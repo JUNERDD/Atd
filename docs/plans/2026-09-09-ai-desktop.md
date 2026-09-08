@@ -1,6 +1,6 @@
 # AI desktop bootstrap and Figma UI
 
-Status: Implemented; final verification and GitHub push in progress
+Status: Complete
 Created: 2026-09-09
 Approval: User authorized planning, initialization, implementation, and GitHub push in the original request.
 
@@ -12,7 +12,7 @@ Approval: User authorized planning, initialization, implementation, and GitHub p
 
 ## Clarifying Questions
 
-- GitHub 已登录账号 JUNERDD；当前目录尚无 Git 仓库，JUNERDD/ai 尚不存在。
+- 初始目录为空，GitHub 登录账号为 JUNERDD；已创建并推送私有仓库 [JUNERDD/ai](https://github.com/JUNERDD/ai)。
 - 用户已确认创建 `JUNERDD/ai` 私有仓库。
 - 默认实现 UI 与本地交互（输入、附件列表、保存任务、历史、置顶设置、隐藏/唤起），未要求模型供应商或 API，因此不接入真实 AI 服务、不伪造生成结果。
 - 以当前 macOS 环境验证桌面体验，保留 Windows/Linux 的标准 Electron 构建配置。
@@ -37,7 +37,7 @@ Approval: User authorized planning, initialization, implementation, and GitHub p
 - [x] P3：实现安全 Electron 主进程/preload、右下角定位、显示/隐藏和置顶控制。依赖 P2。
 - [x] P4：下载原始图标，匹配 Figma 面板，补齐输入、附件、历史和设置交互。依赖 P2/P3。
 - [x] P5：运行格式、lint、类型、Vitest、生产构建、Electron 启动/定位/IPC 和视觉验证，修复发现的问题。依赖 P3/P4。
-- [ ] P6：完善 README、来源与 CI；创建/确认 GitHub 仓库、提交推送并验证远端。依赖 P5。
+- [x] P6：完善 README、来源与 CI；创建/确认 GitHub 仓库、提交推送并验证远端。依赖 P5。
 
 ## Grill-Me Outcome
 
@@ -65,7 +65,7 @@ Approval: User authorized planning, initialization, implementation, and GitHub p
 - Electron 实际启动检查窗口尺寸/右下角位置、预加载桥、置顶、隐藏与重新显示，截图对照 Figma。
 - Aside 浏览器实测 1440×900 视口下面板 420×580，位于 (1004,304)，输入卡片高度 88px，无横向溢出；窄窗口通过 Electron 测试验证。
 - 尝试本机未签名应用打包；签名、公证和发布安装包不属于本次 GitHub 推送。
-- `git status`、`git log -1`、`git ls-remote origin` 核对工作区和推送 SHA。
+- 已推送实现提交 `ae9928d` 到私有仓库 `JUNERDD/ai` 的 `main` 分支，并核对远端 SHA。GitHub Actions 已触发，状态由仓库的 Actions 页面提供。
 
 ## Risks
 
@@ -73,7 +73,7 @@ Approval: User authorized planning, initialization, implementation, and GitHub p
 - CSS backdrop-filter 不能保证跨窗口采样桌面；macOS 使用 Electron 原生 vibrancy，其他平台采用透明背景并记录限制。
 - 本地存储有容量/隐私边界：仅保存用户输入与附件元数据，明确尚未接入 AI；损坏或不可用存储不能导致白屏。
 - 全局快捷键可能被其他软件占用：检查注册结果，保留系统菜单/窗口恢复路径。
-- GitHub 仓库若在创建前出现，则重新检查而不覆盖已有远端内容。
+- 已创建并核实仓库为 PRIVATE；没有覆盖已有远端历史。
 
 ## Approval
 
