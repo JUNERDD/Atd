@@ -1,0 +1,28 @@
+{
+  "name": "ai-workspace",
+  "private": true,
+  "scripts": {
+    "dev": "turbo run dev --filter=@ai/desktop",
+    "dev:web": "turbo run dev:web --filter=@ai/desktop",
+    "build": "turbo run build",
+    "typecheck": "turbo run typecheck",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "test:electron": "pnpm build && pnpm --filter @ai/desktop test:electron",
+    "format": "oxfmt .",
+    "format:check": "oxfmt --check .",
+    "check": "pnpm format:check && turbo run lint typecheck test build",
+    "package": "pnpm build && pnpm --filter @ai/desktop package"
+  },
+  "devDependencies": {
+    "@types/node": "24.13.3",
+    "oxfmt": "0.67.0",
+    "oxlint": "1.82.0",
+    "turbo": "2.10.12",
+    "typescript": "7.0.2"
+  },
+  "engines": {
+    "node": "^24.15.0 || >=26.0.0"
+  },
+  "packageManager": "pnpm@12.3.4"
+}
