@@ -1,0 +1,5 @@
+{
+  "extends": "@ai/typescript-config/react.json",
+  "compilerOptions": { "paths": { "@ai/ui/*": ["./src/*"] } },
+  "include": ["src"]
+}
