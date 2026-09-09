@@ -38,6 +38,7 @@ Approval: User authorized planning, initialization, implementation, and GitHub p
 - [x] P4：下载原始图标，匹配 Figma 面板，补齐输入、附件、历史和设置交互。依赖 P2/P3。
 - [x] P5：运行格式、lint、类型、Vitest、生产构建、Electron 启动/定位/IPC 和视觉验证，修复发现的问题。依赖 P3/P4。
 - [x] P6：完善 README、来源与 CI；创建/确认 GitHub 仓库、提交推送并验证远端。依赖 P5。
+- [x] P7：修复用户截图中的双层圆角与深色遮罩，由 macOS 原生材质负责背景、轮廓和阴影；检查实际桌面合成效果并推送修复。
 
 ## Grill-Me Outcome
 
@@ -48,7 +49,7 @@ Approval: User authorized planning, initialization, implementation, and GitHub p
 ## Build From Plan
 
 - Ready to build: Yes
-- Selected todos: P1–P6
+- Selected todos: P1–P7
 - Execution notes: 原始请求已授权全流程；建立计划不新增实施审批。先完成本地工程和验证，再推送具体可审阅结果。
 - 使用 `vite-plugin-electron@1.1.2` 的已支持 Vite 8 接口；`electron-vite@5` 的 peer 范围只到 Vite 7，故不使用。
 - 渲染进程通过 contextBridge 暴露窄接口；启用 contextIsolation/sandbox，关闭 nodeIntegration，阻止外部导航。
@@ -56,6 +57,7 @@ Approval: User authorized planning, initialization, implementation, and GitHub p
 - 用 shadcn CLI 引入基础组件并按设计变量定制；图标下载原始资产到仓库，避免七天过期链接。
 - 开发入口 `pnpm dev`；网页预览 `pnpm dev:web`；打包入口 `pnpm package`。用户补充要求一键启动开发环境，已实际验证 `pnpm dev` 同时启动 Electron/Vite、CSS 热更新保留草稿、配置变更重启应用、Ctrl+C 退出。
 - 修正插件将 loopback 解析为 localhost 的兼容问题；只允许本机地址，并在 dev/生产两种启动路径保留 Chromium sandbox。
+- 原生表面修复：macOS 使用深色 HUD vibrancy，保留系统轮廓与阴影；preload 同步提供只读平台信息，在首帧前关闭 macOS 渲染层的 CSS 背景、圆角、描边和模糊。网页与其他平台保持原设计表面。
 
 ## Validation
 
@@ -66,6 +68,8 @@ Approval: User authorized planning, initialization, implementation, and GitHub p
 - Aside 浏览器实测 1440×900 视口下面板 420×580，位于 (1004,304)，输入卡片高度 88px，无横向溢出；窄窗口通过 Electron 测试验证。
 - 尝试本机未签名应用打包；签名、公证和发布安装包不属于本次 GitHub 推送。
 - 已推送实现提交 `ae9928d` 到私有仓库 `JUNERDD/ai` 的 `main` 分支，并核对远端 SHA。GitHub Actions 已触发，状态由仓库的 Actions 页面提供。
+- P7 再次通过 `pnpm check`（13 项 Vitest）和现有 Electron 冒烟检查；`pnpm dev` 原生窗口可正常启动。使用 macOS 屏幕区域截图检查实际桌面合成，确认单一圆角轮廓及背后窗口的原生模糊；页面截图只能用于布局与 alpha 检查，不能验证桌面材质。
+- P7 运行时确认深色模式生效、系统未开启减少透明度；渲染层中央像素由 alpha 184/255 降为 0/255，面板背景为透明、CSS 圆角为 0、伪元素描边隐藏，圆角和底层材质由 macOS 接管。
 
 ## Risks
 
@@ -78,5 +82,5 @@ Approval: User authorized planning, initialization, implementation, and GitHub p
 ## Approval
 
 - Status: Implementation and push authorized by the original request.
-- Scope: P1–P6，当前目录新工程、UI 实现、验证、提交及 GitHub 仓库推送。
+- Scope: P1–P7，当前目录新工程、UI 实现、验证、提交及 GitHub 仓库推送，以及用户补充要求的原生透明底与圆角修复。
 - Repository preference: User confirmed private `JUNERDD/ai`.
