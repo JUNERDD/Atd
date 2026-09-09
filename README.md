@@ -1,6 +1,8 @@
 # AI
 
-一个安静的桌面任务面板，默认停靠在屏幕右下角。根据 [Figma 设计 1:400](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=1-400) 实现，使用本地 Inter 字体、原始 SVG 图标和半透明深色表面。
+一个安静的桌面任务面板，默认停靠在屏幕右下角。根据 [Figma 设计 1:400](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=1-400) 实现，使用本地 Inter 字体、[Lucide](https://lucide.dev/) 图标和半透明深色表面。代码通过 `lucide-react` 按需导入 History、Settings、X、Plus 和 ArrowUp；设计稿引用 [00 · Icon 图标库](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=14-91) 中对应的组件，其中 History 对应 `rotate-ccw-clock`。图标库由官方 Lucide Figma 插件导入，可通过 MCP 按名称复用。
+
+图标按钮、面板标题栏和输入框的主组件位于 [02 · App components](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=69-80)，页面同时展示按钮状态、组件用例和样式变量。产品设计通过组件实例复用控件，使用属性切换状态、文字和图标，布局容器保留为自动布局 Frame。桌面模板组件位于 [00 · Desktop assets](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=0-1)；所有组件、样式和变量均保存在同一文件，可直接通过 MCP 查找和复用。
 
 ![AI task panel](docs/task-panel.png)
 

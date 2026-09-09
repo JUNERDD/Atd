@@ -1,8 +1,8 @@
 import { useRef, useState } from 'react';
 import type { FormEvent, KeyboardEvent } from 'react';
+import { ArrowUp, Plus, X } from 'lucide-react';
 import { Button } from '@ai/ui/components/button';
 import { Textarea } from '@ai/ui/components/textarea';
-import { Icon } from './icon';
 import { IconButton } from './icon-button';
 import { MAX_ATTACHMENTS, MAX_PROMPT_LENGTH, type Attachment } from '../lib/task-store';
 
@@ -69,7 +69,7 @@ export function Composer({ onSubmit }: ComposerProps) {
                     setAttachments((files) => files.filter((file) => file.id !== attachment.id))
                   }
                 >
-                  <Icon name="close" size={12} />
+                  <X className="size-3 text-foreground" />
                 </Button>
               </li>
             ))}
@@ -105,7 +105,7 @@ export function Composer({ onSubmit }: ComposerProps) {
             className="attach-button"
             onClick={() => fileInput.current?.click()}
           >
-            <Icon name="plus" size={20} />
+            <Plus className="size-5" />
           </IconButton>
           <span className="composer-spacer" />
           <Button
@@ -115,7 +115,7 @@ export function Composer({ onSubmit }: ComposerProps) {
             disabled={!canSubmit}
             className="send-button"
           >
-            <Icon name="arrowUp" size={20} />
+            <ArrowUp className="size-5" />
           </Button>
         </div>
         {notice && <output className="composer-notice">{notice}</output>}

@@ -54,6 +54,22 @@
 - Discover cloud Figma tools first. Use the local Figma connection only when cloud access or a required capability is unavailable, or when the user requests local access; verify the target file and node before using a local selection.
 - Preserve exact exported design assets in the repository rather than relying on expiring URLs. Represent implemented behavior honestly; do not present local task storage as a connected AI service.
 
+## Figma File Ownership
+
+- Keep reusable components, styles, and variables in the [project Figma file](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=0-1) (`PROJECT_FILE_KEY`) unless the user explicitly requests a shared external library. Reuse `App / Icon button`, `App / Panel header`, and `App / Composer` from [02 · App components](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=69-80), desktop main components from `00 · Desktop assets`, and Lucide main components from `00 · Icon`.
+- Use component instances for reusable controls and compositions; keep layout containers and one-off content as frames. Represent supported appearances and states with variants, copy with text properties, and replaceable icons with instance-swap properties. Expose nested controls where their state or icon needs editing, and use semantic layer names.
+- Use auto layout, fill/hug sizing, padding, and gaps to express layout intent. Remove redundant wrappers and empty spacer layers when layout properties serve the same purpose. Reuse existing variables and styles, document component usage alongside the main components, and verify width changes, long text, icon swaps, and state changes after structural edits.
+- When bringing in external designs, migrate the used main components and their nested dependencies, styles, variable alias chains, and modes into this file before reconnecting instances. Preserve instance overrides, text properties, image fills, layout, and Lucide plugin associations; keep instances connected to local main components.
+- Audit every page after component migrations: check `getMainComponentAsync().remote`, referenced styles and variables, variable aliases, explicit modes, and instance-swap properties. Replacing a nested icon alone does not localize its parent button. Compare screenshots before and after a reference-only migration and check repository Figma design links against the canonical file key.
+
+## Lucide Icons
+
+- Use Lucide for product UI icons. Import named components directly from `lucide-react` at their usage sites; do not introduce a generic `icon.tsx` wrapper or a name-to-icon registry.
+- Reuse the local `Lucide / <kebab-case-name>` components in [Figma's `00 · Icon` page](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=14-91) (file key `PROJECT_FILE_KEY`, page ID `14:91`). Find components by exact name through the cloud Figma MCP, then create or swap instances. Existing library icons do not require computer use or rerunning the plugin.
+- Import missing icons and library updates through the [official Lucide Icons Figma plugin](https://www.figma.com/community/plugin/939567362549682242/lucide-icons). Preserve the imported `lucide/<name>` frame and its plugin association inside the reusable component. Do not substitute package-rendered SVGs, manually drawn paths, or community files for plugin imports, or describe those substitutes as plugin imports.
+- Match the Figma glyph to an export available in the project's pinned `lucide-react` version, checking aliases when names differ (for example, `History` maps to `rotate-ccw-clock`). Keep the 24 × 24 base size, proportional 2px stroke, and existing color-variable bindings consistent with the rendered icon size; verify instance geometry and colors after resizing or swapping.
+- Treat the imported library as a local snapshot. Preserve existing component references when refreshing it, and do not claim that plugin imports automatically track upstream releases.
+
 ## Validation
 
 - Use relevant static checks as the default completion bar; runtime work remains subject to Commands And Local Runtime.
