@@ -8,10 +8,10 @@ export interface DesktopState {
   pinned: boolean;
   shortcut: string;
   shortcutAvailable: boolean;
-  platform: string;
 }
 
 export interface DesktopBridge {
+  readonly platform: string;
   hide: () => Promise<void>;
   getState: () => Promise<DesktopState>;
   setPinned: (pinned: boolean) => Promise<boolean>;

@@ -6,6 +6,7 @@ import './styles.css';
 import { App } from './App';
 
 document.documentElement.dataset.runtime = window.desktop ? 'electron' : 'web';
+document.documentElement.dataset.platform = window.desktop?.platform ?? 'web';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

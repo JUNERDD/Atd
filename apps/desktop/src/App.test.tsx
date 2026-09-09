@@ -72,11 +72,11 @@ describe('task panel', () => {
     const setPinned = vi.fn(async (pinned: boolean) => pinned);
     const hide = vi.fn(async () => {});
     window.desktop = {
+      platform: 'darwin',
       getState: vi.fn(async () => ({
         pinned: true,
         shortcut: '⌘ ⇧ Space',
         shortcutAvailable: true,
-        platform: 'darwin',
       })),
       setPinned,
       hide,

@@ -1,10 +1,20 @@
-import { app, BrowserWindow, globalShortcut, ipcMain, Menu, screen, session } from 'electron';
+import {
+  app,
+  BrowserWindow,
+  globalShortcut,
+  ipcMain,
+  Menu,
+  nativeTheme,
+  screen,
+  session,
+} from 'electron';
 import type { IpcMainInvokeEvent } from 'electron';
 import path from 'node:path';
 import { IPC, type DesktopState } from './contract';
 import { getPanelBounds } from './window-position';
 
 app.setName('AI');
+nativeTheme.themeSource = 'dark';
 
 // A separate profile lets the smoke test run without reading or changing real tasks.
 if (!app.isPackaged && process.env.AI_TEST_USER_DATA) {
@@ -52,7 +62,6 @@ function installIpc() {
       pinned: panel!.isAlwaysOnTop(),
       shortcut: process.platform === 'darwin' ? '⌘ ⇧ Space' : 'Ctrl + Shift + Space',
       shortcutAvailable,
-      platform: process.platform,
     };
   });
   ipcMain.handle(IPC.setPinned, (event, pinned: unknown) => {
@@ -69,7 +78,8 @@ async function createPanel() {
     ...getPanelBounds(display.workArea),
     title: 'AI',
     frame: false,
-    transparent: true,
+    // macOS vibrancy owns the window surface, including its native edge and shadow.
+    transparent: process.platform !== 'darwin',
     backgroundColor: '#00000000',
     alwaysOnTop: true,
     resizable: false,
@@ -79,13 +89,14 @@ async function createPanel() {
     roundedCorners: true,
     show: false,
     ...(process.platform === 'darwin'
-      ? { vibrancy: 'under-window' as const, visualEffectState: 'active' as const }
+      ? { vibrancy: 'hud' as const, visualEffectState: 'active' as const }
       : {}),
     webPreferences: {
       preload: path.join(import.meta.dirname, 'preload.cjs'),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
+      transparent: true,
       webSecurity: true,
       spellcheck: false,
     },

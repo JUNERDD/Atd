@@ -48,6 +48,18 @@ html[data-runtime='electron'] .task-panel {
   height: 100%;
 }
 
+/* The macOS material fills and clips the window; a second shell leaves corner seams. */
+html[data-platform='darwin'] .task-panel {
+  border-radius: 0;
+  background: transparent;
+  backdrop-filter: none;
+  box-shadow: none;
+}
+
+html[data-platform='darwin'] .task-panel::after {
+  display: none;
+}
+
 .task-panel[hidden] {
   display: none;
 }
