@@ -104,14 +104,6 @@ html[data-platform='darwin'] .task-panel::after {
 .secondary-content {
   -webkit-app-region: no-drag;
 }
-.panel-icon {
-  display: block;
-  flex-shrink: 0;
-  max-width: none;
-  pointer-events: none;
-  user-select: none;
-}
-
 .panel-content {
   flex: 1;
   min-height: 0;

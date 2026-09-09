@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
+import { History, Settings, X } from 'lucide-react';
 import { Button } from '@ai/ui/components/button';
 import { Switch } from '@ai/ui/components/switch';
 import { TooltipProvider } from '@ai/ui/components/tooltip';
 import type { DesktopState } from '../electron/contract';
 import { Composer } from './components/composer';
-import { Icon } from './components/icon';
 import { IconButton } from './components/icon-button';
 import { createTask, fileSize, loadState, MAX_TASKS, saveState, taskTitle } from './lib/task-store';
 import type { Attachment, Task } from './lib/task-store';
@@ -112,7 +112,7 @@ export function App() {
               aria-pressed={view === 'history'}
               onClick={() => setView(view === 'history' ? 'new' : 'history')}
             >
-              <Icon name="history" />
+              <History className="size-4.5" />
             </IconButton>
             <IconButton
               label="Settings"
@@ -120,10 +120,10 @@ export function App() {
               aria-pressed={view === 'settings'}
               onClick={() => setView(view === 'settings' ? 'new' : 'settings')}
             >
-              <Icon name="settings" />
+              <Settings className="size-4.5" />
             </IconButton>
             <IconButton label="Hide panel" className="header-button" onClick={() => void hide()}>
-              <Icon name="close" />
+              <X className="size-4.5" />
             </IconButton>
           </nav>
         </header>
