@@ -11,6 +11,7 @@ import {
 } from 'electron';
 import type { IpcMainInvokeEvent } from 'electron';
 import { IPC, type DesktopState } from './contract';
+import { chooseContextFiles } from './context-files';
 import { SettingsService } from './settings-service';
 import {
   isWindowSender,
@@ -18,7 +19,7 @@ import {
   rendererPreferences,
   secureWindowContent,
 } from './window-content';
-import { getPanelBounds } from './window-position';
+import { constrainPanelBounds, getPanelBounds } from './window-position';
 
 app.setName('AI');
 nativeTheme.themeSource = 'dark';
@@ -30,18 +31,18 @@ if (!app.isPackaged && process.env.AI_TEST_USER_DATA) {
 
 let panel: BrowserWindow | null = null;
 let settings: SettingsService;
+let choosingFiles = false;
+let changingPinned = false;
 
 function showPanel() {
-  if (!panel || panel.isDestroyed()) return;
-  const display = screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
-  panel.setBounds(getPanelBounds(display.workArea));
+  if (!panel || panel.isDestroyed() || choosingFiles) return;
   if (panel.isMinimized()) panel.restore();
   panel.show();
   panel.focus();
 }
 
 function hidePanel() {
-  if (!panel || panel.isDestroyed()) return;
+  if (!panel || panel.isDestroyed() || choosingFiles) return;
   // Keep a taskbar restore path when another app has claimed the global shortcut.
   if (!settings.shortcutAvailable && process.platform !== 'darwin') panel.minimize();
   else panel.hide();
@@ -54,6 +55,22 @@ function assertPanelSender(event: IpcMainInvokeEvent) {
 }
 
 function installIpc() {
+  ipcMain.handle(IPC.chooseFiles, async (event) => {
+    assertPanelSender(event);
+    if (choosingFiles) throw new Error('A file chooser is already open');
+    if (changingPinned) throw new Error('Wait for the window preference to finish saving');
+    const window = panel!;
+    const pinned = window.isAlwaysOnTop();
+    choosingFiles = true;
+    try {
+      // Keep the floating panel below the independent native modal.
+      window.setAlwaysOnTop(false);
+      return await chooseContextFiles();
+    } finally {
+      choosingFiles = false;
+      if (!window.isDestroyed()) window.setAlwaysOnTop(pinned);
+    }
+  });
   ipcMain.handle(IPC.hide, (event) => {
     assertPanelSender(event);
     hidePanel();
@@ -62,10 +79,17 @@ function installIpc() {
     settings.assertSender(event);
     return settings.desktopState();
   });
-  ipcMain.handle(IPC.setPinned, (event, pinned: unknown) => {
+  ipcMain.handle(IPC.setPinned, async (event, pinned: unknown) => {
     settings.assertSender(event);
     if (typeof pinned !== 'boolean') throw new TypeError('Pinned must be a boolean');
-    return settings.setPinned(pinned);
+    if (choosingFiles) throw new Error('Close the file chooser before changing window settings');
+    if (changingPinned) throw new Error('A window preference is already being saved');
+    changingPinned = true;
+    try {
+      return await settings.setPinned(pinned);
+    } finally {
+      changingPinned = false;
+    }
   });
 }
 
@@ -150,8 +174,13 @@ if (!app.requestSingleInstanceLock()) {
           if (panel && !panel.isDestroyed()) panel.setAlwaysOnTop(pinned);
         },
         togglePanel: () => {
-          if (panel?.isVisible() && !panel.isMinimized() && panel.isFocused()) hidePanel();
-          else showPanel();
+          if (!panel || panel.isDestroyed() || choosingFiles) return;
+          if (panel.isVisible() && !panel.isMinimized() && panel.isFocused()) hidePanel();
+          else {
+            const display = screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
+            panel.setBounds(getPanelBounds(display.workArea));
+            showPanel();
+          }
         },
       });
       settings.installIpc();
@@ -161,9 +190,22 @@ if (!app.requestSingleInstanceLock()) {
       const reposition = () => {
         if (!panel || panel.isDestroyed()) return;
         const display = screen.getDisplayMatching(panel.getBounds());
-        panel.setBounds(getPanelBounds(display.workArea));
+        const bounds = panel.getBounds();
+        const next = constrainPanelBounds(bounds, display.workArea);
+        if (
+          next.x !== bounds.x ||
+          next.y !== bounds.y ||
+          next.width !== bounds.width ||
+          next.height !== bounds.height
+        )
+          panel.setBounds(next);
       };
-      screen.on('display-metrics-changed', reposition);
+      screen.on('display-metrics-changed', (_event, display, metrics) => {
+        if (!panel || panel.isDestroyed()) return;
+        if (!metrics.some((metric) => ['bounds', 'workArea', 'scaleFactor'].includes(metric)))
+          return;
+        if (display.id === screen.getDisplayMatching(panel.getBounds()).id) reposition();
+      });
       screen.on('display-removed', reposition);
       app.on('activate', () => {
         if (panel) showPanel();
