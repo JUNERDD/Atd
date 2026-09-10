@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useHotkeys, type Options } from 'react-hotkeys-hook';
-import { History, Settings, X } from 'lucide-react';
+import { Astroid, History, Settings, X } from 'lucide-react';
 import { Button } from '@ai/ui/components/button';
 import { TooltipProvider } from '@ai/ui/components/tooltip';
 import { DEFAULT_SHORTCUTS } from '../electron/settings-contract';
@@ -127,6 +127,13 @@ export function App() {
         data-figma-node="1:400"
       >
         <header className="panel-header">
+          <IconButton
+            label="New chat"
+            className="header-button panel-logo-button"
+            onClick={newChat}
+          >
+            <Astroid className="size-5" aria-hidden="true" />
+          </IconButton>
           <h1>{title}</h1>
           <nav className="header-controls" aria-label="Panel controls">
             <IconButton
