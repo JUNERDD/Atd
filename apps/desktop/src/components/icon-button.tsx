@@ -5,8 +5,12 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@ai/ui/components/toolt
 export function IconButton({
   label,
   children,
+  tooltipSide = 'bottom',
   ...props
-}: ComponentProps<typeof Button> & { label: string }) {
+}: ComponentProps<typeof Button> & {
+  label: string;
+  tooltipSide?: ComponentProps<typeof TooltipContent>['side'];
+}) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
@@ -14,7 +18,7 @@ export function IconButton({
           {children}
         </Button>
       </TooltipTrigger>
-      <TooltipContent side="bottom" sideOffset={6}>
+      <TooltipContent side={tooltipSide} sideOffset={4}>
         {label}
       </TooltipContent>
     </Tooltip>
