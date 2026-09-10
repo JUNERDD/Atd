@@ -2,6 +2,8 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { App } from './App';
+import { SettingsWindow } from './features/settings/settings-window';
+import { DEFAULT_SHORTCUTS, type SettingsSnapshot } from '../electron/settings-contract';
 import { loadState } from './lib/task-store';
 
 describe('task panel', () => {
@@ -24,7 +26,7 @@ describe('task panel', () => {
     await user.click(screen.getByRole('button', { name: 'Tasks' }));
     await user.click(screen.getByRole('button', { name: /Plan my afternoon/ }));
     expect(screen.getByText('Plan my afternoon')).toBeVisible();
-    expect(screen.getByText(/Connect an AI provider to run this task/)).toBeVisible();
+    expect(screen.getByText('Saved on this device.')).toBeVisible();
   });
 
   it('allows multiline input and never submits while an IME composition is active', async () => {
@@ -40,10 +42,13 @@ describe('task panel', () => {
 
   it('preserves a draft while viewing history, settings, and hiding the web preview', async () => {
     const user = userEvent.setup();
+    const focus = vi.spyOn(window, 'focus').mockImplementation(() => {});
+    const open = vi.spyOn(window, 'open').mockReturnValue(window);
     render(<App />);
     await user.type(screen.getByRole('textbox'), 'A work in progress');
     await user.click(screen.getByRole('button', { name: 'Settings' }));
-    await user.click(screen.getByRole('button', { name: 'Done' }));
+    expect(open).toHaveBeenCalledWith(expect.any(URL), 'ai-settings', 'width=1000,height=720');
+    expect(focus).toHaveBeenCalledOnce();
     await user.click(screen.getByRole('button', { name: 'Tasks' }));
     await user.click(screen.getByRole('button', { name: 'New task' }));
     await user.click(screen.getByRole('button', { name: 'Hide panel' }));
@@ -69,7 +74,19 @@ describe('task panel', () => {
 
   it('uses the isolated desktop bridge for pinning and hiding', async () => {
     const user = userEvent.setup();
-    const setPinned = vi.fn(async (pinned: boolean) => pinned);
+    let snapshot: SettingsSnapshot = {
+      provider: { id: 'openai', baseUrl: 'https://api.openai.com/v1', model: '', hasApiKey: false },
+      shortcuts: { ...DEFAULT_SHORTCUTS },
+      account: { name: 'Test user', kind: 'local' },
+      pinned: true,
+      shortcutAvailable: true,
+    };
+    const listeners = new Set<(settings: SettingsSnapshot) => void>();
+    const setPinned = vi.fn(async (pinned: boolean) => {
+      snapshot = { ...snapshot, pinned };
+      listeners.forEach((listener) => listener(snapshot));
+      return pinned;
+    });
     const hide = vi.fn(async () => {});
     window.desktop = {
       platform: 'darwin',
@@ -80,12 +97,31 @@ describe('task panel', () => {
       })),
       setPinned,
       hide,
+      settings: {
+        open: vi.fn(async () => {}),
+        close: vi.fn(async () => {}),
+        get: vi.fn(async () => snapshot),
+        saveProvider: vi.fn(async () => snapshot),
+        testProvider: vi.fn(async () => ({ models: [] })),
+        saveShortcuts: vi.fn(async () => snapshot),
+        restoreShortcuts: vi.fn(async () => snapshot),
+        onChange: (listener) => {
+          listeners.add(listener);
+          return () => {
+            listeners.delete(listener);
+          };
+        },
+      },
     };
     render(<App />);
     await user.click(screen.getByRole('button', { name: 'Settings' }));
+    expect(window.desktop.settings.open).toHaveBeenCalledOnce();
+    const settingsView = render(<SettingsWindow />);
+    await user.click(await screen.findByRole('tab', { name: 'Shortcuts' }));
     await user.click(screen.getByRole('switch', { name: 'Always on top' }));
     await waitFor(() => expect(setPinned).toHaveBeenLastCalledWith(false));
     expect(loadState().pinned).toBe(false);
+    settingsView.unmount();
     await user.click(screen.getByRole('button', { name: 'Hide panel' }));
     expect(hide).toHaveBeenCalledOnce();
   });

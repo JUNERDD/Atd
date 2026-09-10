@@ -11,6 +11,12 @@
   color-scheme: dark;
   /* One renderer-owned surface across platforms; native blur remains visible through the tint. */
   --ata-surface-panel: rgb(12 12 12 / 80%);
+  --ata-backdrop-blur: 20px;
+  /* Same tint as the sidebar; this inset layer raises effective opacity only to 82%. */
+  --ata-material-settings-content: rgb(12 12 12 / 10%);
+  --ata-surface-settings-content: var(--ata-material-settings-content);
+  --ata-material-selected: rgb(255 255 255 / 12%);
+  --ata-text-secondary: #a1a1a1;
   --ata-border-subtle: rgb(255 255 255 / 14%);
   --ata-radius-panel: 22px;
   --background: oklch(1 0 0);
@@ -52,7 +58,7 @@
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);
   --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
+  --popover: var(--ata-surface-panel);
   --popover-foreground: oklch(0.985 0 0);
   --primary: oklch(0.922 0 0);
   --primary-foreground: oklch(0.205 0 0);

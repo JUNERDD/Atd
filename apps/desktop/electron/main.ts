@@ -1,6 +1,7 @@
 import {
   app,
   BrowserWindow,
+  dialog,
   globalShortcut,
   ipcMain,
   Menu,
@@ -9,8 +10,14 @@ import {
   session,
 } from 'electron';
 import type { IpcMainInvokeEvent } from 'electron';
-import path from 'node:path';
 import { IPC, type DesktopState } from './contract';
+import { SettingsService } from './settings-service';
+import {
+  isWindowSender,
+  loadWindowContent,
+  rendererPreferences,
+  secureWindowContent,
+} from './window-content';
 import { getPanelBounds } from './window-position';
 
 app.setName('AI');
@@ -22,8 +29,7 @@ if (!app.isPackaged && process.env.AI_TEST_USER_DATA) {
 }
 
 let panel: BrowserWindow | null = null;
-let shortcutAvailable = false;
-const shortcut = 'CommandOrControl+Shift+Space';
+let settings: SettingsService;
 
 function showPanel() {
   if (!panel || panel.isDestroyed()) return;
@@ -37,16 +43,12 @@ function showPanel() {
 function hidePanel() {
   if (!panel || panel.isDestroyed()) return;
   // Keep a taskbar restore path when another app has claimed the global shortcut.
-  if (!shortcutAvailable && process.platform !== 'darwin') panel.minimize();
+  if (!settings.shortcutAvailable && process.platform !== 'darwin') panel.minimize();
   else panel.hide();
 }
 
 function assertPanelSender(event: IpcMainInvokeEvent) {
-  if (
-    !panel ||
-    event.sender !== panel.webContents ||
-    event.senderFrame !== panel.webContents.mainFrame
-  ) {
+  if (!isWindowSender(event, panel)) {
     throw new Error('Untrusted desktop request');
   }
 }
@@ -57,18 +59,13 @@ function installIpc() {
     hidePanel();
   });
   ipcMain.handle(IPC.getState, (event): DesktopState => {
-    assertPanelSender(event);
-    return {
-      pinned: panel!.isAlwaysOnTop(),
-      shortcut: process.platform === 'darwin' ? '⌘ ⇧ Space' : 'Ctrl + Shift + Space',
-      shortcutAvailable,
-    };
+    settings.assertSender(event);
+    return settings.desktopState();
   });
   ipcMain.handle(IPC.setPinned, (event, pinned: unknown) => {
-    assertPanelSender(event);
+    settings.assertSender(event);
     if (typeof pinned !== 'boolean') throw new TypeError('Pinned must be a boolean');
-    panel!.setAlwaysOnTop(pinned);
-    return panel!.isAlwaysOnTop();
+    return settings.setPinned(pinned);
   });
 }
 
@@ -82,7 +79,7 @@ async function createPanel() {
     transparent: process.platform !== 'darwin',
     // The renderer owns the panel tint; keep the native backing clear to avoid double fills.
     backgroundColor: '#00000000',
-    alwaysOnTop: true,
+    alwaysOnTop: settings.pinned,
     resizable: false,
     maximizable: false,
     fullscreenable: false,
@@ -93,37 +90,16 @@ async function createPanel() {
     ...(process.platform === 'darwin'
       ? { vibrancy: 'hud' as const, visualEffectState: 'active' as const }
       : {}),
-    webPreferences: {
-      preload: path.join(import.meta.dirname, 'preload.cjs'),
-      contextIsolation: true,
-      nodeIntegration: false,
-      sandbox: true,
-      transparent: true,
-      webSecurity: true,
-      spellcheck: false,
-    },
+    webPreferences: rendererPreferences,
   });
   panel = window;
-  window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
-  window.webContents.on('will-navigate', (event) => event.preventDefault());
-  window.webContents.on('will-attach-webview', (event) => event.preventDefault());
+  secureWindowContent(window);
   window.on('closed', () => {
     panel = null;
   });
   window.once('ready-to-show', showPanel);
 
-  const developmentUrl = process.env.VITE_DEV_SERVER_URL;
-  if (!app.isPackaged && developmentUrl) {
-    const parsed = new URL(developmentUrl);
-    if (parsed.protocol !== 'http:' || !['127.0.0.1', 'localhost'].includes(parsed.hostname)) {
-      throw new Error('The development server must use the local loopback address');
-    }
-    // vite-plugin-electron normalizes loopback hosts to localhost; Vite binds IPv4 here.
-    parsed.hostname = '127.0.0.1';
-    await window.loadURL(parsed.href);
-  } else {
-    await window.loadFile(path.join(import.meta.dirname, '../dist/index.html'));
-  }
+  await loadWindowContent(window);
 }
 
 function installMenu() {
@@ -134,6 +110,19 @@ function installMenu() {
         submenu: [
           { label: 'Show task panel', click: showPanel },
           { label: 'Hide task panel', click: hidePanel },
+          {
+            label: 'Settings…',
+            click: () => {
+              void settings
+                .open()
+                .catch(() =>
+                  dialog.showErrorBox(
+                    'Could not open settings',
+                    'The settings window could not be opened.',
+                  ),
+                );
+            },
+          },
           { type: 'separator' },
           { role: 'quit' },
         ],
@@ -155,10 +144,17 @@ if (!app.requestSingleInstanceLock()) {
         callback(false),
       );
       session.defaultSession.setPermissionCheckHandler(() => false);
-      shortcutAvailable = globalShortcut.register(shortcut, () => {
-        if (panel?.isVisible() && !panel.isMinimized() && panel.isFocused()) hidePanel();
-        else showPanel();
+      settings = await SettingsService.create({
+        panel: () => panel,
+        applyPinned: (pinned) => {
+          if (panel && !panel.isDestroyed()) panel.setAlwaysOnTop(pinned);
+        },
+        togglePanel: () => {
+          if (panel?.isVisible() && !panel.isMinimized() && panel.isFocused()) hidePanel();
+          else showPanel();
+        },
       });
+      settings.installIpc();
       installIpc();
       installMenu();
       await createPanel();

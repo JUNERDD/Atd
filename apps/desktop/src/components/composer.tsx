@@ -1,5 +1,8 @@
-import { useRef, useState } from 'react';
-import type { FormEvent, KeyboardEvent } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import type { FormEvent } from 'react';
+import { useHotkeys, type Options } from 'react-hotkeys-hook';
+import { DEFAULT_SHORTCUTS } from '../../electron/settings-contract';
+import type { ProviderSettings, ShortcutBindings } from '../../electron/settings-contract';
 import { ArrowUp, Plus, X } from 'lucide-react';
 import { Button } from '@ai/ui/components/button';
 import { Textarea } from '@ai/ui/components/textarea';
@@ -7,13 +10,24 @@ import { IconButton } from './icon-button';
 import { ComposerConfiguration } from './composer-configuration';
 import { VoiceInputButton } from './voice-input-button';
 import { MAX_ATTACHMENTS, MAX_PROMPT_LENGTH, type Attachment } from '../lib/task-store';
+import { acceleratorToHotkey } from '../lib/shortcuts';
 import './composer.css';
 
 interface ComposerProps {
   onSubmit: (prompt: string, attachments: Attachment[]) => void;
+  focusOnMount?: boolean;
+  shortcuts?: ShortcutBindings;
+  provider?: ProviderSettings;
+  onOpenSettings?: () => void;
 }
 
-export function Composer({ onSubmit }: ComposerProps) {
+export function Composer({
+  onSubmit,
+  focusOnMount = false,
+  shortcuts = DEFAULT_SHORTCUTS,
+  provider,
+  onOpenSettings,
+}: ComposerProps) {
   const [prompt, setPrompt] = useState('');
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [attachmentLimitExceeded, setAttachmentLimitExceeded] = useState(false);
@@ -21,6 +35,20 @@ export function Composer({ onSubmit }: ComposerProps) {
   const textarea = useRef<HTMLTextAreaElement>(null);
   const canSubmit = prompt.trim().length > 0 || attachments.length > 0;
   const expanded = prompt.includes('\n');
+  const platform = window.desktop?.platform ?? 'web';
+  const hotkeyOptions: Options = {
+    delimiter: '|',
+    useKey: false,
+    enableOnFormTags: ['textarea'],
+    // Retain send's default prevention for held keys without submitting again.
+    enabled: (event) => !event.repeat,
+    ignoreEventWhen: (event) =>
+      event.defaultPrevented || event.isComposing || event.keyCode === 229,
+  };
+
+  useEffect(() => {
+    if (focusOnMount) textarea.current?.focus();
+  }, [focusOnMount]);
 
   function submit(event?: FormEvent) {
     event?.preventDefault();
@@ -32,17 +60,36 @@ export function Composer({ onSubmit }: ComposerProps) {
     textarea.current?.focus();
   }
 
-  function handleKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
-    if (
-      event.key === 'Enter' &&
-      !event.shiftKey &&
-      !event.nativeEvent.isComposing &&
-      event.keyCode !== 229
-    ) {
+  const sendMessageRef = useHotkeys<HTMLTextAreaElement>(
+    acceleratorToHotkey(shortcuts.sendMessage, platform),
+    () => submit(),
+    { ...hotkeyOptions, preventDefault: true },
+    [prompt, attachments, onSubmit],
+  );
+  const newLineRef = useHotkeys<HTMLTextAreaElement>(
+    acceleratorToHotkey(shortcuts.newLine, platform),
+    (event) => {
+      if (event.key === 'Enter' && !event.metaKey && !event.ctrlKey && !event.altKey) return;
       event.preventDefault();
-      submit();
-    }
-  }
+      const input = textarea.current;
+      if (!input) return;
+      const { selectionStart: start, selectionEnd: end } = input;
+      const next = `${prompt.slice(0, start)}\n${prompt.slice(end)}`;
+      if (next.length > MAX_PROMPT_LENGTH) return;
+      setPrompt(next);
+      requestAnimationFrame(() => textarea.current?.setSelectionRange(start + 1, start + 1));
+    },
+    hotkeyOptions,
+    [prompt],
+  );
+  const setTextareaRef = useCallback(
+    (input: HTMLTextAreaElement | null) => {
+      textarea.current = input;
+      sendMessageRef(input);
+      newLineRef(input);
+    },
+    [sendMessageRef, newLineRef],
+  );
 
   return (
     <footer className="panel-footer">
@@ -53,7 +100,7 @@ export function Composer({ onSubmit }: ComposerProps) {
           data-has-attachments={attachments.length > 0}
         >
           <Textarea
-            ref={textarea}
+            ref={setTextareaRef}
             className="composer-input"
             aria-label="Task prompt"
             placeholder="Ask anything…"
@@ -62,7 +109,6 @@ export function Composer({ onSubmit }: ComposerProps) {
             maxLength={MAX_PROMPT_LENGTH}
             value={prompt}
             onChange={(event) => setPrompt(event.target.value)}
-            onKeyDown={handleKeyDown}
           />
           {attachments.length > 0 && (
             <ul className="attachment-list" aria-label="Attached context">
@@ -122,7 +168,7 @@ export function Composer({ onSubmit }: ComposerProps) {
             </Button>
           </div>
         </div>
-        <ComposerConfiguration />
+        <ComposerConfiguration provider={provider} onOpenSettings={onOpenSettings} />
         {attachmentLimitExceeded === true && (
           <output className="composer-notice">You can attach up to {MAX_ATTACHMENTS} files.</output>
         )}
