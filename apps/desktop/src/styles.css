@@ -48,10 +48,9 @@ html[data-runtime='electron'] .task-panel {
   height: 100%;
 }
 
-/* The macOS material fills and clips the window; a second shell leaves corner seams. */
+/* Keep the shared content fill; macOS owns the outer clipping, edge, blur and shadow. */
 html[data-platform='darwin'] .task-panel {
   border-radius: 0;
-  background: transparent;
   backdrop-filter: none;
   box-shadow: none;
 }
@@ -71,7 +70,7 @@ html[data-platform='darwin'] .task-panel::after {
   gap: 8px;
   height: 49px;
   padding: 8px 12px;
-  border-bottom: 1px solid var(--ata-border-subtle);
+  border-bottom: 1px solid var(--border);
   user-select: none;
   -webkit-app-region: drag;
 }
@@ -93,12 +92,6 @@ html[data-platform='darwin'] .task-panel::after {
   flex-shrink: 0;
   gap: 6px;
 }
-.header-button {
-  border-radius: var(--ata-radius-control);
-}
-.header-button[aria-pressed='true'] {
-  background: var(--ata-surface-hover);
-}
 .header-button,
 .panel-footer,
 .secondary-content {
@@ -110,7 +103,7 @@ html[data-platform='darwin'] .task-panel::after {
   padding: 64px 16px 16px;
   overflow: hidden auto;
   scrollbar-width: thin;
-  scrollbar-color: rgb(255 255 255 / 18%) transparent;
+  scrollbar-color: var(--border) transparent;
 }
 
 .panel-content h2 {
@@ -125,7 +118,7 @@ html[data-platform='darwin'] .task-panel::after {
   gap: 12px;
 }
 .welcome p {
-  color: var(--ata-text-secondary);
+  color: var(--muted-foreground);
   font-size: 14px;
   line-height: 20px;
 }
@@ -134,75 +127,6 @@ html[data-platform='darwin'] .task-panel::after {
 }
 .panel-footer {
   padding: 8px 16px 16px;
-}
-
-.composer {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 12px;
-  padding: 12px;
-  border-radius: 24px;
-  background: var(--ata-surface-raised);
-  box-shadow: 0 1px 1px rgb(0 0 0 / 18%);
-  transition: box-shadow 150ms ease;
-}
-
-.composer:focus-within {
-  box-shadow:
-    0 0 0 1px rgb(255 255 255 / 16%),
-    0 1px 1px rgb(0 0 0 / 18%);
-}
-
-.prompt-input {
-  display: block;
-  field-sizing: content;
-  min-height: 20px;
-  max-height: 80px;
-  padding: 0;
-  resize: none;
-  overflow-y: auto;
-  border: 0;
-  border-radius: 0;
-  background: transparent !important;
-  box-shadow: none !important;
-  color: var(--ata-text-primary);
-  font-size: 14px;
-  font-weight: 400;
-  line-height: 20px;
-  outline: none;
-  scrollbar-width: thin;
-}
-
-.prompt-input::placeholder {
-  color: var(--ata-text-secondary);
-  opacity: 1;
-}
-.composer-controls {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  height: 32px;
-}
-.composer-spacer {
-  flex: 1;
-}
-.attach-button {
-  border-radius: 10px;
-  background: var(--ata-surface-hover);
-}
-.attach-button:hover {
-  background: rgb(255 255 255 / 18%);
-}
-.send-button {
-  border-radius: 999px;
-  background: var(--ata-action-fill);
-}
-.send-button:disabled {
-  opacity: 0.4;
-}
-.send-button:not(:disabled):hover {
-  background: white;
 }
 
 .secondary-content {
@@ -215,20 +139,17 @@ html[data-platform='darwin'] .task-panel::after {
   gap: 8px;
   margin-bottom: 24px;
 }
-.section-heading .data-slot {
-  font-size: 12px;
-}
 .empty-state {
   padding: 22px 0;
 }
 .empty-state p {
-  color: var(--ata-text-secondary);
+  color: var(--muted-foreground);
   font-size: 14px;
   line-height: 22px;
 }
 .empty-state p:first-child {
   margin-bottom: 6px;
-  color: var(--ata-text-primary);
+  color: var(--foreground);
 }
 .task-list {
   display: flex;
@@ -243,7 +164,6 @@ html[data-platform='darwin'] .task-panel::after {
   flex-direction: column;
   gap: 8px;
   padding: 12px;
-  border-radius: 12px;
   text-align: left;
 }
 .task-row-title {
@@ -255,7 +175,7 @@ html[data-platform='darwin'] .task-panel::after {
 .task-row-meta {
   display: flex;
   justify-content: space-between;
-  color: var(--ata-text-secondary);
+  color: var(--muted-foreground);
   font-size: 11px;
   font-weight: 400;
 }
@@ -266,12 +186,12 @@ html[data-platform='darwin'] .task-panel::after {
   justify-content: space-between;
   gap: 16px;
   padding: 20px 0;
-  border-bottom: 1px solid var(--ata-border-subtle);
+  border-bottom: 1px solid var(--border);
   font-size: 14px;
 }
 .setting-row p {
   margin-top: 5px;
-  color: var(--ata-text-secondary);
+  color: var(--muted-foreground);
   font-size: 12px;
   line-height: 18px;
 }
@@ -281,21 +201,21 @@ html[data-platform='darwin'] .task-panel::after {
 .setting-row kbd {
   flex-shrink: 0;
   padding: 5px 7px;
-  border: 1px solid var(--ata-border-subtle);
-  border-radius: 6px;
-  color: var(--ata-text-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--muted-foreground);
   font-family: inherit;
   font-size: 11px;
 }
 .setting-note {
   padding-top: 8px;
-  color: var(--ata-text-secondary);
+  color: var(--muted-foreground);
   font-size: 12px;
   line-height: 18px;
 }
 .privacy-note {
   margin-top: 30px;
-  color: var(--ata-text-secondary);
+  color: var(--muted-foreground);
   font-size: 12px;
   line-height: 20px;
 }
@@ -308,20 +228,20 @@ html[data-platform='darwin'] .task-panel::after {
   height: 6px;
   margin-right: 5px;
   border-radius: 100%;
-  background: #c2c7d1;
+  background: var(--muted-foreground);
 }
 .saved-prompt {
   padding: 14px 16px;
   overflow-wrap: anywhere;
-  border-radius: 16px;
-  background: var(--ata-surface-raised);
+  border-radius: var(--radius-2xl);
+  background: var(--muted);
   font-size: 14px;
   line-height: 22px;
   white-space: pre-wrap;
 }
 .saved-note {
   margin-top: 20px;
-  color: var(--ata-text-secondary);
+  color: var(--muted-foreground);
   font-size: 13px;
   line-height: 21px;
 }
@@ -333,7 +253,7 @@ html[data-platform='darwin'] .task-panel::after {
   justify-content: space-between;
   gap: 16px;
   padding: 8px 0;
-  color: var(--ata-text-secondary);
+  color: var(--muted-foreground);
   font-size: 12px;
 }
 .saved-attachments li span:first-child {
@@ -355,9 +275,9 @@ html[data-platform='darwin'] .task-panel::after {
   align-items: center;
   gap: 4px;
   padding: 3px 3px 3px 8px;
-  border: 1px solid var(--ata-border-subtle);
-  border-radius: 8px;
-  color: var(--ata-text-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  color: var(--muted-foreground);
   font-size: 11px;
 }
 .attachment-chip > span {
@@ -366,19 +286,15 @@ html[data-platform='darwin'] .task-panel::after {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.remove-attachment {
-  width: 20px;
-  height: 20px;
-}
 .panel-notice {
   flex-shrink: 0;
   padding: 8px 20px;
-  color: var(--ata-text-secondary);
+  color: var(--muted-foreground);
   font-size: 12px;
   line-height: 18px;
 }
 .composer-notice {
-  color: var(--ata-text-secondary);
+  color: var(--muted-foreground);
   font-size: 11px;
   line-height: 16px;
 }
@@ -386,9 +302,6 @@ html[data-platform='darwin'] .task-panel::after {
   position: fixed;
   right: 16px;
   bottom: 16px;
-  border: 1px solid var(--ata-border-subtle);
-  background: #20242c;
-  color: var(--ata-text-primary);
 }
 
 @media (max-height: 420px) {

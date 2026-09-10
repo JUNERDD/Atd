@@ -1,0 +1,116 @@
+.composer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* One textarea stays mounted while the composition changes around it. */
+.composer-surface {
+  display: grid;
+  grid-template-areas: 'attach prompt actions';
+  grid-template-columns: 28px minmax(0, 1fr) 60px;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--input) 50%, transparent);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 18%);
+}
+
+.composer-surface:has(.composer-input:focus-visible) {
+  outline: 1px solid var(--ring);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 30%, transparent);
+}
+
+.composer-surface[data-expanded='true'] {
+  grid-template-areas: 'prompt prompt prompt' 'attach . actions';
+  align-content: start;
+  padding-inline: 10px;
+  border-radius: var(--radius-2xl);
+}
+
+.composer-surface[data-has-attachments='true'] {
+  grid-template-areas: 'attach prompt actions' 'files files files';
+  border-radius: var(--radius-2xl);
+}
+
+.composer-surface[data-expanded='true'][data-has-attachments='true'] {
+  grid-template-areas: 'prompt prompt prompt' 'files files files' 'attach . actions';
+}
+
+.composer-input {
+  grid-area: prompt;
+  field-sizing: content;
+  width: 100%;
+  min-width: 0;
+  min-height: 20px;
+  max-height: 20px;
+  padding: 0;
+  overflow: auto;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  font-size: 14px;
+  line-height: 20px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.composer-surface[data-expanded='true'] .composer-input {
+  max-height: 100px;
+}
+
+.composer-surface[data-expanded='false'] .composer-input {
+  scrollbar-width: none;
+}
+
+.composer-attach {
+  grid-area: attach;
+  background: var(--input);
+}
+
+.composer-attach:hover {
+  background: color-mix(in oklab, var(--foreground) 20%, transparent);
+}
+
+.composer-actions {
+  grid-area: actions;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.composer-surface .attachment-list {
+  grid-area: files;
+}
+
+.composer-configuration {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.composer-model {
+  min-width: 0;
+  flex-shrink: 1;
+}
+
+.composer-config-label {
+  max-width: 148px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.provider-logo {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  background: currentColor;
+  mask-repeat: no-repeat;
+  mask-position: center;
+  mask-size: contain;
+}

@@ -80,6 +80,7 @@ async function createPanel() {
     frame: false,
     // macOS vibrancy owns the window surface, including its native edge and shadow.
     transparent: process.platform !== 'darwin',
+    // The renderer owns the panel tint; keep the native backing clear to avoid double fills.
     backgroundColor: '#00000000',
     alwaysOnTop: true,
     resizable: false,
@@ -88,6 +89,7 @@ async function createPanel() {
     hasShadow: true,
     roundedCorners: true,
     show: false,
+    // HUD provides native blur beneath the renderer's content surface, even when unfocused.
     ...(process.platform === 'darwin'
       ? { vibrancy: 'hud' as const, visualEffectState: 'active' as const }
       : {}),

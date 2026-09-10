@@ -109,21 +109,23 @@ export function App() {
             <IconButton
               label="Tasks"
               className="header-button"
+              variant={view === 'history' ? 'secondary' : 'ghost'}
               aria-pressed={view === 'history'}
               onClick={() => setView(view === 'history' ? 'new' : 'history')}
             >
-              <History className="size-4.5" />
+              <History />
             </IconButton>
             <IconButton
               label="Settings"
               className="header-button"
+              variant={view === 'settings' ? 'secondary' : 'ghost'}
               aria-pressed={view === 'settings'}
               onClick={() => setView(view === 'settings' ? 'new' : 'settings')}
             >
-              <Settings className="size-4.5" />
+              <Settings />
             </IconButton>
             <IconButton label="Hide panel" className="header-button" onClick={() => void hide()}>
-              <X className="size-4.5" />
+              <X />
             </IconButton>
           </nav>
         </header>
