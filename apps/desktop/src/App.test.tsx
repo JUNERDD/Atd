@@ -97,6 +97,7 @@ describe('task panel', () => {
       })),
       setPinned,
       hide,
+      chooseFiles: vi.fn(async () => []),
       settings: {
         open: vi.fn(async () => {}),
         close: vi.fn(async () => {}),

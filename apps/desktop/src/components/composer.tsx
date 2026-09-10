@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { useHotkeys, type Options } from 'react-hotkeys-hook';
+import type { ContextFile } from '../../electron/contract';
 import { DEFAULT_SHORTCUTS } from '../../electron/settings-contract';
 import type { ProviderSettings, ShortcutBindings } from '../../electron/settings-contract';
 import { ArrowUp, Plus, X } from 'lucide-react';
@@ -31,6 +32,8 @@ export function Composer({
   const [prompt, setPrompt] = useState('');
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [attachmentLimitExceeded, setAttachmentLimitExceeded] = useState(false);
+  const [choosingFiles, setChoosingFiles] = useState(false);
+  const [fileError, setFileError] = useState('');
   const fileInput = useRef<HTMLInputElement>(null);
   const textarea = useRef<HTMLTextAreaElement>(null);
   const canSubmit = prompt.trim().length > 0 || attachments.length > 0;
@@ -49,6 +52,36 @@ export function Composer({
   useEffect(() => {
     if (focusOnMount) textarea.current?.focus();
   }, [focusOnMount]);
+
+  function addFiles(files: ContextFile[]) {
+    const remaining = MAX_ATTACHMENTS - attachments.length;
+    setAttachmentLimitExceeded(files.length > remaining);
+    setAttachments((previous) => [
+      ...previous,
+      ...files.slice(0, remaining).map(({ name, size, type }) => ({
+        id: crypto.randomUUID(),
+        name,
+        size,
+        type,
+      })),
+    ]);
+  }
+
+  async function chooseFiles() {
+    setFileError('');
+    if (!window.desktop) {
+      fileInput.current?.click();
+      return;
+    }
+    setChoosingFiles(true);
+    try {
+      addFiles(await window.desktop.chooseFiles());
+    } catch {
+      setFileError('Could not attach files. Please try again.');
+    } finally {
+      setChoosingFiles(false);
+    }
+  }
 
   function submit(event?: FormEvent) {
     event?.preventDefault();
@@ -137,18 +170,7 @@ export function Composer({
             hidden
             aria-label="Choose context files"
             onChange={(event) => {
-              const files = Array.from(event.target.files ?? []);
-              const remaining = MAX_ATTACHMENTS - attachments.length;
-              setAttachmentLimitExceeded(files.length > remaining);
-              setAttachments((previous) => [
-                ...previous,
-                ...files.slice(0, remaining).map((file) => ({
-                  id: crypto.randomUUID(),
-                  name: file.name,
-                  size: file.size,
-                  type: file.type,
-                })),
-              ]);
+              addFiles(Array.from(event.target.files ?? []));
               event.target.value = '';
             }}
           />
@@ -157,7 +179,8 @@ export function Composer({
             className="composer-attach"
             tooltipSide="top"
             variant="secondary"
-            onClick={() => fileInput.current?.click()}
+            disabled={choosingFiles}
+            onClick={() => void chooseFiles()}
           >
             <Plus />
           </IconButton>
@@ -172,6 +195,7 @@ export function Composer({
         {attachmentLimitExceeded === true && (
           <output className="composer-notice">You can attach up to {MAX_ATTACHMENTS} files.</output>
         )}
+        {fileError && <output className="composer-notice">{fileError}</output>}
       </form>
     </footer>
   );

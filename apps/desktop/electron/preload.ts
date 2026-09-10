@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import type { IpcRendererEvent } from 'electron';
-import { IPC, type DesktopBridge, type DesktopState } from './contract';
+import { IPC, type ContextFile, type DesktopBridge, type DesktopState } from './contract';
 import { SETTINGS_IPC, type ProviderConnection, type SettingsSnapshot } from './settings-contract';
 
 const desktop: DesktopBridge = {
@@ -26,6 +26,7 @@ const desktop: DesktopBridge = {
   hide: () => ipcRenderer.invoke(IPC.hide) as Promise<void>,
   getState: () => ipcRenderer.invoke(IPC.getState) as Promise<DesktopState>,
   setPinned: (pinned) => ipcRenderer.invoke(IPC.setPinned, pinned) as Promise<boolean>,
+  chooseFiles: () => ipcRenderer.invoke(IPC.chooseFiles) as Promise<ContextFile[]>,
 };
 
 contextBridge.exposeInMainWorld('desktop', desktop);
