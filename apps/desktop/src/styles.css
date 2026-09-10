@@ -69,16 +69,20 @@ html[data-platform='darwin'] .task-panel::after {
   align-items: center;
   gap: 8px;
   height: 49px;
-  padding: 8px 12px;
+  padding: 8px 12px 8px 18px;
   border-bottom: 1px solid var(--border);
   user-select: none;
   -webkit-app-region: drag;
 }
 
+.panel-logo-button {
+  /* Expand the hit area around the existing 20px logo without shifting the title. */
+  margin-inline: -4px;
+}
+
 .panel-header h1 {
   flex: 1;
   min-width: 0;
-  padding-left: 6px;
   overflow: hidden;
   font-size: 14px;
   font-weight: 500;
