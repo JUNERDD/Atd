@@ -1,15 +1,17 @@
 import { useEffect, useState } from 'react';
+import { useHotkeys, type Options } from 'react-hotkeys-hook';
 import { History, Settings, X } from 'lucide-react';
 import { Button } from '@ai/ui/components/button';
-import { Switch } from '@ai/ui/components/switch';
 import { TooltipProvider } from '@ai/ui/components/tooltip';
-import type { DesktopState } from '../electron/contract';
+import { DEFAULT_SHORTCUTS } from '../electron/settings-contract';
 import { Composer } from './components/composer';
 import { IconButton } from './components/icon-button';
 import { createTask, fileSize, loadState, MAX_TASKS, saveState, taskTitle } from './lib/task-store';
 import type { Attachment, Task } from './lib/task-store';
+import { useSettingsSnapshot } from './features/settings/use-settings';
+import { acceleratorToHotkey } from './lib/shortcuts';
 
-type View = 'new' | 'history' | 'settings' | 'task';
+type View = 'new' | 'history' | 'task';
 
 export function App() {
   const [saved, setSaved] = useState(loadState);
@@ -17,27 +19,62 @@ export function App() {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [hidden, setHidden] = useState(false);
   const [notice, setNotice] = useState('');
-  const [desktopState, setDesktopState] = useState<DesktopState | null>(null);
-  const [pinPending, setPinPending] = useState(false);
-  const [initialPinned] = useState(saved.pinned);
+  const [chatSession, setChatSession] = useState(0);
+  const { snapshot } = useSettingsSnapshot();
+  const shortcuts = snapshot?.shortcuts ?? DEFAULT_SHORTCUTS;
+  const pinned = snapshot?.pinned;
+  const platform = window.desktop?.platform ?? 'web';
+  const hotkeyOptions: Options = {
+    delimiter: '|',
+    useKey: false,
+    enableOnFormTags: true,
+    enableOnContentEditable: true,
+    preventDefault: true,
+    enabled: (event) => !event.repeat,
+    ignoreEventWhen: (event) =>
+      event.defaultPrevented || event.isComposing || event.keyCode === 229,
+  };
+
+  useHotkeys(
+    acceleratorToHotkey(shortcuts.openSettings, platform),
+    () => void openSettings(),
+    hotkeyOptions,
+    [openSettings],
+  );
+  useHotkeys(acceleratorToHotkey(shortcuts.newConversation, platform), newChat, hotkeyOptions, [
+    newChat,
+  ]);
+  useHotkeys(
+    'escape',
+    () => {
+      if (view !== 'new') setView('new');
+      else void hide();
+    },
+    { ...hotkeyOptions, ignoreModifiers: true, preventDefault: false },
+    [view, hide],
+  );
 
   useEffect(() => {
-    const desktop = window.desktop;
-    if (!desktop) return;
-    let cancelled = false;
-    void desktop
-      .setPinned(initialPinned)
-      .then(() => desktop.getState())
-      .then((state) => {
-        if (!cancelled) setDesktopState(state);
-      })
-      .catch(() => {
-        if (!cancelled) setNotice('Window settings are temporarily unavailable.');
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [initialPinned]);
+    if (pinned === undefined) return;
+    // Keep the legacy cache current while native settings own the saved preference.
+    const stored = loadState();
+    if (stored.pinned !== pinned) saveState({ ...stored, pinned });
+  }, [pinned]);
+
+  async function openSettings() {
+    try {
+      if (window.desktop) await window.desktop.settings.open();
+      else {
+        const url = new URL(window.location.href);
+        url.hash = 'settings';
+        const settings = window.open(url, 'ai-settings', 'width=1000,height=720');
+        if (settings) settings.focus();
+        else setNotice('Allow pop-ups to open the settings preview.');
+      }
+    } catch {
+      setNotice('Could not open settings. Please try again.');
+    }
+  }
 
   async function hide() {
     if (window.desktop) {
@@ -49,20 +86,14 @@ export function App() {
     } else setHidden(true);
   }
 
-  useEffect(() => {
-    function onEscape(event: globalThis.KeyboardEvent) {
-      if (event.key !== 'Escape' || event.isComposing) return;
-      if (view !== 'new') setView('new');
-      else void hide();
-    }
-    window.addEventListener('keydown', onEscape);
-    return () => window.removeEventListener('keydown', onEscape);
-  }, [view]);
-
   function submit(prompt: string, attachments: Attachment[]) {
     const task = createTask(prompt, attachments);
     if (!task) return;
-    const next = { ...saved, tasks: [task, ...saved.tasks].slice(0, MAX_TASKS) };
+    const next = {
+      ...saved,
+      pinned: pinned ?? saved.pinned,
+      tasks: [task, ...saved.tasks].slice(0, MAX_TASKS),
+    };
     setSaved(next);
     setNotice(
       saveState(next)
@@ -73,22 +104,14 @@ export function App() {
     setView('task');
   }
 
-  async function setPinned(pinned: boolean) {
-    setPinPending(true);
-    try {
-      const actual = window.desktop ? await window.desktop.setPinned(pinned) : pinned;
-      const next = { ...saved, pinned: actual };
-      setSaved(next);
-      setNotice(saveState(next) ? '' : 'This setting could not be saved to this device.');
-      if (desktopState) setDesktopState({ ...desktopState, pinned: actual });
-    } catch {
-      setNotice('Could not change the window setting. Please try again.');
-    } finally {
-      setPinPending(false);
-    }
+  function newChat() {
+    setView('new');
+    setSelectedTask(null);
+    setNotice('');
+    setChatSession((session) => session + 1);
   }
 
-  const title = view === 'history' ? 'Tasks' : view === 'settings' ? 'Settings' : 'New task';
+  const title = view === 'history' ? 'Tasks' : 'New task';
 
   return (
     <TooltipProvider delayDuration={350}>
@@ -118,9 +141,7 @@ export function App() {
             <IconButton
               label="Settings"
               className="header-button"
-              variant={view === 'settings' ? 'secondary' : 'ghost'}
-              aria-pressed={view === 'settings'}
-              onClick={() => setView(view === 'settings' ? 'new' : 'settings')}
+              onClick={() => void openSettings()}
             >
               <Settings />
             </IconButton>
@@ -180,50 +201,6 @@ export function App() {
           </section>
         )}
 
-        {view === 'settings' && (
-          <section className="panel-content secondary-content" aria-label="Panel settings">
-            <div className="section-heading">
-              <h2>Make it yours</h2>
-              <Button variant="ghost" size="sm" onClick={() => setView('new')}>
-                Done
-              </Button>
-            </div>
-            <div className="setting-row">
-              <div>
-                <label htmlFor="always-on-top">Always on top</label>
-                <p>Keep the panel within reach.</p>
-              </div>
-              <Switch
-                id="always-on-top"
-                checked={saved.pinned}
-                disabled={pinPending || !window.desktop}
-                onCheckedChange={(value) => void setPinned(value)}
-              />
-            </div>
-            {!window.desktop && (
-              <p className="setting-note">Open the desktop app to use window settings.</p>
-            )}
-            <div className="setting-row">
-              <div>
-                <span>Show or hide panel</span>
-                <p>
-                  {desktopState?.shortcutAvailable === false
-                    ? 'Shortcut in use. Restore from the app menu or taskbar.'
-                    : 'A shortcut for a fresh thought.'}
-                </p>
-              </div>
-              <kbd>{desktopState?.shortcut ?? '⌘ / Ctrl ⇧ Space'}</kbd>
-            </div>
-            <div className="privacy-note">
-              <span className="status-dot" /> <span>On this device</span>
-              <p>
-                Your last 50 tasks and attachment names stay here. File contents are not stored. No
-                AI provider is connected.
-              </p>
-            </div>
-          </section>
-        )}
-
         {view === 'task' && selectedTask && (
           <section className="panel-content secondary-content" aria-label="Saved task">
             <div className="section-heading">
@@ -243,15 +220,20 @@ export function App() {
                 ))}
               </ul>
             )}
-            <p className="saved-note">
-              Saved on this device. Connect an AI provider to run this task.
-            </p>
+            <p className="saved-note">Saved on this device.</p>
           </section>
         )}
 
         {notice && <output className="panel-notice">{notice}</output>}
-        <div hidden={view === 'history' || view === 'settings'} className="composer-container">
-          <Composer onSubmit={submit} />
+        <div hidden={view === 'history'} className="composer-container">
+          <Composer
+            key={chatSession}
+            onSubmit={submit}
+            focusOnMount={chatSession > 0}
+            shortcuts={shortcuts}
+            provider={snapshot?.provider}
+            onOpenSettings={() => void openSettings()}
+          />
         </div>
       </main>
     </TooltipProvider>

@@ -55,13 +55,29 @@ test('production app: positioning, renderer isolation, task flow, and window con
     await page.reload();
     await page.getByRole('button', { name: 'Tasks', exact: true }).click();
     await expect(page.getByRole('button', { name: /A small desktop task/ })).toBeVisible();
+    const settingsOpened = app.waitForEvent('window');
     await page.getByRole('button', { name: 'Settings', exact: true }).click();
-    await page.getByRole('switch', { name: 'Always on top' }).click();
+    const settings = await settingsOpened;
+    settings.on('pageerror', (error) => errors.push(error.message));
+    await expect(settings.getByRole('heading', { name: 'Providers', exact: true })).toBeVisible();
+    await page.evaluate(() => window.desktop!.settings.open());
+    expect(app.windows()).toHaveLength(2);
+    await settings.getByRole('tab', { name: 'Shortcuts', exact: true }).click();
+    await settings.getByRole('switch', { name: 'Always on top' }).click();
     await expect
       .poll(() =>
         app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.isAlwaysOnTop()),
       )
       .toBe(false);
+    await settings.screenshot({
+      path: path.join(appDirectory, '.artifacts/electron-settings.png'),
+    });
+    await app.evaluate(({ BrowserWindow }) => {
+      BrowserWindow.getAllWindows()
+        .find((window) => window.webContents.getURL().endsWith('#settings'))!
+        .close();
+    });
+    await expect.poll(() => app.windows().length).toBe(1);
     await page.getByRole('button', { name: 'Hide panel' }).click();
     await expect
       .poll(() =>
@@ -76,7 +92,7 @@ test('production app: positioning, renderer isolation, task flow, and window con
         app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.isVisible()),
       )
       .toBe(true);
-    await page.getByRole('button', { name: 'Done' }).click();
+    await page.getByRole('button', { name: 'New task', exact: true }).click();
     await app.evaluate(({ BrowserWindow }) => {
       const window = BrowserWindow.getAllWindows()[0]!;
       window.setResizable(true);
