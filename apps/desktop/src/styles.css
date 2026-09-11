@@ -158,7 +158,7 @@ html[data-platform='darwin'] .task-panel::after {
 .task-list {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: calc(var(--spacing) * 2);
 }
 .task-row {
   width: 100%;
