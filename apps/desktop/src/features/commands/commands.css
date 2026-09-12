@@ -1,0 +1,219 @@
+.command-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 100%;
+}
+.editor-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.editor-heading h2 {
+  font-size: 24px;
+  line-height: 32px;
+  font-weight: 600;
+}
+.editor-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.field-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.input-shortcut-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 216px;
+  gap: 8px 16px;
+  align-items: baseline;
+}
+.input-shortcut-grid > :nth-child(n + 3) {
+  align-self: start;
+}
+.input-options {
+  font-size: 14px;
+}
+.input-options summary::-webkit-details-marker {
+  display: none;
+}
+.editor-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: auto;
+  padding-top: 24px;
+}
+.editor-footer > div {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+.option-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+.option-row .field-columns {
+  flex: 1;
+}
+.option-row > button {
+  margin-bottom: 2px;
+}
+.parameter-items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.parameter-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2xl);
+}
+.variable-token {
+  color: var(--ata-syntax-variable);
+}
+.variable-invalid {
+  color: var(--destructive);
+  text-decoration: underline wavy;
+}
+.variable-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.variable-picker {
+  width: min(460px, calc(100vw - 32px));
+  max-height: var(--radix-popover-content-available-height);
+  backdrop-filter: blur(var(--ata-backdrop-blur));
+}
+.variable-picker [data-slot='command'] {
+  background: transparent;
+}
+.variable-picker [data-slot='command-input-wrapper'] {
+  flex-shrink: 0;
+}
+.variable-picker [data-slot='command-item'] {
+  cursor: pointer;
+}
+.instruction-editor {
+  overflow: hidden;
+  border-radius: var(--radius-2xl);
+  background: color-mix(in oklab, var(--input) 50%, transparent);
+}
+.instruction-editor:focus-within {
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 30%, transparent);
+}
+.instruction-editor .cm-editor {
+  background: transparent;
+}
+.instruction-editor .cm-focused {
+  outline: none;
+}
+.instruction-editor .cm-content {
+  padding: 10px 12px;
+  font: 14px/22px var(--font-sans);
+}
+.instruction-editor .cm-line {
+  padding: 0;
+}
+.instruction-editor .cm-scroller {
+  font-family: var(--font-sans);
+}
+.instruction-editor .cm-gutters {
+  display: none;
+}
+.command-management-row {
+  flex-wrap: nowrap;
+}
+.command-row-shortcut {
+  display: flex;
+  justify-content: flex-end;
+  flex: 0 0 104px;
+  min-width: 0;
+}
+.command-row-shortcut [data-slot='kbd-group'] {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.settings-content [data-slot='tabs-content']:has(.command-editor) {
+  min-height: 100%;
+}
+.command-settings .settings-section-heading {
+  margin-bottom: 24px;
+}
+@media (max-width: 800px) {
+  .command-row-shortcut {
+    flex-basis: 72px;
+  }
+  .command-management-row {
+    gap: 8px;
+  }
+  .field-columns {
+    gap: 12px;
+  }
+  .input-shortcut-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+@media (max-width: 600px) {
+  .command-management-row {
+    flex-wrap: wrap;
+  }
+  .command-management-row [data-slot='item-content'] {
+    flex-basis: calc(100% - 32px);
+  }
+  .command-row-shortcut {
+    flex: 1;
+    justify-content: flex-start;
+  }
+  .field-columns {
+    grid-template-columns: 1fr;
+  }
+}
+.memory-items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 24px;
+}
+.memory-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 12px 0;
+}
+.memory-item > div {
+  flex: 1;
+  min-width: 0;
+}
+.memory-item p {
+  font-size: 14px;
+  line-height: 20px;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.memory-item span {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--muted-foreground);
+}
+.memory-settings {
+  min-height: 100%;
+}
+
+.variable-option > svg:last-child {
+  display: none;
+}
+.variable-option {
+  min-height: 50px;
+}

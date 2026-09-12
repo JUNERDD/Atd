@@ -1,103 +1,98 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { FormEvent } from 'react';
 import { useHotkeys, type Options } from 'react-hotkeys-hook';
-import type { ContextFile } from '../../electron/contract';
-import { DEFAULT_SHORTCUTS } from '../../electron/settings-contract';
-import type { ProviderSettings, ShortcutBindings } from '../../electron/settings-contract';
-import { ArrowUp, Plus, X } from 'lucide-react';
+import { ArrowUp, Play, Plus, Square, X } from 'lucide-react';
 import { Button } from '@ai/ui/components/button';
 import { Textarea } from '@ai/ui/components/textarea';
+import type { ProviderSettings, ShortcutBindings } from '../../electron/settings-contract';
+import { DEFAULT_SHORTCUTS } from '../../electron/settings-contract';
+import type { FileRef, RunStatus } from '../../electron/agent/task-schema';
+import type { RunPolicy } from '../../electron/agent/run-policy';
+import { isActive } from '../../electron/agent/task-schema';
 import { IconButton } from './icon-button';
 import { ComposerConfiguration } from './composer-configuration';
-import { VoiceInputButton } from './voice-input-button';
-import { MAX_ATTACHMENTS, MAX_PROMPT_LENGTH, type Attachment } from '../lib/task-store';
 import { acceleratorToHotkey } from '../lib/shortcuts';
+import { agentApi, messageOf } from '../features/agent/use-agent';
 import './composer.css';
 
+export interface ComposerDraft {
+  text: string;
+  files: FileRef[];
+}
 interface ComposerProps {
-  onSubmit: (prompt: string, attachments: Attachment[]) => void;
-  focusOnMount?: boolean;
+  policy: RunPolicy;
+  onPolicyChange: (policy: RunPolicy) => void;
+  draft: ComposerDraft;
+  onChange: (draft: ComposerDraft) => void;
+  onSubmit: () => Promise<void>;
+  onStop?: () => Promise<void>;
+  onContinue?: () => Promise<void>;
+  status?: RunStatus;
+  pending?: boolean;
+  followup?: boolean;
   shortcuts?: ShortcutBindings;
   provider?: ProviderSettings;
-  onOpenSettings?: () => void;
+  onOpenSettings: () => void;
 }
 
 export function Composer({
+  draft,
+  onChange,
   onSubmit,
-  focusOnMount = false,
+  onStop,
+  onContinue,
+  status,
+  pending = false,
+  followup = false,
   shortcuts = DEFAULT_SHORTCUTS,
   provider,
   onOpenSettings,
+  policy,
+  onPolicyChange,
 }: ComposerProps) {
-  const [prompt, setPrompt] = useState('');
-  const [attachments, setAttachments] = useState<Attachment[]>([]);
-  const [attachmentLimitExceeded, setAttachmentLimitExceeded] = useState(false);
-  const [choosingFiles, setChoosingFiles] = useState(false);
-  const [fileError, setFileError] = useState('');
-  const fileInput = useRef<HTMLInputElement>(null);
+  const [error, setError] = useState('');
+  const [choosing, setChoosing] = useState(false);
   const textarea = useRef<HTMLTextAreaElement>(null);
-  const canSubmit = prompt.trim().length > 0 || attachments.length > 0;
-  const expanded = prompt.includes('\n');
+  const hasContent = Boolean(draft.text.trim() || draft.files.length);
+  const active = isActive(status);
+  const continuing = status === 'stopped' && !hasContent;
+  const label = active
+    ? status === 'stopping'
+      ? 'Stopping…'
+      : status === 'queued'
+        ? 'Cancel queued task'
+        : 'Stop task'
+    : continuing
+      ? 'Continue task'
+      : 'Send task';
+  const disabled = pending || status === 'stopping' || (!active && !continuing && !hasContent);
   const platform = window.desktop?.platform ?? 'web';
-  const hotkeyOptions: Options = {
+  const expanded = draft.text.includes('\n') || draft.text.length > 90;
+  const options: Options = {
     delimiter: '|',
     useKey: false,
     enableOnFormTags: ['textarea'],
-    // Retain send's default prevention for held keys without submitting again.
     enabled: (event) => !event.repeat,
     ignoreEventWhen: (event) =>
       event.defaultPrevented || event.isComposing || event.keyCode === 229,
   };
-
-  useEffect(() => {
-    if (focusOnMount) textarea.current?.focus();
-  }, [focusOnMount]);
-
-  function addFiles(files: ContextFile[]) {
-    const remaining = MAX_ATTACHMENTS - attachments.length;
-    setAttachmentLimitExceeded(files.length > remaining);
-    setAttachments((previous) => [
-      ...previous,
-      ...files.slice(0, remaining).map(({ name, size, type }) => ({
-        id: crypto.randomUUID(),
-        name,
-        size,
-        type,
-      })),
-    ]);
-  }
-
-  async function chooseFiles() {
-    setFileError('');
-    if (!window.desktop) {
-      fileInput.current?.click();
-      return;
-    }
-    setChoosingFiles(true);
+  async function act() {
+    if (disabled) return;
+    setError('');
     try {
-      addFiles(await window.desktop.chooseFiles());
-    } catch {
-      setFileError('Could not attach files. Please try again.');
-    } finally {
-      setChoosingFiles(false);
+      if (active) await onStop?.();
+      else if (continuing) await onContinue?.();
+      else await onSubmit();
+    } catch (error) {
+      setError(messageOf(error));
     }
   }
-
-  function submit(event?: FormEvent) {
-    event?.preventDefault();
-    if (!canSubmit) return;
-    onSubmit(prompt, attachments);
-    setPrompt('');
-    setAttachments([]);
-    setAttachmentLimitExceeded(false);
-    textarea.current?.focus();
-  }
-
-  const sendMessageRef = useHotkeys<HTMLTextAreaElement>(
+  const sendRef = useHotkeys<HTMLTextAreaElement>(
     acceleratorToHotkey(shortcuts.sendMessage, platform),
-    () => submit(),
-    { ...hotkeyOptions, preventDefault: true },
-    [prompt, attachments, onSubmit],
+    () => {
+      if (!active) void act();
+    },
+    { ...options, preventDefault: true },
+    [draft, disabled, active, continuing, onSubmit, onContinue],
   );
   const newLineRef = useHotkeys<HTMLTextAreaElement>(
     acceleratorToHotkey(shortcuts.newLine, platform),
@@ -107,54 +102,77 @@ export function Composer({
       const input = textarea.current;
       if (!input) return;
       const { selectionStart: start, selectionEnd: end } = input;
-      const next = `${prompt.slice(0, start)}\n${prompt.slice(end)}`;
-      if (next.length > MAX_PROMPT_LENGTH) return;
-      setPrompt(next);
+      onChange({ ...draft, text: `${draft.text.slice(0, start)}\n${draft.text.slice(end)}` });
       requestAnimationFrame(() => textarea.current?.setSelectionRange(start + 1, start + 1));
     },
-    hotkeyOptions,
-    [prompt],
+    options,
+    [draft, onChange],
   );
-  const setTextareaRef = useCallback(
+  const ref = useCallback(
     (input: HTMLTextAreaElement | null) => {
       textarea.current = input;
-      sendMessageRef(input);
+      sendRef(input);
       newLineRef(input);
     },
-    [sendMessageRef, newLineRef],
+    [sendRef, newLineRef],
   );
-
+  useEffect(() => {
+    textarea.current?.focus();
+  }, []);
+  async function choose() {
+    setChoosing(true);
+    setError('');
+    try {
+      const files = await agentApi().chooseFiles();
+      if (draft.files.length + files.length > 10) throw new Error('Attach at most 10 files.');
+      onChange({ ...draft, files: [...draft.files, ...files] });
+    } catch (error) {
+      setError(messageOf(error));
+    } finally {
+      setChoosing(false);
+    }
+  }
   return (
     <footer className="panel-footer">
-      <form className="composer" aria-label="New task" onSubmit={submit}>
+      <form
+        className="composer"
+        aria-label={followup ? 'Follow-up' : 'New task'}
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (!active) void act();
+        }}
+      >
         <div
           className="composer-surface"
           data-expanded={expanded}
-          data-has-attachments={attachments.length > 0}
+          data-has-attachments={draft.files.length > 0}
         >
           <Textarea
-            ref={setTextareaRef}
+            ref={ref}
             className="composer-input"
             aria-label="Task prompt"
-            placeholder="Ask anything…"
+            placeholder={followup ? 'Ask a follow-up…' : 'Ask anything…'}
             rows={1}
             wrap={expanded ? 'soft' : 'off'}
-            maxLength={MAX_PROMPT_LENGTH}
-            value={prompt}
-            onChange={(event) => setPrompt(event.target.value)}
+            maxLength={100000}
+            value={draft.text}
+            onChange={(event) => onChange({ ...draft, text: event.target.value })}
           />
-          {attachments.length > 0 && (
+          {draft.files.length > 0 && (
             <ul className="attachment-list" aria-label="Attached context">
-              {attachments.map((attachment) => (
-                <li className="attachment-chip" key={attachment.id}>
-                  <span title={attachment.name}>{attachment.name}</span>
+              {draft.files.map((file) => (
+                <li className="attachment-chip" key={file.id}>
+                  <span title={file.name}>{file.name}</span>
                   <Button
                     type="button"
                     variant="ghost"
                     size="icon-xs"
-                    aria-label={`Remove ${attachment.name}`}
+                    aria-label={`Remove ${file.name}`}
                     onClick={() =>
-                      setAttachments((files) => files.filter((file) => file.id !== attachment.id))
+                      onChange({
+                        ...draft,
+                        files: draft.files.filter((item) => item.id !== file.id),
+                      })
                     }
                   >
                     <X />
@@ -163,39 +181,45 @@ export function Composer({
               ))}
             </ul>
           )}
-          <input
-            ref={fileInput}
-            type="file"
-            multiple
-            hidden
-            aria-label="Choose context files"
-            onChange={(event) => {
-              addFiles(Array.from(event.target.files ?? []));
-              event.target.value = '';
-            }}
-          />
           <IconButton
             label="Attach context"
             className="composer-attach"
             tooltipSide="top"
             variant="secondary"
-            disabled={choosingFiles}
-            onClick={() => void chooseFiles()}
+            disabled={choosing}
+            onClick={() => void choose()}
           >
             <Plus />
           </IconButton>
           <div className="composer-actions">
-            <VoiceInputButton />
-            <Button type="submit" size="icon-sm" aria-label="Send task" disabled={!canSubmit}>
-              <ArrowUp />
-            </Button>
+            <IconButton
+              label={label}
+              variant="default"
+              tooltipSide="top"
+              disabled={disabled}
+              onClick={() => void act()}
+            >
+              {active ? (
+                <Square className="fill-current size-3" />
+              ) : continuing ? (
+                <Play />
+              ) : (
+                <ArrowUp />
+              )}
+            </IconButton>
           </div>
         </div>
-        <ComposerConfiguration provider={provider} onOpenSettings={onOpenSettings} />
-        {attachmentLimitExceeded === true && (
-          <output className="composer-notice">You can attach up to {MAX_ATTACHMENTS} files.</output>
+        <ComposerConfiguration
+          provider={provider}
+          onOpenSettings={onOpenSettings}
+          policy={policy}
+          onPolicyChange={onPolicyChange}
+        />
+        {error && (
+          <output className="composer-notice" role="alert">
+            {error}
+          </output>
         )}
-        {fileError && <output className="composer-notice">{fileError}</output>}
       </form>
     </footer>
   );

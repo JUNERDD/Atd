@@ -16,7 +16,9 @@
   --ata-material-settings-content: rgb(12 12 12 / 10%);
   --ata-surface-settings-content: var(--ata-material-settings-content);
   --ata-material-selected: rgb(255 255 255 / 12%);
+  --ata-surface-ghost-hover: rgb(255 255 255 / 10%);
   --ata-text-secondary: #a1a1a1;
+  --ata-syntax-variable: #60a5fa;
   --ata-border-subtle: rgb(255 255 255 / 14%);
   --ata-radius-panel: 22px;
   --background: oklch(1 0 0);

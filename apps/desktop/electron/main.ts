@@ -10,6 +10,8 @@ import {
   session,
 } from 'electron';
 import type { IpcMainInvokeEvent } from 'electron';
+import { AgentService } from './agent/service';
+import { AGENT_IPC } from './agent/bridge';
 import { IPC, type DesktopState } from './contract';
 import { chooseContextFiles } from './context-files';
 import { SettingsService } from './settings-service';
@@ -24,13 +26,15 @@ import { constrainPanelBounds, getPanelBounds } from './window-position';
 app.setName('AI');
 nativeTheme.themeSource = 'dark';
 
-// A separate profile lets the smoke test run without reading or changing real tasks.
-if (!app.isPackaged && process.env.AI_TEST_USER_DATA) {
+// Explicit profiles isolate both development and packaged smoke checks from real task data.
+if (process.env.AI_TEST_USER_DATA) {
   app.setPath('userData', process.env.AI_TEST_USER_DATA);
 }
 
 let panel: BrowserWindow | null = null;
 let settings: SettingsService;
+let agent: AgentService | undefined;
+let quitting = false;
 let choosingFiles = false;
 let changingPinned = false;
 
@@ -51,6 +55,21 @@ function hidePanel() {
 function assertPanelSender(event: IpcMainInvokeEvent) {
   if (!isWindowSender(event, panel)) {
     throw new Error('Untrusted desktop request');
+  }
+}
+
+async function withFileDialog<T>(operation: () => Promise<T>): Promise<T> {
+  if (choosingFiles || changingPinned)
+    throw new Error('Finish the current window operation first.');
+  const window = panel;
+  const pinned = window?.isAlwaysOnTop() ?? false;
+  choosingFiles = true;
+  try {
+    window?.setAlwaysOnTop(false);
+    return await operation();
+  } finally {
+    choosingFiles = false;
+    if (window && !window.isDestroyed()) window.setAlwaysOnTop(pinned);
   }
 }
 
@@ -173,16 +192,27 @@ if (!app.requestSingleInstanceLock()) {
         applyPinned: (pinned) => {
           if (panel && !panel.isDestroyed()) panel.setAlwaysOnTop(pinned);
         },
+        validateShortcuts: (shortcuts) => agent?.commands.assertSettings(shortcuts),
         togglePanel: () => {
           if (!panel || panel.isDestroyed() || choosingFiles) return;
           if (panel.isVisible() && !panel.isMinimized() && panel.isFocused()) hidePanel();
           else {
+            agent?.commands.captureSelection();
             const display = screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
             panel.setBounds(getPanelBounds(display.workArea));
             showPanel();
           }
         },
       });
+      agent = await AgentService.create(
+        settings,
+        (prepared) => {
+          showPanel();
+          panel?.webContents.send(AGENT_IPC.launch, prepared);
+        },
+        withFileDialog,
+      );
+      agent.installIpc();
       settings.installIpc();
       installIpc();
       installMenu();
@@ -220,3 +250,10 @@ if (!app.requestSingleInstanceLock()) {
 
 app.on('will-quit', () => globalShortcut.unregisterAll());
 app.on('window-all-closed', () => app.quit());
+
+app.on('before-quit', (event) => {
+  if (quitting || !agent) return;
+  event.preventDefault();
+  quitting = true;
+  void agent.runtime.close().finally(() => app.quit());
+});

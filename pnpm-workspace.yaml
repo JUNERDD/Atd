@@ -3,6 +3,13 @@ packages:
   - packages/*
 
 allowBuilds:
+  '@google/genai': false
+  better-sqlite3: true
   electron: true
   electron-winstaller: false
   esbuild: true
+  protobufjs: false
+  selection-hook: true
+
+patchedDependencies:
+  pi-hermes-memory@0.9.8: patches/pi-hermes-memory@0.9.8.patch

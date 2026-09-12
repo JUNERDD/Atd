@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useRecordHotkeys } from 'react-hotkeys-hook';
+import { useShortcutCapture } from './use-shortcut-capture';
 import {
   DEFAULT_SHORTCUTS,
   type SettingsSnapshot,
@@ -8,7 +8,6 @@ import {
 } from '../../../electron/settings-contract';
 import { recordedKeysToAccelerator } from '../../lib/shortcuts';
 
-const RECORDING_CONTROLS = ['tab', 'escape'];
 const MODIFIER_KEYS = new Set(['meta', 'ctrl', 'alt', 'shift']);
 
 function shortcutError(action: ShortcutAction, shortcut: string | null): string {
@@ -30,10 +29,7 @@ export function useShortcutSettings(snapshot: SettingsSnapshot | null) {
   const platform = desktop?.platform ?? 'web';
   const bindings: ShortcutBindings = snapshot?.shortcuts ?? DEFAULT_SHORTCUTS;
   const pinned = snapshot?.pinned ?? false;
-  const [keys, { start, stop, resetKeys, isRecording }] = useRecordHotkeys(
-    false,
-    RECORDING_CONTROLS,
-  );
+  const { keys, start, stop, resetKeys, isRecording } = useShortcutCapture();
   const [recordingAction, setRecordingAction] = useState<ShortcutAction | null>(null);
   const [mutationPending, setPending] = useState<'restore' | 'pin' | null>(null);
   const [error, setError] = useState('');
@@ -83,31 +79,6 @@ export function useShortcutSettings(snapshot: SettingsSnapshot | null) {
     resetKeys,
     stop,
   ]);
-
-  useEffect(() => {
-    if (!isRecording) return;
-    function handleRecordingControl(event: KeyboardEvent) {
-      if (event.key === 'Tab' || event.key === 'Escape') {
-        cancelRecording();
-        if (event.key === 'Escape') {
-          event.preventDefault();
-          event.stopImmediatePropagation();
-        }
-        return;
-      }
-      // The recorder has no event filter; keep composition and held-key repeats out of its Set.
-      if (event.repeat || event.isComposing || event.keyCode === 229) {
-        event.preventDefault();
-        event.stopImmediatePropagation();
-      }
-    }
-    window.addEventListener('keydown', handleRecordingControl, true);
-    window.addEventListener('blur', cancelRecording);
-    return () => {
-      window.removeEventListener('keydown', handleRecordingControl, true);
-      window.removeEventListener('blur', cancelRecording);
-    };
-  }, [cancelRecording, isRecording]);
 
   function startRecording(action: ShortcutAction) {
     if (unavailable || pending) return;

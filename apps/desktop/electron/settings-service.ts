@@ -3,7 +3,7 @@ import type { BrowserWindow, IpcMainInvokeEvent } from 'electron';
 import { userInfo } from 'node:os';
 import type { DesktopState } from './contract';
 import { DEFAULT_SHORTCUTS, SETTINGS_IPC, type SettingsSnapshot } from './settings-contract';
-import { saveProviderDraft, testProviderDraft } from './settings-provider';
+import { agentCredential, saveProviderDraft, testProviderDraft } from './settings-provider';
 import { PanelShortcut, parseShortcutBindings, shortcutLabel } from './settings-shortcuts';
 import { SettingsStore } from './settings-store';
 import { SettingsWindow } from './settings-window';
@@ -13,6 +13,7 @@ interface SettingsHost {
   panel: () => BrowserWindow | null;
   togglePanel: () => void;
   applyPinned: (pinned: boolean) => void;
+  validateShortcuts?: (shortcuts: SettingsSnapshot['shortcuts']) => void;
 }
 
 export class SettingsService {
@@ -31,6 +32,16 @@ export class SettingsService {
 
   static async create(host: SettingsHost): Promise<SettingsService> {
     return new SettingsService(await SettingsStore.load(), host);
+  }
+
+  get credential(): string {
+    return agentCredential(this.store.current.provider);
+  }
+
+  send(channel: string, value: unknown) {
+    for (const window of [this.host.panel(), this.window.current]) {
+      if (window && !window.isDestroyed()) window.webContents.send(channel, value);
+    }
   }
 
   get pinned(): boolean {
@@ -109,6 +120,7 @@ export class SettingsService {
   private saveShortcuts(value: unknown): Promise<SettingsSnapshot> {
     return this.serialize(async () => {
       const shortcuts = parseShortcutBindings(value);
+      this.host.validateShortcuts?.(shortcuts);
       await this.shortcut.replace(shortcuts.togglePanel, () =>
         this.store.commit({ ...this.store.current, shortcuts }),
       );
