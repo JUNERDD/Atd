@@ -231,3 +231,8 @@ export async function testProviderDraft(
     );
   }
 }
+
+/** Main-process-only credential access for a frozen Agent connection. */
+export function agentCredential(current: StoredProvider): string {
+  return connectionKey({ id: current.id, baseUrl: current.baseUrl, model: current.model }, current);
+}

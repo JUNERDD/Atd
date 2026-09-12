@@ -1,8 +1,11 @@
 import { useState } from 'react';
-import { Astroid, Keyboard, Plug, UserRound } from 'lucide-react';
+import { Astroid, Brain, Command, Keyboard, Plug, UserRound } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@ai/ui/components/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@ai/ui/components/tabs';
 import { TooltipProvider } from '@ai/ui/components/tooltip';
+import { CommandSettings } from '../commands/command-settings';
+import { MemorySettings } from '../memory/memory-settings';
+import '../agent/agent.css';
 import { ProviderSettingsForm } from './provider-settings';
 import { ShortcutSettings } from './shortcut-settings';
 import { useSettingsSnapshot } from './use-settings';
@@ -34,6 +37,14 @@ export function SettingsWindow() {
             <TabsTrigger value="providers" disabled={recording}>
               <Plug size={16} aria-hidden="true" />
               Providers
+            </TabsTrigger>
+            <TabsTrigger value="commands" disabled={recording}>
+              <Command size={16} />
+              Commands
+            </TabsTrigger>
+            <TabsTrigger value="memory" disabled={recording}>
+              <Brain size={16} />
+              Memory
             </TabsTrigger>
             <TabsTrigger value="shortcuts" disabled={recording}>
               <Keyboard size={16} aria-hidden="true" />
@@ -71,6 +82,12 @@ export function SettingsWindow() {
                     key={snapshot ? 'loaded' : 'unavailable'}
                     provider={snapshot?.provider ?? null}
                   />
+                </TabsContent>
+                <TabsContent value="commands">
+                  <CommandSettings provider={snapshot?.provider ?? null} />
+                </TabsContent>
+                <TabsContent value="memory">
+                  <MemorySettings />
                 </TabsContent>
                 <TabsContent value="shortcuts" forceMount hidden={tab !== 'shortcuts'}>
                   <ShortcutSettings snapshot={snapshot} onRecordingChange={setRecording} />

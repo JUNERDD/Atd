@@ -1,0 +1,205 @@
+{
+  "catalog": "https://logos.lndev.me/",
+  "repository": "https://github.com/ln-dev7/logos-apps",
+  "revision": "1762cfa050cdba49ba85c813a434d2526cdf0839",
+  "assets": [
+    {
+      "brand": "Anthropic",
+      "file": "anthropic.svg",
+      "source": "https://github.com/ln-dev7/logos-apps/blob/1762cfa050cdba49ba85c813a434d2526cdf0839/logos/anthropic.svg",
+      "sha256": "6816325a37a9b54cb088b804a201efcd40683ac595705186a181c7d61d970c07",
+      "rendering": "foreground"
+    },
+    {
+      "brand": "LM Studio",
+      "file": "lm-studio.svg",
+      "source": "https://github.com/ln-dev7/logos-apps/blob/1762cfa050cdba49ba85c813a434d2526cdf0839/logos/lm-studio.svg",
+      "sha256": "55d0cc4a6c0fa4e6dab5b8072aacddc3a1df8ca8a78da3528256e564c12b8dd6",
+      "rendering": "foreground"
+    },
+    {
+      "brand": "Google Gemini",
+      "file": "google-gemini.svg",
+      "source": "https://github.com/ln-dev7/logos-apps/blob/1762cfa050cdba49ba85c813a434d2526cdf0839/logos/google-gemini.svg",
+      "sha256": "26e40aa4773d7bdb4306cbce583180ee1649b936abde2b4d7bc90e1baa5ec4cb",
+      "rendering": "original-colors",
+      "symbolFile": "google-gemini-symbol.svg",
+      "derivation": "Unchanged final star path from google-gemini.svg, with its own viewBox. No path data or fill altered."
+    },
+    {
+      "brand": "DeepSeek",
+      "file": "deepseek.svg",
+      "source": "https://github.com/ln-dev7/logos-apps/blob/1762cfa050cdba49ba85c813a434d2526cdf0839/logos/deepseek.svg",
+      "sha256": "93e21bfc69f51320943e0605344db01639e620b53a47aeb07e312f7ba92fe79f",
+      "rendering": "original-colors"
+    },
+    {
+      "brand": "GitHub Copilot",
+      "file": "github-copilot.svg",
+      "source": "https://github.com/ln-dev7/logos-apps/blob/1762cfa050cdba49ba85c813a434d2526cdf0839/logos/github-copilot.svg",
+      "sha256": "cff4e5d20ac106cf50364e7e4ee9cffb0bea826e17579cee53dfc838a6f2e434",
+      "rendering": "foreground"
+    },
+    {
+      "brand": "Microsoft Azure",
+      "file": "microsoft-azure.svg",
+      "source": "https://github.com/ln-dev7/logos-apps/blob/1762cfa050cdba49ba85c813a434d2526cdf0839/logos/microsoft-azure.svg",
+      "sha256": "8293981418c6cf7d641952c7a4ea9bbfeabfed668b1863e6a1391b536980a617",
+      "rendering": "original-colors"
+    },
+    {
+      "brand": "AWS",
+      "file": "amazon-aws.svg",
+      "source": "https://github.com/ln-dev7/logos-apps/blob/1762cfa050cdba49ba85c813a434d2526cdf0839/logos/amazon-aws.svg",
+      "sha256": "b4562554168851798e9f20470db99ab8e0a14155541cf8881fadf19808c42336",
+      "rendering": "foreground"
+    },
+    {
+      "brand": "Google Cloud",
+      "file": "google-cloud.svg",
+      "source": "https://github.com/ln-dev7/logos-apps/blob/1762cfa050cdba49ba85c813a434d2526cdf0839/logos/google-cloud.svg",
+      "sha256": "1bb54e983e69f2d3e33c37367e273bd5ffb457c04970024973b7968c22992a93",
+      "rendering": "original-colors"
+    },
+    {
+      "brand": "Claude",
+      "file": "claude.svg",
+      "source": "https://github.com/ln-dev7/logos-apps/blob/1762cfa050cdba49ba85c813a434d2526cdf0839/logos/claude.svg",
+      "sha256": "dfe905feb65e7cfee91936bed766813dd2d0afc89aa113a414e9b5691d3e9cb0",
+      "rendering": "original-colors"
+    },
+    {
+      "brand": "openrouter",
+      "file": "openrouter.svg",
+      "source": "https://raw.githubusercontent.com/ln-dev7/logos-apps/1762cfa050cdba49ba85c813a434d2526cdf0839/logos/openrouter.svg",
+      "sha256": "fec63b6dc071651e45a784031c4755250384314289e3a2695a3383635f6de1d3",
+      "rendering": "foreground"
+    },
+    {
+      "brand": "mistral-ai",
+      "file": "mistral-ai.svg",
+      "source": "https://raw.githubusercontent.com/ln-dev7/logos-apps/1762cfa050cdba49ba85c813a434d2526cdf0839/logos/mistral-ai.svg",
+      "sha256": "276b9fc3972db664c4a7f8c944f9d0548b423a6b89e80e392f1ab497edf4b81d",
+      "rendering": "original"
+    },
+    {
+      "brand": "groq",
+      "file": "groq.svg",
+      "source": "https://raw.githubusercontent.com/ln-dev7/logos-apps/1762cfa050cdba49ba85c813a434d2526cdf0839/logos/groq.svg",
+      "sha256": "f8b4420340ff8875a1f04ce80909325dd81b0cb78d0c7a15fd567977338ae956",
+      "rendering": "original"
+    },
+    {
+      "brand": "cerebras",
+      "file": "cerebras.svg",
+      "source": "https://raw.githubusercontent.com/ln-dev7/logos-apps/1762cfa050cdba49ba85c813a434d2526cdf0839/logos/cerebras.svg",
+      "sha256": "3cbda26043bed3b35f41ece45f7b4d76e859bfad52c6a2d31b15fe8fa54ee2d8",
+      "rendering": "original"
+    },
+    {
+      "brand": "cloudflare",
+      "file": "cloudflare.svg",
+      "source": "https://raw.githubusercontent.com/ln-dev7/logos-apps/1762cfa050cdba49ba85c813a434d2526cdf0839/logos/cloudflare.svg",
+      "sha256": "54d79f2733f59b680e2fc723d9aa3ee0aab669190032e1b594703618e2b017f4",
+      "rendering": "original"
+    },
+    {
+      "brand": "hugging-face",
+      "file": "hugging-face.svg",
+      "source": "https://raw.githubusercontent.com/ln-dev7/logos-apps/1762cfa050cdba49ba85c813a434d2526cdf0839/logos/hugging-face.svg",
+      "sha256": "ffe2cc96cae7b4c94616eab22efc035d0045106a1b6d30b5f8c690e0b6266855",
+      "rendering": "original"
+    },
+    {
+      "brand": "kimi",
+      "file": "kimi.svg",
+      "source": "https://raw.githubusercontent.com/ln-dev7/logos-apps/1762cfa050cdba49ba85c813a434d2526cdf0839/logos/kimi.svg",
+      "sha256": "0ba35ce31b57bb6db39d4e454925e39f88f46a3b52a07898bd8262c3902df7fc",
+      "rendering": "original"
+    },
+    {
+      "brand": "minimax",
+      "file": "minimax.svg",
+      "source": "https://raw.githubusercontent.com/ln-dev7/logos-apps/1762cfa050cdba49ba85c813a434d2526cdf0839/logos/minimax.svg",
+      "sha256": "e514235f472e335f8bb0094ddcc2762b7e38e0dca66225893294457081cc6abf",
+      "rendering": "original"
+    },
+    {
+      "brand": "nvidia",
+      "file": "nvidia.svg",
+      "source": "https://raw.githubusercontent.com/ln-dev7/logos-apps/1762cfa050cdba49ba85c813a434d2526cdf0839/logos/nvidia.svg",
+      "sha256": "da3fbb7daf92f2647250ce43332aa9357ce4e95e127778f1015fc437e4549e37",
+      "rendering": "original"
+    },
+    {
+      "brand": "ollama",
+      "file": "ollama.svg",
+      "source": "https://raw.githubusercontent.com/ln-dev7/logos-apps/1762cfa050cdba49ba85c813a434d2526cdf0839/logos/ollama.svg",
+      "sha256": "b5ee1874b69d216fbc420c6118fac9b2fcc9eeb6ab6a7fc374c6a6512e48b993",
+      "rendering": "foreground"
+    },
+    {
+      "brand": "qwen",
+      "file": "qwen.svg",
+      "source": "https://raw.githubusercontent.com/ln-dev7/logos-apps/1762cfa050cdba49ba85c813a434d2526cdf0839/logos/qwen.svg",
+      "sha256": "0e9788033f252b54c026f4022acf0cc0da5c8f93062d4047e1562d696426194c",
+      "rendering": "original"
+    },
+    {
+      "brand": "together-ai",
+      "file": "together-ai.svg",
+      "source": "https://raw.githubusercontent.com/ln-dev7/logos-apps/1762cfa050cdba49ba85c813a434d2526cdf0839/logos/together-ai.svg",
+      "sha256": "a783e1fe58888d2221b621490017b967a3c583886a1b2aa4da5c193640536703",
+      "rendering": "original"
+    },
+    {
+      "brand": "vercel",
+      "file": "vercel.svg",
+      "source": "https://raw.githubusercontent.com/ln-dev7/logos-apps/1762cfa050cdba49ba85c813a434d2526cdf0839/logos/vercel.svg",
+      "sha256": "ff819a612dca1ff2fef505f77c97f6ccb8a10c4b09ee5e91d89ff93fbd224fff",
+      "rendering": "foreground"
+    },
+    {
+      "brand": "xiaomi",
+      "file": "xiaomi.svg",
+      "source": "https://raw.githubusercontent.com/ln-dev7/logos-apps/1762cfa050cdba49ba85c813a434d2526cdf0839/logos/xiaomi.svg",
+      "sha256": "20fb26a3565ed90895c0f29ad006301a5dd9cede687b3ff4a27a0758ad0f9ede",
+      "rendering": "original"
+    },
+    {
+      "brand": "moonshot-ai",
+      "file": "moonshot-ai.svg",
+      "source": "https://raw.githubusercontent.com/ln-dev7/logos-apps/1762cfa050cdba49ba85c813a434d2526cdf0839/logos/moonshot-ai.svg",
+      "sha256": "90dd5bf514c05a1b51d1daae8b9a63d7ec6e29c5aa3b1e6b744597e5cc78c16e",
+      "rendering": "foreground"
+    },
+    {
+      "brand": "x-ai",
+      "file": "x-ai.svg",
+      "source": "https://raw.githubusercontent.com/ln-dev7/logos-apps/1762cfa050cdba49ba85c813a434d2526cdf0839/logos/x-ai.svg",
+      "sha256": "1dab2028296a547c1692df3a500766cf1aad4b3d360a11f9c461f9ee7630c787",
+      "rendering": "foreground"
+    },
+    {
+      "brand": "opencode",
+      "file": "opencode.svg",
+      "source": "https://raw.githubusercontent.com/ln-dev7/logos-apps/1762cfa050cdba49ba85c813a434d2526cdf0839/logos/opencode.svg",
+      "sha256": "5a44ee78769508c7226d8ac35b7b9738f929176a6c63b15f594a617afbc82a72",
+      "rendering": "original"
+    },
+    {
+      "brand": "NVIDIA symbol",
+      "file": "nvidia-symbol.svg",
+      "source": "https://github.com/ln-dev7/logos-apps/blob/1762cfa050cdba49ba85c813a434d2526cdf0839/logos/nvidia.svg",
+      "sha256": "9d821cb4bd2af6bb867078f7b705615fc910d0f742108b699f653bccc0a5fca4",
+      "rendering": "original",
+      "extraction": "Unchanged green eye path (second path) from nvidia.svg; cropped viewBox 0 0 147 98. Original wordmark retained."
+    }
+  ],
+  "existingOpenAI": {
+    "file": "../openai.svg",
+    "source": "https://github.com/ln-dev7/logos-apps/blob/1762cfa050cdba49ba85c813a434d2526cdf0839/logos/openai.svg",
+    "note": "Existing file retained; identical source SVG ignoring its trailing newline."
+  },
+  "rights": "Brand marks belong to their respective owners. The catalog code license does not license the marks; see the upstream repository README."
+}

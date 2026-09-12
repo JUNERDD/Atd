@@ -1,3 +1,4 @@
+import type { AgentBridge } from './agent/bridge';
 import type { SettingsBridge } from './settings-contract';
 
 export const IPC = {
@@ -22,6 +23,7 @@ export interface DesktopState {
 export interface DesktopBridge {
   readonly platform: string;
   readonly settings: SettingsBridge;
+  readonly agent: AgentBridge;
   hide: () => Promise<void>;
   getState: () => Promise<DesktopState>;
   setPinned: (pinned: boolean) => Promise<boolean>;

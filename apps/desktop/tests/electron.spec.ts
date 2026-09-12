@@ -22,6 +22,7 @@ test('production app: positioning, renderer isolation, task flow, and window con
     env,
   });
   try {
+    expect(await app.evaluate(({ app }) => app.getPath('userData'))).toBe(userData);
     const page = await app.firstWindow();
     const errors: string[] = [];
     page.on('pageerror', (error) => errors.push(error.message));
@@ -51,15 +52,23 @@ test('production app: positioning, renderer isolation, task flow, and window con
 
     await page.getByRole('textbox').fill('A small desktop task');
     await page.getByRole('textbox').press('Enter');
-    await expect(page.getByRole('heading', { name: 'Task saved' })).toBeVisible();
+    await expect(page.getByRole('alert')).toContainText('Choose a model');
+    await expect(page.getByRole('textbox')).toHaveValue('A small desktop task');
     await page.reload();
     await page.getByRole('button', { name: 'Tasks', exact: true }).click();
-    await expect(page.getByRole('button', { name: /A small desktop task/ })).toBeVisible();
+    await expect(page.getByText('No tasks yet.', { exact: true })).toBeVisible();
     const settingsOpened = app.waitForEvent('window');
     await page.getByRole('button', { name: 'Settings', exact: true }).click();
     const settings = await settingsOpened;
     settings.on('pageerror', (error) => errors.push(error.message));
     await expect(settings.getByRole('heading', { name: 'Providers', exact: true })).toBeVisible();
+    await settings.getByRole('tab', { name: 'Memory', exact: true }).click();
+    await expect(settings.getByRole('heading', { name: 'Memory', exact: true })).toBeVisible();
+    await expect(
+      settings.getByText('No saved memories yet. Share a lasting preference as you work.', {
+        exact: true,
+      }),
+    ).toBeVisible();
     await page.evaluate(() => window.desktop!.settings.open());
     expect(app.windows()).toHaveLength(2);
     await settings.getByRole('tab', { name: 'Shortcuts', exact: true }).click();

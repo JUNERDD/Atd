@@ -25,7 +25,7 @@ function effectiveModifier(modifier: string): string {
   return modifier;
 }
 
-function parseAccelerator(value: unknown, requireModifier: boolean): string {
+export function parseAccelerator(value: unknown, requireModifier: boolean): string {
   if (typeof value !== 'string' || value.length > 100) throw new TypeError('Invalid shortcut.');
   const parts = value.split('+');
   const key = parts.pop();
@@ -49,7 +49,7 @@ function parseAccelerator(value: unknown, requireModifier: boolean): string {
   return [...MODIFIERS.filter((modifier) => parts.includes(modifier)), key].join('+');
 }
 
-function effectiveAccelerator(shortcut: string): string {
+export function effectiveAccelerator(shortcut: string): string {
   const parts = shortcut.split('+');
   const key = parts.pop();
   return [...parts.map(effectiveModifier).sort(), key].join('+');

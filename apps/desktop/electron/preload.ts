@@ -1,3 +1,4 @@
+import { agentBridge } from './agent/preload';
 import { contextBridge, ipcRenderer } from 'electron';
 import type { IpcRendererEvent } from 'electron';
 import { IPC, type ContextFile, type DesktopBridge, type DesktopState } from './contract';
@@ -5,6 +6,7 @@ import { SETTINGS_IPC, type ProviderConnection, type SettingsSnapshot } from './
 
 const desktop: DesktopBridge = {
   platform: process.platform,
+  agent: agentBridge,
   settings: {
     open: () => ipcRenderer.invoke(SETTINGS_IPC.open) as Promise<void>,
     close: () => ipcRenderer.invoke(SETTINGS_IPC.close) as Promise<void>,
