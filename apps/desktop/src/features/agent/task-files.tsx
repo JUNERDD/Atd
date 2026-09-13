@@ -33,6 +33,11 @@ export function TaskFiles({
         const location = artifactLocation(file);
         const missing = file.status === 'missing';
         const changed = file.status === 'changed';
+        const description = missing
+          ? 'Locate this file to update its path. Your task is still available.'
+          : changed
+            ? 'Opening uses the current file. Saved messages still describe the original run.'
+            : `${fileSize(location.size)} · ${file.partial ? 'Partial output' : 'Available'}${file.relocation ? ' · Re-linked file' : ''}`;
         return (
           <div className="file-result" key={file.id} data-figma-node="433:2044">
             <Item size="sm" variant="outline">
@@ -43,12 +48,8 @@ export function TaskFiles({
                 <ItemTitle className="block w-full truncate" title={location.name}>
                   {location.name}
                 </ItemTitle>
-                <ItemDescription className="line-clamp-none">
-                  {missing
-                    ? 'Locate this file to update its path. Your task is still available.'
-                    : changed
-                      ? 'Opening uses the current file. Saved messages still describe the original run.'
-                      : `${fileSize(location.size)} · ${file.partial ? 'Partial output' : 'Available'}${file.relocation ? ' · Re-linked file' : ''}`}
+                <ItemDescription className="block truncate" title={description}>
+                  {description}
                 </ItemDescription>
                 {feedback?.id === file.id && (
                   <p
@@ -66,7 +67,11 @@ export function TaskFiles({
             <div className="message-actions">
               {!missing && (
                 <>
-                  <IconButton label="Open file" onClick={() => void act(file, 'open')}>
+                  <IconButton
+                    label="Open"
+                    aria-label="Open file"
+                    onClick={() => void act(file, 'open')}
+                  >
                     <ExternalLink />
                   </IconButton>
                   <IconButton label="Show in folder" onClick={() => void act(file, 'reveal')}>
@@ -76,7 +81,10 @@ export function TaskFiles({
                     <Copy />
                   </IconButton>
                   <IconButton
-                    label={changed ? 'Attach current file to follow-up' : 'Attach to follow-up'}
+                    label={changed ? 'Attach latest version' : 'Attach'}
+                    aria-label={
+                      changed ? 'Attach current file to follow-up' : 'Attach to follow-up'
+                    }
                     onClick={() => void act(file, 'attach')}
                   >
                     <Plus />

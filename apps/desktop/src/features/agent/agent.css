@@ -1,12 +1,19 @@
 .quick-commands {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 8px 12px;
   width: 100%;
   margin-top: 12px;
 }
+.quick-commands:has([data-slot='kbd-group']) {
+  grid-template-columns: max-content minmax(0, 1fr) max-content;
+}
 .quick-command {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
   width: 100%;
+  min-width: 0;
   height: auto;
   padding: 12px;
   gap: 12px;
@@ -15,21 +22,27 @@
 }
 .quick-command-copy {
   display: flex;
-  flex: 1;
   min-width: 0;
+  overflow: hidden;
   flex-direction: column;
   gap: 2px;
 }
-.quick-command-copy small {
+.quick-command-copy > span,
+.quick-command-copy > small {
+  display: block;
+  min-width: 0;
   overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.quick-command-copy small {
   color: var(--muted-foreground);
   font-size: 12px;
   font-weight: 400;
   line-height: 16px;
-  text-overflow: ellipsis;
 }
 .command-catalog {
-  padding-top: 20px;
+  padding: 20px 16px 16px;
 }
 .command-catalog [data-slot='command'] {
   background: transparent;
@@ -47,17 +60,30 @@
   flex-direction: column;
   gap: 16px;
   padding-top: 20px;
+  overflow-wrap: anywhere;
 }
 .input-preview {
-  padding: 12px;
   max-height: 220px;
-  overflow: auto;
   border-radius: var(--radius-2xl);
   background: color-mix(in oklab, var(--input) 50%, transparent);
   font-size: 14px;
   line-height: 22px;
   overflow-wrap: anywhere;
   white-space: pre-wrap;
+}
+.input-preview [data-slot='scroll-area-viewport'] > div > div {
+  padding: 12px;
+}
+.text-preview-viewport {
+  max-height: inherit;
+}
+.panel-text-scroll {
+  max-height: 240px;
+  border-radius: var(--radius-2xl);
+}
+.panel-text-scroll:has(textarea:focus-visible) {
+  outline: 1px solid var(--ring);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 30%, transparent);
 }
 .run-policy {
   display: flex;
@@ -74,20 +100,82 @@
 .command-run-footer {
   display: flex;
   flex-shrink: 0;
+  flex-wrap: wrap;
   align-items: center;
+  justify-content: space-between;
   gap: 8px;
   padding: 12px 16px 16px;
 }
+.command-input-feedback {
+  flex-shrink: 0;
+  max-height: min(136px, 35dvh);
+}
+.command-input-feedback-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 16px;
+  overflow-wrap: anywhere;
+}
+.command-run-tools,
+.command-run-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.command-run-actions {
+  margin-left: auto;
+}
+.panel-dialog {
+  display: flex;
+  max-height: calc(100dvh - 32px);
+  flex-direction: column;
+  gap: 16px;
+  overflow: hidden;
+}
+.panel-dialog > [data-slot='dialog-header'],
+.panel-dialog > [data-slot='dialog-footer'],
+.panel-dialog-actions {
+  flex-shrink: 0;
+}
+.panel-dialog-scroll {
+  flex: 1;
+  min-height: 0;
+  margin: -4px;
+}
+.panel-dialog-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 4px;
+  overflow-wrap: anywhere;
+}
+.panel-dialog-body > * {
+  flex-shrink: 0;
+}
+.panel-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+.task-review-action {
+  max-width: 100%;
+  height: auto;
+  min-height: 32px;
+  padding-block: 6px;
+  white-space: normal;
+}
 .review-text {
   max-height: 260px;
-  padding: 12px;
-  overflow: auto;
   border-radius: var(--radius-xl);
   background: color-mix(in oklab, var(--input) 50%, transparent);
   font-size: 12px;
   line-height: 20px;
   overflow-wrap: anywhere;
   white-space: pre-wrap;
+}
+.review-text pre {
+  padding: 12px;
+  white-space: inherit;
 }
 .conversation {
   position: relative;
@@ -97,13 +185,8 @@
   flex-direction: column;
 }
 .conversation-scroll {
-  display: flex;
   flex: 1;
   min-height: 0;
-  flex-direction: column;
-  overflow: auto;
-  scrollbar-width: thin;
-  scrollbar-color: var(--border) transparent;
 }
 .conversation-messages {
   display: flex;
@@ -154,11 +237,15 @@
 .markdown ol {
   list-style: decimal;
 }
-.markdown pre {
+.markdown-code {
   max-width: 100%;
-  overflow: auto;
+  max-height: 320px;
   border-radius: var(--radius-xl);
   background: var(--muted);
+}
+.markdown pre {
+  width: max-content;
+  min-width: 100%;
   padding: 12px;
   font-size: 12px;
 }
@@ -168,10 +255,12 @@
 .markdown a {
   text-decoration: underline;
 }
-.markdown table {
-  display: block;
+.markdown-table {
   max-width: 100%;
-  overflow-x: auto;
+}
+.markdown table {
+  width: max-content;
+  min-width: 100%;
   border-collapse: collapse;
   font-size: 12px;
 }
@@ -180,6 +269,7 @@
   padding: 6px 8px;
   border: 1px solid var(--border);
   text-align: left;
+  overflow-wrap: normal;
 }
 .markdown h1,
 .markdown h2,
@@ -203,7 +293,6 @@
   gap: 12px;
   padding: 6px 0;
   border-radius: var(--radius-lg);
-  white-space: normal;
 }
 .tool-details {
   margin-left: 8px;
@@ -214,12 +303,13 @@
   line-height: 20px;
 }
 .tool-details pre {
-  max-height: 240px;
-  overflow: auto;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
-.tool-details pre + pre {
+.tool-output {
+  max-height: 240px;
+}
+.tool-output + .tool-output {
   margin-top: 8px;
 }
 .task-request {
@@ -229,6 +319,16 @@
   padding: 12px;
   border: 1px solid var(--border);
   border-radius: var(--radius-2xl);
+  overflow-wrap: anywhere;
+}
+.task-request-option {
+  max-width: 100%;
+  height: auto;
+  min-height: 28px;
+  padding-block: 5px;
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 .task-files:empty {
   display: none;

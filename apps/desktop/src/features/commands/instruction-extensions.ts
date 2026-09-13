@@ -3,12 +3,14 @@ import {
   Decoration,
   EditorView,
   MatchDecorator,
+  tooltips,
   ViewPlugin,
   type ViewUpdate,
 } from '@codemirror/view';
 import type { CommandDefinition } from '../../../electron/agent/command-schema';
 import { availableVariables } from '../../../electron/agent/command-validation';
 import { contextVariables, parameterVariables } from './command-variables';
+import { instructionCompletion } from './instruction-completion';
 
 export function instructionExtensions(command: CommandDefinition) {
   const names = availableVariables(command);
@@ -50,7 +52,26 @@ export function instructionExtensions(command: CommandDefinition) {
   return [
     EditorView.lineWrapping,
     highlights,
-    autocompletion({ override: [complete], activateOnTyping: true, icons: false }),
+    // Match the variable picker's safe inset at the native window edges.
+    tooltips({
+      parent: document.body,
+      tooltipSpace: (view) => {
+        const viewport = view.dom.ownerDocument.documentElement;
+        return {
+          left: 8,
+          top: 8,
+          right: viewport.clientWidth - 8,
+          bottom: viewport.clientHeight - 8,
+        };
+      },
+    }),
+    autocompletion({
+      override: [complete],
+      activateOnTyping: true,
+      icons: false,
+      tooltipClass: () => 'instruction-completion-measure',
+    }),
+    instructionCompletion,
     EditorView.contentAttributes.of({ 'aria-label': 'Instructions', spellcheck: 'false' }),
   ];
 }

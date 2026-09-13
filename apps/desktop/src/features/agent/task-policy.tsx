@@ -12,6 +12,7 @@ import {
 } from '@ai/ui/components/dialog';
 import { Label } from '@ai/ui/components/label';
 import { Switch } from '@ai/ui/components/switch';
+import { ScrollArea } from '@ai/ui/components/scroll-area';
 import { TOOL_DESCRIPTIONS } from '../../../electron/agent/command-schema';
 import type { RunPolicy } from '../../../electron/agent/run-policy';
 
@@ -31,7 +32,7 @@ export function TaskPolicyControl({
           <span className="composer-config-label">Ask first</span>
         </Button>
       </DialogTrigger>
-      <DialogContent className="rounded-2xl bg-card max-h-[90vh] overflow-auto">
+      <DialogContent className="panel-dialog">
         <PolicyEditor
           key={String(open)}
           initial={value}
@@ -64,60 +65,82 @@ function PolicyEditor({
           require approval for each action.
         </DialogDescription>
       </DialogHeader>
-      <div className="space-y-4">
-        {TOOL_DESCRIPTIONS.map((tool) => (
-          <div className="flex items-center justify-between gap-4" key={tool.id}>
-            <div>
-              <Label htmlFor={`next-${tool.id}`}>{tool.label}</Label>
-              <p className="text-xs text-muted-foreground mt-1">{tool.description}</p>
+      <ScrollArea className="panel-dialog-scroll">
+        <div className="panel-dialog-body">
+          {TOOL_DESCRIPTIONS.map((tool) => (
+            <div className="flex items-center justify-between gap-4" key={tool.id}>
+              <div className="min-w-0">
+                <Label className="block truncate" htmlFor={`next-${tool.id}`} title={tool.label}>
+                  {tool.label}
+                </Label>
+                <p className="mt-1 truncate text-xs text-muted-foreground" title={tool.description}>
+                  {tool.description}
+                </p>
+              </div>
+              <Switch
+                id={`next-${tool.id}`}
+                checked={draft.tools.includes(tool.id)}
+                onCheckedChange={(checked) =>
+                  setDraft({
+                    ...draft,
+                    tools: checked
+                      ? [...draft.tools, tool.id]
+                      : draft.tools.filter((item) => item !== tool.id),
+                  })
+                }
+              />
+            </div>
+          ))}
+          <div className="flex items-center justify-between gap-4">
+            <div className="min-w-0">
+              <Label className="block truncate" htmlFor="next-memory" title="Use memory">
+                Use memory
+              </Label>
+              <p
+                className="mt-1 truncate text-xs text-muted-foreground"
+                title="Automatic learning follows your global setting."
+              >
+                Automatic learning follows your global setting.
+              </p>
             </div>
             <Switch
-              id={`next-${tool.id}`}
-              checked={draft.tools.includes(tool.id)}
-              onCheckedChange={(checked) =>
-                setDraft({
-                  ...draft,
-                  tools: checked
-                    ? [...draft.tools, tool.id]
-                    : draft.tools.filter((item) => item !== tool.id),
-                })
+              id="next-memory"
+              checked={draft.memory}
+              onCheckedChange={(memory) => setDraft({ ...draft, memory })}
+            />
+          </div>
+          <div className="flex items-center justify-between gap-4">
+            <div className="min-w-0">
+              <Label
+                className="block truncate"
+                htmlFor="next-model"
+                title="Use current default model"
+              >
+                Use current default model
+              </Label>
+              <p
+                className="mt-1 truncate text-xs text-muted-foreground"
+                title="Otherwise keep this task’s saved model."
+              >
+                Otherwise keep this task’s saved model.
+              </p>
+            </div>
+            <Switch
+              id="next-model"
+              checked={draft.useDefaultModel}
+              onCheckedChange={(useDefaultModel) =>
+                setDraft({ ...draft, useDefaultModel, model: undefined })
               }
             />
           </div>
-        ))}
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <Label htmlFor="next-memory">Use memory</Label>
-            <p className="text-xs text-muted-foreground mt-1">
-              Automatic learning follows your global setting.
+          {expanded && (
+            <p className="text-sm">
+              Additional capabilities:{' '}
+              {[...added, ...(!initial.memory && draft.memory ? ['memory'] : [])].join(', ')}.
             </p>
-          </div>
-          <Switch
-            id="next-memory"
-            checked={draft.memory}
-            onCheckedChange={(memory) => setDraft({ ...draft, memory })}
-          />
+          )}
         </div>
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <Label htmlFor="next-model">Use current default model</Label>
-            <p className="text-xs text-muted-foreground mt-1">
-              Otherwise keep this task’s saved model.
-            </p>
-          </div>
-          <Switch
-            id="next-model"
-            checked={draft.useDefaultModel}
-            onCheckedChange={(useDefaultModel) => setDraft({ ...draft, useDefaultModel })}
-          />
-        </div>
-      </div>
-      {expanded && (
-        <p className="text-sm">
-          Additional capabilities:{' '}
-          {[...added, ...(!initial.memory && draft.memory ? ['memory'] : [])].join(', ')}.
-        </p>
-      )}
+      </ScrollArea>
       <DialogFooter>
         <Button onClick={() => onApply({ ...draft, confirmExpansion: true })}>
           {expanded ? 'Allow for next message' : 'Apply to next message'}

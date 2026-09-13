@@ -49,7 +49,10 @@ export async function createTaskSession(
     modelsStorePath: path.join(agentRoot, 'models-cache.json'),
     refreshOnCreate: false,
   });
-  const model = await configureModel(models, request.run.snapshot.model, request.apiKey);
+  const model = await configureModel(models, request.run.snapshot.model, () => ({
+    taskId: request.taskId,
+    runId: current.request.run.id,
+  }));
   const settings = SettingsManager.inMemory({
     retry: { enabled: false },
     defaultThinkingLevel: 'off',

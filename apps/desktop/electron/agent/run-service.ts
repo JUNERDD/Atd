@@ -7,13 +7,17 @@ import { isActive } from './task-schema';
 import { errorMessage } from './validation';
 import { resolveInstructions } from './command-validation';
 import { TaskRuntime } from './task-runtime';
+import type { ModelReference } from '../providers/schema';
 
 export class RunService {
   private accepting: Promise<void> = Promise.resolve();
   constructor(
     private runtime: TaskRuntime,
-    private model: (command: CommandDefinition | null) => ResolvedModel,
-    private connectionId: () => string,
+    private model: (
+      command: CommandDefinition | null,
+      reference?: ModelReference,
+    ) => Promise<ResolvedModel>,
+    private assertModel: (model: ResolvedModel) => void,
   ) {}
 
   async preview(
@@ -24,17 +28,21 @@ export class RunService {
     const files = await this.runtime.resources.resolve(input.files);
     if (!command && !input.text.trim() && input.files.length === 0)
       throw new Error('Enter a message or attach a file.');
-    const snapshot = this.applyPolicy(
+    const snapshot = await this.applyPolicy(
       {
         command,
         definition: 'current',
         input,
         instructions: command ? resolveInstructions(command, input) : '',
-        model: this.model(policy?.useDefaultModel ? null : command),
+        model: await this.model(
+          policy?.useDefaultModel ? null : command,
+          policy?.useDefaultModel ? undefined : policy?.model,
+        ),
         tools: command?.tools ?? ['read', 'write', 'edit', 'bash'],
         memory: command?.memory !== 'off',
       },
       policy,
+      false,
     );
     this.checkBudget(snapshot, files);
     return snapshot;
@@ -52,7 +60,11 @@ export class RunService {
       );
   }
 
-  private applyPolicy(snapshot: RunSnapshot, policy: RunPolicy | null): RunSnapshot {
+  private async applyPolicy(
+    snapshot: RunSnapshot,
+    policy: RunPolicy | null,
+    resolveModel = true,
+  ): Promise<RunSnapshot> {
     if (!policy) return snapshot;
     const { tools, memory, useDefaultModel, confirmExpansion } = policy;
     if (
@@ -64,7 +76,10 @@ export class RunService {
       ...snapshot,
       tools,
       memory,
-      model: useDefaultModel ? this.model(null) : snapshot.model,
+      model:
+        resolveModel && (policy.model || useDefaultModel)
+          ? await this.model(null, useDefaultModel ? undefined : policy.model)
+          : snapshot.model,
     };
   }
 
@@ -115,12 +130,9 @@ export class RunService {
         );
       snapshot = await this.preview(request.input, command ?? null, request.policy);
     }
-    snapshot = this.applyPolicy(snapshot, request.policy);
+    if (previous || request.savedRun) snapshot = await this.applyPolicy(snapshot, request.policy);
     // Resolve the connection now as well as at dequeue. A snapshot cannot grant a new endpoint credentials.
-    if (snapshot.model.connectionId !== this.connectionId())
-      throw new Error(
-        'The saved model connection changed. Restore that connection in settings before running.',
-      );
+    this.assertModel(snapshot.model);
     const id = previous?.id ?? randomUUID();
     await this.runtime.resources.adopt(id, snapshot.input.files);
     const now = new Date().toISOString();

@@ -40,7 +40,10 @@ async function handle(request: WorkerRequest): Promise<unknown> {
         }
         task.current = request;
         await task.session.setModel(
-          await configureModel(task.models, request.run.snapshot.model, request.apiKey),
+          await configureModel(task.models, request.run.snapshot.model, () => ({
+            taskId: request.taskId,
+            runId: request.run.id,
+          })),
         );
         task.session.setActiveToolsByName(toolNames(request, !paused));
         task.session.sessionManager.appendCustomEntry('app-invocation', {

@@ -33,8 +33,8 @@ export class SettingsWindow {
       title: 'AI Settings',
       frame: true,
       backgroundColor: '#00000000',
-      minWidth: Math.min(760, workArea.width),
-      minHeight: Math.min(560, workArea.height),
+      minWidth: Math.min(320, workArea.width),
+      minHeight: Math.min(400, workArea.height),
       resizable: true,
       minimizable: true,
       maximizable: true,
@@ -54,13 +54,21 @@ export class SettingsWindow {
       webPreferences: rendererPreferences,
     });
     this.window = window;
+    const positionControls = () => {
+      if (process.platform === 'darwin' && !window.isDestroyed())
+        window.setWindowButtonPosition(
+          window.getContentBounds().width < 760 ? { x: 28, y: 22 } : { x: 16, y: 18 },
+        );
+    };
+    window.on('resize', positionControls);
+    positionControls();
     secureWindowContent(window);
     const reposition = () => {
       if (window.isDestroyed()) return;
       const display = screen.getDisplayMatching(window.getBounds());
       window.setMinimumSize(
-        Math.min(760, display.workArea.width),
-        Math.min(560, display.workArea.height),
+        Math.min(320, display.workArea.width),
+        Math.min(400, display.workArea.height),
       );
       if (!window.isMaximized()) {
         const bounds = window.getBounds();

@@ -3,9 +3,11 @@ import { useHotkeys, type Options } from 'react-hotkeys-hook';
 import { ArrowUp, Play, Plus, Square, X } from 'lucide-react';
 import { Button } from '@ai/ui/components/button';
 import { Textarea } from '@ai/ui/components/textarea';
-import type { ProviderSettings, ShortcutBindings } from '../../electron/settings-contract';
+import { ScrollArea } from '@ai/ui/components/scroll-area';
+import type { ShortcutBindings } from '../../electron/settings-contract';
 import { DEFAULT_SHORTCUTS } from '../../electron/settings-contract';
 import type { FileRef, RunStatus } from '../../electron/agent/task-schema';
+import type { Connection, ModelReference } from '../../electron/providers/schema';
 import type { RunPolicy } from '../../electron/agent/run-policy';
 import { isActive } from '../../electron/agent/task-schema';
 import { IconButton } from './icon-button';
@@ -30,7 +32,8 @@ interface ComposerProps {
   pending?: boolean;
   followup?: boolean;
   shortcuts?: ShortcutBindings;
-  provider?: ProviderSettings;
+  connections: Connection[];
+  model: ModelReference | null;
   onOpenSettings: () => void;
 }
 
@@ -44,7 +47,8 @@ export function Composer({
   pending = false,
   followup = false,
   shortcuts = DEFAULT_SHORTCUTS,
-  provider,
+  connections,
+  model,
   onOpenSettings,
   policy,
   onPolicyChange,
@@ -147,39 +151,46 @@ export function Composer({
           data-expanded={expanded}
           data-has-attachments={draft.files.length > 0}
         >
-          <Textarea
-            ref={ref}
-            className="composer-input"
-            aria-label="Task prompt"
-            placeholder={followup ? 'Ask a follow-up…' : 'Ask anything…'}
-            rows={1}
-            wrap={expanded ? 'soft' : 'off'}
-            maxLength={100000}
-            value={draft.text}
-            onChange={(event) => onChange({ ...draft, text: event.target.value })}
-          />
+          <ScrollArea className="composer-input-scroll" viewportClassName="composer-input-viewport">
+            <Textarea
+              ref={ref}
+              className="composer-input"
+              aria-label="Task prompt"
+              placeholder={followup ? 'Ask a follow-up…' : 'Ask anything…'}
+              rows={1}
+              wrap={expanded ? 'soft' : 'off'}
+              maxLength={100000}
+              value={draft.text}
+              onChange={(event) => onChange({ ...draft, text: event.target.value })}
+            />
+          </ScrollArea>
           {draft.files.length > 0 && (
-            <ul className="attachment-list" aria-label="Attached context">
-              {draft.files.map((file) => (
-                <li className="attachment-chip" key={file.id}>
-                  <span title={file.name}>{file.name}</span>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-xs"
-                    aria-label={`Remove ${file.name}`}
-                    onClick={() =>
-                      onChange({
-                        ...draft,
-                        files: draft.files.filter((item) => item.id !== file.id),
-                      })
-                    }
-                  >
-                    <X />
-                  </Button>
-                </li>
-              ))}
-            </ul>
+            <ScrollArea
+              className="composer-attachments"
+              viewportClassName="composer-attachments-viewport"
+            >
+              <ul className="attachment-list" aria-label="Attached context">
+                {draft.files.map((file) => (
+                  <li className="attachment-chip" key={file.id}>
+                    <span title={file.name}>{file.name}</span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-xs"
+                      aria-label={`Remove ${file.name}`}
+                      onClick={() =>
+                        onChange({
+                          ...draft,
+                          files: draft.files.filter((item) => item.id !== file.id),
+                        })
+                      }
+                    >
+                      <X />
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            </ScrollArea>
           )}
           <IconButton
             label="Attach context"
@@ -210,15 +221,16 @@ export function Composer({
           </div>
         </div>
         <ComposerConfiguration
-          provider={provider}
+          connections={connections}
+          model={model}
           onOpenSettings={onOpenSettings}
           policy={policy}
           onPolicyChange={onPolicyChange}
         />
         {error && (
-          <output className="composer-notice" role="alert">
-            {error}
-          </output>
+          <ScrollArea className="composer-notice" viewportClassName="text-preview-viewport">
+            <output role="alert">{error}</output>
+          </ScrollArea>
         )}
       </form>
     </footer>

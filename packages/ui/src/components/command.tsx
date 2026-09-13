@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { Command as CommandPrimitive } from 'cmdk';
+export { defaultFilter as commandFilter } from 'cmdk';
 import { cn } from '@ai/ui/lib/utils';
 
 import {
@@ -11,6 +12,7 @@ import {
 } from '@ai/ui/components/dialog';
 import { InputGroup, InputGroupAddon } from '@ai/ui/components/input-group';
 import { SearchIcon, CheckIcon } from 'lucide-react';
+import { ScrollArea } from '@ai/ui/components/scroll-area';
 
 function Command({ className, ...props }: React.ComponentProps<typeof CommandPrimitive>) {
   return (
@@ -77,16 +79,21 @@ function CommandInput({
   );
 }
 
-function CommandList({ className, ...props }: React.ComponentProps<typeof CommandPrimitive.List>) {
+function CommandList({
+  className,
+  children,
+  ...props
+}: React.ComponentProps<typeof CommandPrimitive.List>) {
   return (
-    <CommandPrimitive.List
-      data-slot="command-list"
-      className={cn(
-        'no-scrollbar max-h-72 scroll-py-1 overflow-x-hidden overflow-y-auto outline-none',
-        className,
-      )}
-      {...props}
-    />
+    <ScrollArea className={cn('min-h-0 max-h-72', className)} viewportClassName="max-h-[inherit]">
+      <CommandPrimitive.List
+        data-slot="command-list"
+        className="scroll-py-1 outline-none"
+        {...props}
+      >
+        {children}
+      </CommandPrimitive.List>
+    </ScrollArea>
   );
 }
 

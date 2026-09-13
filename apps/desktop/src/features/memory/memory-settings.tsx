@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
-import { ArrowLeft, Pencil, Trash2 } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Pencil, Trash2 } from 'lucide-react';
 import { Button } from '@ai/ui/components/button';
 import { Input } from '@ai/ui/components/input';
 import { Label } from '@ai/ui/components/label';
 import { Switch } from '@ai/ui/components/switch';
 import { Textarea } from '@ai/ui/components/textarea';
+import { ScrollArea } from '@ai/ui/components/scroll-area';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,6 +17,7 @@ import {
   AlertDialogTitle,
 } from '@ai/ui/components/alert-dialog';
 import type { MemoryEntry, MemorySnapshot } from '../../../electron/agent/bridge';
+import { SettingsHeading } from '../settings/settings-heading';
 import { IconButton } from '../../components/icon-button';
 import { agentApi, messageOf } from '../agent/use-agent';
 
@@ -28,6 +30,10 @@ export function MemorySettings() {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
   const [status, setStatus] = useState('');
+  const errorMessage = useRef<HTMLParagraphElement>(null);
+  useEffect(() => {
+    if (editing && error) errorMessage.current?.scrollIntoView({ block: 'nearest' });
+  }, [editing, error]);
   useEffect(() => {
     let active = true;
     if (!window.desktop?.agent) return;
@@ -81,41 +87,79 @@ export function MemorySettings() {
       setPending(false);
     }
   }
+  function closeEditor() {
+    setEditing(null);
+    setError('');
+    setStatus('');
+  }
   const failure = error || snapshot?.error;
+  const feedback = (
+    <>
+      {(failure || status) && (
+        <p
+          id="memory-feedback"
+          ref={errorMessage}
+          className="settings-status"
+          data-error={Boolean(failure)}
+          role={failure ? 'alert' : 'status'}
+        >
+          {failure || status}
+        </p>
+      )}
+      {failure && (!editing || Boolean(snapshot?.error)) && (
+        <Button
+          variant="outline"
+          className="mt-3"
+          onClick={() => {
+            void agentApi()
+              .memory()
+              .then((value) => {
+                setSnapshot(value);
+                setError('');
+              })
+              .catch((error) => setError(messageOf(error)));
+          }}
+        >
+          Reload memory
+        </Button>
+      )}
+    </>
+  );
   return (
     <section className="memory-settings">
       {editing ? (
         <div className="command-editor">
-          <header className="editor-heading">
-            <IconButton
-              label="Back to memory"
-              onClick={() => {
-                setEditing(null);
-                setError('');
-              }}
-            >
-              <ArrowLeft />
-            </IconButton>
-            <h2>Edit memory</h2>
-          </header>
-          <div className="settings-field">
-            <Label htmlFor="memory-content">Memory</Label>
-            <Textarea
-              id="memory-content"
-              rows={6}
-              maxLength={20000}
-              value={content}
-              onChange={(event) => setContent(event.target.value)}
-            />
-            <p className="text-xs text-muted-foreground">Changes apply to future memory reads.</p>
-          </div>
+          <SettingsHeading title="Edit memory" onBack={closeEditor} backLabel="Back to memory" />
+          <ScrollArea className="editor-fields">
+            <div className="settings-editor-inner">
+              <div className="settings-field">
+                <Label htmlFor="memory-content">Memory</Label>
+                <Textarea
+                  id="memory-content"
+                  rows={6}
+                  maxLength={20000}
+                  value={content}
+                  aria-invalid={Boolean(error) && !content.trim()}
+                  aria-describedby={failure ? 'memory-feedback' : undefined}
+                  onChange={(event) => {
+                    setContent(event.target.value);
+                    setError('');
+                  }}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Changes apply to future memory reads.
+                </p>
+              </div>
+              {feedback}
+            </div>
+          </ScrollArea>
           <footer className="editor-footer">
             <Button variant="ghost" onClick={() => setConfirm('delete')} disabled={pending}>
               <Trash2 />
               Delete memory
             </Button>
             <div>
-              <Button variant="outline" onClick={() => setEditing(null)} disabled={pending}>
+              <Button variant="outline" onClick={closeEditor} disabled={pending}>
                 Cancel
               </Button>
               <Button onClick={() => void save()} disabled={pending}>
@@ -126,14 +170,24 @@ export function MemorySettings() {
         </div>
       ) : (
         <>
-          <header className="settings-section-heading">
-            <h2>Memory</h2>
-            <p>Preferences that help the agent work the way you do.</p>
-          </header>
+          <SettingsHeading
+            title="Memory"
+            description="Preferences that help the agent work the way you do."
+          >
+            <Input
+              aria-label="Search memory"
+              placeholder="Search memory…"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+          </SettingsHeading>
           <div className="flex items-center justify-between gap-4 mb-6">
             <div className="settings-field">
               <Label htmlFor="memory-learning">Learn automatically</Label>
-              <p className="text-xs text-muted-foreground">
+              <p
+                className="text-xs text-muted-foreground truncate"
+                title="Save stable preferences and clear corrections as you work."
+              >
                 Save stable preferences and clear corrections as you work.
               </p>
             </div>
@@ -147,12 +201,6 @@ export function MemorySettings() {
               }}
             />
           </div>
-          <Input
-            aria-label="Search memory"
-            placeholder="Search memory…"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-          />
           <ul className="memory-items">
             {snapshot?.entries
               .filter((entry) => entry.content.toLowerCase().includes(search.toLowerCase()))
@@ -169,11 +217,13 @@ export function MemorySettings() {
                     </span>
                   </div>
                   <IconButton
-                    label={`Edit memory: ${entry.content.slice(0, 70)}`}
+                    label="Edit"
+                    aria-label={`Edit memory: ${entry.content.slice(0, 70)}`}
                     onClick={() => {
                       setEditing(entry);
                       setContent(entry.content);
                       setError('');
+                      setStatus('');
                     }}
                   >
                     <Pencil />
@@ -196,33 +246,8 @@ export function MemorySettings() {
             Stored on this device. Learning uses your configured model and may make additional model
             calls.
           </p>
+          {feedback}
         </>
-      )}
-      {(failure || status) && (
-        <p
-          className="settings-status"
-          data-error={Boolean(failure)}
-          role={failure ? 'alert' : 'status'}
-        >
-          {failure || status}
-        </p>
-      )}
-      {failure && (
-        <Button
-          variant="outline"
-          className="mt-3"
-          onClick={() => {
-            void agentApi()
-              .memory()
-              .then((value) => {
-                setSnapshot(value);
-                setError('');
-              })
-              .catch((error) => setError(messageOf(error)));
-          }}
-        >
-          Reload memory
-        </Button>
       )}
       <AlertDialog
         open={Boolean(confirm)}

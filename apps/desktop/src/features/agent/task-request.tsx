@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Button } from '@ai/ui/components/button';
 import { Textarea } from '@ai/ui/components/textarea';
+import { ScrollArea } from '@ai/ui/components/scroll-area';
 import { ShieldQuestion } from 'lucide-react';
 import type { PermissionRequest } from '../../../electron/agent/task-schema';
 import { agentApi, messageOf } from './use-agent';
@@ -27,9 +28,15 @@ export function TaskRequest({ request }: { request: PermissionRequest }) {
     >
       <div className="flex items-start gap-2">
         <ShieldQuestion size={16} className="shrink-0 mt-0.5" />
-        <h2 className="text-sm font-medium">{request.title}</h2>
+        <h2 className="min-w-0 truncate text-sm font-medium" title={request.title}>
+          {request.title}
+        </h2>
       </div>
-      {request.detail && <pre className="review-text">{request.detail}</pre>}
+      {request.detail && (
+        <ScrollArea className="review-text" viewportClassName="text-preview-viewport">
+          <pre>{request.detail}</pre>
+        </ScrollArea>
+      )}
       {request.kind === 'input' && (
         <>
           <div className="flex flex-wrap gap-2">
@@ -38,6 +45,7 @@ export function TaskRequest({ request }: { request: PermissionRequest }) {
                 key={option}
                 variant="outline"
                 size="sm"
+                className="task-request-option"
                 disabled={pending}
                 onClick={() => void respond(option)}
               >
@@ -45,12 +53,15 @@ export function TaskRequest({ request }: { request: PermissionRequest }) {
               </Button>
             ))}
           </div>
-          <Textarea
-            aria-label="Your answer"
-            value={answer}
-            onChange={(event) => setAnswer(event.target.value)}
-            placeholder="Your answer…"
-          />
+          <ScrollArea className="panel-text-scroll" viewportClassName="text-preview-viewport">
+            <Textarea
+              aria-label="Your answer"
+              className="overflow-hidden"
+              value={answer}
+              onChange={(event) => setAnswer(event.target.value)}
+              placeholder="Your answer…"
+            />
+          </ScrollArea>
         </>
       )}
       <div className="flex justify-end gap-2">

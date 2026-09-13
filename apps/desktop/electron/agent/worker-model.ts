@@ -1,32 +1,47 @@
 import { ModelRuntime } from '@earendil-works/pi-coding-agent';
 import type { ResolvedModel } from './task-schema';
+import { ModelAuthSchema } from '../providers/schema';
+import { nativeCall } from './worker-channel';
 
-/** Register only the accepted connection, using Pi's provider transport and known model metadata. */
+/** Pi owns the native transport; main resolves and refreshes this run's connection credentials. */
 export async function configureModel(
   models: ModelRuntime,
   selected: ResolvedModel,
-  apiKey: string,
+  request: () => { taskId: string; runId: string },
 ) {
-  const known =
-    selected.provider === 'openai' ? models.getModel('openai', selected.modelId) : undefined;
-  models.registerProvider('app-provider', {
-    baseUrl: selected.baseUrl,
-    api: selected.provider === 'openai' ? 'openai-responses' : 'openai-completions',
-    authHeader: Boolean(apiKey),
-    models: [
-      {
-        id: selected.modelId,
-        name: selected.modelId,
-        reasoning: known?.reasoning ?? false,
-        input: ['text'],
-        cost: known?.cost ?? { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
-        contextWindow: known?.contextWindow ?? 32768,
-        maxTokens: known?.maxTokens ?? 4096,
-      },
-    ],
+  const known = models.getModel(selected.provider, selected.modelId);
+  const definition =
+    'definition' in selected
+      ? selected.definition
+      : {
+          ...known,
+          id: selected.modelId,
+          name: selected.modelId,
+          api: selected.provider === 'openai' ? 'openai-responses' : 'openai-completions',
+          baseUrl: selected.baseUrl,
+          reasoning: known?.reasoning ?? false,
+          input: known?.input ?? ['text' as const],
+          cost: known?.cost ?? { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+          contextWindow: known?.contextWindow ?? 32768,
+          maxTokens: known?.maxTokens ?? 4096,
+        };
+  models.registerProvider(selected.provider, {
+    api: definition.api,
+    baseUrl: definition.baseUrl,
+    models: [{ ...known, ...definition }],
   });
-  await models.setRuntimeApiKey('app-provider', apiKey || 'unused');
-  const model = models.getModel('app-provider', selected.modelId);
+  const provider = models.getProvider(selected.provider);
+  if (!provider) throw new Error('The selected provider is unavailable.');
+  models.registerNativeProvider({
+    ...provider,
+    auth: {
+      apiKey: {
+        name: 'Application connection',
+        resolve: () => nativeCall({ action: 'modelAuth', ...request() }, ModelAuthSchema),
+      },
+    },
+  });
+  const model = models.getModel(selected.provider, selected.modelId);
   if (!model) throw new Error('The selected model is unavailable.');
   return model;
 }

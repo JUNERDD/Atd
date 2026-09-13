@@ -36,7 +36,11 @@ Agent 流程与 Providers / Shortcuts 设置已合并到同一设计页：[统�
 
 返回控件复用 `App / Icon button` 的 Ghost / icon-sm：28 × 28px，连接共享 `Lucide / arrow-left` 的 16px 图标；与 Inter Semi Bold 24px / 32px 标题相距 8px，垂直居中。可选说明使用 Inter Regular 14px / 20px，与标题行相距 8px。组合 Fill 宽度、Hug 高度，长标题自然换行；Desktop 保留设置内容 40px 内边距，窄屏遵循响应式模式。代码对应 `features/commands/commands.css` 的 `.editor-heading` 与 `components/icon-button.tsx`。
 
-组件暴露标题、说明、说明显隐及嵌套返回按钮。原型导航由返回控件的容器承担，避免按钮状态切换覆盖返回目标；可访问名称与 tooltip 应说明返回的上级页面。保留既有导航，并补齐记忆编辑、独立确认页及 Anthropic 连接详情遗漏的返回入口。此次仅修改 Figma 与文档，提供商功能的后续实现沿用 [提供商计划](plans/2026-09-12-provider-defaults-design.md#二级页面标题)。
+组件暴露标题、说明、说明显隐及嵌套返回按钮。原型导航由返回控件的容器承担，避免按钮状态切换覆盖返回目标；tooltip 统一为 `Back`，可访问名称说明返回的上级页面。保留既有导航，并补齐记忆编辑、独立确认页及 Anthropic 连接详情遗漏的返回入口。此次仅修改 Figma 与文档，提供商功能的后续实现沿用 [提供商计划](plans/2026-09-12-provider-defaults-design.md#二级页面标题)。
+
+### 操作提示文案
+
+图标操作的 tooltip 使用简短动作，不重复行内容、对象名称或页面上下文：省略号统一为 `More`，其他操作使用 `Run`、`Edit`、`Remove`、`Delete`、`Copy`、`Back`、`Insert`、`Configure`、`Move up` / `Move down`。`IconButton.label` 提供可见提示，`aria-label` 按需保留命令、参数、记忆内容或返回目标，方便屏幕阅读器区分按钮。文件操作保留 `Copy path`、`Show in folder`、`Attach latest version` 等必要区别。用于查看被截断的文件名、模型名和说明的完整值提示继续保留；不可用提示简明说明状态。
 
 ### 表单分组与间距
 
@@ -169,3 +173,75 @@ Hermes 0.9.8 拥有 SQLite 与 Markdown 记忆。`patches/pi-hermes-memory@0.9.8
 ## 历史资产
 
 `design-assets.json`、`third-party/Hugeicons-LICENSE` 与早期五个 SVG 保留为 2026-09-09 初始面板资产记录；当前产品使用 Lucide，这些旧资源不代表 Agent v1 图标或布局基线。Inter 由 `@fontsource-variable/inter` 本地提供。
+
+## 2026-09-12 应用同步：多连接、响应式设置与指令生成
+
+代码按最新[提供商修订计划](plans/2026-09-12-provider-defaults-design.md#应用实现记录--2026-09-12)及产品页 `1:251` / 组件页 `69:80` 实现。Figma 保持原画板、共享库实例、变量和原型；本轮更新相关组件 usage description 的实现状态，纠正旧单连接说明与已被新计划取代的 Compact 24px 顶部 inset。
+
+| Figma owner                                                 | 应用 owner                                                                                          |
+| ----------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| Settings window layout · Responsive `1119:36110`            | `settings-window.tsx` / `settings.css` / `electron/settings-window.ts`                              |
+| Settings overview header · Rhea `1181:38808`                | `settings-heading.tsx`，Providers / Commands / Memory 共用                                          |
+| Settings editor layout / footer `1093:34262` / `1093:34242` | 共享滚动正文与页脚样式、命令/参数/记忆/连接表单                                                     |
+| Command identity `1093:34209` / Run settings `1062:33204`   | `command-editor.tsx` / `run-settings.tsx` / `commands.css`，220px 字段与16/8px间距                  |
+| Provider connections `913:17261` / Model picker `954:19478` | `provider-settings.tsx` / `model-picker.tsx` / `providers.css`，连接内4px与跨连接8px边界            |
+| Command instruction generator `1231:39739`                  | `instruction-generator.tsx` / `instruction-generation.ts`，24px操作、16px外边距、12px分区与24px圆角 |
+
+代码仍复用项目 Rhea primitives、Radix/cmdk/CodeMirror 和仓库中原始品牌 SVG。该阶段先完成静态检查；其后的完整 UI 走查见下节。真实账户 OAuth 与计费模型调用不在本次视觉验收范围。
+
+## 2026-09-12 完整 UI 走查与透明弹层修复
+
+用户补充的共同验收条件是：可滚动内容统一使用 ScrollArea；项目项、卡片、页面和普通对话框的标题、描述优先单行省略，保留完整值的 title 或详情入口。输入正文、会话内容、校验错误与确认操作所需的正文保持可读。
+
+- 命令 More 菜单统一为 224px、三项次要动作、16px Lucide 图标与 9px 分隔区域，避免 Edit / Delete 文案挤成两行。Run、Switch、More 保留固定顺序；窄列表将身份和动作分为两轨，空快捷键或长名称不改变动作列。对应 Figma 主组件 `487:11060` 和实际 Enabled / Disabled 菜单均保留原型连接。
+- 所有可见滚动区域复用已安装 Radix 的 [Rhea ScrollArea](https://ui.shadcn.com/r/styles/radix-rhea/scroll-area.json)，包括设置、表单、抽屉、菜单、Select、变量补全、对话框、会话、代码/表格、工具详情、附件与长输入。默认纵向 viewport 使用可收缩的 flex 布局，避免仅有 max-height 时内容被裁掉却不能滚动；横向区域保留独立测量。滚动条不占内容布局宽度。
+- CodeMirror 继续拥有匹配、选择、键盘与插入。通过其公开 completion state 和 tooltip API 将可见列表呈现为 ScrollArea；默认 tooltip 仅保留不可见的库内分页度量，避免 PageUp / PageDown 失效。没有自写匹配器或劫持原生列表 DOM。补全已关闭自动补括号，避免插入后多出 `}}`。
+- Select 复用 Radix popper 定位、8px 视口避让和 ScrollArea viewport，修复短窗口中的选项越界。设置抽屉修复 Tailwind 独立 translate 残留，打开时聚焦当前目的地，Escape 或导航后关闭并恢复触发器焦点；Tooltip 保留键盘与悬停触发，避免鼠标关闭后自动弹出。确认框保留 16px 视口边距，标题避开关闭按钮，长正文滚动而底部动作保持可达。
+- 提供商品牌图标使用正确引用的仓库 SVG；修复长连接名、长认证选项、目录失败提示被隐藏和表单内边距覆盖。面板修复长命令、工具详情、附件、Composer 与输入错误挤占底部操作的问题。
+
+Figma 继续复用项目组件与远端共享库连接。Provider row `910:17467` 增加 Inline / Stacked 共 18 个状态，按内容宽度 475px 切换，有效内边距包含代码 1px Item border。命令行 `373:1416` 保持同一 Run / Switch / More 结构；参数行 `414:1817` 统一四项图标操作；项目按钮 `907:17188` 的 24 个变体将图标与标签绑定为同一语义色。命令运行页共用 footer `1287:45290`。Panel dialog `1289:45187` 与权限 overlay `1292:46322` 表达正文滚动和固定操作，普通对话框描述保持单行省略；预览使用 Content / Bounded 高度变体，短内容自然收缩。权限入口分别映射新任务、命令定义或历史快照的初始值，产品页原型指向同页连接实例。Figma 需要显式选择结构性变体；源组件 usage 记录断点和代码映射，实际消费者保留文案、状态与原型目标。
+
+透明材质仍采用原来的窗口/菜单 80% tint、设置内容/抽屉 10% tint、菜单 20px 与抽屉 40px 模糊。实测 Electron 44 的透明 backing surface 会把 CSS backdrop blur 再叠到清晰原像素上；调整窗口透明开关、普通 filter/isolation 或动画没有解决。实现复用原生 [SVG feGaussianBlur](https://developer.mozilla.org/en-US/docs/Web/SVG/Reference/Element/feGaussianBlur) 与 [feComposite](https://developer.mozilla.org/en-US/docs/Web/SVG/Reference/Element/feComposite)，仅在上层浮层覆盖的区域替换下层 portal 的像素，保留 alpha；原生窗口继续拥有桌面毛玻璃、外轮廓与阴影。全窗表面保留 alpha 下限，防止 SVG 模糊在窗口边缘产生亮晕；局部弹层保留透明圆角，并扩展滤镜范围以容纳模糊与外阴影，避免多层覆盖时变成方角。读取 alpha 兼容 CSSOM 的 rgba 与 oklab 等现代颜色表达。该适配限于 macOS Electron，Radix / CodeMirror 仍负责定位、焦点、关闭和滚动；关闭浮层后清除临时滤镜。
+
+本次使用独立 Electron 数据目录分批检查：设置 320 / 480 / 760 / 1000 / 1280px 及 479 / 759px 断点边界和短高，共 36 个页面与尺寸组合，没有水平越界或页面异常；面板覆盖 320 / 420 / 640px，含 320px 短高与长文本。变量补全的键盘翻页、选择、插入，长认证选项、错误反馈、抽屉焦点和关闭均实测。原生合成截图核对明暗背景中的四角、边缘、阴影及材质。
+
+检查记录与截图位于 `apps/desktop/.artifacts/ui-audit/`、`ui-audit-command/` 及各批次目录；生产设置矩阵为 `final-settings-matrix.json`，原生明暗证据为 `os-composite-*-final.png`。`pnpm check` 的格式、Oxlint、TypeScript、13 个现有单元测试、生产构建均通过，`pnpm test:electron` 的现有冒烟检查通过。真实账户认证与远端模型请求没有执行。
+
+### 首页长标题溢出反馈
+
+后续截图显示首页长命令名越过右侧边界。代码补齐 `CommandLauncher` 的行与文字容器约束：行允许收缩，文字容器裁剪自身内容，标题和描述由同一处 CSS 明确设为块级、单行省略，快捷键组不参与收缩。保留完整字符串的 `title`。Figma `App / Command item`（`337:1155`）原本已有 Fill + clipsContent + ENDING/maxLines1，本次补充 usage 映射并读回实际实例，未改变既有几何或原型。
+
+截图中的原状态未在新开的窗口复现，未将缓存或热更新判定为根因。修改后使用独立 Electron 数据目录检查开发版和生产版，覆盖 320 / 420 / 640px 宽、580 / 320px 高的 12 组首页布局，以及 2 组命令目录；包含长英文、无空格标题、中文长描述、有/无快捷键和悬停/键盘焦点。文字与快捷键均在行内，标题和描述各占一行，页面错误为零。截图和尺寸读数位于 `apps/desktop/.artifacts/title-overflow/`。本次 `pnpm check` 的格式、lint、类型、13 个既有单元测试与构建通过。
+
+### 首页文字列与抽屉动效反馈
+
+用户继续用红框指出：无快捷键的第二条命令文字伸入第一条的快捷键列。此前只验证文字在窗口内且单行省略，没有满足同行内容边界一致的要求。现在 `CommandLauncher` 的快捷命令组通过 CSS Grid / subgrid 统一图标、文字和快捷键三列；快捷键列由整组实际内容的最大宽度决定，空快捷键行保留这一列，整组没有快捷键时才使用两列。标题和描述继续单行省略，并通过 `title` 提供完整值；没有添加占位按钮或不可见快捷键。
+
+设置抽屉改用共享 [Rhea Sheet](https://ui.shadcn.com/r/styles/radix-rhea/sheet.json)，复用已安装的 Radix Dialog 焦点与关闭行为。设置组合指定从左侧完整滑入／滑出，时长 200ms，缓动 `cubic-bezier(0.4,0,0.2,1)`，保持内容 opacity 为 1，不使用居中缩放；减少动态效果时取消动画。局部关闭通用 CSS transition，避免原生模糊适配切换 `backdrop-filter` 时产生额外过渡。现有透明适配增加 Sheet 表面选择器，抽屉继续使用 10% 表面与 40px 模糊，原生窗口控件和桌面材质归属不变。
+
+Figma 在既有 [App / Command item](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=337-1155) 增加 `Presentation=Quick`，保留 Catalog 及其消费者。首页两处实际实例与组件页两处实例统一迁入 Quick，并复用远程 Kbd 及既有 Rhea 适配。父级 `App · Home command grid` 模式统一控制快捷键列宽与可见性：Three keys／No shortcuts／Five keys 分别为实测的 69／0／118px。Figma 无法自动实现 CSS subgrid 的跨行测量，因此这些是明确的内容模式；换快捷键组合时须按实际最大宽度调整模式，不能把某个宽度当作通用常量。已验证 320／420px 长文字混排、640px 五键与 320px 全无快捷键，随后恢复原始文案、尺寸和原型。
+
+[Settings window layout · Responsive](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=1119-36110) 的开闭变体使用同名抽屉层，在 -264px 与 0 之间 Smart Animate，窗口栏和正文保持不动。17 个实际消费者的层名、两处导航 Tab 与继承点击已同步；每个实例往返切换后均保留正文、SLOT、选中章节和原型目标，并恢复原来的 15 个关闭态、2 个打开态。菜单、关闭、遮罩和 Escape 均读回同一 200ms 自定义贝塞尔，按钮 hover 不变。Figma 验收记录分别为 `ui-audit-command/home-copy-boundary.md` 与 `ui-audit/settings/drawer-figma-audit.json`。
+
+隔离 Electron 验证覆盖开发／生产两种加载方式：18 组首页布局包含 320／420／640px、不同长度快捷键与全无快捷键，另检查 320px 短高时 ScrollArea 内入口可达。8 组抽屉检查覆盖 320×400、420×685、479×320、导航后关闭、480／760px 断点切换、关闭按钮／Escape／遮罩、焦点限制与归还、减少动态效果及关闭后滤镜清理。逐帧记录确认只发生横向平移；原生录像及明暗背景截图核对侧滑、透明材质和窗口边缘，页面错误为零。
+
+本轮证据位于 `apps/desktop/.artifacts/drawer-motion/`，其中 `home-shared-columns-production-420.png` 替代此前被用户指出问题的首页截图，`drawer-slide.mp4` 为真实窗口开闭录像。最终 `pnpm check`（格式、Oxlint、TypeScript、13 个现有单元测试、生产构建）与现有 Electron 冒烟测试通过；临时运行时与隔离数据目录已清理。
+
+## 2026-09-13 菜单式弹层自适应宽度
+
+用户要求所有 dropdown 形态的弹层随内容调整宽度，并保留最小宽度。代码使用原生 [`max-content`](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Values/max-content) 计算内容宽度；Radix 弹层沿用[可用空间约束](https://www.radix-ui.com/primitives/docs/components/dropdown-menu#constrain-the-contentsub-content-size)与碰撞处理。最小宽度受可用窗口宽度约束，不能在窄窗口中撑出页面。
+
+| 弹层                   | 最小宽度 | 宽度上限与代码归属                                                            |
+| ---------------------- | -------- | ----------------------------------------------------------------------------- |
+| 操作菜单、子菜单       | 128px    | Radix 可用宽度；共享 `dropdown-menu.tsx`                                      |
+| Select 选项            | 144px    | 窗口宽度减 16px；共享 `select.tsx`，取消与触发器宽度绑定                      |
+| 通用 Popover           | 288px    | Radix 可用宽度；共享 `popover.tsx`，业务组合可定义自己的最小值                |
+| 连接内及跨连接模型菜单 | 256px    | Radix 可用宽度；`providers.css` 的 `model-picker`                             |
+| 变量选择器             | 320px    | 460px 与 Radix 可用宽度的较小值；`commands.css` 的 `variable-picker`          |
+| 指令变量补全           | 320px    | 原有 460px／窗口减 32px 上限；`instruction-theme.ts` 已采用内容宽度，继续沿用 |
+
+移除命令菜单的 224px 和连接菜单的 240px 固定宽度；图标、快捷键及禁用原因参与内容宽度计算。继续复用现有 ScrollArea、键盘操作、模型菜单 18px／14px 圆角与单层 4px 边界。
+
+本轮定向格式、Oxlint、TypeScript 与独立输出目录中的 renderer 构建通过；构建保留分块体积提示。未启动或连接应用运行时，因此尚未验证实际窗口中的内容宽度、窄屏碰撞和滚动效果。
+
+Figma 对应组件已记录新宽度规则，但自适应结构尚未同步。临时连接实例试验显示：仅设 Hug 会保留旧宽度，逐层解除 Fill 后会使选项高亮失去整行宽度；恢复高亮 Fill 又使外层收缩到最小值。嵌套实例的 max-size 覆盖被 API 拒绝，原生 Grid 试验也未同时满足两者。试验节点均已移除，保留原组件、共享库引用与画板几何；不把现有固定评审宽度当作自适应布局的验收证据。

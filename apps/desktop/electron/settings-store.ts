@@ -3,12 +3,19 @@ import { randomUUID } from 'node:crypto';
 import { mkdir, open, readFile, rename, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { DEFAULT_SHORTCUTS, type ShortcutBindings } from './settings-contract';
-import { defaultProvider, parseStoredProvider, type StoredProvider } from './settings-provider';
+import { Type, type Static } from 'typebox';
+import { parse } from './agent/validation';
+import { StoredConnectionSchema } from './providers/schema';
+import { migrateProvider } from './providers/legacy';
+import { initialDefaultConnectionId } from './providers/defaults';
 import { parseShortcutBindings } from './settings-shortcuts';
 
-export interface StoredSettings {
-  version: 1;
-  provider: StoredProvider;
+const ProviderSettingsSchema = Type.Object({
+  connections: Type.Array(StoredConnectionSchema, { maxItems: 100 }),
+  defaultConnectionId: Type.Union([Type.String(), Type.Null()]),
+});
+export interface StoredSettings extends Static<typeof ProviderSettingsSchema> {
+  version: 2;
   shortcuts: ShortcutBindings;
   pinned: boolean;
 }
@@ -19,20 +26,40 @@ function parseSettings(value: unknown): StoredSettings {
     value === null ||
     Array.isArray(value) ||
     Object.keys(value).some(
-      (key) => !['version', 'provider', 'shortcuts', 'pinned'].includes(key),
+      (key) =>
+        ![
+          'version',
+          'provider',
+          'connections',
+          'defaultConnectionId',
+          'shortcuts',
+          'pinned',
+        ].includes(key),
     ) ||
     !('version' in value) ||
-    value.version !== 1 ||
-    !('provider' in value) ||
+    (value.version !== 1 && value.version !== 2) ||
     !('shortcuts' in value) ||
     !('pinned' in value) ||
     typeof value.pinned !== 'boolean'
   ) {
     throw new TypeError('Invalid saved settings.');
   }
+  const connections =
+    value.version === 1 && 'provider' in value ? migrateProvider(value.provider) : null;
+  const providers = connections
+    ? { connections, defaultConnectionId: connections[0]?.connectionId ?? null }
+    : parse(ProviderSettingsSchema, {
+        connections: 'connections' in value ? value.connections : null,
+        defaultConnectionId: 'defaultConnectionId' in value ? value.defaultConnectionId : null,
+      });
+  if (
+    new Set(providers.connections.map((connection) => connection.connectionId)).size !==
+    providers.connections.length
+  )
+    throw new Error('Duplicate saved connection identities.');
   return {
-    version: 1,
-    provider: parseStoredProvider(value.provider),
+    version: 2,
+    ...providers,
     shortcuts: parseShortcutBindings(value.shortcuts),
     pinned: value.pinned,
   };
@@ -40,6 +67,7 @@ function parseSettings(value: unknown): StoredSettings {
 
 export class SettingsStore {
   private value: StoredSettings;
+  private mutation: Promise<void> = Promise.resolve();
 
   private constructor(
     private readonly file: string,
@@ -51,14 +79,21 @@ export class SettingsStore {
   static async load(): Promise<SettingsStore> {
     const file = path.join(app.getPath('userData'), 'settings.json');
     try {
-      if ((await stat(file)).size > 65_536) throw new Error('Settings file is too large');
+      if ((await stat(file)).size > 32 * 1024 * 1024) throw new Error('Settings file is too large');
       const parsed: unknown = JSON.parse(await readFile(file, 'utf8'));
-      return new SettingsStore(file, parseSettings(parsed));
+      const settings = parseSettings(parsed);
+      const store = new SettingsStore(file, settings);
+      if (settings.defaultConnectionId === null) {
+        settings.defaultConnectionId = initialDefaultConnectionId(settings.connections, null);
+        if (settings.defaultConnectionId !== null) await store.commit(settings);
+      }
+      return store;
     } catch (error) {
       if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
         return new SettingsStore(file, {
-          version: 1,
-          provider: defaultProvider(),
+          version: 2,
+          connections: [],
+          defaultConnectionId: null,
           shortcuts: { ...DEFAULT_SHORTCUTS },
           pinned: true,
         });
@@ -71,6 +106,20 @@ export class SettingsStore {
 
   get current(): StoredSettings {
     return this.value;
+  }
+
+  change<T>(update: (draft: StoredSettings) => T | Promise<T>): Promise<T> {
+    const pending = this.mutation.then(async () => {
+      const draft = structuredClone(this.value);
+      const result = await update(draft);
+      await this.commit(parseSettings(draft));
+      return result;
+    });
+    this.mutation = pending.then(
+      () => undefined,
+      () => undefined,
+    );
+    return pending;
   }
 
   async commit(settings: StoredSettings): Promise<void> {

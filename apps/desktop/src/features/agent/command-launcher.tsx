@@ -8,9 +8,9 @@ import {
 } from '@ai/ui/components/command';
 import { Button } from '@ai/ui/components/button';
 import { Kbd, KbdGroup } from '@ai/ui/components/kbd';
-import { Languages, ListTodo, Terminal } from 'lucide-react';
 import type { CommandDefinition } from '../../../electron/agent/command-schema';
 import { shortcutKeys } from '../../lib/shortcuts';
+import { CommandIcon } from '../commands/command-icon';
 
 export function CommandLauncher({
   commands,
@@ -34,19 +34,13 @@ export function CommandLauncher({
             className="quick-command"
             onClick={() => onChoose(command.id)}
           >
-            {command.templateId === 'translate' ? (
-              <Languages />
-            ) : command.templateId === 'extract' ? (
-              <ListTodo />
-            ) : (
-              <Terminal />
-            )}
+            <CommandIcon templateId={command.templateId} />
             <span className="quick-command-copy">
-              <span>{command.name}</span>
-              <small>{command.description}</small>
+              <span title={command.name}>{command.name}</span>
+              <small title={command.description}>{command.description}</small>
             </span>
             {command.shortcut && (
-              <KbdGroup>
+              <KbdGroup className="justify-self-end">
                 {shortcutKeys(command.shortcut, window.desktop?.platform ?? 'web').map((key) => (
                   <Kbd key={key}>{key}</Kbd>
                 ))}
@@ -54,7 +48,7 @@ export function CommandLauncher({
             )}
           </Button>
         ))}
-        <Button variant="outline" className="self-start" onClick={onAll}>
+        <Button variant="outline" className="col-span-full justify-self-start" onClick={onAll}>
           All commands
         </Button>
       </div>
@@ -63,7 +57,7 @@ export function CommandLauncher({
     <section className="panel-content command-catalog">
       <Command>
         <CommandInput placeholder="Search commands…" />
-        <CommandList className="max-h-none">
+        <CommandList className="min-h-0 max-h-none flex-1">
           <CommandEmpty>No matching commands.</CommandEmpty>
           {available.map((command) => (
             <CommandItem
@@ -72,10 +66,17 @@ export function CommandLauncher({
               onSelect={() => onChoose(command.id)}
               className="command-option dark:data-selected:bg-(--ata-surface-ghost-hover)"
             >
-              <Terminal />
+              <CommandIcon templateId={command.templateId} />
               <span className="min-w-0 flex-1">
-                <span className="block font-medium">{command.name}</span>
-                <span className="block text-xs text-muted-foreground">{command.description}</span>
+                <span className="block truncate font-medium" title={command.name}>
+                  {command.name}
+                </span>
+                <span
+                  className="block truncate text-xs text-muted-foreground"
+                  title={command.description}
+                >
+                  {command.description}
+                </span>
               </span>
               <CommandShortcut>
                 {command.shortcut

@@ -1,9 +1,3 @@
-.command-editor {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  min-height: 100%;
-}
 .editor-heading {
   display: flex;
   align-items: center;
@@ -21,16 +15,20 @@
 }
 .field-columns {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
   gap: 16px;
 }
-.input-shortcut-grid {
+.aligned-fields > .settings-field {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 216px;
-  gap: 8px 16px;
-  align-items: baseline;
+  grid-template-rows: subgrid;
+  grid-row: span 2;
+  row-gap: 8px;
+  align-content: start;
 }
-.input-shortcut-grid > :nth-child(n + 3) {
+.aligned-fields > .settings-field > :first-child {
+  align-self: baseline;
+}
+.aligned-fields > .settings-field > :nth-child(2) {
   align-self: start;
 }
 .input-options {
@@ -45,8 +43,8 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-top: auto;
-  padding-top: 24px;
+  flex-shrink: 0;
+  min-width: 0;
 }
 .editor-footer > div {
   display: flex;
@@ -61,8 +59,11 @@
 .option-row .field-columns {
   flex: 1;
 }
-.option-row > button {
-  margin-bottom: 2px;
+.option-row > .option-action {
+  display: flex;
+  align-items: center;
+  height: 32px;
+  flex-shrink: 0;
 }
 .parameter-items {
   display: flex;
@@ -77,8 +78,12 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-2xl);
 }
+.parameter-field {
+  overflow-wrap: anywhere;
+}
 .variable-token {
   color: var(--ata-syntax-variable);
+  overflow-wrap: anywhere;
 }
 .variable-invalid {
   color: var(--destructive);
@@ -89,8 +94,13 @@
   flex-wrap: wrap;
   gap: 4px;
 }
+.variable-chips button {
+  max-width: 100%;
+}
 .variable-picker {
-  width: min(460px, calc(100vw - 32px));
+  width: max-content;
+  min-width: min(320px, var(--radix-popover-content-available-width));
+  max-width: min(460px, var(--radix-popover-content-available-width));
   max-height: var(--radix-popover-content-available-height);
   backdrop-filter: blur(var(--ata-backdrop-blur));
 }
@@ -130,8 +140,35 @@
 .instruction-editor .cm-gutters {
   display: none;
 }
+.instruction-completion-scroll-area {
+  flex: 1;
+  max-height: inherit;
+}
+.completion-options {
+  padding: 4px;
+  font-family: var(--font-sans);
+}
+.completion-option {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  text-align: left;
+}
 .command-management-row {
   flex-wrap: nowrap;
+}
+.command-row-identity {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.command-row-controls {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 12px;
 }
 .command-row-shortcut {
   display: flex;
@@ -143,39 +180,47 @@
   flex-wrap: wrap;
   justify-content: flex-end;
 }
-.settings-content [data-slot='tabs-content']:has(.command-editor) {
-  min-height: 100%;
+@container settings (max-width: 455px) {
+  .aligned-fields > .settings-field {
+    display: flex;
+    grid-row: auto;
+  }
+  .aligned-fields > .settings-field > :nth-child(2) {
+    align-self: stretch;
+  }
+  .parameter-item {
+    flex-wrap: wrap;
+  }
+  .parameter-item > :first-child {
+    flex-basis: 100%;
+  }
+  .parameter-item > :last-child {
+    margin-left: auto;
+  }
+  .command-management-row {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .command-row-identity {
+    flex-basis: 100%;
+  }
+  .command-row-controls {
+    width: 100%;
+  }
+  .command-row-shortcut {
+    flex: 1;
+    justify-content: flex-start;
+  }
 }
-.command-settings .settings-section-heading {
-  margin-bottom: 24px;
-}
-@media (max-width: 800px) {
+@container settings (min-width: 456px) and (max-width: 640px) {
   .command-row-shortcut {
     flex-basis: 72px;
   }
   .command-management-row {
     gap: 8px;
   }
-  .field-columns {
-    gap: 12px;
-  }
-  .input-shortcut-grid {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  }
-}
-@media (max-width: 600px) {
-  .command-management-row {
-    flex-wrap: wrap;
-  }
-  .command-management-row [data-slot='item-content'] {
-    flex-basis: calc(100% - 32px);
-  }
-  .command-row-shortcut {
-    flex: 1;
-    justify-content: flex-start;
-  }
-  .field-columns {
-    grid-template-columns: 1fr;
+  .command-row-controls {
+    gap: 8px;
   }
 }
 .memory-items {
@@ -207,8 +252,11 @@
   line-height: 16px;
   color: var(--muted-foreground);
 }
-.memory-settings {
-  min-height: 100%;
+.memory-settings:has(.command-editor) {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .variable-option > svg:last-child {
@@ -216,4 +264,87 @@
 }
 .variable-option {
   min-height: 50px;
+}
+
+.instruction-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.instruction-actions {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 8px;
+}
+.instruction-actions button {
+  flex-shrink: 0;
+}
+.generation-feedback {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+.instruction-generator[data-slot='dialog-content'] {
+  display: flex;
+  flex-direction: column;
+  width: calc(100vw - 32px);
+  max-width: 448px;
+  max-height: calc(100dvh - 64px);
+  top: calc(50% + 16px);
+  border-radius: 24px;
+}
+.generation-scroll-area {
+  flex: 1;
+  min-height: 0;
+  margin: -3px;
+}
+.generation-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 3px;
+  overflow-wrap: anywhere;
+}
+.generation-body textarea {
+  field-sizing: content;
+  min-height: 96px;
+  flex-shrink: 0;
+}
+.generation-preview {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: 14px/22px var(--font-sans);
+  padding: 12px;
+  border-radius: var(--radius-2xl);
+  background: var(--muted);
+}
+.generation-actions {
+  display: flex;
+  flex-shrink: 0;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.generation-actions button {
+  flex-shrink: 0;
+}
+.editor-heading {
+  flex-shrink: 0;
+  min-width: 0;
+}
+.editor-heading h2 {
+  overflow-wrap: anywhere;
+}
+.editor-fields > * {
+  flex-shrink: 0;
+}
+.command-editor [role='alert'] {
+  overflow-wrap: anywhere;
+}
+.parameter-item > div {
+  overflow-wrap: anywhere;
 }

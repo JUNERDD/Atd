@@ -1,181 +1,222 @@
+import { useEffect, useRef, useState } from 'react';
+import { Plug, SearchX } from 'lucide-react';
 import { Button } from '@ai/ui/components/button';
 import { Input } from '@ai/ui/components/input';
-import { Label } from '@ai/ui/components/label';
+import { commandFilter } from '@ai/ui/components/command';
 import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@ai/ui/components/select';
-import type { ProviderSettings } from '../../../electron/settings-contract';
-import { useProviderSettings } from './use-provider-settings';
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from '@ai/ui/components/alert-dialog';
+import type { SettingsSnapshot } from '../../../electron/settings-contract';
+import type { Connection, ProviderCatalogEntry } from '../../../electron/providers/schema';
+import { ProviderConnections } from '../providers/provider-connections';
+import { ProviderCatalog } from '../providers/provider-catalog';
+import { ProviderForm } from '../providers/provider-form';
+import { messageOf } from '../agent/use-agent';
+import { SettingsHeading } from './settings-heading';
+import '../providers/providers.css';
 
-export function ProviderSettingsForm({ provider }: { provider: ProviderSettings | null }) {
-  const settings = useProviderSettings(provider);
-  const { draft, disabled, pending, hasStoredKey } = settings;
-  const keyRemoved = hasStoredKey && draft.apiKey === '';
-
+export function ProviderSettingsForm({ snapshot }: { snapshot: SettingsSnapshot | null }) {
+  const bridge = window.desktop?.settings.providers;
+  const [catalog, setCatalog] = useState<ProviderCatalogEntry[]>([]);
+  const [view, setView] = useState<
+    'overview' | 'catalog' | { provider: ProviderCatalogEntry; connectionId: string | null }
+  >('overview');
+  const [query, setQuery] = useState('');
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+  const [disconnecting, setDisconnecting] = useState<Connection | null>(null);
+  const search = useRef<HTMLInputElement>(null);
+  const retry = useRef<(() => Promise<void>) | null>(null);
+  const connections = snapshot?.connections ?? [];
+  useEffect(() => {
+    if (!bridge) return;
+    let active = true;
+    void bridge.catalog().then(
+      (value) => {
+        if (active) setCatalog(value);
+      },
+      (error) => {
+        if (active) setError(messageOf(error));
+      },
+    );
+    return () => {
+      active = false;
+    };
+  }, [bridge]);
+  async function perform(operation: () => Promise<void>, success = '') {
+    if (pending) return;
+    retry.current = () => perform(operation, success);
+    setPending(true);
+    setError('');
+    setNotice('');
+    try {
+      await operation();
+      setNotice(success);
+      retry.current = null;
+    } catch (error) {
+      setError(messageOf(error));
+    } finally {
+      setPending(false);
+    }
+  }
+  function manage(connection: Connection) {
+    const provider = catalog.find((item) => item.id === connection.provider);
+    if (!provider) {
+      setError('This provider is no longer registered. Its saved connection has been preserved.');
+      return;
+    }
+    setView({ provider, connectionId: connection.connectionId });
+  }
+  if (view === 'catalog')
+    return (
+      <ProviderCatalog
+        catalog={catalog}
+        onBack={() => setView('overview')}
+        onChoose={(provider) => setView({ provider, connectionId: null })}
+      />
+    );
+  if (typeof view === 'object')
+    return (
+      <ProviderForm
+        key={view.provider.id}
+        provider={view.provider}
+        connection={connections.find((item) => item.connectionId === view.connectionId) ?? null}
+        onBack={() => setView('overview')}
+        onSaved={(connection) =>
+          setView((current) =>
+            current === view ? { ...view, connectionId: connection.connectionId } : current,
+          )
+        }
+      />
+    );
+  const visible = connections.filter(
+    (connection) =>
+      commandFilter(
+        `${connection.name} ${connection.provider} ${catalog.find((item) => item.id === connection.provider)?.name ?? ''}`,
+        query.trim(),
+      ) > 0,
+  );
+  const emptyTitle = connections.length ? 'No matching providers' : 'Connect your first provider';
+  const emptyDescription = connections.length
+    ? 'Try a connection or provider name.'
+    : 'Add an account, API key, cloud service or local connection.';
+  function clear() {
+    setQuery('');
+    search.current?.focus();
+  }
   return (
-    <>
-      <header className="settings-section-heading">
-        <h2>Providers</h2>
-        <p>Connect your AI providers and choose a default model.</p>
-      </header>
-      <form
-        className="settings-provider-form"
-        aria-busy={pending !== null}
-        onSubmit={(event) => {
-          event.preventDefault();
-          void settings.saveChanges();
-        }}
+    <section className="providers-overview">
+      <SettingsHeading
+        title="Providers"
+        description="Choose a default provider and set a default model for each connection."
       >
-        <fieldset className="settings-fields" disabled={disabled}>
-          <legend className="sr-only">Provider connection</legend>
-          <div className="settings-field">
-            <Label htmlFor="settings-provider">Provider</Label>
-            <Select
-              value={draft.id}
-              disabled={disabled}
-              onValueChange={(value) => {
-                if (value === 'openai' || value === 'openai-compatible') {
-                  settings.changeProvider(value);
-                }
-              }}
-            >
-              <SelectTrigger id="settings-provider" className="settings-input">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  <SelectItem value="openai">OpenAI</SelectItem>
-                  <SelectItem value="openai-compatible">OpenAI-compatible</SelectItem>
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="settings-field">
-            <div className="settings-field-label">
-              <Label htmlFor="settings-api-key">API key</Label>
-              {hasStoredKey && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="xs"
-                  onClick={() => settings.changeApiKey(keyRemoved ? undefined : '')}
-                >
-                  {keyRemoved ? 'Undo removal' : 'Remove key'}
-                </Button>
-              )}
-            </div>
-            <Input
-              id="settings-api-key"
-              className="settings-input"
-              type="password"
-              autoComplete="off"
-              autoCapitalize="off"
-              spellCheck={false}
-              value={draft.apiKey ?? ''}
-              placeholder={hasStoredKey ? 'Enter a new API key' : 'Enter an API key'}
-              aria-describedby="settings-api-key-note"
-              onChange={(event) => settings.changeApiKey(event.target.value)}
-            />
-            <p id="settings-api-key-note" className="settings-field-note">
-              {keyRemoved
-                ? 'The saved key will be removed when you save.'
-                : hasStoredKey && draft.apiKey === undefined
-                  ? settings.endpointChanged
-                    ? 'A key is saved for the previous endpoint. Enter a new key or choose Remove key to use this URL.'
-                    : 'A key is saved. Leave this field unchanged to keep it.'
-                  : 'Your key is stored securely on this device when you save.'}
-            </p>
-          </div>
-
-          <div className="settings-field">
-            <Label htmlFor="settings-base-url">Base URL</Label>
-            <Input
-              id="settings-base-url"
-              className="settings-input"
-              type="url"
-              autoComplete="off"
-              autoCapitalize="off"
-              spellCheck={false}
-              value={draft.baseUrl}
-              readOnly={draft.id === 'openai'}
-              required
-              placeholder="https://your-provider.example/v1"
-              aria-describedby={
-                draft.id === 'openai-compatible' ? 'settings-base-url-note' : undefined
-              }
-              onChange={(event) => settings.changeBaseUrl(event.target.value)}
-            />
-            {draft.id === 'openai-compatible' && (
-              <p id="settings-base-url-note" className="settings-field-note">
-                Use an HTTPS endpoint, or HTTP for a local provider.
-              </p>
-            )}
-          </div>
-
-          <div className="settings-field">
-            <Label htmlFor="settings-model">Default model</Label>
-            <Select
-              value={draft.model}
-              disabled={disabled || settings.models.length === 0}
-              onValueChange={settings.changeModel}
-            >
-              <SelectTrigger
-                id="settings-model"
-                className="settings-input"
-                aria-describedby="settings-model-note"
-              >
-                <SelectValue placeholder="Test connection to load models">
-                  {draft.model || undefined}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  {settings.models.map((model) => (
-                    <SelectItem key={model} value={model}>
-                      {model}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-            <p id="settings-model-note" className="settings-field-note">
-              {settings.models.length > 0
-                ? 'Choose from the models returned by your provider.'
-                : 'Test the connection to load available models.'}
-            </p>
-          </div>
-        </fieldset>
-
-        {settings.notice && <output className="settings-status">{settings.notice}</output>}
-        {(settings.error || settings.status || pending === 'testing') && (
-          <p
-            className="settings-status"
-            data-error={Boolean(settings.error)}
-            role={settings.error ? 'alert' : 'status'}
-          >
-            {settings.error || (pending === 'testing' ? 'Testing connection…' : settings.status)}
-          </p>
-        )}
-        <div className="settings-actions">
+        <Input
+          ref={search}
+          aria-label="Search providers"
+          placeholder="Search providers…"
+          value={query}
+          disabled={!connections.length}
+          onChange={(event) => setQuery(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Escape' && query) {
+              event.stopPropagation();
+              clear();
+            }
+          }}
+        />
+        <Button disabled={!bridge || !catalog.length} onClick={() => setView('catalog')}>
+          Add provider
+        </Button>
+      </SettingsHeading>
+      {error && (
+        <div role="alert" className="settings-status" data-error="true">
+          {error}{' '}
           <Button
-            type="button"
             variant="outline"
-            disabled={disabled || !draft.baseUrl.trim()}
-            onClick={() => void settings.testConnection()}
+            size="xs"
+            disabled={pending}
+            onClick={() =>
+              void (retry.current
+                ? retry.current()
+                : perform(async () => {
+                    if (bridge) setCatalog(await bridge.catalog());
+                  }))
+            }
           >
-            {pending === 'testing' ? 'Testing…' : 'Test connection'}
-          </Button>
-          <Button type="submit" disabled={disabled || !settings.dirty}>
-            {pending === 'saving' ? 'Saving…' : 'Save changes'}
+            Try again
           </Button>
         </div>
-      </form>
-    </>
+      )}
+      {notice && <output className="settings-status">{notice}</output>}
+      {connections.length > 0 && (
+        <div className="provider-column-headings">
+          <span>Connected providers</span>
+          <span>Default model</span>
+        </div>
+      )}
+      <ProviderConnections
+        connections={visible}
+        defaultConnectionId={snapshot?.defaultConnectionId ?? null}
+        pending={pending}
+        onManage={manage}
+        onDisconnect={setDisconnecting}
+        perform={perform}
+      />
+      {!visible.length && (
+        <div className="provider-empty">
+          {connections.length ? <SearchX size={24} /> : <Plug size={24} />}
+          <h3 title={emptyTitle}>{emptyTitle}</h3>
+          <p title={emptyDescription}>{emptyDescription}</p>
+          <Button
+            variant="outline"
+            disabled={!bridge}
+            onClick={connections.length ? clear : () => setView('catalog')}
+          >
+            {connections.length ? 'Clear search' : 'Add provider'}
+          </Button>
+        </div>
+      )}
+      <AlertDialog
+        open={Boolean(disconnecting)}
+        onOpenChange={(open) => {
+          if (!open && !pending) setDisconnecting(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Disconnect {disconnecting?.name}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Credentials will be removed. Saved model references remain available for repair.
+              {disconnecting?.connectionId === snapshot?.defaultConnectionId &&
+                ' New tasks using the app default will require reconnection or another default provider.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={pending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={pending}
+              onClick={(event) => {
+                event.preventDefault();
+                if (disconnecting)
+                  void perform(async () => {
+                    await bridge!.disconnect(disconnecting.connectionId, disconnecting.revision);
+                    setDisconnecting(null);
+                  }, 'Provider disconnected.');
+              }}
+            >
+              Disconnect
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </section>
   );
 }

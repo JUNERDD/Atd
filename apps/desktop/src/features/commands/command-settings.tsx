@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Copy, MoreHorizontal, Pencil, Play, Plus, Trash2, Terminal } from 'lucide-react';
+import { Copy, MoreHorizontal, Pencil, Play, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@ai/ui/components/button';
 import { Input } from '@ai/ui/components/input';
 import { Switch } from '@ai/ui/components/switch';
@@ -31,19 +31,17 @@ import {
   AlertDialogTitle,
 } from '@ai/ui/components/alert-dialog';
 import type { CommandDefinition } from '../../../electron/agent/command-schema';
-import {
-  copyCommand,
-  initialCommands,
-  newCommand,
-} from '../../../electron/agent/command-templates';
-import type { ProviderSettings } from '../../../electron/settings-contract';
+import { copyCommand, newCommand } from '../../../electron/agent/command-templates';
+import type { SettingsSnapshot } from '../../../electron/settings-contract';
 import { IconButton } from '../../components/icon-button';
 import { shortcutKeys } from '../../lib/shortcuts';
 import { agentApi, messageOf, useAgent } from '../agent/use-agent';
 import { CommandEditor } from './command-editor';
+import { CommandIcon } from './command-icon';
 import './commands.css';
+import { SettingsHeading } from '../settings/settings-heading';
 
-export function CommandSettings({ provider }: { provider: ProviderSettings | null }) {
+export function CommandSettings({ settings }: { settings: SettingsSnapshot | null }) {
   const agent = useAgent();
   const [editing, setEditing] = useState<{ command: CommandDefinition; revision: number } | null>(
     null,
@@ -77,8 +75,7 @@ export function CommandSettings({ provider }: { provider: ProviderSettings | nul
         key={editing.command.id}
         initial={editing.command}
         expectedRevision={editing.revision}
-        connectionId={agent.snapshot?.connectionId ?? ''}
-        provider={provider}
+        settings={settings}
         onCancel={() => setEditing(null)}
         onSaved={() => {
           setEditing(null);
@@ -89,42 +86,24 @@ export function CommandSettings({ provider }: { provider: ProviderSettings | nul
   const commands = agent.snapshot?.commands ?? [];
   return (
     <section className="command-settings">
-      <header className="settings-section-heading">
-        <div className="flex items-center justify-between gap-4">
-          <h2>Commands</h2>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button disabled={!agent.snapshot}>
-                <Plus />
-                New command
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                onSelect={() =>
-                  setEditing({ command: newCommand(crypto.randomUUID()), revision: 0 })
-                }
-              >
-                Custom instructions
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              {initialCommands().map((template) => (
-                <DropdownMenuItem key={template.id} onSelect={() => duplicate(template)}>
-                  {template.name}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-        <p>Reusable instructions for the things you do often.</p>
-      </header>
-      <Input
-        aria-label="Search commands"
-        placeholder="Search commands…"
-        value={search}
-        onChange={(event) => setSearch(event.target.value)}
-        className="mb-4"
-      />
+      <SettingsHeading
+        title="Commands"
+        description="Reusable instructions for the things you do often."
+      >
+        <Input
+          aria-label="Search commands"
+          placeholder="Search commands…"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+        />
+        <Button
+          disabled={!agent.snapshot}
+          onClick={() => setEditing({ command: newCommand(crypto.randomUUID()), revision: 0 })}
+        >
+          <Plus />
+          New
+        </Button>
+      </SettingsHeading>
       <ItemGroup>
         {commands
           .filter((command) =>
@@ -139,79 +118,84 @@ export function CommandSettings({ provider }: { provider: ProviderSettings | nul
               className="command-management-row hover:bg-muted/50"
             >
               <li>
-                <ItemMedia variant="icon">
-                  <Terminal />
-                </ItemMedia>
-                <ItemContent className="min-w-0">
-                  <ItemTitle className="w-full whitespace-normal">{command.name}</ItemTitle>
-                  <ItemDescription>{command.description}</ItemDescription>
-                  {agent.snapshot?.shortcutErrors[command.id] && (
-                    <p className="text-xs text-destructive">
-                      {agent.snapshot.shortcutErrors[command.id]}
-                    </p>
-                  )}
-                </ItemContent>
-                <div className="command-row-shortcut">
-                  {command.shortcut ? (
-                    <KbdGroup>
-                      {shortcutKeys(command.shortcut, window.desktop?.platform ?? 'web').map(
-                        (key) => (
-                          <Kbd key={key}>{key}</Kbd>
-                        ),
-                      )}
-                    </KbdGroup>
-                  ) : (
-                    <span className="text-xs text-muted-foreground">No shortcut</span>
-                  )}
+                <div className="command-row-identity">
+                  <ItemMedia variant="icon">
+                    <CommandIcon templateId={command.templateId} />
+                  </ItemMedia>
+                  <ItemContent className="min-w-0">
+                    <ItemTitle>{command.name}</ItemTitle>
+                    <ItemDescription>{command.description}</ItemDescription>
+                    {agent.snapshot?.shortcutErrors[command.id] && (
+                      <p className="text-xs text-destructive">
+                        {agent.snapshot.shortcutErrors[command.id]}
+                      </p>
+                    )}
+                  </ItemContent>
                 </div>
-                <ItemActions className="shrink-0">
-                  <IconButton
-                    label={`Run ${command.name}`}
-                    disabled={!command.enabled || pending !== null}
-                    onClick={() => {
-                      void agentApi()
-                        .launch(command.id)
-                        .catch((error) => setError(messageOf(error)));
-                    }}
-                  >
-                    <Play />
-                  </IconButton>
-                  <Switch
-                    aria-label={`Enable ${command.name}`}
-                    checked={command.enabled}
-                    disabled={pending !== null}
-                    onCheckedChange={(enabled) => void change(command, enabled)}
-                  />
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <IconButton label={`More actions for ${command.name}`}>
-                        <MoreHorizontal />
-                      </IconButton>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem
-                        onSelect={() =>
-                          setEditing({
-                            command: structuredClone(command),
-                            revision: command.revision,
-                          })
-                        }
-                      >
-                        <Pencil />
-                        Edit command
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onSelect={() => duplicate(command)}>
-                        <Copy />
-                        Duplicate
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onSelect={() => setDeleting(command)}>
-                        <Trash2 />
-                        Delete command
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </ItemActions>
+                <div className="command-row-controls">
+                  <div className="command-row-shortcut">
+                    {command.shortcut ? (
+                      <KbdGroup>
+                        {shortcutKeys(command.shortcut, window.desktop?.platform ?? 'web').map(
+                          (key) => (
+                            <Kbd key={key}>{key}</Kbd>
+                          ),
+                        )}
+                      </KbdGroup>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">No shortcut</span>
+                    )}
+                  </div>
+                  <ItemActions className="shrink-0">
+                    <IconButton
+                      label="Run"
+                      aria-label={`Run ${command.name}`}
+                      disabled={!command.enabled || pending !== null}
+                      onClick={() => {
+                        void agentApi()
+                          .launch(command.id)
+                          .catch((error) => setError(messageOf(error)));
+                      }}
+                    >
+                      <Play />
+                    </IconButton>
+                    <Switch
+                      aria-label={`Enable ${command.name}`}
+                      checked={command.enabled}
+                      disabled={pending !== null}
+                      onCheckedChange={(enabled) => void change(command, enabled)}
+                    />
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <IconButton label="More" aria-label={`More actions for ${command.name}`}>
+                          <MoreHorizontal />
+                        </IconButton>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          onSelect={() =>
+                            setEditing({
+                              command: structuredClone(command),
+                              revision: command.revision,
+                            })
+                          }
+                        >
+                          <Pencil />
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => duplicate(command)}>
+                          <Copy />
+                          Duplicate
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onSelect={() => setDeleting(command)}>
+                          <Trash2 />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </ItemActions>
+                </div>
               </li>
             </Item>
           ))}
@@ -255,7 +239,7 @@ export function CommandSettings({ provider }: { provider: ProviderSettings | nul
                     .catch((error) => setError(messageOf(error)));
               }}
             >
-              Delete command
+              Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -42,16 +42,25 @@ export function VariablePicker({
       >
         <span className="min-w-0 flex-1 flex flex-col gap-0.5">
           <span
-            className={enabled ? 'variable-token font-medium' : 'text-muted-foreground font-medium'}
+            className={
+              enabled
+                ? 'variable-token truncate font-medium'
+                : 'truncate text-muted-foreground font-medium'
+            }
+            title={`{{${name}}}`}
           >{`{{${name}}}`}</span>
-          <span className="text-xs text-muted-foreground">
+          <span
+            className="truncate text-xs text-muted-foreground"
+            title={`${detail}${!enabled ? ' · enable this source first' : ''}`}
+          >
             {detail}
             {!enabled ? ' · enable this source first' : ''}
           </span>
         </span>
         <IconButton
           size="icon"
-          label={enabled ? `Insert {{${name}}}` : `Configure ${name} source`}
+          label={enabled ? 'Insert' : 'Configure'}
+          aria-label={enabled ? `Insert {{${name}}}` : `Configure ${name} source`}
           onClick={(event) => {
             event.stopPropagation();
             act();
