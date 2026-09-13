@@ -4,7 +4,7 @@ import { Button } from '@ai/ui/components/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@ai/ui/components/tooltip';
 
 const FEEDBACK_DURATION_MS = 3_000;
-const FEEDBACK_MESSAGE = 'Voice input is not available yet.';
+const FEEDBACK_MESSAGE = 'Voice input unavailable';
 
 function useVoiceFeedback() {
   const [open, setOpen] = useState(false);

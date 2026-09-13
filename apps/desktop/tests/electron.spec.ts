@@ -52,7 +52,7 @@ test('production app: positioning, renderer isolation, task flow, and window con
 
     await page.getByRole('textbox').fill('A small desktop task');
     await page.getByRole('textbox').press('Enter');
-    await expect(page.getByRole('alert')).toContainText('Choose a model');
+    await expect(page.getByRole('alert')).toContainText('Choose a default provider and model');
     await expect(page.getByRole('textbox')).toHaveValue('A small desktop task');
     await page.reload();
     await page.getByRole('button', { name: 'Tasks', exact: true }).click();
@@ -62,7 +62,7 @@ test('production app: positioning, renderer isolation, task flow, and window con
     const settings = await settingsOpened;
     settings.on('pageerror', (error) => errors.push(error.message));
     await expect(settings.getByRole('heading', { name: 'Providers', exact: true })).toBeVisible();
-    await settings.getByRole('tab', { name: 'Memory', exact: true }).click();
+    await settings.getByRole('button', { name: 'Memory', exact: true }).click();
     await expect(settings.getByRole('heading', { name: 'Memory', exact: true })).toBeVisible();
     await expect(
       settings.getByText('No saved memories yet. Share a lasting preference as you work.', {
@@ -71,7 +71,7 @@ test('production app: positioning, renderer isolation, task flow, and window con
     ).toBeVisible();
     await page.evaluate(() => window.desktop!.settings.open());
     expect(app.windows()).toHaveLength(2);
-    await settings.getByRole('tab', { name: 'Shortcuts', exact: true }).click();
+    await settings.getByRole('button', { name: 'Shortcuts', exact: true }).click();
     await settings.getByRole('switch', { name: 'Always on top' }).click();
     await expect
       .poll(() =>
@@ -101,7 +101,7 @@ test('production app: positioning, renderer isolation, task flow, and window con
         app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.isVisible()),
       )
       .toBe(true);
-    await page.getByRole('button', { name: 'New task', exact: true }).click();
+    await page.getByRole('button', { name: 'New chat', exact: true }).click();
     await app.evaluate(({ BrowserWindow }) => {
       const window = BrowserWindow.getAllWindows()[0]!;
       window.setResizable(true);

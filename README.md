@@ -1,12 +1,12 @@
 # AI
 
-一个安静的桌面任务面板，默认停靠在屏幕右下角。根据 [Figma 设计 1:400](https://www.figma.com/design/D9YK1tEeBTEBgstcepesW5/ai?node-id=1-400) 实现，使用本地 Inter 字体、[Lucide](https://lucide.dev/) 图标和半透明深色表面。代码通过 `lucide-react` 按需导入 History、Settings、X、Plus 和 ArrowUp；设计稿引用 [00 · Icon 图标库](https://www.figma.com/design/D9YK1tEeBTEBgstcepesW5/ai?node-id=14-91) 中对应的组件，其中 History 对应 `rotate-ccw-clock`。图标库由官方 Lucide Figma 插件导入，可通过 MCP 按名称复用。
+一个安静的桌面 Agent 任务面板，默认停靠在屏幕右下角。当前实现依据[产品流程与设置](https://www.figma.com/design/D9YK1tEeBTEBgstcepesW5/ai?node-id=1-251)与[应用组件](https://www.figma.com/design/D9YK1tEeBTEBgstcepesW5/ai?node-id=69-80)，使用本地 Inter、Rhea shadcn 组件、Lucide 图标和原生 macOS 材质。
 
-图标按钮、面板标题栏和输入框的主组件位于 [02 · App components](https://www.figma.com/design/D9YK1tEeBTEBgstcepesW5/ai?node-id=69-80)，页面同时展示按钮状态、组件用例和样式变量。产品设计通过组件实例复用控件，使用属性切换状态、文字和图标，布局容器保留为自动布局 Frame。桌面模板组件位于 [00 · Desktop assets](https://www.figma.com/design/D9YK1tEeBTEBgstcepesW5/ai?node-id=0-1)；所有组件、样式和变量均保存在同一文件，可直接通过 MCP 查找和复用。
+项目 Figma 文件拥有应用组合与产品变量，共享控件和 Lucide 引用[批准的 shadcn UI kit](https://www.figma.com/design/tEV8H6Msibbc64Dds5eehO/shadcn-ui-kit-community-edition--Community-)。品牌 SVG 保存在 `packages/ui/src/assets/brands/`；对应实现与验收记录见[设计来源](docs/design-source.md)。
 
 ![AI task panel](docs/task-panel.png)
 
-图中为渲染层布局预览；macOS 桌面窗口的原生材质会随背后的桌面内容变化。
+图中是早期渲染层预览，不代表本轮视觉验收；macOS 原生材质会随桌面内容变化。
 
 ## 开始开发
 
@@ -31,13 +31,15 @@ pnpm dev:web
 ## 当前功能
 
 - 420 × 580 面板，距屏幕可用区域右侧和底部各 16px；支持副屏、负坐标和小工作区。
-- 与 Figma 一致的字体、布局、图标及空状态；macOS 的外部圆角和背景由系统原生材质绘制。
-- Enter 保存任务，Shift + Enter 换行，中文输入法确认候选词不会误提交。
-- 添加或移除附件，每条任务最多 6 个；仅保存文件名、类型与大小，不读取或持久化文件内容。
-- 最近 50 条任务保存在本设备，可通过历史面板重新打开；切换面板或隐藏窗口时保留当前输入草稿。
+- 多个具名提供商连接、独立凭据和默认模型；目录来自 Pi 注册信息，并提供本地与自定义连接入口。
+- 流式对话、历史与后续消息；接受时保存运行快照，默认值改变不会替换已接受的模型。
+- 自定义命令、Mustache 变量、参数、快捷键、工具与记忆设置；AI 生成指令先预览，采用后只改未保存草稿并支持撤销。
+- 附件、选中文本与剪贴板上下文，文件变更和终端操作确认，以及本地记忆管理。
+- 设置窗口在 760px、480px 断点切换侧栏、顶部导航和抽屉；长表单滚动，页脚操作保留。
+- Enter 发送、Shift + Enter 换行，中文输入法确认候选词不会误提交；切换或隐藏面板保留当前草稿。
 - 显示/隐藏、全局快捷键、置顶设置、键盘焦点、提示和减少动画支持。
 
-**尚未接入 AI 服务。** 发送操作会保存本地任务，界面会明确显示这一状态。任务保存逻辑位于 `apps/desktop/src/lib/task-store.ts`；后续可在主进程接入模型服务，并通过受限 preload API 与界面通信。不要把 API 密钥放入 `VITE_*` 变量。
+实际模型请求需先在桌面应用 Providers 中保存可用连接、选择默认模型并将其设为默认提供商。网页预览不具备桌面桥接能力。凭据通过主进程的 Electron safeStorage 加密，不能放入 `VITE_*` 变量。最新实现与未运行的验收范围见[提供商计划](docs/plans/2026-09-12-provider-defaults-design.md)。
 
 ## 技术栈
 
@@ -96,10 +98,10 @@ GitHub Actions 包含 Linux 工程检查，以及 macOS 的 Electron 冒烟测�
 
 ## 实现说明
 
-主进程启用 `contextIsolation`、`sandbox`，关闭 `nodeIntegration`，禁止外部导航、弹窗和权限请求。preload 暴露只读平台信息，以及隐藏窗口、读取窗口状态、设置置顶三个接口，并在主进程校验调用来源和参数。
+主进程启用 `contextIsolation`、`sandbox`，关闭 `nodeIntegration`，限制外部导航、弹窗和权限请求。preload 通过窄类型接口暴露窗口、设置、连接和 Agent 操作；主进程校验调用来源与参数。模型凭据不会进入渲染层或任务快照。
 
-macOS 使用深色原生 HUD vibrancy，窗口圆角、边缘高光和阴影由系统统一绘制；渲染层背景完全透明，不叠加 CSS 面板底色、圆角、描边或模糊。网页预览与其他平台保留设计中的半透明表面；不同系统、桌面壁纸和窗口管理器的效果可能不同。生产包使用严格 CSP；仅本地开发服务器允许 React Fast Refresh 的内联初始化脚本。
+macOS 使用深色原生 HUD vibrancy，窗口圆角、边缘高光和阴影由系统统一绘制；根元素保持透明，内容颜色由共享 token 填充层负责，不叠加外部 CSS 圆角、描边或桌面模糊。网页预览与其他平台保留设计中的半透明表面；不同系统、桌面壁纸和窗口管理器的效果可能不同。生产包使用严格 CSP；仅本地开发服务器允许 React Fast Refresh 的内联初始化脚本。
 
-任务使用本应用的 localStorage，未加密。存储损坏时恢复为空状态，写入失败时提示仅在当前会话保留。当前输入草稿不跨应用重启持久化。
+设置和 Agent 数据保存在 Electron userData 下，通过原子写入更新。任务和会话内容是本地持久化数据，凭据单独加密；读取损坏时保留原文件并提示错误。旧 localStorage 任务通过既有迁移入口导入；输入草稿不跨应用重启持久化。
 
-设计和资源归属见 [设计来源](docs/design-source.md)，实施记录见 [计划](docs/plans/2026-09-09-ai-desktop.md)。
+设计和资源归属见[设计来源](docs/design-source.md)，运行边界见[通用 Agent 计划](docs/plans/2026-09-10-general-agent-requirements.md)，最新连接设计与实现见[提供商计划](docs/plans/2026-09-12-provider-defaults-design.md)。

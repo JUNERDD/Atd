@@ -1,27 +1,43 @@
 # Repository Guidelines
 
+These rules define project constraints and completion criteria. The [OpenAI prompting guidance](https://developers.openai.com/api/docs/guides/latest-model#prompting-best-practices) informs execution, instruction clarity, communication, delegation, and verification; the access limits and product decisions below are project policy.
+
+## Instruction Priority And Applicability
+
+- Follow system and developer instructions first. Explicit user instructions in the current conversation override repository and skill guidelines for the scope they address. Read applicable nested `AGENTS.md` files before editing their subtrees.
+- Apply domain-specific requirements to work that touches that concern. Command references and examples describe available tools, not a checklist for every task. General implementation authorization does not override the explicit documentation, history, runtime, delegation, or protected-content limits below.
+- Before treating a skill as an approval gate, check its exact requirement against the current scope and existing authorization. If it causes a pause, confirmation request, incomplete work, or departure from the user's intent, link to the exact `SKILL.md`, quote the relevant instruction, and distinguish the requirement from your interpretation.
+- When updating these guidelines, consolidate a rule in its owning section. Keep hard requirements for project invariants; express judgment calls through conditions and observable outcomes. Avoid duplicate instructions, speculative restrictions, and volatile implementation details that belong in source files.
+
 ## Repository Scope And Sources Of Truth
 
 - `pnpm-workspace.yaml` defines workspace membership; the root `package.json` defines the pnpm version and workspace commands. Paths below are repository-relative.
 - The Electron application lives in `apps/desktop/`. Its main process and preload live in `apps/desktop/electron/`; the React renderer lives in `apps/desktop/src/`.
 - Shared shadcn components and theme tokens belong to `packages/ui/`; shared TypeScript configuration belongs to `packages/typescript-config/`.
-- Follow system and developer instructions first. Explicit user instructions in the current conversation override these repository guidelines for the scope they address. Preserve existing authorization without introducing a new approval gate.
-- Read applicable nested `AGENTS.md` files before editing their subtrees. Treat source files, package scripts, and repository configuration as the source of truth; avoid copying volatile implementation details into this file.
+- Treat source files, package scripts, and repository configuration as the source of truth for implemented behavior. Distinguish implementation evidence, agreed design decisions, and assumptions.
 - For product design, Figma work, and analysis or review of behavior shown in a design, relevant project documentation is authorized task context. Search and read requirements, architecture plans, design sources, and their referenced artifacts in `docs/` and elsewhere in the repository as needed, without additional user confirmation. Keep reads scoped to the feature being designed or reviewed.
 - Before defining interaction states, feedback timing, or plugin-specific UI, check the relevant documents for agreed capabilities, technology choices, plugin contracts, and lifecycle and failure behavior, then compare them with the implementation. Distinguish documented design decisions from implemented behavior; missing code does not mean an existing architectural choice is undecided. Follow current explicit user decisions over older documents and identify material conflicts instead of inventing behavior.
 - Outside that design scope, do not use `docs/` as task context unless the user requests it. A user-requested plan and its referenced artifacts remain in scope for the task that created or approved them. Do not use private notes or Git stashes as task context unless the user requests them.
-- Do not read or search other conversations or task histories without explicit user authorization. Earlier content from the current conversation may be used as needed.
+- Earlier content from the current conversation may be retrieved as needed, including after compaction. Other conversations and task histories require explicit user authorization, including listings with summaries, local logs, caches, and exports. Relevance alone does not authorize access.
 
 ## Task Execution
 
-- Treat implementation and fix requests as authorization to finish the scoped work and applicable checks. Respect requests limited to explanation, review, or planning.
+- Treat requests to implement, fix, or help perform an action as instructions to deliver the scoped result and applicable checks. Do not stop at a plan or an offer to continue. Respect requests limited to explanation, review, planning, or approval before implementation.
+- Infer the intended outcome, acceptance criteria, and allowed side effects from the request and current conversation. Choose the simplest complete approach within the project constraints; use a plan when coordination or complexity warrants it.
+- Resolve routine choices from repository evidence and conversation context. Ask for the smallest missing decision only when it materially affects correctness, scope, or consequential side effects and cannot be resolved from that evidence. Continue independent authorized work while waiting; a pending answer does not authorize dependent work.
+- Carry authorization forward across follow-ups and compaction. Complete scoped, reversible work and permitted reads without repeated confirmation. When an action still needs approval, first finish the authorized preparation into a concrete, reviewable result. Do not add approval steps or warnings for hypothetical risks.
+- Incorporate follow-up constraints without losing the original objective or completed work. Treat confirmed corrections as acceptance criteria for affected components and screens with the same purpose within the current scope; inspect their shared owner and consumers instead of waiting for repeated examples. Answer status or side questions, then resume unless the user cancels or changes the objective.
+- Stop when the requested outcome is delivered, applicable checks are complete, and remaining limitations are reported. If blocked, finish independent work and state the exact missing decision, permission, or evidence; do not describe a partial result as complete. See [Validation](#validation) for the completion bar.
+
+### Planning And Product Flows
+
 - For formal requirements or architecture planning, resolve the shared models, ownership, data flows, lifecycle and failure behavior, and extension boundaries required by the agreed scope. Phased implementation must not defer these foundational decisions or omit agreed capabilities. Keep genuine unresolved decisions explicit and avoid speculative features outside that scope.
 - Before expanding a product flow, map agreed capabilities to usable entry points, inputs and available options, primary actions, and relevant outcomes or error states. Keep this proportional to the task: a local visual correction does not require a new planning document or approval phase.
-- Resolve routine choices from repository evidence and conversation context. Ask only when a missing decision materially affects correctness, scope, or consequential side effects; continue independent authorized work while waiting.
-- Carry existing authorization forward. When further approval is required, first prepare the authorized work into a concrete, reviewable result.
-- If a skill causes a pause, approval request, or incomplete work, link to its exact `SKILL.md`, quote the relevant instruction, and explain why it applies. Do not turn a general guideline into an approval gate.
-- Incorporate follow-up constraints without losing the original objective or completed work. Treat confirmed corrections as acceptance criteria for affected components and screens with the same purpose within the current scope; inspect their shared owner and consumers instead of waiting for repeated examples. A status question does not cancel the task.
-- Use subagents only when explicitly requested by the user or applicable instructions. Assign bounded work and distinct file ownership; do not overlap edits or disturb another active task.
+
+### Tools And Delegation
+
+- Prefer scoped `rg` searches and direct reads of the relevant sources. Batch independent reads when useful; keep dependent actions and edits ordered. Broaden investigation when evidence is missing or contradictory, and stop once it supports the scoped decision.
+- Use subagents only when explicitly requested by the user or applicable instructions. General model guidance about delegation does not authorize it. Assign bounded work, distinct file ownership, and acceptance criteria; do not overlap edits or disturb another active task. Keep messages readable and integrate the results before claiming completion.
 
 ## Commands And Local Runtime
 
@@ -46,15 +62,14 @@
 
 ## Community Reuse Before Custom Implementation
 
-The goal is to deliver the requested behavior with less custom infrastructure to maintain. This project policy expresses the user's reuse preference; the [OpenAI model guidance](https://developers.openai.com/api/docs/guides/latest-model#prompting-best-practices) informs its explicit decision boundaries, instruction consistency, and proportionate verification.
+Deliver the requested behavior with less custom infrastructure to maintain.
 
-- Before implementing or delegating a reusable capability such as shortcut recording, key matching, forms, or accessible controls, inspect the relevant feature, shared packages, platform APIs, and installed dependencies, then research suitable community libraries. Research happens before committing to a custom implementation, not after writing one.
-- Prefer suitable existing project code, native platform APIs, installed libraries, and maintained community libraries over a new implementation. A library being absent from this repository is not evidence that it is unsuitable; verify availability and compatibility rather than assuming dependencies from another project exist here.
-- Use current official documentation and upstream source or releases to check the closest candidates against required behavior, framework and runtime compatibility, release maturity, maintenance, license, and dependency cost. Keep research focused; stop when there is enough evidence to choose a suitable solution or establish a concrete gap.
+- Before implementing or delegating a reusable capability such as shortcut recording, key matching, forms, or accessible controls, inspect the relevant feature, shared packages, platform APIs, and installed dependencies, then research suitable community libraries. Prefer suitable reuse over custom infrastructure. Verify dependencies in this repository; absence from the project alone does not make a library unsuitable.
+- Use current official documentation and upstream source or releases to check the closest candidates against required behavior, framework and runtime compatibility, release maturity, maintenance, license, and dependency cost. Stop when there is enough evidence to choose a solution or establish a concrete gap, before committing to custom implementation. Trivial business logic and straightforward glue code do not require a separate library or extended research.
 - Reuse the chosen library's supported APIs and compose existing components. Keep custom code limited to uncovered business rules and necessary integration, such as IPC, persistence, or native accelerator conversion. Do not duplicate a library's event handling, parsing, recording, or state management behind a new wrapper. Product controls should continue to reuse shadcn components from `packages/ui`.
-- When proposing custom reusable behavior, state which existing or community solutions were checked, link the relevant evidence, and identify the specific unmet requirement or disproportionate integration cost. Familiarity, imagined flexibility, a failed search, or already-written custom code is not sufficient justification. Trivial business logic and straightforward glue code do not require a separate library or an extended research exercise.
+- When proposing custom reusable behavior, name the existing or community solutions checked, link the evidence, and identify the unmet requirement or disproportionate integration cost. Familiarity, imagined flexibility, a failed search, or already-written custom code is not sufficient justification.
 - When delegation is authorized, include the accepted reuse decision and evidence in worker contracts before dispatching dependent implementation. Resolve an uncertain library choice through focused research first. If new evidence changes that choice, coordinate the affected work and remove superseded duplication during integration while preserving unrelated changes.
-- Selecting and integrating a suitable dependency is part of authorized implementation, subject to explicit user constraints and repository dependency rules; do not introduce a separate approval gate for routine choices. Verify the actual integration using applicable existing checks, report the reuse decision and any remaining custom boundary, and continue once the required evidence is sufficient. These rules do not authorize unrelated migrations, dependency upgrades, new tests, or runtime launches.
+- Selecting and integrating a suitable dependency is part of authorized implementation, subject to explicit user constraints and repository dependency rules. Verify the integration through [Validation](#validation) and report the reuse decision and remaining custom boundary. This does not authorize unrelated migrations, dependency upgrades, new tests, or runtime launches.
 
 ## Electron And Design Boundaries
 
@@ -131,7 +146,7 @@ These checkpoints describe the checked-in preset components, not universal overr
 - Settings overview pages share the same title, description, search and primary-action arrangement at each width. Express the total space below window controls through the shared navigation and content owners, avoiding accumulated insets that create excessive blank space. Preserve input text padding when values are long, and match the rendered surface bounds and clipping radius to their owning row or overlay; a Fill root alone does not guarantee that nested skins and text areas fit.
 - Keep long forms and lists in a bounded vertical scroll area. Editors and task panels retain reachable header, primary actions, and composer/footer at short heights; wrapping footers may grow and the body must yield space. Overlays fit within the current window, cap their width and height, scroll long content, and remain anchored to the trigger or use the specified drawer/dialog presentation at narrow widths. Code blocks and wide data tables may scroll within their own content region.
 - Keep Figma structural breakpoints explicit through connected layout variants and responsive variable modes. Figma does not automatically switch variants when resized: document the breakpoint, verify native reflow within each variant, and verify that switching variants preserves slot content, selected navigation, values, errors, and prototype targets. Do not present separate fixed screenshots as proof of responsive layout.
-- Before completion, inspect affected source components and all consumers for fixed dimensions and overflow, then render representative narrow, boundary, default, wide, and short-height views with realistic long content. For the current desktop design, include settings widths 320, 480, 760, 1000, and 1280px and panel widths 320, 420, and 640px, plus short-height cases. Check both sides of structural breakpoints, drawer open/closed, long labels, wrapped actions, expanded forms, and visible errors. Record the verified range and any remaining design/code gap; runtime verification still requires the authorization described above.
+- For responsive-layout changes, inspect affected source components and all consumers for fixed dimensions and overflow, then render representative narrow, boundary, default, wide, and short-height views with realistic long content. For each affected surface, include settings widths 320, 480, 760, 1000, and 1280px or panel widths 320, 420, and 640px, plus short-height cases. Check both sides of structural breakpoints, drawer open/closed, long labels, wrapped actions, expanded forms, and visible errors. For a local cosmetic correction, use the affected states and representative widths under [Visual Acceptance](#visual-acceptance). Record the verified range and remaining design/code gaps; runtime verification still requires the authorization in [Commands And Local Runtime](#commands-and-local-runtime).
 
 ## Brand Icons
 
@@ -149,18 +164,19 @@ These checkpoints describe the checked-in preset components, not universal overr
 
 ## Validation
 
-- Use relevant static checks as the default completion bar; runtime work remains subject to Commands And Local Runtime.
-- For changes to native window surfaces, authorized visual verification must include the actual OS-composited Electron window against contrasting backgrounds. Inspect all four corners, edge fill, duplicate outlines, shadow, and the visible native material. Browser previews and renderer-only screenshots do not verify desktop composition; if native inspection was not performed, explicitly report that limitation instead of claiming the native appearance is verified.
+- Select checks from the changed behavior and contracts. Relevant static checks are the default completion bar; the command catalog does not require a full build, package, or test suite for every edit. Runtime work, including Electron smoke tests, remains subject to [Commands And Local Runtime](#commands-and-local-runtime).
+- For Markdown-only changes, check formatting, links or references affected by the edit, and the task-owned diff; skip application lint, type checking, builds, and tests. For lint-configuration-only changes that do not alter evaluated application code, validate the changed rules without application type checking.
 - `pnpm lint` runs workspace Oxlint checks, including the 350-line limit. For a scoped read-only check, use `pnpm exec oxlint <changed-files>`; do not use `--fix` on unrelated files.
-- `pnpm typecheck` checks evaluated TypeScript, imports, exported contracts, and build configuration. Oxlint does not replace type checking. Skip type checking for Markdown-only or lint-configuration-only changes that do not alter evaluated application code, and state the reason.
+- Use `pnpm typecheck` for changes to evaluated TypeScript, imports, exported contracts, or build configuration. Oxlint does not replace type checking.
 - Format only task-owned files with `pnpm exec oxfmt <changed-files>`, then inspect the result. `pnpm format:check` checks repository formatting; do not run a repository-wide formatting write over unrelated work.
-- Do not create or plan new tests unless the user explicitly requests tests or a test plan. Run existing relevant tests when applicable; keep config validation proportionate to the change.
-- Once applicable checks pass, repeat or broaden them only for new edits, failures, or unresolved concerns. Review the task-owned diff and remaining requirements before finishing.
-- Report failures and unrun checks accurately. Do not claim that a build, runtime check, package, or remote push succeeded without evidence.
+- Run existing tests that exercise the affected behavior when applicable. Do not create or plan new tests unless the user explicitly requests tests or a test plan. When requested, test meaningful behavior or regression risk rather than mirroring implementation details.
+- Review the task-owned diff against the acceptance criteria. Once applicable checks pass, repeat or broaden them only for new edits, failures, or a specific unresolved concern. Report failures and unrun checks with their reasons; distinguish pre-existing failures from regressions when evidence allows. Claim successful validation, builds, packaging, or remote actions only when observed.
 
 ### Visual Acceptance
 
 Apply this sequence to visual or interaction work within the authorized design/code scope. It is agent self-review, not a new user approval step. Runtime inspection remains subject to Commands And Local Runtime; use checks relevant to the change rather than an exhaustive matrix for every cosmetic edit.
+
+For changes to native window surfaces, authorized visual verification must include the actual OS-composited Electron window against contrasting backgrounds. Inspect all four corners, edge fill, duplicate outlines, shadow, and the visible native material. Browser previews and renderer-only screenshots do not verify desktop composition; if native inspection was not performed, explicitly report that limitation instead of claiming the native appearance is verified.
 
 1. Before batch edits, identify the affected composition, source variant/tokens, and acceptance criteria from the request and confirmed feedback. Complete and inspect one representative composition with realistic content, its actual page background, and the affected states before expanding it to other screens.
 2. Update the owning component, then migrate its affected consumers. Inspect copied frames and slot content, local overrides, inherited Fill/Hug and min/max constraints, and styles or reactions restored by state changes. Read back actual instances to confirm the intended geometry and state now come from the shared owner. Remove stale overrides selectively while preserving intended copy, icons, states, and prototype targets; do not clear overrides indiscriminately.
@@ -177,7 +193,8 @@ Apply this sequence to visual or interaction work within the authorized design/c
 
 ## Communication And Handoff
 
-- Use the user's language and lead with the outcome. Keep progress updates brief and concrete; prefer plain prose and use lists when they improve clarity.
-- State what changed, relevant validation results or reasons for skipping checks, and remaining blockers. Link to affected files and distinguish observations from assumptions.
+- Use the user's language and lead with the main point. Prefer concise paragraphs, familiar words, and concrete verbs. Use lists or tables when they make steps or comparisons easier to follow; avoid stock phrases, unnecessary headings, and repeated summaries. Include technical detail when it helps assess the result.
+- Start tool-based work with a brief update describing the first useful action. During longer work, report findings, decisions, and blockers rather than narrating every tool call. Answer side questions without dropping the active task.
+- Make the final answer self-contained: state the result, why the change matters, relevant validation or reasons for skipping it, and any remaining blocker or limitation. Link to affected files and distinguish observations from assumptions; do not claim completion beyond the verified scope.
 - Commit messages use Conventional Commits: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, or `chore`. Do not assume commit hooks are installed; inspect repository configuration.
 - Commit or push only within the user's authorized scope. Keep each commit focused and preserve other tasks' work.

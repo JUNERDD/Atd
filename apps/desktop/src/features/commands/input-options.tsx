@@ -35,24 +35,28 @@ export function InputOptions({
   }
   return (
     <div className="space-y-4">
-      <div className="input-shortcut-grid">
-        <Label htmlFor="command-source">Input source</Label>
-        <Label htmlFor="command-shortcut">Shortcut</Label>
-        <Select value={command.input.source} onValueChange={source}>
-          <SelectTrigger id="command-source" className="w-full">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="manual">Manual input</SelectItem>
-            <SelectItem value="selection">Selected text</SelectItem>
-            <SelectItem value="clipboard">Clipboard</SelectItem>
-            <SelectItem value="none">No text input</SelectItem>
-          </SelectContent>
-        </Select>
-        <ShortcutInput
-          value={command.shortcut}
-          onChange={(shortcut) => onChange({ ...command, shortcut })}
-        />
+      <div className="field-columns aligned-fields">
+        <div className="settings-field">
+          <Label htmlFor="command-source">Input source</Label>
+          <Select value={command.input.source} onValueChange={source}>
+            <SelectTrigger id="command-source" className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="manual">Manual input</SelectItem>
+              <SelectItem value="selection">Selected text</SelectItem>
+              <SelectItem value="clipboard">Clipboard</SelectItem>
+              <SelectItem value="none">No text input</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="settings-field">
+          <Label htmlFor="command-shortcut">Shortcut</Label>
+          <ShortcutInput
+            value={command.shortcut}
+            onChange={(shortcut) => onChange({ ...command, shortcut })}
+          />
+        </div>
       </div>
       <details className="input-options group/input-options">
         <Button

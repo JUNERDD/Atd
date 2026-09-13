@@ -8,6 +8,7 @@ export function IconButton({
   tooltipSide = 'bottom',
   ...props
 }: ComponentProps<typeof Button> & {
+  /** Short tooltip text; use aria-label when the accessible name needs more context. */
   label: string;
   tooltipSide?: ComponentProps<typeof TooltipContent>['side'];
 }) {

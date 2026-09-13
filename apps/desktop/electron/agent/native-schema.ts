@@ -19,6 +19,7 @@ export const ToolArgumentsSchema = Type.Object(
 );
 export type ToolArguments = Static<typeof ToolArgumentsSchema>;
 export const NativeRequestSchema = Type.Union([
+  Type.Object({ action: Type.Literal('modelAuth'), taskId: Identifier, runId: Identifier }),
   Type.Object({
     action: Type.Literal('authorize'),
     taskId: Identifier,

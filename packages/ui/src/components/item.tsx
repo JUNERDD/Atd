@@ -108,7 +108,7 @@ function ItemContent({ className, ...props }: React.ComponentProps<'div'>) {
     <div
       data-slot="item-content"
       className={cn(
-        'flex flex-1 flex-col gap-1 group-data-[size=xs]/item:gap-0.5 [&+[data-slot=item-content]]:flex-none',
+        'flex min-w-0 flex-1 flex-col gap-1 group-data-[size=xs]/item:gap-0.5 [&+[data-slot=item-content]]:flex-none',
         className,
       )}
       {...props}
@@ -116,29 +116,35 @@ function ItemContent({ className, ...props }: React.ComponentProps<'div'>) {
   );
 }
 
-function ItemTitle({ className, ...props }: React.ComponentProps<'div'>) {
+function ItemTitle({ className, children, ...props }: React.ComponentProps<'div'>) {
   return (
     <div
       data-slot="item-title"
+      title={typeof children === 'string' ? children : undefined}
       className={cn(
-        'line-clamp-1 flex w-fit items-center gap-2 text-sm leading-snug font-medium underline-offset-4',
+        'block min-w-0 max-w-full truncate text-sm leading-snug font-medium underline-offset-4',
         className,
       )}
       {...props}
-    />
+    >
+      {children}
+    </div>
   );
 }
 
-function ItemDescription({ className, ...props }: React.ComponentProps<'p'>) {
+function ItemDescription({ className, children, ...props }: React.ComponentProps<'p'>) {
   return (
     <p
       data-slot="item-description"
+      title={typeof children === 'string' ? children : undefined}
       className={cn(
-        'line-clamp-2 text-left text-sm font-normal text-muted-foreground [&>a]:underline [&>a]:underline-offset-4 [&>a:hover]:text-primary',
+        'min-w-0 truncate text-left text-sm font-normal text-muted-foreground [&>a]:underline [&>a]:underline-offset-4 [&>a:hover]:text-primary',
         className,
       )}
       {...props}
-    />
+    >
+      {children}
+    </p>
   );
 }
 

@@ -2,7 +2,9 @@ import { agentBridge } from './agent/preload';
 import { contextBridge, ipcRenderer } from 'electron';
 import type { IpcRendererEvent } from 'electron';
 import { IPC, type ContextFile, type DesktopBridge, type DesktopState } from './contract';
-import { SETTINGS_IPC, type ProviderConnection, type SettingsSnapshot } from './settings-contract';
+import { SETTINGS_IPC, type SettingsSnapshot } from './settings-contract';
+import { providerBridge } from './providers/preload';
+import { GENERATION_IPC, type GenerationResult } from './agent/generation-contract';
 
 const desktop: DesktopBridge = {
   platform: process.platform,
@@ -11,10 +13,12 @@ const desktop: DesktopBridge = {
     open: () => ipcRenderer.invoke(SETTINGS_IPC.open) as Promise<void>,
     close: () => ipcRenderer.invoke(SETTINGS_IPC.close) as Promise<void>,
     get: () => ipcRenderer.invoke(SETTINGS_IPC.get) as Promise<SettingsSnapshot>,
-    saveProvider: (provider) =>
-      ipcRenderer.invoke(SETTINGS_IPC.saveProvider, provider) as Promise<SettingsSnapshot>,
-    testProvider: (provider) =>
-      ipcRenderer.invoke(SETTINGS_IPC.testProvider, provider) as Promise<ProviderConnection>,
+    providers: providerBridge,
+    generation: {
+      generate: (request) =>
+        ipcRenderer.invoke(GENERATION_IPC.generate, request) as Promise<GenerationResult>,
+      cancel: (id) => ipcRenderer.invoke(GENERATION_IPC.cancel, id) as Promise<void>,
+    },
     saveShortcuts: (shortcuts) =>
       ipcRenderer.invoke(SETTINGS_IPC.saveShortcuts, shortcuts) as Promise<SettingsSnapshot>,
     restoreShortcuts: () =>

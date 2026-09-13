@@ -1,4 +1,6 @@
 import { Type } from 'typebox';
+import type { AuthResult } from '@earendil-works/pi-ai';
+import { TaskQueue } from './task-queue';
 import path from 'node:path';
 import type { AgentEvent, TaskDetail } from './bridge';
 import { MemoryEntrySchema } from './bridge';
@@ -16,15 +18,10 @@ import { AgentWorker } from './worker-host';
 import type { WorkerOutbound } from './worker-contract';
 import { errorMessage } from './validation';
 
-const RunResult = Type.Object({
-  stopped: Type.Boolean(),
-  error: Type.String(),
-  sessionFile: Type.Optional(Type.String()),
-});
 interface RuntimeHost {
   publish: (event: AgentEvent) => void;
   changed: () => void;
-  credential: (run: TaskRun) => string;
+  auth: (run: TaskRun) => Promise<AuthResult>;
 }
 
 export class TaskRuntime {
@@ -35,8 +32,7 @@ export class TaskRuntime {
     string,
     { request: PermissionRequest; resolve: (answer: string | boolean) => void }
   >();
-  private executing = false;
-  private closing = false;
+  private readonly queue: TaskQueue;
   private revision = 0;
   error = '';
   constructor(
@@ -45,6 +41,7 @@ export class TaskRuntime {
     readonly resources: ContextResources,
     private host: RuntimeHost,
   ) {
+    this.queue = new TaskQueue(this, host.auth);
     this.native = new NativeTools(root, resources, {
       task: (id) => this.task(id),
       ask: (request) => this.ask(request),
@@ -56,7 +53,16 @@ export class TaskRuntime {
       },
     });
     this.worker = new AgentWorker(root, {
-      native: (request, onData) => this.native.execute(request, onData),
+      native: (request, onData) => {
+        if (request.action !== 'modelAuth') return this.native.execute(request, onData);
+        const run = this.task(request.taskId).runs.find((item) => item.id === request.runId);
+        if (
+          !run ||
+          ['cancelled', 'failed', 'interrupted', 'stopping', 'stopped'].includes(run.status)
+        )
+          throw new Error('This model request is no longer active.');
+        return this.host.auth(run);
+      },
       event: (event) => this.event(event),
       failed: (message) => {
         void this.fail(message);
@@ -213,7 +219,7 @@ export class TaskRuntime {
     pending.resolve(answer);
   }
 
-  private dismiss(runId: string) {
+  dismiss(runId: string) {
     for (const [id, pending] of this.requests)
       if (pending.request.runId === runId) {
         this.requests.delete(id);
@@ -234,70 +240,8 @@ export class TaskRuntime {
     await this.worker.call({ action: 'stop', runId }, Type.Null());
   }
 
-  async drain() {
-    if (this.executing || this.closing) return;
-    this.executing = true;
-    try {
-      let next;
-      while (
-        !this.closing &&
-        (next = this.store.data.tasks
-          .flatMap((task) =>
-            task.runs.filter((run) => run.status === 'queued').map((run) => ({ task, run })),
-          )
-          .sort((a, b) => a.run.createdAt.localeCompare(b.run.createdAt))[0])
-      ) {
-        const { task, run } = next;
-        try {
-          const apiKey = this.host.credential(run);
-          const files = await this.resources.resolve(run.snapshot.input.files);
-          await this.ready();
-          if (this.task(task.id).runs.find((item) => item.id === run.id)?.status !== 'queued')
-            continue;
-          await this.status(task.id, run.id, 'running');
-          const result = await this.worker.call(
-            {
-              action: 'run',
-              taskId: task.id,
-              run,
-              sessionFile: task.sessionFile,
-              apiKey,
-              attachments: files.map((file) => ({
-                path: file.path,
-                name: file.file.name,
-                text: file.text,
-              })),
-            },
-            RunResult,
-          );
-          this.dismiss(run.id);
-          if (this.task(task.id).runs.find((item) => item.id === run.id)?.status === 'interrupted')
-            continue;
-          const stopped =
-            this.task(task.id).runs.find((item) => item.id === run.id)?.status === 'stopping' ||
-            result.stopped;
-          await this.status(
-            task.id,
-            run.id,
-            stopped ? 'stopped' : result.error ? 'failed' : 'completed',
-            result.error,
-          );
-        } catch (error) {
-          this.dismiss(run.id);
-          this.native.stop(run.id);
-          const state = this.task(task.id).runs.find((item) => item.id === run.id)?.status;
-          if (state !== 'interrupted')
-            await this.status(
-              task.id,
-              run.id,
-              state === 'stopping' ? 'stopped' : 'failed',
-              errorMessage(error),
-            );
-        }
-      }
-    } finally {
-      this.executing = false;
-    }
+  drain() {
+    return this.queue.drain();
   }
 
   async memory() {
@@ -335,7 +279,7 @@ export class TaskRuntime {
   }
 
   async close() {
-    this.closing = true;
+    this.queue.closing = true;
     for (const task of this.store.data.tasks)
       for (const run of task.runs)
         if (isActive(run.status)) {

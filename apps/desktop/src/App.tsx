@@ -1,6 +1,7 @@
 import { Astroid, History, Settings, X } from 'lucide-react';
 import { Button } from '@ai/ui/components/button';
 import { TooltipProvider } from '@ai/ui/components/tooltip';
+import { ScrollArea } from '@ai/ui/components/scroll-area';
 import { defaultArguments } from '../electron/agent/command-validation';
 import { Composer } from './components/composer';
 import { IconButton } from './components/icon-button';
@@ -45,6 +46,16 @@ export function App() {
     policy,
     changePolicy,
   } = useTaskPanel();
+  const defaultConnection = snapshot?.connections.find(
+    (connection) => connection.connectionId === snapshot.defaultConnectionId,
+  );
+  const selectedModel =
+    policy.model ??
+    (!policy.useDefaultModel && run && view === 'task'
+      ? run.snapshot.model
+      : defaultConnection?.defaultModel
+        ? { connectionId: defaultConnection.connectionId, modelId: defaultConnection.defaultModel }
+        : null);
   return (
     <TooltipProvider delayDuration={350}>
       {hidden && (
@@ -66,7 +77,7 @@ export function App() {
           >
             <Astroid className="size-5" />
           </IconButton>
-          <h1>{title}</h1>
+          <h1 title={title}>{title}</h1>
           <nav className="header-controls" aria-label="Panel controls">
             <IconButton
               label="Tasks"
@@ -89,21 +100,27 @@ export function App() {
           </nav>
         </header>
         {view === 'new' && (
-          <section className="panel-content welcome">
-            <h2>What can I help with?</h2>
-            <p>Ask anything, or start with a command.</p>
-            <CommandLauncher
-              compact
-              commands={agent.snapshot?.commands ?? []}
-              onChoose={(id) => void chooseCommand(id)}
-              onAll={() => setView('commands')}
-            />
-            {!window.desktop && (
-              <p className="text-xs">
-                Open the desktop app to run the Agent and manage saved commands.
+          <ScrollArea className="panel-content">
+            <section className="panel-content-body welcome">
+              <h2 className="max-w-full truncate" title="What can I help with?">
+                What can I help with?
+              </h2>
+              <p className="max-w-full truncate" title="Ask anything, or start with a command.">
+                Ask anything, or start with a command.
               </p>
-            )}
-          </section>
+              <CommandLauncher
+                compact
+                commands={agent.snapshot?.commands ?? []}
+                onChoose={(id) => void chooseCommand(id)}
+                onAll={() => setView('commands')}
+              />
+              {!window.desktop && (
+                <p className="text-xs">
+                  Open the desktop app to run the Agent and manage saved commands.
+                </p>
+              )}
+            </section>
+          </ScrollArea>
         )}
         {view === 'commands' && (
           <CommandLauncher
@@ -156,14 +173,16 @@ export function App() {
               onContinue={() => submit(true)}
             />
           ) : (
-            <section className="panel-content">
-              <p className="text-sm text-muted-foreground">Loading conversation…</p>
-            </section>
+            <ScrollArea className="panel-content">
+              <section className="panel-content-body">
+                <p className="text-sm text-muted-foreground">Loading conversation…</p>
+              </section>
+            </ScrollArea>
           ))}
         {(notice || agent.error || current.error) && (
-          <output role="alert" className="panel-notice">
-            {notice || agent.error || current.error}
-          </output>
+          <ScrollArea className="panel-notice" viewportClassName="panel-notice-viewport">
+            <output role="alert">{notice || agent.error || current.error}</output>
+          </ScrollArea>
         )}
         {(view === 'new' || view === 'task') && (
           <Composer
@@ -179,16 +198,8 @@ export function App() {
             pending={pending}
             followup={view === 'task'}
             shortcuts={shortcuts}
-            provider={
-              run && view === 'task'
-                ? {
-                    id: run.snapshot.model.provider,
-                    baseUrl: run.snapshot.model.baseUrl,
-                    model: run.snapshot.model.modelId,
-                    hasApiKey: false,
-                  }
-                : snapshot?.provider
-            }
+            connections={snapshot?.connections ?? []}
+            model={selectedModel}
             onOpenSettings={() => void openSettings()}
           />
         )}

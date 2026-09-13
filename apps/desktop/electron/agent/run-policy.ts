@@ -1,5 +1,6 @@
 import { Type, type Static } from 'typebox';
 import { ToolIdSchema } from './command-schema';
+import { ModelReferenceSchema } from '../providers/schema';
 
 export const RunPolicySchema = Type.Object(
   {
@@ -7,6 +8,7 @@ export const RunPolicySchema = Type.Object(
     memory: Type.Boolean(),
     useDefaultModel: Type.Boolean(),
     confirmExpansion: Type.Boolean(),
+    model: Type.Optional(ModelReferenceSchema),
   },
   { additionalProperties: false },
 );

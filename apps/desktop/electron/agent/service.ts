@@ -1,11 +1,10 @@
 import { app, clipboard, ipcMain, shell } from 'electron';
-import { createHash, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import { rm } from 'node:fs/promises';
 import path from 'node:path';
 import { Type } from 'typebox';
 import type { SettingsService } from '../settings-service';
-import type { CommandDefinition } from './command-schema';
-import { FileRefSchema, isActive, type ResolvedModel } from './task-schema';
+import { FileRefSchema, isActive } from './task-schema';
 import {
   AGENT_IPC,
   AgentRequestSchema,
@@ -52,20 +51,19 @@ export class AgentService {
     this.runtime = new TaskRuntime(root, store, resources, {
       publish: (event) => settings.send(AGENT_IPC.changed, event),
       changed: () => this.broadcast(),
-      credential: (run) => {
-        if (this.connectionId() !== run.snapshot.model.connectionId)
-          throw new Error(
-            'The model connection changed. Restore it before running this saved task.',
-          );
-        return settings.credential;
-      },
+      auth: (run) => settings.providers.runtime.auth(run.snapshot.model),
     });
     this.commands = new CommandService(store, () => settings.snapshot().shortcuts, launch);
     this.commands.initialize();
     this.runs = new RunService(
       this.runtime,
-      (command) => this.model(command),
-      () => this.connectionId(),
+      (command, reference) =>
+        settings.providers.runtime.resolve(
+          reference ?? (command?.model.mode === 'fixed' ? command.model : null),
+        ),
+      (model) => {
+        settings.providers.runtime.assertModel(model);
+      },
     );
     this.artifacts = new ArtifactService(this.runtime);
   }
@@ -94,22 +92,7 @@ export class AgentService {
   }
 
   private connectionId() {
-    const provider = this.settings.snapshot().provider;
-    return createHash('sha256').update(`${provider.id}\n${provider.baseUrl}`).digest('hex');
-  }
-
-  private model(command: CommandDefinition | null): ResolvedModel {
-    const provider = this.settings.snapshot().provider;
-    const connectionId = this.connectionId();
-    if (command?.model.mode === 'fixed' && command.model.connectionId !== connectionId)
-      throw new Error(
-        'This command’s model connection is unavailable. Choose a current connection in its run settings.',
-      );
-    const modelId = command?.model.mode === 'fixed' ? command.model.modelId : provider.model;
-    if (!modelId) throw new Error('Choose a model in Settings → Providers before running.');
-    if (provider.id === 'openai' && !provider.hasApiKey)
-      throw new Error('Add your OpenAI API key in Settings → Providers.');
-    return { connectionId, modelId, provider: provider.id, baseUrl: provider.baseUrl };
+    return this.settings.snapshot().defaultConnectionId ?? '';
   }
 
   private snapshot(): AgentSnapshot {

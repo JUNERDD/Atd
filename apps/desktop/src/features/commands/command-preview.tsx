@@ -18,14 +18,15 @@ import { agentApi, messageOf } from '../agent/use-agent';
 export function CommandPreview({
   command,
   save,
+  onError,
 }: {
   command: CommandDefinition;
   save: () => Promise<CommandDefinition>;
+  onError: (message: string) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState(emptyInput);
   const [pending, setPending] = useState(false);
-  const [error, setError] = useState('');
   const policy = {
     tools: command.tools,
     memory: command.memory !== 'off',
@@ -41,10 +42,10 @@ export function CommandPreview({
         source: command.input.source,
         arguments: defaultArguments(command),
       });
-      setError('');
+      onError('');
       setOpen(true);
     } catch (error) {
-      setError(messageOf(error));
+      onError(messageOf(error));
     }
   }
   return (
@@ -52,16 +53,14 @@ export function CommandPreview({
       <Button variant="outline" onClick={preview}>
         Run preview
       </Button>
-      {error && (
-        <p role="alert" className="text-xs text-destructive">
-          {error}
-        </p>
-      )}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="command-preview-dialog w-[420px] max-w-[calc(100%-2rem)] h-[min(660px,90vh)] p-0 flex flex-col gap-0 overflow-hidden">
           <DialogHeader className="p-4 pb-2 shrink-0">
             <DialogTitle>Run preview</DialogTitle>
-            <DialogDescription>
+            <DialogDescription
+              className="truncate"
+              title={`Review ${command.name}. Saving opens this input in the task panel.`}
+            >
               Review {command.name}. Saving opens this input in the task panel.
             </DialogDescription>
           </DialogHeader>

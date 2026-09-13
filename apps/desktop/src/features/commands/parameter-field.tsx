@@ -27,13 +27,15 @@ export function ParameterField({
   const id = useId();
   const error = validate ? parameterError(parameter, value) : '';
   const label = (
-    <Label htmlFor={id}>
-      {parameter.label}
+    <Label htmlFor={id} className="min-w-0">
+      <span className="truncate" title={parameter.label}>
+        {parameter.label}
+      </span>
       {parameter.required && <span className="text-muted-foreground"> *</span>}
     </Label>
   );
   return (
-    <div className="settings-field" data-figma-node="410:1982">
+    <div className="settings-field parameter-field" data-figma-node="410:1982">
       {parameter.type === 'boolean' ? (
         <div className="flex items-center justify-between gap-3">
           {label}
@@ -96,8 +98,9 @@ export function ParameterField({
       )}
       {(error || parameter.description) && (
         <p
-          className={error ? 'text-destructive text-xs' : 'text-muted-foreground text-xs'}
+          className={error ? 'text-destructive text-xs' : 'truncate text-muted-foreground text-xs'}
           role={error ? 'alert' : undefined}
+          title={error ? undefined : parameter.description}
         >
           {error || parameter.description}
         </p>

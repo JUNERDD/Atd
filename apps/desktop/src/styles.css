@@ -104,10 +104,9 @@ html[data-platform='darwin'] .task-panel::after {
 .panel-content {
   flex: 1;
   min-height: 0;
+}
+.panel-content-body {
   padding: 64px 16px 16px;
-  overflow: hidden auto;
-  scrollbar-width: thin;
-  scrollbar-color: var(--border) transparent;
 }
 
 .panel-content h2 {
@@ -130,7 +129,14 @@ html[data-platform='darwin'] .task-panel::after {
   flex-shrink: 0;
 }
 .panel-footer {
+  flex-shrink: 0;
   padding: 8px 16px 16px;
+}
+.settings-field {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .secondary-content {
@@ -220,8 +226,6 @@ html[data-platform='darwin'] .task-panel::after {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  max-height: 100px;
-  overflow-y: auto;
 }
 .attachment-chip {
   display: inline-flex;
@@ -241,16 +245,26 @@ html[data-platform='darwin'] .task-panel::after {
   white-space: nowrap;
 }
 .panel-notice {
-  flex-shrink: 0;
-  padding: 8px 20px;
+  min-height: 34px;
+  max-height: 25%;
   color: var(--muted-foreground);
   font-size: 12px;
   line-height: 18px;
+  overflow-wrap: anywhere;
+}
+.panel-notice-viewport {
+  max-height: inherit;
+}
+.panel-notice output {
+  display: block;
+  padding: 8px 20px;
 }
 .composer-notice {
+  max-height: 64px;
   color: var(--muted-foreground);
   font-size: 11px;
   line-height: 16px;
+  overflow-wrap: anywhere;
 }
 .restore-panel {
   position: fixed;
@@ -259,7 +273,7 @@ html[data-platform='darwin'] .task-panel::after {
 }
 
 @media (max-height: 420px) {
-  .panel-content {
+  .panel-content-body {
     padding-top: 24px;
   }
   .section-heading {

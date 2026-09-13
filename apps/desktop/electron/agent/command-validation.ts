@@ -21,7 +21,9 @@ export function templateReferences(instructions: string): VariableReference[] {
   });
 }
 
-export function availableVariables(command: CommandDefinition): string[] {
+export function availableVariables(
+  command: Pick<CommandDefinition, 'input' | 'parameters'>,
+): string[] {
   return [
     ...(command.input.source !== 'none' ? ['input'] : []),
     ...(command.input.files ? ['files'] : []),

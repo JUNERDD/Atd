@@ -1,5 +1,6 @@
 import { Type, type Static } from 'typebox';
 import { ArgumentValuesSchema, CommandSchema, Identifier, ToolIdSchema } from './command-schema';
+import { FrozenModelSchema } from '../providers/schema';
 
 export const FileRefSchema = Type.Object(
   {
@@ -30,15 +31,19 @@ export const InputSchema = Type.Object(
 );
 export type TaskInput = Static<typeof InputSchema>;
 
-export const ResolvedModelSchema = Type.Object(
-  {
-    connectionId: Type.String({ maxLength: 4096 }),
-    modelId: Type.String({ maxLength: 256 }),
-    provider: Type.Union([Type.Literal('openai'), Type.Literal('openai-compatible')]),
-    baseUrl: Type.String({ maxLength: 2048 }),
-  },
-  { additionalProperties: false },
-);
+// v1 history keeps its original model snapshot; new submissions freeze the full model definition.
+export const ResolvedModelSchema = Type.Union([
+  FrozenModelSchema,
+  Type.Object(
+    {
+      connectionId: Type.String({ maxLength: 4096 }),
+      modelId: Type.String({ maxLength: 256 }),
+      provider: Type.Union([Type.Literal('openai'), Type.Literal('openai-compatible')]),
+      baseUrl: Type.String({ maxLength: 2048 }),
+    },
+    { additionalProperties: false },
+  ),
+]);
 export type ResolvedModel = Static<typeof ResolvedModelSchema>;
 export const RunStatusSchema = Type.Union([
   Type.Literal('queued'),

@@ -10,14 +10,26 @@ import { emptyInput } from '../electron/agent/task-schema';
 
 function installBridge() {
   let settings: SettingsSnapshot = {
-    provider: {
-      id: 'openai',
-      baseUrl: 'https://api.openai.com/v1',
-      model: 'test-model',
-      hasApiKey: true,
-    },
+    connections: [
+      {
+        connectionId: 'test',
+        revision: 1,
+        provider: 'openai',
+        name: 'OpenAI API',
+        baseUrl: 'https://api.openai.com/v1',
+        authType: 'api_key',
+        defaultModel: 'test-model',
+        connected: true,
+        hasCredential: true,
+        options: {},
+        customModels: [],
+        catalog: [],
+        catalogError: '',
+        verifiedModel: '',
+      },
+    ],
+    defaultConnectionId: 'test',
     shortcuts: { ...DEFAULT_SHORTCUTS },
-    account: { name: 'Test user', kind: 'local' },
     pinned: true,
     shortcutAvailable: true,
   };
@@ -132,8 +144,26 @@ function installBridge() {
       open,
       close: vi.fn(async () => {}),
       get: vi.fn(async () => settings),
-      saveProvider: vi.fn(async () => settings),
-      testProvider: vi.fn(async () => ({ models: [] })),
+      providers: {
+        catalog: vi.fn(async () => []),
+        save: vi.fn(async () => settings.connections[0]!),
+        setDefault: vi.fn(async () => {}),
+        setModel: vi.fn(async () => {}),
+        disconnect: vi.fn(async () => {}),
+        refresh: vi.fn(async () => {}),
+        verify: vi.fn(async () => {}),
+        login: vi.fn(async () => {
+          throw new Error('Not used');
+        }),
+        answer: vi.fn(async () => {}),
+        cancel: vi.fn(async () => {}),
+        openLink: vi.fn(async () => {}),
+        onLogin: () => () => {},
+      },
+      generation: {
+        generate: vi.fn(async () => ({ status: 'stopped' as const, message: 'Stopped' })),
+        cancel: vi.fn(async () => {}),
+      },
       saveShortcuts: vi.fn(async () => settings),
       restoreShortcuts: vi.fn(async () => settings),
       onChange: (listener) => {
@@ -229,7 +259,7 @@ describe('task panel', () => {
     await user.click(screen.getByRole('button', { name: 'Settings' }));
     expect(open).toHaveBeenCalledOnce();
     const settingsView = render(<SettingsWindow />);
-    await user.click(await screen.findByRole('tab', { name: 'Shortcuts' }));
+    await user.click(await screen.findByRole('button', { name: 'Shortcuts' }));
     await user.click(screen.getByRole('switch', { name: 'Always on top' }));
     await waitFor(() => expect(setPinned).toHaveBeenLastCalledWith(false));
     expect(screen.getByRole('switch', { name: 'Always on top' })).not.toBeChecked();

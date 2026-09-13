@@ -1,9 +1,10 @@
 import { ipcMain } from 'electron';
 import type { BrowserWindow, IpcMainInvokeEvent } from 'electron';
-import { userInfo } from 'node:os';
 import type { DesktopState } from './contract';
 import { DEFAULT_SHORTCUTS, SETTINGS_IPC, type SettingsSnapshot } from './settings-contract';
-import { agentCredential, saveProviderDraft, testProviderDraft } from './settings-provider';
+import { ProviderService } from './providers/service';
+import { publicConnection } from './providers/configuration';
+import { InstructionGeneration } from './agent/instruction-generation';
 import { PanelShortcut, parseShortcutBindings, shortcutLabel } from './settings-shortcuts';
 import { SettingsStore } from './settings-store';
 import { SettingsWindow } from './settings-window';
@@ -19,7 +20,7 @@ interface SettingsHost {
 export class SettingsService {
   private readonly window = new SettingsWindow();
   private readonly shortcut: PanelShortcut;
-  private readonly account = { name: userInfo().username, kind: 'local' as const };
+  readonly providers: ProviderService;
   private mutation: Promise<void> = Promise.resolve();
 
   private constructor(
@@ -28,14 +29,18 @@ export class SettingsService {
   ) {
     this.shortcut = new PanelShortcut(host.togglePanel);
     this.shortcut.initialize(store.current.shortcuts.togglePanel);
+    this.providers = new ProviderService(
+      store,
+      () => this.broadcast(),
+      (channel, value) => this.send(channel, value),
+    );
   }
 
   static async create(host: SettingsHost): Promise<SettingsService> {
-    return new SettingsService(await SettingsStore.load(), host);
-  }
-
-  get credential(): string {
-    return agentCredential(this.store.current.provider);
+    const service = new SettingsService(await SettingsStore.load(), host);
+    for (const connection of service.store.current.connections)
+      await service.providers.refresh(connection.connectionId, false);
+    return service;
   }
 
   send(channel: string, value: unknown) {
@@ -53,16 +58,11 @@ export class SettingsService {
   }
 
   snapshot(): SettingsSnapshot {
-    const { provider, shortcuts, pinned } = this.store.current;
+    const { connections, defaultConnectionId, shortcuts, pinned } = this.store.current;
     return {
-      provider: {
-        id: provider.id,
-        baseUrl: provider.baseUrl,
-        model: provider.model,
-        hasApiKey: Boolean(provider.encryptedApiKey),
-      },
+      connections: connections.map(publicConnection),
+      defaultConnectionId,
       shortcuts: { ...shortcuts },
-      account: { ...this.account },
       pinned,
       shortcutAvailable: this.shortcut.available,
     };
@@ -110,7 +110,9 @@ export class SettingsService {
 
   setPinned(pinned: boolean): Promise<boolean> {
     return this.serialize(async () => {
-      await this.store.commit({ ...this.store.current, pinned });
+      await this.store.change((data) => {
+        data.pinned = pinned;
+      });
       this.host.applyPinned(pinned);
       this.broadcast();
       return pinned;
@@ -122,13 +124,19 @@ export class SettingsService {
       const shortcuts = parseShortcutBindings(value);
       this.host.validateShortcuts?.(shortcuts);
       await this.shortcut.replace(shortcuts.togglePanel, () =>
-        this.store.commit({ ...this.store.current, shortcuts }),
+        this.store.change((data) => {
+          data.shortcuts = shortcuts;
+        }),
       );
       return this.broadcast();
     });
   }
 
   installIpc() {
+    this.providers.installIpc((event, settingsOnly) => this.assertSender(event, settingsOnly));
+    new InstructionGeneration(this.providers.runtime).installIpc((event, settingsOnly) =>
+      this.assertSender(event, settingsOnly),
+    );
     ipcMain.handle(SETTINGS_IPC.open, (event) => {
       this.assertSender(event);
       return this.open();
@@ -140,18 +148,6 @@ export class SettingsService {
     ipcMain.handle(SETTINGS_IPC.get, (event) => {
       this.assertSender(event);
       return this.snapshot();
-    });
-    ipcMain.handle(SETTINGS_IPC.saveProvider, (event, value: unknown) => {
-      this.assertSender(event, true);
-      return this.serialize(async () => {
-        const provider = saveProviderDraft(value, this.store.current.provider);
-        await this.store.commit({ ...this.store.current, provider });
-        return this.broadcast();
-      });
-    });
-    ipcMain.handle(SETTINGS_IPC.testProvider, (event, value: unknown) => {
-      this.assertSender(event, true);
-      return testProviderDraft(value, this.store.current.provider);
     });
     ipcMain.handle(SETTINGS_IPC.saveShortcuts, (event, value: unknown) => {
       this.assertSender(event, true);

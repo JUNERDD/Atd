@@ -41,7 +41,10 @@ export class NativeTools {
     return run;
   }
 
-  async execute(request: NativeRequest, onData: (base64: string) => void): Promise<unknown> {
+  async execute(
+    request: Exclude<NativeRequest, { action: 'modelAuth' }>,
+    onData: (base64: string) => void,
+  ): Promise<unknown> {
     if (request.action === 'authorize') {
       const run = this.run(request.taskId, request.runId);
       if (!run.snapshot.tools.includes(request.tool))

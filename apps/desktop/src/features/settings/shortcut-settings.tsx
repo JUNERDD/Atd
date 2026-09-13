@@ -62,8 +62,12 @@ function ShortcutRow({
     >
       <li>
         <ItemContent>
-          <ItemTitle>{label}</ItemTitle>
-          <ItemDescription>{description}</ItemDescription>
+          <ItemTitle className="block max-w-full truncate" title={label}>
+            {label}
+          </ItemTitle>
+          <ItemDescription className="block truncate" title={description}>
+            {description}
+          </ItemDescription>
         </ItemContent>
         <ItemActions>
           <Button
@@ -122,8 +126,10 @@ export function ShortcutSettings({
   return (
     <>
       <header className="settings-section-heading">
-        <h2>Keyboard shortcuts</h2>
-        <p>Make the app work at your pace. Click a shortcut to edit it.</p>
+        <h2 title="Keyboard shortcuts">Keyboard shortcuts</h2>
+        <p title="Make the app work at your pace. Click a shortcut to edit it.">
+          Make the app work at your pace. Click a shortcut to edit it.
+        </p>
       </header>
       <div className="settings-shortcut-groups" aria-busy={settings.pending !== null}>
         <section className="settings-shortcut-group" aria-labelledby="settings-global-shortcuts">
@@ -171,7 +177,7 @@ export function ShortcutSettings({
               />
             </div>
           </TooltipTrigger>
-          <TooltipContent>Keep the panel within reach.</TooltipContent>
+          <TooltipContent>Always on top</TooltipContent>
         </Tooltip>
         <Button
           type="button"

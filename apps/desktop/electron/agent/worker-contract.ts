@@ -11,7 +11,6 @@ export const WorkerRequestSchema = Type.Union([
     taskId: Identifier,
     run: RunSchema,
     sessionFile: Type.Union([Type.String(), Type.Null()]),
-    apiKey: Type.String(),
     attachments: Type.Array(
       Type.Object({ path: Type.String(), text: Type.String(), name: Type.String() }),
     ),
