@@ -9,15 +9,21 @@ import { StoredConnectionSchema } from './providers/schema';
 import { migrateProvider } from './providers/legacy';
 import { initialDefaultConnectionId } from './providers/defaults';
 import { parseShortcutBindings } from './settings-shortcuts';
+import { PANEL_SIZE, type PanelSize } from './window-position';
 
 const ProviderSettingsSchema = Type.Object({
   connections: Type.Array(StoredConnectionSchema, { maxItems: 100 }),
   defaultConnectionId: Type.Union([Type.String(), Type.Null()]),
 });
+const PanelSizeSchema = Type.Object(
+  { width: Type.Integer({ minimum: 1 }), height: Type.Integer({ minimum: 1 }) },
+  { additionalProperties: false },
+);
 export interface StoredSettings extends Static<typeof ProviderSettingsSchema> {
   version: 2;
   shortcuts: ShortcutBindings;
   pinned: boolean;
+  panelSize: PanelSize;
 }
 
 function parseSettings(value: unknown): StoredSettings {
@@ -34,6 +40,7 @@ function parseSettings(value: unknown): StoredSettings {
           'defaultConnectionId',
           'shortcuts',
           'pinned',
+          'panelSize',
         ].includes(key),
     ) ||
     !('version' in value) ||
@@ -44,6 +51,8 @@ function parseSettings(value: unknown): StoredSettings {
   ) {
     throw new TypeError('Invalid saved settings.');
   }
+  const panelSize =
+    'panelSize' in value ? parse(PanelSizeSchema, value.panelSize) : { ...PANEL_SIZE };
   const connections =
     value.version === 1 && 'provider' in value ? migrateProvider(value.provider) : null;
   const providers = connections
@@ -62,6 +71,7 @@ function parseSettings(value: unknown): StoredSettings {
     ...providers,
     shortcuts: parseShortcutBindings(value.shortcuts),
     pinned: value.pinned,
+    panelSize,
   };
 }
 
@@ -96,6 +106,7 @@ export class SettingsStore {
           defaultConnectionId: null,
           shortcuts: { ...DEFAULT_SHORTCUTS },
           pinned: true,
+          panelSize: { ...PANEL_SIZE },
         });
       }
       throw new Error(

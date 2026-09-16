@@ -21,7 +21,7 @@ import {
   rendererPreferences,
   secureWindowContent,
 } from './window-content';
-import { constrainPanelBounds, getPanelBounds } from './window-position';
+import { constrainPanelBounds, getPanelBounds, getPanelMinimumSize } from './window-position';
 
 app.setName('AI');
 nativeTheme.themeSource = 'dark';
@@ -112,20 +112,44 @@ function installIpc() {
   });
 }
 
+/**
+ * Only a manual edge drag replaces the stored size; programmatic re-docking and
+ * work-area clamping keep the user's preference. The trailing debounce saves the
+ * final bounds once the drag settles.
+ */
+function rememberPanelSize(window: BrowserWindow) {
+  let pending: ReturnType<typeof setTimeout> | undefined;
+  window.on('will-resize', () => {
+    clearTimeout(pending);
+    pending = setTimeout(() => {
+      if (window.isDestroyed()) return;
+      const { width, height } = window.getNormalBounds();
+      settings.setPanelSize({ width, height }).catch((error: unknown) => {
+        console.error('Could not save the panel size:', error);
+      });
+    }, 300);
+  });
+}
+
 async function createPanel() {
   const display = screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
+  // macOS vibrancy owns the window surface, including its native edge and shadow.
+  // Other platforms need a transparent backing, which Electron cannot resize reliably.
+  const transparent = process.platform !== 'darwin';
+  const minimum = getPanelMinimumSize(display.workArea);
   const window = new BrowserWindow({
-    ...getPanelBounds(display.workArea),
+    ...getPanelBounds(display.workArea, settings.panelSize),
     title: 'AI',
     frame: false,
-    // macOS vibrancy owns the window surface, including its native edge and shadow.
-    transparent: process.platform !== 'darwin',
+    transparent,
     // The renderer owns the panel tint; keep the native backing clear to avoid double fills.
     backgroundColor: '#00000000',
     alwaysOnTop: settings.pinned,
-    resizable: false,
+    resizable: !transparent,
     maximizable: false,
     fullscreenable: false,
+    minWidth: minimum.width,
+    minHeight: minimum.height,
     hasShadow: true,
     roundedCorners: true,
     show: false,
@@ -137,6 +161,7 @@ async function createPanel() {
   });
   panel = window;
   secureWindowContent(window);
+  rememberPanelSize(window);
   window.on('closed', () => {
     panel = null;
   });
@@ -199,7 +224,8 @@ if (!app.requestSingleInstanceLock()) {
           else {
             agent?.commands.captureSelection();
             const display = screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
-            panel.setBounds(getPanelBounds(display.workArea));
+            // Re-dock the panel without discarding a size the user resized to.
+            panel.setBounds(getPanelBounds(display.workArea, panel.getNormalBounds()));
             showPanel();
           }
         },
@@ -220,6 +246,8 @@ if (!app.requestSingleInstanceLock()) {
       const reposition = () => {
         if (!panel || panel.isDestroyed()) return;
         const display = screen.getDisplayMatching(panel.getBounds());
+        const minimum = getPanelMinimumSize(display.workArea);
+        panel.setMinimumSize(minimum.width, minimum.height);
         const bounds = panel.getBounds();
         const next = constrainPanelBounds(bounds, display.workArea);
         if (
