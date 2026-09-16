@@ -2,9 +2,14 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath, URL } from 'node:url';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import babel from '@rolldown/plugin-babel';
 import tailwindcss from '@tailwindcss/vite';
 import electron from 'vite-plugin-electron/simple';
 import type { ElectronOptions } from 'vite-plugin-electron';
+import {
+  componentInspector,
+  componentInspectorBabelPlugin,
+} from './plugins/component-inspector.js';
 
 const dependencies = Object.keys(
   JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')).dependencies,
@@ -19,6 +24,12 @@ export default defineConfig(({ mode, command }) => ({
   base: './',
   plugins: [
     react(),
+    ...(command === 'serve'
+      ? [
+          babel({ plugins: [componentInspectorBabelPlugin], include: /\.(tsx|jsx)$/ }),
+          componentInspector(),
+        ]
+      : []),
     tailwindcss(),
     {
       name: 'local-development-csp',
