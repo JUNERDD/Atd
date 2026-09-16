@@ -9,6 +9,7 @@ import { PanelShortcut, parseShortcutBindings, shortcutLabel } from './settings-
 import { SettingsStore } from './settings-store';
 import { SettingsWindow } from './settings-window';
 import { isWindowSender } from './window-content';
+import type { PanelSize } from './window-position';
 
 interface SettingsHost {
   panel: () => BrowserWindow | null;
@@ -51,6 +52,10 @@ export class SettingsService {
 
   get pinned(): boolean {
     return this.store.current.pinned;
+  }
+
+  get panelSize(): PanelSize {
+    return this.store.current.panelSize;
   }
 
   get shortcutAvailable(): boolean {
@@ -116,6 +121,16 @@ export class SettingsService {
       this.host.applyPinned(pinned);
       this.broadcast();
       return pinned;
+    });
+  }
+
+  setPanelSize(size: PanelSize): Promise<void> {
+    const stored = this.store.current.panelSize;
+    if (stored.width === size.width && stored.height === size.height) return Promise.resolve();
+    return this.serialize(async () => {
+      await this.store.change((data) => {
+        data.panelSize = { width: size.width, height: size.height };
+      });
     });
   }
 
