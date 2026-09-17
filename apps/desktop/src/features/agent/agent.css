@@ -107,7 +107,8 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 12px 16px 16px;
+  /* The band reserves room above the controls for the overlay fade to finish. */
+  padding: 24px 16px 16px;
 }
 .command-run-tools,
 .command-run-actions {
@@ -123,6 +124,7 @@
   max-height: calc(100dvh - 32px);
   flex-direction: column;
   gap: 16px;
+  --overlay-footer-gap: 16px;
   overflow: hidden;
 }
 .panel-dialog > [data-slot='dialog-header'],

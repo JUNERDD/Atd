@@ -12,6 +12,7 @@ import type { TaskInput } from '../../../electron/agent/task-schema';
 import { ParameterField } from '../commands/parameter-field';
 import { agentApi } from './use-agent';
 import { showErrorToast } from '../../components/toast-store';
+import { useOverlayFooter } from '../../components/use-overlay-footer';
 
 export function CommandInput({
   prepared,
@@ -33,6 +34,7 @@ export function CommandInput({
   pending: boolean;
 }) {
   const { t } = useTranslation('panel');
+  const footerRef = useOverlayFooter<HTMLElement>();
   const runLabel = customRunLabel ?? t('input.run');
   const { command, input } = prepared;
   const [validate, setValidate] = useState(false);
@@ -49,7 +51,7 @@ export function CommandInput({
   }
   return (
     <>
-      <ScrollArea className="panel-content">
+      <ScrollArea className="panel-content" viewportClassName="overlay-footer-fade">
         <section className="panel-content-body command-preparation" aria-label={t('input.label')}>
           <p className="truncate text-sm text-muted-foreground" title={command.description}>
             {command.description}
@@ -173,7 +175,7 @@ export function CommandInput({
             ))}
         </section>
       </ScrollArea>
-      <footer className="command-run-footer">
+      <footer ref={footerRef} className="command-run-footer overlay-footer">
         <div className="command-run-tools">
           {onPolicyChange && <TaskPolicyControl value={policy} onChange={onPolicyChange} />}
         </div>

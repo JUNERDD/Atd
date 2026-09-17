@@ -65,6 +65,8 @@
   gap: 12px;
   flex-shrink: 0;
   min-width: 0;
+  /* The band reserves room above the controls for the overlay fade to finish. */
+  padding-top: 24px;
 }
 .editor-footer > div {
   display: flex;

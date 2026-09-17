@@ -107,7 +107,7 @@ export function App() {
           </nav>
         </header>
         {view === 'new' && (
-          <ScrollArea className="panel-content">
+          <ScrollArea className="panel-content" viewportClassName="overlay-footer-fade">
             <section className="panel-content-body welcome">
               <h2 className="max-w-full truncate" title={t('welcome.title')}>
                 {t('welcome.title')}
@@ -162,7 +162,7 @@ export function App() {
               onContinue={() => submit(true)}
             />
           ) : (
-            <ScrollArea className="panel-content">
+            <ScrollArea className="panel-content" viewportClassName="overlay-footer-fade">
               <section className="panel-content-body">
                 <p className="text-sm text-muted-foreground">{t('header.loadingConversation')}</p>
               </section>

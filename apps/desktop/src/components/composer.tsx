@@ -13,6 +13,7 @@ import type { RunPolicy } from '../../electron/agent/run-policy';
 import { isActive } from '../../electron/agent/task-schema';
 import { IconButton } from './icon-button';
 import { ComposerConfiguration } from './composer-configuration';
+import { useOverlayFooter } from './use-overlay-footer';
 import { acceleratorToHotkey } from '../lib/shortcuts';
 import { agentApi } from '../features/agent/use-agent';
 import { showErrorToast } from './toast-store';
@@ -56,6 +57,7 @@ export function Composer({
   onPolicyChange,
 }: ComposerProps) {
   const { t } = useTranslation('panel');
+  const footerRef = useOverlayFooter<HTMLElement>();
   const [choosing, setChoosing] = useState(false);
   const textarea = useRef<HTMLTextAreaElement>(null);
   const hasContent = Boolean(draft.text.trim() || draft.files.length);
@@ -137,7 +139,7 @@ export function Composer({
     }
   }
   return (
-    <footer className="panel-footer">
+    <footer ref={footerRef} className="panel-footer overlay-footer">
       <form
         className="composer"
         aria-label={followup ? t('composer.followUpForm') : t('composer.newTaskForm')}

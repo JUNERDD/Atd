@@ -6,24 +6,17 @@ import { useTranslation } from 'react-i18next';
 import { Button } from '@ai/ui/components/button';
 import { Shimmer } from '@ai/ui/components/ai-elements/shimmer';
 import { ScrollArea } from '@ai/ui/components/scroll-area';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@ai/ui/components/dialog';
 import type { TaskDetail } from '../../../electron/agent/bridge';
 import { isActive, type FileRef, type TaskRun } from '../../../electron/agent/task-schema';
 import { IconButton } from '../../components/icon-button';
 import { pendingMessageText, snapshotForMessage } from './pending-message-text';
+import { TaskReviewDialog } from './task-review-dialog';
 import { UserContext } from './user-context';
 import { TaskFiles } from './task-files';
 import { ToolActivity } from './tool-activity';
 import { TaskRequest } from './task-request';
 import { agentApi } from './use-agent';
-import { showErrorToast, showToast } from '../../components/toast-store';
-import { copyCommand } from '../../../electron/agent/command-templates';
+import { showErrorToast } from '../../components/toast-store';
 
 const COPIED_DURATION_MS = 1_000;
 
@@ -75,6 +68,7 @@ export function Conversation({
       <ScrollArea
         viewportRef={scroller}
         className="conversation-scroll"
+        viewportClassName="overlay-footer-fade"
         viewportProps={{
           onScroll: (event) => {
             const node = event.currentTarget;
@@ -260,89 +254,14 @@ export function Conversation({
           )}
         </div>
       </ScrollArea>
-      <Dialog open={review} onOpenChange={setReview}>
-        <DialogContent className="panel-dialog">
-          <DialogHeader>
-            <DialogTitle>{t('review.title')}</DialogTitle>
-            <DialogDescription>{t('review.description')}</DialogDescription>
-          </DialogHeader>
-          <ScrollArea className="panel-dialog-scroll" gutter>
-            <div className="panel-dialog-body">
-              {task.runs.map((item) => (
-                <section key={item.id} className="space-y-2 border-b border-border pb-4">
-                  <p
-                    className="truncate text-sm font-medium"
-                    title={`${item.snapshot.command?.name ?? t('review.conversation')} · ${t(`status.${item.status}`)}${item.snapshot.command ? ` · ${t('review.version', { revision: item.snapshot.command.revision })}` : ''}`}
-                  >
-                    {item.snapshot.command?.name ?? t('review.conversation')} ·{' '}
-                    {t(`status.${item.status}`)}
-                    {item.snapshot.command &&
-                      ` · ${t('review.version', { revision: item.snapshot.command.revision })}`}
-                  </p>
-                  <p
-                    className="truncate text-xs text-muted-foreground"
-                    title={`${item.snapshot.model.modelId} · ${item.snapshot.memory ? t('review.memoryOn') : t('review.memoryOff')} · ${item.snapshot.tools.join(', ')}`}
-                  >
-                    {item.snapshot.model.modelId} ·{' '}
-                    {item.snapshot.memory ? t('review.memoryOn') : t('review.memoryOff')} ·{' '}
-                    {item.snapshot.tools.join(', ')}
-                  </p>
-                  <ScrollArea className="review-text" viewportClassName="text-preview-viewport">
-                    <pre>{item.snapshot.input.text}</pre>
-                  </ScrollArea>
-                  {item.snapshot.instructions && (
-                    <details>
-                      <summary className="text-sm cursor-pointer">
-                        {t('review.savedInstructions')}
-                      </summary>
-                      <ScrollArea className="review-text" viewportClassName="text-preview-viewport">
-                        <pre>{item.snapshot.instructions}</pre>
-                      </ScrollArea>
-                    </details>
-                  )}
-                  <Button
-                    variant="outline"
-                    className="task-review-action"
-                    onClick={() => {
-                      setReview(false);
-                      onRerun(item);
-                    }}
-                  >
-                    {t('review.useSavedVersion')}
-                  </Button>
-                  {item.snapshot.command && (
-                    <Button
-                      variant="ghost"
-                      onClick={() => {
-                        if (item.snapshot.command)
-                          void agentApi()
-                            .saveCommand(copyCommand(item.snapshot.command, crypto.randomUUID()), 0)
-                            .then(() =>
-                              showToast({ kind: 'info', text: t('review.commandCopied') }),
-                            )
-                            .catch((error) => showErrorToast(error));
-                      }}
-                    >
-                      {t('review.saveAsCommand')}
-                    </Button>
-                  )}
-                </section>
-              ))}
-            </div>
-          </ScrollArea>
-          {run?.status === 'interrupted' && (
-            <Button
-              onClick={() => {
-                void onContinue()
-                  .then(() => setReview(false))
-                  .catch((error) => showErrorToast(error));
-              }}
-            >
-              {t('review.continue')}
-            </Button>
-          )}
-        </DialogContent>
-      </Dialog>
+      <TaskReviewDialog
+        open={review}
+        onOpenChange={setReview}
+        runs={task.runs}
+        interrupted={run?.status === 'interrupted'}
+        onRerun={onRerun}
+        onContinue={onContinue}
+      />
     </div>
   );
 }
