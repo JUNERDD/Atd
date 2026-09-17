@@ -37,6 +37,7 @@ function ScrollArea({
   viewportRef,
   viewportProps,
   orientation = 'vertical',
+  gutter = false,
   ...props
 }: React.ComponentProps<typeof ScrollAreaRoot> & {
   viewportClassName?: string;
@@ -46,12 +47,18 @@ function ScrollArea({
     'children' | 'className' | 'ref'
   >;
   orientation?: 'vertical' | 'horizontal' | 'both';
+  /** Reserve a trailing column so the vertical bar never covers content. */
+  gutter?: boolean;
 }) {
   return (
     <ScrollAreaRoot {...props}>
       <ScrollAreaViewport
         ref={viewportRef}
-        className={cn(orientation !== 'vertical' && '[&>div]:table!', viewportClassName)}
+        className={cn(
+          gutter && orientation !== 'horizontal' && 'pr-3',
+          orientation !== 'vertical' && '[&>div]:table!',
+          viewportClassName,
+        )}
         {...viewportProps}
       >
         {children}
@@ -74,14 +81,14 @@ function ScrollBar({
       data-orientation={orientation}
       orientation={orientation}
       className={cn(
-        'flex touch-none p-px transition-colors select-none data-horizontal:h-2.5 data-horizontal:flex-col data-horizontal:border-t data-horizontal:border-t-transparent data-vertical:h-full data-vertical:w-2.5 data-vertical:border-l data-vertical:border-l-transparent',
+        'group/scrollbar flex touch-none p-px transition-colors select-none data-horizontal:h-2.5 data-horizontal:flex-col data-horizontal:border-t data-horizontal:border-t-transparent data-vertical:h-full data-vertical:w-2.5 data-vertical:border-l data-vertical:border-l-transparent',
         className,
       )}
       {...props}
     >
       <ScrollAreaPrimitive.ScrollAreaThumb
         data-slot="scroll-area-thumb"
-        className="relative flex-1 rounded-full bg-border"
+        className="relative flex-1 rounded-full bg-border transition-colors group-hover/scrollbar:bg-muted-foreground/50 active:bg-muted-foreground/70"
       />
     </ScrollAreaPrimitive.ScrollAreaScrollbar>
   );

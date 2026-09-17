@@ -1,6 +1,5 @@
 import * as React from 'react';
 import { Command as CommandPrimitive } from 'cmdk';
-export { defaultFilter as commandFilter } from 'cmdk';
 import { cn } from '@ai/ui/lib/utils';
 
 import {
@@ -58,8 +57,12 @@ function CommandDialog({
 
 function CommandInput({
   className,
+  action,
   ...props
-}: React.ComponentProps<typeof CommandPrimitive.Input>) {
+}: React.ComponentProps<typeof CommandPrimitive.Input> & {
+  /** Optional trailing control rendered inside the field, opposite the search icon. */
+  action?: React.ReactNode;
+}) {
   return (
     <div data-slot="command-input-wrapper" className="p-1 pb-0">
       <InputGroup className="h-8! bg-input/50">
@@ -71,6 +74,11 @@ function CommandInput({
           )}
           {...props}
         />
+        {action && (
+          <InputGroupAddon align="inline-end" className="py-0">
+            {action}
+          </InputGroupAddon>
+        )}
         <InputGroupAddon>
           <SearchIcon className="size-4 shrink-0 opacity-50" />
         </InputGroupAddon>
@@ -81,11 +89,16 @@ function CommandInput({
 
 function CommandList({
   className,
+  gutter = false,
   children,
   ...props
-}: React.ComponentProps<typeof CommandPrimitive.List>) {
+}: React.ComponentProps<typeof CommandPrimitive.List> & { gutter?: boolean }) {
   return (
-    <ScrollArea className={cn('min-h-0 max-h-72', className)} viewportClassName="max-h-[inherit]">
+    <ScrollArea
+      className={cn('min-h-0 max-h-72', className)}
+      viewportClassName="max-h-[inherit]"
+      gutter={gutter}
+    >
       <CommandPrimitive.List
         data-slot="command-list"
         className="scroll-py-1 outline-none"
