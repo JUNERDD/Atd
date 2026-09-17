@@ -19,6 +19,7 @@ import { parse } from '../../../electron/agent/validation';
 import { parameterError } from '../../../electron/agent/command-validation';
 import { SettingsHeading } from '../settings/settings-heading';
 import { IconButton } from '../../components/icon-button';
+import { FieldHint } from '../../components/field-hint';
 import { useOverlayFooter } from '../../components/use-overlay-footer';
 import { messageOf } from '../../lib/errors';
 import { ParameterField } from './parameter-field';
@@ -113,20 +114,15 @@ export function ParameterEditor({
               />
             </div>
             <div className="settings-field">
-              <Label htmlFor="parameter-key">{t('parameters.key')}</Label>
-              <div className="settings-field">
-                <Input
-                  id="parameter-key"
-                  value={draft.key}
-                  onChange={(event) => setDraft({ ...draft, key: event.target.value })}
-                />
-                <p
-                  className="truncate text-xs text-muted-foreground"
-                  title={t('parameters.keyHint')}
-                >
-                  {t('parameters.keyHint')}
-                </p>
+              <div className="flex items-center gap-1.5">
+                <Label htmlFor="parameter-key">{t('parameters.key')}</Label>
+                <FieldHint text={t('parameters.keyHint')} />
               </div>
+              <Input
+                id="parameter-key"
+                value={draft.key}
+                onChange={(event) => setDraft({ ...draft, key: event.target.value })}
+              />
             </div>
           </div>
           <div className="settings-field">
@@ -209,7 +205,10 @@ export function ParameterEditor({
           {draft.type === 'enum' && (
             <section className="settings-field">
               <div className="flex items-center justify-between">
-                <Label>{t('parameters.options')}</Label>
+                <div className="flex items-center gap-1.5">
+                  <Label>{t('parameters.options')}</Label>
+                  <FieldHint text={t('parameters.optionsHint')} />
+                </div>
                 <Button
                   variant="outline"
                   onClick={() =>
@@ -220,12 +219,6 @@ export function ParameterEditor({
                   {t('parameters.addOption')}
                 </Button>
               </div>
-              <p
-                className="truncate text-xs text-muted-foreground"
-                title={t('parameters.optionsHint')}
-              >
-                {t('parameters.optionsHint')}
-              </p>
               {draft.options.map((option, index) => (
                 <div className="option-row" key={index}>
                   <div className="field-columns aligned-fields">
