@@ -332,6 +332,7 @@ export function useTaskPanel() {
     draftRevision,
     draft,
     shortcuts,
+    platform,
     newTask,
     openSettings,
     hide,

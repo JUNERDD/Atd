@@ -272,7 +272,10 @@ describe('task panel', () => {
     await waitFor(() => expect(setPinned).toHaveBeenLastCalledWith(false));
     expect(screen.getByRole('switch', { name: 'Always on top' })).not.toBeChecked();
     settingsView.unmount();
-    await user.click(screen.getByRole('button', { name: 'Hide panel' }));
+    // macOS dismisses the panel through the native traffic lights, so Escape is the only
+    // renderer-side path to the hide bridge.
+    expect(screen.queryByRole('button', { name: 'Hide panel' })).toBeNull();
+    await user.keyboard('{Escape}');
     expect(hide).toHaveBeenCalledOnce();
   });
 
