@@ -125,7 +125,6 @@
     "title": "Instructions",
     "referenceError": "Enable or define {{variables}}.",
     "syntaxError": "Check the variable syntax.",
-    "find": "Find a variable",
     "available": "Available variables",
     "hint": "Use variables for task input. Type {{ to see suggestions."
   },
@@ -147,23 +146,12 @@
   },
   "variables": {
     "suggestions": "Variable suggestions",
-    "insert": "Insert variable",
-    "done": "Done",
-    "search": "Search variables…",
-    "empty": "No variables found.",
-    "builtIn": "Built-in context",
-    "yourParameters": "Your parameters",
-    "noParameters": "No custom parameters yet",
-    "enableFirst": "enable this source first",
     "inputDetail": "Main text · chosen when the command runs",
     "filesDetail": "File attachments",
     "selectionDetail": "Selected text · captured before the panel opens",
     "clipboardDetail": "Clipboard text · only captured when requested",
     "parameterDetail": "{{label}} · {{type}}",
     "parameterDetailDefault": "{{label}} · {{type}} · Default: {{value}}",
-    "configure": "Configure",
-    "configureFor": "Configure {{name}} source",
-    "insertFor": "Insert {{name}}",
-    "footerHint": "↑ ↓ to choose · Enter to insert · Esc to close"
+    "configureFor": "Configure {{name}} source"
   }
 }

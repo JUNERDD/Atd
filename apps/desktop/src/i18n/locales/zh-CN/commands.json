@@ -125,7 +125,6 @@
     "title": "指令",
     "referenceError": "请启用或定义 {{variables}}。",
     "syntaxError": "请检查变量语法。",
-    "find": "查找变量",
     "available": "可用变量",
     "hint": "使用变量引用任务输入。输入 {{ 即可查看建议。"
   },
@@ -147,23 +146,12 @@
   },
   "variables": {
     "suggestions": "变量建议",
-    "insert": "插入变量",
-    "done": "完成",
-    "search": "搜索变量…",
-    "empty": "未找到变量。",
-    "builtIn": "内置上下文",
-    "yourParameters": "你的参数",
-    "noParameters": "还没有自定义参数",
-    "enableFirst": "请先启用此来源",
     "inputDetail": "主文本 · 命令运行时选择",
     "filesDetail": "文件附件",
     "selectionDetail": "选中文本 · 在面板打开前捕获",
     "clipboardDetail": "剪贴板文本 · 仅在需要时捕获",
     "parameterDetail": "{{label}} · {{type}}",
     "parameterDetailDefault": "{{label}} · {{type}} · 默认：{{value}}",
-    "configure": "配置",
-    "configureFor": "配置 {{name}} 来源",
-    "insertFor": "插入 {{name}}",
-    "footerHint": "↑ ↓ 选择 · Enter 插入 · Esc 关闭"
+    "configureFor": "配置 {{name}} 来源"
   }
 }
