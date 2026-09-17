@@ -79,7 +79,7 @@ export function App() {
             className="header-button panel-logo-button"
             onClick={newTask}
           >
-            <Astroid className="size-5" />
+            <Astroid />
           </IconButton>
           <h1 title={title}>{title}</h1>
           <nav className="header-controls" aria-label={t('header.controlsLabel')}>

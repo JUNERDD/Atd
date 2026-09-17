@@ -102,7 +102,7 @@ html[data-platform='darwin'] .panel-header {
 }
 
 .panel-logo-button {
-  /* Expand the hit area around the existing 20px logo without shifting the title. */
+  /* Overlap the header padding and title gap by 4px per side so the 28px hit area adds no visible inset around the 16px icon. */
   margin-inline: -4px;
 }
 
