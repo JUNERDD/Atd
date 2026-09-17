@@ -62,6 +62,9 @@
   flex-shrink: 0;
   height: 40px;
   padding: 0 40px;
+}
+/* The strip stays part of the window drag region; only its controls opt out. */
+.settings-content-header [data-slot='select-trigger'] {
   -webkit-app-region: no-drag;
 }
 .settings-scroll-area {
