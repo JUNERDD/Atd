@@ -119,22 +119,6 @@
 .variable-chips button {
   max-width: 100%;
 }
-.variable-picker {
-  width: max-content;
-  min-width: min(320px, var(--radix-popover-content-available-width));
-  max-width: min(460px, var(--radix-popover-content-available-width));
-  max-height: var(--radix-popover-content-available-height);
-  backdrop-filter: blur(var(--ata-backdrop-blur));
-}
-.variable-picker [data-slot='command'] {
-  background: transparent;
-}
-.variable-picker [data-slot='command-input-wrapper'] {
-  flex-shrink: 0;
-}
-.variable-picker [data-slot='command-item'] {
-  cursor: pointer;
-}
 .instruction-editor {
   overflow: hidden;
   border-radius: var(--radius-2xl);
@@ -287,27 +271,12 @@
   min-height: 0;
 }
 
-.variable-option > svg:last-child {
-  display: none;
-}
-.variable-option {
-  min-height: 50px;
-}
-
 .instruction-toolbar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-}
-.instruction-actions {
-  display: flex;
-  flex-wrap: nowrap;
-  gap: 8px;
-}
-.instruction-actions button {
-  flex-shrink: 0;
 }
 .editor-heading {
   flex-shrink: 0;
