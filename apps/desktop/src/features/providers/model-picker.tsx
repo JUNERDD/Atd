@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Settings2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@ai/ui/components/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@ai/ui/components/popover';
 import {
@@ -11,6 +12,8 @@ import {
   CommandList,
 } from '@ai/ui/components/command';
 import type { Connection, ModelReference } from '../../../electron/providers/schema';
+import { IconButton } from '../../components/icon-button';
+import { sortModels } from './model-order';
 import { ProviderBrand } from './provider-brand';
 
 export function ModelPicker({
@@ -32,16 +35,17 @@ export function ModelPicker({
   disabled?: boolean;
   onOpenProviders?: () => void;
 }) {
+  const { t } = useTranslation('providers');
   const [open, setOpen] = useState(false);
   const connection = connections.find((item) => item.connectionId === value?.connectionId);
   const name =
     connection?.catalog.find((model) => model.id === value?.modelId)?.name ??
-    (value?.modelId || 'Choose model');
+    (value?.modelId || t('models.choose'));
   const unavailable = Boolean(
     value?.modelId &&
     (!connection?.connected || !connection.catalog.some((model) => model.id === value.modelId)),
   );
-  const displayName = unavailable ? `${name} · Unavailable` : name;
+  const displayName = unavailable ? t('models.unavailable', { name }) : name;
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -65,8 +69,21 @@ export function ModelPicker({
       >
         <Command className="bg-transparent min-h-0">
           <CommandInput
-            placeholder="Search models…"
-            aria-label={scoped ? `${label}: search models` : 'Search models'}
+            placeholder={t('models.searchPlaceholder')}
+            aria-label={scoped ? t('models.searchScopedLabel', { label }) : t('models.searchLabel')}
+            action={
+              onOpenProviders && (
+                <IconButton
+                  label={t('models.manageProviders')}
+                  onClick={() => {
+                    setOpen(false);
+                    onOpenProviders();
+                  }}
+                >
+                  <Settings2 />
+                </IconButton>
+              )
+            }
           />
           <CommandList className="min-h-0 flex-1 max-h-none">
             {connections
@@ -79,8 +96,8 @@ export function ModelPicker({
               ))}
             <CommandEmpty>
               {connections.some((item) => item.catalog.length)
-                ? 'No matching models'
-                : 'No models available'}
+                ? t('models.noMatch')
+                : t('models.none')}
             </CommandEmpty>
             {connections.map((item) => (
               <CommandGroup
@@ -88,7 +105,7 @@ export function ModelPicker({
                 heading={scoped ? undefined : item.name}
                 title={item.name}
               >
-                {item.catalog.map((model) => (
+                {sortModels(item.catalog).map((model) => (
                   <CommandItem
                     key={model.id}
                     value={`${item.connectionId} ${model.id}`}
@@ -117,21 +134,6 @@ export function ModelPicker({
               </CommandGroup>
             ))}
           </CommandList>
-          {onOpenProviders && (
-            <div className="shrink-0 p-1">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="w-full justify-start"
-                onClick={() => {
-                  setOpen(false);
-                  onOpenProviders();
-                }}
-              >
-                Manage providers
-              </Button>
-            </div>
-          )}
         </Command>
       </PopoverContent>
     </Popover>

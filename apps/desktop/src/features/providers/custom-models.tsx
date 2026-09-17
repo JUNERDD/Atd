@@ -1,4 +1,5 @@
 import { Plus, Trash2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@ai/ui/components/button';
 import { Input } from '@ai/ui/components/input';
 import { Label } from '@ai/ui/components/label';
@@ -12,6 +13,7 @@ import {
 import { Switch } from '@ai/ui/components/switch';
 import { IconButton } from '../../components/icon-button';
 import type { ModelDefinition } from '../../../electron/providers/schema';
+import { sortModels } from './model-order';
 
 export function CustomModels({
   models,
@@ -24,13 +26,17 @@ export function CustomModels({
   baseUrl: string;
   onChange: (models: ModelDefinition[]) => void;
 }) {
+  const { t } = useTranslation('providers');
   function update(index: number, patch: Partial<ModelDefinition>) {
     onChange(models.map((model, i) => (i === index ? { ...model, ...patch } : model)));
   }
+  const candidates = sortModels(
+    discovered.filter((model) => !models.some((item) => item.id === model.id)),
+  );
   return (
     <section className="settings-field">
       <div className="settings-field-label">
-        <h3 className="font-medium">Custom models</h3>
+        <h3 className="font-medium">{t('customModels.title')}</h3>
         <Button
           size="xs"
           variant="outline"
@@ -53,41 +59,35 @@ export function CustomModels({
           }
         >
           <Plus />
-          Add model
+          {t('customModels.add')}
         </Button>
       </div>
-      <p className="settings-field-note">
-        For services without a model directory, enter the exact model ID and capabilities.
-        Discovered compatible models initially use text input, a 32,768-token context and
-        4,096-token output limit. Configure a model to match your server.
-      </p>
-      {discovered.filter((model) => !models.some((item) => item.id === model.id)).length > 0 && (
+      <p className="settings-field-note">{t('customModels.description')}</p>
+      {candidates.length > 0 && (
         <div className="flex flex-wrap gap-2">
-          {discovered
-            .filter((model) => !models.some((item) => item.id === model.id))
-            .map((model) => (
-              <Button
-                variant="outline"
-                size="xs"
-                key={model.id}
-                className="max-w-full"
-                title={model.id}
-                disabled={models.length >= 100}
-                onClick={() => onChange([...models, model])}
-              >
-                <span className="truncate">Configure {model.name}</span>
-              </Button>
-            ))}
+          {candidates.map((model) => (
+            <Button
+              variant="outline"
+              size="xs"
+              key={model.id}
+              className="max-w-full"
+              title={model.id}
+              disabled={models.length >= 100}
+              onClick={() => onChange([...models, model])}
+            >
+              <span className="truncate">{t('customModels.configure', { name: model.name })}</span>
+            </Button>
+          ))}
         </div>
       )}
       {models.map((model, index) => (
         <div className="custom-model-fields settings-fields" key={index}>
           <div className="settings-field">
             <div className="settings-field-label">
-              <Label htmlFor={`custom-model-${index}`}>Model ID</Label>
+              <Label htmlFor={`custom-model-${index}`}>{t('customModels.modelId')}</Label>
               <IconButton
-                label="Remove"
-                aria-label={`Remove model ${index + 1}`}
+                label={t('customModels.remove')}
+                aria-label={t('customModels.removeLabel', { index: index + 1 })}
                 onClick={() => onChange(models.filter((_, i) => i !== index))}
               >
                 <Trash2 />
@@ -100,13 +100,13 @@ export function CustomModels({
               onChange={(event) =>
                 update(index, { id: event.target.value, name: event.target.value })
               }
-              placeholder="Exact model ID"
+              placeholder={t('customModels.modelIdPlaceholder')}
             />
           </div>
           <div className="settings-field">
-            <Label>Protocol</Label>
+            <Label>{t('customModels.protocol')}</Label>
             <Select value={model.api} onValueChange={(api) => update(index, { api })}>
-              <SelectTrigger aria-label={`Protocol for model ${index + 1}`}>
+              <SelectTrigger aria-label={t('customModels.protocolLabel', { index: index + 1 })}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -119,7 +119,7 @@ export function CustomModels({
           </div>
           <div className="field-columns aligned-fields">
             <div className="settings-field">
-              <Label htmlFor={`context-${index}`}>Context window</Label>
+              <Label htmlFor={`context-${index}`}>{t('customModels.contextWindow')}</Label>
               <Input
                 id={`context-${index}`}
                 type="number"
@@ -129,7 +129,7 @@ export function CustomModels({
               />
             </div>
             <div className="settings-field">
-              <Label htmlFor={`output-${index}`}>Maximum output tokens</Label>
+              <Label htmlFor={`output-${index}`}>{t('customModels.maxOutput')}</Label>
               <Input
                 id={`output-${index}`}
                 type="number"
@@ -140,7 +140,7 @@ export function CustomModels({
             </div>
           </div>
           <div className="settings-field-label">
-            <Label htmlFor={`reasoning-${index}`}>Reasoning</Label>
+            <Label htmlFor={`reasoning-${index}`}>{t('customModels.reasoning')}</Label>
             <Switch
               id={`reasoning-${index}`}
               checked={model.reasoning}
@@ -148,7 +148,7 @@ export function CustomModels({
             />
           </div>
           <div className="settings-field-label">
-            <Label htmlFor={`images-${index}`}>Image input</Label>
+            <Label htmlFor={`images-${index}`}>{t('customModels.imageInput')}</Label>
             <Switch
               id={`images-${index}`}
               checked={model.input.includes('image')}

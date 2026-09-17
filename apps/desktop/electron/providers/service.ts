@@ -9,7 +9,9 @@ import {
   ModelReferenceSchema,
   PROVIDER_IPC,
   type ConnectionDraft,
+  type ModelDefinition,
   type ModelReference,
+  type StoredConnection,
 } from './schema';
 import {
   configurationId,
@@ -21,25 +23,40 @@ import {
 import { decryptCredential, encryptCredential } from './credentials';
 import { ProviderRuntime } from './runtime';
 import { ProviderLogin } from './login';
+import { CatalogSync } from './catalog-sync';
 import { refreshLocalModels } from './local-models';
 import { refreshLlamaModels } from './llama-models';
 import { initialDefaultConnectionId } from './defaults';
 
 const identity = Type.String({ minLength: 1, maxLength: 256, pattern: '^[a-zA-Z0-9_-]+$' });
 const revisionSchema = Type.Integer({ minimum: 1 });
+const CATALOG_REFRESH_FAILED =
+  'Could not refresh models. Your saved catalog and model preference are preserved.';
+
+type CatalogSyncMode = 'restore' | 'manual' | 'background';
+
 export class ProviderService {
   readonly runtime: ProviderRuntime;
   readonly login: ProviderLogin;
+  private readonly catalogSync: CatalogSync;
   constructor(
     private store: SettingsStore,
     private changed: () => void,
     publish: (channel: string, value: unknown) => void,
   ) {
     this.runtime = new ProviderRuntime(store);
+    this.catalogSync = new CatalogSync(
+      () => this.store.current.connections,
+      (connectionId) => this.syncInBackground(connectionId),
+    );
     this.login = new ProviderLogin(
       this.runtime,
       (state) => publish(PROVIDER_IPC.loginEvent, state),
-      changed,
+      (connectionId) => {
+        changed();
+        // Signed-in providers can expose models that need the new credential.
+        void this.syncInBackground(connectionId);
+      },
     );
   }
   async save(value: ConnectionDraft) {
@@ -110,6 +127,8 @@ export class ProviderService {
     this.runtime.invalidate(id);
     // Static catalogs are available without a billable verification or authentication request.
     await this.refresh(id, false);
+    // Model discovery continues in the background so saving stays responsive.
+    void this.syncInBackground(id);
     this.changed();
     return publicConnection(this.runtime.connection(id));
   }
@@ -158,30 +177,29 @@ export class ProviderService {
     this.runtime.invalidate(id);
     this.changed();
   }
+  /** Start automatic catalog refreshes; the first pass runs immediately. */
+  startCatalogSync() {
+    this.catalogSync.start();
+  }
+  /** Refresh one connection's catalog without blocking or reporting failures. */
+  syncInBackground(id: string): Promise<boolean> {
+    // Implicit refreshes honor the SDK's offline switch; manual refreshes stay explicit.
+    if (process.env.PI_OFFLINE !== undefined) return Promise.resolve(false);
+    return this.syncCatalog(id, 'background').catch(() => false);
+  }
   async refresh(id: string, network = true) {
+    await this.syncCatalog(id, network ? 'manual' : 'restore');
+  }
+  /**
+   * Refresh one connection's saved catalog snapshot.
+   * `restore` uses cached catalogs only, `manual` reports failures to the caller,
+   * and `background` keeps failures silent.
+   */
+  private async syncCatalog(id: string, mode: CatalogSyncMode): Promise<boolean> {
     const connection = this.runtime.connection(id);
     const configuration = configurationId(connection);
     try {
-      const models = await this.runtime.models(connection);
-      let catalog;
-      if (network && isCustom(connection.provider)) {
-        if (!connection.connected) throw new Error('Reconnect before refreshing.');
-        const auth = await models.getAuth(connection.provider);
-        if (!auth) throw new Error('Complete authentication before refreshing.');
-        catalog = await (connection.provider === 'llamacpp'
-          ? refreshLlamaModels(connection, auth)
-          : refreshLocalModels(connection, auth));
-      } else {
-        const result = await models.refresh({
-          providers: [connection.provider],
-          allowNetwork: network,
-          force: network,
-          signal: AbortSignal.timeout(15000),
-        });
-        if (result.aborted || result.errors.size)
-          throw new Error('The model catalog could not be refreshed.');
-        catalog = models.getModels(connection.provider).map(modelDefinition);
-      }
+      const catalog = await this.loadCatalog(connection, mode);
       await this.store.change((data) => {
         const current = data.connections.find((item) => item.connectionId === id);
         if (current && configurationId(current) === configuration) {
@@ -190,21 +208,43 @@ export class ProviderService {
         }
       });
       if (isCustom(connection.provider)) this.runtime.invalidate(id);
+      this.changed();
+      return true;
     } catch {
+      if (mode === 'background') return false;
       await this.store.change((data) => {
         const current = data.connections.find((item) => item.connectionId === id);
         if (current && configurationId(current) === configuration)
-          current.catalogError =
-            'Could not refresh models. Your saved catalog and model preference are preserved.';
+          current.catalogError = CATALOG_REFRESH_FAILED;
       });
-      if (network) {
-        this.changed();
-        throw new Error(
-          'Could not refresh models. Your saved catalog and model preference are preserved.',
-        );
-      }
+      this.changed();
+      if (mode === 'manual') throw new Error(CATALOG_REFRESH_FAILED);
+      return false;
     }
-    this.changed();
+  }
+  private async loadCatalog(
+    connection: StoredConnection,
+    mode: CatalogSyncMode,
+  ): Promise<ModelDefinition[]> {
+    const network = mode !== 'restore';
+    const models = await this.runtime.models(connection);
+    if (network && isCustom(connection.provider)) {
+      if (!connection.connected) throw new Error('Reconnect before refreshing.');
+      const auth = await models.getAuth(connection.provider);
+      if (!auth) throw new Error('Complete authentication before refreshing.');
+      return connection.provider === 'llamacpp'
+        ? refreshLlamaModels(connection, auth)
+        : refreshLocalModels(connection, auth);
+    }
+    const result = await models.refresh({
+      providers: [connection.provider],
+      allowNetwork: network,
+      force: mode === 'manual',
+      signal: AbortSignal.timeout(15000),
+    });
+    if (result.aborted || result.errors.size)
+      throw new Error('The model catalog could not be refreshed.');
+    return models.getModels(connection.provider).map(modelDefinition);
   }
   async verify(reference: ModelReference) {
     const selected = await this.runtime.resolve(reference);
