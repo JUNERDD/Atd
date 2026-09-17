@@ -360,3 +360,13 @@ Figma 侧未同步：本会话没有可用的 Figma 工具（云端与本地均�
 验证：定向 oxfmt／Oxlint、`pnpm lint`、`pnpm typecheck`、`pnpm --filter @ai/desktop test`（20 个既有单元测试）通过。未启动应用运行时，因此下拉位置与等宽表现、长目录滚动、禁用与窄窗口布局尚未复核。
 
 Figma 侧未同步：本会话没有可用的 Figma 工具，无法读取或更新提供商详情表单中该字段的组件引用；待有写权限时把该字段同步为 Rhea Select，并把 `App / Provider selection menu` 留给连接行消费者。
+
+## 2026-09-17 面板 header 图标尺寸统一
+
+用户截图指出主面板 header 的 logo 按钮（`Astroid`，原先 20px）比右侧历史／设置按钮（16px）大，要求统一按钮图标尺寸。
+
+实现归属：`App.tsx` 的 `<Astroid />` 去掉 `size-5`，改由共享 `Button` 的 `[&_svg:not([class*='size-'])]:size-4` 决定 16px，与同 header 内 `IconButton`（`icon-sm`，28px）的其他共享 Lucide 图标一致；`.panel-logo-button` 的 `margin-inline: -4px` 与标题位置保持不变，只更新了已过时的「20px logo」注释。AGENTS.md「shadcn Preset Fidelity」例外清单仍列有 logo sizing，本次未改动该文件。
+
+验证：定向 oxfmt／Oxlint、`pnpm --filter @ai/desktop typecheck`、`pnpm --filter @ai/desktop test`（20 个既有单元测试）通过。未启动应用运行时，因此实际渲染尺寸、与标题的视觉间距及原生合成外观尚未复核。
+
+Figma 侧未同步：本会话没有可用的 Figma 工具（云端与本地均未连接），无法把 [Panel header](https://www.figma.com/design/D9YK1tEeBTEBgstcepesW5/ai?node-id=71-112)（`71:112`）主组件内的 logo 实例从 20px 改为与共享 Lucide 图标一致的 16px；待有写权限时同步该主组件、`App / Icon button` 消费者与响应式评审帧。
