@@ -1,5 +1,5 @@
 import { Type, type Static } from 'typebox';
-import { Identifier, ToolIdSchema } from './command-schema';
+import { CommandFieldsSchema, Identifier, ToolIdSchema } from './command-schema';
 
 export const ToolArgumentsSchema = Type.Object(
   {
@@ -44,5 +44,24 @@ export const NativeRequestSchema = Type.Union([
     cwd: Type.String(),
   }),
   Type.Object({ action: Type.Literal('release'), grant: Identifier }),
+  Type.Object({ action: Type.Literal('commandList'), taskId: Identifier, runId: Identifier }),
+  Type.Object({
+    action: Type.Literal('commandGet'),
+    taskId: Identifier,
+    runId: Identifier,
+    commandId: Identifier,
+  }),
+  Type.Object({
+    action: Type.Literal('commandSave'),
+    taskId: Identifier,
+    runId: Identifier,
+    commandId: Type.Union([Identifier, Type.Null()]),
+    expectedRevision: Type.Union([Type.Integer({ minimum: 1 }), Type.Null()]),
+    fields: CommandFieldsSchema,
+  }),
 ]);
 export type NativeRequest = Static<typeof NativeRequestSchema>;
+export type CommandRequest = Extract<
+  NativeRequest,
+  { action: 'commandList' | 'commandGet' | 'commandSave' }
+>;

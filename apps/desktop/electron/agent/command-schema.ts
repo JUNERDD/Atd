@@ -11,6 +11,7 @@ export const ToolIdSchema = Type.Union([
   Type.Literal('write'),
   Type.Literal('edit'),
   Type.Literal('bash'),
+  Type.Literal('command'),
 ]);
 export type ToolId = Static<typeof ToolIdSchema>;
 
@@ -119,6 +120,58 @@ export const CommandSchema = Type.Object(
 );
 export type CommandDefinition = Static<typeof CommandSchema>;
 
+/** The fields the command tool may author; identity, state and model stay with the stored command. */
+export const CommandFieldsSchema = Type.Object(
+  {
+    name: CommandSchema.properties.name,
+    description: CommandSchema.properties.description,
+    instructions: CommandSchema.properties.instructions,
+    input: CommandSchema.properties.input,
+    parameters: Type.Array(ParameterSchema, { maxItems: 20 }),
+    tools: Type.Array(ToolIdSchema, { uniqueItems: true }),
+    memory: CommandSchema.properties.memory,
+  },
+  { additionalProperties: false },
+);
+export type CommandFields = Static<typeof CommandFieldsSchema>;
+
+export const CommandToolSchema = Type.Union([
+  Type.Object({ operation: Type.Literal('list') }, { additionalProperties: false }),
+  Type.Object(
+    { operation: Type.Literal('get'), commandId: Identifier },
+    { additionalProperties: false },
+  ),
+  Type.Object(
+    {
+      operation: Type.Literal('save'),
+      commandId: Type.Union([Identifier, Type.Null()]),
+      expectedRevision: Type.Union([Type.Integer({ minimum: 1 }), Type.Null()]),
+      fields: CommandFieldsSchema,
+    },
+    { additionalProperties: false },
+  ),
+]);
+export type CommandToolArguments = Static<typeof CommandToolSchema>;
+
+/** Command tool replies; the worker parses the native response with these schemas. */
+export const CommandSummarySchema = Type.Object(
+  {
+    id: Identifier,
+    revision: Type.Integer({ minimum: 1 }),
+    name: CommandSchema.properties.name,
+    description: CommandSchema.properties.description,
+  },
+  { additionalProperties: false },
+);
+export const CommandSaveResultSchema = Type.Object(
+  {
+    id: Identifier,
+    revision: Type.Integer({ minimum: 1 }),
+    name: CommandSchema.properties.name,
+  },
+  { additionalProperties: false },
+);
+
 /** The native registry is the source of available tools; definitions store explicit IDs. */
 export const TOOL_DESCRIPTIONS = [
   { id: 'read', label: 'Read files', description: 'Read selected files and approved resources.' },
@@ -133,4 +186,9 @@ export const TOOL_DESCRIPTIONS = [
     description: 'Confirm the exact file and changes before writing.',
   },
   { id: 'bash', label: 'Terminal', description: 'Confirm each command and its working directory.' },
+  {
+    id: 'command',
+    label: 'Manage commands',
+    description: 'Create or update saved commands, with your confirmation.',
+  },
 ] satisfies { id: ToolId; label: string; description: string }[];

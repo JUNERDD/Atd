@@ -16,6 +16,7 @@ export const AGENT_IPC = {
   request: 'agent:request',
   changed: 'agent:changed',
   launch: 'agent:launch',
+  session: 'agent:command-session',
 } as const;
 export const MemoryEntrySchema = Type.Object(
   {
@@ -137,6 +138,16 @@ export interface PreparedCommand {
   input: TaskInput;
   notice: string;
 }
+export interface CommandLaunch {
+  prepared: PreparedCommand;
+  /** Global shortcut presses run without a review step once the input can be used as-is. */
+  autoRun: boolean;
+}
+/** Hands the command editor off to a new panel session; a null id means "create a command". */
+export interface CommandSession {
+  commandId: string | null;
+  name: string;
+}
 
 export interface AgentBridge {
   get: () => Promise<AgentSnapshot>;
@@ -172,5 +183,6 @@ export interface AgentBridge {
   openLink: (url: string) => Promise<void>;
   importLegacy: (json: string) => Promise<void>;
   onChange: (listener: (event: AgentEvent) => void) => () => void;
-  onLaunch: (listener: (prepared: PreparedCommand) => void) => () => void;
+  onLaunch: (listener: (launch: CommandLaunch) => void) => () => void;
+  onCommandSession: (listener: (session: CommandSession) => void) => () => void;
 }

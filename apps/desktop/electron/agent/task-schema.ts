@@ -189,7 +189,7 @@ export function emptyInput(): TaskInput {
   return {
     text: '',
     source: 'manual',
-    capturedAt: new Date().toISOString(),
+    capturedAt: '',
     selection: '',
     clipboard: '',
     files: [],

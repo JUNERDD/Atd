@@ -10,10 +10,14 @@ import {
   session,
 } from 'electron';
 import type { IpcMainInvokeEvent } from 'electron';
+import { Type } from 'typebox';
 import { AgentService } from './agent/service';
-import { AGENT_IPC } from './agent/bridge';
+import { AGENT_IPC, type CommandSession } from './agent/bridge';
+import { Identifier } from './agent/command-schema';
+import { parse } from './agent/validation';
 import { IPC, type DesktopState } from './contract';
 import { chooseContextFiles } from './context-files';
+import { SETTINGS_IPC } from './settings-contract';
 import { SettingsService } from './settings-service';
 import {
   isWindowSender,
@@ -90,6 +94,10 @@ function installIpc() {
       if (!window.isDestroyed()) window.setAlwaysOnTop(pinned);
     }
   });
+  ipcMain.handle(IPC.show, (event) => {
+    assertPanelSender(event);
+    showPanel();
+  });
   ipcMain.handle(IPC.hide, (event) => {
     assertPanelSender(event);
     hidePanel();
@@ -97,6 +105,20 @@ function installIpc() {
   ipcMain.handle(IPC.getState, (event): DesktopState => {
     settings.assertSender(event);
     return settings.desktopState();
+  });
+  /**
+   * The command editor hands off to the panel: send the session first so the renderer can open it
+   * before the panel becomes visible, and surface a deleted command's error to the settings window.
+   */
+  ipcMain.handle(SETTINGS_IPC.startCommandSession, (event, value: unknown) => {
+    settings.assertSender(event);
+    const commandId = parse(Type.Union([Identifier, Type.Null()]), value);
+    const name = commandId === null ? '' : (agent?.commands.find(commandId)?.name ?? '');
+    const window = panel;
+    if (!window || window.isDestroyed()) throw new Error('The task panel is not available');
+    const session: CommandSession = { commandId, name };
+    window.webContents.send(AGENT_IPC.session, session);
+    showPanel();
   });
   ipcMain.handle(IPC.setPinned, async (event, pinned: unknown) => {
     settings.assertSender(event);
@@ -232,9 +254,10 @@ if (!app.requestSingleInstanceLock()) {
       });
       agent = await AgentService.create(
         settings,
-        (prepared) => {
-          showPanel();
-          panel?.webContents.send(AGENT_IPC.launch, prepared);
+        (prepared, autoRun) => {
+          // The renderer reveals the panel after it shows the launched command or its task, so a
+          // launch never flashes an unrelated page first.
+          panel?.webContents.send(AGENT_IPC.launch, { prepared, autoRun });
         },
         withFileDialog,
       );

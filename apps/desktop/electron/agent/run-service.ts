@@ -38,7 +38,7 @@ export class RunService {
           policy?.useDefaultModel ? null : command,
           policy?.useDefaultModel ? undefined : policy?.model,
         ),
-        tools: command?.tools ?? ['read', 'write', 'edit', 'bash'],
+        tools: command?.tools ?? ['read', 'write', 'edit', 'bash', 'command'],
         memory: command?.memory !== 'off',
       },
       policy,

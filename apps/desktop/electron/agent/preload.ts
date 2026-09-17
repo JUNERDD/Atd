@@ -4,7 +4,8 @@ import {
   type AgentBridge,
   type AgentEvent,
   type AgentRequest,
-  type PreparedCommand,
+  type CommandLaunch,
+  type CommandSession,
 } from './bridge';
 
 function invoke<T>(request: AgentRequest): Promise<T> {
@@ -41,8 +42,13 @@ export const agentBridge: AgentBridge = {
     return () => ipcRenderer.removeListener(AGENT_IPC.changed, callback);
   },
   onLaunch: (listener) => {
-    const callback = (_event: IpcRendererEvent, prepared: PreparedCommand) => listener(prepared);
+    const callback = (_event: IpcRendererEvent, launch: CommandLaunch) => listener(launch);
     ipcRenderer.on(AGENT_IPC.launch, callback);
     return () => ipcRenderer.removeListener(AGENT_IPC.launch, callback);
+  },
+  onCommandSession: (listener) => {
+    const callback = (_event: IpcRendererEvent, session: CommandSession) => listener(session);
+    ipcRenderer.on(AGENT_IPC.session, callback);
+    return () => ipcRenderer.removeListener(AGENT_IPC.session, callback);
   },
 };

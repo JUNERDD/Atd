@@ -16,12 +16,14 @@ import { ContextResources } from './resources';
 import { NativeTools } from './native-tools';
 import { AgentWorker } from './worker-host';
 import type { WorkerOutbound } from './worker-contract';
+import type { CommandRequest } from './native-schema';
 import { errorMessage } from './validation';
 
 interface RuntimeHost {
   publish: (event: AgentEvent) => void;
   changed: () => void;
   auth: (run: TaskRun) => Promise<AuthResult>;
+  command: (request: CommandRequest) => Promise<unknown>;
 }
 
 export class TaskRuntime {
@@ -51,6 +53,7 @@ export class TaskRuntime {
         });
         this.publishTask(artifact.taskId);
       },
+      command: (request) => this.host.command(request),
     });
     this.worker = new AgentWorker(root, {
       native: (request, onData) => {
