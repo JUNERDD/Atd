@@ -162,13 +162,19 @@ async function createPanel() {
   const window = new BrowserWindow({
     ...getPanelBounds(display.workArea, settings.panelSize),
     title: 'AI',
-    frame: false,
+    // macOS keeps its native traffic lights over a hidden title bar; every other platform draws
+    // the panel chrome in the renderer instead.
+    ...(process.platform === 'darwin'
+      ? { titleBarStyle: 'hidden' as const, trafficLightPosition: { x: 16, y: 18 } }
+      : { frame: false }),
     transparent,
     // The renderer owns the panel tint; keep the native backing clear to avoid double fills.
     backgroundColor: '#00000000',
     alwaysOnTop: settings.pinned,
     resizable: !transparent,
-    maximizable: false,
+    // The macOS traffic lights replace the in-panel chrome, so the green button stays enabled and
+    // zooms the panel; like the settings window it never enters fullscreen.
+    maximizable: true,
     fullscreenable: false,
     minWidth: minimum.width,
     minHeight: minimum.height,
@@ -184,6 +190,16 @@ async function createPanel() {
   panel = window;
   secureWindowContent(window);
   rememberPanelSize(window);
+  // macOS owns its window management: the native close button dismisses the panel like the
+  // in-panel hide control does, so the global shortcut and the app menu reveal the same window
+  // again. Quitting releases it normally. Every other platform keeps its previous close behavior.
+  if (process.platform === 'darwin') {
+    window.on('close', (event) => {
+      if (quitting) return;
+      event.preventDefault();
+      hidePanel();
+    });
+  }
   window.on('closed', () => {
     panel = null;
   });

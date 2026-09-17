@@ -36,6 +36,7 @@ export function App() {
     draftRevision,
     draft,
     shortcuts,
+    platform,
     newTask,
     openSettings,
     hide,
@@ -97,13 +98,16 @@ export function App() {
             >
               <Settings />
             </IconButton>
-            <IconButton
-              label={t('header.hide')}
-              className="header-button"
-              onClick={() => void hide()}
-            >
-              <X />
-            </IconButton>
+            {/* macOS window management lives in the native traffic lights. */}
+            {platform !== 'darwin' && (
+              <IconButton
+                label={t('header.hide')}
+                className="header-button"
+                onClick={() => void hide()}
+              >
+                <X />
+              </IconButton>
+            )}
           </nav>
         </header>
         {view === 'new' && (

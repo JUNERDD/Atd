@@ -334,3 +334,19 @@ Figma 侧未同步：本环境只有只读的本地 Figma MCP（`figma-desktop_*
 验证：oxfmt／Oxlint、`pnpm typecheck` 与既有 20 个单元测试通过（`--force` 强制不使用缓存）；独立复核确认按工具集授权、确认先于写入、失败与拒绝不广播、可写字段范围与校验和编辑器一致、删除后无残留引用。未启动应用运行时，因此 Agent 实际调用工具、确认卡渲染、移交后的窗口聚焦与原生合成外观尚未复核。
 
 未同步范围：Figma 仍保留「生成指令」旧对话框（`1231:39739`）、运行设置的展开／收起变体（`1062:33204`），也还没有页脚左侧的 AI 入口；本地 Figma MCP 只提供只读工具（`get_design_context`、`get_variable_defs`、`get_screenshot`、`get_motion_context`、`get_metadata`、`get_figjam`），没有写入能力，云端 Figma 工具在本会话不可用，因此本次没有修改设计文件。
+
+## 2026-09-17 面板改用 macOS 原生窗口控件
+
+用户要求移除主面板 header 右侧的关闭按钮，改用 macOS 原生窗口管理按钮。实现归属：
+
+| 归属                                          | 实现                                                                                                                                                                                                                                                                                            |
+| --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `electron/main.ts`                            | 面板在 darwin 使用 `titleBarStyle: 'hidden'` 与 `trafficLightPosition: { x: 16, y: 18 }`（与设置窗口同一口径），其他平台保持 `frame: false`；darwin 的原生关闭按钮经 `close` 事件调用 `hidePanel()`，窗口只隐藏不销毁，全局快捷键与应用菜单仍能显示同一窗口，退出流程继续由 `quitting` 标记让行 |
+| `App.tsx`、`features/agent/use-task-panel.ts` | header 关闭按钮只在非 darwin 渲染，`useTaskPanel` 暴露已有的 `platform` 解析；web 预览与 Windows/Linux 的隐藏入口及 `setHidden` 行为不变                                                                                                                                                        |
+| `src/styles.css`                              | `html[data-platform='darwin'] .panel-header` 预留与设置窗口相同的 88px 原生控件区，logo 与标题不再与三灯重叠                                                                                                                                                                                    |
+
+原生关闭按钮复用原 X 的「隐藏而非退出」语义；绿灯按用户要求保持可用（`maximizable: true`），与设置窗口同为 macOS zoom：缩放到工作区而不进入原生全屏（`fullscreenable: false`），因为面板是快捷键唤起的浮窗，全屏 Space 与「召回即重新停靠」的显隐模型冲突。`pnpm test:electron` 的既有冒烟检查改为直接关闭面板窗口，断言窗口隐藏但仍存在，再经 `activate` 恢复显示。
+
+验证：定向 oxfmt／Oxlint、`pnpm typecheck`、`pnpm --filter @ai/desktop test`（20 个既有单元测试）通过。未启动应用运行时，因此三灯位置、header 内边距、原生关闭→隐藏的实际窗口表现与原生合成外观尚未复核；Windows/Linux 与 web 预览未做运行时验证。已知残留：退出流程执行 `runtime.close()` 期间若用户点击红灯，面板会销毁并触发 `window-all-closed`，应用可能不等清理完成即退出。
+
+Figma 侧未同步：本会话没有可用的 Figma 工具（云端与本地均未连接），无法从 Panel header（`71:112`）移除关闭控件实例或为三灯预留左侧空间；待有写权限时同步该主组件、`App / Icon button` 消费者与响应式评审帧，当前不把代码侧实现当作 Figma 已同步。

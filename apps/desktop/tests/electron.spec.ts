@@ -87,12 +87,15 @@ test('production app: positioning, renderer isolation, task flow, and window con
         .close();
     });
     await expect.poll(() => app.windows().length).toBe(1);
-    await page.getByRole('button', { name: 'Hide panel' }).click();
+    await app.evaluate(({ BrowserWindow }) => {
+      BrowserWindow.getAllWindows()[0]!.close();
+    });
     await expect
       .poll(() =>
         app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.isVisible()),
       )
       .toBe(false);
+    expect(await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().length)).toBe(1);
     await app.evaluate(({ app }) => {
       app.emit('activate');
     });

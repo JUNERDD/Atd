@@ -95,6 +95,12 @@ html[data-platform='darwin'] .task-panel::after {
   -webkit-app-region: drag;
 }
 
+/* macOS paints the native traffic lights over the header's leading edge, so the logo and title
+   clear that zone; the settings window reserves the same 88px for its native controls. */
+html[data-platform='darwin'] .panel-header {
+  padding-left: 88px;
+}
+
 .panel-logo-button {
   /* Expand the hit area around the existing 20px logo without shifting the title. */
   margin-inline: -4px;
