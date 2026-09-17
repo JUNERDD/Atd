@@ -1,0 +1,97 @@
+{
+  "header": {
+    "openPanel": "Open task panel",
+    "panelLabel": "AI task panel",
+    "newChat": "New chat",
+    "controlsLabel": "Panel controls",
+    "tasks": "Tasks",
+    "settings": "Settings",
+    "hide": "Hide panel",
+    "loadingConversation": "Loading conversation…"
+  },
+  "welcome": {
+    "title": "What can I help with?",
+    "subtitle": "Ask anything, or start with a command.",
+    "desktopOnly": "Open the desktop app to run the Agent and manage saved commands."
+  },
+  "titles": {
+    "tasks": "Tasks",
+    "commands": "Commands",
+    "commandInput": "Command input",
+    "task": "Task",
+    "newTask": "New task"
+  },
+  "composer": {
+    "send": "Send task",
+    "stop": "Stop task",
+    "stopping": "Stopping…",
+    "cancelQueued": "Cancel queued task",
+    "continue": "Continue task",
+    "newTaskForm": "New task",
+    "followUpForm": "Follow-up",
+    "promptLabel": "Task prompt",
+    "placeholder": "Ask anything…",
+    "followUpPlaceholder": "Ask a follow-up…",
+    "attachedContext": "Attached context",
+    "attachContext": "Attach context",
+    "attachLimit": "Attach at most 10 files.",
+    "removeFile": "Remove {{name}}"
+  },
+  "configuration": {
+    "label": "Task configuration",
+    "models": "Models: {{model}}",
+    "chooseModel": "Choose model"
+  },
+  "voice": {
+    "label": "Voice input",
+    "unavailable": "Voice input unavailable"
+  },
+  "commands": {
+    "all": "All commands",
+    "search": "Search commands…",
+    "empty": "No matching commands."
+  },
+  "input": {
+    "label": "Command input",
+    "run": "Run",
+    "runCommand": "Run command",
+    "starting": "Starting…",
+    "selectedText": "Selected text",
+    "clipboardText": "Clipboard text",
+    "text": "Input",
+    "textPlaceholder": "Enter text to use with this command…",
+    "captured": "Captured {{time}}",
+    "files": "Files",
+    "attachFiles": "Attach files",
+    "attachLimit": "Attach at most 10 files.",
+    "removeFile": "Remove {{name}}",
+    "useSelection": "Use captured selection",
+    "refreshClipboard": "Refresh clipboard",
+    "toolsAskFirst": "{{n}} tools · Ask first",
+    "noFileTools": "No file or terminal tools",
+    "memoryOff": "Memory off for this task",
+    "memoryOn": "Memory on · Learning follows settings",
+    "orphanParameter": "Parameter {{key}} is no longer defined. Saved value: {{value}}",
+    "removeValue": "Remove value",
+    "review": "Review",
+    "reviewTitle": "Review before running",
+    "expandedInstructions": "Expanded instructions",
+    "capturedSources": "Captured sources",
+    "commandSettings": "Command settings",
+    "version": "{{name}} · Version {{revision}}",
+    "reviewMeta": "{{model}} · {{tools}} · Memory {{memory}}",
+    "reviewNoTools": "No tools",
+    "memoryStateOn": "on",
+    "memoryStateOff": "off",
+    "selectionPrefix": "Selection:",
+    "clipboardPrefix": "Clipboard:",
+    "savedCommandNotice": "Using the saved command version. Review before running."
+  },
+  "session": {
+    "editSeed": "Update the command \"{{name}}\" (id: {{id}}): ",
+    "createSeed": "Create a command: "
+  },
+  "errors": {
+    "openDesktopApp": "Open the desktop app to run tasks and manage saved data."
+  }
+}

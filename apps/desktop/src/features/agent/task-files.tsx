@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { Copy, ExternalLink, FileText, FolderOpen, FolderSearch, Plus } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Item, ItemContent, ItemDescription, ItemMedia, ItemTitle } from '@ai/ui/components/item';
 import type { Artifact, FileRef } from '../../../electron/agent/task-schema';
 import { artifactLocation } from '../../../electron/agent/task-schema';
 import { IconButton } from '../../components/icon-button';
 import { fileSize } from '../../lib/task-store';
-import { agentApi, messageOf } from './use-agent';
+import { agentApi } from './use-agent';
+import { messageOf } from '../../lib/errors';
 
 export function TaskFiles({
   files,
@@ -14,6 +16,7 @@ export function TaskFiles({
   files: Artifact[];
   onAttach: (file: FileRef) => void;
 }) {
+  const { t } = useTranslation('tasks');
   const [feedback, setFeedback] = useState<{ id: string; text: string; error: boolean } | null>(
     null,
   );
@@ -22,7 +25,9 @@ export function TaskFiles({
     try {
       const result = await agentApi().artifact(file.id, operation);
       if (result) onAttach(result);
-      if (operation === 'copy') setFeedback({ id: file.id, text: 'Path copied.', error: false });
+      if (operation === 'copy') {
+        setFeedback({ id: file.id, text: t('files.pathCopied'), error: false });
+      }
     } catch (error) {
       setFeedback({ id: file.id, text: messageOf(error), error: true });
     }
@@ -33,11 +38,12 @@ export function TaskFiles({
         const location = artifactLocation(file);
         const missing = file.status === 'missing';
         const changed = file.status === 'changed';
+        const state = t(file.partial ? 'files.partialOutput' : 'files.available');
         const description = missing
-          ? 'Locate this file to update its path. Your task is still available.'
+          ? t('files.missing')
           : changed
-            ? 'Opening uses the current file. Saved messages still describe the original run.'
-            : `${fileSize(location.size)} · ${file.partial ? 'Partial output' : 'Available'}${file.relocation ? ' · Re-linked file' : ''}`;
+            ? t('files.changed')
+            : `${fileSize(location.size)} · ${state}${file.relocation ? ` · ${t('files.relinked')}` : ''}`;
         return (
           <div className="file-result" key={file.id} data-figma-node="433:2044">
             <Item size="sm" variant="outline">
@@ -68,23 +74,24 @@ export function TaskFiles({
               {!missing && (
                 <>
                   <IconButton
-                    label="Open"
-                    aria-label="Open file"
+                    label={t('files.open')}
+                    aria-label={t('files.openLabel')}
                     onClick={() => void act(file, 'open')}
                   >
                     <ExternalLink />
                   </IconButton>
-                  <IconButton label="Show in folder" onClick={() => void act(file, 'reveal')}>
+                  <IconButton
+                    label={t('files.showInFolder')}
+                    onClick={() => void act(file, 'reveal')}
+                  >
                     <FolderOpen />
                   </IconButton>
-                  <IconButton label="Copy path" onClick={() => void act(file, 'copy')}>
+                  <IconButton label={t('files.copyPath')} onClick={() => void act(file, 'copy')}>
                     <Copy />
                   </IconButton>
                   <IconButton
-                    label={changed ? 'Attach latest version' : 'Attach'}
-                    aria-label={
-                      changed ? 'Attach current file to follow-up' : 'Attach to follow-up'
-                    }
+                    label={changed ? t('files.attachLatest') : t('files.attach')}
+                    aria-label={changed ? t('files.attachLatestLabel') : t('files.attachLabel')}
                     onClick={() => void act(file, 'attach')}
                   >
                     <Plus />
@@ -92,7 +99,7 @@ export function TaskFiles({
                 </>
               )}
               {(missing || changed) && (
-                <IconButton label="Locate file" onClick={() => void act(file, 'locate')}>
+                <IconButton label={t('files.locate')} onClick={() => void act(file, 'locate')}>
                   <FolderSearch />
                 </IconButton>
               )}

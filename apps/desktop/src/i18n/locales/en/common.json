@@ -1,0 +1,28 @@
+{
+  "toast": {
+    "dismiss": "Dismiss",
+    "dismissLabel": "Dismiss notification"
+  },
+  "tools": {
+    "read": {
+      "label": "Read files",
+      "description": "Read selected files and approved resources."
+    },
+    "write": {
+      "label": "Create files",
+      "description": "Confirm each file before creating or replacing it."
+    },
+    "edit": {
+      "label": "Edit files",
+      "description": "Confirm the exact file and changes before writing."
+    },
+    "bash": {
+      "label": "Terminal",
+      "description": "Confirm each command and its working directory."
+    },
+    "command": {
+      "label": "Manage commands",
+      "description": "Create or update saved commands, with your confirmation."
+    }
+  }
+}

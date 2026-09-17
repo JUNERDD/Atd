@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { Mic } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@ai/ui/components/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@ai/ui/components/tooltip';
 
 const FEEDBACK_DURATION_MS = 3_000;
-const FEEDBACK_MESSAGE = 'Voice input unavailable';
 
 function useVoiceFeedback() {
   const [open, setOpen] = useState(false);
@@ -35,6 +35,7 @@ function useVoiceFeedback() {
 }
 
 export function VoiceInputButton() {
+  const { t } = useTranslation('panel');
   const { open, feedback, show, dismiss, onOpenChange } = useVoiceFeedback();
 
   return (
@@ -45,7 +46,7 @@ export function VoiceInputButton() {
             type="button"
             variant="ghost"
             size="icon-sm"
-            aria-label="Voice input"
+            aria-label={t('voice.label')}
             onClick={show}
           >
             <Mic />
@@ -59,11 +60,11 @@ export function VoiceInputButton() {
           onEscapeKeyDown={dismiss}
           onPointerDownOutside={dismiss}
         >
-          {feedback ? FEEDBACK_MESSAGE : 'Voice input'}
+          {feedback ? t('voice.unavailable') : t('voice.label')}
         </TooltipContent>
       </Tooltip>
       <span className="sr-only" aria-live="polite" aria-atomic="true">
-        {feedback ? FEEDBACK_MESSAGE : ''}
+        {feedback ? t('voice.unavailable') : ''}
       </span>
     </>
   );

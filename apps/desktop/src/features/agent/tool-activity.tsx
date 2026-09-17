@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Brain, ChevronRight, Terminal, LoaderCircle, CircleAlert } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@ai/ui/components/collapsible';
 import { Button } from '@ai/ui/components/button';
 import { Shimmer } from '@ai/ui/components/ai-elements/shimmer';
@@ -15,25 +16,30 @@ export function ToolActivity({
   interrupted: boolean;
   waiting: boolean;
 }) {
+  const { t } = useTranslation('tasks');
   const [open, setOpen] = useState(false);
   const memory = part.name.startsWith('memory_');
-  const title = memory ? 'Memory' : part.name === 'ask_user' ? 'Your input' : part.name;
+  const title = memory
+    ? t('activity.memory')
+    : part.name === 'ask_user'
+      ? t('activity.yourInput')
+      : part.name;
   const status = interrupted && part.status === 'running' ? 'interrupted' : part.status;
   const running = status === 'running' && !waiting;
   const statusLabel =
     status === 'completed'
       ? memory && part.name !== 'memory_search'
-        ? 'Saved'
-        : 'Completed'
+        ? t('activity.saved')
+        : t('activity.completed')
       : status === 'running'
         ? waiting
-          ? 'Waiting…'
+          ? t('activity.waiting')
           : memory && part.name !== 'memory_search'
-            ? 'Saving…'
-            : 'Running…'
+            ? t('activity.saving')
+            : t('activity.running')
         : status === 'failed'
-          ? 'Failed'
-          : 'Interrupted';
+          ? t('activity.failed')
+          : t('activity.interrupted');
   return (
     <Collapsible open={open} onOpenChange={setOpen} className="tool-activity">
       <CollapsibleTrigger asChild>
@@ -63,20 +69,15 @@ export function ToolActivity({
         </Button>
       </CollapsibleTrigger>
       <CollapsibleContent className="tool-details">
-        <ScrollArea className="tool-output" viewportClassName="text-preview-viewport">
+        <ScrollArea className="tool-output" viewportClassName="text-preview-viewport" gutter>
           <pre>{part.input}</pre>
         </ScrollArea>
         {part.output && (
-          <ScrollArea className="tool-output" viewportClassName="text-preview-viewport">
+          <ScrollArea className="tool-output" viewportClassName="text-preview-viewport" gutter>
             <pre>{part.output}</pre>
           </ScrollArea>
         )}
-        {status === 'interrupted' && (
-          <p>
-            Execution ended before a final tool result was recorded. Review any existing file
-            changes before continuing.
-          </p>
-        )}
+        {status === 'interrupted' && <p>{t('activity.interruptedNote')}</p>}
       </CollapsibleContent>
     </Collapsible>
   );

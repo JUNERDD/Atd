@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { ChevronRight } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@ai/ui/components/button';
 import { Input } from '@ai/ui/components/input';
 import { ScrollArea } from '@ai/ui/components/scroll-area';
-import { commandFilter } from '@ai/ui/components/command';
+import { commandFilter } from '@ai/ui/lib/command-filter';
 import {
   Select,
   SelectContent,
@@ -24,6 +25,7 @@ export function ProviderCatalog({
   onChoose: (provider: ProviderCatalogEntry) => void;
   onBack: () => void;
 }) {
+  const { t } = useTranslation('providers');
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState('all');
   const visible = catalog.filter(
@@ -36,35 +38,35 @@ export function ProviderCatalog({
   return (
     <section className="provider-catalog settings-editor">
       <SettingsHeading
-        title="Add provider"
-        description="Choose how to connect your models."
+        title={t('catalog.title')}
+        description={t('catalog.description')}
         onBack={onBack}
-        backLabel="Back to providers"
+        backLabel={t('catalog.back')}
       />
       <div className="settings-overview-toolbar">
         <Input
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          aria-label="Search provider catalog"
-          placeholder="Search providers…"
+          aria-label={t('catalog.searchLabel')}
+          placeholder={t('catalog.searchPlaceholder')}
         />
         <Select value={category} onValueChange={setCategory}>
-          <SelectTrigger aria-label="Provider category">
+          <SelectTrigger aria-label={t('catalog.categoryLabel')}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All providers</SelectItem>
-            <SelectItem value="accounts">Account login</SelectItem>
-            <SelectItem value="api">API keys</SelectItem>
-            <SelectItem value="cloud">Cloud services</SelectItem>
-            <SelectItem value="local">Local and custom</SelectItem>
+            <SelectItem value="all">{t('catalog.category.all')}</SelectItem>
+            <SelectItem value="accounts">{t('catalog.category.accounts')}</SelectItem>
+            <SelectItem value="api">{t('catalog.category.api')}</SelectItem>
+            <SelectItem value="cloud">{t('catalog.category.cloud')}</SelectItem>
+            <SelectItem value="local">{t('catalog.category.local')}</SelectItem>
           </SelectContent>
         </Select>
       </div>
-      <ScrollArea className="settings-editor-body" aria-label="Available providers">
+      <ScrollArea className="settings-editor-body" aria-label={t('catalog.available')} gutter>
         <div className="settings-editor-inner provider-directory">
           {!visible.length && (
-            <p className="text-sm text-muted-foreground py-6">No matching providers</p>
+            <p className="text-sm text-muted-foreground py-6">{t('catalog.empty')}</p>
           )}
           {visible.map((provider) => (
             <Button

@@ -4,6 +4,7 @@ import '@fontsource-variable/inter';
 import '@ai/ui/styles.css';
 import './styles.css';
 import { App } from './App';
+import i18n from './i18n';
 import { installNativeOverlayBlur } from './native-overlay-blur';
 const SettingsWindow = React.lazy(() =>
   import('./features/settings/settings-window').then((module) => ({
@@ -13,7 +14,8 @@ const SettingsWindow = React.lazy(() =>
 
 document.documentElement.dataset.runtime = window.desktop ? 'electron' : 'web';
 document.documentElement.dataset.platform = window.desktop?.platform ?? 'web';
-const isSettingsWindow = window.location.hash === '#settings';
+const isSettingsWindow =
+  window.location.hash === '#settings' || window.location.hash.startsWith('#settings?');
 document.documentElement.dataset.window = isSettingsWindow ? 'settings' : 'panel';
 const root = document.getElementById('root')!;
 if (window.desktop?.platform === 'darwin') {
@@ -23,7 +25,9 @@ if (window.desktop?.platform === 'darwin') {
 
 ReactDOM.createRoot(root).render(
   <React.StrictMode>
-    <React.Suspense fallback={<output className="settings-status">Loading settings…</output>}>
+    <React.Suspense
+      fallback={<output className="settings-loading">{i18n.t('window.loading')}</output>}
+    >
       {isSettingsWindow ? <SettingsWindow /> : <App />}
     </React.Suspense>
   </React.StrictMode>,

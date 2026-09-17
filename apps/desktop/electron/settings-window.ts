@@ -20,7 +20,7 @@ export class SettingsWindow {
     return this.window && !this.window.isDestroyed() ? this.window : null;
   }
 
-  async open(): Promise<void> {
+  async open(hash = 'settings'): Promise<void> {
     if (this.current) {
       if (this.current.isMinimized()) this.current.restore();
       this.current.show();
@@ -96,7 +96,7 @@ export class SettingsWindow {
       window.focus();
     });
     try {
-      await loadWindowContent(window, 'settings');
+      await loadWindowContent(window, hash);
     } catch {
       if (!window.isDestroyed()) window.destroy();
       throw new Error('The settings window could not be opened.');

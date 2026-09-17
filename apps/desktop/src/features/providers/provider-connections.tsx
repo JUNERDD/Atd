@@ -1,4 +1,5 @@
 import { Check, Ellipsis, RefreshCw, Settings2, Unplug } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Item, ItemContent, ItemDescription, ItemGroup, ItemTitle } from '@ai/ui/components/item';
 import {
   DropdownMenu,
@@ -27,20 +28,28 @@ export function ProviderConnections({
   onDisconnect: (connection: Connection) => void;
   perform: (operation: () => Promise<void>, success?: string) => Promise<void>;
 }) {
+  const { t } = useTranslation('providers');
   const bridge = window.desktop?.settings.providers;
   return (
     <ItemGroup className="provider-connections">
       {connections.map((connection) => {
         const isDefault = defaultConnectionId === connection.connectionId;
+        const verified = Boolean(
+          connection.verifiedModel && connection.verifiedModel === connection.defaultModel,
+        );
         const description = !connection.connected
-          ? 'Disconnected · Reconnect to use'
+          ? t('connections.status.disconnected')
           : connection.authType === 'oauth'
-            ? 'Account login · Signed in'
+            ? t('connections.status.oauth')
             : connection.authType === 'none'
-              ? `No API key · ${connection.baseUrl}`
+              ? t('connections.status.noKey', { baseUrl: connection.baseUrl })
               : connection.authType === 'ambient'
-                ? 'Cloud credentials'
-                : `API key saved · ${connection.verifiedModel === connection.defaultModel && connection.verifiedModel ? 'Verified' : 'Not yet verified'}`;
+                ? t('connections.status.ambient')
+                : t(
+                    verified
+                      ? 'connections.status.apiKeyVerified'
+                      : 'connections.status.apiKeyUnverified',
+                  );
         return (
           <Item
             asChild
@@ -53,10 +62,14 @@ export function ProviderConnections({
                 <ProviderBrand provider={connection.provider} />
                 <ItemContent>
                   <div className="provider-name-track">
-                    <ItemTitle className="min-w-0 flex-1 truncate" title={connection.name}>
+                    <ItemTitle className="min-w-0 truncate" title={connection.name}>
                       {connection.name}
                     </ItemTitle>
-                    {isDefault && <span className="provider-default-badge">Default</span>}
+                    {isDefault && (
+                      <span className="provider-default-badge">
+                        {t('connections.defaultBadge')}
+                      </span>
+                    )}
                   </div>
                   <ItemDescription title={description}>{description}</ItemDescription>
                 </ItemContent>
@@ -73,20 +86,20 @@ export function ProviderConnections({
                         }
                       : null
                   }
-                  label={`Default model for ${connection.name}`}
+                  label={t('connections.defaultModelLabel', { name: connection.name })}
                   disabled={pending}
                   onChange={(reference) =>
                     void perform(
                       () => bridge!.setModel(reference, connection.revision),
-                      `Default model saved for ${connection.name}.`,
+                      t('connections.defaultModelSaved', { name: connection.name }),
                     )
                   }
                 />
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <IconButton
-                      label="More"
-                      aria-label={`Connection actions for ${connection.name}`}
+                      label={t('connections.more')}
+                      aria-label={t('connections.actionsLabel', { name: connection.name })}
                       disabled={pending}
                     >
                       <Ellipsis />
@@ -98,16 +111,16 @@ export function ProviderConnections({
                       onSelect={() =>
                         void perform(
                           () => bridge!.setDefault(connection.connectionId, connection.revision),
-                          `${connection.name} is now the default provider.`,
+                          t('connections.madeDefault', { name: connection.name }),
                         )
                       }
                     >
                       <Check />
                       <div>
-                        {isDefault ? 'Current default' : 'Make default provider'}
+                        {isDefault ? t('connections.currentDefault') : t('connections.makeDefault')}
                         {!connection.defaultModel && (
                           <p className="text-xs text-muted-foreground">
-                            Choose a default model first
+                            {t('connections.chooseDefaultModel')}
                           </p>
                         )}
                       </div>
@@ -115,21 +128,21 @@ export function ProviderConnections({
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onSelect={() => onManage(connection)}>
                       <Settings2 />
-                      Manage connection
+                      {t('connections.manage')}
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       disabled={!connection.connected}
                       onSelect={() => void perform(() => bridge!.refresh(connection.connectionId))}
                     >
                       <RefreshCw />
-                      Refresh models
+                      {t('connections.refresh')}
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       disabled={!connection.connected}
                       onSelect={() => onDisconnect(connection)}
                     >
                       <Unplug />
-                      Disconnect
+                      {t('connections.disconnect')}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -140,8 +153,7 @@ export function ProviderConnections({
               {connection.defaultModel &&
                 !connection.catalog.some((model) => model.id === connection.defaultModel) && (
                   <p className="provider-row-notice">
-                    {connection.defaultModel} is unavailable. Refresh models or choose another
-                    model.
+                    {t('connections.unavailableModel', { model: connection.defaultModel })}
                   </p>
                 )}
             </li>

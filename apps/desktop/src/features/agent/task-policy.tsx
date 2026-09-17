@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Shield } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@ai/ui/components/button';
 import {
   Dialog,
@@ -24,12 +25,13 @@ export function TaskPolicyControl({
   onChange: (policy: RunPolicy) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const { t } = useTranslation('tasks');
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button type="button" variant="ghost" size="xs" aria-label="Permissions: Ask first">
+        <Button type="button" variant="ghost" size="xs" aria-label={t('policy.permissionsLabel')}>
           <Shield />
-          <span className="composer-config-label">Ask first</span>
+          <span className="composer-config-label">{t('policy.askFirst')}</span>
         </Button>
       </DialogTrigger>
       <DialogContent className="panel-dialog">
@@ -54,27 +56,33 @@ function PolicyEditor({
   onApply: (policy: RunPolicy) => void;
 }) {
   const [draft, setDraft] = useState(initial);
+  const { t } = useTranslation('tasks');
+  const { t: tCommon } = useTranslation('common');
   const added = draft.tools.filter((tool) => !initial.tools.includes(tool));
   const expanded = added.length > 0 || (draft.memory && !initial.memory);
   return (
     <>
       <DialogHeader>
-        <DialogTitle>Task permissions</DialogTitle>
-        <DialogDescription>
-          Choose capabilities for your next message. File changes and terminal commands still
-          require approval for each action.
-        </DialogDescription>
+        <DialogTitle>{t('policy.title')}</DialogTitle>
+        <DialogDescription>{t('policy.description')}</DialogDescription>
       </DialogHeader>
-      <ScrollArea className="panel-dialog-scroll">
+      <ScrollArea className="panel-dialog-scroll" gutter>
         <div className="panel-dialog-body">
           {TOOL_DESCRIPTIONS.map((tool) => (
             <div className="flex items-center justify-between gap-4" key={tool.id}>
               <div className="min-w-0">
-                <Label className="block truncate" htmlFor={`next-${tool.id}`} title={tool.label}>
-                  {tool.label}
+                <Label
+                  className="block truncate"
+                  htmlFor={`next-${tool.id}`}
+                  title={tCommon(`tools.${tool.id}.label`)}
+                >
+                  {tCommon(`tools.${tool.id}.label`)}
                 </Label>
-                <p className="mt-1 truncate text-xs text-muted-foreground" title={tool.description}>
-                  {tool.description}
+                <p
+                  className="mt-1 truncate text-xs text-muted-foreground"
+                  title={tCommon(`tools.${tool.id}.description`)}
+                >
+                  {tCommon(`tools.${tool.id}.description`)}
                 </p>
               </div>
               <Switch
@@ -93,14 +101,18 @@ function PolicyEditor({
           ))}
           <div className="flex items-center justify-between gap-4">
             <div className="min-w-0">
-              <Label className="block truncate" htmlFor="next-memory" title="Use memory">
-                Use memory
+              <Label
+                className="block truncate"
+                htmlFor="next-memory"
+                title={t('policy.memoryLabel')}
+              >
+                {t('policy.memoryLabel')}
               </Label>
               <p
                 className="mt-1 truncate text-xs text-muted-foreground"
-                title="Automatic learning follows your global setting."
+                title={t('policy.memoryDescription')}
               >
-                Automatic learning follows your global setting.
+                {t('policy.memoryDescription')}
               </p>
             </div>
             <Switch
@@ -111,18 +123,14 @@ function PolicyEditor({
           </div>
           <div className="flex items-center justify-between gap-4">
             <div className="min-w-0">
-              <Label
-                className="block truncate"
-                htmlFor="next-model"
-                title="Use current default model"
-              >
-                Use current default model
+              <Label className="block truncate" htmlFor="next-model" title={t('policy.modelLabel')}>
+                {t('policy.modelLabel')}
               </Label>
               <p
                 className="mt-1 truncate text-xs text-muted-foreground"
-                title="Otherwise keep this task’s saved model."
+                title={t('policy.modelDescription')}
               >
-                Otherwise keep this task’s saved model.
+                {t('policy.modelDescription')}
               </p>
             </div>
             <Switch
@@ -135,15 +143,19 @@ function PolicyEditor({
           </div>
           {expanded && (
             <p className="text-sm">
-              Additional capabilities:{' '}
-              {[...added, ...(!initial.memory && draft.memory ? ['memory'] : [])].join(', ')}.
+              {t('policy.additional', {
+                capabilities: [
+                  ...added.map((tool) => tCommon(`tools.${tool}.label`)),
+                  ...(!initial.memory && draft.memory ? [t('policy.memoryLabel')] : []),
+                ].join(', '),
+              })}
             </p>
           )}
         </div>
       </ScrollArea>
       <DialogFooter>
         <Button onClick={() => onApply({ ...draft, confirmExpansion: true })}>
-          {expanded ? 'Allow for next message' : 'Apply to next message'}
+          {expanded ? t('policy.allowForNext') : t('policy.applyToNext')}
         </Button>
       </DialogFooter>
     </>

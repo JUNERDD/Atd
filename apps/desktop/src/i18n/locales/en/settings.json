@@ -1,0 +1,112 @@
+{
+  "language": {
+    "label": "Language"
+  },
+  "window": {
+    "loading": "Loading settings…",
+    "label": "Settings",
+    "previewNote": "Open the desktop app to configure providers, shortcuts, and window preferences.",
+    "loadError": "Settings could not be loaded."
+  },
+  "nav": {
+    "label": "Settings sections",
+    "navigationLabel": "Settings navigation",
+    "providers": "Providers",
+    "commands": "Commands",
+    "memory": "Memory",
+    "shortcuts": "Shortcuts"
+  },
+  "drawer": {
+    "title": "Settings navigation",
+    "description": "Choose a settings section.",
+    "menu": "Menu",
+    "menuLabel": "Open settings navigation",
+    "close": "Close",
+    "closeLabel": "Close settings navigation"
+  },
+  "providers": {
+    "overview": {
+      "title": "Providers",
+      "description": "Choose a default provider and set a default model for each connection.",
+      "searchLabel": "Search providers",
+      "searchPlaceholder": "Search providers…",
+      "addProvider": "Add provider",
+      "retry": "Try again",
+      "connectedProviders": "Connected providers",
+      "defaultModel": "Default model",
+      "empty": {
+        "noMatchesTitle": "No matching providers",
+        "noMatchesDescription": "Try a connection or provider name.",
+        "firstTitle": "Connect your first provider",
+        "firstDescription": "Add an account, API key, cloud service or local connection.",
+        "clearSearch": "Clear search"
+      },
+      "disconnect": {
+        "title": "Disconnect {{name}}?",
+        "description": "Credentials will be removed. Saved model references remain available for repair.",
+        "defaultNote": " New tasks using the app default will require reconnection or another default provider.",
+        "cancel": "Cancel",
+        "confirm": "Disconnect",
+        "missingProvider": "This provider is no longer registered.",
+        "done": "Provider disconnected."
+      }
+    }
+  },
+  "heading": {
+    "back": "Back"
+  },
+  "shortcuts": {
+    "title": "Keyboard shortcuts",
+    "description": "Make the app work at your pace. Click a shortcut to edit it.",
+    "groups": {
+      "global": "Global",
+      "inApp": "In app"
+    },
+    "actions": {
+      "togglePanel": {
+        "label": "Show or hide panel",
+        "description": "Available anywhere on your Mac."
+      },
+      "newConversation": {
+        "label": "New conversation",
+        "description": "Start with a clean composer."
+      },
+      "openSettings": {
+        "label": "Open settings",
+        "description": "Open this settings window."
+      },
+      "sendMessage": {
+        "label": "Send message",
+        "description": "Send the current message."
+      },
+      "newLine": {
+        "label": "New line",
+        "description": "Add a line without sending."
+      }
+    },
+    "capture": {
+      "pressKeys": "Press keys…",
+      "cancelLabel": "Cancel recording {{label}}",
+      "changeLabel": "Change {{label}}: {{keys}}"
+    },
+    "alwaysOnTop": "Always on top",
+    "restoreDefaults": "Restore defaults",
+    "restoring": "Restoring…",
+    "status": {
+      "recordingCanceled": "Recording canceled.",
+      "recordingHint": "Press a shortcut. Escape cancels; Tab moves to the next control.",
+      "shortcutSaved": "Shortcut saved.",
+      "savingShortcut": "Saving shortcut…",
+      "defaultsRestored": "Default shortcuts restored.",
+      "windowPreferenceSaved": "Window preference saved."
+    },
+    "errors": {
+      "register": "This shortcut could not be registered. Choose another combination.",
+      "unsupportedCombination": "This key combination is not supported. Try another shortcut.",
+      "modifierRequired": "Include a modifier such as Command, Control, or Alt.",
+      "shortcutSave": "The shortcut could not be saved.",
+      "defaultsRestore": "Default shortcuts could not be restored.",
+      "windowPreferenceSave": "The window preference could not be saved."
+    }
+  }
+}

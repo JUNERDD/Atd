@@ -1,0 +1,112 @@
+{
+  "language": {
+    "label": "语言"
+  },
+  "window": {
+    "loading": "正在加载设置…",
+    "label": "设置",
+    "previewNote": "打开桌面应用以配置提供商、快捷键和窗口偏好。",
+    "loadError": "无法加载设置。"
+  },
+  "nav": {
+    "label": "设置分类",
+    "navigationLabel": "设置导航",
+    "providers": "提供商",
+    "commands": "命令",
+    "memory": "记忆",
+    "shortcuts": "快捷键"
+  },
+  "drawer": {
+    "title": "设置导航",
+    "description": "选择设置分类。",
+    "menu": "菜单",
+    "menuLabel": "打开设置导航",
+    "close": "关闭",
+    "closeLabel": "关闭设置导航"
+  },
+  "providers": {
+    "overview": {
+      "title": "提供商",
+      "description": "选择默认提供商，并为每个连接设置默认模型。",
+      "searchLabel": "搜索提供商",
+      "searchPlaceholder": "搜索提供商…",
+      "addProvider": "添加提供商",
+      "retry": "重试",
+      "connectedProviders": "已连接的提供商",
+      "defaultModel": "默认模型",
+      "empty": {
+        "noMatchesTitle": "没有匹配的提供商",
+        "noMatchesDescription": "试试其他连接或提供商名称。",
+        "firstTitle": "连接你的第一个提供商",
+        "firstDescription": "添加账号、API 密钥、云服务或本地连接。",
+        "clearSearch": "清除搜索"
+      },
+      "disconnect": {
+        "title": "断开 {{name}}？",
+        "description": "凭据将被移除。已保存的模型引用仍可用于修复。",
+        "defaultNote": "使用应用默认值的新任务将需要重新连接或改用其他默认提供商。",
+        "cancel": "取消",
+        "confirm": "断开连接",
+        "missingProvider": "该提供商已不再注册。",
+        "done": "已断开提供商连接。"
+      }
+    }
+  },
+  "heading": {
+    "back": "返回"
+  },
+  "shortcuts": {
+    "title": "键盘快捷键",
+    "description": "让应用按你的节奏工作。点击快捷键即可编辑。",
+    "groups": {
+      "global": "全局",
+      "inApp": "应用内"
+    },
+    "actions": {
+      "togglePanel": {
+        "label": "显示或隐藏面板",
+        "description": "在 Mac 上随时可用。"
+      },
+      "newConversation": {
+        "label": "新建对话",
+        "description": "从空白输入框开始。"
+      },
+      "openSettings": {
+        "label": "打开设置",
+        "description": "打开此设置窗口。"
+      },
+      "sendMessage": {
+        "label": "发送消息",
+        "description": "发送当前消息。"
+      },
+      "newLine": {
+        "label": "换行",
+        "description": "换行而不发送。"
+      }
+    },
+    "capture": {
+      "pressKeys": "请按下按键…",
+      "cancelLabel": "取消录制“{{label}}”",
+      "changeLabel": "更改“{{label}}”快捷键：{{keys}}"
+    },
+    "alwaysOnTop": "始终置顶",
+    "restoreDefaults": "恢复默认",
+    "restoring": "正在恢复…",
+    "status": {
+      "recordingCanceled": "已取消录制。",
+      "recordingHint": "请按下快捷键。按 Escape 取消，按 Tab 移到下一个控件。",
+      "shortcutSaved": "已保存快捷键。",
+      "savingShortcut": "正在保存快捷键…",
+      "defaultsRestored": "已恢复默认快捷键。",
+      "windowPreferenceSaved": "已保存窗口偏好。"
+    },
+    "errors": {
+      "register": "无法注册此快捷键。请选择其他组合。",
+      "unsupportedCombination": "不支持此按键组合。请尝试其他快捷键。",
+      "modifierRequired": "请包含 Command、Control 或 Alt 等修饰键。",
+      "shortcutSave": "无法保存快捷键。",
+      "defaultsRestore": "无法恢复默认快捷键。",
+      "windowPreferenceSave": "无法保存窗口偏好。"
+    }
+  }
+}

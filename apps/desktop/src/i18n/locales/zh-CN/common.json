@@ -1,0 +1,28 @@
+{
+  "toast": {
+    "dismiss": "关闭",
+    "dismissLabel": "关闭通知"
+  },
+  "tools": {
+    "read": {
+      "label": "读取文件",
+      "description": "读取选中的文件和已批准的资源。"
+    },
+    "write": {
+      "label": "创建文件",
+      "description": "创建或替换前确认每个文件。"
+    },
+    "edit": {
+      "label": "编辑文件",
+      "description": "写入前确认具体文件和更改。"
+    },
+    "bash": {
+      "label": "终端",
+      "description": "确认每条命令及其工作目录。"
+    },
+    "command": {
+      "label": "管理命令",
+      "description": "创建或更新已保存的命令，需经你确认。"
+    }
+  }
+}

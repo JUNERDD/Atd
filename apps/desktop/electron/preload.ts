@@ -4,21 +4,21 @@ import type { IpcRendererEvent } from 'electron';
 import { IPC, type ContextFile, type DesktopBridge, type DesktopState } from './contract';
 import { SETTINGS_IPC, type SettingsSnapshot } from './settings-contract';
 import { providerBridge } from './providers/preload';
-import { GENERATION_IPC, type GenerationResult } from './agent/generation-contract';
 
 const desktop: DesktopBridge = {
   platform: process.platform,
   agent: agentBridge,
   settings: {
     open: () => ipcRenderer.invoke(SETTINGS_IPC.open) as Promise<void>,
+    openCommand: (commandId: string) =>
+      ipcRenderer.invoke(SETTINGS_IPC.openCommand, commandId) as Promise<void>,
     close: () => ipcRenderer.invoke(SETTINGS_IPC.close) as Promise<void>,
     get: () => ipcRenderer.invoke(SETTINGS_IPC.get) as Promise<SettingsSnapshot>,
+    startCommandSession: (commandId) =>
+      ipcRenderer.invoke(SETTINGS_IPC.startCommandSession, commandId) as Promise<void>,
+    setLanguage: (language) =>
+      ipcRenderer.invoke(SETTINGS_IPC.saveLanguage, language) as Promise<SettingsSnapshot>,
     providers: providerBridge,
-    generation: {
-      generate: (request) =>
-        ipcRenderer.invoke(GENERATION_IPC.generate, request) as Promise<GenerationResult>,
-      cancel: (id) => ipcRenderer.invoke(GENERATION_IPC.cancel, id) as Promise<void>,
-    },
     saveShortcuts: (shortcuts) =>
       ipcRenderer.invoke(SETTINGS_IPC.saveShortcuts, shortcuts) as Promise<SettingsSnapshot>,
     restoreShortcuts: () =>
@@ -28,7 +28,13 @@ const desktop: DesktopBridge = {
       ipcRenderer.on(SETTINGS_IPC.changed, callback);
       return () => ipcRenderer.removeListener(SETTINGS_IPC.changed, callback);
     },
+    onOpenCommand: (listener) => {
+      const callback = (_event: IpcRendererEvent, commandId: string) => listener(commandId);
+      ipcRenderer.on(SETTINGS_IPC.openCommand, callback);
+      return () => ipcRenderer.removeListener(SETTINGS_IPC.openCommand, callback);
+    },
   },
+  show: () => ipcRenderer.invoke(IPC.show) as Promise<void>,
   hide: () => ipcRenderer.invoke(IPC.hide) as Promise<void>,
   getState: () => ipcRenderer.invoke(IPC.getState) as Promise<DesktopState>,
   setPinned: (pinned) => ipcRenderer.invoke(IPC.setPinned, pinned) as Promise<boolean>,
