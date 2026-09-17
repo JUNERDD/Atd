@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Copy, MoreHorizontal, Pencil, Play, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@ai/ui/components/button';
 import { Input } from '@ai/ui/components/input';
@@ -35,13 +36,23 @@ import { copyCommand, newCommand } from '../../../electron/agent/command-templat
 import type { SettingsSnapshot } from '../../../electron/settings-contract';
 import { IconButton } from '../../components/icon-button';
 import { shortcutKeys } from '../../lib/shortcuts';
-import { agentApi, messageOf, useAgent } from '../agent/use-agent';
+import { agentApi, useAgent } from '../agent/use-agent';
+import { showErrorToast } from '../../components/toast-store';
 import { CommandEditor } from './command-editor';
 import { CommandIcon } from './command-icon';
 import './commands.css';
 import { SettingsHeading } from '../settings/settings-heading';
 
-export function CommandSettings({ settings }: { settings: SettingsSnapshot | null }) {
+export function CommandSettings({
+  settings,
+  activeCommand,
+  onConsumeActiveCommand,
+}: {
+  settings: SettingsSnapshot | null;
+  activeCommand?: { id: string; nonce: number } | null;
+  onConsumeActiveCommand?: () => void;
+}) {
+  const { t } = useTranslation('commands');
   const agent = useAgent();
   const [editing, setEditing] = useState<{ command: CommandDefinition; revision: number } | null>(
     null,
@@ -49,16 +60,14 @@ export function CommandSettings({ settings }: { settings: SettingsSnapshot | nul
   const [deleting, setDeleting] = useState<CommandDefinition | null>(null);
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
-  const [error, setError] = useState('');
   const [pending, setPending] = useState<string | null>(null);
   async function change(command: CommandDefinition, enabled: boolean) {
     setPending(command.id);
-    setError('');
     try {
       await agentApi().saveCommand({ ...command, enabled }, command.revision);
-      setStatus(enabled ? 'Command enabled.' : 'Command disabled.');
+      setStatus(enabled ? t('list.status.enabled') : t('list.status.disabled'));
     } catch (error) {
-      setError(messageOf(error));
+      showErrorToast(error);
     } finally {
       setPending(null);
     }
@@ -79,20 +88,43 @@ export function CommandSettings({ settings }: { settings: SettingsSnapshot | nul
         onCancel={() => setEditing(null)}
         onSaved={() => {
           setEditing(null);
-          setStatus('Command saved.');
+          setStatus(t('list.status.saved'));
         }}
       />
     );
   const commands = agent.snapshot?.commands ?? [];
+  // A deep link from the task panel opens one command directly in the editor. Derived during
+  // render so a still-loading snapshot resolves to the editor once it arrives; the nonce remounts
+  // the same command when requested again. An unknown id falls through to the list below.
+  const linkedCommand = activeCommand
+    ? (commands.find((command) => command.id === activeCommand.id) ?? null)
+    : null;
+  if (linkedCommand && activeCommand)
+    return (
+      <CommandEditor
+        key={`${linkedCommand.id}-${activeCommand.nonce}`}
+        initial={structuredClone(linkedCommand)}
+        expectedRevision={linkedCommand.revision}
+        settings={settings}
+        onCancel={() => onConsumeActiveCommand?.()}
+        onSaved={() => {
+          onConsumeActiveCommand?.();
+          setStatus(t('list.status.saved'));
+        }}
+      />
+    );
+  if (activeCommand && !agent.snapshot)
+    return (
+      <section className="command-settings">
+        <output className="settings-loading">{t('list.loading')}</output>
+      </section>
+    );
   return (
     <section className="command-settings">
-      <SettingsHeading
-        title="Commands"
-        description="Reusable instructions for the things you do often."
-      >
+      <SettingsHeading title={t('list.title')} description={t('list.description')}>
         <Input
-          aria-label="Search commands"
-          placeholder="Search commands…"
+          aria-label={t('list.searchLabel')}
+          placeholder={t('list.searchPlaceholder')}
           value={search}
           onChange={(event) => setSearch(event.target.value)}
         />
@@ -101,7 +133,7 @@ export function CommandSettings({ settings }: { settings: SettingsSnapshot | nul
           onClick={() => setEditing({ command: newCommand(crypto.randomUUID()), revision: 0 })}
         >
           <Plus />
-          New
+          {t('list.new')}
         </Button>
       </SettingsHeading>
       <ItemGroup>
@@ -143,31 +175,34 @@ export function CommandSettings({ settings }: { settings: SettingsSnapshot | nul
                         )}
                       </KbdGroup>
                     ) : (
-                      <span className="text-xs text-muted-foreground">No shortcut</span>
+                      <span className="text-xs text-muted-foreground">{t('list.noShortcut')}</span>
                     )}
                   </div>
                   <ItemActions className="shrink-0">
                     <IconButton
-                      label="Run"
-                      aria-label={`Run ${command.name}`}
+                      label={t('list.run')}
+                      aria-label={t('list.runFor', { name: command.name })}
                       disabled={!command.enabled || pending !== null}
                       onClick={() => {
                         void agentApi()
                           .launch(command.id)
-                          .catch((error) => setError(messageOf(error)));
+                          .catch((error) => showErrorToast(error));
                       }}
                     >
                       <Play />
                     </IconButton>
                     <Switch
-                      aria-label={`Enable ${command.name}`}
+                      aria-label={t('list.enableFor', { name: command.name })}
                       checked={command.enabled}
                       disabled={pending !== null}
                       onCheckedChange={(enabled) => void change(command, enabled)}
                     />
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <IconButton label="More" aria-label={`More actions for ${command.name}`}>
+                        <IconButton
+                          label={t('list.more')}
+                          aria-label={t('list.moreActionsFor', { name: command.name })}
+                        >
                           <MoreHorizontal />
                         </IconButton>
                       </DropdownMenuTrigger>
@@ -181,16 +216,16 @@ export function CommandSettings({ settings }: { settings: SettingsSnapshot | nul
                           }
                         >
                           <Pencil />
-                          Edit
+                          {t('common.edit')}
                         </DropdownMenuItem>
                         <DropdownMenuItem onSelect={() => duplicate(command)}>
                           <Copy />
-                          Duplicate
+                          {t('list.duplicate')}
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem onSelect={() => setDeleting(command)}>
                           <Trash2 />
-                          Delete
+                          {t('common.delete')}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -200,20 +235,13 @@ export function CommandSettings({ settings }: { settings: SettingsSnapshot | nul
             </Item>
           ))}
       </ItemGroup>
-      {commands.length === 0 && (
-        <p className="text-sm text-muted-foreground">
-          {agent.snapshot ? 'No commands yet. Create your first command.' : 'Loading commands…'}
-        </p>
-      )}
-      {(status || error || agent.error) && (
-        <p
-          role={error || agent.error ? 'alert' : 'status'}
-          className="settings-status"
-          data-error={Boolean(error || agent.error)}
-        >
-          {error || agent.error || status}
-        </p>
-      )}
+      {commands.length === 0 &&
+        (agent.snapshot ? (
+          <p className="text-sm text-muted-foreground">{t('list.empty')}</p>
+        ) : (
+          <output className="settings-loading">{t('list.loading')}</output>
+        ))}
+      {status && <output className="settings-status">{status}</output>}
       <AlertDialog
         open={Boolean(deleting)}
         onOpenChange={(open) => {
@@ -222,24 +250,23 @@ export function CommandSettings({ settings }: { settings: SettingsSnapshot | nul
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete {deleting?.name}?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This removes the command and its shortcut. Existing tasks keep their saved command
-              version.
-            </AlertDialogDescription>
+            <AlertDialogTitle>
+              {t('list.deleteTitle', { name: deleting?.name ?? '' })}
+            </AlertDialogTitle>
+            <AlertDialogDescription>{t('list.deleteDescription')}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
                 if (deleting)
                   void agentApi()
                     .deleteCommand(deleting.id, deleting.revision)
-                    .then(() => setStatus('Command deleted.'))
-                    .catch((error) => setError(messageOf(error)));
+                    .then(() => setStatus(t('list.status.deleted')))
+                    .catch((error) => showErrorToast(error));
               }}
             >
-              Delete
+              {t('common.delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

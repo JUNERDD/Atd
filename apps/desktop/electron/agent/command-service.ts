@@ -1,10 +1,10 @@
-import { clipboard, globalShortcut } from 'electron';
+import { clipboard, globalShortcut, systemPreferences } from 'electron';
 import SelectionHook from 'selection-hook';
 import { effectiveAccelerator, parseAccelerator } from '../settings-shortcuts';
 import type { ShortcutBindings } from '../settings-contract';
 import type { CommandDefinition } from './command-schema';
 import type { PreparedCommand } from './bridge';
-import { defaultArguments, validateCommand } from './command-validation';
+import { defaultArguments, readyToRun, validateCommand } from './command-validation';
 import { emptyInput } from './task-schema';
 import { AgentStore } from './store';
 import { errorMessage } from './validation';
@@ -13,10 +13,12 @@ export class CommandService {
   readonly errors: Record<string, string> = {};
   private selection: SelectionHook | null = null;
   private captured: { text: string; capturedAt: string } | null = null;
+  private trustRequested = false;
   constructor(
     private store: AgentStore,
     private shortcuts: () => ShortcutBindings,
-    private launch: (command: PreparedCommand) => void,
+    private launch: (command: PreparedCommand, autoRun: boolean) => void,
+    private changed: () => void,
   ) {}
 
   find(id: string) {
@@ -26,15 +28,35 @@ export class CommandService {
     return command;
   }
 
+  /**
+   * macOS blocks reading the selected text until the app is trusted for Accessibility. Ask the OS
+   * to show its permission prompt once per launch; capture failures then carry the next steps.
+   */
+  requestAccessibility() {
+    if (process.platform !== 'darwin' || this.trustRequested) return;
+    this.trustRequested = true;
+    systemPreferences.isTrustedAccessibilityClient(true);
+  }
+
+  private accessibilityGranted() {
+    if (process.platform !== 'darwin') return true;
+    try {
+      return systemPreferences.isTrustedAccessibilityClient(false);
+    } catch {
+      return true;
+    }
+  }
+
   captureSelection() {
     this.captured = null;
+    this.requestAccessibility();
     try {
       this.selection ??= new SelectionHook();
       if (!this.selection.isRunning() && !this.selection.start({ enableClipboard: false })) return;
       const text = this.selection.getCurrentSelection()?.text ?? '';
       if (text.trim()) this.captured = { text, capturedAt: new Date().toISOString() };
     } catch {
-      /* Unavailable accessibility is reported on the command input screen. */
+      /* The permission request above and the capture notice cover an unavailable selection read. */
     } finally {
       this.selection?.stop();
     }
@@ -42,12 +64,17 @@ export class CommandService {
 
   async capture(source: 'selection' | 'clipboard') {
     if (source === 'selection') {
-      if (!this.captured)
+      if (!this.captured) {
+        if (!this.accessibilityGranted())
+          throw new Error(
+            'Enable Accessibility: System Settings → Privacy & Security → Accessibility.',
+          );
         throw new Error(
-          'No selected text was captured. Select text in another app and use the command shortcut, or enter text manually. Accessibility permission may be required.',
+          'No selected text — select text in another app, then use the command shortcut.',
         );
+      }
       if (this.captured.text.length > 100000)
-        throw new Error('Selected text exceeds the input limit. Select a smaller passage.');
+        throw new Error('Selected text exceeds the input limit — select a smaller passage.');
       return { ...this.captured };
     }
     const text = await clipboard.readText();
@@ -56,9 +83,16 @@ export class CommandService {
     return { text, capturedAt: new Date().toISOString() };
   }
 
-  async prepare(id: string): Promise<PreparedCommand> {
+  /**
+   * Builds the draft input for a command, asking for macOS Accessibility access when the command
+   * can read the selection. A failed capture only surfaces as a notice when the trigger expected
+   * captured text (the global shortcut); opening the command from the panel leaves the field empty
+   * for manual input instead of reporting a missing selection.
+   */
+  async prepare(id: string, expectCapture = false): Promise<PreparedCommand> {
     const command = this.find(id);
     if (!command.enabled) throw new Error('This command is disabled. Enable it in settings.');
+    if (command.input.selection) this.requestAccessibility();
     const input = {
       ...emptyInput(),
       source: command.input.source,
@@ -75,7 +109,7 @@ export class CommandService {
           input.capturedAt = captured.capturedAt;
         }
       } catch (error) {
-        notice = errorMessage(error);
+        if (expectCapture) notice = errorMessage(error);
       }
     }
     return { command: structuredClone(command), input, notice };
@@ -128,8 +162,10 @@ export class CommandService {
     const success = globalShortcut.register(command.shortcut, () => {
       this.captureSelection();
       try {
-        void this.prepare(command.id)
-          .then((prepared) => this.launch(prepared))
+        void this.prepare(command.id, true)
+          .then((prepared) =>
+            this.launch(prepared, !prepared.notice && readyToRun(prepared.command, prepared.input)),
+          )
           .catch((error) => {
             this.errors[command.id] = errorMessage(error);
           });
@@ -171,6 +207,7 @@ export class CommandService {
     }
     if (registered && !same) globalShortcut.unregister(registered);
     delete this.errors[command.id];
+    this.changed();
     return saved;
   }
 
@@ -184,5 +221,6 @@ export class CommandService {
     if (command.enabled && command.shortcut && !this.errors[id])
       globalShortcut.unregister(command.shortcut);
     delete this.errors[id];
+    this.changed();
   }
 }

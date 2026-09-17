@@ -13,12 +13,20 @@ import {
   type AgentSession,
   type ExtensionFactory,
 } from '@earendil-works/pi-coding-agent';
+import {
+  CommandSaveResultSchema,
+  CommandSchema,
+  CommandSummarySchema,
+  CommandToolSchema,
+  type CommandToolArguments,
+} from './command-schema';
 import type { WorkerRun } from './worker-contract';
 import type { HermesHost } from './hermes-host';
 import { configureModel } from './worker-model';
 import { nativeExtension } from './worker-tools';
-import { askWorker, publish } from './worker-channel';
+import { askWorker, nativeCall, publish } from './worker-channel';
 import { projectTranscript } from './transcript';
+import { parse } from './validation';
 
 export interface SessionHost {
   root: string;
@@ -61,7 +69,11 @@ export async function createTaskSession(
     pi.on('before_agent_start', () => {
       const snapshot = current.request.run.snapshot;
       const material = [
-        snapshot.instructions,
+        // Instructions stay out of the hidden material for command runs: they
+        // are the visible user prompt for command starts (see worker prompt
+        // selection), and follow-ups reuse a stale snapshot whose instructions
+        // no longer match the follow-up input.
+        snapshot.command ? '' : snapshot.instructions,
         snapshot.command ? `Named parameters: ${JSON.stringify(snapshot.input.arguments)}` : '',
         ...current.request.attachments.map(
           (file) =>
@@ -100,6 +112,24 @@ export async function createTaskSession(
               text: typeof answer === 'string' ? answer : 'The user cancelled the request.',
             },
           ],
+          details: {},
+        };
+      },
+    });
+    pi.registerTool({
+      name: 'command',
+      label: 'Manage commands',
+      description:
+        'List, read, create or update saved commands. Read a command before updating it, and pass the revision you read as expectedRevision. Every save is confirmed by the user.',
+      parameters: CommandToolSchema,
+      executionMode: 'sequential',
+      async execute(_id, args) {
+        const value = await commandNativeCall(
+          { taskId: request.taskId, runId: current.request.run.id },
+          parse(CommandToolSchema, args),
+        );
+        return {
+          content: [{ type: 'text', text: JSON.stringify(value, null, 2) }],
           details: {},
         };
       },
@@ -200,6 +230,32 @@ export async function createTaskSession(
       current.request = request;
     },
   };
+}
+
+function commandNativeCall(
+  scope: { taskId: string; runId: string },
+  operation: CommandToolArguments,
+) {
+  switch (operation.operation) {
+    case 'list':
+      return nativeCall({ action: 'commandList', ...scope }, Type.Array(CommandSummarySchema));
+    case 'get':
+      return nativeCall(
+        { action: 'commandGet', ...scope, commandId: operation.commandId },
+        CommandSchema,
+      );
+    case 'save':
+      return nativeCall(
+        {
+          action: 'commandSave',
+          ...scope,
+          commandId: operation.commandId,
+          expectedRevision: operation.expectedRevision,
+          fields: operation.fields,
+        },
+        CommandSaveResultSchema,
+      );
+  }
 }
 
 export function toolNames(request: WorkerRun, learning: boolean): string[] {

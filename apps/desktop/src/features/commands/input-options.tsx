@@ -1,7 +1,10 @@
+import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Label } from '@ai/ui/components/label';
 import { Button } from '@ai/ui/components/button';
 import { ChevronDown } from 'lucide-react';
 import { Switch } from '@ai/ui/components/switch';
+import { Popover, PopoverContent, PopoverTrigger } from '@ai/ui/components/popover';
 import {
   Select,
   SelectContent,
@@ -15,10 +18,18 @@ import { ShortcutInput } from './shortcut-input';
 export function InputOptions({
   command,
   onChange,
+  open,
+  onOpenChange,
 }: {
   command: CommandDefinition;
   onChange: (command: CommandDefinition) => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
+  const { t } = useTranslation('commands');
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isOpen = open ?? internalOpen;
+  const setIsOpen = onOpenChange ?? setInternalOpen;
   function source(value: string) {
     if (value !== 'manual' && value !== 'selection' && value !== 'clipboard' && value !== 'none')
       return;
@@ -37,66 +48,67 @@ export function InputOptions({
     <div className="space-y-4">
       <div className="field-columns aligned-fields">
         <div className="settings-field">
-          <Label htmlFor="command-source">Input source</Label>
+          <Label htmlFor="command-source">{t('input.source')}</Label>
           <Select value={command.input.source} onValueChange={source}>
             <SelectTrigger id="command-source" className="w-full">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="manual">Manual input</SelectItem>
-              <SelectItem value="selection">Selected text</SelectItem>
-              <SelectItem value="clipboard">Clipboard</SelectItem>
-              <SelectItem value="none">No text input</SelectItem>
+              <SelectItem value="manual">{t('input.sourceManual')}</SelectItem>
+              <SelectItem value="selection">{t('input.sourceSelection')}</SelectItem>
+              <SelectItem value="clipboard">{t('input.sourceClipboard')}</SelectItem>
+              <SelectItem value="none">{t('input.sourceNone')}</SelectItem>
             </SelectContent>
           </Select>
         </div>
-        <div className="settings-field">
-          <Label htmlFor="command-shortcut">Shortcut</Label>
+        <div className="settings-field input-shortcut-field">
+          <Label htmlFor="command-shortcut">{t('input.shortcut')}</Label>
           <ShortcutInput
             value={command.shortcut}
             onChange={(shortcut) => onChange({ ...command, shortcut })}
           />
         </div>
       </div>
-      <details className="input-options group/input-options">
-        <Button
-          asChild
-          variant="ghost"
-          size="xs"
-          className="cursor-pointer text-muted-foreground group-open/input-options:bg-muted dark:group-open/input-options:bg-input dark:group-open/input-options:hover:bg-input"
+      <Popover open={isOpen} onOpenChange={setIsOpen}>
+        <PopoverTrigger asChild>
+          <Button variant="outline" size="xs">
+            {t('input.options')}
+            <ChevronDown />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent
+          className="input-options-popover p-4 rounded-2xl bg-popover"
+          align="start"
+          collisionPadding={8}
         >
-          <summary>
-            Input options
-            <ChevronDown className="group-open/input-options:rotate-180" />
-          </summary>
-        </Button>
-        <div className="space-y-3 pt-3">
-          {(
-            [
-              ['required', 'Require text input'],
-              ['files', 'Allow attached files'],
-              ['selection', 'Selected text variable'],
-              ['clipboard', 'Clipboard variable'],
-            ] as const
-          ).map(([key, label]) => (
-            <div className="flex items-center justify-between gap-4" key={key}>
-              <Label htmlFor={`input-${key}`}>{label}</Label>
-              <Switch
-                id={`input-${key}`}
-                disabled={
-                  (key === 'required' && command.input.source === 'none') ||
-                  (key === 'selection' && command.input.source === 'selection') ||
-                  (key === 'clipboard' && command.input.source === 'clipboard')
-                }
-                checked={command.input[key]}
-                onCheckedChange={(checked) =>
-                  onChange({ ...command, input: { ...command.input, [key]: checked } })
-                }
-              />
-            </div>
-          ))}
-        </div>
-      </details>
+          <div className="space-y-3">
+            {(
+              [
+                ['required', 'input.requireText'],
+                ['files', 'input.allowFiles'],
+                ['selection', 'input.selectionVariable'],
+                ['clipboard', 'input.clipboardVariable'],
+              ] as const
+            ).map(([key, labelKey]) => (
+              <div className="flex items-center justify-between gap-4" key={key}>
+                <Label htmlFor={`input-${key}`}>{t(labelKey)}</Label>
+                <Switch
+                  id={`input-${key}`}
+                  disabled={
+                    (key === 'required' && command.input.source === 'none') ||
+                    (key === 'selection' && command.input.source === 'selection') ||
+                    (key === 'clipboard' && command.input.source === 'clipboard')
+                  }
+                  checked={command.input[key]}
+                  onCheckedChange={(checked) =>
+                    onChange({ ...command, input: { ...command.input, [key]: checked } })
+                  }
+                />
+              </div>
+            ))}
+          </div>
+        </PopoverContent>
+      </Popover>
     </div>
   );
 }

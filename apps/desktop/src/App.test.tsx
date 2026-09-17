@@ -29,6 +29,7 @@ function installBridge() {
       },
     ],
     defaultConnectionId: 'test',
+    language: 'en',
     shortcuts: { ...DEFAULT_SHORTCUTS },
     pinned: true,
     shortcutAvailable: true,
@@ -115,6 +116,7 @@ function installBridge() {
     updateMemory: vi.fn(async () => ({ entries: [], paused: false, error: '' })),
     importLegacy: vi.fn(async () => {}),
     onLaunch: () => () => {},
+    onCommandSession: () => () => {},
     onChange: (listener) => {
       listeners.add(listener);
       return () => {
@@ -129,6 +131,7 @@ function installBridge() {
   });
   const hide = vi.fn(async () => {});
   const open = vi.fn(async () => {});
+  const openCommand = vi.fn(async (_commandId: string) => {});
   window.desktop = {
     platform: 'darwin',
     agent: api,
@@ -138,10 +141,13 @@ function installBridge() {
       shortcutAvailable: true,
     })),
     setPinned,
+    show: vi.fn(async () => {}),
     hide,
     chooseFiles: vi.fn(async () => []),
     settings: {
       open,
+      openCommand,
+      startCommandSession: vi.fn(async (_commandId: string | null) => {}),
       close: vi.fn(async () => {}),
       get: vi.fn(async () => settings),
       providers: {
@@ -160,10 +166,11 @@ function installBridge() {
         openLink: vi.fn(async () => {}),
         onLogin: () => () => {},
       },
-      generation: {
-        generate: vi.fn(async () => ({ status: 'stopped' as const, message: 'Stopped' })),
-        cancel: vi.fn(async () => {}),
-      },
+      setLanguage: vi.fn(async (language: SettingsSnapshot['language']) => {
+        settings = { ...settings, language };
+        settingsListeners.forEach((listener) => listener(settings));
+        return settings;
+      }),
       saveShortcuts: vi.fn(async () => settings),
       restoreShortcuts: vi.fn(async () => settings),
       onChange: (listener) => {
@@ -172,9 +179,10 @@ function installBridge() {
           settingsListeners.delete(listener);
         };
       },
+      onOpenCommand: () => () => {},
     },
   };
-  return { api, setPinned, hide, open };
+  return { api, setPinned, hide, open, openCommand };
 }
 
 describe('task panel', () => {
@@ -243,7 +251,7 @@ describe('task panel', () => {
       .mockResolvedValueOnce(files.slice(0, 2));
     render(<App />);
     await user.click(screen.getByRole('button', { name: 'Attach context' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('Attach at most 10 files.');
+    expect(await screen.findByRole('status')).toHaveTextContent('Attach at most 10 files.');
     await user.click(screen.getByRole('button', { name: 'Attach context' }));
     await user.click(await screen.findByRole('button', { name: 'Remove file-0.txt' }));
     await user.click(screen.getByRole('button', { name: 'Send task' }));
@@ -266,5 +274,27 @@ describe('task panel', () => {
     settingsView.unmount();
     await user.click(screen.getByRole('button', { name: 'Hide panel' }));
     expect(hide).toHaveBeenCalledOnce();
+  });
+
+  it('opens the settings editor for the prepared command', async () => {
+    const { openCommand } = installBridge();
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(await screen.findByRole('button', { name: /Translate selection/ }));
+    await user.click(await screen.findByRole('button', { name: 'Command settings' }));
+    await waitFor(() => expect(openCommand).toHaveBeenCalledWith('translate'));
+  });
+
+  it('deep-links the settings window to one command editor', async () => {
+    installBridge();
+    const previousHash = window.location.hash;
+    window.location.hash = '#settings?commandId=translate';
+    try {
+      render(<SettingsWindow />);
+      expect(await screen.findByDisplayValue('Translate selection')).toBeVisible();
+      expect(screen.getByRole('heading', { name: 'Edit command' })).toBeVisible();
+    } finally {
+      window.location.hash = previousHash;
+    }
   });
 });

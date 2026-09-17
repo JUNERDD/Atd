@@ -31,11 +31,31 @@
 .aligned-fields > .settings-field > :nth-child(2) {
   align-self: start;
 }
-.input-options {
-  font-size: 14px;
+.input-shortcut-field {
+  max-width: 180px;
 }
-.input-options summary::-webkit-details-marker {
-  display: none;
+.run-settings {
+  display: grid;
+  gap: 16px;
+}
+/* The preset Item owns padding, border, radius and `gap-3.5`; grid pins the switch to its own track. */
+.run-settings-tool[data-slot='item'] {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+/* Tools follow the same responsive column rule as the parallel fields around them, capped at three
+   columns: the 32px subtracted below are the two 16px gutters of a three-column row. */
+.run-settings-tools[data-slot='item-group'] {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(max(220px, (100% - 32px) / 3), 1fr));
+  gap: 16px;
+}
+.input-options-popover {
+  width: max-content;
+  min-width: min(280px, var(--radix-popover-content-available-width));
+  max-width: min(360px, var(--radix-popover-content-available-width));
+  max-height: var(--radix-popover-content-available-height);
+  backdrop-filter: blur(var(--ata-backdrop-blur));
 }
 .editor-footer {
   display: flex;
@@ -153,6 +173,12 @@
   width: 100%;
   min-width: 0;
   text-align: left;
+}
+.command-settings:has(.settings-loading) {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
 }
 .command-management-row {
   flex-wrap: nowrap;
@@ -279,57 +305,6 @@
   gap: 8px;
 }
 .instruction-actions button {
-  flex-shrink: 0;
-}
-.generation-feedback {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px 8px;
-  color: var(--muted-foreground);
-  font-size: 12px;
-}
-.instruction-generator[data-slot='dialog-content'] {
-  display: flex;
-  flex-direction: column;
-  width: calc(100vw - 32px);
-  max-width: 448px;
-  max-height: calc(100dvh - 64px);
-  top: calc(50% + 16px);
-  border-radius: 24px;
-}
-.generation-scroll-area {
-  flex: 1;
-  min-height: 0;
-  margin: -3px;
-}
-.generation-body {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 3px;
-  overflow-wrap: anywhere;
-}
-.generation-body textarea {
-  field-sizing: content;
-  min-height: 96px;
-  flex-shrink: 0;
-}
-.generation-preview {
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  font: 14px/22px var(--font-sans);
-  padding: 12px;
-  border-radius: var(--radius-2xl);
-  background: var(--muted);
-}
-.generation-actions {
-  display: flex;
-  flex-shrink: 0;
-  justify-content: flex-end;
-  gap: 8px;
-}
-.generation-actions button {
   flex-shrink: 0;
 }
 .editor-heading {

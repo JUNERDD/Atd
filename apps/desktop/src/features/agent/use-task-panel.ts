@@ -1,30 +1,68 @@
 import { useEffect, useRef, useState } from 'react';
 import { useHotkeys, type Options } from 'react-hotkeys-hook';
+import { useTranslation } from 'react-i18next';
 import { DEFAULT_SHORTCUTS } from '../../../electron/settings-contract';
 import type { RunPolicy } from '../../../electron/agent/run-policy';
-import type { PreparedCommand } from '../../../electron/agent/bridge';
+import type { PreparedCommand, TaskDetail } from '../../../electron/agent/bridge';
 import { emptyInput, type TaskRun } from '../../../electron/agent/task-schema';
 import type { ComposerDraft } from '../../components/composer';
 import { useSettingsSnapshot } from '../settings/use-settings';
 import { acceleratorToHotkey } from '../../lib/shortcuts';
 import { STORAGE_KEY } from '../../lib/task-store';
-import { agentApi, messageOf, useAgent, useTaskDetail } from './use-agent';
+import { agentApi, useAgent, useTaskDetail } from './use-agent';
+import { showErrorToast } from '../../components/toast-store';
+import { useAgentNotices } from './use-notices';
 
 type View = 'new' | 'history' | 'task' | 'commands' | 'input';
 const EMPTY_DRAFT: ComposerDraft = { text: '', files: [] };
 
+/**
+ * A hidden page refuses element focus, so a revealed panel lands on the first control of the native
+ * window and its tooltip instead. The presented view marks its primary input with
+ * data-panel-autofocus; a view without one keeps the header unfocused.
+ */
+function focusPanelInput() {
+  const input = document.querySelector<HTMLElement>('[data-panel-autofocus]');
+  if (input) {
+    input.focus();
+    return;
+  }
+  const active = document.activeElement;
+  if (active instanceof HTMLElement && active.closest('.panel-header')) active.blur();
+}
+
+/** Reveals the panel window through the desktop bridge; the renderer owns when a panel appears. */
+async function showPanel() {
+  const restore = () => {
+    document.removeEventListener('visibilitychange', restore);
+    focusPanelInput();
+  };
+  if (document.visibilityState === 'hidden') document.addEventListener('visibilitychange', restore);
+  try {
+    await window.desktop?.show();
+    focusPanelInput();
+  } catch (error) {
+    document.removeEventListener('visibilitychange', restore);
+    showErrorToast(error);
+  }
+}
+
 export function useTaskPanel() {
+  const { t } = useTranslation('panel');
   const agent = useAgent();
+  useAgentNotices();
   const { snapshot } = useSettingsSnapshot();
   const [draftRevision, setDraftRevision] = useState(0);
   const [view, setView] = useState<View>('new');
   const [taskId, setTaskId] = useState<string | null>(null);
   const [prepared, setPrepared] = useState<PreparedCommand | null>(null);
+  const [autoRun, setAutoRun] = useState<PreparedCommand | null>(null);
+  const runAuto = useRef<(command: PreparedCommand) => void>(() => {});
+  const [revealCount, setRevealCount] = useState(0);
   const [savedRun, setSavedRun] = useState<{ taskId: string; runId: string } | null>(null);
   const [policies, setPolicies] = useState<Record<string, RunPolicy>>({});
   const [drafts, setDrafts] = useState<Record<string, ComposerDraft>>({});
   const [hidden, setHidden] = useState(false);
-  const [notice, setNotice] = useState('');
   const [pending, setPending] = useState(false);
   const submission = useRef<{ key: string; id: string } | null>(null);
   const current = useTaskDetail(taskId);
@@ -62,18 +100,67 @@ export function useTaskPanel() {
   useEffect(() => {
     const bridge = window.desktop?.agent;
     if (!bridge) return;
-    const unsubscribe = bridge.onLaunch((value) => {
-      setPrepared(value);
+    const unsubscribe = bridge.onLaunch(({ prepared: value, autoRun: run }) => {
       setSavedRun(null);
+      if (run) {
+        // A shortcut run never shows the command input: the panel is revealed when its task is on
+        // screen, or on the input page with the failure when the run cannot start.
+        setAutoRun(value);
+        return;
+      }
+      setPrepared(value);
       setView('input');
+      setRevealCount((count) => count + 1);
     });
     void Promise.resolve()
       .then(() =>
         bridge.importLegacy(localStorage.getItem(STORAGE_KEY) ?? '{"version":1,"tasks":[]}'),
       )
-      .catch((error) => setNotice(messageOf(error)));
+      .catch((error) => showErrorToast(error));
     return unsubscribe;
   }, []);
+  // The command editor hands its work to the panel: a fresh session gets the seed text in the `new`
+  // draft, so the user completes the intent and sends it with the agent's tools.
+  useEffect(() => {
+    const bridge = window.desktop?.agent;
+    if (!bridge) return;
+    return bridge.onCommandSession(({ commandId, name }) => {
+      newTask();
+      setDrafts((previous) => ({
+        ...previous,
+        new: {
+          text: commandId
+            ? t('session.editSeed', { name, id: commandId })
+            : t('session.createSeed'),
+          files: [],
+        },
+      }));
+      focusPanelInput();
+    });
+  }, [t]);
+  // A failed start restores the command input for repair. The reveal counter is raised together
+  // with the launched view, so the commit that reveals the panel already renders that view; every
+  // launch is a fresh object, so the trigger fires exactly once per shortcut press.
+  useEffect(() => {
+    runAuto.current = (command) => {
+      void submit(false, command)
+        .then((detail) => {
+          if (detail) setRevealCount((count) => count + 1);
+        })
+        .catch((error) => {
+          setPrepared(command);
+          setView('input');
+          showErrorToast(error);
+          setRevealCount((count) => count + 1);
+        });
+    };
+  });
+  useEffect(() => {
+    if (autoRun) runAuto.current(autoRun);
+  }, [autoRun]);
+  useEffect(() => {
+    if (revealCount) void showPanel();
+  }, [revealCount]);
 
   function newTask() {
     setDraftRevision((value) => value + 1);
@@ -87,7 +174,6 @@ export function useTaskPanel() {
     setTaskId(null);
     setPrepared(null);
     setSavedRun(null);
-    setNotice('');
   }
   async function openSettings() {
     try {
@@ -99,7 +185,7 @@ export function useTaskPanel() {
         opened?.focus();
       }
     } catch (error) {
-      setNotice(messageOf(error));
+      showErrorToast(error);
     }
   }
   async function hide() {
@@ -107,7 +193,7 @@ export function useTaskPanel() {
       if (window.desktop) await window.desktop.hide();
       else setHidden(true);
     } catch (error) {
-      setNotice(messageOf(error));
+      showErrorToast(error);
     }
   }
   function changeDraft(value: ComposerDraft) {
@@ -118,54 +204,64 @@ export function useTaskPanel() {
       setPrepared(await agentApi().prepare(id));
       setSavedRun(null);
       setView('input');
-      setNotice('');
     } catch (error) {
-      setNotice(messageOf(error));
+      showErrorToast(error);
     }
   }
-  async function submit(continueTask = false) {
-    if (pending) return;
+  /**
+   * Shortcut launches submit the command they carried: the run uses the command's own policy and
+   * leaves drafts, view state and remembered capability adjustments untouched.
+   */
+  async function submit(
+    continueTask = false,
+    launched?: PreparedCommand,
+  ): Promise<TaskDetail | null> {
+    if (pending) return null;
     setPending(true);
-    setNotice('');
-    const commandInput = view === 'input' ? prepared : null;
+    const commandInput = launched ?? (view === 'input' ? prepared : null);
     const input = commandInput?.input ?? {
       ...emptyInput(),
       text: continueTask ? 'continue task' : draft.text,
       files: continueTask ? [] : draft.files,
     };
+    const policy = launched ? null : (policies[policyKey] ?? null);
+    const targetTaskId = launched ? null : view === 'task' ? taskId : null;
+    const previousRun = launched ? null : savedRun;
     const key = JSON.stringify({
-      policy: policies[policyKey],
+      policy,
       input: { ...input, capturedAt: commandInput ? input.capturedAt : '' },
-      taskId: view === 'task' ? taskId : null,
+      taskId: targetTaskId,
       commandId: commandInput?.command.id,
       revision: commandInput?.command.revision,
-      savedRun,
+      savedRun: previousRun,
     });
     if (submission.current?.key !== key) submission.current = { key, id: crypto.randomUUID() };
     try {
       const detail = await agentApi().submit({
         invocationId: submission.current.id,
-        policy: policies[policyKey] ?? null,
-        taskId: view === 'task' ? taskId : null,
+        policy,
+        taskId: targetTaskId,
         commandId: commandInput?.command.id ?? null,
         commandRevision: commandInput?.command.revision ?? null,
-        savedRun,
+        savedRun: previousRun,
         input,
       });
       submission.current = null;
-      setPolicies((previous) => {
-        const next = { ...previous };
-        delete next[policyKey];
-        return next;
-      });
+      if (!launched)
+        setPolicies((previous) => {
+          const next = { ...previous };
+          delete next[policyKey];
+          return next;
+        });
       setTaskId(detail.task.id);
       setView('task');
       setSavedRun(null);
       setPrepared(null);
-      if (!continueTask)
+      if (!continueTask && !launched)
         setDrafts((previous) =>
           previous[draftKey] === draft ? { ...previous, [draftKey]: EMPTY_DRAFT } : previous,
         );
+      return detail;
     } finally {
       setPending(false);
     }
@@ -177,7 +273,7 @@ export function useTaskPanel() {
       setPrepared({
         command: run.snapshot.command,
         input: structuredClone(run.snapshot.input),
-        notice: 'Using the saved command version. Review before running.',
+        notice: t('input.savedCommandNotice'),
       });
       setView('input');
     } else {
@@ -190,14 +286,14 @@ export function useTaskPanel() {
   }
   const title =
     view === 'history'
-      ? 'Tasks'
+      ? t('titles.tasks')
       : view === 'commands'
-        ? 'Commands'
+        ? t('titles.commands')
         : view === 'input'
-          ? (prepared?.command.name ?? 'Command input')
+          ? (prepared?.command.name ?? t('titles.commandInput'))
           : view === 'task'
-            ? (current.detail?.task.title ?? 'Task')
-            : 'New task';
+            ? (current.detail?.task.title ?? t('titles.task'))
+            : t('titles.newTask');
   const run = current.detail?.task.runs.at(-1);
   const policy: RunPolicy = policies[policyKey] ?? {
     tools:
@@ -205,7 +301,7 @@ export function useTaskPanel() {
         ? prepared.command.tools
         : view === 'task' && run
           ? run.snapshot.tools
-          : ['read', 'write', 'edit', 'bash'],
+          : ['read', 'write', 'edit', 'bash', 'command'],
     memory:
       view === 'input' && prepared
         ? prepared.command.memory !== 'off'
@@ -230,7 +326,6 @@ export function useTaskPanel() {
     setSavedRun,
     hidden,
     setHidden,
-    notice,
     pending,
     current,
     draftKey,

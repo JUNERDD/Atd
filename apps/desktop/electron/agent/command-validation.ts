@@ -166,3 +166,16 @@ export function resolveInstructions(command: CommandDefinition, input: TaskInput
     { escape: (value: string) => value },
   );
 }
+
+/**
+ * Reports whether a prepared command can start without the user supplying more input. Shortcut
+ * launches use this to run immediately (Raycast-style) or to open the command input instead.
+ */
+export function readyToRun(command: CommandDefinition, input: TaskInput): boolean {
+  try {
+    resolveInstructions(command, input);
+    return true;
+  } catch {
+    return false;
+  }
+}

@@ -6,7 +6,7 @@ import { createLocalBashOperations } from '@earendil-works/pi-coding-agent';
 import type { ToolId } from './command-schema';
 import type { AgentTask, Artifact, PermissionRequest, TaskRun } from './task-schema';
 import { canonicalPath, ContextResources, fileFingerprint } from './resources';
-import type { NativeRequest, ToolArguments } from './native-schema';
+import type { CommandRequest, NativeRequest, ToolArguments } from './native-schema';
 
 interface Grant {
   id: string;
@@ -23,6 +23,7 @@ interface NativeHost {
   task: (id: string) => AgentTask;
   ask: (request: PermissionRequest) => Promise<string | boolean>;
   artifact: (artifact: Artifact) => Promise<void>;
+  command: (request: CommandRequest) => Promise<unknown>;
 }
 
 export class NativeTools {
@@ -109,6 +110,16 @@ export class NativeTools {
         abort: new AbortController(),
       });
       return id;
+    }
+    if (
+      request.action === 'commandList' ||
+      request.action === 'commandGet' ||
+      request.action === 'commandSave'
+    ) {
+      const run = this.run(request.taskId, request.runId);
+      if (!run.snapshot.tools.includes('command'))
+        throw new Error('This tool is not enabled for the task.');
+      return this.host.command(request);
     }
     const grant = this.grants.get(request.grant);
     if (request.action === 'release') {

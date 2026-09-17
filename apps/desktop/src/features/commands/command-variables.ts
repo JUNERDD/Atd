@@ -1,17 +1,43 @@
-import type { CommandDefinition } from '../../../electron/agent/command-schema';
+import type { TFunction } from 'i18next';
+import type { CommandDefinition, Parameter } from '../../../electron/agent/command-schema';
 
 export type ContextVariable = 'input' | 'files' | 'selection' | 'clipboard';
 
-export const contextVariables: { name: ContextVariable; detail: string }[] = [
-  { name: 'input', detail: 'Main text · chosen when the command runs' },
-  { name: 'files', detail: 'File attachments' },
-  { name: 'selection', detail: 'Selected text · captured before the panel opens' },
-  { name: 'clipboard', detail: 'Clipboard text · only captured when requested' },
-];
+export const contextVariables = [
+  { name: 'input', detailKey: 'variables.inputDetail' },
+  { name: 'files', detailKey: 'variables.filesDetail' },
+  { name: 'selection', detailKey: 'variables.selectionDetail' },
+  { name: 'clipboard', detailKey: 'variables.clipboardDetail' },
+] as const satisfies readonly { name: ContextVariable; detailKey: string }[];
 
-export function parameterVariables(command: CommandDefinition) {
-  return command.parameters.map((parameter) => ({
-    name: `argument.${parameter.key}`,
-    detail: `${parameter.label} · ${parameter.type}${parameter.default !== undefined ? ` · Default: ${String(parameter.default)}` : ''}`,
-  }));
+const typeTags = {
+  text: 'parameters.type.tag.text',
+  number: 'parameters.type.tag.number',
+  enum: 'parameters.type.tag.enum',
+  boolean: 'parameters.type.tag.boolean',
+} as const;
+
+export function parameterTypeTag(type: Parameter['type']) {
+  return typeTags[type];
+}
+
+export function parameterVariables(command: CommandDefinition, t: TFunction<'commands'>) {
+  return command.parameters.map((parameter) => {
+    const type = t(parameterTypeTag(parameter.type));
+    const values = { label: parameter.label, type };
+    return {
+      name: `argument.${parameter.key}`,
+      detail:
+        parameter.default === undefined
+          ? t('variables.parameterDetail', values)
+          : t('variables.parameterDetailDefault', { ...values, value: String(parameter.default) }),
+    };
+  });
+}
+
+export function variableDetails(command: CommandDefinition, t: TFunction<'commands'>) {
+  return [
+    ...contextVariables.map(({ name, detailKey }) => ({ name, detail: t(detailKey) })),
+    ...parameterVariables(command, t),
+  ];
 }

@@ -178,14 +178,14 @@ Hermes 0.9.8 拥有 SQLite 与 Markdown 记忆。`patches/pi-hermes-memory@0.9.8
 
 代码按最新[提供商修订计划](plans/2026-09-12-provider-defaults-design.md#应用实现记录--2026-09-12)及产品页 `1:251` / 组件页 `69:80` 实现。Figma 保持原画板、共享库实例、变量和原型；本轮更新相关组件 usage description 的实现状态，纠正旧单连接说明与已被新计划取代的 Compact 24px 顶部 inset。
 
-| Figma owner                                                 | 应用 owner                                                                                          |
-| ----------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| Settings window layout · Responsive `1119:36110`            | `settings-window.tsx` / `settings.css` / `electron/settings-window.ts`                              |
-| Settings overview header · Rhea `1181:38808`                | `settings-heading.tsx`，Providers / Commands / Memory 共用                                          |
-| Settings editor layout / footer `1093:34262` / `1093:34242` | 共享滚动正文与页脚样式、命令/参数/记忆/连接表单                                                     |
-| Command identity `1093:34209` / Run settings `1062:33204`   | `command-editor.tsx` / `run-settings.tsx` / `commands.css`，220px 字段与16/8px间距                  |
-| Provider connections `913:17261` / Model picker `954:19478` | `provider-settings.tsx` / `model-picker.tsx` / `providers.css`，连接内4px与跨连接8px边界            |
-| Command instruction generator `1231:39739`                  | `instruction-generator.tsx` / `instruction-generation.ts`，24px操作、16px外边距、12px分区与24px圆角 |
+| Figma owner                                                 | 应用 owner                                                                                                                                                              |
+| ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Settings window layout · Responsive `1119:36110`            | `settings-window.tsx` / `settings.css` / `electron/settings-window.ts`                                                                                                  |
+| Settings overview header · Rhea `1181:38808`                | `settings-heading.tsx`，Providers / Commands / Memory 共用                                                                                                              |
+| Settings editor layout / footer `1093:34262` / `1093:34242` | 共享滚动正文与页脚样式、命令/参数/记忆/连接表单                                                                                                                         |
+| Command identity `1093:34209` / Run settings `1062:33204`   | `command-editor.tsx` / `run-settings.tsx` / `commands.css`，220px 字段与16/8px间距                                                                                      |
+| Provider connections `913:17261` / Model picker `954:19478` | `provider-settings.tsx` / `model-picker.tsx` / `providers.css`，连接内4px与跨连接8px边界                                                                                |
+| Command instruction generator `1231:39739`                  | 已由 Agent 会话的 `command` 工具与编辑器移交入口取代（见 2026-09-17 命令 AI 编辑）；原 `instruction-generator.tsx` / `instruction-generation.ts` 已删除，Figma 侧待同步 |
 
 代码仍复用项目 Rhea primitives、Radix/cmdk/CodeMirror 和仓库中原始品牌 SVG。该阶段先完成静态检查；其后的完整 UI 走查见下节。真实账户 OAuth 与计费模型调用不在本次视觉验收范围。
 
@@ -231,17 +231,106 @@ Figma 在既有 [App / Command item](https://www.figma.com/design/PROJECT_FILE_K
 
 用户要求所有 dropdown 形态的弹层随内容调整宽度，并保留最小宽度。代码使用原生 [`max-content`](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Values/max-content) 计算内容宽度；Radix 弹层沿用[可用空间约束](https://www.radix-ui.com/primitives/docs/components/dropdown-menu#constrain-the-contentsub-content-size)与碰撞处理。最小宽度受可用窗口宽度约束，不能在窄窗口中撑出页面。
 
-| 弹层                   | 最小宽度 | 宽度上限与代码归属                                                            |
-| ---------------------- | -------- | ----------------------------------------------------------------------------- |
-| 操作菜单、子菜单       | 128px    | Radix 可用宽度；共享 `dropdown-menu.tsx`                                      |
-| Select 选项            | 144px    | 窗口宽度减 16px；共享 `select.tsx`，取消与触发器宽度绑定                      |
-| 通用 Popover           | 288px    | Radix 可用宽度；共享 `popover.tsx`，业务组合可定义自己的最小值                |
-| 连接内及跨连接模型菜单 | 256px    | Radix 可用宽度；`providers.css` 的 `model-picker`                             |
-| 变量选择器             | 320px    | 460px 与 Radix 可用宽度的较小值；`commands.css` 的 `variable-picker`          |
-| 指令变量补全           | 320px    | 原有 460px／窗口减 32px 上限；`instruction-theme.ts` 已采用内容宽度，继续沿用 |
+| 弹层                   | 最小宽度               | 宽度上限与代码归属                                                                 |
+| ---------------------- | ---------------------- | ---------------------------------------------------------------------------------- |
+| 操作菜单、子菜单       | 128px                  | Radix 可用宽度；共享 `dropdown-menu.tsx`                                           |
+| Select 选项            | max(144px, 触发器宽度) | 窗口宽度减 16px 上限；共享 `select.tsx`，popper 下跟随触发器，内容更长时按内容扩展 |
+| 通用 Popover           | 288px                  | Radix 可用宽度；共享 `popover.tsx`，业务组合可定义自己的最小值                     |
+| 连接内及跨连接模型菜单 | 256px                  | Radix 可用宽度；`providers.css` 的 `model-picker`                                  |
+| 变量选择器             | 320px                  | 460px 与 Radix 可用宽度的较小值；`commands.css` 的 `variable-picker`               |
+| 指令变量补全           | 320px                  | 原有 460px／窗口减 32px 上限；`instruction-theme.ts` 已采用内容宽度，继续沿用      |
 
 移除命令菜单的 224px 和连接菜单的 240px 固定宽度；图标、快捷键及禁用原因参与内容宽度计算。继续复用现有 ScrollArea、键盘操作、模型菜单 18px／14px 圆角与单层 4px 边界。
 
 本轮定向格式、Oxlint、TypeScript 与独立输出目录中的 renderer 构建通过；构建保留分块体积提示。未启动或连接应用运行时，因此尚未验证实际窗口中的内容宽度、窄屏碰撞和滚动效果。
 
 Figma 对应组件已记录新宽度规则，但自适应结构尚未同步。临时连接实例试验显示：仅设 Hug 会保留旧宽度，逐层解除 Fill 后会使选项高亮失去整行宽度；恢复高亮 Fill 又使外层收缩到最小值。嵌套实例的 max-size 覆盖被 API 拒绝，原生 Grid 试验也未同时满足两者。试验节点均已移除，保留原组件、共享库引用与画板几何；不把现有固定评审宽度当作自适应布局的验收证据。
+
+## 2026-09-17 Select 弹层内边距同步
+
+用户截图指出 `features/commands/parameter-field.tsx` 的语言选项弹层没有内边距。根因在共享组件而非该字段：4px 边界原先只挂在 `SelectGroup` 上，而应用内 8 个文件的 10 处 `SelectContent` 都直接渲染 `SelectItem`、从未使用分组，弹层因此实际为零内边距。此前「应用 Select 已按各自 primitive 布局」的判断只核对了连接与宽度，没有测量累计内边距。
+
+现在由 `packages/ui/src/components/select.tsx` 的 `SelectContent` 拥有单层 4px inset，与 `DropdownMenuContent`、`Command`、`model-picker` 的单层 4px 口径一致；`SelectGroup` 不再叠加，分组用法仍保持单层。行文字与勾选指示距材质边 12px，选中／悬停高亮距材质边 4px，`parameter-field.tsx` 及各消费者无需改动。
+
+同轮用户要求下拉列表与触发器等宽。`SelectContent` 的最小宽度改为 `min(max(144px, var(--radix-select-trigger-width, 0px)), 100vw - 16px)`：popper 定位取触发器宽度与 144px 中的较大值，长选项仍按内容扩展，窄窗口继续受视口上限约束。这取代 [菜单式弹层自适应宽度](#2026-09-13-菜单式弹层自适应宽度) 中「取消与触发器宽度绑定」的单一 144px 下限，`SelectGroup` 与所有消费者自动继承。
+
+触发器宽度让原先照菜单尺寸调好的开合动画变得明显：`zoom-in-95`／`zoom-out-95` 以 `50% 0` 为原点缩放，长宽弹层在 100ms 内左右各移动约 20px，看起来像被横向拉伸。按用户决定，Select 弹层不再有动画：官方 [base select](https://ui.shadcn.com/docs/components/base/select) 的默认 `alignItemWithTrigger` 会命中 `data-[align-trigger=true]:animate-none`，文档页看到的弹层是直接出现；应用把定位改成 popper 后动画才生效。因此从 `SelectContent` 移除 `animate-in`／`animate-out`、`duration-100`、按方向的 `slide-in-from-*` 与 `data-[align-trigger=true]:animate-none`，触发器自身的焦点色／阴影过渡保留。DropdownMenu、Popover、Tooltip 的动画不变，它们宽度仍由内容决定。
+
+定向 Oxlint、oxfmt、`@ai/ui` 类型检查与 `@ai/desktop` 的 renderer 生产构建通过，构建产物已生成对应的 `min-width` 规则；未启动应用运行时，本环境也没有 Figma 工具，因此未复核实际窗口与画板几何。设计记录中 [弹层内边距深度排查](#弹层内边距深度排查仅-figma) 的 4px 口径已由代码兑现。
+
+## 2026-09-17 命令输入页进入即报错修复与辅助功能权限申请
+
+用户截图显示从首页点击 `Translate selection` 进入命令输入页后立即出现 "No selected text was captured."，且没有捕获内容却显示 "Captured 10:16:11"；随后确认正确行为：需要走系统的权限申请。应用从未在打开命令时提交任务：首页快捷命令、命令目录和设置列表的入口都只调用 `prepare` 并停在输入页，真正运行仍需要用户按 Run。
+
+根因在 `CommandService.prepare` 与 `emptyInput()`：准备流程对命令声明的选区／剪贴板来源总是尝试捕获，任何失败都写入 `notice`，输入页进入时把 `notice` 弹成错误；空输入又用当前时间填充 `capturedAt`。现在只有全局快捷键触发把捕获失败作为 `notice`（`register` 传入 `expectCapture`，与 C3「快捷键在浮窗获取焦点前捕获、读取失败明确展示」一致）；`emptyInput().capturedAt` 改为空字符串，只有真实捕获才显示 "Captured" 时间。
+
+按用户确认的正确行为，读取选中文字前走系统权限申请：`selection-hook` 的 `docs/GUIDE.md` 在 Node 场景使用其 `macRequestProcessTrust()`，在 Electron 场景推荐 `systemPreferences.isTrustedAccessibilityClient()`，因此由主进程的 `CommandService.requestAccessibility()` 在 macOS 未授权时调用 `isTrustedAccessibilityClient(true)` 触发系统授权对话框，每次启动最多一次，避免重复打扰。触发点是打开声明了选区来源的命令（`prepare`）与 `captureSelection()`（命令快捷键、浮窗唤起）；权限检查、申请与提示都与捕获同属主进程服务，`selection-hook` 继续只负责捕获。
+
+用户随后用箭头指出提示只显示前半句：`lib/errors.ts` 的 `toastTextOf` 只保留首个句号前的句子并限制在 80 字符内，原消息的第二句（系统设置路径）被截掉。两条捕获失败消息因此改为单句且不超过该上限：「Enable Accessibility: System Settings → Privacy & Security → Accessibility.」（未授权）与「No selected text — select text in another app, then use the command shortcut.」（已授权但没有选区）；不再使用原先「Accessibility permission may be required」的模糊说法，后续修改提示文案时需保持单句可完整显示。
+
+打开缺少选区／剪贴板的草稿仍保持静默：字段留空等待手动输入或显式点击捕获按钮，不会因为进入页面就报错。定向 oxfmt、Oxlint、`pnpm typecheck` 与 13 个现有单元测试通过；未启动应用运行时，无法在真实 macOS 授权对话框下复核申请时机与授权后的捕获，本环境也没有 Figma 工具，Figma 侧的权限引导样例待有工具时复核。
+
+## 2026-09-17 界面语言选择器与 i18n 基础
+
+用户要求在设置窗口右上角（截图红框）添加语言选择器，并把 i18n 作为后续由 agent 增量翻译的基础设施写入 [AGENTS.md](AGENTS.md#internationalization)。渲染层复用社区方案 i18next 26.4.2 + react-i18next 17.0.14（模块级同步初始化、无需 Provider、键类型直接来自英文 JSON），没有自建翻译层；当前语言集为 `en`（源语言）与 `zh-CN`。
+
+| 归属                                                                                       | 实现                                                                                                                            |
+| ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
+| `apps/desktop/src/i18n/`                                                                   | 初始化、`settings` 命名空间资源、`useAppLanguage`、语言自称（endonym）与首次启动的初始语言解析                                  |
+| `electron/settings-contract.ts`                                                            | `LANGUAGE_CODES` / `AppLanguage` / `isAppLanguage` / `resolveLanguage`；`SettingsSnapshot.language` 与 `setLanguage` 契约       |
+| `electron/settings-store.ts` / `settings-service.ts` / `preload.ts`                        | `language` 持久化；`settings:save-language` IPC 仅接受设置窗口，主进程校验、写盘并广播                                          |
+| `features/settings/settings-window.tsx` / `settings.css` / `language-selector.tsx`         | 内容表面顶部 40px 头部行内的右对齐 Select（Rhea 默认触发器 32px、`Languages` 图标、语言自称）；切换后两个窗口即时生效，无需重载 |
+| `features/settings/provider-settings.tsx` 与设置外壳（导航、抽屉、移动栏、加载、预览提示） | 本轮迁移的文案，en 与 zh-CN 键集合一致                                                                                          |
+
+选择器位置按 Figma 读回的口径实现：`App / Settings window layout · Responsive`（1119:36110）内容表面 inset 12px、padding 40/40/32、概览标题自表面顶部 40px 开始，右上角是未被占用的表面内边距；代码新增的 40px 头部行替代原 `padding-top`，桌面标题仍从 40px 开始，32px 控件位于表面 y 4–36，右端对齐内容 inset 40px（窗口右缘内 52px）。紧凑布局（≤759px）标题偏移由 16px 变为 40px，因为 32px 控件无法放进 16px 的旧边距。
+
+Figma 侧未同步：本环境只有只读的本地 Figma MCP（`figma-desktop_*` 工具集没有写入能力），无法新增选择器实例或变体。待有写权限时应在 `App / Settings overview header · Rhea`（1181:38808）或窗口组件层补齐，并复核 Desktop／Compact／Drawer 与二级页头部（`1045:32910`、`1093:34262`）；当前不把代码侧实现当作 Figma 已同步。
+
+本轮是增量迁移的第一步：快捷键、命令、记忆、提供商子页与任务面板仍保留英文文案，后续按 AGENTS.md 的增量约定在改动时迁移；主进程原生菜单、对话框与窗口标题仍为英文。验证为定向 oxfmt／Oxlint、`pnpm --filter @ai/desktop typecheck` 与 13 个既有单元测试通过（英文值保持不变），未启动应用运行时，因此选择器的实际窗口位置、跨窗口切换与原生合成外观尚未复核。
+
+## 2026-09-17 全界面 i18n 补齐
+
+用户截图指出上一轮只迁移设置外壳与 Providers 总览后仍有多处英文（提供商行操作菜单、任务面板标题栏、任务权限弹窗）。本轮按功能域拆分为 `providers`／`commands`／`memory`／`panel`／`tasks` 五个命名空间，外加 `common` 承载共享词条，把渲染层其余用户可见文案全部迁入 i18n。各命名空间 en 与 zh-CN 键集合一致，共 536 条：common 10、settings 70、providers 95、commands 159、memory 36、panel 74、tasks 92。
+
+| 归属                                                         | 迁移内容                                                                                                 |
+| ------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------- |
+| `features/providers/**`                                      | 连接行状态与操作菜单（当前默认／管理连接／刷新模型／断开连接）、目录、表单、登录、模型选择器、自定义模型 |
+| `features/commands/**`                                       | 命令管理、编辑器、参数与变量、运行设置、指令生成、预览、快捷键输入                                       |
+| `features/memory/**` 与设置剩余                              | 记忆列表／编辑／暂停／确认；快捷键设置、二级页返回、设置加载错误                                         |
+| `panel`（`App.tsx`、`components/**`、`features/agent` 外壳） | 面板标题栏、欢迎区、Composer、语音输入、命令启动器与命令输入页                                           |
+| `tasks`（会话、历史、文件、请求、权限）                      | 会话操作与复制反馈、任务历史、文件操作、输入请求、任务权限弹窗                                           |
+
+共享工具词条（Read files／Create files／Edit files／Terminal）不再使用主进程 `TOOL_DESCRIPTIONS` 的英文标签，改由 `common.tools.*` 提供，任务权限弹窗与命令运行设置共用；权限弹窗的“新增能力”现在显示本地化标签而不是 `read, write` 原始 id，复核弹窗中的运行状态也改用 `tasks.status.*` 标签。`common` 同时承载全局 toast 的关闭控件。
+
+独立复核后按中文质量清单统一了术语：对话（不再混用“会话”）、每次询问、设置分类、命令（不再把 Commands 写成指令）、创建副本，并修正若干措辞。英文值保持原样，13 个既有单元测试继续通过。
+
+保留的英文边界：主进程原生菜单／对话框／窗口标题、提供商目录元数据（认证方式与云字段标签）、主进程校验消息（[command-validation.ts](apps/desktop/electron/agent/command-validation.ts)）、[errors.ts](apps/desktop/src/lib/errors.ts) 的回退文案，以及 Agent 运行数据（消息、工具输出、任务标题、模型 id）。处理它们需要主进程侧的语言方案；本轮未修改 `electron/**`（另有任务在改）。
+
+验证：oxfmt／Oxlint、`pnpm --filter @ai/desktop typecheck`、13 个既有单元测试与 renderer 构建通过；行为完整性与中文质量两项独立复核通过，复核发现的 P2 项已修复。未启动应用运行时，未做实际窗口、跨窗口切换与原生合成检查。
+
+## 2026-09-17 命令 AI 编辑移交 Agent 会话
+
+用户决定：命令的 AI 生成不再在编辑器内弹出建议对话框，而是由主面板的 Agent harness 直接创建和修改命令；编辑器里的 AI 入口改为打开一个新会话去改。原来的「只能写指令」与随后的「整份命令建议」两条路径因此都被取代，避免同一能力有两个所有者。
+
+运行时流程：
+
+- 主面板普通任务的默认工具集加入 `command`（[run-service.ts](apps/desktop/electron/agent/run-service.ts)），Agent 可以列出、读取、创建和更新命令。读取不需要确认；写入沿用现有权限弹窗逐次确认，确认卡列出创建的全部字段，更新只列出变化的字段，被拒绝时不落库。
+- 写入与设置编辑器共用同一套校验（`validateCommand` + `CommandSchema`）与 `CommandService.save`：只有 name、description、instructions、input、parameters、tools、memory 七个字段可由 Agent 写入，id、revision、enabled、shortcut、templateId 与 model 仍归用户；更新必须带上读取到的 revision，过期会要求重新读取后再改。
+- 命令保存或删除成功后由 `CommandService` 广播一次快照，面板与设置窗口的命令列表随之刷新（此前由两个 IPC 处理器各自广播）。
+- 编辑器页脚左侧的 AI 按钮调用 `settings:start-command-session`：主进程校验来源、解析 id 并取名字，先向面板发送 `agent:command-session` 再显示面板；面板据此开启新会话，把「更新命令 “X”（id：…）：」或「创建命令：」作为种子文本放进输入框，由用户补充意图后发送。该按钮此前短暂放在二级页标题行的 actions 槽，按用户反馈移回页脚左侧；`SettingsHeading` 的 `actions` 因此在失去唯一消费者后被移除，共享头部组件恢复原形。
+- 运行设置按用户反馈从页脚弹层改为编辑器正文里的正式表单项（`run-settings.tsx`，位于参数之后）：模型策略（含固定模型选择器）、记忆、允许的工具。原 `.run-settings-popover` 与 `run.modelPolicy`／`run.memoryPolicy` 随之删除，Select 改用可见标签关联（`htmlFor`／`id`）而不是 `aria-label`。工具列表按预设列表形态重排为 `ItemGroup` + `Item variant="outline" size="sm"`（`ItemContent` 标题／描述 + `ItemActions` 开关，描述改用预设的 14px muted）。整块布局由 grid 承担：`.run-settings` 提供 16px 分区行距，工具网格 `.run-settings-tools` 采用与 `.field-columns` 相同的 220px 最小列宽与 16px 间距，但上限为三列（`repeat(auto-fit, minmax(max(220px, (100% - 32px) / 3), 1fr))`）：宽窗口始终三列，456–691px 两列，更窄与并排字段同步收成一列，每张卡片内部再由 `.run-settings-tool[data-slot='item']` 的 `minmax(0, 1fr) auto` 把开关固定到独立轨道；并排的模型／记忆继续使用既有的 grid + subgrid 轨道（`.field-columns.aligned-fields`）。Figma `1062:33204` 仍保留展开／收起变体，需要设计侧改为常驻分区。
+
+实现归属：
+
+- `electron/agent/command-schema.ts`：`command` 工具 id、`CommandFieldsSchema`、`CommandToolSchema` 与工具回复 schema；`TOOL_DESCRIPTIONS` 增加条目，显示文案由 `common.tools.command.*` 提供。
+- `electron/agent/command-tool.ts`（新增）：list／get／save，revision 守卫、字段合并与确认卡文本。
+- `electron/agent/native-schema.ts`、`native-tools.ts`、`task-runtime.ts`、`service.ts`：`commandList`／`commandGet`／`commandSave` 三个 native action，按运行快照的工具集授权，工具实例在 `AgentService` 中构造一次。
+- `electron/agent/worker-session.ts`：注册 `command` 工具，允许列表沿用运行快照的工具集。
+- `electron/main.ts`、`settings-contract.ts`、两个 preload：设置窗口到面板的移交通道与本机来源校验。
+- `features/commands/command-editor.tsx`、`features/agent/use-task-panel.ts`：编辑器移交按钮与新会话种子。
+
+同时移除（同一决定的一部分）：编辑器内建议对话框 `command-generator.tsx`、`generation-review.tsx`、`command-changes.ts`，以及主进程的 `command-generation.ts`、`command-generation-prompt.ts`、`generation-contract.ts`、`settings.generation` 桥和配套 i18n／CSS。手动编辑、保存、运行设置、参数编辑与命令运行入口保持不变。
+
+验证：oxfmt／Oxlint、`pnpm typecheck` 与既有 20 个单元测试通过（`--force` 强制不使用缓存）；独立复核确认按工具集授权、确认先于写入、失败与拒绝不广播、可写字段范围与校验和编辑器一致、删除后无残留引用。未启动应用运行时，因此 Agent 实际调用工具、确认卡渲染、移交后的窗口聚焦与原生合成外观尚未复核。
+
+未同步范围：Figma 仍保留「生成指令」旧对话框（`1231:39739`）、运行设置的展开／收起变体（`1062:33204`），也还没有页脚左侧的 AI 入口；本地 Figma MCP 只提供只读工具（`get_design_context`、`get_variable_defs`、`get_screenshot`、`get_motion_context`、`get_metadata`、`get_figjam`），没有写入能力，云端 Figma 工具在本会话不可用，因此本次没有修改设计文件。

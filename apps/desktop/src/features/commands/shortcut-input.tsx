@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { X } from 'lucide-react';
 import { Button } from '@ai/ui/components/button';
 import { Kbd, KbdGroup } from '@ai/ui/components/kbd';
@@ -13,6 +14,7 @@ export function ShortcutInput({
   value: string;
   onChange: (value: string) => void;
 }) {
+  const { t } = useTranslation('commands');
   const capture = useShortcutCapture();
   const platform = window.desktop?.platform ?? 'web';
   const { keys, isRecording, stop, resetKeys } = capture;
@@ -22,7 +24,7 @@ export function ShortcutInput({
     !shortcut ||
     !shortcut.includes('+') ||
     (shortcut.startsWith('Shift+') && shortcut.split('+').length === 2);
-  const error = hasKey && invalid ? 'Include Command, Control, or Alt with a supported key.' : '';
+  const error = hasKey && invalid ? t('shortcut.error') : '';
   useEffect(() => {
     if (!isRecording || !hasKey) return;
     stop();
@@ -32,13 +34,13 @@ export function ShortcutInput({
   }, [hasKey, invalid, shortcut, isRecording, stop, resetKeys, onChange]);
   return (
     <div>
-      <div className="flex items-center gap-2">
+      <div className="relative">
         <Button
           id="command-shortcut"
           type="button"
           variant="outline"
-          className="flex-1"
-          aria-label="Record command shortcut"
+          className="w-full pr-9"
+          aria-label={t('shortcut.record')}
           aria-pressed={isRecording}
           onBlur={capture.cancel}
           onClick={() => {
@@ -47,7 +49,7 @@ export function ShortcutInput({
           }}
         >
           {isRecording ? (
-            'Press keys…'
+            t('shortcut.recording')
           ) : value ? (
             <KbdGroup>
               {shortcutKeys(value, platform).map((key) => (
@@ -55,19 +57,21 @@ export function ShortcutInput({
               ))}
             </KbdGroup>
           ) : (
-            'Record shortcut'
+            t('shortcut.recordShortcut')
           )}
         </Button>
-        <IconButton
-          label="Clear shortcut"
-          disabled={!value}
-          onClick={() => {
-            capture.cancel();
-            onChange('');
-          }}
-        >
-          <X />
-        </IconButton>
+        {value && (
+          <IconButton
+            label={t('shortcut.clear')}
+            className="absolute top-1/2 right-1 -translate-y-1/2"
+            onClick={() => {
+              capture.cancel();
+              onChange('');
+            }}
+          >
+            <X />
+          </IconButton>
+        )}
       </div>
       {error && (
         <p role="alert" className="text-xs text-destructive mt-2">

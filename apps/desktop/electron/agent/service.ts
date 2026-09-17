@@ -15,6 +15,7 @@ import {
 import { AgentStore } from './store';
 import { canonicalPath, ContextResources } from './resources';
 import { CommandService } from './command-service';
+import { CommandTool } from './command-tool';
 import { TaskRuntime } from './task-runtime';
 import { RunService } from './run-service';
 import { ArtifactService } from './artifact-service';
@@ -45,16 +46,25 @@ export class AgentService {
     resources: ContextResources,
     root: string,
     private settings: SettingsService,
-    private launch: (prepared: PreparedCommand) => void,
+    private launch: (prepared: PreparedCommand, autoRun: boolean) => void,
     private choose: <T>(operation: () => Promise<T>) => Promise<T>,
   ) {
+    this.commands = new CommandService(
+      store,
+      () => settings.snapshot().shortcuts,
+      launch,
+      () => this.broadcast(),
+    );
+    this.commands.initialize();
+    const commandTool = new CommandTool(store, this.commands, (request) =>
+      this.runtime.ask(request),
+    );
     this.runtime = new TaskRuntime(root, store, resources, {
       publish: (event) => settings.send(AGENT_IPC.changed, event),
       changed: () => this.broadcast(),
       auth: (run) => settings.providers.runtime.auth(run.snapshot.model),
+      command: (request) => commandTool.execute(request),
     });
-    this.commands = new CommandService(store, () => settings.snapshot().shortcuts, launch);
-    this.commands.initialize();
     this.runs = new RunService(
       this.runtime,
       (command, reference) =>
@@ -70,7 +80,7 @@ export class AgentService {
 
   static async create(
     settings: SettingsService,
-    launch: (prepared: PreparedCommand) => void,
+    launch: (prepared: PreparedCommand, autoRun: boolean) => void,
     choose: <T>(operation: () => Promise<T>) => Promise<T>,
   ) {
     const root = path.join(await canonicalPath(app.getPath('userData')), 'agent-v1');
@@ -151,22 +161,18 @@ export class AgentService {
           if (!command.enabled || command.revision !== request.prepared.revision)
             throw new Error('This command changed or is disabled. Review before running.');
           await this.runs.preview(request.prepared.input, command);
-          this.launch({ command, input: request.prepared.input, notice: '' });
-        } else this.launch(await this.commands.prepare(request.commandId));
+          this.launch({ command, input: request.prepared.input, notice: '' }, false);
+        } else this.launch(await this.commands.prepare(request.commandId), false);
         return null;
       }
       case 'prepare':
         return this.commands.prepare(request.commandId);
       case 'capture':
         return this.commands.capture(request.source);
-      case 'saveCommand': {
-        const command = await this.commands.save(request.command, request.expectedRevision);
-        this.broadcast();
-        return command;
-      }
+      case 'saveCommand':
+        return this.commands.save(request.command, request.expectedRevision);
       case 'deleteCommand':
         await this.commands.delete(request.commandId, request.revision);
-        this.broadcast();
         return null;
       case 'preview':
         return this.runs.preview(request.input, request.command, request.policy);

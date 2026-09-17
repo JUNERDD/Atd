@@ -9,14 +9,14 @@ import {
 } from '@codemirror/view';
 import type { CommandDefinition } from '../../../electron/agent/command-schema';
 import { availableVariables } from '../../../electron/agent/command-validation';
-import { contextVariables, parameterVariables } from './command-variables';
 import { instructionCompletion } from './instruction-completion';
 
-export function instructionExtensions(command: CommandDefinition) {
+export function instructionExtensions(
+  command: CommandDefinition,
+  editor: { variables: { name: string; detail: string }[]; label: string },
+) {
   const names = availableVariables(command);
-  const variables = [...contextVariables, ...parameterVariables(command)].filter(({ name }) =>
-    names.includes(name),
-  );
+  const variables = editor.variables.filter(({ name }) => names.includes(name));
   const matcher = new MatchDecorator({
     regexp: /\{\{\s*([^{}]+?)\s*\}\}/g,
     decoration: (match) =>
@@ -72,6 +72,6 @@ export function instructionExtensions(command: CommandDefinition) {
       tooltipClass: () => 'instruction-completion-measure',
     }),
     instructionCompletion,
-    EditorView.contentAttributes.of({ 'aria-label': 'Instructions', spellcheck: 'false' }),
+    EditorView.contentAttributes.of({ 'aria-label': editor.label, spellcheck: 'false' }),
   ];
 }

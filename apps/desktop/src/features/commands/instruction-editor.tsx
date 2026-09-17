@@ -1,14 +1,14 @@
 import { useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import CodeMirror, { type ReactCodeMirrorRef } from '@uiw/react-codemirror';
 import { instructionExtensions } from './instruction-extensions';
 import { instructionTheme } from './instruction-theme';
-import { Braces, Undo2 } from 'lucide-react';
+import { Braces } from 'lucide-react';
 import { Button } from '@ai/ui/components/button';
 import { Label } from '@ai/ui/components/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@ai/ui/components/popover';
 import { VariablePicker } from './variable-picker';
-import { InstructionGenerator } from './instruction-generator';
-import type { ContextVariable } from './command-variables';
+import { variableDetails, type ContextVariable } from './command-variables';
 import type { CommandDefinition } from '../../../electron/agent/command-schema';
 import { availableVariables, templateReferences } from '../../../electron/agent/command-validation';
 
@@ -23,12 +23,15 @@ export function InstructionEditor({
   onAddParameter: () => void;
   onConfigureSource: (source: ContextVariable) => void;
 }) {
+  const { t } = useTranslation('commands');
   const editor = useRef<ReactCodeMirrorRef>(null);
   const preserveTargetFocus = useRef(false);
   const [open, setOpen] = useState(false);
-  const [undo, setUndo] = useState<string | null>(null);
   const available = availableVariables(command);
-  const extensions = instructionExtensions(command);
+  const extensions = instructionExtensions(command, {
+    variables: variableDetails(command, t),
+    label: t('instruction.title'),
+  });
   function insert(name: string) {
     const view = editor.current?.view;
     const value = `{{${name}}}`;
@@ -57,22 +60,17 @@ export function InstructionEditor({
       (ref) => !available.includes(ref.name),
     );
     if (unknown.length)
-      referenceError = `Enable or define ${unknown.map((ref) => `{{${ref.name}}}`).join(', ')}.`;
+      referenceError = t('instruction.referenceError', {
+        variables: unknown.map((ref) => `{{${ref.name}}}`).join(', '),
+      });
   } catch (error) {
-    referenceError = error instanceof Error ? error.message : 'Check the variable syntax.';
+    referenceError = error instanceof Error ? error.message : t('instruction.syntaxError');
   }
   return (
     <div className="settings-field" data-figma-node="417:1716">
       <div className="instruction-toolbar">
-        <Label>Instructions</Label>
+        <Label>{t('instruction.title')}</Label>
         <div className="instruction-actions">
-          <InstructionGenerator
-            command={command}
-            onChange={(next) => {
-              setUndo(command.instructions);
-              onChange(next);
-            }}
-          />
           <Popover
             open={open}
             onOpenChange={(value) => {
@@ -83,7 +81,7 @@ export function InstructionEditor({
             <PopoverTrigger asChild>
               <Button variant="outline" size="xs">
                 <Braces data-icon="inline-start" />
-                Insert variable
+                {t('variables.insert')}
               </Button>
             </PopoverTrigger>
             <PopoverContent
@@ -131,23 +129,6 @@ export function InstructionEditor({
         onChange={(instructions) => onChange({ ...command, instructions })}
         className="instruction-editor"
       />
-      {undo !== null && (
-        <div className="generation-feedback">
-          <output>Generated instructions applied to this draft.</output>
-          <Button
-            type="button"
-            size="xs"
-            variant="ghost"
-            onClick={() => {
-              onChange({ ...command, instructions: undo });
-              setUndo(null);
-            }}
-          >
-            <Undo2 />
-            Undo
-          </Button>
-        </div>
-      )}
       {referenceError && (
         <p role="alert" className="text-xs text-destructive">
           {referenceError}{' '}
@@ -159,11 +140,11 @@ export function InstructionEditor({
               setOpen(true);
             }}
           >
-            Find a variable
+            {t('instruction.find')}
           </Button>
         </p>
       )}
-      <div className="variable-chips" aria-label="Available variables">
+      <div className="variable-chips" aria-label={t('instruction.available')}>
         {available.map((name) => (
           <Button
             key={name}
@@ -178,11 +159,8 @@ export function InstructionEditor({
           </Button>
         ))}
       </div>
-      <p
-        className="truncate text-xs text-muted-foreground"
-        title="Use variables for task input. Type {{ to see suggestions."
-      >
-        Use variables for task input. Type {'{{'} to see suggestions.
+      <p className="truncate text-xs text-muted-foreground" title={t('instruction.hint')}>
+        {t('instruction.hint')}
       </p>
     </div>
   );
