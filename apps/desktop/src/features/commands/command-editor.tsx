@@ -19,6 +19,7 @@ import { InstructionEditor } from './instruction-editor';
 import { ParameterEditor } from './parameter-editor';
 import { RunSettings } from './run-settings';
 import { parameterTypeTag } from './command-variables';
+import { FieldHint } from '../../components/field-hint';
 import { SettingsHeading } from '../settings/settings-heading';
 
 export function CommandEditor({
@@ -156,7 +157,6 @@ export function CommandEditor({
           <InstructionEditor
             command={draft}
             onChange={setDraft}
-            onAddParameter={() => setParameter({ index: null })}
             onConfigureSource={(source) => {
               setInputOptionsOpen(true);
               requestAnimationFrame(() => {
@@ -176,7 +176,10 @@ export function CommandEditor({
           />
           <section className="settings-field">
             <div className="flex items-center justify-between">
-              <Label>{t('editor.parameters')}</Label>
+              <div className="flex items-center gap-1.5">
+                <Label>{t('editor.parameters')}</Label>
+                <FieldHint text={t('editor.parametersHint')} />
+              </div>
               <Button
                 variant="outline"
                 disabled={draft.parameters.length >= 20}
@@ -186,14 +189,6 @@ export function CommandEditor({
                 {t('parameters.add')}
               </Button>
             </div>
-            {!draft.parameters.length && (
-              <p
-                className="truncate text-xs text-muted-foreground"
-                title={t('editor.parametersHint')}
-              >
-                {t('editor.parametersHint')}
-              </p>
-            )}
             <ul className="parameter-items">
               {draft.parameters.map((item, index) => {
                 const type = t(parameterTypeTag(item.type));

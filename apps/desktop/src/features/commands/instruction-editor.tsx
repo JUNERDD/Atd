@@ -3,22 +3,21 @@ import { useTranslation } from 'react-i18next';
 import CodeMirror, { type ReactCodeMirrorRef } from '@uiw/react-codemirror';
 import { instructionExtensions } from './instruction-extensions';
 import { instructionTheme } from './instruction-theme';
-import { Plus, Settings2 } from 'lucide-react';
+import { Settings2 } from 'lucide-react';
 import { Button } from '@ai/ui/components/button';
 import { Label } from '@ai/ui/components/label';
 import { contextVariables, variableDetails, type ContextVariable } from './command-variables';
+import { FieldHint } from '../../components/field-hint';
 import type { CommandDefinition } from '../../../electron/agent/command-schema';
 import { availableVariables, templateReferences } from '../../../electron/agent/command-validation';
 
 export function InstructionEditor({
   command,
   onChange,
-  onAddParameter,
   onConfigureSource,
 }: {
   command: CommandDefinition;
   onChange: (command: CommandDefinition) => void;
-  onAddParameter: () => void;
   onConfigureSource: (source: ContextVariable) => void;
 }) {
   const { t } = useTranslation('commands');
@@ -74,7 +73,10 @@ export function InstructionEditor({
   return (
     <div className="settings-field" data-figma-node="417:1716">
       <div className="instruction-toolbar">
-        <Label>{t('instruction.title')}</Label>
+        <div className="flex items-center gap-1.5">
+          <Label>{t('instruction.title')}</Label>
+          <FieldHint text={t('instruction.hint')} />
+        </div>
       </div>
       <CodeMirror
         ref={editor}
@@ -129,14 +131,7 @@ export function InstructionEditor({
             </Button>
           ),
         )}
-        <Button type="button" variant="outline" size="sm" onClick={onAddParameter}>
-          <Plus />
-          {t('parameters.add')}
-        </Button>
       </div>
-      <p className="truncate text-xs text-muted-foreground" title={t('instruction.hint')}>
-        {t('instruction.hint')}
-      </p>
     </div>
   );
 }
