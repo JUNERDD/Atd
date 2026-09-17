@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { Plug, SearchX } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@ai/ui/components/button';
 import { Input } from '@ai/ui/components/input';
-import { commandFilter } from '@ai/ui/components/command';
+import { commandFilter } from '@ai/ui/lib/command-filter';
 import {
   AlertDialog,
   AlertDialogContent,
@@ -18,11 +19,12 @@ import type { Connection, ProviderCatalogEntry } from '../../../electron/provide
 import { ProviderConnections } from '../providers/provider-connections';
 import { ProviderCatalog } from '../providers/provider-catalog';
 import { ProviderForm } from '../providers/provider-form';
-import { messageOf } from '../agent/use-agent';
+import { showErrorToast } from '../../components/toast-store';
 import { SettingsHeading } from './settings-heading';
 import '../providers/providers.css';
 
 export function ProviderSettingsForm({ snapshot }: { snapshot: SettingsSnapshot | null }) {
+  const { t } = useTranslation('settings');
   const bridge = window.desktop?.settings.providers;
   const [catalog, setCatalog] = useState<ProviderCatalogEntry[]>([]);
   const [view, setView] = useState<
@@ -30,7 +32,7 @@ export function ProviderSettingsForm({ snapshot }: { snapshot: SettingsSnapshot 
   >('overview');
   const [query, setQuery] = useState('');
   const [pending, setPending] = useState(false);
-  const [error, setError] = useState('');
+  const [retryable, setRetryable] = useState(false);
   const [notice, setNotice] = useState('');
   const [disconnecting, setDisconnecting] = useState<Connection | null>(null);
   const search = useRef<HTMLInputElement>(null);
@@ -44,7 +46,9 @@ export function ProviderSettingsForm({ snapshot }: { snapshot: SettingsSnapshot 
         if (active) setCatalog(value);
       },
       (error) => {
-        if (active) setError(messageOf(error));
+        if (!active) return;
+        setRetryable(true);
+        showErrorToast(error);
       },
     );
     return () => {
@@ -55,14 +59,15 @@ export function ProviderSettingsForm({ snapshot }: { snapshot: SettingsSnapshot 
     if (pending) return;
     retry.current = () => perform(operation, success);
     setPending(true);
-    setError('');
+    setRetryable(false);
     setNotice('');
     try {
       await operation();
       setNotice(success);
       retry.current = null;
     } catch (error) {
-      setError(messageOf(error));
+      setRetryable(true);
+      showErrorToast(error);
     } finally {
       setPending(false);
     }
@@ -70,7 +75,7 @@ export function ProviderSettingsForm({ snapshot }: { snapshot: SettingsSnapshot 
   function manage(connection: Connection) {
     const provider = catalog.find((item) => item.id === connection.provider);
     if (!provider) {
-      setError('This provider is no longer registered. Its saved connection has been preserved.');
+      showErrorToast(t('providers.overview.disconnect.missingProvider'));
       return;
     }
     setView({ provider, connectionId: connection.connectionId });
@@ -104,10 +109,16 @@ export function ProviderSettingsForm({ snapshot }: { snapshot: SettingsSnapshot 
         query.trim(),
       ) > 0,
   );
-  const emptyTitle = connections.length ? 'No matching providers' : 'Connect your first provider';
-  const emptyDescription = connections.length
-    ? 'Try a connection or provider name.'
-    : 'Add an account, API key, cloud service or local connection.';
+  const emptyTitle = t(
+    connections.length
+      ? 'providers.overview.empty.noMatchesTitle'
+      : 'providers.overview.empty.firstTitle',
+  );
+  const emptyDescription = t(
+    connections.length
+      ? 'providers.overview.empty.noMatchesDescription'
+      : 'providers.overview.empty.firstDescription',
+  );
   function clear() {
     setQuery('');
     search.current?.focus();
@@ -115,13 +126,13 @@ export function ProviderSettingsForm({ snapshot }: { snapshot: SettingsSnapshot 
   return (
     <section className="providers-overview">
       <SettingsHeading
-        title="Providers"
-        description="Choose a default provider and set a default model for each connection."
+        title={t('providers.overview.title')}
+        description={t('providers.overview.description')}
       >
         <Input
           ref={search}
-          aria-label="Search providers"
-          placeholder="Search providers…"
+          aria-label={t('providers.overview.searchLabel')}
+          placeholder={t('providers.overview.searchPlaceholder')}
           value={query}
           disabled={!connections.length}
           onChange={(event) => setQuery(event.target.value)}
@@ -133,12 +144,11 @@ export function ProviderSettingsForm({ snapshot }: { snapshot: SettingsSnapshot 
           }}
         />
         <Button disabled={!bridge || !catalog.length} onClick={() => setView('catalog')}>
-          Add provider
+          {t('providers.overview.addProvider')}
         </Button>
       </SettingsHeading>
-      {error && (
-        <div role="alert" className="settings-status" data-error="true">
-          {error}{' '}
+      {retryable && (
+        <div className="settings-status">
           <Button
             variant="outline"
             size="xs"
@@ -151,15 +161,15 @@ export function ProviderSettingsForm({ snapshot }: { snapshot: SettingsSnapshot 
                   }))
             }
           >
-            Try again
+            {t('providers.overview.retry')}
           </Button>
         </div>
       )}
       {notice && <output className="settings-status">{notice}</output>}
       {connections.length > 0 && (
         <div className="provider-column-headings">
-          <span>Connected providers</span>
-          <span>Default model</span>
+          <span>{t('providers.overview.connectedProviders')}</span>
+          <span>{t('providers.overview.defaultModel')}</span>
         </div>
       )}
       <ProviderConnections
@@ -180,7 +190,9 @@ export function ProviderSettingsForm({ snapshot }: { snapshot: SettingsSnapshot 
             disabled={!bridge}
             onClick={connections.length ? clear : () => setView('catalog')}
           >
-            {connections.length ? 'Clear search' : 'Add provider'}
+            {connections.length
+              ? t('providers.overview.empty.clearSearch')
+              : t('providers.overview.addProvider')}
           </Button>
         </div>
       )}
@@ -192,15 +204,19 @@ export function ProviderSettingsForm({ snapshot }: { snapshot: SettingsSnapshot 
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Disconnect {disconnecting?.name}?</AlertDialogTitle>
+            <AlertDialogTitle>
+              {t('providers.overview.disconnect.title', { name: disconnecting?.name ?? '' })}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Credentials will be removed. Saved model references remain available for repair.
+              {t('providers.overview.disconnect.description')}
               {disconnecting?.connectionId === snapshot?.defaultConnectionId &&
-                ' New tasks using the app default will require reconnection or another default provider.'}
+                t('providers.overview.disconnect.defaultNote')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={pending}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={pending}>
+              {t('providers.overview.disconnect.cancel')}
+            </AlertDialogCancel>
             <AlertDialogAction
               disabled={pending}
               onClick={(event) => {
@@ -209,10 +225,10 @@ export function ProviderSettingsForm({ snapshot }: { snapshot: SettingsSnapshot 
                   void perform(async () => {
                     await bridge!.disconnect(disconnecting.connectionId, disconnecting.revision);
                     setDisconnecting(null);
-                  }, 'Provider disconnected.');
+                  }, t('providers.overview.disconnect.done'));
               }}
             >
-              Disconnect
+              {t('providers.overview.disconnect.confirm')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

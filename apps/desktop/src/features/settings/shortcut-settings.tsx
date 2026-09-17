@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@ai/ui/components/button';
 import {
   Item,
@@ -16,28 +17,28 @@ import type { SettingsSnapshot, ShortcutAction } from '../../../electron/setting
 import { shortcutKeys } from '../../lib/shortcuts';
 import { useShortcutSettings } from './use-shortcut-settings';
 
-const IN_APP_SHORTCUTS: { action: ShortcutAction; label: string; description: string }[] = [
+const IN_APP_SHORTCUTS = [
   {
     action: 'newConversation',
-    label: 'New conversation',
-    description: 'Start with a clean composer.',
+    labelKey: 'shortcuts.actions.newConversation.label',
+    descriptionKey: 'shortcuts.actions.newConversation.description',
   },
   {
     action: 'openSettings',
-    label: 'Open settings',
-    description: 'Open this settings window.',
+    labelKey: 'shortcuts.actions.openSettings.label',
+    descriptionKey: 'shortcuts.actions.openSettings.description',
   },
   {
     action: 'sendMessage',
-    label: 'Send message',
-    description: 'Send the current message.',
+    labelKey: 'shortcuts.actions.sendMessage.label',
+    descriptionKey: 'shortcuts.actions.sendMessage.description',
   },
   {
     action: 'newLine',
-    label: 'New line',
-    description: 'Add a line without sending.',
+    labelKey: 'shortcuts.actions.newLine.label',
+    descriptionKey: 'shortcuts.actions.newLine.description',
   },
-];
+] as const;
 
 function ShortcutRow({
   action,
@@ -50,6 +51,7 @@ function ShortcutRow({
   description: string;
   settings: ReturnType<typeof useShortcutSettings>;
 }) {
+  const { t } = useTranslation('settings');
   const recording = settings.recording === action;
   const keys = shortcutKeys(settings.bindings[action], settings.platform);
 
@@ -75,7 +77,9 @@ function ShortcutRow({
             variant="ghost"
             className="settings-shortcut-button"
             aria-label={
-              recording ? `Cancel recording ${label}` : `Change ${label}: ${keys.join(' ')}`
+              recording
+                ? t('shortcuts.capture.cancelLabel', { label })
+                : t('shortcuts.capture.changeLabel', { label, keys: keys.join(' ') })
             }
             aria-describedby={recording ? 'settings-shortcut-status' : undefined}
             aria-pressed={recording}
@@ -93,7 +97,7 @@ function ShortcutRow({
             }}
           >
             {recording ? (
-              'Press keys…'
+              t('shortcuts.capture.pressKeys')
             ) : (
               <KbdGroup aria-hidden="true">
                 {keys.map((key, index) => (
@@ -115,6 +119,7 @@ export function ShortcutSettings({
   snapshot: SettingsSnapshot | null;
   onRecordingChange: (recording: boolean) => void;
 }) {
+  const { t } = useTranslation('settings');
   const settings = useShortcutSettings(snapshot);
   const recording = settings.recording !== null;
 
@@ -126,37 +131,35 @@ export function ShortcutSettings({
   return (
     <>
       <header className="settings-section-heading">
-        <h2 title="Keyboard shortcuts">Keyboard shortcuts</h2>
-        <p title="Make the app work at your pace. Click a shortcut to edit it.">
-          Make the app work at your pace. Click a shortcut to edit it.
-        </p>
+        <h2 title={t('shortcuts.title')}>{t('shortcuts.title')}</h2>
+        <p title={t('shortcuts.description')}>{t('shortcuts.description')}</p>
       </header>
       <div className="settings-shortcut-groups" aria-busy={settings.pending !== null}>
         <section className="settings-shortcut-group" aria-labelledby="settings-global-shortcuts">
-          <h3 id="settings-global-shortcuts">Global</h3>
+          <h3 id="settings-global-shortcuts">{t('shortcuts.groups.global')}</h3>
           <ItemGroup>
             <ShortcutRow
               action="togglePanel"
-              label="Show or hide panel"
-              description="Available anywhere on your Mac."
+              label={t('shortcuts.actions.togglePanel.label')}
+              description={t('shortcuts.actions.togglePanel.description')}
               settings={settings}
             />
           </ItemGroup>
           {snapshot?.shortcutAvailable === false && (
             <p className="settings-status" data-error="true" role="alert">
-              This shortcut could not be registered. Choose another combination.
+              {t('shortcuts.errors.register')}
             </p>
           )}
         </section>
         <section className="settings-shortcut-group" aria-labelledby="settings-in-app-shortcuts">
-          <h3 id="settings-in-app-shortcuts">In app</h3>
+          <h3 id="settings-in-app-shortcuts">{t('shortcuts.groups.inApp')}</h3>
           <ItemGroup>
-            {IN_APP_SHORTCUTS.map(({ action, label, description }) => (
+            {IN_APP_SHORTCUTS.map(({ action, labelKey, descriptionKey }) => (
               <ShortcutRow
                 key={action}
                 action={action}
-                label={label}
-                description={description}
+                label={t(labelKey)}
+                description={t(descriptionKey)}
                 settings={settings}
               />
             ))}
@@ -168,7 +171,7 @@ export function ShortcutSettings({
         <Tooltip>
           <TooltipTrigger asChild>
             <div className="settings-pin-preference">
-              <Label htmlFor="settings-always-on-top">Always on top</Label>
+              <Label htmlFor="settings-always-on-top">{t('shortcuts.alwaysOnTop')}</Label>
               <Switch
                 id="settings-always-on-top"
                 checked={settings.pinned}
@@ -177,7 +180,7 @@ export function ShortcutSettings({
               />
             </div>
           </TooltipTrigger>
-          <TooltipContent>Always on top</TooltipContent>
+          <TooltipContent>{t('shortcuts.alwaysOnTop')}</TooltipContent>
         </Tooltip>
         <Button
           type="button"
@@ -185,7 +188,9 @@ export function ShortcutSettings({
           disabled={settings.unavailable || settings.pending !== null || recording}
           onClick={() => void settings.restoreDefaults()}
         >
-          {settings.pending === 'restore' ? 'Restoring…' : 'Restore defaults'}
+          {settings.pending === 'restore'
+            ? t('shortcuts.restoring')
+            : t('shortcuts.restoreDefaults')}
         </Button>
       </div>
       {(settings.error || settings.status) && (

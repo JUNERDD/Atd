@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@ai/ui/components/button';
 import { Input } from '@ai/ui/components/input';
 import { Label } from '@ai/ui/components/label';
@@ -10,7 +11,7 @@ import {
   SelectValue,
 } from '@ai/ui/components/select';
 import type { LoginState } from '../../../electron/providers/schema';
-import { messageOf } from '../agent/use-agent';
+import { showErrorToast } from '../../components/toast-store';
 
 export function ProviderSignIn({
   connectionId,
@@ -19,10 +20,10 @@ export function ProviderSignIn({
   connectionId: string;
   disabled: boolean;
 }) {
+  const { t } = useTranslation('providers');
   const bridge = window.desktop?.settings.providers;
   const [state, setState] = useState<LoginState | null>(null);
   const [answer, setAnswer] = useState('');
-  const [error, setError] = useState('');
   const prompt = useRef<HTMLDivElement>(null);
   const feedback = useRef<HTMLOutputElement>(null);
   const current = useRef(state);
@@ -48,11 +49,10 @@ export function ProviderSignIn({
     };
   }, [bridge, connectionId]);
   async function action(operation: () => Promise<unknown>) {
-    setError('');
     try {
       await operation();
     } catch (error) {
-      setError(messageOf(error));
+      showErrorToast(error);
     }
   }
   const waiting = state?.status === 'waiting';
@@ -78,7 +78,7 @@ export function ProviderSignIn({
       )}
       {waiting && state.url && (
         <Button variant="outline" onClick={() => void action(() => bridge!.openLink(state.id))}>
-          Open browser
+          {t('login.openBrowser')}
         </Button>
       )}
       {waiting && state.prompt && (
@@ -87,7 +87,7 @@ export function ProviderSignIn({
           {state.prompt.type === 'select' ? (
             <Select value={answer} onValueChange={setAnswer}>
               <SelectTrigger id="provider-auth-answer">
-                <SelectValue placeholder="Choose an option" />
+                <SelectValue placeholder={t('login.chooseOption')} />
               </SelectTrigger>
               <SelectContent position="popper" align="start" collisionPadding={8}>
                 {state.prompt.options.map((option) => (
@@ -110,19 +110,14 @@ export function ProviderSignIn({
             disabled={state.prompt.type === 'select' && !answer}
             onClick={() => void action(() => bridge!.answer(state.id, state.prompt!.id, answer))}
           >
-            Continue
+            {t('login.continue')}
           </Button>
         </div>
-      )}
-      {error && (
-        <p role="alert" className="text-destructive">
-          {error}
-        </p>
       )}
       <div className="flex gap-2">
         {waiting ? (
           <Button variant="outline" onClick={() => void action(() => bridge!.cancel(state.id))}>
-            Cancel sign-in
+            {t('login.cancel')}
           </Button>
         ) : (
           <Button
@@ -139,7 +134,7 @@ export function ProviderSignIn({
               })
             }
           >
-            {state?.status === 'error' ? 'Try again' : 'Sign in'}
+            {state?.status === 'error' ? t('login.tryAgain') : t('login.signIn')}
           </Button>
         )}
       </div>

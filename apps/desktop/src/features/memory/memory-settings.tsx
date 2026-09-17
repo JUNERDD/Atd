@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Pencil, Trash2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@ai/ui/components/button';
 import { Input } from '@ai/ui/components/input';
 import { Label } from '@ai/ui/components/label';
@@ -19,9 +20,11 @@ import {
 import type { MemoryEntry, MemorySnapshot } from '../../../electron/agent/bridge';
 import { SettingsHeading } from '../settings/settings-heading';
 import { IconButton } from '../../components/icon-button';
-import { agentApi, messageOf } from '../agent/use-agent';
+import { agentApi } from '../agent/use-agent';
+import { showErrorToast } from '../../components/toast-store';
 
 export function MemorySettings() {
+  const { t } = useTranslation('memory');
   const [snapshot, setSnapshot] = useState<MemorySnapshot | null>(null);
   const [search, setSearch] = useState('');
   const [editing, setEditing] = useState<MemoryEntry | null>(null);
@@ -45,7 +48,7 @@ export function MemorySettings() {
         if (active) setSnapshot(value);
       },
       (error) => {
-        if (active) setError(messageOf(error));
+        if (active) showErrorToast(error);
       },
     );
     return () => {
@@ -58,13 +61,9 @@ export function MemorySettings() {
     setError('');
     try {
       setSnapshot(await agentApi().pauseMemory(paused));
-      setStatus(
-        paused
-          ? 'Automatic learning paused. Existing memories remain available.'
-          : 'Automatic learning resumed.',
-      );
+      setStatus(paused ? t('memory.feedback.paused') : t('memory.feedback.resumed'));
     } catch (error) {
-      setError(messageOf(error));
+      showErrorToast(error);
     } finally {
       setPending(false);
     }
@@ -72,7 +71,7 @@ export function MemorySettings() {
   async function save(remove = false) {
     if (!editing) return;
     if (!remove && !content.trim()) {
-      setError('Enter the memory, or use Delete to remove it.');
+      setError(t('memory.feedback.emptyContent'));
       return;
     }
     setPending(true);
@@ -80,9 +79,9 @@ export function MemorySettings() {
     try {
       setSnapshot(await agentApi().updateMemory(editing, remove ? '' : content));
       setEditing(null);
-      setStatus(remove ? 'Memory deleted.' : 'Memory updated.');
+      setStatus(remove ? t('memory.feedback.deleted') : t('memory.feedback.updated'));
     } catch (error) {
-      setError(messageOf(error));
+      showErrorToast(error);
     } finally {
       setPending(false);
     }
@@ -117,10 +116,10 @@ export function MemorySettings() {
                 setSnapshot(value);
                 setError('');
               })
-              .catch((error) => setError(messageOf(error)));
+              .catch((error) => showErrorToast(error));
           }}
         >
-          Reload memory
+          {t('memory.feedback.reload')}
         </Button>
       )}
     </>
@@ -129,11 +128,15 @@ export function MemorySettings() {
     <section className="memory-settings">
       {editing ? (
         <div className="command-editor">
-          <SettingsHeading title="Edit memory" onBack={closeEditor} backLabel="Back to memory" />
-          <ScrollArea className="editor-fields">
+          <SettingsHeading
+            title={t('memory.edit.title')}
+            onBack={closeEditor}
+            backLabel={t('memory.edit.back')}
+          />
+          <ScrollArea className="editor-fields" gutter>
             <div className="settings-editor-inner">
               <div className="settings-field">
-                <Label htmlFor="memory-content">Memory</Label>
+                <Label htmlFor="memory-content">{t('memory.edit.fieldLabel')}</Label>
                 <Textarea
                   id="memory-content"
                   rows={6}
@@ -146,9 +149,7 @@ export function MemorySettings() {
                     setError('');
                   }}
                 />
-                <p className="text-xs text-muted-foreground">
-                  Changes apply to future memory reads.
-                </p>
+                <p className="text-xs text-muted-foreground">{t('memory.edit.note')}</p>
               </div>
               {feedback}
             </div>
@@ -156,39 +157,36 @@ export function MemorySettings() {
           <footer className="editor-footer">
             <Button variant="ghost" onClick={() => setConfirm('delete')} disabled={pending}>
               <Trash2 />
-              Delete memory
+              {t('memory.edit.delete')}
             </Button>
             <div>
               <Button variant="outline" onClick={closeEditor} disabled={pending}>
-                Cancel
+                {t('memory.edit.cancel')}
               </Button>
               <Button onClick={() => void save()} disabled={pending}>
-                {pending ? 'Saving…' : 'Save changes'}
+                {pending ? t('memory.edit.saving') : t('memory.edit.save')}
               </Button>
             </div>
           </footer>
         </div>
       ) : (
         <>
-          <SettingsHeading
-            title="Memory"
-            description="Preferences that help the agent work the way you do."
-          >
+          <SettingsHeading title={t('memory.title')} description={t('memory.description')}>
             <Input
-              aria-label="Search memory"
-              placeholder="Search memory…"
+              aria-label={t('memory.searchLabel')}
+              placeholder={t('memory.searchPlaceholder')}
               value={search}
               onChange={(event) => setSearch(event.target.value)}
             />
           </SettingsHeading>
           <div className="flex items-center justify-between gap-4 mb-6">
             <div className="settings-field">
-              <Label htmlFor="memory-learning">Learn automatically</Label>
+              <Label htmlFor="memory-learning">{t('memory.learning.label')}</Label>
               <p
                 className="text-xs text-muted-foreground truncate"
-                title="Save stable preferences and clear corrections as you work."
+                title={t('memory.learning.description')}
               >
-                Save stable preferences and clear corrections as you work.
+                {t('memory.learning.description')}
               </p>
             </div>
             <Switch
@@ -210,15 +208,15 @@ export function MemorySettings() {
                     <p>{entry.content}</p>
                     <span>
                       {entry.target === 'user'
-                        ? 'User profile'
+                        ? t('memory.list.userProfile')
                         : entry.target === 'failure'
-                          ? 'Corrections and learnings'
-                          : 'Saved preference'}
+                          ? t('memory.list.corrections')
+                          : t('memory.list.preference')}
                     </span>
                   </div>
                   <IconButton
-                    label="Edit"
-                    aria-label={`Edit memory: ${entry.content.slice(0, 70)}`}
+                    label={t('memory.list.edit')}
+                    aria-label={t('memory.list.editLabel', { content: entry.content.slice(0, 70) })}
                     onClick={() => {
                       setEditing(entry);
                       setContent(entry.content);
@@ -231,21 +229,16 @@ export function MemorySettings() {
                 </li>
               ))}
           </ul>
-          {!snapshot && <p className="text-sm text-muted-foreground">Loading memory…</p>}
+          {!snapshot && <p className="text-sm text-muted-foreground">{t('memory.list.loading')}</p>}
           {snapshot && !snapshot.entries.length && !snapshot.error && (
-            <p className="text-sm text-muted-foreground">
-              No saved memories yet. Share a lasting preference as you work.
-            </p>
+            <p className="text-sm text-muted-foreground">{t('memory.list.empty')}</p>
           )}
           {snapshot &&
             snapshot.entries.length > 0 &&
             !snapshot.entries.some((entry) =>
               entry.content.toLowerCase().includes(search.toLowerCase()),
-            ) && <p className="text-sm text-muted-foreground">No matching memories.</p>}
-          <p className="text-xs text-muted-foreground mt-8">
-            Stored on this device. Learning uses your configured model and may make additional model
-            calls.
-          </p>
+            ) && <p className="text-sm text-muted-foreground">{t('memory.list.noMatches')}</p>}
+          <p className="text-xs text-muted-foreground mt-8">{t('memory.feedback.storageNote')}</p>
           {feedback}
         </>
       )}
@@ -258,23 +251,27 @@ export function MemorySettings() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {confirm === 'pause' ? 'Pause automatic learning?' : 'Delete this memory?'}
+              {confirm === 'pause'
+                ? t('memory.confirm.pauseTitle')
+                : t('memory.confirm.deleteTitle')}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {confirm === 'pause'
-                ? 'Pending learning will not save new memories. The Agent can still use memories already saved.'
-                : 'This preference will be removed from memory. Existing conversation text will remain.'}
+                ? t('memory.confirm.pauseDescription')
+                : t('memory.confirm.deleteDescription')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t('memory.confirm.cancel')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
                 if (confirm === 'pause') void pause(true);
                 else void save(true);
               }}
             >
-              {confirm === 'pause' ? 'Pause learning' : 'Delete memory'}
+              {confirm === 'pause'
+                ? t('memory.confirm.pauseAction')
+                : t('memory.confirm.deleteAction')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

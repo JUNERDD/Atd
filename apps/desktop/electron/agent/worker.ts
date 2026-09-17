@@ -54,16 +54,27 @@ async function handle(request: WorkerRequest): Promise<unknown> {
         if (execution.abort)
           return { stopped: true, error: '', sessionFile: task.session.sessionFile };
         const version = policyVersion;
+        const snapshot = request.run.snapshot;
+        // Command starts prompt the resolved instruction so the model input,
+        // the transcript and the displayed user bubble agree (the design shows
+        // the instruction, e.g. "Translate the selection into English.", not
+        // the raw selection). Follow-ups prompt the raw follow-up text.
+        const isCommandStart = Boolean(snapshot.command) && task.session.messages.length === 0;
+        const inputText = request.run.snapshot.input.text;
+        let promptText =
+          (isCommandStart ? snapshot.instructions : '') ||
+          inputText ||
+          (request.run.snapshot.command
+            ? `Run ${request.run.snapshot.command.name}.`
+            : 'Use the attached context.');
+        // Custom templates are not required to reference the captured text; if
+        // the instruction omits it, still deliver it so user material is never
+        // silently dropped. The history preview mirrors this rule (UserContext).
+        if (isCommandStart && inputText && !promptText.includes(inputText))
+          promptText += `\n\n${inputText}`;
         await memory.runWithPolicy(
           () => request.run.snapshot.memory && !paused && policyVersion === version,
-          () =>
-            task!.session.prompt(
-              request.run.snapshot.input.text ||
-                (request.run.snapshot.command
-                  ? `Run ${request.run.snapshot.command.name}.`
-                  : 'Use the attached context.'),
-              { expandPromptTemplates: false },
-            ),
+          () => task!.session.prompt(promptText, { expandPromptTemplates: false }),
         );
         task.flush();
         const last = [...task.session.messages]

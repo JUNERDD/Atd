@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
+import type { TFunction } from 'i18next';
+import { useTranslation } from 'react-i18next';
 import { useShortcutCapture } from './use-shortcut-capture';
 import {
   DEFAULT_SHORTCUTS,
@@ -7,23 +9,29 @@ import {
   type ShortcutBindings,
 } from '../../../electron/settings-contract';
 import { recordedKeysToAccelerator } from '../../lib/shortcuts';
+import { showErrorToast } from '../../components/toast-store';
 
 const MODIFIER_KEYS = new Set(['meta', 'ctrl', 'alt', 'shift']);
 
-function shortcutError(action: ShortcutAction, shortcut: string | null): string {
-  if (!shortcut) return 'This key combination is not supported. Try another shortcut.';
+function shortcutError(
+  t: TFunction<'settings'>,
+  action: ShortcutAction,
+  shortcut: string | null,
+): string {
+  if (!shortcut) return t('shortcuts.errors.unsupportedCombination');
   if (
     ['togglePanel', 'newConversation', 'openSettings'].includes(action) &&
     !shortcut
       .split('+')
       .some((key) => ['CommandOrControl', 'Control', 'Alt', 'Super'].includes(key))
   ) {
-    return 'Include a modifier such as Command, Control, or Alt.';
+    return t('shortcuts.errors.modifierRequired');
   }
   return '';
 }
 
 export function useShortcutSettings(snapshot: SettingsSnapshot | null) {
+  const { t } = useTranslation('settings');
   const desktop = window.desktop;
   const bridge = desktop?.settings;
   const platform = desktop?.platform ?? 'web';
@@ -32,13 +40,12 @@ export function useShortcutSettings(snapshot: SettingsSnapshot | null) {
   const { keys, start, stop, resetKeys, isRecording } = useShortcutCapture();
   const [recordingAction, setRecordingAction] = useState<ShortcutAction | null>(null);
   const [mutationPending, setPending] = useState<'restore' | 'pin' | null>(null);
-  const [error, setError] = useState('');
   const [status, setStatus] = useState('');
   const unavailable = !snapshot || !bridge;
   const hasRecordedKey = [...keys].some((key) => !MODIFIER_KEYS.has(key));
   const capturedShortcut = recordedKeysToAccelerator(keys, platform);
   const captureError =
-    recordingAction && hasRecordedKey ? shortcutError(recordingAction, capturedShortcut) : '';
+    recordingAction && hasRecordedKey ? shortcutError(t, recordingAction, capturedShortcut) : '';
   const capturePending = recordingAction !== null && hasRecordedKey && !captureError;
   const pending = capturePending ? 'shortcut' : mutationPending;
   const recording = isRecording && !hasRecordedKey ? recordingAction : null;
@@ -47,9 +54,8 @@ export function useShortcutSettings(snapshot: SettingsSnapshot | null) {
     stop();
     resetKeys();
     setRecordingAction(null);
-    setError('');
-    setStatus('Recording canceled.');
-  }, [resetKeys, stop]);
+    setStatus(t('shortcuts.status.recordingCanceled'));
+  }, [resetKeys, stop, t]);
 
   useEffect(() => {
     if (!isRecording || !recordingAction || !hasRecordedKey) return;
@@ -59,12 +65,12 @@ export function useShortcutSettings(snapshot: SettingsSnapshot | null) {
       () => {
         resetKeys();
         setRecordingAction(null);
-        setStatus('Shortcut saved.');
+        setStatus(t('shortcuts.status.shortcutSaved'));
       },
       (reason: unknown) => {
         resetKeys();
         setRecordingAction(null);
-        setError(reason instanceof Error ? reason.message : 'The shortcut could not be saved.');
+        showErrorToast(reason instanceof Error ? reason : t('shortcuts.errors.shortcutSave'));
         setStatus('');
       },
     );
@@ -78,14 +84,14 @@ export function useShortcutSettings(snapshot: SettingsSnapshot | null) {
     recordingAction,
     resetKeys,
     stop,
+    t,
   ]);
 
   function startRecording(action: ShortcutAction) {
     if (unavailable || pending) return;
     setRecordingAction(action);
     start();
-    setError('');
-    setStatus('Press a shortcut. Escape cancels; Tab moves to the next control.');
+    setStatus(t('shortcuts.status.recordingHint'));
   }
 
   async function restoreDefaults() {
@@ -93,15 +99,12 @@ export function useShortcutSettings(snapshot: SettingsSnapshot | null) {
     resetKeys();
     setRecordingAction(null);
     setPending('restore');
-    setError('');
     setStatus('');
     try {
       await bridge.restoreShortcuts();
-      setStatus('Default shortcuts restored.');
+      setStatus(t('shortcuts.status.defaultsRestored'));
     } catch (reason) {
-      setError(
-        reason instanceof Error ? reason.message : 'Default shortcuts could not be restored.',
-      );
+      showErrorToast(reason instanceof Error ? reason : t('shortcuts.errors.defaultsRestore'));
     } finally {
       setPending(null);
     }
@@ -112,15 +115,12 @@ export function useShortcutSettings(snapshot: SettingsSnapshot | null) {
     resetKeys();
     setRecordingAction(null);
     setPending('pin');
-    setError('');
     setStatus('');
     try {
       await desktop.setPinned(value);
-      setStatus('Window preference saved.');
+      setStatus(t('shortcuts.status.windowPreferenceSaved'));
     } catch (reason) {
-      setError(
-        reason instanceof Error ? reason.message : 'The window preference could not be saved.',
-      );
+      showErrorToast(reason instanceof Error ? reason : t('shortcuts.errors.windowPreferenceSave'));
     } finally {
       setPending(null);
     }
@@ -131,8 +131,8 @@ export function useShortcutSettings(snapshot: SettingsSnapshot | null) {
     pinned,
     recording,
     pending,
-    error: captureError || error,
-    status: capturePending ? 'Saving shortcut…' : status,
+    error: captureError,
+    status: capturePending ? t('shortcuts.status.savingShortcut') : status,
     unavailable,
     platform,
     startRecording,
