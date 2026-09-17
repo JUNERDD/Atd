@@ -1,20 +1,15 @@
 import { useEffect, useState } from 'react';
-import type { AgentNotice, AgentSnapshot, TaskDetail } from '../../../electron/agent/bridge';
+import type { AgentSnapshot, TaskDetail } from '../../../electron/agent/bridge';
+import { showErrorToast } from '../../components/toast-store';
+import i18n from '../../i18n';
 
 export function agentApi() {
-  if (!window.desktop?.agent)
-    throw new Error('Open the desktop app to run tasks and manage saved data.');
+  if (!window.desktop?.agent) throw new Error(i18n.t('panel:errors.openDesktopApp'));
   return window.desktop.agent;
-}
-export function messageOf(error: unknown) {
-  return error instanceof Error
-    ? error.message.replace(/^Error invoking remote method '[^']+': (Error: )?/, '')
-    : 'The operation could not finish.';
 }
 
 export function useAgent() {
   const [snapshot, setSnapshot] = useState<AgentSnapshot | null>(null);
-  const [error, setError] = useState('');
   useEffect(() => {
     const bridge = window.desktop?.agent;
     if (!bridge) return;
@@ -29,7 +24,7 @@ export function useAgent() {
         if (active) update(next);
       },
       (error) => {
-        if (active) setError(messageOf(error));
+        if (active) showErrorToast(error);
       },
     );
     return () => {
@@ -37,13 +32,15 @@ export function useAgent() {
       unsubscribe();
     };
   }, []);
-  return { snapshot, error: error || snapshot?.error || '', setError };
+  const error = snapshot?.error ?? '';
+  useEffect(() => {
+    if (error) showErrorToast(error);
+  }, [error]);
+  return { snapshot };
 }
 
 export function useTaskDetail(taskId: string | null) {
   const [detail, setDetail] = useState<TaskDetail | null>(null);
-  const [notice, setNotice] = useState<AgentNotice | null>(null);
-  const [failure, setFailure] = useState<{ taskId: string; message: string } | null>(null);
   useEffect(() => {
     if (!taskId || !window.desktop?.agent) return;
     let active = true;
@@ -53,7 +50,6 @@ export function useTaskDetail(taskId: string | null) {
         received = true;
         setDetail(event.detail);
       }
-      if (event.type === 'notice' && event.notice.taskId === taskId) setNotice(event.notice);
       if (event.type === 'snapshot')
         setDetail((previous) => {
           const task = event.snapshot.tasks.find((task) => task.id === taskId);
@@ -65,7 +61,7 @@ export function useTaskDetail(taskId: string | null) {
         if (active && !received) setDetail(value);
       },
       (error) => {
-        if (active) setFailure({ taskId, message: messageOf(error) });
+        if (active) showErrorToast(error);
       },
     );
     return () => {
@@ -73,10 +69,5 @@ export function useTaskDetail(taskId: string | null) {
       unsubscribe();
     };
   }, [taskId]);
-  return {
-    detail: detail?.task.id === taskId ? detail : null,
-    notice: notice?.taskId === taskId ? notice : null,
-    dismissNotice: () => setNotice(null),
-    error: failure?.taskId === taskId ? failure.message : '',
-  };
+  return { detail: detail?.task.id === taskId ? detail : null };
 }

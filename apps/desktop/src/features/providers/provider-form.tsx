@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@ai/ui/components/button';
 import { Input } from '@ai/ui/components/input';
 import { Label } from '@ai/ui/components/label';
@@ -16,7 +17,7 @@ import type {
   ProviderCatalogEntry,
 } from '../../../electron/providers/schema';
 import { CLOUD_FIELDS, isCustom, isAmbient } from '../../../electron/providers/metadata';
-import { messageOf } from '../agent/use-agent';
+import { showErrorToast } from '../../components/toast-store';
 import { SettingsHeading } from '../settings/settings-heading';
 import { ModelPicker } from './model-picker';
 import { CustomModels } from './custom-models';
@@ -33,6 +34,7 @@ export function ProviderForm({
   onSaved: (connection: Connection) => void;
   onBack: () => void;
 }) {
+  const { t } = useTranslation('providers');
   const [draft, setDraft] = useState<ConnectionDraft>(() =>
     connection
       ? draftFrom(connection)
@@ -49,12 +51,7 @@ export function ProviderForm({
         },
   );
   const [pending, setPending] = useState('');
-  const [error, setError] = useState('');
-  const errorMessage = useRef<HTMLParagraphElement>(null);
   const [status, setStatus] = useState('');
-  useEffect(() => {
-    if (error) errorMessage.current?.scrollIntoView({ block: 'nearest' });
-  }, [error]);
   const bridge = window.desktop?.settings.providers;
   const disabled = Boolean(pending) || !bridge;
   const custom = isCustom(draft.provider);
@@ -62,7 +59,7 @@ export function ProviderForm({
   const saved = connection && connection.connectionId === draft.connectionId ? connection : null;
   const options =
     provider.auth.length && cloud && !provider.auth.some((auth) => auth.type === 'api_key')
-      ? [...provider.auth, { type: 'api_key' as const, label: 'API key or bearer token' }]
+      ? [...provider.auth, { type: 'api_key' as const, label: t('form.authFallback') }]
       : provider.auth;
   const available = [
     ...(saved ? saved.catalog : provider.models),
@@ -86,17 +83,15 @@ export function ProviderForm({
   };
   function change(patch: Partial<ConnectionDraft>) {
     setDraft({ ...draft, ...patch });
-    setError('');
     setStatus('');
   }
   async function perform(label: string, operation: () => Promise<void>) {
     setPending(label);
-    setError('');
     setStatus('');
     try {
       await operation();
     } catch (error) {
-      setError(messageOf(error));
+      showErrorToast(error);
     } finally {
       setPending('');
     }
@@ -107,29 +102,29 @@ export function ProviderForm({
       const result = await bridge.save(draft);
       setDraft(draftFrom(result));
       onSaved(result);
-      setStatus('Connection saved.');
+      setStatus(t('form.saved'));
     });
   }
   return (
-    <section className="provider-form settings-editor" aria-label="Provider connection">
+    <section className="provider-form settings-editor" aria-label={t('form.sectionLabel')}>
       <SettingsHeading
-        title={saved ? draft.name : `Connect ${provider.name}`}
+        title={saved ? draft.name : t('form.connect', { name: provider.name })}
         onBack={onBack}
-        backLabel="Back to providers"
+        backLabel={t('form.back')}
       />
-      <ScrollArea className="settings-editor-body">
+      <ScrollArea className="settings-editor-body" gutter>
         <div className="settings-editor-inner settings-fields">
           {saved && saved.revision !== draft.expectedRevision && (
             <output className="settings-field-note">
-              Saved settings changed. Your draft is preserved.{' '}
+              {t('form.conflict')}{' '}
               <Button size="xs" variant="outline" onClick={() => setDraft(draftFrom(saved))}>
-                Reload saved settings
+                {t('form.reload')}
               </Button>
             </output>
           )}
           <fieldset disabled={disabled} className="settings-fields">
             <div className="settings-field">
-              <Label htmlFor="provider-name">Connection name</Label>
+              <Label htmlFor="provider-name">{t('form.name')}</Label>
               <Input
                 id="provider-name"
                 value={draft.name}
@@ -138,7 +133,7 @@ export function ProviderForm({
               />
             </div>
             <div className="settings-field">
-              <Label htmlFor="provider-auth">Authentication</Label>
+              <Label htmlFor="provider-auth">{t('form.auth')}</Label>
               <Select
                 value={draft.authType}
                 disabled={Boolean(saved)}
@@ -162,14 +157,14 @@ export function ProviderForm({
             {draft.authType === 'api_key' && (
               <div className="settings-field">
                 <div className="settings-field-label">
-                  <Label htmlFor="provider-api-key">API key</Label>
+                  <Label htmlFor="provider-api-key">{t('form.apiKey')}</Label>
                   {saved?.hasCredential && (
                     <Button
                       size="xs"
                       variant="ghost"
                       onClick={() => change({ apiKey: draft.apiKey === '' ? undefined : '' })}
                     >
-                      {draft.apiKey === '' ? 'Keep saved key' : 'Remove key'}
+                      {draft.apiKey === '' ? t('form.keepKey') : t('form.removeKey')}
                     </Button>
                   )}
                 </div>
@@ -182,22 +177,24 @@ export function ProviderForm({
                   spellCheck={false}
                   placeholder={
                     saved?.hasCredential
-                      ? 'Leave unchanged to keep the saved key'
-                      : 'Enter an API key'
+                      ? t('form.keepKeyPlaceholder')
+                      : t('form.apiKeyPlaceholder')
                   }
                   onChange={(event) => change({ apiKey: event.target.value })}
                 />
                 <p className="settings-field-note">
                   {draft.apiKey === '' && saved?.hasCredential
-                    ? 'The saved key will be removed when you save.'
-                    : 'Credentials are encrypted on this device.'}
+                    ? t('form.keyRemovedNote')
+                    : t('form.encryptedNote')}
                 </p>
               </div>
             )}
             {(custom || draft.provider === 'azure-openai-responses' || draft.baseUrl) && (
               <div className="settings-field">
                 <Label htmlFor="provider-endpoint">
-                  {draft.provider === 'azure-openai-responses' ? 'Resource endpoint' : 'Base URL'}
+                  {draft.provider === 'azure-openai-responses'
+                    ? t('form.resourceEndpoint')
+                    : t('form.baseUrl')}
                 </Label>
                 <Input
                   id="provider-endpoint"
@@ -223,10 +220,7 @@ export function ProviderForm({
               </div>
             ))}
             {draft.authType === 'ambient' && (
-              <p className="settings-field-note">
-                Use the configured AWS credentials or Google Application Default Credentials on this
-                device. Save this connection to opt in.
-              </p>
+              <p className="settings-field-note">{t('form.ambientNote')}</p>
             )}
             {custom && (
               <CustomModels
@@ -237,7 +231,7 @@ export function ProviderForm({
               />
             )}
             <div className="settings-field">
-              <Label>Default model</Label>
+              <Label>{t('form.defaultModel')}</Label>
               <ModelPicker
                 scoped
                 connections={[preview]}
@@ -246,13 +240,13 @@ export function ProviderForm({
                     ? { connectionId: preview.connectionId, modelId: draft.defaultModel }
                     : null
                 }
-                label={`Default model for ${draft.name}`}
+                label={t('form.defaultModelLabel', { name: draft.name })}
                 onChange={(model) => change({ defaultModel: model.modelId })}
                 disabled={disabled}
               />
               {!available.length && (
                 <p className="settings-field-note">
-                  Save the connection, then refresh models or add a custom model.
+                  {saved ? t('form.catalogNote') : t('form.saveNote')}
                 </p>
               )}
             </div>
@@ -261,7 +255,7 @@ export function ProviderForm({
             (saved ? (
               <ProviderSignIn connectionId={saved.connectionId} disabled={disabled} />
             ) : (
-              <p className="settings-field-note">Save this connection to start account sign-in.</p>
+              <p className="settings-field-note">{t('form.signInNote')}</p>
             ))}
           {saved?.catalogError && (
             <output className="settings-field-note">{saved.catalogError}</output>
@@ -275,11 +269,11 @@ export function ProviderForm({
                   onClick={() =>
                     void perform('refreshing', async () => {
                       await bridge!.refresh(saved.connectionId);
-                      setStatus('Model catalog updated.');
+                      setStatus(t('form.catalogUpdated'));
                     })
                   }
                 >
-                  {pending === 'refreshing' ? 'Refreshing…' : 'Refresh models'}
+                  {pending === 'refreshing' ? t('form.refreshing') : t('form.refresh')}
                 </Button>
                 <Button
                   variant="outline"
@@ -290,32 +284,29 @@ export function ProviderForm({
                         connectionId: saved.connectionId,
                         modelId: saved.defaultModel,
                       });
-                      setStatus('Model access verified.');
+                      setStatus(t('form.verified'));
                     })
                   }
                 >
-                  {pending === 'verifying' ? 'Verifying…' : 'Verify model access'}
+                  {pending === 'verifying' ? t('form.verifying') : t('form.verify')}
                 </Button>
               </div>
-              <p className="settings-field-note">
-                Verification sends a small model request and may use credits. It does not run tools.
-              </p>
+              <p className="settings-field-note">{t('form.verifyNote')}</p>
             </div>
-          )}
-          {error && (
-            <p ref={errorMessage} role="alert" className="settings-status" data-error="true">
-              {error}
-            </p>
           )}
           {status && <output className="settings-field-note">{status}</output>}
         </div>
       </ScrollArea>
       <footer className="editor-footer">
         <Button variant="outline" disabled={disabled} onClick={onBack}>
-          Cancel
+          {t('form.cancel')}
         </Button>
         <Button disabled={disabled || !draft.name.trim()} onClick={() => void save()}>
-          {pending === 'saving' ? 'Saving…' : saved ? 'Save changes' : 'Save connection'}
+          {pending === 'saving'
+            ? t('form.saving')
+            : saved
+              ? t('form.saveChanges')
+              : t('form.saveConnection')}
         </Button>
       </footer>
     </section>

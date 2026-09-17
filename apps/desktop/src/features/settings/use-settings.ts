@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { SettingsSnapshot } from '../../../electron/settings-contract';
+import { showErrorToast } from '../../components/toast-store';
 
 export function useSettingsSnapshot() {
+  const { t } = useTranslation('settings');
   const bridge = window.desktop?.settings;
   const [snapshot, setSnapshot] = useState<SettingsSnapshot | null>(null);
   const [loading, setLoading] = useState(Boolean(bridge));
-  const [error, setError] = useState('');
 
   useEffect(() => {
     if (!bridge) return;
@@ -15,7 +17,6 @@ export function useSettingsSnapshot() {
       receivedChange = true;
       if (!active) return;
       setSnapshot(next);
-      setError('');
       setLoading(false);
     });
 
@@ -27,7 +28,7 @@ export function useSettingsSnapshot() {
       },
       (reason: unknown) => {
         if (!active || receivedChange) return;
-        setError(reason instanceof Error ? reason.message : 'Settings could not be loaded.');
+        showErrorToast(reason instanceof Error ? reason : t('window.loadError'));
         setLoading(false);
       },
     );
@@ -36,7 +37,7 @@ export function useSettingsSnapshot() {
       active = false;
       unsubscribe();
     };
-  }, [bridge]);
+  }, [bridge, t]);
 
-  return { snapshot, loading, error };
+  return { snapshot, loading };
 }

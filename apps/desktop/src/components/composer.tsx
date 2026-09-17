@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useHotkeys, type Options } from 'react-hotkeys-hook';
+import { useTranslation } from 'react-i18next';
 import { ArrowUp, Play, Plus, Square, X } from 'lucide-react';
 import { Button } from '@ai/ui/components/button';
 import { Textarea } from '@ai/ui/components/textarea';
@@ -13,7 +14,8 @@ import { isActive } from '../../electron/agent/task-schema';
 import { IconButton } from './icon-button';
 import { ComposerConfiguration } from './composer-configuration';
 import { acceleratorToHotkey } from '../lib/shortcuts';
-import { agentApi, messageOf } from '../features/agent/use-agent';
+import { agentApi } from '../features/agent/use-agent';
+import { showErrorToast } from './toast-store';
 import './composer.css';
 
 export interface ComposerDraft {
@@ -25,9 +27,9 @@ interface ComposerProps {
   onPolicyChange: (policy: RunPolicy) => void;
   draft: ComposerDraft;
   onChange: (draft: ComposerDraft) => void;
-  onSubmit: () => Promise<void>;
+  onSubmit: () => Promise<unknown>;
   onStop?: () => Promise<void>;
-  onContinue?: () => Promise<void>;
+  onContinue?: () => Promise<unknown>;
   status?: RunStatus;
   pending?: boolean;
   followup?: boolean;
@@ -53,7 +55,7 @@ export function Composer({
   policy,
   onPolicyChange,
 }: ComposerProps) {
-  const [error, setError] = useState('');
+  const { t } = useTranslation('panel');
   const [choosing, setChoosing] = useState(false);
   const textarea = useRef<HTMLTextAreaElement>(null);
   const hasContent = Boolean(draft.text.trim() || draft.files.length);
@@ -61,13 +63,13 @@ export function Composer({
   const continuing = status === 'stopped' && !hasContent;
   const label = active
     ? status === 'stopping'
-      ? 'Stopping…'
+      ? t('composer.stopping')
       : status === 'queued'
-        ? 'Cancel queued task'
-        : 'Stop task'
+        ? t('composer.cancelQueued')
+        : t('composer.stop')
     : continuing
-      ? 'Continue task'
-      : 'Send task';
+      ? t('composer.continue')
+      : t('composer.send');
   const disabled = pending || status === 'stopping' || (!active && !continuing && !hasContent);
   const platform = window.desktop?.platform ?? 'web';
   const expanded = draft.text.includes('\n') || draft.text.length > 90;
@@ -81,13 +83,12 @@ export function Composer({
   };
   async function act() {
     if (disabled) return;
-    setError('');
     try {
       if (active) await onStop?.();
       else if (continuing) await onContinue?.();
       else await onSubmit();
     } catch (error) {
-      setError(messageOf(error));
+      showErrorToast(error);
     }
   }
   const sendRef = useHotkeys<HTMLTextAreaElement>(
@@ -125,13 +126,12 @@ export function Composer({
   }, []);
   async function choose() {
     setChoosing(true);
-    setError('');
     try {
       const files = await agentApi().chooseFiles();
-      if (draft.files.length + files.length > 10) throw new Error('Attach at most 10 files.');
+      if (draft.files.length + files.length > 10) throw new Error(t('composer.attachLimit'));
       onChange({ ...draft, files: [...draft.files, ...files] });
     } catch (error) {
-      setError(messageOf(error));
+      showErrorToast(error);
     } finally {
       setChoosing(false);
     }
@@ -140,7 +140,7 @@ export function Composer({
     <footer className="panel-footer">
       <form
         className="composer"
-        aria-label={followup ? 'Follow-up' : 'New task'}
+        aria-label={followup ? t('composer.followUpForm') : t('composer.newTaskForm')}
         onSubmit={(event) => {
           event.preventDefault();
           if (!active) void act();
@@ -151,12 +151,17 @@ export function Composer({
           data-expanded={expanded}
           data-has-attachments={draft.files.length > 0}
         >
-          <ScrollArea className="composer-input-scroll" viewportClassName="composer-input-viewport">
+          <ScrollArea
+            className="composer-input-scroll"
+            viewportClassName="composer-input-viewport"
+            gutter
+          >
             <Textarea
               ref={ref}
               className="composer-input"
-              aria-label="Task prompt"
-              placeholder={followup ? 'Ask a follow-up…' : 'Ask anything…'}
+              data-panel-autofocus="true"
+              aria-label={t('composer.promptLabel')}
+              placeholder={followup ? t('composer.followUpPlaceholder') : t('composer.placeholder')}
               rows={1}
               wrap={expanded ? 'soft' : 'off'}
               maxLength={100000}
@@ -168,8 +173,9 @@ export function Composer({
             <ScrollArea
               className="composer-attachments"
               viewportClassName="composer-attachments-viewport"
+              gutter
             >
-              <ul className="attachment-list" aria-label="Attached context">
+              <ul className="attachment-list" aria-label={t('composer.attachedContext')}>
                 {draft.files.map((file) => (
                   <li className="attachment-chip" key={file.id}>
                     <span title={file.name}>{file.name}</span>
@@ -177,7 +183,7 @@ export function Composer({
                       type="button"
                       variant="ghost"
                       size="icon-xs"
-                      aria-label={`Remove ${file.name}`}
+                      aria-label={t('composer.removeFile', { name: file.name })}
                       onClick={() =>
                         onChange({
                           ...draft,
@@ -193,7 +199,7 @@ export function Composer({
             </ScrollArea>
           )}
           <IconButton
-            label="Attach context"
+            label={t('composer.attachContext')}
             className="composer-attach"
             tooltipSide="top"
             variant="secondary"
@@ -227,11 +233,6 @@ export function Composer({
           policy={policy}
           onPolicyChange={onPolicyChange}
         />
-        {error && (
-          <ScrollArea className="composer-notice" viewportClassName="text-preview-viewport">
-            <output role="alert">{error}</output>
-          </ScrollArea>
-        )}
       </form>
     </footer>
   );

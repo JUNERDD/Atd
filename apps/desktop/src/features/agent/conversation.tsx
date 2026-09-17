@@ -1,7 +1,8 @@
-import { useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { Copy, X } from 'lucide-react';
+import { Check, Copy } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@ai/ui/components/button';
 import { Shimmer } from '@ai/ui/components/ai-elements/shimmer';
 import { ScrollArea } from '@ai/ui/components/scroll-area';
@@ -12,59 +13,65 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@ai/ui/components/dialog';
-import type { AgentNotice, TaskDetail } from '../../../electron/agent/bridge';
+import type { TaskDetail } from '../../../electron/agent/bridge';
 import { isActive, type FileRef, type TaskRun } from '../../../electron/agent/task-schema';
 import { IconButton } from '../../components/icon-button';
+import { pendingMessageText, snapshotForMessage } from './pending-message-text';
+import { UserContext } from './user-context';
 import { TaskFiles } from './task-files';
 import { ToolActivity } from './tool-activity';
 import { TaskRequest } from './task-request';
-import { agentApi, messageOf } from './use-agent';
+import { agentApi } from './use-agent';
+import { showErrorToast, showToast } from '../../components/toast-store';
 import { copyCommand } from '../../../electron/agent/command-templates';
+
+const COPIED_DURATION_MS = 1_000;
 
 export function Conversation({
   detail,
-  notice,
-  onDismissNotice,
   onAttach,
   onRerun,
   onContinue,
 }: {
   detail: TaskDetail;
-  notice: AgentNotice | null;
-  onDismissNotice: () => void;
   onAttach: (file: FileRef) => void;
   onRerun: (run: TaskRun) => void;
-  onContinue: () => Promise<void>;
+  onContinue: () => Promise<unknown>;
 }) {
+  const { t } = useTranslation('tasks');
   const { task, messages } = detail;
   const run = task.runs.at(-1);
   const live = isActive(run?.status);
   const scroller = useRef<HTMLDivElement>(null);
   const follow = useRef(true);
-  const [copyStatus, setCopyStatus] = useState('');
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  /** Holds the "Copied" tooltip open after the click; pointer leave releases it before the feedback window ends. */
+  const [pinnedId, setPinnedId] = useState<string | null>(null);
+  const copiedTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const [review, setReview] = useState(false);
+  useEffect(() => () => clearTimeout(copiedTimer.current), []);
   useLayoutEffect(() => {
     const node = scroller.current;
     if (node && follow.current) node.scrollTop = node.scrollHeight;
   }, [messages, detail.request, live]);
-  async function copy(text: string) {
+  async function copy(text: string, id: string) {
     try {
       await agentApi().copy(text);
-      setCopyStatus('Copied');
+      setCopiedId(id);
+      setPinnedId(id);
+      clearTimeout(copiedTimer.current);
+      copiedTimer.current = setTimeout(() => {
+        setCopiedId(null);
+        setPinnedId(null);
+      }, COPIED_DURATION_MS);
     } catch (error) {
-      setCopyStatus(messageOf(error));
+      showErrorToast(error);
+      setCopiedId((current) => (current === id ? null : current));
+      setPinnedId((current) => (current === id ? null : current));
     }
   }
   return (
     <div className="conversation">
-      {notice && (
-        <output className="memory-notice">
-          <span>{notice.text}</span>
-          <IconButton label="Dismiss" aria-label="Dismiss notification" onClick={onDismissNotice}>
-            <X />
-          </IconButton>
-        </output>
-      )}
       <ScrollArea
         viewportRef={scroller}
         className="conversation-scroll"
@@ -78,14 +85,15 @@ export function Conversation({
         <div className="conversation-messages">
           {task.legacy && (
             <div className="task-request">
-              <p className="text-sm">Imported draft · Not executed</p>
+              <p className="text-sm">{t('conversation.legacyTitle')}</p>
               <ScrollArea className="input-preview" viewportClassName="text-preview-viewport">
                 <div>{task.legacy.prompt}</div>
               </ScrollArea>
               {task.legacy.attachments.length > 0 && (
                 <p className="text-xs text-muted-foreground">
-                  {task.legacy.attachments.map((file) => file.name).join(', ')} — attach these files
-                  again before running.
+                  {t('conversation.legacyAttachments', {
+                    files: task.legacy.attachments.map((file) => file.name).join(', '),
+                  })}
                 </p>
               )}
             </div>
@@ -94,8 +102,15 @@ export function Conversation({
             <article
               key={message.id}
               className={message.role === 'user' ? 'user-message' : 'assistant-message'}
-              aria-label={message.role === 'user' ? 'Your message' : 'Assistant response'}
+              aria-label={
+                message.role === 'user'
+                  ? t('conversation.yourMessage')
+                  : t('conversation.assistantResponse')
+              }
             >
+              {message.role === 'user' && (
+                <UserContext snapshot={snapshotForMessage(task.runs, message.timestamp)} />
+              )}
               {message.parts.map((part, partIndex) =>
                 part.type === 'text' ? (
                   message.role === 'user' ? (
@@ -107,7 +122,7 @@ export function Conversation({
                       <Markdown
                         remarkPlugins={[remarkGfm]}
                         components={{
-                          img: ({ alt }) => <span>{alt || 'Image'}</span>,
+                          img: ({ alt }) => <span>{alt || t('conversation.image')}</span>,
                           pre: ({ children }) => (
                             <ScrollArea
                               orientation="both"
@@ -130,7 +145,7 @@ export function Conversation({
                                 if (href)
                                   void agentApi()
                                     .openLink(href)
-                                    .catch((error) => setCopyStatus(messageOf(error)));
+                                    .catch((error) => showErrorToast(error));
                               }}
                             >
                               {children}
@@ -182,18 +197,27 @@ export function Conversation({
                     {(!live || (run && message.timestamp < Date.parse(run.createdAt))) && (
                       <div className="message-actions">
                         <IconButton
-                          label="Copy"
-                          aria-label="Copy response"
+                          label={
+                            copiedId === message.id
+                              ? t('conversation.copied')
+                              : t('conversation.copy')
+                          }
+                          aria-label={t('conversation.copyResponseLabel')}
+                          tooltipPinned={pinnedId === message.id}
+                          onPointerLeave={() =>
+                            setPinnedId((current) => (current === message.id ? null : current))
+                          }
                           onClick={() =>
                             void copy(
                               message.parts
                                 .filter((part) => part.type === 'text')
                                 .map((part) => part.text)
                                 .join('\n\n'),
+                              message.id,
                             )
                           }
                         >
-                          <Copy />
+                          {copiedId === message.id ? <Check /> : <Copy />}
                         </IconButton>
                       </div>
                     )}
@@ -203,21 +227,18 @@ export function Conversation({
           ))}
           {!messages.length && run && (
             <div className="user-message">
-              <div className="message-bubble">
-                {run.snapshot.input.text ||
-                  run.snapshot.input.files.map((file) => file.name).join(', ') ||
-                  run.snapshot.command?.name}
-              </div>
+              <UserContext snapshot={run.snapshot} />
+              <div className="message-bubble">{pendingMessageText(run.snapshot)}</div>
             </div>
           )}
           {run && ['queued', 'running', 'stopping'].includes(run.status) && !detail.request && (
             <output className="text-xs text-muted-foreground">
               <Shimmer as="span">
                 {run.status === 'queued'
-                  ? 'Queued · Waiting for the current task'
+                  ? t('conversation.queued')
                   : run.status === 'stopping'
-                    ? 'Stopping…'
-                    : 'Working…'}
+                    ? t('conversation.stopping')
+                    : t('conversation.working')}
               </Shimmer>
             </output>
           )}
@@ -226,45 +247,44 @@ export function Conversation({
             <div className="task-request">
               <p className="text-sm font-medium">
                 {run.status === 'interrupted'
-                  ? 'This task was interrupted'
+                  ? t('conversation.interrupted')
                   : run.status === 'cancelled'
-                    ? 'Queued task cancelled'
-                    : 'The task could not finish'}
+                    ? t('conversation.cancelled')
+                    : t('conversation.failed')}
               </p>
-              <p className="text-sm text-muted-foreground">{run.error}</p>
+              <p className="text-sm text-destructive">{run.error}</p>
               <Button variant="outline" onClick={() => setReview(true)}>
-                Review task
+                {t('review.title')}
               </Button>
             </div>
           )}
         </div>
       </ScrollArea>
-      <output className="sr-only">{copyStatus}</output>
       <Dialog open={review} onOpenChange={setReview}>
         <DialogContent className="panel-dialog">
           <DialogHeader>
-            <DialogTitle>Review task</DialogTitle>
-            <DialogDescription>
-              Completed actions and file changes remain. A new message continues the same
-              conversation.
-            </DialogDescription>
+            <DialogTitle>{t('review.title')}</DialogTitle>
+            <DialogDescription>{t('review.description')}</DialogDescription>
           </DialogHeader>
-          <ScrollArea className="panel-dialog-scroll">
+          <ScrollArea className="panel-dialog-scroll" gutter>
             <div className="panel-dialog-body">
               {task.runs.map((item) => (
                 <section key={item.id} className="space-y-2 border-b border-border pb-4">
                   <p
                     className="truncate text-sm font-medium"
-                    title={`${item.snapshot.command?.name ?? 'Conversation'} · ${item.status}${item.snapshot.command ? ` · Version ${item.snapshot.command.revision}` : ''}`}
+                    title={`${item.snapshot.command?.name ?? t('review.conversation')} · ${t(`status.${item.status}`)}${item.snapshot.command ? ` · ${t('review.version', { revision: item.snapshot.command.revision })}` : ''}`}
                   >
-                    {item.snapshot.command?.name ?? 'Conversation'} · {item.status}
-                    {item.snapshot.command && ` · Version ${item.snapshot.command.revision}`}
+                    {item.snapshot.command?.name ?? t('review.conversation')} ·{' '}
+                    {t(`status.${item.status}`)}
+                    {item.snapshot.command &&
+                      ` · ${t('review.version', { revision: item.snapshot.command.revision })}`}
                   </p>
                   <p
                     className="truncate text-xs text-muted-foreground"
-                    title={`${item.snapshot.model.modelId} · Memory ${item.snapshot.memory ? 'on' : 'off'} · ${item.snapshot.tools.join(', ')}`}
+                    title={`${item.snapshot.model.modelId} · ${item.snapshot.memory ? t('review.memoryOn') : t('review.memoryOff')} · ${item.snapshot.tools.join(', ')}`}
                   >
-                    {item.snapshot.model.modelId} · Memory {item.snapshot.memory ? 'on' : 'off'} ·{' '}
+                    {item.snapshot.model.modelId} ·{' '}
+                    {item.snapshot.memory ? t('review.memoryOn') : t('review.memoryOff')} ·{' '}
                     {item.snapshot.tools.join(', ')}
                   </p>
                   <ScrollArea className="review-text" viewportClassName="text-preview-viewport">
@@ -272,7 +292,9 @@ export function Conversation({
                   </ScrollArea>
                   {item.snapshot.instructions && (
                     <details>
-                      <summary className="text-sm cursor-pointer">Saved instructions</summary>
+                      <summary className="text-sm cursor-pointer">
+                        {t('review.savedInstructions')}
+                      </summary>
                       <ScrollArea className="review-text" viewportClassName="text-preview-viewport">
                         <pre>{item.snapshot.instructions}</pre>
                       </ScrollArea>
@@ -286,7 +308,7 @@ export function Conversation({
                       onRerun(item);
                     }}
                   >
-                    Use saved version in a new task
+                    {t('review.useSavedVersion')}
                   </Button>
                   {item.snapshot.command && (
                     <Button
@@ -296,21 +318,16 @@ export function Conversation({
                           void agentApi()
                             .saveCommand(copyCommand(item.snapshot.command, crypto.randomUUID()), 0)
                             .then(() =>
-                              setCopyStatus(
-                                'Command copied. You can edit it in Settings → Commands.',
-                              ),
+                              showToast({ kind: 'info', text: t('review.commandCopied') }),
                             )
-                            .catch((error) => setCopyStatus(messageOf(error)));
+                            .catch((error) => showErrorToast(error));
                       }}
                     >
-                      Save as new command
+                      {t('review.saveAsCommand')}
                     </Button>
                   )}
                 </section>
               ))}
-              {copyStatus && (
-                <output className="text-sm text-muted-foreground">{copyStatus}</output>
-              )}
             </div>
           </ScrollArea>
           {run?.status === 'interrupted' && (
@@ -318,10 +335,10 @@ export function Conversation({
               onClick={() => {
                 void onContinue()
                   .then(() => setReview(false))
-                  .catch((error) => setCopyStatus(messageOf(error)));
+                  .catch((error) => showErrorToast(error));
               }}
             >
-              Continue task
+              {t('review.continue')}
             </Button>
           )}
         </DialogContent>

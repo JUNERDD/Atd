@@ -1,19 +1,23 @@
 import { Astroid, History, Settings, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@ai/ui/components/button';
 import { TooltipProvider } from '@ai/ui/components/tooltip';
 import { ScrollArea } from '@ai/ui/components/scroll-area';
-import { defaultArguments } from '../electron/agent/command-validation';
 import { Composer } from './components/composer';
 import { IconButton } from './components/icon-button';
+import { ToastHost } from './components/toast';
+import { useAppLanguage } from './i18n/use-app-language';
 import { agentApi } from './features/agent/use-agent';
 import { useTaskPanel } from './features/agent/use-task-panel';
 import { CommandLauncher } from './features/agent/command-launcher';
 import { CommandInput } from './features/agent/command-input';
+import { openCommandSettings } from './features/commands/open-command-settings';
 import { Conversation } from './features/agent/conversation';
 import { TaskHistory } from './features/agent/task-history';
 import './features/agent/agent.css';
 
 export function App() {
+  const { t } = useTranslation('panel');
   const {
     agent,
     snapshot,
@@ -24,10 +28,8 @@ export function App() {
     prepared,
     setPrepared,
     savedRun,
-    setSavedRun,
     hidden,
     setHidden,
-    notice,
     pending,
     current,
     draftKey,
@@ -46,6 +48,7 @@ export function App() {
     policy,
     changePolicy,
   } = useTaskPanel();
+  useAppLanguage(snapshot?.language);
   const defaultConnection = snapshot?.connections.find(
     (connection) => connection.connectionId === snapshot.defaultConnectionId,
   );
@@ -60,27 +63,27 @@ export function App() {
     <TooltipProvider delayDuration={350}>
       {hidden && (
         <Button className="restore-panel" onClick={() => setHidden(false)}>
-          Open task panel
+          {t('header.openPanel')}
         </Button>
       )}
       <main
         hidden={hidden}
         className="task-panel"
-        aria-label="AI task panel"
+        aria-label={t('header.panelLabel')}
         data-figma-node="336:1149"
       >
         <header className="panel-header">
           <IconButton
-            label="New chat"
+            label={t('header.newChat')}
             className="header-button panel-logo-button"
             onClick={newTask}
           >
             <Astroid className="size-5" />
           </IconButton>
           <h1 title={title}>{title}</h1>
-          <nav className="header-controls" aria-label="Panel controls">
+          <nav className="header-controls" aria-label={t('header.controlsLabel')}>
             <IconButton
-              label="Tasks"
+              label={t('header.tasks')}
               className="header-button"
               aria-pressed={view === 'history'}
               onClick={() => setView(view === 'history' ? 'new' : 'history')}
@@ -88,13 +91,17 @@ export function App() {
               <History />
             </IconButton>
             <IconButton
-              label="Settings"
+              label={t('header.settings')}
               className="header-button"
               onClick={() => void openSettings()}
             >
               <Settings />
             </IconButton>
-            <IconButton label="Hide panel" className="header-button" onClick={() => void hide()}>
+            <IconButton
+              label={t('header.hide')}
+              className="header-button"
+              onClick={() => void hide()}
+            >
               <X />
             </IconButton>
           </nav>
@@ -102,11 +109,11 @@ export function App() {
         {view === 'new' && (
           <ScrollArea className="panel-content">
             <section className="panel-content-body welcome">
-              <h2 className="max-w-full truncate" title="What can I help with?">
-                What can I help with?
+              <h2 className="max-w-full truncate" title={t('welcome.title')}>
+                {t('welcome.title')}
               </h2>
-              <p className="max-w-full truncate" title="Ask anything, or start with a command.">
-                Ask anything, or start with a command.
+              <p className="max-w-full truncate" title={t('welcome.subtitle')}>
+                {t('welcome.subtitle')}
               </p>
               <CommandLauncher
                 compact
@@ -114,11 +121,7 @@ export function App() {
                 onChoose={(id) => void chooseCommand(id)}
                 onAll={() => setView('commands')}
               />
-              {!window.desktop && (
-                <p className="text-xs">
-                  Open the desktop app to run the Agent and manage saved commands.
-                </p>
-              )}
+              {!window.desktop && <p className="text-xs">{t('welcome.desktopOnly')}</p>}
             </section>
           </ScrollArea>
         )}
@@ -135,7 +138,6 @@ export function App() {
               setTaskId(id);
               setView('task');
             }}
-            onNew={newTask}
           />
         )}
         {view === 'input' && prepared && (
@@ -145,19 +147,8 @@ export function App() {
             onChange={(input) => setPrepared({ ...prepared, input })}
             policy={policy}
             onPolicyChange={changePolicy}
-            onReload={async () => {
-              const latest = await agentApi().prepare(prepared.command.id);
-              setPrepared({
-                ...latest,
-                input: {
-                  ...prepared.input,
-                  arguments: { ...defaultArguments(latest.command), ...prepared.input.arguments },
-                },
-                notice: '',
-              });
-              setSavedRun(null);
-            }}
             onRun={() => submit()}
+            onOpenSettings={() => void openCommandSettings(prepared.command.id)}
             pending={pending}
           />
         )}
@@ -166,8 +157,6 @@ export function App() {
             <Conversation
               key={`conversation-${current.detail.task.id}`}
               detail={current.detail}
-              notice={current.notice}
-              onDismissNotice={current.dismissNotice}
               onAttach={(file) => changeDraft({ ...draft, files: [...draft.files, file] })}
               onRerun={rerun}
               onContinue={() => submit(true)}
@@ -175,15 +164,10 @@ export function App() {
           ) : (
             <ScrollArea className="panel-content">
               <section className="panel-content-body">
-                <p className="text-sm text-muted-foreground">Loading conversation…</p>
+                <p className="text-sm text-muted-foreground">{t('header.loadingConversation')}</p>
               </section>
             </ScrollArea>
           ))}
-        {(notice || agent.error || current.error) && (
-          <ScrollArea className="panel-notice" viewportClassName="panel-notice-viewport">
-            <output role="alert">{notice || agent.error || current.error}</output>
-          </ScrollArea>
-        )}
         {(view === 'new' || view === 'task') && (
           <Composer
             key={`composer-${draftKey}-${draftRevision}`}
@@ -203,6 +187,7 @@ export function App() {
             onOpenSettings={() => void openSettings()}
           />
         )}
+        <ToastHost top={62} />
       </main>
     </TooltipProvider>
   );

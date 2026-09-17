@@ -16,6 +16,26 @@ html[data-runtime='web'] body {
   background: #202020;
 }
 
+.settings-loading {
+  display: flex;
+  flex: 1;
+  min-height: 160px;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: var(--ata-text-secondary);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+/* The window-level splash (Suspense fallback and the settings snapshot wait) fills #root and paints
+   the settings surface, matching the mounted settings shell it replaces. */
+#root > .settings-loading {
+  min-height: 100%;
+  background: var(--ata-surface-panel);
+  -webkit-app-region: drag;
+}
+
 .task-panel {
   position: fixed;
   right: 16px;
@@ -97,8 +117,7 @@ html[data-platform='darwin'] .task-panel::after {
   gap: 6px;
 }
 .header-button,
-.panel-footer,
-.secondary-content {
+.panel-footer {
   -webkit-app-region: no-drag;
 }
 .panel-content {
@@ -139,55 +158,60 @@ html[data-platform='darwin'] .task-panel::after {
   gap: 8px;
 }
 
-.secondary-content {
-  padding-top: 24px;
-}
-.section-heading {
+.task-history {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 24px;
+  min-height: 0;
+  flex-direction: column;
+  padding: 20px 16px 16px;
 }
-.empty-state {
-  padding: 22px 0;
-}
-.empty-state p {
-  color: var(--muted-foreground);
-  font-size: 14px;
-  line-height: 22px;
-}
-.empty-state p:first-child {
-  margin-bottom: 6px;
-  color: var(--foreground);
+.task-history-list {
+  flex: 1;
+  min-height: 0;
+  margin-right: -12px;
 }
 .task-list {
   display: flex;
   flex-direction: column;
-  gap: calc(var(--spacing) * 2);
+  gap: 4px;
 }
 .task-row {
   width: 100%;
+  min-width: 0;
   height: auto;
-  min-height: 72px;
   align-items: stretch;
   flex-direction: column;
-  gap: 8px;
-  padding: 12px;
+  padding: 10px 0;
   text-align: left;
+}
+.task-row:hover {
+  background: transparent;
+}
+.task-row:focus-visible {
+  border-color: transparent;
+  outline: none;
+  box-shadow: none;
 }
 .task-row-title {
   overflow: hidden;
   font-size: 14px;
-  font-weight: 400;
+  font-weight: 500;
+  line-height: 20px;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .task-row-meta {
   display: flex;
   justify-content: space-between;
+  gap: 8px;
   color: var(--muted-foreground);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 400;
+  line-height: 16px;
+}
+.task-row-meta > * {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .saved-prompt {
@@ -244,28 +268,6 @@ html[data-platform='darwin'] .task-panel::after {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.panel-notice {
-  min-height: 34px;
-  max-height: 25%;
-  color: var(--muted-foreground);
-  font-size: 12px;
-  line-height: 18px;
-  overflow-wrap: anywhere;
-}
-.panel-notice-viewport {
-  max-height: inherit;
-}
-.panel-notice output {
-  display: block;
-  padding: 8px 20px;
-}
-.composer-notice {
-  max-height: 64px;
-  color: var(--muted-foreground);
-  font-size: 11px;
-  line-height: 16px;
-  overflow-wrap: anywhere;
-}
 .restore-panel {
   position: fixed;
   right: 16px;
@@ -275,9 +277,6 @@ html[data-platform='darwin'] .task-panel::after {
 @media (max-height: 420px) {
   .panel-content-body {
     padding-top: 24px;
-  }
-  .section-heading {
-    margin-bottom: 12px;
   }
 }
 
