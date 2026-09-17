@@ -149,7 +149,59 @@ html[data-platform='darwin'] .task-panel::after {
 }
 .panel-footer {
   flex-shrink: 0;
-  padding: 8px 16px 16px;
+  /* The band reserves room above the controls for the overlay fade to finish. */
+  padding: 24px 16px 16px;
+}
+
+/* Bottom action bars float over the surface's scrolling content instead of ending it with a hard
+   edge. `useOverlayFooter` publishes the bar's measured height as `--overlay-footer-height` on the
+   bar's parent, and the parent's flex gap as `--overlay-footer-gap`; both feed the negative margin
+   that lets the scroller run underneath and the fade that dissolves the content behind the bar. */
+.overlay-footer {
+  position: relative;
+  z-index: 1;
+  margin-top: calc(-1 * (var(--overlay-footer-height, 0px) + var(--overlay-footer-gap, 0px)));
+  /* The bar itself stays click-through so the faded content under it keeps its hover and wheel. */
+  pointer-events: none;
+}
+.overlay-footer > * {
+  pointer-events: auto;
+}
+/* Disabled controls keep the shared button/input rule that makes them non-interactive. */
+.overlay-footer > :disabled {
+  pointer-events: none;
+}
+/* A bar that is itself a control (for example a lone action button) stays clickable. */
+.overlay-footer:is(button, a, input, [role='button']) {
+  pointer-events: auto;
+}
+/* Buttons on the bar sit over the fading rows instead of over a surface, so the outline variant's
+   dark-mode transparency would let content show through their fill and border ring. Hover and
+   expanded repeat the lift the variant would have painted, because this rule outranks those variant
+   utilities. */
+.overlay-footer [data-slot='button'][data-variant='outline'] {
+  background-color: var(--secondary);
+  border-color: color-mix(in oklch, var(--secondary), var(--foreground) 10%);
+}
+.overlay-footer [data-slot='button'][data-variant='outline']:is(:hover, [aria-expanded='true']) {
+  background-color: color-mix(in oklch, var(--secondary), var(--foreground) 6%);
+}
+
+/* Applied to the ScrollArea viewport a surface's overlay footer covers. The mask reaches well above
+   the bar so the content has finished fading by the time it slides under the controls. */
+.overlay-footer-fade {
+  scroll-padding-bottom: calc(var(--overlay-footer-height, 0px) + 56px);
+  mask-image: linear-gradient(
+    to bottom,
+    #000 calc(100% - var(--overlay-footer-height, 0px) - 48px),
+    rgb(0 0 0 / 42%) calc(100% - var(--overlay-footer-height, 0px)),
+    rgb(0 0 0 / 10%) calc(100% - (var(--overlay-footer-height, 0px) / 2)),
+    transparent
+  );
+}
+/* Reserve the bar's height plus the fade so the last row stays fully opaque at full scroll. */
+.overlay-footer-fade > div {
+  padding-bottom: calc(var(--overlay-footer-height, 0px) + 56px);
 }
 .settings-field {
   display: flex;

@@ -19,6 +19,7 @@ import { parse } from '../../../electron/agent/validation';
 import { parameterError } from '../../../electron/agent/command-validation';
 import { SettingsHeading } from '../settings/settings-heading';
 import { IconButton } from '../../components/icon-button';
+import { useOverlayFooter } from '../../components/use-overlay-footer';
 import { messageOf } from '../../lib/errors';
 import { ParameterField } from './parameter-field';
 
@@ -49,6 +50,7 @@ export function ParameterEditor({
   );
   const [error, setError] = useState('');
   const errorMessage = useRef<HTMLParagraphElement>(null);
+  const footerRef = useOverlayFooter<HTMLElement>();
   function changeType(type: string) {
     const base = {
       key: draft.key,
@@ -99,7 +101,7 @@ export function ParameterEditor({
         onBack={onCancel}
         backLabel={t('parameters.back')}
       />
-      <ScrollArea className="editor-scroll-area" gutter>
+      <ScrollArea className="editor-scroll-area" viewportClassName="overlay-footer-fade" gutter>
         <div className="editor-fields">
           <div className="field-columns aligned-fields">
             <div className="settings-field">
@@ -320,7 +322,7 @@ export function ParameterEditor({
           )}
         </div>
       </ScrollArea>
-      <footer className="editor-footer">
+      <footer ref={footerRef} className="editor-footer overlay-footer">
         <span className="text-xs text-muted-foreground">{t('parameters.footerHint')}</span>
         <div>
           <Button variant="outline" onClick={onCancel}>

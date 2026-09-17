@@ -18,6 +18,7 @@ import type {
 } from '../../../electron/providers/schema';
 import { CLOUD_FIELDS, isCustom, isAmbient } from '../../../electron/providers/metadata';
 import { showErrorToast } from '../../components/toast-store';
+import { useOverlayFooter } from '../../components/use-overlay-footer';
 import { SettingsHeading } from '../settings/settings-heading';
 import { ModelPicker } from './model-picker';
 import { CustomModels } from './custom-models';
@@ -52,6 +53,7 @@ export function ProviderForm({
   );
   const [pending, setPending] = useState('');
   const [status, setStatus] = useState('');
+  const footerRef = useOverlayFooter<HTMLElement>();
   const bridge = window.desktop?.settings.providers;
   const disabled = Boolean(pending) || !bridge;
   const custom = isCustom(draft.provider);
@@ -112,7 +114,7 @@ export function ProviderForm({
         onBack={onBack}
         backLabel={t('form.back')}
       />
-      <ScrollArea className="settings-editor-body" gutter>
+      <ScrollArea className="settings-editor-body" viewportClassName="overlay-footer-fade" gutter>
         <div className="settings-editor-inner settings-fields">
           {saved && saved.revision !== draft.expectedRevision && (
             <output className="settings-field-note">
@@ -297,7 +299,7 @@ export function ProviderForm({
           {status && <output className="settings-field-note">{status}</output>}
         </div>
       </ScrollArea>
-      <footer className="editor-footer">
+      <footer ref={footerRef} className="editor-footer overlay-footer">
         <Button variant="outline" disabled={disabled} onClick={onBack}>
           {t('form.cancel')}
         </Button>

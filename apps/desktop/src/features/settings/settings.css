@@ -109,6 +109,7 @@
   min-height: 0;
   min-width: 0;
   gap: 16px;
+  --overlay-footer-gap: 16px;
 }
 .settings-editor-body,
 .command-editor > .editor-scroll-area,

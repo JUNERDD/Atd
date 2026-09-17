@@ -16,6 +16,7 @@ import { Switch } from '@ai/ui/components/switch';
 import { ScrollArea } from '@ai/ui/components/scroll-area';
 import { TOOL_DESCRIPTIONS } from '../../../electron/agent/command-schema';
 import type { RunPolicy } from '../../../electron/agent/run-policy';
+import { useOverlayFooter } from '../../components/use-overlay-footer';
 
 export function TaskPolicyControl({
   value,
@@ -56,6 +57,7 @@ function PolicyEditor({
   onApply: (policy: RunPolicy) => void;
 }) {
   const [draft, setDraft] = useState(initial);
+  const footerRef = useOverlayFooter<HTMLDivElement>();
   const { t } = useTranslation('tasks');
   const { t: tCommon } = useTranslation('common');
   const added = draft.tools.filter((tool) => !initial.tools.includes(tool));
@@ -66,7 +68,7 @@ function PolicyEditor({
         <DialogTitle>{t('policy.title')}</DialogTitle>
         <DialogDescription>{t('policy.description')}</DialogDescription>
       </DialogHeader>
-      <ScrollArea className="panel-dialog-scroll" gutter>
+      <ScrollArea className="panel-dialog-scroll" viewportClassName="overlay-footer-fade" gutter>
         <div className="panel-dialog-body">
           {TOOL_DESCRIPTIONS.map((tool) => (
             <div className="flex items-center justify-between gap-4" key={tool.id}>
@@ -153,7 +155,7 @@ function PolicyEditor({
           )}
         </div>
       </ScrollArea>
-      <DialogFooter>
+      <DialogFooter ref={footerRef} className="overlay-footer">
         <Button onClick={() => onApply({ ...draft, confirmExpansion: true })}>
           {expanded ? t('policy.allowForNext') : t('policy.applyToNext')}
         </Button>

@@ -22,6 +22,7 @@ import { SettingsHeading } from '../settings/settings-heading';
 import { IconButton } from '../../components/icon-button';
 import { agentApi } from '../agent/use-agent';
 import { showErrorToast } from '../../components/toast-store';
+import { useOverlayFooter } from '../../components/use-overlay-footer';
 
 export function MemorySettings() {
   const { t } = useTranslation('memory');
@@ -34,6 +35,7 @@ export function MemorySettings() {
   const [error, setError] = useState('');
   const [status, setStatus] = useState('');
   const errorMessage = useRef<HTMLParagraphElement>(null);
+  const footerRef = useOverlayFooter<HTMLElement>();
   useEffect(() => {
     if (editing && error) errorMessage.current?.scrollIntoView({ block: 'nearest' });
   }, [editing, error]);
@@ -133,7 +135,7 @@ export function MemorySettings() {
             onBack={closeEditor}
             backLabel={t('memory.edit.back')}
           />
-          <ScrollArea className="editor-fields" gutter>
+          <ScrollArea className="editor-fields" viewportClassName="overlay-footer-fade" gutter>
             <div className="settings-editor-inner">
               <div className="settings-field">
                 <Label htmlFor="memory-content">{t('memory.edit.fieldLabel')}</Label>
@@ -154,7 +156,7 @@ export function MemorySettings() {
               {feedback}
             </div>
           </ScrollArea>
-          <footer className="editor-footer">
+          <footer ref={footerRef} className="editor-footer overlay-footer">
             <Button variant="ghost" onClick={() => setConfirm('delete')} disabled={pending}>
               <Trash2 />
               {t('memory.edit.delete')}

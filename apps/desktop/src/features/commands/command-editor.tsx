@@ -10,6 +10,7 @@ import { renameArgument, validateCommand } from '../../../electron/agent/command
 import { parse } from '../../../electron/agent/validation';
 import type { SettingsSnapshot } from '../../../electron/settings-contract';
 import { IconButton } from '../../components/icon-button';
+import { useOverlayFooter } from '../../components/use-overlay-footer';
 import { agentApi } from '../agent/use-agent';
 import { showErrorToast, showToast } from '../../components/toast-store';
 import { messageOf } from '../../lib/errors';
@@ -41,6 +42,7 @@ export function CommandEditor({
   const [error, setError] = useState('');
   const [inputOptionsOpen, setInputOptionsOpen] = useState(false);
   const errorMessage = useRef<HTMLDivElement>(null);
+  const footerRef = useOverlayFooter<HTMLElement>();
   function showError(message: string) {
     setError(message);
     if (message)
@@ -127,7 +129,7 @@ export function CommandEditor({
         onBack={onCancel}
         backLabel={t('editor.back')}
       />
-      <ScrollArea className="editor-scroll-area" gutter>
+      <ScrollArea className="editor-scroll-area" viewportClassName="overlay-footer-fade" gutter>
         <div className="editor-fields">
           <div className="field-columns aligned-fields">
             <div className="settings-field">
@@ -266,7 +268,7 @@ export function CommandEditor({
           )}
         </div>
       </ScrollArea>
-      <footer className="editor-footer">
+      <footer ref={footerRef} className="editor-footer overlay-footer">
         <Button
           type="button"
           variant="outline"
