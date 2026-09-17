@@ -1,0 +1,50 @@
+{
+  "memory": {
+    "title": "记忆",
+    "description": "帮助 Agent 按你的习惯工作的偏好。",
+    "searchLabel": "搜索记忆",
+    "searchPlaceholder": "搜索记忆…",
+    "learning": {
+      "label": "自动学习",
+      "description": "在工作过程中保存稳定的偏好和明确的纠正。"
+    },
+    "list": {
+      "userProfile": "用户画像",
+      "corrections": "修正与学习记录",
+      "preference": "已保存的偏好",
+      "edit": "编辑",
+      "editLabel": "编辑记忆：{{content}}",
+      "loading": "正在加载记忆…",
+      "empty": "还没有保存的记忆。在工作过程中分享你的长期偏好。",
+      "noMatches": "没有匹配的记忆。"
+    },
+    "edit": {
+      "title": "编辑记忆",
+      "back": "返回记忆",
+      "fieldLabel": "记忆",
+      "note": "更改将影响之后读取的记忆。",
+      "delete": "删除记忆",
+      "cancel": "取消",
+      "saving": "正在保存…",
+      "save": "保存更改"
+    },
+    "feedback": {
+      "reload": "重新加载记忆",
+      "emptyContent": "请输入记忆内容，或点击“删除记忆”将其移除。",
+      "deleted": "已删除记忆。",
+      "updated": "已更新记忆。",
+      "paused": "已暂停自动学习。现有记忆仍可使用。",
+      "resumed": "已恢复自动学习。",
+      "storageNote": "存储在此设备上。学习会使用你配置的模型，并可能产生额外的模型调用。"
+    },
+    "confirm": {
+      "pauseTitle": "暂停自动学习？",
+      "pauseDescription": "将不会保存新的学习记忆。Agent 仍可使用已保存的记忆。",
+      "pauseAction": "暂停学习",
+      "deleteTitle": "删除这条记忆？",
+      "deleteDescription": "该偏好将被从记忆中移除。现有对话内容会保留。",
+      "deleteAction": "删除记忆",
+      "cancel": "取消"
+    }
+  }
+}

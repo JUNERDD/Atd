@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Plus, Trash2 } from 'lucide-react';
 import { Button } from '@ai/ui/components/button';
 import { Input } from '@ai/ui/components/input';
@@ -18,7 +19,7 @@ import { parse } from '../../../electron/agent/validation';
 import { parameterError } from '../../../electron/agent/command-validation';
 import { SettingsHeading } from '../settings/settings-heading';
 import { IconButton } from '../../components/icon-button';
-import { messageOf } from '../agent/use-agent';
+import { messageOf } from '../../lib/errors';
 import { ParameterField } from './parameter-field';
 
 export function ParameterEditor({
@@ -34,6 +35,7 @@ export function ParameterEditor({
   onSave: (parameter: Parameter) => void;
   onCancel: () => void;
 }) {
+  const { t } = useTranslation('commands');
   const [draft, setDraft] = useState<Parameter>(
     initial ?? {
       type: 'text',
@@ -62,24 +64,23 @@ export function ParameterEditor({
   function save() {
     try {
       const parameter = parse(ParameterSchema, draft);
-      if (!/^[A-Za-z][A-Za-z0-9_]*$/.test(parameter.key))
-        throw new Error('Use letters, numbers, and underscores; start with a letter.');
-      if (!parameter.label.trim()) throw new Error('Enter a label.');
-      if (keys.includes(parameter.key)) throw new Error('This variable key is already used.');
+      if (!/^[A-Za-z][A-Za-z0-9_]*$/.test(parameter.key)) throw new Error(t('parameters.errorKey'));
+      if (!parameter.label.trim()) throw new Error(t('parameters.errorLabel'));
+      if (keys.includes(parameter.key)) throw new Error(t('parameters.errorDuplicateKey'));
       if (
         parameter.type === 'number' &&
         parameter.min !== undefined &&
         parameter.max !== undefined &&
         parameter.min > parameter.max
       )
-        throw new Error('Minimum must not exceed maximum.');
+        throw new Error(t('parameters.errorRange'));
       if (
         parameter.type === 'enum' &&
         (parameter.options.some((option) => !option.label.trim() || !option.value.trim()) ||
           new Set(parameter.options.map((option) => option.value)).size !==
             parameter.options.length)
       )
-        throw new Error('Every option needs a label and a unique value.');
+        throw new Error(t('parameters.errorOptions'));
       const validation =
         parameter.default === undefined ? '' : parameterError(parameter, parameter.default);
       if (validation) throw new Error(validation);
@@ -89,19 +90,20 @@ export function ParameterEditor({
       requestAnimationFrame(() => errorMessage.current?.scrollIntoView({ block: 'nearest' }));
     }
   }
+  const variable = `{{argument.${draft.key || 'key'}}}`;
   return (
     <section className="command-editor" data-figma-node="440:6805">
       <SettingsHeading
-        title={initial ? 'Edit parameter' : 'New parameter'}
-        description={`${commandName || 'New command'} · Parameters`}
+        title={initial ? t('parameters.editTitle') : t('parameters.newTitle')}
+        description={t('parameters.subtitle', { name: commandName || t('editor.newTitle') })}
         onBack={onCancel}
-        backLabel="Back to command"
+        backLabel={t('parameters.back')}
       />
-      <ScrollArea className="editor-scroll-area">
+      <ScrollArea className="editor-scroll-area" gutter>
         <div className="editor-fields">
           <div className="field-columns aligned-fields">
             <div className="settings-field">
-              <Label htmlFor="parameter-label">Label</Label>
+              <Label htmlFor="parameter-label">{t('parameters.label')}</Label>
               <Input
                 id="parameter-label"
                 value={draft.label}
@@ -109,7 +111,7 @@ export function ParameterEditor({
               />
             </div>
             <div className="settings-field">
-              <Label htmlFor="parameter-key">Variable key</Label>
+              <Label htmlFor="parameter-key">{t('parameters.key')}</Label>
               <div className="settings-field">
                 <Input
                   id="parameter-key"
@@ -118,29 +120,29 @@ export function ParameterEditor({
                 />
                 <p
                   className="truncate text-xs text-muted-foreground"
-                  title="Used by saved inputs and instructions."
+                  title={t('parameters.keyHint')}
                 >
-                  Used by saved inputs and instructions.
+                  {t('parameters.keyHint')}
                 </p>
               </div>
             </div>
           </div>
           <div className="settings-field">
-            <Label htmlFor="parameter-type">Type</Label>
+            <Label htmlFor="parameter-type">{t('parameters.type.label')}</Label>
             <Select value={draft.type} onValueChange={changeType}>
               <SelectTrigger id="parameter-type" className="w-full">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="text">Text</SelectItem>
-                <SelectItem value="number">Number</SelectItem>
-                <SelectItem value="enum">Choice</SelectItem>
-                <SelectItem value="boolean">Switch</SelectItem>
+                <SelectItem value="text">{t('parameters.type.option.text')}</SelectItem>
+                <SelectItem value="number">{t('parameters.type.option.number')}</SelectItem>
+                <SelectItem value="enum">{t('parameters.type.option.enum')}</SelectItem>
+                <SelectItem value="boolean">{t('parameters.type.option.boolean')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
           <div className="settings-field">
-            <Label htmlFor="parameter-description">Description</Label>
+            <Label htmlFor="parameter-description">{t('parameters.description')}</Label>
             <Input
               id="parameter-description"
               value={draft.description}
@@ -150,22 +152,22 @@ export function ParameterEditor({
           {draft.type === 'text' && (
             <div className="field-columns aligned-fields">
               <div className="settings-field">
-                <Label>Text style</Label>
+                <Label>{t('parameters.textStyle')}</Label>
                 <Select
                   value={draft.multiline ? 'multi' : 'single'}
                   onValueChange={(value) => setDraft({ ...draft, multiline: value === 'multi' })}
                 >
-                  <SelectTrigger aria-label="Text style" className="w-full">
+                  <SelectTrigger aria-label={t('parameters.textStyle')} className="w-full">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="single">Single line</SelectItem>
-                    <SelectItem value="multi">Multiple lines</SelectItem>
+                    <SelectItem value="single">{t('parameters.singleLine')}</SelectItem>
+                    <SelectItem value="multi">{t('parameters.multipleLines')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="settings-field">
-                <Label htmlFor="parameter-length">Maximum length</Label>
+                <Label htmlFor="parameter-length">{t('parameters.maxLength')}</Label>
                 <Input
                   id="parameter-length"
                   type="number"
@@ -184,7 +186,7 @@ export function ParameterEditor({
               {(['min', 'max'] as const).map((field) => (
                 <div className="settings-field" key={field}>
                   <Label htmlFor={`parameter-${field}`}>
-                    {field === 'min' ? 'Minimum' : 'Maximum'}
+                    {field === 'min' ? t('parameters.minimum') : t('parameters.maximum')}
                   </Label>
                   <Input
                     id={`parameter-${field}`}
@@ -205,7 +207,7 @@ export function ParameterEditor({
           {draft.type === 'enum' && (
             <section className="settings-field">
               <div className="flex items-center justify-between">
-                <Label>Options</Label>
+                <Label>{t('parameters.options')}</Label>
                 <Button
                   variant="outline"
                   onClick={() =>
@@ -213,20 +215,20 @@ export function ParameterEditor({
                   }
                 >
                   <Plus />
-                  Add option
+                  {t('parameters.addOption')}
                 </Button>
               </div>
               <p
                 className="truncate text-xs text-muted-foreground"
-                title="Keep values stable; labels can change without changing saved input."
+                title={t('parameters.optionsHint')}
               >
-                Keep values stable; labels can change without changing saved input.
+                {t('parameters.optionsHint')}
               </p>
               {draft.options.map((option, index) => (
                 <div className="option-row" key={index}>
                   <div className="field-columns aligned-fields">
                     <div className="settings-field">
-                      <Label htmlFor={`option-label-${index}`}>Label</Label>
+                      <Label htmlFor={`option-label-${index}`}>{t('parameters.label')}</Label>
                       <Input
                         id={`option-label-${index}`}
                         value={option.label}
@@ -241,7 +243,7 @@ export function ParameterEditor({
                       />
                     </div>
                     <div className="settings-field">
-                      <Label htmlFor={`option-value-${index}`}>Value</Label>
+                      <Label htmlFor={`option-value-${index}`}>{t('parameters.value')}</Label>
                       <Input
                         id={`option-value-${index}`}
                         value={option.value}
@@ -258,8 +260,8 @@ export function ParameterEditor({
                   </div>
                   <div className="option-action">
                     <IconButton
-                      label="Remove"
-                      aria-label={`Remove option ${index + 1}`}
+                      label={t('common.remove')}
+                      aria-label={t('parameters.removeOption', { index: index + 1 })}
                       disabled={draft.options.length === 1}
                       onClick={() =>
                         setDraft({ ...draft, options: draft.options.filter((_, i) => i !== index) })
@@ -273,7 +275,12 @@ export function ParameterEditor({
             </section>
           )}
           <ParameterField
-            parameter={{ ...draft, label: 'Default value', required: false, description: '' }}
+            parameter={{
+              ...draft,
+              label: t('parameters.defaultValue'),
+              required: false,
+              description: '',
+            }}
             value={draft.default}
             onChange={(value) => {
               const next = { ...draft };
@@ -291,7 +298,7 @@ export function ParameterEditor({
             }}
           />
           <div className="flex items-center justify-between">
-            <Label htmlFor="parameter-required">Required</Label>
+            <Label htmlFor="parameter-required">{t('parameters.required')}</Label>
             <Switch
               id="parameter-required"
               checked={draft.required}
@@ -300,10 +307,11 @@ export function ParameterEditor({
           </div>
           <p
             className="truncate text-sm text-muted-foreground"
-            title={`Available in instructions as {{argument.${draft.key || 'key'}}}.`}
+            title={`${t('parameters.availablePrefix')}${variable}${t('parameters.availableSuffix')}`}
           >
-            Available in instructions as{' '}
-            <span className="variable-token">{`{{argument.${draft.key || 'key'}}}`}</span>.
+            {t('parameters.availablePrefix')}
+            <span className="variable-token">{variable}</span>
+            {t('parameters.availableSuffix')}
           </p>
           {error && (
             <p ref={errorMessage} role="alert" className="text-sm text-destructive">
@@ -313,12 +321,12 @@ export function ParameterEditor({
         </div>
       </ScrollArea>
       <footer className="editor-footer">
-        <span className="text-xs text-muted-foreground">Updates this command’s input form</span>
+        <span className="text-xs text-muted-foreground">{t('parameters.footerHint')}</span>
         <div>
           <Button variant="outline" onClick={onCancel}>
-            Cancel
+            {t('common.cancel')}
           </Button>
-          <Button onClick={save}>{initial ? 'Save parameter' : 'Add parameter'}</Button>
+          <Button onClick={save}>{initial ? t('parameters.save') : t('parameters.add')}</Button>
         </div>
       </footer>
     </section>

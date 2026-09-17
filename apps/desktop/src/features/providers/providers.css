@@ -49,9 +49,8 @@
 }
 .provider-name-track {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 4px 8px;
+  gap: 8px;
   min-height: 20px;
 }
 .provider-name-track [data-slot='item-title'] {

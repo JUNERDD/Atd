@@ -8,6 +8,7 @@ import {
 } from '@ai/ui/components/command';
 import { Button } from '@ai/ui/components/button';
 import { Kbd, KbdGroup } from '@ai/ui/components/kbd';
+import { useTranslation } from 'react-i18next';
 import type { CommandDefinition } from '../../../electron/agent/command-schema';
 import { shortcutKeys } from '../../lib/shortcuts';
 import { CommandIcon } from '../commands/command-icon';
@@ -23,6 +24,7 @@ export function CommandLauncher({
   compact?: boolean;
   onAll?: () => void;
 }) {
+  const { t } = useTranslation('panel');
   const available = commands.filter((command) => command.enabled);
   if (compact)
     return (
@@ -49,16 +51,16 @@ export function CommandLauncher({
           </Button>
         ))}
         <Button variant="outline" className="col-span-full justify-self-start" onClick={onAll}>
-          All commands
+          {t('commands.all')}
         </Button>
       </div>
     );
   return (
     <section className="panel-content command-catalog">
       <Command>
-        <CommandInput placeholder="Search commands…" />
-        <CommandList className="min-h-0 max-h-none flex-1">
-          <CommandEmpty>No matching commands.</CommandEmpty>
+        <CommandInput placeholder={t('commands.search')} />
+        <CommandList gutter className="command-catalog-list min-h-0 max-h-none flex-1">
+          <CommandEmpty>{t('commands.empty')}</CommandEmpty>
           {available.map((command) => (
             <CommandItem
               key={command.id}

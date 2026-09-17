@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { ArrowLeft } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { IconButton } from '../../components/icon-button';
 
 export function SettingsHeading({
@@ -15,12 +16,17 @@ export function SettingsHeading({
   onBack?: () => void;
   backLabel?: string;
 }) {
+  const { t } = useTranslation('settings');
   return (
     <header className={`settings-page-heading ${children ? 'settings-overview-heading' : ''}`}>
       <div className="settings-section-heading">
         <div className="editor-heading">
           {onBack && (
-            <IconButton label="Back" aria-label={backLabel ?? 'Back'} onClick={onBack}>
+            <IconButton
+              label={t('heading.back')}
+              aria-label={backLabel ?? t('heading.back')}
+              onClick={onBack}
+            >
               <ArrowLeft />
             </IconButton>
           )}

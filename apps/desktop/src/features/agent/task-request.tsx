@@ -3,10 +3,13 @@ import { Button } from '@ai/ui/components/button';
 import { Textarea } from '@ai/ui/components/textarea';
 import { ScrollArea } from '@ai/ui/components/scroll-area';
 import { ShieldQuestion } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import type { PermissionRequest } from '../../../electron/agent/task-schema';
-import { agentApi, messageOf } from './use-agent';
+import { agentApi } from './use-agent';
+import { messageOf } from '../../lib/errors';
 
 export function TaskRequest({ request }: { request: PermissionRequest }) {
+  const { t } = useTranslation('tasks');
   const [answer, setAnswer] = useState('');
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
@@ -24,7 +27,9 @@ export function TaskRequest({ request }: { request: PermissionRequest }) {
   return (
     <section
       className="task-request"
-      aria-label={request.kind === 'input' ? 'Input needed' : 'Confirmation needed'}
+      aria-label={
+        request.kind === 'input' ? t('request.inputNeeded') : t('request.confirmationNeeded')
+      }
     >
       <div className="flex items-start gap-2">
         <ShieldQuestion size={16} className="shrink-0 mt-0.5" />
@@ -55,24 +60,28 @@ export function TaskRequest({ request }: { request: PermissionRequest }) {
           </div>
           <ScrollArea className="panel-text-scroll" viewportClassName="text-preview-viewport">
             <Textarea
-              aria-label="Your answer"
+              aria-label={t('request.answerLabel')}
               className="overflow-hidden"
               value={answer}
               onChange={(event) => setAnswer(event.target.value)}
-              placeholder="Your answer…"
+              placeholder={t('request.answerPlaceholder')}
             />
           </ScrollArea>
         </>
       )}
       <div className="flex justify-end gap-2">
         <Button variant="outline" disabled={pending} onClick={() => void respond(false)}>
-          {request.kind === 'input' ? 'Skip' : 'Decline'}
+          {request.kind === 'input' ? t('request.skip') : t('request.decline')}
         </Button>
         <Button
           disabled={pending || (request.kind === 'input' && !answer.trim())}
           onClick={() => void respond(request.kind === 'input' ? answer : true)}
         >
-          {pending ? 'Submitting…' : request.kind === 'input' ? 'Respond' : 'Allow once'}
+          {pending
+            ? t('request.submitting')
+            : request.kind === 'input'
+              ? t('request.respond')
+              : t('request.allowOnce')}
         </Button>
       </div>
       {error && (

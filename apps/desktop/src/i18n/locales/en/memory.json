@@ -1,0 +1,50 @@
+{
+  "memory": {
+    "title": "Memory",
+    "description": "Preferences that help the agent work the way you do.",
+    "searchLabel": "Search memory",
+    "searchPlaceholder": "Search memory…",
+    "learning": {
+      "label": "Learn automatically",
+      "description": "Save stable preferences and clear corrections as you work."
+    },
+    "list": {
+      "userProfile": "User profile",
+      "corrections": "Corrections and learnings",
+      "preference": "Saved preference",
+      "edit": "Edit",
+      "editLabel": "Edit memory: {{content}}",
+      "loading": "Loading memory…",
+      "empty": "No saved memories yet. Share a lasting preference as you work.",
+      "noMatches": "No matching memories."
+    },
+    "edit": {
+      "title": "Edit memory",
+      "back": "Back to memory",
+      "fieldLabel": "Memory",
+      "note": "Changes apply to future memory reads.",
+      "delete": "Delete memory",
+      "cancel": "Cancel",
+      "saving": "Saving…",
+      "save": "Save changes"
+    },
+    "feedback": {
+      "reload": "Reload memory",
+      "emptyContent": "Enter the memory, or use Delete to remove it.",
+      "deleted": "Memory deleted.",
+      "updated": "Memory updated.",
+      "paused": "Automatic learning paused. Existing memories remain available.",
+      "resumed": "Automatic learning resumed.",
+      "storageNote": "Stored on this device. Learning uses your configured model and may make additional model calls."
+    },
+    "confirm": {
+      "pauseTitle": "Pause automatic learning?",
+      "pauseDescription": "Pending learning will not save new memories. The Agent can still use memories already saved.",
+      "pauseAction": "Pause learning",
+      "deleteTitle": "Delete this memory?",
+      "deleteDescription": "This preference will be removed from memory. Existing conversation text will remain.",
+      "deleteAction": "Delete memory",
+      "cancel": "Cancel"
+    }
+  }
+}

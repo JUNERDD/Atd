@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import type { RunPolicy } from '../../electron/agent/run-policy';
 import type { Connection, ModelReference } from '../../electron/providers/schema';
 import { TaskPolicyControl } from '../features/agent/task-policy';
@@ -18,14 +19,17 @@ export function ComposerConfiguration({
   policy,
   onPolicyChange,
 }: ComposerConfigurationProps) {
+  const { t } = useTranslation('panel');
   return (
-    <div className="composer-configuration" aria-label="Task configuration">
+    <div className="composer-configuration" aria-label={t('configuration.label')}>
       <TaskPolicyControl value={policy} onChange={onPolicyChange} />
       <ModelPicker
         compact
         connections={connections}
         value={policy.model ?? model}
-        label={`Models: ${policy.model?.modelId ?? model?.modelId ?? 'Choose model'}`}
+        label={t('configuration.models', {
+          model: policy.model?.modelId ?? model?.modelId ?? t('configuration.chooseModel'),
+        })}
         onChange={(model) => onPolicyChange({ ...policy, useDefaultModel: false, model })}
         onOpenProviders={onOpenSettings}
       />

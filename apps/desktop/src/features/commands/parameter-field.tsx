@@ -1,4 +1,5 @@
 import { useId } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Input } from '@ai/ui/components/input';
 import { Textarea } from '@ai/ui/components/textarea';
 import { Switch } from '@ai/ui/components/switch';
@@ -24,6 +25,7 @@ export function ParameterField({
   onChange: (value: string | number | boolean | undefined) => void;
   validate?: boolean;
 }) {
+  const { t } = useTranslation('commands');
   const id = useId();
   const error = validate ? parameterError(parameter, value) : '';
   const label = (
@@ -52,7 +54,7 @@ export function ParameterField({
           {parameter.type === 'enum' ? (
             <Select value={typeof value === 'string' ? value : ''} onValueChange={onChange}>
               <SelectTrigger id={id} className="w-full" aria-invalid={Boolean(error)}>
-                <SelectValue placeholder="Choose an option" />
+                <SelectValue placeholder={t('parameters.chooseOption')} />
               </SelectTrigger>
               <SelectContent>
                 {parameter.options

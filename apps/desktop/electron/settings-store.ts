@@ -2,7 +2,13 @@ import { app } from 'electron';
 import { randomUUID } from 'node:crypto';
 import { mkdir, open, readFile, rename, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
-import { DEFAULT_SHORTCUTS, type ShortcutBindings } from './settings-contract';
+import {
+  DEFAULT_SHORTCUTS,
+  isAppLanguage,
+  resolveLanguage,
+  type AppLanguage,
+  type ShortcutBindings,
+} from './settings-contract';
 import { Type, type Static } from 'typebox';
 import { parse } from './agent/validation';
 import { StoredConnectionSchema } from './providers/schema';
@@ -21,6 +27,7 @@ const PanelSizeSchema = Type.Object(
 );
 export interface StoredSettings extends Static<typeof ProviderSettingsSchema> {
   version: 2;
+  language: AppLanguage;
   shortcuts: ShortcutBindings;
   pinned: boolean;
   panelSize: PanelSize;
@@ -38,6 +45,7 @@ function parseSettings(value: unknown): StoredSettings {
           'provider',
           'connections',
           'defaultConnectionId',
+          'language',
           'shortcuts',
           'pinned',
           'panelSize',
@@ -51,6 +59,8 @@ function parseSettings(value: unknown): StoredSettings {
   ) {
     throw new TypeError('Invalid saved settings.');
   }
+  const language = 'language' in value ? value.language : resolveLanguage(app.getLocale());
+  if (!isAppLanguage(language)) throw new TypeError('Invalid saved settings.');
   const panelSize =
     'panelSize' in value ? parse(PanelSizeSchema, value.panelSize) : { ...PANEL_SIZE };
   const connections =
@@ -69,6 +79,7 @@ function parseSettings(value: unknown): StoredSettings {
   return {
     version: 2,
     ...providers,
+    language,
     shortcuts: parseShortcutBindings(value.shortcuts),
     pinned: value.pinned,
     panelSize,
@@ -104,6 +115,7 @@ export class SettingsStore {
           version: 2,
           connections: [],
           defaultConnectionId: null,
+          language: resolveLanguage(app.getLocale()),
           shortcuts: { ...DEFAULT_SHORTCUTS },
           pinned: true,
           panelSize: { ...PANEL_SIZE },

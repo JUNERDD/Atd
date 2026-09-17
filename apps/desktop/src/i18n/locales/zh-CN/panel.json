@@ -1,0 +1,97 @@
+{
+  "header": {
+    "openPanel": "打开任务面板",
+    "panelLabel": "AI 任务面板",
+    "newChat": "新建对话",
+    "controlsLabel": "面板控件",
+    "tasks": "任务",
+    "settings": "设置",
+    "hide": "隐藏面板",
+    "loadingConversation": "正在加载对话…"
+  },
+  "welcome": {
+    "title": "有什么可以帮你？",
+    "subtitle": "直接提问，或用命令开始。",
+    "desktopOnly": "打开桌面应用以运行 Agent 并管理已保存的命令。"
+  },
+  "titles": {
+    "tasks": "任务",
+    "commands": "命令",
+    "commandInput": "命令输入",
+    "task": "任务",
+    "newTask": "新建任务"
+  },
+  "composer": {
+    "send": "发送任务",
+    "stop": "停止任务",
+    "stopping": "正在停止…",
+    "cancelQueued": "取消排队任务",
+    "continue": "继续任务",
+    "newTaskForm": "新建任务",
+    "followUpForm": "追问",
+    "promptLabel": "任务提示词",
+    "placeholder": "输入任何内容…",
+    "followUpPlaceholder": "继续追问…",
+    "attachedContext": "已附加的上下文",
+    "attachContext": "附加上下文",
+    "attachLimit": "最多附加 10 个文件。",
+    "removeFile": "移除 {{name}}"
+  },
+  "configuration": {
+    "label": "任务配置",
+    "models": "模型：{{model}}",
+    "chooseModel": "选择模型"
+  },
+  "voice": {
+    "label": "语音输入",
+    "unavailable": "语音输入不可用"
+  },
+  "commands": {
+    "all": "全部命令",
+    "search": "搜索命令…",
+    "empty": "没有匹配的命令。"
+  },
+  "input": {
+    "label": "命令输入",
+    "run": "运行",
+    "runCommand": "运行命令",
+    "starting": "正在启动…",
+    "selectedText": "选中的文本",
+    "clipboardText": "剪贴板文本",
+    "text": "输入内容",
+    "textPlaceholder": "输入要用于此命令的文本…",
+    "captured": "捕获于 {{time}}",
+    "files": "文件",
+    "attachFiles": "附加文件",
+    "attachLimit": "最多附加 10 个文件。",
+    "removeFile": "移除 {{name}}",
+    "useSelection": "使用捕获的选区",
+    "refreshClipboard": "刷新剪贴板",
+    "toolsAskFirst": "{{n}} 个工具 · 每次询问",
+    "noFileTools": "没有文件或终端工具",
+    "memoryOff": "此任务未启用记忆",
+    "memoryOn": "记忆已开启 · 学习遵循设置",
+    "orphanParameter": "参数 {{key}} 已不存在。已保存的值：{{value}}",
+    "removeValue": "移除该值",
+    "review": "预览",
+    "reviewTitle": "运行前预览",
+    "expandedInstructions": "展开后的指令",
+    "capturedSources": "捕获的来源",
+    "commandSettings": "命令设置",
+    "version": "{{name}} · 版本 {{revision}}",
+    "reviewMeta": "{{model}} · {{tools}} · 记忆：{{memory}}",
+    "reviewNoTools": "无工具",
+    "memoryStateOn": "开启",
+    "memoryStateOff": "关闭",
+    "selectionPrefix": "选区：",
+    "clipboardPrefix": "剪贴板：",
+    "savedCommandNotice": "正在使用已保存的命令版本，运行前请预览。"
+  },
+  "session": {
+    "editSeed": "更新命令“{{name}}”（id：{{id}}）：",
+    "createSeed": "创建命令："
+  },
+  "errors": {
+    "openDesktopApp": "打开桌面应用以运行任务并管理已保存的数据。"
+  }
+}
