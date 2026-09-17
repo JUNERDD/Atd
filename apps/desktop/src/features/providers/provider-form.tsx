@@ -20,7 +20,7 @@ import { CLOUD_FIELDS, isCustom, isAmbient } from '../../../electron/providers/m
 import { showErrorToast } from '../../components/toast-store';
 import { useOverlayFooter } from '../../components/use-overlay-footer';
 import { SettingsHeading } from '../settings/settings-heading';
-import { ModelPicker } from './model-picker';
+import { sortModels } from './model-order';
 import { CustomModels } from './custom-models';
 import { ProviderSignIn } from './provider-login';
 import { draftFrom } from './provider-draft';
@@ -67,22 +67,11 @@ export function ProviderForm({
     ...(saved ? saved.catalog : provider.models),
     ...draft.customModels.filter((model) => model.id.trim()),
   ].filter((model, index, all) => !all.slice(index + 1).some((item) => item.id === model.id));
-  const preview: Connection = {
-    provider: draft.provider,
-    name: draft.name,
-    baseUrl: draft.baseUrl,
-    authType: draft.authType,
-    defaultModel: draft.defaultModel,
-    options: draft.options,
-    customModels: draft.customModels,
-    connectionId: draft.connectionId ?? 'draft',
-    revision: draft.expectedRevision ?? 1,
-    connected: true,
-    hasCredential: saved?.hasCredential ?? false,
-    catalog: available,
-    catalogError: saved?.catalogError ?? '',
-    verifiedModel: saved?.verifiedModel ?? '',
-  };
+  const models = sortModels(available);
+  const staleModel =
+    draft.defaultModel && !models.some((model) => model.id === draft.defaultModel)
+      ? draft.defaultModel
+      : '';
   function change(patch: Partial<ConnectionDraft>) {
     setDraft({ ...draft, ...patch });
     setStatus('');
@@ -233,19 +222,30 @@ export function ProviderForm({
               />
             )}
             <div className="settings-field">
-              <Label>{t('form.defaultModel')}</Label>
-              <ModelPicker
-                scoped
-                connections={[preview]}
-                value={
-                  draft.defaultModel
-                    ? { connectionId: preview.connectionId, modelId: draft.defaultModel }
-                    : null
-                }
-                label={t('form.defaultModelLabel', { name: draft.name })}
-                onChange={(model) => change({ defaultModel: model.modelId })}
-                disabled={disabled}
-              />
+              <Label htmlFor="provider-default-model">{t('form.defaultModel')}</Label>
+              <Select
+                value={draft.defaultModel}
+                onValueChange={(defaultModel) => change({ defaultModel })}
+              >
+                <SelectTrigger
+                  id="provider-default-model"
+                  aria-label={t('form.defaultModelLabel', { name: draft.name })}
+                >
+                  <SelectValue placeholder={t('models.choose')} />
+                </SelectTrigger>
+                <SelectContent>
+                  {staleModel && (
+                    <SelectItem value={staleModel}>
+                      {t('models.unavailable', { name: staleModel })}
+                    </SelectItem>
+                  )}
+                  {models.map((model) => (
+                    <SelectItem key={model.id} value={model.id}>
+                      {model.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               {!available.length && (
                 <p className="settings-field-note">
                   {saved ? t('form.catalogNote') : t('form.saveNote')}

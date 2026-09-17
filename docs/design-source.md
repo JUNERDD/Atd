@@ -350,3 +350,13 @@ Figma 侧未同步：本环境只有只读的本地 Figma MCP（`figma-desktop_*
 验证：定向 oxfmt／Oxlint、`pnpm typecheck`、`pnpm --filter @ai/desktop test`（20 个既有单元测试）通过。未启动应用运行时，因此三灯位置、header 内边距、原生关闭→隐藏的实际窗口表现与原生合成外观尚未复核；Windows/Linux 与 web 预览未做运行时验证。已知残留：退出流程执行 `runtime.close()` 期间若用户点击红灯，面板会销毁并触发 `window-all-closed`，应用可能不等清理完成即退出。
 
 Figma 侧未同步：本会话没有可用的 Figma 工具（云端与本地均未连接），无法从 Panel header（`71:112`）移除关闭控件实例或为三灯预留左侧空间；待有写权限时同步该主组件、`App / Icon button` 消费者与响应式评审帧，当前不把代码侧实现当作 Figma 已同步。
+
+## 2026-09-17 提供商表单默认模型改用共享 Select
+
+用户截图指出连接详情表单的「默认模型」（`provider-form.tsx`）应接命令编辑器中「输入来源」同款的现有全宽 Select，而不是连接内模型搜索弹层 `ModelPicker`。该字段现在由共享 `Select` 渲染：触发器宽度与值截断继续由 `providers.css` 的 `.provider-form [data-slot='select-trigger']`／`[data-slot='select-value']` 拥有（与同表单的「认证」同一口径），选项为 `sortModels(available)`（已保存目录 + 自定义模型，按 id 排序）；未选择时用 `models.choose` 占位；当前值不在目录中时保留为 `models.unavailable` 选项，避免下拉框吞掉已保存的值。可访问名称沿用 `form.defaultModelLabel`（含连接名称），可见标签经 `htmlFor`／`id` 与触发器关联。随之删除只为该控件构造的 `preview` Connection。
+
+保留范围：连接行（`provider-connections.tsx`）与 Composer／固定命令的 `ModelPicker` 连接内搜索菜单及跨连接选择不变，其菜单几何与最小宽度规则继续有效；表单字段本身不再提供模型搜索。
+
+验证：定向 oxfmt／Oxlint、`pnpm lint`、`pnpm typecheck`、`pnpm --filter @ai/desktop test`（20 个既有单元测试）通过。未启动应用运行时，因此下拉位置与等宽表现、长目录滚动、禁用与窄窗口布局尚未复核。
+
+Figma 侧未同步：本会话没有可用的 Figma 工具，无法读取或更新提供商详情表单中该字段的组件引用；待有写权限时把该字段同步为 Rhea Select，并把 `App / Provider selection menu` 留给连接行消费者。
