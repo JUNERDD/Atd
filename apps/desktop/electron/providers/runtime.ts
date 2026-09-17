@@ -96,6 +96,7 @@ export class ProviderRuntime {
     }
   }
   private async create(connection: StoredConnection) {
+    const root = path.join(app.getPath('userData'), 'providers', connection.connectionId);
     const models = await ModelRuntime.create({
       credentials: new ConnectionCredentials(
         this.store,
@@ -103,13 +104,10 @@ export class ProviderRuntime {
         connection.provider,
         configurationId(connection),
       ),
-      modelsPath: null,
-      modelsStorePath: path.join(
-        app.getPath('userData'),
-        'providers',
-        connection.connectionId,
-        'models.json',
-      ),
+      // The SDK only enables its file-backed catalog store when a config path is set.
+      // No models.json is written; the store keeps remotely refreshed catalogs across restarts.
+      modelsPath: path.join(root, 'models.json'),
+      modelsStorePath: path.join(root, 'models-store.json'),
       refreshOnCreate: false,
     });
     if (isCustom(connection.provider)) {

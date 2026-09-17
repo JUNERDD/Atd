@@ -16,7 +16,7 @@ export class ProviderLogin {
   constructor(
     private runtime: ProviderRuntime,
     private publish: (state: LoginState) => void,
-    private changed: () => void,
+    private signedIn: (connectionId: string) => void,
   ) {}
 
   async start(connectionId: string): Promise<LoginState> {
@@ -65,7 +65,7 @@ export class ProviderLogin {
               message: 'Signed in. Choose a default model.',
               prompt: null,
             };
-            this.changed();
+            this.signedIn(login.connectionId);
           }
         },
         () => {
