@@ -1,6 +1,6 @@
 {
   "status": {
-    "queued": "排队中",
+    "queued": "启动中",
     "running": "运行中",
     "awaiting_input": "等待输入",
     "awaiting_confirmation": "等待确认",
@@ -20,12 +20,15 @@
     "copy": "复制",
     "copied": "已复制",
     "copyResponseLabel": "复制回复",
-    "queued": "已排队 · 等待当前任务",
+    "queued": "正在启动…",
     "stopping": "正在停止…",
     "working": "处理中…",
     "interrupted": "此任务已中断",
-    "cancelled": "排队中的任务已取消",
-    "failed": "任务未能完成"
+    "cancelled": "任务已取消",
+    "failed": "任务未能完成",
+    "jumpToLatest": "跳到最新",
+    "continue": "继续",
+    "stopped": "已停止"
   },
   "review": {
     "title": "查看任务",
@@ -43,14 +46,74 @@
   "activity": {
     "memory": "记忆",
     "yourInput": "你的输入",
-    "saved": "已保存",
+    "ranTool": "运行了 1 个工具",
+    "ranTools": "运行了 {{count}} 个工具",
+    "callOne": "1 次",
+    "calls": "{{count}} 次",
     "completed": "已完成",
     "waiting": "等待中…",
-    "saving": "保存中…",
     "running": "运行中…",
     "failed": "失败",
     "interrupted": "已中断",
-    "interruptedNote": "执行在记录最终工具结果前结束。继续前请检查已有的文件更改。"
+    "interruptedNote": "执行在记录最终工具结果前结束。继续前请检查已有的文件更改。",
+    "showOutput": "显示完整输出",
+    "hideOutput": "收起完整输出",
+    "step": {
+      "read": "读取文件",
+      "write": "写入文件",
+      "edit": "编辑文件",
+      "bash": "运行命令",
+      "command": "管理命令",
+      "searchMemory": "搜索记忆",
+      "saveMemory": "保存记忆",
+      "updateMemory": "更新记忆",
+      "removeMemory": "删除记忆"
+    },
+    "target": {
+      "user": "用户",
+      "project": "项目",
+      "memory": "记忆",
+      "failure": "失败"
+    }
+  },
+  "permission": {
+    "scope": {
+      "read": {
+        "inside": "读取此任务文件夹内的文件",
+        "outside": "读取此任务文件夹外的文件"
+      },
+      "write": {
+        "inside": "在此任务文件夹内创建文件",
+        "outside": "在此任务文件夹外创建文件"
+      },
+      "edit": {
+        "inside": "编辑此任务文件夹内的文件",
+        "outside": "编辑此任务文件夹外的文件"
+      },
+      "bash": "运行终端命令",
+      "command": "保存或更新命令"
+    },
+    "outcome": {
+      "once": "已允许一次",
+      "session": "已允许本次会话",
+      "grant": "已按会话授权允许",
+      "tier": "已自动批准",
+      "declined": "已拒绝"
+    },
+    "allowOnce": "允许一次",
+    "allowSession": "允许本次会话",
+    "decline": "拒绝",
+    "waitingApproval": "等待你的批准",
+    "waitingAnswer": "等待你的回答"
+  },
+  "question": {
+    "skip": "跳过",
+    "skipped": "已跳过"
+  },
+  "thinking": {
+    "title": "思考",
+    "redacted": "推理已隐藏",
+    "done": "已思考"
   },
   "files": {
     "open": "打开",
@@ -83,17 +146,6 @@
     "cancel": "取消",
     "deleteAction": "删除任务"
   },
-  "request": {
-    "inputNeeded": "需要输入",
-    "confirmationNeeded": "需要确认",
-    "answerLabel": "你的回答",
-    "answerPlaceholder": "你的回答…",
-    "skip": "跳过",
-    "decline": "拒绝",
-    "submitting": "提交中…",
-    "respond": "回答",
-    "allowOnce": "允许一次"
-  },
   "policy": {
     "permissionsLabel": "权限：每次询问",
     "askFirst": "每次询问",
@@ -106,5 +158,70 @@
     "additional": "新增能力：{{capabilities}}。",
     "allowForNext": "允许用于下一条消息",
     "applyToNext": "应用于下一条消息"
+  },
+  "transcript": {
+    "footer": {
+      "live": "处理中 · {{elapsed}} · {{model}}",
+      "done": "用时 {{elapsed}} · {{model}} · {{clock}}",
+      "elapsed": "{{elapsed}}",
+      "workedFor": "用时 {{elapsed}}"
+    },
+    "phase": {
+      "show": "展开 {{count}} 个步骤",
+      "showOne": "展开 1 个步骤",
+      "hide": "收起 {{count}} 个步骤",
+      "hideOne": "收起 1 个步骤"
+    },
+    "verb": {
+      "editLive": "正在编辑 {{file}}",
+      "editDone": "已编辑 {{file}}",
+      "editLiveShort": "正在编辑",
+      "editDoneShort": "已编辑",
+      "readLive": "正在读取 {{file}}",
+      "readDone": "已读取 {{file}}",
+      "searchLive": "正在搜索项目",
+      "searchDone": "已搜索项目",
+      "exploreLive": "正在探索项目",
+      "exploreDone": "已探索项目",
+      "exploreLiveShort": "正在探索",
+      "exploreDoneShort": "已探索",
+      "runOneLive": "正在运行命令",
+      "runOneDone": "运行了 1 条命令",
+      "runManyLive": "正在运行 {{count}} 条命令",
+      "runManyDone": "运行了 {{count}} 条命令",
+      "agentOneLive": "正在运行子智能体",
+      "agentOneDone": "运行了 1 个子智能体",
+      "agentManyLive": "正在运行 {{count}} 个子智能体",
+      "agentManyDone": "运行了 {{count}} 个子智能体",
+      "thinkLive": "思考中",
+      "thinkDone": "已思考",
+      "toolOneLive": "正在运行工具",
+      "toolOneDone": "运行了 1 个工具",
+      "toolManyLive": "正在运行 {{count}} 个工具",
+      "toolManyDone": "运行了 {{count}} 个工具",
+      "working": "处理中",
+      "filesMany": "{{count}} 个文件"
+    },
+    "loadEarlier": {
+      "action": "加载更早的消息",
+      "actionWithCount": "加载更早的 {{count}} 条消息",
+      "loading": "正在加载更早的消息…"
+    },
+    "copy": {
+      "label": "复制",
+      "copied": "已复制",
+      "turnLabel": "复制本轮对话"
+    },
+    "save": {
+      "label": "保存",
+      "saved": "已保存",
+      "turnLabel": "保存本轮对话"
+    },
+    "code": {
+      "copy": "复制代码",
+      "copied": "已复制",
+      "download": "下载",
+      "saved": "已保存"
+    }
   }
 }

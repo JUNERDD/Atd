@@ -1,6 +1,6 @@
 {
   "status": {
-    "queued": "queued",
+    "queued": "starting",
     "running": "running",
     "awaiting_input": "awaiting input",
     "awaiting_confirmation": "awaiting confirmation",
@@ -20,12 +20,15 @@
     "copy": "Copy",
     "copied": "Copied",
     "copyResponseLabel": "Copy response",
-    "queued": "Queued · Waiting for the current task",
+    "queued": "Starting…",
     "stopping": "Stopping…",
     "working": "Working…",
     "interrupted": "This task was interrupted",
-    "cancelled": "Queued task cancelled",
-    "failed": "The task could not finish"
+    "cancelled": "Task cancelled",
+    "failed": "The task could not finish",
+    "jumpToLatest": "Jump to latest",
+    "continue": "Continue",
+    "stopped": "Stopped"
   },
   "review": {
     "title": "Review task",
@@ -43,14 +46,74 @@
   "activity": {
     "memory": "Memory",
     "yourInput": "Your input",
-    "saved": "Saved",
+    "ranTool": "Ran 1 tool",
+    "ranTools": "Ran {{count}} tools",
+    "callOne": "1 call",
+    "calls": "{{count}} calls",
     "completed": "Completed",
     "waiting": "Waiting…",
-    "saving": "Saving…",
     "running": "Running…",
     "failed": "Failed",
     "interrupted": "Interrupted",
-    "interruptedNote": "Execution ended before a final tool result was recorded. Review any existing file changes before continuing."
+    "interruptedNote": "Execution ended before a final tool result was recorded. Review any existing file changes before continuing.",
+    "showOutput": "Show full output",
+    "hideOutput": "Hide full output",
+    "step": {
+      "read": "Read file",
+      "write": "Write file",
+      "edit": "Edit file",
+      "bash": "Run command",
+      "command": "Manage command",
+      "searchMemory": "Search memory",
+      "saveMemory": "Save memory",
+      "updateMemory": "Update memory",
+      "removeMemory": "Remove memory"
+    },
+    "target": {
+      "user": "User",
+      "project": "Project",
+      "memory": "Memory",
+      "failure": "Failure"
+    }
+  },
+  "permission": {
+    "scope": {
+      "read": {
+        "inside": "Read a file in this task's folder",
+        "outside": "Read a file outside this task's folder"
+      },
+      "write": {
+        "inside": "Create a file in this task's folder",
+        "outside": "Create a file outside this task's folder"
+      },
+      "edit": {
+        "inside": "Edit a file in this task's folder",
+        "outside": "Edit a file outside this task's folder"
+      },
+      "bash": "Run a terminal command",
+      "command": "Save or update a command"
+    },
+    "outcome": {
+      "once": "Allowed once",
+      "session": "Allowed for this session",
+      "grant": "Allowed by session grant",
+      "tier": "Auto-approved",
+      "declined": "Declined"
+    },
+    "allowOnce": "Allow once",
+    "allowSession": "Allow for this session",
+    "decline": "Decline",
+    "waitingApproval": "Waiting for your approval",
+    "waitingAnswer": "Waiting for your answer"
+  },
+  "question": {
+    "skip": "Skip",
+    "skipped": "Skipped"
+  },
+  "thinking": {
+    "title": "Thinking",
+    "redacted": "Redacted reasoning",
+    "done": "Thought"
   },
   "files": {
     "open": "Open",
@@ -83,17 +146,6 @@
     "cancel": "Cancel",
     "deleteAction": "Delete task"
   },
-  "request": {
-    "inputNeeded": "Input needed",
-    "confirmationNeeded": "Confirmation needed",
-    "answerLabel": "Your answer",
-    "answerPlaceholder": "Your answer…",
-    "skip": "Skip",
-    "decline": "Decline",
-    "submitting": "Submitting…",
-    "respond": "Respond",
-    "allowOnce": "Allow once"
-  },
   "policy": {
     "permissionsLabel": "Permissions: Ask first",
     "askFirst": "Ask first",
@@ -106,5 +158,70 @@
     "additional": "Additional capabilities: {{capabilities}}.",
     "allowForNext": "Allow for next message",
     "applyToNext": "Apply to next message"
+  },
+  "transcript": {
+    "footer": {
+      "live": "Working · {{elapsed}} · {{model}}",
+      "done": "Worked for {{elapsed}} · {{model}} · {{clock}}",
+      "elapsed": "{{elapsed}}",
+      "workedFor": "Worked for {{elapsed}}"
+    },
+    "phase": {
+      "show": "Show {{count}} steps",
+      "showOne": "Show 1 step",
+      "hide": "Hide {{count}} steps",
+      "hideOne": "Hide 1 step"
+    },
+    "verb": {
+      "editLive": "Editing {{file}}",
+      "editDone": "Edited {{file}}",
+      "editLiveShort": "Editing",
+      "editDoneShort": "Edited",
+      "readLive": "Reading {{file}}",
+      "readDone": "Read {{file}}",
+      "searchLive": "Searching the project",
+      "searchDone": "Searched the project",
+      "exploreLive": "Exploring the project",
+      "exploreDone": "Explored the project",
+      "exploreLiveShort": "Exploring",
+      "exploreDoneShort": "Explored",
+      "runOneLive": "Running a command",
+      "runOneDone": "Ran a command",
+      "runManyLive": "Running {{count}} commands",
+      "runManyDone": "Ran {{count}} commands",
+      "agentOneLive": "Running a subagent",
+      "agentOneDone": "Ran a subagent",
+      "agentManyLive": "Running {{count}} subagents",
+      "agentManyDone": "Ran {{count}} subagents",
+      "thinkLive": "Thinking",
+      "thinkDone": "Thought",
+      "toolOneLive": "Running a tool",
+      "toolOneDone": "Ran a tool",
+      "toolManyLive": "Running {{count}} tools",
+      "toolManyDone": "Ran {{count}} tools",
+      "working": "Working",
+      "filesMany": "{{count}} files"
+    },
+    "loadEarlier": {
+      "action": "Load earlier messages",
+      "actionWithCount": "Load {{count}} earlier messages",
+      "loading": "Loading earlier messages…"
+    },
+    "copy": {
+      "label": "Copy",
+      "copied": "Copied",
+      "turnLabel": "Copy turn"
+    },
+    "save": {
+      "label": "Save",
+      "saved": "Saved",
+      "turnLabel": "Save turn"
+    },
+    "code": {
+      "copy": "Copy code",
+      "copied": "Copied",
+      "download": "Download",
+      "saved": "Saved"
+    }
   }
 }

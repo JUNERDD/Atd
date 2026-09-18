@@ -1,7 +1,14 @@
 import { useTranslation } from 'react-i18next';
 import { ContextBubble } from '../../components/context-bubble';
-import type { RunSnapshot } from '../../../electron/agent/task-schema';
-import { fileDetail } from './pending-message-text';
+import type { FileRef, RunSnapshot } from '../../../electron/agent/task-schema';
+import { fileSize } from '../../lib/task-store';
+
+function fileDetail(file: FileRef): string {
+  const size = fileSize(file.size);
+  const dot = file.name.lastIndexOf('.');
+  if (dot <= 0 || dot === file.name.length - 1) return size;
+  return `${file.name.slice(dot + 1).toUpperCase()} · ${size}`;
+}
 
 /**
  * Read-only capture above its owning user bubble. The bubble below already
