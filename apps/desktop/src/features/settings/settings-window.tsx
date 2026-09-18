@@ -20,6 +20,7 @@ import { ToastHost } from '../../components/toast';
 import { useAppLanguage } from '../../i18n/use-app-language';
 import '../agent/agent.css';
 import { LanguageSelector } from './language-selector';
+import { PermissionSettings } from './permission-settings';
 import { ProviderSettingsForm } from './provider-settings';
 import { ShortcutSettings } from './shortcut-settings';
 import { useSettingsSnapshot } from './use-settings';
@@ -218,7 +219,10 @@ export function SettingsWindow() {
                 )}
                 {visited.includes('shortcuts') && (
                   <div className="settings-page" hidden={tab !== 'shortcuts'}>
-                    <ShortcutSettings snapshot={snapshot} onRecordingChange={setRecording} />
+                    <div className="settings-general-sections">
+                      <PermissionSettings snapshot={snapshot} />
+                      <ShortcutSettings snapshot={snapshot} onRecordingChange={setRecording} />
+                    </div>
                   </div>
                 )}
               </div>
