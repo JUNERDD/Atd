@@ -67,7 +67,7 @@ export function App() {
   return (
     <TooltipProvider delayDuration={350}>
       {hidden && (
-        <Button className="restore-panel" onClick={() => setHidden(false)}>
+        <Button className="fixed right-4 bottom-4" onClick={() => setHidden(false)}>
           {t('header.openPanel')}
         </Button>
       )}
@@ -78,11 +78,7 @@ export function App() {
         data-figma-node="336:1149"
       >
         <header className="panel-header">
-          <IconButton
-            label={t('header.newChat')}
-            className="header-button panel-logo-button"
-            onClick={newTask}
-          >
+          <IconButton label={t('header.newChat')} className="header-button -mx-1" onClick={newTask}>
             <Astroid />
           </IconButton>
           <h1 title={title}>{title}</h1>

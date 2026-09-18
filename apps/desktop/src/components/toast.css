@@ -1,28 +1,11 @@
 .app-toast {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: fit-content;
-  max-width: 100%;
-  padding: 6px 8px 6px 12px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-2xl);
-  background: var(--card);
-  font-size: 12px;
+  /* Restores the inherited 1.5 line box that text-xs would otherwise shrink to 16px. */
+  line-height: 1.5;
   box-shadow: 0 4px 12px rgb(0 0 0 / 20%);
   animation: app-toast-enter 0.35s cubic-bezier(0.21, 1.02, 0.73, 1) forwards;
 }
 .app-toast[data-visible='false'] {
   animation: app-toast-exit 0.4s cubic-bezier(0.06, 0.71, 0.55, 1) forwards;
-}
-.app-toast-icon {
-  width: 16px;
-  height: 16px;
-  flex-shrink: 0;
-  color: var(--muted-foreground);
-}
-.app-toast[data-kind='error'] .app-toast-icon {
-  color: var(--destructive);
 }
 @keyframes app-toast-enter {
   from {

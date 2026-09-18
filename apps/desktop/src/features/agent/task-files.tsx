@@ -51,10 +51,10 @@ export function TaskFiles({
                 <FileText className="size-[18px]" />
               </ItemMedia>
               <ItemContent className="min-w-0">
-                <ItemTitle className="block w-full truncate" title={location.name}>
+                <ItemTitle className="block w-full" title={location.name}>
                   {location.name}
                 </ItemTitle>
-                <ItemDescription className="block truncate" title={description}>
+                <ItemDescription className="block" title={description}>
                   {description}
                 </ItemDescription>
                 {feedback?.id === file.id && (

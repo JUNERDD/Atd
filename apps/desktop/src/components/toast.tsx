@@ -16,8 +16,19 @@ export function ToastCard({ item, kind, text }: { item: Toast; kind: ToastKind; 
   const { t } = useTranslation('common');
   const ToastIcon = toastIcons[kind];
   return (
-    <output className="app-toast" data-kind={kind} data-visible={String(item.visible)}>
-      <ToastIcon aria-hidden className="app-toast-icon" />
+    <output
+      className="app-toast flex w-fit max-w-full items-center gap-2 rounded-2xl border border-border bg-card py-1.5 pr-2 pl-3 text-xs"
+      data-kind={kind}
+      data-visible={String(item.visible)}
+    >
+      <ToastIcon
+        aria-hidden
+        className={
+          kind === 'error'
+            ? 'size-4 shrink-0 text-destructive'
+            : 'size-4 shrink-0 text-muted-foreground'
+        }
+      />
       <span>{text}</span>
       <IconButton
         label={t('toast.dismiss')}

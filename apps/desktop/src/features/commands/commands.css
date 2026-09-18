@@ -38,11 +38,6 @@
   display: grid;
   gap: 16px;
 }
-/* The preset Item owns padding, border, radius and `gap-3.5`; grid pins the switch to its own track. */
-.run-settings-tool[data-slot='item'] {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-}
 /* Tools follow the same responsive column rule as the parallel fields around them, capped at three
    columns: the 32px subtracted below are the two 16px gutters of a three-column row. */
 .run-settings-tools[data-slot='item-group'] {
@@ -145,10 +140,6 @@
 }
 .instruction-editor .cm-gutters {
   display: none;
-}
-.instruction-completion-scroll-area {
-  flex: 1;
-  max-height: inherit;
 }
 .completion-options {
   padding: 4px;

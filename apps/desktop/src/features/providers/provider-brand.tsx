@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import openai from '@ai/ui/assets/brands/openai.svg';
 const assets = import.meta.glob<string>(
   '../../../../../packages/ui/src/assets/brands/lndev/*.svg',
@@ -53,7 +54,7 @@ export function ProviderBrand({ provider }: { provider: string }) {
       <span
         aria-hidden="true"
         className="provider-brand provider-brand-mask"
-        style={{ maskImage: `url("${asset}")` }}
+        style={{ '--brand-mask-image': `url("${asset}")` } as CSSProperties}
       />
     );
   return <img src={asset} width={16} height={16} className="provider-brand" alt="" />;

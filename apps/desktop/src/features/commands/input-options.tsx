@@ -77,7 +77,7 @@ export function InputOptions({
           </Button>
         </PopoverTrigger>
         <PopoverContent
-          className="input-options-popover p-4 rounded-2xl bg-popover"
+          className="input-options-popover rounded-2xl"
           align="start"
           collisionPadding={8}
         >

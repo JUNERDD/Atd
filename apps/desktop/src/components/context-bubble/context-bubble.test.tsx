@@ -16,12 +16,7 @@ describe('ContextBubble alternate arrangement', () => {
     const labelRef = createRef<HTMLButtonElement>();
     const onLabelClick = vi.fn();
     render(
-      <ContextBubble.Root
-        ref={rootRef}
-        data-testid="bubble"
-        className="custom-root"
-        style={{ borderWidth: 2 }}
-      >
+      <ContextBubble.Root ref={rootRef} data-testid="bubble" className="custom-root border-2">
         <ContextBubble.Preview className="custom-preview">
           <div>Selected text</div>
           <ContextBubble.Files aria-label="Attachments" className="custom-files">
@@ -44,8 +39,7 @@ describe('ContextBubble alternate arrangement', () => {
 
     const root = screen.getByTestId('bubble');
     expect(rootRef.current).toBe(root);
-    expect(root).toHaveClass('custom-root');
-    expect(root).toHaveStyle({ borderWidth: '2px' });
+    expect(root).toHaveClass('custom-root', 'border-2');
     expect(root).toHaveAttribute('data-slot', 'context-bubble');
     expect(root).toHaveAttribute('data-state', 'open');
 

@@ -101,11 +101,6 @@ html[data-platform='darwin'] .panel-header {
   padding-left: 88px;
 }
 
-.panel-logo-button {
-  /* Overlap the header padding and title gap by 4px per side so the 28px hit area adds no visible inset around the 16px icon. */
-  margin-inline: -4px;
-}
-
 .panel-header h1 {
   flex: 1;
   min-width: 0;
@@ -222,11 +217,6 @@ html[data-platform='darwin'] .panel-header {
   flex-direction: column;
   padding: 20px 16px 16px;
 }
-.task-history-list {
-  flex: 1;
-  min-height: 0;
-  margin-right: -12px;
-}
 .task-list {
   display: flex;
   flex-direction: column;
@@ -325,11 +315,6 @@ html[data-platform='darwin'] .panel-header {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-.restore-panel {
-  position: fixed;
-  right: 16px;
-  bottom: 16px;
 }
 
 @media (max-height: 420px) {
