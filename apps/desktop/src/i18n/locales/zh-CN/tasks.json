@@ -113,7 +113,8 @@
   "thinking": {
     "title": "思考",
     "redacted": "推理已隐藏",
-    "done": "已思考"
+    "done": "已思考",
+    "doneWithElapsed": "已思考 {{elapsed}}"
   },
   "files": {
     "open": "打开",

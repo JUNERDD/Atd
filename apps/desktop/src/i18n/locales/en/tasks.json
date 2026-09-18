@@ -113,7 +113,8 @@
   "thinking": {
     "title": "Thinking",
     "redacted": "Redacted reasoning",
-    "done": "Thought"
+    "done": "Thought",
+    "doneWithElapsed": "Thought {{elapsed}}"
   },
   "files": {
     "open": "Open",
