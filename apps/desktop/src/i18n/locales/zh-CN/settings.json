@@ -55,6 +55,27 @@
   "heading": {
     "back": "返回"
   },
+  "permissions": {
+    "title": "权限",
+    "description": "新任务的默认权限级别。每个任务都可以在输入框中更改自己的级别。",
+    "tiers": {
+      "manual": {
+        "label": "手动批准",
+        "description": "每次文件或终端操作前都先询问。"
+      },
+      "auto": {
+        "label": "自动批准",
+        "description": "允许在任务文件夹内工作；其他操作均需询问。"
+      },
+      "always": {
+        "label": "始终允许",
+        "description": "不再询问。终端命令和任务文件夹外的文件将在无人值守下运行。"
+      }
+    },
+    "errors": {
+      "save": "无法保存权限设置。"
+    }
+  },
   "shortcuts": {
     "title": "键盘快捷键",
     "description": "让应用按你的节奏工作。点击快捷键即可编辑。",

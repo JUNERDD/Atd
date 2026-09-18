@@ -1,18 +1,21 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useHotkeys, type Options } from 'react-hotkeys-hook';
 import { useTranslation } from 'react-i18next';
-import { ArrowUp, Play, Plus, Square, X } from 'lucide-react';
+import { ArrowUp, Plus, Square, X } from 'lucide-react';
 import { Button } from '@ai/ui/components/button';
 import { Textarea } from '@ai/ui/components/textarea';
 import { ScrollArea } from '@ai/ui/components/scroll-area';
 import type { ShortcutBindings } from '../../electron/settings-contract';
 import { DEFAULT_SHORTCUTS } from '../../electron/settings-contract';
-import type { FileRef, RunStatus } from '../../electron/agent/task-schema';
+import type { AgentTask, FileRef, RunStatus } from '../../electron/agent/task-schema';
+import { isActive } from '../../electron/agent/task-schema';
+import type { PermissionRequest } from '../../electron/agent/permission-schema';
+import { EMPTY_QUEUE, type QueueState } from '../../electron/agent/transcript-schema';
 import type { Connection, ModelReference } from '../../electron/providers/schema';
 import type { RunPolicy } from '../../electron/agent/run-policy';
-import { isActive } from '../../electron/agent/task-schema';
 import { IconButton } from './icon-button';
 import { ComposerConfiguration } from './composer-configuration';
+import { ComposerQueue } from './composer-queue';
 import { useOverlayFooter } from './use-overlay-footer';
 import { acceleratorToHotkey } from '../lib/shortcuts';
 import { agentApi } from '../features/agent/use-agent';
@@ -23,14 +26,13 @@ export interface ComposerDraft {
   text: string;
   files: FileRef[];
 }
-interface ComposerProps {
+export interface ComposerProps {
   policy: RunPolicy;
   onPolicyChange: (policy: RunPolicy) => void;
   draft: ComposerDraft;
   onChange: (draft: ComposerDraft) => void;
   onSubmit: () => Promise<unknown>;
   onStop?: () => Promise<void>;
-  onContinue?: () => Promise<unknown>;
   status?: RunStatus;
   pending?: boolean;
   followup?: boolean;
@@ -38,6 +40,19 @@ interface ComposerProps {
   connections: Connection[];
   model: ModelReference | null;
   onOpenSettings: () => void;
+  taskId?: string | null;
+  runId?: string;
+  task?: AgentTask | null;
+  requests?: PermissionRequest[];
+  queue?: QueueState;
+}
+
+function pendingInputOf(requests: PermissionRequest[]) {
+  return requests.find((request) => request.kind === 'input');
+}
+
+function joinDraft(current: string, incoming: string) {
+  return current.trim() ? `${current}\n${incoming}` : incoming;
 }
 
 export function Composer({
@@ -45,7 +60,6 @@ export function Composer({
   onChange,
   onSubmit,
   onStop,
-  onContinue,
   status,
   pending = false,
   followup = false,
@@ -55,51 +69,86 @@ export function Composer({
   onOpenSettings,
   policy,
   onPolicyChange,
+  taskId = null,
+  task = null,
+  requests = [],
+  queue = EMPTY_QUEUE,
 }: ComposerProps) {
   const { t } = useTranslation('panel');
   const footerRef = useOverlayFooter<HTMLElement>();
   const [choosing, setChoosing] = useState(false);
+  const [sending, setSending] = useState(false);
   const textarea = useRef<HTMLTextAreaElement>(null);
   const hasContent = Boolean(draft.text.trim() || draft.files.length);
   const active = isActive(status);
-  const continuing = status === 'stopped' && !hasContent;
+  const locked = status === 'stopping' || status === 'queued';
+  const pendingInput = active && !locked ? pendingInputOf(requests) : undefined;
+  const pendingRequest = active && requests.length > 0;
   const label = active
     ? status === 'stopping'
       ? t('composer.stopping')
       : status === 'queued'
-        ? t('composer.cancelQueued')
-        : t('composer.stop')
-    : continuing
-      ? t('composer.continue')
-      : t('composer.send');
-  const disabled = pending || status === 'stopping' || (!active && !continuing && !hasContent);
+        ? t('composer.cancelStarting')
+        : pendingRequest
+          ? t('composer.stopAndDecline')
+          : t('composer.stop')
+    : t('composer.send');
+  const sendDisabled = pending || sending || locked || (active ? !draft.text.trim() : !hasContent);
+  const stopDisabled = pending || status === 'stopping' || !onStop;
+  const disabled = active ? stopDisabled : sendDisabled;
   const platform = window.desktop?.platform ?? 'web';
   const expanded = draft.text.includes('\n') || draft.text.length > 90;
   const options: Options = {
     delimiter: '|',
     useKey: false,
     enableOnFormTags: ['textarea'],
-    enabled: (event) => !event.repeat,
+    enabled: (event) => !event.repeat && !locked,
     ignoreEventWhen: (event) =>
       event.defaultPrevented || event.isComposing || event.keyCode === 229,
   };
-  async function act() {
-    if (disabled) return;
+  async function send() {
+    if (sendDisabled) return;
     try {
-      if (active) await onStop?.();
-      else if (continuing) await onContinue?.();
-      else await onSubmit();
+      if (active) {
+        if (draft.files.length) throw new Error(t('composer.attachAfterRun'));
+        const text = draft.text.trim();
+        if (!taskId || !text) return;
+        setSending(true);
+        try {
+          if (pendingInput)
+            await agentApi().answer(taskId, pendingInput.runId, pendingInput.id, { answer: text });
+          else await agentApi().queueMessage(taskId, text, 'followUp');
+          onChange({ ...draft, text: '' });
+        } finally {
+          setSending(false);
+        }
+        return;
+      }
+      await onSubmit();
     } catch (error) {
       showErrorToast(error);
     }
   }
+  async function stop() {
+    if (stopDisabled) return;
+    const followUps = queue.followUp;
+    try {
+      await onStop?.();
+      if (followUps.length)
+        onChange({ ...draft, text: joinDraft(draft.text, followUps.join('\n')) });
+    } catch (error) {
+      showErrorToast(error);
+    }
+  }
+  async function act() {
+    if (active) await stop();
+    else await send();
+  }
   const sendRef = useHotkeys<HTMLTextAreaElement>(
     acceleratorToHotkey(shortcuts.sendMessage, platform),
-    () => {
-      if (!active) void act();
-    },
+    () => void send(),
     { ...options, preventDefault: true },
-    [draft, disabled, active, continuing, onSubmit, onContinue],
+    [draft, sendDisabled, active, pendingInput, taskId, onSubmit],
   );
   const newLineRef = useHotkeys<HTMLTextAreaElement>(
     acceleratorToHotkey(shortcuts.newLine, platform),
@@ -138,6 +187,11 @@ export function Composer({
       setChoosing(false);
     }
   }
+  const placeholder = pendingInput
+    ? t('composer.answerPlaceholder')
+    : followup
+      ? t('composer.followUpPlaceholder')
+      : t('composer.placeholder');
   return (
     <footer ref={footerRef} className="panel-footer overlay-footer">
       <form
@@ -145,38 +199,40 @@ export function Composer({
         aria-label={followup ? t('composer.followUpForm') : t('composer.newTaskForm')}
         onSubmit={(event) => {
           event.preventDefault();
-          if (!active) void act();
+          void send();
         }}
       >
         <div
           className="composer-surface"
           data-expanded={expanded}
           data-has-attachments={draft.files.length > 0}
+          data-has-queue={queue.steering.length + queue.followUp.length > 0}
         >
-          <ScrollArea
-            className="composer-input-scroll"
-            viewportClassName="composer-input-viewport"
-            gutter
-          >
+          {taskId && (
+            <ComposerQueue
+              taskId={taskId}
+              queue={queue}
+              disabled={locked || sending}
+              onEdit={(text) => onChange({ ...draft, text: joinDraft(draft.text, text) })}
+            />
+          )}
+          <ScrollArea className="composer-input-scroll" viewportClassName="max-h-[inherit]" gutter>
             <Textarea
               ref={ref}
               className="composer-input"
               data-panel-autofocus="true"
               aria-label={t('composer.promptLabel')}
-              placeholder={followup ? t('composer.followUpPlaceholder') : t('composer.placeholder')}
+              placeholder={placeholder}
               rows={1}
               wrap={expanded ? 'soft' : 'off'}
-              maxLength={100000}
+              maxLength={pendingInput ? 10000 : 100000}
+              disabled={locked}
               value={draft.text}
               onChange={(event) => onChange({ ...draft, text: event.target.value })}
             />
           </ScrollArea>
           {draft.files.length > 0 && (
-            <ScrollArea
-              className="composer-attachments"
-              viewportClassName="composer-attachments-viewport"
-              gutter
-            >
+            <ScrollArea className="composer-attachments" viewportClassName="max-h-[inherit]" gutter>
               <ul className="attachment-list" aria-label={t('composer.attachedContext')}>
                 {draft.files.map((file) => (
                   <li className="attachment-chip" key={file.id}>
@@ -205,7 +261,7 @@ export function Composer({
             className="composer-attach"
             tooltipSide="top"
             variant="secondary"
-            disabled={choosing}
+            disabled={choosing || locked}
             onClick={() => void choose()}
           >
             <Plus />
@@ -218,13 +274,7 @@ export function Composer({
               disabled={disabled}
               onClick={() => void act()}
             >
-              {active ? (
-                <Square className="fill-current size-3" />
-              ) : continuing ? (
-                <Play />
-              ) : (
-                <ArrowUp />
-              )}
+              {active ? <Square className="fill-current size-3" /> : <ArrowUp />}
             </IconButton>
           </div>
         </div>
@@ -234,6 +284,8 @@ export function Composer({
           onOpenSettings={onOpenSettings}
           policy={policy}
           onPolicyChange={onPolicyChange}
+          taskId={taskId}
+          task={task}
         />
       </form>
     </footer>

@@ -55,6 +55,8 @@ export const NativeRequestSchema = Type.Union([
     action: Type.Literal('commandSave'),
     taskId: Identifier,
     runId: Identifier,
+    /** The `command` tool call awaiting the save confirmation; the permission gate records against it. */
+    toolCallId: Type.String({ maxLength: 256 }),
     commandId: Type.Union([Identifier, Type.Null()]),
     expectedRevision: Type.Union([Type.Integer({ minimum: 1 }), Type.Null()]),
     fields: CommandFieldsSchema,

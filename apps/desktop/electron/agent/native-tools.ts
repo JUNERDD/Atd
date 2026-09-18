@@ -4,9 +4,11 @@ import path from 'node:path';
 import { outputVersions, recordOutput } from './output-files';
 import { createLocalBashOperations } from '@earendil-works/pi-coding-agent';
 import type { ToolId } from './command-schema';
-import type { AgentTask, Artifact, PermissionRequest, TaskRun } from './task-schema';
+import type { AgentTask, Artifact, TaskRun } from './task-schema';
 import { canonicalPath, ContextResources, fileFingerprint } from './resources';
 import type { CommandRequest, NativeRequest, ToolArguments } from './native-schema';
+import { locationOf, type PermissionGate } from './permissions';
+import type { GrantScope } from './permission-schema';
 
 interface Grant {
   id: string;
@@ -21,7 +23,7 @@ interface Grant {
 }
 interface NativeHost {
   task: (id: string) => AgentTask;
-  ask: (request: PermissionRequest) => Promise<string | boolean>;
+  gate: PermissionGate;
   artifact: (artifact: Artifact) => Promise<void>;
   command: (request: CommandRequest) => Promise<unknown>;
 }
@@ -52,9 +54,10 @@ export class NativeTools {
         throw new Error('This tool is not enabled for the task.');
       const cwd = path.join(this.root, 'tasks', request.taskId, 'output');
       await mkdir(cwd, { recursive: true });
+      const folder = await canonicalPath(cwd);
       const target =
         request.tool === 'bash'
-          ? cwd
+          ? folder
           : await canonicalPath(path.resolve(cwd, request.args.path ?? ''));
       if (request.tool !== 'bash' && !request.args.path)
         throw new Error('A file path is required.');
@@ -62,7 +65,7 @@ export class NativeTools {
         request.tool !== 'read' &&
         request.tool !== 'bash' &&
         this.resources.isManaged(target) &&
-        !target.startsWith(cwd + path.sep)
+        !target.startsWith(folder + path.sep)
       )
         throw new Error('Agent data and attached context are read-only to tools.');
       const before = request.tool === 'bash' ? '' : await fileFingerprint(target);
@@ -81,16 +84,15 @@ export class NativeTools {
           request.tool === 'bash'
             ? `${request.args.command ?? ''}\n\nWorking directory: ${cwd}\nThis command can affect resources outside this directory.`
             : `${target}\n\n${request.tool === 'write' ? (request.args.content ?? '') : request.tool === 'edit' ? JSON.stringify(request.args.edits, null, 2) : 'Allow this tool to read this file.'}`;
-        const accepted = await this.host.ask({
-          id: randomUUID(),
+        const outcome = await this.host.gate.decide({
           taskId: request.taskId,
           runId: request.runId,
-          kind: 'confirmation',
+          toolCallId: request.toolCallId,
+          scope: authorizeScope(request.tool, target, folder),
           title,
           detail,
-          options: [],
         });
-        if (accepted !== true) throw new Error('The user declined this action.');
+        if (outcome === 'declined') throw new Error('The user declined this action.');
       }
       this.run(request.taskId, request.runId);
       if (request.tool !== 'bash' && (await fileFingerprint(target)) !== before)
@@ -196,10 +198,31 @@ export class NativeTools {
             }
         }
       }
+      default: {
+        const _exhaustive: never = request;
+        throw new Error(`Unsupported native action: ${JSON.stringify(_exhaustive)}`);
+      }
     }
   }
 
   stop(runId: string) {
     for (const grant of this.grants.values()) if (grant.runId === runId) grant.abort.abort();
+  }
+}
+
+function authorizeScope(tool: ToolId, target: string, folder: string): GrantScope {
+  switch (tool) {
+    case 'bash':
+      return { tool: 'bash' };
+    case 'read':
+    case 'write':
+    case 'edit':
+      return { tool, location: locationOf(target, folder) };
+    case 'command':
+      throw new Error('This tool is not enabled for the task.');
+    default: {
+      const _exhaustive: never = tool;
+      throw new Error(`Unsupported tool: ${JSON.stringify(_exhaustive)}`);
+    }
   }
 }

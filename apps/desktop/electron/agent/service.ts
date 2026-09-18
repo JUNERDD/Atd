@@ -16,6 +16,7 @@ import { AgentStore } from './store';
 import { canonicalPath, ContextResources } from './resources';
 import { CommandService } from './command-service';
 import { CommandTool } from './command-tool';
+import { PermissionGate } from './permissions';
 import { TaskRuntime } from './task-runtime';
 import { RunService } from './run-service';
 import { ArtifactService } from './artifact-service';
@@ -56,14 +57,28 @@ export class AgentService {
       () => this.broadcast(),
     );
     this.commands.initialize();
-    const commandTool = new CommandTool(store, this.commands, (request) =>
-      this.runtime.ask(request),
-    );
+    const gate = new PermissionGate({
+      task: (id) => this.runtime.task(id),
+      ask: async (request) => {
+        const answer = await this.runtime.ask(request);
+        if (!('decision' in answer))
+          throw new Error('A confirmation requires a permission decision.');
+        return answer;
+      },
+      record: (taskId, record) => this.runtime.recordPermission(taskId, record),
+      failed: (taskId, text) =>
+        settings.send(AGENT_IPC.changed, {
+          type: 'notice',
+          notice: { taskId, text, kind: 'warning' },
+        }),
+    });
+    const commandTool = new CommandTool(store, this.commands, gate);
     this.runtime = new TaskRuntime(root, store, resources, {
       publish: (event) => settings.send(AGENT_IPC.changed, event),
       changed: () => this.broadcast(),
       auth: (run) => settings.providers.runtime.auth(run.snapshot.model),
       command: (request) => commandTool.execute(request),
+      gate,
     });
     this.runs = new RunService(
       this.runtime,
@@ -75,6 +90,7 @@ export class AgentService {
         settings.providers.runtime.assertModel(model);
       },
       (model, requested) => settings.providers.runtime.resolveThinkingLevel(model, requested),
+      () => settings.snapshot().permissionTier,
     );
     this.artifacts = new ArtifactService(this.runtime);
   }
@@ -140,6 +156,7 @@ export class AgentService {
           'deleteCommand',
           'pauseMemory',
           'updateMemory',
+          'renameTask',
           'deleteTask',
           'importLegacy',
         ].includes(request.action)
@@ -188,6 +205,14 @@ export class AgentService {
           request.requestId,
           request.answer,
         );
+      case 'queueMessage':
+        return this.runtime.queueMessage(request.taskId, request.text, request.mode);
+      case 'replaceQueue':
+        return this.runtime.replaceQueue(request.taskId, request.followUp);
+      case 'setPermissionTier':
+        return this.runtime.attributes.setPermissionTier(request.taskId, request.tier);
+      case 'renameTask':
+        return this.runtime.attributes.renameTask(request.taskId, request.title);
       case 'chooseFiles':
         return this.choose(() => this.runtime.resources.choose());
       case 'artifact':
@@ -265,12 +290,17 @@ export class AgentService {
               sessionFile: null,
               runs: [],
               legacy: { prompt: item.prompt, attachments: item.attachments },
+              permissionTier: this.settings.snapshot().permissionTier,
             });
           }
           data.legacyImported = true;
         });
         this.broadcast();
         return null;
+      }
+      default: {
+        const _exhaustive: never = request;
+        throw new Error(`Unsupported agent action: ${JSON.stringify(_exhaustive)}`);
       }
     }
   }

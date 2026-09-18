@@ -23,6 +23,8 @@ const desktop: DesktopBridge = {
       ipcRenderer.invoke(SETTINGS_IPC.saveShortcuts, shortcuts) as Promise<SettingsSnapshot>,
     restoreShortcuts: () =>
       ipcRenderer.invoke(SETTINGS_IPC.restoreShortcuts) as Promise<SettingsSnapshot>,
+    setPermissionTier: (tier) =>
+      ipcRenderer.invoke(SETTINGS_IPC.savePermissionTier, tier) as Promise<SettingsSnapshot>,
     onChange: (listener) => {
       const callback = (_event: IpcRendererEvent, settings: SettingsSnapshot) => listener(settings);
       ipcRenderer.on(SETTINGS_IPC.changed, callback);

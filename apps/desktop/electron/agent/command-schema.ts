@@ -156,6 +156,21 @@ export const CommandToolSchema = Type.Union([
 ]);
 export type CommandToolArguments = Static<typeof CommandToolSchema>;
 
+/**
+ * Parameters exposed to the model. Providers require the root schema of a function
+ * to be an object, so the discriminated union above cannot be sent as-is; the worker
+ * validates the returned arguments against CommandToolSchema.
+ */
+export const CommandToolParametersSchema = Type.Object(
+  {
+    operation: Type.Union([Type.Literal('list'), Type.Literal('get'), Type.Literal('save')]),
+    commandId: Type.Optional(Type.Union([Identifier, Type.Null()])),
+    expectedRevision: Type.Optional(Type.Union([Type.Integer({ minimum: 1 }), Type.Null()])),
+    fields: Type.Optional(CommandFieldsSchema),
+  },
+  { additionalProperties: false },
+);
+
 /** Command tool replies; the worker parses the native response with these schemas. */
 export const CommandSummarySchema = Type.Object(
   {

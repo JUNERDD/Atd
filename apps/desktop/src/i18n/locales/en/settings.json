@@ -55,6 +55,27 @@
   "heading": {
     "back": "Back"
   },
+  "permissions": {
+    "title": "Permissions",
+    "description": "Default approval tier for new tasks. Each task can change its own tier from the composer.",
+    "tiers": {
+      "manual": {
+        "label": "Manual approval",
+        "description": "Ask before every file or terminal action."
+      },
+      "auto": {
+        "label": "Auto approval",
+        "description": "Allow work inside the task folder; ask for everything else."
+      },
+      "always": {
+        "label": "Always allow",
+        "description": "Never ask. Terminal commands and files outside the task folder run unattended."
+      }
+    },
+    "errors": {
+      "save": "The permission setting could not be saved."
+    }
+  },
   "shortcuts": {
     "title": "Keyboard shortcuts",
     "description": "Make the app work at your pace. Click a shortcut to edit it.",

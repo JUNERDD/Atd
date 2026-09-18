@@ -8,7 +8,15 @@ import {
   type ExtensionFactory,
   type ToolDefinition,
 } from '@earendil-works/pi-coding-agent';
-import type { ToolId } from './command-schema';
+import {
+  CommandSaveResultSchema,
+  CommandSchema,
+  CommandSummarySchema,
+  CommandToolParametersSchema,
+  CommandToolSchema,
+  type CommandToolArguments,
+  type ToolId,
+} from './command-schema';
 import { ToolArgumentsSchema } from './native-schema';
 import { nativeCall, Nothing } from './worker-channel';
 import { parse } from './validation';
@@ -107,4 +115,67 @@ export function nativeExtension(
       ),
     );
   };
+}
+
+export function commandExtension(taskId: string, runId: () => string): ExtensionFactory {
+  return (pi) => {
+    pi.registerTool({
+      name: 'command',
+      label: 'Manage commands',
+      description:
+        'List, read, create or update saved commands. Use "list" for the saved commands, "get" with a commandId for one definition, and "save" with fields. To update, pass the commandId together with the expectedRevision you read; to create, omit commandId (or pass null) and omit expectedRevision. Every save is confirmed by the user.',
+      parameters: CommandToolParametersSchema,
+      executionMode: 'sequential',
+      async execute(id, args) {
+        const value = await commandNativeCall(
+          { taskId, runId: runId(), toolCallId: id },
+          parse(CommandToolSchema, args),
+        );
+        return {
+          content: [{ type: 'text', text: JSON.stringify(value, null, 2) }],
+          details: {},
+        };
+      },
+    });
+  };
+}
+
+function commandNativeCall(
+  scope: { taskId: string; runId: string; toolCallId: string },
+  operation: CommandToolArguments,
+) {
+  switch (operation.operation) {
+    case 'list':
+      return nativeCall(
+        { action: 'commandList', taskId: scope.taskId, runId: scope.runId },
+        Type.Array(CommandSummarySchema),
+      );
+    case 'get':
+      return nativeCall(
+        {
+          action: 'commandGet',
+          taskId: scope.taskId,
+          runId: scope.runId,
+          commandId: operation.commandId,
+        },
+        CommandSchema,
+      );
+    case 'save':
+      return nativeCall(
+        {
+          action: 'commandSave',
+          taskId: scope.taskId,
+          runId: scope.runId,
+          toolCallId: scope.toolCallId,
+          commandId: operation.commandId,
+          expectedRevision: operation.expectedRevision,
+          fields: operation.fields,
+        },
+        CommandSaveResultSchema,
+      );
+    default: {
+      const _exhaustive: never = operation;
+      return _exhaustive;
+    }
+  }
 }

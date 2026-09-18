@@ -4,7 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { DEFAULT_SHORTCUTS } from '../../../electron/settings-contract';
 import type { RunPolicy } from '../../../electron/agent/run-policy';
 import type { PreparedCommand, TaskDetail } from '../../../electron/agent/bridge';
-import { emptyInput, type TaskRun } from '../../../electron/agent/task-schema';
+import { emptyInput, isActive, type TaskRun } from '../../../electron/agent/task-schema';
+import { EMPTY_QUEUE } from '../../../electron/agent/transcript-schema';
 import type { ComposerDraft } from '../../components/composer';
 import { useSettingsSnapshot } from '../settings/use-settings';
 import { acceleratorToHotkey } from '../../lib/shortcuts';
@@ -12,46 +13,17 @@ import { STORAGE_KEY } from '../../lib/task-store';
 import { agentApi, useAgent, useTaskDetail } from './use-agent';
 import { showErrorToast } from '../../components/toast-store';
 import { useAgentNotices } from './use-notices';
+import { focusPanelInput, showPanel, usePanelWindow } from './use-panel-window';
 
 type View = 'new' | 'history' | 'task' | 'commands' | 'input';
 const EMPTY_DRAFT: ComposerDraft = { text: '', files: [] };
-
-/**
- * A hidden page refuses element focus, so a revealed panel lands on the first control of the native
- * window and its tooltip instead. The presented view marks its primary input with
- * data-panel-autofocus; a view without one keeps the header unfocused.
- */
-function focusPanelInput() {
-  const input = document.querySelector<HTMLElement>('[data-panel-autofocus]');
-  if (input) {
-    input.focus();
-    return;
-  }
-  const active = document.activeElement;
-  if (active instanceof HTMLElement && active.closest('.panel-header')) active.blur();
-}
-
-/** Reveals the panel window through the desktop bridge; the renderer owns when a panel appears. */
-async function showPanel() {
-  const restore = () => {
-    document.removeEventListener('visibilitychange', restore);
-    focusPanelInput();
-  };
-  if (document.visibilityState === 'hidden') document.addEventListener('visibilitychange', restore);
-  try {
-    await window.desktop?.show();
-    focusPanelInput();
-  } catch (error) {
-    document.removeEventListener('visibilitychange', restore);
-    showErrorToast(error);
-  }
-}
 
 export function useTaskPanel() {
   const { t } = useTranslation('panel');
   const agent = useAgent();
   useAgentNotices();
   const { snapshot } = useSettingsSnapshot();
+  const { hidden, setHidden, openSettings, hide } = usePanelWindow();
   const [draftRevision, setDraftRevision] = useState(0);
   const [view, setView] = useState<View>('new');
   const [taskId, setTaskId] = useState<string | null>(null);
@@ -62,7 +34,6 @@ export function useTaskPanel() {
   const [savedRun, setSavedRun] = useState<{ taskId: string; runId: string } | null>(null);
   const [policies, setPolicies] = useState<Record<string, RunPolicy>>({});
   const [drafts, setDrafts] = useState<Record<string, ComposerDraft>>({});
-  const [hidden, setHidden] = useState(false);
   const [pending, setPending] = useState(false);
   const submission = useRef<{ key: string; id: string } | null>(null);
   const current = useTaskDetail(taskId);
@@ -175,27 +146,6 @@ export function useTaskPanel() {
     setPrepared(null);
     setSavedRun(null);
   }
-  async function openSettings() {
-    try {
-      if (window.desktop) await window.desktop.settings.open();
-      else {
-        const url = new URL(location.href);
-        url.hash = 'settings';
-        const opened = window.open(url, 'ai-settings', 'width=1000,height=720');
-        opened?.focus();
-      }
-    } catch (error) {
-      showErrorToast(error);
-    }
-  }
-  async function hide() {
-    try {
-      if (window.desktop) await window.desktop.hide();
-      else setHidden(true);
-    } catch (error) {
-      showErrorToast(error);
-    }
-  }
   function changeDraft(value: ComposerDraft) {
     setDrafts((previous) => ({ ...previous, [draftKey]: value }));
   }
@@ -217,6 +167,8 @@ export function useTaskPanel() {
     launched?: PreparedCommand,
   ): Promise<TaskDetail | null> {
     if (pending) return null;
+    const run = current.detail?.task.runs.at(-1);
+    if (!continueTask && !launched && view === 'task' && isActive(run?.status)) return null;
     setPending(true);
     const commandInput = launched ?? (view === 'input' ? prepared : null);
     const input = commandInput?.input ?? {
@@ -344,5 +296,7 @@ export function useTaskPanel() {
     run,
     policy,
     changePolicy,
+    requests: current.detail?.requests ?? [],
+    queue: current.detail?.queue ?? EMPTY_QUEUE,
   };
 }

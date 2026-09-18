@@ -1,41 +1,45 @@
 import { Type } from 'typebox';
 import type { AuthResult } from '@earendil-works/pi-ai';
-import { TaskQueue } from './task-queue';
 import path from 'node:path';
-import type { AgentEvent, TaskDetail } from './bridge';
-import { MemoryEntrySchema } from './bridge';
-import {
-  MessageSchema,
-  isActive,
-  type PermissionRequest,
-  type TaskMessage,
-  type TaskRun,
-} from './task-schema';
+import { RunDispatcher } from './run-dispatcher';
+import { MemoryEntrySchema, type AgentEvent, type TaskDetail, type TaskState } from './bridge';
+import { activeRun, isActive, type TaskRun } from './task-schema';
+import type { PermissionAnswer, PermissionRecord, PermissionRequest } from './permission-schema';
 import { AgentStore } from './store';
 import { ContextResources } from './resources';
 import { NativeTools } from './native-tools';
 import { AgentWorker } from './worker-host';
-import type { WorkerOutbound } from './worker-contract';
+import { TranscriptSnapshotSchema, type WorkerOutbound } from './worker-contract';
 import type { CommandRequest } from './native-schema';
 import { errorMessage } from './validation';
+import { PermissionGate } from './permissions';
+import { TaskAttributes } from './task-attributes';
+import {
+  declinedReply,
+  assertQueueable,
+  isLiveRun,
+  statusForPending,
+  TaskDocuments,
+  TaskRequests,
+  validatePermissionAnswer,
+} from './task-requests';
 
 interface RuntimeHost {
   publish: (event: AgentEvent) => void;
   changed: () => void;
   auth: (run: TaskRun) => Promise<AuthResult>;
   command: (request: CommandRequest) => Promise<unknown>;
+  gate: PermissionGate;
 }
 
 export class TaskRuntime {
   readonly worker: AgentWorker;
   readonly native: NativeTools;
-  private messages = new Map<string, TaskMessage[]>();
-  private requests = new Map<
-    string,
-    { request: PermissionRequest; resolve: (answer: string | boolean) => void }
-  >();
-  private readonly queue: TaskQueue;
-  private revision = 0;
+  readonly gate: PermissionGate;
+  readonly attributes: TaskAttributes;
+  private readonly documents = new TaskDocuments();
+  private readonly requests = new TaskRequests();
+  private readonly dispatcher: RunDispatcher;
   error = '';
   constructor(
     readonly root: string,
@@ -43,14 +47,18 @@ export class TaskRuntime {
     readonly resources: ContextResources,
     private host: RuntimeHost,
   ) {
-    this.queue = new TaskQueue(this, host.auth);
+    this.gate = host.gate;
+    this.dispatcher = new RunDispatcher(this, host.auth);
+    this.attributes = new TaskAttributes(
+      store,
+      (id) => this.task(id),
+      (id) => this.publishTask(id),
+    );
     this.native = new NativeTools(root, resources, {
       task: (id) => this.task(id),
-      ask: (request) => this.ask(request),
+      gate: this.gate,
       artifact: async (artifact) => {
-        await store.change((data) => {
-          data.artifacts.push(artifact);
-        });
+        await store.change((data) => data.artifacts.push(artifact));
         this.publishTask(artifact.taskId);
       },
       command: (request) => this.host.command(request),
@@ -67,9 +75,7 @@ export class TaskRuntime {
         return this.host.auth(run);
       },
       event: (event) => this.event(event),
-      failed: (message) => {
-        void this.fail(message);
-      },
+      failed: (message) => void this.fail(message),
     });
   }
 
@@ -79,34 +85,31 @@ export class TaskRuntime {
     return task;
   }
 
-  cachedDetail(id: string): TaskDetail {
+  state(id: string): TaskState {
     return {
       task: this.task(id),
-      messages: this.messages.get(id) ?? [],
       artifacts: this.store.data.artifacts.filter((file) => file.taskId === id),
-      request:
-        [...this.requests.values()].find((item) => item.request.taskId === id)?.request ?? null,
+      requests: this.requests.list(id),
+      queue: this.documents.queue(id),
     };
   }
 
+  cachedDetail(id: string): TaskDetail {
+    return { ...this.state(id), ...this.documents.snapshot(id) };
+  }
+
   async detail(id: string) {
-    const task = this.task(id);
-    if (!this.messages.has(id) && task.sessionFile) {
-      await this.ready();
-      this.messages.set(
-        id,
-        await this.worker.call(
-          { action: 'messages', taskId: id, sessionFile: task.sessionFile },
-          Type.Array(MessageSchema),
-        ),
-      );
+    if (!this.documents.has(id)) {
+      const snapshot = await this.loadTranscript(id);
+      this.documents.replace(id, { revision: snapshot.revision, blocks: snapshot.blocks });
+      this.gate.seed(id, snapshot.grants);
     }
     return this.cachedDetail(id);
   }
 
   publishTask(id: string) {
     if (this.store.data.tasks.some((task) => task.id === id))
-      this.host.publish({ type: 'task', revision: ++this.revision, detail: this.cachedDetail(id) });
+      this.host.publish({ type: 'task', state: this.state(id) });
     this.host.changed();
   }
 
@@ -122,34 +125,63 @@ export class TaskRuntime {
   }
 
   private async event(event: Exclude<WorkerOutbound, { type: 'response' | 'native' }>) {
-    if (event.type === 'memoryChanged') {
-      this.host.publish({ type: 'memory', snapshot: await this.memory() });
-      return;
+    switch (event.type) {
+      case 'memoryChanged':
+        this.host.publish({ type: 'memory', snapshot: await this.memory() });
+        return;
+      case 'notice':
+        this.host.publish({ type: 'notice', notice: event });
+        return;
+      case 'question': {
+        const answer = await this.ask(event.request);
+        if (!('decision' in answer))
+          await this.worker.call(
+            { action: 'answer', requestId: event.request.id, answer },
+            Type.Null(),
+          );
+        return;
+      }
+      case 'transcript':
+        if (!this.store.data.tasks.some((task) => task.id === event.patch.taskId)) return;
+        if (event.sessionFile) await this.rememberSession(event.patch.taskId, event.sessionFile);
+        await this.publishTranscript(event.patch);
+        return;
+      case 'queue':
+        if (!this.store.data.tasks.some((task) => task.id === event.taskId)) return;
+        this.documents.setQueue(event.taskId, event.queue);
+        this.publishTask(event.taskId);
+        return;
+      default: {
+        const _exhaustive: never = event;
+        throw new Error(`Unsupported worker event: ${JSON.stringify(_exhaustive)}`);
+      }
     }
-    if (event.type === 'notice') {
-      this.host.publish({ type: 'notice', notice: event });
-      return;
-    }
-    if (event.type === 'question') {
-      const answer = await this.ask(event.request);
-      await this.worker.call(
-        { action: 'answer', requestId: event.request.id, answer },
-        Type.Null(),
-      );
-      return;
-    }
-    const task = this.task(event.taskId);
-    if (!task.runs.some((run) => run.id === event.runId)) return;
-    this.messages.set(task.id, event.messages);
-    if (event.sessionFile && task.sessionFile !== event.sessionFile) {
-      const directory = path.join(this.root, 'agent', 'sessions', task.id) + path.sep;
-      if (!event.sessionFile.startsWith(directory))
-        throw new Error('Invalid Agent session location.');
-      await this.store.change((data) => {
-        data.tasks.find((item) => item.id === task.id)!.sessionFile = event.sessionFile;
+  }
+
+  private async publishTranscript(patch: Parameters<TaskDocuments['accept']>[0]) {
+    const result = await this.documents.accept(patch, () => this.loadTranscript(patch.taskId));
+    if ('error' in result) {
+      this.host.publish({
+        type: 'notice',
+        notice: { taskId: patch.taskId, text: result.error, kind: 'error' },
       });
+      return;
     }
-    this.publishTask(task.id);
+    if (result.grants) this.gate.seed(patch.taskId, result.grants);
+    this.host.publish({ type: 'transcript', patch: result.patch });
+    this.host.changed();
+  }
+
+  private async loadTranscript(taskId: string) {
+    await this.ready();
+    return this.worker.call(
+      { action: 'transcript', taskId, sessionFile: this.task(taskId).sessionFile },
+      TranscriptSnapshotSchema,
+    );
+  }
+
+  async recordPermission(taskId: string, record: PermissionRecord) {
+    await this.worker.call({ action: 'record', taskId, record }, Type.Null());
   }
 
   async status(taskId: string, runId: string, status: TaskRun['status'], error = '') {
@@ -164,58 +196,38 @@ export class TaskRuntime {
     this.publishTask(taskId);
   }
 
-  async ask(request: PermissionRequest): Promise<string | boolean> {
-    const run = this.task(request.taskId).runs.find((run) => run.id === request.runId);
-    if (!run || !['running', 'awaiting_input', 'awaiting_confirmation'].includes(run.status))
-      return false;
-    const pending = new Promise<string | boolean>((resolve) =>
-      this.requests.set(request.id, { request, resolve }),
-    );
+  async ask(request: PermissionRequest): Promise<PermissionAnswer> {
+    const declined = declinedReply(request);
+    const run = this.task(request.taskId).runs.find((item) => item.id === request.runId);
+    if (!run || !isLiveRun(run.status)) return declined;
+    const pending = new Promise<PermissionAnswer>((resolve) => this.requests.add(request, resolve));
     try {
       await this.store.change((data) => {
         const active = data.tasks
           .find((task) => task.id === request.taskId)
           ?.runs.find((item) => item.id === request.runId);
-        if (
-          !active ||
-          !['running', 'awaiting_input', 'awaiting_confirmation'].includes(active.status)
-        )
-          throw new Error('This request expired.');
+        if (!active || !isLiveRun(active.status)) throw new Error('This request expired.');
         active.status = request.kind === 'input' ? 'awaiting_input' : 'awaiting_confirmation';
       });
       this.publishTask(request.taskId);
     } catch {
-      this.requests.get(request.id)?.resolve(false);
+      this.requests.resolve(request.id, declined);
       this.requests.delete(request.id);
     }
     return pending;
   }
 
-  async answer(taskId: string, runId: string, id: string, answer: string | boolean) {
+  async answer(taskId: string, runId: string, id: string, answer: PermissionAnswer) {
     const pending = this.requests.get(id);
     if (!pending || pending.request.taskId !== taskId || pending.request.runId !== runId)
       throw new Error('This request expired. Review the current task.');
-    if (pending.request.kind === 'confirmation' && typeof answer !== 'boolean')
-      throw new Error('Choose allow or decline.');
-    if (pending.request.kind === 'input' && typeof answer === 'string' && !answer.trim())
-      throw new Error('Enter a response.');
+    validatePermissionAnswer(pending.request, answer);
     await this.store.change((data) => {
       const task = data.tasks.find((task) => task.id === taskId);
       const run = task?.runs.find((run) => run.id === runId);
-      if (
-        !run ||
-        !['running', 'awaiting_input', 'awaiting_confirmation'].includes(run.status) ||
-        !this.requests.has(id)
-      )
+      if (!run || !isLiveRun(run.status) || !this.requests.get(id))
         throw new Error('This request expired. Review the current task.');
-      const next = [...this.requests.values()].find(
-        (item) => item.request.runId === runId && item.request.id !== id,
-      )?.request;
-      run.status = next
-        ? next.kind === 'input'
-          ? 'awaiting_input'
-          : 'awaiting_confirmation'
-        : 'running';
+      run.status = statusForPending(this.requests.remaining(runId, id));
     });
     if (!this.requests.delete(id)) throw new Error('This request expired.');
     this.publishTask(taskId);
@@ -223,16 +235,39 @@ export class TaskRuntime {
   }
 
   dismiss(runId: string) {
-    for (const [id, pending] of this.requests)
-      if (pending.request.runId === runId) {
-        this.requests.delete(id);
-        pending.resolve(false);
-      }
+    this.requests.dismiss(runId);
+  }
+
+  resetQueue(taskId: string) {
+    this.documents.resetQueue(taskId);
+  }
+
+  async rememberSession(taskId: string, sessionFile: string) {
+    const task = this.task(taskId);
+    if (task.sessionFile === sessionFile) return;
+    const directory = path.join(this.root, 'agent', 'sessions', task.id) + path.sep;
+    if (!sessionFile.startsWith(directory)) throw new Error('Invalid Agent session location.');
+    await this.store.change((data) => {
+      const current = data.tasks.find((item) => item.id === task.id);
+      if (current) current.sessionFile = sessionFile;
+    });
+  }
+
+  async queueMessage(taskId: string, text: string, mode: 'followUp' | 'steer') {
+    this.requireActive(taskId);
+    await this.ready();
+    await this.worker.call({ action: 'queue', taskId, text, mode }, Type.Null());
+  }
+
+  async replaceQueue(taskId: string, followUp: string[]) {
+    this.requireActive(taskId);
+    await this.ready();
+    await this.worker.call({ action: 'replaceQueue', taskId, followUp }, Type.Null());
   }
 
   async stop(taskId: string, runId: string) {
-    const run = this.task(taskId).runs.at(-1);
-    if (run?.id !== runId || !isActive(run.status)) return;
+    const run = this.task(taskId).runs.find((item) => item.id === runId);
+    if (!run || !isActive(run.status)) return;
     if (run.status === 'queued') {
       await this.status(taskId, runId, 'cancelled');
       return;
@@ -243,8 +278,8 @@ export class TaskRuntime {
     await this.worker.call({ action: 'stop', runId }, Type.Null());
   }
 
-  drain() {
-    return this.queue.drain();
+  dispatch() {
+    this.dispatcher.dispatch();
   }
 
   async memory() {
@@ -261,9 +296,15 @@ export class TaskRuntime {
   }
 
   async forget(taskId: string) {
-    if (this.messages.has(taskId))
-      await this.worker.call({ action: 'forget', taskId }, Type.Null());
-    this.messages.delete(taskId);
+    const known = this.documents.known(taskId);
+    this.documents.forget(taskId);
+    this.requests.forget(taskId);
+    this.gate.forget(taskId);
+    if (known) await this.worker.call({ action: 'forget', taskId }, Type.Null());
+  }
+
+  private requireActive(taskId: string) {
+    assertQueueable(activeRun(this.task(taskId))?.status);
   }
 
   private async fail(message: string) {
@@ -275,6 +316,7 @@ export class TaskRuntime {
             run.status = 'interrupted';
             run.error = message;
             this.dismiss(run.id);
+            this.resetQueue(task.id);
             this.native.stop(run.id);
           }
     });
@@ -282,7 +324,7 @@ export class TaskRuntime {
   }
 
   async close() {
-    this.queue.closing = true;
+    this.dispatcher.closing = true;
     for (const task of this.store.data.tasks)
       for (const run of task.runs)
         if (isActive(run.status)) {

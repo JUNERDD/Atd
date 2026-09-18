@@ -25,7 +25,7 @@
     "send": "发送任务",
     "stop": "停止任务",
     "stopping": "正在停止…",
-    "cancelQueued": "取消排队任务",
+    "cancelStarting": "取消",
     "continue": "继续任务",
     "newTaskForm": "新建任务",
     "followUpForm": "追问",
@@ -35,12 +35,23 @@
     "attachedContext": "已附加的上下文",
     "attachContext": "附加上下文",
     "attachLimit": "最多附加 10 个文件。",
-    "removeFile": "移除 {{name}}"
+    "removeFile": "移除 {{name}}",
+    "stopAndDecline": "停止并拒绝",
+    "answerPlaceholder": "输入你的回答…",
+    "attachAfterRun": "请等这次运行结束后再附加文件。",
+    "queued": "排队消息",
+    "sendNow": "立即发送",
+    "editQueued": "编辑排队消息",
+    "removeQueued": "移除排队消息",
+    "sending": "正在发送…",
+    "queuedCount": "{{count}} 条排队消息"
   },
   "configuration": {
     "label": "任务配置",
     "models": "模型：{{model}}",
-    "chooseModel": "选择模型"
+    "chooseModel": "选择模型",
+    "thinkingLevel": "思考档位",
+    "capabilities": "能力"
   },
   "voice": {
     "label": "语音输入",
@@ -90,6 +101,20 @@
   "session": {
     "editSeed": "更新命令“{{name}}”（id：{{id}}）：",
     "createSeed": "创建命令："
+  },
+  "permission": {
+    "tier": {
+      "manual": "手动批准",
+      "auto": "自动批准",
+      "always": "始终允许"
+    },
+    "tierDescription": {
+      "manual": "每次受保护的操作都需确认。",
+      "auto": "允许在此任务文件夹内改文件；其余操作仍需确认。",
+      "always": "不再弹出确认。"
+    },
+    "tierLabel": "权限级别",
+    "defaultFromSettings": "在任务创建前显示设置中的默认级别。"
   },
   "errors": {
     "openDesktopApp": "打开桌面应用以运行任务并管理已保存的数据。"

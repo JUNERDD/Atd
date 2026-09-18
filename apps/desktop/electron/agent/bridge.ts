@@ -6,11 +6,17 @@ import {
   type AgentTask,
   type Artifact,
   type FileRef,
-  type PermissionRequest,
   type RunSnapshot,
   type TaskInput,
-  type TaskMessage,
 } from './task-schema';
+import {
+  PermissionAnswerSchema,
+  PermissionTierSchema,
+  type PermissionAnswer,
+  type PermissionRequest,
+  type PermissionTier,
+} from './permission-schema';
+import type { Block, QueueState, TranscriptPatch } from './transcript-schema';
 
 export const AGENT_IPC = {
   request: 'agent:request',
@@ -32,11 +38,22 @@ export interface MemorySnapshot {
   paused: boolean;
   error: string;
 }
-export interface TaskDetail {
+/**
+ * Everything about a task except its transcript. Published whole whenever run status, pending
+ * requests or the queue change; the transcript travels separately as patches so status updates
+ * stay small on long conversations.
+ */
+export interface TaskState {
   task: AgentTask;
-  messages: TaskMessage[];
   artifacts: Artifact[];
-  request: PermissionRequest | null;
+  /** Every pending request of the task's active run, oldest first. */
+  requests: PermissionRequest[];
+  queue: QueueState;
+}
+/** The state plus the current transcript snapshot; returned by `detail` and used to (re)seed a consumer. */
+export interface TaskDetail extends TaskState {
+  revision: number;
+  blocks: Block[];
 }
 export interface AgentSnapshot {
   revision: number;
@@ -53,7 +70,8 @@ export interface AgentNotice {
 }
 export type AgentEvent =
   | { type: 'snapshot'; snapshot: AgentSnapshot }
-  | { type: 'task'; revision: number; detail: TaskDetail }
+  | { type: 'task'; state: TaskState }
+  | { type: 'transcript'; patch: TranscriptPatch }
   | { type: 'memory'; snapshot: MemorySnapshot }
   | { type: 'notice'; notice: AgentNotice };
 
@@ -105,7 +123,29 @@ export const AgentRequestSchema = Type.Union([
     taskId: Identifier,
     runId: Identifier,
     requestId: Identifier,
-    answer: Type.Union([Type.String({ maxLength: 10000 }), Type.Boolean()]),
+    answer: PermissionAnswerSchema,
+  }),
+  Type.Object({
+    action: Type.Literal('queueMessage'),
+    taskId: Identifier,
+    text: Type.String({ minLength: 1, maxLength: 100000 }),
+    /** `followUp` waits for the turn to end; `steer` is injected after the current tool calls. */
+    mode: Type.Union([Type.Literal('followUp'), Type.Literal('steer')]),
+  }),
+  Type.Object({
+    action: Type.Literal('replaceQueue'),
+    taskId: Identifier,
+    followUp: Type.Array(Type.String({ minLength: 1, maxLength: 100000 }), { maxItems: 50 }),
+  }),
+  Type.Object({
+    action: Type.Literal('setPermissionTier'),
+    taskId: Identifier,
+    tier: PermissionTierSchema,
+  }),
+  Type.Object({
+    action: Type.Literal('renameTask'),
+    taskId: Identifier,
+    title: Type.String({ minLength: 1, maxLength: 120 }),
   }),
   Type.Object({ action: Type.Literal('deleteTask'), taskId: Identifier }),
   Type.Object({ action: Type.Literal('chooseFiles') }),
@@ -168,8 +208,14 @@ export interface AgentBridge {
     taskId: string,
     runId: string,
     requestId: string,
-    answer: string | boolean,
+    answer: PermissionAnswer,
   ) => Promise<void>;
+  /** Mid-run input on the active run's Pi session; rejects when the task has no active run. */
+  queueMessage: (taskId: string, text: string, mode: 'followUp' | 'steer') => Promise<void>;
+  /** Replaces the pending follow-up list (edit / remove); steering messages are not editable. */
+  replaceQueue: (taskId: string, followUp: string[]) => Promise<void>;
+  setPermissionTier: (taskId: string, tier: PermissionTier) => Promise<void>;
+  renameTask: (taskId: string, title: string) => Promise<void>;
   deleteTask: (taskId: string) => Promise<void>;
   chooseFiles: () => Promise<FileRef[]>;
   memory: () => Promise<MemorySnapshot>;

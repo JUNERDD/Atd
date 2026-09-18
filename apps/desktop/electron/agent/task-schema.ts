@@ -5,6 +5,11 @@ import {
   ModelThinkingLevelSchema,
   type ModelThinkingLevel,
 } from '../providers/schema';
+import {
+  DEFAULT_PERMISSION_TIER,
+  PermissionTierSchema,
+  type PermissionTier,
+} from './permission-schema';
 
 export const FileRefSchema = Type.Object(
   {
@@ -102,49 +107,12 @@ export const TaskSchema = Type.Object(
       Type.Object({ prompt: Type.String(), attachments: Type.Array(FileRefSchema) }),
       Type.Null(),
     ]),
+    /** Frozen from the Settings default when the task is created; tasks saved before tiers existed prompt for everything. */
+    permissionTier: Type.Optional(PermissionTierSchema),
   },
   { additionalProperties: false },
 );
 export type AgentTask = Static<typeof TaskSchema>;
-
-export const PermissionSchema = Type.Object(
-  {
-    id: Identifier,
-    taskId: Identifier,
-    runId: Identifier,
-    kind: Type.Union([Type.Literal('confirmation'), Type.Literal('input')]),
-    title: Type.String(),
-    detail: Type.String(),
-    options: Type.Array(Type.String()),
-  },
-  { additionalProperties: false },
-);
-export type PermissionRequest = Static<typeof PermissionSchema>;
-
-export const MessagePartSchema = Type.Union([
-  Type.Object({ type: Type.Literal('text'), text: Type.String() }),
-  Type.Object({
-    type: Type.Literal('tool'),
-    id: Type.String(),
-    name: Type.String(),
-    input: Type.String(),
-    output: Type.String(),
-    status: Type.Union([
-      Type.Literal('running'),
-      Type.Literal('completed'),
-      Type.Literal('failed'),
-      Type.Literal('interrupted'),
-    ]),
-  }),
-]);
-export type MessagePart = Static<typeof MessagePartSchema>;
-export const MessageSchema = Type.Object({
-  id: Type.String(),
-  role: Type.Union([Type.Literal('user'), Type.Literal('assistant')]),
-  parts: Type.Array(MessagePartSchema),
-  timestamp: Type.Number(),
-});
-export type TaskMessage = Static<typeof MessageSchema>;
 
 const ArtifactLocationSchema = Type.Object(
   {
@@ -188,6 +156,10 @@ export function activeRun(task: AgentTask): TaskRun | undefined {
 /** The thinking level this run was accepted with; runs saved before the control existed used 'off'. */
 export function runThinkingLevel(snapshot: RunSnapshot): ModelThinkingLevel {
   return snapshot.thinkingLevel ?? 'off';
+}
+/** The tier guarding this task's tool calls; tasks created before tiers existed stay on manual approval. */
+export function taskPermissionTier(task: AgentTask): PermissionTier {
+  return task.permissionTier ?? DEFAULT_PERMISSION_TIER;
 }
 export function isActive(status: RunStatus | undefined): boolean {
   return (

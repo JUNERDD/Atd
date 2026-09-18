@@ -3,7 +3,7 @@ import { homedir } from 'node:os';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { Type } from 'typebox';
-import { InMemoryCredentialStore } from '@earendil-works/pi-ai';
+import { InMemoryCredentialStore, type AssistantMessage } from '@earendil-works/pi-ai';
 import {
   createAgentSession,
   DefaultResourceLoader,
@@ -13,20 +13,22 @@ import {
   type AgentSession,
   type ExtensionFactory,
 } from '@earendil-works/pi-coding-agent';
-import {
-  CommandSaveResultSchema,
-  CommandSchema,
-  CommandSummarySchema,
-  CommandToolSchema,
-  type CommandToolArguments,
-} from './command-schema';
+import type { GrantScope } from './permission-schema';
+import type { Block } from './transcript-schema';
 import type { WorkerRun } from './worker-contract';
+import { runThinkingLevel } from './task-schema';
 import type { HermesHost } from './hermes-host';
 import { configureModel } from './worker-model';
-import { nativeExtension } from './worker-tools';
-import { askWorker, nativeCall, publish } from './worker-channel';
-import { projectTranscript } from './transcript';
-import { parse } from './validation';
+import { commandExtension, nativeExtension } from './worker-tools';
+import { askWorker, publish } from './worker-channel';
+import { ASK_USER_CANCELLED, toolPartialText } from './transcript-project';
+import {
+  firstInvocationRunId,
+  fromSessionBranch,
+  projectBlocks,
+  sessionGrants,
+} from './transcript';
+import { createTranscriptPublisher } from './transcript-publish';
 
 export interface SessionHost {
   root: string;
@@ -39,7 +41,12 @@ export interface TaskSession {
   models: ModelRuntime;
   current: WorkerRun;
   flush: () => void;
+  document: () => { revision: number; blocks: Block[] };
+  grants: () => GrantScope[];
+  release: () => void;
 }
+
+const MEMORY_TOOLS = ['memory_add', 'memory_replace', 'memory_remove'];
 
 export async function createTaskSession(
   host: SessionHost,
@@ -63,8 +70,12 @@ export async function createTaskSession(
   }));
   const settings = SettingsManager.inMemory({
     retry: { enabled: false },
-    defaultThinkingLevel: 'off',
+    defaultThinkingLevel: runThinkingLevel(request.run.snapshot),
   });
+  const sessionManager = request.sessionFile
+    ? SessionManager.open(request.sessionFile, sessionsDir, homedir())
+    : SessionManager.create(homedir(), sessionsDir);
+  const publishing: { flush: () => void } = { flush: () => undefined };
   const integration: ExtensionFactory = (pi) => {
     pi.on('before_agent_start', () => {
       const snapshot = current.request.run.snapshot;
@@ -95,41 +106,26 @@ export async function createTaskSession(
         question: Type.String(),
         options: Type.Optional(Type.Array(Type.String(), { maxItems: 8 })),
       }),
-      async execute(_id, args) {
+      async execute(id, args) {
         const answer = await askWorker({
           id: randomUUID(),
           taskId: request.taskId,
           runId: current.request.run.id,
+          toolCallId: id,
           kind: 'input',
           title: args.question,
-          detail: '',
           options: args.options ?? [],
         });
+        const skipped = 'skipped' in answer;
+        sessionManager.appendCustomEntry('app-question', {
+          toolCallId: id,
+          runId: current.request.run.id,
+          answer: skipped ? null : answer.answer,
+          at: Date.now(),
+        });
+        publishing.flush();
         return {
-          content: [
-            {
-              type: 'text',
-              text: typeof answer === 'string' ? answer : 'The user cancelled the request.',
-            },
-          ],
-          details: {},
-        };
-      },
-    });
-    pi.registerTool({
-      name: 'command',
-      label: 'Manage commands',
-      description:
-        'List, read, create or update saved commands. Read a command before updating it, and pass the revision you read as expectedRevision. Every save is confirmed by the user.',
-      parameters: CommandToolSchema,
-      executionMode: 'sequential',
-      async execute(_id, args) {
-        const value = await commandNativeCall(
-          { taskId: request.taskId, runId: current.request.run.id },
-          parse(CommandToolSchema, args),
-        );
-        return {
-          content: [{ type: 'text', text: JSON.stringify(value, null, 2) }],
+          content: [{ type: 'text', text: skipped ? ASK_USER_CANCELLED : answer.answer }],
           details: {},
         };
       },
@@ -149,6 +145,7 @@ export async function createTaskSession(
     appendSystemPrompt: [],
     extensionFactories: [
       nativeExtension(request.taskId, () => current.request.run.id, cwd),
+      commandExtension(request.taskId, () => current.request.run.id),
       integration,
       host.memory.extension({
         canRead: () => current.request.run.snapshot.memory,
@@ -162,9 +159,6 @@ export async function createTaskSession(
   await loader.reload();
   if (loader.getExtensions().errors.length)
     throw new Error('An Agent extension could not be loaded.');
-  const sessionManager = request.sessionFile
-    ? SessionManager.open(request.sessionFile, sessionsDir, homedir())
-    : SessionManager.create(homedir(), sessionsDir);
   const { session } = await createAgentSession({
     cwd: homedir(),
     agentDir: agentRoot,
@@ -174,7 +168,7 @@ export async function createTaskSession(
     sessionManager,
     resourceLoader: loader,
     tools: toolNames(request, host.canLearn()),
-    thinkingLevel: 'off',
+    thinkingLevel: runThinkingLevel(request.run.snapshot),
   });
   await session.bindExtensions({
     mode: 'json',
@@ -182,47 +176,57 @@ export async function createTaskSession(
       publish({ type: 'notice', taskId: request.taskId, text: error.error, kind: 'error' });
     },
   });
-  let partial: AgentSession['messages'][number] | undefined;
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  const flush = () => {
-    clearTimeout(timer);
-    timer = undefined;
-    const messages = [...session.messages];
-    if (
-      partial &&
-      !messages.some(
-        (message) =>
-          message === partial ||
-          ('timestamp' in message &&
-            message.timestamp === partial?.timestamp &&
-            message.role === partial.role),
-      )
-    )
-      messages.push(partial);
-    publish({
-      type: 'messages',
-      taskId: request.taskId,
-      runId: current.request.run.id,
-      messages: projectTranscript(messages),
-      sessionFile: session.sessionFile ?? '',
+  let partial: AssistantMessage | undefined;
+  const partials = new Map<string, string>();
+  const branchItems = () => fromSessionBranch(session.sessionManager.getBranch());
+  const project = () => {
+    const branch = branchItems();
+    return projectBlocks({
+      branch,
+      partial,
+      partials,
+      defaultRunId: firstInvocationRunId(branch) ?? current.request.run.id,
+      live: session.isStreaming,
     });
   };
+  const publisher = createTranscriptPublisher({
+    taskId: () => request.taskId,
+    sessionFile: () => session.sessionFile ?? '',
+    project,
+  });
+  publishing.flush = publisher.flush;
   session.subscribe((event) => {
-    if (
-      event.type === 'message_end' &&
-      event.message.role === 'toolResult' &&
-      !event.message.isError &&
-      ['memory_add', 'memory_replace', 'memory_remove'].includes(event.message.toolName)
-    )
-      publish({ type: 'memoryChanged' });
-    if (event.type === 'message_update') partial = event.message;
-    if (event.type === 'message_end') partial = undefined;
-    if (!timer) timer = setTimeout(flush, 40);
+    if (event.type === 'queue_update') {
+      publish({
+        type: 'queue',
+        taskId: request.taskId,
+        queue: { steering: [...event.steering], followUp: [...event.followUp] },
+      });
+      return;
+    }
+    if (event.type === 'message_update' && event.message.role === 'assistant')
+      partial = event.message;
+    if (event.type === 'message_end') {
+      if (event.message.role === 'assistant') partial = undefined;
+      if (
+        event.message.role === 'toolResult' &&
+        !event.message.isError &&
+        MEMORY_TOOLS.includes(event.message.toolName)
+      )
+        publish({ type: 'memoryChanged' });
+    }
+    if (event.type === 'tool_execution_update')
+      partials.set(event.toolCallId, toolPartialText(event.partialResult));
+    if (event.type === 'tool_execution_end') partials.delete(event.toolCallId);
+    publisher.schedule();
   });
   return {
     session,
     models,
-    flush,
+    flush: publisher.flush,
+    document: publisher.document,
+    grants: () => sessionGrants(branchItems()),
+    release: publisher.release,
     get current() {
       return current.request;
     },
@@ -230,32 +234,6 @@ export async function createTaskSession(
       current.request = request;
     },
   };
-}
-
-function commandNativeCall(
-  scope: { taskId: string; runId: string },
-  operation: CommandToolArguments,
-) {
-  switch (operation.operation) {
-    case 'list':
-      return nativeCall({ action: 'commandList', ...scope }, Type.Array(CommandSummarySchema));
-    case 'get':
-      return nativeCall(
-        { action: 'commandGet', ...scope, commandId: operation.commandId },
-        CommandSchema,
-      );
-    case 'save':
-      return nativeCall(
-        {
-          action: 'commandSave',
-          ...scope,
-          commandId: operation.commandId,
-          expectedRevision: operation.expectedRevision,
-          fields: operation.fields,
-        },
-        CommandSaveResultSchema,
-      );
-  }
 }
 
 export function toolNames(request: WorkerRun, learning: boolean): string[] {

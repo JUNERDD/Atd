@@ -10,7 +10,7 @@ import { validateCommand } from './command-validation';
 import type { CommandRequest } from './native-schema';
 import type { AgentStore } from './store';
 import type { CommandService } from './command-service';
-import type { PermissionRequest } from './task-schema';
+import type { PermissionGate } from './permissions';
 import { parse } from './validation';
 
 const DETAIL_LIMIT = 2000;
@@ -103,7 +103,7 @@ export class CommandTool {
   constructor(
     private readonly store: AgentStore,
     private readonly commands: CommandService,
-    private readonly ask: (request: PermissionRequest) => Promise<string | boolean>,
+    private readonly gate: PermissionGate,
   ) {}
 
   async execute(request: CommandRequest): Promise<unknown> {
@@ -132,16 +132,15 @@ export class CommandTool {
       : { ...newCommand(randomUUID()), ...request.fields };
     validateCommand(next);
     parse(CommandSchema, next);
-    const accepted = await this.ask({
-      id: randomUUID(),
+    const outcome = await this.gate.decide({
       taskId: request.taskId,
       runId: request.runId,
-      kind: 'confirmation',
+      toolCallId: request.toolCallId,
+      scope: { tool: 'command' },
       title: previous ? `Update the command "${next.name}"?` : `Create the command "${next.name}"?`,
       detail: previous ? updateDetail(previous, next) : clip(createDetail(next), DETAIL_LIMIT),
-      options: [],
     });
-    if (accepted !== true) throw new Error('The user declined this action.');
+    if (outcome === 'declined') throw new Error('The user declined this action.');
     const saved = await this.commands.save(next, request.expectedRevision ?? 0);
     return { id: saved.id, revision: saved.revision, name: saved.name };
   }
