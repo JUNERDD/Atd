@@ -1,13 +1,12 @@
 import type { ViewBlock } from './adapter';
 import { QuestionBlock } from './question-block';
-import { NoteBlock, SystemBlock, ThinkingBlock } from './thinking-block';
+import { SystemBlock, ThinkingBlock } from './thinking-block';
 import { ToolBlock } from './tool-block';
 import { isPendingWrite, requestFor, type RequestIndex } from './turns';
 
 /**
- * One step inside an activity phase. Folded assistant prose renders as a single-line note row —
- * the full markdown stays with the unfolded final answer — while every other kind keeps its
- * existing block renderer against the same `source` block.
+ * One step inside an activity phase. Every kind keeps its existing block renderer against the
+ * same `source` block.
  */
 export function PhaseStep({ view, requests }: { view: ViewBlock; requests: RequestIndex }) {
   const block = view.source;
@@ -16,7 +15,8 @@ export function PhaseStep({ view, requests }: { view: ViewBlock; requests: Reque
     case 'user':
       return null;
     case 'assistant':
-      return <NoteBlock block={block} />;
+      // Unreachable: `foldTurn` keeps prose standalone, rendered by `AssistantBlock`.
+      return null;
     case 'thinking':
       return <ThinkingBlock block={block} />;
     case 'tool': {

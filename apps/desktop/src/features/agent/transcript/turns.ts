@@ -59,11 +59,6 @@ function isActivityKind(block: Block): boolean {
   return block.kind === 'thinking' || block.kind === 'tool' || block.kind === 'question';
 }
 
-/** Assistant prose with something in it — the paragraphs between tool calls. */
-function isProseBlock(block: Block): boolean {
-  return block.kind === 'assistant' && block.text.trim() !== '';
-}
-
 function isIgnoredBlock(block: Block): boolean {
   // Empty thoughts never render; redacted ones keep their placeholder. Empty assistant blocks
   // stay only when they carry an error or are still streaming into view.
@@ -71,22 +66,6 @@ function isIgnoredBlock(block: Block): boolean {
   if (block.kind === 'assistant')
     return block.text.trim() === '' && !block.error && !block.streaming;
   return false;
-}
-
-/**
- * Where the turn's final answer starts: the trailing run of assistant prose. Everything before it
- * folds, so the last thing the agent says is the only full-size thing left. A block still
- * streaming sits in that run, which is why text renders in full as it arrives and only folds once
- * the next tool starts.
- */
-function finalResponseStart(blocks: Block[]): number {
-  let index = blocks.length;
-  while (index > 0) {
-    const prev = blocks[index - 1];
-    if (!prev || !isProseBlock(prev)) break;
-    index -= 1;
-  }
-  return index;
 }
 
 export function deriveTurns(blocks: Block[], requests: RequestIndex): Turn[] {
@@ -107,7 +86,6 @@ function foldTurn(blocks: Block[], requests: RequestIndex, index: number): Turn 
   const first = blocks[0];
   const user = first?.kind === 'user' ? first : null;
   const rest = (user ? blocks.slice(1) : blocks).filter((block) => !isIgnoredBlock(block));
-  const finalStart = finalResponseStart(rest);
   const items: TurnItem[] = [];
   let activity: Block[] = [];
   const flush = () => {
@@ -121,12 +99,11 @@ function foldTurn(blocks: Block[], requests: RequestIndex, index: number): Turn 
     });
     activity = [];
   };
-  rest.forEach((block, position) => {
+  rest.forEach((block) => {
     const request = requestFor(block, requests);
-    if (
-      !isPendingWrite(block, request) &&
-      (isActivityKind(block) || (position < finalStart && isProseBlock(block)))
-    ) {
+    // Assistant prose always renders standalone at full strength; only foldable work enters an
+    // activity group.
+    if (!isPendingWrite(block, request) && isActivityKind(block)) {
       activity.push(block);
       return;
     }
