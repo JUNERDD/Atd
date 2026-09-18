@@ -1,4 +1,5 @@
 import type { Connection, ProviderBridge } from './providers/schema';
+import type { PermissionTier } from './agent/permission-schema';
 
 export const SETTINGS_IPC = {
   open: 'settings:open',
@@ -9,6 +10,7 @@ export const SETTINGS_IPC = {
   saveLanguage: 'settings:save-language',
   saveShortcuts: 'settings:save-shortcuts',
   restoreShortcuts: 'settings:restore-shortcuts',
+  savePermissionTier: 'settings:save-permission-tier',
   changed: 'settings:changed',
 } as const;
 
@@ -43,6 +45,8 @@ export interface SettingsSnapshot {
   shortcuts: ShortcutBindings;
   pinned: boolean;
   shortcutAvailable: boolean;
+  /** Tier new tasks are created with; existing tasks keep their own tier. */
+  permissionTier: PermissionTier;
 }
 
 export interface SettingsBridge {
@@ -56,6 +60,7 @@ export interface SettingsBridge {
   setLanguage: (language: AppLanguage) => Promise<SettingsSnapshot>;
   saveShortcuts: (shortcuts: ShortcutBindings) => Promise<SettingsSnapshot>;
   restoreShortcuts: () => Promise<SettingsSnapshot>;
+  setPermissionTier: (tier: PermissionTier) => Promise<SettingsSnapshot>;
   onChange: (listener: (settings: SettingsSnapshot) => void) => () => void;
   onOpenCommand: (listener: (commandId: string) => void) => () => void;
 }

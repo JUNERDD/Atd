@@ -7,6 +7,8 @@ import {
   SETTINGS_IPC,
   type SettingsSnapshot,
 } from './settings-contract';
+import { PermissionTierSchema } from './agent/permission-schema';
+import { parse } from './agent/validation';
 import { ProviderService } from './providers/service';
 import { publicConnection } from './providers/configuration';
 import { PanelShortcut, parseShortcutBindings, shortcutLabel } from './settings-shortcuts';
@@ -70,7 +72,8 @@ export class SettingsService {
   }
 
   snapshot(): SettingsSnapshot {
-    const { connections, defaultConnectionId, language, shortcuts, pinned } = this.store.current;
+    const { connections, defaultConnectionId, language, shortcuts, pinned, permissionTier } =
+      this.store.current;
     return {
       connections: connections.map(publicConnection),
       defaultConnectionId,
@@ -78,6 +81,7 @@ export class SettingsService {
       shortcuts: { ...shortcuts },
       pinned,
       shortcutAvailable: this.shortcut.available,
+      permissionTier,
     };
   }
 
@@ -168,6 +172,16 @@ export class SettingsService {
     });
   }
 
+  setPermissionTier(tier: unknown): Promise<SettingsSnapshot> {
+    const permissionTier = parse(PermissionTierSchema, tier);
+    return this.serialize(async () => {
+      await this.store.change((data) => {
+        data.permissionTier = permissionTier;
+      });
+      return this.broadcast();
+    });
+  }
+
   private saveShortcuts(value: unknown): Promise<SettingsSnapshot> {
     return this.serialize(async () => {
       const shortcuts = parseShortcutBindings(value);
@@ -202,6 +216,10 @@ export class SettingsService {
     ipcMain.handle(SETTINGS_IPC.saveLanguage, (event, value: unknown) => {
       this.assertSender(event, true);
       return this.saveLanguage(value);
+    });
+    ipcMain.handle(SETTINGS_IPC.savePermissionTier, (event, value: unknown) => {
+      this.assertSender(event, true);
+      return this.setPermissionTier(value);
     });
     ipcMain.handle(SETTINGS_IPC.saveShortcuts, (event, value: unknown) => {
       this.assertSender(event, true);

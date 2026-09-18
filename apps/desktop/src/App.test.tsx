@@ -2,188 +2,8 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { App } from './App';
+import { installBridge } from '../tests/app-test-bridge';
 import { SettingsWindow } from './features/settings/settings-window';
-import { DEFAULT_SHORTCUTS, type SettingsSnapshot } from '../electron/settings-contract';
-import type { AgentBridge, AgentEvent, AgentSnapshot, TaskDetail } from '../electron/agent/bridge';
-import { initialCommands } from '../electron/agent/command-templates';
-import { emptyInput } from '../electron/agent/task-schema';
-
-function installBridge() {
-  let settings: SettingsSnapshot = {
-    connections: [
-      {
-        connectionId: 'test',
-        revision: 1,
-        provider: 'openai',
-        name: 'OpenAI API',
-        baseUrl: 'https://api.openai.com/v1',
-        authType: 'api_key',
-        defaultModel: 'test-model',
-        connected: true,
-        hasCredential: true,
-        options: {},
-        customModels: [],
-        catalog: [],
-        catalogError: '',
-        verifiedModel: '',
-      },
-    ],
-    defaultConnectionId: 'test',
-    language: 'en',
-    shortcuts: { ...DEFAULT_SHORTCUTS },
-    pinned: true,
-    shortcutAvailable: true,
-  };
-  const settingsListeners = new Set<(value: SettingsSnapshot) => void>();
-  const listeners = new Set<(event: AgentEvent) => void>();
-  const snapshot: AgentSnapshot = {
-    revision: 1,
-    connectionId: 'test',
-    commands: initialCommands(),
-    tasks: [],
-    shortcutErrors: {},
-    error: '',
-  };
-  let detail: TaskDetail | null = null;
-  const api: AgentBridge = {
-    get: vi.fn(async () => structuredClone(snapshot)),
-    detail: vi.fn(async () => {
-      if (!detail) throw new Error('Missing task');
-      return structuredClone(detail);
-    }),
-    submit: vi.fn(async (request) => {
-      const now = new Date().toISOString();
-      const task = {
-        id: 'test-task',
-        title: request.input.text || 'Attached context',
-        createdAt: now,
-        updatedAt: now,
-        sessionFile: null,
-        legacy: null,
-        runs: [
-          {
-            id: 'test-run',
-            invocationId: request.invocationId,
-            createdAt: now,
-            status: 'queued' as const,
-            error: '',
-            snapshot: {
-              command: null,
-              definition: 'current' as const,
-              input: request.input,
-              instructions: '',
-              model: {
-                connectionId: 'test',
-                modelId: 'test-model',
-                provider: 'openai' as const,
-                baseUrl: 'https://api.openai.com/v1',
-              },
-              tools: [],
-              memory: true,
-            },
-          },
-        ],
-      };
-      snapshot.tasks = [task];
-      snapshot.revision++;
-      detail = { task, messages: [], artifacts: [], request: null };
-      listeners.forEach((listener) =>
-        listener({ type: 'snapshot', snapshot: structuredClone(snapshot) }),
-      );
-      return structuredClone(detail);
-    }),
-    prepare: vi.fn(async () => ({
-      command: initialCommands()[0]!,
-      input: emptyInput(),
-      notice: '',
-    })),
-    preview: vi.fn(async () => {
-      throw new Error('Not used by this interaction');
-    }),
-    capture: vi.fn(async () => ({ text: '', capturedAt: '' })),
-    saveCommand: vi.fn(async (command) => command),
-    deleteCommand: vi.fn(async () => {}),
-    launch: vi.fn(async () => {}),
-    stop: vi.fn(async () => {}),
-    answer: vi.fn(async () => {}),
-    deleteTask: vi.fn(async () => {}),
-    chooseFiles: vi.fn(async () => []),
-    artifact: vi.fn(async () => null),
-    copy: vi.fn(async () => {}),
-    openLink: vi.fn(async () => {}),
-    memory: vi.fn(async () => ({ entries: [], paused: false, error: '' })),
-    pauseMemory: vi.fn(async (paused) => ({ entries: [], paused, error: '' })),
-    updateMemory: vi.fn(async () => ({ entries: [], paused: false, error: '' })),
-    importLegacy: vi.fn(async () => {}),
-    onLaunch: () => () => {},
-    onCommandSession: () => () => {},
-    onChange: (listener) => {
-      listeners.add(listener);
-      return () => {
-        listeners.delete(listener);
-      };
-    },
-  };
-  const setPinned = vi.fn(async (pinned: boolean) => {
-    settings = { ...settings, pinned };
-    settingsListeners.forEach((listener) => listener(settings));
-    return pinned;
-  });
-  const hide = vi.fn(async () => {});
-  const open = vi.fn(async () => {});
-  const openCommand = vi.fn(async (_commandId: string) => {});
-  window.desktop = {
-    platform: 'darwin',
-    agent: api,
-    getState: vi.fn(async () => ({
-      pinned: settings.pinned,
-      shortcut: '⌘ ⇧ Space',
-      shortcutAvailable: true,
-    })),
-    setPinned,
-    show: vi.fn(async () => {}),
-    hide,
-    chooseFiles: vi.fn(async () => []),
-    settings: {
-      open,
-      openCommand,
-      startCommandSession: vi.fn(async (_commandId: string | null) => {}),
-      close: vi.fn(async () => {}),
-      get: vi.fn(async () => settings),
-      providers: {
-        catalog: vi.fn(async () => []),
-        save: vi.fn(async () => settings.connections[0]!),
-        setDefault: vi.fn(async () => {}),
-        setModel: vi.fn(async () => {}),
-        disconnect: vi.fn(async () => {}),
-        refresh: vi.fn(async () => {}),
-        verify: vi.fn(async () => {}),
-        login: vi.fn(async () => {
-          throw new Error('Not used');
-        }),
-        answer: vi.fn(async () => {}),
-        cancel: vi.fn(async () => {}),
-        openLink: vi.fn(async () => {}),
-        onLogin: () => () => {},
-      },
-      setLanguage: vi.fn(async (language: SettingsSnapshot['language']) => {
-        settings = { ...settings, language };
-        settingsListeners.forEach((listener) => listener(settings));
-        return settings;
-      }),
-      saveShortcuts: vi.fn(async () => settings),
-      restoreShortcuts: vi.fn(async () => settings),
-      onChange: (listener) => {
-        settingsListeners.add(listener);
-        return () => {
-          settingsListeners.delete(listener);
-        };
-      },
-      onOpenCommand: () => () => {},
-    },
-  };
-  return { api, setPinned, hide, open, openCommand };
-}
 
 describe('task panel', () => {
   it('starts with the Figma empty state and disallows a whitespace-only task', async () => {
@@ -204,7 +24,7 @@ describe('task panel', () => {
     expect(await screen.findByRole('heading', { name: 'Plan my afternoon' })).toBeVisible();
     expect(screen.getByRole('textbox')).toHaveValue('');
     await user.click(screen.getByRole('button', { name: 'Tasks' }));
-    await user.click(screen.getByRole('button', { name: /Plan my afternoon.*queued/ }));
+    await user.click(screen.getByRole('button', { name: /Plan my afternoon.*starting/ }));
     expect(
       await screen.findByText('Plan my afternoon', { selector: '.message-bubble' }),
     ).toBeVisible();
@@ -299,5 +119,52 @@ describe('task panel', () => {
     } finally {
       window.location.hash = previousHash;
     }
+  });
+
+  it('queues a follow-up with Enter while a run is active', async () => {
+    const { api } = installBridge({ status: 'running' });
+    const user = userEvent.setup();
+    render(<App />);
+    await user.type(screen.getByRole('textbox'), 'Plan my afternoon{Enter}');
+    await waitFor(() => expect(api.submit).toHaveBeenCalledOnce());
+    await user.type(screen.getByRole('textbox'), 'Also buy milk{Enter}');
+    await waitFor(() =>
+      expect(api.queueMessage).toHaveBeenCalledWith('test-task', 'Also buy milk', 'followUp'),
+    );
+    expect(screen.getByRole('textbox')).toHaveValue('');
+  });
+
+  it('answers a pending input request from the composer', async () => {
+    const { api } = installBridge({
+      status: 'running',
+      requests: [
+        {
+          kind: 'input',
+          id: 'req-1',
+          taskId: 'test-task',
+          runId: 'test-run',
+          toolCallId: 'call-1',
+          title: 'What is the name?',
+          options: [],
+        },
+      ],
+    });
+    const user = userEvent.setup();
+    render(<App />);
+    await user.type(screen.getByRole('textbox'), 'Plan my afternoon{Enter}');
+    await waitFor(() => expect(api.submit).toHaveBeenCalledOnce());
+    await user.type(screen.getByRole('textbox'), 'Ada{Enter}');
+    await waitFor(() =>
+      expect(api.answer).toHaveBeenCalledWith('test-task', 'test-run', 'req-1', { answer: 'Ada' }),
+    );
+  });
+
+  it('shows the permission-tier control on a task view', async () => {
+    const { api } = installBridge();
+    const user = userEvent.setup();
+    render(<App />);
+    await user.type(screen.getByRole('textbox'), 'Plan my afternoon{Enter}');
+    await waitFor(() => expect(api.submit).toHaveBeenCalledOnce());
+    expect(screen.getByRole('button', { name: 'Permission level' })).toBeEnabled();
   });
 });

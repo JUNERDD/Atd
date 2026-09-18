@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Shield } from 'lucide-react';
+import { Settings2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@ai/ui/components/button';
 import {
@@ -26,13 +26,18 @@ export function TaskPolicyControl({
   onChange: (policy: RunPolicy) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const { t } = useTranslation('tasks');
+  const { t: tPanel } = useTranslation('panel');
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button type="button" variant="ghost" size="xs" aria-label={t('policy.permissionsLabel')}>
-          <Shield />
-          <span className="composer-config-label">{t('policy.askFirst')}</span>
+        <Button
+          type="button"
+          variant="ghost"
+          size="xs"
+          aria-label={tPanel('configuration.capabilities')}
+        >
+          <Settings2 />
+          <span className="composer-config-label">{tPanel('configuration.capabilities')}</span>
         </Button>
       </DialogTrigger>
       <DialogContent className="panel-dialog">
@@ -68,7 +73,11 @@ function PolicyEditor({
         <DialogTitle>{t('policy.title')}</DialogTitle>
         <DialogDescription>{t('policy.description')}</DialogDescription>
       </DialogHeader>
-      <ScrollArea className="panel-dialog-scroll" viewportClassName="overlay-footer-fade" gutter>
+      <ScrollArea
+        className="flex-1 min-h-0 m-[-4px_-16px_-4px_-4px]"
+        viewportClassName="overlay-footer-fade"
+        gutter
+      >
         <div className="panel-dialog-body">
           {TOOL_DESCRIPTIONS.map((tool) => (
             <div className="flex items-center justify-between gap-4" key={tool.id}>

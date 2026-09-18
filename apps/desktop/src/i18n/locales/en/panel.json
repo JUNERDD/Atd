@@ -25,7 +25,7 @@
     "send": "Send task",
     "stop": "Stop task",
     "stopping": "Stopping…",
-    "cancelQueued": "Cancel queued task",
+    "cancelStarting": "Cancel",
     "continue": "Continue task",
     "newTaskForm": "New task",
     "followUpForm": "Follow-up",
@@ -35,12 +35,23 @@
     "attachedContext": "Attached context",
     "attachContext": "Attach context",
     "attachLimit": "Attach at most 10 files.",
-    "removeFile": "Remove {{name}}"
+    "removeFile": "Remove {{name}}",
+    "stopAndDecline": "Stop and decline",
+    "answerPlaceholder": "Type your answer…",
+    "attachAfterRun": "Attach files after this run finishes.",
+    "queued": "Queued messages",
+    "sendNow": "Send now",
+    "editQueued": "Edit queued message",
+    "removeQueued": "Remove queued message",
+    "sending": "Sending…",
+    "queuedCount": "{{count}} queued"
   },
   "configuration": {
     "label": "Task configuration",
     "models": "Models: {{model}}",
-    "chooseModel": "Choose model"
+    "chooseModel": "Choose model",
+    "thinkingLevel": "Thinking level",
+    "capabilities": "Capabilities"
   },
   "voice": {
     "label": "Voice input",
@@ -90,6 +101,20 @@
   "session": {
     "editSeed": "Update the command \"{{name}}\" (id: {{id}}): ",
     "createSeed": "Create a command: "
+  },
+  "permission": {
+    "tier": {
+      "manual": "Manual approval",
+      "auto": "Auto approval",
+      "always": "Always allow"
+    },
+    "tierDescription": {
+      "manual": "Confirm every guarded action.",
+      "auto": "Allow file changes in this task's folder; confirm everything else.",
+      "always": "Never ask for confirmation."
+    },
+    "tierLabel": "Permission level",
+    "defaultFromSettings": "Uses the default from Settings until a task exists."
   },
   "errors": {
     "openDesktopApp": "Open the desktop app to run tasks and manage saved data."

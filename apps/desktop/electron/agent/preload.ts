@@ -27,6 +27,10 @@ export const agentBridge: AgentBridge = {
   stop: (taskId, runId) => invoke({ action: 'stop', taskId, runId }),
   answer: (taskId, runId, requestId, answer) =>
     invoke({ action: 'answer', taskId, runId, requestId, answer }),
+  queueMessage: (taskId, text, mode) => invoke({ action: 'queueMessage', taskId, text, mode }),
+  replaceQueue: (taskId, followUp) => invoke({ action: 'replaceQueue', taskId, followUp }),
+  setPermissionTier: (taskId, tier) => invoke({ action: 'setPermissionTier', taskId, tier }),
+  renameTask: (taskId, title) => invoke({ action: 'renameTask', taskId, title }),
   deleteTask: (taskId) => invoke({ action: 'deleteTask', taskId }),
   chooseFiles: () => invoke({ action: 'chooseFiles' }),
   memory: () => invoke({ action: 'memory' }),

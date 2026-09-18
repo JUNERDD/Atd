@@ -9,7 +9,7 @@ import {
   type RunSnapshot,
   type TaskInput,
 } from './task-schema';
-import { errorMessage } from './validation';
+import type { PermissionTier } from './permission-schema';
 import { resolveInstructions } from './command-validation';
 import { TaskRuntime } from './task-runtime';
 import type { ModelReference, ModelThinkingLevel } from '../providers/schema';
@@ -27,6 +27,7 @@ export class RunService {
       model: ResolvedModel,
       requested?: ModelThinkingLevel,
     ) => Promise<ModelThinkingLevel>,
+    private defaultTier: () => PermissionTier,
   ) {}
 
   async preview(
@@ -132,8 +133,13 @@ export class RunService {
     );
     if (duplicate) return this.runtime.detail(duplicate.id);
     const previous = request.taskId ? this.runtime.task(request.taskId) : null;
-    if (previous?.runs.some((run) => isActive(run.status)))
-      throw new Error('Wait for this task to finish, or stop it before sending another message.');
+    if (previous?.runs.some((run) => isActive(run.status))) {
+      if (request.input.files.length) throw new Error('Attach files after the run finishes.');
+      const text = request.input.text.trim();
+      if (!text) throw new Error('Enter a follow-up.');
+      await this.runtime.queueMessage(previous.id, text, 'followUp');
+      return this.runtime.detail(previous.id);
+    }
     let snapshot: RunSnapshot;
     if (previous && previous.runs.length) {
       const saved = previous.runs.at(-1)!.snapshot;
@@ -164,7 +170,7 @@ export class RunService {
       snapshot = await this.preview(request.input, command ?? null, request.policy);
     }
     if (previous || request.savedRun) snapshot = await this.applyPolicy(snapshot, request.policy);
-    // Resolve the connection now as well as at dequeue. A snapshot cannot grant a new endpoint credentials.
+    // Resolve the connection now as well as when the run starts. A snapshot cannot grant a new endpoint credentials.
     this.assertModel(snapshot.model);
     const id = previous?.id ?? randomUUID();
     await this.runtime.resources.adopt(id, snapshot.input.files);
@@ -189,6 +195,7 @@ export class RunService {
           sessionFile: null,
           runs: [],
           legacy: null,
+          permissionTier: this.defaultTier(),
         };
         data.tasks.unshift(task);
       }
@@ -204,10 +211,7 @@ export class RunService {
     });
     const detail = this.runtime.cachedDetail(id);
     this.runtime.publishTask(id);
-    void this.runtime.drain().catch((error) => {
-      this.runtime.error = errorMessage(error);
-      this.runtime.publishTask(id);
-    });
+    this.runtime.dispatch();
     return detail;
   }
 }

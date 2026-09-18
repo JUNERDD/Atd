@@ -10,6 +10,11 @@ import {
   type ShortcutBindings,
 } from './settings-contract';
 import { Type, type Static } from 'typebox';
+import {
+  DEFAULT_PERMISSION_TIER,
+  PERMISSION_TIERS,
+  type PermissionTier,
+} from './agent/permission-schema';
 import { parse } from './agent/validation';
 import { StoredConnectionSchema } from './providers/schema';
 import { migrateProvider } from './providers/legacy';
@@ -31,6 +36,11 @@ export interface StoredSettings extends Static<typeof ProviderSettingsSchema> {
   shortcuts: ShortcutBindings;
   pinned: boolean;
   panelSize: PanelSize;
+  permissionTier: PermissionTier;
+}
+
+function isPermissionTier(value: unknown): value is PermissionTier {
+  return typeof value === 'string' && PERMISSION_TIERS.includes(value as PermissionTier);
 }
 
 function parseSettings(value: unknown): StoredSettings {
@@ -49,6 +59,7 @@ function parseSettings(value: unknown): StoredSettings {
           'shortcuts',
           'pinned',
           'panelSize',
+          'permissionTier',
         ].includes(key),
     ) ||
     !('version' in value) ||
@@ -61,6 +72,12 @@ function parseSettings(value: unknown): StoredSettings {
   }
   const language = 'language' in value ? value.language : resolveLanguage(app.getLocale());
   if (!isAppLanguage(language)) throw new TypeError('Invalid saved settings.');
+  // Existing files omit this field; default to manual rather than rejecting the file.
+  let permissionTier: PermissionTier = DEFAULT_PERMISSION_TIER;
+  if ('permissionTier' in value) {
+    if (!isPermissionTier(value.permissionTier)) throw new TypeError('Invalid saved settings.');
+    permissionTier = value.permissionTier;
+  }
   const panelSize =
     'panelSize' in value ? parse(PanelSizeSchema, value.panelSize) : { ...PANEL_SIZE };
   const connections =
@@ -83,6 +100,7 @@ function parseSettings(value: unknown): StoredSettings {
     shortcuts: parseShortcutBindings(value.shortcuts),
     pinned: value.pinned,
     panelSize,
+    permissionTier,
   };
 }
 
@@ -119,6 +137,7 @@ export class SettingsStore {
           shortcuts: { ...DEFAULT_SHORTCUTS },
           pinned: true,
           panelSize: { ...PANEL_SIZE },
+          permissionTier: DEFAULT_PERMISSION_TIER,
         });
       }
       throw new Error(

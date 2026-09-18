@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import type { AgentSnapshot, TaskDetail } from '../../../electron/agent/bridge';
+import type { AgentSnapshot, TaskDetail, TaskState } from '../../../electron/agent/bridge';
+import { applyTranscriptPatch } from '../../../electron/agent/transcript-schema';
 import { showErrorToast } from '../../components/toast-store';
 import i18n from '../../i18n';
 
@@ -39,31 +40,68 @@ export function useAgent() {
   return { snapshot };
 }
 
-export function useTaskDetail(taskId: string | null) {
+function mergeState(detail: TaskDetail, state: TaskState): TaskDetail {
+  return { ...detail, ...state, revision: detail.revision, blocks: detail.blocks };
+}
+
+export function useTaskDetail(taskId: string | null): { detail: TaskDetail | null } {
   const [detail, setDetail] = useState<TaskDetail | null>(null);
   useEffect(() => {
     if (!taskId || !window.desktop?.agent) return;
+    const bridge = window.desktop.agent;
     let active = true;
-    let received = false;
-    const unsubscribe = window.desktop.agent.onChange((event) => {
-      if (event.type === 'task' && event.detail.task.id === taskId) {
-        received = true;
-        setDetail(event.detail);
+    let seq = 0;
+    let current: TaskDetail | null = null;
+    let queuedState: TaskState | null = null;
+    let waitingForSeed = false;
+
+    const publish = (next: TaskDetail) => {
+      current = next;
+      waitingForSeed = false;
+      setDetail(next);
+    };
+
+    const seed = () => {
+      const request = ++seq;
+      waitingForSeed = true;
+      void bridge.detail(taskId).then(
+        (value) => {
+          if (!active || request !== seq) return;
+          const state = queuedState;
+          queuedState = null;
+          publish(state && state.task.id === taskId ? mergeState(value, state) : value);
+        },
+        (error) => {
+          if (active && request === seq) showErrorToast(error);
+        },
+      );
+    };
+
+    const unsubscribe = bridge.onChange((event) => {
+      if (event.type === 'task' && event.state.task.id === taskId) {
+        if (!current) queuedState = event.state;
+        else publish(mergeState(current, event.state));
+        return;
       }
-      if (event.type === 'snapshot')
-        setDetail((previous) => {
-          const task = event.snapshot.tasks.find((task) => task.id === taskId);
-          return task && previous?.task.id === taskId ? { ...previous, task } : previous;
-        });
+      if (event.type !== 'transcript' || event.patch.taskId !== taskId) return;
+      // A seed in flight already returns a snapshot at least as new as this patch; patches that
+      // land between that snapshot and the next event surface as a revision gap and reseed once.
+      if (waitingForSeed) return;
+      if (!current) {
+        seed();
+        return;
+      }
+      const patched = applyTranscriptPatch(
+        { revision: current.revision, blocks: current.blocks },
+        event.patch,
+      );
+      if (!patched) {
+        seed();
+        return;
+      }
+      publish({ ...current, revision: patched.revision, blocks: patched.blocks });
     });
-    void window.desktop.agent.detail(taskId).then(
-      (value) => {
-        if (active && !received) setDetail(value);
-      },
-      (error) => {
-        if (active) showErrorToast(error);
-      },
-    );
+    seed();
     return () => {
       active = false;
       unsubscribe();

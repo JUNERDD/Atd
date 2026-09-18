@@ -14,6 +14,7 @@ import { CommandInput } from './features/agent/command-input';
 import { openCommandSettings } from './features/commands/open-command-settings';
 import { Conversation } from './features/agent/conversation';
 import { TaskHistory } from './features/agent/task-history';
+import { EMPTY_QUEUE } from '../electron/agent/transcript-schema';
 import './features/agent/agent.css';
 
 export function App() {
@@ -48,6 +49,8 @@ export function App() {
     run,
     policy,
     changePolicy,
+    requests,
+    queue,
   } = useTaskPanel();
   useAppLanguage(snapshot?.language);
   const defaultConnection = snapshot?.connections.find(
@@ -181,7 +184,6 @@ export function App() {
             onChange={changeDraft}
             onSubmit={() => submit()}
             onStop={run && taskId ? () => agentApi().stop(taskId, run.id) : undefined}
-            onContinue={() => submit(true)}
             status={view === 'task' ? run?.status : undefined}
             pending={pending}
             followup={view === 'task'}
@@ -189,6 +191,11 @@ export function App() {
             connections={snapshot?.connections ?? []}
             model={selectedModel}
             onOpenSettings={() => void openSettings()}
+            taskId={view === 'task' ? taskId : null}
+            runId={run?.id}
+            task={view === 'task' ? (current.detail?.task ?? null) : null}
+            requests={view === 'task' ? requests : []}
+            queue={view === 'task' ? queue : EMPTY_QUEUE}
           />
         )}
         <ToastHost top={62} />

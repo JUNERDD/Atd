@@ -35,6 +35,47 @@
   border-radius: var(--radius-2xl);
 }
 
+.composer-surface[data-has-queue='true'] {
+  grid-template-areas: 'queue queue queue' 'attach prompt actions';
+  border-radius: var(--radius-2xl);
+}
+
+.composer-surface[data-expanded='true'][data-has-queue='true'] {
+  grid-template-areas: 'queue queue queue' 'prompt prompt prompt' 'attach . actions';
+}
+
+.composer-surface[data-has-attachments='true'][data-has-queue='true'] {
+  grid-template-areas: 'queue queue queue' 'attach prompt actions' 'files files files';
+}
+
+.composer-surface[data-expanded='true'][data-has-attachments='true'] {
+  grid-template-areas: 'prompt prompt prompt' 'files files files' 'attach . actions';
+  grid-template-rows: minmax(20px, 1fr) minmax(32px, 1fr) 28px;
+  max-height: min(260px, calc(100dvh - 180px));
+}
+
+.composer-surface[data-expanded='true'][data-has-attachments='true'][data-has-queue='true'] {
+  grid-template-areas: 'queue queue queue' 'prompt prompt prompt' 'files files files' 'attach . actions';
+  grid-template-rows: auto minmax(20px, 1fr) minmax(32px, 1fr) 28px;
+}
+
+.composer-queue {
+  grid-area: queue;
+  min-width: 0;
+  max-height: 88px;
+  overflow: auto;
+  gap: 2px;
+}
+
+.composer-queue-actions {
+  gap: 2px;
+}
+
+.composer-queue-sending {
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+
 .composer-surface[data-expanded='true'][data-has-attachments='true'] {
   grid-template-areas: 'prompt prompt prompt' 'files files files' 'attach . actions';
   grid-template-rows: minmax(20px, 1fr) minmax(32px, 1fr) 28px;
@@ -45,9 +86,6 @@
   grid-area: prompt;
   min-height: 20px;
   max-height: 20px;
-}
-.composer-input-viewport {
-  max-height: inherit;
 }
 .composer-input {
   field-sizing: content;
@@ -98,10 +136,6 @@
   min-height: 0;
   max-height: 100px;
 }
-.composer-attachments-viewport {
-  max-height: inherit;
-}
-
 .composer-configuration {
   display: flex;
   align-items: center;
@@ -109,10 +143,34 @@
   gap: 8px;
 }
 
+.composer-policy-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
 .composer-model {
   max-width: min(240px, 65%);
   min-width: 0;
   flex-shrink: 1;
+}
+
+/* The model and its thinking level stay one trailing control group. */
+.composer-model-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.composer-model-group .thinking-level-select {
+  height: 24px;
+  max-width: min(148px, 46%);
+  flex-shrink: 0;
+  gap: 4px;
+  padding: 0 6px 0 8px;
+  font-size: 12px;
 }
 
 .composer-model .provider-brand {
