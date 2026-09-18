@@ -43,9 +43,9 @@ describe('inline continue', () => {
     expect(onContinue).toHaveBeenCalledOnce();
   });
 
-  it('does not offer Continue for a failed run', () => {
+  it('renders no terminal actions for a failed run', () => {
     mount('failed');
     expect(screen.queryByRole('button', { name: 'Continue' })).toBeNull();
-    expect(screen.getByRole('button', { name: 'Review task' })).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Review task' })).toBeNull();
   });
 });
