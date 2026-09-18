@@ -5,9 +5,9 @@ import type { TaskRun } from '../../../../electron/agent/task-schema';
 import { showErrorToast } from '../../../components/toast-store';
 
 /**
- * Terminal transcript cards: continue plus review after a stop or interruption, review after a
- * failure or cancellation. Live and waiting copy lives with the per-turn footer instead, so the
- * elapsed time, model, and waiting label render once, on the turn they belong to.
+ * Terminal transcript card: continue plus review after a stop or interruption. Failed and
+ * cancelled runs render nothing inline. Live and waiting copy lives with the per-turn footer
+ * instead, so the elapsed time, model, and waiting label render once, on the turn they belong to.
  */
 export function StatusBar({
   run,
@@ -39,21 +39,6 @@ export function StatusBar({
           >
             {t('conversation.continue')}
           </Button>
-          <Button variant="outline" onClick={onReview}>
-            {t('review.title')}
-          </Button>
-        </div>
-      </div>
-    );
-  }
-  if (run && (run.status === 'failed' || run.status === 'cancelled')) {
-    return (
-      <div className="transcript-status">
-        <p className="text-sm font-medium">
-          {run.status === 'cancelled' ? t('conversation.cancelled') : t('conversation.failed')}
-        </p>
-        {run.error && <p className="text-sm text-destructive">{run.error}</p>}
-        <div className="status-actions">
           <Button variant="outline" onClick={onReview}>
             {t('review.title')}
           </Button>
