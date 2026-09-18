@@ -65,6 +65,7 @@ export function thinkingBlock(overrides: Partial<BlockOf<'thinking'>> = {}): Blo
     text: 'I should inspect the file first.',
     streaming: false,
     redacted: false,
+    durationMs: null,
     ...overrides,
   };
 }

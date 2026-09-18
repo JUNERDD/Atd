@@ -178,6 +178,7 @@ export async function createTaskSession(
   });
   let partial: AssistantMessage | undefined;
   const partials = new Map<string, string>();
+  const thinkingStarts = new Map<number, number>();
   const branchItems = () => fromSessionBranch(session.sessionManager.getBranch());
   const project = () => {
     const branch = branchItems();
@@ -204,10 +205,36 @@ export async function createTaskSession(
       });
       return;
     }
-    if (event.type === 'message_update' && event.message.role === 'assistant')
+    if (event.type === 'message_update' && event.message.role === 'assistant') {
       partial = event.message;
+      const timestamp = event.message.timestamp;
+      if (
+        !thinkingStarts.has(timestamp) &&
+        event.message.content.some((part) => part.type === 'thinking')
+      )
+        thinkingStarts.set(timestamp, Date.now());
+    }
     if (event.type === 'message_end') {
-      if (event.message.role === 'assistant') partial = undefined;
+      if (event.message.role === 'assistant') {
+        partial = undefined;
+        const timestamp = event.message.timestamp;
+        const start = thinkingStarts.get(timestamp);
+        if (start !== undefined) {
+          const durationMs = Math.max(0, Date.now() - start);
+          const runId = current.request.run.id;
+          const at = Date.now();
+          event.message.content.forEach((part, index) => {
+            if (part.type !== 'thinking') return;
+            sessionManager.appendCustomEntry('app-thinking-duration', {
+              blockId: `t:${timestamp}:${index}`,
+              runId,
+              durationMs,
+              at,
+            });
+          });
+          thinkingStarts.delete(timestamp);
+        }
+      }
       if (
         event.message.role === 'toolResult' &&
         !event.message.isError &&

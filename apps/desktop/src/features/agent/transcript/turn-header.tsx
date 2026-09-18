@@ -2,15 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Check, LoaderCircle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Shimmer } from '@ai/ui/components/ai-elements/shimmer';
-
-function formatElapsed(elapsedMs: number | null): string | null {
-  if (elapsedMs == null) return null;
-  const totalSec = Math.max(1, Math.round(elapsedMs / 1000));
-  if (totalSec < 60) return `${totalSec}s`;
-  const minutes = Math.floor(totalSec / 60);
-  const seconds = totalSec % 60;
-  return seconds ? `${minutes}m ${seconds}s` : `${minutes}m`;
-}
+import { formatElapsed } from './elapsed';
 
 /** Wall-clock stamp for a finished turn, in the reader's own locale. */
 function formatClockTime(epochMs: number): string {

@@ -3,21 +3,25 @@ import { useTranslation } from 'react-i18next';
 import { Button } from '@ai/ui/components/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@ai/ui/components/collapsible';
 import type { BlockOf } from '../../../../electron/agent/transcript-schema';
+import { formatElapsed } from './elapsed';
 import { StreamdownMarkdown } from './markdown';
 import { proseSummary } from './phases';
 
 /**
- * Single-line reasoning row (plan T2). In a phase the rail is the bullet, so the row drops its
- * own icon and the line itself breathes while reasoning streams in. Opening the fold around it
- * does not open the thought — reasoning is only ever read on purpose, one line until asked for.
+ * Single-line reasoning row showing `Thought 5s` once settled; live keeps the breathing
+ * `Thinking` line. Reasoning is only ever read on purpose by opening the row.
  */
 export function ThinkingBlock({ block }: { block: BlockOf<'thinking'> }) {
   const { t } = useTranslation('tasks');
   const [open, setOpen] = useState(false);
+  const elapsed = block.durationMs == null ? null : formatElapsed(block.durationMs);
   const summary = block.redacted
     ? t('thinking.redacted')
-    : proseSummary(block.text) ||
-      t(block.streaming ? 'transcript.verb.thinkLive' : 'transcript.verb.thinkDone');
+    : block.streaming
+      ? t('transcript.verb.thinkLive')
+      : elapsed == null
+        ? t('transcript.verb.thinkDone')
+        : t('thinking.doneWithElapsed', { elapsed });
   if (block.redacted) {
     return (
       <div aria-label={summary} className="thinking-row text-sm text-muted-foreground">

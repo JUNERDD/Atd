@@ -4,6 +4,7 @@ import { Value } from 'typebox/value';
 import {
   PermissionRecordSchema,
   QuestionRecordSchema,
+  ThinkingDurationRecordSchema,
   type PermissionRecord,
   type QuestionRecord,
 } from './permission-schema';
@@ -29,6 +30,7 @@ export interface ToolLookups {
   results: Map<string, ToolResultMessage>;
   permissions: Map<string, PermissionRecord>;
   questions: Map<string, QuestionRecord>;
+  thinkingDurations: Map<string, number>;
 }
 
 export function contentText(content: unknown): string {
@@ -64,18 +66,24 @@ export function collectLookups(branch: readonly ProjectBranchItem[]): ToolLookup
   const results = new Map<string, ToolResultMessage>();
   const permissions = new Map<string, PermissionRecord>();
   const questions = new Map<string, QuestionRecord>();
+  const thinkingDurations = new Map<string, number>();
   for (const item of branch) {
     if (item.type === 'custom') {
       if (item.customType === 'app-permission' && Value.Check(PermissionRecordSchema, item.data))
         permissions.set(item.data.toolCallId, item.data);
       if (item.customType === 'app-question' && Value.Check(QuestionRecordSchema, item.data))
         questions.set(item.data.toolCallId, item.data);
+      if (
+        item.customType === 'app-thinking-duration' &&
+        Value.Check(ThinkingDurationRecordSchema, item.data)
+      )
+        thinkingDurations.set(item.data.blockId, item.data.durationMs);
       continue;
     }
     if (item.type !== 'message' || item.message.role !== 'toolResult') continue;
     results.set(item.message.toolCallId, item.message);
   }
-  return { results, permissions, questions };
+  return { results, permissions, questions, thinkingDurations };
 }
 
 export function mapStopReason(
@@ -169,6 +177,7 @@ export function projectAssistantBlocks(input: {
           text: part.thinking,
           streaming,
           redacted: Boolean(part.redacted),
+          durationMs: lookups.thinkingDurations.get(`t:${timestamp}:${index}`) ?? null,
         });
         return;
       case 'toolCall': {
