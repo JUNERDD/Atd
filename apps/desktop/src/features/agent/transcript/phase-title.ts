@@ -1,6 +1,6 @@
 import type { useTranslation } from 'react-i18next';
 import type { ViewBlock } from './adapter';
-import { isToolView, proseSummary, type ActivityPhase } from './phases';
+import { isToolView, type ActivityPhase } from './phases';
 
 type T = ReturnType<typeof useTranslation<'tasks'>>['t'];
 
@@ -43,19 +43,12 @@ function fileParam(paths: Set<string>, t: T): string {
 }
 
 /**
- * The group's header. The agent's own line if it wrote one, otherwise what the calls add up to —
- * in the present tense while the group is still running, so "Reading notes.txt" becomes
- * "Read notes.txt" the moment it folds. Ported from monocode `activityPhaseTitle` onto the frozen
- * `transcript.verb.*` keys; every key below is a literal so type checking catches typos.
+ * The group's header: what the calls add up to — in the present tense while the group is still
+ * running, so "Reading notes.txt" becomes "Read notes.txt" the moment it folds. Ported from
+ * monocode `activityPhaseTitle` onto the frozen `transcript.verb.*` keys; every key below is a
+ * literal so type checking catches typos.
  */
 export function phaseTitle(phase: ActivityPhase, live: boolean, t: T): string {
-  if (phase.headline) {
-    const summary = proseSummary(phase.headline.text);
-    if (summary) return summary;
-    return phase.headline.role === 'reasoning'
-      ? t('transcript.verb.thinkDone')
-      : t('transcript.verb.working');
-  }
   const tally = tallySteps(phase.steps);
   switch (phase.kind) {
     case 'edit':
@@ -90,8 +83,6 @@ export function phaseTitle(phase: ActivityPhase, live: boolean, t: T): string {
     }
     case 'think':
       return t(live ? 'transcript.verb.thinkLive' : 'transcript.verb.thinkDone');
-    case 'note':
-      return t('transcript.verb.working');
     case 'other': {
       const count = phase.steps.filter(isToolView).length;
       if (count <= 0) return t('transcript.verb.working');

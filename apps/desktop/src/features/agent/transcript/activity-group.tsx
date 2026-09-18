@@ -1,22 +1,12 @@
 import { useLayoutEffect, useRef, useState, type UIEvent, type WheelEvent } from 'react';
-import {
-  Bot,
-  ChevronRight,
-  Minus,
-  PenLine,
-  Search,
-  Sparkles,
-  Terminal,
-  Wrench,
-} from 'lucide-react';
+import { Bot, ChevronRight, PenLine, Search, Sparkles, Terminal, Wrench } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@ai/ui/components/button';
 import { Shimmer } from '@ai/ui/components/ai-elements/shimmer';
 import type { Artifact, FileRef } from '../../../../electron/agent/task-schema';
 import { TaskFiles } from '../task-files';
 import type { AdaptedItem, ViewBlock } from './adapter';
-import { StreamdownMarkdown } from './markdown';
-import { headlineHasMore, type ActivityPhase, type ActivityPhaseKind } from './phases';
+import { type ActivityPhase, type ActivityPhaseKind } from './phases';
 import { phaseTitle, phaseToggleLabel } from './phase-title';
 import { PhaseStep } from './phase-step';
 import type { RequestIndex } from './turns';
@@ -37,8 +27,6 @@ function PhaseGlyph({ kind }: { kind: ActivityPhaseKind }) {
       return <Sparkles {...props} />;
     case 'other':
       return <Wrench {...props} />;
-    case 'note':
-      return <Minus {...props} />;
   }
 }
 
@@ -94,16 +82,8 @@ function ActivityPhaseView({
   const open = waiting || (override ?? active);
   const { ref, onScroll, onWheel } = useLivePhasePin(active && open, phase.steps);
   const title = phaseTitle(phase, active, t);
-  // Opening a group on purpose is also how the line that titled it reads whole. The auto-open
-  // while it runs is a live view, not a reading one, and a one-line note the header already shows
-  // in full has nothing to add.
-  const headline =
-    override === true && phase.headline && headlineHasMore(phase.headline)
-      ? phase.headline
-      : undefined;
-  const inert = phase.steps.length === 0 && !headlineHasMore(phase.headline);
   const first = phase.steps[0];
-  const single = !phase.headline && phase.steps.length === 1 && first ? first : undefined;
+  const single = phase.steps.length === 1 && first ? first : undefined;
 
   // A lone call the agent never introduced is not a group: a header repeating the single row
   // under it says nothing twice.
@@ -129,16 +109,6 @@ function ActivityPhaseView({
       {title}
     </span>
   );
-
-  // A line the agent wrote with nothing under it is just that line.
-  if (inert) {
-    return (
-      <div className="phase-inert">
-        <PhaseGlyph kind={phase.kind} />
-        {label}
-      </div>
-    );
-  }
 
   const toggle = phaseToggleLabel(open, phase.steps.length, t);
   return (
@@ -169,11 +139,6 @@ function ActivityPhaseView({
           className={active || !open ? 'phase-live' : undefined}
         >
           <div className="phase-steps">
-            {headline && (
-              <div className="phase-step">
-                <StreamdownMarkdown text={headline.text} streaming={false} />
-              </div>
-            )}
             {phase.steps.map((step) => (
               <div key={step.id} className={`phase-step${active ? ' step-in' : ''}`}>
                 <PhaseStep view={step} requests={requests} />

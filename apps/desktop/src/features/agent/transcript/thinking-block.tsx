@@ -5,7 +5,6 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@ai/ui/comp
 import type { BlockOf } from '../../../../electron/agent/transcript-schema';
 import { formatElapsed } from './elapsed';
 import { StreamdownMarkdown } from './markdown';
-import { proseSummary } from './phases';
 
 /**
  * Single-line reasoning row showing `Thought 5s` once settled; live keeps the breathing
@@ -41,33 +40,6 @@ export function ThinkingBlock({ block }: { block: BlockOf<'thinking'> }) {
             className={`thinking-line${block.streaming ? ' thinking-pulse' : ''}`}
             title={summary}
           >
-            {summary}
-          </span>
-        </Button>
-      </CollapsibleTrigger>
-      <CollapsibleContent>
-        <div className="thinking-full">
-          <StreamdownMarkdown text={block.text} streaming={block.streaming} />
-        </div>
-      </CollapsibleContent>
-    </Collapsible>
-  );
-}
-
-/** A line the agent wrote mid-run, kept to one line. It opens on click, so folding the work never costs a paragraph wanted for reading. */
-export function NoteBlock({ block }: { block: BlockOf<'assistant'> }) {
-  const { t } = useTranslation('tasks');
-  const [open, setOpen] = useState(false);
-  const summary = proseSummary(block.text) || t('transcript.verb.working');
-  return (
-    <Collapsible open={open} onOpenChange={setOpen} className="flex min-w-0 flex-col">
-      <CollapsibleTrigger asChild>
-        <Button
-          variant="ghost"
-          className="activity-trigger"
-          aria-label={open ? t('transcript.verb.working') : summary}
-        >
-          <span className="note-line" title={summary}>
             {summary}
           </span>
         </Button>

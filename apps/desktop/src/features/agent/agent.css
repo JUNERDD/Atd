@@ -447,13 +447,6 @@
   min-width: 0;
   flex: 1;
 }
-.phase-inert {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 0;
-}
 .phase-body {
   display: grid;
   grid-template-rows: 1fr;
@@ -565,8 +558,7 @@
   min-width: 0;
   flex-direction: column;
 }
-.thinking-line,
-.note-line {
+.thinking-line {
   min-width: 0;
   flex: 1;
   overflow: hidden;
@@ -577,9 +569,6 @@
 }
 .thinking-line {
   color: var(--muted-foreground);
-}
-.note-line {
-  color: color-mix(in oklab, var(--foreground) 75%, transparent);
 }
 .thinking-full {
   min-width: 0;
