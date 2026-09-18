@@ -10,6 +10,7 @@ export function draftFrom(connection: Connection): ConnectionDraft {
     baseUrl,
     authType,
     defaultModel,
+    defaultThinkingLevel,
     options,
     customModels,
   } = connection;
@@ -21,6 +22,7 @@ export function draftFrom(connection: Connection): ConnectionDraft {
     baseUrl,
     authType,
     defaultModel,
+    defaultThinkingLevel,
     options,
     customModels,
   };

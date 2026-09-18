@@ -2,12 +2,17 @@ import type { RunPolicy } from './run-policy';
 import { randomUUID } from 'node:crypto';
 import type { CommandDefinition } from './command-schema';
 import type { SubmitRequest } from './bridge';
-import type { ResolvedModel, RunSnapshot, TaskInput } from './task-schema';
-import { isActive } from './task-schema';
+import {
+  isActive,
+  runThinkingLevel,
+  type ResolvedModel,
+  type RunSnapshot,
+  type TaskInput,
+} from './task-schema';
 import { errorMessage } from './validation';
 import { resolveInstructions } from './command-validation';
 import { TaskRuntime } from './task-runtime';
-import type { ModelReference } from '../providers/schema';
+import type { ModelReference, ModelThinkingLevel } from '../providers/schema';
 
 export class RunService {
   private accepting: Promise<void> = Promise.resolve();
@@ -18,6 +23,10 @@ export class RunService {
       reference?: ModelReference,
     ) => Promise<ResolvedModel>,
     private assertModel: (model: ResolvedModel) => void,
+    private thinkingLevel: (
+      model: ResolvedModel,
+      requested?: ModelThinkingLevel,
+    ) => Promise<ModelThinkingLevel>,
   ) {}
 
   async preview(
@@ -28,16 +37,18 @@ export class RunService {
     const files = await this.runtime.resources.resolve(input.files);
     if (!command && !input.text.trim() && input.files.length === 0)
       throw new Error('Enter a message or attach a file.');
+    const model = await this.model(
+      policy?.useDefaultModel ? null : command,
+      policy?.useDefaultModel ? undefined : policy?.model,
+    );
     const snapshot = await this.applyPolicy(
       {
         command,
         definition: 'current',
         input,
         instructions: command ? resolveInstructions(command, input) : '',
-        model: await this.model(
-          policy?.useDefaultModel ? null : command,
-          policy?.useDefaultModel ? undefined : policy?.model,
-        ),
+        model,
+        thinkingLevel: await this.freezeThinkingLevel(model, policy, command),
         tools: command?.tools ?? ['read', 'write', 'edit', 'bash', 'command'],
         memory: command?.memory !== 'off',
       },
@@ -46,6 +57,21 @@ export class RunService {
     );
     this.checkBudget(snapshot, files);
     return snapshot;
+  }
+
+  /**
+   * The level a new snapshot freezes: an explicit policy level wins, else a
+   * fixed-model command's pinned level, else the connection's saved default.
+   */
+  private freezeThinkingLevel(
+    model: ResolvedModel,
+    policy: RunPolicy | null,
+    command: CommandDefinition | null,
+  ): Promise<ModelThinkingLevel> {
+    const requested =
+      policy?.thinkingLevel ??
+      (command?.model.mode === 'fixed' ? command.model.thinkingLevel : undefined);
+    return this.thinkingLevel(model, requested);
   }
 
   private checkBudget(snapshot: RunSnapshot, files: { text: string }[]) {
@@ -72,14 +98,21 @@ export class RunService {
       !confirmExpansion
     )
       throw new Error('Confirm the additional task capabilities before running.');
+    // Re-resolving the model re-resolves the level from the new connection's default;
+    // an explicit policy level re-resolves it for the model that stays selected.
+    const reResolved = resolveModel && Boolean(policy.model || useDefaultModel);
+    const model = reResolved
+      ? await this.model(null, useDefaultModel ? undefined : policy.model)
+      : snapshot.model;
     return {
       ...snapshot,
       tools,
       memory,
-      model:
-        resolveModel && (policy.model || useDefaultModel)
-          ? await this.model(null, useDefaultModel ? undefined : policy.model)
-          : snapshot.model,
+      model,
+      thinkingLevel:
+        reResolved || policy.thinkingLevel
+          ? await this.thinkingLevel(model, policy.thinkingLevel)
+          : runThinkingLevel(snapshot),
     };
   }
 

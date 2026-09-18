@@ -109,5 +109,18 @@
     "maxOutput": "最大输出 token 数",
     "reasoning": "推理",
     "imageInput": "图像输入"
+  },
+  "thinkingLevels": {
+    "label": "思考档位",
+    "unavailable": "此模型不支持{{level}}档位。",
+    "levels": {
+      "off": "关闭",
+      "minimal": "极简",
+      "low": "低",
+      "medium": "中",
+      "high": "高",
+      "xhigh": "极高",
+      "max": "最高"
+    }
   }
 }

@@ -2,6 +2,23 @@ import { Type, type Static } from 'typebox';
 
 const text = Type.String({ maxLength: 2048 });
 const id = Type.String({ minLength: 1, maxLength: 256 });
+
+/**
+ * Pi's model thinking levels, mirrored so a stored preference stays valid without
+ * loading the model runtime in the renderer. Keep this union in sync with
+ * `ModelThinkingLevel` from `@earendil-works/pi-ai`.
+ */
+export const ModelThinkingLevelSchema = Type.Union([
+  Type.Literal('off'),
+  Type.Literal('minimal'),
+  Type.Literal('low'),
+  Type.Literal('medium'),
+  Type.Literal('high'),
+  Type.Literal('xhigh'),
+  Type.Literal('max'),
+]);
+export type ModelThinkingLevel = Static<typeof ModelThinkingLevelSchema>;
+
 export const ModelDefinitionSchema = Type.Object(
   {
     id,
@@ -58,6 +75,8 @@ export const ConnectionConfigSchema = Type.Object(
     baseUrl: text,
     authType: AuthTypeSchema,
     defaultModel: Type.String({ maxLength: 256 }),
+    /** Thinking level for the connection's default model; runs without an explicit level use it. */
+    defaultThinkingLevel: Type.Optional(ModelThinkingLevelSchema),
     options: Type.Record(Type.String(), text),
     customModels: Type.Array(ModelDefinitionSchema, { maxItems: 100 }),
   },
@@ -124,6 +143,7 @@ export const PROVIDER_IPC = {
   save: 'providers:save',
   default: 'providers:default',
   model: 'providers:model',
+  levels: 'providers:levels',
   disconnect: 'providers:disconnect',
   refresh: 'providers:refresh',
   verify: 'providers:verify',
@@ -162,6 +182,8 @@ export interface ProviderBridge {
   save: (draft: ConnectionDraft) => Promise<Connection>;
   setDefault: (connectionId: string, revision: number) => Promise<void>;
   setModel: (reference: ModelReference, revision: number) => Promise<void>;
+  /** Thinking levels Pi accepts for one model, in Pi's order; empty when the model is unknown. */
+  levels: (reference: ModelReference) => Promise<ModelThinkingLevel[]>;
   disconnect: (connectionId: string, revision: number) => Promise<void>;
   refresh: (connectionId: string) => Promise<void>;
   verify: (reference: ModelReference) => Promise<void>;

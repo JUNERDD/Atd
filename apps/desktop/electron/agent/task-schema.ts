@@ -1,6 +1,10 @@
 import { Type, type Static } from 'typebox';
 import { ArgumentValuesSchema, CommandSchema, Identifier, ToolIdSchema } from './command-schema';
-import { FrozenModelSchema } from '../providers/schema';
+import {
+  FrozenModelSchema,
+  ModelThinkingLevelSchema,
+  type ModelThinkingLevel,
+} from '../providers/schema';
 
 export const FileRefSchema = Type.Object(
   {
@@ -66,6 +70,8 @@ export const RunSnapshotSchema = Type.Object(
     input: InputSchema,
     instructions: Type.String(),
     model: ResolvedModelSchema,
+    /** Frozen at acceptance; runs saved before thinking levels existed ran with reasoning off. */
+    thinkingLevel: Type.Optional(ModelThinkingLevelSchema),
     tools: Type.Array(ToolIdSchema),
     memory: Type.Boolean(),
   },
@@ -178,6 +184,10 @@ export function artifactLocation(file: Artifact) {
 
 export function activeRun(task: AgentTask): TaskRun | undefined {
   return task.runs.at(-1);
+}
+/** The thinking level this run was accepted with; runs saved before the control existed used 'off'. */
+export function runThinkingLevel(snapshot: RunSnapshot): ModelThinkingLevel {
+  return snapshot.thinkingLevel ?? 'off';
 }
 export function isActive(status: RunStatus | undefined): boolean {
   return (

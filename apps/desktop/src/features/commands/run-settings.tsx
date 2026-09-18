@@ -17,6 +17,7 @@ import {
   ItemTitle,
 } from '@ai/ui/components/item';
 import { ModelPicker } from '../providers/model-picker';
+import { ThinkingLevelSelect } from '../providers/thinking-level-select';
 import { TOOL_DESCRIPTIONS, type CommandDefinition } from '../../../electron/agent/command-schema';
 import type { SettingsSnapshot } from '../../../electron/settings-contract';
 
@@ -35,6 +36,7 @@ export function RunSettings({
   const provider = settings?.connections.find(
     (connection) => connection.connectionId === settings.defaultConnectionId,
   );
+  const fixedModel = command.model.mode === 'fixed' ? command.model : null;
   return (
     <section className="settings-field" data-figma-node="1062:33204">
       <Label>{t('run.title')}</Label>
@@ -75,15 +77,25 @@ export function RunSettings({
                   </SelectItem>
                 </SelectContent>
               </Select>
-              {command.model.mode === 'fixed' && (
-                <ModelPicker
-                  connections={settings?.connections ?? []}
-                  value={command.model}
-                  label={t('run.fixedModel')}
-                  onChange={(reference) =>
-                    onChange({ ...command, model: { mode: 'fixed', ...reference } })
-                  }
-                />
+              {fixedModel && (
+                <>
+                  <ModelPicker
+                    connections={settings?.connections ?? []}
+                    value={fixedModel}
+                    label={t('run.fixedModel')}
+                    onChange={(reference) =>
+                      onChange({ ...command, model: { mode: 'fixed', ...reference } })
+                    }
+                  />
+                  <ThinkingLevelSelect
+                    reference={fixedModel}
+                    value={fixedModel.thinkingLevel ?? 'off'}
+                    label={t('run.thinkingLevel')}
+                    onChange={(thinkingLevel) =>
+                      onChange({ ...command, model: { ...fixedModel, thinkingLevel } })
+                    }
+                  />
+                </>
               )}
             </div>
           </div>
