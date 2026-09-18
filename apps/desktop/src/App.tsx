@@ -13,6 +13,7 @@ import { CommandLauncher } from './features/agent/command-launcher';
 import { CommandInput } from './features/agent/command-input';
 import { openCommandSettings } from './features/commands/open-command-settings';
 import { Transcript } from './features/agent/transcript/transcript';
+import { SessionMenu } from './features/agent/session-menu';
 import { TaskHistory } from './features/agent/task-history';
 import { EMPTY_QUEUE } from '../electron/agent/transcript-schema';
 import './features/agent/agent.css';
@@ -86,6 +87,7 @@ export function App() {
           </IconButton>
           <h1 title={title}>{title}</h1>
           <nav className="header-controls" aria-label={t('header.controlsLabel')}>
+            {view === 'task' && current.detail && <SessionMenu task={current.detail.task} />}
             <IconButton
               label={t('header.tasks')}
               className="header-button"

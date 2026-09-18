@@ -100,7 +100,19 @@
   },
   "session": {
     "editSeed": "更新命令“{{name}}”（id：{{id}}）：",
-    "createSeed": "创建命令："
+    "createSeed": "创建命令：",
+    "menu": "会话操作",
+    "rename": "重命名会话",
+    "copyLink": "复制会话链接",
+    "renameTitle": "重命名会话",
+    "renameDescription": "为此会话起一个简短易认的名称。",
+    "renameLabel": "会话名称",
+    "renamePlaceholder": "例如：Q3 发布计划",
+    "renameCancel": "取消",
+    "renameSave": "保存",
+    "renamed": "会话已重命名。",
+    "linkCopied": "会话链接已复制，在 Pi 中粘贴该命令即可查看。",
+    "idCopied": "会话 ID 已复制，Pi 会话将在首次运行后创建。"
   },
   "permission": {
     "tier": {
