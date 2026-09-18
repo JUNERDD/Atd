@@ -9,7 +9,6 @@ import {
   DialogTitle,
 } from '@ai/ui/components/dialog';
 import type { TaskRun } from '../../../electron/agent/task-schema';
-import { useOverlayFooter } from '../../components/use-overlay-footer';
 import { agentApi } from './use-agent';
 import { showErrorToast, showToast } from '../../components/toast-store';
 import { copyCommand } from '../../../electron/agent/command-templates';
@@ -18,19 +17,14 @@ export function TaskReviewDialog({
   open,
   onOpenChange,
   runs,
-  interrupted,
   onRerun,
-  onContinue,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   runs: TaskRun[];
-  interrupted: boolean;
   onRerun: (run: TaskRun) => void;
-  onContinue: () => Promise<unknown>;
 }) {
   const { t } = useTranslation('tasks');
-  const footerRef = useOverlayFooter<HTMLButtonElement>();
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="panel-dialog">
@@ -38,11 +32,7 @@ export function TaskReviewDialog({
           <DialogTitle>{t('review.title')}</DialogTitle>
           <DialogDescription>{t('review.description')}</DialogDescription>
         </DialogHeader>
-        <ScrollArea
-          className="panel-dialog-scroll"
-          viewportClassName={interrupted ? 'overlay-footer-fade' : undefined}
-          gutter
-        >
+        <ScrollArea className="panel-dialog-scroll" gutter>
           <div className="panel-dialog-body">
             {runs.map((item) => (
               <section key={item.id} className="space-y-2 border-b border-border pb-4">
@@ -104,19 +94,6 @@ export function TaskReviewDialog({
             ))}
           </div>
         </ScrollArea>
-        {interrupted && (
-          <Button
-            ref={footerRef}
-            className="overlay-footer"
-            onClick={() => {
-              void onContinue()
-                .then(() => onOpenChange(false))
-                .catch((error) => showErrorToast(error));
-            }}
-          >
-            {t('review.continue')}
-          </Button>
-        )}
       </DialogContent>
     </Dialog>
   );

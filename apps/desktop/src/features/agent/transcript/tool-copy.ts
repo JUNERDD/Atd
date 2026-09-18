@@ -1,0 +1,254 @@
+import {
+  Brain,
+  File,
+  FileArchive,
+  FileAudio,
+  FileCode,
+  FileImage,
+  FileJson,
+  FilePen,
+  FilePlus,
+  FileText,
+  FileVideo,
+  SquareTerminal,
+  Terminal,
+  Wrench,
+  type LucideIcon,
+} from 'lucide-react';
+import type { GrantScope, PermissionOutcome } from '../../../../electron/agent/permission-schema';
+import type { ToolStatus } from '../../../../electron/agent/transcript-schema';
+
+export type StepKey =
+  | 'activity.step.read'
+  | 'activity.step.write'
+  | 'activity.step.edit'
+  | 'activity.step.bash'
+  | 'activity.step.command'
+  | 'activity.step.searchMemory'
+  | 'activity.step.saveMemory'
+  | 'activity.step.updateMemory'
+  | 'activity.step.removeMemory';
+
+export type MemoryTargetKey =
+  | 'activity.target.user'
+  | 'activity.target.project'
+  | 'activity.target.memory'
+  | 'activity.target.failure';
+
+export type OutcomeKey =
+  | 'permission.outcome.once'
+  | 'permission.outcome.session'
+  | 'permission.outcome.grant'
+  | 'permission.outcome.tier'
+  | 'permission.outcome.declined';
+
+export type ScopeKey =
+  | 'permission.scope.read.inside'
+  | 'permission.scope.read.outside'
+  | 'permission.scope.write.inside'
+  | 'permission.scope.write.outside'
+  | 'permission.scope.edit.inside'
+  | 'permission.scope.edit.outside'
+  | 'permission.scope.bash'
+  | 'permission.scope.command';
+
+const STEP_KEYS: Record<string, StepKey> = {
+  read: 'activity.step.read',
+  write: 'activity.step.write',
+  edit: 'activity.step.edit',
+  bash: 'activity.step.bash',
+  command: 'activity.step.command',
+  memory_search: 'activity.step.searchMemory',
+  memory_add: 'activity.step.saveMemory',
+  memory_replace: 'activity.step.updateMemory',
+  memory_remove: 'activity.step.removeMemory',
+};
+
+const MEMORY_TARGETS: Record<string, MemoryTargetKey> = {
+  user: 'activity.target.user',
+  project: 'activity.target.project',
+  memory: 'activity.target.memory',
+  failure: 'activity.target.failure',
+};
+
+const ICONS: Record<string, LucideIcon> = {
+  read: FileText,
+  write: FilePlus,
+  edit: FilePen,
+  bash: Terminal,
+  command: SquareTerminal,
+  memory_search: Brain,
+  memory_add: Brain,
+  memory_replace: Brain,
+  memory_remove: Brain,
+};
+
+export function stepKey(name: string): StepKey | null {
+  return STEP_KEYS[name] ?? null;
+}
+
+export function toolIcon(name: string): LucideIcon {
+  return ICONS[name] ?? Wrench;
+}
+
+/** Extension-based file glyph for file-tool targets; unknown extensions fall back to `File`. */
+export function fileIconForPath(path: string): LucideIcon {
+  const ext = path.split('.').pop()?.toLowerCase() ?? '';
+  switch (ext) {
+    case 'ts':
+    case 'tsx':
+    case 'js':
+    case 'jsx':
+    case 'mjs':
+    case 'cjs':
+    case 'py':
+    case 'rb':
+    case 'rs':
+    case 'go':
+    case 'java':
+    case 'c':
+    case 'h':
+    case 'cpp':
+    case 'hpp':
+    case 'cs':
+    case 'swift':
+    case 'kt':
+    case 'php':
+    case 'css':
+    case 'scss':
+    case 'html':
+    case 'vue':
+    case 'svelte':
+    case 'sh':
+    case 'zsh':
+    case 'sql':
+    case 'xml':
+    case 'yaml':
+    case 'yml':
+    case 'toml':
+      return FileCode;
+    case 'json':
+    case 'jsonc':
+      return FileJson;
+    case 'md':
+    case 'mdx':
+    case 'txt':
+      return FileText;
+    case 'png':
+    case 'jpg':
+    case 'jpeg':
+    case 'gif':
+    case 'webp':
+    case 'svg':
+    case 'ico':
+      return FileImage;
+    case 'mp3':
+    case 'wav':
+    case 'ogg':
+    case 'flac':
+      return FileAudio;
+    case 'mp4':
+    case 'mov':
+    case 'webm':
+    case 'mkv':
+      return FileVideo;
+    case 'zip':
+    case 'tar':
+    case 'gz':
+    case 'rar':
+    case '7z':
+      return FileArchive;
+    default:
+      return File;
+  }
+}
+
+export function memoryTargetKey(target: string): MemoryTargetKey | null {
+  return MEMORY_TARGETS[target] ?? null;
+}
+
+export function toolTarget(name: string, args: Record<string, unknown>): string | null {
+  if (name === 'read' || name === 'write' || name === 'edit') {
+    const path = args.path;
+    return typeof path === 'string' ? (path.split('/').pop() ?? path) : null;
+  }
+  if (name === 'bash') {
+    const command = args.command;
+    if (typeof command !== 'string') return null;
+    return command.split('\n')[0]?.trim() || null;
+  }
+  if (name === 'command') {
+    return typeof args.name === 'string' && args.name ? args.name : null;
+  }
+  if (name.startsWith('memory_') && typeof args.target === 'string') return args.target;
+  return null;
+}
+
+export function bashCommand(args: Record<string, unknown>): string {
+  return typeof args.command === 'string' ? args.command : '';
+}
+
+export function outcomeKey(outcome: PermissionOutcome): OutcomeKey {
+  switch (outcome) {
+    case 'once':
+      return 'permission.outcome.once';
+    case 'session':
+      return 'permission.outcome.session';
+    case 'grant':
+      return 'permission.outcome.grant';
+    case 'tier':
+      return 'permission.outcome.tier';
+    case 'declined':
+      return 'permission.outcome.declined';
+    default: {
+      const _exhaustive: never = outcome;
+      void _exhaustive;
+      return 'permission.outcome.declined';
+    }
+  }
+}
+
+export function scopeKey(scope: GrantScope): ScopeKey {
+  switch (scope.tool) {
+    case 'read':
+    case 'write':
+    case 'edit':
+      return `permission.scope.${scope.tool}.${scope.location}`;
+    case 'bash':
+      return 'permission.scope.bash';
+    case 'command':
+      return 'permission.scope.command';
+    default: {
+      const _exhaustive: never = scope;
+      void _exhaustive;
+      return 'permission.scope.command';
+    }
+  }
+}
+
+export function statusLabelKey(
+  status: ToolStatus,
+):
+  | 'activity.running'
+  | 'activity.completed'
+  | 'activity.failed'
+  | 'activity.interrupted'
+  | 'permission.outcome.declined' {
+  switch (status) {
+    case 'running':
+      return 'activity.running';
+    case 'completed':
+      return 'activity.completed';
+    case 'failed':
+      return 'activity.failed';
+    case 'interrupted':
+      return 'activity.interrupted';
+    case 'declined':
+      return 'permission.outcome.declined';
+    default: {
+      const _exhaustive: never = status;
+      void _exhaustive;
+      return 'activity.completed';
+    }
+  }
+}

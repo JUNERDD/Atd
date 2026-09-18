@@ -12,7 +12,7 @@ import { useTaskPanel } from './features/agent/use-task-panel';
 import { CommandLauncher } from './features/agent/command-launcher';
 import { CommandInput } from './features/agent/command-input';
 import { openCommandSettings } from './features/commands/open-command-settings';
-import { Conversation } from './features/agent/conversation';
+import { Transcript } from './features/agent/transcript/transcript';
 import { TaskHistory } from './features/agent/task-history';
 import { EMPTY_QUEUE } from '../electron/agent/transcript-schema';
 import './features/agent/agent.css';
@@ -161,12 +161,11 @@ export function App() {
         )}
         {view === 'task' &&
           (current.detail ? (
-            <Conversation
-              key={`conversation-${current.detail.task.id}`}
+            <Transcript
               detail={current.detail}
               onAttach={(file) => changeDraft({ ...draft, files: [...draft.files, file] })}
-              onRerun={rerun}
               onContinue={() => submit(true)}
+              onRerun={rerun}
             />
           ) : (
             <ScrollArea className="panel-content" viewportClassName="overlay-footer-fade">
