@@ -29,6 +29,7 @@ Agent 流程与 Providers / Shortcuts 设置已合并到同一设计页：[统�
 - 按用户反馈移除会话 `margin-top: auto`。短对话首条消息从标题栏下方 20px 开始，Composer 固定在底部；长对话滚动至最新内容由滚动逻辑负责。
 - [共享会话说明](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=694-17333) 与 [短回复示例](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=796-15567) 已同步顶部排列。长内容原型中展示“滚动至最新”的有限状态不代表运行时垂直布局规则。
 - 已检查实际 Electron 内容截图及白色 / 蓝色背景上的 OS 合成窗口，覆盖四角、边缘、阴影和原生材质。证据在 `apps/desktop/.artifacts/agent-result-top-aligned.png`、`agent-native-contrasting.png`。
+- 工具步骤行不绘制任何自身背景：折叠、hover 与展开（`aria-expanded`）都保持透明，hover 只保留指针光标，展开状态由旋转的箭头承担（`features/agent/agent.css` 的 `.tool-heading`）。[Tool activity](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=774-4064) 的 Toggle activity 同样没有行填充，两侧一致。
 
 ### 设置二级页标题统一
 
@@ -370,3 +371,33 @@ Figma 侧未同步：本会话没有可用的 Figma 工具，无法读取或更�
 验证：定向 oxfmt／Oxlint、`pnpm --filter @ai/desktop typecheck`、`pnpm --filter @ai/desktop test`（20 个既有单元测试）通过。未启动应用运行时，因此实际渲染尺寸、与标题的视觉间距及原生合成外观尚未复核。
 
 Figma 侧未同步：本会话没有可用的 Figma 工具（云端与本地均未连接），无法把 [Panel header](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=71-112)（`71:112`）主组件内的 logo 实例从 20px 改为与共享 Lucide 图标一致的 16px；待有写权限时同步该主组件、`App / Icon button` 消费者与响应式评审帧。
+
+## 2026-09-18 连续工具调用收进一个活动根节点
+
+用户以 [Full conversation column](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=237-1370)（`237:1370`）为参照，要求连续的工具调用由一个根节点收集后展示。设计来源是该帧内的实例 `237:1418`，其主组件为 [App / Agent activity](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=204-1096)（`204:1096`，含 `201:425` Expanded 与 `204:1083` Collapsed 两个变体）。组件说明要求：只有真实工具调用进入 rail，助手正文留在 rail 之外；32px 行高、28px 层级缩进、1px 不透明连接线与 8px 弯折；隐藏末条分支时由 Tail=End 收尾。
+
+实现归属：新增 `activity-groups.ts` 承担纯逻辑（`messageBlocks` 按相邻关系把同一轮助手消息切成文本块 / 工具块，文本永远切断根节点；`activityState` 聚合根状态，失败优先于运行中，运行中优先于中断；`isMemoryActivity` 识别全记忆调用）；新增 `activity.tsx` 渲染根节点（Collapsible + 根行 + 步骤列表）；新增 `activity-row.tsx` 作为根行与步骤行共用的行内容（20px 图标槽含 16px 图标、标题、右侧元数据、chevron，运行中用共享 `Shimmer`）；`tool-activity.tsx` 改为嵌套步骤行，保留自己的输入／输出折叠；`conversation.tsx` 改用 `messageBlocks` 渲染块；`agent.css` 拥有 stem、rail、lead-in 与末条步骤的 8px 弯折，`.tool-details` 的 rail 与根 rail 同色；`packages/ui/src/styles.css` 新增 `--activity-connector`（对应 Figma 变量 `activity/connector`），作为 rail 的唯一所有者；i18n 新增 `activity.ranTool` / `activity.ranTools`。
+
+根节点的展开策略：运行或等待中保持展开，全部步骤进入终态后自动折叠一次；用户手动切换后以其选择为准。
+
+标题与元数据的映射：运行时数据（`task-schema.ts` 的 `MessagePart`）只有 name／input／output／status，没有回合摘要，也没有逐步骤计时，因此根标题由调用数量生成（en `Ran 1 tool` / `Ran {{count}} tools`，zh `运行了 N 个工具`，全记忆调用沿用 `Memory`），右侧元数据是状态文案（Completed／Running…／Waiting…／Failed／Interrupted）。Figma 中的 `Done · 42s` 需要逐步骤耗时，本次未改动运行时契约与持久化数据。
+
+验证：定向 `oxfmt`／`oxlint`、`pnpm typecheck`、`pnpm test`（20 个既有单元测试）通过；另用脚本核对分组与状态聚合（相邻工具合并为一个根、文本切分、单条与空消息、失败／运行／等待／中断的优先顺序、记忆判定）全部通过。未启动应用运行时，因此实际的 rail 连续性、折叠动画、窄面板下的换行与原生合成外观尚未复核。
+
+对齐修正（用户反馈「线没对齐」）：在用户截图上按像素测量显示，共享 `Button` 的 `border border-transparent` 使 `.tool-heading` 的 padding box 相对边框盒偏移 1px，且每行实际高 34px。绝对定位的 heading stem 以 padding box 为包含块，于是根行 stem 落在根图标轴（相对 x8.5～9.5），而步骤 rail 落在 x7.5～8.5，两者错开 1px，且 stem 与 lead-in 之间还留下 1px 断口。现在 `.tool-heading` 设 `border-width: 0`（行高回到设计要求的 32px，图标回到轨道起点），`.tool-details` 的 rail 由 8px 改为 7.5px，接上步骤 heading 自身绘制的 stem。修正后用生产构建的 CSS（`pnpm --filter @ai/desktop build`）在无头浏览器渲染同构 DOM 并逐像素测量：四行行高均为 32px；根图标轴与 rail 同在相对 x8（同一列，无断口）；步骤内容起点 x28；步骤 heading 的 stem 与详情 rail 同在步骤图标轴；末条步骤的 8px 弯折收在相对 x16；弯折之后不再有 rail。该测量在无头 Chromium + 生产 CSS 上完成，Electron 窗口内的合成结果仍待用户在运行时确认。
+
+Figma 侧未同步：本会话云端 Figma 工具不可用，本地 Figma MCP 只读，无法写入设计文件。本次设计侧不需要新组件（`App / Agent activity` 及两个 Disclosure 变体已存在），但两处实现差异未在设计文件中表达：根行右侧显示状态而非「状态 · 耗时」，以及上述默认折叠策略。另记一处待定项：新帧 `237:1370` 内各部分的间距是 8px，而代码沿用 `app.css`／`.assistant-message` 的 12px（与 [App / Conversation turn](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=693-4071)（`693:4071`）一致），本次未改动，待确认后再统一。
+
+### 按设计稿重排：工具调用标签与结果卡片
+
+用户反馈上一轮实现「没有按照设计稿来」。重新核对设计文件后确认：面向本应用的真实设计实例是 [Memory activity · Saved](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=772-4031)（`772:4031`，位于应用自己的会话轮次 `693:4071` 内），它给出了设计对真实数据的映射规则，而不是 237-1370 中标注为示意内容的文案：
+
+- 根行 = 种类标签（`Memory`）+ 状态（`Completed`），32px 行、左 7.5px stem、4px lead-in、28px 缩进、末条 8px 弯折。
+- 步骤行 = 动作标签（`Saved memory`）+ 目标（`User`，即 memory 写入工具的 `target` 参数），图标 68% 不透明度。
+- 步骤内容 = 结果卡片 `Tool output`：`surface/raised` #262626、1px `border/subtle`、8px 圆角、16px 内边距、12px 间距；标题行 16px 图标 + 14/20 主色文本；正文 14/22 次级色；`Show full output` 展开原始输入与输出。
+
+实现按同一规则映射到运行时数据：根标题在整段调用同属一种时用种类标签（复用 `common.tools.<id>.label`，memory 用 `activity.memory`，输入用 `activity.yourInput`），混合时用调用数量（`Ran N tools`），右侧固定显示状态；混合运行按种类聚合为 cluster（对应 237-1370 的同种类分组），meta 为「N 次」，单条调用直接作为 step；步骤标题用按工具的过去式动作标签（`activity.step.*`，含 memory 的四个动作），未知工具回退到原始工具名并保留 hover title；步骤右侧优先显示可由参数推导的目标（memory `target` → `activity.target.*`（User／Project／Memory／Failure）；文件工具 → 文件名；终端 → 命令首行；命令工具 → 命令名），推导不到时回退到状态文案；步骤内容改为结果卡片，标题行取输出的首个非空行（无输出时用状态），正文为后续预览，`显示完整输出` 展开原始输入／输出滚动区。图标按种类分配（read→FileText、write→FilePlus、edit→FilePen、bash→Terminal、command→SquareTerminal、memory→Brain、input→MessageCircleQuestionMark、未知→Wrench），运行中与失败仍分别用 spinner 与警示图标覆盖。新增 `--ata-surface-raised`、`--ata-radius-control` 两个 token（对应 Figma 的 `surface/raised` 与 `radius/control`），与既有 `--ata-border-subtle` 一起作为卡片的唯一所有者。
+
+验证：`oxfmt`／`oxlint`／`pnpm typecheck`／`pnpm test`（20 个既有测试）通过；用生产构建的 CSS 在无头浏览器渲染同构 DOM，并按计算值与像素核对：六行行高均 32px；根图标轴与 rail 同在相对 x8；cluster 内容起点 x28、cluster 内步骤 x56；卡片计算样式为 rgb(38,38,38) / 8px / 16px / 1px / 12px 间距，与设计一致；步骤内容起点相对 x56。
+
+仍未落地：设计稿中示意内容使用的散文式根标题（`Explored component patterns`）与分组的结果计数需要运行时并不存在的摘要与统计，本次分别以种类标签／调用数量与状态文案替代；逐步骤耗时仍未实现（transcript 不含计时数据），因此 `Done · 42s`、`2s` 一类时长未落地。Figma 侧仍只读，设计文件未改动。
