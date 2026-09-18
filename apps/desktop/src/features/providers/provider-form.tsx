@@ -23,6 +23,7 @@ import { SettingsHeading } from '../settings/settings-heading';
 import { sortModels } from './model-order';
 import { CustomModels } from './custom-models';
 import { ProviderSignIn } from './provider-login';
+import { ProviderThinkingLevel } from './provider-thinking-level';
 import { draftFrom } from './provider-draft';
 export function ProviderForm({
   provider,
@@ -252,6 +253,12 @@ export function ProviderForm({
                 </p>
               )}
             </div>
+            <ProviderThinkingLevel
+              draft={draft}
+              saved={saved}
+              disabled={disabled}
+              onChange={change}
+            />
           </fieldset>
           {draft.authType === 'oauth' &&
             (saved ? (

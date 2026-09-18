@@ -1,6 +1,7 @@
 import { ipcMain } from 'electron';
 import type { IpcMainInvokeEvent } from 'electron';
 import { randomUUID } from 'node:crypto';
+import { clampThinkingLevel } from '@earendil-works/pi-ai';
 import { Type } from 'typebox';
 import type { SettingsStore } from '../settings-store';
 import { parse } from '../agent/validation';
@@ -60,10 +61,12 @@ export class ProviderService {
     );
   }
   async save(value: ConnectionDraft) {
-    const { connectionId, expectedRevision, apiKey, ...config } = parse(
+    const { connectionId, expectedRevision, apiKey, ...draft } = parse(
       ConnectionDraftSchema,
       value,
     );
+    // Stored connections always carry an explicit level; an absent draft means reasoning off.
+    const config = { ...draft, defaultThinkingLevel: draft.defaultThinkingLevel ?? 'off' };
     validateConfig(config);
     const catalog = (await this.runtime.catalog()).find((item) => item.id === config.provider);
     if (!catalog) throw new Error('This provider is not registered in Pi.');
@@ -155,6 +158,11 @@ export class ProviderService {
       if (!current || current.revision !== revision)
         throw new Error('The connection changed. Try again.');
       current.defaultModel = reference.modelId;
+      // The saved level belongs to the previous model; keep it where the new model still supports it.
+      current.defaultThinkingLevel = clampThinkingLevel(
+        model,
+        current.defaultThinkingLevel ?? 'off',
+      );
       current.revision++;
       data.defaultConnectionId ??= initialDefaultConnectionId(
         data.connections,
@@ -285,6 +293,12 @@ export class ProviderService {
     );
     handle(PROVIDER_IPC.model, (reference, revision) =>
       this.setModel(parse(ModelReferenceSchema, reference), parse(revisionSchema, revision)),
+    );
+    // The panel composer shows the level next to its model picker; both windows may ask.
+    handle(
+      PROVIDER_IPC.levels,
+      (reference) => this.runtime.thinkingLevels(parse(ModelReferenceSchema, reference)),
+      false,
     );
     handle(PROVIDER_IPC.disconnect, (id, revision) =>
       this.disconnect(parse(identity, id), parse(revisionSchema, revision)),

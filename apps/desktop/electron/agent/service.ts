@@ -74,6 +74,7 @@ export class AgentService {
       (model) => {
         settings.providers.runtime.assertModel(model);
       },
+      (model, requested) => settings.providers.runtime.resolveThinkingLevel(model, requested),
     );
     this.artifacts = new ArtifactService(this.runtime);
   }

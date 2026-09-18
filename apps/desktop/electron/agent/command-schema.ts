@@ -1,4 +1,5 @@
 import { Type, type Static } from 'typebox';
+import { ModelThinkingLevelSchema } from '../providers/schema';
 
 export const Identifier = Type.String({
   minLength: 1,
@@ -82,6 +83,8 @@ export const ModelPolicySchema = Type.Union([
       mode: Type.Literal('fixed'),
       connectionId: Type.String({ maxLength: 4096 }),
       modelId: Type.String({ minLength: 1, maxLength: 256 }),
+      /** Level this command pins; omitted commands use the connection's saved level. */
+      thinkingLevel: Type.Optional(ModelThinkingLevelSchema),
     },
     { additionalProperties: false },
   ),

@@ -1,6 +1,11 @@
 import { app } from 'electron';
 import path from 'node:path';
-import { InMemoryCredentialStore, type AuthResult } from '@earendil-works/pi-ai';
+import {
+  clampThinkingLevel,
+  getSupportedThinkingLevels,
+  InMemoryCredentialStore,
+  type AuthResult,
+} from '@earendil-works/pi-ai';
 import { ModelRuntime } from '@earendil-works/pi-coding-agent';
 import type { SettingsStore } from '../settings-store';
 import type { ResolvedModel } from '../agent/task-schema';
@@ -13,7 +18,13 @@ import {
   modelDefinition,
 } from './configuration';
 import { ConnectionCredentials } from './credentials';
-import type { FrozenModel, ModelReference, ProviderCatalogEntry, StoredConnection } from './schema';
+import type {
+  FrozenModel,
+  ModelReference,
+  ModelThinkingLevel,
+  ProviderCatalogEntry,
+  StoredConnection,
+} from './schema';
 
 export class ProviderRuntime {
   private readonly runtimes = new Map<
@@ -198,6 +209,38 @@ export class ProviderRuntime {
       configurationId: configurationId(connection),
       definition: modelDefinition(model),
     };
+  }
+
+  /**
+   * The thinking levels Pi accepts for one saved connection's model, in Pi's order.
+   * Both windows show level pickers before a connection is fully configured, so this
+   * deliberately skips the connected/auth requirements of `resolve`.
+   */
+  async thinkingLevels(reference: ModelReference): Promise<ModelThinkingLevel[]> {
+    const connection = this.store.current.connections.find(
+      (item) => item.connectionId === reference.connectionId,
+    );
+    if (!connection) return [];
+    const model = (await this.models(connection)).getModel(connection.provider, reference.modelId);
+    return model ? getSupportedThinkingLevels(model) : [];
+  }
+
+  /**
+   * The level a run freezes for one model: the request, else the connection's saved
+   * default, else reasoning off, clamped to the levels that model supports. Unknown
+   * models keep the unclamped level; Pi clamps again when the session starts.
+   */
+  async resolveThinkingLevel(
+    model: ResolvedModel,
+    requested?: ModelThinkingLevel,
+  ): Promise<ModelThinkingLevel> {
+    const connection = this.store.current.connections.find(
+      (item) => item.connectionId === model.connectionId,
+    );
+    const level = requested ?? connection?.defaultThinkingLevel ?? 'off';
+    if (!connection) return level;
+    const available = (await this.models(connection)).getModel(model.provider, model.modelId);
+    return available ? clampThinkingLevel(available, level) : level;
   }
 
   assertModel(model: ResolvedModel) {
