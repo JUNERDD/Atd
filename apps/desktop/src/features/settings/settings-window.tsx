@@ -193,8 +193,8 @@ export function SettingsWindow() {
               {bridge && snapshot && <LanguageSelector language={snapshot.language} />}
             </div>
             <ScrollArea
-              className="settings-scroll-area"
-              viewportClassName="settings-scroll-viewport [&>div]:flex!"
+              className="flex-1"
+              viewportClassName="[&>div]:flex! [&>div]:flex-col [&>div]:h-full"
             >
               <div className="settings-content-scroll">
                 {preview && (

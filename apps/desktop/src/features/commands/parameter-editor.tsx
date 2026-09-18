@@ -102,8 +102,12 @@ export function ParameterEditor({
         onBack={onCancel}
         backLabel={t('parameters.back')}
       />
-      <ScrollArea className="editor-scroll-area" viewportClassName="overlay-footer-fade" gutter>
-        <div className="editor-fields">
+      <ScrollArea
+        className="flex-1 min-h-0 min-w-0 m-[-3px_-15px_-3px_-3px]"
+        viewportClassName="overlay-footer-fade"
+        gutter
+      >
+        <div className="editor-fields p-0.75">
           <div className="field-columns aligned-fields">
             <div className="settings-field">
               <Label htmlFor="parameter-label">{t('parameters.label')}</Label>

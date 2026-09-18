@@ -59,7 +59,7 @@ export function CommandLauncher({
     <section className="panel-content command-catalog">
       <Command>
         <CommandInput placeholder={t('commands.search')} />
-        <CommandList gutter className="command-catalog-list min-h-0 max-h-none flex-1">
+        <CommandList gutter className="-mr-3 min-h-0 max-h-none flex-1">
           <CommandEmpty>{t('commands.empty')}</CommandEmpty>
           {available.map((command) => (
             <CommandItem

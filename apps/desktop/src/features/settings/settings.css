@@ -67,14 +67,6 @@
 .settings-content-header [data-slot='select-trigger'] {
   -webkit-app-region: no-drag;
 }
-.settings-scroll-area {
-  flex: 1;
-}
-.settings-scroll-viewport > div {
-  display: flex !important;
-  flex-direction: column;
-  height: 100%;
-}
 .settings-content-scroll {
   display: flex;
   flex: 1;
@@ -114,8 +106,6 @@
   gap: 16px;
   --overlay-footer-gap: 16px;
 }
-.settings-editor-body,
-.command-editor > .editor-scroll-area,
 .command-editor > [data-slot='scroll-area'].editor-fields {
   flex: 1;
   min-height: 0;
@@ -123,8 +113,7 @@
   margin: -3px -15px -3px -3px;
 }
 .settings-editor-inner,
-.settings-editor-inner.settings-fields,
-.command-editor .editor-scroll-area .editor-fields {
+.settings-editor-inner.settings-fields {
   padding: 3px;
 }
 .settings-section-heading {
@@ -215,6 +204,34 @@
   display: block;
   margin-bottom: 24px;
 }
+.settings-general-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  min-width: 0;
+}
+.settings-permission-settings {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 16px;
+}
+.settings-permission-settings .settings-section-heading > p {
+  white-space: normal;
+}
+.settings-permission-options {
+  gap: 8px;
+}
+.settings-permission-option {
+  cursor: pointer;
+}
+.settings-permission-option:has(input:disabled) {
+  cursor: not-allowed;
+}
+.settings-permission-option [data-slot='label'] {
+  min-width: 0;
+  width: 100%;
+}
 .settings-shortcut-groups {
   display: flex;
   flex-direction: column;
@@ -226,9 +243,6 @@
   font-size: 14px;
   font-weight: 500;
   line-height: 20px;
-}
-.settings-shortcut-row [data-slot='item-content'] {
-  min-width: min(120px, 100%);
 }
 .settings-shortcut-button {
   height: auto;

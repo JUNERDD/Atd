@@ -56,18 +56,13 @@ function ShortcutRow({
   const keys = shortcutKeys(settings.bindings[action], settings.platform);
 
   return (
-    <Item
-      asChild
-      variant={action === 'togglePanel' ? 'outline' : 'default'}
-      size="xs"
-      className="settings-shortcut-row"
-    >
+    <Item asChild variant={action === 'togglePanel' ? 'outline' : 'default'} size="xs">
       <li>
-        <ItemContent>
-          <ItemTitle className="block max-w-full truncate" title={label}>
+        <ItemContent className="min-w-[min(120px,100%)]">
+          <ItemTitle className="block max-w-full" title={label}>
             {label}
           </ItemTitle>
-          <ItemDescription className="block truncate" title={description}>
+          <ItemDescription className="block" title={description}>
             {description}
           </ItemDescription>
         </ItemContent>

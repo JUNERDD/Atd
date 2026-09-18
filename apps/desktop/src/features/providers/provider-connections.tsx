@@ -62,7 +62,7 @@ export function ProviderConnections({
                 <ProviderBrand provider={connection.provider} />
                 <ItemContent>
                   <div className="provider-name-track">
-                    <ItemTitle className="min-w-0 truncate" title={connection.name}>
+                    <ItemTitle className="min-w-0" title={connection.name}>
                       {connection.name}
                     </ItemTitle>
                     {isDefault && (

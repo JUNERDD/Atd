@@ -66,7 +66,7 @@ export function CommandInput({
                     : t('input.text')}
                 {command.input.required ? ' *' : ''}
               </Label>
-              <ScrollArea className="panel-text-scroll" viewportClassName="text-preview-viewport">
+              <ScrollArea className="panel-text-scroll" viewportClassName="max-h-[inherit]">
                 <Textarea
                   id="command-text"
                   className="min-h-24 overflow-hidden"

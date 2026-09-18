@@ -44,7 +44,7 @@ export function TaskHistory({
   return (
     <section className="panel-content task-history" aria-label={t('history.label')}>
       <div className="pb-3">
-        <InputGroup className="h-8! bg-input/50">
+        <InputGroup className="h-8!">
           <InputGroupInput
             aria-label={t('history.searchLabel')}
             placeholder={t('history.searchPlaceholder')}
@@ -56,7 +56,7 @@ export function TaskHistory({
           </InputGroupAddon>
         </InputGroup>
       </div>
-      <ScrollArea className="task-history-list" gutter>
+      <ScrollArea className="flex-1 min-h-0 -mr-3" gutter>
         <ul className="task-list">
           {visible.map((task) => {
             const status = task.runs.at(-1)?.status;

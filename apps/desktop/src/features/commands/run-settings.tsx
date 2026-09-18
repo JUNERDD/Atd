@@ -121,7 +121,13 @@ export function RunSettings({
           <Label>{t('run.allowedTools')}</Label>
           <ItemGroup className="run-settings-tools">
             {TOOL_DESCRIPTIONS.map((tool) => (
-              <Item asChild key={tool.id} variant="outline" size="sm" className="run-settings-tool">
+              <Item
+                asChild
+                key={tool.id}
+                variant="outline"
+                size="sm"
+                className="grid grid-cols-[minmax(0,1fr)_auto]"
+              >
                 <li>
                   <ItemContent>
                     <ItemTitle>{tCommon(`tools.${tool.id}.label`)}</ItemTitle>

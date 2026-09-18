@@ -32,7 +32,7 @@ export function TaskReviewDialog({
           <DialogTitle>{t('review.title')}</DialogTitle>
           <DialogDescription>{t('review.description')}</DialogDescription>
         </DialogHeader>
-        <ScrollArea className="panel-dialog-scroll" gutter>
+        <ScrollArea className="flex-1 min-h-0 m-[-4px_-16px_-4px_-4px]" gutter>
           <div className="panel-dialog-body">
             {runs.map((item) => (
               <section key={item.id} className="space-y-2 border-b border-border pb-4">
@@ -53,7 +53,7 @@ export function TaskReviewDialog({
                   {item.snapshot.memory ? t('review.memoryOn') : t('review.memoryOff')} ·{' '}
                   {item.snapshot.tools.join(', ')}
                 </p>
-                <ScrollArea className="review-text" viewportClassName="text-preview-viewport">
+                <ScrollArea className="review-text" viewportClassName="max-h-[inherit]">
                   <pre>{item.snapshot.input.text}</pre>
                 </ScrollArea>
                 {item.snapshot.instructions && (
@@ -61,7 +61,7 @@ export function TaskReviewDialog({
                     <summary className="text-sm cursor-pointer">
                       {t('review.savedInstructions')}
                     </summary>
-                    <ScrollArea className="review-text" viewportClassName="text-preview-viewport">
+                    <ScrollArea className="review-text" viewportClassName="max-h-[inherit]">
                       <pre>{item.snapshot.instructions}</pre>
                     </ScrollArea>
                   </details>

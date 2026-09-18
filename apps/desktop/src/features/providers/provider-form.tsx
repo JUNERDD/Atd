@@ -104,7 +104,11 @@ export function ProviderForm({
         onBack={onBack}
         backLabel={t('form.back')}
       />
-      <ScrollArea className="settings-editor-body" viewportClassName="overlay-footer-fade" gutter>
+      <ScrollArea
+        className="flex-1 min-h-0 min-w-0 m-[-3px_-15px_-3px_-3px]"
+        viewportClassName="overlay-footer-fade"
+        gutter
+      >
         <div className="settings-editor-inner settings-fields">
           {saved && saved.revision !== draft.expectedRevision && (
             <output className="settings-field-note">
