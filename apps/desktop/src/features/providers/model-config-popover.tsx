@@ -112,7 +112,9 @@ export function ModelConfigPopover({
       open={open}
       onOpenChange={(next) => {
         setOpen(next);
-        if (!next) setView('root');
+        // Reset on open, not on close: Radix keeps content mounted during the
+        // exit animation, so resetting on close flashes the root over the subview.
+        if (next) setView('root');
       }}
     >
       <PopoverTrigger asChild>
