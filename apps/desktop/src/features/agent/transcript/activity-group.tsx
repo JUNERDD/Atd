@@ -2,6 +2,7 @@ import { useLayoutEffect, useRef, useState, type UIEvent, type WheelEvent } from
 import { Bot, ChevronRight, PenLine, Search, Sparkles, Terminal, Wrench } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@ai/ui/components/button';
+import { ScrollArea } from '@ai/ui/components/scroll-area';
 import { Shimmer } from '@ai/ui/components/ai-elements/shimmer';
 import type { Artifact, FileRef } from '../../../../electron/agent/task-schema';
 import { TaskFiles } from '../task-files';
@@ -141,11 +142,11 @@ function ActivityPhaseView({
         {label}
       </Button>
       <div className="phase-body" data-open={open}>
-        <div
-          ref={ref}
-          onScroll={onScroll}
-          onWheel={onWheel}
-          className={active || !open ? 'phase-live' : undefined}
+        <ScrollArea
+          viewportRef={ref}
+          viewportProps={{ onScroll, onWheel }}
+          className="phase-scroll"
+          scrollShadow
         >
           <div className="phase-steps">
             {phase.steps.map((step) => (
@@ -154,7 +155,7 @@ function ActivityPhaseView({
               </div>
             ))}
           </div>
-        </div>
+        </ScrollArea>
       </div>
     </div>
   );
