@@ -151,19 +151,6 @@
     "cancel": "取消",
     "deleteAction": "删除任务"
   },
-  "policy": {
-    "permissionsLabel": "权限：每次询问",
-    "askFirst": "每次询问",
-    "title": "任务权限",
-    "description": "为下一条消息选择能力。文件更改和终端命令仍需逐项批准。",
-    "memoryLabel": "使用记忆",
-    "memoryDescription": "自动学习跟随你的全局设置。",
-    "modelLabel": "使用当前默认模型",
-    "modelDescription": "否则保留此任务保存的模型。",
-    "additional": "新增能力：{{capabilities}}。",
-    "allowForNext": "允许用于下一条消息",
-    "applyToNext": "应用于下一条消息"
-  },
   "transcript": {
     "footer": {
       "live": "处理中 · {{elapsed}} · {{model}}",

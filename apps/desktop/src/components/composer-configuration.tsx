@@ -3,7 +3,6 @@ import type { RunPolicy } from '../../electron/agent/run-policy';
 import type { AgentTask } from '../../electron/agent/task-schema';
 import type { Connection, ModelReference } from '../../electron/providers/schema';
 import { PermissionTierControl } from '../features/agent/permission-tier-control';
-import { TaskPolicyControl } from '../features/agent/task-policy';
 import { ModelConfigPopover } from '../features/providers/model-config-popover';
 import '../features/providers/providers.css';
 
@@ -32,7 +31,6 @@ export function ComposerConfiguration({
     <div className="composer-configuration" aria-label={t('configuration.label')}>
       <div className="composer-policy-group">
         <PermissionTierControl taskId={taskId} task={task} />
-        <TaskPolicyControl value={policy} onChange={onPolicyChange} />
       </div>
       <div className="composer-model-group">
         <ModelConfigPopover

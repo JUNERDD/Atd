@@ -104,7 +104,6 @@
   /* The band reserves room above the controls for the overlay fade to finish. */
   padding: 24px 16px 16px;
 }
-.command-run-tools,
 .command-run-actions {
   display: flex;
   align-items: center;

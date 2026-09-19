@@ -151,19 +151,6 @@
     "cancel": "Cancel",
     "deleteAction": "Delete task"
   },
-  "policy": {
-    "permissionsLabel": "Permissions: Ask first",
-    "askFirst": "Ask first",
-    "title": "Task permissions",
-    "description": "Choose capabilities for your next message. File changes and terminal commands still require approval for each action.",
-    "memoryLabel": "Use memory",
-    "memoryDescription": "Automatic learning follows your global setting.",
-    "modelLabel": "Use current default model",
-    "modelDescription": "Otherwise keep this task’s saved model.",
-    "additional": "Additional capabilities: {{capabilities}}.",
-    "allowForNext": "Allow for next message",
-    "applyToNext": "Apply to next message"
-  },
   "transcript": {
     "footer": {
       "live": "Working · {{elapsed}} · {{model}}",
