@@ -14,16 +14,16 @@ import {
   outcomeKey,
   statusLabelKey,
   stepKey,
+  toolIcon,
   toolTarget,
 } from './tool-copy';
 
 /**
- * One step of the agent's work. In a phase the rail draws the bullet, so the row drops its own
- * leading icon: the verb reads at full strength, the file target sits in a chip, and only failure
- * stays marked with a trailing cross. Running and success get no trailing icon. A recorded
- * permission outcome rides the row too — replacing the status fallback when the call has no
- * target — instead of floating on its own line. The trigger, hover, and expanding chevron come
- * from the shared `CollapsibleRow`.
+ * One step of the agent's work. The leading icon names the tool type and swaps to the expanding
+ * chevron on hover (see `CollapsibleRow`); the verb reads at full strength, the file target sits
+ * in a chip, and only failure stays marked with a trailing cross. Running and success get no
+ * trailing icon. A recorded permission outcome rides the row too — replacing the status fallback
+ * when the call has no target — instead of floating on its own line.
  */
 export function ToolBlock({
   block,
@@ -37,6 +37,7 @@ export function ToolBlock({
   const { t } = useTranslation('tasks');
   const [open, setOpen] = useState(Boolean(forceOpen));
   const expanded = Boolean(forceOpen) || open;
+  const Icon = toolIcon(block.name);
   const label = block.name === 'command' ? commandStepKey(block.args) : stepKey(block.name);
   const title = label ? t(label) : block.name;
   const path =
@@ -76,7 +77,12 @@ export function ToolBlock({
   );
   return (
     <div className="tool-block">
-      <CollapsibleRow open={expanded} onOpenChange={setOpen} heading={heading}>
+      <CollapsibleRow
+        open={expanded}
+        onOpenChange={setOpen}
+        icon={<Icon className="row-icon" strokeWidth={1.75} />}
+        heading={heading}
+      >
         <div className="tool-body">
           <ToolBody block={block} />
         </div>
