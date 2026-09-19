@@ -24,6 +24,10 @@ export type StepKey =
   | 'activity.step.edit'
   | 'activity.step.bash'
   | 'activity.step.command'
+  | 'activity.step.commandList'
+  | 'activity.step.commandGet'
+  | 'activity.step.commandCreate'
+  | 'activity.step.commandUpdate'
   | 'activity.step.searchMemory'
   | 'activity.step.saveMemory'
   | 'activity.step.updateMemory'
@@ -85,6 +89,37 @@ const ICONS: Record<string, LucideIcon> = {
 
 export function stepKey(name: string): StepKey | null {
   return STEP_KEYS[name] ?? null;
+}
+
+/**
+ * Operation-specific label for `command` rows. The tool takes `operation` plus `commandId` /
+ * `fields` (see `CommandToolSchema`), so `list` / `get` / `save` read distinctly and a save with
+ * a `commandId` is an update while one without is a create. Unknown shapes fall back to the
+ * generic manage label.
+ */
+export function commandStepKey(args: Record<string, unknown>): StepKey {
+  const operation = args.operation;
+  if (operation === 'list') return 'activity.step.commandList';
+  if (operation === 'get') return 'activity.step.commandGet';
+  if (operation === 'save') {
+    const id = args.commandId;
+    return typeof id === 'string' && id
+      ? 'activity.step.commandUpdate'
+      : 'activity.step.commandCreate';
+  }
+  return 'activity.step.command';
+}
+
+/** Identity of a `command` call: the stored id, or the name being saved on create. */
+export function commandTarget(args: Record<string, unknown>): string | null {
+  const id = args.commandId;
+  if (typeof id === 'string' && id) return id;
+  const fields = args.fields;
+  if (fields && typeof fields === 'object' && !Array.isArray(fields)) {
+    const name = (fields as Record<string, unknown>).name;
+    if (typeof name === 'string' && name) return name;
+  }
+  return null;
 }
 
 export function toolIcon(name: string): LucideIcon {
@@ -177,9 +212,7 @@ export function toolTarget(name: string, args: Record<string, unknown>): string 
     if (typeof command !== 'string') return null;
     return command.split('\n')[0]?.trim() || null;
   }
-  if (name === 'command') {
-    return typeof args.name === 'string' && args.name ? args.name : null;
-  }
+  if (name === 'command') return commandTarget(args);
   if (name.startsWith('memory_') && typeof args.target === 'string') return args.target;
   return null;
 }

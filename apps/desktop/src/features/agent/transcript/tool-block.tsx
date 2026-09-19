@@ -8,6 +8,7 @@ import { ApprovalControls } from './approval-controls';
 import { CollapsibleRow } from './collapsible-row';
 import { ToolBody } from './tool-body';
 import {
+  commandStepKey,
   fileIconForPath,
   memoryTargetKey,
   outcomeKey,
@@ -19,7 +20,10 @@ import {
 /**
  * One step of the agent's work. In a phase the rail draws the bullet, so the row drops its own
  * leading icon: the verb reads at full strength, the file target sits in a chip, and only failure
- * stays marked with a trailing cross. Running and success get no trailing icon.
+ * stays marked with a trailing cross. Running and success get no trailing icon. A recorded
+ * permission outcome rides the row too — replacing the status fallback when the call has no
+ * target — instead of floating on its own line. The trigger, hover, and expanding chevron come
+ * from the shared `CollapsibleRow`.
  */
 export function ToolBlock({
   block,
@@ -33,7 +37,7 @@ export function ToolBlock({
   const { t } = useTranslation('tasks');
   const [open, setOpen] = useState(Boolean(forceOpen));
   const expanded = Boolean(forceOpen) || open;
-  const label = stepKey(block.name);
+  const label = block.name === 'command' ? commandStepKey(block.args) : stepKey(block.name);
   const title = label ? t(label) : block.name;
   const path =
     (block.name === 'read' || block.name === 'write' || block.name === 'edit') &&
@@ -42,7 +46,9 @@ export function ToolBlock({
       : null;
   const rawTarget = toolTarget(block.name, block.args);
   const memoryKey = rawTarget ? memoryTargetKey(rawTarget) : null;
-  const meta = memoryKey ? t(memoryKey) : (rawTarget ?? t(statusLabelKey(block.status)));
+  const outcome =
+    !confirmation && block.permission?.outcome ? t(outcomeKey(block.permission.outcome)) : null;
+  const meta = memoryKey ? t(memoryKey) : (rawTarget ?? outcome ?? t(statusLabelKey(block.status)));
   const rejected =
     block.status === 'failed' || block.status === 'declined' || block.status === 'interrupted';
   const heading = (
@@ -60,6 +66,11 @@ export function ToolBlock({
           {meta}
         </span>
       )}
+      {outcome && meta !== outcome && (
+        <span className="permission-chip" title={outcome}>
+          {outcome}
+        </span>
+      )}
       {rejected && <X className="tool-row-error" />}
     </>
   );
@@ -71,9 +82,6 @@ export function ToolBlock({
         </div>
       </CollapsibleRow>
       {confirmation && <ApprovalControls request={confirmation} />}
-      {!confirmation && block.permission?.outcome && (
-        <p className="permission-chip">{t(outcomeKey(block.permission.outcome))}</p>
-      )}
     </div>
   );
 }
