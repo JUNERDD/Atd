@@ -543,7 +543,12 @@
 .phase-body > .phase-scroll {
   max-height: min(17.5rem, 45vh);
 }
-.phase-body[data-open='true'] > .phase-scroll [data-slot='scroll-area-viewport'] {
+/*
+ * Child combinator is load-bearing: containment and anchor suppression belong to the phase
+ * viewport only. A descendant selector would also match nested tool-output viewports and trap
+ * their wheel events — short boxes can neither consume nor chain the scroll.
+ */
+.phase-body[data-open='true'] > .phase-scroll > [data-slot='scroll-area-viewport'] {
   overscroll-behavior: contain;
   overflow-anchor: none;
 }
@@ -698,6 +703,14 @@
 }
 .tool-command {
   color: var(--muted-foreground);
+}
+.tool-output {
+  max-height: 240px;
+  border-radius: var(--radius-xl);
+  background: var(--muted);
+}
+.tool-output-pre {
+  padding: 8px;
 }
 .tool-diff {
   max-height: 320px;

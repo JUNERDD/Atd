@@ -33,6 +33,7 @@
           "thinking-level-select",
           "tool-body",
           "tool-diff",
+          "tool-output",
           "turn-header-label"
         ],
         "contracts": [

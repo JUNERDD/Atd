@@ -1,17 +1,7 @@
-import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button } from '@ai/ui/components/button';
 import { ScrollArea } from '@ai/ui/components/scroll-area';
 import type { BlockOf } from '../../../../electron/agent/transcript-schema';
 import { bashCommand } from './tool-copy';
-
-const PREVIEW_LINES = 12;
-
-function truncateLines(text: string): { preview: string; truncated: boolean } {
-  const lines = text.split('\n');
-  if (lines.length <= PREVIEW_LINES) return { preview: text, truncated: false };
-  return { preview: lines.slice(0, PREVIEW_LINES).join('\n'), truncated: true };
-}
 
 function DiffLine({ line }: { line: string }) {
   const kind =
@@ -37,22 +27,13 @@ export function ToolDiff({ diff }: { diff: string }) {
   );
 }
 
-export function ToolOutput({ text, live }: { text: string; live?: boolean }) {
-  const { t } = useTranslation('tasks');
-  const [full, setFull] = useState(false);
-  const { preview, truncated } = truncateLines(text);
-  const body = full ? text : preview;
+export function ToolOutput({ text }: { text: string }) {
   return (
-    <div className="tool-output-block">
-      <ScrollArea className="max-h-60" viewportClassName="max-h-[inherit]" gutter>
-        <pre className="m-0 text-xs leading-4.5 whitespace-pre-wrap wrap-anywhere">{body}</pre>
-      </ScrollArea>
-      {truncated && !live && (
-        <Button variant="ghost" size="sm" onClick={() => setFull(!full)}>
-          {full ? t('activity.hideOutput') : t('activity.showOutput')}
-        </Button>
-      )}
-    </div>
+    <ScrollArea className="tool-output" viewportClassName="max-h-[inherit]" gutter scrollShadow>
+      <pre className="tool-output-pre m-0 text-xs leading-4.5 whitespace-pre-wrap wrap-anywhere">
+        {text}
+      </pre>
+    </ScrollArea>
   );
 }
 
@@ -72,13 +53,13 @@ export function ToolBody({ block }: { block: BlockOf<'tool'> }) {
       return (
         <div className="tool-bash">
           {command && <pre className="tool-command">{command}</pre>}
-          {text && <ToolOutput text={text} live={running} />}
+          {text && <ToolOutput text={text} />}
         </div>
       );
     default:
       return (
         <>
-          {text && <ToolOutput text={text} live={running} />}
+          {text && <ToolOutput text={text} />}
           {block.status === 'interrupted' && (
             <p className="text-xs text-muted-foreground">{t('activity.interruptedNote')}</p>
           )}
