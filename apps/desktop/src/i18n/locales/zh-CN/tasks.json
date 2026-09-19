@@ -56,8 +56,6 @@
     "failed": "失败",
     "interrupted": "已中断",
     "interruptedNote": "执行在记录最终工具结果前结束。继续前请检查已有的文件更改。",
-    "showOutput": "显示完整输出",
-    "hideOutput": "收起完整输出",
     "step": {
       "read": "读取文件",
       "write": "写入文件",

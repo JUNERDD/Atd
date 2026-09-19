@@ -56,8 +56,6 @@
     "failed": "Failed",
     "interrupted": "Interrupted",
     "interruptedNote": "Execution ended before a final tool result was recorded. Review any existing file changes before continuing.",
-    "showOutput": "Show full output",
-    "hideOutput": "Hide full output",
     "step": {
       "read": "Read file",
       "write": "Write file",
