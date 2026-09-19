@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { TooltipProvider } from '@ai/ui/components/tooltip';
 import { Transcript } from './transcript';
@@ -26,7 +27,8 @@ function mount(detail: ReturnType<typeof makeDetail>) {
 }
 
 describe('activity folding', () => {
-  it('keeps a live group expanded while a tool runs and the assistant streams', () => {
+  it('collapses a live group behind the latest step and expands on click', async () => {
+    const user = userEvent.setup();
     mount(
       makeDetail({
         status: 'running',
@@ -46,7 +48,9 @@ describe('activity folding', () => {
     );
     const group = document.querySelector('[data-activity="live"]');
     expect(group).not.toBeNull();
-    const header = screen.getByRole('button', { name: 'Hide 2 steps, Reading notes.txt' });
+    const header = screen.getByRole('button', { name: 'Show 2 steps, Reading notes.txt' });
+    expect(header).toHaveAttribute('aria-expanded', 'false');
+    await user.click(header);
     expect(header).toHaveAttribute('aria-expanded', 'true');
     expect(screen.getByText('Read file')).toBeVisible();
   });
@@ -64,7 +68,9 @@ describe('activity folding', () => {
         ],
       }),
     );
-    const trigger = screen.getByRole('button', { name: 'Show 4 steps, Read 2 files' });
+    const trigger = screen.getByRole('button', {
+      name: 'Show 4 steps, Thought once · Read 2 files',
+    });
     expect(trigger).toHaveAttribute('aria-expanded', 'false');
     expect(document.querySelector('[data-activity="settled"]')).not.toBeNull();
   });

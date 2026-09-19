@@ -1,6 +1,6 @@
 import type { useTranslation } from 'react-i18next';
 import type { ViewBlock } from './adapter';
-import { isToolView, type ActivityPhase } from './phases';
+import { isThinkingView, isToolView, toolCategory, type ActivityPhase } from './phases';
 
 type T = ReturnType<typeof useTranslation<'tasks'>>['t'];
 
@@ -43,12 +43,40 @@ function fileParam(paths: Set<string>, t: T): string {
 }
 
 /**
+ * The header while a phase is still running: only the latest step, not the whole tally — a
+ * running tool reads as its own verb line, a question as its title, thinking as its state. Once
+ * the phase settles the header falls back to `phaseTitle` below.
+ */
+export function latestStepTitle(step: ViewBlock, t: T): string {
+  if (step.role === 'question') {
+    return step.text.trim() || t('transcript.verb.toolOneLive');
+  }
+  if (step.role === 'reasoning') {
+    return t(step.streaming ? 'transcript.verb.thinkLive' : 'transcript.verb.thinkDone');
+  }
+  return phaseTitle({ id: step.id, kind: toolCategory(step), steps: [step] }, true, t);
+}
+
+/**
  * The group's header: what the calls add up to — in the present tense while the group is still
- * running, so "Reading notes.txt" becomes "Read notes.txt" the moment it folds. Ported from
- * monocode `activityPhaseTitle` onto the frozen `transcript.verb.*` keys; every key below is a
- * literal so type checking catches typos.
+ * running, so "Reading notes.txt" becomes "Read notes.txt" the moment it folds. A group that
+ * also thought leads with its reasoning count ("Thought 7 times · Ran 10 tools"); a group of
+ * pure thought is just the count. Ported from monocode `activityPhaseTitle` onto the frozen
+ * `transcript.verb.*` keys; every key below is a literal so type checking catches typos.
  */
 export function phaseTitle(phase: ActivityPhase, live: boolean, t: T): string {
+  const thinkCount = phase.steps.filter(isThinkingView).length;
+  const title = workTitle(phase, live, t);
+  if (thinkCount <= 0) return title;
+  const think =
+    thinkCount === 1
+      ? t('transcript.verb.thinkCountOne')
+      : t('transcript.verb.thinkCountMany', { count: thinkCount });
+  if (phase.kind === 'think') return think;
+  return `${think} · ${title}`;
+}
+
+function workTitle(phase: ActivityPhase, live: boolean, t: T): string {
   const tally = tallySteps(phase.steps);
   switch (phase.kind) {
     case 'edit':

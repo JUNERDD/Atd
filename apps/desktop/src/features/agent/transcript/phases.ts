@@ -45,9 +45,6 @@ export function isViewLive(block: ViewBlock): boolean {
   }
 }
 
-/** Ties break towards the kind that changed the most: an edit outranks a read. */
-const WORK_KIND_ORDER: ActivityWorkKind[] = ['edit', 'run', 'agent', 'research', 'other'];
-
 export function toolCategory(block: ViewBlock): ActivityWorkKind {
   const kind = block.tool?.kind;
   if (kind === 'agent') return 'agent';
@@ -116,7 +113,9 @@ function takeTrailingNarration(phase: ActivityPhase): ViewBlock[] {
 
 /**
  * A single call the agent never introduced — the read wedged between two edits, the test run
- * after them — folds back into the group before it rather than taking a header of its own.
+ * after them — folds back into the group before it, which keeps its identity: one absorbed call
+ * never retitles its new home. The absorption can leave two adjacent groups of the same kind, so
+ * a second pass merges those back together: one continuous run of work reads as one group.
  */
 function absorbStrayPhases(phases: ActivityPhase[]): ActivityPhase[] {
   const kept: ActivityPhase[] = [];
@@ -131,27 +130,25 @@ function absorbStrayPhases(phases: ActivityPhase[]): ActivityPhase[] {
       previous.kind !== 'agent'
     ) {
       previous.steps.push(...phase.steps);
-      previous.kind = dominantWorkKind(previous.steps) ?? previous.kind;
       continue;
     }
     kept.push(phase);
   }
-  return kept;
-}
-
-function dominantWorkKind(steps: ViewBlock[]): ActivityWorkKind | undefined {
-  const counts = new Map<ActivityWorkKind, number>();
-  for (const block of steps) {
-    if (!isToolView(block)) continue;
-    const kind = toolCategory(block);
-    counts.set(kind, (counts.get(kind) ?? 0) + 1);
+  const merged: ActivityPhase[] = [];
+  for (const phase of kept) {
+    const previous = merged[merged.length - 1];
+    if (
+      previous &&
+      previous.steps.length > 0 &&
+      previous.kind === phase.kind &&
+      previous.kind !== 'agent'
+    ) {
+      previous.steps.push(...phase.steps);
+      continue;
+    }
+    merged.push(phase);
   }
-  let best: ActivityWorkKind | undefined;
-  for (const kind of WORK_KIND_ORDER) {
-    const count = counts.get(kind) ?? 0;
-    if (count > 0 && (!best || count > (counts.get(best) ?? 0))) best = kind;
-  }
-  return best;
+  return merged;
 }
 
 /** True while a tool in this turn is still running or waiting on the user. */
