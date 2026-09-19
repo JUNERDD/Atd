@@ -16,8 +16,7 @@ import {
   ItemGroup,
   ItemTitle,
 } from '@ai/ui/components/item';
-import { ModelPicker } from '../providers/model-picker';
-import { ThinkingLevelSelect } from '../providers/thinking-level-select';
+import { ModelConfigPopover } from '../providers/model-config-popover';
 import { TOOL_DESCRIPTIONS, type CommandDefinition } from '../../../electron/agent/command-schema';
 import type { SettingsSnapshot } from '../../../electron/settings-contract';
 
@@ -78,24 +77,17 @@ export function RunSettings({
                 </SelectContent>
               </Select>
               {fixedModel && (
-                <>
-                  <ModelPicker
-                    connections={settings?.connections ?? []}
-                    value={fixedModel}
-                    label={t('run.fixedModel')}
-                    onChange={(reference) =>
-                      onChange({ ...command, model: { mode: 'fixed', ...reference } })
-                    }
-                  />
-                  <ThinkingLevelSelect
-                    reference={fixedModel}
-                    value={fixedModel.thinkingLevel ?? 'off'}
-                    label={t('run.thinkingLevel')}
-                    onChange={(thinkingLevel) =>
-                      onChange({ ...command, model: { ...fixedModel, thinkingLevel } })
-                    }
-                  />
-                </>
+                <ModelConfigPopover
+                  connections={settings?.connections ?? []}
+                  model={fixedModel}
+                  thinkingLevel={fixedModel.thinkingLevel ?? 'off'}
+                  onModelChange={(reference) =>
+                    onChange({ ...command, model: { ...fixedModel, ...reference } })
+                  }
+                  onThinkingLevelChange={(thinkingLevel) =>
+                    onChange({ ...command, model: { ...fixedModel, thinkingLevel } })
+                  }
+                />
               )}
             </div>
           </div>

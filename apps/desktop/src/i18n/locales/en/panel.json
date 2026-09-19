@@ -50,7 +50,7 @@
     "label": "Task configuration",
     "models": "Models: {{model}}",
     "chooseModel": "Choose model",
-    "thinkingLevel": "Thinking level",
+    "thinkingLevel": "Effort",
     "capabilities": "Capabilities"
   },
   "voice": {

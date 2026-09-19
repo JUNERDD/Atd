@@ -4,8 +4,7 @@ import type { AgentTask } from '../../electron/agent/task-schema';
 import type { Connection, ModelReference } from '../../electron/providers/schema';
 import { PermissionTierControl } from '../features/agent/permission-tier-control';
 import { TaskPolicyControl } from '../features/agent/task-policy';
-import { ModelPicker } from '../features/providers/model-picker';
-import { ThinkingLevelSelect } from '../features/providers/thinking-level-select';
+import { ModelConfigPopover } from '../features/providers/model-config-popover';
 import '../features/providers/providers.css';
 
 interface ComposerConfigurationProps {
@@ -27,7 +26,7 @@ export function ComposerConfiguration({
   task,
 }: ComposerConfigurationProps) {
   const { t } = useTranslation('panel');
-  const shown = policy.model ?? model;
+  const shown = policy.model ?? model ?? null;
   const connection = connections.find((item) => item.connectionId === shown?.connectionId);
   return (
     <div className="composer-configuration" aria-label={t('configuration.label')}>
@@ -36,22 +35,16 @@ export function ComposerConfiguration({
         <TaskPolicyControl value={policy} onChange={onPolicyChange} />
       </div>
       <div className="composer-model-group">
-        <ModelPicker
+        <ModelConfigPopover
           compact
           connections={connections}
-          value={shown}
-          label={t('configuration.models', {
-            model: policy.model?.modelId ?? model?.modelId ?? t('configuration.chooseModel'),
-          })}
-          onChange={(model) => onPolicyChange({ ...policy, useDefaultModel: false, model })}
+          model={shown}
+          thinkingLevel={policy.thinkingLevel ?? connection?.defaultThinkingLevel ?? 'off'}
+          onModelChange={(next) =>
+            onPolicyChange({ ...policy, useDefaultModel: false, model: next })
+          }
+          onThinkingLevelChange={(thinkingLevel) => onPolicyChange({ ...policy, thinkingLevel })}
           onOpenProviders={onOpenSettings}
-        />
-        <ThinkingLevelSelect
-          compact
-          reference={shown}
-          value={policy.thinkingLevel ?? connection?.defaultThinkingLevel ?? 'off'}
-          label={t('configuration.thinkingLevel')}
-          onChange={(thinkingLevel) => onPolicyChange({ ...policy, thinkingLevel })}
         />
       </div>
     </div>

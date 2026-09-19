@@ -50,7 +50,7 @@
     "label": "任务配置",
     "models": "模型：{{model}}",
     "chooseModel": "选择模型",
-    "thinkingLevel": "思考档位",
+    "thinkingLevel": "推理强度",
     "capabilities": "能力"
   },
   "voice": {
