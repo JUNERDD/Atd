@@ -1,15 +1,13 @@
 import { createElement, useState } from 'react';
-import { X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Shimmer } from '@ai/ui/components/ai-elements/shimmer';
 import type { ConfirmationRequest } from '../../../../electron/agent/permission-schema';
 import type { BlockOf } from '../../../../electron/agent/transcript-schema';
+import { ActivityRow } from './activity-row';
 import { ApprovalControls } from './approval-controls';
-import { CollapsibleRow } from './collapsible-row';
 import { ToolBody } from './tool-body';
 import {
   commandStepKey,
-  fileIconForPath,
   memoryTargetKey,
   outcomeKey,
   statusLabelKey,
@@ -20,10 +18,10 @@ import {
 
 /**
  * One step of the agent's work. The leading icon names the tool type and swaps to the expanding
- * chevron on hover (see `CollapsibleRow`); the verb reads at full strength, the file target sits
- * in a chip, and only failure stays marked with a trailing cross. Running and success get no
- * trailing icon. A recorded permission outcome rides the row too — replacing the status fallback
- * when the call has no target — instead of floating on its own line.
+ * chevron on hover (see `ActivityRow.Icon`); the verb reads at full strength, the file target sits
+ * in a chip, and no trailing status icon is rendered — the row reads the same settled or failed.
+ * A recorded permission outcome rides the row too — replacing the status fallback when the call
+ * has no target — instead of floating on its own line.
  */
 export function ToolBlock({
   block,
@@ -50,43 +48,48 @@ export function ToolBlock({
   const outcome =
     !confirmation && block.permission?.outcome ? t(outcomeKey(block.permission.outcome)) : null;
   const meta = memoryKey ? t(memoryKey) : (rawTarget ?? outcome ?? t(statusLabelKey(block.status)));
-  const rejected =
-    block.status === 'failed' || block.status === 'declined' || block.status === 'interrupted';
   const heading = (
     <>
-      <span className="min-w-0 flex-1 truncate text-left" title={block.name}>
+      {/*
+       * `flex-initial` overrides the generic `flex-1` title so it hugs the verb; the summary meta
+       * is itself `flex: 1` (see `agent.css`) and fills the rest of the row at the same text size.
+       * Both truncate, and the title shrinks first on narrow rows.
+       */}
+      <ActivityRow.Title className="flex-initial" title={block.name}>
         {block.status === 'running' ? <Shimmer as="span">{title}</Shimmer> : title}
-      </span>
+      </ActivityRow.Title>
       {path ? (
-        <span className="tool-chip" title={meta}>
-          {createElement(fileIconForPath(path))}
+        // No file glyph here: the row's leading icon already names the file type.
+        <ActivityRow.Meta className="tool-chip" title={meta}>
           {meta}
-        </span>
+        </ActivityRow.Meta>
       ) : (
-        <span className="activity-meta" title={meta}>
+        <ActivityRow.Meta className="activity-meta" title={meta}>
           {meta}
-        </span>
+        </ActivityRow.Meta>
       )}
       {outcome && meta !== outcome && (
-        <span className="permission-chip" title={outcome}>
+        <ActivityRow.Meta className="permission-chip" title={outcome}>
           {outcome}
-        </span>
+        </ActivityRow.Meta>
       )}
-      {rejected && <X className="tool-row-error" />}
     </>
   );
   return (
     <div className="tool-block">
-      <CollapsibleRow
-        open={expanded}
-        onOpenChange={setOpen}
-        icon={<Icon className="row-icon" strokeWidth={1.75} />}
-        heading={heading}
-      >
-        <div className="tool-body">
-          <ToolBody block={block} />
-        </div>
-      </CollapsibleRow>
+      <ActivityRow.Root open={expanded} onOpenChange={setOpen} status={block.status}>
+        <ActivityRow.Trigger>
+          <ActivityRow.Icon>
+            {createElement(Icon, { className: 'row-icon', strokeWidth: 1.75 })}
+          </ActivityRow.Icon>
+          {heading}
+        </ActivityRow.Trigger>
+        <ActivityRow.Content>
+          <ActivityRow.Body className="tool-body">
+            <ToolBody block={block} />
+          </ActivityRow.Body>
+        </ActivityRow.Content>
+      </ActivityRow.Root>
       {confirmation && <ApprovalControls request={confirmation} />}
     </div>
   );

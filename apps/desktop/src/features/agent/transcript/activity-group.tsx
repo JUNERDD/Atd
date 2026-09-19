@@ -1,11 +1,11 @@
 import { useLayoutEffect, useRef, useState, type UIEvent, type WheelEvent } from 'react';
-import { Bot, ChevronRight, PenLine, Search, Sparkles, Terminal, Wrench } from 'lucide-react';
+import { Bot, PenLine, Search, Sparkles, Terminal, Wrench } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Button } from '@ai/ui/components/button';
 import { ScrollArea } from '@ai/ui/components/scroll-area';
 import { Shimmer } from '@ai/ui/components/ai-elements/shimmer';
 import type { Artifact, FileRef } from '../../../../electron/agent/task-schema';
 import { TaskFiles } from '../task-files';
+import { ActivityRow } from './activity-row';
 import type { AdaptedItem, ViewBlock } from './adapter';
 import { type ActivityPhase, type ActivityPhaseKind } from './phases';
 import { latestStepTitle, phaseTitle, phaseToggleLabel } from './phase-title';
@@ -96,8 +96,20 @@ function ActivityPhaseView({
   const single = phase.steps.length === 1 && first ? first : undefined;
 
   // A lone call the agent never introduced is not a group: a header repeating the single row
-  // under it says nothing twice.
+  // under it says nothing twice. Thinking and tool steps already render their own leading icon,
+  // so an outer phase glyph would double it (two Sparkles for a lone thought, two Terminals for
+  // a lone bash). Only steps without an inner icon keep the outer glyph as their sole marker.
   if (single) {
+    const innerHasIcon = single.role === 'reasoning' || single.role === 'tool';
+    if (innerHasIcon) {
+      return (
+        <div className="phase-single">
+          <div className="phase-single-step">
+            <PhaseStep view={single} requests={requests} />
+          </div>
+        </div>
+      );
+    }
     return (
       <div className="phase-single">
         <PhaseGlyph kind={phase.kind} />
@@ -122,42 +134,37 @@ function ActivityPhaseView({
 
   const toggle = phaseToggleLabel(open, phase.steps.length, t);
   return (
-    <div className="phase-group">
-      <Button
-        type="button"
-        variant="ghost"
-        className="activity-trigger phase-trigger"
-        aria-expanded={open}
-        aria-label={`${toggle}, ${title}`}
-        onClick={() => setOverride(!open)}
-      >
-        {/*
-         * The two icons share one box, so the swap is instant: fading between them leaves both
-         * half-drawn on top of each other.
-         */}
-        <span className="phase-icon-swap">
+    <ActivityRow.Root
+      open={open}
+      onOpenChange={setOverride}
+      status={active ? 'running' : 'completed'}
+      className="phase-group"
+    >
+      <ActivityRow.Trigger aria-label={`${toggle}, ${title}`} className="phase-trigger">
+        <ActivityRow.Icon>
           <PhaseGlyph kind={phase.kind} />
-          <ChevronRight className={`phase-chevron${open ? ' rotate-90' : ''}`} strokeWidth={1.75} />
-        </span>
-        {label}
-      </Button>
-      <div className="phase-body" data-open={open}>
+        </ActivityRow.Icon>
+        <ActivityRow.Title className="phase-title" title={title}>
+          {label}
+        </ActivityRow.Title>
+      </ActivityRow.Trigger>
+      <ActivityRow.Content>
         <ScrollArea
           viewportRef={ref}
           viewportProps={{ onScroll, onWheel }}
           className="phase-scroll"
           scrollShadow
         >
-          <div className="phase-steps">
+          <ActivityRow.Steps>
             {phase.steps.map((step) => (
-              <div key={step.id} className={`phase-step${active ? ' step-in' : ''}`}>
+              <ActivityRow.Step key={step.id} className={active ? 'step-in' : ''}>
                 <PhaseStep view={step} requests={requests} />
-              </div>
+              </ActivityRow.Step>
             ))}
-          </div>
+          </ActivityRow.Steps>
         </ScrollArea>
-      </div>
-    </div>
+      </ActivityRow.Content>
+    </ActivityRow.Root>
   );
 }
 

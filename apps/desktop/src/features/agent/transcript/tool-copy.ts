@@ -1,15 +1,8 @@
 import {
   Brain,
-  File,
-  FileArchive,
-  FileAudio,
-  FileCode,
-  FileImage,
-  FileJson,
   FilePen,
   FilePlus,
   FileText,
-  FileVideo,
   SquareTerminal,
   Terminal,
   Wrench,
@@ -124,78 +117,6 @@ export function commandTarget(args: Record<string, unknown>): string | null {
 
 export function toolIcon(name: string): LucideIcon {
   return ICONS[name] ?? Wrench;
-}
-
-/** Extension-based file glyph for file-tool targets; unknown extensions fall back to `File`. */
-export function fileIconForPath(path: string): LucideIcon {
-  const ext = path.split('.').pop()?.toLowerCase() ?? '';
-  switch (ext) {
-    case 'ts':
-    case 'tsx':
-    case 'js':
-    case 'jsx':
-    case 'mjs':
-    case 'cjs':
-    case 'py':
-    case 'rb':
-    case 'rs':
-    case 'go':
-    case 'java':
-    case 'c':
-    case 'h':
-    case 'cpp':
-    case 'hpp':
-    case 'cs':
-    case 'swift':
-    case 'kt':
-    case 'php':
-    case 'css':
-    case 'scss':
-    case 'html':
-    case 'vue':
-    case 'svelte':
-    case 'sh':
-    case 'zsh':
-    case 'sql':
-    case 'xml':
-    case 'yaml':
-    case 'yml':
-    case 'toml':
-      return FileCode;
-    case 'json':
-    case 'jsonc':
-      return FileJson;
-    case 'md':
-    case 'mdx':
-    case 'txt':
-      return FileText;
-    case 'png':
-    case 'jpg':
-    case 'jpeg':
-    case 'gif':
-    case 'webp':
-    case 'svg':
-    case 'ico':
-      return FileImage;
-    case 'mp3':
-    case 'wav':
-    case 'ogg':
-    case 'flac':
-      return FileAudio;
-    case 'mp4':
-    case 'mov':
-    case 'webm':
-    case 'mkv':
-      return FileVideo;
-    case 'zip':
-    case 'tar':
-    case 'gz':
-    case 'rar':
-    case '7z':
-      return FileArchive;
-    default:
-      return File;
-  }
 }
 
 export function memoryTargetKey(target: string): MemoryTargetKey | null {

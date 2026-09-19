@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { Sparkles } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { BlockOf } from '../../../../electron/agent/transcript-schema';
-import { CollapsibleRow } from './collapsible-row';
+import { ActivityRow } from './activity-row';
+import { DetailBox } from './detail-box';
 import { formatElapsed } from './elapsed';
 import { StreamdownMarkdown } from './markdown';
 
@@ -34,25 +35,31 @@ export function ThinkingBlock({ block }: { block: BlockOf<'thinking'> }) {
     );
   }
   return (
-    <CollapsibleRow
+    <ActivityRow.Root
       open={open}
       onOpenChange={setOpen}
-      label={open ? t('thinking.title') : `${t('thinking.title')}: ${summary}`}
-      icon={icon}
-      heading={
-        <span
+      status={block.streaming ? 'running' : 'completed'}
+      className="flex min-w-0 flex-col"
+    >
+      <ActivityRow.Trigger
+        aria-label={open ? t('thinking.title') : `${t('thinking.title')}: ${summary}`}
+      >
+        <ActivityRow.Icon>{icon}</ActivityRow.Icon>
+        <ActivityRow.Title
           className={`thinking-line${block.streaming ? ' thinking-pulse' : ''}`}
           title={summary}
         >
           {summary}
-        </span>
-      }
-      className="flex min-w-0 flex-col"
-    >
-      <div className="thinking-full">
-        <StreamdownMarkdown text={block.text} streaming={block.streaming} />
-      </div>
-    </CollapsibleRow>
+        </ActivityRow.Title>
+      </ActivityRow.Trigger>
+      <ActivityRow.Content>
+        <ActivityRow.Body className="thinking-full">
+          <DetailBox variant="plain" copyText={block.text}>
+            <StreamdownMarkdown text={block.text} streaming={block.streaming} />
+          </DetailBox>
+        </ActivityRow.Body>
+      </ActivityRow.Content>
+    </ActivityRow.Root>
   );
 }
 
