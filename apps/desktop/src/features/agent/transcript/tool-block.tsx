@@ -1,12 +1,11 @@
 import { createElement, useState } from 'react';
-import { X, ChevronRight } from 'lucide-react';
+import { X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Button } from '@ai/ui/components/button';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@ai/ui/components/collapsible';
 import { Shimmer } from '@ai/ui/components/ai-elements/shimmer';
 import type { ConfirmationRequest } from '../../../../electron/agent/permission-schema';
 import type { BlockOf } from '../../../../electron/agent/transcript-schema';
 import { ApprovalControls } from './approval-controls';
+import { CollapsibleRow } from './collapsible-row';
 import { ToolBody } from './tool-body';
 import {
   fileIconForPath,
@@ -62,21 +61,15 @@ export function ToolBlock({
         </span>
       )}
       {rejected && <X className="tool-row-error" />}
-      <ChevronRight className={expanded ? 'rotate-90' : ''} />
     </>
   );
   return (
     <div className="tool-block">
-      <Collapsible open={expanded} onOpenChange={setOpen}>
-        <CollapsibleTrigger asChild>
-          <Button variant="ghost" className="activity-trigger">
-            {heading}
-          </Button>
-        </CollapsibleTrigger>
-        <CollapsibleContent className="tool-body">
+      <CollapsibleRow open={expanded} onOpenChange={setOpen} heading={heading}>
+        <div className="tool-body">
           <ToolBody block={block} />
-        </CollapsibleContent>
-      </Collapsible>
+        </div>
+      </CollapsibleRow>
       {confirmation && <ApprovalControls request={confirmation} />}
       {!confirmation && block.permission?.outcome && (
         <p className="permission-chip">{t(outcomeKey(block.permission.outcome))}</p>
