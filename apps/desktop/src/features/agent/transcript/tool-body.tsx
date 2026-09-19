@@ -1,7 +1,9 @@
+import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ScrollArea } from '@ai/ui/components/scroll-area';
 import type { BlockOf } from '../../../../electron/agent/transcript-schema';
 import { bashCommand } from './tool-copy';
+import { DetailBox } from './detail-box';
+import { Root as JsonTree } from './json-tree';
 
 function DiffLine({ line }: { line: string }) {
   const kind =
@@ -17,23 +19,35 @@ function DiffLine({ line }: { line: string }) {
 
 export function ToolDiff({ diff }: { diff: string }) {
   return (
-    <ScrollArea orientation="both" className="tool-diff" viewportClassName="max-h-[inherit]" gutter>
-      <pre className="tool-diff-pre">
+    <DetailBox variant="diff" copyText={diff}>
+      <div>
         {diff.split('\n').map((line, index) => (
           <DiffLine key={`${index}:${line.slice(0, 24)}`} line={line} />
         ))}
-      </pre>
-    </ScrollArea>
+      </div>
+    </DetailBox>
   );
 }
 
-export function ToolOutput({ text }: { text: string }) {
+/**
+ * One body, one box: the detail always reads inside a single tinted region. `header` lets bash
+ * share this box for its command line instead of standing alone above it.
+ */
+export function ToolOutput({
+  text,
+  header,
+  kind,
+}: {
+  text: string;
+  header?: ReactNode;
+  kind?: ReactNode;
+}) {
   return (
-    <ScrollArea className="tool-output" viewportClassName="max-h-[inherit]" gutter scrollShadow>
-      <pre className="tool-output-pre m-0 text-xs leading-4.5 whitespace-pre-wrap wrap-anywhere">
-        {text}
-      </pre>
-    </ScrollArea>
+    <DetailBox variant="output" copyText={text}>
+      {kind}
+      {header}
+      {text && <pre className="m-0 whitespace-pre-wrap wrap-anywhere">{text}</pre>}
+    </DetailBox>
   );
 }
 
@@ -49,17 +63,23 @@ export function ToolBody({ block }: { block: BlockOf<'tool'> }) {
       ) : (
         <ToolOutput text={text} />
       );
-    case 'bash':
+    case 'bash': {
+      if (!command && !text) return null;
+      // Only shell executions carry a type badge, and the `Shell` label stays untranslated,
+      // matching the technical-term convention.
+      const kind = <span className="tool-kind">Shell</span>;
       return (
-        <div className="tool-bash">
-          {command && <pre className="tool-command">{command}</pre>}
-          {text && <ToolOutput text={text} />}
-        </div>
+        <ToolOutput
+          text={text}
+          kind={kind}
+          header={command ? <pre className="tool-command">{command}</pre> : undefined}
+        />
       );
+    }
     default:
       return (
         <>
-          {text && <ToolOutput text={text} />}
+          {text && <JsonTree text={text} />}
           {block.status === 'interrupted' && (
             <p className="text-xs text-muted-foreground">{t('activity.interruptedNote')}</p>
           )}

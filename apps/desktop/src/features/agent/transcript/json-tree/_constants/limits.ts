@@ -1,0 +1,3 @@
+export const MAX_JSON_TREE_CHARS = 100_000;
+export const DEFAULT_EXPANDED_DEPTH = 2;
+export const PREVIEW_STRING_CHARS = 120;
