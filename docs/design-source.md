@@ -1,6 +1,6 @@
 # 设计来源与实现记录
 
-更新日期：2026-09-12。当前入口为 [01 · Product design · Flows & settings](https://www.figma.com/design/D9YK1tEeBTEBgstcepesW5/ai?node-id=1-251)。用户已授权界面、真实 Agent 与持久化一并实现，并授权使用独立数据目录验证 Electron。
+更新日期：2026-09-19。当前入口为 [01 · Product design · Flows & settings](https://www.figma.com/design/D9YK1tEeBTEBgstcepesW5/ai?node-id=1-251)。用户已授权界面、真实 Agent 与持久化一并实现，并授权使用独立数据目录验证 Electron。
 
 Agent 流程与 Providers / Shortcuts 设置已合并到同一设计页：[统一导览](https://www.figma.com/design/D9YK1tEeBTEBgstcepesW5/ai?node-id=577-11193)串联 A–E 任务、命令和记忆，F1–F9 提供商，以及 G 快捷键；Q1/Q2 保留视觉验收和渲染参考，Z 保留原型内部状态。原画板节点、组件引用和原型路径继续保留。本次页面合并未修改应用代码。
 
@@ -30,6 +30,7 @@ Agent 流程与 Providers / Shortcuts 设置已合并到同一设计页：[统�
 - [共享会话说明](https://www.figma.com/design/D9YK1tEeBTEBgstcepesW5/ai?node-id=694-17333) 与 [短回复示例](https://www.figma.com/design/D9YK1tEeBTEBgstcepesW5/ai?node-id=796-15567) 已同步顶部排列。长内容原型中展示“滚动至最新”的有限状态不代表运行时垂直布局规则。
 - 已检查实际 Electron 内容截图及白色 / 蓝色背景上的 OS 合成窗口，覆盖四角、边缘、阴影和原生材质。证据在 `apps/desktop/.artifacts/agent-result-top-aligned.png`、`agent-native-contrasting.png`。
 - 工具步骤行不绘制任何自身背景：折叠、hover 与展开（`aria-expanded`）都保持透明，hover 只保留指针光标，展开状态由旋转的箭头承担（`features/agent/agent.css` 的 `.tool-heading`）。[Tool activity](https://www.figma.com/design/D9YK1tEeBTEBgstcepesW5/ai?node-id=774-4064) 的 Toggle activity 同样没有行填充，两侧一致。
+- 滚动条不再压在窗口边框上（2026-09-19）：面板内容滚动区（自身带 `.panel-content` 的 ScrollArea 与 `.conversation`）的纵向滚动条改为向面板内侧让出 4px（`apps/desktop/src/styles.css` 对 `[data-slot='scroll-area-scrollbar'][data-orientation='vertical']` 设置 `margin-right`；Radix 用内联样式固定滚动条位置，`right` 不可覆盖）。历史列表保留自己已有的 4px 内缩（`-mr-3` 加 `gutter`），命令列表因 `Command` 自身内边距落在 8px，消息卡片与代码块内的滚动条保持卡片边缘；消息列 16px 内边距与列宽不变。Figma 的会话画板（`693:4071` 等）只使用 `overflowScroll`、未绘制滚动条，因此本次只改代码与文档。
 
 ### 设置二级页标题统一
 

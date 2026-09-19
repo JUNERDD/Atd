@@ -129,6 +129,21 @@ html[data-platform='darwin'] .panel-header {
   padding: 64px 16px 16px;
 }
 
+/*
+ * Radix pins the vertical bar to the scroll surface edge and keeps that offset inline, so floating
+ * the bar inside the frame comes from the bar's own margin. Only the panel's own content scrollers
+ * are in scope: `.panel-content` here is the class on the ScrollArea itself, and the bar is its
+ * direct child. The history and command sections reuse that class name for their own layout and
+ * keep their own scroll areas — history rests 4px inside the frame by pulling its scroll area over
+ * the section padding. Bars nested in message cards and code blocks keep their card edge.
+ */
+.panel-content > [data-slot='scroll-area-scrollbar'][data-orientation='vertical'],
+.conversation
+  > [data-slot='scroll-area']
+  > [data-slot='scroll-area-scrollbar'][data-orientation='vertical'] {
+  margin-right: 4px;
+}
+
 .panel-content h2 {
   font-size: 18px;
   font-weight: 500;
