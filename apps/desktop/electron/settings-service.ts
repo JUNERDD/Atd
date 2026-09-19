@@ -218,7 +218,8 @@ export class SettingsService {
       return this.saveLanguage(value);
     });
     ipcMain.handle(SETTINGS_IPC.savePermissionTier, (event, value: unknown) => {
-      this.assertSender(event, true);
+      // The panel home view edits the default tier a new task freezes at creation.
+      this.assertSender(event);
       return this.setPermissionTier(value);
     });
     ipcMain.handle(SETTINGS_IPC.saveShortcuts, (event, value: unknown) => {
