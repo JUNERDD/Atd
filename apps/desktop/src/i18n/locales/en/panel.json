@@ -121,9 +121,9 @@
       "always": "Always allow"
     },
     "tierDescription": {
-      "manual": "Confirm every guarded action.",
-      "auto": "Allow file changes in this task's folder; confirm everything else.",
-      "always": "Never ask for confirmation."
+      "manual": "Ask every time.",
+      "auto": "Trust this folder only.",
+      "always": "Never ask."
     },
     "tierLabel": "Permission level",
     "defaultFromSettings": "Uses the default from Settings until a task exists."

@@ -121,9 +121,9 @@
       "always": "始终允许"
     },
     "tierDescription": {
-      "manual": "每次受保护的操作都需确认。",
-      "auto": "允许在此任务文件夹内改文件；其余操作仍需确认。",
-      "always": "不再弹出确认。"
+      "manual": "每次都确认。",
+      "auto": "仅信任此任务文件夹。",
+      "always": "不再确认。"
     },
     "tierLabel": "权限级别",
     "defaultFromSettings": "在任务创建前显示设置中的默认级别。"
