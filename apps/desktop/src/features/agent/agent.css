@@ -566,9 +566,6 @@
   text-align: left;
   font-size: 14px;
 }
-.thinking-line {
-  color: var(--muted-foreground);
-}
 .thinking-full {
   min-width: 0;
   padding: 0 0 8px 8px;
