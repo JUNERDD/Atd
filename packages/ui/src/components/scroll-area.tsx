@@ -38,6 +38,7 @@ function ScrollArea({
   viewportProps,
   orientation = 'vertical',
   gutter = false,
+  scrollShadow = false,
   ...props
 }: React.ComponentProps<typeof ScrollAreaRoot> & {
   viewportClassName?: string;
@@ -49,17 +50,34 @@ function ScrollArea({
   orientation?: 'vertical' | 'horizontal' | 'both';
   /** Reserve a trailing column so the vertical bar never covers content. */
   gutter?: boolean;
+  /** Soft content fade at the scrolled edges revealing further content (vertical only). */
+  scrollShadow?: boolean;
 }) {
+  const viewportNode = React.useRef<HTMLDivElement | null>(null);
+  const setViewportRefs = React.useCallback(
+    (node: HTMLDivElement | null) => {
+      viewportNode.current = node;
+      setRef(viewportRef, node);
+    },
+    [viewportRef],
+  );
+  const shadows = scrollShadow && orientation !== 'horizontal';
+  const edges = useScrollEdges(shadows, viewportNode);
+  const top = shadows && (edges & 1) !== 0;
+  const bottom = shadows && (edges & 2) !== 0;
   return (
     <ScrollAreaRoot {...props}>
       <ScrollAreaViewport
-        ref={viewportRef}
+        ref={setViewportRefs}
         className={cn(
           gutter && orientation !== 'horizontal' && 'pr-3',
           orientation !== 'vertical' && '[&>div]:table!',
+          shadows && 'scroll-shadowed',
           viewportClassName,
         )}
         {...viewportProps}
+        data-top-scroll={top || undefined}
+        data-bottom-scroll={bottom || undefined}
       >
         {children}
       </ScrollAreaViewport>
@@ -68,6 +86,58 @@ function ScrollArea({
       <ScrollAreaPrimitive.Corner />
     </ScrollAreaRoot>
   );
+}
+
+const SHADOW_EDGE_PX = 1;
+
+/** Assigns a forwarded ref without the caller touching props inline. */
+function setRef(ref: React.Ref<HTMLDivElement> | undefined, node: HTMLDivElement | null) {
+  if (typeof ref === 'function') {
+    ref(node);
+  } else if (ref) {
+    ref.current = node;
+  }
+}
+
+/**
+ * Bit 0: more content above; bit 1: more below. A number compares by value, which is what the
+ * external-store snapshot below needs.
+ */
+function scrollEdges(node: HTMLDivElement | null): number {
+  if (!node) return 0;
+  const top = node.scrollTop > SHADOW_EDGE_PX ? 1 : 0;
+  const bottom = node.scrollTop + node.clientHeight < node.scrollHeight - SHADOW_EDGE_PX ? 2 : 0;
+  return top | bottom;
+}
+
+/**
+ * Edge-overflow bits for a scrollable viewport, read through `useSyncExternalStore`: scroll
+ * events and viewport resizes notify, and every render re-reads the snapshot, which also covers
+ * content growing under a settled scroll position. The snapshot is a 2-bit number, so unchanged
+ * scrolls never re-render. Mirrors HeroUI's `useScrollShadow` state model (`data-top-scroll` /
+ * `data-bottom-scroll`) without its MutationObserver — renders already re-read here.
+ */
+function useScrollEdges(enabled: boolean, target: React.RefObject<HTMLDivElement | null>): number {
+  const subscribe = React.useCallback(
+    (notify: () => void) => {
+      if (!enabled) return () => {};
+      const node = target.current;
+      if (!node) return () => {};
+      node.addEventListener('scroll', notify, { passive: true });
+      const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(notify);
+      observer?.observe(node);
+      return () => {
+        node.removeEventListener('scroll', notify);
+        observer?.disconnect();
+      };
+    },
+    [enabled, target],
+  );
+  const getEdges = React.useCallback(
+    () => (enabled ? scrollEdges(target.current) : 0),
+    [enabled, target],
+  );
+  return React.useSyncExternalStore(subscribe, getEdges);
 }
 
 function ScrollBar({
