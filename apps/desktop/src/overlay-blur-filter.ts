@@ -5,6 +5,8 @@ export interface BlurRegion {
   height: number;
   radius: number;
   blur: number;
+  /** Overlay computed opacity (0..1, 2dp). Scales mask transparency during fades. */
+  opacity: number;
 }
 
 export function svgNode<K extends keyof SVGElementTagNameMap>(
@@ -32,9 +34,14 @@ export function updateBlurFilter(
   const children: SVGElement[] = [];
   let source = 'SourceGraphic';
   regions.forEach((region, index) => {
-    const { x, y, width, height, radius, blur } = region;
+    const { x, y, width, height, radius, blur, opacity } = region;
+    // Opacity 1 keeps the exact pre-ramp mask bytes; fades scale mask transparency.
+    const maskRect =
+      opacity >= 1
+        ? `<rect width="${width}" height="${height}" rx="${radius}" fill="white"/>`
+        : `<rect width="${width}" height="${height}" rx="${radius}" fill="white" fill-opacity="${opacity}"/>`;
     const mask = `data:image/svg+xml,${encodeURIComponent(
-      `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"><rect width="${width}" height="${height}" rx="${radius}" fill="white"/></svg>`,
+      `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">${maskRect}</svg>`,
     )}`;
     children.push(
       svgNode('feGaussianBlur', {

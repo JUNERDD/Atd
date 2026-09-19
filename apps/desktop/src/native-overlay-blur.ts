@@ -39,6 +39,13 @@ function backgroundAlpha(color: string): number {
   return legacyAlpha ? Number(legacyAlpha[1]) : 1;
 }
 
+/** Clamp computed opacity to 0..1 at 2dp; NaN falls back to 1. */
+function overlayOpacity(style: CSSStyleDeclaration): number {
+  const value = Number(style.opacity);
+  if (Number.isNaN(value)) return 1;
+  return Math.round(Math.min(1, Math.max(0, value)) * 100) / 100;
+}
+
 /**
  * Electron's transparent backing surface composites CSS backdrop blur over the original pixels.
  * Blur each lower portal layer only inside the overlays above it, preserving native-window alpha.
@@ -108,6 +115,7 @@ export function installNativeOverlayBlur(root: HTMLElement): () => void {
           height,
           radius: Number.parseFloat(overlay.style.borderTopLeftRadius) || 0,
           blur: material.blur,
+          opacity: overlayOpacity(overlay.style),
         });
       }
       if (!regions.length) continue;
