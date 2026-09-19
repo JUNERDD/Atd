@@ -27,21 +27,7 @@
     "cancelled": "任务已取消",
     "failed": "任务未能完成",
     "jumpToLatest": "跳到最新",
-    "continue": "继续",
     "stopped": "已停止"
-  },
-  "review": {
-    "title": "查看任务",
-    "description": "已完成的操作和文件更改会保留。发送新消息将继续同一对话。",
-    "conversation": "对话",
-    "version": "版本 {{revision}}",
-    "memoryOn": "记忆：开",
-    "memoryOff": "记忆：关",
-    "savedInstructions": "保存的指令",
-    "useSavedVersion": "在新任务中使用保存的版本",
-    "commandCopied": "命令已复制到命令列表。",
-    "saveAsCommand": "另存为新命令",
-    "continue": "继续任务"
   },
   "activity": {
     "memory": "记忆",

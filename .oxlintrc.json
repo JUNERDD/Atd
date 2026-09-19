@@ -26,7 +26,6 @@
           "phase-scroll",
           "phase-title",
           "provider-connections",
-          "review-text",
           "run-settings-tools",
           "settings-drawer-scroll",
           "settings-permission-options",
@@ -55,7 +54,6 @@
               "quick-command",
               "settings-nav-button",
               "settings-shortcut-button",
-              "task-review-action",
               "task-row",
               "variable-token"
             ]

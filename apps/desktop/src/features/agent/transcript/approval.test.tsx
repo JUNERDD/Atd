@@ -7,7 +7,6 @@ import { installAgent, makeDetail, toolBlock, userBlock } from './fixtures';
 
 function renderApproval() {
   const { answer } = installAgent();
-  const onContinue = vi.fn(async () => {});
   const detail = makeDetail({
     status: 'awaiting_confirmation',
     blocks: [
@@ -38,7 +37,7 @@ function renderApproval() {
   });
   render(
     <TooltipProvider>
-      <Transcript detail={detail} onAttach={vi.fn()} onContinue={onContinue} onRerun={vi.fn()} />
+      <Transcript detail={detail} onAttach={vi.fn()} />
     </TooltipProvider>,
   );
   return { answer };

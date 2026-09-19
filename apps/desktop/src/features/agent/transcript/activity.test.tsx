@@ -16,12 +16,7 @@ function mount(detail: ReturnType<typeof makeDetail>) {
   installAgent();
   render(
     <TooltipProvider>
-      <Transcript
-        detail={detail}
-        onAttach={vi.fn()}
-        onContinue={vi.fn(async () => {})}
-        onRerun={vi.fn()}
-      />
+      <Transcript detail={detail} onAttach={vi.fn()} />
     </TooltipProvider>,
   );
 }
