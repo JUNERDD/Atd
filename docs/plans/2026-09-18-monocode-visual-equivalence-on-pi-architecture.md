@@ -26,6 +26,7 @@ Constraints: 350-line limit per maintained file, pnpm workspace with lockfile di
 ## File And Code References
 
 Monocode reference (read-only):
+
 - `${referenceRoot}/monocode/src/surfaces/SessionPane.tsx:335-360` transcript host with jump overlay.
 - `${referenceRoot}/monocode/src/surfaces/AgentTranscript.tsx:113-130,301-430` turn shell, live gating, footer placement.
 - `${referenceRoot}/monocode/src/surfaces/AgentTranscript.tsx:847-879,945-1090` phase grouping with live pinning and expand behavior.
@@ -39,6 +40,7 @@ Monocode reference (read-only):
 - `${referenceRoot}/monocode/package.json:33-52` hugeicons, streamdown plugins, harden, react 19.
 
 Current Pi architecture (preserve):
+
 - `apps/desktop/electron/agent/worker-session.ts:179-222` live partial projection source.
 - `apps/desktop/electron/agent/transcript.ts:113-195` projection plus diff.
 - `apps/desktop/electron/agent/transcript-project.ts:82-222` Pi event to block mapping.
