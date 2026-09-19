@@ -151,7 +151,6 @@ export function App() {
             prepared={prepared}
             onChange={(input) => setPrepared({ ...prepared, input })}
             policy={policy}
-            onPolicyChange={changePolicy}
             onRun={() => submit()}
             onOpenSettings={() => void openCommandSettings(prepared.command.id)}
             pending={pending}

@@ -1,5 +1,4 @@
 import type { RunPolicy } from '../../../electron/agent/run-policy';
-import { TaskPolicyControl } from './task-policy';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Brain, FileText, Shield, X } from 'lucide-react';
@@ -21,12 +20,10 @@ export function CommandInput({
   onOpenSettings,
   pending,
   policy,
-  onPolicyChange,
   runLabel: customRunLabel,
 }: {
   runLabel?: string;
   policy: RunPolicy;
-  onPolicyChange?: (policy: RunPolicy) => void;
   prepared: PreparedCommand;
   onChange: (input: TaskInput) => void;
   onRun: () => Promise<unknown>;
@@ -176,9 +173,6 @@ export function CommandInput({
         </section>
       </ScrollArea>
       <footer ref={footerRef} className="command-run-footer overlay-footer">
-        <div className="command-run-tools">
-          {onPolicyChange && <TaskPolicyControl value={policy} onChange={onPolicyChange} />}
-        </div>
         <div className="command-run-actions">
           <Button variant="outline" onClick={onOpenSettings}>
             {t('input.commandSettings')}
