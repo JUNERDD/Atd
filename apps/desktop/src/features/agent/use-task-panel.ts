@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { DEFAULT_SHORTCUTS } from '../../../electron/settings-contract';
 import type { RunPolicy } from '../../../electron/agent/run-policy';
 import type { PreparedCommand, TaskDetail } from '../../../electron/agent/bridge';
-import { emptyInput, isActive, type TaskRun } from '../../../electron/agent/task-schema';
+import { emptyInput, isActive } from '../../../electron/agent/task-schema';
 import { EMPTY_QUEUE } from '../../../electron/agent/transcript-schema';
 import type { ComposerDraft } from '../../components/composer';
 import { useSettingsSnapshot } from '../settings/use-settings';
@@ -31,7 +31,6 @@ export function useTaskPanel() {
   const [autoRun, setAutoRun] = useState<PreparedCommand | null>(null);
   const runAuto = useRef<(command: PreparedCommand) => void>(() => {});
   const [revealCount, setRevealCount] = useState(0);
-  const [savedRun, setSavedRun] = useState<{ taskId: string; runId: string } | null>(null);
   const [policies, setPolicies] = useState<Record<string, RunPolicy>>({});
   const [drafts, setDrafts] = useState<Record<string, ComposerDraft>>({});
   const [pending, setPending] = useState(false);
@@ -72,7 +71,6 @@ export function useTaskPanel() {
     const bridge = window.desktop?.agent;
     if (!bridge) return;
     const unsubscribe = bridge.onLaunch(({ prepared: value, autoRun: run }) => {
-      setSavedRun(null);
       if (run) {
         // A shortcut run never shows the command input: the panel is revealed when its task is on
         // screen, or on the input page with the failure when the run cannot start.
@@ -114,7 +112,7 @@ export function useTaskPanel() {
   // launch is a fresh object, so the trigger fires exactly once per shortcut press.
   useEffect(() => {
     runAuto.current = (command) => {
-      void submit(false, command)
+      void submit(command)
         .then((detail) => {
           if (detail) setRevealCount((count) => count + 1);
         })
@@ -144,7 +142,6 @@ export function useTaskPanel() {
     setView('new');
     setTaskId(null);
     setPrepared(null);
-    setSavedRun(null);
   }
   function changeDraft(value: ComposerDraft) {
     setDrafts((previous) => ({ ...previous, [draftKey]: value }));
@@ -152,7 +149,6 @@ export function useTaskPanel() {
   async function chooseCommand(id: string) {
     try {
       setPrepared(await agentApi().prepare(id));
-      setSavedRun(null);
       setView('input');
     } catch (error) {
       showErrorToast(error);
@@ -162,30 +158,25 @@ export function useTaskPanel() {
    * Shortcut launches submit the command they carried: the run uses the command's own policy and
    * leaves drafts, view state and remembered capability adjustments untouched.
    */
-  async function submit(
-    continueTask = false,
-    launched?: PreparedCommand,
-  ): Promise<TaskDetail | null> {
+  async function submit(launched?: PreparedCommand): Promise<TaskDetail | null> {
     if (pending) return null;
     const run = current.detail?.task.runs.at(-1);
-    if (!continueTask && !launched && view === 'task' && isActive(run?.status)) return null;
+    if (!launched && view === 'task' && isActive(run?.status)) return null;
     setPending(true);
     const commandInput = launched ?? (view === 'input' ? prepared : null);
     const input = commandInput?.input ?? {
       ...emptyInput(),
-      text: continueTask ? 'continue task' : draft.text,
-      files: continueTask ? [] : draft.files,
+      text: draft.text,
+      files: draft.files,
     };
     const policy = launched ? null : (policies[policyKey] ?? null);
     const targetTaskId = launched ? null : view === 'task' ? taskId : null;
-    const previousRun = launched ? null : savedRun;
     const key = JSON.stringify({
       policy,
       input: { ...input, capturedAt: commandInput ? input.capturedAt : '' },
       taskId: targetTaskId,
       commandId: commandInput?.command.id,
       revision: commandInput?.command.revision,
-      savedRun: previousRun,
     });
     if (submission.current?.key !== key) submission.current = { key, id: crypto.randomUUID() };
     try {
@@ -195,7 +186,7 @@ export function useTaskPanel() {
         taskId: targetTaskId,
         commandId: commandInput?.command.id ?? null,
         commandRevision: commandInput?.command.revision ?? null,
-        savedRun: previousRun,
+        savedRun: null,
         input,
       });
       submission.current = null;
@@ -207,33 +198,14 @@ export function useTaskPanel() {
         });
       setTaskId(detail.task.id);
       setView('task');
-      setSavedRun(null);
       setPrepared(null);
-      if (!continueTask && !launched)
+      if (!launched)
         setDrafts((previous) =>
           previous[draftKey] === draft ? { ...previous, [draftKey]: EMPTY_DRAFT } : previous,
         );
       return detail;
     } finally {
       setPending(false);
-    }
-  }
-  function rerun(run: TaskRun) {
-    if (!taskId) return;
-    setSavedRun({ taskId, runId: run.id });
-    if (run.snapshot.command) {
-      setPrepared({
-        command: run.snapshot.command,
-        input: structuredClone(run.snapshot.input),
-        notice: t('input.savedCommandNotice'),
-      });
-      setView('input');
-    } else {
-      setDrafts((previous) => ({
-        ...previous,
-        new: { text: run.snapshot.input.text, files: run.snapshot.input.files },
-      }));
-      setView('new');
     }
   }
   const title =
@@ -274,8 +246,6 @@ export function useTaskPanel() {
     setTaskId,
     prepared,
     setPrepared,
-    savedRun,
-    setSavedRun,
     hidden,
     setHidden,
     pending,
@@ -291,7 +261,6 @@ export function useTaskPanel() {
     changeDraft,
     chooseCommand,
     submit,
-    rerun,
     title,
     run,
     policy,

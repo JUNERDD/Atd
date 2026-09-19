@@ -4,7 +4,6 @@ import { Button } from '@ai/ui/components/button';
 import { ScrollArea } from '@ai/ui/components/scroll-area';
 import type { TaskDetail } from '../../../../electron/agent/bridge';
 import { isActive, type FileRef, type TaskRun } from '../../../../electron/agent/task-schema';
-import { TaskReviewDialog } from '../task-review-dialog';
 import { UserContext } from '../user-context';
 import { TaskFiles } from '../task-files';
 import { adaptTranscript, modelNameForRun, type AdaptedTurn } from './adapter';
@@ -73,13 +72,9 @@ function TurnList({
 export function Transcript({
   detail,
   onAttach,
-  onContinue,
-  onRerun,
 }: {
   detail: TaskDetail;
   onAttach: (file: FileRef) => void;
-  onContinue: () => Promise<unknown>;
-  onRerun: (run: TaskRun) => void;
 }): ReactElement {
   const { t } = useTranslation('tasks');
   const { task, blocks, artifacts, requests } = detail;
@@ -94,7 +89,6 @@ export function Transcript({
   );
   const anchors = useMemo(() => artifactAnchorIds(blocks, artifacts), [blocks, artifacts]);
   const { viewportRef, showJump, pin, onScroll, onWheel } = useTranscriptScroll(detail.revision);
-  const [review, setReview] = useState(false);
   const hasUser = blocks.some((block) => block.kind === 'user');
   const pendingFiles = !hasUser && run ? artifacts.filter((file) => file.runId === run.id) : [];
   const headRequest = requests[0];
@@ -151,7 +145,7 @@ export function Transcript({
             />
           )}
           {pendingFiles.length > 0 && <TaskFiles files={pendingFiles} onAttach={onAttach} />}
-          <StatusBar run={run} onContinue={onContinue} onReview={() => setReview(true)} />
+          <StatusBar run={run} />
         </div>
       </ScrollArea>
       {showJump && (
@@ -164,7 +158,6 @@ export function Transcript({
           {t('conversation.jumpToLatest')}
         </Button>
       )}
-      <TaskReviewDialog open={review} onOpenChange={setReview} runs={task.runs} onRerun={onRerun} />
     </div>
   );
 }

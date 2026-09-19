@@ -27,21 +27,7 @@
     "cancelled": "Task cancelled",
     "failed": "The task could not finish",
     "jumpToLatest": "Jump to latest",
-    "continue": "Continue",
     "stopped": "Stopped"
-  },
-  "review": {
-    "title": "Review task",
-    "description": "Completed actions and file changes remain. A new message continues the same conversation.",
-    "conversation": "Conversation",
-    "version": "Version {{revision}}",
-    "memoryOn": "Memory on",
-    "memoryOff": "Memory off",
-    "savedInstructions": "Saved instructions",
-    "useSavedVersion": "Use saved version in a new task",
-    "commandCopied": "Command copied to Commands.",
-    "saveAsCommand": "Save as new command",
-    "continue": "Continue task"
   },
   "activity": {
     "memory": "Memory",

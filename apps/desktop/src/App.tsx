@@ -29,7 +29,6 @@ export function App() {
     setTaskId,
     prepared,
     setPrepared,
-    savedRun,
     hidden,
     setHidden,
     pending,
@@ -45,7 +44,6 @@ export function App() {
     changeDraft,
     chooseCommand,
     submit,
-    rerun,
     title,
     run,
     policy,
@@ -147,7 +145,7 @@ export function App() {
         )}
         {view === 'input' && prepared && (
           <CommandInput
-            key={`${prepared.command.id}-${savedRun?.runId ?? 'current'}`}
+            key={prepared.command.id}
             prepared={prepared}
             onChange={(input) => setPrepared({ ...prepared, input })}
             policy={policy}
@@ -161,8 +159,6 @@ export function App() {
             <Transcript
               detail={current.detail}
               onAttach={(file) => changeDraft({ ...draft, files: [...draft.files, file] })}
-              onContinue={() => submit(true)}
-              onRerun={rerun}
             />
           ) : (
             <ScrollArea className="panel-content" viewportClassName="overlay-footer-fade">

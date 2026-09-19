@@ -94,8 +94,7 @@
     "memoryStateOn": "on",
     "memoryStateOff": "off",
     "selectionPrefix": "Selection:",
-    "clipboardPrefix": "Clipboard:",
-    "savedCommandNotice": "Using the saved command version. Review before running."
+    "clipboardPrefix": "Clipboard:"
   },
   "session": {
     "editSeed": "Update the command \"{{name}}\" (id: {{id}}): ",

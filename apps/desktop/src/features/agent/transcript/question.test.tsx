@@ -24,12 +24,7 @@ function renderQuestion() {
   });
   render(
     <TooltipProvider>
-      <Transcript
-        detail={detail}
-        onAttach={vi.fn()}
-        onContinue={vi.fn(async () => {})}
-        onRerun={vi.fn()}
-      />
+      <Transcript detail={detail} onAttach={vi.fn()} />
     </TooltipProvider>,
   );
   return { answer };
@@ -63,8 +58,6 @@ describe('question block', () => {
             ],
           })}
           onAttach={vi.fn()}
-          onContinue={vi.fn(async () => {})}
-          onRerun={vi.fn()}
         />
       </TooltipProvider>,
     );

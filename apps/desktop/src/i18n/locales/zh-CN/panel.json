@@ -94,8 +94,7 @@
     "memoryStateOn": "开启",
     "memoryStateOff": "关闭",
     "selectionPrefix": "选区：",
-    "clipboardPrefix": "剪贴板：",
-    "savedCommandNotice": "正在使用已保存的命令版本，运行前请预览。"
+    "clipboardPrefix": "剪贴板："
   },
   "session": {
     "editSeed": "更新命令“{{name}}”（id：{{id}}）：",
