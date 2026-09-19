@@ -111,7 +111,7 @@
     "imageInput": "图像输入"
   },
   "thinkingLevels": {
-    "label": "思考档位",
+    "label": "推理强度",
     "unavailable": "此模型不支持{{level}}档位。",
     "levels": {
       "off": "关闭",
@@ -122,5 +122,11 @@
       "xhigh": "极高",
       "max": "最高"
     }
+  },
+  "modelConfig": {
+    "context": "上下文",
+    "model": "模型",
+    "back": "返回",
+    "triggerLabel": "模型配置：{{model}}、{{contextSize}}、{{effort}}"
   }
 }

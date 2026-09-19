@@ -164,6 +164,107 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* Merged model configuration: trigger segments stay muted while the model name truncates. */
+.model-config-context,
+.model-config-effort {
+  color: var(--muted-foreground);
+}
+.model-config-root {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px;
+}
+.model-config-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 32px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: var(--radius-xl);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+button.model-config-row-nav {
+  cursor: pointer;
+}
+button.model-config-row-nav:hover {
+  background: var(--muted);
+}
+button.model-config-row-nav:focus-visible {
+  outline: 1px solid var(--ring);
+}
+button.model-config-row-nav:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+button.model-config-row-nav:disabled:hover {
+  background: transparent;
+}
+.model-config-row-label {
+  flex-shrink: 0;
+  font-weight: 500;
+}
+.model-config-row-value {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: right;
+  color: var(--muted-foreground);
+}
+.model-config-subview {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  flex: 1;
+}
+.model-config-back-header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  padding: 4px;
+}
+.model-config-back-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+}
+.model-config-effort-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px;
+}
+.model-config-effort-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 32px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: var(--radius-xl);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.model-config-effort-option:hover {
+  background: var(--muted);
+}
+.model-config-effort-option:focus-visible {
+  outline: 1px solid var(--ring);
+}
 .provider-directory {
   display: flex;
   flex-direction: column;

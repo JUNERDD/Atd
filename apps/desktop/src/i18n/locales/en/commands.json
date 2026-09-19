@@ -139,7 +139,7 @@
     "useAppDefault": "Use app default",
     "useFixedModel": "Use a fixed model",
     "fixedModel": "Fixed command model",
-    "thinkingLevel": "Thinking level",
+    "thinkingLevel": "Effort",
     "memory": "Memory",
     "memoryInherit": "Use memory · Follow global learning setting",
     "memoryOff": "Off for this task and follow-ups",

@@ -151,26 +151,17 @@
 }
 
 .composer-model {
-  max-width: min(240px, 65%);
   min-width: 0;
   flex-shrink: 1;
 }
 
-/* The model and its thinking level stay one trailing control group. */
+/* The merged model configuration stays one trailing control. */
 .composer-model-group {
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: flex-end;
   min-width: 0;
-}
-
-.composer-model-group .thinking-level-select {
-  height: 24px;
-  max-width: min(148px, 46%);
-  flex-shrink: 0;
-  gap: 4px;
-  padding: 0 6px 0 8px;
-  font-size: 12px;
+  flex-shrink: 1;
 }
 
 .composer-model .provider-brand {

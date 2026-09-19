@@ -111,7 +111,7 @@
     "imageInput": "Image input"
   },
   "thinkingLevels": {
-    "label": "Thinking level",
+    "label": "Effort",
     "unavailable": "{{level}} is not available for this model.",
     "levels": {
       "off": "Off",
@@ -122,5 +122,11 @@
       "xhigh": "Extra high",
       "max": "Max"
     }
+  },
+  "modelConfig": {
+    "context": "Context",
+    "model": "Model",
+    "back": "Back",
+    "triggerLabel": "Model configuration: {{model}}, {{contextSize}}, {{effort}}"
   }
 }

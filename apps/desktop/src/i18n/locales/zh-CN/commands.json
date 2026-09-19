@@ -139,7 +139,7 @@
     "useAppDefault": "使用应用默认值",
     "useFixedModel": "使用固定模型",
     "fixedModel": "固定的命令模型",
-    "thinkingLevel": "思考档位",
+    "thinkingLevel": "推理强度",
     "memory": "记忆",
     "memoryInherit": "使用记忆 · 跟随全局学习设置",
     "memoryOff": "对此任务及后续任务关闭",
