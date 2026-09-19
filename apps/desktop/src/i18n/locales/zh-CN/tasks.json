@@ -196,6 +196,8 @@
       "agentManyDone": "运行了 {{count}} 个子智能体",
       "thinkLive": "思考中",
       "thinkDone": "已思考",
+      "thinkCountOne": "思考 1 次",
+      "thinkCountMany": "思考 {{count}} 次",
       "toolOneLive": "正在运行工具",
       "toolOneDone": "运行了 1 个工具",
       "toolManyLive": "正在运行 {{count}} 个工具",

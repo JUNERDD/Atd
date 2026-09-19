@@ -196,6 +196,8 @@
       "agentManyDone": "Ran {{count}} subagents",
       "thinkLive": "Thinking",
       "thinkDone": "Thought",
+      "thinkCountOne": "Thought once",
+      "thinkCountMany": "Thought {{count}} times",
       "toolOneLive": "Running a tool",
       "toolOneDone": "Ran a tool",
       "toolManyLive": "Running {{count}} tools",

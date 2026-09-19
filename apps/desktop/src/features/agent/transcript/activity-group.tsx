@@ -7,7 +7,7 @@ import type { Artifact, FileRef } from '../../../../electron/agent/task-schema';
 import { TaskFiles } from '../task-files';
 import type { AdaptedItem, ViewBlock } from './adapter';
 import { type ActivityPhase, type ActivityPhaseKind } from './phases';
-import { phaseTitle, phaseToggleLabel } from './phase-title';
+import { latestStepTitle, phaseTitle, phaseToggleLabel } from './phase-title';
 import { PhaseStep } from './phase-step';
 import type { RequestIndex } from './turns';
 
@@ -61,11 +61,12 @@ function useLivePhasePin(active: boolean, steps: ViewBlock[]) {
 }
 
 /**
- * One phase: a header the whole group hangs off, and the steps under it on a rail. Folding is
- * automatic — the group opens while it is the live one and closes when the agent moves on — until
- * clicked, after which it stays put. A step still waiting on the user keeps the group open
- * regardless. While live, the open body stays a short scrolling window pinned to the newest step;
- * after the turn settles an opened group is full height again.
+ * One phase: a header the whole group hangs off, and the steps under it on a rail. Groups stay
+ * collapsed — while running the header shows only the latest step, and finishing a phase snaps
+ * it shut behind the tally summary — until clicked, after which it stays put for the rest of the
+ * run. A step still waiting on the user keeps the group open regardless. While live, the open
+ * body stays a short scrolling window pinned to the newest step; after the turn settles an
+ * opened group is full height again.
  */
 function ActivityPhaseView({
   phase,
@@ -79,9 +80,17 @@ function ActivityPhaseView({
   const { t } = useTranslation('tasks');
   const [override, setOverride] = useState<boolean | null>(null);
   const waiting = phase.steps.some((step) => step.approvalPending);
-  const open = waiting || (override ?? active);
+  // A finished phase forgets a manual expand, so it snaps shut behind its summary. Adjusted
+  // during render (not in an effect) so no extra render pass is scheduled.
+  const [wasActive, setWasActive] = useState(active);
+  if (wasActive !== active) {
+    setWasActive(active);
+    if (!active) setOverride(null);
+  }
+  const open = waiting || override === true;
   const { ref, onScroll, onWheel } = useLivePhasePin(active && open, phase.steps);
-  const title = phaseTitle(phase, active, t);
+  const last = phase.steps.at(-1);
+  const title = active && last ? latestStepTitle(last, t) : phaseTitle(phase, active, t);
   const first = phase.steps[0];
   const single = phase.steps.length === 1 && first ? first : undefined;
 
