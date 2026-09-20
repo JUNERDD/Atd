@@ -101,6 +101,7 @@ export function ProviderConnections({
                       label={t('connections.more')}
                       aria-label={t('connections.actionsLabel', { name: connection.name })}
                       disabled={pending}
+                      tooltipDismissOnClick
                     >
                       <Ellipsis />
                     </IconButton>
