@@ -35,38 +35,14 @@
   border-radius: var(--radius-2xl);
 }
 
-.composer-surface[data-has-queue='true'] {
-  grid-template-areas: 'queue queue queue' 'attach prompt actions';
-  border-radius: var(--radius-2xl);
-}
-
-.composer-surface[data-expanded='true'][data-has-queue='true'] {
-  grid-template-areas: 'queue queue queue' 'prompt prompt prompt' 'attach . actions';
-}
-
-.composer-surface[data-has-attachments='true'][data-has-queue='true'] {
-  grid-template-areas: 'queue queue queue' 'attach prompt actions' 'files files files';
-}
-
 .composer-surface[data-expanded='true'][data-has-attachments='true'] {
   grid-template-areas: 'prompt prompt prompt' 'files files files' 'attach . actions';
   grid-template-rows: minmax(20px, 1fr) minmax(32px, 1fr) 28px;
   max-height: min(260px, calc(100dvh - 180px));
 }
 
-.composer-surface[data-expanded='true'][data-has-attachments='true'][data-has-queue='true'] {
-  grid-template-areas: 'queue queue queue' 'prompt prompt prompt' 'files files files' 'attach . actions';
-  grid-template-rows: auto minmax(20px, 1fr) minmax(32px, 1fr) 28px;
-}
-
-.composer-queue {
-  grid-area: queue;
-  min-width: 0;
-  max-height: 88px;
-  overflow: auto;
-  gap: 2px;
-}
-
+/* Queue layout moved to the composer popover (`hitl-queue-popover.css`); only inner row styles
+   stay here so queue changes never resize the surface or churn the footer height. */
 .composer-queue-actions {
   gap: 2px;
 }

@@ -151,9 +151,12 @@ describe('task panel', () => {
     });
     const user = userEvent.setup();
     render(<App />);
-    await user.type(screen.getByRole('textbox'), 'Plan my afternoon{Enter}');
+    await user.type(
+      screen.getByRole('textbox', { name: 'Task prompt' }),
+      'Plan my afternoon{Enter}',
+    );
     await waitFor(() => expect(api.submit).toHaveBeenCalledOnce());
-    await user.type(screen.getByRole('textbox'), 'Ada{Enter}');
+    await user.type(screen.getByRole('textbox', { name: 'Task prompt' }), 'Ada{Enter}');
     await waitFor(() =>
       expect(api.answer).toHaveBeenCalledWith('test-task', 'test-run', 'req-1', { answer: 'Ada' }),
     );

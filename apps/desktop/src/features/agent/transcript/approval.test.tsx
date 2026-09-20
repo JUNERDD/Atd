@@ -1,7 +1,8 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { TooltipProvider } from '@ai/ui/components/tooltip';
+import { HitlQueuePopover } from '../../../components/hitl-queue-popover';
 import { Transcript } from './transcript';
 import { installAgent, makeDetail, toolBlock, userBlock } from './fixtures';
 
@@ -37,16 +38,32 @@ function renderApproval() {
   });
   render(
     <TooltipProvider>
-      <Transcript detail={detail} onAttach={vi.fn()} />
+      <div data-testid="transcript-root">
+        <Transcript detail={detail} onAttach={vi.fn()} />
+      </div>
+      <HitlQueuePopover
+        requests={detail.requests}
+        queue={detail.queue}
+        taskId="task-1"
+        onEditQueued={vi.fn()}
+      >
+        <div data-testid="composer-surface" />
+      </HitlQueuePopover>
     </TooltipProvider>,
   );
   return { answer };
 }
 
 describe('approval controls', () => {
-  it('renders the three decisions and sends once / session / declined', async () => {
+  it('renders the three decisions in the popover and sends once', async () => {
     const user = userEvent.setup();
     const { answer } = renderApproval();
+    const transcript = screen.getByTestId('transcript-root');
+    expect(
+      within(transcript).getAllByText('Waiting for your approval').length,
+    ).toBeGreaterThanOrEqual(1);
+    expect(within(transcript).queryByRole('button', { name: /Allow once/ })).toBeNull();
+    expect(within(transcript).queryByRole('button', { name: /Decline/ })).toBeNull();
     expect(screen.getByRole('button', { name: /Allow once/ })).toBeVisible();
     expect(screen.getByRole('button', { name: 'Allow for this session' })).toBeVisible();
     expect(screen.getByRole('button', { name: /Decline/ })).toBeVisible();

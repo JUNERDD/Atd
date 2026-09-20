@@ -26,8 +26,8 @@
     "interrupted": "This task was interrupted",
     "cancelled": "Task cancelled",
     "failed": "The task could not finish",
-    "jumpToLatest": "Jump to latest",
-    "stopped": "Stopped"
+    "stopped": "Stopped",
+    "scrollToBottom": "Scroll to bottom"
   },
   "activity": {
     "memory": "Memory",
@@ -141,6 +141,10 @@
       "done": "Worked for {{elapsed}} · {{model}} · {{clock}}",
       "elapsed": "{{elapsed}}",
       "workedFor": "Worked for {{elapsed}}"
+    },
+    "rate": {
+      "tps": "{{rate}} tok/s",
+      "stats": "{{rate}} tok/s ({{tokens}} tok in {{elapsed}})"
     },
     "phase": {
       "show": "Show {{count}} steps",

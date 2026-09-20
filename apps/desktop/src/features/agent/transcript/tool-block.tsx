@@ -4,7 +4,6 @@ import { Shimmer } from '@ai/ui/components/ai-elements/shimmer';
 import type { ConfirmationRequest } from '../../../../electron/agent/permission-schema';
 import type { BlockOf } from '../../../../electron/agent/transcript-schema';
 import { ActivityRow } from './activity-row';
-import { ApprovalControls } from './approval-controls';
 import { ToolBody } from './tool-body';
 import {
   commandStepKey,
@@ -47,7 +46,12 @@ export function ToolBlock({
   const memoryKey = rawTarget ? memoryTargetKey(rawTarget) : null;
   const outcome =
     !confirmation && block.permission?.outcome ? t(outcomeKey(block.permission.outcome)) : null;
-  const meta = memoryKey ? t(memoryKey) : (rawTarget ?? outcome ?? t(statusLabelKey(block.status)));
+  // A pending approval reads as tool name plus waiting text; the decision lives in the composer
+  // popover. Settled calls keep the recorded outcome chip instead.
+  const waiting = confirmation ? t('permission.waitingApproval') : null;
+  const meta =
+    waiting ??
+    (memoryKey ? t(memoryKey) : (rawTarget ?? outcome ?? t(statusLabelKey(block.status))));
   const heading = (
     <>
       {/*
@@ -90,7 +94,6 @@ export function ToolBlock({
           </ActivityRow.Body>
         </ActivityRow.Content>
       </ActivityRow.Root>
-      {confirmation && <ApprovalControls request={confirmation} />}
     </div>
   );
 }

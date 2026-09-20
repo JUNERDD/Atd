@@ -15,7 +15,7 @@ import type { Connection, ModelReference } from '../../electron/providers/schema
 import type { RunPolicy } from '../../electron/agent/run-policy';
 import { IconButton } from './icon-button';
 import { ComposerConfiguration } from './composer-configuration';
-import { ComposerQueue } from './composer-queue';
+import { HitlQueuePopover } from './hitl-queue-popover';
 import { useOverlayFooter } from './use-overlay-footer';
 import { acceleratorToHotkey } from '../lib/shortcuts';
 import { agentApi } from '../features/agent/use-agent';
@@ -82,6 +82,9 @@ export function Composer({
   const hasContent = Boolean(draft.text.trim() || draft.files.length);
   const active = isActive(status);
   const locked = status === 'stopping' || status === 'queued';
+  // Harmless fallback: the popover owns the primary answer path (chips + free text), but Enter in
+  // the textarea still answers a pending input for typists. Both call the same request-scoped
+  // `answer`, so the first success retires the request and the other path goes idle.
   const pendingInput = active && !locked ? pendingInputOf(requests) : undefined;
   const pendingRequest = active && requests.length > 0;
   const label = active
@@ -202,82 +205,89 @@ export function Composer({
           void send();
         }}
       >
-        <div
-          className="composer-surface"
-          data-expanded={expanded}
-          data-has-attachments={draft.files.length > 0}
-          data-has-queue={queue.steering.length + queue.followUp.length > 0}
+        <HitlQueuePopover
+          requests={requests}
+          queue={queue}
+          taskId={taskId}
+          queueDisabled={locked || sending}
+          onEditQueued={(text) => onChange({ ...draft, text: joinDraft(draft.text, text) })}
         >
-          {taskId && (
-            <ComposerQueue
-              taskId={taskId}
-              queue={queue}
-              disabled={locked || sending}
-              onEdit={(text) => onChange({ ...draft, text: joinDraft(draft.text, text) })}
-            />
-          )}
-          <ScrollArea className="composer-input-scroll" viewportClassName="max-h-[inherit]" gutter>
-            <Textarea
-              ref={ref}
-              className="composer-input"
-              data-panel-autofocus="true"
-              aria-label={t('composer.promptLabel')}
-              placeholder={placeholder}
-              rows={1}
-              wrap={expanded ? 'soft' : 'off'}
-              maxLength={pendingInput ? 10000 : 100000}
-              disabled={locked}
-              value={draft.text}
-              onChange={(event) => onChange({ ...draft, text: event.target.value })}
-            />
-          </ScrollArea>
-          {draft.files.length > 0 && (
-            <ScrollArea className="composer-attachments" viewportClassName="max-h-[inherit]" gutter>
-              <ul className="attachment-list" aria-label={t('composer.attachedContext')}>
-                {draft.files.map((file) => (
-                  <li className="attachment-chip" key={file.id}>
-                    <span title={file.name}>{file.name}</span>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon-xs"
-                      aria-label={t('composer.removeFile', { name: file.name })}
-                      onClick={() =>
-                        onChange({
-                          ...draft,
-                          files: draft.files.filter((item) => item.id !== file.id),
-                        })
-                      }
-                    >
-                      <X />
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-            </ScrollArea>
-          )}
-          <IconButton
-            label={t('composer.attachContext')}
-            className="composer-attach"
-            tooltipSide="top"
-            variant="secondary"
-            disabled={choosing || locked}
-            onClick={() => void choose()}
+          <div
+            className="composer-surface"
+            data-expanded={expanded}
+            data-has-attachments={draft.files.length > 0}
           >
-            <Plus />
-          </IconButton>
-          <div className="composer-actions">
-            <IconButton
-              label={label}
-              variant="default"
-              tooltipSide="top"
-              disabled={disabled}
-              onClick={() => void act()}
+            <ScrollArea
+              className="composer-input-scroll"
+              viewportClassName="max-h-[inherit]"
+              gutter
             >
-              {active ? <Square className="fill-current size-3" /> : <ArrowUp />}
+              <Textarea
+                ref={ref}
+                className="composer-input"
+                data-panel-autofocus="true"
+                aria-label={t('composer.promptLabel')}
+                placeholder={placeholder}
+                rows={1}
+                wrap={expanded ? 'soft' : 'off'}
+                maxLength={pendingInput ? 10000 : 100000}
+                disabled={locked}
+                value={draft.text}
+                onChange={(event) => onChange({ ...draft, text: event.target.value })}
+              />
+            </ScrollArea>
+            {draft.files.length > 0 && (
+              <ScrollArea
+                className="composer-attachments"
+                viewportClassName="max-h-[inherit]"
+                gutter
+              >
+                <ul className="attachment-list" aria-label={t('composer.attachedContext')}>
+                  {draft.files.map((file) => (
+                    <li className="attachment-chip" key={file.id}>
+                      <span title={file.name}>{file.name}</span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-xs"
+                        aria-label={t('composer.removeFile', { name: file.name })}
+                        onClick={() =>
+                          onChange({
+                            ...draft,
+                            files: draft.files.filter((item) => item.id !== file.id),
+                          })
+                        }
+                      >
+                        <X />
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              </ScrollArea>
+            )}
+            <IconButton
+              label={t('composer.attachContext')}
+              className="composer-attach"
+              tooltipSide="top"
+              variant="secondary"
+              disabled={choosing || locked}
+              onClick={() => void choose()}
+            >
+              <Plus />
             </IconButton>
+            <div className="composer-actions">
+              <IconButton
+                label={label}
+                variant="default"
+                tooltipSide="top"
+                disabled={disabled}
+                onClick={() => void act()}
+              >
+                {active ? <Square className="fill-current size-3" /> : <ArrowUp />}
+              </IconButton>
+            </div>
           </div>
-        </div>
+        </HitlQueuePopover>
         <ComposerConfiguration
           connections={connections}
           model={model}
