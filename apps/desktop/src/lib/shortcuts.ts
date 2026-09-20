@@ -82,6 +82,7 @@ export function shortcutKeys(accelerator: string, platform: string): string[] {
     Alt: mac ? '⌥' : 'Alt',
     Shift: mac ? '⇧' : 'Shift',
     Enter: mac ? 'Return' : 'Enter',
+    Escape: mac ? '⎋' : 'Esc',
     Up: '↑',
     Down: '↓',
     Left: '←',
