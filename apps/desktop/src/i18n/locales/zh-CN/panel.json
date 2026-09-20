@@ -16,7 +16,6 @@
   },
   "titles": {
     "tasks": "任务",
-    "commands": "命令",
     "commandInput": "命令输入",
     "task": "任务",
     "newTask": "新建任务"
@@ -58,8 +57,7 @@
   },
   "commands": {
     "all": "全部命令",
-    "search": "搜索命令…",
-    "empty": "没有匹配的命令。"
+    "less": "收起"
   },
   "input": {
     "label": "命令输入",

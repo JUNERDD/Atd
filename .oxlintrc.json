@@ -71,14 +71,7 @@
             ]
           },
           { "pattern": "^Command$", "allow": ["layout", "bg-transparent"] },
-          {
-            "pattern": "^CommandItem$",
-            "allow": [
-              "layout",
-              "command-option",
-              "dark:data-selected:bg-(--ata-surface-ghost-hover)"
-            ]
-          },
+          { "pattern": "^CommandItem$", "allow": ["layout"] },
           {
             "pattern": "^Item$",
             "allow": [

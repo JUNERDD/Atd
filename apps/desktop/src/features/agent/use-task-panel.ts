@@ -15,7 +15,7 @@ import { showErrorToast } from '../../components/toast-store';
 import { useAgentNotices } from './use-notices';
 import { focusPanelInput, showPanel, usePanelWindow } from './use-panel-window';
 
-type View = 'new' | 'history' | 'task' | 'commands' | 'input';
+type View = 'new' | 'history' | 'task' | 'input';
 const EMPTY_DRAFT: ComposerDraft = { text: '', files: [] };
 
 export function useTaskPanel() {
@@ -211,13 +211,11 @@ export function useTaskPanel() {
   const title =
     view === 'history'
       ? t('titles.tasks')
-      : view === 'commands'
-        ? t('titles.commands')
-        : view === 'input'
-          ? (prepared?.command.name ?? t('titles.commandInput'))
-          : view === 'task'
-            ? (current.detail?.task.title ?? t('titles.task'))
-            : t('titles.newTask');
+      : view === 'input'
+        ? (prepared?.command.name ?? t('titles.commandInput'))
+        : view === 'task'
+          ? (current.detail?.task.title ?? t('titles.task'))
+          : t('titles.newTask');
   const run = current.detail?.task.runs.at(-1);
   const policy: RunPolicy = policies[policyKey] ?? {
     tools:

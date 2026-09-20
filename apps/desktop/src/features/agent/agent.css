@@ -41,20 +41,6 @@
   font-weight: 400;
   line-height: 16px;
 }
-.command-catalog {
-  padding: 20px 16px 16px;
-}
-.command-catalog [data-slot='command'] {
-  background: transparent;
-}
-.command-catalog [data-slot='command-input-wrapper'] {
-  padding: 0 0 12px;
-}
-.command-option {
-  margin-bottom: 4px;
-  padding: 10px 12px;
-  cursor: pointer;
-}
 .command-preparation {
   display: flex;
   flex-direction: column;

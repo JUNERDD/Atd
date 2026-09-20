@@ -16,7 +16,6 @@
   },
   "titles": {
     "tasks": "Tasks",
-    "commands": "Commands",
     "commandInput": "Command input",
     "task": "Task",
     "newTask": "New task"
@@ -58,8 +57,7 @@
   },
   "commands": {
     "all": "All commands",
-    "search": "Search commands…",
-    "empty": "No matching commands."
+    "less": "Show less"
   },
   "input": {
     "label": "Command input",

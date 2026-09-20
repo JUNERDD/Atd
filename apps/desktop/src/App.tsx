@@ -119,20 +119,12 @@ export function App() {
                 {t('welcome.subtitle')}
               </p>
               <CommandLauncher
-                compact
                 commands={agent.snapshot?.commands ?? []}
                 onChoose={(id) => void chooseCommand(id)}
-                onAll={() => setView('commands')}
               />
               {!window.desktop && <p className="text-xs">{t('welcome.desktopOnly')}</p>}
             </section>
           </ScrollArea>
-        )}
-        {view === 'commands' && (
-          <CommandLauncher
-            commands={agent.snapshot?.commands ?? []}
-            onChoose={(id) => void chooseCommand(id)}
-          />
         )}
         {view === 'history' && (
           <TaskHistory
