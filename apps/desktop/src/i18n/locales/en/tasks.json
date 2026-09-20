@@ -96,7 +96,8 @@
   },
   "question": {
     "skip": "Skip",
-    "skipped": "Skipped"
+    "skipped": "Skipped",
+    "send": "Send"
   },
   "thinking": {
     "title": "Thinking",
