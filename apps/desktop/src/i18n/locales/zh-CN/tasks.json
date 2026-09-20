@@ -26,8 +26,8 @@
     "interrupted": "此任务已中断",
     "cancelled": "任务已取消",
     "failed": "任务未能完成",
-    "jumpToLatest": "跳到最新",
-    "stopped": "已停止"
+    "stopped": "已停止",
+    "scrollToBottom": "滚动到底部"
   },
   "activity": {
     "memory": "记忆",
@@ -141,6 +141,10 @@
       "done": "用时 {{elapsed}} · {{model}} · {{clock}}",
       "elapsed": "{{elapsed}}",
       "workedFor": "用时 {{elapsed}}"
+    },
+    "rate": {
+      "tps": "{{rate}} tok/s",
+      "stats": "{{rate}} tok/s（{{tokens}} 词元，{{elapsed}}）"
     },
     "phase": {
       "show": "展开 {{count}} 个步骤",

@@ -1,5 +1,6 @@
 import type { AgentSession } from '@earendil-works/pi-coding-agent';
 import type { AssistantMessage, ToolResultMessage } from '@earendil-works/pi-ai';
+import { Type, type Static } from 'typebox';
 import { Value } from 'typebox/value';
 import {
   PermissionRecordSchema,
@@ -26,11 +27,28 @@ export type ProjectBranchItem =
 export const ASK_USER_TOOL = 'ask_user';
 export const ASK_USER_CANCELLED = 'The user cancelled the request.';
 
+/**
+ * Provider output captured at `message_end`, appended as the `app-usage` custom entry keyed by
+ * the assistant message timestamp. Cold projection falls back to `message.usage` when the entry
+ * is missing (sessions written before usage plumbing); after compaction the entry is gone with
+ * the message and the turn reports unknown instead of a false zero.
+ */
+export const UsageRecordSchema = Type.Object(
+  {
+    timestamp: Type.Integer({ minimum: 0 }),
+    output: Type.Integer({ minimum: 0 }),
+    at: Type.Number(),
+  },
+  { additionalProperties: false },
+);
+export type UsageRecord = Static<typeof UsageRecordSchema>;
+
 export interface ToolLookups {
   results: Map<string, ToolResultMessage>;
   permissions: Map<string, PermissionRecord>;
   questions: Map<string, QuestionRecord>;
   thinkingDurations: Map<string, number>;
+  usages: Map<number, number>;
 }
 
 export function contentText(content: unknown): string {
@@ -67,6 +85,7 @@ export function collectLookups(branch: readonly ProjectBranchItem[]): ToolLookup
   const permissions = new Map<string, PermissionRecord>();
   const questions = new Map<string, QuestionRecord>();
   const thinkingDurations = new Map<string, number>();
+  const usages = new Map<number, number>();
   for (const item of branch) {
     if (item.type === 'custom') {
       if (item.customType === 'app-permission' && Value.Check(PermissionRecordSchema, item.data))
@@ -78,12 +97,22 @@ export function collectLookups(branch: readonly ProjectBranchItem[]): ToolLookup
         Value.Check(ThinkingDurationRecordSchema, item.data)
       )
         thinkingDurations.set(item.data.blockId, item.data.durationMs);
+      if (item.customType === 'app-usage' && Value.Check(UsageRecordSchema, item.data))
+        usages.set(item.data.timestamp, item.data.output);
       continue;
     }
     if (item.type !== 'message' || item.message.role !== 'toolResult') continue;
     results.set(item.message.toolCallId, item.message);
   }
-  return { results, permissions, questions, thinkingDurations };
+  return { results, permissions, questions, thinkingDurations, usages };
+}
+
+/** Provider output for a settled message: captured entry first, Pi `message.usage` fallback. */
+function settledOutput(message: AssistantMessage, lookups: ToolLookups): number | undefined {
+  const captured = lookups.usages.get(message.timestamp);
+  if (captured !== undefined) return captured;
+  const output = message.usage?.output;
+  return typeof output === 'number' && Number.isInteger(output) && output >= 0 ? output : undefined;
 }
 
 export function mapStopReason(
@@ -153,6 +182,10 @@ export function projectAssistantBlocks(input: {
   const timestamp = message.timestamp;
   const error = message.errorMessage ?? '';
   const stopReason = mapStopReason(message.stopReason, streaming);
+  // Live partials carry no true usage yet — the renderer shows its character estimate until the
+  // `message_end` capture lands. Every settled block from this message shares one copy.
+  const settled = streaming ? undefined : settledOutput(message, lookups);
+  const usage = settled === undefined ? undefined : { output: settled };
   const blocks: Block[] = [];
   message.content.forEach((part, index) => {
     switch (part.type) {
@@ -166,6 +199,7 @@ export function projectAssistantBlocks(input: {
           streaming,
           stopReason,
           error,
+          ...(usage ? { usage } : {}),
         });
         return;
       case 'thinking':
@@ -178,6 +212,7 @@ export function projectAssistantBlocks(input: {
           streaming,
           redacted: Boolean(part.redacted),
           durationMs: lookups.thinkingDurations.get(`t:${timestamp}:${index}`) ?? null,
+          ...(usage ? { usage } : {}),
         });
         return;
       case 'toolCall': {
@@ -196,6 +231,7 @@ export function projectAssistantBlocks(input: {
             status: resolveToolStatus({ result, declined: false, live }),
             answer: record ? record.answer : null,
             skipped: record ? record.answer === null : false,
+            ...(usage ? { usage } : {}),
           });
           return;
         }
@@ -218,6 +254,7 @@ export function projectAssistantBlocks(input: {
           partial: result ? '' : (partials.get(part.id) ?? ''),
           details: normalizeDetails(result?.details),
           permission: permission ? { scope: permission.scope, outcome: permission.outcome } : null,
+          ...(usage ? { usage } : {}),
         });
         return;
       }

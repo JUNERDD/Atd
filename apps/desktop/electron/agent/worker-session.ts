@@ -234,6 +234,15 @@ export async function createTaskSession(
           });
           thinkingStarts.delete(timestamp);
         }
+        // Pi reports usage only on the final message; capture it here so the projection can
+        // replace the renderer's character estimate with the provider total once settled.
+        const output = event.message.usage?.output;
+        if (typeof output === 'number' && Number.isInteger(output) && output >= 0)
+          sessionManager.appendCustomEntry('app-usage', {
+            timestamp,
+            output,
+            at: Date.now(),
+          });
       }
       if (
         event.message.role === 'toolResult' &&

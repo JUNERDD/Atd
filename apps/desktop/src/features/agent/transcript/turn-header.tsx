@@ -3,6 +3,7 @@ import { Check, LoaderCircle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Shimmer } from '@ai/ui/components/ai-elements/shimmer';
 import { formatElapsed } from './elapsed';
+import { useTokenRate } from './use-token-rate';
 
 /** Wall-clock stamp for a finished turn, in the reader's own locale. */
 function formatClockTime(epochMs: number): string {
@@ -46,6 +47,12 @@ export type TurnWaitingKind = 'approval' | 'answer' | null;
  * Per-turn elapsed header, directly under the user message. Settled turns show
  * "Worked for … · model · clock"; the live turn shows a ticking "Working · … · model"
  * instead of the old bare status line. Copy lives in the turn actions, not here.
+ *
+ * The rate suffix is a smoothed generation rate (`tok/s`), never billed usage: a live
+ * character estimate while streaming, the provider true total back-dated as an average on
+ * settle. It freezes while waiting, pauses through tool execution, and stays visible for
+ * tool-heavy turns with an empty answer. New props are optional so existing TurnView calls
+ * keep rendering until the adapter pass-through is wired.
  */
 export function TurnHeader({
   startedAt,
@@ -53,15 +60,40 @@ export function TurnHeader({
   modelName,
   live,
   waiting,
+  rateText,
+  trueTokens,
+  toolRunning,
+  rateUnknown,
 }: {
   startedAt: number | null;
   durationMs: number | null;
   modelName: string;
   live: boolean;
   waiting: TurnWaitingKind;
+  rateText?: string;
+  trueTokens?: number | null;
+  toolRunning?: boolean;
+  rateUnknown?: boolean;
 }) {
   const { t } = useTranslation('tasks');
   const elapsedMs = useLiveElapsed(live ? startedAt : null, waiting !== null);
+  const rate = useTokenRate({
+    text: rateText ?? '',
+    live,
+    waiting: waiting !== null,
+    toolRunning: toolRunning ?? false,
+    startedAt,
+    trueTokens: trueTokens ?? null,
+    durationMs,
+    rateUnknown: rateUnknown ?? false,
+    elapsedMs,
+  });
+  const suffix =
+    rate === null
+      ? ''
+      : rate.kind === 'stats'
+        ? ` · ${t('transcript.rate.stats', { rate: rate.rate, tokens: rate.tokens, elapsed: rate.elapsed })}`
+        : ` · ${t('transcript.rate.tps', { rate: rate.rate })}`;
 
   if (live) {
     const elapsed = formatElapsed(elapsedMs) ?? '';
@@ -81,7 +113,7 @@ export function TurnHeader({
       >
         <LoaderCircle className="turn-header-spinner" />
         <Shimmer as="span" className="turn-header-label">
-          {label}
+          {`${label}${suffix}`}
         </Shimmer>
       </output>
     );
@@ -91,10 +123,11 @@ export function TurnHeader({
   if (elapsed === null) return null;
   const clock =
     startedAt !== null && durationMs !== null ? formatClockTime(startedAt + durationMs) : '';
-  const label =
+  const label = `${
     modelName && clock
       ? t('transcript.footer.done', { elapsed, model: modelName, clock })
-      : `${t('transcript.footer.workedFor', { elapsed })}${modelName ? ` · ${modelName}` : ''}`;
+      : `${t('transcript.footer.workedFor', { elapsed })}${modelName ? ` · ${modelName}` : ''}`
+  }${suffix}`;
   return (
     <div className="turn-header" aria-label={label}>
       <Check className="turn-header-check" />
