@@ -43,6 +43,20 @@ export const ToolDetailsSchema = Type.Object(
 );
 export type ToolDetails = Static<typeof ToolDetailsSchema>;
 
+/**
+ * Provider-reported generated tokens for one assistant message. Absent while streaming and when
+ * unknown (after compaction, or on blocks projected before usage plumbing). Every block derived
+ * from the same message carries the same copy so tool-only messages keep their usage; the
+ * renderer dedupes by timestamp when summing a turn. This is a rate input, never billed usage.
+ */
+export const AssistantUsageSchema = Type.Object(
+  {
+    output: Type.Integer({ minimum: 0 }),
+  },
+  { additionalProperties: false },
+);
+export type AssistantUsage = Static<typeof AssistantUsageSchema>;
+
 /** Permission state of a guarded tool call, from the `app-permission` record once resolved. */
 export const ToolPermissionSchema = Type.Object(
   {
@@ -79,6 +93,7 @@ export const BlockSchema = Type.Union([
       ]),
       /** Provider error text when `stopReason` is `error`; empty otherwise. */
       error: Type.String(),
+      usage: Type.Optional(AssistantUsageSchema),
     },
     { additionalProperties: false },
   ),
@@ -92,6 +107,7 @@ export const BlockSchema = Type.Union([
       redacted: Type.Boolean(),
       /** Wall-clock reasoning time in ms, measured live; null on cold projection or when untimed. */
       durationMs: Type.Union([Type.Integer({ minimum: 0 }), Type.Null()]),
+      usage: Type.Optional(AssistantUsageSchema),
     },
     { additionalProperties: false },
   ),
@@ -112,6 +128,7 @@ export const BlockSchema = Type.Union([
       details: ToolDetailsSchema,
       /** `null` for tools that never pass through the permission gate (memory tools). */
       permission: Type.Union([ToolPermissionSchema, Type.Null()]),
+      usage: Type.Optional(AssistantUsageSchema),
     },
     { additionalProperties: false },
   ),
@@ -126,6 +143,7 @@ export const BlockSchema = Type.Union([
       /** The user's answer from the `app-question` record; `null` while pending or when skipped. */
       answer: Type.Union([Type.String(), Type.Null()]),
       skipped: Type.Boolean(),
+      usage: Type.Optional(AssistantUsageSchema),
     },
     { additionalProperties: false },
   ),

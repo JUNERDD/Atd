@@ -1,6 +1,7 @@
 import type { ResolvedModel, TaskRun } from '../../../../electron/agent/task-schema';
 import type { Block, BlockOf, ToolStatus } from '../../../../electron/agent/transcript-schema';
 import { buildActivityPhases, isViewLive, type ActivityPhase } from './phases';
+import { buildRateText, hasCompactionMarker, sumTurnUsage } from './token-rate';
 import type { TurnWaitingKind } from './turn-header';
 import { deriveTurns, type RequestIndex, type Turn } from './turns';
 
@@ -72,6 +73,14 @@ export type AdaptedTurn = {
   modelName: string;
   /** Markdown the user actually reads: assistant prose joined for the footer copy action. */
   copyText: string;
+  /** Model-output text for the live rate estimate; includes tool args for tool-heavy turns. */
+  rateText: string;
+  /** Provider true total for settled turns; null while streaming or when unknown. */
+  trueTokens: number | null;
+  /** A tool/question in the turn is still running; the rate clock pauses. */
+  toolRunning: boolean;
+  /** The turn lost provider history to compaction; settled falls back to the estimate. */
+  rateUnknown: boolean;
 };
 
 function toolKindForName(name: string): ViewToolKind {
@@ -240,6 +249,7 @@ function adaptTurn(turn: Turn, requests: RequestIndex, runs: TaskRun[]): Adapted
   const end = last?.timestamp ?? userTimestamp ?? null;
   const runId = turn.user?.runId ?? first?.runId ?? '';
   const run = runs.find((candidate) => candidate.id === runId) ?? runs[0];
+  const source = turn.items.flatMap((item) => (item.type === 'block' ? [item.block] : item.blocks));
   return {
     id: turn.id,
     user: turn.user,
@@ -249,9 +259,13 @@ function adaptTurn(turn: Turn, requests: RequestIndex, runs: TaskRun[]): Adapted
     durationMs: startedAt !== null && end !== null ? Math.max(0, end - startedAt) : null,
     waiting: waitingKindFor(view),
     modelName: modelNameForRun(run),
-    copyText: turnCopyText(
-      turn.items.flatMap((item) => (item.type === 'block' ? [item.block] : item.blocks)),
+    copyText: turnCopyText(source),
+    rateText: buildRateText(source),
+    trueTokens: sumTurnUsage(source),
+    toolRunning: view.some(
+      (block) => (block.role === 'tool' || block.role === 'question') && isViewLive(block),
     ),
+    rateUnknown: hasCompactionMarker(source),
   };
 }
 
