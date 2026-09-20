@@ -1,17 +1,37 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@ai/ui/components/button';
-import { Kbd } from '@ai/ui/components/kbd';
+import { Kbd, KbdGroup } from '@ai/ui/components/kbd';
 import type { ConfirmationRequest } from '../../../../electron/agent/permission-schema';
 import { agentApi } from '../use-agent';
 import { messageOf } from '../../../lib/errors';
+import { shortcutKeys } from '../../../lib/shortcuts';
 import { DetailBox } from './detail-box';
 import { scopeKey } from './tool-copy';
 
 /** Display cap for the approval detail; the full value stays one copy click away. */
 const DETAIL_PREVIEW_CHARS = 2000;
 
-export function ApprovalControls({ request }: { request: ConfirmationRequest }) {
+/** Platform shortcut hint in the shared launcher style (symbols on macOS, words elsewhere). */
+function ShortcutHint({ accelerator }: { accelerator: string }) {
+  const platform = window.desktop?.platform ?? 'web';
+  return (
+    <KbdGroup>
+      {shortcutKeys(accelerator, platform).map((key) => (
+        <Kbd key={key}>{key}</Kbd>
+      ))}
+    </KbdGroup>
+  );
+}
+
+export function ApprovalControls({
+  request,
+  hideTitle = false,
+}: {
+  request: ConfirmationRequest;
+  /** Hide the scope title when the popover header already merges it (single approval). */
+  hideTitle?: boolean;
+}) {
   const { t } = useTranslation('tasks');
   const onceRef = useRef<HTMLButtonElement>(null);
   const [pending, setPending] = useState(false);
@@ -41,6 +61,14 @@ export function ApprovalControls({ request }: { request: ConfirmationRequest }) 
 
   function onControlsKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
     if (pending) return;
+    if (event.key === 'Enter' && event.shiftKey) {
+      // Session grant from any focused decision: preventing default stops the focused button's
+      // own Enter activation so only the session grant fires.
+      event.preventDefault();
+      event.stopPropagation();
+      void respond('session');
+      return;
+    }
     if (event.key === 'Escape') {
       // Decline, not dismiss: stopping propagation keeps the popover-level Esc handler (and the
       // panel-global one) from firing, so the queue region survives a button-focused decline.
@@ -52,9 +80,9 @@ export function ApprovalControls({ request }: { request: ConfirmationRequest }) 
 
   return (
     <div className="approval-controls">
-      <p className="text-sm font-medium">{t(scopeKey(request.scope))}</p>
+      {hideTitle ? null : <p className="text-sm font-medium">{t(scopeKey(request.scope))}</p>}
       {detail ? (
-        <DetailBox variant="output" copyText={detail}>
+        <DetailBox variant="output" copyText={detail} className="approval-detail">
           <pre className="m-0 whitespace-pre-wrap wrap-anywhere">{preview}</pre>
         </DetailBox>
       ) : null}
@@ -66,7 +94,7 @@ export function ApprovalControls({ request }: { request: ConfirmationRequest }) 
           onKeyDown={onControlsKeyDown}
         >
           {t('permission.allowOnce')}
-          <Kbd>Enter</Kbd>
+          <ShortcutHint accelerator="Enter" />
         </Button>
         <Button
           variant="outline"
@@ -75,6 +103,7 @@ export function ApprovalControls({ request }: { request: ConfirmationRequest }) 
           onKeyDown={onControlsKeyDown}
         >
           {t('permission.allowSession')}
+          <ShortcutHint accelerator="Shift+Enter" />
         </Button>
         <Button
           variant="outline"
@@ -83,7 +112,7 @@ export function ApprovalControls({ request }: { request: ConfirmationRequest }) 
           onKeyDown={onControlsKeyDown}
         >
           {t('permission.decline')}
-          <Kbd>Esc</Kbd>
+          <ShortcutHint accelerator="Escape" />
         </Button>
       </div>
       {error && (

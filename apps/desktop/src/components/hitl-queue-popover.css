@@ -1,13 +1,71 @@
+/* Radix content: same width as the composer surface it anchors to, so the form reads as
+   one surface with the input below, with the shared blurred-panel treatment. Available-width
+   caps from the shared primitive still apply. */
+.hitl-queue-content {
+  width: var(--radix-popover-trigger-width);
+  backdrop-filter: blur(var(--ata-backdrop-blur));
+}
+
 /* Single popover above the composer surface hosting the HITL region (top, urgent) and
    the queue region (bottom). The container owns sizing and scrolling so neither region can push
    the composer surface around; each region hides when empty and both empty closes the popover. */
 .hitl-queue-popover {
   display: flex;
   flex-direction: column;
-  width: min(26rem, calc(100vw - 2rem));
+  width: 100%;
   max-height: min(22rem, calc(100dvh - 14rem));
   min-height: 0;
+}
+
+/* Fixed header: summary title plus the collapse control. Dismissing collapses to the recall
+   pill (the minimal state), never resolves a request. */
+.hitl-queue-header {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 8px 8px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.hitl-queue-title {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted-foreground);
+}
+
+.hitl-queue-body {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
   overflow-y: auto;
+}
+
+/* Single-scrollbar contract: the approval detail is the only scroller. The flex chain from
+   the body down carries min-height: 0 so a tall detail compresses instead of pushing the
+   popover into a second outer scroll; actions stay visible. The body keeps its overflow as
+   a last resort for stacked regions whose floors still exceed the popover cap. */
+.hitl-queue-body > * {
+  min-height: 0;
+}
+
+.approval-controls {
+  min-height: 0;
+}
+
+.approval-detail {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.approval-detail > .tool-output {
+  min-height: 96px;
 }
 
 /* Anchor box for the popover: a layout-neutral wrapper around the composer surface so the

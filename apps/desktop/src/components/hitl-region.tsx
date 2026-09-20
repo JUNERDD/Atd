@@ -7,8 +7,15 @@ import { QuestionControls } from '../features/agent/transcript/question-block';
  * Urgent region at the top of the composer popover. Confirmations resolve with a permission
  * decision (detail embedded truncated with full copy); input questions resolve with a chip, a
  * free-text answer, or skip. Polite live so arrivals announce without interrupting typing.
+ * A lone approval drops its scope title because the popover header already merges it.
  */
-export function HitlRegion({ requests }: { requests: PermissionRequest[] }) {
+export function HitlRegion({
+  requests,
+  hideApprovalTitle = false,
+}: {
+  requests: PermissionRequest[];
+  hideApprovalTitle?: boolean;
+}) {
   const { t } = useTranslation('tasks');
   if (requests.length === 0) return null;
   const label = requests.some((request) => request.kind === 'confirmation')
@@ -19,7 +26,7 @@ export function HitlRegion({ requests }: { requests: PermissionRequest[] }) {
     <section aria-live="polite" aria-label={label} className="hitl-region">
       {requests.map((request) =>
         request.kind === 'confirmation' ? (
-          <ApprovalControls key={request.id} request={request} />
+          <ApprovalControls key={request.id} request={request} hideTitle={hideApprovalTitle} />
         ) : (
           <QuestionControls key={request.id} request={request} />
         ),

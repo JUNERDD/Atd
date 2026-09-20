@@ -66,6 +66,7 @@
               "layout",
               "rounded-2xl",
               "p-0",
+              "hitl-queue-content",
               "input-options-popover",
               "model-picker",
               "model-picker-scoped"

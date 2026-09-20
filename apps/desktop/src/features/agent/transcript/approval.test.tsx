@@ -65,7 +65,7 @@ describe('approval controls', () => {
     expect(within(transcript).queryByRole('button', { name: /Allow once/ })).toBeNull();
     expect(within(transcript).queryByRole('button', { name: /Decline/ })).toBeNull();
     expect(screen.getByRole('button', { name: /Allow once/ })).toBeVisible();
-    expect(screen.getByRole('button', { name: 'Allow for this session' })).toBeVisible();
+    expect(screen.getByRole('button', { name: /Allow for this session/ })).toBeVisible();
     expect(screen.getByRole('button', { name: /Decline/ })).toBeVisible();
     await user.click(screen.getByRole('button', { name: /Allow once/ }));
     expect(answer).toHaveBeenCalledWith('task-1', 'run-1', 'req-1', { decision: 'once' });
@@ -74,7 +74,7 @@ describe('approval controls', () => {
   it('sends a session grant from the secondary control', async () => {
     const user = userEvent.setup();
     const { answer } = renderApproval();
-    await user.click(screen.getByRole('button', { name: 'Allow for this session' }));
+    await user.click(screen.getByRole('button', { name: /Allow for this session/ }));
     expect(answer).toHaveBeenCalledWith('task-1', 'run-1', 'req-1', { decision: 'session' });
   });
 

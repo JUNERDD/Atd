@@ -1,4 +1,5 @@
 {
+  "close": "关闭",
   "toast": {
     "dismiss": "关闭",
     "dismissLabel": "关闭通知"

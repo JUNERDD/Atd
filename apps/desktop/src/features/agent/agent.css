@@ -672,6 +672,10 @@
   flex-wrap: wrap;
   gap: 8px;
 }
+/* Approval decisions sit at the form's bottom-right like the question Send/Skip pair. */
+.approval-actions {
+  justify-content: flex-end;
+}
 .question-option {
   max-width: 100%;
   height: auto;
