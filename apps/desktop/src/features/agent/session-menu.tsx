@@ -75,6 +75,7 @@ export function SessionMenu({ task }: { task: AgentTask }): ReactElement {
             label={t('session.menu')}
             aria-label={t('session.menu')}
             className="header-button"
+            tooltipDismissOnClick
           >
             <Ellipsis />
           </IconButton>
