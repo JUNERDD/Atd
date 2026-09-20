@@ -9,7 +9,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import type { GrantScope, PermissionOutcome } from '../../../../electron/agent/permission-schema';
-import type { ToolStatus } from '../../../../electron/agent/transcript-schema';
+import type { BlockOf, ToolStatus } from '../../../../electron/agent/transcript-schema';
 
 export type StepKey =
   | 'activity.step.read'
@@ -140,6 +140,22 @@ export function toolTarget(name: string, args: Record<string, unknown>): string 
 
 export function bashCommand(args: Record<string, unknown>): string {
   return typeof args.command === 'string' ? args.command : '';
+}
+
+/**
+ * Whether the row has anything to expand into. ToolBlock renders a static row when this is
+ * false so tools without detail expose no hover-expand affordance; ToolBody renders nothing.
+ */
+export function hasToolDetail(block: BlockOf<'tool'>): boolean {
+  const text = block.status === 'running' ? block.partial : block.output;
+  switch (block.name) {
+    case 'edit':
+      return Boolean(block.details.diff || text);
+    case 'bash':
+      return Boolean(bashCommand(block.args) || text);
+    default:
+      return Boolean(text || block.status === 'interrupted');
+  }
 }
 
 export function outcomeKey(outcome: PermissionOutcome): OutcomeKey {

@@ -321,6 +321,10 @@
   align-items: center;
   border-radius: var(--radius-lg);
   color: var(--muted-foreground);
+  /* Twin of the trigger's text metrics: Button's `text-sm` (14px/20px) does not apply here
+     since there is no Button host, so declare it to keep static rows pixel-identical. */
+  font-size: 14px;
+  line-height: 20px;
 }
 .activity-icon,
 .activity-icon svg {
@@ -559,11 +563,14 @@
 }
 /*
  * Same tinted region as a tool body: the reasoning reads inside one box, not on the bare page.
- * No height cap — thinking keeps its full-height read; only tool output scrolls.
+ * Capped like tool output so a long trace scrolls instead of pushing the answer away.
  */
 .thinking-detail {
+  max-height: 240px;
   border-radius: var(--radius-xl);
   background: var(--muted);
+}
+.thinking-detail-pre {
   padding: 8px;
 }
 .turn-header {

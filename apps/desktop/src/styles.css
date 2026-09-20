@@ -219,6 +219,11 @@ html[data-platform='darwin'] .panel-header {
 .overlay-footer-fade > div {
   padding-bottom: calc(var(--overlay-footer-height, 0px) + 56px);
 }
+/* Conditional reserve (`useOverlayReserve`): when the content already clears the floating bar,
+   the full padding would only manufacture dead scroll range and a scrollbar for it. */
+.overlay-footer-fade[data-reserve='off'] > div {
+  padding-bottom: 0;
+}
 /* Floating scroll-to-bottom pill pinned above the composer. The wrapper owns position and the
    blurred translucent surface; the ghost icon button inside keeps its own radius, hover wash,
    and focus ring, so no custom class lands on the Button itself. Tokens match the drawer and

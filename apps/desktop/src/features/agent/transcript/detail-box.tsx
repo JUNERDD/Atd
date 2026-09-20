@@ -8,8 +8,9 @@ export type DetailBoxVariant = 'output' | 'diff' | 'plain';
 /**
  * The single shared desc box behind every tool body and thinking detail: one tinted region with
  * an optional copy button that reveals on hover. Variants only change the skin/scroll contract,
- * never the shape: `output` scrolls a muted box, `diff` scrolls a bordered box both ways,
- * `plain` reads full height without scrolling. Empty `copyText` renders no button.
+ * never the shape: `output` scrolls a muted box with dense output typography, `diff` scrolls a
+ * bordered box both ways, `plain` scrolls the same muted box for thinking text. Empty `copyText`
+ * renders no button.
  */
 export function DetailBox({
   variant,
@@ -25,7 +26,14 @@ export function DetailBox({
   return (
     <div className={cn('group relative', className)}>
       {variant === 'plain' ? (
-        <div className="thinking-detail">{children}</div>
+        <ScrollArea
+          className="thinking-detail"
+          viewportClassName="max-h-[inherit]"
+          gutter
+          scrollShadow
+        >
+          <div className="thinking-detail-pre">{children}</div>
+        </ScrollArea>
       ) : variant === 'diff' ? (
         <ScrollArea
           orientation="both"
