@@ -58,8 +58,9 @@ export function latestStepTitle(step: ViewBlock, t: T): string {
 }
 
 /**
- * The group's header: what the calls add up to — in the present tense while the group is still
- * running, so "Reading notes.txt" becomes "Read notes.txt" the moment it folds. A group that
+ * The group's header: what the calls add up to — the latest step in the present tense while
+ * the group is still running, so "Reading notes.txt" becomes "Ran 2 tools" the moment it
+ * folds. A group that
  * also thought leads with its reasoning count ("Thought 7 times · Ran 10 tools"); a group of
  * pure thought is just the count. Ported from monocode `activityPhaseTitle` onto the frozen
  * `transcript.verb.*` keys; every key below is a literal so type checking catches typos.
@@ -76,30 +77,37 @@ export function phaseTitle(phase: ActivityPhase, live: boolean, t: T): string {
   return `${think} · ${title}`;
 }
 
+function settledToolTitle(steps: ViewBlock[], t: T): string {
+  const count = steps.filter(isToolView).length;
+  if (count <= 0) return t('transcript.verb.working');
+  if (count === 1) return t('transcript.verb.toolOneDone');
+  return t('transcript.verb.toolManyDone', { count });
+}
+
 function workTitle(phase: ActivityPhase, live: boolean, t: T): string {
+  if (!live && (phase.kind === 'research' || phase.kind === 'edit' || phase.kind === 'run')) {
+    return settledToolTitle(phase.steps, t);
+  }
   const tally = tallySteps(phase.steps);
   switch (phase.kind) {
     case 'edit':
-      if (tally.edits.size === 0)
-        return t(live ? 'transcript.verb.editLiveShort' : 'transcript.verb.editDoneShort');
-      return t(live ? 'transcript.verb.editLive' : 'transcript.verb.editDone', {
+      if (tally.edits.size === 0) return t('transcript.verb.editLiveShort');
+      return t('transcript.verb.editLive', {
         file: fileParam(tally.edits, t),
       });
     case 'research':
       if (tally.reads.size > 0 && tally.searches === 0)
-        return t(live ? 'transcript.verb.readLive' : 'transcript.verb.readDone', {
+        return t('transcript.verb.readLive', {
           file: fileParam(tally.reads, t),
         });
-      if (tally.reads.size === 0 && tally.searches > 0)
-        return t(live ? 'transcript.verb.searchLive' : 'transcript.verb.searchDone');
+      if (tally.reads.size === 0 && tally.searches > 0) return t('transcript.verb.searchLive');
       if (tally.reads.size === 0 && tally.searches === 0)
-        return t(live ? 'transcript.verb.exploreLiveShort' : 'transcript.verb.exploreDoneShort');
-      return t(live ? 'transcript.verb.exploreLive' : 'transcript.verb.exploreDone');
+        return t('transcript.verb.exploreLiveShort');
+      return t('transcript.verb.exploreLive');
     case 'run':
-      if (tally.runs === 1)
-        return t(live ? 'transcript.verb.runOneLive' : 'transcript.verb.runOneDone');
+      if (tally.runs === 1) return t('transcript.verb.runOneLive');
       if (tally.runs > 1)
-        return t(live ? 'transcript.verb.runManyLive' : 'transcript.verb.runManyDone', {
+        return t('transcript.verb.runManyLive', {
           count: tally.runs,
         });
       return t('transcript.verb.working');
