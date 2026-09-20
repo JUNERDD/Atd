@@ -1,12 +1,16 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { useTranslation } from 'react-i18next';
 import { describe, expect, it, vi } from 'vitest';
 import { TooltipProvider } from '@ai/ui/components/tooltip';
+import type { ViewBlock } from './adapter';
+import { phaseTitle } from './phase-title';
 import { Transcript } from './transcript';
 import {
   assistantBlock,
   installAgent,
   makeDetail,
+  questionBlock,
   thinkingBlock,
   toolBlock,
   userBlock,
@@ -19,6 +23,12 @@ function mount(detail: ReturnType<typeof makeDetail>) {
       <Transcript detail={detail} onAttach={vi.fn()} />
     </TooltipProvider>,
   );
+}
+
+/** Renders a settled agent phase title through the real `tasks` translations. */
+function AgentSettledTitle({ step }: { step: ViewBlock }) {
+  const { t } = useTranslation('tasks');
+  return <>{phaseTitle({ id: 'phase-agent', kind: 'agent', steps: [step] }, false, t)}</>;
 }
 
 describe('activity folding', () => {
@@ -64,9 +74,88 @@ describe('activity folding', () => {
       }),
     );
     const trigger = screen.getByRole('button', {
-      name: 'Show 4 steps, Thought once · Read 2 files',
+      name: 'Show 4 steps, Thought once · Ran 3 tools',
     });
     expect(trigger).toHaveAttribute('aria-expanded', 'false');
     expect(document.querySelector('[data-activity="settled"]')).not.toBeNull();
+  });
+
+  it('counts an answered question toward the settled tool total', () => {
+    mount(
+      makeDetail({
+        blocks: [
+          userBlock(),
+          thinkingBlock(),
+          toolBlock({ id: 'tool:read-1', callId: 'read-1' }),
+          questionBlock({ status: 'completed', answer: 'Detailed' }),
+          assistantBlock(),
+        ],
+      }),
+    );
+    const trigger = screen.getByRole('button', {
+      name: 'Show 3 steps, Thought once · Ran 2 tools',
+    });
+    expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    expect(document.querySelector('[data-activity="settled"]')).not.toBeNull();
+  });
+
+  it('counts redacted empty thinking toward the thought prefix', () => {
+    mount(
+      makeDetail({
+        blocks: [
+          userBlock(),
+          thinkingBlock({ text: '', redacted: true }),
+          toolBlock({ id: 'tool:read-1', callId: 'read-1' }),
+          assistantBlock(),
+        ],
+      }),
+    );
+    // Without the redacted placeholder the lone tool would render headerless, so the
+    // thought prefix proves the empty redacted block still counts as thinking.
+    const trigger = screen.getByRole('button', {
+      name: 'Show 2 steps, Thought once · Ran a tool',
+    });
+    expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    expect(document.querySelector('[data-activity="settled"]')).not.toBeNull();
+  });
+
+  it('renders a lone tool step without a phase header', () => {
+    mount(
+      makeDetail({
+        blocks: [userBlock(), toolBlock({ id: 'tool:read-1', callId: 'read-1' }), assistantBlock()],
+      }),
+    );
+    expect(document.querySelector('[data-activity="settled"]')).not.toBeNull();
+    expect(screen.queryByRole('button', { name: /(Show|Hide) \d+ step/ })).toBeNull();
+    expect(screen.getByText('Done.')).toBeVisible();
+  });
+
+  it('titles a settled agent phase as invoked', () => {
+    // The adapter never synthesizes an agent tool kind from a block name, so this branch
+    // is covered at the title contract with a step shaped like an agent call.
+    const source = toolBlock({ id: 'tool:agent-1', callId: 'agent-1', name: 'task', args: {} });
+    const step: ViewBlock = {
+      id: source.id,
+      runId: source.runId,
+      timestamp: source.timestamp,
+      role: 'tool',
+      text: '',
+      streaming: false,
+      status: 'completed',
+      tool: {
+        callId: source.callId,
+        name: source.name,
+        kind: 'agent',
+        status: 'completed',
+        path: null,
+        fileName: null,
+        query: null,
+      },
+      approvalPending: false,
+      requestKind: null,
+      source,
+    };
+    render(<AgentSettledTitle step={step} />);
+    expect(screen.getByText('Invoked a subagent')).toBeVisible();
   });
 });

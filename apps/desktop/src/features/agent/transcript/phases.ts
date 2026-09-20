@@ -18,7 +18,9 @@ export type ActivityPhase = {
 };
 
 export function isThinkingView(block: ViewBlock): boolean {
-  return block.role === 'reasoning' && block.text.trim() !== '';
+  if (block.role !== 'reasoning') return false;
+  if (block.text.trim() !== '') return true;
+  return block.source.kind === 'thinking' && block.source.redacted === true;
 }
 
 export function isToolView(block: ViewBlock): boolean {
@@ -113,9 +115,10 @@ function takeTrailingNarration(phase: ActivityPhase): ViewBlock[] {
 
 /**
  * A single call the agent never introduced — the read wedged between two edits, the test run
- * after them — folds back into the group before it, which keeps its identity: one absorbed call
- * never retitles its new home. The absorption can leave two adjacent groups of the same kind, so
- * a second pass merges those back together: one continuous run of work reads as one group.
+ * after them — folds back into the group before it, which keeps its kind and only recounts:
+ * the merged steps retitle from the new tool total. The absorption can leave two adjacent
+ * groups of the same kind, so a second pass merges those back together: one continuous run of
+ * work reads as one group.
  */
 function absorbStrayPhases(phases: ActivityPhase[]): ActivityPhase[] {
   const kept: ActivityPhase[] = [];
