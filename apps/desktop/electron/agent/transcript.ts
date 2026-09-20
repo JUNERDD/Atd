@@ -26,9 +26,16 @@ export function fromSessionBranch(entries: readonly SessionEntry[]): ProjectBran
   const items: ProjectBranchItem[] = [];
   for (const entry of entries) {
     switch (entry.type) {
-      case 'message':
-        items.push({ type: 'message', message: entry.message });
+      case 'message': {
+        // Entries are appended on `message_end`, so the entry time is the message end wall time.
+        const endedAt = Date.parse(entry.timestamp);
+        items.push({
+          type: 'message',
+          message: entry.message,
+          ...(Number.isNaN(endedAt) ? {} : { endedAt }),
+        });
         break;
+      }
       case 'custom':
         items.push({ type: 'custom', customType: entry.customType, data: entry.data });
         break;
@@ -105,6 +112,7 @@ function systemBlock(
     id: `s:${timestamp}:${stampSequence(counts, timestamp)}`,
     runId,
     timestamp,
+    endedAt: timestamp,
     level: 'info',
     text,
   };
@@ -151,6 +159,7 @@ export function projectBlocks(input: ProjectBlocksInput): Block[] {
           id: `u:${timestamp}:${stampSequence(userCounts, timestamp)}`,
           runId,
           timestamp,
+          endedAt: timestamp,
           text: contentText(item.message.content),
         });
         break;
@@ -167,6 +176,7 @@ export function projectBlocks(input: ProjectBlocksInput): Block[] {
             live: input.live,
             lookups,
             partials,
+            messageEndedAt: item.endedAt ?? null,
           }),
         );
         break;

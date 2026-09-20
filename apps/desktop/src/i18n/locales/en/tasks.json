@@ -138,13 +138,12 @@
   "transcript": {
     "footer": {
       "live": "Working · {{elapsed}} · {{model}}",
-      "done": "Worked for {{elapsed}} · {{model}} · {{clock}}",
+      "done": "Worked for {{elapsed}} · {{model}}",
       "elapsed": "{{elapsed}}",
       "workedFor": "Worked for {{elapsed}}"
     },
     "rate": {
-      "tps": "{{rate}} tok/s",
-      "stats": "{{rate}} tok/s ({{tokens}} tok in {{elapsed}})"
+      "tps": "{{rate}} tok/s"
     },
     "phase": {
       "show": "Show {{count}} steps",

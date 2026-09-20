@@ -1,72 +1,19 @@
 import type { Block } from '../../../../electron/agent/transcript-schema';
 
 /**
- * Token-rate counting ported from `pi-tps-status 1.0.5` and `pi-token-speed 0.10.1` (both MIT):
- * sliding 1000ms window with a 250ms minimum span, `estimate=ceil(chars/4)` with each CJK char
- * counting 1, provider final total back-dated across the stream window, tool execution pausing
- * the clock, TTFT from the user message to the first delta, and average (`total/elapsed`) at
- * the end.
- *
- * Electron difference: those plugins render into the `@earendil-works/pi-tui` status bar, which
- * is a no-op under this worker's `json` mode. Here the renderer shows a live character estimate
- * as the TurnHeader suffix while streaming, and the json-mode worker projection (`app-usage`
- * entries plus `message.usage` fallback) replaces it with the provider true total on settle.
- * The suffix is labelled a rate (`tok/s`); it is never billed usage.
+ * Turn rate, two faces. Settled turns show the provider true output total over worker-measured
+ * generation time (`message_start` to `message_end` per assistant message, summed). Live turns
+ * cannot know true tokens yet, so they show a character estimate over streamed prose instead;
+ * the estimate yields to the true average on settle. Tool execution, permission waits, and TTFT
+ * gaps between messages stay out of both denominators; the header's outer "Worked for" keeps
+ * the wall duration. Turns without complete durations hide the suffix instead of dividing by
+ * wall time. This is a rate input, never billed usage.
  */
 
-/** Sliding window for the live estimate. */
-export const RATE_WINDOW_MS = 1000;
-/** Minimum span so the first tokens cannot spike the rate. */
+/** Minimum span so an instant cached response cannot spike the rate. */
 export const RATE_MIN_SPAN_MS = 250;
 
-const CJK_PATTERN = '\\p{Script=Han}|\\p{Script=Hiragana}|\\p{Script=Katakana}|\\p{Script=Hangul}';
-const CJK_GLOBAL = new RegExp(CJK_PATTERN, 'gu');
-
-/**
- * Character estimate: every CJK char counts 1 token, other chars count 1/4. Length is UTF-16
- * units, so astral CJK extensions and emoji overcount slightly; acceptable smoothing noise.
- */
-export function estimateTokens(text: string): number {
-  if (text.length === 0) return 0;
-  const cjk = text.match(CJK_GLOBAL)?.length ?? 0;
-  return cjk + Math.ceil((text.length - cjk) / 4);
-}
-
-/** One live sample; `paused` is the accumulated pause time when the sample was taken. */
-export type RateSample = { t: number; tokens: number; paused: number };
-
-/**
- * Keeps samples inside the window plus the newest sample before it as the delta baseline. A
- * lone baseline (mount with existing text, or a single patch) yields no rate until the next
- * growth proves the window — this avoids a remount spike of `total/250ms`.
- */
-export function pruneSamples(samples: readonly RateSample[], now: number): RateSample[] {
-  const floor = now - RATE_WINDOW_MS;
-  let first = 0;
-  while (first + 1 < samples.length && (samples[first + 1]?.t ?? 0) < floor) first += 1;
-  return samples.slice(first);
-}
-
-/**
- * Windowed live rate ending now, with pauses between the baseline and now excluded from the
- * span. Returns null until two samples bracket growth; stalls decay toward zero as now slides
- * past the last sample.
- */
-export function windowedRate(
-  samples: readonly RateSample[],
-  now: number,
-  pausedNow: number,
-): { rate: number; tokens: number; spanMs: number } | null {
-  if (samples.length < 2) return null;
-  const last = samples[samples.length - 1];
-  const first = samples[0];
-  if (!last || !first || last.tokens <= 0) return null;
-  const delta = Math.max(0, last.tokens - first.tokens);
-  const spanMs = Math.max(RATE_MIN_SPAN_MS, now - pausedNow - (first.t - first.paused));
-  return { rate: delta / (spanMs / 1000), tokens: last.tokens, spanMs };
-}
-
-/** Settled average: provider true total (or estimate fallback) back-dated across active time. */
+/** Settled average: provider true total across true generation time. */
 export function averageRate(totalTokens: number, elapsedMs: number): number {
   return totalTokens / (Math.max(RATE_MIN_SPAN_MS, elapsedMs) / 1000);
 }
@@ -77,61 +24,80 @@ export function formatRate(rate: number): string {
   return rate < 100 ? rate.toFixed(1) : String(Math.round(rate));
 }
 
+const CJK_PATTERN = '\\p{Script=Han}|\\p{Script=Hiragana}|\\p{Script=Katakana}|\\p{Script=Hangul}';
+const CJK_GLOBAL = new RegExp(CJK_PATTERN, 'gu');
+
 /**
- * Model-output text for the live estimate: assistant prose, thinking, tool-call arguments, and
- * question titles/options. User input, tool results, and compaction summaries are excluded.
+ * Live character estimate: every CJK char counts 1 token, other chars count 1/4. Length is
+ * UTF-16 units, so astral CJK extensions and emoji overcount slightly; acceptable smoothing
+ * noise for a live suffix that the settled true total replaces.
  */
-export function buildRateText(blocks: Block[]): string {
+export function estimateTokens(text: string): number {
+  if (text.length === 0) return 0;
+  const cjk = text.match(CJK_GLOBAL)?.length ?? 0;
+  return cjk + Math.ceil((text.length - cjk) / 4);
+}
+
+/**
+ * Live estimate input: assistant prose plus thinking text. Tool arguments and question
+ * titles/options are excluded so tool execution and approval waits add no phantom tokens —
+ * the live rate holds its last value while no prose streams.
+ */
+export function buildLiveText(blocks: Block[]): string {
   const parts: string[] = [];
   for (const block of blocks) {
-    switch (block.kind) {
-      case 'assistant':
-      case 'thinking':
-        if (block.text) parts.push(block.text);
-        break;
-      case 'tool':
-        if (block.args && Object.keys(block.args).length > 0)
-          parts.push(JSON.stringify(block.args));
-        break;
-      case 'question':
-        if (block.title) parts.push(block.title);
-        if (block.options.length > 0) parts.push(block.options.join('\n'));
-        break;
-      case 'user':
-      case 'system':
-        break;
-      default: {
-        const _exhaustive: never = block;
-        void _exhaustive;
-      }
-    }
+    if ((block.kind === 'assistant' || block.kind === 'thinking') && block.text)
+      parts.push(block.text);
   }
   return parts.join('\n');
 }
 
+type TurnGeneration = { output: number; durationMs?: number };
+
+function usageOf(block: Block): TurnGeneration | null {
+  if (block.kind === 'user' || block.kind === 'system') return null;
+  const output = block.usage?.output;
+  if (typeof output !== 'number' || !Number.isInteger(output) || output < 0) return null;
+  const durationMs = block.usage?.durationMs;
+  if (durationMs !== undefined && (!Number.isInteger(durationMs) || durationMs < 0)) return null;
+  return durationMs === undefined ? { output } : { output, durationMs };
+}
+
 /**
- * Provider true total for a turn, deduped by message timestamp (every block from one message
- * shares its copy). Null while streaming or when unknown — never a false zero.
+ * Provider true total and generation time for a turn, deduped by message. Every block from one
+ * message shares its copy, so entries collapse on the composite key; distinct messages that
+ * share a millisecond timestamp keep separate entries when their usage differs. Returns null
+ * when no message reports output, when the total is zero, or when any output-bearing message
+ * lacks a measured duration — the header hides the suffix in those cases. Zero-output messages
+ * (errors, aborts) contribute no time so failures cannot dilute the generation rate.
  */
-export function sumTurnUsage(blocks: Block[]): number | null {
-  const byMessage = new Map<number, number>();
+export function sumTurnGeneration(blocks: Block[]): {
+  tokens: number;
+  durationMs: number;
+} | null {
+  const byMessage = new Map<string, TurnGeneration>();
   for (const block of blocks) {
-    if (block.kind === 'user' || block.kind === 'system') continue;
-    const output = block.usage?.output;
-    if (typeof output !== 'number' || !Number.isInteger(output) || output < 0) continue;
-    const prior = byMessage.get(block.timestamp);
-    if (prior === undefined || output > prior) byMessage.set(block.timestamp, output);
+    const usage = usageOf(block);
+    if (!usage) continue;
+    const key = `${block.timestamp}:${usage.output}:${usage.durationMs ?? ''}`;
+    byMessage.set(key, usage);
   }
   if (byMessage.size === 0) return null;
-  let total = 0;
-  for (const output of byMessage.values()) total += output;
-  return total;
+  let tokens = 0;
+  let durationMs = 0;
+  for (const usage of byMessage.values()) {
+    tokens += usage.output;
+    if (usage.output <= 0) continue;
+    if (usage.durationMs === undefined) return null;
+    durationMs += usage.durationMs;
+  }
+  if (tokens <= 0) return null;
+  return { tokens, durationMs };
 }
 
 /**
  * Compaction markers are the only system blocks the projection emits. A turn containing one
- * lost some provider history, so its settled suffix falls back to the character estimate
- * instead of claiming a complete true total.
+ * lost some provider history, so its settled suffix hides instead of claiming a complete total.
  */
 export function hasCompactionMarker(blocks: Block[]): boolean {
   return blocks.some((block) => block.kind === 'system');

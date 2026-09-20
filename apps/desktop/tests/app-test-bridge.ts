@@ -93,7 +93,16 @@ export function installBridge(extras?: {
       snapshot.tasks = [task];
       snapshot.revision++;
       const blocks: TaskDetail['blocks'] = request.input.text
-        ? [{ kind: 'user', id: 'u:1:0', runId: 'test-run', timestamp: 0, text: request.input.text }]
+        ? [
+            {
+              kind: 'user',
+              id: 'u:1:0',
+              runId: 'test-run',
+              timestamp: 0,
+              endedAt: 0,
+              text: request.input.text,
+            },
+          ]
         : [];
       detail = {
         task,

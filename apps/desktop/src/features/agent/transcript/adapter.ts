@@ -1,7 +1,7 @@
 import type { ResolvedModel, TaskRun } from '../../../../electron/agent/task-schema';
 import type { Block, BlockOf, ToolStatus } from '../../../../electron/agent/transcript-schema';
 import { buildActivityPhases, isViewLive, type ActivityPhase } from './phases';
-import { buildRateText, hasCompactionMarker, sumTurnUsage } from './token-rate';
+import { buildLiveText, hasCompactionMarker, sumTurnGeneration } from './token-rate';
 import type { TurnWaitingKind } from './turn-header';
 import { deriveTurns, type RequestIndex, type Turn } from './turns';
 
@@ -65,22 +65,20 @@ export type AdaptedTurn = {
   view: ViewBlock[];
   startedAt: number | null;
   /**
-   * Timestamp-derived turn length. This cannot reproduce pause-aware elapsed time under approval
-   * waits; the live footer ticks its own clock instead.
+   * True turn wall length: user message to the max block completion time. The live header ticks
+   * its own clock (frozen through approval waits) instead of using this.
    */
   durationMs: number | null;
   waiting: TurnWaitingKind;
   modelName: string;
   /** Markdown the user actually reads: assistant prose joined for the footer copy action. */
   copyText: string;
-  /** Model-output text for the live rate estimate; includes tool args for tool-heavy turns. */
-  rateText: string;
-  /** Provider true total for settled turns; null while streaming or when unknown. */
+  /** Provider true output total for settled turns; null while streaming or when unknown. */
   trueTokens: number | null;
-  /** A tool/question in the turn is still running; the rate clock pauses. */
-  toolRunning: boolean;
-  /** The turn lost provider history to compaction; settled falls back to the estimate. */
-  rateUnknown: boolean;
+  /** Worker-measured generation time for settled turns; null while streaming or when unknown. */
+  trueDurationMs: number | null;
+  /** Streamed model prose for the live rate estimate; settled turns ignore it. */
+  liveText: string;
 };
 
 function toolKindForName(name: string): ViewToolKind {
@@ -243,13 +241,14 @@ function adaptTurn(turn: Turn, requests: RequestIndex, runs: TaskRun[]): Adapted
     };
   });
   const first = view[0];
-  const last = view.at(-1);
   const userTimestamp = turn.user?.timestamp;
   const startedAt = userTimestamp ?? first?.timestamp ?? null;
-  const end = last?.timestamp ?? userTimestamp ?? null;
   const runId = turn.user?.runId ?? first?.runId ?? '';
   const run = runs.find((candidate) => candidate.id === runId) ?? runs[0];
   const source = turn.items.flatMap((item) => (item.type === 'block' ? [item.block] : item.blocks));
+  let end = userTimestamp ?? null;
+  for (const block of source) end = end === null ? block.endedAt : Math.max(end, block.endedAt);
+  const generation = hasCompactionMarker(source) ? null : sumTurnGeneration(source);
   return {
     id: turn.id,
     user: turn.user,
@@ -260,12 +259,9 @@ function adaptTurn(turn: Turn, requests: RequestIndex, runs: TaskRun[]): Adapted
     waiting: waitingKindFor(view),
     modelName: modelNameForRun(run),
     copyText: turnCopyText(source),
-    rateText: buildRateText(source),
-    trueTokens: sumTurnUsage(source),
-    toolRunning: view.some(
-      (block) => (block.role === 'tool' || block.role === 'question') && isViewLive(block),
-    ),
-    rateUnknown: hasCompactionMarker(source),
+    trueTokens: generation?.tokens ?? null,
+    trueDurationMs: generation?.durationMs ?? null,
+    liveText: buildLiveText(source),
   };
 }
 

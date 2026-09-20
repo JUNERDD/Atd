@@ -37,7 +37,7 @@ export function baseRun(status: RunStatus = 'completed', error = ''): TaskRun {
 }
 
 export function userBlock(text = 'Do the work'): BlockOf<'user'> {
-  return { kind: 'user', id: 'u:1:0', runId: 'run-1', timestamp: 1, text };
+  return { kind: 'user', id: 'u:1:0', runId: 'run-1', timestamp: 1, endedAt: 1, text };
 }
 
 export function assistantBlock(
@@ -48,6 +48,7 @@ export function assistantBlock(
     id: 'a:4:0',
     runId: 'run-1',
     timestamp: 4,
+    endedAt: 4,
     text: 'Done.',
     streaming: false,
     stopReason: 'stop',
@@ -62,6 +63,7 @@ export function thinkingBlock(overrides: Partial<BlockOf<'thinking'>> = {}): Blo
     id: 't:2:0',
     runId: 'run-1',
     timestamp: 2,
+    endedAt: 2,
     text: 'I should inspect the file first.',
     streaming: false,
     redacted: false,
@@ -76,6 +78,7 @@ export function toolBlock(overrides: Partial<BlockOf<'tool'>> & { id?: string })
     id: overrides.id ?? 'tool:call-1',
     runId: 'run-1',
     timestamp: 3,
+    endedAt: 3,
     callId: 'call-1',
     name: 'read',
     args: { path: 'notes.txt' },
@@ -94,6 +97,7 @@ export function questionBlock(overrides: Partial<BlockOf<'question'>> = {}): Blo
     id: 'q:ask-1',
     runId: 'run-1',
     timestamp: 3,
+    endedAt: 3,
     callId: 'ask-1',
     title: 'Which style?',
     options: ['Concise', 'Detailed'],

@@ -17,6 +17,12 @@ const blockBase = {
   runId: Identifier,
   /** Pi message timestamp in milliseconds; blocks appear in non-decreasing order. */
   timestamp: Type.Number(),
+  /**
+   * Wall-clock completion of this block's content in milliseconds. Pi stamps assistant messages
+   * at creation, so `timestamp` alone cannot end a turn; `endedAt` carries the session entry
+   * time (message end, tool result time) instead. The renderer takes the max as the turn end.
+   */
+  endedAt: Type.Number(),
 };
 
 export const ToolStatusSchema = Type.Union([
@@ -44,14 +50,18 @@ export const ToolDetailsSchema = Type.Object(
 export type ToolDetails = Static<typeof ToolDetailsSchema>;
 
 /**
- * Provider-reported generated tokens for one assistant message. Absent while streaming and when
+ * Provider-reported generated tokens for one assistant message, plus the worker-measured
+ * generation time from `message_start` to `message_end`. Absent while streaming and when
  * unknown (after compaction, or on blocks projected before usage plumbing). Every block derived
  * from the same message carries the same copy so tool-only messages keep their usage; the
  * renderer dedupes by timestamp when summing a turn. This is a rate input, never billed usage.
+ * `durationMs` is absent on records written before duration capture; those turns hide the rate
+ * instead of dividing by wall time.
  */
 export const AssistantUsageSchema = Type.Object(
   {
     output: Type.Integer({ minimum: 0 }),
+    durationMs: Type.Optional(Type.Integer({ minimum: 0 })),
   },
   { additionalProperties: false },
 );
