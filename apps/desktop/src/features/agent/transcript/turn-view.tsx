@@ -70,10 +70,9 @@ export function TurnView({
           modelName={turn.modelName}
           live={liveFooter}
           waiting={liveFooter ? turn.waiting : null}
-          rateText={turn.rateText}
           trueTokens={turn.trueTokens}
-          toolRunning={turn.toolRunning}
-          rateUnknown={turn.rateUnknown}
+          trueDurationMs={turn.trueDurationMs}
+          liveText={turn.liveText}
         />
       )}
       {turn.items.map((item) => {

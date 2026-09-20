@@ -179,6 +179,7 @@ export async function createTaskSession(
   let partial: AssistantMessage | undefined;
   const partials = new Map<string, string>();
   const thinkingStarts = new Map<number, number>();
+  const messageStarts = new Map<number, number>();
   const branchItems = () => fromSessionBranch(session.sessionManager.getBranch());
   const project = () => {
     const branch = branchItems();
@@ -205,6 +206,8 @@ export async function createTaskSession(
       });
       return;
     }
+    if (event.type === 'message_start' && event.message.role === 'assistant')
+      messageStarts.set(event.message.timestamp, Date.now());
     if (event.type === 'message_update' && event.message.role === 'assistant') {
       partial = event.message;
       const timestamp = event.message.timestamp;
@@ -234,13 +237,18 @@ export async function createTaskSession(
           });
           thinkingStarts.delete(timestamp);
         }
-        // Pi reports usage only on the final message; capture it here so the projection can
-        // replace the renderer's character estimate with the provider total once settled.
+        // Pi reports usage only on the settled message; capture it with the measured
+        // generation time so the settled header can show provider total over true active time.
         const output = event.message.usage?.output;
+        const messageStart = messageStarts.get(timestamp);
+        messageStarts.delete(timestamp);
+        const durationMs =
+          messageStart === undefined ? undefined : Math.max(0, Date.now() - messageStart);
         if (typeof output === 'number' && Number.isInteger(output) && output >= 0)
           sessionManager.appendCustomEntry('app-usage', {
             timestamp,
             output,
+            ...(durationMs === undefined ? {} : { durationMs }),
             at: Date.now(),
           });
       }

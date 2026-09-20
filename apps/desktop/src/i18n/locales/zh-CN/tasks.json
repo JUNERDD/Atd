@@ -138,13 +138,12 @@
   "transcript": {
     "footer": {
       "live": "处理中 · {{elapsed}} · {{model}}",
-      "done": "用时 {{elapsed}} · {{model}} · {{clock}}",
+      "done": "用时 {{elapsed}} · {{model}}",
       "elapsed": "{{elapsed}}",
       "workedFor": "用时 {{elapsed}}"
     },
     "rate": {
-      "tps": "{{rate}} tok/s",
-      "stats": "{{rate}} tok/s（{{tokens}} 词元，{{elapsed}}）"
+      "tps": "{{rate}} tok/s"
     },
     "phase": {
       "show": "展开 {{count}} 个步骤",

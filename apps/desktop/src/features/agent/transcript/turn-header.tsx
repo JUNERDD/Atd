@@ -1,17 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Check, LoaderCircle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Shimmer } from '@ai/ui/components/ai-elements/shimmer';
 import { formatElapsed } from './elapsed';
-import { useTokenRate } from './use-token-rate';
-
-/** Wall-clock stamp for a finished turn, in the reader's own locale. */
-function formatClockTime(epochMs: number): string {
-  return new Date(epochMs).toLocaleTimeString(undefined, {
-    hour: 'numeric',
-    minute: '2-digit',
-  });
-}
+import { averageRate, estimateTokens, formatRate } from './token-rate';
 
 /** Ticking clock for the live header; freezes while the turn waits on the user. */
 function useLiveElapsed(startedAt: number | null, paused: boolean): number {
@@ -44,15 +36,58 @@ function useLiveElapsed(startedAt: number | null, paused: boolean): number {
 export type TurnWaitingKind = 'approval' | 'answer' | null;
 
 /**
+ * Live estimated rate over streamed prose, moving with the header's 1s tick. While no prose
+ * streams the display holds its last value and the anchor advances past the idle span, so tool
+ * execution and stalls cannot dilute the streaming rate. While the turn waits on the user the
+ * display freezes outright: the clock freeze alone cannot hold it, because a text flush that
+ * lands on the frozen clock would divide the cumulative total by a near-zero active span.
+ */
+function useLiveRate(
+  text: string,
+  elapsedMs: number,
+  live: boolean,
+  paused: boolean,
+): string | null {
+  const [mountText] = useState(text);
+  const tracker = useRef({
+    first: null as number | null,
+    at: 0,
+    lastText: '',
+    display: null as string | null,
+  });
+  return useMemo(() => {
+    if (!live) return null;
+    const state = tracker.current;
+    if (paused) return state.display;
+    if (text === '') return state.display;
+    if (text === state.lastText) {
+      if (state.first !== null) state.first += Math.max(0, elapsedMs - state.at);
+      state.at = elapsedMs;
+      return state.display;
+    }
+    state.lastText = text;
+    // Mounted with existing text (task switch remount): the true first prose predates the mount,
+    // so anchor at the turn start instead of spiking `total/250ms`. Fresh turns anchor at the
+    // first streamed prose, leaving TTFT out of the rate.
+    state.first ??= mountText === '' ? elapsedMs : 0;
+    state.at = elapsedMs;
+    const tokens = estimateTokens(text);
+    if (tokens <= 0) return state.display;
+    const display = formatRate(averageRate(tokens, Math.max(0, elapsedMs - state.first)));
+    state.display = display;
+    return display;
+    // `text` is intentionally excluded: sampling follows the patch cadence through the ref
+    // comparison above, but the display only moves with the 1s `elapsedMs` tick so
+    // screen-reader chatter stays at the existing elapsed rhythm.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [live, elapsedMs, mountText, paused]);
+}
+
+/**
  * Per-turn elapsed header, directly under the user message. Settled turns show
- * "Worked for … · model · clock"; the live turn shows a ticking "Working · … · model"
- * instead of the old bare status line. Copy lives in the turn actions, not here.
- *
- * The rate suffix is a smoothed generation rate (`tok/s`), never billed usage: a live
- * character estimate while streaming, the provider true total back-dated as an average on
- * settle. It freezes while waiting, pauses through tool execution, and stays visible for
- * tool-heavy turns with an empty answer. New props are optional so existing TurnView calls
- * keep rendering until the adapter pass-through is wired.
+ * "Worked for … · model · … tok/s" from the provider true total; the live turn shows a
+ * ticking "Working · … · model · … tok/s" from the character estimate until the true average
+ * replaces it on settle. Copy lives in the turn actions, not here.
  */
 export function TurnHeader({
   startedAt,
@@ -60,40 +95,22 @@ export function TurnHeader({
   modelName,
   live,
   waiting,
-  rateText,
   trueTokens,
-  toolRunning,
-  rateUnknown,
+  trueDurationMs,
+  liveText,
 }: {
   startedAt: number | null;
   durationMs: number | null;
   modelName: string;
   live: boolean;
   waiting: TurnWaitingKind;
-  rateText?: string;
   trueTokens?: number | null;
-  toolRunning?: boolean;
-  rateUnknown?: boolean;
+  trueDurationMs?: number | null;
+  liveText?: string;
 }) {
   const { t } = useTranslation('tasks');
   const elapsedMs = useLiveElapsed(live ? startedAt : null, waiting !== null);
-  const rate = useTokenRate({
-    text: rateText ?? '',
-    live,
-    waiting: waiting !== null,
-    toolRunning: toolRunning ?? false,
-    startedAt,
-    trueTokens: trueTokens ?? null,
-    durationMs,
-    rateUnknown: rateUnknown ?? false,
-    elapsedMs,
-  });
-  const suffix =
-    rate === null
-      ? ''
-      : rate.kind === 'stats'
-        ? ` · ${t('transcript.rate.stats', { rate: rate.rate, tokens: rate.tokens, elapsed: rate.elapsed })}`
-        : ` · ${t('transcript.rate.tps', { rate: rate.rate })}`;
+  const liveRate = useLiveRate(liveText ?? '', elapsedMs, live, waiting !== null);
 
   if (live) {
     const elapsed = formatElapsed(elapsedMs) ?? '';
@@ -105,6 +122,7 @@ export function TurnHeader({
         : modelName
           ? t('transcript.footer.live', { elapsed, model: modelName })
           : `${t('transcript.verb.working')} · ${t('transcript.footer.elapsed', { elapsed })}`;
+    const suffix = liveRate === null ? '' : ` · ${t('transcript.rate.tps', { rate: liveRate })}`;
     return (
       <output
         aria-live="polite"
@@ -121,12 +139,15 @@ export function TurnHeader({
 
   const elapsed = formatElapsed(durationMs);
   if (elapsed === null) return null;
-  const clock =
-    startedAt !== null && durationMs !== null ? formatClockTime(startedAt + durationMs) : '';
+  const tokens = trueTokens ?? null;
+  const generationMs = trueDurationMs ?? null;
+  let suffix = '';
+  if (tokens !== null && tokens > 0 && generationMs !== null && generationMs >= 0)
+    suffix = ` · ${t('transcript.rate.tps', { rate: formatRate(averageRate(tokens, generationMs)) })}`;
   const label = `${
-    modelName && clock
-      ? t('transcript.footer.done', { elapsed, model: modelName, clock })
-      : `${t('transcript.footer.workedFor', { elapsed })}${modelName ? ` · ${modelName}` : ''}`
+    modelName
+      ? t('transcript.footer.done', { elapsed, model: modelName })
+      : t('transcript.footer.workedFor', { elapsed })
   }${suffix}`;
   return (
     <div className="turn-header" aria-label={label}>

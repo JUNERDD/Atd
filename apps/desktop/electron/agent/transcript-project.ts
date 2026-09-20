@@ -14,7 +14,7 @@ import type { Block, BlockOf, ToolDetails, ToolStatus } from './transcript-schem
 type AgentMessage = AgentSession['messages'][number];
 
 export type ProjectBranchItem =
-  | { type: 'message'; message: AgentMessage }
+  | { type: 'message'; message: AgentMessage; endedAt?: number }
   | { type: 'custom'; customType: string; data?: unknown }
   | {
       type: 'custom_message';
@@ -29,14 +29,17 @@ export const ASK_USER_CANCELLED = 'The user cancelled the request.';
 
 /**
  * Provider output captured at `message_end`, appended as the `app-usage` custom entry keyed by
- * the assistant message timestamp. Cold projection falls back to `message.usage` when the entry
- * is missing (sessions written before usage plumbing); after compaction the entry is gone with
- * the message and the turn reports unknown instead of a false zero.
+ * the assistant message timestamp. `durationMs` is the worker-measured generation time from
+ * `message_start` to `message_end`; records written before duration capture omit it. Cold
+ * projection falls back to `message.usage` when the entry is missing (sessions written before
+ * usage plumbing); after compaction the entry is gone with the message and the turn reports
+ * unknown instead of a false zero.
  */
 export const UsageRecordSchema = Type.Object(
   {
     timestamp: Type.Integer({ minimum: 0 }),
     output: Type.Integer({ minimum: 0 }),
+    durationMs: Type.Optional(Type.Integer({ minimum: 0 })),
     at: Type.Number(),
   },
   { additionalProperties: false },
@@ -45,10 +48,12 @@ export type UsageRecord = Static<typeof UsageRecordSchema>;
 
 export interface ToolLookups {
   results: Map<string, ToolResultMessage>;
+  /** Session entry time of each tool result: the tool's completion wall time. */
+  resultEnds: Map<string, number>;
   permissions: Map<string, PermissionRecord>;
   questions: Map<string, QuestionRecord>;
   thinkingDurations: Map<string, number>;
-  usages: Map<number, number>;
+  usages: Map<number, { output: number; durationMs?: number }>;
 }
 
 export function contentText(content: unknown): string {
@@ -82,10 +87,11 @@ export function stampSequence(counts: Map<number, number>, timestamp: number): n
 
 export function collectLookups(branch: readonly ProjectBranchItem[]): ToolLookups {
   const results = new Map<string, ToolResultMessage>();
+  const resultEnds = new Map<string, number>();
   const permissions = new Map<string, PermissionRecord>();
   const questions = new Map<string, QuestionRecord>();
   const thinkingDurations = new Map<string, number>();
-  const usages = new Map<number, number>();
+  const usages = new Map<number, { output: number; durationMs?: number }>();
   for (const item of branch) {
     if (item.type === 'custom') {
       if (item.customType === 'app-permission' && Value.Check(PermissionRecordSchema, item.data))
@@ -98,21 +104,29 @@ export function collectLookups(branch: readonly ProjectBranchItem[]): ToolLookup
       )
         thinkingDurations.set(item.data.blockId, item.data.durationMs);
       if (item.customType === 'app-usage' && Value.Check(UsageRecordSchema, item.data))
-        usages.set(item.data.timestamp, item.data.output);
+        usages.set(item.data.timestamp, {
+          output: item.data.output,
+          ...(item.data.durationMs !== undefined ? { durationMs: item.data.durationMs } : {}),
+        });
       continue;
     }
     if (item.type !== 'message' || item.message.role !== 'toolResult') continue;
     results.set(item.message.toolCallId, item.message);
+    if (item.endedAt !== undefined) resultEnds.set(item.message.toolCallId, item.endedAt);
   }
-  return { results, permissions, questions, thinkingDurations, usages };
+  return { results, resultEnds, permissions, questions, thinkingDurations, usages };
 }
 
-/** Provider output for a settled message: captured entry first, Pi `message.usage` fallback. */
-function settledOutput(message: AssistantMessage, lookups: ToolLookups): number | undefined {
+/** Provider usage for a settled message: captured entry first, Pi `message.usage` fallback. */
+function settledUsage(
+  message: AssistantMessage,
+  lookups: ToolLookups,
+): { output: number; durationMs?: number } | undefined {
   const captured = lookups.usages.get(message.timestamp);
   if (captured !== undefined) return captured;
   const output = message.usage?.output;
-  return typeof output === 'number' && Number.isInteger(output) && output >= 0 ? output : undefined;
+  if (typeof output !== 'number' || !Number.isInteger(output) || output < 0) return undefined;
+  return { output };
 }
 
 export function mapStopReason(
@@ -177,15 +191,23 @@ export function projectAssistantBlocks(input: {
   live: boolean;
   lookups: ToolLookups;
   partials: ReadonlyMap<string, string>;
+  /** Session entry time of this message (its end); null for live partials and fixtures. */
+  messageEndedAt: number | null;
 }): Block[] {
-  const { message, runId, streaming, live, lookups, partials } = input;
+  const { message, runId, streaming, live, lookups, partials, messageEndedAt } = input;
   const timestamp = message.timestamp;
+  const endedAt = messageEndedAt ?? timestamp;
   const error = message.errorMessage ?? '';
   const stopReason = mapStopReason(message.stopReason, streaming);
-  // Live partials carry no true usage yet — the renderer shows its character estimate until the
+  // Live partials carry no true usage yet — the header shows elapsed time only until the
   // `message_end` capture lands. Every settled block from this message shares one copy.
-  const settled = streaming ? undefined : settledOutput(message, lookups);
-  const usage = settled === undefined ? undefined : { output: settled };
+  const settled = streaming ? undefined : settledUsage(message, lookups);
+  const usage =
+    settled === undefined
+      ? undefined
+      : settled.durationMs === undefined
+        ? { output: settled.output }
+        : { output: settled.output, durationMs: settled.durationMs };
   const blocks: Block[] = [];
   message.content.forEach((part, index) => {
     switch (part.type) {
@@ -195,6 +217,7 @@ export function projectAssistantBlocks(input: {
           id: `a:${timestamp}:${index}`,
           runId,
           timestamp,
+          endedAt,
           text: part.text,
           streaming,
           stopReason,
@@ -208,6 +231,7 @@ export function projectAssistantBlocks(input: {
           id: `t:${timestamp}:${index}`,
           runId,
           timestamp,
+          endedAt,
           text: part.thinking,
           streaming,
           redacted: Boolean(part.redacted),
@@ -225,6 +249,7 @@ export function projectAssistantBlocks(input: {
             id: `q:${part.id}`,
             runId,
             timestamp,
+            endedAt: lookups.resultEnds.get(part.id) ?? endedAt,
             callId: part.id,
             title: typeof args.question === 'string' ? args.question : '',
             options: stringOptions(args.options),
@@ -242,6 +267,7 @@ export function projectAssistantBlocks(input: {
           id: `tool:${part.id}`,
           runId,
           timestamp,
+          endedAt: lookups.resultEnds.get(part.id) ?? endedAt,
           callId: part.id,
           name: part.name,
           args,
