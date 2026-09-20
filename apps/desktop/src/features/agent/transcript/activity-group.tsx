@@ -118,11 +118,13 @@ function ActivityPhaseView({
   const single = phase.steps.length === 1 && first ? first : undefined;
 
   // A lone call the agent never introduced is not a group: a header repeating the single row
-  // under it says nothing twice. Thinking and tool steps already render their own leading icon,
-  // so an outer phase glyph would double it (two Sparkles for a lone thought, two Terminals for
-  // a lone bash). Only steps without an inner icon keep the outer glyph as their sole marker.
+  // under it says nothing twice. Thinking, tool, and question steps already render their own
+  // leading icon, so an outer phase glyph would double it (two Sparkles for a lone thought,
+  // two Terminals for a lone bash). Only steps without an inner icon keep the outer glyph as
+  // their sole marker.
   if (single) {
-    const innerHasIcon = single.role === 'reasoning' || single.role === 'tool';
+    const innerHasIcon =
+      single.role === 'reasoning' || single.role === 'tool' || single.role === 'question';
     if (innerHasIcon) {
       return (
         <div className="phase-single">
@@ -142,16 +144,15 @@ function ActivityPhaseView({
     );
   }
 
+  // The outer Title already carries `phase-title` (truncation included): repeating it on the
+  // inner span would put `overflow: hidden` on the live Shimmer's inline box, moving its
+  // baseline to the bottom edge and shifting the text off the icon center.
   const label = active ? (
-    <Shimmer as="span" className="phase-title">
-      {title}
-    </Shimmer>
+    <Shimmer as="span">{title}</Shimmer>
   ) : (
     // Dimmed to sit with the icons: the work is chrome around the answer, and only the answer
     // reads at full strength.
-    <span className="phase-title" title={title}>
-      {title}
-    </span>
+    <span>{title}</span>
   );
 
   const toggle = phaseToggleLabel(open, phase.steps.length, t);

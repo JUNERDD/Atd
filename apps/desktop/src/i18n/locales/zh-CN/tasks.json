@@ -96,7 +96,8 @@
   },
   "question": {
     "skip": "跳过",
-    "skipped": "已跳过"
+    "skipped": "已跳过",
+    "send": "发送"
   },
   "thinking": {
     "title": "思考",

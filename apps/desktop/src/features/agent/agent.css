@@ -681,6 +681,47 @@
   white-space: normal;
   overflow-wrap: anywhere;
 }
+/* Expanded question row: offered options plus the stored answer, same inset as a tool body. */
+.question-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px 0 8px 8px;
+}
+.question-option-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+  color: var(--muted-foreground);
+}
+.question-answer {
+  margin: 0;
+  font-size: 13px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+/* Popover answer form: title, chips, full-width field, right-aligned actions. */
+.question-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.question-answer-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.question-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
 .permission-chip {
   flex-shrink: 0;
   white-space: nowrap;

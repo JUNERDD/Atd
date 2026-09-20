@@ -1,17 +1,21 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ArrowUp } from 'lucide-react';
+import { MessageCircleQuestion } from 'lucide-react';
 import { Button } from '@ai/ui/components/button';
 import { Input } from '@ai/ui/components/input';
+import { Shimmer } from '@ai/ui/components/ai-elements/shimmer';
 import type { BlockOf } from '../../../../electron/agent/transcript-schema';
 import type { InputRequest } from '../../../../electron/agent/permission-schema';
-import { IconButton } from '../../../components/icon-button';
 import { agentApi } from '../use-agent';
 import { messageOf } from '../../../lib/errors';
+import { ActivityRow } from './activity-row';
+import { DetailBox } from './detail-box';
+import { statusLabelKey } from './tool-copy';
 
 /**
- * Inline question row: title plus waiting text while pending, stored answer once settled.
- * Choices live in the composer popover (`QuestionControls`); the transcript never renders them.
+ * Question row in the normal tool-call chrome: leading icon, truncated title, trailing meta,
+ * and an expandable body with the offered options plus the stored answer. Answering lives in
+ * the composer popover (`QuestionControls`); the transcript never renders choice buttons.
  */
 export function QuestionBlock({
   block,
@@ -21,24 +25,75 @@ export function QuestionBlock({
   request?: InputRequest;
 }) {
   const { t } = useTranslation('tasks');
+  const [open, setOpen] = useState(false);
+  const running = block.status === 'running';
+  const meta = request
+    ? t('permission.waitingAnswer')
+    : block.skipped
+      ? t('question.skipped')
+      : (block.answer ?? t(statusLabelKey(block.status)));
+  const answer = !request && !block.skipped ? block.answer : null;
+  const heading = (
+    <>
+      <ActivityRow.Title className="flex-initial" title={block.title}>
+        {running ? <Shimmer as="span">{block.title}</Shimmer> : block.title}
+      </ActivityRow.Title>
+      {meta ? (
+        <ActivityRow.Meta className="activity-meta" title={meta}>
+          {meta}
+        </ActivityRow.Meta>
+      ) : null}
+    </>
+  );
+  // No options and no stored answer: nothing to expand into, so render the static frame
+  // without a trigger instead of an expandable row with an empty body.
+  if (block.options.length === 0 && answer === null) {
+    return (
+      <div className="question-block">
+        <ActivityRow.Root status={block.status}>
+          <div className="activity-row-static">
+            <ActivityRow.Icon chevron={false}>
+              <MessageCircleQuestion className="row-icon" strokeWidth={1.75} />
+            </ActivityRow.Icon>
+            {heading}
+          </div>
+        </ActivityRow.Root>
+      </div>
+    );
+  }
   return (
-    <section className="question-block" aria-label={block.title}>
-      <p className="text-sm font-medium">{block.title}</p>
-      {request ? (
-        <p className="text-sm text-muted-foreground">{t('permission.waitingAnswer')}</p>
-      ) : (
-        <p className="text-sm text-muted-foreground">
-          {block.skipped ? t('question.skipped') : (block.answer ?? '')}
-        </p>
-      )}
-    </section>
+    <div className="question-block">
+      <ActivityRow.Root open={open} onOpenChange={setOpen} status={block.status}>
+        <ActivityRow.Trigger>
+          <ActivityRow.Icon>
+            <MessageCircleQuestion className="row-icon" strokeWidth={1.75} />
+          </ActivityRow.Icon>
+          {heading}
+        </ActivityRow.Trigger>
+        <ActivityRow.Content>
+          <ActivityRow.Body className="question-body">
+            <DetailBox variant="output" copyText={answer ?? undefined}>
+              {block.options.length > 0 && (
+                <ul className="question-option-list">
+                  {block.options.map((option, index) => (
+                    <li key={`${index}:${option}`}>{option}</li>
+                  ))}
+                </ul>
+              )}
+              {answer ? <p className="question-answer">{answer}</p> : null}
+            </DetailBox>
+          </ActivityRow.Body>
+        </ActivityRow.Content>
+      </ActivityRow.Root>
+    </div>
   );
 }
 
 /**
- * Popover input controls for one pending question: option chips, a free-text answer field
- * (Enter to send), and skip. Autofocuses the first chip only when the user is not typing in
- * the composer textarea; Esc bubbles to the popover content to dismiss, never to skip.
+ * Popover answer form for one pending question: title, option chips, a full-width free-text
+ * field (Enter to send), and right-aligned Skip/Send actions. Autofocuses the first chip only
+ * when the user is not typing in the composer textarea; Esc bubbles to the popover content to
+ * dismiss, never to skip.
  */
 export function QuestionControls({ request }: { request: InputRequest }) {
   const { t } = useTranslation('tasks');
@@ -70,7 +125,7 @@ export function QuestionControls({ request }: { request: InputRequest }) {
   }
 
   return (
-    <div className="question-block">
+    <div className="question-form">
       <p className="text-sm font-medium">{request.title}</p>
       {request.options.length > 0 && (
         <div className="question-options">
@@ -90,7 +145,7 @@ export function QuestionControls({ request }: { request: InputRequest }) {
         </div>
       )}
       <form
-        className="flex min-w-0 items-center gap-1"
+        className="question-answer-form"
         onSubmit={(event) => {
           event.preventDefault();
           void respond({ answer: draft.trim() });
@@ -105,23 +160,26 @@ export function QuestionControls({ request }: { request: InputRequest }) {
           maxLength={10000}
           disabled={pending}
         />
-        <IconButton label={tp('composer.send')} tooltipSide="top" disabled={pending} type="submit">
-          <ArrowUp />
-        </IconButton>
+        {error && (
+          <p role="alert" className="text-xs text-destructive">
+            {error}
+          </p>
+        )}
+        <div className="question-actions">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            disabled={pending}
+            onClick={() => void respond({ skipped: true })}
+          >
+            {t('question.skip')}
+          </Button>
+          <Button type="submit" size="sm" disabled={pending || !draft.trim()}>
+            {t('question.send')}
+          </Button>
+        </div>
       </form>
-      <Button
-        variant="ghost"
-        size="sm"
-        disabled={pending}
-        onClick={() => void respond({ skipped: true })}
-      >
-        {t('question.skip')}
-      </Button>
-      {error && (
-        <p role="alert" className="text-xs text-destructive">
-          {error}
-        </p>
-      )}
     </div>
   );
 }
