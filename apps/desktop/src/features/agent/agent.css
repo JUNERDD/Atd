@@ -64,10 +64,6 @@
   max-height: 240px;
   border-radius: var(--radius-2xl);
 }
-.panel-text-scroll:has(textarea:focus-visible) {
-  outline: 1px solid var(--ring);
-  box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 30%, transparent);
-}
 .run-policy {
   display: flex;
   flex-direction: column;
