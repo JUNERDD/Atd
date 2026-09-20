@@ -18,11 +18,6 @@
   box-shadow: 0 1px 2px rgb(0 0 0 / 18%);
 }
 
-.composer-surface:has(.composer-input:focus-visible) {
-  outline: 1px solid var(--ring);
-  box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 30%, transparent);
-}
-
 .composer-surface[data-expanded='true'] {
   grid-template-areas: 'prompt prompt prompt' 'attach . actions';
   align-content: start;

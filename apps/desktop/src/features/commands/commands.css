@@ -119,9 +119,6 @@
   border-radius: var(--radius-2xl);
   background: color-mix(in oklab, var(--input) 50%, transparent);
 }
-.instruction-editor:focus-within {
-  box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 30%, transparent);
-}
 .instruction-editor .cm-editor {
   background: transparent;
 }
