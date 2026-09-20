@@ -2,7 +2,7 @@ import type { ViewBlock } from './adapter';
 import { QuestionBlock } from './question-block';
 import { SystemBlock, ThinkingBlock } from './thinking-block';
 import { ToolBlock } from './tool-block';
-import { isPendingWrite, requestFor, type RequestIndex } from './turns';
+import { requestFor, type RequestIndex } from './turns';
 
 /**
  * One step inside an activity phase. Every kind keeps its existing block renderer against the
@@ -21,13 +21,7 @@ export function PhaseStep({ view, requests }: { view: ViewBlock; requests: Reque
       return <ThinkingBlock block={block} />;
     case 'tool': {
       const confirmation = request?.kind === 'confirmation' ? request : undefined;
-      return (
-        <ToolBlock
-          block={block}
-          confirmation={confirmation}
-          forceOpen={isPendingWrite(block, request)}
-        />
-      );
+      return <ToolBlock block={block} confirmation={confirmation} />;
     }
     case 'question':
       return (

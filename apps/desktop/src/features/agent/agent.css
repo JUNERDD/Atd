@@ -304,13 +304,16 @@
   display: flex;
   gap: 4px;
 }
-.activity-trigger {
+.activity-trigger,
+.activity-row-static {
   width: 100%;
-  height: auto;
   min-height: 32px;
-  justify-content: flex-start;
   gap: 8px;
   padding: 4px 6px;
+}
+.activity-trigger {
+  height: auto;
+  justify-content: flex-start;
   border-width: 0;
   border-radius: var(--radius-lg);
   color: var(--muted-foreground);
@@ -320,6 +323,18 @@
 .activity-trigger:is([aria-expanded='true']) {
   background-color: transparent;
   color: var(--foreground);
+}
+/*
+ * Non-interactive twin of the trigger box for rows that never expand: the shared row height,
+ * gap, and padding above keep their icon and text edges exactly where an expandable row's sit.
+ * Display and centering live here (Button supplies them for the trigger); hover and focus
+ * affordances stay trigger-only.
+ */
+.activity-row-static {
+  display: flex;
+  align-items: center;
+  border-radius: var(--radius-lg);
+  color: var(--muted-foreground);
 }
 .activity-icon,
 .activity-icon svg {
@@ -385,7 +400,7 @@
   }
 }
 /*
- * Leading icon swap, mirroring the phase header: the type icon reads at rest, hover reveals
+ * Leading icon swap, shared with the phase header: the type icon reads at rest, hover reveals
  * the expanding chevron in the same 14px box so the swap never shifts layout.
  */
 .row-icon-swap {
@@ -446,15 +461,6 @@
   white-space: nowrap;
   text-align: left;
 }
-.phase-icon-swap {
-  position: relative;
-  display: flex;
-  width: 14px;
-  height: 14px;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-}
 .phase-icon {
   width: 14px;
   height: 14px;
@@ -464,62 +470,21 @@
 .phase-trigger:hover .phase-icon {
   opacity: 0;
 }
-.phase-chevron {
-  position: absolute;
-  width: 14px;
-  height: 14px;
-  opacity: 0;
-  /* Only the open/close rotation animates; the hover swap itself is instant. */
-  transition: rotate 200ms;
-  color: var(--muted-foreground);
-}
-.phase-trigger:hover .phase-chevron {
-  opacity: 1;
-}
 .phase-single {
   display: flex;
   min-width: 0;
   align-items: flex-start;
-  gap: 6px;
+  gap: 8px;
 }
 .phase-single > .phase-icon {
-  margin-top: 7px;
+  /* Left inset and gap mirror the trigger box so the glyph and step text start where a group
+     header's icon and title start; the top offset centers the 14px glyph on the 20px first line. */
+  margin-top: 3px;
+  margin-left: 6px;
 }
 .phase-single-step {
   min-width: 0;
   flex: 1;
-}
-.phase-body {
-  display: grid;
-  grid-template-rows: 1fr;
-  transition:
-    grid-template-rows 320ms cubic-bezier(0.22, 1, 0.36, 1),
-    opacity 220ms ease;
-}
-.phase-body[data-open='false'] {
-  grid-template-rows: 0fr;
-  opacity: 0;
-}
-.phase-body > * {
-  min-height: 0;
-  overflow: hidden;
-}
-/*
- * Capped scrolling window so a long run does not push the turn off the screen, live or settled.
- * The cap stays while the group is closed so settling collapses from the window, not a flash of
- * the full list.
- */
-.phase-body > .phase-scroll {
-  max-height: min(17.5rem, 45vh);
-}
-/*
- * Child combinator is load-bearing: containment and anchor suppression belong to the phase
- * viewport only. A descendant selector would also match nested tool-output viewports and trap
- * their wheel events — short boxes can neither consume nor chain the scroll.
- */
-.phase-body[data-open='true'] > .phase-scroll > [data-slot='scroll-area-viewport'] {
-  overscroll-behavior: contain;
-  overflow-anchor: none;
 }
 /*
  * The rail: a spine down the group with a step branching off it on a curve, drawn on the step
@@ -573,19 +538,6 @@
 .step-in {
   animation: step-in 180ms ease-out both;
 }
-@keyframes thinking-pulse {
-  0%,
-  100% {
-    opacity: 0.35;
-  }
-  50% {
-    opacity: 0.9;
-  }
-}
-/* The thinking line breathes while reasoning streams in. */
-.thinking-pulse {
-  animation: thinking-pulse 1.8s ease-in-out infinite;
-}
 @keyframes turn-spin {
   to {
     transform: rotate(360deg);
@@ -593,14 +545,10 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .step-in,
-  .thinking-pulse,
   .turn-header-spinner,
   [data-slot='collapsible-content'][data-state='open'],
   [data-slot='collapsible-content'][data-state='closed'] {
     animation: none;
-  }
-  .phase-body {
-    transition: none;
   }
 }
 .thinking-row {

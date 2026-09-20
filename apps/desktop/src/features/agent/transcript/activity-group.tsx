@@ -62,10 +62,10 @@ function useLivePhasePin(active: boolean, steps: ViewBlock[]) {
 }
 
 /**
- * One phase: a header the whole group hangs off, and the steps under it on a rail. Groups stay
- * collapsed — while running the header shows only the latest step, and finishing a phase snaps
- * it shut behind the tally summary — until clicked, after which it stays put for the rest of the
- * run. A step still waiting on the user keeps the group open regardless. While live, the open
+ * One phase: a header the whole group hangs off, and the steps under it on a rail. Groups start
+ * collapsed — while running the header shows only the latest step — unless a step is waiting on
+ * the user, which opens its group by default. The toggle always wins after that: a collapsed or
+ * expanded group stays put across new steps, phase switches, and settling. While live, the open
  * body stays a short scrolling window pinned to the newest step; after the turn settles an
  * opened group is full height again.
  */
@@ -81,14 +81,9 @@ function ActivityPhaseView({
   const { t } = useTranslation('tasks');
   const [override, setOverride] = useState<boolean | null>(null);
   const waiting = phase.steps.some((step) => step.approvalPending);
-  // A finished phase forgets a manual expand, so it snaps shut behind its summary. Adjusted
-  // during render (not in an effect) so no extra render pass is scheduled.
-  const [wasActive, setWasActive] = useState(active);
-  if (wasActive !== active) {
-    setWasActive(active);
-    if (!active) setOverride(null);
-  }
-  const open = waiting || override === true;
+  // The manual toggle wins over the waiting default: once touched, the group stays put across
+  // new steps, phase switches, and settling — nothing reopens or snap-shuts behind the user.
+  const open = override ?? waiting;
   const { ref, onScroll, onWheel } = useLivePhasePin(active && open, phase.steps);
   const last = phase.steps.at(-1);
   const title = active && last ? latestStepTitle(last, t) : phaseTitle(phase, active, t);
