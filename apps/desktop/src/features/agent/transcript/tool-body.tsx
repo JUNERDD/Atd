@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { BlockOf } from '../../../../electron/agent/transcript-schema';
-import { bashCommand } from './tool-copy';
+import { bashCommand, hasToolDetail } from './tool-copy';
 import { DetailBox } from './detail-box';
 import { Root as JsonTree } from './json-tree';
 
@@ -56,6 +56,7 @@ export function ToolBody({ block }: { block: BlockOf<'tool'> }) {
   const command = bashCommand(block.args);
   const running = block.status === 'running';
   const text = running ? block.partial : block.output;
+  if (!hasToolDetail(block)) return null;
   switch (block.name) {
     case 'edit':
       return block.details.diff ? (
@@ -64,7 +65,6 @@ export function ToolBody({ block }: { block: BlockOf<'tool'> }) {
         <ToolOutput text={text} />
       );
     case 'bash': {
-      if (!command && !text) return null;
       // Only shell executions carry a type badge, and the `Shell` label stays untranslated,
       // matching the technical-term convention.
       const kind = <span className="tool-kind">Shell</span>;

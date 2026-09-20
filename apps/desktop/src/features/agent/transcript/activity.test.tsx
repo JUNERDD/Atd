@@ -47,7 +47,7 @@ describe('activity folding', () => {
     expect(header).toHaveAttribute('aria-expanded', 'false');
     await user.click(header);
     expect(header).toHaveAttribute('aria-expanded', 'true');
-    expect(screen.getByText('Read file')).toBeVisible();
+    expect(screen.getByText('Read file notes.txt')).toBeVisible();
   });
 
   it('collapses a settled group behind the phase verb title', () => {

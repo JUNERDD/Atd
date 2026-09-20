@@ -5,6 +5,7 @@ import { TooltipProvider } from '@ai/ui/components/tooltip';
 import { ScrollArea } from '@ai/ui/components/scroll-area';
 import { Composer } from './components/composer';
 import { IconButton } from './components/icon-button';
+import { useOverlayReserve } from './components/use-overlay-footer';
 import { ToastHost } from './components/toast';
 import { useAppLanguage } from './i18n/use-app-language';
 import { agentApi } from './features/agent/use-agent';
@@ -52,6 +53,7 @@ export function App() {
     queue,
   } = useTaskPanel();
   useAppLanguage(snapshot?.language);
+  const reserveRef = useOverlayReserve();
   const defaultConnection = snapshot?.connections.find(
     (connection) => connection.connectionId === snapshot.defaultConnectionId,
   );
@@ -110,7 +112,11 @@ export function App() {
           </nav>
         </header>
         {view === 'new' && (
-          <ScrollArea className="panel-content" viewportClassName="overlay-footer-fade">
+          <ScrollArea
+            className="panel-content"
+            viewportClassName="overlay-footer-fade"
+            viewportRef={reserveRef}
+          >
             <section className="panel-content-body welcome">
               <h2 className="max-w-full truncate" title={t('welcome.title')}>
                 {t('welcome.title')}

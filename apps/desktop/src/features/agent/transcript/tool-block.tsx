@@ -7,6 +7,7 @@ import { ActivityRow } from './activity-row';
 import { ToolBody } from './tool-body';
 import {
   commandStepKey,
+  hasToolDetail,
   memoryTargetKey,
   outcomeKey,
   statusLabelKey,
@@ -52,33 +53,65 @@ export function ToolBlock({
   const meta =
     waiting ??
     (memoryKey ? t(memoryKey) : (rawTarget ?? outcome ?? t(statusLabelKey(block.status))));
-  const heading = (
-    <>
-      {/*
-       * `flex-initial` overrides the generic `flex-1` title so it hugs the verb; the summary meta
-       * is itself `flex: 1` (see `agent.css`) and fills the rest of the row at the same text size.
-       * Both truncate, and the title shrinks first on narrow rows.
-       */}
-      <ActivityRow.Title className="flex-initial" title={block.name}>
-        {block.status === 'running' ? <Shimmer as="span">{title}</Shimmer> : title}
-      </ActivityRow.Title>
-      {path ? (
-        // No file glyph here: the row's leading icon already names the file type.
-        <ActivityRow.Meta className="tool-chip" title={meta}>
-          {meta}
-        </ActivityRow.Meta>
-      ) : (
-        <ActivityRow.Meta className="activity-meta" title={meta}>
-          {meta}
-        </ActivityRow.Meta>
-      )}
-      {outcome && meta !== outcome && (
-        <ActivityRow.Meta className="permission-chip" title={outcome}>
-          {outcome}
-        </ActivityRow.Meta>
-      )}
-    </>
-  );
+  const running = block.status === 'running';
+  // While running the whole line reads as one live unit: the meta joins the title inside a
+  // single shimmer via plain string concatenation, instead of sitting beside it as static
+  // text. Settled rows keep the split title/meta layout below.
+  const heading =
+    running && meta ? (
+      <>
+        <ActivityRow.Title className="flex-initial" title={block.name}>
+          <Shimmer as="span">{`${title} ${meta}`}</Shimmer>
+        </ActivityRow.Title>
+        {outcome && meta !== outcome && (
+          <ActivityRow.Meta className="permission-chip" title={outcome}>
+            {outcome}
+          </ActivityRow.Meta>
+        )}
+      </>
+    ) : (
+      <>
+        {/*
+         * `flex-initial` overrides the generic `flex-1` title so it hugs the verb; the summary meta
+         * is itself `flex: 1` (see `agent.css`) and fills the rest of the row at the same text size.
+         * Both truncate, and the title shrinks first on narrow rows.
+         */}
+        <ActivityRow.Title className="flex-initial" title={block.name}>
+          {running ? <Shimmer as="span">{title}</Shimmer> : title}
+        </ActivityRow.Title>
+        {path ? (
+          // No file glyph here: the row's leading icon already names the file type.
+          <ActivityRow.Meta className="tool-chip" title={meta}>
+            {meta}
+          </ActivityRow.Meta>
+        ) : (
+          <ActivityRow.Meta className="activity-meta" title={meta}>
+            {meta}
+          </ActivityRow.Meta>
+        )}
+        {outcome && meta !== outcome && (
+          <ActivityRow.Meta className="permission-chip" title={outcome}>
+            {outcome}
+          </ActivityRow.Meta>
+        )}
+      </>
+    );
+  // No detail to expand into: the same row frame without a trigger, so hover offers no
+  // expanding chevron. The icon box keeps its geometry via `chevron={false}`.
+  if (!hasToolDetail(block)) {
+    return (
+      <div className="tool-block">
+        <ActivityRow.Root status={block.status}>
+          <div className="activity-row-static">
+            <ActivityRow.Icon chevron={false}>
+              {createElement(Icon, { className: 'row-icon', strokeWidth: 1.75 })}
+            </ActivityRow.Icon>
+            {heading}
+          </div>
+        </ActivityRow.Root>
+      </div>
+    );
+  }
   return (
     <div className="tool-block">
       <ActivityRow.Root open={expanded} onOpenChange={setOpen} status={block.status}>

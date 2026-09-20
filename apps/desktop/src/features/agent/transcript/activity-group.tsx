@@ -1,5 +1,20 @@
-import { useLayoutEffect, useRef, useState, type UIEvent, type WheelEvent } from 'react';
-import { Bot, PenLine, Search, Sparkles, Terminal, Wrench } from 'lucide-react';
+import {
+  createElement,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type UIEvent,
+  type WheelEvent,
+} from 'react';
+import {
+  Bot,
+  MessageCircleQuestion,
+  PenLine,
+  Search,
+  Sparkles,
+  Terminal,
+  Wrench,
+} from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { ScrollArea } from '@ai/ui/components/scroll-area';
 import { Shimmer } from '@ai/ui/components/ai-elements/shimmer';
@@ -10,6 +25,7 @@ import type { AdaptedItem, ViewBlock } from './adapter';
 import { type ActivityPhase, type ActivityPhaseKind } from './phases';
 import { latestStepTitle, phaseTitle, phaseToggleLabel } from './phase-title';
 import { PhaseStep } from './phase-step';
+import { toolIcon } from './tool-copy';
 import type { RequestIndex } from './turns';
 
 /** What the group was for, at a glance: look, change, run, think. */
@@ -29,6 +45,17 @@ function PhaseGlyph({ kind }: { kind: ActivityPhaseKind }) {
     case 'other':
       return <Wrench {...props} />;
   }
+}
+
+/**
+ * Live header glyph: mirrors `latestStepTitle` so the icon tracks the running step while the
+ * group is active, instead of staying pinned to the group's overall kind.
+ */
+function StepGlyph({ step }: { step: ViewBlock }) {
+  const props = { className: 'phase-icon', strokeWidth: 1.75 };
+  if (step.role === 'reasoning') return <Sparkles {...props} />;
+  if (step.role === 'question') return <MessageCircleQuestion {...props} />;
+  return createElement(toolIcon(step.tool?.name ?? ''), props);
 }
 
 /**
@@ -137,7 +164,7 @@ function ActivityPhaseView({
     >
       <ActivityRow.Trigger aria-label={`${toggle}, ${title}`} className="phase-trigger">
         <ActivityRow.Icon>
-          <PhaseGlyph kind={phase.kind} />
+          {active && last ? <StepGlyph step={last} /> : <PhaseGlyph kind={phase.kind} />}
         </ActivityRow.Icon>
         <ActivityRow.Title className="phase-title" title={title}>
           {label}
@@ -188,7 +215,9 @@ export function ActivityGroup({
           <ActivityPhaseView
             key={phase.id || `${item.id}-${index}`}
             phase={phase}
-            active={!done && index === item.phases.length - 1}
+            // Only the live tail shimmers: settled groups must stay static while the turn
+            // waits on a later approval, even though turn-level `done` is still false.
+            active={!done && item.live && index === item.phases.length - 1}
             requests={requests}
           />
         ))}
