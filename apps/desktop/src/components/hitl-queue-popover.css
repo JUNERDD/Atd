@@ -1,0 +1,57 @@
+/* Single popover above the composer surface hosting the HITL region (top, urgent) and
+   the queue region (bottom). The container owns sizing and scrolling so neither region can push
+   the composer surface around; each region hides when empty and both empty closes the popover. */
+.hitl-queue-popover {
+  display: flex;
+  flex-direction: column;
+  width: min(26rem, calc(100vw - 2rem));
+  max-height: min(22rem, calc(100dvh - 14rem));
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* Anchor box for the popover: a layout-neutral wrapper around the composer surface so the
+   recall pill can float above it without shifting the form. */
+.hitl-queue-anchor {
+  position: relative;
+  min-width: 0;
+}
+
+/* Recall pill, rendered if and only if the popover was dismissed while content is pending.
+   Absolutely positioned, so appearance never moves the surface or the footer. */
+.hitl-queue-recall {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  z-index: 10;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+.hitl-region {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  padding: 12px;
+}
+
+.queue-region {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 8px 12px 12px;
+}
+
+/* The divider belongs to the queue region so a lone HITL region reads without a stray rule. */
+.hitl-region + .queue-region {
+  border-top: 1px solid var(--border);
+}
+
+/* Migrated in-flow queue: the popover owns layout now, `composer.css` no longer grids it. */
+.hitl-queue-popover .composer-queue {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}

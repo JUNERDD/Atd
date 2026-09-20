@@ -1,7 +1,8 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { TooltipProvider } from '@ai/ui/components/tooltip';
+import { HitlQueuePopover } from '../../../components/hitl-queue-popover';
 import { Transcript } from './transcript';
 import { installAgent, makeDetail, questionBlock, userBlock } from './fixtures';
 
@@ -24,7 +25,17 @@ function renderQuestion() {
   });
   render(
     <TooltipProvider>
-      <Transcript detail={detail} onAttach={vi.fn()} />
+      <div data-testid="transcript-root">
+        <Transcript detail={detail} onAttach={vi.fn()} />
+      </div>
+      <HitlQueuePopover
+        requests={detail.requests}
+        queue={detail.queue}
+        taskId="task-1"
+        onEditQueued={vi.fn()}
+      >
+        <div data-testid="composer-surface" />
+      </HitlQueuePopover>
     </TooltipProvider>,
   );
   return { answer };
@@ -34,6 +45,13 @@ describe('question block', () => {
   it('answers with the chosen chip', async () => {
     const user = userEvent.setup();
     const { answer } = renderQuestion();
+    const transcript = screen.getByTestId('transcript-root');
+    expect(within(transcript).getByText('Which style?')).toBeVisible();
+    expect(
+      within(transcript).getAllByText('Waiting for your answer').length,
+    ).toBeGreaterThanOrEqual(1);
+    expect(within(transcript).queryByRole('button', { name: 'Concise' })).toBeNull();
+    expect(within(transcript).queryByRole('button', { name: 'Skip' })).toBeNull();
     expect(screen.getByRole('button', { name: 'Concise' })).toBeVisible();
     await user.click(screen.getByRole('button', { name: 'Concise' }));
     expect(answer).toHaveBeenCalledWith('task-1', 'run-1', 'req-q', { answer: 'Concise' });
