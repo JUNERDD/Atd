@@ -33,6 +33,7 @@
     "i18next": "26.4.2",
     "jiti": "2.7.0",
     "lucide-react": "1.42.0",
+    "motion": "13.2.0",
     "mustache": "4.2.0",
     "pi-hermes-memory": "0.9.8",
     "react": "19.2.8",

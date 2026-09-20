@@ -1,9 +1,12 @@
 import { useMemo, useState, type ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ArrowDown } from 'lucide-react';
+import { AnimatePresence, MotionConfig, motion } from 'motion/react';
 import { Button } from '@ai/ui/components/button';
 import { ScrollArea } from '@ai/ui/components/scroll-area';
 import type { TaskDetail } from '../../../../electron/agent/bridge';
 import { isActive, type FileRef, type TaskRun } from '../../../../electron/agent/task-schema';
+import { IconButton } from '../../../components/icon-button';
 import { UserContext } from '../user-context';
 import { TaskFiles } from '../task-files';
 import { adaptTranscript, modelNameForRun, type AdaptedTurn } from './adapter';
@@ -88,7 +91,7 @@ export function Transcript({
     [blocks, requestIndex, task.runs],
   );
   const anchors = useMemo(() => artifactAnchorIds(blocks, artifacts), [blocks, artifacts]);
-  const { viewportRef, showJump, pin, onScroll, onWheel } = useTranscriptScroll(detail.revision);
+  const { viewportRef, showJump, pin, onScroll } = useTranscriptScroll(detail.revision);
   const hasUser = blocks.some((block) => block.kind === 'user');
   const pendingFiles = !hasUser && run ? artifacts.filter((file) => file.runId === run.id) : [];
   const headRequest = requests[0];
@@ -99,7 +102,7 @@ export function Transcript({
         viewportRef={viewportRef}
         className="flex-1 min-h-0"
         viewportClassName="overlay-footer-fade"
-        viewportProps={{ onScroll, onWheel }}
+        viewportProps={{ onScroll }}
       >
         <div className="conversation-messages">
           {task.legacy && (
@@ -148,16 +151,24 @@ export function Transcript({
           <StatusBar run={run} />
         </div>
       </ScrollArea>
-      {showJump && (
-        <Button
-          className="absolute bottom-[calc(var(--overlay-footer-height,0px)+12px)] left-1/2 z-[1] -translate-x-1/2"
-          variant="outline"
-          size="sm"
-          onClick={pin}
-        >
-          {t('conversation.jumpToLatest')}
-        </Button>
-      )}
+      <MotionConfig reducedMotion="user">
+        <AnimatePresence>
+          {showJump && (
+            <motion.div
+              className="scroll-to-bottom"
+              initial={{ opacity: 0, x: '-50%', y: 16, scale: 0.95 }}
+              animate={{ opacity: 1, x: '-50%', y: 0, scale: 1 }}
+              exit={{ opacity: 0, x: '-50%', y: 16, scale: 0.95 }}
+              transition={{ type: 'spring', stiffness: 380, damping: 28 }}
+              whileTap={{ scale: 0.85 }}
+            >
+              <IconButton label={t('conversation.scrollToBottom')} tooltip={false} onClick={pin}>
+                <ArrowDown />
+              </IconButton>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </MotionConfig>
     </div>
   );
 }

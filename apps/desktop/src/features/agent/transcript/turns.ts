@@ -30,6 +30,9 @@ export function isPendingWrite(
   block: Block,
   request: PermissionRequest | undefined,
 ): request is Extract<PermissionRequest, { kind: 'confirmation' }> {
+  // Kept for reversibility: the composer popover now embeds the approval diff, so folding no
+  // longer keeps pending edits unfolded. Callers were migrated; this predicate documents the
+  // scope that used to bypass the activity group.
   if (block.kind !== 'tool' || request?.kind !== 'confirmation') return false;
   return request.scope.tool === 'edit' || request.scope.tool === 'write';
 }
@@ -54,7 +57,9 @@ export function isLiveBlock(block: Block, request: PermissionRequest | undefined
   }
 }
 
-/** Foldable work: tool calls, questions, and thinking. An edit still awaiting approval stays out — you cannot judge a diff you cannot see. */
+/** Foldable work: tool calls, questions, and thinking. Pending edits fold like any other
+ * step now — the approval diff moved to the composer popover, so the transcript row only needs
+ * the tool name plus waiting text. */
 function isActivityKind(block: Block): boolean {
   return block.kind === 'thinking' || block.kind === 'tool' || block.kind === 'question';
 }
@@ -100,10 +105,9 @@ function foldTurn(blocks: Block[], requests: RequestIndex, index: number): Turn 
     activity = [];
   };
   rest.forEach((block) => {
-    const request = requestFor(block, requests);
     // Assistant prose always renders standalone at full strength; only foldable work enters an
     // activity group.
-    if (!isPendingWrite(block, request) && isActivityKind(block)) {
+    if (isActivityKind(block)) {
       activity.push(block);
       return;
     }
