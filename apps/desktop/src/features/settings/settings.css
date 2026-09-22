@@ -147,8 +147,7 @@
 }
 .settings-section-heading p,
 .settings-field-note,
-.settings-status,
-.settings-preview-note {
+.settings-status {
   color: var(--ata-text-secondary);
   font-size: 14px;
   line-height: 20px;
@@ -223,10 +222,6 @@
 }
 .settings-status[data-error='true'] {
   color: var(--destructive);
-}
-.settings-preview-note {
-  display: block;
-  margin-bottom: 24px;
 }
 .settings-permission-settings {
   display: flex;

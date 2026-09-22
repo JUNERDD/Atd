@@ -5,7 +5,6 @@
   "window": {
     "loading": "Loading settings…",
     "label": "Settings",
-    "previewNote": "Open the desktop app to configure providers, shortcuts, and window preferences.",
     "loadError": "Settings could not be loaded."
   },
   "nav": {
