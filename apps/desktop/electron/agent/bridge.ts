@@ -23,6 +23,7 @@ export const AGENT_IPC = {
   changed: 'agent:changed',
   launch: 'agent:launch',
   session: 'agent:command-session',
+  extensionSession: 'agent:extension-session',
 } as const;
 export const MemoryEntrySchema = Type.Object(
   {
@@ -207,6 +208,12 @@ export interface CommandSession {
   name: string;
 }
 
+/** Hands Extensions create-with-AI off to a new panel session seeded with an app skill. */
+export type ExtensionSessionKind = 'skill' | 'subagent' | 'mcp';
+export interface ExtensionSession {
+  kind: ExtensionSessionKind;
+}
+
 export interface AgentBridge {
   get: () => Promise<AgentSnapshot>;
   detail: (taskId: string) => Promise<TaskDetail>;
@@ -249,4 +256,5 @@ export interface AgentBridge {
   onChange: (listener: (event: AgentEvent) => void) => () => void;
   onLaunch: (listener: (launch: CommandLaunch) => void) => () => void;
   onCommandSession: (listener: (session: CommandSession) => void) => () => void;
+  onExtensionSession: (listener: (session: ExtensionSession) => void) => () => void;
 }

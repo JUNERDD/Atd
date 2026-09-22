@@ -8,17 +8,15 @@ import {
   SessionManager,
   SettingsManager,
   type AgentSession,
-  type ExtensionFactory,
 } from '@earendil-works/pi-coding-agent';
 import { rootExecutionId, type RunStatus, type TaskRun } from '@ai/agent-contracts';
 import { AuthRequired, TempCredentialStore } from './credentials.js';
 import { LiveTranscript } from './live-transcript.js';
-import { McpAdapterMissing, McpAuthority } from './mcp/index.js';
+import { prepareSessionMcp } from './pi-session-mcp.js';
 import { buildSkillLoaderOptions } from './skills/loader.js';
 import { skillProfilePaths } from './skills/profile.js';
 import { loadRunSnapshot } from './skills/versions.js';
-import { ResourceStore } from './resources.js';
-import { readServiceId, type RunnerContext } from './task-runner.js';
+import type { RunnerContext } from './task-runner.js';
 import { effectiveTaskTier } from './tasks/tier.js';
 import { serviceTools } from './tool-proxies.js';
 import { prepareSubagentsParent } from './subagents/index.js';
@@ -96,7 +94,7 @@ export async function createLiveState(
   const skillSnapshot = await loadRunSnapshot(skillProfile, run.id);
   const skillEntries = skillSnapshot.skills.map((skill) => skill.entry);
   // MCP tools alongside service tools via the frozen authority revision.
-  const mcpFactory = await mcpExtensionFactory(deps);
+  const mcp = await prepareSessionMcp(deps);
   const subagentsFactory = await prepareSubagentsParent(deps);
   const loader = new DefaultResourceLoader(
     buildSkillLoaderOptions({
@@ -121,8 +119,10 @@ export async function createLiveState(
           audit: deps.audit,
           log: ctx.log,
           setStatus: (status) => deps.setStatus(deps.currentRunId(), status),
+          configureMcp: mcp.configureMcp,
+          configuredMcp: mcp.configuredMcp,
         }),
-        mcpFactory,
+        mcp.factory,
         subagentsFactory,
         (pi) => {
           pi.on('before_agent_start', () => {
@@ -193,7 +193,7 @@ export async function createLiveState(
     settingsManager: settings,
     sessionManager: manager,
     resourceLoader: loader,
-    tools: [...run.snapshot.tools, 'ask_user', 'desktop'],
+    tools: [...run.snapshot.tools, 'ask_user', 'desktop', 'configure_mcp'],
     thinkingLevel: 'off',
   });
   await created.session.bindExtensions({
@@ -259,43 +259,13 @@ export async function createLiveState(
 export async function applyRunToSession(live: LiveState, run: TaskRun): Promise<void> {
   await live.session.setModel(await configureModel(live.models, run));
   live.session.setThinkingLevel('off');
-  live.session.setActiveToolsByName([...run.snapshot.tools, 'ask_user', 'desktop']);
+  live.session.setActiveToolsByName([
+    ...run.snapshot.tools,
+    'ask_user',
+    'desktop',
+    'configure_mcp',
+  ]);
   live.manager.appendCustomEntry('app-invocation', { runId: run.id, source: 'user' });
-}
-
-async function mcpExtensionFactory(deps: SessionFactoryDeps): Promise<ExtensionFactory> {
-  try {
-    const serviceId = await readServiceId(deps.ctx.paths);
-    const authority = await McpAuthority.authorityFor({
-      serviceId,
-      dataDir: deps.ctx.paths.root,
-      agentDir: deps.ctx.paths.agentDir,
-      sessionsDir: deps.ctx.paths.sessionsDir,
-      cwd: deps.ctx.paths.root,
-      events: deps.ctx.events,
-      confirms: deps.ctx.confirms,
-      resources: new ResourceStore(deps.ctx.ledger, deps.ctx.paths),
-      log: deps.ctx.log,
-    });
-    const { factory, bindings } = await authority.prepareRunnerTools({
-      taskId: deps.taskId,
-      runId: deps.currentRunId,
-      executionId: deps.executionId,
-      audit: deps.audit,
-      log: deps.ctx.log,
-    });
-    deps.audit({ taskId: deps.taskId, runId: deps.currentRunId(), mcpTools: bindings.length });
-    return factory;
-  } catch (error) {
-    // Degraded without the adapter: runs continue with service tools and
-    // skills only. The audit + warning keep the gap explicit, never silent.
-    if (!(error instanceof McpAdapterMissing)) throw error;
-    deps.ctx.log.warn('MCP tools degraded: adapter is unavailable.', {
-      taskId: deps.taskId,
-    });
-    deps.audit({ taskId: deps.taskId, runId: deps.currentRunId(), mcpDegraded: true });
-    return () => undefined;
-  }
 }
 
 async function configureModel(models: ModelRuntime, run: TaskRun) {

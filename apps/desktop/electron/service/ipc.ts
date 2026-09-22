@@ -82,6 +82,12 @@ export const ServiceRequestSchema = Type.Union([
     name: Type.String({ minLength: 1, maxLength: 128 }),
     enabled: Type.Boolean(),
   }),
+  Type.Object({
+    action: Type.Literal('skillsInstall'),
+    source: Type.String({ minLength: 1, maxLength: 2048 }),
+    sourceKind: Type.Union([Type.Literal('local'), Type.Literal('npm'), Type.Literal('git')]),
+    name: Type.Optional(SkillNameSchema),
+  }),
   Type.Object({ action: Type.Literal('roles') }),
   Type.Object({
     action: Type.Literal('rolesPut'),
@@ -94,6 +100,15 @@ export const ServiceRequestSchema = Type.Union([
       },
       { additionalProperties: false },
     ),
+  }),
+  Type.Object({ action: Type.Literal('agents') }),
+  Type.Object({
+    action: Type.Literal('agentsPut'),
+    name: SkillNameSchema,
+    description: Type.String({ minLength: 1, maxLength: 2048 }),
+    tools: Type.Array(RoleToolSchema, { maxItems: 16 }),
+    model: Type.Union([Type.String({ minLength: 1, maxLength: 256 }), Type.Null()]),
+    systemPrompt: Type.String({ minLength: 1, maxLength: 16000 }),
   }),
   Type.Object({ action: Type.Literal('mcpStatus') }),
   Type.Object({
@@ -149,6 +164,11 @@ export interface ServiceBridge {
   skills: () => Promise<{ skills: unknown[]; diagnostics: unknown[] }>;
   updateSkill: (name: string) => Promise<{ skill: unknown; diagnostics: unknown[] }>;
   setSkillEnabled: (name: string, enabled: boolean) => Promise<{ name: string; enabled: boolean }>;
+  installSkill: (input: {
+    source: string;
+    sourceKind: 'local' | 'npm' | 'git';
+    name?: string;
+  }) => Promise<{ skill: unknown; diagnostics: unknown[] }>;
   roles: () => Promise<{ roles: unknown[] }>;
   putRole: (input: {
     id: string;
@@ -158,6 +178,14 @@ export interface ServiceBridge {
       skills: string[];
     };
   }) => Promise<{ role: unknown }>;
+  agents: () => Promise<{ agents: unknown[] }>;
+  putAgent: (input: {
+    name: string;
+    description: string;
+    tools: Array<'read' | 'write' | 'edit' | 'bash' | 'command'>;
+    model: string | null;
+    systemPrompt: string;
+  }) => Promise<{ agent: unknown }>;
   mcpStatus: () => Promise<{ servers: unknown[] }>;
   mcpConnect: (serverId: string) => Promise<{ ok: boolean }>;
   mcpAuthStart: (serverId: string) => Promise<{

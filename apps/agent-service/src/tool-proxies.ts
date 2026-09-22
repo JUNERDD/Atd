@@ -19,9 +19,11 @@ import {
   tierAllows,
   type DesktopCapability,
   type GrantScope,
+  type McpServerConfig,
   type PermissionTier,
 } from '@ai/agent-contracts';
 import type { CapabilityRegistry } from './capabilities.js';
+import { registerConfigureMcpTool } from './configure-mcp-tool.js';
 import { ConfirmStore } from './confirms.js';
 import type { Logger } from './logging.js';
 import { confined, inside, shellAllowlist } from './service-fs.js';
@@ -41,6 +43,8 @@ export interface ServiceToolHost {
   audit: (entry: Record<string, unknown>) => void;
   log: Logger;
   setStatus: (status: 'awaiting_input' | 'awaiting_confirmation' | 'running') => void;
+  configureMcp?: (servers: McpServerConfig[]) => Promise<McpServerConfig[]>;
+  configuredMcp?: () => McpServerConfig[];
 }
 
 /**
@@ -300,6 +304,7 @@ export function serviceTools(host: ServiceToolHost): ExtensionFactory {
         }
       },
     });
+    registerConfigureMcpTool(pi, host);
   };
 }
 

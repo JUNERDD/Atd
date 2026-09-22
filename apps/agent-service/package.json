@@ -6,7 +6,8 @@
     "agent-service": "dist/cli.js"
   },
   "files": [
-    "dist"
+    "dist",
+    "product-skills"
   ],
   "type": "module",
   "exports": {

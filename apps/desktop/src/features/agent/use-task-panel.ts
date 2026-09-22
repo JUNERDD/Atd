@@ -107,6 +107,31 @@ export function useTaskPanel() {
       focusPanelInput();
     });
   }, [t]);
+  // Extensions create-with-AI seeds `/skill:create-*` and stages that app skill on the new draft.
+  useEffect(() => {
+    const bridge = window.desktop?.agent;
+    if (!bridge) return;
+    return bridge.onExtensionSession(({ kind }) => {
+      const skillName =
+        kind === 'skill' ? 'create-skill' : kind === 'subagent' ? 'create-subagent' : 'create-mcp';
+      newTask();
+      setDrafts((previous) => ({
+        ...previous,
+        new: { text: `/skill:${skillName} `, files: [] },
+      }));
+      setPolicies((previous) => ({
+        ...previous,
+        new: {
+          tools: ['read', 'write', 'edit', 'bash', 'command'],
+          memory: true,
+          useDefaultModel: false,
+          confirmExpansion: false,
+          skills: [{ name: skillName }],
+        },
+      }));
+      focusPanelInput();
+    });
+  }, []);
   // A failed start restores the command input for repair. The reveal counter is raised together
   // with the launched view, so the commit that reveals the panel already renders that view; every
   // launch is a fresh object, so the trigger fires exactly once per shortcut press.
