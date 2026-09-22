@@ -1,0 +1,42 @@
+{
+  "note": "Marks missing from https://logos.lndev.me/. Original files, unchanged.",
+  "assets": [
+    {
+      "brand": "Ant Ling",
+      "file": "ant-ling.svg",
+      "source": "https://www.ant-ling.com/en",
+      "asset": "https://mdn.alipayobjects.com/huamei_yj1ans/afts/img/g8JZRrqn3R8AAAAAQCAAAAgADqLdAQFr/original",
+      "sha256": "541b87c5be103c79109c6f4437f61e892667218a53ccfbd4536c8fa3c76d5d7a",
+      "rendering": "original-colors"
+    },
+    {
+      "brand": "Baseten",
+      "file": "baseten.svg",
+      "source": "https://unpkg.com/@lobehub/icons-static-svg@1.95.1/icons/baseten.svg",
+      "sha256": "d560883f6df500c1290b2fb2018836d853c72697c1fc252793538fabf53ff28d",
+      "rendering": "original-colors"
+    },
+    {
+      "brand": "Fireworks",
+      "file": "fireworks.svg",
+      "source": "https://unpkg.com/@lobehub/icons-static-svg@1.95.1/icons/fireworks-color.svg",
+      "sha256": "f1c4782b86bc03a36323fd68ad6cc376c6b2ebe57b701cc958ebd6b8d37effd6",
+      "rendering": "original-colors"
+    },
+    {
+      "brand": "llama.cpp",
+      "file": "llamacpp.svg",
+      "source": "https://github.com/ggml-org/llama.cpp/blob/2cfef4d117d67ab1dec002915b48a15d11ee1973/media/llama1-icon-transparent.svg",
+      "sha256": "611af871c3ba331afa3350d4c94e546607ccdd952c6dfd928dc94dc1e0f0b3ba",
+      "rendering": "original-colors"
+    },
+    {
+      "brand": "Radius",
+      "file": "radius.svg",
+      "source": "https://pi.dev/logo.svg",
+      "sha256": "abd66e7868b2d24f0f0895f9237ee8a6dcb22337583b0dc54aeb595acecb4d6b",
+      "rendering": "original-colors",
+      "note": "Radius is the Pi gateway and publishes no separate mark. This is the Pi logo."
+    }
+  ]
+}
