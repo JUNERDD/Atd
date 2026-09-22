@@ -56,8 +56,10 @@ export class SettingsWindow {
     this.window = window;
     const positionControls = () => {
       if (process.platform === 'darwin' && !window.isDestroyed())
+        // Narrow layouts put the buttons on the title row, so their ~14px circles center on it:
+        // the 52px drawer bar and the 28px controls strip both center content at 26.
         window.setWindowButtonPosition(
-          window.getContentBounds().width < 760 ? { x: 28, y: 22 } : { x: 16, y: 18 },
+          window.getContentBounds().width < 760 ? { x: 28, y: 19 } : { x: 16, y: 18 },
         );
     };
     window.on('resize', positionControls);
