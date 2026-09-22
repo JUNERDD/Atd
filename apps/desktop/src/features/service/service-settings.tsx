@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Input } from '@ai/ui/components/input';
+import { ScrollArea } from '@ai/ui/components/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@ai/ui/components/tabs';
 import { showErrorToast, showToast } from '../../components/toast-store';
 import { SettingsHeading } from '../settings/settings-heading';
@@ -158,61 +159,69 @@ export function ServiceSettings() {
               onCreateWithAi={() => void startAiSession()}
             />
           </div>
-          <TabsContent value="skills" forceMount>
-            <ExtensionSkillsGroup
-              rows={skillRows}
-              loading={skillsLoading}
-              empty={searching ? t('extensions.noMatches') : t('service.emptySkills')}
-              connected={connected}
-              busyName={skillBusyName}
-              adding={adding && tab === 'skills'}
-              formKey={formKey}
-              busy={skillInstallBusy}
-              onClose={() => setAdding(false)}
-              onInstall={(input) => installSkill(input, refreshSkills)}
-              onEnabled={(name, enabled) => {
-                const seq = (enableSeq.current.get(name) ?? 0) + 1;
-                enableSeq.current.set(name, seq);
-                setEnabled(name, enabled);
-                void setSkillEnabled(name, enabled).catch(() => {
-                  if (enableSeq.current.get(name) === seq) setEnabled(name, !enabled);
-                });
-              }}
-              onUpdate={(name) => void updateSkill(name, refreshSkills)}
-            />
-          </TabsContent>
-          <TabsContent value="subagents" forceMount>
-            <ExtensionAgentsGroup
-              rows={agentRows}
-              loading={agentsLoading}
-              empty={searching ? t('extensions.noMatches') : t('service.emptyAgents')}
-              connected={connected}
-              busy={agentsBusy}
-              adding={adding && tab === 'subagents'}
-              formKey={formKey}
-              onClose={() => setAdding(false)}
-              onSave={(input) => putAgent(input, refreshAgents)}
-            />
-          </TabsContent>
-          <TabsContent value="mcp" forceMount>
-            <ExtensionMcpGroup
-              rows={mcpRows}
-              loading={mcpLoading}
-              empty={searching ? t('extensions.noMatches') : t('service.emptyMcp')}
-              connected={connected}
-              busyId={busyId}
-              busy={mcpBusy}
-              adding={adding && tab === 'mcp'}
-              formKey={formKey}
-              onClose={() => setAdding(false)}
-              onConnect={(serverId) => void mcpConnect(serverId)}
-              onAuthStart={(serverId) => void authStart(serverId)}
-              onAuthComplete={(serverId, input) => void authComplete(serverId, input)}
-              onUpsert={(input) => mcpUpsert(input, refreshMcp)}
-              onDisable={(serverId) => void mcpDisable(serverId, refreshMcp)}
-              onRemove={(serverId) => void mcpRemove(serverId, refreshMcp)}
-            />
-          </TabsContent>
+          {/* The panel owns the scrollbar; the heading, search, and tab row stay put above it. */}
+          <ScrollArea
+            className="flex-1"
+            viewportClassName="[&>div]:flex! [&>div]:flex-col [&>div]:min-h-full"
+            gutter
+            scrollShadow
+          >
+            <TabsContent value="skills" forceMount>
+              <ExtensionSkillsGroup
+                rows={skillRows}
+                loading={skillsLoading}
+                empty={searching ? t('extensions.noMatches') : t('service.emptySkills')}
+                connected={connected}
+                busyName={skillBusyName}
+                adding={adding && tab === 'skills'}
+                formKey={formKey}
+                busy={skillInstallBusy}
+                onClose={() => setAdding(false)}
+                onInstall={(input) => installSkill(input, refreshSkills)}
+                onEnabled={(name, enabled) => {
+                  const seq = (enableSeq.current.get(name) ?? 0) + 1;
+                  enableSeq.current.set(name, seq);
+                  setEnabled(name, enabled);
+                  void setSkillEnabled(name, enabled).catch(() => {
+                    if (enableSeq.current.get(name) === seq) setEnabled(name, !enabled);
+                  });
+                }}
+                onUpdate={(name) => void updateSkill(name, refreshSkills)}
+              />
+            </TabsContent>
+            <TabsContent value="subagents" forceMount>
+              <ExtensionAgentsGroup
+                rows={agentRows}
+                loading={agentsLoading}
+                empty={searching ? t('extensions.noMatches') : t('service.emptyAgents')}
+                connected={connected}
+                busy={agentsBusy}
+                adding={adding && tab === 'subagents'}
+                formKey={formKey}
+                onClose={() => setAdding(false)}
+                onSave={(input) => putAgent(input, refreshAgents)}
+              />
+            </TabsContent>
+            <TabsContent value="mcp" forceMount>
+              <ExtensionMcpGroup
+                rows={mcpRows}
+                loading={mcpLoading}
+                empty={searching ? t('extensions.noMatches') : t('service.emptyMcp')}
+                connected={connected}
+                busyId={busyId}
+                busy={mcpBusy}
+                adding={adding && tab === 'mcp'}
+                formKey={formKey}
+                onClose={() => setAdding(false)}
+                onConnect={(serverId) => void mcpConnect(serverId)}
+                onAuthStart={(serverId) => void authStart(serverId)}
+                onAuthComplete={(serverId, input) => void authComplete(serverId, input)}
+                onUpsert={(input) => mcpUpsert(input, refreshMcp)}
+                onDisable={(serverId) => void mcpDisable(serverId, refreshMcp)}
+                onRemove={(serverId) => void mcpRemove(serverId, refreshMcp)}
+              />
+            </TabsContent>
+          </ScrollArea>
         </Tabs>
       </div>
     </section>
