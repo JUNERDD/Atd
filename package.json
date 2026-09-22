@@ -2,7 +2,7 @@
   "name": "ai-workspace",
   "private": true,
   "scripts": {
-    "dev": "turbo run dev --filter=@ai/desktop",
+    "dev": "turbo run dev --filter=@ai/desktop --filter=@ai/agent-service",
     "dev:web": "turbo run dev:web --filter=@ai/desktop",
     "build": "turbo run build",
     "typecheck": "turbo run typecheck",

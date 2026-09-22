@@ -39,6 +39,8 @@ export interface ServiceEndpoint {
   serviceId: string;
   epoch: number;
   pid: number;
+  /** ISO time the process started; dates the code it loaded. */
+  startedAt: string;
 }
 
 export function defaultServiceDataDir(): string {
@@ -116,5 +118,6 @@ export async function discoverService(dataDir: string): Promise<ServiceEndpoint>
     serviceId: endpoint.serviceId,
     epoch: endpoint.epoch,
     pid: endpoint.pid,
+    startedAt: endpoint.startedAt,
   };
 }
