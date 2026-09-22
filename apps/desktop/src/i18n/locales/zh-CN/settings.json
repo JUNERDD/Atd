@@ -5,7 +5,6 @@
   "window": {
     "loading": "正在加载设置…",
     "label": "设置",
-    "previewNote": "打开桌面应用以配置提供商、快捷键和窗口偏好。",
     "loadError": "无法加载设置。"
   },
   "nav": {

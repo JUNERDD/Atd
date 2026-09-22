@@ -80,7 +80,6 @@ export function SettingsWindow() {
     setDrawer(false);
   }
   const bridge = window.desktop?.settings;
-  const preview = !bridge;
   const currentSection = sections.find((section) => section.id === tab) ?? sections[0];
   useAppLanguage(snapshot?.language);
   function navigate(next: string) {
@@ -200,9 +199,6 @@ export function SettingsWindow() {
               viewportClassName="[&>div]:flex! [&>div]:flex-col [&>div]:h-full"
             >
               <div className="settings-content-scroll">
-                {preview && (
-                  <output className="settings-preview-note">{t('window.previewNote')}</output>
-                )}
                 <div className="settings-page" hidden={tab !== 'permissions'}>
                   <PermissionSettings snapshot={snapshot} />
                 </div>
