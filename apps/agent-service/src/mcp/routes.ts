@@ -13,6 +13,7 @@ import {
 } from '@ai/agent-contracts';
 import type { McpAuthority } from './authority.js';
 import { McpError, type OperationContext } from './errors.js';
+import { McpAdapterMissing } from './loader.js';
 import { promptPreviewToInput } from './mapping.js';
 import {
   McpAuthCompleteRequestSchema,
@@ -35,6 +36,13 @@ import { stageTaskMcp } from './staging.js';
 export interface McpRouteDeps {
   authority: McpAuthority;
 }
+
+/**
+ * Defers the authority load to first use so boot never pays for it. Resolving
+ * it is the adapter's own cached per-profile load, so calling it per request
+ * is a no-op once warm and rejects with `McpAdapterMissing` when it is not.
+ */
+export type McpAuthorityResolver = () => Promise<McpAuthority>;
 
 const ANONYMOUS_OP: OperationContext = {
   operationId: 'mcp-direct',
@@ -241,18 +249,28 @@ export function mcpErrorStatus(code: McpError['code']): number {
   }
 }
 
+/** The degraded contract: every MCP route answers this when the adapter is missing. */
+const ADAPTER_MISSING_MESSAGE = 'MCP is unavailable: pi-mcp-adapter 2.34.0 could not be loaded.';
+
 /**
- * Mounts the MCP handlers. T34int ONLY — T4 never calls this (the T1
- * placeholder contract in server.ts stays until integration). Every route
- * is authenticated by the service bearer hook like all other routes.
+ * Mounts the MCP handlers against a lazy authority so publishing the endpoint
+ * never waits for the adapter. The resolver runs per request and the handlers
+ * still see a resolved authority. Every route is authenticated by the service
+ * bearer hook like all other routes, and both failure shapes are translated
+ * here: `McpAdapterMissing` degrades explicitly to 503 (never a 500, never a
+ * fake success) and `McpError` keeps its own status.
  */
-export function registerMcpRoutes(app: FastifyInstance, deps: McpRouteDeps): void {
+export function registerMcpRoutes(app: FastifyInstance, authority: McpAuthorityResolver): void {
   const wrap =
-    <T>(handler: (body: unknown, signal?: AbortSignal) => Promise<T>) =>
+    <T>(handler: (deps: McpRouteDeps, body: unknown) => T | Promise<T>) =>
     async (request: FastifyRequest, reply: FastifyReply) => {
       try {
-        return await handler(request.body);
+        return await handler({ authority: await authority() }, request.body);
       } catch (error) {
+        if (error instanceof McpAdapterMissing) {
+          reply.status(503).send({ error: { code: 'internal', message: ADAPTER_MISSING_MESSAGE } });
+          return;
+        }
         if (error instanceof McpError) {
           reply
             .status(mcpErrorStatus(error.code))
@@ -262,71 +280,23 @@ export function registerMcpRoutes(app: FastifyInstance, deps: McpRouteDeps): voi
         throw error;
       }
     };
-  app.get('/v1/mcp/status', async () => handleMcpStatus(deps));
-  app.get('/v1/mcp/servers', async () => handleMcpRecords(deps));
-  app.get('/v1/mcp/snapshot', async () => handleMcpSnapshot(deps));
-  app.post(
-    '/v1/mcp/configure',
-    wrap((body) => handleMcpConfigure(deps, body)),
-  );
-  app.post(
-    '/v1/mcp/connect',
-    wrap((body, signal) => handleMcpConnect(deps, body, signal)),
-  );
-  app.post(
-    '/v1/mcp/disconnect',
-    wrap((body) => handleMcpDisconnect(deps, body)),
-  );
-  app.post(
-    '/v1/mcp/reconnect',
-    wrap((body, signal) => handleMcpReconnect(deps, body, signal)),
-  );
-  app.post(
-    '/v1/mcp/revoke',
-    wrap((body) => handleMcpRevoke(deps, body)),
-  );
-  app.post(
-    '/v1/mcp/auth/start',
-    wrap((body, signal) => handleMcpAuthStart(deps, body, signal)),
-  );
-  app.post(
-    '/v1/mcp/auth/complete',
-    wrap((body, signal) => handleMcpAuthComplete(deps, body, signal)),
-  );
-  app.post(
-    '/v1/mcp/refresh',
-    wrap((body, signal) => handleMcpRefresh(deps, body, signal)),
-  );
-  app.post(
-    '/v1/mcp/logout',
-    wrap((body) => handleMcpLogout(deps, body)),
-  );
-  app.post(
-    '/v1/mcp/tools/list',
-    wrap((body, signal) => handleMcpListTools(deps, body, signal)),
-  );
-  app.post(
-    '/v1/mcp/tools/call',
-    wrap((body, signal) => handleMcpCallTool(deps, body, signal)),
-  );
-  app.post(
-    '/v1/mcp/resources/list',
-    wrap((body, signal) => handleMcpListResources(deps, body, signal)),
-  );
-  app.post(
-    '/v1/mcp/resources/templates',
-    wrap((body, signal) => handleMcpListResourceTemplates(deps, body, signal)),
-  );
-  app.post(
-    '/v1/mcp/resources/read',
-    wrap((body, signal) => handleMcpReadResource(deps, body, signal)),
-  );
-  app.post(
-    '/v1/mcp/prompts/list',
-    wrap((body, signal) => handleMcpListPrompts(deps, body, signal)),
-  );
-  app.post(
-    '/v1/mcp/prompts/get',
-    wrap((body, signal) => handleMcpGetPrompt(deps, body, signal)),
-  );
+  app.get('/v1/mcp/status', wrap(handleMcpStatus));
+  app.get('/v1/mcp/servers', wrap(handleMcpRecords));
+  app.get('/v1/mcp/snapshot', wrap(handleMcpSnapshot));
+  app.post('/v1/mcp/configure', wrap(handleMcpConfigure));
+  app.post('/v1/mcp/connect', wrap(handleMcpConnect));
+  app.post('/v1/mcp/disconnect', wrap(handleMcpDisconnect));
+  app.post('/v1/mcp/reconnect', wrap(handleMcpReconnect));
+  app.post('/v1/mcp/revoke', wrap(handleMcpRevoke));
+  app.post('/v1/mcp/auth/start', wrap(handleMcpAuthStart));
+  app.post('/v1/mcp/auth/complete', wrap(handleMcpAuthComplete));
+  app.post('/v1/mcp/refresh', wrap(handleMcpRefresh));
+  app.post('/v1/mcp/logout', wrap(handleMcpLogout));
+  app.post('/v1/mcp/tools/list', wrap(handleMcpListTools));
+  app.post('/v1/mcp/tools/call', wrap(handleMcpCallTool));
+  app.post('/v1/mcp/resources/list', wrap(handleMcpListResources));
+  app.post('/v1/mcp/resources/templates', wrap(handleMcpListResourceTemplates));
+  app.post('/v1/mcp/resources/read', wrap(handleMcpReadResource));
+  app.post('/v1/mcp/prompts/list', wrap(handleMcpListPrompts));
+  app.post('/v1/mcp/prompts/get', wrap(handleMcpGetPrompt));
 }

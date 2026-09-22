@@ -113,6 +113,7 @@ export {
   handleMcpStatus,
   mcpErrorStatus,
   registerMcpRoutes,
+  type McpAuthorityResolver,
   type McpRouteDeps,
 } from './routes.js';
 export {
