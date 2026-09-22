@@ -10,7 +10,7 @@ import {
 import type { IpcMainInvokeEvent } from 'electron';
 import { Type } from 'typebox';
 import { AgentService } from './agent/service';
-import { AGENT_IPC, type CommandSession } from './agent/bridge';
+import { AGENT_IPC, type CommandSession, type ExtensionSession } from './agent/bridge';
 import { Identifier } from './agent/command-schema';
 import { parse } from './agent/validation';
 import { IPC, type DesktopState } from './contract';
@@ -119,6 +119,22 @@ function installIpc() {
     if (!window || window.isDestroyed()) throw new Error('The task panel is not available');
     const session: CommandSession = { commandId, name };
     window.webContents.send(AGENT_IPC.session, session);
+    showPanel();
+  });
+  /**
+   * Extensions create-with-AI hands off to the panel: seed the skill prompt and policy first so the
+   * renderer can open a draft before the panel becomes visible.
+   */
+  ipcMain.handle(SETTINGS_IPC.startExtensionSession, (event, value: unknown) => {
+    settings.assertSender(event);
+    const kind = parse(
+      Type.Union([Type.Literal('skill'), Type.Literal('subagent'), Type.Literal('mcp')]),
+      value,
+    );
+    const window = panel;
+    if (!window || window.isDestroyed()) throw new Error('The task panel is not available');
+    const session: ExtensionSession = { kind };
+    window.webContents.send(AGENT_IPC.extensionSession, session);
     showPanel();
   });
   ipcMain.handle(IPC.setPinned, async (event, pinned: unknown) => {

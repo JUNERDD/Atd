@@ -146,6 +146,7 @@ export function installBridge(extras?: {
     importLegacy: vi.fn(async () => {}),
     onLaunch: () => () => {},
     onCommandSession: () => () => {},
+    onExtensionSession: () => () => {},
     onChange: (listener) => {
       listeners.add(listener);
       return () => {
@@ -177,6 +178,7 @@ export function installBridge(extras?: {
       open,
       openCommand,
       startCommandSession: vi.fn(async (_commandId: string | null) => {}),
+      startExtensionSession: vi.fn(async (_kind: 'skill' | 'subagent' | 'mcp') => {}),
       close: vi.fn(async () => {}),
       get: vi.fn(async () => settings),
       providers: {

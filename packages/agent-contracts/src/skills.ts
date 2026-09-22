@@ -17,12 +17,15 @@ export type SkillNameType = Static<typeof SkillName>;
 
 /**
  * Where the skill content came from. `local`, `npm`, and `git` resolve under
- * the service dir. `agents` is a live entry from the real `~/.agents/skills`.
+ * the service dir. `atd` is a live entry from `~/.atd/skills`. `agents` is a
+ * live entry from the real `~/.agents/skills`. Install requests stay
+ * `local` | `npm` | `git` only.
  */
 export const SkillSourceKindSchema = Type.Union([
   Type.Literal('local'),
   Type.Literal('npm'),
   Type.Literal('git'),
+  Type.Literal('atd'),
   Type.Literal('agents'),
 ]);
 export type SkillSourceKind = Static<typeof SkillSourceKindSchema>;
@@ -68,7 +71,8 @@ export const SkillRevisionSchema = Type.Object(
     license: Type.String({ maxLength: 512 }),
     /**
      * Absolute SKILL.md path. Installed skills stay inside the service profile.
-     * `agents` entries point at the real `~/.agents/skills` file.
+     * `atd` entries point at `~/.atd/skills`; `agents` entries point at the
+     * real `~/.agents/skills` file.
      */
     entry: Type.String({ minLength: 1, maxLength: 4096 }),
     baseDir: Type.String({ minLength: 1, maxLength: 4096 }),

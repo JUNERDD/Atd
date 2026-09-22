@@ -7,6 +7,7 @@ export const SETTINGS_IPC = {
   close: 'settings:close',
   get: 'settings:get',
   startCommandSession: 'settings:start-command-session',
+  startExtensionSession: 'settings:start-extension-session',
   saveLanguage: 'settings:save-language',
   saveShortcuts: 'settings:save-shortcuts',
   restoreShortcuts: 'settings:restore-shortcuts',
@@ -54,6 +55,8 @@ export interface SettingsBridge {
   openCommand: (commandId: string) => Promise<void>;
   /** Opens the command's editor content in a new task-panel session; null creates a new command. */
   startCommandSession: (commandId: string | null) => Promise<void>;
+  /** Opens a new task-panel session seeded for creating a skill, subagent, or MCP server. */
+  startExtensionSession: (kind: 'skill' | 'subagent' | 'mcp') => Promise<void>;
   close: () => Promise<void>;
   get: () => Promise<SettingsSnapshot>;
   providers: ProviderBridge;

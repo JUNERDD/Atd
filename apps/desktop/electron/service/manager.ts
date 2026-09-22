@@ -1,6 +1,15 @@
 import { ipcMain, shell } from 'electron';
 import type { IpcMainInvokeEvent } from 'electron';
-import { listRoles, listSkills, putRole, setSkillEnabled, updateSkill } from '@ai/agent-client';
+import {
+  installSkill,
+  listAtdAgents,
+  listRoles,
+  listSkills,
+  putAtdAgent,
+  putRole,
+  setSkillEnabled,
+  updateSkill,
+} from '@ai/agent-client';
 import { mcpAuthComplete, mcpAuthStart, mcpConnect, mcpStatus } from '@ai/agent-client';
 import { parse } from '../agent/validation';
 import { autostartService } from './autostart';
@@ -57,7 +66,10 @@ export class ServiceManager {
     return resolveServiceDataDir();
   }
 
-  /** Awaited before the first window so the renderer starts against a live service. */
+  /**
+   * Starts in parallel with the first window; the connection stays connecting
+   * until the service is live, so the renderer never flashes disconnected.
+   */
   async autostart(): Promise<void> {
     await autostartService(this.connection, {
       dataDir: this.defaultDataDir(),
@@ -114,6 +126,15 @@ export class ServiceManager {
           if (!options) throw new Error('The service is not connected.');
           return setSkillEnabled(options, request.name, request.enabled);
         }
+        case 'skillsInstall': {
+          const options = this.connection.options();
+          if (!options) throw new Error('The service is not connected.');
+          return installSkill(options, {
+            source: request.source,
+            sourceKind: request.sourceKind,
+            ...(request.name !== undefined ? { name: request.name } : {}),
+          });
+        }
         case 'roles': {
           const options = this.connection.options();
           if (!options) throw new Error('The service is not connected.');
@@ -126,6 +147,22 @@ export class ServiceManager {
             id: request.id,
             title: request.title,
             allows: request.allows,
+          });
+        }
+        case 'agents': {
+          const options = this.connection.options();
+          if (!options) throw new Error('The service is not connected.');
+          return listAtdAgents(options);
+        }
+        case 'agentsPut': {
+          const options = this.connection.options();
+          if (!options) throw new Error('The service is not connected.');
+          return putAtdAgent(options, {
+            name: request.name,
+            description: request.description,
+            tools: request.tools,
+            model: request.model,
+            systemPrompt: request.systemPrompt,
           });
         }
         case 'mcpStatus': {

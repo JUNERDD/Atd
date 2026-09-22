@@ -56,6 +56,52 @@ export function useExtensionMutations() {
     [],
   );
 
+  const installSkill = useCallback(
+    async (
+      input: { source: string; sourceKind: 'local' | 'npm' | 'git'; name?: string },
+      refresh: () => Promise<void>,
+    ) => {
+      setBusyKey('skill:install');
+      try {
+        await serviceApi().installSkill(input);
+        await refresh();
+        return true;
+      } catch (error) {
+        showErrorToast(error);
+        return false;
+      } finally {
+        setBusyKey(null);
+      }
+    },
+    [],
+  );
+
+  const putAgent = useCallback(
+    async (
+      input: {
+        name: string;
+        description: string;
+        tools: ExtensionRoleTool[];
+        model: string | null;
+        systemPrompt: string;
+      },
+      refresh: () => Promise<void>,
+    ) => {
+      setBusyKey(`agent:${input.name}`);
+      try {
+        await serviceApi().putAgent(input);
+        await refresh();
+        return true;
+      } catch (error) {
+        showErrorToast(error);
+        return false;
+      } finally {
+        setBusyKey(null);
+      }
+    },
+    [],
+  );
+
   const mcpUpsert = useCallback(
     async (
       input: {
@@ -107,5 +153,15 @@ export function useExtensionMutations() {
     }
   }, []);
 
-  return { busyKey, setSkillEnabled, updateSkill, putRole, mcpUpsert, mcpDisable, mcpRemove };
+  return {
+    busyKey,
+    setSkillEnabled,
+    updateSkill,
+    installSkill,
+    putRole,
+    putAgent,
+    mcpUpsert,
+    mcpDisable,
+    mcpRemove,
+  };
 }

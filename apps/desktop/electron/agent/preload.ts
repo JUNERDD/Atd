@@ -6,6 +6,7 @@ import {
   type AgentRequest,
   type CommandLaunch,
   type CommandSession,
+  type ExtensionSession,
 } from './bridge';
 
 function invoke<T>(request: AgentRequest): Promise<T> {
@@ -54,5 +55,10 @@ export const agentBridge: AgentBridge = {
     const callback = (_event: IpcRendererEvent, session: CommandSession) => listener(session);
     ipcRenderer.on(AGENT_IPC.session, callback);
     return () => ipcRenderer.removeListener(AGENT_IPC.session, callback);
+  },
+  onExtensionSession: (listener) => {
+    const callback = (_event: IpcRendererEvent, session: ExtensionSession) => listener(session);
+    ipcRenderer.on(AGENT_IPC.extensionSession, callback);
+    return () => ipcRenderer.removeListener(AGENT_IPC.extensionSession, callback);
   },
 };

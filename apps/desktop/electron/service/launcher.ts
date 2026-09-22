@@ -1,8 +1,8 @@
 import { spawn } from 'node:child_process';
 import { app } from 'electron';
-import { readFile } from 'node:fs/promises';
+import { readdir, readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { discoverService } from './endpoint';
 import { nodeSearchPath, readEnginesFromCli, resolveSystemNode } from './node-runtime';
 
@@ -16,12 +16,12 @@ export async function startLocalService(options: {
   host?: string;
   port?: number;
 }): Promise<{ pid: number; dataDir: string }> {
-  const cli = await resolveServiceCli();
-  const node = await resolveSystemNode(await readEnginesFromCli(cli));
+  const command = await resolveServiceCommand();
+  const node = await resolveSystemNode(await readEnginesFromCli(command.script));
   const args = ['serve', '--dataDir', path.resolve(options.dataDir)];
   if (options.host) args.push('--host', options.host);
   if (options.port !== undefined) args.push('--port', String(options.port));
-  const child = spawn(node, [cli, ...args], {
+  const child = spawn(node, [...command.nodeArgs, command.script, ...args], {
     stdio: ['ignore', 'ignore', 'pipe'],
     env: { ...process.env, PATH: nodeSearchPath() },
   });
@@ -122,29 +122,115 @@ async function waitForExit(dataDir: string, pid: number, timeoutMs: number): Pro
   return false;
 }
 
-async function resolveServiceCli(): Promise<string> {
+interface ServiceCommand {
+  /** Loader flags that precede the script. Empty when the script is compiled. */
+  nodeArgs: string[];
+  /** CLI path. Engines are read from the package.json beside this file. */
+  script: string;
+}
+
+/**
+ * Unpackaged launches prefer the built `dist/cli.js` when it is newer than
+ * every service source file (about 2.6s vs 5.4s cold start); a stale dist
+ * falls back to `src/cli.ts` through jiti, so a restart always executes the
+ * current service source. Packaged launches keep the bundled dist.
+ */
+async function resolveServiceCommand(): Promise<ServiceCommand> {
   const here = path.dirname(fileURLToPath(import.meta.url));
-  const candidates = [
-    // Packaged extraResources: <Resources>/agent-service/dist/cli.js
-    path.join(process.resourcesPath, 'agent-service/dist/cli.js'),
-    // Packaged via app path: <app.asar>/../agent-service/dist/cli.js
-    path.resolve(app.getAppPath(), '../agent-service/dist/cli.js'),
-    // Built main: apps/desktop/dist-electron -> apps/agent-service.
-    path.resolve(here, '../../agent-service/dist/cli.js'),
-    // Dev source: apps/desktop/electron/service -> apps/agent-service.
-    path.resolve(here, '../../../agent-service/dist/cli.js'),
-  ];
-  for (const file of candidates) {
-    try {
-      await readFile(file, 'utf8');
-      return file;
-    } catch {
-      // Try the next layout.
+  if (!app.isPackaged) {
+    const source = await firstReadable(sourceCliCandidates(here));
+    const dist = await firstReadable(distCliCandidates(here));
+    if (dist && source && (await isDistFresh(dist, path.dirname(source)))) {
+      return { nodeArgs: [], script: dist };
+    }
+    if (source) {
+      const register = path.resolve(
+        path.dirname(source),
+        '../node_modules/jiti/lib/jiti-register.mjs',
+      );
+      if (!(await isReadable(register))) {
+        if (dist) return { nodeArgs: [], script: dist };
+        throw new Error(
+          'The agent service source is present, but its TypeScript loader (jiti) is not installed. Run pnpm install, then start again.',
+        );
+      }
+      return { nodeArgs: ['--import', pathToFileURL(register).href], script: source };
     }
   }
+  const dist = await firstReadable(distCliCandidates(here));
+  if (dist) return { nodeArgs: [], script: dist };
   throw new Error(
     'The agent service is not built. Run `pnpm --filter @ai/agent-service build`, then try again.',
   );
+}
+
+/**
+ * True when the built CLI is newer than every `.ts` source file. A stat or
+ * read failure returns false (run current source); workspace dependencies
+ * still require `pnpm build`, as in both launch paths.
+ */
+async function isDistFresh(distFile: string, srcDir: string): Promise<boolean> {
+  let distMtime: number;
+  try {
+    distMtime = (await stat(distFile)).mtimeMs;
+  } catch {
+    return false;
+  }
+  const pending: string[] = [srcDir];
+  while (pending.length) {
+    const dir = pending.pop() as string;
+    let entries;
+    try {
+      entries = await readdir(dir, { withFileTypes: true });
+    } catch {
+      return false;
+    }
+    for (const entry of entries) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        if (entry.name !== 'node_modules') pending.push(full);
+      } else if (entry.name.endsWith('.ts')) {
+        try {
+          if ((await stat(full)).mtimeMs > distMtime) return false;
+        } catch {
+          return false;
+        }
+      }
+    }
+  }
+  return true;
+}
+
+function sourceCliCandidates(here: string): string[] {
+  return [
+    path.resolve(here, '../../agent-service/src/cli.ts'),
+    path.resolve(here, '../../../agent-service/src/cli.ts'),
+  ];
+}
+
+function distCliCandidates(here: string): string[] {
+  return [
+    path.join(process.resourcesPath, 'agent-service/dist/cli.js'),
+    path.resolve(app.getAppPath(), '../agent-service/dist/cli.js'),
+    path.resolve(here, '../../agent-service/dist/cli.js'),
+    path.resolve(here, '../../../agent-service/dist/cli.js'),
+  ];
+}
+
+async function firstReadable(candidates: string[]): Promise<string | null> {
+  for (const file of candidates) {
+    if (await isReadable(file)) return file;
+  }
+  return null;
+}
+
+async function isReadable(file: string): Promise<boolean> {
+  try {
+    await readFile(file, 'utf8');
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 async function waitForEndpoint(dataDir: string, timeoutMs: number): Promise<void> {
@@ -165,6 +251,6 @@ async function waitForEndpoint(dataDir: string, timeoutMs: number): Promise<void
       // Not ready yet.
     }
     if (Date.now() > deadline) throw new Error('The service did not publish its endpoint in time.');
-    await new Promise((resolve) => setTimeout(resolve, 250));
+    await new Promise((resolve) => setTimeout(resolve, 100));
   }
 }

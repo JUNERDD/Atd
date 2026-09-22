@@ -10,7 +10,7 @@ export interface SkillListRow {
   name: string;
   revision: string;
   description: string;
-  sourceKind: 'local' | 'npm' | 'git' | 'agents';
+  sourceKind: 'local' | 'npm' | 'git' | 'atd' | 'agents';
   disableModelInvocation: boolean;
   enabled: boolean;
   capability: { kind: 'text' | 'script'; tools: string[] };

@@ -2,6 +2,7 @@ export * from './types.js';
 export * from './http-client.js';
 export * from './ws-client.js';
 export * from './skills-client.js';
+export * from './atd-agents-client.js';
 export * from './mcp-client.js';
 export * from './mcp-records-client.js';
 export * from './providers-client.js';

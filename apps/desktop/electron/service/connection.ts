@@ -34,8 +34,9 @@ export class ServiceConnection {
   private endpoint: ServiceEndpoint | null = null;
   private httpClient: AgentHttpClient | null = null;
   private stream: AgentStreamClient | null = null;
-  private state: ConnectionState = 'disconnected';
-  private detail = '';
+  private state: ConnectionState = 'connecting';
+  private detail = 'Starting the agent service…';
+  private connectBusy = false;
   private service: StatusResponse | null = null;
 
   constructor(
@@ -92,22 +93,33 @@ export class ServiceConnection {
     this.setState('disconnected', detail);
   }
 
+  /**
+   * Marks startup work (stop/spawn) before the first connect attempt, so the
+   * renderer shows connecting instead of a transient disconnected error.
+   */
+  markStarting(detail = 'Starting the agent service…'): void {
+    this.setState('connecting', detail);
+  }
+
   /** Connects to the service in dataDir; throws with a user-facing message. */
   async connect(dataDir: string, options?: { quiet?: boolean }): Promise<ServiceStatus> {
-    if (this.state === 'connecting' || this.state === 'reconnecting')
-      throw new Error('A connection attempt is already running.');
+    if (this.connectBusy) throw new Error('A connection attempt is already running.');
+    this.connectBusy = true;
     this.setState('connecting', 'Connecting to the agent service…');
     try {
       const endpoint = await discoverService(dataDir);
-      const options: AgentClientOptions = { baseUrl: endpoint.baseUrl, token: endpoint.token };
-      const http = new AgentHttpClient(options);
+      const clientOptions: AgentClientOptions = {
+        baseUrl: endpoint.baseUrl,
+        token: endpoint.token,
+      };
+      const http = new AgentHttpClient(clientOptions);
       const status = await http.status();
       if (status.service.serviceId !== endpoint.serviceId)
         throw new Error('The service identity changed during connection.');
       this.endpoint = endpoint;
       this.httpClient = http;
       this.service = status;
-      this.openStream(options);
+      this.openStream(clientOptions);
       this.setState('connected', '');
       return this.status();
     } catch (error) {
@@ -116,8 +128,16 @@ export class ServiceConnection {
       this.httpClient = null;
       this.service = null;
       const message = error instanceof Error ? error.message : 'Could not connect to the service.';
-      this.setState('disconnected', options?.quiet ? '' : message);
+      if (options?.quiet) {
+        // Startup probe before a spawn: stay connecting so the panel never
+        // flashes a disconnected error with an empty detail.
+        this.setState('connecting', 'Starting the agent service…');
+      } else {
+        this.setState('disconnected', message);
+      }
       throw new Error(message);
+    } finally {
+      this.connectBusy = false;
     }
   }
 

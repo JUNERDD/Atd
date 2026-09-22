@@ -24,6 +24,7 @@ import { McpAdapterMissing, McpAuthority, registerMcpRoutes } from './mcp/index.
 import { registerMigrationRoutes } from './migration/routes.js';
 import { ResourceStore } from './resources.js';
 import { ConflictError, DrainingError, type RunnerManager } from './runner-manager.js';
+import { registerAtdAgentRoutes } from './atd-agents/mount.js';
 import { registerSkillRoutes } from './skills/mount.js';
 import { StreamHub } from './stream.js';
 
@@ -208,6 +209,7 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
   });
 
   registerSkillRoutes(app, deps.config);
+  registerAtdAgentRoutes(app);
 
   // Live MCP mounts. McpAdapterMissing degrades explicitly: MCP routes
   // answer 503 (never 501-future nor silent success) and runs continue

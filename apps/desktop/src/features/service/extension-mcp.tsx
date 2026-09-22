@@ -138,6 +138,27 @@ function McpRow({
   );
 }
 
+function McpAddSection({
+  busy,
+  onCancel,
+  onSave,
+}: {
+  busy: boolean;
+  onCancel: () => void;
+  onSave: (input: McpUpsertInput) => void;
+}) {
+  const [draft, setDraft] = useState(EMPTY_MCP_DRAFT);
+  return (
+    <McpAddForm
+      draft={draft}
+      busy={busy}
+      onChange={setDraft}
+      onCancel={onCancel}
+      onSave={() => onSave(toUpsertInput(draft))}
+    />
+  );
+}
+
 /** MCP servers group with connect/auth and catalog add/disable/remove. */
 export function ExtensionMcpGroup({
   rows,
@@ -146,6 +167,9 @@ export function ExtensionMcpGroup({
   connected,
   busyId,
   busy,
+  adding,
+  formKey,
+  onClose,
   onConnect,
   onAuthStart,
   onAuthComplete,
@@ -159,6 +183,9 @@ export function ExtensionMcpGroup({
   connected: boolean;
   busyId: string | null;
   busy: boolean;
+  adding: boolean;
+  formKey: number;
+  onClose: () => void;
   onConnect: (serverId: string) => void;
   onAuthStart: (serverId: string) => void;
   onAuthComplete: (serverId: string, input: string) => void;
@@ -167,73 +194,46 @@ export function ExtensionMcpGroup({
   onRemove: (serverId: string) => void;
 }) {
   const { t } = useTranslation('settings');
-  const [adding, setAdding] = useState(false);
-  const [draft, setDraft] = useState(EMPTY_MCP_DRAFT);
   const note = `${t('service.mcpNote')} ${t('extensions.mcpCatalogNote')}`;
-  const openAdd = () => {
-    setDraft(EMPTY_MCP_DRAFT);
-    setAdding(true);
-  };
-  const closeAdd = () => setAdding(false);
-  const save = async () => {
-    const ok = await onUpsert(toUpsertInput(draft));
-    if (ok) closeAdd();
-  };
-  const addButton = (
-    <Button
-      type="button"
-      variant="outline"
-      size="sm"
-      disabled={!connected || busy}
-      onClick={openAdd}
-    >
-      {t('extensions.addServer')}
-    </Button>
-  );
-  const form = adding ? (
-    <McpAddForm
-      draft={draft}
-      busy={busy}
-      onChange={setDraft}
-      onCancel={closeAdd}
-      onSave={() => void save()}
-    />
-  ) : null;
+  const form =
+    adding && connected ? (
+      <McpAddSection
+        key={formKey}
+        busy={busy}
+        onCancel={onClose}
+        onSave={(input) => {
+          void onUpsert(input).then((ok) => {
+            if (ok) onClose();
+          });
+        }}
+      />
+    ) : null;
   return (
-    <ExtensionGroup
-      title={t('extensions.tabMcp')}
-      note={note}
-      empty={empty}
-      loading={loading}
-      hasRows={rows.length > 0}
-      showTitle={false}
-      emptyIcon={<Plug />}
-      emptyAction={
-        <>
-          {addButton}
-          {form}
-        </>
-      }
-      footer={
-        <div className="settings-extension-group-action">
-          {addButton}
-          {form}
-        </div>
-      }
-    >
-      {rows.map((row) => (
-        <McpRow
-          key={row.serverId}
-          row={row}
-          connected={connected}
-          busy={busy || busyId === row.serverId}
-          onConnect={onConnect}
-          onAuthStart={onAuthStart}
-          onAuthComplete={onAuthComplete}
-          onDisable={onDisable}
-          onRemove={onRemove}
-        />
-      ))}
-    </ExtensionGroup>
+    <>
+      {form}
+      <ExtensionGroup
+        title={t('extensions.tabMcp')}
+        note={note}
+        empty={empty}
+        loading={loading}
+        hasRows={rows.length > 0}
+        showTitle={false}
+        emptyIcon={<Plug />}
+      >
+        {rows.map((row) => (
+          <McpRow
+            key={row.serverId}
+            row={row}
+            connected={connected}
+            busy={busy || busyId === row.serverId}
+            onConnect={onConnect}
+            onAuthStart={onAuthStart}
+            onAuthComplete={onAuthComplete}
+            onDisable={onDisable}
+            onRemove={onRemove}
+          />
+        ))}
+      </ExtensionGroup>
+    </>
   );
 }

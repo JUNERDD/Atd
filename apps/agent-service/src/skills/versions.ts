@@ -11,14 +11,15 @@ import {
 } from './diagnostics.js';
 import { readDisabledSkillNames } from './harness.js';
 import type { SkillProfilePaths } from './profile.js';
-import { discoverUserAgentSkills, userSkillsNotInstalled } from './user-agents.js';
+import { discoverAtdSkills, mergeSkillCatalog } from './atd-skills.js';
+import { discoverUserAgentSkills } from './user-agents.js';
 
 /** Immutable installed revision; structurally matches contracts SkillRevision. */
 export interface SkillRevisionRecord {
   name: string;
   revision: string;
   source: string;
-  sourceKind: 'local' | 'npm' | 'git' | 'agents';
+  sourceKind: 'local' | 'npm' | 'git' | 'atd' | 'agents';
   hash: string;
   license: string;
   entry: string;
@@ -152,12 +153,9 @@ export async function freezeRunSkills(
   const frozen = runs.runs[runId];
   if (frozen) return frozen.snapshot;
   const installed = await listRevisions(profile);
-  const discovered = await discoverUserAgentSkills();
+  const [atd, agents] = await Promise.all([discoverAtdSkills(), discoverUserAgentSkills()]);
   const disabled = await readDisabledSkillNames(profile);
-  const all = [
-    ...installed,
-    ...userSkillsNotInstalled(new Set(installed.map((item) => item.name)), discovered.skills),
-  ];
+  const all = mergeSkillCatalog(installed, atd.skills, agents.skills);
   const skills: SkillRevisionRecord[] = [];
   const diagnostics: SkillDiagnostic[] = [];
   for (const ref of requested.slice(0, 32)) {

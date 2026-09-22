@@ -50,7 +50,7 @@ export type ExtensionRoleTool = 'read' | 'write' | 'edit' | 'bash' | 'command';
 export interface ExtensionSkillRow {
   name: string;
   description: string;
-  sourceKind: 'local' | 'npm' | 'git' | 'agents' | '';
+  sourceKind: 'local' | 'npm' | 'git' | 'agents' | 'atd' | '';
   revision: string;
   enabled: boolean;
 }
@@ -59,6 +59,14 @@ export interface ExtensionRoleRow {
   id: string;
   title: string;
   allows: { tools: ExtensionRoleTool[]; skills: string[] };
+}
+
+export interface ExtensionAgentRow {
+  name: string;
+  description: string;
+  tools: ExtensionRoleTool[];
+  model: string;
+  systemPrompt: string;
 }
 
 export interface ExtensionMcpRow {
@@ -82,7 +90,8 @@ function readEnabled(value: unknown): boolean {
 }
 
 function asSourceKind(value: string): ExtensionSkillRow['sourceKind'] {
-  if (value === 'local' || value === 'npm' || value === 'git' || value === 'agents') return value;
+  if (value === 'local' || value === 'npm' || value === 'git') return value;
+  if (value === 'agents' || value === 'atd') return value;
   return '';
 }
 
@@ -127,6 +136,29 @@ function asRoleRow(value: unknown): ExtensionRoleRow | null {
   const allows =
     typeof value === 'object' && value !== null ? Reflect.get(value, 'allows') : undefined;
   return { id, title: readString(value, 'title') || id, allows: asAllows(allows) };
+}
+
+function asAgentTools(value: unknown): ExtensionRoleTool[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((tool) => {
+    const parsed = asRoleTool(tool);
+    return parsed ? [parsed] : [];
+  });
+}
+
+function asAgentRow(value: unknown): ExtensionAgentRow | null {
+  const name = readString(value, 'name');
+  if (!name) return null;
+  const tools =
+    typeof value === 'object' && value !== null ? Reflect.get(value, 'tools') : undefined;
+  const model = readString(value, 'model');
+  return {
+    name,
+    description: readString(value, 'description'),
+    tools: asAgentTools(tools),
+    model,
+    systemPrompt: readString(value, 'systemPrompt'),
+  };
 }
 
 function asMcpRow(value: unknown): ExtensionMcpRow | null {
@@ -183,6 +215,25 @@ export function useServiceRoles() {
     }
   }, []);
   return { roles, loading, refresh };
+}
+
+/** Markdown subagent catalog via the service bridge (`~/.atd/agents`). */
+export function useServiceAgents() {
+  const [agents, setAgents] = useState<{ agents: ExtensionAgentRow[] } | null>(null);
+  const [loading, setLoading] = useState(false);
+  const refresh = useCallback(async () => {
+    if (!window.desktop?.service) return;
+    setLoading(true);
+    try {
+      const result = await window.desktop.service.agents();
+      setAgents({ agents: result.agents.flatMap((row) => asAgentRow(row) ?? []) });
+    } catch (error) {
+      showErrorToast(error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+  return { agents, loading, refresh };
 }
 
 /** MCP status via the service bridge. */

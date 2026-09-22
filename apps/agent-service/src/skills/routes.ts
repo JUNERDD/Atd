@@ -15,7 +15,8 @@ import {
 } from './roles.js';
 import { peekTaskStaging, stageTaskSkills, takeTaskStaging, type TaskStaging } from './staging.js';
 import { readDisabledSkillNames, setSkillHarnessEnabled } from './harness.js';
-import { discoverUserAgentSkills, userSkillsNotInstalled } from './user-agents.js';
+import { discoverAtdSkills, mergeSkillCatalog } from './atd-skills.js';
+import { discoverUserAgentSkills } from './user-agents.js';
 import {
   freezeRunSkills,
   listCurrent,
@@ -52,7 +53,7 @@ export interface SkillListRow {
   name: string;
   revision: string;
   description: string;
-  sourceKind: 'local' | 'npm' | 'git' | 'agents';
+  sourceKind: 'local' | 'npm' | 'git' | 'atd' | 'agents';
   disableModelInvocation: boolean;
   enabled: boolean;
   capability: { kind: 'text' | 'script'; tools: string[] };
@@ -73,13 +74,12 @@ export async function listSkills(
     };
   }
   const installed = await listCurrent(deps.profile);
-  const discovered = await discoverUserAgentSkills();
-  const visible = userSkillsNotInstalled(
-    new Set(installed.map((item) => item.name)),
-    discovered.skills,
-  );
-  const skills = [...installed, ...visible].sort((a, b) => a.name.localeCompare(b.name));
-  return { skills: skills.slice(0, 500).map(listed), diagnostics: discovered.diagnostics };
+  const [atd, agents] = await Promise.all([discoverAtdSkills(), discoverUserAgentSkills()]);
+  const skills = mergeSkillCatalog(installed, atd.skills, agents.skills);
+  return {
+    skills: skills.map(listed),
+    diagnostics: [...atd.diagnostics, ...agents.diagnostics].slice(0, 64),
+  };
 }
 
 /** Stores harness enablement for one catalog skill. Skill files are not opened for write. */
@@ -101,8 +101,11 @@ export async function getSkill(
   const all = await listRevisions(deps.profile);
   const installed = [...all].reverse().find((item) => item.name === name) ?? null;
   if (installed) return { skill: installed, diagnostics: [] };
-  const discovered = await discoverUserAgentSkills();
-  const skill = discovered.skills.find((item) => item.name === name) ?? null;
+  const atd = await discoverAtdSkills();
+  const atdSkill = atd.skills.find((item) => item.name === name) ?? null;
+  if (atdSkill) return { skill: atdSkill, diagnostics: [] };
+  const agents = await discoverUserAgentSkills();
+  const skill = agents.skills.find((item) => item.name === name) ?? null;
   return { skill, diagnostics: [] };
 }
 
@@ -144,6 +147,20 @@ export async function updateSkill(
 ): Promise<{ skill: SkillRevisionRecord; diagnostics: SkillDiagnostic[] }> {
   const current = await getSkill(deps, name);
   if (!current.skill) throw new Error(`Skill "${name}" is not installed.`);
+  if (current.skill.sourceKind === 'atd') {
+    return {
+      skill: current.skill,
+      diagnostics: [
+        {
+          type: 'warning',
+          code: 'update_available',
+          message: `Skill "${name}" is read from ~/.atd/skills and changes when that file changes.`,
+          skill: name,
+          path: current.skill.entry,
+        },
+      ],
+    };
+  }
   if (current.skill.sourceKind === 'agents') {
     return {
       skill: current.skill,
