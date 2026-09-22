@@ -49,7 +49,8 @@
     "label": "任务配置",
     "models": "模型：{{model}}",
     "chooseModel": "选择模型",
-    "thinkingLevel": "推理强度"
+    "thinkingLevel": "推理强度",
+    "capabilities": "能力"
   },
   "voice": {
     "label": "语音输入",
@@ -123,6 +124,26 @@
     },
     "tierLabel": "权限级别",
     "defaultFromSettings": "在任务创建前显示设置中的默认级别。"
+  },
+  "service": {
+    "banner": {
+      "disconnected": "服务未连接。{{detail}}",
+      "connecting": "正在连接服务…",
+      "reconnecting": "正在重连… {{detail}}",
+      "openSettings": "打开服务设置"
+    }
+  },
+  "children": {
+    "title": "子任务",
+    "empty": "暂无子任务。",
+    "failed": "失败",
+    "ok": "完成"
+  },
+  "capability": {
+    "waitingDesktop": "等待桌面：{{capability}}"
+  },
+  "confirms": {
+    "subtask": "子任务 {{execution}}"
   },
   "errors": {
     "openDesktopApp": "打开桌面应用以运行任务并管理已保存的数据。"

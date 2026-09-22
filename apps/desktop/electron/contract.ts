@@ -1,5 +1,6 @@
 import type { AgentBridge } from './agent/bridge';
 import type { SettingsBridge } from './settings-contract';
+import type { ServiceBridge } from './service/ipc';
 
 export const IPC = {
   show: 'panel:show',
@@ -25,6 +26,8 @@ export interface DesktopBridge {
   readonly platform: string;
   readonly settings: SettingsBridge;
   readonly agent: AgentBridge;
+  /** T6 narrow service channel: status/skills/roles/MCP. No token crosses. Optional for test compat. */
+  readonly service?: ServiceBridge;
   show: () => Promise<void>;
   hide: () => Promise<void>;
   getState: () => Promise<DesktopState>;

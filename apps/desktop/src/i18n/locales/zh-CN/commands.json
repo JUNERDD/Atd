@@ -145,6 +145,13 @@
     "memoryOff": "对此任务及后续任务关闭",
     "allowedTools": "允许的工具"
   },
+  "capability": {
+    "skills": "技能",
+    "skillsNote": "选择在接受时冻结，修改对下一轮生效。",
+    "emptySkills": "暂无可用技能。连接服务后加载技能。",
+    "role": "角色",
+    "noRole": "无角色"
+  },
   "variables": {
     "suggestions": "变量建议",
     "inputDetail": "主文本 · 命令运行时选择",

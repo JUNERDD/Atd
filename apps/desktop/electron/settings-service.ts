@@ -74,9 +74,10 @@ export class SettingsService {
   snapshot(): SettingsSnapshot {
     const { connections, defaultConnectionId, language, shortcuts, pinned, permissionTier } =
       this.store.current;
+    const live = this.providers.overlay();
     return {
-      connections: connections.map(publicConnection),
-      defaultConnectionId,
+      connections: live?.connections ?? connections.map(publicConnection),
+      defaultConnectionId: live?.defaultConnectionId ?? defaultConnectionId,
       language,
       shortcuts: { ...shortcuts },
       pinned,

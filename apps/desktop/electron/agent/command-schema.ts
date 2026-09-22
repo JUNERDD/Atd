@@ -118,6 +118,21 @@ export const CommandSchema = Type.Object(
     model: ModelPolicySchema,
     tools: Type.Array(ToolIdSchema, { uniqueItems: true }),
     memory: Type.Union([Type.Literal('inherit'), Type.Literal('off')]),
+    /** T6 additive: skill refs saved on the command, frozen at accept via staging. */
+    skills: Type.Optional(
+      Type.Array(
+        Type.Object(
+          {
+            name: Type.String({ minLength: 1, maxLength: 128 }),
+            revision: Type.Optional(Type.String({ minLength: 1, maxLength: 128 })),
+          },
+          { additionalProperties: false },
+        ),
+        { maxItems: 32 },
+      ),
+    ),
+    /** T6 additive: role id saved on the command, frozen at accept via staging. */
+    roleId: Type.Optional(Type.String({ minLength: 1, maxLength: 128 })),
   },
   { additionalProperties: false },
 );

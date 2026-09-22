@@ -96,6 +96,14 @@
 .settings-page[hidden]:has(.settings-editor, .command-editor, .settings-loading) {
   display: none;
 }
+.settings-page:has(.settings-extension-settings) {
+  flex: 1 0 auto;
+  display: flex;
+  flex-direction: column;
+}
+.settings-page[hidden]:has(.settings-extension-settings) {
+  display: none;
+}
 .settings-editor,
 .command-editor {
   display: flex;
@@ -204,19 +212,80 @@
   display: block;
   margin-bottom: 24px;
 }
-.settings-general-sections {
-  display: flex;
-  flex-direction: column;
-  gap: 32px;
-  min-width: 0;
-}
 .settings-permission-settings {
   display: flex;
   min-width: 0;
   flex-direction: column;
   gap: 16px;
 }
-.settings-permission-settings .settings-section-heading > p {
+.settings-extension-settings {
+  display: flex;
+  flex: 1 0 auto;
+  min-width: 0;
+  flex-direction: column;
+}
+.settings-extension-tabs {
+  display: flex;
+  flex: 1 0 auto;
+  min-width: 0;
+  flex-direction: column;
+  margin-top: 16px;
+}
+.settings-extension-tabs > [data-slot='tabs'] {
+  display: flex;
+  flex: 1 0 auto;
+  min-width: 0;
+  flex-direction: column;
+}
+.settings-extension-settings [data-slot='tabs-content'][data-state='active'] {
+  display: flex;
+  flex: 1 0 auto;
+  min-width: 0;
+  flex-direction: column;
+}
+.settings-extension-settings [data-slot='tabs-content'][data-state='inactive'] {
+  display: none;
+}
+.settings-extension-group {
+  display: flex;
+  flex: 1 0 auto;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.settings-extension-empty {
+  display: flex;
+  flex: 1 0 auto;
+  min-width: 0;
+  flex-direction: column;
+}
+.settings-extension-empty [data-slot='empty'] {
+  flex: 1 0 auto;
+}
+.settings-extension-empty .settings-extension-form {
+  width: 100%;
+  text-align: start;
+}
+.settings-extension-group h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+}
+/* Skill icons sit in a ring and center on the title plus description, not the title line. */
+.settings-extension-settings [data-slot='item-media'],
+.settings-extension-settings .group\/item:has([data-slot='item-description']) [data-slot='item-media'] {
+  align-self: center;
+  transform: none;
+  box-sizing: border-box;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--muted-foreground);
+}
+.settings-permission-settings .settings-section-heading > p,
+.settings-extension-settings .settings-section-heading > p {
   white-space: normal;
 }
 .settings-permission-options {
@@ -224,6 +293,9 @@
 }
 .settings-permission-option {
   cursor: pointer;
+}
+.settings-permission-option[data-variant='muted'] {
+  border-color: var(--border);
 }
 .settings-permission-option:has(input:disabled) {
   cursor: not-allowed;

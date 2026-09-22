@@ -9,7 +9,8 @@
     "completed": "已完成",
     "failed": "失败",
     "cancelled": "已取消",
-    "interrupted": "已中断"
+    "interrupted": "已中断",
+    "unknown": "未知"
   },
   "conversation": {
     "legacyTitle": "导入的草稿 · 未执行",
@@ -26,6 +27,7 @@
     "interrupted": "此任务已中断",
     "cancelled": "任务已取消",
     "failed": "任务未能完成",
+    "unknown": "结果未知",
     "stopped": "已停止",
     "scrollToBottom": "滚动到底部"
   },
@@ -79,7 +81,8 @@
         "outside": "编辑此任务文件夹外的文件"
       },
       "bash": "运行终端命令",
-      "command": "保存或更新命令"
+      "command": "保存或更新命令",
+      "mcp": "使用 MCP 工具"
     },
     "outcome": {
       "once": "已允许一次",

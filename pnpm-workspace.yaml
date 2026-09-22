@@ -11,5 +11,15 @@ allowBuilds:
   protobufjs: false
   selection-hook: true
 
+minimumReleaseAgeExclude:
+  - '@earendil-works/chord@0.86.1'
+  - '@earendil-works/pi-agent-core@0.86.1'
+  - '@earendil-works/pi-ai@0.86.1'
+  - '@earendil-works/pi-coding-agent@0.86.1'
+  - '@earendil-works/pi-telemetry@0.86.1'
+  - '@earendil-works/pi-tui@0.86.1'
+
 patchedDependencies:
-  pi-hermes-memory@0.9.8: patches/pi-hermes-memory@0.9.8.patch
+  pi-hermes-memory@0.9.9: patches/pi-hermes-memory@0.9.9.patch
+  pi-mcp-adapter@2.34.0: patches/pi-mcp-adapter@2.34.0.patch
+  pi-subagents@0.70.0: patches/pi-subagents@0.70.0.patch

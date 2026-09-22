@@ -49,7 +49,8 @@
     "label": "Task configuration",
     "models": "Models: {{model}}",
     "chooseModel": "Choose model",
-    "thinkingLevel": "Effort"
+    "thinkingLevel": "Effort",
+    "capabilities": "Capabilities"
   },
   "voice": {
     "label": "Voice input",
@@ -123,6 +124,26 @@
     },
     "tierLabel": "Permission level",
     "defaultFromSettings": "Uses the default from Settings until a task exists."
+  },
+  "service": {
+    "banner": {
+      "disconnected": "Service disconnected. {{detail}}",
+      "connecting": "Connecting to the service…",
+      "reconnecting": "Reconnecting… {{detail}}",
+      "openSettings": "Open Service settings"
+    }
+  },
+  "children": {
+    "title": "Subtasks",
+    "empty": "No subtasks.",
+    "failed": "Failed",
+    "ok": "Done"
+  },
+  "capability": {
+    "waitingDesktop": "Waiting for the desktop: {{capability}}"
+  },
+  "confirms": {
+    "subtask": "Subtask {{execution}}"
   },
   "errors": {
     "openDesktopApp": "Open the desktop app to run tasks and manage saved data."

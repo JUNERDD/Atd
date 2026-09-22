@@ -1,21 +1,15 @@
 import { describe, expect, it } from 'vitest';
+import type { ServiceBlock } from '@ai/agent-contracts';
 import { applyTranscriptPatch } from './transcript-schema';
-import { diffBlocks, projectBlocks } from './transcript';
-import {
-  ABORTED_TS,
-  ASK_CALL,
-  ASSISTANT_TS,
-  EDIT_CALL,
-  RUN_ID,
-  USER_TS,
-  abortedAssistant,
-  livePrefix,
-  settledBranch,
-  toolResult,
-  userMessage,
-  workingAssistant,
-} from './transcript-project.fixtures';
+import { mapBlock } from './service-map';
 import type { Block, BlockOf } from './transcript-schema';
+
+const RUN_ID = 'run1';
+const USER_TS = 1000;
+const ASSISTANT_TS = 2000;
+const ABORTED_TS = 3000;
+const EDIT_CALL = 'call-edit';
+const ASK_CALL = 'call-ask';
 
 function byId<K extends Block['kind']>(blocks: Block[], id: string, kind: K): BlockOf<K> {
   const block = blocks.find((item) => item.id === id);
@@ -23,21 +17,97 @@ function byId<K extends Block['kind']>(blocks: Block[], id: string, kind: K): Bl
   return block as BlockOf<K>;
 }
 
-function project(
-  branch = settledBranch(),
-  live = false,
-  partial?: Parameters<typeof projectBlocks>[0]['partial'],
-) {
-  return projectBlocks({
-    branch,
-    partial,
-    defaultRunId: 'fallback',
-    live,
-  });
+const settledServiceBlocks: ServiceBlock[] = [
+  {
+    kind: 'user',
+    id: `u:${USER_TS}:0`,
+    runId: RUN_ID,
+    timestamp: USER_TS,
+    endedAt: USER_TS,
+    text: 'Hello',
+  },
+  {
+    kind: 'assistant',
+    id: `a:${ASSISTANT_TS}:0`,
+    runId: RUN_ID,
+    timestamp: ASSISTANT_TS,
+    endedAt: ASSISTANT_TS,
+    text: 'I will look that up.',
+    streaming: false,
+    stopReason: 'stop',
+    error: '',
+  },
+  {
+    kind: 'thinking',
+    id: `t:${ASSISTANT_TS}:1`,
+    runId: RUN_ID,
+    timestamp: ASSISTANT_TS,
+    endedAt: ASSISTANT_TS,
+    text: 'Need the file and a choice.',
+    streaming: false,
+    redacted: false,
+  },
+  {
+    kind: 'tool',
+    id: `tool:${EDIT_CALL}`,
+    runId: RUN_ID,
+    timestamp: ASSISTANT_TS,
+    endedAt: 2100,
+    callId: EDIT_CALL,
+    name: 'edit',
+    args: { path: 'note.txt' },
+    status: 'declined',
+    output: 'The user declined this action.',
+    partial: '',
+    permission: { scope: { tool: 'edit', location: 'inside' }, outcome: 'declined' },
+  },
+  {
+    kind: 'question',
+    id: `q:${ASK_CALL}`,
+    runId: RUN_ID,
+    timestamp: ASSISTANT_TS,
+    endedAt: 2200,
+    callId: ASK_CALL,
+    title: 'Which option?',
+    options: ['Option A', 'Option B'],
+    status: 'completed',
+    answer: 'Option A',
+    skipped: false,
+  },
+  {
+    kind: 'assistant',
+    id: `a:${ABORTED_TS}:0`,
+    runId: RUN_ID,
+    timestamp: ABORTED_TS,
+    endedAt: ABORTED_TS,
+    text: 'Stopped there.',
+    streaming: false,
+    stopReason: 'aborted',
+    error: '',
+  },
+];
+
+const liveServiceBlocks: ServiceBlock[] = [
+  ...settledServiceBlocks.slice(0, -1),
+  {
+    kind: 'assistant',
+    id: `a:${ABORTED_TS}:0`,
+    runId: RUN_ID,
+    timestamp: ABORTED_TS,
+    endedAt: ABORTED_TS,
+    text: 'Stopped there.',
+    streaming: true,
+    stopReason: null,
+    error: '',
+  },
+];
+
+function project(blocks: ServiceBlock[] = settledServiceBlocks) {
+  return blocks.map(mapBlock);
 }
 
-describe('projectBlocks', () => {
-  it('projects identity, order, status, permission and answers from a Pi branch', () => {
+describe('mapBlock + applyTranscriptPatch', () => {
+  it('maps identity, order, status, permission and answers from service blocks', () => {
     const blocks = project();
     expect(blocks.map((block) => [block.kind, block.id, block.runId])).toEqual([
       ['user', `u:${USER_TS}:0`, RUN_ID],
@@ -65,7 +135,7 @@ describe('projectBlocks', () => {
       status: 'declined',
       output: 'The user declined this action.',
       partial: '',
-      details: { diff: '--- a/note.txt\n+++ b/note.txt\n', truncated: true, fullOutputPath: '' },
+      details: { diff: '', truncated: false, fullOutputPath: '' },
       permission: { scope: { tool: 'edit', location: 'inside' }, outcome: 'declined' },
     });
     expect(byId(blocks, `q:${ASK_CALL}`, 'question')).toMatchObject({
@@ -83,8 +153,8 @@ describe('projectBlocks', () => {
   });
 
   it('keeps settled blocks identical between a live partial and a cold settled message', () => {
-    const cold = project(settledBranch(), false);
-    const live = project(livePrefix(), true, abortedAssistant());
+    const cold = project(settledServiceBlocks);
+    const live = project(liveServiceBlocks);
     const settledCold = cold.filter((block) => block.timestamp !== ABORTED_TS);
     const settledLive = live.filter((block) => block.timestamp !== ABORTED_TS);
     expect(settledLive).toEqual(settledCold);
@@ -97,72 +167,118 @@ describe('projectBlocks', () => {
     expect(byId(cold, `a:${ABORTED_TS}:0`, 'assistant').streaming).toBe(false);
   });
 
-  it('marks a tool without a result as interrupted when the session is not live', () => {
-    const hanging = workingAssistant();
-    const branch = [
+  it('maps interrupted tools and questions when the service marks them so', () => {
+    const hanging: ServiceBlock[] = [
       {
-        type: 'custom' as const,
-        customType: 'app-invocation',
-        data: { runId: RUN_ID, source: 'user' },
+        kind: 'user',
+        id: `u:${USER_TS}:0`,
+        runId: RUN_ID,
+        timestamp: USER_TS,
+        endedAt: USER_TS,
+        text: 'Hang',
       },
-      { type: 'message' as const, message: userMessage('Hang') },
-      { type: 'message' as const, message: hanging },
+      {
+        kind: 'tool',
+        id: `tool:${EDIT_CALL}`,
+        runId: RUN_ID,
+        timestamp: ASSISTANT_TS,
+        endedAt: ASSISTANT_TS,
+        callId: EDIT_CALL,
+        name: 'edit',
+        args: {},
+        status: 'interrupted',
+        output: '',
+        partial: '',
+        permission: { scope: { tool: 'edit', location: 'inside' }, outcome: null },
+      },
+      {
+        kind: 'question',
+        id: `q:${ASK_CALL}`,
+        runId: RUN_ID,
+        timestamp: ASSISTANT_TS,
+        endedAt: ASSISTANT_TS,
+        callId: ASK_CALL,
+        title: 'Which option?',
+        options: ['Option A'],
+        status: 'interrupted',
+        answer: null,
+        skipped: false,
+      },
     ];
-    const cold = project(branch, false);
-    const live = project(branch, true);
-    expect(byId(cold, `tool:${EDIT_CALL}`, 'tool').status).toBe('interrupted');
-    expect(byId(live, `tool:${EDIT_CALL}`, 'tool').status).toBe('running');
-    expect(byId(cold, `q:${ASK_CALL}`, 'question').status).toBe('interrupted');
+    const live: ServiceBlock[] = hanging.map((block) =>
+      block.kind === 'tool' || block.kind === 'question'
+        ? { ...block, status: 'running' as const }
+        : block,
+    );
+    expect(byId(project(hanging), `tool:${EDIT_CALL}`, 'tool').status).toBe('interrupted');
+    expect(byId(project(live), `tool:${EDIT_CALL}`, 'tool').status).toBe('running');
+    expect(byId(project(hanging), `q:${ASK_CALL}`, 'question').status).toBe('interrupted');
   });
 
-  it('joins user text parts and surfaces live tool partials until a result arrives', () => {
-    const blocks = projectBlocks({
-      branch: [
-        {
-          type: 'message',
-          message: userMessage([
-            { type: 'text', text: 'Hi ' },
-            { type: 'text', text: 'there' },
-          ]),
-        },
-        { type: 'message', message: workingAssistant() },
-        {
-          type: 'message',
-          message: toolResult(ASK_CALL, 'ask_user', {
-            content: [{ type: 'text', text: 'picked' }],
-          }),
-        },
-      ],
-      defaultRunId: RUN_ID,
-      live: true,
-      partials: new Map([
-        [EDIT_CALL, 'patching…'],
-        [ASK_CALL, 'stale'],
-      ]),
-    });
+  it('joins mapped user text and clears tool partials once a result arrives', () => {
+    const blocks = project([
+      {
+        kind: 'user',
+        id: `u:${USER_TS}:0`,
+        runId: RUN_ID,
+        timestamp: USER_TS,
+        endedAt: USER_TS,
+        text: 'Hi there',
+      },
+      {
+        kind: 'tool',
+        id: `tool:${EDIT_CALL}`,
+        runId: RUN_ID,
+        timestamp: ASSISTANT_TS,
+        endedAt: ASSISTANT_TS,
+        callId: EDIT_CALL,
+        name: 'edit',
+        args: {},
+        status: 'running',
+        output: '',
+        partial: 'patching…',
+        permission: null,
+      },
+      {
+        kind: 'question',
+        id: `q:${ASK_CALL}`,
+        runId: RUN_ID,
+        timestamp: ASSISTANT_TS,
+        endedAt: ASSISTANT_TS,
+        callId: ASK_CALL,
+        title: 'Which option?',
+        options: [],
+        status: 'completed',
+        answer: 'picked',
+        skipped: false,
+      },
+    ]);
     expect(byId(blocks, `u:${USER_TS}:0`, 'user').text).toBe('Hi there');
     expect(byId(blocks, `tool:${EDIT_CALL}`, 'tool').partial).toBe('patching…');
     expect(byId(blocks, `q:${ASK_CALL}`, 'question').status).toBe('completed');
   });
 
-  it('turns compaction summaries into system info blocks and skips hidden custom messages', () => {
-    const blocks = projectBlocks({
-      branch: [
-        { type: 'custom_message', customType: 'app-material', content: 'secret', display: false },
-        { type: 'compaction', summary: 'Earlier turns were folded.', timestamp: 50 },
-        {
-          type: 'message',
-          message: {
-            role: 'compactionSummary',
-            summary: 'Also folded.',
-            tokensBefore: 12,
-            timestamp: 60,
-          },
-        },
-      ],
-      defaultRunId: RUN_ID,
-      live: false,
-    });
+  it('maps compaction summaries into system info blocks', () => {
+    const blocks = project([
+      {
+        kind: 'system',
+        id: 's:50:0',
+        runId: RUN_ID,
+        timestamp: 50,
+        endedAt: 50,
+        level: 'info',
+        text: 'Earlier turns were folded.',
+      },
+      {
+        kind: 'system',
+        id: 's:60:0',
+        runId: RUN_ID,
+        timestamp: 60,
+        endedAt: 60,
+        level: 'info',
+        text: 'Also folded.',
+      },
+    ]);
     expect(blocks).toEqual([
       {
         kind: 'system',
@@ -185,11 +301,15 @@ describe('projectBlocks', () => {
     ]);
   });
 
-  it('reproduces the next document when applyTranscriptPatch consumes the projection diff', () => {
-    const previous = project(livePrefix(), false);
-    const next = project(settledBranch(), false);
-    const { blocks, removed } = diffBlocks(previous, next);
-    expect(removed).toEqual([]);
+  it('reproduces the next document when applyTranscriptPatch consumes a mapped diff', () => {
+    const previous = project(liveServiceBlocks.filter((block) => block.timestamp !== ABORTED_TS));
+    const next = project(settledServiceBlocks);
+    const prior = new Map(previous.map((block) => [block.id, block]));
+    const nextIds = new Set(next.map((block) => block.id));
+    const blocks = next.filter(
+      (block) => JSON.stringify(prior.get(block.id)) !== JSON.stringify(block),
+    );
+    const removed = previous.filter((block) => !nextIds.has(block.id)).map((block) => block.id);
     expect(
       applyTranscriptPatch(
         { revision: 0, blocks: previous },

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
-import { Brain, Command, Keyboard, Menu, Plug, X } from 'lucide-react';
+import { Blocks, Brain, Command, Keyboard, Menu, Plug, Shield, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@ai/ui/components/button';
 import {
@@ -23,11 +23,14 @@ import { LanguageSelector } from './language-selector';
 import { PermissionSettings } from './permission-settings';
 import { ProviderSettingsForm } from './provider-settings';
 import { ShortcutSettings } from './shortcut-settings';
+import { ServiceSettings } from '../service/service-settings';
 import { useSettingsSnapshot } from './use-settings';
 import { SettingsNavigationContext } from './settings-navigation';
 import './settings.css';
 
 const sections = [
+  { id: 'permissions', labelKey: 'nav.permissions', icon: Shield },
+  { id: 'extensions', labelKey: 'nav.extensions', icon: Blocks },
   { id: 'providers', labelKey: 'nav.providers', icon: Plug },
   { id: 'commands', labelKey: 'nav.commands', icon: Command },
   { id: 'memory', labelKey: 'nav.memory', icon: Brain },
@@ -59,9 +62,9 @@ function readCommandIdFromHash(): string | null {
 export function SettingsWindow() {
   const { t } = useTranslation('settings');
   const { snapshot, loading } = useSettingsSnapshot();
-  const [tab, setTab] = useState(() => (readCommandIdFromHash() ? 'commands' : 'providers'));
+  const [tab, setTab] = useState(() => (readCommandIdFromHash() ? 'commands' : 'permissions'));
   const [visited, setVisited] = useState(() =>
-    readCommandIdFromHash() ? ['providers', 'commands'] : ['providers'],
+    readCommandIdFromHash() ? ['permissions', 'commands'] : ['permissions'],
   );
   const [commandTarget, setCommandTarget] = useState<{ id: string; nonce: number } | null>(() => {
     const id = readCommandIdFromHash();
@@ -200,9 +203,19 @@ export function SettingsWindow() {
                 {preview && (
                   <output className="settings-preview-note">{t('window.previewNote')}</output>
                 )}
-                <div className="settings-page" hidden={tab !== 'providers'}>
-                  <ProviderSettingsForm snapshot={snapshot} />
+                <div className="settings-page" hidden={tab !== 'permissions'}>
+                  <PermissionSettings snapshot={snapshot} />
                 </div>
+                {visited.includes('extensions') && (
+                  <div className="settings-page" hidden={tab !== 'extensions'}>
+                    <ServiceSettings />
+                  </div>
+                )}
+                {visited.includes('providers') && (
+                  <div className="settings-page" hidden={tab !== 'providers'}>
+                    <ProviderSettingsForm snapshot={snapshot} />
+                  </div>
+                )}
                 {visited.includes('commands') && (
                   <div className="settings-page" hidden={tab !== 'commands'}>
                     <CommandSettings
@@ -219,10 +232,7 @@ export function SettingsWindow() {
                 )}
                 {visited.includes('shortcuts') && (
                   <div className="settings-page" hidden={tab !== 'shortcuts'}>
-                    <div className="settings-general-sections">
-                      <PermissionSettings snapshot={snapshot} />
-                      <ShortcutSettings snapshot={snapshot} onRecordingChange={setRecording} />
-                    </div>
+                    <ShortcutSettings snapshot={snapshot} onRecordingChange={setRecording} />
                   </div>
                 )}
               </div>

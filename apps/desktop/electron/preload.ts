@@ -4,10 +4,12 @@ import type { IpcRendererEvent } from 'electron';
 import { IPC, type ContextFile, type DesktopBridge, type DesktopState } from './contract';
 import { SETTINGS_IPC, type SettingsSnapshot } from './settings-contract';
 import { providerBridge } from './providers/preload';
+import { serviceBridge } from './service/preload';
 
 const desktop: DesktopBridge = {
   platform: process.platform,
   agent: agentBridge,
+  service: serviceBridge,
   settings: {
     open: () => ipcRenderer.invoke(SETTINGS_IPC.open) as Promise<void>,
     openCommand: (commandId: string) =>

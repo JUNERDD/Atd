@@ -16,6 +16,7 @@ import { openCommandSettings } from './features/commands/open-command-settings';
 import { Transcript } from './features/agent/transcript/transcript';
 import { SessionMenu } from './features/agent/session-menu';
 import { TaskHistory } from './features/agent/task-history';
+import { ServiceBanner } from './features/service/service-banner';
 import { EMPTY_QUEUE } from '../electron/agent/transcript-schema';
 import './features/agent/agent.css';
 
@@ -111,6 +112,7 @@ export function App() {
             )}
           </nav>
         </header>
+        <ServiceBanner onOpenSettings={() => void openSettings()} />
         {view === 'new' && (
           <ScrollArea
             className="panel-content"

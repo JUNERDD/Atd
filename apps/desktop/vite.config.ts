@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import { fileURLToPath, URL } from 'node:url';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
@@ -14,6 +15,22 @@ import {
 const dependencies = Object.keys(
   JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')).dependencies,
 );
+const repoRoot = fileURLToPath(new URL('../..', import.meta.url));
+
+/**
+ * These packages export `dist` at runtime and `src` for types. Electron main
+ * used to load `dist` as an external, so a new export crashed startup until
+ * that package was compiled again. Main bundles the TypeScript source instead.
+ */
+const workspaceSource = {
+  '@ai/agent-client': path.join(repoRoot, 'packages/agent-client/src/index.ts'),
+  '@ai/agent-contracts': path.join(repoRoot, 'packages/agent-contracts/src/index.ts'),
+};
+
+function externalizeDependency(id: string): boolean {
+  if (id in workspaceSource) return false;
+  return dependencies.some((name) => id === name || id.startsWith(`${name}/`));
+}
 
 const startElectron: NonNullable<ElectronOptions['onstart']> = async ({ startup }) => {
   // Explicit arguments retain Chromium's sandbox in development as well as production.
@@ -45,13 +62,15 @@ export default defineConfig(({ mode, command }) => ({
       : [
           electron({
             main: {
-              entry: ['electron/main.ts', 'electron/agent/worker.ts'],
+              // T6 pure client: no worker entry. Agent execution lives in
+              // @ai/agent-service; T7 owns service bundling (see packaging notes).
+              entry: ['electron/main.ts'],
               onstart: startElectron,
               vite: {
+                resolve: { alias: workspaceSource },
                 build: {
                   rolldownOptions: {
-                    external: (id) =>
-                      dependencies.some((name) => id === name || id.startsWith(`${name}/`)),
+                    external: externalizeDependency,
                   },
                 },
               },

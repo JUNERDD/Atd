@@ -1,14 +1,5 @@
-import type { GrantScope, PermissionAnswer, PermissionRequest } from './permission-schema';
+import type { PermissionAnswer, PermissionRequest } from './permission-schema';
 import { isActive, type RunStatus } from './task-schema';
-import {
-  applyTranscriptPatch,
-  EMPTY_QUEUE,
-  type Block,
-  type QueueState,
-  type TranscriptPatch,
-} from './transcript-schema';
-import type { TranscriptSnapshot } from './worker-contract';
-import { errorMessage } from './validation';
 
 export type ConfirmationReply = Extract<PermissionAnswer, { decision: unknown }>;
 export type InputReply = Exclude<PermissionAnswer, { decision: unknown }>;
@@ -43,7 +34,7 @@ export function isLiveRun(status: string) {
   return (LIVE as readonly string[]).includes(status);
 }
 
-/** Queue requests need a Pi session that is prompting; a queued or stopping run has none to receive them. */
+/** Queue requests need a live run; a queued or stopping run has none to receive them. */
 export function assertQueueable(status: RunStatus | undefined) {
   if (status === undefined || !isActive(status)) throw new Error('This task has no active run.');
   if (isLiveRun(status)) return;
@@ -100,71 +91,5 @@ export class TaskRequests {
         this.pending.delete(id);
         pending.resolve(declinedReply(pending.request));
       }
-  }
-}
-
-export class TaskDocuments {
-  private readonly documents = new Map<string, { revision: number; blocks: Block[] }>();
-  private readonly queues = new Map<string, QueueState>();
-
-  has(taskId: string) {
-    return this.documents.has(taskId);
-  }
-
-  known(taskId: string) {
-    return this.documents.has(taskId) || this.queues.has(taskId);
-  }
-
-  snapshot(taskId: string) {
-    return this.documents.get(taskId) ?? { revision: 0, blocks: [] };
-  }
-
-  queue(taskId: string) {
-    return this.queues.get(taskId) ?? EMPTY_QUEUE;
-  }
-
-  replace(taskId: string, document: { revision: number; blocks: Block[] }) {
-    this.documents.set(taskId, document);
-  }
-
-  setQueue(taskId: string, queue: QueueState) {
-    this.queues.set(taskId, queue);
-  }
-
-  resetQueue(taskId: string) {
-    this.queues.set(taskId, EMPTY_QUEUE);
-  }
-
-  forget(taskId: string) {
-    this.documents.delete(taskId);
-    this.queues.delete(taskId);
-  }
-
-  async accept(
-    patch: TranscriptPatch,
-    reload: () => Promise<TranscriptSnapshot>,
-  ): Promise<{ patch: TranscriptPatch; grants?: GrantScope[] } | { error: string }> {
-    const current = this.documents.get(patch.taskId) ?? { revision: -1, blocks: [] };
-    const next = applyTranscriptPatch(current, patch);
-    if (next) {
-      this.documents.set(patch.taskId, next);
-      return { patch };
-    }
-    try {
-      const snapshot = await reload();
-      this.documents.set(patch.taskId, { revision: snapshot.revision, blocks: snapshot.blocks });
-      return {
-        patch: {
-          taskId: patch.taskId,
-          revision: snapshot.revision,
-          snapshot: true,
-          blocks: snapshot.blocks,
-          removed: [],
-        },
-        grants: snapshot.grants,
-      };
-    } catch (error) {
-      return { error: errorMessage(error) };
-    }
   }
 }

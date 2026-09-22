@@ -1,10 +1,8 @@
 import {
   app,
   BrowserWindow,
-  dialog,
   globalShortcut,
   ipcMain,
-  Menu,
   nativeTheme,
   screen,
   session,
@@ -17,6 +15,8 @@ import { Identifier } from './agent/command-schema';
 import { parse } from './agent/validation';
 import { IPC, type DesktopState } from './contract';
 import { chooseContextFiles } from './context-files';
+import { installAppMenu } from './app-menu';
+import { ServiceManager } from './service/manager';
 import { SETTINGS_IPC } from './settings-contract';
 import { SettingsService } from './settings-service';
 import {
@@ -38,6 +38,7 @@ if (process.env.AI_TEST_USER_DATA) {
 let panel: BrowserWindow | null = null;
 let settings: SettingsService;
 let agent: AgentService | undefined;
+let serviceManager: ServiceManager | undefined;
 let quitting = false;
 let choosingFiles = false;
 let changingPinned = false;
@@ -208,37 +209,6 @@ async function createPanel() {
   await loadWindowContent(window);
 }
 
-function installMenu() {
-  Menu.setApplicationMenu(
-    Menu.buildFromTemplate([
-      {
-        label: 'AI',
-        submenu: [
-          { label: 'Show task panel', click: showPanel },
-          { label: 'Hide task panel', click: hidePanel },
-          {
-            label: 'Settings…',
-            click: () => {
-              void settings
-                .open()
-                .catch(() =>
-                  dialog.showErrorBox(
-                    'Could not open settings',
-                    'The settings window could not be opened.',
-                  ),
-                );
-            },
-          },
-          { type: 'separator' },
-          { role: 'quit' },
-        ],
-      },
-      { role: 'editMenu' },
-      ...(!app.isPackaged ? [{ role: 'viewMenu' as const }] : []),
-    ]),
-  );
-}
-
 if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
@@ -268,6 +238,24 @@ if (!app.requestSingleInstanceLock()) {
           }
         },
       });
+      // T6 pure client: main owns the service connection (bearer token stays
+      // in main) plus explicit desktop APIs. No agent execution here.
+      serviceManager = new ServiceManager(
+        (channel, value) => settings.send(channel, value),
+        (event) => settings.assertSender(event),
+        {
+          panelVisible: () =>
+            Boolean(panel && !panel.isDestroyed() && panel.isVisible() && !panel.isMinimized()),
+          withDialog: withFileDialog,
+        },
+        (connected) => {
+          void settings.providers.sync().then(() => {
+            if (connected) return agent?.syncLive();
+            return undefined;
+          });
+        },
+      );
+      settings.providers.attach(serviceManager.connection);
       agent = await AgentService.create(
         settings,
         (prepared, autoRun) => {
@@ -276,12 +264,16 @@ if (!app.requestSingleInstanceLock()) {
           panel?.webContents.send(AGENT_IPC.launch, { prepared, autoRun });
         },
         withFileDialog,
+        serviceManager.connection,
       );
       agent.installIpc();
+      serviceManager.installIpc();
       settings.installIpc();
       installIpc();
-      installMenu();
+      installAppMenu(showPanel, hidePanel, settings);
+      const starting = serviceManager.autostart();
       await createPanel();
+      await starting;
       const reposition = () => {
         if (!panel || panel.isDestroyed()) return;
         const display = screen.getDisplayMatching(panel.getBounds());
@@ -322,5 +314,12 @@ app.on('before-quit', (event) => {
   if (quitting || !agent) return;
   event.preventDefault();
   quitting = true;
-  void agent.runtime.close().finally(() => app.quit());
+  void (async () => {
+    try {
+      await serviceManager?.shutdown();
+      await agent?.close();
+    } finally {
+      app.quit();
+    }
+  })();
 });

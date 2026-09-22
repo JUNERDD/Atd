@@ -127,6 +127,11 @@ export function QuestionControls({ request }: { request: InputRequest }) {
   return (
     <div className="question-form">
       <p className="text-sm font-medium">{request.title}</p>
+      {request.executionId?.startsWith('child:') && (
+        <p className="text-xs text-muted-foreground">
+          {tp('confirms.subtask', { execution: request.executionId })}
+        </p>
+      )}
       {request.options.length > 0 && (
         <div className="question-options">
           {request.options.map((option, index) => (

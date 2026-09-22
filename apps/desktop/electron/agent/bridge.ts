@@ -54,6 +54,24 @@ export interface TaskState {
 export interface TaskDetail extends TaskState {
   revision: number;
   blocks: Block[];
+  /** T6 additive: explicit child results aggregated from subagent tool blocks. */
+  children?: {
+    executionId: string;
+    agent: string;
+    ok: boolean;
+    output: string;
+    runId: string | null;
+    sessionFile: string | null;
+    error: string;
+  }[];
+  /** T6 additive: pending desktop capabilities for waiting-desktop surfacing. */
+  capabilities?: {
+    id: string;
+    capability: string;
+    runId: string;
+    executionId: string;
+    expiresAt: string;
+  }[];
 }
 export interface AgentSnapshot {
   revision: number;

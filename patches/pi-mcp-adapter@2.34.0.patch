@@ -1,0 +1,13 @@
+diff --git a/package.json b/package.json
+index b02d959fcdf896c4cb67c0b13196183c0936c5e6..79f204df646a9aecbcc8e6156633f4c20fe2dbc6 100644
+--- a/package.json
++++ b/package.json
+@@ -177,7 +177,7 @@
+     "zod": "^3.25.0 || ^4.0.0"
+   },
+   "peerDependencies": {
+-    "@earendil-works/pi-ai": "^0.84.1 || ^0.85.0",
++    "@earendil-works/pi-ai": "^0.84.1 || ^0.85.0 || ^0.86.0",
+     "@earendil-works/pi-tui": "*",
+     "typebox": "*",
+     "zod": "^3.25.0 || ^4.0.0"
