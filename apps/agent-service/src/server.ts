@@ -20,7 +20,7 @@ import type { EventLog } from './event-log.js';
 import { Ledger, LedgerNotFound } from './ledger.js';
 import type { Logger } from './logging.js';
 import { registerManageRoutes } from './manage.js';
-import { McpAdapterMissing, McpAuthority, registerMcpRoutes } from './mcp/index.js';
+import { McpAuthority, registerMcpRoutes, type McpAuthorityDeps } from './mcp/index.js';
 import { registerMigrationRoutes } from './migration/routes.js';
 import { ResourceStore } from './resources.js';
 import { ConflictError, DrainingError, type RunnerManager } from './runner-manager.js';
@@ -211,37 +211,14 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
   registerSkillRoutes(app, deps.config);
   registerAtdAgentRoutes(app);
 
-  // Live MCP mounts. McpAdapterMissing degrades explicitly: MCP routes
-  // answer 503 (never 501-future nor silent success) and runs continue
-  // without MCP tools; skills stay live. No silent degradation anywhere.
-  try {
-    const mcpAuthority = await McpAuthority.authorityFor({
-      serviceId: deps.config.serviceId,
-      dataDir: deps.config.paths.root,
-      agentDir: deps.config.paths.agentDir,
-      sessionsDir: deps.config.paths.sessionsDir,
-      cwd: deps.config.paths.root,
-      events: deps.events,
-      confirms: deps.confirms,
-      resources: deps.resources,
-      log: deps.log,
-    });
-    registerMcpRoutes(app, { authority: mcpAuthority });
-  } catch (error) {
-    if (!(error instanceof McpAdapterMissing)) throw error;
-    deps.log.warn('MCP degraded: adapter is unavailable.', {
-      error: errorMessage(error),
-    });
-    const degraded = async (_request: FastifyRequest, reply: FastifyReply) =>
-      fail(
-        reply,
-        503,
-        'internal',
-        'MCP is unavailable: pi-mcp-adapter 2.34.0 could not be loaded.',
-      );
-    app.all('/v1/mcp', degraded);
-    app.all('/v1/mcp/*', degraded);
-  }
+  // Live MCP mounts. Building the authority costs ~880 ms (adapter transpile
+  // plus control session) and nothing at boot needs it, so the routes take a
+  // lazy resolver and the adapter loads on first MCP use or from the warm-up
+  // index.ts kicks once the endpoint is published. `authorityFor` caches per
+  // dataDir, so all of those share one load. McpAdapterMissing still degrades
+  // explicitly: MCP routes answer 503 (never 501-future nor silent success)
+  // and runs continue without MCP tools; skills stay live.
+  registerMcpRoutes(app, () => McpAuthority.authorityFor(mcpAuthorityDeps(deps)));
 
   for (const placeholder of PLACEHOLDERS) {
     const handler = async (_request: FastifyRequest, reply: FastifyReply) =>
@@ -261,6 +238,25 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
   });
 
   return app;
+}
+
+/**
+ * The MCP authority identity for this service profile. `authorityFor` caches on
+ * dataDir alone, so the boot warm-up and the route resolver must describe the
+ * same profile from one place or the first caller would silently win.
+ */
+export function mcpAuthorityDeps(deps: ServerDeps): McpAuthorityDeps {
+  return {
+    serviceId: deps.config.serviceId,
+    dataDir: deps.config.paths.root,
+    agentDir: deps.config.paths.agentDir,
+    sessionsDir: deps.config.paths.sessionsDir,
+    cwd: deps.config.paths.root,
+    events: deps.events,
+    confirms: deps.confirms,
+    resources: deps.resources,
+    log: deps.log,
+  };
 }
 
 function fail(

@@ -1,14 +1,15 @@
-import type { PermissionTier } from '@ai/agent-contracts';
+import { errorMessage, type PermissionTier } from '@ai/agent-contracts';
 import { CapabilityRegistry } from './capabilities.js';
 import { clearEndpoint, releaseLock, writeEndpoint, type ServiceConfig } from './config.js';
 import { ConfirmStore } from './confirms.js';
 import { EventLog } from './event-log.js';
 import { Ledger } from './ledger.js';
 import { createLogger, type Logger } from './logging.js';
+import { McpAuthority } from './mcp/index.js';
 import { recoverService, type RecoveryReport } from './recovery.js';
 import { ResourceStore } from './resources.js';
 import { RunnerManager } from './runner-manager.js';
-import { buildServer } from './server.js';
+import { buildServer, mcpAuthorityDeps, type ServerDeps } from './server.js';
 import type { RunnerContext } from './task-runner.js';
 
 export type { ServiceConfig } from './config.js';
@@ -64,7 +65,7 @@ export async function createService(
   const report = await recoverService({ ledger, events, confirms, capabilities, log });
 
   let stopping: (() => Promise<void>) | null = null;
-  const app = await buildServer({
+  const serverDeps: ServerDeps = {
     config,
     ledger,
     events,
@@ -80,7 +81,8 @@ export async function createService(
           log.error('Shutdown failed.', { error: String(error) }),
         );
     },
-  });
+  };
+  const app = await buildServer(serverDeps);
 
   const handle: ServiceHandle = {
     config,
@@ -109,6 +111,14 @@ export async function createService(
         startedAt,
       });
       manager.dispatch();
+      // The MCP adapter is off the boot path, so warm it only once the
+      // endpoint is published: readiness must never wait for it. The load is
+      // cached per dataDir, so the first MCP request or run joins this one
+      // instead of starting a second; a rejection drops the cache entry, so
+      // the next caller retries on its own.
+      void McpAuthority.authorityFor(mcpAuthorityDeps(serverDeps)).catch((error: unknown) => {
+        log.warn('MCP warm-up failed; MCP loads on first use.', { error: errorMessage(error) });
+      });
       return { url: address, port };
     },
     stop: async () => {

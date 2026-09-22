@@ -32,8 +32,16 @@ let sharedJiti: ReturnType<typeof createJiti> | null = null;
 let cached: Promise<AdapterInternals> | null = null;
 let injected: AdapterInternals | null = null;
 
+/**
+ * `fsCache` stays on (jiti's default): transpiling the adapter costs 894 ms
+ * cold against 328 ms from the cache, and it is the bulk of the first MCP
+ * operation. jiti keys each entry by a content hash and falls back to a plain
+ * transpile on a miss, so no manual version key is needed; it also disables
+ * the cache itself when the directory is not writable
+ * (`node_modules/.cache/jiti`, else `{TMP_DIR}/jiti`).
+ */
 function jiti() {
-  if (!sharedJiti) sharedJiti = createJiti(import.meta.url, { moduleCache: true, fsCache: false });
+  if (!sharedJiti) sharedJiti = createJiti(import.meta.url, { moduleCache: true, fsCache: true });
   return sharedJiti;
 }
 
