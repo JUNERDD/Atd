@@ -18,7 +18,11 @@ export function SettingsHeading({
 }) {
   const { t } = useTranslation('settings');
   return (
-    <header className={`settings-page-heading ${children ? 'settings-overview-heading' : ''}`}>
+    <header
+      className={`settings-page-heading ${children ? 'settings-overview-heading' : ''}`}
+      /* A back button marks a sub-page; without one the title only repeats the section name. */
+      data-section-title={onBack ? undefined : ''}
+    >
       <div className="settings-section-heading">
         <div className="editor-heading">
           {onBack && (
