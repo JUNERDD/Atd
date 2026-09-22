@@ -9,6 +9,8 @@
     "noEmit": false,
     "outDir": "dist",
     "rootDir": "src",
+    "incremental": true,
+    "tsBuildInfoFile": "dist/.tsbuildinfo",
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true

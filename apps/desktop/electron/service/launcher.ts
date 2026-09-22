@@ -117,7 +117,9 @@ async function waitForExit(dataDir: string, pid: number, timeoutMs: number): Pro
     } catch {
       return true;
     }
-    await new Promise((resolve) => setTimeout(resolve, 250));
+    // A graceful shutdown takes about 30ms, so poll far below the old 250ms
+    // step: the restart path waits on this before it can spawn again.
+    await new Promise((resolve) => setTimeout(resolve, 50));
   }
   return false;
 }
@@ -165,40 +167,102 @@ async function resolveServiceCommand(): Promise<ServiceCommand> {
 }
 
 /**
- * True when the built CLI is newer than every `.ts` source file. A stat or
- * read failure returns false (run current source); workspace dependencies
- * still require `pnpm build`, as in both launch paths.
+ * True when the build is newer than every `.ts` source file. The comparison
+ * takes the newest file anywhere in `dist`, not the CLI alone: the dev watcher
+ * compiles incrementally, so editing one module rewrites only that module's
+ * output and leaves `cli.js` at the time of the last full build. tsc writes
+ * its build-info file after the emit, so a dist that is newer than every
+ * source also means the compile finished. A read failure returns false (run
+ * current source); workspace dependencies still require `pnpm build`, as in
+ * both launch paths.
  */
 async function isDistFresh(distFile: string, srcDir: string): Promise<boolean> {
-  let distMtime: number;
-  try {
-    distMtime = (await stat(distFile)).mtimeMs;
-  } catch {
-    return false;
+  const newestSrc = await newestMtimeMs(srcDir, '.ts');
+  if (newestSrc === null) return false;
+  const newestDist = await newestMtimeMs(path.dirname(distFile));
+  return newestDist !== null && newestSrc <= newestDist;
+}
+
+/**
+ * True when a service that started at `startedAt` (ISO, from its endpoint
+ * file) still runs the current code: its own sources, the build the launcher
+ * would execute, and the sources of the workspace packages it is compiled
+ * against must all predate the process. Unpackaged callers only. Every
+ * unknown answer — absent input, unreadable entry, unparseable timestamp —
+ * is false, so a caller respawns instead of reusing possibly stale code.
+ */
+export async function isRunningServiceCurrent(startedAt: string): Promise<boolean> {
+  const started = Date.parse(startedAt);
+  if (Number.isNaN(started)) return false;
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  const source = await firstReadable(sourceCliCandidates(here));
+  const dist = await firstReadable(distCliCandidates(here));
+  if (!source || !dist) return false;
+  const workspaceDirs = await workspaceSourceDirs(path.resolve(path.dirname(source), '..'));
+  if (!workspaceDirs) return false;
+  // dist counts too: a rebuild after the process started means the live
+  // process is running the previous build.
+  for (const dir of [path.dirname(source), path.dirname(dist), ...workspaceDirs]) {
+    const newest = await newestMtimeMs(dir);
+    if (newest === null || newest > started) return false;
   }
-  const pending: string[] = [srcDir];
+  return true;
+}
+
+/**
+ * `src` directories of the workspace packages the service imports at runtime,
+ * read from its own manifest so a new workspace dependency is covered without
+ * editing this file, and resolved through the links pnpm writes into the
+ * service's node_modules. devDependencies stay out: they are build config,
+ * not code the service loads. Null when the manifest cannot be read.
+ */
+async function workspaceSourceDirs(serviceRoot: string): Promise<string[] | null> {
+  let manifest: { dependencies?: Record<string, unknown> };
+  try {
+    manifest = JSON.parse(await readFile(path.join(serviceRoot, 'package.json'), 'utf8')) as {
+      dependencies?: Record<string, unknown>;
+    };
+  } catch {
+    return null;
+  }
+  return Object.entries(manifest.dependencies ?? {})
+    .filter(([, range]) => typeof range === 'string' && range.startsWith('workspace:'))
+    .map(([name]) => path.join(serviceRoot, 'node_modules', name, 'src'));
+}
+
+/**
+ * Newest file mtime under `dir` in ms, walking subdirectories but never
+ * node_modules; `ext` limits which files count. Returns null when any entry
+ * cannot be read, so callers can tell "nothing changed" apart from "cannot
+ * tell" instead of reading an unreadable tree as unchanged.
+ */
+async function newestMtimeMs(dir: string, ext?: string): Promise<number | null> {
+  let newest = 0;
+  const pending: string[] = [dir];
   while (pending.length) {
-    const dir = pending.pop() as string;
+    const current = pending.pop() as string;
     let entries;
     try {
-      entries = await readdir(dir, { withFileTypes: true });
+      entries = await readdir(current, { withFileTypes: true });
     } catch {
-      return false;
+      return null;
     }
     for (const entry of entries) {
-      const full = path.join(dir, entry.name);
+      const full = path.join(current, entry.name);
       if (entry.isDirectory()) {
         if (entry.name !== 'node_modules') pending.push(full);
-      } else if (entry.name.endsWith('.ts')) {
-        try {
-          if ((await stat(full)).mtimeMs > distMtime) return false;
-        } catch {
-          return false;
-        }
+        continue;
+      }
+      if (ext !== undefined && !entry.name.endsWith(ext)) continue;
+      try {
+        const mtime = (await stat(full)).mtimeMs;
+        if (mtime > newest) newest = mtime;
+      } catch {
+        return null;
       }
     }
   }
-  return true;
+  return newest;
 }
 
 function sourceCliCandidates(here: string): string[] {
@@ -251,6 +315,8 @@ async function waitForEndpoint(dataDir: string, timeoutMs: number): Promise<void
       // Not ready yet.
     }
     if (Date.now() > deadline) throw new Error('The service did not publish its endpoint in time.');
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    // This poll sits on the launch path the connecting banner waits for, so the
+    // step stays well under the endpoint write it is watching for.
+    await new Promise((resolve) => setTimeout(resolve, 20));
   }
 }

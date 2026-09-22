@@ -21,6 +21,12 @@ files:
 extraResources:
   - from: ../agent-service/dist
     to: agent-service/dist
+    # The incremental build-info file only exists to keep the dev watcher from
+    # re-emitting the whole service on every start; it is dead weight in the
+    # packaged app.
+    filter:
+      - '**/*'
+      - '!.tsbuildinfo'
   - from: ../agent-service/package.json
     to: agent-service/package.json
   - from: ../../tmp/t7-agent-service-pack/node_modules
