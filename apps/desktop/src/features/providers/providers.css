@@ -1,12 +1,26 @@
+/* Fixed paper tile. Dark mode must not recolor it, or black marks disappear. */
+.provider-brand-frame {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  padding: 3px;
+  border-radius: var(--radius-sm);
+  background: oklch(1 0 0);
+  line-height: 0;
+}
 .provider-brand {
   flex: 0 0 16px;
   width: 16px;
   height: 16px;
   object-fit: contain;
 }
+.provider-brand-ink {
+  color: oklch(0.145 0 0);
+}
 .provider-brand-mask {
   display: inline-block;
-  background: var(--foreground);
+  background: oklch(0.145 0 0);
   mask-size: contain;
   mask-repeat: no-repeat;
   mask-position: center;

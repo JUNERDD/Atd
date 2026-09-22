@@ -194,6 +194,27 @@
       "sha256": "9d821cb4bd2af6bb867078f7b705615fc910d0f742108b699f653bccc0a5fca4",
       "rendering": "original",
       "extraction": "Unchanged green eye path (second path) from nvidia.svg; cropped viewBox 0 0 147 98. Original wordmark retained."
+    },
+    {
+      "brand": "Meta",
+      "file": "meta.svg",
+      "source": "https://raw.githubusercontent.com/ln-dev7/logos-apps/1762cfa050cdba49ba85c813a434d2526cdf0839/logos/meta.svg",
+      "sha256": "f2aab077092443bcea84f7b9c10481d4c0e363474118e9d651ea2a028a59fb54",
+      "rendering": "original-colors"
+    },
+    {
+      "brand": "vLLM",
+      "file": "vllm.svg",
+      "source": "https://raw.githubusercontent.com/ln-dev7/logos-apps/1762cfa050cdba49ba85c813a434d2526cdf0839/logos/vllm.svg",
+      "sha256": "12a0812e247cef4b31160e0d0267142ffe491491537f3e275d8bc645b61eb1a8",
+      "rendering": "original-colors"
+    },
+    {
+      "brand": "Z.AI",
+      "file": "z-ai.svg",
+      "source": "https://raw.githubusercontent.com/ln-dev7/logos-apps/1762cfa050cdba49ba85c813a434d2526cdf0839/logos/z-ai.svg",
+      "sha256": "9cd7033db676e24f2dd706bd14521367b0bb6837f9b55e4fe8106703005609a4",
+      "rendering": "foreground"
     }
   ],
   "existingOpenAI": {

@@ -1,7 +1,11 @@
 import type { CSSProperties } from 'react';
+import { Link } from 'lucide-react';
 import openai from '@ai/ui/assets/brands/openai.svg';
 const assets = import.meta.glob<string>(
-  '../../../../../packages/ui/src/assets/brands/lndev/*.svg',
+  [
+    '../../../../../packages/ui/src/assets/brands/lndev/*.svg',
+    '../../../../../packages/ui/src/assets/brands/external/*.svg',
+  ],
   { eager: true, query: '?url', import: 'default' },
 );
 const names: Record<string, string> = {
@@ -24,6 +28,10 @@ const names: Record<string, string> = {
   'cloudflare-ai-gateway': 'cloudflare',
   'minimax-cn': 'minimax',
   'opencode-go': 'opencode',
+  meta: 'meta',
+  vllm: 'vllm',
+  zai: 'z-ai',
+  'zai-coding-cn': 'z-ai',
 };
 export function ProviderBrand({ provider }: { provider: string }) {
   const stem =
@@ -33,8 +41,8 @@ export function ProviderBrand({ provider }: { provider: string }) {
     provider === 'openai' || provider === 'openai-codex'
       ? openai
       : Object.entries(assets).find(([path]) => path.endsWith(`/${stem}.svg`))?.[1];
-  if (!asset) return <span aria-hidden="true" className="provider-brand" />;
-  if (
+  const masked =
+    asset &&
     [
       'openai',
       'openai-codex',
@@ -48,14 +56,21 @@ export function ProviderBrand({ provider }: { provider: string }) {
       'lm-studio',
       'github-copilot',
       'vercel-ai-gateway',
-    ].includes(provider)
-  )
-    return (
-      <span
-        aria-hidden="true"
-        className="provider-brand provider-brand-mask"
-        style={{ '--brand-mask-image': `url("${asset}")` } as CSSProperties}
-      />
-    );
-  return <img src={asset} width={16} height={16} className="provider-brand" alt="" />;
+    ].includes(provider);
+  return (
+    <span aria-hidden="true" className="provider-brand-frame">
+      {masked ? (
+        <span
+          className="provider-brand provider-brand-mask"
+          style={{ '--brand-mask-image': `url("${asset}")` } as CSSProperties}
+        />
+      ) : asset ? (
+        <img src={asset} width={16} height={16} className="provider-brand" alt="" />
+      ) : provider === 'openai-compatible' ? (
+        <Link className="provider-brand provider-brand-ink" strokeWidth={2} />
+      ) : (
+        <span className="provider-brand" />
+      )}
+    </span>
+  );
 }
