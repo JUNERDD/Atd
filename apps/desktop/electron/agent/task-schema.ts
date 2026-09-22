@@ -41,13 +41,15 @@ export const InputSchema = Type.Object(
 export type TaskInput = Static<typeof InputSchema>;
 
 // v1 history keeps its original model snapshot; new submissions freeze the full model definition.
+// T6 pure client: service models may use any Pi provider id (T2 additive); the
+// narrowed openai-only shape stays for history, new runs use the open shape.
 export const ResolvedModelSchema = Type.Union([
   FrozenModelSchema,
   Type.Object(
     {
       connectionId: Type.String({ maxLength: 4096 }),
       modelId: Type.String({ maxLength: 256 }),
-      provider: Type.Union([Type.Literal('openai'), Type.Literal('openai-compatible')]),
+      provider: Type.String({ minLength: 1, maxLength: 256 }),
       baseUrl: Type.String({ maxLength: 2048 }),
     },
     { additionalProperties: false },
@@ -65,6 +67,8 @@ export const RunStatusSchema = Type.Union([
   Type.Literal('failed'),
   Type.Literal('cancelled'),
   Type.Literal('interrupted'),
+  // T6: service `unknown` (outcome could not be established after a crash).
+  Type.Literal('unknown'),
 ]);
 export type RunStatus = Static<typeof RunStatusSchema>;
 

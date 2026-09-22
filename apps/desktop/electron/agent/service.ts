@@ -1,140 +1,112 @@
 import { app, clipboard, ipcMain, shell } from 'electron';
-import { randomUUID } from 'node:crypto';
-import { rm } from 'node:fs/promises';
 import path from 'node:path';
-import { Type } from 'typebox';
 import type { SettingsService } from '../settings-service';
-import { FileRefSchema, isActive } from './task-schema';
+import type { ServiceConnection } from '../service/connection';
 import {
   AGENT_IPC,
   AgentRequestSchema,
   type AgentRequest,
   type AgentSnapshot,
+  type MemorySnapshot,
   type PreparedCommand,
 } from './bridge';
 import { AgentStore } from './store';
-import { canonicalPath, ContextResources } from './resources';
 import { CommandService } from './command-service';
-import { CommandTool } from './command-tool';
-import { PermissionGate } from './permissions';
-import { TaskRuntime } from './task-runtime';
-import { RunService } from './run-service';
-import { ArtifactService } from './artifact-service';
+import {
+  deleteLiveTask,
+  handleArtifact,
+  loadMemory,
+  notConnected,
+  previewRun,
+  renameLiveTask,
+  replaceLiveQueue,
+  retierLiveTask,
+  saveMemoryEntry,
+  setMemoryPaused,
+} from './service-manage';
 import { parse } from './validation';
+import { TaskClient } from './service-tasks';
 
-const LegacySchema = Type.Object({
-  version: Type.Literal(1),
-  tasks: Type.Array(
-    Type.Object({
-      id: Type.String(),
-      prompt: Type.String({ maxLength: 4000 }),
-      attachments: Type.Array(FileRefSchema),
-      createdAt: Type.String(),
-    }),
-  ),
-  pinned: Type.Optional(Type.Boolean()),
-});
-
+/**
+ * Pure service client. Main owns NO agent execution: no worker, Pi, Hermes,
+ * native tools or local runs. Tasks/confirms/transcript come from the agent
+ * service; commands/shortcuts/selection/clipboard/file-picker stay as
+ * explicit desktop APIs. Management calls use live v1.2 APIs.
+ */
 export class AgentService {
   readonly commands: CommandService;
-  readonly runtime: TaskRuntime;
-  private readonly runs: RunService;
-  private readonly artifacts: ArtifactService;
+  private readonly tasks: TaskClient;
   private revision = 0;
   private mutation: Promise<void> = Promise.resolve();
+  private memory: MemorySnapshot = { entries: [], paused: false, error: '' };
+
   private constructor(
-    private store: AgentStore,
-    resources: ContextResources,
-    root: string,
-    private settings: SettingsService,
-    private launch: (prepared: PreparedCommand, autoRun: boolean) => void,
-    private choose: <T>(operation: () => Promise<T>) => Promise<T>,
+    private readonly store: AgentStore,
+    private readonly settings: SettingsService,
+    private readonly connection: ServiceConnection,
+    private readonly emitLaunch: (prepared: PreparedCommand, autoRun: boolean) => void,
+    private readonly choose: <T>(operation: () => Promise<T>) => Promise<T>,
   ) {
     this.commands = new CommandService(
       store,
       () => settings.snapshot().shortcuts,
-      launch,
+      emitLaunch,
       () => this.broadcast(),
+      () => this.connection.options(),
     );
     this.commands.initialize();
-    const gate = new PermissionGate({
-      task: (id) => this.runtime.task(id),
-      ask: async (request) => {
-        const answer = await this.runtime.ask(request);
-        if (!('decision' in answer))
-          throw new Error('A confirmation requires a permission decision.');
-        return answer;
+    this.tasks = new TaskClient(connection, this.commands, {
+      send: (channel, value) => settings.send(channel, value),
+      broadcast: () => this.broadcast(),
+      defaultModel: () => {
+        const snapshot = settings.snapshot();
+        const id = snapshot.defaultConnectionId;
+        const connection = snapshot.connections.find((item) => item.connectionId === id);
+        return id && connection?.defaultModel
+          ? { connectionId: id, modelId: connection.defaultModel }
+          : undefined;
       },
-      record: (taskId, record) => this.runtime.recordPermission(taskId, record),
-      failed: (taskId, text) =>
-        settings.send(AGENT_IPC.changed, {
-          type: 'notice',
-          notice: { taskId, text, kind: 'warning' },
-        }),
     });
-    const commandTool = new CommandTool(store, this.commands, gate);
-    this.runtime = new TaskRuntime(root, store, resources, {
-      publish: (event) => settings.send(AGENT_IPC.changed, event),
-      changed: () => this.broadcast(),
-      auth: (run) => settings.providers.runtime.auth(run.snapshot.model),
-      command: (request) => commandTool.execute(request),
-      gate,
-    });
-    this.runs = new RunService(
-      this.runtime,
-      (command, reference) =>
-        settings.providers.runtime.resolve(
-          reference ?? (command?.model.mode === 'fixed' ? command.model : null),
-        ),
-      (model) => {
-        settings.providers.runtime.assertModel(model);
-      },
-      (model, requested) => settings.providers.runtime.resolveThinkingLevel(model, requested),
-      () => settings.snapshot().permissionTier,
-    );
-    this.artifacts = new ArtifactService(this.runtime);
   }
 
   static async create(
     settings: SettingsService,
     launch: (prepared: PreparedCommand, autoRun: boolean) => void,
     choose: <T>(operation: () => Promise<T>) => Promise<T>,
+    connection: ServiceConnection,
   ) {
-    const root = path.join(await canonicalPath(app.getPath('userData')), 'agent-v1');
-    const store = await AgentStore.load(root);
-    const resources = new ContextResources(root);
-    await resources.load();
-    if (store.data.tasks.some((task) => task.runs.some((run) => isActive(run.status)))) {
-      await store.change((data) => {
-        for (const task of data.tasks)
-          for (const run of task.runs)
-            if (isActive(run.status)) {
-              run.status = 'interrupted';
-              run.error =
-                'The app closed before this run finished. Review its input and completed actions before continuing.';
-            }
-      });
-    }
-    return new AgentService(store, resources, root, settings, launch, choose);
+    const store = await AgentStore.load(path.join(app.getPath('userData'), 'agent-v1'));
+    return new AgentService(store, settings, connection, launch, choose);
   }
 
-  private connectionId() {
-    return this.settings.snapshot().defaultConnectionId ?? '';
+  /** Pulls live commands after the service connection becomes ready. */
+  async syncLive(): Promise<void> {
+    try {
+      await this.commands.refreshFromService();
+    } catch {
+      // A failed refresh leaves the last cache; the next get() surfaces the error.
+    }
   }
 
   private snapshot(): AgentSnapshot {
     return {
       revision: ++this.revision,
-      connectionId: this.connectionId(),
+      connectionId: this.settings.snapshot().defaultConnectionId ?? '',
       commands: this.store.data.commands,
-      tasks: [...this.store.data.tasks].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
+      tasks: this.tasks.tasks(),
       shortcutErrors: { ...this.commands.errors },
-      error: this.runtime.error,
+      error:
+        this.connection.status().state === 'disconnected' ? this.connection.status().detail : '',
     };
   }
 
   private broadcast() {
     this.settings.send(AGENT_IPC.changed, { type: 'snapshot', snapshot: this.snapshot() });
+  }
+
+  private publishMemory(snapshot: MemorySnapshot) {
+    this.memory = snapshot;
+    this.settings.send(AGENT_IPC.changed, { type: 'memory', snapshot });
   }
 
   private serialize<T>(action: () => Promise<T>): Promise<T> {
@@ -150,20 +122,21 @@ export class AgentService {
     ipcMain.handle(AGENT_IPC.request, (event, value: unknown) => {
       this.settings.assertSender(event);
       const request = parse(AgentRequestSchema, value);
-      if (
-        [
-          'saveCommand',
-          'deleteCommand',
-          'pauseMemory',
-          'updateMemory',
-          'renameTask',
-          'deleteTask',
-          'importLegacy',
-        ].includes(request.action)
-      )
+      if (['saveCommand', 'deleteCommand'].includes(request.action))
         return this.serialize(() => this.handle(request));
       return this.handle(request);
     });
+  }
+
+  /** Clears cached tasks; connection disconnect is owned by ServiceManager. */
+  async close(): Promise<void> {
+    this.tasks.clear();
+  }
+
+  private options() {
+    const options = this.connection.options();
+    if (!options) throw notConnected();
+    return options;
   }
 
   private async handle(request: AgentRequest): Promise<unknown> {
@@ -171,16 +144,14 @@ export class AgentService {
       case 'get':
         return this.snapshot();
       case 'detail':
-        await this.artifacts.refresh(request.taskId);
-        return this.runtime.detail(request.taskId);
+        return this.tasks.detail(request.taskId);
       case 'launch': {
         if (request.prepared) {
           const command = this.commands.find(request.commandId);
           if (!command.enabled || command.revision !== request.prepared.revision)
             throw new Error('This command changed or is disabled. Review before running.');
-          await this.runs.preview(request.prepared.input, command);
-          this.launch({ command, input: request.prepared.input, notice: '' }, false);
-        } else this.launch(await this.commands.prepare(request.commandId), false);
+          this.emitLaunch({ command, input: request.prepared.input, notice: '' }, false);
+        } else this.emitLaunch(await this.commands.prepare(request.commandId), false);
         return null;
       }
       case 'prepare':
@@ -193,30 +164,74 @@ export class AgentService {
         await this.commands.delete(request.commandId, request.revision);
         return null;
       case 'preview':
-        return this.runs.preview(request.input, request.command, request.policy);
-      case 'submit':
-        return this.runs.submit(request);
-      case 'stop':
-        return this.runtime.stop(request.taskId, request.runId);
-      case 'answer':
-        return this.runtime.answer(
-          request.taskId,
-          request.runId,
-          request.requestId,
-          request.answer,
+        return previewRun(
+          this.options(),
+          request.input,
+          request.command?.id ?? null,
+          request.policy,
         );
-      case 'queueMessage':
-        return this.runtime.queueMessage(request.taskId, request.text, request.mode);
+      case 'submit':
+        return this.tasks.submit(request);
+      case 'stop': {
+        const http = this.connection.http();
+        if (!http) throw notConnected();
+        await http.cancel(request.taskId, request.runId);
+        return null;
+      }
+      case 'answer':
+        return this.answer(request);
+      case 'queueMessage': {
+        const http = this.connection.http();
+        if (!http) throw notConnected();
+        await http.queue(request.taskId, { text: request.text, mode: request.mode });
+        return null;
+      }
       case 'replaceQueue':
-        return this.runtime.replaceQueue(request.taskId, request.followUp);
+        await replaceLiveQueue(this.options(), request.taskId, request.followUp);
+        await this.tasks.detail(request.taskId);
+        this.tasks.publishTask(request.taskId);
+        return null;
       case 'setPermissionTier':
-        return this.runtime.attributes.setPermissionTier(request.taskId, request.tier);
+        await retierLiveTask(this.options(), request.taskId, request.tier);
+        await this.tasks.detail(request.taskId);
+        this.tasks.publishTask(request.taskId);
+        return null;
       case 'renameTask':
-        return this.runtime.attributes.renameTask(request.taskId, request.title);
+        await renameLiveTask(this.options(), request.taskId, request.title);
+        await this.tasks.detail(request.taskId);
+        this.tasks.publishTask(request.taskId);
+        return null;
+      case 'deleteTask':
+        await deleteLiveTask(this.options(), request.taskId);
+        this.tasks.details.delete(request.taskId);
+        this.broadcast();
+        return null;
       case 'chooseFiles':
-        return this.choose(() => this.runtime.resources.choose());
+        return this.choose(() => this.tasks.chooseFiles());
+      case 'memory':
+        try {
+          this.publishMemory(await loadMemory(this.options()));
+        } catch (error) {
+          this.publishMemory({
+            entries: [],
+            paused: false,
+            error: error instanceof Error ? error.message : 'Memory could not be loaded.',
+          });
+        }
+        return this.memory;
+      case 'pauseMemory':
+        this.publishMemory(await setMemoryPaused(this.options(), request.paused));
+        return this.memory;
+      case 'updateMemory':
+        this.publishMemory(await saveMemoryEntry(this.options(), request.entry, request.content));
+        return this.memory;
       case 'artifact':
-        return this.choose(() => this.artifacts.act(request));
+        return handleArtifact(
+          this.options(),
+          path.join(app.getPath('userData'), 'agent-v1', 'downloads'),
+          request.artifactId,
+          request.operation,
+        );
       case 'copy':
         await clipboard.writeText(request.text);
         return null;
@@ -227,81 +242,33 @@ export class AgentService {
         await shell.openExternal(url.href);
         return null;
       }
-      case 'memory':
-        return this.runtime.memory();
-      case 'pauseMemory': {
-        await this.runtime.ready();
-        // Freeze pending learners before committing policy; restore on persistence failure with a new epoch.
-        await this.runtime.worker.call({ action: 'pause', paused: request.paused }, Type.Null());
-        try {
-          await this.store.change((data) => {
-            data.memoryPaused = request.paused;
-          });
-        } catch (error) {
-          await this.runtime.worker.call(
-            { action: 'pause', paused: this.store.data.memoryPaused },
-            Type.Null(),
-          );
-          throw error;
-        }
-        const snapshot = await this.runtime.memory();
-        this.settings.send(AGENT_IPC.changed, { type: 'memory', snapshot });
-        return snapshot;
-      }
-      case 'updateMemory': {
-        await this.runtime.ready();
-        await this.runtime.worker.call(
-          { action: 'memoryUpdate', entry: request.entry, content: request.content },
-          Type.String(),
-        );
-        const snapshot = await this.runtime.memory();
-        this.settings.send(AGENT_IPC.changed, { type: 'memory', snapshot });
-        return snapshot;
-      }
-      case 'deleteTask': {
-        const task = this.runtime.task(request.taskId);
-        if (task.runs.some((run) => isActive(run.status)))
-          throw new Error('Stop this task before deleting it.');
-        await this.runtime.forget(task.id);
-        await this.store.change((data) => {
-          data.tasks = data.tasks.filter((item) => item.id !== task.id);
-          data.artifacts = data.artifacts.filter((file) => file.taskId !== task.id);
-        });
-        await this.runtime.resources.deleteTask(task.id);
-        await rm(path.join(this.runtime.root, 'agent', 'sessions', task.id), {
-          recursive: true,
-          force: true,
-        });
-        await rm(path.join(this.runtime.root, 'tasks', task.id), { recursive: true, force: true });
-        this.broadcast();
+      case 'importLegacy':
         return null;
-      }
-      case 'importLegacy': {
-        if (this.store.data.legacyImported) return null;
-        const legacy = parse(LegacySchema, JSON.parse(request.json));
-        await this.store.change((data) => {
-          if (data.legacyImported) return;
-          for (const item of legacy.tasks) {
-            data.tasks.push({
-              id: randomUUID(),
-              title: item.prompt.slice(0, 120) || item.attachments[0]?.name || 'Imported task',
-              createdAt: item.createdAt,
-              updatedAt: item.createdAt,
-              sessionFile: null,
-              runs: [],
-              legacy: { prompt: item.prompt, attachments: item.attachments },
-              permissionTier: this.settings.snapshot().permissionTier,
-            });
-          }
-          data.legacyImported = true;
-        });
-        this.broadcast();
-        return null;
-      }
       default: {
         const _exhaustive: never = request;
         throw new Error(`Unsupported agent action: ${JSON.stringify(_exhaustive)}`);
       }
     }
+  }
+
+  private async answer(request: Extract<AgentRequest, { action: 'answer' }>): Promise<null> {
+    const live = this.tasks.revisions.get(request.requestId);
+    if (!live || live.taskId !== request.taskId || live.runId !== request.runId)
+      throw new Error('This request expired. Review the current task.');
+    try {
+      await this.connection.http()!.confirm({
+        requestId: request.requestId,
+        revision: live.revision,
+        answer: request.answer,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '';
+      if (message.includes('410') || message.toLowerCase().includes('no longer pending'))
+        throw new Error('This request expired. Review the current task.');
+      if (message.includes('409') || message.toLowerCase().includes('changed'))
+        throw new Error('The request changed. Refresh and answer the latest version.');
+      throw error;
+    }
+    return null;
   }
 }

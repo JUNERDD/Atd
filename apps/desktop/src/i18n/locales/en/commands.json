@@ -145,6 +145,13 @@
     "memoryOff": "Off for this task and follow-ups",
     "allowedTools": "Allowed tools"
   },
+  "capability": {
+    "skills": "Skills",
+    "skillsNote": "Selection freezes at accept; edits apply to the next run.",
+    "emptySkills": "No skills are available. Connect the service to load skills.",
+    "role": "Role",
+    "noRole": "No role"
+  },
   "variables": {
     "suggestions": "Variable suggestions",
     "inputDetail": "Main text · chosen when the command runs",

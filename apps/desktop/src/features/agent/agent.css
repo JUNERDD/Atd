@@ -778,3 +778,37 @@
   outline: 1px solid var(--ring);
   box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 30%, transparent);
 }
+
+.service-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in oklab, var(--muted) 50%, transparent);
+  font-size: 13px;
+  line-height: 20px;
+}
+.service-banner-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted-foreground);
+}
+.transcript-children {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 0;
+  border-top: 1px solid var(--border);
+}
+.transcript-children ul {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}

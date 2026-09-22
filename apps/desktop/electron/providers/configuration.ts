@@ -1,6 +1,5 @@
 import { createHash } from 'node:crypto';
-import type { Api, Model } from '@earendil-works/pi-ai';
-import type { ConnectionConfig, ModelDefinition, StoredConnection } from './schema';
+import type { ConnectionConfig, StoredConnection } from './schema';
 
 import { CLOUD_FIELDS, isCustom } from './metadata';
 export { CLOUD_FIELDS, isCustom, isCloud, isAmbient, LOCAL_PROVIDERS } from './metadata';
@@ -66,30 +65,4 @@ export function configurationId(config: ConnectionConfig): string {
 }
 export function publicConnection({ encryptedCredential, ...connection }: StoredConnection) {
   return { ...connection, hasCredential: Boolean(encryptedCredential) };
-}
-export function modelDefinition(model: Model<Api>): ModelDefinition {
-  const {
-    id,
-    name,
-    api,
-    baseUrl,
-    reasoning,
-    input,
-    contextWindow,
-    maxTokens,
-    cost,
-    thinkingLevelMap,
-  } = model;
-  return {
-    id,
-    name,
-    api,
-    baseUrl,
-    reasoning,
-    input,
-    contextWindow,
-    maxTokens,
-    cost,
-    ...(thinkingLevelMap ? { thinkingLevelMap } : {}),
-  };
 }

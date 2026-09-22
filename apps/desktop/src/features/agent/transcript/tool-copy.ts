@@ -47,7 +47,8 @@ export type ScopeKey =
   | 'permission.scope.edit.inside'
   | 'permission.scope.edit.outside'
   | 'permission.scope.bash'
-  | 'permission.scope.command';
+  | 'permission.scope.command'
+  | 'permission.scope.mcp';
 
 const STEP_KEYS: Record<string, StepKey> = {
   read: 'activity.step.read',
@@ -188,6 +189,8 @@ export function scopeKey(scope: GrantScope): ScopeKey {
       return 'permission.scope.bash';
     case 'command':
       return 'permission.scope.command';
+    case 'mcp':
+      return 'permission.scope.mcp';
     default: {
       const _exhaustive: never = scope;
       void _exhaustive;

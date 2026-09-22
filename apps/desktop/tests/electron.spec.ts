@@ -1,5 +1,5 @@
 import { _electron as electron, expect, test } from '@playwright/test';
-import { mkdtemp, mkdir, rm } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, rm } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
@@ -7,7 +7,7 @@ import path from 'node:path';
 const require = createRequire(import.meta.url);
 const appDirectory = path.resolve(import.meta.dirname, '..');
 
-test('production app: positioning, renderer isolation, task flow, and window controls', async () => {
+test('production app: positioning, renderer isolation, service flow, and window controls', async () => {
   const userData = await mkdtemp(path.join(os.tmpdir(), 'ai-electron-test-'));
   const env: Record<string, string> = Object.fromEntries(
     Object.entries(process.env).filter(
@@ -15,10 +15,12 @@ test('production app: positioning, renderer isolation, task flow, and window con
     ),
   );
   env.AI_TEST_USER_DATA = userData;
+  // The isolated profile auto-isolates the service dir; an explicit override would bypass it.
+  delete env.AI_AGENT_DATA_DIR;
   delete env.ELECTRON_RUN_AS_NODE;
   const app = await electron.launch({
     executablePath: require('electron') as string,
-    args: [appDirectory],
+    args: ['--lang=en', appDirectory],
     env,
   });
   try {
@@ -27,6 +29,28 @@ test('production app: positioning, renderer isolation, task flow, and window con
     const errors: string[] = [];
     page.on('pageerror', (error) => errors.push(error.message));
     await expect(page.getByRole('heading', { name: 'What can I help with?' })).toBeVisible();
+    // Autostart connects on launch (spawning a local service when needed): the disconnected
+    // banner must clear without any manual connect step. Spawning can take several seconds.
+    await expect(page.getByRole('status').filter({ hasText: 'Service disconnected' })).toHaveCount(
+      0,
+      { timeout: 30000 },
+    );
+    // Resolver isolation: the autostarted service must live inside the isolated profile,
+    // never in the production dataDir.
+    const serviceDataDir = path.join(userData, 'AgentService');
+    await expect
+      .poll(
+        async () => {
+          try {
+            await readFile(path.join(serviceDataDir, 'endpoint.json'), 'utf8');
+            return true;
+          } catch {
+            return false;
+          }
+        },
+        { timeout: 30000 },
+      )
+      .toBe(true);
     await page.evaluate(() => document.fonts.ready);
     const state = await app.evaluate(({ BrowserWindow, screen }) => {
       const window = BrowserWindow.getAllWindows()[0]!;
@@ -51,9 +75,11 @@ test('production app: positioning, renderer isolation, task flow, and window con
     await page.screenshot({ path: path.join(appDirectory, '.artifacts/electron-panel.png') });
 
     await page.getByRole('textbox').fill('A small desktop task');
-    await page.getByRole('textbox').press('Enter');
-    await expect(page.getByRole('alert')).toContainText('Choose a default provider and model');
     await expect(page.getByRole('textbox')).toHaveValue('A small desktop task');
+    // Connected by default: no connection errors surface from the composer.
+    await expect(
+      page.getByRole('status').filter({ hasText: /Service disconnected|service is not connected/ }),
+    ).toHaveCount(0);
     await page.reload();
     await page.getByRole('button', { name: 'Tasks', exact: true }).click();
     await expect(page.getByText('No tasks yet.', { exact: true })).toBeVisible();
@@ -61,13 +87,14 @@ test('production app: positioning, renderer isolation, task flow, and window con
     await page.getByRole('button', { name: 'Settings', exact: true }).click();
     const settings = await settingsOpened;
     settings.on('pageerror', (error) => errors.push(error.message));
-    await expect(settings.getByRole('heading', { name: 'Providers', exact: true })).toBeVisible();
+    await expect(settings.getByRole('heading', { name: 'Permissions', exact: true })).toBeVisible();
+    // Connected by default, so no manual connect step. Recovery actions
+    // (connect/disconnect/startLocal) stay on the service bridge; the
+    // connected-state button layout is renderer-owned.
     await settings.getByRole('button', { name: 'Memory', exact: true }).click();
     await expect(settings.getByRole('heading', { name: 'Memory', exact: true })).toBeVisible();
     await expect(
-      settings.getByText('No saved memories yet. Share a lasting preference as you work.', {
-        exact: true,
-      }),
+      settings.getByText(/service is not connected|No saved memories yet/i),
     ).toBeVisible();
     await page.evaluate(() => window.desktop!.settings.open());
     expect(app.windows()).toHaveLength(2);
@@ -121,6 +148,24 @@ test('production app: positioning, renderer isolation, task flow, and window con
     expect(compactLayout).toEqual({ fits: true, overflow: false });
     await page.screenshot({ path: path.join(appDirectory, '.artifacts/electron-compact.png') });
     expect(errors).toEqual([]);
+    await app.close();
+    await expect
+      .poll(
+        async () => {
+          try {
+            const raw = JSON.parse(
+              await readFile(path.join(serviceDataDir, 'endpoint.json'), 'utf8'),
+            ) as { pid?: unknown };
+            if (typeof raw.pid !== 'number') return false;
+            process.kill(raw.pid, 0);
+            return true;
+          } catch {
+            return false;
+          }
+        },
+        { timeout: 20000 },
+      )
+      .toBe(false);
   } finally {
     await app.close();
     await rm(userData, { recursive: true, force: true });

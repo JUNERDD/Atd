@@ -33,6 +33,8 @@ export const GrantScopeSchema = Type.Union([
   ),
   Type.Object({ tool: Type.Literal('bash') }, { additionalProperties: false }),
   Type.Object({ tool: Type.Literal('command') }, { additionalProperties: false }),
+  // T6 v1.1 additive: MCP per-operation scope (allow_once/deny only).
+  Type.Object({ tool: Type.Literal('mcp') }, { additionalProperties: false }),
 ]);
 export type GrantScope = Static<typeof GrantScopeSchema>;
 
@@ -104,6 +106,8 @@ const requestBase = {
   runId: Identifier,
   /** The Pi tool call that is blocked on this request; the renderer attaches the prompt to its block. */
   toolCallId: Type.String({ maxLength: 256 }),
+  /** T6 additive: service executionId (root:<runId> or child:<runId>:<n>) for subtask display. */
+  executionId: Type.Optional(Type.String({ maxLength: 256 })),
 };
 /**
  * A pending human-in-the-loop request. Confirmations guard a tool call and resolve with a

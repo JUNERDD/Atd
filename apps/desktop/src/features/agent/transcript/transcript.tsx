@@ -80,6 +80,7 @@ export function Transcript({
   onAttach: (file: FileRef) => void;
 }): ReactElement {
   const { t } = useTranslation('tasks');
+  const { t: tPanel } = useTranslation('panel');
   const { task, blocks, artifacts, requests } = detail;
   const run = task.runs.at(-1);
   const live = isActive(run?.status);
@@ -148,6 +149,27 @@ export function Transcript({
             />
           )}
           {pendingFiles.length > 0 && <TaskFiles files={pendingFiles} onAttach={onAttach} />}
+          {(detail.capabilities?.length ?? 0) > 0 && (
+            <output className="text-sm text-muted-foreground">
+              {tPanel('capability.waitingDesktop', {
+                capability: detail.capabilities!.map((cap) => cap.capability).join(', '),
+              })}
+            </output>
+          )}
+          {(detail.children?.length ?? 0) > 0 && (
+            <section className="transcript-children" aria-label={tPanel('children.title')}>
+              <h3 className="text-sm font-medium">{tPanel('children.title')}</h3>
+              <ul>
+                {detail.children!.map((child) => (
+                  <li key={child.executionId} className="text-sm">
+                    <span>{child.agent}</span>{' '}
+                    <span>{child.ok ? tPanel('children.ok') : tPanel('children.failed')}</span>
+                    {child.error && <span className="text-muted-foreground"> · {child.error}</span>}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
           <StatusBar run={run} />
         </div>
       </ScrollArea>

@@ -1,10 +1,13 @@
 import { clipboard, globalShortcut, systemPreferences } from 'electron';
+import type { AgentClientOptions } from '@ai/agent-client';
 import SelectionHook from 'selection-hook';
 import { effectiveAccelerator, parseAccelerator } from '../settings-shortcuts';
 import type { ShortcutBindings } from '../settings-contract';
 import type { CommandDefinition } from './command-schema';
 import type { PreparedCommand } from './bridge';
 import { defaultArguments, readyToRun, validateCommand } from './command-validation';
+import { deleteRemote, fetchCommands, saveRemote } from './command-remote';
+import { notConnected } from './service-manage';
 import { emptyInput } from './task-schema';
 import { AgentStore } from './store';
 import { errorMessage } from './validation';
@@ -19,6 +22,7 @@ export class CommandService {
     private shortcuts: () => ShortcutBindings,
     private launch: (command: PreparedCommand, autoRun: boolean) => void,
     private changed: () => void,
+    private options: () => AgentClientOptions | null,
   ) {}
 
   find(id: string) {
@@ -127,6 +131,27 @@ export class CommandService {
     }
   }
 
+  /** Replaces the local cache from the live command store and rebinds shortcuts. */
+  async refreshFromService(): Promise<void> {
+    const options = this.options();
+    if (!options) return;
+    const commands = await fetchCommands(options);
+    this.unregisterAll();
+    await this.store.change((data) => {
+      data.commands = commands;
+    });
+    this.initialize();
+    this.changed();
+  }
+
+  private unregisterAll() {
+    for (const command of this.store.data.commands) {
+      if (command.enabled && command.shortcut && !this.errors[command.id])
+        globalShortcut.unregister(command.shortcut);
+    }
+    for (const id of Object.keys(this.errors)) delete this.errors[id];
+  }
+
   private checkShortcut(command: CommandDefinition) {
     if (!command.shortcut) return;
     const accelerator = effectiveAccelerator(parseAccelerator(command.shortcut, true));
@@ -178,26 +203,23 @@ export class CommandService {
   }
 
   async save(command: CommandDefinition, expectedRevision: number) {
+    const options = this.options();
+    if (!options) throw notConnected();
     validateCommand(command);
     if (command.shortcut) command.shortcut = parseAccelerator(command.shortcut, true);
     if (command.enabled) this.checkShortcut(command);
     const old = this.store.data.commands.find((item) => item.id === command.id);
-    if ((old?.revision ?? 0) !== expectedRevision)
-      throw new Error(
-        'This command changed in another window. Reload the latest version before saving.',
-      );
     const registered = old?.enabled && old.shortcut && !this.errors[old.id] ? old.shortcut : '';
     const next = command.enabled ? command.shortcut : '';
     const same = Boolean(
       registered && next && effectiveAccelerator(registered) === effectiveAccelerator(next),
     );
     if (next && !same) this.register(command);
-    const saved = { ...command, revision: expectedRevision + 1 };
+    let saved: CommandDefinition;
     try {
+      saved = await saveRemote(options, command, expectedRevision);
       await this.store.change((data) => {
         const index = data.commands.findIndex((item) => item.id === command.id);
-        if ((index < 0 ? 0 : data.commands[index]!.revision) !== expectedRevision)
-          throw new Error('This command changed. Reload before saving.');
         if (index < 0) data.commands.push(saved);
         else data.commands[index] = saved;
       });
@@ -212,10 +234,11 @@ export class CommandService {
   }
 
   async delete(id: string, revision: number) {
+    const options = this.options();
+    if (!options) throw notConnected();
     const command = this.find(id);
+    await deleteRemote(options, id, revision);
     await this.store.change((data) => {
-      if (data.commands.find((item) => item.id === id)?.revision !== revision)
-        throw new Error('This command changed. Reload before deleting.');
       data.commands = data.commands.filter((item) => item.id !== id);
     });
     if (command.enabled && command.shortcut && !this.errors[id])

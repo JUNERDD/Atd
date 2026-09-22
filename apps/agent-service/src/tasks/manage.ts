@@ -1,0 +1,78 @@
+import type { FastifyInstance } from 'fastify';
+import {
+  Identifier,
+  isActiveStatus,
+  parse,
+  PatchTaskRequestSchema,
+  ReplaceQueueRequestSchema,
+} from '@ai/agent-contracts';
+import { ConflictError } from '../errors.js';
+import type { Ledger } from '../ledger.js';
+import type { RunnerManager } from '../runner-manager.js';
+
+export interface TaskManageContext {
+  ledger: Ledger;
+  manager: RunnerManager;
+}
+
+/**
+ * Live task management routes (T6b). PATCH renames and/or retiers (tier
+ * changes refuse while a run is live: D8 no-hot-swap; the idle session is
+ * released so the next accepted run builds with the new tier). DELETE
+ * refuses while any run is active and otherwise removes the task, its
+ * idempotency entries and its orphaned pending requests; session files,
+ * transcripts and audit logs stay on disk for forensics.
+ */
+export function registerTaskManageRoutes(app: FastifyInstance, ctx: TaskManageContext): void {
+  app.patch<{ Params: { taskId: string } }>('/v1/tasks/:taskId', async (request) => {
+    const taskId = parse(Identifier, request.params.taskId);
+    const body = parse(PatchTaskRequestSchema, request.body);
+    if (body.title === undefined && body.permissionTier === undefined)
+      throw new TypeError('Invalid data: nothing to update.');
+    const task = ctx.ledger.task(taskId);
+    const title = body.title?.trim();
+    if (body.title !== undefined && !title) throw new TypeError('Invalid data: title is empty.');
+    const tierChanging =
+      body.permissionTier !== undefined && body.permissionTier !== task.permissionTier;
+    if (
+      tierChanging &&
+      task.runs.some((run) => run.status !== 'queued' && isActiveStatus(run.status))
+    )
+      throw new ConflictError('Finish the active run before changing the permission tier.');
+    await ctx.ledger.change((data) => {
+      const item = data.tasks.find((entry) => entry.id === taskId);
+      if (!item) return;
+      if (title !== undefined) item.title = title.slice(0, 120);
+      if (body.permissionTier !== undefined) item.permissionTier = body.permissionTier;
+      item.updatedAt = new Date().toISOString();
+    });
+    if (tierChanging) await ctx.manager.runnerFor(taskId).release();
+    return { task: ctx.ledger.task(taskId) };
+  });
+
+  app.delete<{ Params: { taskId: string } }>('/v1/tasks/:taskId', async (request) => {
+    const taskId = parse(Identifier, request.params.taskId);
+    const task = ctx.ledger.task(taskId);
+    if (task.runs.some((run) => isActiveStatus(run.status)))
+      throw new ConflictError('Finish the active run before deleting this task.');
+    const operationIds = new Set(task.runs.map((run) => run.operationId));
+    await ctx.ledger.change((data) => {
+      data.tasks = data.tasks.filter((entry) => entry.id !== taskId);
+      for (const operationId of operationIds) delete data.operations[operationId];
+      data.pendingConfirms = data.pendingConfirms.filter((item) => item.taskId !== taskId);
+      data.pendingCapabilities = data.pendingCapabilities.filter((item) => item.taskId !== taskId);
+    });
+    await ctx.manager.runnerFor(taskId).dispose();
+    return { deleted: true as const, taskId };
+  });
+
+  app.post<{ Params: { taskId: string } }>('/v1/tasks/:taskId/queue/replace', async (request) => {
+    const taskId = parse(Identifier, request.params.taskId);
+    const body = parse(ReplaceQueueRequestSchema, request.body);
+    const task = ctx.ledger.task(taskId);
+    if (!task.runs.some((run) => isActiveStatus(run.status)))
+      throw new Error('The task has no active run.');
+    const queue = await ctx.manager.runnerFor(taskId).replaceQueue(body.followUp);
+    return { queue };
+  });
+}

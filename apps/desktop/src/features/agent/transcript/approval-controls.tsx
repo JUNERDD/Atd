@@ -33,6 +33,7 @@ export function ApprovalControls({
   hideTitle?: boolean;
 }) {
   const { t } = useTranslation('tasks');
+  const { t: tPanel } = useTranslation('panel');
   const onceRef = useRef<HTMLButtonElement>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
@@ -81,6 +82,11 @@ export function ApprovalControls({
   return (
     <div className="approval-controls">
       {hideTitle ? null : <p className="text-sm font-medium">{t(scopeKey(request.scope))}</p>}
+      {request.executionId?.startsWith('child:') && (
+        <p className="text-xs text-muted-foreground">
+          {tPanel('confirms.subtask', { execution: request.executionId })}
+        </p>
+      )}
       {detail ? (
         <DetailBox variant="output" copyText={detail} className="approval-detail">
           <pre className="m-0 whitespace-pre-wrap wrap-anywhere">{preview}</pre>

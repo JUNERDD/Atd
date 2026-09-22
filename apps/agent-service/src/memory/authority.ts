@@ -1,0 +1,183 @@
+import { createJiti } from 'jiti';
+import type { ExtensionFactory } from '@earendil-works/pi-coding-agent';
+import type { MemoryTarget } from './policy.js';
+
+/**
+ * Hermes handles exposed by the patched `pi-hermes-memory/src/desktop.ts`
+ * entry (see patches/pi-hermes-memory@0.9.9.patch). The service consumes the
+ * entry through jiti exactly like the desktop host; the patch itself is T0
+ * frozen and never edited here.
+ */
+export interface HermesEntry {
+  id: string;
+  target: MemoryTarget;
+  content: string;
+}
+
+export interface HermesScope {
+  canRead: () => boolean;
+  canLearn: () => boolean;
+  policyVersion: () => number;
+  notify: (message: string, kind: 'info' | 'warning' | 'error') => void;
+  changed: () => void;
+}
+
+export interface HermesDesktop {
+  extension: (scope: HermesScope) => ExtensionFactory;
+  list: () => Promise<unknown>;
+  update: (entry: HermesEntry, content: string) => Promise<unknown>;
+  runWithPolicy: <T>(allowed: () => boolean, action: () => Promise<T>) => Promise<T>;
+  close: () => void;
+}
+
+async function loadHermes(agentDir: string): Promise<HermesDesktop> {
+  const jiti = createJiti(import.meta.url, { moduleCache: true, fsCache: false });
+  const module = await jiti.import<{
+    createDesktopMemory: (root: string) => Promise<HermesDesktop>;
+  }>('pi-hermes-memory/src/desktop.ts');
+  return module.createDesktopMemory(agentDir);
+}
+
+export interface MemoryAuthorityEvents {
+  notify: (message: string, kind: 'info' | 'warning' | 'error') => void;
+  changed: () => void;
+}
+
+/**
+ * Single service Memory authority (D7). The Hermes Store/DatabaseManager pair
+ * is instantiated exactly once per agentDir; every runner proxy delegates to
+ * this instance. There are no per-runner competing stores.
+ */
+export class MemoryAuthority {
+  private paused = false;
+  private policyVersion = 0;
+  private closed = false;
+
+  private constructor(
+    readonly agentDir: string,
+    private readonly hermes: HermesDesktop,
+    private readonly events: MemoryAuthorityEvents,
+  ) {}
+
+  private static readonly instances = new Map<string, Promise<MemoryAuthority>>();
+
+  /**
+   * Returns the singleton for one agentDir. Concurrent callers share the
+   * in-flight load; a failed load is dropped so the next caller retries.
+   */
+  static authorityFor(agentDir: string, events: MemoryAuthorityEvents): Promise<MemoryAuthority> {
+    const existing = MemoryAuthority.instances.get(agentDir);
+    if (existing) return existing;
+    const pending = loadHermes(agentDir).then(
+      (hermes) => new MemoryAuthority(agentDir, hermes, events),
+      (error: unknown) => {
+        MemoryAuthority.instances.delete(agentDir);
+        throw error;
+      },
+    );
+    MemoryAuthority.instances.set(agentDir, pending);
+    return pending;
+  }
+
+  /** Test/CLI hook: drops the cached singleton without touching the store. */
+  static forgetForTests(agentDir: string): void {
+    MemoryAuthority.instances.delete(agentDir);
+  }
+
+  isPaused(): boolean {
+    return this.paused;
+  }
+
+  currentPolicyVersion(): number {
+    return this.policyVersion;
+  }
+
+  /** Pauses learning; in-flight learners abort via the policy revision. */
+  setPaused(paused: boolean): number {
+    this.assertOpen();
+    this.paused = paused;
+    this.policyVersion += 1;
+    return this.policyVersion;
+  }
+
+  canRead(runMemory: boolean): boolean {
+    return runMemory;
+  }
+
+  canLearn(runMemory: boolean, executionId: string): boolean {
+    return runMemory && !this.paused && executionId.startsWith('root:');
+  }
+
+  /**
+   * Runner memory tools. The child scope can never learn, even when the root
+   * scope allows it; command materials stay excluded by the patched host.
+   */
+  extensionFor(scope: {
+    runMemory: boolean;
+    executionId: string;
+    taskId: string;
+  }): ExtensionFactory {
+    this.assertOpen();
+    const child = !scope.executionId.startsWith('root:');
+    return this.hermes.extension({
+      canRead: () => this.canRead(scope.runMemory),
+      canLearn: () => !child && this.canLearn(scope.runMemory, scope.executionId),
+      policyVersion: () => this.policyVersion,
+      notify: this.events.notify,
+      changed: this.events.changed,
+    });
+  }
+
+  /**
+   * Root learn/flush path: the runner hands its prompt/flush work to the
+   * authority, which gates it on the live policy revision and the root JSONL.
+   * Child executions are rejected before any Hermes call.
+   */
+  runRootOperation<T>(
+    scope: { runMemory: boolean; executionId: string },
+    action: () => Promise<T>,
+  ): Promise<T> {
+    this.assertOpen();
+    if (!scope.executionId.startsWith('root:'))
+      return Promise.reject(new Error('Child executions cannot trigger memory learning.'));
+    const version = this.policyVersion;
+    return this.hermes.runWithPolicy(
+      () => scope.runMemory && !this.paused && this.policyVersion === version,
+      action,
+    );
+  }
+
+  async list(): Promise<HermesEntry[]> {
+    this.assertOpen();
+    const entries = (await this.hermes.list()) as HermesEntry[];
+    return entries.filter(
+      (entry) =>
+        typeof entry?.id === 'string' &&
+        (entry.target === 'memory' || entry.target === 'user' || entry.target === 'failure') &&
+        typeof entry.content === 'string',
+    );
+  }
+
+  async update(entry: HermesEntry, content: string): Promise<void> {
+    this.assertOpen();
+    const result = (await this.hermes.update(entry, content)) as {
+      success?: boolean;
+      error?: string;
+    };
+    if (result && typeof result === 'object' && result.success === false)
+      throw new Error(result.error ?? 'Memory could not be updated.');
+    this.policyVersion += 1;
+  }
+
+  /** Service-owned flush/close; runners never close the shared store. */
+  close(): void {
+    if (this.closed) return;
+    this.closed = true;
+    MemoryAuthority.instances.delete(this.agentDir);
+    this.hermes.close();
+  }
+
+  private assertOpen(): void {
+    if (this.closed) throw new Error('The memory authority is closed.');
+  }
+}

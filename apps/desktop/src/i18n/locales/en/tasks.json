@@ -9,7 +9,8 @@
     "completed": "completed",
     "failed": "failed",
     "cancelled": "cancelled",
-    "interrupted": "interrupted"
+    "interrupted": "interrupted",
+    "unknown": "unknown"
   },
   "conversation": {
     "legacyTitle": "Imported draft · Not executed",
@@ -26,6 +27,7 @@
     "interrupted": "This task was interrupted",
     "cancelled": "Task cancelled",
     "failed": "The task could not finish",
+    "unknown": "The outcome could not be established",
     "stopped": "Stopped",
     "scrollToBottom": "Scroll to bottom"
   },
@@ -79,7 +81,8 @@
         "outside": "Edit a file outside this task's folder"
       },
       "bash": "Run a terminal command",
-      "command": "Save or update a command"
+      "command": "Save or update a command",
+      "mcp": "Use an MCP tool"
     },
     "outcome": {
       "once": "Allowed once",

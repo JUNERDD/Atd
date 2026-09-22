@@ -3,10 +3,32 @@ productName: AI
 asar: true
 directories:
   output: release
+# T7 bundling map (dir target; no publish / no installers / no Node binary):
+# extraResources = service dist + package.json (engines) + production
+# node_modules from `pnpm deploy --prod --legacy` staging
+# (tmp/t7-agent-service-pack; gitignored). node_modules is copied from the
+# staging folder itself so package.json files:["dist"] cannot drop it.
+# contracts/client dist remain for launcher/desktop resolution. System Node
+# runs the CLI. Node-binary + login-start + installers = future.
+# Stale Electron worker outputs are excluded here and deleted by
+# scripts/prepare-service-pack.mjs before pack.
 files:
+  # T6 pure client: desktop ships renderer + main + preload only.
   - dist/**
   - dist-electron/**
+  - '!dist-electron/worker*.js'
   - package.json
+extraResources:
+  - from: ../agent-service/dist
+    to: agent-service/dist
+  - from: ../agent-service/package.json
+    to: agent-service/package.json
+  - from: ../../tmp/t7-agent-service-pack/node_modules
+    to: agent-service/node_modules
+  - from: ../../packages/agent-contracts/dist
+    to: agent-contracts/dist
+  - from: ../../packages/agent-client/dist
+    to: agent-client/dist
 mac:
   category: public.app-category.productivity
   target: dmg

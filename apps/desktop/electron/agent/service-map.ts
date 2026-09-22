@@ -1,0 +1,186 @@
+import type {
+  AgentTask as ServiceTask,
+  CapabilityRequest as ServiceCapability,
+  PermissionRequest as ServiceRequest,
+  ServiceBlock,
+  TaskRun as ServiceRun,
+  TaskSnapshot as ServiceSnapshot,
+} from '@ai/agent-contracts';
+import type { AgentTask, FileRef, RunSnapshot, TaskInput, TaskRun } from './task-schema';
+import type { PermissionRequest } from './permission-schema';
+import type { Block, QueueState } from './transcript-schema';
+import type { TaskDetail } from './bridge';
+
+/** Maps a service task snapshot to the desktop detail shape (no Pi projection). */
+export function mapSnapshot(snapshot: ServiceSnapshot): TaskDetail {
+  return {
+    task: mapTask(snapshot.task),
+    artifacts: [],
+    requests: snapshot.requests.map(mapRequest),
+    queue: { ...snapshot.queue },
+    revision: snapshot.revision,
+    blocks: snapshot.blocks.map(mapBlock),
+    capabilities: snapshot.capabilities.map((cap) => ({
+      id: cap.id,
+      capability: cap.capability,
+      runId: cap.runId,
+      executionId: cap.executionId,
+      expiresAt: cap.expiresAt,
+    })),
+  };
+}
+
+export function mapTask(task: ServiceTask): AgentTask {
+  return {
+    id: task.id,
+    title: task.title,
+    createdAt: task.createdAt,
+    updatedAt: task.updatedAt,
+    sessionFile: task.sessionFile,
+    runs: task.runs.map(mapRun),
+    legacy: null,
+    ...(task.permissionTier ? { permissionTier: task.permissionTier } : {}),
+  };
+}
+
+function mapRun(run: ServiceRun): TaskRun {
+  return {
+    id: run.id,
+    invocationId: run.operationId,
+    createdAt: run.createdAt,
+    status: run.status,
+    error: run.error,
+    snapshot: mapRunSnapshot(run),
+  };
+}
+
+function mapRunSnapshot(run: ServiceRun): RunSnapshot {
+  const input: TaskInput = {
+    text: run.snapshot.input.text,
+    source: run.snapshot.input.source,
+    capturedAt: run.snapshot.input.capturedAt,
+    selection: run.snapshot.input.selection,
+    clipboard: run.snapshot.input.clipboard,
+    files: run.snapshot.input.files.map((file): FileRef => ({
+      id: file.id,
+      name: file.name,
+      size: file.size,
+      type: file.type,
+    })),
+    arguments: { ...run.snapshot.input.arguments },
+  };
+  return {
+    command: null,
+    definition: 'current',
+    input,
+    instructions: run.snapshot.instructions,
+    model: {
+      connectionId: run.snapshot.model.connectionId,
+      modelId: run.snapshot.model.modelId,
+      provider: run.snapshot.model.provider,
+      baseUrl: run.snapshot.model.baseUrl,
+    },
+    ...(run.snapshot.thinkingLevel ? { thinkingLevel: run.snapshot.thinkingLevel } : {}),
+    tools: run.snapshot.tools.filter(
+      (tool): tool is 'read' | 'write' | 'edit' | 'bash' | 'command' => tool !== 'ask_user',
+    ),
+    memory: run.snapshot.memory,
+  };
+}
+
+export function mapRequest(request: ServiceRequest): PermissionRequest {
+  if (request.kind === 'confirmation') {
+    return {
+      kind: 'confirmation',
+      id: request.id,
+      taskId: request.taskId,
+      runId: request.runId,
+      toolCallId: request.toolCallId,
+      executionId: request.executionId,
+      scope: request.scope,
+      title: request.title,
+      detail: request.detail,
+    };
+  }
+  return {
+    kind: 'input',
+    id: request.id,
+    taskId: request.taskId,
+    runId: request.runId,
+    toolCallId: request.toolCallId,
+    executionId: request.executionId,
+    title: request.title,
+    options: [...request.options],
+  };
+}
+
+export function mapBlock(block: ServiceBlock): Block {
+  const base = {
+    id: block.id,
+    runId: block.runId,
+    timestamp: block.timestamp,
+    endedAt: block.endedAt,
+  };
+  switch (block.kind) {
+    case 'user':
+      return { kind: 'user', ...base, text: block.text };
+    case 'assistant':
+      return {
+        kind: 'assistant',
+        ...base,
+        text: block.text,
+        streaming: block.streaming,
+        stopReason: block.stopReason,
+        error: block.error,
+      };
+    case 'thinking':
+      return {
+        kind: 'thinking',
+        ...base,
+        text: block.text,
+        streaming: block.streaming,
+        redacted: block.redacted,
+        durationMs: null,
+      };
+    case 'tool':
+      return {
+        kind: 'tool',
+        ...base,
+        callId: block.callId,
+        name: block.name,
+        args: { ...(block.args as Record<string, unknown>) },
+        status: block.status,
+        output: block.output,
+        partial: block.partial,
+        details: { diff: '', truncated: false, fullOutputPath: '' },
+        permission: block.permission
+          ? { scope: block.permission.scope, outcome: block.permission.outcome }
+          : null,
+      };
+    case 'question':
+      return {
+        kind: 'question',
+        ...base,
+        callId: block.callId,
+        title: block.title,
+        options: [...block.options],
+        status: block.status,
+        answer: block.answer,
+        skipped: block.skipped,
+      };
+    case 'system':
+      return { kind: 'system', ...base, level: block.level, text: block.text };
+    default: {
+      const _exhaustive: never = block;
+      throw new Error(`Unsupported service block: ${JSON.stringify(_exhaustive)}`);
+    }
+  }
+}
+
+export function mapQueue(queue: QueueState): QueueState {
+  return { steering: [...queue.steering], followUp: [...queue.followUp] };
+}
+
+export function serviceCapabilityId(cap: ServiceCapability): string {
+  return `${cap.capability}:${cap.id}`;
+}
