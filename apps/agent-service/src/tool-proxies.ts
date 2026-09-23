@@ -13,11 +13,8 @@ import {
   type ToolDefinition,
 } from '@earendil-works/pi-coding-agent';
 import {
-  DesktopCapabilitySchema,
-  errorMessage,
   grantKey,
   tierAllows,
-  type DesktopCapability,
   type GrantScope,
   type McpServerConfig,
   type PermissionTier,
@@ -25,8 +22,9 @@ import {
 import type { CapabilityRegistry } from './capabilities.js';
 import { registerConfigureMcpTool } from './configure-mcp-tool.js';
 import { ConfirmStore } from './confirms.js';
+import { registerDesktopTool } from './desktop-tool.js';
 import type { Logger } from './logging.js';
-import { confined, inside, shellAllowlist } from './service-fs.js';
+import { confined, inside, shellAllowlist, withinRoots } from './service-fs.js';
 
 /** Host services the service tool proxies need; owned by the task runner. */
 export interface ServiceToolHost {
@@ -43,6 +41,11 @@ export interface ServiceToolHost {
   audit: (entry: Record<string, unknown>) => void;
   log: Logger;
   setStatus: (status: 'awaiting_input' | 'awaiting_confirmation' | 'running') => void;
+  /**
+   * Directories of the skills the current run loaded. They are the run's read-only material:
+   * the read tool reads inside them without a confirmation; writes keep the usual rules.
+   */
+  skillDirs: () => readonly string[];
   configureMcp?: (servers: McpServerConfig[]) => Promise<McpServerConfig[]>;
   configuredMcp?: () => McpServerConfig[];
 }
@@ -113,6 +116,15 @@ export function serviceTools(host: ServiceToolHost): ExtensionFactory {
     }
   }
 
+  /**
+   * Whether a read targets a directory of the current run's skills. Their files are read-only
+   * material the run was given, so reading them needs no confirmation.
+   */
+  async function readsRunSkill(args: unknown): Promise<boolean> {
+    const target = pathOf(args);
+    return target !== '' && (await withinRoots(host.skillDirs(), host.cwd, target));
+  }
+
   function controlled<T extends TSchema, D, S>(
     tool: ToolDefinition<T, D, S>,
     name: 'read' | 'write' | 'edit' | 'bash',
@@ -141,7 +153,18 @@ export function serviceTools(host: ServiceToolHost): ExtensionFactory {
             );
           }
         }
-        await authorize(id, scope, titleOf(name, args), detailOf(name, args), signal ?? undefined);
+        if (name === 'read' && (await readsRunSkill(args))) {
+          const base = { taskId: host.taskId, runId: host.runId(), toolCallId: id };
+          host.audit({ ...base, tool: 'read:skill', decision: 'skill' });
+        } else {
+          await authorize(
+            id,
+            scope,
+            titleOf(name, args),
+            detailOf(name, args),
+            signal ?? undefined,
+          );
+        }
         const token = `${host.taskId}:${id}`;
         return calls.run(token, () =>
           tool.execute(id, args, signal, onUpdate, { ...ctx, cwd: host.cwd }),
@@ -163,12 +186,12 @@ export function serviceTools(host: ServiceToolHost): ExtensionFactory {
           operations: {
             readFile: async (target) => {
               guard();
-              const { real } = await confined(host.cwd, host.dataDir, target);
+              const { real } = await confined(host.cwd, host.dataDir, target, host.skillDirs());
               return readFile(real);
             },
             access: async (target) => {
               guard();
-              const { real } = await confined(host.cwd, host.dataDir, target);
+              const { real } = await confined(host.cwd, host.dataDir, target, host.skillDirs());
               await stat(real);
             },
           },
@@ -264,46 +287,7 @@ export function serviceTools(host: ServiceToolHost): ExtensionFactory {
         };
       },
     });
-    pi.registerTool({
-      name: 'desktop',
-      label: 'Desktop abilities',
-      description:
-        'Desktop-only abilities served by a connected client (file picker, selection, clipboard).',
-      parameters: Type.Object(
-        { capability: DesktopCapabilitySchema, input: Type.Optional(Type.Unknown()) },
-        { additionalProperties: false },
-      ),
-      executionMode: 'sequential',
-      async execute(_id, args, signal) {
-        void _id;
-        signal?.throwIfAborted();
-        const params = args as { capability: DesktopCapability; input?: unknown };
-        host.audit({
-          taskId: host.taskId,
-          runId: host.runId(),
-          tool: `desktop:${params.capability}`,
-          decision: 'request',
-        });
-        try {
-          const value = await host.capabilities.request(
-            {
-              capability: params.capability,
-              input: params.input ?? null,
-              taskId: host.taskId,
-              runId: host.runId(),
-              executionId: host.executionId(),
-            },
-            signal ?? undefined,
-          );
-          return { content: [{ type: 'text', text: JSON.stringify(value) }], details: {} };
-        } catch (error) {
-          return {
-            content: [{ type: 'text', text: `Desktop capability failed: ${errorMessage(error)}` }],
-            details: {},
-          };
-        }
-      },
-    });
+    registerDesktopTool(pi, host);
     registerConfigureMcpTool(pi, host);
   };
 }
@@ -314,10 +298,14 @@ function scopeOf(
   host: ServiceToolHost,
 ): GrantScope {
   if (name === 'bash') return { tool: 'bash' };
-  const target =
-    typeof (args as { path?: unknown }).path === 'string' ? (args as { path: string }).path : '';
-  const absolute = path.resolve(host.cwd, target);
+  const absolute = path.resolve(host.cwd, pathOf(args));
   return { tool: name, location: inside(host.cwd, absolute) ? 'inside' : 'outside' };
+}
+
+/** The file path a file tool call names; empty when it names none. */
+function pathOf(args: unknown): string {
+  const value = (args as { path?: unknown }).path;
+  return typeof value === 'string' ? value : '';
 }
 
 function titleOf(name: string, args: unknown): string {

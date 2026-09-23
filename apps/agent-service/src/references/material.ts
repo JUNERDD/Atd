@@ -36,6 +36,8 @@ export interface ReferenceContext {
   run: TaskRun;
   /** The run's child tool ceiling: its frozen role capabilities. */
   toolCeiling: string[];
+  /** Characters the run's skills take from the context budget first (skills/run-skills.ts). */
+  skillChars: number;
   /** Configured servers and the run's frozen tool selection; null while MCP is unavailable. */
   mcp: { servers: McpServerConfig[]; selected: McpToolSelection[] | null } | null;
 }
@@ -73,7 +75,7 @@ interface Source {
  * Resolves a run's staged references. A reference that no longer resolves
  * never fails the run: it is listed as unavailable with its reason, so the
  * model can tell the user. Everything the references add counts against the
- * context budget left by the run's own input (tasks/run-budget.ts).
+ * context budget left by the run's own input and its skills (tasks/run-budget.ts).
  */
 export async function resolveRunReferences(
   context: ReferenceContext,
@@ -118,7 +120,7 @@ function compose(
   context: ReferenceContext,
   parts: { notes: Note[]; hints: Hint[]; sources: Source[] },
 ): RunReferences {
-  const room = CONTEXT_BUDGET - runInputSize(context.run.snapshot);
+  const room = CONTEXT_BUDGET - runInputSize(context.run.snapshot) - context.skillChars;
   const excerpts = new Map<Source, { text: string; audit: Record<string, unknown> }>();
   const noRoom = (source: Source): Note => ({
     reference: source.reference,

@@ -1,11 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
+import { MAX_RUN_SKILLS } from '@ai/agent-contracts';
 import { atomicWrite } from '../config.js';
 import {
   diagnoseHarnessDisabled,
   diagnoseInvalidRef,
   diagnoseMissingPackage,
-  diagnoseNotRunAvailable,
   diagnoseStaleRevision,
   type SkillDiagnostic,
 } from './diagnostics.js';
@@ -140,6 +140,18 @@ export function resolveRef(
 }
 
 /**
+ * The skills one run requests: a name counts once, at its first occurrence
+ * (a composer may carry the same skill chip twice), and the list stops at
+ * `MAX_RUN_SKILLS`. Deduping first keeps a repeat from pushing a later
+ * distinct skill past the cap.
+ */
+export function runSkillRefs(refs: readonly SkillRefInput[]): SkillRefInput[] {
+  const first = new Map<string, SkillRefInput>();
+  for (const ref of refs) if (!first.has(ref.name)) first.set(ref.name, ref);
+  return [...first.values()].slice(0, MAX_RUN_SKILLS);
+}
+
+/**
  * Freezes the skill snapshot for a run. Idempotent per runId: repeats return
  * the original snapshot and never re-resolve, so updates apply next run and
  * active sessions are never reloaded.
@@ -147,7 +159,7 @@ export function resolveRef(
 export async function freezeRunSkills(
   profile: SkillProfilePaths,
   runId: string,
-  requested: SkillRefInput[],
+  refs: SkillRefInput[],
 ): Promise<SkillSnapshotRecord> {
   const runs = await readJson<RunsFile>(profile.runsFile, emptyRuns());
   const frozen = runs.runs[runId];
@@ -156,9 +168,10 @@ export async function freezeRunSkills(
   const [atd, agents] = await Promise.all([discoverAtdSkills(), discoverUserAgentSkills()]);
   const disabled = await readDisabledSkillNames(profile);
   const all = mergeSkillCatalog(installed, atd.skills, agents.skills);
+  const requested = runSkillRefs(refs);
   const skills: SkillRevisionRecord[] = [];
   const diagnostics: SkillDiagnostic[] = [];
-  for (const ref of requested.slice(0, 32)) {
+  for (const ref of requested) {
     const { record, diagnostic } = resolveRef(all, ref);
     if (record && disabled.has(record.name)) diagnostics.push(diagnoseHarnessDisabled(record.name));
     else if (record) skills.push(record);
@@ -167,7 +180,7 @@ export async function freezeRunSkills(
   const snapshot: SkillSnapshotRecord = {
     revision: randomUUID(),
     frozenAt: new Date().toISOString(),
-    requested: requested.slice(0, 32),
+    requested,
     skills,
     diagnostics,
   };
@@ -191,23 +204,6 @@ export async function loadRunSnapshot(
       diagnostics: [],
     }
   );
-}
-
-/**
- * Validates an explicit `/skill:name` entry against the frozen snapshot. Only
- * frozen skills expand; everything else is `not_run_available`, never a
- * silent pass-through to ambient content.
- */
-export function validateSkillEntry(
-  snapshot: SkillSnapshotRecord,
-  runId: string,
-  name: string,
-): { record: SkillRevisionRecord | null; diagnostic: SkillDiagnostic | null } {
-  const invalid = diagnoseInvalidRef(name);
-  if (invalid) return { record: null, diagnostic: invalid };
-  const record = snapshot.skills.find((item) => item.name === name) ?? null;
-  if (!record) return { record: null, diagnostic: diagnoseNotRunAvailable(name, runId) };
-  return { record, diagnostic: null };
 }
 
 /**

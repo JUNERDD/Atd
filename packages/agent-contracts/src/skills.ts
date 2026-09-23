@@ -110,13 +110,16 @@ export const SkillDiagnosticSchema = Type.Object(
 );
 export type SkillDiagnostic = Static<typeof SkillDiagnosticSchema>;
 
+/** Upper bound on the skills one run requests; the composer dedupes chips before staging. */
+export const MAX_RUN_SKILLS = 32;
+
 /** Frozen per run: requested refs plus the pinned revisions they resolved to. */
 export const SkillSnapshotSchema = Type.Object(
   {
     revision: Identifier,
     frozenAt: Type.String(),
-    requested: Type.Array(SkillRefSchema, { maxItems: 32 }),
-    skills: Type.Array(SkillRevisionSchema, { maxItems: 32 }),
+    requested: Type.Array(SkillRefSchema, { maxItems: MAX_RUN_SKILLS }),
+    skills: Type.Array(SkillRevisionSchema, { maxItems: MAX_RUN_SKILLS }),
     diagnostics: Type.Array(SkillDiagnosticSchema, { maxItems: 64 }),
   },
   { additionalProperties: false },
@@ -184,46 +187,6 @@ export const SkillUpdateRequestSchema = Type.Object(
   { additionalProperties: false },
 );
 export type SkillUpdateRequest = Static<typeof SkillUpdateRequestSchema>;
-
-/** Explicit `/skill:name args` entry parsed without Pi loader side effects. */
-export const SkillExpansionRequestSchema = Type.Object(
-  {
-    text: Type.String({ minLength: 1, maxLength: 100000 }),
-    runId: Type.Optional(Identifier),
-  },
-  { additionalProperties: false },
-);
-export type SkillExpansionRequest = Static<typeof SkillExpansionRequestSchema>;
-
-export const SkillExpansionResponseSchema = Type.Object(
-  {
-    isSkillCommand: Type.Boolean(),
-    allowed: Type.Boolean(),
-    skillName: Type.Union([SkillName, Type.Null()]),
-    args: Type.String({ maxLength: 100000 }),
-    /** True only for a validated explicit entry; ordinary input stays false. */
-    expandPromptTemplates: Type.Boolean(),
-    diagnostics: Type.Array(SkillDiagnosticSchema, { maxItems: 8 }),
-  },
-  { additionalProperties: false },
-);
-export type SkillExpansionResponse = Static<typeof SkillExpansionResponseSchema>;
-
-/** True only for the `/skill:name` prefix; all other text is ordinary input. */
-export function isSkillCommand(text: string): boolean {
-  return text.startsWith('/skill:');
-}
-
-/** Parses `/skill:name args`; returns null for ordinary input or bad names. */
-export function parseSkillCommand(text: string): { name: string; args: string } | null {
-  if (!isSkillCommand(text)) return null;
-  const rest = text.slice('/skill:'.length);
-  const space = rest.indexOf(' ');
-  const name = (space === -1 ? rest : rest.slice(0, space)).trim();
-  if (!/^[A-Za-z0-9][A-Za-z0-9_-]*$/.test(name)) return null;
-  const args = space === -1 ? '' : rest.slice(space + 1).trim();
-  return { name, args };
-}
 
 /** Empty snapshot for runs that requested no skills; preserves T1/T2 behavior. */
 export function emptySkillSnapshot(): SkillSnapshot {

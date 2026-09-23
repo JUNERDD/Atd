@@ -10,6 +10,7 @@ import { takeTaskReferences } from './references/staging.js';
 import { ResourceStore } from './resources.js';
 import { ensureSkillProfile, skillProfilePaths } from './skills/profile.js';
 import { freezeRunRole } from './skills/roles.js';
+import { captureRunSkills, skillChars, type RunSkills } from './skills/run-skills.js';
 import { takeTaskStaging } from './skills/staging.js';
 import { freezeRunSkills, releaseRun } from './skills/versions.js';
 import { readServiceId, type RunnerContext } from './task-runner.js';
@@ -21,20 +22,31 @@ export interface RunFreezeDeps {
   audit: (entry: Record<string, unknown>) => void;
 }
 
+/** What a run's freeze resolved for its material and session. */
+export interface FrozenSelections {
+  references: RunReferences;
+  skills: RunSkills;
+}
+
 /**
  * Accept-time freeze of the selections staged for a task's next run. Staging
- * is consumed once here; the frozen skill and MCP records are what the run's
- * session binding reads (run-binding.ts), and the resolved references are
- * returned for the run's material and binding, so later staging never reaches
- * this run.
+ * is consumed once here; the frozen role and MCP records are what the run's
+ * session binding reads (run-binding.ts), the skills the run loads are
+ * captured with their bodies, and the resolved references are returned for
+ * the run's material and binding, so later staging never reaches this run.
  */
 export async function freezeRunSelections(
   deps: RunFreezeDeps,
   run: TaskRun,
-): Promise<RunReferences> {
-  const toolCeiling = await freezeSkills(deps, run);
+): Promise<FrozenSelections> {
+  const { toolCeiling, skills } = await freezeSkills(deps, run);
   const mcp = await freezeMcp(deps, run);
-  return freezeReferencesForRun(deps, run, { toolCeiling, mcp });
+  const references = await freezeReferencesForRun(deps, run, {
+    toolCeiling,
+    mcp,
+    skillChars: skillChars(run.id, skills.loaded),
+  });
+  return { references, skills };
 }
 
 /** Releases the run's frozen skill and MCP records once the run ends. */
@@ -51,15 +63,15 @@ export async function releaseRunSelections(deps: RunFreezeDeps, runId: string): 
 }
 
 /**
- * Resolves the references staged for this run against the tool ceiling and
- * MCP state frozen just before (references/material.ts). They reach the run
- * only through its material and session binding, so nothing is written per
- * run and nothing needs a release.
+ * Resolves the references staged for this run against the tool ceiling, MCP
+ * state and skills frozen just before (references/material.ts). They reach
+ * the run only through its material and session binding, so nothing is
+ * written per run and nothing needs a release.
  */
 async function freezeReferencesForRun(
   deps: RunFreezeDeps,
   run: TaskRun,
-  frozen: Pick<ReferenceContext, 'toolCeiling' | 'mcp'>,
+  frozen: Pick<ReferenceContext, 'toolCeiling' | 'mcp' | 'skillChars'>,
 ): Promise<RunReferences> {
   const references = await takeTaskReferences(deps.ctx.paths.root, deps.taskId);
   const resolved = await resolveRunReferences(
@@ -70,27 +82,36 @@ async function freezeReferencesForRun(
   return resolved;
 }
 
-/** Freezes skills and the role; answers the run's tool ceiling for its children. */
-async function freezeSkills(deps: RunFreezeDeps, run: TaskRun): Promise<string[]> {
+/**
+ * Freezes skills and the role, then captures the skills the run loads.
+ * Answers those skills and the run's tool ceiling for its children.
+ */
+async function freezeSkills(
+  deps: RunFreezeDeps,
+  run: TaskRun,
+): Promise<{ toolCeiling: string[]; skills: RunSkills }> {
   // T3 additive freeze: staged next-run selection is consumed once; runs
   // without staging freeze empty skills + the default role (T1/T2 shape).
   const profile = skillProfilePaths(deps.ctx.paths.root, deps.ctx.paths.agentDir);
   await ensureSkillProfile(profile);
   const staging = await takeTaskStaging(profile, deps.taskId);
-  const skills = await freezeRunSkills(profile, run.id, staging.skills);
+  const snapshot = await freezeRunSkills(profile, run.id, staging.skills);
   const { capabilities } = await freezeRunRole(profile, {
     runId: run.id,
     roleId: staging.roleId,
     requestedTools: [...run.snapshot.tools],
-    requestedSkills: skills.skills.map((skill) => skill.name),
+    requestedSkills: snapshot.skills.map((skill) => skill.name),
   });
+  const skills = await captureRunSkills(snapshot, capabilities);
   deps.audit({
     taskId: deps.taskId,
     runId: run.id,
-    skillRevision: skills.revision,
-    skillCount: skills.skills.length,
+    skillRevision: snapshot.revision,
+    skillCount: snapshot.skills.length,
+    loadedSkills: skills.loaded.map(({ name, revision }) => ({ name, revision })),
+    skillDiagnostics: skills.diagnostics,
   });
-  return capabilities.tools;
+  return { toolCeiling: capabilities.tools, skills };
 }
 
 /** Freezes the run's MCP selection; answers the servers and selection, or null while degraded. */

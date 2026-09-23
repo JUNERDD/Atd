@@ -25,6 +25,7 @@ const settledServiceBlocks: ServiceBlock[] = [
     timestamp: USER_TS,
     endedAt: USER_TS,
     text: 'Hello',
+    prompt: true,
   },
   {
     kind: 'assistant',
@@ -117,7 +118,7 @@ describe('mapBlock + applyTranscriptPatch', () => {
       ['question', `q:${ASK_CALL}`, RUN_ID],
       ['assistant', `a:${ABORTED_TS}:0`, RUN_ID],
     ]);
-    expect(byId(blocks, `u:${USER_TS}:0`, 'user').text).toBe('Hello');
+    expect(byId(blocks, `u:${USER_TS}:0`, 'user')).toMatchObject({ text: 'Hello', prompt: true });
     const assistant = byId(blocks, `a:${ASSISTANT_TS}:0`, 'assistant');
     expect(assistant).toMatchObject({
       text: 'I will look that up.',

@@ -3,7 +3,6 @@ import type { AgentSession, SessionManager } from '@earendil-works/pi-coding-age
 import type { QueueState, ServiceBlock } from '@ai/agent-contracts';
 import {
   diffServiceBlocks,
-  firstInvocationRunId,
   fromServiceBranch,
   projectServiceBlocks,
   toolPartialText,
@@ -43,6 +42,8 @@ export class LiveTranscript {
     private readonly manager: SessionManager,
     private readonly sink: LiveTranscriptSink,
     private readonly runId: () => string,
+    /** The task's first run (see `ProjectServiceBlocksInput.firstRunId`). */
+    private readonly firstRunId: string,
   ) {}
 
   attach(): void {
@@ -97,7 +98,7 @@ export class LiveTranscript {
       branch,
       partial: this.partial,
       partials: this.partials,
-      defaultRunId: firstInvocationRunId(branch) ?? runId,
+      firstRunId: this.firstRunId,
       live: true,
     });
     const patch = diffServiceBlocks(this.blocks, next);

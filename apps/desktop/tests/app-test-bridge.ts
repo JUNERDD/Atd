@@ -101,6 +101,7 @@ export function installBridge(extras?: {
               timestamp: 0,
               endedAt: 0,
               text: request.input.text,
+              prompt: true,
             },
           ]
         : [];

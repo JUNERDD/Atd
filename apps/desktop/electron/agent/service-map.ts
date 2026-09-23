@@ -68,6 +68,7 @@ function mapRunSnapshot(run: ServiceRun): RunSnapshot {
       type: file.type,
     })),
     arguments: { ...run.snapshot.input.arguments },
+    ...(run.snapshot.input.chips ? { chips: structuredClone(run.snapshot.input.chips) } : {}),
   };
   return {
     command: null,
@@ -123,7 +124,7 @@ export function mapBlock(block: ServiceBlock): Block {
   };
   switch (block.kind) {
     case 'user':
-      return { kind: 'user', ...base, text: block.text };
+      return { kind: 'user', ...base, text: block.text, ...(block.prompt ? { prompt: true } : {}) };
     case 'assistant':
       return {
         kind: 'assistant',

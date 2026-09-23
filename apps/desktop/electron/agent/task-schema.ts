@@ -1,4 +1,5 @@
 import { Type, type Static } from 'typebox';
+import { InputChipRangeSchema, MAX_INPUT_CHIPS } from '@ai/agent-contracts';
 import { ArgumentValuesSchema, CommandSchema, Identifier, ToolIdSchema } from './command-schema';
 import {
   FrozenModelSchema,
@@ -35,6 +36,8 @@ export const InputSchema = Type.Object(
     clipboard: Type.String({ maxLength: 100000 }),
     files: Type.Array(FileRefSchema, { maxItems: 10 }),
     arguments: ArgumentValuesSchema,
+    /** The service's chip records (`TaskInput.chips`), passed through unchanged. */
+    chips: Type.Optional(Type.Array(InputChipRangeSchema, { maxItems: MAX_INPUT_CHIPS })),
   },
   { additionalProperties: false },
 );

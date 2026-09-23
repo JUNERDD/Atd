@@ -14,6 +14,8 @@ import type { RunBinding } from './run-binding.js';
 import { openRunModel, reuseRunModel, type RunModel } from './run-model.js';
 import { buildSkillLoaderOptions } from './skills/loader.js';
 import { skillProfilePaths } from './skills/profile.js';
+import type { LoadedSkill } from './skills/run-skills.js';
+import { sessionSkills } from './skills/session-skills.js';
 import type { RunnerContext } from './task-runner.js';
 import { effectiveTaskTier } from './tasks/tier.js';
 import { serviceTools } from './tool-proxies.js';
@@ -54,12 +56,14 @@ export interface RunAttachment {
   text: string;
 }
 
-/** Material a run injects before its first turn: its instructions, files and references. */
+/** Material a run injects before its first turn: its instructions, files, references and skills. */
 export interface RunMaterial {
   instructions: string;
   attachments: RunAttachment[];
   /** What the run's `@` references resolved to at freeze (references/material.ts); may be empty. */
   references: string;
+  /** Skills captured at freeze, sent in a message of their own (skills/session-skills.ts). */
+  skills: LoadedSkill[];
 }
 
 /**
@@ -74,6 +78,8 @@ export async function createLiveState(
   binding: RunBinding,
 ): Promise<LiveState> {
   const { ctx, taskId } = deps;
+  // The run that owns a session's unmarked start; a new task's first run is this one.
+  const [firstRun = run] = ctx.ledger.task(taskId).runs;
   const sessionsDir = path.join(ctx.paths.sessionsDir, taskId);
   const cwd = path.join(ctx.paths.tasksDir, taskId, 'output');
   // T3 skill wiring: resource loading uses the service profile cwd, never the
@@ -102,7 +108,6 @@ export async function createLiveState(
       loaderCwd: skillProfile.loaderCwd,
       agentDir: ctx.paths.agentDir,
       settingsManager: settings,
-      skillEntries: binding.skillEntries,
       systemPrompt: SERVICE_SYSTEM_PROMPT,
       appendSystemPrompt: [],
       extensionFactories: [
@@ -120,11 +125,13 @@ export async function createLiveState(
           audit: deps.audit,
           log: ctx.log,
           setStatus: (status) => deps.setStatus(deps.currentRunId(), status),
+          skillDirs: () => deps.currentMaterial().skills.map((skill) => skill.baseDir),
           configureMcp: binding.mcp.configureMcp,
           configuredMcp: binding.mcp.configuredMcp,
         }),
         binding.mcp.factory,
         subagentsFactory,
+        sessionSkills({ runId: deps.currentRunId, skills: () => deps.currentMaterial().skills }),
         (pi) => {
           pi.on('before_agent_start', () => {
             const material = formatMaterial(deps.currentMaterial());
@@ -233,6 +240,7 @@ export async function createLiveState(
         },
       },
       deps.currentRunId,
+      firstRun.id,
     ),
     sessionFile: created.session.sessionFile ?? '',
     bindingKey: binding.key,
@@ -250,10 +258,11 @@ export async function createLiveState(
 
 /**
  * Rebinds a live session to a later run of the same task, or answers false
- * when the run needs a new session: its binding differs (skills, MCP proxies,
- * tools or role; see run-binding.ts) or it needs another model runtime (see
- * reuseRunModel). Pi fixes the binding at construction and a live session is
- * never reloaded, so the caller rebuilds from the same session file instead.
+ * when the run needs a new session: its binding differs (MCP proxies, tools,
+ * role, memory or agents; see run-binding.ts) or it needs another model
+ * runtime (see reuseRunModel). Pi fixes the binding at construction and a live
+ * session is never reloaded, so the caller rebuilds from the same session file
+ * instead.
  */
 export async function applyRunToSession(
   live: LiveState,

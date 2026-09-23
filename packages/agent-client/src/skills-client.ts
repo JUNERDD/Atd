@@ -24,15 +24,6 @@ export interface SkillDiagnosticWire {
   path?: string;
 }
 
-export interface SkillExpansionWire {
-  isSkillCommand: boolean;
-  allowed: boolean;
-  skillName: string | null;
-  args: string;
-  expandPromptTemplates: boolean;
-  diagnostics: SkillDiagnosticWire[];
-}
-
 export interface RoleWire {
   id: string;
   revision: string;
@@ -104,15 +95,6 @@ export function updateSkill(
   fetchImpl?: typeof fetch,
 ): Promise<{ skill: unknown; diagnostics: SkillDiagnosticWire[] }> {
   return request(options, `/v1/skills/${encodeURIComponent(name)}/update`, 'POST', {}, fetchImpl);
-}
-
-/** Validates an explicit `/skill:name` entry against the frozen run snapshot. */
-export function expandSkill(
-  options: AgentClientOptions,
-  input: { text: string; runId: string },
-  fetchImpl?: typeof fetch,
-): Promise<SkillExpansionWire> {
-  return request(options, '/v1/skills/expand', 'POST', input, fetchImpl);
 }
 
 /** Stages skill/role selection for the next run of a task. */

@@ -84,6 +84,11 @@ export const BlockSchema = Type.Union([
       kind: Type.Literal('user'),
       ...blockBase,
       text: Type.String(),
+      /**
+       * The run's prompt (first user message after its invocation). The renderer draws it from the
+       * run snapshot's input, chips included; queued follow-ups stay plain text.
+       */
+      prompt: Type.Optional(Type.Literal(true)),
     },
     { additionalProperties: false },
   ),
