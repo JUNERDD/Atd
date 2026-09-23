@@ -109,7 +109,7 @@ export function ExtensionSkillsGroup({
           const showUpdate = connected && row.sourceKind === 'local';
           const rowBusy = busyName === row.name;
           return (
-            <Item asChild key={row.name} size="xs">
+            <Item asChild key={row.name} size="xs" className="pl-0">
               <li>
                 <ItemMedia variant="icon">
                   <BookOpen />
