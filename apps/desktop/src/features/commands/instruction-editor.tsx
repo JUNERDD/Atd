@@ -1,6 +1,6 @@
-import { useRef } from 'react';
+import { useCallback, useMemo, useRef, type Dispatch, type SetStateAction } from 'react';
 import { useTranslation } from 'react-i18next';
-import CodeMirror, { type ReactCodeMirrorRef } from '@uiw/react-codemirror';
+import CodeMirror, { type BasicSetupOptions, type ReactCodeMirrorRef } from '@uiw/react-codemirror';
 import { instructionExtensions } from './instruction-extensions';
 import { instructionTheme } from './instruction-theme';
 import { Settings2 } from 'lucide-react';
@@ -11,13 +11,23 @@ import { FieldHint } from '../../components/field-hint';
 import type { CommandDefinition } from '../../../electron/agent/command-schema';
 import { availableVariables, templateReferences } from '../../../electron/agent/command-validation';
 
+const basicSetup: BasicSetupOptions = {
+  lineNumbers: false,
+  foldGutter: false,
+  highlightActiveLine: false,
+  highlightActiveLineGutter: false,
+  autocompletion: false,
+  bracketMatching: false,
+  closeBrackets: false,
+};
+
 export function InstructionEditor({
   command,
   onChange,
   onConfigureSource,
 }: {
   command: CommandDefinition;
-  onChange: (command: CommandDefinition) => void;
+  onChange: Dispatch<SetStateAction<CommandDefinition>>;
   onConfigureSource: (source: ContextVariable) => void;
 }) {
   const { t } = useTranslation('commands');
@@ -34,29 +44,41 @@ export function InstructionEditor({
       .filter((name) => !contextVariables.some((variable) => variable.name === name))
       .map((name) => ({ name, enabled: true, source: undefined })),
   ];
-  const extensions = instructionExtensions(command, {
-    variables: variableDetails(command, t),
-    label: t('instruction.title'),
-  });
+  // react-codemirror reconfigures the editor whenever `basicSetup`, `extensions` or `onChange`
+  // changes identity; rebuilt extensions also replace the completion source, which drops its open
+  // list. So typing changes none of them: the extensions change only with the offered variables
+  // and the language.
+  const { input, parameters } = command;
+  const extensions = useMemo(
+    () =>
+      instructionExtensions(
+        { input, parameters },
+        { variables: variableDetails({ parameters }, t), label: t('instruction.title') },
+      ),
+    [input, parameters, t],
+  );
+  const changeInstructions = useCallback(
+    (instructions: string) => onChange((current) => ({ ...current, instructions })),
+    [onChange],
+  );
   function insert(name: string) {
-    const view = editor.current?.view;
     const value = `{{${name}}}`;
-    const selection = view?.state.selection.main;
-    const from = selection?.from ?? command.instructions.length;
-    const to = selection?.to ?? from;
-    onChange({
-      ...command,
-      instructions: `${command.instructions.slice(0, from)}${value}${command.instructions.slice(to)}`,
+    const view = editor.current?.view;
+    if (!view) {
+      onChange((current) => ({ ...current, instructions: `${current.instructions}${value}` }));
+      return;
+    }
+    // Edit the editor's own document; its change reaches the draft through `onChange`. Setting the
+    // draft instead races with typing: react-codemirror holds back a new `value` while the user
+    // types, then applies it over whatever was typed in the meantime.
+    const { from, to } = view.state.selection.main;
+    view.dispatch({
+      changes: { from, to, insert: value },
+      selection: { anchor: from + value.length },
+      scrollIntoView: true,
+      userEvent: 'input.complete',
     });
-    requestAnimationFrame(() => {
-      const current = editor.current?.view;
-      if (current) {
-        current.dispatch({
-          selection: { anchor: Math.min(from + value.length, current.state.doc.length) },
-        });
-        current.focus();
-      }
-    });
+    view.focus();
   }
   let referenceError = '';
   try {
@@ -83,17 +105,9 @@ export function InstructionEditor({
         value={command.instructions}
         minHeight="96px"
         theme={instructionTheme}
-        basicSetup={{
-          lineNumbers: false,
-          foldGutter: false,
-          highlightActiveLine: false,
-          highlightActiveLineGutter: false,
-          autocompletion: false,
-          bracketMatching: false,
-          closeBrackets: false,
-        }}
+        basicSetup={basicSetup}
         extensions={extensions}
-        onChange={(instructions) => onChange({ ...command, instructions })}
+        onChange={changeInstructions}
         className="instruction-editor"
       />
       {referenceError && (

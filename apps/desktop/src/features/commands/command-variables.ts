@@ -21,7 +21,10 @@ export function parameterTypeTag(type: Parameter['type']) {
   return typeTags[type];
 }
 
-export function parameterVariables(command: CommandDefinition, t: TFunction<'commands'>) {
+export function parameterVariables(
+  command: Pick<CommandDefinition, 'parameters'>,
+  t: TFunction<'commands'>,
+) {
   return command.parameters.map((parameter) => {
     const type = t(parameterTypeTag(parameter.type));
     const values = { label: parameter.label, type };
@@ -35,7 +38,10 @@ export function parameterVariables(command: CommandDefinition, t: TFunction<'com
   });
 }
 
-export function variableDetails(command: CommandDefinition, t: TFunction<'commands'>) {
+export function variableDetails(
+  command: Pick<CommandDefinition, 'parameters'>,
+  t: TFunction<'commands'>,
+) {
   return [
     ...contextVariables.map(({ name, detailKey }) => ({ name, detail: t(detailKey) })),
     ...parameterVariables(command, t),
