@@ -90,7 +90,18 @@ async function serve(flags: Flags): Promise<void> {
     host: flags.host,
     port: flags.port,
   });
-  const handle = await createService(config, { tier: flags.tier });
+  // SIGINT, SIGTERM and `POST /v1/admin/shutdown` all end here. The exit is
+  // what ends the process once the service has stopped; nothing else would.
+  const shutdown = () => {
+    void handle
+      .stop()
+      .then(() => process.exit(0))
+      .catch((error: unknown) => {
+        log.error('Shutdown failed.', { error: errorMessage(error) });
+        process.exit(1);
+      });
+  };
+  const handle = await createService(config, { tier: flags.tier, onShutdownRequest: shutdown });
   const { url, port } = await handle.start();
   log.info('Agent service ready.', {
     serviceId: config.serviceId,
@@ -103,15 +114,6 @@ async function serve(flags: Flags): Promise<void> {
   process.stdout.write(
     `AGENT_SERVICE_READY url=${url} serviceId=${config.serviceId} epoch=${config.epoch}\n`,
   );
-  const shutdown = () => {
-    void handle
-      .stop()
-      .then(() => process.exit(0))
-      .catch((error: unknown) => {
-        log.error('Shutdown failed.', { error: errorMessage(error) });
-        process.exit(1);
-      });
-  };
   process.on('SIGINT', shutdown);
   process.on('SIGTERM', shutdown);
   await new Promise(() => undefined);

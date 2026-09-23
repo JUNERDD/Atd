@@ -148,16 +148,18 @@ test('production app: positioning, renderer isolation, service flow, and window 
     expect(compactLayout).toEqual({ fits: true, overflow: false });
     await page.screenshot({ path: path.join(appDirectory, '.artifacts/electron-compact.png') });
     expect(errors).toEqual([]);
+    // Read the pid before quitting: the service removes endpoint.json before it
+    // exits, so only the process itself proves that quitting stopped it.
+    const { pid: servicePid } = JSON.parse(
+      await readFile(path.join(serviceDataDir, 'endpoint.json'), 'utf8'),
+    ) as { pid?: unknown };
+    if (typeof servicePid !== 'number') throw new Error('endpoint.json has no service pid.');
     await app.close();
     await expect
       .poll(
-        async () => {
+        () => {
           try {
-            const raw = JSON.parse(
-              await readFile(path.join(serviceDataDir, 'endpoint.json'), 'utf8'),
-            ) as { pid?: unknown };
-            if (typeof raw.pid !== 'number') return false;
-            process.kill(raw.pid, 0);
+            process.kill(servicePid, 0);
             return true;
           } catch {
             return false;

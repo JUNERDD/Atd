@@ -39,11 +39,20 @@ export interface ServiceHandle {
 /**
  * Importable service entry. Wires ledger, events, confirms, capabilities,
  * resources, runners and transport; `start` listens and publishes the
- * endpoint, `stop` drains and releases the dataDir lock.
+ * endpoint, `stop` drains runs, closes HTTP and MCP, and releases the dataDir
+ * lock. Every stop trigger shares one run of those steps.
  */
 export async function createService(
   config: ServiceConfig,
-  options: { tier?: PermissionTier } = {},
+  options: {
+    tier?: PermissionTier;
+    /**
+     * Answers `POST /v1/admin/shutdown` once the reply is out. Only the process
+     * host may exit, so the CLI passes the stop-then-exit handler its signals
+     * use; without one the route only stops the service.
+     */
+    onShutdownRequest?: () => void;
+  } = {},
 ): Promise<ServiceHandle> {
   const log = createLogger(process.env.AI_AGENT_LOG_LEVEL === 'debug' ? 'debug' : 'info');
   const startedAt = new Date().toISOString();
@@ -75,14 +84,29 @@ export async function createService(
     manager,
     log,
     startedAt,
-    onShutdown: () => {
-      if (stopping)
-        void stopping().catch((error: unknown) =>
-          log.error('Shutdown failed.', { error: String(error) }),
-        );
-    },
+    onShutdown:
+      options.onShutdownRequest ??
+      (() => {
+        if (stopping)
+          void stopping().catch((error: unknown) =>
+            log.error('Shutdown failed.', { error: String(error) }),
+          );
+      }),
   };
   const app = await buildServer(serverDeps);
+  // Runs drain and HTTP closes first, so MCP has lost its callers when the
+  // close ends every adapter connection (base and per-task aliases) and its
+  // stdio child; only then does the lock free the profile for a new service.
+  const stopService = async () => {
+    await manager.shutdown();
+    await app.close();
+    await McpAuthority.closeFor(config.paths.root);
+    await clearEndpoint(config.paths);
+    await releaseLock(config.paths);
+  };
+  // A signal that lands during an admin shutdown awaits the same run instead
+  // of draining again and releasing the lock under it.
+  let stopped: Promise<void> | null = null;
 
   const handle: ServiceHandle = {
     config,
@@ -121,12 +145,7 @@ export async function createService(
       });
       return { url: address, port };
     },
-    stop: async () => {
-      await manager.shutdown();
-      await app.close();
-      await clearEndpoint(config.paths);
-      await releaseLock(config.paths);
-    },
+    stop: () => (stopped ??= stopService()),
   };
   stopping = handle.stop;
   return handle;
