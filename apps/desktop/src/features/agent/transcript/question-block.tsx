@@ -153,6 +153,9 @@ export function QuestionControls({ request }: { request: InputRequest }) {
         className="question-answer-form"
         onSubmit={(event) => {
           event.preventDefault();
+          // The popover portals this form out of the composer's DOM, but React still bubbles the
+          // submit to the composer form, which would send its own draft as a second answer.
+          event.stopPropagation();
           void respond({ answer: draft.trim() });
         }}
       >
