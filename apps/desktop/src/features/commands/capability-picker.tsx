@@ -10,6 +10,7 @@ import {
 } from '@ai/ui/components/select';
 import { Item, ItemContent, ItemDescription, ItemGroup, ItemTitle } from '@ai/ui/components/item';
 import { Switch } from '@ai/ui/components/switch';
+import { useServiceStatus } from '../service/use-service';
 
 /** Shared capability selection: skills + role, saved as refs, frozen at accept. */
 export function SkillsRolePicker({
@@ -24,9 +25,12 @@ export function SkillsRolePicker({
   const { t } = useTranslation('commands');
   const [available, setAvailable] = useState<{ name: string; description: string }[]>([]);
   const [roles, setRoles] = useState<{ id: string; title: string }[]>([]);
+  // The panel mounts while main is still connecting; fetch once the service is live and again
+  // after every reconnect, since the service owns both lists.
+  const connected = useServiceStatus().status?.state === 'connected';
   useEffect(() => {
     const bridge = window.desktop?.service;
-    if (!bridge) return;
+    if (!bridge || !connected) return;
     void bridge.skills().then(
       (result) =>
         setAvailable(
@@ -40,7 +44,7 @@ export function SkillsRolePicker({
       (result) => setRoles((result.roles as { id: string; title: string }[]) ?? []),
       () => setRoles([]),
     );
-  }, []);
+  }, [connected]);
   const selected = new Set(skills.map((skill) => skill.name));
   return (
     <div className="settings-field">
