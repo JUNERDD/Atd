@@ -1,12 +1,15 @@
 import {
+  acceptCompletion,
   autocompletion,
   type Completion,
   type CompletionContext,
   type CompletionResult,
 } from '@codemirror/autocomplete';
+import { Prec } from '@codemirror/state';
 import {
   Decoration,
   EditorView,
+  keymap,
   MatchDecorator,
   tooltips,
   ViewPlugin,
@@ -18,7 +21,7 @@ import { instructionCompletion } from './instruction-completion';
 import { rankVariables, typedVariable } from './instruction-variable-match';
 
 export function instructionExtensions(
-  command: CommandDefinition,
+  command: Pick<CommandDefinition, 'input' | 'parameters'>,
   editor: { variables: { name: string; detail: string }[]; label: string },
 ) {
   const names = availableVariables(command);
@@ -84,9 +87,14 @@ export function instructionExtensions(
     autocompletion({
       override: [complete],
       activateOnTyping: true,
+      // The source is synchronous and cheap, so the list opens at `{{` instead of after a 100 ms
+      // pause in typing; the default let fast typists press Enter before it appeared.
+      activateOnTypingDelay: 0,
       icons: false,
       tooltipClass: () => 'instruction-completion-measure',
     }),
+    // Tab accepts an open completion like Enter; without one it still indents.
+    Prec.highest(keymap.of([{ key: 'Tab', run: acceptCompletion }])),
     instructionCompletion,
     EditorView.contentAttributes.of({ 'aria-label': editor.label, spellcheck: 'false' }),
   ];
