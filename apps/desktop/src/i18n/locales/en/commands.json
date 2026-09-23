@@ -125,6 +125,7 @@
     "title": "Instructions",
     "referenceError": "Enable or define {{variables}}.",
     "syntaxError": "Check the variable syntax.",
+    "unsupportedTag": "Use variables only: {{tag}} isn't supported.",
     "available": "Available variables",
     "hint": "Use variables for task input. Type {{ to see suggestions."
   },
