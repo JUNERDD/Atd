@@ -43,14 +43,21 @@
     "editQueued": "Edit queued message",
     "removeQueued": "Remove queued message",
     "sending": "Sending…",
-    "queuedCount": "{{count}} queued"
+    "queuedCount": "{{count}} queued",
+    "chipsAfterRun": "Send mentions and skills after this run finishes.",
+    "chips": {
+      "file": "File: {{name}}",
+      "task": "Conversation: {{name}}",
+      "mcpServer": "MCP server: {{name}}",
+      "agent": "Subagent: {{name}}",
+      "skill": "Skill: {{name}}"
+    }
   },
   "configuration": {
     "label": "Task configuration",
     "models": "Models: {{model}}",
     "chooseModel": "Choose model",
-    "thinkingLevel": "Effort",
-    "capabilities": "Capabilities"
+    "thinkingLevel": "Effort"
   },
   "voice": {
     "label": "Voice input",
@@ -147,5 +154,86 @@
   },
   "errors": {
     "openDesktopApp": "Open the desktop app to run tasks and manage saved data."
+  },
+  "quickPanel": {
+    "listLabel": "Suggestions",
+    "groups": {
+      "commands": "Quick commands",
+      "skills": "Skills",
+      "recentAttached": "Recently attached",
+      "recentUsed": "Recently used",
+      "files": "Files",
+      "conversations": "Conversations",
+      "mcp": "MCP",
+      "agents": "Subagents"
+    },
+    "commands": {
+      "new": {
+        "title": "New chat",
+        "description": "Start a new conversation"
+      },
+      "model": {
+        "title": "Model",
+        "description": "Choose the model for this draft"
+      },
+      "effort": {
+        "title": "Effort",
+        "description": "Set the reasoning effort for this draft"
+      },
+      "history": {
+        "title": "History",
+        "description": "Open the task list"
+      },
+      "settings": {
+        "title": "Settings",
+        "description": "Open the settings window"
+      }
+    },
+    "blocked": {
+      "noModel": "Choose a model first.",
+      "noEffort": "This model has no effort levels to choose from."
+    },
+    "hints": {
+      "choose": "to choose",
+      "insert": "to insert",
+      "use": "to use",
+      "close": "to close"
+    },
+    "states": {
+      "loading": "Loading…",
+      "desktopOnly": "Open the desktop app to load this list.",
+      "disconnected": "Connect the service to load this list.",
+      "failed": "Couldn't load: {{message}}",
+      "noMatches": "No matches.",
+      "noCommandMatches": "No matching commands or skills.",
+      "runningNoMatches": "No matching commands. Skills are available after this run finishes.",
+      "noSkills": "No skills are turned on. Manage skills in Extensions.",
+      "noConversations": "No other conversations with history yet.",
+      "noMcp": "No MCP servers yet. Add one in Extensions.",
+      "noAgents": "No subagents yet. Add one in Extensions → Subagents.",
+      "providerOffline": "Provider not connected"
+    },
+    "mcpState": {
+      "disabled": "Disabled",
+      "disconnected": "Disconnected",
+      "connecting": "Connecting…",
+      "auth_required": "Needs sign-in",
+      "ready": "Ready",
+      "error": "Error",
+      "closing": "Closing…"
+    },
+    "files": {
+      "browse": "Browse files…",
+      "browseDescription": "Choose text files on this computer",
+      "partial": "Some results may be missing.",
+      "indexDisabled": "Spotlight indexing is off, so file search is unavailable.",
+      "unsupported": "File search isn't available on this system.",
+      "tooLarge": "Larger than 1 MB",
+      "limit": "10 files already attached",
+      "failed": "File search failed. Try again.",
+      "none": "No matching files.",
+      "noRecent": "No recent files.",
+      "attaching": "Attaching…"
+    }
   }
 }

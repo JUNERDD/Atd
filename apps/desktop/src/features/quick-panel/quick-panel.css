@@ -1,0 +1,38 @@
+/* Radix content: exactly the composer surface width with the shared blurred-panel material, as
+   `hitl-queue-popover.css`. Height follows the HITL cap and the room between the surface and the
+   top of the panel body (the collision boundary, below the header); the list scrolls inside and
+   the footer stays, so the panel never has to flip below the input. */
+.quick-panel-content {
+  width: var(--radix-popover-trigger-width);
+  /* The shared 18rem floor would overhang a surface narrower than that (320px windows). */
+  min-width: 0;
+  max-height: min(22rem, calc(100dvh - 14rem), var(--radix-popover-content-available-height));
+  /* Same composition as the scoped model picker: one 4px inset (the command's own padding)
+     keeps the 18px surface concentric with the 14px options. */
+  border-radius: var(--radius-2xl);
+  backdrop-filter: blur(var(--ata-backdrop-blur));
+}
+
+.quick-panel-content [data-slot='command'] {
+  gap: var(--spacing);
+  border-radius: inherit;
+}
+
+.quick-panel-content [data-slot='command-group'] {
+  padding: 0;
+}
+
+/* Long connection names in the model drill truncate like the model picker's headings. */
+.quick-panel-content [cmdk-group-heading] {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Provider marks fill the 16px icon slot of a row (10px mark + 3px frame), like the compact
+   model trigger in the composer footer. */
+.quick-panel-content .provider-brand {
+  flex-basis: 10px;
+  width: 10px;
+  height: 10px;
+}

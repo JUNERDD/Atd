@@ -4,7 +4,6 @@ import type { AgentTask } from '../../electron/agent/task-schema';
 import type { Connection, ModelReference } from '../../electron/providers/schema';
 import { PermissionTierControl } from '../features/agent/permission-tier-control';
 import { ModelConfigPopover } from '../features/providers/model-config-popover';
-import { SkillsRolePicker } from '../features/commands/capability-picker';
 import '../features/providers/providers.css';
 
 interface ComposerConfigurationProps {
@@ -46,14 +45,6 @@ export function ComposerConfiguration({
           onOpenProviders={onOpenSettings}
         />
       </div>
-      <details className="composer-capabilities">
-        <summary className="text-sm font-medium">{t('configuration.capabilities')}</summary>
-        <SkillsRolePicker
-          skills={policy.skills ?? []}
-          roleId={policy.roleId}
-          onChange={({ skills, roleId }) => onPolicyChange({ ...policy, skills, roleId })}
-        />
-      </details>
     </div>
   );
 }

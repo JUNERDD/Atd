@@ -1,0 +1,155 @@
+import { useLayoutEffect, useState, type RefCallback, type RefObject } from 'react';
+import { flushSync } from 'react-dom';
+import type { EditorState } from '@codemirror/state';
+import { EditorView, type ViewUpdate } from '@codemirror/view';
+import type { ShortcutBindings } from '../../../electron/settings-contract';
+import type { TriggerState } from '../quick-panel/trigger';
+import type { QuickPanelHandle } from '../quick-panel/use-quick-panel';
+import { editorDraft } from './chip-state';
+import { normalizeDraft, sameContent, type ComposerDraft } from './draft';
+import { createEditorCommands, type ComposerEditorCommands } from './editor-commands';
+import {
+  createComposerState,
+  reconfigure,
+  type EditorHost,
+  type EditorSettings,
+} from './editor-state';
+import { refreshTrigger, sameTrigger, triggerField } from './trigger-field';
+
+export interface ComposerEditorOptions extends EditorSettings {
+  draft: ComposerDraft;
+  onChange: (draft: ComposerDraft) => void;
+  onTrigger: (trigger: TriggerState | null) => void;
+  onSend: () => void;
+  panel: RefObject<QuickPanelHandle | null>;
+  shortcuts: ShortcutBindings;
+  platform: string;
+  /** Fixed for the editor's lifetime. */
+  drillCommands: readonly string[];
+}
+
+function settingsOf({ wrap, locked, limit, label, placeholder, aria }: EditorSettings) {
+  return { wrap, locked, limit, label, placeholder, aria };
+}
+
+/**
+ * Owns the composer's CodeMirror view: created when its host element mounts, destroyed by the ref
+ * cleanup (StrictMode-safe), focused with the caret at the end. While the user types the editor
+ * leads and emits serialized drafts; it is rebuilt only for a draft it did not emit (cleared after
+ * a send, re-joined after a stop, seeded), which resets undo like a textarea. Rebuilds and setting
+ * changes wait for an IME composition to end.
+ */
+class ComposerEditor implements EditorHost {
+  readonly commands: ComposerEditorCommands;
+  readonly drillCommands: readonly string[];
+  readonly platform: string;
+  private options: ComposerEditorOptions;
+  private view: EditorView | null = null;
+  /** Drafts this editor emitted; any other draft prop is an external change. */
+  private readonly emitted = new WeakSet<ComposerDraft>();
+  private content: ComposerDraft;
+  private applied: EditorSettings;
+  private reported: TriggerState | null = null;
+
+  constructor(options: ComposerEditorOptions) {
+    this.options = options;
+    this.drillCommands = options.drillCommands;
+    this.platform = options.platform;
+    this.content = normalizeDraft(options.draft);
+    this.applied = settingsOf(options);
+    this.commands = createEditorCommands(() => this.view);
+  }
+
+  /** Stable ref callback for the host element; the returned cleanup destroys the view. */
+  readonly container: RefCallback<HTMLDivElement> = (parent) => {
+    if (!parent) return;
+    this.applied = settingsOf(this.options);
+    this.content = normalizeDraft(this.options.draft);
+    this.reported = null;
+    const view = new EditorView({ parent, state: this.create(this.content) });
+    this.view = view;
+    this.report(view.state);
+    if (this.content !== this.options.draft) this.emit(this.content);
+    view.focus();
+    return () => {
+      this.view = null;
+      view.destroy();
+    };
+  };
+
+  /** Latest props after each render; the host element's ref callback has already run. */
+  update(options: ComposerEditorOptions) {
+    this.options = options;
+    if (this.view) this.sync(this.view);
+  }
+
+  panel() {
+    return this.options.panel.current;
+  }
+
+  shortcuts() {
+    return this.options.shortcuts;
+  }
+
+  send() {
+    // A keydown can arrive before React rendered the last emitted draft; commit it first so the
+    // send reads the text on screen.
+    const { content } = this;
+    if (!sameContent(this.options.draft, content)) flushSync(() => this.options.onChange(content));
+    this.options.onSend();
+  }
+
+  onUpdate(update: ViewUpdate) {
+    if (update.docChanged) this.emit(editorDraft(update.state, this.options.draft.files));
+    this.report(update.state);
+  }
+
+  onCompositionEnd(view: EditorView) {
+    // CodeMirror applies the committed text in a microtask; settle after it.
+    setTimeout(() => {
+      if (this.view !== view || view.compositionStarted) return;
+      view.dispatch({ effects: refreshTrigger.of(null) });
+      this.sync(view);
+    });
+  }
+
+  private create(draft: ComposerDraft) {
+    return createComposerState(draft, this.applied, this);
+  }
+
+  private emit(draft: ComposerDraft) {
+    this.content = draft;
+    this.emitted.add(draft);
+    this.options.onChange(draft);
+  }
+
+  private report(state: EditorState) {
+    const next = state.field(triggerField).trigger;
+    if (sameTrigger(next, this.reported)) return;
+    this.reported = next;
+    this.options.onTrigger(next);
+  }
+
+  private sync(view: EditorView) {
+    if (view.compositionStarted) return;
+    const { draft } = this.options;
+    const settings = settingsOf(this.options);
+    if (!this.emitted.has(draft) && !sameContent(draft, this.content)) {
+      this.applied = settings;
+      this.content = normalizeDraft(draft);
+      view.setState(this.create(this.content));
+      this.report(view.state);
+      if (this.content !== draft) this.emit(this.content);
+      return;
+    }
+    const effects = reconfigure(this.applied, settings);
+    this.applied = settings;
+    if (effects.length) view.dispatch({ effects });
+  }
+}
+
+export function useComposerEditor(options: ComposerEditorOptions) {
+  const [editor] = useState(() => new ComposerEditor(options));
+  useLayoutEffect(() => editor.update(options));
+  return { container: editor.container, commands: editor.commands };
+}

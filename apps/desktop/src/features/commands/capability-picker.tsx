@@ -12,7 +12,7 @@ import { Item, ItemContent, ItemDescription, ItemGroup, ItemTitle } from '@ai/ui
 import { Switch } from '@ai/ui/components/switch';
 import { useServiceStatus } from '../service/use-service';
 
-/** Shared capability selection: skills + role, saved as refs, frozen at accept. */
+/** A command's capability selection: skills + role, saved as refs, frozen at accept. */
 export function SkillsRolePicker({
   skills,
   roleId,

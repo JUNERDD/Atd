@@ -1,13 +1,13 @@
 import { dialog } from 'electron';
-import { randomUUID } from 'node:crypto';
-import { extractSubagentResults, mcpStage, previewTask, stageSkills } from '@ai/agent-client';
+import { extractSubagentResults, previewTask } from '@ai/agent-client';
 import type { ServiceEvent, TaskSnapshot } from '@ai/agent-contracts';
 import type { ServiceConnection } from '../service/connection';
 import { ATTACHABLE_EXTENSIONS, attachFiles } from './attachable-files';
 import type { AgentRequest, TaskDetail } from './bridge';
 import type { CommandService } from './command-service';
 import { AGENT_IPC } from './ipc-channels';
-import { mapRunPolicy, parseMcpTools } from './service-manage';
+import { stageRunChoices } from './run-staging';
+import { mapRunPolicy } from './service-manage';
 import { isActive, type FileRef } from './task-schema';
 import { applyTranscriptPatch, QueueStateSchema } from './transcript-schema';
 import { mapBlock, mapRequest, mapSnapshot } from './service-map';
@@ -242,6 +242,9 @@ export class TaskClient {
     const previous = request.taskId ? (this.details.get(request.taskId)?.task ?? null) : null;
     if (previous?.runs.some((run) => isActive(run.status))) {
       if (request.input.files.length) throw new Error('Attach files after the run finishes.');
+      // A queued follow-up is text only; it would silently drop the chips' references and skill.
+      if (request.policy?.references?.length || request.policy?.skills?.length)
+        throw new Error('Send mentions and skills after this run finishes.');
       const text = request.input.text.trim();
       if (!text) throw new Error('Enter a follow-up.');
       await http.queue(previous.id, { text, mode: 'followUp' });
@@ -273,22 +276,7 @@ export class TaskClient {
     }
     if (!text.trim() && !request.input.files.length)
       throw new Error('Enter a message or attach a file.');
-    let taskId = request.taskId;
-    const skills = request.policy?.skills;
-    const roleId = request.policy?.roleId;
-    if ((skills?.length || roleId) && options) {
-      taskId ??= randomUUID();
-      await stageSkills(options, {
-        taskId,
-        skills: skills ?? [],
-        ...(roleId ? { roleId } : {}),
-      });
-    }
-    const mcpTools = request.policy?.mcpTools ? parseMcpTools(request.policy.mcpTools) : [];
-    if (mcpTools.length && options) {
-      taskId ??= randomUUID();
-      await mcpStage({ options }, { taskId, tools: mcpTools });
-    }
+    const taskId = await stageRunChoices(options, request.taskId, request.policy);
     const submitted = await http.submit({
       operationId: request.invocationId,
       ...(taskId ? { taskId } : {}),

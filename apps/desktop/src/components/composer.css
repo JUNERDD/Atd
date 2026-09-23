@@ -58,19 +58,95 @@
   min-height: 20px;
   max-height: 20px;
 }
+/* The CodeMirror editor grows with its text; the scroll area around it owns vertical scrolling
+   (20px collapsed, 100px expanded). `.cm-editor` scoping outranks the library's base theme. */
 .composer-input {
-  field-sizing: content;
   width: 100%;
   min-width: 0;
-  min-height: 20px;
-  padding: 0;
-  overflow: hidden;
-  border: 0;
-  border-radius: 0;
+}
+.composer-input .cm-editor {
   background: transparent;
-  box-shadow: none;
+  color: var(--foreground);
   font-size: 14px;
   line-height: 20px;
+}
+.composer-input .cm-editor.cm-focused {
+  outline: none;
+}
+/* A one-line draft scrolls sideways with the caret, without a visible bar, like the textarea. */
+.composer-input .cm-editor .cm-scroller {
+  font-family: var(--font-sans);
+  line-height: 20px;
+  scrollbar-width: none;
+}
+.composer-input .cm-editor .cm-content {
+  min-height: 20px;
+  padding: 0;
+  caret-color: var(--foreground);
+}
+.composer-input .cm-editor .cm-line {
+  padding: 0;
+}
+.composer-input .cm-editor .cm-cursor {
+  border-left-color: var(--foreground);
+}
+.composer-input .cm-editor .cm-selectionBackground,
+.composer-input .cm-editor.cm-focused .cm-selectionBackground {
+  background: var(--input);
+}
+/* The placeholder is drawn by the editor root, not by a widget at the caret where `／` and `、`
+   are typed. */
+.composer-input .cm-editor.cm-composer-empty::before {
+  content: attr(data-placeholder);
+  position: absolute;
+  inset: 0 auto auto 0;
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--muted-foreground);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: none;
+}
+/* Stopping or queued: the text stays visible but locked, like the disabled textarea. */
+.composer-input .cm-editor:has(.cm-content[contenteditable='false']) {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+/* A chip is one atom in the text: the root must stay inline-block (see ChipWidget). */
+.composer-chip {
+  display: inline-block;
+  max-width: 100%;
+  margin: 0 1px;
+  padding: 0 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--input);
+  color: var(--ata-syntax-variable);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+  vertical-align: top;
+  white-space: nowrap;
+  cursor: default;
+}
+/* The skill chip's separating space lives in its serialized text, not in the document, so the
+   gap a typed space would give is drawn here. */
+.composer-chip[data-kind='skill'] {
+  margin-inline-end: 4px;
+}
+.composer-chip-icon {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  margin-inline-end: 4px;
+  vertical-align: -2px;
+}
+.composer-chip-name {
+  display: inline-block;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: top;
 }
 .composer-surface[data-expanded='true'][data-has-attachments='true'] .composer-input-scroll {
   height: 100%;
@@ -158,15 +234,4 @@
   mask-repeat: no-repeat;
   mask-position: center;
   mask-size: contain;
-}
-
-.composer-capabilities {
-  width: 100%;
-  border-top: 1px solid var(--border);
-  padding-top: 8px;
-}
-
-.composer-capabilities summary {
-  cursor: pointer;
-  color: var(--muted-foreground);
 }

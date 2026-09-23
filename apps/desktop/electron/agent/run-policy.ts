@@ -1,4 +1,5 @@
 import { Type, type Static } from 'typebox';
+import { MAX_RUN_REFERENCES, RunReferenceSchema } from '@ai/agent-contracts';
 import { ToolIdSchema } from './command-schema';
 import { ModelReferenceSchema, ModelThinkingLevelSchema } from '../providers/schema';
 
@@ -26,10 +27,20 @@ export const RunPolicySchema = Type.Object(
     ),
     /** T6 additive: role id saved on the task, frozen at accept via staging. */
     roleId: Type.Optional(Type.String({ minLength: 1, maxLength: 128 })),
-    /** T6 additive: MCP tool refs (connectionId+toolName) for display; service freezes all. */
+    /**
+     * T6 additive: MCP tool refs (connectionId+toolName) staged for the next run. The service
+     * binds exactly the staged set, so a staged list is a strict allowlist; without staging,
+     * every MCP tool stays available.
+     */
     mcpTools: Type.Optional(
       Type.Array(Type.String({ minLength: 1, maxLength: 512 }), { maxItems: 64 }),
     ),
+    /**
+     * Composer `@` references (conversation, subagent, MCP server) staged for the next run, where
+     * the service resolves them into run material. They suggest and allow; they never narrow the
+     * tool set.
+     */
+    references: Type.Optional(Type.Array(RunReferenceSchema, { maxItems: MAX_RUN_REFERENCES })),
   },
   { additionalProperties: false },
 );

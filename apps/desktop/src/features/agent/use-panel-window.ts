@@ -1,15 +1,19 @@
 import { useState } from 'react';
+import { EditorView } from '@codemirror/view';
 import { showErrorToast } from '../../components/toast-store';
 
 /**
  * A hidden page refuses element focus, so a revealed panel lands on the first control of the native
  * window and its tooltip instead. The presented view marks its primary input with
- * data-panel-autofocus; a view without one keeps the header unfocused.
+ * data-panel-autofocus; a view without one keeps the header unfocused. The composer editor
+ * focuses through its view, which restores its own selection.
  */
 export function focusPanelInput() {
   const input = document.querySelector<HTMLElement>('[data-panel-autofocus]');
   if (input) {
-    input.focus();
+    const editor = EditorView.findFromDOM(input);
+    if (editor) editor.focus();
+    else input.focus();
     return;
   }
   const active = document.activeElement;

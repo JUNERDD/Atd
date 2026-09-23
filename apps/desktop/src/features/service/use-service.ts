@@ -117,7 +117,7 @@ function asAllows(value: unknown): ExtensionRoleRow['allows'] {
   return { tools, skills };
 }
 
-function asSkillRow(value: unknown): ExtensionSkillRow | null {
+export function asSkillRow(value: unknown): ExtensionSkillRow | null {
   const name = readString(value, 'name');
   return name
     ? {
@@ -146,7 +146,7 @@ function asAgentTools(value: unknown): ExtensionRoleTool[] {
   });
 }
 
-function asAgentRow(value: unknown): ExtensionAgentRow | null {
+export function asAgentRow(value: unknown): ExtensionAgentRow | null {
   const name = readString(value, 'name');
   if (!name) return null;
   const tools =
@@ -161,7 +161,7 @@ function asAgentRow(value: unknown): ExtensionAgentRow | null {
   };
 }
 
-function asMcpRow(value: unknown): ExtensionMcpRow | null {
+export function asMcpRow(value: unknown): ExtensionMcpRow | null {
   const serverId = readString(value, 'serverId');
   return serverId
     ? { serverId, state: readString(value, 'state'), lastError: readString(value, 'lastError') }

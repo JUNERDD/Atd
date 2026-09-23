@@ -1,9 +1,18 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
+import { EditorView } from '@codemirror/view';
 import { App } from './App';
 import { installBridge } from '../tests/app-test-bridge';
 import { SettingsWindow } from './features/settings/settings-window';
+import { editorDraft } from './features/composer-editor/chip-state';
+
+/** The composer's serialized draft text, read from its CodeMirror view. */
+function draftText(textbox: HTMLElement) {
+  const view = EditorView.findFromDOM(textbox);
+  if (!view) throw new Error('The composer editor is not mounted.');
+  return editorDraft(view.state, []).text;
+}
 
 describe('task panel', () => {
   it('starts with the Figma empty state and disallows a whitespace-only task', async () => {
@@ -22,7 +31,7 @@ describe('task panel', () => {
     await user.type(screen.getByRole('textbox'), 'Plan my afternoon{Enter}');
     await waitFor(() => expect(api.submit).toHaveBeenCalledOnce());
     expect(await screen.findByRole('heading', { name: 'Plan my afternoon' })).toBeVisible();
-    expect(screen.getByRole('textbox')).toHaveValue('');
+    expect(draftText(screen.getByRole('textbox'))).toBe('');
     await user.click(screen.getByRole('button', { name: 'Tasks' }));
     await user.click(screen.getByRole('button', { name: /Plan my afternoon.*starting/ }));
     expect(
@@ -36,7 +45,7 @@ describe('task panel', () => {
     render(<App />);
     const input = screen.getByRole('textbox');
     await user.type(input, 'Line one{Shift>}{Enter}{/Shift}Line two');
-    expect(input).toHaveValue('Line one\nLine two');
+    expect(draftText(input)).toBe('Line one\nLine two');
     fireEvent.keyDown(input, { key: 'Enter', code: 'Enter', isComposing: true });
     expect(api.submit).not.toHaveBeenCalled();
   });
@@ -54,7 +63,7 @@ describe('task panel', () => {
     await user.click(screen.getByRole('button', { name: 'Tasks' }));
     await user.click(screen.getByRole('button', { name: 'Hide panel' }));
     await user.click(screen.getByRole('button', { name: 'Open task panel' }));
-    expect(screen.getByRole('textbox')).toHaveValue('A work in progress');
+    expect(draftText(screen.getByRole('textbox'))).toBe('A work in progress');
   });
 
   it('uses persistent attachment IDs, allows removal, and rejects more than ten files', async () => {
@@ -131,7 +140,7 @@ describe('task panel', () => {
     await waitFor(() =>
       expect(api.queueMessage).toHaveBeenCalledWith('test-task', 'Also buy milk', 'followUp'),
     );
-    expect(screen.getByRole('textbox')).toHaveValue('');
+    expect(draftText(screen.getByRole('textbox'))).toBe('');
   });
 
   it('answers a pending input request from the composer', async () => {

@@ -3,6 +3,8 @@
    caps from the shared primitive still apply. */
 .hitl-queue-content {
   width: var(--radix-popover-trigger-width);
+  /* The shared 18rem floor would overhang a surface narrower than that (320px windows). */
+  min-width: 0;
   backdrop-filter: blur(var(--ata-backdrop-blur));
 }
 

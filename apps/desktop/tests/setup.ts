@@ -11,6 +11,11 @@ beforeEach(() => {
 afterEach(cleanup);
 
 // jsdom has no layout engine; geometry and ScrollArea behavior are checked in Electron.
+// CodeMirror (the composer editor) measures text through Range geometry; the quick panel and
+// cmdk scroll the active option into view.
+Range.prototype.getBoundingClientRect = () => new DOMRect();
+Range.prototype.getClientRects = () => document.createElement('span').getClientRects();
+Element.prototype.scrollIntoView = () => {};
 globalThis.ResizeObserver = class implements ResizeObserver {
   observe() {}
   unobserve() {}
