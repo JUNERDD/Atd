@@ -18,13 +18,6 @@ import {
 } from './permission-schema';
 import type { Block, QueueState, TranscriptPatch } from './transcript-schema';
 
-export const AGENT_IPC = {
-  request: 'agent:request',
-  changed: 'agent:changed',
-  launch: 'agent:launch',
-  session: 'agent:command-session',
-  extensionSession: 'agent:extension-session',
-} as const;
 export const MemoryEntrySchema = Type.Object(
   {
     id: Identifier,

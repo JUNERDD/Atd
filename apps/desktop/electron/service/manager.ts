@@ -16,7 +16,8 @@ import { autostartService } from './autostart';
 import { resolveServiceDataDir } from './endpoint';
 import { ServiceConnection, type ServiceStatus } from './connection';
 import { startLocalService, stopLocalService } from './launcher';
-import { SERVICE_IPC, ServiceRequestSchema, type ServiceStatusView } from './ipc';
+import { ServiceRequestSchema, type ServiceStatusView } from './ipc';
+import { SERVICE_IPC } from './ipc-channels';
 import { disableMcpServer, removeMcpServer, upsertMcpServer } from './mcp-catalog';
 
 function view(status: ServiceStatus, fallbackDataDir: string): ServiceStatusView {
