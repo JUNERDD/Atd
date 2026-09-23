@@ -38,6 +38,12 @@ extraResources:
 mac:
   category: public.app-category.productivity
   target: dmg
+  # Shown the first time an attached file sits in one of these folders. File search itself reads
+  # the Spotlight index and never opens the folders.
+  extendInfo:
+    NSDesktopFolderUsageDescription: AI reads a file in your Desktop folder only when you attach it.
+    NSDocumentsFolderUsageDescription: AI reads a file in your Documents folder only when you attach it.
+    NSDownloadsFolderUsageDescription: AI reads a file in your Downloads folder only when you attach it.
 win:
   target: nsis
 linux:

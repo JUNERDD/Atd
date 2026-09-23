@@ -1,4 +1,5 @@
 import type { AgentBridge } from './agent/bridge';
+import type { FileSearchBridge } from './file-search/contract';
 import type { SettingsBridge } from './settings-contract';
 import type { ServiceBridge } from './service/ipc';
 
@@ -28,6 +29,11 @@ export interface DesktopBridge {
   readonly agent: AgentBridge;
   /** T6 narrow service channel: status/skills/roles/MCP. No token crosses. Optional for test compat. */
   readonly service?: ServiceBridge;
+  /**
+   * Panel-only system file search: opaque result ids and home-relative folders, never paths.
+   * Absent in the web preview and tests, where the file group reads as unavailable.
+   */
+  readonly files?: FileSearchBridge;
   show: () => Promise<void>;
   hide: () => Promise<void>;
   getState: () => Promise<DesktopState>;
