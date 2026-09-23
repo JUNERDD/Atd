@@ -8,6 +8,7 @@ import type { BlockOf } from '../../../../electron/agent/transcript-schema';
 import type { InputRequest } from '../../../../electron/agent/permission-schema';
 import { agentApi } from '../use-agent';
 import { messageOf } from '../../../lib/errors';
+import { isTextEntryFocused } from '../../../lib/text-entry';
 import { ActivityRow } from './activity-row';
 import { DetailBox } from './detail-box';
 import { statusLabelKey } from './tool-copy';
@@ -92,8 +93,8 @@ export function QuestionBlock({
 /**
  * Popover answer form for one pending question: title, option chips, a full-width free-text
  * field (Enter to send), and right-aligned Skip/Send actions. Autofocuses the first chip only
- * when the user is not typing in the composer textarea; Esc bubbles to the popover content to
- * dismiss, never to skip.
+ * when the user is not typing (the composer or another text field); Esc bubbles to the popover
+ * content to dismiss, never to skip.
  */
 export function QuestionControls({ request }: { request: InputRequest }) {
   const { t } = useTranslation('tasks');
@@ -105,7 +106,7 @@ export function QuestionControls({ request }: { request: InputRequest }) {
   const answerRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (document.activeElement instanceof HTMLTextAreaElement) return;
+    if (isTextEntryFocused()) return;
     (firstOptionRef.current ?? answerRef.current)?.focus();
   }, [request.id]);
 

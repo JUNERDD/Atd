@@ -45,6 +45,26 @@ export function acceleratorToHotkey(accelerator: string, platform: string): stri
     .join('+');
 }
 
+/**
+ * Matches a keydown against a validated Electron accelerator the way `useHotkeys` does with
+ * `useKey: false`: by physical key (`event.code`), with exactly the accelerator's modifiers.
+ */
+export function matchesAccelerator(
+  event: Pick<KeyboardEvent, 'code' | 'metaKey' | 'ctrlKey' | 'altKey' | 'shiftKey'>,
+  accelerator: string,
+  platform: string,
+): boolean {
+  const keys = acceleratorToHotkey(accelerator, platform).split('+');
+  const key = keys.pop();
+  return (
+    key === event.code.toLowerCase().replace(/key|digit|numpad/, '') &&
+    event.metaKey === keys.includes('meta') &&
+    event.ctrlKey === keys.includes('ctrl') &&
+    event.altKey === keys.includes('alt') &&
+    event.shiftKey === keys.includes('shift')
+  );
+}
+
 /** Converts useRecordHotkeys(false) tokens to the single-key subset supported by native settings. */
 export function recordedKeysToAccelerator(
   keys: ReadonlySet<string>,

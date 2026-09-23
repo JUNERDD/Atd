@@ -121,6 +121,14 @@ html[data-platform='darwin'] .panel-header {
 .panel-footer {
   -webkit-app-region: no-drag;
 }
+/* Everything below the header. The composer's quick panel uses it as its collision boundary, so
+   the panel never reaches the header's drag region or the macOS traffic lights. */
+.panel-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
 .panel-content {
   flex: 1;
   min-height: 0;

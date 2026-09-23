@@ -20,16 +20,18 @@ import './hitl-queue-popover.css';
  * while a steady queue stays put.
  *
  * Focus and Esc are split by intent, not by layer. Radix auto-focus is disabled outright so a
- * queue-only arrival never steals the textarea; only the HITL controls autofocus, and only when
- * the active element is already outside the textarea. Esc inside the content dismisses the
- * popover and stops propagation so the panel-global Esc (new chat/hide) never fires; Esc on an
- * approval button declines instead and never reaches this handler.
+ * queue-only arrival never steals the composer; only the HITL controls autofocus, and only when
+ * the user is not typing. Esc inside the content dismisses the popover and stops propagation so
+ * the panel-global Esc (new chat/hide) never fires; Esc on an approval button declines instead
+ * and never reaches this handler. While the quick panel is open above the same anchor this
+ * popover is `suppressed`: it hides without counting as a dismiss and returns unchanged.
  */
 export function HitlQueuePopover({
   requests,
   queue,
   taskId,
   queueDisabled = false,
+  suppressed = false,
   onEditQueued,
   children,
 }: {
@@ -37,6 +39,8 @@ export function HitlQueuePopover({
   queue: QueueState;
   taskId: string | null;
   queueDisabled?: boolean;
+  /** The quick panel is open over the composer; hide without dismissing. */
+  suppressed?: boolean;
   onEditQueued: (text: string) => void;
   /** The composer surface; the popover anchors to it without adding a visible trigger. */
   children: ReactElement;
@@ -56,7 +60,7 @@ export function HitlQueuePopover({
   const hasQueue = taskId !== null && queueCount > 0;
   const hasContent = requests.length > 0 || hasQueue;
   if (!hasContent && dismissedFor !== null) setDismissedFor(null);
-  const open = hasContent && dismissedFor !== signature;
+  const open = hasContent && dismissedFor !== signature && !suppressed;
   const dismissedWithContent = hasContent && dismissedFor === signature;
   const dismiss = () => setDismissedFor(signature);
 

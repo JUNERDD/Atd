@@ -6,7 +6,14 @@ import type { RunPolicy } from '../../../electron/agent/run-policy';
 import type { PreparedCommand, TaskDetail } from '../../../electron/agent/bridge';
 import { emptyInput, isActive } from '../../../electron/agent/task-schema';
 import { EMPTY_QUEUE } from '../../../electron/agent/transcript-schema';
-import type { ComposerDraft } from '../../components/composer';
+import type { RunReference } from '@ai/agent-contracts';
+import {
+  draftFiles,
+  draftReferences,
+  draftSkill,
+  seedFromText,
+  type ComposerDraft,
+} from '../composer-editor/draft';
 import { useSettingsSnapshot } from '../settings/use-settings';
 import { acceleratorToHotkey } from '../../lib/shortcuts';
 import { STORAGE_KEY } from '../../lib/task-store';
@@ -16,7 +23,19 @@ import { useAgentNotices } from './use-notices';
 import { focusPanelInput, showPanel, usePanelWindow } from './use-panel-window';
 
 type View = 'new' | 'history' | 'task' | 'input';
-const EMPTY_DRAFT: ComposerDraft = { text: '', files: [] };
+const EMPTY_DRAFT: ComposerDraft = { text: '', files: [], chips: [] };
+
+/**
+ * Stages what the draft's chips select: the skill chip is the run's skill, and the references are
+ * exactly the draft's conversation, MCP server and subagent chips.
+ */
+function withChips(policy: RunPolicy, skill: string | null, references: RunReference[]): RunPolicy {
+  return {
+    ...policy,
+    ...(skill ? { skills: [{ name: skill }] } : {}),
+    ...(references.length ? { references } : {}),
+  };
+}
 
 export function useTaskPanel() {
   const { t } = useTranslation('panel');
@@ -97,17 +116,15 @@ export function useTaskPanel() {
       newTask();
       setDrafts((previous) => ({
         ...previous,
-        new: {
-          text: commandId
-            ? t('session.editSeed', { name, id: commandId })
-            : t('session.createSeed'),
-          files: [],
-        },
+        new: seedFromText(
+          commandId ? t('session.editSeed', { name, id: commandId }) : t('session.createSeed'),
+        ),
       }));
       focusPanelInput();
     });
   }, [t]);
-  // Extensions create-with-AI seeds `/skill:create-*` and stages that app skill on the new draft.
+  // Extensions create-with-AI seeds the `/skill:create-*` chip on the new draft; submit stages the
+  // chip's skill, so removing the chip also drops the skill.
   useEffect(() => {
     const bridge = window.desktop?.agent;
     if (!bridge) return;
@@ -115,10 +132,7 @@ export function useTaskPanel() {
       const skillName =
         kind === 'skill' ? 'create-skill' : kind === 'subagent' ? 'create-subagent' : 'create-mcp';
       newTask();
-      setDrafts((previous) => ({
-        ...previous,
-        new: { text: `/skill:${skillName} `, files: [] },
-      }));
+      setDrafts((previous) => ({ ...previous, new: seedFromText(`/skill:${skillName} `) }));
       setPolicies((previous) => ({
         ...previous,
         new: {
@@ -126,7 +140,6 @@ export function useTaskPanel() {
           memory: true,
           useDefaultModel: false,
           confirmExpansion: false,
-          skills: [{ name: skillName }],
         },
       }));
       focusPanelInput();
@@ -181,24 +194,28 @@ export function useTaskPanel() {
   }
   /**
    * Shortcut launches submit the command they carried: the run uses the command's own policy and
-   * leaves drafts, view state and remembered capability adjustments untouched.
+   * leaves drafts, view state and remembered model and effort choices untouched.
    */
   async function submit(launched?: PreparedCommand): Promise<TaskDetail | null> {
     if (pending) return null;
     const run = current.detail?.task.runs.at(-1);
     if (!launched && view === 'task' && isActive(run?.status)) return null;
-    setPending(true);
     const commandInput = launched ?? (view === 'input' ? prepared : null);
-    const input = commandInput?.input ?? {
-      ...emptyInput(),
-      text: draft.text,
-      files: draft.files,
-    };
-    const policy = launched ? null : (policies[policyKey] ?? null);
+    // Chips are the draft's only record of its references: files and the skill derive from them.
+    const files = draftFiles(draft);
+    if (!commandInput && files.length > 10) throw new Error(t('composer.attachLimit'));
+    setPending(true);
+    const input = commandInput?.input ?? { ...emptyInput(), text: draft.text, files };
+    const skill = commandInput ? null : draftSkill(draft);
+    const references = commandInput ? [] : draftReferences(draft);
+    const saved = launched ? null : (policies[policyKey] ?? null);
+    const policy: RunPolicy | null =
+      skill || references.length ? withChips(saved ?? defaultPolicy, skill, references) : saved;
     const targetTaskId = launched ? null : view === 'task' ? taskId : null;
     const key = JSON.stringify({
       policy,
       input: { ...input, capturedAt: commandInput ? input.capturedAt : '' },
+      chips: commandInput ? [] : draft.chips,
       taskId: targetTaskId,
       commandId: commandInput?.command.id,
       revision: commandInput?.command.revision,
@@ -242,7 +259,7 @@ export function useTaskPanel() {
           ? (current.detail?.task.title ?? t('titles.task'))
           : t('titles.newTask');
   const run = current.detail?.task.runs.at(-1);
-  const policy: RunPolicy = policies[policyKey] ?? {
+  const defaultPolicy: RunPolicy = {
     tools:
       view === 'input' && prepared
         ? prepared.command.tools
@@ -258,6 +275,7 @@ export function useTaskPanel() {
     useDefaultModel: false,
     confirmExpansion: false,
   };
+  const policy = policies[policyKey] ?? defaultPolicy;
   const changePolicy = (value: RunPolicy) =>
     setPolicies((previous) => ({ ...previous, [policyKey]: value }));
   return {

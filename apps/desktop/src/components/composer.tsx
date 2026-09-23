@@ -1,31 +1,31 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { useHotkeys, type Options } from 'react-hotkeys-hook';
+import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ArrowUp, Plus, Square, X } from 'lucide-react';
-import { Button } from '@ai/ui/components/button';
-import { Textarea } from '@ai/ui/components/textarea';
+import { ArrowUp, Plus, Square } from 'lucide-react';
 import { ScrollArea } from '@ai/ui/components/scroll-area';
 import type { ShortcutBindings } from '../../electron/settings-contract';
 import { DEFAULT_SHORTCUTS } from '../../electron/settings-contract';
-import type { AgentTask, FileRef, RunStatus } from '../../electron/agent/task-schema';
+import type { AgentTask, RunStatus } from '../../electron/agent/task-schema';
 import { isActive } from '../../electron/agent/task-schema';
 import type { PermissionRequest } from '../../electron/agent/permission-schema';
 import { EMPTY_QUEUE, type QueueState } from '../../electron/agent/transcript-schema';
 import type { Connection, ModelReference } from '../../electron/providers/schema';
 import type { RunPolicy } from '../../electron/agent/run-policy';
+import { draftFiles, normalizeDraft, type ComposerDraft } from '../features/composer-editor/draft';
+import type { ComboboxAria } from '../features/composer-editor/editor-state';
+import { useComposerEditor } from '../features/composer-editor/use-composer-editor';
+import { DRILL_COMMAND_IDS, type QuickActions } from '../features/quick-panel/quick-commands';
+import { QuickPanel } from '../features/quick-panel/quick-panel';
+import type { TriggerState } from '../features/quick-panel/trigger';
+import { isQuickPanelOpen, type QuickPanelHandle } from '../features/quick-panel/use-quick-panel';
 import { IconButton } from './icon-button';
+import { ComposerAttachments } from './composer-attachments';
 import { ComposerConfiguration } from './composer-configuration';
 import { HitlQueuePopover } from './hitl-queue-popover';
 import { useOverlayFooter } from './use-overlay-footer';
-import { acceleratorToHotkey } from '../lib/shortcuts';
 import { agentApi } from '../features/agent/use-agent';
 import { showErrorToast } from './toast-store';
 import './composer.css';
 
-export interface ComposerDraft {
-  text: string;
-  files: FileRef[];
-}
 export interface ComposerProps {
   policy: RunPolicy;
   onPolicyChange: (policy: RunPolicy) => void;
@@ -46,6 +46,12 @@ export interface ComposerProps {
   task?: AgentTask | null;
   requests?: PermissionRequest[];
   queue?: QueueState;
+  /** Panel actions the `/new` and `/history` quick commands run. */
+  quickActions: QuickActions;
+  /** Snapshot tasks: `@` conversations and recently attached files. */
+  tasks: readonly AgentTask[];
+  /** The panel body below the header, which the quick panel must not leave. */
+  overlayBoundary: Element | null;
 }
 
 function pendingInputOf(requests: PermissionRequest[]) {
@@ -74,20 +80,27 @@ export function Composer({
   task = null,
   requests = [],
   queue = EMPTY_QUEUE,
+  quickActions,
+  tasks,
+  overlayBoundary,
 }: ComposerProps) {
   const { t } = useTranslation('panel');
   const footerRef = useOverlayFooter<HTMLElement>();
   const [choosing, setChoosing] = useState(false);
   const [sending, setSending] = useState(false);
-  const textarea = useRef<HTMLTextAreaElement>(null);
+  const [trigger, setTrigger] = useState<TriggerState | null>(null);
+  const [aria, setAria] = useState<ComboboxAria | null>(null);
+  const panel = useRef<QuickPanelHandle>(null);
   const hasContent = Boolean(draft.text.trim() || draft.files.length);
   const active = isActive(status);
   const locked = status === 'stopping' || status === 'queued';
   // Harmless fallback: the popover owns the primary answer path (chips + free text), but Enter in
-  // the textarea still answers a pending input for typists. Both call the same request-scoped
+  // the composer still answers a pending input for typists. Both call the same request-scoped
   // `answer`, so the first success retires the request and the other path goes idle.
   const pendingInput = active && !locked ? pendingInputOf(requests) : undefined;
   const pendingRequest = active && requests.length > 0;
+  // The IPC limits: an answer takes 10000 characters, a message or queued follow-up 100000.
+  const limit = pendingInput ? 10000 : 100000;
   const label = active
     ? status === 'stopping'
       ? t('composer.stopping')
@@ -97,24 +110,25 @@ export function Composer({
           ? t('composer.stopAndDecline')
           : t('composer.stop')
     : t('composer.send');
-  const sendDisabled = pending || sending || locked || (active ? !draft.text.trim() : !hasContent);
+  const sendDisabled =
+    pending ||
+    sending ||
+    locked ||
+    draft.text.length > limit ||
+    (active ? !draft.text.trim() : !hasContent);
   const stopDisabled = pending || status === 'stopping' || !onStop;
   const disabled = active ? stopDisabled : sendDisabled;
   const platform = window.desktop?.platform ?? 'web';
   const expanded = draft.text.includes('\n') || draft.text.length > 90;
-  const options: Options = {
-    delimiter: '|',
-    useKey: false,
-    enableOnFormTags: ['textarea'],
-    enabled: (event) => !event.repeat && !locked,
-    ignoreEventWhen: (event) =>
-      event.defaultPrevented || event.isComposing || event.keyCode === 229,
-  };
+  /** Plain-text edits from outside the editor; chips they break are dropped. */
+  const setText = (text: string) => onChange(normalizeDraft({ ...draft, text }));
   async function send() {
     if (sendDisabled) return;
     try {
       if (active) {
+        // Queued messages and answers are plain text, so chips wait for the run to finish.
         if (draft.files.length) throw new Error(t('composer.attachAfterRun'));
+        if (draft.chips.length) throw new Error(t('composer.chipsAfterRun'));
         const text = draft.text.trim();
         if (!taskId || !text) return;
         setSending(true);
@@ -122,7 +136,7 @@ export function Composer({
           if (pendingInput)
             await agentApi().answer(taskId, pendingInput.runId, pendingInput.id, { answer: text });
           else await agentApi().queueMessage(taskId, text, 'followUp');
-          onChange({ ...draft, text: '' });
+          setText('');
         } finally {
           setSending(false);
         }
@@ -140,7 +154,7 @@ export function Composer({
       // item in the meantime, and a pending steer ("send now") is withdrawn too.
       const unsent = await onStop();
       const restored = [...unsent.steering, ...unsent.followUp];
-      if (restored.length) onChange({ ...draft, text: joinDraft(draft.text, restored.join('\n')) });
+      if (restored.length) setText(joinDraft(draft.text, restored.join('\n')));
     } catch (error) {
       showErrorToast(error);
     }
@@ -149,42 +163,12 @@ export function Composer({
     if (active) await stop();
     else await send();
   }
-  const sendRef = useHotkeys<HTMLTextAreaElement>(
-    acceleratorToHotkey(shortcuts.sendMessage, platform),
-    () => void send(),
-    { ...options, preventDefault: true },
-    [draft, sendDisabled, active, pendingInput, taskId, onSubmit],
-  );
-  const newLineRef = useHotkeys<HTMLTextAreaElement>(
-    acceleratorToHotkey(shortcuts.newLine, platform),
-    (event) => {
-      if (event.key === 'Enter' && !event.metaKey && !event.ctrlKey && !event.altKey) return;
-      event.preventDefault();
-      const input = textarea.current;
-      if (!input) return;
-      const { selectionStart: start, selectionEnd: end } = input;
-      onChange({ ...draft, text: `${draft.text.slice(0, start)}\n${draft.text.slice(end)}` });
-      requestAnimationFrame(() => textarea.current?.setSelectionRange(start + 1, start + 1));
-    },
-    options,
-    [draft, onChange],
-  );
-  const ref = useCallback(
-    (input: HTMLTextAreaElement | null) => {
-      textarea.current = input;
-      sendRef(input);
-      newLineRef(input);
-    },
-    [sendRef, newLineRef],
-  );
-  useEffect(() => {
-    textarea.current?.focus();
-  }, []);
   async function choose() {
     setChoosing(true);
     try {
       const files = await agentApi().chooseFiles();
-      if (draft.files.length + files.length > 10) throw new Error(t('composer.attachLimit'));
+      // The attachment row and file chips share the 10-file limit.
+      if (draftFiles(draft).length + files.length > 10) throw new Error(t('composer.attachLimit'));
       onChange({ ...draft, files: [...draft.files, ...files] });
     } catch (error) {
       showErrorToast(error);
@@ -197,6 +181,22 @@ export function Composer({
     : followup
       ? t('composer.followUpPlaceholder')
       : t('composer.placeholder');
+  const { container: editorContainer, commands: editorCommands } = useComposerEditor({
+    draft,
+    onChange,
+    onTrigger: setTrigger,
+    onSend: () => void send(),
+    panel,
+    shortcuts,
+    platform,
+    drillCommands: DRILL_COMMAND_IDS,
+    wrap: expanded,
+    locked,
+    limit,
+    label: t('composer.promptLabel'),
+    placeholder,
+    aria,
+  });
   return (
     <footer ref={footerRef} className="panel-footer overlay-footer">
       <form
@@ -212,83 +212,66 @@ export function Composer({
           queue={queue}
           taskId={taskId}
           queueDisabled={locked || sending}
-          onEditQueued={(text) => onChange({ ...draft, text: joinDraft(draft.text, text) })}
+          suppressed={isQuickPanelOpen(trigger, active)}
+          onEditQueued={(text) => setText(joinDraft(draft.text, text))}
         >
-          <div
-            className="composer-surface"
-            data-expanded={expanded}
-            data-has-attachments={draft.files.length > 0}
+          <QuickPanel
+            trigger={trigger}
+            running={active}
+            editor={editorCommands}
+            handleRef={panel}
+            onAriaChange={setAria}
+            actions={{ ...quickActions, openSettings: onOpenSettings }}
+            policy={policy}
+            onPolicyChange={onPolicyChange}
+            connections={connections}
+            model={model}
+            attachmentCount={draftFiles(draft).length}
+            taskId={taskId}
+            tasks={tasks}
+            boundary={overlayBoundary}
           >
-            <ScrollArea
-              className="composer-input-scroll"
-              viewportClassName="max-h-[inherit]"
-              gutter
+            <div
+              className="composer-surface"
+              data-expanded={expanded}
+              data-has-attachments={draft.files.length > 0}
             >
-              <Textarea
-                ref={ref}
-                className="composer-input"
-                data-panel-autofocus="true"
-                aria-label={t('composer.promptLabel')}
-                placeholder={placeholder}
-                rows={1}
-                wrap={expanded ? 'soft' : 'off'}
-                maxLength={pendingInput ? 10000 : 100000}
-                disabled={locked}
-                value={draft.text}
-                onChange={(event) => onChange({ ...draft, text: event.target.value })}
-              />
-            </ScrollArea>
-            {draft.files.length > 0 && (
               <ScrollArea
-                className="composer-attachments"
+                className="composer-input-scroll"
                 viewportClassName="max-h-[inherit]"
                 gutter
               >
-                <ul className="attachment-list" aria-label={t('composer.attachedContext')}>
-                  {draft.files.map((file) => (
-                    <li className="attachment-chip" key={file.id}>
-                      <span title={file.name}>{file.name}</span>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon-xs"
-                        aria-label={t('composer.removeFile', { name: file.name })}
-                        onClick={() =>
-                          onChange({
-                            ...draft,
-                            files: draft.files.filter((item) => item.id !== file.id),
-                          })
-                        }
-                      >
-                        <X />
-                      </Button>
-                    </li>
-                  ))}
-                </ul>
+                <div ref={editorContainer} className="composer-input" />
               </ScrollArea>
-            )}
-            <IconButton
-              label={t('composer.attachContext')}
-              className="composer-attach"
-              tooltipSide="top"
-              variant="secondary"
-              disabled={choosing || locked}
-              onClick={() => void choose()}
-            >
-              <Plus />
-            </IconButton>
-            <div className="composer-actions">
+              <ComposerAttachments
+                files={draft.files}
+                onRemove={(id) =>
+                  onChange({ ...draft, files: draft.files.filter((file) => file.id !== id) })
+                }
+              />
               <IconButton
-                label={label}
-                variant="default"
+                label={t('composer.attachContext')}
+                className="composer-attach"
                 tooltipSide="top"
-                disabled={disabled}
-                onClick={() => void act()}
+                variant="secondary"
+                disabled={choosing || locked}
+                onClick={() => void choose()}
               >
-                {active ? <Square className="fill-current size-3" /> : <ArrowUp />}
+                <Plus />
               </IconButton>
+              <div className="composer-actions">
+                <IconButton
+                  label={label}
+                  variant="default"
+                  tooltipSide="top"
+                  disabled={disabled}
+                  onClick={() => void act()}
+                >
+                  {active ? <Square className="fill-current size-3" /> : <ArrowUp />}
+                </IconButton>
+              </div>
             </div>
-          </div>
+          </QuickPanel>
         </HitlQueuePopover>
         <ComposerConfiguration
           connections={connections}

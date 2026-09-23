@@ -6,6 +6,7 @@ import type { ConfirmationRequest } from '../../../../electron/agent/permission-
 import { agentApi } from '../use-agent';
 import { messageOf } from '../../../lib/errors';
 import { shortcutKeys } from '../../../lib/shortcuts';
+import { isTextEntryFocused } from '../../../lib/text-entry';
 import { DetailBox } from './detail-box';
 import { scopeKey } from './tool-copy';
 
@@ -42,8 +43,9 @@ export function ApprovalControls({
     detail.length > DETAIL_PREVIEW_CHARS ? `${detail.slice(0, DETAIL_PREVIEW_CHARS)}…` : detail;
 
   useEffect(() => {
-    // A HITL arrival autofocuses only when the user is not typing an answer already.
-    if (document.activeElement instanceof HTMLTextAreaElement) return;
+    // A HITL arrival autofocuses only when the user is not typing: Enter meant for the draft
+    // must never approve.
+    if (isTextEntryFocused()) return;
     onceRef.current?.focus();
   }, [request.id]);
 

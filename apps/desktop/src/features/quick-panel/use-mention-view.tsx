@@ -1,0 +1,136 @@
+import { Bot, MessageSquare, Plug } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import type { AgentTask } from '../../../electron/agent/task-schema';
+import type { ComposerEditorCommands } from '../composer-editor/editor-commands';
+import type { ExtensionAgentRow, ExtensionMcpRow } from '../service/use-service';
+import { orderGroups, rankByQuery, type QuickGroup, type QuickView } from './quick-options';
+import { relativeTime } from './relative-time';
+import type { TriggerState } from './trigger';
+import { useFileGroups } from './use-file-groups';
+import { serviceNotice, type ServiceListView } from './use-service-lists';
+
+export type MentionTrigger = Extract<TriggerState, { kind: 'mention' }>;
+
+// Service MCP connection states (`McpConnectionState`); anything newer shows as sent.
+const MCP_STATES = [
+  'disabled',
+  'disconnected',
+  'connecting',
+  'auth_required',
+  'ready',
+  'error',
+  'closing',
+] as const;
+
+function isMcpState(state: string): state is (typeof MCP_STATES)[number] {
+  const states: readonly string[] = MCP_STATES;
+  return states.includes(state);
+}
+
+/** Recent conversations for an empty query; a query searches further back. */
+const CONVERSATIONS_RECENT = 5;
+const CONVERSATIONS_MATCHES = 20;
+
+/**
+ * The `@` panel: files, conversations, MCP servers, and subagents. A pick inserts a chip; the
+ * references themselves are derived from the chips when the draft is sent. Only conversations
+ * with a session transcript can be referenced, and the current task is left out.
+ */
+export function useMentionView({
+  trigger,
+  open,
+  editor,
+  tasks,
+  taskId,
+  attachmentCount,
+  agents,
+  mcp,
+}: {
+  trigger: MentionTrigger | null;
+  /** False while the panel animates out with its last rows. */
+  open: boolean;
+  editor: ComposerEditorCommands;
+  tasks: readonly AgentTask[];
+  taskId: string | null;
+  attachmentCount: number;
+  agents: ServiceListView<ExtensionAgentRow>;
+  mcp: ServiceListView<ExtensionMcpRow>;
+}): QuickView {
+  const { t, i18n } = useTranslation('panel');
+  const query = trigger?.query ?? '';
+  const files = useFileGroups({
+    enabled: trigger !== null,
+    live: open && trigger !== null,
+    query,
+    editor,
+    tasks,
+    attachmentCount,
+  });
+  if (!trigger || !files) return { groups: [], empty: '' };
+  const language = i18n.resolvedLanguage ?? i18n.language;
+
+  const referable = tasks.filter((task) => task.id !== taskId && task.sessionFile !== null);
+  const conversations: QuickGroup = {
+    id: 'conversations',
+    heading: t('quickPanel.groups.conversations'),
+    notice: referable.length || query ? undefined : t('quickPanel.states.noConversations'),
+    options: rankByQuery(referable, query, (task) => task.title)
+      .slice(0, query ? CONVERSATIONS_MATCHES : CONVERSATIONS_RECENT)
+      .map(({ item: task, score }) => ({
+        value: `task:${task.id}`,
+        score,
+        icon: <MessageSquare />,
+        title: task.title,
+        status: relativeTime(Date.parse(task.updatedAt), language),
+        // A title taken from a multi-line first message would break the one-line chip and its text.
+        select: () =>
+          editor.insertChips([
+            { kind: 'task', taskId: task.id, title: task.title.replace(/\s+/g, ' ').trim() },
+          ]),
+      })),
+  };
+
+  const servers = mcp.status === 'ready' ? mcp.rows : [];
+  const mcpGroup: QuickGroup = {
+    id: 'mcp',
+    heading: t('quickPanel.groups.mcp'),
+    notice:
+      serviceNotice(mcp, t) ?? (servers.length || query ? undefined : t('quickPanel.states.noMcp')),
+    options: rankByQuery(servers, query, (row) => row.serverId).map(({ item: row, score }) => ({
+      value: `mcp:${row.serverId}`,
+      score,
+      icon: <Plug />,
+      title: row.serverId,
+      description: row.lastError || undefined,
+      status: isMcpState(row.state) ? t(`quickPanel.mcpState.${row.state}`) : row.state,
+      // A disabled server offers no tools to prefer, so it stays visible but cannot be picked.
+      disabled: row.state === 'disabled',
+      select: () => editor.insertChips([{ kind: 'mcpServer', serverId: row.serverId }]),
+    })),
+  };
+
+  const catalog = agents.status === 'ready' ? agents.rows : [];
+  const agentGroup: QuickGroup = {
+    id: 'agents',
+    heading: t('quickPanel.groups.agents'),
+    notice:
+      serviceNotice(agents, t) ??
+      (catalog.length || query ? undefined : t('quickPanel.states.noAgents')),
+    options: rankByQuery(catalog, query, (row) => `${row.name} ${row.description}`).map(
+      ({ item: row, score }) => ({
+        value: `agent:${row.name}`,
+        score,
+        icon: <Bot />,
+        title: row.name,
+        description: row.description || undefined,
+        select: () => editor.insertChips([{ kind: 'agent', name: row.name }]),
+      }),
+    ),
+  };
+
+  return {
+    // "Browse files…" ends the list, so the first candidate, not the picker, is active by default.
+    groups: orderGroups([...files.lists, conversations, mcpGroup, agentGroup, files.browse], query),
+    empty: t('quickPanel.states.noMatches'),
+  };
+}

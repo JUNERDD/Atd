@@ -75,7 +75,7 @@ test('production app: positioning, renderer isolation, service flow, and window 
     await page.screenshot({ path: path.join(appDirectory, '.artifacts/electron-panel.png') });
 
     await page.getByRole('textbox').fill('A small desktop task');
-    await expect(page.getByRole('textbox')).toHaveValue('A small desktop task');
+    await expect(page.getByRole('textbox')).toHaveText('A small desktop task');
     // Connected by default: no connection errors surface from the composer.
     await expect(
       page.getByRole('status').filter({ hasText: /Service disconnected|service is not connected/ }),

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Astroid, History, Settings, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@ai/ui/components/button';
@@ -55,6 +56,7 @@ export function App() {
   } = useTaskPanel();
   useAppLanguage(snapshot?.language);
   const reserveRef = useOverlayReserve();
+  const [panelBody, setPanelBody] = useState<HTMLDivElement | null>(null);
   const defaultConnection = snapshot?.connections.find(
     (connection) => connection.connectionId === snapshot.defaultConnectionId,
   );
@@ -112,84 +114,90 @@ export function App() {
             )}
           </nav>
         </header>
-        <ServiceBanner onOpenSettings={() => void openSettings()} />
-        {view === 'new' && (
-          <ScrollArea
-            className="panel-content"
-            viewportClassName="overlay-footer-fade"
-            viewportRef={reserveRef}
-          >
-            <section className="panel-content-body welcome">
-              <h2 className="max-w-full truncate" title={t('welcome.title')}>
-                {t('welcome.title')}
-              </h2>
-              <p className="max-w-full truncate" title={t('welcome.subtitle')}>
-                {t('welcome.subtitle')}
-              </p>
-              <CommandLauncher
-                commands={agent.snapshot?.commands ?? []}
-                onChoose={(id) => void chooseCommand(id)}
-              />
-              {!window.desktop && <p className="text-xs">{t('welcome.desktopOnly')}</p>}
-            </section>
-          </ScrollArea>
-        )}
-        {view === 'history' && (
-          <TaskHistory
-            tasks={agent.snapshot?.tasks ?? []}
-            onChoose={(id) => {
-              setTaskId(id);
-              setView('task');
-            }}
-          />
-        )}
-        {view === 'input' && prepared && (
-          <CommandInput
-            key={prepared.command.id}
-            prepared={prepared}
-            onChange={(input) => setPrepared({ ...prepared, input })}
-            policy={policy}
-            onRun={() => submit()}
-            onOpenSettings={() => void openCommandSettings(prepared.command.id)}
-            pending={pending}
-          />
-        )}
-        {view === 'task' &&
-          (current.detail ? (
-            <Transcript
-              detail={current.detail}
-              onAttach={(file) => changeDraft({ ...draft, files: [...draft.files, file] })}
-            />
-          ) : (
-            <ScrollArea className="panel-content" viewportClassName="overlay-footer-fade">
-              <section className="panel-content-body">
-                <p className="text-sm text-muted-foreground">{t('header.loadingConversation')}</p>
+        {/* Everything below the header; composer overlays stay inside it. */}
+        <div ref={setPanelBody} className="panel-body">
+          <ServiceBanner onOpenSettings={() => void openSettings()} />
+          {view === 'new' && (
+            <ScrollArea
+              className="panel-content"
+              viewportClassName="overlay-footer-fade"
+              viewportRef={reserveRef}
+            >
+              <section className="panel-content-body welcome">
+                <h2 className="max-w-full truncate" title={t('welcome.title')}>
+                  {t('welcome.title')}
+                </h2>
+                <p className="max-w-full truncate" title={t('welcome.subtitle')}>
+                  {t('welcome.subtitle')}
+                </p>
+                <CommandLauncher
+                  commands={agent.snapshot?.commands ?? []}
+                  onChoose={(id) => void chooseCommand(id)}
+                />
+                {!window.desktop && <p className="text-xs">{t('welcome.desktopOnly')}</p>}
               </section>
             </ScrollArea>
-          ))}
-        {(view === 'new' || view === 'task') && (
-          <Composer
-            key={`composer-${draftKey}-${draftRevision}`}
-            draft={draft}
-            policy={policy}
-            onPolicyChange={changePolicy}
-            onChange={changeDraft}
-            onSubmit={() => submit()}
-            onStop={run && taskId ? () => agentApi().stop(taskId, run.id) : undefined}
-            status={view === 'task' ? run?.status : undefined}
-            pending={pending}
-            followup={view === 'task'}
-            shortcuts={shortcuts}
-            connections={snapshot?.connections ?? []}
-            model={selectedModel}
-            onOpenSettings={() => void openSettings()}
-            taskId={view === 'task' ? taskId : null}
-            runId={run?.id}
-            task={view === 'task' ? (current.detail?.task ?? null) : null}
-            requests={view === 'task' ? requests : []}
-            queue={view === 'task' ? queue : EMPTY_QUEUE}
-          />
-        )}
+          )}
+          {view === 'history' && (
+            <TaskHistory
+              tasks={agent.snapshot?.tasks ?? []}
+              onChoose={(id) => {
+                setTaskId(id);
+                setView('task');
+              }}
+            />
+          )}
+          {view === 'input' && prepared && (
+            <CommandInput
+              key={prepared.command.id}
+              prepared={prepared}
+              onChange={(input) => setPrepared({ ...prepared, input })}
+              policy={policy}
+              onRun={() => submit()}
+              onOpenSettings={() => void openCommandSettings(prepared.command.id)}
+              pending={pending}
+            />
+          )}
+          {view === 'task' &&
+            (current.detail ? (
+              <Transcript
+                detail={current.detail}
+                onAttach={(file) => changeDraft({ ...draft, files: [...draft.files, file] })}
+              />
+            ) : (
+              <ScrollArea className="panel-content" viewportClassName="overlay-footer-fade">
+                <section className="panel-content-body">
+                  <p className="text-sm text-muted-foreground">{t('header.loadingConversation')}</p>
+                </section>
+              </ScrollArea>
+            ))}
+          {(view === 'new' || view === 'task') && (
+            <Composer
+              key={`composer-${draftKey}-${draftRevision}`}
+              draft={draft}
+              policy={policy}
+              onPolicyChange={changePolicy}
+              onChange={changeDraft}
+              onSubmit={() => submit()}
+              onStop={run && taskId ? () => agentApi().stop(taskId, run.id) : undefined}
+              status={view === 'task' ? run?.status : undefined}
+              pending={pending}
+              followup={view === 'task'}
+              shortcuts={shortcuts}
+              connections={snapshot?.connections ?? []}
+              model={selectedModel}
+              onOpenSettings={() => void openSettings()}
+              taskId={view === 'task' ? taskId : null}
+              runId={run?.id}
+              task={view === 'task' ? (current.detail?.task ?? null) : null}
+              requests={view === 'task' ? requests : []}
+              queue={view === 'task' ? queue : EMPTY_QUEUE}
+              quickActions={{ newTask, openHistory: () => setView('history') }}
+              tasks={agent.snapshot?.tasks ?? []}
+              overlayBoundary={panelBody}
+            />
+          )}
+        </div>
         <ToastHost top={62} />
       </main>
     </TooltipProvider>
