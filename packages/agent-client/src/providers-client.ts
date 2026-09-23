@@ -2,6 +2,7 @@ import {
   parse,
   ProviderConnectRequestSchema,
   ProviderConnectResponseSchema,
+  ProviderCreateRequestSchema,
   ProviderDisconnectRequestSchema,
   ProviderDisconnectResponseSchema,
   ProviderGetResponseSchema,
@@ -10,6 +11,7 @@ import {
   ProviderStatusResponseSchema,
   type ProviderConnectRequest,
   type ProviderConnectResponse,
+  type ProviderCreateRequest,
   type ProviderDisconnectResponse,
   type ProviderGetResponse,
   type ProvidersCatalogResponse,
@@ -62,6 +64,26 @@ export function providerStatus(
     'GET',
     undefined,
     (json) => parse(ProviderStatusResponseSchema, json),
+    fetchImpl,
+  );
+}
+
+/**
+ * Creates a connection and stores its credential in one request; the service
+ * owns the id, revision and configurationId. Resolves with the same outcome
+ * connect returns, because creating is the first connect.
+ */
+export function createProvider(
+  options: AgentClientOptions,
+  body: ProviderCreateRequest,
+  fetchImpl?: typeof fetch,
+): Promise<ProviderConnectResponse> {
+  return manageRequest(
+    options,
+    '/v1/providers',
+    'POST',
+    parse(ProviderCreateRequestSchema, body),
+    (json) => parse(ProviderConnectResponseSchema, json),
     fetchImpl,
   );
 }

@@ -13,3 +13,11 @@ export class DrainingError extends Error {
     this.name = 'DrainingError';
   }
 }
+
+/** 502: a model provider failed; the message is safe to show and names the next step. */
+export class UpstreamError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'UpstreamError';
+  }
+}

@@ -23,6 +23,11 @@ const CLOUD_PROVIDERS = new Set([
   'cloudflare-workers-ai',
 ]);
 
+/** Local and custom endpoints: the connection supplies the models, not the Pi directory. */
+export function isLocalProvider(providerId: string): boolean {
+  return LOCAL_PROVIDERS.some((provider) => provider.id === providerId);
+}
+
 function isCloud(providerId: string): boolean {
   return CLOUD_PROVIDERS.has(providerId);
 }
@@ -31,7 +36,7 @@ function isAmbient(providerId: string): boolean {
   return providerId === 'amazon-bedrock' || providerId === 'google-vertex';
 }
 
-function toServiceModel(model: Model<Api>): ServiceModelDefinition {
+export function toServiceModel(model: Model<Api>): ServiceModelDefinition {
   const {
     id,
     name,
@@ -81,6 +86,19 @@ function getDirectory(): Promise<ModelRuntime> {
     });
   }
   return directory;
+}
+
+/**
+ * The built-in models Pi ships for one provider, without network or
+ * credentials. Local providers and Pi failures have none.
+ */
+export async function directoryModels(providerId: string): Promise<ServiceModelDefinition[]> {
+  try {
+    return (await getDirectory()).getModels(providerId).map(toServiceModel);
+  } catch {
+    directory = null;
+    return [];
+  }
 }
 
 /** Pi providers plus locals; Pi failure falls back to locals only. */

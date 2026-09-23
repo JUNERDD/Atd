@@ -1,5 +1,6 @@
 import { Type, type Static } from 'typebox';
 import { Identifier } from './identifiers.js';
+import { ThinkingLevelSchema } from './models.js';
 
 /**
  * T6b (service v1.2 candidate): live command management DTOs. The persisted
@@ -19,17 +20,6 @@ export const CommandToolSchema = Type.Union([
   Type.Literal('command'),
 ]);
 export type CommandTool = Static<typeof CommandToolSchema>;
-
-export const CommandThinkingLevelSchema = Type.Union([
-  Type.Literal('off'),
-  Type.Literal('minimal'),
-  Type.Literal('low'),
-  Type.Literal('medium'),
-  Type.Literal('high'),
-  Type.Literal('xhigh'),
-  Type.Literal('max'),
-]);
-export type CommandThinkingLevel = Static<typeof CommandThinkingLevelSchema>;
 
 const ParameterBase = {
   key: Type.String({ pattern: '^[a-zA-Z][a-zA-Z0-9_]*$', maxLength: 64 }),
@@ -112,7 +102,7 @@ export const CommandModelSchema = Type.Union([
       mode: Type.Literal('fixed'),
       connectionId: Type.String({ maxLength: 4096 }),
       modelId: Type.String({ minLength: 1, maxLength: 256 }),
-      thinkingLevel: Type.Optional(CommandThinkingLevelSchema),
+      thinkingLevel: Type.Optional(ThinkingLevelSchema),
     },
     { additionalProperties: false },
   ),

@@ -1,6 +1,7 @@
 import { Type, type Static } from 'typebox';
 import { Identifier, OperationId } from './identifiers.js';
 import { PermissionTierSchema } from './confirms.js';
+import { ThinkingLevelSchema } from './models.js';
 
 /** Tool ids the T1 runner proxies; dynamic MCP/Skill ids arrive in T3/T4. */
 export const ServiceToolIdSchema = Type.Union([
@@ -98,17 +99,7 @@ export const RunSnapshotSchema = Type.Object(
     tools: Type.Array(ServiceToolIdSchema),
     memory: Type.Boolean(),
     /** T2 additive: migrated runs keep their accepted thinking level. */
-    thinkingLevel: Type.Optional(
-      Type.Union([
-        Type.Literal('off'),
-        Type.Literal('minimal'),
-        Type.Literal('low'),
-        Type.Literal('medium'),
-        Type.Literal('high'),
-        Type.Literal('xhigh'),
-        Type.Literal('max'),
-      ]),
-    ),
+    thinkingLevel: Type.Optional(ThinkingLevelSchema),
   },
   { additionalProperties: false },
 );

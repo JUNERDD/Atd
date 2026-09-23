@@ -6,6 +6,7 @@ export * from './atd-agents-client.js';
 export * from './mcp-client.js';
 export * from './mcp-records-client.js';
 export * from './providers-client.js';
+export * from './provider-manage-client.js';
 export * from './commands-client.js';
 export * from './memory-client.js';
 export * from './tasks-manage-client.js';

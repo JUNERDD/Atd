@@ -1,6 +1,7 @@
 import { Type, type Static } from 'typebox';
 import { Identifier } from './identifiers.js';
 import { PermissionTierSchema } from './confirms.js';
+import { ThinkingLevelSchema } from './models.js';
 import { QueueStateSchema } from './snapshot.js';
 import {
   ModelSelectionSchema,
@@ -60,17 +61,7 @@ export const ServiceRunPolicySchema = Type.Object(
     useDefaultModel: Type.Optional(Type.Boolean()),
     confirmExpansion: Type.Optional(Type.Boolean()),
     model: Type.Optional(ModelSelectionSchema),
-    thinkingLevel: Type.Optional(
-      Type.Union([
-        Type.Literal('off'),
-        Type.Literal('minimal'),
-        Type.Literal('low'),
-        Type.Literal('medium'),
-        Type.Literal('high'),
-        Type.Literal('xhigh'),
-        Type.Literal('max'),
-      ]),
-    ),
+    thinkingLevel: Type.Optional(ThinkingLevelSchema),
     skills: Type.Optional(Type.Array(CommandSkillRefSchema, { maxItems: 32 })),
     roleId: Type.Optional(Type.String({ minLength: 1, maxLength: 128 })),
     mcpTools: Type.Optional(

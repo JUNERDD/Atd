@@ -47,8 +47,19 @@ function emptyFile(): ServiceConnectionsFile {
   return { version: 1, defaultConnectionId: null, connections: [] };
 }
 
+async function readConnections(file: string): Promise<ServiceConnectionsFile> {
+  if ((await stat(file)).size > 8 * 1024 * 1024)
+    throw new Error('Provider connections file is too large.');
+  return parse(ServiceConnectionsFileSchema, JSON.parse(await readFile(file, 'utf8')));
+}
+
 export class ConnectionStore {
-  private chain: Promise<void> = Promise.resolve();
+  /**
+   * Mutation chains per file, shared by every instance. Requests load their
+   * own store, and a catalog refresh or sign-in can finish long after it
+   * loaded, so each change runs in file order against the current contents.
+   */
+  private static readonly chains = new Map<string, Promise<void>>();
 
   private constructor(
     private readonly file: string,
@@ -58,12 +69,7 @@ export class ConnectionStore {
   static async load(dataDir: string): Promise<ConnectionStore> {
     const file = connectionsFile(dataDir);
     try {
-      if ((await stat(file)).size > 8 * 1024 * 1024)
-        throw new Error('Provider connections file is too large.');
-      return new ConnectionStore(
-        file,
-        parse(ServiceConnectionsFileSchema, JSON.parse(await readFile(file, 'utf8'))),
-      );
+      return new ConnectionStore(file, await readConnections(file));
     } catch (error) {
       if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
         const store = new ConnectionStore(file, emptyFile());
@@ -76,18 +82,33 @@ export class ConnectionStore {
 
   /** Serializes metadata mutations; publishes only after the atomic write. */
   change<T>(update: (draft: ServiceConnectionsFile) => T | Promise<T>): Promise<T> {
-    const operation = this.chain.then(async () => {
-      const draft = structuredClone(this.data);
+    const prior = ConnectionStore.chains.get(this.file) ?? Promise.resolve();
+    const operation = prior.then(async () => {
+      let draft: ServiceConnectionsFile;
+      try {
+        draft = await readConnections(this.file);
+      } catch {
+        throw new Error('Saved provider connections could not be read. The file is preserved.');
+      }
       const result = await update(draft);
       await atomicWrite(this.file, parse(ServiceConnectionsFileSchema, draft));
       this.data = draft;
       return result;
     });
-    this.chain = operation.then(
+    const tail = operation.then(
       () => undefined,
       () => undefined,
     );
+    ConnectionStore.chains.set(this.file, tail);
+    void tail.then(() => {
+      if (ConnectionStore.chains.get(this.file) === tail) ConnectionStore.chains.delete(this.file);
+    });
     return operation;
+  }
+
+  /** Rereads the file, so a long-lived holder sees connections changed since it loaded. */
+  async reload(): Promise<void> {
+    this.data = await readConnections(this.file);
   }
 
   connection(connectionId: string): ServiceConnection {

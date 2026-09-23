@@ -18,9 +18,6 @@ import type { MemoryEntry, MemorySnapshot } from './bridge';
 import type { RunPolicy } from './run-policy';
 import type { FileRef, RunSnapshot } from './task-schema';
 
-const FUTURE =
-  'This provider action is not available yet. Creating, editing, and login stay on a later service.';
-
 export function notConnected(): Error {
   return new Error('The service is not connected. Connect in Settings → Service.');
 }
@@ -221,10 +218,6 @@ export async function handleArtifact(
   } catch (error) {
     manageError(error);
   }
-}
-
-export function providerFuture(): never {
-  throw new Error(FUTURE);
 }
 
 /** Parses `connectionId:tool` / `connectionId/tool` MCP refs; skips display-only ids. */
