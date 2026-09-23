@@ -278,6 +278,7 @@ export class TaskClient {
     let text = request.input.text;
     let titleCommand: string | null = null;
     let model = request.policy?.model ?? this.host.defaultModel();
+    let thinkingLevel = request.policy?.thinkingLevel;
     const options = this.connection.options();
     if (request.commandId) {
       if (!options) throw new Error('The service is not connected. Connect in Settings → Service.');
@@ -296,6 +297,7 @@ export class TaskClient {
           connectionId: previewed.snapshot.model.connectionId,
           modelId: previewed.snapshot.model.modelId,
         };
+      thinkingLevel ??= previewed.snapshot.thinkingLevel;
     }
     if (!text.trim() && !request.input.files.length)
       throw new Error('Enter a message or attach a file.');
@@ -320,6 +322,7 @@ export class TaskClient {
       ...(taskId ? { taskId } : {}),
       input: { ...request.input, text },
       ...(model ? { model } : {}),
+      ...(thinkingLevel ? { thinkingLevel } : {}),
     });
     const detail = await this.detail(submitted.taskId);
     if (titleCommand && !request.taskId) detail.task.title = titleCommand;

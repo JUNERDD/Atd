@@ -1,9 +1,9 @@
 import type { AuthOperationOptions, Credential, CredentialInfo } from '@earendil-works/pi-ai';
 
 /**
- * Explicit temporary credentials injected through the environment only.
- * No persistent keyring, no file storage, nothing logged. T2 owns the
- * persistent backend; until then a missing key is a truthful `auth_required`.
+ * Explicit temporary credentials injected through the environment only, for
+ * runs without a saved provider connection. No keyring, no file storage,
+ * nothing logged; a missing key is a truthful `auth_required`.
  */
 export interface TempCredentialConfig {
   provider: string;

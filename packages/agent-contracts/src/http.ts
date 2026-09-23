@@ -5,6 +5,7 @@ import {
   PermissionAnswerSchema,
   PermissionRequestSchema,
 } from './confirms.js';
+import { ThinkingLevelSchema } from './models.js';
 import { ResourceRefSchema } from './resources.js';
 import { TaskSnapshotSchema } from './snapshot.js';
 import { AgentTaskSchema, ModelSelectionSchema, TaskInputSchema } from './task.js';
@@ -16,6 +17,8 @@ export const SubmitTaskRequestSchema = Type.Object(
     taskId: Type.Optional(Type.Union([Identifier, Type.Null()])),
     input: TaskInputSchema,
     model: Type.Optional(ModelSelectionSchema),
+    /** Absent uses the connection's saved level, else off. */
+    thinkingLevel: Type.Optional(ThinkingLevelSchema),
   },
   { additionalProperties: false },
 );
