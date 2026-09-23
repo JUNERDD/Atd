@@ -15,11 +15,11 @@ import type { Logger } from './logging.js';
 import { ResourceStore } from './resources.js';
 import { ConflictError, DrainingError } from './errors.js';
 import { TaskRunner, type RunnerContext } from './task-runner.js';
+import { CONTEXT_BUDGET, runInputSize } from './tasks/run-budget.js';
 import { resolveRunModel, resolveRunThinkingLevel } from './tasks/run-selection.js';
 
 /** First-round ceiling: at most two active parent tasks per service. */
 const MAX_ACTIVE_PARENTS = 2;
-const CONTEXT_BUDGET = 120000;
 
 export interface ManagerDeps {
   ctx: RunnerContext;
@@ -288,11 +288,7 @@ export class RunnerManager {
   }
 
   private checkBudget(snapshot: RunSnapshot): void {
-    const size =
-      snapshot.input.text.length +
-      snapshot.instructions.length +
-      JSON.stringify(snapshot.input.arguments).length;
-    if (size > CONTEXT_BUDGET)
+    if (runInputSize(snapshot) > CONTEXT_BUDGET)
       throw new Error('The combined input and parameters exceed the context budget.');
   }
 }

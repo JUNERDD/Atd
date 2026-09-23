@@ -1,6 +1,6 @@
 import type { SessionFactoryDeps } from '../pi-session.js';
 import type { ExtensionAPI, ExtensionFactory } from '@earendil-works/pi-coding-agent';
-import { registerServiceAgents, serviceAgentNames } from './agents.js';
+import { registerRuntimeAgents, SERVICE_RUNTIME_AGENTS, type RuntimeAgent } from './agents.js';
 import {
   SERVICE_CHAIN_WORKFLOW,
   SERVICE_PARALLEL_WORKFLOW,
@@ -30,6 +30,11 @@ import {
  * bridge, ceiling, named workflows and runtime agents. Guards live in
  * guard.ts, async narrowing in enrich.ts.
  */
+
+/** A pi-subagents registration that must be released with its parent session. */
+interface Registration {
+  dispose(): void;
+}
 
 interface Preloaded {
   subagents: ExtensionFactory;
@@ -92,9 +97,14 @@ async function preload(): Promise<Preloaded> {
 /**
  * Prepares the parent subagent factory. Writes the managed config, pins the
  * agent dir, installs the trigger and validates the bridge path. Returns the
- * single factory pi-session appends to its extension list.
+ * single factory pi-session appends to its extension list. `runAgents` are
+ * the referenced atd agents the session registers beside the service agents
+ * (fixed per session through the run binding).
  */
-export async function prepareSubagentsParent(deps: SessionFactoryDeps): Promise<ExtensionFactory> {
+export async function prepareSubagentsParent(
+  deps: SessionFactoryDeps,
+  runAgents: RuntimeAgent[],
+): Promise<ExtensionFactory> {
   const agentDir = deps.ctx.paths.agentDir;
   process.env.PI_CODING_AGENT_DIR = agentDir;
   const { config } = await ensureManagedSubagentConfig(agentDir);
@@ -104,6 +114,10 @@ export async function prepareSubagentsParent(deps: SessionFactoryDeps): Promise<
   deps.audit({ taskId: deps.taskId, requiredExtension: REQUIRED_EXTENSION_ID });
   const preloaded = await preload();
   const factory: ExtensionFactory = (pi) => {
+    // What this session registered at session_start. pi-subagents keys these
+    // by session id, and a session rebuilt for a later run reopens the same
+    // session file (same id), so shutdown releases them for the next session.
+    const registrations: Registration[] = [];
     preloaded.subagents(pi);
     pi.on('tool_call', (raw) => guardSubagentCall(deps, raw as unknown as GuardInput));
     pi.on('tool_result', (raw) => {
@@ -118,10 +132,14 @@ export async function prepareSubagentsParent(deps: SessionFactoryDeps): Promise<
         sessionManager: { getSessionId(): string | undefined };
         cwd: string;
       };
-      registerParentSession(deps, preloaded, bridgePath, pi, ctx);
+      registerParentSession(deps, preloaded, bridgePath, pi, ctx, {
+        agents: [...SERVICE_RUNTIME_AGENTS, ...runAgents],
+        registrations,
+      });
       return undefined;
     });
     pi.on('session_shutdown', (_raw, ctxRaw) => {
+      for (const registration of registrations.splice(0)) registration.dispose();
       const ctx = ctxRaw as unknown as { sessionManager: { getSessionId(): string | undefined } };
       const sessionId = ctx.sessionManager.getSessionId();
       if (sessionId) {
@@ -140,16 +158,30 @@ function registerParentSession(
   bridgePath: string,
   pi: ExtensionAPI,
   ctx: { sessionManager: { getSessionId(): string | undefined }; cwd: string },
+  session: { agents: RuntimeAgent[]; registrations: Registration[] },
 ): void {
+  const { registrations } = session;
   const sessionId = ctx.sessionManager.getSessionId();
   if (!sessionId) throw new Error('Subagent parent has no session identity; refusing to start.');
   const taskId = deps.taskId;
   const runId = deps.currentRunId();
   const run = deps.ctx.ledger.run(taskId, runId);
+  // Runtime agents register first: if pi-subagents refuses one, nothing below
+  // registers, no parent record exists and the guard blocks every call.
+  registrations.push(
+    registerRuntimeAgents(pi, session.agents, (input) =>
+      preloaded.registerAgent({
+        pi: input.pi,
+        name: input.name,
+        definition: input.definition as unknown as Record<string, unknown>,
+      }),
+    ),
+  );
+  const agents = session.agents.map((agent) => agent.name);
   // Sync registrations use the frozen run snapshot; enrich.ts narrows async
   // and fails closed to fewer tools (never wider) when unavailable.
   const parentTools = [...run.snapshot.tools];
-  registerParent({ taskId, runId, sessionId, tools: parentTools, roleId: 'default' });
+  registerParent({ taskId, runId, sessionId, tools: parentTools, roleId: 'default', agents });
   storeHost(taskId, {
     dataDir: deps.ctx.paths.root,
     cwd: ctx.cwd,
@@ -159,45 +191,45 @@ function registerParentSession(
     audit: deps.audit,
     resourceIds: run.snapshot.input.files.map((file) => file.id),
   });
-  preloaded.registerRequired({
-    sessionId,
-    extensions: [{ id: REQUIRED_EXTENSION_ID, path: bridgePath }],
-  });
+  registrations.push(
+    preloaded.registerRequired({
+      sessionId,
+      extensions: [{ id: REQUIRED_EXTENSION_ID, path: bridgePath }],
+    }),
+  );
   const ceiling = preloaded.registerCeiling({
     sessionId,
     source: 'service',
-    ceiling: { allowedTools: parentTools, allowedAgents: serviceAgentNames() },
+    ceiling: { allowedTools: parentTools, allowedAgents: agents },
   });
-  preloaded.registerWorkflow({
-    sessionId,
-    definition: {
-      name: SERVICE_PARALLEL_WORKFLOW,
-      version: 1,
-      resolve: (args) => {
-        const validated = validateParallelArgs(args);
-        if (!validated.ok) return { error: validated.error };
-        return { script: buildParallelScript(validated.args) };
+  registrations.push(ceiling);
+  registrations.push(
+    preloaded.registerWorkflow({
+      sessionId,
+      definition: {
+        name: SERVICE_PARALLEL_WORKFLOW,
+        version: 1,
+        resolve: (args) => {
+          const validated = validateParallelArgs(args);
+          if (!validated.ok) return { error: validated.error };
+          return { script: buildParallelScript(validated.args) };
+        },
       },
-    },
-  });
-  preloaded.registerWorkflow({
-    sessionId,
-    definition: {
-      name: SERVICE_CHAIN_WORKFLOW,
-      version: 1,
-      resolve: (args) => {
-        const validated = validateChainArgs(args);
-        if (!validated.ok) return { error: validated.error };
-        return { script: buildChainScript(validated.args) };
-      },
-    },
-  });
-  registerServiceAgents(pi, (input) =>
-    preloaded.registerAgent({
-      pi: input.pi,
-      name: input.name,
-      definition: input.definition as unknown as Record<string, unknown>,
     }),
   );
-  void enrichParentAsync(deps, taskId, runId, ceiling);
+  registrations.push(
+    preloaded.registerWorkflow({
+      sessionId,
+      definition: {
+        name: SERVICE_CHAIN_WORKFLOW,
+        version: 1,
+        resolve: (args) => {
+          const validated = validateChainArgs(args);
+          if (!validated.ok) return { error: validated.error };
+          return { script: buildChainScript(validated.args) };
+        },
+      },
+    }),
+  );
+  void enrichParentAsync(deps, taskId, runId, ceiling, agents);
 }

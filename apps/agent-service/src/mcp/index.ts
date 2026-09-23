@@ -135,6 +135,7 @@ export {
 } from './servers.js';
 export {
   mcpProxyName,
+  mcpProxyPrefix,
   prepareMcpTools,
   type McpProxyDetails,
   type McpProxyHost,

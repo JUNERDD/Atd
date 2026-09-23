@@ -1,6 +1,6 @@
 import type { ExtensionFactory } from '@earendil-works/pi-coding-agent';
 import type { McpServerConfig } from '@ai/agent-contracts';
-import { McpAdapterMissing, McpAuthority } from './mcp/index.js';
+import { McpAdapterMissing, McpAuthority, type McpToolBinding } from './mcp/index.js';
 import { ResourceStore } from './resources.js';
 import { readServiceId, type RunnerContext } from './task-runner.js';
 
@@ -14,6 +14,8 @@ export interface SessionMcpDeps {
 
 export interface SessionMcpPrep {
   factory: ExtensionFactory;
+  /** The proxies `factory` registers; empty while the adapter is unavailable. */
+  bindings: McpToolBinding[];
   configureMcp?: (servers: McpServerConfig[]) => Promise<McpServerConfig[]>;
   configuredMcp?: () => McpServerConfig[];
 }
@@ -46,6 +48,7 @@ export async function prepareSessionMcp(deps: SessionMcpDeps): Promise<SessionMc
     deps.audit({ taskId: deps.taskId, runId: deps.currentRunId(), mcpTools: bindings.length });
     return {
       factory,
+      bindings,
       configureMcp: async (servers) => authority.configure({ servers }),
       configuredMcp: () => authority.configured(),
     };
@@ -55,6 +58,6 @@ export async function prepareSessionMcp(deps: SessionMcpDeps): Promise<SessionMc
       taskId: deps.taskId,
     });
     deps.audit({ taskId: deps.taskId, runId: deps.currentRunId(), mcpDegraded: true });
-    return { factory: () => undefined };
+    return { factory: () => undefined, bindings: [] };
   }
 }

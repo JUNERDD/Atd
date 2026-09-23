@@ -15,6 +15,12 @@ export interface ParentRecord {
   sessionId: string;
   tools: string[];
   roleId: string;
+  /**
+   * Runtime agents this parent session registered and may delegate to: the
+   * service agents plus the atd agents its runs referenced. Fixed for the
+   * session's life; the run binding key rebuilds the session when it changes.
+   */
+  agents: string[];
   stopping: boolean;
   workflowActive: boolean;
 }
@@ -94,6 +100,12 @@ export function storeHost(taskId: string, host: SubagentHost): void {
 /** Reads the host record the bridge uses to build child proxies. */
 export function hostForTask(taskId: string): SubagentHost | null {
   return store().hosts.get(taskId) ?? null;
+}
+
+/** Points the child host at the ledger resources the task's current run attached. */
+export function rebindHostResources(taskId: string, resourceIds: string[]): void {
+  const host = store().hosts.get(taskId);
+  if (host) store().hosts.set(taskId, { ...host, resourceIds: [...resourceIds] });
 }
 
 /** Rebinds a live parent session to its newest run. */

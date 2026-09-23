@@ -7,7 +7,6 @@ import { readServiceId } from '../task-runner.js';
 import { ResourceStore } from '../resources.js';
 import { skillProfilePaths } from '../skills/profile.js';
 import { loadRunRole } from '../skills/roles.js';
-import { serviceAgentNames } from './agents.js';
 import { intersectChildTools } from './intersection.js';
 import { hostForTask, rebindParentRun, storeHost } from './registry.js';
 
@@ -21,12 +20,16 @@ export type CeilingHandle = {
   update(ceiling: { allowedTools: string[]; allowedAgents: string[] }): void;
 };
 
-/** Narrows the ceiling and host after the sync registrations land. */
+/**
+ * Narrows the ceiling and host after the sync registrations land.
+ * `allowedAgents` are the runtime agents the session registered.
+ */
 export async function enrichParentAsync(
   deps: SessionFactoryDeps,
   taskId: string,
   runId: string,
   ceiling: CeilingHandle,
+  allowedAgents: string[],
 ): Promise<void> {
   try {
     const profile = skillProfilePaths(deps.ctx.paths.root, deps.ctx.paths.agentDir);
@@ -42,7 +45,7 @@ export async function enrichParentAsync(
       mcpProxies: proxies,
       runMemory: run.snapshot.memory,
     });
-    ceiling.update({ allowedTools, allowedAgents: serviceAgentNames() });
+    ceiling.update({ allowedTools, allowedAgents });
     const host = hostForTask(taskId);
     if (host) storeHost(taskId, { ...host, allowedTools, mcpProxies: proxies });
     rebindParentRun(taskId, runId, run.snapshot.tools);
