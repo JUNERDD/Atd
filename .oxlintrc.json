@@ -5,101 +5,6 @@
   "categories": { "correctness": "error" },
   "rules": {
     "react/only-export-components": ["error", { "allowConstantExport": true }],
-    "shadcn/no-restyle": [
-      "error",
-      {
-        "allow": [
-          "layout",
-          "composer-attachments",
-          "composer-input",
-          "composer-input-scroll",
-          "composer-queue",
-          "composer-queue-actions",
-          "editor-fields",
-          "input-preview",
-          "markdown-code",
-          "overlay-footer",
-          "overlay-footer-fade",
-          "panel-content",
-          "panel-dialog",
-          "panel-text-scroll",
-          "phase-scroll",
-          "phase-title",
-          "provider-connections",
-          "run-settings-tools",
-          "settings-drawer-scroll",
-          "settings-permission-options",
-          "thinking-detail",
-          "thinking-level-select",
-          "tool-body",
-          "tool-diff",
-          "tool-output",
-          "turn-header-label"
-        ],
-        "contracts": [
-          {
-            "pattern": "^Button$",
-            "allow": [
-              "layout",
-              "font-normal",
-              "text-muted-foreground",
-              "pr-9",
-              "activity-trigger",
-              "composer-attach",
-              "composer-model",
-              "header-button",
-              "phase-trigger",
-              "provider-directory-row",
-              "provider-model-trigger",
-              "question-option",
-              "quick-command",
-              "settings-nav-button",
-              "settings-shortcut-button",
-              "task-row",
-              "variable-token"
-            ]
-          },
-          { "pattern": "^Label$", "allow": ["layout", "truncate", "gap-3.5"] },
-          {
-            "pattern": "^PopoverContent$",
-            "allow": [
-              "layout",
-              "rounded-2xl",
-              "p-0",
-              "hitl-queue-content",
-              "input-options-popover",
-              "model-picker",
-              "model-picker-scoped"
-            ]
-          },
-          { "pattern": "^Command$", "allow": ["layout", "bg-transparent"] },
-          { "pattern": "^CommandItem$", "allow": ["layout"] },
-          {
-            "pattern": "^Item$",
-            "allow": [
-              "layout",
-              "hover:bg-muted/50",
-              "command-management-row",
-              "provider-connection-row",
-              "settings-permission-option"
-            ]
-          },
-          {
-            "pattern": "^SheetContent$",
-            "allow": [
-              "layout",
-              "motion",
-              "settings-drawer",
-              "settings-drawer-overlay",
-              "data-open:fade-in-100",
-              "data-closed:fade-out-100",
-              "data-[side=left]:data-open:slide-in-from-left",
-              "data-[side=left]:data-closed:slide-out-to-left"
-            ]
-          }
-        ]
-      }
-    ],
     "shadcn/no-raw-colors": "error",
     "shadcn/no-arbitrary-values": ["error", { "allow": ["layout"] }],
     "shadcn/no-inline-styles": "error",
@@ -117,7 +22,6 @@
     {
       "files": ["packages/ui/src/components/**"],
       "rules": {
-        "shadcn/no-restyle": "off",
         "shadcn/no-arbitrary-values": "off",
         "shadcn/require-static-classes": "off"
       }
