@@ -7,10 +7,10 @@ import { ScrollArea } from '@ai/ui/components/scroll-area';
 import type { TaskDetail } from '../../../../electron/agent/bridge';
 import { isActive, type FileRef, type TaskRun } from '../../../../electron/agent/task-schema';
 import { IconButton } from '../../../components/icon-button';
-import { UserContext } from '../user-context';
 import { TaskFiles } from '../task-files';
 import { adaptTranscript, modelNameForRun, type AdaptedTurn } from './adapter';
 import { artifactAnchorIds, indexRequests, type RequestIndex } from './turns';
+import { PromptMessage } from './prompt-message';
 import { pendingMessageText } from './run-prompt';
 import { StatusBar } from './status-bar';
 import { TurnHeader } from './turn-header';
@@ -124,8 +124,10 @@ export function Transcript({
           {!hasUser && run && (
             <section className="transcript-turn">
               <article className="user-message" aria-label={t('conversation.yourMessage')}>
-                <UserContext snapshot={run.snapshot} />
-                <div className="message-bubble">{pendingMessageText(run.snapshot)}</div>
+                <PromptMessage
+                  snapshot={run.snapshot}
+                  fallback={pendingMessageText(run.snapshot)}
+                />
               </article>
             </section>
           )}

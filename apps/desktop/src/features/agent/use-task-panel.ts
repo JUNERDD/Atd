@@ -8,10 +8,11 @@ import { emptyInput, isActive } from '../../../electron/agent/task-schema';
 import { EMPTY_QUEUE } from '../../../electron/agent/transcript-schema';
 import type { RunReference } from '@ai/agent-contracts';
 import {
+  draftChips,
   draftFiles,
   draftReferences,
-  draftSkill,
-  seedFromText,
+  draftSkills,
+  serialize,
   type ComposerDraft,
 } from '../composer-editor/draft';
 import { useSettingsSnapshot } from '../settings/use-settings';
@@ -26,13 +27,13 @@ type View = 'new' | 'history' | 'task' | 'input';
 const EMPTY_DRAFT: ComposerDraft = { text: '', files: [], chips: [] };
 
 /**
- * Stages what the draft's chips select: the skill chip is the run's skill, and the references are
- * exactly the draft's conversation, MCP server and subagent chips.
+ * Stages what the draft's chips select: the skills are the draft's skill chips, and the references
+ * are exactly its conversation, MCP server and subagent chips, each item once.
  */
-function withChips(policy: RunPolicy, skill: string | null, references: RunReference[]): RunPolicy {
+function withChips(policy: RunPolicy, skills: string[], references: RunReference[]): RunPolicy {
   return {
     ...policy,
-    ...(skill ? { skills: [{ name: skill }] } : {}),
+    ...(skills.length ? { skills: skills.map((name) => ({ name })) } : {}),
     ...(references.length ? { references } : {}),
   };
 }
@@ -114,17 +115,15 @@ export function useTaskPanel() {
     if (!bridge) return;
     return bridge.onCommandSession(({ commandId, name }) => {
       newTask();
-      setDrafts((previous) => ({
-        ...previous,
-        new: seedFromText(
-          commandId ? t('session.editSeed', { name, id: commandId }) : t('session.createSeed'),
-        ),
-      }));
+      const seed = commandId
+        ? t('session.editSeed', { name, id: commandId })
+        : t('session.createSeed');
+      setDrafts((previous) => ({ ...previous, new: serialize([seed], []) }));
       focusPanelInput();
     });
   }, [t]);
-  // Extensions create-with-AI seeds the `/skill:create-*` chip on the new draft; submit stages the
-  // chip's skill, so removing the chip also drops the skill.
+  // Extensions create-with-AI seeds a `create-*` skill chip and a space on the new draft; submit
+  // stages the chip's skill, so removing the chip also drops the skill.
   useEffect(() => {
     const bridge = window.desktop?.agent;
     if (!bridge) return;
@@ -132,7 +131,8 @@ export function useTaskPanel() {
       const skillName =
         kind === 'skill' ? 'create-skill' : kind === 'subagent' ? 'create-subagent' : 'create-mcp';
       newTask();
-      setDrafts((previous) => ({ ...previous, new: seedFromText(`/skill:${skillName} `) }));
+      const seed = serialize([{ kind: 'skill', name: skillName }, ' '], []);
+      setDrafts((previous) => ({ ...previous, new: seed }));
       setPolicies((previous) => ({
         ...previous,
         new: {
@@ -201,21 +201,29 @@ export function useTaskPanel() {
     const run = current.detail?.task.runs.at(-1);
     if (!launched && view === 'task' && isActive(run?.status)) return null;
     const commandInput = launched ?? (view === 'input' ? prepared : null);
-    // Chips are the draft's only record of its references: files and the skill derive from them.
+    // Chips are the draft's only record of its references: files, skills and references derive
+    // from them, and `input.chips` keeps where each chip sits so the transcript can show it again.
     const files = draftFiles(draft);
     if (!commandInput && files.length > 10) throw new Error(t('composer.attachLimit'));
     setPending(true);
-    const input = commandInput?.input ?? { ...emptyInput(), text: draft.text, files };
-    const skill = commandInput ? null : draftSkill(draft);
+    // Always recorded, even empty: a run without `input.chips` reads as sent before chips were.
+    const input = commandInput?.input ?? {
+      ...emptyInput(),
+      text: draft.text,
+      files,
+      chips: draftChips(draft),
+    };
+    const skills = commandInput ? [] : draftSkills(draft);
     const references = commandInput ? [] : draftReferences(draft);
     const saved = launched ? null : (policies[policyKey] ?? null);
     const policy: RunPolicy | null =
-      skill || references.length ? withChips(saved ?? defaultPolicy, skill, references) : saved;
+      skills.length || references.length
+        ? withChips(saved ?? defaultPolicy, skills, references)
+        : saved;
     const targetTaskId = launched ? null : view === 'task' ? taskId : null;
     const key = JSON.stringify({
       policy,
       input: { ...input, capturedAt: commandInput ? input.capturedAt : '' },
-      chips: commandInput ? [] : draft.chips,
       taskId: targetTaskId,
       commandId: commandInput?.command.id,
       revision: commandInput?.command.revision,

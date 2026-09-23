@@ -27,11 +27,12 @@ export interface QuickPanelAria {
 }
 
 /**
- * Whether the panel shows for this trigger. During an active run `@` stays plain text (mentions
- * cannot be sent then), while `/` still opens with quick commands only.
+ * Whether the panel shows for this trigger. During an active run `@` and an inline `/` stay plain
+ * text (chips cannot be sent then), while a leading `/` still opens with quick commands only.
  */
 export function isQuickPanelOpen(trigger: TriggerState | null, running: boolean): boolean {
-  return trigger !== null && !(running && trigger.kind === 'mention');
+  if (trigger === null) return false;
+  return !running || (trigger.kind === 'slash' && trigger.placement === 'leading');
 }
 
 interface Selection {

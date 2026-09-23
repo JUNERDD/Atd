@@ -1,4 +1,9 @@
-import { autocompletion, type CompletionContext } from '@codemirror/autocomplete';
+import {
+  autocompletion,
+  type Completion,
+  type CompletionContext,
+  type CompletionResult,
+} from '@codemirror/autocomplete';
 import {
   Decoration,
   EditorView,
@@ -10,6 +15,7 @@ import {
 import type { CommandDefinition } from '../../../electron/agent/command-schema';
 import { availableVariables } from '../../../electron/agent/command-validation';
 import { instructionCompletion } from './instruction-completion';
+import { rankVariables, typedVariable } from './instruction-variable-match';
 
 export function instructionExtensions(
   command: CommandDefinition,
@@ -17,6 +23,13 @@ export function instructionExtensions(
 ) {
   const names = availableVariables(command);
   const variables = editor.variables.filter(({ name }) => names.includes(name));
+  // Built per configuration and only re-ranked per query: CodeMirror keeps the selected option
+  // across updates by object identity.
+  const completions: Completion[] = variables.map(({ name, detail }) => ({
+    label: `{{${name}}}`,
+    detail,
+    apply: `{{${name}}}`,
+  }));
   const matcher = new MatchDecorator({
     regexp: /\{\{\s*([^{}]+?)\s*\}\}/g,
     decoration: (match) =>
@@ -36,17 +49,20 @@ export function instructionExtensions(
     },
     { decorations: (instance) => instance.decorations },
   );
-  const complete = (context: CompletionContext) => {
-    const word = context.matchBefore(/\{\{[\w.]*/);
-    if (!word) return null;
+  /*
+   * The shared matcher filters and orders the options, so CodeMirror keeps them as given
+   * (`filter: false`). That rules out `validFor`, so `update` re-ranks synchronously as the name
+   * is typed; otherwise each keystroke would query the source again, and until it answered the
+   * list would be empty and Enter would not accept.
+   */
+  const complete = (context: CompletionContext): CompletionResult | null => {
+    const typed = typedVariable(context.state, context.pos);
+    if (!typed) return null;
     return {
-      from: word.from,
-      options: variables.map(({ name, detail }) => ({
-        label: `{{${name}}}`,
-        detail,
-        apply: `{{${name}}}`,
-      })),
-      validFor: /^\{\{[\w.]*$/,
+      from: typed.from,
+      options: rankVariables(completions, typed.query),
+      filter: false,
+      update: (_current, _from, _to, next) => complete(next),
     };
   };
   return [

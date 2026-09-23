@@ -23,7 +23,6 @@ import {
 const OPEN = '\uE000';
 const CLOSE = '\uE001';
 const TOKEN = /\uE000([0-9a-z]+)\uE001/g;
-const LEADING_TOKEN = /^\uE000([0-9a-z]+)\uE001/;
 export const SENTINELS = /[\uE000\uE001]/g;
 
 export interface ChipEntry {
@@ -131,10 +130,4 @@ export function serializedLength(
       length + (typeof segment === 'string' ? segment.length : chipText(segment).length),
     0,
   );
-}
-
-/** End of the skill token pinned at the document start, or 0 when the draft has no skill chip. */
-export function leadingSkillEnd(doc: Text, table: ReadonlyMap<string, Chip>): number {
-  const match = LEADING_TOKEN.exec(doc.sliceString(0, 32));
-  return match && table.get(match[1] ?? '')?.kind === 'skill' ? match[0].length : 0;
 }

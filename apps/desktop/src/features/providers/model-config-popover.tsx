@@ -1,23 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
-import { Check, ChevronDown, ChevronLeft, ChevronRight, Settings2 } from 'lucide-react';
+import { Check, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@ai/ui/components/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@ai/ui/components/popover';
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from '@ai/ui/components/command';
 import type {
   Connection,
   ModelReference,
   ModelThinkingLevel,
 } from '../../../electron/providers/schema';
-import { IconButton } from '../../components/icon-button';
-import { sortModels } from './model-order';
+import { ModelList } from './model-list';
 import { ProviderBrand } from './provider-brand';
 import { useThinkingLevels } from './use-thinking-levels';
 
@@ -40,7 +31,7 @@ type ModelConfigView = 'root' | 'effort' | 'model';
 /**
  * One trigger (`model + context + effort`) with inline drill-in. The root view shows Context
  * readonly plus Effort/Model navigation; subviews render in the same Popover with a back header.
- * Model search, catalog warnings, and empty states mirror ModelPicker; effort options come from
+ * The model view is the ModelList that ModelPicker also shows; effort options come from
  * useThinkingLevels with the same disabled and levels[0] fallback semantics.
  */
 export function ModelConfigPopover({
@@ -228,72 +219,22 @@ export function ModelConfigPopover({
               </Button>
               <span className="model-config-back-title">{t('modelConfig.model')}</span>
             </div>
-            <Command className="bg-transparent min-h-0">
-              <CommandInput
-                placeholder={t('models.searchPlaceholder')}
-                aria-label={t('models.searchLabel')}
-                action={
-                  onOpenProviders && (
-                    <IconButton
-                      label={t('models.manageProviders')}
-                      onClick={() => {
-                        setOpen(false);
-                        onOpenProviders();
-                      }}
-                    >
-                      <Settings2 />
-                    </IconButton>
-                  )
-                }
-              />
-              <CommandList className="min-h-0 flex-1 max-h-none">
-                {connections
-                  .filter((item) => item.catalogError)
-                  .map((item) => (
-                    <output key={item.connectionId} className="model-catalog-warning">
-                      {`${item.name}: ${item.catalogError}`}
-                    </output>
-                  ))}
-                <CommandEmpty>
-                  {connections.some((item) => item.catalog.length)
-                    ? t('models.noMatch')
-                    : t('models.none')}
-                </CommandEmpty>
-                {connections.map((item) => (
-                  <CommandGroup key={item.connectionId} heading={item.name} title={item.name}>
-                    {sortModels(item.catalog).map((entry) => (
-                      <CommandItem
-                        key={entry.id}
-                        value={`${item.connectionId} ${entry.id}`}
-                        keywords={[item.name, entry.name]}
-                        disabled={!item.connected}
-                        data-checked={
-                          model?.connectionId === item.connectionId && model.modelId === entry.id
-                        }
-                        onSelect={() => {
-                          onModelChange({
-                            connectionId: item.connectionId,
-                            modelId: entry.id,
-                          });
-                          setOpen(false);
-                        }}
-                      >
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate" title={entry.name}>
-                            {entry.name}
-                          </p>
-                          {entry.name !== entry.id && (
-                            <p className="text-xs text-muted-foreground truncate" title={entry.id}>
-                              {entry.id}
-                            </p>
-                          )}
-                        </div>
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
-                ))}
-              </CommandList>
-            </Command>
+            <ModelList
+              connections={connections}
+              value={model}
+              searchLabel={t('models.searchLabel')}
+              onSelect={(reference) => {
+                onModelChange(reference);
+                setOpen(false);
+              }}
+              onOpenProviders={
+                onOpenProviders &&
+                (() => {
+                  setOpen(false);
+                  onOpenProviders();
+                })
+              }
+            />
           </div>
         )}
       </PopoverContent>

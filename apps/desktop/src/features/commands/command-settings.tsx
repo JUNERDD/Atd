@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Copy, MoreHorizontal, Pencil, Play, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@ai/ui/components/button';
+import { HighlightedText } from '@ai/ui/components/highlighted-text';
 import { Input } from '@ai/ui/components/input';
 import { Switch } from '@ai/ui/components/switch';
 import {
@@ -31,6 +32,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@ai/ui/components/alert-dialog';
+import { matchFields } from '@ai/ui/lib/fuzzy-match';
 import type { CommandDefinition } from '../../../electron/agent/command-schema';
 import { copyCommand, newCommand } from '../../../electron/agent/command-templates';
 import type { SettingsSnapshot } from '../../../electron/settings-contract';
@@ -138,10 +140,15 @@ export function CommandSettings({
       </SettingsHeading>
       <ItemGroup>
         {commands
-          .filter((command) =>
-            `${command.name} ${command.description}`.toLowerCase().includes(search.toLowerCase()),
-          )
-          .map((command) => (
+          // Saved order stays; the search matches and marks the name and description rows show.
+          .flatMap((command) => {
+            const match = matchFields(search, {
+              name: command.name,
+              description: command.description,
+            });
+            return match || !search.trim() ? [{ command, match }] : [];
+          })
+          .map(({ command, match }) => (
             <Item
               asChild
               size="sm"
@@ -155,8 +162,15 @@ export function CommandSettings({
                     <CommandIcon templateId={command.templateId} />
                   </ItemMedia>
                   <ItemContent className="min-w-0">
-                    <ItemTitle>{command.name}</ItemTitle>
-                    <ItemDescription>{command.description}</ItemDescription>
+                    <ItemTitle>
+                      <HighlightedText text={command.name} ranges={match?.ranges.name} />
+                    </ItemTitle>
+                    <ItemDescription>
+                      <HighlightedText
+                        text={command.description}
+                        ranges={match?.ranges.description}
+                      />
+                    </ItemDescription>
                     {agent.snapshot?.shortcutErrors[command.id] && (
                       <p className="text-xs text-destructive">
                         {agent.snapshot.shortcutErrors[command.id]}

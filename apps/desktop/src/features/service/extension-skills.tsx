@@ -1,6 +1,7 @@
 import { BookOpen } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@ai/ui/components/button';
+import { HighlightedText } from '@ai/ui/components/highlighted-text';
 import {
   Item,
   ItemActions,
@@ -10,6 +11,7 @@ import {
   ItemTitle,
 } from '@ai/ui/components/item';
 import { Switch } from '@ai/ui/components/switch';
+import { matchFields } from '@ai/ui/lib/fuzzy-match';
 import { ExtensionGroup } from './extension-group';
 import { SkillInstallForm } from './extension-skill-install-form';
 import type { ExtensionSkillRow } from './use-service';
@@ -43,9 +45,13 @@ function sourceLabelKey(
   }
 }
 
-/** Skills catalog. Entries come from the service list, including ~/.agents/skills. */
+/**
+ * Skills catalog. Entries come from the service list, including ~/.agents/skills. The search
+ * matches and marks the name and the description line as shown, with the translated source.
+ */
 export function ExtensionSkillsGroup({
   rows,
+  query,
   loading,
   empty,
   connected,
@@ -59,6 +65,7 @@ export function ExtensionSkillsGroup({
   onUpdate,
 }: {
   rows: ExtensionSkillRow[];
+  query: string;
   loading: boolean;
   empty: string;
   connected: boolean;
@@ -89,6 +96,14 @@ export function ExtensionSkillsGroup({
         }}
       />
     ) : null;
+  const shown = rows.flatMap((row) => {
+    const sourceKey = sourceLabelKey(row.sourceKind);
+    const description = [row.description, sourceKey ? t(sourceKey) : '', row.revision]
+      .filter(Boolean)
+      .join(' · ');
+    const match = matchFields(query, { name: row.name, description });
+    return match || !query.trim() ? [{ row, description, match }] : [];
+  });
   return (
     <>
       {form}
@@ -97,15 +112,11 @@ export function ExtensionSkillsGroup({
         note=""
         empty={empty}
         loading={loading}
-        hasRows={rows.length > 0}
+        hasRows={shown.length > 0}
         showTitle={false}
         emptyIcon={<BookOpen />}
       >
-        {rows.map((row) => {
-          const sourceKey = sourceLabelKey(row.sourceKind);
-          const description = [row.description, sourceKey ? t(sourceKey) : '', row.revision]
-            .filter(Boolean)
-            .join(' · ');
+        {shown.map(({ row, description, match }) => {
           const showUpdate = connected && row.sourceKind === 'local';
           const rowBusy = busyName === row.name;
           return (
@@ -115,9 +126,13 @@ export function ExtensionSkillsGroup({
                   <BookOpen />
                 </ItemMedia>
                 <ItemContent>
-                  <ItemTitle title={row.name}>{row.name}</ItemTitle>
+                  <ItemTitle title={row.name}>
+                    <HighlightedText text={row.name} ranges={match?.ranges.name} />
+                  </ItemTitle>
                   {description ? (
-                    <ItemDescription title={description}>{description}</ItemDescription>
+                    <ItemDescription title={description}>
+                      <HighlightedText text={description} ranges={match?.ranges.description} />
+                    </ItemDescription>
                   ) : null}
                 </ItemContent>
                 <ItemActions>

@@ -2,9 +2,11 @@ import { useState } from 'react';
 import { Bot } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@ai/ui/components/button';
+import { HighlightedText } from '@ai/ui/components/highlighted-text';
 import { Input } from '@ai/ui/components/input';
 import { Textarea } from '@ai/ui/components/textarea';
 import { Item, ItemContent, ItemDescription, ItemTitle } from '@ai/ui/components/item';
+import { matchFields } from '@ai/ui/lib/fuzzy-match';
 import { ExtensionGroup } from './extension-group';
 import { ROLE_TOOLS, type ExtensionAgentRow, type ExtensionRoleTool } from './use-service';
 
@@ -126,9 +128,13 @@ function AgentForm({
   );
 }
 
-/** Markdown subagent catalog (`~/.atd/agents`); add form opens from the tab menu. */
+/**
+ * Markdown subagent catalog (`~/.atd/agents`); add form opens from the tab menu. The search
+ * matches and marks the name and description.
+ */
 export function ExtensionAgentsGroup({
   rows,
+  query,
   loading,
   empty,
   connected,
@@ -139,6 +145,7 @@ export function ExtensionAgentsGroup({
   onSave,
 }: {
   rows: ExtensionAgentRow[];
+  query: string;
   loading: boolean;
   empty: string;
   connected: boolean;
@@ -168,6 +175,10 @@ export function ExtensionAgentsGroup({
         }}
       />
     ) : null;
+  const shown = rows.flatMap((row) => {
+    const match = matchFields(query, { name: row.name, description: row.description });
+    return match || !query.trim() ? [{ row, match }] : [];
+  });
 
   return (
     <>
@@ -177,17 +188,21 @@ export function ExtensionAgentsGroup({
         note={t('service.agentsNote')}
         empty={empty}
         loading={loading}
-        hasRows={rows.length > 0}
+        hasRows={shown.length > 0}
         showTitle={false}
         emptyIcon={<Bot />}
       >
-        {rows.map((row) => (
+        {shown.map(({ row, match }) => (
           <Item asChild key={row.name} size="xs">
             <li>
               <ItemContent>
-                <ItemTitle title={row.name}>{row.name}</ItemTitle>
+                <ItemTitle title={row.name}>
+                  <HighlightedText text={row.name} ranges={match?.ranges.name} />
+                </ItemTitle>
                 {row.description ? (
-                  <ItemDescription title={row.description}>{row.description}</ItemDescription>
+                  <ItemDescription title={row.description}>
+                    <HighlightedText text={row.description} ranges={match?.ranges.description} />
+                  </ItemDescription>
                 ) : null}
               </ItemContent>
             </li>

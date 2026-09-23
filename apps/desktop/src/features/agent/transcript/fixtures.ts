@@ -36,8 +36,17 @@ export function baseRun(status: RunStatus = 'completed', error = ''): TaskRun {
   };
 }
 
+/** The run's prompt, flagged as the service flags the first user message after an invocation. */
 export function userBlock(text = 'Do the work'): BlockOf<'user'> {
-  return { kind: 'user', id: 'u:1:0', runId: 'run-1', timestamp: 1, endedAt: 1, text };
+  return {
+    kind: 'user',
+    id: 'u:1:0',
+    runId: 'run-1',
+    timestamp: 1,
+    endedAt: 1,
+    text,
+    prompt: true,
+  };
 }
 
 export function assistantBlock(

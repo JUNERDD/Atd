@@ -11,24 +11,30 @@ function fileDetail(file: FileRef): string {
 }
 
 /**
- * Read-only capture above its owning user bubble. The bubble below already
- * below already carries the resolved instruction (which embeds the captured
- * text for the built-in templates), so embedded text is not repeated here.
- * Text the instruction omits still surfaces as a static preview (Input-page
- * pattern); attached files always surface as rows (User message pattern).
+ * Read-only capture above a run's prompt bubble, once per run: queued follow-ups carry none. The
+ * bubble already carries the resolved instruction (which embeds the captured text for the built-in
+ * templates), so embedded text is not repeated here. Text the instruction omits still surfaces as
+ * a static preview (Input-page pattern); attached files surface as rows (User message pattern),
+ * except the ones the bubble already shows as file chips.
  */
-export function UserContext({ snapshot }: { snapshot: RunSnapshot | undefined }) {
+export function UserContext({
+  snapshot,
+  chipFileIds,
+}: {
+  snapshot: RunSnapshot;
+  /** Files drawn as chips in the bubble below. */
+  chipFileIds: ReadonlySet<string>;
+}) {
   const { t } = useTranslation('panel');
-  const input = snapshot?.input;
-  if (!input) return null;
+  const { input } = snapshot;
   const text =
     input.source === 'selection'
       ? input.selection
       : input.source === 'clipboard'
         ? input.clipboard
         : '';
-  const showText = Boolean(text) && !(snapshot?.instructions ?? '').includes(text);
-  const files = input.files ?? [];
+  const showText = Boolean(text) && !snapshot.instructions.includes(text);
+  const files = input.files.filter((file) => !chipFileIds.has(file.id));
   if (!showText && files.length === 0) return null;
   return (
     <ContextBubble.Root>

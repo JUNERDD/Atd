@@ -1,6 +1,8 @@
 import { Check, Ellipsis, RefreshCw, Settings2, Unplug } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { HighlightedText } from '@ai/ui/components/highlighted-text';
 import { Item, ItemContent, ItemDescription, ItemGroup, ItemTitle } from '@ai/ui/components/item';
+import type { MatchRange } from '@ai/ui/lib/fuzzy-match';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,15 +15,21 @@ import { IconButton } from '../../components/icon-button';
 import { ModelPicker } from './model-picker';
 import { ProviderBrand } from './provider-brand';
 
+/** One overview row: a connection and where the overview search matched its name. */
+interface ConnectionRow {
+  connection: Connection;
+  nameRanges?: readonly MatchRange[];
+}
+
 export function ProviderConnections({
-  connections,
+  rows,
   defaultConnectionId,
   pending,
   onManage,
   onDisconnect,
   perform,
 }: {
-  connections: Connection[];
+  rows: ConnectionRow[];
   defaultConnectionId: string | null;
   pending: boolean;
   onManage: (connection: Connection) => void;
@@ -32,7 +40,7 @@ export function ProviderConnections({
   const bridge = window.desktop?.settings.providers;
   return (
     <ItemGroup className="provider-connections">
-      {connections.map((connection) => {
+      {rows.map(({ connection, nameRanges }) => {
         const isDefault = defaultConnectionId === connection.connectionId;
         const verified = Boolean(
           connection.verifiedModel && connection.verifiedModel === connection.defaultModel,
@@ -63,7 +71,7 @@ export function ProviderConnections({
                 <ItemContent>
                   <div className="provider-name-track">
                     <ItemTitle className="min-w-0" title={connection.name}>
-                      {connection.name}
+                      <HighlightedText text={connection.name} ranges={nameRanges} />
                     </ItemTitle>
                     {isDefault && (
                       <span className="provider-default-badge">
