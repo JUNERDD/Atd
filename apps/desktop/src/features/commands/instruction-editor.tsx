@@ -9,7 +9,8 @@ import { Label } from '@ai/ui/components/label';
 import { contextVariables, variableDetails, type ContextVariable } from './command-variables';
 import { FieldHint } from '../../components/field-hint';
 import type { CommandDefinition } from '../../../electron/agent/command-schema';
-import { availableVariables, templateReferences } from '../../../electron/agent/command-validation';
+import { availableVariables } from '../../../electron/agent/command-validation';
+import { instructionProblem } from './instruction-problem';
 
 const basicSetup: BasicSetupOptions = {
   lineNumbers: false,
@@ -80,18 +81,7 @@ export function InstructionEditor({
     });
     view.focus();
   }
-  let referenceError = '';
-  try {
-    const unknown = templateReferences(command.instructions).filter(
-      (ref) => !available.includes(ref.name),
-    );
-    if (unknown.length)
-      referenceError = t('instruction.referenceError', {
-        variables: unknown.map((ref) => `{{${ref.name}}}`).join(', '),
-      });
-  } catch (error) {
-    referenceError = error instanceof Error ? error.message : t('instruction.syntaxError');
-  }
+  const referenceError = instructionProblem(command, t);
   return (
     <div className="settings-field" data-figma-node="417:1716">
       <div className="instruction-toolbar">

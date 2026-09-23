@@ -125,6 +125,7 @@
     "title": "指令",
     "referenceError": "请启用或定义 {{variables}}。",
     "syntaxError": "请检查变量语法。",
+    "unsupportedTag": "只能使用变量，不支持 {{tag}}。",
     "available": "可用变量",
     "hint": "使用变量引用任务输入。输入 {{ 即可查看建议。"
   },

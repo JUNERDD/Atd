@@ -8,14 +8,38 @@ export interface VariableReference {
   to: number;
 }
 
+/**
+ * Instructions the template parser rejects. The message stays English for main-process errors;
+ * the editor shows its own copy, naming `tag` (the offending tag as written) when there is one.
+ */
+export class TemplateSyntaxError extends Error {
+  constructor(
+    message: string,
+    readonly tag?: string,
+  ) {
+    super(message);
+    this.name = 'TemplateSyntaxError';
+  }
+}
+
 export function templateReferences(instructions: string): VariableReference[] {
-  return Mustache.parse(instructions).flatMap((token) => {
+  let tokens: ReturnType<typeof Mustache.parse>;
+  try {
+    tokens = Mustache.parse(instructions);
+  } catch (error) {
+    // Unclosed or unbalanced tags; Mustache reports them in English with an offset.
+    throw new TemplateSyntaxError(error instanceof Error ? error.message : String(error));
+  }
+  return tokens.flatMap((token) => {
     if (token[0] === 'text') return [];
     if (
       token[0] !== 'name' ||
       !/^(input|files|selection|clipboard|argument\.[a-zA-Z][a-zA-Z0-9_]*)$/.test(token[1])
     ) {
-      throw new Error(`Unsupported variable or template syntax: ${token[1]}`);
+      throw new TemplateSyntaxError(
+        `Unsupported variable or template syntax: ${token[1]}`,
+        instructions.slice(token[2], token[3]),
+      );
     }
     return [{ name: token[1], from: token[2], to: token[3] }];
   });

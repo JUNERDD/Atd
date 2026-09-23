@@ -16,6 +16,7 @@ import { showErrorToast, showToast } from '../../components/toast-store';
 import { messageOf } from '../../lib/errors';
 import { InputOptions } from './input-options';
 import { InstructionEditor } from './instruction-editor';
+import { instructionProblem } from './instruction-problem';
 import { ParameterEditor } from './parameter-editor';
 import { RunSettings } from './run-settings';
 import { parameterTypeTag } from './command-variables';
@@ -62,6 +63,12 @@ export function CommandEditor({
   }
   async function save() {
     setError('');
+    // Template problems first, in the app's language; the checks below name them in English.
+    const problem = instructionProblem(draft, t);
+    if (problem) {
+      showError(problem);
+      return;
+    }
     try {
       validateCommand(draft);
       parse(CommandSchema, draft);
