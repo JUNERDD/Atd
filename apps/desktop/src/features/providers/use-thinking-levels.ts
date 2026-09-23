@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { ModelReference, ModelThinkingLevel } from '../../../electron/providers/schema';
+import { useServiceStatus } from '../service/use-service';
 
 /** One request per connection and model; concurrent consumers of the same model share it. */
 const pending = new Map<string, Promise<ModelThinkingLevel[]>>();
@@ -31,18 +32,20 @@ export interface ThinkingLevels {
 }
 
 /**
- * Levels for one model selection, resolved once per selection. A failed request settles as an
- * empty list so the control stops waiting and stays disabled.
+ * Levels for one model selection, resolved once per selection while the service is connected and
+ * again after each reconnect, because main answers from the live service. A failed request
+ * settles as an empty list so the control stops waiting and stays disabled.
  */
 export function useThinkingLevels(reference: ModelReference | null): ThinkingLevels {
   const connectionId = reference?.connectionId ?? null;
   const modelId = reference?.modelId ?? null;
-  const key = connectionId && modelId ? levelsKey(connectionId, modelId) : null;
+  const connected = useServiceStatus().status?.state === 'connected';
+  const key = connected && connectionId && modelId ? levelsKey(connectionId, modelId) : null;
   const [answers, setAnswers] = useState<ReadonlyMap<string, ModelThinkingLevel[]>>(
     () => new Map(),
   );
   useEffect(() => {
-    if (!connectionId || !modelId) return;
+    if (!connected || !connectionId || !modelId) return;
     const requested = levelsKey(connectionId, modelId);
     let active = true;
     void loadThinkingLevels({ connectionId, modelId }).then((levels) => {
@@ -54,7 +57,7 @@ export function useThinkingLevels(reference: ModelReference | null): ThinkingLev
     return () => {
       active = false;
     };
-  }, [connectionId, modelId]);
+  }, [connected, connectionId, modelId]);
   const levels = key ? answers.get(key) : undefined;
   return { levels: levels ?? [], loading: Boolean(key) && levels === undefined };
 }
