@@ -1,10 +1,9 @@
 import { dialog } from 'electron';
 import { randomUUID } from 'node:crypto';
-import { readFile, stat } from 'node:fs/promises';
-import path from 'node:path';
 import { extractSubagentResults, mcpStage, previewTask, stageSkills } from '@ai/agent-client';
 import type { ServiceEvent, TaskSnapshot } from '@ai/agent-contracts';
 import type { ServiceConnection } from '../service/connection';
+import { ATTACHABLE_EXTENSIONS, attachFiles } from './attachable-files';
 import type { AgentRequest, TaskDetail } from './bridge';
 import type { CommandService } from './command-service';
 import { AGENT_IPC } from './ipc-channels';
@@ -13,23 +12,6 @@ import { isActive, type FileRef } from './task-schema';
 import { applyTranscriptPatch, QueueStateSchema } from './transcript-schema';
 import { mapBlock, mapRequest, mapSnapshot } from './service-map';
 import { parse } from './validation';
-
-const TEXT_EXTENSIONS = [
-  'txt',
-  'md',
-  'csv',
-  'json',
-  'log',
-  'yaml',
-  'yml',
-  'xml',
-  'html',
-  'css',
-  'ts',
-  'tsx',
-  'js',
-  'py',
-];
 
 interface TaskHost {
   send: (channel: string, value: unknown) => void;
@@ -247,29 +229,10 @@ export class TaskClient {
     const picked = await dialog.showOpenDialog({
       title: 'Attach text files',
       properties: ['openFile', 'multiSelections'],
-      filters: [{ name: 'Text files', extensions: TEXT_EXTENSIONS }],
+      filters: [{ name: 'Text files', extensions: [...ATTACHABLE_EXTENSIONS] }],
     });
     if (picked.canceled) return [];
-    if (picked.filePaths.length > 10) throw new Error('Attach at most 10 files.');
-    const files: FileRef[] = [];
-    for (const filePath of picked.filePaths) {
-      const info = await stat(filePath);
-      if (!info.isFile() || info.size > 1024 * 1024)
-        throw new Error(`${path.basename(filePath)} must be a text file smaller than 1 MB.`);
-      const ext = path.extname(filePath).slice(1).toLowerCase();
-      if (!TEXT_EXTENSIONS.includes(ext))
-        throw new Error(`${path.basename(filePath)} is not supported.`);
-      const bytes = await readFile(filePath);
-      const mime = ext === 'json' ? 'application/json' : 'text/plain';
-      const uploaded = await http.upload(path.basename(filePath), mime, new Uint8Array(bytes));
-      files.push({
-        id: uploaded.resource.id,
-        name: path.basename(filePath),
-        size: bytes.length,
-        type: mime,
-      });
-    }
-    return files;
+    return attachFiles(http, picked.filePaths);
   }
 
   async submit(request: Extract<AgentRequest, { action: 'submit' }>): Promise<TaskDetail> {

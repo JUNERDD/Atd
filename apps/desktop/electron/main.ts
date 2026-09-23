@@ -17,6 +17,7 @@ import { parse } from './agent/validation';
 import { IPC, type DesktopState } from './contract';
 import { chooseContextFiles } from './context-files';
 import { installAppMenu } from './app-menu';
+import { installFileSearch } from './file-search/ipc';
 import { ServiceManager } from './service/manager';
 import { SETTINGS_IPC } from './settings-contract';
 import { SettingsService } from './settings-service';
@@ -287,6 +288,7 @@ if (!app.requestSingleInstanceLock()) {
       serviceManager.installIpc();
       settings.installIpc();
       installIpc();
+      installFileSearch(() => panel, serviceManager.connection);
       installAppMenu(showPanel, hidePanel, settings);
       const starting = serviceManager.autostart();
       await createPanel();
