@@ -6,6 +6,7 @@ import './styles.css';
 import { App } from './App';
 import i18n from './i18n';
 import { installNativeOverlayBlur } from './native-overlay-blur';
+import { installEditCommands } from './lib/edit-commands';
 const SettingsWindow = React.lazy(() =>
   import('./features/settings/settings-window').then((module) => ({
     default: module.SettingsWindow,
@@ -18,6 +19,9 @@ const isSettingsWindow =
   window.location.hash === '#settings' || window.location.hash.startsWith('#settings?');
 document.documentElement.dataset.window = isSettingsWindow ? 'settings' : 'panel';
 const root = document.getElementById('root')!;
+// Both windows (panel and settings) run the application menu's Undo/Redo through this entry.
+const disposeEditCommands = installEditCommands();
+import.meta.hot?.dispose(disposeEditCommands);
 if (window.desktop?.platform === 'darwin') {
   const disposeOverlayBlur = installNativeOverlayBlur(root);
   import.meta.hot?.dispose(disposeOverlayBlur);

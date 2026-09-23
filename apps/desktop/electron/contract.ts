@@ -9,7 +9,12 @@ export const IPC = {
   getState: 'panel:get-state',
   setPinned: 'panel:set-pinned',
   chooseFiles: 'panel:choose-files',
+  /** Main → renderer only: Edit → Undo/Redo clicked in the application menu for this window. */
+  editCommand: 'app:edit-command',
 } as const;
+
+/** Application menu edits the renderer runs itself (see `app-menu.ts`). */
+export type EditCommand = 'undo' | 'redo';
 
 export interface ContextFile {
   name: string;
@@ -39,4 +44,9 @@ export interface DesktopBridge {
   getState: () => Promise<DesktopState>;
   setPinned: (pinned: boolean) => Promise<boolean>;
   chooseFiles: () => Promise<ContextFile[]>;
+  /**
+   * Edit → Undo/Redo from the application menu; returns the unsubscribe. The renderer moves the
+   * focused CodeMirror editor's history or runs the native command. Optional for test compat.
+   */
+  onEditCommand?: (listener: (command: EditCommand) => void) => () => void;
 }
