@@ -1,11 +1,19 @@
 import { ipcMain } from 'electron';
 import type { IpcMainInvokeEvent } from 'electron';
 import { Type } from 'typebox';
+import {
+  getProviderLevels,
+  refreshProvider,
+  setDefaultProvider,
+  setProviderModel,
+  verifyProvider,
+  type AgentClientOptions,
+} from '@ai/agent-client';
 import type { SettingsStore } from '../settings-store';
 import { parse } from '../agent/validation';
-import { providerFuture } from '../agent/service-manage';
 import type { ServiceConnection } from '../service/connection';
-import { connectLive, disconnectLive, fetchCatalog, fetchLiveProviders } from './live';
+import { disconnectLive, fetchCatalog, fetchLiveProviders, saveLive } from './live';
+import { ProviderLoginClient } from './login-client';
 import {
   ConnectionDraftSchema,
   ModelReferenceSchema,
@@ -13,6 +21,7 @@ import {
   type Connection,
   type ConnectionDraft,
   type ModelReference,
+  type ModelThinkingLevel,
   type ProviderCatalogEntry,
 } from './schema';
 
@@ -20,20 +29,25 @@ const identity = Type.String({ minLength: 1, maxLength: 256, pattern: '^[a-zA-Z0
 const revisionSchema = Type.Integer({ minimum: 1 });
 
 /**
- * Live provider client for list/connect/disconnect. Create/update/default/
- * model/levels/refresh/verify/login stay honest futures (not faked).
+ * Live provider client over the service: every write goes to the service,
+ * then the settings snapshot reloads from it.
  */
 export class ProviderService {
   private connection: ServiceConnection | null = null;
   private live: { defaultConnectionId: string | null; connections: Connection[] } | null = null;
+  private readonly login: ProviderLoginClient;
 
   constructor(
     private store: SettingsStore,
     private changed: () => void,
-    _publish: (channel: string, value: unknown) => void,
+    publish: (channel: string, value: unknown) => void,
   ) {
     void this.store;
-    void _publish;
+    this.login = new ProviderLoginClient(
+      () => this.connection?.options() ?? null,
+      (state) => publish(PROVIDER_IPC.loginEvent, state),
+      () => this.sync().catch(() => undefined),
+    );
   }
 
   attach(connection: ServiceConnection) {
@@ -60,27 +74,45 @@ export class ProviderService {
     return fetchCatalog(this.connection?.options() ?? null);
   }
 
-  async save(value: ConnectionDraft): Promise<Connection> {
+  private options(): AgentClientOptions {
     const options = this.connection?.options();
     if (!options) throw new Error('The service is not connected. Connect in Settings → Service.');
-    const saved = await connectLive(options, value);
+    return options;
+  }
+
+  /**
+   * Runs one service write, then reloads connections. A failed write reloads
+   * too — a conflict shows the newer revision, a failed refresh its error —
+   * but reports its own error rather than one from the reload.
+   */
+  private async write<T>(operation: (options: AgentClientOptions) => Promise<T>): Promise<T> {
+    let result: T;
+    try {
+      result = await operation(this.options());
+    } catch (error) {
+      await this.sync().catch(() => undefined);
+      throw error;
+    }
     await this.sync();
-    return saved;
+    return result;
   }
 
-  async setDefault(_id: string, _revision: number): Promise<never> {
-    providerFuture();
+  save(value: ConnectionDraft): Promise<Connection> {
+    return this.write((options) => saveLive(options, value));
   }
 
-  async setModel(_reference: ModelReference, _revision: number): Promise<never> {
-    providerFuture();
+  async setDefault(id: string, revision: number): Promise<void> {
+    await this.write((options) => setDefaultProvider(options, id, revision));
+  }
+
+  async setModel(reference: ModelReference, revision: number): Promise<void> {
+    await this.write((options) =>
+      setProviderModel(options, reference.connectionId, reference.modelId, revision),
+    );
   }
 
   async disconnect(id: string, revision: number): Promise<void> {
-    const options = this.connection?.options();
-    if (!options) throw new Error('The service is not connected. Connect in Settings → Service.');
-    await disconnectLive(options, id, revision);
-    await this.sync();
+    await this.write((options) => disconnectLive(options, id, revision));
   }
 
   startCatalogSync(): void {
@@ -91,12 +123,36 @@ export class ProviderService {
     return Promise.resolve(false);
   }
 
-  async refresh(_id: string, _network = true): Promise<void> {
-    await this.sync();
+  /** `network: false` only reloads the saved catalog; a refresh failure is kept on the row. */
+  async refresh(id: string, network = true): Promise<void> {
+    if (!network) return this.sync();
+    await this.write((options) => refreshProvider(options, id));
   }
 
-  async verify(_reference: ModelReference): Promise<never> {
-    providerFuture();
+  async verify(reference: ModelReference): Promise<void> {
+    await this.write((options) =>
+      verifyProvider(options, reference.connectionId, reference.modelId),
+    );
+  }
+
+  /**
+   * The thinking levels Pi accepts for one saved connection's model, lowest first. Until the
+   * live list loads, the settings snapshot carries the local store's connections, whose ids the
+   * service does not know; a reference outside the live list answers no levels, and the renderer
+   * asks again once the live snapshot replaces that reference.
+   */
+  async levels(reference: ModelReference): Promise<ModelThinkingLevel[]> {
+    if (!this.live) await this.sync();
+    const known = this.live?.connections.some(
+      (connection) => connection.connectionId === reference.connectionId,
+    );
+    if (!known) return [];
+    const { levels } = await getProviderLevels(
+      this.options(),
+      reference.connectionId,
+      reference.modelId,
+    );
+    return levels;
   }
 
   installIpc(assertSender: (event: IpcMainInvokeEvent, settingsOnly?: boolean) => void) {
@@ -117,18 +173,32 @@ export class ProviderService {
     handle(PROVIDER_IPC.model, (reference, revision) =>
       this.setModel(parse(ModelReferenceSchema, reference), parse(revisionSchema, revision)),
     );
-    handle(PROVIDER_IPC.levels, () => [], false);
+    // The panel composer shows the level next to its model picker; both windows may ask.
+    handle(
+      PROVIDER_IPC.levels,
+      (reference) => this.levels(parse(ModelReferenceSchema, reference)),
+      false,
+    );
     handle(PROVIDER_IPC.disconnect, (id, revision) =>
       this.disconnect(parse(identity, id), parse(revisionSchema, revision)),
     );
     handle(PROVIDER_IPC.refresh, (id) => this.refresh(parse(identity, id)));
     handle(PROVIDER_IPC.verify, (reference) => this.verify(parse(ModelReferenceSchema, reference)));
-    ipcMain.handle(PROVIDER_IPC.login, (event) => {
+    ipcMain.handle(PROVIDER_IPC.login, async (event, value: unknown) => {
       assertSender(event, true);
-      providerFuture();
+      const state = await this.login.start(parse(identity, value));
+      // A closed settings window cannot answer prompts; end its sign-in.
+      event.sender.once('destroyed', () => void this.login.cancel(state.id).catch(() => undefined));
+      return state;
     });
-    handle(PROVIDER_IPC.cancel, () => providerFuture());
-    handle(PROVIDER_IPC.openLink, () => providerFuture());
-    handle(PROVIDER_IPC.answer, () => providerFuture());
+    handle(PROVIDER_IPC.cancel, (id) => this.login.cancel(parse(identity, id)));
+    handle(PROVIDER_IPC.openLink, (id) => this.login.openLink(parse(identity, id)));
+    handle(PROVIDER_IPC.answer, (id, promptId, value) =>
+      this.login.answer(
+        parse(identity, id),
+        parse(identity, promptId),
+        parse(Type.String({ maxLength: 16384 }), value),
+      ),
+    );
   }
 }

@@ -13,6 +13,8 @@ export const ErrorCodeSchema = Type.Union([
   Type.Literal('auth_required'),
   Type.Literal('desktop_unavailable'),
   Type.Literal('draining'),
+  /** 502: a model provider the service called on the user's behalf failed. */
+  Type.Literal('upstream_failed'),
   Type.Literal('not_implemented'),
   Type.Literal('internal'),
 ]);

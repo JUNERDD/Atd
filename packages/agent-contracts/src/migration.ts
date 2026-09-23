@@ -1,5 +1,6 @@
 import { Type, type Static } from 'typebox';
 import { Identifier } from './identifiers.js';
+import { ServiceModelDefinitionSchema, ThinkingLevelSchema } from './models.js';
 
 /**
  * T2 migration contracts (additive to service-contracts v1). The manifest is
@@ -160,6 +161,21 @@ export const ServiceConnectionSchema = Type.Object(
     configurationId: Type.String({ minLength: 1, maxLength: 256 }),
     verifiedModel: Type.String({ maxLength: 256 }),
     migratedAt: Type.Union([Type.String(), Type.Null()]),
+    /*
+     * The fields below are optional because records written before the service
+     * owned connection editing lack them; absent means none. Responses always
+     * carry them, filled by the service.
+     */
+    /** Non-secret provider options such as a region or deployment map. */
+    options: Type.Optional(Type.Record(Type.String(), Type.String({ maxLength: 2048 }))),
+    /** Caller-defined models for custom endpoints. */
+    customModels: Type.Optional(Type.Array(ServiceModelDefinitionSchema, { maxItems: 100 })),
+    /** Last successful catalog refresh; absent until one succeeds for this configuration. */
+    catalog: Type.Optional(Type.Array(ServiceModelDefinitionSchema, { maxItems: 10000 })),
+    /** Why the last manual refresh failed; cleared by the next success. */
+    catalogError: Type.Optional(Type.String({ maxLength: 2000 })),
+    /** Level for runs on this connection that name none; absent means off. */
+    defaultThinkingLevel: Type.Optional(ThinkingLevelSchema),
   },
   { additionalProperties: false },
 );

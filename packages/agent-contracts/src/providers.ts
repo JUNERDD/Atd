@@ -1,6 +1,7 @@
 import { Type, type Static } from 'typebox';
 import { Identifier } from './identifiers.js';
 import { MigrationCredentialSchema, ServiceConnectionSchema } from './migration.js';
+import { ServiceModelDefinitionSchema } from './models.js';
 
 /**
  * T6b (service v1.2 candidate): live provider management DTOs. Every response
@@ -105,52 +106,8 @@ export type ProviderDisconnectResponse = Static<typeof ProviderDisconnectRespons
 
 /**
  * Service-owned provider catalog (v1, frozen): Pi providers plus local
- * entries. Mirrors the desktop ModelDefinition shape so callers keep one
- * model contract; secrets never appear here.
+ * entries. Secrets never appear here.
  */
-export const ServiceModelDefinitionSchema = Type.Object(
-  {
-    id: Type.String({ minLength: 1, maxLength: 256 }),
-    name: Type.String({ minLength: 1, maxLength: 256 }),
-    api: Type.String({ minLength: 1, maxLength: 256 }),
-    baseUrl: Type.String({ maxLength: 2048 }),
-    reasoning: Type.Boolean(),
-    thinkingLevelMap: Type.Optional(
-      Type.Object({
-        off: Type.Optional(Type.Union([Type.String(), Type.Null()])),
-        minimal: Type.Optional(Type.Union([Type.String(), Type.Null()])),
-        low: Type.Optional(Type.Union([Type.String(), Type.Null()])),
-        medium: Type.Optional(Type.Union([Type.String(), Type.Null()])),
-        high: Type.Optional(Type.Union([Type.String(), Type.Null()])),
-        xhigh: Type.Optional(Type.Union([Type.String(), Type.Null()])),
-        max: Type.Optional(Type.Union([Type.String(), Type.Null()])),
-      }),
-    ),
-    input: Type.Array(Type.Union([Type.Literal('text'), Type.Literal('image')])),
-    contextWindow: Type.Integer({ minimum: 1 }),
-    maxTokens: Type.Integer({ minimum: 1 }),
-    cost: Type.Object({
-      input: Type.Number(),
-      output: Type.Number(),
-      cacheRead: Type.Number(),
-      cacheWrite: Type.Number(),
-      tiers: Type.Optional(
-        Type.Array(
-          Type.Object({
-            inputTokensAbove: Type.Number(),
-            input: Type.Number(),
-            output: Type.Number(),
-            cacheRead: Type.Number(),
-            cacheWrite: Type.Number(),
-          }),
-        ),
-      ),
-    }),
-  },
-  { additionalProperties: false },
-);
-export type ServiceModelDefinition = Static<typeof ServiceModelDefinitionSchema>;
-
 export const ServiceCatalogEntrySchema = Type.Object(
   {
     id: Type.String({ minLength: 1, maxLength: 256 }),
@@ -191,3 +148,31 @@ export const ProvidersCatalogResponseSchema = Type.Object(
   { additionalProperties: false },
 );
 export type ProvidersCatalogResponse = Static<typeof ProvidersCatalogResponseSchema>;
+
+/**
+ * Creates one connection from the settings catalog. The service owns the
+ * connectionId, revision and configurationId, so the request carries only the
+ * configuration the caller chose. The credential travels in the same request
+ * because create and connect are one step: a connection never exists without
+ * the secret it was created for. `credential: null` saves it disconnected —
+ * an API-key connection without a key yet, or an account-login connection
+ * that receives its credential from sign-in.
+ *
+ * `options` and `customModels` are stored with the connection and hashed into
+ * its configurationId, the same identity the migration importer computes.
+ */
+export const ProviderCreateRequestSchema = Type.Object(
+  {
+    provider: ServiceConnectionSchema.properties.provider,
+    name: ServiceConnectionSchema.properties.name,
+    baseUrl: ServiceConnectionSchema.properties.baseUrl,
+    authType: ServiceConnectionSchema.properties.authType,
+    defaultModel: ServiceConnectionSchema.properties.defaultModel,
+    defaultThinkingLevel: ServiceConnectionSchema.properties.defaultThinkingLevel,
+    options: Type.Record(Type.String(), Type.String({ maxLength: 2048 })),
+    customModels: Type.Array(ServiceModelDefinitionSchema, { maxItems: 100 }),
+    credential: Type.Union([MigrationCredentialSchema, Type.Null()]),
+  },
+  { additionalProperties: false },
+);
+export type ProviderCreateRequest = Static<typeof ProviderCreateRequestSchema>;

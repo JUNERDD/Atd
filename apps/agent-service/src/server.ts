@@ -23,6 +23,7 @@ import { registerManageRoutes } from './manage.js';
 import { McpAuthority, registerMcpRoutes, type McpAuthorityDeps } from './mcp/index.js';
 import { registerMigrationRoutes } from './migration/routes.js';
 import { ResourceStore } from './resources.js';
+import { UpstreamError } from './errors.js';
 import { ConflictError, DrainingError, type RunnerManager } from './runner-manager.js';
 import { registerAtdAgentRoutes } from './atd-agents/mount.js';
 import { registerSkillRoutes } from './skills/mount.js';
@@ -101,6 +102,7 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
       return fail(reply, 410, 'gone', error.message);
     if (error instanceof ConflictError) return fail(reply, 409, 'conflict', error.message);
     if (error instanceof DrainingError) return fail(reply, 503, 'draining', error.message);
+    if (error instanceof UpstreamError) return fail(reply, 502, 'upstream_failed', error.message);
     if (error instanceof DesktopUnavailable)
       return fail(reply, 503, 'desktop_unavailable', error.message);
     if (error instanceof TypeError) return fail(reply, 400, 'bad_request', error.message);
