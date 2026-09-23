@@ -47,6 +47,13 @@ const desktop: DesktopBridge = {
   getState: () => ipcRenderer.invoke(IPC.getState) as Promise<DesktopState>,
   setPinned: (pinned) => ipcRenderer.invoke(IPC.setPinned, pinned) as Promise<boolean>,
   chooseFiles: () => ipcRenderer.invoke(IPC.chooseFiles) as Promise<ContextFile[]>,
+  onEditCommand: (listener) => {
+    const callback = (_event: IpcRendererEvent, command: unknown) => {
+      if (command === 'undo' || command === 'redo') listener(command);
+    };
+    ipcRenderer.on(IPC.editCommand, callback);
+    return () => ipcRenderer.removeListener(IPC.editCommand, callback);
+  },
 };
 
 contextBridge.exposeInMainWorld('desktop', desktop);
