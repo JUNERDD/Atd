@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import {
   errorMessage,
   isActiveStatus,
-  type AgentTask,
+  type CancelRunResponse,
   type QueueState,
   type RunSnapshot,
   type SubmitTaskRequest,
@@ -125,9 +125,11 @@ export class RunnerManager {
     return { taskId, runId, duplicate: false };
   }
 
-  async cancel(taskId: string, runId: string): Promise<AgentTask> {
+  /** Stops a run; only a live run can hold undelivered queued messages to return. */
+  async cancel(taskId: string, runId: string): Promise<CancelRunResponse> {
     const ledger = this.deps.ctx.ledger;
     const run = ledger.run(taskId, runId);
+    const nothingQueued = { steering: [], followUp: [] };
     if (run.status === 'queued') {
       await ledger.change((data) => {
         const task = data.tasks.find((item) => item.id === taskId);
@@ -145,9 +147,9 @@ export class RunnerManager {
         type: 'run.status',
         data: { status: 'cancelled', error: '' },
       });
-      return ledger.task(taskId);
+      return { task: ledger.task(taskId), unsent: nothingQueued };
     }
-    if (!isActiveStatus(run.status)) return ledger.task(taskId);
+    if (!isActiveStatus(run.status)) return { task: ledger.task(taskId), unsent: nothingQueued };
     await ledger.change((data) => {
       const item = data.tasks
         .find((entry) => entry.id === taskId)
@@ -161,8 +163,8 @@ export class RunnerManager {
       type: 'run.status',
       data: { status: 'stopping', error: '' },
     });
-    await this.runnerFor(taskId).abort(runId);
-    return ledger.task(taskId);
+    const unsent = await this.runnerFor(taskId).abort(runId);
+    return { task: ledger.task(taskId), unsent };
   }
 
   async queue(taskId: string, text: string, mode: 'followUp' | 'steer'): Promise<void> {

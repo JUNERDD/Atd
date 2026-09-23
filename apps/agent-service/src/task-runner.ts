@@ -4,6 +4,7 @@ import {
   errorMessage,
   rootExecutionId,
   type PermissionTier,
+  type QueueState,
   type RunStatus,
   type ServiceBlock,
   type TaskRun,
@@ -101,7 +102,7 @@ export class TaskRunner {
     }
   }
 
-  queueState(): { steering: string[]; followUp: string[] } {
+  queueState(): QueueState {
     return this.live?.transcript.queueState() ?? { steering: [], followUp: [] };
   }
 
@@ -161,17 +162,22 @@ export class TaskRunner {
     }
   }
 
-  async abort(runId: string): Promise<void> {
+  /** Stops the run and returns the queued messages it withdrew, undelivered. */
+  async abort(runId: string): Promise<QueueState> {
     this.aborted = true;
+    // Pi's abort keeps its queue, and the next prompt would deliver it into an
+    // unrelated run; withdraw it first, as Pi's own Stop restores it to the editor.
+    const unsent = this.live?.session.clearQueue() ?? { steering: [], followUp: [] };
     await abortSubagentsForTask(this.taskId);
     await this.ctx.confirms.cancelRun(this.taskId, runId, 'Task stopped.');
     await this.ctx.capabilities.cancelRun(this.taskId, runId, 'Task stopped.');
     await this.live?.session.abort();
+    return unsent;
   }
 
   async queue(text: string, mode: 'followUp' | 'steer'): Promise<void> {
     const live = this.live;
-    if (!live) throw new Error('The task has no active run.');
+    if (!live || this.aborted) throw new Error('The task has no active run.');
     // T3: Pi queue entries always expand in Pi, so explicit `/skill:name`
     // entries are pre-validated against the frozen snapshot; ordinary input
     // (no `/skill:` prefix) passes through without skill expansion.
@@ -186,13 +192,31 @@ export class TaskRunner {
       );
     if (mode === 'followUp') await live.session.followUp(text);
     else await live.session.steer(text);
+    this.withdrawIfStopped(live);
   }
 
-  async replaceQueue(followUp: string[]): Promise<{ steering: string[]; followUp: string[] }> {
-    return replaceFollowUps(
-      { runId: this.currentRunId, session: this.live?.session ?? null, paths: this.ctx.paths },
-      followUp,
-    );
+  async replaceQueue(followUp: string[]): Promise<QueueState> {
+    const live = this.live;
+    if (!live || this.aborted) throw new Error('The task has no active run.');
+    return live.transcript.batchQueue(async () => {
+      const queue = await replaceFollowUps(
+        { runId: this.currentRunId, session: live.session, paths: this.ctx.paths },
+        followUp,
+      );
+      this.withdrawIfStopped(live);
+      return queue;
+    });
+  }
+
+  /**
+   * Stop withdraws the queue once, but an edit that was still validating or in
+   * Pi's input handlers lands afterwards; take it back out so it cannot reach
+   * a later run, and fail so the caller keeps its text.
+   */
+  private withdrawIfStopped(live: LiveState): void {
+    if (!this.aborted) return;
+    live.session.clearQueue();
+    throw new Error('The task stopped before the message was queued.');
   }
 
   /** Releases the idle session; reopening resumes from the same session file. */

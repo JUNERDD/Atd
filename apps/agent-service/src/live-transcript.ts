@@ -1,6 +1,6 @@
 import type { AssistantMessage } from '@earendil-works/pi-ai';
 import type { AgentSession, SessionManager } from '@earendil-works/pi-coding-agent';
-import type { ServiceBlock } from '@ai/agent-contracts';
+import type { QueueState, ServiceBlock } from '@ai/agent-contracts';
 import {
   diffServiceBlocks,
   firstInvocationRunId,
@@ -18,20 +18,25 @@ export interface TranscriptPatchData {
 
 export interface LiveTranscriptSink {
   publish: (runId: string, patch: TranscriptPatchData) => void;
+  /** The whole pending queue after it changed; clients hold no other live queue source. */
+  queue: (runId: string, queue: QueueState) => void;
   sessionFile: (file: string) => void;
 }
 
 /**
  * Live transcript of one Pi session. Subscribes to session events, reprojects
  * the 0.86 branch on every change, and publishes patches; the cold path in
- * the runner reuses the same projection so the two cannot diverge.
+ * the runner reuses the same projection so the two cannot diverge. It also
+ * publishes Pi's mid-run queue whenever it changes.
  */
 export class LiveTranscript {
   private blocks: ServiceBlock[] = [];
   private revision = 0;
   private readonly partials = new Map<string, string>();
   private partial: AssistantMessage | undefined;
-  private queue: { steering: string[]; followUp: string[] } = { steering: [], followUp: [] };
+  private queue: QueueState = { steering: [], followUp: [] };
+  /** Open `batchQueue` edits; their intermediate queue states stay unpublished. */
+  private queueBatches = 0;
 
   constructor(
     private readonly session: AgentSession,
@@ -44,6 +49,7 @@ export class LiveTranscript {
     this.session.subscribe((event) => {
       if (event.type === 'queue_update') {
         this.queue = { steering: [...event.steering], followUp: [...event.followUp] };
+        if (this.queueBatches === 0) this.sink.queue(this.runId(), this.queueState());
         return;
       }
       if (event.type === 'message_update' && event.message.role === 'assistant')
@@ -64,8 +70,24 @@ export class LiveTranscript {
     return { revision: this.revision, blocks: [...this.blocks] };
   }
 
-  queueState(): { steering: string[]; followUp: string[] } {
+  queueState(): QueueState {
     return { steering: [...this.queue.steering], followUp: [...this.queue.followUp] };
+  }
+
+  /**
+   * Runs a multi-step queue edit and publishes only the queue it leaves. Pi can
+   * only clear both lists and re-queue, which may span ticks (extension input
+   * handlers run per message), and a transient empty queue would close the
+   * client's queue view mid-edit.
+   */
+  async batchQueue<T>(edit: () => Promise<T>): Promise<T> {
+    this.queueBatches += 1;
+    try {
+      return await edit();
+    } finally {
+      this.queueBatches -= 1;
+      if (this.queueBatches === 0) this.sink.queue(this.runId(), this.queueState());
+    }
   }
 
   reproject(snapshot: boolean): void {

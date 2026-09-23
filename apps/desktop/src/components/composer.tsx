@@ -32,7 +32,8 @@ export interface ComposerProps {
   draft: ComposerDraft;
   onChange: (draft: ComposerDraft) => void;
   onSubmit: () => Promise<unknown>;
-  onStop?: () => Promise<void>;
+  /** Resolves with the queued messages Stop withdrew; they return to the draft. */
+  onStop?: () => Promise<QueueState>;
   status?: RunStatus;
   pending?: boolean;
   followup?: boolean;
@@ -133,12 +134,13 @@ export function Composer({
     }
   }
   async function stop() {
-    if (stopDisabled) return;
-    const followUps = queue.followUp;
+    if (stopDisabled || !onStop) return;
     try {
-      await onStop?.();
-      if (followUps.length)
-        onChange({ ...draft, text: joinDraft(draft.text, followUps.join('\n')) });
+      // Restore what the service withdrew, not the last queue shown: Pi may have delivered an
+      // item in the meantime, and a pending steer ("send now") is withdrawn too.
+      const unsent = await onStop();
+      const restored = [...unsent.steering, ...unsent.followUp];
+      if (restored.length) onChange({ ...draft, text: joinDraft(draft.text, restored.join('\n')) });
     } catch (error) {
       showErrorToast(error);
     }

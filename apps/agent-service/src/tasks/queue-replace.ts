@@ -6,7 +6,8 @@ import type { ServicePaths } from '../storage.js';
 
 export interface QueueReplaceContext {
   runId: string;
-  session: AgentSession | null;
+  /** The active run's session; the runner rejects a replace without one. */
+  session: AgentSession;
   paths: ServicePaths;
 }
 
@@ -23,7 +24,6 @@ export async function replaceFollowUps(
   followUp: string[],
 ): Promise<{ steering: string[]; followUp: string[] }> {
   const session = ctx.session;
-  if (!session) throw new Error('The task has no active run.');
   const profile = skillProfilePaths(ctx.paths.root, ctx.paths.agentDir);
   const snapshot = await loadRunSnapshot(profile, ctx.runId);
   for (const text of followUp) {

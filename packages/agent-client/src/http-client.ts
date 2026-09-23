@@ -1,5 +1,6 @@
 import { Type } from 'typebox';
 import {
+  CancelRunResponseSchema,
   ConfirmReplyRequestSchema,
   ConfirmReplyResponseSchema,
   CredentialUploadRequestSchema,
@@ -14,6 +15,7 @@ import {
   SubmitTaskRequestSchema,
   SubmitTaskResponseSchema,
   TaskResponseSchema,
+  type CancelRunResponse,
   type CapabilityReplyRequest,
   type ConfirmReplyRequest,
   type ConfirmReplyResponse,
@@ -64,12 +66,12 @@ export class AgentHttpClient {
     );
   }
 
-  cancel(taskId: string, runId: string): Promise<TaskResponse> {
+  cancel(taskId: string, runId: string): Promise<CancelRunResponse> {
     return this.request(
       `/v1/tasks/${encodeURIComponent(taskId)}/runs/${encodeURIComponent(runId)}/cancel`,
       'POST',
       {},
-      (json) => parse(TaskResponseSchema, json),
+      (json) => parse(CancelRunResponseSchema, json),
     );
   }
 

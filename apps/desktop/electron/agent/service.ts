@@ -175,11 +175,12 @@ export class AgentService {
       case 'stop': {
         const http = this.connection.http();
         if (!http) throw notConnected();
-        await http.cancel(request.taskId, request.runId);
-        return null;
+        const { unsent } = await http.cancel(request.taskId, request.runId);
+        return unsent;
       }
       case 'answer':
         return this.answer(request);
+      // Queue edits publish through the service's `queue.update` event, like Pi's own deliveries.
       case 'queueMessage': {
         const http = this.connection.http();
         if (!http) throw notConnected();
@@ -188,8 +189,6 @@ export class AgentService {
       }
       case 'replaceQueue':
         await replaceLiveQueue(this.options(), request.taskId, request.followUp);
-        await this.tasks.detail(request.taskId);
-        this.tasks.publishTask(request.taskId);
         return null;
       case 'setPermissionTier':
         await retierLiveTask(this.options(), request.taskId, request.tier);
