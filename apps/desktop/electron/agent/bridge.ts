@@ -221,7 +221,8 @@ export interface AgentBridge {
     policy?: RunPolicy | null,
   ) => Promise<RunSnapshot>;
   submit: (request: Omit<SubmitRequest, 'action'>) => Promise<TaskDetail>;
-  stop: (taskId: string, runId: string) => Promise<void>;
+  /** Stops the run; resolves with the queued messages Stop withdrew, never delivered. */
+  stop: (taskId: string, runId: string) => Promise<QueueState>;
   answer: (
     taskId: string,
     runId: string,

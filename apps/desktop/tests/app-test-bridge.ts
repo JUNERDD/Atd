@@ -129,7 +129,7 @@ export function installBridge(extras?: {
     saveCommand: vi.fn(async (command) => command),
     deleteCommand: vi.fn(async () => {}),
     launch: vi.fn(async () => {}),
-    stop: vi.fn(async () => {}),
+    stop: vi.fn(async () => ({ steering: [], followUp: [] })),
     answer: vi.fn(async () => {}),
     queueMessage: vi.fn(async () => {}),
     replaceQueue: vi.fn(async () => {}),

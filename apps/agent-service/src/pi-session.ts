@@ -213,6 +213,15 @@ export async function createLiveState(
             data: patch,
           });
         },
+        queue: (queueRunId, queue) => {
+          ctx.events.publish({
+            taskId,
+            runId: queueRunId,
+            executionId: rootExecutionId(queueRunId),
+            type: 'queue.update',
+            data: queue,
+          });
+        },
         sessionFile: (file) => {
           if (file === state.sessionFile) return;
           state.sessionFile = file;

@@ -10,8 +10,9 @@ import type { CommandService } from './command-service';
 import { AGENT_IPC } from './ipc-channels';
 import { mapRunPolicy, parseMcpTools } from './service-manage';
 import { isActive, type FileRef } from './task-schema';
-import { applyTranscriptPatch } from './transcript-schema';
+import { applyTranscriptPatch, QueueStateSchema } from './transcript-schema';
 import { mapBlock, mapRequest, mapSnapshot } from './service-map';
+import { parse } from './validation';
 
 const TEXT_EXTENSIONS = [
   'txt',
@@ -175,6 +176,14 @@ export class TaskClient {
           cached.revision = next.revision;
           cached.blocks = next.blocks;
           this.host.send(AGENT_IPC.changed, { type: 'transcript', patch });
+          return;
+        }
+        case 'queue.update': {
+          // The service's only live queue signal: queued, delivered, replaced or withdrawn by Stop.
+          const cached = this.details.get(event.taskId);
+          if (!cached) return;
+          cached.queue = parse(QueueStateSchema, event.data);
+          this.publishTask(event.taskId);
           return;
         }
         case 'confirm.requested': {

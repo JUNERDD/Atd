@@ -160,9 +160,7 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
 
   app.post<{ Params: { taskId: string; runId: string } }>(
     '/v1/tasks/:taskId/runs/:runId/cancel',
-    async (request) => ({
-      task: await deps.manager.cancel(request.params.taskId, request.params.runId),
-    }),
+    async (request) => deps.manager.cancel(request.params.taskId, request.params.runId),
   );
 
   app.post('/v1/confirms', async (request) => {

@@ -11,6 +11,8 @@ export function rootExecutionId(runId: string): string {
 export const EventTypeSchema = Type.Union([
   Type.Literal('run.status'),
   Type.Literal('transcript.patch'),
+  /** Data is the task's whole `QueueState` (snapshot.ts) after each queue, delivery or removal. */
+  Type.Literal('queue.update'),
   Type.Literal('confirm.requested'),
   Type.Literal('confirm.resolved'),
   Type.Literal('capability.requested'),

@@ -7,7 +7,7 @@ import {
 } from './confirms.js';
 import { ThinkingLevelSchema } from './models.js';
 import { ResourceRefSchema } from './resources.js';
-import { TaskSnapshotSchema } from './snapshot.js';
+import { QueueStateSchema, TaskSnapshotSchema } from './snapshot.js';
 import { AgentTaskSchema, ModelSelectionSchema, TaskInputSchema } from './task.js';
 
 /** Run acceptance; repeats with the same operationId return the original run. */
@@ -41,6 +41,19 @@ export const TaskResponseSchema = Type.Object(
   { additionalProperties: false },
 );
 export type TaskResponse = Static<typeof TaskResponseSchema>;
+
+/**
+ * Stop withdraws the messages still queued on the run: Pi's abort would otherwise deliver them
+ * with a later prompt. `unsent` returns them so the client restores them to its draft.
+ */
+export const CancelRunResponseSchema = Type.Object(
+  {
+    task: AgentTaskSchema,
+    unsent: QueueStateSchema,
+  },
+  { additionalProperties: false },
+);
+export type CancelRunResponse = Static<typeof CancelRunResponseSchema>;
 
 /** Reply to a pending confirm; revision mismatch rejects the reply as stale. */
 export const ConfirmReplyRequestSchema = Type.Object(
