@@ -1,4 +1,11 @@
-import type { MAX_RUN_REFERENCES, RunReference } from '@ai/agent-contracts';
+import type {
+  InputChip,
+  InputChipRange,
+  MAX_INPUT_CHIPS,
+  MAX_RUN_REFERENCES,
+  MAX_RUN_SKILLS,
+  RunReference,
+} from '@ai/agent-contracts';
 import type { FileRef } from '../../../electron/agent/task-schema';
 
 /** One inline reference inserted from the quick panel; the draft's only source of truth for it. */
@@ -25,11 +32,16 @@ export interface ComposerDraft {
 /** Draft content in document order: plain text runs and chips. */
 export type DraftSegment = string | Chip;
 
-/** The service's `/skill:` rule (`skills/expansion.ts`): a valid name followed by a space. */
-const SKILL_PREFIX = /^\/skill:([A-Za-z0-9][A-Za-z0-9_-]*) /;
+/**
+ * How the service read a skill before messages carried chip records: a leading `/skill:` with a
+ * valid skill name, followed by a space.
+ */
+const LEGACY_SKILL_PREFIX = /^\/skill:([A-Za-z0-9][A-Za-z0-9_-]*) /;
 
-/** The contract's cap, type-checked against it without importing the contracts at runtime. */
+/** The contracts' caps, type-checked against them without importing the contracts at runtime. */
 const MAX_REFERENCES: typeof MAX_RUN_REFERENCES = 16;
+const MAX_SKILLS: typeof MAX_RUN_SKILLS = 32;
+const MAX_CHIPS: typeof MAX_INPUT_CHIPS = 64;
 
 export function chipName(chip: Chip): string {
   switch (chip.kind) {
@@ -61,12 +73,12 @@ function chipKey(chip: Chip): string {
 }
 
 /**
- * Serialized chip text. A skill chip owns its separating space because the service only expands
- * `/skill:<name> ` at the very start; every other chip reads as `@<name>`, quoted when the name
- * contains whitespace.
+ * Serialized chip text: a skill reads as `/skill:<name>`, every other chip as `@<name>`, quoted
+ * when the name contains whitespace. The text around a chip, separating spaces included, belongs
+ * to the document.
  */
 export function chipText(chip: Chip): string {
-  if (chip.kind === 'skill') return `/skill:${chip.name} `;
+  if (chip.kind === 'skill') return `/skill:${chip.name}`;
   const name = chipName(chip);
   return /\s/.test(name) ? `@"${name}"` : `@${name}`;
 }
@@ -100,19 +112,16 @@ export function deserialize(draft: ComposerDraft): DraftSegment[] {
 }
 
 /**
- * Keeps the chips whose text still equals their serialized token, in order and without overlap; a
- * skill chip counts only at the start. Plain-text changes made outside the editor (clearing after
- * a send, re-joining queued text) therefore drop exactly the chips they broke.
+ * Keeps the chips whose text still equals their serialized token, in order and without overlap.
+ * Plain-text changes made outside the editor (clearing after a send, re-joining queued text)
+ * therefore drop exactly the chips they broke.
  */
 export function normalizeDraft(draft: ComposerDraft): ComposerDraft {
   let end = 0;
   const chips = [...draft.chips]
     .sort((a, b) => a.from - b.from)
     .filter(({ from, to, chip }) => {
-      const valid =
-        from >= end &&
-        draft.text.slice(from, to) === chipText(chip) &&
-        (chip.kind !== 'skill' || from === 0);
+      const valid = from >= end && draft.text.slice(from, to) === chipText(chip);
       if (valid) end = to;
       return valid;
     });
@@ -122,14 +131,15 @@ export function normalizeDraft(draft: ComposerDraft): ComposerDraft {
   return unchanged ? draft : { ...draft, chips };
 }
 
-/** A plain-text draft; a leading `/skill:<name> ` becomes the skill chip it stands for. */
+/**
+ * Legacy-bubble parser for the text of a run sent before messages carried chip records: the
+ * leading `/skill:<name> ` the service ran as a skill becomes that skill chip, over
+ * `/skill:<name>` only, so the separating space stays text.
+ */
 export function seedFromText(text: string): ComposerDraft {
-  const name = SKILL_PREFIX.exec(text)?.[1];
-  return {
-    text,
-    files: [],
-    chips: name ? [{ from: 0, to: `/skill:${name} `.length, chip: { kind: 'skill', name } }] : [],
-  };
+  const name = LEGACY_SKILL_PREFIX.exec(text)?.[1];
+  const chip: Chip | null = name ? { kind: 'skill', name } : null;
+  return { text, files: [], chips: chip ? [{ from: 0, to: chipText(chip).length, chip }] : [] };
 }
 
 /** Whether two drafts hold the same editor content; attachments live outside the editor. */
@@ -158,10 +168,14 @@ export function draftFiles(draft: ComposerDraft): FileRef[] {
   return files;
 }
 
-/** The skill chip's name; submit stages it as `policy.skills`, so the run follows the chip. */
-export function draftSkill(draft: ComposerDraft): string | null {
-  for (const { chip } of draft.chips) if (chip.kind === 'skill') return chip.name;
-  return null;
+/**
+ * Skill names of the draft's skill chips, each once, in draft order, up to the contract's cap.
+ * Submit stages them as `policy.skills`, so a chip repeated in the text loads its skill once.
+ */
+export function draftSkills(draft: ComposerDraft): string[] {
+  const names = new Set<string>();
+  for (const { chip } of draft.chips) if (chip.kind === 'skill') names.add(chip.name);
+  return [...names].slice(0, MAX_SKILLS);
 }
 
 function referenceOf(chip: Chip): RunReference | null {
@@ -189,4 +203,31 @@ export function draftReferences(draft: ComposerDraft): RunReference[] {
     if (reference && !references.has(chipKey(chip))) references.set(chipKey(chip), reference);
   }
   return [...references.values()].slice(0, MAX_REFERENCES);
+}
+
+/** What the transcript needs to show a chip again: its kind, what it names, and the item's id. */
+function inputChipOf(chip: Chip): InputChip {
+  switch (chip.kind) {
+    case 'file':
+      return { kind: 'file', fileId: chip.file.id, name: chip.file.name };
+    case 'task':
+      return { kind: 'task', taskId: chip.taskId, title: chip.title };
+    case 'mcpServer':
+      return { kind: 'mcpServer', serverId: chip.serverId };
+    case 'agent':
+      return { kind: 'agent', name: chip.name };
+    case 'skill':
+      return { kind: 'skill', name: chip.name };
+  }
+}
+
+/**
+ * Chip records for `input.chips`: each chip's range in `draft.text`, in draft order, up to the
+ * contract's cap. They only let the transcript and the title show chips (a chip past the cap shows
+ * as its text); files, skills and references still reach the run through `files` and staging.
+ */
+export function draftChips(draft: ComposerDraft): InputChipRange[] {
+  return draft.chips
+    .slice(0, MAX_CHIPS)
+    .map(({ from, to, chip }) => ({ from, to, chip: inputChipOf(chip) }));
 }

@@ -10,7 +10,7 @@ import { notConnected } from '../agent/service-manage';
 import type { FileRef } from '../agent/task-schema';
 import type { SearchBackend } from './backend';
 import type { FileSearchReply, FileSearchRequest, FileSearchResult } from './contract';
-import { candidatesOf, rankCandidates, tooLarge, type Candidate } from './rank';
+import { candidatesOf, rankCandidates, tooLarge, type Ranked } from './rank';
 import { resolveSearchScope, searchableLocation } from './scope';
 
 /** Results per reply, whatever limit the renderer asks for. */
@@ -95,9 +95,9 @@ export class FileSearchService {
         return { state: 'unavailable', reason: reply.reason, results: [] };
       // Every hit passes the same filter here, whichever backend produced it.
       const ranked = rankCandidates(query, candidatesOf(reply.hits, scope), Date.now());
-      const results = ranked.slice(0, limit).map((candidate) => ({
-        resultId: this.issue(sender, candidate.hit.path),
-        ...resultFields(candidate),
+      const results = ranked.slice(0, limit).map((entry) => ({
+        resultId: this.issue(sender, entry.candidate.hit.path),
+        ...resultFields(entry),
       }));
       return { state: reply.state, results };
     } catch {
@@ -155,12 +155,8 @@ export class FileSearchService {
 }
 
 /** Renderer-safe metadata: a name and a location, never the path. */
-function resultFields({
-  hit,
-  name,
-  location,
-  extension,
-}: Candidate): Omit<FileSearchResult, 'resultId'> {
+function resultFields({ candidate, match }: Ranked): Omit<FileSearchResult, 'resultId'> {
+  const { hit, name, location, extension } = candidate;
   const oversized = tooLarge(hit);
   return {
     name,
@@ -172,5 +168,7 @@ function resultFields({
     source: hit.source,
     attachable: !oversized,
     ...(oversized ? { reason: 'tooLarge' as const } : {}),
+    // Ranking settles on one occurrence per name: the one that placed the file.
+    ...(match ? { match: [match] } : {}),
   };
 }

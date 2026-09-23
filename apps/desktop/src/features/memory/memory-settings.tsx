@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Pencil, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@ai/ui/components/button';
+import { HighlightedText } from '@ai/ui/components/highlighted-text';
 import { Input } from '@ai/ui/components/input';
 import { Label } from '@ai/ui/components/label';
 import { Switch } from '@ai/ui/components/switch';
@@ -17,6 +18,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@ai/ui/components/alert-dialog';
+import { matchFields } from '@ai/ui/lib/fuzzy-match';
 import type { MemoryEntry, MemorySnapshot } from '../../../electron/agent/bridge';
 import { SettingsHeading } from '../settings/settings-heading';
 import { IconButton } from '../../components/icon-button';
@@ -94,6 +96,11 @@ export function MemorySettings() {
     setStatus('');
   }
   const failure = error || snapshot?.error;
+  // Saved order stays; the search matches and marks the entry text.
+  const entries = (snapshot?.entries ?? []).flatMap((entry) => {
+    const match = matchFields(search, { content: entry.content });
+    return match || !search.trim() ? [{ entry, match }] : [];
+  });
   const feedback = (
     <>
       {(failure || status) && (
@@ -202,44 +209,42 @@ export function MemorySettings() {
             />
           </div>
           <ul className="memory-items">
-            {snapshot?.entries
-              .filter((entry) => entry.content.toLowerCase().includes(search.toLowerCase()))
-              .map((entry) => (
-                <li key={entry.id} className="memory-item">
-                  <div>
-                    <p>{entry.content}</p>
-                    <span>
-                      {entry.target === 'user'
-                        ? t('memory.list.userProfile')
-                        : entry.target === 'failure'
-                          ? t('memory.list.corrections')
-                          : t('memory.list.preference')}
-                    </span>
-                  </div>
-                  <IconButton
-                    label={t('memory.list.edit')}
-                    aria-label={t('memory.list.editLabel', { content: entry.content.slice(0, 70) })}
-                    onClick={() => {
-                      setEditing(entry);
-                      setContent(entry.content);
-                      setError('');
-                      setStatus('');
-                    }}
-                  >
-                    <Pencil />
-                  </IconButton>
-                </li>
-              ))}
+            {entries.map(({ entry, match }) => (
+              <li key={entry.id} className="memory-item">
+                <div>
+                  <p>
+                    <HighlightedText text={entry.content} ranges={match?.ranges.content} />
+                  </p>
+                  <span>
+                    {entry.target === 'user'
+                      ? t('memory.list.userProfile')
+                      : entry.target === 'failure'
+                        ? t('memory.list.corrections')
+                        : t('memory.list.preference')}
+                  </span>
+                </div>
+                <IconButton
+                  label={t('memory.list.edit')}
+                  aria-label={t('memory.list.editLabel', { content: entry.content.slice(0, 70) })}
+                  onClick={() => {
+                    setEditing(entry);
+                    setContent(entry.content);
+                    setError('');
+                    setStatus('');
+                  }}
+                >
+                  <Pencil />
+                </IconButton>
+              </li>
+            ))}
           </ul>
           {!snapshot && <p className="text-sm text-muted-foreground">{t('memory.list.loading')}</p>}
           {snapshot && !snapshot.entries.length && !snapshot.error && (
             <p className="text-sm text-muted-foreground">{t('memory.list.empty')}</p>
           )}
-          {snapshot &&
-            snapshot.entries.length > 0 &&
-            !snapshot.entries.some((entry) =>
-              entry.content.toLowerCase().includes(search.toLowerCase()),
-            ) && <p className="text-sm text-muted-foreground">{t('memory.list.noMatches')}</p>}
+          {snapshot && snapshot.entries.length > 0 && !entries.length && (
+            <p className="text-sm text-muted-foreground">{t('memory.list.noMatches')}</p>
+          )}
           <p className="text-xs text-muted-foreground mt-8">{t('memory.feedback.storageNote')}</p>
           {feedback}
         </>

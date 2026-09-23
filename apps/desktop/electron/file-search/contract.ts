@@ -35,6 +35,13 @@ export interface FileSearchResult {
   source: 'recent' | 'search';
   attachable: boolean;
   reason?: 'tooLarge';
+  /**
+   * Query matches in the name: sorted, non-overlapping `[from, to)` UTF-16 ranges into
+   * `name.normalize('NFC')`, the form the renderer highlights, covering whole characters with
+   * their combining marks. They belong to the query this reply answered. Absent when nothing in
+   * the name matched: recent files for an empty query, or a file found by a parent folder name.
+   */
+  match?: ReadonlyArray<readonly [number, number]>;
 }
 
 export interface FileSearchReply {

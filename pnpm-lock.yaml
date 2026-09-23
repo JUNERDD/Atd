@@ -360,6 +360,9 @@ importers:
       cn:
         specifier: 0.3.0
         version: 0.3.0
+      fuzzysort:
+        specifier: 3.1.0
+        version: 3.1.0
       lucide-react:
         specifier: 1.42.0
         version: 1.42.0(react@19.2.8)

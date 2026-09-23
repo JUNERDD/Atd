@@ -201,16 +201,10 @@
     },
     "states": {
       "loading": "正在加载…",
-      "desktopOnly": "打开桌面应用以加载此列表。",
-      "disconnected": "连接服务后才能加载此列表。",
-      "failed": "无法加载：{{message}}",
       "noMatches": "没有匹配项。",
       "noCommandMatches": "没有匹配的指令或技能。",
+      "noSkillMatches": "没有匹配的技能。",
       "runningNoMatches": "没有匹配的指令。技能需等这次运行结束后使用。",
-      "noSkills": "尚未开启任何技能。可在“拓展”中管理技能。",
-      "noConversations": "还没有其他带记录的对话。",
-      "noMcp": "还没有 MCP 服务。可在“拓展”中添加。",
-      "noAgents": "还没有子代理。可在“拓展 → 子代理”中添加。",
       "providerOffline": "提供商未连接"
     },
     "mcpState": {
@@ -231,8 +225,6 @@
       "tooLarge": "超过 1 MB",
       "limit": "已附加 10 个文件",
       "failed": "文件搜索失败，请重试。",
-      "none": "没有匹配的文件。",
-      "noRecent": "没有最近使用的文件。",
       "attaching": "正在附加…"
     }
   }

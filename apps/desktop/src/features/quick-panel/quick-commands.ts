@@ -1,4 +1,5 @@
 import { Astroid, BrainCircuit, Gauge, History, Settings, type LucideIcon } from 'lucide-react';
+import type { CommandIds } from './trigger';
 
 /**
  * Quick commands that open a second-level list instead of running at once.
@@ -79,6 +80,12 @@ export const QUICK_COMMANDS: readonly QuickCommand[] = [
     run: (actions) => actions.openSettings(),
   },
 ];
+
+/** The ids the composer editor recognizes after a leading `/`; it never imports the table above. */
+export const QUICK_COMMAND_IDS: CommandIds = {
+  all: QUICK_COMMANDS.map((command) => command.id),
+  drillable: DRILL_COMMAND_IDS,
+};
 
 /** Narrows the editor's reported drill command to a known drill list. */
 export function isDrillCommand(command: string): command is DrillCommandId {

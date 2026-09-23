@@ -13,7 +13,7 @@ import type { RunPolicy } from '../../electron/agent/run-policy';
 import { draftFiles, normalizeDraft, type ComposerDraft } from '../features/composer-editor/draft';
 import type { ComboboxAria } from '../features/composer-editor/editor-state';
 import { useComposerEditor } from '../features/composer-editor/use-composer-editor';
-import { DRILL_COMMAND_IDS, type QuickActions } from '../features/quick-panel/quick-commands';
+import { QUICK_COMMAND_IDS, type QuickActions } from '../features/quick-panel/quick-commands';
 import { QuickPanel } from '../features/quick-panel/quick-panel';
 import type { TriggerState } from '../features/quick-panel/trigger';
 import { isQuickPanelOpen, type QuickPanelHandle } from '../features/quick-panel/use-quick-panel';
@@ -189,7 +189,7 @@ export function Composer({
     panel,
     shortcuts,
     platform,
-    drillCommands: DRILL_COMMAND_IDS,
+    quickCommands: QUICK_COMMAND_IDS,
     wrap: expanded,
     locked,
     limit,

@@ -177,6 +177,12 @@
   overflow-wrap: anywhere;
   white-space: pre-wrap;
 }
+/* A sent chip keeps the composer's look (chips.css) unchanged: the bubble's fill resolves to the
+   composer surface's colour. Its 20px box (18px line plus borders, top-aligned) sits centred in the
+   bubble's 24px line without growing it, so lines with and without chips keep one rhythm. */
+.message-bubble .composer-chip {
+  margin-block: 2px;
+}
 .assistant-message {
   display: flex;
   flex-direction: column;

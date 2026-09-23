@@ -1,12 +1,14 @@
 import { Compartment, EditorSelection, EditorState, type Extension } from '@codemirror/state';
 import { EditorView, type ViewUpdate } from '@codemirror/view';
+import type { CommandIds } from '../quick-panel/trigger';
 import type { ComposerDraft } from './draft';
 import { chipDecorations } from './chip-decorations';
 import { chipIntegrity } from './chip-integrity';
 import { chipTable, draftDocument } from './chip-state';
+import { commandMarks } from './command-mark';
 import { composerKeys, type KeyRouting } from './editor-keys';
 import { inputFilters, textLimit } from './input-filters';
-import { drillCommands, triggerField } from './trigger-field';
+import { quickCommandIds, triggerField } from './trigger-field';
 
 /** Combobox wiring the quick panel reports while it is open. */
 export interface ComboboxAria {
@@ -29,7 +31,7 @@ export interface EditorSettings {
 
 /** React side of the editor; handlers read the latest props through it. */
 export interface EditorHost extends KeyRouting {
-  drillCommands: readonly string[];
+  quickCommands: CommandIds;
   onUpdate(update: ViewUpdate): void;
   onCompositionEnd(view: EditorView): void;
 }
@@ -81,7 +83,8 @@ export function createComposerState(
       chipIntegrity,
       inputFilters,
       triggerField,
-      drillCommands.of(host.drillCommands),
+      quickCommandIds.of(host.quickCommands),
+      commandMarks,
       composerKeys(host),
       EditorView.contentAttributes.of({
         'aria-autocomplete': 'list',

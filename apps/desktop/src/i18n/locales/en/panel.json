@@ -201,16 +201,10 @@
     },
     "states": {
       "loading": "Loading…",
-      "desktopOnly": "Open the desktop app to load this list.",
-      "disconnected": "Connect the service to load this list.",
-      "failed": "Couldn't load: {{message}}",
       "noMatches": "No matches.",
       "noCommandMatches": "No matching commands or skills.",
+      "noSkillMatches": "No matching skills.",
       "runningNoMatches": "No matching commands. Skills are available after this run finishes.",
-      "noSkills": "No skills are turned on. Manage skills in Extensions.",
-      "noConversations": "No other conversations with history yet.",
-      "noMcp": "No MCP servers yet. Add one in Extensions.",
-      "noAgents": "No subagents yet. Add one in Extensions → Subagents.",
       "providerOffline": "Provider not connected"
     },
     "mcpState": {
@@ -231,8 +225,6 @@
       "tooLarge": "Larger than 1 MB",
       "limit": "10 files already attached",
       "failed": "File search failed. Try again.",
-      "none": "No matching files.",
-      "noRecent": "No recent files.",
       "attaching": "Attaching…"
     }
   }

@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { ChevronRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@ai/ui/components/button';
+import { HighlightedText } from '@ai/ui/components/highlighted-text';
 import { Input } from '@ai/ui/components/input';
 import { ScrollArea } from '@ai/ui/components/scroll-area';
-import { commandFilter } from '@ai/ui/lib/command-filter';
+import { matchFields } from '@ai/ui/lib/fuzzy-match';
 import {
   Select,
   SelectContent,
@@ -28,13 +29,16 @@ export function ProviderCatalog({
   const { t } = useTranslation('providers');
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState('all');
-  const visible = catalog.filter(
-    (provider) =>
-      (category === 'all' ||
-        provider.category === category ||
-        (category === 'api' && provider.auth.some((auth) => auth.type === 'api_key'))) &&
-      commandFilter(`${provider.name} ${provider.id}`, query.trim()) > 0,
-  );
+  // Directory order stays; the search matches and marks the provider name the row shows.
+  const visible = catalog.flatMap((provider) => {
+    const inCategory =
+      category === 'all' ||
+      provider.category === category ||
+      (category === 'api' && provider.auth.some((auth) => auth.type === 'api_key'));
+    if (!inCategory) return [];
+    const match = matchFields(query, { name: provider.name });
+    return match || !query.trim() ? [{ provider, match }] : [];
+  });
   return (
     <section className="provider-catalog settings-editor">
       <SettingsHeading
@@ -72,7 +76,7 @@ export function ProviderCatalog({
           {!visible.length && (
             <p className="text-sm text-muted-foreground py-6">{t('catalog.empty')}</p>
           )}
-          {visible.map((provider) => (
+          {visible.map(({ provider, match }) => (
             <Button
               key={provider.id}
               variant="ghost"
@@ -82,7 +86,7 @@ export function ProviderCatalog({
               <ProviderBrand provider={provider.id} />
               <div className="min-w-0 flex-1 text-left">
                 <p className="font-medium truncate" title={provider.name}>
-                  {provider.name}
+                  <HighlightedText text={provider.name} ranges={match?.ranges.name} />
                 </p>
                 <p
                   className="text-muted-foreground font-normal truncate"

@@ -12,11 +12,6 @@ import { ExtensionSkillsGroup } from './extension-skills';
 import { useExtensionMutations } from './use-extension-mutations';
 import { useServiceAgents, useServiceMcp, useServiceSkills, useServiceStatus } from './use-service';
 
-function matches(query: string, ...values: string[]) {
-  const needle = query.trim().toLowerCase();
-  return !needle || values.some((value) => value.toLowerCase().includes(needle));
-}
-
 function createSkillName(tab: ExtensionTab): 'create-skill' | 'create-subagent' | 'create-mcp' {
   switch (tab) {
     case 'skills':
@@ -86,15 +81,6 @@ export function ServiceSettings() {
     void refreshAgents();
     void refreshMcp();
   }, [connected, refreshAgents, refreshMcp, refreshSkills]);
-  const skillRows = (skills?.skills ?? []).filter((row) =>
-    matches(query, row.name, row.description, row.sourceKind, row.revision),
-  );
-  const agentRows = (agents?.agents ?? []).filter((row) =>
-    matches(query, row.name, row.description),
-  );
-  const mcpRows = (mcp?.servers ?? []).filter((row) =>
-    matches(query, row.serverId, row.state, row.lastError),
-  );
   const catalogCount =
     (skills?.skills.length ?? 0) + (agents?.agents.length ?? 0) + (mcp?.servers.length ?? 0);
   const searching = Boolean(query.trim());
@@ -168,7 +154,8 @@ export function ServiceSettings() {
           >
             <TabsContent value="skills" forceMount>
               <ExtensionSkillsGroup
-                rows={skillRows}
+                rows={skills?.skills ?? []}
+                query={query}
                 loading={skillsLoading}
                 empty={searching ? t('extensions.noMatches') : t('service.emptySkills')}
                 connected={connected}
@@ -191,7 +178,8 @@ export function ServiceSettings() {
             </TabsContent>
             <TabsContent value="subagents" forceMount>
               <ExtensionAgentsGroup
-                rows={agentRows}
+                rows={agents?.agents ?? []}
+                query={query}
                 loading={agentsLoading}
                 empty={searching ? t('extensions.noMatches') : t('service.emptyAgents')}
                 connected={connected}
@@ -204,7 +192,8 @@ export function ServiceSettings() {
             </TabsContent>
             <TabsContent value="mcp" forceMount>
               <ExtensionMcpGroup
-                rows={mcpRows}
+                rows={mcp?.servers ?? []}
+                query={query}
                 loading={mcpLoading}
                 empty={searching ? t('extensions.noMatches') : t('service.emptyMcp')}
                 connected={connected}

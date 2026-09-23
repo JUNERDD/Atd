@@ -15,8 +15,39 @@ export interface Candidate {
   extension: AttachableExtension;
 }
 
+/** `[from, to)` UTF-16 offsets into the NFC name, the text the renderer highlights. */
+export type NameRange = readonly [from: number, to: number];
+
+/** A candidate in rank order, with where the query matched its name. */
+export interface Ranked {
+  candidate: Candidate;
+  /** Null for an empty query, and when only a parent folder name matched. */
+  match: NameRange | null;
+}
+
 /** How the query matches, best first; `folder` means only a parent folder name matched. */
 type Tier = 'exact' | 'prefix' | 'wordStart' | 'substring' | 'folder';
+
+/** A name tier and the occurrence that earned it. */
+interface NameMatch {
+  tier: Tier;
+  range: NameRange;
+}
+
+/** A file name folded for matching, as `foldName` returns it. */
+interface FoldedName {
+  /** The NFC name, which ranges point into. */
+  text: string;
+  /** `text` folded like `foldText`. */
+  folded: string;
+  /** Where words start in `folded`. */
+  starts: number[];
+  /**
+   * For each code unit of `folded`, the offset in `text` of the character it came from. Null for
+   * ASCII names, which fold unit for unit.
+   */
+  origins: number[] | null;
+}
 
 /** Tiers dominate: boosts and penalties only reorder files within about one tier. */
 const TIER_SCORES: Record<Tier, number> = {
@@ -69,7 +100,8 @@ function foldChar(char: string): string {
 
 /** Whether a file name contains the query at all; `query` is raw user text. */
 export function nameMatches(query: string, name: string): boolean {
-  return nameTier(foldText(query), name) !== null;
+  const folded = foldText(query);
+  return !folded || nameTier(folded, name) !== null;
 }
 
 export function tooLarge(hit: SearchHit): boolean {
@@ -101,10 +133,11 @@ export function candidatesOf(hits: SearchHit[], scope: SearchScope): Candidate[]
  * files the user opened before files that were only modified, each newest first: builds and
  * installs modify many files without anyone opening them. Files too large to attach sort last.
  */
-export function rankCandidates(query: string, candidates: Candidate[], now: number): Candidate[] {
+export function rankCandidates(query: string, candidates: Candidate[], now: number): Ranked[] {
   const folded = foldText(query);
   const scored: Array<{
     candidate: Candidate;
+    match: NameRange | null;
     score: number;
     used: boolean;
     recency: number;
@@ -112,15 +145,17 @@ export function rankCandidates(query: string, candidates: Candidate[], now: numb
   }> = [];
   for (const candidate of candidates) {
     const recency = latest(candidate.hit.usedAt, candidate.hit.modifiedAt) ?? 0;
+    const named = folded ? nameTier(folded, candidate.name) : null;
     let score = 0;
     if (folded) {
-      const tier = nameTier(folded, candidate.name) ?? folderTier(folded, candidate.location);
+      const tier = named?.tier ?? folderTier(folded, candidate.location);
       if (!tier) continue;
       score =
         TIER_SCORES[tier] + recencyBoost(now - recency) - placementPenalty(candidate.location);
     }
     const used = candidate.hit.usedAt !== null;
-    scored.push({ candidate, score, used, recency, last: tooLarge(candidate.hit) });
+    const match = named?.range ?? null;
+    scored.push({ candidate, match, score, used, recency, last: tooLarge(candidate.hit) });
   }
   scored.sort(
     (a, b) =>
@@ -131,16 +166,39 @@ export function rankCandidates(query: string, candidates: Candidate[], now: numb
       a.candidate.name.length - b.candidate.name.length ||
       (a.candidate.hit.path < b.candidate.hit.path ? -1 : 1),
   );
-  return scored.map((entry) => entry.candidate);
+  return scored.map(({ candidate, match }) => ({ candidate, match }));
 }
 
-function nameTier(query: string, name: string): Tier | null {
-  const { folded, starts } = foldName(name);
+/** The best tier of a name for a folded, non-empty query, with the occurrence that earned it. */
+function nameTier(query: string, name: string): NameMatch | null {
+  const fold = foldName(name);
+  const { folded, starts } = fold;
+  const matchAt = (tier: Tier, from: number): NameMatch => ({
+    tier,
+    range: nameRange(fold, from, from + query.length),
+  });
   const dot = folded.lastIndexOf('.');
-  if (folded === query || (dot > 0 && folded.slice(0, dot) === query)) return 'exact';
-  if (folded.startsWith(query)) return 'prefix';
-  if (starts.some((start) => folded.startsWith(query, start))) return 'wordStart';
-  return folded.includes(query) ? 'substring' : null;
+  if (folded === query || (dot > 0 && folded.slice(0, dot) === query)) return matchAt('exact', 0);
+  if (folded.startsWith(query)) return matchAt('prefix', 0);
+  const word = starts.find((start) => folded.startsWith(query, start));
+  if (word !== undefined) return matchAt('wordStart', word);
+  const index = folded.indexOf(query);
+  return index === -1 ? null : matchAt('substring', index);
+}
+
+/**
+ * The folded units `[from, to)` as a range of the NFC name: the characters they came from, plus
+ * the combining marks after the last one, which fold to nothing. A highlight thus never splits a
+ * character from its marks, or a Hangul syllable whose jamo only partly matched.
+ */
+function nameRange({ text, origins }: FoldedName, from: number, to: number): NameRange {
+  if (!origins) return [from, to];
+  // Origins never decrease, so the extremes are the first and last matched characters.
+  const matched = origins.slice(from, to);
+  const last = Math.max(...matched);
+  // Up to the next character that folds to anything, or the end: the marks between are included.
+  const next = origins.slice(to).find((origin) => origin > last);
+  return [Math.min(...matched), next ?? text.length];
 }
 
 function folderTier(query: string, location: string): Tier | null {
@@ -149,9 +207,11 @@ function folderTier(query: string, location: string): Tier | null {
 
 /**
  * The folded name and where its words start: after `-`, `_`, `.`, spaces or other separators, and
- * at camelCase humps. ASCII names, the common case, skip Unicode normalization.
+ * at camelCase humps. ASCII names, the common case, skip Unicode normalization. Other names are
+ * walked in NFC, the text the renderer shows: NFC and NFD spellings fold alike, and so a name
+ * stored decomposed (common on macOS) ranks and highlights like the name it displays.
  */
-function foldName(name: string): { folded: string; starts: number[] } {
+function foldName(name: string): FoldedName {
   const starts: number[] = [];
   if (ASCII.test(name)) {
     let previous = -1;
@@ -161,19 +221,25 @@ function foldName(name: string): { folded: string; starts: number[] } {
       if (isWordAscii(code) && (!isWordAscii(previous) || hump)) starts.push(index);
       previous = code;
     }
-    return { folded: name.toLowerCase(), starts };
+    return { text: name, folded: name.toLowerCase(), starts, origins: null };
   }
+  const text = name.normalize('NFC');
+  const origins: number[] = [];
   let folded = '';
   let previous = '';
-  for (const char of name) {
+  let offset = 0;
+  for (const char of text) {
     const piece = foldChar(char);
     const hump = /\p{Ll}/u.test(previous) && /\p{Lu}/u.test(char);
     const word = /[\p{L}\p{N}\p{M}]/u.test(char);
     if (piece && word && (!/[\p{L}\p{N}\p{M}]/u.test(previous) || hump)) starts.push(folded.length);
     folded += piece;
+    // A character can fold to several units (a Hangul syllable to its jamo) or to none (a mark).
+    for (let unit = 0; unit < piece.length; unit += 1) origins.push(offset);
+    offset += char.length;
     previous = char;
   }
-  return { folded, starts };
+  return { text, folded, starts, origins };
 }
 
 function isLowerAscii(code: number): boolean {

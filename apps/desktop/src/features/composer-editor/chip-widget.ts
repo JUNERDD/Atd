@@ -2,7 +2,7 @@ import { createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { WidgetType } from '@codemirror/view';
 import { ChipContent } from './chip-content';
-import type { Chip } from './draft';
+import { chipName, type Chip } from './draft';
 
 const roots = new WeakMap<HTMLElement, Root>();
 
@@ -28,7 +28,7 @@ export class ChipWidget extends WidgetType {
     dom.className = 'composer-chip';
     dom.dataset.kind = this.chip.kind;
     const root = createRoot(dom);
-    root.render(createElement(ChipContent, { chip: this.chip }));
+    root.render(createElement(ChipContent, { kind: this.chip.kind, name: chipName(this.chip) }));
     roots.set(dom, root);
     return dom;
   }

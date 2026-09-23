@@ -8,8 +8,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import type { TFunction } from 'i18next';
-import { commandFilter } from '@ai/ui/lib/command-filter';
+import { matchFields } from '@ai/ui/lib/fuzzy-match';
 import type { AgentTask, FileRef } from '../../../electron/agent/task-schema';
 import type { FileSearchResult } from '../../../electron/file-search/contract';
 import { showErrorToast } from '../../components/toast-store';
@@ -17,7 +16,7 @@ import { agentApi } from '../agent/use-agent';
 import type { ComposerEditorCommands } from '../composer-editor/editor-commands';
 import type { QuickGroup, QuickOption } from './quick-options';
 import { relativeTime } from './relative-time';
-import { useFileSearch, type FileSearchState } from './use-file-search';
+import { useFileSearch } from './use-file-search';
 
 /** Run input limit (`InputSchema.files`), counted over the attachment row and file chips together. */
 const ATTACHMENT_LIMIT = 10;
@@ -53,28 +52,13 @@ function locationLabel(location: string): string {
   return location ? `~/${location}` : '~';
 }
 
-function matchRange(name: string, query: string): readonly [number, number] | undefined {
-  const index = query ? name.toLowerCase().indexOf(query.toLowerCase()) : -1;
-  return index < 0 ? undefined : [index, index + query.length];
-}
-
-function searchNotice(search: FileSearchState, query: string, t: TFunction<'panel'>) {
-  if (search.status === 'loading') return t('quickPanel.states.loading');
-  if (search.status === 'unavailable') {
-    if (search.reason === 'desktop') return t('quickPanel.states.desktopOnly');
-    return t(`quickPanel.files.${search.reason}`);
-  }
-  if (search.partial) return t('quickPanel.files.partial');
-  if (search.results.length) return undefined;
-  return query ? t('quickPanel.files.none') : t('quickPanel.files.noRecent');
-}
-
 /**
  * The `@` file sources (plan 1.9): recently attached and recently used files for an empty query,
  * system search matches for a query, and the "Browse files…" row, which the list keeps last and
- * which reuses the system picker to insert one chip per chosen file. Rows grey out, with the
- * reason, for files over 1 MB and once the draft already carries ten attachments. While a pick
- * uploads, further picks are ignored rather than disabled, so the active row does not jump.
+ * which reuses the system picker to insert one chip per chosen file. When the system search is
+ * off or failed, the "Browse files…" row says why. Rows grey out, with the reason, for files over
+ * 1 MB and once the draft already carries ten attachments. While a pick uploads, further picks are
+ * ignored rather than disabled, so the active row does not jump.
  */
 export function useFileGroups({
   enabled,
@@ -91,7 +75,12 @@ export function useFileGroups({
   editor: ComposerEditorCommands;
   tasks: readonly AgentTask[];
   attachmentCount: number;
-}): { lists: QuickGroup[]; browse: QuickGroup } | null {
+}): {
+  lists: QuickGroup[];
+  browse: QuickGroup;
+  /** The search has not answered this query yet. */
+  loading: boolean;
+} | null {
   const { t, i18n } = useTranslation('panel');
   const [busy, setBusy] = useState<string | null>(null);
   const search = useFileSearch(live, query);
@@ -145,9 +134,9 @@ export function useFileGroups({
             value: `file:${result.resultId}`,
             icon: <Icon />,
             title: result.name,
-            match: matchRange(result.name, query),
-            // Main ranks the matches; the score only places this group among the others.
-            score: query ? commandFilter(result.name, query) : undefined,
+            // Main marks and ranks the matches; the score only places this group among the others.
+            ranges: result.match ? { title: result.match } : undefined,
+            score: matchFields(query, { name: result.name })?.score,
             description: reason ?? locationLabel(result.location),
             status:
               busy === result.resultId
@@ -159,11 +148,16 @@ export function useFileGroups({
             select: () => void pick(result.resultId, () => search.attach([result.resultId])),
           };
         });
+  // Without the desktop bridge nothing here works, so there is no reason worth showing.
+  const searchOff =
+    search.status === 'unavailable' && search.reason !== 'desktop'
+      ? t(`quickPanel.files.${search.reason}`)
+      : undefined;
   const browse: QuickOption = {
     value: 'files:browse',
     icon: <FolderOpen />,
     title: t('quickPanel.files.browse'),
-    description: full ? limitReason : t('quickPanel.files.browseDescription'),
+    description: full ? limitReason : (searchOff ?? t('quickPanel.files.browseDescription')),
     disabled: full,
     select: () => void pick('browse', () => agentApi().chooseFiles()),
   };
@@ -173,10 +167,12 @@ export function useFileGroups({
       {
         id: query ? 'files:search' : 'files:recent',
         heading: query ? t('quickPanel.groups.files') : t('quickPanel.groups.recentUsed'),
-        notice: searchNotice(search, query, t),
+        notice:
+          search.status === 'ready' && search.partial ? t('quickPanel.files.partial') : undefined,
         options: results,
       },
     ],
     browse: { id: 'files:browse', options: [browse] },
+    loading: search.status === 'loading',
   };
 }

@@ -1,13 +1,16 @@
-import type { ChangeSpec, EditorState, TransactionSpec } from '@codemirror/state';
+import type { EditorState, TransactionSpec } from '@codemirror/state';
 import type { EditorView } from '@codemirror/view';
-import { addChips, chipEntry, chipTable, leadingSkillEnd, tokenOf } from './chip-state';
+import { addChips, chipEntry, tokenOf } from './chip-state';
 import type { Chip } from './draft';
 import { currentTrigger, dismissTrigger } from './trigger-field';
 
 /** Edits the quick panel applies to the composer editor; stable for the editor's lifetime. */
 export interface ComposerEditorCommands {
-  /** One transaction: replaces the active trigger text with chip tokens (space-separated, one trailing space).
-   *  A skill chip is pinned at the start, replaces an existing skill chip, and its `/query` text is removed. */
+  /**
+   * One transaction: replaces the active trigger text, wherever it starts, with chip tokens
+   * (space-separated, one trailing space). Every kind, skills included, lands at the trigger, and
+   * the same item may be inserted any number of times.
+   */
   insertChips(chips: Chip[]): void;
   /** Replaces the active trigger text, e.g. `/model ` to drill. */
   replaceTrigger(text: string): void;
@@ -28,31 +31,18 @@ function targetRange(state: EditorState) {
 }
 
 function insertChipsSpec(state: EditorState, chips: Chip[]): TransactionSpec {
-  const skill = chips.find((chip) => chip.kind === 'skill');
-  const entries = chips
-    .filter((chip) => chip === skill || chip.kind !== 'skill')
-    .map((chip) => chipEntry(chip));
-  const skillEntry = entries.find((entry) => entry.chip === skill);
-  const others = entries.filter((entry) => entry !== skillEntry);
+  const entries = chips.map((chip) => chipEntry(chip));
   const { from, to, trigger } = targetRange(state);
   const before = state.sliceDoc(from - 1, from);
   const after = state.sliceDoc(to, to + 1);
-  let inserted = others.map((entry) => tokenOf(entry.id)).join(' ');
-  if (inserted) {
-    // A caret insertion keeps chips apart from adjacent words; one space always follows.
-    if (!trigger && before && !/\s/.test(before)) inserted = ` ${inserted}`;
-    if (!/\s/.test(after)) inserted += ' ';
-  }
-  const changes: ChangeSpec[] = [];
-  const skillEnd = leadingSkillEnd(state.doc, state.field(chipTable));
-  if (skillEntry && (skillEnd || from > 0))
-    changes.push({ from: 0, to: skillEnd, insert: tokenOf(skillEntry.id) });
-  else if (skillEntry) inserted = tokenOf(skillEntry.id) + inserted;
-  changes.push({ from: Math.max(from, skillEnd), to, insert: inserted });
-  const changeSet = state.changes(changes);
+  let inserted = entries.map((entry) => tokenOf(entry.id)).join(' ');
+  // A caret insertion keeps chips apart from adjacent words; one space always follows. Existing
+  // whitespace counts, except a line break: typing would then continue right at the chip.
+  if (!trigger && before && !/\s/.test(before)) inserted = ` ${inserted}`;
+  if (!/[^\S\n]/.test(after)) inserted += ' ';
   return {
-    changes: changeSet,
-    selection: { anchor: changeSet.mapPos(to, 1) },
+    changes: { from, to, insert: inserted },
+    selection: { anchor: from + inserted.length },
     effects: addChips.of(entries),
     scrollIntoView: true,
     userEvent: 'input.complete',

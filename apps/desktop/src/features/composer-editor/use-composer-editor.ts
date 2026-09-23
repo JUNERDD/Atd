@@ -3,7 +3,7 @@ import { flushSync } from 'react-dom';
 import type { EditorState } from '@codemirror/state';
 import { EditorView, type ViewUpdate } from '@codemirror/view';
 import type { ShortcutBindings } from '../../../electron/settings-contract';
-import type { TriggerState } from '../quick-panel/trigger';
+import type { CommandIds, TriggerState } from '../quick-panel/trigger';
 import type { QuickPanelHandle } from '../quick-panel/use-quick-panel';
 import { editorDraft } from './chip-state';
 import { normalizeDraft, sameContent, type ComposerDraft } from './draft';
@@ -25,7 +25,7 @@ export interface ComposerEditorOptions extends EditorSettings {
   shortcuts: ShortcutBindings;
   platform: string;
   /** Fixed for the editor's lifetime. */
-  drillCommands: readonly string[];
+  quickCommands: CommandIds;
 }
 
 function settingsOf({ wrap, locked, limit, label, placeholder, aria }: EditorSettings) {
@@ -41,7 +41,7 @@ function settingsOf({ wrap, locked, limit, label, placeholder, aria }: EditorSet
  */
 class ComposerEditor implements EditorHost {
   readonly commands: ComposerEditorCommands;
-  readonly drillCommands: readonly string[];
+  readonly quickCommands: CommandIds;
   readonly platform: string;
   private options: ComposerEditorOptions;
   private view: EditorView | null = null;
@@ -53,7 +53,7 @@ class ComposerEditor implements EditorHost {
 
   constructor(options: ComposerEditorOptions) {
     this.options = options;
-    this.drillCommands = options.drillCommands;
+    this.quickCommands = options.quickCommands;
     this.platform = options.platform;
     this.content = normalizeDraft(options.draft);
     this.applied = settingsOf(options);

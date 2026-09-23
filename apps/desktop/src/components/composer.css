@@ -112,41 +112,10 @@
   cursor: not-allowed;
   opacity: 0.5;
 }
-/* A chip is one atom in the text: the root must stay inline-block (see ChipWidget). */
-.composer-chip {
-  display: inline-block;
-  max-width: 100%;
-  margin: 0 1px;
-  padding: 0 6px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  background: var(--input);
+/* The quick command a leading `/` names (`/model` in `/model 5.`): colour only, so glyphs never
+   shift when the mark comes and goes. */
+.composer-input .cm-composer-command {
   color: var(--ata-syntax-variable);
-  font-size: 12px;
-  font-weight: 500;
-  line-height: 18px;
-  vertical-align: top;
-  white-space: nowrap;
-  cursor: default;
-}
-/* The skill chip's separating space lives in its serialized text, not in the document, so the
-   gap a typed space would give is drawn here. */
-.composer-chip[data-kind='skill'] {
-  margin-inline-end: 4px;
-}
-.composer-chip-icon {
-  display: inline-block;
-  width: 12px;
-  height: 12px;
-  margin-inline-end: 4px;
-  vertical-align: -2px;
-}
-.composer-chip-name {
-  display: inline-block;
-  max-width: 160px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  vertical-align: top;
 }
 .composer-surface[data-expanded='true'][data-has-attachments='true'] .composer-input-scroll {
   height: 100%;

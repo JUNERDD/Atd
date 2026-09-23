@@ -1,9 +1,15 @@
 import { Facet, StateEffect, StateField, type EditorState } from '@codemirror/state';
-import { parseTrigger, type TriggerState } from '../quick-panel/trigger';
+import { parseTrigger, type CommandIds, type TriggerState } from '../quick-panel/trigger';
 
-/** Quick-command ids whose `/<id> <query>` text drills into a second-level list. */
-export const drillCommands = Facet.define<readonly string[], readonly string[]>({
-  combine: (values) => values.flat(),
+/**
+ * Quick-command ids the trigger parser recognizes after a leading `/`. The composer provides them,
+ * so the editor never imports the command table and its icons.
+ */
+export const quickCommandIds = Facet.define<CommandIds, CommandIds>({
+  combine: (values) => ({
+    all: values.flatMap((value) => value.all),
+    drillable: values.flatMap((value) => value.drillable),
+  }),
 });
 
 /** Closes the panel for the current trigger token (Esc) until that token changes. */
@@ -26,7 +32,7 @@ export function currentTrigger(state: EditorState): TriggerState | null {
       start: head <= SLASH_SCAN ? state.sliceDoc(0, head) : null,
       line: state.sliceDoc(line.from, head),
     },
-    state.facet(drillCommands),
+    state.facet(quickCommandIds),
   );
 }
 
@@ -70,5 +76,9 @@ export function sameTrigger(a: TriggerState | null, b: TriggerState | null): boo
   if (!a || !b || a.kind !== b.kind || a.from !== b.from || a.to !== b.to || a.query !== b.query)
     return false;
   if (a.kind === 'mention' || b.kind === 'mention') return true;
-  return a.drill?.command === b.drill?.command && a.drill?.query === b.drill?.query;
+  return (
+    a.placement === b.placement &&
+    a.drill?.command === b.drill?.command &&
+    a.drill?.query === b.drill?.query
+  );
 }

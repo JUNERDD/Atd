@@ -3,7 +3,7 @@ import { Plug, SearchX } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@ai/ui/components/button';
 import { Input } from '@ai/ui/components/input';
-import { commandFilter } from '@ai/ui/lib/command-filter';
+import { matchFields } from '@ai/ui/lib/fuzzy-match';
 import {
   AlertDialog,
   AlertDialogContent,
@@ -102,13 +102,13 @@ export function ProviderSettingsForm({ snapshot }: { snapshot: SettingsSnapshot 
         }
       />
     );
-  const visible = connections.filter(
-    (connection) =>
-      commandFilter(
-        `${connection.name} ${connection.provider} ${catalog.find((item) => item.id === connection.provider)?.name ?? ''}`,
-        query.trim(),
-      ) > 0,
-  );
+  // Rows keep their order. The search marks the connection name and also matches the provider's
+  // name, which the row shows as its logo; the no-match hint suggests both.
+  const visible = connections.flatMap((connection) => {
+    const provider = catalog.find((item) => item.id === connection.provider)?.name;
+    const match = matchFields(query, { name: connection.name, provider });
+    return match || !query.trim() ? [{ connection, nameRanges: match?.ranges.name }] : [];
+  });
   const emptyTitle = t(
     connections.length
       ? 'providers.overview.empty.noMatchesTitle'
@@ -173,7 +173,7 @@ export function ProviderSettingsForm({ snapshot }: { snapshot: SettingsSnapshot 
         </div>
       )}
       <ProviderConnections
-        connections={visible}
+        rows={visible}
         defaultConnectionId={snapshot?.defaultConnectionId ?? null}
         pending={pending}
         onManage={manage}

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { matchFields } from '@ai/ui/lib/fuzzy-match';
 import type { FileRef } from '../../../electron/agent/task-schema';
 import type { FileSearchReply, FileSearchResult } from '../../../electron/file-search/contract';
 
@@ -12,6 +13,7 @@ export type FileSearchState =
   | { status: 'loading' }
   | {
       status: 'ready';
+      /** Each `match` belongs to the current query. */
       results: FileSearchResult[];
       partial: boolean;
       /** Reads and uploads the files behind the ids (main process); rejects with English errors. */
@@ -37,8 +39,9 @@ function unavailableReason(settled: Settled): 'indexDisabled' | 'unsupported' | 
  * in typing; the editor holds the trigger still while an IME composes, so composing text never
  * searches. Requests are numbered and only the newest reply lands (`superseded` replies are
  * dropped too). While a request is in flight the previous batch stays, narrowed to names that
- * still contain the query: the list does not jump, and Enter cannot pick a stale file that no
- * longer matches. A rejected search reads as unavailable for that query, without a toast.
+ * still match the query and marked for it by the shared matcher: the list does not jump, and
+ * Enter cannot pick a stale file that no longer matches. A rejected search reads as unavailable
+ * for that query, without a toast.
  * `live` is the panel's open state: each opening searches afresh and ignores earlier replies,
  * while a closing panel keeps its last rows for the exit animation.
  */
@@ -81,9 +84,11 @@ export function useFileSearch(live: boolean, query: string): FileSearchState {
   // A backend that is off stays off between keystrokes; keep its reason instead of flickering.
   if (settled.state === 'unavailable')
     return { status: 'unavailable', reason: unavailableReason(settled) };
-  const needle = query.toLowerCase();
   const kept = found
-    ? settled.results.filter((result) => result.name.toLowerCase().includes(needle))
+    ? settled.results.flatMap((result) => {
+        const match = matchFields(query, { name: result.name });
+        return match ? [{ ...result, match: match.ranges.name }] : [];
+      })
     : [];
   return kept.length
     ? { status: 'ready', results: kept, partial: false, attach }

@@ -63,7 +63,9 @@ export class HomeIndexBackend implements SearchBackend {
     const { entries, complete } = await this.current(scope, signal);
     // Rank on names first, then stat only the files the reply can show.
     const picked = rankCandidates(query, preselect(entries, folded, limit, scope.home), Date.now());
-    const hits = await Promise.all(picked.slice(0, limit).map(({ hit }) => withStats(hit)));
+    const hits = await Promise.all(
+      picked.slice(0, limit).map(({ candidate }) => withStats(candidate.hit)),
+    );
     return {
       state: complete ? 'ok' : 'partial',
       hits: hits.filter((hit) => hit !== null),

@@ -20,6 +20,8 @@
   --ata-surface-ghost-hover: rgb(255 255 255 / 10%);
   --ata-text-secondary: #a1a1a1;
   --ata-syntax-variable: #60a5fa;
+  /* Figma text/match (#80b7fb): search matches in lists, the composer's blue made a little paler. */
+  --ata-text-match: color-mix(in srgb, var(--ata-syntax-variable) 80%, white);
   --ata-border-subtle: rgb(255 255 255 / 14%);
   --ata-radius-panel: 22px;
   /* Figma activity/connector: the opaque rail shared by the activity tree. */
@@ -116,6 +118,7 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-match: var(--ata-text-match);
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);

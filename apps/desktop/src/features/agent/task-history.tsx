@@ -2,10 +2,11 @@ import { useState } from 'react';
 import { SearchIcon, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@ai/ui/components/button';
-import { commandFilter } from '@ai/ui/lib/command-filter';
+import { HighlightedText } from '@ai/ui/components/highlighted-text';
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@ai/ui/components/input-group';
 import { Shimmer } from '@ai/ui/components/ai-elements/shimmer';
 import { ScrollArea } from '@ai/ui/components/scroll-area';
+import { matchFields } from '@ai/ui/lib/fuzzy-match';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -38,9 +39,12 @@ export function TaskHistory({
     const status = task.runs.at(-1)?.status;
     return status ? t(`status.${status}`) : t('history.importedDraft');
   }
-  const visible = query
-    ? tasks.filter((task) => commandFilter(`${task.title} ${statusLabelOf(task)}`, query) > 0)
-    : tasks;
+  // The query filters and marks the visible title and status; the list stays chronological.
+  const visible = tasks.flatMap((task) => {
+    const statusLabel = statusLabelOf(task);
+    const match = matchFields(query, { title: task.title, status: statusLabel });
+    return match || !query ? [{ task, statusLabel, match }] : [];
+  });
   return (
     <section className="panel-content task-history" aria-label={t('history.label')}>
       <div className="pb-3">
@@ -58,9 +62,8 @@ export function TaskHistory({
       </div>
       <ScrollArea className="flex-1 min-h-0 -mr-3" gutter>
         <ul className="task-list">
-          {visible.map((task) => {
+          {visible.map(({ task, statusLabel, match }) => {
             const status = task.runs.at(-1)?.status;
-            const statusLabel = statusLabelOf(task);
             const progressing =
               status === 'queued' || status === 'running' || status === 'stopping';
             return (
@@ -71,7 +74,7 @@ export function TaskHistory({
                   onClick={() => onChoose(task.id)}
                 >
                   <span className="task-row-title" title={task.title}>
-                    {task.title}
+                    <HighlightedText text={task.title} ranges={match?.ranges.title} />
                   </span>
                   <span className="task-row-meta">
                     <time dateTime={task.updatedAt}>
@@ -81,7 +84,12 @@ export function TaskHistory({
                       })}
                     </time>
                     <span>
-                      {progressing ? <Shimmer as="span">{statusLabel}</Shimmer> : statusLabel}
+                      {/* Shimmer animates plain text only, so a running status stays unmarked. */}
+                      {progressing ? (
+                        <Shimmer as="span">{statusLabel}</Shimmer>
+                      ) : (
+                        <HighlightedText text={statusLabel} ranges={match?.ranges.status} />
+                      )}
                     </span>
                   </span>
                 </Button>

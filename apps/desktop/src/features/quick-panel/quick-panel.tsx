@@ -8,6 +8,7 @@ import {
   CommandSeparator,
   CommandShortcut,
 } from '@ai/ui/components/command';
+import { HighlightedText } from '@ai/ui/components/highlighted-text';
 import { Kbd, KbdGroup } from '@ai/ui/components/kbd';
 import { Popover, PopoverAnchor, PopoverContent } from '@ai/ui/components/popover';
 import type { RunPolicy } from '../../../electron/agent/run-policy';
@@ -30,7 +31,7 @@ import './quick-panel.css';
 
 export interface QuickPanelProps {
   trigger: TriggerState | null;
-  /** Active run: `@` stays closed; `/` lists quick commands only. */
+  /** Active run: `@` and an inline `/` stay closed; a leading `/` lists quick commands only. */
   running: boolean;
   editor: ComposerEditorCommands;
   handleRef: Ref<QuickPanelHandle>;
@@ -117,6 +118,8 @@ export function QuickPanel({
   });
   const view = slash ? slashView : mentionView;
   const groups = visibleGroups(view.groups);
+  // Only the trailing "Browse files…" group has no heading; it is an action, not a result.
+  const empty = groups.some((group) => group.heading !== undefined) ? null : view.empty;
   const { activeValue, hover, setList, trackOption } = useQuickPanel({
     open,
     groups,
@@ -166,10 +169,23 @@ export function QuickPanel({
             label={t('quickPanel.listLabel')}
             className="max-h-none min-h-0 flex-1"
           >
-            {groups.flatMap((group) => [
-              // A heading-less group (the trailing "Browse files…") is set apart by a rule.
-              !group.heading && <CommandSeparator key={`${group.id}:rule`} alwaysRender />,
-              <CommandGroup key={group.id} value={group.id} heading={group.heading}>
+            {empty !== null && (
+              <p className="px-2 py-6 text-center text-sm text-muted-foreground">{empty}</p>
+            )}
+            {groups.flatMap((group, index) => [
+              // The heading-less "Browse files…" group is set apart from whatever precedes it.
+              !group.heading && (index > 0 || empty !== null) && (
+                <CommandSeparator key={`${group.id}:rule`} alwaysRender />
+              ),
+              <CommandGroup
+                key={group.id}
+                value={group.id}
+                heading={
+                  group.heading === undefined ? undefined : (
+                    <HighlightedText text={group.heading} ranges={group.headingRanges} />
+                  )
+                }
+              >
                 {group.notice && (
                   <p className="px-2 py-1.5 text-xs text-muted-foreground">{group.notice}</p>
                 )}
@@ -178,9 +194,6 @@ export function QuickPanel({
                 ))}
               </CommandGroup>,
             ])}
-            {groups.length === 0 && (
-              <p className="px-2 py-6 text-center text-sm text-muted-foreground">{view.empty}</p>
-            )}
           </CommandList>
           <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 px-2 py-1.5 text-xs text-muted-foreground">
             <span className="inline-flex items-center gap-1 whitespace-nowrap">
@@ -192,7 +205,9 @@ export function QuickPanel({
             </span>
             <span className="inline-flex items-center gap-1 whitespace-nowrap">
               <Kbd>Enter</Kbd>
-              {slash ? t('quickPanel.hints.use') : t('quickPanel.hints.insert')}
+              {slash?.placement === 'leading'
+                ? t('quickPanel.hints.use')
+                : t('quickPanel.hints.insert')}
             </span>
             <span className="inline-flex items-center gap-1 whitespace-nowrap">
               <Kbd>Esc</Kbd>
@@ -205,7 +220,7 @@ export function QuickPanel({
   );
 }
 
-/** Icon, title (query match emphasized), one-line secondary text, trailing status. */
+/** Icon, title and one-line secondary text (query matches emphasized), trailing status. */
 function QuickRow({
   option,
   track,
@@ -214,7 +229,6 @@ function QuickRow({
   /** Registers the option element so its id can become `aria-activedescendant`. */
   track: RefCallback<HTMLDivElement>;
 }) {
-  const [from, to] = option.match ?? [0, 0];
   return (
     <CommandItem
       ref={track}
@@ -226,21 +240,11 @@ function QuickRow({
       {option.icon}
       <span className="flex min-w-0 flex-1 flex-col">
         <span className="truncate" title={option.title}>
-          {to > from ? (
-            <>
-              {option.title.slice(0, from)}
-              <mark className="bg-transparent font-semibold text-inherit">
-                {option.title.slice(from, to)}
-              </mark>
-              {option.title.slice(to)}
-            </>
-          ) : (
-            option.title
-          )}
+          <HighlightedText text={option.title} ranges={option.ranges?.title} />
         </span>
         {option.description && (
           <span className="truncate text-xs text-muted-foreground" title={option.description}>
-            {option.description}
+            <HighlightedText text={option.description} ranges={option.ranges?.description} />
           </span>
         )}
       </span>

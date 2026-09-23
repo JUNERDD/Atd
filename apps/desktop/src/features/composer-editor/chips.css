@@ -1,0 +1,31 @@
+/* A chip is one atom in the text: the root must stay inline-block (see ChipWidget). */
+.composer-chip {
+  display: inline-block;
+  max-width: 100%;
+  margin: 0 1px;
+  padding: 0 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--input);
+  color: var(--ata-syntax-variable);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+  vertical-align: top;
+  white-space: nowrap;
+  cursor: default;
+}
+.composer-chip-icon {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  margin-inline-end: 4px;
+  vertical-align: -2px;
+}
+.composer-chip-name {
+  display: inline-block;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: top;
+}

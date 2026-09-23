@@ -1,7 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { TFunction } from 'i18next';
 import type { ServiceBridge } from '../../../electron/service/ipc';
-import { messageOf } from '../../lib/errors';
 import {
   asAgentRow,
   asMcpRow,
@@ -12,17 +10,17 @@ import {
   type ExtensionSkillRow,
 } from '../service/use-service';
 
-/** A service-backed list as a quick-panel group sees it. */
+/**
+ * A service-backed list as a quick-panel view sees it. Only rows are shown: a list that is still
+ * loading only keeps the panel from reporting no match, and one that is unavailable (no desktop
+ * bridge, a disconnected service with its own banner, a failed load) is simply left out.
+ */
 export type ServiceListView<T> =
   | { status: 'ready'; rows: T[] }
   | { status: 'loading' }
-  | { status: 'unavailable'; reason: 'desktop' | 'disconnected' }
-  | { status: 'failed'; message: string };
+  | { status: 'unavailable' };
 
-type Loaded<T> =
-  | { status: 'loading' }
-  | { status: 'ready'; rows: T[] }
-  | { status: 'failed'; message: string };
+type Loaded<T> = { status: 'loading' } | { status: 'ready'; rows: T[] } | { status: 'failed' };
 
 const loadSkills = (bridge: ServiceBridge) =>
   bridge.skills().then((result) => result.skills.flatMap((row) => asSkillRow(row) ?? []));
@@ -33,8 +31,8 @@ const loadMcp = (bridge: ServiceBridge) =>
 
 /**
  * Loads one list the first time its group is wanted while the service is connected. A failure
- * stays in the group and retries on the next opening; a reconnect may reach another service, so
- * it also loads again. Late replies from a superseded request are dropped.
+ * retries on the next opening; a reconnect may reach another service, so it also loads again.
+ * Late replies from a superseded request are dropped.
  */
 function useLazyList<T>(
   load: (bridge: ServiceBridge) => Promise<T[]>,
@@ -59,10 +57,10 @@ function useLazyList<T>(
       (rows) => {
         if (request === generation.current) setLoaded({ status: 'ready', rows });
       },
-      (error: unknown) => {
+      () => {
         if (request !== generation.current) return;
         requested.current = false;
-        setLoaded({ status: 'failed', message: messageOf(error) });
+        setLoaded({ status: 'failed' });
       },
     );
   }, [connected, wanted, load]);
@@ -86,28 +84,12 @@ export function useServiceLists(wanted: { skills: boolean; agents: boolean; mcp:
   const agents = useLazyList(loadAgents, wanted.agents, connected);
   const mcp = useLazyList(loadMcp, wanted.mcp, connected);
   function view<T>(loaded: Loaded<T> | null): ServiceListView<T> {
-    if (!window.desktop?.service) return { status: 'unavailable', reason: 'desktop' };
-    if (connected) return loaded ?? { status: 'loading' };
-    return settling ? { status: 'loading' } : { status: 'unavailable', reason: 'disconnected' };
+    if (!window.desktop?.service) return { status: 'unavailable' };
+    if (connected) {
+      if (!loaded) return { status: 'loading' };
+      return loaded.status === 'failed' ? { status: 'unavailable' } : loaded;
+    }
+    return settling ? { status: 'loading' } : { status: 'unavailable' };
   }
   return { skills: view(skills), agents: view(agents), mcp: view(mcp) };
-}
-
-/** The in-group line for a list that has no rows to show yet; `undefined` once it is ready. */
-export function serviceNotice(
-  view: ServiceListView<unknown>,
-  t: TFunction<'panel'>,
-): string | undefined {
-  switch (view.status) {
-    case 'ready':
-      return undefined;
-    case 'loading':
-      return t('quickPanel.states.loading');
-    case 'failed':
-      return t('quickPanel.states.failed', { message: view.message });
-    case 'unavailable':
-      return view.reason === 'desktop'
-        ? t('quickPanel.states.desktopOnly')
-        : t('quickPanel.states.disconnected');
-  }
 }

@@ -1,12 +1,12 @@
 import { useTranslation } from 'react-i18next';
 import type { Artifact, FileRef, TaskRun } from '../../../../electron/agent/task-schema';
-import { UserContext } from '../user-context';
 import { TaskFiles } from '../task-files';
 import type { AdaptedTurn } from './adapter';
 import { ActivityGroup } from './activity-group';
 import { BlockView } from './block-view';
 import { activityStillRunning, lastActivityIndex } from './phases';
-import { runById } from './run-prompt';
+import { PromptMessage } from './prompt-message';
+import { promptRun } from './run-prompt';
 import { TurnHeader } from './turn-header';
 import type { RequestIndex } from './turns';
 
@@ -55,12 +55,16 @@ export function TurnView({
   const done = settled || (answering && !activityStillRunning(turn.view));
   const liveFooter = live && last;
   const sectionClass = `transcript-turn${liveFooter ? ' transcript-turn-live' : ''}`;
+  const run = turn.user ? promptRun(runs, turn.user) : undefined;
   return (
     <section className={sectionClass}>
       {turn.user && (
         <article className="user-message" aria-label={t('conversation.yourMessage')}>
-          <UserContext snapshot={runById(runs, turn.user.runId)?.snapshot} />
-          <div className="message-bubble">{turn.user.text}</div>
+          {run ? (
+            <PromptMessage snapshot={run.snapshot} fallback={turn.user.text} />
+          ) : (
+            <div className="message-bubble">{turn.user.text}</div>
+          )}
         </article>
       )}
       {(liveFooter || settled) && (

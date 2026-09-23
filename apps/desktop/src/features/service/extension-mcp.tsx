@@ -2,8 +2,10 @@ import { useState } from 'react';
 import { Plug } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@ai/ui/components/button';
+import { HighlightedText } from '@ai/ui/components/highlighted-text';
 import { Input } from '@ai/ui/components/input';
 import { Item, ItemActions, ItemContent, ItemDescription, ItemTitle } from '@ai/ui/components/item';
+import { matchFields, type FieldsMatch } from '@ai/ui/lib/fuzzy-match';
 import { ExtensionGroup } from './extension-group';
 import { EMPTY_MCP_DRAFT, toUpsertInput, type McpUpsertInput } from './extension-mcp-draft';
 import { McpAddForm } from './extension-mcp-form';
@@ -23,6 +25,7 @@ function needsAuth(state: string): boolean {
 
 function McpRow({
   row,
+  match,
   connected,
   busy,
   onConnect,
@@ -32,6 +35,8 @@ function McpRow({
   onRemove,
 }: {
   row: ExtensionMcpRow;
+  /** Where the search matched the server id and the description line. */
+  match: FieldsMatch<'serverId' | 'description'> | null;
   connected: boolean;
   busy: boolean;
   onConnect: (serverId: string) => void;
@@ -50,9 +55,13 @@ function McpRow({
     <Item asChild size="xs">
       <li>
         <ItemContent>
-          <ItemTitle title={row.serverId}>{row.serverId}</ItemTitle>
+          <ItemTitle title={row.serverId}>
+            <HighlightedText text={row.serverId} ranges={match?.ranges.serverId} />
+          </ItemTitle>
           {description ? (
-            <ItemDescription title={description}>{description}</ItemDescription>
+            <ItemDescription title={description}>
+              <HighlightedText text={description} ranges={match?.ranges.description} />
+            </ItemDescription>
           ) : null}
           {showAuth ? (
             <div className="settings-extension-mcp-auth">
@@ -159,9 +168,13 @@ function McpAddSection({
   );
 }
 
-/** MCP servers group with connect/auth and catalog add/disable/remove. */
+/**
+ * MCP servers group with connect/auth and catalog add/disable/remove. The search matches and
+ * marks the server id and the description line as shown.
+ */
 export function ExtensionMcpGroup({
   rows,
+  query,
   loading,
   empty,
   connected,
@@ -178,6 +191,7 @@ export function ExtensionMcpGroup({
   onRemove,
 }: {
   rows: ExtensionMcpRow[];
+  query: string;
   loading: boolean;
   empty: string;
   connected: boolean;
@@ -208,6 +222,10 @@ export function ExtensionMcpGroup({
         }}
       />
     ) : null;
+  const shown = rows.flatMap((row) => {
+    const match = matchFields(query, { serverId: row.serverId, description: mcpDescription(row) });
+    return match || !query.trim() ? [{ row, match }] : [];
+  });
   return (
     <>
       {form}
@@ -216,14 +234,15 @@ export function ExtensionMcpGroup({
         note={note}
         empty={empty}
         loading={loading}
-        hasRows={rows.length > 0}
+        hasRows={shown.length > 0}
         showTitle={false}
         emptyIcon={<Plug />}
       >
-        {rows.map((row) => (
+        {shown.map(({ row, match }) => (
           <McpRow
             key={row.serverId}
             row={row}
+            match={match}
             connected={connected}
             busy={busy || busyId === row.serverId}
             onConnect={onConnect}

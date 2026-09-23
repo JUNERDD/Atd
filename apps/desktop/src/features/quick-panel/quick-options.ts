@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { commandFilter } from '@ai/ui/lib/command-filter';
+import type { MatchRange } from '@ai/ui/lib/fuzzy-match';
 
 /** One selectable row of the quick panel; every source maps its candidates to this shape. */
 export interface QuickOption {
@@ -7,59 +7,47 @@ export interface QuickOption {
   value: string;
   icon: ReactNode;
   title: string;
-  /** `[from, to)` range of `title` emphasized as the query match. */
-  match?: readonly [number, number];
   description?: string;
+  /**
+   * Query matches to emphasize. Views match their visible text as the `title` and `description`
+   * fields, so a match object fits here as is; other fields (command keywords) match unmarked.
+   */
+  ranges?: { title?: readonly MatchRange[]; description?: readonly MatchRange[] };
   /** Trailing muted text, such as a state or a relative time. */
   status?: string;
   /** Greyed rows stay visible with their reason but are skipped by keyboard and pointer. */
   disabled?: boolean;
   /** The current choice in a drill list (model, effort). */
   checked?: boolean;
-  /** Relevance to the query (cmdk's 0–1 score); absent without a query or a local match. */
+  /** 0–1 relevance to the query (`FieldsMatch.score`); absent without a query. */
   score?: number;
   /** Runs for a click, Enter, or Tab alike. */
   select: () => void;
 }
 
-/** A section of the list. `notice` explains a loading, unavailable, or empty group in place. */
+/** A section of the list; it shows only while it has options. */
 export interface QuickGroup {
   id: string;
   /** Omitted for the trailing "Browse files…" row, which ends the list without a heading. */
   heading?: string;
+  /** Query matches in the heading, when the options also match on it (a model's connection). */
+  headingRanges?: readonly MatchRange[];
   options: QuickOption[];
+  /** A remark above the options, such as incomplete file results. */
   notice?: string;
 }
 
-/** Groups for one panel view, plus the line shown when none of them has anything to show. */
+/** Groups for one panel view, plus the line shown when no group with a heading has options. */
 export interface QuickView {
   groups: QuickGroup[];
-  empty: string;
-}
-
-/**
- * Keeps the items matching `query` (all of them, unscored, for an empty query) with the best
- * matches first; equal scores keep the source order. Matching is cmdk's filter, shared with the
- * app's other lists.
- */
-export function rankByQuery<T>(
-  items: readonly T[],
-  query: string,
-  text: (item: T) => string,
-): { item: T; score?: number }[] {
-  const search = query.trim();
-  if (!search) return items.map((item) => ({ item }));
-  return items
-    .map((item, index) => ({ item, index, score: commandFilter(text(item), search) }))
-    .filter((entry) => entry.score > 0)
-    .sort((a, b) => b.score - a.score || a.index - b.index)
-    .map(({ item, score }) => ({ item, score }));
+  /** Why nothing is listed, such as no match or a loading source; null shows no line. */
+  empty: string | null;
 }
 
 /**
  * Orders groups for a query the way cmdk does when it filters: by their best option score, ties
- * in source order. Groups without a scored option (notices, the trailing "Browse files…") keep
- * their relative order after the matches, so the first selectable option is the best match.
+ * in source order. Groups without a scored option (the trailing "Browse files…") keep their
+ * relative order after the matches, so the first selectable option is the best match.
  */
 export function orderGroups(groups: readonly QuickGroup[], query: string): QuickGroup[] {
   if (!query.trim()) return [...groups];
@@ -71,7 +59,10 @@ export function orderGroups(groups: readonly QuickGroup[], query: string): Quick
     .map((entry) => entry.group);
 }
 
-/** Drops groups with nothing to show: no options and no notice. */
+/**
+ * Drops groups without options: a loading, unavailable, or empty source takes no room, and a
+ * notice only accompanies options.
+ */
 export function visibleGroups(groups: readonly QuickGroup[]): QuickGroup[] {
-  return groups.filter((group) => group.options.length > 0 || group.notice !== undefined);
+  return groups.filter((group) => group.options.length > 0);
 }

@@ -3,7 +3,9 @@ import { useLayoutEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { EditorView } from '@codemirror/view';
 import { acceptCompletion, type Completion, setSelectedCompletion } from '@codemirror/autocomplete';
+import { HighlightedText } from '@ai/ui/components/highlighted-text';
 import { ScrollArea } from '@ai/ui/components/scroll-area';
+import { typedVariable, variableRanges } from './instruction-variable-match';
 
 export function CompletionList({
   view,
@@ -18,6 +20,8 @@ export function CompletionList({
 }) {
   const { t } = useTranslation('commands');
   const selectedOption = useRef<HTMLButtonElement>(null);
+  // The list shows only while a `{{` reference is being typed; its name is the ranked query.
+  const query = typedVariable(view.state, view.state.selection.main.head)?.query ?? '';
   useLayoutEffect(() => {
     const scrollOptions = { block: 'nearest', inline: 'nearest', container: 'nearest' } as const;
     selectedOption.current?.scrollIntoView(scrollOptions);
@@ -49,7 +53,9 @@ export function CompletionList({
               view.focus();
             }}
           >
-            <span className="cm-completionLabel">{option.label}</span>
+            <span className="cm-completionLabel">
+              <HighlightedText text={option.label} ranges={variableRanges(query, option)} />
+            </span>
             <span className="cm-completionDetail">{option.detail}</span>
           </button>
         ))}

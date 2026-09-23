@@ -1,4 +1,5 @@
 import type { RunSnapshot, TaskRun } from '../../../../electron/agent/task-schema';
+import type { BlockOf } from '../../../../electron/agent/transcript-schema';
 
 /** Pending-bubble text before the first user block arrives: instruction first. */
 export function pendingMessageText(snapshot: RunSnapshot): string {
@@ -11,6 +12,10 @@ export function pendingMessageText(snapshot: RunSnapshot): string {
   );
 }
 
-export function runById(runs: TaskRun[], runId: string): TaskRun | undefined {
-  return runs.find((run) => run.id === runId) ?? runs[0];
+/**
+ * The run whose prompt `block` is. Queued follow-ups have none, and neither has a prompt the task's
+ * runs do not list yet: guessing another run would draw that run's input into this bubble.
+ */
+export function promptRun(runs: TaskRun[], block: BlockOf<'user'>): TaskRun | undefined {
+  return block.prompt ? runs.find((run) => run.id === block.runId) : undefined;
 }

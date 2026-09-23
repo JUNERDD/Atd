@@ -8,7 +8,6 @@ import {
   type TransactionSpec,
 } from '@codemirror/state';
 import { chipDecorations } from './chip-decorations';
-import { chipTable, leadingSkillEnd } from './chip-state';
 
 interface Edit {
   from: number;
@@ -17,15 +16,14 @@ interface Edit {
 }
 
 /**
- * Widens every edit that touches part of a chip token to the whole token and moves text
- * inserted in front of the leading skill chip behind it. DOM-driven edits always cover whole
- * widgets; this guards the programmatic and multi-step paths that could split a token.
+ * Widens every edit that touches part of a chip token to the whole token, and moves an insertion
+ * that falls inside a token to its end. DOM-driven edits always cover whole widgets; this guards
+ * the programmatic and multi-step paths that could split a token.
  */
 function keepTokensWhole(transaction: Transaction): TransactionSpec | readonly TransactionSpec[] {
   if (!transaction.docChanged) return transaction;
   const start = transaction.startState;
   const tokens = start.field(chipDecorations);
-  const skillEnd = leadingSkillEnd(start.doc, start.field(chipTable));
   const edits: Edit[] = [];
   let adjusted = false;
   let movedTo = -1;
@@ -39,7 +37,6 @@ function keepTokensWhole(transaction: Transaction): TransactionSpec | readonly T
         edit.to = Math.max(edit.to, tokenTo);
       }
     });
-    if (skillEnd && edit.from === 0 && edit.to === 0 && edit.insert) edit.from = edit.to = skillEnd;
     if (edit.from !== fromA || edit.to !== toA) {
       adjusted = true;
       if (edit.from === edit.to) movedTo = edit.from;
@@ -76,25 +73,7 @@ function merge(edits: Edit[]): ChangeSpec[] {
 }
 
 /**
- * The skill chip stays first: a cursor never rests in front of it, so typing — including an IME
- * composition, which must not be moved once started — always lands after it. A skill chip added
- * by this transaction is skipped: `insertChips` already puts the cursor after it.
+ * Transaction filters run from the lowest precedence to the highest, so tokens are made whole
+ * before any other filter (the length limit) sees the edit.
  */
-function cursorAfterSkill(transaction: Transaction): TransactionSpec | readonly TransactionSpec[] {
-  const { main } = transaction.newSelection;
-  if (!main.empty || main.head !== 0 || !(transaction.selection || transaction.docChanged))
-    return transaction;
-  const end = leadingSkillEnd(transaction.newDoc, transaction.startState.field(chipTable));
-  return end
-    ? [transaction, { selection: EditorSelection.cursor(end), sequential: true }]
-    : transaction;
-}
-
-/**
- * Transaction filters run from the lowest precedence to the highest: tokens are made whole
- * before any other filter (the length limit) sees the edit, and the cursor rule sees the result.
- */
-export const chipIntegrity = [
-  Prec.lowest(EditorState.transactionFilter.of(keepTokensWhole)),
-  Prec.highest(EditorState.transactionFilter.of(cursorAfterSkill)),
-];
+export const chipIntegrity = Prec.lowest(EditorState.transactionFilter.of(keepTokensWhole));
