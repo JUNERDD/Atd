@@ -1,4 +1,10 @@
-import { forgetTaskTree, markParentStopping, rebindParentRun } from './registry.js';
+import type { TaskRun } from '@ai/agent-contracts';
+import {
+  forgetTaskTree,
+  markParentStopping,
+  rebindHostResources,
+  rebindParentRun,
+} from './registry.js';
 import { abortTaskChildren } from './trigger.js';
 
 /**
@@ -8,9 +14,18 @@ import { abortTaskChildren } from './trigger.js';
  * revoke remote side effects already committed by a child.
  */
 
-/** Rebinds the parent record after a live session accepts a new run. */
-export function rebindSubagentsForRun(taskId: string, runId: string, tools: string[]): void {
-  rebindParentRun(taskId, runId, tools);
+/**
+ * Rebinds the parent record and child host to the run a live session now
+ * serves. A reused session keeps its session_start registration (role
+ * ceiling, MCP proxies), which the run binding key pins; attachments change
+ * with every run, so children read the current run's resources.
+ */
+export function rebindSubagentsForRun(taskId: string, run: TaskRun): void {
+  rebindParentRun(taskId, run.id, run.snapshot.tools);
+  rebindHostResources(
+    taskId,
+    run.snapshot.input.files.map((file) => file.id),
+  );
 }
 
 /**

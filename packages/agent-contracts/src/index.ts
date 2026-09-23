@@ -18,3 +18,4 @@ export * from './provider-manage.js';
 export * from './commands.js';
 export * from './memory.js';
 export * from './tasks-manage.js';
+export * from './references.js';

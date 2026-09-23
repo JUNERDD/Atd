@@ -10,11 +10,10 @@ import {
 } from '@earendil-works/pi-coding-agent';
 import { rootExecutionId, type RunStatus, type TaskRun } from '@ai/agent-contracts';
 import { LiveTranscript } from './live-transcript.js';
-import { prepareSessionMcp } from './pi-session-mcp.js';
+import type { RunBinding } from './run-binding.js';
 import { openRunModel, reuseRunModel, type RunModel } from './run-model.js';
 import { buildSkillLoaderOptions } from './skills/loader.js';
 import { skillProfilePaths } from './skills/profile.js';
-import { loadRunSnapshot } from './skills/versions.js';
 import type { RunnerContext } from './task-runner.js';
 import { effectiveTaskTier } from './tasks/tier.js';
 import { serviceTools } from './tool-proxies.js';
@@ -30,14 +29,19 @@ export interface LiveState {
   manager: SessionManager;
   transcript: LiveTranscript;
   sessionFile: string;
-  /** Frozen skill entries for this run; empty preserves the T1/T2 no-skill shape. */
-  skillSnapshot?: { revision: string; skills: { name: string; revision: string }[] };
+  /** Key of the run binding the session was built with (run-binding.ts). */
+  bindingKey: string;
 }
 
 export interface SessionFactoryDeps {
   ctx: RunnerContext;
   taskId: string;
   currentRunId: () => string;
+  /**
+   * The current run's material. A session outlives the run that built it, so
+   * handlers read this per run instead of capturing that first run.
+   */
+  currentMaterial: () => RunMaterial;
   executionId: () => string;
   grants: Set<string>;
   audit: (entry: Record<string, unknown>) => void;
@@ -50,16 +54,24 @@ export interface RunAttachment {
   text: string;
 }
 
+/** Material a run injects before its first turn: its instructions, files and references. */
+export interface RunMaterial {
+  instructions: string;
+  attachments: RunAttachment[];
+  /** What the run's `@` references resolved to at freeze (references/material.ts); may be empty. */
+  references: string;
+}
+
 /**
  * Pi session assembly for one parent task, extracted from the desktop
  * worker-session shape: the run's connection model runtime, in-memory
  * settings with cache warming off, service-owned SessionManager and resource
- * loader.
+ * loader. `binding` supplies what Pi fixes at construction (run-binding.ts).
  */
 export async function createLiveState(
   deps: SessionFactoryDeps,
   run: TaskRun,
-  attachments: RunAttachment[],
+  binding: RunBinding,
 ): Promise<LiveState> {
   const { ctx, taskId } = deps;
   const sessionsDir = path.join(ctx.paths.sessionsDir, taskId);
@@ -84,18 +96,13 @@ export async function createLiveState(
   const manager = task.sessionFile
     ? SessionManager.open(task.sessionFile, sessionsDir, ctx.paths.agentDir)
     : SessionManager.create(ctx.paths.agentDir, sessionsDir);
-  // T3: frozen absolute skill entries for this run; unknown runs get none.
-  const skillSnapshot = await loadRunSnapshot(skillProfile, run.id);
-  const skillEntries = skillSnapshot.skills.map((skill) => skill.entry);
-  // MCP tools alongside service tools via the frozen authority revision.
-  const mcp = await prepareSessionMcp(deps);
-  const subagentsFactory = await prepareSubagentsParent(deps);
+  const subagentsFactory = await prepareSubagentsParent(deps, binding.agents);
   const loader = new DefaultResourceLoader(
     buildSkillLoaderOptions({
       loaderCwd: skillProfile.loaderCwd,
       agentDir: ctx.paths.agentDir,
       settingsManager: settings,
-      skillEntries,
+      skillEntries: binding.skillEntries,
       systemPrompt: SERVICE_SYSTEM_PROMPT,
       appendSystemPrompt: [],
       extensionFactories: [
@@ -113,22 +120,14 @@ export async function createLiveState(
           audit: deps.audit,
           log: ctx.log,
           setStatus: (status) => deps.setStatus(deps.currentRunId(), status),
-          configureMcp: mcp.configureMcp,
-          configuredMcp: mcp.configuredMcp,
+          configureMcp: binding.mcp.configureMcp,
+          configuredMcp: binding.mcp.configuredMcp,
         }),
-        mcp.factory,
+        binding.mcp.factory,
         subagentsFactory,
         (pi) => {
           pi.on('before_agent_start', () => {
-            const material = [
-              run.snapshot.instructions,
-              ...attachments.map(
-                (file) =>
-                  `File: ${file.name}\nRead-only resource: ${file.path}\n<file-material>\n${file.text}\n</file-material>`,
-              ),
-            ]
-              .filter(Boolean)
-              .join('\n\n');
+            const material = formatMaterial(deps.currentMaterial());
             if (material)
               return {
                 message: { customType: 'app-material', content: material, display: false },
@@ -187,7 +186,7 @@ export async function createLiveState(
     settingsManager: settings,
     sessionManager: manager,
     resourceLoader: loader,
-    tools: [...run.snapshot.tools, 'ask_user', 'desktop', 'configure_mcp'],
+    tools: binding.tools,
     thinkingLevel: run.snapshot.thinkingLevel ?? 'off',
   });
   await created.session.bindExtensions({
@@ -236,13 +235,7 @@ export async function createLiveState(
       deps.currentRunId,
     ),
     sessionFile: created.session.sessionFile ?? '',
-    skillSnapshot: {
-      revision: skillSnapshot.revision,
-      skills: skillSnapshot.skills.map((skill) => ({
-        name: skill.name,
-        revision: skill.revision,
-      })),
-    },
+    bindingKey: binding.key,
   };
   state.transcript.attach();
   if (state.sessionFile)
@@ -250,28 +243,52 @@ export async function createLiveState(
       const item = data.tasks.find((entry) => entry.id === taskId);
       if (item) item.sessionFile = state.sessionFile;
     });
+  markInvocation(manager, run);
   state.transcript.reproject(true);
   return state;
 }
 
 /**
- * Rebinds a live session to a new run of the same task, or answers false when
- * the run needs a session on another model runtime (see reuseRunModel). Skill
- * entries are never reloaded here: the live loader keeps its frozen run
- * entries, and the next run builds a fresh loader from its own frozen snapshot.
+ * Rebinds a live session to a later run of the same task, or answers false
+ * when the run needs a new session: its binding differs (skills, MCP proxies,
+ * tools or role; see run-binding.ts) or it needs another model runtime (see
+ * reuseRunModel). Pi fixes the binding at construction and a live session is
+ * never reloaded, so the caller rebuilds from the same session file instead.
  */
-export async function applyRunToSession(live: LiveState, run: TaskRun): Promise<boolean> {
+export async function applyRunToSession(
+  live: LiveState,
+  run: TaskRun,
+  binding: RunBinding,
+): Promise<boolean> {
+  if (binding.key !== live.bindingKey) return false;
   const model = await reuseRunModel(live.runModel, run);
   if (!model) return false;
   await live.session.setModel(model);
   // Pi clamps the level to what the model supports.
   live.session.setThinkingLevel(run.snapshot.thinkingLevel ?? 'off');
-  live.session.setActiveToolsByName([
-    ...run.snapshot.tools,
-    'ask_user',
-    'desktop',
-    'configure_mcp',
-  ]);
-  live.manager.appendCustomEntry('app-invocation', { runId: run.id, source: 'user' });
+  live.session.setActiveToolsByName(binding.tools);
+  markInvocation(live.manager, run);
   return true;
+}
+
+/**
+ * Marks where a run starts in the session branch. Transcript projection
+ * attributes the entries after it to that run, so every run a session
+ * executes needs one, whether the session was reused or rebuilt for it.
+ */
+function markInvocation(manager: SessionManager, run: TaskRun): void {
+  manager.appendCustomEntry('app-invocation', { runId: run.id, source: 'user' });
+}
+
+function formatMaterial(material: RunMaterial): string {
+  return [
+    material.instructions,
+    ...material.attachments.map(
+      (file) =>
+        `File: ${file.name}\nRead-only resource: ${file.path}\n<file-material>\n${file.text}\n</file-material>`,
+    ),
+    material.references,
+  ]
+    .filter(Boolean)
+    .join('\n\n');
 }

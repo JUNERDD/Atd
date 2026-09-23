@@ -1,5 +1,4 @@
 import type { SessionFactoryDeps } from '../pi-session.js';
-import { serviceAgentNames } from './agents.js';
 import {
   CLOSED_SUBAGENT_ACTIONS,
   FORBIDDEN_SUBAGENT_PARAMS,
@@ -130,8 +129,14 @@ function guardSingleCall(
 ): { block?: boolean; reason?: string } | undefined {
   const agent = input['agent'];
   const task = input['task'];
-  if (typeof agent !== 'string' || !serviceAgentNames().includes(agent))
-    return { block: true, reason: 'Subagent agent must be a service runtime agent.' };
+  const parent = parentByTask(deps.taskId);
+  if (!parent) return { block: true, reason: 'Unknown parent session.' };
+  // The session's registered agents: service agents plus referenced atd agents.
+  if (typeof agent !== 'string' || !parent.agents.includes(agent))
+    return {
+      block: true,
+      reason: 'Subagent agent must be a service agent or an agent referenced in this message.',
+    };
   if (typeof task !== 'string' || !task.trim() || task.length > 8000)
     return { block: true, reason: 'Subagent task must hold 1-8000 characters.' };
   const resources = input['resources'];
@@ -144,8 +149,6 @@ function guardSingleCall(
         return { block: true, reason: 'Subagent resource is not in the ledger.' };
     }
   }
-  const parent = parentByTask(deps.taskId);
-  if (!parent) return { block: true, reason: 'Unknown parent session.' };
   if (activeChildCount(parent.sessionId) >= SUBAGENT_LIMITS.maxForegroundChildren)
     return { block: true, reason: 'Foreground child limit (3) is reached.' };
   return undefined;

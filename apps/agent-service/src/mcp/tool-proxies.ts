@@ -55,8 +55,16 @@ export interface McpToolBinding {
 
 /** Proxy tool name: `mcp__<server>__<tool>`, sanitized for Pi. */
 export function mcpProxyName(serverId: string, tool: string): string {
-  const clean = (value: string) => value.replace(/[^A-Za-z0-9_]+/g, '_').slice(0, 80) || 'x';
-  return `mcp__${clean(serverId)}__${clean(tool)}`;
+  return `${mcpProxyPrefix(serverId)}${cleanProxyPart(tool)}`;
+}
+
+/** The prefix every proxy of one server shares: `mcp__<server>__`. */
+export function mcpProxyPrefix(serverId: string): string {
+  return `mcp__${cleanProxyPart(serverId)}__`;
+}
+
+function cleanProxyPart(value: string): string {
+  return value.replace(/[^A-Za-z0-9_]+/g, '_').slice(0, 80) || 'x';
 }
 
 /**
