@@ -94,26 +94,25 @@ export async function stopLocalService(dataDir: string): Promise<void> {
       return;
     }
   }
-  if (await waitForExit(dataDir, pid, 20000)) return;
+  if (await waitForExit(pid, 20000)) return;
   try {
     process.kill(pid, 'SIGTERM');
   } catch {
     return;
   }
-  await waitForExit(dataDir, pid, 5000);
+  await waitForExit(pid, 5000);
 }
 
-async function waitForExit(dataDir: string, pid: number, timeoutMs: number): Promise<boolean> {
-  const file = path.join(path.resolve(dataDir), 'endpoint.json');
+/**
+ * Polls the process itself. The service removes endpoint.json before it
+ * exits, so a missing file cannot tell a finished shutdown from one that
+ * stopped listening but never exited; only the SIGTERM fallback ends that.
+ */
+async function waitForExit(pid: number, timeoutMs: number): Promise<boolean> {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() <= deadline) {
     try {
       process.kill(pid, 0);
-    } catch {
-      return true;
-    }
-    try {
-      await readFile(file, 'utf8');
     } catch {
       return true;
     }

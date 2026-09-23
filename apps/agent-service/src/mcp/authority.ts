@@ -1,6 +1,5 @@
 import { errorMessage, type McpServerConfig, type McpSnapshot } from '@ai/agent-contracts';
 import type { ConfirmStore } from '../confirms.js';
-import { KeyringBackend, keyringMcpAccount } from '../credentials/keyring.js';
 import type { EventLog } from '../event-log.js';
 import type { Logger } from '../logging.js';
 import type { ResourceStore } from '../resources.js';
@@ -13,12 +12,12 @@ import { buildSnapshot, McpAuthManager, McpConnectionStates } from './lifecycle.
 import { loadAdapterInternals, scopeAdapterEnv } from './loader.js';
 import type { AdapterInternals, AdapterManagerLike } from './adapter-types.js';
 import {
+  bearerSecrets,
   loadServerRecords,
   parseServerConfigs,
   reuseKey,
   saveServerRecords,
   toAdapterConfig,
-  credentialIdentity,
 } from './servers.js';
 import { prepareMcpTools, type McpProxyHost } from './tool-proxies.js';
 import { loadRunMcpSelection } from './staging.js';
@@ -93,6 +92,16 @@ export class McpAuthority {
     McpAuthority.instances.delete(dataDir);
   }
 
+  /**
+   * Closes the profile's authority for a stopping service. An in-flight load
+   * (the start-up warm-up) settles first, so its control session and stdio
+   * children cannot outlive the service; a failed load left nothing to close.
+   */
+  static async closeFor(dataDir: string): Promise<void> {
+    const authority = await McpAuthority.instances.get(dataDir)?.catch(() => null);
+    await authority?.close();
+  }
+
   private static async assemble(
     deps: McpAuthorityDeps,
     managerOverride: AdapterManagerLike | null,
@@ -116,25 +125,6 @@ export class McpAuthority {
         return found;
       },
     };
-    const keyring = new KeyringBackend(deps.serviceId);
-    const secrets = {
-      bearerToken: async (record: McpServerConfig): Promise<string | null> => {
-        if (record.http?.auth.type !== 'bearer') return null;
-        const envName = record.http.auth.tokenEnv;
-        if (envName) {
-          const injected = process.env[envName]?.trim();
-          if (injected) return injected;
-        }
-        try {
-          const stored = await keyring.get(
-            keyringMcpAccount(credentialIdentity(deps.serviceId, record)),
-          );
-          return stored ?? null;
-        } catch {
-          return null;
-        }
-      },
-    };
     const authority = new McpAuthority(
       deps,
       internals,
@@ -146,7 +136,7 @@ export class McpAuthority {
         internals,
         manager: managerOf,
         servers,
-        secrets,
+        secrets: bearerSecrets(deps.serviceId),
         states,
         txns: transactions,
         approvals,

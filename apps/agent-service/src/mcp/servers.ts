@@ -3,9 +3,11 @@ import { readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { Type, type Static } from 'typebox';
 import { McpServerConfigSchema, parse, type McpServerConfig } from '@ai/agent-contracts';
+import { KeyringBackend, keyringMcpAccount } from '../credentials/keyring.js';
 import { mcpServerKey } from '../credentials/server-keys.js';
 import { atomicWrite } from '../config.js';
 import type { AdapterMcpConfig, AdapterServerEntry } from './adapter-types.js';
+import type { SecretResolver } from './errors.js';
 import { McpConfigureRequestSchema } from './requests.js';
 
 /**
@@ -245,6 +247,31 @@ export function reuseKey(record: McpServerConfig): string {
 /** Stable credential identity from migration v1 server keys. */
 export function credentialIdentity(serviceId: string, record: McpServerConfig): string {
   return mcpServerKey(serviceId, record.serverId, record.principal);
+}
+
+/**
+ * Connect-time bearer secrets: a non-empty `tokenEnv` value wins over the
+ * keyring entry under the record's credential identity. An unreadable keyring
+ * answers null, which the connection reports as a missing credential.
+ */
+export function bearerSecrets(serviceId: string): SecretResolver {
+  const keyring = new KeyringBackend(serviceId);
+  return {
+    bearerToken: async (record) => {
+      if (record.http?.auth.type !== 'bearer') return null;
+      const envName = record.http.auth.tokenEnv;
+      if (envName) {
+        const injected = process.env[envName]?.trim();
+        if (injected) return injected;
+      }
+      try {
+        const stored = await keyring.get(keyringMcpAccount(credentialIdentity(serviceId, record)));
+        return stored ?? null;
+      } catch {
+        return null;
+      }
+    },
+  };
 }
 
 /**
