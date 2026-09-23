@@ -1,7 +1,6 @@
 import { spawn } from 'node:child_process';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
-import path from 'node:path';
 import { Type, type TSchema } from 'typebox';
 import {
   createBashToolDefinition,
@@ -24,7 +23,7 @@ import { registerConfigureMcpTool } from './configure-mcp-tool.js';
 import { ConfirmStore } from './confirms.js';
 import { registerDesktopTool } from './desktop-tool.js';
 import type { Logger } from './logging.js';
-import { confined, inside, shellAllowlist, withinRoots } from './service-fs.js';
+import { confined, inside, resolveToolPath, shellAllowlist, withinRoots } from './service-fs.js';
 
 /** Host services the service tool proxies need; owned by the task runner. */
 export interface ServiceToolHost {
@@ -298,7 +297,7 @@ function scopeOf(
   host: ServiceToolHost,
 ): GrantScope {
   if (name === 'bash') return { tool: 'bash' };
-  const absolute = path.resolve(host.cwd, pathOf(args));
+  const absolute = resolveToolPath(host.cwd, pathOf(args));
   return { tool: name, location: inside(host.cwd, absolute) ? 'inside' : 'outside' };
 }
 

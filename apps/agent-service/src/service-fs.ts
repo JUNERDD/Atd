@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { realpath } from 'node:fs/promises';
 import { homedir } from 'node:os';
+import { fileURLToPath } from 'node:url';
 
 /** Operator shell allowlist; empty denies every command with a clear message. */
 export function shellAllowlist(): string[] {
@@ -15,6 +16,22 @@ export function inside(root: string, target: string): boolean {
   return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative));
 }
 
+/** Unicode space variants that pi's file tools read as a plain space. */
+const UNICODE_SPACES = /[\u00A0\u2000-\u200A\u202F\u205F\u3000]/g;
+
+/**
+ * Resolves a file tool's `path` argument as pi does: the path write and edit act on, and the
+ * path read opens unless it falls back to a macOS spelling of a missing name. Classify tool
+ * calls with it rather than `path.resolve`, which keeps an `@`, `~` or `file://` path inside
+ * `cwd` while pi reaches outside it. Mirrors the unexported `resolveToCwd` of
+ * `@earendil-works/pi-coding-agent` 0.86.1 (`dist/core/tools/path-utils.js`, which calls
+ * `resolvePath` in `dist/utils/paths.js`); re-check it when upgrading pi.
+ */
+export function resolveToolPath(cwd: string, rawPath: string): string {
+  const target = normalizePath(rawPath.replace(UNICODE_SPACES, ' ').replace(/^@/, ''));
+  return path.isAbsolute(target) ? path.resolve(target) : path.resolve(normalizePath(cwd), target);
+}
+
 export interface ConfinedPath {
   real: string;
   location: 'inside' | 'outside';
@@ -26,7 +43,8 @@ export interface ConfinedPath {
  * agent catalogs (`~/.atd/skills`, `~/.atd/agents`) via `os.homedir()`, and
  * under `readRoots`, which only the read tool passes: the directories of the
  * skills the current run loaded. Every other path outside the data directory
- * stays blocked.
+ * stays blocked. `rawPath` is the path the operation touches, which pi's tools
+ * pass already resolved, so it is not re-normalized like a tool argument.
  */
 export async function confined(
   cwd: string,
@@ -34,7 +52,7 @@ export async function confined(
   rawPath: string,
   readRoots: readonly string[] = [],
 ): Promise<ConfinedPath> {
-  const real = await realTarget(cwd, rawPath);
+  const real = await realTarget(path.resolve(cwd, rawPath));
   if (inside(cwd, real)) return { real, location: 'inside' };
   if (inside(dataDir, real)) return { real, location: 'outside' };
   const home = homedir();
@@ -48,19 +66,19 @@ export async function confined(
 }
 
 /**
- * Whether a tool path lies under one of `roots`. Both sides compare as real
- * paths, so a symlink inside a root that leads elsewhere does not count.
+ * Whether a file tool's `path` argument, resolved as pi resolves it, lies under
+ * one of `roots`. Both sides compare as real paths, so a symlink inside a root
+ * that leads elsewhere does not count.
  */
 export async function withinRoots(
   roots: readonly string[],
   cwd: string,
   rawPath: string,
 ): Promise<boolean> {
-  return underAny(roots, await realTarget(cwd, rawPath));
+  return underAny(roots, await realTarget(resolveToolPath(cwd, rawPath)));
 }
 
-async function realTarget(cwd: string, rawPath: string): Promise<string> {
-  const absolute = path.resolve(cwd, rawPath);
+async function realTarget(absolute: string): Promise<string> {
   try {
     return await realpath(absolute);
   } catch {
@@ -80,4 +98,21 @@ async function resolveRoot(root: string): Promise<string> {
   } catch {
     return path.resolve(root);
   }
+}
+
+/** pi's `normalizePath` defaults: Windows shell drive paths, a leading `~`, `file://` URLs. */
+function normalizePath(value: string): string {
+  const windows = process.platform === 'win32';
+  const input = windows ? windowsShellPath(value) : value;
+  if (input === '~') return homedir();
+  if (input.startsWith('~/') || (windows && input.startsWith('~\\')))
+    return path.join(homedir(), input.slice(2));
+  return input.startsWith('file://') ? fileURLToPath(input) : input;
+}
+
+/** pi's `normalizeWindowsShellPath`: Git Bash, MSYS, Cygwin and WSL drive paths. */
+function windowsShellPath(value: string): string {
+  if (!value.startsWith('/') || value.startsWith('//') || value.includes('\\')) return value;
+  const [, drive, rest] = /^\/(?:mnt\/|cygdrive\/)?([a-z])(?:\/(.*))?$/i.exec(value) ?? [];
+  return drive ? `${drive.toUpperCase()}:\\${rest?.replaceAll('/', '\\') ?? ''}` : value;
 }
