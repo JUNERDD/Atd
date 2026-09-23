@@ -94,15 +94,6 @@ function invocationRunId(data: unknown): string | undefined {
   return typeof data.runId === 'string' && data.runId ? data.runId : undefined;
 }
 
-export function firstInvocationRunId(branch: readonly ServiceBranchItem[]): string | undefined {
-  for (const item of branch) {
-    if (item.type !== 'custom' || item.customType !== 'app-invocation') continue;
-    const runId = invocationRunId(item.data);
-    if (runId) return runId;
-  }
-  return undefined;
-}
-
 function stampSequence(counts: Map<number, number>, timestamp: number): number {
   const next = counts.get(timestamp) ?? 0;
   counts.set(timestamp, next + 1);
@@ -130,7 +121,11 @@ export interface ProjectServiceBlocksInput {
   branch: readonly ServiceBranchItem[];
   partial?: AssistantMessage;
   partials?: ReadonlyMap<string, string>;
-  defaultRunId: string;
+  /**
+   * The task's first run, which owns what comes before the branch's first invocation marker:
+   * sessions built before first runs were marked (d2a5c16) start without one.
+   */
+  firstRunId: string;
   live: boolean;
 }
 
@@ -150,13 +145,20 @@ export function projectServiceBlocks(input: ProjectServiceBlocksInput): ServiceB
   const partials = input.partials ?? new Map<string, string>();
   const userCounts = new Map<number, number>();
   const systemCounts = new Map<number, number>();
-  let runId = input.defaultRunId;
+  let runId = input.firstRunId;
+  // The first user message after a run's invocation marker is that run's prompt; the run's later
+  // user messages are queued steers and follow-ups. The branch's first user message is the first
+  // run's prompt even without a marker.
+  let awaitingPrompt = true;
   const blocks: ServiceBlock[] = [];
   for (const item of branch) {
     if (item.type === 'custom') {
       if (item.customType === 'app-invocation') {
         const next = invocationRunId(item.data);
-        if (next) runId = next;
+        if (next) {
+          runId = next;
+          awaitingPrompt = true;
+        }
       }
       continue;
     }
@@ -187,7 +189,9 @@ export function projectServiceBlocks(input: ProjectServiceBlocksInput): ServiceB
           timestamp: item.message.timestamp,
           endedAt: item.message.timestamp,
           text: contentText(item.message.content),
+          ...(awaitingPrompt ? { prompt: true } : {}),
         });
+        awaitingPrompt = false;
         break;
       case 'assistant': {
         const streaming = Boolean(

@@ -1,67 +1,21 @@
-import { readFile, readdir } from 'node:fs/promises';
-import path from 'node:path';
+import { readFile } from 'node:fs/promises';
 
 /**
- * Read-only skill resource maps. Skill body, references and assets are
- * exposed as in-memory maps for prompt assembly and UI preview; install
- * declarations and skill text can never authorize a write to user files.
+ * Read-only access to a skill's own files. A run captures each skill's
+ * SKILL.md body once, at freeze (skills/run-skills.ts); the model reads the
+ * skill's other files (references, assets) itself through the read tool,
+ * which allows the run's skill directories. Skill text never authorizes a
+ * write to user files.
  */
-export interface SkillResourceMaps {
-  /** SKILL.md body without frontmatter, keyed by skill name. */
-  content: ReadonlyMap<string, string>;
-  /** references/** files, keyed by `name/relative-path`. */
-  references: ReadonlyMap<string, string>;
-  /** assets/** files, keyed by `name/relative-path`. */
-  assets: ReadonlyMap<string, string>;
-}
+const MAX_BODY_CHARS = 256 * 1024;
 
-const MAX_FILE_BYTES = 256 * 1024;
-const MAX_FILES = 64;
-
-/** Loads read-only maps for frozen skill entries; missing dirs yield empty maps. */
-export async function loadSkillResourceMaps(
-  skills: { name: string; entry: string; baseDir: string }[],
-): Promise<SkillResourceMaps> {
-  const content = new Map<string, string>();
-  const references = new Map<string, string>();
-  const assets = new Map<string, string>();
-  for (const skill of skills.slice(0, 32)) {
-    content.set(skill.name, await readBody(skill.entry));
-    await collectDir(skill, 'references', references);
-    await collectDir(skill, 'assets', assets);
-  }
-  return { content, references, assets };
-}
-
-async function readBody(entry: string): Promise<string> {
-  try {
-    const raw = await readFile(entry, 'utf8');
-    return stripFrontmatter(raw).slice(0, MAX_FILE_BYTES);
-  } catch {
-    return '';
-  }
-}
-
-async function collectDir(
-  skill: { name: string; baseDir: string },
-  dir: 'references' | 'assets',
-  into: Map<string, string>,
-): Promise<void> {
-  let names: string[];
-  try {
-    names = await readdir(path.join(skill.baseDir, dir));
-  } catch {
-    return;
-  }
-  for (const name of names.slice(0, MAX_FILES)) {
-    if (!/^[A-Za-z0-9._-]+$/.test(name)) continue;
-    try {
-      const text = await readFile(path.join(skill.baseDir, dir, name), 'utf8');
-      into.set(`${skill.name}/${name}`, text.slice(0, MAX_FILE_BYTES));
-    } catch {
-      continue;
-    }
-  }
+/**
+ * The SKILL.md body without its frontmatter, capped at 256K characters.
+ * Throws when the file cannot be read, so a caller can report the skill
+ * instead of injecting an empty body.
+ */
+export async function readSkillBody(entry: string): Promise<string> {
+  return stripFrontmatter(await readFile(entry, 'utf8')).slice(0, MAX_BODY_CHARS);
 }
 
 function stripFrontmatter(raw: string): string {

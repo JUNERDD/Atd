@@ -15,6 +15,7 @@ import type { Logger } from './logging.js';
 import { ResourceStore } from './resources.js';
 import { ConflictError, DrainingError } from './errors.js';
 import { TaskRunner, type RunnerContext } from './task-runner.js';
+import { checkChipRanges, taskTitle } from './tasks/input-chips.js';
 import { CONTEXT_BUDGET, runInputSize } from './tasks/run-budget.js';
 import { resolveRunModel, resolveRunThinkingLevel } from './tasks/run-selection.js';
 
@@ -62,6 +63,7 @@ export class RunnerManager {
   /** Idempotent acceptance; repeats return the original run, never a new one. */
   async submit(request: SubmitTaskRequest): Promise<SubmitTaskResponse> {
     if (this.draining) throw new DrainingError();
+    checkChipRanges(request.input);
     // Read before the checks below so acceptance stays free of awaits until the ledger write.
     const connections = await ConnectionStore.load(this.deps.ctx.paths.root);
     const ledger = this.deps.ctx.ledger;
@@ -88,10 +90,7 @@ export class RunnerManager {
       if (!task) {
         task = {
           id: taskId,
-          title:
-            snapshot.input.text.trim().slice(0, 120) ||
-            snapshot.instructions.slice(0, 120) ||
-            'New task',
+          title: taskTitle(snapshot),
           createdAt: now,
           updatedAt: now,
           sessionFile: null,

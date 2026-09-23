@@ -2,6 +2,7 @@ import { Type, type Static } from 'typebox';
 import { Identifier, OperationId } from './identifiers.js';
 import { PermissionTierSchema } from './confirms.js';
 import { ThinkingLevelSchema } from './models.js';
+import { SkillName } from './skills.js';
 
 /** Tool ids the T1 runner proxies; dynamic MCP/Skill ids arrive in T3/T4. */
 export const ServiceToolIdSchema = Type.Union([
@@ -25,6 +26,47 @@ export const FileRefSchema = Type.Object(
 );
 export type FileRef = Static<typeof FileRefSchema>;
 
+/** Upper bound on the chip records one submitted message carries. */
+export const MAX_INPUT_CHIPS = 64;
+
+/**
+ * Display record of one composer chip, kept with the submitted text so the transcript and the
+ * title show the message the way it was composed. Each kind holds only what the chip shows and
+ * identifies; what the run does with it still comes from staging (skills, references) and `files`.
+ */
+export const InputChipSchema = Type.Union([
+  Type.Object(
+    { kind: Type.Literal('file'), fileId: Identifier, name: Type.String({ maxLength: 255 }) },
+    { additionalProperties: false },
+  ),
+  Type.Object(
+    { kind: Type.Literal('task'), taskId: Identifier, title: Type.String({ maxLength: 1024 }) },
+    { additionalProperties: false },
+  ),
+  Type.Object(
+    { kind: Type.Literal('mcpServer'), serverId: Identifier },
+    { additionalProperties: false },
+  ),
+  Type.Object({ kind: Type.Literal('agent'), name: Identifier }, { additionalProperties: false }),
+  Type.Object({ kind: Type.Literal('skill'), name: SkillName }, { additionalProperties: false }),
+]);
+export type InputChip = Static<typeof InputChipSchema>;
+
+/**
+ * A chip and the `[from, to)` UTF-16 range of its serialized token in `TaskInput.text`. The
+ * schema bounds the numbers only; acceptance checks that ranges lie inside the text, ascending and
+ * without overlap.
+ */
+export const InputChipRangeSchema = Type.Object(
+  {
+    from: Type.Integer({ minimum: 0, maximum: 100000 }),
+    to: Type.Integer({ minimum: 0, maximum: 100000 }),
+    chip: InputChipSchema,
+  },
+  { additionalProperties: false },
+);
+export type InputChipRange = Static<typeof InputChipRangeSchema>;
+
 export const TaskInputSchema = Type.Object(
   {
     text: Type.String({ maxLength: 100000 }),
@@ -42,6 +84,12 @@ export const TaskInputSchema = Type.Object(
       Type.String(),
       Type.Union([Type.String({ maxLength: 10000 }), Type.Number(), Type.Boolean()]),
     ),
+    /**
+     * Composer chips in `text`, in document order. The desktop always sends the array, empty for
+     * plain text, so an absent field marks input from before chips were recorded (or from another
+     * client): the transcript then reads a leading `/skill:<name> ` as the skill chip it was.
+     */
+    chips: Type.Optional(Type.Array(InputChipRangeSchema, { maxItems: MAX_INPUT_CHIPS })),
   },
   { additionalProperties: false },
 );

@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { atomicWrite } from '../config.js';
 import type { SkillProfilePaths } from './profile.js';
-import type { SkillRefInput } from './versions.js';
+import { runSkillRefs, type SkillRefInput } from './versions.js';
 
 /**
  * Next-run staging. SubmitTaskRequest is frozen, so skill/role selection for
@@ -33,7 +33,7 @@ async function readPending(profile: SkillProfilePaths): Promise<PendingFile> {
   }
 }
 
-/** Stages skill/role selection for the next run of a task. */
+/** Stages skill/role selection for the next run of a task, as the run will request it. */
 export async function stageTaskSkills(
   profile: SkillProfilePaths,
   taskId: string,
@@ -42,7 +42,7 @@ export async function stageTaskSkills(
 ): Promise<TaskStaging> {
   const file = await readPending(profile);
   const staging: TaskStaging = {
-    skills: skills.slice(0, 32),
+    skills: runSkillRefs(skills),
     roleId,
     stagedAt: new Date().toISOString(),
   };

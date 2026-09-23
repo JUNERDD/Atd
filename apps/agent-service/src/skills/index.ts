@@ -10,7 +10,7 @@ export {
   createManagedSettings,
   type SkillProfilePaths,
 } from './profile.js';
-export { buildSkillLoaderOptions, createSkillLoader, runAvailableSkills } from './loader.js';
+export { buildSkillLoaderOptions } from './loader.js';
 export { ConfinedSkillPackages } from './package-manager.js';
 export {
   listRevisions,
@@ -19,7 +19,6 @@ export {
   resolveRef,
   freezeRunSkills,
   loadRunSnapshot,
-  validateSkillEntry,
   releaseRun,
   type SkillRevisionRecord,
   type SkillRefInput,
@@ -38,8 +37,6 @@ export {
   diagnoseCapabilityDenied,
   type SkillDiagnostic,
 } from './diagnostics.js';
-export { parseSkillEntry, decideExpansion, expansionFlag } from './expansion.js';
-export { loadSkillResourceMaps, type SkillResourceMaps } from './resources.js';
 export {
   listRoles,
   putRole,
@@ -60,7 +57,6 @@ export {
   getSkill,
   installSkill,
   updateSkill,
-  expandSkill,
   stageSkills,
   peekStaging,
   freezeRun,

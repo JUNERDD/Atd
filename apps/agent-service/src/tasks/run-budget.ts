@@ -2,8 +2,9 @@ import type { RunSnapshot } from '@ai/agent-contracts';
 
 /**
  * Character budget for the text one run brings into context. Acceptance
- * rejects a run whose own input exceeds it; reference material resolved at
- * freeze (references/material.ts) fills only what the input leaves.
+ * rejects a run whose own input exceeds it. At freeze the run's skills come
+ * next and fail the run when they overflow it (skills/run-skills.ts); reference
+ * material (references/material.ts) fills only what the input and skills leave.
  * Attachments are outside this budget: their size is capped at upload.
  */
 export const CONTEXT_BUDGET = 120000;

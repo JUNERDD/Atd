@@ -1,6 +1,5 @@
 import { createManagedSettings, ensureSkillProfile, type SkillProfilePaths } from './profile.js';
 import { ConfinedSkillPackages } from './package-manager.js';
-import { decideExpansion, type ExpansionDecision } from './expansion.js';
 import { checkSkillExecution } from './capability-check.js';
 import type { SkillDiagnostic } from './diagnostics.js';
 import {
@@ -39,7 +38,6 @@ import {
  * - GET    /v1/skills/:name         -> getSkill
  * - POST   /v1/skills/install       -> installSkill
  * - POST   /v1/skills/:name/update  -> updateSkill
- * - POST   /v1/skills/expand        -> expandSkill
  * - POST   /v1/skills/stage         -> stageSkills
  * - GET    /v1/roles                -> listRolesHandler
  * - PUT    /v1/roles/:id            -> putRoleHandler
@@ -197,14 +195,6 @@ export async function updateSkill(
       },
     ],
   };
-}
-
-export async function expandSkill(
-  deps: SkillRouteDeps,
-  input: { text: string; runId: string },
-): Promise<ExpansionDecision> {
-  const snapshot = await loadRunSnapshot(deps.profile, input.runId);
-  return decideExpansion(input.text, snapshot, input.runId);
 }
 
 export async function stageSkills(

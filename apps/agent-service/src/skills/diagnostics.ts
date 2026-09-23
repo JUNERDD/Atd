@@ -119,7 +119,7 @@ export function diagnoseStaleRevision(name: string, revision: string): SkillDiag
   };
 }
 
-/** Explicit `/skill:name` for a skill outside the frozen run snapshot. */
+/** A requested skill the run's frozen capabilities leave out: its role does not allow it. */
 export function diagnoseNotRunAvailable(name: string, runId: string): SkillDiagnostic {
   return {
     type: 'error',

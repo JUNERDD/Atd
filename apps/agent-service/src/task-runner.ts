@@ -27,11 +27,9 @@ import {
 } from './pi-session.js';
 import { prepareRunBinding } from './run-binding.js';
 import { freezeRunSelections, releaseRunSelections } from './run-freeze.js';
-import { firstInvocationRunId, fromServiceBranch, projectServiceBlocks } from './transcript.js';
+import { fromServiceBranch, projectServiceBlocks } from './transcript.js';
 import { SessionManager } from '@earendil-works/pi-coding-agent';
-import { decideExpansion } from './skills/expansion.js';
-import { skillProfilePaths } from './skills/profile.js';
-import { loadRunSnapshot } from './skills/versions.js';
+import { runSkillsError } from './skills/run-skills.js';
 import type { RuntimeAgent } from './subagents/agents.js';
 import {
   abortSubagentsForTask,
@@ -58,7 +56,7 @@ export interface RunnerContext {
 export class TaskRunner {
   private live: LiveState | null = null;
   private currentRunId = '';
-  private material: RunMaterial = { instructions: '', attachments: [], references: '' };
+  private material: RunMaterial = { instructions: '', attachments: [], references: '', skills: [] };
   private aborted = false;
   private audit: AuditWriter | null = null;
   private readonly grants = new Set<string>();
@@ -94,7 +92,8 @@ export class TaskRunner {
   async transcript(): Promise<{ revision: number; blocks: ServiceBlock[] }> {
     if (this.live) return this.live.transcript.snapshot();
     const task = this.ctx.ledger.task(this.taskId);
-    if (!task.sessionFile) return { revision: 0, blocks: [] };
+    const [first] = task.runs;
+    if (!task.sessionFile || !first) return { revision: 0, blocks: [] };
     try {
       const manager = SessionManager.open(
         task.sessionFile,
@@ -106,7 +105,7 @@ export class TaskRunner {
         revision: 0,
         blocks: projectServiceBlocks({
           branch,
-          defaultRunId: firstInvocationRunId(branch) ?? this.taskId,
+          firstRunId: first.id,
           live: false,
         }),
       };
@@ -135,30 +134,23 @@ export class TaskRunner {
     try {
       // T3/T4: skill, role, MCP and reference selections freeze once at
       // accept; the run's material and session binding come from them.
-      const references = await freezeRunSelections(this.session, run);
+      const frozen = await freezeRunSelections(this.session, run);
+      const blocked = runSkillsError(run, frozen.skills.loaded);
+      if (blocked) {
+        await this.setStatus(run.id, 'failed', blocked);
+        return;
+      }
       this.material = {
         instructions: run.snapshot.instructions,
         attachments,
-        references: references.material,
+        references: frozen.references.material,
+        skills: frozen.skills.loaded,
       };
-      const live = await this.ensureSession(run, references.agents);
+      const live = await this.ensureSession(run, frozen.references.agents);
       rebindSubagentsForRun(this.taskId, run);
-      const entry = promptText(run);
-      const decision = decideExpansion(
-        entry,
-        await loadRunSnapshot(
-          skillProfilePaths(this.ctx.paths.root, this.ctx.paths.agentDir),
-          run.id,
-        ),
-        run.id,
-      );
-      if (decision.isSkillCommand && !decision.allowed) {
-        const message =
-          decision.diagnostics[0]?.message ?? `Skill "${decision.skillName}" is not available.`;
-        await this.setStatus(run.id, 'failed', message);
-        return;
-      }
-      await live.session.prompt(entry, { expandPromptTemplates: decision.expandPromptTemplates });
+      // Nothing in the text expands: `/skill:` markers reach the model as written,
+      // and the skills themselves arrive in a hidden message (skills/session-skills.ts).
+      await live.session.prompt(promptText(run), { expandPromptTemplates: false });
       const last = [...live.session.messages]
         .reverse()
         .find((message) => message.role === 'assistant');
@@ -198,18 +190,8 @@ export class TaskRunner {
   async queue(text: string, mode: 'followUp' | 'steer'): Promise<void> {
     const live = this.live;
     if (!live || this.aborted) throw new Error('The task has no active run.');
-    // T3: Pi queue entries always expand in Pi, so explicit `/skill:name`
-    // entries are pre-validated against the frozen snapshot; ordinary input
-    // (no `/skill:` prefix) passes through without skill expansion.
-    const snapshot = await loadRunSnapshot(
-      skillProfilePaths(this.ctx.paths.root, this.ctx.paths.agentDir),
-      this.currentRunId,
-    );
-    const decision = decideExpansion(text, snapshot, this.currentRunId);
-    if (decision.isSkillCommand && !decision.allowed)
-      throw new Error(
-        decision.diagnostics[0]?.message ?? `Skill "${decision.skillName}" is not available.`,
-      );
+    // Pi runs skill and template expansion on every queued entry, but with no
+    // skills or prompt templates loaded, `/skill:` text stays as written.
     if (mode === 'followUp') await live.session.followUp(text);
     else await live.session.steer(text);
     this.withdrawIfStopped(live);
@@ -219,10 +201,7 @@ export class TaskRunner {
     const live = this.live;
     if (!live || this.aborted) throw new Error('The task has no active run.');
     return live.transcript.batchQueue(async () => {
-      const queue = await replaceFollowUps(
-        { runId: this.currentRunId, session: live.session, paths: this.ctx.paths },
-        followUp,
-      );
+      const queue = await replaceFollowUps(live.session, followUp);
       this.withdrawIfStopped(live);
       return queue;
     });

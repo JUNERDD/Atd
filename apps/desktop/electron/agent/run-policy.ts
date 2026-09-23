@@ -1,5 +1,5 @@
 import { Type, type Static } from 'typebox';
-import { MAX_RUN_REFERENCES, RunReferenceSchema } from '@ai/agent-contracts';
+import { MAX_RUN_REFERENCES, MAX_RUN_SKILLS, RunReferenceSchema } from '@ai/agent-contracts';
 import { ToolIdSchema } from './command-schema';
 import { ModelReferenceSchema, ModelThinkingLevelSchema } from '../providers/schema';
 
@@ -22,7 +22,7 @@ export const RunPolicySchema = Type.Object(
           },
           { additionalProperties: false },
         ),
-        { maxItems: 32 },
+        { maxItems: MAX_RUN_SKILLS },
       ),
     ),
     /** T6 additive: role id saved on the task, frozen at accept via staging. */

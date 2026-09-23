@@ -277,10 +277,14 @@ export class TaskClient {
     if (!text.trim() && !request.input.files.length)
       throw new Error('Enter a message or attach a file.');
     const taskId = await stageRunChoices(options, request.taskId, request.policy);
+    // Chip ranges index the composed text, so a saved command's text gets none. The array is always
+    // sent: without it the transcript treats the run as sent before chips were recorded and shows
+    // a leading `/skill:` token as a skill chip.
+    const { chips = [], ...input } = request.input;
     const submitted = await http.submit({
       operationId: request.invocationId,
       ...(taskId ? { taskId } : {}),
-      input: { ...request.input, text },
+      input: { ...input, text, chips: text === request.input.text ? chips : [] },
       ...(model ? { model } : {}),
       ...(thinkingLevel ? { thinkingLevel } : {}),
     });

@@ -2,9 +2,9 @@ import type { FastifyInstance } from 'fastify';
 import { Type } from 'typebox';
 import {
   Identifier,
+  MAX_RUN_SKILLS,
   RoleAllowsSchema,
   RoleId,
-  SkillExpansionRequestSchema,
   SkillHarnessRequestSchema,
   SkillInstallRequestSchema,
   SkillName,
@@ -13,7 +13,6 @@ import {
 } from '@ai/agent-contracts';
 import type { ServiceConfig } from '../config.js';
 import {
-  expandSkill,
   getSkill,
   installSkill,
   listRolesHandler,
@@ -29,7 +28,7 @@ import {
 const StageSkillsSchema = Type.Object(
   {
     taskId: Identifier,
-    skills: Type.Array(SkillRefSchema, { maxItems: 32 }),
+    skills: Type.Array(SkillRefSchema, { maxItems: MAX_RUN_SKILLS }),
     roleId: Type.Optional(RoleId),
   },
   { additionalProperties: false },
@@ -69,11 +68,6 @@ export function registerSkillRoutes(app: FastifyInstance, config: ServiceConfig)
   app.post<{ Params: { name: string } }>('/v1/skills/:name/update', async (request) => {
     const name = parse(SkillName, request.params.name);
     return updateSkill(skillDeps, name);
-  });
-  app.post('/v1/skills/expand', async (request) => {
-    const body = parse(SkillExpansionRequestSchema, request.body);
-    if (!body.runId) throw new TypeError('Invalid data: runId is required.');
-    return expandSkill(skillDeps, { text: body.text, runId: body.runId });
   });
   app.post('/v1/skills/stage', async (request) => {
     const body = parse(StageSkillsSchema, request.body);

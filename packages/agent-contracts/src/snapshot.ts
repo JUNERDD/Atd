@@ -31,10 +31,17 @@ export type ServiceToolStatus = Static<typeof ServiceToolStatusSchema>;
 
 export const ServiceBlockSchema = Type.Union([
   Type.Object(
-    { kind: Type.Literal('user'), ...blockBase, text: Type.String() },
     {
-      additionalProperties: false,
+      kind: Type.Literal('user'),
+      ...blockBase,
+      text: Type.String(),
+      /**
+       * Set on the run's prompt: the first user message after its `app-invocation`. Clients render
+       * a prompt from the run snapshot's input (text plus chips); queued follow-ups stay text.
+       */
+      prompt: Type.Optional(Type.Literal(true)),
     },
+    { additionalProperties: false },
   ),
   Type.Object(
     {
