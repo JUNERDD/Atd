@@ -1,11 +1,12 @@
 import { ipcRenderer, type IpcRendererEvent } from 'electron';
-import {
-  PROVIDER_IPC,
-  type ProviderBridge,
-  type ProviderCatalogEntry,
-  type Connection,
-  type LoginState,
-  type ModelThinkingLevel,
+import { PROVIDER_IPC } from './ipc-channels';
+// Type-only: a value import would bundle the provider schemas into the preload.
+import type {
+  ProviderBridge,
+  ProviderCatalogEntry,
+  Connection,
+  LoginState,
+  ModelThinkingLevel,
 } from './schema';
 
 export const providerBridge: ProviderBridge = {

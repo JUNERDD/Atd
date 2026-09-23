@@ -6,8 +6,8 @@ import { extractSubagentResults, mcpStage, previewTask, stageSkills } from '@ai/
 import type { ServiceEvent, TaskSnapshot } from '@ai/agent-contracts';
 import type { ServiceConnection } from '../service/connection';
 import type { AgentRequest, TaskDetail } from './bridge';
-import { AGENT_IPC } from './bridge';
 import type { CommandService } from './command-service';
+import { AGENT_IPC } from './ipc-channels';
 import { mapRunPolicy, parseMcpTools } from './service-manage';
 import { isActive, type FileRef } from './task-schema';
 import { applyTranscriptPatch } from './transcript-schema';

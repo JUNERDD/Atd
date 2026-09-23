@@ -10,7 +10,8 @@ import {
 import type { IpcMainInvokeEvent } from 'electron';
 import { Type } from 'typebox';
 import { AgentService } from './agent/service';
-import { AGENT_IPC, type CommandSession, type ExtensionSession } from './agent/bridge';
+import type { CommandSession, ExtensionSession } from './agent/bridge';
+import { AGENT_IPC } from './agent/ipc-channels';
 import { Identifier } from './agent/command-schema';
 import { parse } from './agent/validation';
 import { IPC, type DesktopState } from './contract';

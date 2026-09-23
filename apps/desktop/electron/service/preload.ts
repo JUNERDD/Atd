@@ -1,5 +1,7 @@
 import { ipcRenderer, type IpcRendererEvent } from 'electron';
-import { SERVICE_IPC, type ServiceBridge, type ServiceEvent, type ServiceRequest } from './ipc';
+// Type-only: a value import would bundle the request schemas into the preload.
+import type { ServiceBridge, ServiceEvent, ServiceRequest } from './ipc';
+import { SERVICE_IPC } from './ipc-channels';
 
 function invoke<T>(request: ServiceRequest): Promise<T> {
   return ipcRenderer.invoke(SERVICE_IPC.request, request) as Promise<T>;

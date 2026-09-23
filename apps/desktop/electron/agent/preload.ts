@@ -1,13 +1,14 @@
 import { ipcRenderer, type IpcRendererEvent } from 'electron';
-import {
-  AGENT_IPC,
-  type AgentBridge,
-  type AgentEvent,
-  type AgentRequest,
-  type CommandLaunch,
-  type CommandSession,
-  type ExtensionSession,
+// Type-only: a value import would bundle bridge.ts's request schemas into the preload.
+import type {
+  AgentBridge,
+  AgentEvent,
+  AgentRequest,
+  CommandLaunch,
+  CommandSession,
+  ExtensionSession,
 } from './bridge';
+import { AGENT_IPC } from './ipc-channels';
 
 function invoke<T>(request: AgentRequest): Promise<T> {
   return ipcRenderer.invoke(AGENT_IPC.request, request) as Promise<T>;

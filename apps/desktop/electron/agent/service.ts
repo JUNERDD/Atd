@@ -3,13 +3,13 @@ import path from 'node:path';
 import type { SettingsService } from '../settings-service';
 import type { ServiceConnection } from '../service/connection';
 import {
-  AGENT_IPC,
   AgentRequestSchema,
   type AgentRequest,
   type AgentSnapshot,
   type MemorySnapshot,
   type PreparedCommand,
 } from './bridge';
+import { AGENT_IPC } from './ipc-channels';
 import { AgentStore } from './store';
 import { CommandService } from './command-service';
 import {

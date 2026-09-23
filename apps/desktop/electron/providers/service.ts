@@ -14,10 +14,10 @@ import { parse } from '../agent/validation';
 import type { ServiceConnection } from '../service/connection';
 import { disconnectLive, fetchCatalog, fetchLiveProviders, saveLive } from './live';
 import { ProviderLoginClient } from './login-client';
+import { PROVIDER_IPC } from './ipc-channels';
 import {
   ConnectionDraftSchema,
   ModelReferenceSchema,
-  PROVIDER_IPC,
   type Connection,
   type ConnectionDraft,
   type ModelReference,

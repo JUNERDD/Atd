@@ -138,22 +138,6 @@ export const ModelAuthSchema = Type.Object({
   source: Type.Optional(Type.String()),
 });
 
-export const PROVIDER_IPC = {
-  catalog: 'providers:catalog',
-  save: 'providers:save',
-  default: 'providers:default',
-  model: 'providers:model',
-  levels: 'providers:levels',
-  disconnect: 'providers:disconnect',
-  refresh: 'providers:refresh',
-  verify: 'providers:verify',
-  login: 'providers:login',
-  answer: 'providers:answer',
-  cancel: 'providers:cancel',
-  loginEvent: 'providers:login-event',
-  openLink: 'providers:open-link',
-} as const;
-
 export interface ProviderCatalogEntry {
   id: string;
   name: string;

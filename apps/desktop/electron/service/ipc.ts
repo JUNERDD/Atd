@@ -1,10 +1,5 @@
 import { Type, type Static } from 'typebox';
 
-export const SERVICE_IPC = {
-  request: 'service:request',
-  changed: 'service:changed',
-} as const;
-
 export const ServiceStateSchema = Type.Union([
   Type.Literal('disconnected'),
   Type.Literal('connecting'),
