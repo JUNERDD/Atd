@@ -5,16 +5,17 @@ import {
   type AgentTask,
   type QueueState,
   type RunSnapshot,
-  type ServiceModel,
   type SubmitTaskRequest,
   type SubmitTaskResponse,
   type TaskRun,
   type TaskSnapshot,
 } from '@ai/agent-contracts';
+import { ConnectionStore } from './credentials/connections.js';
 import type { Logger } from './logging.js';
 import { ResourceStore } from './resources.js';
 import { ConflictError, DrainingError } from './errors.js';
 import { TaskRunner, type RunnerContext } from './task-runner.js';
+import { resolveRunModel, resolveRunThinkingLevel } from './tasks/run-selection.js';
 
 /** First-round ceiling: at most two active parent tasks per service. */
 const MAX_ACTIVE_PARENTS = 2;
@@ -61,6 +62,8 @@ export class RunnerManager {
   /** Idempotent acceptance; repeats return the original run, never a new one. */
   async submit(request: SubmitTaskRequest): Promise<SubmitTaskResponse> {
     if (this.draining) throw new DrainingError();
+    // Read before the checks below so acceptance stays free of awaits until the ledger write.
+    const connections = await ConnectionStore.load(this.deps.ctx.paths.root);
     const ledger = this.deps.ctx.ledger;
     const duplicate = ledger.operation(request.operationId);
     if (duplicate) return { taskId: duplicate.taskId, runId: duplicate.runId, duplicate: true };
@@ -76,7 +79,7 @@ export class RunnerManager {
       if (!ledger.data.resources.some((resource) => resource.id === file.id))
         throw new Error(`Attachment ${file.id} was not uploaded.`);
     }
-    const snapshot = this.freezeSnapshot(request);
+    const snapshot = this.freezeSnapshot(request, connections);
     this.checkBudget(snapshot);
     const runId = randomUUID();
     const now = new Date().toISOString();
@@ -268,14 +271,17 @@ export class RunnerManager {
     }
   }
 
-  private freezeSnapshot(request: SubmitTaskRequest): RunSnapshot {
+  private freezeSnapshot(request: SubmitTaskRequest, connections: ConnectionStore): RunSnapshot {
+    const model = resolveRunModel(connections, request.model);
+    const thinkingLevel = resolveRunThinkingLevel(connections, model, request.thinkingLevel);
     return {
       input: request.input,
       instructions: '',
-      model: defaultModel(request.model),
+      model,
       tools: ['read', 'write', 'edit', 'bash', 'command'],
       // T1 runs without a memory authority; memory tools arrive with T2.
       memory: false,
+      ...(thinkingLevel ? { thinkingLevel } : {}),
     };
   }
 
@@ -287,18 +293,6 @@ export class RunnerManager {
     if (size > CONTEXT_BUDGET)
       throw new Error('The combined input and parameters exceed the context budget.');
   }
-}
-
-function defaultModel(selection?: { connectionId: string; modelId: string }): ServiceModel {
-  const provider = process.env.AI_AGENT_TEMP_PROVIDER?.trim() || 'openai-compatible';
-  if (provider !== 'openai' && provider !== 'openai-compatible')
-    throw new Error('AI_AGENT_TEMP_PROVIDER must be openai or openai-compatible.');
-  return {
-    connectionId: selection?.connectionId ?? 'temp',
-    modelId: selection?.modelId ?? process.env.AI_AGENT_TEMP_MODEL?.trim() ?? 'default-model',
-    provider,
-    baseUrl: process.env.AI_AGENT_TEMP_BASE_URL?.trim() ?? '',
-  };
 }
 
 export { ConflictError, DrainingError } from './errors.js';

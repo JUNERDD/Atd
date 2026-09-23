@@ -6,12 +6,12 @@ import {
   type PreviewTaskRequest,
   type PreviewTaskResponse,
   type ServiceCommandFull,
-  type ServiceModel,
 } from '@ai/agent-contracts';
 import { CommandStore } from '../commands/store.js';
 import { defaultArguments, resolveCommandInstructions } from '../commands/templates.js';
 import { ConnectionStore } from '../credentials/connections.js';
-import { LedgerNotFound, type Ledger } from '../ledger.js';
+import type { Ledger } from '../ledger.js';
+import { resolveRunModel, resolveRunThinkingLevel } from './run-selection.js';
 
 export interface PreviewContext {
   dataDir: string;
@@ -49,13 +49,18 @@ export async function resolvePreview(
     if (!ctx.ledger.data.resources.some((resource) => resource.id === file.id))
       warnings.push(`Attachment ${file.name} was not uploaded.`);
   }
-  const model = resolveModel(connections, body, warnings);
+  const policy = body.policy;
+  const selection = policy && policy.useDefaultModel !== true ? policy.model : undefined;
+  const model = resolveRunModel(connections, selection, warnings);
   const tools = body.policy?.tools ??
     command?.tools ?? ['read', 'write', 'edit', 'bash', 'command'];
   const memory = body.policy?.memory ?? (command ? command.memory !== 'off' : false);
-  const thinkingLevel =
+  const thinkingLevel = resolveRunThinkingLevel(
+    connections,
+    model,
     body.policy?.thinkingLevel ??
-    (command?.model.mode === 'fixed' ? command.model.thinkingLevel : undefined);
+      (command?.model.mode === 'fixed' ? command.model.thinkingLevel : undefined),
+  );
   const snapshot = parse(RunSnapshotSchema, {
     input,
     instructions,
@@ -87,53 +92,4 @@ function resolveInstructions(
     const message = error instanceof Error ? error.message : 'The input is invalid.';
     throw new TypeError(`Invalid preview: ${message}`);
   }
-}
-
-function resolveModel(
-  connections: ConnectionStore,
-  body: PreviewTaskRequest,
-  warnings: string[],
-): ServiceModel {
-  const policy = body.policy;
-  const selection = policy && policy.useDefaultModel !== true ? policy.model : undefined;
-  if (selection) {
-    const connection = connections.data.connections.find(
-      (item) => item.connectionId === selection.connectionId,
-    );
-    if (!connection) throw new LedgerNotFound('Connection', selection.connectionId);
-    return {
-      connectionId: connection.connectionId,
-      modelId: selection.modelId,
-      provider: connection.provider,
-      baseUrl: connection.baseUrl,
-      configurationId: connection.configurationId,
-    };
-  }
-  const defaultId = connections.data.defaultConnectionId;
-  const connection = connections.data.connections.find((item) => item.connectionId === defaultId);
-  if (!connection) {
-    warnings.push('No default connection; the run would use temporary credentials.');
-    return tempModel();
-  }
-  const modelId = connection.defaultModel || 'default-model';
-  if (!connection.defaultModel)
-    warnings.push(`Connection ${connection.connectionId} has no default model.`);
-  return {
-    connectionId: connection.connectionId,
-    modelId,
-    provider: connection.provider,
-    baseUrl: connection.baseUrl,
-    configurationId: connection.configurationId,
-  };
-}
-
-/** Temp-credential fallback mirroring the runner acceptance default. */
-function tempModel(): ServiceModel {
-  const provider = process.env.AI_AGENT_TEMP_PROVIDER?.trim() || 'openai-compatible';
-  return {
-    connectionId: 'temp',
-    modelId: process.env.AI_AGENT_TEMP_MODEL?.trim() || 'default-model',
-    provider,
-    baseUrl: process.env.AI_AGENT_TEMP_BASE_URL?.trim() ?? '',
-  };
 }

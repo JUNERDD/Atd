@@ -68,8 +68,8 @@ function usage(): string {
     `Requires Node.js ${engines} on PATH (workspace toolchain; covers Pi 0.86.1`,
     '≥22.19.0). The Electron app binary is not Node.js; there is no auto-download.',
     'AI_AGENT_DATA_DIR overrides --dataDir. Default host is loopback; --port 0',
-    'lets the OS assign a port (never 5173). Temporary model credentials come',
-    'from AI_AGENT_TEMP_API_KEY (+PROVIDER/MODEL/BASE_URL) and are never stored.',
+    'lets the OS assign a port (never 5173). Runs without a saved provider',
+    'connection use AI_AGENT_TEMP_API_KEY (+PROVIDER/MODEL/BASE_URL), never stored.',
   ].join('\n');
 }
 

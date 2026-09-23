@@ -314,10 +314,9 @@ export class TaskRunner {
   }
 
   private async ensureSession(run: TaskRun, attachments: RunAttachment[]): Promise<LiveState> {
-    if (this.live) {
-      await applyRunToSession(this.live, run);
-      return this.live;
-    }
+    if (this.live && (await applyRunToSession(this.live, run))) return this.live;
+    // Another connection needs its own runtime; reopen from the same session file.
+    await this.release();
     const live = await createLiveState(
       {
         ctx: this.ctx,

@@ -4,15 +4,14 @@ import { Type } from 'typebox';
 import {
   createAgentSession,
   DefaultResourceLoader,
-  ModelRuntime,
   SessionManager,
   SettingsManager,
   type AgentSession,
 } from '@earendil-works/pi-coding-agent';
 import { rootExecutionId, type RunStatus, type TaskRun } from '@ai/agent-contracts';
-import { AuthRequired, TempCredentialStore } from './credentials.js';
 import { LiveTranscript } from './live-transcript.js';
 import { prepareSessionMcp } from './pi-session-mcp.js';
+import { openRunModel, reuseRunModel, type RunModel } from './run-model.js';
 import { buildSkillLoaderOptions } from './skills/loader.js';
 import { skillProfilePaths } from './skills/profile.js';
 import { loadRunSnapshot } from './skills/versions.js';
@@ -27,7 +26,7 @@ const SERVICE_SYSTEM_PROMPT =
 
 export interface LiveState {
   session: AgentSession;
-  models: ModelRuntime;
+  runModel: RunModel;
   manager: SessionManager;
   transcript: LiveTranscript;
   sessionFile: string;
@@ -53,8 +52,9 @@ export interface RunAttachment {
 
 /**
  * Pi session assembly for one parent task, extracted from the desktop
- * worker-session shape: temp-credential model runtime, in-memory settings
- * with cache warming off, service-owned SessionManager and resource loader.
+ * worker-session shape: the run's connection model runtime, in-memory
+ * settings with cache warming off, service-owned SessionManager and resource
+ * loader.
  */
 export async function createLiveState(
   deps: SessionFactoryDeps,
@@ -70,13 +70,7 @@ export async function createLiveState(
   await mkdir(sessionsDir, { recursive: true });
   await mkdir(cwd, { recursive: true });
   await mkdir(skillProfile.loaderCwd, { recursive: true });
-  const models = await ModelRuntime.create({
-    credentials: new TempCredentialStore(),
-    modelsPath: null,
-    modelsStorePath: path.join(ctx.paths.agentDir, 'models-cache.json'),
-    refreshOnCreate: false,
-  });
-  const model = await configureModel(models, run);
+  const runModel = await openRunModel(ctx.paths, run);
   const settings = SettingsManager.inMemory(
     {
       retry: { enabled: false },
@@ -188,13 +182,13 @@ export async function createLiveState(
   const created = await createAgentSession({
     cwd,
     agentDir: ctx.paths.agentDir,
-    modelRuntime: models,
-    model,
+    modelRuntime: runModel.models,
+    model: runModel.model,
     settingsManager: settings,
     sessionManager: manager,
     resourceLoader: loader,
     tools: [...run.snapshot.tools, 'ask_user', 'desktop', 'configure_mcp'],
-    thinkingLevel: 'off',
+    thinkingLevel: run.snapshot.thinkingLevel ?? 'off',
   });
   await created.session.bindExtensions({
     mode: 'json',
@@ -204,7 +198,7 @@ export async function createLiveState(
   });
   const state: LiveState = {
     session: created.session,
-    models,
+    runModel,
     manager,
     transcript: new LiveTranscript(
       created.session,
@@ -252,13 +246,17 @@ export async function createLiveState(
 }
 
 /**
- * Rebinds a live session to a new run of the same task. Skill entries are
- * never reloaded here: the live loader keeps its frozen run entries, and the
- * next run builds a fresh loader from its own frozen snapshot.
+ * Rebinds a live session to a new run of the same task, or answers false when
+ * the run needs a session on another model runtime (see reuseRunModel). Skill
+ * entries are never reloaded here: the live loader keeps its frozen run
+ * entries, and the next run builds a fresh loader from its own frozen snapshot.
  */
-export async function applyRunToSession(live: LiveState, run: TaskRun): Promise<void> {
-  await live.session.setModel(await configureModel(live.models, run));
-  live.session.setThinkingLevel('off');
+export async function applyRunToSession(live: LiveState, run: TaskRun): Promise<boolean> {
+  const model = await reuseRunModel(live.runModel, run);
+  if (!model) return false;
+  await live.session.setModel(model);
+  // Pi clamps the level to what the model supports.
+  live.session.setThinkingLevel(run.snapshot.thinkingLevel ?? 'off');
   live.session.setActiveToolsByName([
     ...run.snapshot.tools,
     'ask_user',
@@ -266,55 +264,5 @@ export async function applyRunToSession(live: LiveState, run: TaskRun): Promise<
     'configure_mcp',
   ]);
   live.manager.appendCustomEntry('app-invocation', { runId: run.id, source: 'user' });
-}
-
-async function configureModel(models: ModelRuntime, run: TaskRun) {
-  const temp = new TempCredentialStore();
-  // Truthful auth gate before any Pi provider work: without injected temp
-  // credentials the run fails `auth_required` instead of a misleading error.
-  if (!temp.hasCredentials())
-    throw new AuthRequired(
-      'Inject AI_AGENT_TEMP_API_KEY for a real model turn, or reconnect when T2 lands.',
-    );
-  const selected = run.snapshot.model;
-  const known = models.getModel(selected.provider, selected.modelId);
-  const definition = {
-    ...known,
-    id: selected.modelId,
-    name: selected.modelId,
-    api: selected.provider === 'openai' ? 'openai-responses' : 'openai-completions',
-    baseUrl: selected.baseUrl,
-    reasoning: known?.reasoning ?? false,
-    input: known?.input ?? ['text' as const],
-    cost: known?.cost ?? { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
-    contextWindow: known?.contextWindow ?? 32768,
-    maxTokens: known?.maxTokens ?? 4096,
-  };
-  models.registerProvider(selected.provider, {
-    api: definition.api,
-    baseUrl: definition.baseUrl,
-    models: [{ ...known, ...definition }],
-  });
-  const provider = models.getProvider(run.snapshot.model.provider);
-  if (!provider) throw new Error('The selected provider is unavailable.');
-  models.registerNativeProvider({
-    ...provider,
-    auth: {
-      apiKey: {
-        name: 'Service temporary credentials',
-        resolve: async () => {
-          const credential = await temp.read(run.snapshot.model.provider);
-          if (!credential || credential.type !== 'api_key' || !credential.key) return undefined;
-          return { auth: { apiKey: credential.key }, env: {} };
-        },
-      },
-    },
-  });
-  const model = models.getModel(run.snapshot.model.provider, run.snapshot.model.modelId);
-  if (!model) throw new Error('The selected model is unavailable.');
-  if (!(await models.checkAuth(run.snapshot.model.provider)))
-    throw new AuthRequired(
-      'Inject AI_AGENT_TEMP_API_KEY for a real model turn, or reconnect when T2 lands.',
-    );
-  return model;
+  return true;
 }
