@@ -1,5 +1,6 @@
 import { readFile, stat } from 'node:fs/promises';
 import {
+  AgentTaskSchema,
   parse,
   LedgerDataSchema,
   type AgentTask,
@@ -36,7 +37,8 @@ export class Ledger {
     const file = paths.ledgerFile;
     try {
       if ((await stat(file)).size > 64 * 1024 * 1024) throw new Error('Task ledger is too large.');
-      return new Ledger(file, parse(LedgerDataSchema, JSON.parse(await readFile(file, 'utf8'))));
+      const raw: unknown = JSON.parse(await readFile(file, 'utf8'));
+      return new Ledger(file, parse(LedgerDataSchema, dropRetiredData(raw)));
     } catch (error) {
       if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
         const ledger = new Ledger(file, emptyLedger());
@@ -78,6 +80,42 @@ export class Ledger {
   operation(operationId: string): { taskId: string; runId: string } | undefined {
     return this.data.operations[operationId];
   }
+}
+
+/** Task fields the current contract knows; any other top-level task field is retired. */
+const TASK_KEYS: ReadonlySet<string> = new Set(Object.keys(AgentTaskSchema.properties));
+/** Kinds of pending requests whose feature was removed (the planning approval). */
+const RETIRED_REQUEST_KINDS: ReadonlySet<unknown> = new Set(['plan']);
+
+/**
+ * Read-side tolerance for a ledger written by a build with since-removed features: a retired
+ * top-level task field (the planning flag) and pending requests of a retired kind would make
+ * the strict parse refuse the whole ledger. Both are dropped before it; recovery then ends a run
+ * that waited on a dropped request. Anything else is left for the parse to judge, and writes
+ * stay strict.
+ */
+function dropRetiredData(raw: unknown): unknown {
+  if (!isRecord(raw)) return raw;
+  const { tasks, pendingConfirms } = raw;
+  return {
+    ...raw,
+    tasks: Array.isArray(tasks)
+      ? tasks.map((task: unknown) =>
+          isRecord(task)
+            ? Object.fromEntries(Object.entries(task).filter(([key]) => TASK_KEYS.has(key)))
+            : task,
+        )
+      : tasks,
+    pendingConfirms: Array.isArray(pendingConfirms)
+      ? pendingConfirms.filter(
+          (request: unknown) => !isRecord(request) || !RETIRED_REQUEST_KINDS.has(request.kind),
+        )
+      : pendingConfirms,
+  };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 /** Typed not-found failure mapped to HTTP 404 by the server layer. */
