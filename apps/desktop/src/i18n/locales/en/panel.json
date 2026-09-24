@@ -37,6 +37,7 @@
     "removeFile": "Remove {{name}}",
     "stopAndDecline": "Stop and decline",
     "answerPlaceholder": "Type your answer…",
+    "interjectPlaceholder": "Send to decline and redirect now…",
     "attachAfterRun": "Attach files after this run finishes.",
     "queued": "Queued messages",
     "sendNow": "Send now",
@@ -44,6 +45,7 @@
     "removeQueued": "Remove queued message",
     "sending": "Sending…",
     "queuedCount": "{{count}} queued",
+    "reorderQueued": "Drag to reorder",
     "chipsAfterRun": "Send mentions and skills after this run finishes.",
     "chips": {
       "file": "File: {{name}}",
@@ -190,6 +192,10 @@
         "title": "History",
         "description": "Open the task list"
       },
+      "queue": {
+        "title": "Pending",
+        "description": "Show waiting approvals and queued messages"
+      },
       "settings": {
         "title": "Settings",
         "description": "Open the settings window"
@@ -197,7 +203,8 @@
     },
     "blocked": {
       "noModel": "Choose a model first.",
-      "noEffort": "This model has no effort levels to choose from."
+      "noEffort": "This model has no effort levels to choose from.",
+      "noPending": "Nothing is waiting."
     },
     "hints": {
       "choose": "to choose",

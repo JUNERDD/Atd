@@ -1,4 +1,12 @@
-import { Astroid, BrainCircuit, Gauge, History, Settings, type LucideIcon } from 'lucide-react';
+import {
+  Astroid,
+  BrainCircuit,
+  Gauge,
+  History,
+  ListOrdered,
+  Settings,
+  type LucideIcon,
+} from 'lucide-react';
 import type { CommandIds } from './trigger';
 
 /**
@@ -15,7 +23,11 @@ export interface QuickActions {
   openHistory: () => void;
 }
 
-export type QuickCommandActions = QuickActions & { openSettings: () => void };
+/** Composer-owned actions beyond `QuickActions`; `showQueue` reopens the approval/queue popover. */
+export type QuickCommandActions = QuickActions & {
+  openSettings: () => void;
+  showQueue: () => void;
+};
 
 /** What decides whether a command can run for the current draft. */
 export interface QuickCommandContext {
@@ -23,10 +35,12 @@ export interface QuickCommandContext {
   hasModel: boolean;
   /** Effort levels the model offers; `null` while they load. */
   effortLevels: number | null;
+  /** Something waits above the composer: an approval, a question, or a queued message. */
+  hasPending: boolean;
 }
 
 /** Why a command is greyed out; each maps to `quickPanel.blocked.*`. */
-export type QuickCommandBlock = 'noModel' | 'noEffort';
+export type QuickCommandBlock = 'noModel' | 'noEffort' | 'noPending';
 
 interface CommandBase {
   icon: LucideIcon;
@@ -44,7 +58,7 @@ export type QuickCommand =
   | (CommandBase & { kind: 'drill'; id: DrillCommandId })
   | (CommandBase & {
       kind: 'run';
-      id: 'new' | 'history' | 'settings';
+      id: 'new' | 'history' | 'queue' | 'settings';
       run: (actions: QuickCommandActions) => void;
     });
 
@@ -71,6 +85,14 @@ export const QUICK_COMMANDS: readonly QuickCommand[] = [
     icon: History,
     keywords: ['tasks', 'conversations'],
     run: (actions) => actions.openHistory(),
+  },
+  {
+    kind: 'run',
+    id: 'queue',
+    icon: ListOrdered,
+    keywords: ['pending', 'waiting', 'approval', 'queued', 'messages'],
+    blockedBy: ({ hasPending }) => (hasPending ? null : 'noPending'),
+    run: (actions) => actions.showQueue(),
   },
   {
     kind: 'run',

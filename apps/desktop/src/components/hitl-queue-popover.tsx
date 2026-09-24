@@ -1,6 +1,14 @@
-import { useMemo, useState, type KeyboardEvent, type ReactElement, type ReactNode } from 'react';
+import {
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type ReactElement,
+  type ReactNode,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { X } from 'lucide-react';
+import { motion } from 'motion/react';
 import { Popover, PopoverAnchor, PopoverContent } from '@ai/ui/components/popover';
 import { Button } from '@ai/ui/components/button';
 import type { PermissionRequest } from '../../electron/agent/permission-schema';
@@ -32,6 +40,7 @@ export function HitlQueuePopover({
   taskId,
   queueDisabled = false,
   suppressed = false,
+  recall: recallCount = 0,
   onEditQueued,
   header,
   children,
@@ -42,6 +51,8 @@ export function HitlQueuePopover({
   queueDisabled?: boolean;
   /** The quick panel is open over the composer; hide without dismissing. */
   suppressed?: boolean;
+  /** Changes when the user asks for the popover (`/queue`): a dismissed popover reopens. */
+  recall?: number;
   onEditQueued: (text: string) => void;
   /**
    * Status shown directly above the surface (the progress pill). It sits inside the anchor, so
@@ -55,6 +66,7 @@ export function HitlQueuePopover({
   // resolution, or queue edit produces a new signature and reopens. Empty content clears the
   // dismiss during render so identical content returning later still opens.
   const [dismissedFor, setDismissedFor] = useState<string | null>(null);
+  const anchor = useRef<HTMLDivElement>(null);
   const { t } = useTranslation('tasks');
   const { t: tp } = useTranslation('panel');
   const { t: tc } = useTranslation('common');
@@ -66,6 +78,11 @@ export function HitlQueuePopover({
   const hasQueue = taskId !== null && queueCount > 0;
   const hasContent = requests.length > 0 || hasQueue;
   if (!hasContent && dismissedFor !== null) setDismissedFor(null);
+  const [recalled, setRecalled] = useState(recallCount);
+  if (recalled !== recallCount) {
+    setRecalled(recallCount);
+    setDismissedFor(null);
+  }
   const open = hasContent && dismissedFor !== signature && !suppressed;
   const dismissedWithContent = hasContent && dismissedFor === signature;
   const dismiss = () => setDismissedFor(signature);
@@ -103,11 +120,12 @@ export function HitlQueuePopover({
     focusRecall();
   }
 
-  // Reuses the same waiting labels as the regions: approvals win over answers, queue count
-  // covers queue-only. No new copy invented. Shared by the header title and the recall pill.
+  // Reuses the same waiting labels as the regions: approvals (permission confirms and plans) win
+  // over answers, queue count covers queue-only. No new copy invented. Shared by the header
+  // title and the recall pill.
   const summaryLabel =
     requests.length > 0
-      ? requests.some((request) => request.kind === 'confirmation')
+      ? requests.some((request) => request.kind !== 'input')
         ? t('permission.waitingApproval')
         : t('permission.waitingAnswer')
       : tp('composer.queuedCount', { count: queueCount });
@@ -128,7 +146,7 @@ export function HitlQueuePopover({
       }}
     >
       <PopoverAnchor asChild>
-        <div className="hitl-queue-anchor">
+        <div ref={anchor} className="hitl-queue-anchor">
           {header}
           {children}
           {dismissedWithContent && (
@@ -148,6 +166,12 @@ export function HitlQueuePopover({
         className="p-0 hitl-queue-content"
         onOpenAutoFocus={(event) => event.preventDefault()}
         onCloseAutoFocus={(event) => event.preventDefault()}
+        // The composer is where the user answers or types while it waits: a click or focus
+        // there is not "outside". Anywhere else still dismisses.
+        onInteractOutside={(event) => {
+          if (event.target instanceof Node && anchor.current?.contains(event.target))
+            event.preventDefault();
+        }}
         onKeyDown={onContentKeyDown}
       >
         <div className="hitl-queue-popover">
@@ -159,7 +183,8 @@ export function HitlQueuePopover({
               <X />
             </IconButton>
           </div>
-          <div className="hitl-queue-body">
+          {/* The queue reorders inside this scroller; motion must account for its offset. */}
+          <motion.div layoutScroll className="hitl-queue-body">
             {requests.length > 0 && (
               <HitlRegion requests={requests} hideApprovalTitle={singleApproval !== null} />
             )}
@@ -171,7 +196,7 @@ export function HitlQueuePopover({
                 onEdit={onEditQueued}
               />
             )}
-          </div>
+          </motion.div>
         </div>
       </PopoverContent>
     </Popover>

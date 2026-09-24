@@ -31,6 +31,7 @@ export type SlashTrigger = Extract<TriggerState, { kind: 'slash' }>;
 export function useSlashView({
   trigger,
   running,
+  pending,
   editor,
   actions,
   policy,
@@ -41,6 +42,7 @@ export function useSlashView({
 }: {
   trigger: SlashTrigger | null;
   running: boolean;
+  pending: boolean;
   editor: ComposerEditorCommands;
   actions: QuickCommandActions;
   policy: RunPolicy;
@@ -153,6 +155,7 @@ export function useSlashView({
   const context: QuickCommandContext = {
     hasModel: shown !== null,
     effortLevels: effort.loading ? null : effort.levels.length,
+    hasPending: pending,
   };
   const run = (command: QuickCommand) => {
     if (command.kind === 'drill') {

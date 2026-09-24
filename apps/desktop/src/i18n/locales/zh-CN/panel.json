@@ -37,6 +37,7 @@
     "removeFile": "移除 {{name}}",
     "stopAndDecline": "停止并拒绝",
     "answerPlaceholder": "输入你的回答…",
+    "interjectPlaceholder": "直接发送将拒绝此操作并立即送达…",
     "attachAfterRun": "请等这次运行结束后再附加文件。",
     "queued": "排队消息",
     "sendNow": "立即发送",
@@ -44,6 +45,7 @@
     "removeQueued": "移除排队消息",
     "sending": "正在发送…",
     "queuedCount": "{{count}} 条排队消息",
+    "reorderQueued": "拖动调整顺序",
     "chipsAfterRun": "请等这次运行结束后再发送提及和技能。",
     "chips": {
       "file": "文件：{{name}}",
@@ -190,6 +192,10 @@
         "title": "历史记录",
         "description": "打开任务列表"
       },
+      "queue": {
+        "title": "等待队列",
+        "description": "显示待批准的操作和排队消息"
+      },
       "settings": {
         "title": "设置",
         "description": "打开设置窗口"
@@ -197,7 +203,8 @@
     },
     "blocked": {
       "noModel": "请先选择模型。",
-      "noEffort": "此模型没有可选的推理强度。"
+      "noEffort": "此模型没有可选的推理强度。",
+      "noPending": "当前没有等待中的内容。"
     },
     "hints": {
       "choose": "选择",

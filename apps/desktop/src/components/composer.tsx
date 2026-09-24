@@ -96,6 +96,8 @@ export function Composer({
   const [sending, setSending] = useState(false);
   const [trigger, setTrigger] = useState<TriggerState | null>(null);
   const [aria, setAria] = useState<ComboboxAria | null>(null);
+  // Bumped by `/queue`: the popover reopens whenever the count changes.
+  const [queueRecall, setQueueRecall] = useState(0);
   const panel = useRef<QuickPanelHandle>(null);
   const hasContent = Boolean(draft.text.trim() || draft.files.length);
   const active = isActive(status);
@@ -105,6 +107,8 @@ export function Composer({
   // `answer`, so the first success retires the request and the other path goes idle.
   const pendingInput = active && !locked ? pendingInputOf(requests) : undefined;
   const pendingRequest = active && requests.length > 0;
+  const waiting =
+    requests.length > 0 || (taskId !== null && queue.steering.length + queue.followUp.length > 0);
   // The IPC limits: an answer takes 10000 characters, a message or queued follow-up 100000.
   const limit = pendingInput ? 10000 : 100000;
   const label = active
@@ -141,7 +145,9 @@ export function Composer({
         try {
           if (pendingInput)
             await agentApi().answer(taskId, pendingInput.runId, pendingInput.id, { answer: text });
-          else await agentApi().queueMessage(taskId, text, 'followUp');
+          // Paused on an approval, the message cuts in: the service declines what is waiting
+          // and delivers it now. Otherwise it queues behind the reply.
+          else await agentApi().queueMessage(taskId, text, pendingRequest ? 'steer' : 'followUp');
           setText('');
         } finally {
           setSending(false);
@@ -184,9 +190,11 @@ export function Composer({
   }
   const placeholder = pendingInput
     ? t('composer.answerPlaceholder')
-    : followup
-      ? t('composer.followUpPlaceholder')
-      : t('composer.placeholder');
+    : pendingRequest
+      ? t('composer.interjectPlaceholder')
+      : followup
+        ? t('composer.followUpPlaceholder')
+        : t('composer.placeholder');
   const { container: editorContainer, commands: editorCommands } = useComposerEditor({
     draft,
     onChange,
@@ -218,6 +226,7 @@ export function Composer({
           queue={queue}
           taskId={taskId}
           queueDisabled={locked || sending}
+          recall={queueRecall}
           suppressed={isQuickPanelOpen(trigger, active)}
           onEditQueued={(text) => setText(joinDraft(draft.text, text))}
           header={taskId !== null && <ProgressPill blocks={blocks} />}
@@ -225,10 +234,15 @@ export function Composer({
           <QuickPanel
             trigger={trigger}
             running={active}
+            pending={waiting}
             editor={editorCommands}
             handleRef={panel}
             onAriaChange={setAria}
-            actions={{ ...quickActions, openSettings: onOpenSettings }}
+            actions={{
+              ...quickActions,
+              openSettings: onOpenSettings,
+              showQueue: () => setQueueRecall((count) => count + 1),
+            }}
             policy={policy}
             onPolicyChange={onPolicyChange}
             connections={connections}
