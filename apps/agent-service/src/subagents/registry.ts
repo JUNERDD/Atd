@@ -1,6 +1,7 @@
 import path from 'node:path';
-import { childExecutionId } from '@ai/agent-contracts';
+import { childExecutionId, type PermissionTier } from '@ai/agent-contracts';
 import type { CredentialStore } from '@earendil-works/pi-ai';
+import type { Gate } from '../harness/gate.js';
 
 /**
  * T5 in-process parent/child registry. Foreground children share the parent
@@ -35,6 +36,16 @@ export interface ChildRecord {
   startedAt: string;
 }
 
+/**
+ * The parent's approval rules as one child sees them: the parent task's tier and the service
+ * gate (harness/gate.ts) over the parent's confirms, session grants, audit and session, with
+ * confirms attributed to the child's execution id.
+ */
+export interface ChildApprovals {
+  tier: PermissionTier;
+  gate: Gate;
+}
+
 /** Host handles the child bridge needs; stored per task, never serialized. */
 export interface SubagentHost {
   dataDir: string;
@@ -52,6 +63,8 @@ export interface SubagentHost {
   resourceIds: string[];
   /** The parent's model credentials; children run on them instead of the agent dir's store. */
   credentials: CredentialStore;
+  /** Approvals for one child execution; child bash and command saves decide through them. */
+  approvals: (child: { runId: string; executionId: string }) => ChildApprovals;
 }
 
 interface RegistryStore {

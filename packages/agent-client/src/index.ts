@@ -10,5 +10,6 @@ export * from './provider-manage-client.js';
 export * from './commands-client.js';
 export * from './memory-client.js';
 export * from './tasks-manage-client.js';
+export * from './shell-client.js';
 export * from './subagents-client.js';
 export * from './references-client.js';

@@ -1,12 +1,29 @@
-import type { TaskRun } from '@ai/agent-contracts';
+import {
+  MEMORY_TOOLS,
+  TODO_TOOL,
+  WEB_FETCH_TOOL,
+  WEB_SEARCH_TOOL,
+  type TaskRun,
+} from '@ai/agent-contracts';
 import type { SessionFactoryDeps } from './pi-session.js';
 import { prepareSessionMcp, type SessionMcpPrep } from './pi-session-mcp.js';
 import { skillProfilePaths } from './skills/profile.js';
 import { loadRunRole } from './skills/roles.js';
 import type { RuntimeAgent } from './subagents/agents.js';
 
-/** Service tools every parent run keeps beside its snapshot tools. */
-const SERVICE_TOOLS = ['ask_user', 'desktop', 'configure_mcp'];
+/**
+ * Parent-only service tools every parent run keeps beside its snapshot tools. Roles do not grant
+ * them and subagent children never inherit them. The harness registers the feature tools
+ * (harness/index.ts).
+ */
+const SERVICE_TOOLS = [
+  'ask_user',
+  'desktop',
+  'configure_mcp',
+  TODO_TOOL,
+  WEB_SEARCH_TOOL,
+  WEB_FETCH_TOOL,
+];
 
 /**
  * The delegator tool pi-subagents registers on the parent. What its children
@@ -49,11 +66,15 @@ export async function prepareRunBinding(
   const profile = skillProfilePaths(deps.ctx.paths.root, deps.ctx.paths.agentDir);
   const role = await loadRunRole(profile, run.id);
   const mcp = await prepareSessionMcp(deps);
+  // Memory tools follow the frozen memory flag, which is part of the key below.
   const tools = [
-    ...run.snapshot.tools,
-    ...SERVICE_TOOLS,
-    SUBAGENT_TOOL,
-    ...mcp.bindings.map((binding) => binding.proxyName),
+    ...new Set([
+      ...run.snapshot.tools,
+      ...SERVICE_TOOLS,
+      ...(run.snapshot.memory ? MEMORY_TOOLS : []),
+      SUBAGENT_TOOL,
+      ...mcp.bindings.map((binding) => binding.proxyName),
+    ]),
   ];
   const key = JSON.stringify({
     tools,

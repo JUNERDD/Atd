@@ -1,9 +1,7 @@
-import { spawn } from 'node:child_process';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
-import { Type, type TSchema } from 'typebox';
+import type { TSchema } from 'typebox';
 import {
-  createBashToolDefinition,
   createEditToolDefinition,
   createReadToolDefinition,
   createWriteToolDefinition,
@@ -11,19 +9,16 @@ import {
   type SessionManager,
   type ToolDefinition,
 } from '@earendil-works/pi-coding-agent';
-import {
-  grantKey,
-  tierAllows,
-  type GrantScope,
-  type McpServerConfig,
-  type PermissionTier,
-} from '@ai/agent-contracts';
+import type { GrantScope, McpServerConfig, PermissionTier } from '@ai/agent-contracts';
 import type { CapabilityRegistry } from './capabilities.js';
+import { commandToolDefinition } from './commands/tool.js';
 import { registerConfigureMcpTool } from './configure-mcp-tool.js';
 import { ConfirmStore } from './confirms.js';
 import { registerDesktopTool } from './desktop-tool.js';
+import { createGate } from './harness/gate.js';
 import type { Logger } from './logging.js';
-import { confined, inside, resolveToolPath, shellAllowlist, withinRoots } from './service-fs.js';
+import { confined, inside, resolveToolPath, withinRoots } from './service-fs.js';
+import { bashToolDefinition } from './shell-tool.js';
 
 /** Host services the service tool proxies need; owned by the task runner. */
 export interface ServiceToolHost {
@@ -50,70 +45,34 @@ export interface ServiceToolHost {
 }
 
 /**
+ * Marks file and shell operations as part of one tool invocation: pi's operations run only inside
+ * `run`, and `guard` refuses an operation reached any other way.
+ */
+export interface ToolInvocation {
+  run<T>(toolCallId: string, operation: () => T): T;
+  guard(): string;
+}
+
+/**
  * Minimal service file/shell/command proxies. Pi owns the tool protocols;
- * the service owns confinement, allowlists, tier/grant checks, confirms and
- * audit. Desktop-only abilities arrive as capability requests, never as
- * direct filesystem or clipboard access.
+ * the service owns confinement here, the shell policy in shell-tool.ts, and
+ * tier/grant checks, confirms and audit in the shared gate (harness/gate.ts).
+ * Desktop-only abilities arrive as capability requests, never as direct
+ * filesystem or clipboard access.
  */
 export function serviceTools(host: ServiceToolHost): ExtensionFactory {
   const calls = new AsyncLocalStorage<string>();
+  const invocation: ToolInvocation = {
+    run: (toolCallId, operation) => calls.run(`${host.taskId}:${toolCallId}`, operation),
+    guard: () => {
+      const value = calls.getStore();
+      if (!value) throw new Error('A file operation requires a tool invocation.');
+      return value;
+    },
+  };
+  const guard = invocation.guard;
 
-  async function authorize(
-    toolCallId: string,
-    scope: GrantScope,
-    title: string,
-    detail: string,
-    signal?: AbortSignal,
-  ): Promise<void> {
-    const key = grantKey(scope);
-    const base = { taskId: host.taskId, runId: host.runId(), tool: key, toolCallId };
-    if (host.grants.has(key)) {
-      host.audit({ ...base, decision: 'grant' });
-      return;
-    }
-    if (tierAllows(host.tier, scope)) {
-      host.audit({ ...base, decision: 'tier' });
-      return;
-    }
-    host.setStatus('awaiting_confirmation');
-    try {
-      const answer = await host.confirms.request(
-        {
-          taskId: host.taskId,
-          runId: host.runId(),
-          executionId: host.executionId(),
-          toolCallId,
-          kind: 'confirmation',
-          scope,
-          title,
-          detail: detail.slice(0, 200000),
-        },
-        signal,
-      );
-      if (!('decision' in answer) || answer.decision === 'declined') {
-        host.audit({ ...base, decision: 'declined' });
-        host.sessions.appendCustomEntry('app-permission', {
-          toolCallId,
-          runId: host.runId(),
-          scope,
-          outcome: 'declined',
-          at: Date.now(),
-        });
-        throw new Error('The user declined this action.');
-      }
-      if (answer.decision === 'session') host.grants.add(key);
-      host.audit({ ...base, decision: answer.decision });
-      host.sessions.appendCustomEntry('app-permission', {
-        toolCallId,
-        runId: host.runId(),
-        scope,
-        outcome: answer.decision,
-        at: Date.now(),
-      });
-    } finally {
-      host.setStatus('running');
-    }
-  }
+  const authorize = createGate(host);
 
   /**
    * Whether a read targets a directory of the current run's skills. Their files are read-only
@@ -126,7 +85,7 @@ export function serviceTools(host: ServiceToolHost): ExtensionFactory {
 
   function controlled<T extends TSchema, D, S>(
     tool: ToolDefinition<T, D, S>,
-    name: 'read' | 'write' | 'edit' | 'bash',
+    name: 'read' | 'write' | 'edit',
   ): ToolDefinition<T, D, S> {
     return {
       ...tool,
@@ -134,49 +93,24 @@ export function serviceTools(host: ServiceToolHost): ExtensionFactory {
       async execute(id, args, signal, onUpdate, ctx) {
         signal?.throwIfAborted();
         const scope = scopeOf(name, args, host);
-        const allow = shellAllowlist();
-        if (name === 'bash') {
-          const command =
-            typeof (args as { command?: unknown }).command === 'string'
-              ? (args as { command: string }).command.trim()
-              : '';
-          if (!allow.some((prefix) => command.startsWith(prefix))) {
-            host.audit({
-              taskId: host.taskId,
-              runId: host.runId(),
-              tool: 'bash',
-              decision: 'allowlist_deny',
-            });
-            throw new Error(
-              'This shell command is not on the operator allowlist (AI_AGENT_SHELL_ALLOWLIST).',
-            );
-          }
-        }
         if (name === 'read' && (await readsRunSkill(args))) {
           const base = { taskId: host.taskId, runId: host.runId(), toolCallId: id };
           host.audit({ ...base, tool: 'read:skill', decision: 'skill' });
         } else {
-          await authorize(
-            id,
+          await authorize({
+            toolCallId: id,
             scope,
-            titleOf(name, args),
-            detailOf(name, args),
-            signal ?? undefined,
-          );
+            title: titleOf(name, args),
+            detail: detailOf(name, args),
+            signal: signal ?? undefined,
+          });
         }
-        const token = `${host.taskId}:${id}`;
-        return calls.run(token, () =>
+        return invocation.run(id, () =>
           tool.execute(id, args, signal, onUpdate, { ...ctx, cwd: host.cwd }),
         );
       },
     };
   }
-
-  const guard = () => {
-    const value = calls.getStore();
-    if (!value) throw new Error('A file operation requires a tool invocation.');
-    return value;
-  };
 
   return (pi) => {
     pi.registerTool(
@@ -241,62 +175,18 @@ export function serviceTools(host: ServiceToolHost): ExtensionFactory {
         'write',
       ),
     );
-    pi.registerTool(
-      controlled(
-        createBashToolDefinition(host.cwd, {
-          exposeSessionEnvironment: false,
-          operations: {
-            exec: (command, cwd, options) =>
-              new Promise<{ exitCode: number | null }>((resolve, reject) => {
-                guard();
-                const child = spawn(command, { cwd, shell: true, timeout: 120000 });
-                let settled = false;
-                const finish = (value: { exitCode: number | null }) => {
-                  if (settled) return;
-                  settled = true;
-                  resolve(value);
-                };
-                child.stdout?.on('data', (chunk: Buffer) => options.onData(chunk));
-                child.stderr?.on('data', (chunk: Buffer) => options.onData(chunk));
-                child.on('error', (error) => {
-                  if (!settled) {
-                    settled = true;
-                    reject(error);
-                  }
-                });
-                child.on('close', (code) => finish({ exitCode: code }));
-              }),
-          },
-        }),
-        'bash',
-      ),
-    );
-    pi.registerTool({
-      name: 'command',
-      label: 'Manage commands',
-      description: 'Saved-command management. Unavailable until T2 delivers the command store.',
-      parameters: Type.Object({ operation: Type.String() }, { additionalProperties: false }),
-      executionMode: 'sequential',
-      async execute() {
-        return {
-          content: [
-            { type: 'text', text: 'Command management is unavailable until T2 (owner T2).' },
-          ],
-          details: {},
-        };
-      },
-    });
+    pi.registerTool(bashToolDefinition(host, authorize, invocation));
+    pi.registerTool(commandToolDefinition(host.dataDir, authorize));
     registerDesktopTool(pi, host);
     registerConfigureMcpTool(pi, host);
   };
 }
 
 function scopeOf(
-  name: 'read' | 'write' | 'edit' | 'bash',
+  name: 'read' | 'write' | 'edit',
   args: unknown,
   host: ServiceToolHost,
 ): GrantScope {
-  if (name === 'bash') return { tool: 'bash' };
   const absolute = resolveToolPath(host.cwd, pathOf(args));
   return { tool: name, location: inside(host.cwd, absolute) ? 'inside' : 'outside' };
 }
@@ -309,8 +199,6 @@ function pathOf(args: unknown): string {
 
 function titleOf(name: string, args: unknown): string {
   const record = (args ?? {}) as Record<string, unknown>;
-  if (name === 'bash' && typeof record.command === 'string')
-    return `Run: ${record.command.slice(0, 200)}`;
   if (typeof record.path === 'string') return `${name}: ${record.path.slice(0, 300)}`;
   return `${name} operation`;
 }

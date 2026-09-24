@@ -7,7 +7,7 @@ import {
 } from '@ai/agent-contracts';
 import type { Logger } from '../logging.js';
 import { ConflictError } from '../errors.js';
-import { MemoryAuthority } from './authority.js';
+import { logMemoryEvents, MemoryAuthority } from './authority.js';
 
 export interface MemoryRouteContext {
   agentDir: string;
@@ -16,20 +16,11 @@ export interface MemoryRouteContext {
 
 /**
  * Live memory routes (T6b) over the D7 authority singleton. Service-level
- * notify/changed events land in the log (runners attach their own scoped
- * handlers); Hermes stays the only store, so management reads and runner
- * tools can never diverge.
+ * notify/changed events land in the log (logMemoryEvents); Hermes stays the
+ * only store, so management reads and runner tools can never diverge.
  */
 export function registerMemoryRoutes(app: FastifyInstance, ctx: MemoryRouteContext): void {
-  const authority = () =>
-    MemoryAuthority.authorityFor(ctx.agentDir, {
-      notify: (message, kind) => {
-        if (kind === 'error') ctx.log.error('Memory notice.', { message });
-        else if (kind === 'warning') ctx.log.warn('Memory notice.', { message });
-        else ctx.log.info('Memory notice.', { message });
-      },
-      changed: () => ctx.log.debug('Memory store changed.'),
-    });
+  const authority = () => MemoryAuthority.authorityFor(ctx.agentDir, logMemoryEvents(ctx.log));
 
   app.get('/v1/memory', async () => {
     const memory = await authority();

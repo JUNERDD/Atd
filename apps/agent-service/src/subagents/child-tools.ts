@@ -1,14 +1,23 @@
 import { spawn } from 'node:child_process';
 import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { Type } from 'typebox';
+import { childCommandTool } from '../commands/tool.js';
+import { childSearchTools } from '../harness/search/tools.js';
+import { authorizeShellCommand } from '../shell-policy.js';
 import { checkChildPath, isChildToolAllowed } from './intersection.js';
-import { releaseWrite, tryAcquireWrite } from './registry.js';
+import { hostForTask, releaseWrite, tryAcquireWrite } from './registry.js';
 
 /**
  * T5 child tool proxies. The required bridge registers these confined tools
- * in every foreground child: service dataDir confinement, operator shell
- * allowlist, no parallel same-file writes, explicit blocks. Child writes stay
+ * in every foreground child: service dataDir confinement, the service shell
+ * policy, no parallel same-file writes, explicit blocks. Child writes stay
  * inside the task output dir; outside paths are blocked without a prompt.
+ * grep/find/ls are the parent's confined pi tools (harness/search).
+ *
+ * bash and command saves decide exactly as the parent's do: through the
+ * parent task's tier and the service gate (`SubagentHost.approvals`), with
+ * confirms attributed to the child's execution id. A child's abort signal
+ * cancels its pending confirm wait.
  */
 
 export interface ChildToolHost {
@@ -22,29 +31,25 @@ export interface ChildToolHost {
   audit: (entry: Record<string, unknown>) => void;
 }
 
+/** A tool as the child bridge registers it. */
+export interface ChildTool {
+  name: string;
+  label: string;
+  description: string;
+  parameters: unknown;
+  execute: (
+    id: string,
+    args: unknown,
+    signal?: AbortSignal,
+  ) => Promise<{ content: { type: string; text: string }[]; details: unknown }>;
+}
+
 interface PiLike {
-  registerTool(tool: {
-    name: string;
-    label: string;
-    description: string;
-    parameters: unknown;
-    execute: (
-      id: string,
-      args: unknown,
-      signal?: AbortSignal,
-    ) => Promise<{ content: { type: string; text: string }[]; details: unknown }>;
-  }): void;
+  registerTool(tool: ChildTool): void;
   on(
     event: 'tool_call',
     handler: (event: { toolName: string }) => { block?: boolean; reason?: string } | undefined,
   ): void;
-}
-
-function shellAllowlist(): string[] {
-  return (process.env.AI_AGENT_SHELL_ALLOWLIST ?? '')
-    .split(',')
-    .map((item) => item.trim())
-    .filter(Boolean);
 }
 
 function denied(host: ChildToolHost, tool: string, reason: string): Error {
@@ -74,9 +79,21 @@ export function registerChildCeiling(pi: PiLike, host: ChildToolHost): void {
   });
 }
 
-/** Registers confined read/write/edit/bash/command proxies for one child. */
+/** Registers confined read/write/edit/bash/command/grep/find/ls proxies for one child. */
 export function registerChildTools(pi: PiLike, host: ChildToolHost): void {
   registerChildCeiling(pi, host);
+  const parent = hostForTask(host.taskId);
+  if (!parent) throw new Error('Child tools have no host record for this task; refusing to start.');
+  const approvals = parent.approvals({ runId: host.parentRunId, executionId: host.executionId });
+  const allow = (tool: string, decision = 'allow') =>
+    host.audit({
+      taskId: host.taskId,
+      runId: host.parentRunId,
+      executionId: host.executionId,
+      tool,
+      decision,
+    });
+  for (const tool of childSearchTools(host.cwd, host.allowedTools, allow)) pi.registerTool(tool);
   if (host.allowedTools.includes('read')) {
     pi.registerTool({
       name: 'read',
@@ -168,45 +185,32 @@ export function registerChildTools(pi: PiLike, host: ChildToolHost): void {
     pi.registerTool({
       name: 'bash',
       label: 'Run a shell command',
-      description: 'Run an allowlisted shell command in the task output dir.',
+      description:
+        'Run a shell command in the task output dir. Commands off the shell allowlist ask the user first.',
       parameters: Type.Object({ command: Type.String() }),
-      async execute(_id, args, signal) {
-        void _id;
+      async execute(id, args, signal) {
         signal?.throwIfAborted();
         const command = (args as { command?: unknown }).command;
         if (typeof command !== 'string' || !command.trim())
           throw denied(host, 'bash', 'A command is required.');
-        const allow = shellAllowlist();
-        if (!allow.some((prefix) => command.trim().startsWith(prefix)))
-          throw denied(host, 'bash', 'This shell command is not on the operator allowlist.');
-        host.audit({
-          taskId: host.taskId,
-          runId: host.parentRunId,
-          executionId: host.executionId,
-          tool: 'bash',
-          decision: 'allow',
+        await authorizeShellCommand({
+          command,
+          toolCallId: id,
+          tier: approvals.tier,
+          gate: approvals.gate,
+          signal,
+          detail: JSON.stringify({ tool: 'bash', args: { command } }),
+          auditAllowlisted: () => allow('bash', 'allowlist'),
         });
         const output = await runCommand(command, host.cwd, signal);
         return { content: [{ type: 'text', text: output }], details: {} };
       },
     });
   }
-  if (host.allowedTools.includes('command')) {
-    pi.registerTool({
-      name: 'command',
-      label: 'Manage commands',
-      description: 'Saved-command management. Unavailable until T2 delivers the command store.',
-      parameters: Type.Object({ operation: Type.String() }),
-      async execute() {
-        return {
-          content: [
-            { type: 'text', text: 'Command management is unavailable until T2 (owner T2).' },
-          ],
-          details: {},
-        };
-      },
-    });
-  }
+  if (host.allowedTools.includes('command'))
+    pi.registerTool(
+      childCommandTool(host.dataDir, approvals.gate, (decision) => allow('command', decision)),
+    );
 }
 
 function isResourcePath(host: ChildToolHost, real: string): boolean {

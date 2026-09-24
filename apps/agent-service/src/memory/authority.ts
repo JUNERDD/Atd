@@ -1,5 +1,6 @@
 import { createJiti } from 'jiti';
 import type { ExtensionFactory } from '@earendil-works/pi-coding-agent';
+import type { Logger } from '../logging.js';
 import type { MemoryTarget } from './policy.js';
 
 /**
@@ -31,6 +32,11 @@ export interface HermesDesktop {
 }
 
 async function loadHermes(agentDir: string): Promise<HermesDesktop> {
+  // The patch's desktop-host switch: with it, a failed or policy-aborted direct review/flush never
+  // falls back to spawning an external `pi` (which would write memory outside this authority and
+  // its write guard), and better-sqlite3 is never rebuilt at runtime. The service process is that
+  // host, and this is the only place it loads Hermes; Electron's former utility process set it.
+  process.env.AI_DESKTOP_AGENT = '1';
   const jiti = createJiti(import.meta.url, { moduleCache: true, fsCache: false });
   const module = await jiti.import<{
     createDesktopMemory: (root: string) => Promise<HermesDesktop>;
@@ -41,6 +47,21 @@ async function loadHermes(agentDir: string): Promise<HermesDesktop> {
 export interface MemoryAuthorityEvents {
   notify: (message: string, kind: 'info' | 'warning' | 'error') => void;
   changed: () => void;
+}
+
+/**
+ * Service-level authority events: Hermes notices and store changes land in the service log. The
+ * authority is a per-agentDir singleton, so the first caller's events serve every runner.
+ */
+export function logMemoryEvents(log: Logger): MemoryAuthorityEvents {
+  return {
+    notify: (message, kind) => {
+      if (kind === 'error') log.error('Memory notice.', { message });
+      else if (kind === 'warning') log.warn('Memory notice.', { message });
+      else log.info('Memory notice.', { message });
+    },
+    changed: () => log.debug('Memory store changed.'),
+  };
 }
 
 /**

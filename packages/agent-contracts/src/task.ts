@@ -4,7 +4,12 @@ import { PermissionTierSchema } from './confirms.js';
 import { ThinkingLevelSchema } from './models.js';
 import { SkillName } from './skills.js';
 
-/** Tool ids the T1 runner proxies; dynamic MCP/Skill ids arrive in T3/T4. */
+/**
+ * Snapshot tool ids: frozen per run, granted by roles and inherited by subagent children within
+ * the role ceiling. `ask_user` stays accepted for runs frozen before it moved to the parent-only
+ * service tools. Parent-only harness tools (todo, web, memory) are named in tool-names.ts
+ * and never appear here. C1 additive: `grep`, `find`, `ls` (read-only, task-folder confined).
+ */
 export const ServiceToolIdSchema = Type.Union([
   Type.Literal('read'),
   Type.Literal('write'),
@@ -12,6 +17,9 @@ export const ServiceToolIdSchema = Type.Union([
   Type.Literal('bash'),
   Type.Literal('command'),
   Type.Literal('ask_user'),
+  Type.Literal('grep'),
+  Type.Literal('find'),
+  Type.Literal('ls'),
 ]);
 export type ServiceToolId = Static<typeof ServiceToolIdSchema>;
 

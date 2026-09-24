@@ -1,5 +1,6 @@
 import { Type, type Static } from 'typebox';
 import { Identifier } from './identifiers.js';
+import { ShellAllowlistEntrySchema } from './shell.js';
 
 /** Per-task approval tier carried over from the desktop permission model. */
 export const PermissionTierSchema = Type.Union([
@@ -27,6 +28,8 @@ export const GrantScopeSchema = Type.Union([
   // v1.1 additive: MCP per-operation scope. MCP approvals are allow_once/deny
   // only; a `session` answer downgrades to once and is never cached as a grant.
   Type.Object({ tool: Type.Literal('mcp') }, { additionalProperties: false }),
+  // C1 additive: every network call of web_search / fetch_content. Session grants apply.
+  Type.Object({ tool: Type.Literal('web') }, { additionalProperties: false }),
 ]);
 export type GrantScope = Static<typeof GrantScopeSchema>;
 
@@ -47,6 +50,10 @@ export type PermissionOutcome = Static<typeof PermissionOutcomeSchema>;
 /**
  * Pending human-in-the-loop request. `revision` guards replies: a reply whose
  * revision does not match the live request is rejected as stale.
+ *
+ * C1 additive: a bash `confirmation` may carry `allowlistEntry`, the entry the
+ * service suggests adding to the user's shell allowlist (shell.ts); absent when
+ * the command has no safe suggestion.
  */
 export const PermissionRequestSchema = Type.Union([
   Type.Object(
@@ -61,6 +68,7 @@ export const PermissionRequestSchema = Type.Union([
       scope: GrantScopeSchema,
       title: Type.String({ maxLength: 500 }),
       detail: Type.String({ maxLength: 200000 }),
+      allowlistEntry: Type.Optional(ShellAllowlistEntrySchema),
       createdAt: Type.String(),
     },
     { additionalProperties: false },
@@ -83,7 +91,11 @@ export const PermissionRequestSchema = Type.Union([
 ]);
 export type PermissionRequest = Static<typeof PermissionRequestSchema>;
 
-/** The renderer's reply to a request; the runtime rejects a reply whose shape does not fit the kind. */
+/**
+ * The renderer's reply to a request; the runtime rejects a reply whose shape does not fit the kind.
+ * `confirmation` takes a decision (a bash confirm's add-to-allowlist choice adds the entry through
+ * the desktop settings first, then answers `once`); `input` takes an answer or a skip.
+ */
 export const PermissionAnswerSchema = Type.Union([
   Type.Object(
     {

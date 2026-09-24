@@ -81,7 +81,11 @@ export class CommandStore {
     return parse(ServiceCommandFullSchema, found);
   }
 
-  async create(draft: CommandCreate): Promise<ServiceCommandFull> {
+  /**
+   * The command a create would store: defaults filled, identity assigned (a draft without `id`
+   * gets a fresh one), shape and templates validated. Throws TypeError on invalid drafts.
+   */
+  static compose(draft: CommandCreate): ServiceCommandFull {
     const full = parse(ServiceCommandFullSchema, {
       id: draft.id ?? randomUUID(),
       revision: 1,
@@ -104,6 +108,11 @@ export class CommandStore {
       migratedAt: null,
     });
     validateCommandShape(full);
+    return full;
+  }
+
+  async create(draft: CommandCreate): Promise<ServiceCommandFull> {
+    const full = CommandStore.compose(draft);
     return this.change((data) => {
       if (data.commands.some((command) => command.id === full.id))
         throw new ConflictError(`Command ${full.id} already exists.`);

@@ -23,8 +23,20 @@ export interface IntersectionResult {
   removedTools: string[];
 }
 
-/** Service tools a child may inherit; ask/desktop/subagent never pass. */
-const CHILD_ELIGIBLE_SERVICE_TOOLS = new Set(['read', 'write', 'edit', 'bash', 'command']);
+/**
+ * Service tools a child may inherit; ask/desktop/subagent never pass. grep/find/ls are
+ * read-only and confined to the task folder like the parent's.
+ */
+const CHILD_ELIGIBLE_SERVICE_TOOLS = new Set([
+  'read',
+  'write',
+  'edit',
+  'bash',
+  'command',
+  'grep',
+  'find',
+  'ls',
+]);
 
 const FORBIDDEN = new Set<string>(FORBIDDEN_CHILD_TOOLS);
 

@@ -269,9 +269,9 @@ export class RunnerManager {
       input: request.input,
       instructions: '',
       model,
-      tools: ['read', 'write', 'edit', 'bash', 'command'],
-      // T1 runs without a memory authority; memory tools arrive with T2.
-      memory: false,
+      tools: ['read', 'write', 'edit', 'bash', 'command', 'grep', 'find', 'ls'],
+      // New runs search and learn through the service memory authority (harness memory slot).
+      memory: true,
       ...(thinkingLevel ? { thinkingLevel } : {}),
     };
   }
