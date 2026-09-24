@@ -40,7 +40,7 @@ function withResources(task: WorkflowTask): string {
   return refs ? `${task.task}\n\nResources: ${refs}` : task.task;
 }
 
-/** Validates parallel args: 1-3 tasks, 16 KiB cap, JSON data only. */
+/** Validates parallel args: at least one task, 16 KiB cap, JSON data only. */
 export function validateParallelArgs(value: unknown):
   | {
       ok: true;

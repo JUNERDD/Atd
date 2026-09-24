@@ -1,6 +1,5 @@
 import path from 'node:path';
 import { childExecutionId } from '@ai/agent-contracts';
-import { SUBAGENT_LIMITS } from './config.js';
 import type { CredentialStore } from '@earendil-works/pi-ai';
 
 /**
@@ -23,7 +22,6 @@ export interface ParentRecord {
    */
   agents: string[];
   stopping: boolean;
-  workflowActive: boolean;
 }
 
 export interface ChildRecord {
@@ -86,9 +84,9 @@ function store(): RegistryStore {
 }
 
 /** Registers a parent session; replaces any stale record for the task. */
-export function registerParent(record: Omit<ParentRecord, 'stopping' | 'workflowActive'>): void {
+export function registerParent(record: Omit<ParentRecord, 'stopping'>): void {
   const state = store();
-  const full: ParentRecord = { ...record, stopping: false, workflowActive: false };
+  const full: ParentRecord = { ...record, stopping: false };
   const stale = state.parentsByTask.get(record.taskId);
   if (stale && stale.sessionId !== record.sessionId) state.parentsBySession.delete(stale.sessionId);
   state.parentsBySession.set(record.sessionId, full);
@@ -118,7 +116,6 @@ export function rebindParentRun(taskId: string, runId: string, tools: string[]):
   record.runId = runId;
   record.tools = [...tools];
   record.stopping = false;
-  record.workflowActive = false;
 }
 
 /** Removes a parent and drops its tracked children and write locks. */
@@ -155,12 +152,7 @@ export function parentForChildCwd(cwd: string): ParentRecord | null {
   return taskId ? parentByTask(taskId) : null;
 }
 
-/** Active foreground children for one parent session. */
-export function activeChildCount(parentSessionId: string): number {
-  return store().childrenByParent.get(parentSessionId)?.size ?? 0;
-}
-
-/** Admits a child when the ≤3 foreground ceiling has room. */
+/** Tracks a child launch; refuses only unknown or stopping parents, never by count. */
 export function tryTrackChildStart(input: {
   parentSessionId: string;
   agent: string;
@@ -170,8 +162,6 @@ export function tryTrackChildStart(input: {
   if (!parent) return { ok: false, reason: 'Unknown parent session.' };
   if (parent.stopping) return { ok: false, reason: 'The parent is stopping; no new children.' };
   const live = state.childrenByParent.get(input.parentSessionId) ?? new Map<string, ChildRecord>();
-  if (live.size >= SUBAGENT_LIMITS.maxForegroundChildren)
-    return { ok: false, reason: 'Foreground child limit (3) is reached.' };
   const index = state.childSequence;
   state.childSequence += 1;
   const record: ChildRecord = {
@@ -199,33 +189,10 @@ export function liveChildren(parentSessionId: string): ChildRecord[] {
   return [...(store().childrenByParent.get(parentSessionId)?.values() ?? [])];
 }
 
-/** Serializes parent workflows: at most one foreground workflow each. */
-export function tryAcquireWorkflow(parentSessionId: string): {
-  ok: boolean;
-  reason?: string;
-} {
-  const parent = store().parentsBySession.get(parentSessionId);
-  if (!parent) return { ok: false, reason: 'Unknown parent session.' };
-  if (parent.stopping) return { ok: false, reason: 'The parent is stopping; no new workflows.' };
-  if (parent.workflowActive)
-    return { ok: false, reason: 'A foreground workflow is already active.' };
-  parent.workflowActive = true;
-  return { ok: true };
-}
-
-/** Releases the parent workflow slot; safe to call when idle. */
-export function releaseWorkflow(parentSessionId: string): void {
-  const parent = store().parentsBySession.get(parentSessionId);
-  if (parent) parent.workflowActive = false;
-}
-
 /** Marks a parent stopping so the guard admits no new launches. */
 export function markParentStopping(taskId: string): void {
   const record = store().parentsByTask.get(taskId);
-  if (record) {
-    record.stopping = true;
-    record.workflowActive = false;
-  }
+  if (record) record.stopping = true;
 }
 
 /** True while a parent refuses new subagent launches. */

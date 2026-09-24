@@ -6,12 +6,12 @@ import {
   SERVICE_CHAIN_WORKFLOW,
   SERVICE_PARALLEL_WORKFLOW,
   ensureManagedSubagentConfig,
+  SUBAGENT_PARALLEL_GUIDELINE,
 } from './config.js';
 import { enrichParentAsync } from './enrich.js';
 import { guardSubagentCall, onSubagentResult, type GuardInput } from './guard.js';
 import {
   registerParent,
-  releaseWorkflow,
   storeHost,
   unregisterParentBySession,
 } from './registry.js';
@@ -122,6 +122,17 @@ export async function prepareSubagentsParent(
     // session file (same id), so shutdown releases them for the next session.
     const registrations: Registration[] = [];
     preloaded.subagents(pi);
+    // The service's custom system prompt skips Pi's per-tool rules, so the guideline rides on
+    // the addendum, and only while the subagent tool is on.
+    pi.on('before_agent_start', (event) => {
+      const options = event.systemPromptOptions;
+      if (!options.selectedTools.includes('subagent')) return undefined;
+      if (options.appendSystemPrompt.includes(SUBAGENT_PARALLEL_GUIDELINE)) return undefined;
+      options.appendSystemPrompt = [options.appendSystemPrompt, SUBAGENT_PARALLEL_GUIDELINE]
+        .filter(Boolean)
+        .join('\n\n');
+      return undefined;
+    });
     pi.on('tool_call', (raw) => guardSubagentCall(deps, raw as unknown as GuardInput));
     pi.on('tool_result', (raw) => {
       onSubagentResult(
@@ -147,7 +158,6 @@ export async function prepareSubagentsParent(
       const ctx = ctxRaw as unknown as { sessionManager: { getSessionId(): string | undefined } };
       const sessionId = ctx.sessionManager.getSessionId();
       if (sessionId) {
-        releaseWorkflow(sessionId);
         unregisterParentBySession(sessionId);
       }
       return undefined;
