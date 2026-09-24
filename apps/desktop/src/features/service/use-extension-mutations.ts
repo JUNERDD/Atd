@@ -32,6 +32,24 @@ export function useExtensionMutations() {
     }
   }, []);
 
+  /**
+   * Reinstalls the shipped version of a built-in resource after the service backs up the user's
+   * copy. The busy key is the builtin id, which is `skill:<name>` for skill rows. Resolves to the
+   * backup path (null when there was nothing to back up), or undefined when the restore failed.
+   */
+  const restoreBuiltin = useCallback(async (id: string, refresh: () => Promise<void>) => {
+    setBusyKey(id);
+    try {
+      const result = await serviceApi().restoreBuiltin(id);
+      await refresh();
+      return { backupPath: result.backupPath };
+    } catch {
+      return undefined;
+    } finally {
+      setBusyKey(null);
+    }
+  }, []);
+
   const putRole = useCallback(
     async (
       input: {
@@ -157,6 +175,7 @@ export function useExtensionMutations() {
     busyKey,
     setSkillEnabled,
     updateSkill,
+    restoreBuiltin,
     installSkill,
     putRole,
     putAgent,

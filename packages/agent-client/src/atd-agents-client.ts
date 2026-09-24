@@ -29,11 +29,14 @@ async function request<T>(
   return json as T;
 }
 
-/** Lists markdown specialists from ~/.atd/agents. */
+/**
+ * Lists the subagent catalog: the service's system agents (`system: true`, read-only), then the
+ * markdown specialists from ~/.atd/agents.
+ */
 export function listAtdAgents(
   options: AgentClientOptions,
   fetchImpl?: typeof fetch,
-): Promise<{ agents: AtdAgentWire[] }> {
+): Promise<{ agents: Array<AtdAgentWire & { system: boolean }> }> {
   return request(options, '/v1/agents', 'GET', undefined, fetchImpl);
 }
 

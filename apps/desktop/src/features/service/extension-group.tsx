@@ -10,7 +10,7 @@ export function ExtensionGroup({
   loading,
   emptyAction,
   emptyIcon,
-  footer,
+  status,
   children,
   hasRows,
   showTitle = true,
@@ -22,7 +22,8 @@ export function ExtensionGroup({
   hasRows: boolean;
   emptyAction?: ReactNode;
   emptyIcon?: ReactNode;
-  footer?: ReactNode;
+  /** Transient status above the rows, such as where the last restore backed up a copy. */
+  status?: ReactNode;
   children?: ReactNode;
   /** Tab pages supply the visible heading; the section name stays for accessibility. */
   showTitle?: boolean;
@@ -37,8 +38,8 @@ export function ExtensionGroup({
       ) : hasRows ? (
         <>
           {note ? <p className="settings-field-note">{note}</p> : null}
+          {status}
           <ItemGroup>{children}</ItemGroup>
-          {footer}
         </>
       ) : (
         <div className="settings-extension-empty">

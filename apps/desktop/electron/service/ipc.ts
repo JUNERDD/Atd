@@ -1,3 +1,4 @@
+import type { BuiltinStatusWire } from '@ai/agent-client';
 import { Type, type Static } from 'typebox';
 
 export const ServiceStateSchema = Type.Union([
@@ -43,6 +44,13 @@ const SkillNameSchema = Type.String({
   pattern: '^[A-Za-z0-9][A-Za-z0-9_-]*$',
 });
 
+/** Built-in resource id (`skill:<name>` or `role:<id>`), checked before it reaches the service URL. */
+const BuiltinIdSchema = Type.String({
+  minLength: 1,
+  maxLength: 134,
+  pattern: '^(skill|role):[A-Za-z0-9][A-Za-z0-9_-]{0,127}$',
+});
+
 const McpAuthDraftSchema = Type.Union([
   Type.Object({ type: Type.Literal('none') }, { additionalProperties: false }),
   Type.Object(
@@ -83,6 +91,7 @@ export const ServiceRequestSchema = Type.Union([
     sourceKind: Type.Union([Type.Literal('local'), Type.Literal('npm'), Type.Literal('git')]),
     name: Type.Optional(SkillNameSchema),
   }),
+  Type.Object({ action: Type.Literal('builtinRestore'), id: BuiltinIdSchema }),
   Type.Object({ action: Type.Literal('roles') }),
   Type.Object({
     action: Type.Literal('rolesPut'),
@@ -164,6 +173,13 @@ export interface ServiceBridge {
     sourceKind: 'local' | 'npm' | 'git';
     name?: string;
   }) => Promise<{ skill: unknown; diagnostics: unknown[] }>;
+  /** Backs up the user's copy of a built-in resource, then reinstalls the shipped version. */
+  restoreBuiltin: (id: string) => Promise<{
+    id: string;
+    /** Where the replaced copy was saved; null when there was no copy to back up. */
+    backupPath: string | null;
+    builtin: BuiltinStatusWire;
+  }>;
   roles: () => Promise<{ roles: unknown[] }>;
   putRole: (input: {
     id: string;

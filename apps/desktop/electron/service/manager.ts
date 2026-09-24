@@ -7,6 +7,7 @@ import {
   listSkills,
   putAtdAgent,
   putRole,
+  restoreBuiltin,
   setSkillEnabled,
   updateSkill,
 } from '@ai/agent-client';
@@ -135,6 +136,11 @@ export class ServiceManager {
             sourceKind: request.sourceKind,
             ...(request.name !== undefined ? { name: request.name } : {}),
           });
+        }
+        case 'builtinRestore': {
+          const options = this.connection.options();
+          if (!options) throw new Error('The service is not connected.');
+          return restoreBuiltin(options, request.id);
         }
         case 'roles': {
           const options = this.connection.options();

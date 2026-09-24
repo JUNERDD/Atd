@@ -65,6 +65,7 @@ export function ServiceSettings() {
     busyKey,
     setSkillEnabled,
     updateSkill,
+    restoreBuiltin,
     installSkill,
     putAgent,
     mcpUpsert,
@@ -174,6 +175,7 @@ export function ServiceSettings() {
                   });
                 }}
                 onUpdate={(name) => void updateSkill(name, refreshSkills)}
+                onRestore={(id) => restoreBuiltin(id, refreshSkills)}
               />
             </TabsContent>
             <TabsContent value="subagents" forceMount>

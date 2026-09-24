@@ -1,45 +1,48 @@
 import { createHash } from 'node:crypto';
 import { readFile, stat } from 'node:fs/promises';
-import path from 'node:path';
-import { homedir } from 'node:os';
 import { loadSkillsFromDir, type Skill } from '@earendil-works/pi-coding-agent';
+import type { BuiltinStatus } from '../builtins/manifest.js';
+import { reconcileBuiltinSkills } from '../builtins/skills.js';
+import { atdSkillsDir } from '../service-fs.js';
 import { mapPiDiagnostics, type SkillDiagnostic } from './diagnostics.js';
-import { ensureProductSkillsSeeded } from './seed-product-skills.js';
 import type { SkillRevisionRecord } from './versions.js';
 
 /**
- * Live catalog of product-home skills at `~/.atd/skills`. Uses `os.homedir()`
- * so a confined service HOME cannot hide or redirect this directory. Entries
- * stay on disk; they are never recorded as installed revisions.
+ * Live catalog of product-home skills at `<atdHome>/skills` (service-fs.ts `atdHome`: `~/.atd`
+ * through `os.homedir()` unless `AI_ATD_HOME` overrides it), so a confined service HOME cannot
+ * hide or redirect this directory. Entries stay on disk; they are never recorded as installed
+ * revisions.
  */
 const NAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
 const MAX_SKILLS = 500;
 const MAX_DIAGNOSTICS = 64;
 
-export function atdSkillsDir(): string {
-  return path.join(homedir(), '.atd', 'skills');
-}
-
-export function atdAgentsDir(): string {
-  return path.join(homedir(), '.atd', 'agents');
-}
-
+/**
+ * Reconciles the product skills (builtins/skills.ts), then loads the catalog. `builtins` holds
+ * the builtin status of each product skill by name; reconcile failures join the diagnostics.
+ */
 export async function discoverAtdSkills(): Promise<{
   skills: SkillRevisionRecord[];
   diagnostics: SkillDiagnostic[];
+  builtins: ReadonlyMap<string, BuiltinStatus>;
 }> {
-  await ensureProductSkillsSeeded();
+  const builtins = await reconcileBuiltinSkills();
   const root = atdSkillsDir();
   const loaded = loadSkillsFromDir({ dir: root, source: 'atd' });
-  const diagnostics = mapPiDiagnostics(loaded.diagnostics)
-    .filter((item) => item.code === 'same_name')
-    .slice(0, MAX_DIAGNOSTICS);
+  const diagnostics = [
+    ...builtins.diagnostics,
+    ...mapPiDiagnostics(loaded.diagnostics).filter((item) => item.code === 'same_name'),
+  ].slice(0, MAX_DIAGNOSTICS);
   const records = await Promise.all(loaded.skills.map((skill) => toRecord(skill, diagnostics)));
   const skills = records
     .flatMap((record) => (record ? [record] : []))
     .sort((a, b) => a.name.localeCompare(b.name))
     .slice(0, MAX_SKILLS);
-  return { skills, diagnostics: diagnostics.slice(0, MAX_DIAGNOSTICS) };
+  return {
+    skills,
+    diagnostics: diagnostics.slice(0, MAX_DIAGNOSTICS),
+    builtins: builtins.statuses,
+  };
 }
 
 /** ATD skills whose names are already taken stay out of the resolvable set. */

@@ -3,7 +3,7 @@ import { app } from 'electron';
 import { readdir, readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { discoverService } from './endpoint';
+import { discoverService, resolveServiceAtdHome } from './endpoint';
 import { nodeSearchPath, readEnginesFromCli, resolveSystemNode } from './node-runtime';
 
 /**
@@ -21,9 +21,14 @@ export async function startLocalService(options: {
   const args = ['serve', '--dataDir', path.resolve(options.dataDir)];
   if (options.host) args.push('--host', options.host);
   if (options.port !== undefined) args.push('--port', String(options.port));
+  const atdHome = resolveServiceAtdHome();
   const child = spawn(node, [...command.nodeArgs, command.script, ...args], {
     stdio: ['ignore', 'ignore', 'pipe'],
-    env: { ...process.env, PATH: nodeSearchPath() },
+    env: {
+      ...process.env,
+      PATH: nodeSearchPath(),
+      ...(atdHome !== null ? { AI_ATD_HOME: atdHome } : {}),
+    },
   });
   let stderr = '';
   child.stderr?.setEncoding('utf8');

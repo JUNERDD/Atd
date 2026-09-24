@@ -17,6 +17,7 @@ export const serviceBridge: ServiceBridge = {
   updateSkill: (name) => invoke({ action: 'skillsUpdate', name }),
   setSkillEnabled: (name, enabled) => invoke({ action: 'skillsSetEnabled', name, enabled }),
   installSkill: (input) => invoke({ action: 'skillsInstall', ...input }),
+  restoreBuiltin: (id) => invoke({ action: 'builtinRestore', id }),
   roles: () => invoke({ action: 'roles' }),
   putRole: (input) => invoke({ action: 'rolesPut', ...input }),
   agents: () => invoke({ action: 'agents' }),
