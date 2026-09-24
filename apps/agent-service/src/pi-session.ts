@@ -102,7 +102,7 @@ export async function createLiveState(
   const manager = task.sessionFile
     ? SessionManager.open(task.sessionFile, sessionsDir, ctx.paths.agentDir)
     : SessionManager.create(ctx.paths.agentDir, sessionsDir);
-  const subagentsFactory = await prepareSubagentsParent(deps, binding.agents);
+  const subagentsFactory = await prepareSubagentsParent(deps, binding.agents, runModel.credentials);
   const loader = new DefaultResourceLoader(
     buildSkillLoaderOptions({
       loaderCwd: skillProfile.loaderCwd,

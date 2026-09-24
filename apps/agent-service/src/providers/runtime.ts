@@ -19,6 +19,20 @@ export interface ProviderStores {
 const CATALOG_REFRESH_FAILED =
   'Could not refresh models. Your saved catalog and model preference are preserved.';
 
+/** The keyring-backed credential store of one connection. */
+export function connectionCredentials(
+  stores: ProviderStores,
+  connection: ServiceConnection,
+): ServiceCredentialStore {
+  return new ServiceCredentialStore(
+    stores.keyring,
+    stores.connections,
+    connection.connectionId,
+    connection.provider,
+    connection.configurationId,
+  );
+}
+
 /**
  * A Pi model runtime bound to one connection: its keyring credential,
  * endpoint, options and models. Ambient credentials stay opt-in for cloud
@@ -28,17 +42,12 @@ const CATALOG_REFRESH_FAILED =
 export async function connectionRuntime(
   stores: ProviderStores,
   connection: ServiceConnection,
+  credentials: ServiceCredentialStore = connectionCredentials(stores, connection),
 ): Promise<ModelRuntime> {
   const root = path.join(stores.dataDir, 'providers', connection.connectionId);
   await mkdir(root, { recursive: true });
   const models = await ModelRuntime.create({
-    credentials: new ServiceCredentialStore(
-      stores.keyring,
-      stores.connections,
-      connection.connectionId,
-      connection.provider,
-      connection.configurationId,
-    ),
+    credentials,
     // The SDK only enables its file-backed catalog store when a config path is set.
     // No models.json is written; the store keeps refreshed catalogs across restarts.
     modelsPath: path.join(root, 'models.json'),

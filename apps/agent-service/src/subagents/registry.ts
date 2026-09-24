@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { childExecutionId } from '@ai/agent-contracts';
 import { SUBAGENT_LIMITS } from './config.js';
+import type { CredentialStore } from '@earendil-works/pi-ai';
 
 /**
  * T5 in-process parent/child registry. Foreground children share the parent
@@ -51,6 +52,8 @@ export interface SubagentHost {
   mcpBuilder?: (executionId: string) => (pi: unknown) => void;
   /** Ledger resource ids frozen for this run (resource-ref checks). */
   resourceIds: string[];
+  /** The parent's model credentials; children run on them instead of the agent dir's store. */
+  credentials: CredentialStore;
 }
 
 interface RegistryStore {

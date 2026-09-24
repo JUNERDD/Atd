@@ -1,11 +1,15 @@
 import path from 'node:path';
-import type { Api, Model } from '@earendil-works/pi-ai';
+import type { Api, CredentialStore, Model } from '@earendil-works/pi-ai';
 import { ModelRuntime } from '@earendil-works/pi-coding-agent';
 import type { TaskRun } from '@ai/agent-contracts';
 import { AuthRequired, TempCredentialStore } from './credentials.js';
 import { ConnectionStore } from './credentials/connections.js';
 import { KeyringBackend } from './credentials/keyring.js';
-import { connectionRuntime, type ProviderStores } from './providers/runtime.js';
+import {
+  connectionCredentials,
+  connectionRuntime,
+  type ProviderStores,
+} from './providers/runtime.js';
 import type { ServicePaths } from './storage.js';
 import { readServiceId } from './task-runner.js';
 import { TEMP_CONNECTION_ID } from './tasks/run-selection.js';
@@ -16,6 +20,11 @@ const CONNECT_PROVIDER = 'Connect a provider in Settings → Providers, then sen
 export interface RunModel {
   models: ModelRuntime;
   model: Model<Api>;
+  /**
+   * The store `models` reads credentials from. Subagent children build their own runtime, so
+   * the parent hands them this store to run on the same connection credentials.
+   */
+  credentials: CredentialStore;
   /** The saved connection the runtime is bound to; null on temporary credentials. */
   binding: { stores: ProviderStores; connectionId: string; configurationId: string } | null;
 }
@@ -29,13 +38,14 @@ export interface RunModel {
 export async function openRunModel(paths: ServicePaths, run: TaskRun): Promise<RunModel> {
   const selected = run.snapshot.model;
   if (selected.connectionId === TEMP_CONNECTION_ID) {
+    const credentials = new TempCredentialStore();
     const models = await ModelRuntime.create({
-      credentials: new TempCredentialStore(),
+      credentials,
       modelsPath: null,
       modelsStorePath: path.join(paths.agentDir, 'models-cache.json'),
       refreshOnCreate: false,
     });
-    return { models, model: await configureTempModel(models, run), binding: null };
+    return { models, model: await configureTempModel(models, run), credentials, binding: null };
   }
   const stores: ProviderStores = {
     dataDir: paths.root,
@@ -53,7 +63,8 @@ export async function openRunModel(paths: ServicePaths, run: TaskRun): Promise<R
     throw new AuthRequired(
       `${connection.name} is disconnected. Reconnect it in Settings → Providers, then send again.`,
     );
-  const models = await connectionRuntime(stores, connection);
+  const credentials = connectionCredentials(stores, connection);
+  const models = await connectionRuntime(stores, connection, credentials);
   const model = models.getModel(connection.provider, selected.modelId);
   if (!model)
     throw new Error(
@@ -64,7 +75,7 @@ export async function openRunModel(paths: ServicePaths, run: TaskRun): Promise<R
       `${connection.name} has no usable credentials. Reconnect it in Settings → Providers, then send again.`,
     );
   const { connectionId, configurationId } = connection;
-  return { models, model, binding: { stores, connectionId, configurationId } };
+  return { models, model, credentials, binding: { stores, connectionId, configurationId } };
 }
 
 /**
