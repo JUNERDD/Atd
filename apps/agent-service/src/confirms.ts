@@ -73,6 +73,9 @@ export class ConfirmStore {
           this.waiters.delete(created.id);
           if (waiter.timer) clearTimeout(waiter.timer);
           reject(new Error('Task stopped.'));
+          // A subagent can abort while its parent run keeps going, so no cancelRun follows:
+          // withdraw this one request here or the desktop keeps showing it until expiry.
+          void this.withdraw(created);
         },
         { once: true },
       );
@@ -89,21 +92,47 @@ export class ConfirmStore {
       throw new TypeError('Invalid data: this confirmation needs a decision.');
     if (live.kind === 'input' && !('answer' in answer) && !('skipped' in answer))
       throw new TypeError('Invalid data: this question needs a text answer.');
+    return this.settle(live, answer);
+  }
+
+  private async settle(live: PermissionRequest, answer: PermissionAnswer): Promise<boolean> {
     await this.ledger.change((data) => {
-      data.pendingConfirms = data.pendingConfirms.filter((item) => item.id !== requestId);
+      data.pendingConfirms = data.pendingConfirms.filter((item) => item.id !== live.id);
     });
-    const waiter = this.waiters.get(requestId);
-    this.waiters.delete(requestId);
+    const waiter = this.waiters.get(live.id);
+    this.waiters.delete(live.id);
     if (waiter?.timer) clearTimeout(waiter.timer);
     this.events.publish({
       taskId: live.taskId,
       runId: live.runId,
       executionId: live.executionId,
       type: 'confirm.resolved',
-      data: { requestId, outcome: outcomeOf(answer) },
+      data: { requestId: live.id, outcome: outcomeOf(answer) },
     });
     waiter?.resolve(answer);
     return waiter !== undefined;
+  }
+
+  /** Removes one aborted request and tells clients it was cancelled; no-op once it is gone. */
+  private async withdraw(request: PermissionRequest): Promise<void> {
+    if (!this.ledger.data.pendingConfirms.some((item) => item.id === request.id)) return;
+    try {
+      await this.ledger.change((data) => {
+        data.pendingConfirms = data.pendingConfirms.filter((item) => item.id !== request.id);
+      });
+    } catch (error) {
+      this.log.warn('Confirm cancel write failed.', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return;
+    }
+    this.events.publish({
+      taskId: request.taskId,
+      runId: request.runId,
+      executionId: request.executionId,
+      type: 'confirm.resolved',
+      data: { requestId: request.id, outcome: 'cancelled' },
+    });
   }
 
   /** Cancels every pending request of a run (stop/drain); late replies go `gone`. */

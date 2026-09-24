@@ -13,6 +13,18 @@ import { ConnectionStore } from '../credentials/connections.js';
 import type { Ledger } from '../ledger.js';
 import { resolveRunModel, resolveRunThinkingLevel } from './run-selection.js';
 
+/** The snapshot tools a plain submit freezes (runner-manager.ts `freezeSnapshot`). */
+const DEFAULT_RUN_TOOLS = [
+  'read',
+  'write',
+  'edit',
+  'bash',
+  'command',
+  'grep',
+  'find',
+  'ls',
+] as const;
+
 export interface PreviewContext {
   dataDir: string;
   ledger: Ledger;
@@ -52,9 +64,9 @@ export async function resolvePreview(
   const policy = body.policy;
   const selection = policy && policy.useDefaultModel !== true ? policy.model : undefined;
   const model = resolveRunModel(connections, selection, warnings);
-  const tools = body.policy?.tools ??
-    command?.tools ?? ['read', 'write', 'edit', 'bash', 'command'];
-  const memory = body.policy?.memory ?? (command ? command.memory !== 'off' : false);
+  // Without a command, mirror what RunnerManager.freezeSnapshot freezes for a plain submit.
+  const tools = body.policy?.tools ?? command?.tools ?? [...DEFAULT_RUN_TOOLS];
+  const memory = body.policy?.memory ?? (command ? command.memory !== 'off' : true);
   const thinkingLevel = resolveRunThinkingLevel(
     connections,
     model,

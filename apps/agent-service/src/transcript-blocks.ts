@@ -7,6 +7,8 @@ import {
   type ServiceBlock,
   type ServiceToolStatus,
 } from '@ai/agent-contracts';
+import type { Logger } from './logging.js';
+import { projectToolDetails } from './transcript-details/index.js';
 import type { ServiceBranchItem } from './transcript.js';
 
 const PermissionRecordSchema = Type.Object(
@@ -117,6 +119,7 @@ function mapStopReason(
 export interface AssistantBlockInput {
   message: AssistantMessage;
   runId: string;
+  /** The whole message is still the live partial; per-part liveness derives from it. */
   streaming: boolean;
   live: boolean;
   lookups: BlockLookups;
@@ -124,15 +127,23 @@ export interface AssistantBlockInput {
   /** Session entry time of this message (its end); null for live partials. */
   messageEndedAt: number | null;
   outputOf: (result: ToolResultMessage) => string;
+  /** Receives diagnostics for tool details dropped by the projection. */
+  log?: Pick<Logger, 'debug'>;
 }
 
 /** Projects one assistant message into text/thinking/tool/question blocks. */
 export function projectAssistantServiceBlocks(input: AssistantBlockInput): ServiceBlock[] {
-  const { message, runId, streaming, live, lookups, partials, messageEndedAt, outputOf } = input;
+  const { message, runId, streaming, live, lookups, partials, messageEndedAt, outputOf, log } =
+    input;
   const timestamp = message.timestamp;
   const endedAt = messageEndedAt ?? timestamp;
   const blocks: ServiceBlock[] = [];
+  const stopReason = mapStopReason(message.stopReason, streaming);
   message.content.forEach((part, index) => {
+    // A provider streams content parts in order, so only the newest part of the live partial is
+    // still growing: a thought is finished once the answer after it starts. The stop reason
+    // stays message-level because it is only known when the whole message ends.
+    const partStreaming = streaming && index === message.content.length - 1;
     switch (part.type) {
       case 'text':
         blocks.push({
@@ -142,8 +153,8 @@ export function projectAssistantServiceBlocks(input: AssistantBlockInput): Servi
           timestamp,
           endedAt,
           text: part.text,
-          streaming,
-          stopReason: mapStopReason(message.stopReason, streaming),
+          streaming: partStreaming,
+          stopReason,
           error: message.errorMessage ?? '',
         });
         return;
@@ -155,7 +166,7 @@ export function projectAssistantServiceBlocks(input: AssistantBlockInput): Servi
           timestamp,
           endedAt,
           text: part.thinking,
-          streaming,
+          streaming: partStreaming,
           redacted: Boolean(part.redacted),
         });
         return;
@@ -181,6 +192,12 @@ export function projectAssistantServiceBlocks(input: AssistantBlockInput): Servi
           return;
         }
         const permission = lookups.permissions.get(part.id);
+        const status = resolveStatus(result, permission?.outcome === 'declined', live);
+        // Raw result details stop here: only a completed call gets the whitelisted projection.
+        const details =
+          result && status === 'completed'
+            ? projectToolDetails(part.name, result.details, log)
+            : undefined;
         blocks.push({
           kind: 'tool',
           id: `tool:${part.id}`,
@@ -190,10 +207,11 @@ export function projectAssistantServiceBlocks(input: AssistantBlockInput): Servi
           callId: part.id,
           name: part.name,
           args,
-          status: resolveStatus(result, permission?.outcome === 'declined', live),
+          status,
           output: result ? outputOf(result) : '',
           partial: result ? '' : (partials.get(part.id) ?? ''),
           permission: permission ? { scope: permission.scope, outcome: permission.outcome } : null,
+          ...(details ? { details } : {}),
         });
         return;
       }

@@ -1,5 +1,6 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { TODO_TOOL, WEB_FETCH_TOOL, WEB_SEARCH_TOOL } from '@ai/agent-contracts';
 
 /**
  * T5 managed subagent config (D4). Written to the service profile before the
@@ -17,8 +18,19 @@ export const SUBAGENT_CONFIG_FILE = 'config.json';
 export const SERVICE_PARALLEL_WORKFLOW = 'service.parallel';
 export const SERVICE_CHAIN_WORKFLOW = 'service.chain';
 
-/** Tools a child may never receive: re-delegation and role/config planes. */
-export const FORBIDDEN_CHILD_TOOLS = ['subagent', 'ask_user', 'desktop'] as const;
+/**
+ * Tools a child may never receive: re-delegation, role/config planes, and the parent-only
+ * harness tools (todo, web). Harness tools are not snapshot tools, so they never reach a
+ * child's parent tools anyway; listing them keeps the ceiling closed if that ever changes.
+ */
+export const FORBIDDEN_CHILD_TOOLS = [
+  'subagent',
+  'ask_user',
+  'desktop',
+  TODO_TOOL,
+  WEB_SEARCH_TOOL,
+  WEB_FETCH_TOOL,
+] as const;
 
 /** Subagent actions closed in round one; the guard blocks them explicitly. */
 export const CLOSED_SUBAGENT_ACTIONS = [

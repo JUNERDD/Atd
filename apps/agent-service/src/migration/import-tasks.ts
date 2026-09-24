@@ -47,7 +47,18 @@ const KNOWN_STATUS: ReadonlySet<string> = new Set([
   'interrupted',
 ]);
 
-const KNOWN_TOOLS = new Set(['read', 'write', 'edit', 'bash', 'command', 'ask_user']);
+/** Snapshot tool ids an imported run may keep (contracts `ServiceToolIdSchema`). */
+const KNOWN_TOOLS = new Set([
+  'read',
+  'write',
+  'edit',
+  'bash',
+  'command',
+  'ask_user',
+  'grep',
+  'find',
+  'ls',
+]);
 const KNOWN_LEVELS = new Set(['off', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max']);
 const KNOWN_TIERS = new Set(['manual', 'auto', 'always']);
 

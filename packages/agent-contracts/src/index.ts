@@ -19,3 +19,6 @@ export * from './commands.js';
 export * from './memory.js';
 export * from './tasks-manage.js';
 export * from './references.js';
+export * from './shell.js';
+export * from './tool-details.js';
+export * from './tool-names.js';

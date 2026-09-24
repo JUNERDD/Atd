@@ -37,6 +37,7 @@ import {
   rebindSubagentsForRun,
 } from './subagents/index.js';
 import { replaceFollowUps } from './tasks/queue-replace.js';
+import { rootMemoryScope, withRootMemoryTurn, type RunnerMemoryScope } from './memory/index.js';
 
 export interface RunnerContext {
   ledger: Ledger;
@@ -55,6 +56,8 @@ export interface RunnerContext {
  */
 export class TaskRunner {
   private live: LiveState | null = null;
+  /** Memory scope of the run the live session last served; its shutdown flush learns under it. */
+  private liveMemory: RunnerMemoryScope | null = null;
   private currentRunId = '';
   private material: RunMaterial = { instructions: '', attachments: [], references: '', skills: [] };
   private aborted = false;
@@ -150,7 +153,10 @@ export class TaskRunner {
       rebindSubagentsForRun(this.taskId, run);
       // Nothing in the text expands: `/skill:` markers reach the model as written,
       // and the skills themselves arrive in a hidden message (skills/session-skills.ts).
-      await live.session.prompt(promptText(run), { expandPromptTemplates: false });
+      // Memory tool writes and Hermes' review learners pass only inside the root memory scope.
+      await this.memoryTurn(rootMemoryScope(this.taskId, run), () =>
+        live.session.prompt(promptText(run), { expandPromptTemplates: false }),
+      );
       const last = [...live.session.messages]
         .reverse()
         .find((message) => message.role === 'assistant');
@@ -220,22 +226,34 @@ export class TaskRunner {
 
   /** Releases the idle session; reopening resumes from the same session file. */
   async release(): Promise<void> {
-    const live = this.live;
-    this.live = null;
-    if (!live) return;
-    await live.session.extensionRunner.emit({ type: 'session_shutdown', reason: 'new' });
-    live.session.dispose();
+    await this.closeLive('new');
   }
 
   async dispose(): Promise<void> {
-    const live = this.live;
-    this.live = null;
-    if (live) {
-      await live.session.extensionRunner.emit({ type: 'session_shutdown', reason: 'quit' });
-      live.session.dispose();
-    }
+    await this.closeLive('quit');
     disposeSubagentsForTask(this.taskId);
     await this.audit?.flush();
+  }
+
+  /** Shuts the live session down; Hermes' shutdown flush runs in the session's memory scope. */
+  private async closeLive(reason: 'new' | 'quit'): Promise<void> {
+    const live = this.live;
+    const memory = this.liveMemory;
+    this.live = null;
+    this.liveMemory = null;
+    if (!live) return;
+    await this.memoryTurn(memory, () =>
+      live.session.extensionRunner.emit({ type: 'session_shutdown', reason }),
+    );
+    live.session.dispose();
+  }
+
+  private memoryTurn<T>(scope: RunnerMemoryScope | null, action: () => Promise<T>): Promise<T> {
+    return withRootMemoryTurn(
+      { agentDir: this.ctx.paths.agentDir, log: this.ctx.log, taskId: this.taskId },
+      scope,
+      action,
+    );
   }
 
   private statusOf(runId: string): RunStatus {
@@ -262,11 +280,15 @@ export class TaskRunner {
 
   private async ensureSession(run: TaskRun, agents: RuntimeAgent[]): Promise<LiveState> {
     const binding = await prepareRunBinding(this.session, run, agents);
-    if (this.live && (await applyRunToSession(this.live, run, binding))) return this.live;
+    if (this.live && (await applyRunToSession(this.live, run, binding))) {
+      this.liveMemory = rootMemoryScope(this.taskId, run);
+      return this.live;
+    }
     // A changed run binding or another connection needs a new session;
     // reopen it from the same session file.
     await this.release();
     this.live = await createLiveState(this.session, run, binding);
+    this.liveMemory = rootMemoryScope(this.taskId, run);
     return this.live;
   }
 }

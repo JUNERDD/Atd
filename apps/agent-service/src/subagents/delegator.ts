@@ -1,6 +1,12 @@
 import type { SessionFactoryDeps } from '../pi-session.js';
 import type { CredentialStore } from '@earendil-works/pi-ai';
-import type { ExtensionAPI, ExtensionFactory } from '@earendil-works/pi-coding-agent';
+import {
+  SessionManager,
+  type ExtensionAPI,
+  type ExtensionFactory,
+} from '@earendil-works/pi-coding-agent';
+import { createGate } from '../harness/gate.js';
+import { effectiveTaskTier } from '../tasks/tier.js';
 import { registerRuntimeAgents, SERVICE_RUNTIME_AGENTS, type RuntimeAgent } from './agents.js';
 import {
   SERVICE_CHAIN_WORKFLOW,
@@ -14,6 +20,7 @@ import {
   registerParent,
   storeHost,
   unregisterParentBySession,
+  type ChildApprovals,
 } from './registry.js';
 import { resolveRequiredExtensionPath, REQUIRED_EXTENSION_ID } from './required-extension.js';
 import { installManagedSettingsTrigger } from './trigger.js';
@@ -166,6 +173,38 @@ export async function prepareSubagentsParent(
   return factory;
 }
 
+/**
+ * The parent's approval rules for its children: the task tier the parent session froze (pi-session
+ * builds its tool host with the same `effectiveTaskTier`) and one gate per child execution over the
+ * parent's confirms, session grants, audit and session entries. Child confirms carry the child's
+ * execution id, which the desktop labels as a subtask; while one waits, the parent run shows
+ * `awaiting_confirmation`, as for the parent's own confirms.
+ */
+function childApprovals(
+  deps: SessionFactoryDeps,
+  sessions: unknown,
+): (child: { runId: string; executionId: string }) => ChildApprovals {
+  // Pi hands extensions its live SessionManager behind a read-only type; the gate records
+  // permission outcomes in it like the parent's own gate does.
+  if (!(sessions instanceof SessionManager))
+    throw new Error('Subagent parent has no session manager; refusing to start.');
+  const tier = effectiveTaskTier(deps.ctx.ledger, deps.taskId, deps.ctx.tier);
+  return (child) => ({
+    tier,
+    gate: createGate({
+      taskId: deps.taskId,
+      runId: () => child.runId,
+      executionId: () => child.executionId,
+      tier,
+      grants: deps.grants,
+      sessions,
+      confirms: deps.ctx.confirms,
+      audit: deps.audit,
+      setStatus: (status) => deps.setStatus(child.runId, status),
+    }),
+  });
+}
+
 function registerParentSession(
   deps: SessionFactoryDeps,
   preloaded: Preloaded,
@@ -205,6 +244,7 @@ function registerParentSession(
     audit: deps.audit,
     resourceIds: run.snapshot.input.files.map((file) => file.id),
     credentials: session.credentials,
+    approvals: childApprovals(deps, ctx.sessionManager),
   });
   registrations.push(
     preloaded.registerRequired({

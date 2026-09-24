@@ -3,14 +3,6 @@ import { realpath } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 
-/** Operator shell allowlist; empty denies every command with a clear message. */
-export function shellAllowlist(): string[] {
-  return (process.env.AI_AGENT_SHELL_ALLOWLIST ?? '')
-    .split(',')
-    .map((item) => item.trim())
-    .filter(Boolean);
-}
-
 /**
  * The product home that holds the `skills` and `agents` catalogs. `AI_ATD_HOME` overrides it (the
  * desktop sets it for isolated test profiles); otherwise it is `~/.atd` through `os.homedir()`, so a

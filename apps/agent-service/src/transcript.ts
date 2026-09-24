@@ -1,6 +1,7 @@
 import type { AgentSession, SessionEntry } from '@earendil-works/pi-coding-agent';
 import type { AssistantMessage, ToolResultMessage } from '@earendil-works/pi-ai';
 import type { ServiceBlock } from '@ai/agent-contracts';
+import type { Logger } from './logging.js';
 import {
   collectBlockLookups,
   projectAssistantServiceBlocks,
@@ -127,6 +128,8 @@ export interface ProjectServiceBlocksInput {
    */
   firstRunId: string;
   live: boolean;
+  /** Receives projection diagnostics (tool details dropped by the contract check). */
+  log?: Pick<Logger, 'debug'>;
 }
 
 export function projectServiceBlocks(input: ProjectServiceBlocksInput): ServiceBlock[] {
@@ -207,6 +210,7 @@ export function projectServiceBlocks(input: ProjectServiceBlocksInput): ServiceB
             partials,
             messageEndedAt: item.endedAt ?? null,
             outputOf,
+            log: input.log,
           }),
         );
         break;

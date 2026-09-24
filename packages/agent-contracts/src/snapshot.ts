@@ -7,6 +7,7 @@ import {
   PermissionRequestSchema,
 } from './confirms.js';
 import { AgentTaskSchema } from './task.js';
+import { ToolBlockDetailsSchema } from './tool-details.js';
 
 /**
  * T1 transcript block subset. Field names match the desktop Block shape so T6
@@ -90,6 +91,8 @@ export const ServiceBlockSchema = Type.Union([
         ),
         Type.Null(),
       ]),
+      /** C1 additive: whitelisted per-tool result facts (tool-details.ts). */
+      details: Type.Optional(ToolBlockDetailsSchema),
     },
     { additionalProperties: false },
   ),
