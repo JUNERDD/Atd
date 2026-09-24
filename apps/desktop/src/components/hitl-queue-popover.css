@@ -48,26 +48,22 @@
   overflow-y: auto;
 }
 
-/* Single-scrollbar contract: the approval detail is the only scroller. The flex chain from
-   the body down carries min-height: 0 so a tall detail compresses instead of pushing the
-   popover into a second outer scroll; actions stay visible. The body keeps its overflow as
-   a last resort for stacked regions whose floors still exceed the popover cap. */
+/* Regions keep their natural height and the body scrolls once they outgrow the popover cap.
+   Compressing the approval instead cannot stop at the detail's floor: a flex minimum ignores a
+   descendant's floor, so the form collapsed and its buttons slid under the detail. The detail
+   caps itself so the approval and a few queued rows still fit without the outer scroll. */
 .hitl-queue-body > * {
-  min-height: 0;
-}
-
-.approval-controls {
-  min-height: 0;
+  flex-shrink: 0;
 }
 
 .approval-detail {
   display: flex;
   flex-direction: column;
-  min-height: 0;
 }
 
 .approval-detail > .tool-output {
   min-height: 96px;
+  max-height: 160px;
 }
 
 /* Anchor box for the popover: a layout-neutral wrapper around the composer surface so the
@@ -96,11 +92,12 @@
   padding: 12px;
 }
 
+/* Compact rows need little frame: the row highlight sits 6px from the popover edge. */
 .queue-region {
   display: flex;
   flex-direction: column;
   min-width: 0;
-  padding: 8px 12px 12px;
+  padding: 6px;
 }
 
 /* The divider belongs to the queue region so a lone HITL region reads without a stray rule. */

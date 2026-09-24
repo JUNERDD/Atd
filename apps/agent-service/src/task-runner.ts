@@ -201,6 +201,12 @@ export class TaskRunner {
     if (mode === 'followUp') await live.session.followUp(text);
     else await live.session.steer(text);
     this.withdrawIfStopped(live);
+    // A steer is sent to be read now, so it cannot wait behind an approval or a question.
+    if (mode === 'steer')
+      await this.ctx.confirms.interject(
+        this.taskId,
+        () => live.session.getSteeringMessages().length > 0,
+      );
   }
 
   async replaceQueue(followUp: string[]): Promise<QueueState> {

@@ -24,6 +24,8 @@ const CONFIRM_TTL_MS = 30 * 60 * 1000;
  */
 export class ConfirmStore {
   private readonly waiters = new Map<string, ConfirmWaiter>();
+  /** Per task: whether the message the user cut in with is still undelivered. */
+  private readonly interjections = new Map<string, () => boolean>();
 
   constructor(
     private readonly ledger: Ledger,
@@ -46,6 +48,7 @@ export class ConfirmStore {
    * not cancel the wait; abort (run cancel) and expiry reject it instead.
    */
   async request(draft: PermissionRequestDraft, signal?: AbortSignal): Promise<PermissionAnswer> {
+    if (this.interjecting(draft.taskId)) return supersededAnswer(draft);
     const stamp = { id: randomUUID(), revision: 1, createdAt: new Date().toISOString() };
     const created: PermissionRequest =
       draft.kind === 'confirmation' ? { ...draft, ...stamp } : { ...draft, ...stamp };
@@ -93,6 +96,25 @@ export class ConfirmStore {
     if (live.kind === 'input' && !('answer' in answer) && !('skipped' in answer))
       throw new TypeError('Invalid data: this question needs a text answer.');
     return this.settle(live, answer);
+  }
+
+  /**
+   * The user cut in with a message (a steer): it supersedes the task's human-in-the-loop pauses.
+   * Pending requests resolve now — approvals declined, questions skipped — and while the message
+   * is still undelivered, new ones resolve the same way without being raised. Pi delivers a steer
+   * only after the current tool batch, so a later approval in that batch would otherwise hold
+   * the message back.
+   */
+  async interject(taskId: string, undelivered: () => boolean): Promise<void> {
+    this.interjections.set(taskId, undelivered);
+    for (const request of this.forTask(taskId))
+      await this.settle(request, supersededAnswer(request));
+  }
+
+  private interjecting(taskId: string): boolean {
+    if (this.interjections.get(taskId)?.()) return true;
+    this.interjections.delete(taskId);
+    return false;
   }
 
   private async settle(live: PermissionRequest, answer: PermissionAnswer): Promise<boolean> {
@@ -218,6 +240,12 @@ export class ConfirmGone extends Error {
 /** Distributive draft: plain Omit would collapse the union to common keys. */
 type DraftOf<T> = T extends unknown ? Omit<T, 'id' | 'revision' | 'createdAt'> : never;
 export type PermissionRequestDraft = DraftOf<PermissionRequest>;
+
+/** How a request resolves when the user's interjection supersedes it. */
+function supersededAnswer(request: { kind: PermissionRequest['kind'] }): PermissionAnswer {
+  if (request.kind === 'confirmation') return { decision: 'declined' };
+  return { skipped: true };
+}
 
 function outcomeOf(answer: PermissionAnswer): string {
   if ('decision' in answer) return answer.decision;

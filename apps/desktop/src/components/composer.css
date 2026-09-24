@@ -38,6 +38,55 @@
 
 /* Queue layout moved to the composer popover (`hitl-queue-popover.css`); only inner row styles
    stay here so queue changes never resize the surface or churn the footer height. */
+.composer-queue-row {
+  position: relative;
+  background: var(--popover);
+}
+
+.composer-queue-row:hover,
+.composer-queue-row:focus-within {
+  background: color-mix(in oklab, var(--muted) 60%, var(--popover));
+}
+
+/* Follow-up rows move on their own compositor layer: a drag or a make-way slide then never
+   repaints the popover, whose macOS backdrop blur is a software SVG filter on the panel. */
+.composer-queue-row[data-dragging] {
+  will-change: transform;
+}
+
+/* The row being dragged lifts above its siblings; the popover fill keeps it opaque over them. */
+.composer-queue-row[data-dragging='true'] {
+  z-index: 1;
+  background: var(--popover);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 20%);
+}
+
+/* One leading slot for the grip and the sending spinner, so every row's text starts together. */
+.composer-queue-lead {
+  width: 24px;
+  height: 24px;
+  color: var(--muted-foreground);
+}
+
+.composer-queue-lead > svg {
+  width: 14px;
+  height: 14px;
+}
+
+.composer-queue-handle {
+  cursor: grab;
+  touch-action: none;
+  color: var(--muted-foreground);
+}
+
+.composer-queue-row[data-dragging='true'] .composer-queue-handle {
+  cursor: grabbing;
+}
+
+.composer-queue-text {
+  font-weight: 400;
+}
+
 .composer-queue-actions {
   gap: 2px;
 }

@@ -33,6 +33,8 @@ export interface QuickPanelProps {
   trigger: TriggerState | null;
   /** Active run: `@` and an inline `/` stay closed; a leading `/` lists quick commands only. */
   running: boolean;
+  /** Approvals, questions or queued messages wait in the popover `/queue` reopens. */
+  pending: boolean;
   editor: ComposerEditorCommands;
   handleRef: Ref<QuickPanelHandle>;
   /** Combobox wiring for the editor content; null while closed. */
@@ -67,6 +69,7 @@ export interface QuickPanelProps {
 export function QuickPanel({
   trigger,
   running,
+  pending,
   editor,
   handleRef,
   onAriaChange,
@@ -98,6 +101,7 @@ export function QuickPanel({
   const slashView = useSlashView({
     trigger: slash,
     running,
+    pending,
     editor,
     actions,
     policy,

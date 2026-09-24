@@ -3,9 +3,8 @@ import type { QueueState } from '../../electron/agent/transcript-schema';
 import { ComposerQueue } from './composer-queue';
 
 /**
- * Queue region at the bottom of the composer popover. Same steer/followUp display and
- * edit/send-now/remove actions as the old in-flow slot, now floating so queue changes never
- * resize the composer surface or churn the footer height.
+ * Queue region at the bottom of the composer popover. Floating, so queue changes never resize
+ * the composer surface or churn the footer height.
  */
 export function QueueRegion({
   taskId,
