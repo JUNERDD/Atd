@@ -25,6 +25,7 @@ import {
   isWindowSender,
   loadWindowContent,
   rendererPreferences,
+  reportRendererExit,
   secureWindowContent,
 } from './window-content';
 import { constrainPanelBounds, getPanelBounds, getPanelMinimumSize } from './window-position';
@@ -208,6 +209,7 @@ async function createPanel() {
   });
   panel = window;
   secureWindowContent(window);
+  reportRendererExit(window, 'panel');
   rememberPanelSize(window);
   // macOS owns its window management: the native close button dismisses the panel like the
   // in-panel hide control does, so the global shortcut and the app menu reveal the same window
