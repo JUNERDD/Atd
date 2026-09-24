@@ -108,7 +108,7 @@ settings:
 patchedDependencies:
   pi-hermes-memory@0.9.9: d07ef2e2cf21101b58c8cfc9997fe0c5770353ab019e632894c0cb1fd148b791
   pi-mcp-adapter@2.34.0: 630981a9fd7b1fd75c26784d56b248c72207011336b139c29aa67032b3fae1f3
-  pi-subagents@0.70.0: d4f421374978b17b8119cd35e09814c4dc4e8dc791d4f52a883e64752b9759f0
+  pi-subagents@0.70.0: 6a288700b6eaab4ec27bdd12c521e773438cbd8e7303e7677670c3ab1c52d448
 
 importers:
 
@@ -164,7 +164,7 @@ importers:
         version: 2.34.0(patch_hash=630981a9fd7b1fd75c26784d56b248c72207011336b139c29aa67032b3fae1f3)(@earendil-works/pi-ai@0.86.1(@modelcontextprotocol/sdk@1.30.0(supports-color@7.2.0)(zod@4.6.5))(supports-color@7.2.0)(ws@8.21.3)(zod@4.6.5))(@earendil-works/pi-tui@0.86.1)(@modelcontextprotocol/sdk@1.30.0(supports-color@7.2.0)(zod@4.6.5))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typebox@1.3.27)(zod@4.6.5)
       pi-subagents:
         specifier: 0.70.0
-        version: 0.70.0(patch_hash=d4f421374978b17b8119cd35e09814c4dc4e8dc791d4f52a883e64752b9759f0)(@earendil-works/pi-agent-core@0.86.1(@modelcontextprotocol/sdk@1.30.0(supports-color@7.2.0)(zod@4.6.5))(supports-color@7.2.0)(ws@8.21.3)(zod@4.6.5))(@earendil-works/pi-ai@0.86.1(@modelcontextprotocol/sdk@1.30.0(supports-color@7.2.0)(zod@4.6.5))(supports-color@7.2.0)(ws@8.21.3)(zod@4.6.5))(@earendil-works/pi-coding-agent@0.86.1(@modelcontextprotocol/sdk@1.30.0(supports-color@7.2.0)(zod@4.6.5))(supports-color@7.2.0)(ws@8.21.3)(zod@4.6.5))(@earendil-works/pi-tui@0.86.1)
+        version: 0.70.0(patch_hash=6a288700b6eaab4ec27bdd12c521e773438cbd8e7303e7677670c3ab1c52d448)(@earendil-works/pi-agent-core@0.86.1(@modelcontextprotocol/sdk@1.30.0(supports-color@7.2.0)(zod@4.6.5))(supports-color@7.2.0)(ws@8.21.3)(zod@4.6.5))(@earendil-works/pi-ai@0.86.1(@modelcontextprotocol/sdk@1.30.0(supports-color@7.2.0)(zod@4.6.5))(supports-color@7.2.0)(ws@8.21.3)(zod@4.6.5))(@earendil-works/pi-coding-agent@0.86.1(@modelcontextprotocol/sdk@1.30.0(supports-color@7.2.0)(zod@4.6.5))(supports-color@7.2.0)(ws@8.21.3)(zod@4.6.5))(@earendil-works/pi-tui@0.86.1)
       typebox:
         specifier: 1.3.27
         version: 1.3.27
@@ -12842,7 +12842,7 @@ snapshots:
       - react
       - react-dom
 
-  pi-subagents@0.70.0(patch_hash=d4f421374978b17b8119cd35e09814c4dc4e8dc791d4f52a883e64752b9759f0)(@earendil-works/pi-agent-core@0.86.1(@modelcontextprotocol/sdk@1.30.0(supports-color@7.2.0)(zod@4.6.5))(supports-color@7.2.0)(ws@8.21.3)(zod@4.6.5))(@earendil-works/pi-ai@0.86.1(@modelcontextprotocol/sdk@1.30.0(supports-color@7.2.0)(zod@4.6.5))(supports-color@7.2.0)(ws@8.21.3)(zod@4.6.5))(@earendil-works/pi-coding-agent@0.86.1(@modelcontextprotocol/sdk@1.30.0(supports-color@7.2.0)(zod@4.6.5))(supports-color@7.2.0)(ws@8.21.3)(zod@4.6.5))(@earendil-works/pi-tui@0.86.1):
+  pi-subagents@0.70.0(patch_hash=6a288700b6eaab4ec27bdd12c521e773438cbd8e7303e7677670c3ab1c52d448)(@earendil-works/pi-agent-core@0.86.1(@modelcontextprotocol/sdk@1.30.0(supports-color@7.2.0)(zod@4.6.5))(supports-color@7.2.0)(ws@8.21.3)(zod@4.6.5))(@earendil-works/pi-ai@0.86.1(@modelcontextprotocol/sdk@1.30.0(supports-color@7.2.0)(zod@4.6.5))(supports-color@7.2.0)(ws@8.21.3)(zod@4.6.5))(@earendil-works/pi-coding-agent@0.86.1(@modelcontextprotocol/sdk@1.30.0(supports-color@7.2.0)(zod@4.6.5))(supports-color@7.2.0)(ws@8.21.3)(zod@4.6.5))(@earendil-works/pi-tui@0.86.1):
     dependencies:
       acorn: 8.18.0
       jiti: 2.7.0

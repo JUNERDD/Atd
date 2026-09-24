@@ -1,8 +1,10 @@
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import type { CredentialStore } from '@earendil-works/pi-ai';
 import { SUBAGENT_CHILD_SYSTEM_PROMPT } from './config.js';
 import {
+  hostForTask,
   parentByTask,
   taskIdFromCwd,
   trackChildEnd,
@@ -17,15 +19,22 @@ import {
  * `launch.managedSettings`, but the foreground executor never sets it, so the
  * service installs a process-wide factory wrapper that pins it on every
  * launch: projectTrusted:false plus forced noContextFiles plus explicit
- * system/append prompts. The wrapper also tracks per-parent children for the
- * ≤3 ceiling and per-task abort without touching sibling parents.
+ * system/append prompts, plus the parent's credential store so the child's
+ * own model runtime can authenticate. The wrapper also tracks per-parent
+ * children for UI aggregation and per-task abort without touching siblings.
  */
+
+type ManagedSettings = {
+  systemPrompt?: string;
+  appendSystemPrompt?: string;
+  credentials?: CredentialStore;
+};
 
 interface ChildLaunchLike {
   cwd: string;
   systemPrompt?: string;
   appendSystemPrompt?: string;
-  managedSettings?: { systemPrompt?: string; appendSystemPrompt?: string };
+  managedSettings?: ManagedSettings;
   runtime?: { parentSessionId?: string; agent?: string };
 }
 
@@ -76,11 +85,15 @@ async function loadChildSessionModule(): Promise<ChildSessionModule> {
 }
 
 /** Pins managedSettings on a launch, preserving the agent prompts. */
-export function pinManagedSettings<T extends ChildLaunchLike>(launch: T): T {
+export function pinManagedSettings<T extends ChildLaunchLike>(
+  launch: T,
+  credentials?: CredentialStore,
+): T {
   const systemPrompt = launch.systemPrompt ?? SUBAGENT_CHILD_SYSTEM_PROMPT;
-  const managed: { systemPrompt?: string; appendSystemPrompt?: string } = { systemPrompt };
+  const managed: ManagedSettings = { systemPrompt };
   if (launch.appendSystemPrompt !== undefined)
     managed.appendSystemPrompt = launch.appendSystemPrompt;
+  if (credentials) managed.credentials = credentials;
   return { ...launch, managedSettings: managed };
 }
 
@@ -104,7 +117,8 @@ export async function installManagedSettingsTrigger(): Promise<{ installed: bool
         tracked = { parentSessionId, key: admission.record.key, record: admission.record };
       }
       try {
-        const child = await inner.create(pinManagedSettings(launch));
+        const credentials = taskId ? hostForTask(taskId)?.credentials : undefined;
+        const child = await inner.create(pinManagedSettings(launch, credentials));
         if (tracked) trackChildSession(child.sessionId, tracked.record);
         if (tracked && taskId) {
           keyBySession.set(child, tracked);

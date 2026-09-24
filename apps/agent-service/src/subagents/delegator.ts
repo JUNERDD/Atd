@@ -1,4 +1,5 @@
 import type { SessionFactoryDeps } from '../pi-session.js';
+import type { CredentialStore } from '@earendil-works/pi-ai';
 import type { ExtensionAPI, ExtensionFactory } from '@earendil-works/pi-coding-agent';
 import { registerRuntimeAgents, SERVICE_RUNTIME_AGENTS, type RuntimeAgent } from './agents.js';
 import {
@@ -99,11 +100,13 @@ async function preload(): Promise<Preloaded> {
  * agent dir, installs the trigger and validates the bridge path. Returns the
  * single factory pi-session appends to its extension list. `runAgents` are
  * the referenced atd agents the session registers beside the service agents
- * (fixed per session through the run binding).
+ * (fixed per session through the run binding); `credentials` is the store of
+ * the session's model runtime, which a runtime change rebuilds the session for.
  */
 export async function prepareSubagentsParent(
   deps: SessionFactoryDeps,
   runAgents: RuntimeAgent[],
+  credentials: CredentialStore,
 ): Promise<ExtensionFactory> {
   const agentDir = deps.ctx.paths.agentDir;
   process.env.PI_CODING_AGENT_DIR = agentDir;
@@ -135,6 +138,7 @@ export async function prepareSubagentsParent(
       registerParentSession(deps, preloaded, bridgePath, pi, ctx, {
         agents: [...SERVICE_RUNTIME_AGENTS, ...runAgents],
         registrations,
+        credentials,
       });
       return undefined;
     });
@@ -158,7 +162,7 @@ function registerParentSession(
   bridgePath: string,
   pi: ExtensionAPI,
   ctx: { sessionManager: { getSessionId(): string | undefined }; cwd: string },
-  session: { agents: RuntimeAgent[]; registrations: Registration[] },
+  session: { agents: RuntimeAgent[]; registrations: Registration[]; credentials: CredentialStore },
 ): void {
   const { registrations } = session;
   const sessionId = ctx.sessionManager.getSessionId();
@@ -190,6 +194,7 @@ function registerParentSession(
     runMemory: run.snapshot.memory,
     audit: deps.audit,
     resourceIds: run.snapshot.input.files.map((file) => file.id),
+    credentials: session.credentials,
   });
   registrations.push(
     preloaded.registerRequired({

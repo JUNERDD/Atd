@@ -24,10 +24,10 @@ index b71f81a75bb971855a07bf7863e55e74d50db91e..37b5673541e2ac053d6b28fc5c8594cf
      return {
          toolPlan,
 diff --git a/src/runs/shared/child-session.d.ts b/src/runs/shared/child-session.d.ts
-index 4fd3fad7150dde48db44401daaa473747a3ae5e8..9c59718a66da1298eb68fe1c04d55ae4e42a7a4e 100644
+index 4fd3fad7150dde48db44401daaa473747a3ae5e8..a6b077560f626ffc4160707bf4832897ea0723e1 100644
 --- a/src/runs/shared/child-session.d.ts
 +++ b/src/runs/shared/child-session.d.ts
-@@ -71,6 +71,17 @@ export interface ChildSessionLaunch {
+@@ -71,6 +71,23 @@ export interface ChildSessionLaunch {
      noContextFiles: boolean;
      systemPrompt?: string;
      appendSystemPrompt?: string;
@@ -41,11 +41,17 @@ index 4fd3fad7150dde48db44401daaa473747a3ae5e8..9c59718a66da1298eb68fe1c04d55ae4
 +    managedSettings?: {
 +        systemPrompt?: string;
 +        appendSystemPrompt?: string;
++        /**
++         * Credential store for a parent-bound child's model runtime. Inherited
++         * providers keep the parent's registrations but read credentials from
++         * the runtime's own store, which otherwise is the agent dir's auth file.
++         */
++        credentials?: import("@earendil-works/pi-ai").CredentialStore;
 +    };
      /**
       * Environment values that extensions loaded into the child read from
       * `process.env`. Applied to the hosting process while the session is created
-@@ -116,6 +127,12 @@ export interface ChildSessionFactory {
+@@ -116,6 +133,12 @@ export interface ChildSessionFactory {
      dispose(): Promise<void>;
  }
  export type PiCodingAgentModule = typeof import("@earendil-works/pi-coding-agent");
@@ -59,7 +65,7 @@ index 4fd3fad7150dde48db44401daaa473747a3ae5e8..9c59718a66da1298eb68fe1c04d55ae4
      /**
       * Loads the pi package the sessions are created from. The parent process
 diff --git a/src/runs/shared/child-session.js b/src/runs/shared/child-session.js
-index 5703d97fe7916bd549e23aa14fb4c2ad21da61db..1998fe3ba6cf84838fd241a7c96841ccf6b47c16 100644
+index 5703d97fe7916bd549e23aa14fb4c2ad21da61db..5e44801bd69ce3c21e31105bc4d50d1ff67640e3 100644
 --- a/src/runs/shared/child-session.js
 +++ b/src/runs/shared/child-session.js
 @@ -1,5 +1,9 @@
@@ -150,21 +156,27 @@ index 5703d97fe7916bd549e23aa14fb4c2ad21da61db..1998fe3ba6cf84838fd241a7c96841cc
      const shutdownTimeoutMs = options.shutdownTimeoutMs ?? 5_000;
      let runtime;
      const live = new Set();
-@@ -150,7 +217,12 @@ export function createDefaultChildSessionFactory(options = {}) {
-                 ? await pi.ModelRuntime.create()
+@@ -146,11 +213,17 @@ export function createDefaultChildSessionFactory(options = {}) {
+     return {
+         async create(launch) {
+             const pi = await loadPiCodingAgent();
++            // Host seam (not upstream): service-managed children pin project
++            // trust, context files, and prompts explicitly, and may run on the
++            // parent's credential store. Absent = upstream.
++            const managed = launch.managedSettings;
+             const modelRuntime = launch.parentProviderRegistry
+-                ? await pi.ModelRuntime.create()
++                ? await pi.ModelRuntime.create(managed?.credentials ? { credentials: managed.credentials } : undefined)
                  : await sharedRuntime(pi);
              const agentDir = getAgentDir();
 -            const settingsManager = pi.SettingsManager.create(launch.cwd, agentDir);
-+            // Host seam (not upstream): service-managed children pin project
-+            // trust, context files, and prompts explicitly. Absent = upstream.
-+            const managed = launch.managedSettings;
 +            const settingsManager = managed
 +                ? pi.SettingsManager.create(launch.cwd, agentDir, { projectTrusted: false })
 +                : pi.SettingsManager.create(launch.cwd, agentDir);
              // Foreground children share Pi's global theme with the parent, so reinitializing it
              // would overwrite the parent's active light/dark appearance. Detached runners have
              // no initialized theme and must initialize one for headless extension renderers.
-@@ -158,6 +230,13 @@ export function createDefaultChildSessionFactory(options = {}) {
+@@ -158,6 +231,13 @@ export function createDefaultChildSessionFactory(options = {}) {
              const themeInitialized = Boolean(globalThis[themeKey]);
              if (!themeInitialized && typeof pi.initTheme === "function")
                  pi.initTheme(settingsManager.getTheme());
@@ -178,7 +190,7 @@ index 5703d97fe7916bd549e23aa14fb4c2ad21da61db..1998fe3ba6cf84838fd241a7c96841cc
              const loader = new pi.DefaultResourceLoader({
                  cwd: launch.cwd,
                  agentDir,
-@@ -166,12 +245,12 @@ export function createDefaultChildSessionFactory(options = {}) {
+@@ -166,12 +246,12 @@ export function createDefaultChildSessionFactory(options = {}) {
                  noSkills: launch.noSkills,
                  noPromptTemplates: true,
                  noThemes: true,
