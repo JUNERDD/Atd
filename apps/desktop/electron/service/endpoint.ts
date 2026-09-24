@@ -70,6 +70,18 @@ export function resolveServiceDataDir(): string {
   return defaultServiceDataDir();
 }
 
+/**
+ * The `.atd` root for the spawned service, mirroring resolveServiceDataDir: an explicit
+ * AI_ATD_HOME wins; an isolated test profile (AI_TEST_USER_DATA) keeps atd skills and agents
+ * inside the profile. Null leaves the service on its own ~/.atd default.
+ */
+export function resolveServiceAtdHome(): string | null {
+  const override = process.env.AI_ATD_HOME?.trim();
+  if (override) return override;
+  if (!process.env.AI_TEST_USER_DATA) return null;
+  return path.join(app.getPath('userData'), 'atd');
+}
+
 function isLoopbackUrl(url: string): boolean {
   return (
     url.startsWith('http://127.0.0.1') ||

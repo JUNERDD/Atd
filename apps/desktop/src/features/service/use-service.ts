@@ -47,10 +47,20 @@ export function useServiceStatus() {
 
 export type ExtensionRoleTool = 'read' | 'write' | 'edit' | 'bash' | 'command';
 
+/** Install state of a resource that ships with the app; `modified` copies are never overwritten. */
+export interface ExtensionBuiltin {
+  id: string;
+  status: 'current' | 'modified' | 'update_available';
+}
+
 export interface ExtensionSkillRow {
   name: string;
   description: string;
   sourceKind: 'local' | 'npm' | 'git' | 'agents' | 'atd' | '';
+  /** Seeded by the service; the row reads as a system skill instead of its folder. */
+  system: boolean;
+  /** Null for skills that do not ship with the app. */
+  builtin: ExtensionBuiltin | null;
   revision: string;
   enabled: boolean;
 }
@@ -63,6 +73,8 @@ export interface ExtensionRoleRow {
 
 export interface ExtensionAgentRow {
   name: string;
+  /** Registered by the service for every session; read-only. */
+  system: boolean;
   description: string;
   tools: ExtensionRoleTool[];
   model: string;
@@ -83,6 +95,11 @@ function readString(value: unknown, key: string): string {
   return typeof field === 'string' ? field : '';
 }
 
+function readFlag(value: unknown, key: string): boolean {
+  if (typeof value !== 'object' || value === null) return false;
+  return Reflect.get(value, key) === true;
+}
+
 function readEnabled(value: unknown): boolean {
   if (typeof value !== 'object' || value === null) return true;
   const field = Reflect.get(value, 'enabled');
@@ -93,6 +110,17 @@ function asSourceKind(value: string): ExtensionSkillRow['sourceKind'] {
   if (value === 'local' || value === 'npm' || value === 'git') return value;
   if (value === 'agents' || value === 'atd') return value;
   return '';
+}
+
+function asBuiltin(value: unknown): ExtensionBuiltin | null {
+  if (typeof value !== 'object' || value === null) return null;
+  const builtin = Reflect.get(value, 'builtin');
+  const id = readString(builtin, 'id');
+  const status = readString(builtin, 'status');
+  if (!id) return null;
+  if (status === 'current' || status === 'modified' || status === 'update_available')
+    return { id, status };
+  return null;
 }
 
 function asRoleTool(value: unknown): ExtensionRoleTool | null {
@@ -124,6 +152,8 @@ export function asSkillRow(value: unknown): ExtensionSkillRow | null {
         name,
         description: readString(value, 'description'),
         sourceKind: asSourceKind(readString(value, 'sourceKind')),
+        system: readFlag(value, 'system'),
+        builtin: asBuiltin(value),
         revision: readString(value, 'revision'),
         enabled: readEnabled(value),
       }
@@ -154,6 +184,7 @@ export function asAgentRow(value: unknown): ExtensionAgentRow | null {
   const model = readString(value, 'model');
   return {
     name,
+    system: readFlag(value, 'system'),
     description: readString(value, 'description'),
     tools: asAgentTools(tools),
     model,

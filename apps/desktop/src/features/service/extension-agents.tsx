@@ -129,8 +129,9 @@ function AgentForm({
 }
 
 /**
- * Markdown subagent catalog (`~/.atd/agents`); add form opens from the tab menu. The search
- * matches and marks the name and description.
+ * Subagent catalog: the service's system agents, then the markdown specialists (`~/.atd/agents`);
+ * the add form opens from the tab menu. System rows name their source on the description line,
+ * like skills. The search matches and marks the name and that line.
  */
 export function ExtensionAgentsGroup({
   rows,
@@ -176,8 +177,11 @@ export function ExtensionAgentsGroup({
       />
     ) : null;
   const shown = rows.flatMap((row) => {
-    const match = matchFields(query, { name: row.name, description: row.description });
-    return match || !query.trim() ? [{ row, match }] : [];
+    const description = [row.description, row.system ? t('extensions.sourceSystem') : '']
+      .filter(Boolean)
+      .join(' · ');
+    const match = matchFields(query, { name: row.name, description });
+    return match || !query.trim() ? [{ row, description, match }] : [];
   });
 
   return (
@@ -192,16 +196,16 @@ export function ExtensionAgentsGroup({
         showTitle={false}
         emptyIcon={<Bot />}
       >
-        {shown.map(({ row, match }) => (
+        {shown.map(({ row, description, match }) => (
           <Item asChild key={row.name} size="xs">
             <li>
               <ItemContent>
                 <ItemTitle title={row.name}>
                   <HighlightedText text={row.name} ranges={match?.ranges.name} />
                 </ItemTitle>
-                {row.description ? (
-                  <ItemDescription title={row.description}>
-                    <HighlightedText text={row.description} ranges={match?.ranges.description} />
+                {description ? (
+                  <ItemDescription title={description}>
+                    <HighlightedText text={description} ranges={match?.ranges.description} />
                   </ItemDescription>
                 ) : null}
               </ItemContent>

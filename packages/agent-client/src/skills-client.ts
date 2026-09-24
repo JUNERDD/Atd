@@ -11,6 +11,9 @@ export interface SkillListRow {
   revision: string;
   description: string;
   sourceKind: 'local' | 'npm' | 'git' | 'atd' | 'agents';
+  system: boolean;
+  /** Set for a product skill's ATD-home copy; null for every other row. */
+  builtin: BuiltinStatusWire | null;
   disableModelInvocation: boolean;
   enabled: boolean;
   capability: { kind: 'text' | 'script'; tools: string[] };
@@ -24,12 +27,24 @@ export interface SkillDiagnosticWire {
   path?: string;
 }
 
+/**
+ * Status of a builtin resource (a product skill in the ATD home, or the default role) against the
+ * version the service ships; `version` is that shipped version.
+ */
+export interface BuiltinStatusWire {
+  id: string;
+  version: number;
+  status: 'current' | 'modified' | 'update_available';
+}
+
 export interface RoleWire {
   id: string;
   revision: string;
   title: string;
   allows: { tools: string[]; skills: string[] };
   updatedAt: string;
+  /** Set for the builtin default role; null for every other role. */
+  builtin: BuiltinStatusWire | null;
 }
 
 async function request<T>(
@@ -135,4 +150,16 @@ export function putRole(
     { title, allows },
     fetchImpl,
   );
+}
+
+/**
+ * Restores a builtin resource (`skill:<name>` or `role:default`) to the shipped version. The
+ * service backs up a changed copy first; `backupPath` is null when there was nothing to keep.
+ */
+export function restoreBuiltin(
+  options: AgentClientOptions,
+  id: string,
+  fetchImpl?: typeof fetch,
+): Promise<{ id: string; backupPath: string | null; builtin: BuiltinStatusWire }> {
+  return request(options, `/v1/builtins/${encodeURIComponent(id)}/restore`, 'POST', {}, fetchImpl);
 }

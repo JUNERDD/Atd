@@ -11,6 +11,26 @@ export function shellAllowlist(): string[] {
     .filter(Boolean);
 }
 
+/**
+ * The product home that holds the `skills` and `agents` catalogs. `AI_ATD_HOME` overrides it (the
+ * desktop sets it for isolated test profiles); otherwise it is `~/.atd` through `os.homedir()`, so a
+ * confined service HOME cannot hide or redirect it. Read on every call, never cached.
+ */
+export function atdHome(): string {
+  const override = process.env.AI_ATD_HOME?.trim();
+  return override ? path.resolve(override) : path.join(homedir(), '.atd');
+}
+
+/** The product-home skill catalog, `<atdHome>/skills`. */
+export function atdSkillsDir(): string {
+  return path.join(atdHome(), 'skills');
+}
+
+/** The product-home markdown specialist catalog, `<atdHome>/agents`. */
+export function atdAgentsDir(): string {
+  return path.join(atdHome(), 'agents');
+}
+
 export function inside(root: string, target: string): boolean {
   const relative = path.relative(root, target);
   return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative));
@@ -40,7 +60,7 @@ export interface ConfinedPath {
 /**
  * Confines a tool path to the service dataDir, reporting whether it lands in
  * the task output dir. Also allows real paths under the product home skill and
- * agent catalogs (`~/.atd/skills`, `~/.atd/agents`) via `os.homedir()`, and
+ * agent catalogs (`<atdHome>/skills`, `<atdHome>/agents`, see `atdHome`), and
  * under `readRoots`, which only the read tool passes: the directories of the
  * skills the current run loaded. Every other path outside the data directory
  * stays blocked. `rawPath` is the path the operation touches, which pi's tools
@@ -55,12 +75,7 @@ export async function confined(
   const real = await realTarget(path.resolve(cwd, rawPath));
   if (inside(cwd, real)) return { real, location: 'inside' };
   if (inside(dataDir, real)) return { real, location: 'outside' };
-  const home = homedir();
-  const roots = [
-    path.join(home, '.atd', 'skills'),
-    path.join(home, '.atd', 'agents'),
-    ...readRoots,
-  ];
+  const roots = [atdSkillsDir(), atdAgentsDir(), ...readRoots];
   if (await underAny(roots, real)) return { real, location: 'outside' };
   throw new Error('File access outside the service data directory is blocked.');
 }

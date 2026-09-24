@@ -136,6 +136,25 @@ export const SkillSnapshotSchema = Type.Object(
 );
 export type SkillSnapshot = Static<typeof SkillSnapshotSchema>;
 
+/**
+ * Where a built-in resource's user copy stands against the version this build ships:
+ * `modified` — the user edited the shipped content; `update_available` — the user's copy is based
+ * on other content than what ships now (or its base is unknown). `version` is the shipped version.
+ */
+export const BuiltinStatusSchema = Type.Object(
+  {
+    id: Type.String({ pattern: '^(skill|role):[A-Za-z0-9][A-Za-z0-9_-]{0,127}$' }),
+    version: Type.Integer({ minimum: 1 }),
+    status: Type.Union([
+      Type.Literal('current'),
+      Type.Literal('modified'),
+      Type.Literal('update_available'),
+    ]),
+  },
+  { additionalProperties: false },
+);
+export type BuiltinStatus = Static<typeof BuiltinStatusSchema>;
+
 /** Run-available skill row for discovery; never includes non-pinned content. */
 export const SkillListItemSchema = Type.Object(
   {
@@ -143,10 +162,14 @@ export const SkillListItemSchema = Type.Object(
     revision: Identifier,
     description: Type.String({ maxLength: 2048 }),
     sourceKind: SkillSourceKindSchema,
+    /** A product skill the service seeds into ~/.atd/skills and restores when deleted. */
+    system: Type.Boolean(),
     disableModelInvocation: Type.Boolean(),
     /** Harness gate. False keeps the skill out of runs without editing its files. */
     enabled: Type.Boolean(),
     capability: SkillCapabilitySchema,
+    /** Built-in version status of a product skill; null for every other row. */
+    builtin: Type.Union([BuiltinStatusSchema, Type.Null()]),
   },
   { additionalProperties: false },
 );

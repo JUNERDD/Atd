@@ -1,6 +1,6 @@
 import { Type, type Static } from 'typebox';
 import { Identifier } from './identifiers.js';
-import { SkillName, SkillToolSchema } from './skills.js';
+import { BuiltinStatusSchema, SkillName, SkillToolSchema } from './skills.js';
 
 /**
  * T3 roles v1 (UNFROZEN proposal). Roles bound what a run may use; Skill/MCP
@@ -71,9 +71,20 @@ export const CapabilitySnapshotSchema = Type.Object(
 );
 export type CapabilitySnapshot = Static<typeof CapabilitySnapshotSchema>;
 
+/** A role as the role list shows it: the definition plus the builtin default role's status. */
+export const RoleListItemSchema = Type.Object(
+  {
+    ...RoleDefinitionSchema.properties,
+    /** Built-in version status of the builtin default role; null for every other role. */
+    builtin: Type.Union([BuiltinStatusSchema, Type.Null()]),
+  },
+  { additionalProperties: false },
+);
+export type RoleListItem = Static<typeof RoleListItemSchema>;
+
 export const RoleListResponseSchema = Type.Object(
   {
-    roles: Type.Array(RoleDefinitionSchema, { maxItems: 128 }),
+    roles: Type.Array(RoleListItemSchema, { maxItems: 128 }),
   },
   { additionalProperties: false },
 );

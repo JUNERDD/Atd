@@ -9,13 +9,15 @@ import {
   putRole,
   resolveRole,
   type CapabilitySnapshotRecord,
-  type RoleRecord,
+  type RoleRow,
   type RoleSnapshotRecord,
 } from './roles.js';
 import { peekTaskStaging, stageTaskSkills, takeTaskStaging, type TaskStaging } from './staging.js';
 import { readDisabledSkillNames, setSkillHarnessEnabled } from './harness.js';
 import { discoverAtdSkills, mergeSkillCatalog } from './atd-skills.js';
 import { discoverUserAgentSkills } from './user-agents.js';
+import { isBuiltinSkill, type BuiltinStatus } from '../builtins/manifest.js';
+import { reconcileBuiltinSkills } from '../builtins/skills.js';
 import {
   freezeRunSkills,
   listCurrent,
@@ -52,6 +54,10 @@ export interface SkillListRow {
   revision: string;
   description: string;
   sourceKind: 'local' | 'npm' | 'git' | 'atd' | 'agents';
+  /** A product skill the service installs into `<atdHome>/skills`; see builtins/manifest.ts. */
+  system: boolean;
+  /** Builtin status of a product skill's `<atdHome>/skills` copy; null for every other row. */
+  builtin: BuiltinStatus | null;
   disableModelInvocation: boolean;
   enabled: boolean;
   capability: { kind: 'text' | 'script'; tools: string[] };
@@ -63,11 +69,16 @@ export async function listSkills(
 ): Promise<{ skills: SkillListRow[]; diagnostics: SkillDiagnostic[] }> {
   await ensureSkillProfile(deps.profile);
   const disabled = await readDisabledSkillNames(deps.profile);
-  const listed = (record: SkillRevisionRecord) => toRow(record, !disabled.has(record.name));
+  const rows = (records: SkillRevisionRecord[], builtins: ReadonlyMap<string, BuiltinStatus>) =>
+    records.map((record) => toRow(record, !disabled.has(record.name), builtins));
   if (runId) {
-    const snapshot = await loadRunSnapshot(deps.profile, runId);
+    // A frozen run's rows still report the live builtin status of their product skills.
+    const [snapshot, builtins] = await Promise.all([
+      loadRunSnapshot(deps.profile, runId),
+      reconcileBuiltinSkills(),
+    ]);
     return {
-      skills: snapshot.skills.map(listed),
+      skills: rows(snapshot.skills, builtins.statuses),
       diagnostics: snapshot.diagnostics,
     };
   }
@@ -75,7 +86,7 @@ export async function listSkills(
   const [atd, agents] = await Promise.all([discoverAtdSkills(), discoverUserAgentSkills()]);
   const skills = mergeSkillCatalog(installed, atd.skills, agents.skills);
   return {
-    skills: skills.map(listed),
+    skills: rows(skills, atd.builtins),
     diagnostics: [...atd.diagnostics, ...agents.diagnostics].slice(0, 64),
   };
 }
@@ -242,7 +253,7 @@ export async function releaseRunHandler(
   return releaseRun(deps.profile, runId);
 }
 
-export async function listRolesHandler(deps: SkillRouteDeps): Promise<{ roles: RoleRecord[] }> {
+export async function listRolesHandler(deps: SkillRouteDeps): Promise<{ roles: RoleRow[] }> {
   await ensureSkillProfile(deps.profile);
   return { roles: await listRoles(deps.profile) };
 }
@@ -250,7 +261,7 @@ export async function listRolesHandler(deps: SkillRouteDeps): Promise<{ roles: R
 export async function putRoleHandler(
   deps: SkillRouteDeps,
   input: { id: string; title: string; allows: { tools: string[]; skills: string[] } },
-): Promise<{ role: RoleRecord }> {
+): Promise<{ role: RoleRow }> {
   await ensureSkillProfile(deps.profile);
   return { role: await putRole(deps.profile, input) };
 }
@@ -263,12 +274,19 @@ export function previewSkillExecution(
   return checkSkillExecution(capabilities, skill.name, skill.capability.tools);
 }
 
-function toRow(record: SkillRevisionRecord, enabled: boolean): SkillListRow {
+function toRow(
+  record: SkillRevisionRecord,
+  enabled: boolean,
+  builtins: ReadonlyMap<string, BuiltinStatus>,
+): SkillListRow {
+  const atd = record.sourceKind === 'atd';
   return {
     name: record.name,
     revision: record.revision,
     description: record.description,
     sourceKind: record.sourceKind,
+    system: atd && isBuiltinSkill(record.name),
+    builtin: (atd && builtins.get(record.name)) || null,
     disableModelInvocation: record.disableModelInvocation,
     enabled,
     capability: record.capability,

@@ -1,7 +1,7 @@
 import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { parseFrontmatter } from '@earendil-works/pi-coding-agent';
-import { atdAgentsDir } from '../skills/atd-skills.js';
+import { atdAgentsDir } from '../service-fs.js';
 
 const NAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
 const TOOLS = new Set(['read', 'write', 'edit', 'bash', 'command']);
@@ -32,7 +32,7 @@ type AgentFrontmatter = {
   model?: unknown;
 };
 
-/** Lists markdown specialists from ~/.atd/agents/*.md only. */
+/** Lists markdown specialists from `<atdHome>/agents/*.md` only (service-fs.ts `atdHome`). */
 export async function listAtdAgents(): Promise<{
   agents: AtdAgent[];
   diagnostics: AtdAgentDiagnostic[];
@@ -74,7 +74,7 @@ export async function listAtdAgents(): Promise<{
   return { agents, diagnostics };
 }
 
-/** Writes one agent markdown file under ~/.atd/agents. */
+/** Writes one agent markdown file under `<atdHome>/agents`. */
 export async function putAtdAgent(input: {
   name: string;
   description: string;

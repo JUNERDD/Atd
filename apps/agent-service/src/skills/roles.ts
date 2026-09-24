@@ -1,5 +1,17 @@
 import { randomUUID } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import path from 'node:path';
+import { roleFingerprint } from '../builtins/fingerprint.js';
+import { utcStamp } from '../builtins/install-dir.js';
+import { DEFAULT_ROLE_BUILTIN, type BuiltinStatus } from '../builtins/manifest.js';
+import {
+  SHIPPED_ROLE_FINGERPRINT,
+  defaultRoleStatus,
+  placeDefaultRole,
+  reconcileDefaultRole,
+  shippedDefaultRole,
+} from '../builtins/role.js';
+import { readInstallState, recordInstall, withBuiltinLock } from '../builtins/state.js';
 import { atomicWrite } from '../config.js';
 import type { SkillProfilePaths } from './profile.js';
 
@@ -30,56 +42,118 @@ export interface CapabilitySnapshotRecord {
   frozenAt: string;
 }
 
-interface RolesFile {
+/** `<dataDir>/skills/roles.json`. */
+export interface RolesFile {
   version: 1;
   roles: RoleRecord[];
   defaultRoleId: string;
 }
 
-const BUILTIN_DEFAULT: RoleRecord = {
-  id: 'default',
-  revision: 'rev-builtin-default',
-  title: 'Default service role',
-  allows: { tools: ['read', 'write', 'edit', 'bash', 'command'], skills: [] },
-  updatedAt: new Date(0).toISOString(),
-};
+/** A role as the roles routes answer it; `builtin` is set for the builtin default role only. */
+export type RoleRow = RoleRecord & { builtin: BuiltinStatus | null };
 
-async function readRoles(profile: SkillProfilePaths): Promise<RolesFile> {
+/** Install record of the builtin default role, beside the roles file it describes. */
+function roleStateFile(profile: SkillProfilePaths): string {
+  return path.join(profile.profileDir, 'builtins.json');
+}
+
+async function readRolesFile(profile: SkillProfilePaths): Promise<RolesFile | null> {
   try {
     return JSON.parse(await readFile(profile.rolesFile, 'utf8')) as RolesFile;
   } catch (error) {
-    if (error instanceof Error && 'code' in error && error.code === 'ENOENT')
-      return { version: 1, roles: [BUILTIN_DEFAULT], defaultRoleId: 'default' };
+    if (error instanceof Error && 'code' in error && error.code === 'ENOENT') return null;
     throw new Error('Skill roles could not be read. The original file is preserved.');
   }
 }
 
+/**
+ * Reads the roles with the builtin default role reconciled (builtins/role.ts): installed when
+ * absent, upgraded while untouched, kept once the user changed it. The caller holds the roles
+ * lock. Answers the file and the default role's builtin status.
+ */
+async function reconciledRoles(
+  profile: SkillProfilePaths,
+): Promise<{ file: RolesFile; builtin: BuiltinStatus }> {
+  const stateFile = roleStateFile(profile);
+  let record = (await readInstallState(stateFile))[DEFAULT_ROLE_BUILTIN.id];
+  const step = reconcileDefaultRole(await readRolesFile(profile), record);
+  if (step.write) await atomicWrite(profile.rolesFile, step.file);
+  if (step.record) record = await recordInstall(stateFile, DEFAULT_ROLE_BUILTIN, step.fingerprint);
+  return { file: step.file, builtin: defaultRoleStatus(step.fingerprint, record) };
+}
+
+function readRoles(profile: SkillProfilePaths): Promise<RolesFile> {
+  return withBuiltinLock(profile.rolesFile, async () => (await reconciledRoles(profile)).file);
+}
+
+function toRoleRow(role: RoleRecord, builtin: BuiltinStatus): RoleRow {
+  return { ...role, builtin: role.id === DEFAULT_ROLE_BUILTIN.name ? builtin : null };
+}
+
 /** Lists managed roles; the service user profile owns them, no exec-dir overrides. */
-export async function listRoles(profile: SkillProfilePaths): Promise<RoleRecord[]> {
-  return (await readRoles(profile)).roles;
+export function listRoles(profile: SkillProfilePaths): Promise<RoleRow[]> {
+  return withBuiltinLock(profile.rolesFile, async () => {
+    const { file, builtin } = await reconciledRoles(profile);
+    return file.roles.map((role) => toRoleRow(role, builtin));
+  });
 }
 
 /** Upserts a managed role revision; runs freeze the revision they accepted. */
-export async function putRole(
+export function putRole(
   profile: SkillProfilePaths,
   input: { id: string; title: string; allows: { tools: string[]; skills: string[] } },
-): Promise<RoleRecord> {
-  const file = await readRoles(profile);
-  const record: RoleRecord = {
-    id: input.id,
-    revision: randomUUID(),
-    title: input.title,
-    allows: {
-      tools: input.allows.tools.slice(0, 16),
-      skills: input.allows.skills.slice(0, 128),
-    },
-    updatedAt: new Date().toISOString(),
-  };
-  const at = file.roles.findIndex((role) => role.id === record.id);
-  if (at === -1) file.roles.push(record);
-  else file.roles[at] = record;
-  await atomicWrite(profile.rolesFile, file);
-  return record;
+): Promise<RoleRow> {
+  return withBuiltinLock(profile.rolesFile, async () => {
+    const { file } = await reconciledRoles(profile);
+    const role: RoleRecord = {
+      id: input.id,
+      revision: randomUUID(),
+      title: input.title,
+      allows: {
+        tools: input.allows.tools.slice(0, 16),
+        skills: input.allows.skills.slice(0, 128),
+      },
+      updatedAt: new Date().toISOString(),
+    };
+    const at = file.roles.findIndex((item) => item.id === role.id);
+    if (at === -1) file.roles.push(role);
+    else file.roles[at] = role;
+    await atomicWrite(profile.rolesFile, file);
+    const record = (await readInstallState(roleStateFile(profile)))[DEFAULT_ROLE_BUILTIN.id];
+    return toRoleRow(role, defaultRoleStatus(roleFingerprint(role), record));
+  });
+}
+
+/**
+ * Restores the builtin default role to the shipped version. A stored default role that differs
+ * from it is first written to `<dataDir>/skills/backups/role-default-<UTC stamp>.json`. Answers
+ * that path, or null when there was nothing to keep.
+ */
+export function restoreDefaultRole(
+  profile: SkillProfilePaths,
+): Promise<{ backupPath: string | null; builtin: BuiltinStatus }> {
+  return withBuiltinLock(profile.rolesFile, async () => {
+    const stored = await readRolesFile(profile);
+    const current = stored?.roles.find((role) => role.id === DEFAULT_ROLE_BUILTIN.name);
+    const changed = current !== undefined && roleFingerprint(current) !== SHIPPED_ROLE_FINGERPRINT;
+    let backupPath: string | null = null;
+    if (changed) {
+      backupPath = path.join(profile.profileDir, 'backups', `role-default-${utcStamp()}.json`);
+      await mkdir(path.dirname(backupPath), { recursive: true });
+      await writeFile(backupPath, `${JSON.stringify(current, null, 2)}\n`, {
+        flag: 'wx',
+        mode: 0o600,
+      });
+    }
+    if (!current || changed) {
+      const base = stored ?? { version: 1, roles: [], defaultRoleId: DEFAULT_ROLE_BUILTIN.name };
+      const role = shippedDefaultRole(new Date().toISOString());
+      await atomicWrite(profile.rolesFile, placeDefaultRole(base, role));
+    }
+    const stateFile = roleStateFile(profile);
+    const record = await recordInstall(stateFile, DEFAULT_ROLE_BUILTIN, SHIPPED_ROLE_FINGERPRINT);
+    return { backupPath, builtin: defaultRoleStatus(SHIPPED_ROLE_FINGERPRINT, record) };
+  });
 }
 
 /** Resolves the role for a new run; unknown ids fall back to the default role. */
@@ -91,7 +165,7 @@ export async function resolveRole(
   return (
     file.roles.find((role) => role.id === roleId) ??
     file.roles.find((role) => role.id === file.defaultRoleId) ??
-    BUILTIN_DEFAULT
+    shippedDefaultRole()
   );
 }
 
