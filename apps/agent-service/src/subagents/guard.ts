@@ -4,23 +4,15 @@ import {
   FORBIDDEN_SUBAGENT_PARAMS,
   SERVICE_CHAIN_WORKFLOW,
   SERVICE_PARALLEL_WORKFLOW,
-  SUBAGENT_LIMITS,
 } from './config.js';
-import {
-  activeChildCount,
-  isParentStopping,
-  liveChildren,
-  parentByTask,
-  releaseWorkflow,
-  tryAcquireWorkflow,
-} from './registry.js';
+import { isParentStopping, liveChildren, parentByTask } from './registry.js';
 import { validateChainArgs, validateParallelArgs } from './workflows.js';
 
 /**
  * T5 foreground dispatch guard. Blocks disallowed subagent invocations with
  * explicit reasons before the delegator runs: closed actions/params, missing
  * async:false, non-fresh context, overrides, unknown workflows/agents, ledger
- * resource refs and the 3-child / 1-workflow ceilings. Never throws.
+ * resource refs. Child and workflow concurrency is not capped here. Never throws.
  */
 
 export interface GuardInput {
@@ -65,6 +57,7 @@ export function guardSubagentCall(
     return { block: true, reason: 'Subagent worktrees are closed in round one.' };
   const workflow = input['workflow'];
   if (typeof workflow === 'string') return guardWorkflowCall(deps, input, workflow);
+  if (input['tasks'] !== undefined) return guardParallelCall(deps, input);
   return guardSingleCall(deps, input);
 }
 
@@ -96,14 +89,7 @@ function guardWorkflowCall(
       if (!known.has(id)) return { block: true, reason: `Resource ${id} is not in the ledger.` };
     }
   }
-  const parent = parentByTask(deps.taskId);
-  if (!parent) return { block: true, reason: 'Unknown parent session.' };
-  const active = activeChildCount(parent.sessionId);
-  const incoming = workflow === SERVICE_PARALLEL_WORKFLOW ? tasks.length : 1;
-  if (active + incoming > SUBAGENT_LIMITS.maxForegroundChildren)
-    return { block: true, reason: 'Foreground child limit (3) would be exceeded.' };
-  const acquired = tryAcquireWorkflow(parent.sessionId);
-  if (!acquired.ok) return { block: true, reason: acquired.reason ?? 'Workflow is busy.' };
+  if (!parentByTask(deps.taskId)) return { block: true, reason: 'Unknown parent session.' };
   return undefined;
 }
 
@@ -123,22 +109,55 @@ function validatedChainTasks(
   return validated.args.steps;
 }
 
+/** Keys a native parallel task may carry: the delegation itself, no per-task overrides. */
+const PARALLEL_TASK_KEYS = new Set(['agent', 'task']);
+
+/**
+ * Native parallel fan-out: one call whose `tasks` run at the same time. It is the only way to run
+ * subagents together, since pi-subagents rejects a second call while one is running. Each task
+ * is checked like a single delegation.
+ */
+function guardParallelCall(
+  deps: SessionFactoryDeps,
+  input: Record<string, unknown>,
+): { block?: boolean; reason?: string } | undefined {
+  if (input['agent'] !== undefined || input['task'] !== undefined || input['chain'] !== undefined)
+    return { block: true, reason: 'A parallel subagent call takes tasks only.' };
+  const tasks = input['tasks'];
+  if (!Array.isArray(tasks) || tasks.length === 0)
+    return { block: true, reason: 'Subagent tasks must be a non-empty list of { agent, task }.' };
+  const parent = parentByTask(deps.taskId);
+  if (!parent) return { block: true, reason: 'Unknown parent session.' };
+  for (const item of tasks) {
+    if (typeof item !== 'object' || item === null || Array.isArray(item))
+      return { block: true, reason: 'Each subagent task must be { agent, task }.' };
+    const entry = item as Record<string, unknown>;
+    const extra = Object.keys(entry).find((key) => !PARALLEL_TASK_KEYS.has(key));
+    if (extra) return { block: true, reason: `Subagent task field ${extra} is not allowed.` };
+    const problem = delegationProblem(parent.agents, entry['agent'], entry['task']);
+    if (problem) return { block: true, reason: problem };
+  }
+  return undefined;
+}
+
+/** Why one delegation is refused: the agent must be registered for this session, the task sized. */
+function delegationProblem(agents: string[], agent: unknown, task: unknown): string | null {
+  // The session's registered agents: service agents plus referenced atd agents.
+  if (typeof agent !== 'string' || !agents.includes(agent))
+    return 'Subagent agent must be a service agent or an agent referenced in this message.';
+  if (typeof task !== 'string' || !task.trim() || task.length > 8000)
+    return 'Subagent task must hold 1-8000 characters.';
+  return null;
+}
+
 function guardSingleCall(
   deps: SessionFactoryDeps,
   input: Record<string, unknown>,
 ): { block?: boolean; reason?: string } | undefined {
-  const agent = input['agent'];
-  const task = input['task'];
   const parent = parentByTask(deps.taskId);
   if (!parent) return { block: true, reason: 'Unknown parent session.' };
-  // The session's registered agents: service agents plus referenced atd agents.
-  if (typeof agent !== 'string' || !parent.agents.includes(agent))
-    return {
-      block: true,
-      reason: 'Subagent agent must be a service agent or an agent referenced in this message.',
-    };
-  if (typeof task !== 'string' || !task.trim() || task.length > 8000)
-    return { block: true, reason: 'Subagent task must hold 1-8000 characters.' };
+  const problem = delegationProblem(parent.agents, input['agent'], input['task']);
+  if (problem) return { block: true, reason: problem };
   const resources = input['resources'];
   if (resources !== undefined) {
     if (!Array.isArray(resources))
@@ -149,12 +168,10 @@ function guardSingleCall(
         return { block: true, reason: 'Subagent resource is not in the ledger.' };
     }
   }
-  if (activeChildCount(parent.sessionId) >= SUBAGENT_LIMITS.maxForegroundChildren)
-    return { block: true, reason: 'Foreground child limit (3) is reached.' };
   return undefined;
 }
 
-/** Releases the workflow slot and audits the landed result (never throws). */
+/** Audits the landed result (never throws). */
 export function onSubagentResult(
   deps: SessionFactoryDeps,
   event: { toolName: string; input: Record<string, unknown> },
@@ -163,7 +180,6 @@ export function onSubagentResult(
     if (event.toolName !== 'subagent') return;
     const parent = parentByTask(deps.taskId);
     if (!parent) return;
-    if (typeof event.input?.['workflow'] === 'string') releaseWorkflow(parent.sessionId);
     const children = liveChildren(parent.sessionId);
     deps.audit({ taskId: deps.taskId, subagentResult: true, liveChildren: children.length });
   } catch {

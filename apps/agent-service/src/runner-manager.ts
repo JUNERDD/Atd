@@ -19,9 +19,6 @@ import { checkChipRanges, taskTitle } from './tasks/input-chips.js';
 import { CONTEXT_BUDGET, runInputSize } from './tasks/run-budget.js';
 import { resolveRunModel, resolveRunThinkingLevel } from './tasks/run-selection.js';
 
-/** First-round ceiling: at most two active parent tasks per service. */
-const MAX_ACTIVE_PARENTS = 2;
-
 export interface ManagerDeps {
   ctx: RunnerContext;
   resources: ResourceStore;
@@ -30,8 +27,9 @@ export interface ManagerDeps {
 
 /**
  * Accepts runs idempotently and schedules them on per-task runners. The
- * service owns the ledger; runners own their Pi sessions; queued work beyond
- * the parent ceiling waits instead of starting.
+ * service owns the ledger; runners own their Pi sessions. Tasks run
+ * concurrently without a service-wide ceiling; within one task, runs share a
+ * Pi session and start one at a time.
  */
 export class RunnerManager {
   private readonly runners = new Map<string, TaskRunner>();
@@ -194,21 +192,13 @@ export class RunnerManager {
 
   dispatch(): void {
     if (this.draining) return;
-    // Only started runs hold a parent slot; a queued run must never block
-    // itself (queued counts as active for acceptance, not for dispatch).
-    const activeParents = new Set<string>();
-    for (const task of this.deps.ctx.ledger.data.tasks)
-      if (task.runs.some((run) => run.status !== 'queued' && isActiveStatus(run.status)))
-        activeParents.add(task.id);
+    // A task's runs share one Pi session, so only its oldest queued run starts
+    // and only once no started run is active (queued counts as active for
+    // acceptance, not for dispatch). Other tasks never wait on each other.
     for (const task of this.deps.ctx.ledger.data.tasks) {
-      if (activeParents.size >= MAX_ACTIVE_PARENTS) return;
-      for (const run of task.runs) {
-        if (run.status !== 'queued' || this.executions.has(run.id)) continue;
-        if (activeParents.has(task.id)) continue;
-        activeParents.add(task.id);
-        this.start(task.id, run);
-        break;
-      }
+      if (task.runs.some((run) => run.status !== 'queued' && isActiveStatus(run.status))) continue;
+      const next = task.runs.find((run) => run.status === 'queued');
+      if (next && !this.executions.has(next.id)) this.start(task.id, next);
     }
   }
 

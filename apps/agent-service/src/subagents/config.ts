@@ -8,9 +8,6 @@ import path from 'node:path';
  */
 
 export const SUBAGENT_LIMITS = {
-  maxActiveParents: 2,
-  maxForegroundChildren: 3,
-  maxWorkflowsPerParent: 1,
   namedArgsLimit: 16384,
 } as const;
 
@@ -99,12 +96,25 @@ export const FORBIDDEN_SUBAGENT_PARAMS = [
 export const SUBAGENT_CHILD_SYSTEM_PROMPT =
   'You are a bounded child subagent of the desktop assistant. Complete only the assigned task with the available tools. File paths do not grant access. You cannot delegate further, change roles, or schedule work. Return an explicit result; the parent decides what to use.';
 
+/**
+ * pi-subagents runs one foreground subagent call per session at a time and rejects a second
+ * that overlaps it, so work meant to run together has to go out as one call.
+ */
+export const SUBAGENT_PARALLEL_GUIDELINE =
+  'To run several subagents at the same time, make ONE subagent call with tasks: [{ agent, task }, ...]. Separate subagent calls in the same turn are rejected, not run in parallel.';
+
+/**
+ * A native parallel call's own task and concurrency caps stay out of the way: pi-subagents'
+ * default global child limit and its per-run spawn budget are the bounds that apply.
+ */
+const UNCAPPED = Number.MAX_SAFE_INTEGER;
+
 /** Managed config pinned for every parent; unknown keys are never added. */
 export function managedSubagentConfig(): Record<string, unknown> {
   return {
     asyncByDefault: false,
     forceTopLevelAsync: false,
-    globalConcurrencyLimit: SUBAGENT_LIMITS.maxForegroundChildren,
+    parallel: { maxTasks: UNCAPPED, concurrency: UNCAPPED },
     maxSubagentDepth: 1,
     defaultSubagentContext: 'fresh',
     scheduledRuns: { enabled: false },
@@ -118,7 +128,19 @@ export function subagentConfigPath(agentDir: string): string {
   return path.join(agentDir, SUBAGENT_CONFIG_DIR, SUBAGENT_CONFIG_FILE);
 }
 
-/** Writes the managed config; fails closed when the write does not land. */
+/**
+ * Pi settings pinned in the service agent dir. pi-subagents reads its agent
+ * discovery switches from the `subagents` key here, not from the extension
+ * config. Its packaged builtins (`scout`, `worker`, the external CLI runners…)
+ * are refused by the ceiling anyway, so they stay out of discovery: `list`
+ * then advertises only the agents a parent may actually call. The parent
+ * session keeps in-memory settings, so only pi-subagents and children read it.
+ */
+export function managedAgentSettings(): Record<string, unknown> {
+  return { subagents: { disableBuiltins: true } };
+}
+
+/** Writes the managed config and settings; fails closed when a write does not land. */
 export async function ensureManagedSubagentConfig(agentDir: string): Promise<{
   path: string;
   config: Record<string, unknown>;
@@ -127,6 +149,11 @@ export async function ensureManagedSubagentConfig(agentDir: string): Promise<{
   const config = managedSubagentConfig();
   await mkdir(path.dirname(file), { recursive: true });
   await writeFile(file, `${JSON.stringify(config, null, 2)}\n`, 'utf8');
+  await writeFile(
+    path.join(agentDir, 'settings.json'),
+    `${JSON.stringify(managedAgentSettings(), null, 2)}\n`,
+    'utf8',
+  );
   return { path: file, config };
 }
 
@@ -146,7 +173,6 @@ export async function readManagedSubagentConfig(
 export function auditManagedConfig(config: Record<string, unknown>): {
   asyncByDefault: unknown;
   forceTopLevelAsync: unknown;
-  globalConcurrencyLimit: unknown;
   maxSubagentDepth: unknown;
   scheduledOff: boolean;
   intercomOff: boolean;
@@ -159,7 +185,6 @@ export function auditManagedConfig(config: Record<string, unknown>): {
   return {
     asyncByDefault: config['asyncByDefault'],
     forceTopLevelAsync: config['forceTopLevelAsync'],
-    globalConcurrencyLimit: config['globalConcurrencyLimit'],
     maxSubagentDepth: config['maxSubagentDepth'],
     scheduledOff: scheduled?.enabled === false,
     intercomOff: intercom?.mode === 'off',

@@ -7,13 +7,8 @@ import { Identifier } from './identifiers.js';
  * Frozen task/ledger/auth DTOs are untouched; T6 consumes events/refs.
  */
 
-/** First-round limits: 2 parents, 3 foreground children, 1 workflow. */
+/** Delegation payload limits; child and workflow concurrency is uncapped. */
 export const SUBAGENT_LIMITS = {
-  maxActiveParents: 2,
-  maxForegroundChildren: 3,
-  maxWorkflowsPerParent: 1,
-  /** Upper bound sessions: 2 parents + 6 children (not a model quota). */
-  maxSessions: 8,
   /** Named workflow args cap; large materials travel as resource refs. */
   namedArgsLimit: 16384,
 } as const;
@@ -62,10 +57,10 @@ export const WorkflowTaskSchema = Type.Object(
 );
 export type WorkflowTask = Static<typeof WorkflowTaskSchema>;
 
-/** Parallel fanout args: 1-3 independent tasks, one `runs.all` batch. */
+/** Parallel fanout args: independent tasks in one `runs.all` batch. */
 export const ParallelWorkflowArgsSchema = Type.Object(
   {
-    tasks: Type.Array(WorkflowTaskSchema, { minItems: 1, maxItems: 3 }),
+    tasks: Type.Array(WorkflowTaskSchema, { minItems: 1 }),
   },
   { additionalProperties: false },
 );
