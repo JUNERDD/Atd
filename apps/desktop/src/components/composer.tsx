@@ -7,7 +7,7 @@ import { DEFAULT_SHORTCUTS } from '../../electron/settings-contract';
 import type { AgentTask, RunStatus } from '../../electron/agent/task-schema';
 import { isActive } from '../../electron/agent/task-schema';
 import type { PermissionRequest } from '../../electron/agent/permission-schema';
-import { EMPTY_QUEUE, type QueueState } from '../../electron/agent/transcript-schema';
+import { EMPTY_QUEUE, type Block, type QueueState } from '../../electron/agent/transcript-schema';
 import type { Connection, ModelReference } from '../../electron/providers/schema';
 import type { RunPolicy } from '../../electron/agent/run-policy';
 import { draftFiles, normalizeDraft, type ComposerDraft } from '../features/composer-editor/draft';
@@ -23,6 +23,7 @@ import { ComposerConfiguration } from './composer-configuration';
 import { HitlQueuePopover } from './hitl-queue-popover';
 import { useOverlayFooter } from './use-overlay-footer';
 import { agentApi } from '../features/agent/use-agent';
+import { ProgressPill } from '../features/agent/progress/progress-pill';
 import { showErrorToast } from './toast-store';
 import './composer.css';
 
@@ -46,6 +47,8 @@ export interface ComposerProps {
   task?: AgentTask | null;
   requests?: PermissionRequest[];
   queue?: QueueState;
+  /** The open task's transcript; the progress pill above the input derives from it. */
+  blocks?: readonly Block[];
   /** Panel actions the `/new` and `/history` quick commands run. */
   quickActions: QuickActions;
   /** Snapshot tasks: `@` conversations and recently attached files. */
@@ -53,6 +56,8 @@ export interface ComposerProps {
   /** The panel body below the header, which the quick panel must not leave. */
   overlayBoundary: Element | null;
 }
+
+const NO_BLOCKS: readonly Block[] = [];
 
 function pendingInputOf(requests: PermissionRequest[]) {
   return requests.find((request) => request.kind === 'input');
@@ -80,6 +85,7 @@ export function Composer({
   task = null,
   requests = [],
   queue = EMPTY_QUEUE,
+  blocks = NO_BLOCKS,
   quickActions,
   tasks,
   overlayBoundary,
@@ -214,6 +220,7 @@ export function Composer({
           queueDisabled={locked || sending}
           suppressed={isQuickPanelOpen(trigger, active)}
           onEditQueued={(text) => setText(joinDraft(draft.text, text))}
+          header={taskId !== null && <ProgressPill blocks={blocks} />}
         >
           <QuickPanel
             trigger={trigger}

@@ -1,9 +1,32 @@
 import type { ReactNode } from 'react';
+import type { ToolBlockDetails } from '@ai/agent-contracts';
 import { useTranslation } from 'react-i18next';
+import { cn } from '@ai/ui/lib/utils';
 import type { BlockOf } from '../../../../electron/agent/transcript-schema';
 import { bashCommand, hasToolDetail } from './tool-copy';
 import { DetailBox } from './detail-box';
 import { Root as JsonTree } from './json-tree';
+import { TodoBody } from './todo-body';
+import { WebFetchBody, WebSearchBody } from './web-body';
+
+/** Pi's edit diff marks skipped context with a line holding only padding and `...`. */
+const PI_GAP_LINE = /^\s+\.\.\.$/;
+/**
+ * Pi's display diff embeds the line number after the sign (`+12 text`, ` 12 text`); the sign and
+ * number read as a muted gutter so the changed text stands out. Other lines render verbatim.
+ */
+const PI_NUMBERED_LINE = /^([+\- ] *\d+ ?)(.*)$/;
+
+function DiffText({ line }: { line: string }) {
+  const match = PI_NUMBERED_LINE.exec(line);
+  if (!match) return line || ' ';
+  return (
+    <>
+      <span className="text-muted-foreground">{match[1]}</span>
+      {match[2]}
+    </>
+  );
+}
 
 function DiffLine({ line }: { line: string }) {
   const kind =
@@ -11,21 +34,39 @@ function DiffLine({ line }: { line: string }) {
       ? 'add'
       : line.startsWith('-') && !line.startsWith('---')
         ? 'del'
-        : line.startsWith('@@')
+        : line.startsWith('@@') || PI_GAP_LINE.test(line)
           ? 'hunk'
           : '';
-  return <div className={kind ? `diff-line diff-${kind}` : 'diff-line'}>{line || ' '}</div>;
+  return (
+    <div
+      className={cn(
+        'diff-line',
+        kind === 'add' && 'diff-add',
+        kind === 'del' && 'diff-del',
+        kind === 'hunk' && 'diff-hunk',
+      )}
+    >
+      <DiffText line={line} />
+    </div>
+  );
 }
 
-export function ToolDiff({ diff }: { diff: string }) {
+/** The diff box; a note below it says when the service shortened the diff to its bound. */
+export function ToolDiff({ diff, truncated }: { diff: string; truncated: boolean }) {
+  const { t } = useTranslation('tasks');
   return (
-    <DetailBox variant="diff" copyText={diff}>
-      <div>
-        {diff.split('\n').map((line, index) => (
-          <DiffLine key={`${index}:${line.slice(0, 24)}`} line={line} />
-        ))}
-      </div>
-    </DetailBox>
+    <>
+      <DetailBox variant="diff" copyText={diff}>
+        <div>
+          {diff.split('\n').map((line, index) => (
+            <DiffLine key={`${index}:${line.slice(0, 24)}`} line={line} />
+          ))}
+        </div>
+      </DetailBox>
+      {truncated && (
+        <p className="m-0 text-xs text-muted-foreground">{t('activity.truncatedNote')}</p>
+      )}
+    </>
   );
 }
 
@@ -51,16 +92,40 @@ export function ToolOutput({
   );
 }
 
+/**
+ * Structured result of a settled call (`details.data`, validated at the main boundary). The
+ * model-facing output stays the copy text so the box copies what the agent actually read.
+ */
+function DetailsBody({ block, data }: { block: BlockOf<'tool'>; data: ToolBlockDetails }) {
+  switch (data.type) {
+    case 'todo':
+      return <TodoBody details={data} copyText={block.output} />;
+    case 'webSearch':
+      return <WebSearchBody details={data} copyText={block.output} />;
+    case 'webFetch':
+      return <WebFetchBody details={data} copyText={block.output} />;
+    case 'diff':
+      // The projection moves the edit diff into `details.diff`; a stray variant reads the same.
+      return <ToolDiff diff={data.diff} truncated={data.truncated} />;
+    default: {
+      const _exhaustive: never = data;
+      void _exhaustive;
+      return null;
+    }
+  }
+}
+
 export function ToolBody({ block }: { block: BlockOf<'tool'> }) {
   const { t } = useTranslation('tasks');
   const command = bashCommand(block.args);
   const running = block.status === 'running';
   const text = running ? block.partial : block.output;
   if (!hasToolDetail(block)) return null;
+  if (block.details.data) return <DetailsBody block={block} data={block.details.data} />;
   switch (block.name) {
     case 'edit':
       return block.details.diff ? (
-        <ToolDiff diff={block.details.diff} />
+        <ToolDiff diff={block.details.diff} truncated={block.details.truncated} />
       ) : (
         <ToolOutput text={text} />
       );

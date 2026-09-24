@@ -4,7 +4,6 @@ import { TaskFiles } from '../task-files';
 import type { AdaptedTurn } from './adapter';
 import { ActivityGroup } from './activity-group';
 import { BlockView } from './block-view';
-import { activityStillRunning, lastActivityIndex } from './phases';
 import { PromptMessage } from './prompt-message';
 import { promptRun } from './run-prompt';
 import { TurnHeader } from './turn-header';
@@ -14,6 +13,23 @@ function lastAssistantId(turn: AdaptedTurn): string | null {
   for (let index = turn.items.length - 1; index >= 0; index -= 1) {
     const item = turn.items[index];
     if (item?.type === 'block' && item.block.kind === 'assistant') return item.block.id;
+  }
+  return null;
+}
+
+/**
+ * The activity group whose round of work is still going: the last group of a live turn, until
+ * the answer or any other block follows it. Between steps — a tool finished, the next message
+ * not yet streaming — no block in the group is live, so liveness alone would flash the settled
+ * tally mid-round.
+ */
+function openActivityId(items: AdaptedTurn['items']): string | null {
+  for (let index = items.length - 1; index >= 0; index -= 1) {
+    const item = items[index];
+    if (!item) continue;
+    if (item.type === 'activity') return item.id;
+    // An answer that has not produced text yet has not ended the work.
+    if (item.block.kind !== 'assistant' || item.block.text.trim() !== '') return null;
   }
   return null;
 }
@@ -40,19 +56,7 @@ export function TurnView({
   const { t } = useTranslation('tasks');
   const copyId = live ? null : lastAssistantId(turn);
   const settled = !(live && last);
-  // Where the work ends and the answer begins: the last group of activity in the turn. The agent
-  // starting its answer is the end of the work — fold the groups then, not when the turn finally
-  // settles, so the collapse never lands under text already being read.
-  const foldedAt = lastActivityIndex(turn.items);
-  const answering =
-    foldedAt >= 0 &&
-    turn.items
-      .slice(foldedAt + 1)
-      .some(
-        (item) =>
-          item.type === 'block' && item.block.kind === 'assistant' && item.block.text.trim() !== '',
-      );
-  const done = settled || (answering && !activityStillRunning(turn.view));
+  const openId = settled ? null : openActivityId(turn.items);
   const liveFooter = live && last;
   const sectionClass = `transcript-turn${liveFooter ? ' transcript-turn-live' : ''}`;
   const run = turn.user ? promptRun(runs, turn.user) : undefined;
@@ -89,7 +93,9 @@ export function TurnView({
               artifacts={artifacts}
               anchors={anchors}
               onAttach={onAttach}
-              done={done}
+              // A group still holding a running call or a pending request stays live even
+              // after prose follows it.
+              active={!settled && (item.id === openId || item.live)}
             />
           );
         }

@@ -1,15 +1,27 @@
-import type {
-  AgentTask as ServiceTask,
-  CapabilityRequest as ServiceCapability,
-  PermissionRequest as ServiceRequest,
-  ServiceBlock,
-  TaskRun as ServiceRun,
-  TaskSnapshot as ServiceSnapshot,
+import { Value } from 'typebox/value';
+import {
+  ToolBlockDetailsSchema,
+  type AgentTask as ServiceTask,
+  type CapabilityRequest as ServiceCapability,
+  type PermissionRequest as ServiceRequest,
+  type ServiceBlock,
+  type TaskRun as ServiceRun,
+  type TaskSnapshot as ServiceSnapshot,
+  type ToolBlockDetails,
 } from '@ai/agent-contracts';
+import type { ToolId } from './command-schema';
 import type { AgentTask, FileRef, RunSnapshot, TaskInput, TaskRun } from './task-schema';
 import type { PermissionRequest } from './permission-schema';
-import type { Block, QueueState } from './transcript-schema';
+import type { Block, QueueState, ToolDetails } from './transcript-schema';
 import type { TaskDetail } from './bridge';
+
+const DESKTOP_TOOL_IDS: ReadonlySet<string> = new Set<ToolId>([
+  'read',
+  'write',
+  'edit',
+  'bash',
+  'command',
+]);
 
 /** Maps a service task snapshot to the desktop detail shape (no Pi projection). */
 export function mapSnapshot(snapshot: ServiceSnapshot): TaskDetail {
@@ -82,9 +94,9 @@ function mapRunSnapshot(run: ServiceRun): RunSnapshot {
       baseUrl: run.snapshot.model.baseUrl,
     },
     ...(run.snapshot.thinkingLevel ? { thinkingLevel: run.snapshot.thinkingLevel } : {}),
-    tools: run.snapshot.tools.filter(
-      (tool): tool is 'read' | 'write' | 'edit' | 'bash' | 'command' => tool !== 'ask_user',
-    ),
+    // The desktop run snapshot lists command-policy tools only; grep/find/ls and ask_user are
+    // service-side snapshot tools without a desktop policy entry.
+    tools: run.snapshot.tools.filter((tool): tool is ToolId => DESKTOP_TOOL_IDS.has(tool)),
     memory: run.snapshot.memory,
   };
 }
@@ -113,6 +125,18 @@ export function mapRequest(request: ServiceRequest): PermissionRequest {
     title: request.title,
     options: [...request.options],
   };
+}
+
+/**
+ * Splits service tool details into the desktop shape: the edit diff keeps its dedicated `diff`
+ * field, every other variant rides in `data`. Service events reach main as unchecked JSON, so
+ * details that fail the contract are dropped here and the row falls back to its output text.
+ */
+function mapToolDetails(details: ToolBlockDetails | undefined): ToolDetails {
+  const none: ToolDetails = { diff: '', truncated: false, fullOutputPath: '' };
+  if (details === undefined || !Value.Check(ToolBlockDetailsSchema, details)) return none;
+  if (details.type === 'diff') return { ...none, diff: details.diff, truncated: details.truncated };
+  return { ...none, data: details };
 }
 
 export function mapBlock(block: ServiceBlock): Block {
@@ -153,7 +177,7 @@ export function mapBlock(block: ServiceBlock): Block {
         status: block.status,
         output: block.output,
         partial: block.partial,
-        details: { diff: '', truncated: false, fullOutputPath: '' },
+        details: mapToolDetails(block.details),
         permission: block.permission
           ? { scope: block.permission.scope, outcome: block.permission.outcome }
           : null,

@@ -1,6 +1,8 @@
+import { TODO_TOOL, WEB_FETCH_TOOL, WEB_SEARCH_TOOL } from '@ai/agent-contracts';
 import type { ResolvedModel, TaskRun } from '../../../../electron/agent/task-schema';
 import type { Block, BlockOf, ToolStatus } from '../../../../electron/agent/transcript-schema';
-import { buildActivityPhases, isViewLive, type ActivityPhase } from './phases';
+import { buildActivityPhase, isViewLive, type ActivityPhase } from './phases';
+import { subagentLaunches } from './subagent-call';
 import { buildLiveText, hasCompactionMarker, sumTurnGeneration } from './token-rate';
 import type { TurnWaitingKind } from './turn-header';
 import { deriveTurns, type RequestIndex, type Turn } from './turns';
@@ -15,8 +17,19 @@ import { deriveTurns, type RequestIndex, type Turn } from './turns';
 
 export type ViewRole = 'user' | 'assistant' | 'reasoning' | 'tool' | 'question' | 'system';
 
-/** Preview kind synthesized from the Pi tool name plus its parsed args. */
-export type ViewToolKind = 'read' | 'write' | 'shell' | 'search' | 'agent' | 'other';
+/**
+ * Preview kind synthesized from the Pi tool name plus its parsed args. `web` covers search and
+ * page fetches; `plan` covers the todo list, which tracks the work rather than doing it.
+ */
+export type ViewToolKind =
+  | 'read'
+  | 'write'
+  | 'shell'
+  | 'search'
+  | 'web'
+  | 'plan'
+  | 'agent'
+  | 'other';
 
 export type ViewTool = {
   callId: string;
@@ -26,6 +39,8 @@ export type ViewTool = {
   path: string | null;
   fileName: string | null;
   query: string | null;
+  /** Subagents this call launched; zero for every other tool and for subagent management calls. */
+  subagents: number;
 };
 
 export type ViewBlock = {
@@ -51,7 +66,7 @@ export type AdaptedItem =
       type: 'activity';
       id: string;
       view: ViewBlock[];
-      phases: ActivityPhase[];
+      phase: ActivityPhase;
       live: boolean;
       anchorRunId: string;
       anchorBlockId: string;
@@ -84,6 +99,7 @@ export type AdaptedTurn = {
 function toolKindForName(name: string): ViewToolKind {
   switch (name) {
     case 'read':
+    case 'ls':
       return 'read';
     case 'write':
     case 'edit':
@@ -91,7 +107,16 @@ function toolKindForName(name: string): ViewToolKind {
     case 'bash':
       return 'shell';
     case 'memory_search':
+    case 'grep':
+    case 'find':
       return 'search';
+    case WEB_SEARCH_TOOL:
+    case WEB_FETCH_TOOL:
+      return 'web';
+    case TODO_TOOL:
+      return 'plan';
+    case 'subagent':
+      return 'agent';
     default:
       return 'other';
   }
@@ -146,7 +171,10 @@ function adaptBlock(block: Block, requests: RequestIndex): ViewBlock {
     case 'tool': {
       const path = stringArg(block.args, 'path');
       const command = stringArg(block.args, 'command');
-      const query = stringArg(block.args, 'query') ?? stringArg(block.args, 'target');
+      const query =
+        stringArg(block.args, 'query') ??
+        stringArg(block.args, 'pattern') ??
+        stringArg(block.args, 'target');
       const request = requests.get(block.callId);
       return {
         ...base,
@@ -162,6 +190,7 @@ function adaptBlock(block: Block, requests: RequestIndex): ViewBlock {
           path,
           fileName: path ? leafName(path) : null,
           query,
+          subagents: block.name === 'subagent' ? subagentLaunches(block.args, block.status) : 0,
         },
         approvalPending: requests.has(block.callId),
         requestKind: request?.kind ?? null,
@@ -234,7 +263,7 @@ function adaptTurn(turn: Turn, requests: RequestIndex, runs: TaskRun[]): Adapted
       type: 'activity',
       id: item.id,
       view: activity,
-      phases: buildActivityPhases(activity),
+      phase: buildActivityPhase(activity),
       live: activity.some(isViewLive),
       anchorRunId: anchor?.runId ?? '',
       anchorBlockId: anchor?.id ?? item.id,

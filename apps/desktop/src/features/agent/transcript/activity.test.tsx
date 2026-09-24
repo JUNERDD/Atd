@@ -32,7 +32,7 @@ function AgentSettledTitle({ step }: { step: ViewBlock }) {
 }
 
 describe('activity folding', () => {
-  it('collapses a live group behind the latest step and expands on click', async () => {
+  it('collapses a live group behind its running tally and expands on click', async () => {
     const user = userEvent.setup();
     mount(
       makeDetail({
@@ -53,7 +53,7 @@ describe('activity folding', () => {
     );
     const group = document.querySelector('[data-activity="live"]');
     expect(group).not.toBeNull();
-    const header = screen.getByRole('button', { name: 'Show 2 steps, Reading notes.txt' });
+    const header = screen.getByRole('button', { name: 'Show 2 steps, Thought once · Ran a tool' });
     expect(header).toHaveAttribute('aria-expanded', 'false');
     await user.click(header);
     expect(header).toHaveAttribute('aria-expanded', 'true');
@@ -131,9 +131,14 @@ describe('activity folding', () => {
   });
 
   it('titles a settled agent phase as invoked', () => {
-    // The adapter never synthesizes an agent tool kind from a block name, so this branch
-    // is covered at the title contract with a step shaped like an agent call.
-    const source = toolBlock({ id: 'tool:agent-1', callId: 'agent-1', name: 'task', args: {} });
+    // Covered at the title contract with a step shaped like the adapter's view of a
+    // `subagent` call that launched one child.
+    const source = toolBlock({
+      id: 'tool:agent-1',
+      callId: 'agent-1',
+      name: 'subagent',
+      args: { agent: 'service.worker', task: 'Say hello' },
+    });
     const step: ViewBlock = {
       id: source.id,
       runId: source.runId,
@@ -150,6 +155,7 @@ describe('activity folding', () => {
         path: null,
         fileName: null,
         query: null,
+        subagents: 1,
       },
       approvalPending: false,
       requestKind: null,

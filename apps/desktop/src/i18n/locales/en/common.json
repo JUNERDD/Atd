@@ -24,6 +24,18 @@
     "command": {
       "label": "Manage commands",
       "description": "Create or update saved commands, with your confirmation."
+    },
+    "grep": {
+      "label": "Search file contents",
+      "description": "Search text in the task folder."
+    },
+    "find": {
+      "label": "Find files",
+      "description": "Find files by name in the task folder."
+    },
+    "ls": {
+      "label": "List folders",
+      "description": "List folder contents in the task folder."
     }
   }
 }

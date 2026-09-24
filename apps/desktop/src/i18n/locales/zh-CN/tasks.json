@@ -32,6 +32,7 @@
     "scrollToBottom": "滚动到底部"
   },
   "activity": {
+    "truncatedNote": "仅显示开头部分。",
     "memory": "记忆",
     "yourInput": "你的输入",
     "ranTool": "运行了 1 个工具",
@@ -57,7 +58,19 @@
       "searchMemory": "搜索记忆",
       "saveMemory": "保存记忆",
       "updateMemory": "更新记忆",
-      "removeMemory": "删除记忆"
+      "removeMemory": "删除记忆",
+      "subagentRun": "派发子智能体",
+      "subagentList": "查看可用子智能体",
+      "subagentGuide": "查阅子智能体指南",
+      "subagentStatus": "查看子智能体运行",
+      "subagentManage": "管理子智能体",
+      "subagentWorkflow": "运行工作流",
+      "grep": "搜索文件内容",
+      "find": "查找文件",
+      "ls": "列出文件夹",
+      "todo": "更新待办",
+      "webSearch": "搜索网页",
+      "webFetch": "获取网页"
     },
     "target": {
       "user": "用户",
@@ -82,7 +95,8 @@
       },
       "bash": "运行终端命令",
       "command": "保存或更新命令",
-      "mcp": "使用 MCP 工具"
+      "mcp": "使用 MCP 工具",
+      "web": "访问网络"
     },
     "outcome": {
       "once": "已允许一次",
@@ -173,9 +187,9 @@
       "runManyLive": "正在运行 {{count}} 条命令",
       "runManyDone": "运行了 {{count}} 条命令",
       "agentOneLive": "正在运行子智能体",
-      "agentOneDone": "唤起了 1 个子智能体",
+      "agentOneDone": "派发了 1 个子智能体",
       "agentManyLive": "正在运行 {{count}} 个子智能体",
-      "agentManyDone": "唤起了 {{count}} 个子智能体",
+      "agentManyDone": "派发了 {{count}} 个子智能体",
       "thinkLive": "思考中",
       "thinkDone": "已思考",
       "thinkCountOne": "思考 1 次",
@@ -208,5 +222,26 @@
       "download": "下载",
       "saved": "已保存"
     }
+  },
+  "todo": {
+    "title": "待办",
+    "listLabel": "待办列表",
+    "empty": "暂无待办。",
+    "progress": "已完成 {{completed}}/{{total}}",
+    "blockedBy": "等待 {{ids}} 完成",
+    "status": {
+      "pending": "待处理",
+      "in_progress": "进行中",
+      "completed": "已完成"
+    }
+  },
+  "web": {
+    "resultsOne": "1 条结果",
+    "results": "{{count}} 条结果",
+    "noResults": "没有结果。",
+    "pageLength": "{{length}} 个字符",
+    "fetchFailed": "无法获取此网页。",
+    "openLink": "打开链接",
+    "truncated": "仅显示开头部分。"
   }
 }

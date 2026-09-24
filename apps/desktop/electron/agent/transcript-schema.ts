@@ -1,4 +1,5 @@
 import { Type, type Static } from 'typebox';
+import { ToolBlockDetailsSchema } from '@ai/agent-contracts';
 import { Identifier } from './command-schema';
 import { GrantScopeSchema, PermissionOutcomeSchema } from './permission-schema';
 
@@ -36,14 +37,27 @@ export const ToolStatusSchema = Type.Union([
 ]);
 export type ToolStatus = Static<typeof ToolStatusSchema>;
 
-/** Renderable facts from Pi's `ToolResultMessage.details`, normalized across built-in tools. */
+/**
+ * Renderable facts from Pi's `ToolResultMessage.details`, normalized across tools. The service
+ * projects and bounds them (`ServiceBlock` tool `details`); the main process revalidates them.
+ */
 export const ToolDetailsSchema = Type.Object(
   {
-    /** Unified diff for `edit`; empty otherwise. */
+    /**
+     * Pi's display diff for a completed `edit` (`+<n> text` / `-<n> text` / ` <n> text` lines,
+     * no file or hunk headers); empty otherwise.
+     */
     diff: Type.String({ maxLength: 200000 }),
+    /** The service shortened `diff` to its bound. */
     truncated: Type.Boolean(),
     /** Full output file when Pi truncated shell output; empty otherwise. */
     fullOutputPath: Type.String({ maxLength: 4096 }),
+    /**
+     * Structured result of a completed `todo`, `web_search`, or `fetch_content` call,
+     * discriminated by `type`; each variant carries its own `truncated`. Absent for every other
+     * tool, while running, and on failure. The edit diff is never duplicated here.
+     */
+    data: Type.Optional(ToolBlockDetailsSchema),
   },
   { additionalProperties: false },
 );

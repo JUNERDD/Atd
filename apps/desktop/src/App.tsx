@@ -190,6 +190,7 @@ export function App() {
               taskId={view === 'task' ? taskId : null}
               runId={run?.id}
               task={view === 'task' ? (current.detail?.task ?? null) : null}
+              blocks={view === 'task' ? current.detail?.blocks : undefined}
               requests={view === 'task' ? requests : []}
               queue={view === 'task' ? queue : EMPTY_QUEUE}
               quickActions={{ newTask, openHistory: () => setView('history') }}

@@ -1,4 +1,4 @@
-import { useMemo, useState, type KeyboardEvent, type ReactElement } from 'react';
+import { useMemo, useState, type KeyboardEvent, type ReactElement, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { X } from 'lucide-react';
 import { Popover, PopoverAnchor, PopoverContent } from '@ai/ui/components/popover';
@@ -33,6 +33,7 @@ export function HitlQueuePopover({
   queueDisabled = false,
   suppressed = false,
   onEditQueued,
+  header,
   children,
 }: {
   requests: PermissionRequest[];
@@ -42,6 +43,11 @@ export function HitlQueuePopover({
   /** The quick panel is open over the composer; hide without dismissing. */
   suppressed?: boolean;
   onEditQueued: (text: string) => void;
+  /**
+   * Status shown directly above the surface (the progress pill). It sits inside the anchor, so
+   * the popover and the recall pill stack above it instead of covering it.
+   */
+  header?: ReactNode;
   /** The composer surface; the popover anchors to it without adding a visible trigger. */
   children: ReactElement;
 }) {
@@ -123,6 +129,7 @@ export function HitlQueuePopover({
     >
       <PopoverAnchor asChild>
         <div className="hitl-queue-anchor">
+          {header}
           {children}
           {dismissedWithContent && (
             <span className="hitl-queue-recall" aria-live="polite">

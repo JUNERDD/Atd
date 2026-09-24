@@ -152,3 +152,90 @@ export function installAgent() {
   } as DesktopBridge;
   return { answer, copy, openLink };
 }
+
+/**
+ * One settled row per structured tool body (todo, edit diff, web search/fetch) plus the
+ * read-style grep/find/ls rows, with long values that exercise truncation at narrow widths.
+ * Render them through `makeDetail({ blocks: [userBlock(), ...toolDetailFixtures()] })`.
+ */
+export function toolDetailFixtures(): BlockOf<'tool'>[] {
+  const settled = (id: string, name: string, args: Record<string, unknown>, output = 'ok') =>
+    toolBlock({ id: `tool:${id}`, callId: id, name, args, output });
+  const longSubject =
+    'Update the settings window navigation so the drawer keeps focus while it is open and closes after navigation';
+  return [
+    {
+      ...settled('todo-1', 'todo', { action: 'update', id: 2, status: 'in_progress' }),
+      details: {
+        ...DETAILS,
+        data: {
+          type: 'todo',
+          truncated: false,
+          tasks: [
+            { id: 1, subject: 'Read the plan', status: 'completed', blockedBy: [] },
+            {
+              id: 2,
+              subject: longSubject,
+              status: 'in_progress',
+              activeForm: 'Updating the settings navigation',
+              blockedBy: [],
+            },
+            { id: 3, subject: 'Run the smoke suite', status: 'pending', blockedBy: [1, 2] },
+            { id: 4, subject: 'Dropped idea', status: 'deleted', blockedBy: [] },
+          ],
+        },
+      },
+    },
+    {
+      ...settled('edit-1', 'edit', { path: 'src/features/settings/settings-window.tsx' }),
+      details: {
+        ...DETAILS,
+        diff: '  9 import { Drawer } from "./drawer";\n-10 const open = false;\n+10 const [open, setOpen] = useState(false);\n 11 \n   ...',
+      },
+    },
+    {
+      ...settled('search-1', 'web_search', { query: 'electron vibrancy transparent window' }),
+      details: {
+        ...DETAILS,
+        data: {
+          type: 'webSearch',
+          queries: ['electron vibrancy transparent window'],
+          provider: 'duckduckgo',
+          truncated: false,
+          results: [
+            {
+              title: 'BrowserWindow | Electron',
+              url: 'https://www.electronjs.org/docs/latest/api/browser-window#new-browserwindowoptions-with-a-very-long-anchor',
+              snippet:
+                'Create and control browser windows. vibrancy sets the window vibrancy effect on macOS.',
+            },
+          ],
+        },
+      },
+    },
+    {
+      ...settled('fetch-1', 'fetch_content', {
+        urls: ['https://example.com', 'https://bad.example'],
+      }),
+      details: {
+        ...DETAILS,
+        data: {
+          type: 'webFetch',
+          truncated: true,
+          pages: [
+            {
+              url: 'https://example.com',
+              title: 'Example Domain',
+              excerpt: 'This domain is for use in examples.',
+              length: 1256,
+            },
+            { url: 'https://bad.example', title: '', excerpt: '', length: 0, error: 'HTTP 404' },
+          ],
+        },
+      },
+    },
+    settled('grep-1', 'grep', { pattern: 'useLivePhasePin', path: 'src' }, 'src/a.tsx:12: x'),
+    settled('find-1', 'find', { pattern: '**/*.test.tsx' }, 'src/a.test.tsx'),
+    settled('ls-1', 'ls', { path: 'src/features/agent' }, 'transcript/\nagent.css'),
+  ];
+}

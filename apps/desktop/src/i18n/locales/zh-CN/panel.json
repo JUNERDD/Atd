@@ -51,6 +51,12 @@
       "mcpServer": "MCP 服务：{{name}}",
       "agent": "子代理：{{name}}",
       "skill": "技能：{{name}}"
+    },
+    "progress": {
+      "label": "任务进度",
+      "step": "第 {{current}} / {{total}} 步",
+      "running": "{{count}} 个运行中",
+      "showTodos": "查看待办"
     }
   },
   "configuration": {

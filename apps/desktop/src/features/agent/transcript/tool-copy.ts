@@ -1,15 +1,24 @@
 import {
+  Bot,
   Brain,
   FilePen,
   FilePlus,
+  FileSearch,
   FileText,
+  FolderOpen,
+  Globe,
+  Link,
+  ListTodo,
   SquareTerminal,
   Terminal,
+  TextSearch,
   Wrench,
   type LucideIcon,
 } from 'lucide-react';
-import type { GrantScope, PermissionOutcome } from '../../../../electron/agent/permission-schema';
+import { TODO_TOOL, WEB_FETCH_TOOL, WEB_SEARCH_TOOL, type GrantScope } from '@ai/agent-contracts';
+import type { PermissionOutcome } from '../../../../electron/agent/permission-schema';
 import type { BlockOf, ToolStatus } from '../../../../electron/agent/transcript-schema';
+import { subagentStepKey, subagentTarget, type SubagentStepKey } from './subagent-call';
 
 export type StepKey =
   | 'activity.step.read'
@@ -24,7 +33,14 @@ export type StepKey =
   | 'activity.step.searchMemory'
   | 'activity.step.saveMemory'
   | 'activity.step.updateMemory'
-  | 'activity.step.removeMemory';
+  | 'activity.step.removeMemory'
+  | 'activity.step.grep'
+  | 'activity.step.find'
+  | 'activity.step.ls'
+  | 'activity.step.todo'
+  | 'activity.step.webSearch'
+  | 'activity.step.webFetch'
+  | SubagentStepKey;
 
 export type MemoryTargetKey =
   | 'activity.target.user'
@@ -48,7 +64,8 @@ export type ScopeKey =
   | 'permission.scope.edit.outside'
   | 'permission.scope.bash'
   | 'permission.scope.command'
-  | 'permission.scope.mcp';
+  | 'permission.scope.mcp'
+  | 'permission.scope.web';
 
 const STEP_KEYS: Record<string, StepKey> = {
   read: 'activity.step.read',
@@ -60,6 +77,12 @@ const STEP_KEYS: Record<string, StepKey> = {
   memory_add: 'activity.step.saveMemory',
   memory_replace: 'activity.step.updateMemory',
   memory_remove: 'activity.step.removeMemory',
+  grep: 'activity.step.grep',
+  find: 'activity.step.find',
+  ls: 'activity.step.ls',
+  [TODO_TOOL]: 'activity.step.todo',
+  [WEB_SEARCH_TOOL]: 'activity.step.webSearch',
+  [WEB_FETCH_TOOL]: 'activity.step.webFetch',
 };
 
 const MEMORY_TARGETS: Record<string, MemoryTargetKey> = {
@@ -79,10 +102,24 @@ const ICONS: Record<string, LucideIcon> = {
   memory_add: Brain,
   memory_replace: Brain,
   memory_remove: Brain,
+  subagent: Bot,
+  grep: TextSearch,
+  find: FileSearch,
+  ls: FolderOpen,
+  [TODO_TOOL]: ListTodo,
+  [WEB_SEARCH_TOOL]: Globe,
+  [WEB_FETCH_TOOL]: Link,
 };
 
-export function stepKey(name: string): StepKey | null {
+function stepKey(name: string): StepKey | null {
   return STEP_KEYS[name] ?? null;
+}
+
+/** Row label for a call: tools whose one name covers several operations read by their args. */
+export function toolStepKey(name: string, args: Record<string, unknown>): StepKey | null {
+  if (name === 'command') return commandStepKey(args);
+  if (name === 'subagent') return subagentStepKey(args);
+  return stepKey(name);
 }
 
 /**
@@ -91,7 +128,7 @@ export function stepKey(name: string): StepKey | null {
  * a `commandId` is an update while one without is a create. Unknown shapes fall back to the
  * generic manage label.
  */
-export function commandStepKey(args: Record<string, unknown>): StepKey {
+function commandStepKey(args: Record<string, unknown>): StepKey {
   const operation = args.operation;
   if (operation === 'list') return 'activity.step.commandList';
   if (operation === 'get') return 'activity.step.commandGet';
@@ -135,8 +172,26 @@ export function toolTarget(name: string, args: Record<string, unknown>): string 
     return command.split('\n')[0]?.trim() || null;
   }
   if (name === 'command') return commandTarget(args);
+  if (name === 'subagent') return subagentTarget(args);
   if (name.startsWith('memory_') && typeof args.target === 'string') return args.target;
+  if (name === 'grep' || name === 'find') return stringArg(args.pattern);
+  if (name === 'ls') {
+    const path = stringArg(args.path);
+    return path ? (path.split('/').pop() ?? path) : null;
+  }
+  if (name === TODO_TOOL) return stringArg(args.subject);
+  if (name === WEB_SEARCH_TOOL) return stringArg(args.query) ?? firstString(args.queries);
+  if (name === WEB_FETCH_TOOL) return stringArg(args.url) ?? firstString(args.urls);
   return null;
+}
+
+function stringArg(value: unknown): string | null {
+  return typeof value === 'string' && value ? value : null;
+}
+
+/** First string of a list argument (`queries`, `urls`); the row shows one representative value. */
+function firstString(value: unknown): string | null {
+  return Array.isArray(value) ? stringArg(value[0]) : null;
 }
 
 export function bashCommand(args: Record<string, unknown>): string {
@@ -155,7 +210,7 @@ export function hasToolDetail(block: BlockOf<'tool'>): boolean {
     case 'bash':
       return Boolean(bashCommand(block.args) || text);
     default:
-      return Boolean(text || block.status === 'interrupted');
+      return Boolean(text || block.details.data || block.status === 'interrupted');
   }
 }
 
@@ -191,6 +246,8 @@ export function scopeKey(scope: GrantScope): ScopeKey {
       return 'permission.scope.command';
     case 'mcp':
       return 'permission.scope.mcp';
+    case 'web':
+      return 'permission.scope.web';
     default: {
       const _exhaustive: never = scope;
       void _exhaustive;
