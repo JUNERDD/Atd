@@ -12,6 +12,8 @@ export const SETTINGS_IPC = {
   saveShortcuts: 'settings:save-shortcuts',
   restoreShortcuts: 'settings:restore-shortcuts',
   savePermissionTier: 'settings:save-permission-tier',
+  saveShellAllowlist: 'settings:save-shell-allowlist',
+  addShellAllowlistEntry: 'settings:add-shell-allowlist-entry',
   changed: 'settings:changed',
 } as const;
 
@@ -48,6 +50,13 @@ export interface SettingsSnapshot {
   shortcutAvailable: boolean;
   /** Tier new tasks are created with; existing tasks keep their own tier. */
   permissionTier: PermissionTier;
+  /**
+   * The user's shell allowlist, in the user's order: commands matching an entry run without a
+   * confirm (`isShellAllowlisted` in `@ai/agent-contracts`). Main persists it and pushes the full
+   * list to the service on every connection and change; the operator's
+   * `AI_AGENT_SHELL_ALLOWLIST` applies on the service side and is not listed here.
+   */
+  shellAllowlist: string[];
 }
 
 export interface SettingsBridge {
@@ -64,6 +73,17 @@ export interface SettingsBridge {
   saveShortcuts: (shortcuts: ShortcutBindings) => Promise<SettingsSnapshot>;
   restoreShortcuts: () => Promise<SettingsSnapshot>;
   setPermissionTier: (tier: PermissionTier) => Promise<SettingsSnapshot>;
+  /**
+   * Replaces the shell allowlist (settings window). Main normalizes each entry with
+   * `normalizeShellAllowlistEntry`, rejects invalid entries, duplicates or more than
+   * `SHELL_ALLOWLIST_MAX_ENTRIES`, then persists and pushes the list.
+   */
+  saveShellAllowlist: (entries: string[]) => Promise<SettingsSnapshot>;
+  /**
+   * Appends one entry: the bash confirm's add-to-allowlist choice (panel) or the settings page.
+   * An entry already listed leaves the list unchanged; an invalid entry or a full list rejects.
+   */
+  addShellAllowlistEntry: (entry: string) => Promise<SettingsSnapshot>;
   onChange: (listener: (settings: SettingsSnapshot) => void) => () => void;
   onOpenCommand: (listener: (commandId: string) => void) => () => void;
 }

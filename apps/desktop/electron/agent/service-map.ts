@@ -113,6 +113,7 @@ export function mapRequest(request: ServiceRequest): PermissionRequest {
       scope: request.scope,
       title: request.title,
       detail: request.detail,
+      ...(request.allowlistEntry ? { allowlistEntry: request.allowlistEntry } : {}),
     };
   }
   return {

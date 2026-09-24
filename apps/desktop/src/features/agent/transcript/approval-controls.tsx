@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@ai/ui/components/button';
 import { Kbd, KbdGroup } from '@ai/ui/components/kbd';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@ai/ui/components/tooltip';
 import type { ConfirmationRequest } from '../../../../electron/agent/permission-schema';
 import { agentApi } from '../use-agent';
 import { messageOf } from '../../../lib/errors';
@@ -14,7 +15,7 @@ import { scopeKey } from './tool-copy';
 const DETAIL_PREVIEW_CHARS = 2000;
 
 /** Platform shortcut hint in the shared launcher style (symbols on macOS, words elsewhere). */
-function ShortcutHint({ accelerator }: { accelerator: string }) {
+export function ShortcutHint({ accelerator }: { accelerator: string }) {
   const platform = window.desktop?.platform ?? 'web';
   return (
     <KbdGroup>
@@ -49,27 +50,51 @@ export function ApprovalControls({
     onceRef.current?.focus();
   }, [request.id]);
 
-  async function respond(decision: 'once' | 'session' | 'declined') {
+  // Shell commands off the allowlist get allow once / add to allowlist / deny. A session grant is
+  // never offered for them: the service does not cache one for bash.
+  const bash = request.scope.tool === 'bash';
+  const allowlistEntry = bash ? request.allowlistEntry : undefined;
+
+  async function settle(action: () => Promise<void>) {
     if (pending) return;
     setPending(true);
     setError('');
     try {
-      await agentApi().answer(request.taskId, request.runId, request.id, { decision });
+      await action();
     } catch (cause) {
       setError(messageOf(cause));
     } finally {
       setPending(false);
     }
   }
+  const answer = (decision: 'once' | 'session' | 'declined') =>
+    agentApi().answer(request.taskId, request.runId, request.id, { decision });
+  const respond = (decision: 'once' | 'session' | 'declined') => settle(() => answer(decision));
+
+  /**
+   * Persists the suggested entry first (main saves it and pushes it to the service), then allows
+   * this call. A failed save leaves the confirm pending so the user can still decide.
+   */
+  function addToAllowlist(entry: string) {
+    return settle(async () => {
+      const added = await window.desktop?.settings.addShellAllowlistEntry(entry).then(
+        () => true,
+        () => false,
+      );
+      if (!added) throw new Error(t('permission.bash.addFailed'));
+      await answer('once');
+    });
+  }
 
   function onControlsKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
     if (pending) return;
     if (event.key === 'Enter' && event.shiftKey) {
-      // Session grant from any focused decision: preventing default stops the focused button's
-      // own Enter activation so only the session grant fires.
+      // The second decision (session grant, or add to allowlist for bash) from any focused
+      // decision: preventing default stops the focused button's own Enter activation.
+      if (bash && !allowlistEntry) return;
       event.preventDefault();
       event.stopPropagation();
-      void respond('session');
+      void (allowlistEntry ? addToAllowlist(allowlistEntry) : respond('session'));
       return;
     }
     if (event.key === 'Escape') {
@@ -89,6 +114,9 @@ export function ApprovalControls({
           {tPanel('confirms.subtask', { execution: request.executionId })}
         </p>
       )}
+      {bash && (
+        <p className="text-xs text-muted-foreground">{t('permission.bash.notAllowlisted')}</p>
+      )}
       {detail ? (
         <DetailBox variant="output" copyText={detail} className="approval-detail">
           <pre className="m-0 whitespace-pre-wrap wrap-anywhere">{preview}</pre>
@@ -101,25 +129,47 @@ export function ApprovalControls({
           onClick={() => void respond('once')}
           onKeyDown={onControlsKeyDown}
         >
-          {t('permission.allowOnce')}
+          {bash ? t('permission.bash.allowOnce') : t('permission.allowOnce')}
           <ShortcutHint accelerator="Enter" />
         </Button>
-        <Button
-          variant="outline"
-          disabled={pending}
-          onClick={() => void respond('session')}
-          onKeyDown={onControlsKeyDown}
-        >
-          {t('permission.allowSession')}
-          <ShortcutHint accelerator="Shift+Enter" />
-        </Button>
+        {allowlistEntry ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                className="max-w-full"
+                disabled={pending}
+                onClick={() => void addToAllowlist(allowlistEntry)}
+                onKeyDown={onControlsKeyDown}
+              >
+                <span className="min-w-0 truncate">
+                  {t('permission.bash.addToAllowlistEntry', { entry: allowlistEntry })}
+                </span>
+                <ShortcutHint accelerator="Shift+Enter" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top">
+              {t('permission.bash.allowlistHint', { entry: allowlistEntry })}
+            </TooltipContent>
+          </Tooltip>
+        ) : bash ? null : (
+          <Button
+            variant="outline"
+            disabled={pending}
+            onClick={() => void respond('session')}
+            onKeyDown={onControlsKeyDown}
+          >
+            {t('permission.allowSession')}
+            <ShortcutHint accelerator="Shift+Enter" />
+          </Button>
+        )}
         <Button
           variant="outline"
           disabled={pending}
           onClick={() => void respond('declined')}
           onKeyDown={onControlsKeyDown}
         >
-          {t('permission.decline')}
+          {bash ? t('permission.bash.deny') : t('permission.decline')}
           <ShortcutHint accelerator="Escape" />
         </Button>
       </div>

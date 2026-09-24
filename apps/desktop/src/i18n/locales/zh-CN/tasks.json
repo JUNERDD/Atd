@@ -109,7 +109,17 @@
     "allowSession": "允许本次会话",
     "decline": "拒绝",
     "waitingApproval": "等待你的批准",
-    "waitingAnswer": "等待你的回答"
+    "waitingAnswer": "等待你的回答",
+    "bash": {
+      "notAllowlisted": "此命令不在你的命令允许列表中。",
+      "allowOnce": "允许一次",
+      "addToAllowlist": "加入允许列表",
+      "addToAllowlistEntry": "始终允许“{{entry}}”",
+      "allowlistHint": "加入“{{entry}}”后，匹配的命令将直接运行，不再询问。",
+      "deny": "拒绝",
+      "deniedNote": "已拒绝，并已告知智能体此命令不被允许。",
+      "addFailed": "无法更新允许列表，命令未运行。"
+    }
   },
   "question": {
     "skip": "跳过",

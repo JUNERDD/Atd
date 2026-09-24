@@ -38,6 +38,7 @@ export class ServiceConnection {
   private detail = 'Starting the agent service…';
   private connectBusy = false;
   private service: StatusResponse | null = null;
+  private readonly connectedListeners = new Set<() => void>();
 
   constructor(
     private events: ConnectionEvents,
@@ -66,6 +67,18 @@ export class ServiceConnection {
     };
   }
 
+  /**
+   * Runs `listener` on every transition to connected: the first connect, a reconnect, and a
+   * resumed stream after a drop. A restarted service loses in-memory state, so owners of state
+   * the service holds only in memory (the user shell allowlist) push it again here.
+   */
+  onConnected(listener: () => void): () => void {
+    this.connectedListeners.add(listener);
+    return () => {
+      this.connectedListeners.delete(listener);
+    };
+  }
+
   http(): AgentHttpClient | null {
     return this.httpClient;
   }
@@ -79,9 +92,11 @@ export class ServiceConnection {
   }
 
   private setState(state: ConnectionState, detail = '') {
+    const connected = state === 'connected' && this.state !== 'connected';
     this.state = state;
     this.detail = detail;
     this.publish();
+    if (connected) for (const listener of this.connectedListeners) listener();
   }
 
   /** Records a startup failure after a spawn attempt. The renderer can show it. */

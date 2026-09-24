@@ -109,7 +109,17 @@
     "allowSession": "Allow for this session",
     "decline": "Decline",
     "waitingApproval": "Waiting for your approval",
-    "waitingAnswer": "Waiting for your answer"
+    "waitingAnswer": "Waiting for your answer",
+    "bash": {
+      "notAllowlisted": "This command is not on your shell allowlist.",
+      "allowOnce": "Allow once",
+      "addToAllowlist": "Add to allowlist",
+      "addToAllowlistEntry": "Always allow “{{entry}}”",
+      "allowlistHint": "Adding “{{entry}}” lets matching commands run without asking.",
+      "deny": "Deny",
+      "deniedNote": "Denied. The agent was told this command is not allowed.",
+      "addFailed": "The allowlist could not be updated. The command did not run."
+    }
   },
   "question": {
     "skip": "Skip",

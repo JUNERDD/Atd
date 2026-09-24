@@ -1,4 +1,5 @@
 import { Type, type Static } from 'typebox';
+import { ShellAllowlistEntrySchema } from '@ai/agent-contracts';
 import { Identifier } from './command-schema';
 
 /**
@@ -126,6 +127,8 @@ export const PermissionRequestSchema = Type.Union([
       title: Type.String({ maxLength: 500 }),
       /** The command, path, content or definition diff the user is approving. */
       detail: Type.String({ maxLength: 200000 }),
+      /** Bash only: the entry the add-to-allowlist choice adds; absent when none is offered. */
+      allowlistEntry: Type.Optional(ShellAllowlistEntrySchema),
     },
     { additionalProperties: false },
   ),

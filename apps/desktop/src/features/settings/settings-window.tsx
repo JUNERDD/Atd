@@ -21,6 +21,7 @@ import { useAppLanguage } from '../../i18n/use-app-language';
 import '../agent/agent.css';
 import { LanguageSelector } from './language-selector';
 import { PermissionSettings } from './permission-settings';
+import { ShellAllowlistSettings } from './shell-allowlist-settings';
 import { ProviderSettingsForm } from './provider-settings';
 import { ShortcutSettings } from './shortcut-settings';
 import { ServiceSettings } from '../service/service-settings';
@@ -201,6 +202,7 @@ export function SettingsWindow() {
               <div className="settings-content-scroll">
                 <div className="settings-page" hidden={tab !== 'permissions'}>
                   <PermissionSettings snapshot={snapshot} />
+                  <ShellAllowlistSettings snapshot={snapshot} />
                 </div>
                 {visited.includes('extensions') && (
                   <div className="settings-page" hidden={tab !== 'extensions'}>

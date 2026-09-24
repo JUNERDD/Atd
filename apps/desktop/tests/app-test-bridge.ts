@@ -38,6 +38,7 @@ export function installBridge(extras?: {
     pinned: true,
     shortcutAvailable: true,
     permissionTier: 'manual',
+    shellAllowlist: [],
   };
   const settingsListeners = new Set<(value: SettingsSnapshot) => void>();
   const listeners = new Set<(event: AgentEvent) => void>();
@@ -206,6 +207,17 @@ export function installBridge(extras?: {
       restoreShortcuts: vi.fn(async () => settings),
       setPermissionTier: vi.fn(async (tier) => {
         settings = { ...settings, permissionTier: tier };
+        settingsListeners.forEach((listener) => listener(settings));
+        return settings;
+      }),
+      saveShellAllowlist: vi.fn(async (entries: string[]) => {
+        settings = { ...settings, shellAllowlist: [...entries] };
+        settingsListeners.forEach((listener) => listener(settings));
+        return settings;
+      }),
+      addShellAllowlistEntry: vi.fn(async (entry: string) => {
+        if (!settings.shellAllowlist.includes(entry))
+          settings = { ...settings, shellAllowlist: [...settings.shellAllowlist, entry] };
         settingsListeners.forEach((listener) => listener(settings));
         return settings;
       }),

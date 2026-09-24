@@ -31,6 +31,10 @@ const desktop: DesktopBridge = {
       ipcRenderer.invoke(SETTINGS_IPC.restoreShortcuts) as Promise<SettingsSnapshot>,
     setPermissionTier: (tier) =>
       ipcRenderer.invoke(SETTINGS_IPC.savePermissionTier, tier) as Promise<SettingsSnapshot>,
+    saveShellAllowlist: (entries) =>
+      ipcRenderer.invoke(SETTINGS_IPC.saveShellAllowlist, entries) as Promise<SettingsSnapshot>,
+    addShellAllowlistEntry: (entry) =>
+      ipcRenderer.invoke(SETTINGS_IPC.addShellAllowlistEntry, entry) as Promise<SettingsSnapshot>,
     onChange: (listener) => {
       const callback = (_event: IpcRendererEvent, settings: SettingsSnapshot) => listener(settings);
       ipcRenderer.on(SETTINGS_IPC.changed, callback);

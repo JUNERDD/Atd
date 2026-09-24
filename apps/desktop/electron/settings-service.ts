@@ -11,6 +11,12 @@ import { PermissionTierSchema } from './agent/permission-schema';
 import { parse } from './agent/validation';
 import { ProviderService } from './providers/service';
 import { publicConnection } from './providers/configuration';
+import {
+  parseShellAllowlist,
+  parseShellAllowlistEntry,
+  ShellAllowlistSync,
+  withShellAllowlistEntry,
+} from './settings-shell';
 import { PanelShortcut, parseShortcutBindings, shortcutLabel } from './settings-shortcuts';
 import { SettingsStore } from './settings-store';
 import { SettingsWindow } from './settings-window';
@@ -28,6 +34,8 @@ export class SettingsService {
   private readonly window = new SettingsWindow();
   private readonly shortcut: PanelShortcut;
   readonly providers: ProviderService;
+  /** Pushes the user shell allowlist to the agent service; main attaches the connection. */
+  readonly shellAllowlist: ShellAllowlistSync;
   private mutation: Promise<void> = Promise.resolve();
 
   private constructor(
@@ -41,6 +49,7 @@ export class SettingsService {
       () => this.broadcast(),
       (channel, value) => this.send(channel, value),
     );
+    this.shellAllowlist = new ShellAllowlistSync(() => this.store.current.shellAllowlist);
   }
 
   static async create(host: SettingsHost): Promise<SettingsService> {
@@ -72,8 +81,15 @@ export class SettingsService {
   }
 
   snapshot(): SettingsSnapshot {
-    const { connections, defaultConnectionId, language, shortcuts, pinned, permissionTier } =
-      this.store.current;
+    const {
+      connections,
+      defaultConnectionId,
+      language,
+      shortcuts,
+      pinned,
+      permissionTier,
+      shellAllowlist,
+    } = this.store.current;
     const live = this.providers.overlay();
     return {
       connections: live?.connections ?? connections.map(publicConnection),
@@ -83,6 +99,7 @@ export class SettingsService {
       pinned,
       shortcutAvailable: this.shortcut.available,
       permissionTier,
+      shellAllowlist: [...shellAllowlist],
     };
   }
 
@@ -183,6 +200,23 @@ export class SettingsService {
     });
   }
 
+  /**
+   * Runs one shell allowlist update in the settings queue, then broadcasts and pushes the list to
+   * the service. `update` returning the current array means nothing changed: no write, no push.
+   */
+  private updateShellAllowlist(update: (current: string[]) => string[]): Promise<SettingsSnapshot> {
+    return this.serialize(async () => {
+      const current = this.store.current.shellAllowlist;
+      const next = update(current);
+      if (next === current) return this.snapshot();
+      await this.store.change((data) => {
+        data.shellAllowlist = next;
+      });
+      this.shellAllowlist.push();
+      return this.broadcast();
+    });
+  }
+
   private saveShortcuts(value: unknown): Promise<SettingsSnapshot> {
     return this.serialize(async () => {
       const shortcuts = parseShortcutBindings(value);
@@ -226,6 +260,17 @@ export class SettingsService {
     ipcMain.handle(SETTINGS_IPC.saveShortcuts, (event, value: unknown) => {
       this.assertSender(event, true);
       return this.saveShortcuts(value);
+    });
+    ipcMain.handle(SETTINGS_IPC.saveShellAllowlist, (event, value: unknown) => {
+      this.assertSender(event, true);
+      const entries = parseShellAllowlist(value);
+      return this.updateShellAllowlist(() => entries);
+    });
+    ipcMain.handle(SETTINGS_IPC.addShellAllowlistEntry, (event, value: unknown) => {
+      // The panel's bash confirm adds the suggested entry; the settings page adds typed ones.
+      this.assertSender(event);
+      const entry = parseShellAllowlistEntry(value);
+      return this.updateShellAllowlist((current) => withShellAllowlistEntry(current, entry));
     });
     ipcMain.handle(SETTINGS_IPC.restoreShortcuts, (event) => {
       this.assertSender(event, true);

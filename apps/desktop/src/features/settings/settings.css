@@ -455,3 +455,42 @@
     padding: 0 16px 16px;
   }
 }
+/* Shell allowlist: a subsection of the Permissions page below the tier choice. */
+.settings-shell-allowlist {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 32px;
+}
+.settings-shell-allowlist-heading {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+.settings-shell-allowlist-heading h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 24px;
+}
+.settings-shell-allowlist-form {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 8px;
+}
+/* The Add action keeps its size; the field takes the rest and never pushes it out of the row. */
+.settings-shell-allowlist-control {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+}
+.settings-shell-allowlist-control > input {
+  flex: 1;
+}
+.settings-shell-allowlist [data-slot='item-group'] {
+  gap: 6px;
+}
