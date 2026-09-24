@@ -121,6 +121,16 @@ export const SkillSnapshotSchema = Type.Object(
     requested: Type.Array(SkillRefSchema, { maxItems: MAX_RUN_SKILLS }),
     skills: Type.Array(SkillRevisionSchema, { maxItems: MAX_RUN_SKILLS }),
     diagnostics: Type.Array(SkillDiagnosticSchema, { maxItems: 64 }),
+    /**
+     * Skills in `skills` loaded only because a requested skill declares them in
+     * `companion-skills`, each with the skill that declared it. Absent in snapshots frozen before
+     * companions existed.
+     */
+    companions: Type.Optional(
+      Type.Array(Type.Object({ name: SkillName, of: SkillName }, { additionalProperties: false }), {
+        maxItems: MAX_RUN_SKILLS,
+      }),
+    ),
   },
   { additionalProperties: false },
 );

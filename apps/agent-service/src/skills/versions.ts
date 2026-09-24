@@ -9,6 +9,7 @@ import {
   diagnoseStaleRevision,
   type SkillDiagnostic,
 } from './diagnostics.js';
+import { companionRefs, diagnoseCompanionLimit, type CompanionRef } from './companions.js';
 import { readDisabledSkillNames } from './harness.js';
 import type { SkillProfilePaths } from './profile.js';
 import { discoverAtdSkills, mergeSkillCatalog } from './atd-skills.js';
@@ -40,6 +41,11 @@ export interface SkillSnapshotRecord {
   frozenAt: string;
   requested: SkillRefInput[];
   skills: SkillRevisionRecord[];
+  /**
+   * The `skills` entries loaded only as a requested skill's companion, each with the skill that
+   * declares it. Absent in snapshots frozen before companion skills existed.
+   */
+  companions?: CompanionRef[];
   diagnostics: SkillDiagnostic[];
 }
 
@@ -154,7 +160,10 @@ export function runSkillRefs(refs: readonly SkillRefInput[]): SkillRefInput[] {
 /**
  * Freezes the skill snapshot for a run. Idempotent per runId: repeats return
  * the original snapshot and never re-resolve, so updates apply next run and
- * active sessions are never reloaded.
+ * active sessions are never reloaded. The requested skills' companions
+ * (`companion-skills`, skills/companions.ts) follow them in `skills`, so the
+ * role snapshot, the capture and the hidden skill message treat them like the
+ * requested ones; `requested` stays what the run asked for.
  */
 export async function freezeRunSkills(
   profile: SkillProfilePaths,
@@ -177,16 +186,47 @@ export async function freezeRunSkills(
     else if (record) skills.push(record);
     if (diagnostic) diagnostics.push(diagnostic);
   }
+  const companions = await appendCompanions({ all, disabled, skills, diagnostics });
   const snapshot: SkillSnapshotRecord = {
     revision: randomUUID(),
     frozenAt: new Date().toISOString(),
     requested,
     skills,
+    companions,
     diagnostics,
   };
   runs.runs[runId] = { snapshot, released: false, releasedAt: null };
   await atomicWrite(profile.runsFile, runs);
   return snapshot;
+}
+
+/**
+ * Appends the companions of the resolved skills at their latest revision and answers the ones
+ * appended. A companion that is missing, harness-disabled or over `MAX_RUN_SKILLS` stays out with
+ * a diagnostic; it never fails the run (only skill chips do, skills/run-skills.ts).
+ */
+async function appendCompanions(run: {
+  all: SkillRevisionRecord[];
+  disabled: ReadonlySet<string>;
+  skills: SkillRevisionRecord[];
+  diagnostics: SkillDiagnostic[];
+}): Promise<CompanionRef[]> {
+  const companions = await companionRefs(run.skills);
+  run.diagnostics.push(...companions.diagnostics);
+  const appended: CompanionRef[] = [];
+  for (const ref of companions.refs) {
+    const { record, diagnostic } = resolveRef(run.all, { name: ref.name });
+    if (diagnostic) run.diagnostics.push(diagnostic);
+    if (!record) continue;
+    if (run.disabled.has(record.name)) run.diagnostics.push(diagnoseHarnessDisabled(record.name));
+    else if (run.skills.length >= MAX_RUN_SKILLS)
+      run.diagnostics.push(diagnoseCompanionLimit(ref, MAX_RUN_SKILLS));
+    else {
+      run.skills.push(record);
+      appended.push(ref);
+    }
+  }
+  return appended;
 }
 
 /** Loads the frozen snapshot; unknown runs get an empty (T1/T2) snapshot. */
@@ -201,6 +241,7 @@ export async function loadRunSnapshot(
       frozenAt: new Date(0).toISOString(),
       requested: [],
       skills: [],
+      companions: [],
       diagnostics: [],
     }
   );

@@ -6,11 +6,13 @@ import { Value } from 'typebox/value';
 /** Custom type of the hidden message that carries skills to the model; transcripts never show it. */
 export const APP_SKILL = 'app-skill';
 
-const LOAD_PREAMBLE =
-  'The /skill:<name> markers in the user message refer to the skills below. Their SKILL.md bodies are already loaded here, so do not read SKILL.md again. Apply each skill to the request where its marker appears; a skill without a marker applies to the whole message.';
+/** How a companion skill is used; both preambles carry it, since a companion's block keeps its mark. */
+const COMPANION_RULE =
+  'A skill marked companion-of="<name>" is loaded for that skill: use it only where that skill\'s instructions call for it; it does not apply to the message on its own.';
 
-const REATTACH_PREAMBLE =
-  'Earlier parts of this conversation were compacted into a summary. The skills below were loaded in them and are re-attached here with their SKILL.md bodies, so do not read SKILL.md again. Keep applying each skill as the earlier requests asked.';
+const LOAD_PREAMBLE = `The /skill:<name> markers in the user message refer to the skills below. Their SKILL.md bodies are already loaded here, so do not read SKILL.md again. Apply each skill to the request where its marker appears; a skill without a marker applies to the whole message. ${COMPANION_RULE}`;
+
+const REATTACH_PREAMBLE = `Earlier parts of this conversation were compacted into a summary. The skills below were loaded in them and are re-attached here with their SKILL.md bodies, so do not read SKILL.md again. Keep applying each skill as the earlier requests asked. ${COMPANION_RULE}`;
 
 /** One skill as a message carries it. */
 export interface SkillBlock {
@@ -38,14 +40,20 @@ export interface SkillMessage {
   details: Static<typeof SkillMessageDetailsSchema>;
 }
 
-/** Renders a skill the way Pi's own `/skill:` expansion does, so models see the familiar element. */
+/**
+ * Renders a skill the way Pi's own `/skill:` expansion does, so models see the familiar element.
+ * A companion also names the skill that declares it (`companion-of`), which the preambles explain.
+ */
 export function skillBlock(
-  skill: { name: string; location: string; baseDir: string },
+  skill: { name: string; location: string; baseDir: string; companionOf: string | null },
   body: string,
 ): string {
   const name = escapeAttribute(skill.name);
   const location = escapeAttribute(skill.location);
-  return `<skill name="${name}" location="${location}">\nReferences are relative to ${skill.baseDir}.\n\n${body}\n</skill>`;
+  const companion = skill.companionOf
+    ? ` companion-of="${escapeAttribute(skill.companionOf)}"`
+    : '';
+  return `<skill name="${name}" location="${location}"${companion}>\nReferences are relative to ${skill.baseDir}.\n\n${body}\n</skill>`;
 }
 
 /** The message that brings a run's skills in with its prompt. */

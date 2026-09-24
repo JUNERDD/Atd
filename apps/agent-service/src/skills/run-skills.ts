@@ -25,17 +25,23 @@ export interface RunSkills {
  * Captures the skills a run may use: the frozen skills its capability snapshot keeps (requested ∩
  * role allows ∩ not revoked, skills/roles.ts). Each body is read once, here, and hashed as the run's
  * revision of that skill. The run injects exactly this content, so a skill file edited after the
- * freeze, or a revision pruned once the run is released, never changes what the run saw.
+ * freeze, or a revision pruned once the run is released, never changes what the run saw. A
+ * companion (skills/companions.ts) is marked with the skill that declares it, and stays out when
+ * that skill does not load: it serves no request on its own.
  */
 export async function captureRunSkills(
   snapshot: SkillSnapshotRecord,
   capabilities: CapabilitySnapshotRecord,
 ): Promise<RunSkills> {
   const allowed = new Set(capabilities.skills);
+  const companionOf = new Map((snapshot.companions ?? []).map((ref) => [ref.name, ref.of]));
   const loaded: LoadedSkill[] = [];
   const diagnostics: SkillDiagnostic[] = [];
   for (const record of snapshot.skills) {
-    if (!allowed.has(record.name)) {
+    const declaredBy = companionOf.get(record.name) ?? null;
+    const declarerMissing =
+      declaredBy !== null && !loaded.some((skill) => skill.name === declaredBy);
+    if (!allowed.has(record.name) || declarerMissing) {
       diagnostics.push(diagnoseNotRunAvailable(record.name, capabilities.runId));
       continue;
     }
@@ -57,7 +63,12 @@ export async function captureRunSkills(
       revision: createHash('sha256').update(body).digest('hex').slice(0, 32),
       baseDir: record.baseDir,
       block: skillBlock(
-        { name: record.name, location: record.entry, baseDir: record.baseDir },
+        {
+          name: record.name,
+          location: record.entry,
+          baseDir: record.baseDir,
+          companionOf: declaredBy,
+        },
         body,
       ),
     });
