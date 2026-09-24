@@ -19,6 +19,7 @@ import { parse } from './agent/validation';
 import { StoredConnectionSchema } from './providers/schema';
 import { migrateProvider } from './providers/legacy';
 import { initialDefaultConnectionId } from './providers/defaults';
+import { parseStoredShellAllowlist } from './settings-shell';
 import { parseShortcutBindings } from './settings-shortcuts';
 import { PANEL_SIZE, type PanelSize } from './window-position';
 
@@ -37,6 +38,8 @@ export interface StoredSettings extends Static<typeof ProviderSettingsSchema> {
   pinned: boolean;
   panelSize: PanelSize;
   permissionTier: PermissionTier;
+  /** User shell allowlist in the user's order; see `SettingsSnapshot.shellAllowlist`. */
+  shellAllowlist: string[];
 }
 
 function isPermissionTier(value: unknown): value is PermissionTier {
@@ -60,6 +63,7 @@ function parseSettings(value: unknown): StoredSettings {
           'pinned',
           'panelSize',
           'permissionTier',
+          'shellAllowlist',
         ].includes(key),
     ) ||
     !('version' in value) ||
@@ -101,6 +105,9 @@ function parseSettings(value: unknown): StoredSettings {
     pinned: value.pinned,
     panelSize,
     permissionTier,
+    shellAllowlist: parseStoredShellAllowlist(
+      'shellAllowlist' in value ? value.shellAllowlist : null,
+    ),
   };
 }
 
@@ -138,6 +145,7 @@ export class SettingsStore {
           pinned: true,
           panelSize: { ...PANEL_SIZE },
           permissionTier: DEFAULT_PERMISSION_TIER,
+          shellAllowlist: [],
         });
       }
       throw new Error(

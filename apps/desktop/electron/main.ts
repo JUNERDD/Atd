@@ -274,6 +274,7 @@ if (!app.requestSingleInstanceLock()) {
         },
       );
       settings.providers.attach(serviceManager.connection);
+      settings.shellAllowlist.attach(serviceManager.connection);
       agent = await AgentService.create(
         settings,
         (prepared, autoRun) => {

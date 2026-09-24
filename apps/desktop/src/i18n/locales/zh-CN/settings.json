@@ -75,6 +75,25 @@
     },
     "errors": {
       "save": "无法保存权限设置。"
+    },
+    "shellAllowlist": {
+      "title": "命令允许列表",
+      "description": "以列表条目开头的命令将直接运行，不再询问。包含串联、重定向或替换的命令始终需要确认。",
+      "listLabel": "已允许的命令",
+      "inputLabel": "命令前缀",
+      "placeholder": "例如 npm test",
+      "add": "添加",
+      "remove": "移除",
+      "removeLabel": "移除 {{entry}}",
+      "empty": "尚未允许任何命令，每条命令都会先询问。",
+      "errors": {
+        "empty": "请输入命令。",
+        "tooLong": "条目不能超过 200 个字符。",
+        "invalid": "只能包含程序名和普通参数，不能使用引号或 shell 符号。",
+        "duplicate": "此条目已在列表中。",
+        "limit": "允许列表最多 100 条。",
+        "save": "无法保存允许列表。"
+      }
     }
   },
   "shortcuts": {

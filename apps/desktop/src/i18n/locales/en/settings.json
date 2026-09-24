@@ -75,6 +75,25 @@
     },
     "errors": {
       "save": "The permission setting could not be saved."
+    },
+    "shellAllowlist": {
+      "title": "Shell allowlist",
+      "description": "Commands that start with an entry run without asking. Commands that chain, redirect or substitute always ask.",
+      "listLabel": "Allowlisted commands",
+      "inputLabel": "Command prefix",
+      "placeholder": "e.g. npm test",
+      "add": "Add",
+      "remove": "Remove",
+      "removeLabel": "Remove {{entry}}",
+      "empty": "No commands are allowlisted. Every command asks first.",
+      "errors": {
+        "empty": "Enter a command.",
+        "tooLong": "Keep entries to 200 characters or fewer.",
+        "invalid": "Use a program name and plain arguments, without quotes or shell symbols.",
+        "duplicate": "This entry is already on the list.",
+        "limit": "The allowlist holds at most 100 entries.",
+        "save": "The allowlist could not be saved."
+      }
     }
   },
   "shortcuts": {
