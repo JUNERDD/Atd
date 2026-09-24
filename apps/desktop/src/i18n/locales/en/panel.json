@@ -51,6 +51,12 @@
       "mcpServer": "MCP server: {{name}}",
       "agent": "Subagent: {{name}}",
       "skill": "Skill: {{name}}"
+    },
+    "progress": {
+      "label": "Task progress",
+      "step": "Step {{current}} / {{total}}",
+      "running": "{{count}} running",
+      "showTodos": "Show todos"
     }
   },
   "configuration": {

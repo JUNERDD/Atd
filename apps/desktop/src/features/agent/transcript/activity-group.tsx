@@ -1,20 +1,5 @@
-import {
-  createElement,
-  useLayoutEffect,
-  useRef,
-  useState,
-  type UIEvent,
-  type WheelEvent,
-} from 'react';
-import {
-  Bot,
-  MessageCircleQuestion,
-  PenLine,
-  Search,
-  Sparkles,
-  Terminal,
-  Wrench,
-} from 'lucide-react';
+import { useLayoutEffect, useRef, useState, type UIEvent, type WheelEvent } from 'react';
+import { Bot, ListTodo, PenLine, Search, Sparkles, Terminal, Wrench } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { ScrollArea } from '@ai/ui/components/scroll-area';
 import { Shimmer } from '@ai/ui/components/ai-elements/shimmer';
@@ -23,12 +8,11 @@ import { TaskFiles } from '../task-files';
 import { ActivityRow } from './activity-row';
 import type { AdaptedItem, ViewBlock } from './adapter';
 import { type ActivityPhase, type ActivityPhaseKind } from './phases';
-import { latestStepTitle, phaseTitle, phaseToggleLabel } from './phase-title';
+import { phaseTitle, phaseToggleLabel } from './phase-title';
 import { PhaseStep } from './phase-step';
-import { toolIcon } from './tool-copy';
 import type { RequestIndex } from './turns';
 
-/** What the group was for, at a glance: look, change, run, think. */
+/** What the group was for, at a glance: look, change, run, plan, think. */
 function PhaseGlyph({ kind }: { kind: ActivityPhaseKind }) {
   const props = { className: 'phase-icon', strokeWidth: 1.75 };
   switch (kind) {
@@ -40,22 +24,13 @@ function PhaseGlyph({ kind }: { kind: ActivityPhaseKind }) {
       return <Terminal {...props} />;
     case 'agent':
       return <Bot {...props} />;
+    case 'plan':
+      return <ListTodo {...props} />;
     case 'think':
       return <Sparkles {...props} />;
     case 'other':
       return <Wrench {...props} />;
   }
-}
-
-/**
- * Live header glyph: mirrors `latestStepTitle` so the icon tracks the running step while the
- * group is active, instead of staying pinned to the group's overall kind.
- */
-function StepGlyph({ step }: { step: ViewBlock }) {
-  const props = { className: 'phase-icon', strokeWidth: 1.75 };
-  if (step.role === 'reasoning') return <Sparkles {...props} />;
-  if (step.role === 'question') return <MessageCircleQuestion {...props} />;
-  return createElement(toolIcon(step.tool?.name ?? ''), props);
 }
 
 /**
@@ -89,9 +64,10 @@ function useLivePhasePin(active: boolean, steps: ViewBlock[]) {
 }
 
 /**
- * One phase: a header the whole group hangs off, and the steps under it on a rail. Groups start
- * collapsed — while running the header shows only the latest step — unless a step is waiting on
- * the user, which opens its group by default. The toggle always wins after that: a collapsed or
+ * One phase: a header the whole group hangs off, and the steps under it on a rail. The header
+ * always carries the group's tally; while running it grows under a shimmer instead of switching
+ * to the latest step. Groups start collapsed unless a step is waiting on the user, which opens
+ * its group by default. The toggle always wins after that: a collapsed or
  * expanded group stays put across new steps, phase switches, and settling. While live, the open
  * body stays a short scrolling window pinned to the newest step; after the turn settles an
  * opened group is full height again.
@@ -112,8 +88,7 @@ function ActivityPhaseView({
   // new steps, phase switches, and settling — nothing reopens or snap-shuts behind the user.
   const open = override ?? waiting;
   const { ref, onScroll, onWheel } = useLivePhasePin(active && open, phase.steps);
-  const last = phase.steps.at(-1);
-  const title = active && last ? latestStepTitle(last, t) : phaseTitle(phase, active, t);
+  const title = phaseTitle(phase, active, t);
   const first = phase.steps[0];
   const single = phase.steps.length === 1 && first ? first : undefined;
 
@@ -165,7 +140,7 @@ function ActivityPhaseView({
     >
       <ActivityRow.Trigger aria-label={`${toggle}, ${title}`} className="phase-trigger">
         <ActivityRow.Icon>
-          {active && last ? <StepGlyph step={last} /> : <PhaseGlyph kind={phase.kind} />}
+          <PhaseGlyph kind={phase.kind} />
         </ActivityRow.Icon>
         <ActivityRow.Title className="phase-title" title={title}>
           {label}
@@ -197,32 +172,22 @@ export function ActivityGroup({
   artifacts,
   anchors,
   onAttach,
-  done,
+  active,
 }: {
   item: Extract<AdaptedItem, { type: 'activity' }>;
   requests: RequestIndex;
   artifacts: Artifact[];
   anchors: Set<string>;
   onAttach: (file: FileRef) => void;
-  done: boolean;
+  /** The round of work is still going: the tally shimmers and the open body follows new steps. */
+  active: boolean;
 }) {
   const files = anchors.has(item.anchorBlockId)
     ? artifacts.filter((file) => file.runId === item.anchorRunId)
     : [];
   return (
     <div className="activity-group" data-activity={item.live ? 'live' : 'settled'}>
-      <div className="activity-phases">
-        {item.phases.map((phase, index) => (
-          <ActivityPhaseView
-            key={phase.id || `${item.id}-${index}`}
-            phase={phase}
-            // Only the live tail shimmers: settled groups must stay static while the turn
-            // waits on a later approval, even though turn-level `done` is still false.
-            active={!done && item.live && index === item.phases.length - 1}
-            requests={requests}
-          />
-        ))}
-      </div>
+      <ActivityPhaseView phase={item.phase} active={active} requests={requests} />
       {files.length > 0 && <TaskFiles files={files} onAttach={onAttach} />}
     </div>
   );

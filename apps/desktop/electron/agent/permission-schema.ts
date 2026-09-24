@@ -35,6 +35,8 @@ export const GrantScopeSchema = Type.Union([
   Type.Object({ tool: Type.Literal('command') }, { additionalProperties: false }),
   // T6 v1.1 additive: MCP per-operation scope (allow_once/deny only).
   Type.Object({ tool: Type.Literal('mcp') }, { additionalProperties: false }),
+  // C1 additive: web search and fetch network calls.
+  Type.Object({ tool: Type.Literal('web') }, { additionalProperties: false }),
 ]);
 export type GrantScope = Static<typeof GrantScopeSchema>;
 

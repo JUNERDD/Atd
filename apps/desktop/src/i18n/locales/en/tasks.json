@@ -32,6 +32,7 @@
     "scrollToBottom": "Scroll to bottom"
   },
   "activity": {
+    "truncatedNote": "Only the first part is shown.",
     "memory": "Memory",
     "yourInput": "Your input",
     "ranTool": "Ran 1 tool",
@@ -57,7 +58,19 @@
       "searchMemory": "Search memory",
       "saveMemory": "Save memory",
       "updateMemory": "Update memory",
-      "removeMemory": "Remove memory"
+      "removeMemory": "Remove memory",
+      "subagentRun": "Invoke subagent",
+      "subagentList": "List subagents",
+      "subagentGuide": "Read subagent guide",
+      "subagentStatus": "Check subagent run",
+      "subagentManage": "Manage subagents",
+      "subagentWorkflow": "Run workflow",
+      "grep": "Search file contents",
+      "find": "Find files",
+      "ls": "List folder",
+      "todo": "Update todos",
+      "webSearch": "Search the web",
+      "webFetch": "Fetch web page"
     },
     "target": {
       "user": "User",
@@ -82,7 +95,8 @@
       },
       "bash": "Run a terminal command",
       "command": "Save or update a command",
-      "mcp": "Use an MCP tool"
+      "mcp": "Use an MCP tool",
+      "web": "Access the web"
     },
     "outcome": {
       "once": "Allowed once",
@@ -208,5 +222,26 @@
       "download": "Download",
       "saved": "Saved"
     }
+  },
+  "todo": {
+    "title": "Todos",
+    "listLabel": "Todo list",
+    "empty": "No todos yet.",
+    "progress": "{{completed}} of {{total}} done",
+    "blockedBy": "Blocked by {{ids}}",
+    "status": {
+      "pending": "Pending",
+      "in_progress": "In progress",
+      "completed": "Completed"
+    }
+  },
+  "web": {
+    "resultsOne": "1 result",
+    "results": "{{count}} results",
+    "noResults": "No results.",
+    "pageLength": "{{length}} characters",
+    "fetchFailed": "This page could not be fetched.",
+    "openLink": "Open link",
+    "truncated": "Only the first part is shown."
   }
 }

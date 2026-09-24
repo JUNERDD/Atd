@@ -16,6 +16,7 @@ import { ScrollArea } from '@ai/ui/components/scroll-area';
 import { agentApi } from '../use-agent';
 import { IconButton } from '../../../components/icon-button';
 import { showErrorToast } from '../../../components/toast-store';
+import { ExternalLink } from './external-link';
 import { hasMermaidFence, loadMermaidPlugin } from './mermaid-lazy';
 
 type MarkdownProps<T extends keyof JSX.IntrinsicElements> = ComponentProps<T> & ExtraProps;
@@ -46,20 +47,7 @@ function MarkdownImage({ alt }: MarkdownProps<'img'>) {
 }
 
 function MarkdownLink({ href, children }: MarkdownProps<'a'>) {
-  return (
-    <a
-      href={href}
-      onClick={(event) => {
-        event.preventDefault();
-        if (href)
-          void agentApi()
-            .openLink(href)
-            .catch((error) => showErrorToast(error));
-      }}
-    >
-      {children}
-    </a>
-  );
+  return <ExternalLink href={href}>{children}</ExternalLink>;
 }
 
 function MarkdownPre({ children, className }: MarkdownProps<'pre'>) {
@@ -105,6 +93,12 @@ function MermaidFallback({ chart }: MermaidErrorComponentProps) {
   );
 }
 
+/**
+ * Per-character reveal: the default word split cuts on whitespace, so an unspaced CJK paragraph
+ * is one token and its streamed growth would appear without animating.
+ */
+const STREAM_ANIMATION: StreamdownProps['animated'] = { sep: 'char' };
+
 const COMPONENTS = {
   img: MarkdownImage,
   a: MarkdownLink,
@@ -149,6 +143,7 @@ export function StreamdownMarkdown({ text, streaming }: { text: string; streamin
   return (
     <Streamdown
       className="markdown"
+      animated={STREAM_ANIMATION}
       isAnimating={streaming}
       mode={streaming ? 'streaming' : 'static'}
       controls={{

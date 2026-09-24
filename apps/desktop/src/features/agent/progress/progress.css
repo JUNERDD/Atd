@@ -1,0 +1,126 @@
+/* Row above the composer surface. It lives inside the composer popover anchor, so the HITL/queue
+   popover and its recall pill stack above the pill instead of covering it. */
+.composer-progress-row {
+  display: flex;
+  justify-content: center;
+  min-width: 0;
+  margin-bottom: 8px;
+}
+
+/* The pill keeps the xs Button geometry (24px, rounded) in both the trigger and the static
+   status; the static one mirrors the secondary fill so both read as the same control. */
+.composer-progress {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  max-width: 100%;
+  border-radius: 999px;
+}
+
+output.composer-progress {
+  height: 24px;
+  padding-inline: 10px;
+  background: var(--secondary);
+  color: var(--secondary-foreground);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+}
+
+.composer-progress-part {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.composer-progress-part > svg {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  color: var(--muted-foreground);
+}
+
+/* Todo progress ring: 12px like the pill's icons, a track in the border color and the completed
+   share in the foreground color, starting at 12 o'clock. A finished list turns the arc primary. */
+.composer-progress-ring {
+  transform: rotate(-90deg);
+}
+
+.composer-progress-ring circle {
+  fill: none;
+  stroke-width: 2.5;
+}
+
+.composer-progress-ring-track {
+  stroke: var(--border);
+}
+
+.composer-progress-ring-value {
+  stroke: var(--foreground);
+  stroke-linecap: round;
+  transition: stroke-dasharray 200ms ease-out;
+}
+
+.composer-progress-ring-value[data-complete] {
+  stroke: var(--primary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .composer-progress-ring-value {
+    transition: none;
+  }
+}
+
+/* Fits a 320px panel and short windows: the width stays within the viewport and the list scrolls
+   inside the height Radix reports as available above the pill. */
+.composer-todos[data-slot='popover-content'] {
+  width: min(20rem, calc(100vw - 16px));
+  min-width: 0;
+  max-height: min(22rem, var(--radix-popover-content-available-height));
+  gap: 8px;
+  padding: 12px 4px 8px 12px;
+  backdrop-filter: blur(var(--ata-backdrop-blur));
+}
+
+.composer-todos-header {
+  padding-right: 8px;
+}
+
+.composer-todos-scroll {
+  flex: 1;
+  min-height: 0;
+}
+
+.composer-todos-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.composer-todo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  min-height: 28px;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.composer-todo-subject {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.composer-todo[data-status='completed'] .composer-todo-subject {
+  color: var(--muted-foreground);
+  text-decoration: line-through;
+}

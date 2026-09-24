@@ -6,15 +6,17 @@ import type { BlockOf } from '../../../../electron/agent/transcript-schema';
 import { ActivityRow } from './activity-row';
 import { ToolBody } from './tool-body';
 import {
-  commandStepKey,
   hasToolDetail,
   memoryTargetKey,
   outcomeKey,
   statusLabelKey,
-  stepKey,
   toolIcon,
+  toolStepKey,
   toolTarget,
 } from './tool-copy';
+
+/** Tools whose target is a file or search subject, shown as the read-style chip. */
+const CHIP_TOOLS: ReadonlySet<string> = new Set(['read', 'write', 'edit', 'grep', 'find', 'ls']);
 
 /**
  * One step of the agent's work. The leading icon names the tool type and swaps to the expanding
@@ -36,14 +38,17 @@ export function ToolBlock({
   const [open, setOpen] = useState(Boolean(forceOpen));
   const expanded = Boolean(forceOpen) || open;
   const Icon = toolIcon(block.name);
-  const label = block.name === 'command' ? commandStepKey(block.args) : stepKey(block.name);
+  const label = toolStepKey(block.name, block.args);
   const title = label ? t(label) : block.name;
-  const path =
-    (block.name === 'read' || block.name === 'write' || block.name === 'edit') &&
-    typeof block.args.path === 'string'
-      ? block.args.path
-      : null;
-  const rawTarget = toolTarget(block.name, block.args);
+  const target = toolTarget(block.name, block.args);
+  // What the call looked at or changed — a file, a search pattern, a folder — sits in a chip.
+  const chip = CHIP_TOOLS.has(block.name) && target !== null;
+  // A refused launch still names its agents, so the row keeps the failure beside them: the group
+  // title leaves the call out of its dispatch count and the row must not read as a launch.
+  const rawTarget =
+    target && block.name === 'subagent' && block.status === 'failed'
+      ? `${target} · ${t(statusLabelKey(block.status))}`
+      : target;
   const memoryKey = rawTarget ? memoryTargetKey(rawTarget) : null;
   const outcome =
     !confirmation && block.permission?.outcome ? t(outcomeKey(block.permission.outcome)) : null;
@@ -79,8 +84,8 @@ export function ToolBlock({
         <ActivityRow.Title className="flex-initial" title={block.name}>
           {running ? <Shimmer as="span">{title}</Shimmer> : title}
         </ActivityRow.Title>
-        {path ? (
-          // No file glyph here: the row's leading icon already names the file type.
+        {chip ? (
+          // No file glyph here: the row's leading icon already names the tool.
           <ActivityRow.Meta className="tool-chip" title={meta}>
             {meta}
           </ActivityRow.Meta>

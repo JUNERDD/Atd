@@ -24,6 +24,18 @@
     "command": {
       "label": "管理命令",
       "description": "创建或更新已保存的命令，需经你确认。"
+    },
+    "grep": {
+      "label": "搜索文件内容",
+      "description": "在任务文件夹中搜索文本。"
+    },
+    "find": {
+      "label": "查找文件",
+      "description": "按名称在任务文件夹中查找文件。"
+    },
+    "ls": {
+      "label": "列出文件夹",
+      "description": "列出任务文件夹中的内容。"
     }
   }
 }

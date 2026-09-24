@@ -431,12 +431,6 @@
   flex-direction: column;
   gap: 4px;
 }
-.activity-phases {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 4px;
-}
 .phase-group {
   display: flex;
   min-width: 0;
@@ -538,6 +532,8 @@
 @media (prefers-reduced-motion: reduce) {
   .step-in,
   .turn-header-spinner,
+  .markdown [data-sd-animate],
+  .markdown [data-sd-animate-marker]::marker,
   [data-slot='collapsible-content'][data-state='open'],
   [data-slot='collapsible-content'][data-state='closed'] {
     animation: none;
