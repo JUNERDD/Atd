@@ -1,6 +1,11 @@
 import { BrowserWindow, screen } from 'electron';
 import { constrainPanelBounds, type WorkArea } from './window-position';
-import { loadWindowContent, rendererPreferences, secureWindowContent } from './window-content';
+import {
+  loadWindowContent,
+  rendererPreferences,
+  reportRendererExit,
+  secureWindowContent,
+} from './window-content';
 
 function settingsBounds(workArea: WorkArea): WorkArea {
   const width = Math.min(1000, workArea.width);
@@ -65,6 +70,7 @@ export class SettingsWindow {
     window.on('resize', positionControls);
     positionControls();
     secureWindowContent(window);
+    reportRendererExit(window, 'settings');
     const reposition = () => {
       if (window.isDestroyed()) return;
       const display = screen.getDisplayMatching(window.getBounds());

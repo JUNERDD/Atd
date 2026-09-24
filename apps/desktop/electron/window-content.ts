@@ -21,6 +21,26 @@ export function isWindowSender(event: IpcMainInvokeEvent, window: BrowserWindow 
   );
 }
 
+/**
+ * Pushes a fire-and-forget message to a window's page. A renderer that crashed or was killed
+ * leaves the window and its webContents alive while the main frame is disposed, and Electron logs
+ * every send to such a frame as an error; the message is dropped instead, because a page that
+ * loads again reads the current state on mount.
+ */
+export function sendToPage(window: BrowserWindow | null, channel: string, value: unknown) {
+  if (!window || window.isDestroyed() || window.webContents.isDestroyed()) return;
+  const frame = window.webContents.mainFrame;
+  if (!frame.isDestroyed()) frame.send(channel, value);
+}
+
+/** Records why a window's renderer exited, since its page stays blank until it loads again. */
+export function reportRendererExit(window: BrowserWindow, name: string) {
+  window.webContents.on('render-process-gone', (_event, details) => {
+    if (details.reason === 'clean-exit') return;
+    console.error(`The ${name} renderer exited (${details.reason}, code ${details.exitCode}).`);
+  });
+}
+
 export function secureWindowContent(window: BrowserWindow) {
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   window.webContents.on('will-navigate', (event) => event.preventDefault());

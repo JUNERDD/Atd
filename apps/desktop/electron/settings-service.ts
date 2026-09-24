@@ -20,7 +20,7 @@ import {
 import { PanelShortcut, parseShortcutBindings, shortcutLabel } from './settings-shortcuts';
 import { SettingsStore } from './settings-store';
 import { SettingsWindow } from './settings-window';
-import { isWindowSender } from './window-content';
+import { isWindowSender, sendToPage } from './window-content';
 import type { PanelSize } from './window-position';
 
 interface SettingsHost {
@@ -61,11 +61,8 @@ export class SettingsService {
   }
 
   send(channel: string, value: unknown) {
-    for (const window of [this.host.panel(), this.window.current]) {
-      if (window && !window.isDestroyed() && !window.webContents.isDestroyed()) {
-        window.webContents.send(channel, value);
-      }
-    }
+    for (const window of [this.host.panel(), this.window.current])
+      sendToPage(window, channel, value);
   }
 
   get pinned(): boolean {
@@ -131,11 +128,7 @@ export class SettingsService {
 
   private broadcast(): SettingsSnapshot {
     const snapshot = this.snapshot();
-    for (const window of [this.host.panel(), this.window.current]) {
-      if (window && !window.isDestroyed() && !window.webContents.isDestroyed()) {
-        window.webContents.send(SETTINGS_IPC.changed, snapshot);
-      }
-    }
+    this.send(SETTINGS_IPC.changed, snapshot);
     return snapshot;
   }
 
