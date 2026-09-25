@@ -160,15 +160,13 @@ export function ComposerPopover({
     >
       <PopoverAnchor virtualRef={viewAnchor} />
       <div ref={anchor} className="composer-popover-anchor">
-        {taskId !== null && (
-          <ProgressPill
-            progress={progress}
-            live={live}
-            hitl={hitl.status}
-            view={open ? shown : null}
-            onToggle={toggle}
-          />
-        )}
+        <ProgressPill
+          progress={progress}
+          live={live}
+          hitl={hitl.status}
+          view={open ? shown : null}
+          onToggle={toggle}
+        />
         {children}
       </div>
       <PopoverContent
