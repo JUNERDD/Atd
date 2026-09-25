@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron';
+import { ipcMain, shell } from 'electron';
 import type { BrowserWindow, IpcMainInvokeEvent } from 'electron';
 import type { DesktopState } from './contract';
 import {
@@ -9,15 +9,20 @@ import {
 } from './settings-contract';
 import { PermissionTierSchema } from './agent/permission-schema';
 import { parse } from './agent/validation';
+import { installProviderIpc } from './providers/ipc';
+import { PROVIDER_IPC } from './providers/ipc-channels';
 import { ProviderService } from './providers/service';
 import { publicConnection } from './providers/configuration';
+import type { UserSettings } from '@ai/agent-contracts';
+import type { ServiceConnection } from './service/connection';
 import {
   parseShellAllowlist,
   parseShellAllowlistEntry,
-  ShellAllowlistSync,
   withShellAllowlistEntry,
 } from './settings-shell';
-import { PanelShortcut, parseShortcutBindings, shortcutLabel } from './settings-shortcuts';
+import { ServiceSettingsSync } from './settings-sync';
+import { parseShortcutBindings, shortcutLabel } from './accelerators';
+import { PanelShortcut } from './settings-shortcuts';
 import { SettingsStore } from './settings-store';
 import { SettingsWindow } from './settings-window';
 import { isWindowSender, sendToPage } from './window-content';
@@ -34,8 +39,8 @@ export class SettingsService {
   private readonly window = new SettingsWindow();
   private readonly shortcut: PanelShortcut;
   readonly providers: ProviderService;
-  /** Pushes the user shell allowlist to the agent service; main attaches the connection. */
-  readonly shellAllowlist: ShellAllowlistSync;
+  /** Keeps language, default tier, shell allowlist and shortcuts equal to the service's copy. */
+  private readonly shared: ServiceSettingsSync;
   private mutation: Promise<void> = Promise.resolve();
 
   private constructor(
@@ -45,11 +50,54 @@ export class SettingsService {
     this.shortcut = new PanelShortcut(host.togglePanel);
     this.shortcut.initialize(store.current.shortcuts.togglePanel);
     this.providers = new ProviderService(
-      store,
       () => this.broadcast(),
-      (channel, value) => this.send(channel, value),
+      (state) => this.send(PROVIDER_IPC.loginEvent, state),
+      (url) => shell.openExternal(url),
     );
-    this.shellAllowlist = new ShellAllowlistSync(() => this.store.current.shellAllowlist);
+    this.shared = new ServiceSettingsSync(
+      () => {
+        const { language, permissionTier, shellAllowlist, shortcuts } = this.store.current;
+        return { language, permissionTier, shellAllowlist, shortcuts };
+      },
+      (settings) => this.adoptShared(settings),
+    );
+  }
+
+  /** Connects the service-backed parts: providers and the shared settings. */
+  attach(connection: ServiceConnection) {
+    this.providers.attach(connection);
+    this.shared.attach(connection);
+    connection.onInvalidate((frame) => {
+      if (frame.scope === 'providers') void this.providers.sync().catch(() => undefined);
+    });
+  }
+
+  /**
+   * Applies the service's shared settings to the local cache. A service without a language
+   * (only the web client wrote settings) keeps the one resolved here; shortcuts another client
+   * saved are applied even when the OS refuses the panel shortcut, which then reads unavailable.
+   */
+  private adoptShared(settings: UserSettings): Promise<void> {
+    return this.serialize(async () => {
+      const current = this.store.current;
+      let shortcuts = current.shortcuts;
+      try {
+        shortcuts = parseShortcutBindings(
+          settings.shortcuts ?? DEFAULT_SHORTCUTS,
+          process.platform,
+        );
+      } catch {
+        // Bindings this platform cannot parse keep the local ones.
+      }
+      this.shortcut.adopt(shortcuts.togglePanel);
+      await this.store.change((data) => {
+        data.language = settings.language ?? data.language;
+        data.permissionTier = settings.permissionTier;
+        data.shellAllowlist = [...settings.shellAllowlist];
+        data.shortcuts = shortcuts;
+      });
+      this.broadcast();
+    });
   }
 
   static async create(host: SettingsHost): Promise<SettingsService> {
@@ -102,7 +150,7 @@ export class SettingsService {
   desktopState(): DesktopState {
     return {
       pinned: this.pinned,
-      shortcut: shortcutLabel(this.store.current.shortcuts.togglePanel),
+      shortcut: shortcutLabel(this.store.current.shortcuts.togglePanel, process.platform),
       shortcutAvailable: this.shortcutAvailable,
     };
   }
@@ -178,6 +226,7 @@ export class SettingsService {
       await this.store.change((data) => {
         data.language = value;
       });
+      this.shared.changed(['language']);
       return this.broadcast();
     });
   }
@@ -188,13 +237,14 @@ export class SettingsService {
       await this.store.change((data) => {
         data.permissionTier = permissionTier;
       });
+      this.shared.changed(['permissionTier']);
       return this.broadcast();
     });
   }
 
   /**
-   * Runs one shell allowlist update in the settings queue, then broadcasts and pushes the list to
-   * the service. `update` returning the current array means nothing changed: no write, no push.
+   * Runs one shell allowlist update in the settings queue, then broadcasts it and sends it to the
+   * service. `update` returning the current array means nothing changed: no write, no push.
    */
   private updateShellAllowlist(update: (current: string[]) => string[]): Promise<SettingsSnapshot> {
     return this.serialize(async () => {
@@ -204,26 +254,29 @@ export class SettingsService {
       await this.store.change((data) => {
         data.shellAllowlist = next;
       });
-      this.shellAllowlist.push();
+      this.shared.changed(['shellAllowlist']);
       return this.broadcast();
     });
   }
 
   private saveShortcuts(value: unknown): Promise<SettingsSnapshot> {
     return this.serialize(async () => {
-      const shortcuts = parseShortcutBindings(value);
+      const shortcuts = parseShortcutBindings(value, process.platform);
       this.host.validateShortcuts?.(shortcuts);
       await this.shortcut.replace(shortcuts.togglePanel, () =>
         this.store.change((data) => {
           data.shortcuts = shortcuts;
         }),
       );
+      this.shared.changed(['shortcuts']);
       return this.broadcast();
     });
   }
 
   installIpc() {
-    this.providers.installIpc((event, settingsOnly) => this.assertSender(event, settingsOnly));
+    installProviderIpc(this.providers, (event, settingsOnly) =>
+      this.assertSender(event, settingsOnly),
+    );
     ipcMain.handle(SETTINGS_IPC.open, (event) => {
       this.assertSender(event);
       return this.open();

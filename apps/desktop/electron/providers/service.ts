@@ -1,6 +1,3 @@
-import { ipcMain } from 'electron';
-import type { IpcMainInvokeEvent } from 'electron';
-import { Type } from 'typebox';
 import {
   getProviderLevels,
   refreshProvider,
@@ -9,35 +6,32 @@ import {
   verifyProvider,
   type AgentClientOptions,
 } from '@ai/agent-client';
-import type { SettingsStore } from '../settings-store';
-import { parse } from '../agent/validation';
-import type { ServiceConnection } from '../service/connection';
 import { CatalogSync } from './catalog-sync';
 import { disconnectLive, fetchCatalog, fetchLiveProviders, saveLive } from './live';
 import { ProviderLoginClient } from './login-client';
-import { PROVIDER_IPC } from './ipc-channels';
-import {
-  ConnectionDraftSchema,
-  ModelReferenceSchema,
-  ModelThinkingLevelSchema,
-  type Connection,
-  type ConnectionDraft,
-  type ModelReference,
-  type ModelThinkingLevel,
-  type ProviderCatalogEntry,
+import type {
+  Connection,
+  ConnectionDraft,
+  LoginState,
+  ModelReference,
+  ModelThinkingLevel,
+  ProviderCatalogEntry,
 } from './schema';
 
-const identity = Type.String({ minLength: 1, maxLength: 256, pattern: '^[a-zA-Z0-9_-]+$' });
-const revisionSchema = Type.Integer({ minimum: 1 });
+/** The connection the provider client reads its service options from, once it exists. */
+export interface ProviderConnection {
+  options(): AgentClientOptions | null;
+}
 
 /**
- * Live provider client over the service: every write goes to the service,
- * then the settings snapshot reloads from it.
+ * Live provider client over the service, shared by the desktop main process and the web client:
+ * every write goes to the service, then the settings snapshot reloads from it. Writes made by
+ * another client arrive as a `providers` invalidation, which calls `sync`.
  */
 export class ProviderService {
-  private connection: ServiceConnection | null = null;
+  private connection: ProviderConnection | null = null;
   private live: { defaultConnectionId: string | null; connections: Connection[] } | null = null;
-  private readonly login: ProviderLoginClient;
+  readonly login: ProviderLoginClient;
   private readonly catalogSync = new CatalogSync(
     () => this.live?.connections ?? [],
     (id) =>
@@ -47,22 +41,23 @@ export class ProviderService {
       ),
   );
 
+  /** `openExternal` shows a sign-in link: the system browser in the desktop, a new tab on the web. */
   constructor(
-    private store: SettingsStore,
     private changed: () => void,
-    publish: (channel: string, value: unknown) => void,
+    publishLogin: (state: LoginState) => void,
+    openExternal: (url: string) => Promise<void>,
   ) {
-    void this.store;
     this.login = new ProviderLoginClient(
       () => this.connection?.options() ?? null,
-      (state) => publish(PROVIDER_IPC.loginEvent, state),
+      publishLogin,
       // Signed-in providers can expose models that need the new credential; the refresh reloads
       // the connections either way.
       (connectionId) => void this.catalogSync.sync(connectionId),
+      openExternal,
     );
   }
 
-  attach(connection: ServiceConnection) {
+  attach(connection: ProviderConnection) {
     this.connection = connection;
   }
 
@@ -177,58 +172,5 @@ export class ProviderService {
       reference.modelId,
     );
     return levels;
-  }
-
-  installIpc(assertSender: (event: IpcMainInvokeEvent, settingsOnly?: boolean) => void) {
-    const handle = (
-      channel: string,
-      action: (...args: unknown[]) => unknown,
-      settingsOnly = true,
-    ) =>
-      ipcMain.handle(channel, (event, ...args: unknown[]) => {
-        assertSender(event, settingsOnly);
-        return action(...args);
-      });
-    handle(PROVIDER_IPC.catalog, async () => this.catalog(), false);
-    handle(PROVIDER_IPC.save, (value) => this.save(parse(ConnectionDraftSchema, value)));
-    handle(PROVIDER_IPC.default, (id, revision) =>
-      this.setDefault(parse(identity, id), parse(revisionSchema, revision)),
-    );
-    handle(PROVIDER_IPC.model, (reference, revision, thinkingLevel) =>
-      this.setModel(
-        parse(ModelReferenceSchema, reference),
-        parse(revisionSchema, revision),
-        thinkingLevel === undefined ? undefined : parse(ModelThinkingLevelSchema, thinkingLevel),
-      ),
-    );
-    // The panel composer shows the level next to its model picker; both windows may ask.
-    handle(
-      PROVIDER_IPC.levels,
-      (reference) => this.levels(parse(ModelReferenceSchema, reference)),
-      false,
-    );
-    handle(PROVIDER_IPC.disconnect, (id, revision) =>
-      this.disconnect(parse(identity, id), parse(revisionSchema, revision)),
-    );
-    handle(PROVIDER_IPC.refresh, (id) => this.refresh(parse(identity, id)));
-    // Both windows show model lists: the settings pickers and the panel composer.
-    handle(PROVIDER_IPC.refreshCatalogs, () => this.refreshShownCatalogs(), false);
-    handle(PROVIDER_IPC.verify, (reference) => this.verify(parse(ModelReferenceSchema, reference)));
-    ipcMain.handle(PROVIDER_IPC.login, async (event, value: unknown) => {
-      assertSender(event, true);
-      const state = await this.login.start(parse(identity, value));
-      // A closed settings window cannot answer prompts; end its sign-in.
-      event.sender.once('destroyed', () => void this.login.cancel(state.id).catch(() => undefined));
-      return state;
-    });
-    handle(PROVIDER_IPC.cancel, (id) => this.login.cancel(parse(identity, id)));
-    handle(PROVIDER_IPC.openLink, (id) => this.login.openLink(parse(identity, id)));
-    handle(PROVIDER_IPC.answer, (id, promptId, value) =>
-      this.login.answer(
-        parse(identity, id),
-        parse(identity, promptId),
-        parse(Type.String({ maxLength: 16384 }), value),
-      ),
-    );
   }
 }

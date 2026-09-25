@@ -1,6 +1,7 @@
 import { AgentHttpClient, AgentStreamClient, type AgentClientOptions } from '@ai/agent-client';
 import type {
   CapabilityRequest,
+  InvalidateFrame,
   ServiceEvent,
   StatusResponse,
   TaskSnapshot,
@@ -39,6 +40,7 @@ export class ServiceConnection {
   private connectBusy = false;
   private service: StatusResponse | null = null;
   private readonly connectedListeners = new Set<() => void>();
+  private readonly invalidateListeners = new Set<(frame: InvalidateFrame) => void>();
 
   constructor(
     private events: ConnectionEvents,
@@ -76,6 +78,17 @@ export class ServiceConnection {
     this.connectedListeners.add(listener);
     return () => {
       this.connectedListeners.delete(listener);
+    };
+  }
+
+  /**
+   * Runs `listener` for every `invalidate` frame: shared data (settings, commands, providers,
+   * extensions, memory, a task) changed, whichever client changed it.
+   */
+  onInvalidate(listener: (frame: InvalidateFrame) => void): () => void {
+    this.invalidateListeners.add(listener);
+    return () => {
+      this.invalidateListeners.delete(listener);
     };
   }
 
@@ -194,6 +207,9 @@ export class ServiceConnection {
           this.events.onSnapshot(snapshot);
         },
         onEvent: (event) => this.events.onEvent(event),
+        onInvalidate: (frame) => {
+          for (const listener of this.invalidateListeners) listener(frame);
+        },
         onResumed: () => {
           if (this.state === 'reconnecting') this.setState('connected', '');
           else this.publish();

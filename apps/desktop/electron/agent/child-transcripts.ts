@@ -1,9 +1,6 @@
-import { BrowserWindow, type WebContents } from 'electron';
 import type { AgentHttpClient } from '@ai/agent-client';
 import { ChildTranscriptPatchDataSchema, ServiceBlockSchema } from '@ai/agent-contracts';
-import { sendToPage } from '../window-content';
 import type { AgentEvent, ChildTranscriptDetail } from './bridge';
-import { AGENT_IPC } from './ipc-channels';
 import { mapBlock } from './service-map';
 import { applyTranscriptPatch, type Block, type ChildTranscriptPatch } from './transcript-schema';
 import { parse } from './validation';
@@ -11,11 +8,11 @@ import { parse } from './validation';
 /** Patches kept while a snapshot loads; a longer burst is recovered by the next reload. */
 const MAX_BUFFERED = 200;
 
-interface ChildEntry {
+interface ChildEntry<S> {
   taskId: string;
   childKey: string;
-  /** Hold count per window; the entry exists only while some window holds it. */
-  subscribers: Map<WebContents, number>;
+  /** Hold count per subscriber; the entry exists only while some subscriber holds it. */
+  subscribers: Map<S, number>;
   state: { revision: number; blocks: Block[]; live: boolean } | null;
   loading: Promise<void> | null;
   /** Patches that arrived while `state` was missing or loading, in arrival order. */
@@ -23,38 +20,38 @@ interface ChildEntry {
 }
 
 /**
- * Child session transcripts for the windows that asked for them. Main keeps state only for
- * `(taskId, childKey)` pairs some window holds, forwards `child.transcript.patch` events to those
- * windows only, and reseeds from the snapshot endpoint on the first hold or a revision gap.
+ * Child session transcripts for the subscribers that asked for them: renderer windows in the
+ * desktop, the page itself in the web client. State is kept only for `(taskId, childKey)` pairs
+ * some subscriber holds; `child.transcript.patch` events reach those subscribers only, and the
+ * snapshot endpoint reseeds on the first hold or a revision gap. A subscriber that goes away
+ * without releasing (a closed or reloaded window) is dropped through `dropSubscriber`.
  */
-export class ChildTranscripts {
-  private readonly entries = new Map<string, Map<string, ChildEntry>>();
-  private readonly watched = new Set<WebContents>();
+export class ChildTranscripts<S> {
+  private readonly entries = new Map<string, Map<string, ChildEntry<S>>>();
 
-  constructor(private readonly http: () => AgentHttpClient) {}
+  constructor(
+    private readonly http: () => AgentHttpClient,
+    private readonly forwardTo: (subscriber: S, event: AgentEvent) => void,
+  ) {}
 
   /**
-   * Adds one hold for `sender` and resolves with the current transcript. The hold stays when
+   * Adds one hold for `subscriber` and resolves with the current transcript. The hold stays when
    * loading fails, so the caller's paired release still balances it; the next patch retries.
    */
-  async subscribe(
-    sender: WebContents,
-    taskId: string,
-    childKey: string,
-  ): Promise<ChildTranscriptDetail> {
-    const entry = this.hold(sender, taskId, childKey);
+  async subscribe(subscriber: S, taskId: string, childKey: string): Promise<ChildTranscriptDetail> {
+    const entry = this.hold(subscriber, taskId, childKey);
     if (!entry.state || entry.loading) await this.reload(entry);
     const state = entry.state;
     if (!state) throw new Error('The subagent transcript is unavailable.');
     return structuredClone({ taskId, childKey, ...state });
   }
 
-  release(sender: WebContents, taskId: string, childKey: string) {
+  release(subscriber: S, taskId: string, childKey: string) {
     const entry = this.entries.get(taskId)?.get(childKey);
-    const count = entry?.subscribers.get(sender);
+    const count = entry?.subscribers.get(subscriber);
     if (!entry || count === undefined) return;
-    if (count > 1) entry.subscribers.set(sender, count - 1);
-    else entry.subscribers.delete(sender);
+    if (count > 1) entry.subscribers.set(subscriber, count - 1);
+    else entry.subscribers.delete(subscriber);
     if (!entry.subscribers.size) this.remove(entry);
   }
 
@@ -99,8 +96,14 @@ export class ChildTranscripts {
     this.entries.clear();
   }
 
-  private hold(sender: WebContents, taskId: string, childKey: string): ChildEntry {
-    this.watch(sender);
+  /** Drops every hold of a subscriber that can no longer release (closed or reloaded). */
+  dropSubscriber(subscriber: S) {
+    for (const children of this.entries.values())
+      for (const entry of children.values())
+        if (entry.subscribers.delete(subscriber) && !entry.subscribers.size) this.remove(entry);
+  }
+
+  private hold(subscriber: S, taskId: string, childKey: string): ChildEntry<S> {
     let children = this.entries.get(taskId);
     if (!children) this.entries.set(taskId, (children = new Map()));
     let entry = children.get(childKey);
@@ -115,51 +118,30 @@ export class ChildTranscripts {
       };
       children.set(childKey, entry);
     }
-    entry.subscribers.set(sender, (entry.subscribers.get(sender) ?? 0) + 1);
+    entry.subscribers.set(subscriber, (entry.subscribers.get(subscriber) ?? 0) + 1);
     return entry;
   }
 
-  /**
-   * A destroyed window cannot release, and a reloaded page starts without holds, so both drop
-   * every hold of that webContents.
-   */
-  private watch(sender: WebContents) {
-    if (this.watched.has(sender)) return;
-    this.watched.add(sender);
-    const drop = () => this.dropSender(sender);
-    sender.on('did-navigate', drop);
-    sender.once('destroyed', () => {
-      this.watched.delete(sender);
-      drop();
-    });
-  }
-
-  private dropSender(sender: WebContents) {
-    for (const children of this.entries.values())
-      for (const entry of children.values())
-        if (entry.subscribers.delete(sender) && !entry.subscribers.size) this.remove(entry);
-  }
-
-  private remove(entry: ChildEntry) {
+  private remove(entry: ChildEntry<S>) {
     const children = this.entries.get(entry.taskId);
     if (children?.get(entry.childKey) !== entry) return;
     children.delete(entry.childKey);
     if (!children.size) this.entries.delete(entry.taskId);
   }
 
-  private isHeld(entry: ChildEntry) {
+  private isHeld(entry: ChildEntry<S>) {
     return this.entries.get(entry.taskId)?.get(entry.childKey) === entry;
   }
 
   /** Loads the snapshot once at a time, replays newer buffered patches, and reseeds holders. */
-  private reload(entry: ChildEntry): Promise<void> {
+  private reload(entry: ChildEntry<S>): Promise<void> {
     entry.loading ??= this.load(entry).finally(() => {
       entry.loading = null;
     });
     return entry.loading;
   }
 
-  private async load(entry: ChildEntry) {
+  private async load(entry: ChildEntry<S>) {
     const response = await this.http().childTranscript(entry.taskId, entry.childKey);
     if (!this.isHeld(entry)) return;
     let state = {
@@ -185,10 +167,8 @@ export class ChildTranscripts {
     });
   }
 
-  private forward(entry: ChildEntry, patch: ChildTranscriptPatch) {
+  private forward(entry: ChildEntry<S>, patch: ChildTranscriptPatch) {
     const event: AgentEvent = { type: 'childTranscript', patch };
-    for (const sender of entry.subscribers.keys())
-      if (!sender.isDestroyed())
-        sendToPage(BrowserWindow.fromWebContents(sender), AGENT_IPC.changed, event);
+    for (const subscriber of entry.subscribers.keys()) this.forwardTo(subscriber, event);
   }
 }

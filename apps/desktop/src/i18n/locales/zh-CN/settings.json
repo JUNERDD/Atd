@@ -7,6 +7,7 @@
     "label": "设置",
     "loadError": "无法加载设置。"
   },
+  "openInBrowser": "在浏览器中打开",
   "nav": {
     "label": "设置分类",
     "navigationLabel": "设置导航",
@@ -103,6 +104,7 @@
       "global": "全局",
       "inApp": "应用内"
     },
+    "registeredByDesktop": "桌面应用运行时会注册此快捷键。",
     "actions": {
       "togglePanel": {
         "label": "显示或隐藏面板",

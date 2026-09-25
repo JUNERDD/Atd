@@ -1,25 +1,14 @@
 import { ipcMain, shell } from 'electron';
 import type { IpcMainInvokeEvent } from 'electron';
-import {
-  installSkill,
-  listAtdAgents,
-  listRoles,
-  listSkills,
-  putAtdAgent,
-  putRole,
-  restoreBuiltin,
-  setSkillEnabled,
-  updateSkill,
-} from '@ai/agent-client';
-import { mcpAuthComplete, mcpAuthStart, mcpConnect, mcpStatus } from '@ai/agent-client';
 import { parse } from '../agent/validation';
 import { autostartService } from './autostart';
-import { resolveServiceDataDir } from './endpoint';
+import { resolveServiceDataDir } from './data-dir';
 import { ServiceConnection, type ServiceStatus } from './connection';
 import { startLocalService, stopLocalService } from './launcher';
 import { ServiceRequestSchema, type ServiceStatusView } from './ipc';
 import { SERVICE_IPC } from './ipc-channels';
-import { disableMcpServer, removeMcpServer, upsertMcpServer } from './mcp-catalog';
+import { createWebPairing } from '@ai/agent-client';
+import { handleExtensionRequest } from './extension-requests';
 
 function view(status: ServiceStatus, fallbackDataDir: string): ServiceStatusView {
   return {
@@ -62,6 +51,9 @@ export class ServiceManager {
       },
       caps,
     );
+    this.connection.onInvalidate((frame) => {
+      if (frame.scope === 'extensions') this.send(SERVICE_IPC.changed, { type: 'extensions' });
+    });
   }
 
   defaultDataDir(): string {
@@ -89,6 +81,19 @@ export class ServiceManager {
     }
   }
 
+  /**
+   * Opens the web client of the connected service in the default browser. The link carries a
+   * one-time pairing code, so the browser gets its own session and never sees the owner token.
+   * Under `pnpm dev` it opens the dev server, which serves the live client and proxies `/v1`.
+   */
+  async openInBrowser(): Promise<void> {
+    const options = this.connection.options();
+    if (!options) throw new Error('The service is not connected.');
+    const { code } = await createWebPairing(options);
+    const origin = new URL(process.env.VITE_DEV_SERVER_URL || options.baseUrl).origin;
+    await shell.openExternal(`${origin}/#pair=${code}`);
+  }
+
   statusView(): ServiceStatusView {
     return view(this.connection.status(), this.defaultDataDir());
   }
@@ -107,121 +112,19 @@ export class ServiceManager {
         case 'disconnect':
           this.onLive(false);
           return view(this.connection.disconnect(), this.defaultDataDir());
+        case 'openInBrowser':
+          await this.openInBrowser();
+          return null;
         case 'startLocal': {
           await startLocalService({ dataDir: request.dataDir, port: request.port });
           await this.connection.connect(request.dataDir);
           this.onLive(true);
           return this.statusView();
         }
-        case 'skills': {
-          const options = this.connection.options();
-          if (!options) throw new Error('The service is not connected.');
-          return listSkills(options);
-        }
-        case 'skillsUpdate': {
-          const options = this.connection.options();
-          if (!options) throw new Error('The service is not connected.');
-          return updateSkill(options, request.name);
-        }
-        case 'skillsSetEnabled': {
-          const options = this.connection.options();
-          if (!options) throw new Error('The service is not connected.');
-          return setSkillEnabled(options, request.name, request.enabled);
-        }
-        case 'skillsInstall': {
-          const options = this.connection.options();
-          if (!options) throw new Error('The service is not connected.');
-          return installSkill(options, {
-            source: request.source,
-            sourceKind: request.sourceKind,
-            ...(request.name !== undefined ? { name: request.name } : {}),
-          });
-        }
-        case 'builtinRestore': {
-          const options = this.connection.options();
-          if (!options) throw new Error('The service is not connected.');
-          return restoreBuiltin(options, request.id);
-        }
-        case 'roles': {
-          const options = this.connection.options();
-          if (!options) throw new Error('The service is not connected.');
-          return listRoles(options);
-        }
-        case 'rolesPut': {
-          const options = this.connection.options();
-          if (!options) throw new Error('The service is not connected.');
-          return putRole(options, {
-            id: request.id,
-            title: request.title,
-            allows: request.allows,
-          });
-        }
-        case 'agents': {
-          const options = this.connection.options();
-          if (!options) throw new Error('The service is not connected.');
-          return listAtdAgents(options);
-        }
-        case 'agentsPut': {
-          const options = this.connection.options();
-          if (!options) throw new Error('The service is not connected.');
-          return putAtdAgent(options, {
-            name: request.name,
-            description: request.description,
-            tools: request.tools,
-            model: request.model,
-            systemPrompt: request.systemPrompt,
-          });
-        }
-        case 'mcpStatus': {
-          const options = this.connection.options();
-          if (!options) throw new Error('The service is not connected.');
-          return mcpStatus({ options });
-        }
-        case 'mcpConnect': {
-          const options = this.connection.options();
-          if (!options) throw new Error('The service is not connected.');
-          return mcpConnect({ options }, { serverId: request.serverId });
-        }
-        case 'mcpAuthStart': {
-          const options = this.connection.options();
-          if (!options) throw new Error('The service is not connected.');
-          const result = await mcpAuthStart({ options }, { serverId: request.serverId });
-          if (result.authorizationUrl) {
-            const url = new URL(result.authorizationUrl);
-            if (!['http:', 'https:'].includes(url.protocol))
-              throw new Error('Only web links can be opened.');
-            await shell.openExternal(url.href);
-          }
-          return result;
-        }
-        case 'mcpAuthComplete': {
-          const options = this.connection.options();
-          if (!options) throw new Error('The service is not connected.');
-          const result = await mcpAuthComplete(
-            { options },
-            { serverId: request.serverId, input: request.input },
+        default:
+          return handleExtensionRequest(this.connection.options(), request, (url) =>
+            shell.openExternal(url),
           );
-          return { ok: result.authenticated };
-        }
-        case 'mcpUpsert': {
-          const options = this.connection.options();
-          if (!options) throw new Error('The service is not connected.');
-          return upsertMcpServer(options, request);
-        }
-        case 'mcpDisable': {
-          const options = this.connection.options();
-          if (!options) throw new Error('The service is not connected.');
-          return disableMcpServer(options, request.serverId);
-        }
-        case 'mcpRemove': {
-          const options = this.connection.options();
-          if (!options) throw new Error('The service is not connected.');
-          return removeMcpServer(options, request.serverId);
-        }
-        default: {
-          const _exhaustive: never = request;
-          throw new Error(`Unsupported service action: ${JSON.stringify(_exhaustive)}`);
-        }
       }
     });
   }

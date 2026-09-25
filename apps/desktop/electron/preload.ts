@@ -8,6 +8,7 @@ import { providerBridge } from './providers/preload';
 import { serviceBridge } from './service/preload';
 
 const desktop: DesktopBridge = {
+  runtime: 'electron',
   platform: process.platform,
   agent: agentBridge,
   service: serviceBridge,

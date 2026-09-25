@@ -34,7 +34,8 @@ export class CatalogSync {
       () => void this.pass(CATALOG_SYNC_INTERVAL_MS),
       CATALOG_CHECK_INTERVAL_MS,
     );
-    this.timer.unref();
+    // Node timers must not keep the main process alive; browser timers are plain ids.
+    if (typeof this.timer === 'object' && 'unref' in this.timer) this.timer.unref();
   }
 
   /** A model list opened: refresh what is more than a minute old so new models show while it is open. */

@@ -19,6 +19,9 @@ files:
   - '!dist-electron/worker*.js'
   - package.json
 extraResources:
+  # The web client the service serves to paired browsers (`build:web`).
+  - from: dist-web
+    to: web
   - from: ../agent-service/dist
     to: agent-service/dist
     # The incremental build-info file only exists to keep the dev watcher from

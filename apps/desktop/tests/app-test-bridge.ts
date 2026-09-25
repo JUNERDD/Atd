@@ -173,6 +173,7 @@ export function installBridge(extras?: {
   const open = vi.fn(async () => {});
   const openCommand = vi.fn(async (_commandId: string) => {});
   window.desktop = {
+    runtime: 'electron',
     platform: 'darwin',
     agent: api,
     getState: vi.fn(async () => ({

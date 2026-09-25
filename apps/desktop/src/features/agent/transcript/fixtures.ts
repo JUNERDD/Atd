@@ -147,6 +147,7 @@ export function installAgent() {
   const copy = vi.fn(async () => {});
   const openLink = vi.fn(async () => {});
   window.desktop = {
+    runtime: 'electron',
     platform: 'darwin',
     agent: { answer, copy, openLink } as unknown as AgentBridge,
   } as DesktopBridge;

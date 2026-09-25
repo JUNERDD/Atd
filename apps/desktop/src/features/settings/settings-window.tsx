@@ -20,6 +20,7 @@ import { ToastHost } from '../../components/toast';
 import { useAppLanguage } from '../../i18n/use-app-language';
 import '../agent/agent.css';
 import { LanguageSelector } from './language-selector';
+import { OpenInBrowserButton } from './open-in-browser-button';
 import { PermissionSettings } from './permission-settings';
 import { ShellAllowlistSettings } from './shell-allowlist-settings';
 import { ProviderSettingsForm } from './provider-settings';
@@ -193,6 +194,7 @@ export function SettingsWindow() {
           )}
           <main className="settings-content" aria-label={t('window.label')}>
             <div className="settings-content-header">
+              <OpenInBrowserButton />
               {bridge && snapshot && <LanguageSelector language={snapshot.language} />}
             </div>
             <ScrollArea

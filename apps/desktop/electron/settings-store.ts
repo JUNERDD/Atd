@@ -20,7 +20,7 @@ import { StoredConnectionSchema } from './providers/schema';
 import { migrateProvider } from './providers/legacy';
 import { initialDefaultConnectionId } from './providers/defaults';
 import { parseStoredShellAllowlist } from './settings-shell';
-import { parseShortcutBindings } from './settings-shortcuts';
+import { parseShortcutBindings } from './accelerators';
 import { PANEL_SIZE, type PanelSize } from './window-position';
 
 const ProviderSettingsSchema = Type.Object({
@@ -101,7 +101,7 @@ function parseSettings(value: unknown): StoredSettings {
     version: 2,
     ...providers,
     language,
-    shortcuts: parseShortcutBindings(value.shortcuts),
+    shortcuts: parseShortcutBindings(value.shortcuts, process.platform),
     pinned: value.pinned,
     panelSize,
     permissionTier,

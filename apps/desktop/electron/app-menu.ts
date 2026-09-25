@@ -80,6 +80,7 @@ export function installAppMenu(
   showPanel: () => void,
   hidePanel: () => void,
   settings: SettingsService,
+  openInBrowser: () => Promise<void>,
 ) {
   Menu.setApplicationMenu(
     Menu.buildFromTemplate([
@@ -99,6 +100,17 @@ export function installAppMenu(
                     'The settings window could not be opened.',
                   ),
                 );
+            },
+          },
+          {
+            label: 'Open in Browser…',
+            click: () => {
+              void openInBrowser().catch((error: unknown) =>
+                dialog.showErrorBox(
+                  'Could not open the web client',
+                  error instanceof Error ? error.message : 'The browser could not be opened.',
+                ),
+              );
             },
           },
           { type: 'separator' },

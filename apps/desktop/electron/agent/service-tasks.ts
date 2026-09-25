@@ -1,39 +1,52 @@
-import { dialog } from 'electron';
-import { previewTask } from '@ai/agent-client';
-import type { ServiceEvent, TaskSnapshot } from '@ai/agent-contracts';
-import type { ServiceConnection } from '../service/connection';
-import { ATTACHABLE_EXTENSIONS, attachFiles } from './attachable-files';
-import type { AgentRequest, TaskDetail } from './bridge';
+import { previewTask, type AgentClientOptions, type AgentHttpClient } from '@ai/agent-client';
+import type { InvalidateFrame, ServiceEvent, TaskSnapshot } from '@ai/agent-contracts';
+import type { AgentEvent, AgentRequest, TaskDetail } from './bridge';
 import { ChildTranscripts } from './child-transcripts';
-import type { CommandService } from './command-service';
-import { AGENT_IPC } from './ipc-channels';
+import type { CommandDefinition } from './command-schema';
 import { stageRunChoices } from './run-staging';
-import { mapRunPolicy } from './service-manage';
-import { isActive, type FileRef } from './task-schema';
-import { applyTranscriptPatch, QueueStateSchema } from './transcript-schema';
-import { mapBlock, mapRequest, mapSnapshot } from './service-map';
-import { parse } from './validation';
+import { mapRunPolicy, notConnected, renameLiveTask } from './service-manage';
+import { mapSnapshot } from './service-map';
+import { applyTaskEvent } from './task-events';
+import { isActive } from './task-schema';
 
-interface TaskHost {
-  send: (channel: string, value: unknown) => void;
+/** The slice of a service connection the task cache uses; desktop and web both provide it. */
+export interface TaskConnection {
+  http(): AgentHttpClient | null;
+  options(): AgentClientOptions | null;
+  setTaskHandlers(handlers: {
+    onSnapshot: (snapshot: TaskSnapshot) => void;
+    onEvent: (event: ServiceEvent) => void;
+  }): void;
+}
+
+export interface TaskHost {
+  /** Delivers an event to every client view (all renderer windows, or the web page). */
+  emit: (event: AgentEvent) => void;
+  /** Republishes the agent snapshot (task list, commands). */
   broadcast: () => void;
   defaultModel: () => { connectionId: string; modelId: string } | undefined;
 }
 
 /**
- * Service task cache + submit/detail/events. Owns the desktop TaskDetail map
- * populated from service snapshots/events; no Pi, worker or local runs.
+ * Service task cache + submit/detail/events, shared by the desktop main process and the web
+ * client. The service owns every task; this cache only mirrors the snapshots and events of the
+ * shared stream, so a task another client creates, renames or deletes shows up here too.
+ * `S` identifies who holds a subagent transcript (a window in the desktop, the page on the web).
  */
-export class TaskClient {
+export class TaskClient<S> {
   readonly details = new Map<string, TaskDetail>();
   readonly revisions = new Map<string, { revision: number; taskId: string; runId: string }>();
-  readonly children = new ChildTranscripts(() => this.http());
+  readonly children: ChildTranscripts<S>;
+  /** Snapshot loads in flight, so a burst of events for an unknown task loads it once. */
+  private readonly seeding = new Map<string, Promise<void>>();
 
   constructor(
-    private readonly connection: ServiceConnection,
-    private readonly commands: CommandService,
-    private readonly host: TaskHost,
+    private readonly connection: TaskConnection,
+    private readonly commands: { find: (id: string) => CommandDefinition },
+    readonly host: TaskHost,
+    forward: (subscriber: S, event: AgentEvent) => void,
   ) {
+    this.children = new ChildTranscripts(() => this.http(), forward);
     connection.setTaskHandlers({
       onSnapshot: (snapshot) => void this.onSnapshot(snapshot),
       onEvent: (event) => void this.onEvent(event),
@@ -52,9 +65,9 @@ export class TaskClient {
     this.children.clear();
   }
 
-  private http() {
+  http() {
     const client = this.connection.http();
-    if (!client) throw new Error('The service is not connected. Connect in Settings → Service.');
+    if (!client) throw notConnected();
     return client;
   }
 
@@ -78,7 +91,7 @@ export class TaskClient {
   publishTask(taskId: string) {
     const detail = this.details.get(taskId);
     if (!detail) return;
-    this.host.send(AGENT_IPC.changed, {
+    this.host.emit({
       type: 'task',
       state: {
         task: detail.task,
@@ -90,10 +103,45 @@ export class TaskClient {
     this.host.broadcast();
   }
 
+  /** Reloads a task from its snapshot and republishes it whole, transcript included. */
+  reseed(taskId: string): Promise<void> {
+    let pending = this.seeding.get(taskId);
+    if (pending) return pending;
+    pending = this.detail(taskId)
+      .then((detail) => {
+        this.publishTask(taskId);
+        this.host.emit({
+          type: 'transcript',
+          patch: {
+            taskId,
+            revision: detail.revision,
+            snapshot: true,
+            blocks: detail.blocks,
+            removed: [],
+          },
+        });
+      })
+      .finally(() => this.seeding.delete(taskId));
+    this.seeding.set(taskId, pending);
+    return pending;
+  }
+
+  /** Another client (or this one) renamed, retiered or deleted a task. */
+  async onInvalidate(frame: InvalidateFrame) {
+    if (!frame.taskId) return;
+    if (frame.scope === 'task.deleted') {
+      this.details.delete(frame.taskId);
+      this.children.forgetTask(frame.taskId);
+      this.host.broadcast();
+      return;
+    }
+    if (frame.scope === 'task') await this.reseed(frame.taskId).catch(() => undefined);
+  }
+
   private async onSnapshot(snapshot: TaskSnapshot) {
     try {
       const detail = this.cacheSnapshot(snapshot);
-      this.host.send(AGENT_IPC.changed, {
+      this.host.emit({
         type: 'task',
         state: { task: detail.task, artifacts: [], requests: detail.requests, queue: detail.queue },
       });
@@ -105,135 +153,13 @@ export class TaskClient {
 
   private async onEvent(event: ServiceEvent) {
     try {
-      const data = event.data as Record<string, unknown>;
-      switch (event.type) {
-        case 'run.status': {
-          const cached = this.details.get(event.taskId);
-          if (!cached || !event.runId) return;
-          const run = cached.task.runs.find((item) => item.id === event.runId);
-          if (!run) return;
-          const status = data['status'] as typeof run.status;
-          if (status) run.status = status;
-          if (typeof data['error'] === 'string') run.error = data['error'];
-          cached.task.updatedAt = event.at;
-          this.publishTask(event.taskId);
-          return;
-        }
-        case 'transcript.patch': {
-          const cached = this.details.get(event.taskId);
-          if (!cached) return;
-          const revision = typeof data['revision'] === 'number' ? data['revision'] : -1;
-          const isSnapshot = data['snapshot'] === true;
-          const blocks = Array.isArray(data['blocks']) ? data['blocks'] : [];
-          const removed = Array.isArray(data['removed']) ? (data['removed'] as string[]) : [];
-          const mapped = blocks.map((block) => mapBlock(block as Parameters<typeof mapBlock>[0]));
-          const patch = {
-            taskId: event.taskId,
-            revision,
-            snapshot: isSnapshot,
-            blocks: mapped,
-            removed,
-          };
-          const next = applyTranscriptPatch(
-            { revision: cached.revision, blocks: cached.blocks },
-            patch,
-          );
-          if (!next) {
-            const fresh = await this.http().snapshot(event.taskId);
-            const detail = this.cacheSnapshot(fresh.snapshot);
-            this.host.send(AGENT_IPC.changed, {
-              type: 'transcript',
-              patch: {
-                taskId: event.taskId,
-                revision: detail.revision,
-                snapshot: true,
-                blocks: detail.blocks,
-                removed: [],
-              },
-            });
-            return;
-          }
-          cached.revision = next.revision;
-          cached.blocks = next.blocks;
-          this.host.send(AGENT_IPC.changed, { type: 'transcript', patch });
-          return;
-        }
-        case 'child.transcript.patch':
-          this.children.onPatch(event.taskId, event.data);
-          return;
-        case 'queue.update': {
-          // The service's only live queue signal: queued, delivered, replaced or withdrawn by Stop.
-          const cached = this.details.get(event.taskId);
-          if (!cached) return;
-          cached.queue = parse(QueueStateSchema, event.data);
-          this.publishTask(event.taskId);
-          return;
-        }
-        case 'confirm.requested': {
-          const raw = data['request'] as Parameters<typeof mapRequest>[0] & { revision: number };
-          const request = mapRequest(raw);
-          this.revisions.set(raw.id, {
-            revision: raw.revision,
-            taskId: raw.taskId,
-            runId: raw.runId,
-          });
-          const cached = this.details.get(event.taskId);
-          if (cached && !cached.requests.some((item) => item.id === request.id)) {
-            cached.requests.push(request);
-            this.publishTask(event.taskId);
-          }
-          return;
-        }
-        case 'confirm.resolved': {
-          const requestId = typeof data['requestId'] === 'string' ? data['requestId'] : '';
-          this.revisions.delete(requestId);
-          const cached = this.details.get(event.taskId);
-          if (cached) {
-            cached.requests = cached.requests.filter((item) => item.id !== requestId);
-            this.publishTask(event.taskId);
-          }
-          return;
-        }
-        case 'capability.requested':
-        case 'capability.resolved': {
-          try {
-            const fresh = await this.http().snapshot(event.taskId);
-            this.cacheSnapshot(fresh.snapshot);
-            this.publishTask(event.taskId);
-          } catch {
-            // Capability-only events never break task state.
-          }
-          return;
-        }
-        case 'notice': {
-          const text = typeof data['text'] === 'string' ? data['text'] : '';
-          const kind =
-            data['kind'] === 'warning' || data['kind'] === 'error' ? data['kind'] : 'info';
-          this.host.send(AGENT_IPC.changed, {
-            type: 'notice',
-            notice: { taskId: event.taskId, text, kind },
-          });
-          return;
-        }
-        default: {
-          const _exhaustive: never = event.type;
-          throw new Error(`Unsupported service event: ${String(_exhaustive)}`);
-        }
-      }
+      // A task this cache has not seen yet (created by another client, or before this client
+      // connected): its snapshot already contains the event.
+      if (!this.details.has(event.taskId)) return await this.reseed(event.taskId);
+      await applyTaskEvent(this, event);
     } catch {
       // Stream events never throw; detail() reseeds on demand.
     }
-  }
-
-  async chooseFiles(): Promise<FileRef[]> {
-    const http = this.http();
-    const picked = await dialog.showOpenDialog({
-      title: 'Attach text files',
-      properties: ['openFile', 'multiSelections'],
-      filters: [{ name: 'Text files', extensions: [...ATTACHABLE_EXTENSIONS] }],
-    });
-    if (picked.canceled) return [];
-    return attachFiles(http, picked.filePaths);
   }
 
   async submit(request: Extract<AgentRequest, { action: 'submit' }>): Promise<TaskDetail> {
@@ -257,7 +183,7 @@ export class TaskClient {
     let thinkingLevel = request.policy?.thinkingLevel;
     const options = this.connection.options();
     if (request.commandId) {
-      if (!options) throw new Error('The service is not connected. Connect in Settings → Service.');
+      if (!options) throw notConnected();
       const command = this.commands.find(request.commandId);
       if (!command.enabled || command.revision !== request.commandRevision)
         throw new Error('This command changed or was disabled. Review before running.');
@@ -289,9 +215,12 @@ export class TaskClient {
       ...(model ? { model } : {}),
       ...(thinkingLevel ? { thinkingLevel } : {}),
     });
+    // A command run is titled after the command. The title lives in the service like any rename,
+    // so every client shows it.
+    if (titleCommand && !request.taskId && options)
+      await renameLiveTask(options, submitted.taskId, titleCommand);
     const detail = await this.detail(submitted.taskId);
-    if (titleCommand && !request.taskId) detail.task.title = titleCommand;
     this.host.broadcast();
-    return structuredClone(detail);
+    return detail;
   }
 }

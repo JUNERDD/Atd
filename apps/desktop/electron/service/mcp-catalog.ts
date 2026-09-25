@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto';
 import {
   McpServerConfigSchema,
   parse,
@@ -86,7 +85,7 @@ function buildRecord(
   return {
     serverId: draft.serverId,
     revision: 1,
-    connectionId: randomUUID(),
+    connectionId: crypto.randomUUID(),
     transport: fields.transport,
     stdio: fields.stdio,
     http: fields.http,

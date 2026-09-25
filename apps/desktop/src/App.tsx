@@ -120,8 +120,9 @@ export function App() {
               >
                 <Settings />
               </IconButton>
-              {/* macOS window management lives in the native traffic lights. */}
-              {platform !== 'darwin' && (
+              {/* macOS window management lives in the native traffic lights; the web client is a
+                  browser tab with nothing to hide. */}
+              {window.desktop?.runtime !== 'web' && platform !== 'darwin' && (
                 <IconButton
                   label={t('header.hide')}
                   className="header-button"

@@ -1,45 +1,20 @@
 import { readFile, realpath, stat } from 'node:fs/promises';
 import path from 'node:path';
 import type { AgentHttpClient } from '@ai/agent-client';
+import {
+  attachableExtension,
+  attachableMime,
+  MAX_ATTACHMENT_BYTES,
+  MAX_ATTACHMENTS,
+  uploadAttachables,
+  type AttachableUpload,
+} from './attachable-rules';
 import type { FileRef } from './task-schema';
 
-/** Text formats the service reads back as UTF-8 run material. */
-export const ATTACHABLE_EXTENSIONS = [
-  'txt',
-  'md',
-  'csv',
-  'json',
-  'log',
-  'yaml',
-  'yml',
-  'xml',
-  'html',
-  'css',
-  'ts',
-  'tsx',
-  'js',
-  'py',
-] as const;
-export type AttachableExtension = (typeof ATTACHABLE_EXTENSIONS)[number];
-
-/** Files per message; `InputSchema.files` accepts the same number. */
-const MAX_ATTACHMENTS = 10;
-/** Largest file main reads for one attachment, well under the service's 8 MiB resource cap. */
-export const MAX_ATTACHMENT_BYTES = 1024 * 1024;
-
-/** A validated file held in memory until upload. `realPath` stays in main. */
-export interface AttachableFile {
-  /** The requested path's basename: the name the user picked or saw in search results. */
-  name: string;
+/** A picked file read from disk. `realPath` stays in main. */
+export interface AttachableFile extends AttachableUpload {
   /** The resolved path every rule was checked against and the bytes were read from. */
   realPath: string;
-  mime: string;
-  bytes: Uint8Array;
-}
-
-export function attachableExtension(filePath: string): AttachableExtension | undefined {
-  const extension = path.extname(filePath).slice(1).toLowerCase();
-  return ATTACHABLE_EXTENSIONS.find((candidate) => candidate === extension);
 }
 
 /**
@@ -62,26 +37,7 @@ export async function readAttachable(filePath: string): Promise<AttachableFile> 
   const bytes = await readFile(realPath).catch(unreadable);
   // The file can grow between stat and read; the limit applies to the bytes that are uploaded.
   if (bytes.length > MAX_ATTACHMENT_BYTES) throw tooLarge();
-  const mime = extension === 'json' ? 'application/json' : 'text/plain';
-  return { name, realPath, mime, bytes: new Uint8Array(bytes) };
-}
-
-/** Uploads without a task id; the service ledger lets any later run reference the resource. */
-export async function uploadAttachables(
-  http: Pick<AgentHttpClient, 'upload'>,
-  files: AttachableFile[],
-): Promise<FileRef[]> {
-  const refs: FileRef[] = [];
-  for (const file of files) {
-    const uploaded = await http.upload(file.name, file.mime, file.bytes);
-    refs.push({
-      id: uploaded.resource.id,
-      name: file.name,
-      size: file.bytes.length,
-      type: file.mime,
-    });
-  }
-  return refs;
+  return { name, realPath, mime: attachableMime(extension), bytes: new Uint8Array(bytes) };
 }
 
 /**
