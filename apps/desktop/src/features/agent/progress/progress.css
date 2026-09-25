@@ -1,10 +1,19 @@
 /* Row above the composer surface. It lives inside the composer popover anchor, so the popover its
-   parts open stacks above the pill instead of covering it. */
+   parts open stacks above the pill instead of covering it. Its height animates on enter and exit,
+   so it clips the capsule while collapsed; the margin keeps the parts' 3px focus ring visible. */
 .composer-progress-row {
+  min-width: 0;
+  overflow: clip;
+  overflow-clip-margin: 4px;
+}
+
+/* The row's measured content: the centered capsule and its 8px gap to the composer, which the row
+   collapses with it. */
+.composer-progress-slot {
   display: flex;
   justify-content: center;
   min-width: 0;
-  margin-bottom: 8px;
+  padding-bottom: 8px;
 }
 
 /* One 24px secondary capsule (the xs Button height) holding up to three parts. A part with a view
