@@ -103,7 +103,12 @@ span.composer-progress-part {
   padding: 12px 4px 8px 12px;
 }
 
+/* Title and completed count share one line: the count trails at the header's end. */
 .composer-todos-header {
+  flex-direction: row;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
   padding-right: 8px;
 }
 
@@ -145,7 +150,9 @@ span.composer-progress-part {
 }
 
 /* Subagents view: hugs its rows up to the Todos view width and scrolls within the height Radix
-   reports above the pill. */
+   reports above the pill. One 4px inset on the sides and bottom keeps the 18px row highlights
+   concentric with the popover's 22px corners; the header's 12px inline inset lines the title up
+   with the row icons. */
 .composer-subagents {
   display: flex;
   flex-direction: column;
@@ -154,11 +161,11 @@ span.composer-progress-part {
   max-width: min(20rem, calc(100vw - 16px));
   max-height: min(22rem, var(--radix-popover-content-available-height));
   gap: 6px;
-  padding: 10px 4px 6px 8px;
+  padding: 10px 4px 4px;
 }
 
 .composer-subagents-header {
-  padding-inline: 4px;
+  padding-inline: 12px;
 }
 
 .composer-subagents-list {

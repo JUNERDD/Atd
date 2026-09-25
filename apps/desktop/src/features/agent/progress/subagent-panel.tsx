@@ -105,13 +105,13 @@ export function SubagentPanel({
         </PopoverTitle>
       </PopoverHeader>
       <ScrollArea className="composer-todos-scroll" scrollShadow>
-        <ul className="composer-subagents-list pr-1" data-panel-focus>
+        <ul className="composer-subagents-list" data-panel-focus>
           {rows.map(({ child, glyph }) => (
             <ChildRow key={child.key} child={child} glyph={glyph} onOpen={onOpen} />
           ))}
         </ul>
         {truncated && (
-          <p className="m-0 mt-2 text-xs text-muted-foreground">{t('subagent.truncated')}</p>
+          <p className="m-0 mt-2 px-3 text-xs text-muted-foreground">{t('subagent.truncated')}</p>
         )}
       </ScrollArea>
     </div>
