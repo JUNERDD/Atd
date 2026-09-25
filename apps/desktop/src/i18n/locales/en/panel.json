@@ -57,7 +57,8 @@
     "progress": {
       "label": "Task progress",
       "step": "Step {{current}} / {{total}}",
-      "running": "{{count}} running",
+      "subagentOne": "1 subagent",
+      "subagentMany": "{{count}} subagents",
       "showTodos": "Show todos"
     }
   },

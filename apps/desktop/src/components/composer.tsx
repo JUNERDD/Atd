@@ -229,7 +229,12 @@ export function Composer({
           recall={queueRecall}
           suppressed={isQuickPanelOpen(trigger, active)}
           onEditQueued={(text) => setText(joinDraft(draft.text, text))}
-          header={taskId !== null && <ProgressPill blocks={blocks} />}
+          header={
+            taskId !== null && (
+              // A queued run has not started, so the latest reply still belongs to the last run.
+              <ProgressPill blocks={blocks} live={active && status !== 'queued'} />
+            )
+          }
         >
           <QuickPanel
             trigger={trigger}

@@ -15,8 +15,8 @@ export interface TaskProgress {
   todos: VisibleTodo[];
   step: TodoStep | null;
   completed: number;
-  /** Subagents launched by `subagent` calls that are still running. */
-  running: number;
+  /** Subagents the current assistant message dispatched successfully, finished or not. */
+  subagents: number;
 }
 
 function isVisible(todo: TodoItem): todo is VisibleTodo {
@@ -51,14 +51,20 @@ export function todoStep(todos: readonly VisibleTodo[]): TodoStep | null {
   return { current: Math.min(completed + 1, total), total };
 }
 
-/** Counts launches the same way the transcript's subagent rows do (`subagentLaunches`). */
-export function runningSubagents(blocks: readonly Block[]): number {
-  let running = 0;
-  for (const block of blocks) {
-    if (block.kind === 'tool' && block.name === 'subagent' && block.status === 'running')
-      running += subagentLaunches(block.args, block.status);
+/**
+ * Subagents dispatched by the current assistant message: the blocks after the latest user message,
+ * the same boundary that starts a transcript turn. Counts like the transcript's group header
+ * (`subagentLaunches`), so only completed dispatches add up.
+ */
+export function dispatchedSubagents(blocks: readonly Block[]): number {
+  let dispatched = 0;
+  for (let index = blocks.length - 1; index >= 0; index -= 1) {
+    const block = blocks[index];
+    if (!block || block.kind === 'user') break;
+    if (block.kind === 'tool' && block.name === 'subagent')
+      dispatched += subagentLaunches(block.args, block.status);
   }
-  return running;
+  return dispatched;
 }
 
 export function taskProgress(blocks: readonly Block[]): TaskProgress {
@@ -67,6 +73,6 @@ export function taskProgress(blocks: readonly Block[]): TaskProgress {
     todos,
     step: todoStep(todos),
     completed: todos.filter((todo) => todo.status === 'completed').length,
-    running: runningSubagents(blocks),
+    subagents: dispatchedSubagents(blocks),
   };
 }

@@ -57,7 +57,8 @@
     "progress": {
       "label": "任务进度",
       "step": "第 {{current}} / {{total}} 步",
-      "running": "{{count}} 个运行中",
+      "subagentOne": "1 个子智能体",
+      "subagentMany": "{{count}} 个子智能体",
       "showTodos": "查看待办"
     }
   },

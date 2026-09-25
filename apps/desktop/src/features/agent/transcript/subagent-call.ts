@@ -46,13 +46,13 @@ function isWorkflow(args: Args): boolean {
 }
 
 /**
- * How many subagents the call launches: none for a management action or a raw script the service
- * refuses, one per delegation (times its `count`), and one per task or step of a parallel batch,
- * a chain, or a named workflow's `args`. A failed call counts none: most failures are refusals
- * before anything launched.
+ * How many subagents the call dispatched: one per delegation (times its `count`), and one per task
+ * or step of a parallel batch, a chain, or a named workflow's `args`. Only a completed call counts:
+ * a running one may still wait for approval or be refused, and a failed, declined, or interrupted
+ * one dispatched nothing it could report. Management actions and raw scripts count none.
  */
 export function subagentLaunches(args: Args, status: ToolStatus): number {
-  if (status === 'failed' || text(args, 'action')) return 0;
+  if (status !== 'completed' || text(args, 'action')) return 0;
   const list = launchList(args);
   if (list) return list.length;
   if (!text(args, 'agent')) return 0;

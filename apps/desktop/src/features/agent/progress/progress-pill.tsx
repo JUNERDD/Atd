@@ -42,19 +42,27 @@ function StepRing({ completed, total }: { completed: number; total: number }) {
 
 /**
  * Compact progress pill, centered above the composer input: a progress ring and `Step x / y` from
- * the latest todo list, and `N running` for launched subagents still running. Each half hides when
- * it has nothing to say and the pill hides when both do. With todos it opens the Todos popover; without them it is a
+ * the latest todo list, and, while the reply is `live` (its run is in progress), the subagents that
+ * reply dispatched successfully, finished ones included. Each half hides when it has nothing to say
+ * and the pill hides when both do. With todos it opens the Todos popover; without them it is a
  * plain status.
  */
-export function ProgressPill({ blocks }: { blocks: readonly Block[] }) {
+export function ProgressPill({ blocks, live }: { blocks: readonly Block[]; live: boolean }) {
   const { t } = useTranslation('panel');
   const { t: tt } = useTranslation('tasks');
-  const { todos, step, completed, running } = useTaskProgress(blocks);
-  if (!step && running === 0) return null;
+  const progress = useTaskProgress(blocks);
+  const { todos, step, completed } = progress;
+  const subagents = live ? progress.subagents : 0;
+  if (!step && subagents === 0) return null;
   const stepText = step
     ? t('composer.progress.step', { current: step.current, total: step.total })
     : null;
-  const runningText = running > 0 ? t('composer.progress.running', { count: running }) : null;
+  const subagentText =
+    subagents === 0
+      ? null
+      : subagents === 1
+        ? t('composer.progress.subagentOne')
+        : t('composer.progress.subagentMany', { count: subagents });
   const content = (
     <>
       {stepText && (
@@ -63,11 +71,11 @@ export function ProgressPill({ blocks }: { blocks: readonly Block[] }) {
           <span className="truncate">{stepText}</span>
         </span>
       )}
-      {stepText && runningText && <Separator orientation="vertical" className="h-3" />}
-      {runningText && (
+      {stepText && subagentText && <Separator orientation="vertical" className="h-3" />}
+      {subagentText && (
         <span className="composer-progress-part">
           <Bot aria-hidden />
-          <span className="truncate">{runningText}</span>
+          <span className="truncate">{subagentText}</span>
         </span>
       )}
     </>
@@ -97,7 +105,7 @@ export function ProgressPill({ blocks }: { blocks: readonly Block[] }) {
             variant="secondary"
             size="xs"
             className="composer-progress"
-            aria-label={[stepText, runningText, t('composer.progress.showTodos')]
+            aria-label={[stepText, subagentText, t('composer.progress.showTodos')]
               .filter(Boolean)
               .join(' · ')}
           >
