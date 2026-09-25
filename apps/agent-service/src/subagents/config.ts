@@ -1,6 +1,6 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { TODO_TOOL, WEB_FETCH_TOOL, WEB_SEARCH_TOOL } from '@ai/agent-contracts';
+import { TODO_TOOL } from '@ai/agent-contracts';
 
 /**
  * T5 managed subagent config (D4). Written to the service profile before the
@@ -19,18 +19,12 @@ export const SERVICE_PARALLEL_WORKFLOW = 'service.parallel';
 export const SERVICE_CHAIN_WORKFLOW = 'service.chain';
 
 /**
- * Tools a child may never receive: re-delegation, role/config planes, and the parent-only
- * harness tools (todo, web). Harness tools are not snapshot tools, so they never reach a
- * child's parent tools anyway; listing them keeps the ceiling closed if that ever changes.
+ * Tools a child may never receive: re-delegation, role/config planes, and the parent-only todo
+ * harness tool. Harness tools are not snapshot tools, so they never reach a child's parent tools
+ * anyway; listing todo keeps the ceiling closed if that ever changes. The web harness tools are
+ * the exception children do inherit (intersection.ts `CHILD_WEB_TOOLS`).
  */
-export const FORBIDDEN_CHILD_TOOLS = [
-  'subagent',
-  'ask_user',
-  'desktop',
-  TODO_TOOL,
-  WEB_SEARCH_TOOL,
-  WEB_FETCH_TOOL,
-] as const;
+export const FORBIDDEN_CHILD_TOOLS = ['subagent', 'ask_user', 'desktop', TODO_TOOL] as const;
 
 /** Explicit child system prompt; the trigger pins it on every launch. */
 export const SUBAGENT_CHILD_SYSTEM_PROMPT =

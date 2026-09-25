@@ -12,9 +12,9 @@ import { loadRunRole } from './skills/roles.js';
 import type { RuntimeAgent } from './subagents/agents.js';
 
 /**
- * Parent-only service tools every parent run keeps beside its snapshot tools. Roles do not grant
- * them and subagent children never inherit them. The harness registers the feature tools
- * (harness/index.ts).
+ * Service tools every parent run keeps beside its snapshot tools. Roles do not grant them;
+ * subagent children inherit only the web tools (subagents/intersection.ts). The harness
+ * registers the feature tools (harness/index.ts).
  */
 const SERVICE_TOOLS = [
   'ask_user',

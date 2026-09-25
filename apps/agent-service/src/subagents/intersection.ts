@@ -1,3 +1,4 @@
+import { WEB_FETCH_TOOL, WEB_SEARCH_TOOL } from '@ai/agent-contracts';
 import { confined } from '../service-fs.js';
 import { FORBIDDEN_CHILD_TOOLS } from './config.js';
 
@@ -38,11 +39,18 @@ const CHILD_ELIGIBLE_SERVICE_TOOLS = new Set([
   'ls',
 ]);
 
+/**
+ * Parent service tools a child inherits although neither the snapshot nor a role names them:
+ * every parent run keeps the web tools (run-binding.ts), and a child's calls pass the same `web`
+ * gate as the parent's (subagents/child-tools.ts).
+ */
+export const CHILD_WEB_TOOLS: readonly string[] = [WEB_SEARCH_TOOL, WEB_FETCH_TOOL];
+
 const FORBIDDEN = new Set<string>(FORBIDDEN_CHILD_TOOLS);
 
 /**
  * Intersects parent tools with role allows minus revocation, then narrows to
- * child-eligible service tools plus frozen MCP proxies and memory search.
+ * child-eligible service tools plus frozen MCP proxies, memory search and web.
  */
 export function intersectChildTools(input: IntersectionInput): IntersectionResult {
   const allow = new Set(input.roleAllowsTools);
@@ -50,25 +58,23 @@ export function intersectChildTools(input: IntersectionInput): IntersectionResul
   const proxies = new Set(input.mcpProxies);
   const allowed: string[] = [];
   const removed: string[] = [];
-  const candidates = [...input.parentTools, ...input.mcpProxies];
+  const candidates = [...input.parentTools, ...input.mcpProxies, ...CHILD_WEB_TOOLS];
   if (input.runMemory) candidates.push('memory_search');
   for (const tool of new Set(candidates)) {
     if (FORBIDDEN.has(tool)) {
       removed.push(tool);
       continue;
     }
-    const isProxy = proxies.has(tool);
-    const isMemorySearch = tool === 'memory_search';
-    const isService = CHILD_ELIGIBLE_SERVICE_TOOLS.has(tool);
-    if (!isProxy && !isMemorySearch && !isService) {
+    // Proxies, memory search and web come from the run itself, not from a role grant.
+    const inherited =
+      proxies.has(tool) || tool === 'memory_search' || CHILD_WEB_TOOLS.includes(tool);
+    if (!inherited && !CHILD_ELIGIBLE_SERVICE_TOOLS.has(tool)) {
       removed.push(tool);
       continue;
     }
-    if (!isProxy && !isMemorySearch) {
-      if (!allow.has(tool) || revoked.has(tool)) {
-        removed.push(tool);
-        continue;
-      }
+    if (!inherited && !allow.has(tool)) {
+      removed.push(tool);
+      continue;
     }
     if (revoked.has(tool)) {
       removed.push(tool);

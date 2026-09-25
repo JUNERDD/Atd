@@ -3,6 +3,7 @@ import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { Type } from 'typebox';
 import { childCommandTool } from '../commands/tool.js';
 import { childSearchTools } from '../harness/search/tools.js';
+import { childWebTools } from '../harness/web-extension.js';
 import { authorizeShellCommand } from '../shell-policy.js';
 import { checkChildPath, isChildToolAllowed } from './intersection.js';
 import { hostForTask, releaseWrite, tryAcquireWrite } from './registry.js';
@@ -12,9 +13,10 @@ import { hostForTask, releaseWrite, tryAcquireWrite } from './registry.js';
  * in every foreground child: service dataDir confinement, the service shell
  * policy, no parallel same-file writes, explicit blocks. Child writes stay
  * inside the task output dir; outside paths are blocked without a prompt.
- * grep/find/ls are the parent's confined pi tools (harness/search).
+ * grep/find/ls are the parent's confined pi tools (harness/search), and
+ * web_search/fetch_content the parent's keyless web tools (harness/web-extension).
  *
- * bash and command saves decide exactly as the parent's do: through the
+ * bash, command saves and web calls decide exactly as the parent's do: through the
  * parent task's tier and the service gate (`SubagentHost.approvals`), with
  * confirms attributed to the child's execution id. A child's abort signal
  * cancels its pending confirm wait.
@@ -79,7 +81,7 @@ export function registerChildCeiling(pi: PiLike, host: ChildToolHost): void {
   });
 }
 
-/** Registers confined read/write/edit/bash/command/grep/find/ls proxies for one child. */
+/** Registers confined file, shell, command, search and web proxies for one child. */
 export function registerChildTools(pi: PiLike, host: ChildToolHost): void {
   registerChildCeiling(pi, host);
   const parent = hostForTask(host.taskId);
@@ -94,6 +96,7 @@ export function registerChildTools(pi: PiLike, host: ChildToolHost): void {
       decision,
     });
   for (const tool of childSearchTools(host.cwd, host.allowedTools, allow)) pi.registerTool(tool);
+  for (const tool of childWebTools(approvals.gate, host.allowedTools)) pi.registerTool(tool);
   if (host.allowedTools.includes('read')) {
     pi.registerTool({
       name: 'read',

@@ -1,7 +1,8 @@
 /**
- * Names of the parent-only harness tools. They are not snapshot tools (`ServiceToolIdSchema`):
- * every parent run gets them beside its snapshot tools (the service run binding), roles do not
- * grant them, and subagent children never inherit them. Transcript rows key on these names.
+ * Names of the harness tools. They are not snapshot tools (`ServiceToolIdSchema`): every parent
+ * run gets them beside its snapshot tools (the service run binding) and roles do not grant them.
+ * Subagent children inherit the web tools and, when the run enables memory, memory search; the
+ * others stay parent-only. Transcript rows key on these names.
  */
 
 /** rpiv-todo's tool; its name is the key of its branch replay, so it never changes. */
