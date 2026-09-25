@@ -1,5 +1,6 @@
 import { Fragment, type ReactNode } from 'react';
 import { Bot, ListOrdered, MessageCircleQuestion, ShieldAlert } from 'lucide-react';
+import { AnimatePresence, motion, useReducedMotion, type Transition } from 'motion/react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@ai/ui/components/button';
 import { Separator } from '@ai/ui/components/separator';
@@ -30,6 +31,11 @@ function StepRing({ completed, total }: { completed: number; total: number }) {
     </svg>
   );
 }
+
+/** Enter eases out like the popover's view slide; exit is quicker and eases in. */
+const ENTER: Transition = { duration: 0.2, ease: [0.22, 1, 0.36, 1] };
+const EXIT: Transition = { duration: 0.15, ease: [0.4, 0, 1, 1] };
+const INSTANT: Transition = { duration: 0 };
 
 /** The views of the one popover above the composer, each opened by its pill part. */
 export type PillView = 'hitl' | 'todos' | 'subagents';
@@ -97,6 +103,10 @@ function PartButton({
  *   Summarized children stay after the reply ends and on reopen, since the pill is the way into
  *   their conversations; a bare count from a transcript without summaries has no list to open and
  *   shows only while the reply is `live` (its run is in progress).
+ *
+ * The pill enters and leaves animated: its row grows from and collapses to zero height, so the
+ * transcript above resizes instead of jumping, while the capsule fades and scales, rising out of
+ * the composer. The first render (a window that opens on a task) places it without animating.
  */
 export function ProgressPill({
   progress,
@@ -193,20 +203,38 @@ export function ProgressPill({
         ),
     });
   }
-  if (parts.length === 0) return null;
+  const reduced = useReducedMotion();
   return (
-    <div className="composer-progress-row">
-      <output className="composer-progress" aria-label={t('composer.progress.label')}>
-        {parts.map(({ key, node }, index) => (
-          <Fragment key={key}>
-            {index > 0 && (
-              // Radix stretches a vertical separator; a fixed 12px one centers in the 24px capsule.
-              <Separator orientation="vertical" className="h-3 data-vertical:self-center" />
-            )}
-            {node}
-          </Fragment>
-        ))}
-      </output>
-    </div>
+    <AnimatePresence initial={false}>
+      {parts.length > 0 && (
+        <motion.div
+          key="pill"
+          className="composer-progress-row"
+          initial={{ height: 0 }}
+          animate={{ height: 'auto', transition: reduced ? INSTANT : ENTER }}
+          exit={{ height: 0, transition: reduced ? INSTANT : EXIT }}
+        >
+          <motion.div
+            className="composer-progress-slot"
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1, transition: reduced ? INSTANT : ENTER }}
+            exit={{ opacity: 0, scale: 0.96, transition: reduced ? INSTANT : EXIT }}
+          >
+            <output className="composer-progress" aria-label={t('composer.progress.label')}>
+              {parts.map(({ key, node }, index) => (
+                <Fragment key={key}>
+                  {index > 0 && (
+                    // Radix stretches a vertical separator; a fixed 12px one centers in the 24px
+                    // capsule.
+                    <Separator orientation="vertical" className="h-3 data-vertical:self-center" />
+                  )}
+                  {node}
+                </Fragment>
+              ))}
+            </output>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
