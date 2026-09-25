@@ -291,10 +291,12 @@ html[data-platform='darwin'] .panel-header {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* "Sep 25 · Completed": the parts read as one dot-joined line, like the transcript's activity
+   summary. The dot is decoration only, so assistive technology hears the date and status. */
 .task-row-meta {
   display: flex;
-  justify-content: space-between;
-  gap: 8px;
+  align-items: center;
+  gap: 4px;
   color: var(--muted-foreground);
   font-size: 12px;
   font-weight: 400;
@@ -304,6 +306,10 @@ html[data-platform='darwin'] .panel-header {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.task-row-meta > * + *::before {
+  margin-right: 4px;
+  content: '·' / '';
 }
 
 .saved-prompt {
