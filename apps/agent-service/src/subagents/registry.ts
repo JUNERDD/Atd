@@ -6,7 +6,7 @@ import {
   type PermissionTier,
   type SubagentChildEntry,
 } from '@ai/agent-contracts';
-import type { CredentialStore } from '@earendil-works/pi-ai';
+import type { ModelRuntime } from '@earendil-works/pi-coding-agent';
 import type { Gate } from '../harness/gate.js';
 import type { PermissionLookups } from '../transcript-blocks.js';
 
@@ -71,6 +71,9 @@ export interface ChildApprovals {
   gate: Gate;
 }
 
+/** Builds one child's model runtime on the parent's credentials, endpoint and model catalog. */
+export type ChildModelRuntime = () => Promise<ModelRuntime>;
+
 /** Host handles the child bridge needs; stored per task, never serialized. */
 export interface SubagentHost {
   dataDir: string;
@@ -86,8 +89,8 @@ export interface SubagentHost {
   mcpBuilder?: (executionId: string) => (pi: unknown) => void;
   /** Ledger resource ids frozen for this run (resource-ref checks). */
   resourceIds: string[];
-  /** The parent's model credentials; children run on them instead of the agent dir's store. */
-  credentials: CredentialStore;
+  /** Builds each child's model runtime like the parent's (run-model.ts `childRuntime`). */
+  childRuntime: ChildModelRuntime;
   /** Approvals for one child execution; child bash and command saves decide through them. */
   approvals: (child: { runId: string; executionId: string }) => ChildApprovals;
   /** Publishes one child's transcript patch as an event of the parent task. */

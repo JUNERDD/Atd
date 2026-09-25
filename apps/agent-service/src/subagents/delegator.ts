@@ -1,5 +1,4 @@
 import type { SessionFactoryDeps } from '../pi-session.js';
-import type { CredentialStore } from '@earendil-works/pi-ai';
 import { SUBAGENT_CHILD_ENTRY } from '@ai/agent-contracts';
 import {
   SessionManager,
@@ -28,6 +27,7 @@ import {
   storeHost,
   unregisterParentBySession,
   type ChildApprovals,
+  type ChildModelRuntime,
 } from './registry.js';
 import { resolveRequiredExtensionPath, REQUIRED_EXTENSION_ID } from './required-extension.js';
 import { withServiceSubagentTool } from './tool-contract.js';
@@ -115,13 +115,13 @@ async function preload(): Promise<Preloaded> {
  * agent dir, installs the trigger and validates the bridge path. Returns the
  * single factory pi-session appends to its extension list. `runAgents` are
  * the referenced atd agents the session registers beside the service agents
- * (fixed per session through the run binding); `credentials` is the store of
- * the session's model runtime, which a runtime change rebuilds the session for.
+ * (fixed per session through the run binding); `childRuntime` builds a child's model runtime
+ * like the session's own, which a runtime change rebuilds the session for.
  */
 export async function prepareSubagentsParent(
   deps: SessionFactoryDeps,
   runAgents: RuntimeAgent[],
-  credentials: CredentialStore,
+  childRuntime: ChildModelRuntime,
 ): Promise<ExtensionFactory> {
   const agentDir = deps.ctx.paths.agentDir;
   process.env.PI_CODING_AGENT_DIR = agentDir;
@@ -155,7 +155,7 @@ export async function prepareSubagentsParent(
       registerParentSession(deps, preloaded, bridgePath, pi, ctx, {
         agents: [...SERVICE_RUNTIME_AGENTS, ...runAgents],
         registrations,
-        credentials,
+        childRuntime,
       });
       return undefined;
     });
@@ -206,7 +206,11 @@ function registerParentSession(
   bridgePath: string,
   pi: ExtensionAPI,
   ctx: { sessionManager: { getSessionId(): string | undefined }; cwd: string },
-  session: { agents: RuntimeAgent[]; registrations: Registration[]; credentials: CredentialStore },
+  session: {
+    agents: RuntimeAgent[];
+    registrations: Registration[];
+    childRuntime: ChildModelRuntime;
+  },
 ): void {
   const { registrations } = session;
   const sessionId = ctx.sessionManager.getSessionId();
@@ -253,7 +257,7 @@ function registerParentSession(
     runMemory: run.snapshot.memory,
     audit: deps.audit,
     resourceIds: run.snapshot.input.files.map((file) => file.id),
-    credentials: session.credentials,
+    childRuntime: session.childRuntime,
     approvals: childApprovals(deps, sessions),
     publishChildTranscript: (child, data) => {
       deps.ctx.events.publish({
