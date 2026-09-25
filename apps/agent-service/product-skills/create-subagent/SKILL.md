@@ -20,10 +20,9 @@ Then write `~/.atd/agents/<name>.md` with YAML frontmatter:
 ---
 name: <name>
 description: <description>
-tools: read, write   # omit if none
-model: <model-id>    # omit if none
+tools: read, write # omit if none
+model: <model-id> # omit if none
 ---
-
 <system prompt body>
 ```
 
