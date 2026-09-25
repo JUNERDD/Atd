@@ -95,16 +95,17 @@ export function registerConnectionRoutes(
     const { catalog = [] } = await presentConnection(live);
     if (!catalog.some((model) => model.id === body.modelId))
       throw new TypeError('This model is unavailable in the connection catalog.');
-    const model = live.defaultThinkingLevel
-      ? await connectionModel(opened, live, body.modelId)
-      : undefined;
+    const level = body.thinkingLevel ?? live.defaultThinkingLevel;
+    const model = level ? await connectionModel(opened, live, body.modelId) : undefined;
+    if (body.thinkingLevel && !model)
+      throw new TypeError('This model does not offer thinking levels.');
     await opened.connections.change((data) => {
       const current = data.connections.find((item) => item.connectionId === live.connectionId);
       if (!current || current.revision !== body.expectedRevision) throw new ConflictError(STALE);
       current.defaultModel = body.modelId;
-      // The saved level belongs to the previous model; keep what the new one still supports.
-      if (model && current.defaultThinkingLevel)
-        current.defaultThinkingLevel = clampThinkingLevel(model, current.defaultThinkingLevel);
+      // A requested level, or the saved one that belonged to the previous model, is kept only as
+      // far as this model supports it.
+      if (model && level) current.defaultThinkingLevel = clampThinkingLevel(model, level);
       current.revision += 1;
       if (!data.defaultConnectionId && current.connected)
         data.defaultConnectionId = current.connectionId;

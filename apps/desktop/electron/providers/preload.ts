@@ -14,8 +14,8 @@ export const providerBridge: ProviderBridge = {
   save: (draft) => ipcRenderer.invoke(PROVIDER_IPC.save, draft) as Promise<Connection>,
   setDefault: (id, revision) =>
     ipcRenderer.invoke(PROVIDER_IPC.default, id, revision) as Promise<void>,
-  setModel: (reference, revision) =>
-    ipcRenderer.invoke(PROVIDER_IPC.model, reference, revision) as Promise<void>,
+  setModel: (reference, revision, thinkingLevel) =>
+    ipcRenderer.invoke(PROVIDER_IPC.model, reference, revision, thinkingLevel) as Promise<void>,
   levels: (reference) =>
     ipcRenderer.invoke(PROVIDER_IPC.levels, reference) as Promise<ModelThinkingLevel[]>,
   disconnect: (id, revision) =>

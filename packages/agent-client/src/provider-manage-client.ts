@@ -16,6 +16,7 @@ import {
   type ProviderLevelsResponse,
   type ProviderLoginResponse,
   type ProviderUpdateRequest,
+  type ThinkingLevel,
 } from '@ai/agent-contracts';
 import { manageRequest } from './manage-request.js';
 import type { AgentClientOptions } from './types.js';
@@ -67,13 +68,18 @@ export function setProviderModel(
   connectionId: string,
   modelId: string,
   expectedRevision: number,
+  thinkingLevel?: ThinkingLevel,
   fetchImpl?: typeof fetch,
 ): Promise<ProviderConnectionResponse> {
   return manageRequest(
     options,
     connectionPath(connectionId, '/model'),
     'POST',
-    parse(ProviderModelRequestSchema, { expectedRevision, modelId }),
+    parse(ProviderModelRequestSchema, {
+      expectedRevision,
+      modelId,
+      ...(thinkingLevel ? { thinkingLevel } : {}),
+    }),
     decodeConnection,
     fetchImpl,
   );

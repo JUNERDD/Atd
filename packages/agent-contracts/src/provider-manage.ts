@@ -61,11 +61,15 @@ export const ProviderDefaultResponseSchema = Type.Object(
 );
 export type ProviderDefaultResponse = Static<typeof ProviderDefaultResponseSchema>;
 
-/** Sets the default model; it must be in the connection's catalog. */
+/**
+ * Sets the default model; it must be in the connection's catalog. The saved thinking level follows
+ * it, clamped to what the model supports; `thinkingLevel` replaces that level in the same write.
+ */
 export const ProviderModelRequestSchema = Type.Object(
   {
     expectedRevision: Type.Integer({ minimum: 1 }),
     modelId: Type.String({ minLength: 1, maxLength: 256 }),
+    thinkingLevel: Type.Optional(ThinkingLevelSchema),
   },
   { additionalProperties: false },
 );

@@ -165,7 +165,15 @@ export interface ProviderBridge {
   catalog: () => Promise<ProviderCatalogEntry[]>;
   save: (draft: ConnectionDraft) => Promise<Connection>;
   setDefault: (connectionId: string, revision: number) => Promise<void>;
-  setModel: (reference: ModelReference, revision: number) => Promise<void>;
+  /**
+   * Sets a connection's default model. Its saved thinking level follows, clamped to the model;
+   * `thinkingLevel` replaces that level in the same write.
+   */
+  setModel: (
+    reference: ModelReference,
+    revision: number,
+    thinkingLevel?: ModelThinkingLevel,
+  ) => Promise<void>;
   /** Thinking levels Pi accepts for one model, in Pi's order; empty when the model is unknown. */
   levels: (reference: ModelReference) => Promise<ModelThinkingLevel[]>;
   disconnect: (connectionId: string, revision: number) => Promise<void>;
