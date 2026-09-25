@@ -1,18 +1,15 @@
+import { SUBAGENT_WORKFLOWS } from '@ai/agent-contracts';
 import type { SessionFactoryDeps } from '../pi-session.js';
-import {
-  CLOSED_SUBAGENT_ACTIONS,
-  FORBIDDEN_SUBAGENT_PARAMS,
-  SERVICE_CHAIN_WORKFLOW,
-  SERVICE_PARALLEL_WORKFLOW,
-} from './config.js';
+import { SERVICE_PARALLEL_WORKFLOW } from './config.js';
 import { isParentStopping, liveChildren, parentByTask } from './registry.js';
+import { SUBAGENT_ACTION_KEYS, SUBAGENT_TOOL, SUBAGENT_TOOL_KEYS } from './tool-contract.js';
 import { validateChainArgs, validateParallelArgs } from './workflows.js';
 
 /**
- * T5 foreground dispatch guard. Blocks disallowed subagent invocations with
- * explicit reasons before the delegator runs: closed actions/params, missing
- * async:false, non-fresh context, overrides, unknown workflows/agents, ledger
- * resource refs. Child and workflow concurrency is not capped here. Never throws.
+ * T5 foreground dispatch guard: the authority on which `subagent` calls dispatch. It admits exactly
+ * the shapes the service tool contract advertises (tool-contract.ts) and refuses everything else
+ * before the delegator runs, naming the shape to use instead so a model can correct its next call.
+ * Child and workflow concurrency is not capped here. Never throws.
  */
 
 export interface GuardInput {
@@ -20,155 +17,94 @@ export interface GuardInput {
   input: Record<string, unknown>;
 }
 
-const ALLOWED_READ_ACTIONS = new Set(['status', 'list', 'get', 'guide', 'validate']);
-const CLOSED_ACTIONS = new Set<string>(CLOSED_SUBAGENT_ACTIONS);
-const FORBIDDEN_PARAMS = new Set<string>(FORBIDDEN_SUBAGENT_PARAMS);
+type GuardResult = { block?: boolean; reason?: string } | undefined;
 
-/** Validates one `subagent` tool call; undefined allows it to dispatch. */
-export function guardSubagentCall(
-  deps: SessionFactoryDeps,
-  event: GuardInput,
-): { block?: boolean; reason?: string } | undefined {
-  if (event.toolName !== 'subagent') return undefined;
-  if (isParentStopping(deps.taskId)) return { block: true, reason: 'The parent is stopping.' };
-  const input = event.input ?? {};
-  if (input['capabilities'] === true) return undefined;
-  const action = input['action'];
-  if (typeof action === 'string') return guardAction(action);
-  for (const param of FORBIDDEN_PARAMS) {
-    if (input[param] !== undefined)
-      return { block: true, reason: `Subagent param ${param} is forbidden.` };
-  }
-  if (input['workflowScript'] !== undefined || input['workflowScriptPath'] !== undefined)
-    return { block: true, reason: 'Raw workflow scripts are forbidden; use named workflows.' };
-  if (input['async'] !== false)
-    return { block: true, reason: 'Subagent calls require explicit async:false.' };
-  if (input['context'] !== undefined && input['context'] !== 'fresh')
-    return { block: true, reason: 'Subagent context must be fresh.' };
-  if (input['cwd'] !== undefined)
-    return { block: true, reason: 'Subagent cwd overrides are forbidden.' };
-  if (input['model'] !== undefined)
-    return { block: true, reason: 'Subagent model overrides are forbidden.' };
-  if (input['skill'] !== undefined)
-    return { block: true, reason: 'Subagent skill overrides are forbidden.' };
-  if (input['thinking'] !== undefined)
-    return { block: true, reason: 'Subagent thinking overrides are forbidden.' };
-  if (input['worktree'] === true)
-    return { block: true, reason: 'Subagent worktrees are closed in round one.' };
-  const workflow = input['workflow'];
-  if (typeof workflow === 'string') return guardWorkflowCall(deps, input, workflow);
-  if (input['tasks'] !== undefined) return guardParallelCall(deps, input);
-  return guardSingleCall(deps, input);
+const LAUNCH_SHAPES =
+  'Use { agent, task } for one child, { workflow: "service.parallel", args: { tasks: [{ agent, task }] } } for children at the same time, or { workflow: "service.chain", args: { steps: [{ agent, task }] } } for children in order.';
+
+const WORKFLOWS = new Set<string>(SUBAGENT_WORKFLOWS);
+
+function refuse(reason: string): GuardResult {
+  return { block: true, reason };
 }
 
-function guardAction(action: string): { block?: boolean; reason?: string } | undefined {
-  if (CLOSED_ACTIONS.has(action))
-    return { block: true, reason: `Subagent action ${action} is closed in round one.` };
-  if (ALLOWED_READ_ACTIONS.has(action) || action === 'interrupt') return undefined;
-  return { block: true, reason: `Subagent action ${action} is not allowed.` };
+/** Validates one `subagent` tool call; undefined allows it to dispatch. */
+export function guardSubagentCall(deps: SessionFactoryDeps, event: GuardInput): GuardResult {
+  if (event.toolName !== SUBAGENT_TOOL) return undefined;
+  if (isParentStopping(deps.taskId)) return refuse('The parent is stopping.');
+  const input = event.input ?? {};
+  const unknown = Object.keys(input).find((key) => !SUBAGENT_TOOL_KEYS.has(key));
+  if (unknown) return refuse(`Subagent param ${unknown} is not supported here. ${LAUNCH_SHAPES}`);
+  if (input['action'] !== undefined) return guardAction(input);
+  // The tool contract pins omitted async to false, so anything else here would detach the launch.
+  if (input['async'] !== false)
+    return refuse('Subagent calls run in the foreground; omit async or pass async:false.');
+  if (input['capabilities'] !== undefined || input['id'] !== undefined)
+    return refuse('capabilities and id belong to the list and status actions.');
+  const parent = parentByTask(deps.taskId);
+  if (!parent) return refuse('Unknown parent session.');
+  if (input['workflow'] !== undefined) return guardWorkflowCall(deps, parent.agents, input);
+  if (input['args'] !== undefined)
+    return refuse(`Subagent args belong to a workflow call. ${LAUNCH_SHAPES}`);
+  const problem = delegationProblem(parent.agents, input['agent'], input['task']);
+  return problem ? refuse(problem) : undefined;
+}
+
+function guardAction(input: Record<string, unknown>): GuardResult {
+  const action = input['action'];
+  const allowed =
+    typeof action === 'string' && Object.hasOwn(SUBAGENT_ACTION_KEYS, action)
+      ? SUBAGENT_ACTION_KEYS[action as keyof typeof SUBAGENT_ACTION_KEYS]
+      : null;
+  if (!allowed)
+    return refuse(`Subagent action ${String(action)} is not available; use list or status.`);
+  // A habitual async:false is harmless on an action; any other extra key is a malformed call.
+  const extra = Object.keys(input).find(
+    (key) =>
+      key !== 'action' && !allowed.includes(key) && !(key === 'async' && input['async'] === false),
+  );
+  if (extra)
+    return refuse(
+      `Subagent action ${String(action)} takes ${allowed.length ? allowed.join(', ') : 'no other params'}, not ${extra}.`,
+    );
+  return undefined;
 }
 
 function guardWorkflowCall(
   deps: SessionFactoryDeps,
+  agents: string[],
   input: Record<string, unknown>,
-  workflow: string,
-): { block?: boolean; reason?: string } | undefined {
-  if (workflow !== SERVICE_PARALLEL_WORKFLOW && workflow !== SERVICE_CHAIN_WORKFLOW)
-    return { block: true, reason: `Unknown workflow ${workflow}.` };
+): GuardResult {
+  const workflow = input['workflow'];
+  if (typeof workflow !== 'string' || !WORKFLOWS.has(workflow))
+    return refuse(`Unknown workflow ${String(workflow)}. ${LAUNCH_SHAPES}`);
   if (input['agent'] !== undefined || input['task'] !== undefined)
-    return { block: true, reason: 'Workflow calls take workflow+args only.' };
-  const args = (input['args'] ?? {}) as Record<string, unknown>;
-  const tasks =
-    workflow === SERVICE_PARALLEL_WORKFLOW
-      ? validatedParallelTasks(args)
-      : validatedChainTasks(args);
-  if (typeof tasks === 'string') return { block: true, reason: tasks };
+    return refuse(`Workflow calls put each agent and task inside args. ${LAUNCH_SHAPES}`);
+  const args = input['args'] ?? {};
+  const validated =
+    workflow === SERVICE_PARALLEL_WORKFLOW ? validateParallelArgs(args) : validateChainArgs(args);
+  if (!validated.ok) return refuse(`${validated.error} ${LAUNCH_SHAPES}`);
+  const tasks = 'tasks' in validated.args ? validated.args.tasks : validated.args.steps;
   const known = new Set(deps.ctx.ledger.data.resources.map((resource) => resource.id));
-  for (const task of tasks) {
-    for (const id of task.resources ?? []) {
-      if (!known.has(id)) return { block: true, reason: `Resource ${id} is not in the ledger.` };
-    }
+  for (const [index, task] of tasks.entries()) {
+    const problem = delegationProblem(agents, task.agent, task.task);
+    if (problem) return refuse(`Workflow task ${index}: ${problem}`);
+    const missing = (task.resources ?? []).find((id) => !known.has(id));
+    if (missing) return refuse(`Resource ${missing} is not in the ledger.`);
   }
-  if (!parentByTask(deps.taskId)) return { block: true, reason: 'Unknown parent session.' };
   return undefined;
 }
-
-function validatedParallelTasks(
-  args: Record<string, unknown>,
-): { agent: string; task: string; resources?: string[] }[] | string {
-  const validated = validateParallelArgs(args);
-  if (!validated.ok) return validated.error;
-  return validated.args.tasks;
-}
-
-function validatedChainTasks(
-  args: Record<string, unknown>,
-): { agent: string; task: string; resources?: string[] }[] | string {
-  const validated = validateChainArgs(args);
-  if (!validated.ok) return validated.error;
-  return validated.args.steps;
-}
-
-/** Keys a native parallel task may carry: the delegation itself, no per-task overrides. */
-const PARALLEL_TASK_KEYS = new Set(['agent', 'task']);
 
 /**
- * Native parallel fan-out: one call whose `tasks` run at the same time. It is the only way to run
- * subagents together, since pi-subagents rejects a second call while one is running. Each task
- * is checked like a single delegation.
+ * Why one delegation is refused: the agent must be registered for this session (service agents plus
+ * the atd agents the message referenced) and the task sized. Workflows apply it to every task.
  */
-function guardParallelCall(
-  deps: SessionFactoryDeps,
-  input: Record<string, unknown>,
-): { block?: boolean; reason?: string } | undefined {
-  if (input['agent'] !== undefined || input['task'] !== undefined || input['chain'] !== undefined)
-    return { block: true, reason: 'A parallel subagent call takes tasks only.' };
-  const tasks = input['tasks'];
-  if (!Array.isArray(tasks) || tasks.length === 0)
-    return { block: true, reason: 'Subagent tasks must be a non-empty list of { agent, task }.' };
-  const parent = parentByTask(deps.taskId);
-  if (!parent) return { block: true, reason: 'Unknown parent session.' };
-  for (const item of tasks) {
-    if (typeof item !== 'object' || item === null || Array.isArray(item))
-      return { block: true, reason: 'Each subagent task must be { agent, task }.' };
-    const entry = item as Record<string, unknown>;
-    const extra = Object.keys(entry).find((key) => !PARALLEL_TASK_KEYS.has(key));
-    if (extra) return { block: true, reason: `Subagent task field ${extra} is not allowed.` };
-    const problem = delegationProblem(parent.agents, entry['agent'], entry['task']);
-    if (problem) return { block: true, reason: problem };
-  }
-  return undefined;
-}
-
-/** Why one delegation is refused: the agent must be registered for this session, the task sized. */
 function delegationProblem(agents: string[], agent: unknown, task: unknown): string | null {
-  // The session's registered agents: service agents plus referenced atd agents.
   if (typeof agent !== 'string' || !agents.includes(agent))
-    return 'Subagent agent must be a service agent or an agent referenced in this message.';
+    return `Subagent agent must be one of: ${agents.join(', ')}.`;
   if (typeof task !== 'string' || !task.trim() || task.length > 8000)
     return 'Subagent task must hold 1-8000 characters.';
   return null;
-}
-
-function guardSingleCall(
-  deps: SessionFactoryDeps,
-  input: Record<string, unknown>,
-): { block?: boolean; reason?: string } | undefined {
-  const parent = parentByTask(deps.taskId);
-  if (!parent) return { block: true, reason: 'Unknown parent session.' };
-  const problem = delegationProblem(parent.agents, input['agent'], input['task']);
-  if (problem) return { block: true, reason: problem };
-  const resources = input['resources'];
-  if (resources !== undefined) {
-    if (!Array.isArray(resources))
-      return { block: true, reason: 'Subagent resources are malformed.' };
-    const known = new Set(deps.ctx.ledger.data.resources.map((resource) => resource.id));
-    for (const id of resources) {
-      if (typeof id !== 'string' || !known.has(id))
-        return { block: true, reason: 'Subagent resource is not in the ledger.' };
-    }
-  }
-  return undefined;
 }
 
 /** Audits the landed result (never throws). */
@@ -177,7 +113,7 @@ export function onSubagentResult(
   event: { toolName: string; input: Record<string, unknown> },
 ): void {
   try {
-    if (event.toolName !== 'subagent') return;
+    if (event.toolName !== SUBAGENT_TOOL) return;
     const parent = parentByTask(deps.taskId);
     if (!parent) return;
     const children = liveChildren(parent.sessionId);
