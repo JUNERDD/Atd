@@ -53,3 +53,4 @@ export {
 } from './trigger.js';
 export { resolveRequiredExtensionPath, REQUIRED_EXTENSION_ID } from './required-extension.js';
 export { guardSubagentCall, onSubagentResult } from './guard.js';
+export { readChildTranscript } from './child-transcript-read.js';

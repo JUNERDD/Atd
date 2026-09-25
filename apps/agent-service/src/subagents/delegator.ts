@@ -1,5 +1,6 @@
 import type { SessionFactoryDeps } from '../pi-session.js';
 import type { CredentialStore } from '@earendil-works/pi-ai';
+import { SUBAGENT_CHILD_ENTRY } from '@ai/agent-contracts';
 import {
   SessionManager,
   type ExtensionAPI,
@@ -7,6 +8,8 @@ import {
 } from '@earendil-works/pi-coding-agent';
 import { createGate } from '../harness/gate.js';
 import { effectiveTaskTier } from '../tasks/tier.js';
+import { collectPermissionLookups } from '../transcript-blocks.js';
+import { fromServiceBranch } from '../transcript.js';
 import { registerRuntimeAgents, SERVICE_RUNTIME_AGENTS, type RuntimeAgent } from './agents.js';
 import {
   SERVICE_CHAIN_WORKFLOW,
@@ -14,7 +17,12 @@ import {
   ensureManagedSubagentConfig,
 } from './config.js';
 import { enrichParentAsync } from './enrich.js';
-import { guardSubagentCall, onSubagentResult, type GuardInput } from './guard.js';
+import {
+  guardSubagentCall,
+  onSubagentExecutionEnd,
+  onSubagentResult,
+  type GuardInput,
+} from './guard.js';
 import {
   registerParent,
   storeHost,
@@ -135,12 +143,10 @@ export async function prepareSubagentsParent(
     assertInstalled();
     pi.on('tool_call', (raw) => guardSubagentCall(deps, raw as unknown as GuardInput));
     pi.on('tool_result', (raw) => {
-      onSubagentResult(
-        deps,
-        raw as unknown as { toolName: string; input: Record<string, unknown> },
-      );
+      onSubagentResult(deps, raw);
       return undefined;
     });
+    pi.on('tool_execution_end', (raw) => onSubagentExecutionEnd(deps, raw));
     pi.on('session_start', (_raw, ctxRaw) => {
       const ctx = ctxRaw as unknown as {
         sessionManager: { getSessionId(): string | undefined };
@@ -175,12 +181,8 @@ export async function prepareSubagentsParent(
  */
 function childApprovals(
   deps: SessionFactoryDeps,
-  sessions: unknown,
+  sessions: SessionManager,
 ): (child: { runId: string; executionId: string }) => ChildApprovals {
-  // Pi hands extensions its live SessionManager behind a read-only type; the gate records
-  // permission outcomes in it like the parent's own gate does.
-  if (!(sessions instanceof SessionManager))
-    throw new Error('Subagent parent has no session manager; refusing to start.');
   const tier = effectiveTaskTier(deps.ctx.ledger, deps.taskId, deps.ctx.tier);
   return (child) => ({
     tier,
@@ -209,6 +211,11 @@ function registerParentSession(
   const { registrations } = session;
   const sessionId = ctx.sessionManager.getSessionId();
   if (!sessionId) throw new Error('Subagent parent has no session identity; refusing to start.');
+  // Pi hands extensions its live SessionManager behind a read-only type; child approvals and
+  // `app-child` entries are written to it like the parent's own records.
+  const sessions = ctx.sessionManager;
+  if (!(sessions instanceof SessionManager))
+    throw new Error('Subagent parent has no session manager; refusing to start.');
   const taskId = deps.taskId;
   const runId = deps.currentRunId();
   const run = deps.ctx.ledger.run(taskId, runId);
@@ -227,7 +234,17 @@ function registerParentSession(
   // Sync registrations use the frozen run snapshot; enrich.ts narrows async
   // and fails closed to fewer tools (never wider) when unavailable.
   const parentTools = [...run.snapshot.tools];
-  registerParent({ taskId, runId, sessionId, tools: parentTools, roleId: 'default', agents });
+  registerParent({
+    taskId,
+    runId,
+    sessionId,
+    tools: parentTools,
+    roleId: 'default',
+    agents,
+    appendChildEntry: (entry) => {
+      sessions.appendCustomEntry(SUBAGENT_CHILD_ENTRY, entry);
+    },
+  });
   storeHost(taskId, {
     dataDir: deps.ctx.paths.root,
     cwd: ctx.cwd,
@@ -237,7 +254,17 @@ function registerParentSession(
     audit: deps.audit,
     resourceIds: run.snapshot.input.files.map((file) => file.id),
     credentials: session.credentials,
-    approvals: childApprovals(deps, ctx.sessionManager),
+    approvals: childApprovals(deps, sessions),
+    publishChildTranscript: (child, data) => {
+      deps.ctx.events.publish({
+        taskId,
+        runId: child.runId,
+        executionId: child.executionId,
+        type: 'child.transcript.patch',
+        data,
+      });
+    },
+    parentPermissions: () => collectPermissionLookups(fromServiceBranch(sessions.getBranch())),
   });
   registrations.push(
     preloaded.registerRequired({

@@ -11,6 +11,8 @@ export function rootExecutionId(runId: string): string {
 export const EventTypeSchema = Type.Union([
   Type.Literal('run.status'),
   Type.Literal('transcript.patch'),
+  /** Data is `ChildTranscriptPatchData`: one child session's transcript of the event's task. */
+  Type.Literal('child.transcript.patch'),
   /** Data is the task's whole `QueueState` (snapshot.ts) after each queue, delivery or removal. */
   Type.Literal('queue.update'),
   Type.Literal('confirm.requested'),
@@ -62,6 +64,22 @@ export const TranscriptPatchDataSchema = Type.Object(
   { additionalProperties: false },
 );
 export type TranscriptPatchData = Static<typeof TranscriptPatchDataSchema>;
+
+/**
+ * A child session's transcript patch. Same patch rules as the task transcript, keyed by
+ * `childKey` (`<toolCallId>:<seq>`); `revision` counts per child and restarts at a snapshot.
+ */
+export const ChildTranscriptPatchDataSchema = Type.Object(
+  {
+    childKey: Type.String({ minLength: 1, maxLength: 512 }),
+    revision: Type.Integer({ minimum: 0 }),
+    snapshot: Type.Boolean(),
+    blocks: Type.Array(Type.Unknown()),
+    removed: Type.Array(Type.String({ maxLength: 256 })),
+  },
+  { additionalProperties: false },
+);
+export type ChildTranscriptPatchData = Static<typeof ChildTranscriptPatchDataSchema>;
 
 export const ConfirmRequestedDataSchema = Type.Object(
   {

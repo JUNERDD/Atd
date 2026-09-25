@@ -159,6 +159,19 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
     snapshot: await deps.manager.snapshot(request.params.taskId),
   }));
 
+  // childKey arrives URL-encoded and Fastify decodes it; only the task's `app-child` entries resolve it.
+  app.get<{ Params: { taskId: string; childKey: string } }>(
+    '/v1/tasks/:taskId/children/:childKey/transcript',
+    async (request) => {
+      const { taskId, childKey } = request.params;
+      deps.ledger.task(taskId);
+      if (!childKey || childKey.length > 512) throw new TypeError('Invalid child key.');
+      const transcript = await deps.manager.runnerFor(taskId).childTranscript(childKey);
+      if (!transcript) throw new LedgerNotFound('Child', childKey);
+      return transcript;
+    },
+  );
+
   app.post<{ Params: { taskId: string; runId: string } }>(
     '/v1/tasks/:taskId/runs/:runId/cancel',
     async (request) => deps.manager.cancel(request.params.taskId, request.params.runId),

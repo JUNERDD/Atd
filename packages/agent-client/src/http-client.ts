@@ -1,6 +1,7 @@
 import { Type } from 'typebox';
 import {
   CancelRunResponseSchema,
+  ChildTranscriptResponseSchema,
   ConfirmReplyRequestSchema,
   ConfirmReplyResponseSchema,
   CredentialUploadRequestSchema,
@@ -17,6 +18,7 @@ import {
   TaskResponseSchema,
   type CancelRunResponse,
   type CapabilityReplyRequest,
+  type ChildTranscriptResponse,
   type ConfirmReplyRequest,
   type ConfirmReplyResponse,
   type CredentialUploadRequest,
@@ -63,6 +65,16 @@ export class AgentHttpClient {
       'GET',
       undefined,
       (json) => parse(SnapshotResponseSchema, json),
+    );
+  }
+
+  /** One child session's transcript; `childKey` is `<toolCallId>:<seq>` from the subagent details. */
+  childTranscript(taskId: string, childKey: string): Promise<ChildTranscriptResponse> {
+    return this.request(
+      `/v1/tasks/${encodeURIComponent(taskId)}/children/${encodeURIComponent(childKey)}/transcript`,
+      'GET',
+      undefined,
+      (json) => parse(ChildTranscriptResponseSchema, json),
     );
   }
 

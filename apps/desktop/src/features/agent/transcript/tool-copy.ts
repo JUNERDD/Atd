@@ -15,7 +15,13 @@ import {
   Wrench,
   type LucideIcon,
 } from 'lucide-react';
-import { TODO_TOOL, WEB_FETCH_TOOL, WEB_SEARCH_TOOL, type GrantScope } from '@ai/agent-contracts';
+import {
+  TODO_TOOL,
+  WEB_FETCH_TOOL,
+  WEB_SEARCH_TOOL,
+  type GrantScope,
+  type ToolBlockDetails,
+} from '@ai/agent-contracts';
 import type { PermissionOutcome } from '../../../../electron/agent/permission-schema';
 import type { BlockOf, ToolStatus } from '../../../../electron/agent/transcript-schema';
 import { subagentStepKey, subagentTarget, type SubagentStepKey } from './subagent-call';
@@ -198,6 +204,19 @@ export function bashCommand(args: Record<string, unknown>): string {
   return typeof args.command === 'string' ? args.command : '';
 }
 
+/** Structured details a transcript row renders as its body. */
+export type RowDetails = Exclude<ToolBlockDetails, { type: 'subagent' }>;
+
+/**
+ * The structured body a row renders, if any. A launching `subagent` call's child summaries feed
+ * the progress pill's subagent list and the drill-in view, never the message, so that row keeps
+ * its plain output.
+ */
+export function structuredDetails(block: BlockOf<'tool'>): RowDetails | null {
+  const data = block.details.data;
+  return !data || data.type === 'subagent' ? null : data;
+}
+
 /**
  * Whether the row has anything to expand into. ToolBlock renders a static row when this is
  * false so tools without detail expose no hover-expand affordance; ToolBody renders nothing.
@@ -210,7 +229,7 @@ export function hasToolDetail(block: BlockOf<'tool'>): boolean {
     case 'bash':
       return Boolean(bashCommand(block.args) || text);
     default:
-      return Boolean(text || block.details.data || block.status === 'interrupted');
+      return Boolean(text || structuredDetails(block) || block.status === 'interrupted');
   }
 }
 

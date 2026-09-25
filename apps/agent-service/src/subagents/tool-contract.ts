@@ -70,6 +70,14 @@ export const SubagentToolParams = Type.Object(
   { additionalProperties: false },
 );
 
+/**
+ * True for a call that launches children rather than a list/status action. A null action counts as
+ * omitted, as in `foregroundByDefault`, because transcripts keep the model's raw arguments.
+ */
+export function isSubagentLaunch(args: Record<string, unknown>): boolean {
+  return args['action'] == null;
+}
+
 /** Every key the closed schema declares; the guard refuses anything else as well. */
 export const SUBAGENT_TOOL_KEYS: ReadonlySet<string> = new Set(
   Object.keys(SubagentToolParams.properties),

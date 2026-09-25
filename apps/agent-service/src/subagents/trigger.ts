@@ -2,10 +2,12 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import type { CredentialStore } from '@earendil-works/pi-ai';
+import { startChildTranscript, type ChildTranscriptSource } from './child-transcript.js';
 import { SUBAGENT_CHILD_SYSTEM_PROMPT } from './config.js';
 import {
   hostForTask,
   parentByTask,
+  recordChildSession,
   taskIdFromCwd,
   trackChildEnd,
   trackChildSession,
@@ -21,7 +23,9 @@ import {
  * launch: projectTrusted:false plus forced noContextFiles plus explicit
  * system/append prompts, plus the parent's credential store so the child's
  * own model runtime can authenticate. The wrapper also tracks per-parent
- * children for UI aggregation and per-task abort without touching siblings.
+ * children for UI aggregation and per-task abort without touching siblings,
+ * links each created child to its parent call (`app-child`) and follows its
+ * transcript until it disposes.
  */
 
 type ManagedSettings = {
@@ -38,7 +42,7 @@ interface ChildLaunchLike {
   runtime?: { parentSessionId?: string; agent?: string };
 }
 
-interface ChildSessionLike {
+interface ChildSessionLike extends ChildTranscriptSource {
   abort(): Promise<void>;
   dispose(): Promise<void>;
   sessionFile?: string | undefined;
@@ -58,7 +62,6 @@ interface ChildSessionModule {
 let installed = false;
 let installations = 0;
 const liveByTask = new Map<string, Set<ChildSessionLike>>();
-const keyBySession = new Map<ChildSessionLike, { parentSessionId: string; key: string }>();
 
 async function loadChildSessionModule(): Promise<ChildSessionModule> {
   const require = createRequire(import.meta.url);
@@ -119,24 +122,30 @@ export async function installManagedSettingsTrigger(): Promise<{ installed: bool
       try {
         const credentials = taskId ? hostForTask(taskId)?.credentials : undefined;
         const child = await inner.create(pinManagedSettings(launch, credentials));
-        if (tracked) trackChildSession(child.sessionId, tracked.record);
-        if (tracked && taskId) {
-          keyBySession.set(child, tracked);
-          const live = liveByTask.get(taskId) ?? new Set<ChildSessionLike>();
-          live.add(child);
-          liveByTask.set(taskId, live);
-          const dispose = child.dispose.bind(child);
-          child.dispose = async () => {
-            try {
-              await dispose();
-            } finally {
-              live.delete(child);
-              keyBySession.delete(child);
-              untrackChildSession(child.sessionId);
-              trackChildEnd(tracked.parentSessionId, tracked.key);
-            }
-          };
+        if (!tracked) return child;
+        const { record } = tracked;
+        let closeTranscript: () => void;
+        try {
+          closeTranscript = adoptChild(record, child);
+        } catch (error) {
+          untrackChildSession(child.sessionId);
+          await child.dispose().catch(() => undefined);
+          throw error;
         }
+        const live = liveByTask.get(record.taskId) ?? new Set<ChildSessionLike>();
+        live.add(child);
+        liveByTask.set(record.taskId, live);
+        const dispose = child.dispose.bind(child);
+        child.dispose = async () => {
+          try {
+            await dispose();
+          } finally {
+            live.delete(child);
+            untrackChildSession(child.sessionId);
+            trackChildEnd(record.parentSessionId, record.key);
+            closeTranscript();
+          }
+        };
         return child;
       } catch (error) {
         if (tracked) trackChildEnd(tracked.parentSessionId, tracked.key);
@@ -153,6 +162,21 @@ export async function installManagedSettingsTrigger(): Promise<{ installed: bool
   void installations;
   void parentByTask;
   return { installed: true };
+}
+
+/**
+ * Links a created child to its parent call and starts following its transcript; returns the
+ * transcript's close. Fails closed without a session file: the `app-child` entry, the child
+ * transcript endpoint and the parent's cards all resolve the child through it.
+ */
+function adoptChild(record: ChildRecord, child: ChildSessionLike): () => void {
+  const sessionFile = child.sessionFile;
+  if (!sessionFile) throw new Error('The subagent child has no session file; refusing to start.');
+  const host = hostForTask(record.taskId);
+  if (!host) throw new Error('The subagent parent task is gone; refusing to start.');
+  recordChildSession(record, sessionFile);
+  trackChildSession(child.sessionId, record);
+  return startChildTranscript(record, host, child);
 }
 
 /** Aborts only one task tree's live children; siblings keep running. */
