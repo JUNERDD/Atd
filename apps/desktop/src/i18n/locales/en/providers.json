@@ -13,6 +13,7 @@
     },
     "defaultModelLabel": "Default model for {{name}}",
     "defaultModelSaved": "Default model saved for {{name}}.",
+    "thinkingLevelSaved": "Effort saved for {{name}}.",
     "currentDefault": "Current default",
     "makeDefault": "Make default provider",
     "chooseDefaultModel": "Choose a default model first",
@@ -127,6 +128,7 @@
     "context": "Context",
     "model": "Model",
     "back": "Back",
-    "triggerLabel": "Model configuration: {{model}}, {{contextSize}}, {{effort}}"
+    "triggerLabel": "Model configuration: {{model}}, {{contextSize}}, {{effort}}",
+    "scopedTriggerLabel": "{{label}}: {{model}}, {{contextSize}}, {{effort}}"
   }
 }
