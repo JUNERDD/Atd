@@ -8,6 +8,7 @@ import {
   SubscribeSchema,
   type CapabilityRequest,
   type DesktopCapability,
+  type InvalidateFrame,
   type ServiceEvent,
   type TaskSnapshot,
 } from '@ai/agent-contracts';
@@ -71,6 +72,11 @@ export class StreamHub {
       if (connection.tasks && !connection.tasks.has(event.taskId)) continue;
       this.send(connection.socket, { type: 'event', event });
     }
+  }
+
+  /** Workspace changes reach every connection, whatever tasks it subscribed to. */
+  invalidate(frame: InvalidateFrame): void {
+    for (const connection of this.connections) this.send(connection.socket, frame);
   }
 
   private deliver(request: CapabilityRequest): void {

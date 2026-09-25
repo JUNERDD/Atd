@@ -9,7 +9,8 @@ import { registerProviderRoutes } from './providers/routes.js';
 import { registerReferenceStageRoute } from './references/routes.js';
 import { registerResourceRoutes } from './resources/routes.js';
 import type { RunnerManager } from './runner-manager.js';
-import { registerShellAllowlistRoute } from './shell-policy-route.js';
+import { registerSettingsRoutes } from './settings/routes.js';
+import type { SettingsStore } from './settings/store.js';
 import { registerTaskManageRoutes } from './tasks/manage.js';
 import { registerPreviewRoute } from './tasks/preview.js';
 
@@ -17,14 +18,15 @@ export interface ManageContext {
   config: ServiceConfig;
   ledger: Ledger;
   manager: RunnerManager;
+  settings: SettingsStore;
   log: Logger;
 }
 
 /**
  * T6b management mounts (service v1.2 candidate): providers, commands,
  * memory, task PATCH/DELETE/queue-replace, read-only preview, resource
- * download, the MCP and reference next-run staging writes, and the user
- * shell allowlist.
+ * download, the MCP and reference next-run staging writes, and the shared
+ * user settings (including the shell allowlist).
  */
 export function registerManageRoutes(app: FastifyInstance, ctx: ManageContext): void {
   registerProviderRoutes(app, {
@@ -38,5 +40,5 @@ export function registerManageRoutes(app: FastifyInstance, ctx: ManageContext): 
   registerResourceRoutes(app, { ledger: ctx.ledger, paths: ctx.config.paths });
   registerMcpStageRoute(app, { dataDir: ctx.config.paths.root });
   registerReferenceStageRoute(app, { dataDir: ctx.config.paths.root });
-  registerShellAllowlistRoute(app, ctx.log);
+  registerSettingsRoutes(app, ctx.settings, ctx.log);
 }

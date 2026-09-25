@@ -3,6 +3,7 @@ import {
   errorMessage,
   isActiveStatus,
   type CancelRunResponse,
+  type PermissionTier,
   type QueueState,
   type RunSnapshot,
   type SubmitTaskRequest,
@@ -23,6 +24,8 @@ export interface ManagerDeps {
   ctx: RunnerContext;
   resources: ResourceStore;
   log: Logger;
+  /** The shared settings' default tier, frozen onto each task at creation. */
+  newTaskTier: () => PermissionTier;
 }
 
 /**
@@ -95,8 +98,8 @@ export class RunnerManager {
           runs: [],
           rootTaskId: null,
           parentExecutionId: null,
-          // T6b: freeze the service default tier at creation (contract v1 shape).
-          permissionTier: this.deps.ctx.tier,
+          // A task keeps the tier it was created with; later default changes leave it alone.
+          permissionTier: this.deps.newTaskTier(),
         };
         data.tasks.unshift(task);
       }
