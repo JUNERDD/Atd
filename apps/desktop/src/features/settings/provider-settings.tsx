@@ -19,7 +19,7 @@ import type { Connection, ProviderCatalogEntry } from '../../../electron/provide
 import { ProviderConnections } from '../providers/provider-connections';
 import { ProviderCatalog } from '../providers/provider-catalog';
 import { ProviderForm } from '../providers/provider-form';
-import { showErrorToast } from '../../components/toast-store';
+import { showErrorToast, showToast } from '../../components/toast-store';
 import { SettingsHeading } from './settings-heading';
 import '../providers/providers.css';
 
@@ -33,7 +33,6 @@ export function ProviderSettingsForm({ snapshot }: { snapshot: SettingsSnapshot 
   const [query, setQuery] = useState('');
   const [pending, setPending] = useState(false);
   const [retryable, setRetryable] = useState(false);
-  const [notice, setNotice] = useState('');
   const [disconnecting, setDisconnecting] = useState<Connection | null>(null);
   const search = useRef<HTMLInputElement>(null);
   const retry = useRef<(() => Promise<void>) | null>(null);
@@ -60,10 +59,9 @@ export function ProviderSettingsForm({ snapshot }: { snapshot: SettingsSnapshot 
     retry.current = () => perform(operation, success);
     setPending(true);
     setRetryable(false);
-    setNotice('');
     try {
       await operation();
-      setNotice(success);
+      if (success) showToast({ kind: 'info', text: success });
       retry.current = null;
     } catch (error) {
       setRetryable(true);
@@ -165,7 +163,6 @@ export function ProviderSettingsForm({ snapshot }: { snapshot: SettingsSnapshot 
           </Button>
         </div>
       )}
-      {notice && <output className="settings-status">{notice}</output>}
       {connections.length > 0 && (
         <div className="provider-column-headings">
           <span>{t('providers.overview.connectedProviders')}</span>
