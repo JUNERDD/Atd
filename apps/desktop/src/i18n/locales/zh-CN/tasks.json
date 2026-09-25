@@ -257,10 +257,6 @@
   "subagent": {
     "listLabel": "子智能体",
     "openChild": "打开 {{name}}",
-    "runningTool": "正在运行 {{tool}}",
-    "toolOne": "1 个工具",
-    "tools": "{{count}} 个工具",
-    "tokens": "{{amount}} tokens",
     "truncated": "部分子智能体未显示。",
     "back": "返回任务",
     "breadcrumb": "子智能体位置",

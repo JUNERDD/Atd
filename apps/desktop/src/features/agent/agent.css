@@ -167,9 +167,6 @@
   padding: 8px 16px 10px;
   border-bottom: 1px solid var(--border);
 }
-.child-task {
-  max-height: 96px;
-}
 .transcript-turn {
   display: flex;
   flex-direction: column;

@@ -59,9 +59,3 @@ export function subtaskLabel(child: SubagentChildSummary): string {
     line.length > TASK_SUMMARY_CHARS ? `${line.slice(0, TASK_SUMMARY_CHARS - 1).trimEnd()}…` : line;
   return `${child.agent} · ${summary}`;
 }
-
-/** Summed input and output tokens; null when the child reported neither. */
-export function childTokens(child: SubagentChildSummary): number | null {
-  if (child.inputTokens === undefined && child.outputTokens === undefined) return null;
-  return (child.inputTokens ?? 0) + (child.outputTokens ?? 0);
-}
