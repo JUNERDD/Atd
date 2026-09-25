@@ -71,6 +71,18 @@ export const ProviderModelRequestSchema = Type.Object(
 );
 export type ProviderModelRequest = Static<typeof ProviderModelRequestSchema>;
 
+/**
+ * Reloads a connection's model catalog. A manual refresh fetches now and
+ * records why it failed on the connection. A background refresh keeps Pi's
+ * per-provider freshness window, honors `PI_OFFLINE` and leaves the connection
+ * untouched when it fails, so an implicit retry never shows an error row.
+ */
+export const ProviderRefreshRequestSchema = Type.Object(
+  { background: Type.Boolean() },
+  { additionalProperties: false },
+);
+export type ProviderRefreshRequest = Static<typeof ProviderRefreshRequestSchema>;
+
 /** Sends one small billable request to prove the model answers with this credential. */
 export const ProviderVerifyRequestSchema = Type.Object(
   { modelId: Type.String({ minLength: 1, maxLength: 256 }) },

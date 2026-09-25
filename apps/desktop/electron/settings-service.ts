@@ -56,7 +56,6 @@ export class SettingsService {
     const service = new SettingsService(await SettingsStore.load(), host);
     for (const connection of service.store.current.connections)
       await service.providers.refresh(connection.connectionId, false);
-    service.providers.startCatalogSync();
     return service;
   }
 

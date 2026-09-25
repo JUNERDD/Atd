@@ -10,6 +10,7 @@ export const PROVIDER_IPC = {
   levels: 'providers:levels',
   disconnect: 'providers:disconnect',
   refresh: 'providers:refresh',
+  refreshCatalogs: 'providers:refresh-catalogs',
   verify: 'providers:verify',
   login: 'providers:login',
   answer: 'providers:answer',

@@ -270,8 +270,9 @@ if (!app.requestSingleInstanceLock()) {
         },
         (connected) => {
           void settings.providers.sync().then(() => {
-            if (connected) return agent?.syncLive();
-            return undefined;
+            if (!connected) return undefined;
+            settings.providers.syncCatalogs();
+            return agent?.syncLive();
           });
         },
       );

@@ -21,6 +21,7 @@ export const providerBridge: ProviderBridge = {
   disconnect: (id, revision) =>
     ipcRenderer.invoke(PROVIDER_IPC.disconnect, id, revision) as Promise<void>,
   refresh: (id) => ipcRenderer.invoke(PROVIDER_IPC.refresh, id) as Promise<void>,
+  refreshCatalogs: () => ipcRenderer.invoke(PROVIDER_IPC.refreshCatalogs) as Promise<void>,
   verify: (reference) => ipcRenderer.invoke(PROVIDER_IPC.verify, reference) as Promise<void>,
   login: (id) => ipcRenderer.invoke(PROVIDER_IPC.login, id) as Promise<LoginState>,
   answer: (id, promptId, value) =>

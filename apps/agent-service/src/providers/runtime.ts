@@ -125,6 +125,7 @@ export async function connectionModel(
 async function loadCatalog(
   stores: ProviderStores,
   connection: ServiceConnection,
+  background: boolean,
 ): Promise<ServiceModelDefinition[]> {
   const models = await connectionRuntime(stores, connection);
   if (isLocalProvider(connection.provider)) {
@@ -137,7 +138,8 @@ async function loadCatalog(
   const result = await models.refresh({
     providers: [connection.provider],
     allowNetwork: true,
-    force: true,
+    // Background refreshes keep Pi's per-provider freshness window instead of refetching.
+    force: !background,
     signal: AbortSignal.timeout(15000),
   });
   if (result.aborted || result.errors.size)
@@ -145,22 +147,32 @@ async function loadCatalog(
   return models.getModels(connection.provider).map(toServiceModel);
 }
 
+/** Pi's offline switch, read the way Pi reads it: 1, true or yes. */
+function offline(): boolean {
+  return ['1', 'true', 'yes'].includes(process.env.PI_OFFLINE?.toLowerCase() ?? '');
+}
+
 /**
- * Refreshes one connection's catalog over the network and stores it. A
- * failure keeps the previous catalog and records why; either write is
- * dropped when the configuration changed while the refresh ran.
+ * Refreshes one connection's catalog and stores it. A failure keeps the
+ * previous catalog; a manual refresh also records why, while a background
+ * refresh leaves the connection as it was. Either write is dropped when the
+ * configuration changed while the refresh ran. Background refreshes skip the
+ * network entirely under `PI_OFFLINE`; manual ones stay explicit.
  */
 export async function refreshCatalog(
   stores: ProviderStores,
   connection: ServiceConnection,
+  background: boolean,
 ): Promise<void> {
   if (!connection.connected) throw new ConflictError('Reconnect before refreshing models.');
+  if (background && offline()) return;
   let catalog: ServiceModelDefinition[];
   try {
-    catalog = await loadCatalog(stores, connection);
+    catalog = await loadCatalog(stores, connection, background);
   } catch (error) {
     if (error instanceof ConflictError) throw error;
-    await recordCatalog(stores, connection, { catalogError: CATALOG_REFRESH_FAILED });
+    if (!background)
+      await recordCatalog(stores, connection, { catalogError: CATALOG_REFRESH_FAILED });
     throw new UpstreamError(CATALOG_REFRESH_FAILED);
   }
   await recordCatalog(stores, connection, { catalog, catalogError: '' });

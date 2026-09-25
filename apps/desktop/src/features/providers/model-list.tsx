@@ -14,6 +14,7 @@ import type { Connection, ModelReference } from '../../../electron/providers/sch
 import { IconButton } from '../../components/icon-button';
 import { rankModels } from './model-match';
 import { sortModels } from './model-order';
+import { useCatalogRefresh } from './use-catalog-refresh';
 
 /**
  * The connections that list a model for the query, each with its models ranked the way the
@@ -59,6 +60,8 @@ export function ModelList({
 }) {
   const { t } = useTranslation('providers');
   const [query, setQuery] = useState('');
+  // Popover content mounts only while shown, so mounting is opening the list.
+  useCatalogRefresh(true);
   return (
     <Command shouldFilter={false} className="bg-transparent min-h-0">
       <CommandInput
