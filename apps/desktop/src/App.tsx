@@ -229,6 +229,7 @@ export function App() {
                 quickActions={{ newTask, openHistory: () => setView('history') }}
                 tasks={agent.snapshot?.tasks ?? []}
                 overlayBoundary={panelBody}
+                hidden={view === 'task' && child.childKey !== null}
               />
             )}
           </div>

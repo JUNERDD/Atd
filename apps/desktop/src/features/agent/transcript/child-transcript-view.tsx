@@ -8,7 +8,6 @@ import { IconButton } from '../../../components/icon-button';
 import { adaptTranscript } from './adapter';
 import { ScrollJump } from './scroll-jump';
 import { useSubagents } from './subagent-context';
-import { SubagentStatus } from './subagent-status';
 import { TurnView } from './turn-view';
 import { indexRequests } from './turns';
 import { useChildTranscript } from './use-child-transcript';
@@ -19,8 +18,9 @@ const NO_ANCHORS = new Set<string>();
 const noAttach = () => {};
 
 /**
- * Where the view sits ("task › agent") with the way back, then the child's full task, state and
- * usage. The back action takes focus on open so keyboard users land inside the new view.
+ * Where the view sits ("task › agent") with the way back. The view is a read-only transcript, so
+ * the header carries no task, status or error of its own. The back action takes focus on open so
+ * keyboard users land inside the new view.
  */
 function ChildHeader({
   taskTitle,
@@ -32,7 +32,6 @@ function ChildHeader({
   onBack: () => void;
 }) {
   const { t } = useTranslation('tasks');
-  const { pending } = useSubagents();
   const backRef = useRef<HTMLButtonElement>(null);
   const agent = child?.agent || t('subagent.fallbackName');
   useEffect(() => {
@@ -62,19 +61,6 @@ function ChildHeader({
           </ol>
         </nav>
       </div>
-      {child?.task && (
-        <ScrollArea className="child-task" viewportClassName="max-h-[inherit]" scrollShadow>
-          <p className="m-0 text-sm whitespace-pre-wrap wrap-anywhere">{child.task}</p>
-        </ScrollArea>
-      )}
-      {child && (
-        <SubagentStatus child={child} waiting={pending.get(child.executionId) ?? null} withModel />
-      )}
-      {child?.error && (
-        <p className="m-0 line-clamp-2 text-xs wrap-anywhere text-destructive" title={child.error}>
-          {child.error}
-        </p>
-      )}
     </header>
   );
 }
@@ -82,8 +68,9 @@ function ChildHeader({
 /**
  * A subagent's full conversation laid over the parent transcript: the same turn, activity and
  * answer rendering, fed from the child's own transcript subscription. Pending approvals come
- * from the task-level requests because the child's tool calls raise them on the parent task.
- * The composer below stays the parent's.
+ * from the task-level requests because the child's tool calls raise them on the parent task;
+ * the transcript only labels them, and the parent's composer (hidden while this view is open)
+ * answers them.
  */
 export function ChildTranscriptView({
   taskId,
