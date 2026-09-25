@@ -22,7 +22,7 @@ export class ProviderLoginClient {
   constructor(
     private readonly options: () => AgentClientOptions | null,
     private readonly publish: (state: LoginState) => void,
-    private readonly signedIn: () => Promise<void>,
+    private readonly signedIn: (connectionId: string) => void,
   ) {}
 
   async start(connectionId: string): Promise<LoginState> {
@@ -78,12 +78,13 @@ export class ProviderLoginClient {
     }
   }
 
-  /** Publishes changed states; a completed sign-in reloads the connections. */
+  /** Publishes changed states and reports a completed sign-in once. */
   private record(state: LoginState): void {
     const previous = this.states.get(state.id);
     if (!previous || JSON.stringify(previous) === JSON.stringify(state)) return;
     this.states.set(state.id, state);
     this.publish(state);
-    if (state.status === 'complete' && previous.status !== 'complete') void this.signedIn();
+    if (state.status === 'complete' && previous.status !== 'complete')
+      this.signedIn(state.connectionId);
   }
 }
