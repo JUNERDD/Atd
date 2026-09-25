@@ -2,7 +2,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { TooltipProvider } from '@ai/ui/components/tooltip';
-import { HitlQueuePopover } from '../../../components/hitl-queue-popover';
+import { ComposerPopover } from '../../../components/composer-popover';
 import { Transcript } from './transcript';
 import { installAgent, makeDetail, toolBlock, userBlock } from './fixtures';
 
@@ -41,14 +41,14 @@ function renderApproval() {
       <div data-testid="transcript-root">
         <Transcript detail={detail} onAttach={vi.fn()} />
       </div>
-      <HitlQueuePopover
+      <ComposerPopover
         requests={detail.requests}
         queue={detail.queue}
         taskId="task-1"
         onEditQueued={vi.fn()}
       >
         <div data-testid="composer-surface" />
-      </HitlQueuePopover>
+      </ComposerPopover>
     </TooltipProvider>,
   );
   return { answer };

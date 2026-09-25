@@ -1,5 +1,5 @@
-/* Row above the composer surface. It lives inside the composer popover anchor, so the HITL/queue
-   popover and its recall pill stack above the pill instead of covering it. */
+/* Row above the composer surface. It lives inside the composer popover anchor, so the popover its
+   parts open stacks above the pill instead of covering it. */
 .composer-progress-row {
   display: flex;
   justify-content: center;
@@ -7,20 +7,16 @@
   margin-bottom: 8px;
 }
 
-/* The pill keeps the xs Button geometry (24px, rounded) in both the trigger and the static
-   status; the static one mirrors the secondary fill so both read as the same control. */
+/* One 24px secondary capsule (the xs Button height) holding up to three parts. A part with a view
+   to open is its own ghost xs button, rounded to the capsule, so each part is a separate control. */
 .composer-progress {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 2px;
   min-width: 0;
   max-width: 100%;
-  border-radius: 999px;
-}
-
-output.composer-progress {
   height: 24px;
-  padding-inline: 10px;
+  border-radius: 999px;
   background: var(--secondary);
   color: var(--secondary-foreground);
   font-size: 12px;
@@ -33,6 +29,20 @@ output.composer-progress {
   align-items: center;
   gap: 4px;
   min-width: 0;
+}
+
+span.composer-progress-part {
+  padding-inline: 10px;
+}
+
+.composer-progress-trigger {
+  border-radius: 999px;
+}
+
+/* In a narrow panel only the HITL part's long label gives way; step and subagents keep their
+   short text whole (a proportional shrink would clip them by a pixel or two). */
+.composer-progress-hitl {
+  flex-shrink: 1;
 }
 
 .composer-progress-part > svg {
@@ -73,15 +83,15 @@ output.composer-progress {
   }
 }
 
-/* Fits a 320px panel and short windows: the width stays within the viewport and the list scrolls
-   inside the height Radix reports as available above the pill. */
-.composer-todos[data-slot='popover-content'] {
+/* Todos view. Fits a 320px panel and short windows: the width stays within the viewport and the
+   list scrolls inside the height Radix reports as available above the pill. */
+.composer-todos {
+  display: flex;
+  flex-direction: column;
   width: min(20rem, calc(100vw - 16px));
-  min-width: 0;
   max-height: min(22rem, var(--radix-popover-content-available-height));
   gap: 8px;
   padding: 12px 4px 8px 12px;
-  backdrop-filter: blur(var(--ata-backdrop-blur));
 }
 
 .composer-todos-header {
@@ -123,4 +133,29 @@ output.composer-progress {
 .composer-todo[data-status='completed'] .composer-todo-subject {
   color: var(--muted-foreground);
   text-decoration: line-through;
+}
+
+/* Subagents view: hugs its rows up to the Todos view width and scrolls within the height Radix
+   reports above the pill. */
+.composer-subagents {
+  display: flex;
+  flex-direction: column;
+  width: max-content;
+  min-width: 12rem;
+  max-width: min(20rem, calc(100vw - 16px));
+  max-height: min(22rem, var(--radix-popover-content-available-height));
+  gap: 6px;
+  padding: 10px 4px 6px 8px;
+}
+
+.composer-subagents-header {
+  padding-inline: 4px;
+}
+
+.composer-subagents-list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }

@@ -253,5 +253,19 @@
     "fetchFailed": "This page could not be fetched.",
     "openLink": "Open link",
     "truncated": "Only the first part is shown."
+  },
+  "subagent": {
+    "listLabel": "Subagents",
+    "openChild": "Open {{name}}",
+    "runningTool": "Running {{tool}}",
+    "toolOne": "1 tool",
+    "tools": "{{count}} tools",
+    "tokens": "{{amount}} tokens",
+    "truncated": "Some subagents are not shown.",
+    "back": "Back to task",
+    "breadcrumb": "Subagent location",
+    "fallbackName": "Subagent",
+    "loading": "Loading conversation…",
+    "empty": "No messages yet."
   }
 }

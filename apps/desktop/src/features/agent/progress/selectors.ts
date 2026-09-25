@@ -1,6 +1,7 @@
-import { TODO_TOOL, type TodoItem } from '@ai/agent-contracts';
+import { TODO_TOOL, type SubagentChildSummary, type TodoItem } from '@ai/agent-contracts';
 import type { Block } from '../../../../electron/agent/transcript-schema';
 import { subagentLaunches } from '../transcript/subagent-call';
+import { subagentDetailsOf } from '../transcript/subagent-children';
 
 /** A todo the UI lists: rpiv-todo's `deleted` tombstones never show. */
 export type VisibleTodo = TodoItem & { status: Exclude<TodoItem['status'], 'deleted'> };
@@ -17,6 +18,13 @@ export interface TaskProgress {
   completed: number;
   /** Subagents the current assistant message dispatched successfully, finished or not. */
   subagents: number;
+  /**
+   * Those subagents' summaries in launch order, for the pill's list. Empty for transcripts
+   * recorded before the service summarized children; `subagents` still counts those.
+   */
+  children: SubagentChildSummary[];
+  /** Whether a summary dropped children over its bound, so the list is incomplete. */
+  childrenTruncated: boolean;
 }
 
 function isVisible(todo: TodoItem): todo is VisibleTodo {
@@ -67,12 +75,36 @@ export function dispatchedSubagents(blocks: readonly Block[]): number {
   return dispatched;
 }
 
+/**
+ * Children of the current assistant message's `subagent` calls, from their summaries (the same
+ * boundary as `dispatchedSubagents`). A child appears once it launched, so running ones count.
+ */
+export function currentChildren(blocks: readonly Block[]): {
+  children: SubagentChildSummary[];
+  truncated: boolean;
+} {
+  const calls: { children: SubagentChildSummary[]; truncated: boolean }[] = [];
+  for (let index = blocks.length - 1; index >= 0; index -= 1) {
+    const block = blocks[index];
+    if (!block || block.kind === 'user') break;
+    const details = block.kind === 'tool' ? subagentDetailsOf(block) : null;
+    if (details) calls.unshift(details);
+  }
+  return {
+    children: calls.flatMap((call) => call.children),
+    truncated: calls.some((call) => call.truncated),
+  };
+}
+
 export function taskProgress(blocks: readonly Block[]): TaskProgress {
   const todos = latestTodos(blocks);
+  const { children, truncated } = currentChildren(blocks);
   return {
     todos,
     step: todoStep(todos),
     completed: todos.filter((todo) => todo.status === 'completed').length,
-    subagents: dispatchedSubagents(blocks),
+    subagents: children.length || dispatchedSubagents(blocks),
+    children,
+    childrenTruncated: truncated,
   };
 }

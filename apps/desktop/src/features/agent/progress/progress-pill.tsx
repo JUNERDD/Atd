@@ -1,19 +1,10 @@
-import type { KeyboardEvent } from 'react';
-import { Bot } from 'lucide-react';
+import { Fragment, type ReactNode } from 'react';
+import { Bot, ListOrdered, MessageCircleQuestion, ShieldAlert } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@ai/ui/components/button';
-import {
-  Popover,
-  PopoverContent,
-  PopoverDescription,
-  PopoverHeader,
-  PopoverTitle,
-  PopoverTrigger,
-} from '@ai/ui/components/popover';
 import { Separator } from '@ai/ui/components/separator';
-import type { Block } from '../../../../electron/agent/transcript-schema';
-import { TodoList } from './todo-list';
-import { useTaskProgress } from './use-task-progress';
+import { cn } from '@ai/ui/lib/utils';
+import type { TaskProgress } from './selectors';
 import './progress.css';
 
 /**
@@ -40,94 +31,182 @@ function StepRing({ completed, total }: { completed: number; total: number }) {
   );
 }
 
+/** The views of the one popover above the composer, each opened by its pill part. */
+export type PillView = 'hitl' | 'todos' | 'subagents';
+
 /**
- * Compact progress pill, centered above the composer input: a progress ring and `Step x / y` from
- * the latest todo list, and, while the reply is `live` (its run is in progress), the subagents that
- * reply dispatched successfully, finished ones included. Each half hides when it has nothing to say
- * and the pill hides when both do. With todos it opens the Todos popover; without them it is a
- * plain status.
+ * Pending human-in-the-loop content (approvals, answers, queued messages): the pill's first part
+ * shows it for as long as it waits.
  */
-export function ProgressPill({ blocks, live }: { blocks: readonly Block[]; live: boolean }) {
+export interface HitlStatus {
+  kind: 'approval' | 'answer' | 'queue';
+  /** "Waiting for your approval", "Waiting for your answer", or the queued count. */
+  label: string;
+}
+
+const HITL_ICONS = {
+  approval: ShieldAlert,
+  answer: MessageCircleQuestion,
+  queue: ListOrdered,
+} as const;
+
+/**
+ * A part that opens its view: a ghost xs button rounded to the capsule, expanded while its view
+ * shows. `data-pill-view` lets the popover return focus to it.
+ */
+function PartButton({
+  view,
+  open,
+  label,
+  className,
+  onToggle,
+  children,
+}: {
+  view: PillView;
+  open: boolean;
+  label?: string;
+  className?: string;
+  onToggle: (view: PillView) => void;
+  children: ReactNode;
+}) {
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="xs"
+      className={cn('composer-progress-part composer-progress-trigger', className)}
+      data-pill-view={view}
+      aria-expanded={open}
+      aria-haspopup="dialog"
+      aria-label={label}
+      onClick={() => onToggle(view)}
+    >
+      {children}
+    </Button>
+  );
+}
+
+/**
+ * Compact status capsule, centered above the composer input, with up to three parts, each hidden
+ * when it has nothing to say (the pill hides when all are). Parts with something to list open
+ * their view in the one popover the composer owns, so switching parts morphs that popover
+ * instead of stacking a second one:
+ * - pending HITL content ("Waiting for your approval"), shown for as long as it waits;
+ * - a progress ring and `Step x / y` from the latest todo list, which opens Todos;
+ * - the subagents the latest reply dispatched, finished ones included, which opens their list.
+ *   Summarized children stay after the reply ends and on reopen, since the pill is the way into
+ *   their conversations; a bare count from a transcript without summaries has no list to open and
+ *   shows only while the reply is `live` (its run is in progress).
+ */
+export function ProgressPill({
+  progress,
+  live,
+  hitl,
+  view,
+  onToggle,
+}: {
+  progress: TaskProgress;
+  live: boolean;
+  hitl: HitlStatus | null;
+  /** The view the popover shows, which marks its part expanded. */
+  view: PillView | null;
+  onToggle: (view: PillView) => void;
+}) {
   const { t } = useTranslation('panel');
   const { t: tt } = useTranslation('tasks');
-  const progress = useTaskProgress(blocks);
-  const { todos, step, completed } = progress;
-  const subagents = live ? progress.subagents : 0;
-  if (!step && subagents === 0) return null;
-  const stepText = step
-    ? t('composer.progress.step', { current: step.current, total: step.total })
-    : null;
-  const subagentText =
-    subagents === 0
-      ? null
-      : subagents === 1
-        ? t('composer.progress.subagentOne')
-        : t('composer.progress.subagentMany', { count: subagents });
-  const content = (
-    <>
-      {stepText && (
-        <span className="composer-progress-part">
-          <StepRing completed={completed} total={step?.total ?? 0} />
-          <span className="truncate">{stepText}</span>
-        </span>
-      )}
-      {stepText && subagentText && <Separator orientation="vertical" className="h-3" />}
-      {subagentText && (
-        <span className="composer-progress-part">
-          <Bot aria-hidden />
-          <span className="truncate">{subagentText}</span>
-        </span>
-      )}
-    </>
-  );
-  if (todos.length === 0)
-    return (
-      <div className="composer-progress-row">
-        <output className="composer-progress" aria-label={t('composer.progress.label')}>
-          {content}
-        </output>
-      </div>
+  const { todos, step, completed, children } = progress;
+  const subagents = children.length > 0 ? children.length : live ? progress.subagents : 0;
+  const running = children.filter((child) => child.status === 'running').length;
+  const parts: { key: string; node: ReactNode }[] = [];
+  if (hitl) {
+    const Icon = HITL_ICONS[hitl.kind];
+    parts.push({
+      key: 'hitl',
+      node: (
+        <PartButton
+          view="hitl"
+          open={view === 'hitl'}
+          className="composer-progress-hitl"
+          onToggle={onToggle}
+        >
+          <Icon aria-hidden />
+          {/* A narrow panel truncates this label first; hover shows it whole. */}
+          <span className="truncate" title={hitl.label}>
+            {hitl.label}
+          </span>
+        </PartButton>
+      ),
+    });
+  }
+  if (step) {
+    const stepText = t('composer.progress.step', { current: step.current, total: step.total });
+    const content = (
+      <>
+        <StepRing completed={completed} total={step.total} />
+        <span className="truncate">{stepText}</span>
+      </>
     );
-  // Esc closes this popover only: marking it handled keeps the panel-global Esc (new chat, hide)
-  // and the HITL popover around the composer from reacting to the same key.
-  const onContentKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      event.stopPropagation();
-    }
-  };
-  return (
-    <div className="composer-progress-row">
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button
-            type="button"
-            variant="secondary"
-            size="xs"
-            className="composer-progress"
-            aria-label={[stepText, subagentText, t('composer.progress.showTodos')]
-              .filter(Boolean)
-              .join(' · ')}
+    parts.push({
+      key: 'step',
+      node:
+        todos.length > 0 ? (
+          <PartButton
+            view="todos"
+            open={view === 'todos'}
+            label={`${stepText} · ${t('composer.progress.showTodos')}`}
+            onToggle={onToggle}
           >
             {content}
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent
-          side="top"
-          align="center"
-          sideOffset={8}
-          className="composer-todos"
-          onKeyDown={onContentKeyDown}
-        >
-          <PopoverHeader className="composer-todos-header">
-            <PopoverTitle className="text-sm">{tt('todo.title')}</PopoverTitle>
-            <PopoverDescription className="text-xs">
-              {tt('todo.progress', { completed, total: todos.length })}
-            </PopoverDescription>
-          </PopoverHeader>
-          <TodoList todos={todos} />
-        </PopoverContent>
-      </Popover>
+          </PartButton>
+        ) : (
+          <span className="composer-progress-part">{content}</span>
+        ),
+    });
+  }
+  if (subagents > 0) {
+    const subagentText =
+      running > 0
+        ? t('composer.progress.subagentRunning', { count: running })
+        : subagents === 1
+          ? t('composer.progress.subagentOne')
+          : t('composer.progress.subagentMany', { count: subagents });
+    const content = (
+      <>
+        <Bot aria-hidden />
+        <span className="truncate">{subagentText}</span>
+      </>
+    );
+    parts.push({
+      key: 'subagents',
+      node:
+        children.length > 0 ? (
+          <PartButton
+            view="subagents"
+            open={view === 'subagents'}
+            label={`${subagentText} · ${tt('subagent.listLabel')}`}
+            onToggle={onToggle}
+          >
+            {content}
+          </PartButton>
+        ) : (
+          <span className="composer-progress-part">{content}</span>
+        ),
+    });
+  }
+  if (parts.length === 0) return null;
+  return (
+    <div className="composer-progress-row">
+      <output className="composer-progress" aria-label={t('composer.progress.label')}>
+        {parts.map(({ key, node }, index) => (
+          <Fragment key={key}>
+            {index > 0 && (
+              // Radix stretches a vertical separator; a fixed 12px one centers in the 24px capsule.
+              <Separator orientation="vertical" className="h-3 data-vertical:self-center" />
+            )}
+            {node}
+          </Fragment>
+        ))}
+      </output>
     </div>
   );
 }

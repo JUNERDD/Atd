@@ -1,4 +1,4 @@
-import { app, clipboard, ipcMain, shell } from 'electron';
+import { app, clipboard, ipcMain, shell, type WebContents } from 'electron';
 import path from 'node:path';
 import type { SettingsService } from '../settings-service';
 import type { ServiceConnection } from '../service/connection';
@@ -123,8 +123,8 @@ export class AgentService {
       this.settings.assertSender(event);
       const request = parse(AgentRequestSchema, value);
       if (['saveCommand', 'deleteCommand'].includes(request.action))
-        return this.serialize(() => this.handle(request));
-      return this.handle(request);
+        return this.serialize(() => this.handle(request, event.sender));
+      return this.handle(request, event.sender);
     });
   }
 
@@ -139,7 +139,8 @@ export class AgentService {
     return options;
   }
 
-  private async handle(request: AgentRequest): Promise<unknown> {
+  /** `sender` is the validated requesting window; child transcript holds belong to it. */
+  private async handle(request: AgentRequest, sender: WebContents): Promise<unknown> {
     switch (request.action) {
       case 'get':
         return this.snapshot();
@@ -203,6 +204,7 @@ export class AgentService {
       case 'deleteTask':
         await deleteLiveTask(this.options(), request.taskId);
         this.tasks.details.delete(request.taskId);
+        this.tasks.children.forgetTask(request.taskId);
         this.broadcast();
         return null;
       case 'chooseFiles':
@@ -242,6 +244,11 @@ export class AgentService {
         return null;
       }
       case 'importLegacy':
+        return null;
+      case 'childTranscript':
+        return this.tasks.children.subscribe(sender, request.taskId, request.childKey);
+      case 'releaseChildTranscript':
+        this.tasks.children.release(sender, request.taskId, request.childKey);
         return null;
       default: {
         const _exhaustive: never = request;

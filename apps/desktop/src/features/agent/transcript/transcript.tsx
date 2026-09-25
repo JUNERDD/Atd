@@ -1,16 +1,14 @@
 import { useMemo, useState, type ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ArrowDown } from 'lucide-react';
-import { AnimatePresence, MotionConfig, motion } from 'motion/react';
 import { Button } from '@ai/ui/components/button';
 import { ScrollArea } from '@ai/ui/components/scroll-area';
 import type { TaskDetail } from '../../../../electron/agent/bridge';
 import { isActive, type FileRef, type TaskRun } from '../../../../electron/agent/task-schema';
-import { IconButton } from '../../../components/icon-button';
 import { TaskFiles } from '../task-files';
 import { adaptTranscript, modelNameForRun, type AdaptedTurn } from './adapter';
 import { artifactAnchorIds, indexRequests, type RequestIndex } from './turns';
 import { PromptMessage } from './prompt-message';
+import { ScrollJump } from './scroll-jump';
 import { pendingMessageText } from './run-prompt';
 import { StatusBar } from './status-bar';
 import { TurnHeader } from './turn-header';
@@ -72,11 +70,18 @@ function TurnList({
   );
 }
 
+/**
+ * The task's conversation. `covered` keeps it laid out but invisible and inert while a subagent's
+ * drill-in view sits on top, so expanded rows, loaded turns and the scroll offset survive the
+ * round trip without being restored by hand (a `display: none` box would drop the offset).
+ */
 export function Transcript({
   detail,
+  covered = false,
   onAttach,
 }: {
   detail: TaskDetail;
+  covered?: boolean;
   onAttach: (file: FileRef) => void;
 }): ReactElement {
   const { t } = useTranslation('tasks');
@@ -98,7 +103,7 @@ export function Transcript({
   const headRequest = requests[0];
 
   return (
-    <div className="conversation">
+    <div className="conversation" data-covered={covered || undefined} inert={covered}>
       <ScrollArea
         viewportRef={viewportRef}
         className="flex-1 min-h-0"
@@ -158,41 +163,10 @@ export function Transcript({
               })}
             </output>
           )}
-          {(detail.children?.length ?? 0) > 0 && (
-            <section className="transcript-children" aria-label={tPanel('children.title')}>
-              <h3 className="text-sm font-medium">{tPanel('children.title')}</h3>
-              <ul>
-                {detail.children!.map((child) => (
-                  <li key={child.executionId} className="text-sm">
-                    <span>{child.agent}</span>{' '}
-                    <span>{child.ok ? tPanel('children.ok') : tPanel('children.failed')}</span>
-                    {child.error && <span className="text-muted-foreground"> · {child.error}</span>}
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
           <StatusBar run={run} />
         </div>
       </ScrollArea>
-      <MotionConfig reducedMotion="user">
-        <AnimatePresence>
-          {showJump && (
-            <motion.div
-              className="scroll-to-bottom"
-              initial={{ opacity: 0, x: '-50%', y: 16, scale: 0.95 }}
-              animate={{ opacity: 1, x: '-50%', y: 0, scale: 1 }}
-              exit={{ opacity: 0, x: '-50%', y: 16, scale: 0.95 }}
-              transition={{ type: 'spring', stiffness: 380, damping: 28 }}
-              whileTap={{ scale: 0.85 }}
-            >
-              <IconButton label={t('conversation.scrollToBottom')} tooltip={false} onClick={pin}>
-                <ArrowDown />
-              </IconButton>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </MotionConfig>
+      <ScrollJump show={showJump} onJump={pin} />
     </div>
   );
 }
