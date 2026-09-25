@@ -1,3 +1,4 @@
+import { APP_LANGUAGES, type AppLanguage } from '@ai/agent-contracts';
 import type { Connection, ProviderBridge } from './providers/schema';
 import type { PermissionTier } from './agent/permission-schema';
 
@@ -28,9 +29,9 @@ export const DEFAULT_SHORTCUTS = {
 export type ShortcutAction = keyof typeof DEFAULT_SHORTCUTS;
 export type ShortcutBindings = Record<ShortcutAction, string>;
 
-/** Languages the desktop UI ships translations for. English is the source language. */
-export const LANGUAGE_CODES = ['en', 'zh-CN'] as const;
-export type AppLanguage = (typeof LANGUAGE_CODES)[number];
+/** Languages the UI ships translations for; the list lives in the contracts all clients share. */
+export const LANGUAGE_CODES = APP_LANGUAGES;
+export type { AppLanguage };
 
 export function isAppLanguage(value: unknown): value is AppLanguage {
   return typeof value === 'string' && (LANGUAGE_CODES as readonly string[]).includes(value);

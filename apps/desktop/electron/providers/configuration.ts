@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import type { ConnectionConfig, StoredConnection } from './schema';
 
 import { CLOUD_FIELDS, isCustom } from './metadata';
@@ -50,19 +49,6 @@ export function validateConfig(config: ConnectionConfig) {
     throw new Error('Model IDs must be unique within a connection.');
 }
 
-export function configurationId(config: ConnectionConfig): string {
-  return createHash('sha256')
-    .update(
-      JSON.stringify({
-        provider: config.provider,
-        baseUrl: config.baseUrl,
-        authType: config.authType,
-        options: Object.entries(config.options).sort(([a], [b]) => a.localeCompare(b)),
-        customModels: config.customModels,
-      }),
-    )
-    .digest('hex');
-}
 export function publicConnection({ encryptedCredential, ...connection }: StoredConnection) {
   return { ...connection, hasCredential: Boolean(encryptedCredential) };
 }

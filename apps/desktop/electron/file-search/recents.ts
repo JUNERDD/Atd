@@ -2,7 +2,7 @@ import { shell } from 'electron';
 import { readdir, readFile, realpath, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { attachableExtension } from '../agent/attachable-files';
+import { attachableExtension } from '../agent/attachable-rules';
 import type { SearchHit } from './backend';
 
 /** Newest entries read from the desktop's recent list before any file is touched. */

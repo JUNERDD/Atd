@@ -21,11 +21,9 @@
   },
   "dependencies": {
     "@ai/agent-contracts": "workspace:*",
-    "typebox": "1.3.27",
-    "ws": "8.21.3"
+    "typebox": "1.3.27"
   },
   "devDependencies": {
-    "@ai/typescript-config": "workspace:*",
-    "@types/ws": "8.18.1"
+    "@ai/typescript-config": "workspace:*"
   }
 }

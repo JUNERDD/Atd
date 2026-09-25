@@ -276,8 +276,7 @@ if (!app.requestSingleInstanceLock()) {
           });
         },
       );
-      settings.providers.attach(serviceManager.connection);
-      settings.shellAllowlist.attach(serviceManager.connection);
+      settings.attach(serviceManager.connection);
       agent = await AgentService.create(
         settings,
         (prepared, autoRun) => {
@@ -293,7 +292,8 @@ if (!app.requestSingleInstanceLock()) {
       settings.installIpc();
       installIpc();
       installFileSearch(() => panel, serviceManager.connection);
-      installAppMenu(showPanel, hidePanel, settings);
+      const manager = serviceManager;
+      installAppMenu(showPanel, hidePanel, settings, () => manager.openInBrowser());
       const starting = serviceManager.autostart();
       await createPanel();
       await starting;

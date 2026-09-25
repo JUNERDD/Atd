@@ -9,7 +9,8 @@
   "scripts": {
     "dev": "vite",
     "dev:web": "vite --mode web",
-    "build": "vite build",
+    "build": "vite build && vite build --mode web",
+    "build:web": "vite build --mode web",
     "preview": "vite preview",
     "start": "electron .",
     "typecheck": "tsc -p tsconfig.json",

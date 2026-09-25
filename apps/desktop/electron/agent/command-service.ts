@@ -1,14 +1,14 @@
 import { clipboard, globalShortcut, systemPreferences } from 'electron';
 import type { AgentClientOptions } from '@ai/agent-client';
 import SelectionHook from 'selection-hook';
-import { effectiveAccelerator, parseAccelerator } from '../settings-shortcuts';
+import { effectiveAccelerator, parseAccelerator } from '../accelerators';
 import type { ShortcutBindings } from '../settings-contract';
 import type { CommandDefinition } from './command-schema';
 import type { PreparedCommand } from './bridge';
-import { defaultArguments, readyToRun, validateCommand } from './command-validation';
+import { prepareCommand } from './command-prepare';
+import { readyToRun, validateCommand } from './command-validation';
 import { deleteRemote, fetchCommands, saveRemote } from './command-remote';
 import { notConnected } from './service-manage';
-import { emptyInput } from './task-schema';
 import { AgentStore } from './store';
 import { errorMessage } from './validation';
 
@@ -24,6 +24,10 @@ export class CommandService {
     private changed: () => void,
     private options: () => AgentClientOptions | null,
   ) {}
+
+  list() {
+    return this.store.data.commands;
+  }
 
   find(id: string) {
     const command = this.store.data.commands.find((command) => command.id === id);
@@ -87,36 +91,11 @@ export class CommandService {
     return { text, capturedAt: new Date().toISOString() };
   }
 
-  /**
-   * Builds the draft input for a command, asking for macOS Accessibility access when the command
-   * can read the selection. A failed capture only surfaces as a notice when the trigger expected
-   * captured text (the global shortcut); opening the command from the panel leaves the field empty
-   * for manual input instead of reporting a missing selection.
-   */
+  /** `prepareCommand`, asking for macOS Accessibility access when the command reads the selection. */
   async prepare(id: string, expectCapture = false): Promise<PreparedCommand> {
     const command = this.find(id);
-    if (!command.enabled) throw new Error('This command is disabled. Enable it in settings.');
-    if (command.input.selection) this.requestAccessibility();
-    const input = {
-      ...emptyInput(),
-      source: command.input.source,
-      arguments: defaultArguments(command),
-    };
-    let notice = '';
-    for (const source of ['selection', 'clipboard'] as const) {
-      if (!command.input[source]) continue;
-      try {
-        const captured = await this.capture(source);
-        input[source] = captured.text;
-        if (input.source === source) {
-          input.text = captured.text;
-          input.capturedAt = captured.capturedAt;
-        }
-      } catch (error) {
-        if (expectCapture) notice = errorMessage(error);
-      }
-    }
-    return { command: structuredClone(command), input, notice };
+    if (command.enabled && command.input.selection) this.requestAccessibility();
+    return prepareCommand(command, (source) => this.capture(source), expectCapture);
   }
 
   initialize() {
@@ -154,16 +133,19 @@ export class CommandService {
 
   private checkShortcut(command: CommandDefinition) {
     if (!command.shortcut) return;
-    const accelerator = effectiveAccelerator(parseAccelerator(command.shortcut, true));
+    const accelerator = effectiveAccelerator(
+      parseAccelerator(command.shortcut, true, process.platform),
+      process.platform,
+    );
     const reserved = Object.values(this.shortcuts()).some(
-      (value) => effectiveAccelerator(value) === accelerator,
+      (value) => effectiveAccelerator(value, process.platform) === accelerator,
     );
     const duplicate = this.store.data.commands.some(
       (other) =>
         other.id !== command.id &&
         other.enabled &&
         other.shortcut &&
-        effectiveAccelerator(other.shortcut) === accelerator,
+        effectiveAccelerator(other.shortcut, process.platform) === accelerator,
     );
     if (reserved || duplicate)
       throw new Error('This shortcut is already assigned to another action.');
@@ -176,7 +158,8 @@ export class CommandService {
           (command) =>
             command.enabled &&
             command.shortcut &&
-            effectiveAccelerator(command.shortcut) === effectiveAccelerator(value),
+            effectiveAccelerator(command.shortcut, process.platform) ===
+              effectiveAccelerator(value, process.platform),
         )
       )
         throw new Error('This shortcut is assigned to a command.');
@@ -206,13 +189,17 @@ export class CommandService {
     const options = this.options();
     if (!options) throw notConnected();
     validateCommand(command);
-    if (command.shortcut) command.shortcut = parseAccelerator(command.shortcut, true);
+    if (command.shortcut)
+      command.shortcut = parseAccelerator(command.shortcut, true, process.platform);
     if (command.enabled) this.checkShortcut(command);
     const old = this.store.data.commands.find((item) => item.id === command.id);
     const registered = old?.enabled && old.shortcut && !this.errors[old.id] ? old.shortcut : '';
     const next = command.enabled ? command.shortcut : '';
     const same = Boolean(
-      registered && next && effectiveAccelerator(registered) === effectiveAccelerator(next),
+      registered &&
+      next &&
+      effectiveAccelerator(registered, process.platform) ===
+        effectiveAccelerator(next, process.platform),
     );
     if (next && !same) this.register(command);
     let saved: CommandDefinition;

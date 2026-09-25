@@ -2,11 +2,15 @@ import type {
   CapabilityRequest,
   CapabilityResult,
   DesktopCapability,
+  InvalidateFrame,
   ServiceEvent,
   TaskSnapshot,
 } from '@ai/agent-contracts';
 
-/** Connection options; the token comes from the service auth file or pairing. */
+/**
+ * Connection options. The token is the service owner token (desktop, CLI) or a paired browser
+ * session token; both travel as `Authorization: Bearer`.
+ */
 export interface AgentClientOptions {
   baseUrl: string;
   token: string;
@@ -30,6 +34,8 @@ export interface StreamHandlers {
   onEvent: (event: ServiceEvent) => void;
   onResumed?: (seq: number) => void;
   onDisconnect?: (reason: string) => void;
+  /** Shared data outside the task stream changed; reload the named scope. */
+  onInvalidate?: (frame: InvalidateFrame) => void;
 }
 
 /** Desktop capability served by this client with a result producer. */

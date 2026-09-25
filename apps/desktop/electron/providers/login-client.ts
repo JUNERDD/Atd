@@ -1,4 +1,3 @@
-import { shell } from 'electron';
 import {
   answerProviderLogin,
   cancelProviderLogin,
@@ -11,10 +10,11 @@ import type { LoginState } from './schema';
 const POLL_INTERVAL_MS = 1000;
 
 /**
- * Relays account sign-in between the settings window and the service. The
- * service runs the Pi login flow; main polls its state while it waits,
- * publishes every change to the renderer, and opens the sign-in link itself
- * because the service never touches the user's browser.
+ * Relays account sign-in between the settings UI and the service. The service
+ * runs the Pi login flow; the client polls its state while it waits, publishes
+ * every change to the UI, and opens the sign-in link itself (the system browser
+ * from the desktop, a new tab from the web client) because the service never
+ * touches the user's browser.
  */
 export class ProviderLoginClient {
   private readonly states = new Map<string, LoginState>();
@@ -23,6 +23,7 @@ export class ProviderLoginClient {
     private readonly options: () => AgentClientOptions | null,
     private readonly publish: (state: LoginState) => void,
     private readonly signedIn: (connectionId: string) => void,
+    private readonly openExternal: (url: string) => Promise<void>,
   ) {}
 
   async start(connectionId: string): Promise<LoginState> {
@@ -48,7 +49,7 @@ export class ProviderLoginClient {
     const url = new URL(state.url);
     if (url.protocol !== 'https:' || url.username || url.password)
       throw new Error('Invalid sign-in URL.');
-    await shell.openExternal(url.href);
+    await this.openExternal(url.href);
   }
 
   private required(): AgentClientOptions {

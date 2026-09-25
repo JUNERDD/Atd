@@ -1,8 +1,10 @@
-import WebSocket from 'ws';
 import {
   CapabilityRequestSchema,
+  InvalidateFrameSchema,
   parse,
   ServiceEventSchema,
+  STREAM_AUTH_PROTOCOL_PREFIX,
+  STREAM_PROTOCOL,
   TaskSnapshotSchema,
   type CapabilityRequest,
   type ServiceEvent,
@@ -57,14 +59,19 @@ export class AgentStreamClient {
     this.socket = null;
   }
 
+  /**
+   * Uses the standard `WebSocket` global (Node 22+, Electron, browsers). Browsers cannot set
+   * headers on a socket, so every client sends its credential as the `ai.auth.<token>`
+   * subprotocol next to `ai.v1`, which is the one the service selects.
+   */
   private open(): void {
     const url = this.options.baseUrl.replace(/^http/, 'ws');
-    const socket = new WebSocket(`${url}/v1/stream`, {
-      headers: { authorization: `Bearer ${this.options.token}` },
-      maxPayload: 1024 * 1024,
-    });
+    const socket = new WebSocket(`${url}/v1/stream`, [
+      STREAM_PROTOCOL,
+      `${STREAM_AUTH_PROTOCOL_PREFIX}${this.options.token}`,
+    ]);
     this.socket = socket;
-    socket.on('open', () => {
+    socket.addEventListener('open', () => {
       this.failures = 0;
       socket.send(
         JSON.stringify({
@@ -82,20 +89,18 @@ export class AgentStreamClient {
           }),
         );
     });
-    socket.on('message', (raw) => {
-      void this.onMessage(String(raw)).catch((error: unknown) => {
+    socket.addEventListener('message', (event) => {
+      void this.onMessage(String(event.data)).catch((error: unknown) => {
         this.handlers.onDisconnect?.(error instanceof Error ? error.message : 'Stream error.');
       });
     });
-    socket.on('close', (code, reason) => {
-      this.socket = null;
+    socket.addEventListener('close', (event) => {
+      if (this.socket === socket) this.socket = null;
       if (this.closed) return;
-      this.handlers.onDisconnect?.(`Stream closed (${code} ${reason.toString()}).`);
+      this.handlers.onDisconnect?.(`Stream closed (${event.code} ${event.reason}).`);
       this.scheduleReconnect();
     });
-    socket.on('error', () => {
-      // Errors surface through close; no separate handling needed.
-    });
+    // Errors surface through close; no separate handling needed.
   }
 
   private scheduleReconnect(): void {
@@ -128,6 +133,10 @@ export class AgentStreamClient {
         const event = parse(ServiceEventSchema, field(message, 'event'));
         this.observe(event);
         this.handlers.onEvent(event);
+        break;
+      }
+      case 'invalidate': {
+        this.handlers.onInvalidate?.(parse(InvalidateFrameSchema, message));
         break;
       }
       case 'capability.request': {
