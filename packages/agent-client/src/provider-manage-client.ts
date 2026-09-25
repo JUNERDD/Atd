@@ -8,6 +8,7 @@ import {
   ProviderLevelsResponseSchema,
   ProviderLoginResponseSchema,
   ProviderModelRequestSchema,
+  ProviderRefreshRequestSchema,
   ProviderUpdateRequestSchema,
   ProviderVerifyRequestSchema,
   type ProviderConnectionResponse,
@@ -78,17 +79,18 @@ export function setProviderModel(
   );
 }
 
-/** Refreshes a connection's model catalog over the network. */
+/** Refreshes a connection's model catalog; `background` makes it an implicit, silent refresh. */
 export function refreshProvider(
   options: AgentClientOptions,
   connectionId: string,
+  background: boolean,
   fetchImpl?: typeof fetch,
 ): Promise<ProviderConnectionResponse> {
   return manageRequest(
     options,
     connectionPath(connectionId, '/refresh'),
     'POST',
-    undefined,
+    parse(ProviderRefreshRequestSchema, { background }),
     decodeConnection,
     fetchImpl,
   );

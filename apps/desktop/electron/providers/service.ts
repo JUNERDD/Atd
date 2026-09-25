@@ -12,6 +12,7 @@ import {
 import type { SettingsStore } from '../settings-store';
 import { parse } from '../agent/validation';
 import type { ServiceConnection } from '../service/connection';
+import { CatalogSync } from './catalog-sync';
 import { disconnectLive, fetchCatalog, fetchLiveProviders, saveLive } from './live';
 import { ProviderLoginClient } from './login-client';
 import { PROVIDER_IPC } from './ipc-channels';
@@ -36,6 +37,14 @@ export class ProviderService {
   private connection: ServiceConnection | null = null;
   private live: { defaultConnectionId: string | null; connections: Connection[] } | null = null;
   private readonly login: ProviderLoginClient;
+  private readonly catalogSync = new CatalogSync(
+    () => this.live?.connections ?? [],
+    (id) =>
+      this.write((options) => refreshProvider(options, id, true)).then(
+        () => true,
+        () => false,
+      ),
+  );
 
   constructor(
     private store: SettingsStore,
@@ -46,7 +55,9 @@ export class ProviderService {
     this.login = new ProviderLoginClient(
       () => this.connection?.options() ?? null,
       (state) => publish(PROVIDER_IPC.loginEvent, state),
-      () => this.sync().catch(() => undefined),
+      // Signed-in providers can expose models that need the new credential; the refresh reloads
+      // the connections either way.
+      (connectionId) => void this.catalogSync.sync(connectionId),
     );
   }
 
@@ -97,8 +108,11 @@ export class ProviderService {
     return result;
   }
 
-  save(value: ConnectionDraft): Promise<Connection> {
-    return this.write((options) => saveLive(options, value));
+  async save(value: ConnectionDraft): Promise<Connection> {
+    const saved = await this.write((options) => saveLive(options, value));
+    // Model discovery continues in the background so saving stays responsive.
+    void this.catalogSync.sync(saved.connectionId);
+    return saved;
   }
 
   async setDefault(id: string, revision: number): Promise<void> {
@@ -115,18 +129,23 @@ export class ProviderService {
     await this.write((options) => disconnectLive(options, id, revision));
   }
 
-  startCatalogSync(): void {
-    return;
+  /**
+   * Refreshes stale connected catalogs in the background now and every interval after. Call it
+   * whenever the service connects, once the connections have loaded.
+   */
+  syncCatalogs(): void {
+    this.catalogSync.start();
   }
 
-  syncInBackground(_id: string): Promise<boolean> {
-    return Promise.resolve(false);
+  /** A model list opened in either window; see `ProviderBridge.refreshCatalogs`. */
+  refreshShownCatalogs(): void {
+    this.catalogSync.shown();
   }
 
   /** `network: false` only reloads the saved catalog; a refresh failure is kept on the row. */
   async refresh(id: string, network = true): Promise<void> {
     if (!network) return this.sync();
-    await this.write((options) => refreshProvider(options, id));
+    await this.write((options) => refreshProvider(options, id, false));
   }
 
   async verify(reference: ModelReference): Promise<void> {
@@ -183,6 +202,8 @@ export class ProviderService {
       this.disconnect(parse(identity, id), parse(revisionSchema, revision)),
     );
     handle(PROVIDER_IPC.refresh, (id) => this.refresh(parse(identity, id)));
+    // Both windows show model lists: the settings pickers and the panel composer.
+    handle(PROVIDER_IPC.refreshCatalogs, () => this.refreshShownCatalogs(), false);
     handle(PROVIDER_IPC.verify, (reference) => this.verify(parse(ModelReferenceSchema, reference)));
     ipcMain.handle(PROVIDER_IPC.login, async (event, value: unknown) => {
       assertSender(event, true);

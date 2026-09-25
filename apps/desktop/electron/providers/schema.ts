@@ -170,6 +170,12 @@ export interface ProviderBridge {
   levels: (reference: ModelReference) => Promise<ModelThinkingLevel[]>;
   disconnect: (connectionId: string, revision: number) => Promise<void>;
   refresh: (connectionId: string) => Promise<void>;
+  /**
+   * A model list opened: background-refreshes connected catalogs that are more than a minute old.
+   * Resolves at once; refreshed catalogs arrive with the next settings snapshot, and failures stay
+   * silent.
+   */
+  refreshCatalogs: () => Promise<void>;
   verify: (reference: ModelReference) => Promise<void>;
   login: (connectionId: string) => Promise<LoginState>;
   answer: (id: string, promptId: string, value: string) => Promise<void>;

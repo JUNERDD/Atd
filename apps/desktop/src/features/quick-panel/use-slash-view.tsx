@@ -7,6 +7,7 @@ import type { ComposerEditorCommands } from '../composer-editor/editor-commands'
 import { rankModels } from '../providers/model-match';
 import { sortModels } from '../providers/model-order';
 import { ProviderBrand } from '../providers/provider-brand';
+import { useCatalogRefresh } from '../providers/use-catalog-refresh';
 import { useThinkingLevels } from '../providers/use-thinking-levels';
 import type { ExtensionSkillRow } from '../service/use-service';
 import {
@@ -56,6 +57,7 @@ export function useSlashView({
   const shown = policy.model ?? model;
   // Levels load once a leading `/` opens; they gate `/effort` and fill its drill list.
   const effort = useThinkingLevels(trigger?.placement === 'leading' ? shown : null);
+  useCatalogRefresh(trigger?.drill?.command === 'model');
   if (!trigger) return { groups: [], empty: null };
   const drill = trigger.drill && isDrillCommand(trigger.drill.command) ? trigger.drill : null;
 

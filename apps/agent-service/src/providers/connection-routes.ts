@@ -7,6 +7,7 @@ import {
   ProviderLevelsQuerySchema,
   ProviderLoginAnswerRequestSchema,
   ProviderModelRequestSchema,
+  ProviderRefreshRequestSchema,
   ProviderUpdateRequestSchema,
   ProviderVerifyRequestSchema,
   type ProviderUpdateRequest,
@@ -119,8 +120,9 @@ export function registerConnectionRoutes(
   });
 
   app.post<Params>('/v1/providers/:connectionId/refresh', async (request) => {
+    const { background } = parse(ProviderRefreshRequestSchema, request.body);
     const { live, ...opened } = await load(request.params.connectionId);
-    await refreshCatalog(opened, live);
+    await refreshCatalog(opened, live, background);
     return { connection: await presentStored(opened.connections, live.connectionId) };
   });
 

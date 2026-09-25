@@ -199,6 +199,7 @@ export function installBridge(extras?: {
         levels: vi.fn(async (): Promise<ModelThinkingLevel[]> => ['off', 'low', 'high']),
         disconnect: vi.fn(async () => {}),
         refresh: vi.fn(async () => {}),
+        refreshCatalogs: vi.fn(async () => {}),
         verify: vi.fn(async () => {}),
         login: vi.fn(async () => Promise.reject(new Error('Not used'))),
         answer: vi.fn(async () => {}),
