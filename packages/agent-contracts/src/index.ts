@@ -22,3 +22,4 @@ export * from './references.js';
 export * from './shell.js';
 export * from './tool-details.js';
 export * from './tool-names.js';
+export * from './workspace.js';
