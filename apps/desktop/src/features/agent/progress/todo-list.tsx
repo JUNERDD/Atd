@@ -37,7 +37,7 @@ export function TodoList({ todos }: { todos: readonly VisibleTodo[] }) {
   );
 }
 
-/** The composer popover's Todos view: the list under its title and completed count. */
+/** The composer popover's Todos view: the list under a header of its title and completed count. */
 export function TodosPanel({
   todos,
   completed,
