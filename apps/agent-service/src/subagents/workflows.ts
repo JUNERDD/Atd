@@ -91,7 +91,12 @@ export function validateChainArgs(value: unknown):
   return { ok: true, args };
 }
 
-/** Builds the parallel `runs.all` script with `async:false` everywhere. */
+/**
+ * Builds the parallel `runs.all` script with `async:false` everywhere. Failed children keep their
+ * error in the return value; when every child failed the script throws, so the workflow call
+ * fails (pi-subagents reports "Workflow failed" with `isError`) instead of returning a success
+ * that holds no output.
+ */
 export function buildParallelScript(args: ParallelWorkflowArgs): string {
   const children = args.tasks
     .map(
@@ -99,9 +104,16 @@ export function buildParallelScript(args: ParallelWorkflowArgs): string {
         `{ key: "p${index}", agent: ${JSON.stringify(task.agent)}, task: ${JSON.stringify(withResources(task))}, async: false${task.label ? `, label: ${JSON.stringify(task.label)}` : ''} }`,
     )
     .join(', ');
+  // Failed children are named by key plus label (else agent) in the all-failed error.
+  const names = JSON.stringify(
+    args.tasks.map((task, index) => `p${index} (${task.label ?? task.agent})`),
+  );
   return [
     `const results = await runs.all([${children}]);`,
-    'return results.map((result) => ({ ok: result.ok, output: result.output, runId: result.runId ?? null }));',
+    `const names = ${names};`,
+    `const settled = results.map((result) => (result.ok ? { ok: true, output: result.output, runId: result.runId ?? null } : { ok: false, output: result.output, runId: result.runId ?? null, error: result.error || "The subagent run failed." }));`,
+    'if (settled.every((result) => !result.ok)) throw new Error("Every subagent run failed. " + settled.map((result, index) => names[index] + ": " + result.error).join("; "));',
+    'return settled;',
   ].join('\n');
 }
 
