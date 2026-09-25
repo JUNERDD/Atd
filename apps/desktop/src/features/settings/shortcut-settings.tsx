@@ -116,6 +116,7 @@ export function ShortcutSettings({
 }) {
   const { t } = useTranslation('settings');
   const settings = useShortcutSettings(snapshot);
+  const desktopApp = window.desktop?.runtime === 'electron';
   const recording = settings.recording !== null;
 
   useEffect(() => {
@@ -140,10 +141,14 @@ export function ShortcutSettings({
               settings={settings}
             />
           </ItemGroup>
-          {snapshot?.shortcutAvailable === false && (
-            <p className="settings-status" data-error="true" role="alert">
-              {t('shortcuts.errors.register')}
-            </p>
+          {!desktopApp ? (
+            <p className="settings-status">{t('shortcuts.registeredByDesktop')}</p>
+          ) : (
+            snapshot?.shortcutAvailable === false && (
+              <p className="settings-status" data-error="true" role="alert">
+                {t('shortcuts.errors.register')}
+              </p>
+            )
           )}
         </section>
         <section className="settings-shortcut-group" aria-labelledby="settings-in-app-shortcuts">
@@ -163,23 +168,28 @@ export function ShortcutSettings({
       </div>
 
       <div className="settings-shortcuts-footer">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <div className="settings-pin-preference">
-              <Label htmlFor="settings-always-on-top">{t('shortcuts.alwaysOnTop')}</Label>
-              <Switch
-                id="settings-always-on-top"
-                checked={settings.pinned}
-                disabled={settings.unavailable || settings.pending !== null || recording}
-                onCheckedChange={(value) => void settings.changePinned(value)}
-              />
-            </div>
-          </TooltipTrigger>
-          <TooltipContent>{t('shortcuts.alwaysOnTop')}</TooltipContent>
-        </Tooltip>
+        {/* Keeping a window on top is a desktop window preference; a browser tab has none. */}
+        {desktopApp && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="settings-pin-preference">
+                <Label htmlFor="settings-always-on-top">{t('shortcuts.alwaysOnTop')}</Label>
+                <Switch
+                  id="settings-always-on-top"
+                  checked={settings.pinned}
+                  disabled={settings.unavailable || settings.pending !== null || recording}
+                  onCheckedChange={(value) => void settings.changePinned(value)}
+                />
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>{t('shortcuts.alwaysOnTop')}</TooltipContent>
+          </Tooltip>
+        )}
         <Button
           type="button"
           variant="outline"
+          // Stays at the trailing edge when the pin preference is absent (web client).
+          className="ml-auto"
           disabled={settings.unavailable || settings.pending !== null || recording}
           onClick={() => void settings.restoreDefaults()}
         >

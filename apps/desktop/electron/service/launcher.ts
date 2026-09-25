@@ -18,7 +18,7 @@ export async function startLocalService(options: {
 }): Promise<{ pid: number; dataDir: string }> {
   const command = await resolveServiceCommand();
   const node = await resolveSystemNode(await readEnginesFromCli(command.script));
-  const args = ['serve', '--dataDir', path.resolve(options.dataDir)];
+  const args = ['serve', '--dataDir', path.resolve(options.dataDir), '--web-root', webRoot()];
   if (options.host) args.push('--host', options.host);
   if (options.port !== undefined) args.push('--port', String(options.port));
   const atdHome = resolveServiceAtdHome();
@@ -267,6 +267,17 @@ async function newestMtimeMs(dir: string, ext?: string): Promise<number | null> 
     }
   }
   return newest;
+}
+
+/**
+ * The web client build the service serves at `/`: bundled next to the service in a packaged app,
+ * `dist-web` (`pnpm --filter @ai/desktop build:web`) otherwise. A missing build leaves the
+ * service API-only; it says so on `/`.
+ */
+function webRoot(): string {
+  return app.isPackaged
+    ? path.join(process.resourcesPath, 'web')
+    : path.resolve(app.getAppPath(), 'dist-web');
 }
 
 function sourceCliCandidates(here: string): string[] {

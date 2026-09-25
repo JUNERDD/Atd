@@ -43,7 +43,7 @@ These rules define project constraints and completion criteria. The [OpenAI prom
 ## Commands And Local Runtime
 
 - Before pnpm-based validation, confirm `pnpm --version` matches the root `packageManager`.
-- `pnpm dev` starts the Electron app through Turbo. `pnpm dev:web` starts the renderer preview. Inspect `apps/desktop/vite.config.ts` for the configured host and port; do not invent a different origin.
+- `pnpm dev` starts the Electron app through Turbo; its renderer dev server also serves the web client when opened in a browser, proxying `/v1` to the service the app started and signing the page in through a same-origin dev pairing endpoint. `pnpm dev:web` runs that dev server without Electron (it needs a running service: `AI_AGENT_DATA_DIR` or `AI_AGENT_URL` selects it); append `?preview` for the bare renderer without a service. `pnpm --filter @ai/desktop build:web` builds the client the service serves at `/`. Inspect `apps/desktop/vite.config.ts` for the configured host and port; do not invent a different origin.
 - `pnpm build` builds the renderer, main process, and preload. `pnpm package` builds and packages the desktop app; inspect the desktop package scripts and `electron-builder.yml` before changing packaging behavior.
 - `pnpm test` runs Vitest once; `pnpm --filter @ai/desktop test:watch` watches existing tests. `pnpm test:electron` builds and runs the Electron smoke suite.
 - Start runtime work — the app, the renderer preview, the smoke suite — when a task's acceptance criteria depend on rendered or native behavior, and prefer the smallest launch that answers the question: renderer-only for layout, styling, and copy; the real app for IPC, window, and native-surface behavior. Do not launch for unrelated tasks.
@@ -55,7 +55,8 @@ Automated debugging is part of the authorized check set for those tasks: start a
 
 | Surface                                  | Launch                                                                                                     | Attach                                                                                                               |
 | ---------------------------------------- | ---------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| Renderer only (layout, styling, copy)    | `pnpm dev:web` at the origin configured in `apps/desktop/vite.config.ts`                                   | Browser automation on that origin. No `window.desktop` bridge exists here, so desktop-only surfaces are not covered. |
+| Renderer only (layout, styling, copy)    | `pnpm dev:web` at the origin configured in `apps/desktop/vite.config.ts`, with `?preview`                  | Browser automation on that origin. No `window.desktop` bridge exists here, so desktop-only surfaces are not covered. |
+| Web client (service-backed UI, sync)     | An isolated `agent-service serve --dataDir <temp> --port <free> --web-root apps/desktop/dist-web`          | Open the link from `agent-service web --dataDir <temp>`. It runs the shared client core, not native surfaces.        |
 | Real app (IPC, windows, native surfaces) | `AI_TEST_USER_DATA=$(mktemp -d) pnpm dev` with a task-added debug port on a verified-free port (see below) | CDP at that port, for example chrome-devtools-mcp with `--browserUrl`, or any CDP client.                            |
 | Electron smoke suite                     | `pnpm test:electron`                                                                                       | Playwright, temporary profile, exit code and `.artifacts/` screenshots.                                              |
 

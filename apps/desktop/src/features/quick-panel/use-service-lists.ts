@@ -31,8 +31,9 @@ const loadMcp = (bridge: ServiceBridge) =>
 
 /**
  * Loads one list the first time its group is wanted while the service is connected. A failure
- * retries on the next opening; a reconnect may reach another service, so it also loads again.
- * Late replies from a superseded request are dropped.
+ * retries on the next opening; a reconnect may reach another service, and another client may
+ * change the extensions, so both load it again. Late replies from a superseded request are
+ * dropped.
  */
 function useLazyList<T>(
   load: (bridge: ServiceBridge) => Promise<T[]>,
@@ -42,6 +43,16 @@ function useLazyList<T>(
   const [loaded, setLoaded] = useState<Loaded<T> | null>(null);
   const requested = useRef(false);
   const generation = useRef(0);
+  const [changes, setChanges] = useState(0);
+  useEffect(
+    () =>
+      window.desktop?.service?.onChange((event) => {
+        if (event.type !== 'extensions') return;
+        requested.current = false;
+        setChanges((count) => count + 1);
+      }),
+    [],
+  );
   useEffect(() => {
     if (!connected) {
       requested.current = false;
@@ -63,7 +74,7 @@ function useLazyList<T>(
         setLoaded({ status: 'failed' });
       },
     );
-  }, [connected, wanted, load]);
+  }, [connected, wanted, load, changes]);
   return loaded;
 }
 

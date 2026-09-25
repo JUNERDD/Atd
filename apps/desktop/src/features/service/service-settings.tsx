@@ -78,9 +78,16 @@ export function ServiceSettings() {
   const enableSeq = useRef(new Map<string, number>());
   useEffect(() => {
     if (!connected) return;
-    void refreshSkills();
-    void refreshAgents();
-    void refreshMcp();
+    const refresh = () => {
+      void refreshSkills();
+      void refreshAgents();
+      void refreshMcp();
+    };
+    refresh();
+    // Another client (the desktop app or a browser) changed the extensions.
+    return window.desktop?.service?.onChange((event) => {
+      if (event.type === 'extensions') refresh();
+    });
   }, [connected, refreshAgents, refreshMcp, refreshSkills]);
   const catalogCount =
     (skills?.skills.length ?? 0) + (agents?.agents.length ?? 0) + (mcp?.servers.length ?? 0);

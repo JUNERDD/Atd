@@ -29,6 +29,12 @@ export interface DesktopState {
 }
 
 export interface DesktopBridge {
+  /**
+   * `electron` is the desktop app; `web` is the browser client served by the agent service. Only
+   * the Electron runtime has native window surfaces (vibrancy, traffic lights, global shortcuts).
+   */
+  readonly runtime: 'electron' | 'web';
+  /** The OS as a Node platform name; the web client reports the OS it detected. */
   readonly platform: string;
   readonly settings: SettingsBridge;
   readonly agent: AgentBridge;

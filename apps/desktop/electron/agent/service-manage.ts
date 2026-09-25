@@ -1,10 +1,6 @@
-import { clipboard, shell } from 'electron';
-import { mkdir, writeFile } from 'node:fs/promises';
-import path from 'node:path';
 import {
   AgentClientError,
   deleteTask,
-  downloadResource,
   listMemory,
   patchTask,
   pauseMemory,
@@ -16,7 +12,7 @@ import {
 import type { PreviewTaskRequest, ServiceRunPolicy } from '@ai/agent-contracts';
 import type { MemoryEntry, MemorySnapshot } from './bridge';
 import type { RunPolicy } from './run-policy';
-import type { FileRef, RunSnapshot } from './task-schema';
+import type { RunSnapshot } from './task-schema';
 
 export function notConnected(): Error {
   return new Error('The service is not connected. Connect in Settings → Service.');
@@ -171,50 +167,6 @@ export async function replaceLiveQueue(
 ): Promise<void> {
   try {
     await replaceQueue(options, taskId, followUp);
-  } catch (error) {
-    manageError(error);
-  }
-}
-
-function safeName(name: string): string {
-  return name.replace(/[/\\?%*:|"<>]/g, '_').slice(0, 200) || 'download.bin';
-}
-
-export async function handleArtifact(
-  options: AgentClientOptions,
-  downloadsRoot: string,
-  artifactId: string,
-  operation: 'open' | 'reveal' | 'copy' | 'locate' | 'attach',
-): Promise<FileRef | null> {
-  try {
-    const downloaded = await downloadResource(options, artifactId);
-    const filePath = path.join(downloadsRoot, `${artifactId}-${safeName(downloaded.name)}`);
-    await mkdir(downloadsRoot, { recursive: true });
-    await writeFile(filePath, downloaded.bytes);
-    const file: FileRef = {
-      id: artifactId,
-      name: downloaded.name,
-      size: downloaded.bytes.length,
-      type: downloaded.mime,
-    };
-    switch (operation) {
-      case 'open':
-        await shell.openPath(filePath);
-        return file;
-      case 'reveal':
-      case 'locate':
-        shell.showItemInFolder(filePath);
-        return file;
-      case 'copy':
-        clipboard.writeText(filePath);
-        return file;
-      case 'attach':
-        return file;
-      default: {
-        const _exhaustive: never = operation;
-        throw new Error(`Unsupported artifact operation: ${String(_exhaustive)}`);
-      }
-    }
   } catch (error) {
     manageError(error);
   }

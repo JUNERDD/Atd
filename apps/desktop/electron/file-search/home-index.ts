@@ -1,7 +1,7 @@
 import { stat } from 'node:fs/promises';
 import path from 'node:path';
 import { fdir } from 'fdir';
-import { attachableExtension, type AttachableExtension } from '../agent/attachable-files';
+import { attachableExtension, type AttachableExtension } from '../agent/attachable-rules';
 import type { BackendReply, SearchBackend, SearchHit, SearchRequest } from './backend';
 import { foldText, nameMatches, rankCandidates, type Candidate } from './rank';
 import { recentHits } from './recents';

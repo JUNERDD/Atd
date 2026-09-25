@@ -38,7 +38,8 @@ import { AgentClientError, type AgentClientOptions } from './types.js';
 export class AgentHttpClient {
   constructor(
     private readonly options: AgentClientOptions,
-    private readonly fetchImpl: typeof fetch = fetch,
+    // Browsers reject `fetch` called as a method of another object ("Illegal invocation").
+    private readonly fetchImpl: typeof fetch = (input, init) => fetch(input, init),
   ) {}
 
   status(): Promise<StatusResponse> {

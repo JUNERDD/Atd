@@ -1,5 +1,4 @@
 import { readFile } from 'node:fs/promises';
-import { homedir, platform } from 'node:os';
 import path from 'node:path';
 import { app } from 'electron';
 import { Type, type Static } from 'typebox';
@@ -41,33 +40,6 @@ export interface ServiceEndpoint {
   pid: number;
   /** ISO time the process started; dates the code it loaded. */
   startedAt: string;
-}
-
-export function defaultServiceDataDir(): string {
-  const home = homedir();
-  switch (platform()) {
-    case 'darwin':
-      return path.join(home, 'Library', 'Application Support', 'AgentService');
-    case 'win32':
-      return path.join(process.env.LOCALAPPDATA ?? home, 'AgentService');
-    default:
-      return path.join(
-        process.env.XDG_DATA_HOME ?? path.join(home, '.local', 'share'),
-        'agent-service',
-      );
-  }
-}
-
-/**
- * Resolves the service dataDir: an explicit AI_AGENT_DATA_DIR override wins;
- * isolated test profiles (AI_TEST_USER_DATA) keep the service inside the
- * profile; otherwise the per-OS production default applies.
- */
-export function resolveServiceDataDir(): string {
-  const override = process.env.AI_AGENT_DATA_DIR?.trim();
-  if (override) return override;
-  if (process.env.AI_TEST_USER_DATA) return path.join(app.getPath('userData'), 'AgentService');
-  return defaultServiceDataDir();
 }
 
 /**

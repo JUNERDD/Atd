@@ -59,12 +59,14 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
+  gap: 8px;
   flex-shrink: 0;
   height: 40px;
   padding: 0 40px;
 }
 /* The strip stays part of the window drag region; only its controls opt out. */
-.settings-content-header [data-slot='select-trigger'] {
+.settings-content-header [data-slot='select-trigger'],
+.settings-content-header [data-slot='button'] {
   -webkit-app-region: no-drag;
 }
 .settings-content-scroll {

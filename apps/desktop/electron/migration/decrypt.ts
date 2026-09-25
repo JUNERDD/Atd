@@ -1,10 +1,11 @@
+import { createHash } from 'node:crypto';
 import { app } from 'electron';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { MigrationCredential } from '@ai/agent-contracts';
 import { Type, type Static } from 'typebox';
 import { decryptCredential } from '../providers/credentials';
-import { configurationId } from '../providers/configuration';
+import type { ConnectionConfig } from '../providers/schema';
 import { parse } from '../agent/validation';
 
 /**
@@ -115,4 +116,19 @@ export async function decryptConnectionsOnce(): Promise<{
     }
   }
   return { ready, blocked };
+}
+
+/** The service's configuration fingerprint of a migrated connection (provider, endpoint, auth, options, models). */
+export function configurationId(config: ConnectionConfig): string {
+  return createHash('sha256')
+    .update(
+      JSON.stringify({
+        provider: config.provider,
+        baseUrl: config.baseUrl,
+        authType: config.authType,
+        options: Object.entries(config.options).sort(([a], [b]) => a.localeCompare(b)),
+        customModels: config.customModels,
+      }),
+    )
+    .digest('hex');
 }

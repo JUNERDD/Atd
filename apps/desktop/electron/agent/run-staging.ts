@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto';
 import { mcpStage, stageReferences, stageSkills, type AgentClientOptions } from '@ai/agent-client';
 import type { RunPolicy } from './run-policy';
 import { parseMcpTools } from './service-manage';
@@ -23,7 +22,7 @@ export async function stageRunChoices(
   let staged = taskId;
   const skills = policy.skills ?? [];
   if (skills.length || policy.roleId) {
-    staged ??= randomUUID();
+    staged ??= crypto.randomUUID();
     await stageSkills(options, {
       taskId: staged,
       skills,
@@ -32,12 +31,12 @@ export async function stageRunChoices(
   }
   const tools = policy.mcpTools ? parseMcpTools(policy.mcpTools) : [];
   if (tools.length) {
-    staged ??= randomUUID();
+    staged ??= crypto.randomUUID();
     await mcpStage({ options }, { taskId: staged, tools });
   }
   const references = policy.references ?? [];
   if (references.length) {
-    staged ??= randomUUID();
+    staged ??= crypto.randomUUID();
     await stageReferences(options, { taskId: staged, references });
   }
   return staged;

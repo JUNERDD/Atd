@@ -1,11 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { AgentHttpClient } from '@ai/agent-client';
-import {
-  readAttachable,
-  uploadAttachables,
-  type AttachableExtension,
-  type AttachableFile,
-} from '../agent/attachable-files';
+import { readAttachable, type AttachableFile } from '../agent/attachable-files';
+import { uploadAttachables, type AttachableExtension } from '../agent/attachable-rules';
 import { notConnected } from '../agent/service-manage';
 import type { FileRef } from '../agent/task-schema';
 import type { SearchBackend } from './backend';

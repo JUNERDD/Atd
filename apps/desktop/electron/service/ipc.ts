@@ -70,6 +70,7 @@ export const ServiceRequestSchema = Type.Union([
     dataDir: Type.String({ minLength: 1, maxLength: 2048 }),
   }),
   Type.Object({ action: Type.Literal('disconnect') }),
+  Type.Object({ action: Type.Literal('openInBrowser') }),
   Type.Object({
     action: Type.Literal('startLocal'),
     dataDir: Type.String({ minLength: 1, maxLength: 2048 }),
@@ -158,6 +159,8 @@ export type ServiceRequest = Static<typeof ServiceRequestSchema>;
 
 export type ServiceEvent =
   | { type: 'status'; status: ServiceStatusView }
+  /** Skills, roles, subagents or MCP servers changed, possibly from another client: reload lists. */
+  | { type: 'extensions' }
   | { type: 'notice'; text: string; kind: 'info' | 'warning' | 'error' };
 
 export interface ServiceBridge {
@@ -165,6 +168,8 @@ export interface ServiceBridge {
   connect: (dataDir: string) => Promise<ServiceStatusView>;
   disconnect: () => Promise<ServiceStatusView>;
   startLocal: (dataDir: string, port?: number) => Promise<ServiceStatusView>;
+  /** Signs the default browser in to the connected service with a one-time link (desktop only). */
+  openInBrowser: () => Promise<void>;
   skills: () => Promise<{ skills: unknown[]; diagnostics: unknown[] }>;
   updateSkill: (name: string) => Promise<{ skill: unknown; diagnostics: unknown[] }>;
   setSkillEnabled: (name: string, enabled: boolean) => Promise<{ name: string; enabled: boolean }>;

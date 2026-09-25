@@ -7,6 +7,7 @@ import babel from '@rolldown/plugin-babel';
 import tailwindcss from '@tailwindcss/vite';
 import electron from 'vite-plugin-electron/simple';
 import type { ElectronOptions } from 'vite-plugin-electron';
+import { agentServiceDev } from './plugins/agent-service-dev.js';
 import {
   componentInspector,
   componentInspectorBabelPlugin,
@@ -45,6 +46,8 @@ export default defineConfig(({ mode, command }) => ({
       ? [
           babel({ plugins: [componentInspectorBabelPlugin], include: /\.(tsx|jsx)$/ }),
           componentInspector(),
+          // `pnpm dev` also serves the web client on this origin.
+          agentServiceDev(),
         ]
       : []),
     tailwindcss(),
@@ -87,7 +90,13 @@ export default defineConfig(({ mode, command }) => ({
           }),
         ]),
   ],
-  resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
+  resolve: {
+    alias: {
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
+      // The web client runs the service client packages in the page.
+      ...workspaceSource,
+    },
+  },
   server: {
     host: '127.0.0.1',
     port: 5173,
@@ -95,5 +104,5 @@ export default defineConfig(({ mode, command }) => ({
     watch: { ignored: ['**/release/**', '**/test-results/**', '**/.artifacts/**'] },
   },
   preview: { host: '127.0.0.1', port: 4173, strictPort: true },
-  build: { target: 'chrome152' },
+  build: { target: 'chrome152', outDir: mode === 'web' ? 'dist-web' : 'dist' },
 }));

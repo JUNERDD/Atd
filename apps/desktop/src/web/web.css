@@ -1,0 +1,19 @@
+/* The web client is a browser page rather than a floating window: the panel fills the tab's
+   height in a centered column that keeps the panel's reading width. At or below that width it is
+   the full viewport, so the panel's responsive widths apply unchanged. */
+html[data-runtime='web'] .task-panel {
+  inset: 0;
+  width: min(100dvw, 720px);
+  height: 100dvh;
+  margin-inline: auto;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.web-sign-in {
+  display: flex;
+  min-height: 100dvh;
+  padding: 16px;
+  background: var(--ata-surface-panel);
+  color: var(--foreground);
+}
