@@ -19,6 +19,7 @@ import { PROVIDER_IPC } from './ipc-channels';
 import {
   ConnectionDraftSchema,
   ModelReferenceSchema,
+  ModelThinkingLevelSchema,
   type Connection,
   type ConnectionDraft,
   type ModelReference,
@@ -119,9 +120,13 @@ export class ProviderService {
     await this.write((options) => setDefaultProvider(options, id, revision));
   }
 
-  async setModel(reference: ModelReference, revision: number): Promise<void> {
+  async setModel(
+    reference: ModelReference,
+    revision: number,
+    thinkingLevel?: ModelThinkingLevel,
+  ): Promise<void> {
     await this.write((options) =>
-      setProviderModel(options, reference.connectionId, reference.modelId, revision),
+      setProviderModel(options, reference.connectionId, reference.modelId, revision, thinkingLevel),
     );
   }
 
@@ -189,8 +194,12 @@ export class ProviderService {
     handle(PROVIDER_IPC.default, (id, revision) =>
       this.setDefault(parse(identity, id), parse(revisionSchema, revision)),
     );
-    handle(PROVIDER_IPC.model, (reference, revision) =>
-      this.setModel(parse(ModelReferenceSchema, reference), parse(revisionSchema, revision)),
+    handle(PROVIDER_IPC.model, (reference, revision, thinkingLevel) =>
+      this.setModel(
+        parse(ModelReferenceSchema, reference),
+        parse(revisionSchema, revision),
+        thinkingLevel === undefined ? undefined : parse(ModelThinkingLevelSchema, thinkingLevel),
+      ),
     );
     // The panel composer shows the level next to its model picker; both windows may ask.
     handle(

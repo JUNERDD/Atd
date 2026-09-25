@@ -31,8 +31,12 @@ type ModelConfigView = 'root' | 'effort' | 'model';
 /**
  * One trigger (`model + context + effort`) with inline drill-in. The root view shows Context
  * readonly plus Effort/Model navigation; subviews render in the same Popover with a back header.
- * The model view is the ModelList that ModelPicker also shows; effort options come from
- * useThinkingLevels with the same disabled and levels[0] fallback semantics.
+ * The model view is a ModelList; effort options come from useThinkingLevels, disabled until the
+ * model offers a choice and falling back to levels[0] when the given level is unsupported.
+ *
+ * `scopeLabel` names the one connection a scoped popover configures (a provider overview row):
+ * its list shows only that connection without a heading, and the trigger drops the brand the row
+ * already shows and carries the label for assistive technology.
  */
 export function ModelConfigPopover({
   connections,
@@ -41,6 +45,7 @@ export function ModelConfigPopover({
   onModelChange,
   onThinkingLevelChange,
   onOpenProviders,
+  scopeLabel,
   compact = false,
   disabled = false,
 }: {
@@ -50,6 +55,7 @@ export function ModelConfigPopover({
   onModelChange: (value: ModelReference) => void;
   onThinkingLevelChange: (level: ModelThinkingLevel) => void;
   onOpenProviders?: () => void;
+  scopeLabel?: string;
   compact?: boolean;
   disabled?: boolean;
 }) {
@@ -75,10 +81,10 @@ export function ModelConfigPopover({
   const selected = levels.includes(thinkingLevel) ? thinkingLevel : (levels[0] ?? thinkingLevel);
   const effortText = t(`thinkingLevels.levels.${selected}`);
   const effortDisabled = !model || loading || levels.length < 2;
-  const title =
-    connection && model
-      ? `${connection.name} · ${displayName} · ${contextText} · ${effortText}`
-      : displayName;
+  const scoped = scopeLabel !== undefined;
+  const summary = { model: displayName, contextSize: contextText, effort: effortText };
+  const details = model ? `${displayName} · ${contextText} · ${effortText}` : displayName;
+  const title = connection && model && !scoped ? `${connection.name} · ${details}` : details;
 
   useEffect(() => {
     if (!open) {
@@ -114,14 +120,14 @@ export function ModelConfigPopover({
           size={compact ? 'xs' : 'default'}
           className={compact ? 'composer-model' : 'provider-model-trigger'}
           disabled={disabled}
-          aria-label={t('modelConfig.triggerLabel', {
-            model: displayName,
-            contextSize: contextText,
-            effort: effortText,
-          })}
+          aria-label={
+            scoped
+              ? t('modelConfig.scopedTriggerLabel', { label: scopeLabel, ...summary })
+              : t('modelConfig.triggerLabel', summary)
+          }
           title={title}
         >
-          {connection && <ProviderBrand provider={connection.provider} />}
+          {connection && !scoped && <ProviderBrand provider={connection.provider} />}
           <span className="min-w-0 flex-1 truncate text-left">{displayName}</span>
           {model && <span className="model-config-context shrink-0">{contextText}</span>}
           {model && <span className="model-config-effort shrink-0">{effortText}</span>}
@@ -222,7 +228,12 @@ export function ModelConfigPopover({
             <ModelList
               connections={connections}
               value={model}
-              searchLabel={t('models.searchLabel')}
+              scoped={scoped}
+              searchLabel={
+                scoped
+                  ? t('models.searchScopedLabel', { label: scopeLabel })
+                  : t('models.searchLabel')
+              }
               onSelect={(reference) => {
                 onModelChange(reference);
                 setOpen(false);

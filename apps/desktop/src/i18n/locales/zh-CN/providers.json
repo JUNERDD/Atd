@@ -13,6 +13,7 @@
     },
     "defaultModelLabel": "{{name}} 的默认模型",
     "defaultModelSaved": "已保存 {{name}} 的默认模型。",
+    "thinkingLevelSaved": "已保存 {{name}} 的推理强度。",
     "currentDefault": "当前默认",
     "makeDefault": "设为默认提供商",
     "chooseDefaultModel": "请先选择默认模型",
@@ -127,6 +128,7 @@
     "context": "上下文",
     "model": "模型",
     "back": "返回",
-    "triggerLabel": "模型配置：{{model}}、{{contextSize}}、{{effort}}"
+    "triggerLabel": "模型配置：{{model}}、{{contextSize}}、{{effort}}",
+    "scopedTriggerLabel": "{{label}}：{{model}}、{{contextSize}}、{{effort}}"
   }
 }

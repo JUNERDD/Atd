@@ -12,7 +12,7 @@ import {
 } from '@ai/ui/components/dropdown-menu';
 import type { Connection } from '../../../electron/providers/schema';
 import { IconButton } from '../../components/icon-button';
-import { ModelPicker } from './model-picker';
+import { ModelConfigPopover } from './model-config-popover';
 import { ProviderBrand } from './provider-brand';
 
 /** One overview row: a connection and where the overview search matched its name. */
@@ -42,6 +42,9 @@ export function ProviderConnections({
     <ItemGroup className="provider-connections">
       {rows.map(({ connection, nameRanges }) => {
         const isDefault = defaultConnectionId === connection.connectionId;
+        const model = connection.defaultModel
+          ? { connectionId: connection.connectionId, modelId: connection.defaultModel }
+          : null;
         const verified = Boolean(
           connection.verifiedModel && connection.verifiedModel === connection.defaultModel,
         );
@@ -83,25 +86,27 @@ export function ProviderConnections({
                 </ItemContent>
               </div>
               <div className="provider-model-controls">
-                <ModelPicker
-                  scoped
+                <ModelConfigPopover
                   connections={[connection]}
-                  value={
-                    connection.defaultModel
-                      ? {
-                          connectionId: connection.connectionId,
-                          modelId: connection.defaultModel,
-                        }
-                      : null
-                  }
-                  label={t('connections.defaultModelLabel', { name: connection.name })}
+                  model={model}
+                  // Runs without a saved level run with reasoning off.
+                  thinkingLevel={connection.defaultThinkingLevel ?? 'off'}
+                  scopeLabel={t('connections.defaultModelLabel', { name: connection.name })}
                   disabled={pending}
-                  onChange={(reference) =>
+                  onModelChange={(reference) =>
                     void perform(
                       () => bridge!.setModel(reference, connection.revision),
                       t('connections.defaultModelSaved', { name: connection.name }),
                     )
                   }
+                  onThinkingLevelChange={(level) => {
+                    // The popover offers levels only once a model is chosen.
+                    if (!model) return;
+                    void perform(
+                      () => bridge!.setModel(model, connection.revision, level),
+                      t('connections.thinkingLevelSaved', { name: connection.name }),
+                    );
+                  }}
                 />
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
