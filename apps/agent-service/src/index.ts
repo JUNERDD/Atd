@@ -10,6 +10,8 @@ import { recoverService, type RecoveryReport } from './recovery.js';
 import { ResourceStore } from './resources.js';
 import { RunnerManager } from './runner-manager.js';
 import { buildServer, mcpAuthorityDeps, type ServerDeps } from './server.js';
+import { SettingsStore } from './settings/store.js';
+import { WebSessions } from './web/sessions.js';
 import type { RunnerContext } from './task-runner.js';
 
 export type { ServiceConfig } from './config.js';
@@ -70,7 +72,14 @@ export async function createService(
     log,
     tier: options.tier ?? 'manual',
   };
-  const manager = new RunnerManager({ ctx: runnerContext, resources, log });
+  const settings = await SettingsStore.load(config.paths.root, runnerContext.tier);
+  const sessions = await WebSessions.load(config.paths.root);
+  const manager = new RunnerManager({
+    ctx: runnerContext,
+    resources,
+    log,
+    newTaskTier: () => settings.newTaskTier(),
+  });
   const report = await recoverService({ ledger, events, confirms, capabilities, log });
 
   let stopping: (() => Promise<void>) | null = null;
@@ -82,6 +91,8 @@ export async function createService(
     capabilities,
     resources,
     manager,
+    settings,
+    sessions,
     log,
     startedAt,
     onShutdown:
