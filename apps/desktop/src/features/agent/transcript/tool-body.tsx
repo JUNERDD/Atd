@@ -1,9 +1,8 @@
 import type { ReactNode } from 'react';
-import type { ToolBlockDetails } from '@ai/agent-contracts';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@ai/ui/lib/utils';
 import type { BlockOf } from '../../../../electron/agent/transcript-schema';
-import { bashCommand, hasToolDetail } from './tool-copy';
+import { bashCommand, hasToolDetail, structuredDetails, type RowDetails } from './tool-copy';
 import { DetailBox } from './detail-box';
 import { Root as JsonTree } from './json-tree';
 import { TodoBody } from './todo-body';
@@ -96,7 +95,7 @@ export function ToolOutput({
  * Structured result of a settled call (`details.data`, validated at the main boundary). The
  * model-facing output stays the copy text so the box copies what the agent actually read.
  */
-function DetailsBody({ block, data }: { block: BlockOf<'tool'>; data: ToolBlockDetails }) {
+function DetailsBody({ block, data }: { block: BlockOf<'tool'>; data: RowDetails }) {
   switch (data.type) {
     case 'todo':
       return <TodoBody details={data} copyText={block.output} />;
@@ -121,7 +120,8 @@ export function ToolBody({ block }: { block: BlockOf<'tool'> }) {
   const running = block.status === 'running';
   const text = running ? block.partial : block.output;
   if (!hasToolDetail(block)) return null;
-  if (block.details.data) return <DetailsBody block={block} data={block.details.data} />;
+  const data = structuredDetails(block);
+  if (data) return <DetailsBody block={block} data={data} />;
   switch (block.name) {
     case 'edit':
       return block.details.diff ? (

@@ -5,8 +5,9 @@ import { Type, type Static } from 'typebox';
  * transcript projection builds them from Pi's `ToolResultMessage.details` by whitelisting fields
  * and clamping every string and list to the bounds below; raw tool details never cross the
  * service boundary. A block has no `details` when its tool has no variant here, while it runs,
- * or when its result is an error. `truncated` reports that the projection dropped items or
- * characters.
+ * or when its result is an error; `subagent` is the one exception and also carries details while
+ * running and on failure (see `SubagentDetailsSchema`). `truncated` reports that the projection
+ * dropped items or characters.
  */
 
 export const TODO_DETAILS_MAX_ITEMS = 100;
@@ -21,6 +22,10 @@ export const WEB_EXCERPT_MAX_LENGTH = 2000;
 export const WEB_SNIPPET_MAX_LENGTH = 1000;
 export const WEB_TITLE_MAX_LENGTH = 300;
 export const WEB_URL_MAX_LENGTH = 2048;
+export const SUBAGENT_DETAILS_MAX_CHILDREN = 32;
+export const SUBAGENT_TASK_MAX_LENGTH = 500;
+export const SUBAGENT_OUTPUT_MAX_LENGTH = 8000;
+export const SUBAGENT_ERROR_MAX_LENGTH = 2000;
 
 /** rpiv-todo task status; `deleted` is a tombstone the UI hides. */
 export const TodoStatusSchema = Type.Union([
@@ -118,10 +123,62 @@ export const WebFetchDetailsSchema = Type.Object(
 );
 export type WebFetchDetails = Static<typeof WebFetchDetailsSchema>;
 
+export const SubagentChildStatusSchema = Type.Union([
+  Type.Literal('running'),
+  Type.Literal('completed'),
+  Type.Literal('failed'),
+  Type.Literal('interrupted'),
+]);
+export type SubagentChildStatus = Static<typeof SubagentChildStatusSchema>;
+
+/**
+ * One child the parent `subagent` call launched. Identity comes from the parent session's
+ * `app-child` entry (subagents.ts); status, usage and output enrich it from pi-subagents' result
+ * rows matched by `sessionFile`, so a row without a match shows only identity and `running`.
+ */
+export const SubagentChildSummarySchema = Type.Object(
+  {
+    /** `<toolCallId>:<seq>`: the child transcript key (`subagentChildKey`). */
+    key: Type.String({ maxLength: 512 }),
+    seq: Type.Integer({ minimum: 0 }),
+    /** `child:<parentRunId>:<n>`; confirms raised by this child carry it. */
+    executionId: Type.String({ maxLength: 256 }),
+    agent: Type.String({ maxLength: 128 }),
+    /** The delegated task from the call args, clamped; pi-subagents redacts its own copy. */
+    task: Type.String({ maxLength: SUBAGENT_TASK_MAX_LENGTH }),
+    status: SubagentChildStatusSchema,
+    model: Type.Optional(Type.String({ maxLength: 256 })),
+    /** Tool the child is running now; only while `running`. */
+    currentTool: Type.Optional(Type.String({ maxLength: 128 })),
+    toolCount: Type.Integer({ minimum: 0 }),
+    turnCount: Type.Optional(Type.Integer({ minimum: 0 })),
+    durationMs: Type.Integer({ minimum: 0 }),
+    inputTokens: Type.Optional(Type.Integer({ minimum: 0 })),
+    outputTokens: Type.Optional(Type.Integer({ minimum: 0 })),
+    /** Final answer preview; empty until the child ends. */
+    finalOutput: Type.String({ maxLength: SUBAGENT_OUTPUT_MAX_LENGTH }),
+    error: Type.String({ maxLength: SUBAGENT_ERROR_MAX_LENGTH }),
+  },
+  { additionalProperties: false },
+);
+export type SubagentChildSummary = Static<typeof SubagentChildSummarySchema>;
+
+/** Children of one launching `subagent` call in launch (`seq`) order. */
+export const SubagentDetailsSchema = Type.Object(
+  {
+    type: Type.Literal('subagent'),
+    children: Type.Array(SubagentChildSummarySchema, { maxItems: SUBAGENT_DETAILS_MAX_CHILDREN }),
+    truncated: Type.Boolean(),
+  },
+  { additionalProperties: false },
+);
+export type SubagentDetails = Static<typeof SubagentDetailsSchema>;
+
 export const ToolBlockDetailsSchema = Type.Union([
   TodoDetailsSchema,
   EditDiffDetailsSchema,
   WebSearchDetailsSchema,
   WebFetchDetailsSchema,
+  SubagentDetailsSchema,
 ]);
 export type ToolBlockDetails = Static<typeof ToolBlockDetailsSchema>;

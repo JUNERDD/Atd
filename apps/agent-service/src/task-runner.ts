@@ -3,6 +3,7 @@ import path from 'node:path';
 import {
   errorMessage,
   rootExecutionId,
+  type ChildTranscriptResponse,
   type PermissionTier,
   type QueueState,
   type RunStatus,
@@ -34,6 +35,7 @@ import type { RuntimeAgent } from './subagents/agents.js';
 import {
   abortSubagentsForTask,
   disposeSubagentsForTask,
+  readChildTranscript,
   rebindSubagentsForRun,
 } from './subagents/index.js';
 import { replaceFollowUps } from './tasks/queue-replace.js';
@@ -119,6 +121,20 @@ export class TaskRunner {
       });
       return { revision: 0, blocks: [] };
     }
+  }
+
+  /** One child session's transcript (child-transcript-read.ts); null when the task has no such child. */
+  async childTranscript(childKey: string): Promise<ChildTranscriptResponse | null> {
+    const live = this.live;
+    const parentSessionFile = live?.sessionFile || this.ctx.ledger.task(this.taskId).sessionFile;
+    if (!parentSessionFile) return null;
+    return readChildTranscript({
+      taskId: this.taskId,
+      childKey,
+      parentSessionFile,
+      ...(live ? { parentBranch: () => live.manager.getBranch() } : {}),
+      log: this.ctx.log,
+    });
   }
 
   queueState(): QueueState {

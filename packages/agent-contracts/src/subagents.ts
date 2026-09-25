@@ -45,6 +45,33 @@ export function parseChildExecutionId(executionId: string): {
   return { parentRunId: match[1], index: Number(match[2]) };
 }
 
+/** Parent session custom entry type that links a `subagent` call to each child it launched. */
+export const SUBAGENT_CHILD_ENTRY = 'app-child';
+
+/**
+ * The only link between a parent `subagent` tool call and a child session. The service writes one
+ * per child launch into the parent session: `toolCallId` is the admitting call, `seq` the launch
+ * order within it, `sessionFile` the child's JSONL (resolved and contained server side only).
+ */
+export const SubagentChildEntrySchema = Type.Object(
+  {
+    toolCallId: Type.String({ minLength: 1, maxLength: 256 }),
+    seq: Type.Integer({ minimum: 0 }),
+    executionId: Type.String({ maxLength: 256 }),
+    agent: Type.String({ maxLength: 128 }),
+    sessionFile: Type.String({ minLength: 1, maxLength: 4096 }),
+    /** ISO timestamp of the launch. */
+    startedAt: Type.String({ maxLength: 64 }),
+  },
+  { additionalProperties: false },
+);
+export type SubagentChildEntry = Static<typeof SubagentChildEntrySchema>;
+
+/** Child transcript key `<toolCallId>:<seq>`; URL-encode it in paths. */
+export function subagentChildKey(toolCallId: string, seq: number): string {
+  return `${toolCallId}:${seq}`;
+}
+
 /** One validated child task inside a named workflow. */
 export const WorkflowTaskSchema = Type.Object(
   {

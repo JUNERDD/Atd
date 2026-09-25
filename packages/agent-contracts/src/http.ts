@@ -7,7 +7,7 @@ import {
 } from './confirms.js';
 import { ThinkingLevelSchema } from './models.js';
 import { ResourceRefSchema } from './resources.js';
-import { QueueStateSchema, TaskSnapshotSchema } from './snapshot.js';
+import { QueueStateSchema, ServiceBlockSchema, TaskSnapshotSchema } from './snapshot.js';
 import { AgentTaskSchema, ModelSelectionSchema, TaskInputSchema } from './task.js';
 
 /** Run acceptance; repeats with the same operationId return the original run. */
@@ -145,3 +145,19 @@ export const LedgerDataSchema = Type.Object(
   { additionalProperties: false },
 );
 export type LedgerData = Static<typeof LedgerDataSchema>;
+
+/**
+ * `GET /v1/tasks/:taskId/children/:childKey/transcript` (childKey URL-encoded). The service
+ * resolves the child through the parent's `app-child` entry; `live` is true while the child runs,
+ * and later `child.transcript.patch` events continue from `revision`.
+ */
+export const ChildTranscriptResponseSchema = Type.Object(
+  {
+    childKey: Type.String({ minLength: 1, maxLength: 512 }),
+    revision: Type.Integer({ minimum: 0 }),
+    live: Type.Boolean(),
+    blocks: Type.Array(ServiceBlockSchema),
+  },
+  { additionalProperties: false },
+);
+export type ChildTranscriptResponse = Static<typeof ChildTranscriptResponseSchema>;

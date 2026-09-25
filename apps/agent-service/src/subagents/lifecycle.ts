@@ -5,6 +5,7 @@ import {
   rebindHostResources,
   rebindParentRun,
 } from './registry.js';
+import { forgetChildTranscripts } from './child-transcript.js';
 import { abortTaskChildren } from './trigger.js';
 
 /**
@@ -38,7 +39,8 @@ export async function abortSubagentsForTask(taskId: string): Promise<{ aborted: 
   return abortTaskChildren(taskId);
 }
 
-/** Drops registry state when a runner disposes (module cleanup per tree). */
+/** Drops registry state and live child transcripts when a runner disposes (cleanup per tree). */
 export function disposeSubagentsForTask(taskId: string): void {
   forgetTaskTree(taskId);
+  forgetChildTranscripts(taskId);
 }

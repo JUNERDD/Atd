@@ -1,19 +1,33 @@
 import { SUBAGENT_WORKFLOWS } from '@ai/agent-contracts';
 import type { SessionFactoryDeps } from '../pi-session.js';
 import { SERVICE_PARALLEL_WORKFLOW } from './config.js';
-import { isParentStopping, liveChildren, parentByTask } from './registry.js';
-import { SUBAGENT_ACTION_KEYS, SUBAGENT_TOOL, SUBAGENT_TOOL_KEYS } from './tool-contract.js';
+import {
+  beginDelegation,
+  endDelegation,
+  isParentStopping,
+  liveChildren,
+  parentByTask,
+} from './registry.js';
+import {
+  isSubagentLaunch,
+  SUBAGENT_ACTION_KEYS,
+  SUBAGENT_TOOL,
+  SUBAGENT_TOOL_KEYS,
+} from './tool-contract.js';
 import { validateChainArgs, validateParallelArgs } from './workflows.js';
 
 /**
  * T5 foreground dispatch guard: the authority on which `subagent` calls dispatch. It admits exactly
  * the shapes the service tool contract advertises (tool-contract.ts) and refuses everything else
  * before the delegator runs, naming the shape to use instead so a model can correct its next call.
- * Child and workflow concurrency is not capped here. Never throws.
+ * An admitted launching call becomes the parent's active delegation (registry.ts), which owns every
+ * child launched until its result lands; one launching call runs at a time, as the tool contract
+ * tells the model. Child and workflow concurrency within that call is not capped here. Never throws.
  */
 
 export interface GuardInput {
   toolName: string;
+  toolCallId: string;
   input: Record<string, unknown>;
 }
 
@@ -31,8 +45,14 @@ function refuse(reason: string): GuardResult {
 /** Validates one `subagent` tool call; undefined allows it to dispatch. */
 export function guardSubagentCall(deps: SessionFactoryDeps, event: GuardInput): GuardResult {
   if (event.toolName !== SUBAGENT_TOOL) return undefined;
-  if (isParentStopping(deps.taskId)) return refuse('The parent is stopping.');
   const input = event.input ?? {};
+  const refused = checkSubagentCall(deps, input);
+  if (!refused && isSubagentLaunch(input)) beginDelegation(deps.taskId, event.toolCallId);
+  return refused;
+}
+
+function checkSubagentCall(deps: SessionFactoryDeps, input: Record<string, unknown>): GuardResult {
+  if (isParentStopping(deps.taskId)) return refuse('The parent is stopping.');
   const unknown = Object.keys(input).find((key) => !SUBAGENT_TOOL_KEYS.has(key));
   if (unknown) return refuse(`Subagent param ${unknown} is not supported here. ${LAUNCH_SHAPES}`);
   if (input['action'] !== undefined) return guardAction(input);
@@ -43,6 +63,10 @@ export function guardSubagentCall(deps: SessionFactoryDeps, event: GuardInput): 
     return refuse('capabilities and id belong to the list and status actions.');
   const parent = parentByTask(deps.taskId);
   if (!parent) return refuse('Unknown parent session.');
+  // Pi prepares every call of one message before running them, so a second launch admitted here
+  // would take over the first call's children; pi-subagents would reject its dispatch anyway.
+  if (parent.activeToolCallId)
+    return refuse('Another subagent call is still running; wait for its result.');
   if (input['workflow'] !== undefined) return guardWorkflowCall(deps, parent.agents, input);
   if (input['args'] !== undefined)
     return refuse(`Subagent args belong to a workflow call. ${LAUNCH_SHAPES}`);
@@ -107,13 +131,14 @@ function delegationProblem(agents: string[], agent: unknown, task: unknown): str
   return null;
 }
 
-/** Audits the landed result (never throws). */
+/** Ends the call's delegation and audits the landed result (never throws). */
 export function onSubagentResult(
   deps: SessionFactoryDeps,
-  event: { toolName: string; input: Record<string, unknown> },
+  event: { toolName: string; toolCallId: string; input: Record<string, unknown> },
 ): void {
   try {
     if (event.toolName !== SUBAGENT_TOOL) return;
+    endDelegation(deps.taskId, event.toolCallId);
     const parent = parentByTask(deps.taskId);
     if (!parent) return;
     const children = liveChildren(parent.sessionId);
@@ -121,4 +146,15 @@ export function onSubagentResult(
   } catch {
     // Result landing never throws into the Pi runner.
   }
+}
+
+/**
+ * Ends the call's delegation when its execution ends. A call another extension blocked after this
+ * guard admitted it never reaches `tool_result`, and would otherwise hold the delegation open.
+ */
+export function onSubagentExecutionEnd(
+  deps: SessionFactoryDeps,
+  event: { toolName: string; toolCallId: string },
+): void {
+  if (event.toolName === SUBAGENT_TOOL) endDelegation(deps.taskId, event.toolCallId);
 }

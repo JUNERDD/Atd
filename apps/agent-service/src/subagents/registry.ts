@@ -1,7 +1,14 @@
 import path from 'node:path';
-import { childExecutionId, type PermissionTier } from '@ai/agent-contracts';
+import {
+  childExecutionId,
+  subagentChildKey,
+  type ChildTranscriptPatchData,
+  type PermissionTier,
+  type SubagentChildEntry,
+} from '@ai/agent-contracts';
 import type { CredentialStore } from '@earendil-works/pi-ai';
 import type { Gate } from '../harness/gate.js';
+import type { PermissionLookups } from '../transcript-blocks.js';
 
 /**
  * T5 in-process parent/child registry. Foreground children share the parent
@@ -23,17 +30,35 @@ export interface ParentRecord {
    */
   agents: string[];
   stopping: boolean;
+  /**
+   * The launching `subagent` call the guard admitted and whose result has not landed. Children
+   * launched meanwhile belong to it; the service admits one launching call at a time, so a single
+   * value cannot be overwritten by a concurrent call.
+   */
+  activeToolCallId: string | null;
+  /** Launch order within `activeToolCallId`; reset when the guard admits a call. */
+  launchSeq: number;
+  /** Appends an `app-child` entry to the parent session (its live SessionManager). */
+  appendChildEntry: (entry: SubagentChildEntry) => void;
 }
 
 export interface ChildRecord {
+  /** `subagentChildKey(toolCallId, seq)`: the child transcript key. */
   key: string;
   parentSessionId: string;
   taskId: string;
   parentRunId: string;
+  /** Process-wide launch number inside `executionId`. */
   index: number;
+  /** The parent `subagent` call that launched this child. */
+  toolCallId: string;
+  /** Launch order within `toolCallId`. */
+  seq: number;
   agent: string;
   executionId: string;
   startedAt: string;
+  /** The child's session JSONL; set once the child session exists. */
+  sessionFile: string | null;
 }
 
 /**
@@ -65,6 +90,13 @@ export interface SubagentHost {
   credentials: CredentialStore;
   /** Approvals for one child execution; child bash and command saves decide through them. */
   approvals: (child: { runId: string; executionId: string }) => ChildApprovals;
+  /** Publishes one child's transcript patch as an event of the parent task. */
+  publishChildTranscript: (
+    child: { runId: string; executionId: string },
+    data: ChildTranscriptPatchData,
+  ) => void;
+  /** Permission outcomes recorded in the parent session; child approvals land there. */
+  parentPermissions: () => PermissionLookups;
 }
 
 interface RegistryStore {
@@ -97,9 +129,11 @@ function store(): RegistryStore {
 }
 
 /** Registers a parent session; replaces any stale record for the task. */
-export function registerParent(record: Omit<ParentRecord, 'stopping'>): void {
+export function registerParent(
+  record: Omit<ParentRecord, 'stopping' | 'activeToolCallId' | 'launchSeq'>,
+): void {
   const state = store();
-  const full: ParentRecord = { ...record, stopping: false };
+  const full: ParentRecord = { ...record, stopping: false, activeToolCallId: null, launchSeq: 0 };
   const stale = state.parentsByTask.get(record.taskId);
   if (stale && stale.sessionId !== record.sessionId) state.parentsBySession.delete(stale.sessionId);
   state.parentsBySession.set(record.sessionId, full);
@@ -129,6 +163,7 @@ export function rebindParentRun(taskId: string, runId: string, tools: string[]):
   record.runId = runId;
   record.tools = [...tools];
   record.stopping = false;
+  record.activeToolCallId = null;
 }
 
 /** Removes a parent and drops its tracked children and write locks. */
@@ -165,7 +200,24 @@ export function parentForChildCwd(cwd: string): ParentRecord | null {
   return taskId ? parentByTask(taskId) : null;
 }
 
-/** Tracks a child launch; refuses only unknown or stopping parents, never by count. */
+/** Marks the launching call the guard admitted; its children launch until its result lands. */
+export function beginDelegation(taskId: string, toolCallId: string): void {
+  const record = store().parentsByTask.get(taskId);
+  if (!record) return;
+  record.activeToolCallId = toolCallId;
+  record.launchSeq = 0;
+}
+
+/** Ends the admitted call; a different call's end leaves it active. */
+export function endDelegation(taskId: string, toolCallId: string): void {
+  const record = store().parentsByTask.get(taskId);
+  if (record?.activeToolCallId === toolCallId) record.activeToolCallId = null;
+}
+
+/**
+ * Tracks a child launch; refuses unknown or stopping parents and launches no admitted call owns
+ * (fail closed: a child without its call could not be linked to a transcript row). Never by count.
+ */
 export function tryTrackChildStart(input: {
   parentSessionId: string;
   agent: string;
@@ -174,22 +226,47 @@ export function tryTrackChildStart(input: {
   const parent = state.parentsBySession.get(input.parentSessionId);
   if (!parent) return { ok: false, reason: 'Unknown parent session.' };
   if (parent.stopping) return { ok: false, reason: 'The parent is stopping; no new children.' };
+  const toolCallId = parent.activeToolCallId;
+  if (!toolCallId) return { ok: false, reason: 'No admitted subagent call owns this launch.' };
   const live = state.childrenByParent.get(input.parentSessionId) ?? new Map<string, ChildRecord>();
   const index = state.childSequence;
   state.childSequence += 1;
+  const seq = parent.launchSeq;
+  parent.launchSeq += 1;
   const record: ChildRecord = {
-    key: `${parent.runId}:${index}`,
+    key: subagentChildKey(toolCallId, seq),
     parentSessionId: input.parentSessionId,
     taskId: parent.taskId,
     parentRunId: parent.runId,
     index,
+    toolCallId,
+    seq,
     agent: input.agent,
     executionId: childExecutionId(parent.runId, index),
     startedAt: new Date().toISOString(),
+    sessionFile: null,
   };
   live.set(record.key, record);
   state.childrenByParent.set(input.parentSessionId, live);
   return { ok: true, record };
+}
+
+/**
+ * Records a created child: its session file and the parent's `app-child` entry, the only link from
+ * the parent call to the child session. Throws when the parent session is gone.
+ */
+export function recordChildSession(record: ChildRecord, sessionFile: string): void {
+  const parent = store().parentsBySession.get(record.parentSessionId);
+  if (!parent) throw new Error('The parent session ended before the child started.');
+  record.sessionFile = sessionFile;
+  parent.appendChildEntry({
+    toolCallId: record.toolCallId,
+    seq: record.seq,
+    executionId: record.executionId,
+    agent: record.agent,
+    sessionFile,
+    startedAt: record.startedAt,
+  });
 }
 
 /** Releases a tracked child; unknown keys are ignored. */
@@ -205,7 +282,9 @@ export function liveChildren(parentSessionId: string): ChildRecord[] {
 /** Marks a parent stopping so the guard admits no new launches. */
 export function markParentStopping(taskId: string): void {
   const record = store().parentsByTask.get(taskId);
-  if (record) record.stopping = true;
+  if (!record) return;
+  record.stopping = true;
+  record.activeToolCallId = null;
 }
 
 /** True while a parent refuses new subagent launches. */
@@ -239,6 +318,7 @@ export function forgetTaskTree(taskId: string): void {
   const state = store();
   const record = state.parentsByTask.get(taskId);
   if (record) {
+    record.activeToolCallId = null;
     state.parentsBySession.delete(record.sessionId);
     state.childrenByParent.delete(record.sessionId);
     state.parentsByTask.delete(taskId);

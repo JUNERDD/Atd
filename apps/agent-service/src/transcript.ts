@@ -6,7 +6,9 @@ import {
   collectBlockLookups,
   projectAssistantServiceBlocks,
   type BlockLookups,
+  type PermissionLookup,
 } from './transcript-blocks.js';
+import type { SubagentRow } from './transcript-details/subagent.js';
 
 type AgentMessage = AgentSession['messages'][number];
 
@@ -122,6 +124,10 @@ export interface ProjectServiceBlocksInput {
   branch: readonly ServiceBranchItem[];
   partial?: AssistantMessage;
   partials?: ReadonlyMap<string, string>;
+  /** Latest streamed result rows of running `subagent` calls, by call id. */
+  subagentProgress?: ReadonlyMap<string, readonly SubagentRow[]>;
+  /** Permission outcomes recorded outside this branch: a child's live in its parent session. */
+  permissions?: ReadonlyMap<string, PermissionLookup>;
   /**
    * The task's first run, which owns what comes before the branch's first invocation marker:
    * sessions built before first runs were marked (d2a5c16) start without one.
@@ -144,8 +150,9 @@ export function projectServiceBlocks(input: ProjectServiceBlocksInput): ServiceB
     )
   )
     branch.push({ type: 'message', message: input.partial });
-  const lookups: BlockLookups = collectBlockLookups(branch);
+  const lookups: BlockLookups = collectBlockLookups(branch, input.permissions);
   const partials = input.partials ?? new Map<string, string>();
+  const subagentProgress = input.subagentProgress ?? new Map<string, readonly SubagentRow[]>();
   const userCounts = new Map<number, number>();
   const systemCounts = new Map<number, number>();
   let runId = input.firstRunId;
@@ -208,6 +215,7 @@ export function projectServiceBlocks(input: ProjectServiceBlocksInput): ServiceB
             live: input.live,
             lookups,
             partials,
+            subagentProgress,
             messageEndedAt: item.endedAt ?? null,
             outputOf,
             log: input.log,

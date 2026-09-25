@@ -1,6 +1,8 @@
 import type { AssistantMessage } from '@earendil-works/pi-ai';
 import type { AgentSession, SessionManager } from '@earendil-works/pi-coding-agent';
 import type { QueueState, ServiceBlock } from '@ai/agent-contracts';
+import { SUBAGENT_TOOL } from './subagents/tool-contract.js';
+import { subagentRows, type SubagentRow } from './transcript-details/subagent.js';
 import {
   diffServiceBlocks,
   fromServiceBranch,
@@ -32,6 +34,11 @@ export class LiveTranscript {
   private blocks: ServiceBlock[] = [];
   private revision = 0;
   private readonly partials = new Map<string, string>();
+  /**
+   * Bounded result rows from each running `subagent` call's latest partial details: its cards
+   * track children while the call runs. Other tools' partial details are not kept.
+   */
+  private readonly subagentProgress = new Map<string, SubagentRow[]>();
   private partial: AssistantMessage | undefined;
   private queue: QueueState = { steering: [], followUp: [] };
   /** Open `batchQueue` edits; their intermediate queue states stay unpublished. */
@@ -60,9 +67,15 @@ export class LiveTranscript {
         const file = this.session.sessionFile;
         if (file) this.sink.sessionFile(file);
       }
-      if (event.type === 'tool_execution_update')
+      if (event.type === 'tool_execution_update') {
         this.partials.set(event.toolCallId, toolPartialText(event.partialResult));
-      if (event.type === 'tool_execution_end') this.partials.delete(event.toolCallId);
+        if (event.toolName === SUBAGENT_TOOL)
+          this.subagentProgress.set(event.toolCallId, subagentRows(partialDetails(event)));
+      }
+      if (event.type === 'tool_execution_end') {
+        this.partials.delete(event.toolCallId);
+        this.subagentProgress.delete(event.toolCallId);
+      }
       this.reproject(false);
     });
   }
@@ -98,6 +111,7 @@ export class LiveTranscript {
       branch,
       partial: this.partial,
       partials: this.partials,
+      subagentProgress: this.subagentProgress,
       firstRunId: this.firstRunId,
       live: true,
     });
@@ -112,4 +126,12 @@ export class LiveTranscript {
         removed: snapshot ? [] : patch.removed,
       });
   }
+}
+
+/** A tool update's streamed `details` (`AgentToolResult.details`); untrusted until projected. */
+function partialDetails(event: { partialResult: unknown }): unknown {
+  const partial = event.partialResult;
+  return partial && typeof partial === 'object' && 'details' in partial
+    ? partial.details
+    : undefined;
 }
