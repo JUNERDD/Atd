@@ -7,8 +7,8 @@ import { SkillName } from './skills.js';
 /**
  * Snapshot tool ids: frozen per run, granted by roles and inherited by subagent children within
  * the role ceiling. `ask_user` stays accepted for runs frozen before it moved to the parent-only
- * service tools. Parent-only harness tools (todo, web, memory) are named in tool-names.ts
- * and never appear here. C1 additive: `grep`, `find`, `ls` (read-only, task-folder confined).
+ * service tools. Harness tools (todo, web, memory) are named in tool-names.ts and never
+ * appear here. C1 additive: `grep`, `find`, `ls` (read-only, task-folder confined).
  */
 export const ServiceToolIdSchema = Type.Union([
   Type.Literal('read'),

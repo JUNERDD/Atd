@@ -75,9 +75,10 @@ export const SERVICE_RUNTIME_AGENTS: RuntimeAgent[] = [
   {
     name: 'service.scout',
     definition: {
-      description: 'Read-only discovery child mapping code behavior.',
+      description:
+        'Read-only discovery child: maps code behavior or researches the web, returning sources.',
       systemPrompt:
-        'You are the service scout child. Map only the requested behavior and return paths, symbols and brief notes. Do not mutate files.',
+        'You are the service scout child. Investigate only the requested question, in the task files or on the web, and return findings with their paths, symbols or source URLs and brief notes. Do not mutate files.',
       extensions: [],
       inheritProjectContext: false,
       inheritGlobalContext: false,
