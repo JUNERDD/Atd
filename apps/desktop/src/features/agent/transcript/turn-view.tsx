@@ -42,6 +42,7 @@ export function TurnView({
   requests,
   live,
   last,
+  copyable = true,
   onAttach,
 }: {
   turn: AdaptedTurn;
@@ -51,10 +52,12 @@ export function TurnView({
   requests: RequestIndex;
   live: boolean;
   last: boolean;
+  /** Offer copying the settled answer; a subagent's drill-in view leaves that to its parent. */
+  copyable?: boolean;
   onAttach: (file: FileRef) => void;
 }) {
   const { t } = useTranslation('tasks');
-  const copyId = live ? null : lastAssistantId(turn);
+  const copyId = live || !copyable ? null : lastAssistantId(turn);
   const settled = !(live && last);
   const openId = settled ? null : openActivityId(turn.items);
   const liveFooter = live && last;

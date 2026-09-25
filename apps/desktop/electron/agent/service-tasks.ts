@@ -1,9 +1,10 @@
 import { dialog } from 'electron';
-import { extractSubagentResults, previewTask } from '@ai/agent-client';
+import { previewTask } from '@ai/agent-client';
 import type { ServiceEvent, TaskSnapshot } from '@ai/agent-contracts';
 import type { ServiceConnection } from '../service/connection';
 import { ATTACHABLE_EXTENSIONS, attachFiles } from './attachable-files';
 import type { AgentRequest, TaskDetail } from './bridge';
+import { ChildTranscripts } from './child-transcripts';
 import type { CommandService } from './command-service';
 import { AGENT_IPC } from './ipc-channels';
 import { stageRunChoices } from './run-staging';
@@ -26,6 +27,7 @@ interface TaskHost {
 export class TaskClient {
   readonly details = new Map<string, TaskDetail>();
   readonly revisions = new Map<string, { revision: number; taskId: string; runId: string }>();
+  readonly children = new ChildTranscripts(() => this.http());
 
   constructor(
     private readonly connection: ServiceConnection,
@@ -47,6 +49,7 @@ export class TaskClient {
   clear() {
     this.details.clear();
     this.revisions.clear();
+    this.children.clear();
   }
 
   private http() {
@@ -62,11 +65,6 @@ export class TaskClient {
 
   cacheSnapshot(snapshot: TaskSnapshot): TaskDetail {
     const detail = mapSnapshot(snapshot);
-    try {
-      detail.children = extractSubagentResults(snapshot.blocks).map((result) => ({ ...result }));
-    } catch {
-      detail.children = [];
-    }
     for (const request of snapshot.requests)
       this.revisions.set(request.id, {
         revision: request.revision,
@@ -160,6 +158,9 @@ export class TaskClient {
           this.host.send(AGENT_IPC.changed, { type: 'transcript', patch });
           return;
         }
+        case 'child.transcript.patch':
+          this.children.onPatch(event.taskId, event.data);
+          return;
         case 'queue.update': {
           // The service's only live queue signal: queued, delivered, replaced or withdrawn by Stop.
           const cached = this.details.get(event.taskId);

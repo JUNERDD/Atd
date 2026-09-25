@@ -11,6 +11,7 @@ import { messageOf } from '../../../lib/errors';
 import { isTextEntryFocused } from '../../../lib/text-entry';
 import { ActivityRow } from './activity-row';
 import { DetailBox } from './detail-box';
+import { useSubtaskLabel } from './subagent-context';
 import { statusLabelKey } from './tool-copy';
 
 /**
@@ -99,6 +100,7 @@ export function QuestionBlock({
 export function QuestionControls({ request }: { request: InputRequest }) {
   const { t } = useTranslation('tasks');
   const { t: tp } = useTranslation('panel');
+  const subtask = useSubtaskLabel(request.executionId);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
   const [draft, setDraft] = useState('');
@@ -128,9 +130,9 @@ export function QuestionControls({ request }: { request: InputRequest }) {
   return (
     <div className="question-form">
       <p className="text-sm font-medium">{request.title}</p>
-      {request.executionId?.startsWith('child:') && (
-        <p className="text-xs text-muted-foreground">
-          {tp('confirms.subtask', { execution: request.executionId })}
+      {subtask && (
+        <p className="min-w-0 truncate text-xs text-muted-foreground" title={subtask}>
+          {tp('confirms.subtask', { execution: subtask })}
         </p>
       )}
       {request.options.length > 0 && (

@@ -16,7 +16,13 @@ import {
   type PermissionRequest,
   type PermissionTier,
 } from './permission-schema';
-import type { Block, QueueState, TranscriptPatch } from './transcript-schema';
+import {
+  ChildKeySchema,
+  type Block,
+  type ChildTranscriptPatch,
+  type QueueState,
+  type TranscriptPatch,
+} from './transcript-schema';
 
 export const MemoryEntrySchema = Type.Object(
   {
@@ -48,16 +54,6 @@ export interface TaskState {
 export interface TaskDetail extends TaskState {
   revision: number;
   blocks: Block[];
-  /** T6 additive: explicit child results aggregated from subagent tool blocks. */
-  children?: {
-    executionId: string;
-    agent: string;
-    ok: boolean;
-    output: string;
-    runId: string | null;
-    sessionFile: string | null;
-    error: string;
-  }[];
   /** T6 additive: pending desktop capabilities for waiting-desktop surfacing. */
   capabilities?: {
     id: string;
@@ -66,6 +62,15 @@ export interface TaskDetail extends TaskState {
     executionId: string;
     expiresAt: string;
   }[];
+}
+/** A child session's transcript as the renderer first receives it; patches continue from `revision`. */
+export interface ChildTranscriptDetail {
+  taskId: string;
+  childKey: string;
+  revision: number;
+  /** The child still runs, so `childTranscript` patches will follow. */
+  live: boolean;
+  blocks: Block[];
 }
 export interface AgentSnapshot {
   revision: number;
@@ -84,6 +89,7 @@ export type AgentEvent =
   | { type: 'snapshot'; snapshot: AgentSnapshot }
   | { type: 'task'; state: TaskState }
   | { type: 'transcript'; patch: TranscriptPatch }
+  | { type: 'childTranscript'; patch: ChildTranscriptPatch }
   | { type: 'memory'; snapshot: MemorySnapshot }
   | { type: 'notice'; notice: AgentNotice };
 
@@ -182,6 +188,16 @@ export const AgentRequestSchema = Type.Union([
   Type.Object({ action: Type.Literal('copy'), text: Type.String({ maxLength: 1000000 }) }),
   Type.Object({ action: Type.Literal('openLink'), url: Type.String({ maxLength: 8192 }) }),
   Type.Object({ action: Type.Literal('importLegacy'), json: Type.String({ maxLength: 8000000 }) }),
+  Type.Object({
+    action: Type.Literal('childTranscript'),
+    taskId: Identifier,
+    childKey: ChildKeySchema,
+  }),
+  Type.Object({
+    action: Type.Literal('releaseChildTranscript'),
+    taskId: Identifier,
+    childKey: ChildKeySchema,
+  }),
 ]);
 export type AgentRequest = Static<typeof AgentRequestSchema>;
 export type SubmitRequest = Extract<AgentRequest, { action: 'submit' }>;
@@ -247,6 +263,12 @@ export interface AgentBridge {
   copy: (text: string) => Promise<void>;
   openLink: (url: string) => Promise<void>;
   importLegacy: (json: string) => Promise<void>;
+  /**
+   * Subscribes this window to one child's transcript and returns its current state; while held,
+   * `childTranscript` events carry its patches. Pair every call with `releaseChildTranscript`.
+   */
+  childTranscript: (taskId: string, childKey: string) => Promise<ChildTranscriptDetail>;
+  releaseChildTranscript: (taskId: string, childKey: string) => Promise<void>;
   onChange: (listener: (event: AgentEvent) => void) => () => void;
   onLaunch: (listener: (launch: CommandLaunch) => void) => () => void;
   onCommandSession: (listener: (session: CommandSession) => void) => () => void;

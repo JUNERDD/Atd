@@ -55,7 +55,8 @@ export const ToolDetailsSchema = Type.Object(
     /**
      * Structured result of a completed `todo`, `web_search`, or `fetch_content` call,
      * discriminated by `type`; each variant carries its own `truncated`. Absent for every other
-     * tool, while running, and on failure. The edit diff is never duplicated here.
+     * tool, while running, and on failure, except the launching `subagent` call, whose child
+     * summaries are present in every state. The edit diff is never duplicated here.
      */
     data: Type.Optional(ToolBlockDetailsSchema),
   },
@@ -206,6 +207,27 @@ export const TranscriptPatchSchema = Type.Object(
   { additionalProperties: false },
 );
 export type TranscriptPatch = Static<typeof TranscriptPatchSchema>;
+
+/** `<toolCallId>:<seq>` from the parent `subagent` block's details. */
+export const ChildKeySchema = Type.String({ minLength: 1, maxLength: 512 });
+
+/**
+ * One child session's transcript patch, forwarded only while the renderer holds a subscription
+ * for `(taskId, childKey)`. Same rules as `TranscriptPatch`, so `applyTranscriptPatch` applies it;
+ * `revision` counts per child.
+ */
+export const ChildTranscriptPatchSchema = Type.Object(
+  {
+    taskId: Identifier,
+    childKey: ChildKeySchema,
+    revision: Type.Integer({ minimum: 0 }),
+    snapshot: Type.Boolean(),
+    blocks: Type.Array(BlockSchema),
+    removed: Type.Array(Type.String({ maxLength: 256 })),
+  },
+  { additionalProperties: false },
+);
+export type ChildTranscriptPatch = Static<typeof ChildTranscriptPatchSchema>;
 
 /** Pi's pending mid-run messages as reported by `queue_update`. */
 export const QueueStateSchema = Type.Object(

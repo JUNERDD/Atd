@@ -1,33 +1,26 @@
-/* Radix content: same width as the composer surface it anchors to, so the form reads as
-   one surface with the input below, with the shared blurred-panel treatment. Available-width
-   caps from the shared primitive still apply. */
-.hitl-queue-content {
-  width: var(--radix-popover-trigger-width);
-  /* The shared 18rem floor would overhang a surface narrower than that (320px windows). */
-  min-width: 0;
-  backdrop-filter: blur(var(--ata-backdrop-blur));
-}
-
-/* Single popover above the composer surface hosting the HITL region (top, urgent) and
-   the queue region (bottom). The container owns sizing and scrolling so neither region can push
-   the composer surface around; each region hides when empty and both empty closes the popover. */
+/* HITL view of the composer popover: the HITL region (top, urgent) and the queue region
+   (bottom). It spans the composer surface it anchors to, so the form reads as one surface with the
+   input below, within the width Radix reports as available. The container owns sizing and
+   scrolling so neither region can push the composer surface around; each region hides when empty
+   and both empty closes the view. */
 .hitl-queue-popover {
   display: flex;
   flex-direction: column;
-  width: 100%;
+  width: var(--radix-popover-trigger-width);
+  max-width: var(--radix-popover-content-available-width);
   max-height: min(22rem, calc(100dvh - 14rem));
   min-height: 0;
 }
 
-/* Fixed header: summary title plus the collapse control. Dismissing collapses to the recall
-   pill (the minimal state), never resolves a request. */
+/* Fixed header, laid out like the model configuration popover's sub-view header: the close
+   control first, then the title. Closing leaves the pill's HITL part to reopen the view, never
+   resolves a request. */
 .hitl-queue-header {
   display: flex;
   flex-shrink: 0;
   align-items: center;
-  gap: 8px;
-  padding: 8px 8px 8px 12px;
-  border-bottom: 1px solid var(--border);
+  gap: 4px;
+  padding: 4px;
 }
 
 .hitl-queue-title {
@@ -36,9 +29,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 12px;
   font-weight: 500;
-  color: var(--muted-foreground);
 }
 
 .hitl-queue-body {
@@ -64,24 +55,6 @@
 .approval-detail > .tool-output {
   min-height: 96px;
   max-height: 160px;
-}
-
-/* Anchor box for the popover: a layout-neutral wrapper around the composer surface so the
-   recall pill can float above it without shifting the form. */
-.hitl-queue-anchor {
-  position: relative;
-  min-width: 0;
-}
-
-/* Recall pill, rendered if and only if the popover was dismissed while content is pending.
-   Absolutely positioned, so appearance never moves the surface or the footer. */
-.hitl-queue-recall {
-  position: absolute;
-  bottom: calc(100% + 8px);
-  left: 50%;
-  z-index: 10;
-  transform: translateX(-50%);
-  white-space: nowrap;
 }
 
 .hitl-region {

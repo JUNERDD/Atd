@@ -20,10 +20,9 @@ import { isQuickPanelOpen, type QuickPanelHandle } from '../features/quick-panel
 import { IconButton } from './icon-button';
 import { ComposerAttachments } from './composer-attachments';
 import { ComposerConfiguration } from './composer-configuration';
-import { HitlQueuePopover } from './hitl-queue-popover';
+import { ComposerPopover } from './composer-popover';
 import { useOverlayFooter } from './use-overlay-footer';
 import { agentApi } from '../features/agent/use-agent';
-import { ProgressPill } from '../features/agent/progress/progress-pill';
 import { showErrorToast } from './toast-store';
 import './composer.css';
 
@@ -221,20 +220,17 @@ export function Composer({
           void send();
         }}
       >
-        <HitlQueuePopover
+        <ComposerPopover
           requests={requests}
           queue={queue}
           taskId={taskId}
           queueDisabled={locked || sending}
           recall={queueRecall}
           suppressed={isQuickPanelOpen(trigger, active)}
+          blocks={blocks}
+          // A queued run has not started, so the latest reply still belongs to the last run.
+          live={active && status !== 'queued'}
           onEditQueued={(text) => setText(joinDraft(draft.text, text))}
-          header={
-            taskId !== null && (
-              // A queued run has not started, so the latest reply still belongs to the last run.
-              <ProgressPill blocks={blocks} live={active && status !== 'queued'} />
-            )
-          }
         >
           <QuickPanel
             trigger={trigger}
@@ -298,7 +294,7 @@ export function Composer({
               </div>
             </div>
           </QuickPanel>
-        </HitlQueuePopover>
+        </ComposerPopover>
         <ComposerConfiguration
           connections={connections}
           model={model}

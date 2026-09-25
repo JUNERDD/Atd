@@ -59,6 +59,7 @@
       "step": "Step {{current}} / {{total}}",
       "subagentOne": "1 subagent",
       "subagentMany": "{{count}} subagents",
+      "subagentRunning": "{{count}} running",
       "showTodos": "Show todos"
     }
   },
@@ -148,12 +149,6 @@
       "reconnecting": "Reconnecting… {{detail}}",
       "openSettings": "Open Service settings"
     }
-  },
-  "children": {
-    "title": "Subtasks",
-    "empty": "No subtasks.",
-    "failed": "Failed",
-    "ok": "Done"
   },
   "capability": {
     "waitingDesktop": "Waiting for the desktop: {{capability}}"

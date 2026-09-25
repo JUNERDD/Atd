@@ -128,6 +128,22 @@
   min-height: 0;
   flex-direction: column;
 }
+/* Holds the task conversation and, while one is open, a subagent's drill-in view on top of it. */
+.task-stage {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+}
+/* Covered, the parent keeps its layout and scroll offset; it is only unseen and inert. */
+.conversation[data-covered] {
+  visibility: hidden;
+}
+.child-conversation {
+  position: absolute;
+  inset: 0;
+}
 .conversation-messages {
   display: flex;
   flex-direction: column;
@@ -140,6 +156,19 @@
  * top with a void beneath. The auto margin collapses to zero once content overflows. */
 .conversation-messages > :first-child {
   margin-top: auto;
+}
+/* A subagent's drill-in header: pinned above its transcript, horizontally aligned with the
+ * messages. The full task scrolls within a short box so short windows keep the transcript. */
+.child-header {
+  display: flex;
+  flex-shrink: 0;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 16px 10px;
+  border-bottom: 1px solid var(--border);
+}
+.child-task {
+  max-height: 96px;
 }
 .transcript-turn {
   display: flex;
@@ -798,19 +827,4 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--muted-foreground);
-}
-.transcript-children {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 12px 0;
-  border-top: 1px solid var(--border);
-}
-.transcript-children ul {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
 }

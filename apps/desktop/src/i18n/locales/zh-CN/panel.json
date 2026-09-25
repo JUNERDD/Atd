@@ -59,6 +59,7 @@
       "step": "第 {{current}} / {{total}} 步",
       "subagentOne": "1 个子智能体",
       "subagentMany": "{{count}} 个子智能体",
+      "subagentRunning": "{{count}} 个运行中",
       "showTodos": "查看待办"
     }
   },
@@ -148,12 +149,6 @@
       "reconnecting": "正在重连… {{detail}}",
       "openSettings": "打开服务设置"
     }
-  },
-  "children": {
-    "title": "子任务",
-    "empty": "暂无子任务。",
-    "failed": "失败",
-    "ok": "完成"
   },
   "capability": {
     "waitingDesktop": "等待桌面：{{capability}}"

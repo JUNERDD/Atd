@@ -19,6 +19,7 @@ import { useSettingsSnapshot } from '../settings/use-settings';
 import { acceleratorToHotkey } from '../../lib/shortcuts';
 import { STORAGE_KEY } from '../../lib/task-store';
 import { agentApi, useAgent, useTaskDetail } from './use-agent';
+import { useChildView } from './use-child-view';
 import { showErrorToast } from '../../components/toast-store';
 import { useAgentNotices } from './use-notices';
 import { focusPanelInput, showPanel, usePanelWindow } from './use-panel-window';
@@ -56,6 +57,7 @@ export function useTaskPanel() {
   const [pending, setPending] = useState(false);
   const submission = useRef<{ key: string; id: string } | null>(null);
   const current = useTaskDetail(taskId);
+  const child = useChildView(view === 'task' ? taskId : null);
   const draftKey = view === 'task' && taskId ? taskId : 'new';
   const draft = drafts[draftKey] ?? EMPTY_DRAFT;
   const policyKey = view === 'input' && prepared ? `command-${prepared.command.id}` : draftKey;
@@ -78,14 +80,16 @@ export function useTaskPanel() {
     [],
   );
   useHotkeys(acceleratorToHotkey(shortcuts.newConversation, platform), newTask, options, []);
+  // Escape steps back one level: out of a subagent's conversation, then to a new chat, then hide.
   useHotkeys(
     'escape',
     () => {
-      if (view !== 'new') setView('new');
+      if (child.childKey) child.close();
+      else if (view !== 'new') setView('new');
       else void hide();
     },
     { ...options, ignoreModifiers: true, preventDefault: false },
-    [view],
+    [view, child.childKey],
   );
   useEffect(() => {
     const bridge = window.desktop?.agent;
@@ -299,6 +303,7 @@ export function useTaskPanel() {
     setHidden,
     pending,
     current,
+    child,
     draftKey,
     draftRevision,
     draft,

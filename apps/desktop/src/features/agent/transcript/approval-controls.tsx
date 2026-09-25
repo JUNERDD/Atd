@@ -9,6 +9,7 @@ import { messageOf } from '../../../lib/errors';
 import { shortcutKeys } from '../../../lib/shortcuts';
 import { isTextEntryFocused } from '../../../lib/text-entry';
 import { DetailBox } from './detail-box';
+import { useSubtaskLabel } from './subagent-context';
 import { scopeKey } from './tool-copy';
 
 /** Display cap for the approval detail; the full value stays one copy click away. */
@@ -36,6 +37,7 @@ export function ApprovalControls({
 }) {
   const { t } = useTranslation('tasks');
   const { t: tPanel } = useTranslation('panel');
+  const subtask = useSubtaskLabel(request.executionId);
   const onceRef = useRef<HTMLButtonElement>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
@@ -109,9 +111,9 @@ export function ApprovalControls({
   return (
     <div className="approval-controls">
       {hideTitle ? null : <p className="text-sm font-medium">{t(scopeKey(request.scope))}</p>}
-      {request.executionId?.startsWith('child:') && (
-        <p className="text-xs text-muted-foreground">
-          {tPanel('confirms.subtask', { execution: request.executionId })}
+      {subtask && (
+        <p className="min-w-0 truncate text-xs text-muted-foreground" title={subtask}>
+          {tPanel('confirms.subtask', { execution: subtask })}
         </p>
       )}
       {bash && (

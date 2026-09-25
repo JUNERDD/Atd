@@ -42,6 +42,9 @@ export const agentBridge: AgentBridge = {
   copy: (text) => invoke({ action: 'copy', text }),
   openLink: (url) => invoke({ action: 'openLink', url }),
   importLegacy: (json) => invoke({ action: 'importLegacy', json }),
+  childTranscript: (taskId, childKey) => invoke({ action: 'childTranscript', taskId, childKey }),
+  releaseChildTranscript: (taskId, childKey) =>
+    invoke({ action: 'releaseChildTranscript', taskId, childKey }),
   onChange: (listener) => {
     const callback = (_event: IpcRendererEvent, event: AgentEvent) => listener(event);
     ipcRenderer.on(AGENT_IPC.changed, callback);
