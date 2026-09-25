@@ -54,6 +54,11 @@ export interface ComposerProps {
   tasks: readonly AgentTask[];
   /** The panel body below the header, which the quick panel must not leave. */
   overlayBoundary: Element | null;
+  /**
+   * Hides the composer without unmounting it, while a read-only view (a subagent's transcript)
+   * covers the task: the draft, the open popover state and the focus-return target survive.
+   */
+  hidden?: boolean;
 }
 
 const NO_BLOCKS: readonly Block[] = [];
@@ -88,6 +93,7 @@ export function Composer({
   quickActions,
   tasks,
   overlayBoundary,
+  hidden = false,
 }: ComposerProps) {
   const { t } = useTranslation('panel');
   const footerRef = useOverlayFooter<HTMLElement>();
@@ -211,7 +217,7 @@ export function Composer({
     aria,
   });
   return (
-    <footer ref={footerRef} className="panel-footer overlay-footer">
+    <footer ref={footerRef} className="panel-footer overlay-footer" hidden={hidden}>
       <form
         className="composer"
         aria-label={followup ? t('composer.followUpForm') : t('composer.newTaskForm')}
@@ -226,7 +232,8 @@ export function Composer({
           taskId={taskId}
           queueDisabled={locked || sending}
           recall={queueRecall}
-          suppressed={isQuickPanelOpen(trigger, active)}
+          // Hidden, a new approval still reaches the pill; its popover opens once shown again.
+          suppressed={hidden || isQuickPanelOpen(trigger, active)}
           blocks={blocks}
           // A queued run has not started, so the latest reply still belongs to the last run.
           live={active && status !== 'queued'}
