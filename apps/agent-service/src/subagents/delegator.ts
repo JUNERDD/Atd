@@ -16,6 +16,7 @@ import {
   ensureManagedSubagentConfig,
 } from './config.js';
 import { enrichParentAsync } from './enrich.js';
+import { CHILD_WEB_TOOLS } from './intersection.js';
 import {
   guardSubagentCall,
   onSubagentExecutionEnd,
@@ -235,9 +236,10 @@ function registerParentSession(
     ),
   );
   const agents = session.agents.map((agent) => agent.name);
-  // Sync registrations use the frozen run snapshot; enrich.ts narrows async
-  // and fails closed to fewer tools (never wider) when unavailable.
+  // Sync registrations use the frozen run snapshot plus the web tools every parent keeps;
+  // enrich.ts narrows async and fails closed to fewer tools (never wider) when unavailable.
   const parentTools = [...run.snapshot.tools];
+  const childTools = [...parentTools, ...CHILD_WEB_TOOLS];
   registerParent({
     taskId,
     runId,
@@ -252,7 +254,7 @@ function registerParentSession(
   storeHost(taskId, {
     dataDir: deps.ctx.paths.root,
     cwd: ctx.cwd,
-    allowedTools: parentTools.filter((tool) => tool !== 'ask_user'),
+    allowedTools: childTools.filter((tool) => tool !== 'ask_user'),
     mcpProxies: [],
     runMemory: run.snapshot.memory,
     audit: deps.audit,
@@ -279,7 +281,7 @@ function registerParentSession(
   const ceiling = preloaded.registerCeiling({
     sessionId,
     source: 'service',
-    ceiling: { allowedTools: parentTools, allowedAgents: agents },
+    ceiling: { allowedTools: childTools, allowedAgents: agents },
   });
   registrations.push(ceiling);
   registrations.push(
