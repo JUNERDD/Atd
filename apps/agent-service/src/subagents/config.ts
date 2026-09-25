@@ -32,101 +32,18 @@ export const FORBIDDEN_CHILD_TOOLS = [
   WEB_FETCH_TOOL,
 ] as const;
 
-/** Subagent actions closed in round one; the guard blocks them explicitly. */
-export const CLOSED_SUBAGENT_ACTIONS = [
-  'stop',
-  'resume',
-  'steer',
-  'dismiss',
-  'create',
-  'update',
-  'delete',
-  'eject',
-  'disable',
-  'enable',
-  'reset',
-  'refine',
-  'grant-spawn-budget',
-  'doctor',
-  'schedule.create',
-  'schedule.list',
-  'schedule.show',
-  'schedule.history',
-  'schedule.pause',
-  'schedule.resume',
-  'schedule.run',
-  'schedule.run-due',
-  'schedule.delete',
-  'mission.create',
-  'mission.list',
-  'mission.show',
-  'mission.update',
-  'mission.resolve-decision',
-  'mission.attach-run',
-  'mission.close',
-  'inspector.open',
-  'inspector.command',
-  'inspector.status',
-  'inspector.close',
-  'project.open',
-  'project.status',
-  'project.close',
-  'worktree.discard',
-  'worktree.cleanup',
-  'lane.status',
-  'lane.recordMerge',
-  'lane.recordSupersession',
-  'watchdog.status',
-  'watchdog.check',
-  'watchdog.configure',
-  'watchdog.recommend-model',
-] as const;
-
-/** Params that never reach the delegator; rejected before dispatch. */
-export const FORBIDDEN_SUBAGENT_PARAMS = [
-  'workflowScript',
-  'workflowScriptPath',
-  'extensionBindings',
-  'globalConcurrencyLimit',
-  'maxSubagentSpawnsPerRun',
-  'machine',
-  'sessionDir',
-  'mission',
-  'missionId',
-  'missionUpdate',
-  'missionStatus',
-  'missionScope',
-  'config',
-  'at',
-  'every',
-  'sessionOnly',
-  'overlap',
-  'catchUp',
-] as const;
-
 /** Explicit child system prompt; the trigger pins it on every launch. */
 export const SUBAGENT_CHILD_SYSTEM_PROMPT =
   'You are a bounded child subagent of the desktop assistant. Complete only the assigned task with the available tools. File paths do not grant access. You cannot delegate further, change roles, or schedule work. Return an explicit result; the parent decides what to use.';
 
 /**
- * pi-subagents runs one foreground subagent call per session at a time and rejects a second
- * that overlaps it, so work meant to run together has to go out as one call.
+ * Managed config pinned for every parent; unknown keys are never added. Child concurrency keeps
+ * pi-subagents' own bounds: its default global child limit and per-run fan-out budget.
  */
-export const SUBAGENT_PARALLEL_GUIDELINE =
-  'To run several subagents at the same time, make ONE subagent call with tasks: [{ agent, task }, ...]. Separate subagent calls in the same turn are rejected, not run in parallel.';
-
-/**
- * A native parallel call's own task and concurrency caps stay out of the way: pi-subagents'
- * default global child limit and its per-run spawn budget are the bounds that apply.
- */
-const UNCAPPED = Number.MAX_SAFE_INTEGER;
-
-/** Managed config pinned for every parent; unknown keys are never added. */
 export function managedSubagentConfig(): Record<string, unknown> {
   return {
     asyncByDefault: false,
     forceTopLevelAsync: false,
-    parallel: { maxTasks: UNCAPPED, concurrency: UNCAPPED },
     maxSubagentDepth: 1,
     defaultSubagentContext: 'fresh',
     scheduledRuns: { enabled: false },

@@ -12,7 +12,6 @@ import {
   SERVICE_CHAIN_WORKFLOW,
   SERVICE_PARALLEL_WORKFLOW,
   ensureManagedSubagentConfig,
-  SUBAGENT_PARALLEL_GUIDELINE,
 } from './config.js';
 import { enrichParentAsync } from './enrich.js';
 import { guardSubagentCall, onSubagentResult, type GuardInput } from './guard.js';
@@ -23,6 +22,7 @@ import {
   type ChildApprovals,
 } from './registry.js';
 import { resolveRequiredExtensionPath, REQUIRED_EXTENSION_ID } from './required-extension.js';
+import { withServiceSubagentTool } from './tool-contract.js';
 import { installManagedSettingsTrigger } from './trigger.js';
 import {
   validateChainArgs,
@@ -123,23 +123,16 @@ export async function prepareSubagentsParent(
   const bridgePath = await resolveRequiredExtensionPath();
   deps.audit({ taskId: deps.taskId, requiredExtension: REQUIRED_EXTENSION_ID });
   const preloaded = await preload();
-  const factory: ExtensionFactory = (pi) => {
+  const factory: ExtensionFactory = (host) => {
     // What this session registered at session_start. pi-subagents keys these
     // by session id, and a session rebuilt for a later run reopens the same
     // session file (same id), so shutdown releases them for the next session.
     const registrations: Registration[] = [];
+    // pi-subagents keys runtime agents by the `pi` it was given, so every registration below goes
+    // through the same view that carries the service's subagent tool contract.
+    const { api: pi, assertInstalled } = withServiceSubagentTool(host);
     preloaded.subagents(pi);
-    // The service's custom system prompt skips Pi's per-tool rules, so the guideline rides on
-    // the addendum, and only while the subagent tool is on.
-    pi.on('before_agent_start', (event) => {
-      const options = event.systemPromptOptions;
-      if (!options.selectedTools.includes('subagent')) return undefined;
-      if (options.appendSystemPrompt.includes(SUBAGENT_PARALLEL_GUIDELINE)) return undefined;
-      options.appendSystemPrompt = [options.appendSystemPrompt, SUBAGENT_PARALLEL_GUIDELINE]
-        .filter(Boolean)
-        .join('\n\n');
-      return undefined;
-    });
+    assertInstalled();
     pi.on('tool_call', (raw) => guardSubagentCall(deps, raw as unknown as GuardInput));
     pi.on('tool_result', (raw) => {
       onSubagentResult(

@@ -24,10 +24,11 @@ export interface WorkflowResolveErr {
   error: string;
 }
 
-const SERVICE_AGENTS = new Set(['service.worker', 'service.reviewer', 'service.scout']);
-
+/**
+ * Shape checks only: which agents a session may call is the guard's and pi-subagents' capability
+ * ceiling's decision, so referenced atd agents work in workflows as they do alone.
+ */
 function checkTask(task: WorkflowTask, index: number): string | null {
-  if (!SERVICE_AGENTS.has(task.agent)) return `tasks[${index}].agent is not a service agent.`;
   if (!task.task.trim()) return `tasks[${index}].task is empty.`;
   for (const id of task.resources ?? []) {
     if (!/^[a-zA-Z0-9_-]+$/.test(id)) return `tasks[${index}].resources holds a bad id.`;
