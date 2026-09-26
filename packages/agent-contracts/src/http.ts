@@ -8,7 +8,12 @@ import {
 import { ThinkingLevelSchema } from './models.js';
 import { ResourceRefSchema } from './resources.js';
 import { QueueStateSchema, ServiceBlockSchema, TaskSnapshotSchema } from './snapshot.js';
-import { AgentTaskSchema, ModelSelectionSchema, TaskInputSchema } from './task.js';
+import {
+  AgentTaskSchema,
+  ModelSelectionSchema,
+  ServiceToolIdSchema,
+  TaskInputSchema,
+} from './task.js';
 
 /** Run acceptance; repeats with the same operationId return the original run. */
 export const SubmitTaskRequestSchema = Type.Object(
@@ -19,6 +24,13 @@ export const SubmitTaskRequestSchema = Type.Object(
     model: Type.Optional(ModelSelectionSchema),
     /** Absent uses the connection's saved level, else off. */
     thinkingLevel: Type.Optional(ThinkingLevelSchema),
+    /**
+     * Snapshot tools frozen onto the run (`snapshotToolsFor` maps a five-tool grant). Absent keeps
+     * the tools of the task's last run, else `DEFAULT_RUN_TOOLS`.
+     */
+    tools: Type.Optional(Type.Array(ServiceToolIdSchema, { uniqueItems: true })),
+    /** Whether the run reads and learns memory. Absent keeps the task's last run's flag, else on. */
+    memory: Type.Optional(Type.Boolean()),
   },
   { additionalProperties: false },
 );
