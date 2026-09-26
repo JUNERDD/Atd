@@ -40,6 +40,8 @@ export interface ReferenceContext {
   skillChars: number;
   /** Configured servers and the run's frozen tool selection; null while MCP is unavailable. */
   mcp: { servers: McpServerConfig[]; selected: McpToolSelection[] | null } | null;
+  /** Catalog agents turned off in Settings (atd-agents/enablement.ts); a reference to one resolves to a note. */
+  disabledAgents: ReadonlySet<string>;
 }
 
 /** A run's references resolved at freeze into material and capabilities. */
@@ -106,7 +108,9 @@ export async function resolveRunReferences(
         ({ agents }) => agents,
         (error: unknown) => `the agent catalog could not be read (${errorMessage(error)})`,
       );
-      const resolved = resolveAgent(await catalog, reference.name, context.toolCeiling);
+      const resolved = context.disabledAgents.has(reference.name)
+        ? 'it is turned off in Settings'
+        : resolveAgent(await catalog, reference.name, context.toolCeiling);
       const label = `Agent "${reference.name}"`;
       if (typeof resolved === 'string') notes.push({ reference, label, reason: resolved });
       else hints.push({ reference, ...resolved });

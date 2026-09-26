@@ -245,7 +245,7 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
 
   registerSkillRoutes(app, deps.config);
   registerBuiltinRoutes(app, deps.config);
-  registerAtdAgentRoutes(app);
+  registerAtdAgentRoutes(app, deps.config);
 
   // Live MCP mounts. Building the authority costs ~880 ms (adapter transpile
   // plus control session) and nothing at boot needs it, so the routes take a

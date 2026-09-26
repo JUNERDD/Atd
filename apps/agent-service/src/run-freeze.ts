@@ -1,4 +1,5 @@
 import { errorMessage, type TaskRun } from '@ai/agent-contracts';
+import { readDisabledAgentNames } from './atd-agents/enablement.js';
 import { McpAdapterMissing, McpAuthority } from './mcp/index.js';
 import { freezeRunMcp, releaseRunMcp } from './mcp/staging.js';
 import {
@@ -14,6 +15,7 @@ import { captureRunSkills, skillChars, type RunSkills } from './skills/run-skill
 import { takeTaskStaging } from './skills/staging.js';
 import { freezeSkillCatalog, type RunSkillCatalog } from './skills/skill-catalog.js';
 import { freezeRunSkills, loadSkillCatalog, releaseRun } from './skills/versions.js';
+import { SERVICE_RUNTIME_AGENTS, type RuntimeAgent } from './subagents/agents.js';
 import { readServiceId, type RunnerContext } from './task-runner.js';
 
 /** What a freeze needs from the task runner: its context, task and run audit. */
@@ -29,6 +31,8 @@ export interface FrozenSelections {
   skills: RunSkills;
   /** The skills the run's model is told about and may load (skills/skill-catalog.ts). */
   catalog: RunSkillCatalog;
+  /** The runtime agents the run's session registers: enabled system agents, then referenced specialists. */
+  agents: RuntimeAgent[];
 }
 
 /**
@@ -44,12 +48,16 @@ export async function freezeRunSelections(
 ): Promise<FrozenSelections> {
   const { toolCeiling, skills, catalog } = await freezeSkills(deps, run);
   const mcp = await freezeMcp(deps, run);
+  // Agents turned off in Settings stay off for this run even if they are turned on during it.
+  const disabledAgents = await readDisabledAgentNames(deps.ctx.paths.root);
   const references = await freezeReferencesForRun(deps, run, {
     toolCeiling,
     mcp,
     skillChars: skillChars(run.id, skills.loaded, catalog),
+    disabledAgents,
   });
-  return { references, skills, catalog };
+  const systemAgents = SERVICE_RUNTIME_AGENTS.filter((agent) => !disabledAgents.has(agent.name));
+  return { references, skills, catalog, agents: [...systemAgents, ...references.agents] };
 }
 
 /** Releases the run's frozen skill and MCP records once the run ends. */
@@ -74,7 +82,7 @@ export async function releaseRunSelections(deps: RunFreezeDeps, runId: string): 
 async function freezeReferencesForRun(
   deps: RunFreezeDeps,
   run: TaskRun,
-  frozen: Pick<ReferenceContext, 'toolCeiling' | 'mcp' | 'skillChars'>,
+  frozen: Pick<ReferenceContext, 'toolCeiling' | 'mcp' | 'skillChars' | 'disabledAgents'>,
 ): Promise<RunReferences> {
   const references = await takeTaskReferences(deps.ctx.paths.root, deps.taskId);
   const resolved = await resolveRunReferences(

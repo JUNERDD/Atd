@@ -179,7 +179,7 @@ export class TaskRunner {
         skills: frozen.skills.loaded,
         catalog: frozen.catalog,
       };
-      const live = await this.ensureSession(run, frozen.references.agents);
+      const live = await this.ensureSession(run, frozen.agents);
       rebindSubagentsForRun(this.taskId, run);
       // Nothing in the text expands: `/skill:` markers reach the model as written,
       // and the skills themselves arrive in a hidden message (skills/session-skills.ts).

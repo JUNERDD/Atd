@@ -9,7 +9,7 @@ import { createGate } from '../harness/gate.js';
 import { effectiveTaskTier } from '../tasks/tier.js';
 import { collectPermissionLookups } from '../transcript-blocks.js';
 import { fromServiceBranch } from '../transcript.js';
-import { registerRuntimeAgents, SERVICE_RUNTIME_AGENTS, type RuntimeAgent } from './agents.js';
+import { registerRuntimeAgents, type RuntimeAgent } from './agents.js';
 import {
   SERVICE_CHAIN_WORKFLOW,
   SERVICE_PARALLEL_WORKFLOW,
@@ -115,8 +115,8 @@ async function preload(): Promise<Preloaded> {
  * Prepares the parent subagent factory. Writes the managed config, pins the
  * agent dir, installs the trigger and validates the bridge path. Returns the
  * single factory pi-session appends to its extension list. `runAgents` are
- * the referenced atd agents the session registers beside the service agents
- * (fixed per session through the run binding); `childRuntime` builds a child's model runtime
+ * every runtime agent the session registers: the service agents enabled at
+ * freeze and the referenced atd agents (fixed per session through the run binding); `childRuntime` builds a child's model runtime
  * like the session's own, which a runtime change rebuilds the session for.
  */
 export async function prepareSubagentsParent(
@@ -154,7 +154,7 @@ export async function prepareSubagentsParent(
         cwd: string;
       };
       registerParentSession(deps, preloaded, bridgePath, pi, ctx, {
-        agents: [...SERVICE_RUNTIME_AGENTS, ...runAgents],
+        agents: runAgents,
         registrations,
         childRuntime,
       });

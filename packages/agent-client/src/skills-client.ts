@@ -78,6 +78,35 @@ export function listSkills(
   return request(options, `/v1/skills${query}`, 'GET', undefined, fetchImpl);
 }
 
+/**
+ * One catalog skill (null when the name is not in the catalog) with its folder's files as
+ * relative paths; `truncated` says the listing was cut off. `skill` mirrors the revision record.
+ */
+export function getSkill(
+  options: AgentClientOptions,
+  name: string,
+  fetchImpl?: typeof fetch,
+): Promise<{ skill: unknown; files: string[]; truncated: boolean }> {
+  return request(options, `/v1/skills/${encodeURIComponent(name)}`, 'GET', undefined, fetchImpl);
+}
+
+/** One text file of a skill folder; `content` is null with the reason for a binary or large file. */
+export function readSkillFile(
+  options: AgentClientOptions,
+  name: string,
+  path: string,
+  fetchImpl?: typeof fetch,
+): Promise<{ path: string; content: string | null; reason: 'binary' | 'too_large' | null }> {
+  const query = `?path=${encodeURIComponent(path)}`;
+  return request(
+    options,
+    `/v1/skills/${encodeURIComponent(name)}/file${query}`,
+    'GET',
+    undefined,
+    fetchImpl,
+  );
+}
+
 /** Installs a skill from a local/npm/git source (T34int mounts the route). */
 export function installSkill(
   options: AgentClientOptions,

@@ -52,13 +52,13 @@ export interface RunBinding {
   tools: string[];
   /** MCP proxies bound from this run's frozen selection and the current catalog. */
   mcp: SessionMcpPrep;
-  /** Referenced `~/.atd/agents` specialists registered beside the service agents. */
+  /** The runtime agents the session registers: enabled service agents and referenced specialists. */
   agents: RuntimeAgent[];
 }
 
 /**
  * Reads a run's frozen role and MCP records into its session binding, with
- * the atd agents its references resolved to at freeze. The runner sets the
+ * the runtime agents resolved at freeze (run-freeze.ts). The runner sets the
  * run's material, with its frozen skill catalog, before it binds the run.
  */
 export async function prepareRunBinding(
