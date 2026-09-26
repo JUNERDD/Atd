@@ -15,15 +15,3 @@
   position: relative;
   min-width: 0;
 }
-
-/* Switching views slides the popover from the last part to the next while the viewport resizes.
-   Only a switch animates: Radix first places the wrapper off screen, which must not show. */
-[data-radix-popper-content-wrapper]:has(> .composer-popover[data-moved]) {
-  transition: transform 200ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  [data-radix-popper-content-wrapper]:has(> .composer-popover[data-moved]) {
-    transition: none;
-  }
-}

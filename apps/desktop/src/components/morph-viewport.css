@@ -10,6 +10,11 @@
     height 200ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+/* Set for the opening size report only (see `MorphViewport`). */
+.morph-viewport[data-instant] {
+  transition: none;
+}
+
 .morph-viewport-content {
   position: absolute;
   top: 0;

@@ -57,7 +57,7 @@ export function useTaskPanel() {
   const [pending, setPending] = useState(false);
   const submission = useRef<{ key: string; id: string } | null>(null);
   const current = useTaskDetail(taskId);
-  const child = useChildView(view === 'task' ? taskId : null);
+  const child = useChildView(view === 'task' ? taskId : null, current.detail?.requests ?? []);
   const draftKey = view === 'task' && taskId ? taskId : 'new';
   const draft = drafts[draftKey] ?? EMPTY_DRAFT;
   const policyKey = view === 'input' && prepared ? `command-${prepared.command.id}` : draftKey;

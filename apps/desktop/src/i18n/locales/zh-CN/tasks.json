@@ -100,13 +100,14 @@
     },
     "outcome": {
       "once": "已允许一次",
-      "session": "已允许本次会话",
+      "session": "本会话已允许此工具",
       "grant": "已按会话授权允许",
       "tier": "已自动批准",
       "declined": "已拒绝"
     },
     "allowOnce": "允许一次",
-    "allowSession": "允许本次会话",
+    "allowSession": "允许此工具",
+    "allowSessionHint": "本次会话内此工具不再询问。",
     "decline": "拒绝",
     "waitingApproval": "等待你的批准",
     "waitingAnswer": "等待你的回答",
@@ -119,6 +120,11 @@
       "deny": "拒绝",
       "deniedNote": "已拒绝，并已告知智能体此命令不被允许。",
       "addFailed": "无法更新允许列表，命令未运行。"
+    },
+    "pager": {
+      "previous": "上一个请求",
+      "next": "下一个请求",
+      "position": "{{current}} / {{total}}"
     }
   },
   "question": {

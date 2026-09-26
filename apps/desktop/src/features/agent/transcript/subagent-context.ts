@@ -5,7 +5,6 @@ import {
   EMPTY_CHILD_INDEX,
   indexSubagentChildren,
   pendingExecutions,
-  subtaskLabel,
   type PendingByExecution,
   type SubagentChildIndex,
 } from './subagent-children';
@@ -46,15 +45,4 @@ export function useSubagentContextValue(
   const index = useMemo(() => indexSubagentChildren(blocks), [blocks]);
   const pending = useMemo(() => pendingExecutions(requests), [requests]);
   return useMemo(() => ({ index, pending, open }), [index, pending, open]);
-}
-
-/**
- * Names the subtask behind a request a child raised as "agent · task summary"; the raw
- * execution id when no card in this task names it, and null for the parent's own requests.
- */
-export function useSubtaskLabel(executionId: string | undefined): string | null {
-  const { index } = useSubagents();
-  if (!executionId?.startsWith('child:')) return null;
-  const child = index.byExecution.get(executionId);
-  return child ? subtaskLabel(child) : executionId;
 }
