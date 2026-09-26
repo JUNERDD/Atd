@@ -208,7 +208,6 @@ export function ExtensionMcpGroup({
   onRemove: (serverId: string) => void;
 }) {
   const { t } = useTranslation('settings');
-  const note = `${t('service.mcpNote')} ${t('extensions.mcpCatalogNote')}`;
   const form =
     adding && connected ? (
       <McpAddSection
@@ -231,7 +230,6 @@ export function ExtensionMcpGroup({
       {form}
       <ExtensionGroup
         title={t('extensions.tabMcp')}
-        note={note}
         empty={empty}
         loading={loading}
         hasRows={shown.length > 0}
