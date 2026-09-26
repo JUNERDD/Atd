@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import {
   errorMessage,
+  grantKey,
   type GrantScope,
   type PermissionAnswer,
   type PermissionRequest,
@@ -109,6 +110,17 @@ export class ConfirmStore {
     this.interjections.set(taskId, undelivered);
     for (const request of this.forTask(taskId))
       await this.settle(request, supersededAnswer(request));
+  }
+
+  /**
+   * A session grant on `key` also answers the task's other confirmations already waiting on that
+   * scope (parallel subagents often ask at once): each settles as `session`, as the grant would
+   * have let it through had it been raised afterwards.
+   */
+  async grantPending(taskId: string, key: string): Promise<void> {
+    for (const request of this.forTask(taskId))
+      if (request.kind === 'confirmation' && grantKey(request.scope) === key)
+        await this.settle(request, { decision: 'session' });
   }
 
   private interjecting(taskId: string): boolean {
