@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Artifact, FileRef, TaskRun } from '../../../../electron/agent/task-schema';
 import { TaskFiles } from '../task-files';
@@ -6,15 +7,21 @@ import { ActivityGroup } from './activity-group';
 import { BlockView } from './block-view';
 import { PromptMessage } from './prompt-message';
 import { promptRun } from './run-prompt';
+import { TurnActions } from './turn-actions';
 import { TurnHeader } from './turn-header';
 import type { RequestIndex } from './turns';
 
-function lastAssistantId(turn: AdaptedTurn): string | null {
+/**
+ * The turn's final answer: the last assistant text. A stopped turn can end in tool activity or an
+ * empty aborted message, so the copied answer is not always the last block.
+ */
+function lastAnswerText(turn: AdaptedTurn): string {
   for (let index = turn.items.length - 1; index >= 0; index -= 1) {
     const item = turn.items[index];
-    if (item?.type === 'block' && item.block.kind === 'assistant') return item.block.id;
+    if (item?.type === 'block' && item.block.kind === 'assistant' && item.block.text.trim())
+      return item.block.text;
   }
-  return null;
+  return '';
 }
 
 /**
@@ -43,6 +50,7 @@ export function TurnView({
   live,
   last,
   copyable = true,
+  status,
   onAttach,
 }: {
   turn: AdaptedTurn;
@@ -54,10 +62,12 @@ export function TurnView({
   last: boolean;
   /** Offer copying the settled answer; a subagent's drill-in view leaves that to its parent. */
   copyable?: boolean;
+  /** The run's terminal note (stopped, failed) on the last turn, above its action bar. */
+  status?: ReactNode;
   onAttach: (file: FileRef) => void;
 }) {
   const { t } = useTranslation('tasks');
-  const copyId = live || !copyable ? null : lastAssistantId(turn);
+  const copyText = live || !copyable ? '' : lastAnswerText(turn);
   const settled = !(live && last);
   const openId = settled ? null : openActivityId(turn.items);
   const liveFooter = live && last;
@@ -112,11 +122,13 @@ export function TurnView({
             className={assistant ? 'assistant-message' : undefined}
             aria-label={assistant ? t('conversation.assistantResponse') : undefined}
           >
-            <BlockView block={item.block} requests={requests} showCopy={item.block.id === copyId} />
+            <BlockView block={item.block} requests={requests} />
             {files.length > 0 && <TaskFiles files={files} onAttach={onAttach} />}
           </div>
         );
       })}
+      {status}
+      {copyText && <TurnActions text={copyText} />}
     </section>
   );
 }

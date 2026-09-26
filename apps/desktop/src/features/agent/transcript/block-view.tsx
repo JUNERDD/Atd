@@ -5,21 +5,13 @@ import { SystemBlock, ThinkingBlock } from './thinking-block';
 import { ToolBlock } from './tool-block';
 import { requestFor, type RequestIndex } from './turns';
 
-export function BlockView({
-  block,
-  requests,
-  showCopy,
-}: {
-  block: Block;
-  requests: RequestIndex;
-  showCopy?: boolean;
-}) {
+export function BlockView({ block, requests }: { block: Block; requests: RequestIndex }) {
   const request = requestFor(block, requests);
   switch (block.kind) {
     case 'user':
       return null;
     case 'assistant':
-      return <AssistantBlock block={block} showCopy={showCopy} />;
+      return <AssistantBlock block={block} />;
     case 'thinking':
       return <ThinkingBlock block={block} />;
     case 'tool': {
