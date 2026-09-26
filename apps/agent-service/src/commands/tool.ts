@@ -1,8 +1,14 @@
 import { Type, type Static } from 'typebox';
 import type { ToolDefinition } from '@earendil-works/pi-coding-agent';
-import { Identifier, parse, ServiceCommandFullSchema } from '@ai/agent-contracts';
+import {
+  Identifier,
+  parse,
+  ServiceCommandFullSchema,
+  type ServiceCommandFull,
+} from '@ai/agent-contracts';
 import type { Gate } from '../harness/gate.js';
 import type { ChildTool } from '../subagents/child-tools.js';
+import { withCanonicalShortcut } from './shortcuts.js';
 import { CommandStore } from './store.js';
 import { validateCommandShape } from './templates.js';
 import { createDetail, updateDetail } from './tool-detail.js';
@@ -17,7 +23,7 @@ import { createDetail, updateDetail } from './tool-detail.js';
 
 const Fields = ServiceCommandFullSchema.properties;
 
-/** What the Agent may author; identity, state, shortcut and model stay with the stored command. */
+/** What the Agent may author; identity, enabled state and model stay with the stored command. */
 const CommandFieldsSchema = Type.Object(
   {
     name: Fields.name,
@@ -27,6 +33,13 @@ const CommandFieldsSchema = Type.Object(
     parameters: Fields.parameters,
     tools: Fields.tools,
     memory: Fields.memory,
+    shortcut: Type.Optional(
+      Type.String({
+        maxLength: 100,
+        description:
+          'Global shortcut as an Electron accelerator, e.g. CommandOrControl+Alt+S (Alt is Option on macOS). An empty string removes it; omit it to keep the current one.',
+      }),
+    ),
   },
   { additionalProperties: false },
 );
@@ -81,7 +94,20 @@ export const CommandToolParametersSchema = Type.Object(
 );
 
 const DESCRIPTION =
-  "Manage the user's saved commands: list them, get one, or save (create or update) one. Saving asks the user to confirm. Instructions may use {{input}}, {{files}}, {{selection}}, {{clipboard}} and {{argument.<key>}} for declared parameters. To update, get the command first and pass its id and revision.";
+  "Manage the user's saved commands: list them, get one, or save (create or update) one. Saving asks the user to confirm. Instructions may use {{input}}, {{files}}, {{selection}}, {{clipboard}} and {{argument.<key>}} for declared parameters. A save may set the command's global shortcut; one already used by the app or another command is refused, so ask the user for another combination. To update, get the command first and pass its id and revision.";
+
+/** The save result the model reads; a shortcut adds where the user sees whether it registered. */
+function savedResult(saved: ServiceCommandFull): string {
+  const { id, revision, name, shortcut } = saved;
+  if (!shortcut) return JSON.stringify({ id, revision, name });
+  return JSON.stringify({
+    id,
+    revision,
+    name,
+    shortcut,
+    note: 'The desktop app registers the shortcut. If another application already uses it, Settings > Commands marks it unavailable.',
+  });
+}
 
 /** Approves a validated save; throws when it is not approved. */
 type ApproveSave = (request: { title: string; detail: string }) => Promise<void>;
@@ -102,16 +128,17 @@ export async function runCommandCall(
     return summaries.length ? JSON.stringify(summaries) : 'No saved commands.';
   }
   if (call.operation === 'get') return JSON.stringify(store.get(call.commandId));
-  const saved = await save(store, call, approve);
-  return JSON.stringify({ id: saved.id, revision: saved.revision, name: saved.name });
+  return savedResult(await save(store, call, approve));
 }
 
+/** Refuses what the store would refuse before asking the user to approve the save. */
 async function save(store: CommandStore, call: SaveCall, approve: ApproveSave) {
   const expected = call.expectedRevision ?? null;
   if (!call.commandId) {
     if (expected !== null)
       throw new Error('A new command has no revision yet. Omit expectedRevision.');
     const next = CommandStore.compose(call.fields);
+    await store.assertShortcutFree(next);
     await approve({ title: `Create the command "${next.name}"?`, detail: createDetail(next) });
     return store.create({ ...call.fields, id: next.id });
   }
@@ -120,9 +147,11 @@ async function save(store: CommandStore, call: SaveCall, approve: ApproveSave) {
     throw new Error(
       'This command changed. Read the latest revision, then apply your change again.',
     );
-  const next = parse(ServiceCommandFullSchema, { ...previous, ...call.fields });
-  // Validate before asking, so the user never approves a save the store would refuse.
+  const next = withCanonicalShortcut(
+    parse(ServiceCommandFullSchema, { ...previous, ...call.fields }),
+  );
   validateCommandShape(next);
+  await store.assertShortcutFree(next);
   await approve({
     title: `Update the command "${next.name}"?`,
     detail: updateDetail(previous, next),

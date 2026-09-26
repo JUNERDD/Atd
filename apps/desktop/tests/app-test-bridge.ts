@@ -1,5 +1,6 @@
 import { vi } from 'vitest';
-import { DEFAULT_SHORTCUTS, type SettingsSnapshot } from '../electron/settings-contract';
+import { DEFAULT_SHORTCUTS } from '@ai/agent-contracts';
+import type { SettingsSnapshot } from '../electron/settings-contract';
 import type { AgentBridge, AgentEvent, AgentSnapshot, TaskDetail } from '../electron/agent/bridge';
 import { initialCommands } from '../electron/agent/command-templates';
 import { emptyInput, type RunStatus } from '../electron/agent/task-schema';

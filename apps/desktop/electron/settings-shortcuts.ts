@@ -1,5 +1,5 @@
 import { globalShortcut } from 'electron';
-import { effectiveAccelerator } from './accelerators';
+import { effectiveAccelerator } from '@ai/agent-contracts';
 
 export class PanelShortcut {
   private accelerator = '';

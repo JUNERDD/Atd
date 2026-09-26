@@ -1,7 +1,12 @@
 import { clipboard, globalShortcut, systemPreferences } from 'electron';
 import type { AgentClientOptions } from '@ai/agent-client';
 import SelectionHook from 'selection-hook';
-import { effectiveAccelerator, parseAccelerator } from '../accelerators';
+import {
+  commandHoldingShortcut,
+  commandShortcutHolder,
+  effectiveAccelerator,
+  parseAccelerator,
+} from '@ai/agent-contracts';
 import type { ShortcutBindings } from '../settings-contract';
 import type { CommandDefinition } from './command-schema';
 import type { PreparedCommand } from './bridge';
@@ -133,37 +138,22 @@ export class CommandService {
 
   private checkShortcut(command: CommandDefinition) {
     if (!command.shortcut) return;
-    const accelerator = effectiveAccelerator(
-      parseAccelerator(command.shortcut, true, process.platform),
-      process.platform,
-    );
-    const reserved = Object.values(this.shortcuts()).some(
-      (value) => effectiveAccelerator(value, process.platform) === accelerator,
-    );
-    const duplicate = this.store.data.commands.some(
-      (other) =>
-        other.id !== command.id &&
-        other.enabled &&
-        other.shortcut &&
-        effectiveAccelerator(other.shortcut, process.platform) === accelerator,
-    );
-    if (reserved || duplicate)
+    const shortcut = parseAccelerator(command.shortcut, true, process.platform);
+    if (
+      commandShortcutHolder(
+        { id: command.id, shortcut },
+        this.shortcuts(),
+        this.store.data.commands,
+        process.platform,
+      )
+    )
       throw new Error('This shortcut is already assigned to another action.');
   }
 
   assertSettings(shortcuts: ShortcutBindings) {
-    for (const value of Object.values(shortcuts)) {
-      if (
-        this.store.data.commands.some(
-          (command) =>
-            command.enabled &&
-            command.shortcut &&
-            effectiveAccelerator(command.shortcut, process.platform) ===
-              effectiveAccelerator(value, process.platform),
-        )
-      )
+    for (const value of Object.values(shortcuts))
+      if (commandHoldingShortcut(value, this.store.data.commands, process.platform))
         throw new Error('This shortcut is assigned to a command.');
-    }
   }
 
   private register(command: CommandDefinition) {

@@ -1,4 +1,4 @@
-import { parseAccelerator } from '../../electron/accelerators';
+import { parseAccelerator } from '@ai/agent-contracts';
 import type { CommandCatalog } from '../../electron/agent/agent-requests';
 import type { PreparedCommand } from '../../electron/agent/bridge';
 import { prepareCommand } from '../../electron/agent/command-prepare';
@@ -9,8 +9,8 @@ import type { WebConnection } from './web-connection';
 
 /**
  * The command list as the web client keeps it: the service's commands, cached for the page.
- * Global command shortcuts belong to the desktop app, which registers them and reports conflicts;
- * the web client only checks their grammar before saving. Reading the selection in another app
+ * Global command shortcuts belong to the desktop app, which registers them; the web client checks
+ * their grammar before saving, and the service refuses one another action already holds. Reading the selection in another app
  * is desktop-only; the clipboard is read through the browser, which may ask for permission.
  */
 export class WebCommands implements CommandCatalog {

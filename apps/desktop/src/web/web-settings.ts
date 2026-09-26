@@ -1,11 +1,14 @@
 import { getSettings, patchSettings } from '@ai/agent-client';
-import type { PatchSettingsRequest, SettingsResponse } from '@ai/agent-contracts';
-import { parseShortcutBindings } from '../../electron/accelerators';
+import {
+  DEFAULT_SHORTCUTS,
+  parseShortcutBindings,
+  type PatchSettingsRequest,
+  type SettingsResponse,
+} from '@ai/agent-contracts';
 import { DEFAULT_PERMISSION_TIER } from '../../electron/agent/permission-schema';
 import type { ProviderBridge } from '../../electron/providers/schema';
 import { ProviderService } from '../../electron/providers/service';
 import {
-  DEFAULT_SHORTCUTS,
   isAppLanguage,
   resolveLanguage,
   type SettingsBridge,
