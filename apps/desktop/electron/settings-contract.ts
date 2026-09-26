@@ -1,4 +1,4 @@
-import { APP_LANGUAGES, type AppLanguage } from '@ai/agent-contracts';
+import { APP_LANGUAGES, DEFAULT_SHORTCUTS, type AppLanguage } from '@ai/agent-contracts';
 import type { Connection, ProviderBridge } from './providers/schema';
 import type { ExtensionSessionKind } from './agent/bridge';
 import type { PermissionTier } from './agent/permission-schema';
@@ -17,14 +17,6 @@ export const SETTINGS_IPC = {
   saveShellAllowlist: 'settings:save-shell-allowlist',
   addShellAllowlistEntry: 'settings:add-shell-allowlist-entry',
   changed: 'settings:changed',
-} as const;
-
-export const DEFAULT_SHORTCUTS = {
-  togglePanel: 'CommandOrControl+Shift+Space',
-  newConversation: 'CommandOrControl+N',
-  openSettings: 'CommandOrControl+,',
-  sendMessage: 'Enter',
-  newLine: 'Shift+Enter',
 } as const;
 
 export type ShortcutAction = keyof typeof DEFAULT_SHORTCUTS;

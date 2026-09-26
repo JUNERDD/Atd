@@ -13,6 +13,8 @@ import { atomicWrite } from '../config.js';
 import { ConflictError } from '../errors.js';
 import { LedgerNotFound } from '../ledger.js';
 import { commandsFile } from '../migration/import-tasks.js';
+import { SettingsStore } from '../settings/store.js';
+import { assertShortcutFree, withCanonicalShortcut } from './shortcuts.js';
 import { validateCommandShape } from './templates.js';
 
 /**
@@ -20,6 +22,8 @@ import { validateCommandShape } from './templates.js';
  * Create assigns identity; updates are full-replace with an expected-revision
  * guard (next-version edits, never a hot-swap: accepted runs already froze
  * their resolved instructions). Unknown extension fields round-trip.
+ * Every write stores a canonical shortcut no app action or other enabled
+ * command holds (`shortcuts.ts`), for routes and the Agent's tool alike.
  */
 export class CommandStore {
   private chain: Promise<void> = Promise.resolve();
@@ -43,6 +47,7 @@ export class CommandStore {
   }
 
   private constructor(
+    private readonly dataDir: string,
     private readonly file: string,
     public data: ServiceCommandsFile,
   ) {}
@@ -52,12 +57,13 @@ export class CommandStore {
     try {
       if ((await stat(file)).size > 8 * 1024 * 1024) throw new Error('Commands file is too large.');
       return new CommandStore(
+        dataDir,
         file,
         parse(ServiceCommandsFileSchema, JSON.parse(await readFile(file, 'utf8'))),
       );
     } catch (error) {
       if (error instanceof Error && 'code' in error && error.code === 'ENOENT')
-        return new CommandStore(file, { version: 1, commands: [] });
+        return new CommandStore(dataDir, file, { version: 1, commands: [] });
       throw new Error('Saved service commands could not be read. The file is preserved.');
     }
   }
@@ -123,18 +129,31 @@ export class CommandStore {
       model: { mode: 'inherit' },
       tools: [],
       memory: 'inherit',
-      ...draft,
+      ...withCanonicalShortcut(draft),
       migratedAt: null,
     });
     validateCommandShape(full);
     return full;
   }
 
+  /**
+   * Throws a ConflictError when the app or another enabled command holds `command`'s shortcut;
+   * lets a caller refuse before asking the user to approve a save. Writes check it again.
+   */
+  async assertShortcutFree(
+    command: ServiceCommandFull,
+    commands: ServiceCommand[] = this.data.commands,
+  ): Promise<void> {
+    const stored = commands.map((item) => parse(ServiceCommandFullSchema, item));
+    assertShortcutFree(command, stored, await SettingsStore.readShortcuts(this.dataDir));
+  }
+
   async create(draft: CommandCreate): Promise<ServiceCommandFull> {
     const full = CommandStore.compose(draft);
-    return this.change((data) => {
+    return this.change(async (data) => {
       if (data.commands.some((command) => command.id === full.id))
         throw new ConflictError(`Command ${full.id} already exists.`);
+      await this.assertShortcutFree(full, data.commands);
       data.commands.push(CommandStore.storable(full));
       return full;
     });
@@ -146,13 +165,15 @@ export class CommandStore {
     expectedRevision: number,
   ): Promise<ServiceCommandFull> {
     if (command.id !== id) throw new TypeError('Invalid data: path id and command id differ.');
+    command = withCanonicalShortcut(command);
     validateCommandShape(command);
-    return this.change((data) => {
+    return this.change(async (data) => {
       const index = data.commands.findIndex((item) => item.id === id);
       const live = data.commands.find((item) => item.id === id);
       if (index < 0 || !live) throw new LedgerNotFound('Command', id);
       if (live.revision !== expectedRevision)
         throw new ConflictError('This command changed. Reload before saving.');
+      await this.assertShortcutFree(command, data.commands);
       const next = parse(ServiceCommandFullSchema, {
         ...command,
         revision: live.revision + 1,

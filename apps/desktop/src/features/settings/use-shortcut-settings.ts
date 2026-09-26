@@ -2,8 +2,8 @@ import { useCallback, useEffect, useState } from 'react';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { useShortcutCapture } from './use-shortcut-capture';
+import { DEFAULT_SHORTCUTS } from '@ai/agent-contracts';
 import {
-  DEFAULT_SHORTCUTS,
   type SettingsSnapshot,
   type ShortcutAction,
   type ShortcutBindings,

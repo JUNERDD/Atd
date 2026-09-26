@@ -48,6 +48,7 @@ export function createDetail(command: ServiceCommandFull): string {
       `Name: ${command.name}`,
       `Description: ${command.description || 'none'}`,
       `Input: ${inputSummary(command.input)}`,
+      `Shortcut: ${command.shortcut || 'none'}`,
       'Parameters:',
       ...(command.parameters.length
         ? command.parameters.map((parameter) => `- ${parameterLine(parameter)}`)
@@ -84,6 +85,8 @@ export function updateDetail(previous: ServiceCommandFull, next: ServiceCommandF
     lines.push(`Description: ${previous.description} → ${next.description}`);
   if (JSON.stringify(previous.input) !== JSON.stringify(next.input))
     lines.push(`Input: ${inputSummary(previous.input)} → ${inputSummary(next.input)}`);
+  if (previous.shortcut !== next.shortcut)
+    lines.push(`Shortcut: ${previous.shortcut || 'none'} → ${next.shortcut || 'none'}`);
   if (JSON.stringify(previous.parameters) !== JSON.stringify(next.parameters))
     lines.push('Parameters:', ...parameterChanges(previous.parameters, next.parameters));
   if (JSON.stringify(previous.tools) !== JSON.stringify(next.tools))

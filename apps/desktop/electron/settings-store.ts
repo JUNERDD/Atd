@@ -2,8 +2,8 @@ import { app } from 'electron';
 import { randomUUID } from 'node:crypto';
 import { mkdir, open, readFile, rename, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
+import { DEFAULT_SHORTCUTS, parseShortcutBindings } from '@ai/agent-contracts';
 import {
-  DEFAULT_SHORTCUTS,
   isAppLanguage,
   resolveLanguage,
   type AppLanguage,
@@ -20,7 +20,6 @@ import { StoredConnectionSchema } from './providers/schema';
 import { migrateProvider } from './providers/legacy';
 import { initialDefaultConnectionId } from './providers/defaults';
 import { parseStoredShellAllowlist } from './settings-shell';
-import { parseShortcutBindings } from './accelerators';
 import { PANEL_SIZE, type PanelSize } from './window-position';
 
 const ProviderSettingsSchema = Type.Object({

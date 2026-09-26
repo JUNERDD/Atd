@@ -1,14 +1,17 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import {
+  DEFAULT_SHORTCUTS,
   parse,
+  parseShortcutBindings,
   UserSettingsSchema,
+  type ShortcutBindingsWire,
   type PatchSettingsRequest,
   type PermissionTier,
   type SettingsResponse,
   type UserSettings,
 } from '@ai/agent-contracts';
-import { Type } from 'typebox';
+import { Type, type Static } from 'typebox';
 import { atomicWrite } from '../config.js';
 import { setUserShellAllowlist } from '../shell-policy.js';
 
@@ -22,6 +25,22 @@ const SettingsFileSchema = Type.Object(
   },
   { additionalProperties: false },
 );
+
+function settingsFile(root: string): string {
+  return path.join(root, 'settings.json');
+}
+
+/** The stored settings file, or null while no client has written one. */
+async function readStored(file: string): Promise<Static<typeof SettingsFileSchema> | null> {
+  let raw: string;
+  try {
+    raw = await readFile(file, 'utf8');
+  } catch (error) {
+    if (error instanceof Error && 'code' in error && error.code === 'ENOENT') return null;
+    throw error;
+  }
+  return parse(SettingsFileSchema, JSON.parse(raw));
+}
 
 /**
  * The user settings every client shares (`settings.json` in the data dir). A missing file means
@@ -41,12 +60,9 @@ export class SettingsStore {
 
   /** `defaultTier` is the operator's `--tier`, the new-task tier until a client picks one. */
   static async load(root: string, defaultTier: PermissionTier): Promise<SettingsStore> {
-    const file = path.join(root, 'settings.json');
-    let raw: string;
-    try {
-      raw = await readFile(file, 'utf8');
-    } catch (error) {
-      if (!(error instanceof Error && 'code' in error && error.code === 'ENOENT')) throw error;
+    const file = settingsFile(root);
+    const stored = await readStored(file);
+    if (!stored) {
       const settings: UserSettings = {
         language: null,
         permissionTier: defaultTier,
@@ -55,12 +71,19 @@ export class SettingsStore {
       };
       return new SettingsStore(file, { settings, revision: 0, initialized: false });
     }
-    const stored = parse(SettingsFileSchema, JSON.parse(raw));
     return new SettingsStore(file, {
       settings: stored.settings,
       revision: stored.revision,
       initialized: stored.initialized,
     });
+  }
+
+  /**
+   * The application shortcuts in effect, read from the file the live store writes atomically:
+   * for callers that load stores per call (the Agent's `command` tool) and hold no instance.
+   */
+  static async readShortcuts(root: string): Promise<ShortcutBindingsWire> {
+    return (await readStored(settingsFile(root)))?.settings.shortcuts ?? DEFAULT_SHORTCUTS;
   }
 
   current(): SettingsResponse {
@@ -72,11 +95,26 @@ export class SettingsStore {
     return this.state.settings.permissionTier;
   }
 
-  patch(request: PatchSettingsRequest): Promise<SettingsResponse> {
-    return this.serialize(() => {
+  /**
+   * Applies a settings patch. Application bindings it sets are validated for this machine's
+   * platform (the desktop there registers them) and stored canonical; `checkShortcuts` then sees
+   * the bindings in effect before and after, inside the write order, and throws to refuse.
+   */
+  patch(
+    request: PatchSettingsRequest,
+    checkShortcuts: (next: ShortcutBindingsWire, previous: ShortcutBindingsWire) => Promise<void>,
+  ): Promise<SettingsResponse> {
+    return this.serialize(async () => {
       if (request.onlyIfUninitialized && this.state.initialized) return this.current();
       const { onlyIfUninitialized: _seed, ...fields } = request;
       void _seed;
+      if (fields.shortcuts)
+        fields.shortcuts = parseShortcutBindings(fields.shortcuts, process.platform);
+      if (fields.shortcuts !== undefined)
+        await checkShortcuts(
+          fields.shortcuts ?? DEFAULT_SHORTCUTS,
+          this.state.settings.shortcuts ?? DEFAULT_SHORTCUTS,
+        );
       return this.write({ ...this.state.settings, ...fields }, true);
     });
   }
