@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { realpath } from 'node:fs/promises';
+import { readdir, realpath } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 
@@ -21,6 +21,34 @@ export function atdSkillsDir(): string {
 /** The product-home markdown specialist catalog, `<atdHome>/agents`. */
 export function atdAgentsDir(): string {
   return path.join(atdHome(), 'agents');
+}
+
+/**
+ * The cross-client user home of skills and agents, `~/.agents`, through `os.homedir()` like
+ * `atdHome`. The read tool may read under it; no tool writes there.
+ */
+export function userAgentsHome(): string {
+  return path.join(homedir(), '.agents');
+}
+
+/**
+ * What the read tools may reach for `~/.agents`: the home itself plus each skill linked into
+ * `~/.agents/skills`. Skill managers commonly symlink a skill there from elsewhere; confinement
+ * compares real paths, so without the link as a root of its own such a skill would read as
+ * outside. Only direct links under `skills` count, so a deeper link cannot widen access. Read on
+ * every call, like the skill catalog.
+ */
+export async function userAgentsReadRoots(): Promise<string[]> {
+  const home = userAgentsHome();
+  const skills = path.join(home, 'skills');
+  try {
+    const entries = await readdir(skills, { withFileTypes: true });
+    const linked = entries.filter((entry) => entry.isSymbolicLink());
+    return [home, ...linked.map((entry) => path.join(skills, entry.name))];
+  } catch {
+    // No skills directory: the home alone.
+    return [home];
+  }
 }
 
 export function inside(root: string, target: string): boolean {
@@ -53,8 +81,8 @@ export interface ConfinedPath {
  * Confines a tool path to the service dataDir, reporting whether it lands in
  * the task output dir. Also allows real paths under the product home skill and
  * agent catalogs (`<atdHome>/skills`, `<atdHome>/agents`, see `atdHome`), and
- * under `readRoots`, which only the read tool passes: the directories of the
- * skills the current run loaded. Every other path outside the data directory
+ * under `readRoots`, which only the read tool passes: `~/.agents` and the
+ * directories of the skills the current run loaded. Every other path outside the data directory
  * stays blocked. `rawPath` is the path the operation touches, which pi's tools
  * pass already resolved, so it is not re-normalized like a tool argument.
  */
