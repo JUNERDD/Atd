@@ -236,7 +236,6 @@
   "todo": {
     "title": "Todos",
     "listLabel": "Todo list",
-    "empty": "No todos yet.",
     "progress": "{{completed}} of {{total}} done",
     "blockedBy": "Blocked by {{ids}}",
     "status": {

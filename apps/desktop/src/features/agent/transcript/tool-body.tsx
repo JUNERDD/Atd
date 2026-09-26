@@ -5,7 +5,6 @@ import type { BlockOf } from '../../../../electron/agent/transcript-schema';
 import { bashCommand, hasToolDetail, structuredDetails, type RowDetails } from './tool-copy';
 import { DetailBox } from './detail-box';
 import { Root as JsonTree } from './json-tree';
-import { TodoBody } from './todo-body';
 import { WebFetchBody, WebSearchBody } from './web-body';
 
 /** Pi's edit diff marks skipped context with a line holding only padding and `...`. */
@@ -97,8 +96,6 @@ export function ToolOutput({
  */
 function DetailsBody({ block, data }: { block: BlockOf<'tool'>; data: RowDetails }) {
   switch (data.type) {
-    case 'todo':
-      return <TodoBody details={data} copyText={block.output} />;
     case 'webSearch':
       return <WebSearchBody details={data} copyText={block.output} />;
     case 'webFetch':

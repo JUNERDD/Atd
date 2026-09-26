@@ -1,13 +1,55 @@
+import { Circle, CircleCheck, LoaderCircle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { PopoverDescription, PopoverHeader, PopoverTitle } from '@ai/ui/components/popover';
 import { ScrollArea } from '@ai/ui/components/scroll-area';
-import { TodoStatusIcon } from '../transcript/todo-body';
+import { cn } from '@ai/ui/lib/utils';
 import type { VisibleTodo } from './selectors';
 
 /**
- * The task list of the Todos view, in rpiv-todo id order, with the transcript's todo status
- * glyphs. Subjects truncate to one line; the full subject (and what blocks a task) stays in the
- * row's native tooltip and in the accessible text, which is never truncated.
+ * Status glyph of one todo: a spinner while in progress, an empty circle while pending, a check
+ * once completed. Deleted items are tombstones and never reach it. The glyph carries the
+ * status name for assistive technology because the row text alone does not state it.
+ */
+function TodoStatusIcon({ status }: { status: VisibleTodo['status'] }) {
+  const { t } = useTranslation('tasks');
+  const props = { role: 'img', strokeWidth: 1.75, className: 'size-3.5 shrink-0' };
+  switch (status) {
+    case 'in_progress':
+      return (
+        <LoaderCircle
+          {...props}
+          className={cn(props.className, 'animate-spin')}
+          aria-label={t('todo.status.in_progress')}
+        />
+      );
+    case 'pending':
+      return (
+        <Circle
+          {...props}
+          className={cn(props.className, 'text-muted-foreground')}
+          aria-label={t('todo.status.pending')}
+        />
+      );
+    case 'completed':
+      return (
+        <CircleCheck
+          {...props}
+          className={cn(props.className, 'text-muted-foreground')}
+          aria-label={t('todo.status.completed')}
+        />
+      );
+    default: {
+      const _exhaustive: never = status;
+      void _exhaustive;
+      return null;
+    }
+  }
+}
+
+/**
+ * The task list of the Todos view, in rpiv-todo id order, with one status glyph per task.
+ * Subjects truncate to one line; the full subject (and what blocks a task) stays in the row's
+ * native tooltip and in the accessible text, which is never truncated.
  */
 export function TodoList({ todos }: { todos: readonly VisibleTodo[] }) {
   const { t } = useTranslation('tasks');
