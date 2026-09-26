@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import type { Api, Model } from '@earendil-works/pi-ai';
 import type { ModelRuntime, SessionEntry } from '@earendil-works/pi-coding-agent';
 import { errorMessage, type ConfirmReview, type GrantScope } from '@ai/agent-contracts';
@@ -101,6 +102,9 @@ export function createReviewer(deps: ReviewerDeps): Reviewer {
         },
         {
           maxTokens: Math.min(2048, source.model.maxTokens),
+          // Each review is its own conversation, apart from the task's. Providers that route by
+          // session (OpenCode rejects requests without `x-opencode-session`) read this id.
+          sessionId: randomUUID(),
           signal: signal
             ? AbortSignal.any([signal, AbortSignal.timeout(REVIEW_TIMEOUT_MS)])
             : AbortSignal.timeout(REVIEW_TIMEOUT_MS),
