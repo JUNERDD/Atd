@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { ArrowUp, Plus, Square } from 'lucide-react';
 import { ScrollArea } from '@ai/ui/components/scroll-area';
 import type { ShortcutBindings } from '../../electron/settings-contract';
-import { DEFAULT_SHORTCUTS } from '../../electron/settings-contract';
+import { DEFAULT_SHORTCUTS } from '@ai/agent-contracts';
 import type { AgentTask, RunStatus } from '../../electron/agent/task-schema';
 import { isActive } from '../../electron/agent/task-schema';
 import type { PermissionRequest } from '../../electron/agent/permission-schema';

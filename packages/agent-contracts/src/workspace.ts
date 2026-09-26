@@ -17,8 +17,8 @@ export const AppLanguageSchema = Type.Union([Type.Literal('en'), Type.Literal('z
 const AcceleratorSchema = Type.String({ minLength: 1, maxLength: 100 });
 
 /**
- * Application shortcut bindings. The service stores them as opaque accelerators; the desktop
- * validates the grammar before saving and owns global registration.
+ * Application shortcut bindings. The accelerator grammar lives in `shortcuts.ts`; clients validate
+ * it before saving, and the desktop owns global registration.
  */
 export const ShortcutBindingsSchema = Type.Object(
   {

@@ -40,5 +40,5 @@ export function registerManageRoutes(app: FastifyInstance, ctx: ManageContext): 
   registerResourceRoutes(app, { ledger: ctx.ledger, paths: ctx.config.paths });
   registerMcpStageRoute(app, { dataDir: ctx.config.paths.root });
   registerReferenceStageRoute(app, { dataDir: ctx.config.paths.root });
-  registerSettingsRoutes(app, ctx.settings, ctx.log);
+  registerSettingsRoutes(app, ctx.settings, ctx.config.paths.root, ctx.log);
 }
