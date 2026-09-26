@@ -9,8 +9,9 @@ import type { TaskProgress } from './selectors';
 import './progress.css';
 
 /**
- * Circular progress of the todo list: a muted track with an arc for the completed share. The pill
- * text says the same, so the ring is decorative. `pathLength` makes the dash a plain percentage.
+ * Circular progress of the todo list: a muted track with a green arc for the completed share.
+ * The pill text says the same, so the ring is decorative. `pathLength` makes the dash a plain
+ * percentage.
  */
 function StepRing({ completed, total }: { completed: number; total: number }) {
   const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
@@ -25,7 +26,6 @@ function StepRing({ completed, total }: { completed: number; total: number }) {
           r="6"
           pathLength={100}
           strokeDasharray={`${percent} 100`}
-          data-complete={percent === 100 || undefined}
         />
       )}
     </svg>
