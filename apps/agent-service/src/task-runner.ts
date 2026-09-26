@@ -21,6 +21,7 @@ import { AuditWriter } from './audit.js';
 import {
   applyRunToSession,
   createLiveState,
+  NO_RUN_MATERIAL,
   type LiveState,
   type RunAttachment,
   type RunMaterial,
@@ -61,7 +62,7 @@ export class TaskRunner {
   /** Memory scope of the run the live session last served; its shutdown flush learns under it. */
   private liveMemory: RunnerMemoryScope | null = null;
   private currentRunId = '';
-  private material: RunMaterial = { instructions: '', attachments: [], references: '', skills: [] };
+  private material: RunMaterial = NO_RUN_MATERIAL;
   private aborted = false;
   private audit: AuditWriter | null = null;
   private readonly grants = new Set<string>();
@@ -154,7 +155,7 @@ export class TaskRunner {
       // T3/T4: skill, role, MCP and reference selections freeze once at
       // accept; the run's material and session binding come from them.
       const frozen = await freezeRunSelections(this.session, run);
-      const blocked = runSkillsError(run, frozen.skills.loaded);
+      const blocked = runSkillsError(run, frozen.skills.loaded, frozen.catalog);
       if (blocked) {
         await this.setStatus(run.id, 'failed', blocked);
         return;
@@ -164,6 +165,7 @@ export class TaskRunner {
         attachments,
         references: frozen.references.material,
         skills: frozen.skills.loaded,
+        catalog: frozen.catalog,
       };
       const live = await this.ensureSession(run, frozen.references.agents);
       rebindSubagentsForRun(this.taskId, run);

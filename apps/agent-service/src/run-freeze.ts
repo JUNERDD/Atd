@@ -12,7 +12,8 @@ import { ensureSkillProfile, skillProfilePaths } from './skills/profile.js';
 import { freezeRunRole } from './skills/roles.js';
 import { captureRunSkills, skillChars, type RunSkills } from './skills/run-skills.js';
 import { takeTaskStaging } from './skills/staging.js';
-import { freezeRunSkills, releaseRun } from './skills/versions.js';
+import { freezeSkillCatalog, type RunSkillCatalog } from './skills/skill-catalog.js';
+import { freezeRunSkills, loadSkillCatalog, releaseRun } from './skills/versions.js';
 import { readServiceId, type RunnerContext } from './task-runner.js';
 
 /** What a freeze needs from the task runner: its context, task and run audit. */
@@ -26,6 +27,8 @@ export interface RunFreezeDeps {
 export interface FrozenSelections {
   references: RunReferences;
   skills: RunSkills;
+  /** The skills the run's model is told about and may load (skills/skill-catalog.ts). */
+  catalog: RunSkillCatalog;
 }
 
 /**
@@ -39,14 +42,14 @@ export async function freezeRunSelections(
   deps: RunFreezeDeps,
   run: TaskRun,
 ): Promise<FrozenSelections> {
-  const { toolCeiling, skills } = await freezeSkills(deps, run);
+  const { toolCeiling, skills, catalog } = await freezeSkills(deps, run);
   const mcp = await freezeMcp(deps, run);
   const references = await freezeReferencesForRun(deps, run, {
     toolCeiling,
     mcp,
-    skillChars: skillChars(run.id, skills.loaded),
+    skillChars: skillChars(run.id, skills.loaded, catalog),
   });
-  return { references, skills };
+  return { references, skills, catalog };
 }
 
 /** Releases the run's frozen skill and MCP records once the run ends. */
@@ -83,26 +86,29 @@ async function freezeReferencesForRun(
 }
 
 /**
- * Freezes skills and the role, then captures the skills the run loads.
- * Answers those skills and the run's tool ceiling for its children.
+ * Freezes skills and the role, then captures the skills the run loads and the skill catalog its
+ * model is told about, both from one read of the catalog. Answers those and the run's tool ceiling
+ * for its children.
  */
 async function freezeSkills(
   deps: RunFreezeDeps,
   run: TaskRun,
-): Promise<{ toolCeiling: string[]; skills: RunSkills }> {
+): Promise<{ toolCeiling: string[]; skills: RunSkills; catalog: RunSkillCatalog }> {
   // T3 additive freeze: staged next-run selection is consumed once; runs
   // without staging freeze empty skills + the default role (T1/T2 shape).
   const profile = skillProfilePaths(deps.ctx.paths.root, deps.ctx.paths.agentDir);
   await ensureSkillProfile(profile);
   const staging = await takeTaskStaging(profile, deps.taskId);
-  const snapshot = await freezeRunSkills(profile, run.id, staging.skills);
-  const { capabilities } = await freezeRunRole(profile, {
+  const catalogRecords = await loadSkillCatalog(profile);
+  const snapshot = await freezeRunSkills(profile, run.id, staging.skills, catalogRecords);
+  const { role, capabilities } = await freezeRunRole(profile, {
     runId: run.id,
     roleId: staging.roleId,
     requestedTools: [...run.snapshot.tools],
     requestedSkills: snapshot.skills.map((skill) => skill.name),
   });
   const skills = await captureRunSkills(snapshot, capabilities);
+  const catalog = freezeSkillCatalog(catalogRecords, role, capabilities.revokedSkills);
   deps.audit({
     taskId: deps.taskId,
     runId: run.id,
@@ -110,8 +116,13 @@ async function freezeSkills(
     skillCount: snapshot.skills.length,
     loadedSkills: skills.loaded.map(({ name, revision }) => ({ name, revision })),
     skillDiagnostics: skills.diagnostics,
+    skillCatalog: {
+      loadable: catalog.invocable.length,
+      userOnly: catalog.userOnly.length,
+      chars: catalog.text.length,
+    },
   });
-  return { toolCeiling: capabilities.tools, skills };
+  return { toolCeiling: capabilities.tools, skills, catalog };
 }
 
 /** Freezes the run's MCP selection; answers the servers and selection, or null while degraded. */

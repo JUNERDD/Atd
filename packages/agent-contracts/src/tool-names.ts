@@ -11,6 +11,12 @@ export const TODO_TOOL = 'todo';
 export const WEB_SEARCH_TOOL = 'web_search';
 export const WEB_FETCH_TOOL = 'fetch_content';
 
+/**
+ * Loads one skill from the run's model-invocable catalog. Parent-only, and registered only when
+ * that catalog is not empty.
+ */
+export const LOAD_SKILL_TOOL = 'load_skill';
+
 /** pi-hermes-memory tools, registered only when the run snapshot enables memory. */
 export const MEMORY_TOOLS: readonly string[] = [
   'memory_search',

@@ -70,7 +70,8 @@
       "ls": "列出文件夹",
       "todo": "更新待办",
       "webSearch": "搜索网页",
-      "webFetch": "获取网页"
+      "webFetch": "获取网页",
+      "loadSkill": "加载技能"
     },
     "target": {
       "user": "用户",

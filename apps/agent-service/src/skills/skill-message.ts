@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+import { LOAD_SKILL_TOOL } from '@ai/agent-contracts';
 import type { TextContent } from '@earendil-works/pi-ai';
 import type { SessionEntry } from '@earendil-works/pi-coding-agent';
 import { Type, type Static } from 'typebox';
@@ -27,6 +29,19 @@ const SkillMessageDetailsSchema = Type.Object({
   runId: Type.String(),
   skills: Type.Array(Type.Object({ name: Type.String(), revision: Type.String() })),
 });
+
+/**
+ * `details` of a successful `load_skill` result whose single text part is the skill's block
+ * (skills/load-skill-tool.ts). A result for a skill that was already loaded carries no block and
+ * does not match.
+ */
+export const LoadSkillDetailsSchema = Type.Object({
+  name: Type.String(),
+  revision: Type.String(),
+  baseDir: Type.String(),
+});
+
+export type LoadSkillDetails = Static<typeof LoadSkillDetailsSchema>;
 
 /**
  * An `app-skill` message as Pi takes it from `before_agent_start` or `sendMessage`. Content part 0
@@ -66,13 +81,37 @@ export function reattachMessage(runId: string, skills: readonly SkillBlock[]): S
   return skillMessage(REATTACH_PREAMBLE, runId, skills);
 }
 
+/** The revision of a SKILL.md body: the first 32 hex digits of its SHA-256. */
+export function skillRevision(body: string): string {
+  return createHash('sha256').update(body).digest('hex').slice(0, 32);
+}
+
 /** Characters a message puts into the model context. */
 export function contentChars(message: SkillMessage): number {
   return message.content.reduce((total, part) => total + part.text.length, 0);
 }
 
+/**
+ * The skills a session entry brings into context: every skill of an `app-skill` message (the
+ * user's `/` selection or a compaction's re-attach) and the skill of a successful `load_skill`
+ * result. Other entries, and entries of another shape, carry none. This is the one reader for
+ * whether a skill is loaded, so the `load_skill` dedupe and the compaction re-attach agree.
+ */
+export function readCarriedSkills(entry: SessionEntry): SkillBlock[] {
+  const message = readSkillMessage(entry);
+  if (message) return message;
+  if (entry.type !== 'message') return [];
+  const result = entry.message;
+  if (result.role !== 'toolResult' || result.toolName !== LOAD_SKILL_TOOL || result.isError)
+    return [];
+  const [part, ...rest] = result.content;
+  if (part?.type !== 'text' || rest.length || !Value.Check(LoadSkillDetailsSchema, result.details))
+    return [];
+  return [{ name: result.details.name, revision: result.details.revision, block: part.text }];
+}
+
 /** The skills an `app-skill` session entry carries; null for other entries or another shape. */
-export function readSkillMessage(entry: SessionEntry): SkillBlock[] | null {
+function readSkillMessage(entry: SessionEntry): SkillBlock[] | null {
   if (entry.type !== 'custom_message' || entry.customType !== APP_SKILL) return null;
   const { content, details } = entry;
   if (!Value.Check(SkillMessageDetailsSchema, details) || !Array.isArray(content)) return null;

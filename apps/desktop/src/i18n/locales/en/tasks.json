@@ -70,7 +70,8 @@
       "ls": "List folder",
       "todo": "Update todos",
       "webSearch": "Search the web",
-      "webFetch": "Fetch web page"
+      "webFetch": "Fetch web page",
+      "loadSkill": "Load skill"
     },
     "target": {
       "user": "User",

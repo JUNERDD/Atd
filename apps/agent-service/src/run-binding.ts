@@ -1,4 +1,5 @@
 import {
+  LOAD_SKILL_TOOL,
   MEMORY_TOOLS,
   TODO_TOOL,
   WEB_FETCH_TOOL,
@@ -41,7 +42,8 @@ const SUBAGENT_TOOL = 'subagent';
  * run's key matches; any change means a new session on the same session file.
  * Skills are not part of it: each run brings its captured skills in its own
  * hidden message (skills/session-skills.ts), so a different skill selection
- * reuses the session.
+ * reuses the session. Only whether the run's skill catalog lists a loadable
+ * skill is, through the `load_skill` tool (skills/load-skill-tool.ts).
  */
 export interface RunBinding {
   /** Identity of everything above; equal keys mean an equal Pi session. */
@@ -56,7 +58,8 @@ export interface RunBinding {
 
 /**
  * Reads a run's frozen role and MCP records into its session binding, with
- * the atd agents its references resolved to at freeze.
+ * the atd agents its references resolved to at freeze. The runner sets the
+ * run's material, with its frozen skill catalog, before it binds the run.
  */
 export async function prepareRunBinding(
   deps: SessionFactoryDeps,
@@ -66,12 +69,14 @@ export async function prepareRunBinding(
   const profile = skillProfilePaths(deps.ctx.paths.root, deps.ctx.paths.agentDir);
   const role = await loadRunRole(profile, run.id);
   const mcp = await prepareSessionMcp(deps);
-  // Memory tools follow the frozen memory flag, which is part of the key below.
+  const loadable = deps.currentMaterial().catalog.invocable.length > 0;
+  // Memory tools follow the frozen memory flag and `load_skill` the catalog; `tools` is in the key.
   const tools = [
     ...new Set([
       ...run.snapshot.tools,
       ...SERVICE_TOOLS,
       ...(run.snapshot.memory ? MEMORY_TOOLS : []),
+      ...(loadable ? [LOAD_SKILL_TOOL] : []),
       SUBAGENT_TOOL,
       ...mcp.bindings.map((binding) => binding.proxyName),
     ]),

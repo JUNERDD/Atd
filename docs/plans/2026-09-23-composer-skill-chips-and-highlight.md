@@ -55,6 +55,7 @@ flowchart LR
 
 - 排队消息（运行中的 steer / follow-up）携带区块。运行中仍然拒绝区块（`apps/desktop/electron/agent/service-tasks.ts:243-252`），排队文本里手输的 `/skill:` 只是普通文本。
 - 模型自主发现并加载未被选择的技能。产品只给运行提供显式选择的技能（`apps/agent-service/src/skills/loader.ts:74-83`），本次不改变。
+  - 2026-09-26 更新：已由 [`2026-09-26-model-skill-catalog.md`](2026-09-26-model-skill-catalog.md) 实施。模型通过隐藏的 `app-skill-catalog` 目录与 `load_skill` 工具按需加载技能，本计划的服务端确定性注入仍是 `/` 显式选择的路径。
 - 子代理继承技能：子代理当前不接收技能（`apps/agent-service/src/subagents/agents.ts:52,68,84,128`），本次不改变。
 - 迁移旧任务的标题和会话文件。
 - 快捷指令出现在草稿中间（见 Clarifying Questions 的默认决定）。
@@ -66,6 +67,7 @@ flowchart LR
   - C（推荐）：服务端确定性注入。看到区块就在同一轮加载，不依赖模型是否照做。这与 Agent Skills 规范对“用户显式调用”的建议一致（[agentskills.io](https://agentskills.io/integrate-skills)：由宿主查找并注入），Claude Code 与 Codex 也都在宿主侧处理显式调用（[Claude Code](https://code.claude.com/docs/en/skills)、[Codex](https://learn.chatgpt.com/docs/build-skills)）。
   - B：注册一个 `skill` 工具，由模型看到标记后自己调用。对话记录里会出现一次可见的“加载技能”调用，但 pi-agent-core 没有 `toolChoice`，无法强制调用，较弱的模型可能跳过；每个技能还多一轮往返。
   - 已排除：A「系统提示列出 + 模型用 `read` 读取」。pi 的列表路径指向 `~/.agents`，而服务端的路径限制会拦截这里的读取；其他位置在默认档位下要逐次询问（`apps/agent-service/src/service-fs.ts:26-50`，`packages/agent-contracts/src/confirms.ts:11,112-117`）。E「每次调用 LLM 前改写上下文」：只作用于单次调用、不落盘，压缩摘要看不到它，冻结版本被清理后也无法重放。
+  - 2026-09-26 更新：`~/.agents` 已对 `read`、`grep`、`find`、`ls` 开放只读访问（按 `read:outside` 走权限关卡），模型侧目录改用专用 `load_skill` 工具加载冻结目录中的技能，见 [`2026-09-26-model-skill-catalog.md`](2026-09-26-model-skill-catalog.md) D5、D9。
 - [x] **Q2 技能目录里的 `references/` 等文件是否允许读取？** 用户选择「允许只读」（2026-09-23），落为 A7。
   - 注入的正文会写“References are relative to <技能目录>”。但 `~/.agents` 下的技能目录现在被拦截，其余位置在默认档位下每次都要确认，所以引用了附属文件的技能只能部分生效。这是既有缺陷，与第 5 项直接相关，但涉及安全边界，需要你决定。
   - 推荐：本次运行已加载的技能目录对 `read` 工具只读放行，不再确认；写入、编辑和 `bash` 仍按现有规则处理。

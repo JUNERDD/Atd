@@ -1,4 +1,5 @@
 import {
+  BookOpen,
   Bot,
   Brain,
   FilePen,
@@ -16,6 +17,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import {
+  LOAD_SKILL_TOOL,
   TODO_TOOL,
   WEB_FETCH_TOOL,
   WEB_SEARCH_TOOL,
@@ -46,6 +48,7 @@ export type StepKey =
   | 'activity.step.todo'
   | 'activity.step.webSearch'
   | 'activity.step.webFetch'
+  | 'activity.step.loadSkill'
   | SubagentStepKey;
 
 export type MemoryTargetKey =
@@ -89,6 +92,7 @@ const STEP_KEYS: Record<string, StepKey> = {
   [TODO_TOOL]: 'activity.step.todo',
   [WEB_SEARCH_TOOL]: 'activity.step.webSearch',
   [WEB_FETCH_TOOL]: 'activity.step.webFetch',
+  [LOAD_SKILL_TOOL]: 'activity.step.loadSkill',
 };
 
 const MEMORY_TARGETS: Record<string, MemoryTargetKey> = {
@@ -115,6 +119,8 @@ const ICONS: Record<string, LucideIcon> = {
   [TODO_TOOL]: ListTodo,
   [WEB_SEARCH_TOOL]: Globe,
   [WEB_FETCH_TOOL]: Link,
+  // Same mark as skill chips in the composer and the extension settings.
+  [LOAD_SKILL_TOOL]: BookOpen,
 };
 
 function stepKey(name: string): StepKey | null {
@@ -188,6 +194,7 @@ export function toolTarget(name: string, args: Record<string, unknown>): string 
   if (name === TODO_TOOL) return stringArg(args.subject);
   if (name === WEB_SEARCH_TOOL) return stringArg(args.query) ?? firstString(args.queries);
   if (name === WEB_FETCH_TOOL) return stringArg(args.url) ?? firstString(args.urls);
+  if (name === LOAD_SKILL_TOOL) return stringArg(args.name);
   return null;
 }
 
