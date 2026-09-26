@@ -77,13 +77,9 @@ span.composer-progress-part {
 }
 
 .composer-progress-ring-value {
-  stroke: var(--foreground);
+  stroke: var(--ata-status-progress);
   stroke-linecap: round;
   transition: stroke-dasharray 200ms ease-out;
-}
-
-.composer-progress-ring-value[data-complete] {
-  stroke: var(--primary);
 }
 
 @media (prefers-reduced-motion: reduce) {
