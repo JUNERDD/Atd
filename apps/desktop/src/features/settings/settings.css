@@ -299,10 +299,14 @@
 }
 /* A row opens its details from anywhere: the open button fills the row under its content, which
  * ignores the pointer, while the actions and the inline sign-in field stay above it. */
-.settings-extension-row {
+/*
+ * A row that opens its details on click: a button fills the row under its content, which ignores
+ * the pointer, while trailing actions and inline fields stay interactive above it.
+ */
+.settings-open-row {
   position: relative;
 }
-.settings-extension-row-open {
+.settings-open-row-button {
   position: absolute;
   inset: 0;
   padding: 0;
@@ -313,25 +317,25 @@
   outline: none;
   transition: background-color 100ms;
 }
-.settings-extension-row > :not(.settings-extension-row-open) {
+.settings-open-row > :not(.settings-open-row-button) {
   position: relative;
   pointer-events: none;
 }
-.settings-extension-row > [data-slot='item-actions'],
-.settings-extension-row .settings-extension-mcp-auth {
+.settings-open-row > [data-slot='item-actions'],
+.settings-open-row .settings-extension-mcp-auth {
   pointer-events: auto;
 }
-.settings-extension-row:hover > .settings-extension-row-open,
-.settings-extension-row:has([aria-expanded='true']) > .settings-extension-row-open,
-.settings-extension-row-open:focus-visible {
+.settings-open-row:hover > .settings-open-row-button,
+.settings-open-row:has([aria-expanded='true']) > .settings-open-row-button,
+.settings-open-row-button:focus-visible {
   background: var(--muted);
 }
-.dark .settings-extension-row:hover > .settings-extension-row-open,
-.dark .settings-extension-row:has([aria-expanded='true']) > .settings-extension-row-open,
-.dark .settings-extension-row-open:focus-visible {
+.dark .settings-open-row:hover > .settings-open-row-button,
+.dark .settings-open-row:has([aria-expanded='true']) > .settings-open-row-button,
+.dark .settings-open-row-button:focus-visible {
   background: var(--ata-surface-ghost-hover);
 }
-.settings-extension-row-open:focus-visible {
+.settings-open-row-button:focus-visible {
   outline: 1px solid var(--ring);
   box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 30%, transparent);
 }
