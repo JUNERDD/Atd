@@ -8,6 +8,12 @@
       "label": "Learn automatically",
       "description": "Save stable preferences and clear corrections as you work."
     },
+    "create": {
+      "label": "Create memory",
+      "opened": "Opened a new AI session in the task panel to save a memory.",
+      "pausedHint": "Resume automatic learning to let the agent save memories.",
+      "enableSkill": "Enable {{name}} in Extensions → Skills before creating with AI."
+    },
     "list": {
       "userProfile": "User profile",
       "corrections": "Corrections and learnings",

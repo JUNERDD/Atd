@@ -217,8 +217,17 @@ export interface CommandSession {
   name: string;
 }
 
-/** Hands Extensions create-with-AI off to a new panel session seeded with an app skill. */
-export type ExtensionSessionKind = 'skill' | 'subagent' | 'mcp';
+/**
+ * Hands create-with-AI off to a new panel session seeded with an app skill: Extensions creates a
+ * skill, subagent, or MCP server; Memory saves or updates a memory.
+ */
+export const ExtensionSessionKindSchema = Type.Union([
+  Type.Literal('skill'),
+  Type.Literal('subagent'),
+  Type.Literal('mcp'),
+  Type.Literal('memory'),
+]);
+export type ExtensionSessionKind = Static<typeof ExtensionSessionKindSchema>;
 export interface ExtensionSession {
   kind: ExtensionSessionKind;
 }
