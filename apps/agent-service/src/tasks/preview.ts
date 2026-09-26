@@ -1,29 +1,19 @@
 import type { FastifyInstance } from 'fastify';
 import {
+  DEFAULT_RUN_TOOLS,
   parse,
   PreviewTaskRequestSchema,
   RunSnapshotSchema,
   type PreviewTaskRequest,
   type PreviewTaskResponse,
   type ServiceCommandFull,
+  snapshotToolsFor,
 } from '@ai/agent-contracts';
 import { CommandStore } from '../commands/store.js';
 import { defaultArguments, resolveCommandInstructions } from '../commands/templates.js';
 import { ConnectionStore } from '../credentials/connections.js';
 import type { Ledger } from '../ledger.js';
 import { resolveRunModel, resolveRunThinkingLevel } from './run-selection.js';
-
-/** The snapshot tools a plain submit freezes (runner-manager.ts `freezeSnapshot`). */
-const DEFAULT_RUN_TOOLS = [
-  'read',
-  'write',
-  'edit',
-  'bash',
-  'command',
-  'grep',
-  'find',
-  'ls',
-] as const;
 
 export interface PreviewContext {
   dataDir: string;
@@ -64,8 +54,9 @@ export async function resolvePreview(
   const policy = body.policy;
   const selection = policy && policy.useDefaultModel !== true ? policy.model : undefined;
   const model = resolveRunModel(connections, selection, warnings);
-  // Without a command, mirror what RunnerManager.freezeSnapshot freezes for a plain submit.
-  const tools = body.policy?.tools ?? command?.tools ?? [...DEFAULT_RUN_TOOLS];
+  // Without a command, mirror what RunnerManager.freezeSnapshot freezes for a new task.
+  const tools =
+    body.policy?.tools ?? (command ? snapshotToolsFor(command.tools) : [...DEFAULT_RUN_TOOLS]);
   const memory = body.policy?.memory ?? (command ? command.memory !== 'off' : true);
   const thinkingLevel = resolveRunThinkingLevel(
     connections,

@@ -4,8 +4,8 @@ import type { SkillProfilePaths } from './profile.js';
 import { runSkillRefs, type SkillRefInput } from './versions.js';
 
 /**
- * Next-run staging. SubmitTaskRequest is frozen, so skill/role selection for
- * the next run is staged per task and consumed once at run freeze. Staging
+ * Next-run staging. SubmitTaskRequest carries only what acceptance freezes, so
+ * skill/role selection for the next run is staged per task and consumed once at run freeze. Staging
  * never mutates an accepted run; unreleased staging applies to the next run.
  */
 export interface TaskStaging {
