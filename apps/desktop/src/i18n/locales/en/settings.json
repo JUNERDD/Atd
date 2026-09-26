@@ -226,17 +226,14 @@
     "disable": "Disable",
     "remove": "Remove",
     "confirmRemove": "Confirm remove",
-    "cancel": "Cancel",
-    "mcpCatalogNote": "Adding a server does not change an accepted run. Disabling or removing rejects new calls immediately."
+    "cancel": "Cancel"
   },
   "service": {
     "loading": "Loading service status…",
     "skillsTitle": "Skills",
     "rolesTitle": "Roles",
     "rolesNote": "Subagent roles bounding what a run may use. Edits apply to the next run.",
-    "agentsNote": "System subagents, plus Markdown subagents under ~/.atd/agents. Changes apply to the next run.",
     "mcpTitle": "MCP servers",
-    "mcpNote": "External tools and resources. Config changes apply to the next run, never hot-swapped.",
     "emptySkills": "No skills found.",
     "emptyRoles": "No roles are configured.",
     "emptyAgents": "No subagents are configured.",

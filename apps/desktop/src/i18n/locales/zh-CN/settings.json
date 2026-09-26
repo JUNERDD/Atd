@@ -226,17 +226,14 @@
     "disable": "禁用",
     "remove": "移除",
     "confirmRemove": "确认移除",
-    "cancel": "取消",
-    "mcpCatalogNote": "添加服务器不会改变已接受的运行。禁用或移除会立即拒绝新的调用。"
+    "cancel": "取消"
   },
   "service": {
     "loading": "正在加载服务状态…",
     "skillsTitle": "技能",
     "rolesTitle": "角色",
     "rolesNote": "限定单轮可用的子代理角色。修改对下一轮生效。",
-    "agentsNote": "系统子代理，以及 ~/.atd/agents 下的 Markdown 子代理。修改对下一轮生效。",
     "mcpTitle": "MCP 服务",
-    "mcpNote": "外部工具与资源。配置修改对下一轮生效，不会热替换。",
     "emptySkills": "没有发现技能。",
     "emptyRoles": "未配置任何角色。",
     "emptyAgents": "未配置任何子代理。",

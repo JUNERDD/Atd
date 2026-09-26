@@ -138,7 +138,6 @@ export function ExtensionSkillsGroup({
       {form}
       <ExtensionGroup
         title={t('extensions.tabSkills')}
-        note=""
         empty={empty}
         loading={loading}
         hasRows={shown.length > 0}

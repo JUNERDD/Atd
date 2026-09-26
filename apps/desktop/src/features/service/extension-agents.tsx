@@ -5,7 +5,7 @@ import { Button } from '@ai/ui/components/button';
 import { HighlightedText } from '@ai/ui/components/highlighted-text';
 import { Input } from '@ai/ui/components/input';
 import { Textarea } from '@ai/ui/components/textarea';
-import { Item, ItemContent, ItemDescription, ItemTitle } from '@ai/ui/components/item';
+import { Item, ItemContent, ItemDescription, ItemMedia, ItemTitle } from '@ai/ui/components/item';
 import { matchFields } from '@ai/ui/lib/fuzzy-match';
 import { ExtensionGroup } from './extension-group';
 import { ROLE_TOOLS, type ExtensionAgentRow, type ExtensionRoleTool } from './use-service';
@@ -130,8 +130,8 @@ function AgentForm({
 
 /**
  * Subagent catalog: the service's system agents, then the markdown specialists (`~/.atd/agents`);
- * the add form opens from the tab menu. System rows name their source on the description line,
- * like skills. The search matches and marks the name and that line.
+ * the add form opens from the tab menu. Rows share the skill row anatomy (icon ring, name, and a
+ * description line naming system sources); the search matches and marks the name and that line.
  */
 export function ExtensionAgentsGroup({
   rows,
@@ -189,7 +189,6 @@ export function ExtensionAgentsGroup({
       {form}
       <ExtensionGroup
         title={t('extensions.tabSubagents')}
-        note={t('service.agentsNote')}
         empty={empty}
         loading={loading}
         hasRows={shown.length > 0}
@@ -197,8 +196,11 @@ export function ExtensionAgentsGroup({
         emptyIcon={<Bot />}
       >
         {shown.map(({ row, description, match }) => (
-          <Item asChild key={row.name} size="xs">
+          <Item asChild key={row.name} size="xs" className="pl-0">
             <li>
+              <ItemMedia variant="icon">
+                <Bot />
+              </ItemMedia>
               <ItemContent>
                 <ItemTitle title={row.name}>
                   <HighlightedText text={row.name} ranges={match?.ranges.name} />
