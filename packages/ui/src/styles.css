@@ -23,6 +23,8 @@
   /* Figma text/match (#80b7fb): search matches in lists, the composer's blue made a little paler. */
   --ata-text-match: color-mix(in srgb, var(--ata-syntax-variable) 80%, white);
   --ata-border-subtle: rgb(255 255 255 / 14%);
+  /* Progress fill, such as the todo ring's completed arc. */
+  --ata-status-progress: #22c55e;
   --ata-radius-panel: 22px;
   /* Figma activity/connector: the opaque rail shared by the activity tree. */
   --activity-connector: #3c3c3c;
