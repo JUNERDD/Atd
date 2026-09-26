@@ -98,14 +98,15 @@
 .settings-page[hidden]:has(.settings-editor, .command-editor, .settings-loading) {
   display: none;
 }
-/* Extensions keeps its heading and tab row fixed, so the page itself never outgrows the viewport. */
-.settings-page:has(.settings-extension-settings) {
+/* Extensions and memory keep their heading fixed above a scrolling list, so the page never
+ * outgrows the viewport. */
+.settings-page:has(.settings-extension-settings, .memory-settings) {
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
 }
-.settings-page[hidden]:has(.settings-extension-settings) {
+.settings-page[hidden]:has(.settings-extension-settings, .memory-settings) {
   display: none;
 }
 .settings-editor,
@@ -167,8 +168,15 @@
 /*
  * The drawer bar already names the section, so a page-level title below it reads as a duplicate.
  * It stays in the accessibility tree as the page's heading; only sub-pages show a visible title.
+ * A title hint stays visible, so its note remains reachable.
  */
-.settings-window[data-layout='drawer'] .settings-page-heading[data-section-title] .editor-heading {
+.settings-window[data-layout='drawer']
+  .settings-page-heading[data-section-title]
+  .editor-heading:not(:has(> :not(h2))),
+.settings-window[data-layout='drawer']
+  .settings-page-heading[data-section-title]
+  .editor-heading
+  > h2 {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -177,6 +185,20 @@
   overflow: hidden;
   clip-path: inset(50%);
   white-space: nowrap;
+}
+/* With the title hidden, a title hint follows the description on its line instead. */
+.settings-window[data-layout='drawer']
+  .settings-page-heading[data-section-title]
+  .settings-section-heading:has(.editor-heading > :not(h2)) {
+  flex-direction: row;
+  align-items: center;
+  gap: 4px;
+}
+.settings-window[data-layout='drawer']
+  .settings-page-heading[data-section-title]
+  .settings-section-heading
+  > .editor-heading {
+  order: 1;
 }
 .settings-overview-toolbar {
   display: flex;
@@ -339,9 +361,9 @@
   outline: 1px solid var(--ring);
   box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 30%, transparent);
 }
-/* Skill icons sit in a ring and center on the title plus description, not the title line. */
-.settings-extension-settings [data-slot='item-media'],
-.settings-extension-settings
+/* Extension and memory icons sit in a ring and center on the title plus description. */
+:is(.settings-extension-settings, .memory-settings) [data-slot='item-media'],
+:is(.settings-extension-settings, .memory-settings)
   .group\/item:has([data-slot='item-description'])
   [data-slot='item-media'] {
   align-self: center;

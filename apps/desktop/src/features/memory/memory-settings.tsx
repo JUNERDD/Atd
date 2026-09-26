@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { Pencil, Trash2 } from 'lucide-react';
+import { CircleAlert, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@ai/ui/components/button';
-import { HighlightedText } from '@ai/ui/components/highlighted-text';
 import { Input } from '@ai/ui/components/input';
 import { Label } from '@ai/ui/components/label';
 import { Switch } from '@ai/ui/components/switch';
@@ -18,13 +17,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@ai/ui/components/alert-dialog';
-import { matchFields } from '@ai/ui/lib/fuzzy-match';
 import type { MemoryEntry, MemorySnapshot } from '../../../electron/agent/bridge';
+import { FieldHint } from '../../components/field-hint';
 import { SettingsHeading } from '../settings/settings-heading';
-import { IconButton } from '../../components/icon-button';
 import { agentApi } from '../agent/use-agent';
 import { showErrorToast } from '../../components/toast-store';
 import { useOverlayFooter } from '../../components/use-overlay-footer';
+import { MemoryList } from './memory-list';
+
+type Confirm = { kind: 'pause' } | { kind: 'delete'; entry: MemoryEntry };
 
 export function MemorySettings() {
   const { t } = useTranslation('memory');
@@ -32,7 +33,7 @@ export function MemorySettings() {
   const [search, setSearch] = useState('');
   const [editing, setEditing] = useState<MemoryEntry | null>(null);
   const [content, setContent] = useState('');
-  const [confirm, setConfirm] = useState<'pause' | 'delete' | null>(null);
+  const [confirm, setConfirm] = useState<Confirm | null>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
   const [status, setStatus] = useState('');
@@ -72,23 +73,30 @@ export function MemorySettings() {
       setPending(false);
     }
   }
-  async function save(remove = false) {
-    if (!editing) return;
-    if (!remove && !content.trim()) {
-      setError(t('memory.feedback.emptyContent'));
-      return;
-    }
+  /** Saves `entry` with new content; empty content deletes it. Either way the editor closes. */
+  async function update(entry: MemoryEntry, next: string) {
     setPending(true);
     setError('');
     try {
-      setSnapshot(await agentApi().updateMemory(editing, remove ? '' : content));
+      setSnapshot(await agentApi().updateMemory(entry, next));
       setEditing(null);
-      setStatus(remove ? t('memory.feedback.deleted') : t('memory.feedback.updated'));
+      setStatus(next ? t('memory.feedback.updated') : t('memory.feedback.deleted'));
     } catch (error) {
       showErrorToast(error);
     } finally {
       setPending(false);
     }
+  }
+  function save() {
+    if (!editing) return;
+    if (!content.trim()) setError(t('memory.feedback.emptyContent'));
+    else void update(editing, content);
+  }
+  function openEditor(entry: MemoryEntry) {
+    setEditing(entry);
+    setContent(entry.content);
+    setError('');
+    setStatus('');
   }
   function closeEditor() {
     setEditing(null);
@@ -96,11 +104,6 @@ export function MemorySettings() {
     setStatus('');
   }
   const failure = error || snapshot?.error;
-  // Saved order stays; the search matches and marks the entry text.
-  const entries = (snapshot?.entries ?? []).flatMap((entry) => {
-    const match = matchFields(search, { content: entry.content });
-    return match || !search.trim() ? [{ entry, match }] : [];
-  });
   const feedback = (
     <>
       {(failure || status) && (
@@ -164,7 +167,11 @@ export function MemorySettings() {
             </div>
           </ScrollArea>
           <footer ref={footerRef} className="editor-footer overlay-footer">
-            <Button variant="ghost" onClick={() => setConfirm('delete')} disabled={pending}>
+            <Button
+              variant="ghost"
+              onClick={() => setConfirm({ kind: 'delete', entry: editing })}
+              disabled={pending}
+            >
               <Trash2 />
               {t('memory.edit.delete')}
             </Button>
@@ -172,7 +179,7 @@ export function MemorySettings() {
               <Button variant="outline" onClick={closeEditor} disabled={pending}>
                 {t('memory.edit.cancel')}
               </Button>
-              <Button onClick={() => void save()} disabled={pending}>
+              <Button onClick={save} disabled={pending}>
                 {pending ? t('memory.edit.saving') : t('memory.edit.save')}
               </Button>
             </div>
@@ -180,73 +187,73 @@ export function MemorySettings() {
         </div>
       ) : (
         <>
-          <SettingsHeading title={t('memory.title')} description={t('memory.description')}>
+          <SettingsHeading
+            title={t('memory.title')}
+            titleHint={
+              <FieldHint
+                text={t('memory.feedback.storageNote')}
+                side="bottom"
+                icon={<CircleAlert className="size-4" />}
+              />
+            }
+            description={t('memory.description')}
+          >
             <Input
               aria-label={t('memory.searchLabel')}
               placeholder={t('memory.searchPlaceholder')}
               value={search}
+              disabled={!snapshot?.entries.length}
               onChange={(event) => setSearch(event.target.value)}
             />
           </SettingsHeading>
-          <div className="flex items-center justify-between gap-4 mb-6">
-            <div className="settings-field">
-              <Label htmlFor="memory-learning">{t('memory.learning.label')}</Label>
-              <p
-                className="text-xs text-muted-foreground truncate"
-                title={t('memory.learning.description')}
-              >
-                {t('memory.learning.description')}
-              </p>
-            </div>
-            <Switch
-              id="memory-learning"
-              checked={snapshot ? !snapshot.paused : false}
-              disabled={!snapshot || pending || Boolean(snapshot.error)}
-              onCheckedChange={(checked) => {
-                if (checked) void pause(false);
-                else setConfirm('pause');
-              }}
-            />
-          </div>
-          <ul className="memory-items">
-            {entries.map(({ entry, match }) => (
-              <li key={entry.id} className="memory-item">
-                <div>
-                  <p>
-                    <HighlightedText text={entry.content} ranges={match?.ranges.content} />
+          {/* The panel owns the scrollbar; the heading and search stay put above it. */}
+          <ScrollArea
+            className="mt-4 flex-1"
+            viewportClassName="[&>div]:flex! [&>div]:flex-col [&>div]:min-h-full"
+            gutter
+            scrollShadow
+          >
+            <div className="memory-list">
+              {/* A setting, not a memory: a plain switch row, unlike the list rows below it. */}
+              <div className="memory-learning">
+                <div className="min-w-0">
+                  <Label htmlFor="memory-learning">{t('memory.learning.label')}</Label>
+                  <p
+                    className="truncate text-xs text-muted-foreground"
+                    title={t('memory.learning.description')}
+                  >
+                    {t('memory.learning.description')}
                   </p>
-                  <span>
-                    {entry.target === 'user'
-                      ? t('memory.list.userProfile')
-                      : entry.target === 'failure'
-                        ? t('memory.list.corrections')
-                        : t('memory.list.preference')}
-                  </span>
                 </div>
-                <IconButton
-                  label={t('memory.list.edit')}
-                  aria-label={t('memory.list.editLabel', { content: entry.content.slice(0, 70) })}
-                  onClick={() => {
-                    setEditing(entry);
-                    setContent(entry.content);
-                    setError('');
-                    setStatus('');
+                <Switch
+                  id="memory-learning"
+                  checked={snapshot ? !snapshot.paused : false}
+                  disabled={!snapshot || pending || Boolean(snapshot.error)}
+                  onCheckedChange={(checked) => {
+                    if (checked) void pause(false);
+                    else setConfirm({ kind: 'pause' });
                   }}
-                >
-                  <Pencil />
-                </IconButton>
-              </li>
-            ))}
-          </ul>
-          {!snapshot && <p className="text-sm text-muted-foreground">{t('memory.list.loading')}</p>}
-          {snapshot && !snapshot.entries.length && !snapshot.error && (
-            <p className="text-sm text-muted-foreground">{t('memory.list.empty')}</p>
-          )}
-          {snapshot && snapshot.entries.length > 0 && !entries.length && (
-            <p className="text-sm text-muted-foreground">{t('memory.list.noMatches')}</p>
-          )}
-          <p className="text-xs text-muted-foreground mt-8">{t('memory.feedback.storageNote')}</p>
-          {feedback}
+                />
+              </div>
+              {snapshot ? (
+                snapshot.error && !snapshot.entries.length ? null : (
+                  <MemoryList
+                    entries={snapshot.entries}
+                    query={search}
+                    empty={
+                      snapshot.entries.length ? t('memory.list.noMatches') : t('memory.list.empty')
+                    }
+                    disabled={pending}
+                    onEdit={openEditor}
+                    onDelete={(entry) => setConfirm({ kind: 'delete', entry })}
+                  />
+                )
+              ) : (
+                <p className="text-sm text-muted-foreground">{t('memory.list.loading')}</p>
+              )}
+              {feedback}
+            </div>
+          </ScrollArea>
         </>
       )}
       <AlertDialog
@@ -258,12 +265,12 @@ export function MemorySettings() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {confirm === 'pause'
+              {confirm?.kind === 'pause'
                 ? t('memory.confirm.pauseTitle')
                 : t('memory.confirm.deleteTitle')}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {confirm === 'pause'
+              {confirm?.kind === 'pause'
                 ? t('memory.confirm.pauseDescription')
                 : t('memory.confirm.deleteDescription')}
             </AlertDialogDescription>
@@ -272,11 +279,11 @@ export function MemorySettings() {
             <AlertDialogCancel>{t('memory.confirm.cancel')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
-                if (confirm === 'pause') void pause(true);
-                else void save(true);
+                if (confirm?.kind === 'pause') void pause(true);
+                else if (confirm) void update(confirm.entry, '');
               }}
             >
-              {confirm === 'pause'
+              {confirm?.kind === 'pause'
                 ? t('memory.confirm.pauseAction')
                 : t('memory.confirm.deleteAction')}
             </AlertDialogAction>

@@ -14,6 +14,9 @@
       "preference": "Saved preference",
       "edit": "Edit",
       "editLabel": "Edit memory: {{content}}",
+      "more": "More",
+      "moreActionsFor": "More actions for memory: {{content}}",
+      "delete": "Delete",
       "loading": "Loading memory…",
       "empty": "No saved memories yet. Share a lasting preference as you work.",
       "noMatches": "No matching memories."

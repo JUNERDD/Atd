@@ -223,40 +223,33 @@
     gap: 8px;
   }
 }
-.memory-items {
+.memory-settings {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-top: 24px;
-}
-.memory-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 16px;
-  padding: 12px 0;
-}
-.memory-item > div {
   flex: 1;
   min-width: 0;
-}
-.memory-item p {
-  font-size: 14px;
-  line-height: 20px;
-  overflow-wrap: anywhere;
-  white-space: pre-wrap;
-}
-.memory-item span {
-  display: block;
-  margin-top: 6px;
-  font-size: 12px;
-  line-height: 16px;
-  color: var(--muted-foreground);
-}
-.memory-settings:has(.command-editor) {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
   min-height: 0;
+  flex-direction: column;
+}
+.memory-learning {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+.memory-learning label {
+  display: block;
+  margin-bottom: 2px;
+}
+/* Rows, feedback, and the storage note; an empty state fills the rest. */
+.memory-list {
+  display: flex;
+  flex: 1 0 auto;
+  min-width: 0;
+  flex-direction: column;
+  gap: 8px;
+  padding-bottom: 16px;
 }
 
 .instruction-toolbar {
