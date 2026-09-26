@@ -16,6 +16,8 @@ import { ScrollArea } from '@ai/ui/components/scroll-area';
 import { agentApi } from '../use-agent';
 import { IconButton } from '../../../components/icon-button';
 import { showErrorToast } from '../../../components/toast-store';
+import { CodeBlock } from './code-block';
+import { codeLanguage } from './code-language';
 import { ExternalLink } from './external-link';
 import { hasMermaidFence, loadMermaidPlugin } from './mermaid-lazy';
 
@@ -50,7 +52,46 @@ function MarkdownLink({ href, children }: MarkdownProps<'a'>) {
   return <ExternalLink href={href}>{children}</ExternalLink>;
 }
 
-function MarkdownPre({ children, className }: MarkdownProps<'pre'>) {
+/** The slice of a hast node a fenced block needs: its tag, class names and text. */
+type HastNode = {
+  type: string;
+  tagName?: string;
+  value?: string;
+  properties?: { className?: unknown };
+  children?: HastNode[];
+};
+
+function textOf(node: HastNode): string {
+  return node.value ?? (node.children ?? []).map(textOf).join('');
+}
+
+/** The fence's language from its `language-*` class; an unlabeled fence has none. */
+function fenceLabel(node: HastNode): string {
+  const classes = Array.isArray(node.properties?.className) ? node.properties.className : [];
+  const label = classes.find(
+    (name): name is string => typeof name === 'string' && name.startsWith('language-'),
+  );
+  return label ? label.slice('language-'.length) : '';
+}
+
+/**
+ * A fenced block renders as the project's code block. A mermaid fence keeps Streamdown's own
+ * rendering inside the plain frame, so the diagram plugin (or its fallback) still draws it.
+ */
+function MarkdownPre({ children, className, node }: MarkdownProps<'pre'>) {
+  const codeNode = (node?.children as HastNode[] | undefined)?.find(
+    (child) => child.type === 'element' && child.tagName === 'code',
+  );
+  const label = codeNode ? fenceLabel(codeNode) : '';
+  if (codeNode && label !== 'mermaid') {
+    return (
+      <CodeBlock
+        className="markdown-code-block"
+        contents={textOf(codeNode)}
+        language={codeLanguage(label)}
+      />
+    );
+  }
   return (
     <ScrollArea orientation="both" className="markdown-code" viewportClassName="max-h-[inherit]">
       <pre className={className}>{children}</pre>

@@ -1,19 +1,28 @@
 import { useCallback, useState } from 'react';
 import { showErrorToast } from '../../components/toast-store';
-import type { ExtensionRoleTool } from './use-service';
+import type { ExtensionRoleTool } from './extension-rows';
 
 function serviceApi() {
   if (!window.desktop?.service) throw new Error('Open the desktop app to manage the service.');
   return window.desktop.service;
 }
 
-/** Local skill update and role/MCP catalog writes; refresh is owned by the caller. */
+/** Skill, subagent and MCP catalog writes; refresh is owned by the caller. */
 export function useExtensionMutations() {
   const [busyKey, setBusyKey] = useState<string | null>(null);
 
   const setSkillEnabled = useCallback(async (name: string, enabled: boolean) => {
     try {
       await serviceApi().setSkillEnabled(name, enabled);
+    } catch (error) {
+      showErrorToast(error);
+      throw error;
+    }
+  }, []);
+
+  const setAgentEnabled = useCallback(async (name: string, enabled: boolean) => {
+    try {
+      await serviceApi().setAgentEnabled(name, enabled);
     } catch (error) {
       showErrorToast(error);
       throw error;
@@ -147,17 +156,20 @@ export function useExtensionMutations() {
     [],
   );
 
-  const mcpDisable = useCallback(async (serverId: string, refresh: () => Promise<void>) => {
-    setBusyKey(`mcp:${serverId}`);
-    try {
-      await serviceApi().mcpDisable(serverId);
-      await refresh();
-    } catch (error) {
-      showErrorToast(error);
-    } finally {
-      setBusyKey(null);
-    }
-  }, []);
+  const mcpSetEnabled = useCallback(
+    async (serverId: string, enabled: boolean, refresh: () => Promise<void>) => {
+      setBusyKey(`mcp:${serverId}`);
+      try {
+        await serviceApi().mcpSetEnabled(serverId, enabled);
+        await refresh();
+      } catch (error) {
+        showErrorToast(error);
+      } finally {
+        setBusyKey(null);
+      }
+    },
+    [],
+  );
 
   const mcpRemove = useCallback(async (serverId: string, refresh: () => Promise<void>) => {
     setBusyKey(`mcp:${serverId}`);
@@ -174,13 +186,14 @@ export function useExtensionMutations() {
   return {
     busyKey,
     setSkillEnabled,
+    setAgentEnabled,
     updateSkill,
     restoreBuiltin,
     installSkill,
     putRole,
     putAgent,
     mcpUpsert,
-    mcpDisable,
+    mcpSetEnabled,
     mcpRemove,
   };
 }

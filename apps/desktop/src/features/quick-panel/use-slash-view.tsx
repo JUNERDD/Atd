@@ -9,7 +9,7 @@ import { sortModels } from '../providers/model-order';
 import { ProviderBrand } from '../providers/provider-brand';
 import { useCatalogRefresh } from '../providers/use-catalog-refresh';
 import { useThinkingLevels } from '../providers/use-thinking-levels';
-import type { ExtensionSkillRow } from '../service/use-service';
+import type { ExtensionSkillRow } from '../service/extension-rows';
 import {
   QUICK_COMMANDS,
   isDrillCommand,

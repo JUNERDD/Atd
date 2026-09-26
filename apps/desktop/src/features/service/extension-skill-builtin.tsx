@@ -10,7 +10,7 @@ import {
   AlertDialogTitle,
 } from '@ai/ui/components/alert-dialog';
 import { Badge } from '@ai/ui/components/badge';
-import type { ExtensionBuiltin } from './use-service';
+import type { ExtensionBuiltin } from './extension-rows';
 
 /**
  * Marks a built-in skill whose copy differs from what ships with the app: a newer shipped version

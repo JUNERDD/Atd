@@ -1,60 +1,24 @@
 import { useState } from 'react';
-import { BookOpen, RotateCcw } from 'lucide-react';
+import { BookOpen, RefreshCw, RotateCcw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Button } from '@ai/ui/components/button';
+import { DropdownMenuItem } from '@ai/ui/components/dropdown-menu';
 import { HighlightedText } from '@ai/ui/components/highlighted-text';
-import {
-  Item,
-  ItemActions,
-  ItemContent,
-  ItemDescription,
-  ItemMedia,
-  ItemTitle,
-} from '@ai/ui/components/item';
-import { Switch } from '@ai/ui/components/switch';
+import { ItemContent, ItemDescription, ItemMedia, ItemTitle } from '@ai/ui/components/item';
 import { matchFields } from '@ai/ui/lib/fuzzy-match';
-import { IconButton } from '../../components/icon-button';
 import { showToast } from '../../components/toast-store';
 import { ExtensionGroup } from './extension-group';
+import { ExtensionRow, ExtensionRowActions } from './extension-row';
+import { skillSourceLabelKey, type ExtensionSkillRow } from './extension-rows';
 import { RestoreBuiltinDialog, SkillBuiltinStatus } from './extension-skill-builtin';
+import { SkillDetailDialog } from './extension-skill-detail';
 import { SkillInstallForm } from './extension-skill-install-form';
-import type { ExtensionSkillRow } from './use-service';
-
-function sourceLabelKey(
-  sourceKind: ExtensionSkillRow['sourceKind'],
-):
-  | 'extensions.sourceLocal'
-  | 'extensions.sourceNpm'
-  | 'extensions.sourceGit'
-  | 'extensions.sourceAgents'
-  | 'extensions.sourceAtd'
-  | null {
-  switch (sourceKind) {
-    case 'local':
-      return 'extensions.sourceLocal';
-    case 'npm':
-      return 'extensions.sourceNpm';
-    case 'git':
-      return 'extensions.sourceGit';
-    case 'agents':
-      return 'extensions.sourceAgents';
-    case 'atd':
-      return 'extensions.sourceAtd';
-    case '':
-      return null;
-    default: {
-      const _exhaustive: never = sourceKind;
-      return _exhaustive;
-    }
-  }
-}
 
 /**
  * Skills catalog. Entries come from the service list, including ~/.agents/skills. The search
  * matches and marks the name and the description line as shown, with the translated source.
  * A built-in skill whose copy differs from the shipped one shows its state next to the name and
- * a restore action before the switch; the backup path of the last restore stays above the list,
- * since a toast only carries one short sentence.
+ * offers a restore in its More menu, beside the details and a local skill's update; the backup
+ * path of the last restore stays above the list, since a toast only carries one short sentence.
  */
 export function ExtensionSkillsGroup({
   rows,
@@ -95,6 +59,9 @@ export function ExtensionSkillsGroup({
   const { t } = useTranslation('settings');
   const [restoring, setRestoring] = useState<{ id: string; name: string } | null>(null);
   const [backup, setBackup] = useState<{ name: string; path: string } | null>(null);
+  // The name stays while the dialog closes; the row is read live so a toggle shows in it.
+  const [detail, setDetail] = useState<{ name: string; open: boolean } | null>(null);
+  const detailRow = detail ? rows.find((row) => row.name === detail.name) : undefined;
   function restore(target: { id: string; name: string }) {
     void onRestore(target.id).then((result) => {
       if (!result) {
@@ -126,13 +93,17 @@ export function ExtensionSkillsGroup({
       />
     ) : null;
   const shown = rows.flatMap((row) => {
-    const sourceKey = row.system ? 'extensions.sourceSystem' : sourceLabelKey(row.sourceKind);
+    const sourceKey = row.system ? 'extensions.sourceSystem' : skillSourceLabelKey(row.sourceKind);
     const description = [row.description, sourceKey ? t(sourceKey) : '', row.revision]
       .filter(Boolean)
       .join(' · ');
     const match = matchFields(query, { name: row.name, description });
-    return match || !query.trim() ? [{ row, description, match }] : [];
+    const showUpdate = connected && row.sourceKind === 'local';
+    const showRestore = row.builtin !== null && row.builtin.status !== 'current';
+    return match || !query.trim() ? [{ row, description, match, showUpdate, showRestore }] : [];
   });
+  // Rows without More keep its column while another row shows it, so the switches line up.
+  const anyMenu = shown.some((item) => item.showUpdate || item.showRestore);
   return (
     <>
       {form}
@@ -151,65 +122,71 @@ export function ExtensionSkillsGroup({
           ) : null
         }
       >
-        {shown.map(({ row, description, match }) => {
-          const showUpdate = connected && row.sourceKind === 'local';
+        {shown.map(({ row, description, match, showUpdate, showRestore }) => {
           const rowBusy = busyName === row.name;
           const builtin = row.builtin;
-          const showRestore = builtin !== null && builtin.status !== 'current';
           return (
-            <Item asChild key={row.name} size="xs" className="pl-0">
-              <li>
-                <ItemMedia variant="icon">
-                  <BookOpen />
-                </ItemMedia>
-                <ItemContent>
-                  <div className="flex min-w-0 items-center gap-2">
-                    <ItemTitle title={row.name}>
-                      <HighlightedText text={row.name} ranges={match?.ranges.name} />
-                    </ItemTitle>
-                    {builtin ? <SkillBuiltinStatus status={builtin.status} /> : null}
-                  </div>
-                  {description ? (
-                    <ItemDescription title={description}>
-                      <HighlightedText text={description} ranges={match?.ranges.description} />
-                    </ItemDescription>
-                  ) : null}
-                </ItemContent>
-                <ItemActions>
-                  {showUpdate ? (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      disabled={rowBusy}
-                      onClick={() => onUpdate(row.name)}
-                    >
-                      {t('extensions.updateSkill')}
-                    </Button>
-                  ) : null}
-                  {showRestore ? (
-                    <IconButton
-                      label={t('extensions.restoreAction')}
-                      aria-label={t('extensions.restoreActionFor', { name: row.name })}
-                      disabled={!connected || rowBusy}
-                      tooltipDismissOnClick
-                      onClick={() => setRestoring({ id: builtin.id, name: row.name })}
-                    >
-                      <RotateCcw />
-                    </IconButton>
-                  ) : null}
-                  <Switch
-                    aria-label={t('extensions.enableSkill', { name: row.name })}
-                    checked={row.enabled}
-                    disabled={!connected}
-                    onCheckedChange={(enabled) => onEnabled(row.name, enabled)}
-                  />
-                </ItemActions>
-              </li>
-            </Item>
+            <ExtensionRow
+              key={row.name}
+              name={row.name}
+              onDetails={() => setDetail({ name: row.name, open: true })}
+            >
+              <ItemMedia variant="icon">
+                <BookOpen />
+              </ItemMedia>
+              <ItemContent>
+                <div className="flex min-w-0 items-center gap-2">
+                  <ItemTitle title={row.name}>
+                    <HighlightedText text={row.name} ranges={match?.ranges.name} />
+                  </ItemTitle>
+                  {builtin ? <SkillBuiltinStatus status={builtin.status} /> : null}
+                </div>
+                {description ? (
+                  <ItemDescription title={description}>
+                    <HighlightedText text={description} ranges={match?.ranges.description} />
+                  </ItemDescription>
+                ) : null}
+              </ItemContent>
+              <ExtensionRowActions
+                name={row.name}
+                enabled={row.enabled}
+                disabled={!connected}
+                onEnabledChange={(enabled) => onEnabled(row.name, enabled)}
+                onDetails={() => setDetail({ name: row.name, open: true })}
+                reserveMenu={anyMenu}
+                menu={
+                  showUpdate || showRestore ? (
+                    <>
+                      {showUpdate ? (
+                        <DropdownMenuItem disabled={rowBusy} onSelect={() => onUpdate(row.name)}>
+                          <RefreshCw />
+                          {t('extensions.updateSkill')}
+                        </DropdownMenuItem>
+                      ) : null}
+                      {builtin && showRestore ? (
+                        <DropdownMenuItem
+                          disabled={!connected || rowBusy}
+                          onSelect={() => setRestoring({ id: builtin.id, name: row.name })}
+                        >
+                          <RotateCcw />
+                          {t('extensions.restoreAction')}
+                        </DropdownMenuItem>
+                      ) : null}
+                    </>
+                  ) : null
+                }
+              />
+            </ExtensionRow>
           );
         })}
       </ExtensionGroup>
+      {detailRow ? (
+        <SkillDetailDialog
+          row={detailRow}
+          open={detail?.open ?? false}
+          onOpenChange={(open) => setDetail({ name: detailRow.name, open })}
+        />
+      ) : null}
       <RestoreBuiltinDialog
         name={restoring?.name ?? null}
         onCancel={() => setRestoring(null)}

@@ -1,4 +1,5 @@
 import {
+  getSkill,
   installSkill,
   listAtdAgents,
   listRoles,
@@ -6,16 +7,19 @@ import {
   mcpAuthComplete,
   mcpAuthStart,
   mcpConnect,
+  mcpRecords,
   mcpStatus,
   putAtdAgent,
   putRole,
+  readSkillFile,
   restoreBuiltin,
+  setAtdAgentEnabled,
   setSkillEnabled,
   updateSkill,
   type AgentClientOptions,
 } from '@ai/agent-client';
 import type { ServiceRequest } from './ipc';
-import { disableMcpServer, removeMcpServer, upsertMcpServer } from './mcp-catalog';
+import { removeMcpServer, setMcpServerEnabled, upsertMcpServer } from './mcp-catalog';
 
 /** Service bridge requests about extensions; connection lifecycle stays with each host. */
 export type ExtensionRequest = Exclude<
@@ -36,6 +40,10 @@ export async function handleExtensionRequest(
   switch (request.action) {
     case 'skills':
       return listSkills(options);
+    case 'skillsGet':
+      return getSkill(options, request.name);
+    case 'skillsFile':
+      return readSkillFile(options, request.name, request.path);
     case 'skillsUpdate':
       return updateSkill(options, request.name);
     case 'skillsSetEnabled':
@@ -54,6 +62,8 @@ export async function handleExtensionRequest(
       return putRole(options, { id: request.id, title: request.title, allows: request.allows });
     case 'agents':
       return listAtdAgents(options);
+    case 'agentsSetEnabled':
+      return setAtdAgentEnabled(options, request.name, request.enabled);
     case 'agentsPut':
       return putAtdAgent(options, {
         name: request.name,
@@ -64,6 +74,8 @@ export async function handleExtensionRequest(
       });
     case 'mcpStatus':
       return mcpStatus({ options });
+    case 'mcpServers':
+      return mcpRecords({ options });
     case 'mcpConnect':
       return mcpConnect({ options }, { serverId: request.serverId });
     case 'mcpAuthStart': {
@@ -85,8 +97,8 @@ export async function handleExtensionRequest(
     }
     case 'mcpUpsert':
       return upsertMcpServer(options, request);
-    case 'mcpDisable':
-      return disableMcpServer(options, request.serverId);
+    case 'mcpSetEnabled':
+      return setMcpServerEnabled(options, request.serverId, request.enabled);
     case 'mcpRemove':
       return removeMcpServer(options, request.serverId);
     default: {
