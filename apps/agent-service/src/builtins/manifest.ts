@@ -51,6 +51,7 @@ export const BUILTIN_SKILLS: readonly BuiltinEntry[] = [
   skill('create-mcp', 1, ['a6b2db9e4c7a64c07d796c9a185485c3066891e5347cabca2c60e9493fe53a9a']),
   skill('plan-mode', 1, []),
   skill('grill-me', 1, []),
+  skill('create-memory', 1, []),
 ];
 
 /**

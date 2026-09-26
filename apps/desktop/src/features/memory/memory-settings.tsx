@@ -23,6 +23,7 @@ import { SettingsHeading } from '../settings/settings-heading';
 import { agentApi } from '../agent/use-agent';
 import { showErrorToast } from '../../components/toast-store';
 import { useOverlayFooter } from '../../components/use-overlay-footer';
+import { MemoryCreateButton } from './memory-create-button';
 import { MemoryList } from './memory-list';
 
 type Confirm = { kind: 'pause' } | { kind: 'delete'; entry: MemoryEntry };
@@ -204,6 +205,10 @@ export function MemorySettings() {
               value={search}
               disabled={!snapshot?.entries.length}
               onChange={(event) => setSearch(event.target.value)}
+            />
+            <MemoryCreateButton
+              paused={Boolean(snapshot?.paused)}
+              unavailable={!snapshot || Boolean(snapshot.error)}
             />
           </SettingsHeading>
           {/* The panel owns the scrollbar; the heading and search stay put above it. */}

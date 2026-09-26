@@ -8,6 +8,12 @@
       "label": "自动学习",
       "description": "在工作过程中保存稳定的偏好和明确的纠正。"
     },
+    "create": {
+      "label": "创建记忆",
+      "opened": "已在任务面板中打开新的 AI 会话，用于保存记忆。",
+      "pausedHint": "恢复自动学习后，Agent 才能保存记忆。",
+      "enableSkill": "请先在「拓展 → 技能」中启用 {{name}}，再使用 AI 创建。"
+    },
     "list": {
       "userProfile": "用户画像",
       "corrections": "修正与学习记录",
