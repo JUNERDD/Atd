@@ -4,27 +4,37 @@ import type { FindOperations, GrepOperations, LsOperations } from '@earendil-wor
 import { inside, resolveToolPath } from '../../service-fs.js';
 import { ripgrepFiles } from './ripgrep.js';
 
-/** Thrown before the gate when a grep/find/ls path leaves the task folder. */
+/** Thrown before the gate when a grep/find/ls path leaves the task folder and its extra roots. */
 export const OUTSIDE_TASK_FOLDER = 'File access outside the task folder is blocked.';
 
 /**
- * Real path of `target`, required to lie inside the real `root`. A missing path resolves through
- * its nearest existing ancestor, so a missing name under a symlink that leads outside still
- * counts as outside.
+ * Real path of `target` (relative targets resolve against `root`), required to lie inside the
+ * real `root` or one of the real `extraRoots`. A missing path resolves through its nearest
+ * existing ancestor, so a missing name under a symlink that leads outside still counts as outside.
  */
-export async function confineToRoot(root: string, target: string): Promise<string> {
-  const realRoot = await realOrNearest(path.resolve(root));
+export async function confineToRoot(
+  root: string,
+  target: string,
+  extraRoots: readonly string[] = [],
+): Promise<string> {
   const real = await realOrNearest(path.resolve(root, target));
-  if (!inside(realRoot, real)) throw new Error(OUTSIDE_TASK_FOLDER);
-  return real;
+  for (const allowed of [root, ...extraRoots])
+    if (inside(await realOrNearest(path.resolve(allowed)), real)) return real;
+  throw new Error(OUTSIDE_TASK_FOLDER);
 }
 
 /**
  * Confines a grep/find/ls `path` argument (default: the task folder) as pi resolves it: `@`,
- * `~` and `file://` spellings resolve like pi's tools before the containment check.
+ * `~` and `file://` spellings resolve like pi's tools before the containment check. Answers
+ * whether it lands in the task folder or in one of `extraRoots`, which decides the gate scope.
  */
-export function confineToolArgument(root: string, rawPath: string | undefined): Promise<string> {
-  return confineToRoot(root, resolveToolPath(root, rawPath || '.'));
+export async function confineToolArgument(
+  root: string,
+  rawPath: string | undefined,
+  extraRoots: readonly string[] = [],
+): Promise<'inside' | 'outside'> {
+  const real = await confineToRoot(root, resolveToolPath(root, rawPath || '.'), extraRoots);
+  return inside(await realOrNearest(path.resolve(root)), real) ? 'inside' : 'outside';
 }
 
 async function realOrNearest(absolute: string): Promise<string> {
@@ -43,18 +53,21 @@ async function realOrNearest(absolute: string): Promise<string> {
 }
 
 /**
- * pi's pluggable grep/find/ls operations, each confined to `root`. They are the second line of
- * confinement after the argument check: every path pi touches (search roots, context-line file
- * reads, listed entries) must stay inside the task folder. find globs through ripgrep, never
- * through pi's fd download path.
+ * pi's pluggable grep/find/ls operations, each confined to `root` and the current `extraRoots`. They are the
+ * second line of confinement after the argument check: every path pi touches (search roots,
+ * context-line file reads, listed entries) must stay inside those roots. find globs through
+ * ripgrep, never through pi's fd download path.
  */
-export function searchOperations(root: string): {
+export function searchOperations(
+  root: string,
+  extraRoots: () => Promise<readonly string[]> = async () => [],
+): {
   grep: GrepOperations;
   find: FindOperations;
   ls: LsOperations;
 } {
   const exists = async (target: string) => {
-    const real = await confineToRoot(root, target);
+    const real = await confineToRoot(root, target, await extraRoots());
     try {
       await stat(real);
       return true;
@@ -64,18 +77,20 @@ export function searchOperations(root: string): {
   };
   return {
     grep: {
-      isDirectory: async (target) => (await stat(await confineToRoot(root, target))).isDirectory(),
-      readFile: async (target) => readFile(await confineToRoot(root, target), 'utf8'),
+      isDirectory: async (target) =>
+        (await stat(await confineToRoot(root, target, await extraRoots()))).isDirectory(),
+      readFile: async (target) =>
+        readFile(await confineToRoot(root, target, await extraRoots()), 'utf8'),
     },
     find: {
       exists,
       glob: async (pattern, cwd, options) =>
-        ripgrepFiles(pattern, await confineToRoot(root, cwd), options),
+        ripgrepFiles(pattern, await confineToRoot(root, cwd, await extraRoots()), options),
     },
     ls: {
       exists,
-      stat: async (target) => stat(await confineToRoot(root, target)),
-      readdir: async (target) => readdir(await confineToRoot(root, target)),
+      stat: async (target) => stat(await confineToRoot(root, target, await extraRoots())),
+      readdir: async (target) => readdir(await confineToRoot(root, target, await extraRoots())),
     },
   };
 }

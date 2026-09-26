@@ -17,7 +17,13 @@ import { ConfirmStore } from './confirms.js';
 import { registerDesktopTool } from './desktop-tool.js';
 import { createGate } from './harness/gate.js';
 import type { Logger } from './logging.js';
-import { confined, inside, resolveToolPath, withinRoots } from './service-fs.js';
+import {
+  confined,
+  inside,
+  resolveToolPath,
+  userAgentsReadRoots,
+  withinRoots,
+} from './service-fs.js';
 import { bashToolDefinition } from './shell-tool.js';
 
 /** Host services the service tool proxies need; owned by the task runner. */
@@ -83,6 +89,11 @@ export function serviceTools(host: ServiceToolHost): ExtensionFactory {
     return target !== '' && (await withinRoots(host.skillDirs(), host.cwd, target));
   }
 
+  /** Roots only the read tool may reach beyond the data directory (service-fs.ts `confined`). */
+  async function readRoots(): Promise<string[]> {
+    return [...(await userAgentsReadRoots()), ...host.skillDirs()];
+  }
+
   function controlled<T extends TSchema, D, S>(
     tool: ToolDefinition<T, D, S>,
     name: 'read' | 'write' | 'edit',
@@ -119,12 +130,12 @@ export function serviceTools(host: ServiceToolHost): ExtensionFactory {
           operations: {
             readFile: async (target) => {
               guard();
-              const { real } = await confined(host.cwd, host.dataDir, target, host.skillDirs());
+              const { real } = await confined(host.cwd, host.dataDir, target, await readRoots());
               return readFile(real);
             },
             access: async (target) => {
               guard();
-              const { real } = await confined(host.cwd, host.dataDir, target, host.skillDirs());
+              const { real } = await confined(host.cwd, host.dataDir, target, await readRoots());
               await stat(real);
             },
           },

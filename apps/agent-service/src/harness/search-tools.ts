@@ -6,6 +6,7 @@ import {
   type ExtensionFactory,
   type ToolDefinition,
 } from '@earendil-works/pi-coding-agent';
+import { userAgentsReadRoots } from '../service-fs.js';
 import type { HarnessDeps } from './deps.js';
 import { searchOperations } from './search/confine.js';
 import { pathArgument, precheckSearch } from './search/tools.js';
@@ -13,12 +14,14 @@ import { pathArgument, precheckSearch } from './search/tools.js';
 /**
  * grep / find / ls: pi's built-in tools with confined pluggable operations. The names are
  * snapshot tools, so these registrations must exist whenever the binding allows them: they
- * shadow pi's own unconfined built-ins. Every call is confined to the task folder (a path
- * outside throws before the gate) and passes the gate as `read:inside`, which no tier prompts
- * for but every call is audited under.
+ * shadow pi's own unconfined built-ins. Every call is confined to the task folder or
+ * `~/.agents` with its linked skills (userAgentsReadRoots), as the read tool is (a path
+ * elsewhere throws before the gate). A task-folder call passes the gate as `read:inside`, which
+ * no tier prompts for but every call is audited under; a `~/.agents` call as `read:outside`,
+ * like a read there. Children keep the task folder only (search/tools.ts).
  */
 export function searchToolsExtension(deps: HarnessDeps): ExtensionFactory {
-  const operations = searchOperations(deps.cwd);
+  const operations = searchOperations(deps.cwd, userAgentsReadRoots);
   return (pi) => {
     pi.registerTool(
       gated(createGrepToolDefinition(deps.cwd, { operations: operations.grep }), deps),
@@ -38,10 +41,10 @@ function gated<T extends TSchema, D>(
     ...tool,
     async execute(id, args, signal, onUpdate, ctx) {
       signal?.throwIfAborted();
-      await precheckSearch(deps.cwd, tool.name, args);
+      const location = await precheckSearch(deps.cwd, tool.name, args, await userAgentsReadRoots());
       await deps.gate({
         toolCallId: id,
-        scope: { tool: 'read', location: 'inside' },
+        scope: { tool: 'read', location },
         title: `${tool.name}: ${(pathArgument(args) ?? '.').slice(0, 300)}`,
         detail: JSON.stringify({ tool: tool.name, args }),
         signal: signal ?? undefined,
