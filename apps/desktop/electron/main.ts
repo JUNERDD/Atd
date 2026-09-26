@@ -32,7 +32,8 @@ import {
   reportRendererExit,
   secureWindowContent,
 } from './window-content';
-import { constrainPanelBounds, getPanelBounds, getPanelMinimumSize } from './window-position';
+import { PanelPlacement } from './panel-placement';
+import { getPanelMinimumSize } from './window-position';
 
 app.setName('AI');
 nativeTheme.themeSource = 'dark';
@@ -43,6 +44,7 @@ if (process.env.AI_TEST_USER_DATA) {
 }
 
 let panel: BrowserWindow | null = null;
+const placement = new PanelPlacement(() => panel);
 let settings: SettingsService;
 let agent: AgentService | undefined;
 let serviceManager: ServiceManager | undefined;
@@ -181,7 +183,7 @@ async function createPanel() {
   const transparent = process.platform !== 'darwin';
   const minimum = getPanelMinimumSize(display.workArea);
   const window = new BrowserWindow({
-    ...getPanelBounds(display.workArea, settings.panelSize),
+    ...placement.dockedBounds(display.workArea, settings.panelSize),
     title: 'AI',
     // macOS keeps its native traffic lights over a hidden title bar; every other platform draws
     // the panel chrome in the renderer instead.
@@ -254,7 +256,7 @@ if (!app.requestSingleInstanceLock()) {
             agent?.commands.captureSelection();
             const display = screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
             // Re-dock the panel without discarding a size the user resized to.
-            panel.setBounds(getPanelBounds(display.workArea, panel.getNormalBounds()));
+            panel.setBounds(placement.dockedBounds(display.workArea, panel.getNormalBounds()));
             showPanel();
           }
         },
@@ -296,30 +298,9 @@ if (!app.requestSingleInstanceLock()) {
       const manager = serviceManager;
       installAppMenu(showPanel, hidePanel, settings, () => manager.openInBrowser());
       const starting = serviceManager.autostart();
+      placement.install();
       await createPanel();
       await starting;
-      const reposition = () => {
-        if (!panel || panel.isDestroyed()) return;
-        const display = screen.getDisplayMatching(panel.getBounds());
-        const minimum = getPanelMinimumSize(display.workArea);
-        panel.setMinimumSize(minimum.width, minimum.height);
-        const bounds = panel.getBounds();
-        const next = constrainPanelBounds(bounds, display.workArea);
-        if (
-          next.x !== bounds.x ||
-          next.y !== bounds.y ||
-          next.width !== bounds.width ||
-          next.height !== bounds.height
-        )
-          panel.setBounds(next);
-      };
-      screen.on('display-metrics-changed', (_event, display, metrics) => {
-        if (!panel || panel.isDestroyed()) return;
-        if (!metrics.some((metric) => ['bounds', 'workArea', 'scaleFactor'].includes(metric)))
-          return;
-        if (display.id === screen.getDisplayMatching(panel.getBounds()).id) reposition();
-      });
-      screen.on('display-removed', reposition);
       app.on('activate', () => {
         if (panel) showPanel();
         else void createPanel();
