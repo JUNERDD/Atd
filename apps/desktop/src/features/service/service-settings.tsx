@@ -51,7 +51,12 @@ export function ServiceSettings() {
   const [formKey, setFormKey] = useState(0);
   const { status } = useServiceStatus();
   const { skills, loading: skillsLoading, refresh: refreshSkills, setEnabled } = useServiceSkills();
-  const { agents, loading: agentsLoading, refresh: refreshAgents } = useServiceAgents();
+  const {
+    agents,
+    loading: agentsLoading,
+    refresh: refreshAgents,
+    setEnabled: setAgentRowEnabled,
+  } = useServiceAgents();
   const {
     mcp,
     loading: mcpLoading,
@@ -64,18 +69,36 @@ export function ServiceSettings() {
   const {
     busyKey,
     setSkillEnabled,
+    setAgentEnabled,
     updateSkill,
     restoreBuiltin,
     installSkill,
     putAgent,
     mcpUpsert,
-    mcpDisable,
+    mcpSetEnabled,
     mcpRemove,
   } = useExtensionMutations();
   const connected = status?.state === 'connected';
   const catalogBusy = busyKey !== null;
   const menuDisabled = !connected || catalogBusy;
   const enableSeq = useRef(new Map<string, number>());
+  /**
+   * Shows a switch change at once and reverts it when the write fails, unless a later change to
+   * the same row already superseded it.
+   */
+  function toggleOptimistically(
+    key: string,
+    enabled: boolean,
+    show: (enabled: boolean) => void,
+    save: (enabled: boolean) => Promise<void>,
+  ) {
+    const seq = (enableSeq.current.get(key) ?? 0) + 1;
+    enableSeq.current.set(key, seq);
+    show(enabled);
+    void save(enabled).catch(() => {
+      if (enableSeq.current.get(key) === seq) show(!enabled);
+    });
+  }
   useEffect(() => {
     if (!connected) return;
     const refresh = () => {
@@ -173,14 +196,14 @@ export function ServiceSettings() {
                 busy={skillInstallBusy}
                 onClose={() => setAdding(false)}
                 onInstall={(input) => installSkill(input, refreshSkills)}
-                onEnabled={(name, enabled) => {
-                  const seq = (enableSeq.current.get(name) ?? 0) + 1;
-                  enableSeq.current.set(name, seq);
-                  setEnabled(name, enabled);
-                  void setSkillEnabled(name, enabled).catch(() => {
-                    if (enableSeq.current.get(name) === seq) setEnabled(name, !enabled);
-                  });
-                }}
+                onEnabled={(name, enabled) =>
+                  toggleOptimistically(
+                    `skill:${name}`,
+                    enabled,
+                    (value) => setEnabled(name, value),
+                    (value) => setSkillEnabled(name, value),
+                  )
+                }
                 onUpdate={(name) => void updateSkill(name, refreshSkills)}
                 onRestore={(id) => restoreBuiltin(id, refreshSkills)}
               />
@@ -197,6 +220,14 @@ export function ServiceSettings() {
                 formKey={formKey}
                 onClose={() => setAdding(false)}
                 onSave={(input) => putAgent(input, refreshAgents)}
+                onEnabled={(name, enabled) =>
+                  toggleOptimistically(
+                    `agent:${name}`,
+                    enabled,
+                    (value) => setAgentRowEnabled(name, value),
+                    (value) => setAgentEnabled(name, value),
+                  )
+                }
               />
             </TabsContent>
             <TabsContent value="mcp" forceMount>
@@ -215,7 +246,7 @@ export function ServiceSettings() {
                 onAuthStart={(serverId) => void authStart(serverId)}
                 onAuthComplete={(serverId, input) => void authComplete(serverId, input)}
                 onUpsert={(input) => mcpUpsert(input, refreshMcp)}
-                onDisable={(serverId) => void mcpDisable(serverId, refreshMcp)}
+                onEnabled={(serverId, enabled) => void mcpSetEnabled(serverId, enabled, refreshMcp)}
                 onRemove={(serverId) => void mcpRemove(serverId, refreshMcp)}
               />
             </TabsContent>

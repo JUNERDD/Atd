@@ -297,6 +297,44 @@
   font-weight: 500;
   line-height: 20px;
 }
+/* A row opens its details from anywhere: the open button fills the row under its content, which
+ * ignores the pointer, while the actions and the inline sign-in field stay above it. */
+.settings-extension-row {
+  position: relative;
+}
+.settings-extension-row-open {
+  position: absolute;
+  inset: 0;
+  padding: 0;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  cursor: pointer;
+  outline: none;
+  transition: background-color 100ms;
+}
+.settings-extension-row > :not(.settings-extension-row-open) {
+  position: relative;
+  pointer-events: none;
+}
+.settings-extension-row > [data-slot='item-actions'],
+.settings-extension-row .settings-extension-mcp-auth {
+  pointer-events: auto;
+}
+.settings-extension-row:hover > .settings-extension-row-open,
+.settings-extension-row:has([aria-expanded='true']) > .settings-extension-row-open,
+.settings-extension-row-open:focus-visible {
+  background: var(--muted);
+}
+.dark .settings-extension-row:hover > .settings-extension-row-open,
+.dark .settings-extension-row:has([aria-expanded='true']) > .settings-extension-row-open,
+.dark .settings-extension-row-open:focus-visible {
+  background: var(--ata-surface-ghost-hover);
+}
+.settings-extension-row-open:focus-visible {
+  outline: 1px solid var(--ring);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 30%, transparent);
+}
 /* Skill icons sit in a ring and center on the title plus description, not the title line. */
 .settings-extension-settings [data-slot='item-media'],
 .settings-extension-settings
@@ -310,6 +348,186 @@
   border: 1px solid var(--border);
   border-radius: 999px;
   color: var(--muted-foreground);
+}
+/* Extension details: the header stays while the fields and long content scroll below it. */
+.extension-detail-dialog {
+  max-width: min(32rem, calc(100% - 2rem));
+  /*
+   * One fill for the dialog's inset panels (the fields card and the file tree). Opaque, because the
+   * tree paints it behind a middle-truncation marker to hide the characters it replaces.
+   */
+  --extension-detail-panel: color-mix(in oklab, var(--muted) 60%, var(--background));
+}
+.extension-detail-dialog[data-wide='true'] {
+  max-width: min(48rem, calc(100% - 2rem));
+}
+.extension-detail-heading {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+}
+.extension-detail-title {
+  flex: 0 1 auto;
+  line-height: 24px;
+}
+.extension-detail-description {
+  white-space: normal;
+  text-wrap: pretty;
+}
+.extension-detail-scroll {
+  flex: 1 1 auto;
+}
+.extension-detail-body {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+/* One card of label/value rows; labels share a column sized by the longest one. */
+.extension-detail-fields {
+  display: grid;
+  grid-template-columns: fit-content(10rem) minmax(0, 1fr);
+  gap: 8px 20px;
+  margin: 0;
+  padding: 12px 16px;
+  border-radius: var(--radius-xl);
+  background: var(--extension-detail-panel);
+  font-size: 13px;
+  line-height: 20px;
+}
+.extension-detail-fields > div {
+  display: contents;
+}
+.extension-detail-fields dt {
+  color: var(--muted-foreground);
+}
+.extension-detail-fields dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.extension-detail-fields dd[data-mono='true'] {
+  font-size: 12px;
+  word-break: break-all;
+}
+.extension-detail-section {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 8px;
+}
+.extension-detail-section > h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+}
+.extension-detail-text {
+  min-width: 0;
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+}
+/*
+ * A skill folder as a file browser: the tree beside the open file, both at one fixed height so
+ * switching files never resizes the dialog. A narrow dialog stacks them, tree first.
+ */
+.skill-files {
+  container-type: inline-size;
+}
+.skill-browser {
+  display: grid;
+  height: 26rem;
+  grid-template-columns: minmax(10rem, 30%) minmax(0, 1fr);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+}
+@container (max-width: 32rem) {
+  .skill-browser {
+    height: 32rem;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: 10rem minmax(0, 1fr);
+  }
+}
+.skill-browser-tree {
+  min-height: 0;
+  padding-block: 8px;
+  overflow: hidden;
+  border-right: 1px solid var(--border);
+  background: var(--extension-detail-panel);
+  --trees-bg-override: var(--extension-detail-panel);
+  --trees-fg-override: var(--foreground);
+  --trees-fg-muted-override: var(--muted-foreground);
+  --trees-bg-muted-override: var(--muted);
+  --trees-selected-bg-override: var(--accent);
+  --trees-selected-fg-override: var(--accent-foreground);
+  --trees-focus-ring-color-override: var(--ring);
+  --trees-border-color-override: var(--border);
+  --trees-font-family-override: var(--font-sans);
+  --trees-font-size-override: 13px;
+  --trees-border-radius-override: var(--radius-lg);
+  --trees-padding-inline-override: 8px;
+}
+@container (max-width: 32rem) {
+  .skill-browser-tree {
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+}
+.skill-browser-preview {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+}
+.skill-browser-path {
+  flex-shrink: 0;
+  padding: 6px 12px;
+  overflow: hidden;
+  border-bottom: 1px solid var(--border);
+  color: var(--muted-foreground);
+  font-size: 12px;
+  line-height: 20px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.skill-browser-body {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.skill-browser-content {
+  padding: 12px;
+}
+.skill-browser-message {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  color: var(--muted-foreground);
+  font-size: 13px;
+  line-height: 20px;
+  text-align: center;
+}
+.skill-browser-message[data-error='true'] {
+  color: var(--destructive);
+}
+.skill-files-note {
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  line-height: 16px;
+}
+.extension-detail-status {
+  display: block;
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: 14px;
+  line-height: 20px;
+}
+.extension-detail-status[data-error='true'] {
+  color: var(--destructive);
 }
 .settings-permission-settings .settings-section-heading > p,
 .settings-extension-settings .settings-section-heading > p {

@@ -32,6 +32,13 @@ const RoleToolSchema = Type.Union([
   Type.Literal('command'),
 ]);
 
+/** A subagent catalog name: `service.*` for the system agents, a bare file name otherwise. */
+const AgentNameSchema = Type.String({
+  minLength: 1,
+  maxLength: 128,
+  pattern: '^[A-Za-z0-9][A-Za-z0-9._-]*$',
+});
+
 const RoleIdSchema = Type.String({
   minLength: 1,
   maxLength: 128,
@@ -78,6 +85,15 @@ export const ServiceRequestSchema = Type.Union([
   }),
   Type.Object({ action: Type.Literal('skills') }),
   Type.Object({
+    action: Type.Literal('skillsGet'),
+    name: Type.String({ minLength: 1, maxLength: 128 }),
+  }),
+  Type.Object({
+    action: Type.Literal('skillsFile'),
+    name: Type.String({ minLength: 1, maxLength: 128 }),
+    path: Type.String({ minLength: 1, maxLength: 1024 }),
+  }),
+  Type.Object({
     action: Type.Literal('skillsUpdate'),
     name: Type.String({ minLength: 1, maxLength: 128 }),
   }),
@@ -108,6 +124,11 @@ export const ServiceRequestSchema = Type.Union([
   }),
   Type.Object({ action: Type.Literal('agents') }),
   Type.Object({
+    action: Type.Literal('agentsSetEnabled'),
+    name: AgentNameSchema,
+    enabled: Type.Boolean(),
+  }),
+  Type.Object({
     action: Type.Literal('agentsPut'),
     name: SkillNameSchema,
     description: Type.String({ minLength: 1, maxLength: 2048 }),
@@ -116,6 +137,7 @@ export const ServiceRequestSchema = Type.Union([
     systemPrompt: Type.String({ minLength: 1, maxLength: 16000 }),
   }),
   Type.Object({ action: Type.Literal('mcpStatus') }),
+  Type.Object({ action: Type.Literal('mcpServers') }),
   Type.Object({
     action: Type.Literal('mcpConnect'),
     serverId: Type.String({ minLength: 1, maxLength: 128 }),
@@ -147,8 +169,9 @@ export const ServiceRequestSchema = Type.Union([
     auth: McpAuthDraftSchema,
   }),
   Type.Object({
-    action: Type.Literal('mcpDisable'),
+    action: Type.Literal('mcpSetEnabled'),
     serverId: Type.String({ minLength: 1, maxLength: 128 }),
+    enabled: Type.Boolean(),
   }),
   Type.Object({
     action: Type.Literal('mcpRemove'),
@@ -172,6 +195,13 @@ export interface ServiceBridge {
   openInBrowser: () => Promise<void>;
   skills: () => Promise<{ skills: unknown[]; diagnostics: unknown[] }>;
   updateSkill: (name: string) => Promise<{ skill: unknown; diagnostics: unknown[] }>;
+  /** One catalog skill (null when it left the catalog) with its folder's files. */
+  skill: (name: string) => Promise<{ skill: unknown; files: string[]; truncated: boolean }>;
+  /** One text file of a skill folder; null content with the reason for binary or large files. */
+  skillFile: (
+    name: string,
+    path: string,
+  ) => Promise<{ path: string; content: string | null; reason: 'binary' | 'too_large' | null }>;
   setSkillEnabled: (name: string, enabled: boolean) => Promise<{ name: string; enabled: boolean }>;
   installSkill: (input: {
     source: string;
@@ -195,6 +225,8 @@ export interface ServiceBridge {
     };
   }) => Promise<{ role: unknown }>;
   agents: () => Promise<{ agents: unknown[] }>;
+  /** Turns a catalog subagent on or off for later runs. */
+  setAgentEnabled: (name: string, enabled: boolean) => Promise<{ name: string; enabled: boolean }>;
   putAgent: (input: {
     name: string;
     description: string;
@@ -203,6 +235,8 @@ export interface ServiceBridge {
     systemPrompt: string;
   }) => Promise<{ agent: unknown }>;
   mcpStatus: () => Promise<{ servers: unknown[] }>;
+  /** The configured MCP records (transport, command or URL, auth) behind the status rows. */
+  mcpServers: () => Promise<{ servers: unknown[] }>;
   mcpConnect: (serverId: string) => Promise<{ ok: boolean }>;
   mcpAuthStart: (serverId: string) => Promise<{
     serverId: string;
@@ -219,7 +253,7 @@ export interface ServiceBridge {
     url?: string;
     auth: { type: 'none' } | { type: 'bearer'; tokenEnv: string } | { type: 'oauth' };
   }) => Promise<{ servers: unknown[] }>;
-  mcpDisable: (serverId: string) => Promise<{ servers: unknown[] }>;
+  mcpSetEnabled: (serverId: string, enabled: boolean) => Promise<{ servers: unknown[] }>;
   mcpRemove: (serverId: string) => Promise<{ servers: unknown[] }>;
   onChange: (listener: (event: ServiceEvent) => void) => () => void;
 }

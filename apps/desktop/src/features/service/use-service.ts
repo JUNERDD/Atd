@@ -1,6 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ServiceStatusView } from '../../../electron/service/ipc';
 import { showErrorToast } from '../../components/toast-store';
+import {
+  asAgentRow,
+  asMcpRow,
+  asRoleRow,
+  asSkillRow,
+  type ExtensionAgentRow,
+  type ExtensionMcpRow,
+  type ExtensionRoleRow,
+  type ExtensionSkillRow,
+} from './extension-rows';
 
 function serviceApi() {
   if (!window.desktop?.service) throw new Error('Open the desktop app to manage the service.');
@@ -43,160 +53,6 @@ export function useServiceStatus() {
     setStatus(await serviceApi().startLocal(dataDir));
   }, []);
   return { status, loading, connect, disconnect, startLocal };
-}
-
-export type ExtensionRoleTool = 'read' | 'write' | 'edit' | 'bash' | 'command';
-
-/** Install state of a resource that ships with the app; `modified` copies are never overwritten. */
-export interface ExtensionBuiltin {
-  id: string;
-  status: 'current' | 'modified' | 'update_available';
-}
-
-export interface ExtensionSkillRow {
-  name: string;
-  description: string;
-  sourceKind: 'local' | 'npm' | 'git' | 'agents' | 'atd' | '';
-  /** Seeded by the service; the row reads as a system skill instead of its folder. */
-  system: boolean;
-  /** Null for skills that do not ship with the app. */
-  builtin: ExtensionBuiltin | null;
-  revision: string;
-  enabled: boolean;
-}
-
-export interface ExtensionRoleRow {
-  id: string;
-  title: string;
-  allows: { tools: ExtensionRoleTool[]; skills: string[] };
-}
-
-export interface ExtensionAgentRow {
-  name: string;
-  /** Registered by the service for every session; read-only. */
-  system: boolean;
-  description: string;
-  tools: ExtensionRoleTool[];
-  model: string;
-  systemPrompt: string;
-}
-
-export interface ExtensionMcpRow {
-  serverId: string;
-  state: string;
-  lastError: string;
-}
-
-export const ROLE_TOOLS: ExtensionRoleTool[] = ['read', 'write', 'edit', 'bash', 'command'];
-
-function readString(value: unknown, key: string): string {
-  if (typeof value !== 'object' || value === null) return '';
-  const field = Reflect.get(value, key);
-  return typeof field === 'string' ? field : '';
-}
-
-function readFlag(value: unknown, key: string): boolean {
-  if (typeof value !== 'object' || value === null) return false;
-  return Reflect.get(value, key) === true;
-}
-
-function readEnabled(value: unknown): boolean {
-  if (typeof value !== 'object' || value === null) return true;
-  const field = Reflect.get(value, 'enabled');
-  return typeof field === 'boolean' ? field : true;
-}
-
-function asSourceKind(value: string): ExtensionSkillRow['sourceKind'] {
-  if (value === 'local' || value === 'npm' || value === 'git') return value;
-  if (value === 'agents' || value === 'atd') return value;
-  return '';
-}
-
-function asBuiltin(value: unknown): ExtensionBuiltin | null {
-  if (typeof value !== 'object' || value === null) return null;
-  const builtin = Reflect.get(value, 'builtin');
-  const id = readString(builtin, 'id');
-  const status = readString(builtin, 'status');
-  if (!id) return null;
-  if (status === 'current' || status === 'modified' || status === 'update_available')
-    return { id, status };
-  return null;
-}
-
-function asRoleTool(value: unknown): ExtensionRoleTool | null {
-  if (value === 'read' || value === 'write' || value === 'edit') return value;
-  if (value === 'bash' || value === 'command') return value;
-  return null;
-}
-
-function asAllows(value: unknown): ExtensionRoleRow['allows'] {
-  if (typeof value !== 'object' || value === null) return { tools: [], skills: [] };
-  const toolsRaw = Reflect.get(value, 'tools');
-  const skillsRaw = Reflect.get(value, 'skills');
-  const tools = Array.isArray(toolsRaw)
-    ? toolsRaw.flatMap((tool) => {
-        const parsed = asRoleTool(tool);
-        return parsed ? [parsed] : [];
-      })
-    : [];
-  const skills = Array.isArray(skillsRaw)
-    ? skillsRaw.filter((skill): skill is string => typeof skill === 'string')
-    : [];
-  return { tools, skills };
-}
-
-export function asSkillRow(value: unknown): ExtensionSkillRow | null {
-  const name = readString(value, 'name');
-  return name
-    ? {
-        name,
-        description: readString(value, 'description'),
-        sourceKind: asSourceKind(readString(value, 'sourceKind')),
-        system: readFlag(value, 'system'),
-        builtin: asBuiltin(value),
-        revision: readString(value, 'revision'),
-        enabled: readEnabled(value),
-      }
-    : null;
-}
-
-function asRoleRow(value: unknown): ExtensionRoleRow | null {
-  const id = readString(value, 'id');
-  if (!id) return null;
-  const allows =
-    typeof value === 'object' && value !== null ? Reflect.get(value, 'allows') : undefined;
-  return { id, title: readString(value, 'title') || id, allows: asAllows(allows) };
-}
-
-function asAgentTools(value: unknown): ExtensionRoleTool[] {
-  if (!Array.isArray(value)) return [];
-  return value.flatMap((tool) => {
-    const parsed = asRoleTool(tool);
-    return parsed ? [parsed] : [];
-  });
-}
-
-export function asAgentRow(value: unknown): ExtensionAgentRow | null {
-  const name = readString(value, 'name');
-  if (!name) return null;
-  const tools =
-    typeof value === 'object' && value !== null ? Reflect.get(value, 'tools') : undefined;
-  const model = readString(value, 'model');
-  return {
-    name,
-    system: readFlag(value, 'system'),
-    description: readString(value, 'description'),
-    tools: asAgentTools(tools),
-    model,
-    systemPrompt: readString(value, 'systemPrompt'),
-  };
-}
-
-export function asMcpRow(value: unknown): ExtensionMcpRow | null {
-  const serverId = readString(value, 'serverId');
-  return serverId
-    ? { serverId, state: readString(value, 'state'), lastError: readString(value, 'lastError') }
-    : null;
 }
 
 /** Skills list via the service bridge; empty when disconnected. */
@@ -264,7 +120,14 @@ export function useServiceAgents() {
       setLoading(false);
     }
   }, []);
-  return { agents, loading, refresh };
+  const setEnabled = useCallback((name: string, enabled: boolean) => {
+    setAgents((current) =>
+      current
+        ? { agents: current.agents.map((row) => (row.name === name ? { ...row, enabled } : row)) }
+        : current,
+    );
+  }, []);
+  return { agents, loading, refresh, setEnabled };
 }
 
 /** MCP status via the service bridge. */

@@ -122,17 +122,18 @@ export async function upsertMcpServer(
   return writeServers(options, merged);
 }
 
-/** Sets disabled on one server and writes the full catalog. */
-export async function disableMcpServer(
+/** Turns one server on or off and writes the full catalog; the record is otherwise kept. */
+export async function setMcpServerEnabled(
   options: AgentClientOptions,
   serverId: string,
+  enabled: boolean,
 ): Promise<{ servers: unknown[] }> {
   const { servers: raw } = await mcpRecords({ options });
   const servers = loadServers(raw);
   const found = servers.some((server) => server.serverId === serverId);
   if (!found) throw new Error(`MCP server "${serverId}" was not found.`);
   const merged = servers.map((server) =>
-    server.serverId === serverId ? { ...server, disabled: true } : server,
+    server.serverId === serverId ? { ...server, disabled: !enabled } : server,
   );
   return writeServers(options, merged);
 }

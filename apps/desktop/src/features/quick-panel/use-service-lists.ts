@@ -4,11 +4,11 @@ import {
   asAgentRow,
   asMcpRow,
   asSkillRow,
-  useServiceStatus,
   type ExtensionAgentRow,
   type ExtensionMcpRow,
   type ExtensionSkillRow,
-} from '../service/use-service';
+} from '../service/extension-rows';
+import { useServiceStatus } from '../service/use-service';
 
 /**
  * A service-backed list as a quick-panel view sees it. Only rows are shown: a list that is still

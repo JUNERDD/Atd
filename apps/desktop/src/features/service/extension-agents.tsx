@@ -5,10 +5,12 @@ import { Button } from '@ai/ui/components/button';
 import { HighlightedText } from '@ai/ui/components/highlighted-text';
 import { Input } from '@ai/ui/components/input';
 import { Textarea } from '@ai/ui/components/textarea';
-import { Item, ItemContent, ItemDescription, ItemMedia, ItemTitle } from '@ai/ui/components/item';
+import { ItemContent, ItemDescription, ItemMedia, ItemTitle } from '@ai/ui/components/item';
 import { matchFields } from '@ai/ui/lib/fuzzy-match';
+import { AgentDetailDialog } from './extension-agent-detail';
 import { ExtensionGroup } from './extension-group';
-import { ROLE_TOOLS, type ExtensionAgentRow, type ExtensionRoleTool } from './use-service';
+import { ExtensionRow, ExtensionRowActions } from './extension-row';
+import { ROLE_TOOLS, type ExtensionAgentRow, type ExtensionRoleTool } from './extension-rows';
 
 type AgentDraft = {
   name: string;
@@ -130,8 +132,9 @@ function AgentForm({
 
 /**
  * Subagent catalog: the service's system agents, then the markdown specialists (`~/.atd/agents`);
- * the add form opens from the tab menu. Rows share the skill row anatomy (icon ring, name, and a
- * description line naming system sources); the search matches and marks the name and that line.
+ * the add form opens from the tab menu. Rows share the skill row anatomy (icon ring, name, a
+ * description line naming system sources, the enable switch and More); the search matches and
+ * marks the name and that line. Turning an agent off applies from the next run.
  */
 export function ExtensionAgentsGroup({
   rows,
@@ -144,6 +147,7 @@ export function ExtensionAgentsGroup({
   formKey,
   onClose,
   onSave,
+  onEnabled,
 }: {
   rows: ExtensionAgentRow[];
   query: string;
@@ -161,8 +165,12 @@ export function ExtensionAgentsGroup({
     model: string | null;
     systemPrompt: string;
   }) => Promise<boolean>;
+  onEnabled: (name: string, enabled: boolean) => void;
 }) {
   const { t } = useTranslation('settings');
+  // The name stays while the dialog closes; the row is read live so a toggle shows in it.
+  const [detail, setDetail] = useState<{ name: string; open: boolean } | null>(null);
+  const detailRow = detail ? rows.find((row) => row.name === detail.name) : undefined;
   const form =
     adding && connected ? (
       <AgentForm
@@ -196,25 +204,41 @@ export function ExtensionAgentsGroup({
         emptyIcon={<Bot />}
       >
         {shown.map(({ row, description, match }) => (
-          <Item asChild key={row.name} size="xs" className="pl-0">
-            <li>
-              <ItemMedia variant="icon">
-                <Bot />
-              </ItemMedia>
-              <ItemContent>
-                <ItemTitle title={row.name}>
-                  <HighlightedText text={row.name} ranges={match?.ranges.name} />
-                </ItemTitle>
-                {description ? (
-                  <ItemDescription title={description}>
-                    <HighlightedText text={description} ranges={match?.ranges.description} />
-                  </ItemDescription>
-                ) : null}
-              </ItemContent>
-            </li>
-          </Item>
+          <ExtensionRow
+            key={row.name}
+            name={row.name}
+            onDetails={() => setDetail({ name: row.name, open: true })}
+          >
+            <ItemMedia variant="icon">
+              <Bot />
+            </ItemMedia>
+            <ItemContent>
+              <ItemTitle title={row.name}>
+                <HighlightedText text={row.name} ranges={match?.ranges.name} />
+              </ItemTitle>
+              {description ? (
+                <ItemDescription title={description}>
+                  <HighlightedText text={description} ranges={match?.ranges.description} />
+                </ItemDescription>
+              ) : null}
+            </ItemContent>
+            <ExtensionRowActions
+              name={row.name}
+              enabled={row.enabled}
+              disabled={!connected}
+              onEnabledChange={(enabled) => onEnabled(row.name, enabled)}
+              onDetails={() => setDetail({ name: row.name, open: true })}
+            />
+          </ExtensionRow>
         ))}
       </ExtensionGroup>
+      {detailRow ? (
+        <AgentDetailDialog
+          row={detailRow}
+          open={detail?.open ?? false}
+          onOpenChange={(open) => setDetail({ name: detailRow.name, open })}
+        />
+      ) : null}
     </>
   );
 }
