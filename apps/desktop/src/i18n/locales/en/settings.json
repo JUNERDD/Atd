@@ -79,14 +79,14 @@
     },
     "shellAllowlist": {
       "title": "Shell allowlist",
-      "description": "Commands that start with an entry run without asking. Commands that chain, redirect or substitute always ask.",
+      "description": "Commands that start with an entry run right away: without asking under Manual approval, and without a review under Auto approval. Commands that chain, redirect or substitute always ask.",
       "listLabel": "Allowlisted commands",
       "inputLabel": "Command prefix",
-      "placeholder": "e.g. npm test",
+      "placeholder": "npm test",
       "add": "Add",
       "remove": "Remove",
       "removeLabel": "Remove {{entry}}",
-      "empty": "No commands are allowlisted. Every command asks first.",
+      "empty": "No commands yet. Add a prefix above, or choose “Always allow” when you approve a command.",
       "errors": {
         "empty": "Enter a command.",
         "tooLong": "Keep entries to 200 characters or fewer.",
@@ -94,7 +94,10 @@
         "duplicate": "This entry is already on the list.",
         "limit": "The allowlist holds at most 100 entries.",
         "save": "The allowlist could not be saved."
-      }
+      },
+      "viewLabel": "View {{entry}}",
+      "detailTitle": "Allowed command",
+      "detailDescription": "Commands that start with this prefix run right away."
     }
   },
   "shortcuts": {
