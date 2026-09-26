@@ -1,10 +1,16 @@
-import { createHash } from 'node:crypto';
 import { errorMessage, type TaskRun } from '@ai/agent-contracts';
 import { CONTEXT_BUDGET, runInputSize } from '../tasks/run-budget.js';
 import { diagnoseNotRunAvailable, type SkillDiagnostic } from './diagnostics.js';
 import { readSkillBody } from './resources.js';
 import type { CapabilitySnapshotRecord } from './roles.js';
-import { contentChars, loadMessage, skillBlock, type SkillBlock } from './skill-message.js';
+import type { RunSkillCatalog } from './skill-catalog.js';
+import {
+  contentChars,
+  loadMessage,
+  skillBlock,
+  skillRevision,
+  type SkillBlock,
+} from './skill-message.js';
 import type { SkillSnapshotRecord } from './versions.js';
 
 /** A skill a run loads. */
@@ -60,7 +66,7 @@ export async function captureRunSkills(
     }
     loaded.push({
       name: record.name,
-      revision: createHash('sha256').update(body).digest('hex').slice(0, 32),
+      revision: skillRevision(body),
       baseDir: record.baseDir,
       block: skillBlock(
         {
@@ -76,18 +82,31 @@ export async function captureRunSkills(
   return { loaded, diagnostics };
 }
 
-/** Characters the run's skill message puts into context; they come out of the budget before references. */
-export function skillChars(runId: string, skills: readonly LoadedSkill[]): number {
-  return skills.length ? contentChars(loadMessage(runId, skills)) : 0;
+/**
+ * Characters the run's skill message and skill catalog message (skills/skill-catalog.ts) put into
+ * context; they come out of the budget before references. The catalog counts even when an
+ * unchanged catalog is not sent again, so the budget does not depend on session history.
+ */
+export function skillChars(
+  runId: string,
+  skills: readonly LoadedSkill[],
+  catalog: RunSkillCatalog,
+): number {
+  return (skills.length ? contentChars(loadMessage(runId, skills)) : 0) + catalog.text.length;
 }
 
 /**
  * Why a run cannot start with its skills, or null. A skill chip the run cannot load fails it by
- * name, and so do skills that leave the message no room in the context budget. Chip skills are the
- * `skill` chips of the run's input (the composer stages exactly those); any other staged skill came
- * from a saved command, and when one is missing the freeze diagnostics record it without failing.
+ * name, and so do skills and the skill catalog when they leave the message no room in the context
+ * budget. Chip skills are the `skill` chips of the run's input (the composer stages exactly those);
+ * any other staged skill came from a saved command, and when one is missing the freeze diagnostics
+ * record it without failing.
  */
-export function runSkillsError(run: TaskRun, skills: readonly LoadedSkill[]): string | null {
+export function runSkillsError(
+  run: TaskRun,
+  skills: readonly LoadedSkill[],
+  catalog: RunSkillCatalog,
+): string | null {
   const loaded = new Set(skills.map((skill) => skill.name));
   const chips = (run.snapshot.input.chips ?? []).flatMap(({ chip }) =>
     chip.kind === 'skill' ? [chip.name] : [],
@@ -99,8 +118,9 @@ export function runSkillsError(run: TaskRun, skills: readonly LoadedSkill[]): st
       ? `Skill ${names} is not available to this run.`
       : `Skills ${names} are not available to this run.`;
   }
-  const chars = skillChars(run.id, skills);
-  if (runInputSize(run.snapshot) + chars > CONTEXT_BUDGET)
-    return `The selected skills (${chars} characters) and the message exceed the context budget of ${CONTEXT_BUDGET} characters. Remove a skill or shorten the message.`;
-  return null;
+  const chars = skillChars(run.id, skills, catalog);
+  if (runInputSize(run.snapshot) + chars <= CONTEXT_BUDGET) return null;
+  return skills.length
+    ? `The selected skills (${chars - catalog.text.length} characters) and the message exceed the context budget of ${CONTEXT_BUDGET} characters. Remove a skill or shorten the message.`
+    : `The skill catalog (${chars} characters) and the message exceed the context budget of ${CONTEXT_BUDGET} characters. Shorten the message.`;
 }

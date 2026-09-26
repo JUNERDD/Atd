@@ -8,7 +8,7 @@ import { CONTEXT_BUDGET } from '../tasks/run-budget.js';
 import type { LoadedSkill } from './run-skills.js';
 import {
   loadMessage,
-  readSkillMessage,
+  readCarriedSkills,
   reattachMessage,
   type SkillBlock,
 } from './skill-message.js';
@@ -29,8 +29,9 @@ export interface SessionSkillsHost {
 /**
  * Brings skills to the model as hidden `app-skill` messages, so the user text keeps its `/skill:`
  * markers as plain position hints. A run's captured skills go in once, with its prompt. When a
- * compaction removes earlier skill messages from context, their skills are re-attached from those
- * messages, not from skill files: the revisions they came from may be pruned by then.
+ * compaction removes earlier skill messages or `load_skill` results from context, their skills are
+ * re-attached from those entries, not from skill files: the revisions they came from may be pruned
+ * or edited by then.
  */
 export function sessionSkills(host: SessionSkillsHost): ExtensionFactory {
   return (pi) => {
@@ -58,20 +59,19 @@ export function sessionSkills(host: SessionSkillsHost): ExtensionFactory {
 }
 
 /**
- * Skills whose `app-skill` messages the compaction took out of context: in the context just before
- * it (built at its parent entry) but not after it. A skill a kept message still carries is not
- * repeated, and a skill loaded more than once comes back in its latest version.
+ * Skills whose carrying entries the compaction took out of context: `app-skill` messages and
+ * successful `load_skill` results (readCarriedSkills) in the context just before it (built at its
+ * parent entry) but not after it. A skill a kept entry still carries is not repeated, and a skill
+ * loaded more than once comes back in its latest version.
  */
 function droppedSkills(entries: SessionEntry[], compaction: CompactionEntry): SkillBlock[] {
   const after = buildContextEntries(entries, compaction.id);
   const kept = new Set(after.map((entry) => entry.id));
-  const loaded = new Set(
-    after.flatMap((entry) => readSkillMessage(entry) ?? []).map((s) => s.name),
-  );
+  const loaded = new Set(after.flatMap((entry) => readCarriedSkills(entry)).map((s) => s.name));
   const latest = new Map<string, SkillBlock>();
   for (const entry of buildContextEntries(entries, compaction.parentId)) {
     if (kept.has(entry.id)) continue;
-    for (const skill of readSkillMessage(entry) ?? []) {
+    for (const skill of readCarriedSkills(entry)) {
       if (loaded.has(skill.name)) continue;
       // Deleting first moves a repeated name to its latest position.
       latest.delete(skill.name);

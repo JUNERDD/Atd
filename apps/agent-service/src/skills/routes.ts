@@ -23,6 +23,7 @@ import {
   listCurrent,
   listRevisions,
   loadRunSnapshot,
+  loadSkillCatalog,
   releaseRun,
   type SkillRefInput,
   type SkillRevisionRecord,
@@ -234,7 +235,12 @@ export async function freezeRun(
 }> {
   await ensureSkillProfile(deps.profile);
   const staging = await takeTaskStaging(deps.profile, input.taskId);
-  const skills = await freezeRunSkills(deps.profile, input.runId, staging.skills);
+  const skills = await freezeRunSkills(
+    deps.profile,
+    input.runId,
+    staging.skills,
+    await loadSkillCatalog(deps.profile),
+  );
   const role = await resolveRole(deps.profile, input.roleId ?? staging.roleId);
   const roleSnapshot = freezeRoleSnapshot(role);
   const capabilities = freezeCapabilitySnapshot({
