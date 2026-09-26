@@ -53,6 +53,9 @@ export class McpConnectionStates implements McpStateSink {
         });
       } else if (record.disabled) {
         this.states.set(record.serverId, { state: 'disabled', lastError: '' });
+      } else if (this.states.get(record.serverId)?.state === 'disabled') {
+        // Re-enabled: it starts over as a server that has not connected yet.
+        this.states.set(record.serverId, { state: 'disconnected', lastError: '' });
       }
     }
   }

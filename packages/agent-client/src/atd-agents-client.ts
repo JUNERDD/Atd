@@ -31,13 +31,29 @@ async function request<T>(
 
 /**
  * Lists the subagent catalog: the service's system agents (`system: true`, read-only), then the
- * markdown specialists from ~/.atd/agents.
+ * markdown specialists from ~/.atd/agents, each with whether later runs may use it.
  */
 export function listAtdAgents(
   options: AgentClientOptions,
   fetchImpl?: typeof fetch,
-): Promise<{ agents: Array<AtdAgentWire & { system: boolean }> }> {
+): Promise<{ agents: Array<AtdAgentWire & { system: boolean; enabled: boolean }> }> {
   return request(options, '/v1/agents', 'GET', undefined, fetchImpl);
+}
+
+/** Turns one catalog agent on or off for later runs; the agent file is not written. */
+export function setAtdAgentEnabled(
+  options: AgentClientOptions,
+  name: string,
+  enabled: boolean,
+  fetchImpl?: typeof fetch,
+): Promise<{ name: string; enabled: boolean }> {
+  return request(
+    options,
+    `/v1/agents/${encodeURIComponent(name)}/enabled`,
+    'POST',
+    { enabled },
+    fetchImpl,
+  );
 }
 
 /** Creates or replaces one markdown specialist under ~/.atd/agents. */

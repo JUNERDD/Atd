@@ -24,6 +24,7 @@ import {
   stageSkills,
   updateSkill,
 } from './index.js';
+import { listSkillFiles, readSkillFile } from './skill-files.js';
 
 const StageSkillsSchema = Type.Object(
   {
@@ -31,6 +32,11 @@ const StageSkillsSchema = Type.Object(
     skills: Type.Array(SkillRefSchema, { maxItems: MAX_RUN_SKILLS }),
     roleId: Type.Optional(RoleId),
   },
+  { additionalProperties: false },
+);
+
+const SkillFileQuerySchema = Type.Object(
+  { path: Type.String({ minLength: 1, maxLength: 1024 }) },
   { additionalProperties: false },
 );
 
@@ -52,9 +58,21 @@ export function registerSkillRoutes(app: FastifyInstance, config: ServiceConfig)
     const runId = typeof query.runId === 'string' ? parse(Identifier, query.runId) : undefined;
     return listSkills(skillDeps, runId);
   });
+  // The detail view lists the skill folder; its files are read one at a time below.
   app.get<{ Params: { name: string } }>('/v1/skills/:name', async (request) => {
     const name = parse(SkillName, request.params.name);
-    return getSkill(skillDeps, name);
+    const found = await getSkill(skillDeps, name);
+    const listing = found.skill
+      ? await listSkillFiles(found.skill.baseDir)
+      : { files: [], truncated: false };
+    return { ...found, ...listing };
+  });
+  app.get<{ Params: { name: string } }>('/v1/skills/:name/file', async (request) => {
+    const name = parse(SkillName, request.params.name);
+    const { path } = parse(SkillFileQuerySchema, request.query);
+    const { skill } = await getSkill(skillDeps, name);
+    if (!skill) throw new Error(`Skill "${name}" is not in the harness catalog.`);
+    return readSkillFile(skill.baseDir, path);
   });
   app.post('/v1/skills/install', async (request) => {
     const body = parse(SkillInstallRequestSchema, request.body);
