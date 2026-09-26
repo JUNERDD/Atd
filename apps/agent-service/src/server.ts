@@ -15,6 +15,7 @@ import {
 import { AuthError, hostAllowed, originAllowed } from './auth.js';
 import { CapabilityGone, DesktopUnavailable } from './capabilities.js';
 import type { CapabilityRegistry } from './capabilities.js';
+import { CommandStore } from './commands/store.js';
 import type { ServiceConfig } from './config.js';
 import { ConfirmGone, type ConfirmStore } from './confirms.js';
 import type { EventLog } from './event-log.js';
@@ -150,7 +151,14 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
   const stopMemoryWatch = MemoryAuthority.onChanged(deps.config.paths.agentDir, () =>
     hub.invalidate({ type: 'invalidate', scope: 'memory' }),
   );
-  app.addHook('onClose', async () => stopMemoryWatch());
+  // The Agent's `command` tool writes the store without a route; the store announces every write.
+  const stopCommandWatch = CommandStore.onChanged(deps.config.paths.root, () =>
+    hub.invalidate({ type: 'invalidate', scope: 'commands' }),
+  );
+  app.addHook('onClose', async () => {
+    stopMemoryWatch();
+    stopCommandWatch();
+  });
 
   app.get('/v1/status', async () => ({
     service: {

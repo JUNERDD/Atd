@@ -4,10 +4,10 @@ import type { InvalidateFrame, InvalidateScope } from '@ai/agent-contracts';
 /**
  * Successful writes that change shared data, by route prefix. Staging routes, tool and resource
  * calls, and task routes whose changes already travel as task events are absent on purpose.
+ * Commands are absent too: the command store announces every write itself (see server.ts).
  */
 const PREFIX_SCOPES: ReadonlyArray<readonly [string, InvalidateScope]> = [
   ['/v1/settings', 'settings'],
-  ['/v1/commands', 'commands'],
   ['/v1/providers', 'providers'],
   ['/v1/skills', 'extensions'],
   ['/v1/roles', 'extensions'],
