@@ -17,7 +17,7 @@ import type {
   ProviderCatalogEntry,
 } from '../../../electron/providers/schema';
 import { CLOUD_FIELDS, isCustom, isAmbient } from '../../../electron/providers/metadata';
-import { showErrorToast } from '../../components/toast-store';
+import { showErrorToast, showToast } from '../../components/toast-store';
 import { useOverlayFooter } from '../../components/use-overlay-footer';
 import { SettingsHeading } from '../settings/settings-heading';
 import { sortModels } from './model-order';
@@ -53,7 +53,6 @@ export function ProviderForm({
         },
   );
   const [pending, setPending] = useState('');
-  const [status, setStatus] = useState('');
   const footerRef = useOverlayFooter<HTMLElement>();
   const bridge = window.desktop?.settings.providers;
   const disabled = Boolean(pending) || !bridge;
@@ -75,11 +74,9 @@ export function ProviderForm({
       : '';
   function change(patch: Partial<ConnectionDraft>) {
     setDraft({ ...draft, ...patch });
-    setStatus('');
   }
   async function perform(label: string, operation: () => Promise<void>) {
     setPending(label);
-    setStatus('');
     try {
       await operation();
     } catch (error) {
@@ -94,7 +91,7 @@ export function ProviderForm({
       const result = await bridge.save(draft);
       setDraft(draftFrom(result));
       onSaved(result);
-      setStatus(t('form.saved'));
+      showToast({ kind: 'info', text: t('form.saved') });
     });
   }
   return (
@@ -282,7 +279,7 @@ export function ProviderForm({
                   onClick={() =>
                     void perform('refreshing', async () => {
                       await bridge!.refresh(saved.connectionId);
-                      setStatus(t('form.catalogUpdated'));
+                      showToast({ kind: 'info', text: t('form.catalogUpdated') });
                     })
                   }
                 >
@@ -297,7 +294,7 @@ export function ProviderForm({
                         connectionId: saved.connectionId,
                         modelId: saved.defaultModel,
                       });
-                      setStatus(t('form.verified'));
+                      showToast({ kind: 'info', text: t('form.verified') });
                     })
                   }
                 >
@@ -307,7 +304,6 @@ export function ProviderForm({
               <p className="settings-field-note">{t('form.verifyNote')}</p>
             </div>
           )}
-          {status && <output className="settings-field-note">{status}</output>}
         </div>
       </ScrollArea>
       <footer ref={footerRef} className="editor-footer overlay-footer">
