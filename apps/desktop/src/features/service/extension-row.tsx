@@ -28,11 +28,11 @@ export function ExtensionRow({
 }) {
   const { t } = useTranslation('settings');
   return (
-    <Item asChild size="xs" className="settings-extension-row">
+    <Item asChild size="xs" className="settings-open-row">
       <li>
         <button
           type="button"
-          className="settings-extension-row-open"
+          className="settings-open-row-button"
           aria-label={t('extensions.viewDetailsFor', { name })}
           onClick={onDetails}
         />
