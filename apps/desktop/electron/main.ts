@@ -10,7 +10,11 @@ import {
 import type { IpcMainInvokeEvent } from 'electron';
 import { Type } from 'typebox';
 import { AgentService } from './agent/service';
-import type { CommandSession, ExtensionSession } from './agent/bridge';
+import {
+  ExtensionSessionKindSchema,
+  type CommandSession,
+  type ExtensionSession,
+} from './agent/bridge';
 import { AGENT_IPC } from './agent/ipc-channels';
 import { Identifier } from './agent/command-schema';
 import { parse } from './agent/validation';
@@ -130,10 +134,7 @@ function installIpc() {
    */
   ipcMain.handle(SETTINGS_IPC.startExtensionSession, (event, value: unknown) => {
     settings.assertSender(event);
-    const kind = parse(
-      Type.Union([Type.Literal('skill'), Type.Literal('subagent'), Type.Literal('mcp')]),
-      value,
-    );
+    const kind = parse(ExtensionSessionKindSchema, value);
     const window = panel;
     if (!window || window.isDestroyed()) throw new Error('The task panel is not available');
     const session: ExtensionSession = { kind };

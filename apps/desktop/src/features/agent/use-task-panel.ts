@@ -126,21 +126,21 @@ export function useTaskPanel() {
       focusPanelInput();
     });
   }, [t]);
-  // Extensions create-with-AI seeds a `create-*` skill chip and a space on the new draft; submit
-  // stages the chip's skill, so removing the chip also drops the skill.
+  // Create-with-AI (Extensions, Memory) seeds a `create-*` skill chip and a space on the new
+  // draft; submit stages the chip's skill, so removing the chip also drops the skill.
   useEffect(() => {
     const bridge = window.desktop?.agent;
     if (!bridge) return;
     return bridge.onExtensionSession(({ kind }) => {
-      const skillName =
-        kind === 'skill' ? 'create-skill' : kind === 'subagent' ? 'create-subagent' : 'create-mcp';
       newTask();
-      const seed = serialize([{ kind: 'skill', name: skillName }, ' '], []);
+      const seed = serialize([{ kind: 'skill', name: `create-${kind}` }, ' '], []);
       setDrafts((previous) => ({ ...previous, new: seed }));
       setPolicies((previous) => ({
         ...previous,
         new: {
-          tools: ['read', 'write', 'edit', 'bash', 'command'],
+          // Memory writes use the memory tools `memory` enables; `read` (with its search tools)
+          // lets the user point at a file to remember from. The other skills write files.
+          tools: kind === 'memory' ? ['read'] : ['read', 'write', 'edit', 'bash', 'command'],
           memory: true,
           useDefaultModel: false,
           confirmExpansion: false,

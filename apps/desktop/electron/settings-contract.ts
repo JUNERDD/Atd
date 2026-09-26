@@ -1,5 +1,6 @@
 import { APP_LANGUAGES, type AppLanguage } from '@ai/agent-contracts';
 import type { Connection, ProviderBridge } from './providers/schema';
+import type { ExtensionSessionKind } from './agent/bridge';
 import type { PermissionTier } from './agent/permission-schema';
 
 export const SETTINGS_IPC = {
@@ -65,8 +66,8 @@ export interface SettingsBridge {
   openCommand: (commandId: string) => Promise<void>;
   /** Opens the command's editor content in a new task-panel session; null creates a new command. */
   startCommandSession: (commandId: string | null) => Promise<void>;
-  /** Opens a new task-panel session seeded for creating a skill, subagent, or MCP server. */
-  startExtensionSession: (kind: 'skill' | 'subagent' | 'mcp') => Promise<void>;
+  /** Opens a new task-panel session seeded for creating a skill, subagent, MCP server, or memory. */
+  startExtensionSession: (kind: ExtensionSessionKind) => Promise<void>;
   close: () => Promise<void>;
   get: () => Promise<SettingsSnapshot>;
   providers: ProviderBridge;
