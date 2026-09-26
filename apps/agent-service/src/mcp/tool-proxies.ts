@@ -4,7 +4,7 @@ import type { ExtensionFactory, ToolDefinition } from '@earendil-works/pi-coding
 import { errorMessage, type McpServerConfig, type McpToolRef } from '@ai/agent-contracts';
 import type { Logger } from '../logging.js';
 import { McpFacade } from './facade.js';
-import { McpError, type McpUpdate, type OperationContext } from './errors.js';
+import { McpError, type McpPreapproval, type McpUpdate, type OperationContext } from './errors.js';
 import { toPiText } from './mapping.js';
 import { matchToolPattern } from './servers.js';
 
@@ -22,6 +22,16 @@ export interface McpProxyHost {
   executionId: () => string;
   audit: (entry: Record<string, unknown>) => void;
   log: Logger;
+  /** The task tier's say on a guarded call (`OperationContext.preapprove`); absent always asks. */
+  preapprove?: (call: McpGuardedCall, signal?: AbortSignal) => Promise<McpPreapproval>;
+}
+
+/** One proxy call the server's approval policy guards. */
+export interface McpGuardedCall {
+  toolCallId: string;
+  serverId: string;
+  tool: string;
+  args: Record<string, unknown>;
 }
 
 export interface McpProxyOptions {
@@ -161,6 +171,16 @@ function mcpProxyTool(
         configRevision: binding.revision,
       };
       const input = (args ?? {}) as Record<string, unknown>;
+      const preapprove = host.preapprove;
+      if (preapprove) {
+        const call = {
+          toolCallId: id,
+          serverId: binding.serverId,
+          tool: binding.tool,
+          args: input,
+        };
+        op.preapprove = (callSignal) => preapprove(call, callSignal);
+      }
       const bridge = onUpdate
         ? (update: McpUpdate) => {
             onUpdate({

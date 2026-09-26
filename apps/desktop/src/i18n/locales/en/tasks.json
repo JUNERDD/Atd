@@ -104,6 +104,7 @@
       "session": "Allowed tool for session",
       "grant": "Allowed by session grant",
       "tier": "Auto-approved",
+      "reviewed": "Auto-approved after review",
       "declined": "Declined"
     },
     "allowOnce": "Allow once",
@@ -126,6 +127,11 @@
       "previous": "Previous request",
       "next": "Next request",
       "position": "{{current}} / {{total}}"
+    },
+    "review": {
+      "flagged": "Auto review flagged this: {{reason}}",
+      "flaggedNoReason": "Auto review flagged this action.",
+      "unavailable": "Auto review is unavailable; decide this one yourself."
     }
   },
   "question": {

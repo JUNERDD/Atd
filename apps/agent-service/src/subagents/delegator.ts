@@ -193,6 +193,7 @@ function childApprovals(
       executionId: () => child.executionId,
       tier,
       grants: deps.grants,
+      review: deps.review,
       sessions,
       confirms: deps.ctx.confirms,
       audit: deps.audit,

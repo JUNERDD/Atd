@@ -1,4 +1,4 @@
-import { errorMessage, mcpCapabilityId } from '@ai/agent-contracts';
+import { errorMessage, mcpCapabilityId, type ConfirmReview } from '@ai/agent-contracts';
 import type { ConfirmStore } from '../confirms.js';
 import type { Logger } from '../logging.js';
 import type { AdapterApprovalRequest } from './adapter-types.js';
@@ -22,6 +22,8 @@ export interface McpApprovalContext {
   toolName: string;
   origin: string;
   args: Record<string, unknown>;
+  /** What the `auto` tier's review said before this confirm, shown on it. */
+  review?: ConfirmReview;
 }
 
 /** Minimal event-bus surface the broker subscribes to. */
@@ -81,6 +83,7 @@ export class McpApprovalBroker {
             tool: ctx.toolName,
             args: ctx.args,
           }).slice(0, 20000),
+          ...(ctx.review ? { review: ctx.review } : {}),
         },
         signal,
       );

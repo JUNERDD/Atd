@@ -225,7 +225,10 @@ export class McpFacade {
     const definition = this.policy.authorizeTool(record, catalog.tools, tool);
     const input = args ?? {};
     this.policy.validateToolInput(record, definition, input);
-    if (McpApprovalBroker.approvalRequired(record.approveTools, definition.name)) {
+    const guarded = McpApprovalBroker.approvalRequired(record.approveTools, definition.name);
+    // The preapproval audits its own decision; a refused one hands its review to the confirm.
+    const preapproval = guarded ? await op.preapprove?.(signal) : undefined;
+    if (guarded && !preapproval?.allowed) {
       const decision = await this.deps.approvals.decide(
         {
           taskId: op.taskId,
@@ -237,6 +240,7 @@ export class McpFacade {
           toolName: definition.name,
           origin: 'facade',
           args: input,
+          ...(preapproval?.review ? { review: preapproval.review } : {}),
         },
         signal,
       );
@@ -247,7 +251,7 @@ export class McpFacade {
           `The user declined MCP tool ${definition.name} on ${serverId}.`,
         );
       }
-    } else {
+    } else if (!guarded) {
       this.deps.audit({
         ...this.base(op),
         server: serverId,

@@ -136,7 +136,7 @@
     },
     "tierDescription": {
       "manual": "Ask every time.",
-      "auto": "Trust this folder only.",
+      "auto": "Review each action; ask when risky.",
       "always": "Never ask."
     },
     "tierLabel": "Permission level",

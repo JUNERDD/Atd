@@ -1,7 +1,7 @@
 import type { Logger } from '../logging.js';
 import type { ResourceStore } from '../resources.js';
 import type { AdapterManagerLike } from './adapter-types.js';
-import type { McpConnectionState, McpServerConfig } from '@ai/agent-contracts';
+import type { ConfirmReview, McpConnectionState, McpServerConfig } from '@ai/agent-contracts';
 
 /**
  * Shared MCP operation context, boundary errors and seam interfaces. One
@@ -17,7 +17,15 @@ export interface OperationContext {
   toolCallId?: string;
   /** Pinned config revision; mismatches fail instead of silently upgrading. */
   configRevision?: number;
+  /**
+   * The task tier's say on a call its server policy guards, asked before the per-operation
+   * confirm. Runner proxies pass it; HTTP callers never do.
+   */
+  preapprove?: (signal?: AbortSignal) => Promise<McpPreapproval>;
 }
+
+/** An allowed call runs without asking; a refused one may carry the review its confirm shows. */
+export type McpPreapproval = { allowed: true } | { allowed: false; review?: ConfirmReview };
 
 export interface McpStateSink {
   set(serverId: string, state: McpConnectionState, lastError?: string): void;

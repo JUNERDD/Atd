@@ -1,14 +1,23 @@
 import type { ExtensionFactory } from '@earendil-works/pi-coding-agent';
 import type { McpServerConfig } from '@ai/agent-contracts';
-import { McpAdapterMissing, McpAuthority, type McpToolBinding } from './mcp/index.js';
+import { confirmReview, type Reviewer } from './harness/auto-review.js';
+import {
+  McpAdapterMissing,
+  McpAuthority,
+  type McpGuardedCall,
+  type McpPreapproval,
+  type McpToolBinding,
+} from './mcp/index.js';
 import { ResourceStore } from './resources.js';
 import { readServiceId, type RunnerContext } from './task-runner.js';
+import { effectiveTaskTier } from './tasks/tier.js';
 
 export interface SessionMcpDeps {
   ctx: RunnerContext;
   taskId: string;
   currentRunId: () => string;
   executionId: () => string;
+  review: Reviewer;
   audit: (entry: Record<string, unknown>) => void;
 }
 
@@ -44,6 +53,7 @@ export async function prepareSessionMcp(deps: SessionMcpDeps): Promise<SessionMc
       executionId: deps.executionId,
       audit: deps.audit,
       log: deps.ctx.log,
+      preapprove: mcpPreapproval(deps),
     });
     deps.audit({ taskId: deps.taskId, runId: deps.currentRunId(), mcpTools: bindings.length });
     return {
@@ -60,4 +70,35 @@ export async function prepareSessionMcp(deps: SessionMcpDeps): Promise<SessionMc
     deps.audit({ taskId: deps.taskId, runId: deps.currentRunId(), mcpDegraded: true });
     return { factory: () => undefined, bindings: [] };
   }
+}
+
+/**
+ * The task tier's say on an MCP call its server policy guards, frozen with the session as the
+ * gate's tier is: `always` runs it, `auto` runs it when the review allows, and anything else
+ * leaves it to the per-operation confirm.
+ */
+function mcpPreapproval(
+  deps: SessionMcpDeps,
+): (call: McpGuardedCall, signal?: AbortSignal) => Promise<McpPreapproval> {
+  const tier = effectiveTaskTier(deps.ctx.ledger, deps.taskId, deps.ctx.tier);
+  return async (call, signal) => {
+    const base = {
+      taskId: deps.taskId,
+      runId: deps.currentRunId(),
+      executionId: deps.executionId(),
+      tool: `mcp:${call.serverId}/${call.tool}`,
+      toolCallId: call.toolCallId,
+    };
+    if (tier === 'always') {
+      deps.audit({ ...base, decision: 'tier' });
+      return { allowed: true };
+    }
+    if (tier !== 'auto') return { allowed: false };
+    const detail = JSON.stringify({ server: call.serverId, tool: call.tool, args: call.args });
+    const verdict = await deps.review({ scope: { tool: 'mcp' }, detail }, signal);
+    deps.audit({ ...base, decision: `review-${verdict.decision}`, reason: verdict.reason });
+    return verdict.decision === 'allow'
+      ? { allowed: true }
+      : { allowed: false, review: confirmReview(verdict) };
+  };
 }

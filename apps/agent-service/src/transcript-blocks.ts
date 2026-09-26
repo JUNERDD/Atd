@@ -3,9 +3,11 @@ import { Type } from 'typebox';
 import { Value } from 'typebox/value';
 import {
   GrantScopeSchema,
+  PermissionOutcomeSchema,
   SUBAGENT_CHILD_ENTRY,
   SubagentChildEntrySchema,
   type GrantScope,
+  type PermissionOutcome,
   type ServiceBlock,
   type ServiceToolStatus,
   type SubagentChildEntry,
@@ -22,13 +24,7 @@ const PermissionRecordSchema = Type.Object(
     toolCallId: Type.String(),
     runId: Type.String(),
     scope: GrantScopeSchema,
-    outcome: Type.Union([
-      Type.Literal('once'),
-      Type.Literal('session'),
-      Type.Literal('grant'),
-      Type.Literal('tier'),
-      Type.Literal('declined'),
-    ]),
+    outcome: PermissionOutcomeSchema,
     at: Type.Number(),
   },
   { additionalProperties: false },
@@ -48,7 +44,7 @@ export const ASK_USER_TOOL = 'ask_user';
 
 export interface PermissionLookup {
   scope: GrantScope;
-  outcome: 'once' | 'session' | 'grant' | 'tier' | 'declined';
+  outcome: PermissionOutcome;
 }
 
 /** Recorded permission outcomes (`app-permission`) by tool call id. */
