@@ -153,9 +153,6 @@
   "capability": {
     "waitingDesktop": "等待桌面：{{capability}}"
   },
-  "confirms": {
-    "subtask": "子任务 {{execution}}"
-  },
   "errors": {
     "openDesktopApp": "打开桌面应用以运行任务并管理已保存的数据。"
   },

@@ -9,7 +9,6 @@ import { messageOf } from '../../../lib/errors';
 import { shortcutKeys } from '../../../lib/shortcuts';
 import { isTextEntryFocused } from '../../../lib/text-entry';
 import { DetailBox } from './detail-box';
-import { useSubtaskLabel } from './subagent-context';
 import { scopeKey } from './tool-copy';
 
 /** Display cap for the approval detail; the full value stays one copy click away. */
@@ -29,15 +28,16 @@ export function ShortcutHint({ accelerator }: { accelerator: string }) {
 
 export function ApprovalControls({
   request,
+  focusOnMount = true,
   hideTitle = false,
 }: {
   request: ConfirmationRequest;
+  /** Focus the allow-once action on mount; the popover's pager turns it off after paging. */
+  focusOnMount?: boolean;
   /** Hide the scope title when the popover header already merges it (single approval). */
   hideTitle?: boolean;
 }) {
   const { t } = useTranslation('tasks');
-  const { t: tPanel } = useTranslation('panel');
-  const subtask = useSubtaskLabel(request.executionId);
   const onceRef = useRef<HTMLButtonElement>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
@@ -48,14 +48,16 @@ export function ApprovalControls({
   useEffect(() => {
     // A HITL arrival autofocuses only when the user is not typing: Enter meant for the draft
     // must never approve.
-    if (isTextEntryFocused()) return;
+    if (!focusOnMount || isTextEntryFocused()) return;
     onceRef.current?.focus();
-  }, [request.id]);
+  }, [request.id, focusOnMount]);
 
-  // Shell commands off the allowlist get allow once / add to allowlist / deny. A session grant is
-  // never offered for them: the service does not cache one for bash.
+  // Shell commands off the allowlist get allow once / add to allowlist / deny. A session grant
+  // (the same tool, allowed for the rest of the task) is offered only where the service caches
+  // one: never for bash or MCP, which it would downgrade to once.
   const bash = request.scope.tool === 'bash';
   const allowlistEntry = bash ? request.allowlistEntry : undefined;
+  const sessionGrant = !bash && request.scope.tool !== 'mcp';
 
   async function settle(action: () => Promise<void>) {
     if (pending) return;
@@ -93,7 +95,7 @@ export function ApprovalControls({
     if (event.key === 'Enter' && event.shiftKey) {
       // The second decision (session grant, or add to allowlist for bash) from any focused
       // decision: preventing default stops the focused button's own Enter activation.
-      if (bash && !allowlistEntry) return;
+      if (!sessionGrant && !allowlistEntry) return;
       event.preventDefault();
       event.stopPropagation();
       void (allowlistEntry ? addToAllowlist(allowlistEntry) : respond('session'));
@@ -111,11 +113,6 @@ export function ApprovalControls({
   return (
     <div className="approval-controls">
       {hideTitle ? null : <p className="text-sm font-medium">{t(scopeKey(request.scope))}</p>}
-      {subtask && (
-        <p className="min-w-0 truncate text-xs text-muted-foreground" title={subtask}>
-          {tPanel('confirms.subtask', { execution: subtask })}
-        </p>
-      )}
       {bash && (
         <p className="text-xs text-muted-foreground">{t('permission.bash.notAllowlisted')}</p>
       )}
@@ -125,8 +122,11 @@ export function ApprovalControls({
         </DetailBox>
       ) : null}
       <div className="approval-actions">
+        {/* One variant for every decision: none is the recommended answer, and the focused one
+            already shows the Enter target through its focus ring. */}
         <Button
           ref={onceRef}
+          variant="outline"
           disabled={pending}
           onClick={() => void respond('once')}
           onKeyDown={onControlsKeyDown}
@@ -154,17 +154,23 @@ export function ApprovalControls({
               {t('permission.bash.allowlistHint', { entry: allowlistEntry })}
             </TooltipContent>
           </Tooltip>
-        ) : bash ? null : (
-          <Button
-            variant="outline"
-            disabled={pending}
-            onClick={() => void respond('session')}
-            onKeyDown={onControlsKeyDown}
-          >
-            {t('permission.allowSession')}
-            <ShortcutHint accelerator="Shift+Enter" />
-          </Button>
-        )}
+        ) : sessionGrant ? (
+          // The label stays short beside "Allow once"; the tooltip says how long the grant lasts.
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                disabled={pending}
+                onClick={() => void respond('session')}
+                onKeyDown={onControlsKeyDown}
+              >
+                {t('permission.allowSession')}
+                <ShortcutHint accelerator="Shift+Enter" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top">{t('permission.allowSessionHint')}</TooltipContent>
+          </Tooltip>
+        ) : null}
         <Button
           variant="outline"
           disabled={pending}

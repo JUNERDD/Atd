@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState, type KeyboardEvent, type ReactElement } from 'react';
+import { useReducedMotion } from 'motion/react';
 import { useTranslation } from 'react-i18next';
 import { Popover, PopoverAnchor, PopoverContent } from '@ai/ui/components/popover';
 import type { PermissionRequest } from '../../electron/agent/permission-schema';
@@ -12,23 +13,10 @@ import { HitlPanel } from './hitl-panel';
 import { MorphViewport } from './morph-viewport';
 import { useComposerView } from './use-composer-view';
 import { useHitlSummary } from './use-hitl-summary';
+import { createViewAnchor } from './view-anchor';
 import './composer-popover.css';
 
 const NO_BLOCKS: readonly Block[] = [];
-
-/**
- * Where the popover anchors for a view, read on every position update: horizontally the part that
- * opens it, so each view centers on its part; the HITL view spans the whole anchor instead (the
- * composer's width, which its panel reads as the trigger width). Vertically the top of the pill,
- * so every view stacks above it.
- */
-function viewRect(root: HTMLElement | null, view: PillView | null): DOMRect {
-  if (!root) return new DOMRect();
-  const part = view === 'hitl' ? null : root.querySelector(`[data-pill-view="${view}"]`);
-  const { left, width } = (part ?? root).getBoundingClientRect();
-  const top = (root.querySelector('.composer-progress') ?? root).getBoundingClientRect().top;
-  return new DOMRect(left, top, width, 0);
-}
 
 /**
  * The status pill above the composer surface and the one Radix popover its parts open: HITL
@@ -101,11 +89,13 @@ export function ComposerPopover({
     setPrevious(shown);
     setMoved(previous !== null && shown !== null);
   }
+  const reduced = useReducedMotion();
+  const [anchorFor] = useState(createViewAnchor);
   // A new reference per view makes Radix re-anchor when the view changes.
-  const viewAnchor = useMemo(
-    () => ({ current: { getBoundingClientRect: () => viewRect(anchor.current, rendered) } }),
-    [rendered],
-  );
+  const viewAnchor = useMemo(() => {
+    const slide = moved && !reduced;
+    return { current: { getBoundingClientRect: () => anchorFor(anchor.current, rendered, slide) } };
+  }, [anchorFor, rendered, moved, reduced]);
 
   const part = (target: PillView) =>
     anchor.current?.querySelector<HTMLElement>(`[data-pill-view="${target}"]`) ?? null;
@@ -179,7 +169,6 @@ export function ComposerPopover({
         // The pill can reflow under an open view (a part appears or its count changes), which no
         // resize of the popover or window reports.
         updatePositionStrategy="always"
-        data-moved={moved || undefined}
         aria-label={rendered === null ? undefined : labels[rendered]}
         onOpenAutoFocus={(event) => event.preventDefault()}
         onCloseAutoFocus={(event) => event.preventDefault()}

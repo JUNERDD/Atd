@@ -153,9 +153,6 @@
   "capability": {
     "waitingDesktop": "Waiting for the desktop: {{capability}}"
   },
-  "confirms": {
-    "subtask": "Subtask {{execution}}"
-  },
   "errors": {
     "openDesktopApp": "Open the desktop app to run tasks and manage saved data."
   },
