@@ -786,12 +786,19 @@
   border-radius: var(--radius-xl);
   transition: background-color 100ms;
 }
+/* Only keyboard focus highlights the row: a menu returns focus to the row's button when it
+ * closes, and pointer focus there would leave the row lit after the pointer has left. An open
+ * context menu (data-state on the row) or More menu keeps the row lit to show its target. */
 .history-row:hover,
-.history-row:focus-within {
+.history-row:has(:focus-visible),
+.history-row[data-state='open'],
+.history-row:has([aria-expanded='true']) {
   background: var(--muted);
 }
 .dark .history-row:hover,
-.dark .history-row:focus-within {
+.dark .history-row:has(:focus-visible),
+.dark .history-row[data-state='open'],
+.dark .history-row:has([aria-expanded='true']) {
   background: var(--ata-surface-ghost-hover);
 }
 .history-row:has(.task-row:focus-visible) {
