@@ -1,5 +1,10 @@
 import { previewTask, type AgentClientOptions, type AgentHttpClient } from '@ai/agent-client';
-import type { InvalidateFrame, ServiceEvent, TaskSnapshot } from '@ai/agent-contracts';
+import {
+  snapshotToolsFor,
+  type InvalidateFrame,
+  type ServiceEvent,
+  type TaskSnapshot,
+} from '@ai/agent-contracts';
 import type { AgentEvent, AgentRequest, TaskDetail } from './bridge';
 import { ChildTranscripts } from './child-transcripts';
 import type { CommandDefinition } from './command-schema';
@@ -181,6 +186,9 @@ export class TaskClient<S> {
     let titleCommand: string | null = null;
     let model = request.policy?.model ?? this.host.defaultModel();
     let thinkingLevel = request.policy?.thinkingLevel;
+    // Without a policy the service keeps the task's last tools and memory flag (or its defaults).
+    let tools = request.policy ? snapshotToolsFor(request.policy.tools) : undefined;
+    let memory = request.policy?.memory;
     const options = this.connection.options();
     if (request.commandId) {
       if (!options) throw notConnected();
@@ -200,6 +208,9 @@ export class TaskClient<S> {
           modelId: previewed.snapshot.model.modelId,
         };
       thinkingLevel ??= previewed.snapshot.thinkingLevel;
+      // The preview resolved the policy, else the command's own tools and memory setting.
+      tools = previewed.snapshot.tools;
+      memory = previewed.snapshot.memory;
     }
     if (!text.trim() && !request.input.files.length)
       throw new Error('Enter a message or attach a file.');
@@ -214,6 +225,8 @@ export class TaskClient<S> {
       input: { ...input, text, chips: text === request.input.text ? chips : [] },
       ...(model ? { model } : {}),
       ...(thinkingLevel ? { thinkingLevel } : {}),
+      ...(tools ? { tools } : {}),
+      ...(memory === undefined ? {} : { memory }),
     });
     // A command run is titled after the command. The title lives in the service like any rename,
     // so every client shows it.

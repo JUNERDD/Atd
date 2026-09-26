@@ -1,4 +1,5 @@
 import { Type, type Static } from 'typebox';
+import type { CommandTool } from './commands.js';
 import { Identifier, OperationId } from './identifiers.js';
 import { PermissionTierSchema } from './confirms.js';
 import { ThinkingLevelSchema } from './models.js';
@@ -22,6 +23,24 @@ export const ServiceToolIdSchema = Type.Union([
   Type.Literal('ls'),
 ]);
 export type ServiceToolId = Static<typeof ServiceToolIdSchema>;
+
+/**
+ * The snapshot tools a five-tool grant stands for (commands, skills, roles and the desktop run
+ * policy name only those five): `read` also grants the read-only search tools, which share its
+ * task-folder confinement. Order follows the grant, then the search tools.
+ */
+export function snapshotToolsFor(tools: readonly CommandTool[]): ServiceToolId[] {
+  return tools.includes('read') ? [...tools, 'grep', 'find', 'ls'] : [...tools];
+}
+
+/** What a run gets when neither the request nor an earlier run of its task chose tools. */
+export const DEFAULT_RUN_TOOLS: readonly ServiceToolId[] = snapshotToolsFor([
+  'read',
+  'write',
+  'edit',
+  'bash',
+  'command',
+]);
 
 export const FileRefSchema = Type.Object(
   {

@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import {
+  DEFAULT_RUN_TOOLS,
   errorMessage,
   isActiveStatus,
   type CancelRunResponse,
@@ -82,7 +83,7 @@ export class RunnerManager {
       if (!ledger.data.resources.some((resource) => resource.id === file.id))
         throw new Error(`Attachment ${file.id} was not uploaded.`);
     }
-    const snapshot = this.freezeSnapshot(request, connections);
+    const snapshot = this.freezeSnapshot(request, connections, previous?.runs.at(-1));
     this.checkBudget(snapshot);
     const runId = randomUUID();
     const now = new Date().toISOString();
@@ -265,16 +266,24 @@ export class RunnerManager {
     }
   }
 
-  private freezeSnapshot(request: SubmitTaskRequest, connections: ConnectionStore): RunSnapshot {
+  /**
+   * Tools and memory come from the request, else carry over from the task's last run (a command
+   * that turned memory off keeps it off for the task's follow-ups), else the defaults.
+   */
+  private freezeSnapshot(
+    request: SubmitTaskRequest,
+    connections: ConnectionStore,
+    last: TaskRun | undefined,
+  ): RunSnapshot {
     const model = resolveRunModel(connections, request.model);
     const thinkingLevel = resolveRunThinkingLevel(connections, model, request.thinkingLevel);
     return {
       input: request.input,
       instructions: '',
       model,
-      tools: ['read', 'write', 'edit', 'bash', 'command', 'grep', 'find', 'ls'],
-      // New runs search and learn through the service memory authority (harness memory slot).
-      memory: true,
+      tools: [...(request.tools ?? last?.snapshot.tools ?? DEFAULT_RUN_TOOLS)],
+      // Runs with memory search and learn through the service memory authority (harness slot).
+      memory: request.memory ?? last?.snapshot.memory ?? true,
       ...(thinkingLevel ? { thinkingLevel } : {}),
     };
   }

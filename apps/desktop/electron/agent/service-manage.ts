@@ -9,7 +9,11 @@ import {
   updateMemory,
   type AgentClientOptions,
 } from '@ai/agent-client';
-import type { PreviewTaskRequest, ServiceRunPolicy } from '@ai/agent-contracts';
+import {
+  snapshotToolsFor,
+  type PreviewTaskRequest,
+  type ServiceRunPolicy,
+} from '@ai/agent-contracts';
 import type { MemoryEntry, MemorySnapshot } from './bridge';
 import type { RunPolicy } from './run-policy';
 import type { RunSnapshot } from './task-schema';
@@ -30,7 +34,7 @@ export function manageError(error: unknown): never {
 export function mapRunPolicy(policy: RunPolicy | null | undefined): ServiceRunPolicy | undefined {
   if (!policy) return undefined;
   return {
-    tools: policy.tools,
+    tools: snapshotToolsFor(policy.tools),
     memory: policy.memory,
     useDefaultModel: policy.useDefaultModel,
     confirmExpansion: policy.confirmExpansion,

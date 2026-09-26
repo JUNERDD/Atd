@@ -5,9 +5,9 @@ import { Identifier } from './identifiers.js';
 export const MAX_RUN_REFERENCES = 16;
 
 /**
- * A reference picked in the composer's `@` panel. `SubmitTaskRequest` stays frozen, so
- * references stage per task like skill and MCP selection and freeze once at run
- * acceptance, where the service resolves them into run material and capabilities:
+ * A reference picked in the composer's `@` panel. `SubmitTaskRequest` carries only what
+ * acceptance freezes, so references stage per task like skill and MCP selection and freeze
+ * once at run acceptance, where the service resolves them into run material and capabilities:
  * `task` injects a bounded excerpt of that conversation, `mcpServer` suggests that
  * server's tools without narrowing the tool set, and `agent` registers and allows that
  * `~/.atd/agents` subagent for the run with a delegation hint.

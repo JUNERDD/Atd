@@ -4,8 +4,8 @@ import { atomicWrite } from '../config.js';
 
 /**
  * Next-run MCP staging (T6b), mirroring skills/staging.ts. SubmitTaskRequest
- * is frozen, so MCP tool selection for the next run stages per task and is
- * consumed once at run freeze. No staging means bind-all (current behavior);
+ * carries only what acceptance freezes, so MCP tool selection for the next run
+ * stages per task and is consumed once at run freeze. No staging means bind-all (current behavior);
  * staged selection (even empty) binds exactly the frozen set. Staging never
  * mutates an accepted run; unreleased staging applies to the next run.
  */
