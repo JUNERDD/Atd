@@ -260,6 +260,29 @@
 .markdown code {
   font-size: 12px;
 }
+/* The project's code block (`@pierre/diffs`): a framed card whose copy action sits on its corner. */
+.code-block {
+  position: relative;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+}
+.code-block-file {
+  display: block;
+}
+/* In a message a long block scrolls inside itself instead of stretching the turn. */
+.markdown-code-block .code-block-file {
+  max-height: 320px;
+  overflow-y: auto;
+}
+/* A fenced block's code carries the inline-code chip classes; the block already frames it. */
+.markdown pre > code {
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+}
 .markdown a {
   text-decoration: underline;
 }

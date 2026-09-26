@@ -3,7 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { rankByQuery } from '@ai/ui/lib/fuzzy-match';
 import type { AgentTask } from '../../../electron/agent/task-schema';
 import type { ComposerEditorCommands } from '../composer-editor/editor-commands';
-import type { ExtensionAgentRow, ExtensionMcpRow } from '../service/use-service';
+import type { ExtensionAgentRow, ExtensionMcpRow } from '../service/extension-rows';
+import { useMcpStateLabel } from '../service/use-mcp-state-label';
 import { orderGroups, type QuickGroup, type QuickOption, type QuickView } from './quick-options';
 import { relativeTime } from './relative-time';
 import type { TriggerState } from './trigger';
@@ -11,22 +12,6 @@ import { useFileGroups } from './use-file-groups';
 import type { ServiceListView } from './use-service-lists';
 
 export type MentionTrigger = Extract<TriggerState, { kind: 'mention' }>;
-
-// Service MCP connection states (`McpConnectionState`); anything newer shows as sent.
-const MCP_STATES = [
-  'disabled',
-  'disconnected',
-  'connecting',
-  'auth_required',
-  'ready',
-  'error',
-  'closing',
-] as const;
-
-function isMcpState(state: string): state is (typeof MCP_STATES)[number] {
-  const states: readonly string[] = MCP_STATES;
-  return states.includes(state);
-}
 
 /** Recent conversations for an empty query; a query searches further back. */
 const CONVERSATIONS_RECENT = 5;
@@ -59,6 +44,7 @@ export function useMentionView({
   mcp: ServiceListView<ExtensionMcpRow>;
 }): QuickView {
   const { t, i18n } = useTranslation('panel');
+  const stateLabel = useMcpStateLabel();
   const query = trigger?.query ?? '';
   const files = useFileGroups({
     enabled: trigger !== null,
@@ -106,14 +92,15 @@ export function useMentionView({
       icon: <Plug />,
       title: row.serverId,
       description: row.lastError || undefined,
-      status: isMcpState(row.state) ? t(`quickPanel.mcpState.${row.state}`) : row.state,
+      status: stateLabel(row.state),
       // A disabled server offers no tools to prefer, so it stays visible but cannot be picked.
       disabled: row.state === 'disabled',
       select: () => editor.insertChips([{ kind: 'mcpServer', serverId: row.serverId }]),
     })),
   };
 
-  const catalog = agents.status === 'ready' ? agents.rows : [];
+  // An agent turned off in Settings would only be refused at send, so it is not offered.
+  const catalog = agents.status === 'ready' ? agents.rows.filter((row) => row.enabled) : [];
   const agentGroup: QuickGroup = {
     id: 'agents',
     heading: t('quickPanel.groups.agents'),
