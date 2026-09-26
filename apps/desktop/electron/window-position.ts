@@ -54,3 +54,23 @@ export function getPanelBounds(workArea: WorkArea, size: PanelSize = PANEL_SIZE)
     height,
   };
 }
+
+function sameBounds(a: WorkArea, b: WorkArea): boolean {
+  return a.x === b.x && a.y === b.y && a.width === b.width && a.height === b.height;
+}
+
+/**
+ * Where the panel goes when its display's work area changes. A panel still where `getPanelBounds`
+ * docked it against `docked` re-docks in the new work area, so a resized Dock or menu bar never
+ * leaves it off its corner margin; a panel the user moved only stays inside the work area.
+ * `docked` in the answer is the work area the panel is docked against afterwards, or null.
+ */
+export function followWorkArea(
+  bounds: WorkArea,
+  docked: WorkArea | null,
+  workArea: WorkArea,
+): { bounds: WorkArea; docked: WorkArea | null } {
+  if (docked && sameBounds(bounds, getPanelBounds(docked, bounds)))
+    return { bounds: getPanelBounds(workArea, bounds), docked: { ...workArea } };
+  return { bounds: constrainPanelBounds(bounds, workArea), docked: null };
+}

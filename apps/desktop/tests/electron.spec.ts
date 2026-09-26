@@ -61,10 +61,14 @@ test('production app: positioning, renderer isolation, service flow, and window 
         pinned: window.isAlwaysOnTop(),
       };
     });
-    expect(state.bounds.width).toBe(Math.min(420, state.workArea.width - 32));
-    expect(state.bounds.height).toBe(Math.min(580, state.workArea.height - 32));
-    expect(state.bounds.x + state.bounds.width).toBe(state.workArea.x + state.workArea.width - 16);
-    expect(state.bounds.y + state.bounds.height).toBe(
+    // The bounds and work area in every message make a CI placement failure diagnosable.
+    const placement = JSON.stringify({ bounds: state.bounds, workArea: state.workArea });
+    expect(state.bounds.width, placement).toBe(Math.min(420, state.workArea.width - 32));
+    expect(state.bounds.height, placement).toBe(Math.min(580, state.workArea.height - 32));
+    expect(state.bounds.x + state.bounds.width, placement).toBe(
+      state.workArea.x + state.workArea.width - 16,
+    );
+    expect(state.bounds.y + state.bounds.height, placement).toBe(
       state.workArea.y + state.workArea.height - 16,
     );
     expect(state.pinned).toBe(true);
