@@ -10,17 +10,23 @@ import type { ChildTool } from '../../subagents/child-tools.js';
 import { confineToolArgument, searchOperations } from './confine.js';
 import { resolveRipgrep } from './ripgrep.js';
 
-/** The read-only search tools: pi's built-ins, confined to the task folder. */
+/** The read-only search tools: pi's built-ins, confined to the task folder (and `~/.agents` on the parent). */
 export const SEARCH_TOOL_NAMES = ['grep', 'find', 'ls'] as const;
 
 /**
  * Checks a grep/find/ls call before the gate, for parent and child alike: the `path` argument
- * must resolve inside the task folder, and grep/find need `rg` on PATH (so pi's grep never
- * reaches its binary download).
+ * must resolve inside the task folder or one of `extraRoots`, and grep/find need `rg` on PATH (so
+ * pi's grep never reaches its binary download). Answers where the path landed, the gate scope.
  */
-export async function precheckSearch(root: string, name: string, args: unknown): Promise<void> {
-  await confineToolArgument(root, pathArgument(args));
+export async function precheckSearch(
+  root: string,
+  name: string,
+  args: unknown,
+  extraRoots: readonly string[] = [],
+): Promise<'inside' | 'outside'> {
+  const location = await confineToolArgument(root, pathArgument(args), extraRoots);
   if (name === 'grep' || name === 'find') await resolveRipgrep();
+  return location;
 }
 
 /** The call's `path` argument; pi's schemas make it an optional string. */
