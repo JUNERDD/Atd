@@ -24,6 +24,7 @@ function TurnList({
   anchors,
   requests,
   live,
+  status,
   onAttach,
 }: {
   turns: AdaptedTurn[];
@@ -32,6 +33,7 @@ function TurnList({
   anchors: Set<string>;
   requests: RequestIndex;
   live: boolean;
+  status: ReactElement;
   onAttach: (file: FileRef) => void;
 }) {
   const { t } = useTranslation('tasks');
@@ -63,6 +65,7 @@ function TurnList({
           requests={requests}
           live={live}
           last={firstVisible + index === turns.length - 1}
+          status={firstVisible + index === turns.length - 1 ? status : null}
           onAttach={onAttach}
         />
       ))}
@@ -144,6 +147,7 @@ export function Transcript({
             anchors={anchors}
             requests={requestIndex}
             live={live}
+            status={<StatusBar run={run} />}
             onAttach={onAttach}
           />
           {turns.length === 0 && live && (
@@ -163,7 +167,8 @@ export function Transcript({
               })}
             </output>
           )}
-          <StatusBar run={run} />
+          {/* With turns, the note closes the last one, above its action bar. */}
+          {turns.length === 0 && <StatusBar run={run} />}
         </div>
       </ScrollArea>
       <ScrollJump show={showJump} onJump={pin} />

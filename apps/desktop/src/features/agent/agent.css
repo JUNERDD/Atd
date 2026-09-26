@@ -682,7 +682,6 @@
 }
 .approval-controls,
 .question-block,
-.transcript-status,
 .legacy-note {
   display: flex;
   flex-direction: column;
