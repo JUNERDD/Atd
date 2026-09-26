@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { ModelRuntime } from '@earendil-works/pi-coding-agent';
@@ -206,7 +207,9 @@ export async function verifyModel(
   const result = await models.completeSimple(
     model,
     { messages: [{ role: 'user', content: 'Reply OK.', timestamp: Date.now() }] },
-    { maxTokens: 16, signal: AbortSignal.timeout(30000) },
+    // The check is its own one-message conversation. Providers that route by session (OpenCode
+    // rejects requests without `x-opencode-session`) read this id the way they read a task's.
+    { maxTokens: 16, signal: AbortSignal.timeout(30000), sessionId: randomUUID() },
   );
   if (result.stopReason === 'error' || result.stopReason === 'aborted')
     throw new UpstreamError(
