@@ -24,6 +24,24 @@ import { validateCommandShape } from './templates.js';
 export class CommandStore {
   private chain: Promise<void> = Promise.resolve();
 
+  /** Change listeners by store file; instances load per call, so listeners live on the class. */
+  private static readonly watchers = new Map<string, Set<() => void>>();
+
+  /**
+   * Calls `listener` after every write to the command store of `dataDir`, whether a route or the
+   * Agent's `command` tool made it, so clients hear about both. Answers the unsubscribe.
+   */
+  static onChanged(dataDir: string, listener: () => void): () => void {
+    const file = commandsFile(dataDir);
+    const listeners = CommandStore.watchers.get(file) ?? new Set();
+    listeners.add(listener);
+    CommandStore.watchers.set(file, listeners);
+    return () => {
+      listeners.delete(listener);
+      if (!listeners.size) CommandStore.watchers.delete(file);
+    };
+  }
+
   private constructor(
     private readonly file: string,
     public data: ServiceCommandsFile,
@@ -51,6 +69,7 @@ export class CommandStore {
       const result = await update(draft);
       await atomicWrite(this.file, parse(ServiceCommandsFileSchema, draft));
       this.data = draft;
+      for (const listener of CommandStore.watchers.get(this.file) ?? []) listener();
       return result;
     });
     this.chain = operation.then(
