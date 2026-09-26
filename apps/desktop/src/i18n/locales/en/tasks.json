@@ -100,13 +100,14 @@
     },
     "outcome": {
       "once": "Allowed once",
-      "session": "Allowed for this session",
+      "session": "Allowed tool for session",
       "grant": "Allowed by session grant",
       "tier": "Auto-approved",
       "declined": "Declined"
     },
     "allowOnce": "Allow once",
-    "allowSession": "Allow for this session",
+    "allowSession": "Allow this tool",
+    "allowSessionHint": "Won’t ask again for this tool in this session.",
     "decline": "Decline",
     "waitingApproval": "Waiting for your approval",
     "waitingAnswer": "Waiting for your answer",
@@ -119,6 +120,11 @@
       "deny": "Deny",
       "deniedNote": "Denied. The agent was told this command is not allowed.",
       "addFailed": "The allowlist could not be updated. The command did not run."
+    },
+    "pager": {
+      "previous": "Previous request",
+      "next": "Next request",
+      "position": "{{current}} / {{total}}"
     }
   },
   "question": {

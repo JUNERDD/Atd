@@ -11,7 +11,6 @@ import { messageOf } from '../../../lib/errors';
 import { isTextEntryFocused } from '../../../lib/text-entry';
 import { ActivityRow } from './activity-row';
 import { DetailBox } from './detail-box';
-import { useSubtaskLabel } from './subagent-context';
 import { statusLabelKey } from './tool-copy';
 
 /**
@@ -97,10 +96,16 @@ export function QuestionBlock({
  * when the user is not typing (the composer or another text field); Esc bubbles to the popover
  * content to dismiss, never to skip.
  */
-export function QuestionControls({ request }: { request: InputRequest }) {
+export function QuestionControls({
+  request,
+  focusOnMount = true,
+}: {
+  request: InputRequest;
+  /** Focus the first chip (or the answer field) on mount; off after the popover pages. */
+  focusOnMount?: boolean;
+}) {
   const { t } = useTranslation('tasks');
   const { t: tp } = useTranslation('panel');
-  const subtask = useSubtaskLabel(request.executionId);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
   const [draft, setDraft] = useState('');
@@ -108,9 +113,9 @@ export function QuestionControls({ request }: { request: InputRequest }) {
   const answerRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (isTextEntryFocused()) return;
+    if (!focusOnMount || isTextEntryFocused()) return;
     (firstOptionRef.current ?? answerRef.current)?.focus();
-  }, [request.id]);
+  }, [request.id, focusOnMount]);
 
   async function respond(answer: { answer: string } | { skipped: true }) {
     if (pending) return;
@@ -130,11 +135,6 @@ export function QuestionControls({ request }: { request: InputRequest }) {
   return (
     <div className="question-form">
       <p className="text-sm font-medium">{request.title}</p>
-      {subtask && (
-        <p className="min-w-0 truncate text-xs text-muted-foreground" title={subtask}>
-          {tp('confirms.subtask', { execution: subtask })}
-        </p>
-      )}
       {request.options.length > 0 && (
         <div className="question-options">
           {request.options.map((option, index) => (

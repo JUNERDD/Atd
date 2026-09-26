@@ -8,7 +8,7 @@ import type { Block, BlockOf } from '../../../../electron/agent/transcript-schem
  * helpers read that summary for cards, the drill-in header, and request attribution.
  */
 
-/** Longest task excerpt shown beside the agent name where a request names its subtask. */
+/** Longest task excerpt shown beside the agent name in a child's label. */
 const TASK_SUMMARY_CHARS = 60;
 
 export type SubagentChildIndex = {
@@ -51,7 +51,7 @@ export function pendingExecutions(requests: readonly PermissionRequest[]): Pendi
   return pending;
 }
 
-/** "agent · first line of the task", clamped, for the approval and question subtask label. */
+/** "agent · first line of the task", clamped, naming a child in the subagent list. */
 export function subtaskLabel(child: SubagentChildSummary): string {
   const line = child.task.split('\n', 1)[0]?.trim() ?? '';
   if (!line) return child.agent;

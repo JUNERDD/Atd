@@ -32,6 +32,22 @@
   font-weight: 500;
 }
 
+/* Paging several requests: previous, `n / m`, next, after the title. */
+.hitl-queue-pager {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 2px;
+}
+
+.hitl-queue-pager-position {
+  min-width: 3ch;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
 .hitl-queue-body {
   display: flex;
   flex-direction: column;
