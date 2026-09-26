@@ -15,6 +15,7 @@ import { ScrollArea } from '@ai/ui/components/scroll-area';
 import { cn } from '@ai/ui/lib/utils';
 import { subtaskLabel, type PendingByExecution } from '../transcript/subagent-children';
 import { useSubagents } from '../transcript/subagent-context';
+import { usePrefetchChildTranscripts } from '../transcript/use-child-transcript';
 
 /**
  * A child's state as its row's leading glyph, in the Todos list's glyph style: the pill's HITL
@@ -80,20 +81,28 @@ function ChildRow({
 
 /**
  * The composer popover's Subagents view: the latest reply's children in one flat list, sorted by
- * state with each state shown by the row's leading glyph. Each row opens that child's full conversation (`onOpen`, null outside the task panel);
- * the list keeps no detail beyond the name, which the drill-in view shows.
+ * state with each state shown by the row's leading glyph. Each row opens that child's full
+ * conversation (`onOpen`, null outside the task panel); the list keeps no detail beyond the name,
+ * which the drill-in view shows. While the list shows, it prefetches the conversations it can
+ * open, so the drill-in rarely waits.
  */
 export function SubagentPanel({
+  taskId,
   items,
   truncated,
   onOpen,
 }: {
+  taskId: string | null;
   items: SubagentChildSummary[];
   truncated: boolean;
   onOpen: ((childKey: string) => void) | null;
 }) {
   const { t } = useTranslation('tasks');
   const { pending } = useSubagents();
+  usePrefetchChildTranscripts(
+    onOpen ? taskId : null,
+    items.map((child) => child.key),
+  );
   const rows = items.map((child) => ({ child, glyph: glyphOf(child, pending) }));
   // A stable sort keeps launch order within each state.
   rows.sort((a, b) => ORDER.indexOf(a.glyph) - ORDER.indexOf(b.glyph));

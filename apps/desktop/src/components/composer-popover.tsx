@@ -209,6 +209,7 @@ export function ComposerPopover({
           {rendered === 'subagents' && (
             <SubagentPanel
               key="subagents"
+              taskId={taskId}
               items={progress.children}
               truncated={progress.childrenTruncated}
               onOpen={onOpenChild}

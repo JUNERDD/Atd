@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, ChevronRight } from 'lucide-react';
 import type { SubagentChildSummary } from '@ai/agent-contracts';
@@ -12,6 +12,9 @@ import { TurnView } from './turn-view';
 import { indexRequests } from './turns';
 import { useChildTranscript } from './use-child-transcript';
 import { useTranscriptScroll } from './use-transcript-scroll';
+
+/** A load shorter than this shows nothing rather than flashing the loading line. */
+const LOADING_DELAY_MS = 400;
 
 /** The drill-in view owns no files: task files anchor in the parent conversation only. */
 const NO_ANCHORS = new Set<string>();
@@ -89,6 +92,12 @@ export function ChildTranscriptView({
   const { index } = useSubagents();
   const child = index.byKey.get(childKey);
   const { detail, error } = useChildTranscript(taskId, childKey);
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    if (detail || error) return;
+    const timer = setTimeout(() => setSlow(true), LOADING_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [detail, error]);
   const requestIndex = useMemo(() => indexRequests(requests), [requests]);
   const blocks = detail?.blocks;
   const model = child?.model ?? '';
@@ -133,7 +142,7 @@ export function ChildTranscriptView({
               {error}
             </p>
           ) : !detail ? (
-            <p className="m-0 text-sm text-muted-foreground">{t('subagent.loading')}</p>
+            slow && <p className="m-0 text-sm text-muted-foreground">{t('subagent.loading')}</p>
           ) : (
             turns.length === 0 && (
               <p className="m-0 text-sm text-muted-foreground">{t('subagent.empty')}</p>
