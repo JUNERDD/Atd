@@ -721,22 +721,46 @@
   font-weight: 600;
   line-height: 24px;
 }
+/* One card: the add field on top, then the entries (or a note while there are none). */
+.settings-shell-allowlist-card {
+  min-width: 0;
+  overflow: hidden;
+}
 .settings-shell-allowlist-form {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 8px;
+  padding: 6px;
 }
-/* The Add action keeps its size; the field takes the rest and never pushes it out of the row. */
-.settings-shell-allowlist-control {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  gap: 8px;
+.settings-shell-allowlist-list {
+  gap: 0;
+  padding: 4px 6px;
+  border-top: 1px solid var(--border);
 }
-.settings-shell-allowlist-control > input {
-  flex: 1;
+/* Compact rows whose `$` lines up with the one in the add field above. */
+.settings-shell-allowlist-list > li {
+  padding: 2px 4px 2px 8px;
 }
-.settings-shell-allowlist [data-slot='item-group'] {
-  gap: 6px;
+.settings-shell-allowlist-prompt {
+  flex-shrink: 0;
+  color: var(--muted-foreground);
+  font-size: 13px;
+}
+.settings-shell-allowlist-detail {
+  max-height: 40dvh;
+  border-radius: var(--radius-xl);
+  background: var(--muted);
+}
+.settings-shell-allowlist-detail pre {
+  margin: 0;
+  padding: 12px;
+  font-size: 13px;
+  line-height: 20px;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+.settings-shell-allowlist-empty {
+  margin: 0;
+  padding: 8px 14px;
+  border-top: 1px solid var(--border);
+  color: var(--muted-foreground);
+  font-size: 13px;
+  line-height: 20px;
 }

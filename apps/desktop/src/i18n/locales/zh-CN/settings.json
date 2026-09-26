@@ -79,14 +79,14 @@
     },
     "shellAllowlist": {
       "title": "命令允许列表",
-      "description": "以列表条目开头的命令将直接运行，不再询问。包含串联、重定向或替换的命令始终需要确认。",
+      "description": "以列表条目开头的命令将直接运行：手动批准时不再询问，自动批准时不再审查。包含串联、重定向或替换的命令始终需要确认。",
       "listLabel": "已允许的命令",
       "inputLabel": "命令前缀",
-      "placeholder": "例如 npm test",
+      "placeholder": "npm test",
       "add": "添加",
       "remove": "移除",
       "removeLabel": "移除 {{entry}}",
-      "empty": "尚未允许任何命令，每条命令都会先询问。",
+      "empty": "还没有命令。可以在上方添加前缀，或在审批命令时选择“始终允许”。",
       "errors": {
         "empty": "请输入命令。",
         "tooLong": "条目不能超过 200 个字符。",
@@ -94,7 +94,10 @@
         "duplicate": "此条目已在列表中。",
         "limit": "允许列表最多 100 条。",
         "save": "无法保存允许列表。"
-      }
+      },
+      "viewLabel": "查看 {{entry}}",
+      "detailTitle": "允许的命令",
+      "detailDescription": "以此前缀开头的命令将直接运行。"
     }
   },
   "shortcuts": {
