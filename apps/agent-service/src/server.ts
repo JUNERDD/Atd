@@ -22,6 +22,7 @@ import { Ledger, LedgerNotFound } from './ledger.js';
 import type { Logger } from './logging.js';
 import { registerManageRoutes } from './manage.js';
 import { McpAuthority, registerMcpRoutes, type McpAuthorityDeps } from './mcp/index.js';
+import { MemoryAuthority } from './memory/index.js';
 import { registerMigrationRoutes } from './migration/routes.js';
 import { ResourceStore } from './resources.js';
 import { UpstreamError } from './errors.js';
@@ -145,6 +146,11 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
     log: deps.log,
   });
   registerInvalidation(app, (frame) => hub.invalidate(frame));
+  // Runs change memory without a route write (tool calls, learners); announce those too.
+  const stopMemoryWatch = MemoryAuthority.onChanged(deps.config.paths.agentDir, () =>
+    hub.invalidate({ type: 'invalidate', scope: 'memory' }),
+  );
+  app.addHook('onClose', async () => stopMemoryWatch());
 
   app.get('/v1/status', async () => ({
     service: {

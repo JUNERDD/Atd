@@ -1,5 +1,6 @@
 import { createJiti } from 'jiti';
 import type { ExtensionFactory } from '@earendil-works/pi-coding-agent';
+import { MEMORY_TOOLS } from '@ai/agent-contracts';
 import type { Logger } from '../logging.js';
 import type { MemoryTarget } from './policy.js';
 
@@ -44,6 +45,9 @@ async function loadHermes(agentDir: string): Promise<HermesDesktop> {
   return module.createDesktopMemory(agentDir);
 }
 
+/** The memory tools that change the store; `memory_search` only reads it. */
+const MEMORY_WRITE_TOOLS = new Set(MEMORY_TOOLS.filter((name) => name !== 'memory_search'));
+
 export interface MemoryAuthorityEvents {
   notify: (message: string, kind: 'info' | 'warning' | 'error') => void;
   changed: () => void;
@@ -81,6 +85,22 @@ export class MemoryAuthority {
   ) {}
 
   private static readonly instances = new Map<string, Promise<MemoryAuthority>>();
+  private static readonly watchers = new Map<string, Set<() => void>>();
+
+  /**
+   * Calls `listener` whenever a run changes the store of `agentDir`: a memory tool write or a
+   * learner commit. Those writes skip the HTTP routes, whose own writes the server already
+   * announces, so this is how clients hear about them. Answers the unsubscribe.
+   */
+  static onChanged(agentDir: string, listener: () => void): () => void {
+    const listeners = MemoryAuthority.watchers.get(agentDir) ?? new Set();
+    listeners.add(listener);
+    MemoryAuthority.watchers.set(agentDir, listeners);
+    return () => {
+      listeners.delete(listener);
+      if (!listeners.size) MemoryAuthority.watchers.delete(agentDir);
+    };
+  }
 
   /**
    * Returns the singleton for one agentDir. Concurrent callers share the
@@ -140,13 +160,20 @@ export class MemoryAuthority {
   }): ExtensionFactory {
     this.assertOpen();
     const child = !scope.executionId.startsWith('root:');
-    return this.hermes.extension({
+    const hermes = this.hermes.extension({
       canRead: () => this.canRead(scope.runMemory),
       canLearn: () => !child && this.canLearn(scope.runMemory, scope.executionId),
       policyVersion: () => this.policyVersion,
       notify: this.events.notify,
-      changed: this.events.changed,
+      changed: () => this.changed(),
     });
+    return async (pi) => {
+      await hermes(pi);
+      // Hermes reports only learner commits; a tool write that went through counts as well.
+      pi.on('tool_execution_end', (event) => {
+        if (!event.isError && MEMORY_WRITE_TOOLS.has(event.toolName)) this.changed();
+      });
+    };
   }
 
   /**
@@ -188,6 +215,11 @@ export class MemoryAuthority {
     if (result && typeof result === 'object' && result.success === false)
       throw new Error(result.error ?? 'Memory could not be updated.');
     this.policyVersion += 1;
+  }
+
+  private changed(): void {
+    this.events.changed();
+    for (const listener of MemoryAuthority.watchers.get(this.agentDir) ?? []) listener();
   }
 
   /** Service-owned flush/close; runners never close the shared store. */
