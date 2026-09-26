@@ -2,7 +2,12 @@ import { Type, type Static } from 'typebox';
 import { Identifier } from './identifiers.js';
 import { ShellAllowlistEntrySchema } from './shell.js';
 
-/** Per-task approval tier carried over from the desktop permission model. */
+/**
+ * Per-task approval tier. `manual` prompts for every guarded action; `auto` has a model review
+ * each guarded action against the user's request and prompts only when the review flags it
+ * (file work inside the task folder and web search or fetch need no review); `always` never
+ * prompts.
+ */
 export const PermissionTierSchema = Type.Union([
   Type.Literal('manual'),
   Type.Literal('auto'),
@@ -43,9 +48,24 @@ export const PermissionOutcomeSchema = Type.Union([
   Type.Literal('session'),
   Type.Literal('grant'),
   Type.Literal('tier'),
+  // Allowed without a prompt because the `auto` tier's review judged the call safe.
+  Type.Literal('reviewed'),
   Type.Literal('declined'),
 ]);
 export type PermissionOutcome = Static<typeof PermissionOutcomeSchema>;
+
+/**
+ * What the `auto` tier's review said before a confirm: `flagged` with the reviewer's reason (in
+ * the user's language; may be empty), or `unavailable` when no verdict came back.
+ */
+export const ConfirmReviewSchema = Type.Union([
+  Type.Object(
+    { outcome: Type.Literal('flagged'), reason: Type.String({ maxLength: 500 }) },
+    { additionalProperties: false },
+  ),
+  Type.Object({ outcome: Type.Literal('unavailable') }, { additionalProperties: false }),
+]);
+export type ConfirmReview = Static<typeof ConfirmReviewSchema>;
 
 /**
  * Pending human-in-the-loop request. `revision` guards replies: a reply whose
@@ -53,7 +73,7 @@ export type PermissionOutcome = Static<typeof PermissionOutcomeSchema>;
  *
  * C1 additive: a bash `confirmation` may carry `allowlistEntry`, the entry the
  * service suggests adding to the user's shell allowlist (shell.ts); absent when
- * the command has no safe suggestion.
+ * the command has no safe suggestion. A confirmation reached under `auto` carries `review`.
  */
 export const PermissionRequestSchema = Type.Union([
   Type.Object(
@@ -69,6 +89,7 @@ export const PermissionRequestSchema = Type.Union([
       title: Type.String({ maxLength: 500 }),
       detail: Type.String({ maxLength: 200000 }),
       allowlistEntry: Type.Optional(ShellAllowlistEntrySchema),
+      review: Type.Optional(ConfirmReviewSchema),
       createdAt: Type.String(),
     },
     { additionalProperties: false },
@@ -118,14 +139,16 @@ export const PermissionAnswerSchema = Type.Union([
 export type PermissionAnswer = Static<typeof PermissionAnswerSchema>;
 
 /**
- * Whether a scope is allowed without a prompt under a tier. Reads inside the
+ * Whether a scope is allowed without a prompt or review under a tier. Reads inside the
  * task folder never prompt: the agent reading its own output is not a decision.
  */
 export function tierAllows(tier: PermissionTier, scope: GrantScope): boolean {
   if (tier === 'always') return true;
   if ('location' in scope && scope.tool === 'read' && scope.location === 'inside') return true;
   if (tier === 'manual') return false;
-  return 'location' in scope && scope.location === 'inside';
+  // `auto` needs no review for the task's own folder or for web search and fetch, which only
+  // read (a search query, a GET per URL).
+  return scope.tool === 'web' || ('location' in scope && scope.location === 'inside');
 }
 
 /** Desktop-only capabilities a registered client may serve; T6 owns the UI. */
