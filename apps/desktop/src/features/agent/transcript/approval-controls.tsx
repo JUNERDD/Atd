@@ -58,6 +58,17 @@ export function ApprovalControls({
   const bash = request.scope.tool === 'bash';
   const allowlistEntry = bash ? request.allowlistEntry : undefined;
   const sessionGrant = !bash && request.scope.tool !== 'mcp';
+  // Why the auto tier's review handed this call to the user. The reason is model-written runtime
+  // text in the user's language, so it is shown as-is and wraps inside the card.
+  const review = request.review;
+  const reviewReason = review?.outcome === 'flagged' ? review.reason.trim() : '';
+  const reviewNote = !review
+    ? ''
+    : review.outcome === 'unavailable'
+      ? t('permission.review.unavailable')
+      : reviewReason
+        ? t('permission.review.flagged', { reason: reviewReason })
+        : t('permission.review.flaggedNoReason');
 
   async function settle(action: () => Promise<void>) {
     if (pending) return;
@@ -116,6 +127,7 @@ export function ApprovalControls({
       {bash && (
         <p className="text-xs text-muted-foreground">{t('permission.bash.notAllowlisted')}</p>
       )}
+      {review && <p className="text-xs text-muted-foreground">{reviewNote}</p>}
       {detail ? (
         <DetailBox variant="output" copyText={detail} className="approval-detail">
           <pre className="m-0 whitespace-pre-wrap wrap-anywhere">{preview}</pre>

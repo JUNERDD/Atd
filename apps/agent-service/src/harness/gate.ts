@@ -2,11 +2,13 @@ import type { SessionManager } from '@earendil-works/pi-coding-agent';
 import {
   grantKey,
   tierAllows,
+  type ConfirmReview,
   type GrantScope,
   type PermissionOutcome,
   type PermissionTier,
 } from '@ai/agent-contracts';
 import type { ConfirmStore } from '../confirms.js';
+import { confirmReview, type Reviewer } from './auto-review.js';
 
 /** What the approval gate needs from the task runner; `ServiceToolHost` satisfies it. */
 export interface GateHost {
@@ -18,6 +20,8 @@ export interface GateHost {
   grants: Set<string>;
   sessions: SessionManager;
   confirms: ConfirmStore;
+  /** The `auto` tier's review (auto-review.ts); consulted only under that tier. */
+  review: Reviewer;
   audit: (entry: Record<string, unknown>) => void;
   setStatus: (status: 'awaiting_input' | 'awaiting_confirmation' | 'running') => void;
 }
@@ -51,10 +55,11 @@ const DECLINED = 'The user declined this action.';
 
 /**
  * The service's approval gate, shared by every guarded tool (file tools, grep/find/ls, bash,
- * command saves, web). Order: session grant, then tier, then one confirm. A session answer
+ * command saves, web). Order: session grant, then tier, then under `auto` a review of the call,
+ * then one confirm; a flagged or failed review falls through to the confirm. A session answer
  * grants the scope (tool, plus location for file tools) for the rest of the task, including
- * confirms already waiting on it. Every decision is audited; confirm outcomes are also appended
- * as `app-permission` session entries so the transcript shows them after reopen.
+ * confirms already waiting on it. Every decision is audited; confirm and review outcomes are
+ * also appended as `app-permission` session entries so the transcript shows them after reopen.
  */
 export function createGate(host: GateHost): Gate {
   function record(toolCallId: string, scope: GrantScope, outcome: PermissionOutcome): void {
@@ -86,6 +91,16 @@ export function createGate(host: GateHost): Gate {
       host.audit({ ...base, decision: 'tier' });
       return 'tier';
     }
+    let review: ConfirmReview | undefined;
+    if (host.tier === 'auto') {
+      const verdict = await host.review({ scope, detail: request.detail }, request.signal);
+      host.audit({ ...base, decision: `review-${verdict.decision}`, reason: verdict.reason });
+      if (verdict.decision === 'allow') {
+        record(toolCallId, scope, 'reviewed');
+        return 'reviewed';
+      }
+      review = confirmReview(verdict);
+    }
     host.setStatus('awaiting_confirmation');
     try {
       const answer = await host.confirms.request(
@@ -99,6 +114,7 @@ export function createGate(host: GateHost): Gate {
           title: request.title,
           detail: request.detail.slice(0, 200000),
           ...(request.allowlistEntry ? { allowlistEntry: request.allowlistEntry } : {}),
+          ...(review ? { review } : {}),
         },
         request.signal,
       );

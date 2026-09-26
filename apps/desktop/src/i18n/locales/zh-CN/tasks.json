@@ -104,6 +104,7 @@
       "session": "本会话已允许此工具",
       "grant": "已按会话授权允许",
       "tier": "已自动批准",
+      "reviewed": "已审查并自动批准",
       "declined": "已拒绝"
     },
     "allowOnce": "允许一次",
@@ -126,6 +127,11 @@
       "previous": "上一个请求",
       "next": "下一个请求",
       "position": "{{current}} / {{total}}"
+    },
+    "review": {
+      "flagged": "自动审查认为有风险：{{reason}}",
+      "flaggedNoReason": "自动审查认为此操作有风险。",
+      "unavailable": "自动审查暂不可用，请你来决定。"
     }
   },
   "question": {

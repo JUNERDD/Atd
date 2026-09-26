@@ -67,7 +67,7 @@
       },
       "auto": {
         "label": "Auto approval",
-        "description": "Allow work inside the task folder; ask for everything else."
+        "description": "A model checks each action against your request. Safe actions run; risky ones still ask."
       },
       "always": {
         "label": "Always allow",

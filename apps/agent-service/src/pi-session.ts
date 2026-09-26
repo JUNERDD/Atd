@@ -21,6 +21,7 @@ import { EMPTY_SKILL_CATALOG, type RunSkillCatalog } from './skills/skill-catalo
 import type { RunnerContext } from './task-runner.js';
 import { effectiveTaskTier } from './tasks/tier.js';
 import { createGate, prepareHarness } from './harness/index.js';
+import type { Reviewer } from './harness/auto-review.js';
 import { serviceTools, type ServiceToolHost } from './tool-proxies.js';
 import { prepareSubagentsParent } from './subagents/index.js';
 
@@ -48,6 +49,8 @@ export interface SessionFactoryDeps {
   currentMaterial: () => RunMaterial;
   executionId: () => string;
   grants: Set<string>;
+  /** The runner's `auto` tier review, shared by the parent, its children and its MCP calls. */
+  review: Reviewer;
   audit: (entry: Record<string, unknown>) => void;
   setStatus: (runId: string, status: RunStatus) => void;
 }
@@ -128,6 +131,7 @@ export async function createLiveState(
     dataDir: ctx.paths.root,
     tier: effectiveTaskTier(ctx.ledger, taskId, ctx.tier),
     grants: deps.grants,
+    review: deps.review,
     sessions: manager,
     confirms: ctx.confirms,
     capabilities: ctx.capabilities,

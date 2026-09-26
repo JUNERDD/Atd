@@ -136,7 +136,7 @@
     },
     "tierDescription": {
       "manual": "每次都确认。",
-      "auto": "仅信任此任务文件夹。",
+      "auto": "逐项审查，有风险时询问。",
       "always": "不再确认。"
     },
     "tierLabel": "权限级别",

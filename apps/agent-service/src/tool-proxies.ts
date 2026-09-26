@@ -15,6 +15,7 @@ import { commandToolDefinition } from './commands/tool.js';
 import { registerConfigureMcpTool } from './configure-mcp-tool.js';
 import { ConfirmStore } from './confirms.js';
 import { registerDesktopTool } from './desktop-tool.js';
+import type { Reviewer } from './harness/auto-review.js';
 import { createGate } from './harness/gate.js';
 import type { Logger } from './logging.js';
 import {
@@ -35,6 +36,7 @@ export interface ServiceToolHost {
   dataDir: string;
   tier: PermissionTier;
   grants: Set<string>;
+  review: Reviewer;
   sessions: SessionManager;
   confirms: ConfirmStore;
   capabilities: CapabilityRegistry;
@@ -108,6 +110,14 @@ export function serviceTools(host: ServiceToolHost): ExtensionFactory {
           const base = { taskId: host.taskId, runId: host.runId(), toolCallId: id };
           host.audit({ ...base, tool: 'read:skill', decision: 'skill' });
         } else {
+          // A path the operation would refuse fails before the gate, so no prompt or review
+          // is spent on a call that cannot run.
+          await confined(
+            host.cwd,
+            host.dataDir,
+            resolveToolPath(host.cwd, pathOf(args)),
+            name === 'read' ? await readRoots() : [],
+          );
           await authorize({
             toolCallId: id,
             scope,

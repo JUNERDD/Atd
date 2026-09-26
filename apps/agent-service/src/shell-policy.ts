@@ -115,9 +115,10 @@ export interface ShellDecision {
 
 /**
  * The one bash decision, for parent and children: a tier that allows bash runs it (the gate
- * audits `tier`); otherwise an allowlisted command runs without a confirm; anything else asks
- * once. Bash never takes a session grant, so every other command is confirmed on its own, with
- * the suggested allowlist entry the confirm can offer to add. Throws when the user declines.
+ * audits `tier`); otherwise an allowlisted command runs without a confirm; anything else goes to
+ * the gate, where `auto` reviews it and a flagged command asks once. Bash never takes a session
+ * grant, so every asked command is confirmed on its own, with the suggested allowlist entry the
+ * confirm can offer to add. Throws when the user declines.
  */
 export async function authorizeShellCommand(decision: ShellDecision): Promise<void> {
   const command = decision.command.trim();

@@ -1,10 +1,11 @@
 import { Type, type Static } from 'typebox';
-import { ShellAllowlistEntrySchema } from '@ai/agent-contracts';
+import { ConfirmReviewSchema, ShellAllowlistEntrySchema } from '@ai/agent-contracts';
 import { Identifier } from './command-schema';
 
 /**
- * Per-task approval tier. `manual` prompts for every guarded action, `auto` prompts only outside
- * the task's own sandbox folder and for shell commands or command saves, `always` never prompts.
+ * Per-task approval tier. `manual` prompts for every guarded action, `auto` reviews each guarded
+ * action with a model and prompts only when the review flags it (inside-task-folder file work and
+ * web search or fetch need no review), `always` never prompts.
  * `ask_user` questions are not permissions and are shown in every tier.
  */
 export const PermissionTierSchema = Type.Union([
@@ -48,13 +49,15 @@ export function grantKey(scope: GrantScope): string {
 
 /**
  * How one guarded tool call was resolved. `once` and `session` are user decisions from a prompt,
- * `grant` reused an earlier session grant, `tier` was allowed by the task's tier without a prompt.
+ * `grant` reused an earlier session grant, `tier` was allowed by the task's tier without a prompt,
+ * `reviewed` was allowed by the auto tier's review without a prompt.
  */
 export const PermissionOutcomeSchema = Type.Union([
   Type.Literal('once'),
   Type.Literal('session'),
   Type.Literal('grant'),
   Type.Literal('tier'),
+  Type.Literal('reviewed'),
   Type.Literal('declined'),
 ]);
 export type PermissionOutcome = Static<typeof PermissionOutcomeSchema>;
@@ -129,6 +132,8 @@ export const PermissionRequestSchema = Type.Union([
       detail: Type.String({ maxLength: 200000 }),
       /** Bash only: the entry the add-to-allowlist choice adds; absent when none is offered. */
       allowlistEntry: Type.Optional(ShellAllowlistEntrySchema),
+      /** Auto tier only: why the model review sent this call to the user (flagged or no verdict). */
+      review: Type.Optional(ConfirmReviewSchema),
     },
     { additionalProperties: false },
   ),
@@ -169,12 +174,14 @@ export const PermissionAnswerSchema = Type.Union([
 export type PermissionAnswer = Static<typeof PermissionAnswerSchema>;
 
 /**
- * Whether a scope is allowed without a prompt under a tier. Reads inside the task folder never
- * prompt: the agent reading its own output is not a meaningful decision.
+ * Whether a scope is allowed without a prompt or review under a tier. Reads inside the task folder
+ * never prompt: the agent reading its own output is not a meaningful decision.
  */
 export function tierAllows(tier: PermissionTier, scope: GrantScope): boolean {
   if (tier === 'always') return true;
   if ('location' in scope && scope.tool === 'read' && scope.location === 'inside') return true;
   if (tier === 'manual') return false;
-  return 'location' in scope && scope.location === 'inside';
+  // `auto` needs no review for the task's own folder or for web search and fetch, which only
+  // read (a search query, a GET per URL).
+  return scope.tool === 'web' || ('location' in scope && scope.location === 'inside');
 }

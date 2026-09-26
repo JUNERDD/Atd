@@ -62,6 +62,7 @@ export type OutcomeKey =
   | 'permission.outcome.session'
   | 'permission.outcome.grant'
   | 'permission.outcome.tier'
+  | 'permission.outcome.reviewed'
   | 'permission.outcome.declined';
 
 export type ScopeKey =
@@ -253,6 +254,8 @@ export function outcomeKey(outcome: PermissionOutcome): OutcomeKey {
       return 'permission.outcome.grant';
     case 'tier':
       return 'permission.outcome.tier';
+    case 'reviewed':
+      return 'permission.outcome.reviewed';
     case 'declined':
       return 'permission.outcome.declined';
     default: {

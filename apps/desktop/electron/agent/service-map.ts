@@ -114,6 +114,7 @@ export function mapRequest(request: ServiceRequest): PermissionRequest {
       title: request.title,
       detail: request.detail,
       ...(request.allowlistEntry ? { allowlistEntry: request.allowlistEntry } : {}),
+      ...(request.review ? { review: request.review } : {}),
     };
   }
   return {

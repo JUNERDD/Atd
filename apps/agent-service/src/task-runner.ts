@@ -18,6 +18,7 @@ import type { ServicePaths } from './storage.js';
 import type { CapabilityRegistry } from './capabilities.js';
 import type { ConfirmStore } from './confirms.js';
 import { AuditWriter } from './audit.js';
+import { createReviewer } from './harness/auto-review.js';
 import {
   applyRunToSession,
   createLiveState,
@@ -80,6 +81,17 @@ export class TaskRunner {
       currentMaterial: () => this.material,
       executionId: () => this.executionId(),
       grants: this.grants,
+      review: createReviewer({
+        source: () => {
+          const live = this.live;
+          if (!live) return null;
+          const model = live.session.model ?? live.runModel.model;
+          return { models: live.runModel.models, model, branch: () => live.manager.getBranch() };
+        },
+        runId: () => this.currentRunId,
+        cwd: path.join(ctx.paths.tasksDir, taskId, 'output'),
+        log: ctx.log,
+      }),
       audit: (entry) => this.audit?.append(entry),
       setStatus: (runId, status) => {
         void this.setStatus(runId, status, '').catch(() => undefined);
