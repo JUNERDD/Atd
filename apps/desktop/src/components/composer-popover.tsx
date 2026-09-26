@@ -30,7 +30,9 @@ const NO_BLOCKS: readonly Block[] = [];
  * a view from the pill moves focus to its first action (or the popover) and Esc returns focus to
  * that part, stopping propagation so the panel-global Esc (new chat, hide) never fires. While the
  * quick panel is open above the same anchor the popover is `suppressed`: it hides without
- * counting as a dismiss and returns unchanged.
+ * counting as a dismiss and returns unchanged. A `hidden` composer (a subagent's drill-in covers
+ * the task) closes it the same way but at once, without the exit animation: the drill-in replaces
+ * the view the popover belonged to.
  */
 export function ComposerPopover({
   requests,
@@ -38,6 +40,7 @@ export function ComposerPopover({
   taskId,
   queueDisabled = false,
   suppressed = false,
+  hidden = false,
   recall = 0,
   blocks = NO_BLOCKS,
   live = false,
@@ -50,6 +53,8 @@ export function ComposerPopover({
   queueDisabled?: boolean;
   /** The quick panel is open over the composer; hide without dismissing. */
   suppressed?: boolean;
+  /** The composer is hidden; close at once and return unchanged when it shows again. */
+  hidden?: boolean;
   /** Changes when the user asks for the queue (`/queue`): dismissed HITL content reopens. */
   recall?: number;
   /** The open task's transcript, which the pill's step and subagent parts derive from. */
@@ -78,7 +83,7 @@ export function ComposerPopover({
     subagents: progress.children.length > 0,
   };
   const shown = view !== null && available[view] ? view : null;
-  const open = shown !== null && !suppressed;
+  const open = shown !== null && !suppressed && !hidden;
   // The closing popover keeps its last view while it animates out, instead of emptying.
   const [rendered, setRendered] = useState(shown);
   if (shown !== null && shown !== rendered) setRendered(shown);
@@ -166,6 +171,8 @@ export function ComposerPopover({
         sideOffset={8}
         collisionPadding={8}
         className="composer-popover"
+        // Radix unmounts closed content at once when it has no exit animation to wait for.
+        data-instant-close={hidden || undefined}
         // The pill can reflow under an open view (a part appears or its count changes), which no
         // resize of the popover or window reports.
         updatePositionStrategy="always"

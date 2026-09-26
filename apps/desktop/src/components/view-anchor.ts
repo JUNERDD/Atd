@@ -35,7 +35,7 @@ export function createViewAnchor() {
   let slide: { from: DOMRect; start: number } | null = null;
   return (root: HTMLElement | null, next: PillView | null, animate: boolean): DOMRect => {
     // A hidden composer (a subagent's drill-in covers the task) leaves the pill without a box;
-    // the closing popover fades out where it was instead of jumping to the viewport origin.
+    // until the popover is gone it keeps where it was instead of jumping to the viewport origin.
     if (!root || root.getClientRects().length === 0) return last ?? new DOMRect();
     if (next !== view) {
       slide = animate && last ? { from: last, start: performance.now() } : null;

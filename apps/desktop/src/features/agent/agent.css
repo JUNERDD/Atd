@@ -136,9 +136,13 @@
   min-height: 0;
   flex-direction: column;
 }
-/* Covered, the parent keeps its layout and scroll offset; it is only unseen and inert. */
+/* Covered, the parent keeps its layout and scroll offset; it is only unseen and inert. `opacity`
+   hides the subtree as one group from the first frame: `visibility` is inherited element by
+   element, so a descendant that transitions it (every Button, through `transition-all`) would
+   stay visible over the drill-in until its transition ends. */
 .conversation[data-covered] {
   visibility: hidden;
+  opacity: 0;
 }
 .child-conversation {
   position: absolute;
