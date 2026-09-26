@@ -205,25 +205,28 @@ export function bashCommand(args: Record<string, unknown>): string {
 }
 
 /** Structured details a transcript row renders as its body. */
-export type RowDetails = Exclude<ToolBlockDetails, { type: 'subagent' }>;
+export type RowDetails = Exclude<ToolBlockDetails, { type: 'subagent' | 'todo' }>;
 
 /**
  * The structured body a row renders, if any. A launching `subagent` call's child summaries feed
- * the progress pill's subagent list and the drill-in view, never the message, so that row keeps
- * its plain output.
+ * the progress pill's subagent list and the drill-in view, and a `todo` call's list feeds the
+ * progress pill's Todos view; neither renders in the message.
  */
 export function structuredDetails(block: BlockOf<'tool'>): RowDetails | null {
   const data = block.details.data;
-  return !data || data.type === 'subagent' ? null : data;
+  return !data || data.type === 'subagent' || data.type === 'todo' ? null : data;
 }
 
 /**
  * Whether the row has anything to expand into. ToolBlock renders a static row when this is
  * false so tools without detail expose no hover-expand affordance; ToolBody renders nothing.
+ * Todo updates stay static: the progress pill's Todos view already shows the current list.
  */
 export function hasToolDetail(block: BlockOf<'tool'>): boolean {
   const text = block.status === 'running' ? block.partial : block.output;
   switch (block.name) {
+    case TODO_TOOL:
+      return false;
     case 'edit':
       return Boolean(block.details.diff || text);
     case 'bash':

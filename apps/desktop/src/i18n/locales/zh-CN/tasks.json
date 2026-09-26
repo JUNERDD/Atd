@@ -236,7 +236,6 @@
   "todo": {
     "title": "待办",
     "listLabel": "待办列表",
-    "empty": "暂无待办。",
     "progress": "已完成 {{completed}}/{{total}}",
     "blockedBy": "等待 {{ids}} 完成",
     "status": {
