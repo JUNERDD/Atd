@@ -5,7 +5,6 @@ import { ItemGroup } from '@ai/ui/components/item';
 /** Shared Skills/Roles/MCP group shell with loading, empty, and row slots. */
 export function ExtensionGroup({
   title,
-  note,
   empty,
   loading,
   emptyAction,
@@ -16,7 +15,6 @@ export function ExtensionGroup({
   showTitle = true,
 }: {
   title: string;
-  note: string;
   empty: string;
   loading: boolean;
   hasRows: boolean;
@@ -31,13 +29,8 @@ export function ExtensionGroup({
   return (
     <section className="settings-extension-group" aria-label={title}>
       {showTitle ? <h3>{title}</h3> : null}
-      {loading && !hasRows ? (
-        note ? (
-          <p className="settings-field-note">{note}</p>
-        ) : null
-      ) : hasRows ? (
+      {loading && !hasRows ? null : hasRows ? (
         <>
-          {note ? <p className="settings-field-note">{note}</p> : null}
           {status}
           <ItemGroup>{children}</ItemGroup>
         </>
