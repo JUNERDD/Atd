@@ -9,6 +9,12 @@
   backdrop-filter: blur(var(--ata-backdrop-blur));
 }
 
+/* Closing under a hidden composer skips the exit animation, so Radix removes the popover in the
+   same frame instead of leaving it over the view that replaced the composer. */
+.composer-popover[data-slot='popover-content'][data-instant-close] {
+  animation: none;
+}
+
 /* Layout-neutral wrapper around the status pill and the composer surface; the popover anchors to
    rects read from it. */
 .composer-popover-anchor {

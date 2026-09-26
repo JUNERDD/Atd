@@ -233,7 +233,8 @@ export function Composer({
           queueDisabled={locked || sending}
           recall={queueRecall}
           // Hidden, a new approval still reaches the pill; its popover opens once shown again.
-          suppressed={hidden || isQuickPanelOpen(trigger, active)}
+          hidden={hidden}
+          suppressed={isQuickPanelOpen(trigger, active)}
           blocks={blocks}
           // A queued run has not started, so the latest reply still belongs to the last run.
           live={active && status !== 'queued'}
