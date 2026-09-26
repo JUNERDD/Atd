@@ -51,9 +51,10 @@ const DECLINED = 'The user declined this action.';
 
 /**
  * The service's approval gate, shared by every guarded tool (file tools, grep/find/ls, bash,
- * command saves, web). Order: session grant, then tier, then one confirm. Every decision is
- * audited; confirm outcomes are also appended as `app-permission` session entries so the
- * transcript shows them after reopen.
+ * command saves, web). Order: session grant, then tier, then one confirm. A session answer
+ * grants the scope (tool, plus location for file tools) for the rest of the task, including
+ * confirms already waiting on it. Every decision is audited; confirm outcomes are also appended
+ * as `app-permission` session entries so the transcript shows them after reopen.
  */
 export function createGate(host: GateHost): Gate {
   function record(toolCallId: string, scope: GrantScope, outcome: PermissionOutcome): void {
@@ -107,9 +108,14 @@ export function createGate(host: GateHost): Gate {
         throw new Error(request.declinedMessage ?? DECLINED);
       }
       const outcome = answer.decision === 'session' && sessionGrant ? 'session' : 'once';
-      if (outcome === 'session') host.grants.add(key);
       host.audit({ ...base, decision: outcome });
       record(toolCallId, scope, outcome);
+      // Only the answer that creates the grant sweeps: the confirms it settles come back here as
+      // `session` too, while the ledger still lists them, and must not settle them again.
+      if (outcome === 'session' && !host.grants.has(key)) {
+        host.grants.add(key);
+        await host.confirms.grantPending(host.taskId, key);
+      }
       return outcome;
     } finally {
       host.setStatus('running');
