@@ -1,4 +1,4 @@
-import { TODO_TOOL, WEB_FETCH_TOOL, WEB_SEARCH_TOOL } from '@ai/agent-contracts';
+import { LOAD_SKILL_TOOL, TODO_TOOL, WEB_FETCH_TOOL, WEB_SEARCH_TOOL } from '@ai/agent-contracts';
 import type { ResolvedModel, TaskRun } from '../../../../electron/agent/task-schema';
 import type { Block, BlockOf, ToolStatus } from '../../../../electron/agent/transcript-schema';
 import { buildActivityPhase, isViewLive, type ActivityPhase } from './phases';
@@ -100,6 +100,7 @@ function toolKindForName(name: string): ViewToolKind {
   switch (name) {
     case 'read':
     case 'ls':
+    case LOAD_SKILL_TOOL:
       return 'read';
     case 'write':
     case 'edit':

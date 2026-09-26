@@ -198,7 +198,7 @@ flowchart TB
 - 包管理复用 DefaultPackageManager 的服务 user scope，在暂存 generation 内安装/更新，成功后发布不可变 revision；运行只接收已存在的托管绝对入口。npm prefix/userconfig/globalconfig 也限定到服务 profile，避免 missing package 时回退 npm root -g。[全局回退](https://github.com/earendil-works/pi/blob/v0.86.0/packages/coding-agent/src/core/package-manager.ts#L2085)
 - 本地导入、Pi npm/Git package 管理使用同一目录。每包保存来源、revision、hash、许可与解析诊断；验证 symlink realpath 属于允许包范围。通用 Skill 仓库可选固定 skills CLI 的 add --json --yes --agent pi --copy，在暂存 cwd 运行；Git 来源明确依赖 Git。
 - run 冻结 SkillRef；更新在下一 run 生效，旧版本在引用释放后回收。禁在活动会话上用 reload 假装只是刷新技能列表，因为它会关闭和重建扩展。
-- 显式选择使用内置 /skill 展开，先校验引用与快照，再针对该入口启用展开；普通输入保留现有模板规则。自动发现只呈现本 run 可用说明；disable-model-invocation 保留上游语义。
+- 显式选择使用内置 /skill 展开，先校验引用与快照，再针对该入口启用展开；普通输入保留现有模板规则。自动发现只呈现本 run 可用说明；disable-model-invocation 保留上游语义。（2026-09-26：以服务端冻结目录 + `load_skill` 工具实现，而非 pi 的系统提示列表 + `read`；见 [`2026-09-26-model-skill-catalog.md`](2026-09-26-model-skill-catalog.md)。）
 - 引入实际工具目录后，文本 Skill 不自动开启 read/bash；需要脚本的 Skill 显示所需能力并按服务授权执行。正文、references、assets 有只读资源映射，安装声明或正文不能授权写用户文件。
 
 ### D6 · MCP authority 与认证

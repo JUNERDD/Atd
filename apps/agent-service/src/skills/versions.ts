@@ -145,6 +145,22 @@ export function resolveRef(
   return { record: pinned, diagnostic };
 }
 
+/** What a new run resolves skills against. */
+export interface SkillCatalog {
+  /** Every live installed revision, then the free `~/.atd` and `~/.agents` names (mergeSkillCatalog). */
+  all: SkillRevisionRecord[];
+  /** Names the harness turned off for runs (skills/harness.ts). */
+  disabled: ReadonlySet<string>;
+}
+
+/** Reads the skill catalog as it stands now; a freeze reads it once and resolves against it. */
+export async function loadSkillCatalog(profile: SkillProfilePaths): Promise<SkillCatalog> {
+  const installed = await listRevisions(profile);
+  const [atd, agents] = await Promise.all([discoverAtdSkills(), discoverUserAgentSkills()]);
+  const disabled = await readDisabledSkillNames(profile);
+  return { all: mergeSkillCatalog(installed, atd.skills, agents.skills), disabled };
+}
+
 /**
  * The skills one run requests: a name counts once, at its first occurrence
  * (a composer may carry the same skill chip twice), and the list stops at
@@ -158,7 +174,8 @@ export function runSkillRefs(refs: readonly SkillRefInput[]): SkillRefInput[] {
 }
 
 /**
- * Freezes the skill snapshot for a run. Idempotent per runId: repeats return
+ * Freezes the skill snapshot for a run, resolving `refs` against `catalog`
+ * (loadSkillCatalog). Idempotent per runId: repeats return
  * the original snapshot and never re-resolve, so updates apply next run and
  * active sessions are never reloaded. The requested skills' companions
  * (`companion-skills`, skills/companions.ts) follow them in `skills`, so the
@@ -169,14 +186,12 @@ export async function freezeRunSkills(
   profile: SkillProfilePaths,
   runId: string,
   refs: SkillRefInput[],
+  catalog: SkillCatalog,
 ): Promise<SkillSnapshotRecord> {
   const runs = await readJson<RunsFile>(profile.runsFile, emptyRuns());
   const frozen = runs.runs[runId];
   if (frozen) return frozen.snapshot;
-  const installed = await listRevisions(profile);
-  const [atd, agents] = await Promise.all([discoverAtdSkills(), discoverUserAgentSkills()]);
-  const disabled = await readDisabledSkillNames(profile);
-  const all = mergeSkillCatalog(installed, atd.skills, agents.skills);
+  const { all, disabled } = catalog;
   const requested = runSkillRefs(refs);
   const skills: SkillRevisionRecord[] = [];
   const diagnostics: SkillDiagnostic[] = [];

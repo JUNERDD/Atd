@@ -249,19 +249,30 @@ export function freezeCapabilitySnapshot(input: {
   revokedSkills?: string[];
 }): CapabilitySnapshotRecord {
   const allowTools = new Set(input.role.allows.tools);
-  const allowSkills = new Set(input.role.allows.skills);
   const revokedTools = new Set(input.revokedTools ?? []);
-  const revokedSkills = new Set(input.revokedSkills ?? []);
+  const revokedSkills = input.revokedSkills ?? [];
   return {
     runId: input.runId,
     roleId: input.role.roleId,
     roleRevision: input.role.revision,
     tools: input.requestedTools.filter((tool) => allowTools.has(tool) && !revokedTools.has(tool)),
-    skills: input.requestedSkills.filter(
-      (skill) => (allowSkills.size === 0 || allowSkills.has(skill)) && !revokedSkills.has(skill),
-    ),
+    skills: roleAllowedSkills(input.role, revokedSkills, input.requestedSkills),
     revokedTools: [...revokedTools],
-    revokedSkills: [...revokedSkills],
+    revokedSkills: [...new Set(revokedSkills)],
     frozenAt: new Date().toISOString(),
   };
+}
+
+/**
+ * The skill names a frozen role lets a run use, in the given order: an empty role skill list
+ * allows every skill, and a revoked skill never passes.
+ */
+export function roleAllowedSkills(
+  role: RoleSnapshotRecord,
+  revokedSkills: readonly string[],
+  names: readonly string[],
+): string[] {
+  const allow = new Set(role.allows.skills);
+  const revoked = new Set(revokedSkills);
+  return names.filter((name) => (allow.size === 0 || allow.has(name)) && !revoked.has(name));
 }
