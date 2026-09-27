@@ -197,17 +197,26 @@
   align-items: flex-end;
   gap: 8px;
 }
-.message-bubble {
+/* The frame (a ScrollArea root) owns shape, fill and the height cap; the viewport inherits the cap
+   so a long message scrolls inside the rounded fill. The cap ends mid-line on purpose, so the cut
+   reads as more content even before the scrollbar appears. */
+.message-bubble-frame {
   max-width: min(304px, 90%);
-  padding: 10px 14px;
+  max-height: 300px;
   border-radius: 20px;
   background: var(--muted);
+}
+.message-bubble-viewport {
+  max-height: inherit;
+}
+.message-bubble {
+  padding: 10px 14px;
   font-size: 14px;
   line-height: 24px;
   overflow-wrap: anywhere;
   white-space: pre-wrap;
 }
-/* A sent chip keeps the composer's look (chips.css) unchanged: the bubble's fill resolves to the
+/* A sent chip keeps the composer's look (chips.css) unchanged: the frame's fill resolves to the
    composer surface's colour. Its 20px box (18px line plus borders, top-aligned) sits centred in the
    bubble's 24px line without growing it, so lines with and without chips keep one rhythm. */
 .message-bubble .composer-chip {
