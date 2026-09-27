@@ -402,3 +402,21 @@ Figma 侧未同步：本会话云端 Figma 工具不可用，本地 Figma MCP �
 验证：`oxfmt`／`oxlint`／`pnpm typecheck`／`pnpm test`（20 个既有测试）通过；用生产构建的 CSS 在无头浏览器渲染同构 DOM，并按计算值与像素核对：六行行高均 32px；根图标轴与 rail 同在相对 x8；cluster 内容起点 x28、cluster 内步骤 x56；卡片计算样式为 rgb(38,38,38) / 8px / 16px / 1px / 12px 间距，与设计一致；步骤内容起点相对 x56。
 
 仍未落地：设计稿中示意内容使用的散文式根标题（`Explored component patterns`）与分组的结果计数需要运行时并不存在的摘要与统计，本次分别以种类标签／调用数量与状态文案替代；逐步骤耗时仍未实现（transcript 不含计时数据），因此 `Done · 42s`、`2s` 一类时长未落地。Figma 侧仍只读，设计文件未改动。
+
+## 2026-09-27 上下文窗口档位与自动压缩
+
+计划：[`docs/plans/2026-09-27-context-window-and-compaction.md`](plans/2026-09-27-context-window-and-compaction.md)。代码与项目 Figma 文件已双侧同步，节点如下（链接格式 `https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=<id>`，`:` 换成 `-`）：
+
+| Figma 节点                                                                                                                                                                                             | 代码                                                                     |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------ |
+| App / Model config content `1544:58725`：新增 `View=Root context tiers` `1557:58946`、`View=Context` `1557:58964`；App / Model config popover · Rhea `1544:58943`：同名变体 `1557:59043`、`1557:59133` | `model-config-popover.tsx`、`model-config-subviews.tsx`、`providers.css` |
+| App / Model config option · Rhea `1557:58872`（Default / Hover / Focus；32px、6/8 内边距、14 圆角、16px 勾选槽）                                                                                       | `model-config-subviews.tsx` 的档位选项                                   |
+| 15 · Context window & compaction `1557:59218`：App / Compaction activity `1557:59298`（Running / Completed / Completed expanded / Failed）                                                             | `transcript/compaction-block.tsx`、`agent.css`                           |
+| App / Context usage ring `1557:59243`（Normal / Warning / Error × Default / Focus）                                                                                                                    | `compaction/context-usage-ring.tsx`、`composer.css`                      |
+| App / New task hint `1558:58935`                                                                                                                                                                       | `compaction/new-task-hint.tsx`                                           |
+| App / Progress pill segment `1523:57936` 新增 `Kind=Compacting` `1558:59086`；App / Progress pill `1499:53918` 新增 `Compacting` 轴 `1558:59091`                                                       | `progress/progress-pill.tsx`                                             |
+| App / Composer `72:150` 新增 `Show context usage` 属性；App / Composer quick panel `1447:51964` 新增 `View=Context drill` `1558:60190`、`View=Compact query` `1558:60271`                              | `composer.tsx`、`quick-commands.ts`、`slash-drills.tsx`                  |
+| 变量 `status/warning` `VariableID:1557:58847`（#f59e0b）                                                                                                                                               | `packages/ui/src/styles.css` 的 `--ata-status-warning`                   |
+| 评审帧 `1558:60437`（420 与 320 宽）                                                                                                                                                                   | —                                                                        |
+
+未同步或有差异：会话菜单项“整理上下文”（Figma 中没有会话菜单可扩展）；zh-CN 文案变体；运行中微光、旋转与圆环动画只写在组件说明里；14px 库图标的描边约 1.17px，代码为 1.75（约 1.02px）；摘要以 13/20 文本近似 Markdown；评审帧中的 Composer 仍使用待迁移的旧 `App / Composer selector`（见 `96:215`）。
