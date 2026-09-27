@@ -11,10 +11,13 @@ import {
   type AgentClientOptions,
 } from '@ai/agent-client';
 import {
+  CompactRefusalSchema,
   snapshotToolsFor,
+  type CompactRefusal,
   type PreviewTaskRequest,
   type ServiceRunPolicy,
 } from '@ai/agent-contracts';
+import { Value } from 'typebox/value';
 import type { MemoryEntry, MemorySnapshot } from './bridge';
 import type { RunPolicy } from './run-policy';
 import type { RunSnapshot } from './task-schema';
@@ -165,15 +168,25 @@ export async function deleteLiveTask(options: AgentClientOptions, taskId: string
   }
 }
 
-/** A refusal (409: a run is active, or nothing to compact) surfaces the service's reason. */
+/**
+ * Null once the service accepts. A refusal (409: a run is active, nothing to compact) resolves
+ * to its code so the renderer words it in the interface language; other failures still throw.
+ */
 export async function compactLiveTask(
   options: AgentClientOptions,
   taskId: string,
   instructions: string | undefined,
-): Promise<void> {
+): Promise<CompactRefusal | null> {
   try {
     await compactTask(options, taskId, instructions);
+    return null;
   } catch (error) {
+    if (
+      error instanceof AgentClientError &&
+      error.status === 409 &&
+      Value.Check(CompactRefusalSchema, error.code)
+    )
+      return error.code;
     manageError(error);
   }
 }

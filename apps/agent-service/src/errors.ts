@@ -1,6 +1,14 @@
-/** 409: the target changed or is busy; refresh and retry with current state. */
+import type { ErrorCode } from '@ai/agent-contracts';
+
+/**
+ * 409: the target changed or is busy; refresh and retry with current state. `code` becomes the
+ * envelope's `error.code`: `conflict` unless the route's contract names finer reasons.
+ */
 export class ConflictError extends Error {
-  constructor(message: string) {
+  constructor(
+    message: string,
+    readonly code: ErrorCode = 'conflict',
+  ) {
     super(message);
     this.name = 'ConflictError';
   }

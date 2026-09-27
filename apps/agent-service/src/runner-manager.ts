@@ -15,6 +15,7 @@ import {
 import { ConnectionStore } from './credentials/connections.js';
 import type { Logger } from './logging.js';
 import { ResourceStore } from './resources.js';
+import { compactRefused } from './compaction/manual.js';
 import { ConflictError, DrainingError } from './errors.js';
 import { TaskRunner, type RunnerContext } from './task-runner.js';
 import { checkChipRanges, taskTitle } from './tasks/input-chips.js';
@@ -214,7 +215,7 @@ export class RunnerManager {
     if (this.draining) throw new DrainingError();
     const task = this.deps.ctx.ledger.task(taskId);
     if (task.runs.some((run) => isActiveStatus(run.status)))
-      throw new ConflictError('Finish the active run before compacting the context.');
+      throw compactRefused('active_run', 'Finish the active run before compacting the context.');
     const { done } = await this.runnerFor(taskId).compact(instructions);
     void done
       .catch((error: unknown) => {

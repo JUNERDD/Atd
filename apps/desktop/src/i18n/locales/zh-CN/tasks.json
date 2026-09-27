@@ -151,7 +151,13 @@
     "doneWithTokens": "上下文已整理 · 约 {{before}} → {{after}} tokens",
     "summaryLabel": "上下文摘要",
     "failed": "上下文整理失败",
-    "retry": "重试整理"
+    "retry": "重试整理",
+    "refused": {
+      "active_run": "请等待当前运行结束后再整理。",
+      "already_compacting": "上下文正在整理中。",
+      "nothing_to_compact": "暂无可整理的内容：对话还较短，或刚整理过。",
+      "compaction_unavailable": "暂时无法整理上下文，请稍后再试。"
+    }
   },
   "files": {
     "open": "打开",

@@ -211,8 +211,7 @@ export class AgentRequests<S> {
         this.broadcast();
         return null;
       case 'compactTask':
-        await compactLiveTask(this.options(), request.taskId, request.instructions);
-        return null;
+        return compactLiveTask(this.options(), request.taskId, request.instructions);
       case 'chooseFiles':
         return this.platform.chooseFiles(this.tasks.http());
       case 'memory':

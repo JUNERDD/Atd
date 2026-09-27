@@ -102,7 +102,7 @@ export type PreviewTaskResponse = Static<typeof PreviewTaskResponseSchema>;
 /**
  * `POST /v1/tasks/:taskId/compact`: compacts the task's context now, optionally focused by
  * `instructions`. Refused with 409 while the task has an active run or when nothing can be
- * compacted (the error says why).
+ * compacted; the envelope's `error.code` is a `CompactRefusal`.
  */
 export const CompactTaskRequestSchema = Type.Object(
   { instructions: Type.Optional(Type.String({ maxLength: 2000 })) },

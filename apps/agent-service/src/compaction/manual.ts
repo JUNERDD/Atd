@@ -6,7 +6,7 @@ import {
   SessionManager,
   SettingsManager,
 } from '@earendil-works/pi-coding-agent';
-import { errorMessage, type TaskRun } from '@ai/agent-contracts';
+import { errorMessage, type CompactRefusal, type TaskRun } from '@ai/agent-contracts';
 import { ConflictError } from '../errors.js';
 import { bindLiveState, type LiveState } from '../live-state.js';
 import type { SessionFactoryDeps } from '../pi-session.js';
@@ -19,6 +19,11 @@ import { compactionSettings } from './policy.js';
 
 export const NOTHING_TO_COMPACT =
   'There is nothing to compact: the conversation is still short or was just compacted.';
+
+/** A refused compaction request: a 409 whose code clients word in their own language. */
+export function compactRefused(code: CompactRefusal, message: string): ConflictError {
+  return new ConflictError(message, code);
+}
 
 /**
  * Starts Pi's manual compaction on the task's session and returns once Pi prepared it
@@ -66,12 +71,14 @@ export async function startManualCompaction(input: {
 function refusal(error: unknown): ConflictError {
   if (error instanceof ConflictError) return error;
   const message = errorMessage(error);
-  if (/Nothing to compact/i.test(message)) return new ConflictError(NOTHING_TO_COMPACT);
+  if (/Nothing to compact/i.test(message))
+    return compactRefused('nothing_to_compact', NOTHING_TO_COMPACT);
   if (/Already compacted/i.test(message))
-    return new ConflictError(
+    return compactRefused(
+      'nothing_to_compact',
       'The conversation was just compacted; there is nothing new to compact.',
     );
-  return new ConflictError(`The context could not be compacted: ${message}`);
+  return compactRefused('compaction_unavailable', `The context could not be compacted: ${message}`);
 }
 
 /**
@@ -88,7 +95,7 @@ export async function createCompactionState(
   const { ctx, taskId } = deps;
   const task = ctx.ledger.task(taskId);
   const [firstRun = run] = task.runs;
-  if (!task.sessionFile) throw new ConflictError(NOTHING_TO_COMPACT);
+  if (!task.sessionFile) throw compactRefused('nothing_to_compact', NOTHING_TO_COMPACT);
   const skillProfile = skillProfilePaths(ctx.paths.root, ctx.paths.agentDir);
   const cwd = path.join(ctx.paths.tasksDir, taskId, 'output');
   await mkdir(skillProfile.loaderCwd, { recursive: true });
