@@ -1,13 +1,15 @@
 import type { PreparedCommand } from './bridge';
 import type { CommandDefinition } from './command-schema';
-import { defaultArguments } from './command-validation';
+import { defaultArguments, templateReferences } from './command-validation';
 import { emptyInput } from './task-schema';
 import { errorMessage } from './validation';
 
 /**
  * Builds the draft input for a command from its sources. A failed capture only surfaces as a
- * notice when the trigger expected captured text (the global shortcut); opening the command from
- * the panel leaves the field empty for manual input instead of reporting a missing selection.
+ * notice when the trigger expected captured text (the global shortcut) and the command consumes
+ * that source, as its input source or a `{{selection}}` / `{{clipboard}}` reference. An enabled
+ * but unused source stays optional, so it cannot block the run or mask the failure that matters;
+ * the first consumed failure (selection before clipboard) is the one reported.
  */
 export async function prepareCommand(
   command: CommandDefinition,
@@ -20,6 +22,9 @@ export async function prepareCommand(
     source: command.input.source,
     arguments: defaultArguments(command),
   };
+  const referenced = new Set(
+    templateReferences(command.instructions).map((reference) => reference.name),
+  );
   let notice = '';
   for (const source of ['selection', 'clipboard'] as const) {
     if (!command.input[source]) continue;
@@ -31,7 +36,8 @@ export async function prepareCommand(
         input.capturedAt = captured.capturedAt;
       }
     } catch (error) {
-      if (expectCapture) notice = errorMessage(error);
+      const consumed = input.source === source || referenced.has(source);
+      if (expectCapture && consumed && !notice) notice = errorMessage(error);
     }
   }
   return { command: structuredClone(command), input, notice };
