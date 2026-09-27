@@ -14,6 +14,7 @@ import { ConflictError } from '../errors.js';
 import { LedgerNotFound } from '../ledger.js';
 import { commandsFile } from '../migration/import-tasks.js';
 import { SettingsStore } from '../settings/store.js';
+import { withoutLegacySelection } from './legacy-selection.js';
 import { assertShortcutFree, withCanonicalShortcut } from './shortcuts.js';
 import { validateCommandShape } from './templates.js';
 
@@ -24,6 +25,9 @@ import { validateCommandShape } from './templates.js';
  * their resolved instructions). Unknown extension fields round-trip.
  * Every write stores a canonical shortcut no app action or other enabled
  * command holds (`shortcuts.ts`), for routes and the Agent's tool alike.
+ * Legacy `skills`/`roleId` keys are folded into instructions on load and on
+ * every write (`legacy-selection.ts`). The load keeps the revision: the fold
+ * is deterministic, so the file converges with the next write of any command.
  */
 export class CommandStore {
   private chain: Promise<void> = Promise.resolve();
@@ -56,11 +60,11 @@ export class CommandStore {
     const file = commandsFile(dataDir);
     try {
       if ((await stat(file)).size > 8 * 1024 * 1024) throw new Error('Commands file is too large.');
-      return new CommandStore(
-        dataDir,
-        file,
-        parse(ServiceCommandsFileSchema, JSON.parse(await readFile(file, 'utf8'))),
-      );
+      const data = parse(ServiceCommandsFileSchema, JSON.parse(await readFile(file, 'utf8')));
+      return new CommandStore(dataDir, file, {
+        ...data,
+        commands: data.commands.map(withoutLegacySelection),
+      });
     } catch (error) {
       if (error instanceof Error && 'code' in error && error.code === 'ENOENT')
         return new CommandStore(dataDir, file, { version: 1, commands: [] });
@@ -111,27 +115,30 @@ export class CommandStore {
    * gets a fresh one), shape and templates validated. Throws TypeError on invalid drafts.
    */
   static compose(draft: CommandCreate): ServiceCommandFull {
-    const full = parse(ServiceCommandFullSchema, {
-      id: draft.id ?? randomUUID(),
-      revision: 1,
-      description: '',
-      enabled: true,
-      shortcut: '',
-      templateId: null,
-      input: {
-        source: 'manual',
-        required: false,
-        files: false,
-        selection: false,
-        clipboard: false,
-      },
-      parameters: [],
-      model: { mode: 'inherit' },
-      tools: [],
-      memory: 'inherit',
-      ...withCanonicalShortcut(draft),
-      migratedAt: null,
-    });
+    const full = parse(
+      ServiceCommandFullSchema,
+      withoutLegacySelection({
+        id: draft.id ?? randomUUID(),
+        revision: 1,
+        description: '',
+        enabled: true,
+        shortcut: '',
+        templateId: null,
+        input: {
+          source: 'manual',
+          required: false,
+          files: false,
+          selection: false,
+          clipboard: false,
+        },
+        parameters: [],
+        model: { mode: 'inherit' },
+        tools: [],
+        memory: 'inherit',
+        ...withCanonicalShortcut(draft),
+        migratedAt: null,
+      }),
+    );
     validateCommandShape(full);
     return full;
   }
@@ -165,7 +172,7 @@ export class CommandStore {
     expectedRevision: number,
   ): Promise<ServiceCommandFull> {
     if (command.id !== id) throw new TypeError('Invalid data: path id and command id differ.');
-    command = withCanonicalShortcut(command);
+    command = withCanonicalShortcut(withoutLegacySelection(command));
     validateCommandShape(command);
     return this.change(async (data) => {
       const index = data.commands.findIndex((item) => item.id === id);

@@ -9,6 +9,7 @@ import {
   type ServiceCommandsFile,
   type TaskInput,
 } from '@ai/agent-contracts';
+import { withoutLegacySelection } from '../commands/legacy-selection.js';
 import { atomicWrite } from '../config.js';
 import { Ledger } from '../ledger.js';
 import { sha256 } from './checks.js';
@@ -254,14 +255,22 @@ export async function importCommands(
   const next: ServiceCommand[] = [...current.commands];
   for (const command of workspace.commands) {
     const mapped = mapDesktopCommand(command, at);
-    const index = next.findIndex((item) => item.id === mapped.id);
-    if (index < 0) {
+    const existing = next.find((item) => item.id === mapped.id);
+    if (!existing) {
       next.push(mapped);
       inserted += 1;
       continue;
     }
-    const { migratedAt: _a, ...kept } = next[index] as unknown as Record<string, unknown>;
-    const { migratedAt: _b, ...fresh } = mapped as unknown as Record<string, unknown>;
+    // The command store folds legacy skills into instructions (commands/legacy-selection.ts), so
+    // compare folded shapes: a file the store already migrated is not a divergence.
+    const { migratedAt: _a, ...kept } = withoutLegacySelection(existing) as unknown as Record<
+      string,
+      unknown
+    >;
+    const { migratedAt: _b, ...fresh } = withoutLegacySelection(mapped) as unknown as Record<
+      string,
+      unknown
+    >;
     if (sha256(JSON.stringify(kept)) !== sha256(JSON.stringify(fresh)))
       throw new Error(`Command ${mapped.id} diverged since migration; refusing to overwrite.`);
     identical += 1;

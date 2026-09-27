@@ -15,6 +15,26 @@ export interface KeyRouting {
 /** Plain Enter inserts a newline like a textarea when no shortcut claims it, never mid-composition. */
 const newline = (view: EditorView) => !view.compositionStarted && insertNewline(view);
 
+function composingKey(event: KeyboardEvent, view: EditorView): boolean {
+  return event.isComposing || event.keyCode === 229 || view.composing;
+}
+
+/**
+ * An open quick panel takes unmodified ↑/↓/Enter/Tab; false leaves the key to the editor (the
+ * panel is closed or has nothing to select). Keys of an IME composition never reach the panel.
+ */
+export function routePanelKey(
+  event: KeyboardEvent,
+  view: EditorView,
+  panel: QuickPanelHandle | null,
+): boolean {
+  if (!panel || composingKey(event, view)) return false;
+  if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return false;
+  if (event.key === 'ArrowUp' || event.key === 'ArrowDown')
+    return panel.move(event.key === 'ArrowUp' ? -1 : 1);
+  return (event.key === 'Enter' || event.key === 'Tab') && panel.select();
+}
+
 /**
  * Keys reach the composer in one order: an IME composition keeps every key; an open quick panel
  * takes ↑/↓/Enter/Tab; then the user's send and newline shortcuts, matched on physical keys like
@@ -22,13 +42,8 @@ const newline = (view: EditorView) => !view.compositionStarted && insertNewline(
  * panel-level handler owns it.
  */
 function routeKey(event: KeyboardEvent, view: EditorView, routing: KeyRouting): boolean {
-  if (event.isComposing || event.keyCode === 229 || view.composing) return false;
-  const panel = routing.panel();
-  if (panel && !event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey) {
-    if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
-      if (panel.move(event.key === 'ArrowUp' ? -1 : 1)) return true;
-    } else if ((event.key === 'Enter' || event.key === 'Tab') && panel.select()) return true;
-  }
+  if (composingKey(event, view)) return false;
+  if (routePanelKey(event, view, routing.panel())) return true;
   const { sendMessage, newLine } = routing.shortcuts();
   if (matchesAccelerator(event, sendMessage, routing.platform)) {
     // Holding the key never repeats a send; the default newline stays suppressed.

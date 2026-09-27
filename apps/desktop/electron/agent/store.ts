@@ -20,6 +20,24 @@ const StoreSchema = Type.Object(
 );
 export type AgentData = Static<typeof StoreSchema>;
 
+/**
+ * Commands cached before instruction tokens carried `skills` and `roleId`. The service migrates
+ * those into tokens and the next command refresh replaces the cache, so loading drops the keys
+ * instead of rejecting the whole file. Stored task runs predate both keys.
+ */
+function withoutRetiredCommandFields(data: unknown): unknown {
+  if (typeof data !== 'object' || data === null || !('commands' in data)) return data;
+  if (!Array.isArray(data.commands)) return data;
+  const commands = data.commands.map((command: unknown) =>
+    typeof command === 'object' && command !== null
+      ? Object.fromEntries(
+          Object.entries(command).filter(([key]) => key !== 'skills' && key !== 'roleId'),
+        )
+      : command,
+  );
+  return { ...data, commands };
+}
+
 export async function atomicJson(file: string, value: unknown): Promise<void> {
   await mkdir(path.dirname(file), { recursive: true });
   const temporary = `${file}.${randomUUID()}.tmp`;
@@ -49,7 +67,8 @@ export class AgentStore {
     try {
       if ((await stat(file)).size > 64 * 1024 * 1024)
         throw new Error('Task metadata is too large.');
-      return new AgentStore(file, parse(StoreSchema, JSON.parse(await readFile(file, 'utf8'))));
+      const raw: unknown = JSON.parse(await readFile(file, 'utf8'));
+      return new AgentStore(file, parse(StoreSchema, withoutRetiredCommandFields(raw)));
     } catch (error) {
       if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
         const store = new AgentStore(file, {

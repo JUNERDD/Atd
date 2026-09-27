@@ -2,6 +2,8 @@ import { Type, type Static } from 'typebox';
 import type { ToolDefinition } from '@earendil-works/pi-coding-agent';
 import {
   Identifier,
+  MAX_RUN_REFERENCES,
+  MAX_RUN_SKILLS,
   parse,
   ServiceCommandFullSchema,
   type ServiceCommandFull,
@@ -23,12 +25,18 @@ import { createDetail, updateDetail } from './tool-detail.js';
 
 const Fields = ServiceCommandFullSchema.properties;
 
+/** The stored instructions field, described for the model that writes it. */
+const InstructionsField = {
+  ...Fields.instructions,
+  description: `The prompt the command runs. It may use {{input}}, {{files}}, {{selection}}, {{clipboard}} and {{argument.<key>}} for declared parameters, and these tokens, each after a space or at the start: /skill:<name> loads that skill, @agent:<name> allows that subagent, @mcp:<serverId> suggests that MCP server's tools, @task:<taskId> includes an excerpt of that conversation. At most ${MAX_RUN_SKILLS} skills and ${MAX_RUN_REFERENCES} other tokens.`,
+};
+
 /** What the Agent may author; identity, enabled state and model stay with the stored command. */
 const CommandFieldsSchema = Type.Object(
   {
     name: Fields.name,
     description: Fields.description,
-    instructions: Fields.instructions,
+    instructions: InstructionsField,
     input: Fields.input,
     parameters: Fields.parameters,
     tools: Fields.tools,
@@ -94,7 +102,7 @@ export const CommandToolParametersSchema = Type.Object(
 );
 
 const DESCRIPTION =
-  "Manage the user's saved commands: list them, get one, or save (create or update) one. Saving asks the user to confirm. Instructions may use {{input}}, {{files}}, {{selection}}, {{clipboard}} and {{argument.<key>}} for declared parameters. A save may set the command's global shortcut; one already used by the app or another command is refused, so ask the user for another combination. To update, get the command first and pass its id and revision.";
+  "Manage the user's saved commands: list them, get one, or save (create or update) one. Saving asks the user to confirm. Instructions carry variables and /skill:, @agent:, @mcp: and @task: tokens (see the instructions field); a command has no separate skill or subagent setting. A save may set the command's global shortcut; one already used by the app or another command is refused, so ask the user for another combination. To update, get the command first and pass its id and revision.";
 
 /** The save result the model reads; a shortcut adds where the user sees whether it registered. */
 function savedResult(saved: ServiceCommandFull): string {

@@ -118,7 +118,11 @@ export const CommandSkillRefSchema = Type.Object(
 );
 export type CommandSkillRef = Static<typeof CommandSkillRefSchema>;
 
-/** Full round-trippable command: core identity plus editor fields. */
+/**
+ * Full round-trippable command: core identity plus editor fields. Skills, subagents, MCP servers
+ * and conversations are written into `instructions` as tokens (`instruction-tokens.ts`), so the
+ * command carries no separate skill or role selection.
+ */
 export const ServiceCommandFullSchema = Type.Object({
   id: Identifier,
   revision: Type.Integer({ minimum: 1 }),
@@ -133,8 +137,6 @@ export const ServiceCommandFullSchema = Type.Object({
   model: CommandModelSchema,
   tools: Type.Array(CommandToolSchema, { uniqueItems: true }),
   memory: Type.Union([Type.Literal('inherit'), Type.Literal('off')]),
-  skills: Type.Optional(Type.Array(CommandSkillRefSchema, { maxItems: 32 })),
-  roleId: Type.Optional(Type.String({ minLength: 1, maxLength: 128 })),
   migratedAt: Type.Optional(Type.Union([Type.String(), Type.Null()])),
 });
 export type ServiceCommandFull = Static<typeof ServiceCommandFullSchema>;
@@ -153,8 +155,6 @@ export const CommandCreateSchema = Type.Object({
   model: Type.Optional(CommandModelSchema),
   tools: Type.Optional(Type.Array(CommandToolSchema, { uniqueItems: true })),
   memory: Type.Optional(Type.Union([Type.Literal('inherit'), Type.Literal('off')])),
-  skills: Type.Optional(Type.Array(CommandSkillRefSchema, { maxItems: 32 })),
-  roleId: Type.Optional(Type.String({ minLength: 1, maxLength: 128 })),
 });
 export type CommandCreate = Static<typeof CommandCreateSchema>;
 

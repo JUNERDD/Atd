@@ -120,6 +120,7 @@
   background: color-mix(in oklab, var(--input) 50%, transparent);
 }
 .instruction-editor .cm-editor {
+  min-height: 96px;
   background: transparent;
 }
 .instruction-editor .cm-focused {
@@ -132,11 +133,18 @@
 .instruction-editor .cm-line {
   padding: 0;
 }
+/* The scroller fills the editor, so a click below the text still places the caret. */
 .instruction-editor .cm-scroller {
+  flex-grow: 1;
   font-family: var(--font-sans);
 }
 .instruction-editor .cm-gutters {
   display: none;
+}
+/* The instruction editor's `/` and `@` panel: the shared quick-panel material, capped by the room
+   Radix measures on the side it opens (the settings window has no composer offset to keep). */
+.quick-panel-content.instruction-quick-panel {
+  max-height: min(22rem, var(--radix-popover-content-available-height));
 }
 .completion-options {
   padding: 4px;

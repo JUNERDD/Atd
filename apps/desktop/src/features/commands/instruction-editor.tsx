@@ -1,38 +1,38 @@
-import { useCallback, useMemo, useRef, type Dispatch, type SetStateAction } from 'react';
+import { useCallback, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react';
 import { useTranslation } from 'react-i18next';
-import CodeMirror, { type BasicSetupOptions, type ReactCodeMirrorRef } from '@uiw/react-codemirror';
-import { instructionExtensions } from './instruction-extensions';
-import { instructionTheme } from './instruction-theme';
 import { Settings2 } from 'lucide-react';
 import { Button } from '@ai/ui/components/button';
 import { Label } from '@ai/ui/components/label';
 import { contextVariables, variableDetails, type ContextVariable } from './command-variables';
 import { FieldHint } from '../../components/field-hint';
 import type { CommandDefinition } from '../../../electron/agent/command-schema';
+import type { AgentTask } from '../../../electron/agent/task-schema';
 import { availableVariables } from '../../../electron/agent/command-validation';
+import type { ComboboxAria } from '../composer-editor/editor-state';
+import type { TriggerState } from '../quick-panel/trigger';
+import type { QuickPanelHandle } from '../quick-panel/use-quick-panel';
+import { instructionExtensions } from './instruction-extensions';
 import { instructionProblem } from './instruction-problem';
-
-const basicSetup: BasicSetupOptions = {
-  lineNumbers: false,
-  foldGutter: false,
-  highlightActiveLine: false,
-  highlightActiveLineGutter: false,
-  autocompletion: false,
-  bracketMatching: false,
-  closeBrackets: false,
-};
+import { InstructionQuickPanel } from './instruction-quick-panel';
+import { useInstructionEditor } from './use-instruction-editor';
 
 export function InstructionEditor({
   command,
   onChange,
   onConfigureSource,
+  tasks,
 }: {
   command: CommandDefinition;
   onChange: Dispatch<SetStateAction<CommandDefinition>>;
   onConfigureSource: (source: ContextVariable) => void;
+  /** Snapshot tasks: `@` conversations and the titles of conversation chips. */
+  tasks: readonly AgentTask[];
 }) {
   const { t } = useTranslation('commands');
-  const editor = useRef<ReactCodeMirrorRef>(null);
+  const [trigger, setTrigger] = useState<TriggerState | null>(null);
+  const [aria, setAria] = useState<ComboboxAria | null>(null);
+  const panel = useRef<QuickPanelHandle>(null);
+  const owner = useRef<HTMLDivElement | null>(null);
   const available = availableVariables(command);
   // Disabled context sources stay listed so their configure entry remains reachable.
   const chips = [
@@ -45,12 +45,11 @@ export function InstructionEditor({
       .filter((name) => !contextVariables.some((variable) => variable.name === name))
       .map((name) => ({ name, enabled: true, source: undefined })),
   ];
-  // react-codemirror reconfigures the editor whenever `basicSetup`, `extensions` or `onChange`
-  // changes identity; rebuilt extensions also replace the completion source, which drops its open
-  // list. So typing changes none of them: the extensions change only with the offered variables
-  // and the language.
+  // The editor reconfigures its variable support only when this value changes, so it depends on
+  // the offered variables and the language, never on the typed text; a rebuilt completion source
+  // would drop its open list.
   const { input, parameters } = command;
-  const extensions = useMemo(
+  const variables = useMemo(
     () =>
       instructionExtensions(
         { input, parameters },
@@ -62,43 +61,56 @@ export function InstructionEditor({
     (instructions: string) => onChange((current) => ({ ...current, instructions })),
     [onChange],
   );
-  function insert(name: string) {
-    const value = `{{${name}}}`;
-    const view = editor.current?.view;
-    if (!view) {
-      onChange((current) => ({ ...current, instructions: `${current.instructions}${value}` }));
-      return;
-    }
-    // Edit the editor's own document; its change reaches the draft through `onChange`. Setting the
-    // draft instead races with typing: react-codemirror holds back a new `value` while the user
-    // types, then applies it over whatever was typed in the meantime.
-    const { from, to } = view.state.selection.main;
-    view.dispatch({
-      changes: { from, to, insert: value },
-      selection: { anchor: from + value.length },
-      scrollIntoView: true,
-      userEvent: 'input.complete',
-    });
-    view.focus();
-  }
+  const editor = useInstructionEditor({
+    instructions: command.instructions,
+    onChange: changeInstructions,
+    onTrigger: setTrigger,
+    panel,
+    tasks,
+    variables,
+    aria,
+  });
+  const { container } = editor;
+  const host = useCallback(
+    (node: HTMLDivElement | null) => {
+      owner.current = node;
+      const destroy = container(node);
+      return () => {
+        owner.current = null;
+        destroy?.();
+      };
+    },
+    [container],
+  );
+  const caret = useMemo(
+    () => ({
+      current: {
+        getBoundingClientRect: () => editor.triggerRect(),
+        get contextElement() {
+          return owner.current ?? undefined;
+        },
+      },
+    }),
+    [editor],
+  );
   const referenceError = instructionProblem(command, t);
   return (
-    <div className="settings-field" data-figma-node="417:1716">
+    <div className="settings-field" data-figma-node="1554:58480">
       <div className="instruction-toolbar">
         <div className="flex items-center gap-1.5">
           <Label>{t('instruction.title')}</Label>
           <FieldHint text={t('instruction.hint')} />
         </div>
       </div>
-      <CodeMirror
-        ref={editor}
-        value={command.instructions}
-        minHeight="96px"
-        theme={instructionTheme}
-        basicSetup={basicSetup}
-        extensions={extensions}
-        onChange={changeInstructions}
-        className="instruction-editor"
+      <div ref={host} className="instruction-editor" />
+      <InstructionQuickPanel
+        trigger={trigger}
+        editor={editor.commands}
+        handleRef={panel}
+        onAriaChange={setAria}
+        tasks={tasks}
+        anchor={caret}
+        owner={owner}
       />
       {referenceError && (
         <p role="alert" className="text-xs text-destructive">
@@ -115,7 +127,7 @@ export function InstructionEditor({
               size="sm"
               className="variable-token font-normal"
               title={`{{${name}}}`}
-              onClick={() => insert(name)}
+              onClick={() => editor.insertText(`{{${name}}}`)}
             >
               <span className="truncate">{`{{${name}}}`}</span>
             </Button>

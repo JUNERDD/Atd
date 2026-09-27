@@ -1,4 +1,5 @@
 import Mustache from 'mustache';
+import { instructionTokenProblem } from '@ai/agent-contracts';
 import type { ArgumentValues, CommandDefinition, Parameter } from './command-schema';
 import type { TaskInput } from './task-schema';
 
@@ -102,6 +103,8 @@ export function parameterError(
 export function validateCommand(command: CommandDefinition): void {
   if (!command.name.trim()) throw new Error('Enter a command name.');
   if (!command.instructions.trim()) throw new Error('Enter instructions.');
+  const tokenProblem = instructionTokenProblem(command.instructions);
+  if (tokenProblem) throw new Error(tokenProblem);
   const keys = command.parameters.map((parameter) => parameter.key);
   if (new Set(keys).size !== keys.length) throw new Error('Each parameter needs a unique key.');
   if (command.input.source === 'selection' && !command.input.selection)

@@ -38,7 +38,10 @@ export interface TriggerContext {
   line: string;
 }
 
-/** Quick-command ids the editor recognizes after a leading `/`. */
+/**
+ * Quick-command ids the editor recognizes after a leading `/`. An editor without quick commands
+ * (command instructions) passes null: a `/` at the start is then an inline one, skills only.
+ */
 export interface CommandIds {
   /** Every command id; a leading `/<id>` is reported as `command`. */
   all: readonly string[];
@@ -65,8 +68,9 @@ const TOKEN_START = /(?:^|[\s"'“”‘’=\u3000-\u303F\uFF01-\uFF0F\uFF1A-\uF
 const INLINE_SLASH = new RegExp(String.raw`${TOKEN_START.source}/([^\s/\uE000\uE001]*)$`);
 const MENTION = new RegExp(String.raw`${TOKEN_START.source}[@＠]([^\s@＠\uE000\uE001]*)$`);
 
-function leadingTrigger(context: TriggerContext, commands: CommandIds): TriggerState | null {
-  const match = context.start === null ? null : LEADING_SLASH.exec(context.start);
+function leadingTrigger(context: TriggerContext, commands: CommandIds | null): TriggerState | null {
+  if (!commands || context.start === null) return null;
+  const match = LEADING_SLASH.exec(context.start);
   if (!match) return null;
   const from = match[1]?.length ?? 0;
   const typed = match[2] ?? '';
@@ -86,7 +90,10 @@ function leadingTrigger(context: TriggerContext, commands: CommandIds): TriggerS
 }
 
 /** The trigger ending at the cursor. A leading `/` wins over an inline one, which wins over `@`. */
-export function parseTrigger(context: TriggerContext, commands: CommandIds): TriggerState | null {
+export function parseTrigger(
+  context: TriggerContext,
+  commands: CommandIds | null,
+): TriggerState | null {
   const leading = leadingTrigger(context, commands);
   if (leading) return leading;
   const { head, line } = context;

@@ -1,4 +1,9 @@
-import type { CommandInput, CommandParameter, ServiceCommandFull } from '@ai/agent-contracts';
+import {
+  instructionTokenProblem,
+  type CommandInput,
+  type CommandParameter,
+  type ServiceCommandFull,
+} from '@ai/agent-contracts';
 
 /**
  * Command template + validation port (T6b). The desktop resolves command
@@ -9,6 +14,9 @@ import type { CommandInput, CommandParameter, ServiceCommandFull } from '@ai/age
  * tags) throws like the desktop validator. Rendering substitutes values
  * without escaping, matching the desktop identity-escape render. All
  * validation failures throw TypeError so HTTP answers 400, never 500.
+ * Instruction tokens (`/skill:`, `@agent:`, `@mcp:`, `@task:`) are plain text
+ * here: saving checks their caps, and rendering leaves them verbatim for the
+ * submitting client to stage.
  */
 
 export interface VariableReference {
@@ -82,6 +90,8 @@ export function parameterError(
 export function validateCommandShape(command: ServiceCommandFull): void {
   if (!command.name.trim()) throw new TypeError('Enter a command name.');
   if (!command.instructions.trim()) throw new TypeError('Enter instructions.');
+  const tokenProblem = instructionTokenProblem(command.instructions);
+  if (tokenProblem) throw new TypeError(tokenProblem);
   const keys = command.parameters.map((parameter) => parameter.key);
   if (new Set(keys).size !== keys.length) throw new TypeError('Each parameter needs a unique key.');
   if (command.input.source === 'selection' && !command.input.selection)

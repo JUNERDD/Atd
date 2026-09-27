@@ -19,7 +19,6 @@ import {
 import { ModelConfigPopover } from '../providers/model-config-popover';
 import { TOOL_DESCRIPTIONS, type CommandDefinition } from '../../../electron/agent/command-schema';
 import type { SettingsSnapshot } from '../../../electron/settings-contract';
-import { SkillsRolePicker } from './capability-picker';
 
 /** The command's run policy as an editor form section: model, memory and allowed tools. */
 export function RunSettings({
@@ -145,11 +144,6 @@ export function RunSettings({
             ))}
           </ItemGroup>
         </div>
-        <SkillsRolePicker
-          skills={command.skills ?? []}
-          roleId={command.roleId}
-          onChange={({ skills, roleId }) => onChange({ ...command, skills, roleId })}
-        />
       </div>
     </section>
   );

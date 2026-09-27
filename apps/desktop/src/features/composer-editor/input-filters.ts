@@ -4,6 +4,7 @@ import {
   chipTable,
   hasToken,
   plainText,
+  segmentText,
   SENTINELS,
   serializedLength,
   tableAfter,
@@ -22,20 +23,22 @@ export const textLimit = Facet.define<number, number>({
 function withinLimit(transaction: Transaction) {
   if (!transaction.docChanged || transaction.isUserEvent('input.type.compose')) return transaction;
   const start = transaction.startState;
-  const next = serializedLength(transaction.newDoc, tableAfter(transaction));
+  const write = start.facet(segmentText);
+  const next = serializedLength(transaction.newDoc, tableAfter(transaction), write);
   if (next <= start.facet(textLimit)) return transaction;
-  return next > serializedLength(start.doc, start.field(chipTable)) ? [] : transaction;
+  return next > serializedLength(start.doc, start.field(chipTable), write) ? [] : transaction;
 }
 
 /** Pasted and dropped text: no chip sentinels, one newline form, cut to the room left. */
 function clipboardInput(text: string, state: EditorState): string {
   const clean = text.replace(SENTINELS, '').replace(/\r\n?/g, '\n');
   const table = state.field(chipTable);
+  const write = state.facet(segmentText);
   const { from, to } = state.selection.main;
   const room =
     state.facet(textLimit) -
-    serializedLength(state.doc, table) +
-    serializedLength(state.doc, table, from, to);
+    serializedLength(state.doc, table, write) +
+    serializedLength(state.doc, table, write, from, to);
   if (clean.length <= room) return clean;
   const cut = Math.max(0, room);
   // Never leave half of a surrogate pair at the cut.
@@ -45,7 +48,9 @@ function clipboardInput(text: string, state: EditorState): string {
 export const inputFilters = [
   EditorState.transactionFilter.of(withinLimit),
   EditorView.clipboardInputFilter.of(clipboardInput),
-  EditorView.clipboardOutputFilter.of((text, state) => plainText(text, state.field(chipTable))),
+  EditorView.clipboardOutputFilter.of((text, state) =>
+    plainText(text, state.field(chipTable), state.facet(segmentText)),
+  ),
   EditorView.domEventHandlers({
     // CodeMirror drops dragged content as its clipboard text, which would turn a chip into its
     // `@name` text and lose the reference, so selections holding a chip are not draggable.
