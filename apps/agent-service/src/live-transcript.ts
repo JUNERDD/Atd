@@ -1,6 +1,7 @@
 import type { AssistantMessage } from '@earendil-works/pi-ai';
 import type { AgentSession, SessionManager } from '@earendil-works/pi-coding-agent';
 import type { QueueState, ServiceBlock } from '@ai/agent-contracts';
+import type { RunningCompaction } from './compaction/records.js';
 import { SUBAGENT_TOOL } from './subagents/tool-contract.js';
 import { subagentRows, type SubagentRow } from './transcript-details/subagent.js';
 import {
@@ -51,6 +52,8 @@ export class LiveTranscript {
     private readonly runId: () => string,
     /** The task's first run (see `ProjectServiceBlocksInput.firstRunId`). */
     private readonly firstRunId: string,
+    /** The compaction the session runs now (compaction/observer.ts). */
+    private readonly compacting: () => RunningCompaction | null,
   ) {}
 
   attach(): void {
@@ -114,6 +117,7 @@ export class LiveTranscript {
       subagentProgress: this.subagentProgress,
       firstRunId: this.firstRunId,
       live: true,
+      compacting: this.compacting(),
     });
     const patch = diffServiceBlocks(this.blocks, next);
     this.blocks = next;

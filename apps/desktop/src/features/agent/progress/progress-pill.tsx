@@ -1,5 +1,5 @@
 import { Fragment, type ReactNode } from 'react';
-import { Bot, ListOrdered, MessageCircleQuestion, ShieldAlert } from 'lucide-react';
+import { Bot, ListOrdered, LoaderCircle, MessageCircleQuestion, ShieldAlert } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotion, type Transition } from 'motion/react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@ai/ui/components/button';
@@ -102,7 +102,9 @@ function PartButton({
  * - the subagents the latest reply dispatched, finished ones included, which opens their list.
  *   Summarized children stay after the reply ends and on reopen, since the pill is the way into
  *   their conversations; a bare count from a transcript without summaries has no list to open and
- *   shows only while the reply is `live` (its run is in progress).
+ *   shows only while the reply is `live` (its run is in progress);
+ * - "Compacting context…" while the task's context is being compacted, with nothing to open: the
+ *   transcript's compaction row carries the outcome.
  *
  * The pill enters and leaves animated: its row grows from and collapses to zero height, so the
  * transcript above resizes instead of jumping, while the capsule fades and scales, rising out of
@@ -112,12 +114,15 @@ export function ProgressPill({
   progress,
   live,
   hitl,
+  compacting = false,
   view,
   onToggle,
 }: {
   progress: TaskProgress;
   live: boolean;
   hitl: HitlStatus | null;
+  /** The task's context is being compacted. */
+  compacting?: boolean;
   /** The view the popover shows, which marks its part expanded. */
   view: PillView | null;
   onToggle: (view: PillView) => void;
@@ -203,6 +208,16 @@ export function ProgressPill({
         ),
     });
   }
+  if (compacting)
+    parts.push({
+      key: 'compacting',
+      node: (
+        <span className="composer-progress-part">
+          <LoaderCircle aria-hidden className="animate-spin motion-reduce:animate-none" />
+          <span className="truncate">{t('composer.progress.compacting')}</span>
+        </span>
+      ),
+    });
   const reduced = useReducedMotion();
   return (
     <AnimatePresence initial={false}>

@@ -60,7 +60,14 @@
       "subagentOne": "1 subagent",
       "subagentMany": "{{count}} subagents",
       "subagentRunning": "{{count}} running",
-      "showTodos": "Show todos"
+      "showTodos": "Show todos",
+      "compacting": "Compacting context…"
+    },
+    "context": {
+      "label": "Context usage",
+      "usage": "{{tokens}} / {{window}} tokens · {{percent}}%",
+      "percent": "{{percent}}% used",
+      "autoCompact": "Compacts automatically before the context fills up"
     }
   },
   "configuration": {
@@ -118,6 +125,7 @@
     "menu": "Session actions",
     "rename": "Rename session",
     "copyLink": "Copy session link",
+    "compact": "Compact context",
     "renameTitle": "Rename session",
     "renameDescription": "Give this session a short recognizable name.",
     "renameLabel": "Session name",
@@ -181,6 +189,15 @@
         "title": "Effort",
         "description": "Set the reasoning effort for this draft"
       },
+      "context": {
+        "title": "Context",
+        "description": "Choose this model's context window"
+      },
+      "compact": {
+        "title": "Compact",
+        "description": "Summarize this conversation to free up context",
+        "focus": "Focus: {{focus}}"
+      },
       "history": {
         "title": "History",
         "description": "Open the task list"
@@ -197,7 +214,13 @@
     "blocked": {
       "noModel": "Choose a model first.",
       "noEffort": "This model has no effort levels to choose from.",
-      "noPending": "Nothing is waiting."
+      "noContext": "This model has a single context window.",
+      "noPending": "Nothing is waiting.",
+      "noTask": "Open a task first.",
+      "taskRunning": "Wait for the current run to finish.",
+      "compacting": "The context is already being compacted.",
+      "nothingToCompact": "Nothing to compact yet.",
+      "focusTooLong": "Keep the focus under {{count}} characters."
     },
     "hints": {
       "choose": "to choose",
@@ -233,6 +256,11 @@
       "failed": "File search failed. Try again.",
       "attaching": "Attaching…"
     }
+  },
+  "contextHint": {
+    "text": "This task's context has been compacted {{count}} times. A new task may work better.",
+    "newTask": "New task",
+    "dismiss": "Dismiss"
   },
   "webSignIn": {
     "title": "Open this page from the desktop app",

@@ -118,6 +118,35 @@ export const ServiceBlockSchema = Type.Union([
     },
     { additionalProperties: false },
   ),
+  /**
+   * One context compaction. `running` is live only; `completed` comes from Pi's persisted
+   * compaction entry and `failed` from a service session entry, so both survive a reload.
+   */
+  Type.Object(
+    {
+      kind: Type.Literal('compaction'),
+      ...blockBase,
+      status: Type.Union([
+        Type.Literal('running'),
+        Type.Literal('completed'),
+        Type.Literal('failed'),
+      ]),
+      /** `manual` is a user request, `threshold` the automatic trigger, `overflow` a context overflow. */
+      reason: Type.Union([
+        Type.Literal('manual'),
+        Type.Literal('threshold'),
+        Type.Literal('overflow'),
+      ]),
+      /** Markdown summary; empty unless `completed`. */
+      summary: Type.String(),
+      /** Context tokens before and after, null when unknown. */
+      tokensBefore: Type.Union([Type.Integer({ minimum: 0 }), Type.Null()]),
+      tokensAfter: Type.Union([Type.Integer({ minimum: 0 }), Type.Null()]),
+      /** Why a `failed` compaction failed; empty otherwise. */
+      error: Type.String(),
+    },
+    { additionalProperties: false },
+  ),
 ]);
 export type ServiceBlock = Static<typeof ServiceBlockSchema>;
 
@@ -130,6 +159,29 @@ export const QueueStateSchema = Type.Object(
 );
 export type QueueState = Static<typeof QueueStateSchema>;
 
+/**
+ * A task's context usage, also the data of `context.update` events. `contextWindow` is the
+ * effective window of the task's latest run; `tokens` and `percent` (of that window, may exceed
+ * 100) are null while unknown, such as right after a compaction.
+ */
+export const TaskContextStateSchema = Type.Object(
+  {
+    contextWindow: Type.Union([Type.Integer({ minimum: 1 }), Type.Null()]),
+    tokens: Type.Union([Type.Integer({ minimum: 0 }), Type.Null()]),
+    percent: Type.Union([Type.Number({ minimum: 0 }), Type.Null()]),
+    /** Compactions the task's session has completed. */
+    compactions: Type.Integer({ minimum: 0 }),
+    compacting: Type.Boolean(),
+  },
+  { additionalProperties: false },
+);
+export type TaskContextState = Static<typeof TaskContextStateSchema>;
+
+/** Context state of a task with no usage known yet. */
+export function emptyContextState(): TaskContextState {
+  return { contextWindow: null, tokens: null, percent: null, compactions: 0, compacting: false };
+}
+
 /** Full task state returned after a gap or restart instead of replaying events. */
 export const TaskSnapshotSchema = Type.Object(
   {
@@ -139,6 +191,7 @@ export const TaskSnapshotSchema = Type.Object(
     requests: Type.Array(PermissionRequestSchema),
     capabilities: Type.Array(CapabilityRequestSchema),
     queue: QueueStateSchema,
+    context: TaskContextStateSchema,
     epoch: Type.Integer({ minimum: 0 }),
     seq: Type.Integer({ minimum: 0 }),
   },

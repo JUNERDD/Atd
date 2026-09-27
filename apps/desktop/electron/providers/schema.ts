@@ -1,4 +1,5 @@
 import { Type, type Static } from 'typebox';
+import type { ProviderContextsResponse } from '@ai/agent-contracts';
 
 const text = Type.String({ maxLength: 2048 });
 const id = Type.String({ minLength: 1, maxLength: 256 });
@@ -18,6 +19,15 @@ export const ModelThinkingLevelSchema = Type.Union([
   Type.Literal('max'),
 ]);
 export type ModelThinkingLevel = Static<typeof ModelThinkingLevelSchema>;
+
+/**
+ * A model's context window tier, mirrored from the service contract (`ContextTier`) so the main
+ * process validates renderer writes without importing the service schemas.
+ */
+export const ContextTierSchema = Type.Union([Type.Literal('standard'), Type.Literal('long')]);
+export type ContextTier = Static<typeof ContextTierSchema>;
+/** The tiers one model offers; no options when the model has no real choice. */
+export type ModelContexts = ProviderContextsResponse;
 
 export const ModelDefinitionSchema = Type.Object(
   {
@@ -77,6 +87,11 @@ export const ConnectionConfigSchema = Type.Object(
     defaultModel: Type.String({ maxLength: 256 }),
     /** Thinking level for the connection's default model; runs without an explicit level use it. */
     defaultThinkingLevel: Type.Optional(ModelThinkingLevelSchema),
+    /**
+     * Context tier per model id, holding only choices that differ from the model's default tier.
+     * Written through `ProviderBridge.setContext` only; connection saves never send it.
+     */
+    contextTiers: Type.Optional(Type.Record(id, ContextTierSchema)),
     options: Type.Record(Type.String(), text),
     customModels: Type.Array(ModelDefinitionSchema, { maxItems: 100 }),
   },
@@ -176,6 +191,13 @@ export interface ProviderBridge {
   ) => Promise<void>;
   /** Thinking levels Pi accepts for one model, in Pi's order; empty when the model is unknown. */
   levels: (reference: ModelReference) => Promise<ModelThinkingLevel[]>;
+  /** Context window tiers one model offers; no options when the model is unknown or has none. */
+  contexts: (reference: ModelReference) => Promise<ModelContexts>;
+  /**
+   * Remembers a model's context tier on its connection for later runs; revision-guarded. Both
+   * windows may write it: the panel composer's model popover offers the choice too.
+   */
+  setContext: (reference: ModelReference, tier: ContextTier, revision: number) => Promise<void>;
   disconnect: (connectionId: string, revision: number) => Promise<void>;
   refresh: (connectionId: string) => Promise<void>;
   /**

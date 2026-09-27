@@ -98,3 +98,24 @@ export const PreviewTaskResponseSchema = Type.Object(
   { additionalProperties: false },
 );
 export type PreviewTaskResponse = Static<typeof PreviewTaskResponseSchema>;
+
+/**
+ * `POST /v1/tasks/:taskId/compact`: compacts the task's context now, optionally focused by
+ * `instructions`. Refused with 409 while the task has an active run or when nothing can be
+ * compacted (the error says why).
+ */
+export const CompactTaskRequestSchema = Type.Object(
+  { instructions: Type.Optional(Type.String({ maxLength: 2000 })) },
+  { additionalProperties: false },
+);
+export type CompactTaskRequest = Static<typeof CompactTaskRequestSchema>;
+
+/**
+ * The compaction was accepted. Progress and outcome arrive as the task's `compaction` block and
+ * `context.update` events.
+ */
+export const CompactTaskResponseSchema = Type.Object(
+  { ok: Type.Literal(true) },
+  { additionalProperties: false },
+);
+export type CompactTaskResponse = Static<typeof CompactTaskResponseSchema>;

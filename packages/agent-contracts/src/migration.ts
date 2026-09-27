@@ -1,6 +1,6 @@
 import { Type, type Static } from 'typebox';
 import { Identifier } from './identifiers.js';
-import { ServiceModelDefinitionSchema, ThinkingLevelSchema } from './models.js';
+import { ContextTierSchema, ServiceModelDefinitionSchema, ThinkingLevelSchema } from './models.js';
 
 /**
  * T2 migration contracts (additive to service-contracts v1). The manifest is
@@ -176,6 +176,17 @@ export const ServiceConnectionSchema = Type.Object(
     catalogError: Type.Optional(Type.String({ maxLength: 2000 })),
     /** Level for runs on this connection that name none; absent means off. */
     defaultThinkingLevel: Type.Optional(ThinkingLevelSchema),
+    /**
+     * Context window tier per model id, holding only choices that differ from the model's default
+     * tier; absent (or a missing model id) means the default.
+     */
+    contextTiers: Type.Optional(
+      Type.Record(Type.String(), ContextTierSchema, {
+        maxProperties: 10000,
+        // Record key schemas are not validated; bound the model ids here.
+        propertyNames: { minLength: 1, maxLength: 256 },
+      }),
+    ),
   },
   { additionalProperties: false },
 );

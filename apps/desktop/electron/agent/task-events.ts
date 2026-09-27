@@ -1,4 +1,4 @@
-import type { ServiceEvent } from '@ai/agent-contracts';
+import { TaskContextStateSchema, type ServiceEvent } from '@ai/agent-contracts';
 import type { TaskClient } from './service-tasks';
 import { mapBlock, mapRequest } from './service-map';
 import { applyTranscriptPatch, QueueStateSchema } from './transcript-schema';
@@ -91,6 +91,13 @@ export async function applyTaskEvent<S>(tasks: TaskClient<S>, event: ServiceEven
       const text = typeof data['text'] === 'string' ? data['text'] : '';
       const kind = data['kind'] === 'warning' || data['kind'] === 'error' ? data['kind'] : 'info';
       tasks.host.emit({ type: 'notice', notice: { taskId: event.taskId, text, kind } });
+      return;
+    }
+    case 'context.update': {
+      // The whole state each time: after a turn, around a compaction, and on a model change.
+      if (!cached) return;
+      cached.context = parse(TaskContextStateSchema, event.data);
+      tasks.publishTask(event.taskId);
       return;
     }
     default: {

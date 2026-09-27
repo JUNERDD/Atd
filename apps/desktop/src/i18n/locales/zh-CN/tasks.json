@@ -145,6 +145,14 @@
     "done": "已思考",
     "doneWithElapsed": "已思考 {{elapsed}}"
   },
+  "compaction": {
+    "running": "正在整理上下文…",
+    "done": "上下文已整理",
+    "doneWithTokens": "上下文已整理 · 约 {{before}} → {{after}} tokens",
+    "summaryLabel": "上下文摘要",
+    "failed": "上下文整理失败",
+    "retry": "重试整理"
+  },
   "files": {
     "open": "打开",
     "openLabel": "打开文件",

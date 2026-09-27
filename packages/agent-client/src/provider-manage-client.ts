@@ -1,6 +1,9 @@
 import {
   parse,
   ProviderConnectionResponseSchema,
+  ProviderContextRequestSchema,
+  ProviderContextsQuerySchema,
+  ProviderContextsResponseSchema,
   ProviderDefaultRequestSchema,
   ProviderDefaultResponseSchema,
   ProviderLoginAnswerRequestSchema,
@@ -11,7 +14,9 @@ import {
   ProviderRefreshRequestSchema,
   ProviderUpdateRequestSchema,
   ProviderVerifyRequestSchema,
+  type ContextTier,
   type ProviderConnectionResponse,
+  type ProviderContextsResponse,
   type ProviderDefaultResponse,
   type ProviderLevelsResponse,
   type ProviderLoginResponse,
@@ -133,6 +138,43 @@ export function getProviderLevels(
     'GET',
     undefined,
     (json) => parse(ProviderLevelsResponseSchema, json),
+    fetchImpl,
+  );
+}
+
+/** The context window tiers one of the connection's models offers; empty when it has no choice. */
+export function getProviderContexts(
+  options: AgentClientOptions,
+  connectionId: string,
+  modelId: string,
+  fetchImpl?: typeof fetch,
+): Promise<ProviderContextsResponse> {
+  const query = new URLSearchParams(parse(ProviderContextsQuerySchema, { modelId }));
+  return manageRequest(
+    options,
+    connectionPath(connectionId, `/contexts?${query}`),
+    'GET',
+    undefined,
+    (json) => parse(ProviderContextsResponseSchema, json),
+    fetchImpl,
+  );
+}
+
+/** Remembers a model's context tier for later runs on the connection; revision-guarded. */
+export function setProviderContext(
+  options: AgentClientOptions,
+  connectionId: string,
+  modelId: string,
+  tier: ContextTier,
+  expectedRevision: number,
+  fetchImpl?: typeof fetch,
+): Promise<ProviderConnectionResponse> {
+  return manageRequest(
+    options,
+    connectionPath(connectionId, '/context'),
+    'PUT',
+    parse(ProviderContextRequestSchema, { expectedRevision, modelId, tier }),
+    decodeConnection,
     fetchImpl,
   );
 }

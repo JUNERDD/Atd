@@ -45,6 +45,7 @@ export function ComposerPopover({
   recall = 0,
   blocks = NO_BLOCKS,
   live = false,
+  compacting = false,
   onEditQueued,
   children,
 }: {
@@ -62,6 +63,8 @@ export function ComposerPopover({
   blocks?: readonly Block[];
   /** The latest reply's run is in progress. */
   live?: boolean;
+  /** The task's context is being compacted (`TaskContextState.compacting`). */
+  compacting?: boolean;
   onEditQueued: (text: string) => void;
   /** The composer surface; the popover anchors to it without adding a visible trigger. */
   children: ReactElement;
@@ -160,6 +163,7 @@ export function ComposerPopover({
           progress={progress}
           live={live}
           hitl={hitl.status}
+          compacting={compacting}
           view={open ? shown : null}
           onToggle={toggle}
         />

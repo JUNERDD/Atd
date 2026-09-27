@@ -104,6 +104,7 @@ export class TaskClient<S> {
         artifacts: detail.artifacts,
         requests: detail.requests,
         queue: detail.queue,
+        context: detail.context,
       },
     });
     this.host.broadcast();
@@ -149,7 +150,13 @@ export class TaskClient<S> {
       const detail = this.cacheSnapshot(snapshot);
       this.host.emit({
         type: 'task',
-        state: { task: detail.task, artifacts: [], requests: detail.requests, queue: detail.queue },
+        state: {
+          task: detail.task,
+          artifacts: [],
+          requests: detail.requests,
+          queue: detail.queue,
+          context: detail.context,
+        },
       });
       this.host.broadcast();
     } catch {

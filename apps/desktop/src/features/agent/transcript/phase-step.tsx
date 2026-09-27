@@ -1,4 +1,5 @@
 import type { ViewBlock } from './adapter';
+import { CompactionBlock } from './compaction-block';
 import { QuestionBlock } from './question-block';
 import { SystemBlock, ThinkingBlock } from './thinking-block';
 import { ToolBlock } from './tool-block';
@@ -29,6 +30,9 @@ export function PhaseStep({ view, requests }: { view: ViewBlock; requests: Reque
       );
     case 'system':
       return <SystemBlock block={block} />;
+    case 'compaction':
+      // Unreachable: `foldTurn` keeps compactions standalone, rendered by `BlockView`.
+      return <CompactionBlock block={block} />;
     default: {
       const _exhaustive: never = block;
       void _exhaustive;

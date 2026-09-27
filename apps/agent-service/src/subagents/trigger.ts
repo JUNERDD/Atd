@@ -1,6 +1,8 @@
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import type { CompactionSettings } from '@earendil-works/pi-coding-agent';
+import { compactionSettings, type PolicyModel } from '../compaction/policy.js';
 import { startChildTranscript, type ChildTranscriptSource } from './child-transcript.js';
 import { SUBAGENT_CHILD_SYSTEM_PROMPT } from './config.js';
 import {
@@ -23,7 +25,10 @@ import {
  * launch: projectTrusted:false plus forced noContextFiles plus explicit
  * system/append prompts, plus a model runtime built like the parent's so the
  * child authenticates and resolves the parent's model to the same catalog
- * definition. The wrapper also tracks per-parent
+ * definition. The child's settings get the service compaction policy for its
+ * model, which carries the parent's frozen window through that runtime, so a
+ * model compacts alike in the parent and its children (compaction/policy.ts).
+ * The wrapper also tracks per-parent
  * children for UI aggregation and per-task abort without touching siblings,
  * links each created child to its parent call (`app-child`) and follows its
  * transcript until it disposes.
@@ -48,6 +53,8 @@ interface ChildSessionLike extends ChildTranscriptSource {
   dispose(): Promise<void>;
   sessionFile?: string | undefined;
   sessionId: string;
+  model?: PolicyModel | undefined;
+  settingsManager: { applyOverrides(overrides: { compaction: CompactionSettings }): void };
 }
 
 interface ChildFactoryLike {
@@ -123,6 +130,8 @@ export async function installManagedSettingsTrigger(): Promise<{ installed: bool
       try {
         const modelRuntime = taskId ? hostForTask(taskId)?.childRuntime : undefined;
         const child = await inner.create(pinManagedSettings(launch, modelRuntime));
+        // Before the child's first prompt: children read settings from the agent dir otherwise.
+        child.settingsManager.applyOverrides(compactionSettings(child.model));
         if (!tracked) return child;
         const { record } = tracked;
         let closeTranscript: () => void;

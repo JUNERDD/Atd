@@ -129,6 +129,12 @@
     "model": "Model",
     "back": "Back",
     "triggerLabel": "Model configuration: {{model}}, {{contextSize}}, {{effort}}",
-    "scopedTriggerLabel": "{{label}}: {{model}}, {{contextSize}}, {{effort}}"
+    "scopedTriggerLabel": "{{label}}: {{model}}, {{contextSize}}, {{effort}}",
+    "tiers": {
+      "standard": "Standard",
+      "long": "Long context"
+    },
+    "pricedAbove": "Billed at a higher rate above {{tokens}} tokens",
+    "contextApplies": "Applies to this model's later tasks."
   }
 }

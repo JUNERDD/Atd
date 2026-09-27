@@ -259,7 +259,20 @@ describe('mapBlock + applyTranscriptPatch', () => {
     expect(byId(blocks, `q:${ASK_CALL}`, 'question').status).toBe('completed');
   });
 
-  it('maps compaction summaries into system info blocks', () => {
+  it('maps compactions into typed compaction blocks and keeps system notes', () => {
+    const compaction = {
+      kind: 'compaction',
+      id: 'c:60:0',
+      runId: RUN_ID,
+      timestamp: 60,
+      endedAt: 60,
+      status: 'completed',
+      reason: 'threshold',
+      summary: 'Earlier turns were folded.',
+      tokensBefore: 182000,
+      tokensAfter: 24000,
+      error: '',
+    } as const;
     const blocks = project([
       {
         kind: 'system',
@@ -268,17 +281,9 @@ describe('mapBlock + applyTranscriptPatch', () => {
         timestamp: 50,
         endedAt: 50,
         level: 'info',
-        text: 'Earlier turns were folded.',
+        text: 'A note.',
       },
-      {
-        kind: 'system',
-        id: 's:60:0',
-        runId: RUN_ID,
-        timestamp: 60,
-        endedAt: 60,
-        level: 'info',
-        text: 'Also folded.',
-      },
+      compaction,
     ]);
     expect(blocks).toEqual([
       {
@@ -288,17 +293,9 @@ describe('mapBlock + applyTranscriptPatch', () => {
         timestamp: 50,
         endedAt: 50,
         level: 'info',
-        text: 'Earlier turns were folded.',
+        text: 'A note.',
       },
-      {
-        kind: 'system',
-        id: 's:60:0',
-        runId: RUN_ID,
-        timestamp: 60,
-        endedAt: 60,
-        level: 'info',
-        text: 'Also folded.',
-      },
+      compaction,
     ]);
   });
 

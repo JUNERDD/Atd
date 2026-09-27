@@ -11,7 +11,8 @@ import { GrantScopeSchema, PermissionOutcomeSchema } from './permission-schema';
  *
  * Block ids are stable across live and cold projection: `u:<timestamp>:<n>` for user messages,
  * `a:<timestamp>:<index>` / `t:<timestamp>:<index>` for assistant text and thinking content items,
- * `tool:<callId>` and `q:<callId>` for tool calls, `s:<timestamp>:<n>` for system notes.
+ * `tool:<callId>` and `q:<callId>` for tool calls, `s:<timestamp>:<n>` for system notes; compaction
+ * ids are the service's.
  */
 const blockBase = {
   id: Type.String({ maxLength: 256 }),
@@ -183,6 +184,35 @@ export const BlockSchema = Type.Union([
       ...blockBase,
       level: Type.Union([Type.Literal('info'), Type.Literal('warning'), Type.Literal('error')]),
       text: Type.String(),
+    },
+    { additionalProperties: false },
+  ),
+  /**
+   * One context compaction, mirrored from the service block. `running` is live only; `completed`
+   * and `failed` survive a reload. Provider history before it was summarized, so a turn holding
+   * one hides its settled token rate.
+   */
+  Type.Object(
+    {
+      kind: Type.Literal('compaction'),
+      ...blockBase,
+      status: Type.Union([
+        Type.Literal('running'),
+        Type.Literal('completed'),
+        Type.Literal('failed'),
+      ]),
+      /** `manual` is a user request, `threshold` the automatic trigger, `overflow` a context overflow. */
+      reason: Type.Union([
+        Type.Literal('manual'),
+        Type.Literal('threshold'),
+        Type.Literal('overflow'),
+      ]),
+      /** Markdown summary; empty unless `completed`. */
+      summary: Type.String(),
+      tokensBefore: Type.Union([Type.Integer({ minimum: 0 }), Type.Null()]),
+      tokensAfter: Type.Union([Type.Integer({ minimum: 0 }), Type.Null()]),
+      /** Why a `failed` compaction failed; empty otherwise. */
+      error: Type.String(),
     },
     { additionalProperties: false },
   ),

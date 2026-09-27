@@ -1,6 +1,8 @@
 import type { ModelSelection, ServiceModel, ThinkingLevel } from '@ai/agent-contracts';
 import type { ConnectionStore } from '../credentials/connections.js';
 import { LedgerNotFound } from '../ledger.js';
+import { presentConnection } from '../providers/connection-view.js';
+import { effectiveContextWindow } from '../providers/context-tiers.js';
 
 /** Connection id of runs on the operator's environment-injected credentials. */
 export const TEMP_CONNECTION_ID = 'temp';
@@ -61,6 +63,30 @@ export function resolveRunThinkingLevel(
     connections.data.connections.find((item) => item.connectionId === model.connectionId)
       ?.defaultThinkingLevel
   );
+}
+
+/** Resolves the context window a run of a model freezes; undefined keeps the catalog window. */
+export type RunContextWindow = (model: ServiceModel) => number | undefined;
+
+/**
+ * Loads what `RunContextWindow` needs for the connection a selection (else the default) names:
+ * its presented catalog and saved tiers. Submit loads it before acceptance, so the freeze itself
+ * stays synchronous; a model on another connection, or the temp connection, gets no window.
+ */
+export async function loadRunContextWindow(
+  connections: ConnectionStore,
+  selection: ModelSelection | undefined,
+): Promise<RunContextWindow> {
+  const connectionId = selection?.connectionId ?? connections.data.defaultConnectionId;
+  const connection = connections.data.connections.find(
+    (item) => item.connectionId === connectionId,
+  );
+  if (!connection) return () => undefined;
+  const { catalog = [] } = await presentConnection(connection);
+  return (model) =>
+    model.connectionId === connection.connectionId
+      ? effectiveContextWindow(connection, catalog, model.modelId)
+      : undefined;
 }
 
 function tempModel(): ServiceModel {

@@ -30,6 +30,7 @@ export function mapSnapshot(snapshot: ServiceSnapshot): TaskDetail {
     artifacts: [],
     requests: snapshot.requests.map(mapRequest),
     queue: { ...snapshot.queue },
+    context: { ...snapshot.context },
     revision: snapshot.revision,
     blocks: snapshot.blocks.map(mapBlock),
     capabilities: snapshot.capabilities.map((cap) => ({
@@ -197,6 +198,17 @@ export function mapBlock(block: ServiceBlock): Block {
       };
     case 'system':
       return { kind: 'system', ...base, level: block.level, text: block.text };
+    case 'compaction':
+      return {
+        kind: 'compaction',
+        ...base,
+        status: block.status,
+        reason: block.reason,
+        summary: block.summary,
+        tokensBefore: block.tokensBefore,
+        tokensAfter: block.tokensAfter,
+        error: block.error,
+      };
     default: {
       const _exhaustive: never = block;
       throw new Error(`Unsupported service block: ${JSON.stringify(_exhaustive)}`);

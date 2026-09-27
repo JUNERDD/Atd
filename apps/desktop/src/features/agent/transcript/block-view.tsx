@@ -1,5 +1,6 @@
 import type { Block } from '../../../../electron/agent/transcript-schema';
 import { AssistantBlock } from './assistant-block';
+import { CompactionBlock } from './compaction-block';
 import { QuestionBlock } from './question-block';
 import { SystemBlock, ThinkingBlock } from './thinking-block';
 import { ToolBlock } from './tool-block';
@@ -24,6 +25,8 @@ export function BlockView({ block, requests }: { block: Block; requests: Request
       );
     case 'system':
       return <SystemBlock block={block} />;
+    case 'compaction':
+      return <CompactionBlock block={block} />;
     default: {
       const _exhaustive: never = block;
       void _exhaustive;

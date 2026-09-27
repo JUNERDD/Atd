@@ -1,5 +1,5 @@
 import { useState, type ReactElement } from 'react';
-import { Link2, Pencil, Ellipsis } from 'lucide-react';
+import { FoldVertical, Link2, Pencil, Ellipsis } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import {
   DropdownMenu,
@@ -7,15 +7,21 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@ai/ui/components/dropdown-menu';
-import type { AgentTask } from '../../../electron/agent/task-schema';
+import type { TaskDetail } from '../../../electron/agent/bridge';
 import { IconButton } from '../../components/icon-button';
+import { compactBlock } from './compaction/compact-availability';
+import { useCompactTask } from './compaction/use-compact-task';
 import { RenameTaskDialog } from './rename-task-dialog';
 import { useCopyTaskLink } from './use-copy-task-link';
 
-export function SessionMenu({ task }: { task: AgentTask }): ReactElement {
+export function SessionMenu({ detail }: { detail: TaskDetail }): ReactElement {
   const { t } = useTranslation('panel');
   const [renameOpen, setRenameOpen] = useState(false);
   const copyLink = useCopyTaskLink();
+  const { compact, pending } = useCompactTask();
+  const task = detail.task;
+  // A blocked item stays listed with its reason, like the matching quick command.
+  const blocked = compactBlock(task, detail.context);
 
   return (
     <>
@@ -38,6 +44,14 @@ export function SessionMenu({ task }: { task: AgentTask }): ReactElement {
           <DropdownMenuItem onSelect={() => void copyLink(task)}>
             <Link2 />
             {t('session.copyLink')}
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            disabled={blocked !== null || pending}
+            title={blocked ? t(`quickPanel.blocked.${blocked}`) : undefined}
+            onSelect={() => void compact(task.id)}
+          >
+            <FoldVertical />
+            {t('session.compact')}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

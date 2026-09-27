@@ -25,6 +25,8 @@
   --ata-border-subtle: rgb(255 255 255 / 14%);
   /* Progress fill, such as the todo ring's completed arc. */
   --ata-status-progress: #22c55e;
+  /* Warning status, such as context usage nearing its limit. */
+  --ata-status-warning: #f59e0b;
   --ata-radius-panel: 22px;
   /* Figma activity/connector: the opaque rail shared by the activity tree. */
   --activity-connector: #3c3c3c;

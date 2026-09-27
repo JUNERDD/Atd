@@ -3,6 +3,7 @@ import { PopoverAnchor } from '@ai/ui/components/popover';
 import type { RunPolicy } from '../../../electron/agent/run-policy';
 import type { AgentTask } from '../../../electron/agent/task-schema';
 import type { Connection, ModelReference } from '../../../electron/providers/schema';
+import type { CompactBlock } from '../agent/compaction/compact-availability';
 import type { ComposerEditorCommands } from '../composer-editor/editor-commands';
 import type { QuickCommandActions } from './quick-commands';
 import { QuickPanelSurface } from './quick-panel-surface';
@@ -29,6 +30,8 @@ export interface QuickPanelProps {
   model: ModelReference | null;
   /** `draft.files` plus file chips, against the 10-file limit. */
   attachmentCount: number;
+  /** Why the open task cannot be compacted now (`/compact`); null when it can. */
+  compact: CompactBlock | null;
   /** The current task, excluded from `@` conversations. */
   taskId: string | null;
   /** Snapshot tasks: `@` conversations and recently attached files. */
@@ -60,6 +63,7 @@ export function QuickPanel({
   connections,
   model,
   attachmentCount,
+  compact,
   taskId,
   tasks = [],
   children,
@@ -89,6 +93,7 @@ export function QuickPanel({
     connections,
     model,
     skills: lists.skills,
+    compact,
   });
   const mentionView = useMentionView({
     trigger: mention,

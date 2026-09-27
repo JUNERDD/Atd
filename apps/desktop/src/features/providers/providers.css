@@ -279,6 +279,31 @@ button.model-config-row-nav:disabled:hover {
 .model-config-effort-option:focus-visible {
   outline: 1px solid var(--ring);
 }
+.model-config-option-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  text-align: left;
+}
+.model-config-option-value {
+  flex-shrink: 0;
+  color: var(--muted-foreground);
+}
+/* The hint and the footnote wrap within the width the rows already set (width 0, min-width 100%),
+   so a long translation never widens the popover. */
+.model-config-option-hint,
+.model-config-note {
+  width: 0;
+  min-width: 100%;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  line-height: 16px;
+}
+.model-config-note {
+  margin: 0;
+  padding: 0 12px 8px;
+}
 .provider-directory {
   display: flex;
   flex-direction: column;
