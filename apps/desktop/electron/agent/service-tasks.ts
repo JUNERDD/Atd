@@ -45,6 +45,8 @@ export class TaskClient<S> {
   readonly children: ChildTranscripts<S>;
   /** Snapshot loads in flight, so a burst of events for an unknown task loads it once. */
   private readonly seeding = new Map<string, Promise<void>>();
+  /** The stream position of each task's latest event, which a cached snapshot must not predate. */
+  private readonly seen = new Map<string, { epoch: number; seq: number }>();
 
   constructor(
     private readonly connection: TaskConnection,
@@ -67,6 +69,7 @@ export class TaskClient<S> {
 
   clear() {
     this.details.clear();
+    this.seen.clear();
     this.revisions.clear();
     this.children.clear();
   }
@@ -77,9 +80,19 @@ export class TaskClient<S> {
     return client;
   }
 
+  /**
+   * Loads and caches a task's snapshot. A snapshot requested before one of the task's events
+   * arrived can answer after that event was applied; caching it would roll the event back (a
+   * finished run shown as still running, with no later event to correct it), so a snapshot older
+   * than the task's latest event is requested again, a bounded number of times.
+   */
   async detail(taskId: string): Promise<TaskDetail> {
-    const snapshot = await this.http().snapshot(taskId);
-    return structuredClone(this.cacheSnapshot(snapshot.snapshot));
+    for (let attempt = 1; ; attempt += 1) {
+      const { snapshot } = await this.http().snapshot(taskId);
+      const seen = this.seen.get(taskId);
+      const stale = seen !== undefined && seen.epoch === snapshot.epoch && seen.seq > snapshot.seq;
+      if (!stale || attempt === 3) return structuredClone(this.cacheSnapshot(snapshot));
+    }
   }
 
   cacheSnapshot(snapshot: TaskSnapshot): TaskDetail {
@@ -165,6 +178,7 @@ export class TaskClient<S> {
   }
 
   private async onEvent(event: ServiceEvent) {
+    this.seen.set(event.taskId, { epoch: event.epoch, seq: event.seq });
     try {
       // A task this cache has not seen yet (created by another client, or before this client
       // connected): its snapshot already contains the event.
