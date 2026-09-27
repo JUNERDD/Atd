@@ -13,13 +13,13 @@ directories:
 # Stale Electron worker outputs are excluded here and deleted by
 # scripts/prepare-service-pack.mjs before pack.
 files:
-  # T6 pure client: desktop ships renderer + main + preload only.
-  - dist/**
+  # T6 pure client: desktop ships main + preload only. The renderer ships once, as the `web`
+  # extra resource below, which the window loads and the service serves to paired browsers.
   - dist-electron/**
   - '!dist-electron/worker*.js'
   - package.json
 extraResources:
-  # The web client the service serves to paired browsers (`build:web`).
+  # The renderer (`build:web`): loaded by the packaged window and served by the service.
   - from: dist-web
     to: web
   - from: ../agent-service/dist
