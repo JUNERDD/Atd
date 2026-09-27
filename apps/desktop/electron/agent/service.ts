@@ -14,6 +14,12 @@ import { CommandService } from './command-service';
 import { parse } from './validation';
 
 /**
+ * Events only the panel renders (task detail, transcripts, notices). The settings window reads the
+ * snapshot and memory, and a subagent transcript goes to the window that holds it.
+ */
+const PANEL_EVENTS: ReadonlySet<AgentEvent['type']> = new Set(['task', 'transcript', 'notice']);
+
+/**
  * The desktop's agent bridge: IPC in front of the shared `AgentRequests`, plus the Electron
  * abilities the web client replaces with browser APIs (native file picker, clipboard, shell).
  * Main owns no agent execution; tasks, confirms and transcripts come from the agent service.
@@ -21,7 +27,7 @@ import { parse } from './validation';
 export class AgentService {
   readonly commands: CommandService;
   private readonly requests: AgentRequests<WebContents>;
-  /** Windows whose subagent-transcript holds are dropped when they close or reload. */
+  /** Windows whose task and subagent-transcript holds are dropped when they close or reload. */
   private readonly watched = new Set<WebContents>();
 
   private constructor(
@@ -71,7 +77,10 @@ export class AgentService {
       this.commands,
       platform,
       {
-        emit: (event) => settings.send(AGENT_IPC.changed, event),
+        emit: (event) => {
+          if (PANEL_EVENTS.has(event.type)) settings.sendToPanel(AGENT_IPC.changed, event);
+          else settings.send(AGENT_IPC.changed, event);
+        },
         defaultConnectionId: () => settings.snapshot().defaultConnectionId,
         defaultModel: () => {
           const snapshot = settings.snapshot();
@@ -124,13 +133,16 @@ export class AgentService {
   }
 
   /**
-   * A destroyed window cannot release its subagent transcripts, and a reloaded page starts
+   * A destroyed window cannot release its task or subagent transcripts, and a reloaded page starts
    * without holds, so both drop every hold of that webContents.
    */
   private watch(sender: WebContents) {
     if (this.watched.has(sender)) return;
     this.watched.add(sender);
-    const drop = () => this.requests.tasks.children.dropSubscriber(sender);
+    const drop = () => {
+      this.requests.tasks.children.dropSubscriber(sender);
+      this.requests.tasks.release(sender);
+    };
     sender.on('did-navigate', drop);
     sender.once('destroyed', () => {
       this.watched.delete(sender);

@@ -96,15 +96,17 @@ export class SettingsService {
   }
 
   static async create(host: SettingsHost): Promise<SettingsService> {
-    const service = new SettingsService(await SettingsStore.load(), host);
-    for (const connection of service.store.current.connections)
-      await service.providers.refresh(connection.connectionId, false);
-    return service;
+    return new SettingsService(await SettingsStore.load(), host);
   }
 
   send(channel: string, value: unknown) {
     for (const window of [this.host.panel(), this.window.current])
       sendToPage(window, channel, value);
+  }
+
+  /** Sends what only the panel renders, sparing the settings window the copy. */
+  sendToPanel(channel: string, value: unknown) {
+    sendToPage(this.host.panel(), channel, value);
   }
 
   get pinned(): boolean {

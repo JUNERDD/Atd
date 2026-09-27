@@ -16,6 +16,7 @@ import {
   SubmitTaskRequestSchema,
   SubmitTaskResponseSchema,
   TaskResponseSchema,
+  TaskSummaryResponseSchema,
   type CancelRunResponse,
   type CapabilityReplyRequest,
   type ChildTranscriptResponse,
@@ -31,8 +32,11 @@ import {
   type SubmitTaskRequest,
   type SubmitTaskResponse,
   type TaskResponse,
+  type TaskSummaryResponse,
 } from '@ai/agent-contracts';
 import { AgentClientError, type AgentClientOptions } from './types.js';
+
+const CapabilityOkSchema = Type.Object({ ok: Type.Boolean() }, { additionalProperties: false });
 
 /** Typed HTTP client for the agent service; fetch is injected for testing. */
 export class AgentHttpClient {
@@ -69,6 +73,16 @@ export class AgentHttpClient {
     );
   }
 
+  /** The task without its transcript; cheap, the service reads no session for it. */
+  summary(taskId: string): Promise<TaskSummaryResponse> {
+    return this.request(
+      `/v1/tasks/${encodeURIComponent(taskId)}/summary`,
+      'GET',
+      undefined,
+      (json) => parse(TaskSummaryResponseSchema, json),
+    );
+  }
+
   /** One child session's transcript; `childKey` is `<toolCallId>:<seq>` from the subagent details. */
   childTranscript(taskId: string, childKey: string): Promise<ChildTranscriptResponse> {
     return this.request(
@@ -96,7 +110,7 @@ export class AgentHttpClient {
 
   capabilityResult(body: CapabilityReplyRequest): Promise<{ ok: boolean }> {
     return this.request('/v1/capabilities/result', 'POST', body, (json) =>
-      parse(CapabilityOkSchema(), json),
+      parse(CapabilityOkSchema, json),
     );
   }
 
@@ -105,7 +119,7 @@ export class AgentHttpClient {
       `/v1/tasks/${encodeURIComponent(taskId)}/queue`,
       'POST',
       parse(QueueMessageRequestSchema, body),
-      (json) => parse(CapabilityOkSchema(), json),
+      (json) => parse(CapabilityOkSchema, json),
     );
   }
 
@@ -178,8 +192,4 @@ function toClientError(status: number, json: unknown): AgentClientError {
   } catch {
     return new AgentClientError('internal', status, `Request failed with status ${status}.`);
   }
-}
-
-function CapabilityOkSchema() {
-  return Type.Object({ ok: Type.Boolean() }, { additionalProperties: false });
 }

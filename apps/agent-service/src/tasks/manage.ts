@@ -65,7 +65,7 @@ export function registerTaskManageRoutes(app: FastifyInstance, ctx: TaskManageCo
       data.pendingConfirms = data.pendingConfirms.filter((item) => item.taskId !== taskId);
       data.pendingCapabilities = data.pendingCapabilities.filter((item) => item.taskId !== taskId);
     });
-    await ctx.manager.runnerFor(taskId).dispose();
+    await ctx.manager.remove(taskId);
     return { deleted: true as const, taskId };
   });
 

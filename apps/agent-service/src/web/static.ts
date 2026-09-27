@@ -31,12 +31,16 @@ export async function registerWebClient(
     );
     return;
   }
+  // Vite names everything it emits under `assets/` by content hash, so those URLs never change
+  // content and may be cached for good; the page itself must always revalidate to pick them up.
+  const assets = path.join(root, 'assets') + path.sep;
   await app.register(fastifyStatic, {
     root,
     prefix: '/',
-    // Hashed asset names change with every build; the page itself must always revalidate.
     setHeaders: (response, file) => {
       if (file.endsWith('.html')) response.header('cache-control', 'no-cache');
+      else if (file.startsWith(assets))
+        response.header('cache-control', 'public, max-age=31536000, immutable');
     },
   });
 }

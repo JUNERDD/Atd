@@ -1,5 +1,5 @@
 import { Type } from 'typebox';
-import { Value } from 'typebox/value';
+import { Compile } from 'typebox/compile';
 import {
   TODO_ACTIVE_FORM_MAX_LENGTH,
   TODO_BLOCKED_BY_MAX_ITEMS,
@@ -15,19 +15,23 @@ import { createClamp } from './clamp.js';
  * rpiv-todo `TaskDetails` (tool/types.ts): the replay snapshot every successful `todo` call
  * returns. Only `tasks` is read; `error` marks a failed reducer op, which has no list to show.
  */
-const RawTodoDetailsSchema = Type.Object({
-  tasks: Type.Array(Type.Unknown()),
-  error: Type.Optional(Type.Unknown()),
-});
+const RawTodoDetailsValidator = Compile(
+  Type.Object({
+    tasks: Type.Array(Type.Unknown()),
+    error: Type.Optional(Type.Unknown()),
+  }),
+);
 
 /** rpiv-todo `Task`; `description`, `owner`, and `metadata` stay in the session. */
-const RawTaskSchema = Type.Object({
-  id: Type.Integer({ minimum: 0 }),
-  subject: Type.String(),
-  status: TodoStatusSchema,
-  activeForm: Type.Optional(Type.String()),
-  blockedBy: Type.Optional(Type.Array(Type.Unknown())),
-});
+const RawTaskValidator = Compile(
+  Type.Object({
+    id: Type.Integer({ minimum: 0 }),
+    subject: Type.String(),
+    status: TodoStatusSchema,
+    activeForm: Type.Optional(Type.String()),
+    blockedBy: Type.Optional(Type.Array(Type.Unknown())),
+  }),
+);
 
 /** Over the item cap, deleted tombstones go first, then the highest ids. */
 function keepOrder(a: TodoItem, b: TodoItem): number {
@@ -36,11 +40,11 @@ function keepOrder(a: TodoItem, b: TodoItem): number {
 }
 
 export function projectTodoDetails(raw: unknown): TodoDetails | undefined {
-  if (!Value.Check(RawTodoDetailsSchema, raw) || raw.error !== undefined) return undefined;
+  if (!RawTodoDetailsValidator.Check(raw) || raw.error !== undefined) return undefined;
   const clamp = createClamp();
   const items: TodoItem[] = [];
   for (const task of raw.tasks) {
-    if (!Value.Check(RawTaskSchema, task)) {
+    if (!RawTaskValidator.Check(task)) {
       clamp.drop();
       continue;
     }

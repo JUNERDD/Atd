@@ -140,10 +140,10 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
   });
 
   const hub = new StreamHub({
-    ledger: deps.ledger,
     events: deps.events,
     capabilities: deps.capabilities,
     snapshot: (taskId) => deps.manager.snapshot(taskId),
+    summaries: () => deps.manager.summaries(),
     log: deps.log,
   });
   registerInvalidation(app, (frame) => hub.invalidate(frame));
@@ -185,6 +185,12 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
 
   app.get<{ Params: { taskId: string } }>('/v1/tasks/:taskId', async (request) => ({
     task: deps.ledger.task(request.params.taskId),
+  }));
+
+  app.get<{ Params: { taskId: string } }>('/v1/tasks/:taskId/summary', async (request) => ({
+    summary: deps.manager.summary(request.params.taskId),
+    epoch: deps.events.epoch,
+    seq: deps.events.currentSeq,
   }));
 
   app.get<{ Params: { taskId: string } }>('/v1/tasks/:taskId/snapshot', async (request) => ({

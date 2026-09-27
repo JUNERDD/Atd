@@ -13,6 +13,7 @@ import type { ProviderService } from './service';
 
 const identity = Type.String({ minLength: 1, maxLength: 256, pattern: '^[a-zA-Z0-9_-]+$' });
 const revisionSchema = Type.Integer({ minimum: 1 });
+const answerSchema = Type.String({ maxLength: 16384 });
 
 /** The desktop's provider IPC: validates each payload, then calls the shared provider client. */
 export function installProviderIpc(
@@ -83,7 +84,7 @@ export function installProviderIpc(
     service.login.answer(
       parse(identity, id),
       parse(identity, promptId),
-      parse(Type.String({ maxLength: 16384 }), value),
+      parse(answerSchema, value),
     ),
   );
 }

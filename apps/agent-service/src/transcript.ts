@@ -1,3 +1,4 @@
+import { isDeepStrictEqual } from 'node:util';
 import type { AgentSession, SessionEntry } from '@earendil-works/pi-coding-agent';
 import type { AssistantMessage, ToolResultMessage } from '@earendil-works/pi-ai';
 import type { ServiceBlock } from '@ai/agent-contracts';
@@ -278,7 +279,12 @@ export function projectServiceBlocks(input: ProjectServiceBlocksInput): ServiceB
   return blocks;
 }
 
-/** Diffs two projections into a patch; ids are stable across live and cold paths. */
+/**
+ * Diffs two projections into a patch; ids are stable across live and cold paths. Blocks are plain
+ * JSON data, so deep equality implies equal JSON: at worst it resends an unchanged block, never
+ * drops a change. It compares without serializing, which matters because a live transcript diffs
+ * its whole branch on every flush, and projections share the session's (large) output strings.
+ */
 export function diffServiceBlocks(
   previous: readonly ServiceBlock[],
   next: readonly ServiceBlock[],
@@ -286,7 +292,7 @@ export function diffServiceBlocks(
   const prior = new Map(previous.map((block) => [block.id, block]));
   const nextIds = new Set(next.map((block) => block.id));
   return {
-    blocks: next.filter((block) => JSON.stringify(prior.get(block.id)) !== JSON.stringify(block)),
+    blocks: next.filter((block) => !isDeepStrictEqual(prior.get(block.id), block)),
     removed: previous.filter((block) => !nextIds.has(block.id)).map((block) => block.id),
   };
 }
