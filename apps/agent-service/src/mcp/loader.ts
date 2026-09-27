@@ -12,7 +12,7 @@ import type {
 } from './adapter-types.js';
 
 /**
- * Adapter loading: the service consumes its direct `pi-mcp-adapter 2.34.0`
+ * Adapter loading: the service consumes its direct `pi-mcp-adapter 2.38.0`
  * dependency through jiti (TS root, no static import). A single shared jiti
  * instance keeps module identity so host seams observe the control
  * session's live manager.
@@ -23,7 +23,7 @@ export class McpAdapterMissing extends Error {
     readonly searched: string[],
     detail: string,
   ) {
-    super(`pi-mcp-adapter 2.34.0 is unavailable: ${detail}`);
+    super(`pi-mcp-adapter 2.38.0 is unavailable: ${detail}`);
     this.name = 'McpAdapterMissing';
   }
 }
@@ -91,7 +91,7 @@ export async function resolveAdapterDir(): Promise<{
   }
   throw new McpAdapterMissing(
     searched,
-    'no adapter install found (need direct pi-mcp-adapter 2.34.0 + peer patch).',
+    'no adapter install found (need direct pi-mcp-adapter 2.38.0).',
   );
 }
 
@@ -127,9 +127,9 @@ async function importFromDir(dir: string, source: AdapterModuleSource): Promise<
     utilsMod = {};
   }
   const version = await readVersion(dir);
-  if (version !== '2.34.0') {
+  if (version !== '2.38.0') {
     throw new Error(
-      `adapter version ${version} is not the verified 2.34.0 pin; refusing to float.`,
+      `adapter version ${version} is not the verified 2.38.0 pin; refusing to float.`,
     );
   }
   return {

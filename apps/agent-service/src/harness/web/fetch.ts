@@ -6,7 +6,7 @@ const FETCH_TIMEOUT_MS = 30_000;
 /** Largest body read, the package's default response limit. */
 const MAX_RESPONSE_BYTES = 5 * 1024 * 1024;
 const HEADERS = {
-  'User-Agent': 'Mozilla/5.0 (compatible; pi-web-access/0.31.0)',
+  'User-Agent': 'Mozilla/5.0 (compatible; pi-web-access/0.32.0)',
   Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,text/plain;q=0.8,*/*;q=0.5',
   'Accept-Language': 'en-US,en;q=0.9',
 };

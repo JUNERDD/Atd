@@ -5,7 +5,7 @@ import { pathToFileURL } from 'node:url';
 import { createJiti } from 'jiti';
 
 /**
- * The parts of `pi-web-access 0.31.0` the web tools reuse, loaded module by module through jiti
+ * The parts of `pi-web-access 0.32.0` the web tools reuse, loaded module by module through jiti
  * from the package's TypeScript sources. The package factory (`index.ts`) and its bundled
  * `dist/index.js` are never loaded: index.ts statically imports the curator server, Gemini web
  * (browser cookies) and every keyed provider, and reads `web-search.json`. The modules loaded
@@ -26,7 +26,7 @@ import { createJiti } from 'jiti';
  * directory so their versions stay the ones the pinned package installed.
  */
 
-const PACKAGE_VERSION = '0.31.0';
+const PACKAGE_VERSION = '0.32.0';
 
 export interface SearchHit {
   title: string;

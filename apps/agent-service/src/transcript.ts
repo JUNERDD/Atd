@@ -19,9 +19,11 @@ export type ServiceBranchItem =
   | { type: 'compaction'; summary: string; timestamp: number };
 
 /**
- * Pi 0.86 session-branch projection. `usage` entries are reported on the
+ * Pi 0.87 session-branch projection. `usage` entries are reported on the
  * settled message instead, and mid-transcript `system` entries are prompt
  * patches rather than conversation content, so both are skipped by design.
+ * `context_edit` entries only change what later provider requests see; the
+ * transcript keeps showing the raw history they edit, so they are skipped too.
  */
 export function fromServiceBranch(entries: readonly SessionEntry[]): ServiceBranchItem[] {
   const items: ServiceBranchItem[] = [];
@@ -60,6 +62,7 @@ export function fromServiceBranch(entries: readonly SessionEntry[]): ServiceBran
       case 'label':
       case 'session_info':
       case 'usage':
+      case 'context_edit':
         break;
       default: {
         const _exhaustive: never = entry;

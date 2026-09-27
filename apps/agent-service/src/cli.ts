@@ -73,7 +73,7 @@ function usage(): string {
     '  --help, -h       Show this help',
     '  --version, -v    Print version and Node requirement',
     '',
-    `Requires Node.js ${engines} on PATH (workspace toolchain; covers Pi 0.86.1`,
+    `Requires Node.js ${engines} on PATH (workspace toolchain; covers Pi 0.87.1`,
     '≥22.19.0). The Electron app binary is not Node.js; there is no auto-download.',
     'AI_AGENT_DATA_DIR overrides --dataDir; AI_AGENT_WEB_ROOT overrides --web-root.',
     'Default host is loopback; --port 0',
