@@ -43,6 +43,9 @@ if (process.env.AI_TEST_USER_DATA) {
   app.setPath('userData', process.env.AI_TEST_USER_DATA);
 }
 
+/** The command a settings-window editor hands to the panel; `null` starts a new command. */
+const CommandSessionIdSchema = Type.Union([Identifier, Type.Null()]);
+
 let panel: BrowserWindow | null = null;
 const placement = new PanelPlacement(() => panel);
 let settings: SettingsService;
@@ -122,7 +125,7 @@ function installIpc() {
    */
   ipcMain.handle(SETTINGS_IPC.startCommandSession, (event, value: unknown) => {
     settings.assertSender(event);
-    const commandId = parse(Type.Union([Identifier, Type.Null()]), value);
+    const commandId = parse(CommandSessionIdSchema, value);
     const name = commandId === null ? '' : (agent?.commands.find(commandId)?.name ?? '');
     const window = panel;
     if (!window || window.isDestroyed()) throw new Error('The task panel is not available');
@@ -272,11 +275,11 @@ if (!app.requestSingleInstanceLock()) {
           withDialog: withFileDialog,
         },
         (connected) => {
+          // Commands load independently of providers; catalog refresh reads the loaded providers.
           void settings.providers.sync().then(() => {
-            if (!connected) return undefined;
-            settings.providers.syncCatalogs();
-            return agent?.syncLive();
+            if (connected) settings.providers.syncCatalogs();
           });
+          if (connected) void agent?.syncLive();
         },
       );
       settings.attach(serviceManager.connection);

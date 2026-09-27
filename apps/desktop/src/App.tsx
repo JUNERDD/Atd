@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { Astroid, History, Settings, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@ai/ui/components/button';
@@ -24,6 +24,7 @@ import { SessionMenu } from './features/agent/session-menu';
 import { TaskHistory } from './features/agent/task-history';
 import { ServiceBanner } from './features/service/service-banner';
 import { EMPTY_QUEUE, type Block } from '../electron/agent/transcript-schema';
+import type { FileRef } from '../electron/agent/task-schema';
 import './features/agent/agent.css';
 
 const NO_BLOCKS: Block[] = [];
@@ -70,6 +71,16 @@ export function App() {
     child.open,
   );
   const [panelBody, setPanelBody] = useState<HTMLDivElement | null>(null);
+  // A stable attach callback, so streamed patches leave the transcript's memoized turns alone; it
+  // appends to the draft as of the latest commit.
+  const latestDraft = useRef({ draft, changeDraft });
+  useLayoutEffect(() => {
+    latestDraft.current = { draft, changeDraft };
+  });
+  const attachToDraft = useCallback((file: FileRef) => {
+    const latest = latestDraft.current;
+    latest.changeDraft({ ...latest.draft, files: [...latest.draft.files, file] });
+  }, []);
   const defaultConnection = snapshot?.connections.find(
     (connection) => connection.connectionId === snapshot.defaultConnectionId,
   );
@@ -183,7 +194,7 @@ export function App() {
                   <Transcript
                     detail={current.detail}
                     covered={child.childKey !== null}
-                    onAttach={(file) => changeDraft({ ...draft, files: [...draft.files, file] })}
+                    onAttach={attachToDraft}
                     onNewTask={newTask}
                   />
                   {child.childKey && (

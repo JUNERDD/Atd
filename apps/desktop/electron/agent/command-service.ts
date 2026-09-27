@@ -60,8 +60,14 @@ export class CommandService {
     }
   }
 
+  /**
+   * Reads the selected text while the other app still has focus, for any enabled command that
+   * fills its input from the selection (the one a shortcut launches, or one picked in the panel).
+   * Without such a command nothing reads it, so the native hook and the Accessibility check stay off.
+   */
   captureSelection() {
     this.captured = null;
+    if (!this.list().some((command) => command.enabled && command.input.selection)) return;
     this.requestAccessibility();
     try {
       this.selection ??= new SelectionHook();

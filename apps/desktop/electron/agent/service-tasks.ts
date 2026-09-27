@@ -1,19 +1,23 @@
-import { previewTask, type AgentClientOptions, type AgentHttpClient } from '@ai/agent-client';
-import {
-  snapshotToolsFor,
-  type InvalidateFrame,
-  type ServiceEvent,
-  type TaskSnapshot,
+import type { AgentClientOptions, AgentHttpClient } from '@ai/agent-client';
+import type {
+  InvalidateFrame,
+  ServiceEvent,
+  SummariesFrame,
+  TaskSnapshot,
+  TaskSummary,
 } from '@ai/agent-contracts';
-import type { AgentEvent, AgentRequest, TaskDetail } from './bridge';
+import type { AgentEvent, TaskDetail } from './bridge';
 import { ChildTranscripts } from './child-transcripts';
-import type { CommandDefinition } from './command-schema';
-import { commandRunChips, commandRunTokens, withCommandTokens } from './command-run';
-import { stageRunChoices, type RunStaging } from './run-staging';
-import { mapRunPolicy, notConnected, renameLiveTask } from './service-manage';
-import { mapSnapshot } from './service-map';
+import { notConnected } from './service-manage';
+import {
+  mapSummary,
+  mapTranscript,
+  taskDetail,
+  type TaskSummaryState,
+  type TaskTranscript,
+} from './service-map';
 import { applyTaskEvent } from './task-events';
-import { isActive } from './task-schema';
+import { applySummaries } from './task-summaries';
 
 /** The slice of a service connection the task cache uses; desktop and web both provide it. */
 export interface TaskConnection {
@@ -21,6 +25,7 @@ export interface TaskConnection {
   options(): AgentClientOptions | null;
   setTaskHandlers(handlers: {
     onSnapshot: (snapshot: TaskSnapshot) => void;
+    onSummaries: (frame: SummariesFrame) => void;
     onEvent: (event: ServiceEvent) => void;
   }): void;
 }
@@ -28,49 +33,62 @@ export interface TaskConnection {
 export interface TaskHost {
   /** Delivers an event to every client view (all renderer windows, or the web page). */
   emit: (event: AgentEvent) => void;
-  /** Republishes the agent snapshot (task list, commands). */
+  /** Republishes the agent snapshot (task list, commands); a burst of calls publishes once. */
   broadcast: () => void;
   defaultModel: () => { connectionId: string; modelId: string } | undefined;
 }
 
+/** A cached task: its summary always, its transcript only while some view holds the task. */
+export interface CachedTask extends TaskSummaryState {
+  transcript: TaskTranscript | null;
+}
+
+/** Loads of one task that answered older than its latest event, before one is kept anyway. */
+const LOAD_ATTEMPTS = 3;
+
 /**
- * Service task cache + submit/detail/events, shared by the desktop main process and the web
- * client. The service owns every task; this cache only mirrors the snapshots and events of the
- * shared stream, so a task another client creates, renames or deletes shows up here too.
- * `S` identifies who holds a subagent transcript (a window in the desktop, the page on the web).
+ * Service task cache + detail/events, shared by the desktop main process and the web client. The
+ * service owns every task; this cache mirrors the summaries and events of the shared stream, so a
+ * task another client creates, renames or deletes shows up here too. Transcripts are loaded only
+ * for held tasks: `S` identifies a view (a window in the desktop, the page on the web), each view
+ * holds the task it last loaded, and a task no view holds keeps its summary only.
  */
 export class TaskClient<S> {
-  readonly details = new Map<string, TaskDetail>();
+  readonly entries = new Map<string, CachedTask>();
   readonly revisions = new Map<string, { revision: number; taskId: string; runId: string }>();
   readonly children: ChildTranscripts<S>;
-  /** Snapshot loads in flight, so a burst of events for an unknown task loads it once. */
-  private readonly seeding = new Map<string, Promise<void>>();
-  /** The stream position of each task's latest event, which a cached snapshot must not predate. */
+  /** The task each view shows. */
+  private readonly holds = new Map<S, string>();
+  /** Loads in flight, so a burst of events for one task loads it once. */
+  private readonly reloading = new Map<string, Promise<void>>();
+  private readonly summarizing = new Map<string, Promise<void>>();
+  /** The stream position of each task's latest event, which a cached load must not predate. */
   private readonly seen = new Map<string, { epoch: number; seq: number }>();
 
   constructor(
     private readonly connection: TaskConnection,
-    private readonly commands: { find: (id: string) => CommandDefinition },
     readonly host: TaskHost,
     forward: (subscriber: S, event: AgentEvent) => void,
   ) {
     this.children = new ChildTranscripts(() => this.http(), forward);
     connection.setTaskHandlers({
-      onSnapshot: (snapshot) => void this.onSnapshot(snapshot),
+      onSnapshot: (snapshot) => this.onSnapshot(snapshot),
+      onSummaries: (frame) => this.onSummaries(frame),
       onEvent: (event) => void this.onEvent(event),
     });
   }
 
   tasks() {
-    return [...this.details.values()]
-      .map((detail) => detail.task)
+    return [...this.entries.values()]
+      .map((entry) => entry.task)
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
   }
 
   clear() {
-    this.details.clear();
+    this.entries.clear();
     this.seen.clear();
     this.revisions.clear();
+    this.holds.clear();
     this.children.clear();
   }
 
@@ -81,189 +99,188 @@ export class TaskClient<S> {
   }
 
   /**
-   * Loads and caches a task's snapshot. A snapshot requested before one of the task's events
-   * arrived can answer after that event was applied; caching it would roll the event back (a
-   * finished run shown as still running, with no later event to correct it), so a snapshot older
-   * than the task's latest event is requested again, a bounded number of times.
+   * Loads and caches a task's snapshot. With `holder`, that view now shows the task: its
+   * transcript stays cached and follows the stream, and the task the view showed before keeps
+   * its summary only unless another view holds it.
    */
-  async detail(taskId: string): Promise<TaskDetail> {
-    for (let attempt = 1; ; attempt += 1) {
-      const { snapshot } = await this.http().snapshot(taskId);
-      const seen = this.seen.get(taskId);
-      const stale = seen !== undefined && seen.epoch === snapshot.epoch && seen.seq > snapshot.seq;
-      if (!stale || attempt === 3) return structuredClone(this.cacheSnapshot(snapshot));
+  async detail(taskId: string, holder?: S): Promise<TaskDetail> {
+    if (holder !== undefined) {
+      const previous = this.holds.get(holder);
+      this.holds.set(holder, taskId);
+      if (previous !== undefined && previous !== taskId) this.unload(previous);
     }
+    const snapshot = await this.fresh(
+      taskId,
+      async () => (await this.http().snapshot(taskId)).snapshot,
+    );
+    return structuredClone(this.cacheSnapshot(snapshot));
   }
 
+  /** A view went away (a closed or reloaded window); the task it showed may unload. */
+  release(holder: S) {
+    const taskId = this.holds.get(holder);
+    this.holds.delete(holder);
+    if (taskId !== undefined) this.unload(taskId);
+  }
+
+  /** Forgets a deleted task: its entry, the holds on it and its subagent transcripts. */
+  forget(taskId: string) {
+    this.entries.delete(taskId);
+    this.seen.delete(taskId);
+    for (const [holder, held] of this.holds) if (held === taskId) this.holds.delete(holder);
+    this.children.forgetTask(taskId);
+  }
+
+  /** Caches a snapshot's summary, and its transcript while the task is held. */
   cacheSnapshot(snapshot: TaskSnapshot): TaskDetail {
-    const detail = mapSnapshot(snapshot);
-    for (const request of snapshot.requests)
+    const entry = this.storeSummary(snapshot);
+    const transcript = mapTranscript(snapshot);
+    entry.transcript = this.held(snapshot.task.id) ? transcript : null;
+    return taskDetail(entry, transcript);
+  }
+
+  /** Caches a task's summary, keeping its loaded transcript. */
+  storeSummary(summary: TaskSummary): CachedTask {
+    const entry: CachedTask = {
+      ...mapSummary(summary),
+      transcript: this.entries.get(summary.task.id)?.transcript ?? null,
+    };
+    this.entries.set(summary.task.id, entry);
+    for (const request of summary.requests)
       this.revisions.set(request.id, {
         revision: request.revision,
         taskId: request.taskId,
         runId: request.runId,
       });
-    this.details.set(snapshot.task.id, detail);
-    return detail;
+    return entry;
   }
 
+  /** Publishes a task change: its state to the views that load it, the task list to all. */
   publishTask(taskId: string) {
-    const detail = this.details.get(taskId);
-    if (!detail) return;
-    this.host.emit({
-      type: 'task',
-      state: {
-        task: detail.task,
-        artifacts: detail.artifacts,
-        requests: detail.requests,
-        queue: detail.queue,
-        context: detail.context,
-      },
-    });
+    const entry = this.entries.get(taskId);
+    if (entry?.transcript) {
+      const { task, requests, queue } = entry;
+      this.host.emit({
+        type: 'task',
+        state: { task, artifacts: [], requests, queue, context: entry.transcript.context },
+      });
+    }
     this.host.broadcast();
   }
 
-  /** Reloads a task from its snapshot and republishes it whole, transcript included. */
-  reseed(taskId: string): Promise<void> {
-    let pending = this.seeding.get(taskId);
-    if (pending) return pending;
-    pending = this.detail(taskId)
-      .then((detail) => {
-        this.publishTask(taskId);
-        this.host.emit({
-          type: 'transcript',
-          patch: {
-            taskId,
-            revision: detail.revision,
-            snapshot: true,
-            blocks: detail.blocks,
-            removed: [],
-          },
-        });
-      })
-      .finally(() => this.seeding.delete(taskId));
-    this.seeding.set(taskId, pending);
-    return pending;
+  /** Loads a task's summary (not its transcript) and publishes it. */
+  async loadSummary(taskId: string): Promise<void> {
+    const { summary } = await this.fresh(taskId, () => this.http().summary(taskId));
+    this.storeSummary(summary);
+    this.publishTask(taskId);
+  }
+
+  /**
+   * `loadSummary` for stream events: a burst for one task loads once. An event that arrives
+   * meanwhile is covered, since a summary older than the task's latest event is loaded again.
+   */
+  refreshSummary(taskId: string): Promise<void> {
+    return this.once(this.summarizing, taskId, () => this.loadSummary(taskId));
+  }
+
+  /** Reloads a held task's snapshot and republishes it whole, transcript included. */
+  reloadTranscript(taskId: string): Promise<void> {
+    if (!this.held(taskId)) return Promise.resolve();
+    return this.once(this.reloading, taskId, async () =>
+      this.publishLoaded(await this.detail(taskId)),
+    );
   }
 
   /** Another client (or this one) renamed, retiered or deleted a task. */
   async onInvalidate(frame: InvalidateFrame) {
     if (!frame.taskId) return;
     if (frame.scope === 'task.deleted') {
-      this.details.delete(frame.taskId);
-      this.children.forgetTask(frame.taskId);
+      this.forget(frame.taskId);
       this.host.broadcast();
       return;
     }
-    if (frame.scope === 'task') await this.reseed(frame.taskId).catch(() => undefined);
+    if (frame.scope === 'task') await this.loadSummary(frame.taskId).catch(() => undefined);
   }
 
-  private async onSnapshot(snapshot: TaskSnapshot) {
+  private held(taskId: string): boolean {
+    for (const held of this.holds.values()) if (held === taskId) return true;
+    return false;
+  }
+
+  private unload(taskId: string) {
+    const entry = this.entries.get(taskId);
+    if (entry && !this.held(taskId)) entry.transcript = null;
+  }
+
+  /**
+   * Loads until the answer is not older than the task's latest event. A load requested before
+   * one of the task's events arrived can answer after that event was applied; caching it would
+   * roll the event back (a finished run shown as still running, with no later event to correct
+   * it), so it is requested again, a bounded number of times.
+   */
+  private async fresh<T extends { epoch: number; seq: number }>(
+    taskId: string,
+    load: () => Promise<T>,
+  ): Promise<T> {
+    for (let attempt = 1; ; attempt += 1) {
+      const loaded = await load();
+      const seen = this.seen.get(taskId);
+      const stale = seen !== undefined && seen.epoch === loaded.epoch && seen.seq > loaded.seq;
+      if (!stale || attempt === LOAD_ATTEMPTS) return loaded;
+    }
+  }
+
+  private once(inFlight: Map<string, Promise<void>>, taskId: string, load: () => Promise<void>) {
+    let pending = inFlight.get(taskId);
+    if (pending) return pending;
+    pending = load().finally(() => inFlight.delete(taskId));
+    inFlight.set(taskId, pending);
+    return pending;
+  }
+
+  /** Republishes a freshly cached task, with its transcript as a snapshot patch when loaded. */
+  private publishLoaded(detail: TaskDetail) {
+    const taskId = detail.task.id;
+    this.publishTask(taskId);
+    if (!this.entries.get(taskId)?.transcript) return;
+    this.host.emit({
+      type: 'transcript',
+      patch: {
+        taskId,
+        revision: detail.revision,
+        snapshot: true,
+        blocks: detail.blocks,
+        removed: [],
+      },
+    });
+  }
+
+  /** A per-task stream snapshot (a subscription naming tasks); malformed ones are skipped. */
+  private onSnapshot(snapshot: TaskSnapshot) {
     try {
-      const detail = this.cacheSnapshot(snapshot);
-      this.host.emit({
-        type: 'task',
-        state: {
-          task: detail.task,
-          artifacts: [],
-          requests: detail.requests,
-          queue: detail.queue,
-          context: detail.context,
-        },
-      });
-      this.host.broadcast();
+      this.publishLoaded(this.cacheSnapshot(snapshot));
     } catch {
-      // Malformed snapshots never break the stream; detail() reseeds on demand.
+      // Malformed snapshots never break the stream; detail() reloads on demand.
+    }
+  }
+
+  private onSummaries(frame: SummariesFrame) {
+    try {
+      applySummaries(this, frame);
+    } catch {
+      // Malformed summaries never break the stream; the next resubscribe replaces them.
     }
   }
 
   private async onEvent(event: ServiceEvent) {
     this.seen.set(event.taskId, { epoch: event.epoch, seq: event.seq });
     try {
-      // A task this cache has not seen yet (created by another client, or before this client
-      // connected): its snapshot already contains the event.
-      if (!this.details.has(event.taskId)) return await this.reseed(event.taskId);
+      // A task this cache has not seen yet (created by another client after the summaries): its
+      // summary already contains the event, and a view that loads it gets the transcript.
+      if (!this.entries.has(event.taskId)) return await this.refreshSummary(event.taskId);
       await applyTaskEvent(this, event);
     } catch {
-      // Stream events never throw; detail() reseeds on demand.
+      // Stream events never throw; detail() reloads on demand.
     }
-  }
-
-  async submit(request: Extract<AgentRequest, { action: 'submit' }>): Promise<TaskDetail> {
-    const http = this.http();
-    if (request.savedRun)
-      throw new Error('Saved runs are unavailable until the service delivers commands (owner T2).');
-    const command = request.commandId ? this.commands.find(request.commandId) : null;
-    const tokens = command ? commandRunTokens(command) : null;
-    const previous = request.taskId ? (this.details.get(request.taskId)?.task ?? null) : null;
-    if (previous?.runs.some((run) => isActive(run.status))) {
-      if (request.input.files.length) throw new Error('Attach files after the run finishes.');
-      // A queued follow-up is text only; it would silently drop the chips' references and skill,
-      // and a command template's tokens alike.
-      if (request.policy?.references?.length || request.policy?.skills?.length || tokens?.keys.size)
-        throw new Error('Send mentions and skills after this run finishes.');
-      const text = request.input.text.trim();
-      if (!text) throw new Error('Enter a follow-up.');
-      await http.queue(previous.id, { text, mode: 'followUp' });
-      return this.detail(previous.id);
-    }
-    let text = request.input.text;
-    // Chip ranges index the submitted text. The array is always sent: without it the transcript
-    // treats the run as sent before chips were recorded and shows a leading `/skill:` token as a
-    // skill chip.
-    let chips = request.input.chips ?? [];
-    let staging: RunStaging | null = request.policy;
-    let model = request.policy?.model ?? this.host.defaultModel();
-    let thinkingLevel = request.policy?.thinkingLevel;
-    // Without a policy the service keeps the task's last tools and memory flag (or its defaults).
-    let tools = request.policy ? snapshotToolsFor(request.policy.tools) : undefined;
-    let memory = request.policy?.memory;
-    const options = this.connection.options();
-    if (command && tokens) {
-      if (!options) throw notConnected();
-      if (!command.enabled || command.revision !== request.commandRevision)
-        throw new Error('This command changed or was disabled. Review before running.');
-      // The preview sees the request's policy unchanged; the template's tokens only add staging.
-      const previewed = await previewTask(options, {
-        commandId: command.id,
-        input: request.input,
-        ...(request.policy ? { policy: mapRunPolicy(request.policy) } : {}),
-      });
-      text = previewed.snapshot.instructions || previewed.snapshot.input.text || text;
-      chips = commandRunChips(
-        text,
-        tokens,
-        (taskId) => this.details.get(taskId)?.task.title || taskId,
-      );
-      staging = withCommandTokens(request.policy, tokens);
-      if (!request.policy?.model)
-        model = {
-          connectionId: previewed.snapshot.model.connectionId,
-          modelId: previewed.snapshot.model.modelId,
-        };
-      thinkingLevel ??= previewed.snapshot.thinkingLevel;
-      // The preview resolved the policy, else the command's own tools and memory setting.
-      tools = previewed.snapshot.tools;
-      memory = previewed.snapshot.memory;
-    }
-    if (!text.trim() && !request.input.files.length)
-      throw new Error('Enter a message or attach a file.');
-    const taskId = await stageRunChoices(options, request.taskId, staging);
-    const submitted = await http.submit({
-      operationId: request.invocationId,
-      ...(taskId ? { taskId } : {}),
-      input: { ...request.input, text, chips },
-      ...(model ? { model } : {}),
-      ...(thinkingLevel ? { thinkingLevel } : {}),
-      ...(tools ? { tools } : {}),
-      ...(memory === undefined ? {} : { memory }),
-    });
-    // A command run is titled after the command. The title lives in the service like any rename,
-    // so every client shows it.
-    if (command && !request.taskId && options)
-      await renameLiveTask(options, submitted.taskId, command.name);
-    const detail = await this.detail(submitted.taskId);
-    this.host.broadcast();
-    return detail;
   }
 }

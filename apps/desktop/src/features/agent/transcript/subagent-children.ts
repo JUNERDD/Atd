@@ -39,6 +39,28 @@ export function indexSubagentChildren(blocks: readonly Block[]): SubagentChildIn
   return { byKey, byExecution };
 }
 
+/** Flat summaries of primitives: the same fields with the same values. */
+function sameSummary(a: SubagentChildSummary, b: SubagentChildSummary): boolean {
+  const keys = Object.keys(a) as (keyof SubagentChildSummary)[];
+  return keys.length === Object.keys(b).length && keys.every((key) => Object.is(a[key], b[key]));
+}
+
+/**
+ * Whether two indexes describe the same children. Every patch re-indexes the task's blocks, and
+ * an equal index keeps the context value (and every card reading it) unchanged.
+ */
+export function sameChildIndex(a: SubagentChildIndex, b: SubagentChildIndex): boolean {
+  if (a.byKey.size !== b.byKey.size || a.byExecution.size !== b.byExecution.size) return false;
+  for (const [key, child] of a.byKey) {
+    const other = b.byKey.get(key);
+    if (!other || (other !== child && !sameSummary(child, other))) return false;
+  }
+  for (const [executionId, child] of a.byExecution) {
+    if (b.byExecution.get(executionId)?.key !== child.key) return false;
+  }
+  return true;
+}
+
 /** What each child waits on, by execution id; the head request of a child wins. */
 export type PendingByExecution = ReadonlyMap<string, PermissionRequest['kind']>;
 

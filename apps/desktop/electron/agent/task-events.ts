@@ -5,18 +5,19 @@ import { applyTranscriptPatch, QueueStateSchema } from './transcript-schema';
 import { parse } from './validation';
 
 /**
- * Applies one stream event to a task the cache already holds and publishes the change. A
- * transcript revision gap reloads the task from its snapshot instead of guessing.
+ * Applies one stream event to a task the cache already has and publishes the change. Transcript
+ * and context events apply only to tasks a view has loaded; a revision gap reloads the transcript
+ * instead of guessing, and a run or capability the summary lacks reloads the summary.
  */
 export async function applyTaskEvent<S>(tasks: TaskClient<S>, event: ServiceEvent): Promise<void> {
   const data = event.data as Record<string, unknown>;
-  const cached = tasks.details.get(event.taskId);
+  const cached = tasks.entries.get(event.taskId);
   switch (event.type) {
     case 'run.status': {
       if (!cached || !event.runId) return;
       const run = cached.task.runs.find((item) => item.id === event.runId);
       // A run another client just submitted is not in the cached task yet.
-      if (!run) return tasks.reseed(event.taskId);
+      if (!run) return tasks.refreshSummary(event.taskId);
       const status = data['status'] as typeof run.status;
       if (status) run.status = status;
       if (typeof data['error'] === 'string') run.error = data['error'];
@@ -25,7 +26,8 @@ export async function applyTaskEvent<S>(tasks: TaskClient<S>, event: ServiceEven
       return;
     }
     case 'transcript.patch': {
-      if (!cached) return;
+      const transcript = cached?.transcript;
+      if (!transcript) return;
       const revision = typeof data['revision'] === 'number' ? data['revision'] : -1;
       const blocks = Array.isArray(data['blocks']) ? data['blocks'] : [];
       const removed = Array.isArray(data['removed']) ? (data['removed'] as string[]) : [];
@@ -36,13 +38,10 @@ export async function applyTaskEvent<S>(tasks: TaskClient<S>, event: ServiceEven
         blocks: blocks.map((block) => mapBlock(block as Parameters<typeof mapBlock>[0])),
         removed,
       };
-      const next = applyTranscriptPatch(
-        { revision: cached.revision, blocks: cached.blocks },
-        patch,
-      );
-      if (!next) return tasks.reseed(event.taskId);
-      cached.revision = next.revision;
-      cached.blocks = next.blocks;
+      const next = applyTranscriptPatch(transcript, patch);
+      if (!next) return tasks.reloadTranscript(event.taskId);
+      transcript.revision = next.revision;
+      transcript.blocks = next.blocks;
       tasks.host.emit({ type: 'transcript', patch });
       return;
     }
@@ -76,17 +75,10 @@ export async function applyTaskEvent<S>(tasks: TaskClient<S>, event: ServiceEven
       return;
     }
     case 'capability.requested':
-    case 'capability.resolved': {
-      // Capability-only events never break task state.
-      const fresh = await tasks
-        .http()
-        .snapshot(event.taskId)
-        .catch(() => null);
-      if (!fresh) return;
-      tasks.cacheSnapshot(fresh.snapshot);
-      tasks.publishTask(event.taskId);
-      return;
-    }
+    case 'capability.resolved':
+      // The pending capabilities are part of the summary. Capability-only events never break
+      // task state.
+      return tasks.refreshSummary(event.taskId).catch(() => undefined);
     case 'notice': {
       const text = typeof data['text'] === 'string' ? data['text'] : '';
       const kind = data['kind'] === 'warning' || data['kind'] === 'error' ? data['kind'] : 'info';
@@ -95,8 +87,8 @@ export async function applyTaskEvent<S>(tasks: TaskClient<S>, event: ServiceEven
     }
     case 'context.update': {
       // The whole state each time: after a turn, around a compaction, and on a model change.
-      if (!cached) return;
-      cached.context = parse(TaskContextStateSchema, event.data);
+      if (!cached?.transcript) return;
+      cached.transcript.context = parse(TaskContextStateSchema, event.data);
       tasks.publishTask(event.taskId);
       return;
     }

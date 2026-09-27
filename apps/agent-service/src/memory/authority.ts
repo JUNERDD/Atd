@@ -38,7 +38,9 @@ async function loadHermes(agentDir: string): Promise<HermesDesktop> {
   // its write guard), and better-sqlite3 is never rebuilt at runtime. The service process is that
   // host, and this is the only place it loads Hermes; Electron's former utility process set it.
   process.env.AI_DESKTOP_AGENT = '1';
-  const jiti = createJiti(import.meta.url, { moduleCache: true, fsCache: false });
+  // The transpile cache (as for the MCP adapter, mcp/loader.ts) roughly halves the first load.
+  // Entries are keyed by source hash, so the pnpm patch applied to Hermes is never served stale.
+  const jiti = createJiti(import.meta.url, { moduleCache: true, fsCache: true });
   const module = await jiti.import<{
     createDesktopMemory: (root: string) => Promise<HermesDesktop>;
   }>('pi-hermes-memory/src/desktop.ts');

@@ -7,7 +7,12 @@ import {
 } from './confirms.js';
 import { ThinkingLevelSchema } from './models.js';
 import { ResourceRefSchema } from './resources.js';
-import { QueueStateSchema, ServiceBlockSchema, TaskSnapshotSchema } from './snapshot.js';
+import {
+  QueueStateSchema,
+  ServiceBlockSchema,
+  TaskSnapshotSchema,
+  TaskSummarySchema,
+} from './snapshot.js';
 import {
   AgentTaskSchema,
   ModelSelectionSchema,
@@ -122,6 +127,17 @@ export const SnapshotResponseSchema = Type.Object(
   { additionalProperties: false },
 );
 export type SnapshotResponse = Static<typeof SnapshotResponseSchema>;
+
+/** `GET /v1/tasks/:taskId/summary`: the task without its session, as of `(epoch, seq)`. */
+export const TaskSummaryResponseSchema = Type.Object(
+  {
+    summary: TaskSummarySchema,
+    epoch: Type.Integer({ minimum: 0 }),
+    seq: Type.Integer({ minimum: 0 }),
+  },
+  { additionalProperties: false },
+);
+export type TaskSummaryResponse = Static<typeof TaskSummaryResponseSchema>;
 
 /** Ledger record shape the service persists; T2 extends it with migration fields. */
 export const LedgerDataSchema = Type.Object(

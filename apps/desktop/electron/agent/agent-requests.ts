@@ -21,6 +21,7 @@ import {
   setMemoryPaused,
 } from './service-manage';
 import { TaskClient, type TaskConnection } from './service-tasks';
+import { submitTask } from './task-submit';
 import type { FileRef } from './task-schema';
 
 /** The command list as each client keeps it: the desktop also binds global shortcuts. */
@@ -70,6 +71,8 @@ export interface AgentHost {
 export class AgentRequests<S> {
   readonly tasks: TaskClient<S>;
   private revision = 0;
+  /** The pending publish of task changes; see `scheduleBroadcast`. */
+  private scheduled: ReturnType<typeof setTimeout> | null = null;
   private mutation: Promise<void> = Promise.resolve();
   private memory: MemorySnapshot = { entries: [], paused: false, error: '' };
 
@@ -82,10 +85,9 @@ export class AgentRequests<S> {
   ) {
     this.tasks = new TaskClient(
       connection,
-      { find: (id) => commands.find(id) },
       {
         emit: (event) => host.emit(event),
-        broadcast: () => this.broadcast(),
+        broadcast: () => this.scheduleBroadcast(),
         defaultModel: () => host.defaultModel(),
       },
       forward,
@@ -103,8 +105,25 @@ export class AgentRequests<S> {
     };
   }
 
+  /** Publishes the snapshot now, which also covers a scheduled publish. */
   broadcast() {
+    if (this.scheduled !== null) clearTimeout(this.scheduled);
+    this.scheduled = null;
     this.host.emit({ type: 'snapshot', snapshot: this.snapshot() });
+  }
+
+  /**
+   * Publishes task changes once per burst. Connecting replays one stream snapshot per task, and
+   * publishing the whole task list after each would send it once per task. The snapshot is built
+   * when the timer fires, so it carries the final state; `handle` publishes a pending one before a
+   * request settles, so a reply never arrives ahead of the list it changed.
+   */
+  private scheduleBroadcast() {
+    this.scheduled ??= setTimeout(() => this.broadcast(), 0);
+  }
+
+  private flushBroadcast() {
+    if (this.scheduled !== null) this.broadcast();
   }
 
   /** Reloads what another client changed; task-scoped frames go to the task cache. */
@@ -138,9 +157,9 @@ export class AgentRequests<S> {
 
   /** Command writes run one at a time so revisions never race each other. */
   handle(request: AgentRequest, subscriber?: S): Promise<unknown> {
-    if (request.action !== 'saveCommand' && request.action !== 'deleteCommand')
-      return this.dispatch(request, subscriber);
-    const pending = this.mutation.then(() => this.dispatch(request, subscriber));
+    const run = () => this.dispatch(request, subscriber).finally(() => this.flushBroadcast());
+    if (request.action !== 'saveCommand' && request.action !== 'deleteCommand') return run();
+    const pending = this.mutation.then(run);
     this.mutation = pending.then(
       () => undefined,
       () => undefined,
@@ -153,7 +172,7 @@ export class AgentRequests<S> {
       case 'get':
         return this.snapshot();
       case 'detail':
-        return this.tasks.detail(request.taskId);
+        return this.tasks.detail(request.taskId, subscriber);
       case 'launch': {
         if (request.prepared) {
           const command = this.commands.find(request.commandId);
@@ -180,7 +199,12 @@ export class AgentRequests<S> {
           request.policy,
         );
       case 'submit':
-        return this.tasks.submit(request);
+        return submitTask(
+          this.tasks,
+          { options: () => this.connection.options(), findCommand: (id) => this.commands.find(id) },
+          request,
+          subscriber,
+        );
       case 'stop': {
         const { unsent } = await this.tasks.http().cancel(request.taskId, request.runId);
         return unsent;
@@ -196,18 +220,15 @@ export class AgentRequests<S> {
         return null;
       case 'setPermissionTier':
         await retierLiveTask(this.options(), request.taskId, request.tier);
-        await this.tasks.detail(request.taskId);
-        this.tasks.publishTask(request.taskId);
+        await this.tasks.loadSummary(request.taskId);
         return null;
       case 'renameTask':
         await renameLiveTask(this.options(), request.taskId, request.title);
-        await this.tasks.detail(request.taskId);
-        this.tasks.publishTask(request.taskId);
+        await this.tasks.loadSummary(request.taskId);
         return null;
       case 'deleteTask':
         await deleteLiveTask(this.options(), request.taskId);
-        this.tasks.details.delete(request.taskId);
-        this.tasks.children.forgetTask(request.taskId);
+        this.tasks.forget(request.taskId);
         this.broadcast();
         return null;
       case 'compactTask':

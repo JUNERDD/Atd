@@ -1,5 +1,5 @@
 import { Type } from 'typebox';
-import { Value } from 'typebox/value';
+import { Compile } from 'typebox/compile';
 import { EDIT_DIFF_MAX_LENGTH, type EditDiffDetails } from '@ai/agent-contracts';
 import { createClamp } from './clamp.js';
 
@@ -8,13 +8,15 @@ import { createClamp } from './clamp.js';
  * line per change as `+<n> text`, `-<n> text`, or ` <n> text` with a padded line number and no
  * file or hunk headers. The unified `patch` stays in the session.
  */
-const RawEditDetailsSchema = Type.Object({
-  diff: Type.String(),
-  firstChangedLine: Type.Optional(Type.Unknown()),
-});
+const RawEditDetailsValidator = Compile(
+  Type.Object({
+    diff: Type.String(),
+    firstChangedLine: Type.Optional(Type.Unknown()),
+  }),
+);
 
 export function projectEditDetails(raw: unknown): EditDiffDetails | undefined {
-  if (!Value.Check(RawEditDetailsSchema, raw) || !raw.diff) return undefined;
+  if (!RawEditDetailsValidator.Check(raw) || !raw.diff) return undefined;
   const clamp = createClamp();
   let diff = clamp.text(raw.diff, EDIT_DIFF_MAX_LENGTH);
   // A clamped diff ends on the last whole line so no row renders half a change.

@@ -1,6 +1,8 @@
 import type { AssistantMessage } from '@earendil-works/pi-ai';
 import type { AgentSession } from '@earendil-works/pi-coding-agent';
 import type { ServiceBlock } from '@ai/agent-contracts';
+import { STREAM_COALESCE_MS } from '../live-transcript.js';
+import { TrailingFlush } from '../trailing-flush.js';
 import {
   diffServiceBlocks,
   projectServiceBlocks,
@@ -30,11 +32,13 @@ export type ChildTranscriptHost = Pick<
  * ids match the cold projection of the child JSONL; the branch is the child's messages, stamped
  * with the time each ended as the session entry would be. Patches go out as
  * `child.transcript.patch`, and the revision advances only with a published patch so a client can
- * detect a gap. Approvals of the child's tools are recorded in the parent session and joined in.
+ * detect a gap. Approvals of the child's tools are recorded in the parent session and joined in,
+ * read once per reprojection. Streamed deltas coalesce as the parent's do (`STREAM_COALESCE_MS`).
  */
 class LiveChildTranscript {
   private blocks: ServiceBlock[] = [];
   private revision = 0;
+  private readonly streamed = new TrailingFlush(() => this.reproject(true), STREAM_COALESCE_MS);
   private partial: AssistantMessage | undefined;
   private readonly partials = new Map<string, string>();
   /** When each message ended, by message identity (Pi pushes the `message_end` object). */
@@ -58,11 +62,14 @@ class LiveChildTranscript {
       if (event.type === 'tool_execution_update')
         this.partials.set(event.toolCallId, toolPartialText(event.partialResult));
       if (event.type === 'tool_execution_end') this.partials.delete(event.toolCallId);
-      this.reproject(true);
+      if (event.type === 'message_update' || event.type === 'tool_execution_update')
+        this.streamed.schedule();
+      else this.reproject(true);
     });
   }
 
   snapshot(): { revision: number; blocks: ServiceBlock[] } {
+    this.streamed.flush();
     return { revision: this.revision, blocks: [...this.blocks] };
   }
 
@@ -80,11 +87,13 @@ class LiveChildTranscript {
 
   /** Drops the subscription without publishing (task teardown). */
   forget(): void {
+    this.streamed.cancel();
     this.unsubscribe?.();
     this.unsubscribe = null;
   }
 
   private reproject(live: boolean): void {
+    this.streamed.cancel();
     const branch = this.source.messages.map((message): ServiceBranchItem => {
       const endedAt = this.endedAt.get(message);
       return { type: 'message', message, ...(endedAt === undefined ? {} : { endedAt }) };

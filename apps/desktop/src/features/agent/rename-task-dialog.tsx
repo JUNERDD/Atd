@@ -49,9 +49,8 @@ export function RenameTaskDialog({
       onOpenChange(false);
     } catch (error) {
       showErrorToast(error);
-    } finally {
-      setSaving(false);
     }
+    setSaving(false);
   }
 
   return (

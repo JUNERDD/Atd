@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { memo, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Artifact, FileRef, TaskRun } from '../../../../electron/agent/task-schema';
 import { TaskFiles } from '../task-files';
@@ -7,6 +7,7 @@ import { ActivityGroup } from './activity-group';
 import { BlockView } from './block-view';
 import { PromptMessage } from './prompt-message';
 import { promptRun } from './run-prompt';
+import { buildLiveText } from './token-rate';
 import { TurnActions } from './turn-actions';
 import { TurnHeader } from './turn-header';
 import type { RequestIndex } from './turns';
@@ -41,7 +42,11 @@ function openActivityId(items: AdaptedTurn['items']): string | null {
   return null;
 }
 
-export function TurnView({
+/**
+ * One turn. Memoized: the adapter keeps a settled turn's object across patches, so only the turn
+ * a patch touched renders again while the answer streams.
+ */
+export const TurnView = memo(function TurnView({
   turn,
   runs,
   artifacts,
@@ -50,6 +55,7 @@ export function TurnView({
   live,
   last,
   copyable = true,
+  modelName,
   status,
   onAttach,
 }: {
@@ -62,6 +68,8 @@ export function TurnView({
   last: boolean;
   /** Offer copying the settled answer; a subagent's drill-in view leaves that to its parent. */
   copyable?: boolean;
+  /** Names the model instead of the turn's run; a subagent's view knows its child's own model. */
+  modelName?: string;
   /** The run's terminal note (stopped, failed) on the last turn, above its action bar. */
   status?: ReactNode;
   onAttach: (file: FileRef) => void;
@@ -71,6 +79,8 @@ export function TurnView({
   const settled = !(live && last);
   const openId = settled ? null : openActivityId(turn.items);
   const liveFooter = live && last;
+  // Streamed prose for the live rate estimate; only the live footer reads it.
+  const liveText = liveFooter ? buildLiveText(turn.view.map((view) => view.source)) : undefined;
   const sectionClass = `transcript-turn${liveFooter ? ' transcript-turn-live' : ''}`;
   const run = turn.user ? promptRun(runs, turn.user) : undefined;
   return (
@@ -88,12 +98,12 @@ export function TurnView({
         <TurnHeader
           startedAt={turn.startedAt}
           durationMs={turn.durationMs}
-          modelName={turn.modelName}
+          modelName={modelName ?? turn.modelName}
           live={liveFooter}
           waiting={liveFooter ? turn.waiting : null}
           trueTokens={turn.trueTokens}
           trueDurationMs={turn.trueDurationMs}
-          liveText={turn.liveText}
+          liveText={liveText}
         />
       )}
       {turn.items.map((item) => {
@@ -131,4 +141,4 @@ export function TurnView({
       {copyText && <TurnActions text={copyText} />}
     </section>
   );
-}
+});

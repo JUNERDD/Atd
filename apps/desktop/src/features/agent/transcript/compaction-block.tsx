@@ -8,7 +8,7 @@ import { formatTokenCount } from '../../providers/context-window';
 import { ActivityRow } from './activity-row';
 import { useCompactionRetry } from './compaction-context';
 import { DetailBox } from './detail-box';
-import { StreamdownMarkdown } from './markdown';
+import { LazyMarkdown } from './lazy-markdown';
 
 /** A one-line row without a body, on the same frame and icon geometry as expandable rows. */
 function StaticRow({
@@ -111,7 +111,7 @@ export function CompactionBlock({ block }: { block: BlockOf<'compaction'> }) {
       <ActivityRow.Content>
         <ActivityRow.Body className="thinking-full">
           <DetailBox variant="plain" copyText={block.summary}>
-            <StreamdownMarkdown text={block.summary} streaming={false} />
+            <LazyMarkdown text={block.summary} streaming={false} />
           </DetailBox>
         </ActivityRow.Body>
       </ActivityRow.Content>

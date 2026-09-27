@@ -1,6 +1,6 @@
 import type { AssistantMessage, ToolResultMessage } from '@earendil-works/pi-ai';
 import { Type } from 'typebox';
-import { Value } from 'typebox/value';
+import { Compile } from 'typebox/compile';
 import {
   GrantScopeSchema,
   PermissionOutcomeSchema,
@@ -40,6 +40,11 @@ const QuestionRecordSchema = Type.Object(
   { additionalProperties: false },
 );
 
+// Compiled once: every live reprojection checks each record on the branch.
+const PermissionRecordValidator = Compile(PermissionRecordSchema);
+const QuestionRecordValidator = Compile(QuestionRecordSchema);
+const SubagentChildEntryValidator = Compile(SubagentChildEntrySchema);
+
 export const ASK_USER_TOOL = 'ask_user';
 
 export interface PermissionLookup {
@@ -66,7 +71,7 @@ export function collectPermissionLookups(branch: readonly ServiceBranchItem[]): 
     if (
       item.type === 'custom' &&
       item.customType === 'app-permission' &&
-      Value.Check(PermissionRecordSchema, item.data)
+      PermissionRecordValidator.Check(item.data)
     )
       permissions.set(item.data.toolCallId, { scope: item.data.scope, outcome: item.data.outcome });
   }
@@ -89,12 +94,9 @@ export function collectBlockLookups(
   const children = new Map<string, SubagentChildEntry[]>();
   for (const item of branch) {
     if (item.type === 'custom') {
-      if (item.customType === 'app-question' && Value.Check(QuestionRecordSchema, item.data))
+      if (item.customType === 'app-question' && QuestionRecordValidator.Check(item.data))
         questions.set(item.data.toolCallId, item.data.answer);
-      if (
-        item.customType === SUBAGENT_CHILD_ENTRY &&
-        Value.Check(SubagentChildEntrySchema, item.data)
-      )
+      if (item.customType === SUBAGENT_CHILD_ENTRY && SubagentChildEntryValidator.Check(item.data))
         children.set(item.data.toolCallId, [
           ...(children.get(item.data.toolCallId) ?? []),
           item.data,

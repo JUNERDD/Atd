@@ -81,9 +81,8 @@ export function ProviderForm({
       await operation();
     } catch (error) {
       showErrorToast(error);
-    } finally {
-      setPending('');
     }
+    setPending('');
   }
   async function save() {
     if (!bridge) return;

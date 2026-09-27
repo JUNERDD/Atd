@@ -2,10 +2,11 @@ import { LOAD_SKILL_TOOL, TODO_TOOL, WEB_FETCH_TOOL, WEB_SEARCH_TOOL } from '@ai
 import type { ResolvedModel, TaskRun } from '../../../../electron/agent/task-schema';
 import type { Block, BlockOf, ToolStatus } from '../../../../electron/agent/transcript-schema';
 import { buildActivityPhase, isViewLive, type ActivityPhase } from './phases';
+import { reuseProjection, type ProjectionCache } from './projection-cache';
 import { subagentLaunches } from './subagent-call';
-import { buildLiveText, hasCompactionMarker, sumTurnGeneration } from './token-rate';
+import { hasCompactionMarker, sumTurnGeneration } from './token-rate';
 import type { TurnWaitingKind } from './turn-header';
-import { deriveTurns, type RequestIndex, type Turn } from './turns';
+import { deriveTurns, requestFor, type RequestIndex, type Turn } from './turns';
 
 /**
  * Renderer-side reshape adapter (plan T1). The main process keeps the canonical flat `Block`
@@ -86,14 +87,10 @@ export type AdaptedTurn = {
   durationMs: number | null;
   waiting: TurnWaitingKind;
   modelName: string;
-  /** Markdown the user actually reads: assistant prose joined for the footer copy action. */
-  copyText: string;
   /** Provider true output total for settled turns; null while streaming or when unknown. */
   trueTokens: number | null;
   /** Worker-measured generation time for settled turns; null while streaming or when unknown. */
   trueDurationMs: number | null;
-  /** Streamed model prose for the live rate estimate; settled turns ignore it. */
-  liveText: string;
 };
 
 function toolKindForName(name: string): ViewToolKind {
@@ -244,14 +241,6 @@ export function modelNameForRun(run: TaskRun | undefined): string {
   return 'definition' in model ? model.definition.name : model.modelId;
 }
 
-function turnCopyText(blocks: Block[]): string {
-  return blocks
-    .filter((block) => block.kind === 'assistant')
-    .map((block) => block.text.replace(/\r\n?/g, '\n').trim())
-    .filter(Boolean)
-    .join('\n\n');
-}
-
 function waitingKindFor(view: ViewBlock[]): TurnWaitingKind {
   for (const block of view) {
     if (block.requestKind === 'input') return 'answer';
@@ -260,14 +249,18 @@ function waitingKindFor(view: ViewBlock[]): TurnWaitingKind {
   return null;
 }
 
-function adaptTurn(turn: Turn, requests: RequestIndex, runs: TaskRun[]): AdaptedTurn {
-  const view = turn.items.flatMap((item) =>
-    item.type === 'block'
-      ? [adaptBlock(item.block, requests)]
-      : item.blocks.map((block) => adaptBlock(block, requests)),
-  );
-  const items: AdaptedItem[] = turn.items.map((item) => {
-    if (item.type === 'block') return item;
+type ActivityItem = Extract<AdaptedItem, { type: 'activity' }>;
+
+const activityCache: ProjectionCache<ActivityItem> = new WeakMap();
+const turnCache: ProjectionCache<AdaptedTurn> = new WeakMap();
+
+function adaptActivity(
+  item: Extract<Turn['items'][number], { type: 'activity' }>,
+  requests: RequestIndex,
+): ActivityItem {
+  // Each step with the request raised on it, if any: all an adapted step reads.
+  const inputs = item.blocks.flatMap((block) => [block, requestFor(block, requests)]);
+  return reuseProjection(activityCache, item.blocks[0], inputs, () => {
     const activity = item.blocks.map((block) => adaptBlock(block, requests));
     const anchor = item.blocks.at(-1);
     return {
@@ -280,35 +273,52 @@ function adaptTurn(turn: Turn, requests: RequestIndex, runs: TaskRun[]): Adapted
       anchorBlockId: anchor?.id ?? item.id,
     };
   });
-  const first = view[0];
-  const userTimestamp = turn.user?.timestamp;
-  const startedAt = userTimestamp ?? first?.timestamp ?? null;
-  const runId = turn.user?.runId ?? first?.runId ?? '';
-  const run = runs.find((candidate) => candidate.id === runId) ?? runs[0];
+}
+
+function adaptTurn(turn: Turn, requests: RequestIndex, runs: TaskRun[]): AdaptedTurn {
+  const items: AdaptedItem[] = turn.items.map((item) =>
+    item.type === 'block' ? item : adaptActivity(item, requests),
+  );
   const source = turn.items.flatMap((item) => (item.type === 'block' ? [item.block] : item.blocks));
-  let end = userTimestamp ?? null;
-  for (const block of source) end = end === null ? block.endedAt : Math.max(end, block.endedAt);
-  const generation = hasCompactionMarker(source) ? null : sumTurnGeneration(source);
-  return {
-    id: turn.id,
-    user: turn.user,
-    items,
-    view,
-    startedAt,
-    durationMs: startedAt !== null && end !== null ? Math.max(0, end - startedAt) : null,
-    waiting: waitingKindFor(view),
-    modelName: modelNameForRun(run),
-    copyText: turnCopyText(source),
-    trueTokens: generation?.tokens ?? null,
-    trueDurationMs: generation?.durationMs ?? null,
-    liveText: buildLiveText(source),
-  };
+  const head = turn.user ?? source[0];
+  const runId = head?.runId ?? '';
+  const run = runs.find((candidate) => candidate.id === runId) ?? runs[0];
+  // Standalone blocks (prose, notes, compactions) carry no call, so no request reaches them.
+  const inputs = [
+    turn.id,
+    run,
+    turn.user,
+    ...items.map((item) => (item.type === 'block' ? item.block : item)),
+  ];
+  return reuseProjection(turnCache, head, inputs, () => {
+    const view = items.flatMap((item) =>
+      item.type === 'block' ? [adaptBlock(item.block, requests)] : item.view,
+    );
+    const userTimestamp = turn.user?.timestamp;
+    const startedAt = userTimestamp ?? view[0]?.timestamp ?? null;
+    let end = userTimestamp ?? null;
+    for (const block of source) end = end === null ? block.endedAt : Math.max(end, block.endedAt);
+    const generation = hasCompactionMarker(source) ? null : sumTurnGeneration(source);
+    return {
+      id: turn.id,
+      user: turn.user,
+      items,
+      view,
+      startedAt,
+      durationMs: startedAt !== null && end !== null ? Math.max(0, end - startedAt) : null,
+      waiting: waitingKindFor(view),
+      modelName: modelNameForRun(run),
+      trueTokens: generation?.tokens ?? null,
+      trueDurationMs: generation?.durationMs ?? null,
+    };
+  });
 }
 
 /**
- * Projects patched blocks plus the request index into adapted turns. Pure in its inputs — call it
- * inside `useMemo` keyed on the patched blocks, request index, and runs so the 40ms patch cadence
- * cannot rerender markdown past the revision that changed it.
+ * Projects patched blocks plus the request index into adapted turns. Pure in its inputs; every
+ * streamed patch replaces `blocks`, so it runs once per patch, but turns and activity groups whose
+ * blocks, requests and run are unchanged come back as the same objects (`reuseProjection`), so
+ * memoized turn and group views skip the patch.
  */
 export function adaptTranscript(
   blocks: Block[],

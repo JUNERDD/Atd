@@ -1,14 +1,39 @@
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { messageOf } from '../../lib/errors';
+import { lazyWithPreload } from '../../lib/lazy-with-preload';
 import { ExtensionDetailDialog, type DetailField } from './extension-detail-dialog';
-import { SkillFiles } from './extension-skill-files';
 import {
   asSkillDetail,
   skillSourceLabelKey,
   type ExtensionSkillDetail,
   type ExtensionSkillRow,
 } from './extension-rows';
+
+// The file browser brings a tree, a diff renderer, and Markdown; the dialog starts loading them as
+// it opens, alongside the skill's details, so the files usually render without a loading frame.
+const { Component: SkillFiles, preload: preloadSkillFiles } = lazyWithPreload(() =>
+  import('./extension-skill-files').then((module) => module.SkillFiles),
+);
+
+/** Holds the browser's fixed frame while its code loads, so the dialog does not resize. */
+function SkillFilesFallback() {
+  const { t } = useTranslation('settings');
+  return (
+    <section
+      className="extension-detail-section skill-files"
+      aria-label={t('extensions.detailFiles')}
+    >
+      <h3>{t('extensions.detailFiles')}</h3>
+      <div className="skill-browser">
+        <div className="skill-browser-tree" />
+        <div className="skill-browser-preview">
+          <output className="skill-browser-message">{t('extensions.detailLoading')}</output>
+        </div>
+      </div>
+    </section>
+  );
+}
 
 type Loaded =
   | { name: string; detail: ExtensionSkillDetail | null }
@@ -23,6 +48,8 @@ function useSkillDetail(name: string | null): Loaded | null {
   useEffect(() => {
     const bridge = window.desktop?.service;
     if (!name || !bridge) return;
+    // The file browser renders once the details arrive; fetch its code meanwhile.
+    void preloadSkillFiles();
     let active = true;
     bridge.skill(name).then(
       (result) => {
@@ -106,12 +133,14 @@ export function SkillDetailDialog({
       status={status}
     >
       {detail ? (
-        <SkillFiles
-          key={row.name}
-          name={row.name}
-          files={detail.files}
-          truncated={detail.truncated}
-        />
+        <Suspense fallback={<SkillFilesFallback />}>
+          <SkillFiles
+            key={row.name}
+            name={row.name}
+            files={detail.files}
+            truncated={detail.truncated}
+          />
+        </Suspense>
       ) : null}
     </ExtensionDetailDialog>
   );

@@ -13,6 +13,8 @@ import { Type } from 'typebox';
 import { manageRequest, toClientError } from './manage-request.js';
 import type { AgentClientOptions } from './types.js';
 
+const OkSchema = Type.Object({ ok: Type.Boolean() });
+
 /** The shared user settings and whether any client has written them yet. */
 export function getSettings(
   options: AgentClientOptions,
@@ -85,7 +87,7 @@ export function revokeWebSession(
     '/v1/web/session',
     'DELETE',
     undefined,
-    (json) => parse(Type.Object({ ok: Type.Boolean() }), json),
+    (json) => parse(OkSchema, json),
     fetchImpl,
   );
 }

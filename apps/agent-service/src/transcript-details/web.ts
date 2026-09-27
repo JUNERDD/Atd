@@ -1,5 +1,5 @@
 import { Type } from 'typebox';
-import { Value } from 'typebox/value';
+import { Compile } from 'typebox/compile';
 import {
   WEB_EXCERPT_MAX_LENGTH,
   WEB_FETCH_MAX_PAGES,
@@ -26,30 +26,38 @@ const FETCH_ERROR_MAX_LENGTH = 1000;
  * `ExtractedContent[]` of `fetchAllContent` (extract.ts) as `results`. pi-web-access's own tool
  * details carry counts and storage ids only, so without these arrays there is nothing to show.
  */
-const RawSearchDetailsSchema = Type.Object({
-  queries: Type.Optional(Type.Unknown()),
-  provider: Type.Optional(Type.Unknown()),
-  results: Type.Array(Type.Unknown()),
-});
-const RawQueryResultSchema = Type.Object({
-  query: Type.String(),
-  provider: Type.Optional(Type.Unknown()),
-  results: Type.Array(Type.Unknown()),
-});
-const RawSearchResultSchema = Type.Object({
-  url: Type.String(),
-  title: Type.Optional(Type.String()),
-  snippet: Type.Optional(Type.String()),
-});
-const RawFetchDetailsSchema = Type.Object({ results: Type.Array(Type.Unknown()) });
-const RawPageSchema = Type.Object({
-  url: Type.String(),
-  title: Type.Optional(Type.String()),
-  content: Type.Optional(Type.String()),
-  /** Full extracted length when the tool kept only a bounded `content`. */
-  length: Type.Optional(Type.Integer({ minimum: 0 })),
-  error: Type.Optional(Type.Union([Type.String(), Type.Null()])),
-});
+const RawSearchDetailsValidator = Compile(
+  Type.Object({
+    queries: Type.Optional(Type.Unknown()),
+    provider: Type.Optional(Type.Unknown()),
+    results: Type.Array(Type.Unknown()),
+  }),
+);
+const RawQueryResultValidator = Compile(
+  Type.Object({
+    query: Type.String(),
+    provider: Type.Optional(Type.Unknown()),
+    results: Type.Array(Type.Unknown()),
+  }),
+);
+const RawSearchResultValidator = Compile(
+  Type.Object({
+    url: Type.String(),
+    title: Type.Optional(Type.String()),
+    snippet: Type.Optional(Type.String()),
+  }),
+);
+const RawFetchDetailsValidator = Compile(Type.Object({ results: Type.Array(Type.Unknown()) }));
+const RawPageValidator = Compile(
+  Type.Object({
+    url: Type.String(),
+    title: Type.Optional(Type.String()),
+    content: Type.Optional(Type.String()),
+    /** Full extracted length when the tool kept only a bounded `content`. */
+    length: Type.Optional(Type.Integer({ minimum: 0 })),
+    error: Type.Optional(Type.Union([Type.String(), Type.Null()])),
+  }),
+);
 
 /**
  * Only whole http(s) URLs cross the boundary: the renderer offers them as links, and a clamped
@@ -62,7 +70,7 @@ function safeUrl(url: string, clamp: Clamp): string | undefined {
 }
 
 function searchResult(raw: unknown, clamp: Clamp): WebSearchResult | undefined {
-  if (!Value.Check(RawSearchResultSchema, raw)) {
+  if (!RawSearchResultValidator.Check(raw)) {
     clamp.drop();
     return undefined;
   }
@@ -76,13 +84,13 @@ function searchResult(raw: unknown, clamp: Clamp): WebSearchResult | undefined {
 }
 
 export function projectWebSearchDetails(raw: unknown): WebSearchDetails | undefined {
-  if (!Value.Check(RawSearchDetailsSchema, raw)) return undefined;
+  if (!RawSearchDetailsValidator.Check(raw)) return undefined;
   const clamp = createClamp();
   const queries: string[] = [];
   const providers: string[] = typeof raw.provider === 'string' ? [raw.provider] : [];
   const found: unknown[] = [];
   for (const item of raw.results) {
-    if (Value.Check(RawQueryResultSchema, item)) {
+    if (RawQueryResultValidator.Check(item)) {
       queries.push(item.query);
       if (typeof item.provider === 'string') providers.push(item.provider);
       found.push(...item.results);
@@ -106,7 +114,7 @@ export function projectWebSearchDetails(raw: unknown): WebSearchDetails | undefi
 }
 
 function fetchedPage(raw: unknown, clamp: Clamp): WebFetchPage | undefined {
-  if (!Value.Check(RawPageSchema, raw)) {
+  if (!RawPageValidator.Check(raw)) {
     clamp.drop();
     return undefined;
   }
@@ -123,7 +131,7 @@ function fetchedPage(raw: unknown, clamp: Clamp): WebFetchPage | undefined {
 }
 
 export function projectWebFetchDetails(raw: unknown): WebFetchDetails | undefined {
-  if (!Value.Check(RawFetchDetailsSchema, raw)) return undefined;
+  if (!RawFetchDetailsValidator.Check(raw)) return undefined;
   const clamp = createClamp();
   const pages: WebFetchPage[] = [];
   for (const item of clamp.list(raw.results, WEB_FETCH_MAX_PAGES)) {
