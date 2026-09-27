@@ -142,7 +142,6 @@
       "recordingCanceled": "Recording canceled.",
       "recordingHint": "Press a shortcut. Escape cancels; Tab moves to the next control.",
       "shortcutSaved": "Shortcut saved.",
-      "savingShortcut": "Saving shortcut…",
       "defaultsRestored": "Default shortcuts restored.",
       "windowPreferenceSaved": "Window preference saved."
     },

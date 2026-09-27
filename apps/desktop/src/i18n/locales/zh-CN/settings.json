@@ -142,7 +142,6 @@
       "recordingCanceled": "已取消录制。",
       "recordingHint": "请按下快捷键。按 Escape 取消，按 Tab 移到下一个控件。",
       "shortcutSaved": "已保存快捷键。",
-      "savingShortcut": "正在保存快捷键…",
       "defaultsRestored": "已恢复默认快捷键。",
       "windowPreferenceSaved": "已保存窗口偏好。"
     },

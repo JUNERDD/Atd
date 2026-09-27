@@ -76,7 +76,7 @@ function ShortcutRow({
                 ? t('shortcuts.capture.cancelLabel', { label })
                 : t('shortcuts.capture.changeLabel', { label, keys: keys.join(' ') })
             }
-            aria-describedby={recording ? 'settings-shortcut-status' : undefined}
+            aria-describedby={recording ? 'settings-shortcut-hint' : undefined}
             aria-pressed={recording}
             disabled={
               settings.unavailable ||
@@ -198,16 +198,10 @@ export function ShortcutSettings({
             : t('shortcuts.restoreDefaults')}
         </Button>
       </div>
-      {(settings.error || settings.status) && (
-        <p
-          id="settings-shortcut-status"
-          className="settings-status"
-          data-error={Boolean(settings.error)}
-          role={settings.error ? 'alert' : 'status'}
-        >
-          {settings.error || settings.status}
-        </p>
-      )}
+      {/* Read with the recording button, which itself only shows Press keys. */}
+      <p id="settings-shortcut-hint" className="sr-only">
+        {t('shortcuts.status.recordingHint')}
+      </p>
     </>
   );
 }
