@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { cn } from '@ai/ui/lib/utils';
+import { ignoreComposingEscape } from '@ai/ui/lib/ime';
 import { ContextMenu as ContextMenuPrimitive } from 'radix-ui';
 import { ChevronRightIcon, CheckIcon } from 'lucide-react';
 import { ScrollArea } from '@ai/ui/components/scroll-area';
@@ -45,6 +46,7 @@ function ContextMenuContent({
   className,
   collisionPadding = 8,
   children,
+  onEscapeKeyDown,
   ...props
 }: React.ComponentProps<typeof ContextMenuPrimitive.Content>) {
   return (
@@ -58,6 +60,7 @@ function ContextMenuContent({
           className,
         )}
         {...props}
+        onEscapeKeyDown={ignoreComposingEscape(onEscapeKeyDown)}
       >
         <ScrollArea
           className="max-h-[calc(var(--radix-context-menu-content-available-height)-8px)]"
@@ -121,6 +124,7 @@ function ContextMenuSubContent({
   className,
   collisionPadding = 8,
   children,
+  onEscapeKeyDown,
   ...props
 }: React.ComponentProps<typeof ContextMenuPrimitive.SubContent>) {
   return (
@@ -133,6 +137,7 @@ function ContextMenuSubContent({
         className,
       )}
       {...props}
+      onEscapeKeyDown={ignoreComposingEscape(onEscapeKeyDown)}
     >
       <ScrollArea
         className="max-h-[calc(var(--radix-context-menu-content-available-height)-8px)]"

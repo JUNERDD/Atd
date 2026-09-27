@@ -6,6 +6,7 @@ import type { PreparedCommand, TaskDetail } from '../../../electron/agent/bridge
 import { emptyInput, isActive } from '../../../electron/agent/task-schema';
 import { EMPTY_QUEUE } from '../../../electron/agent/transcript-schema';
 import { DEFAULT_SHORTCUTS, type RunReference } from '@ai/agent-contracts';
+import { isComposingKey } from '@ai/ui/lib/ime';
 import {
   draftChips,
   draftFiles,
@@ -69,8 +70,7 @@ export function useTaskPanel() {
     enableOnContentEditable: true,
     preventDefault: true,
     enabled: (event) => !event.repeat,
-    ignoreEventWhen: (event) =>
-      event.defaultPrevented || event.isComposing || event.keyCode === 229,
+    ignoreEventWhen: (event) => event.defaultPrevented || isComposingKey(event),
   };
   useHotkeys(
     acceleratorToHotkey(shortcuts.openSettings, platform),

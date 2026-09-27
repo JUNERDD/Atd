@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { cn } from '@ai/ui/lib/utils';
+import { ignoreComposingEscape } from '@ai/ui/lib/ime';
 import { AlertDialog as AlertDialogPrimitive } from 'radix-ui';
 
 import { Button } from '@ai/ui/components/button';
@@ -38,6 +39,7 @@ function AlertDialogOverlay({
 function AlertDialogContent({
   className,
   size = 'default',
+  onEscapeKeyDown,
   ...props
 }: React.ComponentProps<typeof AlertDialogPrimitive.Content> & {
   size?: 'default' | 'sm';
@@ -53,6 +55,7 @@ function AlertDialogContent({
           className,
         )}
         {...props}
+        onEscapeKeyDown={ignoreComposingEscape(onEscapeKeyDown)}
       />
     </AlertDialogPortal>
   );

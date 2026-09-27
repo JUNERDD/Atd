@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { cn } from '@ai/ui/lib/utils';
+import { ignoreComposingEscape } from '@ai/ui/lib/ime';
 import { DropdownMenu as DropdownMenuPrimitive } from 'radix-ui';
 import { CheckIcon, ChevronRightIcon } from 'lucide-react';
 import { ScrollArea } from '@ai/ui/components/scroll-area';
@@ -28,6 +29,7 @@ function DropdownMenuContent({
   sideOffset = 4,
   collisionPadding = 8,
   children,
+  onEscapeKeyDown,
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.Content>) {
   return (
@@ -43,6 +45,7 @@ function DropdownMenuContent({
           className,
         )}
         {...props}
+        onEscapeKeyDown={ignoreComposingEscape(onEscapeKeyDown)}
       >
         <ScrollArea
           className="max-h-[calc(var(--radix-dropdown-menu-content-available-height)-8px)]"
@@ -227,6 +230,7 @@ function DropdownMenuSubContent({
   className,
   children,
   collisionPadding = 8,
+  onEscapeKeyDown,
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.SubContent>) {
   return (
@@ -239,6 +243,7 @@ function DropdownMenuSubContent({
       )}
       collisionPadding={collisionPadding}
       {...props}
+      onEscapeKeyDown={ignoreComposingEscape(onEscapeKeyDown)}
     >
       <ScrollArea
         className="max-h-[calc(var(--radix-dropdown-menu-content-available-height)-8px)]"

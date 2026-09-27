@@ -3,6 +3,7 @@ import { CircleAlert, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@ai/ui/components/button';
 import { Input } from '@ai/ui/components/input';
+import { useCompositionQuery } from '@ai/ui/lib/ime';
 import { Label } from '@ai/ui/components/label';
 import { Switch } from '@ai/ui/components/switch';
 import { Textarea } from '@ai/ui/components/textarea';
@@ -31,7 +32,7 @@ type Confirm = { kind: 'pause' } | { kind: 'delete'; entry: MemoryEntry };
 export function MemorySettings() {
   const { t } = useTranslation('memory');
   const [snapshot, setSnapshot] = useState<MemorySnapshot | null>(null);
-  const [search, setSearch] = useState('');
+  const search = useCompositionQuery();
   const [editing, setEditing] = useState<MemoryEntry | null>(null);
   const [content, setContent] = useState('');
   const [confirm, setConfirm] = useState<Confirm | null>(null);
@@ -202,9 +203,10 @@ export function MemorySettings() {
             <Input
               aria-label={t('memory.searchLabel')}
               placeholder={t('memory.searchPlaceholder')}
-              value={search}
+              value={search.text}
               disabled={!snapshot?.entries.length}
-              onChange={(event) => setSearch(event.target.value)}
+              onChange={(event) => search.change(event.target.value)}
+              {...search.compositionProps}
             />
             <MemoryCreateButton
               paused={Boolean(snapshot?.paused)}
@@ -244,7 +246,7 @@ export function MemorySettings() {
                 snapshot.error && !snapshot.entries.length ? null : (
                   <MemoryList
                     entries={snapshot.entries}
-                    query={search}
+                    query={search.query}
                     empty={
                       snapshot.entries.length ? t('memory.list.noMatches') : t('memory.list.empty')
                     }

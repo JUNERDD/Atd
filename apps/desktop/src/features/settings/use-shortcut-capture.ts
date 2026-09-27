@@ -1,5 +1,6 @@
 import { useCallback, useEffect } from 'react';
 import { useRecordHotkeys } from 'react-hotkeys-hook';
+import { isComposingKey } from '@ai/ui/lib/ime';
 
 /** The existing recorder owns key collection; this adapter handles native focus and IME boundaries. */
 export function useShortcutCapture() {
@@ -18,7 +19,7 @@ export function useShortcutCapture() {
           event.preventDefault();
           event.stopImmediatePropagation();
         }
-      } else if (event.repeat || event.isComposing || event.keyCode === 229) {
+      } else if (event.repeat || isComposingKey(event)) {
         event.preventDefault();
         event.stopImmediatePropagation();
       }

@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { cn } from '@ai/ui/lib/utils';
+import { ignoreComposingEscape } from '@ai/ui/lib/ime';
 import { Select as SelectPrimitive } from 'radix-ui';
 import { ChevronDownIcon, CheckIcon, ChevronUpIcon } from 'lucide-react';
 import { ScrollAreaRoot, ScrollAreaViewport, ScrollBar } from '@ai/ui/components/scroll-area';
@@ -55,6 +56,7 @@ function SelectContent({
   align = 'center',
   sideOffset = 4,
   collisionPadding = 8,
+  onEscapeKeyDown,
   ...props
 }: React.ComponentProps<typeof SelectPrimitive.Content>) {
   return (
@@ -72,6 +74,7 @@ function SelectContent({
         sideOffset={sideOffset}
         collisionPadding={collisionPadding}
         {...props}
+        onEscapeKeyDown={ignoreComposingEscape(onEscapeKeyDown)}
       >
         <ScrollAreaRoot className="flex min-h-0 flex-1 flex-col">
           <SelectPrimitive.Viewport asChild>

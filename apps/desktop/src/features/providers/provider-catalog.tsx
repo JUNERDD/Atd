@@ -6,6 +6,7 @@ import { HighlightedText } from '@ai/ui/components/highlighted-text';
 import { Input } from '@ai/ui/components/input';
 import { ScrollArea } from '@ai/ui/components/scroll-area';
 import { matchFields } from '@ai/ui/lib/fuzzy-match';
+import { useCompositionQuery } from '@ai/ui/lib/ime';
 import {
   Select,
   SelectContent,
@@ -27,7 +28,7 @@ export function ProviderCatalog({
   onBack: () => void;
 }) {
   const { t } = useTranslation('providers');
-  const [query, setQuery] = useState('');
+  const search = useCompositionQuery();
   const [category, setCategory] = useState('all');
   // Directory order stays; the search matches and marks the provider name the row shows.
   const visible = catalog.flatMap((provider) => {
@@ -36,8 +37,8 @@ export function ProviderCatalog({
       provider.category === category ||
       (category === 'api' && provider.auth.some((auth) => auth.type === 'api_key'));
     if (!inCategory) return [];
-    const match = matchFields(query, { name: provider.name });
-    return match || !query.trim() ? [{ provider, match }] : [];
+    const match = matchFields(search.query, { name: provider.name });
+    return match || !search.query.trim() ? [{ provider, match }] : [];
   });
   return (
     <section className="provider-catalog settings-editor">
@@ -49,8 +50,9 @@ export function ProviderCatalog({
       />
       <div className="settings-overview-toolbar">
         <Input
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
+          value={search.text}
+          onChange={(event) => search.change(event.target.value)}
+          {...search.compositionProps}
           aria-label={t('catalog.searchLabel')}
           placeholder={t('catalog.searchPlaceholder')}
         />

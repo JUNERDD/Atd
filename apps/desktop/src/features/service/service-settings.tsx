@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Input } from '@ai/ui/components/input';
+import { useCompositionQuery } from '@ai/ui/lib/ime';
 import { ScrollArea } from '@ai/ui/components/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@ai/ui/components/tabs';
 import { showErrorToast, showToast } from '../../components/toast-store';
@@ -45,7 +46,8 @@ function sessionKind(tab: ExtensionTab): 'skill' | 'subagent' | 'mcp' {
 /** Skills/subagents/MCP overview for the Extensions settings page. */
 export function ServiceSettings() {
   const { t } = useTranslation('settings');
-  const [query, setQuery] = useState('');
+  const search = useCompositionQuery();
+  const query = search.query;
   const [tab, setTab] = useState<ExtensionTab>('skills');
   const [adding, setAdding] = useState(false);
   const [formKey, setFormKey] = useState(0);
@@ -146,9 +148,10 @@ export function ServiceSettings() {
         <Input
           aria-label={t('extensions.searchLabel')}
           placeholder={t('extensions.searchPlaceholder')}
-          value={query}
+          value={search.text}
           disabled={!catalogCount}
-          onChange={(event) => setQuery(event.target.value)}
+          onChange={(event) => search.change(event.target.value)}
+          {...search.compositionProps}
         />
       </SettingsHeading>
       <div className="settings-extension-tabs">

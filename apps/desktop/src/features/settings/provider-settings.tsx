@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Button } from '@ai/ui/components/button';
 import { Input } from '@ai/ui/components/input';
 import { matchFields } from '@ai/ui/lib/fuzzy-match';
+import { isComposingKey, useCompositionQuery } from '@ai/ui/lib/ime';
 import {
   AlertDialog,
   AlertDialogContent,
@@ -30,11 +31,11 @@ export function ProviderSettingsForm({ snapshot }: { snapshot: SettingsSnapshot 
   const [view, setView] = useState<
     'overview' | 'catalog' | { provider: ProviderCatalogEntry; connectionId: string | null }
   >('overview');
-  const [query, setQuery] = useState('');
+  const search = useCompositionQuery();
   const [pending, setPending] = useState(false);
   const [retryable, setRetryable] = useState(false);
   const [disconnecting, setDisconnecting] = useState<Connection | null>(null);
-  const search = useRef<HTMLInputElement>(null);
+  const searchInput = useRef<HTMLInputElement>(null);
   const retry = useRef<(() => Promise<void>) | null>(null);
   const connections = snapshot?.connections ?? [];
   useEffect(() => {
@@ -104,8 +105,8 @@ export function ProviderSettingsForm({ snapshot }: { snapshot: SettingsSnapshot 
   // name, which the row shows as its logo; the no-match hint suggests both.
   const visible = connections.flatMap((connection) => {
     const provider = catalog.find((item) => item.id === connection.provider)?.name;
-    const match = matchFields(query, { name: connection.name, provider });
-    return match || !query.trim() ? [{ connection, nameRanges: match?.ranges.name }] : [];
+    const match = matchFields(search.query, { name: connection.name, provider });
+    return match || !search.query.trim() ? [{ connection, nameRanges: match?.ranges.name }] : [];
   });
   const emptyTitle = t(
     connections.length
@@ -118,8 +119,8 @@ export function ProviderSettingsForm({ snapshot }: { snapshot: SettingsSnapshot 
       : 'providers.overview.empty.firstDescription',
   );
   function clear() {
-    setQuery('');
-    search.current?.focus();
+    search.change('');
+    searchInput.current?.focus();
   }
   return (
     <section className="providers-overview">
@@ -128,14 +129,15 @@ export function ProviderSettingsForm({ snapshot }: { snapshot: SettingsSnapshot 
         description={t('providers.overview.description')}
       >
         <Input
-          ref={search}
+          ref={searchInput}
           aria-label={t('providers.overview.searchLabel')}
           placeholder={t('providers.overview.searchPlaceholder')}
-          value={query}
+          value={search.text}
           disabled={!connections.length}
-          onChange={(event) => setQuery(event.target.value)}
+          onChange={(event) => search.change(event.target.value)}
+          {...search.compositionProps}
           onKeyDown={(event) => {
-            if (event.key === 'Escape' && query) {
+            if (event.key === 'Escape' && search.text && !isComposingKey(event)) {
               event.stopPropagation();
               clear();
             }
