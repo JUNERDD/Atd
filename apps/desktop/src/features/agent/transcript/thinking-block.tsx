@@ -6,7 +6,7 @@ import type { BlockOf } from '../../../../electron/agent/transcript-schema';
 import { ActivityRow } from './activity-row';
 import { DetailBox } from './detail-box';
 import { formatElapsed } from './elapsed';
-import { StreamdownMarkdown } from './markdown';
+import { LazyMarkdown } from './lazy-markdown';
 
 /**
  * Single-line reasoning row showing `Thought 5s` once settled; live streams the `Thinking`
@@ -57,7 +57,7 @@ export function ThinkingBlock({ block }: { block: BlockOf<'thinking'> }) {
       <ActivityRow.Content>
         <ActivityRow.Body className="thinking-full">
           <DetailBox variant="plain" copyText={block.text}>
-            <StreamdownMarkdown text={block.text} streaming={block.streaming} />
+            <LazyMarkdown text={block.text} streaming={block.streaming} />
           </DetailBox>
         </ActivityRow.Body>
       </ActivityRow.Content>

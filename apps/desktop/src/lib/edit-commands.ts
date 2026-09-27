@@ -1,5 +1,3 @@
-import { historyField, redo, undo } from '@codemirror/commands';
-import { EditorView } from '@codemirror/view';
 import type { EditCommand } from '../../electron/contract';
 
 /**
@@ -7,15 +5,20 @@ import type { EditCommand } from '../../electron/contract';
  * its own history: Blink's native undo stack never sees the edits CodeMirror handles itself, and
  * running the native command inside the editor would rewrite its document behind its back.
  * Anywhere else (inputs, textareas) the native editing command runs, as the menu role did.
+ *
+ * CodeMirror loads lazily: a window that never mounted an editor (the settings window until the
+ * command editor opens) has no `.cm-editor` to find, so it never fetches the editor packages. A
+ * focused editor means they are already loaded, and the import resolves from the module cache.
  */
 export function runEditCommand(command: EditCommand): void {
   const host = document.activeElement?.closest('.cm-editor');
-  const view = host instanceof HTMLElement ? EditorView.findFromDOM(host) : null;
-  if (view?.state.field(historyField, false)) {
-    (command === 'undo' ? undo : redo)(view);
+  if (!(host instanceof HTMLElement)) {
+    document.execCommand(command);
     return;
   }
-  document.execCommand(command);
+  void import('./editor-history').then(({ runEditorHistory }) => {
+    if (!runEditorHistory(host, command)) document.execCommand(command);
+  });
 }
 
 /** Routes the application menu's edit commands in this window; returns the unsubscribe. */

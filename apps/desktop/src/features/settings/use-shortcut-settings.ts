@@ -106,10 +106,10 @@ export function useShortcutSettings(snapshot: SettingsSnapshot | null) {
       await bridge.restoreShortcuts();
       showToast({ kind: 'info', text: t('shortcuts.status.defaultsRestored') });
     } catch (reason) {
-      showErrorToast(reason instanceof Error ? reason : t('shortcuts.errors.defaultsRestore'));
-    } finally {
-      setPending(null);
+      if (reason instanceof Error) showErrorToast(reason);
+      else showErrorToast(t('shortcuts.errors.defaultsRestore'));
     }
+    setPending(null);
   }
 
   async function changePinned(value: boolean) {
@@ -121,10 +121,10 @@ export function useShortcutSettings(snapshot: SettingsSnapshot | null) {
       await desktop.setPinned(value);
       showToast({ kind: 'info', text: t('shortcuts.status.windowPreferenceSaved') });
     } catch (reason) {
-      showErrorToast(reason instanceof Error ? reason : t('shortcuts.errors.windowPreferenceSave'));
-    } finally {
-      setPending(null);
+      if (reason instanceof Error) showErrorToast(reason);
+      else showErrorToast(t('shortcuts.errors.windowPreferenceSave'));
     }
+    setPending(null);
   }
 
   return {

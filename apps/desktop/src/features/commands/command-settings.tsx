@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Copy, MoreHorizontal, Pencil, Play, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@ai/ui/components/button';
@@ -41,10 +41,16 @@ import { IconButton } from '../../components/icon-button';
 import { shortcutKeys } from '../../lib/shortcuts';
 import { agentApi, useAgent } from '../agent/use-agent';
 import { showErrorToast, showToast } from '../../components/toast-store';
-import { CommandEditor } from './command-editor';
 import { CommandIcon } from './command-icon';
 import './commands.css';
 import { SettingsHeading } from '../settings/settings-heading';
+import { lazyWithPreload } from '../../lib/lazy-with-preload';
+
+// The editor brings CodeMirror; the settings window loads it once the command settings open, so
+// opening a command for editing renders it at once.
+const { Component: CommandEditor, preload: preloadCommandEditor } = lazyWithPreload(() =>
+  import('./command-editor').then((module) => module.CommandEditor),
+);
 
 export function CommandSettings({
   settings,
@@ -63,19 +69,19 @@ export function CommandSettings({
   const [deleting, setDeleting] = useState<CommandDefinition | null>(null);
   const search = useCompositionQuery();
   const [pending, setPending] = useState<string | null>(null);
+  useEffect(() => {
+    void preloadCommandEditor();
+  }, []);
   async function change(command: CommandDefinition, enabled: boolean) {
     setPending(command.id);
+    const status = enabled ? t('list.status.enabled') : t('list.status.disabled');
     try {
       await agentApi().saveCommand({ ...command, enabled }, command.revision);
-      showToast({
-        kind: 'info',
-        text: enabled ? t('list.status.enabled') : t('list.status.disabled'),
-      });
+      showToast({ kind: 'info', text: status });
     } catch (error) {
       showErrorToast(error);
-    } finally {
-      setPending(null);
     }
+    setPending(null);
   }
   function edit(command: CommandDefinition) {
     setEditing({ command: structuredClone(command), revision: command.revision });
@@ -88,18 +94,20 @@ export function CommandSettings({
   }
   if (editing)
     return (
-      <CommandEditor
-        key={editing.command.id}
-        initial={editing.command}
-        expectedRevision={editing.revision}
-        settings={settings}
-        tasks={agent.snapshot?.tasks ?? []}
-        onCancel={() => setEditing(null)}
-        onSaved={() => {
-          setEditing(null);
-          showToast({ kind: 'info', text: t('list.status.saved') });
-        }}
-      />
+      <Suspense>
+        <CommandEditor
+          key={editing.command.id}
+          initial={editing.command}
+          expectedRevision={editing.revision}
+          settings={settings}
+          tasks={agent.snapshot?.tasks ?? []}
+          onCancel={() => setEditing(null)}
+          onSaved={() => {
+            setEditing(null);
+            showToast({ kind: 'info', text: t('list.status.saved') });
+          }}
+        />
+      </Suspense>
     );
   const commands = agent.snapshot?.commands ?? [];
   // A deep link from the task panel opens one command directly in the editor. Derived during
@@ -110,18 +118,20 @@ export function CommandSettings({
     : null;
   if (linkedCommand && activeCommand)
     return (
-      <CommandEditor
-        key={`${linkedCommand.id}-${activeCommand.nonce}`}
-        initial={structuredClone(linkedCommand)}
-        expectedRevision={linkedCommand.revision}
-        settings={settings}
-        tasks={agent.snapshot?.tasks ?? []}
-        onCancel={() => onConsumeActiveCommand?.()}
-        onSaved={() => {
-          onConsumeActiveCommand?.();
-          showToast({ kind: 'info', text: t('list.status.saved') });
-        }}
-      />
+      <Suspense>
+        <CommandEditor
+          key={`${linkedCommand.id}-${activeCommand.nonce}`}
+          initial={structuredClone(linkedCommand)}
+          expectedRevision={linkedCommand.revision}
+          settings={settings}
+          tasks={agent.snapshot?.tasks ?? []}
+          onCancel={() => onConsumeActiveCommand?.()}
+          onSaved={() => {
+            onConsumeActiveCommand?.();
+            showToast({ kind: 'info', text: t('list.status.saved') });
+          }}
+        />
+      </Suspense>
     );
   if (activeCommand && !agent.snapshot)
     return (

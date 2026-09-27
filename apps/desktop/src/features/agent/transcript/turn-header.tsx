@@ -15,7 +15,7 @@ function useLiveElapsed(startedAt: number | null, paused: boolean): number {
   useEffect(() => {
     const tracker = state.current;
     if (paused) {
-      tracker.pauseStarted ??= Date.now();
+      if (tracker.pauseStarted == null) tracker.pauseStarted = Date.now();
       setElapsed(Math.max(0, Date.now() - tracker.pausedMs - origin));
       return;
     }

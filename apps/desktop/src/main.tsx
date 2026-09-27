@@ -4,15 +4,22 @@ import '@fontsource-variable/inter';
 import '@ai/ui/styles.css';
 import './styles.css';
 import './web/web.css';
-import { App } from './App';
-import i18n from './i18n';
+import i18n, { initialLanguageReady } from './i18n';
 import { installNativeOverlayBlur } from './native-overlay-blur';
 import { installEditCommands } from './lib/edit-commands';
-const SettingsWindow = React.lazy(() =>
-  import('./features/settings/settings-window').then((module) => ({
-    default: module.SettingsWindow,
-  })),
-);
+import { loadMarkdown } from './features/agent/transcript/markdown-loader';
+
+const isSettingsWindow =
+  window.location.hash === '#settings' || window.location.hash.startsWith('#settings?');
+// Each window loads only its own tree: the settings window never parses the panel, and vice versa.
+// The entry awaits it before the first render rather than suspending on it: a root Suspense
+// fallback would hold the window's content back by React's fallback throttle (300 ms).
+const windowRoot = isSettingsWindow
+  ? import('./features/settings/settings-window').then((module) => module.SettingsWindow)
+  : import('./App').then((module) => module.App);
+// The panel renders transcripts as soon as a task loads; start the markdown chunk alongside its
+// tree, so a transcript rarely has to show plain text first.
+if (!isSettingsWindow) void loadMarkdown();
 
 const WebSignIn = React.lazy(() =>
   import('./web/web-sign-in').then((module) => ({ default: module.WebSignIn })),
@@ -30,8 +37,6 @@ document.documentElement.dataset.runtime = runtime;
 // Platform styles describe native window surfaces, which only the Electron runtime has.
 document.documentElement.dataset.platform =
   runtime === 'electron' ? (window.desktop?.platform ?? 'web') : 'web';
-const isSettingsWindow =
-  window.location.hash === '#settings' || window.location.hash.startsWith('#settings?');
 document.documentElement.dataset.window = isSettingsWindow ? 'settings' : 'panel';
 const root = document.getElementById('root')!;
 // Both windows (panel and settings) run the application menu's Undo/Redo through this entry.
@@ -42,18 +47,14 @@ if (runtime === 'electron' && window.desktop?.platform === 'darwin') {
   import.meta.hot?.dispose(disposeOverlayBlur);
 }
 
+// A non-English first language loads its translations (started when i18n loaded) before any text renders.
+const [WindowRoot] = await Promise.all([windowRoot, initialLanguageReady]);
 ReactDOM.createRoot(root).render(
   <React.StrictMode>
     <React.Suspense
       fallback={<output className="settings-loading">{i18n.t('window.loading')}</output>}
     >
-      {webHost && webHost.kind !== 'ready' ? (
-        <WebSignIn state={webHost} />
-      ) : isSettingsWindow ? (
-        <SettingsWindow />
-      ) : (
-        <App />
-      )}
+      {webHost && webHost.kind !== 'ready' ? <WebSignIn state={webHost} /> : <WindowRoot />}
     </React.Suspense>
   </React.StrictMode>,
 );

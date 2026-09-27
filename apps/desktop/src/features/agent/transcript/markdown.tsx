@@ -7,6 +7,7 @@ import {
   type ExtraProps,
   type MermaidErrorComponentProps,
   type StreamdownProps,
+  useIsCodeFenceIncomplete,
 } from 'streamdown';
 import 'streamdown/styles.css';
 import { harden } from 'rehype-harden';
@@ -76,13 +77,25 @@ function fenceLabel(node: HastNode): string {
 
 /**
  * A fenced block renders as the project's code block. A mermaid fence keeps Streamdown's own
- * rendering inside the plain frame, so the diagram plugin (or its fallback) still draws it.
+ * rendering inside the plain frame, so the diagram plugin (or its fallback) still draws it. While
+ * the fence is still streaming its text stays plain in that frame: highlighting it would re-run
+ * Shiki over the whole block on every patch, so the code block takes over once the fence closes.
  */
 function MarkdownPre({ children, className, node }: MarkdownProps<'pre'>) {
+  const incomplete = useIsCodeFenceIncomplete();
   const codeNode = (node?.children as HastNode[] | undefined)?.find(
     (child) => child.type === 'element' && child.tagName === 'code',
   );
   const label = codeNode ? fenceLabel(codeNode) : '';
+  if (codeNode && incomplete) {
+    return (
+      <ScrollArea orientation="both" className="markdown-code" viewportClassName="max-h-[inherit]">
+        <pre className={className}>
+          <code>{textOf(codeNode)}</code>
+        </pre>
+      </ScrollArea>
+    );
+  }
   if (codeNode && label !== 'mermaid') {
     return (
       <CodeBlock
@@ -140,6 +153,19 @@ function MermaidFallback({ chart }: MermaidErrorComponentProps) {
  */
 const STREAM_ANIMATION: StreamdownProps['animated'] = { sep: 'char' };
 
+/**
+ * Streamdown's root memo compares these props by reference, so inline literals would re-render
+ * every settled message whenever its parent renders.
+ */
+const CONTROLS: StreamdownProps['controls'] = {
+  code: { copy: true, download: true },
+  mermaid: { copy: true, download: true },
+  table: false,
+  image: false,
+};
+const LINK_SAFETY: StreamdownProps['linkSafety'] = { enabled: false };
+const MERMAID_OPTIONS: StreamdownProps['mermaid'] = { errorComponent: MermaidFallback };
+
 const COMPONENTS = {
   img: MarkdownImage,
   a: MarkdownLink,
@@ -187,18 +213,13 @@ export function StreamdownMarkdown({ text, streaming }: { text: string; streamin
       animated={STREAM_ANIMATION}
       isAnimating={streaming}
       mode={streaming ? 'streaming' : 'static'}
-      controls={{
-        code: { copy: true, download: true },
-        mermaid: { copy: true, download: true },
-        table: false,
-        image: false,
-      }}
-      linkSafety={{ enabled: false }}
+      controls={CONTROLS}
+      linkSafety={LINK_SAFETY}
       lineNumbers
       codeBlockMaxHeight={Infinity}
       tableMaxHeight={Infinity}
       plugins={plugins}
-      mermaid={{ errorComponent: MermaidFallback }}
+      mermaid={MERMAID_OPTIONS}
       rehypePlugins={MARKDOWN_REHYPE_PLUGINS}
       translations={translations}
       components={COMPONENTS}

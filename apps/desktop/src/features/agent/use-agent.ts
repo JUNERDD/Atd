@@ -54,11 +54,22 @@ export function useTaskDetail(taskId: string | null): { detail: TaskDetail | nul
     let current: TaskDetail | null = null;
     let queuedState: TaskState | null = null;
     let waitingForSeed = false;
+    let frame = 0;
 
-    const publish = (next: TaskDetail) => {
+    const commit = () => {
+      frame = 0;
+      setDetail(current);
+    };
+    // `current` always takes each update at once, so the revision chain stays exact. Seeds and task
+    // state commit immediately (carrying any pending patches); streamed transcript patches commit
+    // at most once per animation frame, sparing a render per token.
+    const publish = (next: TaskDetail, streamed = false) => {
       current = next;
       waitingForSeed = false;
-      setDetail(next);
+      if (!streamed) {
+        cancelAnimationFrame(frame);
+        commit();
+      } else if (!frame) frame = requestAnimationFrame(commit);
     };
 
     const seed = () => {
@@ -99,11 +110,12 @@ export function useTaskDetail(taskId: string | null): { detail: TaskDetail | nul
         seed();
         return;
       }
-      publish({ ...current, revision: patched.revision, blocks: patched.blocks });
+      publish({ ...current, revision: patched.revision, blocks: patched.blocks }, true);
     });
     seed();
     return () => {
       active = false;
+      cancelAnimationFrame(frame);
       unsubscribe();
     };
   }, [taskId]);

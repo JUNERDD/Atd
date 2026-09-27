@@ -22,16 +22,17 @@ export function useCompactTask(): {
       if (inflight.current) return;
       inflight.current = true;
       setPending(true);
+      // The error is handled in `catch`, so the reset follows the statement: React Compiler 1.0
+      // does not compile `finally` or conditional expressions inside `try`.
+      const focus = instructions?.trim() || undefined;
       try {
-        const focus = instructions?.trim();
-        const refused = await agentApi().compactTask(taskId, focus || undefined);
+        const refused = await agentApi().compactTask(taskId, focus);
         if (refused) showToast({ kind: 'warning', text: t(`compaction.refused.${refused}`) });
       } catch (error) {
         showErrorToast(error);
-      } finally {
-        inflight.current = false;
-        setPending(false);
       }
+      inflight.current = false;
+      setPending(false);
     },
     [t],
   );

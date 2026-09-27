@@ -1,12 +1,13 @@
 import type { CSSProperties } from 'react';
 import { Link } from 'lucide-react';
-import openai from '@ai/ui/assets/brands/openai.svg';
+// `no-inline` keeps each mark a separate file: inlined base64 would load every brand with the shared chunk.
+import openai from '@ai/ui/assets/brands/openai.svg?url&no-inline';
 const assets = import.meta.glob<string>(
   [
     '../../../../../packages/ui/src/assets/brands/lndev/*.svg',
     '../../../../../packages/ui/src/assets/brands/external/*.svg',
   ],
-  { eager: true, query: '?url', import: 'default' },
+  { eager: true, query: '?url&no-inline', import: 'default' },
 );
 const names: Record<string, string> = {
   anthropic: 'anthropic',

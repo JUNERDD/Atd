@@ -1,10 +1,11 @@
-import { createContext, useContext, useMemo } from 'react';
+import { createContext, useContext, useMemo, useState } from 'react';
 import type { PermissionRequest } from '../../../../electron/agent/permission-schema';
 import type { Block } from '../../../../electron/agent/transcript-schema';
 import {
   EMPTY_CHILD_INDEX,
   indexSubagentChildren,
   pendingExecutions,
+  sameChildIndex,
   type PendingByExecution,
   type SubagentChildIndex,
 } from './subagent-children';
@@ -36,13 +37,18 @@ export function useSubagents(): SubagentContextValue {
   return useContext(SubagentContext);
 }
 
-/** The provider value for one task: re-indexed only when its blocks or requests change. */
+/**
+ * The provider value for one task: re-indexed when its blocks or requests change, and kept while
+ * the children it indexes are equal by value, so streamed patches leave it stable.
+ */
 export function useSubagentContextValue(
   blocks: readonly Block[],
   requests: readonly PermissionRequest[],
   open: (childKey: string, origin: HTMLElement) => void,
 ): SubagentContextValue {
-  const index = useMemo(() => indexSubagentChildren(blocks), [blocks]);
+  const nextIndex = useMemo(() => indexSubagentChildren(blocks), [blocks]);
+  const [index, setIndex] = useState(nextIndex);
+  if (index !== nextIndex && !sameChildIndex(index, nextIndex)) setIndex(nextIndex);
   const pending = useMemo(() => pendingExecutions(requests), [requests]);
   return useMemo(() => ({ index, pending, open }), [index, pending, open]);
 }

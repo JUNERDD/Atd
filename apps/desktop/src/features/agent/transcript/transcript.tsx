@@ -10,7 +10,7 @@ import { NewTaskHint } from '../compaction/new-task-hint';
 import { useCompactTask } from '../compaction/use-compact-task';
 import { adaptTranscript, modelNameForRun, type AdaptedTurn } from './adapter';
 import { CompactionRetryContext, type CompactionRetry } from './compaction-context';
-import { artifactAnchorIds, indexRequests, type RequestIndex } from './turns';
+import { artifactAnchorIds, indexRequests, sameIds, type RequestIndex } from './turns';
 import { PromptMessage } from './prompt-message';
 import { ScrollJump } from './scroll-jump';
 import { pendingMessageText } from './run-prompt';
@@ -102,13 +102,18 @@ export function Transcript({
   const run = task.runs.at(-1);
   const live = isActive(run?.status);
   const requestIndex = useMemo(() => indexRequests(requests), [requests]);
-  // Renderer-side reshape after the patch apply: the patched blocks, request index, and runs only
-  // change when a new revision lands, so this memo holds the 40ms patch cadence at bay.
+  // Renderer-side reshape after the patch apply. Every streamed patch replaces `blocks`, so this
+  // reruns per patch; the adapter hands back unchanged turns as the same objects, and only the
+  // turn a patch touched renders again.
   const turns = useMemo(
     () => adaptTranscript(blocks, requestIndex, task.runs),
     [blocks, requestIndex, task.runs],
   );
-  const anchors = useMemo(() => artifactAnchorIds(blocks, artifacts), [blocks, artifacts]);
+  // Held by value: the anchor set rarely changes while blocks do on every patch, and a new set
+  // would render every memoized turn again.
+  const nextAnchors = useMemo(() => artifactAnchorIds(blocks, artifacts), [blocks, artifacts]);
+  const [anchors, setAnchors] = useState(nextAnchors);
+  if (anchors !== nextAnchors && !sameIds(anchors, nextAnchors)) setAnchors(nextAnchors);
   const { viewportRef, showJump, pin, onScroll } = useTranscriptScroll(detail.revision);
   const hasUser = blocks.some((block) => block.kind === 'user');
   const pendingFiles = !hasUser && run ? artifacts.filter((file) => file.runId === run.id) : [];
