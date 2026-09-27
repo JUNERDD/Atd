@@ -55,13 +55,24 @@ export function useTranscriptScroll(revision: number) {
     }
   }, [revision]);
 
+  // Layout changes move the bottom without a scroll event: a shrinking transcript (a collapsed
+  // group, a capped bubble) clamps scrollTop silently, and a growing viewport reveals the end.
+  // Watch both the viewport and its content: pinned follows the bottom, unpinned re-arms once the
+  // bottom is back in view so the jump action never outlives the need for it.
   useEffect(() => {
     const node = viewportRef.current;
     if (!node || typeof ResizeObserver === 'undefined') return;
     const observer = new ResizeObserver(() => {
-      if (pinned.current) node.scrollTop = node.scrollHeight;
+      if (pinned.current) {
+        node.scrollTop = node.scrollHeight;
+      } else if (isNearBottom(node)) {
+        pinned.current = true;
+        setShowJump(false);
+      }
     });
     observer.observe(node);
+    // The ScrollArea viewport wraps its children in one content element, which owns the height.
+    if (node.firstElementChild) observer.observe(node.firstElementChild);
     return () => observer.disconnect();
   }, []);
 
