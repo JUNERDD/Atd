@@ -14,6 +14,7 @@
     "noShortcut": "无快捷键",
     "run": "运行",
     "runFor": "运行 {{name}}",
+    "editFor": "编辑 {{name}}",
     "enableFor": "启用 {{name}}",
     "more": "更多",
     "moreActionsFor": "{{name}} 的更多操作",
