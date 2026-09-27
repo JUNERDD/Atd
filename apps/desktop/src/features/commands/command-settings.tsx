@@ -40,7 +40,7 @@ import type { SettingsSnapshot } from '../../../electron/settings-contract';
 import { IconButton } from '../../components/icon-button';
 import { shortcutKeys } from '../../lib/shortcuts';
 import { agentApi, useAgent } from '../agent/use-agent';
-import { showErrorToast } from '../../components/toast-store';
+import { showErrorToast, showToast } from '../../components/toast-store';
 import { CommandEditor } from './command-editor';
 import { CommandIcon } from './command-icon';
 import './commands.css';
@@ -62,13 +62,15 @@ export function CommandSettings({
   );
   const [deleting, setDeleting] = useState<CommandDefinition | null>(null);
   const search = useCompositionQuery();
-  const [status, setStatus] = useState('');
   const [pending, setPending] = useState<string | null>(null);
   async function change(command: CommandDefinition, enabled: boolean) {
     setPending(command.id);
     try {
       await agentApi().saveCommand({ ...command, enabled }, command.revision);
-      setStatus(enabled ? t('list.status.enabled') : t('list.status.disabled'));
+      showToast({
+        kind: 'info',
+        text: enabled ? t('list.status.enabled') : t('list.status.disabled'),
+      });
     } catch (error) {
       showErrorToast(error);
     } finally {
@@ -91,7 +93,7 @@ export function CommandSettings({
         onCancel={() => setEditing(null)}
         onSaved={() => {
           setEditing(null);
-          setStatus(t('list.status.saved'));
+          showToast({ kind: 'info', text: t('list.status.saved') });
         }}
       />
     );
@@ -112,7 +114,7 @@ export function CommandSettings({
         onCancel={() => onConsumeActiveCommand?.()}
         onSaved={() => {
           onConsumeActiveCommand?.();
-          setStatus(t('list.status.saved'));
+          showToast({ kind: 'info', text: t('list.status.saved') });
         }}
       />
     );
@@ -258,7 +260,6 @@ export function CommandSettings({
         ) : (
           <output className="settings-loading">{t('list.loading')}</output>
         ))}
-      {status && <output className="settings-status">{status}</output>}
       <AlertDialog
         open={Boolean(deleting)}
         onOpenChange={(open) => {
@@ -279,7 +280,7 @@ export function CommandSettings({
                 if (deleting)
                   void agentApi()
                     .deleteCommand(deleting.id, deleting.revision)
-                    .then(() => setStatus(t('list.status.deleted')))
+                    .then(() => showToast({ kind: 'info', text: t('list.status.deleted') }))
                     .catch((error) => showErrorToast(error));
               }}
             >

@@ -22,7 +22,7 @@ import type { MemoryEntry, MemorySnapshot } from '../../../electron/agent/bridge
 import { FieldHint } from '../../components/field-hint';
 import { SettingsHeading } from '../settings/settings-heading';
 import { agentApi } from '../agent/use-agent';
-import { showErrorToast } from '../../components/toast-store';
+import { showErrorToast, showToast } from '../../components/toast-store';
 import { useOverlayFooter } from '../../components/use-overlay-footer';
 import { MemoryCreateButton } from './memory-create-button';
 import { MemoryList } from './memory-list';
@@ -38,7 +38,6 @@ export function MemorySettings() {
   const [confirm, setConfirm] = useState<Confirm | null>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
-  const [status, setStatus] = useState('');
   const errorMessage = useRef<HTMLParagraphElement>(null);
   const footerRef = useOverlayFooter<HTMLElement>();
   useEffect(() => {
@@ -68,7 +67,10 @@ export function MemorySettings() {
     setError('');
     try {
       setSnapshot(await agentApi().pauseMemory(paused));
-      setStatus(paused ? t('memory.feedback.paused') : t('memory.feedback.resumed'));
+      showToast({
+        kind: 'info',
+        text: paused ? t('memory.feedback.paused') : t('memory.feedback.resumed'),
+      });
     } catch (error) {
       showErrorToast(error);
     } finally {
@@ -82,7 +84,10 @@ export function MemorySettings() {
     try {
       setSnapshot(await agentApi().updateMemory(entry, next));
       setEditing(null);
-      setStatus(next ? t('memory.feedback.updated') : t('memory.feedback.deleted'));
+      showToast({
+        kind: 'info',
+        text: next ? t('memory.feedback.updated') : t('memory.feedback.deleted'),
+      });
     } catch (error) {
       showErrorToast(error);
     } finally {
@@ -98,25 +103,23 @@ export function MemorySettings() {
     setEditing(entry);
     setContent(entry.content);
     setError('');
-    setStatus('');
   }
   function closeEditor() {
     setEditing(null);
     setError('');
-    setStatus('');
   }
   const failure = error || snapshot?.error;
   const feedback = (
     <>
-      {(failure || status) && (
+      {failure && (
         <p
           id="memory-feedback"
           ref={errorMessage}
           className="settings-status"
-          data-error={Boolean(failure)}
-          role={failure ? 'alert' : 'status'}
+          data-error="true"
+          role="alert"
         >
-          {failure || status}
+          {failure}
         </p>
       )}
       {failure && (!editing || Boolean(snapshot?.error)) && (

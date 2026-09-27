@@ -9,7 +9,7 @@ import {
   type ShortcutBindings,
 } from '../../../electron/settings-contract';
 import { recordedKeysToAccelerator } from '../../lib/shortcuts';
-import { showErrorToast } from '../../components/toast-store';
+import { showErrorToast, showToast } from '../../components/toast-store';
 
 const MODIFIER_KEYS = new Set(['meta', 'ctrl', 'alt', 'shift']);
 
@@ -40,7 +40,6 @@ export function useShortcutSettings(snapshot: SettingsSnapshot | null) {
   const { keys, start, stop, resetKeys, isRecording } = useShortcutCapture();
   const [recordingAction, setRecordingAction] = useState<ShortcutAction | null>(null);
   const [mutationPending, setPending] = useState<'restore' | 'pin' | null>(null);
-  const [status, setStatus] = useState('');
   const unavailable = !snapshot || !bridge;
   const hasRecordedKey = [...keys].some((key) => !MODIFIER_KEYS.has(key));
   const capturedShortcut = recordedKeysToAccelerator(keys, platform);
@@ -54,24 +53,30 @@ export function useShortcutSettings(snapshot: SettingsSnapshot | null) {
     stop();
     resetKeys();
     setRecordingAction(null);
-    setStatus(t('shortcuts.status.recordingCanceled'));
+    showToast({ kind: 'info', text: t('shortcuts.status.recordingCanceled') });
   }, [resetKeys, stop, t]);
 
   useEffect(() => {
     if (!isRecording || !recordingAction || !hasRecordedKey) return;
     stop();
-    if (!bridge || captureError || !capturedShortcut) return;
+    // A rejected combination ends the attempt; the next click starts a clean recording.
+    if (captureError) {
+      resetKeys();
+      setRecordingAction(null);
+      showErrorToast(captureError);
+      return;
+    }
+    if (!bridge || !capturedShortcut) return;
     void bridge.saveShortcuts({ ...bindings, [recordingAction]: capturedShortcut }).then(
       () => {
         resetKeys();
         setRecordingAction(null);
-        setStatus(t('shortcuts.status.shortcutSaved'));
+        showToast({ kind: 'info', text: t('shortcuts.status.shortcutSaved') });
       },
       (reason: unknown) => {
         resetKeys();
         setRecordingAction(null);
         showErrorToast(reason instanceof Error ? reason : t('shortcuts.errors.shortcutSave'));
-        setStatus('');
       },
     );
   }, [
@@ -91,7 +96,6 @@ export function useShortcutSettings(snapshot: SettingsSnapshot | null) {
     if (unavailable || pending) return;
     setRecordingAction(action);
     start();
-    setStatus(t('shortcuts.status.recordingHint'));
   }
 
   async function restoreDefaults() {
@@ -99,10 +103,9 @@ export function useShortcutSettings(snapshot: SettingsSnapshot | null) {
     resetKeys();
     setRecordingAction(null);
     setPending('restore');
-    setStatus('');
     try {
       await bridge.restoreShortcuts();
-      setStatus(t('shortcuts.status.defaultsRestored'));
+      showToast({ kind: 'info', text: t('shortcuts.status.defaultsRestored') });
     } catch (reason) {
       showErrorToast(reason instanceof Error ? reason : t('shortcuts.errors.defaultsRestore'));
     } finally {
@@ -115,10 +118,9 @@ export function useShortcutSettings(snapshot: SettingsSnapshot | null) {
     resetKeys();
     setRecordingAction(null);
     setPending('pin');
-    setStatus('');
     try {
       await desktop.setPinned(value);
-      setStatus(t('shortcuts.status.windowPreferenceSaved'));
+      showToast({ kind: 'info', text: t('shortcuts.status.windowPreferenceSaved') });
     } catch (reason) {
       showErrorToast(reason instanceof Error ? reason : t('shortcuts.errors.windowPreferenceSave'));
     } finally {
@@ -131,8 +133,6 @@ export function useShortcutSettings(snapshot: SettingsSnapshot | null) {
     pinned,
     recording,
     pending,
-    error: captureError,
-    status: capturePending ? t('shortcuts.status.savingShortcut') : status,
     unavailable,
     platform,
     startRecording,
