@@ -64,7 +64,7 @@ const UNICODE_SPACES = /[\u00A0\u2000-\u200A\u202F\u205F\u3000]/g;
  * path read opens unless it falls back to a macOS spelling of a missing name. Classify tool
  * calls with it rather than `path.resolve`, which keeps an `@`, `~` or `file://` path inside
  * `cwd` while pi reaches outside it. Mirrors the unexported `resolveToCwd` of
- * `@earendil-works/pi-coding-agent` 0.86.1 (`dist/core/tools/path-utils.js`, which calls
+ * `@earendil-works/pi-coding-agent` 0.87.1 (`dist/core/tools/path-utils.js`, which calls
  * `resolvePath` in `dist/utils/paths.js`); re-check it when upgrading pi.
  */
 export function resolveToolPath(cwd: string, rawPath: string): string {

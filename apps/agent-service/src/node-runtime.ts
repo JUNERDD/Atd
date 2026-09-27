@@ -3,7 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 /**
- * Workspace toolchain range (root `engines.node`). Pi 0.86.1 needs ≥22.19.0;
+ * Workspace toolchain range (root `engines.node`). Pi 0.87.1 needs ≥22.19.0;
  * this range is a strict subset and matches what we typecheck/build against.
  */
 export const DEFAULT_NODE_ENGINES = '^24.15.0 || >=26.0.0';

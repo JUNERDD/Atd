@@ -250,7 +250,7 @@ export function mcpErrorStatus(code: McpError['code']): number {
 }
 
 /** The degraded contract: every MCP route answers this when the adapter is missing. */
-const ADAPTER_MISSING_MESSAGE = 'MCP is unavailable: pi-mcp-adapter 2.34.0 could not be loaded.';
+const ADAPTER_MISSING_MESSAGE = 'MCP is unavailable: pi-mcp-adapter 2.38.0 could not be loaded.';
 
 /**
  * Mounts the MCP handlers against a lazy authority so publishing the endpoint

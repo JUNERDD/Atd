@@ -115,7 +115,7 @@ docs/                    Design sources, plans, and screenshots
 | Desktop         | Electron 44, Vite 8 (Rolldown, Oxc), `vite-plugin-electron`                                                          |
 | UI              | React 19, Tailwind CSS 4, shadcn (Radix / Rhea preset `b27GcrRo`), Lucide, Inter                                     |
 | Editor & render | CodeMirror 6, Streamdown, `@pierre/diffs`, `@pierre/trees`                                                           |
-| Agent runtime   | `@earendil-works/pi-coding-agent` and `pi-ai` 0.86.1, pi extensions for memory, MCP, subagents, web tools, and todos |
+| Agent runtime   | `@earendil-works/pi-coding-agent` and `pi-ai` 0.87.1, pi extensions for memory, MCP, subagents, web tools, and todos |
 | Service         | Fastify 5, `@fastify/websocket`, TypeBox, `@napi-rs/keyring`                                                         |
 | Tooling         | pnpm workspaces, Turborepo, TypeScript 7, Oxlint, Oxfmt, Vitest, Playwright                                          |
 
