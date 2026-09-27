@@ -2,6 +2,7 @@ import { Fragment } from 'react';
 import type { RunSnapshot } from '../../../../electron/agent/task-schema';
 import { ChipToken } from '../../composer-editor/chip-content';
 import { UserContext } from '../user-context';
+import { MessageBubble } from './message-bubble';
 import { chipFileIds, composedPrompt, sentChipName, type SentSegment } from './composed-prompt';
 
 /** Text runs and chips in document order; the bubble's `pre-wrap` keeps the text's own breaks. */
@@ -29,7 +30,7 @@ export function PromptMessage({ snapshot, fallback }: { snapshot: RunSnapshot; f
   return (
     <>
       <UserContext snapshot={snapshot} chipFileIds={chipFileIds(composed)} />
-      <div className="message-bubble">{composed ? <SentText segments={composed} /> : fallback}</div>
+      <MessageBubble>{composed ? <SentText segments={composed} /> : fallback}</MessageBubble>
     </>
   );
 }

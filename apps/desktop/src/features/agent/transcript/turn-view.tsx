@@ -5,6 +5,7 @@ import { TaskFiles } from '../task-files';
 import type { AdaptedTurn } from './adapter';
 import { ActivityGroup } from './activity-group';
 import { BlockView } from './block-view';
+import { MessageBubble } from './message-bubble';
 import { PromptMessage } from './prompt-message';
 import { promptRun } from './run-prompt';
 import { buildLiveText } from './token-rate';
@@ -90,7 +91,7 @@ export const TurnView = memo(function TurnView({
           {run ? (
             <PromptMessage snapshot={run.snapshot} fallback={turn.user.text} />
           ) : (
-            <div className="message-bubble">{turn.user.text}</div>
+            <MessageBubble>{turn.user.text}</MessageBubble>
           )}
         </article>
       )}
