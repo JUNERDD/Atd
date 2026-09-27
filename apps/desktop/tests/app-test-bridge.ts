@@ -146,7 +146,7 @@ export function installBridge(extras?: {
     setPermissionTier: vi.fn(async () => {}),
     renameTask: vi.fn(async () => {}),
     deleteTask: vi.fn(async () => {}),
-    compactTask: vi.fn(async () => {}),
+    compactTask: vi.fn(async () => null),
     chooseFiles: vi.fn(async () => []),
     artifact: vi.fn(async () => null),
     copy: vi.fn(async () => {}),

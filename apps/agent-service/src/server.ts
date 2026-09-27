@@ -120,7 +120,7 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
     if (error instanceof LedgerNotFound) return fail(reply, 404, 'not_found', error.message);
     if (error instanceof ConfirmGone || error instanceof CapabilityGone)
       return fail(reply, 410, 'gone', error.message);
-    if (error instanceof ConflictError) return fail(reply, 409, 'conflict', error.message);
+    if (error instanceof ConflictError) return fail(reply, 409, error.code, error.message);
     if (error instanceof DrainingError) return fail(reply, 503, 'draining', error.message);
     if (error instanceof UpstreamError) return fail(reply, 502, 'upstream_failed', error.message);
     if (error instanceof DesktopUnavailable)

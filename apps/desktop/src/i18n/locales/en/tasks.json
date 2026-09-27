@@ -151,7 +151,13 @@
     "doneWithTokens": "Context compacted · ~{{before}} → {{after}} tokens",
     "summaryLabel": "Context summary",
     "failed": "Couldn't compact context",
-    "retry": "Retry"
+    "retry": "Retry",
+    "refused": {
+      "active_run": "Wait for the current run to finish before compacting.",
+      "already_compacting": "The context is already being compacted.",
+      "nothing_to_compact": "Nothing to compact yet: the conversation is short or was just compacted.",
+      "compaction_unavailable": "The context can't be compacted right now. Try again later."
+    }
   },
   "files": {
     "open": "Open",

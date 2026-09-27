@@ -1,6 +1,19 @@
 import { Type, type Static } from 'typebox';
 import { Identifier } from './identifiers.js';
 
+/**
+ * Why a compaction request was refused (POST `/v1/tasks/:taskId/compact`, 409), so clients word
+ * it in their own language; `error.message` stays the service's English explanation.
+ * `compaction_unavailable` covers Pi refusing for any other reason.
+ */
+export const CompactRefusalSchema = Type.Union([
+  Type.Literal('active_run'),
+  Type.Literal('already_compacting'),
+  Type.Literal('nothing_to_compact'),
+  Type.Literal('compaction_unavailable'),
+]);
+export type CompactRefusal = Static<typeof CompactRefusalSchema>;
+
 /** Machine-readable error codes; `owner` on 501 names the responsible todo. */
 export const ErrorCodeSchema = Type.Union([
   Type.Literal('bad_request'),
@@ -8,6 +21,8 @@ export const ErrorCodeSchema = Type.Union([
   Type.Literal('forbidden'),
   Type.Literal('not_found'),
   Type.Literal('conflict'),
+  /** A 409 from the compact route that says which refusal it is. */
+  CompactRefusalSchema,
   Type.Literal('gone'),
   Type.Literal('payload_too_large'),
   Type.Literal('auth_required'),

@@ -10,6 +10,7 @@ import {
 } from '@ai/agent-contracts';
 import {
   createCompactionState,
+  compactRefused,
   NOTHING_TO_COMPACT,
   startManualCompaction,
 } from './compaction/manual.js';
@@ -21,7 +22,6 @@ import type { ServicePaths } from './storage.js';
 import type { CapabilityRegistry } from './capabilities.js';
 import type { ConfirmStore } from './confirms.js';
 import { AuditWriter } from './audit.js';
-import { ConflictError } from './errors.js';
 import { createReviewer } from './harness/auto-review.js';
 import {
   applyRunToSession,
@@ -128,10 +128,12 @@ export class TaskRunner {
    * refuses while a run is active and holds new runs until it ends.
    */
   async compact(instructions: string | undefined): Promise<{ done: Promise<void> }> {
-    if (this.compacting) throw new ConflictError('The context is already being compacted.');
+    if (this.compacting)
+      throw compactRefused('already_compacting', 'The context is already being compacted.');
     const task = this.ctx.ledger.task(this.taskId);
     const run = task.runs.at(-1);
-    if (!run || !(this.live || task.sessionFile)) throw new ConflictError(NOTHING_TO_COMPACT);
+    if (!run || !(this.live || task.sessionFile))
+      throw compactRefused('nothing_to_compact', NOTHING_TO_COMPACT);
     // Events of a compaction outside a run belong to the task's latest run.
     this.currentRunId ||= run.id;
     const memory = this.live ? this.liveMemory : null;

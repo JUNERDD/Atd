@@ -1,6 +1,6 @@
 import { RunPolicySchema, type RunPolicy } from './run-policy';
 import { Type, type Static } from 'typebox';
-import type { TaskContextState } from '@ai/agent-contracts';
+import type { CompactRefusal, TaskContextState } from '@ai/agent-contracts';
 import { CommandSchema, Identifier, type CommandDefinition } from './command-schema';
 import {
   InputSchema,
@@ -271,11 +271,11 @@ export interface AgentBridge {
   renameTask: (taskId: string, title: string) => Promise<void>;
   deleteTask: (taskId: string) => Promise<void>;
   /**
-   * Compacts an idle task's context now. Resolves once the service accepts; progress and the
-   * outcome arrive as the task's `compaction` block and context state. Rejects while a run is
-   * active or when there is nothing to compact.
+   * Compacts an idle task's context now. Resolves to null once the service accepts; progress and
+   * the outcome arrive as the task's `compaction` block and context state. A refusal (a run is
+   * active, nothing to compact) resolves to its code; other failures reject.
    */
-  compactTask: (taskId: string, instructions?: string) => Promise<void>;
+  compactTask: (taskId: string, instructions?: string) => Promise<CompactRefusal | null>;
   chooseFiles: () => Promise<FileRef[]>;
   memory: () => Promise<MemorySnapshot>;
   pauseMemory: (paused: boolean) => Promise<MemorySnapshot>;
