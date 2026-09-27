@@ -182,15 +182,28 @@ export function emptyContextState(): TaskContextState {
   return { contextWindow: null, tokens: null, percent: null, compactions: 0, compacting: false };
 }
 
+/** What a task summary carries; the full snapshot extends it with the task's session. */
+const taskSummaryFields = {
+  task: AgentTaskSchema,
+  requests: Type.Array(PermissionRequestSchema),
+  capabilities: Type.Array(CapabilityRequestSchema),
+  queue: QueueStateSchema,
+};
+
+/**
+ * A task without its transcript and context usage: the ledger task, pending confirms and
+ * capabilities, and the live queue. The service builds it from memory without reading the task's
+ * session, so a client can list every task and load transcripts only for the tasks it shows.
+ */
+export const TaskSummarySchema = Type.Object(taskSummaryFields, { additionalProperties: false });
+export type TaskSummary = Static<typeof TaskSummarySchema>;
+
 /** Full task state returned after a gap or restart instead of replaying events. */
 export const TaskSnapshotSchema = Type.Object(
   {
-    task: AgentTaskSchema,
+    ...taskSummaryFields,
     revision: Type.Integer({ minimum: 0 }),
     blocks: Type.Array(ServiceBlockSchema),
-    requests: Type.Array(PermissionRequestSchema),
-    capabilities: Type.Array(CapabilityRequestSchema),
-    queue: QueueStateSchema,
     context: TaskContextStateSchema,
     epoch: Type.Integer({ minimum: 0 }),
     seq: Type.Integer({ minimum: 0 }),
@@ -199,7 +212,26 @@ export const TaskSnapshotSchema = Type.Object(
 );
 export type TaskSnapshot = Static<typeof TaskSnapshotSchema>;
 
-/** Client subscription: replay from (epoch, seq), or snapshot when stale. */
+/**
+ * Answer to a subscribe without `taskIds` that cannot be replayed: every task the service holds,
+ * as of `(epoch, seq)`. It is the authoritative task set, so a client drops cached tasks it does
+ * not list; transcripts load on demand through the task snapshot endpoint.
+ */
+export const SummariesFrameSchema = Type.Object(
+  {
+    type: Type.Literal('summaries'),
+    epoch: Type.Integer({ minimum: 0 }),
+    seq: Type.Integer({ minimum: 0 }),
+    tasks: Type.Array(TaskSummarySchema),
+  },
+  { additionalProperties: false },
+);
+export type SummariesFrame = Static<typeof SummariesFrameSchema>;
+
+/**
+ * Client subscription: replay from (epoch, seq). When that is stale, a subscription naming
+ * `taskIds` gets one `snapshot` frame per task, and one without gets a single `summaries` frame.
+ */
 export const SubscribeSchema = Type.Object(
   {
     epoch: Type.Integer({ minimum: 0 }),

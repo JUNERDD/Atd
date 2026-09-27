@@ -58,8 +58,9 @@ export function CommandEditor({
   async function startSession() {
     const bridge = window.desktop?.settings;
     if (!bridge) return;
+    const commandId = baseRevision ? draft.id : null;
     try {
-      await bridge.startCommandSession(baseRevision ? draft.id : null);
+      await bridge.startCommandSession(commandId);
       showToast({ kind: 'info', text: t('session.opened') });
     } catch (error) {
       showErrorToast(error);
@@ -87,14 +88,16 @@ export function CommandEditor({
     } catch (error) {
       // A revision conflict has to stay inline: the reload control lives next to this error.
       showError(messageOf(error));
-    } finally {
-      setPending(false);
     }
+    setPending(false);
   }
   async function reload() {
     try {
       const current = (await agentApi().get()).commands.find((command) => command.id === draft.id);
-      if (!current) throw new Error(t('editor.deletedError'));
+      if (!current) {
+        showErrorToast(t('editor.deletedError'));
+        return;
+      }
       setDraft(current);
       setBaseRevision(current.revision);
       setError('');

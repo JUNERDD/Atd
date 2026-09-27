@@ -5,12 +5,12 @@ import {
   isActiveStatus,
   type CancelRunResponse,
   type PermissionTier,
-  type QueueState,
   type RunSnapshot,
   type SubmitTaskRequest,
   type SubmitTaskResponse,
   type TaskRun,
   type TaskSnapshot,
+  type TaskSummary,
 } from '@ai/agent-contracts';
 import { ConnectionStore } from './credentials/connections.js';
 import type { Logger } from './logging.js';
@@ -18,6 +18,7 @@ import { ResourceStore } from './resources.js';
 import { compactRefused } from './compaction/manual.js';
 import { ConflictError, DrainingError } from './errors.js';
 import { TaskRunner, type RunnerContext } from './task-runner.js';
+import { taskSnapshot, taskSummary } from './task-view.js';
 import { checkChipRanges, taskTitle } from './tasks/input-chips.js';
 import { CONTEXT_BUDGET, runInputSize } from './tasks/run-budget.js';
 import {
@@ -187,23 +188,28 @@ export class RunnerManager {
     await this.runnerFor(taskId).queue(text, mode);
   }
 
-  async snapshot(taskId: string): Promise<TaskSnapshot> {
-    const task = this.deps.ctx.ledger.task(taskId);
-    // runnerFor cold-projects from Pi JSONL when no live session exists, so
-    // snapshots after a restart still carry the transcript without a runner.
-    const runner = this.runnerFor(taskId);
-    const view = await runner.view();
-    const queue: QueueState = runner.queueState();
+  /** Disposes a deleted task's runner and forgets it, so deleted tasks hold no runner. */
+  async remove(taskId: string): Promise<void> {
+    const runner = this.runners.get(taskId);
+    this.runners.delete(taskId);
+    await runner?.dispose();
+  }
+
+  snapshot(taskId: string): Promise<TaskSnapshot> {
+    return taskSnapshot(this.deps.ctx, this.runners.get(taskId), taskId);
+  }
+
+  summary(taskId: string): TaskSummary {
+    return taskSummary(this.deps.ctx, this.runners.get(taskId), taskId);
+  }
+
+  /** Every task's summary as of one stream position; synchronous, so no event lands in between. */
+  summaries(): { tasks: TaskSummary[]; epoch: number; seq: number } {
+    const { ledger, events } = this.deps.ctx;
     return {
-      task,
-      revision: view.revision,
-      blocks: view.blocks,
-      requests: this.deps.ctx.confirms.forTask(taskId),
-      capabilities: this.deps.ctx.capabilities.forTask(taskId),
-      queue,
-      context: view.context,
-      epoch: this.deps.ctx.events.epoch,
-      seq: this.deps.ctx.events.currentSeq,
+      tasks: ledger.data.tasks.map((task) => this.summary(task.id)),
+      epoch: events.epoch,
+      seq: events.currentSeq,
     };
   }
 

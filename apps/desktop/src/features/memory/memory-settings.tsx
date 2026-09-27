@@ -65,34 +65,28 @@ export function MemorySettings() {
   async function pause(paused: boolean) {
     setPending(true);
     setError('');
+    const feedback = paused ? t('memory.feedback.paused') : t('memory.feedback.resumed');
     try {
       setSnapshot(await agentApi().pauseMemory(paused));
-      showToast({
-        kind: 'info',
-        text: paused ? t('memory.feedback.paused') : t('memory.feedback.resumed'),
-      });
+      showToast({ kind: 'info', text: feedback });
     } catch (error) {
       showErrorToast(error);
-    } finally {
-      setPending(false);
     }
+    setPending(false);
   }
   /** Saves `entry` with new content; empty content deletes it. Either way the editor closes. */
   async function update(entry: MemoryEntry, next: string) {
     setPending(true);
     setError('');
+    const feedback = next ? t('memory.feedback.updated') : t('memory.feedback.deleted');
     try {
       setSnapshot(await agentApi().updateMemory(entry, next));
       setEditing(null);
-      showToast({
-        kind: 'info',
-        text: next ? t('memory.feedback.updated') : t('memory.feedback.deleted'),
-      });
+      showToast({ kind: 'info', text: feedback });
     } catch (error) {
       showErrorToast(error);
-    } finally {
-      setPending(false);
     }
+    setPending(false);
   }
   function save() {
     if (!editing) return;

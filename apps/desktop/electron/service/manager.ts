@@ -47,6 +47,7 @@ export class ServiceManager {
             status: view(status, this.defaultDataDir()),
           }),
         onSnapshot: () => undefined,
+        onSummaries: () => undefined,
         onEvent: () => undefined,
       },
       caps,

@@ -78,9 +78,8 @@ export function ApprovalControls({
       await action();
     } catch (cause) {
       setError(messageOf(cause));
-    } finally {
-      setPending(false);
     }
+    setPending(false);
   }
   const answer = (decision: 'once' | 'session' | 'declined') =>
     agentApi().answer(request.taskId, request.runId, request.id, { decision });

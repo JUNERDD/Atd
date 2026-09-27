@@ -131,3 +131,10 @@ export function artifactAnchorIds(blocks: Block[], artifacts: Artifact[]): Set<s
   }
   return anchors;
 }
+
+/** Whether two id sets hold the same ids. */
+export function sameIds(a: ReadonlySet<string>, b: ReadonlySet<string>): boolean {
+  if (a.size !== b.size) return false;
+  for (const id of a) if (!b.has(id)) return false;
+  return true;
+}

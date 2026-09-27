@@ -288,6 +288,7 @@ export class TaskRunner {
     this.live = null;
     this.liveMemory = null;
     if (!live) return;
+    live.transcript.dispose();
     await this.memoryTurn(memory, () =>
       live.session.extensionRunner.emit({ type: 'session_shutdown', reason }),
     );

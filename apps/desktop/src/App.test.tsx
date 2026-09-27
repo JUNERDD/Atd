@@ -123,12 +123,16 @@ describe('task panel', () => {
     window.location.hash = '#settings?commandId=translate';
     try {
       render(<SettingsWindow />);
-      expect(await screen.findByDisplayValue('Translate selection')).toBeVisible();
+      // The editor is a code-split chunk (it brings CodeMirror); its first import can take over a
+      // second on a cold CI worker.
+      expect(
+        await screen.findByDisplayValue('Translate selection', undefined, { timeout: 8_000 }),
+      ).toBeVisible();
       expect(screen.getByRole('heading', { name: 'Edit command' })).toBeVisible();
     } finally {
       window.location.hash = previousHash;
     }
-  });
+  }, 10_000);
 
   it('queues a follow-up with Enter while a run is active', async () => {
     const { api } = installBridge({ status: 'running' });

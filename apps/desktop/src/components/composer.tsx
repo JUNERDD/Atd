@@ -75,6 +75,22 @@ function joinDraft(current: string, incoming: string) {
   return current.trim() ? `${current}\n${incoming}` : incoming;
 }
 
+/**
+ * Sends text while a run is active. A pending input takes it as the answer; paused on an approval,
+ * the message cuts in (the service declines what is waiting and delivers it now); otherwise it
+ * queues behind the reply.
+ */
+async function deliverDuringRun(
+  taskId: string,
+  text: string,
+  pendingInput: PermissionRequest | undefined,
+  steer: boolean,
+) {
+  if (pendingInput)
+    await agentApi().answer(taskId, pendingInput.runId, pendingInput.id, { answer: text });
+  else await agentApi().queueMessage(taskId, text, steer ? 'steer' : 'followUp');
+}
+
 export function Composer({
   draft,
   onChange,
@@ -143,32 +159,32 @@ export function Composer({
   const expanded = draft.text.includes('\n') || draft.text.length > 90;
   /** Plain-text edits from outside the editor; chips they break are dropped. */
   const setText = (text: string) => onChange(normalizeDraft({ ...draft, text }));
+  // The handlers below catch every error and reset their flags after the try statement: React
+  // Compiler 1.0 leaves a component uncompiled for `finally`, `throw`, or conditional expressions
+  // inside `try`.
   async function send() {
     if (sendDisabled) return;
-    try {
-      if (active) {
-        // Queued messages and answers are plain text, so chips wait for the run to finish.
-        if (draft.files.length) throw new Error(t('composer.attachAfterRun'));
-        if (draft.chips.length) throw new Error(t('composer.chipsAfterRun'));
-        const text = draft.text.trim();
-        if (!taskId || !text) return;
-        setSending(true);
-        try {
-          if (pendingInput)
-            await agentApi().answer(taskId, pendingInput.runId, pendingInput.id, { answer: text });
-          // Paused on an approval, the message cuts in: the service declines what is waiting
-          // and delivers it now. Otherwise it queues behind the reply.
-          else await agentApi().queueMessage(taskId, text, pendingRequest ? 'steer' : 'followUp');
-          setText('');
-        } finally {
-          setSending(false);
-        }
-        return;
+    if (!active) {
+      try {
+        await onSubmit();
+      } catch (error) {
+        showErrorToast(error);
       }
-      await onSubmit();
+      return;
+    }
+    // Queued messages and answers are plain text, so chips wait for the run to finish.
+    if (draft.files.length) return showErrorToast(t('composer.attachAfterRun'));
+    if (draft.chips.length) return showErrorToast(t('composer.chipsAfterRun'));
+    const text = draft.text.trim();
+    if (!taskId || !text) return;
+    setSending(true);
+    try {
+      await deliverDuringRun(taskId, text, pendingInput, pendingRequest);
+      setText('');
     } catch (error) {
       showErrorToast(error);
     }
+    setSending(false);
   }
   async function stop() {
     if (stopDisabled || !onStop) return;
@@ -191,13 +207,12 @@ export function Composer({
     try {
       const files = await agentApi().chooseFiles();
       // The attachment row and file chips share the 10-file limit.
-      if (draftFiles(draft).length + files.length > 10) throw new Error(t('composer.attachLimit'));
-      onChange({ ...draft, files: [...draft.files, ...files] });
+      if (draftFiles(draft).length + files.length > 10) showErrorToast(t('composer.attachLimit'));
+      else onChange({ ...draft, files: [...draft.files, ...files] });
     } catch (error) {
       showErrorToast(error);
-    } finally {
-      setChoosing(false);
     }
+    setChoosing(false);
   }
   const placeholder = pendingInput
     ? t('composer.answerPlaceholder')

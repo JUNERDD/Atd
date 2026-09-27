@@ -103,13 +103,15 @@ export function SettingsWindow() {
     const unsubscribe = window.desktop?.settings.onOpenCommand?.((commandId) => show(commandId));
     const onStorage = (event: StorageEvent) => {
       if (event.key !== COMMAND_SETTINGS_STORAGE_KEY || !event.newValue) return;
+      let parsed: unknown;
       try {
-        const parsed: unknown = JSON.parse(event.newValue);
-        if (typeof parsed === 'object' && parsed !== null && 'commandId' in parsed)
-          show((parsed as { commandId: unknown }).commandId);
+        parsed = JSON.parse(event.newValue);
       } catch {
         // A foreign tab wrote an unreadable value; the command list stays visible.
+        return;
       }
+      if (typeof parsed === 'object' && parsed !== null && 'commandId' in parsed)
+        show((parsed as { commandId: unknown }).commandId);
     };
     window.addEventListener('storage', onStorage);
     return () => {

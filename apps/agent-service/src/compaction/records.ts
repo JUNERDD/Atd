@@ -1,6 +1,6 @@
 import type { SessionManager } from '@earendil-works/pi-coding-agent';
 import { Type, type Static } from 'typebox';
-import { Value } from 'typebox/value';
+import { Compile } from 'typebox/compile';
 import type { ServiceBlock } from '@ai/agent-contracts';
 
 /**
@@ -41,6 +41,8 @@ const CompactionRecordSchema = Type.Union([
   ),
 ]);
 type CompactionRecord = Static<typeof CompactionRecordSchema>;
+/** Compiled once: every reprojection reads each custom entry on the branch through it. */
+const CompactionRecordValidator = Compile(CompactionRecordSchema);
 export type FailedCompaction = Extract<CompactionRecord, { status: 'failed' }>;
 
 /** Records a finished compaction next to Pi's entry `compactionId`. */
@@ -75,7 +77,7 @@ export function recordFailed(
 
 /** A custom entry's data as a compaction record, or null for other entries and shapes. */
 export function readCompactionRecord(customType: string, data: unknown): CompactionRecord | null {
-  return customType === APP_COMPACTION && Value.Check(CompactionRecordSchema, data) ? data : null;
+  return customType === APP_COMPACTION && CompactionRecordValidator.Check(data) ? data : null;
 }
 
 /** What `completed` records add to Pi's compaction entries, by compaction entry id. */

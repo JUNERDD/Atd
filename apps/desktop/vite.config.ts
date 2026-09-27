@@ -8,11 +8,17 @@ import tailwindcss from '@tailwindcss/vite';
 import electron from 'vite-plugin-electron/simple';
 import type { ElectronOptions } from 'vite-plugin-electron';
 import { agentServiceDev } from './plugins/agent-service-dev.js';
+import { reactCompiler } from './plugins/react-compiler.js';
 import {
   componentInspector,
   componentInspectorBabelPlugin,
 } from './plugins/component-inspector.js';
 
+/**
+ * `dependencies` lists only the packages Electron main loads at runtime, because electron-builder
+ * ships exactly those in the app. Everything Vite bundles (the renderer's packages and the
+ * source-aliased workspace packages below) is a devDependency.
+ */
 const dependencies = Object.keys(
   JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')).dependencies,
 );
@@ -44,12 +50,16 @@ export default defineConfig(({ mode, command }) => ({
     react(),
     ...(command === 'serve'
       ? [
+          // Tags JSX with source locations for the component inspector.
           babel({ plugins: [componentInspectorBabelPlugin], include: /\.(tsx|jsx)$/ }),
           componentInspector(),
           // `pnpm dev` also serves the web client on this origin.
           agentServiceDev(),
         ]
       : []),
+    // The compiler's Babel pass is synchronous and made a cold dev start ~2 s slower, so the dev
+    // server serves uncompiled components; builds and tests (vitest.config.ts) run compiled code.
+    ...(command === 'build' ? [reactCompiler()] : []),
     tailwindcss(),
     {
       name: 'local-development-csp',

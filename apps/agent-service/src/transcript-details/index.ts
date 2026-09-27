@@ -1,4 +1,4 @@
-import { Value } from 'typebox/value';
+import { Compile } from 'typebox/compile';
 import {
   TODO_TOOL,
   ToolBlockDetailsSchema,
@@ -14,6 +14,9 @@ import { projectTodoDetails } from './todo.js';
 import { projectWebFetchDetails, projectWebSearchDetails } from './web.js';
 
 type Projector = (raw: unknown) => ToolBlockDetails | undefined;
+
+/** Compiled once: live projection checks every detailed row on each reprojection. */
+const ToolBlockDetailsValidator = Compile(ToolBlockDetailsSchema);
 
 /**
  * Per-tool projectors from a result's raw `details` (Pi `ToolResultMessage.details`, untrusted
@@ -61,7 +64,7 @@ function checked(
   log?: Pick<Logger, 'debug'>,
 ): ToolBlockDetails | undefined {
   const { type } = details;
-  if (Value.Check(ToolBlockDetailsSchema, details)) return details;
+  if (ToolBlockDetailsValidator.Check(details)) return details;
   // Debug level: live projection reruns on every streamed delta and would repeat the entry.
   log?.debug('Dropped tool details that failed the contract.', { tool, type });
   return undefined;

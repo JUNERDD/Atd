@@ -4,6 +4,7 @@ import type {
   InvalidateFrame,
   ServiceEvent,
   StatusResponse,
+  SummariesFrame,
   TaskSnapshot,
 } from '@ai/agent-contracts';
 import { discoverService, type ServiceEndpoint } from './endpoint';
@@ -22,6 +23,7 @@ export interface ServiceStatus {
 export interface ConnectionEvents {
   onStatus: (status: ServiceStatus) => void;
   onSnapshot: (snapshot: TaskSnapshot) => void;
+  onSummaries: (frame: SummariesFrame) => void;
   onEvent: (event: ServiceEvent) => void;
 }
 
@@ -47,8 +49,8 @@ export class ServiceConnection {
     private readonly caps: Omit<CapabilityContext, 'http'>,
   ) {}
 
-  /** Lets the task client attach snapshot/event handlers to the shared stream. */
-  setTaskHandlers(handlers: Pick<ConnectionEvents, 'onSnapshot' | 'onEvent'>) {
+  /** Lets the task client attach snapshot/summaries/event handlers to the shared stream. */
+  setTaskHandlers(handlers: Pick<ConnectionEvents, 'onSnapshot' | 'onSummaries' | 'onEvent'>) {
     this.events = { ...this.events, ...handlers };
   }
 
@@ -205,6 +207,10 @@ export class ServiceConnection {
         onSnapshot: (snapshot) => {
           if (this.state === 'reconnecting') this.setState('connected', '');
           this.events.onSnapshot(snapshot);
+        },
+        onSummaries: (frame) => {
+          if (this.state === 'reconnecting') this.setState('connected', '');
+          this.events.onSummaries(frame);
         },
         onEvent: (event) => this.events.onEvent(event),
         onInvalidate: (frame) => {

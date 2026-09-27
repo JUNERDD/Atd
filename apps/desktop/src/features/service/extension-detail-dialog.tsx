@@ -8,7 +8,7 @@ import {
   DialogTitle,
 } from '@ai/ui/components/dialog';
 import { ScrollArea } from '@ai/ui/components/scroll-area';
-import { StreamdownMarkdown } from '../agent/transcript/markdown';
+import { LazyMarkdown } from '../agent/transcript/lazy-markdown';
 
 export interface DetailField {
   label: string;
@@ -92,7 +92,7 @@ export function ExtensionDetailDialog({
                 <section className="extension-detail-section" aria-label={text.label}>
                   <h3>{text.label}</h3>
                   <div className="extension-detail-text">
-                    <StreamdownMarkdown text={text.value} streaming={false} />
+                    <LazyMarkdown text={text.value} streaming={false} />
                   </div>
                 </section>
               ) : null}

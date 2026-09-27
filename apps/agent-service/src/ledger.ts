@@ -1,7 +1,7 @@
 import { readFile, stat } from 'node:fs/promises';
+import { Compile } from 'typebox/compile';
 import {
   AgentTaskSchema,
-  parse,
   LedgerDataSchema,
   type AgentTask,
   type LedgerData,
@@ -9,6 +9,20 @@ import {
 } from '@ai/agent-contracts';
 import { atomicWrite } from './config.js';
 import type { ServicePaths } from './storage.js';
+
+/**
+ * Every change validates the whole ledger, which grows with each task, so the schema is compiled
+ * once (tens of times faster than `Value.Check`). Compiling evaluates generated code, which only
+ * the service may do: the renderer's CSP forbids it, so the shared contracts stay uncompiled.
+ */
+const LedgerValidator = Compile(LedgerDataSchema);
+
+/** The contracts' `parse` over the compiled validator, with the same error message. */
+function parseLedger(value: unknown): LedgerData {
+  if (LedgerValidator.Check(value)) return value;
+  const issue = LedgerValidator.Errors(value)[0];
+  throw new TypeError(`Invalid data${issue ? `: ${issue.instancePath} ${issue.message}` : '.'}`);
+}
 
 function emptyLedger(): LedgerData {
   return {
@@ -38,7 +52,7 @@ export class Ledger {
     try {
       if ((await stat(file)).size > 64 * 1024 * 1024) throw new Error('Task ledger is too large.');
       const raw: unknown = JSON.parse(await readFile(file, 'utf8'));
-      return new Ledger(file, parse(LedgerDataSchema, dropRetiredData(raw)));
+      return new Ledger(file, parseLedger(dropRetiredData(raw)));
     } catch (error) {
       if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
         const ledger = new Ledger(file, emptyLedger());
@@ -54,7 +68,7 @@ export class Ledger {
     const operation = this.chain.then(async () => {
       const draft = structuredClone(this.data);
       const result = await update(draft);
-      await atomicWrite(this.file, parse(LedgerDataSchema, draft));
+      await atomicWrite(this.file, parseLedger(draft));
       this.data = draft;
       return result;
     });

@@ -5,8 +5,10 @@ import {
   type CapabilityRequest as ServiceCapability,
   type PermissionRequest as ServiceRequest,
   type ServiceBlock,
+  type TaskContextState,
   type TaskRun as ServiceRun,
   type TaskSnapshot as ServiceSnapshot,
+  type TaskSummary as ServiceSummary,
   type ToolBlockDetails,
 } from '@ai/agent-contracts';
 import type { ToolId } from './command-schema';
@@ -23,17 +25,28 @@ const DESKTOP_TOOL_IDS: ReadonlySet<string> = new Set<ToolId>([
   'command',
 ]);
 
-/** Maps a service task snapshot to the desktop detail shape (no Pi projection). */
-export function mapSnapshot(snapshot: ServiceSnapshot): TaskDetail {
+/** A task's desktop state without its session: what the task list and pending prompts need. */
+export interface TaskSummaryState {
+  task: AgentTask;
+  requests: PermissionRequest[];
+  queue: QueueState;
+  capabilities: NonNullable<TaskDetail['capabilities']>;
+}
+
+/** A task's session as the desktop shows it: its transcript and context usage. */
+export interface TaskTranscript {
+  revision: number;
+  blocks: Block[];
+  context: TaskContextState;
+}
+
+/** Maps a service task summary (or the summary part of a snapshot) to the desktop shape. */
+export function mapSummary(summary: ServiceSummary): TaskSummaryState {
   return {
-    task: mapTask(snapshot.task),
-    artifacts: [],
-    requests: snapshot.requests.map(mapRequest),
-    queue: { ...snapshot.queue },
-    context: { ...snapshot.context },
-    revision: snapshot.revision,
-    blocks: snapshot.blocks.map(mapBlock),
-    capabilities: snapshot.capabilities.map((cap) => ({
+    task: mapTask(summary.task),
+    requests: summary.requests.map(mapRequest),
+    queue: { ...summary.queue },
+    capabilities: summary.capabilities.map((cap) => ({
       id: cap.id,
       capability: cap.capability,
       runId: cap.runId,
@@ -41,6 +54,21 @@ export function mapSnapshot(snapshot: ServiceSnapshot): TaskDetail {
       expiresAt: cap.expiresAt,
     })),
   };
+}
+
+/** Maps the session part of a service task snapshot (no Pi projection). */
+export function mapTranscript(snapshot: ServiceSnapshot): TaskTranscript {
+  return {
+    revision: snapshot.revision,
+    blocks: snapshot.blocks.map(mapBlock),
+    context: { ...snapshot.context },
+  };
+}
+
+/** The detail a consumer seeds from: the summary plus the transcript. */
+export function taskDetail(summary: TaskSummaryState, transcript: TaskTranscript): TaskDetail {
+  const { task, requests, queue, capabilities } = summary;
+  return { task, artifacts: [], requests, queue, capabilities, ...transcript };
 }
 
 export function mapTask(task: ServiceTask): AgentTask {

@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState, type UIEvent, type WheelEvent } from 'react';
+import { memo, useLayoutEffect, useRef, useState, type UIEvent, type WheelEvent } from 'react';
 import { Bot, ListTodo, PenLine, Search, Sparkles, Terminal, Wrench } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { ScrollArea } from '@ai/ui/components/scroll-area';
@@ -166,7 +166,8 @@ function ActivityPhaseView({
   );
 }
 
-export function ActivityGroup({
+/** Memoized: the adapter keeps a group's object while its steps and requests are unchanged. */
+export const ActivityGroup = memo(function ActivityGroup({
   item,
   requests,
   artifacts,
@@ -191,4 +192,4 @@ export function ActivityGroup({
       {files.length > 0 && <TaskFiles files={files} onAttach={onAttach} />}
     </div>
   );
-}
+});

@@ -4,6 +4,7 @@ import { ArrowLeft, ChevronRight } from 'lucide-react';
 import type { SubagentChildSummary } from '@ai/agent-contracts';
 import { ScrollArea } from '@ai/ui/components/scroll-area';
 import type { PermissionRequest } from '../../../../electron/agent/permission-schema';
+import type { Artifact, TaskRun } from '../../../../electron/agent/task-schema';
 import { IconButton } from '../../../components/icon-button';
 import { adaptTranscript } from './adapter';
 import { ScrollJump } from './scroll-jump';
@@ -18,7 +19,10 @@ const LOADING_DELAY_MS = 400;
 
 /** The drill-in view owns no files: task files anchor in the parent conversation only. */
 const NO_ANCHORS = new Set<string>();
+const NO_ARTIFACTS: Artifact[] = [];
 const noAttach = () => {};
+/** Child blocks carry the parent's run id, so the parent's runs would name the wrong model. */
+const NO_RUNS: TaskRun[] = [];
 
 /**
  * Where the view sits ("task › agent") with the way back. The view is a read-only transcript, so
@@ -101,14 +105,10 @@ export function ChildTranscriptView({
   const requestIndex = useMemo(() => indexRequests(requests), [requests]);
   const blocks = detail?.blocks;
   const model = child?.model ?? '';
-  // Child blocks carry the parent's run id, so the run list would name the parent's model; the
-  // child's own model from its summary labels the turn instead.
+  // The child's own model from its summary labels its turns instead of a run's.
   const turns = useMemo(
-    () =>
-      blocks
-        ? adaptTranscript(blocks, requestIndex, []).map((turn) => ({ ...turn, modelName: model }))
-        : [],
-    [blocks, requestIndex, model],
+    () => (blocks ? adaptTranscript(blocks, requestIndex, NO_RUNS) : []),
+    [blocks, requestIndex],
   );
   const live = child ? child.status === 'running' : Boolean(detail?.live);
   const { viewportRef, showJump, pin, onScroll } = useTranscriptScroll(detail?.revision ?? 0);
@@ -127,13 +127,14 @@ export function ChildTranscriptView({
             <TurnView
               key={turn.id}
               turn={turn}
-              runs={[]}
-              artifacts={[]}
+              runs={NO_RUNS}
+              artifacts={NO_ARTIFACTS}
               anchors={NO_ANCHORS}
               requests={requestIndex}
               live={live}
               last={position === turns.length - 1}
               copyable={false}
+              modelName={model}
               onAttach={noAttach}
             />
           ))}

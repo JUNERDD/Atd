@@ -3,6 +3,7 @@ import type { AgentSession, SessionManager } from '@earendil-works/pi-coding-age
 import type { QueueState, ServiceBlock } from '@ai/agent-contracts';
 import type { RunningCompaction } from './compaction/records.js';
 import { SUBAGENT_TOOL } from './subagents/tool-contract.js';
+import { TrailingFlush } from './trailing-flush.js';
 import { subagentRows, type SubagentRow } from './transcript-details/subagent.js';
 import {
   diffServiceBlocks,
@@ -10,6 +11,12 @@ import {
   projectServiceBlocks,
   toolPartialText,
 } from './transcript.js';
+
+/**
+ * Window in which streamed deltas (`message_update`, `tool_execution_update`) coalesce into one
+ * reprojection, about one patch per display frame at 30 fps. Every other event flushes first.
+ */
+export const STREAM_COALESCE_MS = 33;
 
 export interface TranscriptPatchData {
   revision: number;
@@ -30,10 +37,16 @@ export interface LiveTranscriptSink {
  * the 0.87 branch on every change, and publishes patches; the cold path in
  * the runner reuses the same projection so the two cannot diverge. It also
  * publishes Pi's mid-run queue whenever it changes.
+ *
+ * Streamed deltas reproject at most once per `STREAM_COALESCE_MS`; any other event, a snapshot
+ * and disposal publish the owed delta first, so patches keep their order relative to message
+ * ends, queue updates and the run status that follows the session's last event. The revision
+ * advances only with a published patch: clients apply patch `revision + 1` and reseed on a gap.
  */
 export class LiveTranscript {
   private blocks: ServiceBlock[] = [];
   private revision = 0;
+  private readonly streamed = new TrailingFlush(() => this.reproject(false), STREAM_COALESCE_MS);
   private readonly partials = new Map<string, string>();
   /**
    * Bounded result rows from each running `subagent` call's latest partial details: its cards
@@ -59,6 +72,7 @@ export class LiveTranscript {
   attach(): void {
     this.session.subscribe((event) => {
       if (event.type === 'queue_update') {
+        this.streamed.flush();
         this.queue = { steering: [...event.steering], followUp: [...event.followUp] };
         if (this.queueBatches === 0) this.sink.queue(this.runId(), this.queueState());
         return;
@@ -79,11 +93,14 @@ export class LiveTranscript {
         this.partials.delete(event.toolCallId);
         this.subagentProgress.delete(event.toolCallId);
       }
-      this.reproject(false);
+      if (event.type === 'message_update' || event.type === 'tool_execution_update')
+        this.streamed.schedule();
+      else this.reproject(false);
     });
   }
 
   snapshot(): { revision: number; blocks: ServiceBlock[] } {
+    this.streamed.flush();
     return { revision: this.revision, blocks: [...this.blocks] };
   }
 
@@ -107,7 +124,13 @@ export class LiveTranscript {
     }
   }
 
+  /** Publishes the owed streamed delta before the session goes away. */
+  dispose(): void {
+    this.streamed.flush();
+  }
+
   reproject(snapshot: boolean): void {
+    this.streamed.cancel();
     const branch = fromServiceBranch(this.manager.getBranch());
     const runId = this.runId();
     const next = projectServiceBlocks({
@@ -121,14 +144,14 @@ export class LiveTranscript {
     });
     const patch = diffServiceBlocks(this.blocks, next);
     this.blocks = next;
+    if (!patch.blocks.length && !patch.removed.length && !snapshot) return;
     this.revision += 1;
-    if (patch.blocks.length || patch.removed.length || snapshot)
-      this.sink.publish(runId, {
-        revision: this.revision,
-        snapshot,
-        blocks: snapshot ? next : patch.blocks,
-        removed: snapshot ? [] : patch.removed,
-      });
+    this.sink.publish(runId, {
+      revision: this.revision,
+      snapshot,
+      blocks: snapshot ? next : patch.blocks,
+      removed: snapshot ? [] : patch.removed,
+    });
   }
 }
 

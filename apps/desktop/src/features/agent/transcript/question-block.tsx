@@ -127,9 +127,8 @@ export function QuestionControls({
       setDraft('');
     } catch (cause) {
       setError(messageOf(cause));
-    } finally {
-      setPending(false);
     }
+    setPending(false);
   }
 
   return (

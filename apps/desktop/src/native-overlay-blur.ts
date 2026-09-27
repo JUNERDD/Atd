@@ -167,28 +167,43 @@ export function installNativeOverlayBlur(root: HTMLElement): () => void {
       schedule();
   }
 
-  const mutationObserver = new MutationObserver((records) => {
-    if (records.some(({ target }) => !definitions.contains(target))) schedule();
+  // Overlays live in portal layers, the body's children other than the root. Watching only those
+  // layers keeps streamed transcript DOM in the root from running an update per patch. A removed
+  // layer's registration lapses with the node.
+  const layerObserver = new MutationObserver(schedule);
+  const observeLayer = (node: Node) => {
+    // The SVG filter definitions are not an HTMLElement, so this observer never sees its own writes.
+    if (!(node instanceof HTMLElement) || node === root) return;
+    layerObserver.observe(node, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['style', 'class', 'data-state', 'hidden'],
+    });
+  };
+  for (const child of document.body.children) observeLayer(child);
+  const bodyObserver = new MutationObserver((records) => {
+    for (const { addedNodes } of records) addedNodes.forEach(observeLayer);
+    schedule();
   });
-  mutationObserver.observe(document.body, {
-    childList: true,
-    subtree: true,
-    attributes: true,
-    attributeFilter: ['style', 'class', 'data-state', 'hidden'],
-  });
+  bodyObserver.observe(document.body, { childList: true });
+  const onAnimationStart = ({ target }: AnimationEvent) => {
+    if (target instanceof Element && target.matches(overlaySelector)) schedule();
+  };
   window.addEventListener('resize', schedule);
   document.addEventListener('scroll', schedule, true);
-  document.addEventListener('animationstart', schedule, true);
+  document.addEventListener('animationstart', onAnimationStart, true);
   schedule();
 
   return () => {
     disposed = true;
     cancelAnimationFrame(scheduled);
-    mutationObserver.disconnect();
+    bodyObserver.disconnect();
+    layerObserver.disconnect();
     resizeObserver.disconnect();
     window.removeEventListener('resize', schedule);
     document.removeEventListener('scroll', schedule, true);
-    document.removeEventListener('animationstart', schedule, true);
+    document.removeEventListener('animationstart', onAnimationStart, true);
     for (const [element, material] of materials) element.style.backdropFilter = material.backdrop;
     for (const [layer, entry] of layers) layer.style.filter = entry.original;
     definitions.remove();

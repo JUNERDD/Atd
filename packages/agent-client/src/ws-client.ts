@@ -5,10 +5,10 @@ import {
   ServiceEventSchema,
   STREAM_AUTH_PROTOCOL_PREFIX,
   STREAM_PROTOCOL,
+  SummariesFrameSchema,
   TaskSnapshotSchema,
   type CapabilityRequest,
   type ServiceEvent,
-  type TaskSnapshot,
 } from '@ai/agent-contracts';
 import type { AgentClientOptions, CapabilityHandler, StreamHandlers } from './types.js';
 
@@ -21,7 +21,8 @@ const MAX_BACKOFF_MS = 5000;
 
 /**
  * WS stream client with reconnect. Tracks (epoch, seq) and resubscribes after a
- * drop; the service replays bounded events or answers with a fresh snapshot.
+ * drop; the service replays bounded events or answers with fresh task summaries
+ * (per-task snapshots when the client subscribed to named tasks).
  */
 export class AgentStreamClient {
   private socket: WebSocket | null = null;
@@ -123,6 +124,12 @@ export class AgentStreamClient {
         this.handlers.onSnapshot(snapshot);
         break;
       }
+      case 'summaries': {
+        const frame = parse(SummariesFrameSchema, message);
+        this.adopt(frame);
+        this.handlers.onSummaries(frame);
+        break;
+      }
       case 'resumed': {
         const seq = field(message, 'seq');
         if (typeof seq === 'number') this.state.seq = seq;
@@ -149,14 +156,15 @@ export class AgentStreamClient {
     }
   }
 
-  private adopt(snapshot: TaskSnapshot): void {
-    this.state.epoch = snapshot.epoch;
-    this.state.seq = snapshot.seq;
+  /** Takes the stream position a snapshot or summaries frame was built at. */
+  private adopt(position: StreamState): void {
+    this.state.epoch = position.epoch;
+    this.state.seq = position.seq;
   }
 
   private observe(event: ServiceEvent): void {
     if (event.epoch !== this.state.epoch) {
-      // A new epoch always arrives via snapshot first; ignore stray events.
+      // A new epoch always arrives via a snapshot or summaries frame first; ignore stray events.
       return;
     }
     if (event.seq > this.state.seq) this.state.seq = event.seq;

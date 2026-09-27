@@ -6,13 +6,15 @@ import {
   type ServiceBlock,
   type ServiceModel,
   type TaskContextState,
+  type TaskSnapshot,
+  type TaskSummary,
   emptyContextState,
 } from '@ai/agent-contracts';
 import { coldContextState } from './compaction/context-state.js';
 import { ConnectionStore } from './credentials/connections.js';
 import type { LiveState } from './live-state.js';
 import { presentConnection } from './providers/connection-view.js';
-import type { RunnerContext } from './task-runner.js';
+import type { RunnerContext, TaskRunner } from './task-runner.js';
 import { fromServiceBranch, projectServiceBlocks } from './transcript.js';
 
 /** What a task snapshot shows of a task's session. */
@@ -24,6 +26,45 @@ export interface TaskView {
 
 export function liveTaskView(live: LiveState): TaskView {
   return { ...live.transcript.snapshot(), context: live.context.current() };
+}
+
+/**
+ * A task as a task list shows it, built from memory only: no session read and no runner, so
+ * summarizing every task stays cheap. `runner` is the task's runner when one exists.
+ */
+export function taskSummary(
+  ctx: RunnerContext,
+  runner: TaskRunner | undefined,
+  taskId: string,
+): TaskSummary {
+  return {
+    task: ctx.ledger.task(taskId),
+    requests: ctx.confirms.forTask(taskId),
+    capabilities: ctx.capabilities.forTask(taskId),
+    queue: runner?.queueState() ?? { steering: [], followUp: [] },
+  };
+}
+
+/**
+ * The summary plus the task's transcript and context. A task without a runner has no live
+ * session: its view is cold-projected from its Pi JSONL, so a snapshot never creates a runner.
+ */
+export async function taskSnapshot(
+  ctx: RunnerContext,
+  runner: TaskRunner | undefined,
+  taskId: string,
+): Promise<TaskSnapshot> {
+  const view = runner ? await runner.view() : await coldTaskView(ctx, taskId);
+  // The summary is read with `seq`, after the view's await: an event published meanwhile must be
+  // in the snapshot when its seq is, or a client would cache the older state over it.
+  return {
+    ...taskSummary(ctx, runner, taskId),
+    revision: view.revision,
+    blocks: view.blocks,
+    context: view.context,
+    epoch: ctx.events.epoch,
+    seq: ctx.events.currentSeq,
+  };
 }
 
 /**

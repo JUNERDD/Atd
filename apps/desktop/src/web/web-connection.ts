@@ -1,10 +1,16 @@
 import { AgentHttpClient, AgentStreamClient, type AgentClientOptions } from '@ai/agent-client';
-import type { InvalidateFrame, ServiceEvent, TaskSnapshot } from '@ai/agent-contracts';
+import type {
+  InvalidateFrame,
+  ServiceEvent,
+  SummariesFrame,
+  TaskSnapshot,
+} from '@ai/agent-contracts';
 import type { AgentConnection } from '../../electron/agent/agent-requests';
 import type { ServiceState, ServiceStatusView } from '../../electron/service/ipc';
 
 interface TaskHandlers {
   onSnapshot: (snapshot: TaskSnapshot) => void;
+  onSummaries: (frame: SummariesFrame) => void;
   onEvent: (event: ServiceEvent) => void;
 }
 
@@ -33,6 +39,10 @@ export class WebConnection implements AgentConnection {
       onSnapshot: (snapshot) => {
         this.setState('connected');
         this.handlers?.onSnapshot(snapshot);
+      },
+      onSummaries: (frame) => {
+        this.setState('connected');
+        this.handlers?.onSummaries(frame);
       },
       onEvent: (event) => {
         this.setState('connected');
