@@ -1,4 +1,5 @@
 import {
+  Facet,
   StateEffect,
   StateField,
   type EditorState,
@@ -6,14 +7,7 @@ import {
   type Transaction,
 } from '@codemirror/state';
 import type { FileRef } from '../../../electron/agent/task-schema';
-import {
-  chipText,
-  deserialize,
-  serialize,
-  type Chip,
-  type ComposerDraft,
-  type DraftSegment,
-} from './draft';
+import { deserialize, serialize, type Chip, type ComposerDraft, type DraftSegment } from './draft';
 
 /**
  * The editor document stores each chip as one opaque token, `\uE000<id>\uE001`, built from
@@ -102,9 +96,21 @@ export function editorDraft(state: EditorState, files: FileRef[]): ComposerDraft
   return serialize(segmentsOf(state.doc.toString(), state.field(chipTable)), files);
 }
 
-/** Document text with every token written as its chip's serialized text. */
-export function plainText(text: string, table: ReadonlyMap<string, Chip>): string {
-  return serialize(segmentsOf(text, table), []).text;
+/** Writes document segments as the text the editor stands for. */
+export type SegmentWriter = (segments: readonly DraftSegment[]) => string;
+
+/**
+ * The text form of this editor's content, which copying and the length limit read: the composer's
+ * serialized draft text unless the editor provides its own (command instructions write each chip
+ * as its instruction token).
+ */
+export const segmentText = Facet.define<SegmentWriter, SegmentWriter>({
+  combine: (values) => values[0] ?? ((segments) => serialize(segments, []).text),
+});
+
+/** Document text with every token written as its chip's text. */
+export function plainText(text: string, table: ReadonlyMap<string, Chip>, write: SegmentWriter) {
+  return write(segmentsOf(text, table));
 }
 
 export function hasToken(text: string): boolean {
@@ -122,12 +128,9 @@ export function tableAfter(transaction: Transaction): ReadonlyMap<string, Chip> 
 export function serializedLength(
   doc: Text,
   table: ReadonlyMap<string, Chip>,
+  write: SegmentWriter,
   from = 0,
   to = doc.length,
 ): number {
-  return segmentsOf(doc.sliceString(from, to), table).reduce(
-    (length, segment) =>
-      length + (typeof segment === 'string' ? segment.length : chipText(segment).length),
-    0,
-  );
+  return plainText(doc.sliceString(from, to), table, write).length;
 }

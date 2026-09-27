@@ -74,7 +74,6 @@ export function instructionExtensions(
     };
   };
   return [
-    EditorView.lineWrapping,
     highlights,
     // Match the variable picker's safe inset at the native window edges.
     tooltips({
@@ -110,6 +109,6 @@ export function instructionExtensions(
     // Tab accepts an open completion like Enter; without one it still indents.
     Prec.highest(keymap.of([{ key: 'Tab', run: acceptCompletion }])),
     instructionCompletion,
-    EditorView.contentAttributes.of({ 'aria-label': editor.label, spellcheck: 'false' }),
+    EditorView.contentAttributes.of({ 'aria-label': editor.label }),
   ];
 }

@@ -93,6 +93,7 @@ export function CommandSettings({
         initial={editing.command}
         expectedRevision={editing.revision}
         settings={settings}
+        tasks={agent.snapshot?.tasks ?? []}
         onCancel={() => setEditing(null)}
         onSaved={() => {
           setEditing(null);
@@ -114,6 +115,7 @@ export function CommandSettings({
         initial={structuredClone(linkedCommand)}
         expectedRevision={linkedCommand.revision}
         settings={settings}
+        tasks={agent.snapshot?.tasks ?? []}
         onCancel={() => onConsumeActiveCommand?.()}
         onSaved={() => {
           onConsumeActiveCommand?.();

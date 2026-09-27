@@ -3,13 +3,17 @@ import { parseTrigger, type CommandIds, type TriggerState } from '../quick-panel
 
 /**
  * Quick-command ids the trigger parser recognizes after a leading `/`. The composer provides them,
- * so the editor never imports the command table and its icons.
+ * so the editor never imports the command table and its icons; an editor that provides none
+ * (command instructions) reads every `/` as an inline skill trigger.
  */
-export const quickCommandIds = Facet.define<CommandIds, CommandIds>({
-  combine: (values) => ({
-    all: values.flatMap((value) => value.all),
-    drillable: values.flatMap((value) => value.drillable),
-  }),
+export const quickCommandIds = Facet.define<CommandIds, CommandIds | null>({
+  combine: (values) =>
+    values.length
+      ? {
+          all: values.flatMap((value) => value.all),
+          drillable: values.flatMap((value) => value.drillable),
+        }
+      : null,
 });
 
 /** Closes the panel for the current trigger token (Esc) until that token changes. */

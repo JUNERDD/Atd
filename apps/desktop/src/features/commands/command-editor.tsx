@@ -9,6 +9,7 @@ import { CommandSchema, type CommandDefinition } from '../../../electron/agent/c
 import { renameArgument, validateCommand } from '../../../electron/agent/command-validation';
 import { parse } from '../../../electron/agent/validation';
 import type { SettingsSnapshot } from '../../../electron/settings-contract';
+import type { AgentTask } from '../../../electron/agent/task-schema';
 import { IconButton } from '../../components/icon-button';
 import { useOverlayFooter } from '../../components/use-overlay-footer';
 import { agentApi } from '../agent/use-agent';
@@ -27,12 +28,15 @@ export function CommandEditor({
   initial,
   expectedRevision,
   settings,
+  tasks,
   onSaved,
   onCancel,
 }: {
   initial: CommandDefinition;
   expectedRevision: number;
   settings: SettingsSnapshot | null;
+  /** Snapshot tasks: the conversations instructions can mention. */
+  tasks: readonly AgentTask[];
   onSaved: () => void;
   onCancel: () => void;
 }) {
@@ -168,6 +172,7 @@ export function CommandEditor({
           <InstructionEditor
             command={draft}
             onChange={setDraft}
+            tasks={tasks}
             onConfigureSource={(source) => {
               setInputOptionsOpen(true);
               requestAnimationFrame(() => {

@@ -1,33 +1,16 @@
-import { useRef, useState, type ReactElement, type Ref, type RefCallback } from 'react';
-import { useTranslation } from 'react-i18next';
-import {
-  Command,
-  CommandGroup,
-  CommandItem,
-  CommandList,
-  CommandSeparator,
-  CommandShortcut,
-} from '@ai/ui/components/command';
-import { HighlightedText } from '@ai/ui/components/highlighted-text';
-import { Kbd, KbdGroup } from '@ai/ui/components/kbd';
-import { Popover, PopoverAnchor, PopoverContent } from '@ai/ui/components/popover';
+import { useRef, useState, type ReactElement, type Ref } from 'react';
+import { PopoverAnchor } from '@ai/ui/components/popover';
 import type { RunPolicy } from '../../../electron/agent/run-policy';
 import type { AgentTask } from '../../../electron/agent/task-schema';
 import type { Connection, ModelReference } from '../../../electron/providers/schema';
 import type { ComposerEditorCommands } from '../composer-editor/editor-commands';
 import type { QuickCommandActions } from './quick-commands';
-import { visibleGroups, type QuickOption } from './quick-options';
+import { QuickPanelSurface } from './quick-panel-surface';
 import type { TriggerState } from './trigger';
 import { useMentionView } from './use-mention-view';
-import {
-  isQuickPanelOpen,
-  useQuickPanel,
-  type QuickPanelAria,
-  type QuickPanelHandle,
-} from './use-quick-panel';
+import { isQuickPanelOpen, type QuickPanelAria, type QuickPanelHandle } from './use-quick-panel';
 import { useServiceLists } from './use-service-lists';
 import { useSlashView } from './use-slash-view';
-import './quick-panel.css';
 
 export interface QuickPanelProps {
   trigger: TriggerState | null;
@@ -60,11 +43,9 @@ export interface QuickPanelProps {
 }
 
 /**
- * The `@` / `/` panel above the composer surface (plan 1.4). Focus never leaves the editor: it
- * forwards ↑ ↓ Enter Tab through `handleRef`, the content refuses focus (no auto-focus, mousedown
- * cancelled), and Esc closes the panel in Radix's dismissable layer before the panel-level Esc
- * sees it. The surface matches the composer width, always opens above it, and scrolls inside
- * instead of flipping below the input on short windows.
+ * The composer's `@` / `/` panel (plan 1.4) on the shared `QuickPanelSurface`. The surface
+ * matches the composer width, always opens above it, and scrolls inside instead of flipping below
+ * the input on short windows.
  */
 export function QuickPanel({
   trigger,
@@ -84,7 +65,6 @@ export function QuickPanel({
   children,
   boundary,
 }: QuickPanelProps) {
-  const { t } = useTranslation('panel');
   const anchor = useRef<HTMLDivElement>(null);
   const open = isQuickPanelOpen(trigger, running);
   // Radix keeps the content mounted while it animates out, so it keeps the last open view.
@@ -119,148 +99,30 @@ export function QuickPanel({
     attachmentCount,
     agents: lists.agents,
     mcp: lists.mcp,
+    files: true,
   });
   const view = slash ? slashView : mentionView;
-  const groups = visibleGroups(view.groups);
-  // Only the trailing "Browse files…" group has no heading; it is an action, not a result.
-  const empty = groups.some((group) => group.heading !== undefined) ? null : view.empty;
-  const { activeValue, hover, setList, trackOption } = useQuickPanel({
-    open,
-    groups,
-    handleRef,
-    onAriaChange,
-  });
 
   return (
-    <Popover
+    <QuickPanelSurface
       open={open}
-      onOpenChange={(next) => {
-        if (!next) editor.dismissTrigger();
+      view={view}
+      enterHint={slash?.placement === 'leading' ? 'use' : 'insert'}
+      onDismiss={editor.dismissTrigger}
+      handleRef={handleRef}
+      onAriaChange={onAriaChange}
+      anchor={
+        <PopoverAnchor asChild ref={anchor}>
+          {children}
+        </PopoverAnchor>
+      }
+      owner={anchor}
+      placement={{
+        side: 'top',
+        collisionBoundary: boundary,
+        avoidCollisions: false,
+        className: 'quick-panel-content p-0',
       }}
-    >
-      <PopoverAnchor asChild ref={anchor}>
-        {children}
-      </PopoverAnchor>
-      <PopoverContent
-        side="top"
-        align="start"
-        sideOffset={8}
-        collisionBoundary={boundary}
-        collisionPadding={8}
-        avoidCollisions={false}
-        className="quick-panel-content p-0"
-        onOpenAutoFocus={(event) => event.preventDefault()}
-        onCloseAutoFocus={(event) => event.preventDefault()}
-        onEscapeKeyDown={(event) => {
-          event.preventDefault();
-          if (!event.isComposing) editor.dismissTrigger();
-        }}
-        onInteractOutside={(event) => {
-          // Clicks in the editor move the caret; the trigger under it decides whether to stay open.
-          if (event.target instanceof Node && anchor.current?.contains(event.target))
-            event.preventDefault();
-        }}
-        onMouseDown={(event) => event.preventDefault()}
-      >
-        <Command
-          shouldFilter={false}
-          value={activeValue}
-          onValueChange={hover}
-          className="min-h-0 bg-transparent"
-        >
-          <CommandList
-            ref={setList}
-            label={t('quickPanel.listLabel')}
-            className="max-h-none min-h-0 flex-1"
-          >
-            {empty !== null && (
-              <p className="px-2 py-6 text-center text-sm text-muted-foreground">{empty}</p>
-            )}
-            {groups.flatMap((group, index) => [
-              // The heading-less "Browse files…" group is set apart from whatever precedes it.
-              !group.heading && (index > 0 || empty !== null) && (
-                <CommandSeparator key={`${group.id}:rule`} alwaysRender />
-              ),
-              <CommandGroup
-                key={group.id}
-                value={group.id}
-                heading={
-                  group.heading === undefined ? undefined : (
-                    <HighlightedText text={group.heading} ranges={group.headingRanges} />
-                  )
-                }
-              >
-                {group.notice && (
-                  <p className="px-2 py-1.5 text-xs text-muted-foreground">{group.notice}</p>
-                )}
-                {group.options.map((option) => (
-                  <QuickRow key={option.value} option={option} track={trackOption(option.value)} />
-                ))}
-              </CommandGroup>,
-            ])}
-          </CommandList>
-          <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 px-2 py-1.5 text-xs text-muted-foreground">
-            <span className="inline-flex items-center gap-1 whitespace-nowrap">
-              <KbdGroup>
-                <Kbd>↑</Kbd>
-                <Kbd>↓</Kbd>
-              </KbdGroup>
-              {t('quickPanel.hints.choose')}
-            </span>
-            <span className="inline-flex items-center gap-1 whitespace-nowrap">
-              <Kbd>Enter</Kbd>
-              {slash?.placement === 'leading'
-                ? t('quickPanel.hints.use')
-                : t('quickPanel.hints.insert')}
-            </span>
-            <span className="inline-flex items-center gap-1 whitespace-nowrap">
-              <Kbd>Esc</Kbd>
-              {t('quickPanel.hints.close')}
-            </span>
-          </div>
-        </Command>
-      </PopoverContent>
-    </Popover>
-  );
-}
-
-/** Icon, title and one-line secondary text (query matches emphasized), trailing status. */
-function QuickRow({
-  option,
-  track,
-}: {
-  option: QuickOption;
-  /** Registers the option element so its id can become `aria-activedescendant`. */
-  track: RefCallback<HTMLDivElement>;
-}) {
-  return (
-    <CommandItem
-      ref={track}
-      value={option.value}
-      disabled={option.disabled}
-      data-checked={option.checked}
-      onSelect={option.select}
-    >
-      {option.icon}
-      <span className="flex min-w-0 flex-1 flex-col">
-        <span className="truncate" title={option.title}>
-          <HighlightedText text={option.title} ranges={option.ranges?.title} />
-        </span>
-        {option.description && (
-          <span className="truncate text-xs text-muted-foreground" title={option.description}>
-            <HighlightedText text={option.description} ranges={option.ranges?.description} />
-          </span>
-        )}
-      </span>
-      {/* The item's trailing slot: it replaces the hidden check, so statuses sit flush right. */}
-      {option.status && (
-        <CommandShortcut
-          className="max-w-2/5 shrink-0 truncate tracking-normal"
-          title={option.status}
-        >
-          {option.status}
-        </CommandShortcut>
-      )}
-    </CommandItem>
+    />
   );
 }

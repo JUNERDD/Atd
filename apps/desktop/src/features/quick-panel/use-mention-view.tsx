@@ -2,6 +2,7 @@ import { Bot, MessageSquare, Plug } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { rankByQuery } from '@ai/ui/lib/fuzzy-match';
 import type { AgentTask } from '../../../electron/agent/task-schema';
+import type { Chip } from '../composer-editor/draft';
 import type { ComposerEditorCommands } from '../composer-editor/editor-commands';
 import type { ExtensionAgentRow, ExtensionMcpRow } from '../service/extension-rows';
 import { useMcpStateLabel } from '../service/use-mcp-state-label';
@@ -22,6 +23,7 @@ const CONVERSATIONS_MATCHES = 20;
  * references themselves are derived from the chips when the draft is sent. Only conversations
  * with a session transcript can be referenced, and the current task is left out. A source with
  * nothing to offer takes no room; a query that leaves only "Browse files…" gets the empty line.
+ * Command instructions offer no files: a command takes them at run time through `{{files}}`.
  */
 export function useMentionView({
   trigger,
@@ -32,6 +34,8 @@ export function useMentionView({
   attachmentCount,
   agents,
   mcp,
+  files: offerFiles,
+  accepts = () => true,
 }: {
   trigger: MentionTrigger | null;
   /** False while the panel animates out with its last rows. */
@@ -42,22 +46,31 @@ export function useMentionView({
   attachmentCount: number;
   agents: ServiceListView<ExtensionAgentRow>;
   mcp: ServiceListView<ExtensionMcpRow>;
+  /** Whether files and "Browse files…" are offered (the composer). */
+  files: boolean;
+  /** Whether the editor can hold this chip; items it cannot are not offered. */
+  accepts?: (chip: Chip) => boolean;
 }): QuickView {
   const { t, i18n } = useTranslation('panel');
   const stateLabel = useMcpStateLabel();
   const query = trigger?.query ?? '';
   const files = useFileGroups({
-    enabled: trigger !== null,
-    live: open && trigger !== null,
+    enabled: offerFiles && trigger !== null,
+    live: offerFiles && open && trigger !== null,
     query,
     editor,
     tasks,
     attachmentCount,
   });
-  if (!trigger || !files) return { groups: [], empty: null };
+  if (!trigger || (offerFiles && !files)) return { groups: [], empty: null };
   const language = i18n.resolvedLanguage ?? i18n.language;
 
-  const referable = tasks.filter((task) => task.id !== taskId && task.sessionFile !== null);
+  const referable = tasks.filter(
+    (task) =>
+      task.id !== taskId &&
+      task.sessionFile !== null &&
+      accepts({ kind: 'task', taskId: task.id, title: task.title }),
+  );
   const conversations: QuickGroup = {
     id: 'conversations',
     heading: t('quickPanel.groups.conversations'),
@@ -78,7 +91,10 @@ export function useMentionView({
       })),
   };
 
-  const servers = mcp.status === 'ready' ? mcp.rows : [];
+  const servers =
+    mcp.status === 'ready'
+      ? mcp.rows.filter((row) => accepts({ kind: 'mcpServer', serverId: row.serverId }))
+      : [];
   const mcpGroup: QuickGroup = {
     id: 'mcp',
     heading: t('quickPanel.groups.mcp'),
@@ -99,8 +115,15 @@ export function useMentionView({
     })),
   };
 
-  // An agent turned off in Settings would only be refused at send, so it is not offered.
-  const catalog = agents.status === 'ready' ? agents.rows.filter((row) => row.enabled) : [];
+  // Only enabled `~/.atd/agents` specialists resolve as references. A disabled one would only be
+  // refused at send; a system agent (`service.*`) is already registered for every run, and its
+  // name is not a valid reference, so the send itself would be rejected.
+  const catalog =
+    agents.status === 'ready'
+      ? agents.rows.filter(
+          (row) => row.enabled && !row.system && accepts({ kind: 'agent', name: row.name }),
+        )
+      : [];
   const agentGroup: QuickGroup = {
     id: 'agents',
     heading: t('quickPanel.groups.agents'),
@@ -119,10 +142,11 @@ export function useMentionView({
   };
 
   // A source still answering may yet match, so it is not reported as no match.
-  const loading = files.loading || mcp.status === 'loading' || agents.status === 'loading';
+  const loading = files?.loading || mcp.status === 'loading' || agents.status === 'loading';
+  const references = [conversations, mcpGroup, agentGroup];
   return {
     // "Browse files…" ends the list, so the first candidate, not the picker, is active by default.
-    groups: orderGroups([...files.lists, conversations, mcpGroup, agentGroup, files.browse], query),
+    groups: orderGroups(files ? [...files.lists, ...references, files.browse] : references, query),
     empty: !query
       ? null
       : loading

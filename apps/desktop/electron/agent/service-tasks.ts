@@ -8,7 +8,8 @@ import {
 import type { AgentEvent, AgentRequest, TaskDetail } from './bridge';
 import { ChildTranscripts } from './child-transcripts';
 import type { CommandDefinition } from './command-schema';
-import { stageRunChoices } from './run-staging';
+import { commandRunChips, commandRunTokens, withCommandTokens } from './command-run';
+import { stageRunChoices, type RunStaging } from './run-staging';
 import { mapRunPolicy, notConnected, renameLiveTask } from './service-manage';
 import { mapSnapshot } from './service-map';
 import { applyTaskEvent } from './task-events';
@@ -171,11 +172,14 @@ export class TaskClient<S> {
     const http = this.http();
     if (request.savedRun)
       throw new Error('Saved runs are unavailable until the service delivers commands (owner T2).');
+    const command = request.commandId ? this.commands.find(request.commandId) : null;
+    const tokens = command ? commandRunTokens(command) : null;
     const previous = request.taskId ? (this.details.get(request.taskId)?.task ?? null) : null;
     if (previous?.runs.some((run) => isActive(run.status))) {
       if (request.input.files.length) throw new Error('Attach files after the run finishes.');
-      // A queued follow-up is text only; it would silently drop the chips' references and skill.
-      if (request.policy?.references?.length || request.policy?.skills?.length)
+      // A queued follow-up is text only; it would silently drop the chips' references and skill,
+      // and a command template's tokens alike.
+      if (request.policy?.references?.length || request.policy?.skills?.length || tokens?.keys.size)
         throw new Error('Send mentions and skills after this run finishes.');
       const text = request.input.text.trim();
       if (!text) throw new Error('Enter a follow-up.');
@@ -183,25 +187,34 @@ export class TaskClient<S> {
       return this.detail(previous.id);
     }
     let text = request.input.text;
-    let titleCommand: string | null = null;
+    // Chip ranges index the submitted text. The array is always sent: without it the transcript
+    // treats the run as sent before chips were recorded and shows a leading `/skill:` token as a
+    // skill chip.
+    let chips = request.input.chips ?? [];
+    let staging: RunStaging | null = request.policy;
     let model = request.policy?.model ?? this.host.defaultModel();
     let thinkingLevel = request.policy?.thinkingLevel;
     // Without a policy the service keeps the task's last tools and memory flag (or its defaults).
     let tools = request.policy ? snapshotToolsFor(request.policy.tools) : undefined;
     let memory = request.policy?.memory;
     const options = this.connection.options();
-    if (request.commandId) {
+    if (command && tokens) {
       if (!options) throw notConnected();
-      const command = this.commands.find(request.commandId);
       if (!command.enabled || command.revision !== request.commandRevision)
         throw new Error('This command changed or was disabled. Review before running.');
-      titleCommand = command.name;
+      // The preview sees the request's policy unchanged; the template's tokens only add staging.
       const previewed = await previewTask(options, {
-        commandId: request.commandId,
+        commandId: command.id,
         input: request.input,
         ...(request.policy ? { policy: mapRunPolicy(request.policy) } : {}),
       });
       text = previewed.snapshot.instructions || previewed.snapshot.input.text || text;
+      chips = commandRunChips(
+        text,
+        tokens,
+        (taskId) => this.details.get(taskId)?.task.title || taskId,
+      );
+      staging = withCommandTokens(request.policy, tokens);
       if (!request.policy?.model)
         model = {
           connectionId: previewed.snapshot.model.connectionId,
@@ -214,15 +227,11 @@ export class TaskClient<S> {
     }
     if (!text.trim() && !request.input.files.length)
       throw new Error('Enter a message or attach a file.');
-    const taskId = await stageRunChoices(options, request.taskId, request.policy);
-    // Chip ranges index the composed text, so a saved command's text gets none. The array is always
-    // sent: without it the transcript treats the run as sent before chips were recorded and shows
-    // a leading `/skill:` token as a skill chip.
-    const { chips = [], ...input } = request.input;
+    const taskId = await stageRunChoices(options, request.taskId, staging);
     const submitted = await http.submit({
       operationId: request.invocationId,
       ...(taskId ? { taskId } : {}),
-      input: { ...input, text, chips: text === request.input.text ? chips : [] },
+      input: { ...request.input, text, chips },
       ...(model ? { model } : {}),
       ...(thinkingLevel ? { thinkingLevel } : {}),
       ...(tools ? { tools } : {}),
@@ -230,8 +239,8 @@ export class TaskClient<S> {
     });
     // A command run is titled after the command. The title lives in the service like any rename,
     // so every client shows it.
-    if (titleCommand && !request.taskId && options)
-      await renameLiveTask(options, submitted.taskId, titleCommand);
+    if (command && !request.taskId && options)
+      await renameLiveTask(options, submitted.taskId, command.name);
     const detail = await this.detail(submitted.taskId);
     this.host.broadcast();
     return detail;

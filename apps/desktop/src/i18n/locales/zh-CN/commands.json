@@ -128,7 +128,9 @@
     "syntaxError": "请检查变量语法。",
     "unsupportedTag": "只能使用变量，不支持 {{tag}}。",
     "available": "可用变量",
-    "hint": "使用变量引用任务输入。输入 {{ 即可查看建议。"
+    "hint": "输入 / 添加技能，输入 @ 提及子代理、MCP 服务或对话，输入 {{ 插入变量。",
+    "tooManySkills": "指令最多只能加载 {{max}} 个技能。",
+    "tooManyReferences": "指令最多只能提及 {{max}} 个子代理、MCP 服务和对话。"
   },
   "session": {
     "trigger": "用 AI 创建",
@@ -146,13 +148,6 @@
     "memoryInherit": "使用记忆 · 跟随全局学习设置",
     "memoryOff": "对此任务及后续任务关闭",
     "allowedTools": "允许的工具"
-  },
-  "capability": {
-    "skills": "技能",
-    "skillsNote": "选择在接受时冻结，修改对下一轮生效。",
-    "emptySkills": "暂无可用技能。连接服务后加载技能。",
-    "role": "角色",
-    "noRole": "无角色"
   },
   "variables": {
     "suggestions": "变量建议",

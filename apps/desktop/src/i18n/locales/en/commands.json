@@ -128,7 +128,9 @@
     "syntaxError": "Check the variable syntax.",
     "unsupportedTag": "Use variables only: {{tag}} isn't supported.",
     "available": "Available variables",
-    "hint": "Use variables for task input. Type {{ to see suggestions."
+    "hint": "Type / for skills, @ for subagents, MCP servers and conversations, and {{ for variables.",
+    "tooManySkills": "Instructions can load at most {{max}} skills.",
+    "tooManyReferences": "Instructions can mention at most {{max}} subagents, MCP servers and conversations."
   },
   "session": {
     "trigger": "Create with AI",
@@ -146,13 +148,6 @@
     "memoryInherit": "Use memory · Follow global learning setting",
     "memoryOff": "Off for this task and follow-ups",
     "allowedTools": "Allowed tools"
-  },
-  "capability": {
-    "skills": "Skills",
-    "skillsNote": "Selection freezes at accept; edits apply to the next run.",
-    "emptySkills": "No skills are available. Connect the service to load skills.",
-    "role": "Role",
-    "noRole": "No role"
   },
   "variables": {
     "suggestions": "Variable suggestions",

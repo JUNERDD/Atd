@@ -1,4 +1,5 @@
 import { BookOpen, Gauge } from 'lucide-react';
+import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { rankByQuery } from '@ai/ui/lib/fuzzy-match';
 import type { RunPolicy } from '../../../electron/agent/run-policy';
@@ -22,6 +23,51 @@ import type { TriggerState } from './trigger';
 import type { ServiceListView } from './use-service-lists';
 
 export type SlashTrigger = Extract<TriggerState, { kind: 'slash' }>;
+
+/** Enabled skills matching `query`, best first; a pick inserts one skill chip. */
+function skillGroup(
+  skills: ServiceListView<ExtensionSkillRow>,
+  query: string,
+  editor: ComposerEditorCommands,
+  t: TFunction<'panel'>,
+): QuickGroup {
+  const enabled = skills.status === 'ready' ? skills.rows.filter((row) => row.enabled) : [];
+  return {
+    id: 'skills',
+    heading: t('quickPanel.groups.skills'),
+    options: rankByQuery(enabled, query, (row) => ({
+      title: row.name,
+      description: row.description,
+    })).map(({ item: row, match }): QuickOption => ({
+      value: `skill:${row.name}`,
+      score: match?.score,
+      ranges: match?.ranges,
+      icon: <BookOpen />,
+      title: row.name,
+      description: row.description || undefined,
+      select: () => editor.insertChips([{ kind: 'skill', name: row.name }]),
+    })),
+  };
+}
+
+/**
+ * Skills only: what an inline `/` lists in the composer and every `/` lists in command
+ * instructions. A list still loading may yet match, so it is not reported as no match.
+ */
+export function skillsView(
+  skills: ServiceListView<ExtensionSkillRow>,
+  query: string,
+  editor: ComposerEditorCommands,
+  t: TFunction<'panel'>,
+): QuickView {
+  return {
+    groups: [skillGroup(skills, query, editor, t)],
+    empty:
+      skills.status === 'loading'
+        ? t('quickPanel.states.loading')
+        : t('quickPanel.states.noSkillMatches'),
+  };
+}
 
 /**
  * The `/` panel. A leading `/` lists quick commands and enabled skills, or the `/model` and
@@ -129,30 +175,10 @@ export function useSlashView({
     return { groups: [group], empty: reason ?? t('quickPanel.states.noMatches') };
   }
 
-  const enabled = skills.status === 'ready' ? skills.rows.filter((row) => row.enabled) : [];
-  const skillGroup: QuickGroup = {
-    id: 'skills',
-    heading: t('quickPanel.groups.skills'),
-    options: rankByQuery(enabled, trigger.query, (row) => ({
-      title: row.name,
-      description: row.description,
-    })).map(({ item: row, match }): QuickOption => ({
-      value: `skill:${row.name}`,
-      score: match?.score,
-      ranges: match?.ranges,
-      icon: <BookOpen />,
-      title: row.name,
-      description: row.description || undefined,
-      select: () => editor.insertChips([{ kind: 'skill', name: row.name }]),
-    })),
-  };
+  if (trigger.placement === 'inline') return skillsView(skills, trigger.query, editor, t);
+  const skillOptions = skillGroup(skills, trigger.query, editor, t);
   // A list still loading may yet match, so it is not reported as no match.
   const loading = skills.status === 'loading';
-  if (trigger.placement === 'inline')
-    return {
-      groups: [skillGroup],
-      empty: loading ? t('quickPanel.states.loading') : t('quickPanel.states.noSkillMatches'),
-    };
 
   const context: QuickCommandContext = {
     hasModel: shown !== null,
@@ -204,7 +230,7 @@ export function useSlashView({
   // A run in progress lists quick commands only: chips wait until the run finishes.
   if (running) return { groups: [commandGroup], empty: t('quickPanel.states.runningNoMatches') };
   return {
-    groups: orderGroups([commandGroup, skillGroup], trigger.query),
+    groups: orderGroups([commandGroup, skillOptions], trigger.query),
     empty: loading ? t('quickPanel.states.loading') : t('quickPanel.states.noCommandMatches'),
   };
 }

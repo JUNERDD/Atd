@@ -24,8 +24,6 @@ export function toDesktopCommand(command: ServiceCommandFull): CommandDefinition
     model: { ...command.model },
     tools: [...command.tools],
     memory: command.memory,
-    ...(command.skills ? { skills: command.skills.map((skill) => ({ ...skill })) } : {}),
-    ...(command.roleId ? { roleId: command.roleId } : {}),
   };
 }
 
@@ -51,8 +49,6 @@ export function toCommandCreate(command: CommandDefinition): CommandCreate {
     model: { ...command.model },
     tools: [...command.tools],
     memory: command.memory,
-    ...(command.skills ? { skills: command.skills.map((skill) => ({ ...skill })) } : {}),
-    ...(command.roleId ? { roleId: command.roleId } : {}),
   };
 }
 
