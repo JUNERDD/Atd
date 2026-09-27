@@ -59,10 +59,9 @@ export function useShortcutSettings(snapshot: SettingsSnapshot | null) {
   useEffect(() => {
     if (!isRecording || !recordingAction || !hasRecordedKey) return;
     stop();
-    // A rejected combination ends the attempt; the next click starts a clean recording.
+    // Stopping alone ends a rejected attempt: `recording` and `pending` derive from the stopped
+    // recorder, and the next `start()` clears the leftover keys.
     if (captureError) {
-      resetKeys();
-      setRecordingAction(null);
       showErrorToast(captureError);
       return;
     }
