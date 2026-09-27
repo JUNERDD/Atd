@@ -77,6 +77,9 @@ export function CommandSettings({
       setPending(null);
     }
   }
+  function edit(command: CommandDefinition) {
+    setEditing({ command: structuredClone(command), revision: command.revision });
+  }
   function duplicate(command: CommandDefinition) {
     setEditing({
       command: copyCommand(command, crypto.randomUUID()),
@@ -158,9 +161,17 @@ export function CommandSettings({
               size="sm"
               variant="outline"
               key={command.id}
-              className="command-management-row hover:bg-muted/50"
+              className="command-management-row settings-open-row"
             >
               <li>
+                {/* A click anywhere on the row opens the editor, like the memory and skill rows;
+                    the run, enable and More controls stay interactive above this button. */}
+                <button
+                  type="button"
+                  className="settings-open-row-button"
+                  aria-label={t('list.editFor', { name: command.name })}
+                  onClick={() => edit(command)}
+                />
                 <div className="command-row-identity">
                   <ItemMedia variant="icon">
                     <CommandIcon templateId={command.templateId} />
@@ -226,14 +237,7 @@ export function CommandSettings({
                         </IconButton>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          onSelect={() =>
-                            setEditing({
-                              command: structuredClone(command),
-                              revision: command.revision,
-                            })
-                          }
-                        >
+                        <DropdownMenuItem onSelect={() => edit(command)}>
                           <Pencil />
                           {t('common.edit')}
                         </DropdownMenuItem>

@@ -343,9 +343,15 @@
   position: relative;
   pointer-events: none;
 }
-.settings-open-row > [data-slot='item-actions'],
+/* Actions may sit in a wrapper, as the command rows group them with the shortcut. */
+.settings-open-row [data-slot='item-actions'],
 .settings-open-row .settings-extension-mcp-auth {
   pointer-events: auto;
+}
+/* An outlined row fills inside its 1px border, so the fill's corners follow the border's inner
+ * curve instead of the outer one. */
+.settings-open-row[data-variant='outline'] > .settings-open-row-button {
+  border-radius: calc(var(--radius-2xl) - 1px);
 }
 .settings-open-row:hover > .settings-open-row-button,
 .settings-open-row:has([aria-expanded='true']) > .settings-open-row-button,
