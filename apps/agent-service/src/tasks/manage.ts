@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import {
+  CompactTaskRequestSchema,
   Identifier,
   isActiveStatus,
   parse,
@@ -21,7 +22,9 @@ export interface TaskManageContext {
  * released so the next accepted run builds with the new tier). DELETE
  * refuses while any run is active and otherwise removes the task, its
  * idempotency entries and its orphaned pending requests; session files,
- * transcripts and audit logs stay on disk for forensics.
+ * transcripts and audit logs stay on disk for forensics. POST compact starts
+ * a manual compaction of an idle task (RunnerManager.compact) and answers once
+ * it is accepted; the task's compaction block and context updates follow it.
  */
 export function registerTaskManageRoutes(app: FastifyInstance, ctx: TaskManageContext): void {
   app.patch<{ Params: { taskId: string } }>('/v1/tasks/:taskId', async (request) => {
@@ -64,6 +67,14 @@ export function registerTaskManageRoutes(app: FastifyInstance, ctx: TaskManageCo
     });
     await ctx.manager.runnerFor(taskId).dispose();
     return { deleted: true as const, taskId };
+  });
+
+  app.post<{ Params: { taskId: string } }>('/v1/tasks/:taskId/compact', async (request) => {
+    const taskId = parse(Identifier, request.params.taskId);
+    const body = parse(CompactTaskRequestSchema, request.body ?? {});
+    ctx.ledger.task(taskId);
+    await ctx.manager.compact(taskId, body.instructions?.trim() || undefined);
+    return { ok: true as const };
   });
 
   app.post<{ Params: { taskId: string } }>('/v1/tasks/:taskId/queue/replace', async (request) => {

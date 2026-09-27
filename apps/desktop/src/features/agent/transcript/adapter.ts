@@ -219,6 +219,16 @@ function adaptBlock(block: Block, requests: RequestIndex): ViewBlock {
         status: null,
         tool: null,
       };
+    // A compaction is a system event in the view model; `CompactionBlock` renders its source.
+    case 'compaction':
+      return {
+        ...base,
+        role: 'system',
+        text: block.summary,
+        streaming: false,
+        status: null,
+        tool: null,
+      };
     default: {
       const _exhaustive: never = block;
       void _exhaustive;

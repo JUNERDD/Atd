@@ -3,6 +3,8 @@ import { clampThinkingLevel, getSupportedThinkingLevels } from '@earendil-works/
 import {
   Identifier,
   parse,
+  ProviderContextRequestSchema,
+  ProviderContextsQuerySchema,
   ProviderDefaultRequestSchema,
   ProviderLevelsQuerySchema,
   ProviderLoginAnswerRequestSchema,
@@ -17,6 +19,7 @@ import { serviceConfigurationId } from '../credentials/connections.js';
 import { keyringAccount } from '../credentials/keyring.js';
 import { ConflictError } from '../errors.js';
 import { mustConnection, presentConnection, presentStored } from './connection-view.js';
+import { connectionModelTiers, contextsResponse } from './context-tiers.js';
 import type { ProviderLogins } from './login.js';
 import { connectionModel, refreshCatalog, verifyModel, type ProviderStores } from './runtime.js';
 
@@ -25,7 +28,7 @@ const STALE = 'This connection changed. Reload its saved settings and try again.
 type Params = { Params: { connectionId: string } };
 
 /**
- * Connection edits, preference writes, thinking levels, catalog refresh,
+ * Connection edits, preference writes, thinking levels, context window tiers, catalog refresh,
  * model verification and account sign-in. Every write names the revision the
  * caller read, and the revision check repeats inside the store's serialized
  * change, so two windows cannot silently overwrite each other.
@@ -118,6 +121,34 @@ export function registerConnectionRoutes(
     const { live, ...opened } = await load(request.params.connectionId);
     const model = await connectionModel(opened, live, modelId);
     return { levels: model ? getSupportedThinkingLevels(model) : [] };
+  });
+
+  app.get<Params>('/v1/providers/:connectionId/contexts', async (request) => {
+    const { modelId } = parse(ProviderContextsQuerySchema, request.query);
+    const { live } = await load(request.params.connectionId);
+    const { catalog = [] } = await presentConnection(live);
+    return contextsResponse(live, catalog, modelId);
+  });
+
+  app.put<Params>('/v1/providers/:connectionId/context', async (request) => {
+    const body = parse(ProviderContextRequestSchema, request.body);
+    const { live, connections } = await load(request.params.connectionId);
+    if (live.revision !== body.expectedRevision) throw new ConflictError(STALE);
+    const { catalog = [] } = await presentConnection(live);
+    const derived = connectionModelTiers(live, catalog, body.modelId);
+    if (!derived) throw new TypeError('This model has no context window choice.');
+    await connections.change((data) => {
+      const current = data.connections.find((item) => item.connectionId === live.connectionId);
+      if (!current || current.revision !== body.expectedRevision) throw new ConflictError(STALE);
+      // Only choices that differ from the default are stored; choosing the default forgets one.
+      const tiers = { ...current.contextTiers };
+      if (body.tier === derived.defaultTier) delete tiers[body.modelId];
+      else tiers[body.modelId] = body.tier;
+      if (Object.keys(tiers).length) current.contextTiers = tiers;
+      else delete current.contextTiers;
+      current.revision += 1;
+    });
+    return { connection: await presentStored(connections, live.connectionId) };
   });
 
   app.post<Params>('/v1/providers/:connectionId/refresh', async (request) => {

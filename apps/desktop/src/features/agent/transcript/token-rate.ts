@@ -55,7 +55,7 @@ export function buildLiveText(blocks: Block[]): string {
 type TurnGeneration = { output: number; durationMs?: number };
 
 function usageOf(block: Block): TurnGeneration | null {
-  if (block.kind === 'user' || block.kind === 'system') return null;
+  if (block.kind === 'user' || block.kind === 'system' || block.kind === 'compaction') return null;
   const output = block.usage?.output;
   if (typeof output !== 'number' || !Number.isInteger(output) || output < 0) return null;
   const durationMs = block.usage?.durationMs;
@@ -96,9 +96,9 @@ export function sumTurnGeneration(blocks: Block[]): {
 }
 
 /**
- * Compaction markers are the only system blocks the projection emits. A turn containing one
- * lost some provider history, so its settled suffix hides instead of claiming a complete total.
+ * A turn holding a compaction lost some provider history, so its settled suffix hides instead of
+ * claiming a complete total. Other system notes leave the rate alone.
  */
 export function hasCompactionMarker(blocks: Block[]): boolean {
-  return blocks.some((block) => block.kind === 'system');
+  return blocks.some((block) => block.kind === 'compaction');
 }

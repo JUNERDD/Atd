@@ -59,3 +59,11 @@ export const ServiceModelDefinitionSchema = Type.Object(
   { additionalProperties: false },
 );
 export type ServiceModelDefinition = Static<typeof ServiceModelDefinitionSchema>;
+
+/**
+ * A model's context window choice where a real trade-off exists: `standard` is the smaller window
+ * (or the one below a pricing threshold), `long` the larger one. The service alone derives which
+ * windows a model offers.
+ */
+export const ContextTierSchema = Type.Union([Type.Literal('standard'), Type.Literal('long')]);
+export type ContextTier = Static<typeof ContextTierSchema>;

@@ -3,7 +3,12 @@ import type { IpcMainInvokeEvent } from 'electron';
 import { Type } from 'typebox';
 import { parse } from '../agent/validation';
 import { PROVIDER_IPC } from './ipc-channels';
-import { ConnectionDraftSchema, ModelReferenceSchema, ModelThinkingLevelSchema } from './schema';
+import {
+  ConnectionDraftSchema,
+  ContextTierSchema,
+  ModelReferenceSchema,
+  ModelThinkingLevelSchema,
+} from './schema';
 import type { ProviderService } from './service';
 
 const identity = Type.String({ minLength: 1, maxLength: 256, pattern: '^[a-zA-Z0-9_-]+$' });
@@ -35,6 +40,22 @@ export function installProviderIpc(
   handle(
     PROVIDER_IPC.levels,
     (reference) => service.levels(parse(ModelReferenceSchema, reference)),
+    false,
+  );
+  // The composer's model popover shows and changes the context tier too; both windows may ask.
+  handle(
+    PROVIDER_IPC.contexts,
+    (reference) => service.contexts(parse(ModelReferenceSchema, reference)),
+    false,
+  );
+  handle(
+    PROVIDER_IPC.context,
+    (reference, tier, revision) =>
+      service.setContext(
+        parse(ModelReferenceSchema, reference),
+        parse(ContextTierSchema, tier),
+        parse(revisionSchema, revision),
+      ),
     false,
   );
   handle(PROVIDER_IPC.disconnect, (id, revision) =>

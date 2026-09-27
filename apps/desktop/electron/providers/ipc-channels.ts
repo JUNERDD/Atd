@@ -8,6 +8,8 @@ export const PROVIDER_IPC = {
   default: 'providers:default',
   model: 'providers:model',
   levels: 'providers:levels',
+  contexts: 'providers:contexts',
+  context: 'providers:context',
   disconnect: 'providers:disconnect',
   refresh: 'providers:refresh',
   refreshCatalogs: 'providers:refresh-catalogs',

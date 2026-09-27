@@ -6,6 +6,7 @@ import type {
   ProviderCatalogEntry,
   Connection,
   LoginState,
+  ModelContexts,
   ModelThinkingLevel,
 } from './schema';
 
@@ -18,6 +19,10 @@ export const providerBridge: ProviderBridge = {
     ipcRenderer.invoke(PROVIDER_IPC.model, reference, revision, thinkingLevel) as Promise<void>,
   levels: (reference) =>
     ipcRenderer.invoke(PROVIDER_IPC.levels, reference) as Promise<ModelThinkingLevel[]>,
+  contexts: (reference) =>
+    ipcRenderer.invoke(PROVIDER_IPC.contexts, reference) as Promise<ModelContexts>,
+  setContext: (reference, tier, revision) =>
+    ipcRenderer.invoke(PROVIDER_IPC.context, reference, tier, revision) as Promise<void>,
   disconnect: (id, revision) =>
     ipcRenderer.invoke(PROVIDER_IPC.disconnect, id, revision) as Promise<void>,
   refresh: (id) => ipcRenderer.invoke(PROVIDER_IPC.refresh, id) as Promise<void>,

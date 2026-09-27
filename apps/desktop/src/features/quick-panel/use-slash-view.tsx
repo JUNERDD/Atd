@@ -9,7 +9,9 @@ import { rankModels } from '../providers/model-match';
 import { sortModels } from '../providers/model-order';
 import { ProviderBrand } from '../providers/provider-brand';
 import { useCatalogRefresh } from '../providers/use-catalog-refresh';
+import { useModelContexts } from '../providers/use-model-contexts';
 import { useThinkingLevels } from '../providers/use-thinking-levels';
+import type { CompactBlock } from '../agent/compaction/compact-availability';
 import type { ExtensionSkillRow } from '../service/extension-rows';
 import {
   QUICK_COMMANDS,
@@ -19,6 +21,7 @@ import {
   type QuickCommandContext,
 } from './quick-commands';
 import { orderGroups, type QuickGroup, type QuickOption, type QuickView } from './quick-options';
+import { compactDrill, contextDrill } from './slash-drills';
 import type { TriggerState } from './trigger';
 import type { ServiceListView } from './use-service-lists';
 
@@ -70,10 +73,11 @@ export function skillsView(
 }
 
 /**
- * The `/` panel. A leading `/` lists quick commands and enabled skills, or the `/model` and
- * `/effort` drill lists; an inline `/` lists skills only, since commands act on the whole draft.
- * Policy changes stay on this draft (`useDefaultModel: false` for a model pick) and never touch
- * the app defaults; every drill pick clears the trigger text afterwards.
+ * The `/` panel. A leading `/` lists quick commands and enabled skills, or the `/model`,
+ * `/effort` and `/context` drill lists and the `/compact <focus>` row; an inline `/` lists skills
+ * only, since commands act on the whole draft. Model and effort changes stay on this draft
+ * (`useDefaultModel: false` for a model pick) and never touch the app defaults; a context tier is
+ * the connection's remembered choice for the model. Every drill pick clears the trigger text.
  */
 export function useSlashView({
   trigger,
@@ -86,6 +90,7 @@ export function useSlashView({
   connections,
   model,
   skills,
+  compact,
 }: {
   trigger: SlashTrigger | null;
   running: boolean;
@@ -97,15 +102,34 @@ export function useSlashView({
   connections: Connection[];
   model: ModelReference | null;
   skills: ServiceListView<ExtensionSkillRow>;
+  /** Why the open task cannot be compacted now; null when it can. */
+  compact: CompactBlock | null;
 }): QuickView {
   const { t } = useTranslation('panel');
   const { t: tp } = useTranslation('providers');
   const shown = policy.model ?? model;
   // Levels load once a leading `/` opens; they gate `/effort` and fill its drill list.
-  const effort = useThinkingLevels(trigger?.placement === 'leading' ? shown : null);
+  const leading = trigger?.placement === 'leading' ? shown : null;
+  const effort = useThinkingLevels(leading);
+  const shownConnection = connections.find((item) => item.connectionId === shown?.connectionId);
+  // Tiers load with the levels; they gate `/context` and fill its drill list.
+  const contexts = useModelContexts(leading, shownConnection?.revision ?? null);
   useCatalogRefresh(trigger?.drill?.command === 'model');
   if (!trigger) return { groups: [], empty: null };
+  if (trigger.drill?.command === 'compact')
+    return compactDrill({ query: trigger.drill.query, block: compact, actions, editor, t });
   const drill = trigger.drill && isDrillCommand(trigger.drill.command) ? trigger.drill : null;
+
+  if (drill?.command === 'context')
+    return contextDrill({
+      query: drill.query,
+      shown,
+      connection: shownConnection,
+      contexts,
+      editor,
+      t,
+      tp,
+    });
 
   if (drill?.command === 'model') {
     const groups = connections.map((connection): QuickGroup => {
@@ -142,8 +166,7 @@ export function useSlashView({
   }
 
   if (drill?.command === 'effort') {
-    const connection = connections.find((item) => item.connectionId === shown?.connectionId);
-    const current = policy.thinkingLevel ?? connection?.defaultThinkingLevel ?? 'off';
+    const current = policy.thinkingLevel ?? shownConnection?.defaultThinkingLevel ?? 'off';
     // Same substitution as the model popover: an unsupported level shows the first offered one.
     const selected = effort.levels.includes(current) ? current : (effort.levels[0] ?? current);
     // Why no level can be chosen replaces the list as the panel's empty line.
@@ -183,7 +206,9 @@ export function useSlashView({
   const context: QuickCommandContext = {
     hasModel: shown !== null,
     effortLevels: effort.loading ? null : effort.levels.length,
+    contextTiers: contexts.loading ? null : contexts.options.length,
     hasPending: pending,
+    compact,
   };
   const run = (command: QuickCommand) => {
     if (command.kind === 'drill') {

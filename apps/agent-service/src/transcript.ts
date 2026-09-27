@@ -3,6 +3,14 @@ import type { AssistantMessage, ToolResultMessage } from '@earendil-works/pi-ai'
 import type { ServiceBlock } from '@ai/agent-contracts';
 import type { Logger } from './logging.js';
 import {
+  collectCompleted,
+  completedBlock,
+  failedBlock,
+  readCompactionRecord,
+  runningBlock,
+  type RunningCompaction,
+} from './compaction/records.js';
+import {
   collectBlockLookups,
   projectAssistantServiceBlocks,
   type BlockLookups,
@@ -13,20 +21,28 @@ import type { SubagentRow } from './transcript-details/subagent.js';
 type AgentMessage = AgentSession['messages'][number];
 
 export type ServiceBranchItem =
-  | { type: 'message'; message: AgentMessage; endedAt?: number }
+  | {
+      type: 'message';
+      message: AgentMessage;
+      endedAt?: number;
+      /** A failed attempt an overflow compaction replaced with its retry (`supersededEntries`). */
+      superseded?: true;
+    }
   | { type: 'custom'; customType: string; data?: unknown }
   | { type: 'custom_message'; customType: string; content: unknown; display: boolean }
-  | { type: 'compaction'; summary: string; timestamp: number };
+  | { type: 'compaction'; id: string; summary: string; tokensBefore: number; timestamp: number };
 
 /**
  * Pi 0.87 session-branch projection. `usage` entries are reported on the
  * settled message instead, and mid-transcript `system` entries are prompt
  * patches rather than conversation content, so both are skipped by design.
  * `context_edit` entries only change what later provider requests see; the
- * transcript keeps showing the raw history they edit, so they are skipped too.
+ * transcript keeps showing the raw history they edit, so they are skipped too,
+ * except that they mark attempts an overflow compaction superseded.
  */
 export function fromServiceBranch(entries: readonly SessionEntry[]): ServiceBranchItem[] {
   const items: ServiceBranchItem[] = [];
+  const superseded = supersededEntries(entries);
   for (const entry of entries) {
     switch (entry.type) {
       case 'message': {
@@ -35,6 +51,7 @@ export function fromServiceBranch(entries: readonly SessionEntry[]): ServiceBran
           type: 'message',
           message: entry.message,
           ...(Number.isNaN(endedAt) ? {} : { endedAt }),
+          ...(superseded.has(entry.id) ? { superseded: true as const } : {}),
         });
         break;
       }
@@ -52,7 +69,9 @@ export function fromServiceBranch(entries: readonly SessionEntry[]): ServiceBran
       case 'compaction':
         items.push({
           type: 'compaction',
+          id: entry.id,
           summary: entry.summary,
+          tokensBefore: entry.tokensBefore,
           timestamp: Date.parse(entry.timestamp) || 0,
         });
         break;
@@ -71,6 +90,26 @@ export function fromServiceBranch(entries: readonly SessionEntry[]): ServiceBran
     }
   }
   return items;
+}
+
+/**
+ * Messages Pi dropped to retry after an overflow. Before compacting and retrying a turn that
+ * overflowed the context, Pi omits the failed attempt from later context with a `context_edit`
+ * whose replacement is null (`AgentSession._omitRecoveryAttempt`); the service's own edits always
+ * replace content. Once a compaction follows the omission, the retry supersedes the attempt, so
+ * its error is not the run's outcome and must not show. Without that compaction (the recovery
+ * failed) the attempt keeps showing.
+ */
+function supersededEntries(entries: readonly SessionEntry[]): Set<string> {
+  const omitted = new Set<string>();
+  const superseded = new Set<string>();
+  for (const entry of entries) {
+    if (entry.type === 'context_edit' && entry.replacement === null) omitted.add(entry.targetId);
+    if (entry.type !== 'compaction') continue;
+    for (const id of omitted) superseded.add(id);
+    omitted.clear();
+  }
+  return superseded;
 }
 
 export function contentText(content: unknown): string {
@@ -106,23 +145,6 @@ function stampSequence(counts: Map<number, number>, timestamp: number): number {
   return next;
 }
 
-function systemBlock(
-  runId: string,
-  timestamp: number,
-  text: string,
-  counts: Map<number, number>,
-): ServiceBlock {
-  return {
-    kind: 'system',
-    id: `s:${timestamp}:${stampSequence(counts, timestamp)}`,
-    runId,
-    timestamp,
-    endedAt: timestamp,
-    level: 'info',
-    text,
-  };
-}
-
 export interface ProjectServiceBlocksInput {
   branch: readonly ServiceBranchItem[];
   partial?: AssistantMessage;
@@ -137,6 +159,8 @@ export interface ProjectServiceBlocksInput {
    */
   firstRunId: string;
   live: boolean;
+  /** The compaction the live session runs now; shown last until it ends. */
+  compacting?: RunningCompaction | null;
   /** Receives projection diagnostics (tool details dropped by the contract check). */
   log?: Pick<Logger, 'debug'>;
 }
@@ -157,7 +181,8 @@ export function projectServiceBlocks(input: ProjectServiceBlocksInput): ServiceB
   const partials = input.partials ?? new Map<string, string>();
   const subagentProgress = input.subagentProgress ?? new Map<string, readonly SubagentRow[]>();
   const userCounts = new Map<number, number>();
-  const systemCounts = new Map<number, number>();
+  const compactionCounts = new Map<number, number>();
+  const completed = collectCompleted(branch);
   let runId = input.firstRunId;
   // The first user message after a run's invocation marker is that run's prompt; the run's later
   // user messages are queued steers and follow-ups. The branch's first user message is the first
@@ -173,13 +198,24 @@ export function projectServiceBlocks(input: ProjectServiceBlocksInput): ServiceB
           awaitingPrompt = true;
         }
       }
+      const record = readCompactionRecord(item.customType, item.data);
+      if (record?.status === 'failed') {
+        const id = `cmp:failed:${record.at}:${stampSequence(compactionCounts, record.at)}`;
+        blocks.push(failedBlock({ id, runId, timestamp: record.at, endedAt: record.at }, record));
+      }
       continue;
     }
     if (item.type === 'compaction') {
-      blocks.push(systemBlock(runId, item.timestamp, item.summary, systemCounts));
+      const base = {
+        id: `cmp:${item.id}`,
+        runId,
+        timestamp: item.timestamp,
+        endedAt: item.timestamp,
+      };
+      blocks.push(completedBlock(base, item, completed.get(item.id)));
       continue;
     }
-    if (item.type === 'custom_message') continue;
+    if (item.type === 'custom_message' || item.superseded) continue;
     switch (item.message.role) {
       case 'toolResult':
       case 'custom':
@@ -191,9 +227,15 @@ export function projectServiceBlocks(input: ProjectServiceBlocksInput): ServiceB
       case 'bashExecution':
       case 'branchSummary':
         break;
-      case 'compactionSummary':
-        blocks.push(systemBlock(runId, item.message.timestamp, item.message.summary, systemCounts));
+      case 'compactionSummary': {
+        // Pi projects its compaction entries into these; a branch holds one only from older files.
+        const at = item.message.timestamp;
+        const id = `cmp:m:${at}:${stampSequence(compactionCounts, at)}`;
+        blocks.push(
+          completedBlock({ id, runId, timestamp: at, endedAt: at }, item.message, undefined),
+        );
         break;
+      }
       case 'user':
         blocks.push({
           kind: 'user',
@@ -232,6 +274,7 @@ export function projectServiceBlocks(input: ProjectServiceBlocksInput): ServiceB
       }
     }
   }
+  if (input.compacting) blocks.push(runningBlock(runId, input.compacting));
   return blocks;
 }
 

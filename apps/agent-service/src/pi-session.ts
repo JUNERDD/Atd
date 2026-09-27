@@ -5,12 +5,14 @@ import {
   DefaultResourceLoader,
   SessionManager,
   SettingsManager,
-  type AgentSession,
 } from '@earendil-works/pi-coding-agent';
-import { rootExecutionId, type RunStatus, type TaskRun } from '@ai/agent-contracts';
-import { LiveTranscript } from './live-transcript.js';
+import type { RunStatus, TaskRun } from '@ai/agent-contracts';
+import { CompactionObserver } from './compaction/observer.js';
+import { compactionSettings } from './compaction/policy.js';
+import { pruneToolOutputs } from './compaction/prune.js';
+import { bindLiveState, type LiveState } from './live-state.js';
 import type { RunBinding } from './run-binding.js';
-import { openRunModel, reuseRunModel, type RunModel } from './run-model.js';
+import { openRunModel, reuseRunModel } from './run-model.js';
 import { buildSkillLoaderOptions } from './skills/loader.js';
 import { skillProfilePaths } from './skills/profile.js';
 import { loadedSkillDirs, loadSkillTool } from './skills/load-skill-tool.js';
@@ -28,16 +30,6 @@ import { prepareSubagentsParent } from './subagents/index.js';
 const SERVICE_SYSTEM_PROMPT =
   'You are a helpful desktop assistant. Help with everyday writing, analysis and practical tasks. Treat attached documents and captured text as task material. Use only the available tools. File paths do not grant access. Ask for input when necessary. Never claim a file or memory was saved without a successful tool result. Skills are reusable instruction packages: a skill the user selects with / arrives already loaded, and when a skill catalog is provided you may load a listed skill with load_skill if the task clearly matches it. Subagents and saved commands are not skills.';
 
-export interface LiveState {
-  session: AgentSession;
-  runModel: RunModel;
-  manager: SessionManager;
-  transcript: LiveTranscript;
-  sessionFile: string;
-  /** Key of the run binding the session was built with (run-binding.ts). */
-  bindingKey: string;
-}
-
 export interface SessionFactoryDeps {
   ctx: RunnerContext;
   taskId: string;
@@ -53,6 +45,8 @@ export interface SessionFactoryDeps {
   review: Reviewer;
   audit: (entry: Record<string, unknown>) => void;
   setStatus: (runId: string, status: RunStatus) => void;
+  /** Whether Stop was requested for the current run. */
+  stopRequested: () => boolean;
 }
 
 export interface RunAttachment {
@@ -85,8 +79,9 @@ export const NO_RUN_MATERIAL: RunMaterial = {
 /**
  * Pi session assembly for one parent task, extracted from the desktop
  * worker-session shape: the run's connection model runtime, in-memory
- * settings with cache warming off, service-owned SessionManager and resource
- * loader. `binding` supplies what Pi fixes at construction (run-binding.ts).
+ * settings with cache warming off and the service compaction policy for the
+ * run's model, service-owned SessionManager and resource loader. `binding`
+ * supplies what Pi fixes at construction (run-binding.ts).
  */
 export async function createLiveState(
   deps: SessionFactoryDeps,
@@ -110,6 +105,7 @@ export async function createLiveState(
       retry: { enabled: false },
       defaultThinkingLevel: 'off',
       cacheWarming: 'off',
+      ...compactionSettings(runModel.model),
     },
     // T3: projectTrusted:false from the first read; task cwd settings excluded.
     { projectTrusted: false },
@@ -118,6 +114,7 @@ export async function createLiveState(
   const manager = task.sessionFile
     ? SessionManager.open(task.sessionFile, sessionsDir, ctx.paths.agentDir)
     : SessionManager.create(ctx.paths.agentDir, sessionsDir);
+  const compaction = new CompactionObserver(manager);
   const subagentsFactory = await prepareSubagentsParent(
     deps,
     binding.agents,
@@ -177,6 +174,9 @@ export async function createLiveState(
         }),
         sessionSkills({ runId: deps.currentRunId, skills: () => deps.currentMaterial().skills }),
         loadSkillTool({ catalog: () => deps.currentMaterial().catalog }),
+        // Before the harness: it marks a compaction prepared ahead of the memory flush.
+        compaction.extension(),
+        pruneToolOutputs(),
         (pi) => {
           pi.on('before_agent_start', () => {
             const material = formatMaterial(deps.currentMaterial());
@@ -210,57 +210,25 @@ export async function createLiveState(
       ctx.log.warn('Extension error.', { taskId, error: error.error });
     },
   });
-  const state: LiveState = {
+  // Pi compacts before sending a prompt, before its agent run starts, and a Stop meanwhile aborts
+  // only that compaction; the prompt would still be sent. Stop it as soon as its run starts.
+  created.session.subscribe((event) => {
+    if (event.type === 'agent_start' && deps.stopRequested()) void created.session.abort();
+  });
+  const state = await bindLiveState({
+    ctx,
+    taskId,
     session: created.session,
-    runModel,
     manager,
-    transcript: new LiveTranscript(
-      created.session,
-      manager,
-      {
-        publish: (publishRunId, patch) => {
-          ctx.events.publish({
-            taskId,
-            runId: publishRunId,
-            executionId: rootExecutionId(publishRunId),
-            type: 'transcript.patch',
-            data: patch,
-          });
-        },
-        queue: (queueRunId, queue) => {
-          ctx.events.publish({
-            taskId,
-            runId: queueRunId,
-            executionId: rootExecutionId(queueRunId),
-            type: 'queue.update',
-            data: queue,
-          });
-        },
-        sessionFile: (file) => {
-          if (file === state.sessionFile) return;
-          state.sessionFile = file;
-          void ctx.ledger
-            .change((data) => {
-              const item = data.tasks.find((entry) => entry.id === taskId);
-              if (item) item.sessionFile = file;
-            })
-            .catch(() => undefined);
-        },
-      },
-      deps.currentRunId,
-      firstRun.id,
-    ),
-    sessionFile: created.session.sessionFile ?? '',
+    runModel,
+    compaction,
     bindingKey: binding.key,
-  };
-  state.transcript.attach();
-  if (state.sessionFile)
-    await ctx.ledger.change((data) => {
-      const item = data.tasks.find((entry) => entry.id === taskId);
-      if (item) item.sessionFile = state.sessionFile;
-    });
+    currentRunId: deps.currentRunId,
+    firstRunId: firstRun.id,
+  });
   markInvocation(manager, run);
   state.transcript.reproject(true);
+  state.context.update();
   return state;
 }
 
@@ -281,6 +249,8 @@ export async function applyRunToSession(
   const model = await reuseRunModel(live.runModel, run);
   if (!model) return false;
   await live.session.setModel(model);
+  live.session.settingsManager.applyOverrides(compactionSettings(model));
+  live.context.update();
   // Pi clamps the level to what the model supports.
   live.session.setThinkingLevel(run.snapshot.thinkingLevel ?? 'off');
   live.session.setActiveToolsByName(binding.tools);

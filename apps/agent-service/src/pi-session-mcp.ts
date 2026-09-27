@@ -9,7 +9,8 @@ import {
   type McpToolBinding,
 } from './mcp/index.js';
 import { ResourceStore } from './resources.js';
-import { readServiceId, type RunnerContext } from './task-runner.js';
+import { readServiceId } from './storage.js';
+import type { RunnerContext } from './task-runner.js';
 import { effectiveTaskTier } from './tasks/tier.js';
 
 export interface SessionMcpDeps {

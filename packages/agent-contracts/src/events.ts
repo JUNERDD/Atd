@@ -1,6 +1,7 @@
 import { Type, type Static } from 'typebox';
 import { Identifier } from './identifiers.js';
 import { CapabilityRequestSchema, PermissionRequestSchema } from './confirms.js';
+import { TaskContextStateSchema } from './snapshot.js';
 import { RunStatusSchema } from './task.js';
 
 /** Execution identity: `root:<runId>` today; T5 adds `child:<runId>:<n>`. */
@@ -20,6 +21,11 @@ export const EventTypeSchema = Type.Union([
   Type.Literal('capability.requested'),
   Type.Literal('capability.resolved'),
   Type.Literal('notice'),
+  /**
+   * Data is `ContextUpdateData`, the task's whole context state, sent after each turn, when a
+   * compaction starts or ends, and when the model changes.
+   */
+  Type.Literal('context.update'),
 ]);
 export type EventType = Static<typeof EventTypeSchema>;
 
@@ -124,3 +130,7 @@ export const NoticeDataSchema = Type.Object(
   { additionalProperties: false },
 );
 export type NoticeData = Static<typeof NoticeDataSchema>;
+
+/** `context.update` data: the task's whole context state (snapshot.ts). */
+export const ContextUpdateDataSchema = TaskContextStateSchema;
+export type ContextUpdateData = Static<typeof ContextUpdateDataSchema>;

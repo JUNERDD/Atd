@@ -1,7 +1,7 @@
 import { Type, type Static } from 'typebox';
 import { Identifier } from './identifiers.js';
 import { MigrationCredentialSchema, ServiceConnectionSchema } from './migration.js';
-import { ServiceModelDefinitionSchema, ThinkingLevelSchema } from './models.js';
+import { ContextTierSchema, ServiceModelDefinitionSchema, ThinkingLevelSchema } from './models.js';
 
 /**
  * Provider connection edits, preference writes, catalog refresh, model
@@ -107,6 +107,57 @@ export const ProviderLevelsResponseSchema = Type.Object(
   { additionalProperties: false },
 );
 export type ProviderLevelsResponse = Static<typeof ProviderLevelsResponseSchema>;
+
+/** Query for the context window tiers one of the connection's models offers. */
+export const ProviderContextsQuerySchema = Type.Object(
+  { modelId: Type.String({ minLength: 1, maxLength: 256 }) },
+  { additionalProperties: false },
+);
+export type ProviderContextsQuery = Static<typeof ProviderContextsQuerySchema>;
+
+/** One selectable context window of a model. */
+export const ProviderContextOptionSchema = Type.Object(
+  {
+    tier: ContextTierSchema,
+    contextWindow: Type.Integer({ minimum: 1 }),
+    /**
+     * Input tokens above which the whole request is billed at the model's higher rate; set only
+     * on the `long` tier of a model whose catalog prices such a threshold.
+     */
+    pricedAbove: Type.Union([Type.Integer({ minimum: 1 }), Type.Null()]),
+  },
+  { additionalProperties: false },
+);
+export type ProviderContextOption = Static<typeof ProviderContextOptionSchema>;
+
+/**
+ * The model's context tiers, `standard` first. A model without a real choice has no options and
+ * null `defaultTier` / `selected`, and its Context row stays read-only.
+ */
+export const ProviderContextsResponseSchema = Type.Object(
+  {
+    options: Type.Array(ProviderContextOptionSchema, { maxItems: 2 }),
+    defaultTier: Type.Union([ContextTierSchema, Type.Null()]),
+    /** The tier new runs of this model use: the saved choice, else `defaultTier`. */
+    selected: Type.Union([ContextTierSchema, Type.Null()]),
+  },
+  { additionalProperties: false },
+);
+export type ProviderContextsResponse = Static<typeof ProviderContextsResponseSchema>;
+
+/**
+ * Remembers a model's context tier on the connection for later runs; choosing the model's default
+ * tier removes the saved entry. Revision-guarded; answers with `ProviderConnectionResponse`.
+ */
+export const ProviderContextRequestSchema = Type.Object(
+  {
+    expectedRevision: Type.Integer({ minimum: 1 }),
+    modelId: Type.String({ minLength: 1, maxLength: 256 }),
+    tier: ContextTierSchema,
+  },
+  { additionalProperties: false },
+);
+export type ProviderContextRequest = Static<typeof ProviderContextRequestSchema>;
 
 /**
  * Account sign-in progress. The service runs the Pi login flow and keeps its

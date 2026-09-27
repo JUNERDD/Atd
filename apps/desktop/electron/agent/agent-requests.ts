@@ -9,6 +9,7 @@ import type {
 } from './bridge';
 import type { CommandDefinition } from './command-schema';
 import {
+  compactLiveTask,
   deleteLiveTask,
   loadMemory,
   notConnected,
@@ -208,6 +209,9 @@ export class AgentRequests<S> {
         this.tasks.details.delete(request.taskId);
         this.tasks.children.forgetTask(request.taskId);
         this.broadcast();
+        return null;
+      case 'compactTask':
+        await compactLiveTask(this.options(), request.taskId, request.instructions);
         return null;
       case 'chooseFiles':
         return this.platform.chooseFiles(this.tasks.http());

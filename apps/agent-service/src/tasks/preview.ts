@@ -13,7 +13,7 @@ import { CommandStore } from '../commands/store.js';
 import { defaultArguments, resolveCommandInstructions } from '../commands/templates.js';
 import { ConnectionStore } from '../credentials/connections.js';
 import type { Ledger } from '../ledger.js';
-import { resolveRunModel, resolveRunThinkingLevel } from './run-selection.js';
+import { loadRunContextWindow, resolveRunModel, resolveRunThinkingLevel } from './run-selection.js';
 
 export interface PreviewContext {
   dataDir: string;
@@ -23,7 +23,7 @@ export interface PreviewContext {
 /**
  * Read-only run preview (T6b). Shows the exact snapshot a submit with the
  * same inputs would freeze: resolved instructions, pinned model ref,
- * tools, memory flag and thinking level. No ledger write, no run, no
+ * tools, memory flag, thinking level and context window. No ledger write, no run, no
  * network. Input problems answer 400 (TypeError); unknown command or
  * connection answers 404.
  */
@@ -64,6 +64,7 @@ export async function resolvePreview(
     body.policy?.thinkingLevel ??
       (command?.model.mode === 'fixed' ? command.model.thinkingLevel : undefined),
   );
+  const contextWindow = (await loadRunContextWindow(connections, selection))(model);
   const snapshot = parse(RunSnapshotSchema, {
     input,
     instructions,
@@ -71,6 +72,7 @@ export async function resolvePreview(
     tools,
     memory,
     ...(thinkingLevel ? { thinkingLevel } : {}),
+    ...(contextWindow ? { contextWindow } : {}),
   });
   return { snapshot, commandId: command?.id ?? null, warnings };
 }

@@ -1,4 +1,3 @@
-import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import {
   errorMessage,
@@ -7,9 +6,13 @@ import {
   type PermissionTier,
   type QueueState,
   type RunStatus,
-  type ServiceBlock,
   type TaskRun,
 } from '@ai/agent-contracts';
+import {
+  createCompactionState,
+  NOTHING_TO_COMPACT,
+  startManualCompaction,
+} from './compaction/manual.js';
 import { AuthRequired } from './credentials.js';
 import type { EventLog } from './event-log.js';
 import { Ledger } from './ledger.js';
@@ -18,20 +21,20 @@ import type { ServicePaths } from './storage.js';
 import type { CapabilityRegistry } from './capabilities.js';
 import type { ConfirmStore } from './confirms.js';
 import { AuditWriter } from './audit.js';
+import { ConflictError } from './errors.js';
 import { createReviewer } from './harness/auto-review.js';
 import {
   applyRunToSession,
   createLiveState,
   NO_RUN_MATERIAL,
-  type LiveState,
   type RunAttachment,
   type RunMaterial,
   type SessionFactoryDeps,
 } from './pi-session.js';
 import { prepareRunBinding } from './run-binding.js';
 import { freezeRunSelections, releaseRunSelections } from './run-freeze.js';
-import { fromServiceBranch, projectServiceBlocks } from './transcript.js';
-import { SessionManager } from '@earendil-works/pi-coding-agent';
+import type { LiveState } from './live-state.js';
+import { coldTaskView, lastAssistant, liveTaskView, type TaskView } from './task-view.js';
 import { runSkillsError } from './skills/run-skills.js';
 import type { RuntimeAgent } from './subagents/agents.js';
 import {
@@ -65,6 +68,8 @@ export class TaskRunner {
   private currentRunId = '';
   private material: RunMaterial = NO_RUN_MATERIAL;
   private aborted = false;
+  /** A manual compaction of the idle session runs; runs wait for it. */
+  private compacting = false;
   private audit: AuditWriter | null = null;
   private readonly grants = new Set<string>();
   /** Wiring for every Pi session this runner builds; accessors read the current run. */
@@ -96,6 +101,7 @@ export class TaskRunner {
       setStatus: (runId, status) => {
         void this.setStatus(runId, status, '').catch(() => undefined);
       },
+      stopRequested: () => this.aborted,
     };
   }
 
@@ -107,33 +113,37 @@ export class TaskRunner {
     return this.live !== null;
   }
 
-  async transcript(): Promise<{ revision: number; blocks: ServiceBlock[] }> {
-    if (this.live) return this.live.transcript.snapshot();
+  /** The task's transcript and context state, live or read from its session file. */
+  async view(): Promise<TaskView> {
+    return this.live ? liveTaskView(this.live) : coldTaskView(this.ctx, this.taskId);
+  }
+
+  isCompacting(): boolean {
+    return this.compacting;
+  }
+
+  /**
+   * Compacts the idle task's context now, on its live session or, without one, a session opened
+   * for it on the latest run (compaction/manual.ts); see `startManualCompaction`. The caller
+   * refuses while a run is active and holds new runs until it ends.
+   */
+  async compact(instructions: string | undefined): Promise<{ done: Promise<void> }> {
+    if (this.compacting) throw new ConflictError('The context is already being compacted.');
     const task = this.ctx.ledger.task(this.taskId);
-    const [first] = task.runs;
-    if (!task.sessionFile || !first) return { revision: 0, blocks: [] };
-    try {
-      const manager = SessionManager.open(
-        task.sessionFile,
-        path.join(this.ctx.paths.sessionsDir, this.taskId),
-        this.ctx.paths.agentDir,
-      );
-      const branch = fromServiceBranch(manager.getBranch());
-      return {
-        revision: 0,
-        blocks: projectServiceBlocks({
-          branch,
-          firstRunId: first.id,
-          live: false,
-        }),
-      };
-    } catch (error) {
-      this.ctx.log.warn('Cold transcript projection failed.', {
-        taskId: this.taskId,
-        error: errorMessage(error),
-      });
-      return { revision: 0, blocks: [] };
-    }
+    const run = task.runs.at(-1);
+    if (!run || !(this.live || task.sessionFile)) throw new ConflictError(NOTHING_TO_COMPACT);
+    // Events of a compaction outside a run belong to the task's latest run.
+    this.currentRunId ||= run.id;
+    const memory = this.live ? this.liveMemory : null;
+    this.compacting = true;
+    return startManualCompaction({
+      live: async () => (this.live ??= await createCompactionState(this.session, run)),
+      instructions,
+      wrap: (action) => this.memoryTurn(memory, action),
+      onEnd: () => {
+        this.compacting = false;
+      },
+    });
   }
 
   /** One child session's transcript (child-transcript-read.ts); null when the task has no such child. */
@@ -187,10 +197,8 @@ export class TaskRunner {
       await this.memoryTurn(rootMemoryScope(this.taskId, run), () =>
         live.session.prompt(promptText(run), { expandPromptTemplates: false }),
       );
-      const last = [...live.session.messages]
-        .reverse()
-        .find((message) => message.role === 'assistant');
-      const failed = last?.role === 'assistant' && last.stopReason === 'error';
+      const last = lastAssistant(live.manager.getBranch());
+      const failed = last?.stopReason === 'error';
       const error = failed ? (last.errorMessage ?? 'The model request failed.') : '';
       if (this.statusOf(run.id) === 'stopping' || this.aborted)
         await this.setStatus(run.id, 'stopped', '');
@@ -331,11 +339,4 @@ export class TaskRunner {
 
 function promptText(run: TaskRun): string {
   return run.snapshot.input.text.trim() || run.snapshot.instructions || 'Use the attached context.';
-}
-
-export async function readServiceId(paths: ServicePaths): Promise<string> {
-  const raw = JSON.parse(await readFile(paths.serviceFile, 'utf8')) as { serviceId?: unknown };
-  if (typeof raw.serviceId !== 'string' || !raw.serviceId)
-    throw new Error('Service identity is missing.');
-  return raw.serviceId;
 }

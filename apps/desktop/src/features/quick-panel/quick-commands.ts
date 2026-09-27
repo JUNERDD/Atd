@@ -1,21 +1,30 @@
 import {
   Astroid,
   BrainCircuit,
+  FoldVertical,
   Gauge,
   History,
+  Layers,
   ListOrdered,
   Settings,
   type LucideIcon,
 } from 'lucide-react';
+import type { CompactBlock } from '../agent/compaction/compact-availability';
 import type { CommandIds } from './trigger';
 
 /**
  * Quick commands that open a second-level list instead of running at once.
  * The editor reports `trigger.drill` only for these ids (`/model gpt` → drill `model`).
  */
-export const DRILL_COMMAND_IDS = ['model', 'effort'] as const;
+export const DRILL_COMMAND_IDS = ['model', 'effort', 'context'] as const;
 
 export type DrillCommandId = (typeof DRILL_COMMAND_IDS)[number];
+
+/**
+ * Run commands that take free text: `/compact keep the API decisions` reports `trigger.drill`
+ * like a drill command, and its query becomes the command's argument instead of a list filter.
+ */
+export const ARGUMENT_COMMAND_IDS = ['compact'] as const;
 
 /** Composer-owned actions that quick commands run after the trigger text is cleared. */
 export interface QuickActions {
@@ -27,6 +36,8 @@ export interface QuickActions {
 export type QuickCommandActions = QuickActions & {
   openSettings: () => void;
   showQueue: () => void;
+  /** Compacts the open task's context, focused by `/compact <instructions>` when given. */
+  compact: (instructions?: string) => void;
 };
 
 /** What decides whether a command can run for the current draft. */
@@ -35,12 +46,16 @@ export interface QuickCommandContext {
   hasModel: boolean;
   /** Effort levels the model offers; `null` while they load. */
   effortLevels: number | null;
+  /** Context tiers the model offers (two, or none); `null` while they load. */
+  contextTiers: number | null;
   /** Something waits above the composer: an approval, a question, or a queued message. */
   hasPending: boolean;
+  /** Why the open task cannot be compacted now; null when it can. */
+  compact: CompactBlock | null;
 }
 
 /** Why a command is greyed out; each maps to `quickPanel.blocked.*`. */
-export type QuickCommandBlock = 'noModel' | 'noEffort' | 'noPending';
+export type QuickCommandBlock = 'noModel' | 'noEffort' | 'noContext' | 'noPending' | CompactBlock;
 
 interface CommandBase {
   icon: LucideIcon;
@@ -58,7 +73,7 @@ export type QuickCommand =
   | (CommandBase & { kind: 'drill'; id: DrillCommandId })
   | (CommandBase & {
       kind: 'run';
-      id: 'new' | 'history' | 'queue' | 'settings';
+      id: 'new' | 'history' | 'queue' | 'settings' | 'compact';
       run: (actions: QuickCommandActions) => void;
     });
 
@@ -78,6 +93,22 @@ export const QUICK_COMMANDS: readonly QuickCommand[] = [
     keywords: ['thinking', 'reasoning'],
     blockedBy: ({ hasModel, effortLevels }) =>
       !hasModel ? 'noModel' : effortLevels !== null && effortLevels < 2 ? 'noEffort' : null,
+  },
+  {
+    kind: 'drill',
+    id: 'context',
+    icon: Layers,
+    keywords: ['window', 'tokens', 'long'],
+    blockedBy: ({ hasModel, contextTiers }) =>
+      !hasModel ? 'noModel' : contextTiers !== null && contextTiers < 2 ? 'noContext' : null,
+  },
+  {
+    kind: 'run',
+    id: 'compact',
+    icon: FoldVertical,
+    keywords: ['summarize', 'summary', 'context', 'tokens'],
+    blockedBy: ({ compact }) => compact,
+    run: (actions) => actions.compact(),
   },
   {
     kind: 'run',
@@ -106,7 +137,7 @@ export const QUICK_COMMANDS: readonly QuickCommand[] = [
 /** The ids the composer editor recognizes after a leading `/`; it never imports the table above. */
 export const QUICK_COMMAND_IDS: CommandIds = {
   all: QUICK_COMMANDS.map((command) => command.id),
-  drillable: DRILL_COMMAND_IDS,
+  drillable: [...DRILL_COMMAND_IDS, ...ARGUMENT_COMMAND_IDS],
 };
 
 /** Narrows the editor's reported drill command to a known drill list. */

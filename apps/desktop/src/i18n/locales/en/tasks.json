@@ -145,6 +145,14 @@
     "done": "Thought",
     "doneWithElapsed": "Thought {{elapsed}}"
   },
+  "compaction": {
+    "running": "Compacting context…",
+    "done": "Context compacted",
+    "doneWithTokens": "Context compacted · ~{{before}} → {{after}} tokens",
+    "summaryLabel": "Context summary",
+    "failed": "Couldn't compact context",
+    "retry": "Retry"
+  },
   "files": {
     "open": "Open",
     "openLabel": "Open file",

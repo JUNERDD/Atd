@@ -5,7 +5,11 @@ import { ScrollArea } from '@ai/ui/components/scroll-area';
 import type { TaskDetail } from '../../../../electron/agent/bridge';
 import { isActive, type FileRef, type TaskRun } from '../../../../electron/agent/task-schema';
 import { TaskFiles } from '../task-files';
+import { compactBlock } from '../compaction/compact-availability';
+import { NewTaskHint } from '../compaction/new-task-hint';
+import { useCompactTask } from '../compaction/use-compact-task';
 import { adaptTranscript, modelNameForRun, type AdaptedTurn } from './adapter';
+import { CompactionRetryContext, type CompactionRetry } from './compaction-context';
 import { artifactAnchorIds, indexRequests, type RequestIndex } from './turns';
 import { PromptMessage } from './prompt-message';
 import { ScrollJump } from './scroll-jump';
@@ -77,15 +81,20 @@ function TurnList({
  * The task's conversation. `covered` keeps it laid out but invisible and inert while a subagent's
  * drill-in view sits on top, so expanded rows, loaded turns and the scroll offset survive the
  * round trip without being restored by hand (a `display: none` box would drop the offset).
+ * A failed compaction row retries through this task; after repeated compactions the end of the
+ * conversation suggests `onNewTask`.
  */
 export function Transcript({
   detail,
   covered = false,
   onAttach,
+  onNewTask,
 }: {
   detail: TaskDetail;
   covered?: boolean;
   onAttach: (file: FileRef) => void;
+  /** Starts a new task; without it the repeated-compaction hint stays hidden. */
+  onNewTask?: () => void;
 }): ReactElement {
   const { t } = useTranslation('tasks');
   const { t: tPanel } = useTranslation('panel');
@@ -104,6 +113,13 @@ export function Transcript({
   const hasUser = blocks.some((block) => block.kind === 'user');
   const pendingFiles = !hasUser && run ? artifacts.filter((file) => file.runId === run.id) : [];
   const headRequest = requests[0];
+  const { compact, pending: compacting } = useCompactTask();
+  const retryBlocked = compacting || compactBlock(task, detail.context) !== null;
+  const latestCompaction = blocks.findLast((block) => block.kind === 'compaction')?.id ?? null;
+  const retry = useMemo<CompactionRetry>(
+    () => ({ retry: () => void compact(task.id), disabled: retryBlocked, latestCompaction }),
+    [compact, task.id, retryBlocked, latestCompaction],
+  );
 
   return (
     <div className="conversation" data-covered={covered || undefined} inert={covered}>
@@ -139,17 +155,27 @@ export function Transcript({
               </article>
             </section>
           )}
-          <TurnList
-            key={task.id}
-            turns={turns}
-            runs={task.runs}
-            artifacts={artifacts}
-            anchors={anchors}
-            requests={requestIndex}
-            live={live}
-            status={<StatusBar run={run} />}
-            onAttach={onAttach}
-          />
+          <CompactionRetryContext value={retry}>
+            <TurnList
+              key={task.id}
+              turns={turns}
+              runs={task.runs}
+              artifacts={artifacts}
+              anchors={anchors}
+              requests={requestIndex}
+              live={live}
+              status={<StatusBar run={run} />}
+              onAttach={onAttach}
+            />
+          </CompactionRetryContext>
+          {onNewTask && (
+            <NewTaskHint
+              key={task.id}
+              taskId={task.id}
+              compactions={detail.context.compactions}
+              onNewTask={onNewTask}
+            />
+          )}
           {turns.length === 0 && live && (
             <TurnHeader
               startedAt={null}

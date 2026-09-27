@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { ArrowUp, Plus, Square } from 'lucide-react';
 import { ScrollArea } from '@ai/ui/components/scroll-area';
 import type { ShortcutBindings } from '../../electron/settings-contract';
-import { DEFAULT_SHORTCUTS } from '@ai/agent-contracts';
+import { DEFAULT_SHORTCUTS, type TaskContextState } from '@ai/agent-contracts';
 import type { AgentTask, RunStatus } from '../../electron/agent/task-schema';
 import { isActive } from '../../electron/agent/task-schema';
 import type { PermissionRequest } from '../../electron/agent/permission-schema';
@@ -23,6 +23,8 @@ import { ComposerConfiguration } from './composer-configuration';
 import { ComposerPopover } from './composer-popover';
 import { useOverlayFooter } from './use-overlay-footer';
 import { agentApi } from '../features/agent/use-agent';
+import { compactBlock } from '../features/agent/compaction/compact-availability';
+import { useCompactTask } from '../features/agent/compaction/use-compact-task';
 import { showErrorToast } from './toast-store';
 import './composer.css';
 
@@ -48,6 +50,8 @@ export interface ComposerProps {
   queue?: QueueState;
   /** The open task's transcript; the progress pill above the input derives from it. */
   blocks?: readonly Block[];
+  /** The open task's context usage: the usage ring, `/compact`, and the pill's compacting part. */
+  context?: TaskContextState | null;
   /** Panel actions the `/new` and `/history` quick commands run. */
   quickActions: QuickActions;
   /** Snapshot tasks: `@` conversations and recently attached files. */
@@ -90,6 +94,7 @@ export function Composer({
   requests = [],
   queue = EMPTY_QUEUE,
   blocks = NO_BLOCKS,
+  context = null,
   quickActions,
   tasks,
   overlayBoundary,
@@ -104,6 +109,7 @@ export function Composer({
   // Bumped by `/queue`: the popover reopens whenever the count changes.
   const [queueRecall, setQueueRecall] = useState(0);
   const panel = useRef<QuickPanelHandle>(null);
+  const { compact } = useCompactTask();
   const hasContent = Boolean(draft.text.trim() || draft.files.length);
   const active = isActive(status);
   const locked = status === 'stopping' || status === 'queued';
@@ -238,6 +244,7 @@ export function Composer({
           blocks={blocks}
           // A queued run has not started, so the latest reply still belongs to the last run.
           live={active && status !== 'queued'}
+          compacting={context?.compacting ?? false}
           onEditQueued={(text) => setText(joinDraft(draft.text, text))}
         >
           <QuickPanel
@@ -251,7 +258,11 @@ export function Composer({
               ...quickActions,
               openSettings: onOpenSettings,
               showQueue: () => setQueueRecall((count) => count + 1),
+              compact: (instructions) => {
+                if (taskId) void compact(taskId, instructions);
+              },
             }}
+            compact={compactBlock(task, context)}
             policy={policy}
             onPolicyChange={onPolicyChange}
             connections={connections}
@@ -311,6 +322,7 @@ export function Composer({
           onPolicyChange={onPolicyChange}
           taskId={taskId}
           task={task}
+          context={context}
         />
       </form>
     </footer>

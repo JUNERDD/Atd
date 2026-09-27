@@ -137,6 +137,13 @@ export function makeDetail(options: {
     artifacts: [],
     requests: options.requests ?? [],
     queue: EMPTY_QUEUE,
+    context: {
+      contextWindow: null,
+      tokens: null,
+      percent: null,
+      compactions: 0,
+      compacting: false,
+    },
     revision: 1,
     blocks: options.blocks,
   };

@@ -112,6 +112,8 @@ export function webSettings(
       setDefault: (id, revision) => providers.setDefault(id, revision),
       setModel: (reference, revision, level) => providers.setModel(reference, revision, level),
       levels: (reference) => providers.levels(reference),
+      contexts: (reference) => providers.contexts(reference),
+      setContext: (reference, tier, revision) => providers.setContext(reference, tier, revision),
       disconnect: (id, revision) => providers.disconnect(id, revision),
       refresh: (id) => providers.refresh(id),
       refreshCatalogs: async () => providers.refreshShownCatalogs(),

@@ -16,7 +16,8 @@ import { takeTaskStaging } from './skills/staging.js';
 import { freezeSkillCatalog, type RunSkillCatalog } from './skills/skill-catalog.js';
 import { freezeRunSkills, loadSkillCatalog, releaseRun } from './skills/versions.js';
 import { SERVICE_RUNTIME_AGENTS, type RuntimeAgent } from './subagents/agents.js';
-import { readServiceId, type RunnerContext } from './task-runner.js';
+import { readServiceId } from './storage.js';
+import type { RunnerContext } from './task-runner.js';
 
 /** What a freeze needs from the task runner: its context, task and run audit. */
 export interface RunFreezeDeps {

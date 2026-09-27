@@ -104,7 +104,7 @@ export function App() {
             </IconButton>
             <h1 title={title}>{title}</h1>
             <nav className="header-controls" aria-label={t('header.controlsLabel')}>
-              {view === 'task' && current.detail && <SessionMenu task={current.detail.task} />}
+              {view === 'task' && current.detail && <SessionMenu detail={current.detail} />}
               <IconButton
                 label={t('header.tasks')}
                 className="header-button"
@@ -184,6 +184,7 @@ export function App() {
                     detail={current.detail}
                     covered={child.childKey !== null}
                     onAttach={(file) => changeDraft({ ...draft, files: [...draft.files, file] })}
+                    onNewTask={newTask}
                   />
                   {child.childKey && (
                     <ChildTranscriptView
@@ -225,6 +226,7 @@ export function App() {
                 runId={run?.id}
                 task={view === 'task' ? (current.detail?.task ?? null) : null}
                 blocks={view === 'task' ? current.detail?.blocks : undefined}
+                context={view === 'task' ? current.detail?.context : null}
                 requests={view === 'task' ? requests : []}
                 queue={view === 'task' ? queue : EMPTY_QUEUE}
                 quickActions={{ newTask, openHistory: () => setView('history') }}

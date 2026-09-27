@@ -612,6 +612,45 @@
   color: var(--muted-foreground);
   font-size: 13px;
 }
+/* A compaction row sits between turns' prose like a thinking row; a failed one keeps its reason
+   under the title, indented to the title's edge (row padding + icon + gap). */
+.compaction-row {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+.compaction-error {
+  margin: 0;
+  padding: 0 6px 4px 28px;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  line-height: 16px;
+  overflow-wrap: anywhere;
+}
+/* After repeated compactions: a quiet suggestion to continue in a new task. */
+.context-hint {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  padding: 6px 4px 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2xl);
+  color: var(--muted-foreground);
+  font-size: 12px;
+  line-height: 16px;
+}
+.context-hint-text {
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+/* The action and its dismiss wrap together and stay at the trailing edge. */
+.context-hint-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+}
 /*
  * Same tinted region as a tool body: the reasoning reads inside one box, not on the bare page.
  * Capped like tool output so a long trace scrolls instead of pushing the answer away.

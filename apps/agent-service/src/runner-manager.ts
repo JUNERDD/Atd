@@ -19,7 +19,12 @@ import { ConflictError, DrainingError } from './errors.js';
 import { TaskRunner, type RunnerContext } from './task-runner.js';
 import { checkChipRanges, taskTitle } from './tasks/input-chips.js';
 import { CONTEXT_BUDGET, runInputSize } from './tasks/run-budget.js';
-import { resolveRunModel, resolveRunThinkingLevel } from './tasks/run-selection.js';
+import {
+  loadRunContextWindow,
+  resolveRunModel,
+  resolveRunThinkingLevel,
+  type RunContextWindow,
+} from './tasks/run-selection.js';
 
 export interface ManagerDeps {
   ctx: RunnerContext;
@@ -68,6 +73,7 @@ export class RunnerManager {
     checkChipRanges(request.input);
     // Read before the checks below so acceptance stays free of awaits until the ledger write.
     const connections = await ConnectionStore.load(this.deps.ctx.paths.root);
+    const contextWindowOf = await loadRunContextWindow(connections, request.model);
     const ledger = this.deps.ctx.ledger;
     const duplicate = ledger.operation(request.operationId);
     if (duplicate) return { taskId: duplicate.taskId, runId: duplicate.runId, duplicate: true };
@@ -83,7 +89,12 @@ export class RunnerManager {
       if (!ledger.data.resources.some((resource) => resource.id === file.id))
         throw new Error(`Attachment ${file.id} was not uploaded.`);
     }
-    const snapshot = this.freezeSnapshot(request, connections, previous?.runs.at(-1));
+    const snapshot = this.freezeSnapshot(
+      request,
+      connections,
+      contextWindowOf,
+      previous?.runs.at(-1),
+    );
     this.checkBudget(snapshot);
     const runId = randomUUID();
     const now = new Date().toISOString();
@@ -180,27 +191,48 @@ export class RunnerManager {
     // runnerFor cold-projects from Pi JSONL when no live session exists, so
     // snapshots after a restart still carry the transcript without a runner.
     const runner = this.runnerFor(taskId);
-    const document = await runner.transcript();
+    const view = await runner.view();
     const queue: QueueState = runner.queueState();
     return {
       task,
-      revision: document.revision,
-      blocks: document.blocks,
+      revision: view.revision,
+      blocks: view.blocks,
       requests: this.deps.ctx.confirms.forTask(taskId),
       capabilities: this.deps.ctx.capabilities.forTask(taskId),
       queue,
+      context: view.context,
       epoch: this.deps.ctx.events.epoch,
       seq: this.deps.ctx.events.currentSeq,
     };
+  }
+
+  /**
+   * Compacts an idle task's context now (task-runner.ts `compact`); refused while the task has a
+   * run, queued ones included. Runs accepted meanwhile wait until the compaction ends.
+   */
+  async compact(taskId: string, instructions: string | undefined): Promise<void> {
+    if (this.draining) throw new DrainingError();
+    const task = this.deps.ctx.ledger.task(taskId);
+    if (task.runs.some((run) => isActiveStatus(run.status)))
+      throw new ConflictError('Finish the active run before compacting the context.');
+    const { done } = await this.runnerFor(taskId).compact(instructions);
+    void done
+      .catch((error: unknown) => {
+        // The failure is the task's failed compaction block; the log keeps the cause.
+        this.deps.log.warn('Manual compaction failed.', { taskId, error: errorMessage(error) });
+      })
+      .finally(() => this.dispatch());
   }
 
   dispatch(): void {
     if (this.draining) return;
     // A task's runs share one Pi session, so only its oldest queued run starts
     // and only once no started run is active (queued counts as active for
-    // acceptance, not for dispatch). Other tasks never wait on each other.
+    // acceptance, not for dispatch) and no manual compaction holds the session.
+    // Other tasks never wait on each other.
     for (const task of this.deps.ctx.ledger.data.tasks) {
       if (task.runs.some((run) => run.status !== 'queued' && isActiveStatus(run.status))) continue;
+      if (this.runners.get(task.id)?.isCompacting()) continue;
       const next = task.runs.find((run) => run.status === 'queued');
       if (next && !this.executions.has(next.id)) this.start(task.id, next);
     }
@@ -268,15 +300,18 @@ export class RunnerManager {
 
   /**
    * Tools and memory come from the request, else carry over from the task's last run (a command
-   * that turned memory off keeps it off for the task's follow-ups), else the defaults.
+   * that turned memory off keeps it off for the task's follow-ups), else the defaults. The context
+   * window freezes like the thinking level: later tier changes never reach an accepted run.
    */
   private freezeSnapshot(
     request: SubmitTaskRequest,
     connections: ConnectionStore,
+    contextWindowOf: RunContextWindow,
     last: TaskRun | undefined,
   ): RunSnapshot {
     const model = resolveRunModel(connections, request.model);
     const thinkingLevel = resolveRunThinkingLevel(connections, model, request.thinkingLevel);
+    const contextWindow = contextWindowOf(model);
     return {
       input: request.input,
       instructions: '',
@@ -285,6 +320,7 @@ export class RunnerManager {
       // Runs with memory search and learn through the service memory authority (harness slot).
       memory: request.memory ?? last?.snapshot.memory ?? true,
       ...(thinkingLevel ? { thinkingLevel } : {}),
+      ...(contextWindow ? { contextWindow } : {}),
     };
   }
 

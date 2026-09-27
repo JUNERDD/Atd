@@ -221,13 +221,64 @@
   flex-shrink: 1;
 }
 
-/* The merged model configuration stays one trailing control. */
+/* The merged model configuration stays one trailing control; the context ring sits before it.
+   When a narrow panel wraps it below the policy group, it stays at the trailing edge. */
 .composer-model-group {
   display: flex;
   align-items: center;
   justify-content: flex-end;
+  gap: 2px;
   min-width: 0;
   flex-shrink: 1;
+  margin-left: auto;
+}
+
+/* Context usage ring: an icon-xs (24px) focus target around a 14px ring, like the progress pill's
+   todo ring. The level colors the arc: muted, then warning from 75%, destructive from 90%. */
+.context-usage {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-lg);
+  background: transparent;
+  color: var(--muted-foreground);
+  outline: none;
+}
+.context-usage:focus-visible {
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 30%, transparent);
+}
+.context-usage[data-level='warning'] {
+  color: var(--ata-status-warning);
+}
+.context-usage[data-level='error'] {
+  color: var(--destructive);
+}
+.context-usage-ring {
+  width: 14px;
+  height: 14px;
+  transform: rotate(-90deg);
+}
+.context-usage-ring circle {
+  fill: none;
+  stroke-width: 2.5;
+}
+.context-usage-track {
+  stroke: var(--border);
+}
+.context-usage-value {
+  stroke: currentColor;
+  stroke-linecap: round;
+  transition: stroke-dasharray 200ms ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .context-usage-value {
+    transition: none;
+  }
 }
 
 .composer-model .provider-brand {

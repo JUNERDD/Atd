@@ -56,6 +56,12 @@ export function createAgentBridge(
     setPermissionTier: (taskId, tier) => invoke({ action: 'setPermissionTier', taskId, tier }),
     renameTask: (taskId, title) => invoke({ action: 'renameTask', taskId, title }),
     deleteTask: (taskId) => invoke({ action: 'deleteTask', taskId }),
+    compactTask: (taskId, instructions) =>
+      invoke({
+        action: 'compactTask',
+        taskId,
+        ...(instructions === undefined ? {} : { instructions }),
+      }),
     chooseFiles: () => invoke({ action: 'chooseFiles' }),
     memory: () => invoke({ action: 'memory' }),
     pauseMemory: (paused) => invoke({ action: 'pauseMemory', paused }),

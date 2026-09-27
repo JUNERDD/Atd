@@ -129,6 +129,12 @@
     "model": "模型",
     "back": "返回",
     "triggerLabel": "模型配置：{{model}}、{{contextSize}}、{{effort}}",
-    "scopedTriggerLabel": "{{label}}：{{model}}、{{contextSize}}、{{effort}}"
+    "scopedTriggerLabel": "{{label}}：{{model}}、{{contextSize}}、{{effort}}",
+    "tiers": {
+      "standard": "标准",
+      "long": "长上下文"
+    },
+    "pricedAbove": "超过 {{tokens}} tokens 按更高价格计费",
+    "contextApplies": "对此模型后续任务生效。"
   }
 }

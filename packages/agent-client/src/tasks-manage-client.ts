@@ -1,4 +1,6 @@
 import {
+  CompactTaskRequestSchema,
+  CompactTaskResponseSchema,
   DeleteTaskResponseSchema,
   parse,
   PatchTaskRequestSchema,
@@ -7,6 +9,7 @@ import {
   ReplaceQueueRequestSchema,
   ReplaceQueueResponseSchema,
   TaskResponseSchema,
+  type CompactTaskResponse,
   type DeleteTaskResponse,
   type PatchTaskRequest,
   type PreviewTaskRequest,
@@ -63,6 +66,23 @@ export function replaceQueue(
     'POST',
     parse(ReplaceQueueRequestSchema, { followUp }),
     (json) => parse(ReplaceQueueResponseSchema, json),
+    fetchImpl,
+  );
+}
+
+/** Compacts an idle task's context now, optionally focused by `instructions`. */
+export function compactTask(
+  options: AgentClientOptions,
+  taskId: string,
+  instructions?: string,
+  fetchImpl?: typeof fetch,
+): Promise<CompactTaskResponse> {
+  return manageRequest(
+    options,
+    `/v1/tasks/${encodeURIComponent(taskId)}/compact`,
+    'POST',
+    parse(CompactTaskRequestSchema, instructions === undefined ? {} : { instructions }),
+    (json) => parse(CompactTaskResponseSchema, json),
     fetchImpl,
   );
 }

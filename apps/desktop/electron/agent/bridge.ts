@@ -1,5 +1,6 @@
 import { RunPolicySchema, type RunPolicy } from './run-policy';
 import { Type, type Static } from 'typebox';
+import type { TaskContextState } from '@ai/agent-contracts';
 import { CommandSchema, Identifier, type CommandDefinition } from './command-schema';
 import {
   InputSchema,
@@ -49,6 +50,8 @@ export interface TaskState {
   /** Every pending request of the task's active run, oldest first. */
   requests: PermissionRequest[];
   queue: QueueState;
+  /** Context usage and compaction state from the service snapshot and `context.update` events. */
+  context: TaskContextState;
 }
 /** The state plus the current transcript snapshot; returned by `detail` and used to (re)seed a consumer. */
 export interface TaskDetail extends TaskState {
@@ -166,6 +169,12 @@ export const AgentRequestSchema = Type.Union([
     title: Type.String({ minLength: 1, maxLength: 120 }),
   }),
   Type.Object({ action: Type.Literal('deleteTask'), taskId: Identifier }),
+  Type.Object({
+    action: Type.Literal('compactTask'),
+    taskId: Identifier,
+    /** Focus for the summary (`/compact <focus>`); the service caps it at 2000 characters. */
+    instructions: Type.Optional(Type.String({ minLength: 1, maxLength: 2000 })),
+  }),
   Type.Object({ action: Type.Literal('chooseFiles') }),
   Type.Object({ action: Type.Literal('memory') }),
   Type.Object({ action: Type.Literal('pauseMemory'), paused: Type.Boolean() }),
@@ -261,6 +270,12 @@ export interface AgentBridge {
   setPermissionTier: (taskId: string, tier: PermissionTier) => Promise<void>;
   renameTask: (taskId: string, title: string) => Promise<void>;
   deleteTask: (taskId: string) => Promise<void>;
+  /**
+   * Compacts an idle task's context now. Resolves once the service accepts; progress and the
+   * outcome arrive as the task's `compaction` block and context state. Rejects while a run is
+   * active or when there is nothing to compact.
+   */
+  compactTask: (taskId: string, instructions?: string) => Promise<void>;
   chooseFiles: () => Promise<FileRef[]>;
   memory: () => Promise<MemorySnapshot>;
   pauseMemory: (paused: boolean) => Promise<MemorySnapshot>;

@@ -175,6 +175,12 @@ export const RunSnapshotSchema = Type.Object(
     memory: Type.Boolean(),
     /** T2 additive: migrated runs keep their accepted thinking level. */
     thinkingLevel: Type.Optional(ThinkingLevelSchema),
+    /**
+     * Effective context window in tokens, frozen at acceptance from the connection's tier for the
+     * model; later tier changes never affect the run. Absent (runs accepted before tiers existed)
+     * means the model catalog's window.
+     */
+    contextWindow: Type.Optional(Type.Integer({ minimum: 1 })),
   },
   { additionalProperties: false },
 );

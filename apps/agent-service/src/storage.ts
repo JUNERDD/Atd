@@ -1,3 +1,4 @@
+import { readFile } from 'node:fs/promises';
 import { homedir, platform } from 'node:os';
 import path from 'node:path';
 
@@ -42,6 +43,14 @@ export function defaultDataDir(): string {
 export function resolveDataDir(options: { envDir?: string; flagDir?: string }): string {
   const raw = options.envDir?.trim() || options.flagDir?.trim() || defaultDataDir();
   return path.resolve(raw);
+}
+
+/** The service identity recorded in `service.json`; fails when it is missing. */
+export async function readServiceId(paths: ServicePaths): Promise<string> {
+  const raw = JSON.parse(await readFile(paths.serviceFile, 'utf8')) as { serviceId?: unknown };
+  if (typeof raw.serviceId !== 'string' || !raw.serviceId)
+    throw new Error('Service identity is missing.');
+  return raw.serviceId;
 }
 
 export function servicePaths(root: string): ServicePaths {

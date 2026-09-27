@@ -1,7 +1,9 @@
 import {
+  getProviderContexts,
   getProviderLevels,
   refreshProvider,
   setDefaultProvider,
+  setProviderContext,
   setProviderModel,
   verifyProvider,
   type AgentClientOptions,
@@ -12,7 +14,9 @@ import { ProviderLoginClient } from './login-client';
 import type {
   Connection,
   ConnectionDraft,
+  ContextTier,
   LoginState,
+  ModelContexts,
   ModelReference,
   ModelThinkingLevel,
   ProviderCatalogEntry,
@@ -125,6 +129,12 @@ export class ProviderService {
     );
   }
 
+  async setContext(reference: ModelReference, tier: ContextTier, revision: number): Promise<void> {
+    await this.write((options) =>
+      setProviderContext(options, reference.connectionId, reference.modelId, tier, revision),
+    );
+  }
+
   async disconnect(id: string, revision: number): Promise<void> {
     await this.write((options) => disconnectLive(options, id, revision));
   }
@@ -161,16 +171,29 @@ export class ProviderService {
    * asks again once the live snapshot replaces that reference.
    */
   async levels(reference: ModelReference): Promise<ModelThinkingLevel[]> {
-    if (!this.live) await this.sync();
-    const known = this.live?.connections.some(
-      (connection) => connection.connectionId === reference.connectionId,
-    );
-    if (!known) return [];
+    if (!(await this.isLive(reference.connectionId))) return [];
     const { levels } = await getProviderLevels(
       this.options(),
       reference.connectionId,
       reference.modelId,
     );
     return levels;
+  }
+
+  /**
+   * The context tiers one saved connection's model offers. Like `levels`, a reference outside the
+   * live list (the local store's connections before the live list loads) answers no tiers.
+   */
+  async contexts(reference: ModelReference): Promise<ModelContexts> {
+    const none: ModelContexts = { options: [], defaultTier: null, selected: null };
+    if (!(await this.isLive(reference.connectionId))) return none;
+    return getProviderContexts(this.options(), reference.connectionId, reference.modelId);
+  }
+
+  private async isLive(connectionId: string): Promise<boolean> {
+    if (!this.live) await this.sync();
+    return Boolean(
+      this.live?.connections.some((connection) => connection.connectionId === connectionId),
+    );
   }
 }

@@ -3,7 +3,7 @@ import type { RunnerContext } from '../task-runner.js';
 import { MemoryAuthority } from '../memory/authority.js';
 import { childMemoryProxy } from '../memory/proxy.js';
 import { McpAdapterMissing, McpAuthority } from '../mcp/index.js';
-import { readServiceId } from '../task-runner.js';
+import { readServiceId } from '../storage.js';
 import { ResourceStore } from '../resources.js';
 import { skillProfilePaths } from '../skills/profile.js';
 import { loadRunRole } from '../skills/roles.js';

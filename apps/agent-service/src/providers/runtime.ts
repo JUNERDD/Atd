@@ -9,6 +9,7 @@ import { ServiceCredentialStore } from '../credentials/service-store.js';
 import { ConflictError, UpstreamError } from '../errors.js';
 import { isLocalProvider, toServiceModel } from './catalog.js';
 import { uniqueModels } from './connection-view.js';
+import { contextOverrideFile, type ContextOverride } from './context-override.js';
 import { discoverCompatibleModels, discoverLlamaModels } from './discovery.js';
 
 export interface ProviderStores {
@@ -38,20 +39,23 @@ export function connectionCredentials(
  * A Pi model runtime bound to one connection: its keyring credential,
  * endpoint, options and models. Ambient credentials stay opt-in for cloud
  * connections, and a saved API-key connection never borrows another key from
- * the environment.
+ * the environment. `contextOverride` gives one model a run's frozen window.
  */
 export async function connectionRuntime(
   stores: ProviderStores,
   connection: ServiceConnection,
   credentials: ServiceCredentialStore = connectionCredentials(stores, connection),
+  contextOverride?: ContextOverride,
 ): Promise<ModelRuntime> {
   const root = path.join(stores.dataDir, 'providers', connection.connectionId);
   await mkdir(root, { recursive: true });
   const models = await ModelRuntime.create({
     credentials,
-    // The SDK only enables its file-backed catalog store when a config path is set.
-    // No models.json is written; the store keeps refreshed catalogs across restarts.
-    modelsPath: path.join(root, 'models.json'),
+    // The SDK only enables its file-backed catalog store when a config path is set. Without an
+    // override no models.json is written; the store keeps refreshed catalogs across restarts.
+    modelsPath: contextOverride
+      ? await contextOverrideFile(root, connection.provider, contextOverride)
+      : path.join(root, 'models.json'),
     modelsStorePath: path.join(root, 'models-store.json'),
     refreshOnCreate: false,
   });

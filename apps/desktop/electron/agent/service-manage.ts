@@ -1,5 +1,6 @@
 import {
   AgentClientError,
+  compactTask,
   deleteTask,
   listMemory,
   patchTask,
@@ -159,6 +160,19 @@ export async function retierLiveTask(
 export async function deleteLiveTask(options: AgentClientOptions, taskId: string): Promise<void> {
   try {
     await deleteTask(options, taskId);
+  } catch (error) {
+    manageError(error);
+  }
+}
+
+/** A refusal (409: a run is active, or nothing to compact) surfaces the service's reason. */
+export async function compactLiveTask(
+  options: AgentClientOptions,
+  taskId: string,
+  instructions: string | undefined,
+): Promise<void> {
+  try {
+    await compactTask(options, taskId, instructions);
   } catch (error) {
     manageError(error);
   }
