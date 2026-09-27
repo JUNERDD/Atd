@@ -1,6 +1,8 @@
 import {
   acceptCompletion,
   autocompletion,
+  completionStatus,
+  startCompletion,
   type Completion,
   type CompletionContext,
   type CompletionResult,
@@ -17,6 +19,7 @@ import {
 } from '@codemirror/view';
 import type { CommandDefinition } from '../../../electron/agent/command-schema';
 import { availableVariables } from '../../../electron/agent/command-validation';
+import { composingSince } from '../composer-editor/trigger-field';
 import { instructionCompletion } from './instruction-completion';
 import { rankVariables, typedVariable } from './instruction-variable-match';
 
@@ -65,7 +68,9 @@ export function instructionExtensions(
       from: typed.from,
       options: rankVariables(completions, typed.query),
       filter: false,
-      update: (_current, _from, _to, next) => complete(next),
+      // During an IME composition the open list keeps its options instead of ranking pinyin.
+      update: (current, _from, _to, next) =>
+        composingSince(next.state) ? current : complete(next),
     };
   };
   return [
@@ -92,6 +97,15 @@ export function instructionExtensions(
       activateOnTypingDelay: 0,
       icons: false,
       tooltipClass: () => 'instruction-completion-measure',
+    }),
+    // The list stays frozen while an IME composes (see `update`); once the committed text lands,
+    // an open list asks again, as CodeMirror does not re-query after every composition.
+    EditorView.domEventObservers({
+      compositionend: (_event, view) => {
+        setTimeout(() => {
+          if (!view.compositionStarted && completionStatus(view.state)) startCompletion(view);
+        });
+      },
     }),
     // Tab accepts an open completion like Enter; without one it still indents.
     Prec.highest(keymap.of([{ key: 'Tab', run: acceptCompletion }])),

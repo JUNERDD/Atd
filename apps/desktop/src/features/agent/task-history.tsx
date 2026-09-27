@@ -18,6 +18,7 @@ import {
 } from '@ai/ui/components/dropdown-menu';
 import { HighlightedText } from '@ai/ui/components/highlighted-text';
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@ai/ui/components/input-group';
+import { useCompositionQuery } from '@ai/ui/lib/ime';
 import { Shimmer } from '@ai/ui/components/ai-elements/shimmer';
 import { ScrollArea } from '@ai/ui/components/scroll-area';
 import { matchFields } from '@ai/ui/lib/fuzzy-match';
@@ -87,9 +88,9 @@ export function TaskHistory({
   // The last renamed task stays mounted while its dialog closes so the exit animation keeps its content.
   const [renaming, setRenaming] = useState<{ task: AgentTask; open: boolean } | null>(null);
   const copyLink = useCopyTaskLink();
-  const [search, setSearch] = useState('');
+  const search = useCompositionQuery();
   const [error, setError] = useState('');
-  const query = search.trim();
+  const query = search.query.trim();
   function statusLabelOf(task: AgentTask) {
     const status = task.runs.at(-1)?.status;
     return status ? t(`status.${status}`) : t('history.importedDraft');
@@ -107,8 +108,9 @@ export function TaskHistory({
           <InputGroupInput
             aria-label={t('history.searchLabel')}
             placeholder={t('history.searchPlaceholder')}
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
+            value={search.text}
+            onChange={(event) => search.change(event.target.value)}
+            {...search.compositionProps}
           />
           <InputGroupAddon>
             <SearchIcon className="size-4 shrink-0 opacity-50" />

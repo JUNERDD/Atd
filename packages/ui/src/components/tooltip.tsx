@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { cn } from '@ai/ui/lib/utils';
+import { ignoreComposingEscape } from '@ai/ui/lib/ime';
 import { Tooltip as TooltipPrimitive } from 'radix-ui';
 
 function TooltipProvider({
@@ -42,6 +43,7 @@ function TooltipContent({
   sideOffset = 0,
   collisionPadding = 8,
   children,
+  onEscapeKeyDown,
   ...props
 }: React.ComponentProps<typeof TooltipPrimitive.Content>) {
   return (
@@ -56,6 +58,7 @@ function TooltipContent({
           'pointer-events-none max-w-[min(20rem,calc(100vw-16px))] wrap-anywhere select-none',
         )}
         {...props}
+        onEscapeKeyDown={ignoreComposingEscape(onEscapeKeyDown)}
       >
         {children}
         <TooltipPrimitive.Arrow asChild>

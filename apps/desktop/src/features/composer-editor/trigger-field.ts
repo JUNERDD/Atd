@@ -41,7 +41,7 @@ interface TriggerSlot {
   trigger: TriggerState | null;
   /** The dismissed token, identified by kind and start. */
   dismissed: { kind: TriggerState['kind']; from: number } | null;
-  /** Set while an IME composes; the next non-composing transaction re-reads the trigger. */
+  /** Set once an IME composes; the composition end or the next edit re-reads the trigger. */
   stale: boolean;
 }
 
@@ -55,12 +55,15 @@ export const triggerField = StateField.define<TriggerSlot>({
     const dismissing = transaction.effects.some((effect) => effect.is(dismissTrigger));
     if (dismissing && slot.trigger)
       dismissed = { kind: slot.trigger.kind, from: slot.trigger.from };
-    // Composition keeps the reported trigger, so the panel neither opens nor closes mid-word.
+    // An IME composition freezes the trigger: the panel stays as it was, but neither answers the
+    // uncommitted pinyin nor opens or closes mid-word. The commit re-reads it.
     if (transaction.isUserEvent('input.type.compose')) return { ...slot, dismissed, stale: true };
-    const refreshing =
-      slot.stale ||
-      transaction.reconfigured ||
-      transaction.effects.some((effect) => effect.is(refreshTrigger));
+    const refresh = transaction.effects.some((effect) => effect.is(refreshTrigger));
+    // Other transactions during the composition (effects, reconfiguration) keep it frozen too; the
+    // editor's composition end, a real edit or a pointer selection reads the trigger again.
+    if (slot.stale && !refresh && !transaction.docChanged && !transaction.isUserEvent('select'))
+      return { ...slot, dismissed };
+    const refreshing = slot.stale || transaction.reconfigured || refresh;
     if (!transaction.docChanged && !transaction.selection && !dismissing && !refreshing)
       return slot;
     const next = currentTrigger(transaction.state);
@@ -70,6 +73,15 @@ export const triggerField = StateField.define<TriggerSlot>({
     return { trigger: next, dismissed: null, stale: false };
   },
 });
+
+/**
+ * Whether an IME composition is in progress, as the trigger sees it: from its first composing
+ * transaction until the editor's composition end (or the next real edit) re-reads the trigger.
+ * Other editor features freeze on it as the trigger does.
+ */
+export function composingSince(state: EditorState): boolean {
+  return state.field(triggerField, false)?.stale ?? false;
+}
 
 export function sameTrigger(a: TriggerState | null, b: TriggerState | null): boolean {
   if (a === b) return true;

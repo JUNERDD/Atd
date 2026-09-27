@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { cn } from '@ai/ui/lib/utils';
+import { ignoreComposingEscape } from '@ai/ui/lib/ime';
 import { Dialog as DialogPrimitive } from 'radix-ui';
 
 import { Button } from '@ai/ui/components/button';
@@ -44,6 +45,7 @@ function DialogContent({
   children,
   showCloseButton = true,
   overlayClassName,
+  onEscapeKeyDown,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean;
@@ -60,6 +62,7 @@ function DialogContent({
           className,
         )}
         {...props}
+        onEscapeKeyDown={ignoreComposingEscape(onEscapeKeyDown)}
       >
         {children}
         {showCloseButton && (

@@ -2,6 +2,7 @@ import { useMemo, useRef, useState, type KeyboardEvent, type ReactElement } from
 import { useReducedMotion } from 'motion/react';
 import { useTranslation } from 'react-i18next';
 import { Popover, PopoverAnchor, PopoverContent } from '@ai/ui/components/popover';
+import { isComposingKey } from '@ai/ui/lib/ime';
 import type { PermissionRequest } from '../../electron/agent/permission-schema';
 import type { Block, QueueState } from '../../electron/agent/transcript-schema';
 import { ProgressPill, type PillView } from '../features/agent/progress/progress-pill';
@@ -126,7 +127,7 @@ export function ComposerPopover({
   }
 
   function onContentKeyDown(event: KeyboardEvent<HTMLDivElement>) {
-    if (event.key !== 'Escape') return;
+    if (event.key !== 'Escape' || isComposingKey(event)) return;
     event.preventDefault();
     event.stopPropagation();
     close();

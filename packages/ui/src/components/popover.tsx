@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { cn } from '@ai/ui/lib/utils';
+import { ignoreComposingEscape } from '@ai/ui/lib/ime';
 import { Popover as PopoverPrimitive } from 'radix-ui';
 
 function Popover({ ...props }: React.ComponentProps<typeof PopoverPrimitive.Root>) {
@@ -15,6 +16,7 @@ function PopoverContent({
   align = 'center',
   sideOffset = 4,
   collisionPadding = 8,
+  onEscapeKeyDown,
   ...props
 }: React.ComponentProps<typeof PopoverPrimitive.Content>) {
   return (
@@ -31,6 +33,7 @@ function PopoverContent({
           className,
         )}
         {...props}
+        onEscapeKeyDown={ignoreComposingEscape(onEscapeKeyDown)}
       />
     </PopoverPrimitive.Portal>
   );

@@ -33,6 +33,7 @@ import {
   AlertDialogTitle,
 } from '@ai/ui/components/alert-dialog';
 import { matchFields } from '@ai/ui/lib/fuzzy-match';
+import { useCompositionQuery } from '@ai/ui/lib/ime';
 import type { CommandDefinition } from '../../../electron/agent/command-schema';
 import { copyCommand, newCommand } from '../../../electron/agent/command-templates';
 import type { SettingsSnapshot } from '../../../electron/settings-contract';
@@ -60,7 +61,7 @@ export function CommandSettings({
     null,
   );
   const [deleting, setDeleting] = useState<CommandDefinition | null>(null);
-  const [search, setSearch] = useState('');
+  const search = useCompositionQuery();
   const [status, setStatus] = useState('');
   const [pending, setPending] = useState<string | null>(null);
   async function change(command: CommandDefinition, enabled: boolean) {
@@ -127,8 +128,9 @@ export function CommandSettings({
         <Input
           aria-label={t('list.searchLabel')}
           placeholder={t('list.searchPlaceholder')}
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
+          value={search.text}
+          onChange={(event) => search.change(event.target.value)}
+          {...search.compositionProps}
         />
         <Button
           disabled={!agent.snapshot}
@@ -142,11 +144,11 @@ export function CommandSettings({
         {commands
           // Saved order stays; the search matches and marks the name and description rows show.
           .flatMap((command) => {
-            const match = matchFields(search, {
+            const match = matchFields(search.query, {
               name: command.name,
               description: command.description,
             });
-            return match || !search.trim() ? [{ command, match }] : [];
+            return match || !search.query.trim() ? [{ command, match }] : [];
           })
           .map(({ command, match }) => (
             <Item

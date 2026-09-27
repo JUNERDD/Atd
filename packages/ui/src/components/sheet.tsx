@@ -4,6 +4,7 @@ import * as React from 'react';
 import { Dialog as SheetPrimitive } from 'radix-ui';
 import { XIcon } from 'lucide-react';
 import { cn } from '@ai/ui/lib/utils';
+import { ignoreComposingEscape } from '@ai/ui/lib/ime';
 import { Button } from '@ai/ui/components/button';
 
 function Sheet({ ...props }: React.ComponentProps<typeof SheetPrimitive.Root>) {
@@ -44,6 +45,7 @@ function SheetContent({
   side = 'right',
   showCloseButton = true,
   overlayClassName,
+  onEscapeKeyDown,
   ...props
 }: React.ComponentProps<typeof SheetPrimitive.Content> & {
   side?: 'top' | 'right' | 'bottom' | 'left';
@@ -61,6 +63,7 @@ function SheetContent({
           className,
         )}
         {...props}
+        onEscapeKeyDown={ignoreComposingEscape(onEscapeKeyDown)}
       >
         {children}
         {showCloseButton && (

@@ -11,6 +11,7 @@ import {
 } from '@ai/ui/components/dialog';
 import { Input } from '@ai/ui/components/input';
 import { Label } from '@ai/ui/components/label';
+import { isComposingKey } from '@ai/ui/lib/ime';
 import type { AgentTask } from '../../../electron/agent/task-schema';
 import { showErrorToast, showToast } from '../../components/toast-store';
 import { agentApi } from './use-agent';
@@ -74,7 +75,7 @@ export function RenameTaskDialog({
             placeholder={t('session.renamePlaceholder')}
             onChange={(event) => setName(event.target.value)}
             onKeyDown={(event) => {
-              if (event.key === 'Enter' && !event.nativeEvent.isComposing) void save();
+              if (event.key === 'Enter' && !isComposingKey(event)) void save();
             }}
           />
         </div>

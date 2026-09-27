@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { Settings2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -10,6 +9,7 @@ import {
   CommandList,
 } from '@ai/ui/components/command';
 import { HighlightedText } from '@ai/ui/components/highlighted-text';
+import { useCompositionQuery } from '@ai/ui/lib/ime';
 import type { Connection, ModelReference } from '../../../electron/providers/schema';
 import { IconButton } from '../../components/icon-button';
 import { rankModels } from './model-match';
@@ -59,14 +59,15 @@ export function ModelList({
   onOpenProviders?: () => void;
 }) {
   const { t } = useTranslation('providers');
-  const [query, setQuery] = useState('');
+  const search = useCompositionQuery();
   // Popover content mounts only while shown, so mounting is opening the list.
   useCatalogRefresh(true);
   return (
     <Command shouldFilter={false} className="bg-transparent min-h-0">
       <CommandInput
-        value={query}
-        onValueChange={setQuery}
+        value={search.text}
+        onValueChange={search.change}
+        {...search.compositionProps}
         placeholder={t('models.searchPlaceholder')}
         aria-label={searchLabel}
         action={
@@ -90,7 +91,7 @@ export function ModelList({
             ? t('models.noMatch')
             : t('models.none')}
         </CommandEmpty>
-        {rankConnections(connections, query, scoped).map(({ connection, models }) => (
+        {rankConnections(connections, search.query, scoped).map(({ connection, models }) => (
           <CommandGroup
             key={connection.connectionId}
             heading={

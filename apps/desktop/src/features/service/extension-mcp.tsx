@@ -17,6 +17,7 @@ import { HighlightedText } from '@ai/ui/components/highlighted-text';
 import { Input } from '@ai/ui/components/input';
 import { ItemContent, ItemDescription, ItemMedia, ItemTitle } from '@ai/ui/components/item';
 import { matchFields, type FieldsMatch } from '@ai/ui/lib/fuzzy-match';
+import { isComposingKey } from '@ai/ui/lib/ime';
 import { ExtensionGroup } from './extension-group';
 import { McpDetailDialog } from './extension-mcp-detail';
 import { EMPTY_MCP_DRAFT, toUpsertInput, type McpUpsertInput } from './extension-mcp-draft';
@@ -92,7 +93,8 @@ function McpRow({
               disabled={locked}
               onChange={(event) => setAuthCode(event.target.value)}
               onKeyDown={(event) => {
-                if (event.key !== 'Enter' || !authCode.trim() || locked) return;
+                if (event.key !== 'Enter' || isComposingKey(event) || !authCode.trim() || locked)
+                  return;
                 event.preventDefault();
                 onAuthComplete(authCode.trim());
               }}
