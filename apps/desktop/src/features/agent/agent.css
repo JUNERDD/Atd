@@ -896,6 +896,30 @@
   box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 30%, transparent);
 }
 
+/* The service-starting surface replaces the whole panel, header included, so it drags the window
+   in the header's place. The hide action sits where the header put it. */
+.service-starting {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  -webkit-app-region: drag;
+}
+.service-starting-hide {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+}
+/* A service that is already running settles within a moment, so the loading fades in late
+   instead of flashing before the panel content. */
+.service-starting-content {
+  animation: service-starting-in 200ms ease-out 250ms both;
+}
+@keyframes service-starting-in {
+  from {
+    opacity: 0;
+  }
+}
 .service-banner {
   display: flex;
   align-items: center;

@@ -154,6 +154,10 @@
     "defaultFromSettings": "在任务创建前显示设置中的默认级别。"
   },
   "service": {
+    "starting": {
+      "title": "正在启动服务…",
+      "description": "首次启动可能需要几秒钟。"
+    },
     "banner": {
       "disconnected": "服务未连接。{{detail}}",
       "connecting": "正在连接服务…",

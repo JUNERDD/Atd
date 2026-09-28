@@ -154,6 +154,10 @@
     "defaultFromSettings": "Uses the default from Settings until a task exists."
   },
   "service": {
+    "starting": {
+      "title": "Starting the agent service…",
+      "description": "This can take a few seconds the first time."
+    },
     "banner": {
       "disconnected": "Service disconnected. {{detail}}",
       "connecting": "Connecting to the service…",
