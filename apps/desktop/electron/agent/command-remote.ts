@@ -8,7 +8,7 @@ import {
 import type { CommandCreate, ServiceCommandFull } from '@ai/agent-contracts';
 import type { CommandDefinition } from './command-schema';
 
-/** Maps a service command to the desktop editor shape (drops migratedAt). */
+/** Maps a service command to the desktop editor shape (drops migratedAt, keeps pluginId). */
 export function toDesktopCommand(command: ServiceCommandFull): CommandDefinition {
   return {
     id: command.id,
@@ -24,6 +24,7 @@ export function toDesktopCommand(command: ServiceCommandFull): CommandDefinition
     model: { ...command.model },
     tools: [...command.tools],
     memory: command.memory,
+    ...(command.pluginId === undefined ? {} : { pluginId: command.pluginId }),
   };
 }
 

@@ -260,52 +260,77 @@
   min-height: 0;
   flex-direction: column;
 }
-.settings-extension-tabs {
-  display: flex;
-  flex: 1;
-  min-width: 0;
-  min-height: 0;
-  flex-direction: column;
-  margin-top: 16px;
-}
-.settings-extension-tabs > [data-slot='tabs'] {
+.settings-extension-body {
   display: flex;
   flex: 1;
   min-width: 0;
   min-height: 0;
   flex-direction: column;
 }
-.settings-extension-tab-row {
-  display: flex;
-  flex-shrink: 0;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-.settings-extension-settings [data-slot='tabs-content'][data-state='active'] {
+/* The scrolling plugin list: its sections, or the search results. */
+.settings-extension-list {
   display: flex;
   flex: 1 0 auto;
   min-width: 0;
   flex-direction: column;
+  gap: 24px;
+}
+/* Plugin cards fill as many columns of at least 240px as the list's width holds, one column at
+ * the narrowest widths; cards in a row share its height. */
+.plugin-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.plugin-card-cell {
+  display: flex;
+  min-width: 0;
+}
+/* The card keeps the focus ring of its open button visible, which the default clip would cut. */
+.plugin-card {
+  flex: 1;
+  min-width: 0;
+  overflow: visible;
+}
+.plugin-card > [data-slot='card-header'] {
+  align-items: center;
+}
+/* The switch and More center on the icon, with or without the source line under the name. */
+.plugin-card [data-slot='card-action'] {
+  align-self: center;
+}
+.plugin-card-description {
+  display: -webkit-box;
+  min-height: 40px;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-height: 20px;
+}
+.plugin-card-footer {
   gap: 8px;
+  margin-top: auto;
 }
-.settings-extension-settings [data-slot='tabs-content'][data-state='inactive'] {
-  display: none;
-}
-/* Search results stack every catalog's matching group; the groups hug their rows. */
+/* One plugin's search results stack its row and kind groups; the groups hug their rows. */
 .settings-extension-results {
   display: flex;
   min-width: 0;
   flex-direction: column;
-  gap: 16px;
+  gap: 24px;
 }
 .settings-extension-group {
   display: flex;
-  flex: 1 0 auto;
+  flex: 0 0 auto;
   flex-direction: column;
   gap: 8px;
   min-width: 0;
+}
+/* A list holding only an empty state (no plugins, no search match) centers it in the panel. */
+.settings-extension-list > .settings-extension-group:only-child {
+  flex: 1 0 auto;
 }
 .settings-extension-empty {
   display: flex;
@@ -348,8 +373,18 @@
 }
 /* Actions may sit in a wrapper, as the command rows group them with the shortcut. */
 .settings-open-row [data-slot='item-actions'],
-.settings-open-row .settings-extension-mcp-auth {
+.settings-open-row .settings-extension-mcp-auth,
+.settings-open-row .settings-extension-mcp-approval {
   pointer-events: auto;
+}
+/* Allow to run under an installed plugin's local MCP server, until the user allows it. */
+.settings-extension-mcp-approval {
+  display: flex;
+  width: fit-content;
+  max-width: 100%;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
 }
 /* An outlined row fills inside its 1px border, so the fill's corners follow the border's inner
  * curve instead of the outer one. */
@@ -370,9 +405,10 @@
   outline: 1px solid var(--ring);
   box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 30%, transparent);
 }
-/* Extension and memory icons sit in a ring and center on the title plus description. */
-:is(.settings-extension-settings, .memory-settings) [data-slot='item-media'],
-:is(.settings-extension-settings, .memory-settings)
+/* Extension and memory icons sit in a ring and center on the title plus description, on the
+ * plugin list and on a plugin's page alike. */
+:is(.settings-extension-settings, .extension-page, .memory-settings) [data-slot='item-media'],
+:is(.settings-extension-settings, .extension-page, .memory-settings)
   .group\/item:has([data-slot='item-description'])
   [data-slot='item-media'] {
   align-self: center;
@@ -531,6 +567,51 @@
   color: var(--muted-foreground);
   font-size: 12px;
   line-height: 16px;
+}
+/* What a plugin could not import, one note per line with its level icon and location. */
+.plugin-diagnostics,
+.plugin-review-list {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 12px 16px;
+  border-radius: var(--radius-xl);
+  background: var(--extension-detail-panel);
+  font-size: 13px;
+  line-height: 20px;
+  list-style: none;
+}
+.plugin-diagnostics > li {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  gap: 8px;
+}
+.plugin-diagnostics > li > svg {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+  color: var(--muted-foreground);
+}
+.plugin-diagnostics > li[data-level='error'] > svg {
+  color: var(--destructive);
+}
+.plugin-diagnostics > li > div {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.plugin-diagnostics .font-mono {
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+/* Commands and URLs a bundle would run or reach, in full so they can be reviewed. */
+.plugin-review-list > li {
+  min-width: 0;
+  font-size: 12px;
+  word-break: break-all;
 }
 .extension-detail-status {
   display: block;

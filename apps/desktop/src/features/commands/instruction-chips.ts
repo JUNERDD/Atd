@@ -52,8 +52,8 @@ function parsesBetween(before: string, token: string, after: string): boolean {
 
 /**
  * Whether the instructions can hold this chip: its token must read back as the same item. Every
- * service identifier can, but system subagents (`service.worker`) are named outside that alphabet
- * and cannot be referenced by a run anyway.
+ * service identifier and qualified plugin item name (`<plugin>:<item>`) can, but system subagents
+ * (`service.worker`) are named outside that alphabet and cannot be referenced by a run anyway.
  */
 export function isInstructionChip(chip: Chip): boolean {
   const reference = referenceOf(chip);
@@ -76,7 +76,9 @@ export function instructionText(segments: readonly DraftSegment[]): string {
     const token = reference ? instructionTokenText(reference) : chipText(segment);
     const next = segments[index + 1];
     const lead = parsesBetween(text.slice(-1), token, '') ? '' : ' ';
-    const trail = typeof next === 'string' && !parsesBetween('', token, next.charAt(0)) ? ' ' : '';
+    // The whole following text, not its first character: `:` followed by a name segment would
+    // extend the token into a qualified `<plugin>:<item>` name.
+    const trail = typeof next === 'string' && !parsesBetween('', token, next) ? ' ' : '';
     text += `${lead}${token}${trail}`;
   });
   return text;

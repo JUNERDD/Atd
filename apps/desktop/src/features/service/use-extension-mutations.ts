@@ -8,9 +8,18 @@ function serviceApi() {
   return window.desktop.service;
 }
 
+/**
+ * What a write in progress holds: one built-in, role, subagent or MCP server, one plugin, or an
+ * install. Rows lock while their own target is busy; pages lock while anything is.
+ */
+export type ExtensionBusyTarget =
+  | { kind: 'builtin' | 'role' | 'agent' | 'mcp'; name: string }
+  | { kind: 'plugin'; id: string }
+  | { kind: 'install' };
+
 /** Skill, subagent and MCP catalog writes; refresh is owned by the caller. */
 export function useExtensionMutations() {
-  const [busyKey, setBusyKey] = useState<string | null>(null);
+  const [busy, setBusy] = useState<ExtensionBusyTarget | null>(null);
 
   const setSkillEnabled = useCallback(async (name: string, enabled: boolean) => {
     try {
@@ -30,25 +39,13 @@ export function useExtensionMutations() {
     }
   }, []);
 
-  const updateSkill = useCallback(async (name: string, refresh: () => Promise<void>) => {
-    setBusyKey(`skill:${name}`);
-    try {
-      await serviceApi().updateSkill(name);
-      await refresh();
-    } catch (error) {
-      showErrorToast(error);
-    } finally {
-      setBusyKey(null);
-    }
-  }, []);
-
   /**
    * Reinstalls the shipped version of a built-in resource after the service backs up the user's
-   * copy. The busy key is the builtin id, which is `skill:<name>` for skill rows. Resolves to the
+   * copy; the builtin id (`skill:<name>` for skill rows) is busy meanwhile. Resolves to the
    * backup path (null when there was nothing to back up), or undefined when the restore failed.
    */
   const restoreBuiltin = useCallback(async (id: string, refresh: () => Promise<void>) => {
-    setBusyKey(id);
+    setBusy({ kind: 'builtin', name: id });
     try {
       const result = await serviceApi().restoreBuiltin(id);
       await refresh();
@@ -56,7 +53,7 @@ export function useExtensionMutations() {
     } catch {
       return undefined;
     } finally {
-      setBusyKey(null);
+      setBusy(null);
     }
   }, []);
 
@@ -69,7 +66,7 @@ export function useExtensionMutations() {
       },
       refresh: () => Promise<void>,
     ) => {
-      setBusyKey(`role:${input.id}`);
+      setBusy({ kind: 'role', name: input.id });
       try {
         await serviceApi().putRole(input);
         await refresh();
@@ -78,27 +75,7 @@ export function useExtensionMutations() {
         showErrorToast(error);
         return false;
       } finally {
-        setBusyKey(null);
-      }
-    },
-    [],
-  );
-
-  const installSkill = useCallback(
-    async (
-      input: { source: string; sourceKind: 'local' | 'npm' | 'git'; name?: string },
-      refresh: () => Promise<void>,
-    ) => {
-      setBusyKey('skill:install');
-      try {
-        await serviceApi().installSkill(input);
-        await refresh();
-        return true;
-      } catch (error) {
-        showErrorToast(error);
-        return false;
-      } finally {
-        setBusyKey(null);
+        setBusy(null);
       }
     },
     [],
@@ -115,7 +92,7 @@ export function useExtensionMutations() {
       },
       refresh: () => Promise<void>,
     ) => {
-      setBusyKey(`agent:${input.name}`);
+      setBusy({ kind: 'agent', name: input.name });
       try {
         await serviceApi().putAgent(input);
         await refresh();
@@ -124,7 +101,7 @@ export function useExtensionMutations() {
         showErrorToast(error);
         return false;
       } finally {
-        setBusyKey(null);
+        setBusy(null);
       }
     },
     [],
@@ -133,7 +110,7 @@ export function useExtensionMutations() {
   /** Saves one subagent's permissions for later runs, or with null restores its defaults. */
   const setAgentPermissions = useCallback(
     async (name: string, permissions: SubagentPermissions | null, refresh: () => Promise<void>) => {
-      setBusyKey(`agent:${name}`);
+      setBusy({ kind: 'agent', name });
       try {
         await serviceApi().setAgentPermissions(name, permissions);
         await refresh();
@@ -142,7 +119,7 @@ export function useExtensionMutations() {
         showErrorToast(error);
         return false;
       } finally {
-        setBusyKey(null);
+        setBusy(null);
       }
     },
     [],
@@ -160,7 +137,7 @@ export function useExtensionMutations() {
       },
       refresh: () => Promise<void>,
     ) => {
-      setBusyKey(`mcp:${input.serverId}`);
+      setBusy({ kind: 'mcp', name: input.serverId });
       try {
         await serviceApi().mcpUpsert(input);
         await refresh();
@@ -169,46 +146,46 @@ export function useExtensionMutations() {
         showErrorToast(error);
         return false;
       } finally {
-        setBusyKey(null);
+        setBusy(null);
       }
     },
     [],
   );
 
+  /** Turns a Personal server on or off; rejects after showing the error, so a switch can revert. */
   const mcpSetEnabled = useCallback(
     async (serverId: string, enabled: boolean, refresh: () => Promise<void>) => {
-      setBusyKey(`mcp:${serverId}`);
+      setBusy({ kind: 'mcp', name: serverId });
       try {
         await serviceApi().mcpSetEnabled(serverId, enabled);
         await refresh();
       } catch (error) {
         showErrorToast(error);
+        throw error;
       } finally {
-        setBusyKey(null);
+        setBusy(null);
       }
     },
     [],
   );
 
   const mcpRemove = useCallback(async (serverId: string, refresh: () => Promise<void>) => {
-    setBusyKey(`mcp:${serverId}`);
+    setBusy({ kind: 'mcp', name: serverId });
     try {
       await serviceApi().mcpRemove(serverId);
       await refresh();
     } catch (error) {
       showErrorToast(error);
     } finally {
-      setBusyKey(null);
+      setBusy(null);
     }
   }, []);
 
   return {
-    busyKey,
+    busy,
     setSkillEnabled,
     setAgentEnabled,
-    updateSkill,
     restoreBuiltin,
-    installSkill,
     putRole,
     putAgent,
     setAgentPermissions,

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { KeyRound, Plug, PlugZap, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -16,6 +16,8 @@ import { DropdownMenuItem, DropdownMenuSeparator } from '@ai/ui/components/dropd
 import { HighlightedText } from '@ai/ui/components/highlighted-text';
 import { Input } from '@ai/ui/components/input';
 import { ItemContent, ItemDescription, ItemMedia, ItemTitle } from '@ai/ui/components/item';
+import { Label } from '@ai/ui/components/label';
+import { Switch } from '@ai/ui/components/switch';
 import type { FieldsMatch } from '@ai/ui/lib/fuzzy-match';
 import { isComposingKey } from '@ai/ui/lib/ime';
 import { ExtensionGroup } from './extension-group';
@@ -26,8 +28,9 @@ import { mcpCanConnect, mcpNeedsAuth } from './use-mcp-state-label';
 
 /**
  * One server row in the shared anatomy: icon ring, id, the translated state and last error, then
- * the enable switch and More. Connect, sign-in and remove sit in More; while the server asks for
- * sign-in, the code field stays under the row so the flow is visible.
+ * the enable switch and More. Connect, sign-in and (for Personal servers) remove sit in More;
+ * while the server asks for sign-in, the code field stays under the row so the flow is visible.
+ * An installed plugin's local command waits for Allow to run, which also stays under the row.
  */
 function McpRow({
   row,
@@ -35,6 +38,8 @@ function McpRow({
   match,
   connected,
   busy,
+  lockedReason,
+  onApprove,
   onEnabled,
   onDetails,
   onConnect,
@@ -48,6 +53,9 @@ function McpRow({
   match: FieldsMatch<'serverId' | 'description'> | null;
   connected: boolean;
   busy: boolean;
+  lockedReason: string | null;
+  /** Set while the server waits for the user to allow its local command to run. */
+  onApprove: (() => void) | null;
   onEnabled: (enabled: boolean) => void;
   onDetails: () => void;
   onConnect: () => void;
@@ -57,6 +65,7 @@ function McpRow({
 }) {
   const { t } = useTranslation('settings');
   const [authCode, setAuthCode] = useState('');
+  const approveId = useId();
   const showConnect = mcpCanConnect(row.state);
   const showAuth = mcpNeedsAuth(row.state);
   const locked = !connected || busy;
@@ -100,6 +109,20 @@ function McpRow({
             </Button>
           </div>
         ) : null}
+        {onApprove ? (
+          <div className="settings-extension-mcp-approval">
+            <Switch
+              id={approveId}
+              size="sm"
+              checked={false}
+              disabled={locked}
+              onCheckedChange={(approved) => {
+                if (approved) onApprove();
+              }}
+            />
+            <Label htmlFor={approveId}>{t('extensions.plugins.page.allowRun')}</Label>
+          </div>
+        ) : null}
       </ItemContent>
       <ExtensionRowActions
         name={row.serverId}
@@ -107,26 +130,31 @@ function McpRow({
         disabled={locked}
         onEnabledChange={onEnabled}
         onDetails={onDetails}
+        lockedReason={lockedReason}
         menu={
-          <>
-            {showConnect ? (
-              <DropdownMenuItem disabled={locked} onSelect={onConnect}>
-                <PlugZap />
-                {t('extensions.connect')}
-              </DropdownMenuItem>
-            ) : null}
-            {showAuth ? (
-              <DropdownMenuItem disabled={locked} onSelect={onAuthStart}>
-                <KeyRound />
-                {t('extensions.authenticate')}
-              </DropdownMenuItem>
-            ) : null}
-            {showConnect || showAuth ? <DropdownMenuSeparator /> : null}
-            <DropdownMenuItem disabled={locked} onSelect={onRemove}>
-              <Trash2 />
-              {t('extensions.remove')}
-            </DropdownMenuItem>
-          </>
+          showConnect || showAuth || !row.readOnly ? (
+            <>
+              {showConnect ? (
+                <DropdownMenuItem disabled={locked} onSelect={onConnect}>
+                  <PlugZap />
+                  {t('extensions.connect')}
+                </DropdownMenuItem>
+              ) : null}
+              {showAuth ? (
+                <DropdownMenuItem disabled={locked} onSelect={onAuthStart}>
+                  <KeyRound />
+                  {t('extensions.authenticate')}
+                </DropdownMenuItem>
+              ) : null}
+              {(showConnect || showAuth) && !row.readOnly ? <DropdownMenuSeparator /> : null}
+              {row.readOnly ? null : (
+                <DropdownMenuItem disabled={locked} onSelect={onRemove}>
+                  <Trash2 />
+                  {t('extensions.remove')}
+                </DropdownMenuItem>
+              )}
+            </>
+          ) : null
         }
       />
     </ExtensionRow>
@@ -134,17 +162,21 @@ function McpRow({
 }
 
 /**
- * MCP servers group with connect/auth and catalog enable/remove; a row opens that server's
- * details page. `items` are the servers the search kept, with the id and description line marked.
+ * One plugin's MCP servers with connect/auth, enable, and remove for Personal servers; a row opens
+ * that server's details page. `items` are the servers shown, with search marks.
  */
 export function ExtensionMcpGroup({
+  title,
+  showTitle = true,
   items,
-  showTitle,
   loading,
   empty,
   connected,
   busyId,
   busy,
+  lockedReason,
+  needsApproval,
+  onApprove,
   onOpen,
   onConnect,
   onAuthStart,
@@ -152,14 +184,20 @@ export function ExtensionMcpGroup({
   onEnabled,
   onRemove,
 }: {
+  title: string;
+  /** False when a tab names the kind; the section keeps its name for accessibility. */
+  showTitle?: boolean;
   items: McpMatch[];
-  /** Search results list every catalog at once, so each group names itself. */
-  showTitle: boolean;
   loading: boolean;
   empty: string;
   connected: boolean;
   busyId: string | null;
   busy: boolean;
+  /** Why the switches are locked (their plugin is off); null when they are not. */
+  lockedReason: string | null;
+  /** Whether a server waits for Allow to run (an installed plugin's local command). */
+  needsApproval: (serverId: string) => boolean;
+  onApprove: (serverId: string) => void;
   onOpen: (serverId: string) => void;
   onConnect: (serverId: string) => void;
   onAuthStart: (serverId: string) => void;
@@ -172,11 +210,11 @@ export function ExtensionMcpGroup({
   return (
     <>
       <ExtensionGroup
-        title={t('extensions.tabMcp')}
+        title={title}
+        showTitle={showTitle}
         empty={empty}
         loading={loading}
         hasRows={items.length > 0}
-        showTitle={showTitle}
         emptyIcon={<Plug />}
       >
         {items.map(({ row, description, match }) => (
@@ -187,6 +225,8 @@ export function ExtensionMcpGroup({
             match={match}
             connected={connected}
             busy={busy || busyId === row.serverId}
+            lockedReason={lockedReason}
+            onApprove={needsApproval(row.serverId) ? () => onApprove(row.serverId) : null}
             onEnabled={(enabled) => onEnabled(row.serverId, enabled)}
             onDetails={() => onOpen(row.serverId)}
             onConnect={() => onConnect(row.serverId)}

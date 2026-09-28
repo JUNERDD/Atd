@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { messageOf } from '../../lib/errors';
-import { asMcpConfig, type ExtensionMcpConfig } from './extension-rows';
+import { asMcpConfig, type ExtensionMcpConfig } from './extension-detail-rows';
 
 export type McpConfigLoad =
   | { serverId: string; config: ExtensionMcpConfig | null }

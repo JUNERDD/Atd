@@ -122,6 +122,12 @@ export const CommandSchema = Type.Object(
     model: ModelPolicySchema,
     tools: Type.Array(ToolIdSchema, { uniqueItems: true }),
     memory: Type.Union([Type.Literal('inherit'), Type.Literal('off')]),
+    /**
+     * The plugin contributing this command, as the service reports it (`ServiceCommandFull`).
+     * Absent for the user's own commands; a plugin command is read-only except for `enabled`, never
+     * joins the saved command cache, and is never sent when creating a command.
+     */
+    pluginId: Type.Optional(Type.String({ minLength: 1, maxLength: 128 })),
   },
   { additionalProperties: false },
 );

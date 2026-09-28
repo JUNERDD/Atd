@@ -1,4 +1,11 @@
-import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type ReactNode,
+} from 'react';
 import { Blocks, Brain, Command, Keyboard, Menu, Plug, Shield, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@ai/ui/components/button';
@@ -27,7 +34,11 @@ import { ProviderSettingsForm } from './provider-settings';
 import { ShortcutSettings } from './shortcut-settings';
 import { ServiceSettings } from '../service/service-settings';
 import { useSettingsSnapshot } from './use-settings';
-import { SettingsNavigationContext, SettingsSectionActiveContext } from './settings-navigation';
+import {
+  SettingsCommandLinkContext,
+  SettingsNavigationContext,
+  SettingsSectionActiveContext,
+} from './settings-navigation';
 import './settings.css';
 
 const sections = [
@@ -93,17 +104,23 @@ export function SettingsWindow() {
     setDrawer(false);
     setVisited((current) => (current.includes(next) ? current : [...current, next]));
   }
-  // The task panel can request the editor for one command, either through the desktop bridge
-  // when this window is already open or through storage/URL in the web preview.
-  useEffect(() => {
-    const show = (commandId: unknown) => {
+  /** Shows one command's editor; the task panel and plugin pages link to commands this way. */
+  const showCommand = useCallback(
+    (commandId: unknown) => {
       if (recording || !isCommandId(commandId)) return;
       setTab('commands');
       setDrawer(false);
       setVisited((current) => (current.includes('commands') ? current : [...current, 'commands']));
       setCommandTarget({ id: commandId, nonce: Date.now() });
-    };
-    const unsubscribe = window.desktop?.settings.onOpenCommand?.((commandId) => show(commandId));
+    },
+    [recording],
+  );
+  // The task panel can request the editor for one command, either through the desktop bridge
+  // when this window is already open or through storage/URL in the web preview.
+  useEffect(() => {
+    const unsubscribe = window.desktop?.settings.onOpenCommand?.((commandId) =>
+      showCommand(commandId),
+    );
     const onStorage = (event: StorageEvent) => {
       if (event.key !== COMMAND_SETTINGS_STORAGE_KEY || !event.newValue) return;
       let parsed: unknown;
@@ -114,14 +131,14 @@ export function SettingsWindow() {
         return;
       }
       if (typeof parsed === 'object' && parsed !== null && 'commandId' in parsed)
-        show((parsed as { commandId: unknown }).commandId);
+        showCommand((parsed as { commandId: unknown }).commandId);
     };
     window.addEventListener('storage', onStorage);
     return () => {
       unsubscribe?.();
       window.removeEventListener('storage', onStorage);
     };
-  }, [recording]);
+  }, [showCommand]);
   function navigation() {
     return (
       <nav className="settings-navigation" aria-label={t('nav.label')}>
@@ -156,96 +173,100 @@ export function SettingsWindow() {
   return (
     <TooltipProvider delayDuration={300}>
       <SettingsNavigationContext value={navigate}>
-        <div className="settings-window" data-layout={layout}>
-          {layout === 'drawer' ? (
-            <header className="settings-mobile-bar">
-              <span className="settings-native-controls-space" aria-hidden="true" />
-              <span className="settings-current-section">{t(currentSection.labelKey)}</span>
-              <Sheet open={drawer} onOpenChange={setDrawer}>
-                <SheetTrigger asChild>
-                  <IconButton
-                    label={t('drawer.menu')}
-                    aria-label={t('drawer.menuLabel')}
-                    disabled={recording}
-                  >
-                    <Menu />
-                  </IconButton>
-                </SheetTrigger>
-                <SheetContent
-                  ref={drawerContent}
-                  side="left"
-                  showCloseButton={false}
-                  className="settings-drawer transition-none data-open:fade-in-100 data-[side=left]:data-open:slide-in-from-left data-closed:fade-out-100 data-[side=left]:data-closed:slide-out-to-left motion-reduce:animate-none"
-                  overlayClassName="settings-drawer-overlay duration-200 motion-reduce:animate-none"
-                  onOpenAutoFocus={(event) => {
-                    event.preventDefault();
-                    drawerContent.current
-                      ?.querySelector<HTMLButtonElement>('[aria-current="page"]')
-                      ?.focus();
-                  }}
-                >
-                  <SheetTitle className="sr-only">{t('drawer.title')}</SheetTitle>
-                  <SheetDescription className="sr-only">{t('drawer.description')}</SheetDescription>
-                  <header className="settings-drawer-header">
-                    <span className="settings-native-controls-space" aria-hidden="true" />
-                    <SheetClose asChild>
-                      <IconButton label={t('drawer.close')} aria-label={t('drawer.closeLabel')}>
-                        <X />
-                      </IconButton>
-                    </SheetClose>
-                  </header>
-                  <ScrollArea className="settings-drawer-scroll" gutter="stable">
-                    {navigation()}
-                  </ScrollArea>
-                </SheetContent>
-              </Sheet>
-            </header>
-          ) : (
-            <aside className="settings-sidebar" aria-label={t('nav.navigationLabel')}>
-              <header className="settings-window-controls">
+        <SettingsCommandLinkContext value={showCommand}>
+          <div className="settings-window" data-layout={layout}>
+            {layout === 'drawer' ? (
+              <header className="settings-mobile-bar">
                 <span className="settings-native-controls-space" aria-hidden="true" />
+                <span className="settings-current-section">{t(currentSection.labelKey)}</span>
+                <Sheet open={drawer} onOpenChange={setDrawer}>
+                  <SheetTrigger asChild>
+                    <IconButton
+                      label={t('drawer.menu')}
+                      aria-label={t('drawer.menuLabel')}
+                      disabled={recording}
+                    >
+                      <Menu />
+                    </IconButton>
+                  </SheetTrigger>
+                  <SheetContent
+                    ref={drawerContent}
+                    side="left"
+                    showCloseButton={false}
+                    className="settings-drawer transition-none data-open:fade-in-100 data-[side=left]:data-open:slide-in-from-left data-closed:fade-out-100 data-[side=left]:data-closed:slide-out-to-left motion-reduce:animate-none"
+                    overlayClassName="settings-drawer-overlay duration-200 motion-reduce:animate-none"
+                    onOpenAutoFocus={(event) => {
+                      event.preventDefault();
+                      drawerContent.current
+                        ?.querySelector<HTMLButtonElement>('[aria-current="page"]')
+                        ?.focus();
+                    }}
+                  >
+                    <SheetTitle className="sr-only">{t('drawer.title')}</SheetTitle>
+                    <SheetDescription className="sr-only">
+                      {t('drawer.description')}
+                    </SheetDescription>
+                    <header className="settings-drawer-header">
+                      <span className="settings-native-controls-space" aria-hidden="true" />
+                      <SheetClose asChild>
+                        <IconButton label={t('drawer.close')} aria-label={t('drawer.closeLabel')}>
+                          <X />
+                        </IconButton>
+                      </SheetClose>
+                    </header>
+                    <ScrollArea className="settings-drawer-scroll" gutter="stable">
+                      {navigation()}
+                    </ScrollArea>
+                  </SheetContent>
+                </Sheet>
               </header>
-              {navigation()}
-            </aside>
-          )}
-          <main className="settings-content" aria-label={t('window.label')}>
-            <div className="settings-content-header">
-              <OpenInBrowserButton />
-              {bridge && snapshot && <LanguageSelector language={snapshot.language} />}
-            </div>
-            <ScrollArea
-              className="flex-1"
-              viewportClassName="[&>div]:flex! [&>div]:flex-col [&>div]:h-full"
-              gutter="none"
-            >
-              <div className="settings-content-scroll">
-                {page(
-                  'permissions',
-                  <>
-                    <PermissionSettings snapshot={snapshot} />
-                    <ShellAllowlistSettings snapshot={snapshot} />
-                  </>,
-                )}
-                {page('extensions', <ServiceSettings />)}
-                {page('providers', <ProviderSettingsForm snapshot={snapshot} />)}
-                {page(
-                  'commands',
-                  <CommandSettings
-                    settings={snapshot}
-                    activeCommand={commandTarget}
-                    onConsumeActiveCommand={() => setCommandTarget(null)}
-                  />,
-                )}
-                {page('memory', <MemorySettings />)}
-                {page(
-                  'shortcuts',
-                  <ShortcutSettings snapshot={snapshot} onRecordingChange={setRecording} />,
-                )}
+            ) : (
+              <aside className="settings-sidebar" aria-label={t('nav.navigationLabel')}>
+                <header className="settings-window-controls">
+                  <span className="settings-native-controls-space" aria-hidden="true" />
+                </header>
+                {navigation()}
+              </aside>
+            )}
+            <main className="settings-content" aria-label={t('window.label')}>
+              <div className="settings-content-header">
+                <OpenInBrowserButton />
+                {bridge && snapshot && <LanguageSelector language={snapshot.language} />}
               </div>
-            </ScrollArea>
-          </main>
-        </div>
-        <ToastHost top={52} />
+              <ScrollArea
+                className="flex-1"
+                viewportClassName="[&>div]:flex! [&>div]:flex-col [&>div]:h-full"
+                gutter="none"
+              >
+                <div className="settings-content-scroll">
+                  {page(
+                    'permissions',
+                    <>
+                      <PermissionSettings snapshot={snapshot} />
+                      <ShellAllowlistSettings snapshot={snapshot} />
+                    </>,
+                  )}
+                  {page('extensions', <ServiceSettings />)}
+                  {page('providers', <ProviderSettingsForm snapshot={snapshot} />)}
+                  {page(
+                    'commands',
+                    <CommandSettings
+                      settings={snapshot}
+                      activeCommand={commandTarget}
+                      onConsumeActiveCommand={() => setCommandTarget(null)}
+                    />,
+                  )}
+                  {page('memory', <MemorySettings />)}
+                  {page(
+                    'shortcuts',
+                    <ShortcutSettings snapshot={snapshot} onRecordingChange={setRecording} />,
+                  )}
+                </div>
+              </ScrollArea>
+            </main>
+          </div>
+          <ToastHost top={52} />
+        </SettingsCommandLinkContext>
       </SettingsNavigationContext>
     </TooltipProvider>
   );

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import type { PluginSummary } from '@ai/agent-contracts';
 import type { ServiceStatusView } from '../../../electron/service/ipc';
 import { showErrorToast } from '../../components/toast-store';
 import {
@@ -11,6 +12,7 @@ import {
   type ExtensionRoleRow,
   type ExtensionSkillRow,
 } from './extension-rows';
+import { asPluginSummary } from './plugin-rows';
 
 function serviceApi() {
   if (!window.desktop?.service) throw new Error('Open the desktop app to manage the service.');
@@ -185,5 +187,48 @@ export function useServiceMcp() {
     },
     [refresh],
   );
-  return { mcp, loading, busyId, refresh, connect, authStart, authComplete };
+  const setEnabled = useCallback((serverId: string, enabled: boolean) => {
+    setMcp((current) =>
+      current
+        ? {
+            servers: current.servers.map((row) =>
+              row.serverId === serverId ? { ...row, disabled: !enabled } : row,
+            ),
+          }
+        : current,
+    );
+  }, []);
+  return { mcp, loading, busyId, refresh, setEnabled, connect, authStart, authComplete };
+}
+
+/**
+ * The plugin list via the service bridge: every host and installed plugin with its contents
+ * counts. Rows outside the contract are left out, so one bad row cannot hide the rest. `epoch`
+ * moves after every reload, so an open plugin page reads its detail again with the list.
+ */
+export function useServicePlugins() {
+  const [plugins, setPlugins] = useState<PluginSummary[] | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [epoch, setEpoch] = useState(0);
+  const loaded = useRef(false);
+  const refresh = useCallback(async () => {
+    if (!window.desktop?.service) return;
+    if (!loaded.current) setLoading(true);
+    try {
+      const result = await window.desktop.service.plugins();
+      loaded.current = true;
+      setPlugins(result.plugins.flatMap((row) => asPluginSummary(row) ?? []));
+    } catch (error) {
+      showErrorToast(error);
+    } finally {
+      setLoading(false);
+      setEpoch((value) => value + 1);
+    }
+  }, []);
+  const setEnabled = useCallback((id: string, enabled: boolean) => {
+    setPlugins((current) =>
+      current ? current.map((row) => (row.id === id ? { ...row, enabled } : row)) : current,
+    );
+  }, []);
+  return { plugins, loading, epoch, refresh, setEnabled };
 }

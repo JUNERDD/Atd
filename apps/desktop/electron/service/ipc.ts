@@ -1,6 +1,13 @@
 import type { AgentPermissionsWire, BuiltinStatusWire } from '@ai/agent-client';
-import { SubagentPermissionsSchema, type SubagentPermissions } from '@ai/agent-contracts';
+import {
+  McpServerIdSchema,
+  SkillName,
+  SubagentNameSchema,
+  SubagentPermissionsSchema,
+  type SubagentPermissions,
+} from '@ai/agent-contracts';
 import { Type, type Static } from 'typebox';
+import { PluginRequestSchema, type ServicePluginBridge } from './plugin-requests';
 
 export const ServiceStateSchema = Type.Union([
   Type.Literal('disconnected'),
@@ -33,12 +40,14 @@ const RoleToolSchema = Type.Union([
   Type.Literal('command'),
 ]);
 
-/** A subagent catalog name: `service.*` for the system agents, a bare file name otherwise. */
-const AgentNameSchema = Type.String({
-  minLength: 1,
-  maxLength: 128,
-  pattern: '^[A-Za-z0-9][A-Za-z0-9._-]*$',
-});
+/**
+ * A subagent catalog name: `service.*` for the system agents, a bare file name for Personal ones,
+ * or `<plugin>:<agent>` for an installed plugin's.
+ */
+const AgentNameSchema = Type.Union([
+  Type.String({ minLength: 1, maxLength: 128, pattern: '^[A-Za-z0-9][A-Za-z0-9._-]*$' }),
+  SubagentNameSchema,
+]);
 
 const RoleIdSchema = Type.String({
   minLength: 1,
@@ -46,7 +55,8 @@ const RoleIdSchema = Type.String({
   pattern: '^[A-Za-z0-9][A-Za-z0-9_-]*$',
 });
 
-const SkillNameSchema = Type.String({
+/** A Personal item's name (it also names the file), never qualified by a plugin. */
+const PersonalItemNameSchema = Type.String({
   minLength: 1,
   maxLength: 128,
   pattern: '^[A-Za-z0-9][A-Za-z0-9_-]*$',
@@ -85,29 +95,16 @@ export const ServiceRequestSchema = Type.Union([
     port: Type.Optional(Type.Integer({ minimum: 1, maximum: 65535 })),
   }),
   Type.Object({ action: Type.Literal('skills') }),
-  Type.Object({
-    action: Type.Literal('skillsGet'),
-    name: Type.String({ minLength: 1, maxLength: 128 }),
-  }),
+  Type.Object({ action: Type.Literal('skillsGet'), name: SkillName }),
   Type.Object({
     action: Type.Literal('skillsFile'),
-    name: Type.String({ minLength: 1, maxLength: 128 }),
+    name: SkillName,
     path: Type.String({ minLength: 1, maxLength: 1024 }),
   }),
   Type.Object({
-    action: Type.Literal('skillsUpdate'),
-    name: Type.String({ minLength: 1, maxLength: 128 }),
-  }),
-  Type.Object({
     action: Type.Literal('skillsSetEnabled'),
-    name: Type.String({ minLength: 1, maxLength: 128 }),
+    name: SkillName,
     enabled: Type.Boolean(),
-  }),
-  Type.Object({
-    action: Type.Literal('skillsInstall'),
-    source: Type.String({ minLength: 1, maxLength: 2048 }),
-    sourceKind: Type.Union([Type.Literal('local'), Type.Literal('npm'), Type.Literal('git')]),
-    name: Type.Optional(SkillNameSchema),
   }),
   Type.Object({ action: Type.Literal('builtinRestore'), id: BuiltinIdSchema }),
   Type.Object({ action: Type.Literal('roles') }),
@@ -118,7 +115,7 @@ export const ServiceRequestSchema = Type.Union([
     allows: Type.Object(
       {
         tools: Type.Array(RoleToolSchema, { maxItems: 16 }),
-        skills: Type.Array(SkillNameSchema, { maxItems: 128 }),
+        skills: Type.Array(SkillName, { maxItems: 128 }),
       },
       { additionalProperties: false },
     ),
@@ -136,7 +133,7 @@ export const ServiceRequestSchema = Type.Union([
   }),
   Type.Object({
     action: Type.Literal('agentsPut'),
-    name: SkillNameSchema,
+    name: PersonalItemNameSchema,
     description: Type.String({ minLength: 1, maxLength: 2048 }),
     tools: Type.Array(RoleToolSchema, { maxItems: 16 }),
     model: Type.Union([Type.String({ minLength: 1, maxLength: 256 }), Type.Null()]),
@@ -144,17 +141,11 @@ export const ServiceRequestSchema = Type.Union([
   }),
   Type.Object({ action: Type.Literal('mcpStatus') }),
   Type.Object({ action: Type.Literal('mcpServers') }),
-  Type.Object({
-    action: Type.Literal('mcpConnect'),
-    serverId: Type.String({ minLength: 1, maxLength: 128 }),
-  }),
-  Type.Object({
-    action: Type.Literal('mcpAuthStart'),
-    serverId: Type.String({ minLength: 1, maxLength: 128 }),
-  }),
+  Type.Object({ action: Type.Literal('mcpConnect'), serverId: McpServerIdSchema }),
+  Type.Object({ action: Type.Literal('mcpAuthStart'), serverId: McpServerIdSchema }),
   Type.Object({
     action: Type.Literal('mcpAuthComplete'),
-    serverId: Type.String({ minLength: 1, maxLength: 128 }),
+    serverId: McpServerIdSchema,
     input: Type.String({ minLength: 1, maxLength: 8192 }),
   }),
   Type.Object({
@@ -183,16 +174,20 @@ export const ServiceRequestSchema = Type.Union([
     action: Type.Literal('mcpRemove'),
     serverId: Type.String({ minLength: 1, maxLength: 128 }),
   }),
+  PluginRequestSchema,
 ]);
 export type ServiceRequest = Static<typeof ServiceRequestSchema>;
 
 export type ServiceEvent =
   | { type: 'status'; status: ServiceStatusView }
-  /** Skills, roles, subagents or MCP servers changed, possibly from another client: reload lists. */
+  /**
+   * Plugins, skills, roles, subagents or MCP servers changed, possibly from another client: reload
+   * lists.
+   */
   | { type: 'extensions' }
   | { type: 'notice'; text: string; kind: 'info' | 'warning' | 'error' };
 
-export interface ServiceBridge {
+export interface ServiceBridge extends ServicePluginBridge {
   status: () => Promise<ServiceStatusView>;
   connect: (dataDir: string) => Promise<ServiceStatusView>;
   disconnect: () => Promise<ServiceStatusView>;
@@ -200,7 +195,6 @@ export interface ServiceBridge {
   /** Signs the default browser in to the connected service with a one-time link (desktop only). */
   openInBrowser: () => Promise<void>;
   skills: () => Promise<{ skills: unknown[]; diagnostics: unknown[] }>;
-  updateSkill: (name: string) => Promise<{ skill: unknown; diagnostics: unknown[] }>;
   /** One catalog skill (null when it left the catalog) with its folder's files. */
   skill: (name: string) => Promise<{ skill: unknown; files: string[]; truncated: boolean }>;
   /** One text file of a skill folder; null content with the reason for binary or large files. */
@@ -209,11 +203,6 @@ export interface ServiceBridge {
     path: string,
   ) => Promise<{ path: string; content: string | null; reason: 'binary' | 'too_large' | null }>;
   setSkillEnabled: (name: string, enabled: boolean) => Promise<{ name: string; enabled: boolean }>;
-  installSkill: (input: {
-    source: string;
-    sourceKind: 'local' | 'npm' | 'git';
-    name?: string;
-  }) => Promise<{ skill: unknown; diagnostics: unknown[] }>;
   /** Backs up the user's copy of a built-in resource, then reinstalls the shipped version. */
   restoreBuiltin: (id: string) => Promise<{
     id: string;

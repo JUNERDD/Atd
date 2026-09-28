@@ -1,6 +1,5 @@
 import {
   getSkill,
-  installSkill,
   listAtdAgents,
   listRoles,
   listSkills,
@@ -16,11 +15,11 @@ import {
   setAtdAgentEnabled,
   setAtdAgentPermissions,
   setSkillEnabled,
-  updateSkill,
   type AgentClientOptions,
 } from '@ai/agent-client';
 import type { ServiceRequest } from './ipc';
 import { removeMcpServer, setMcpServerEnabled, upsertMcpServer } from './mcp-catalog';
+import { handlePluginRequest } from './plugin-requests';
 
 /** Service bridge requests about extensions; connection lifecycle stays with each host. */
 export type ExtensionRequest = Exclude<
@@ -29,7 +28,7 @@ export type ExtensionRequest = Exclude<
 >;
 
 /**
- * Skills, roles, subagents, built-ins and MCP servers over the service API, shared by the
+ * Plugins, skills, roles, subagents, built-ins and MCP servers over the service API, shared by the
  * desktop main process and the web client. `openExternal` shows an MCP authorization page.
  */
 export async function handleExtensionRequest(
@@ -45,16 +44,8 @@ export async function handleExtensionRequest(
       return getSkill(options, request.name);
     case 'skillsFile':
       return readSkillFile(options, request.name, request.path);
-    case 'skillsUpdate':
-      return updateSkill(options, request.name);
     case 'skillsSetEnabled':
       return setSkillEnabled(options, request.name, request.enabled);
-    case 'skillsInstall':
-      return installSkill(options, {
-        source: request.source,
-        sourceKind: request.sourceKind,
-        ...(request.name !== undefined ? { name: request.name } : {}),
-      });
     case 'builtinRestore':
       return restoreBuiltin(options, request.id);
     case 'roles':
@@ -104,6 +95,18 @@ export async function handleExtensionRequest(
       return setMcpServerEnabled(options, request.serverId, request.enabled);
     case 'mcpRemove':
       return removeMcpServer(options, request.serverId);
+    case 'plugins':
+    case 'pluginsGet':
+    case 'pluginsSetEnabled':
+    case 'pluginsSetItemEnabled':
+    case 'pluginsSetApproval':
+    case 'pluginsConfigure':
+    case 'pluginsDuplicate':
+    case 'pluginsPreview':
+    case 'pluginsUpdatePreview':
+    case 'pluginsInstall':
+    case 'pluginsUninstall':
+      return handlePluginRequest(options, request);
     default: {
       const _exhaustive: never = request;
       throw new Error(`Unsupported service action: ${JSON.stringify(_exhaustive)}`);
