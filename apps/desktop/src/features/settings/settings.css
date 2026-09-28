@@ -309,10 +309,6 @@
 .settings-extension-empty [data-slot='empty'] {
   flex: 1 0 auto;
 }
-.settings-extension-form {
-  width: 100%;
-  text-align: start;
-}
 .settings-extension-group h3 {
   margin: 0;
   font-size: 14px;
@@ -381,36 +377,12 @@
   border-radius: 999px;
   color: var(--muted-foreground);
 }
-/* Extension details: the header stays while the fields and long content scroll below it. */
-.extension-detail-dialog {
-  max-width: min(32rem, calc(100% - 2rem));
-  /*
-   * One fill for the dialog's inset panels (the fields card and the file tree). Opaque, because the
-   * tree paints it behind a middle-truncation marker to hide the characters it replaces.
-   */
+/* Extension sub-pages (add and details): form sections and detail blocks stack in one column. */
+.extension-page {
+  /* Opaque, because the file tree paints it behind a middle-truncation marker. */
   --extension-detail-panel: color-mix(in oklab, var(--muted) 60%, var(--background));
 }
-.extension-detail-dialog[data-wide='true'] {
-  max-width: min(48rem, calc(100% - 2rem));
-}
-.extension-detail-heading {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  gap: 8px;
-}
-.extension-detail-title {
-  flex: 0 1 auto;
-  line-height: 24px;
-}
-.extension-detail-description {
-  white-space: normal;
-  text-wrap: pretty;
-}
-.extension-detail-scroll {
-  flex: 1 1 auto;
-}
-.extension-detail-body {
+.extension-page-body {
   display: flex;
   flex-direction: column;
   gap: 20px;
@@ -461,16 +433,18 @@
   border-radius: var(--radius-xl);
 }
 /*
- * A skill folder as a file browser: the tree beside the open file, both at one fixed height so
- * switching files never resizes the dialog. A narrow dialog stacks them, tree first.
+ * A skill folder as a file browser on the skill's details page: the tree beside the open file,
+ * both at one fixed height so switching files never resizes the page. The browser takes the
+ * page's width with the tree capped, and its height follows the window within bounds, so a
+ * short window still shows the fields above it. A narrow page stacks them, tree first.
  */
 .skill-files {
   container-type: inline-size;
 }
 .skill-browser {
   display: grid;
-  height: 26rem;
-  grid-template-columns: minmax(10rem, 30%) minmax(0, 1fr);
+  height: clamp(20rem, 60vh, 36rem);
+  grid-template-columns: minmax(10rem, min(30%, 18rem)) minmax(0, 1fr);
   overflow: hidden;
   border: 1px solid var(--border);
   border-radius: var(--radius-xl);
@@ -637,6 +611,14 @@
 }
 .settings-permission-settings .settings-section-heading > p,
 .settings-extension-settings .settings-section-heading > p {
+  white-space: normal;
+}
+/* An item's own description reads as content: it wraps, capped so a long one cannot push the body
+ * out of a short window (the heading's title attribute still carries it in full). */
+.extension-page .settings-section-heading > p {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
   white-space: normal;
 }
 .settings-permission-options {

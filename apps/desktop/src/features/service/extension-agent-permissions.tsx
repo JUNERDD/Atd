@@ -27,6 +27,7 @@ import {
   SelectValue,
 } from '@ai/ui/components/select';
 import { Switch } from '@ai/ui/components/switch';
+import { showToast } from '../../components/toast-store';
 import type { ExtensionAgentRow } from './extension-rows';
 
 /** Tool groups in the order the dialog lists them; together they cover every nameable tool. */
@@ -90,7 +91,7 @@ function PermissionSwitch({
 /**
  * The permissions form, mounted while the dialog is open so each opening starts from the row's
  * current permissions. Save stores the draft; Restore removes the override (shown only when one
- * exists); both close the dialog once the service accepts them.
+ * exists); both confirm with a toast and close the dialog once the service accepts them.
  */
 function AgentPermissionsForm({
   row,
@@ -109,7 +110,10 @@ function AgentPermissionsForm({
   const noTools = draft.limit && draft.tools.length === 0;
   const save = (permissions: SubagentPermissions | null) => {
     void onSave(permissions).then((ok) => {
-      if (ok) onClose();
+      if (!ok) return;
+      // No agent name: toasts keep one sentence, and names like service.reviewer hold a dot.
+      showToast({ kind: 'info', text: t('extensions.agentPermissions.saved') });
+      onClose();
     });
   };
   const toggleTool = (tool: SubagentTool, on: boolean) =>
