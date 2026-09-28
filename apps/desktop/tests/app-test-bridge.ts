@@ -37,6 +37,8 @@ export function installBridge(extras?: {
     language: 'en',
     shortcuts: { ...DEFAULT_SHORTCUTS },
     pinned: true,
+    showInDock: false,
+    openAtLogin: null,
     shortcutAvailable: true,
     permissionTier: 'manual',
     shellAllowlist: [],
@@ -178,6 +180,11 @@ export function installBridge(extras?: {
     settingsListeners.forEach((listener) => listener(settings));
     return pinned;
   });
+  const setShowInDock = vi.fn(async (showInDock: boolean) => {
+    settings = { ...settings, showInDock };
+    settingsListeners.forEach((listener) => listener(settings));
+    return showInDock;
+  });
   const hide = vi.fn(async () => {});
   const open = vi.fn(async () => {});
   const openCommand = vi.fn(async (_commandId: string) => {});
@@ -191,6 +198,8 @@ export function installBridge(extras?: {
       shortcutAvailable: true,
     })),
     setPinned,
+    setShowInDock,
+    setOpenAtLogin: vi.fn(async (_open: boolean) => false),
     show: vi.fn(async () => {}),
     hide,
     chooseFiles: vi.fn(async () => []),
