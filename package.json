@@ -16,11 +16,11 @@
     "package": "pnpm build && pnpm --filter @ai/desktop package"
   },
   "devDependencies": {
-    "@shadcn/lint": "0.1.0",
-    "@types/node": "24.13.3",
-    "oxfmt": "0.67.0",
-    "oxlint": "1.82.0",
-    "turbo": "2.10.12",
+    "@shadcn/lint": "0.2.0",
+    "@types/node": "24.19.0",
+    "oxfmt": "0.70.0",
+    "oxlint": "1.85.0",
+    "turbo": "2.11.4",
     "typescript": "7.0.2"
   },
   "engines": {
