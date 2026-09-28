@@ -42,10 +42,7 @@ export function registerMemoryRoutes(app: FastifyInstance, ctx: MemoryRouteConte
     const body = parse(MemoryUpdateRequestSchema, request.body);
     const memory = await authority();
     try {
-      await memory.update(
-        { id: body.entry.id, target: body.entry.target, content: body.content },
-        body.content,
-      );
+      await memory.update(body.entry, body.content);
     } catch (error) {
       // Hermes reports a stale/missing entry as changed (observed against
       // the pinned host): a client-state conflict (409), not a server fault.
