@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { Search } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Input } from '@ai/ui/components/input';
 import { useCompositionQuery } from '@ai/ui/lib/ime';
@@ -10,11 +11,13 @@ import { useSettingsSectionExit } from '../settings/settings-navigation';
 import { ExtensionAddButton, type ExtensionTab } from './extension-add-button';
 import { AgentPage } from './extension-agent-page';
 import { ExtensionAgentsGroup } from './extension-agents';
+import { ExtensionGroup } from './extension-group';
 import { ExtensionMcpGroup } from './extension-mcp';
 import { McpPage } from './extension-mcp-page';
 import { SkillPage } from './extension-skill-page';
 import { ExtensionSkillsGroup } from './extension-skills';
 import { useExtensionAiSession } from './use-extension-ai-session';
+import { useExtensionMatches } from './use-extension-matches';
 import { useExtensionMutations } from './use-extension-mutations';
 import { useServiceAgents, useServiceMcp, useServiceSkills, useServiceStatus } from './use-service';
 
@@ -104,6 +107,11 @@ export function ServiceSettings() {
   const catalogCount =
     (skills?.skills.length ?? 0) + (agents?.agents.length ?? 0) + (mcp?.servers.length ?? 0);
   const searching = Boolean(query.trim());
+  const matches = useExtensionMatches(query, {
+    skills: skills?.skills ?? [],
+    agents: agents?.agents ?? [],
+    mcp: mcp?.servers ?? [],
+  });
   const skillBusyName =
     busyKey?.startsWith('skill:') && busyKey !== 'skill:install'
       ? busyKey.slice('skill:'.length)
@@ -173,6 +181,80 @@ export function ServiceSettings() {
     }
   }
 
+  const skillsGroup = (
+    <ExtensionSkillsGroup
+      items={matches.skills}
+      showTitle={searching}
+      // Subagent and MCP rows always show More, so listed below them skills keep its column.
+      reserveMenu={searching && matches.agents.length + matches.mcp.length > 0}
+      loading={skillsLoading}
+      empty={t('service.emptySkills')}
+      connected={connected}
+      busyName={skillBusyName}
+      onOpen={(name) => setPage({ tab: 'skills', name })}
+      onEnabled={(name, enabled) =>
+        toggleOptimistically(
+          `skill:${name}`,
+          enabled,
+          (value) => setEnabled(name, value),
+          (value) => setSkillEnabled(name, value),
+        )
+      }
+      onUpdate={(name) => void updateSkill(name, refreshSkills)}
+      onRestore={(id) => restoreBuiltin(id, refreshSkills)}
+    />
+  );
+  const agentsGroup = (
+    <ExtensionAgentsGroup
+      rows={agents?.agents ?? []}
+      items={matches.agents}
+      showTitle={searching}
+      loading={agentsLoading}
+      empty={t('service.emptyAgents')}
+      connected={connected}
+      busy={agentsBusy}
+      onOpen={(name) => setPage({ tab: 'subagents', name })}
+      onEnabled={(name, enabled) =>
+        toggleOptimistically(
+          `agent:${name}`,
+          enabled,
+          (value) => setAgentRowEnabled(name, value),
+          (value) => setAgentEnabled(name, value),
+        )
+      }
+      onPermissions={(name, value) => setAgentPermissions(name, value, refreshAgents)}
+    />
+  );
+  const mcpGroup = (
+    <ExtensionMcpGroup
+      items={matches.mcp}
+      showTitle={searching}
+      loading={mcpLoading}
+      empty={t('service.emptyMcp')}
+      connected={connected}
+      busyId={busyId}
+      busy={mcpBusy}
+      onOpen={(serverId) => setPage({ tab: 'mcp', name: serverId })}
+      onConnect={(serverId) => void mcpConnect(serverId)}
+      onAuthStart={(serverId) => void authStart(serverId)}
+      onAuthComplete={(serverId, input) => void authComplete(serverId, input)}
+      onEnabled={(serverId, enabled) => void mcpSetEnabled(serverId, enabled, refreshMcp)}
+      onRemove={(serverId) => void mcpRemove(serverId, refreshMcp)}
+    />
+  );
+  const matchCount = matches.skills.length + matches.agents.length + matches.mcp.length;
+  // The panel owns the scrollbar; the heading, search, and tab row stay put above it.
+  const scroll = (content: ReactNode) => (
+    <ScrollArea
+      className="flex-1"
+      viewportClassName="[&>div]:flex! [&>div]:flex-col [&>div]:min-h-full"
+      gutter="stable"
+      scrollShadow
+    >
+      {content}
+    </ScrollArea>
+  );
+
   return (
     <section className="settings-extension-settings" aria-label={t('extensions.title')}>
       <SettingsHeading title={t('extensions.title')} description={t('extensions.description')}>
@@ -186,92 +268,62 @@ export function ServiceSettings() {
         />
       </SettingsHeading>
       <div className="settings-extension-tabs">
-        <Tabs
-          value={tab}
-          onValueChange={(value) => {
-            if (value !== 'skills' && value !== 'subagents' && value !== 'mcp') return;
-            setTab(value);
-          }}
-        >
-          <div className="settings-extension-tab-row">
-            <TabsList aria-label={t('extensions.tabsLabel')}>
-              <TabsTrigger value="skills">{t('extensions.tabSkills')}</TabsTrigger>
-              <TabsTrigger value="subagents">{t('extensions.tabSubagents')}</TabsTrigger>
-              <TabsTrigger value="mcp">{t('extensions.tabMcp')}</TabsTrigger>
-            </TabsList>
-            <ExtensionAddButton
-              tab={tab}
-              disabled={menuDisabled}
-              onAdd={() => setPage({ tab, name: null })}
-            />
-          </div>
-          {/* The panel owns the scrollbar; the heading, search, and tab row stay put above it. */}
-          <ScrollArea
-            className="flex-1"
-            viewportClassName="[&>div]:flex! [&>div]:flex-col [&>div]:min-h-full"
-            gutter="stable"
-            scrollShadow
+        {searching ? (
+          // A search spans all three catalogs: the tabs and the add button step aside, and only
+          // the groups with a match stay, each under its own title.
+          scroll(
+            matchCount ? (
+              <div className="settings-extension-results">
+                {matches.skills.length ? skillsGroup : null}
+                {matches.agents.length ? agentsGroup : null}
+                {matches.mcp.length ? mcpGroup : null}
+              </div>
+            ) : (
+              <ExtensionGroup
+                title={t('extensions.title')}
+                empty={t('extensions.noMatches')}
+                loading={skillsLoading || agentsLoading || mcpLoading}
+                hasRows={false}
+                showTitle={false}
+                emptyIcon={<Search />}
+              />
+            ),
+          )
+        ) : (
+          <Tabs
+            value={tab}
+            onValueChange={(value) => {
+              if (value !== 'skills' && value !== 'subagents' && value !== 'mcp') return;
+              setTab(value);
+            }}
           >
-            <TabsContent value="skills" forceMount>
-              <ExtensionSkillsGroup
-                rows={skills?.skills ?? []}
-                query={query}
-                loading={skillsLoading}
-                empty={searching ? t('extensions.noMatches') : t('service.emptySkills')}
-                connected={connected}
-                busyName={skillBusyName}
-                onOpen={(name) => setPage({ tab: 'skills', name })}
-                onEnabled={(name, enabled) =>
-                  toggleOptimistically(
-                    `skill:${name}`,
-                    enabled,
-                    (value) => setEnabled(name, value),
-                    (value) => setSkillEnabled(name, value),
-                  )
-                }
-                onUpdate={(name) => void updateSkill(name, refreshSkills)}
-                onRestore={(id) => restoreBuiltin(id, refreshSkills)}
+            <div className="settings-extension-tab-row">
+              <TabsList aria-label={t('extensions.tabsLabel')}>
+                <TabsTrigger value="skills">{t('extensions.tabSkills')}</TabsTrigger>
+                <TabsTrigger value="subagents">{t('extensions.tabSubagents')}</TabsTrigger>
+                <TabsTrigger value="mcp">{t('extensions.tabMcp')}</TabsTrigger>
+              </TabsList>
+              <ExtensionAddButton
+                tab={tab}
+                disabled={menuDisabled}
+                onAdd={() => setPage({ tab, name: null })}
               />
-            </TabsContent>
-            <TabsContent value="subagents" forceMount>
-              <ExtensionAgentsGroup
-                rows={agents?.agents ?? []}
-                query={query}
-                loading={agentsLoading}
-                empty={searching ? t('extensions.noMatches') : t('service.emptyAgents')}
-                connected={connected}
-                busy={agentsBusy}
-                onOpen={(name) => setPage({ tab: 'subagents', name })}
-                onEnabled={(name, enabled) =>
-                  toggleOptimistically(
-                    `agent:${name}`,
-                    enabled,
-                    (value) => setAgentRowEnabled(name, value),
-                    (value) => setAgentEnabled(name, value),
-                  )
-                }
-                onPermissions={(name, value) => setAgentPermissions(name, value, refreshAgents)}
-              />
-            </TabsContent>
-            <TabsContent value="mcp" forceMount>
-              <ExtensionMcpGroup
-                rows={mcp?.servers ?? []}
-                query={query}
-                loading={mcpLoading}
-                empty={searching ? t('extensions.noMatches') : t('service.emptyMcp')}
-                connected={connected}
-                busyId={busyId}
-                busy={mcpBusy}
-                onOpen={(serverId) => setPage({ tab: 'mcp', name: serverId })}
-                onConnect={(serverId) => void mcpConnect(serverId)}
-                onAuthStart={(serverId) => void authStart(serverId)}
-                onAuthComplete={(serverId, input) => void authComplete(serverId, input)}
-                onEnabled={(serverId, enabled) => void mcpSetEnabled(serverId, enabled, refreshMcp)}
-                onRemove={(serverId) => void mcpRemove(serverId, refreshMcp)}
-              />
-            </TabsContent>
-          </ScrollArea>
-        </Tabs>
+            </div>
+            {scroll(
+              <>
+                <TabsContent value="skills" forceMount>
+                  {skillsGroup}
+                </TabsContent>
+                <TabsContent value="subagents" forceMount>
+                  {agentsGroup}
+                </TabsContent>
+                <TabsContent value="mcp" forceMount>
+                  {mcpGroup}
+                </TabsContent>
+              </>,
+            )}
+          </Tabs>
+        )}
       </div>
     </section>
   );

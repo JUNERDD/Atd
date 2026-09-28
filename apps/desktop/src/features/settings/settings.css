@@ -293,6 +293,13 @@
 .settings-extension-settings [data-slot='tabs-content'][data-state='inactive'] {
   display: none;
 }
+/* Search results stack every catalog's matching group; the groups hug their rows. */
+.settings-extension-results {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 16px;
+}
 .settings-extension-group {
   display: flex;
   flex: 1 0 auto;

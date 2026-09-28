@@ -16,12 +16,13 @@ import { DropdownMenuItem, DropdownMenuSeparator } from '@ai/ui/components/dropd
 import { HighlightedText } from '@ai/ui/components/highlighted-text';
 import { Input } from '@ai/ui/components/input';
 import { ItemContent, ItemDescription, ItemMedia, ItemTitle } from '@ai/ui/components/item';
-import { matchFields, type FieldsMatch } from '@ai/ui/lib/fuzzy-match';
+import type { FieldsMatch } from '@ai/ui/lib/fuzzy-match';
 import { isComposingKey } from '@ai/ui/lib/ime';
 import { ExtensionGroup } from './extension-group';
 import { ExtensionRow, ExtensionRowActions } from './extension-row';
 import type { ExtensionMcpRow } from './extension-rows';
-import { mcpCanConnect, mcpNeedsAuth, useMcpStateLabel } from './use-mcp-state-label';
+import type { McpMatch } from './use-extension-matches';
+import { mcpCanConnect, mcpNeedsAuth } from './use-mcp-state-label';
 
 /**
  * One server row in the shared anatomy: icon ring, id, the translated state and last error, then
@@ -134,11 +135,11 @@ function McpRow({
 
 /**
  * MCP servers group with connect/auth and catalog enable/remove; a row opens that server's
- * details page. The search matches and marks the server id and the description line as shown.
+ * details page. `items` are the servers the search kept, with the id and description line marked.
  */
 export function ExtensionMcpGroup({
-  rows,
-  query,
+  items,
+  showTitle,
   loading,
   empty,
   connected,
@@ -151,8 +152,9 @@ export function ExtensionMcpGroup({
   onEnabled,
   onRemove,
 }: {
-  rows: ExtensionMcpRow[];
-  query: string;
+  items: McpMatch[];
+  /** Search results list every catalog at once, so each group names itself. */
+  showTitle: boolean;
   loading: boolean;
   empty: string;
   connected: boolean;
@@ -166,24 +168,18 @@ export function ExtensionMcpGroup({
   onRemove: (serverId: string) => void;
 }) {
   const { t } = useTranslation('settings');
-  const stateLabel = useMcpStateLabel();
   const [removing, setRemoving] = useState<string | null>(null);
-  const shown = rows.flatMap((row) => {
-    const description = [stateLabel(row.state), row.lastError].filter(Boolean).join(' · ');
-    const match = matchFields(query, { serverId: row.serverId, description });
-    return match || !query.trim() ? [{ row, description, match }] : [];
-  });
   return (
     <>
       <ExtensionGroup
         title={t('extensions.tabMcp')}
         empty={empty}
         loading={loading}
-        hasRows={shown.length > 0}
-        showTitle={false}
+        hasRows={items.length > 0}
+        showTitle={showTitle}
         emptyIcon={<Plug />}
       >
-        {shown.map(({ row, description, match }) => (
+        {items.map(({ row, description, match }) => (
           <McpRow
             key={row.serverId}
             row={row}
