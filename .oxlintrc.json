@@ -20,6 +20,22 @@
       }
     },
     {
+      "files": ["packages/plugin-kit/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["@ai/*", "@earendil-works/*", "electron", "react", "react-dom"],
+                "message": "plugin-kit is host-agnostic and will be published on its own; take host behavior through a port."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
       "files": ["packages/ui/src/components/**"],
       "rules": {
         "shadcn/no-arbitrary-values": "off",

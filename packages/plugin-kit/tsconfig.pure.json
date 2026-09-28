@@ -1,0 +1,8 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": []
+  },
+  "include": [],
+  "files": ["src/index.ts", "src/model.ts"]
+}
