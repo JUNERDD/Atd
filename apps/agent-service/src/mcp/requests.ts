@@ -1,5 +1,5 @@
 import { Type, type Static } from 'typebox';
-import { Identifier, McpServerConfigSchema } from '@ai/agent-contracts';
+import { Identifier, McpServerConfigSchema, McpServerIdSchema } from '@ai/agent-contracts';
 
 /**
  * MCP route request bodies (service parsing concern). Canonical placement
@@ -15,20 +15,24 @@ const TaskScope = {
 };
 
 export const McpServerRequestSchema = Type.Object(
-  { serverId: Identifier, ...TaskScope },
+  { serverId: McpServerIdSchema, ...TaskScope },
   { additionalProperties: false },
 );
 export type McpServerRequest = Static<typeof McpServerRequestSchema>;
 
 export const McpAuthCompleteRequestSchema = Type.Object(
-  { serverId: Identifier, input: Type.String({ minLength: 1, maxLength: 8192 }), ...TaskScope },
+  {
+    serverId: McpServerIdSchema,
+    input: Type.String({ minLength: 1, maxLength: 8192 }),
+    ...TaskScope,
+  },
   { additionalProperties: false },
 );
 export type McpAuthCompleteRequest = Static<typeof McpAuthCompleteRequestSchema>;
 
 export const McpCallToolRequestSchema = Type.Object(
   {
-    serverId: Identifier,
+    serverId: McpServerIdSchema,
     tool: Type.String({ minLength: 1, maxLength: 256 }),
     args: Type.Optional(Type.Record(Type.String(), Type.Unknown())),
     ...TaskScope,
@@ -38,14 +42,18 @@ export const McpCallToolRequestSchema = Type.Object(
 export type McpCallToolRequest = Static<typeof McpCallToolRequestSchema>;
 
 export const McpReadResourceRequestSchema = Type.Object(
-  { serverId: Identifier, uri: Type.String({ minLength: 1, maxLength: 2048 }), ...TaskScope },
+  {
+    serverId: McpServerIdSchema,
+    uri: Type.String({ minLength: 1, maxLength: 2048 }),
+    ...TaskScope,
+  },
   { additionalProperties: false },
 );
 export type McpReadResourceRequest = Static<typeof McpReadResourceRequestSchema>;
 
 export const McpGetPromptRequestSchema = Type.Object(
   {
-    serverId: Identifier,
+    serverId: McpServerIdSchema,
     name: Type.String({ minLength: 1, maxLength: 256 }),
     args: Type.Optional(Type.Record(Type.String(), Type.String({ maxLength: 8192 }))),
     ...TaskScope,

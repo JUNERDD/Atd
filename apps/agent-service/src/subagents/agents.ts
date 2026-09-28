@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import {
   WEB_FETCH_TOOL,
   WEB_SEARCH_TOOL,
@@ -6,6 +7,7 @@ import {
   type SubagentTool,
 } from '@ai/agent-contracts';
 import type { AtdAgent } from '../atd-agents/catalog.js';
+import { CHILD_WEB_TOOLS } from './intersection.js';
 
 /**
  * T5 runtime agents. The service registers three foreground-only agents per
@@ -51,6 +53,8 @@ export interface RuntimeAgent {
  * under their bare names; `atd.` also keeps them apart from `service.*`.
  */
 const ATD_AGENT_PREFIX = 'atd.';
+/** Namespace for referenced plugin subagents; see pluginRuntimeName. */
+const PLUGIN_AGENT_PREFIX = 'plugin.';
 /** pi-subagents' limit on runtime agent names. */
 const MAX_RUNTIME_NAME = 128;
 
@@ -59,9 +63,6 @@ const MAX_RUNTIME_NAME = 128;
  * registers (child-tools.ts). MCP proxies stay out because their servers may write.
  */
 const READ_ONLY_TOOLS: SubagentTool[] = ['read', 'grep', 'find', 'ls'];
-
-/** The web tools every run keeps; a listed agent may name them although roles never grant them. */
-const WEB_TOOLS: readonly string[] = [WEB_SEARCH_TOOL, WEB_FETCH_TOOL];
 
 export const SERVICE_RUNTIME_AGENTS: RuntimeAgent[] = [
   {
@@ -141,39 +142,39 @@ export function withPermissions(
   };
 }
 
+/** What a referenced specialist brings: its text, and its tool list (null lets the ceiling decide). */
+interface SpecialistSource {
+  description: string;
+  systemPrompt: string;
+  tools: readonly string[] | null;
+}
+
 /**
- * The runtime agent a run registers for a referenced `~/.atd/agents` entry:
- * the file's description and prompt with the service pins (fresh context,
- * foreground, depth 1, no extensions). Tools are the Settings override's, else
- * the file's; a list keeps the names within the run's child ceiling and the
- * web tools, and no list lets the service ceiling decide, as for the worker.
- * The file's `model` is never applied: the guard forbids per-call model
- * overrides, and a definition model would be one.
+ * The runtime agent for a referenced specialist under `name`, with the service pins (fresh
+ * context, foreground, depth 1, no extensions). Tools are the Settings override's, else the
+ * source's; a list keeps the names within the run's child ceiling and the web tools
+ * (subagents/intersection.ts), and no list lets the service ceiling decide, as for the worker.
+ * A source `model` is never applied: the guard forbids per-call model overrides, and a
+ * definition model would be one.
  */
-export function atdRuntimeAgent(
-  agent: AtdAgent,
+function specialistRuntimeAgent(
+  name: string,
+  source: SpecialistSource,
   ceiling: readonly string[],
-  permissions?: SubagentPermissions,
+  permissions: SubagentPermissions | undefined,
 ): { agent: RuntimeAgent } | { reason: string } {
-  const name = `${ATD_AGENT_PREFIX}${agent.name}`;
-  if (name.length > MAX_RUNTIME_NAME)
-    return { reason: `its name is longer than ${MAX_RUNTIME_NAME - ATD_AGENT_PREFIX.length}` };
-  // The catalog accepts NUL characters; pi-subagents refuses them at registration.
-  if (agent.description.includes('\0') || agent.systemPrompt.includes('\0'))
-    return { reason: 'its file contains a NUL character' };
-  const listed: readonly string[] | null = permissions
-    ? permissions.tools
-    : agent.tools.length
-      ? agent.tools
-      : null;
-  const tools = listed?.filter((tool) => ceiling.includes(tool) || WEB_TOOLS.includes(tool));
+  // Sources accept NUL characters; pi-subagents refuses them at registration.
+  if (source.description.includes('\0') || source.systemPrompt.includes('\0'))
+    return { reason: 'its definition contains a NUL character' };
+  const listed = permissions ? permissions.tools : source.tools;
+  const tools = listed?.filter((tool) => ceiling.includes(tool) || CHILD_WEB_TOOLS.includes(tool));
   return {
     agent: {
       name,
       approval: permissions?.approval ?? null,
       definition: {
-        description: agent.description,
-        systemPrompt: agent.systemPrompt,
+        description: source.description,
+        systemPrompt: source.systemPrompt,
         ...(tools ? { tools } : {}),
         extensions: [],
         inheritProjectContext: false,
@@ -186,6 +187,42 @@ export function atdRuntimeAgent(
       },
     },
   };
+}
+
+/** The runtime agent a run registers for a referenced `~/.atd/agents` entry, as `atd.<name>`. */
+export function atdRuntimeAgent(
+  agent: AtdAgent,
+  ceiling: readonly string[],
+  permissions?: SubagentPermissions,
+): { agent: RuntimeAgent } | { reason: string } {
+  const name = `${ATD_AGENT_PREFIX}${agent.name}`;
+  if (name.length > MAX_RUNTIME_NAME)
+    return { reason: `its name is longer than ${MAX_RUNTIME_NAME - ATD_AGENT_PREFIX.length}` };
+  const tools = agent.tools.length ? agent.tools : null;
+  return specialistRuntimeAgent(name, { ...agent, tools }, ceiling, permissions);
+}
+
+/**
+ * The runtime name of a plugin subagent `<plugin>:<item>`: `plugin.<plugin>.<item>`. Item names
+ * contain no `.`, so the last `.` separates the parts and no two plugin agents share a name;
+ * `plugin.` keeps them apart from `atd.`, `service.` and pi-subagents' builtins. Past the runtime
+ * name limit it is `plugin.<hash>`, which has a single `.` and so cannot equal a long form.
+ */
+export function pluginRuntimeName(plugin: string, item: string): string {
+  const name = `${PLUGIN_AGENT_PREFIX}${plugin}.${item}`;
+  if (name.length <= MAX_RUNTIME_NAME) return name;
+  const hash = createHash('sha256').update(`${plugin}:${item}`).digest('hex').slice(0, 32);
+  return `${PLUGIN_AGENT_PREFIX}${hash}`;
+}
+
+/** The runtime agent a run registers for a referenced plugin subagent (plugins/map.ts). */
+export function pluginRuntimeAgent(
+  agent: { pluginId: string; localName: string } & SpecialistSource,
+  ceiling: readonly string[],
+  permissions?: SubagentPermissions,
+): { agent: RuntimeAgent } | { reason: string } {
+  const name = pluginRuntimeName(agent.pluginId, agent.localName);
+  return specialistRuntimeAgent(name, agent, ceiling, permissions);
 }
 
 /**

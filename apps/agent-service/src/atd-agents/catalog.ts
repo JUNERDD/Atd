@@ -1,9 +1,9 @@
 import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { parseFrontmatter } from '@earendil-works/pi-coding-agent';
+import { isItemName } from '@ai/plugin-kit';
 import { atdAgentsDir } from '../service-fs.js';
 
-const NAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
 const TOOLS = new Set(['read', 'write', 'edit', 'bash', 'command']);
 const MAX_DESCRIPTION = 2048;
 const MAX_PROMPT = 16000;
@@ -74,7 +74,10 @@ export async function listAtdAgents(): Promise<{
   return { agents, diagnostics };
 }
 
-/** Writes one agent markdown file under `<atdHome>/agents`. */
+/**
+ * Writes one agent markdown file under `<atdHome>/agents`. Names are bare item names: the file
+ * name is the agent name, and qualified `<plugin>:<item>` names belong to installed plugins.
+ */
 export async function putAtdAgent(input: {
   name: string;
   description: string;
@@ -83,8 +86,10 @@ export async function putAtdAgent(input: {
   systemPrompt: string;
 }): Promise<{ agent: AtdAgent }> {
   const name = input.name.trim();
-  if (!NAME_PATTERN.test(name) || name.length > 128) {
-    throw new Error(`Agent name "${name}" does not match ^[A-Za-z0-9][A-Za-z0-9_-]*$.`);
+  if (!isItemName(name)) {
+    throw new TypeError(
+      `Agent name "${name}" must be 1–128 letters, digits, "-" or "_", starting with a letter or digit.`,
+    );
   }
   const description = input.description.trim();
   const systemPrompt = input.systemPrompt.trim();
@@ -119,7 +124,7 @@ function parseAgentMarkdown(content: string, fileName: string): AtdAgent | null 
     typeof frontmatter.name === 'string' && frontmatter.name.trim()
       ? frontmatter.name.trim()
       : fromFile;
-  if (!NAME_PATTERN.test(name) || name.length > 128) return null;
+  if (!isItemName(name)) return null;
   if (typeof frontmatter.description !== 'string' || !frontmatter.description.trim()) return null;
   const description = frontmatter.description.trim().slice(0, MAX_DESCRIPTION);
   const systemPrompt = body.trim();

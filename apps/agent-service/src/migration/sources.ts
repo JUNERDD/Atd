@@ -114,7 +114,8 @@ export const DesktopWorkspaceSchema = Type.Object(
     commands: Type.Array(DesktopCommandSchema),
     tasks: Type.Array(DesktopTaskSchema),
     artifacts: Type.Array(Type.Object({}, { additionalProperties: true })),
-    memoryPaused: Type.Boolean(),
+    /** Written by older desktops only; newer ones dropped the field, which reads as not paused. */
+    memoryPaused: Type.Optional(Type.Boolean()),
     legacyImported: Type.Boolean(),
   },
   { additionalProperties: false },
@@ -214,7 +215,6 @@ export function emptyWorkspace(): DesktopWorkspace {
     commands: [],
     tasks: [],
     artifacts: [],
-    memoryPaused: false,
     legacyImported: false,
   };
 }

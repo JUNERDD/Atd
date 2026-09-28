@@ -22,24 +22,41 @@ const PREFIX_SCOPES: ReadonlyArray<readonly [string, InvalidateScope]> = [
   ['/v1/mcp/refresh', 'extensions'],
   ['/v1/mcp/logout', 'extensions'],
   ['/v1/memory', 'memory'],
+  ['/v1/plugins', 'extensions'],
 ];
 
-/** Staging writes a client makes for its own next run; nobody else's view changes. */
-const PRIVATE_WRITES = new Set(['/v1/skills/stage']);
+/**
+ * Writes that change nobody else's view: next-run staging a client makes for itself, and plugin
+ * previews, which only fetch a bundle into short-lived staging.
+ */
+const PRIVATE_WRITES = new Set([
+  '/v1/skills/stage',
+  '/v1/plugins/preview',
+  '/v1/plugins/:id/update/preview',
+]);
 
-function frameFor(request: FastifyRequest): InvalidateFrame | null {
+/** The plugin item switch that can be the memory pause (plugins/toggle.ts). */
+const PLUGIN_SWITCHES = new Set(['/v1/plugins/:id/items/:kind/:name/enabled']);
+
+function framesFor(request: FastifyRequest): InvalidateFrame[] {
   const route = request.routeOptions.url ?? '';
-  if (PRIVATE_WRITES.has(route)) return null;
+  if (PRIVATE_WRITES.has(route)) return [];
   if (route === '/v1/tasks/:taskId') {
     const { taskId } = request.params as { taskId: string };
-    if (request.method === 'PATCH') return { type: 'invalidate', scope: 'task', taskId };
-    if (request.method === 'DELETE') return { type: 'invalidate', scope: 'task.deleted', taskId };
-    return null;
+    if (request.method === 'PATCH') return [{ type: 'invalidate', scope: 'task', taskId }];
+    if (request.method === 'DELETE') return [{ type: 'invalidate', scope: 'task.deleted', taskId }];
+    return [];
   }
   const match = PREFIX_SCOPES.find(
     ([prefix]) => route === prefix || route.startsWith(`${prefix}/`),
   );
-  return match ? { type: 'invalidate', scope: match[1] } : null;
+  if (!match) return [];
+  const frames: InvalidateFrame[] = [{ type: 'invalidate', scope: match[1] }];
+  // Personal's memory switch is the memory pause, which the Memory section also shows.
+  const { kind } = request.params as { kind?: string };
+  if (PLUGIN_SWITCHES.has(route) && kind === 'memory')
+    frames.push({ type: 'invalidate', scope: 'memory' });
+  return frames;
 }
 
 /**
@@ -51,10 +68,8 @@ export function registerInvalidation(
   notify: (frame: InvalidateFrame) => void,
 ): void {
   app.addHook('onResponse', (request, reply, done) => {
-    if (request.method !== 'GET' && request.method !== 'HEAD' && reply.statusCode < 400) {
-      const frame = frameFor(request);
-      if (frame) notify(frame);
-    }
+    if (request.method !== 'GET' && request.method !== 'HEAD' && reply.statusCode < 400)
+      for (const frame of framesFor(request)) notify(frame);
     done();
   });
 }

@@ -10,8 +10,12 @@ export interface SkillListRow {
   name: string;
   revision: string;
   description: string;
-  sourceKind: 'local' | 'npm' | 'git' | 'atd' | 'agents';
+  sourceKind: 'local' | 'npm' | 'git' | 'atd' | 'agents' | 'plugin';
   system: boolean;
+  /** The plugin that contributes the skill, computed by the service (`user` for Personal). */
+  pluginId: string;
+  /** Skills of installed and shared plugins cannot be edited, only toggled or duplicated. */
+  readOnly: boolean;
   /** Set for a product skill's ATD-home copy; null for every other row. */
   builtin: BuiltinStatusWire | null;
   disableModelInvocation: boolean;
@@ -107,15 +111,6 @@ export function readSkillFile(
   );
 }
 
-/** Installs a skill from a local/npm/git source (T34int mounts the route). */
-export function installSkill(
-  options: AgentClientOptions,
-  input: { source: string; sourceKind: 'local' | 'npm' | 'git'; name?: string },
-  fetchImpl?: typeof fetch,
-): Promise<{ skill: unknown; diagnostics: SkillDiagnosticWire[] }> {
-  return request(options, '/v1/skills/install', 'POST', input, fetchImpl);
-}
-
 /** Records whether this harness may use the skill. Does not write the skill directory. */
 export function setSkillEnabled(
   options: AgentClientOptions,
@@ -130,15 +125,6 @@ export function setSkillEnabled(
     { enabled },
     fetchImpl,
   );
-}
-
-/** Triggers a managed skill update for the named package. */
-export function updateSkill(
-  options: AgentClientOptions,
-  name: string,
-  fetchImpl?: typeof fetch,
-): Promise<{ skill: unknown; diagnostics: SkillDiagnosticWire[] }> {
-  return request(options, `/v1/skills/${encodeURIComponent(name)}/update`, 'POST', {}, fetchImpl);
 }
 
 /** Stages skill/role selection for the next run of a task. */

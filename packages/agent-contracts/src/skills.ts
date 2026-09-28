@@ -1,3 +1,4 @@
+import { QualifiedNameSchema } from '@ai/plugin-kit/model';
 import { Type, type Static } from 'typebox';
 import { Identifier } from './identifiers.js';
 
@@ -7,18 +8,19 @@ import { Identifier } from './identifiers.js';
  * the export lines in `index.ts` and the route mounts.
  */
 
-/** Skill name alphabet: Pi skill directory names constrained to this set. */
-export const SkillName = Type.String({
-  minLength: 1,
-  maxLength: 128,
-  pattern: '^[A-Za-z0-9][A-Za-z0-9_-]*$',
-});
+/**
+ * Skill name: a bare item name (`[A-Za-z0-9][A-Za-z0-9_-]*`, at most 128 characters) for skills
+ * the host owns, or `<plugin>:<item>` for a skill an installed plugin contributes (plugin-kit's
+ * qualified name).
+ */
+export const SkillName = QualifiedNameSchema;
 export type SkillNameType = Static<typeof SkillName>;
 
 /**
  * Where the skill content came from. `local`, `npm`, and `git` resolve under
  * the service dir. `atd` is a live entry from `~/.atd/skills`. `agents` is a
- * live entry from the real `~/.agents/skills`. Install requests stay
+ * live entry from the real `~/.agents/skills`. `plugin` is a skill contributed by
+ * an installed plugin (plugin-kit revision). Install requests stay
  * `local` | `npm` | `git` only.
  */
 export const SkillSourceKindSchema = Type.Union([
@@ -27,6 +29,7 @@ export const SkillSourceKindSchema = Type.Union([
   Type.Literal('git'),
   Type.Literal('atd'),
   Type.Literal('agents'),
+  Type.Literal('plugin'),
 ]);
 export type SkillSourceKind = Static<typeof SkillSourceKindSchema>;
 
@@ -170,6 +173,10 @@ export const SkillListItemSchema = Type.Object(
     capability: SkillCapabilitySchema,
     /** Built-in version status of a product skill; null for every other row. */
     builtin: Type.Union([BuiltinStatusSchema, Type.Null()]),
+    /** The plugin that contributes this skill (see plugins.ts). */
+    pluginId: Type.String({ minLength: 1, maxLength: 128 }),
+    /** Skills of installed, shared and built-in plugins are not edited in place. */
+    readOnly: Type.Boolean(),
   },
   { additionalProperties: false },
 );

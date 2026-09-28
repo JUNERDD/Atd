@@ -6,7 +6,6 @@ import {
   RoleAllowsSchema,
   RoleId,
   SkillHarnessRequestSchema,
-  SkillInstallRequestSchema,
   SkillName,
   SkillRefSchema,
   parse,
@@ -14,7 +13,6 @@ import {
 import type { ServiceConfig } from '../config.js';
 import {
   getSkill,
-  installSkill,
   listRolesHandler,
   listSkills,
   putRoleHandler,
@@ -22,7 +20,6 @@ import {
   setSkillEnabled,
   skillProfilePaths,
   stageSkills,
-  updateSkill,
 } from './index.js';
 import { listSkillFiles, readSkillFile } from './skill-files.js';
 
@@ -48,7 +45,10 @@ const PutRoleBodySchema = Type.Object(
   { additionalProperties: false },
 );
 
-/** HTTP mounts for the skill catalog, harness enablement, roles, and run release. */
+/**
+ * HTTP mounts for the skill catalog, harness enablement, roles, and run release. Installing and
+ * updating skills is plugin work (`/v1/plugins`); the former skill-only routes are retired.
+ */
 export function registerSkillRoutes(app: FastifyInstance, config: ServiceConfig): void {
   const skillDeps = {
     profile: skillProfilePaths(config.paths.root, config.paths.agentDir),
@@ -74,18 +74,10 @@ export function registerSkillRoutes(app: FastifyInstance, config: ServiceConfig)
     if (!skill) throw new Error(`Skill "${name}" is not in the harness catalog.`);
     return readSkillFile(skill.baseDir, path);
   });
-  app.post('/v1/skills/install', async (request) => {
-    const body = parse(SkillInstallRequestSchema, request.body);
-    return installSkill(skillDeps, body);
-  });
   app.post<{ Params: { name: string } }>('/v1/skills/:name/enabled', async (request) => {
     const name = parse(SkillName, request.params.name);
     const body = parse(SkillHarnessRequestSchema, request.body);
     return setSkillEnabled(skillDeps, { name, enabled: body.enabled });
-  });
-  app.post<{ Params: { name: string } }>('/v1/skills/:name/update', async (request) => {
-    const name = parse(SkillName, request.params.name);
-    return updateSkill(skillDeps, name);
   });
   app.post('/v1/skills/stage', async (request) => {
     const body = parse(StageSkillsSchema, request.body);

@@ -144,19 +144,18 @@ export async function runMigration(options: MigrateOptions): Promise<MigrateResu
       };
     });
     await attempt('policy', async () => {
+      const memoryPaused = docs.workspace.memoryPaused ?? false;
       await importPolicy(
         dataDir,
         {
           defaultTier: docs.settings?.permissionTier ?? 'manual',
-          memoryPaused: docs.workspace.memoryPaused,
+          memoryPaused,
         },
         at,
       );
       return {
         count: 1,
-        checksum: sha256(
-          `${docs.settings?.permissionTier ?? 'manual'}:${docs.workspace.memoryPaused}`,
-        ),
+        checksum: sha256(`${docs.settings?.permissionTier ?? 'manual'}:${memoryPaused}`),
       };
     });
     await attempt('resources', async () => {

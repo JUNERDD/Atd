@@ -1,3 +1,4 @@
+import { QualifiedNameSchema } from '@ai/plugin-kit/model';
 import { Type, type Static } from 'typebox';
 import { Identifier } from './identifiers.js';
 
@@ -24,6 +25,14 @@ export type SubagentRuntimeAgent = (typeof SUBAGENT_RUNTIME_AGENTS)[number];
 /** Named workflow resources; raw scripts stay forbidden. */
 export const SUBAGENT_WORKFLOWS = ['service.parallel', 'service.chain'] as const;
 export type SubagentWorkflowName = (typeof SUBAGENT_WORKFLOWS)[number];
+
+/**
+ * A catalog subagent a run can reference by name: a user agent (`~/.atd/agents`, Settings) keeps
+ * the identifier alphabet, an agent an installed plugin contributes is `<plugin>:<agent>`
+ * (plugin-kit's qualified name). System agents (`service.worker`) are named outside both and are
+ * never referenced.
+ */
+export const SubagentNameSchema = Type.Union([Identifier, QualifiedNameSchema]);
 
 /** Child execution identity: `child:<parentRunId>:<index>`. */
 export function childExecutionId(parentRunId: string, index: number): string {

@@ -9,12 +9,14 @@ import { listAtdAgents, type AtdAgent } from '../atd-agents/catalog.js';
 import type { Ledger } from '../ledger.js';
 import { mcpProxyPrefix } from '../mcp/index.js';
 import type { McpToolSelection } from '../mcp/staging.js';
-import { atdRuntimeAgent, type RuntimeAgent } from '../subagents/agents.js';
+import type { PluginAgent } from '../plugins/map.js';
+import type { RuntimeAgent } from '../subagents/agents.js';
 import { CONTEXT_BUDGET, runInputSize } from '../tasks/run-budget.js';
+import { resolveAgentReference } from './agents.js';
 import {
-  clip,
   CONVERSATION_EXCERPT_CHARS,
   excerptConversation,
+  oneLine,
   readConversation,
   type Conversation,
 } from './conversation.js';
@@ -23,8 +25,6 @@ import {
 const MAX_TASK_REFERENCES = 3;
 /** Below this, an excerpt says too little; the conversation is listed as unavailable. */
 const MIN_EXCERPT_CHARS = 1000;
-/** Characters of an agent description repeated in its delegation hint. */
-const DESCRIPTION_CHARS = 400;
 const SEPARATOR = '\n\n';
 const INTRO = 'The user referenced the following with @ in this message.';
 const NOTES_HEADER = 'Unavailable references (tell the user when this matters for the answer):';
@@ -45,13 +45,15 @@ export interface ReferenceContext {
   disabledAgents: ReadonlySet<string>;
   /** Settings permission overrides by catalog name (atd-agents/harness.ts). */
   agentPermissions: ReadonlyMap<string, SubagentPermissions>;
+  /** Plugin subagents effective in the run's frozen plugin snapshot, by qualified name. */
+  pluginAgents: ReadonlyMap<string, PluginAgent>;
 }
 
 /** A run's references resolved at freeze into material and capabilities. */
 export interface RunReferences {
   /** Text appended to the run material; empty when the run has no references. */
   material: string;
-  /** `~/.atd/agents` specialists the run's session registers and allows. */
+  /** `~/.atd/agents` and plugin specialists the run's session registers and allows. */
   agents: RuntimeAgent[];
   /** One record per staged reference plus a summary, for the run audit. */
   audit: Record<string, unknown>[];
@@ -111,9 +113,7 @@ export async function resolveRunReferences(
         ({ agents }) => agents,
         (error: unknown) => `the agent catalog could not be read (${errorMessage(error)})`,
       );
-      const resolved = context.disabledAgents.has(reference.name)
-        ? 'it is turned off in Settings'
-        : resolveAgent(await catalog, reference.name, context);
+      const resolved = await resolveAgentReference(reference.name, context, catalog);
       const label = `Agent "${reference.name}"`;
       if (typeof resolved === 'string') notes.push({ reference, label, reason: resolved });
       else hints.push({ reference, ...resolved });
@@ -257,51 +257,9 @@ function resolveMcpServer(
   };
 }
 
-function resolveAgent(
-  catalog: AtdAgent[] | string,
-  name: string,
-  context: Pick<ReferenceContext, 'toolCeiling' | 'agentPermissions'>,
-): Omit<Hint, 'reference'> | string {
-  if (typeof catalog === 'string') return catalog;
-  const entry = catalog.find((agent) => agent.name === name);
-  if (!entry) return 'it is not in ~/.atd/agents';
-  const runtime = atdRuntimeAgent(entry, context.toolCeiling, context.agentPermissions.get(name));
-  if ('reason' in runtime) return runtime.reason;
-  const { agent } = runtime;
-  // No list means the child gets whatever this run allows children (subagents/agents.ts).
-  const tools = agent.definition.tools ?? null;
-  const toolLine = !tools
-    ? 'It uses the tools this run allows.'
-    : tools.length
-      ? `Its tools: ${tools.join(', ')}.`
-      : 'It has no tools in this run.';
-  const call = JSON.stringify({ agent: agent.name, task: '<what to do>', async: false });
-  return {
-    agent,
-    text: [
-      `Agent "${agent.name}" (${name} from ~/.atd/agents): ${clip(oneLine(entry.description), DESCRIPTION_CHARS)}`,
-      `Delegate work that suits it with the subagent tool: ${call}. ${toolLine}`,
-    ].join('\n'),
-    audit: {
-      reference: 'agent',
-      target: name,
-      decision: 'included',
-      registeredAs: agent.name,
-      tools: tools ?? 'run',
-      approval: agent.approval,
-      ignoredModel: entry.model,
-    },
-  };
-}
-
 function taskLabel(context: ReferenceContext, taskId: string): string {
   const task = context.ledger.data.tasks.find((item) => item.id === taskId);
   return task ? `Conversation "${oneLine(task.title)}"` : `Conversation ${taskId}`;
-}
-
-/** Titles and descriptions are user text; labels and hints stay on one line. */
-function oneLine(text: string): string {
-  return text.replace(/\s+/g, ' ').trim();
 }
 
 function target(reference: RunReference): { reference: string; target: string } {

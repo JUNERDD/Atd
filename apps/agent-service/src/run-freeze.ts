@@ -2,6 +2,10 @@ import { errorMessage, type TaskRun } from '@ai/agent-contracts';
 import { readAgentHarness } from './atd-agents/harness.js';
 import { McpAdapterMissing, McpAuthority } from './mcp/index.js';
 import { freezeRunMcp, releaseRunMcp } from './mcp/staging.js';
+import { inSnapshot, mapPluginComponents } from './plugins/components.js';
+import type { PluginAgent } from './plugins/map.js';
+import { freezeRunPlugins, releaseRunPlugins } from './plugins/run-snapshot.js';
+import type { PluginSkillSet } from './plugins/skill-set.js';
 import {
   resolveRunReferences,
   type ReferenceContext,
@@ -47,7 +51,10 @@ export async function freezeRunSelections(
   deps: RunFreezeDeps,
   run: TaskRun,
 ): Promise<FrozenSelections> {
-  const { toolCeiling, skills, catalog } = await freezeSkills(deps, run);
+  // The plugin catalog freezes first (D4): skills, agents and MCP below all read the run's
+  // snapshot, so a plugin or item toggled later never changes what this run may use.
+  const plugins = await freezePlugins(deps, run);
+  const { toolCeiling, skills, catalog } = await freezeSkills(deps, run, plugins.skills);
   const mcp = await freezeMcp(deps, run);
   // Agents turned off in Settings stay off for this run even if they are turned on during it, and
   // a permission change made during the run applies from the next one.
@@ -60,6 +67,7 @@ export async function freezeRunSelections(
     skillChars: skillChars(run.id, skills.loaded, catalog),
     disabledAgents,
     agentPermissions,
+    pluginAgents: plugins.agents,
   });
   const systemAgents = SERVICE_RUNTIME_AGENTS.filter(
     (agent) => !disabledAgents.has(agent.name),
@@ -67,16 +75,59 @@ export async function freezeRunSelections(
   return { references, skills, catalog, agents: [...systemAgents, ...references.agents] };
 }
 
-/** Releases the run's frozen skill and MCP records once the run ends. */
+/**
+ * Releases the run's frozen skill, MCP and plugin records once the run ends; releasing the plugin
+ * snapshot lets superseded plugin revisions be collected.
+ */
 export async function releaseRunSelections(deps: RunFreezeDeps, runId: string): Promise<void> {
   try {
     await releaseRun(skillProfilePaths(deps.ctx.paths.root, deps.ctx.paths.agentDir), runId);
     await releaseRunMcp(deps.ctx.paths.root, runId);
+    await releaseRunPlugins(deps.ctx.paths.root, runId);
   } catch (error) {
     deps.ctx.log.warn('Run snapshot release failed.', {
       taskId: deps.taskId,
       error: errorMessage(error),
     });
+  }
+}
+
+/**
+ * Freezes the run's plugin snapshot (plugins/run-snapshot.ts) and answers what skills and agent
+ * references read from it. A plugin failure never fails the run: it runs as before plugins, with
+ * host skills only and no plugin agents or servers, and the audit says so.
+ */
+async function freezePlugins(
+  deps: RunFreezeDeps,
+  run: TaskRun,
+): Promise<{ skills: PluginSkillSet; agents: ReadonlyMap<string, PluginAgent> }> {
+  try {
+    const plugins = await freezeRunPlugins(deps.ctx.paths.root, run.id);
+    const components = await mapPluginComponents(plugins.host, plugins.view, new Set(['agent']));
+    const agents = new Map<string, PluginAgent>(
+      components.agents
+        .filter(({ item }) => inSnapshot(plugins.snapshot, item))
+        .map(({ value }) => [value.name, value]),
+    );
+    deps.audit({
+      taskId: deps.taskId,
+      runId: run.id,
+      plugins: plugins.snapshot.plugins,
+      pluginItems: Object.fromEntries(
+        Object.entries(plugins.snapshot.items).map(([kind, names]) => [kind, names.length]),
+      ),
+    });
+    return { skills: plugins.skills, agents };
+  } catch (error) {
+    deps.ctx.log.warn('Plugin freeze degraded: plugins are unavailable to this run.', {
+      taskId: deps.taskId,
+      error: errorMessage(error),
+    });
+    deps.audit({ taskId: deps.taskId, runId: run.id, pluginsDegraded: true });
+    return {
+      skills: { records: [], items: new Map(), effective: new Set(), sharedEnabled: true },
+      agents: new Map(),
+    };
   }
 }
 
@@ -91,7 +142,7 @@ async function freezeReferencesForRun(
   run: TaskRun,
   frozen: Pick<
     ReferenceContext,
-    'toolCeiling' | 'mcp' | 'skillChars' | 'disabledAgents' | 'agentPermissions'
+    'toolCeiling' | 'mcp' | 'skillChars' | 'disabledAgents' | 'agentPermissions' | 'pluginAgents'
   >,
 ): Promise<RunReferences> {
   const references = await takeTaskReferences(deps.ctx.paths.root, deps.taskId);
@@ -111,13 +162,14 @@ async function freezeReferencesForRun(
 async function freezeSkills(
   deps: RunFreezeDeps,
   run: TaskRun,
+  plugins: PluginSkillSet,
 ): Promise<{ toolCeiling: string[]; skills: RunSkills; catalog: RunSkillCatalog }> {
   // T3 additive freeze: staged next-run selection is consumed once; runs
   // without staging freeze empty skills + the default role (T1/T2 shape).
   const profile = skillProfilePaths(deps.ctx.paths.root, deps.ctx.paths.agentDir);
   await ensureSkillProfile(profile);
   const staging = await takeTaskStaging(profile, deps.taskId);
-  const catalogRecords = await loadSkillCatalog(profile);
+  const catalogRecords = await loadSkillCatalog(profile, plugins);
   const snapshot = await freezeRunSkills(profile, run.id, staging.skills, catalogRecords);
   const { role, capabilities } = await freezeRunRole(profile, {
     runId: run.id,
@@ -173,7 +225,10 @@ async function freezeMcp(deps: RunFreezeDeps, run: TaskRun): Promise<ReferenceCo
       mcpServers: snapshot.servers.length,
       mcpStaged: staged ? staged.tools.length : null,
     });
-    return { servers: authority.configured(), selected: staged ? staged.tools : null };
+    return {
+      servers: await authority.runServers(run.id),
+      selected: staged ? staged.tools : null,
+    };
   } catch (error) {
     if (!(error instanceof McpAdapterMissing)) throw error;
     ctx.log.warn('MCP freeze degraded: adapter is unavailable.', {

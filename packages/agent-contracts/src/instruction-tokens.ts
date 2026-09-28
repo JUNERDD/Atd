@@ -1,3 +1,4 @@
+import { parseQualifiedName } from '@ai/plugin-kit/model';
 import { MAX_RUN_REFERENCES, type RunReference } from './references.js';
 import { MAX_RUN_SKILLS } from './skills.js';
 
@@ -10,6 +11,9 @@ import { MAX_RUN_SKILLS } from './skills.js';
  * - `@agent:<name>` registers and allows that `~/.atd/agents` subagent;
  * - `@mcp:<serverId>` suggests that MCP server's tools;
  * - `@task:<taskId>` injects a bounded excerpt of that conversation.
+ *
+ * A skill, subagent or MCP server an installed plugin contributes is named `<plugin>:<item>`
+ * (`/skill:review-kit:triage`); host items stay bare. Task ids are never qualified.
  *
  * The command editor shows tokens as chips, the command tool writes them as text, and a command
  * run stages the template's tokens exactly as a composer submit stages its chips.
@@ -38,17 +42,27 @@ const PREFIXES = {
  * A token starts the text or follows whitespace, a quote, an opening bracket, `=`, or CJK
  * punctuation (the composer's token rule), so URLs, paths and e-mail addresses never read as
  * tokens. The name runs over the identifier alphabet and stops at anything else, so trailing
- * punctuation stays text.
+ * punctuation stays text. Skill, subagent and MCP names may carry one `<plugin>:` prefix; there a
+ * lone trailing `:` stays text too, but a name that continues with `:` and another segment is no
+ * token, since a qualified name has exactly one separator. Task ids keep the plain rule.
  */
 const TOKEN =
-  /(?<![^\s"'“”‘’([{=　-〿！-／：-？])(\/skill:|@agent:|@mcp:|@task:)([A-Za-z0-9_-]{1,128})(?![A-Za-z0-9_-])/g;
-/** Skill names must also start with a letter or digit (`SkillName`). */
-const SKILL_NAME = /^[A-Za-z0-9]/;
+  /(?<![^\s"'“”‘’([{=　-〿！-／：-？])(?:(\/skill:|@agent:|@mcp:)((?:[A-Za-z0-9.-]{1,64}:)?[A-Za-z0-9_-]{1,128})(?![A-Za-z0-9_-]|:[A-Za-z0-9_.-])|(@task:)([A-Za-z0-9_-]{1,128})(?![A-Za-z0-9_-]))/g;
+
+/**
+ * Whether the matched name names an item of this kind. A qualified name must parse as one
+ * (plugin-kit's rule), and so must a skill name, which also starts with a letter or digit
+ * (`SkillName`). Bare subagent and MCP names and task ids keep the alphabet the pattern matched.
+ */
+function validName(prefix: string, name: string): boolean {
+  return prefix === PREFIXES.skill || name.includes(':') ? parseQualifiedName(name) !== null : true;
+}
 
 function referenceOf(prefix: string, name: string): InstructionReference | null {
+  if (!validName(prefix, name)) return null;
   switch (prefix) {
     case PREFIXES.skill:
-      return SKILL_NAME.test(name) ? { kind: 'skill', name } : null;
+      return { kind: 'skill', name };
     case PREFIXES.agent:
       return { kind: 'agent', name };
     case PREFIXES.mcpServer:
@@ -77,7 +91,7 @@ export function instructionTokenText(reference: InstructionReference): string {
 export function parseInstructionTokens(text: string): InstructionToken[] {
   const tokens: InstructionToken[] = [];
   for (const match of text.matchAll(TOKEN)) {
-    const reference = referenceOf(match[1] ?? '', match[2] ?? '');
+    const reference = referenceOf(match[1] ?? match[3] ?? '', match[2] ?? match[4] ?? '');
     if (reference) tokens.push({ from: match.index, to: match.index + match[0].length, reference });
   }
   return tokens;

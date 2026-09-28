@@ -5,6 +5,8 @@
  * - keyring service: `ai-agent-service:<serviceId>`
  * - keyring account: `provider:<connectionId>`
  * - MCP server entries: account `mcp:<serverKey>` (see server-keys.ts)
+ * - sensitive plugin config: account `plugin:<pluginId>:<key>` (plugins/secrets.ts); plugin ids
+ *   never contain `:` and config keys are identifiers, so accounts cannot collide
  *
  * Linux pins `secret-service`; keyutils is kernel memory and must never be
  * reported as persistent storage. When no durable backend exists the backend
@@ -27,6 +29,10 @@ export function keyringAccount(connectionId: string): string {
 
 export function keyringMcpAccount(serverKey: string): string {
   return `mcp:${serverKey}`;
+}
+
+export function keyringPluginAccount(pluginId: string, key: string): string {
+  return `plugin:${pluginId}:${key}`;
 }
 
 interface AsyncEntryLike {

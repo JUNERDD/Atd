@@ -2,6 +2,7 @@ import { createJiti } from 'jiti';
 import type { ExtensionFactory } from '@earendil-works/pi-coding-agent';
 import { MEMORY_TOOLS } from '@ai/agent-contracts';
 import type { Logger } from '../logging.js';
+import { readMemoryPause, writeMemoryPause } from './pause.js';
 import type { MemoryTarget } from './policy.js';
 
 /**
@@ -76,7 +77,6 @@ export function logMemoryEvents(log: Logger): MemoryAuthorityEvents {
  * this instance. There are no per-runner competing stores.
  */
 export class MemoryAuthority {
-  private paused = false;
   private policyVersion = 0;
   private closed = false;
 
@@ -84,6 +84,8 @@ export class MemoryAuthority {
     readonly agentDir: string,
     private readonly hermes: HermesDesktop,
     private readonly events: MemoryAuthorityEvents,
+    /** Starts from the persisted pause (memory/pause.ts); `setPaused` keeps the file in step. */
+    private paused: boolean,
   ) {}
 
   private static readonly instances = new Map<string, Promise<MemoryAuthority>>();
@@ -111,8 +113,8 @@ export class MemoryAuthority {
   static authorityFor(agentDir: string, events: MemoryAuthorityEvents): Promise<MemoryAuthority> {
     const existing = MemoryAuthority.instances.get(agentDir);
     if (existing) return existing;
-    const pending = loadHermes(agentDir).then(
-      (hermes) => new MemoryAuthority(agentDir, hermes, events),
+    const pending = Promise.all([loadHermes(agentDir), readMemoryPause(agentDir)]).then(
+      ([hermes, paused]) => new MemoryAuthority(agentDir, hermes, events, paused),
       (error: unknown) => {
         MemoryAuthority.instances.delete(agentDir);
         throw error;
@@ -135,9 +137,13 @@ export class MemoryAuthority {
     return this.policyVersion;
   }
 
-  /** Pauses learning; in-flight learners abort via the policy revision. */
-  setPaused(paused: boolean): number {
+  /**
+   * Pauses learning; in-flight learners abort via the policy revision. The pause is persisted
+   * first, so a failed write leaves both the file and this authority unchanged.
+   */
+  async setPaused(paused: boolean): Promise<number> {
     this.assertOpen();
+    await writeMemoryPause(this.agentDir, paused);
     this.paused = paused;
     this.policyVersion += 1;
     return this.policyVersion;

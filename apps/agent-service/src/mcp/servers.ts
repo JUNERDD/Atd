@@ -45,6 +45,25 @@ export async function saveServerRecords(
   await atomicWrite(serversFile(dataDir), { version: 1, servers });
 }
 
+/**
+ * A configured set with revisions carried over: a new server starts at 1, a changed one bumps,
+ * an unchanged one keeps its revision.
+ */
+export function reviseRecords(
+  previous: readonly McpServerConfig[],
+  parsed: readonly McpServerConfig[],
+): McpServerConfig[] {
+  const byId = new Map(previous.map((record) => [record.serverId, record]));
+  return parsed.map((candidate) => {
+    const old = byId.get(candidate.serverId);
+    if (!old) return { ...candidate, revision: 1 };
+    const { revision: _a, ...oldRest } = old;
+    const { revision: _b, ...newRest } = candidate;
+    const changed = JSON.stringify(oldRest) !== JSON.stringify(newRest);
+    return { ...candidate, revision: changed ? old.revision + 1 : old.revision };
+  });
+}
+
 /** Parses + cross-checks server configs (transport halves must match). */
 export function parseServerConfigs(input: unknown): McpServerConfig[] {
   const { servers } = parse(McpConfigureRequestSchema, input);

@@ -40,6 +40,10 @@ export interface AgentPermissionsWire {
 /** One catalog row: the agent, its enablement, and the permissions later runs use. */
 export interface AtdAgentCatalogWire extends Omit<AtdAgentWire, 'tools'> {
   system: boolean;
+  /** The plugin that contributes the agent, computed by the service (`user` for Personal). */
+  pluginId: string;
+  /** Agents of installed plugins cannot be edited; their permissions can still be overridden. */
+  readOnly: boolean;
   enabled: boolean;
   permissions: SubagentPermissions;
   customized: boolean;

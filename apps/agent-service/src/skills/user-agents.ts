@@ -3,6 +3,7 @@ import { readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { homedir } from 'node:os';
 import { loadSkillsFromDir, type Skill } from '@earendil-works/pi-coding-agent';
+import { isItemName } from '@ai/plugin-kit';
 import { mapPiDiagnostics, type SkillDiagnostic } from './diagnostics.js';
 import type { SkillRevisionRecord } from './versions.js';
 
@@ -12,7 +13,6 @@ import type { SkillRevisionRecord } from './versions.js';
  * on disk; install still copies only skills the person explicitly installs.
  * Pi's other default skill roots stay closed.
  */
-const NAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
 const MAX_SKILLS = 500;
 const MAX_DIAGNOSTICS = 64;
 
@@ -49,7 +49,8 @@ async function toRecord(
   skill: Skill,
   diagnostics: SkillDiagnostic[],
 ): Promise<SkillRevisionRecord | null> {
-  if (!NAME_PATTERN.test(skill.name) || skill.name.length > 128) {
+  // Shared skills are host items: bare item names only.
+  if (!isItemName(skill.name)) {
     pushDiagnostic(diagnostics, {
       type: 'warning',
       code: 'invalid_skill',

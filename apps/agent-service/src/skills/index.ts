@@ -11,7 +11,6 @@ export {
   type SkillProfilePaths,
 } from './profile.js';
 export { buildSkillLoaderOptions } from './loader.js';
-export { ConfinedSkillPackages } from './package-manager.js';
 export {
   listRevisions,
   listCurrent,
@@ -55,8 +54,6 @@ export {
   listSkills,
   setSkillEnabled,
   getSkill,
-  installSkill,
-  updateSkill,
   stageSkills,
   peekStaging,
   freezeRun,

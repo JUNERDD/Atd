@@ -1,4 +1,5 @@
 import type { ResourceDiagnostic } from '@earendil-works/pi-coding-agent';
+import { parseQualifiedName } from '@ai/plugin-kit';
 
 /**
  * T3-owned diagnostic codes. Pi diagnostics are preserved verbatim in
@@ -24,11 +25,12 @@ export interface SkillDiagnostic {
   loserPath?: string;
 }
 
-const NAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
-
-/** Validates a skill reference name without touching the filesystem. */
+/**
+ * Validates a skill reference name without touching the filesystem: a bare host skill name or a
+ * qualified `<plugin>:<item>` plugin skill name.
+ */
 export function diagnoseInvalidRef(name: string): SkillDiagnostic | null {
-  if (NAME_PATTERN.test(name)) return null;
+  if (parseQualifiedName(name)) return null;
   return {
     type: 'error',
     code: 'invalid_ref',
