@@ -148,7 +148,7 @@ GitHub Actions runs `pnpm check` on Linux, and the Electron smoke suite and app 
 
 ### Releases
 
-To release, bump `version` in `apps/desktop/package.json` and push it to `main`. The [Release workflow](.github/workflows/release.yml) builds `AI-<version>-arm64.dmg` and `AI-<version>-x64.dmg` on Apple Silicon and Intel runners, then publishes them as the GitHub Release `v<version>` with generated notes. A version with a suffix such as `1.2.0-beta.1` is published as a prerelease. If the tag already exists, nothing is built. To retry a failed release, run the workflow manually from `main`.
+To release, bump `version` in `apps/desktop/package.json` and merge it into `main` through a pull request. The [Release workflow](.github/workflows/release.yml) builds `AI-<version>-arm64.dmg` and `AI-<version>-x64.dmg` on Apple Silicon and Intel runners, then publishes them as the GitHub Release `v<version>` with generated notes. A version with a suffix such as `1.2.0-beta.1` is published as a prerelease. A merge that leaves the version unchanged builds nothing, and neither does a version whose tag already exists. To release the current version without a bump (such as the first release) or to retry a failed release, run the workflow manually from `main`.
 
 Signing uses these optional repository secrets:
 
