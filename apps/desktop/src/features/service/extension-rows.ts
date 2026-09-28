@@ -42,6 +42,11 @@ export interface ExtensionAgentRow {
   permissions: SubagentPermissions;
   /** Whether a Settings override replaces its defaults; Restore removes it. */
   customized: boolean;
+  /**
+   * Its own permissions from its definition or file, which Restore brings back. For a markdown
+   * agent, `defaults.tools` is the file's `tools` list (null when the file names none).
+   */
+  defaults: SubagentPermissions;
   model: string;
   systemPrompt: string;
   /** Whether later runs register it; a disabled agent is also refused as a reference. */
@@ -71,14 +76,30 @@ export interface ExtensionSkillDetail {
   truncated: boolean;
 }
 
-/** The configured connection behind an MCP status row. Header and env values stay out of view. */
+export type ExtensionMcpTransport = 'stdio' | 'streamable-http' | 'sse';
+
+/**
+ * The configured connection behind an MCP status row. Header and env values never leave the
+ * parser: only their names are kept, so a page can say which settings its form cannot carry over.
+ */
 export interface ExtensionMcpConfig {
   serverId: string;
-  transport: string;
+  transport: ExtensionMcpTransport;
   command: string;
   args: string[];
+  /** Names of the stdio process's environment variables. */
+  envNames: string[];
+  /** The stdio process's working directory; empty when it inherits the service's. */
+  cwd: string;
   url: string;
+  /** Names of the extra HTTP request headers. */
+  headerNames: string[];
   auth: 'none' | 'bearer' | 'oauth' | null;
+  /** The bearer token's environment variable; empty for other auth. */
+  tokenEnv: string;
+  /** OAuth overrides; empty when the defaults apply. */
+  oauthScope: string;
+  redirectUri: string;
 }
 
 /** The translated source a skill row names; null for a skill without one. */
@@ -209,13 +230,18 @@ export function asRoleRow(value: unknown): ExtensionRoleRow | null {
   return { id, title: readString(value, 'title') || id, allows: asAllows(allows) };
 }
 
-/** A catalog row; one without a name or with permissions outside the contract is dropped. */
+/**
+ * A catalog row; one without a name, or with permissions or defaults outside the contract, is
+ * dropped.
+ */
 export function asAgentRow(value: unknown): ExtensionAgentRow | null {
   const name = readString(value, 'name');
   if (!name || typeof value !== 'object' || value === null) return null;
   let permissions: SubagentPermissions;
+  let defaults: SubagentPermissions;
   try {
     permissions = parse(SubagentPermissionsSchema, Reflect.get(value, 'permissions'));
+    defaults = parse(SubagentPermissionsSchema, Reflect.get(value, 'defaults'));
   } catch {
     return null;
   }
@@ -226,6 +252,7 @@ export function asAgentRow(value: unknown): ExtensionAgentRow | null {
     description: readString(value, 'description'),
     permissions,
     customized: readFlag(value, 'customized'),
+    defaults,
     model,
     systemPrompt: readString(value, 'systemPrompt'),
     enabled: readEnabled(value),
@@ -270,18 +297,39 @@ export function asSkillDetail(value: {
   };
 }
 
+/** The keys of a string map such as env or headers; the values are deliberately not read. */
+function readKeys(value: unknown, key: string): string[] {
+  const field = readObject(value, key);
+  return typeof field === 'object' && field !== null && !Array.isArray(field)
+    ? Object.keys(field)
+    : [];
+}
+
+function asMcpTransport(value: string): ExtensionMcpTransport | null {
+  return value === 'stdio' || value === 'streamable-http' || value === 'sse' ? value : null;
+}
+
+/** A configured record; one without an id or with a transport outside the contract is dropped. */
 export function asMcpConfig(value: unknown): ExtensionMcpConfig | null {
   const serverId = readString(value, 'serverId');
-  if (!serverId) return null;
+  const transport = asMcpTransport(readString(value, 'transport'));
+  if (!serverId || !transport) return null;
   const stdio = readObject(value, 'stdio');
   const http = readObject(value, 'http');
-  const auth = readString(readObject(http, 'auth'), 'type');
+  const authRecord = readObject(http, 'auth');
+  const auth = readString(authRecord, 'type');
   return {
     serverId,
-    transport: readString(value, 'transport'),
+    transport,
     command: readString(stdio, 'command'),
     args: readStrings(stdio, 'args'),
+    envNames: readKeys(stdio, 'env'),
+    cwd: readString(stdio, 'cwd'),
     url: readString(http, 'url'),
+    headerNames: readKeys(http, 'headers'),
     auth: auth === 'none' || auth === 'bearer' || auth === 'oauth' ? auth : null,
+    tokenEnv: readString(authRecord, 'tokenEnv'),
+    oauthScope: readString(authRecord, 'scope'),
+    redirectUri: readString(authRecord, 'redirectUri'),
   };
 }

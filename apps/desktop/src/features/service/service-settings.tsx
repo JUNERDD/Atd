@@ -4,53 +4,33 @@ import { Input } from '@ai/ui/components/input';
 import { useCompositionQuery } from '@ai/ui/lib/ime';
 import { ScrollArea } from '@ai/ui/components/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@ai/ui/components/tabs';
-import { showErrorToast, showToast } from '../../components/toast-store';
+import { showToast } from '../../components/toast-store';
 import { SettingsHeading } from '../settings/settings-heading';
-import { ExtensionAddMenu, type ExtensionTab } from './extension-add-menu';
+import { ExtensionAddButton, type ExtensionTab } from './extension-add-button';
+import { AgentPage } from './extension-agent-page';
 import { ExtensionAgentsGroup } from './extension-agents';
 import { ExtensionMcpGroup } from './extension-mcp';
+import { McpPage } from './extension-mcp-page';
+import { SkillPage } from './extension-skill-page';
 import { ExtensionSkillsGroup } from './extension-skills';
+import { useExtensionAiSession } from './use-extension-ai-session';
 import { useExtensionMutations } from './use-extension-mutations';
 import { useServiceAgents, useServiceMcp, useServiceSkills, useServiceStatus } from './use-service';
 
-function createSkillName(tab: ExtensionTab): 'create-skill' | 'create-subagent' | 'create-mcp' {
-  switch (tab) {
-    case 'skills':
-      return 'create-skill';
-    case 'subagents':
-      return 'create-subagent';
-    case 'mcp':
-      return 'create-mcp';
-    default: {
-      const _exhaustive: never = tab;
-      return _exhaustive;
-    }
-  }
-}
+/** Which sub-page replaces the overview: a tab's add page (`name` null) or one item's details. */
+type ExtensionPageRoute = { tab: ExtensionTab; name: string | null };
 
-function sessionKind(tab: ExtensionTab): 'skill' | 'subagent' | 'mcp' {
-  switch (tab) {
-    case 'skills':
-      return 'skill';
-    case 'subagents':
-      return 'subagent';
-    case 'mcp':
-      return 'mcp';
-    default: {
-      const _exhaustive: never = tab;
-      return _exhaustive;
-    }
-  }
-}
-
-/** Skills/subagents/MCP overview for the Extensions settings page. */
+/**
+ * Skills/subagents/MCP overview for the Extensions settings page. Adding an item and one item's
+ * details open as sub-pages in place of the overview, as the command editor does; a successful
+ * save returns to the list.
+ */
 export function ServiceSettings() {
   const { t } = useTranslation('settings');
   const search = useCompositionQuery();
   const query = search.query;
   const [tab, setTab] = useState<ExtensionTab>('skills');
-  const [adding, setAdding] = useState(false);
-  const [formKey, setFormKey] = useState(0);
+  const [page, setPage] = useState<ExtensionPageRoute | null>(null);
   const { status } = useServiceStatus();
   const { skills, loading: skillsLoading, refresh: refreshSkills, setEnabled } = useServiceSkills();
   const {
@@ -124,22 +104,66 @@ export function ServiceSettings() {
       : null;
   const agentsBusy = busyKey?.startsWith('agent:') ?? false;
   const mcpBusy = busyKey?.startsWith('mcp:') ?? false;
-  const skillInstallBusy = busyKey === 'skill:install';
 
-  async function startAiSession() {
-    const bridge = window.desktop?.settings;
-    if (!bridge) return;
-    const skillName = createSkillName(tab);
-    const skill = skills?.skills.find((row) => row.name === skillName);
-    if (skill && !skill.enabled) {
-      showToast({ kind: 'error', text: t('extensions.enableCreateSkill', { name: skillName }) });
-      return;
-    }
-    try {
-      await bridge.startExtensionSession(sessionKind(tab));
-      showToast({ kind: 'info', text: t('extensions.sessionOpened') });
-    } catch (error) {
-      showErrorToast(error);
+  const startAi = useExtensionAiSession(skills?.skills ?? []);
+  /** Returns to the list once a page's save succeeds; a failure keeps the page for repair. */
+  async function saved(save: Promise<boolean>, text: string) {
+    const ok = await save;
+    if (!ok) return false;
+    setPage(null);
+    showToast({ kind: 'info', text });
+    return true;
+  }
+
+  if (page) {
+    const back = () => setPage(null);
+    const onStartAi = (target: string | null) => void startAi(page.tab, target);
+    switch (page.tab) {
+      case 'skills':
+        return (
+          <SkillPage
+            name={page.name}
+            rows={skills?.skills ?? []}
+            connected={connected}
+            busy={catalogBusy}
+            onBack={back}
+            onInstall={(input) =>
+              saved(installSkill(input, refreshSkills), t('extensions.skillInstalled'))
+            }
+            onStartAi={onStartAi}
+          />
+        );
+      case 'subagents':
+        return (
+          <AgentPage
+            name={page.name}
+            rows={agents?.agents ?? []}
+            connected={connected}
+            busy={catalogBusy}
+            onBack={back}
+            onSave={(input) => saved(putAgent(input, refreshAgents), t('extensions.subagentSaved'))}
+            onPermissions={(name, value) => setAgentPermissions(name, value, refreshAgents)}
+            onStartAi={onStartAi}
+          />
+        );
+      case 'mcp':
+        return (
+          <McpPage
+            serverId={page.name}
+            rows={mcp?.servers ?? []}
+            connected={connected}
+            busy={catalogBusy || (page.name !== null && busyId === page.name)}
+            onBack={back}
+            onUpsert={(input) => saved(mcpUpsert(input, refreshMcp), t('extensions.serverSaved'))}
+            onConnect={(serverId) => void mcpConnect(serverId)}
+            onAuthStart={(serverId) => void authStart(serverId)}
+            onStartAi={onStartAi}
+          />
+        );
+      default: {
+        const _exhaustive: never = page.tab;
+        return _exhaustive;
+      }
     }
   }
 
@@ -161,7 +185,6 @@ export function ServiceSettings() {
           onValueChange={(value) => {
             if (value !== 'skills' && value !== 'subagents' && value !== 'mcp') return;
             setTab(value);
-            setAdding(false);
           }}
         >
           <div className="settings-extension-tab-row">
@@ -170,14 +193,10 @@ export function ServiceSettings() {
               <TabsTrigger value="subagents">{t('extensions.tabSubagents')}</TabsTrigger>
               <TabsTrigger value="mcp">{t('extensions.tabMcp')}</TabsTrigger>
             </TabsList>
-            <ExtensionAddMenu
+            <ExtensionAddButton
               tab={tab}
               disabled={menuDisabled}
-              onFillForm={() => {
-                setFormKey((value) => value + 1);
-                setAdding(true);
-              }}
-              onCreateWithAi={() => void startAiSession()}
+              onAdd={() => setPage({ tab, name: null })}
             />
           </div>
           {/* The panel owns the scrollbar; the heading, search, and tab row stay put above it. */}
@@ -195,11 +214,7 @@ export function ServiceSettings() {
                 empty={searching ? t('extensions.noMatches') : t('service.emptySkills')}
                 connected={connected}
                 busyName={skillBusyName}
-                adding={adding && tab === 'skills'}
-                formKey={formKey}
-                busy={skillInstallBusy}
-                onClose={() => setAdding(false)}
-                onInstall={(input) => installSkill(input, refreshSkills)}
+                onOpen={(name) => setPage({ tab: 'skills', name })}
                 onEnabled={(name, enabled) =>
                   toggleOptimistically(
                     `skill:${name}`,
@@ -220,10 +235,7 @@ export function ServiceSettings() {
                 empty={searching ? t('extensions.noMatches') : t('service.emptyAgents')}
                 connected={connected}
                 busy={agentsBusy}
-                adding={adding && tab === 'subagents'}
-                formKey={formKey}
-                onClose={() => setAdding(false)}
-                onSave={(input) => putAgent(input, refreshAgents)}
+                onOpen={(name) => setPage({ tab: 'subagents', name })}
                 onEnabled={(name, enabled) =>
                   toggleOptimistically(
                     `agent:${name}`,
@@ -244,13 +256,10 @@ export function ServiceSettings() {
                 connected={connected}
                 busyId={busyId}
                 busy={mcpBusy}
-                adding={adding && tab === 'mcp'}
-                formKey={formKey}
-                onClose={() => setAdding(false)}
+                onOpen={(serverId) => setPage({ tab: 'mcp', name: serverId })}
                 onConnect={(serverId) => void mcpConnect(serverId)}
                 onAuthStart={(serverId) => void authStart(serverId)}
                 onAuthComplete={(serverId, input) => void authComplete(serverId, input)}
-                onUpsert={(input) => mcpUpsert(input, refreshMcp)}
                 onEnabled={(serverId, enabled) => void mcpSetEnabled(serverId, enabled, refreshMcp)}
                 onRemove={(serverId) => void mcpRemove(serverId, refreshMcp)}
               />

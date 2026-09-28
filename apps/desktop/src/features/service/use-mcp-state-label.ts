@@ -25,3 +25,13 @@ export function useMcpStateLabel(): (state: string) => string {
     [t],
   );
 }
+
+/** A server that is not connected and not connecting can be asked to connect again. */
+export function mcpCanConnect(state: string): boolean {
+  return state === 'disconnected' || state === 'error';
+}
+
+/** The server waits for its user to sign in before it can connect. */
+export function mcpNeedsAuth(state: string): boolean {
+  return state === 'auth_required';
+}

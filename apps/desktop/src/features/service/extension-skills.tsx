@@ -10,8 +10,6 @@ import { ExtensionGroup } from './extension-group';
 import { ExtensionRow, ExtensionRowActions } from './extension-row';
 import { skillSourceLabelKey, type ExtensionSkillRow } from './extension-rows';
 import { RestoreBuiltinDialog, SkillBuiltinStatus } from './extension-skill-builtin';
-import { SkillDetailDialog } from './extension-skill-detail';
-import { SkillInstallForm } from './extension-skill-install-form';
 
 /**
  * Skills catalog. Entries come from the service list, including ~/.agents/skills. The search
@@ -19,6 +17,7 @@ import { SkillInstallForm } from './extension-skill-install-form';
  * A built-in skill whose copy differs from the shipped one shows its state next to the name and
  * offers a restore in its More menu, beside the details and a local skill's update; the backup
  * path of the last restore stays above the list, since a toast only carries one short sentence.
+ * A row click and More › View details both open the skill's details page (`onOpen`).
  */
 export function ExtensionSkillsGroup({
   rows,
@@ -27,11 +26,7 @@ export function ExtensionSkillsGroup({
   empty,
   connected,
   busyName,
-  adding,
-  formKey,
-  busy,
-  onClose,
-  onInstall,
+  onOpen,
   onEnabled,
   onUpdate,
   onRestore,
@@ -42,15 +37,7 @@ export function ExtensionSkillsGroup({
   empty: string;
   connected: boolean;
   busyName: string | null;
-  adding: boolean;
-  formKey: number;
-  busy: boolean;
-  onClose: () => void;
-  onInstall: (input: {
-    source: string;
-    sourceKind: 'local' | 'npm' | 'git';
-    name?: string;
-  }) => Promise<boolean>;
+  onOpen: (name: string) => void;
   onEnabled: (name: string, enabled: boolean) => void;
   onUpdate: (name: string) => void;
   /** Resolves to the backup path (null when nothing was backed up), or undefined on failure. */
@@ -59,9 +46,6 @@ export function ExtensionSkillsGroup({
   const { t } = useTranslation('settings');
   const [restoring, setRestoring] = useState<{ id: string; name: string } | null>(null);
   const [backup, setBackup] = useState<{ name: string; path: string } | null>(null);
-  // The name stays while the dialog closes; the row is read live so a toggle shows in it.
-  const [detail, setDetail] = useState<{ name: string; open: boolean } | null>(null);
-  const detailRow = detail ? rows.find((row) => row.name === detail.name) : undefined;
   function restore(target: { id: string; name: string }) {
     void onRestore(target.id).then((result) => {
       if (!result) {
@@ -79,19 +63,6 @@ export function ExtensionSkillsGroup({
       });
     });
   }
-  const form =
-    adding && connected ? (
-      <SkillInstallForm
-        key={formKey}
-        busy={busy}
-        onCancel={onClose}
-        onSave={(input) => {
-          void onInstall(input).then((ok) => {
-            if (ok) onClose();
-          });
-        }}
-      />
-    ) : null;
   const shown = rows.flatMap((row) => {
     const sourceKey = row.system ? 'extensions.sourceSystem' : skillSourceLabelKey(row.sourceKind);
     const description = [row.description, sourceKey ? t(sourceKey) : '', row.revision]
@@ -106,7 +77,6 @@ export function ExtensionSkillsGroup({
   const anyMenu = shown.some((item) => item.showUpdate || item.showRestore);
   return (
     <>
-      {form}
       <ExtensionGroup
         title={t('extensions.tabSkills')}
         empty={empty}
@@ -126,11 +96,7 @@ export function ExtensionSkillsGroup({
           const rowBusy = busyName === row.name;
           const builtin = row.builtin;
           return (
-            <ExtensionRow
-              key={row.name}
-              name={row.name}
-              onDetails={() => setDetail({ name: row.name, open: true })}
-            >
+            <ExtensionRow key={row.name} name={row.name} onDetails={() => onOpen(row.name)}>
               <ItemMedia variant="icon">
                 <BookOpen />
               </ItemMedia>
@@ -152,7 +118,7 @@ export function ExtensionSkillsGroup({
                 enabled={row.enabled}
                 disabled={!connected}
                 onEnabledChange={(enabled) => onEnabled(row.name, enabled)}
-                onDetails={() => setDetail({ name: row.name, open: true })}
+                onDetails={() => onOpen(row.name)}
                 reserveMenu={anyMenu}
                 menu={
                   showUpdate || showRestore ? (
@@ -180,13 +146,6 @@ export function ExtensionSkillsGroup({
           );
         })}
       </ExtensionGroup>
-      {detailRow ? (
-        <SkillDetailDialog
-          row={detailRow}
-          open={detail?.open ?? false}
-          onOpenChange={(open) => setDetail({ name: detailRow.name, open })}
-        />
-      ) : null}
       <RestoreBuiltinDialog
         name={restoring?.name ?? null}
         onCancel={() => setRestoring(null)}
