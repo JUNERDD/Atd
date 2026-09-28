@@ -208,8 +208,17 @@ export class MemoryAuthority {
     );
   }
 
-  async update(entry: HermesEntry, content: string): Promise<void> {
+  /**
+   * Replaces the live entry named by `identity` with `content`, or removes it when `content` is
+   * blank. Clients name an entry only by id and target; Hermes needs its saved text to find it,
+   * so that text comes from the store. A missing entry reports as changed, like Hermes' own check.
+   */
+  async update(identity: Pick<HermesEntry, 'id' | 'target'>, content: string): Promise<void> {
     this.assertOpen();
+    const entry = (await this.list()).find(
+      (current) => current.id === identity.id && current.target === identity.target,
+    );
+    if (!entry) throw new Error('This memory changed. Reload it before editing.');
     const result = (await this.hermes.update(entry, content)) as {
       success?: boolean;
       error?: string;
