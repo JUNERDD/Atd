@@ -267,6 +267,12 @@
   min-height: 0;
   flex-direction: column;
 }
+/* Cards draw their ring, shadow and focus ring outside their box, which the viewport would clip
+ * at its edges; the list insets them by that much and the scroller gives the inset back, so the
+ * cards still line up with the search field. */
+.settings-extension-scroll {
+  margin: -4px;
+}
 /* The scrolling plugin list: its sections, or the search results. */
 .settings-extension-list {
   display: flex;
@@ -274,6 +280,7 @@
   min-width: 0;
   flex-direction: column;
   gap: 24px;
+  padding: 4px;
 }
 /* Plugin cards fill as many columns of at least 240px as the list's width holds, one column at
  * the narrowest widths; cards in a row share its height. */
@@ -720,6 +727,18 @@
 }
 .settings-permission-option:has(input:disabled) {
   cursor: not-allowed;
+}
+/* The label and radio cover the whole row, and the user agent gives both `cursor: default`, so
+ * they take the row's cursor instead. */
+.settings-permission-option :is([data-slot='label'], input) {
+  cursor: inherit;
+}
+/* Item only styles hover for links; an enabled option row fills like the other settings rows. */
+.settings-permission-option:hover:not(:has(input:disabled)) {
+  background: var(--muted);
+}
+.dark .settings-permission-option:hover:not(:has(input:disabled)) {
+  background: var(--ata-surface-ghost-hover);
 }
 .settings-permission-option [data-slot='label'] {
   min-width: 0;
