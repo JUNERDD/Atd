@@ -25,15 +25,9 @@ import { installFileSearch } from './file-search/ipc';
 import { ServiceManager } from './service/manager';
 import { SETTINGS_IPC } from './settings-contract';
 import { SettingsService } from './settings-service';
-import {
-  isWindowSender,
-  loadWindowContent,
-  rendererPreferences,
-  reportRendererExit,
-  secureWindowContent,
-} from './window-content';
+import { isWindowSender, loadWindowContent } from './window-content';
 import { PanelPlacement } from './panel-placement';
-import { getPanelMinimumSize } from './window-position';
+import { createPanelWindow } from './panel-window';
 
 app.setName('AI');
 nativeTheme.themeSource = 'dark';
@@ -160,63 +154,15 @@ function installIpc() {
   });
 }
 
-/**
- * Only a manual edge drag replaces the stored size; programmatic re-docking and
- * work-area clamping keep the user's preference. The trailing debounce saves the
- * final bounds once the drag settles.
- */
-function rememberPanelSize(window: BrowserWindow) {
-  let pending: ReturnType<typeof setTimeout> | undefined;
-  window.on('will-resize', () => {
-    clearTimeout(pending);
-    pending = setTimeout(() => {
-      if (window.isDestroyed()) return;
-      const { width, height } = window.getNormalBounds();
-      settings.setPanelSize({ width, height }).catch((error: unknown) => {
-        console.error('Could not save the panel size:', error);
-      });
-    }, 300);
-  });
-}
-
 async function createPanel() {
-  const display = screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
-  // macOS vibrancy owns the window surface, including its native edge and shadow.
-  // Other platforms need a transparent backing, which Electron cannot resize reliably.
-  const transparent = process.platform !== 'darwin';
-  const minimum = getPanelMinimumSize(display.workArea);
-  const window = new BrowserWindow({
-    ...placement.dockedBounds(display.workArea, settings.panelSize),
-    title: 'AI',
-    // macOS keeps its native traffic lights over a hidden title bar; every other platform draws
-    // the panel chrome in the renderer instead.
-    ...(process.platform === 'darwin'
-      ? { titleBarStyle: 'hidden' as const, trafficLightPosition: { x: 16, y: 18 } }
-      : { frame: false }),
-    transparent,
-    // The renderer owns the panel tint; keep the native backing clear to avoid double fills.
-    backgroundColor: '#00000000',
-    alwaysOnTop: settings.pinned,
-    resizable: !transparent,
-    // The macOS traffic lights replace the in-panel chrome, so the green button stays enabled and
-    // zooms the panel; like the settings window it never enters fullscreen.
-    maximizable: true,
-    fullscreenable: false,
-    minWidth: minimum.width,
-    minHeight: minimum.height,
-    hasShadow: true,
-    roundedCorners: true,
-    show: false,
-    // HUD provides native blur beneath the renderer's content surface, even when unfocused.
-    ...(process.platform === 'darwin'
-      ? { vibrancy: 'hud' as const, visualEffectState: 'active' as const }
-      : {}),
-    webPreferences: rendererPreferences,
+  const { workArea } = screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
+  const window = createPanelWindow({
+    bounds: placement.dockedBounds(workArea, settings.panelSize),
+    workArea,
+    pinned: settings.pinned,
+    saveSize: (size) => settings.setPanelSize(size),
   });
   panel = window;
-  secureWindowContent(window);
-  reportRendererExit(window, 'panel');
-  rememberPanelSize(window);
   // macOS owns its window management: the native close button dismisses the panel like the
   // in-panel hide control does, so the global shortcut and the app menu reveal the same window
   // again. Quitting releases it normally. Every other platform keeps its previous close behavior.
