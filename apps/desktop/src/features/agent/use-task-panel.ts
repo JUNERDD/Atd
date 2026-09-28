@@ -25,6 +25,12 @@ import { useAgentNotices } from './use-notices';
 import { focusPanelInput, showPanel, usePanelWindow } from './use-panel-window';
 
 type View = 'new' | 'history' | 'task' | 'input';
+/** The edit-with-AI sentence per extension kind; memory sessions never carry a target. */
+const EDIT_SEEDS = {
+  skill: 'session.editSkillSeed',
+  subagent: 'session.editSubagentSeed',
+  mcp: 'session.editMcpSeed',
+} as const;
 const EMPTY_DRAFT: ComposerDraft = { text: '', files: [], chips: [] };
 
 /**
@@ -126,13 +132,16 @@ export function useTaskPanel() {
     });
   }, [t]);
   // Create-with-AI (Extensions, Memory) seeds a `create-*` skill chip and a space on the new
-  // draft; submit stages the chip's skill, so removing the chip also drops the skill.
+  // draft; edit-with-AI adds a sentence naming the existing item after the space. Submit stages the
+  // chip's skill, so removing the chip also drops the skill.
   useEffect(() => {
     const bridge = window.desktop?.agent;
     if (!bridge) return;
-    return bridge.onExtensionSession(({ kind }) => {
+    return bridge.onExtensionSession(({ kind, target }) => {
       newTask();
-      const seed = serialize([{ kind: 'skill', name: `create-${kind}` }, ' '], []);
+      const edit =
+        target === null || kind === 'memory' ? '' : t(EDIT_SEEDS[kind], { name: target });
+      const seed = serialize([{ kind: 'skill', name: `create-${kind}` }, ' ', edit], []);
       setDrafts((previous) => ({ ...previous, new: seed }));
       setPolicies((previous) => ({
         ...previous,
@@ -147,7 +156,7 @@ export function useTaskPanel() {
       }));
       focusPanelInput();
     });
-  }, []);
+  }, [t]);
   // A failed start restores the command input for repair. The reveal counter is raised together
   // with the launched view, so the commit that reveals the panel already renders that view; every
   // launch is a fresh object, so the trigger fires exactly once per shortcut press.

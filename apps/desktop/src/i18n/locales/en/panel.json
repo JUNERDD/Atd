@@ -122,6 +122,9 @@
   "session": {
     "editSeed": "Update the command \"{{name}}\" (id: {{id}}): ",
     "createSeed": "Create a command: ",
+    "editSkillSeed": "Update the existing skill \"{{name}}\": ",
+    "editSubagentSeed": "Update the existing subagent \"{{name}}\": ",
+    "editMcpSeed": "Update the existing MCP server \"{{name}}\": ",
     "menu": "Session actions",
     "rename": "Rename session",
     "copyLink": "Copy session link",

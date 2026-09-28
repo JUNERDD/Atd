@@ -19,4 +19,9 @@ Interview until you have:
 
 When the answers are complete, call the `configure_mcp` tool with those fields. Do not rewrite `servers.json` yourself and do not invent other persistence paths.
 
+To update an existing server (the user's message names its serverId):
+
+- `configure_mcp` replaces the transport, command/args or url, and auth of that serverId with what you send. It keeps the server's stdio env/cwd, HTTP headers, and OAuth scope/redirect for the same kind of transport, and drops them when you switch between stdio and HTTP; tell the user when that matters. Start from the server's current configuration; ask the user for any current value you cannot see instead of guessing.
+- Change only what the user asks and call `configure_mcp` with the same `serverId`.
+
 For bearer auth, store only `tokenEnv` (the name of an environment variable). Never ask the user to paste a secret into a file.

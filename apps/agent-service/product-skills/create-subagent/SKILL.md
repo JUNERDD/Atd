@@ -26,6 +26,12 @@ model: <model-id> # omit if none
 <system prompt body>
 ```
 
+To update an existing subagent (the user's message names it):
+
+- Read `~/.atd/agents/<name>.md` before changing anything.
+- Change only what the user asks; keep the file name and the frontmatter `name`.
+- Save with the edit/write tools at the same path.
+
 Rules:
 
 - Only write under `~/.atd/agents`. Refuse any other path.
