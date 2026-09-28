@@ -245,28 +245,18 @@ export class RunnerManager {
     }
   }
 
-  /** Enters draining: no new runs, active trees abort, runners dispose. */
+  /**
+   * Enters draining: no new runs, started runs abort, runners dispose. Queued runs never started,
+   * so they stay `queued` in the ledger: draining keeps `dispatch` from starting them now, and the
+   * next boot keeps them queued (recovery.ts) and dispatches them once the server listens.
+   */
   async shutdown(): Promise<void> {
     this.draining = true;
     const stopping: Promise<unknown>[] = [];
     for (const task of this.deps.ctx.ledger.data.tasks)
       for (const run of task.runs) {
-        if (run.status === 'queued') {
-          stopping.push(
-            this.deps.ctx.ledger
-              .change((data) => {
-                const item = data.tasks
-                  .find((entry) => entry.id === task.id)
-                  ?.runs.find((entry) => entry.id === run.id);
-                if (item && item.status === 'queued') item.status = 'cancelled';
-              })
-              .catch((error: unknown) => {
-                this.deps.log.warn('Drain cancel failed.', { error: errorMessage(error) });
-              }),
-          );
-        } else if (isActiveStatus(run.status)) {
+        if (run.status !== 'queued' && isActiveStatus(run.status))
           stopping.push(this.cancel(task.id, run.id).catch(() => undefined));
-        }
       }
     await Promise.allSettled(stopping);
     await Promise.allSettled([...this.executions.values()]);
