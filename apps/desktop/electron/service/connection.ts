@@ -1,3 +1,4 @@
+import log from 'electron-log/main';
 import { AgentHttpClient, AgentStreamClient, type AgentClientOptions } from '@ai/agent-client';
 import type {
   CapabilityRequest,
@@ -9,6 +10,8 @@ import type {
 } from '@ai/agent-contracts';
 import { discoverService, type ServiceEndpoint } from './endpoint';
 import { handleCapability, type CapabilityContext } from './capabilities';
+
+const logger = log.scope('service');
 
 export type ConnectionState = 'disconnected' | 'connecting' | 'connected' | 'reconnecting';
 
@@ -237,8 +240,12 @@ export class ServiceConnection {
           else this.publish();
         },
         onDisconnect: (reason) => {
-          if (this.state === 'connected') this.setState('reconnecting', reason);
-          else {
+          // The banner shows only that the stream is reconnecting; the close reason goes to the
+          // log once per drop, not on every retry.
+          if (this.state === 'connected') {
+            logger.warn(`The service stream dropped: ${reason}`);
+            this.setState('reconnecting', reason);
+          } else {
             this.detail = reason;
             this.publish();
           }

@@ -98,7 +98,8 @@ export class AgentStreamClient {
     socket.addEventListener('close', (event) => {
       if (this.socket === socket) this.socket = null;
       if (this.closed) return;
-      this.handlers.onDisconnect?.(`Stream closed (${event.code} ${event.reason}).`);
+      const reason = event.reason ? ` ${event.reason}` : '';
+      this.handlers.onDisconnect?.(`Stream closed (${event.code}${reason}).`);
       this.scheduleReconnect();
     });
     // Errors surface through close; no separate handling needed.

@@ -1,5 +1,5 @@
-import { app, autoUpdater, dialog, powerMonitor } from 'electron';
-import type { BrowserWindow, MessageBoxOptions } from 'electron';
+import { app, autoUpdater, BrowserWindow, dialog, powerMonitor } from 'electron';
+import type { MessageBoxOptions } from 'electron';
 import type { ServiceManager } from './service/manager';
 
 /** How long a quit waits for the service's run count before it treats the service as idle. */
@@ -40,9 +40,9 @@ export interface QuitGuard {
 /**
  * Owns the app's quit flow. Stopping the service cancels its started runs (queued runs stay queued
  * and start the next time the service boots), so a quit someone asked for at the app first asks
- * whether to stop running tasks. The teardown order is `service.shutdown()`, then `closeAgent()`,
- * then `app.quit()`; once it starts, every later quit passes straight through, so a second quit
- * still ends a hung teardown.
+ * whether to stop running tasks. The teardown hides every window, then runs `service.shutdown()`,
+ * `closeAgent()` and `app.quit()`; once it starts, every later quit passes straight through, so a
+ * second quit still ends a hung teardown.
  *
  * Unattended quits never ask: OS shutdown or logout (`powerMonitor` 'shutdown' on macOS and
  * Linux, a window's 'session-end' on Windows, where a session end emits no before-quit at all),
@@ -72,6 +72,9 @@ export function installQuitGuard(deps: QuitGuardDeps): QuitGuard {
     tearingDown = true;
     asking?.abort();
     asking = null;
+    // The quit is committed, so the windows go away now instead of showing the service stopping,
+    // which can take seconds while it drains running work.
+    for (const window of BrowserWindow.getAllWindows()) window.hide();
     void (async () => {
       try {
         await deps.service()?.shutdown();
