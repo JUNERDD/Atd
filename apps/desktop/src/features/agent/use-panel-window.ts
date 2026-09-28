@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { EditorView } from '@codemirror/view';
 import { showErrorToast } from '../../components/toast-store';
 
@@ -36,8 +36,25 @@ export async function showPanel() {
   }
 }
 
+/**
+ * The main process reveals the panel without telling the renderer (global shortcut, menu bar item,
+ * Dock, second launch), so every reveal restores focus here once the page becomes visible. Focus
+ * the user left inside the panel content, such as a question answer, survives the reveal.
+ */
+function restoreRevealedFocus() {
+  if (document.visibilityState !== 'visible') return;
+  const active = document.activeElement;
+  if (active && active !== document.body && !active.closest('.panel-header')) return;
+  focusPanelInput();
+}
+
 export function usePanelWindow() {
   const [hidden, setHidden] = useState(false);
+  useEffect(() => {
+    if (!window.desktop) return;
+    document.addEventListener('visibilitychange', restoreRevealedFocus);
+    return () => document.removeEventListener('visibilitychange', restoreRevealedFocus);
+  }, []);
   async function openSettings() {
     try {
       if (window.desktop) await window.desktop.settings.open();
