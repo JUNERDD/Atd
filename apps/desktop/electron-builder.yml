@@ -3,7 +3,8 @@ productName: AI
 asar: true
 directories:
   output: release
-# T7 bundling map (dir target; no publish / no installers):
+# T7 bundling map (`package` builds the dir target; `package:installer` builds
+# the platform target below, which .github/workflows/release.yml publishes):
 # extraResources = service dist + package.json (engines) + production
 # node_modules from `pnpm deploy --prod --legacy` staging
 # (tmp/t7-agent-service-pack; gitignored). node_modules is copied from the
@@ -14,7 +15,7 @@ directories:
 # release SHASUMS256.txt), never a user-installed Node; unpackaged dev runs use
 # the system Node. The osx-sign walk signs it with the rest of Contents/, with
 # the app's hardened-runtime setting and the default entitlements (JIT
-# included). Login-start + installers = future.
+# included). Login-start = future.
 # Stale Electron worker outputs are excluded here and deleted by
 # scripts/prepare-service-pack.mjs before pack.
 files:
@@ -64,9 +65,20 @@ electronFuses:
   # signature no longer matches, so re-sign ad hoc for unsigned local packs. Real signing
   # (CI identity or `-c.mac.identity=-`) signs again afterwards.
   resetAdHocDarwinSignature: true
+# The update feed electron-updater reads (`electron/updater.ts`). The scripts pass
+# `--publish never` and .github/workflows/release.yml uploads the files, so this only writes
+# Contents/Resources/app-update.yml, for the dmg and zip targets (not `--dir` packs).
+publish:
+  provider: github
+  owner: JUNERDD
+  repo: ai
 mac:
   category: public.app-category.productivity
-  target: dmg
+  # The dmg is the download; Squirrel.Mac installs updates from the zip.
+  target: [dmg, zip]
+  # The zip keeps the arch for x64 too, so each architecture's file is unambiguous in the merged
+  # latest-mac.yml. The dmg sets its own name below.
+  artifactName: ${productName}-${version}-${arch}-mac.${ext}
   # Shown the first time an attached file sits in one of these folders. File search itself reads
   # the Spotlight index and never opens the folders.
   extendInfo:
@@ -76,6 +88,9 @@ mac:
     # Start as an agent app so a hidden Dock icon never flashes at launch; `dock-visibility.ts`
     # shows the icon at runtime when the user turns on Show in Dock.
     LSUIElement: true
+dmg:
+  # Name both architectures explicitly; the default omits the arch for x64.
+  artifactName: ${productName}-${version}-${arch}.${ext}
 win:
   target: nsis
 linux:
