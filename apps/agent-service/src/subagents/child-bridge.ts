@@ -50,6 +50,7 @@ export default function serviceChildBridge(pi: BridgePi): void {
       taskId: parent.taskId,
       parentRunId,
       executionId,
+      agent: tracked?.agent ?? null,
       cwd: host.cwd,
       dataDir: host.dataDir,
       allowedTools: host.allowedTools,

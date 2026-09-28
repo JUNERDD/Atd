@@ -2,6 +2,7 @@ import {
   errorMessage,
   type McpServerConfig,
   type RunReference,
+  type SubagentPermissions,
   type TaskRun,
 } from '@ai/agent-contracts';
 import { listAtdAgents, type AtdAgent } from '../atd-agents/catalog.js';
@@ -40,8 +41,10 @@ export interface ReferenceContext {
   skillChars: number;
   /** Configured servers and the run's frozen tool selection; null while MCP is unavailable. */
   mcp: { servers: McpServerConfig[]; selected: McpToolSelection[] | null } | null;
-  /** Catalog agents turned off in Settings (atd-agents/enablement.ts); a reference to one resolves to a note. */
+  /** Catalog agents turned off in Settings (atd-agents/harness.ts); a reference to one resolves to a note. */
   disabledAgents: ReadonlySet<string>;
+  /** Settings permission overrides by catalog name (atd-agents/harness.ts). */
+  agentPermissions: ReadonlyMap<string, SubagentPermissions>;
 }
 
 /** A run's references resolved at freeze into material and capabilities. */
@@ -110,7 +113,7 @@ export async function resolveRunReferences(
       );
       const resolved = context.disabledAgents.has(reference.name)
         ? 'it is turned off in Settings'
-        : resolveAgent(await catalog, reference.name, context.toolCeiling);
+        : resolveAgent(await catalog, reference.name, context);
       const label = `Agent "${reference.name}"`;
       if (typeof resolved === 'string') notes.push({ reference, label, reason: resolved });
       else hints.push({ reference, ...resolved });
@@ -257,28 +260,35 @@ function resolveMcpServer(
 function resolveAgent(
   catalog: AtdAgent[] | string,
   name: string,
-  ceiling: string[],
+  context: Pick<ReferenceContext, 'toolCeiling' | 'agentPermissions'>,
 ): Omit<Hint, 'reference'> | string {
   if (typeof catalog === 'string') return catalog;
   const entry = catalog.find((agent) => agent.name === name);
   if (!entry) return 'it is not in ~/.atd/agents';
-  const runtime = atdRuntimeAgent(entry, ceiling);
+  const runtime = atdRuntimeAgent(entry, context.toolCeiling, context.agentPermissions.get(name));
   if ('reason' in runtime) return runtime.reason;
   const { agent } = runtime;
-  const tools = agent.definition.tools ?? [];
+  // No list means the child gets whatever this run allows children (subagents/agents.ts).
+  const tools = agent.definition.tools ?? null;
+  const toolLine = !tools
+    ? 'It uses the tools this run allows.'
+    : tools.length
+      ? `Its tools: ${tools.join(', ')}.`
+      : 'It has no tools in this run.';
   const call = JSON.stringify({ agent: agent.name, task: '<what to do>', async: false });
   return {
     agent,
     text: [
       `Agent "${agent.name}" (${name} from ~/.atd/agents): ${clip(oneLine(entry.description), DESCRIPTION_CHARS)}`,
-      `Delegate work that suits it with the subagent tool: ${call}. ${tools.length ? `Its tools: ${tools.join(', ')}.` : 'It has no tools in this run.'}`,
+      `Delegate work that suits it with the subagent tool: ${call}. ${toolLine}`,
     ].join('\n'),
     audit: {
       reference: 'agent',
       target: name,
       decision: 'included',
       registeredAs: agent.name,
-      tools,
+      tools: tools ?? 'run',
+      approval: agent.approval,
       ignoredModel: entry.model,
     },
   };

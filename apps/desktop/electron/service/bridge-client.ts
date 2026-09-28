@@ -28,6 +28,8 @@ export function createServiceBridge(
     putRole: (input) => invoke({ action: 'rolesPut', ...input }),
     agents: () => invoke({ action: 'agents' }),
     setAgentEnabled: (name, enabled) => invoke({ action: 'agentsSetEnabled', name, enabled }),
+    setAgentPermissions: (name, permissions) =>
+      invoke({ action: 'agentsSetPermissions', name, permissions }),
     putAgent: (input) => invoke({ action: 'agentsPut', ...input }),
     mcpStatus: () => invoke({ action: 'mcpStatus' }),
     mcpServers: () => invoke({ action: 'mcpServers' }),

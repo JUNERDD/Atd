@@ -26,6 +26,8 @@ export interface ChildToolHost {
   taskId: string;
   parentRunId: string;
   executionId: string;
+  /** The child's runtime agent name, which may make its approvals stricter; null when unknown. */
+  agent: string | null;
   cwd: string;
   dataDir: string;
   allowedTools: string[];
@@ -86,7 +88,11 @@ export function registerChildTools(pi: PiLike, host: ChildToolHost): void {
   registerChildCeiling(pi, host);
   const parent = hostForTask(host.taskId);
   if (!parent) throw new Error('Child tools have no host record for this task; refusing to start.');
-  const approvals = parent.approvals({ runId: host.parentRunId, executionId: host.executionId });
+  const approvals = parent.approvals({
+    runId: host.parentRunId,
+    executionId: host.executionId,
+    agent: host.agent,
+  });
   const allow = (tool: string, decision = 'allow') =>
     host.audit({
       taskId: host.taskId,

@@ -1,5 +1,5 @@
 import { errorMessage, type TaskRun } from '@ai/agent-contracts';
-import { readDisabledAgentNames } from './atd-agents/enablement.js';
+import { readAgentHarness } from './atd-agents/harness.js';
 import { McpAdapterMissing, McpAuthority } from './mcp/index.js';
 import { freezeRunMcp, releaseRunMcp } from './mcp/staging.js';
 import {
@@ -15,7 +15,7 @@ import { captureRunSkills, skillChars, type RunSkills } from './skills/run-skill
 import { takeTaskStaging } from './skills/staging.js';
 import { freezeSkillCatalog, type RunSkillCatalog } from './skills/skill-catalog.js';
 import { freezeRunSkills, loadSkillCatalog, releaseRun } from './skills/versions.js';
-import { SERVICE_RUNTIME_AGENTS, type RuntimeAgent } from './subagents/agents.js';
+import { SERVICE_RUNTIME_AGENTS, withPermissions, type RuntimeAgent } from './subagents/agents.js';
 import { readServiceId } from './storage.js';
 import type { RunnerContext } from './task-runner.js';
 
@@ -49,15 +49,21 @@ export async function freezeRunSelections(
 ): Promise<FrozenSelections> {
   const { toolCeiling, skills, catalog } = await freezeSkills(deps, run);
   const mcp = await freezeMcp(deps, run);
-  // Agents turned off in Settings stay off for this run even if they are turned on during it.
-  const disabledAgents = await readDisabledAgentNames(deps.ctx.paths.root);
+  // Agents turned off in Settings stay off for this run even if they are turned on during it, and
+  // a permission change made during the run applies from the next one.
+  const { disabled: disabledAgents, permissions: agentPermissions } = await readAgentHarness(
+    deps.ctx.paths.root,
+  );
   const references = await freezeReferencesForRun(deps, run, {
     toolCeiling,
     mcp,
     skillChars: skillChars(run.id, skills.loaded, catalog),
     disabledAgents,
+    agentPermissions,
   });
-  const systemAgents = SERVICE_RUNTIME_AGENTS.filter((agent) => !disabledAgents.has(agent.name));
+  const systemAgents = SERVICE_RUNTIME_AGENTS.filter(
+    (agent) => !disabledAgents.has(agent.name),
+  ).map((agent) => withPermissions(agent, agentPermissions.get(agent.name)));
   return { references, skills, catalog, agents: [...systemAgents, ...references.agents] };
 }
 
@@ -83,7 +89,10 @@ export async function releaseRunSelections(deps: RunFreezeDeps, runId: string): 
 async function freezeReferencesForRun(
   deps: RunFreezeDeps,
   run: TaskRun,
-  frozen: Pick<ReferenceContext, 'toolCeiling' | 'mcp' | 'skillChars' | 'disabledAgents'>,
+  frozen: Pick<
+    ReferenceContext,
+    'toolCeiling' | 'mcp' | 'skillChars' | 'disabledAgents' | 'agentPermissions'
+  >,
 ): Promise<RunReferences> {
   const references = await takeTaskReferences(deps.ctx.paths.root, deps.taskId);
   const resolved = await resolveRunReferences(
