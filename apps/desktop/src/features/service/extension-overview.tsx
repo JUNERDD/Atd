@@ -74,7 +74,7 @@ export function ExtensionOverview({
   // The panel owns the scrollbar; the heading and search stay put above it.
   const scroll = (content: ReactNode) => (
     <ScrollArea
-      className="flex-1"
+      className="settings-extension-scroll flex-1"
       viewportClassName="[&>div]:flex! [&>div]:flex-col [&>div]:min-h-full"
       gutter="stable"
       scrollShadow
