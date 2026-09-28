@@ -5,11 +5,10 @@ import {
   type ExtensionAPI,
   type ExtensionFactory,
 } from '@earendil-works/pi-coding-agent';
-import { createGate } from '../harness/gate.js';
-import { effectiveTaskTier } from '../tasks/tier.js';
 import { collectPermissionLookups } from '../transcript-blocks.js';
 import { fromServiceBranch } from '../transcript.js';
 import { registerRuntimeAgents, type RuntimeAgent } from './agents.js';
+import { childApprovals } from './approvals.js';
 import {
   SERVICE_CHAIN_WORKFLOW,
   SERVICE_PARALLEL_WORKFLOW,
@@ -27,7 +26,6 @@ import {
   registerParent,
   storeHost,
   unregisterParentBySession,
-  type ChildApprovals,
   type ChildModelRuntime,
 } from './registry.js';
 import { resolveRequiredExtensionPath, REQUIRED_EXTENSION_ID } from './required-extension.js';
@@ -173,35 +171,6 @@ export async function prepareSubagentsParent(
   return factory;
 }
 
-/**
- * The parent's approval rules for its children: the task tier the parent session froze (pi-session
- * builds its tool host with the same `effectiveTaskTier`) and one gate per child execution over the
- * parent's confirms, session grants, audit and session entries. Child confirms carry the child's
- * execution id, which the desktop labels as a subtask; while one waits, the parent run shows
- * `awaiting_confirmation`, as for the parent's own confirms.
- */
-function childApprovals(
-  deps: SessionFactoryDeps,
-  sessions: SessionManager,
-): (child: { runId: string; executionId: string }) => ChildApprovals {
-  const tier = effectiveTaskTier(deps.ctx.ledger, deps.taskId, deps.ctx.tier);
-  return (child) => ({
-    tier,
-    gate: createGate({
-      taskId: deps.taskId,
-      runId: () => child.runId,
-      executionId: () => child.executionId,
-      tier,
-      grants: deps.grants,
-      review: deps.review,
-      sessions,
-      confirms: deps.ctx.confirms,
-      audit: deps.audit,
-      setStatus: (status) => deps.setStatus(child.runId, status),
-    }),
-  });
-}
-
 function registerParentSession(
   deps: SessionFactoryDeps,
   preloaded: Preloaded,
@@ -261,7 +230,7 @@ function registerParentSession(
     audit: deps.audit,
     resourceIds: run.snapshot.input.files.map((file) => file.id),
     childRuntime: session.childRuntime,
-    approvals: childApprovals(deps, sessions),
+    approvals: childApprovals(deps, sessions, session.agents),
     publishChildTranscript: (child, data) => {
       deps.ctx.events.publish({
         taskId,

@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react';
+import type { SubagentPermissions } from '@ai/agent-contracts';
 import { showErrorToast } from '../../components/toast-store';
 import type { ExtensionRoleTool } from './extension-rows';
 
@@ -129,6 +130,24 @@ export function useExtensionMutations() {
     [],
   );
 
+  /** Saves one subagent's permissions for later runs, or with null restores its defaults. */
+  const setAgentPermissions = useCallback(
+    async (name: string, permissions: SubagentPermissions | null, refresh: () => Promise<void>) => {
+      setBusyKey(`agent:${name}`);
+      try {
+        await serviceApi().setAgentPermissions(name, permissions);
+        await refresh();
+        return true;
+      } catch (error) {
+        showErrorToast(error);
+        return false;
+      } finally {
+        setBusyKey(null);
+      }
+    },
+    [],
+  );
+
   const mcpUpsert = useCallback(
     async (
       input: {
@@ -192,6 +211,7 @@ export function useExtensionMutations() {
     installSkill,
     putRole,
     putAgent,
+    setAgentPermissions,
     mcpUpsert,
     mcpSetEnabled,
     mcpRemove,

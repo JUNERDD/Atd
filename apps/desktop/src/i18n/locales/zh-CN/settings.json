@@ -192,7 +192,72 @@
     "detailModel": "模型",
     "sourceAtdAgents": "~/.atd/agents",
     "agentToolsFromTask": "沿用任务的工具",
-    "agentNoTools": "无",
+    "agentToolsWithinTask": "{{tools}}（不超出任务的工具）",
+    "agentPermissionsAction": "权限…",
+    "customPermissions": "已自定义权限",
+    "detailApproval": "审批",
+    "agentPermissions": {
+      "title": "{{name}} 的权限",
+      "description": "从下一轮开始生效，且不会超出任务本身的权限。",
+      "limitTools": "限制工具",
+      "limitToolsDescription": "关闭时可使用任务允许的全部工具，包括 MCP 和记忆。",
+      "toolsLabel": "工具",
+      "noTools": "请至少选择一个工具，或关闭“限制工具”。",
+      "groups": {
+        "read": "读取与搜索",
+        "change": "修改文件",
+        "run": "运行",
+        "web": "网络"
+      },
+      "tools": {
+        "read": {
+          "label": "读取文件",
+          "description": "读取任务文件夹中的文件和已授权的资源。"
+        },
+        "grep": {
+          "label": "搜索内容",
+          "description": "在任务文件夹的文件中搜索文字。"
+        },
+        "find": {
+          "label": "查找文件",
+          "description": "按名称查找任务文件夹中的文件。"
+        },
+        "ls": {
+          "label": "列出文件夹",
+          "description": "列出任务文件夹中某个文件夹的内容。"
+        },
+        "write": {
+          "label": "创建文件",
+          "description": "在任务输出文件夹中创建或替换文件。"
+        },
+        "edit": {
+          "label": "编辑文件",
+          "description": "修改任务输出文件夹中已有的文件。"
+        },
+        "bash": {
+          "label": "终端",
+          "description": "运行 shell 命令，审批方式与任务相同。"
+        },
+        "command": {
+          "label": "已保存的命令",
+          "description": "创建或编辑已保存的命令。"
+        },
+        "web_search": {
+          "label": "网页搜索",
+          "description": "在网上搜索资料来源。"
+        },
+        "fetch_content": {
+          "label": "读取网页",
+          "description": "获取并阅读网页内容。"
+        }
+      },
+      "approval": "审批",
+      "approvalDescription": "只能比任务更严格。任务要求逐项询问时，子代理也会逐项询问。",
+      "approvalTask": "与任务相同",
+      "restore": "恢复默认",
+      "save": "保存",
+      "saved": "权限修改从下一轮开始生效。"
+    },
     "agentTaskModel": "与任务相同",
     "detailOffers": "提供",
     "mcpOffers": "工具 {{tools}} · 资源 {{resources}} · 提示 {{prompts}}",

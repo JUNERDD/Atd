@@ -1,4 +1,5 @@
-import type { BuiltinStatusWire } from '@ai/agent-client';
+import type { AgentPermissionsWire, BuiltinStatusWire } from '@ai/agent-client';
+import { SubagentPermissionsSchema, type SubagentPermissions } from '@ai/agent-contracts';
 import { Type, type Static } from 'typebox';
 
 export const ServiceStateSchema = Type.Union([
@@ -129,6 +130,11 @@ export const ServiceRequestSchema = Type.Union([
     enabled: Type.Boolean(),
   }),
   Type.Object({
+    action: Type.Literal('agentsSetPermissions'),
+    name: AgentNameSchema,
+    permissions: Type.Union([SubagentPermissionsSchema, Type.Null()]),
+  }),
+  Type.Object({
     action: Type.Literal('agentsPut'),
     name: SkillNameSchema,
     description: Type.String({ minLength: 1, maxLength: 2048 }),
@@ -227,6 +233,11 @@ export interface ServiceBridge {
   agents: () => Promise<{ agents: unknown[] }>;
   /** Turns a catalog subagent on or off for later runs. */
   setAgentEnabled: (name: string, enabled: boolean) => Promise<{ name: string; enabled: boolean }>;
+  /** Saves a catalog subagent's permissions for later runs; null restores its defaults. */
+  setAgentPermissions: (
+    name: string,
+    permissions: SubagentPermissions | null,
+  ) => Promise<AgentPermissionsWire>;
   putAgent: (input: {
     name: string;
     description: string;

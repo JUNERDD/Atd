@@ -76,6 +76,7 @@ export function ServiceSettings() {
     restoreBuiltin,
     installSkill,
     putAgent,
+    setAgentPermissions,
     mcpUpsert,
     mcpSetEnabled,
     mcpRemove,
@@ -231,6 +232,7 @@ export function ServiceSettings() {
                     (value) => setAgentEnabled(name, value),
                   )
                 }
+                onPermissions={(name, value) => setAgentPermissions(name, value, refreshAgents)}
               />
             </TabsContent>
             <TabsContent value="mcp" forceMount>
