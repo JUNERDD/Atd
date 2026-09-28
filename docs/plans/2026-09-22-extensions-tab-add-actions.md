@@ -1,6 +1,6 @@
 # Extensions tab add actions
 
-Status: In progress
+Status: Superseded by [2026-09-28 plugin-grouped extensions settings](2026-09-28-plugin-grouped-extensions-settings.md) (the per-kind tabs and add button were replaced by plugin rows)
 Created: 2026-09-22
 Approval: Implementation requested. All plan todos are in scope.
 

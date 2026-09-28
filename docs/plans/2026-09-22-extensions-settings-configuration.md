@@ -1,6 +1,6 @@
 # Extensions settings configuration
 
-Status: Research complete — implementation not requested
+Status: Superseded by [2026-09-28 plugin-grouped extensions settings](2026-09-28-plugin-grouped-extensions-settings.md)
 Created: 2026-09-22
 Approval: Planning only. Implementation is not authorized.
 
