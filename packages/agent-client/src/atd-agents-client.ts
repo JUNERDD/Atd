@@ -1,3 +1,4 @@
+import type { SubagentPermissions } from '@ai/agent-contracts';
 import type { AgentClientOptions } from './types.js';
 
 export interface AtdAgentWire {
@@ -29,15 +30,49 @@ async function request<T>(
   return json as T;
 }
 
+/** The permissions later runs give one catalog agent, and whether Settings changed them. */
+export interface AgentPermissionsWire {
+  name: string;
+  permissions: SubagentPermissions;
+  customized: boolean;
+}
+
+/** One catalog row: the agent, its enablement, and the permissions later runs use. */
+export interface AtdAgentCatalogWire extends Omit<AtdAgentWire, 'tools'> {
+  system: boolean;
+  enabled: boolean;
+  permissions: SubagentPermissions;
+  customized: boolean;
+  /** Its own permissions from its definition or file, which Restore brings back. */
+  defaults: SubagentPermissions;
+}
+
 /**
  * Lists the subagent catalog: the service's system agents (`system: true`, read-only), then the
- * markdown specialists from ~/.atd/agents, each with whether later runs may use it.
+ * markdown specialists from ~/.atd/agents, each with whether later runs may use it and with what
+ * permissions.
  */
 export function listAtdAgents(
   options: AgentClientOptions,
   fetchImpl?: typeof fetch,
-): Promise<{ agents: Array<AtdAgentWire & { system: boolean; enabled: boolean }> }> {
+): Promise<{ agents: AtdAgentCatalogWire[] }> {
   return request(options, '/v1/agents', 'GET', undefined, fetchImpl);
+}
+
+/**
+ * Saves one catalog agent's permissions for later runs, or with null restores its defaults. An
+ * override equal to the defaults is not kept.
+ */
+export function setAtdAgentPermissions(
+  options: AgentClientOptions,
+  name: string,
+  permissions: SubagentPermissions | null,
+  fetchImpl?: typeof fetch,
+): Promise<AgentPermissionsWire> {
+  const path = `/v1/agents/${encodeURIComponent(name)}/permissions`;
+  return permissions
+    ? request(options, path, 'PUT', permissions, fetchImpl)
+    : request(options, path, 'DELETE', undefined, fetchImpl);
 }
 
 /** Turns one catalog agent on or off for later runs; the agent file is not written. */

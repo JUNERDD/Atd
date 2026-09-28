@@ -14,6 +14,7 @@ import {
   readSkillFile,
   restoreBuiltin,
   setAtdAgentEnabled,
+  setAtdAgentPermissions,
   setSkillEnabled,
   updateSkill,
   type AgentClientOptions,
@@ -64,6 +65,8 @@ export async function handleExtensionRequest(
       return listAtdAgents(options);
     case 'agentsSetEnabled':
       return setAtdAgentEnabled(options, request.name, request.enabled);
+    case 'agentsSetPermissions':
+      return setAtdAgentPermissions(options, request.name, request.permissions);
     case 'agentsPut':
       return putAtdAgent(options, {
         name: request.name,

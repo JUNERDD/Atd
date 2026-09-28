@@ -3,12 +3,11 @@ import {
   childExecutionId,
   subagentChildKey,
   type ChildTranscriptPatchData,
-  type PermissionTier,
   type SubagentChildEntry,
 } from '@ai/agent-contracts';
 import type { ModelRuntime } from '@earendil-works/pi-coding-agent';
-import type { Gate } from '../harness/gate.js';
 import type { PermissionLookups } from '../transcript-blocks.js';
+import type { ChildApprovals, ChildApprovalsRequest } from './approvals.js';
 
 /**
  * T5 in-process parent/child registry. Foreground children share the parent
@@ -61,16 +60,6 @@ export interface ChildRecord {
   sessionFile: string | null;
 }
 
-/**
- * The parent's approval rules as one child sees them: the parent task's tier and the service
- * gate (harness/gate.ts) over the parent's confirms, session grants, audit and session, with
- * confirms attributed to the child's execution id.
- */
-export interface ChildApprovals {
-  tier: PermissionTier;
-  gate: Gate;
-}
-
 /** Builds one child's model runtime on the parent's credentials, endpoint and model catalog. */
 export type ChildModelRuntime = () => Promise<ModelRuntime>;
 
@@ -92,7 +81,7 @@ export interface SubagentHost {
   /** Builds each child's model runtime like the parent's (run-model.ts `childRuntime`). */
   childRuntime: ChildModelRuntime;
   /** Approvals for one child execution; child bash and command saves decide through them. */
-  approvals: (child: { runId: string; executionId: string }) => ChildApprovals;
+  approvals: (child: ChildApprovalsRequest) => ChildApprovals;
   /** Publishes one child's transcript patch as an event of the parent task. */
   publishChildTranscript: (
     child: { runId: string; executionId: string },

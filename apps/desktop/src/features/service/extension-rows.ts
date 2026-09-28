@@ -1,3 +1,5 @@
+import { SubagentPermissionsSchema, parse, type SubagentPermissions } from '@ai/agent-contracts';
+
 /**
  * Extension catalog rows as the renderer reads them from the service bridge. Wire values arrive
  * as `unknown`, so each parser checks the fields it keeps and drops a row without its key.
@@ -33,7 +35,13 @@ export interface ExtensionAgentRow {
   /** Registered by the service for every session; read-only. */
   system: boolean;
   description: string;
-  tools: ExtensionRoleTool[];
+  /**
+   * What later runs give it: its own tools (null inherits the task's) and approval (null keeps
+   * the task's tier). Either way it never exceeds the task's own permissions.
+   */
+  permissions: SubagentPermissions;
+  /** Whether a Settings override replaces its defaults; Restore removes it. */
+  customized: boolean;
   model: string;
   systemPrompt: string;
   /** Whether later runs register it; a disabled agent is also refused as a reference. */
@@ -201,25 +209,23 @@ export function asRoleRow(value: unknown): ExtensionRoleRow | null {
   return { id, title: readString(value, 'title') || id, allows: asAllows(allows) };
 }
 
-function asAgentTools(value: unknown): ExtensionRoleTool[] {
-  if (!Array.isArray(value)) return [];
-  return value.flatMap((tool) => {
-    const parsed = asRoleTool(tool);
-    return parsed ? [parsed] : [];
-  });
-}
-
+/** A catalog row; one without a name or with permissions outside the contract is dropped. */
 export function asAgentRow(value: unknown): ExtensionAgentRow | null {
   const name = readString(value, 'name');
-  if (!name) return null;
-  const tools =
-    typeof value === 'object' && value !== null ? Reflect.get(value, 'tools') : undefined;
+  if (!name || typeof value !== 'object' || value === null) return null;
+  let permissions: SubagentPermissions;
+  try {
+    permissions = parse(SubagentPermissionsSchema, Reflect.get(value, 'permissions'));
+  } catch {
+    return null;
+  }
   const model = readString(value, 'model');
   return {
     name,
     system: readFlag(value, 'system'),
     description: readString(value, 'description'),
-    tools: asAgentTools(tools),
+    permissions,
+    customized: readFlag(value, 'customized'),
     model,
     systemPrompt: readString(value, 'systemPrompt'),
     enabled: readEnabled(value),

@@ -1,13 +1,17 @@
 import { useState } from 'react';
-import { Bot } from 'lucide-react';
+import { Bot, Shield } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import type { SubagentPermissions } from '@ai/agent-contracts';
 import { Button } from '@ai/ui/components/button';
+import { DropdownMenuItem } from '@ai/ui/components/dropdown-menu';
 import { HighlightedText } from '@ai/ui/components/highlighted-text';
 import { Input } from '@ai/ui/components/input';
 import { Textarea } from '@ai/ui/components/textarea';
 import { ItemContent, ItemDescription, ItemMedia, ItemTitle } from '@ai/ui/components/item';
 import { matchFields } from '@ai/ui/lib/fuzzy-match';
+import { showToast } from '../../components/toast-store';
 import { AgentDetailDialog } from './extension-agent-detail';
+import { AgentPermissionsDialog } from './extension-agent-permissions';
 import { ExtensionGroup } from './extension-group';
 import { ExtensionRow, ExtensionRowActions } from './extension-row';
 import { ROLE_TOOLS, type ExtensionAgentRow, type ExtensionRoleTool } from './extension-rows';
@@ -133,8 +137,9 @@ function AgentForm({
 /**
  * Subagent catalog: the service's system agents, then the markdown specialists (`~/.atd/agents`);
  * the add form opens from the tab menu. Rows share the skill row anatomy (icon ring, name, a
- * description line naming system sources, the enable switch and More); the search matches and
- * marks the name and that line. Turning an agent off applies from the next run.
+ * description line naming system sources and custom permissions, the enable switch and More with
+ * Permissions…); the search matches and marks the name and that line. Turning an agent off and
+ * permission changes apply from the next run.
  */
 export function ExtensionAgentsGroup({
   rows,
@@ -148,6 +153,7 @@ export function ExtensionAgentsGroup({
   onClose,
   onSave,
   onEnabled,
+  onPermissions,
 }: {
   rows: ExtensionAgentRow[];
   query: string;
@@ -166,11 +172,17 @@ export function ExtensionAgentsGroup({
     systemPrompt: string;
   }) => Promise<boolean>;
   onEnabled: (name: string, enabled: boolean) => void;
+  /** Saves one agent's permissions for later runs; null restores its defaults. */
+  onPermissions: (name: string, permissions: SubagentPermissions | null) => Promise<boolean>;
 }) {
   const { t } = useTranslation('settings');
-  // The name stays while the dialog closes; the row is read live so a toggle shows in it.
+  // Each dialog keeps its name while it closes; its row is read live so a toggle shows in it.
   const [detail, setDetail] = useState<{ name: string; open: boolean } | null>(null);
   const detailRow = detail ? rows.find((row) => row.name === detail.name) : undefined;
+  const [permissions, setPermissions] = useState<{ name: string; open: boolean } | null>(null);
+  const permissionsRow = permissions
+    ? rows.find((row) => row.name === permissions.name)
+    : undefined;
   const form =
     adding && connected ? (
       <AgentForm
@@ -185,7 +197,11 @@ export function ExtensionAgentsGroup({
       />
     ) : null;
   const shown = rows.flatMap((row) => {
-    const description = [row.description, row.system ? t('extensions.sourceSystem') : '']
+    const description = [
+      row.description,
+      row.system ? t('extensions.sourceSystem') : '',
+      row.customized ? t('extensions.customPermissions') : '',
+    ]
       .filter(Boolean)
       .join(' · ');
     const match = matchFields(query, { name: row.name, description });
@@ -228,6 +244,12 @@ export function ExtensionAgentsGroup({
               disabled={!connected}
               onEnabledChange={(enabled) => onEnabled(row.name, enabled)}
               onDetails={() => setDetail({ name: row.name, open: true })}
+              menu={
+                <DropdownMenuItem onSelect={() => setPermissions({ name: row.name, open: true })}>
+                  <Shield />
+                  {t('extensions.agentPermissionsAction')}
+                </DropdownMenuItem>
+              }
             />
           </ExtensionRow>
         ))}
@@ -237,6 +259,24 @@ export function ExtensionAgentsGroup({
           row={detailRow}
           open={detail?.open ?? false}
           onOpenChange={(open) => setDetail({ name: detailRow.name, open })}
+        />
+      ) : null}
+      {permissionsRow ? (
+        <AgentPermissionsDialog
+          row={permissionsRow}
+          open={permissions?.open ?? false}
+          onOpenChange={(open) => setPermissions({ name: permissionsRow.name, open })}
+          disabled={!connected || busy}
+          onSave={async (value) => {
+            const ok = await onPermissions(permissionsRow.name, value);
+            if (ok)
+              showToast({
+                kind: 'info',
+                // No agent name: toasts keep one sentence, and names like service.reviewer hold a dot.
+                text: t('extensions.agentPermissions.saved'),
+              });
+            return ok;
+          }}
         />
       ) : null}
     </>

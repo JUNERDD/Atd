@@ -13,6 +13,7 @@ export * from './skills.js';
 export * from './roles.js';
 export * from './mcp.js';
 export * from './subagents.js';
+export * from './subagent-permissions.js';
 export * from './providers.js';
 export * from './provider-manage.js';
 export * from './commands.js';

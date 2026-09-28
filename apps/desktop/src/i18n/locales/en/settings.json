@@ -192,7 +192,72 @@
     "detailModel": "Model",
     "sourceAtdAgents": "~/.atd/agents",
     "agentToolsFromTask": "The task's tools",
-    "agentNoTools": "None",
+    "agentToolsWithinTask": "{{tools}} (within the task's tools)",
+    "agentPermissionsAction": "Permissions…",
+    "customPermissions": "Custom permissions",
+    "detailApproval": "Approval",
+    "agentPermissions": {
+      "title": "Permissions for {{name}}",
+      "description": "Applies from the next run and never exceeds the task's own permissions.",
+      "limitTools": "Limit tools",
+      "limitToolsDescription": "Off: every tool the task allows, including MCP and memory.",
+      "toolsLabel": "Tools",
+      "noTools": "Choose at least one tool, or turn off Limit tools.",
+      "groups": {
+        "read": "Read & search",
+        "change": "Change files",
+        "run": "Run",
+        "web": "Web"
+      },
+      "tools": {
+        "read": {
+          "label": "Read files",
+          "description": "Read files in the task folder and approved resources."
+        },
+        "grep": {
+          "label": "Search contents",
+          "description": "Search text inside files in the task folder."
+        },
+        "find": {
+          "label": "Find files",
+          "description": "Find files in the task folder by name."
+        },
+        "ls": {
+          "label": "List folders",
+          "description": "List what a folder in the task folder contains."
+        },
+        "write": {
+          "label": "Create files",
+          "description": "Create or replace files in the task output folder."
+        },
+        "edit": {
+          "label": "Edit files",
+          "description": "Change existing files in the task output folder."
+        },
+        "bash": {
+          "label": "Terminal",
+          "description": "Run shell commands, approved like the task's own."
+        },
+        "command": {
+          "label": "Saved commands",
+          "description": "Create or edit saved commands."
+        },
+        "web_search": {
+          "label": "Web search",
+          "description": "Search the web for sources."
+        },
+        "fetch_content": {
+          "label": "Read web pages",
+          "description": "Fetch and read a web page."
+        }
+      },
+      "approval": "Approval",
+      "approvalDescription": "Only stricter than the task. When the task asks for every action, so does the subagent.",
+      "approvalTask": "Same as task",
+      "restore": "Restore defaults",
+      "save": "Save",
+      "saved": "Permission changes apply from the next run."
+    },
     "agentTaskModel": "Same as the task",
     "detailOffers": "Offers",
     "mcpOffers": "Tools {{tools}} · Resources {{resources}} · Prompts {{prompts}}",
