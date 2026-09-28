@@ -1,10 +1,13 @@
+import { mkdir } from 'node:fs/promises';
 import { ipcMain, shell } from 'electron';
 import type { IpcMainInvokeEvent } from 'electron';
 import { parse } from '../agent/validation';
 import { autostartService } from './autostart';
 import { resolveServiceDataDir } from './data-dir';
 import { ServiceConnection, type ServiceStatus } from './connection';
-import { startLocalService, stopLocalService } from './launcher';
+import { startLocalService } from './launcher';
+import { serviceLogDir } from './service-log';
+import { ServiceSupervisor } from './supervisor';
 import { ServiceRequestSchema, type ServiceStatusView } from './ipc';
 import { SERVICE_IPC } from './ipc-channels';
 import { createWebPairing } from '@ai/agent-client';
@@ -33,6 +36,7 @@ function view(status: ServiceStatus, fallbackDataDir: string): ServiceStatusView
  */
 export class ServiceManager {
   readonly connection: ServiceConnection;
+  private readonly supervisor: ServiceSupervisor;
   constructor(
     private readonly send: (channel: string, value: unknown) => void,
     private readonly assertSender: (event: IpcMainInvokeEvent) => void,
@@ -55,6 +59,10 @@ export class ServiceManager {
     this.connection.onInvalidate((frame) => {
       if (frame.scope === 'extensions') this.send(SERVICE_IPC.changed, { type: 'extensions' });
     });
+    this.supervisor = new ServiceSupervisor(this.connection, {
+      dataDir: () => this.defaultDataDir(),
+      onLive: this.onLive,
+    });
   }
 
   defaultDataDir(): string {
@@ -69,13 +77,32 @@ export class ServiceManager {
     await autostartService(this.connection, {
       dataDir: this.defaultDataDir(),
       onLive: this.onLive,
+      supervisor: this.supervisor,
     });
   }
 
-  /** Stops the local service, then drops the client connection. */
+  /**
+   * Menu action: replaces the default dataDir's service and resumes supervision with a clean
+   * crash history, including after the breaker gave up. Never rejects; a failure is shown on the
+   * connection.
+   */
+  async restart(): Promise<void> {
+    await this.supervisor.restart();
+  }
+
+  /** Menu action: opens the folder with service.log and its rotated predecessors. */
+  async revealLogs(): Promise<void> {
+    const dir = serviceLogDir(this.defaultDataDir());
+    // The folder only exists after a first spawn; an adopted service may predate it.
+    await mkdir(dir, { recursive: true });
+    const failure = await shell.openPath(dir);
+    if (failure) throw new Error(failure);
+  }
+
+  /** Stops supervision and the local service, then drops the client connection. */
   async shutdown(): Promise<void> {
     try {
-      await stopLocalService(this.defaultDataDir());
+      await this.supervisor.stop();
     } finally {
       this.onLive(false);
       this.connection.disconnect();
@@ -106,17 +133,22 @@ export class ServiceManager {
       switch (request.action) {
         case 'status':
           return this.statusView();
+        // Manual connection changes take over from supervision, so a later exit of the
+        // supervised service no longer respawns it.
         case 'connect':
+          this.supervisor.release();
           await this.connection.connect(request.dataDir);
           this.onLive(true);
           return this.statusView();
         case 'disconnect':
+          this.supervisor.release();
           this.onLive(false);
           return view(this.connection.disconnect(), this.defaultDataDir());
         case 'openInBrowser':
           await this.openInBrowser();
           return null;
         case 'startLocal': {
+          this.supervisor.release();
           await startLocalService({ dataDir: request.dataDir, port: request.port });
           await this.connection.connect(request.dataDir);
           this.onLive(true);

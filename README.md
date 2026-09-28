@@ -38,7 +38,8 @@ You can change all of them in Settings → Shortcuts. If the OS refuses the glob
 
 - Node.js **24.19.0** (see `.node-version`). The service requires `^24.15.0 || >=26.0.0`.
 - pnpm **12.3.4** (see `packageManager` in `package.json`).
-- Node.js on `PATH` at runtime. The desktop app starts the agent service with the system Node.js. The Electron binary is not used as Node, and no Node.js runtime is bundled or downloaded.
+- At runtime, unpackaged builds (`pnpm dev`, `pnpm --filter @ai/desktop start`) run the agent service with the system Node.js on `PATH`. Packaged apps ship their own Node.js and need nothing installed. The Electron binary is never used as Node.
+- Commands the agent runs use your own tools. A packaged app asks your login shell (`$SHELL -il`) for its `PATH` once per launch, waiting at most 5 seconds, so tools from nvm, pyenv, cargo, Homebrew and your rc files resolve as they do in a terminal. The bundled Node.js comes last on that `PATH`, as a fallback when you have none. Only `PATH` is taken from the shell; unpackaged builds keep the `PATH` of the terminal that started them.
 
 ## Getting Started
 
@@ -139,7 +140,7 @@ Builds the app and runs the Playwright smoke suite against a real Electron windo
 pnpm package
 ```
 
-Builds an unsigned app directory for the current platform. On macOS the output is `apps/desktop/release/mac-arm64/AI.app` (`mac` on Intel). The agent service, its production dependencies, and the web client are copied into the app resources. `pnpm --filter @ai/desktop start` runs the production build without packaging.
+Builds an unsigned app directory for the current platform. On macOS the output is `apps/desktop/release/mac-arm64/AI.app` (`mac` on Intel). The agent service, its production dependencies, and the web client are copied into the app resources, together with the official Node.js release pinned by `.node-version` for the build machine's platform and architecture. The first pack downloads that release into `tmp/node-dist/` and checks it against the release's `SHASUMS256.txt`. Each pack also writes a new build ID; a packaged app only reuses a running service with the same build ID and replaces any other. `pnpm --filter @ai/desktop start` runs the production build without packaging.
 
 Installer targets (dmg, nsis, AppImage) are configured in `apps/desktop/electron-builder.yml` but are not part of the packaging script. Signing and notarization are not set up.
 
@@ -150,6 +151,8 @@ GitHub Actions runs `pnpm check` on Linux, and the Electron smoke suite and app 
 - **Process isolation**: the renderer runs with `contextIsolation` and `sandbox`, and without `nodeIntegration`. External navigation, pop-ups, and permission requests are restricted. The preload exposes a narrow, typed API, and the main process validates the sender and the payload of every IPC call.
 - **Local service**: the agent service listens only on loopback and requires a bearer token stored in its data directory. Browsers sign in through one-time pairing codes.
 - **Credentials**: provider and MCP secrets are stored in the OS keychain (macOS Keychain, Windows Credential Manager, or Secret Service on Linux). They never reach the renderer or task snapshots. If no persistent keyring is available, the service says so and runs only with temporary credentials from `AI_AGENT_TEMP_*` environment variables, which it never stores.
+- **Service lifecycle**: the desktop app starts the service as its child and stops it on quit. When tasks are running, quitting first asks whether to stop them; queued tasks stay queued and start the next time the app opens. OS shutdown, logout, and termination signals quit without asking. If the service exits unexpectedly, the app restarts it with an increasing delay. After 3 unexpected exits within 5 minutes it stops trying, and **Restart Agent Service** in the menu starts it again.
+- **Logs**: the service's output goes to `logs/service.log` in its data directory, with the previous four launches kept as `service.1.log` to `service.4.log` (**Show Service Logs** in the menu opens the folder). The desktop app's main process logs to `~/Library/Logs/AI/main.log` on macOS.
 - **Data location**: tasks, settings, and memory live in the service data directory:
   - macOS: `~/Library/Application Support/AgentService`
   - Windows: `%LOCALAPPDATA%\AgentService`

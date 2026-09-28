@@ -42,6 +42,7 @@ export class ServiceConnection {
   private connectBusy = false;
   private service: StatusResponse | null = null;
   private readonly connectedListeners = new Set<() => void>();
+  private readonly stateListeners = new Set<(state: ConnectionState) => void>();
   private readonly invalidateListeners = new Set<(frame: InvalidateFrame) => void>();
 
   constructor(
@@ -83,6 +84,14 @@ export class ServiceConnection {
     };
   }
 
+  /** Runs `listener` whenever the connection state is set, including a repeated state. */
+  onState(listener: (state: ConnectionState) => void): () => void {
+    this.stateListeners.add(listener);
+    return () => {
+      this.stateListeners.delete(listener);
+    };
+  }
+
   /**
    * Runs `listener` for every `invalidate` frame: shared data (settings, commands, providers,
    * extensions, memory, a task) changed, whichever client changed it.
@@ -111,6 +120,7 @@ export class ServiceConnection {
     this.state = state;
     this.detail = detail;
     this.publish();
+    for (const listener of this.stateListeners) listener(state);
     if (connected) for (const listener of this.connectedListeners) listener();
   }
 
@@ -124,10 +134,16 @@ export class ServiceConnection {
   }
 
   /**
-   * Marks startup work (stop/spawn) before the first connect attempt, so the
-   * renderer shows connecting instead of a transient disconnected error.
+   * Marks startup work (stop/spawn/restart) before the next connect attempt, so the
+   * renderer shows connecting instead of a transient disconnected error. Drops the
+   * previous endpoint and stream: their service is gone or about to be replaced, and
+   * a stream still retrying its old port would overwrite `detail` with close reasons.
    */
   markStarting(detail = 'Starting the agent service…'): void {
+    this.closeStream();
+    this.endpoint = null;
+    this.httpClient = null;
+    this.service = null;
     this.setState('connecting', detail);
   }
 

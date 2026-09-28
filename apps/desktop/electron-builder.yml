@@ -3,13 +3,18 @@ productName: AI
 asar: true
 directories:
   output: release
-# T7 bundling map (dir target; no publish / no installers / no Node binary):
+# T7 bundling map (dir target; no publish / no installers):
 # extraResources = service dist + package.json (engines) + production
 # node_modules from `pnpm deploy --prod --legacy` staging
 # (tmp/t7-agent-service-pack; gitignored). node_modules is copied from the
 # staging folder itself so package.json files:["dist"] cannot drop it.
-# contracts/client dist remain for launcher/desktop resolution. System Node
-# runs the CLI. Node-binary + login-start + installers = future.
+# contracts/client dist remain for launcher/desktop resolution. The CLI runs on
+# the official Node.js executable staged by scripts/prepare-service-pack.mjs
+# (tmp/t7-node, pinned by the root .node-version and verified against the
+# release SHASUMS256.txt), never a user-installed Node; unpackaged dev runs use
+# the system Node. The osx-sign walk signs it with the rest of Contents/, with
+# the app's hardened-runtime setting and the default entitlements (JIT
+# included). Login-start + installers = future.
 # Stale Electron worker outputs are excluded here and deleted by
 # scripts/prepare-service-pack.mjs before pack.
 files:
@@ -38,6 +43,22 @@ extraResources:
     to: agent-contracts/dist
   - from: ../../packages/agent-client/dist
     to: agent-client/dist
+  # The bundled Node: `node/bin/node` on macOS and Linux, `node/node.exe` on Windows
+  # (`electron/service/node-runtime.ts`). The service runs it by absolute path; on the service's
+  # PATH its directory comes last, after the user's login-shell PATH (`service/shell-path.ts`).
+  - from: ../../tmp/t7-node
+    to: node
+  # Identifies this packaged service build; a fresh id is written on every pack.
+  - from: ../../tmp/t7-agent-service-pack/build-info.json
+    to: agent-service/build-info.json
+# Only runAsNode is changed; every other fuse keeps Electron's default. The service runs on
+# the bundled Node, and nothing re-executes the Electron binary as Node.
+electronFuses:
+  runAsNode: false
+  # Flipping a fuse rewrites the Electron binary; macOS on Apple Silicon kills a binary whose
+  # signature no longer matches, so re-sign ad hoc for unsigned local packs. Real signing
+  # (CI identity or `-c.mac.identity=-`) signs again afterwards.
+  resetAdHocDarwinSignature: true
 mac:
   category: public.app-category.productivity
   target: dmg

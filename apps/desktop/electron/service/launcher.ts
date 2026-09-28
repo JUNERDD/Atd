@@ -1,77 +1,97 @@
-import { spawn } from 'node:child_process';
+import { spawn, type ChildProcess } from 'node:child_process';
 import { app } from 'electron';
-import { readdir, readFile, stat } from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
 import path from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
 import { discoverService, resolveServiceAtdHome } from './endpoint';
-import { nodeSearchPath, readEnginesFromCli, resolveSystemNode } from './node-runtime';
+import { nodeSearchPath, readEnginesFromCli, resolveServiceNode } from './node-runtime';
+import { resolveServiceCommand } from './service-code';
+import { openServiceLog, startupFailureMessage } from './service-log';
+import { loginShellPath } from './shell-path';
+
+/** How a spawned service process ended: an exit code, or the signal that stopped it. */
+export interface ServiceExit {
+  code: number | null;
+  signal: NodeJS.Signals | null;
+}
+
+/** A service this process spawned and saw publish its endpoint. */
+export interface LocalService {
+  pid: number;
+  dataDir: string;
+  /**
+   * Settles once the process exits, for whatever reason. Callers decide whether an exit was
+   * expected; the launcher cannot tell a crash from a requested shutdown.
+   */
+  exited: Promise<ServiceExit>;
+}
 
 /**
- * Starts a local agent service as a child of Electron (not detached). App
- * quit stops it via stopLocalService; a crash also takes the child with it.
- * Spawns system Node (version-checked against service engines).
+ * Starts a local agent service as a child of Electron (not detached) and resolves once it has
+ * published a live endpoint. Its stdout and stderr go to `<dataDir>/logs/service.log`, never to
+ * a pipe, so the process does not depend on Electron staying alive. App quit stops it via
+ * stopLocalService. Packaged builds run the bundled Node; unpackaged builds run the system Node,
+ * version-checked against the service engines. The child's PATH starts from the user's
+ * login-shell PATH (`shell-path.ts`), resolved once per app run.
  */
 export async function startLocalService(options: {
   dataDir: string;
   host?: string;
   port?: number;
-}): Promise<{ pid: number; dataDir: string }> {
+}): Promise<LocalService> {
+  const dataDir = path.resolve(options.dataDir);
   const command = await resolveServiceCommand();
-  const node = await resolveSystemNode(await readEnginesFromCli(command.script));
-  const args = ['serve', '--dataDir', path.resolve(options.dataDir), '--web-root', webRoot()];
+  const searchPath = nodeSearchPath(await loginShellPath());
+  const node = await resolveServiceNode(
+    await readEnginesFromCli(command.script),
+    app.isPackaged ? path.join(process.resourcesPath, 'node') : null,
+    searchPath,
+  );
+  const args = ['serve', '--dataDir', dataDir, '--web-root', webRoot()];
   if (options.host) args.push('--host', options.host);
   if (options.port !== undefined) args.push('--port', String(options.port));
   const atdHome = resolveServiceAtdHome();
-  const child = spawn(node, [...command.nodeArgs, command.script, ...args], {
-    stdio: ['ignore', 'ignore', 'pipe'],
-    env: {
-      ...process.env,
-      PATH: nodeSearchPath(),
-      ...(atdHome !== null ? { AI_ATD_HOME: atdHome } : {}),
-    },
-  });
-  let stderr = '';
-  child.stderr?.setEncoding('utf8');
-  child.stderr?.on('data', (chunk: string) => {
-    stderr = (stderr + chunk).slice(-4000);
-  });
-  await new Promise<void>((resolve, reject) => {
-    child.once('error', (error) => reject(new Error(`Could not start Node: ${error.message}`)));
-    child.once('spawn', () => resolve());
-  });
+  const log = await openServiceLog(dataDir);
+  let child: ChildProcess;
+  let exited: Promise<ServiceExit>;
+  try {
+    child = spawn(node.command, [...command.nodeArgs, command.script, ...args], {
+      stdio: ['ignore', log.handle.fd, log.handle.fd],
+      env: {
+        ...process.env,
+        // Everything the agent runs inherits this PATH. The user's toolchain comes first, so
+        // `node` and `npm` in their projects are one matching pair; the bundled Node is the
+        // last-resort `node` for users without one. The service itself and pi-subagents' child
+        // runs use the bundled binary by absolute path (`process.execPath`), whatever PATH says.
+        PATH: node.binDir !== null ? [searchPath, node.binDir].join(path.delimiter) : searchPath,
+        ...(atdHome !== null ? { AI_ATD_HOME: atdHome } : {}),
+      },
+    });
+    // Listen before any await: a child that dies at once must still settle `exited`.
+    exited = new Promise<ServiceExit>((resolve) => {
+      child.once('exit', (code, signal) => resolve({ code, signal }));
+    });
+    await new Promise<void>((resolve, reject) => {
+      child.once('error', (error) => reject(new Error(`Could not start Node: ${error.message}`)));
+      child.once('spawn', () => resolve());
+    });
+  } finally {
+    // The child holds its own copy of the descriptor from spawn on.
+    await log.handle.close();
+  }
   if (!child.pid) throw new Error('The service process could not be started.');
   const pid = child.pid;
-  let settled = false;
-  const exited = new Promise<never>((_resolve, reject) => {
-    child.once('exit', (code) => {
-      if (settled) return;
-      reject(new Error(serviceExitMessage(stderr, code)));
-    });
-  });
+  const running = () => child.exitCode === null && child.signalCode === null;
   try {
-    await Promise.race([
-      waitForEndpoint(options.dataDir, 15000).then(() => {
-        settled = true;
-      }),
-      exited,
-    ]);
+    await waitForEndpoint(dataDir, pid, 15000, running);
   } catch (error) {
-    settled = true;
-    if (child.exitCode === null && !child.killed) child.kill('SIGTERM');
-    throw error;
+    if (running()) {
+      if (!child.killed) child.kill('SIGTERM');
+      throw error;
+    }
+    // `exit` has already fired when exitCode is set, so this settles at once.
+    throw new Error(await startupFailureMessage(log, await exited));
   }
-  return { pid, dataDir: path.resolve(options.dataDir) };
-}
-
-function serviceExitMessage(stderr: string, code: number | null): string {
-  const lines = stderr
-    .split('\n')
-    .map((line) => line.trim())
-    .filter(Boolean);
-  const syntax = lines.find((line) => line.startsWith('SyntaxError:') || line.startsWith('Error:'));
-  if (syntax) return syntax.slice(0, 500);
-  const tail = lines.slice(-4).join(' ');
-  return (tail || `The agent service exited with code ${code ?? 1}.`).slice(0, 500);
+  return { pid, dataDir, exited };
 }
 
 /** Asks the service to shut down, then waits for the process to exit. */
@@ -128,147 +148,6 @@ async function waitForExit(pid: number, timeoutMs: number): Promise<boolean> {
   return false;
 }
 
-interface ServiceCommand {
-  /** Loader flags that precede the script. Empty when the script is compiled. */
-  nodeArgs: string[];
-  /** CLI path. Engines are read from the package.json beside this file. */
-  script: string;
-}
-
-/**
- * Unpackaged launches prefer the built `dist/cli.js` when it is newer than
- * every service source file (about 2.6s vs 5.4s cold start); a stale dist
- * falls back to `src/cli.ts` through jiti, so a restart always executes the
- * current service source. Packaged launches keep the bundled dist.
- */
-async function resolveServiceCommand(): Promise<ServiceCommand> {
-  const here = path.dirname(fileURLToPath(import.meta.url));
-  if (!app.isPackaged) {
-    const source = await firstReadable(sourceCliCandidates(here));
-    const dist = await firstReadable(distCliCandidates(here));
-    if (dist && source && (await isDistFresh(dist, path.dirname(source)))) {
-      return { nodeArgs: [], script: dist };
-    }
-    if (source) {
-      const register = path.resolve(
-        path.dirname(source),
-        '../node_modules/jiti/lib/jiti-register.mjs',
-      );
-      if (!(await isReadable(register))) {
-        if (dist) return { nodeArgs: [], script: dist };
-        throw new Error(
-          'The agent service source is present, but its TypeScript loader (jiti) is not installed. Run pnpm install, then start again.',
-        );
-      }
-      return { nodeArgs: ['--import', pathToFileURL(register).href], script: source };
-    }
-  }
-  const dist = await firstReadable(distCliCandidates(here));
-  if (dist) return { nodeArgs: [], script: dist };
-  throw new Error(
-    'The agent service is not built. Run `pnpm --filter @ai/agent-service build`, then try again.',
-  );
-}
-
-/**
- * True when the build is newer than every `.ts` source file. The comparison
- * takes the newest file anywhere in `dist`, not the CLI alone: the dev watcher
- * compiles incrementally, so editing one module rewrites only that module's
- * output and leaves `cli.js` at the time of the last full build. tsc writes
- * its build-info file after the emit, so a dist that is newer than every
- * source also means the compile finished. A read failure returns false (run
- * current source); workspace dependencies still require `pnpm build`, as in
- * both launch paths.
- */
-async function isDistFresh(distFile: string, srcDir: string): Promise<boolean> {
-  const newestSrc = await newestMtimeMs(srcDir, '.ts');
-  if (newestSrc === null) return false;
-  const newestDist = await newestMtimeMs(path.dirname(distFile));
-  return newestDist !== null && newestSrc <= newestDist;
-}
-
-/**
- * True when a service that started at `startedAt` (ISO, from its endpoint
- * file) still runs the current code: its own sources, the build the launcher
- * would execute, and the sources of the workspace packages it is compiled
- * against must all predate the process. Unpackaged callers only. Every
- * unknown answer — absent input, unreadable entry, unparseable timestamp —
- * is false, so a caller respawns instead of reusing possibly stale code.
- */
-export async function isRunningServiceCurrent(startedAt: string): Promise<boolean> {
-  const started = Date.parse(startedAt);
-  if (Number.isNaN(started)) return false;
-  const here = path.dirname(fileURLToPath(import.meta.url));
-  const source = await firstReadable(sourceCliCandidates(here));
-  const dist = await firstReadable(distCliCandidates(here));
-  if (!source || !dist) return false;
-  const workspaceDirs = await workspaceSourceDirs(path.resolve(path.dirname(source), '..'));
-  if (!workspaceDirs) return false;
-  // dist counts too: a rebuild after the process started means the live
-  // process is running the previous build.
-  for (const dir of [path.dirname(source), path.dirname(dist), ...workspaceDirs]) {
-    const newest = await newestMtimeMs(dir);
-    if (newest === null || newest > started) return false;
-  }
-  return true;
-}
-
-/**
- * `src` directories of the workspace packages the service imports at runtime,
- * read from its own manifest so a new workspace dependency is covered without
- * editing this file, and resolved through the links pnpm writes into the
- * service's node_modules. devDependencies stay out: they are build config,
- * not code the service loads. Null when the manifest cannot be read.
- */
-async function workspaceSourceDirs(serviceRoot: string): Promise<string[] | null> {
-  let manifest: { dependencies?: Record<string, unknown> };
-  try {
-    manifest = JSON.parse(await readFile(path.join(serviceRoot, 'package.json'), 'utf8')) as {
-      dependencies?: Record<string, unknown>;
-    };
-  } catch {
-    return null;
-  }
-  return Object.entries(manifest.dependencies ?? {})
-    .filter(([, range]) => typeof range === 'string' && range.startsWith('workspace:'))
-    .map(([name]) => path.join(serviceRoot, 'node_modules', name, 'src'));
-}
-
-/**
- * Newest file mtime under `dir` in ms, walking subdirectories but never
- * node_modules; `ext` limits which files count. Returns null when any entry
- * cannot be read, so callers can tell "nothing changed" apart from "cannot
- * tell" instead of reading an unreadable tree as unchanged.
- */
-async function newestMtimeMs(dir: string, ext?: string): Promise<number | null> {
-  let newest = 0;
-  const pending: string[] = [dir];
-  while (pending.length) {
-    const current = pending.pop() as string;
-    let entries;
-    try {
-      entries = await readdir(current, { withFileTypes: true });
-    } catch {
-      return null;
-    }
-    for (const entry of entries) {
-      const full = path.join(current, entry.name);
-      if (entry.isDirectory()) {
-        if (entry.name !== 'node_modules') pending.push(full);
-        continue;
-      }
-      if (ext !== undefined && !entry.name.endsWith(ext)) continue;
-      try {
-        const mtime = (await stat(full)).mtimeMs;
-        if (mtime > newest) newest = mtime;
-      } catch {
-        return null;
-      }
-    }
-  }
-  return newest;
-}
-
 /**
  * The web client build the service serves at `/`: bundled next to the service in a packaged app,
  * `dist-web` (`pnpm --filter @ai/desktop build:web`) otherwise. A missing build leaves the
@@ -280,52 +159,25 @@ function webRoot(): string {
     : path.resolve(app.getAppPath(), 'dist-web');
 }
 
-function sourceCliCandidates(here: string): string[] {
-  return [
-    path.resolve(here, '../../agent-service/src/cli.ts'),
-    path.resolve(here, '../../../agent-service/src/cli.ts'),
-  ];
-}
-
-function distCliCandidates(here: string): string[] {
-  return [
-    path.join(process.resourcesPath, 'agent-service/dist/cli.js'),
-    path.resolve(app.getAppPath(), '../agent-service/dist/cli.js'),
-    path.resolve(here, '../../agent-service/dist/cli.js'),
-    path.resolve(here, '../../../agent-service/dist/cli.js'),
-  ];
-}
-
-async function firstReadable(candidates: string[]): Promise<string | null> {
-  for (const file of candidates) {
-    if (await isReadable(file)) return file;
-  }
-  return null;
-}
-
-async function isReadable(file: string): Promise<boolean> {
-  try {
-    await readFile(file, 'utf8');
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-async function waitForEndpoint(dataDir: string, timeoutMs: number): Promise<void> {
-  const file = path.join(path.resolve(dataDir), 'endpoint.json');
+/**
+ * Polls until the spawned process (`pid`) publishes its endpoint. Another live service's endpoint
+ * does not count: this child then fails on the dataDir lock and reports that. Stops as soon as
+ * `running` turns false, so a service that exits at startup reports its own error instead of
+ * waiting out the timeout.
+ */
+async function waitForEndpoint(
+  dataDir: string,
+  pid: number,
+  timeoutMs: number,
+  running: () => boolean,
+): Promise<void> {
+  const file = path.join(dataDir, 'endpoint.json');
   const deadline = Date.now() + timeoutMs;
   for (;;) {
+    if (!running()) throw new Error('The service exited during startup.');
     try {
       const raw = JSON.parse(await readFile(file, 'utf8')) as { url?: unknown; pid?: unknown };
-      if (typeof raw.url === 'string' && raw.url && typeof raw.pid === 'number') {
-        try {
-          process.kill(raw.pid, 0);
-          return;
-        } catch {
-          // The endpoint is stale; keep waiting for a live one.
-        }
-      }
+      if (typeof raw.url === 'string' && raw.url && raw.pid === pid) return;
     } catch {
       // Not ready yet.
     }

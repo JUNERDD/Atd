@@ -75,62 +75,100 @@ function editMenu(): MenuItemConstructorOptions {
   };
 }
 
-/** Application menu: panel, settings, T2 migration, quit. */
-export function installAppMenu(
-  showPanel: () => void,
-  hidePanel: () => void,
-  settings: SettingsService,
-  openInBrowser: () => Promise<void>,
-) {
+/** What the application menu can do. */
+export interface AppActions {
+  showPanel: () => void;
+  hidePanel: () => void;
+  settings: SettingsService;
+  openInBrowser: () => Promise<void>;
+  /** Replaces the local agent service; also the way back after automatic restarts gave up. */
+  restartService: () => Promise<void>;
+  /** Reveals the folder with the local agent service's log files. */
+  showServiceLogs: () => Promise<void>;
+}
+
+/** A click handler that runs `action` and reports a rejection in an error box. */
+function reportFailure(action: () => Promise<void>, title: string, fallback: string): () => void {
+  return () => {
+    void action().catch((error: unknown) =>
+      dialog.showErrorBox(title, error instanceof Error ? error.message : fallback),
+    );
+  };
+}
+
+/** The app's everyday items: panel, settings, web client, the service actions, then `extras` and Quit. */
+function appItems(
+  actions: AppActions,
+  extras: MenuItemConstructorOptions[] = [],
+): MenuItemConstructorOptions[] {
+  return [
+    { label: 'Show task panel', click: actions.showPanel },
+    { label: 'Hide task panel', click: actions.hidePanel },
+    {
+      label: 'Settings…',
+      click: () => {
+        void actions.settings
+          .open()
+          .catch(() =>
+            dialog.showErrorBox(
+              'Could not open settings',
+              'The settings window could not be opened.',
+            ),
+          );
+      },
+    },
+    {
+      label: 'Open in Browser…',
+      click: reportFailure(
+        actions.openInBrowser,
+        'Could not open the web client',
+        'The browser could not be opened.',
+      ),
+    },
+    { type: 'separator' },
+    {
+      label: 'Restart Agent Service',
+      click: reportFailure(
+        actions.restartService,
+        'Could not restart the agent service',
+        'The agent service could not be restarted.',
+      ),
+    },
+    {
+      label: 'Show Service Logs',
+      click: reportFailure(
+        actions.showServiceLogs,
+        'Could not show the service logs',
+        'The log folder could not be opened.',
+      ),
+    },
+    { type: 'separator' },
+    ...extras,
+    { role: 'quit' },
+  ];
+}
+
+/**
+ * T2 migration-only: explicit credential upload to a running service. T6 pure client has no local
+ * executions to pause.
+ */
+const migrationItem: MenuItemConstructorOptions = {
+  label: 'Migrate to Agent Service…',
+  click: () => {
+    void runServiceMigration().catch((error: unknown) =>
+      dialog.showErrorBox(
+        'Migration failed',
+        error instanceof Error ? error.message : 'The migration could not finish.',
+      ),
+    );
+  },
+};
+
+/** Application menu: the app's items with the migration before Quit, Edit, and dev-only View. */
+export function installAppMenu(actions: AppActions) {
   Menu.setApplicationMenu(
     Menu.buildFromTemplate([
-      {
-        label: 'AI',
-        submenu: [
-          { label: 'Show task panel', click: showPanel },
-          { label: 'Hide task panel', click: hidePanel },
-          {
-            label: 'Settings…',
-            click: () => {
-              void settings
-                .open()
-                .catch(() =>
-                  dialog.showErrorBox(
-                    'Could not open settings',
-                    'The settings window could not be opened.',
-                  ),
-                );
-            },
-          },
-          {
-            label: 'Open in Browser…',
-            click: () => {
-              void openInBrowser().catch((error: unknown) =>
-                dialog.showErrorBox(
-                  'Could not open the web client',
-                  error instanceof Error ? error.message : 'The browser could not be opened.',
-                ),
-              );
-            },
-          },
-          { type: 'separator' },
-          {
-            // T2 migration-only: explicit credential upload to a running
-            // service. T6 pure client has no local executions to pause.
-            label: 'Migrate to Agent Service…',
-            click: () => {
-              void runServiceMigration().catch((error: unknown) =>
-                dialog.showErrorBox(
-                  'Migration failed',
-                  error instanceof Error ? error.message : 'The migration could not finish.',
-                ),
-              );
-            },
-          },
-          { type: 'separator' },
-          { role: 'quit' },
-        ],
-      },
+      { label: 'AI', submenu: appItems(actions, [migrationItem, { type: 'separator' }]) },
       editMenu(),
       ...(!app.isPackaged ? [{ role: 'viewMenu' as const }] : []),
     ]),
