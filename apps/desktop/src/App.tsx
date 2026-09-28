@@ -23,6 +23,8 @@ import {
 import { SessionMenu } from './features/agent/session-menu';
 import { TaskHistory } from './features/agent/task-history';
 import { ServiceBanner } from './features/service/service-banner';
+import { ServiceStarting } from './features/service/service-starting';
+import { useServiceStarting } from './features/service/use-service-starting';
 import { EMPTY_QUEUE, type Block } from '../electron/agent/transcript-schema';
 import type { FileRef } from '../electron/agent/task-schema';
 import './features/agent/agent.css';
@@ -64,6 +66,10 @@ export function App() {
     queue,
   } = useTaskPanel();
   useAppLanguage(snapshot?.language);
+  const starting = useServiceStarting();
+  // macOS window management lives in the native traffic lights; the web client is a browser tab
+  // with nothing to hide.
+  const canHide = window.desktop?.runtime !== 'web' && platform !== 'darwin';
   const reserveRef = useOverlayReserve();
   const subagents = useSubagentContextValue(
     (view === 'task' && current.detail?.blocks) || NO_BLOCKS,
@@ -105,153 +111,160 @@ export function App() {
           aria-label={t('header.panelLabel')}
           data-figma-node="336:1149"
         >
-          <header className="panel-header">
-            <IconButton
-              label={t('header.newChat')}
-              className="header-button -mx-1"
-              onClick={newTask}
-            >
-              <Astroid />
-            </IconButton>
-            <h1 title={title}>{title}</h1>
-            <nav className="header-controls" aria-label={t('header.controlsLabel')}>
-              {view === 'task' && current.detail && <SessionMenu detail={current.detail} />}
-              <IconButton
-                label={t('header.tasks')}
-                className="header-button"
-                aria-pressed={view === 'history'}
-                onClick={() => setView(view === 'history' ? 'new' : 'history')}
-              >
-                <History />
-              </IconButton>
-              <IconButton
-                label={t('header.settings')}
-                className="header-button"
-                onClick={() => void openSettings()}
-              >
-                <Settings />
-              </IconButton>
-              {/* macOS window management lives in the native traffic lights; the web client is a
-                  browser tab with nothing to hide. */}
-              {window.desktop?.runtime !== 'web' && platform !== 'darwin' && (
+          {/* Until the service first settles nothing in the panel can work, so the loading takes the
+              whole panel. macOS keeps its native traffic lights over it; elsewhere the loading
+              keeps the header's hide action, the only window control a frameless panel has. */}
+          {starting ? (
+            <ServiceStarting onHide={canHide ? () => void hide() : undefined} />
+          ) : (
+            <>
+              <header className="panel-header">
                 <IconButton
-                  label={t('header.hide')}
-                  className="header-button"
-                  onClick={() => void hide()}
+                  label={t('header.newChat')}
+                  className="header-button -mx-1"
+                  onClick={newTask}
                 >
-                  <X />
+                  <Astroid />
                 </IconButton>
-              )}
-            </nav>
-          </header>
-          {/* Everything below the header; composer overlays stay inside it. */}
-          <div ref={setPanelBody} className="panel-body">
-            <ServiceBanner onOpenSettings={() => void openSettings()} />
-            {view === 'new' && (
-              <ScrollArea
-                className="panel-content"
-                viewportClassName="overlay-footer-fade"
-                gutter="none"
-                viewportRef={reserveRef}
-              >
-                <section className="panel-content-body welcome">
-                  <h2 className="max-w-full truncate" title={t('welcome.title')}>
-                    {t('welcome.title')}
-                  </h2>
-                  <p className="max-w-full truncate" title={t('welcome.subtitle')}>
-                    {t('welcome.subtitle')}
-                  </p>
-                  <CommandLauncher
-                    commands={agent.snapshot?.commands ?? []}
-                    onChoose={(id) => void chooseCommand(id)}
-                  />
-                  {!window.desktop && <p className="text-xs">{t('welcome.desktopOnly')}</p>}
-                </section>
-              </ScrollArea>
-            )}
-            {view === 'history' && (
-              <TaskHistory
-                tasks={agent.snapshot?.tasks ?? []}
-                onChoose={(id) => {
-                  setTaskId(id);
-                  setView('task');
-                }}
-              />
-            )}
-            {view === 'input' && prepared && (
-              <CommandInput
-                key={prepared.command.id}
-                prepared={prepared}
-                onChange={(input) => setPrepared({ ...prepared, input })}
-                policy={policy}
-                onRun={() => submit()}
-                onOpenSettings={() => void openCommandSettings(prepared.command.id)}
-                pending={pending}
-              />
-            )}
-            {view === 'task' &&
-              (current.detail ? (
-                <div className="task-stage">
-                  <Transcript
-                    detail={current.detail}
-                    covered={child.childKey !== null}
-                    onAttach={attachToDraft}
-                    onNewTask={newTask}
-                  />
-                  {child.childKey && (
-                    <ChildTranscriptView
-                      key={child.childKey}
-                      taskId={current.detail.task.id}
-                      taskTitle={current.detail.task.title}
-                      childKey={child.childKey}
-                      requests={requests}
-                      onBack={child.close}
-                    />
+                <h1 title={title}>{title}</h1>
+                <nav className="header-controls" aria-label={t('header.controlsLabel')}>
+                  {view === 'task' && current.detail && <SessionMenu detail={current.detail} />}
+                  <IconButton
+                    label={t('header.tasks')}
+                    className="header-button"
+                    aria-pressed={view === 'history'}
+                    onClick={() => setView(view === 'history' ? 'new' : 'history')}
+                  >
+                    <History />
+                  </IconButton>
+                  <IconButton
+                    label={t('header.settings')}
+                    className="header-button"
+                    onClick={() => void openSettings()}
+                  >
+                    <Settings />
+                  </IconButton>
+                  {canHide && (
+                    <IconButton
+                      label={t('header.hide')}
+                      className="header-button"
+                      onClick={() => void hide()}
+                    >
+                      <X />
+                    </IconButton>
                   )}
-                </div>
-              ) : (
-                <ScrollArea
-                  className="panel-content"
-                  viewportClassName="overlay-footer-fade"
-                  gutter="none"
-                >
-                  <section className="panel-content-body">
-                    <p className="text-sm text-muted-foreground">
-                      {t('header.loadingConversation')}
-                    </p>
-                  </section>
-                </ScrollArea>
-              ))}
-            {(view === 'new' || view === 'task') && (
-              <Composer
-                key={`composer-${draftKey}-${draftRevision}`}
-                draft={draft}
-                policy={policy}
-                onPolicyChange={changePolicy}
-                onChange={changeDraft}
-                onSubmit={() => submit()}
-                onStop={run && taskId ? () => agentApi().stop(taskId, run.id) : undefined}
-                status={view === 'task' ? run?.status : undefined}
-                pending={pending}
-                followup={view === 'task'}
-                shortcuts={shortcuts}
-                connections={snapshot?.connections ?? []}
-                model={selectedModel}
-                onOpenSettings={() => void openSettings()}
-                taskId={view === 'task' ? taskId : null}
-                runId={run?.id}
-                task={view === 'task' ? (current.detail?.task ?? null) : null}
-                blocks={view === 'task' ? current.detail?.blocks : undefined}
-                context={view === 'task' ? current.detail?.context : null}
-                requests={view === 'task' ? requests : []}
-                queue={view === 'task' ? queue : EMPTY_QUEUE}
-                quickActions={{ newTask, openHistory: () => setView('history') }}
-                tasks={agent.snapshot?.tasks ?? []}
-                overlayBoundary={panelBody}
-                hidden={view === 'task' && child.childKey !== null}
-              />
-            )}
-          </div>
+                </nav>
+              </header>
+              {/* Everything below the header; composer overlays stay inside it. */}
+              <div ref={setPanelBody} className="panel-body">
+                <ServiceBanner onOpenSettings={() => void openSettings()} />
+                {view === 'new' && (
+                  <ScrollArea
+                    className="panel-content"
+                    viewportClassName="overlay-footer-fade"
+                    gutter="none"
+                    viewportRef={reserveRef}
+                  >
+                    <section className="panel-content-body welcome">
+                      <h2 className="max-w-full truncate" title={t('welcome.title')}>
+                        {t('welcome.title')}
+                      </h2>
+                      <p className="max-w-full truncate" title={t('welcome.subtitle')}>
+                        {t('welcome.subtitle')}
+                      </p>
+                      <CommandLauncher
+                        commands={agent.snapshot?.commands ?? []}
+                        onChoose={(id) => void chooseCommand(id)}
+                      />
+                      {!window.desktop && <p className="text-xs">{t('welcome.desktopOnly')}</p>}
+                    </section>
+                  </ScrollArea>
+                )}
+                {view === 'history' && (
+                  <TaskHistory
+                    tasks={agent.snapshot?.tasks ?? []}
+                    onChoose={(id) => {
+                      setTaskId(id);
+                      setView('task');
+                    }}
+                  />
+                )}
+                {view === 'input' && prepared && (
+                  <CommandInput
+                    key={prepared.command.id}
+                    prepared={prepared}
+                    onChange={(input) => setPrepared({ ...prepared, input })}
+                    policy={policy}
+                    onRun={() => submit()}
+                    onOpenSettings={() => void openCommandSettings(prepared.command.id)}
+                    pending={pending}
+                  />
+                )}
+                {view === 'task' &&
+                  (current.detail ? (
+                    <div className="task-stage">
+                      <Transcript
+                        detail={current.detail}
+                        covered={child.childKey !== null}
+                        onAttach={attachToDraft}
+                        onNewTask={newTask}
+                      />
+                      {child.childKey && (
+                        <ChildTranscriptView
+                          key={child.childKey}
+                          taskId={current.detail.task.id}
+                          taskTitle={current.detail.task.title}
+                          childKey={child.childKey}
+                          requests={requests}
+                          onBack={child.close}
+                        />
+                      )}
+                    </div>
+                  ) : (
+                    <ScrollArea
+                      className="panel-content"
+                      viewportClassName="overlay-footer-fade"
+                      gutter="none"
+                    >
+                      <section className="panel-content-body">
+                        <p className="text-sm text-muted-foreground">
+                          {t('header.loadingConversation')}
+                        </p>
+                      </section>
+                    </ScrollArea>
+                  ))}
+                {(view === 'new' || view === 'task') && (
+                  <Composer
+                    key={`composer-${draftKey}-${draftRevision}`}
+                    draft={draft}
+                    policy={policy}
+                    onPolicyChange={changePolicy}
+                    onChange={changeDraft}
+                    onSubmit={() => submit()}
+                    onStop={run && taskId ? () => agentApi().stop(taskId, run.id) : undefined}
+                    status={view === 'task' ? run?.status : undefined}
+                    pending={pending}
+                    followup={view === 'task'}
+                    shortcuts={shortcuts}
+                    connections={snapshot?.connections ?? []}
+                    model={selectedModel}
+                    onOpenSettings={() => void openSettings()}
+                    taskId={view === 'task' ? taskId : null}
+                    runId={run?.id}
+                    task={view === 'task' ? (current.detail?.task ?? null) : null}
+                    blocks={view === 'task' ? current.detail?.blocks : undefined}
+                    context={view === 'task' ? current.detail?.context : null}
+                    requests={view === 'task' ? requests : []}
+                    queue={view === 'task' ? queue : EMPTY_QUEUE}
+                    quickActions={{ newTask, openHistory: () => setView('history') }}
+                    tasks={agent.snapshot?.tasks ?? []}
+                    overlayBoundary={panelBody}
+                    hidden={view === 'task' && child.childKey !== null}
+                  />
+                )}
+              </div>
+            </>
+          )}
           <ToastHost top={62} />
         </main>
       </SubagentContext>
