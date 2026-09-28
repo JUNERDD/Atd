@@ -14,9 +14,18 @@ const isSettingsWindow =
 // Each window loads only its own tree: the settings window never parses the panel, and vice versa.
 // The entry awaits it before the first render rather than suspending on it: a root Suspense
 // fallback would hold the window's content back by React's fallback throttle (300 ms).
-const windowRoot = isSettingsWindow
-  ? import('./features/settings/settings-window').then((module) => module.SettingsWindow)
-  : import('./App').then((module) => module.App);
+// Keep each window's import a separate statement: a conditional expression around both imports
+// gets one preload wrapper with only the panel's CSS dependencies, so the settings window rendered
+// without its own stylesheet.
+async function loadWindowRoot() {
+  if (isSettingsWindow) {
+    const module = await import('./features/settings/settings-window');
+    return module.SettingsWindow;
+  }
+  const module = await import('./App');
+  return module.App;
+}
+const windowRoot = loadWindowRoot();
 // The panel renders transcripts as soon as a task loads; start the markdown chunk alongside its
 // tree, so a transcript rarely has to show plain text first.
 if (!isSettingsWindow) void loadMarkdown();
