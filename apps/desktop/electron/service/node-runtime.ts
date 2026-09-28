@@ -3,6 +3,10 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { promisify } from 'node:util';
 
+// `scripts/prepare-service-pack.mjs` imports this file directly through Node's
+// type stripping to check the bundled Node version, so it must keep erasable
+// TypeScript syntax only and import nothing but Node built-ins.
+
 const execFileAsync = promisify(execFile);
 
 /**
@@ -56,15 +60,20 @@ export function nodeRequirementError(required: string, found: string): Error {
   );
 }
 
-/** GUI apps often have a stripped PATH; keep common system-Node locations. */
-export function nodeSearchPath(): string {
+/**
+ * `base` (the login-shell PATH, or the app's own when the shell could not answer) followed by the
+ * common system-Node locations it lacks, so a stripped GUI PATH still finds a Homebrew or
+ * /usr/local install. `base` keeps its order: the user's own toolchain comes first.
+ */
+export function nodeSearchPath(base: string): string {
   const extras =
     process.platform === 'darwin'
       ? ['/opt/homebrew/bin', '/usr/local/bin']
       : process.platform === 'win32'
         ? []
         : ['/usr/local/bin'];
-  return [...extras, process.env.PATH ?? ''].filter(Boolean).join(path.delimiter);
+  const entries = base.split(path.delimiter).filter(Boolean);
+  return [...entries, ...extras.filter((extra) => !entries.includes(extra))].join(path.delimiter);
 }
 
 export async function readEnginesFromCli(cli: string): Promise<string> {
@@ -88,11 +97,12 @@ export async function readEnginesFromCli(cli: string): Promise<string> {
 }
 
 /**
- * Resolves system `node` (never `process.execPath`). Parses `node --version`
- * and compares it to engines. No download.
+ * Resolves system `node` (never `process.execPath`) on `searchPath`, the PATH the service is
+ * spawned with, so the checked `node` is the one that runs. Parses `node --version` and compares
+ * it to engines. No download.
  */
-export async function resolveSystemNode(required: string): Promise<string> {
-  const env = { ...process.env, PATH: nodeSearchPath() };
+export async function resolveSystemNode(required: string, searchPath: string): Promise<string> {
+  const env = { ...process.env, PATH: searchPath };
   try {
     const { stdout } = await execFileAsync('node', ['--version'], { encoding: 'utf8', env });
     const found = stdout.trim() || '(empty)';
@@ -103,4 +113,62 @@ export async function resolveSystemNode(required: string): Promise<string> {
     const detail = error instanceof Error ? error.message : 'missing';
     throw nodeRequirementError(required, `missing (${detail})`);
   }
+}
+
+/** The Node executable that runs the service, and the directory that carries it. */
+export interface ServiceNode {
+  /** Executable to spawn. */
+  command: string;
+  /**
+   * Directory the launcher appends last to the child's PATH, so a bare `node` falls back to
+   * `command` only when the user has no Node of their own; null when the system Node is used.
+   */
+  binDir: string | null;
+}
+
+/**
+ * Location of the executable inside the bundled Node root. Mirrors the layout
+ * `scripts/prepare-service-pack.mjs` stages from the official release archive.
+ */
+function bundledNodeCommand(root: string): string {
+  return process.platform === 'win32'
+    ? path.join(root, 'node.exe')
+    : path.join(root, 'bin', 'node');
+}
+
+/**
+ * The bundled Node ships with the app, so a missing, broken, or out-of-range
+ * binary means a damaged install. It fails loudly instead of falling back to a
+ * system Node the packaged build was never tested against.
+ */
+async function resolveBundledNode(required: string, root: string): Promise<ServiceNode> {
+  const command = bundledNodeCommand(root);
+  let found: string;
+  try {
+    const { stdout } = await execFileAsync(command, ['--version'], { encoding: 'utf8' });
+    found = stdout.trim() || '(empty)';
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    throw new Error(
+      `The Node.js bundled with AI could not run (${command}: ${detail}). Reinstall AI.`,
+    );
+  }
+  if (!nodeSatisfiesEngines(found, required))
+    throw new Error(
+      `The Node.js bundled with AI is ${found}, but the service requires ${required}. Reinstall AI.`,
+    );
+  return { command, binDir: path.dirname(command) };
+}
+
+/**
+ * Packaged builds pass the bundled root (`<resources>/node`) and must use it; unpackaged builds
+ * pass null and use the system Node found on `searchPath`.
+ */
+export async function resolveServiceNode(
+  required: string,
+  bundledRoot: string | null,
+  searchPath: string,
+): Promise<ServiceNode> {
+  if (bundledRoot !== null) return resolveBundledNode(required, bundledRoot);
+  return { command: await resolveSystemNode(required, searchPath), binDir: null };
 }

@@ -1,6 +1,12 @@
 import { errorMessage, type PermissionTier } from '@ai/agent-contracts';
 import { CapabilityRegistry } from './capabilities.js';
-import { clearEndpoint, releaseLock, writeEndpoint, type ServiceConfig } from './config.js';
+import {
+  clearEndpoint,
+  readBuildId,
+  releaseLock,
+  writeEndpoint,
+  type ServiceConfig,
+} from './config.js';
 import { ConfirmStore } from './confirms.js';
 import { EventLog } from './event-log.js';
 import { Ledger } from './ledger.js';
@@ -131,6 +137,8 @@ export async function createService(
     startedAt,
     report,
     start: async () => {
+      // Read before listening: a broken build-info file fails startup before the port opens.
+      const buildId = await readBuildId();
       const address = await app.listen({ host: config.host, port: config.port });
       const bound = app.server.address();
       const port = typeof bound === 'object' && bound ? bound.port : config.port;
@@ -144,6 +152,7 @@ export async function createService(
         url: address,
         pid: process.pid,
         startedAt,
+        ...(buildId === undefined ? {} : { buildId }),
       });
       manager.dispatch();
       // The MCP adapter is off the boot path, so warm it only once the

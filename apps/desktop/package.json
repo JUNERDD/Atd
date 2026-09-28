@@ -21,6 +21,7 @@
     "package": "node ./scripts/prepare-service-pack.mjs && electron-builder --dir --publish never"
   },
   "dependencies": {
+    "electron-log": "5.4.4",
     "fdir": "6.5.0",
     "mustache": "4.2.0",
     "selection-hook": "2.1.1",

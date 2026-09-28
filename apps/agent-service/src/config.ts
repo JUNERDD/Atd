@@ -1,6 +1,7 @@
 import { randomBytes, randomUUID } from 'node:crypto';
 import { mkdir, open, readFile, rename, rm } from 'node:fs/promises';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   errorMessage,
   parse,
@@ -34,10 +35,20 @@ const EndpointFileSchema = Type.Object(
     url: Type.String({ maxLength: 2048 }),
     pid: Type.Integer({ minimum: 1 }),
     startedAt: Type.String(),
+    /** Identity of a packaged build (see readBuildId); development builds omit it. */
+    buildId: Type.Optional(Type.String({ minLength: 1, maxLength: 128 })),
   },
   { additionalProperties: false },
 );
 export type EndpointFile = Static<typeof EndpointFileSchema>;
+
+const BuildInfoSchema = Type.Object(
+  {
+    version: Type.Literal(1),
+    buildId: Type.String({ minLength: 1, maxLength: 128 }),
+  },
+  { additionalProperties: false },
+);
 
 const LockFileSchema = Type.Object(
   {
@@ -198,6 +209,26 @@ export async function readLocalToken(dataDir: string): Promise<string | null> {
   } catch {
     return null;
   }
+}
+
+/**
+ * The packaged build's identity, read from `build-info.json` in the service package root, which
+ * the desktop pack step writes. The desktop app reuses a running service only when the buildId in
+ * its endpoint matches the one it ships. Development builds have no such file and return
+ * undefined; a file that exists but does not parse throws, so a broken pack never passes as a
+ * development build.
+ */
+export async function readBuildId(
+  packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'),
+): Promise<string | undefined> {
+  let text: string;
+  try {
+    text = await readFile(path.join(packageRoot, 'build-info.json'), 'utf8');
+  } catch (error) {
+    if (error instanceof Error && 'code' in error && error.code === 'ENOENT') return undefined;
+    throw error;
+  }
+  return parse(BuildInfoSchema, JSON.parse(text)).buildId;
 }
 
 export async function writeEndpoint(

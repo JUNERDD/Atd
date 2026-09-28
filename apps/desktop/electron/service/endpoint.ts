@@ -15,6 +15,8 @@ const EndpointSchema = Type.Object(
     url: Type.String({ maxLength: 2048 }),
     pid: Type.Integer({ minimum: 1 }),
     startedAt: Type.String(),
+    /** Copied from the service package's build-info.json; dev and older services omit it. */
+    buildId: Type.Optional(Type.String({ maxLength: 128 })),
   },
   { additionalProperties: false },
 );
@@ -40,6 +42,8 @@ export interface ServiceEndpoint {
   pid: number;
   /** ISO time the process started; dates the code it loaded. */
   startedAt: string;
+  /** Build of the running service package; null for dev and older services. */
+  buildId: string | null;
 }
 
 /**
@@ -103,5 +107,6 @@ export async function discoverService(dataDir: string): Promise<ServiceEndpoint>
     epoch: endpoint.epoch,
     pid: endpoint.pid,
     startedAt: endpoint.startedAt,
+    buildId: endpoint.buildId ?? null,
   };
 }
