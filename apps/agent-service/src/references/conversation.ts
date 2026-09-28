@@ -98,6 +98,11 @@ export function excerptConversation(conversation: Conversation, cap: number): Co
   };
 }
 
+/** Titles and descriptions are user text; labels and hints stay on one line. */
+export function oneLine(text: string): string {
+  return text.replace(/\s+/g, ' ').trim();
+}
+
 /** Keeps the head and tail of `text` within `max` characters. */
 export function clip(text: string, max: number): string {
   if (text.length <= max) return text;

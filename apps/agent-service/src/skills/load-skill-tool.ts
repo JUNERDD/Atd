@@ -34,8 +34,9 @@ export function loadSkillTool(host: LoadSkillHost): ExtensionFactory {
       label: 'Load skill',
       description:
         "Load the instructions of one skill from this app's skill catalog, by its name. Use it only when the task clearly matches the skill's description, and not for a skill already loaded in this conversation.",
-      // Catalog names reach 128 characters (atd-skills.ts, user-agents.ts); the catalog decides.
-      parameters: Type.Object({ name: Type.String({ minLength: 1, maxLength: 128 }) }),
+      // Host names reach 128 characters and qualified plugin names 193 (plugin-kit
+      // QualifiedNameSchema); the catalog decides.
+      parameters: Type.Object({ name: Type.String({ minLength: 1, maxLength: 193 }) }),
       executionMode: 'sequential',
       async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
         const { name } = params;

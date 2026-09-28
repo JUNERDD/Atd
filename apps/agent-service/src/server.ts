@@ -30,6 +30,7 @@ import { UpstreamError } from './errors.js';
 import { ConflictError, DrainingError, type RunnerManager } from './runner-manager.js';
 import { registerAtdAgentRoutes } from './atd-agents/mount.js';
 import { registerBuiltinRoutes } from './builtins/mount.js';
+import { registerPluginRoutes } from './plugins/routes.js';
 import { registerSkillRoutes } from './skills/mount.js';
 import type { SettingsStore } from './settings/store.js';
 import { StreamHub } from './stream.js';
@@ -266,6 +267,12 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
   registerSkillRoutes(app, deps.config);
   registerBuiltinRoutes(app, deps.config);
   registerAtdAgentRoutes(app, deps.config);
+  registerPluginRoutes(app, {
+    dataDir: deps.config.paths.root,
+    agentDir: deps.config.paths.agentDir,
+    log: deps.log,
+    mcp: () => McpAuthority.authorityFor(mcpAuthorityDeps(deps)),
+  });
 
   // Live MCP mounts. Building the authority costs ~880 ms (adapter transpile
   // plus control session) and nothing at boot needs it, so the routes take a

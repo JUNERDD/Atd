@@ -316,3 +316,30 @@ export function buildSnapshot(
   });
   return { revision, servers };
 }
+
+/**
+ * Tool, resource and prompt counts of one logical server across its connections (the base name
+ * and per-task aliases); zero while none is connected or the manager is unavailable.
+ */
+export function connectionCounts(
+  manager: AdapterManagerLike | null,
+  serverId: string,
+): { tools: number; resources: number; prompts: number } {
+  const total = { tools: 0, resources: 0, prompts: 0 };
+  try {
+    const all = manager?.getAllConnections?.();
+    const names = all
+      ? [...all.keys()].filter((name) => name === serverId || name.startsWith(`${serverId}__t__`))
+      : [serverId];
+    for (const name of names) {
+      const connection = manager?.getConnection(name);
+      if (!connection || connection.status !== 'connected') continue;
+      total.tools = Math.max(total.tools, connection.tools.length);
+      total.resources = Math.max(total.resources, connection.resources.length);
+      total.prompts = Math.max(total.prompts, connection.prompts.length);
+    }
+    return total;
+  } catch {
+    return { tools: 0, resources: 0, prompts: 0 };
+  }
+}

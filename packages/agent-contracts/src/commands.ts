@@ -1,6 +1,7 @@
 import { Type, type Static } from 'typebox';
 import { Identifier } from './identifiers.js';
 import { ThinkingLevelSchema } from './models.js';
+import { SkillName } from './skills.js';
 
 /**
  * T6b (service v1.2 candidate): live command management DTOs. The persisted
@@ -111,7 +112,7 @@ export type CommandModel = Static<typeof CommandModelSchema>;
 
 export const CommandSkillRefSchema = Type.Object(
   {
-    name: Type.String({ minLength: 1, maxLength: 128 }),
+    name: SkillName,
     revision: Type.Optional(Type.String({ minLength: 1, maxLength: 128 })),
   },
   { additionalProperties: false },
@@ -138,6 +139,12 @@ export const ServiceCommandFullSchema = Type.Object({
   tools: Type.Array(CommandToolSchema, { uniqueItems: true }),
   memory: Type.Union([Type.Literal('inherit'), Type.Literal('off')]),
   migratedAt: Type.Optional(Type.Union([Type.String(), Type.Null()])),
+  /**
+   * The plugin that contributes this command, computed by the service and never persisted. Absent
+   * for the user's own commands (the Personal plugin); present commands are read-only except for
+   * `enabled`, and their `name` is qualified (`<plugin>:<item>`).
+   */
+  pluginId: Type.Optional(Type.String({ minLength: 1, maxLength: 128 })),
 });
 export type ServiceCommandFull = Static<typeof ServiceCommandFullSchema>;
 

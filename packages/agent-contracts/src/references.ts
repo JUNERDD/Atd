@@ -1,5 +1,7 @@
 import { Type, type Static } from 'typebox';
 import { Identifier } from './identifiers.js';
+import { McpServerIdSchema } from './mcp.js';
+import { SubagentNameSchema } from './subagents.js';
 
 /** Upper bound on references staged for one run; the composer dedupes before staging. */
 export const MAX_RUN_REFERENCES = 16;
@@ -10,13 +12,17 @@ export const MAX_RUN_REFERENCES = 16;
  * once at run acceptance, where the service resolves them into run material and capabilities:
  * `task` injects a bounded excerpt of that conversation, `mcpServer` suggests that
  * server's tools without narrowing the tool set, and `agent` registers and allows that
- * `~/.atd/agents` subagent for the run with a delegation hint.
+ * `~/.atd/agents` subagent for the run with a delegation hint. Agents and MCP servers an installed
+ * plugin contributes are named `<plugin>:<item>`.
  */
 export const RunReferenceSchema = Type.Union([
   Type.Object({ kind: Type.Literal('task'), taskId: Identifier }, { additionalProperties: false }),
-  Type.Object({ kind: Type.Literal('agent'), name: Identifier }, { additionalProperties: false }),
   Type.Object(
-    { kind: Type.Literal('mcpServer'), serverId: Identifier },
+    { kind: Type.Literal('agent'), name: SubagentNameSchema },
+    { additionalProperties: false },
+  ),
+  Type.Object(
+    { kind: Type.Literal('mcpServer'), serverId: McpServerIdSchema },
     { additionalProperties: false },
   ),
 ]);

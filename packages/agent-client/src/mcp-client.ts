@@ -24,6 +24,10 @@ export interface McpServerStatusDto {
   promptCount: number;
   disabled: boolean;
   lastError: string;
+  /** The plugin that contributes the server, computed by the service (`user` for Personal). */
+  pluginId: string;
+  /** Servers of installed plugins are not in the user catalog and cannot be edited or removed. */
+  readOnly: boolean;
 }
 
 export interface McpContentDto {
