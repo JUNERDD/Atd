@@ -1,12 +1,12 @@
 import { failure, oneLine } from './bounds.js';
-import { loadWebPackage, type WebPackage } from './package.js';
+import { loadWebPackage, WEB_PACKAGE_VERSION, type WebPackage } from './package.js';
 
 /** Per-URL request budget (headers and body), the package's default fetch timeout. */
 const FETCH_TIMEOUT_MS = 30_000;
 /** Largest body read, the package's default response limit. */
 const MAX_RESPONSE_BYTES = 5 * 1024 * 1024;
 const HEADERS = {
-  'User-Agent': 'Mozilla/5.0 (compatible; pi-web-access/0.32.0)',
+  'User-Agent': `Mozilla/5.0 (compatible; pi-web-access/${WEB_PACKAGE_VERSION})`,
   Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,text/plain;q=0.8,*/*;q=0.5',
   'Accept-Language': 'en-US,en;q=0.9',
 };
