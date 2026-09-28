@@ -26,6 +26,7 @@ import { showErrorToast, showToast } from '../../components/toast-store';
 import { useOverlayFooter } from '../../components/use-overlay-footer';
 import { MemoryCreateButton } from './memory-create-button';
 import { MemoryList } from './memory-list';
+import { useSettingsSectionExit } from '../settings/settings-navigation';
 
 type Confirm = { kind: 'pause' } | { kind: 'delete'; entry: MemoryEntry };
 
@@ -38,6 +39,11 @@ export function MemorySettings() {
   const [confirm, setConfirm] = useState<Confirm | null>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
+  useSettingsSectionExit(() => {
+    setEditing(null);
+    setError('');
+    search.change('');
+  });
   const errorMessage = useRef<HTMLParagraphElement>(null);
   const footerRef = useOverlayFooter<HTMLElement>();
   useEffect(() => {

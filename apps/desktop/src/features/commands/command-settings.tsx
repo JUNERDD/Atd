@@ -44,6 +44,7 @@ import { showErrorToast, showToast } from '../../components/toast-store';
 import { CommandIcon } from './command-icon';
 import './commands.css';
 import { SettingsHeading } from '../settings/settings-heading';
+import { useSettingsSectionExit } from '../settings/settings-navigation';
 import { lazyWithPreload } from '../../lib/lazy-with-preload';
 
 // The editor brings CodeMirror; the settings window loads it once the command settings open, so
@@ -69,6 +70,10 @@ export function CommandSettings({
   const [deleting, setDeleting] = useState<CommandDefinition | null>(null);
   const search = useCompositionQuery();
   const [pending, setPending] = useState<string | null>(null);
+  useSettingsSectionExit(() => {
+    setEditing(null);
+    search.change('');
+  });
   useEffect(() => {
     void preloadCommandEditor();
   }, []);
