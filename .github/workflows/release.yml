@@ -4,8 +4,9 @@ name: Release
 # `v<version>` with one dmg per Mac architecture. A signed build also publishes the update feed
 # electron-updater reads (apps/desktop/electron/updater.ts): one zip and zip blockmap per
 # architecture and a single latest-mac.yml (beta-mac.yml and so on for prereleases) listing both.
-# A push that does not change the version finds the tag already present and builds nothing. Run
-# it manually to retry a release whose build failed.
+# A push that leaves the version as it was builds nothing, even when that version has no release
+# yet. A manual run releases the current version unless its tag exists: use it for a first
+# release without a bump, or to retry a release whose build failed.
 on:
   push:
     branches: [main]
@@ -30,7 +31,13 @@ jobs:
       release: ${{ steps.version.outputs.release }}
     steps:
       - uses: actions/checkout@v7.0.1
+        with:
+          # The version before the push is read from `github.event.before`.
+          fetch-depth: 0
       - id: version
+        env:
+          EVENT: ${{ github.event_name }}
+          BEFORE: ${{ github.event.before }}
         run: |
           version=$(node -p "require('./apps/desktop/package.json').version")
           if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
@@ -38,6 +45,18 @@ jobs:
             exit 1
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
+          # A push releases only a version bump; other edits to package.json (dependencies,
+          # scripts) do not. An unreadable previous manifest falls through to the tag check.
+          if [ "$EVENT" = push ]; then
+            previous=$(git show "$BEFORE:apps/desktop/package.json" 2> /dev/null \
+              | node -p "JSON.parse(require('fs').readFileSync(0, 'utf8')).version" 2> /dev/null \
+              || true)
+            if [ "$previous" = "$version" ]; then
+              echo "The push kept version $version; nothing to release." >> "$GITHUB_STEP_SUMMARY"
+              echo "release=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          fi
           # --exit-code returns 2 only when the tag is absent; any other failure stops the run.
           status=0
           git ls-remote --exit-code --tags origin "refs/tags/v$version" > /dev/null || status=$?
