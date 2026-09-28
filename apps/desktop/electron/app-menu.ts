@@ -75,7 +75,7 @@ function editMenu(): MenuItemConstructorOptions {
   };
 }
 
-/** What the application menu can do. */
+/** What the application menu and the menu bar status item's menu can do. */
 export interface AppActions {
   showPanel: () => void;
   hidePanel: () => void;
@@ -96,8 +96,12 @@ function reportFailure(action: () => Promise<void>, title: string, fallback: str
   };
 }
 
-/** The app's everyday items: panel, settings, web client, the service actions, then `extras` and Quit. */
-function appItems(
+/**
+ * The app's everyday items: panel, settings, web client, the service actions, then
+ * `extras` and Quit. The application menu and the menu bar status item's menu share them, since a
+ * hidden Dock icon hides the application menu.
+ */
+export function appItems(
   actions: AppActions,
   extras: MenuItemConstructorOptions[] = [],
 ): MenuItemConstructorOptions[] {
@@ -150,7 +154,7 @@ function appItems(
 
 /**
  * T2 migration-only: explicit credential upload to a running service. T6 pure client has no local
- * executions to pause.
+ * executions to pause. The application menu keeps it; the status item's everyday menu does not.
  */
 const migrationItem: MenuItemConstructorOptions = {
   label: 'Migrate to Agent Service…',
@@ -164,7 +168,11 @@ const migrationItem: MenuItemConstructorOptions = {
   },
 };
 
-/** Application menu: the app's items with the migration before Quit, Edit, and dev-only View. */
+/**
+ * Application menu: the app's items with the migration before Quit, Edit, and dev-only View. The
+ * menu is a snapshot, so call this again whenever the items' state changes; the status item's
+ * menu rebuilds itself on every open.
+ */
 export function installAppMenu(actions: AppActions) {
   Menu.setApplicationMenu(
     Menu.buildFromTemplate([

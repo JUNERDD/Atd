@@ -12,6 +12,7 @@ import { AGENT_IPC } from './ipc-channels';
 import { AgentStore } from './store';
 import { CommandService } from './command-service';
 import { parse } from './validation';
+import { activeRun, type RunStatus } from './task-schema';
 
 /**
  * Events only the panel renders (task detail, transcripts, notices). The settings window reads the
@@ -29,6 +30,7 @@ export class AgentService {
   private readonly requests: AgentRequests<WebContents>;
   /** Windows whose task and subagent-transcript holds are dropped when they close or reload. */
   private readonly watched = new Set<WebContents>();
+  private readonly taskListeners = new Set<() => void>();
 
   private constructor(
     store: AgentStore,
@@ -80,6 +82,7 @@ export class AgentService {
         emit: (event) => {
           if (PANEL_EVENTS.has(event.type)) settings.sendToPanel(AGENT_IPC.changed, event);
           else settings.send(AGENT_IPC.changed, event);
+          if (event.type === 'snapshot') for (const listener of this.taskListeners) listener();
         },
         defaultConnectionId: () => settings.snapshot().defaultConnectionId,
         defaultModel: () => {
@@ -107,6 +110,25 @@ export class AgentService {
   ) {
     const store = await AgentStore.load(path.join(app.getPath('userData'), 'agent-v1'));
     return new AgentService(store, settings, connection, launch, choose);
+  }
+
+  /**
+   * Runs `listener` after each published task list, which follows every run status, request or
+   * queue change of a cached task; read the result through `taskStates`.
+   */
+  onTasksChanged(listener: () => void): () => void {
+    this.taskListeners.add(listener);
+    return () => {
+      this.taskListeners.delete(listener);
+    };
+  }
+
+  /** Every cached task's latest run status and pending request count. */
+  taskStates(): { status: RunStatus | undefined; pendingRequests: number }[] {
+    return [...this.requests.tasks.entries.values()].map((entry) => ({
+      status: activeRun(entry.task)?.status,
+      pendingRequests: entry.requests.length,
+    }));
   }
 
   /** Pulls live commands after the service connection becomes ready. */

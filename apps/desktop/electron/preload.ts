@@ -51,6 +51,8 @@ const desktop: DesktopBridge = {
   hide: () => ipcRenderer.invoke(IPC.hide) as Promise<void>,
   getState: () => ipcRenderer.invoke(IPC.getState) as Promise<DesktopState>,
   setPinned: (pinned) => ipcRenderer.invoke(IPC.setPinned, pinned) as Promise<boolean>,
+  setShowInDock: (show) => ipcRenderer.invoke(IPC.setShowInDock, show) as Promise<boolean>,
+  setOpenAtLogin: (open) => ipcRenderer.invoke(IPC.setOpenAtLogin, open) as Promise<boolean>,
   chooseFiles: () => ipcRenderer.invoke(IPC.chooseFiles) as Promise<ContextFile[]>,
   onEditCommand: (listener) => {
     const callback = (_event: IpcRendererEvent, command: unknown) => {

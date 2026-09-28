@@ -131,6 +131,12 @@ export async function installWebHost(): Promise<WebHostState> {
     setPinned: async () => {
       throw new Error('Keeping the panel on top needs the desktop app.');
     },
+    setShowInDock: async () => {
+      throw new Error('The Dock icon is a desktop app preference.');
+    },
+    setOpenAtLogin: async () => {
+      throw new Error('Opening at login is a desktop app preference.');
+    },
     chooseFiles: async () => [],
   };
   window.desktop = bridge;

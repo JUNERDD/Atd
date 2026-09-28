@@ -12,7 +12,6 @@ import {
 import { Kbd, KbdGroup } from '@ai/ui/components/kbd';
 import { Label } from '@ai/ui/components/label';
 import { Switch } from '@ai/ui/components/switch';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@ai/ui/components/tooltip';
 import type { SettingsSnapshot, ShortcutAction } from '../../../electron/settings-contract';
 import { shortcutKeys } from '../../lib/shortcuts';
 import { useShortcutSettings } from './use-shortcut-settings';
@@ -39,6 +38,29 @@ const IN_APP_SHORTCUTS = [
     descriptionKey: 'shortcuts.actions.newLine.description',
   },
 ] as const;
+
+/** A labeled desktop window preference switch in the page footer. */
+function WindowPreference({
+  id,
+  label,
+  checked,
+  disabled,
+  onCheckedChange,
+}: {
+  id: string;
+  label: string;
+  checked: boolean;
+  disabled: boolean;
+  onCheckedChange: (value: boolean) => void;
+}) {
+  // The visible label names the switch; a tooltip repeating it would add nothing.
+  return (
+    <div className="settings-window-preference">
+      <Label htmlFor={id}>{label}</Label>
+      <Switch id={id} checked={checked} disabled={disabled} onCheckedChange={onCheckedChange} />
+    </div>
+  );
+}
 
 function ShortcutRow({
   action,
@@ -118,6 +140,7 @@ export function ShortcutSettings({
   const settings = useShortcutSettings(snapshot);
   const desktopApp = window.desktop?.runtime === 'electron';
   const recording = settings.recording !== null;
+  const preferenceDisabled = settings.unavailable || settings.pending !== null || recording;
 
   useEffect(() => {
     onRecordingChange(recording);
@@ -168,29 +191,44 @@ export function ShortcutSettings({
       </div>
 
       <div className="settings-shortcuts-footer">
-        {/* Keeping a window on top is a desktop window preference; a browser tab has none. */}
+        {/* Window preferences belong to the desktop app; a browser tab has none. */}
         {desktopApp && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div className="settings-pin-preference">
-                <Label htmlFor="settings-always-on-top">{t('shortcuts.alwaysOnTop')}</Label>
-                <Switch
-                  id="settings-always-on-top"
-                  checked={settings.pinned}
-                  disabled={settings.unavailable || settings.pending !== null || recording}
-                  onCheckedChange={(value) => void settings.changePinned(value)}
-                />
-              </div>
-            </TooltipTrigger>
-            <TooltipContent>{t('shortcuts.alwaysOnTop')}</TooltipContent>
-          </Tooltip>
+          <div className="settings-window-preferences">
+            {/* Null where the OS login item is unavailable: development builds and Linux. */}
+            {settings.openAtLogin !== null && (
+              <WindowPreference
+                id="settings-open-at-login"
+                label={t('shortcuts.openAtLogin')}
+                checked={settings.openAtLogin}
+                disabled={preferenceDisabled}
+                onCheckedChange={(value) => void settings.changeOpenAtLogin(value)}
+              />
+            )}
+            {/* macOS keeps the menu bar status item either way, so the panel stays reachable. */}
+            {settings.platform === 'darwin' && (
+              <WindowPreference
+                id="settings-show-in-dock"
+                label={t('shortcuts.showInDock')}
+                checked={settings.showInDock}
+                disabled={preferenceDisabled}
+                onCheckedChange={(value) => void settings.changeShowInDock(value)}
+              />
+            )}
+            <WindowPreference
+              id="settings-always-on-top"
+              label={t('shortcuts.alwaysOnTop')}
+              checked={settings.pinned}
+              disabled={preferenceDisabled}
+              onCheckedChange={(value) => void settings.changePinned(value)}
+            />
+          </div>
         )}
         <Button
           type="button"
           variant="outline"
-          // Stays at the trailing edge when the pin preference is absent (web client).
+          // Stays at the trailing edge when the window preferences are absent (web client).
           className="ml-auto"
-          disabled={settings.unavailable || settings.pending !== null || recording}
+          disabled={preferenceDisabled}
           onClick={() => void settings.restoreDefaults()}
         >
           {settings.pending === 'restore'

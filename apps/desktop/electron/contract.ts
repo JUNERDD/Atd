@@ -8,6 +8,8 @@ export const IPC = {
   hide: 'panel:hide',
   getState: 'panel:get-state',
   setPinned: 'panel:set-pinned',
+  setShowInDock: 'app:set-show-in-dock',
+  setOpenAtLogin: 'app:set-open-at-login',
   chooseFiles: 'panel:choose-files',
   /** Main → renderer only: Edit → Undo/Redo clicked in the application menu for this window. */
   editCommand: 'app:edit-command',
@@ -49,6 +51,13 @@ export interface DesktopBridge {
   hide: () => Promise<void>;
   getState: () => Promise<DesktopState>;
   setPinned: (pinned: boolean) => Promise<boolean>;
+  /** macOS only: keeps or removes the Dock icon; the web client rejects it. */
+  setShowInDock: (show: boolean) => Promise<boolean>;
+  /**
+   * Packaged macOS and Windows builds only: registers or removes the OS login item and resolves to
+   * the applied state, which stays false while macOS waits for approval in System Settings.
+   */
+  setOpenAtLogin: (open: boolean) => Promise<boolean>;
   chooseFiles: () => Promise<ContextFile[]>;
   /**
    * Edit → Undo/Redo from the application menu; returns the unsubscribe. The renderer moves the

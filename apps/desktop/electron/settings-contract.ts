@@ -41,6 +41,13 @@ export interface SettingsSnapshot {
   language: AppLanguage;
   shortcuts: ShortcutBindings;
   pinned: boolean;
+  /** macOS window preference; the web client always reports false. */
+  showInDock: boolean;
+  /**
+   * The OS login item, read live rather than stored; null where it is unavailable (development
+   * builds, Linux, the web client).
+   */
+  openAtLogin: boolean | null;
   shortcutAvailable: boolean;
   /** Tier new tasks are created with; existing tasks keep their own tier. */
   permissionTier: PermissionTier;

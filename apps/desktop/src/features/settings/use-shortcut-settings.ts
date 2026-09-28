@@ -37,9 +37,11 @@ export function useShortcutSettings(snapshot: SettingsSnapshot | null) {
   const platform = desktop?.platform ?? 'web';
   const bindings: ShortcutBindings = snapshot?.shortcuts ?? DEFAULT_SHORTCUTS;
   const pinned = snapshot?.pinned ?? false;
+  const showInDock = snapshot?.showInDock ?? false;
+  const openAtLogin = snapshot?.openAtLogin ?? null;
   const { keys, start, stop, resetKeys, isRecording } = useShortcutCapture();
   const [recordingAction, setRecordingAction] = useState<ShortcutAction | null>(null);
-  const [mutationPending, setPending] = useState<'restore' | 'pin' | null>(null);
+  const [mutationPending, setPending] = useState<'restore' | 'pin' | 'dock' | 'login' | null>(null);
   const unavailable = !snapshot || !bridge;
   const hasRecordedKey = [...keys].some((key) => !MODIFIER_KEYS.has(key));
   const capturedShortcut = recordedKeysToAccelerator(keys, platform);
@@ -112,14 +114,26 @@ export function useShortcutSettings(snapshot: SettingsSnapshot | null) {
     setPending(null);
   }
 
-  async function changePinned(value: boolean) {
+  /** Saves one desktop window preference; all share the pending state and the feedback. */
+  async function changeWindowPreference(
+    kind: 'pin' | 'dock' | 'login',
+    value: boolean,
+    save: (desktop: NonNullable<typeof window.desktop>) => Promise<boolean>,
+  ) {
     if (!desktop || unavailable || pending || recording) return;
     resetKeys();
     setRecordingAction(null);
-    setPending('pin');
+    setPending(kind);
     try {
-      await desktop.setPinned(value);
-      showToast({ kind: 'info', text: t('shortcuts.status.windowPreferenceSaved') });
+      const applied = await save(desktop);
+      // Only a login item differs: macOS keeps it off until the user approves it.
+      showToast({
+        kind: 'info',
+        text:
+          applied === value
+            ? t('shortcuts.status.windowPreferenceSaved')
+            : t('shortcuts.status.openAtLoginApproval'),
+      });
     } catch (reason) {
       if (reason instanceof Error) showErrorToast(reason);
       else showErrorToast(t('shortcuts.errors.windowPreferenceSave'));
@@ -130,6 +144,8 @@ export function useShortcutSettings(snapshot: SettingsSnapshot | null) {
   return {
     bindings,
     pinned,
+    showInDock,
+    openAtLogin,
     recording,
     pending,
     unavailable,
@@ -137,6 +153,11 @@ export function useShortcutSettings(snapshot: SettingsSnapshot | null) {
     startRecording,
     cancelRecording,
     restoreDefaults,
-    changePinned,
+    changePinned: (value: boolean) =>
+      changeWindowPreference('pin', value, (desktop) => desktop.setPinned(value)),
+    changeShowInDock: (value: boolean) =>
+      changeWindowPreference('dock', value, (desktop) => desktop.setShowInDock(value)),
+    changeOpenAtLogin: (value: boolean) =>
+      changeWindowPreference('login', value, (desktop) => desktop.setOpenAtLogin(value)),
   };
 }
