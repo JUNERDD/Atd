@@ -9,6 +9,7 @@ import {
 import { IPC, type EditCommand } from './contract';
 import { runServiceMigration } from './migration/index';
 import type { SettingsService } from './settings-service';
+import type { Updater } from './updater';
 
 /**
  * Undo and Redo are app items instead of roles. A role runs Blink's native undo, whose stack never
@@ -85,6 +86,8 @@ export interface AppActions {
   restartService: () => Promise<void>;
   /** Reveals the folder with the local agent service's log files. */
   showServiceLogs: () => Promise<void>;
+  /** Automatic updates: Check for Updates…, and Restart to Update once one is ready. */
+  updates: Updater;
 }
 
 /** A click handler that runs `action` and reports a rejection in an error box. */
@@ -96,8 +99,35 @@ function reportFailure(action: () => Promise<void>, title: string, fallback: str
   };
 }
 
+/** Check for Updates…, plus Restart to Update once a downloaded update is ready. */
+function updateItems(updates: Updater): MenuItemConstructorOptions[] {
+  return [
+    { type: 'separator' },
+    {
+      label: 'Check for Updates…',
+      click: reportFailure(
+        () => updates.checkForUpdates(),
+        'Could not check for updates',
+        'The update check could not finish.',
+      ),
+    },
+    ...(updates.current.status === 'ready'
+      ? [
+          {
+            label: 'Restart to Update',
+            click: reportFailure(
+              () => updates.restartToUpdate(),
+              'Could not restart to update',
+              'The update could not be installed.',
+            ),
+          },
+        ]
+      : []),
+  ];
+}
+
 /**
- * The app's everyday items: panel, settings, web client, the service actions, then
+ * The app's everyday items: panel, settings, web client, updates, the service actions, then
  * `extras` and Quit. The application menu and the menu bar status item's menu share them, since a
  * hidden Dock icon hides the application menu.
  */
@@ -129,6 +159,7 @@ export function appItems(
         'The browser could not be opened.',
       ),
     },
+    ...updateItems(actions.updates),
     { type: 'separator' },
     {
       label: 'Restart Agent Service',
@@ -170,8 +201,8 @@ const migrationItem: MenuItemConstructorOptions = {
 
 /**
  * Application menu: the app's items with the migration before Quit, Edit, and dev-only View. The
- * menu is a snapshot, so call this again whenever the items' state changes; the status item's
- * menu rebuilds itself on every open.
+ * menu is a snapshot, so call this again whenever the items' state changes (such as
+ * `Updater.onChange`); the status item's menu rebuilds itself on every open.
  */
 export function installAppMenu(actions: AppActions) {
   Menu.setApplicationMenu(

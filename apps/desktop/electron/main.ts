@@ -34,6 +34,7 @@ import { PanelPlacement } from './panel-placement';
 import { createPanelWindow } from './panel-window';
 import { openedAtLogin } from './login-item';
 import { installQuitGuard } from './quit-guard';
+import { Updater } from './updater';
 
 app.setName('AI');
 // After setName, which names the log folder (~/Library/Logs/AI/main.log on macOS): main-process
@@ -291,6 +292,9 @@ if (!app.requestSingleInstanceLock()) {
       installIpc();
       installFileSearch(() => panel, serviceManager.connection);
       const manager = serviceManager;
+      // A restart into an update cannot be cancelled once it starts, so running tasks are
+      // confirmed first.
+      const updates = new Updater({ confirmRestart: () => quitGuard.confirmStopTasks() });
       const actions = {
         showPanel,
         hidePanel,
@@ -298,8 +302,11 @@ if (!app.requestSingleInstanceLock()) {
         openInBrowser: () => manager.openInBrowser(),
         restartService: () => manager.restart(),
         showServiceLogs: () => manager.revealLogs(),
+        updates,
       };
       installAppMenu(actions);
+      // The status item's menu rebuilds on every open; the application menu does not.
+      updates.onChange(() => installAppMenu(actions));
       const tasks = agent;
       menuBar = new MenuBarItem({
         toggle: togglePanel,
