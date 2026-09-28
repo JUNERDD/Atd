@@ -161,7 +161,7 @@
     "banner": {
       "disconnected": "Service disconnected. {{detail}}",
       "connecting": "Connecting to the service…",
-      "reconnecting": "Reconnecting… {{detail}}",
+      "reconnecting": "Connection lost. Reconnecting…",
       "openSettings": "Open Service settings"
     }
   },
