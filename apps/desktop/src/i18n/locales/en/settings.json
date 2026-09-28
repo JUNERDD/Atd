@@ -159,13 +159,7 @@
   },
   "extensions": {
     "title": "Extensions",
-    "description": "Skills, subagents, and MCP servers available to a run. Changes apply to the next run.",
     "searchLabel": "Search extensions",
-    "searchPlaceholder": "Search skills, subagents, or MCP servers…",
-    "tabsLabel": "Extension sections",
-    "tabSkills": "Skills",
-    "tabSubagents": "Subagents",
-    "tabMcp": "MCP",
     "noMatches": "No matching extensions.",
     "more": "More",
     "moreActionsFor": "More actions for {{name}}",
@@ -265,7 +259,6 @@
     "mcpDetailDescription": "How this server connects and what it offers.",
     "removeTitle": "Remove {{name}}?",
     "removeDescription": "The server leaves the catalog, so later runs can't use it. Its sign-in is not revoked.",
-    "updateSkill": "Update",
     "builtinModified": "Modified",
     "builtinUpdateAvailable": "New version",
     "restoreAction": "Restore built-in version",
@@ -287,19 +280,13 @@
     "sourceAgents": "~/.agents/skills",
     "sourceAtd": "atd",
     "sourceSystem": "System",
-    "addSkill": "Add skill",
     "addSubagent": "Add subagent",
     "createWithAi": "Create with AI",
     "editWithAi": "Edit with AI",
     "sessionOpened": "Opened a new AI session in the task panel.",
-    "skillInstalled": "Skill installed.",
     "subagentSaved": "Subagent saved.",
     "serverSaved": "MCP server saved.",
     "enableCreateSkill": "Enable {{name}} in Skills before creating with AI.",
-    "skillSourceKind": "Source kind",
-    "skillSource": "Source",
-    "skillNameOptional": "Name (optional)",
-    "installSkill": "Install skill",
     "agentName": "Name",
     "agentDescription": "Description",
     "agentTools": "Tools",
@@ -328,31 +315,11 @@
     "remove": "Remove",
     "cancel": "Cancel",
     "skillPage": {
-      "back": "Back to skills",
-      "addDescription": "Install an existing skill from a folder or package. To write a new skill, use Create with AI.",
       "detailsLabel": "Skill details",
-      "kind": {
-        "local": "Local folder",
-        "npm": "npm package",
-        "git": "Git repository"
-      },
-      "sourcePlaceholder": {
-        "local": "/path/to/my-skill",
-        "npm": "@scope/my-skill",
-        "git": "https://github.com/owner/repo.git"
-      },
-      "sourceHint": {
-        "local": "The absolute path of a folder that contains SKILL.md. The folder is copied, so use Update after you change it.",
-        "npm": "The name of an npm package already installed among the service's managed packages. Nothing is downloaded.",
-        "git": "The repository URL. Its package must already be installed among the service's managed packages; enter that package's name as the skill name. Nothing is downloaded."
-      },
-      "nameHint": "Leave empty to use the folder or package name.",
-      "sourceRequired": "Enter a source to install from.",
       "builtin": "Built-in",
       "builtinCurrent": "Same as the version that ships with the app"
     },
     "agentPage": {
-      "back": "Back to subagents",
       "addDescription": "Define a specialist the task can hand work to. It is saved to ~/.atd/agents.",
       "create": "Create subagent",
       "save": "Save changes",
@@ -375,7 +342,6 @@
     },
     "mcpPage": {
       "label": "MCP server",
-      "back": "Back to MCP servers",
       "addTitle": "Add MCP server",
       "addDescription": "Connect a local command or a remote server so runs can use its tools, resources, and prompts.",
       "saveChanges": "Save changes",
@@ -416,7 +382,170 @@
         "tokenEnvRequired": "Enter the environment variable that holds the token.",
         "tokenEnvInvalid": "Use letters, digits, and underscores, not starting with a digit."
       }
-    }
+    },
+    "plugins": {
+      "description": "Plugins bundle commands, skills, subagents, and MCP servers. Changes apply to the next run.",
+      "searchPlaceholder": "Search plugins, commands, skills, subagents, or MCP servers…",
+      "add": "Add",
+      "installPlugin": "Install plugin",
+      "install": {
+        "title": "Install plugin",
+        "updateTitle": "Update {{name}}",
+        "description": "Fetch a plugin from a folder, Git, or npm, and review it before installing.",
+        "source": "Source",
+        "sourcePlaceholder": "/path/to/plugin, https://github.com/owner/repo.git, or @scope/package",
+        "sourceHint": "For Git, add #ref:folder to pick a branch and folder, e.g. #main:plugins/tools.",
+        "sourceRequired": "Enter a source to fetch.",
+        "sourceInvalid": "Enter a folder path, a Git URL, or an npm package name.",
+        "detected": {
+          "local": "Local folder",
+          "npm": "npm package",
+          "git": "Git repository"
+        },
+        "fetch": "Fetch",
+        "fetching": "Fetching…",
+        "installAction": "Install",
+        "updateAction": "Update",
+        "installed": "Installed {{name}}. Turn it on to use it.",
+        "updated": "Updated {{name}}.",
+        "preview": {
+          "title": "Review",
+          "plugin": "Plugin",
+          "author": "Author",
+          "integrity": "Integrity",
+          "noLicense": "No license stated",
+          "contents": "Contents",
+          "stdio": "Programs it can run on this computer",
+          "urls": "Servers it connects to",
+          "scripts": "Scripts in its skills",
+          "updatesExisting": "{{name}} is already installed (revision {{revision}}). Installing updates it and keeps its settings and on/off state.",
+          "trust": "Plugins are not signed. The pinned Git commit or npm package integrity is the only check that these contents are what the source published, so install plugins only from sources you trust."
+        },
+        "emptyTitle": "Nothing fetched yet",
+        "emptyDescription": "Its contents appear here once fetched.",
+        "startsOff": "Nothing runs during install, and plugins start turned off."
+      },
+      "createGroup": "Create",
+      "create": {
+        "skill": "Skill",
+        "agent": "Subagent",
+        "mcp": "MCP server",
+        "command": "Command",
+        "memory": "Memory"
+      },
+      "sections": {
+        "builtin": "Built-in",
+        "personal": "Personal & shared"
+      },
+      "resultsPlugins": "Plugins",
+      "host": {
+        "core": {
+          "name": "Core",
+          "description": "Skills and subagents that ship with the app."
+        },
+        "personal": {
+          "name": "Personal",
+          "description": "Your own commands, skills, subagents, MCP servers, and memory."
+        },
+        "shared": {
+          "name": "Shared skills",
+          "description": "Skills in ~/.agents/skills, shared with other agent tools."
+        }
+      },
+      "source": {
+        "builtin": "Built-in",
+        "personal": "Personal",
+        "shared": "Shared",
+        "local": "Local",
+        "npm": "npm",
+        "git": "Git"
+      },
+      "format": {
+        "agent-plugins": "Agent Plugins",
+        "claude": "Claude Code plugin",
+        "pi": "pi package",
+        "skill": "Agent Skill"
+      },
+      "count": {
+        "command_one": "{{count}} command",
+        "command_other": "{{count}} commands",
+        "skill_one": "{{count}} skill",
+        "skill_other": "{{count}} skills",
+        "agent_one": "{{count}} subagent",
+        "agent_other": "{{count}} subagents",
+        "mcp_one": "{{count}} MCP server",
+        "mcp_other": "{{count}} MCP servers"
+      },
+      "noContents": "Nothing to use yet",
+      "needsConfig": "Needs configuration",
+      "disabled": "Disabled",
+      "update": "Update",
+      "configure": "Configure",
+      "uninstall": "Uninstall",
+      "uninstallTitle": "Uninstall {{name}}?",
+      "uninstallDescription": "Its commands, skills, subagents, and MCP servers leave later runs, and its settings and stored data are deleted. Runs already started keep what they loaded.",
+      "uninstalled": "Uninstalled {{name}}.",
+      "diagnosticLevel": {
+        "error": "Error",
+        "warning": "Warning",
+        "info": "Note"
+      },
+      "kinds": {
+        "command": "Commands",
+        "skill": "Skills",
+        "agent": "Subagents",
+        "mcp": "MCP servers",
+        "memory": "Memory"
+      },
+      "page": {
+        "label": "Plugin details",
+        "back": "Back to plugins",
+        "backToPlugin": "Back to {{name}}",
+        "source": "Source",
+        "version": "Version",
+        "format": "Format",
+        "revision": "Revision",
+        "pinned": "Pinned to",
+        "license": "License",
+        "installedAt": "Installed",
+        "enablePrompt": "{{name}} is installed and turned off. Review what it contains, then turn it on to use it in later runs.",
+        "enable": "Turn on",
+        "disabledByPlugin": "Turn on {{name}} to change its items.",
+        "noItems": "This plugin contributes nothing this app can use.",
+        "diagnostics": "Not imported",
+        "allowRun": "Allow to run",
+        "learning": "Learn new memories",
+        "memoryEntries_one": "{{count}} memory",
+        "memoryEntries_other": "{{count}} memories",
+        "learningOn": "Learning",
+        "learningOff": "Learning paused",
+        "openMemory": "Open memory settings",
+        "openInCommands": "Open in Commands",
+        "openInCommandsFor": "Open {{name}} in Commands",
+        "readOnlyNote": "Items from this plugin are read-only. Duplicate one to Personal to change it.",
+        "versionLabel": "v{{version}}",
+        "kindsLabel": "Item kinds"
+      },
+      "item": {
+        "duplicate": "Duplicate to Personal",
+        "duplicated": "Duplicated to Personal as {{name}}."
+      },
+      "config": {
+        "title": "Configuration",
+        "save": "Save configuration",
+        "saved": "Configuration saved.",
+        "requiredLabel": "Required",
+        "required": "Enter a value.",
+        "invalidNumber": "Enter a number in the allowed range.",
+        "choose": "Choose…",
+        "set": "Set",
+        "unset": "Not set",
+        "replaceSecret": "Enter a new value to replace it",
+        "clear": "Clear",
+        "keep": "Keep"
+      }
+    },
+    "sourcePlugin": "Plugin"
   },
   "service": {
     "loading": "Loading service status…",
@@ -424,9 +553,6 @@
     "rolesTitle": "Roles",
     "rolesNote": "Subagent roles bounding what a run may use. Edits apply to the next run.",
     "mcpTitle": "MCP servers",
-    "emptySkills": "No skills found.",
-    "emptyRoles": "No roles are configured.",
-    "emptyAgents": "No subagents are configured.",
-    "emptyMcp": "No MCP servers are configured."
+    "emptyRoles": "No roles are configured."
   }
 }

@@ -1,4 +1,5 @@
 import { useId } from 'react';
+import { Copy } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { SubagentPermissions } from '@ai/agent-contracts';
 import { Button } from '@ai/ui/components/button';
@@ -16,36 +17,43 @@ import type { ExtensionAgentRow } from './extension-rows';
 export type { AgentInput } from './extension-agent-draft';
 
 /**
- * Subagent sub-page. `name` null is the add page; a name is that subagent's details: an editable
- * form for a markdown agent (`~/.atd/agents`, saved by overwriting its file) and read-only facts
- * for a system agent, both with its permissions for later runs. A name not in `rows` shows as
- * loading while the catalog is still empty (it always lists the system agents once loaded) and as
- * missing otherwise. The root returns to the list after a successful save, so the page stays on a
- * failure for the user to repair.
+ * Subagent sub-page. `name` null is the add page (a Personal agent); a name is that subagent's
+ * details: an editable form for a Personal markdown agent (`~/.atd/agents`, saved by overwriting
+ * its file) and read-only facts for a system agent or an installed plugin's, all with its
+ * permissions for later runs, which a plugin's agent may override too. A plugin's agent offers
+ * Duplicate to Personal to change the rest. A name not in `rows` shows as loading while the
+ * catalog is still empty (it always lists the system agents once loaded) and as missing otherwise.
+ * The root leaves the page after a successful save, so it stays on a failure for repair.
  */
 export function AgentPage({
   name,
   rows,
+  pluginName,
+  backLabel,
   connected,
   busy,
   onBack,
   onSave,
   onPermissions,
   onStartAi,
+  onDuplicate,
 }: {
   name: string | null;
   rows: readonly ExtensionAgentRow[];
+  /** The contributing plugin, named as a read-only agent's source. */
+  pluginName: string;
+  backLabel: string;
   connected: boolean;
   busy: boolean;
   onBack: () => void;
   onSave: (input: AgentInput) => Promise<boolean>;
   onPermissions: (name: string, permissions: SubagentPermissions | null) => Promise<boolean>;
   onStartAi: (target: string | null) => void;
+  onDuplicate: () => void;
 }) {
   const { t } = useTranslation('settings');
   const formId = useId();
   const locked = !connected || busy;
-  const backLabel = t('extensions.agentPage.back');
   const save = (input: AgentInput) => void onSave(input);
   const actions = (submitLabel: string) => (
     <>
@@ -111,12 +119,25 @@ export function AgentPage({
     <AgentPermissionsSection row={row} disabled={locked} onPermissions={onPermissions} />
   );
 
-  if (row.system)
+  if (row.system || row.readOnly)
     return (
-      <ExtensionPage {...page}>
+      <ExtensionPage
+        {...page}
+        actions={
+          row.readOnly && !row.system ? (
+            <Button type="button" disabled={locked} onClick={onDuplicate}>
+              <Copy data-icon="inline-start" />
+              {t('extensions.plugins.item.duplicate')}
+            </Button>
+          ) : null
+        }
+      >
         <ExtensionDetailFields
           fields={[
-            { label: t('extensions.detailSource'), value: t('extensions.sourceSystem') },
+            {
+              label: t('extensions.detailSource'),
+              value: row.system ? t('extensions.sourceSystem') : pluginName,
+            },
             {
               label: t('extensions.detailModel'),
               value: row.model || t('extensions.agentTaskModel'),

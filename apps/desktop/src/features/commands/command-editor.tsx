@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ChevronDown, ChevronUp, Pencil, Plus, Sparkles, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronUp, Copy, Pencil, Plus, Puzzle, Sparkles, Trash2 } from 'lucide-react';
+import { Alert, AlertDescription } from '@ai/ui/components/alert';
 import { Button } from '@ai/ui/components/button';
 import { Input } from '@ai/ui/components/input';
 import { Label } from '@ai/ui/components/label';
@@ -31,6 +32,7 @@ export function CommandEditor({
   tasks,
   onSaved,
   onCancel,
+  onDuplicate,
 }: {
   initial: CommandDefinition;
   expectedRevision: number;
@@ -39,8 +41,12 @@ export function CommandEditor({
   tasks: readonly AgentTask[];
   onSaved: () => void;
   onCancel: () => void;
+  /** Duplicate to Personal, offered in place of saving when `initial` belongs to a plugin. */
+  onDuplicate: () => void;
 }) {
   const { t } = useTranslation('commands');
+  // A plugin command is shown, never edited: the fieldset below disables every control.
+  const plugin = initial.pluginId;
   const [draft, setDraft] = useState(initial);
   const [baseRevision, setBaseRevision] = useState(expectedRevision);
   const [parameter, setParameter] = useState<{ index: number | null } | null>(null);
@@ -140,7 +146,13 @@ export function CommandEditor({
   return (
     <section className="command-editor" aria-label={t('editor.label')} data-figma-node="348:799">
       <SettingsHeading
-        title={baseRevision ? t('editor.editTitle') : t('editor.newTitle')}
+        title={
+          plugin
+            ? t('editor.viewTitle')
+            : baseRevision
+              ? t('editor.editTitle')
+              : t('editor.newTitle')
+        }
         onBack={onCancel}
         backLabel={t('editor.back')}
       />
@@ -149,7 +161,13 @@ export function CommandEditor({
         viewportClassName="overlay-footer-fade"
         gutter="stable"
       >
-        <div className="editor-fields p-0.75">
+        <fieldset disabled={Boolean(plugin)} className="editor-fields min-w-0 p-0.75">
+          {plugin && (
+            <Alert role="note">
+              <Puzzle />
+              <AlertDescription>{t('editor.pluginNotice', { plugin })}</AlertDescription>
+            </Alert>
+          )}
           <div className="field-columns aligned-fields">
             <div className="settings-field">
               <Label htmlFor="command-name">{t('editor.name')}</Label>
@@ -175,6 +193,7 @@ export function CommandEditor({
           <InstructionEditor
             command={draft}
             onChange={setDraft}
+            readOnly={Boolean(plugin)}
             tasks={tasks}
             onConfigureSource={(source) => {
               setInputOptionsOpen(true);
@@ -280,30 +299,41 @@ export function CommandEditor({
               )}
             </div>
           )}
-        </div>
+        </fieldset>
       </ScrollArea>
       <footer ref={footerRef} className="editor-footer overlay-footer">
-        <Button
-          type="button"
-          variant="outline"
-          disabled={pending || !window.desktop?.settings}
-          onClick={() => void startSession()}
-        >
-          <Sparkles data-icon="inline-start" />
-          {baseRevision ? t('session.triggerEdit') : t('session.trigger')}
-        </Button>
-        <div>
-          <Button variant="outline" disabled={pending} onClick={onCancel}>
-            {t('common.cancel')}
-          </Button>
-          <Button disabled={pending} onClick={() => void save()}>
-            {pending
-              ? t('editor.saving')
-              : baseRevision
-                ? t('editor.saveChanges')
-                : t('editor.create')}
-          </Button>
-        </div>
+        {plugin ? (
+          <div>
+            <Button onClick={onDuplicate}>
+              <Copy data-icon="inline-start" />
+              {t('list.duplicateToPersonal')}
+            </Button>
+          </div>
+        ) : (
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={pending || !window.desktop?.settings}
+              onClick={() => void startSession()}
+            >
+              <Sparkles data-icon="inline-start" />
+              {baseRevision ? t('session.triggerEdit') : t('session.trigger')}
+            </Button>
+            <div>
+              <Button variant="outline" disabled={pending} onClick={onCancel}>
+                {t('common.cancel')}
+              </Button>
+              <Button disabled={pending} onClick={() => void save()}>
+                {pending
+                  ? t('editor.saving')
+                  : baseRevision
+                    ? t('editor.saveChanges')
+                    : t('editor.create')}
+              </Button>
+            </div>
+          </>
+        )}
       </footer>
     </section>
   );

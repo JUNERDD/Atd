@@ -32,6 +32,10 @@ const repoRoot = fileURLToPath(new URL('../..', import.meta.url));
 const workspaceSource = {
   '@ai/agent-client': path.join(repoRoot, 'packages/agent-client/src/index.ts'),
   '@ai/agent-contracts': path.join(repoRoot, 'packages/agent-contracts/src/index.ts'),
+  // Contracts use only the data model; the model entry keeps format parsers (and their Node
+  // dependencies) out of the sandboxed preload bundle. Listed before the package root so it wins.
+  '@ai/plugin-kit/model': path.join(repoRoot, 'packages/plugin-kit/src/model.ts'),
+  '@ai/plugin-kit': path.join(repoRoot, 'packages/plugin-kit/src/index.ts'),
 };
 
 function externalizeDependency(id: string): boolean {

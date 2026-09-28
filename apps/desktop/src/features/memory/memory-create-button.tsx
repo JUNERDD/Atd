@@ -1,17 +1,12 @@
-import { useState } from 'react';
 import { Sparkles } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@ai/ui/components/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@ai/ui/components/tooltip';
-import { showErrorToast, showToast } from '../../components/toast-store';
-import { asSkillRow } from '../service/extension-rows';
-
-const SKILL = 'create-memory';
+import { useMemoryCreate } from './use-memory-create';
 
 /**
- * Create-with-AI for memory: opens a new panel session seeded with the built-in `create-memory`
- * skill, which saves or updates a memory through the memory tools. Pausing learning blocks those
- * tools as well, so the button waits for learning to resume and says why while it waits.
+ * The Memory section's Create-with-AI button (`useMemoryCreate`). While learning is paused the
+ * agent cannot save memories, so the button waits for learning to resume and says why meanwhile.
  */
 export function MemoryCreateButton({
   paused,
@@ -23,36 +18,16 @@ export function MemoryCreateButton({
   unavailable: boolean;
 }) {
   const { t } = useTranslation('memory');
-  const [starting, setStarting] = useState(false);
-  async function start() {
-    const bridge = window.desktop?.settings;
-    if (!bridge || paused) return;
-    setStarting(true);
-    try {
-      // Extensions can switch the skill off; its chip would then load nothing.
-      const listed = await window.desktop?.service?.skills();
-      const skill = listed?.skills
-        .flatMap((row) => asSkillRow(row) ?? [])
-        .find((row) => row.name === SKILL);
-      if (skill && !skill.enabled) {
-        showToast({ kind: 'error', text: t('memory.create.enableSkill', { name: SKILL }) });
-        return;
-      }
-      await bridge.startExtensionSession('memory');
-      showToast({ kind: 'info', text: t('memory.create.opened') });
-    } catch (error) {
-      showErrorToast(error);
-    } finally {
-      setStarting(false);
-    }
-  }
+  const { starting, start } = useMemoryCreate();
   const button = (
     <Button
       disabled={unavailable || starting}
       // Paused stays focusable and hoverable, unlike `disabled`, so its tooltip can say why.
       aria-disabled={paused || undefined}
       className="aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
-      onClick={() => void start()}
+      onClick={() => {
+        if (!paused) void start(false);
+      }}
     >
       <Sparkles data-icon="inline-start" />
       {t('memory.create.label')}

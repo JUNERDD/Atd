@@ -6,6 +6,14 @@ export function useSettingsNavigation() {
   return navigate;
 }
 
+/** Opens the Commands section at one command's editor, as a deep link from the task panel does. */
+export const SettingsCommandLinkContext = createContext<((commandId: string) => void) | null>(null);
+export function useOpenSettingsCommand() {
+  const open = useContext(SettingsCommandLinkContext);
+  if (!open) throw new Error('Opening a command requires the settings window.');
+  return open;
+}
+
 /** Whether the enclosing settings section is the one shown; pages outside the window count as shown. */
 export const SettingsSectionActiveContext = createContext(true);
 

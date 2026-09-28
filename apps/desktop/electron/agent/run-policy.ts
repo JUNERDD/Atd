@@ -17,7 +17,8 @@ export const RunPolicySchema = Type.Object(
       Type.Array(
         Type.Object(
           {
-            name: Type.String({ minLength: 1, maxLength: 128 }),
+            // Qualified plugin skill names (`<plugin>:<item>`) run up to 193 characters.
+            name: Type.String({ minLength: 1, maxLength: 193 }),
             revision: Type.Optional(Type.String({ minLength: 1, maxLength: 128 })),
           },
           { additionalProperties: false },
