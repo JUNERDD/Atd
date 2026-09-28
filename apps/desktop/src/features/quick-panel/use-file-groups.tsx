@@ -12,6 +12,7 @@ import { matchFields } from '@ai/ui/lib/fuzzy-match';
 import type { AgentTask, FileRef } from '../../../electron/agent/task-schema';
 import type { FileSearchResult } from '../../../electron/file-search/contract';
 import { showErrorToast } from '../../components/toast-store';
+import { fileSize } from '../../lib/task-store';
 import { agentApi } from '../agent/use-agent';
 import type { ComposerEditorCommands } from '../composer-editor/editor-commands';
 import type { QuickGroup, QuickOption } from './quick-options';
@@ -29,18 +30,25 @@ const KIND_ICONS: Record<FileSearchResult['kind'], LucideIcon> = {
 /** Main names iCloud Drive results from their own root; every other location is home-relative. */
 const ICLOUD = 'iCloud Drive';
 
+interface RecentAttachment {
+  file: FileRef;
+  at: number;
+  /** Title of the conversation that attached it last. */
+  source: string;
+}
+
 /**
  * Files that earlier runs attached, newest first and once per resource id. The service keeps
  * uploaded resources, so a pick reuses the `FileRef` as is and never reads the file again.
  */
-function recentAttachments(tasks: readonly AgentTask[]): { file: FileRef; at: number }[] {
-  const newest = new Map<string, { file: FileRef; at: number }>();
+function recentAttachments(tasks: readonly AgentTask[]): RecentAttachment[] {
+  const newest = new Map<string, RecentAttachment>();
   for (const task of tasks) {
     for (const run of task.runs) {
       const at = Date.parse(run.createdAt);
       for (const file of run.snapshot.input.files) {
         const known = newest.get(file.id);
-        if (!known || known.at < at) newest.set(file.id, { file, at });
+        if (!known || known.at < at) newest.set(file.id, { file, at, source: task.title });
       }
     }
   }
@@ -106,11 +114,17 @@ export function useFileGroups({
 
   const attached = query
     ? []
-    : recentAttachments(tasks).map(({ file, at }): QuickOption => ({
+    : recentAttachments(tasks).map(({ file, at, source }): QuickOption => ({
         value: `attached:${file.id}`,
         icon: <Paperclip />,
         title: file.name,
-        description: full ? limitReason : undefined,
+        // The pick reuses the stored copy, not a path on disk, so the row names that copy's origin.
+        description: full
+          ? limitReason
+          : t('quickPanel.files.attachedFrom', {
+              size: fileSize(file.size),
+              conversation: source.replace(/\s+/g, ' ').trim(),
+            }),
         status: relativeTime(at, language),
         disabled: full,
         select: () => editor.insertChips([{ kind: 'file', file }]),
