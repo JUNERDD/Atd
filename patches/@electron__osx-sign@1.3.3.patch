@@ -1,0 +1,60 @@
+diff --git a/dist/cjs/util.js b/dist/cjs/util.js
+index 77e64b56872bc65bcb0f60ecfbec84eb3da02c6f..be70aa1b2db089ed09ba5ed4aa9c047bc03bcbbc 100644
+--- a/dist/cjs/util.js
++++ b/dist/cjs/util.js
+@@ -151,7 +151,7 @@ async function walkAsync(dirPath) {
+     (0, exports.debugLog)('Walking... ' + dirPath);
+     async function _walkAsync(dirPath) {
+         const children = await fs.readdir(dirPath);
+-        return await Promise.all(children.map(async (child) => {
++        async function visitChild(child) {
+             const filePath = path.resolve(dirPath, child);
+             const stat = await fs.stat(filePath);
+             if (stat.isFile()) {
+@@ -174,7 +174,15 @@ async function walkAsync(dirPath) {
+                 return walkResult;
+             }
+             return null;
+-        }));
++        }
++        // Patched: visit entries one at a time. Upstream maps them through Promise.all, which
++        // opens every file in the bundle at once and fails signing with EMFILE once the app
++        // holds more files than the process may open (the bundled agent service ships 60k+).
++        const entries = [];
++        for (const child of children) {
++            entries.push(await visitChild(child));
++        }
++        return entries;
+     }
+     const allPaths = await _walkAsync(dirPath);
+     return compactFlattenedList(allPaths);
+diff --git a/dist/esm/util.js b/dist/esm/util.js
+index d3f66d54b1a88e7410d78affe17de87302db02a3..c24432799dcb989278f5d16e4fd267fa3893a8fa 100644
+--- a/dist/esm/util.js
++++ b/dist/esm/util.js
+@@ -115,7 +115,7 @@ export async function walkAsync(dirPath) {
+     debugLog('Walking... ' + dirPath);
+     async function _walkAsync(dirPath) {
+         const children = await fs.readdir(dirPath);
+-        return await Promise.all(children.map(async (child) => {
++        async function visitChild(child) {
+             const filePath = path.resolve(dirPath, child);
+             const stat = await fs.stat(filePath);
+             if (stat.isFile()) {
+@@ -138,7 +138,15 @@ export async function walkAsync(dirPath) {
+                 return walkResult;
+             }
+             return null;
+-        }));
++        }
++        // Patched: visit entries one at a time. Upstream maps them through Promise.all, which
++        // opens every file in the bundle at once and fails signing with EMFILE once the app
++        // holds more files than the process may open (the bundled agent service ships 60k+).
++        const entries = [];
++        for (const child of children) {
++            entries.push(await visitChild(child));
++        }
++        return entries;
+     }
+     const allPaths = await _walkAsync(dirPath);
+     return compactFlattenedList(allPaths);
