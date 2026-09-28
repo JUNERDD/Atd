@@ -99,14 +99,14 @@ export class ServiceManager {
     if (failure) throw new Error(failure);
   }
 
-  /** Stops supervision and the local service, then drops the client connection. */
+  /**
+   * Drops the client connection, then stops supervision and the local service. Disconnecting
+   * first keeps the service's own close of the stream from reading as a drop to reconnect from.
+   */
   async shutdown(): Promise<void> {
-    try {
-      await this.supervisor.stop();
-    } finally {
-      this.onLive(false);
-      this.connection.disconnect();
-    }
+    this.onLive(false);
+    this.connection.disconnect('The agent service is stopping.');
+    await this.supervisor.stop();
   }
 
   /**
