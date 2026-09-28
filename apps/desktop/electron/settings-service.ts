@@ -1,6 +1,6 @@
 import { ipcMain, shell } from 'electron';
 import type { BrowserWindow, IpcMainInvokeEvent } from 'electron';
-import type { DesktopState } from './contract';
+import { IPC, type DesktopState } from './contract';
 import { isAppLanguage, SETTINGS_IPC, type SettingsSnapshot } from './settings-contract';
 import { PermissionTierSchema } from './agent/permission-schema';
 import { parse } from './agent/validation';
@@ -20,6 +20,7 @@ import { shortcutLabel } from './accelerators';
 import { PanelShortcut } from './settings-shortcuts';
 import { SettingsStore } from './settings-store';
 import { SettingsWindow } from './settings-window';
+import { LoginItem } from './login-item';
 import { isWindowSender, sendToPage } from './window-content';
 import type { PanelSize } from './window-position';
 
@@ -27,11 +28,16 @@ interface SettingsHost {
   panel: () => BrowserWindow | null;
   togglePanel: () => void;
   applyPinned: (pinned: boolean) => void;
+  applyShowInDock: (show: boolean) => Promise<void>;
   validateShortcuts?: (shortcuts: SettingsSnapshot['shortcuts']) => void;
 }
 
 export class SettingsService {
   private readonly window = new SettingsWindow();
+  private readonly loginItem = new LoginItem(
+    () => this.window.current,
+    () => this.broadcast(),
+  );
   private readonly shortcut: PanelShortcut;
   readonly providers: ProviderService;
   /** Keeps language, default tier, shell allowlist and shortcuts equal to the service's copy. */
@@ -113,6 +119,10 @@ export class SettingsService {
     return this.store.current.pinned;
   }
 
+  get showInDock(): boolean {
+    return this.store.current.showInDock;
+  }
+
   get panelSize(): PanelSize {
     return this.store.current.panelSize;
   }
@@ -122,25 +132,19 @@ export class SettingsService {
   }
 
   snapshot(): SettingsSnapshot {
-    const {
-      connections,
-      defaultConnectionId,
-      language,
-      shortcuts,
-      pinned,
-      permissionTier,
-      shellAllowlist,
-    } = this.store.current;
+    const current = this.store.current;
     const live = this.providers.overlay();
     return {
-      connections: live?.connections ?? connections.map(publicConnection),
-      defaultConnectionId: live?.defaultConnectionId ?? defaultConnectionId,
-      language,
-      shortcuts: { ...shortcuts },
-      pinned,
+      connections: live?.connections ?? current.connections.map(publicConnection),
+      defaultConnectionId: live?.defaultConnectionId ?? current.defaultConnectionId,
+      language: current.language,
+      shortcuts: { ...current.shortcuts },
+      pinned: current.pinned,
+      showInDock: current.showInDock,
+      openAtLogin: this.loginItem.current,
       shortcutAvailable: this.shortcut.available,
-      permissionTier,
-      shellAllowlist: [...shellAllowlist],
+      permissionTier: current.permissionTier,
+      shellAllowlist: [...current.shellAllowlist],
     };
   }
 
@@ -204,6 +208,19 @@ export class SettingsService {
       this.host.applyPinned(pinned);
       this.broadcast();
       return pinned;
+    });
+  }
+
+  private setShowInDock(value: unknown): Promise<boolean> {
+    if (typeof value !== 'boolean') throw new TypeError('Show in Dock must be a boolean');
+    if (process.platform !== 'darwin') throw new Error('The Dock icon is a macOS preference.');
+    return this.serialize(async () => {
+      await this.store.change((data) => {
+        data.showInDock = value;
+      });
+      await this.host.applyShowInDock(value);
+      this.broadcast();
+      return value;
     });
   }
 
@@ -313,6 +330,14 @@ export class SettingsService {
       this.assertSender(event);
       const entry = parseShellAllowlistEntry(value);
       return this.updateShellAllowlist((current) => withShellAllowlistEntry(current, entry));
+    });
+    ipcMain.handle(IPC.setShowInDock, (event, value: unknown) => {
+      this.assertSender(event, true);
+      return this.setShowInDock(value);
+    });
+    ipcMain.handle(IPC.setOpenAtLogin, (event, value: unknown) => {
+      this.assertSender(event, true);
+      return this.loginItem.set(value);
     });
     ipcMain.handle(SETTINGS_IPC.restoreShortcuts, (event) => {
       this.assertSender(event, true);

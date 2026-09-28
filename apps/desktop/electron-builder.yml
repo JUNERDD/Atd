@@ -27,6 +27,11 @@ extraResources:
   # The renderer (`build:web`): loaded by the packaged window and served by the service.
   - from: dist-web
     to: web
+  # Menu bar status item template images (`electron/menu-bar.ts`).
+  - from: resources/menu-bar
+    to: menu-bar
+    filter:
+      - '*.png'
   - from: ../agent-service/dist
     to: agent-service/dist
     # The incremental build-info file only exists to keep the dev watcher from
@@ -68,6 +73,9 @@ mac:
     NSDesktopFolderUsageDescription: AI reads a file in your Desktop folder only when you attach it.
     NSDocumentsFolderUsageDescription: AI reads a file in your Documents folder only when you attach it.
     NSDownloadsFolderUsageDescription: AI reads a file in your Downloads folder only when you attach it.
+    # Start as an agent app so a hidden Dock icon never flashes at launch; `dock-visibility.ts`
+    # shows the icon at runtime when the user turns on Show in Dock.
+    LSUIElement: true
 win:
   target: nsis
 linux:

@@ -72,6 +72,19 @@ test('production app: positioning, renderer isolation, service flow, and window 
       state.workArea.y + state.workArea.height - 16,
     );
     expect(state.pinned).toBe(true);
+    if (process.platform === 'darwin') {
+      // Show in Dock is off by default: the menu bar status item is the app's standing entry.
+      await expect.poll(() => app.evaluate(({ app }) => app.dock?.isVisible())).toBe(false);
+      const images = await app.evaluate(({ app, nativeImage }) =>
+        ['idle', 'running', 'attention', 'unavailable'].map((state) => {
+          const image = nativeImage.createFromPath(
+            `${app.getAppPath()}/resources/menu-bar/${state}Template.png`,
+          );
+          return [image.isTemplateImage(), image.getScaleFactors()];
+        }),
+      );
+      expect(images).toEqual(Array(4).fill([true, [1, 2]]));
+    }
     expect(await page.evaluate(() => typeof window.desktop?.hide)).toBe('function');
     expect(await page.evaluate(() => 'require' in window)).toBe(false);
     expect(await page.evaluate(() => 'process' in window)).toBe(false);
@@ -109,6 +122,19 @@ test('production app: positioning, renderer isolation, service flow, and window 
         app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.isAlwaysOnTop()),
       )
       .toBe(false);
+    if (process.platform === 'darwin') {
+      const showInDock = settings.getByRole('switch', { name: 'Show in Dock' });
+      await showInDock.click();
+      await expect.poll(() => app.evaluate(({ app }) => app.dock?.isVisible())).toBe(true);
+      await expect(showInDock).toBeChecked();
+      // Hiding waits out Electron's one-second spacing after the icon was shown.
+      await showInDock.click();
+      await expect
+        .poll(() => app.evaluate(({ app }) => app.dock?.isVisible()), { timeout: 5000 })
+        .toBe(false);
+      await expect(showInDock).not.toBeChecked();
+      expect(await settings.evaluate(() => document.visibilityState)).toBe('visible');
+    }
     await settings.screenshot({
       path: path.join(appDirectory, '.artifacts/electron-settings.png'),
     });

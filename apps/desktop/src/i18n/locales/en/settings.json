@@ -135,6 +135,8 @@
       "cancelLabel": "Cancel recording {{label}}",
       "changeLabel": "Change {{label}}: {{keys}}"
     },
+    "openAtLogin": "Open at login",
+    "showInDock": "Show in Dock",
     "alwaysOnTop": "Always on top",
     "restoreDefaults": "Restore defaults",
     "restoring": "Restoring…",
@@ -143,7 +145,8 @@
       "recordingHint": "Press a shortcut. Escape cancels; Tab moves to the next control.",
       "shortcutSaved": "Shortcut saved.",
       "defaultsRestored": "Default shortcuts restored.",
-      "windowPreferenceSaved": "Window preference saved."
+      "windowPreferenceSaved": "Window preference saved.",
+      "openAtLoginApproval": "Approve AI in System Settings › Login Items to finish."
     },
     "errors": {
       "register": "This shortcut could not be registered. Choose another combination.",

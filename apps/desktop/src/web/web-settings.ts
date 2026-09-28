@@ -45,6 +45,8 @@ export function webSettings(
       language: settings?.language ?? resolveLanguage(navigator.language),
       shortcuts: { ...(settings?.shortcuts ?? DEFAULT_SHORTCUTS) },
       pinned: false,
+      showInDock: false,
+      openAtLogin: null,
       shortcutAvailable: false,
       permissionTier: settings?.permissionTier ?? DEFAULT_PERMISSION_TIER,
       shellAllowlist: [...(settings?.shellAllowlist ?? [])],

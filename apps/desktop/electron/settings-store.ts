@@ -35,6 +35,8 @@ export interface StoredSettings extends Static<typeof ProviderSettingsSchema> {
   language: AppLanguage;
   shortcuts: ShortcutBindings;
   pinned: boolean;
+  /** macOS: whether the app keeps a Dock icon; the menu bar status item stays either way. */
+  showInDock: boolean;
   panelSize: PanelSize;
   permissionTier: PermissionTier;
   /** User shell allowlist in the user's order; see `SettingsSnapshot.shellAllowlist`. */
@@ -60,6 +62,7 @@ function parseSettings(value: unknown): StoredSettings {
           'language',
           'shortcuts',
           'pinned',
+          'showInDock',
           'panelSize',
           'permissionTier',
           'shellAllowlist',
@@ -80,6 +83,12 @@ function parseSettings(value: unknown): StoredSettings {
   if ('permissionTier' in value) {
     if (!isPermissionTier(value.permissionTier)) throw new TypeError('Invalid saved settings.');
     permissionTier = value.permissionTier;
+  }
+  // Files saved before the preference existed keep the default: no Dock icon.
+  let showInDock = false;
+  if ('showInDock' in value) {
+    if (typeof value.showInDock !== 'boolean') throw new TypeError('Invalid saved settings.');
+    showInDock = value.showInDock;
   }
   const panelSize =
     'panelSize' in value ? parse(PanelSizeSchema, value.panelSize) : { ...PANEL_SIZE };
@@ -102,6 +111,7 @@ function parseSettings(value: unknown): StoredSettings {
     language,
     shortcuts: parseShortcutBindings(value.shortcuts, process.platform),
     pinned: value.pinned,
+    showInDock,
     panelSize,
     permissionTier,
     shellAllowlist: parseStoredShellAllowlist(
@@ -142,6 +152,7 @@ export class SettingsStore {
           language: resolveLanguage(app.getLocale()),
           shortcuts: { ...DEFAULT_SHORTCUTS },
           pinned: true,
+          showInDock: false,
           panelSize: { ...PANEL_SIZE },
           permissionTier: DEFAULT_PERMISSION_TIER,
           shellAllowlist: [],

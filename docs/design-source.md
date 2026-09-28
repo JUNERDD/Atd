@@ -420,3 +420,38 @@ Figma 侧未同步：本会话云端 Figma 工具不可用，本地 Figma MCP �
 | 评审帧 `1558:60437`（420 与 320 宽）                                                                                                                                                                   | —                                                                        |
 
 未同步或有差异：会话菜单项“整理上下文”（Figma 中没有会话菜单可扩展）；zh-CN 文案变体；运行中微光、旋转与圆环动画只写在组件说明里；14px 库图标的描边约 1.17px，代码为 1.75（约 1.02px）；摘要以 13/20 文本近似 Markdown；评审帧中的 Composer 仍使用待迁移的旧 `App / Composer selector`（见 `96:215`）。
+
+## 2026-09-27 macOS 菜单栏状态项与程序坞显示
+
+决策记录：`tmp/grill-me/outcome-claude-ce5ffe71-mac-menubar-20260927-221259.md`（本机，未提交）。仅 macOS；Windows 与 Linux 行为不变。代码与项目 Figma 已双侧同步：
+
+| Figma 节点                                                                                                                                                                        | 代码                                                                                      |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| 16 · Menu bar status item `1562:59907`：App / Menu bar status item `1562:59933`（State=Idle / Running / Attention / Unavailable，18 × 18 模板图，连接共享库 `Lucide / sparkles`） | `electron/menu-bar.ts`、`menu-bar-status.ts`；导出图在 `apps/desktop/resources/menu-bar/` |
+| 预览帧 Preview / Menu bar appearance `1562:59934`（浅色与深色菜单栏）                                                                                                             | —                                                                                         |
+| Settings / Shortcuts · Desktop preview `257:1454`：页脚 Window preferences `1561:48667` 新增 Show in Dock（默认关闭）                                                             | `shortcut-settings.tsx`、`use-shortcut-settings.ts`、`settings.css`                       |
+
+- 入口：状态项是任务面板的第二入口。左键与全局快捷键共用切换逻辑：面板聚焦时隐藏，否则停靠到默认的右下角并显示、聚焦（按用户修正，不再锚定到图标下方）。失焦不自动收起。右键或 Control/Option 点击打开日常菜单项：显示/隐藏面板、设置、在浏览器中打开、退出；一次性的“迁移到 Agent Service”只保留在应用菜单中。
+- 状态：服务断开或重连中（与面板横幅一致；启动时的连接中不算）> 等待输入或确认 > 排队、运行或停止中 > 空闲，只显示优先级最高的一种。tooltip 汇总数量，不显示数字标题；完成与失败不提示。主进程文案与应用菜单一样只有英文。
+- 程序坞：`showInDock` 是本机偏好，默认关闭，不同步到服务，网页端不显示。打包版通过 `LSUIElement` 以代理应用启动，启动时不会闪现程序坞图标；开启后在运行时显示。开发版启动时会先出现图标，读取偏好后再隐藏。状态项始终显示，不能关闭。
+- 恢复路径：图标被刘海或菜单栏管理工具遮住、全局快捷键又被占用时，从 Spotlight、Finder 或启动台再次打开 AI 会触发 `activate` 并显示面板。
+
+验证：`pnpm test:electron` 覆盖默认隐藏程序坞、开关切换和四个模板图的 1x/2x 加载；打包版在隔离配置中确认默认启动期间程序坞始终不可见、保存为开启后重启会显示。打包版原生操作确认：点击状态项切换面板、右键菜单与“设置…”、深色菜单栏中的模板图着色、服务停止后的 Unavailable 图标与 tooltip、隐藏程序坞后设置窗口保持焦点、隐藏程序坞时输入框的 Cmd+Z / Shift+Cmd+Z / Cmd+A、重新打开应用恢复面板。未验证：Running 与 Attention 的真实任务状态（隔离配置没有模型提供商），以及 Cmd+C / Cmd+V（避免覆盖剪贴板）。
+
+## 2026-09-28 登录时打开
+
+设置「快捷键」页页脚的窗口偏好新增“登录时打开”（Open at login），默认关闭，顺序为：登录时打开、在程序坞中显示、始终置顶。代码与项目 Figma 已双侧同步：
+
+| Figma 节点                                                                                                                                                                                                                                                                                      | 代码                                                                                                |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| Settings / Shortcuts · Desktop preview `257:1454` 的页脚 Shortcut actions `1123:37578`：Window preferences `1561:48668`（上节记为 `1561:48667`，实际节点为 `1561:48668`）新增 Window preference / Open at login `1564:60015`，开关复用 App / Settings switch · Rhea `State=Unchecked` `284:983` | `shortcut-settings.tsx`、`use-shortcut-settings.ts`                                                 |
+| Window preferences 改为 Fill、最小宽度 139（最宽一项的 Hug 宽度）、行距 12；Shortcut actions 改为左对齐、间距 16，偏好组占满剩余宽度，窄宽度下开关组内换行、恢复默认按钮随后换行                                                                                                                | `settings.css` 的 `.settings-window-preferences`（`gap: 12px 16px`）与 `.settings-shortcuts-footer` |
+
+- 状态来源：系统登录项本身，不写入设置文件。主进程 `electron/login-item.ts` 读取 `app.getLoginItemSettings()`、写入 `app.setLoginItemSettings({ openAtLogin })`；设置窗口重新获得焦点时再读一次，在“系统设置”里做的更改会随之反映。
+- 可用范围：仅打包版的 macOS 与 Windows。开发版（会注册裸 Electron 程序）、Linux 和网页端的快照值为 `null`，开关不显示。
+- 三个开关只由左侧可见标签命名，不再显示重复标签的 tooltip（按用户修正；此前“始终置顶”的 tooltip 一并移除）。Figma 中这些行本就没有 tooltip，App / Settings switch · Rhea `284:988` 的用法说明已改为覆盖三个窗口偏好并注明不加 tooltip。
+- macOS 13+ 若返回 `requires-approval`，开关保持关闭并打开“系统设置 › 登录项”，提示 `shortcuts.status.openAtLoginApproval`；批准后回到设置窗口即显示为开启。其他未生效的开启会报错。
+
+验证：打包版（隔离配置、CDP）读取到 `openAtLogin: false`，全程未切换登录项；按视口宽 1280、1000、760、759、480、479、320 与 760 × 420 核对页脚，英文与 zh-CN 均无溢出和横向滚动，换行位置与 Figma 各布局变体一致；悬停三个开关均无 tooltip。未验证：真实开启、`requires-approval` 流程与 Windows（避免给本机注册登录项）。
+
+差异：Figma 中恢复默认按钮单独换行时位于行首，代码用 `ml-auto` 保持在行尾；最小宽度按英文文案取值，zh-CN 文案未在 Figma 中单独验证。

@@ -22,7 +22,9 @@ import { Identifier } from './agent/command-schema';
 import { parse } from './agent/validation';
 import { IPC, type DesktopState } from './contract';
 import { chooseContextFiles } from './context-files';
-import { installAppMenu } from './app-menu';
+import { appItems, installAppMenu } from './app-menu';
+import { DockVisibility } from './dock-visibility';
+import { MenuBarItem } from './menu-bar';
 import { installFileSearch } from './file-search/ipc';
 import { ServiceManager } from './service/manager';
 import { SETTINGS_IPC } from './settings-contract';
@@ -30,6 +32,7 @@ import { SettingsService } from './settings-service';
 import { isWindowSender, loadWindowContent } from './window-content';
 import { PanelPlacement } from './panel-placement';
 import { createPanelWindow } from './panel-window';
+import { openedAtLogin } from './login-item';
 import { installQuitGuard } from './quit-guard';
 
 app.setName('AI');
@@ -58,6 +61,9 @@ const CommandSessionIdSchema = Type.Union([Identifier, Type.Null()]);
 
 let panel: BrowserWindow | null = null;
 const placement = new PanelPlacement(() => panel);
+const dock = new DockVisibility();
+/** Held for the app's lifetime: a status item without a reference is garbage-collected. */
+let menuBar: MenuBarItem | undefined;
 let settings: SettingsService;
 let agent: AgentService | undefined;
 let serviceManager: ServiceManager | undefined;
@@ -83,6 +89,24 @@ function showPanel() {
   if (panel.isMinimized()) panel.restore();
   panel.show();
   panel.focus();
+}
+
+/**
+ * The global shortcut and the menu bar status item share one toggle: a focused panel hides, any
+ * other panel re-docks bottom-right and is revealed. Both capture the frontmost app's selection
+ * before the panel takes focus.
+ */
+function togglePanel() {
+  if (!panel || panel.isDestroyed() || choosingFiles) return;
+  if (panel.isVisible() && !panel.isMinimized() && panel.isFocused()) {
+    hidePanel();
+    return;
+  }
+  agent?.commands.captureSelection();
+  const display = screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
+  // Re-dock the panel without discarding a size the user resized to.
+  panel.setBounds(placement.dockedBounds(display.workArea, panel.getNormalBounds()));
+  showPanel();
 }
 
 function hidePanel() {
@@ -183,7 +207,8 @@ function installIpc() {
   });
 }
 
-async function createPanel() {
+/** `reveal: false` creates the panel hidden, for a launch the OS started at login. */
+async function createPanel({ reveal = true }: { reveal?: boolean } = {}) {
   const { workArea } = screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
   const window = createPanelWindow({
     bounds: placement.dockedBounds(workArea, settings.panelSize),
@@ -193,8 +218,8 @@ async function createPanel() {
   });
   panel = window;
   // macOS owns its window management: the native close button dismisses the panel like the
-  // in-panel hide control does, so the global shortcut and the app menu reveal the same window
-  // again. Quitting releases it normally. Every other platform keeps its previous close behavior.
+  // in-panel hide control does, so the global shortcut, the menu bar status item and the app menu
+  // reveal the same window again. Quitting releases it normally. Every other platform keeps its previous close behavior.
   if (process.platform === 'darwin') {
     window.on('close', (event) => {
       if (quitGuard.isQuitting()) return;
@@ -205,7 +230,7 @@ async function createPanel() {
   window.on('closed', () => {
     panel = null;
   });
-  window.once('ready-to-show', showPanel);
+  if (reveal) window.once('ready-to-show', showPanel);
 
   await loadWindowContent(window);
 }
@@ -227,18 +252,10 @@ if (!app.requestSingleInstanceLock()) {
           if (panel && !panel.isDestroyed()) panel.setAlwaysOnTop(pinned);
         },
         validateShortcuts: (shortcuts) => agent?.commands.assertSettings(shortcuts),
-        togglePanel: () => {
-          if (!panel || panel.isDestroyed() || choosingFiles) return;
-          if (panel.isVisible() && !panel.isMinimized() && panel.isFocused()) hidePanel();
-          else {
-            agent?.commands.captureSelection();
-            const display = screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
-            // Re-dock the panel without discarding a size the user resized to.
-            panel.setBounds(placement.dockedBounds(display.workArea, panel.getNormalBounds()));
-            showPanel();
-          }
-        },
+        togglePanel,
+        applyShowInDock: (show) => dock.apply(show),
       });
+      void dock.apply(settings.showInDock);
       // T6 pure client: main owns the service connection (bearer token stays
       // in main) plus explicit desktop APIs. No agent execution here.
       serviceManager = new ServiceManager(
@@ -274,17 +291,29 @@ if (!app.requestSingleInstanceLock()) {
       installIpc();
       installFileSearch(() => panel, serviceManager.connection);
       const manager = serviceManager;
-      installAppMenu({
+      const actions = {
         showPanel,
         hidePanel,
         settings,
         openInBrowser: () => manager.openInBrowser(),
         restartService: () => manager.restart(),
         showServiceLogs: () => manager.revealLogs(),
+      };
+      installAppMenu(actions);
+      const tasks = agent;
+      menuBar = new MenuBarItem({
+        toggle: togglePanel,
+        items: () => appItems(actions),
+        tasks: () => tasks.taskStates(),
+        onTasksChanged: (listener) => tasks.onTasksChanged(listener),
+        connection: () => manager.connection.status().state,
+        onConnectionChanged: (listener) => manager.connection.onState(listener),
       });
+      menuBar.install();
       const starting = serviceManager.autostart();
       placement.install();
-      await createPanel();
+      // Opened at login, the app waits in the menu bar instead of showing the panel.
+      await createPanel({ reveal: !openedAtLogin() });
       await starting;
       app.on('activate', () => {
         if (panel) showPanel();
