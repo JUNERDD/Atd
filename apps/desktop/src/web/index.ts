@@ -1,4 +1,5 @@
 import { AgentRequests } from '../../electron/agent/agent-requests';
+import { parseExtensionSession, type ExtensionSession } from '../../electron/agent/bridge';
 import {
   createAgentBridge,
   type AgentChannel,
@@ -84,7 +85,15 @@ export async function installWebHost(): Promise<WebHostState> {
       emit('session', { commandId: message.commandId, name });
       window.focus();
     } else if (message.type === 'extensionSession') {
-      emit('extensionSession', { kind: message.kind });
+      // Any same-origin tab, including one running an older build, can post this: drop a
+      // message the panel cannot seed instead of throwing from the channel listener.
+      let session: ExtensionSession;
+      try {
+        session = parseExtensionSession(message.kind, message.target);
+      } catch {
+        return;
+      }
+      emit('extensionSession', session);
       window.focus();
     }
   });

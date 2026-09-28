@@ -8,8 +8,8 @@ import type { ExtensionSessionKind } from '../../electron/agent/bridge';
 export type TabMessage =
   /** Settings → panel: open the command editor session (`null` creates a command). */
   | { type: 'commandSession'; commandId: string | null }
-  /** Settings → panel: start a create-with-AI session. */
-  | { type: 'extensionSession'; kind: ExtensionSessionKind }
+  /** Settings → panel: start a create-with-AI session, or an edit session when `target` is set. */
+  | { type: 'extensionSession'; kind: ExtensionSessionKind; target: string | null }
   /** Panel → settings: show one command's editor in an already open settings tab. */
   | { type: 'openCommand'; commandId: string };
 

@@ -14,6 +14,12 @@ Interview until you have:
 
 Then write `~/.atd/skills/<name>/SKILL.md` with YAML frontmatter (`name`, `description`, and any needed flags) and a clear body that tells the model how to perform the skill.
 
+To update an existing skill (the user's message names it):
+
+- Read `~/.atd/skills/<name>/SKILL.md` and any files it references before changing anything.
+- Change only what the user asks; keep the directory name and the frontmatter `name`.
+- Save with the edit/write tools at the same path. Naming the skill is the explicit request to update it, so the overwrite rule below does not apply.
+
 Rules:
 
 - Refuse the reserved names `create-skill`, `create-subagent`, and `create-mcp`.

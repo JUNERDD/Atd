@@ -12,11 +12,7 @@ import type { IpcMainInvokeEvent } from 'electron';
 import log from 'electron-log/main';
 import { Type } from 'typebox';
 import { AgentService } from './agent/service';
-import {
-  ExtensionSessionKindSchema,
-  type CommandSession,
-  type ExtensionSession,
-} from './agent/bridge';
+import { parseExtensionSession, type CommandSession } from './agent/bridge';
 import { AGENT_IPC } from './agent/ipc-channels';
 import { Identifier } from './agent/command-schema';
 import { parse } from './agent/validation';
@@ -182,15 +178,14 @@ function installIpc() {
     showPanel();
   });
   /**
-   * Extensions create-with-AI hands off to the panel: seed the skill prompt and policy first so the
-   * renderer can open a draft before the panel becomes visible.
+   * Extensions create- and edit-with-AI hand off to the panel: seed the skill prompt and policy
+   * first so the renderer can open a draft before the panel becomes visible.
    */
-  ipcMain.handle(SETTINGS_IPC.startExtensionSession, (event, value: unknown) => {
+  ipcMain.handle(SETTINGS_IPC.startExtensionSession, (event, kind: unknown, target: unknown) => {
     settings.assertSender(event);
-    const kind = parse(ExtensionSessionKindSchema, value);
+    const session = parseExtensionSession(kind, target);
     const window = panel;
     if (!window || window.isDestroyed()) throw new Error('The task panel is not available');
-    const session: ExtensionSession = { kind };
     window.webContents.send(AGENT_IPC.extensionSession, session);
     showPanel();
   });
