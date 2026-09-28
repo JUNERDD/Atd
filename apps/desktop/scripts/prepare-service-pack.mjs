@@ -216,7 +216,18 @@ const pnpm = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
 const deploy = spawnSync(
   pnpm,
   ['--filter', '@ai/agent-service', 'deploy', '--prod', '--legacy', packDir],
-  { cwd: repoRoot, stdio: 'inherit', env: { ...process.env, npm_config_lockfile: 'false' } },
+  {
+    cwd: repoRoot,
+    stdio: 'inherit',
+    env: {
+      ...process.env,
+      npm_config_lockfile: 'false',
+      // The deploy installs only the service's production dependencies, so workspace patches
+      // for other projects' packages (such as the desktop build's @electron/osx-sign) are
+      // legitimately unused here; pnpm 12 reads this setting only with the pnpm_config_ prefix.
+      pnpm_config_allow_unused_patches: 'true',
+    },
+  },
 );
 // Restore before any exit below so a failed deploy cannot leave it either.
 await restoreSnapshot(workspaceState, workspaceStateBefore);
