@@ -144,7 +144,11 @@ export function MemorySettings() {
             onBack={closeEditor}
             backLabel={t('memory.edit.back')}
           />
-          <ScrollArea className="editor-fields" viewportClassName="overlay-footer-fade" gutter>
+          <ScrollArea
+            className="editor-fields"
+            viewportClassName="overlay-footer-fade"
+            gutter="stable"
+          >
             <div className="settings-editor-inner">
               <div className="settings-field">
                 <Label htmlFor="memory-content">{t('memory.edit.fieldLabel')}</Label>
@@ -214,7 +218,7 @@ export function MemorySettings() {
           <ScrollArea
             className="mt-4 flex-1"
             viewportClassName="[&>div]:flex! [&>div]:flex-col [&>div]:min-h-full"
-            gutter
+            gutter="stable"
             scrollShadow
           >
             <div className="memory-list">

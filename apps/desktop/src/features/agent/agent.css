@@ -107,6 +107,14 @@
 .panel-dialog-actions {
   flex-shrink: 0;
 }
+/*
+ * A dialog body that scrolls reaches 12px into the dialog's 24px padding, exactly the width of the
+ * stable bar lane (ScrollArea `gutter="stable"`), so its content keeps the header and footer edge
+ * and the bar floats in the padding instead of beside a narrower column.
+ */
+.panel-dialog-scroll {
+  margin-right: -12px;
+}
 .panel-dialog-body {
   display: flex;
   flex-direction: column;

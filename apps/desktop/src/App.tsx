@@ -151,6 +151,7 @@ export function App() {
               <ScrollArea
                 className="panel-content"
                 viewportClassName="overlay-footer-fade"
+                gutter="none"
                 viewportRef={reserveRef}
               >
                 <section className="panel-content-body welcome">
@@ -209,7 +210,11 @@ export function App() {
                   )}
                 </div>
               ) : (
-                <ScrollArea className="panel-content" viewportClassName="overlay-footer-fade">
+                <ScrollArea
+                  className="panel-content"
+                  viewportClassName="overlay-footer-fade"
+                  gutter="none"
+                >
                   <section className="panel-content-body">
                     <p className="text-sm text-muted-foreground">
                       {t('header.loadingConversation')}

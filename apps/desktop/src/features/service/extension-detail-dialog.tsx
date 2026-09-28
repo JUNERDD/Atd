@@ -69,7 +69,7 @@ export function ExtensionDetailDialog({
             {description}
           </DialogDescription>
         </DialogHeader>
-        <ScrollArea className="extension-detail-scroll">
+        <ScrollArea className="panel-dialog-scroll extension-detail-scroll" gutter="stable">
           {status ? (
             <output className="extension-detail-status" data-error={status.error}>
               {status.text}

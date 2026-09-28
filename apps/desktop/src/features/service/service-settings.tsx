@@ -183,7 +183,7 @@ export function ServiceSettings() {
           <ScrollArea
             className="flex-1"
             viewportClassName="[&>div]:flex! [&>div]:flex-col [&>div]:min-h-full"
-            gutter
+            gutter="stable"
             scrollShadow
           >
             <TabsContent value="skills" forceMount>
