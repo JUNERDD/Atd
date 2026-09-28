@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { Blocks, Brain, Command, Keyboard, Menu, Plug, Shield, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@ai/ui/components/button';
@@ -27,7 +27,7 @@ import { ProviderSettingsForm } from './provider-settings';
 import { ShortcutSettings } from './shortcut-settings';
 import { ServiceSettings } from '../service/service-settings';
 import { useSettingsSnapshot } from './use-settings';
-import { SettingsNavigationContext } from './settings-navigation';
+import { SettingsNavigationContext, SettingsSectionActiveContext } from './settings-navigation';
 import './settings.css';
 
 const sections = [
@@ -38,6 +38,7 @@ const sections = [
   { id: 'memory', labelKey: 'nav.memory', icon: Brain },
   { id: 'shortcuts', labelKey: 'nav.shortcuts', icon: Keyboard },
 ] as const;
+type SectionId = (typeof sections)[number]['id'];
 function subscribeLayout(listener: () => void) {
   const queries = [
     window.matchMedia('(min-width: 480px)'),
@@ -86,6 +87,8 @@ export function SettingsWindow() {
   useAppLanguage(snapshot?.language);
   function navigate(next: string) {
     if (recording || !sections.some((section) => section.id === next)) return;
+    // A command deep link belongs to the visit that opened it; returning shows the command list.
+    if (next !== tab) setCommandTarget(null);
     setTab(next);
     setDrawer(false);
     setVisited((current) => (current.includes(next) ? current : [...current, next]));
@@ -136,6 +139,17 @@ export function SettingsWindow() {
           </Button>
         ))}
       </nav>
+    );
+  }
+  /** Mounts a section on its first visit and keeps it mounted, so its data survives switching. */
+  function page(id: SectionId, content: ReactNode) {
+    if (!visited.includes(id)) return null;
+    return (
+      <SettingsSectionActiveContext value={tab === id}>
+        <div className="settings-page" hidden={tab !== id}>
+          {content}
+        </div>
+      </SettingsSectionActiveContext>
     );
   }
   if (loading) return <output className="settings-loading">{t('window.loading')}</output>;
@@ -205,38 +219,27 @@ export function SettingsWindow() {
               gutter="none"
             >
               <div className="settings-content-scroll">
-                <div className="settings-page" hidden={tab !== 'permissions'}>
-                  <PermissionSettings snapshot={snapshot} />
-                  <ShellAllowlistSettings snapshot={snapshot} />
-                </div>
-                {visited.includes('extensions') && (
-                  <div className="settings-page" hidden={tab !== 'extensions'}>
-                    <ServiceSettings />
-                  </div>
+                {page(
+                  'permissions',
+                  <>
+                    <PermissionSettings snapshot={snapshot} />
+                    <ShellAllowlistSettings snapshot={snapshot} />
+                  </>,
                 )}
-                {visited.includes('providers') && (
-                  <div className="settings-page" hidden={tab !== 'providers'}>
-                    <ProviderSettingsForm snapshot={snapshot} />
-                  </div>
+                {page('extensions', <ServiceSettings />)}
+                {page('providers', <ProviderSettingsForm snapshot={snapshot} />)}
+                {page(
+                  'commands',
+                  <CommandSettings
+                    settings={snapshot}
+                    activeCommand={commandTarget}
+                    onConsumeActiveCommand={() => setCommandTarget(null)}
+                  />,
                 )}
-                {visited.includes('commands') && (
-                  <div className="settings-page" hidden={tab !== 'commands'}>
-                    <CommandSettings
-                      settings={snapshot}
-                      activeCommand={commandTarget}
-                      onConsumeActiveCommand={() => setCommandTarget(null)}
-                    />
-                  </div>
-                )}
-                {visited.includes('memory') && (
-                  <div className="settings-page" hidden={tab !== 'memory'}>
-                    <MemorySettings />
-                  </div>
-                )}
-                {visited.includes('shortcuts') && (
-                  <div className="settings-page" hidden={tab !== 'shortcuts'}>
-                    <ShortcutSettings snapshot={snapshot} onRecordingChange={setRecording} />
-                  </div>
+                {page('memory', <MemorySettings />)}
+                {page(
+                  'shortcuts',
+                  <ShortcutSettings snapshot={snapshot} onRecordingChange={setRecording} />,
                 )}
               </div>
             </ScrollArea>

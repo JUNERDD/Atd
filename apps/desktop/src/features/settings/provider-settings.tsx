@@ -22,6 +22,7 @@ import { ProviderCatalog } from '../providers/provider-catalog';
 import { ProviderForm } from '../providers/provider-form';
 import { showErrorToast, showToast } from '../../components/toast-store';
 import { SettingsHeading } from './settings-heading';
+import { useSettingsSectionExit } from './settings-navigation';
 import '../providers/providers.css';
 
 export function ProviderSettingsForm({ snapshot }: { snapshot: SettingsSnapshot | null }) {
@@ -32,6 +33,10 @@ export function ProviderSettingsForm({ snapshot }: { snapshot: SettingsSnapshot 
     'overview' | 'catalog' | { provider: ProviderCatalogEntry; connectionId: string | null }
   >('overview');
   const search = useCompositionQuery();
+  useSettingsSectionExit(() => {
+    setView('overview');
+    search.change('');
+  });
   const [pending, setPending] = useState(false);
   const [retryable, setRetryable] = useState(false);
   const [disconnecting, setDisconnecting] = useState<Connection | null>(null);

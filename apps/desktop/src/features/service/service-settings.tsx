@@ -6,6 +6,7 @@ import { ScrollArea } from '@ai/ui/components/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@ai/ui/components/tabs';
 import { showToast } from '../../components/toast-store';
 import { SettingsHeading } from '../settings/settings-heading';
+import { useSettingsSectionExit } from '../settings/settings-navigation';
 import { ExtensionAddButton, type ExtensionTab } from './extension-add-button';
 import { AgentPage } from './extension-agent-page';
 import { ExtensionAgentsGroup } from './extension-agents';
@@ -31,6 +32,11 @@ export function ServiceSettings() {
   const query = search.query;
   const [tab, setTab] = useState<ExtensionTab>('skills');
   const [page, setPage] = useState<ExtensionPageRoute | null>(null);
+  useSettingsSectionExit(() => {
+    setPage(null);
+    setTab('skills');
+    search.change('');
+  });
   const { status } = useServiceStatus();
   const { skills, loading: skillsLoading, refresh: refreshSkills, setEnabled } = useServiceSkills();
   const {
