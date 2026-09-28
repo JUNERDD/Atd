@@ -4,24 +4,24 @@ import { useTranslation } from 'react-i18next';
 import { DropdownMenuItem } from '@ai/ui/components/dropdown-menu';
 import { HighlightedText } from '@ai/ui/components/highlighted-text';
 import { ItemContent, ItemDescription, ItemMedia, ItemTitle } from '@ai/ui/components/item';
-import { matchFields } from '@ai/ui/lib/fuzzy-match';
 import { showToast } from '../../components/toast-store';
 import { ExtensionGroup } from './extension-group';
 import { ExtensionRow, ExtensionRowActions } from './extension-row';
-import { skillSourceLabelKey, type ExtensionSkillRow } from './extension-rows';
 import { RestoreBuiltinDialog, SkillBuiltinStatus } from './extension-skill-builtin';
+import type { SkillMatch } from './use-extension-matches';
 
 /**
- * Skills catalog. Entries come from the service list, including ~/.agents/skills. The search
- * matches and marks the name and the description line as shown, with the translated source.
+ * Skills catalog. Entries come from the service list, including ~/.agents/skills, already
+ * filtered by the search (`useExtensionMatches`), which marks the name and the description line.
  * A built-in skill whose copy differs from the shipped one shows its state next to the name and
  * offers a restore in its More menu, beside the details and a local skill's update; the backup
  * path of the last restore stays above the list, since a toast only carries one short sentence.
  * A row click and More › View details both open the skill's details page (`onOpen`).
  */
 export function ExtensionSkillsGroup({
-  rows,
-  query,
+  items,
+  showTitle,
+  reserveMenu,
   loading,
   empty,
   connected,
@@ -31,8 +31,11 @@ export function ExtensionSkillsGroup({
   onUpdate,
   onRestore,
 }: {
-  rows: ExtensionSkillRow[];
-  query: string;
+  items: SkillMatch[];
+  /** Search results list every catalog at once, so each group names itself. */
+  showTitle: boolean;
+  /** Keeps More's column when rows listed beside this group show it, as search results do. */
+  reserveMenu: boolean;
   loading: boolean;
   empty: string;
   connected: boolean;
@@ -63,18 +66,13 @@ export function ExtensionSkillsGroup({
       });
     });
   }
-  const shown = rows.flatMap((row) => {
-    const sourceKey = row.system ? 'extensions.sourceSystem' : skillSourceLabelKey(row.sourceKind);
-    const description = [row.description, sourceKey ? t(sourceKey) : '', row.revision]
-      .filter(Boolean)
-      .join(' · ');
-    const match = matchFields(query, { name: row.name, description });
-    const showUpdate = connected && row.sourceKind === 'local';
-    const showRestore = row.builtin !== null && row.builtin.status !== 'current';
-    return match || !query.trim() ? [{ row, description, match, showUpdate, showRestore }] : [];
-  });
+  const shown = items.map((item) => ({
+    ...item,
+    showUpdate: connected && item.row.sourceKind === 'local',
+    showRestore: item.row.builtin !== null && item.row.builtin.status !== 'current',
+  }));
   // Rows without More keep its column while another row shows it, so the switches line up.
-  const anyMenu = shown.some((item) => item.showUpdate || item.showRestore);
+  const anyMenu = reserveMenu || shown.some((item) => item.showUpdate || item.showRestore);
   return (
     <>
       <ExtensionGroup
@@ -82,7 +80,7 @@ export function ExtensionSkillsGroup({
         empty={empty}
         loading={loading}
         hasRows={shown.length > 0}
-        showTitle={false}
+        showTitle={showTitle}
         emptyIcon={<BookOpen />}
         status={
           backup ? (

@@ -5,23 +5,24 @@ import type { SubagentPermissions } from '@ai/agent-contracts';
 import { DropdownMenuItem } from '@ai/ui/components/dropdown-menu';
 import { HighlightedText } from '@ai/ui/components/highlighted-text';
 import { ItemContent, ItemDescription, ItemMedia, ItemTitle } from '@ai/ui/components/item';
-import { matchFields } from '@ai/ui/lib/fuzzy-match';
 import { AgentPermissionsDialog } from './extension-agent-permissions';
 import { ExtensionGroup } from './extension-group';
 import { ExtensionRow, ExtensionRowActions } from './extension-row';
 import type { ExtensionAgentRow } from './extension-rows';
+import type { AgentMatch } from './use-extension-matches';
 
 /**
  * Subagent catalog: the service's system agents, then the markdown specialists (`~/.atd/agents`).
  * Rows share the skill row anatomy (icon ring, name, a description line naming system sources and
- * custom permissions, the enable switch and More with Permissions…); the search matches and marks
- * the name and that line. A row click and More › View details open the agent's details page, and
+ * custom permissions, the enable switch and More with Permissions…); `items` are the rows the
+ * search kept, with the name and that line marked. A row click and More › View details open the agent's details page, and
  * adding one opens the add page from the tab row. Turning an agent off and permission changes
  * apply from the next run.
  */
 export function ExtensionAgentsGroup({
   rows,
-  query,
+  items,
+  showTitle,
   loading,
   empty,
   connected,
@@ -30,8 +31,11 @@ export function ExtensionAgentsGroup({
   onEnabled,
   onPermissions,
 }: {
+  /** Every agent, so the permissions dialog keeps its row when a save changes what matches. */
   rows: ExtensionAgentRow[];
-  query: string;
+  items: AgentMatch[];
+  /** Search results list every catalog at once, so each group names itself. */
+  showTitle: boolean;
   loading: boolean;
   empty: string;
   connected: boolean;
@@ -48,17 +52,6 @@ export function ExtensionAgentsGroup({
   const permissionsRow = permissions
     ? rows.find((row) => row.name === permissions.name)
     : undefined;
-  const shown = rows.flatMap((row) => {
-    const description = [
-      row.description,
-      row.system ? t('extensions.sourceSystem') : '',
-      row.customized ? t('extensions.customPermissions') : '',
-    ]
-      .filter(Boolean)
-      .join(' · ');
-    const match = matchFields(query, { name: row.name, description });
-    return match || !query.trim() ? [{ row, description, match }] : [];
-  });
 
   return (
     <>
@@ -66,11 +59,11 @@ export function ExtensionAgentsGroup({
         title={t('extensions.tabSubagents')}
         empty={empty}
         loading={loading}
-        hasRows={shown.length > 0}
-        showTitle={false}
+        hasRows={items.length > 0}
+        showTitle={showTitle}
         emptyIcon={<Bot />}
       >
-        {shown.map(({ row, description, match }) => (
+        {items.map(({ row, description, match }) => (
           <ExtensionRow key={row.name} name={row.name} onDetails={() => onOpen(row.name)}>
             <ItemMedia variant="icon">
               <Bot />
