@@ -1,3 +1,4 @@
+import { join } from 'node:path';
 import {
   app,
   BrowserWindow,
@@ -8,6 +9,7 @@ import {
   session,
 } from 'electron';
 import type { IpcMainInvokeEvent } from 'electron';
+import log from 'electron-log/main';
 import { Type } from 'typebox';
 import { AgentService } from './agent/service';
 import {
@@ -28,13 +30,27 @@ import { SettingsService } from './settings-service';
 import { isWindowSender, loadWindowContent } from './window-content';
 import { PanelPlacement } from './panel-placement';
 import { createPanelWindow } from './panel-window';
+import { installQuitGuard } from './quit-guard';
 
 app.setName('AI');
+// After setName, which names the log folder (~/Library/Logs/AI/main.log on macOS): main-process
+// console output and uncaught errors reach a file that packaged builds keep. The file follows
+// Electron's `logs` path, which the test profile below redirects; electron-log's default library
+// folder would not.
+log.transports.file.resolvePathFn = (variables) =>
+  join(
+    variables.electronDefaultDir ?? variables.libraryDefaultDir,
+    variables.fileName ?? 'main.log',
+  );
+log.errorHandler.startCatching();
+Object.assign(console, log.functions);
 nativeTheme.themeSource = 'dark';
 
 // Explicit profiles isolate both development and packaged smoke checks from real task data.
 if (process.env.AI_TEST_USER_DATA) {
   app.setPath('userData', process.env.AI_TEST_USER_DATA);
+  // `logs` holds main.log and does not follow userData.
+  app.setPath('logs', join(process.env.AI_TEST_USER_DATA, 'logs'));
 }
 
 /** The command a settings-window editor hands to the panel; `null` starts a new command. */
@@ -45,9 +61,22 @@ const placement = new PanelPlacement(() => panel);
 let settings: SettingsService;
 let agent: AgentService | undefined;
 let serviceManager: ServiceManager | undefined;
-let quitting = false;
 let choosingFiles = false;
 let changingPinned = false;
+const quitGuard = installQuitGuard({
+  service: () => (agent ? serviceManager : undefined),
+  closeAgent: async () => {
+    await agent?.close();
+  },
+  onCancelled: () => {
+    if (!panel) void createPanel();
+  },
+  // The quit prompt is a sheet on the panel, so the panel shows first.
+  promptParent: () => {
+    showPanel();
+    return panel && !panel.isDestroyed() && panel.isVisible() ? panel : null;
+  },
+});
 
 function showPanel() {
   if (!panel || panel.isDestroyed() || choosingFiles) return;
@@ -168,7 +197,7 @@ async function createPanel() {
   // again. Quitting releases it normally. Every other platform keeps its previous close behavior.
   if (process.platform === 'darwin') {
     window.on('close', (event) => {
-      if (quitting) return;
+      if (quitGuard.isQuitting()) return;
       event.preventDefault();
       hidePanel();
     });
@@ -245,7 +274,14 @@ if (!app.requestSingleInstanceLock()) {
       installIpc();
       installFileSearch(() => panel, serviceManager.connection);
       const manager = serviceManager;
-      installAppMenu(showPanel, hidePanel, settings, () => manager.openInBrowser());
+      installAppMenu({
+        showPanel,
+        hidePanel,
+        settings,
+        openInBrowser: () => manager.openInBrowser(),
+        restartService: () => manager.restart(),
+        showServiceLogs: () => manager.revealLogs(),
+      });
       const starting = serviceManager.autostart();
       placement.install();
       await createPanel();
@@ -263,17 +299,3 @@ if (!app.requestSingleInstanceLock()) {
 
 app.on('will-quit', () => globalShortcut.unregisterAll());
 app.on('window-all-closed', () => app.quit());
-
-app.on('before-quit', (event) => {
-  if (quitting || !agent) return;
-  event.preventDefault();
-  quitting = true;
-  void (async () => {
-    try {
-      await serviceManager?.shutdown();
-      await agent?.close();
-    } finally {
-      app.quit();
-    }
-  })();
-});
