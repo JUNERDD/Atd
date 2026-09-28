@@ -24,6 +24,7 @@ export function McpEditor({
   initial,
   takenIds,
   badge,
+  backLabel,
   connected,
   busy,
   before,
@@ -37,6 +38,7 @@ export function McpEditor({
   /** Ids the draft may not take: the catalog on the add page, nothing for an existing server. */
   takenIds: readonly string[];
   badge?: ExtensionPageBadge | null;
+  backLabel: string;
   connected: boolean;
   busy: boolean;
   before?: ReactNode;
@@ -97,7 +99,7 @@ export function McpEditor({
       description={
         adding ? t('extensions.mcpPage.addDescription') : t('extensions.mcpDetailDescription')
       }
-      backLabel={t('extensions.mcpPage.back')}
+      backLabel={backLabel}
       onBack={onBack}
       ai={{
         label: adding ? t('extensions.createWithAi') : t('extensions.editWithAi'),

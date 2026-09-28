@@ -15,8 +15,8 @@ export interface ExtensionPageBadge {
 const BADGE_VARIANT = { on: 'secondary', off: 'outline', error: 'destructive' } as const;
 
 /**
- * The sub-page every skill, subagent and MCP server opens into, for adding one or for one item's
- * details, laid out like the command editor: a heading with Back, a scrolling body, and a footer
+ * The sub-page every plugin, skill, subagent and MCP server opens into, for adding or installing
+ * one or for one item's details, laid out like the command editor: a heading with Back, a scrolling body, and a footer
  * floating over it with the AI hand-off at its leading edge and the page's own actions trailing.
  * The page replaces the whole Extensions overview while it is open, so the list's search and tab
  * stay as they were when Back returns to it.
@@ -25,10 +25,12 @@ export function ExtensionPage({
   label,
   title,
   badge,
+  titleExtra,
   description,
   backLabel,
   onBack,
   ai,
+  note,
   actions,
   children,
 }: {
@@ -36,22 +38,33 @@ export function ExtensionPage({
   label: string;
   title: string;
   badge?: ExtensionPageBadge | null;
+  /** Controls after the title, such as a plugin's version and its switch. */
+  titleExtra?: ReactNode;
   description?: string;
   backLabel: string;
   onBack: () => void;
   /** Create or Edit with AI: hands the item to a new panel session seeded with its skill. */
   ai?: { label: string; disabled: boolean; onClick: () => void } | null;
+  /** A short note at the footer's leading edge, where the AI hand-off would sit. */
+  note?: string;
   /** Trailing footer buttons, such as Cancel and Save. */
   actions?: ReactNode;
   children: ReactNode;
 }) {
   const footerRef = useOverlayFooter<HTMLElement>();
-  const hasFooter = Boolean(ai || actions);
+  const hasFooter = Boolean(ai || note || actions);
   return (
     <section className="settings-editor extension-page" aria-label={label}>
       <SettingsHeading
         title={title}
-        titleHint={badge ? <Badge variant={BADGE_VARIANT[badge.tone]}>{badge.label}</Badge> : null}
+        titleHint={
+          badge || titleExtra ? (
+            <>
+              {badge ? <Badge variant={BADGE_VARIANT[badge.tone]}>{badge.label}</Badge> : null}
+              {titleExtra}
+            </>
+          ) : null
+        }
         description={description}
         onBack={onBack}
         backLabel={backLabel}
@@ -70,6 +83,8 @@ export function ExtensionPage({
               <Sparkles data-icon="inline-start" />
               {ai.label}
             </Button>
+          ) : note ? (
+            <p className="settings-field-note">{note}</p>
           ) : null}
           {actions ? <div>{actions}</div> : null}
         </footer>

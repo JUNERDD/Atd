@@ -1,3 +1,4 @@
+import { isDeepStrictEqual } from 'node:util';
 import { clipboard, globalShortcut, systemPreferences } from 'electron';
 import type { AgentClientOptions } from '@ai/agent-client';
 import SelectionHook from 'selection-hook';
@@ -17,8 +18,36 @@ import { notConnected } from './service-manage';
 import { AgentStore } from './store';
 import { errorMessage } from './validation';
 
+/**
+ * Plugin commands are read-only apart from `enabled`, the rule the service also enforces; a new
+ * command never claims a plugin, and a saved one keeps the plugin the service reported.
+ */
+function assertPluginSave(
+  command: CommandDefinition,
+  old: CommandDefinition | undefined,
+  expectedRevision: number,
+) {
+  if (expectedRevision === 0) {
+    if (command.pluginId) throw new Error('A new command cannot belong to a plugin.');
+    return;
+  }
+  if (command.pluginId !== old?.pluginId)
+    throw new Error('A command keeps the plugin it came from.');
+  if (!old?.pluginId) return;
+  // JSON drops keys holding `undefined`, so an absent optional field matches an unset one.
+  const fields = (value: CommandDefinition): unknown =>
+    JSON.parse(JSON.stringify({ ...value, enabled: false, revision: 0 }));
+  if (!isDeepStrictEqual(fields(command), fields(old)))
+    throw new Error('Commands provided by a plugin are read-only. Duplicate one to customize it.');
+}
+
 export class CommandService {
   readonly errors: Record<string, string> = {};
+  /**
+   * Plugin commands from the last service refresh. The service owns them, so they live only in
+   * memory: the saved cache holds the user's own commands, which the desktop migration imports.
+   */
+  private plugins: CommandDefinition[] = [];
   private selection: SelectionHook | null = null;
   private captured: { text: string; capturedAt: string } | null = null;
   private trustRequested = false;
@@ -30,12 +59,12 @@ export class CommandService {
     private options: () => AgentClientOptions | null,
   ) {}
 
-  list() {
-    return this.store.data.commands;
+  list(): CommandDefinition[] {
+    return [...this.store.data.commands, ...this.plugins];
   }
 
   find(id: string) {
-    const command = this.store.data.commands.find((command) => command.id === id);
+    const command = this.list().find((command) => command.id === id);
     if (!command)
       throw new Error('This command was deleted. Use its saved version from task history.');
     return command;
@@ -110,7 +139,7 @@ export class CommandService {
   }
 
   initialize() {
-    for (const command of this.store.data.commands) {
+    for (const command of this.list()) {
       if (!command.enabled || !command.shortcut) continue;
       try {
         this.checkShortcut(command);
@@ -128,14 +157,15 @@ export class CommandService {
     const commands = await fetchCommands(options);
     this.unregisterAll();
     await this.store.change((data) => {
-      data.commands = commands;
+      data.commands = commands.filter((command) => !command.pluginId);
     });
+    this.plugins = commands.filter((command) => command.pluginId);
     this.initialize();
     this.changed();
   }
 
   private unregisterAll() {
-    for (const command of this.store.data.commands) {
+    for (const command of this.list()) {
       if (command.enabled && command.shortcut && !this.errors[command.id])
         globalShortcut.unregister(command.shortcut);
     }
@@ -149,7 +179,7 @@ export class CommandService {
       commandShortcutHolder(
         { id: command.id, shortcut },
         this.shortcuts(),
-        this.store.data.commands,
+        this.list(),
         process.platform,
       )
     )
@@ -158,7 +188,7 @@ export class CommandService {
 
   assertSettings(shortcuts: ShortcutBindings) {
     for (const value of Object.values(shortcuts))
-      if (commandHoldingShortcut(value, this.store.data.commands, process.platform))
+      if (commandHoldingShortcut(value, this.list(), process.platform))
         throw new Error('This shortcut is assigned to a command.');
   }
 
@@ -184,11 +214,13 @@ export class CommandService {
   async save(command: CommandDefinition, expectedRevision: number) {
     const options = this.options();
     if (!options) throw notConnected();
-    validateCommand(command);
+    const old = this.list().find((item) => item.id === command.id);
+    assertPluginSave(command, old, expectedRevision);
+    // A plugin command's content is the service's; saving it only changes `enabled`.
+    if (!old?.pluginId) validateCommand(command);
     if (command.shortcut)
       command.shortcut = parseAccelerator(command.shortcut, true, process.platform);
     if (command.enabled) this.checkShortcut(command);
-    const old = this.store.data.commands.find((item) => item.id === command.id);
     const registered = old?.enabled && old.shortcut && !this.errors[old.id] ? old.shortcut : '';
     const next = command.enabled ? command.shortcut : '';
     const same = Boolean(
@@ -201,11 +233,14 @@ export class CommandService {
     let saved: CommandDefinition;
     try {
       saved = await saveRemote(options, command, expectedRevision);
-      await this.store.change((data) => {
-        const index = data.commands.findIndex((item) => item.id === command.id);
-        if (index < 0) data.commands.push(saved);
-        else data.commands[index] = saved;
-      });
+      if (old?.pluginId)
+        this.plugins = this.plugins.map((item) => (item.id === saved.id ? saved : item));
+      else
+        await this.store.change((data) => {
+          const index = data.commands.findIndex((item) => item.id === command.id);
+          if (index < 0) data.commands.push(saved);
+          else data.commands[index] = saved;
+        });
     } catch (error) {
       if (next && !same) globalShortcut.unregister(next);
       throw error;
@@ -220,6 +255,10 @@ export class CommandService {
     const options = this.options();
     if (!options) throw notConnected();
     const command = this.find(id);
+    if (command.pluginId)
+      throw new Error(
+        'Commands provided by a plugin cannot be deleted. Turn the command off instead.',
+      );
     await deleteRemote(options, id, revision);
     await this.store.change((data) => {
       data.commands = data.commands.filter((item) => item.id !== id);

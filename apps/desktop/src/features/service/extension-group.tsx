@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { Empty, EmptyContent, EmptyHeader, EmptyMedia, EmptyTitle } from '@ai/ui/components/empty';
 import { ItemGroup } from '@ai/ui/components/item';
 
-/** Shared Skills/Roles/MCP group shell with loading, empty, and row slots. */
+/** Shared plugin, skill, subagent and MCP group shell with loading, empty, and row or card slots. */
 export function ExtensionGroup({
   title,
   empty,
@@ -13,6 +13,7 @@ export function ExtensionGroup({
   children,
   hasRows,
   showTitle = true,
+  cards = false,
 }: {
   title: string;
   empty: string;
@@ -25,6 +26,8 @@ export function ExtensionGroup({
   children?: ReactNode;
   /** Tab pages supply the visible heading; the section name stays for accessibility. */
   showTitle?: boolean;
+  /** Children are cards (`PluginCard`) in a grid that fits as many columns as the width allows. */
+  cards?: boolean;
 }) {
   return (
     <section className="settings-extension-group" aria-label={title}>
@@ -32,7 +35,11 @@ export function ExtensionGroup({
       {loading && !hasRows ? null : hasRows ? (
         <>
           {status}
-          <ItemGroup>{children}</ItemGroup>
+          {cards ? (
+            <ul className="plugin-card-grid">{children}</ul>
+          ) : (
+            <ItemGroup>{children}</ItemGroup>
+          )}
         </>
       ) : (
         <div className="settings-extension-empty">

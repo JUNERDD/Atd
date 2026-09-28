@@ -12,34 +12,39 @@ import type { ExtensionAgentRow } from './extension-rows';
 import type { AgentMatch } from './use-extension-matches';
 
 /**
- * Subagent catalog: the service's system agents, then the markdown specialists (`~/.atd/agents`).
- * Rows share the skill row anatomy (icon ring, name, a description line naming system sources and
- * custom permissions, the enable switch and More with Permissions…); `items` are the rows the
- * search kept, with the name and that line marked. A row click and More › View details open the agent's details page, and
- * adding one opens the add page from the tab row. Turning an agent off and permission changes
- * apply from the next run.
+ * One plugin's subagents: the service's system agents (Core), the markdown specialists
+ * (`~/.atd/agents`, Personal) or an installed plugin's agents. Rows share the skill row anatomy
+ * (icon ring, name, a description line naming system sources and custom permissions, the enable
+ * switch and More with Permissions…, which plugin agents keep as well); `items` are the rows shown,
+ * with search marks. A row click and More › View details open the agent's details page. Turning
+ * an agent off and permission changes apply from the next run.
  */
 export function ExtensionAgentsGroup({
+  title,
+  showTitle = true,
   rows,
   items,
-  showTitle,
   loading,
   empty,
   connected,
   busy,
+  lockedReason,
   onOpen,
   onEnabled,
   onPermissions,
 }: {
+  title: string;
+  /** False when a tab names the kind; the section keeps its name for accessibility. */
+  showTitle?: boolean;
   /** Every agent, so the permissions dialog keeps its row when a save changes what matches. */
-  rows: ExtensionAgentRow[];
+  rows: readonly ExtensionAgentRow[];
   items: AgentMatch[];
-  /** Search results list every catalog at once, so each group names itself. */
-  showTitle: boolean;
   loading: boolean;
   empty: string;
   connected: boolean;
   busy: boolean;
+  /** Why the switches are locked (their plugin is off); null when they are not. */
+  lockedReason: string | null;
   /** Opens one agent's details page. */
   onOpen: (name: string) => void;
   onEnabled: (name: string, enabled: boolean) => void;
@@ -56,11 +61,11 @@ export function ExtensionAgentsGroup({
   return (
     <>
       <ExtensionGroup
-        title={t('extensions.tabSubagents')}
+        title={title}
+        showTitle={showTitle}
         empty={empty}
         loading={loading}
         hasRows={items.length > 0}
-        showTitle={showTitle}
         emptyIcon={<Bot />}
       >
         {items.map(({ row, description, match }) => (
@@ -84,6 +89,7 @@ export function ExtensionAgentsGroup({
               disabled={!connected}
               onEnabledChange={(enabled) => onEnabled(row.name, enabled)}
               onDetails={() => onOpen(row.name)}
+              lockedReason={lockedReason}
               menu={
                 <DropdownMenuItem onSelect={() => setPermissions({ name: row.name, open: true })}>
                   <Shield />

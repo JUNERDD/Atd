@@ -1,11 +1,14 @@
 import { useTranslation } from 'react-i18next';
+import type { PluginSummary } from '@ai/agent-contracts';
 import { matchFields, type FieldsMatch } from '@ai/ui/lib/fuzzy-match';
+import type { ExtensionCommandRow } from './extension-commands';
 import {
   skillSourceLabelKey,
   type ExtensionAgentRow,
   type ExtensionMcpRow,
   type ExtensionSkillRow,
 } from './extension-rows';
+import { usePluginLabels } from './use-plugin-labels';
 import { useMcpStateLabel } from './use-mcp-state-label';
 
 /** One catalog row as listed: its description line and where the search marked it. */
@@ -18,6 +21,29 @@ export interface ExtensionMatch<Row, Field extends string> {
 export type SkillMatch = ExtensionMatch<ExtensionSkillRow, 'name' | 'description'>;
 export type AgentMatch = ExtensionMatch<ExtensionAgentRow, 'name' | 'description'>;
 export type McpMatch = ExtensionMatch<ExtensionMcpRow, 'serverId' | 'description'>;
+export type CommandMatch = ExtensionMatch<ExtensionCommandRow, 'name' | 'description'>;
+
+/** A plugin's contributions of each kind, as rows with their description lines. */
+export interface ExtensionItemMatches {
+  commands: CommandMatch[];
+  skills: SkillMatch[];
+  agents: AgentMatch[];
+  mcp: McpMatch[];
+}
+
+/** One search result group: a plugin and what of it matched. */
+export interface PluginMatches extends ExtensionItemMatches {
+  plugin: PluginSummary;
+  /** Where the search marked the plugin's own row; null when only its items matched. */
+  match: FieldsMatch<'name' | 'description'> | null;
+}
+
+export type ExtensionCatalogs = {
+  commands: readonly ExtensionCommandRow[];
+  skills: readonly ExtensionSkillRow[];
+  agents: readonly ExtensionAgentRow[];
+  mcp: readonly ExtensionMcpRow[];
+};
 
 function filterRows<Row, Field extends string>(
   rows: readonly Row[],
@@ -33,23 +59,32 @@ function filterRows<Row, Field extends string>(
 }
 
 /**
- * Builds the description line each Skills/Subagents/MCP row shows and filters all three catalogs
- * by one query, which matches and marks the name (or server id) and that line. An empty query
- * keeps every row. The overview counts these to tell when a search matched nothing anywhere.
+ * Builds the description line each command, skill, subagent and MCP row shows and filters the
+ * catalogs by one query, which matches and marks the name (or server id) and that line. An empty
+ * query keeps every row, as a plugin page lists them.
  */
 export function useExtensionMatches(
   query: string,
-  catalogs: { skills: ExtensionSkillRow[]; agents: ExtensionAgentRow[]; mcp: ExtensionMcpRow[] },
-): { skills: SkillMatch[]; agents: AgentMatch[]; mcp: McpMatch[] } {
+  catalogs: ExtensionCatalogs,
+): ExtensionItemMatches {
   const { t } = useTranslation('settings');
   const stateLabel = useMcpStateLabel();
   const line = (parts: (string | null | undefined)[]) => parts.filter(Boolean).join(' · ');
   return {
+    commands: filterRows(catalogs.commands, query, (row) => ({
+      description: row.description,
+      fields: { name: row.name, description: row.description },
+    })),
     skills: filterRows(catalogs.skills, query, (row) => {
       const sourceKey = row.system
         ? 'extensions.sourceSystem'
         : skillSourceLabelKey(row.sourceKind);
-      const description = line([row.description, sourceKey ? t(sourceKey) : '', row.revision]);
+      // A plugin's skill is listed under its plugin, whose row already names the source and
+      // version; the rendered revision id would only add noise.
+      const description =
+        row.sourceKind === 'plugin'
+          ? row.description
+          : line([row.description, sourceKey ? t(sourceKey) : '', row.revision]);
       return { description, fields: { name: row.name, description } };
     }),
     agents: filterRows(catalogs.agents, query, (row) => {
@@ -65,4 +100,35 @@ export function useExtensionMatches(
       return { description, fields: { serverId: row.serverId, description } };
     }),
   };
+}
+
+/**
+ * Search over the whole Extensions section: each plugin's name and description, and every item it
+ * contributes, grouped by the plugin the service attributes the item to. A plugin shows when it or
+ * any of its items matched, in list order.
+ */
+export function usePluginMatches(
+  query: string,
+  plugins: readonly PluginSummary[],
+  catalogs: ExtensionCatalogs,
+): PluginMatches[] {
+  const labels = usePluginLabels();
+  const items = useExtensionMatches(query, catalogs);
+  return plugins.flatMap((plugin) => {
+    const match = matchFields(query, {
+      name: labels.name(plugin),
+      description: labels.description(plugin),
+    });
+    const group: PluginMatches = {
+      plugin,
+      match,
+      commands: items.commands.filter((item) => item.row.pluginId === plugin.id),
+      skills: items.skills.filter((item) => item.row.pluginId === plugin.id),
+      agents: items.agents.filter((item) => item.row.pluginId === plugin.id),
+      mcp: items.mcp.filter((item) => item.row.pluginId === plugin.id),
+    };
+    const hits =
+      group.commands.length + group.skills.length + group.agents.length + group.mcp.length;
+    return match || hits ? [group] : [];
+  });
 }

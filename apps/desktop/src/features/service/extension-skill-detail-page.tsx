@@ -1,5 +1,7 @@
 import { Suspense, useEffect, useState } from 'react';
+import { Copy } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { Button } from '@ai/ui/components/button';
 import { messageOf } from '../../lib/errors';
 import { lazyWithPreload } from '../../lib/lazy-with-preload';
 import {
@@ -8,13 +10,9 @@ import {
   ExtensionDetailStatus,
   type DetailField,
 } from './extension-detail-fields';
+import { asSkillDetail, type ExtensionSkillDetail } from './extension-detail-rows';
 import { ExtensionPage } from './extension-page';
-import {
-  asSkillDetail,
-  skillSourceLabelKey,
-  type ExtensionSkillDetail,
-  type ExtensionSkillRow,
-} from './extension-rows';
+import { skillSourceLabelKey, type ExtensionSkillRow } from './extension-rows';
 import { SkillBuiltinStatus } from './extension-skill-builtin';
 
 // The file browser brings a tree, a diff renderer, and Markdown; the page starts loading them as
@@ -77,27 +75,34 @@ function useSkillDetail(name: string | null, revision: string): Loaded | null {
  * are outside that root, so the session could not change them and the button stays hidden.
  */
 function aiCanEdit(row: ExtensionSkillRow): boolean {
-  return row.sourceKind === 'atd';
+  return row.sourceKind === 'atd' && !row.readOnly;
 }
 
 /**
  * One skill's details page: its state and built-in status, where it comes from, how a run may
- * load it, and its folder's files. Update and Restore stay in the row's More menu.
+ * load it, and its folder's files. Restore stays in the row's More menu and updates belong to the
+ * plugin. A read-only skill (an installed or shared plugin's) offers Duplicate to Personal, whose
+ * copy can then be edited.
  */
 export function SkillDetailPage({
   name,
   rows,
+  pluginName,
   connected,
   busy,
   onBack,
   onStartAi,
+  onDuplicate,
 }: {
   name: string;
   rows: readonly ExtensionSkillRow[];
+  /** The contributing plugin, named in the source of an installed plugin's skill. */
+  pluginName: string;
   connected: boolean;
   busy: boolean;
   onBack: () => void;
   onStartAi: () => void;
+  onDuplicate: () => void;
 }) {
   const { t } = useTranslation('settings');
   const row = rows.find((item) => item.name === name) ?? null;
@@ -126,6 +131,7 @@ export function SkillDetailPage({
             // A package or repository says more than the label; a path repeats the location below.
             value: [
               sourceKey ? t(sourceKey) : '',
+              row.sourceKind === 'plugin' ? pluginName : '',
               row.sourceKind === 'npm' || row.sourceKind === 'git' ? detail.source : '',
             ]
               .filter(Boolean)
@@ -174,12 +180,20 @@ export function SkillDetailPage({
           : null
       }
       description={row ? row.description || t('extensions.detailNoDescription') : undefined}
-      backLabel={t('extensions.skillPage.back')}
+      backLabel={t('extensions.plugins.page.backToPlugin', { name: pluginName })}
       onBack={onBack}
       ai={
         row && aiCanEdit(row)
           ? { label: t('extensions.editWithAi'), disabled: busy || !connected, onClick: onStartAi }
           : null
+      }
+      actions={
+        row?.readOnly ? (
+          <Button type="button" disabled={busy || !connected} onClick={onDuplicate}>
+            <Copy data-icon="inline-start" />
+            {t('extensions.plugins.item.duplicate')}
+          </Button>
+        ) : null
       }
     >
       {status ? <ExtensionDetailStatus text={status.text} error={status.error} /> : null}

@@ -13,6 +13,11 @@ const StoreSchema = Type.Object(
     commands: Type.Array(CommandSchema),
     tasks: Type.Array(TaskSchema),
     artifacts: Type.Array(ArtifactSchema),
+    /**
+     * Unused by the app (the service persists the memory pause), but the service's one-time
+     * desktop migration still requires it in this file (`DesktopWorkspaceSchema`), so it stays
+     * until that reader accepts its absence.
+     */
     memoryPaused: Type.Boolean(),
     legacyImported: Type.Boolean(),
   },

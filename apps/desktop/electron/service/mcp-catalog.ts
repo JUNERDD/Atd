@@ -15,8 +15,26 @@ export type McpUpsertDraft = {
   auth: { type: 'none' } | { type: 'bearer'; tokenEnv: string } | { type: 'oauth' };
 };
 
-function loadServers(raw: unknown[]): McpServerConfig[] {
-  return raw.map((record) => parse(McpServerConfigSchema, record));
+/**
+ * The records Settings may rewrite: Personal servers only. `mcpConfigure` replaces the whole user
+ * catalog, so a server an installed plugin contributes must never be written back into it. Such a
+ * record is marked with its `pluginId`, and its id is qualified (`<plugin>:<server>`, see
+ * `McpServerIdSchema`), which user ids never are; either one keeps it out. The `pluginId` and
+ * `readOnly` markers are not record fields and are dropped before the record is checked.
+ */
+function loadUserServers(raw: unknown[]): McpServerConfig[] {
+  return raw.flatMap((record) => {
+    const marked = typeof record === 'object' && record !== null;
+    const pluginId = marked ? Reflect.get(record, 'pluginId') : undefined;
+    const fields = marked
+      ? Object.fromEntries(
+          Object.entries(record).filter(([key]) => key !== 'pluginId' && key !== 'readOnly'),
+        )
+      : record;
+    const server = parse(McpServerConfigSchema, fields);
+    const plugin = (pluginId !== undefined && pluginId !== 'user') || server.serverId.includes(':');
+    return plugin ? [] : [server];
+  });
 }
 
 function httpAuth(auth: McpUpsertDraft['auth'], previous: McpHttpAuth | undefined): McpHttpAuth {
@@ -122,13 +140,13 @@ async function writeServers(
   return mcpConfigure({ options }, { servers });
 }
 
-/** Loads every MCP catalog record, upserts one draft, and replaces the full set. */
+/** Loads the user's MCP records, upserts one draft, and replaces the user catalog. */
 export async function upsertMcpServer(
   options: AgentClientOptions,
   draft: McpUpsertDraft,
 ): Promise<{ servers: unknown[] }> {
   const { servers: raw } = await mcpRecords({ options });
-  const servers = loadServers(raw);
+  const servers = loadUserServers(raw);
   const existing = servers.find((server) => server.serverId === draft.serverId);
   const next = buildRecord(draft, existing);
   const merged = existing
@@ -137,14 +155,17 @@ export async function upsertMcpServer(
   return writeServers(options, merged);
 }
 
-/** Turns one server on or off and writes the full catalog; the record is otherwise kept. */
+/**
+ * Turns one Personal server on or off and writes the user catalog; the record is otherwise kept.
+ * A plugin's server is toggled through its plugin instead.
+ */
 export async function setMcpServerEnabled(
   options: AgentClientOptions,
   serverId: string,
   enabled: boolean,
 ): Promise<{ servers: unknown[] }> {
   const { servers: raw } = await mcpRecords({ options });
-  const servers = loadServers(raw);
+  const servers = loadUserServers(raw);
   const found = servers.some((server) => server.serverId === serverId);
   if (!found) throw new Error(`MCP server "${serverId}" was not found.`);
   const merged = servers.map((server) =>
@@ -153,13 +174,13 @@ export async function setMcpServerEnabled(
   return writeServers(options, merged);
 }
 
-/** Omits one server and writes the remaining catalog. Does not call revoke. */
+/** Omits one Personal server and writes the remaining user catalog. Does not call revoke. */
 export async function removeMcpServer(
   options: AgentClientOptions,
   serverId: string,
 ): Promise<{ servers: unknown[] }> {
   const { servers: raw } = await mcpRecords({ options });
-  const servers = loadServers(raw);
+  const servers = loadUserServers(raw);
   const merged = servers.filter((server) => server.serverId !== serverId);
   if (merged.length === servers.length) throw new Error(`MCP server "${serverId}" was not found.`);
   return writeServers(options, merged);

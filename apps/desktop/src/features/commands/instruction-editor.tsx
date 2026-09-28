@@ -1,6 +1,8 @@
 import { useCallback, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Settings2 } from 'lucide-react';
+import { EditorState } from '@codemirror/state';
+import { EditorView } from '@codemirror/view';
 import { Button } from '@ai/ui/components/button';
 import { Label } from '@ai/ui/components/label';
 import { contextVariables, variableDetails, type ContextVariable } from './command-variables';
@@ -20,11 +22,14 @@ export function InstructionEditor({
   command,
   onChange,
   onConfigureSource,
+  readOnly,
   tasks,
 }: {
   command: CommandDefinition;
   onChange: Dispatch<SetStateAction<CommandDefinition>>;
   onConfigureSource: (source: ContextVariable) => void;
+  /** Shows the instructions without accepting edits (a plugin command). */
+  readOnly: boolean;
   /** Snapshot tasks: `@` conversations and the titles of conversation chips. */
   tasks: readonly AgentTask[];
 }) {
@@ -50,12 +55,14 @@ export function InstructionEditor({
   // would drop its open list.
   const { input, parameters } = command;
   const variables = useMemo(
-    () =>
+    () => [
       instructionExtensions(
         { input, parameters },
         { variables: variableDetails({ parameters }, t), label: t('instruction.title') },
       ),
-    [input, parameters, t],
+      readOnly ? [EditorState.readOnly.of(true), EditorView.editable.of(false)] : [],
+    ],
+    [input, parameters, t, readOnly],
   );
   const changeInstructions = useCallback(
     (instructions: string) => onChange((current) => ({ ...current, instructions })),

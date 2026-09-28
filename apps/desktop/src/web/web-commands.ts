@@ -48,7 +48,10 @@ export class WebCommands implements CommandCatalog {
   }
 
   async save(command: CommandDefinition, expectedRevision: number) {
-    validateCommand(command);
+    // A plugin command's content is the service's (read-only apart from `enabled`, which the
+    // service enforces), so only the user's own commands pass the desktop instruction checks.
+    const old = this.commands.find((item) => item.id === command.id);
+    if (!old?.pluginId) validateCommand(command);
     if (command.shortcut)
       command.shortcut = parseAccelerator(command.shortcut, true, this.platform);
     const saved = await saveRemote(this.connection.options(), command, expectedRevision);

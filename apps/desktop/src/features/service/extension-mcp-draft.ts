@@ -1,4 +1,4 @@
-import type { ExtensionMcpConfig, ExtensionMcpTransport } from './extension-rows';
+import type { ExtensionMcpConfig, ExtensionMcpTransport } from './extension-detail-rows';
 
 export type McpTransport = ExtensionMcpTransport;
 export type McpAuthKind = 'none' | 'bearer' | 'oauth';

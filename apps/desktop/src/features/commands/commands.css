@@ -162,6 +162,28 @@
   flex-direction: column;
   min-height: 0;
 }
+/* The user's commands, then one titled group per plugin that contributes commands. */
+.command-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+.command-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.command-group h3 {
+  margin: 0;
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .command-management-row {
   flex-wrap: nowrap;
 }

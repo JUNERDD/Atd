@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BookOpen, RefreshCw, RotateCcw } from 'lucide-react';
+import { BookOpen, RotateCcw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { DropdownMenuItem } from '@ai/ui/components/dropdown-menu';
 import { HighlightedText } from '@ai/ui/components/highlighted-text';
@@ -11,38 +11,38 @@ import { RestoreBuiltinDialog, SkillBuiltinStatus } from './extension-skill-buil
 import type { SkillMatch } from './use-extension-matches';
 
 /**
- * Skills catalog. Entries come from the service list, including ~/.agents/skills, already
- * filtered by the search (`useExtensionMatches`), which marks the name and the description line.
- * A built-in skill whose copy differs from the shipped one shows its state next to the name and
- * offers a restore in its More menu, beside the details and a local skill's update; the backup
- * path of the last restore stays above the list, since a toast only carries one short sentence.
- * A row click and More › View details both open the skill's details page (`onOpen`).
+ * One plugin's skills, on its page or among search results (`useExtensionMatches` marks the name
+ * and the description line). A built-in skill whose copy differs from the shipped one shows its
+ * state next to the name and offers a restore in its More menu; the backup path of the last
+ * restore stays above the list, since a toast only carries one short sentence. Updates belong to
+ * the plugin. A row click and More › View details both open the skill's details page (`onOpen`).
  */
 export function ExtensionSkillsGroup({
+  title,
+  showTitle = true,
   items,
-  showTitle,
-  reserveMenu,
   loading,
   empty,
   connected,
-  busyName,
+  busyId,
+  lockedReason,
   onOpen,
   onEnabled,
-  onUpdate,
   onRestore,
 }: {
+  title: string;
+  /** False when a tab names the kind; the section keeps its name for accessibility. */
+  showTitle?: boolean;
   items: SkillMatch[];
-  /** Search results list every catalog at once, so each group names itself. */
-  showTitle: boolean;
-  /** Keeps More's column when rows listed beside this group show it, as search results do. */
-  reserveMenu: boolean;
   loading: boolean;
   empty: string;
   connected: boolean;
-  busyName: string | null;
+  /** The built-in id (`skill:<name>`) a restore is running for. */
+  busyId: string | null;
+  /** Why the switches are locked (their plugin is off); null when they are not. */
+  lockedReason: string | null;
   onOpen: (name: string) => void;
   onEnabled: (name: string, enabled: boolean) => void;
-  onUpdate: (name: string) => void;
   /** Resolves to the backup path (null when nothing was backed up), or undefined on failure. */
   onRestore: (id: string) => Promise<{ backupPath: string | null } | undefined>;
 }) {
@@ -66,21 +66,14 @@ export function ExtensionSkillsGroup({
       });
     });
   }
-  const shown = items.map((item) => ({
-    ...item,
-    showUpdate: connected && item.row.sourceKind === 'local',
-    showRestore: item.row.builtin !== null && item.row.builtin.status !== 'current',
-  }));
-  // Rows without More keep its column while another row shows it, so the switches line up.
-  const anyMenu = reserveMenu || shown.some((item) => item.showUpdate || item.showRestore);
   return (
     <>
       <ExtensionGroup
-        title={t('extensions.tabSkills')}
+        title={title}
+        showTitle={showTitle}
         empty={empty}
         loading={loading}
-        hasRows={shown.length > 0}
-        showTitle={showTitle}
+        hasRows={items.length > 0}
         emptyIcon={<BookOpen />}
         status={
           backup ? (
@@ -90,9 +83,10 @@ export function ExtensionSkillsGroup({
           ) : null
         }
       >
-        {shown.map(({ row, description, match, showUpdate, showRestore }) => {
-          const rowBusy = busyName === row.name;
+        {items.map(({ row, description, match }) => {
           const builtin = row.builtin;
+          const showRestore = builtin !== null && builtin.status !== 'current';
+          const rowBusy = builtin !== null && busyId === builtin.id;
           return (
             <ExtensionRow key={row.name} name={row.name} onDetails={() => onOpen(row.name)}>
               <ItemMedia variant="icon">
@@ -117,26 +111,16 @@ export function ExtensionSkillsGroup({
                 disabled={!connected}
                 onEnabledChange={(enabled) => onEnabled(row.name, enabled)}
                 onDetails={() => onOpen(row.name)}
-                reserveMenu={anyMenu}
+                lockedReason={lockedReason}
                 menu={
-                  showUpdate || showRestore ? (
-                    <>
-                      {showUpdate ? (
-                        <DropdownMenuItem disabled={rowBusy} onSelect={() => onUpdate(row.name)}>
-                          <RefreshCw />
-                          {t('extensions.updateSkill')}
-                        </DropdownMenuItem>
-                      ) : null}
-                      {builtin && showRestore ? (
-                        <DropdownMenuItem
-                          disabled={!connected || rowBusy}
-                          onSelect={() => setRestoring({ id: builtin.id, name: row.name })}
-                        >
-                          <RotateCcw />
-                          {t('extensions.restoreAction')}
-                        </DropdownMenuItem>
-                      ) : null}
-                    </>
+                  builtin && showRestore ? (
+                    <DropdownMenuItem
+                      disabled={!connected || rowBusy}
+                      onSelect={() => setRestoring({ id: builtin.id, name: row.name })}
+                    >
+                      <RotateCcw />
+                      {t('extensions.restoreAction')}
+                    </DropdownMenuItem>
                   ) : null
                 }
               />
