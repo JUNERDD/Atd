@@ -142,16 +142,31 @@ pnpm package
 
 Builds an unsigned app directory for the current platform. On macOS the output is `apps/desktop/release/mac-arm64/AI.app` (`mac` on Intel). The agent service, its production dependencies, and the web client are copied into the app resources, together with the official Node.js release pinned by `.node-version` for the build machine's platform and architecture. The first pack downloads that release into `tmp/node-dist/` and checks it against the release's `SHASUMS256.txt`. Each pack also writes a new build ID; a packaged app only reuses a running service with the same build ID and replaces any other. `pnpm --filter @ai/desktop start` runs the production build without packaging.
 
-Installer targets (dmg, nsis, AppImage) are configured in `apps/desktop/electron-builder.yml` but are not part of the packaging script. Signing and notarization are not set up.
+`pnpm build && pnpm --filter @ai/desktop package:installer` builds the configured installer for the current platform instead (dmg on macOS, nsis on Windows, AppImage on Linux) into `apps/desktop/release/`.
 
 GitHub Actions runs `pnpm check` on Linux, and the Electron smoke suite and app packaging on macOS. Windows and Linux builds have not been verified locally.
+
+### Releases
+
+To release, bump `version` in `apps/desktop/package.json` and push it to `main`. The [Release workflow](.github/workflows/release.yml) builds `AI-<version>-arm64.dmg` and `AI-<version>-x64.dmg` on Apple Silicon and Intel runners, then publishes them as the GitHub Release `v<version>` with generated notes. A version with a suffix such as `1.2.0-beta.1` is published as a prerelease. If the tag already exists, nothing is built. To retry a failed release, run the workflow manually from `main`.
+
+Signing uses these optional repository secrets:
+
+| Secret                                                     | Purpose                                                                   |
+| ---------------------------------------------------------- | ------------------------------------------------------------------------- |
+| `MAC_CERTIFICATE`, `MAC_CERTIFICATE_PASSWORD`              | Base64 of a Developer ID Application `.p12` and its password, for signing |
+| `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID` | Notarization, which also needs the certificate                            |
+
+Without a certificate, the dmg is ad-hoc signed and not notarized. The first launch is then blocked by macOS until the user clicks **Open Anyway** in System Settings → Privacy & Security.
+
+Signed releases also publish the update feed: one `AI-<version>-<arch>-mac.zip` and its blockmap per architecture, and a `latest-mac.yml` merged from both runners. Signed macOS installs check GitHub Releases shortly after launch and every 4 hours, download a new version in the background, and install it at the next quit; **Check for Updates…** and **Restart to Update** are in the menu. Ad-hoc signed releases publish only dmgs, and builds without a Developer ID signature never check for updates, because Squirrel.Mac can only install an update signed by the same team.
 
 ## Data and Security
 
 - **Process isolation**: the renderer runs with `contextIsolation` and `sandbox`, and without `nodeIntegration`. External navigation, pop-ups, and permission requests are restricted. The preload exposes a narrow, typed API, and the main process validates the sender and the payload of every IPC call.
 - **Local service**: the agent service listens only on loopback and requires a bearer token stored in its data directory. Browsers sign in through one-time pairing codes.
 - **Credentials**: provider and MCP secrets are stored in the OS keychain (macOS Keychain, Windows Credential Manager, or Secret Service on Linux). They never reach the renderer or task snapshots. If no persistent keyring is available, the service says so and runs only with temporary credentials from `AI_AGENT_TEMP_*` environment variables, which it never stores.
-- **Service lifecycle**: the desktop app starts the service as its child and stops it on quit. When tasks are running, quitting first asks whether to stop them; queued tasks stay queued and start the next time the app opens. OS shutdown, logout, and termination signals quit without asking. If the service exits unexpectedly, the app restarts it with an increasing delay. After 3 unexpected exits within 5 minutes it stops trying, and **Restart Agent Service** in the menu starts it again.
+- **Service lifecycle**: the desktop app starts the service as its child and stops it on quit. When tasks are running, quitting (or restarting to update) first asks whether to stop them; queued tasks stay queued and start the next time the app opens. OS shutdown, logout, and termination signals quit without asking. If the service exits unexpectedly, the app restarts it with an increasing delay. After 3 unexpected exits within 5 minutes it stops trying, and **Restart Agent Service** in the menu starts it again.
 - **Open at login**: an opt-in switch in Settings › Shortcuts (packaged macOS and Windows builds). The state lives in the OS login items, not in the app's settings; an app started at login stays in the menu bar without showing the panel.
 - **Logs**: the service's output goes to `logs/service.log` in its data directory, with the previous four launches kept as `service.1.log` to `service.4.log` (**Show Service Logs** in the menu opens the folder). The desktop app's main process logs to `~/Library/Logs/AI/main.log` on macOS.
 - **Data location**: tasks, settings, and memory live in the service data directory:
