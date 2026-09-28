@@ -65,6 +65,18 @@ export function useMentionView({
   if (!trigger || (offerFiles && !files)) return { groups: [], empty: null };
   const language = i18n.resolvedLanguage ?? i18n.language;
 
+  // Titles repeat (they come from the first message), so the row tells conversations apart by how
+  // far they went and which model answered last. A task without runs has neither to show.
+  function describeConversation(task: AgentTask): string {
+    const run = task.runs.at(-1);
+    if (!run) return '';
+    const { model } = run.snapshot;
+    const name = 'definition' in model ? model.definition.name : model.modelId;
+    const count = task.runs.length;
+    return count === 1
+      ? t('quickPanel.conversation.turnOne', { model: name })
+      : t('quickPanel.conversation.turnMany', { count, model: name });
+  }
   const referable = tasks.filter(
     (task) =>
       task.id !== taskId &&
@@ -74,7 +86,10 @@ export function useMentionView({
   const conversations: QuickGroup = {
     id: 'conversations',
     heading: t('quickPanel.groups.conversations'),
-    options: rankByQuery(referable, query, (task) => ({ title: task.title }))
+    options: rankByQuery(referable, query, (task) => ({
+      title: task.title,
+      description: describeConversation(task),
+    }))
       .slice(0, query ? CONVERSATIONS_MATCHES : CONVERSATIONS_RECENT)
       .map(({ item: task, match }): QuickOption => ({
         value: `task:${task.id}`,
@@ -82,6 +97,7 @@ export function useMentionView({
         ranges: match?.ranges,
         icon: <MessageSquare />,
         title: task.title,
+        description: describeConversation(task) || undefined,
         status: relativeTime(Date.parse(task.updatedAt), language),
         // A title taken from a multi-line first message would break the one-line chip and its text.
         select: () =>

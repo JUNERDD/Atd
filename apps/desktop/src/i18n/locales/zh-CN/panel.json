@@ -225,6 +225,10 @@
       "nothingToCompact": "暂无可整理的内容。",
       "focusTooLong": "重点说明请控制在 {{count}} 个字符以内。"
     },
+    "conversation": {
+      "turnOne": "1 轮对话 · {{model}}",
+      "turnMany": "{{count}} 轮对话 · {{model}}"
+    },
     "hints": {
       "choose": "选择",
       "insert": "插入",
@@ -257,7 +261,8 @@
       "tooLarge": "超过 1 MB",
       "limit": "已附加 10 个文件",
       "failed": "文件搜索失败，请重试。",
-      "attaching": "正在附加…"
+      "attaching": "正在附加…",
+      "attachedFrom": "{{size}} · {{conversation}}"
     }
   },
   "contextHint": {

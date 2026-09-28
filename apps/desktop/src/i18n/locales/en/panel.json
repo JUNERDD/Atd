@@ -225,6 +225,10 @@
       "nothingToCompact": "Nothing to compact yet.",
       "focusTooLong": "Keep the focus under {{count}} characters."
     },
+    "conversation": {
+      "turnOne": "1 turn · {{model}}",
+      "turnMany": "{{count}} turns · {{model}}"
+    },
     "hints": {
       "choose": "to choose",
       "insert": "to insert",
@@ -257,7 +261,8 @@
       "tooLarge": "Larger than 1 MB",
       "limit": "10 files already attached",
       "failed": "File search failed. Try again.",
-      "attaching": "Attaching…"
+      "attaching": "Attaching…",
+      "attachedFrom": "{{size}} · {{conversation}}"
     }
   },
   "contextHint": {
