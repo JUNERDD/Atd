@@ -1,5 +1,5 @@
-import { createManagedSettings, ensureSkillProfile, type SkillProfilePaths } from './profile.js';
-import { ConfinedSkillPackages } from './package-manager.js';
+import type { SkillListItem } from '@ai/agent-contracts';
+import { ensureSkillProfile, type SkillProfilePaths } from './profile.js';
 import { checkSkillExecution } from './capability-check.js';
 import type { SkillDiagnostic } from './diagnostics.js';
 import {
@@ -18,10 +18,11 @@ import { discoverAtdSkills, mergeSkillCatalog } from './atd-skills.js';
 import { discoverUserAgentSkills } from './user-agents.js';
 import { isBuiltinSkill, type BuiltinStatus } from '../builtins/manifest.js';
 import { reconcileBuiltinSkills } from '../builtins/skills.js';
+import { PluginHost } from '../plugins/host.js';
+import { USER_PLUGIN } from '../plugins/host-plugins.js';
+import { currentPluginSkillSet, skillPluginId, type PluginSkillSet } from '../plugins/skill-set.js';
 import {
   freezeRunSkills,
-  listCurrent,
-  listRevisions,
   loadRunSnapshot,
   loadSkillCatalog,
   releaseRun,
@@ -31,38 +32,22 @@ import {
 } from './versions.js';
 
 /**
- * T3 skill/role handlers, UNMOUNTED. T34int mounts these on the exact paths
- * below; this module never touches Fastify so the proof calls handlers
- * directly. All inputs are already validated by the caller against the
- * contracts in `packages/agent-contracts/src/skills.ts` and `roles.ts`.
- *
- * Mount plan for T34int (all authenticated, loopback Bearer):
- * - GET    /v1/skills               -> listSkills
- * - GET    /v1/skills/:name         -> getSkill
- * - POST   /v1/skills/install       -> installSkill
- * - POST   /v1/skills/:name/update  -> updateSkill
- * - POST   /v1/skills/stage         -> stageSkills
- * - GET    /v1/roles                -> listRolesHandler
- * - PUT    /v1/roles/:id            -> putRoleHandler
- * - POST   /v1/runs/:runId/release  -> releaseRunHandler (skill side only)
+ * T3 skill/role handlers. `skills/mount.ts` mounts them; this module never touches Fastify.
+ * All inputs are already validated by the caller against the contracts in
+ * `packages/agent-contracts/src/skills.ts` and `roles.ts`. Installing and updating skills goes
+ * through plugins (`/v1/plugins`, plugins/routes.ts); the catalog here lists every source.
  */
 export interface SkillRouteDeps {
   profile: SkillProfilePaths;
 }
 
-export interface SkillListRow {
-  name: string;
-  revision: string;
-  description: string;
-  sourceKind: 'local' | 'npm' | 'git' | 'atd' | 'agents';
-  /** A product skill the service installs into `<atdHome>/skills`; see builtins/manifest.ts. */
-  system: boolean;
-  /** Builtin status of a product skill's `<atdHome>/skills` copy; null for every other row. */
-  builtin: BuiltinStatus | null;
-  disableModelInvocation: boolean;
-  enabled: boolean;
-  capability: { kind: 'text' | 'script'; tools: string[] };
-}
+/**
+ * A catalog row: the contract's `SkillListItem`, with the capability as the catalog records it
+ * (tool names checked when a script skill runs, skills/capability-check.ts).
+ */
+export type SkillListRow = Omit<SkillListItem, 'capability'> & {
+  capability: SkillRevisionRecord['capability'];
+};
 
 export async function listSkills(
   deps: SkillRouteDeps,
@@ -70,8 +55,6 @@ export async function listSkills(
 ): Promise<{ skills: SkillListRow[]; diagnostics: SkillDiagnostic[] }> {
   await ensureSkillProfile(deps.profile);
   const disabled = await readDisabledSkillNames(deps.profile);
-  const rows = (records: SkillRevisionRecord[], builtins: ReadonlyMap<string, BuiltinStatus>) =>
-    records.map((record) => toRow(record, !disabled.has(record.name), builtins));
   if (runId) {
     // A frozen run's rows still report the live builtin status of their product skills.
     const [snapshot, builtins] = await Promise.all([
@@ -79,20 +62,38 @@ export async function listSkills(
       reconcileBuiltinSkills(),
     ]);
     return {
-      skills: rows(snapshot.skills, builtins.statuses),
+      skills: snapshot.skills.map((record) =>
+        toRow(record, !disabled.has(record.name), builtins.statuses),
+      ),
       diagnostics: snapshot.diagnostics,
     };
   }
-  const installed = await listCurrent(deps.profile);
+  const plugins = await currentPluginSkillSet(deps.profile.root);
   const [atd, agents] = await Promise.all([discoverAtdSkills(), discoverUserAgentSkills()]);
-  const skills = mergeSkillCatalog(installed, atd.skills, agents.skills);
+  const skills = mergeSkillCatalog(plugins.records, atd.skills, agents.skills);
   return {
-    skills: rows(skills, atd.builtins),
+    skills: skills.map((record) =>
+      toRow(record, rowEnabled(record, disabled, plugins), atd.builtins),
+    ),
     diagnostics: [...atd.diagnostics, ...agents.diagnostics].slice(0, 64),
   };
 }
 
-/** Stores harness enablement for one catalog skill. Skill files are not opened for write. */
+/** A plugin skill is on when effective; a shared one also needs the shared plugin on. */
+function rowEnabled(
+  record: SkillRevisionRecord,
+  disabled: ReadonlySet<string>,
+  plugins: PluginSkillSet,
+): boolean {
+  if (record.sourceKind === 'plugin') return plugins.effective.has(record.name);
+  if (record.sourceKind === 'agents' && !plugins.sharedEnabled) return false;
+  return !disabled.has(record.name);
+}
+
+/**
+ * Stores enablement for one catalog skill. A plugin skill's switch is its plugin item
+ * (installer state); a host skill's is the harness. Skill files are not opened for write.
+ */
 export async function setSkillEnabled(
   deps: SkillRouteDeps,
   input: { name: string; enabled: boolean },
@@ -100,113 +101,31 @@ export async function setSkillEnabled(
   await ensureSkillProfile(deps.profile);
   const current = await getSkill(deps, input.name);
   if (!current.skill) throw new Error(`Skill "${input.name}" is not in the harness catalog.`);
-  await setSkillHarnessEnabled(deps.profile, input.name, input.enabled);
+  const item = (await currentPluginSkillSet(deps.profile.root)).items.get(input.name);
+  if (item) {
+    const host = await PluginHost.for(deps.profile.root);
+    await host.installer.setItemEnabled(item.pluginId, `skill:${item.localName}`, input.enabled);
+  } else await setSkillHarnessEnabled(deps.profile, input.name, input.enabled);
   return { name: input.name, enabled: input.enabled };
 }
 
+/**
+ * One catalog skill, in catalog merge order: the installed plugin skill that owns the name, then
+ * `~/.atd`, then `~/.agents`.
+ */
 export async function getSkill(
   deps: SkillRouteDeps,
   name: string,
 ): Promise<{ skill: SkillRevisionRecord | null; diagnostics: SkillDiagnostic[] }> {
-  const all = await listRevisions(deps.profile);
-  const installed = [...all].reverse().find((item) => item.name === name) ?? null;
-  if (installed) return { skill: installed, diagnostics: [] };
+  const plugins = await currentPluginSkillSet(deps.profile.root);
+  const plugin = plugins.records.find((item) => item.name === name);
+  if (plugin) return { skill: plugin, diagnostics: [] };
   const atd = await discoverAtdSkills();
   const atdSkill = atd.skills.find((item) => item.name === name) ?? null;
   if (atdSkill) return { skill: atdSkill, diagnostics: [] };
   const agents = await discoverUserAgentSkills();
   const skill = agents.skills.find((item) => item.name === name) ?? null;
   return { skill, diagnostics: [] };
-}
-
-export async function installSkill(
-  deps: SkillRouteDeps,
-  input: { source: string; sourceKind: 'local' | 'npm' | 'git'; name?: string },
-): Promise<{ skill: SkillRevisionRecord; diagnostics: SkillDiagnostic[] }> {
-  await ensureSkillProfile(deps.profile);
-  const settings = createManagedSettings();
-  const packages = new ConfinedSkillPackages(
-    deps.profile,
-    deps.profile.loaderCwd,
-    deps.profile.agentDir,
-    settings,
-  );
-  if (input.sourceKind === 'local') {
-    const installed = await packages.installLocal(input.source, { name: input.name });
-    return { skill: installed.record, diagnostics: installed.diagnostics };
-  }
-  const { entry, diagnostic } = await packages.resolveManagedNpm(input.name ?? input.source);
-  if (!entry || diagnostic)
-    throw new Error(diagnostic?.message ?? `Package "${input.source}" is not installed.`);
-  const recorded = await packages.recordManaged(input.sourceKind, {
-    name: input.name ?? input.source,
-    source: input.source,
-    entry,
-  });
-  return { skill: recorded.record, diagnostics: recorded.diagnostics };
-}
-
-/**
- * Update publishes a new immutable revision for local skills (re-reads the
- * source dir). npm/git updates resolve the managed entry; the new revision
- * takes effect on the next run, never on an active one.
- */
-export async function updateSkill(
-  deps: SkillRouteDeps,
-  name: string,
-): Promise<{ skill: SkillRevisionRecord; diagnostics: SkillDiagnostic[] }> {
-  const current = await getSkill(deps, name);
-  if (!current.skill) throw new Error(`Skill "${name}" is not installed.`);
-  if (current.skill.sourceKind === 'atd') {
-    return {
-      skill: current.skill,
-      diagnostics: [
-        {
-          type: 'warning',
-          code: 'update_available',
-          message: `Skill "${name}" is read from ~/.atd/skills and changes when that file changes.`,
-          skill: name,
-          path: current.skill.entry,
-        },
-      ],
-    };
-  }
-  if (current.skill.sourceKind === 'agents') {
-    return {
-      skill: current.skill,
-      diagnostics: [
-        {
-          type: 'warning',
-          code: 'update_available',
-          message: `Skill "${name}" is read from ~/.agents/skills and changes when that file changes.`,
-          skill: name,
-          path: current.skill.entry,
-        },
-      ],
-    };
-  }
-  if (current.skill.sourceKind === 'local') {
-    const settings = createManagedSettings();
-    const packages = new ConfinedSkillPackages(
-      deps.profile,
-      deps.profile.loaderCwd,
-      deps.profile.agentDir,
-      settings,
-    );
-    const refreshed = await packages.installLocal(current.skill.source, { name });
-    return { skill: refreshed.record, diagnostics: refreshed.diagnostics };
-  }
-  return {
-    skill: current.skill,
-    diagnostics: [
-      {
-        type: 'warning',
-        code: 'update_available',
-        message: `Skill "${name}" updates publish a new revision for the next run.`,
-        skill: name,
-      },
-    ],
-  };
 }
 
 export async function stageSkills(
@@ -239,7 +158,7 @@ export async function freezeRun(
     deps.profile,
     input.runId,
     staging.skills,
-    await loadSkillCatalog(deps.profile),
+    await loadSkillCatalog(deps.profile, await currentPluginSkillSet(deps.profile.root)),
   );
   const role = await resolveRole(deps.profile, input.roleId ?? staging.roleId);
   const roleSnapshot = freezeRoleSnapshot(role);
@@ -286,15 +205,19 @@ function toRow(
   builtins: ReadonlyMap<string, BuiltinStatus>,
 ): SkillListRow {
   const atd = record.sourceKind === 'atd';
+  const system = atd && isBuiltinSkill(record.name);
+  const pluginId = skillPluginId(record, system);
   return {
     name: record.name,
     revision: record.revision,
     description: record.description,
     sourceKind: record.sourceKind,
-    system: atd && isBuiltinSkill(record.name),
+    system,
     builtin: (atd && builtins.get(record.name)) || null,
     disableModelInvocation: record.disableModelInvocation,
     enabled,
     capability: record.capability,
+    pluginId,
+    readOnly: pluginId !== USER_PLUGIN,
   };
 }

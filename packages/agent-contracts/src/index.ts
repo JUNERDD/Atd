@@ -26,3 +26,4 @@ export * from './tool-details.js';
 export * from './tool-names.js';
 export * from './workspace.js';
 export * from './shortcuts.js';
+export * from './plugins.js';

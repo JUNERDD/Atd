@@ -14,13 +14,14 @@ import { readDisabledSkillNames } from './harness.js';
 import type { SkillProfilePaths } from './profile.js';
 import { discoverAtdSkills, mergeSkillCatalog } from './atd-skills.js';
 import { discoverUserAgentSkills } from './user-agents.js';
+import type { PluginSkillSet } from '../plugins/skill-set.js';
 
 /** Immutable installed revision; structurally matches contracts SkillRevision. */
 export interface SkillRevisionRecord {
   name: string;
   revision: string;
   source: string;
-  sourceKind: 'local' | 'npm' | 'git' | 'atd' | 'agents';
+  sourceKind: 'local' | 'npm' | 'git' | 'atd' | 'agents' | 'plugin';
   hash: string;
   license: string;
   entry: string;
@@ -29,6 +30,11 @@ export interface SkillRevisionRecord {
   disableModelInvocation: boolean;
   capability: { kind: 'text' | 'script'; tools: string[] };
   installedAt: string;
+  /**
+   * The installed plugin that contributes the skill; present exactly when `sourceKind` is
+   * `plugin`. A standalone skill's name is bare, so the owner is never read from the name.
+   */
+  pluginId?: string;
 }
 
 export interface SkillRefInput {
@@ -147,18 +153,34 @@ export function resolveRef(
 
 /** What a new run resolves skills against. */
 export interface SkillCatalog {
-  /** Every live installed revision, then the free `~/.atd` and `~/.agents` names (mergeSkillCatalog). */
+  /**
+   * Installed plugin skills (qualified names), then the free `~/.atd` names, then the free
+   * `~/.agents` names while the shared plugin is on (mergeSkillCatalog).
+   */
   all: SkillRevisionRecord[];
-  /** Names the harness turned off for runs (skills/harness.ts). */
+  /** Names turned off for runs: by the harness (skills/harness.ts), or not effective as plugin items. */
   disabled: ReadonlySet<string>;
 }
 
-/** Reads the skill catalog as it stands now; a freeze reads it once and resolves against it. */
-export async function loadSkillCatalog(profile: SkillProfilePaths): Promise<SkillCatalog> {
-  const installed = await listRevisions(profile);
+/**
+ * Reads the skill catalog with the plugin skills of `plugins`; a freeze reads it once, with the
+ * run's frozen plugin snapshot, and resolves against it. A plugin skill that is not effective
+ * stays listed as turned off, so a request for it says so instead of calling it missing.
+ */
+export async function loadSkillCatalog(
+  profile: SkillProfilePaths,
+  plugins: PluginSkillSet,
+): Promise<SkillCatalog> {
   const [atd, agents] = await Promise.all([discoverAtdSkills(), discoverUserAgentSkills()]);
-  const disabled = await readDisabledSkillNames(profile);
-  return { all: mergeSkillCatalog(installed, atd.skills, agents.skills), disabled };
+  // The harness switches host skills only; a plugin skill's switch is its item, even when a
+  // standalone skill's bare name is also in the harness file.
+  const owned = new Set(plugins.records.map((record) => record.name));
+  const harness = await readDisabledSkillNames(profile);
+  const disabled = new Set([...harness].filter((name) => !owned.has(name)));
+  for (const record of plugins.records)
+    if (!plugins.effective.has(record.name)) disabled.add(record.name);
+  const shared = plugins.sharedEnabled ? agents.skills : [];
+  return { all: mergeSkillCatalog(plugins.records, atd.skills, shared), disabled };
 }
 
 /**

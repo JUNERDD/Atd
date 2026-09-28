@@ -10,6 +10,7 @@ import {
   snapshotToolsFor,
 } from '@ai/agent-contracts';
 import { CommandStore } from '../commands/store.js';
+import { findPluginCommand } from '../plugins/commands.js';
 import { defaultArguments, resolveCommandInstructions } from '../commands/templates.js';
 import { ConnectionStore } from '../credentials/connections.js';
 import type { Ledger } from '../ledger.js';
@@ -40,7 +41,7 @@ export async function resolvePreview(
 ): Promise<PreviewTaskResponse> {
   const commands = await CommandStore.load(ctx.dataDir);
   const connections = await ConnectionStore.load(ctx.dataDir);
-  const command = resolveCommand(commands, body);
+  const command = await resolveCommand(ctx.dataDir, commands, body);
   const args = command
     ? { ...defaultArguments(command), ...body.input.arguments }
     : body.input.arguments;
@@ -77,11 +78,19 @@ export async function resolvePreview(
   return { snapshot, commandId: command?.id ?? null, warnings };
 }
 
-function resolveCommand(
+/** The command to preview: the one sent, or a saved one by id, a user's first, then a plugin's. */
+async function resolveCommand(
+  dataDir: string,
   commands: CommandStore,
   body: PreviewTaskRequest,
-): ServiceCommandFull | null {
-  const command = body.command ?? (body.commandId ? commands.get(body.commandId) : null);
+): Promise<ServiceCommandFull | null> {
+  const id = body.commandId;
+  const saved = id
+    ? (commands.list().find((item) => item.id === id) ??
+      (await findPluginCommand(dataDir, id))?.value ??
+      commands.get(id))
+    : null;
+  const command = body.command ?? saved;
   if (command && !command.enabled)
     throw new TypeError('Invalid preview: this command is disabled. Enable it first.');
   return command;

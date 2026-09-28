@@ -4,6 +4,7 @@ import { loadSkillsFromDir, type Skill } from '@earendil-works/pi-coding-agent';
 import type { BuiltinStatus } from '../builtins/manifest.js';
 import { reconcileBuiltinSkills } from '../builtins/skills.js';
 import { atdSkillsDir } from '../service-fs.js';
+import { isItemName } from '@ai/plugin-kit';
 import { mapPiDiagnostics, type SkillDiagnostic } from './diagnostics.js';
 import type { SkillRevisionRecord } from './versions.js';
 
@@ -13,7 +14,6 @@ import type { SkillRevisionRecord } from './versions.js';
  * hide or redirect this directory. Entries stay on disk; they are never recorded as installed
  * revisions.
  */
-const NAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
 const MAX_SKILLS = 500;
 const MAX_DIAGNOSTICS = 64;
 
@@ -54,8 +54,9 @@ export function atdSkillsNotInstalled(
 }
 
 /**
- * Merge order: installed revisions, then ATD skills whose names are free,
- * then `~/.agents/skills` names that are still free.
+ * Merge order: installed plugin skills, then ATD skills whose names are free,
+ * then `~/.agents/skills` names that are still free. Plugin skill names are qualified
+ * (`<plugin>:<item>`), so they never take a host skill's bare name.
  */
 export function mergeSkillCatalog(
   installed: readonly SkillRevisionRecord[],
@@ -75,7 +76,8 @@ async function toRecord(
   skill: Skill,
   diagnostics: SkillDiagnostic[],
 ): Promise<SkillRevisionRecord | null> {
-  if (!NAME_PATTERN.test(skill.name) || skill.name.length > 128) {
+  // Host skills keep bare item names; only installed plugins contribute qualified ones.
+  if (!isItemName(skill.name)) {
     pushDiagnostic(diagnostics, {
       type: 'warning',
       code: 'invalid_skill',

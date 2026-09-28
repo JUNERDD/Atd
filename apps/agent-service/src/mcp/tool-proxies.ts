@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { Type, type TSchema } from 'typebox';
 import type { ExtensionFactory, ToolDefinition } from '@earendil-works/pi-coding-agent';
 import { errorMessage, type McpServerConfig, type McpToolRef } from '@ai/agent-contracts';
@@ -68,9 +68,16 @@ export function mcpProxyName(serverId: string, tool: string): string {
   return `${mcpProxyPrefix(serverId)}${cleanProxyPart(tool)}`;
 }
 
-/** The prefix every proxy of one server shares: `mcp__<server>__`. */
+/**
+ * The prefix every proxy of one server shares: `mcp__<server>__`. A plugin server's qualified id
+ * (`<plugin>:<item>`) has characters the tool alphabet lacks, so cleaning alone would give
+ * `kit:srv`, `kit.io:srv` and a user's `kit_srv` one prefix; it gets a readable part plus a hash
+ * of the whole id instead, so its prefix names that server alone.
+ */
 export function mcpProxyPrefix(serverId: string): string {
-  return `mcp__${cleanProxyPart(serverId)}__`;
+  if (!serverId.includes(':')) return `mcp__${cleanProxyPart(serverId)}__`;
+  const hash = createHash('sha256').update(serverId).digest('hex').slice(0, 10);
+  return `mcp__${cleanProxyPart(serverId).slice(0, 40)}_${hash}__`;
 }
 
 function cleanProxyPart(value: string): string {

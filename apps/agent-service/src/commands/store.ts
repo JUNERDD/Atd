@@ -50,6 +50,14 @@ export class CommandStore {
     };
   }
 
+  /**
+   * Tells `onChanged` listeners that the command list changed without a store write: an
+   * installed plugin's command was turned on or off, or a plugin came or went.
+   */
+  static announce(dataDir: string): void {
+    for (const listener of CommandStore.watchers.get(commandsFile(dataDir)) ?? []) listener();
+  }
+
   private constructor(
     private readonly dataDir: string,
     private readonly file: string,

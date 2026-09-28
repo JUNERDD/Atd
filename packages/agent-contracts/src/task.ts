@@ -2,8 +2,10 @@ import { Type, type Static } from 'typebox';
 import type { CommandTool } from './commands.js';
 import { Identifier, OperationId } from './identifiers.js';
 import { PermissionTierSchema } from './confirms.js';
+import { McpServerIdSchema } from './mcp.js';
 import { ThinkingLevelSchema } from './models.js';
 import { SkillName } from './skills.js';
+import { SubagentNameSchema } from './subagents.js';
 
 /**
  * Snapshot tool ids: frozen per run, granted by roles and inherited by subagent children within
@@ -71,10 +73,13 @@ export const InputChipSchema = Type.Union([
     { additionalProperties: false },
   ),
   Type.Object(
-    { kind: Type.Literal('mcpServer'), serverId: Identifier },
+    { kind: Type.Literal('mcpServer'), serverId: McpServerIdSchema },
     { additionalProperties: false },
   ),
-  Type.Object({ kind: Type.Literal('agent'), name: Identifier }, { additionalProperties: false }),
+  Type.Object(
+    { kind: Type.Literal('agent'), name: SubagentNameSchema },
+    { additionalProperties: false },
+  ),
   Type.Object({ kind: Type.Literal('skill'), name: SkillName }, { additionalProperties: false }),
 ]);
 export type InputChip = Static<typeof InputChipSchema>;

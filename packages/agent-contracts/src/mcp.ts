@@ -1,3 +1,4 @@
+import { QualifiedNameSchema } from '@ai/plugin-kit/model';
 import { Type, type Static } from 'typebox';
 import { Identifier } from './identifiers.js';
 
@@ -7,6 +8,16 @@ import { Identifier } from './identifiers.js';
  * the service); route request bodies live service-side in mcp/requests.ts
  * until root freezes their placement.
  */
+
+/**
+ * MCP server id. A server the user configures keeps the identifier alphabet it always had; a
+ * server an installed plugin contributes is `<plugin>:<server>` (plugin-kit's qualified name).
+ * `connectionId` stays an `Identifier`; capability ids (`mcpCapabilityId`) key on it, so a `:` in
+ * the server id never reaches them. Anything that embeds the server id in a colon-delimited key or
+ * a file name must encode it.
+ */
+export const McpServerIdSchema = Type.Union([Identifier, QualifiedNameSchema]);
+export type McpServerId = Static<typeof McpServerIdSchema>;
 
 export const McpConnectionStateSchema = Type.Union([
   Type.Literal('disabled'),
@@ -66,7 +77,7 @@ export type McpHttp = Static<typeof McpHttpSchema>;
 
 export const McpServerConfigSchema = Type.Object(
   {
-    serverId: Identifier,
+    serverId: McpServerIdSchema,
     revision: Type.Integer({ minimum: 1 }),
     connectionId: Identifier,
     transport: McpTransportKindSchema,
@@ -87,7 +98,7 @@ export type McpServerConfig = Static<typeof McpServerConfigSchema>;
 
 export const McpServerStatusSchema = Type.Object(
   {
-    serverId: Identifier,
+    serverId: McpServerIdSchema,
     connectionId: Identifier,
     configRevision: Type.Integer({ minimum: 1 }),
     state: McpConnectionStateSchema,
@@ -101,13 +112,27 @@ export const McpServerStatusSchema = Type.Object(
 );
 export type McpServerStatus = Static<typeof McpServerStatusSchema>;
 
+/**
+ * A status row as `/v1/mcp/status` lists it: the connection status plus the plugin that contributes
+ * the server. Plugin servers (`readOnly`) are configured by their plugin, never through MCP writes.
+ */
+export const McpServerStatusRowSchema = Type.Object(
+  {
+    ...McpServerStatusSchema.properties,
+    pluginId: Type.String({ minLength: 1, maxLength: 128 }),
+    readOnly: Type.Boolean(),
+  },
+  { additionalProperties: false },
+);
+export type McpServerStatusRow = Static<typeof McpServerStatusRowSchema>;
+
 export interface McpStatusResponse {
-  servers: McpServerStatus[];
+  servers: McpServerStatusRow[];
 }
 
 export const McpToolRefSchema = Type.Object(
   {
-    serverId: Identifier,
+    serverId: McpServerIdSchema,
     connectionId: Identifier,
     name: Type.String({ maxLength: 256 }),
     title: Type.Union([Type.String({ maxLength: 256 }), Type.Null()]),
@@ -122,7 +147,7 @@ export type McpToolRef = Static<typeof McpToolRefSchema>;
 
 export const McpResourceRefSchema = Type.Object(
   {
-    serverId: Identifier,
+    serverId: McpServerIdSchema,
     connectionId: Identifier,
     uri: Type.String({ maxLength: 2048 }),
     name: Type.String({ maxLength: 256 }),
@@ -136,7 +161,7 @@ export type McpResourceRef = Static<typeof McpResourceRefSchema>;
 
 export const McpResourceTemplateRefSchema = Type.Object(
   {
-    serverId: Identifier,
+    serverId: McpServerIdSchema,
     connectionId: Identifier,
     uriTemplate: Type.String({ maxLength: 2048 }),
     name: Type.String({ maxLength: 256 }),
@@ -160,7 +185,7 @@ export type McpPromptArgument = Static<typeof McpPromptArgumentSchema>;
 
 export const McpPromptRefSchema = Type.Object(
   {
-    serverId: Identifier,
+    serverId: McpServerIdSchema,
     connectionId: Identifier,
     name: Type.String({ maxLength: 256 }),
     title: Type.Union([Type.String({ maxLength: 256 }), Type.Null()]),
@@ -262,7 +287,7 @@ const ResourceContent = Type.Object(
 );
 export const McpReadResourceResponseSchema = Type.Object(
   {
-    serverId: Identifier,
+    serverId: McpServerIdSchema,
     uri: Type.String({ maxLength: 2048 }),
     contents: Type.Array(ResourceContent),
   },
@@ -272,7 +297,7 @@ export type McpReadResourceResponse = Static<typeof McpReadResourceResponseSchem
 
 export const McpGetPromptResponseSchema = Type.Object(
   {
-    serverId: Identifier,
+    serverId: McpServerIdSchema,
     name: Type.String({ maxLength: 256 }),
     description: Type.Union([Type.String({ maxLength: 8000 }), Type.Null()]),
     messages: Type.Array(McpPromptMessageSchema),

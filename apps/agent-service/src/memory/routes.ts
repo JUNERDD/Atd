@@ -34,7 +34,7 @@ export function registerMemoryRoutes(app: FastifyInstance, ctx: MemoryRouteConte
   app.post('/v1/memory/pause', async (request) => {
     const body = parse(MemoryPauseRequestSchema, request.body);
     const memory = await authority();
-    const version = memory.setPaused(body.paused);
+    const version = await memory.setPaused(body.paused);
     return { paused: memory.isPaused(), version };
   });
 

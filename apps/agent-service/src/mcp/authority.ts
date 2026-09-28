@@ -8,17 +8,16 @@ import { McpHostCallbacks } from './callbacks.js';
 import { ControlSession } from './control-session.js';
 import { McpFacade } from './facade.js';
 import { McpError } from './errors.js';
-import { buildSnapshot, McpAuthManager, McpConnectionStates } from './lifecycle.js';
+import {
+  buildSnapshot,
+  connectionCounts,
+  McpAuthManager,
+  McpConnectionStates,
+} from './lifecycle.js';
 import { loadAdapterInternals, scopeAdapterEnv } from './loader.js';
 import type { AdapterInternals, AdapterManagerLike } from './adapter-types.js';
-import {
-  bearerSecrets,
-  loadServerRecords,
-  parseServerConfigs,
-  reuseKey,
-  saveServerRecords,
-  toAdapterConfig,
-} from './servers.js';
+import { McpServerRecords, type RecordChange } from './server-records.js';
+import { bearerSecrets, parseServerConfigs, reuseKey, toAdapterConfig } from './servers.js';
 import { prepareMcpTools, type McpProxyHost } from './tool-proxies.js';
 import { loadRunMcpSelection } from './staging.js';
 import { CredentialTransactions } from './transactions.js';
@@ -42,7 +41,6 @@ export interface McpAuthorityDeps {
 }
 
 export class McpAuthority {
-  private records: McpServerConfig[] = [];
   private snapshotRevision = 0;
   private closed = false;
   private envRestore: (() => void) | null = null;
@@ -60,6 +58,8 @@ export class McpAuthority {
     readonly authManager: McpAuthManager,
     private control: ControlSession | null,
     private readonly managerOverride: AdapterManagerLike | null,
+    /** User servers and the read-only plugin layer (mcp/server-records.ts). */
+    private readonly servers: McpServerRecords,
   ) {
     this.audit = deps.audit ?? ((entry) => deps.log.debug('MCP audit.', entry));
   }
@@ -88,6 +88,16 @@ export class McpAuthority {
     return McpAuthority.assemble(deps, manager);
   }
 
+  /**
+   * Reloads the plugin layer of the profile's authority after a plugin change. An authority that
+   * is not loaded yet reads the layer when it loads, so this never loads one.
+   */
+  static async refreshPlugins(dataDir: string): Promise<void> {
+    const authority = await McpAuthority.instances.get(dataDir)?.catch(() => null);
+    if (authority && !authority.closed)
+      await authority.apply('mcp:plugins', await authority.servers.reloadPlugins());
+  }
+
   static forgetForTests(dataDir: string): void {
     McpAuthority.instances.delete(dataDir);
   }
@@ -113,13 +123,13 @@ export class McpAuthority {
     const audit =
       deps.audit ?? ((entry: Record<string, unknown>) => deps.log.debug('MCP audit.', entry));
     const approvals = new McpApprovalBroker(deps.confirms, audit, deps.log);
-    const records = await loadServerRecords(deps.dataDir);
-    states.reset(records);
+    const records = await McpServerRecords.load(deps.dataDir, deps.log);
+    states.reset(records.all());
     const holder: { control: ControlSession | null } = { control: null };
     const managerOf = () => managerOverride ?? holder.control?.manager() ?? null;
     const servers = {
       record: (serverId: string) => {
-        const found = authority.records.find((entry) => entry.serverId === serverId);
+        const found = records.find(serverId);
         if (!found)
           throw new McpError('not_found', serverId, `MCP server ${serverId} is not configured.`);
         return found;
@@ -157,9 +167,9 @@ export class McpAuthority {
       }),
       null,
       managerOverride,
+      records,
     );
-    authority.records = records;
-    for (const record of records) authority.trackIdentity(record);
+    for (const record of records.all()) authority.trackIdentity(record);
     if (!managerOverride) {
       authority.envRestore = scopeAdapterEnv(deps.dataDir);
       const control = await ControlSession.create({
@@ -167,7 +177,7 @@ export class McpAuthority {
         sessionsDir: deps.sessionsDir,
         cwd: deps.cwd,
         internals,
-        config: toAdapterConfig(records),
+        config: toAdapterConfig(records.userRecords()),
         callbacks,
         log: deps.log,
       });
@@ -189,74 +199,72 @@ export class McpAuthority {
     this.identities.set(record.serverId, set);
   }
 
+  /** The user's servers (servers.json): the ones configure writes and clients edit. */
   configured(): McpServerConfig[] {
-    return this.records.map((record) => ({ ...record }));
+    return this.servers.userRecords();
   }
 
-  /** Accepts a new server set; revisions bump on change, removals disconnect. */
+  /** The servers a run may reference and bind: the user's and its frozen plugin servers. */
+  runServers(runId: string): Promise<McpServerConfig[]> {
+    return this.servers.forRun(runId);
+  }
+
+  /**
+   * Accepts a new user server set; revisions bump on change, removals disconnect. A set that
+   * names a plugin server is refused whole (mcp/plugin-servers.ts).
+   */
   async configure(input: unknown): Promise<McpServerConfig[]> {
     this.assertOpen();
-    const parsed = parseServerConfigs(input);
-    const previous = new Map(this.records.map((record) => [record.serverId, record]));
-    const next: McpServerConfig[] = parsed.map((candidate) => {
-      const old = previous.get(candidate.serverId);
-      if (!old) return { ...candidate, revision: 1 };
-      const { revision: _a, ...oldRest } = old;
-      const { revision: _b, ...newRest } = candidate;
-      const changed = JSON.stringify(oldRest) !== JSON.stringify(newRest);
-      return { ...candidate, revision: changed ? old.revision + 1 : old.revision };
-    });
-    const incoming = new Map(next.map((record) => [record.serverId, record]));
-    for (const [serverId, old] of previous) {
-      const updated = incoming.get(serverId);
-      if (!updated || updated.disabled) {
-        for (const identity of this.identities.get(serverId) ?? [])
-          this.transactions.revoke(identity);
-        if (!old.disabled || !updated) {
-          await this.facade.disconnect(serverId).catch((error: unknown) => {
-            this.deps.log.warn('MCP configure disconnect failed.', {
-              serverId,
-              error: errorMessage(error),
-            });
-          });
-        }
-      }
-    }
-    this.records = next;
-    await saveServerRecords(this.deps.dataDir, next);
-    this.states.reset(next);
-    for (const record of next) this.trackIdentity(record);
-    this.snapshotRevision += 1;
-    this.audit({
-      tool: 'mcp:configure',
-      decision: 'applied',
-      servers: next.length,
-      revision: this.snapshotRevision,
-    });
+    await this.apply('mcp:configure', this.servers.replaceUser(parseServerConfigs(input)));
     return this.configured();
   }
 
-  /** Revokes a server immediately: no new calls, cancellable ones cancel. */
+  /** Revokes a user server immediately: no new calls, cancellable ones cancel. */
   async revoke(serverId: string): Promise<void> {
     this.assertOpen();
-    const record = this.records.find((entry) => entry.serverId === serverId);
-    if (!record)
-      throw new McpError('not_found', serverId, `MCP server ${serverId} is not configured.`);
-    for (const identity of this.identities.get(serverId) ?? []) this.transactions.revoke(identity);
-    this.records = this.records.map((entry) =>
-      entry.serverId === serverId ? { ...entry, disabled: true } : entry,
-    );
-    await saveServerRecords(this.deps.dataDir, this.records);
-    await this.facade.disconnect(serverId).catch(() => undefined);
-    this.states.set(serverId, 'disabled', '');
-    this.snapshotRevision += 1;
-    this.audit({ server: serverId, tool: 'mcp:revoke', decision: 'revoked' });
+    await this.apply('mcp:revoke', this.servers.disableUser(serverId));
   }
 
+  /**
+   * Applies a change of one layer: every server it drops or disables loses its credentials'
+   * transactions and disconnects while its record still resolves, then the change commits and
+   * states, identities and the snapshot revision follow the new set.
+   */
+  private async apply(tool: string, change: RecordChange): Promise<void> {
+    const incoming = new Map(change.next.map((record) => [record.serverId, record]));
+    for (const old of change.previous) {
+      const updated = incoming.get(old.serverId);
+      if (updated && !updated.disabled) continue;
+      for (const identity of this.identities.get(old.serverId) ?? [])
+        this.transactions.revoke(identity);
+      if (!old.disabled || !updated)
+        await this.facade.disconnect(old.serverId).catch((error: unknown) => {
+          this.deps.log.warn('MCP disconnect failed.', {
+            serverId: old.serverId,
+            error: errorMessage(error),
+          });
+        });
+    }
+    await change.commit();
+    const all = this.servers.all();
+    this.states.reset(all);
+    for (const record of all) this.trackIdentity(record);
+    this.snapshotRevision += 1;
+    this.audit({
+      tool,
+      decision: 'applied',
+      servers: change.next.length,
+      revision: this.snapshotRevision,
+    });
+  }
+
+  /** Every server's status, each row naming its plugin (`user` for servers.json). */
   snapshot(): McpSnapshot {
-    return buildSnapshot(this.records, this.states, this.snapshotRevision, (serverId) =>
-      this.counts(serverId),
+    const manager = this.managerOverride ?? this.control?.manager() ?? null;
+    const snapshot = buildSnapshot(this.servers.all(), this.states, this.snapshotRevision, (id) =>
+      connectionCounts(manager, id),
     );
+    return { ...snapshot, servers: this.servers.statusRows(snapshot.servers) };
   }
 
   /** Binds run-frozen runner proxies; catalog changes never leak into a run. */
@@ -269,7 +277,7 @@ export class McpAuthority {
       host,
       {
         facade: this.facade,
-        records: this.configured(),
+        records: await this.runServers(host.runId()),
         normalizeSchema: this.internals.normalizeDirectToolInputSchema,
         ...(selection ? { selected: selection.tools } : {}),
       },
@@ -291,27 +299,6 @@ export class McpAuthority {
       settings: this.control?.settingsProof() ?? null,
       managers: this.control?.observedManagerCount() ?? (this.managerOverride ? 1 : 0),
     };
-  }
-
-  private counts(serverId: string): { tools: number; resources: number; prompts: number } {
-    try {
-      const manager = this.managerOverride ?? this.control?.manager() ?? null;
-      const all = manager?.getAllConnections?.();
-      const names = all
-        ? [...all.keys()].filter((name) => name === serverId || name.startsWith(`${serverId}__t__`))
-        : [serverId];
-      const total = { tools: 0, resources: 0, prompts: 0 };
-      for (const name of names) {
-        const connection = manager?.getConnection(name);
-        if (!connection || connection.status !== 'connected') continue;
-        total.tools = Math.max(total.tools, connection.tools.length);
-        total.resources = Math.max(total.resources, connection.resources.length);
-        total.prompts = Math.max(total.prompts, connection.prompts.length);
-      }
-      return total;
-    } catch {
-      return { tools: 0, resources: 0, prompts: 0 };
-    }
   }
 
   async close(): Promise<void> {
