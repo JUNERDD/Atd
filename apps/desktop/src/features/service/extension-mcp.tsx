@@ -19,20 +19,9 @@ import { ItemContent, ItemDescription, ItemMedia, ItemTitle } from '@ai/ui/compo
 import { matchFields, type FieldsMatch } from '@ai/ui/lib/fuzzy-match';
 import { isComposingKey } from '@ai/ui/lib/ime';
 import { ExtensionGroup } from './extension-group';
-import { McpDetailDialog } from './extension-mcp-detail';
-import { EMPTY_MCP_DRAFT, toUpsertInput, type McpUpsertInput } from './extension-mcp-draft';
-import { McpAddForm } from './extension-mcp-form';
 import { ExtensionRow, ExtensionRowActions } from './extension-row';
 import type { ExtensionMcpRow } from './extension-rows';
-import { useMcpStateLabel } from './use-mcp-state-label';
-
-function canConnect(state: string): boolean {
-  return state === 'disconnected' || state === 'error';
-}
-
-function needsAuth(state: string): boolean {
-  return state === 'auth_required';
-}
+import { mcpCanConnect, mcpNeedsAuth, useMcpStateLabel } from './use-mcp-state-label';
 
 /**
  * One server row in the shared anatomy: icon ring, id, the translated state and last error, then
@@ -67,8 +56,8 @@ function McpRow({
 }) {
   const { t } = useTranslation('settings');
   const [authCode, setAuthCode] = useState('');
-  const showConnect = canConnect(row.state);
-  const showAuth = needsAuth(row.state);
+  const showConnect = mcpCanConnect(row.state);
+  const showAuth = mcpNeedsAuth(row.state);
   const locked = !connected || busy;
   return (
     <ExtensionRow name={row.serverId} onDetails={onDetails}>
@@ -143,30 +132,9 @@ function McpRow({
   );
 }
 
-function McpAddSection({
-  busy,
-  onCancel,
-  onSave,
-}: {
-  busy: boolean;
-  onCancel: () => void;
-  onSave: (input: McpUpsertInput) => void;
-}) {
-  const [draft, setDraft] = useState(EMPTY_MCP_DRAFT);
-  return (
-    <McpAddForm
-      draft={draft}
-      busy={busy}
-      onChange={setDraft}
-      onCancel={onCancel}
-      onSave={() => onSave(toUpsertInput(draft))}
-    />
-  );
-}
-
 /**
- * MCP servers group with connect/auth and catalog add/enable/remove. The search matches and
- * marks the server id and the description line as shown.
+ * MCP servers group with connect/auth and catalog enable/remove; a row opens that server's
+ * details page. The search matches and marks the server id and the description line as shown.
  */
 export function ExtensionMcpGroup({
   rows,
@@ -176,13 +144,10 @@ export function ExtensionMcpGroup({
   connected,
   busyId,
   busy,
-  adding,
-  formKey,
-  onClose,
+  onOpen,
   onConnect,
   onAuthStart,
   onAuthComplete,
-  onUpsert,
   onEnabled,
   onRemove,
 }: {
@@ -193,35 +158,16 @@ export function ExtensionMcpGroup({
   connected: boolean;
   busyId: string | null;
   busy: boolean;
-  adding: boolean;
-  formKey: number;
-  onClose: () => void;
+  onOpen: (serverId: string) => void;
   onConnect: (serverId: string) => void;
   onAuthStart: (serverId: string) => void;
   onAuthComplete: (serverId: string, input: string) => void;
-  onUpsert: (input: McpUpsertInput) => Promise<boolean>;
   onEnabled: (serverId: string, enabled: boolean) => void;
   onRemove: (serverId: string) => void;
 }) {
   const { t } = useTranslation('settings');
   const stateLabel = useMcpStateLabel();
   const [removing, setRemoving] = useState<string | null>(null);
-  // The id stays while the dialog closes; the row is read live so state changes show in it.
-  const [detail, setDetail] = useState<{ serverId: string; open: boolean } | null>(null);
-  const detailRow = detail ? rows.find((row) => row.serverId === detail.serverId) : undefined;
-  const form =
-    adding && connected ? (
-      <McpAddSection
-        key={formKey}
-        busy={busy}
-        onCancel={onClose}
-        onSave={(input) => {
-          void onUpsert(input).then((ok) => {
-            if (ok) onClose();
-          });
-        }}
-      />
-    ) : null;
   const shown = rows.flatMap((row) => {
     const description = [stateLabel(row.state), row.lastError].filter(Boolean).join(' · ');
     const match = matchFields(query, { serverId: row.serverId, description });
@@ -229,7 +175,6 @@ export function ExtensionMcpGroup({
   });
   return (
     <>
-      {form}
       <ExtensionGroup
         title={t('extensions.tabMcp')}
         empty={empty}
@@ -247,7 +192,7 @@ export function ExtensionMcpGroup({
             connected={connected}
             busy={busy || busyId === row.serverId}
             onEnabled={(enabled) => onEnabled(row.serverId, enabled)}
-            onDetails={() => setDetail({ serverId: row.serverId, open: true })}
+            onDetails={() => onOpen(row.serverId)}
             onConnect={() => onConnect(row.serverId)}
             onAuthStart={() => onAuthStart(row.serverId)}
             onAuthComplete={(input) => onAuthComplete(row.serverId, input)}
@@ -255,13 +200,6 @@ export function ExtensionMcpGroup({
           />
         ))}
       </ExtensionGroup>
-      {detailRow ? (
-        <McpDetailDialog
-          row={detailRow}
-          open={detail?.open ?? false}
-          onOpenChange={(open) => setDetail({ serverId: detailRow.serverId, open })}
-        />
-      ) : null}
       <AlertDialog
         open={removing !== null}
         onOpenChange={(open) => {
