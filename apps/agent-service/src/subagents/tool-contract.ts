@@ -16,6 +16,9 @@ import { Type, type TSchema } from 'typebox';
 
 export const SUBAGENT_TOOL = 'subagent';
 
+/** Longest `setTimeout` delay Node.js honors; pi-subagents rejects a larger `timeoutMs`. */
+const MAX_TIMER_DELAY_MS = 2_147_483_647;
+
 /** Management actions a parent may call; everything else launches children or is refused. */
 export const SUBAGENT_ACTIONS = ['list', 'status'] as const;
 
@@ -55,7 +58,11 @@ export const SubagentToolParams = Type.Object(
       Type.Boolean({ description: 'Omit it or pass false: every call runs in the foreground.' }),
     ),
     timeoutMs: Type.Optional(
-      Type.Integer({ minimum: 1, description: 'Optional deadline for the launch.' }),
+      Type.Integer({
+        minimum: 1,
+        maximum: MAX_TIMER_DELAY_MS,
+        description: 'Optional deadline for the launch.',
+      }),
     ),
     action: Type.Optional(
       Type.Enum([...SUBAGENT_ACTIONS], {

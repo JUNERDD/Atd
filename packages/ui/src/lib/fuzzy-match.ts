@@ -60,11 +60,16 @@ export function rankByQuery<T, K extends string>(
 }
 
 /**
- * Combining marks that fuzzysort deletes when folding accents. NFC keeps them only where no
- * precomposed letter exists (x with U+0302, Cyrillic stress marks). Removing them before
- * matching keeps fuzzysort's indexes aligned with the text; `nfcOffset` maps the indexes back.
+ * Combining marks, which fuzzysort 4 folds only inside a character whose NFKD form minus these
+ * marks is one UTF-16 unit. A mark NFC leaves on its own (x with U+0302, Cyrillic stress marks)
+ * would stay a unit between letters and break contiguous and verbatim matches, so it is removed
+ * before matching; `nfcOffset` maps fuzzysort's indexes back.
  */
 const FOLDED_MARKS = /[\u0300-\u036f]/gu;
+
+/** fuzzysort 4's fixed remappings (its `remapFrom` / `remapTo`), applied before case folding. */
+const REMAP_FROM = '\\"`‘’‚‛“”„‟«»‹›‐–—−⁄∕…øØłŁđĐðÐıħĦŧŦ';
+const REMAP_TO = "/''''''''''''''----//.oOlLdDdDihHtT";
 
 interface Word {
   /** NFC without folded marks, as passed to fuzzysort. */
@@ -98,13 +103,19 @@ function queryWords(query: string): Word[] {
 }
 
 /**
- * fuzzysort 3.1.0's comparison form: its `remove_accents` (Latin letters only), then lower case.
- * Keeps the length of text without folded marks, so offsets carry over.
+ * fuzzysort 4's comparison form: a remapped unit takes its replacement, and any other UTF-16 unit
+ * outside ASCII becomes its NFKD form without folded marks when that is a single unit (accents,
+ * fullwidth forms); then lower case. Keeps the length of its input, so offsets carry over.
  */
 function fold(text: string): string {
+  // No `u` flag: fuzzysort remaps code units, so astral characters stay as they are.
   return text
-    .replace(/\p{Script=Latin}+/gu, (run) => run.normalize('NFD'))
-    .replace(FOLDED_MARKS, '')
+    .replace(/[\u0080-\uffff\\"`]/g, (unit) => {
+      const remapped = REMAP_FROM.indexOf(unit);
+      if (remapped >= 0) return REMAP_TO.charAt(remapped);
+      const base = unit.normalize('NFKD').replace(FOLDED_MARKS, '');
+      return base.length === 1 ? base : unit;
+    })
     .toLowerCase();
 }
 
@@ -148,7 +159,7 @@ function matchWord(word: Word, field: Field): { score: number; units: readonly n
   const result = fuzzysort.single(word.text, field.prepared);
   // No match means not even a subsequence, so no verbatim occurrence either.
   if (!result) return null;
-  // Read before the next `single` call: fuzzysort reuses the prepared target's index buffer.
+  // A sorted copy; the target's own index buffer is reused by the next `single` call.
   const units = result.indexes;
   if (result.score >= MIN_MATCH_SCORE && !splitsPair(field.text, units)) {
     return { score: result.score, units };
