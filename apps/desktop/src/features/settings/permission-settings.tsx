@@ -82,7 +82,7 @@ export function PermissionSettings({ snapshot }: { snapshot: SettingsSnapshot | 
                     value={tier}
                     checked={selected}
                     disabled={unavailable}
-                    className="peer mt-0.5 size-4 shrink-0 accent-primary disabled:cursor-not-allowed"
+                    className="peer mt-0.5 size-4 shrink-0 accent-primary"
                     onChange={() => select(tier)}
                   />
                   <ItemContent>
