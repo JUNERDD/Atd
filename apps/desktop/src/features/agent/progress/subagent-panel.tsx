@@ -113,7 +113,7 @@ export function SubagentPanel({
           {t('subagent.listLabel')}
         </PopoverTitle>
       </PopoverHeader>
-      <ScrollArea className="composer-todos-scroll" scrollShadow>
+      <ScrollArea className="composer-todos-scroll" gutter="stable" scrollShadow>
         <ul className="composer-subagents-list" data-panel-focus>
           {rows.map(({ child, glyph }) => (
             <ChildRow key={child.key} child={child} glyph={glyph} onOpen={onOpen} />

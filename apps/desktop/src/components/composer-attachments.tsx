@@ -15,7 +15,11 @@ export function ComposerAttachments({
   const { t } = useTranslation('panel');
   if (!files.length) return null;
   return (
-    <ScrollArea className="composer-attachments" viewportClassName="max-h-[inherit]" gutter>
+    <ScrollArea
+      className="composer-attachments"
+      viewportClassName="max-h-[inherit]"
+      gutter="stable"
+    >
       <ul className="attachment-list" aria-label={t('composer.attachedContext')}>
         {files.map((file) => (
           <li className="attachment-chip" key={file.id}>

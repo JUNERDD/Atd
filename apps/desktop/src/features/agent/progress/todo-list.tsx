@@ -54,7 +54,7 @@ function TodoStatusIcon({ status }: { status: VisibleTodo['status'] }) {
 export function TodoList({ todos }: { todos: readonly VisibleTodo[] }) {
   const { t } = useTranslation('tasks');
   return (
-    <ScrollArea className="composer-todos-scroll" gutter>
+    <ScrollArea className="composer-todos-scroll" gutter="stable">
       <ul className="composer-todos-list" aria-label={t('todo.listLabel')}>
         {todos.map((todo) => {
           const blockedBy =

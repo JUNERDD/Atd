@@ -120,6 +120,7 @@ export function ChildTranscriptView({
         viewportRef={viewportRef}
         className="flex-1 min-h-0"
         viewportClassName="overlay-footer-fade"
+        gutter="none"
         viewportProps={{ onScroll }}
       >
         <div className="conversation-messages">

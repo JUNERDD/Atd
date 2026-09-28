@@ -295,7 +295,7 @@ export function Composer({
               <ScrollArea
                 className="composer-input-scroll"
                 viewportClassName="max-h-[inherit]"
-                gutter
+                gutter="stable"
               >
                 <div ref={editorContainer} className="composer-input" />
               </ScrollArea>
