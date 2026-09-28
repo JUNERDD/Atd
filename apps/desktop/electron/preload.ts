@@ -21,8 +21,8 @@ const desktop: DesktopBridge = {
     get: () => ipcRenderer.invoke(SETTINGS_IPC.get) as Promise<SettingsSnapshot>,
     startCommandSession: (commandId) =>
       ipcRenderer.invoke(SETTINGS_IPC.startCommandSession, commandId) as Promise<void>,
-    startExtensionSession: (kind) =>
-      ipcRenderer.invoke(SETTINGS_IPC.startExtensionSession, kind) as Promise<void>,
+    startExtensionSession: (kind, target) =>
+      ipcRenderer.invoke(SETTINGS_IPC.startExtensionSession, kind, target ?? null) as Promise<void>,
     setLanguage: (language) =>
       ipcRenderer.invoke(SETTINGS_IPC.saveLanguage, language) as Promise<SettingsSnapshot>,
     providers: providerBridge,

@@ -207,7 +207,9 @@ export function installBridge(extras?: {
       open,
       openCommand,
       startCommandSession: vi.fn(async (_commandId: string | null) => {}),
-      startExtensionSession: vi.fn(async (_kind: 'skill' | 'subagent' | 'mcp' | 'memory') => {}),
+      startExtensionSession: vi.fn(
+        async (_kind: 'skill' | 'subagent' | 'mcp' | 'memory', _target?: string | null) => {},
+      ),
       close: vi.fn(async () => {}),
       get: vi.fn(async () => settings),
       providers: {

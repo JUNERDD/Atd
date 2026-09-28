@@ -65,8 +65,12 @@ export interface SettingsBridge {
   openCommand: (commandId: string) => Promise<void>;
   /** Opens the command's editor content in a new task-panel session; null creates a new command. */
   startCommandSession: (commandId: string | null) => Promise<void>;
-  /** Opens a new task-panel session seeded for creating a skill, subagent, MCP server, or memory. */
-  startExtensionSession: (kind: ExtensionSessionKind) => Promise<void>;
+  /**
+   * Opens a new task-panel session seeded for creating a skill, subagent, MCP server, or memory.
+   * `target` names an existing skill, subagent, or MCP serverId to edit instead; omitted or null
+   * creates. Memory takes no target.
+   */
+  startExtensionSession: (kind: ExtensionSessionKind, target?: string | null) => Promise<void>;
   close: () => Promise<void>;
   get: () => Promise<SettingsSnapshot>;
   providers: ProviderBridge;

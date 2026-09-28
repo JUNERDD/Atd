@@ -24,6 +24,7 @@ import {
   type QueueState,
   type TranscriptPatch,
 } from './transcript-schema';
+import { parse } from './validation';
 
 export const MemoryEntrySchema = Type.Object(
   {
@@ -227,8 +228,8 @@ export interface CommandSession {
 }
 
 /**
- * Hands create-with-AI off to a new panel session seeded with an app skill: Extensions creates a
- * skill, subagent, or MCP server; Memory saves or updates a memory.
+ * Hands create- or edit-with-AI off to a new panel session seeded with an app skill: Extensions
+ * creates or edits a skill, subagent, or MCP server; Memory saves or updates a memory.
  */
 export const ExtensionSessionKindSchema = Type.Union([
   Type.Literal('skill'),
@@ -237,8 +238,32 @@ export const ExtensionSessionKindSchema = Type.Union([
   Type.Literal('memory'),
 ]);
 export type ExtensionSessionKind = Static<typeof ExtensionSessionKindSchema>;
+/**
+ * The existing item an edit session updates: a skill or subagent name, or an MCP serverId. It is
+ * quoted into the seeded prompt, so it must be one trimmed line. Null starts a create session.
+ */
+export const ExtensionSessionTargetSchema = Type.Union([
+  Type.String({ minLength: 1, maxLength: 128, pattern: '^\\S(?:.*\\S)?$' }),
+  Type.Null(),
+]);
 export interface ExtensionSession {
   kind: ExtensionSessionKind;
+  target: string | null;
+}
+
+/**
+ * Validates an extension session request at a process or tab boundary. Memory has no edit target
+ * (its skill saves or updates entries from the conversation), so a memory target is rejected
+ * rather than silently dropped.
+ */
+export function parseExtensionSession(kind: unknown, target: unknown): ExtensionSession {
+  const session = {
+    kind: parse(ExtensionSessionKindSchema, kind),
+    target: parse(ExtensionSessionTargetSchema, target),
+  };
+  if (session.kind === 'memory' && session.target !== null)
+    throw new TypeError('Memory sessions do not take an edit target');
+  return session;
 }
 
 export interface AgentBridge {

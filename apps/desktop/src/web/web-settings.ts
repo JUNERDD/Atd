@@ -5,6 +5,7 @@ import {
   type PatchSettingsRequest,
   type SettingsResponse,
 } from '@ai/agent-contracts';
+import { parseExtensionSession } from '../../electron/agent/bridge';
 import { DEFAULT_PERMISSION_TIER } from '../../electron/agent/permission-schema';
 import type { ProviderBridge } from '../../electron/providers/schema';
 import { ProviderService } from '../../electron/providers/service';
@@ -99,7 +100,9 @@ export function webSettings(
       );
     },
     startCommandSession: async (commandId) => events.post({ type: 'commandSession', commandId }),
-    startExtensionSession: async (kind) => events.post({ type: 'extensionSession', kind }),
+    // Validated here so the caller sees a rejection, as the desktop IPC boundary does.
+    startExtensionSession: async (kind, target) =>
+      events.post({ type: 'extensionSession', ...parseExtensionSession(kind, target ?? null) }),
     close: async () => {
       window.close();
       // A tab the user opened directly cannot close itself; it returns to the panel instead.
