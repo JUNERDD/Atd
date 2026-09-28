@@ -105,14 +105,17 @@ export function registerConfigureMcpTool(pi: ExtensionAPI, host: ConfigureMcpHos
   });
 }
 
-function httpAuth(auth: ConfigureMcpAuth): McpHttpAuth {
+function httpAuth(auth: ConfigureMcpAuth, previous: McpHttpAuth | undefined): McpHttpAuth {
   switch (auth.type) {
     case 'none':
       return { type: 'none' };
     case 'bearer':
       return { type: 'bearer', tokenEnv: auth.tokenEnv };
     case 'oauth':
-      return { type: 'oauth', scope: null, redirectUri: null };
+      // The draft has no scope or redirect fields; an OAuth server keeps the ones it had.
+      return previous?.type === 'oauth'
+        ? { type: 'oauth', scope: previous.scope, redirectUri: previous.redirectUri }
+        : { type: 'oauth', scope: null, redirectUri: null };
     default: {
       const _exhaustive: never = auth;
       throw new Error(`Unsupported MCP auth: ${JSON.stringify(_exhaustive)}`);
@@ -120,8 +123,14 @@ function httpAuth(auth: ConfigureMcpAuth): McpHttpAuth {
   }
 }
 
+/**
+ * The connection part of a record from the draft. The draft carries no env, working directory or
+ * headers, so updating an existing server keeps the ones it had for the same kind of transport;
+ * switching between stdio and HTTP drops the other kind's fields, which no longer apply.
+ */
 function transportFields(
   draft: ConfigureMcpDraft,
+  existing: McpServerConfig | undefined,
 ): Pick<McpServerConfig, 'transport' | 'stdio' | 'http'> {
   switch (draft.transport) {
     case 'stdio': {
@@ -129,7 +138,12 @@ function transportFields(
       if (!command) throw new Error('A command is required for stdio MCP servers.');
       return {
         transport: 'stdio',
-        stdio: { command, args: draft.args ?? [], env: {}, cwd: null },
+        stdio: {
+          command,
+          args: draft.args ?? [],
+          env: existing?.stdio?.env ?? {},
+          cwd: existing?.stdio?.cwd ?? null,
+        },
         http: null,
       };
     }
@@ -143,8 +157,8 @@ function transportFields(
         http: {
           url,
           transport: draft.transport,
-          headers: {},
-          auth: httpAuth(draft.auth),
+          headers: existing?.http?.headers ?? {},
+          auth: httpAuth(draft.auth, existing?.http?.auth),
         },
       };
     }
@@ -159,7 +173,7 @@ function buildRecord(
   draft: ConfigureMcpDraft,
   existing: McpServerConfig | undefined,
 ): McpServerConfig {
-  const fields = transportFields(draft);
+  const fields = transportFields(draft, existing);
   if (existing) {
     return {
       ...existing,
