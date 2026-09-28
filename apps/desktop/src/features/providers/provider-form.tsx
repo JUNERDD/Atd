@@ -103,7 +103,7 @@ export function ProviderForm({
       <ScrollArea
         className="flex-1 min-h-0 min-w-0 m-[-3px_-15px_-3px_-3px]"
         viewportClassName="overlay-footer-fade"
-        gutter
+        gutter="stable"
       >
         <div className="settings-editor-inner settings-fields">
           {saved && saved.revision !== draft.expectedRevision && (

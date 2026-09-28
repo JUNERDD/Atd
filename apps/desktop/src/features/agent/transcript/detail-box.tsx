@@ -29,7 +29,7 @@ export function DetailBox({
         <ScrollArea
           className="thinking-detail"
           viewportClassName="max-h-[inherit]"
-          gutter
+          gutter="stable"
           scrollShadow
         >
           <div className="thinking-detail-pre">{children}</div>
@@ -39,12 +39,17 @@ export function DetailBox({
           orientation="both"
           className="tool-diff"
           viewportClassName="max-h-[inherit]"
-          gutter
+          gutter="stable"
         >
           <div className="tool-diff-pre">{children}</div>
         </ScrollArea>
       ) : (
-        <ScrollArea className="tool-output" viewportClassName="max-h-[inherit]" gutter scrollShadow>
+        <ScrollArea
+          className="tool-output"
+          viewportClassName="max-h-[inherit]"
+          gutter="stable"
+          scrollShadow
+        >
           <div className="tool-output-pre m-0 flex flex-col gap-2 text-xs leading-4.5">
             {children}
           </div>

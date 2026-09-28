@@ -2,6 +2,20 @@ import * as React from 'react';
 import { ScrollArea as ScrollAreaPrimitive } from 'radix-ui';
 import { cn } from '@ai/ui/lib/utils';
 
+type ScrollOrientation = 'vertical' | 'horizontal' | 'both';
+
+/**
+ * How a scroll area keeps its bars off the content. Each bar gets a lane the width of the bar plus
+ * a 4px gap, taken from the viewport so content never runs under the bar at any scroll position.
+ * - `auto` (default): an axis reserves its lane while its content overflows, so areas that do not
+ *   scroll keep their full width.
+ * - `stable`: the lanes are always reserved, so content does not reflow when overflow starts;
+ *   for page-level scrollers whose content grows and shrinks while the user works.
+ * - `none`: the content's own padding already clears the bars (the panel and settings pages,
+ *   whose bars float in that padding); nothing is reserved.
+ */
+type ScrollGutter = 'auto' | 'stable' | 'none';
+
 function ScrollAreaRoot({
   className,
   ...props
@@ -15,18 +29,58 @@ function ScrollAreaRoot({
   );
 }
 
+/**
+ * The scrolling surface. It owns the bar lanes (`gutter`) and the edge fade (`scrollShadow`),
+ * because both follow its own overflow; `orientation` names the axes that scroll and must match
+ * the bars rendered beside it. The lane is a margin rather than padding: padding would scroll away
+ * with content that also overflows along the other axis.
+ */
 function ScrollAreaViewport({
   className,
+  ref,
+  orientation = 'vertical',
+  gutter = 'auto',
+  scrollShadow = false,
   ...props
-}: React.ComponentProps<typeof ScrollAreaPrimitive.Viewport>) {
+}: React.ComponentProps<typeof ScrollAreaPrimitive.Viewport> & {
+  orientation?: ScrollOrientation;
+  gutter?: ScrollGutter;
+  /** Soft content fade at the scrolled edges revealing further content (vertical only). */
+  scrollShadow?: boolean;
+}) {
+  const node = React.useRef<HTMLDivElement | null>(null);
+  const setRefs = React.useCallback(
+    (element: HTMLDivElement | null) => {
+      node.current = element;
+      setRef(ref, element);
+    },
+    [ref],
+  );
+  const scrollsY = orientation !== 'horizontal';
+  const scrollsX = orientation !== 'vertical';
+  const shadows = scrollShadow && scrollsY;
+  const state = useViewportState(node, {
+    edges: shadows,
+    overflowY: gutter === 'auto' && scrollsY,
+    overflowX: gutter === 'auto' && scrollsX,
+  });
+  const laneY = scrollsY && (gutter === 'stable' || (gutter === 'auto' && has(state, OVERFLOW_Y)));
+  const laneX = scrollsX && (gutter === 'stable' || (gutter === 'auto' && has(state, OVERFLOW_X)));
   return (
     <ScrollAreaPrimitive.Viewport
+      ref={setRefs}
       data-slot="scroll-area-viewport"
       className={cn(
-        'min-h-0 w-full min-w-0 flex-1 rounded-[inherit] transition-[color,box-shadow] outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-1 [&>div]:block!',
+        'min-h-0 min-w-0 flex-1 rounded-[inherit] transition-[color,box-shadow] outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-1 [&>div]:block!',
+        scrollsX && '[&>div]:table!',
+        laneY && 'mr-3',
+        laneX && 'mb-3',
+        shadows && 'scroll-shadowed',
         className,
       )}
       {...props}
+      data-top-scroll={(shadows && has(state, MORE_ABOVE)) || undefined}
+      data-bottom-scroll={(shadows && has(state, MORE_BELOW)) || undefined}
     />
   );
 }
@@ -37,7 +91,7 @@ function ScrollArea({
   viewportRef,
   viewportProps,
   orientation = 'vertical',
-  gutter = false,
+  gutter = 'auto',
   scrollShadow = false,
   ...props
 }: React.ComponentProps<typeof ScrollAreaRoot> & {
@@ -45,39 +99,22 @@ function ScrollArea({
   viewportRef?: React.Ref<HTMLDivElement>;
   viewportProps?: Omit<
     React.ComponentProps<typeof ScrollAreaViewport>,
-    'children' | 'className' | 'ref'
+    'children' | 'className' | 'ref' | 'orientation' | 'gutter' | 'scrollShadow'
   >;
-  orientation?: 'vertical' | 'horizontal' | 'both';
-  /** Reserve a trailing column so the vertical bar never covers content. */
-  gutter?: boolean;
+  orientation?: ScrollOrientation;
+  gutter?: ScrollGutter;
   /** Soft content fade at the scrolled edges revealing further content (vertical only). */
   scrollShadow?: boolean;
 }) {
-  const viewportNode = React.useRef<HTMLDivElement | null>(null);
-  const setViewportRefs = React.useCallback(
-    (node: HTMLDivElement | null) => {
-      viewportNode.current = node;
-      setRef(viewportRef, node);
-    },
-    [viewportRef],
-  );
-  const shadows = scrollShadow && orientation !== 'horizontal';
-  const edges = useScrollEdges(shadows, viewportNode);
-  const top = shadows && (edges & 1) !== 0;
-  const bottom = shadows && (edges & 2) !== 0;
   return (
     <ScrollAreaRoot {...props}>
       <ScrollAreaViewport
-        ref={setViewportRefs}
-        className={cn(
-          gutter && orientation !== 'horizontal' && 'pr-3',
-          orientation !== 'vertical' && '[&>div]:table!',
-          shadows && 'scroll-shadowed',
-          viewportClassName,
-        )}
+        ref={viewportRef}
+        orientation={orientation}
+        gutter={gutter}
+        scrollShadow={scrollShadow}
+        className={viewportClassName}
         {...viewportProps}
-        data-top-scroll={top || undefined}
-        data-bottom-scroll={bottom || undefined}
       >
         {children}
       </ScrollAreaViewport>
@@ -89,6 +126,14 @@ function ScrollArea({
 }
 
 const SHADOW_EDGE_PX = 1;
+const MORE_ABOVE = 1;
+const MORE_BELOW = 2;
+const OVERFLOW_Y = 4;
+const OVERFLOW_X = 8;
+
+function has(state: number, flag: number): boolean {
+  return (state & flag) !== 0;
+}
 
 /** Assigns a forwarded ref without the caller touching props inline. */
 function setRef(ref: React.Ref<HTMLDivElement> | undefined, node: HTMLDivElement | null) {
@@ -99,45 +144,70 @@ function setRef(ref: React.Ref<HTMLDivElement> | undefined, node: HTMLDivElement
   }
 }
 
-/**
- * Bit 0: more content above; bit 1: more below. A number compares by value, which is what the
- * external-store snapshot below needs.
- */
-function scrollEdges(node: HTMLDivElement | null): number {
-  if (!node) return 0;
-  const top = node.scrollTop > SHADOW_EDGE_PX ? 1 : 0;
-  const bottom = node.scrollTop + node.clientHeight < node.scrollHeight - SHADOW_EDGE_PX ? 2 : 0;
-  return top | bottom;
+interface ViewportWatch {
+  /** Track whether content lies beyond the top and bottom edges. */
+  edges: boolean;
+  /** Track whether content overflows vertically / horizontally. */
+  overflowY: boolean;
+  overflowX: boolean;
 }
 
 /**
- * Edge-overflow bits for a scrollable viewport, read through `useSyncExternalStore`: scroll
- * events and viewport resizes notify, and every render re-reads the snapshot, which also covers
- * content growing under a settled scroll position. The snapshot is a 2-bit number, so unchanged
- * scrolls never re-render. Mirrors HeroUI's `useScrollShadow` state model (`data-top-scroll` /
- * `data-bottom-scroll`) without its MutationObserver — renders already re-read here.
+ * Overflow bits for a viewport, as the bars see it: Radix shows a bar when the viewport's offset
+ * size is below its scroll size, so a lane appears exactly when its bar can.
  */
-function useScrollEdges(enabled: boolean, target: React.RefObject<HTMLDivElement | null>): number {
+function readViewport(node: HTMLDivElement, watch: ViewportWatch): number {
+  let state = 0;
+  if (watch.edges) {
+    if (node.scrollTop > SHADOW_EDGE_PX) state |= MORE_ABOVE;
+    if (node.scrollTop + node.clientHeight < node.scrollHeight - SHADOW_EDGE_PX)
+      state |= MORE_BELOW;
+  }
+  if (watch.overflowY && node.offsetHeight < node.scrollHeight) state |= OVERFLOW_Y;
+  if (watch.overflowX && node.offsetWidth < node.scrollWidth) state |= OVERFLOW_X;
+  return state;
+}
+
+/**
+ * Overflow bits for a viewport, read through `useSyncExternalStore`. Scrolls, viewport resizes and
+ * content resizes (Radix wraps the children in one element) recompute them after layout, so render
+ * never reads layout; the snapshot is a small number, so unchanged reads never re-render. Mirrors
+ * HeroUI's `useScrollShadow` state model (`data-top-scroll` / `data-bottom-scroll`). A reserved
+ * lane narrows the content, which can only make it taller, so toggling a lane settles in one pass.
+ */
+function useViewportState(
+  target: React.RefObject<HTMLDivElement | null>,
+  { edges, overflowY, overflowX }: ViewportWatch,
+): number {
+  const state = React.useRef(0);
   const subscribe = React.useCallback(
     (notify: () => void) => {
-      if (!enabled) return () => {};
       const node = target.current;
-      if (!node) return () => {};
-      node.addEventListener('scroll', notify, { passive: true });
-      const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(notify);
+      state.current = 0;
+      if (!node || !(edges || overflowY || overflowX)) return () => {};
+      const update = () => {
+        const next = readViewport(node, { edges, overflowY, overflowX });
+        if (next === state.current) return;
+        state.current = next;
+        notify();
+      };
+      update();
+      if (edges) node.addEventListener('scroll', update, { passive: true });
+      const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(update);
       observer?.observe(node);
+      if (node.firstElementChild) observer?.observe(node.firstElementChild);
       return () => {
-        node.removeEventListener('scroll', notify);
+        node.removeEventListener('scroll', update);
         observer?.disconnect();
       };
     },
-    [enabled, target],
+    [target, edges, overflowY, overflowX],
   );
-  const getEdges = React.useCallback(
-    () => (enabled ? scrollEdges(target.current) : 0),
-    [enabled, target],
+  return React.useSyncExternalStore(
+    subscribe,
+    () => state.current,
+    () => 0,
   );
-  return React.useSyncExternalStore(subscribe, getEdges);
 }
 
 function ScrollBar({
@@ -164,4 +234,4 @@ function ScrollBar({
   );
 }
 
-export { ScrollArea, ScrollAreaRoot, ScrollAreaViewport, ScrollBar };
+export { ScrollArea, ScrollAreaRoot, ScrollAreaViewport, ScrollBar, type ScrollGutter };

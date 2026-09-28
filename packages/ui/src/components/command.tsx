@@ -11,7 +11,7 @@ import {
 } from '@ai/ui/components/dialog';
 import { InputGroup, InputGroupAddon } from '@ai/ui/components/input-group';
 import { SearchIcon, CheckIcon } from 'lucide-react';
-import { ScrollArea } from '@ai/ui/components/scroll-area';
+import { ScrollArea, type ScrollGutter } from '@ai/ui/components/scroll-area';
 
 function Command({ className, ...props }: React.ComponentProps<typeof CommandPrimitive>) {
   return (
@@ -89,10 +89,10 @@ function CommandInput({
 
 function CommandList({
   className,
-  gutter = false,
+  gutter = 'auto',
   children,
   ...props
-}: React.ComponentProps<typeof CommandPrimitive.List> & { gutter?: boolean }) {
+}: React.ComponentProps<typeof CommandPrimitive.List> & { gutter?: ScrollGutter }) {
   return (
     <ScrollArea
       className={cn('min-h-0 max-h-72', className)}

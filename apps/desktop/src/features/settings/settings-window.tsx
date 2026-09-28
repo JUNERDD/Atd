@@ -180,7 +180,7 @@ export function SettingsWindow() {
                       </IconButton>
                     </SheetClose>
                   </header>
-                  <ScrollArea className="settings-drawer-scroll" gutter>
+                  <ScrollArea className="settings-drawer-scroll" gutter="stable">
                     {navigation()}
                   </ScrollArea>
                 </SheetContent>
@@ -202,6 +202,7 @@ export function SettingsWindow() {
             <ScrollArea
               className="flex-1"
               viewportClassName="[&>div]:flex! [&>div]:flex-col [&>div]:h-full"
+              gutter="none"
             >
               <div className="settings-content-scroll">
                 <div className="settings-page" hidden={tab !== 'permissions'}>
