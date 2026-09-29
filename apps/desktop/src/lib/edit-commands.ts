@@ -1,9 +1,10 @@
 import type { EditCommand } from '../../electron/contract';
 
 /**
- * Runs Edit → Undo/Redo from the application menu. A focused CodeMirror editor with history moves
- * its own history: Blink's native undo stack never sees the edits CodeMirror handles itself, and
- * running the native command inside the editor would rewrite its document behind its back.
+ * Runs Edit → Undo/Redo from the application menu (Electron's, or the macOS shell's through the
+ * `edit.command` event). A focused CodeMirror editor with history moves its own history: the
+ * engine's native undo stack (Blink's, WebKit's) never sees the edits CodeMirror handles itself,
+ * and running the native command inside the editor would rewrite its document behind its back.
  * Anywhere else (inputs, textareas) the native editing command runs, as the menu role did.
  *
  * CodeMirror loads lazily: a window that never mounted an editor (the settings window until the

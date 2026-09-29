@@ -37,7 +37,7 @@ function pageOrigin(): string {
  * service through the shell's relay: HTTP as same-origin fetches the scheme handler forwards, the
  * stream over virtual sockets. Host abilities go through native calls. Only the panel owns the
  * global shortcuts, the language push, file search and the files the shell imports from drops and
- * pastes; each window publishes its own drag regions.
+ * pastes; each window publishes its own drag regions and runs the menu's Undo/Redo.
  */
 export async function installNativeHost(
   native: NativeBridge,
@@ -204,6 +204,7 @@ export async function installNativeHost(
     },
     // Attachments go through the agent bridge (`chooseFiles` → `files.pick`).
     chooseFiles: async () => [],
+    onEditCommand: (listener) => native.on('edit.command', ({ command }) => listener(command)),
   };
   window.desktop = bridge;
 }
