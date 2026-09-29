@@ -273,13 +273,5 @@
     "text": "此任务的上下文已整理 {{count}} 次，新开任务效果更好。",
     "newTask": "新建任务",
     "dismiss": "关闭提示"
-  },
-  "webSignIn": {
-    "title": "请从桌面应用打开此页面",
-    "none": "此浏览器尚未登录智能体服务。请在桌面应用中打开「设置」，点击右上角的「在浏览器中打开」（地球图标），或在本机运行 `agent-service web`。",
-    "expired": "该登录链接已过期或已被使用。请在桌面应用中（设置 → 在浏览器中打开）或通过 `agent-service web` 重新获取链接。",
-    "offlineTitle": "无法连接智能体服务",
-    "offline": "请先启动桌面应用或 `agent-service serve`，然后重试。",
-    "retry": "重试"
   }
 }

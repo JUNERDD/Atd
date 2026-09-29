@@ -273,13 +273,5 @@
     "text": "This task's context has been compacted {{count}} times. A new task may work better.",
     "newTask": "New task",
     "dismiss": "Dismiss"
-  },
-  "webSignIn": {
-    "title": "Open this page from the desktop app",
-    "none": "This browser is not signed in to the agent service yet. In the desktop app, open Settings and choose Open in browser (the globe button), or run `agent-service web` on this computer.",
-    "expired": "That sign-in link expired or was already used. Open a new one from the desktop app (Settings → Open in browser) or with `agent-service web`.",
-    "offlineTitle": "The agent service is not reachable",
-    "offline": "Start the desktop app or `agent-service serve`, then try again.",
-    "retry": "Try again"
   }
 }

@@ -1,3 +1,4 @@
+import type { AgentClientOptions } from '@ai/agent-client';
 import { AgentRequests } from '../../electron/agent/agent-requests';
 import { parseExtensionSession, type ExtensionSession } from '../../electron/agent/bridge';
 import {
@@ -9,14 +10,11 @@ import type { DesktopBridge } from '../../electron/contract';
 import { createServiceBridge } from '../../electron/service/bridge-client';
 import { handleExtensionRequest } from '../../electron/service/extension-requests';
 import type { ServiceEvent } from '../../electron/service/ipc';
-import { establishSession, type SessionResult } from './host-session';
 import { WebCommands } from './web-commands';
 import { WebConnection } from './web-connection';
 import { webEvents } from './web-events';
 import { webPlatform } from './web-platform';
 import { webSettings } from './web-settings';
-
-export type WebHostState = { kind: 'ready' } | Exclude<SessionResult, { kind: 'ready' }>;
 
 /** The OS as a Node platform name, for shortcut semantics (⌘ on macOS, Ctrl elsewhere). */
 function detectPlatform(): string {
@@ -29,16 +27,18 @@ function detectPlatform(): string {
 const openExternal = async (url: string) => void window.open(url, '_blank', 'noopener,noreferrer');
 
 /**
- * Installs `window.desktop` for the browser client served by the agent service. It runs the same
- * request handling, task cache and provider client as the desktop main process, against the
- * service directly with this browser's session; only host abilities (file chooser, clipboard,
- * links, settings tab) differ. Resolves `ready`, or why the page cannot sign in yet.
+ * Installs `window.desktop` for a page that reaches the service through its host rather than the
+ * Electron preload. It runs the same request handling, task cache and provider client as the
+ * desktop main process; only host abilities (file chooser, clipboard, links, settings tab)
+ * differ. Nothing calls it until the native shell supplies `options`
+ * (docs/plans/2026-09-29-macos-native-frontend.md); until then only type checking covers it.
  */
-export async function installWebHost(): Promise<WebHostState> {
-  const session = await establishSession();
-  if (session.kind !== 'ready') return session;
+export async function installWebHost(
+  options: AgentClientOptions,
+  serviceId: string,
+): Promise<void> {
   const platform = detectPlatform();
-  const connection = new WebConnection(session.options, session.serviceId);
+  const connection = new WebConnection(options, serviceId);
   const events = webEvents();
   const channels: { [C in AgentChannel]: Set<(value: AgentChannelValues[C]) => void> } = {
     changed: new Set(),
@@ -149,5 +149,4 @@ export async function installWebHost(): Promise<WebHostState> {
     chooseFiles: async () => [],
   };
   window.desktop = bridge;
-  return { kind: 'ready' };
 }

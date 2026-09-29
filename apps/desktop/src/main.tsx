@@ -30,17 +30,8 @@ const windowRoot = loadWindowRoot();
 // tree, so a transcript rarely has to show plain text first.
 if (!isSettingsWindow) void loadMarkdown();
 
-const WebSignIn = React.lazy(() =>
-  import('./web/web-sign-in').then((module) => ({ default: module.WebSignIn })),
-);
-
-// In a plain browser (the dev server `pnpm dev` runs, or the build the service serves) the page
-// signs in to the agent service and installs the same bridge the desktop preload provides.
-// `?preview` keeps a bare renderer without a service, for layout checks.
-const webHost =
-  !window.desktop && !new URLSearchParams(window.location.search).has('preview')
-    ? await import('./web').then((module) => module.installWebHost())
-    : null;
+// Without the Electron preload (a plain browser on `pnpm dev:web`, conventionally opened with
+// `?preview`) no host installs `window.desktop`: the page is a bare renderer for layout checks.
 const runtime = window.desktop?.runtime ?? 'web';
 document.documentElement.dataset.runtime = runtime;
 // Platform styles describe native window surfaces, which only the Electron runtime has.
@@ -63,7 +54,7 @@ ReactDOM.createRoot(root).render(
     <React.Suspense
       fallback={<output className="settings-loading">{i18n.t('window.loading')}</output>}
     >
-      {webHost && webHost.kind !== 'ready' ? <WebSignIn state={webHost} /> : <WindowRoot />}
+      <WindowRoot />
     </React.Suspense>
   </React.StrictMode>,
 );

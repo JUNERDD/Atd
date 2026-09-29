@@ -15,10 +15,9 @@ interface TaskHandlers {
 }
 
 /**
- * The web client's link to the service that served it: one HTTP client and one stream with the
- * session token. It serves no desktop capabilities (file picker, selection, clipboard); runs
- * that need them wait for the desktop app. The stream reconnects on its own; a service restart
- * that forgets nothing (sessions persist) resumes without a new pairing.
+ * The web host's link to the service: one HTTP client and one stream with the options its host
+ * supplies. It serves no desktop capabilities (file picker, selection, clipboard); runs that
+ * need them wait for the desktop app. The stream reconnects on its own.
  */
 export class WebConnection implements AgentConnection {
   private readonly httpClient: AgentHttpClient;

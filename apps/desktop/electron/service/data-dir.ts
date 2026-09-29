@@ -1,10 +1,7 @@
 import { homedir, platform } from 'node:os';
 import path from 'node:path';
 
-/**
- * Where the agent service keeps its data. Free of Electron so the dev server (`vite.config.ts`)
- * finds the same service the desktop app starts.
- */
+/** Where the agent service keeps its data by default, per OS. */
 export function defaultServiceDataDir(): string {
   const home = homedir();
   switch (platform()) {

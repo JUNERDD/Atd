@@ -7,7 +7,6 @@ import babel from '@rolldown/plugin-babel';
 import tailwindcss from '@tailwindcss/vite';
 import electron from 'vite-plugin-electron/simple';
 import type { ElectronOptions } from 'vite-plugin-electron';
-import { agentServiceDev } from './plugins/agent-service-dev.js';
 import { reactCompiler } from './plugins/react-compiler.js';
 import {
   componentInspector,
@@ -57,8 +56,6 @@ export default defineConfig(({ mode, command }) => ({
           // Tags JSX with source locations for the component inspector.
           babel({ plugins: [componentInspectorBabelPlugin], include: /\.(tsx|jsx)$/ }),
           componentInspector(),
-          // `pnpm dev` also serves the web client on this origin.
-          agentServiceDev(),
         ]
       : []),
     // The compiler's Babel pass is synchronous and made a cold dev start ~2 s slower, so the dev
@@ -107,7 +104,7 @@ export default defineConfig(({ mode, command }) => ({
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
-      // The web client runs the service client packages in the page.
+      // Renderer code imports the workspace packages from source as well.
       ...workspaceSource,
     },
   },
