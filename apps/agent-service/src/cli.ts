@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Agent service CLI: foreground `serve`, plus `status` and `stop` against the
- * dataDir endpoint file. No Electron, no app.getPath, no utilityProcess.
+ * dataDir endpoint file.
  */
 import path from 'node:path';
 import { errorMessage } from '@ai/agent-contracts';
@@ -59,7 +59,7 @@ function usage(): string {
     '  --version, -v    Print version and Node requirement',
     '',
     `Requires Node.js ${engines} on PATH (workspace toolchain; covers Pi 0.87.1`,
-    '≥22.19.0). The Electron app binary is not Node.js; there is no auto-download.',
+    '≥22.19.0); there is no auto-download.',
     'AI_AGENT_DATA_DIR overrides --dataDir.',
     'approve asks the running service what an MCP server would launch and approves it after a',
     'y on the terminal; without a terminal it refuses unless --yes is given.',

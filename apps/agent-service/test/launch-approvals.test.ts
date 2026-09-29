@@ -129,7 +129,7 @@ test('a stale fingerprint is refused and nothing is stored', async () => {
   assert.ok(!(await api.stored()).approvals.some((record) => record.serverId === 'stale'));
   assert.equal(await api.approvalOf('stale'), 'required');
   const invalid = await api.approve('stale', shown, 'renderer');
-  assert.equal(invalid.status, 400, 'only shell, electron or cli confirm an approval');
+  assert.equal(invalid.status, 400, 'only shell or cli confirm an approval');
 });
 
 test('an approval lets the server launch; a change or a withdrawal stops it', async () => {

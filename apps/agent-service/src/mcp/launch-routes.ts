@@ -11,8 +11,8 @@ import type { McpRouteDeps } from './routes.js';
 
 /**
  * Launch approval routes (contract in agent-contracts `mcp-approvals.ts`). Granting is shell-only:
- * the details and approve routes are reachable by main-token clients (the Swift shell, Electron
- * main, the CLI) and never through the renderer relay. The renderer may withdraw an approval and
+ * the details and approve routes are reachable by main-token clients (the Swift shell and the
+ * CLI) and never through the renderer relay. The renderer may withdraw an approval and
  * dismiss the one-time notice, neither of which lets anything run.
  */
 

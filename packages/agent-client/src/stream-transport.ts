@@ -30,7 +30,7 @@ export interface StreamTransportFactory {
 }
 
 /**
- * Default transport over the standard `WebSocket` global (Node 22+, Electron, browsers), offering
+ * Default transport over the standard `WebSocket` global (Node 22+, browsers, WebKit), offering
  * the given subprotocols.
  */
 export function webSocketTransport(protocols: string[]): StreamTransportFactory {

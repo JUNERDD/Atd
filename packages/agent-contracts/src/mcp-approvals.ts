@@ -9,7 +9,7 @@ import { McpServerIdSchema, McpServerStatusSchema } from './mcp.js';
  * `${NAME}`, `$env:NAME` or `{env:NAME}`, NAME being letters, digits and `_`. An approval binds a
  * fingerprint of everything that decides what runs or where the env value goes; any change to
  * those voids it. Granting happens only through shell-only routes, after a native confirmation in
- * the shell (Swift or Electron main), or through the CLI; the renderer may only withdraw.
+ * the Swift shell, or through the CLI; the renderer may only withdraw.
  *
  * Routes (exposure in brackets, see agent-service `route-exposure.ts`):
  * - `GET    /v1/admin/approvals/mcp/:serverId`  [shell]    → McpLaunchApprovalDetails
@@ -46,12 +46,8 @@ export const McpLaunchKindSchema = Type.Union([
 ]);
 export type McpLaunchKind = Static<typeof McpLaunchKindSchema>;
 
-/** Who confirmed an approval: the Swift shell, Electron main, or the CLI prompt. */
-export const McpLaunchApprovalViaSchema = Type.Union([
-  Type.Literal('shell'),
-  Type.Literal('electron'),
-  Type.Literal('cli'),
-]);
+/** Who confirmed an approval: the Swift shell or the CLI prompt. */
+export const McpLaunchApprovalViaSchema = Type.Union([Type.Literal('shell'), Type.Literal('cli')]);
 export type McpLaunchApprovalVia = Static<typeof McpLaunchApprovalViaSchema>;
 
 export const McpServerLayerSchema = Type.Union([Type.Literal('user'), Type.Literal('plugin')]);
@@ -226,7 +222,7 @@ export type McpStatusResponse = Static<typeof McpStatusResponseSchema>;
 
 /**
  * What a client's request for a native approval confirmation answered. The page names only the
- * server; the shell (Swift or Electron main) reads the details itself, shows them, and approves
+ * server; the Swift shell reads the details itself, shows them, and approves
  * with the fingerprint it showed.
  * - `cancelled`: the user dismissed the dialog, or cancelled the same launch moments ago.
  * - `changed`: what the server launches changed between the dialog and the approve (409).
