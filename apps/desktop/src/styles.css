@@ -184,19 +184,14 @@ body {
 .overlay-footer-fade[data-reserve='off'] > div {
   padding-bottom: 0;
 }
-/* Floating scroll-to-bottom pill pinned above the composer. The wrapper owns position and the
-   glass surface (`surface-glass`, a lighter fill than the popovers); the ghost icon button inside
-   keeps its own radius, hover wash, and focus ring, so no custom class lands on the Button
-   itself. */
+/* Floating scroll-to-bottom pill pinned above the composer. The wrapper owns only position and
+   motion; the icon button inside is the panel's shared glass control (`variant="glass"`), so it
+   matches the header and composer controls. */
 .scroll-to-bottom {
   position: absolute;
   bottom: calc(var(--overlay-footer-height, 0px) + 12px);
   left: 50%;
   z-index: 1;
-  border-radius: var(--radius-2xl);
-  border: 1px solid var(--border);
-  --ata-glass-fill: color-mix(in oklch, var(--popover) 75%, transparent);
-  --ata-glass-shadow: 0 4px 12px rgb(0 0 0 / 20%);
 }
 .settings-field {
   display: flex;

@@ -102,6 +102,7 @@ export function App() {
               <header className="panel-header">
                 <IconButton
                   label={t('header.newChat')}
+                  variant="glass"
                   className="header-button -mx-1"
                   onClick={newTask}
                 >
@@ -112,6 +113,7 @@ export function App() {
                   {view === 'task' && current.detail && <SessionMenu detail={current.detail} />}
                   <IconButton
                     label={t('header.tasks')}
+                    variant="glass"
                     className="header-button"
                     aria-pressed={view === 'history'}
                     onClick={() => setView(view === 'history' ? 'new' : 'history')}
@@ -120,6 +122,7 @@ export function App() {
                   </IconButton>
                   <IconButton
                     label={t('header.settings')}
+                    variant="glass"
                     className="header-button"
                     onClick={() => void openSettings()}
                   >

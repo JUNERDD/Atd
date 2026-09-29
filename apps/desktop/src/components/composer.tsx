@@ -292,7 +292,7 @@ export function Composer({
             boundary={overlayBoundary}
           >
             <div
-              className="composer-surface"
+              className="composer-surface surface-glass glass-control"
               data-expanded={expanded}
               data-has-attachments={draft.files.length > 0}
             >
@@ -313,7 +313,7 @@ export function Composer({
                 label={t('composer.attachContext')}
                 className="composer-attach"
                 tooltipSide="top"
-                variant="secondary"
+                variant="glass-ghost"
                 disabled={choosing || locked}
                 onClick={() => void choose()}
               >

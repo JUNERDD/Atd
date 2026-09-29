@@ -47,7 +47,7 @@ export function PermissionTierControl({
   const trigger = (
     <Button
       type="button"
-      variant="ghost"
+      variant="glass"
       size="xs"
       disabled={!writable}
       aria-label={t('permission.tierLabel')}

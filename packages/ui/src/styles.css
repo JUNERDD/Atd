@@ -24,6 +24,12 @@
     0 0 0 1px var(--ata-glass-edge);
   --ata-glass-fill-inactive: rgb(30 30 30 / 96%);
   --ata-glass-fill-opaque: rgb(24 24 24);
+  /* Glass controls (`glass-control`, `glass-state`): the fallback fill and shadow of control-sized
+     glass, and the washes a control draws inside its bounds on hover, and when pressed or open. */
+  --ata-glass-control-fill: color-mix(in oklch, var(--secondary) 72%, transparent);
+  --ata-glass-control-shadow: 0 1px 2px rgb(0 0 0 / 18%), 0 0 0 1px var(--ata-glass-edge);
+  --ata-glass-control-wash: color-mix(in srgb, var(--foreground) 10%, transparent);
+  --ata-glass-control-wash-strong: color-mix(in srgb, var(--foreground) 16%, transparent);
   /* Same tint as the sidebar; this inset layer raises effective opacity only to 82%. */
   --ata-material-settings-content: rgb(12 12 12 / 10%);
   --ata-surface-settings-content: var(--ata-material-settings-content);
@@ -224,6 +230,62 @@
       box-shadow: var(--ata-glass-shadow, var(--ata-glass-shadow-default));
       -apple-visual-effect: none;
     }
+  }
+}
+
+/*
+ * Glass controls: the task panel's buttons, composer field and floating capsules, after iOS 26 and
+ * Raycast's glass pills. A control keeps the one material above and only tunes it: `surface-glass
+ * glass-control` gives it the control-sized fallback fill and shadow, and clips its content so
+ * nothing inside can widen the glass layer. The shared `Button` owns the pressable forms:
+ * `variant="glass"` is a control with its own glass; `variant="glass-ghost"` sits flush inside
+ * another glass surface without glass of its own, so glass never stacks.
+ */
+@utility glass-control {
+  --ata-glass-fill: var(--ata-glass-control-fill);
+  --ata-glass-shadow: var(--ata-glass-control-shadow);
+  overflow: clip;
+}
+
+/*
+ * The states of a pressable glass control, drawn inside its own border box: system glass ignores
+ * background-color, and an outset ring would grow the glass layer (see `surface-glass`). A layer
+ * under the content carries the hover wash, the stronger wash for pressed, expanded and active,
+ * and the focus-visible ring, which mirrors the shared focus ring inward: the border turns the
+ * ring color and a 3px band at 30% runs just inside it.
+ */
+@utility glass-state {
+  position: relative;
+  isolation: isolate;
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    pointer-events: none;
+    transition:
+      background-color 150ms ease-out,
+      box-shadow 150ms ease-out;
+  }
+
+  &:hover::before {
+    background-color: var(--ata-glass-control-wash);
+  }
+
+  &:active::before,
+  &[aria-expanded='true']::before,
+  &[aria-pressed='true']::before {
+    background-color: var(--ata-glass-control-wash-strong);
+  }
+
+  &:focus-visible {
+    border-color: var(--ring);
+  }
+
+  &:focus-visible::before {
+    box-shadow: inset 0 0 0 3px color-mix(in oklab, var(--ring) 30%, transparent);
   }
 }
 

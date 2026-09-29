@@ -11,14 +11,19 @@ export function ScrollJump({ show, onJump }: { show: boolean; onJump: () => void
       <AnimatePresence>
         {show && (
           <motion.div
-            className="scroll-to-bottom surface-glass"
+            className="scroll-to-bottom"
             initial={{ opacity: 0, x: '-50%', y: 16, scale: 0.95 }}
             animate={{ opacity: 1, x: '-50%', y: 0, scale: 1 }}
             exit={{ opacity: 0, x: '-50%', y: 16, scale: 0.95 }}
             transition={{ type: 'spring', stiffness: 380, damping: 28 }}
             whileTap={{ scale: 0.85 }}
           >
-            <IconButton label={t('conversation.scrollToBottom')} tooltip={false} onClick={onJump}>
+            <IconButton
+              label={t('conversation.scrollToBottom')}
+              tooltip={false}
+              variant="glass"
+              onClick={onJump}
+            >
               <ArrowDown />
             </IconButton>
           </motion.div>

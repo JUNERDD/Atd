@@ -57,8 +57,8 @@ const HITL_ICONS = {
 } as const;
 
 /**
- * A part that opens its view: a ghost xs button rounded to the capsule, expanded while its view
- * shows. `data-pill-view` lets the popover return focus to it.
+ * A part that opens its view: an xs button flush on the capsule's glass (`glass-ghost`), rounded to
+ * the capsule, expanded while its view shows. `data-pill-view` lets the popover return focus to it.
  */
 function PartButton({
   view,
@@ -78,7 +78,7 @@ function PartButton({
   return (
     <Button
       type="button"
-      variant="ghost"
+      variant="glass-ghost"
       size="xs"
       className={cn('composer-progress-part composer-progress-trigger', className)}
       data-pill-view={view}
@@ -235,7 +235,10 @@ export function ProgressPill({
             animate={{ opacity: 1, scale: 1, transition: reduced ? INSTANT : ENTER }}
             exit={{ opacity: 0, scale: 0.96, transition: reduced ? INSTANT : EXIT }}
           >
-            <output className="composer-progress" aria-label={t('composer.progress.label')}>
+            <output
+              className="composer-progress surface-glass glass-control"
+              aria-label={t('composer.progress.label')}
+            >
               {parts.map(({ key, node }, index) => (
                 <Fragment key={key}>
                   {index > 0 && (

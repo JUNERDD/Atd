@@ -4,8 +4,10 @@
   gap: 8px;
 }
 
-/* One textarea stays mounted while the composition changes around it. The surface is opaque because
-   the composer floats over the conversation and would otherwise show the fading messages through. */
+/* One editor stays mounted while the composition changes around it. The surface is a glass control
+   (`surface-glass glass-control`), so the conversation fading under the floating composer shows
+   through its material; it sets no fill or shadow of its own. The attach and send buttons sit
+   inside its padding, clear of the clipped edge. */
 .composer-surface {
   display: grid;
   grid-template-areas: 'attach prompt actions';
@@ -14,8 +16,6 @@
   gap: 8px;
   padding: 8px;
   border-radius: 999px;
-  background: var(--secondary);
-  box-shadow: 0 1px 2px rgb(0 0 0 / 18%);
 }
 
 .composer-surface[data-expanded='true'] {
@@ -182,11 +182,6 @@
 
 .composer-attach {
   grid-area: attach;
-  background: var(--input);
-}
-
-.composer-attach:hover {
-  background: color-mix(in oklab, var(--foreground) 20%, transparent);
 }
 
 .composer-actions {
@@ -221,36 +216,23 @@
   flex-shrink: 1;
 }
 
-/* The merged model configuration stays one trailing control; the context ring sits before it.
-   When a narrow panel wraps it below the policy group, it stays at the trailing edge. */
+/* The merged model configuration stays one trailing control; the context ring sits before it as a
+   separate glass pill. When a narrow panel wraps it below the policy group, it stays at the
+   trailing edge. */
 .composer-model-group {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 2px;
+  gap: 4px;
   min-width: 0;
   flex-shrink: 1;
   margin-left: auto;
 }
 
-/* Context usage ring: an icon-xs (24px) focus target around a 14px ring, like the progress pill's
+/* Context usage ring: an icon-xs (24px) glass button around a 14px ring, like the progress pill's
    todo ring. The level colors the arc: muted, then warning from 75%, destructive from 90%. */
 .context-usage {
-  display: inline-flex;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  padding: 0;
-  border: 0;
-  border-radius: var(--radius-lg);
-  background: transparent;
   color: var(--muted-foreground);
-  outline: none;
-}
-.context-usage:focus-visible {
-  box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 30%, transparent);
 }
 .context-usage[data-level='warning'] {
   color: var(--ata-status-warning);
@@ -259,8 +241,6 @@
   color: var(--destructive);
 }
 .context-usage-ring {
-  width: 14px;
-  height: 14px;
   transform: rotate(-90deg);
 }
 .context-usage-ring circle {

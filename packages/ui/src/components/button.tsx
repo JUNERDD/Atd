@@ -4,7 +4,7 @@ import { cn } from '@ai/ui/lib/utils';
 import { Slot } from 'radix-ui';
 
 const buttonVariants = cva(
-  "group/button inline-flex shrink-0 items-center justify-center rounded-2xl border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "group/button inline-flex shrink-0 items-center justify-center rounded-2xl border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-all outline-none select-none disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
@@ -18,6 +18,11 @@ const buttonVariants = cva(
         destructive:
           'bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 dark:focus-visible:ring-destructive/40',
         link: 'text-primary underline-offset-4 hover:underline',
+        // Glass controls (`glass-control` and `glass-state` in the shared styles): a control with
+        // its own glass, or one flush inside another glass surface. Their states stay inside the
+        // border box, since any outset shadow or ring would grow the glass layer.
+        glass: 'surface-glass glass-control glass-state text-foreground',
+        'glass-ghost': 'glass-state text-foreground',
       },
       size: {
         default:
@@ -31,6 +36,18 @@ const buttonVariants = cva(
         'icon-lg': 'size-9',
       },
     },
+    // The shared outset focus and invalid rings, for every variant but the glass ones.
+    compoundVariants: [
+      {
+        variant: ['default', 'outline', 'secondary', 'ghost', 'destructive', 'link'],
+        class:
+          'focus-visible:ring-3 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40',
+      },
+      {
+        variant: ['default', 'outline', 'secondary', 'ghost', 'link'],
+        class: 'focus-visible:border-ring focus-visible:ring-ring/30',
+      },
+    ],
     defaultVariants: {
       variant: 'default',
       size: 'default',

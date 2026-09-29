@@ -110,7 +110,7 @@ export function ModelConfigPopover({
     >
       <PopoverTrigger asChild>
         <Button
-          variant="ghost"
+          variant={compact ? 'glass' : 'ghost'}
           size={compact ? 'xs' : 'default'}
           className={compact ? 'composer-model' : 'provider-model-trigger'}
           disabled={disabled}
