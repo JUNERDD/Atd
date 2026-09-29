@@ -8,6 +8,7 @@ import {
   type McpDraft,
   type McpUpsertInput,
 } from './extension-mcp-draft';
+import type { ExtensionMcpConfig } from './extension-detail-rows';
 import { McpConnectionFields } from './extension-mcp-form';
 import { ExtensionPage, type ExtensionPageBadge } from './extension-page';
 
@@ -23,6 +24,7 @@ export function McpEditor({
   serverId,
   initial,
   takenIds,
+  saved = null,
   badge,
   backLabel,
   connected,
@@ -37,6 +39,8 @@ export function McpEditor({
   initial: McpDraft;
   /** Ids the draft may not take: the catalog on the add page, nothing for an existing server. */
   takenIds: readonly string[];
+  /** The stored server, whose kept env vars, headers and token limit what may change. */
+  saved?: ExtensionMcpConfig | null;
   badge?: ExtensionPageBadge | null;
   backLabel: string;
   connected: boolean;
@@ -52,14 +56,14 @@ export function McpEditor({
   // Problems show once a save was tried, then follow the edits so a fix clears its message.
   const [checked, setChecked] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
-  const problems = checked ? validateDraft(draft, takenIds) : {};
+  const problems = checked ? validateDraft(draft, takenIds, saved) : {};
   const locked = !connected || busy;
   const adding = serverId === null;
 
   function submit() {
     if (locked) return;
     setChecked(true);
-    const found = validateDraft(draft, takenIds);
+    const found = validateDraft(draft, takenIds, saved);
     if (Object.keys(found).length) {
       // The first invalid control takes focus once the messages render.
       requestAnimationFrame(() => {

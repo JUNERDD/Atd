@@ -377,6 +377,8 @@
         "argumentsInvalid": "最多 100 个参数，每个参数不超过 4,096 个字符。",
         "urlRequired": "请输入服务器 URL。",
         "urlInvalid": "请输入以 http:// 或 https:// 开头的 URL。",
+        "urlKeepsCredentials": "此服务器保存的请求头和令牌只会发送到当前站点。如需连接其他站点，请移除该服务器后重新添加。",
+        "commandKeepsEnv": "此服务器的环境变量只会提供给当前命令。如需运行其他命令，请移除该服务器后重新添加。",
         "tokenEnvRequired": "请输入保存令牌的环境变量。",
         "tokenEnvInvalid": "只能使用字母、数字和下划线，且不能以数字开头。"
       }

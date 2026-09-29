@@ -101,9 +101,9 @@ function McpStatusSection({
 }
 
 /**
- * Settings in the record the form has no control for. `mcpUpsert` rebuilds the transport block
- * from the form, so saving drops them; they are listed by name (never by value) with that
- * warning rather than lost silently.
+ * Settings in the record the form has no control for. Saving keeps them for the same kind of
+ * transport (env vars and headers by name: their values never reach this page) and drops them
+ * when the transport switches between stdio and HTTP, which the note says.
  */
 function McpUnkeptSection({ config }: { config: ExtensionMcpConfig }) {
   const { t } = useTranslation('settings');
@@ -228,6 +228,7 @@ function McpDetailsPage({ serverId, ...props }: McpPageProps & { serverId: strin
       serverId={serverId}
       initial={draftFromConfig(config)}
       takenIds={[]}
+      saved={config}
       badge={badge}
       backLabel={props.backLabel}
       connected={props.connected}
