@@ -231,13 +231,32 @@ export type SummariesFrame = Static<typeof SummariesFrameSchema>;
 /**
  * Client subscription: replay from (epoch, seq). When that is stale, a subscription naming
  * `taskIds` gets one `snapshot` frame per task, and one without gets a single `summaries` frame.
+ * `status: true` also asks for `status` frames: one at once, then one whenever the counts change.
  */
 export const SubscribeSchema = Type.Object(
   {
     epoch: Type.Integer({ minimum: 0 }),
     seq: Type.Integer({ minimum: 0 }),
     taskIds: Type.Optional(Type.Array(Identifier, { maxItems: 100 })),
+    status: Type.Optional(Type.Literal(true)),
   },
   { additionalProperties: false },
 );
 export type Subscribe = Static<typeof SubscribeSchema>;
+
+/**
+ * Root-task counts for a status indicator such as the menu bar. A root task counts once, and a
+ * subagent's work counts toward its root. `attention` counts tasks waiting for the user (a pending
+ * request, or a latest run awaiting input or confirmation) and wins over `running`, which counts
+ * the other tasks whose latest run is queued, running or stopping. Sent only to connections that
+ * subscribed with `status: true`: on each subscribe, then only when a count changed.
+ */
+export const StatusFrameSchema = Type.Object(
+  {
+    type: Type.Literal('status'),
+    running: Type.Integer({ minimum: 0 }),
+    attention: Type.Integer({ minimum: 0 }),
+  },
+  { additionalProperties: false },
+);
+export type StatusFrame = Static<typeof StatusFrameSchema>;

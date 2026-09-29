@@ -1,6 +1,7 @@
 export * from './identifiers.js';
 export * from './validation.js';
 export * from './protocol.js';
+export * from './relay.js';
 export * from './task.js';
 export * from './confirms.js';
 export * from './events.js';
