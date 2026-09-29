@@ -17,6 +17,8 @@ public final class ShellController: ShellEventSending {
   private var registrar: HotKeyRegistrar?
   private(set) var quitGuard: QuitGuard
   let capabilities: ShellCapabilities
+  /// Serves the five desktop capabilities for the relay's control stream.
+  public var capabilityHandler: any CapabilityHandling { capabilities }
   let artifacts: ArtifactActions
   private(set) lazy var attachments = AttachmentImporter(
     resources: services.resources, sink: eventSink, systemPanels: systemPanels)
