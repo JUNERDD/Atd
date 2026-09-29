@@ -1,14 +1,13 @@
 import { downloadResource } from '@ai/agent-client';
-import type { AgentPlatform } from '../../electron/agent/agent-requests';
 import {
   ATTACHABLE_EXTENSIONS,
   attachableExtension,
   attachableMime,
   MAX_ATTACHMENT_BYTES,
   MAX_ATTACHMENTS,
-  uploadAttachables,
-  type AttachableUpload,
-} from '../../electron/agent/attachable-rules';
+} from '@ai/agent-contracts';
+import type { AgentPlatform } from '../../electron/agent/agent-requests';
+import { uploadAttachables, type AttachableUpload } from '../../electron/agent/attachable-upload';
 import type { PreparedCommand } from '../../electron/agent/bridge';
 
 /**

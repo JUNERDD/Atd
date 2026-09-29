@@ -6,9 +6,8 @@ import {
   attachableMime,
   MAX_ATTACHMENT_BYTES,
   MAX_ATTACHMENTS,
-  uploadAttachables,
-  type AttachableUpload,
-} from './attachable-rules';
+} from '@ai/agent-contracts';
+import { uploadAttachables, type AttachableUpload } from './attachable-upload';
 import type { FileRef } from './task-schema';
 
 /** A picked file read from disk. `realPath` stays in main. */

@@ -3,7 +3,7 @@ import {
   attachableExtension,
   MAX_ATTACHMENT_BYTES,
   type AttachableExtension,
-} from '../agent/attachable-rules';
+} from '@ai/agent-contracts';
 import type { SearchHit } from './backend';
 import { searchableLocation, type SearchScope } from './scope';
 

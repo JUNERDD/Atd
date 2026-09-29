@@ -1,12 +1,12 @@
 import { app, BrowserWindow, clipboard, dialog, ipcMain, shell, type WebContents } from 'electron';
 import path from 'node:path';
+import { ATTACHABLE_EXTENSIONS } from '@ai/agent-contracts';
 import type { SettingsService } from '../settings-service';
 import type { ServiceConnection } from '../service/connection';
 import { sendToPage } from '../window-content';
 import { AgentRequests, type AgentPlatform } from './agent-requests';
 import { handleArtifact } from './artifacts';
 import { attachFiles } from './attachable-files';
-import { ATTACHABLE_EXTENSIONS } from './attachable-rules';
 import { AgentRequestSchema, type AgentEvent, type PreparedCommand } from './bridge';
 import { AGENT_IPC } from './ipc-channels';
 import { AgentStore } from './store';

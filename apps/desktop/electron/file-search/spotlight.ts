@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process';
 import { readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
-import { ATTACHABLE_EXTENSIONS, attachableExtension } from '../agent/attachable-rules';
+import { ATTACHABLE_EXTENSIONS, attachableExtension } from '@ai/agent-contracts';
 import type { BackendReply, SearchBackend, SearchHit, SearchRequest } from './backend';
 import { foldText, nameMatches } from './rank';
 import { isExcludedDirectory, searchableLocation, type SearchScope } from './scope';

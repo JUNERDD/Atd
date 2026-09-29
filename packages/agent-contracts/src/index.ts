@@ -6,6 +6,7 @@ export * from './confirms.js';
 export * from './events.js';
 export * from './snapshot.js';
 export * from './resources.js';
+export * from './attachments.js';
 export * from './http.js';
 export * from './models.js';
 export * from './migration.js';
