@@ -28,9 +28,12 @@ test('production app: positioning, renderer isolation, service flow, and window 
     const page = await app.firstWindow();
     const errors: string[] = [];
     page.on('pageerror', (error) => errors.push(error.message));
-    await expect(page.getByRole('heading', { name: 'What can I help with?' })).toBeVisible();
-    // Autostart connects on launch (spawning a local service when needed): the disconnected
-    // banner must clear without any manual connect step. Spawning can take several seconds.
+    // Autostart connects on launch (spawning a local service when needed), and until the service
+    // first settles the whole panel shows the starting surface. Spawning can take several seconds.
+    await expect(page.getByRole('heading', { name: 'What can I help with?' })).toBeVisible({
+      timeout: 30000,
+    });
+    // The disconnected banner must clear without any manual connect step.
     await expect(page.getByRole('status').filter({ hasText: 'Service disconnected' })).toHaveCount(
       0,
       { timeout: 30000 },
