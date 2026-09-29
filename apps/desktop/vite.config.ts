@@ -117,5 +117,10 @@ export default defineConfig(({ mode, command }) => ({
     watch: { ignored: ['**/release/**', '**/test-results/**', '**/.artifacts/**'] },
   },
   preview: { host: '127.0.0.1', port: 4173, strictPort: true },
-  build: { target: 'chrome152', outDir: mode === 'native' ? 'dist-native' : 'dist' },
+  build: {
+    // The native build runs in the macOS shell's WKWebView and in packaged Electron, so it targets
+    // both engines (WebKit still needs prefixes such as `-webkit-user-select`).
+    target: mode === 'native' ? ['chrome152', 'safari26'] : 'chrome152',
+    outDir: mode === 'native' ? 'dist-native' : 'dist',
+  },
 }));
