@@ -34,8 +34,8 @@ targets:
     dependencies:
       - package: AIMac
         product: AIShell
-    # Release only: embeds the renderer (`dist-native`) and the service pack with its bundled
-    # Node (`apps/desktop/scripts/prepare-service-pack.mjs`) where ServiceLaunchPlan and
+    # Release only: embeds the renderer (`apps/desktop/dist-native`) and the service pack with its
+    # bundled Node (`scripts/prepare-service-pack.mjs`) where ServiceLaunchPlan and
     # RendererSource expect them. `pnpm --filter @ai/macos build:release` prepares both first;
     # Debug builds skip it and use `pnpm dev`'s dev server and service.
     postBuildScripts:
@@ -85,8 +85,7 @@ targets:
         # Start as an agent app so a hidden Dock icon never flashes at launch; the Show in Dock
         # setting changes the activation policy at runtime.
         LSUIElement: true
-        # Shown the first time an attached file sits in one of these folders (copied from
-        # apps/desktop/electron-builder.yml).
+        # Shown the first time an attached file sits in one of these folders.
         NSDesktopFolderUsageDescription: AI reads a file in your Desktop folder only when you attach it.
         NSDocumentsFolderUsageDescription: AI reads a file in your Documents folder only when you attach it.
         NSDownloadsFolderUsageDescription: AI reads a file in your Downloads folder only when you attach it.

@@ -117,7 +117,7 @@ struct SupervisorPolicyTests {
     #expect(policy.unexpectedExit() == .restart(after: .seconds(1)))
   }
 
-  @Test("Limits mirror the Electron supervisor")
+  @Test("Backoff, healthy uptime and breaker limits")
   func limits() {
     #expect(SupervisorLimits.backoffStart == .milliseconds(500))
     #expect(SupervisorLimits.backoffMax == .seconds(15))

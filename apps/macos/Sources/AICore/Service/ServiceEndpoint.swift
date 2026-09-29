@@ -1,8 +1,8 @@
 import Foundation
 
 /// A running agent service as its data directory describes it: `endpoint.json` (written by the
-/// service once it listens) and the main token in `auth/token` (0600). Mirrors `discoverService`
-/// in `apps/desktop/electron/service/endpoint.ts`. The token only ever lives in that file; the
+/// service once it listens) and the main token in `auth/token` (0600). The token only ever lives
+/// in that file; the
 /// keychain namespace `ai-agent-service:<serviceId>` holds provider, MCP and plugin secrets that
 /// the shell never reads.
 public struct ServiceEndpoint: Equatable, Sendable {
@@ -76,8 +76,8 @@ public enum ServiceEndpointFiles {
       startedAt: endpoint.startedAt, buildId: endpoint.buildId)
   }
 
-  /// `http://` on a loopback host with a port, and no path, query or credentials. Stricter than
-  /// Electron's prefix check, which would also take `http://127.0.0.1.example.com`.
+  /// `http://` on a loopback host with a port, and no path, query or credentials. Stricter than a
+  /// prefix check, which would also take `http://127.0.0.1.example.com`.
   static func loopbackBaseURL(_ raw: String) -> URL? {
     guard let url = URL(string: raw), url.scheme == "http",
       let host = url.host(percentEncoded: false), ["127.0.0.1", "localhost", "::1"].contains(host),
@@ -126,9 +126,9 @@ public enum ServiceEndpointFiles {
 /// Where the shell finds the service's data directory.
 public enum ServiceDataDirectory {
   /// Overrides the directory in both configurations (isolated debugging, `open --env` tests of a
-  /// packaged build). Read exactly as the service and Electron read it: trimmed, empty ignored.
+  /// packaged build). Read exactly as the service reads it: trimmed, empty ignored.
   public static let overrideVariable = "AI_AGENT_DATA_DIR"
-  /// The packaged app's directory, shared with the Electron app until the switch.
+  /// The packaged app's directory.
   public static let productionFolder = "AgentService"
   /// The directory `pnpm dev` serves and a Debug shell connects to (spike S10).
   public static let developmentFolder = "AgentService Dev"

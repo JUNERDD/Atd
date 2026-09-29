@@ -68,8 +68,7 @@ final class PanelWindowController: NSObject, NSWindowDelegate {
     panel.level = pinned ? .floating : .normal
   }
 
-  /// Floats below system panels (open and save) while one is open, like Electron's
-  /// `setAlwaysOnTop(false)` around dialogs; returns the level to restore.
+  /// Floats below system panels (open and save) while one is open; returns the level to restore.
   func lowerForSystemPanel() -> NSWindow.Level {
     let level = panel.level
     panel.level = .normal

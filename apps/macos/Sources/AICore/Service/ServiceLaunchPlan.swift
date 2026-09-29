@@ -1,8 +1,7 @@
 import Foundation
 
-/// How a packaged shell starts its bundled service, mirroring `startLocalService` in
-/// `apps/desktop/electron/service/launcher.ts` for the packaged branch only: the bundled Node
-/// and service by absolute path, never a Node found on `PATH` (decision Q10).
+/// How a packaged shell starts its bundled service: the bundled Node and service by absolute path,
+/// never a Node found on `PATH` (decision Q10).
 public struct ServiceLaunchPlan: Equatable, Sendable {
   /// `Contents/Resources/node/bin/node`.
   public let node: URL
@@ -31,7 +30,7 @@ public struct ServiceLaunchPlan: Equatable, Sendable {
   }
 
   /// The child's environment: the app's own, with the bundled Node's directory appended to
-  /// `PATH` so a bare `node` still resolves for users without one, as Electron's launcher did.
+  /// `PATH` so a bare `node` still resolves for users without one.
   /// This is the `PATH` the service starts with; `--login-shell-path` makes it resolve the login
   /// shell's itself, and it keeps this one when that times out.
   /// `AI_AGENT_DATA_DIR` is dropped: `--dataDir` names the directory, and the service would

@@ -173,7 +173,7 @@ public final class ControlStreamClient {
 
   /// Results go to whichever connection is live when the handler finishes: the service matches
   /// them by request id and revision, not by connection. With none live the result is lost and
-  /// the request expires, as in Electron.
+  /// the request expires.
   private func serve(_ request: CapabilityRequest) {
     Task { @MainActor in
       let result: CapabilityResult

@@ -6,7 +6,7 @@ use crate::Error;
 /// The attachable file extensions the index keeps, lower case and without the dot.
 ///
 /// The list has one owner: `ATTACHABLE_EXTENSIONS` in the TypeScript attachment rules
-/// (`apps/desktop/electron/agent/attachable-rules.ts` today). The service passes that list to
+/// (`packages/agent-contracts/src/attachments.ts`). The service passes that list to
 /// `FileIndex::open`, so Rust never holds a second copy that could drift. The list is saved with
 /// the index state; opening with a different list discards the index and rescans.
 #[derive(Debug, Clone, PartialEq, Eq)]

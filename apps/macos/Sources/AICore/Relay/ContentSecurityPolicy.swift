@@ -1,9 +1,9 @@
 import CryptoKit
 import Foundation
 
-/// The `Content-Security-Policy` header of the renderer's HTML documents. It replaces the meta
-/// CSP of `apps/desktop/index.html` for the native shell (the meta tag stays until Electron is
-/// removed, decision R2; both then apply, so the effective policy is their intersection).
+/// The `Content-Security-Policy` header of the renderer's HTML documents, in development and
+/// release alike. `apps/desktop/index.html` carries no meta CSP (decision R2), so this header is
+/// the page's whole policy.
 ///
 /// Spike S2 established what a header CSP does for `ai-app://`: `script-src`, `connect-src` and
 /// `frame-src` are enforced; `frame-ancestors` is not (navigation lockdown, R6, covers framing).
@@ -44,7 +44,7 @@ public enum ContentSecurityPolicy {
     let directives: [(String, [String])] = [
       ("default-src", ["'self'"]),
       ("script-src", ["'self'"] + scriptExtra),
-      // Radix, CodeMirror and Mermaid set inline styles; the meta CSP allows them too.
+      // Radix, CodeMirror and Mermaid set inline styles.
       ("style-src", ["'self'", "'unsafe-inline'"]),
       ("img-src", ["'self'", "data:", "blob:"]),
       ("font-src", ["'self'"]),

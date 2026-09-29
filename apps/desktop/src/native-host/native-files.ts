@@ -3,11 +3,10 @@ import type { FileSearchBridge } from '../client/contract';
 import type { NativeConnection } from './native-connection';
 
 /**
- * The panel's `@` file search through the relay, as Electron main forwards it
- * (`electron/agent/file-search.ts`). The window is one search channel: a newer query supersedes
- * only this window's older one, which the service answers `superseded` for the file group to
- * drop, and result ids attach only through the channel that issued them. The channel lives as
- * long as the page, so a reload starts a fresh one.
+ * The panel's `@` file search through the relay to the service's file routes. The window is one
+ * search channel: a newer query supersedes only this window's older one, which the service answers
+ * `superseded` for the file group to drop, and result ids attach only through the channel that
+ * issued them. The channel lives as long as the page, so a reload starts a fresh one.
  */
 export function nativeFiles(connection: NativeConnection): FileSearchBridge {
   const channel = `panel-${crypto.randomUUID()}`;

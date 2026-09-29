@@ -1,8 +1,7 @@
 import Foundation
 
-/// Input rules of the capabilities the shell serves, from
-/// apps/desktop/electron/service/capabilities.ts and file-save.ts. Messages stay English: they
-/// reach the agent through the service, not a native surface.
+/// Input rules of the capabilities the shell serves. Messages stay English: they reach the agent
+/// through the service, not a native surface.
 public enum CapabilityInputs {
   public static let maxSaveBase64Length = 700_000
   public static let maxSaveNameLength = 255

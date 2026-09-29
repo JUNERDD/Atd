@@ -33,9 +33,9 @@ function pageOrigin(): string {
 }
 
 /**
- * Installs `window.desktop` for a page the macOS shell hosts in a WKWebView. It runs the same
- * request handling, task cache and provider client as the Electron main process, reaching the
- * service through the shell's relay: HTTP as same-origin fetches the scheme handler forwards, the
+ * Installs `window.desktop` for a page the macOS shell hosts in a WKWebView. It runs the shared
+ * request handling, task cache and provider client (`src/client`), reaching the service through
+ * the shell's relay: HTTP as same-origin fetches the scheme handler forwards, the
  * stream over virtual sockets. Host abilities go through native calls. Only the panel owns the
  * global shortcuts, the language push, file search and the files the shell imports from drops and
  * pastes; each window publishes its own drag regions and runs the menu's Undo/Redo.
@@ -158,7 +158,6 @@ export async function installNativeHost(
   });
   const openLink = async (url: string) => void (await native.call('link.open', { url }));
   const bridge: DesktopBridge = {
-    runtime: 'native',
     platform: 'darwin',
     settings: settings.bridge,
     ...(surface === 'panel' ? { files: nativeFiles(connection) } : {}),

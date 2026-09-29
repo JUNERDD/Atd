@@ -74,7 +74,7 @@ public struct ResourceImportResponse: Codable, Equatable, Sendable {
 
 extension ResourcesImportedEvent {
   /// What the panel page receives for an import: the stored files and, for refused paths, the
-  /// basename only. Absolute paths stay in the shell (the Electron rule for attachments).
+  /// basename only. Absolute paths stay in the shell.
   public init(_ response: ResourceImportResponse) {
     self.init(
       resources: response.imported.map { FileRef($0.resource) },

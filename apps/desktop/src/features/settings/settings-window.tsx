@@ -20,7 +20,7 @@ import {
 import { TooltipProvider } from '@ai/ui/components/tooltip';
 import { ScrollArea } from '@ai/ui/components/scroll-area';
 import { CommandSettings } from '../commands/command-settings';
-import { COMMAND_SETTINGS_STORAGE_KEY, isCommandId } from '../commands/open-command-settings';
+import { isCommandId } from '../commands/open-command-settings';
 import { MemorySettings } from '../memory/memory-settings';
 import { IconButton } from '../../components/icon-button';
 import { ToastHost } from '../../components/toast';
@@ -64,7 +64,7 @@ const getLayout = () =>
       ? 'top'
       : 'drawer';
 
-/** A fresh settings tab can carry its editor target in the URL hash. */
+/** A new settings window carries its editor target in the URL hash. */
 function readCommandIdFromHash(): string | null {
   const hash = window.location.hash;
   if (!hash.startsWith('#settings?')) return null;
@@ -114,30 +114,11 @@ export function SettingsWindow() {
     },
     [recording],
   );
-  // The task panel can request the editor for one command, either through the desktop bridge
-  // when this window is already open or through storage/URL in the web preview.
-  useEffect(() => {
-    const unsubscribe = window.desktop?.settings.onOpenCommand?.((commandId) =>
-      showCommand(commandId),
-    );
-    const onStorage = (event: StorageEvent) => {
-      if (event.key !== COMMAND_SETTINGS_STORAGE_KEY || !event.newValue) return;
-      let parsed: unknown;
-      try {
-        parsed = JSON.parse(event.newValue);
-      } catch {
-        // A foreign tab wrote an unreadable value; the command list stays visible.
-        return;
-      }
-      if (typeof parsed === 'object' && parsed !== null && 'commandId' in parsed)
-        showCommand((parsed as { commandId: unknown }).commandId);
-    };
-    window.addEventListener('storage', onStorage);
-    return () => {
-      unsubscribe?.();
-      window.removeEventListener('storage', onStorage);
-    };
-  }, [showCommand]);
+  // The task panel can request the editor for one command while this window is already open.
+  useEffect(
+    () => window.desktop?.settings.onOpenCommand?.((commandId) => showCommand(commandId)),
+    [showCommand],
+  );
   function navigation() {
     return (
       <nav className="settings-navigation" aria-label={t('nav.label')}>

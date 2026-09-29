@@ -15,8 +15,7 @@ struct AppMenuActions {
   var developmentHint: () -> Bool
 }
 
-/// The app's menus (apps/desktop/electron/app-menu.ts) without the items that are out of scope
-/// natively: Open in Browser, the migration and the updater.
+/// The app's menus.
 @MainActor
 enum AppMenus {
   /// Panel, settings and service items, then Quit. The status item and the application menu

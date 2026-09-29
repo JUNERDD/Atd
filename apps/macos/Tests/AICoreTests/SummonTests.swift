@@ -69,7 +69,7 @@ struct SummonTests {
     #expect(TextCapture.stash(" a ", at: Self.now)?.text == " a ")
   }
 
-  @Test("capture('selection') keeps the Electron error semantics")
+  @Test("capture('selection') reports why no text was captured")
   func selectionCapture() {
     #expect(TextCapture.selection(stash: nil, trusted: false) == .failure(.accessibilityNotTrusted))
     #expect(TextCapture.selection(stash: nil, trusted: true) == .failure(.noSelection))

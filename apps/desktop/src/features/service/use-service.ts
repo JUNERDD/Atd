@@ -17,7 +17,7 @@ function serviceApi() {
   return window.desktop.service;
 }
 
-/** Service connection status via the narrow preload bridge (no token in renderer). */
+/** Service connection status via the narrow service bridge (no token in the renderer). */
 export function useServiceStatus() {
   const [status, setStatus] = useState<ServiceStatusView | null>(null);
   const [loading, setLoading] = useState(() => Boolean(window.desktop?.service));

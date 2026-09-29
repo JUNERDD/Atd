@@ -1,5 +1,4 @@
-/// The shell's answer to a page's `approval.request` (`McpApprovalGate` in
-/// apps/desktop/electron/service/mcp-approval.ts). The page names a server and nothing else:
+/// The shell's answer to a page's `approval.request`. The page names a server and nothing else:
 /// the gate reads what would run from the service with the shell's own token, has the user
 /// confirm exactly that, and approves with the fingerprint it showed, so a change in between
 /// is refused (`changed`) rather than approved unseen.

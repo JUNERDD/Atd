@@ -1,12 +1,10 @@
 {
   "header": {
-    "openPanel": "打开任务面板",
     "panelLabel": "AI 任务面板",
     "newChat": "新建对话",
     "controlsLabel": "面板控件",
     "tasks": "任务",
     "settings": "设置",
-    "hide": "隐藏面板",
     "loadingConversation": "正在加载对话…"
   },
   "welcome": {

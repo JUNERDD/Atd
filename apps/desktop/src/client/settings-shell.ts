@@ -1,23 +1,6 @@
 import { normalizeShellAllowlistEntry, SHELL_ALLOWLIST_MAX_ENTRIES } from '@ai/agent-contracts';
 
 /**
- * Reads the saved user shell allowlist leniently: a missing or malformed field becomes `[]`, and
- * entries that no longer normalize, repeat an earlier entry or exceed the cap are dropped, so a
- * stale or hand-edited list never makes the whole settings file unreadable.
- */
-export function parseStoredShellAllowlist(value: unknown): string[] {
-  if (!Array.isArray(value)) return [];
-  const entries: string[] = [];
-  for (const item of value) {
-    if (typeof item !== 'string') continue;
-    const result = normalizeShellAllowlistEntry(item);
-    if ('entry' in result && !entries.includes(result.entry)) entries.push(result.entry);
-    if (entries.length === SHELL_ALLOWLIST_MAX_ENTRIES) break;
-  }
-  return entries;
-}
-
-/**
  * Validates one entry from an IPC payload. The renderer pre-validates to show the specific error
  * code, so main rejects generically.
  */

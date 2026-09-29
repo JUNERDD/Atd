@@ -4,8 +4,7 @@ import AppKit
 import UniformTypeIdentifiers
 
 /// The shell's answers to the service's desktop capability requests, which the control stream
-/// (``ControlStreamClient``) receives, with the semantics of
-/// apps/desktop/electron/service/capabilities.ts and file-save.ts. Reads that could take text
+/// (``ControlStreamClient``) receives. Reads that could take text
 /// from the user's apps (selection, clipboard) answer only while the panel is visible. A thrown
 /// ``CapabilityFailure`` is the message the agent sees.
 @MainActor
@@ -32,7 +31,7 @@ final class ShellCapabilities: CapabilityHandling {
     }
   }
 
-  /// Text files the user picks, imported by path. The value keeps the Electron shape:
+  /// Text files the user picks, imported by path. The value's shape:
   /// `{ files: [{ resourceId, name, size, mime }] }`.
   private func pickFiles() async throws -> JSONValue {
     guard let urls = await systemPanels.chooseAttachments(), !urls.isEmpty else {
@@ -116,8 +115,7 @@ struct CapabilityFailure: LocalizedError {
 }
 
 /// Open and save panels. While one is open the panel floats no higher than normal windows
-/// (so the system panel is never hidden behind it) and summons are ignored, as in Electron's
-/// `withFileDialog`.
+/// (so the system panel is never hidden behind it) and summons are ignored.
 @MainActor
 final class SystemPanels {
   private(set) var isOpen = false

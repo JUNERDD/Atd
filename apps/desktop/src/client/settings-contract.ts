@@ -3,22 +3,6 @@ import type { Connection, ProviderBridge } from './providers/schema';
 import type { ExtensionSessionKind } from './agent/bridge';
 import type { PermissionTier } from './agent/permission-schema';
 
-export const SETTINGS_IPC = {
-  open: 'settings:open',
-  openCommand: 'settings:open-command',
-  close: 'settings:close',
-  get: 'settings:get',
-  startCommandSession: 'settings:start-command-session',
-  startExtensionSession: 'settings:start-extension-session',
-  saveLanguage: 'settings:save-language',
-  saveShortcuts: 'settings:save-shortcuts',
-  restoreShortcuts: 'settings:restore-shortcuts',
-  savePermissionTier: 'settings:save-permission-tier',
-  saveShellAllowlist: 'settings:save-shell-allowlist',
-  addShellAllowlistEntry: 'settings:add-shell-allowlist-entry',
-  changed: 'settings:changed',
-} as const;
-
 export type ShortcutAction = keyof typeof DEFAULT_SHORTCUTS;
 export type ShortcutBindings = Record<ShortcutAction, string>;
 
@@ -30,7 +14,7 @@ export function isAppLanguage(value: unknown): value is AppLanguage {
   return typeof value === 'string' && (LANGUAGE_CODES as readonly string[]).includes(value);
 }
 
-/** Maps an Electron or browser locale such as `zh-Hans-CN` to the nearest shipped language. */
+/** Maps an OS or browser locale such as `zh-Hans-CN` to the nearest shipped language. */
 export function resolveLanguage(locale: string): AppLanguage {
   return locale.toLowerCase().startsWith('zh') ? 'zh-CN' : 'en';
 }

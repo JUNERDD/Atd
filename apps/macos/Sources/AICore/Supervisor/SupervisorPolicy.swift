@@ -1,5 +1,4 @@
-/// Restart timing for the packaged service, mirroring `ServiceSupervisor` in
-/// `apps/desktop/electron/service/supervisor.ts`.
+/// Restart timing for the packaged service.
 public enum SupervisorLimits {
   public static let backoffStart: Duration = .milliseconds(500)
   public static let backoffMax: Duration = .seconds(15)
@@ -20,12 +19,12 @@ public enum SupervisorDecision: Equatable, Sendable {
 /// The supervisor's decision state, free of processes and timers so it can be tested with a
 /// manual clock. The owner reports what happened; the policy answers what to do.
 ///
-/// Semantics kept from Electron:
+/// Semantics:
 /// - Supervision starts once a service came up; a failed first start is shown, not retried.
 /// - An unexpected exit, or a respawn that fails before the service is live, counts as one
 ///   exit. Exits older than the window are forgotten; the third within it gives up.
 /// - The n-th consecutive restart waits `500 ms × 2ⁿ`, capped at 15 s. A service that stayed
-///   live for 60 s resets that count (Electron's healthy timer), not the breaker history.
+///   live for 60 s resets that count, not the breaker history.
 /// - Giving up keeps the history; only a manual restart (``reset()``) clears both.
 public struct SupervisorPolicy<C: Clock>: Sendable where C.Duration == Duration {
   private let clock: C

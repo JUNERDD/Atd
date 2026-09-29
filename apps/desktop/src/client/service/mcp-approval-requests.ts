@@ -32,8 +32,8 @@ export const McpApprovalRequestSchema = Type.Union([
 export type McpApprovalRequest = Static<typeof McpApprovalRequestSchema>;
 
 /**
- * Asks the host to confirm a server's launch in a native dialog the page cannot forge (Swift in the
- * macOS shell, `dialog.showMessageBox` in Electron main) and approve it on Allow.
+ * Asks the host to confirm a server's launch in a native dialog the page cannot forge (an alert
+ * the macOS shell shows) and approve it on Allow.
  */
 export type RequestMcpApproval = (serverId: string) => Promise<McpApprovalRequestResult>;
 

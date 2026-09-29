@@ -1,7 +1,6 @@
 import Foundation
 
-/// File names for downloaded artifacts, as `apps/desktop/electron/agent/artifacts.ts` and
-/// `dispositionName` in `@ai/agent-client` derive them.
+/// File names for downloaded artifacts, as `dispositionName` in `@ai/agent-client` derives them.
 public enum ArtifactFileName {
   public static let fallback = "download.bin"
 

@@ -1,7 +1,6 @@
 import { useCallback, useLayoutEffect, useRef, useState } from 'react';
-import { Astroid, History, Settings, X } from 'lucide-react';
+import { Astroid, History, Settings } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Button } from '@ai/ui/components/button';
 import { TooltipProvider } from '@ai/ui/components/tooltip';
 import { ScrollArea } from '@ai/ui/components/scroll-area';
 import { Composer } from './components/composer';
@@ -42,8 +41,6 @@ export function App() {
     setTaskId,
     prepared,
     setPrepared,
-    hidden,
-    setHidden,
     pending,
     current,
     child,
@@ -51,10 +48,8 @@ export function App() {
     draftRevision,
     draft,
     shortcuts,
-    platform,
     newTask,
     openSettings,
-    hide,
     changeDraft,
     chooseCommand,
     submit,
@@ -67,9 +62,6 @@ export function App() {
   } = useTaskPanel();
   useAppLanguage(snapshot?.language);
   const starting = useServiceStarting();
-  // macOS window management lives in the native traffic lights; the renderer preview hides the
-  // panel in the page.
-  const canHide = platform !== 'darwin';
   const reserveRef = useOverlayReserve();
   const subagents = useSubagentContextValue(
     (view === 'task' && current.detail?.blocks) || NO_BLOCKS,
@@ -100,22 +92,11 @@ export function App() {
   return (
     <TooltipProvider delayDuration={350}>
       <SubagentContext value={subagents}>
-        {hidden && (
-          <Button className="fixed right-4 bottom-4" onClick={() => setHidden(false)}>
-            {t('header.openPanel')}
-          </Button>
-        )}
-        <main
-          hidden={hidden}
-          className="task-panel"
-          aria-label={t('header.panelLabel')}
-          data-figma-node="336:1149"
-        >
+        <main className="task-panel" aria-label={t('header.panelLabel')} data-figma-node="336:1149">
           {/* Until the service first settles nothing in the panel can work, so the loading takes the
-              whole panel. macOS keeps its native traffic lights over it; elsewhere the loading
-              keeps the header's hide action, the only window control a frameless panel has. */}
+              whole panel. macOS keeps its native traffic lights over it. */}
           {starting ? (
-            <ServiceStarting onHide={canHide ? () => void hide() : undefined} />
+            <ServiceStarting />
           ) : (
             <>
               <header className="panel-header">
@@ -144,15 +125,6 @@ export function App() {
                   >
                     <Settings />
                   </IconButton>
-                  {canHide && (
-                    <IconButton
-                      label={t('header.hide')}
-                      className="header-button"
-                      onClick={() => void hide()}
-                    >
-                      <X />
-                    </IconButton>
-                  )}
                 </nav>
               </header>
               {/* Everything below the header; composer overlays stay inside it. */}

@@ -1,8 +1,7 @@
-// Type-only: a value import would bundle the request schemas into the preload.
 import type { ServiceBridge, ServiceEvent, ServiceRequest } from './ipc';
 
 /**
- * The service bridge over a transport: IPC in the desktop, direct calls in the web client. The
+ * The service bridge over a transport, which the host (`native-host`) routes to the service. The
  * transport answers `unknown`; each method states the result its request produces.
  */
 export function createServiceBridge(

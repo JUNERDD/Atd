@@ -1,7 +1,7 @@
 import AICore
 import AppKit
 
-/// The app's quit flow (apps/desktop/electron/quit-guard.ts). Stopping the service cancels its
+/// The app's quit flow. Stopping the service cancels its
 /// started runs, so a quit someone asked for first asks whether to stop running tasks; queued
 /// runs stay queued and start with the next service. Once a quit is committed the windows go
 /// away, the service stops, and the app terminates; any later quit passes straight through, so
@@ -92,7 +92,7 @@ final class QuitGuard {
     let quit = alert.addButton(withTitle: strings.text(.quitConfirm))
     let cancel = alert.addButton(withTitle: strings.text(.cancel))
     quit.hasDestructiveAction = true
-    // Cancel is the default and the Escape answer, as in Electron (`defaultId`/`cancelId` 1).
+    // Cancel is the default and the Escape answer.
     quit.keyEquivalent = ""
     cancel.keyEquivalent = "\r"
     // A menu bar app is often not frontmost when it is quit.

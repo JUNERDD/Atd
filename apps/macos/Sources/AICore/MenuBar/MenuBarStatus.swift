@@ -18,8 +18,7 @@ public enum ServiceAvailability: Equatable, Sendable {
 }
 
 /// What the status item shows. Counts come from the service's `status` frame, which already
-/// counts root tasks only, with attention taking precedence over running
-/// (apps/desktop/electron/menu-bar-status.ts, moved to the service by plan P2).
+/// counts root tasks only, with attention taking precedence over running (plan P2).
 public struct MenuBarStatus: Equatable, Sendable {
   public let state: MenuBarState
   public let running: Int

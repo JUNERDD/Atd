@@ -46,7 +46,7 @@ struct ShellResourcesTests {
     .object(["name": .string(name), "contentBase64": .string(content)])
   }
 
-  @Test("file.save validates the name and base64 like Electron")
+  @Test("file.save validates the name and base64")
   func fileSave() {
     #expect(
       CapabilityInputs.fileSave(Self.save("../x/report.txt", "aGk="))

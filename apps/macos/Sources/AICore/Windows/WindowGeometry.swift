@@ -34,8 +34,7 @@ public struct WindowSize: Equatable, Sendable {
   }
 }
 
-/// Panel placement, ported from `apps/desktop/electron/window-position.ts` into AppKit's y-up
-/// space: "bottom" is the work area's `y`, not its maximum.
+/// Panel placement in AppKit's y-up space: "bottom" is the work area's `y`, not its maximum.
 public enum PanelGeometry {
   public static let defaultSize = WindowSize(width: 420, height: 580)
   public static let minimumSize = WindowSize(width: 320, height: 400)
@@ -92,7 +91,7 @@ public enum PanelGeometry {
   }
 }
 
-/// The settings window's first frame, from `apps/desktop/electron/settings-window.ts`.
+/// The settings window's first frame.
 public enum SettingsGeometry {
   public static let preferredSize = WindowSize(width: 1000, height: 720)
 
@@ -113,8 +112,7 @@ public enum SettingsGeometry {
   }
 }
 
-/// Electron's `screen.getDisplayNearestPoint`: the display containing the point, otherwise the
-/// one whose frame is closest to it.
+/// The display containing the point, otherwise the one whose frame is closest to it.
 public enum DisplaySelection {
   public static func index(nearestTo x: Double, _ y: Double, in frames: [ScreenRect]) -> Int? {
     if let containing = frames.firstIndex(where: { $0.contains(x: x, y: y) }) {

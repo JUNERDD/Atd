@@ -1,12 +1,10 @@
 {
   "header": {
-    "openPanel": "Open task panel",
     "panelLabel": "AI task panel",
     "newChat": "New chat",
     "controlsLabel": "Panel controls",
     "tasks": "Tasks",
     "settings": "Settings",
-    "hide": "Hide panel",
     "loadingConversation": "Loading conversation…"
   },
   "welcome": {

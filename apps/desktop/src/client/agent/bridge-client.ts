@@ -1,4 +1,3 @@
-// Type-only: a value import would bundle bridge.ts's request schemas into the preload.
 import type {
   AgentBridge,
   AgentEvent,
@@ -7,16 +6,15 @@ import type {
   CommandSession,
   ExtensionSession,
 } from './bridge';
-import type { AGENT_IPC } from './ipc-channels';
 
-/** What each push channel of the agent bridge carries, keyed like the IPC channels. */
+/** What each push channel of the agent bridge carries. */
 export interface AgentChannelValues {
   changed: AgentEvent;
   launch: CommandLaunch;
   session: CommandSession;
   extensionSession: ExtensionSession;
 }
-export type AgentChannel = keyof AgentChannelValues & keyof typeof AGENT_IPC;
+export type AgentChannel = keyof AgentChannelValues;
 
 export type AgentListen = <C extends AgentChannel>(
   channel: C,
@@ -24,10 +22,9 @@ export type AgentListen = <C extends AgentChannel>(
 ) => () => void;
 
 /**
- * The agent bridge over a transport: the desktop preload sends each request through IPC, the web
- * client hands it straight to the shared request handler. Both expose the same object. The
- * transport answers `unknown`; each method states the result its request produces, the one
- * place that contract is asserted.
+ * The agent bridge over a transport: the host (`native-host`) hands each request to the shared
+ * request handler. The transport answers `unknown`; each method states the result its request
+ * produces, the one place that contract is asserted.
  */
 export function createAgentBridge(
   transport: (request: AgentRequest) => Promise<unknown>,

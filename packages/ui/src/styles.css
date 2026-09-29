@@ -181,10 +181,10 @@
 /*
  * The one glass material for overlay surfaces (menus, selects, popovers, dialogs, sheets, floating
  * pills); nothing else writes these properties. WebKit's system glass applies where the page may
- * use it; otherwise, including every WKWebView without WebKit's private preference and Electron,
- * a translucent fill over a backdrop blur. An inactive window (`data-window-active="false"` on the
- * root) and reduced transparency drop the blur for a flat fill. The surface keeps this one fill:
- * consumers tune the tokens above rather than setting a background of their own.
+ * use it; otherwise, as in a WKWebView without WebKit's private preference, a translucent fill
+ * over a backdrop blur. An inactive window (`data-window-active="false"` on the root) and reduced
+ * transparency drop the blur for a flat fill. The surface keeps this one fill: consumers tune the
+ * tokens above rather than setting a background of their own.
  */
 @utility surface-glass {
   background-color: var(--ata-glass-fill, var(--popover));

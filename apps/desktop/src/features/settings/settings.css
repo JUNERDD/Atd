@@ -7,9 +7,6 @@
   font-size: 14px;
   line-height: 20px;
 }
-html[data-runtime='electron'] .settings-window {
-  -webkit-app-region: drag;
-}
 .settings-sidebar {
   display: flex;
   flex: 0 0 208px;
@@ -32,7 +29,6 @@ html[data-runtime='electron'] .settings-window {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  -webkit-app-region: no-drag;
 }
 .settings-navigation .settings-nav-button {
   justify-content: flex-start;
@@ -66,10 +62,6 @@ html[data-runtime='electron'] .settings-window {
   height: 40px;
   padding: 0 40px;
 }
-/* The strip stays part of the window drag region; only its controls opt out. */
-.settings-content-header [data-slot='select-trigger'] {
-  -webkit-app-region: no-drag;
-}
 .settings-content-scroll {
   display: flex;
   flex: 1;
@@ -77,7 +69,6 @@ html[data-runtime='electron'] .settings-window {
   min-width: 0;
   flex-direction: column;
   padding: 0 40px 32px;
-  -webkit-app-region: no-drag;
 }
 .settings-page {
   flex-shrink: 0;
@@ -798,9 +789,6 @@ html[data-runtime='electron'] .settings-window {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-.settings-mobile-bar > button {
-  -webkit-app-region: no-drag;
 }
 .settings-drawer[data-slot='sheet-content'] {
   inset: 0 auto 0 0;

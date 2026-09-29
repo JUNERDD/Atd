@@ -1,9 +1,9 @@
 import type { ExtensionSessionKind } from '../client/agent/bridge';
 
 /**
- * Messages between the shell's panel and settings windows. Electron routes these through its main
- * process; the shell's web views share the `ai-app://renderer` origin, so they travel on a
- * `BroadcastChannel` without a round trip through Swift.
+ * Messages between the shell's panel and settings windows. The shell's web views share the
+ * `ai-app://renderer` origin, so they travel on a `BroadcastChannel` without a round trip through
+ * Swift.
  */
 export type WindowMessage =
   /** Settings → panel: open the command editor session (`null` creates a command). */
@@ -18,7 +18,7 @@ export interface WindowMessages {
   listen(listener: (message: WindowMessage) => void): () => void;
 }
 
-/** Cross-window messages; a window never receives its own posts, as with desktop IPC. */
+/** Cross-window messages; a window never receives its own posts. */
 export function windowMessages(): WindowMessages {
   const channel = new BroadcastChannel('ai-windows');
   const listeners = new Set<(message: WindowMessage) => void>();

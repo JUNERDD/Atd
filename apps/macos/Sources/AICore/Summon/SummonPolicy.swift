@@ -44,8 +44,8 @@ public enum SummonStep: Equatable, Sendable {
   case deliverCommand(id: String)
 }
 
-/// The summon flow of `togglePanel` (apps/desktop/electron/main.ts) and command shortcuts
-/// (`command-service.ts`), with the selection model of grill decision Q9:
+/// The summon flow of the panel toggle and command shortcuts, with the selection model of grill
+/// decision Q9:
 /// - a key panel hides without capturing (toggle only);
 /// - summons are ignored while a file panel is open;
 /// - otherwise the selection is captured before the panel can take focus when some command

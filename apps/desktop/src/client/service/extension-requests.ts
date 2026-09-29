@@ -38,8 +38,8 @@ export interface ExtensionHost {
 }
 
 /**
- * Plugins, skills, roles, subagents, built-ins and MCP servers over the service API, shared by the
- * desktop main process and the macOS shell's page (`native-host`).
+ * Plugins, skills, roles, subagents, built-ins and MCP servers over the service API, for the macOS
+ * shell's page (`native-host`).
  */
 export async function handleExtensionRequest(
   options: AgentClientOptions | null,

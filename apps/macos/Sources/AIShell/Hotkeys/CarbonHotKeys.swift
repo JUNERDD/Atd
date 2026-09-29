@@ -2,7 +2,7 @@ import AICore
 import Carbon.HIToolbox
 
 /// The thinnest Carbon wrapper that keeps `RegisterEventHotKey`'s `OSStatus` (plan decision
-/// R8, from spike S9). Registrations are non-exclusive, like Electron's `globalShortcut`: they
+/// R8, from spike S9). Registrations are non-exclusive: they
 /// never take a combination away from another app, and no other app's registration makes them
 /// fail. Real errors (a repeat within this process, an invalid key) still come back as status.
 /// HotKey is not used: it drops the status and is unmaintained; only its idea of mapping key

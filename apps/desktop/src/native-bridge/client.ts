@@ -81,7 +81,7 @@ export class NativeBridge {
 
   /**
    * The bridge when the macOS shell hosts this page, with its delivery function installed and
-   * Swift told the page is ready; null in Electron, tests and the renderer preview.
+   * Swift told the page is ready; null in tests and in a plain browser.
    */
   static connect(): NativeBridge | null {
     const handler = window.webkit?.messageHandlers?.[MESSAGE_HANDLER];

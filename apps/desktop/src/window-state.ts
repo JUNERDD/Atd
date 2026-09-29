@@ -10,15 +10,3 @@ export function setWindowActive(active: boolean) {
 export function setWindowVisible(visible: boolean) {
   document.documentElement.dataset.windowVisible = String(visible);
 }
-
-/** Electron: the document has focus exactly while its window is the key window. */
-export function followDocumentFocus(): () => void {
-  const update = () => setWindowActive(document.hasFocus());
-  window.addEventListener('focus', update);
-  window.addEventListener('blur', update);
-  update();
-  return () => {
-    window.removeEventListener('focus', update);
-    window.removeEventListener('blur', update);
-  };
-}

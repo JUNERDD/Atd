@@ -3,8 +3,8 @@ import type { NativeBridge, PostParams } from '../native-bridge/client';
 type Rect = PostParams<'window.dragRegions'>['rects'][number];
 
 /**
- * The surfaces that move the window: the same ones Electron's CSS marks `-webkit-app-region: drag`
- * (`styles.css`, `settings.css`, `agent.css`).
+ * The surfaces that move the window: the panel header, the service-starting surface that stands
+ * in for it, the settings window, and the window-level loading splash.
  */
 const DRAG_AREAS = [
   '.panel-header',
@@ -14,8 +14,8 @@ const DRAG_AREAS = [
 ].join(',');
 
 /**
- * What stays clickable inside a drag area: controls, and the regions Electron's CSS marks
- * `no-drag` as a whole (the settings navigation and scrolling content, the panel footer).
+ * What stays clickable inside a drag area: controls, and regions that are interactive as a whole
+ * (the settings navigation and scrolling content, the panel footer).
  */
 const NO_DRAG = [
   'button',
@@ -85,7 +85,7 @@ function dragRects(root: Element): Rect[] {
 
 /**
  * Publishes the window drag regions to the shell, which starts a native window drag for a press
- * inside one (WKWebView has no `-webkit-app-region`). It recomputes once per frame after a layout
+ * inside one (WKWebView has no CSS drag regions). It recomputes once per frame after a layout
  * or DOM change, sends only changed sets, pauses while the panel is hidden, and clears the regions
  * when the page goes away.
  */

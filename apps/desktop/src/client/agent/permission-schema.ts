@@ -42,11 +42,6 @@ export const GrantScopeSchema = Type.Union([
 ]);
 export type GrantScope = Static<typeof GrantScopeSchema>;
 
-/** Stable identity of a scope, used as the key of the per-session grant set. */
-export function grantKey(scope: GrantScope): string {
-  return 'location' in scope ? `${scope.tool}:${scope.location}` : scope.tool;
-}
-
 /**
  * How one guarded tool call was resolved. `once` and `session` are user decisions from a prompt,
  * `grant` reused an earlier session grant, `tier` was allowed by the task's tier without a prompt,
@@ -172,16 +167,3 @@ export const PermissionAnswerSchema = Type.Union([
   Type.Object({ skipped: Type.Literal(true) }, { additionalProperties: false }),
 ]);
 export type PermissionAnswer = Static<typeof PermissionAnswerSchema>;
-
-/**
- * Whether a scope is allowed without a prompt or review under a tier. Reads inside the task folder
- * never prompt: the agent reading its own output is not a meaningful decision.
- */
-export function tierAllows(tier: PermissionTier, scope: GrantScope): boolean {
-  if (tier === 'always') return true;
-  if ('location' in scope && scope.tool === 'read' && scope.location === 'inside') return true;
-  if (tier === 'manual') return false;
-  // `auto` needs no review for the task's own folder or for web search and fetch, which only
-  // read (a search query, a GET per URL).
-  return scope.tool === 'web' || ('location' in scope && scope.location === 'inside');
-}

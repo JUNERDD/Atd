@@ -156,10 +156,6 @@ export type Artifact = Static<typeof ArtifactSchema>;
 export function artifactLocation(file: Artifact) {
   return file.relocation ?? file;
 }
-
-export function activeRun(task: AgentTask): TaskRun | undefined {
-  return task.runs.at(-1);
-}
 /** The thinking level this run was accepted with; runs saved before the control existed used 'off'. */
 export function runThinkingLevel(snapshot: RunSnapshot): ModelThinkingLevel {
   return snapshot.thinkingLevel ?? 'off';

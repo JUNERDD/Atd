@@ -46,8 +46,7 @@ public struct ShellClient: Sendable {
   }
 
   /// Downloads a resource the agent produced into `directory` as `<id>-<name>`, quarantined,
-  /// and returns where it went (`handleArtifact` in `electron/agent/artifacts.ts`). Opening,
-  /// revealing and copying the path are the caller's.
+  /// and returns where it went. Opening, revealing and copying the path are the caller's.
   public func downloadArtifact(
     id: String, into directory: URL
   ) async throws -> DownloadedArtifact {
@@ -189,8 +188,8 @@ extension McpApprovalGate.Service {
 }
 
 extension ServiceLink {
-  /// The quit guard's count of active runs (`activeRunCount` in `electron/quit-guard.ts`): an
-  /// unavailable, failing or slower-than-`timeout` service counts as idle.
+  /// The quit guard's count of active runs: an unavailable, failing or slower-than-`timeout`
+  /// service counts as idle.
   public func activeRunsForQuitGuard(timeout: Duration = .milliseconds(1500)) async -> Int {
     guard case .success(let endpoint) = await endpoint() else { return 0 }
     let client = ShellClient(endpoint: endpoint)

@@ -27,7 +27,7 @@ jobs:
       # On Linux this skips the Swift and Rust checks (scripts/on-macos.mjs); desktop runs them.
       - run: pnpm check
 
-  # Also runs the Swift and Rust checks. The job name stays as it is because the "Protect main"
+  # The Swift and Rust checks. The job id and name stay as they are because the "Protect main"
   # ruleset requires a status check with this exact name.
   desktop:
     name: macOS desktop smoke test
@@ -60,18 +60,7 @@ jobs:
           rustup toolchain install
           cargo --version
       - run: pnpm install --frozen-lockfile
-      - run: pnpm test:electron
       - name: Swift checks (format, lint, test, build)
         run: pnpm check:swift
       - name: Rust checks (file length, fmt, clippy, test)
         run: pnpm check:rust
-      - run: pnpm --filter @ai/desktop package
-      - uses: actions/upload-artifact@v7.0.1
-        if: always()
-        with:
-          name: desktop-smoke-test
-          path: |
-            apps/desktop/.artifacts/
-            apps/desktop/test-results/
-          include-hidden-files: true
-          retention-days: 7

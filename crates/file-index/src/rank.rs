@@ -1,4 +1,4 @@
-//! Result ordering, ported from `apps/desktop/electron/file-search/rank.ts` (`rankCandidates`).
+//! Result ordering, ported from `apps/agent-service/src/file-search/rank.ts` (`rankCandidates`).
 //!
 //! Same tiers, boosts, penalties and tie-breaks, with two differences owned elsewhere: the index
 //! has no "last used" date (Spotlight's `kMDItemLastUsedDate`), so recency is the modification

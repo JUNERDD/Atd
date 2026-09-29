@@ -37,7 +37,7 @@ export interface CommandCatalog {
   refreshFromService(): Promise<void>;
 }
 
-/** What only the host can do: native pickers and clipboard in Electron, browser APIs on the web. */
+/** What only the host can do: native pickers, clipboard, links and artifact operations. */
 export interface AgentPlatform {
   /** Lets the user pick files and uploads them; resolves `[]` when cancelled. */
   chooseFiles(http: AgentHttpClient): Promise<FileRef[]>;
@@ -64,9 +64,9 @@ export interface AgentHost {
 }
 
 /**
- * The agent bridge's request handling, shared by the desktop main process (behind IPC) and the
- * web client (called directly). Everything here is a service call or cached service state;
- * host-only abilities go through `AgentPlatform`. `S` identifies a subagent-transcript holder.
+ * The agent bridge's request handling, which the macOS shell's page (`native-host`) calls
+ * directly. Everything here is a service call or cached service state; host-only abilities go
+ * through `AgentPlatform`. `S` identifies a subagent-transcript holder.
  */
 export class AgentRequests<S> {
   readonly tasks: TaskClient<S>;

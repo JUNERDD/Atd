@@ -17,9 +17,8 @@ public struct CapturedText: Codable, Equatable, Sendable {
   }
 }
 
-/// Why a capture has no text. Messages are the Electron shell's (`command-service.ts` and
-/// `service/capabilities.ts`); they reach the page or the agent, not a native surface, so they
-/// stay English like the service's own errors.
+/// Why a capture has no text. The messages reach the page or the agent, not a native surface, so
+/// they stay English like the service's own errors.
 public enum CaptureFailure: String, Error, Equatable, Sendable {
   case accessibilityNotTrusted
   case noSelection

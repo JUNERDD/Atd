@@ -1,5 +1,6 @@
 {
   "close": "关闭",
+  "hostRequired": "此页面只能在 macOS 版 AI 应用中运行。",
   "toast": {
     "dismiss": "关闭",
     "dismissLabel": "关闭通知"

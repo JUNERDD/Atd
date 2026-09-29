@@ -7,7 +7,7 @@ import ApplicationServices
 ///   cannot stall a summon (the AX default is about 6 s). A timeout aborts the whole read and
 ///   counts as no selection.
 /// - The system-wide focused element comes first. It fails while an Electron app is
-///   frontmost, so the read then starts from the frontmost app's pid, like `selection-hook`.
+///   frontmost, so the read then starts from the frontmost app's pid.
 /// - Per element: `AXSelectedText`, then `AXSelectedTextRange` + `AXStringForRange`, then
 ///   `AXValue` sliced by the range, then the text-marker range web content uses. Elements:
 ///   the focused one, its first 20 children, then up to 10 ancestors.

@@ -1,10 +1,9 @@
 #!/usr/bin/env node
 /**
- * T7 packaging prepare: drop stale Electron worker outputs, then `pnpm deploy
- * --prod --legacy` the built service into gitignored tmp/ so extraResources
- * can copy production node_modules without applying files:["dist"].
- * The workspace lockfile is snapshotted and restored; a demanded lockfile
- * write is a hard failure (do not keep it).
+ * Stages what the Release app embeds beside the renderer (project.yml's "Embed renderer and
+ * service" phase): `pnpm deploy --prod --legacy` of the built service into gitignored tmp/, so the
+ * bundle carries production node_modules without applying files:["dist"]. The workspace lockfile
+ * is snapshotted and restored; a demanded lockfile write is a hard failure (do not keep it).
  *
  * pnpm < 12.7.0 also rewrites the source workspace's
  * node_modules/.pnpm-workspace-state-v1.json during a legacy deploy, recording
@@ -20,8 +19,7 @@
  * are checked against the release's SHASUMS256.txt and cached under
  * tmp/node-dist, so repeat packs work offline. Only the executable is shipped:
  * whether the app bundles npm/npx is undecided. The target is the build host's
- * platform and architecture; the release workflow packages each architecture
- * on its own runner.
+ * architecture on macOS, the only platform the app ships for.
  *
  * Every run writes a fresh build-info.json into the pack, identifying this
  * packaged service build.
@@ -32,11 +30,9 @@ import {
   copyFile,
   mkdir,
   readFile,
-  readdir,
   realpath,
   rename,
   rm,
-  unlink,
   writeFile,
 } from 'node:fs/promises';
 import { createHash, randomUUID } from 'node:crypto';
@@ -44,10 +40,8 @@ import { createReadStream } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { nodeSatisfiesEngines } from '../electron/service/node-runtime.ts';
 
-const desktopRoot = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-const repoRoot = path.resolve(desktopRoot, '../..');
+const repoRoot = path.resolve(fileURLToPath(import.meta.url), '../../../..');
 const packDir = path.join(repoRoot, 'tmp', 't7-agent-service-pack');
 const lockFile = path.join(repoRoot, 'pnpm-lock.yaml');
 const lockBak = path.join(repoRoot, 'tmp', 't7-lockfile.bak');
@@ -55,7 +49,6 @@ const workspaceState = path.join(repoRoot, 'node_modules', '.pnpm-workspace-stat
 const cli = path.join(repoRoot, 'apps', 'agent-service', 'dist', 'cli.js');
 const contracts = path.join(repoRoot, 'packages', 'agent-contracts', 'dist', 'index.js');
 const client = path.join(repoRoot, 'packages', 'agent-client', 'dist', 'index.js');
-const distElectron = path.join(desktopRoot, 'dist-electron');
 const nodeVersionFile = path.join(repoRoot, '.node-version');
 const serviceManifest = path.join(repoRoot, 'apps', 'agent-service', 'package.json');
 const nodeCache = path.join(repoRoot, 'tmp', 'node-dist');
@@ -94,15 +87,38 @@ function fail(message) {
   process.exit(1);
 }
 
-/** Release archive for the host; the executable's path inside it matches `resolveServiceNode`. */
+/** `[major, minor, patch]` of a Node version such as `v24.19.0`. */
+function nodeTriple(raw) {
+  const match = /^v?(\d+)\.(\d+)\.(\d+)/.exec(raw.trim());
+  if (!match) fail(`Unrecognized Node.js version: ${raw.trim() || '(empty)'}`);
+  return match.slice(1).map(Number);
+}
+
+function compareTriples(left, right) {
+  return left[0] - right[0] || left[1] - right[1] || left[2] - right[2];
+}
+
+/**
+ * Whether `version` satisfies an `engines.node` range made of `^x.y.z` and `>=x.y.z` clauses joined
+ * by `||`, the only forms the service declares. Any other clause fails the pack.
+ */
+function nodeSatisfiesEngines(version, range) {
+  const found = nodeTriple(version);
+  return range.split('||').some((clause) => {
+    const [, operator, min] = /^\s*(\^|>=)(\d+\.\d+\.\d+)\s*$/.exec(clause) ?? [];
+    if (!operator) fail(`Unsupported engines.node clause: ${clause}`);
+    const lower = nodeTriple(min);
+    if (compareTriples(found, lower) < 0) return false;
+    return operator === '>=' || found[0] === lower[0];
+  });
+}
+
+/** Release archive for the host; the executable's path inside it matches `ServiceLaunchPlan`. */
 function nodeArchive(version) {
-  const platform = { darwin: 'darwin', linux: 'linux', win32: 'win' }[process.platform];
-  if (!platform || !['x64', 'arm64'].includes(process.arch))
-    fail(`No official Node.js build is mapped for ${process.platform}-${process.arch}.`);
-  const base = `node-v${version}-${platform}-${process.arch}`;
-  return platform === 'win'
-    ? { name: `${base}.zip`, member: `${base}/node.exe`, staged: 'node.exe' }
-    : { name: `${base}.tar.gz`, member: `${base}/bin/node`, staged: path.join('bin', 'node') };
+  if (process.platform !== 'darwin' || !['x64', 'arm64'].includes(process.arch))
+    fail(`The service pack is built on macOS only, not ${process.platform}-${process.arch}.`);
+  const base = `node-v${version}-darwin-${process.arch}`;
+  return { name: `${base}.tar.gz`, member: `${base}/bin/node`, staged: path.join('bin', 'node') };
 }
 
 async function download(url) {
@@ -162,7 +178,6 @@ async function stageNode() {
   const extractDir = path.join(cacheDir, 'extract');
   await rm(extractDir, { recursive: true, force: true });
   await mkdir(extractDir, { recursive: true });
-  // bsdtar (macOS, Windows 10+) and GNU tar both extract a single member; bsdtar also reads zip.
   const tar = spawnSync('tar', ['-xf', archiveFile, '-C', extractDir, archive.member], {
     stdio: 'inherit',
   });
@@ -181,20 +196,6 @@ async function stageNode() {
   process.stdout.write(`Staged Node ${probe.stdout.trim()} at ${target}\n`);
 }
 
-async function clearStaleWorkers() {
-  let names = [];
-  try {
-    names = await readdir(distElectron);
-  } catch {
-    return;
-  }
-  await Promise.all(
-    names
-      .filter((name) => name.startsWith('worker') && name.endsWith('.js'))
-      .map((name) => unlink(path.join(distElectron, name))),
-  );
-}
-
 for (const file of [cli, contracts, client]) {
   try {
     await access(file);
@@ -204,7 +205,6 @@ for (const file of [cli, contracts, client]) {
   }
 }
 
-await clearStaleWorkers();
 await stageNode();
 await mkdir(path.dirname(packDir), { recursive: true });
 await copyFile(lockFile, lockBak);
@@ -212,21 +212,13 @@ const lockBefore = await hashFile(lockFile);
 const workspaceStateBefore = await readIfPresent(workspaceState);
 await rm(packDir, { recursive: true, force: true });
 
-const pnpm = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
 const deploy = spawnSync(
-  pnpm,
+  'pnpm',
   ['--filter', '@ai/agent-service', 'deploy', '--prod', '--legacy', packDir],
   {
     cwd: repoRoot,
     stdio: 'inherit',
-    env: {
-      ...process.env,
-      npm_config_lockfile: 'false',
-      // The deploy installs only the service's production dependencies, so workspace patches
-      // for other projects' packages (such as the desktop build's @electron/osx-sign) are
-      // legitimately unused here; pnpm 12 reads this setting only with the pnpm_config_ prefix.
-      pnpm_config_allow_unused_patches: 'true',
-    },
+    env: { ...process.env, npm_config_lockfile: 'false' },
   },
 );
 // Restore before any exit below so a failed deploy cannot leave it either.
@@ -264,7 +256,7 @@ if (!resolved.startsWith(packDir)) {
 }
 // The file index addon is built for darwin-arm64 only (packages/file-index); without it that
 // pack would ship a service whose file search reports itself unavailable.
-if (process.platform === 'darwin' && process.arch === 'arm64') {
+if (process.arch === 'arm64') {
   const addon = path.join(stagedModules, '@ai', 'file-index', 'file-index.darwin-arm64.node');
   try {
     await access(addon);

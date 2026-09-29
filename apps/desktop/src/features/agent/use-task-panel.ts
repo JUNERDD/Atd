@@ -49,7 +49,7 @@ export function useTaskPanel() {
   const agent = useAgent();
   useAgentNotices();
   const { snapshot } = useSettingsSnapshot();
-  const { hidden, setHidden, openSettings, hide } = usePanelWindow();
+  const { openSettings, hide } = usePanelWindow();
   const [draftRevision, setDraftRevision] = useState(0);
   const [view, setView] = useState<View>('new');
   const [taskId, setTaskId] = useState<string | null>(null);
@@ -300,8 +300,6 @@ export function useTaskPanel() {
     setTaskId,
     prepared,
     setPrepared,
-    hidden,
-    setHidden,
     pending,
     current,
     child,
@@ -309,10 +307,8 @@ export function useTaskPanel() {
     draftRevision,
     draft,
     shortcuts,
-    platform,
     newTask,
     openSettings,
-    hide,
     changeDraft,
     chooseCommand,
     submit,

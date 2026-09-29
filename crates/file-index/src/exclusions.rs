@@ -1,6 +1,6 @@
 //! What the index leaves out, merged from two sources:
 //!
-//! - `apps/desktop/electron/file-search/scope.ts`: hidden entries, `.app` bundles, the directory
+//! - `apps/agent-service/src/file-search/scope.ts`: hidden entries, `.app` bundles, the directory
 //!   names below, and the OS-owned `Library` folder directly in home. These carry over unchanged,
 //!   so the index covers the same files the current search offers.
 //! - Raycast 2.0's file indexer: the override globs below, read from the strings of

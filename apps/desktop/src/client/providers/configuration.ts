@@ -1,4 +1,4 @@
-import type { ConnectionConfig, StoredConnection } from './schema';
+import type { ConnectionConfig } from './schema';
 
 import { CLOUD_FIELDS, isCustom } from './metadata';
 export { CLOUD_FIELDS, isCustom, isCloud, isAmbient, LOCAL_PROVIDERS } from './metadata';
@@ -47,8 +47,4 @@ export function validateConfig(config: ConnectionConfig) {
   }
   if (new Set(config.customModels.map((model) => model.id)).size !== config.customModels.length)
     throw new Error('Model IDs must be unique within a connection.');
-}
-
-export function publicConnection({ encryptedCredential, ...connection }: StoredConnection) {
-  return { ...connection, hasCredential: Boolean(encryptedCredential) };
 }

@@ -1,13 +1,14 @@
 import AICore
 import AppKit
 
-/// The menu bar status item (apps/desktop/electron/menu-bar.ts): the second way to the panel
+/// The menu bar status item: the second way to the panel
 /// beside the shortcut, and the one that stays reachable while the Dock icon is hidden. A click
 /// toggles the panel; a right-click or Control/Option-click opens the app menu. The image and
 /// tooltip follow the service's reachability and its root-task counts.
 ///
-/// The images are the App target's `<state>Template` image sets, copied unchanged from
-/// apps/desktop/resources/menu-bar (exported from the Figma component set `1562:59933`).
+/// The images are the App target's `<state>Template` image sets, exported at 1x and 2x from the
+/// Figma component set `1562:59933`; re-export them from Figma instead of editing them. The
+/// `Template` suffix makes macOS tint them for the menu bar appearance.
 @MainActor
 final class StatusItemController: NSObject {
   private let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)

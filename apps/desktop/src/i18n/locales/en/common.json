@@ -1,5 +1,6 @@
 {
   "close": "Close",
+  "hostRequired": "This page runs only inside the AI app for macOS.",
   "toast": {
     "dismiss": "Dismiss",
     "dismissLabel": "Dismiss notification"

@@ -1,8 +1,7 @@
 import Foundation
 
-/// The native confirmation of an MCP launch approval, as text (`describeLaunch` in
-/// apps/desktop/electron/service/mcp-approval.ts). Everything comes from the service's details;
-/// the page only named the server.
+/// The native confirmation of an MCP launch approval, as text. Everything comes from the service's
+/// details; the page only named the server.
 ///
 /// `detail` lists one fact per line for a monospaced, read-only view. Every value from a
 /// server's configuration is quoted with its control, formatting and separator characters

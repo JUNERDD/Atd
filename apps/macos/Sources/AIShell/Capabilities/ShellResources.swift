@@ -78,7 +78,7 @@ final class AttachmentImporter {
   }
 }
 
-/// Artifact operations (apps/desktop/electron/agent/artifacts.ts): the shell downloads the
+/// Artifact operations: the shell downloads the
 /// bytes with its credentials into its downloads folder, quarantined, then opens, reveals or
 /// copies the path. The page can upload any file and ask to open it, so only document types
 /// (``ArtifactOpenPolicy``) open directly; any other type opens only after the user chooses

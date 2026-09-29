@@ -10,8 +10,8 @@ function serviceApi() {
 }
 
 /**
- * Whether this page can ask for a launch approval: only a desktop host (Electron main or the macOS
- * shell) shows the native confirmation, which the page itself can never stand in for.
+ * Whether this page can ask for a launch approval: only the macOS shell shows the native
+ * confirmation, which the page itself can never stand in for.
  */
 export function canConfirmMcpApproval(): boolean {
   return window.desktop !== undefined;

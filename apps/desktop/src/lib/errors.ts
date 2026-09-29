@@ -1,8 +1,6 @@
-/** Removes Electron's IPC wrapper so caught rejections carry only their own message. */
+/** A caught rejection's own message, or a generic one for a value that is not an Error. */
 export function messageOf(error: unknown) {
-  return error instanceof Error
-    ? error.message.replace(/^Error invoking remote method '[^']+': (Error: )?/, '')
-    : 'The operation could not finish.';
+  return error instanceof Error ? error.message : 'The operation could not finish.';
 }
 
 const toastTextLimit = 80;

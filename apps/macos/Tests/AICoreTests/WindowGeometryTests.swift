@@ -2,9 +2,8 @@ import Testing
 
 @testable import AICore
 
-/// The Electron cases (apps/desktop/electron/window-position.test.ts) moved into AppKit's y-up
-/// space. `flip` turns an Electron top-left rectangle into it for a primary display of height
-/// `primaryHeight`.
+/// Placement cases in AppKit's y-up space. `flip` turns a top-left-origin rectangle into it for a
+/// primary display of height `primaryHeight`.
 @Suite("Panel placement in AppKit screen coordinates")
 struct WindowGeometryTests {
   static func flip(_ x: Double, _ y: Double, _ w: Double, _ h: Double, primaryHeight: Double)
