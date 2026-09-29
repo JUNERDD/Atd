@@ -1,0 +1,385 @@
+# macOS 原生前端与剔除网页端
+
+Status: Approved - in progress
+Created: 2026-09-29
+Approval: Approved by user on 2026-09-29 (execute all phases)
+
+## Summary
+
+把桌面前端从 Electron 换成参照 Raycast 2.0 的 macOS 原生外壳，并删除网页端访问。决策全部来自本次 grill（见 Grill-Me Outcome），本计划只负责落成可执行的步骤。
+
+- **分层**：
+  - Swift/AppKit 外壳负责窗口、面板、菜单栏、全局快捷键、选中文本、原生能力和服务进程。
+  - 现有 React 渲染层跑在 WKWebView 里，页面从包内的 `ai-app://renderer/` 加载，不开放任何 HTTP 源。
+  - `agent-service`（Node）继续做唯一的数据源。
+- **客户端核心留在 JS**：任务缓存、事件归约、命令、模型服务、设置同步约 8k 行 TS，复用 `src/web` 已经验证过的宿主路径，不用 Swift 重写。
+- **Swift 做中继，WebView 不持有凭据**：
+  - HTTP 走同源的 `WKURLSchemeHandler`。
+  - 流走一对一的透明虚拟 socket。
+  - 路由白名单由 service 为每条路由标注 exposure，并在运行时下发。
+- **Liquid Glass**：
+  - 窗口背景用 `NSGlassEffectView`。
+  - 页面内用私有 CSS `-apple-visual-effect`，spike 失败就退回 `backdrop-filter`。
+  - 只支持 macOS 26 和 arm64。
+- **推进顺序**：
+  1. 先单独删除网页端访问。
+  2. 原生外壳在 `apps/macos` 并行开发，日常仍用已安装的 0.2.1。
+  3. 功能对等清单验收通过后，用一个 PR 删除 Electron 和旧数据迁移代码。
+- **文件搜索**：先原样迁入 service，再并行做 Raycast 式的 Rust 索引。它不挡切换。
+
+```mermaid
+flowchart LR
+  subgraph App["AI.app（Swift/AppKit）"]
+    Shell["外壳：NSPanel/NSWindow + NSGlassEffectView<br/>菜单栏、快捷键、AX、NSPasteboard、NSWorkspace"]
+    Scheme["WKURLSchemeHandler<br/>ai-app://renderer/*（包内文件 + CSP 头）<br/>/v1/*（规范化 → 清单白名单 → epoch 头 → 转发）"]
+    Pipe["虚拟 socket 管道<br/>上行只放 subscribe、ping"]
+    Control["控制流<br/>capability.* + status 帧"]
+    Sup["服务监管<br/>Process、退避、熔断"]
+    subgraph Web["WKWebView（React 渲染层 + JS 客户端核心）"]
+      UI["面板和设置 UI"]
+    end
+  end
+  Service["agent-service（Node 子进程）<br/>HTTP /v1 + WS /v1/stream<br/>只认主 token"]
+  UI -- "fetch 同源" --> Scheme
+  UI -- "消息处理器" --> Pipe
+  UI -- "原生调用" --> Shell
+  Scheme -- "Bearer 主 token" --> Service
+  Pipe -- "每条一个 URLSessionWebSocketTask" --> Service
+  Control --> Service
+  Sup --> Service
+```
+
+## Clarifying Questions
+
+- [x] 原生的边界：选方案 b，原生外壳加 WKWebView 承载富内容（grill 问题 2）。
+- [x] 客户端核心和凭据：采用 Swift 中继，WebView 不持有凭据（问题 3、4、5、6、7）。
+- [x] 切换方式：唯一用户是作者本人，并行开发后一次性删除 Electron，不做迁移桥，Electron 本地数据全部丢弃（问题 8、11、20）。
+- [x] Liquid Glass 覆盖范围和最低系统版本（问题 13）。
+- [x] 工程、CI、测试范围：Swift Testing 覆盖中继白名单和路径规范化（问题 14）。
+- [x] 文件搜索：迁入 service，并行做 Rust 索引，只在索引上沿用 Raycast 模式（问题 15–18）。
+- [x] 切换门槛：使用本文的功能对等清单（问题 19）；旧迁移代码随 Electron 一起删除（问题 20）；原生界面文案本地化（问题 21）。
+- [ ] 不阻塞实施：没有设定内存和冷启动的量化目标，grill 问题 1 被调研取代，没有直接回答。当前门槛只有功能对等。如需量化目标，在 P0 里测出 0.2.1 的基线后再定。
+
+## File And Code References
+
+**剔除网页端**
+
+- **service**：
+  - `apps/agent-service/src/web/{access,routes,sessions,static}.ts`
+  - 挂载点：`server.ts:37-39`、`:98-100`、`:273-274`
+  - CLI：`--web-root` 参数在 `cli.ts:43`；`web` 子命令在 `cli.ts:181-206`、`:255`；帮助文案在 `:66-78`、`:101`
+  - 配置：`config.ts` 里的 `webRoot`
+  - 依赖：`package.json:31` 的 `@fastify/static`
+- **保留**：`web/invalidate.ts`，多窗口同步还要用它。
+- **契约和客户端**：
+  - `packages/agent-contracts/src/workspace.ts` 里的 `WebPairing*`、`WebSession*`
+  - `packages/agent-client/src/workspace-client.ts:55`、`:71`、`:90`
+- **渲染层**：
+  - 删除：`apps/desktop/src/web/host-session.ts`、`web-sign-in.tsx`，以及相应的 `web.css` 片段和 `webSignIn.*` 文案
+  - 修改入口：`src/main.tsx:33-50`
+  - 保留：`web-connection.ts`、`web-commands.ts`、`web-settings.ts`、`web-platform.ts`、`web-events.ts`
+- **开发服务器**：`apps/desktop/plugins/agent-service-dev.ts:57-71`，包括 `/v1` 代理和 `/__ai/dev-pair`；接入点在 `vite.config.ts:60-72`。
+- **Electron 入口**：
+  - `electron/service/manager.ts:119`（`openInBrowser`）
+  - `electron/app-menu.ts:157`
+  - `main.ts:304`、`ipc.ts:91`、`service/bridge-client.ts:17`、`service/extension-requests.ts:27`
+  - `src/features/settings/open-in-browser-button.tsx`
+
+**打包对 `dist-web` 的依赖**
+
+- `electron-builder.yml:27-30`
+- `electron/window-content.ts:69`
+- `electron/service/launcher.ts:49`、`:156`（`--web-root`）
+- 构建脚本：`apps/desktop/package.json` 的 `build` 和 `build:web`；`vite.config.ts:77`、`:110`、`:121` 的 `mode === 'web'`；`turbo.json` 的 `dist-web/**`
+
+**中继和流**
+
+- `packages/agent-client/src/http-client.ts:46`：`fetchImpl` 保持默认。
+- `packages/agent-client/src/ws-client.ts:69-110`：写死了 `new WebSocket`，要改成传输工厂。
+- `apps/agent-service/src/stream.ts`：
+  - `:62`：subscribe 之前 `tasks` 为 null
+  - `:91`：broadcast 过滤
+  - `:126-130`：capability 投递给所有持有 clientId 的连接
+  - `:134-153`：上行消息分派
+  - `:156-190`：subscribe 处理
+- `capabilities.ts`：`:28` 定义 `LEASE_MS`，`:89` 检查租约，`:132-138` 的 `result` 与 clientId 无关。
+- `packages/agent-contracts/src/snapshot.ts:235-242`：`SubscribeSchema`，要新增 `status`。
+- `apps/desktop/electron/menu-bar-status.ts`：计数推导，迁到服务端。
+- `electron/quit-guard.ts:182-195`：退出保护读的是 `activeRuns`。
+- `server.ts:116`、`:175-178`：`x-service-id` 和 epoch。
+
+**快捷键、选中文本、原生能力**
+
+- `electron/agent/command-service.ts:52`、`:73-127`、`:196-212`
+- `electron/main.ts:90-106`：`togglePanel` 在显示前先捕获选中文本。
+- `electron/service/capabilities.ts:47-66`、`:117-135`：`selection.read` 的现状语义。
+- `electron/agent/artifacts.ts`，以及 `electron/agent/service.ts:53-61` 的对话框、剪贴板和外链。
+
+**进程监管**
+
+- `electron/service/{launcher,supervisor,autostart,node-runtime,shell-path,data-dir,endpoint,connection,manager,service-log,service-code}.ts`，约 1.7k 行。
+- `shell-path.ts:62-67`：只在打包版解析登录 shell PATH。
+- `data-dir.ts:28-31`：`AI_AGENT_DATA_DIR`。
+- 读取 PATH 的地方：`apps/agent-service/src/mcp/servers.ts:163`、`harness/search/ripgrep.ts:21`。
+- 服务身份和凭据：`config.ts:127-156`，`credentials/keyring.ts`（`ai-agent-service:<serviceId>`）。
+
+**文件搜索**
+
+- `apps/desktop/electron/file-search/*`，约 1.3k 行，除 `recents.ts:59` 的 Windows 分支外都是纯 Node。
+- `electron/agent/attachable-rules.ts`。
+
+**材质和样式**
+
+- `apps/desktop/src/native-overlay-blur.ts`、`src/overlay-blur-filter.ts`，共 301 行。
+- `src/styles.css:15`、`:65-110`：`data-runtime` 和 `data-platform` 分支，以及 `-webkit-app-region: drag`。
+- `packages/ui/src/styles.css`。
+- `apps/desktop/index.html`：meta CSP。
+
+**遗留代码**
+
+- `src/features/agent/use-task-panel.ts:113-116`
+- `electron/agent/bridge.ts:200`、`:314`
+- `bridge-client.ts:72`
+- `agent-requests.ts:268`：`importLegacy` 已经是空操作。
+- `src/lib/task-store.ts`：只有 `fileSize` 仍在使用，被 `task-files.tsx`、`user-context.tsx`、`use-file-groups.tsx` 引用。
+- 旧数据迁移：`apps/agent-service/src/migration/*`（约 1.7k 行）、`apps/desktop/electron/migration/*`（约 0.4k 行）。
+
+**文档和 CI**
+
+- `AGENTS.md:46`、`:58-59`，以及 Electron 原生表面规则 `:103-114`、`:209`。
+- `README.md:24`、`:62-90`、`:98`、`:105`、`:143`。
+- `.github/workflows/ci.yml`、`.github/workflows/release.yml`。
+
+**参考**
+
+- Raycast 2.0 工程博文：<https://www.raycast.com/blog/a-technical-deep-dive-into-the-new-raycast>
+- 本机 `/Applications/Raycast.app`（只读检查结论已记录在 grill 记录里）。
+
+## Plan Todos
+
+阶段之间的依赖：
+
+- P0（spike）和 P1（剔除网页端）可以立即并行开始。
+- P2 依赖 P1。P3 依赖 P2 的契约。P4 依赖 P0 的结论，以及 P2、P3。
+- P5 贯穿各阶段。P6 在 P2 的文件搜索迁移之后并行进行。
+- P7 依赖 P4 和 P5。P8 依赖 P7。
+
+### P0 原生可行性 spike
+
+在 `tmp/spikes/` 下做最小的 Swift/WKWebView 原型，结论写回本文件。
+
+- [ ] **S1**：`WKURLSchemeHandler` 能完整收到最大附件大小的 POST 请求体，响应用 `didReceive` 分块回传，`stop` 能对应 `AbortController`。
+- [ ] **S2**：跨源 iframe 或其他源对 `ai-app://` 发起的 fetch 会被拦截；`HTTPURLResponse` 头里的 CSP 生效，包括内联脚本被拦截和 `frame-ancestors`。
+- [ ] **S3**：`ai-app://` 页面的 `window.isSecureContext`。如果是 false，就为 4 处 `crypto.randomUUID()` 准备基于 `getRandomValues` 的替代。
+- [ ] **S4**：开发模式下 handler 代理 Vite 的模块请求，HMR 直连 `ws://127.0.0.1:<port>` 时不会被当成混合内容拦截。失败则退回 `vite build --watch` 加整页重载。
+- [ ] **S5**：`-apple-visual-effect: -apple-system-glass-material` 在我们的 WKWebView 配置下，不开私有偏好也能生效。失败则退回 `backdrop-filter`。
+- [ ] **S6**：`callAsyncJavaScript` 按 runloop 合批推帧的吞吐。用长对话流式输出实测，定出门槛。
+- [ ] **S7**：标题栏拖动由 Swift 处理，可以叠原生拖动区域，也可以由 JS 请求执行拖动；使用标准交通灯按钮；`.nonactivatingPanel` 下的键盘和中文输入法正常。
+- [ ] **S8**：原生 AX 读取选中文本的覆盖范围，至少测 Safari、Chrome、VS Code 和终端，设置 250ms 消息超时；和 `selection-hook` 对比。覆盖不到的应用记录下来，不回退到模拟 Cmd+C。
+- [ ] **S9**：候选快捷键库（优先 HotKey）能报告被其他应用占用的组合键。如果库吞掉了错误码，就按复用规则记录缺口，用最薄的一层 Carbon 调用补上。
+- [ ] **S10**：开发服务热重载，按顺序尝试：`node --watch` 加 jiti 跑 `src/cli.ts` → `tsx watch` → `--watch-path` 监听 tsc 输出目录。
+
+### P1 剔除网页端访问（独立 PR，不影响 Electron）
+
+- [ ] **service**：删除 `/v1/web/*`、配对、会话存储和浏览器会话角色。`authorize` 收敛为只认主 token，`isPublic` 只剩必要的公开接口。删除静态托管（`static.ts`、`@fastify/static`、`--web-root`、`AI_AGENT_WEB_ROOT`、`config.webRoot`）和 CLI `web` 子命令。保留 `invalidate.ts`。
+- [ ] **契约和客户端**：删除 Web 配对和会话的 schema，以及 `createWebPairing`、`exchangeWebPairing`、`revokeWebSession`。
+- [ ] **渲染层**：
+  - 删除 `host-session.ts`、`web-sign-in.tsx` 和相关 CSS、两种语言的文案。
+  - 删除 `main.tsx` 里“无 `window.desktop` 时安装 Web 宿主”的入口，保留 `?preview`。
+  - 保留其余 `src/web/*` 文件。它们在原生外壳接上之前没有运行入口，只受类型检查保护，这是已接受的空窗期。
+- [ ] **开发服务器**：`plugins/agent-service-dev.ts` 删除 `/v1` 代理和 `/__ai/dev-pair`。如果插件因此变空，就整体删除并更新 `vite.config.ts`。
+- [ ] **Electron**：删除“在浏览器中打开”的全部入口（菜单、设置按钮、IPC、bridge、manager），以及 launcher 传给服务的 `--web-root`。`dist-web` 仍然作为 Electron 的渲染层产物打包，文件路径加载保持不变。
+- [ ] **删除遗留代码**：`importLegacy` 整条链路；`task-store.ts` 里只给测试用的 `loadState`、`saveState`、`createTask`、`STORAGE_KEY`，连同测试一起删掉；`fileSize` 移到合适的 lib 模块。
+- [ ] **文档**：更新 README 的 Web 客户端章节和 CLI 表，以及 AGENTS.md:46、:58-59 里与 Web 客户端相关的命令和运行时调试行；在 `docs/plans/2026-09-25-web-client.md` 顶部标注“已由本计划撤销网页端访问”。
+
+### P2 service 契约（为原生外壳准备）
+
+- [ ] **路由分类**：
+  - 对 `FastifyContextConfig` 做声明合并，加上 `exposure?: 'renderer' | 'shell'`。
+  - 每条 `/v1` 路由都声明 exposure。`/v1/admin/*`、`/v1/migration/*`、`/v1/capabilities/result`、`/v1/stream` 标为 `shell`，并在 `/v1/stream` 旁边加注释说明原因。
+  - `onRoute` 钩子在启动时断言所有路由都已分类，包括 Fastify 为 GET 自动生成的 HEAD 路由：要么确认它继承了 config，要么关闭 `exposeHeadRoutes`。
+- [ ] **清单下发**：新增只接受主 token 的 `GET /v1/admin/routes`，返回 `{ method, pathPattern, exposure }[]` 和 epoch。`onRequest` 阶段检查中继带来的 epoch 前置条件头，不一致就返回 409。
+- [ ] **status 帧**：`SubscribeSchema` 新增可选字段 `status: true`，服务端推送 `{ type: 'status', running, attention }`。计数规则从 `menu-bar-status.ts` 迁过来：只统计根任务；attention 优先；running 包括 queued、running、stopping。订阅时先发一次基线，之后按连接去重，只在变化时发送。
+- [ ] **登录 shell PATH**：解析逻辑迁入 service，由 `--login-shell-path` 显式开启，默认关闭。它在构建服务器和开始监听之前完成，结果写回 `process.env.PATH`；超时就保留原 PATH 并记日志。
+- [ ] **附件导入**：新增 shell 专用路由 `POST /v1/resources/import { paths }`，按 `attachable-rules` 读盘并生成 resource。`attachable-rules` 需要移到 service 和桌面端都能引用的位置。
+- [ ] **文件搜索**：把 `electron/file-search` 原样迁入 service，作为 renderer 路由（搜索和按结果 id 附加）。附加时由 service 自己读盘，删除 Windows 分支。
+
+### P3 客户端包与渲染层
+
+- [ ] **流传输**：`AgentStreamClient` 改为接收一个类 WebSocket 的传输工厂，浏览器的 WebSocket 仍是默认实现，供测试和 CLI 使用。重连、退避、epoch/seq 和 subscribe 逻辑不变。
+- [ ] **WebView 宿主**：把保留的 `src/web/*` 改名为 WebView 宿主，实现 `DesktopBridge`，并把 `runtime` 设为 `native`：
+  - HTTP 的 `baseUrl` 用页面源；
+  - 流使用桥传输；
+  - 流不再注册任何原生能力；
+  - 选文件、剪贴板、外链、产物操作改为调用原生。
+- [ ] **桥契约**：用 TypeBox 定义为唯一来源，放在桌面端的桥契约模块里，JS 端用 `parse()` 校验。它覆盖以下内容：
+  - 窗口：show、hide、pin、Dock、登录项，以及窗口活动状态的推送；
+  - 快捷键和选中文本：快捷键注册集合 `[{ id, accelerator }]` 与每项的注册结果、`selectionWanted`、命令快捷键事件 `{ id }`、`capture('selection')`；
+  - 语言推送；
+  - 资源：附件导入结果、`{ artifactId, operation }`、openLink、剪贴板读写。
+- [ ] **样式**：`data-runtime` 从 `electron` 改为 `native`；删除 SVG 模拟磨砂；在 `packages/ui` 新增唯一的玻璃令牌或工具类，内部用 `@supports` 回退；窗口失去焦点时暗化；`prefers-reduced-transparency` 生效时改为不透明；去掉 `-webkit-app-region`，改为按 S7 的结论请求原生拖动。
+- [ ] **构建产物**：`--mode web` 构建改名为原生渲染层产物，输出目录、`turbo.json` 和 Electron 打包路径同步修改。
+- [ ] **CSP**：删除 `index.html` 里的 meta CSP，由 handler 分别为开发和生产生成响应头，包含 `frame-ancestors 'none'` 和 `frame-src 'none'`。
+- [ ] 如果 S3 证明不是安全上下文，就实现 `crypto.randomUUID` 的替代函数并替换那 4 处调用。
+
+### P4 Swift 外壳 `apps/macos`
+
+- [ ] **工程**：
+  - 一个 SwiftPM 包承载全部逻辑。
+  - XcodeGen 的 `project.yml` 生成很薄的 App target：Debug 用 `com.junerdd.ai.dev`，Release 用 `com.junerdd.ai`；最低 macOS 26，只构建 arm64；Swift 6 语言模式，开启完整严格并发检查。
+  - 生成的 `.xcodeproj` 不入库。
+  - Info.plist 设置 `LSUIElement`，并迁入 `NS*FolderUsageDescription`。
+- [ ] **窗口**：
+  - 面板：NSPanel 加 `.nonactivatingPanel`，以 `NSGlassEffectView` 为背景，上面叠透明 WKWebView；停靠到光标所在显示器工作区的右下角，处理负坐标和小屏；支持置顶。
+  - 隐藏：窗口保持原尺寸，用 `alphaValue = 0` 隐藏，并关闭遮挡检测，避免 WebKit 降频。
+  - 设置窗口：NSWindow 加玻璃背景。
+  - 其他：标题栏拖动、交通灯、WebContent 进程崩溃后重建 WebView 并补发排队中的事件。
+- [ ] **scheme handler**：
+  - 先规范化路径，拒绝 `..`、编码斜杠和二次解码。
+  - 静态文件从包内读取。
+  - `/v1/*` 按运行时清单做方法加路径的白名单匹配，默认拒绝，路径参数只匹配单个段。
+  - 请求头和响应头都按白名单复制，`Authorization` 只由 Swift 设置。
+  - 请求带上 epoch 前置条件头；收到 409 时重拉清单并重放一次。
+  - 清单拉取期间，请求挂起并有上限，超时返回 503。
+  - HTML 响应附带 CSP 头。
+- [ ] **消息处理器**：只接受主框架且 `securityOrigin` 为 `ai-app` 的消息。原生调用的类型由 JSON Schema 生成 Codable。
+- [ ] **虚拟 socket 管道**：每条虚拟 socket 对应一条 `URLSessionWebSocketTask`，socket 按 WKWebView 归属管理。上行只读 `type` 字段，只放 `subscribe` 和 `ping`，其他一律用 1008 关闭；下行不解析。服务重启时用 1012 关闭全部 socket；Swift 自己从不重连。
+- [ ] **控制流**：
+  - 建立后立即发 `subscribe { epoch:0, seq:0, taskIds: [], status: true }`，然后注册五项原生能力，并在 `LEASE_MS` 内定时 ping。
+  - 只解码 status、`capability.request`、`capability.registered`、`capability.ack`、pong、error 这六种帧。
+  - 这是 Swift 唯一自行退避重连的连接。
+- [ ] **原生能力**：
+  - file.pick 和 file.save 用系统面板；clipboard 读写用 NSPasteboard。
+  - `selection.read` 读实时选区，只在面板可见时允许，保持现状语义。
+- [ ] **快捷键和选中文本**：
+  - 按 JS 推送的集合做差异注册，并回报每项结果。
+  - 召唤面板时，只有真正要显示面板，并且 `selectionWanted` 为真，才先读取选中文本（带超时）并暂存；否则清空暂存。
+  - 命令快捷键只投递 `{ id }`。
+  - accelerator 格式保持 Electron 字符串，由 Swift 转换。
+- [ ] **附件、产物、外链**：
+  - 附件：NSOpenPanel、在 WKWebView 上拦截文件拖放、剪贴板文件 URL 和位图，统一调用 `/v1/resources/import`。
+  - 产物：用主 token 下载后交给 NSWorkspace 打开或定位。
+  - 外链：再校验一次只允许 http/https。
+- [ ] **服务监管**：
+  - Release：用包内 Node 以绝对路径启动 service，并传 `--login-shell-path`；同 build 就复用；按 500ms–15s 退避，5 分钟内 3 次失败就熔断；退出时先 shutdown 再 SIGTERM；日志写入文件。
+  - Debug：只读取开发数据目录里的 `endpoint.json` 和 token 来连接，不启动服务；服务不可用时提示“请运行 pnpm dev”。每次连接前都重新读取 `endpoint.json`。
+- [ ] **应用级**：
+  - 菜单栏：NSStatusItem 四种状态，NSMenu 菜单。
+  - Dock 显隐；开机启动用 `SMAppService.mainApp`。
+  - 退出保护：用 `GET /v1/status` 读取 `activeRuns`，用 NSAlert 确认。
+  - 重启服务、查看日志；单实例。
+  - String Catalog 提供 en 和 zh-Hans；语言跟随 JS 推送的服务端设置，收到之前先用系统语言。
+- [ ] **Swift Testing**：覆盖路径规范化（`..`、编码斜杠、二次解码）、方法白名单、路径参数单段匹配、默认拒绝、上行类型过滤。
+
+### P5 工具链、CI、文档、设计同步
+
+- [ ] **`pnpm dev`**：改为只启动开发服务（`AI_AGENT_DATA_DIR` 指向开发数据目录，热重载方式按 S10 的结论）和 Vite 渲染层开发服务器。新增 `pnpm dev:electron`，必须用 `AI_TEST_USER_DATA` 隔离启动，并且不和 `pnpm dev` 同时运行。
+- [ ] **开发数据目录**：用默认目录的副本作种子时，删除 `service.json`、token 文件和陈旧的 `endpoint.json`，并在 README 写明开发环境要重新录入全部机密。
+- [ ] **`apps/macos/package.json`**：提供 build、lint、`format:check`、`codegen:check`、test 脚本，由 turbo 调用 xcodebuild 和 swift。App 的构建阶段先生成渲染层产物和 service 包，再拷进 Resources；内置 Node 沿用 `prepare-service-pack.mjs`。
+- [ ] **Swift 检查**：`swift format` 做格式化和 lint；SwiftLint 只启用 `file_length`，上限 350，超出即报错；`codegen:check` 纳入 `pnpm check`。
+- [ ] **CI**：`ci.yml` 的 macOS job 在删除 Electron 之前同时跑 `test:electron` 和 Swift 检查，删除后只跑 Swift 检查。停用 `release.yml` 的 Electron 发布。
+- [ ] **AGENTS.md**：
+  - 改写 Electron 原生表面相关章节：NSGlassEffectView、页面内玻璃令牌、单一填充所有者。
+  - 改写 Commands And Local Runtime 与 Runtime Debugging 表：原生 App 的隔离启动方式、Debug bundle id、开发数据目录。
+  - 350 行上限扩展到 `.swift` 和 `.rs`。
+  - 更新第 89 行关于原生表面本地化的说法。
+- [ ] **Figma**（按设计与代码同步规则）：更新面板和设置窗口材质的表示，以及页面内玻璃的位置；移除“在浏览器中打开”按钮；移除 Web 专属界面，包括快捷键页的网页端说明。
+
+### P6 Rust 文件索引（并行，不挡切换）
+
+- [ ] **Cargo workspace**：`crates/file-index` 放核心，负责 `ignore` 遍历、FSEvents 增量（在 `fsevent-sys` 和 `notify` 之间二选一）、事件断点持久化、索引和排序；`crates/file-index-node` 放 napi-rs 绑定。`rust-toolchain.toml` 固定工具链版本。
+- [ ] **依赖**：`minidex` 固定精确版本，并包在自有 trait 后面，不向外暴露它的类型。
+- [ ] **pnpm 包**：`packages/file-index` 承载加载器和 `.d.ts`，由 service 在 worker_thread 中使用。
+- [ ] **索引范围**：只收可附加扩展名的文件，范围为主目录；排除规则合并 `scope.ts` 和 Raycast 的列表，遵守 `.gitignore`；不收网络卷和可移动卷，不做全文搜索。
+- [ ] **构建与 CI**：turbo 在 service 之前执行 `napi build --release`，只构建 darwin-arm64，签名路径和 `@napi-rs/keyring` 相同。CI 跑 `cargo fmt --check`、`cargo clippy -D warnings`、`cargo test`。
+- [ ] **验收**：用作者主目录实测首次建索引耗时、常驻内存、查询 p95 延迟、新建或改名文件多久能搜到，定出门槛后替换 P2 迁入的 mdfind 加 fdir 后端。
+
+### P7 对等验收与切换
+
+- [ ] **对等验收**：Release 构建用 `open --env AI_AGENT_DATA_DIR=<测试目录>` 启动，逐项验证下面的功能对等清单，推迟项单独列出。
+- [ ] **切换**：退出 0.2.1，确认它的服务已经停止监听，整体复制默认数据目录作为回滚点，再安装并启动原生版 0.3.0 接管。
+- [ ] **回滚预案**：恢复数据目录副本并重装 0.2.1。钥匙串里切换后改过的条目不会随之恢复。
+
+功能对等清单：
+
+- **面板**：
+  - 召唤和窗口：面板开关快捷键和菜单栏图标召唤、停靠、置顶、调整尺寸。
+  - 输入：输入框（chip、@ 提及文件搜索、斜杠命令、技能 chip）；附件（选择、拖放、粘贴）。
+  - 对话：发送；流式 Markdown、代码、Mermaid、diff；工具和思考过程展示。
+  - 流程控制：审批、提问、队列、停止、压缩、上下文气泡；子代理钻取视图。
+  - 任务：历史、改名、删除；命令全局快捷键配合选中文本或剪贴板输入。
+  - 产物：打开、定位、复制路径、作为附件；服务状态横幅和重连。
+- **设置**：
+  - 模型：模型服务（API key 和浏览器登录）、模型目录。
+  - 命令和快捷键：命令编辑器与快捷键、通用快捷键。
+  - 权限：权限档位、shell 白名单。
+  - 扩展和其他：扩展（技能、角色、子代理、MCP、插件）、记忆、语言切换。
+- **应用**：菜单栏四种状态、在 Dock 显示、开机启动、重启服务、查看日志、退出保护。
+- **明确不迁移**：在浏览器中打开、自动更新、迁移菜单项。语音按钮保持现有的占位行为。
+
+### P8 删除 Electron（一个 PR）
+
+- [ ] 删除 `apps/desktop/electron/`、electron-builder 配置、`electron-updater`、`selection-hook`、Playwright Electron 冒烟测试，以及只服务于 Electron 的 Vite 插件和脚本。渲染层保留在 `apps/desktop/src`，也可以在同一个 PR 里挪到更合适的位置。
+- [ ] 删除旧数据迁移：`electron/migration`、service 的 `src/migration` 和 `/v1/migration/*`、迁移相关的 schema 和客户端调用，并从 shell 路由清单里移除。
+- [ ] 清理 CI 和文档里剩余的 Electron 内容。原生版本号从 0.3.0 开始。
+
+## Grill-Me Outcome
+
+- Transcript: [tmp/grill-me/session-macos-native-3a585a6f-20260929-143523.md](../../tmp/grill-me/session-macos-native-3a585a6f-20260929-143523.md)
+- Outcome: [tmp/grill-me/outcome-macos-native-3a585a6f-20260929-143523.md](../../tmp/grill-me/outcome-macos-native-3a585a6f-20260929-143523.md)
+- Summary: 21 个问题中，2 个被调研取代（问题 1、12），其余都已确认。两份文件都在被忽略的 `tmp/` 目录里，只存在于本机。
+
+## Build From Plan
+
+- Ready to build: Yes（决策完整；P0 的 spike 结论会影响 P3 和 P4 的具体实现，并且都预先记录了退路）
+- Selected todos: 等待批准。建议的第一批是 P0 和 P1，两者互不依赖，可以并行。
+- Execution notes:
+  - **分支与 PR**：P1 单独成 PR，从 `main` 拉分支；每个阶段一个或多个聚焦的 PR，遵守不直接提交到 `main` 的规则。
+  - **spike**：原型放在 `tmp/spikes/`，不入库，结论写回本文件的对应待办。
+  - **运行时**：所有运行时验证都使用隔离的数据目录，不连接日常 0.2.1 使用的默认数据目录。
+  - **协调**：多代理执行时，service 契约（P2）和桥契约（P3）各只有一个写入者，Swift 外壳按模块划分写入边界。
+  - **提交**：只在获得授权的范围内提交，遵守 Conventional Commits。
+
+## Validation
+
+- **TS 部分**（每个阶段）：
+  - `pnpm --version` 与 `packageManager` 一致；
+  - 改动文件 `pnpm exec oxfmt --check`、`pnpm exec oxlint <files>`；
+  - `pnpm typecheck`；
+  - `pnpm test`（覆盖受影响的现有测试）。
+- **P1**：
+  - 在隔离数据目录上跑 `agent-service serve`，确认 `/v1/web/*` 返回 404，`/` 不再托管静态页面，浏览器会话 token 被拒绝；
+  - `pnpm test:electron` 通过，确认 Electron 不受影响；
+  - `grep` 确认 `web-sign-in`、`dev-pair`、`openInBrowser` 已经没有残留。
+- **P2**：
+  - service 启动断言能拦住未分类的路由；
+  - 用主 token 调 `/v1/admin/routes`，返回的清单完整；
+  - epoch 不一致时返回 409；
+  - status 帧先发基线、之后去重。
+- **P4、P5**：
+  - `pnpm --filter <macos 包> build lint format:check codegen:check test`；
+  - Swift Testing 的中继安全用例全部通过。
+  - 运行时验收按 AGENTS.md 的隔离规则执行：Debug 版连接开发服务；Release 构建用 `open --env` 指向测试目录。
+- **P6**：`cargo fmt --check`、`cargo clippy -D warnings`、`cargo test`；主目录实测指标达到门槛。
+- **P7**：
+  - 功能对等清单逐项通过。
+  - 原生窗口的视觉验收必须检查真实的系统合成效果：在对比强烈的背景下看四角、边缘、玻璃、阴影和失焦状态。只看渲染层截图不能算作验证。
+  - 所有 spike 结论都已写回本文件。
+- **Markdown**：本文件用 `oxfmt` 格式化；Mermaid 图可以渲染。
+
+## Risks
+
+- **私有 WebKit 属性**：`-apple-visual-effect` 可能被系统更新改掉。已接受这个风险，回退方案是 `backdrop-filter`。
+- **scheme handler 请求体和混合内容**（S1、S4）：附件上传的退路是 Swift 按路径导入，已经不再依赖大请求体；HMR 的退路是整页重载。
+- **流吞吐**（S6）：长对话流式输出可能卡顿。可以用按 runloop 合批的方式缓解，门槛由 spike 定出。
+- **XSS 仍能驱动白名单内的路由**：WebView 虽然不持有凭据，真正的防线是 CSP 和 Markdown 净化，与 Electron 渲染层的边界相同。还需要在 P2 核对白名单里有没有会回读机密的路由。
+- **既有风险（待办）**：打开产物时，会直接执行代理生成的 `.app`、`.command`、`.pkg`。本计划保留现状语义，另行决定是否加以限制。
+- **`selection.read` 的既有语义问题**：面板获得焦点时读不到其他应用的选区。照搬现状，不在本次修改。
+- **`minidex`**：单一维护者，没有列出公开仓库。已通过固定版本和自有 trait 隔离，必要时 vendoring 或替换。
+- **空窗期**：P1 到 P3 之间，保留的 WebView 宿主文件没有运行入口，只受类型检查保护。
+- **没有资源占用目标**：WebView 加 Node 的内存不会降到纯原生水平。按 Raycast 的实测，常驻约 300MB 以上。
+
+## Approval
+
+- Status: Draft - awaiting approval
+- Scope: 本计划只完成了规划。实施尚未授权，需要用户批准全部或部分待办；建议先批准 P0 和 P1。
