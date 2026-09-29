@@ -24,7 +24,8 @@ export function TaskFiles({
     setFeedback(null);
     try {
       const result = await agentApi().artifact(file.id, operation);
-      if (result) onAttach(result);
+      // Every host resolves the file for each operation; only Attach adds it to the follow-up.
+      if (operation === 'attach' && result) onAttach(result);
       if (operation === 'copy') {
         setFeedback({ id: file.id, text: t('files.pathCopied'), error: false });
       }
