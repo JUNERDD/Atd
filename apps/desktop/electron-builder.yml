@@ -51,7 +51,7 @@ extraResources:
     to: agent-client/dist
   # The bundled Node: `node/bin/node` on macOS and Linux, `node/node.exe` on Windows
   # (`electron/service/node-runtime.ts`). The service runs it by absolute path; on the service's
-  # PATH its directory comes last, after the user's login-shell PATH (`service/shell-path.ts`).
+  # PATH its directory comes last, after the user's login-shell PATH (`serve --login-shell-path`).
   - from: ../../tmp/t7-node
     to: node
   # Identifies this packaged service build; a fresh id is written on every pack.

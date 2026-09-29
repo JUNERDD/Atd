@@ -8,6 +8,7 @@ import { errorMessage } from '@ai/agent-contracts';
 import { prepareServe, readEndpoint, readLocalToken, releaseLock } from './config.js';
 import { createService } from './index.js';
 import { createLogger } from './logging.js';
+import { applyLoginShellPath } from './login-shell-path.js';
 import { rollbackMigration } from './migration/rollback.js';
 import { runMigration } from './migration/migrate.js';
 import { assertSupportedNode, readServiceManifest } from './node-runtime.js';
@@ -25,6 +26,7 @@ interface Flags {
   assumeQuiesced?: boolean;
   rollback?: boolean;
   reason?: string;
+  loginShellPath?: boolean;
 }
 
 function parseFlags(argv: string[]): Flags {
@@ -39,6 +41,7 @@ function parseFlags(argv: string[]): Flags {
     else if (arg === '--dry-run') flags.dryRun = true;
     else if (arg === '--assume-quiesced') flags.assumeQuiesced = true;
     else if (arg === '--rollback') flags.rollback = true;
+    else if (arg === '--login-shell-path') flags.loginShellPath = true;
     else if (arg === '--tier' && argv[index + 1]) {
       const tier = argv[(index += 1)];
       if (tier !== 'manual' && tier !== 'auto' && tier !== 'always')
@@ -56,7 +59,7 @@ function usage(): string {
     '',
     'Usage: node dist/cli.js <command> [flags]',
     '',
-    '  serve [--dataDir <dir>] [--host 127.0.0.1] [--port 0] [--tier manual]',
+    '  serve [--dataDir <dir>] [--host 127.0.0.1] [--port 0] [--tier manual] [--login-shell-path]',
     '  status [--dataDir <dir>]',
     '  stop [--dataDir <dir>]',
     '  migrate --source <desktopUserDataCopy> [--dataDir <dir>] [--dry-run] [--assume-quiesced]',
@@ -68,6 +71,8 @@ function usage(): string {
     `Requires Node.js ${engines} on PATH (workspace toolchain; covers Pi 0.87.1`,
     '≥22.19.0). The Electron app binary is not Node.js; there is no auto-download.',
     'AI_AGENT_DATA_DIR overrides --dataDir.',
+    '--login-shell-path makes serve adopt the login shell PATH before it starts',
+    '(for launchers with a minimal GUI PATH; off by default).',
     'Default host is loopback; --port 0',
     'lets the OS assign a port (never 5173). Runs without a saved provider',
     'connection use AI_AGENT_TEMP_API_KEY (+PROVIDER/MODEL/BASE_URL), never stored.',
@@ -85,6 +90,8 @@ async function serve(flags: Flags): Promise<void> {
     flags.host !== 'localhost'
   )
     throw new Error('Only loopback hosts are supported in T1.');
+  // Before anything reads PATH: MCP stdio servers, ripgrep and tool runs use process.env.PATH.
+  if (flags.loginShellPath) await applyLoginShellPath(log);
   const config = await prepareServe({
     envDir: process.env.AI_AGENT_DATA_DIR,
     flagDir: flags.dataDir,

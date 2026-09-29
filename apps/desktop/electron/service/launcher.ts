@@ -6,7 +6,6 @@ import { discoverService, resolveServiceAtdHome } from './endpoint';
 import { nodeSearchPath, readEnginesFromCli, resolveServiceNode } from './node-runtime';
 import { resolveServiceCommand } from './service-code';
 import { openServiceLog, startupFailureMessage } from './service-log';
-import { loginShellPath } from './shell-path';
 
 /** How a spawned service process ended: an exit code, or the signal that stopped it. */
 export interface ServiceExit {
@@ -30,8 +29,9 @@ export interface LocalService {
  * published a live endpoint. Its stdout and stderr go to `<dataDir>/logs/service.log`, never to
  * a pipe, so the process does not depend on Electron staying alive. App quit stops it via
  * stopLocalService. Packaged builds run the bundled Node; unpackaged builds run the system Node,
- * version-checked against the service engines. The child's PATH starts from the user's
- * login-shell PATH (`shell-path.ts`), resolved once per app run.
+ * version-checked against the service engines. Packaged builds, started with the minimal GUI PATH,
+ * also pass `--login-shell-path`, so the service adopts the user's login-shell PATH before it
+ * starts; unpackaged builds keep the terminal PATH `pnpm dev` ran with.
  */
 export async function startLocalService(options: {
   dataDir: string;
@@ -40,13 +40,14 @@ export async function startLocalService(options: {
 }): Promise<LocalService> {
   const dataDir = path.resolve(options.dataDir);
   const command = await resolveServiceCommand();
-  const searchPath = nodeSearchPath(await loginShellPath());
+  const searchPath = nodeSearchPath(process.env.PATH ?? '');
   const node = await resolveServiceNode(
     await readEnginesFromCli(command.script),
     app.isPackaged ? path.join(process.resourcesPath, 'node') : null,
     searchPath,
   );
   const args = ['serve', '--dataDir', dataDir];
+  if (app.isPackaged) args.push('--login-shell-path');
   if (options.host) args.push('--host', options.host);
   if (options.port !== undefined) args.push('--port', String(options.port));
   const atdHome = resolveServiceAtdHome();
@@ -58,10 +59,11 @@ export async function startLocalService(options: {
       stdio: ['ignore', log.handle.fd, log.handle.fd],
       env: {
         ...process.env,
-        // Everything the agent runs inherits this PATH. The user's toolchain comes first, so
-        // `node` and `npm` in their projects are one matching pair; the bundled Node is the
-        // last-resort `node` for users without one. The service itself and pi-subagents' child
-        // runs use the bundled binary by absolute path (`process.execPath`), whatever PATH says.
+        // Everything the agent runs inherits this PATH, behind the login-shell PATH the service
+        // puts first in packaged builds. The user's toolchain comes first, so `node` and `npm` in
+        // their projects are one matching pair; the bundled Node is the last-resort `node` for
+        // users without one. The service itself and pi-subagents' child runs use the bundled
+        // binary by absolute path (`process.execPath`), whatever PATH says.
         PATH: node.binDir !== null ? [searchPath, node.binDir].join(path.delimiter) : searchPath,
         ...(atdHome !== null ? { AI_ATD_HOME: atdHome } : {}),
       },

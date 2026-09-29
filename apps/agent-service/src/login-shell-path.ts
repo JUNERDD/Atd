@@ -2,30 +2,28 @@ import { spawn, type ChildProcess } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { userInfo } from 'node:os';
 import path from 'node:path';
-import { app } from 'electron';
-import log from 'electron-log/main';
+import { errorMessage } from '@ai/agent-contracts';
+import type { Logger } from './logging.js';
 
 // A macOS app started by launchd (Finder, Dock, login item) or a Linux desktop entry inherits a
-// minimal PATH, so the agent service and every command it runs (shell tool, MCP stdio servers,
-// ripgrep) miss tools the user installed through nvm, fnm, volta, asdf, pyenv, cargo, go, bun or
-// their own rc-file PATH lines. This module asks the user's shell for its PATH once per app run,
-// the way VS Code (`src/vs/platform/shell/node/shellEnv.ts`) and Goose
+// minimal PATH, so the service it launches and every command the service runs (shell tool, MCP
+// stdio servers, ripgrep) miss tools the user installed through nvm, fnm, volta, asdf, pyenv,
+// cargo, go, bun or their own rc-file PATH lines. `serve --login-shell-path` asks the user's shell
+// for its PATH once, the way VS Code (`src/vs/platform/shell/node/shellEnv.ts`) and Goose
 // (`ui/desktop/src/loginShellPath.ts`) do. sindresorhus/shell-env (and shell-path / fix-path on
 // top of it) was not used: it has no timeout and cannot kill a hung shell, pipes stdin into the
-// interactive shell, silently falls back to the app's own environment so a failure cannot be
-// reported, and fix-path resolves synchronously on the main thread.
+// interactive shell, silently falls back to the caller's own environment so a failure cannot be
+// reported, and fix-path resolves synchronously.
 //
 // Only PATH is taken, never the whole shell environment: an imported AI_AGENT_*, NODE_OPTIONS or
-// ELECTRON_* value from an rc file would change which data dir, runtime or flags the service
-// uses, which the app's own environment decides.
-
-const logger = log.scope('shell-env');
+// similar value from an rc file would change which data dir, runtime or flags the service uses,
+// which its launcher decides. The flag stays off for a service started from a terminal, whose PATH
+// is already complete and may carry a project's venv or direnv changes a login shell would drop.
 
 /**
  * Upper bound on the shell run. A healthy interactive zsh with nvm and oh-my-zsh answers in about
- * 1 s; the service spawn waits on this, so a broken rc file may delay the connecting state by at
- * most this long. Goose uses the same 5 s; VS Code's 10 s default guards a terminal env that is
- * not on the app's startup path.
+ * 1 s; startup waits on this, so a broken rc file delays the service by at most this long. Goose
+ * uses the same 5 s.
  */
 const RESOLVE_TIMEOUT_MS = 5000;
 
@@ -58,32 +56,17 @@ function extractPath(stdout: string, mark: string): string | null {
   return value && !value.includes('\n') ? value : null;
 }
 
-/**
- * Windows GUI apps already inherit the full PATH. Unpackaged builds run from a terminal whose
- * PATH is already complete and may carry a project's venv or direnv changes a login shell would
- * drop, as VS Code skips the resolution when started from its CLI.
- */
-function resolveLoginShellPath(): Promise<string | null> {
-  if (process.platform === 'win32' || !app.isPackaged) return Promise.resolve(null);
-  const started = performance.now();
+/** The login shell's PATH, or null (with the reason) when it could not answer in time. */
+function resolveLoginShellPath(): Promise<{ value: string; shell: string } | { problem: string }> {
   return new Promise((resolve) => {
     let settled = false;
     let shell = '(unknown shell)';
     let child: ChildProcess | undefined;
-    const finish = (value: string | null, problem: string | null) => {
+    const finish = (value: string | null, problem: string) => {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
-      const elapsed = Math.round(performance.now() - started);
-      if (value !== null)
-        logger.info(
-          `Resolved the PATH of ${shell} in ${elapsed} ms (${value.split(path.delimiter).length} entries).`,
-        );
-      else
-        logger.warn(
-          `Could not resolve the PATH of ${shell} after ${elapsed} ms (${problem}); the agent service keeps the app's PATH.`,
-        );
-      resolve(value);
+      resolve(value !== null ? { value, shell } : { problem: `${shell}: ${problem}` });
     };
     const timer = setTimeout(() => {
       // An interactive shell ignores SIGTERM, and rc files may have started children in its
@@ -102,8 +85,8 @@ function resolveLoginShellPath(): Promise<string | null> {
       if (!shell) throw new Error('no login shell is configured');
       const mark = randomUUID();
       child = spawn(shell, shellArgs(shell), {
-        // A new session keeps the interactive shell's job control away from any terminal the app
-        // was started from; stdin is closed so an rc file that reads it cannot block.
+        // A new session keeps the interactive shell's job control away from any terminal the
+        // service was started from; stdin is closed so an rc file that reads it cannot block.
         detached: true,
         stdio: ['ignore', 'pipe', 'ignore'],
         env: {
@@ -125,7 +108,7 @@ function resolveLoginShellPath(): Promise<string | null> {
         output += chunk;
         const value = extractPath(output, mark);
         if (value === null) return;
-        finish(value, null);
+        finish(value, '');
         stdout.destroy();
       });
       child.once('error', (error) => finish(null, error.message));
@@ -133,27 +116,37 @@ function resolveLoginShellPath(): Promise<string | null> {
         finish(null, `exited with ${signal ?? `code ${code}`} before printing PATH`),
       );
     } catch (error) {
-      finish(null, error instanceof Error ? error.message : String(error));
+      finish(null, errorMessage(error));
     }
   });
 }
 
 /**
- * Started when the module loads — main imports the launcher statically — so the shell run
- * overlaps app startup instead of adding to the first service spawn. Settled once per app run;
- * respawns reuse it.
+ * Replaces `process.env.PATH` with the login shell's PATH, followed by the inherited entries it
+ * lacks, so a launcher's own additions (the bundled Node's directory, Homebrew fallbacks) stay
+ * reachable as the last resort. Must finish before the server is built: MCP stdio servers,
+ * ripgrep lookup and tool runs all read `process.env.PATH`. When the shell cannot answer, PATH is
+ * left unchanged and the reason logged; Windows GUI apps already inherit the full PATH.
  */
-const pending = resolveLoginShellPath();
-
-/**
- * The user's login-shell PATH, or the app's own PATH when the shell could not answer or was not
- * asked (Windows and unpackaged builds, see resolveLoginShellPath). Waits at most RESOLVE_TIMEOUT_MS from
- * app start.
- */
-export async function loginShellPath(): Promise<string> {
+export async function applyLoginShellPath(log: Logger): Promise<void> {
+  if (process.platform === 'win32') return;
   const started = performance.now();
-  const resolved = await pending;
-  const waited = Math.round(performance.now() - started);
-  if (waited > 0) logger.info(`The service spawn waited ${waited} ms for the shell PATH.`);
-  return resolved ?? process.env.PATH ?? '';
+  const resolved = await resolveLoginShellPath();
+  const elapsedMs = Math.round(performance.now() - started);
+  if ('problem' in resolved) {
+    log.warn('Login shell PATH could not be resolved; keeping the inherited PATH.', {
+      problem: resolved.problem,
+      elapsedMs,
+    });
+    return;
+  }
+  const entries = resolved.value.split(path.delimiter).filter(Boolean);
+  const inherited = (process.env.PATH ?? '').split(path.delimiter).filter(Boolean);
+  const merged = [...entries, ...inherited.filter((entry) => !entries.includes(entry))];
+  process.env.PATH = merged.join(path.delimiter);
+  log.info('Using the login shell PATH.', {
+    shell: resolved.shell,
+    entries: merged.length,
+    elapsedMs,
+  });
 }
