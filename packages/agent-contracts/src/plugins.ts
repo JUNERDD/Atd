@@ -163,8 +163,16 @@ export const PluginConfigRequestSchema = Type.Object(
 );
 export type PluginConfigRequest = Static<typeof PluginConfigRequestSchema>;
 
+/**
+ * `omitted` names the env and header entries an MCP copy left out because the plugin filled them
+ * from a sensitive setting or an environment variable; they need re-entry. Empty for other kinds.
+ */
 export const PluginDuplicateResponseSchema = Type.Object(
-  { kind: PluginItemKindSchema, name: Type.String({ maxLength: 256 }) },
+  {
+    kind: PluginItemKindSchema,
+    name: Type.String({ maxLength: 256 }),
+    omitted: Type.Array(Type.String({ maxLength: 256 })),
+  },
   { additionalProperties: false },
 );
 export type PluginDuplicateResponse = Static<typeof PluginDuplicateResponseSchema>;

@@ -5,6 +5,7 @@ import {
   expander,
   ownValue,
   pluginDirectoryResolver,
+  secretDetector,
   userConfigKey,
 } from './expand.js';
 import { resolveCommand, resolveCwd } from './paths.js';
@@ -78,6 +79,45 @@ export function substituteTransport(
   return {
     transport: { type: 'stdio', command, args, env, cwd },
     diagnostics,
+  };
+}
+
+/** The parts of a substituted MCP transport that took a secret (see `secretDetector`). */
+export interface TransportSecrets {
+  /** Env names, as substituted, whose values took a secret. */
+  env: string[];
+  /** Header names whose values took a secret. */
+  headers: string[];
+  /** Whether the command, an argument, the working directory, the URL or an env name took one. */
+  elsewhere: boolean;
+}
+
+/**
+ * Names where `substituteTransport` puts secrets into a transport, so a copy of the substituted
+ * transport outside the plugin (a Personal duplicate) can leave them out instead of storing them
+ * in plain text. Only the Claude format substitutes secrets.
+ */
+export function transportSecrets(
+  format: PluginFormat,
+  transport: McpTransport,
+  context: SubstitutionContext,
+): TransportSecrets {
+  if (format !== 'claude') return { env: [], headers: [], elsewhere: false };
+  const secret = secretDetector(context);
+  const named = (entries: Record<string, string>) =>
+    Object.entries(entries).flatMap(([name, value]) => (secret(value) ? [name] : []));
+  if (transport.type === 'http')
+    return { env: [], headers: named(transport.headers), elsewhere: secret(transport.url) };
+  const expand = expander(claudeTransportResolver(context, []));
+  return {
+    env: named(transport.env).map(expand),
+    headers: [],
+    elsewhere: [
+      transport.command,
+      ...transport.args,
+      transport.cwd ?? '',
+      ...Object.keys(transport.env),
+    ].some(secret),
   };
 }
 

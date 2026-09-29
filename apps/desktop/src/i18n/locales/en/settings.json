@@ -528,7 +528,8 @@
       },
       "item": {
         "duplicate": "Duplicate to Personal",
-        "duplicated": "Duplicated to Personal as {{name}}."
+        "duplicated": "Duplicated to Personal as {{name}}.",
+        "secretsNotCopied": "Secrets weren't copied; re-enter them: {{names}}"
       },
       "config": {
         "title": "Configuration",

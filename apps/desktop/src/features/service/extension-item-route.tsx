@@ -66,6 +66,12 @@ export function ExtensionItemRoute({
     await Promise.all([skills.refresh(), agents.refresh(), mcp.refresh()]);
     extensions.refreshAll();
     showToast({ kind: 'info', text: t('extensions.plugins.item.duplicated', { name: copy.name }) });
+    // An MCP copy leaves out the env vars and headers its plugin filled from secrets.
+    if (copy.omitted.length)
+      showToast({
+        kind: 'warning',
+        text: t('extensions.plugins.item.secretsNotCopied', { names: copy.omitted.join(', ') }),
+      });
     if (copy.kind === 'skill' || copy.kind === 'agent' || copy.kind === 'mcp')
       onOpenItem({ pluginId: USER_PLUGIN_ID, kind: copy.kind, name: copy.name });
   }

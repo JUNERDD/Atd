@@ -528,7 +528,8 @@
       },
       "item": {
         "duplicate": "复制到个人",
-        "duplicated": "已复制到个人，名称为 {{name}}。"
+        "duplicated": "已复制到个人，名称为 {{name}}。",
+        "secretsNotCopied": "未复制密钥，请重新填写：{{names}}"
       },
       "config": {
         "title": "配置",

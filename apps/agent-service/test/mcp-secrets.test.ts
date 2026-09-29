@@ -1,10 +1,15 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { after, before, test } from 'node:test';
 import {
   ErrorEnvelopeSchema,
   McpServersResponseSchema,
   parse,
+  PluginDetailSchema,
+  PluginInstallPreviewSchema,
+  PluginDuplicateResponseSchema,
   type McpServerConfig,
   type McpServerUpsertRequest,
 } from '@ai/agent-contracts';
@@ -15,11 +20,13 @@ import { startTestService } from './service-harness.ts';
 
 /**
  * The security invariants of MCP env and header values: they are stored for connecting, never
- * read back by a client or the model, and never sent to a new destination.
+ * read back by a client or the model, never sent to a new destination, and never copied out of a
+ * plugin into plain text.
  */
 
 const ENV_SECRET = 'sentinel-env-5f1c9a';
 const HEADER_SECRET = 'sentinel-header-8b2e4d';
+const PLUGIN_SECRET = 'sentinel-plugin-3a7f0e';
 
 let harness: Awaited<ReturnType<typeof startTestService>>;
 const bodies: string[] = [];
@@ -169,4 +176,50 @@ test('configure_mcp answers a status without env or header values', async () => 
   const text = result.content.map((block) => block.text).join('\n');
   assert.ok(!text.includes(ENV_SECRET));
   assert.deepEqual(JSON.parse(text), { serverId: 'tool', revision: 1, disabled: false });
+});
+
+test('a plugin duplicate leaves env-sourced header values out of servers.json', async () => {
+  const folder = await mkdtemp(path.join(tmpdir(), 'mcp-secret-plugin-'));
+  try {
+    process.env.AI_TEST_MCP_TOKEN = PLUGIN_SECRET;
+    await mkdir(path.join(folder, '.claude-plugin'));
+    await writeFile(
+      path.join(folder, '.claude-plugin', 'plugin.json'),
+      JSON.stringify({ name: 'secret-fixture', version: '1.0.0', description: 'Fixture' }),
+    );
+    await writeFile(
+      path.join(folder, '.mcp.json'),
+      JSON.stringify({
+        mcpServers: {
+          remote: {
+            type: 'http',
+            url: 'https://plugin.example/mcp',
+            headers: { Authorization: 'Bearer ${AI_TEST_MCP_TOKEN}', 'X-Plain': 'plain' },
+          },
+        },
+      }),
+    );
+    const preview = await send('/v1/plugins/preview', 'POST', {
+      source: { kind: 'local', path: folder },
+    });
+    assert.equal(preview.status, 200, JSON.stringify(preview.json));
+    const { previewId } = parse(PluginInstallPreviewSchema, preview.json);
+    const installed = await send('/v1/plugins/install', 'POST', { previewId });
+    assert.equal(installed.status, 200, JSON.stringify(installed.json));
+    const { id } = parse(PluginDetailSchema, installed.json).plugin;
+    const copy = await send(
+      `/v1/plugins/${encodeURIComponent(id)}/items/mcp/remote/duplicate`,
+      'POST',
+    );
+    assert.equal(copy.status, 200, JSON.stringify(copy.json));
+    const result = parse(PluginDuplicateResponseSchema, copy.json);
+    assert.deepEqual(result.omitted, ['Authorization']);
+    const saved = await stored(result.name);
+    assert.deepEqual(saved.http?.headers, { 'X-Plain': 'plain' });
+    const file = await readFile(serversFile(harness.config.paths.root), 'utf8');
+    assert.ok(!file.includes(PLUGIN_SECRET), 'servers.json holds no plugin secret');
+  } finally {
+    delete process.env.AI_TEST_MCP_TOKEN;
+    await rm(folder, { recursive: true, force: true });
+  }
 });
