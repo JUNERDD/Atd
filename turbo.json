@@ -39,6 +39,13 @@
     "typecheck": { "dependsOn": ["^typecheck"] },
     "test": { "dependsOn": ["^typecheck"], "outputs": [] },
     "format:check": {},
-    "@ai/macos#build": { "cache": false }
+    "@ai/macos#build": { "cache": false },
+    "codegen:check": {
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/apps/desktop/src/native-bridge/native-bridge.schema.json"
+      ],
+      "outputs": []
+    }
   }
 }

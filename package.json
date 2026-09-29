@@ -15,7 +15,7 @@
     "format:check": "oxfmt --check .",
     "check": "pnpm format:check && turbo run lint typecheck test build --filter=!@ai/macos && node scripts/on-macos.mjs pnpm check:macos",
     "check:macos": "pnpm check:swift && pnpm check:rust",
-    "check:swift": "turbo run format:check lint test build --filter=@ai/macos",
+    "check:swift": "turbo run codegen:check format:check lint test build --filter=@ai/macos",
     "check:rust": "node scripts/check-rust-file-length.mjs && cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test",
     "package": "pnpm build && pnpm --filter @ai/desktop package"
   },
