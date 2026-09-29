@@ -53,6 +53,7 @@ final class ShellCapabilities: CapabilityHandling {
     return .object(["files": .array(files)])
   }
 
+  /// The agent's bytes where the user chooses, quarantined like any download.
   private func saveFile(_ input: JSONValue) async throws -> JSONValue {
     let file: CapabilityInputs.FileSave
     switch CapabilityInputs.fileSave(input) {
@@ -62,7 +63,7 @@ final class ShellCapabilities: CapabilityHandling {
     guard let url = await systemPanels.chooseSaveLocation(suggestedName: file.suggestedName)
     else { throw CapabilityFailure("The save was cancelled.") }
     do {
-      try file.bytes.write(to: url, options: .atomic)
+      try DownloadQuarantine.app.write(file.bytes, to: url)
     } catch {
       throw CapabilityFailure("The file could not be saved.")
     }

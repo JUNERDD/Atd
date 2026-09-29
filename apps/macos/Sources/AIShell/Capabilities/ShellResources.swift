@@ -46,7 +46,7 @@ final class AttachmentImporter {
     }
   }
 
-  /// `files.save`: the save panel, then the resource's bytes from the service.
+  /// `files.save`: the save panel, then the resource's bytes from the service, quarantined.
   func save(resourceId: String, name: String) async throws(BridgeError) -> Bool {
     let suggested = AttachmentRules.basename(name)
     guard
@@ -55,7 +55,7 @@ final class AttachmentImporter {
     else { return false }
     do {
       let resource = try await services.client().resource(id: resourceId)
-      try resource.bytes.write(to: url, options: .atomic)
+      try DownloadQuarantine.app.write(resource.bytes, to: url)
       return true
     } catch {
       throw BridgeError(ShellBridge.message(error, "The file could not be saved."))
@@ -79,9 +79,9 @@ final class AttachmentImporter {
 }
 
 /// Artifact operations (apps/desktop/electron/agent/artifacts.ts): the shell downloads the
-/// bytes with its credentials into its downloads folder, then opens, reveals or copies the
-/// path. Opening keeps today's semantics, which run whatever the agent produced (an `.app` or
-/// `.command` too); restricting that is a separate decision.
+/// bytes with its credentials into its downloads folder, quarantined, then opens, reveals or
+/// copies the path. Opening keeps today's semantics, which run whatever the agent produced (an
+/// `.app` or `.command` too); restricting that is a separate decision.
 @MainActor
 final class ArtifactActions {
   private let services: ShellServices

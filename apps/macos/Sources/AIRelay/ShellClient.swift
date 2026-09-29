@@ -45,9 +45,9 @@ public struct ShellClient: Sendable {
       mime: response.headers["Content-Type"] ?? RendererMIMEType.fallback)
   }
 
-  /// Downloads a resource the agent produced into `directory` as `<id>-<name>` and returns
-  /// where it went (`handleArtifact` in `electron/agent/artifacts.ts`). Opening, revealing and
-  /// copying the path are the caller's.
+  /// Downloads a resource the agent produced into `directory` as `<id>-<name>`, quarantined,
+  /// and returns where it went (`handleArtifact` in `electron/agent/artifacts.ts`). Opening,
+  /// revealing and copying the path are the caller's.
   public func downloadArtifact(
     id: String, into directory: URL
   ) async throws -> DownloadedArtifact {
@@ -56,7 +56,7 @@ public struct ShellClient: Sendable {
       path: ArtifactFileName.downloadName(artifactId: id, name: resource.name),
       directoryHint: .notDirectory)
     try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-    try resource.bytes.write(to: file, options: .atomic)
+    try DownloadQuarantine.app.write(resource.bytes, to: file)
     return DownloadedArtifact(
       fileURL: file, name: resource.name, mime: resource.mime, size: resource.bytes.count)
   }
