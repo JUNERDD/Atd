@@ -8,12 +8,8 @@ import {
   withPluginOwners,
   type PluginServerLayer,
 } from './plugin-servers.js';
-import {
-  loadServerRecords,
-  parseServerConfigs,
-  reviseRecords,
-  saveServerRecords,
-} from './servers.js';
+import { McpServerStore } from './server-store.js';
+import { parseServerConfigs, reviseRecords } from './servers.js';
 
 /**
  * A pending change to one layer: what it holds and what it will hold. Nothing changes until
@@ -27,24 +23,26 @@ export interface RecordChange {
 }
 
 /**
- * The MCP server records one authority serves: the user's layer, persisted in `servers.json`,
- * and the read-only plugin layer (mcp/plugin-servers.ts). This class owns their contents and
- * persistence; the authority applies each change to connections, states and credentials.
+ * The MCP server records one authority serves: the user's layer, persisted in `servers.json` with
+ * its env and header values in the keyring (mcp/server-store.ts), and the read-only plugin layer
+ * (mcp/plugin-servers.ts). This class owns their contents and serves them in full; the authority
+ * applies each change to connections, states and credentials.
  */
 export class McpServerRecords {
   private constructor(
     private readonly dataDir: string,
     private readonly log: Logger,
+    private readonly store: McpServerStore,
     private user: McpServerConfig[],
     private plugins: PluginServerLayer,
   ) {}
 
-  static async load(dataDir: string, log: Logger): Promise<McpServerRecords> {
-    const [user, plugins] = await Promise.all([
-      loadServerRecords(dataDir),
+  static async load(dataDir: string, serviceId: string, log: Logger): Promise<McpServerRecords> {
+    const [{ store, records }, plugins] = await Promise.all([
+      McpServerStore.load(dataDir, serviceId, log),
       loadPluginServerLayer(dataDir, log),
     ]);
-    return new McpServerRecords(dataDir, log, user, plugins);
+    return new McpServerRecords(dataDir, log, store, records, plugins);
   }
 
   /** The user's servers: the ones clients and `configure_mcp` edit. */
@@ -114,13 +112,13 @@ export class McpServerRecords {
     return withPluginOwners(servers, this.plugins);
   }
 
-  /** A user-layer change; committing saves `servers.json` first, then serves the new set. */
+  /** A user-layer change; committing saves it (file and keyring) first, then serves the new set. */
   private userChange(next: McpServerConfig[]): RecordChange {
     return {
       previous: this.user,
       next,
       commit: async () => {
-        await saveServerRecords(this.dataDir, next);
+        await this.store.save(next);
         this.user = next;
       },
     };

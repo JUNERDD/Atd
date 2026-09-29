@@ -1,26 +1,19 @@
 import { createHash } from 'node:crypto';
-import { readFile, stat } from 'node:fs/promises';
+import { stat } from 'node:fs/promises';
 import path from 'node:path';
-import { Type, type Static } from 'typebox';
+import { Type } from 'typebox';
 import { McpServerConfigSchema, parse, type McpServerConfig } from '@ai/agent-contracts';
 import { KeyringBackend, keyringMcpAccount } from '../credentials/keyring.js';
 import { mcpServerKey } from '../credentials/server-keys.js';
-import { atomicWrite } from '../config.js';
 import type { AdapterMcpConfig, AdapterServerEntry } from './adapter-types.js';
 import type { SecretResolver } from './errors.js';
 
 /**
- * Service MCP server records: validation, persistence, stdio/HTTP
- * diagnostics and the adapter config snapshot. Persisted records never
- * carry secrets; bearer tokens resolve at connect time from the keyring
- * (or an explicit env var) into an in-memory adapter entry only.
+ * Service MCP server records: validation, stdio/HTTP diagnostics and the adapter config snapshot.
+ * Records at rest live in `servers.json` and the keyring (mcp/server-store.ts); bearer tokens
+ * resolve at connect time from the keyring (or an explicit env var) into an in-memory adapter
+ * entry only.
  */
-
-const ServerFileSchema = Type.Object(
-  { version: Type.Literal(1), servers: Type.Array(McpServerConfigSchema) },
-  { additionalProperties: false },
-);
-type ServerFile = Static<typeof ServerFileSchema>;
 
 /** The user catalog as a whole: at most 100 servers. */
 const ServerListSchema = Type.Object(
@@ -30,24 +23,6 @@ const ServerListSchema = Type.Object(
 
 export function serversFile(dataDir: string): string {
   return path.join(dataDir, 'mcp', 'servers.json');
-}
-
-export async function loadServerRecords(dataDir: string): Promise<McpServerConfig[]> {
-  try {
-    const raw = JSON.parse(await readFile(serversFile(dataDir), 'utf8')) as unknown;
-    const file: ServerFile = parse(ServerFileSchema, raw);
-    return parseServerConfigs({ servers: file.servers });
-  } catch (error) {
-    if (error instanceof Error && 'code' in error && error.code === 'ENOENT') return [];
-    throw new Error('Saved MCP servers could not be read. The file is preserved.');
-  }
-}
-
-export async function saveServerRecords(
-  dataDir: string,
-  servers: McpServerConfig[],
-): Promise<void> {
-  await atomicWrite(serversFile(dataDir), { version: 1, servers });
 }
 
 /**
@@ -269,7 +244,10 @@ export function reuseKey(record: McpServerConfig): string {
 }
 
 /** Stable credential identity from migration v1 server keys. */
-export function credentialIdentity(serviceId: string, record: McpServerConfig): string {
+export function credentialIdentity(
+  serviceId: string,
+  record: Pick<McpServerConfig, 'serverId' | 'principal'>,
+): string {
   return mcpServerKey(serviceId, record.serverId, record.principal);
 }
 

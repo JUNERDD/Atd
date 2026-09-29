@@ -129,7 +129,7 @@ export class McpAuthority {
     const audit =
       deps.audit ?? ((entry: Record<string, unknown>) => deps.log.debug('MCP audit.', entry));
     const approvals = new McpApprovalBroker(deps.confirms, audit, deps.log);
-    const records = await McpServerRecords.load(deps.dataDir, deps.log);
+    const records = await McpServerRecords.load(deps.dataDir, deps.serviceId, deps.log);
     states.reset(records.all());
     const holder: { control: ControlSession | null } = { control: null };
     const managerOf = () => managerOverride ?? holder.control?.manager() ?? null;
@@ -237,10 +237,13 @@ export class McpAuthority {
     await this.apply('mcp:enabled', this.servers.setUserEnabled(serverId, enabled));
   }
 
-  /** Removes one user server and disconnects it; its stored credentials are not touched. */
+  /** Removes one user server: OAuth logs out, and the save deletes its keyring entries. */
   async remove(serverId: string): Promise<void> {
     this.assertOpen();
-    await this.apply('mcp:remove', this.servers.removeUser(serverId));
+    const change = this.servers.removeUser(serverId);
+    const removed = change.previous.find((record) => record.serverId === serverId);
+    if (removed?.http?.auth.type === 'oauth') await this.authManager.logout(serverId);
+    await this.apply('mcp:remove', change);
   }
 
   /** Revokes a user server immediately: no new calls, cancellable ones cancel. */

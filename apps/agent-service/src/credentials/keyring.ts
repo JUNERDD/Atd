@@ -4,7 +4,9 @@
  * Namespace (freeze candidate `keyring-namespace v1`):
  * - keyring service: `ai-agent-service:<serviceId>`
  * - keyring account: `provider:<connectionId>`
- * - MCP server entries: account `mcp:<serverKey>` (see server-keys.ts)
+ * - MCP server entries: account `mcp:<serverKey>` (see server-keys.ts), the server's bearer token
+ * - MCP stdio env and HTTP header values: `mcp:<serverKey>:env:<NAME>` and
+ *   `mcp:<serverKey>:header:<Name>` (mcp/server-store.ts)
  * - sensitive plugin config: account `plugin:<pluginId>:<key>` (plugins/secrets.ts); plugin ids
  *   never contain `:` and config keys are identifiers, so accounts cannot collide
  *
@@ -29,6 +31,20 @@ export function keyringAccount(connectionId: string): string {
 
 export function keyringMcpAccount(serverKey: string): string {
   return `mcp:${serverKey}`;
+}
+
+/**
+ * One stdio env or HTTP header value of an MCP server. The server key has a fixed shape
+ * (`mcp:<serviceId>:<serverId>:<hash8>`, see server-keys.ts) and the name is everything after the
+ * kind, so each (server, kind, name) has its own account, and the server's own `mcp:<serverKey>`
+ * account (its bearer token) prefixes all of them.
+ */
+export function keyringMcpSecretAccount(
+  serverKey: string,
+  kind: 'env' | 'header',
+  name: string,
+): string {
+  return `${keyringMcpAccount(serverKey)}:${kind}:${name}`;
 }
 
 export function keyringPluginAccount(pluginId: string, key: string): string {

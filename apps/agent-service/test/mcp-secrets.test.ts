@@ -16,12 +16,14 @@ import {
 import { configureMcp } from '../dist/configure-mcp-tool.js';
 import { serversFile } from '../dist/mcp/servers.js';
 import { upsertRecord } from '../dist/mcp/server-edits.js';
+import { secretAccount, type StoredServer } from '../dist/mcp/server-store.js';
+import { installMemoryKeyring } from './memory-keyring.ts';
 import { startTestService } from './service-harness.ts';
 
 /**
- * The security invariants of MCP env and header values: they are stored for connecting, never
- * read back by a client or the model, never sent to a new destination, and never copied out of a
- * plugin into plain text.
+ * The security invariants of MCP env and header values: they are stored in the keyring for
+ * connecting, never read back by a client or the model, never sent to a new destination, and
+ * never copied out of a plugin into plain text.
  */
 
 const ENV_SECRET = 'sentinel-env-5f1c9a';
@@ -30,8 +32,11 @@ const PLUGIN_SECRET = 'sentinel-plugin-3a7f0e';
 
 let harness: Awaited<ReturnType<typeof startTestService>>;
 const bodies: string[] = [];
+const keyring = installMemoryKeyring();
 
 before(async () => {
+  // The adapter's OAuth store is one OS-wide keyring service; tests never reach it.
+  process.env.PI_MCP_ADAPTER_TEST_AUTH_STORE = 'memory';
   harness = await startTestService();
 });
 after(() => harness.stop());
@@ -50,13 +55,29 @@ async function send(pathname: string, method: string, body?: unknown) {
 const put = (serverId: string, request: McpServerUpsertRequest) =>
   send(`/v1/mcp/servers/${serverId}`, 'PUT', request);
 
+/** A saved server with its values read back from the keyring, which holds every one of them. */
 async function stored(serverId: string): Promise<McpServerConfig> {
   const file = JSON.parse(await readFile(serversFile(harness.config.paths.root), 'utf8')) as {
-    servers: McpServerConfig[];
+    servers: StoredServer[];
   };
   const record = file.servers.find((server) => server.serverId === serverId);
   assert.ok(record, `${serverId} is stored`);
-  return record;
+  const { serviceId } = harness.config;
+  const held = keyring.accounts(serviceId);
+  const values = (kind: 'env' | 'header', saved: Record<string, unknown>) =>
+    Object.fromEntries(
+      Object.entries(saved).map(([name, value]) => {
+        assert.deepEqual(value, { keyring: true }, `${name} is held by the keyring`);
+        const secret = held.get(secretAccount(serviceId, record, kind, name));
+        assert.ok(secret !== undefined, `${name} has a keyring value`);
+        return [name, secret];
+      }),
+    );
+  return {
+    ...record,
+    stdio: record.stdio && { ...record.stdio, env: values('env', record.stdio.env) },
+    http: record.http && { ...record.http, headers: values('header', record.http.headers) },
+  };
 }
 
 function errorCode(json: unknown): string {
@@ -108,6 +129,9 @@ test('reads and edits show env and header names, never their values', async () =
   }
   assert.equal((await stored('local')).stdio?.env.API_KEY, ENV_SECRET, 'the value is stored');
   assert.equal((await stored('remote')).http?.headers.Authorization, HEADER_SECRET);
+  const file = await readFile(serversFile(harness.config.paths.root), 'utf8');
+  assert.ok(!file.includes(ENV_SECRET), 'servers.json holds no env value');
+  assert.ok(!file.includes(HEADER_SECRET), 'servers.json holds no header value');
 });
 
 test('env and headers keep, clear and rename by name on disk', async () => {
