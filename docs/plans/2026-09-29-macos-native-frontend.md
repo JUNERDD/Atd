@@ -168,16 +168,23 @@ flowchart LR
 
 在 `tmp/spikes/` 下做最小的 Swift/WKWebView 原型，结论写回本文件。
 
-- [ ] **S1**：`WKURLSchemeHandler` 能完整收到最大附件大小的 POST 请求体，响应用 `didReceive` 分块回传，`stop` 能对应 `AbortController`。
-- [ ] **S2**：跨源 iframe 或其他源对 `ai-app://` 发起的 fetch 会被拦截；`HTTPURLResponse` 头里的 CSP 生效，包括内联脚本被拦截和 `frame-ancestors`。
-- [ ] **S3**：`ai-app://` 页面的 `window.isSecureContext`。如果是 false，就为 4 处 `crypto.randomUUID()` 准备基于 `getRandomValues` 的替代。
-- [ ] **S4**：开发模式下 handler 代理 Vite 的模块请求，HMR 直连 `ws://127.0.0.1:<port>` 时不会被当成混合内容拦截。失败则退回 `vite build --watch` 加整页重载。
-- [ ] **S5**：`-apple-visual-effect: -apple-system-glass-material` 在我们的 WKWebView 配置下，不开私有偏好也能生效。失败则退回 `backdrop-filter`。
-- [ ] **S6**：`callAsyncJavaScript` 按 runloop 合批推帧的吞吐。用长对话流式输出实测，定出门槛。
+- [x] **S1**：`WKURLSchemeHandler` 能完整收到最大附件大小的 POST 请求体，响应用 `didReceive` 分块回传，`stop` 能对应 `AbortController`。
+  - 结论：部分通过。ArrayBuffer/Uint8Array 请求体 1、8、32 MiB 都完整到达 `httpBody`；Blob/File 请求体被静默丢成 0 字节，ReadableStream 直接报错，所以 WebView 宿主只能发 ArrayBuffer 或类型化数组。`didReceive` 分块能逐块到达，五种中止方式都会触发 `stop`。实际上传上限是 Fastify `bodyLimit` 的 1 MiB。handler 要按任务对象保存存活表，`stop` 之后不再回调（用 `ObjectIdentifier` 会因地址复用而漏答）。
+- [x] **S2**：跨源 iframe 或其他源对 `ai-app://` 发起的 fetch 会被拦截；`HTTPURLResponse` 头里的 CSP 生效，包括内联脚本被拦截和 `frame-ancestors`。
+  - 结论：部分通过。其他源读不到响应，但 WebKit 对自定义 scheme 不发预检，跨源 no-cors 和 CORS POST 会带着请求体到达 handler。响应头 CSP 对内联脚本、eval、`frame-src`、`connect-src` 生效；`frame-ancestors` 和 `X-Frame-Options` 对 `ai-app://` 不生效。改为决策 R6、R7（见 Execution notes）。
+- [x] **S3**：`ai-app://` 页面的 `window.isSecureContext`。如果是 false，就为 4 处 `crypto.randomUUID()` 准备基于 `getRandomValues` 的替代。
+  - 结论：通过。`isSecureContext` 为 true，`crypto.randomUUID` 可用，不需要替代函数（P3 对应待办取消）。
+- [x] **S4**：开发模式下 handler 代理 Vite 的模块请求，HMR 直连 `ws://127.0.0.1:<port>` 时不会被当成混合内容拦截。失败则退回 `vite build --watch` 加整页重载。
+  - 结论：通过。`server.hmr = { protocol: 'ws', host: '127.0.0.1', clientPort }` 加开发 CSP `connect-src 'self' ws://127.0.0.1:<port>`，HMR 直连不被当成混合内容，热更新约 24ms。开发代理要放行 `/@vite/*`、`/@fs/<绝对路径>` 和 `?t=`、`?import` 查询串。React 刷新前导内联脚本尚未实测。
+- [x] **S5**：`-apple-visual-effect: -apple-system-glass-material` 在我们的 WKWebView 配置下，不开私有偏好也能生效。失败则退回 `backdrop-filter`。
+  - 结论：失败，按预案回退 `backdrop-filter`（决策 R5）。不开私有偏好时 `CSS.supports` 对 `-apple-visual-effect` 全部为 false；打开私有偏好 `useSystemAppearance` 后才是真玻璃（Raycast 疑似如此），本计划不开。透明 WKWebView 叠在 `NSGlassEffectView` 上需要私有 KVC `drawsBackground = false`，没有公开替代，已接受。
+- [x] **S6**：`callAsyncJavaScript` 按 runloop 合批推帧的吞吐。用长对话流式输出实测，定出门槛。
+  - 结论：通过，但合批规则改为“每个 WKWebView 同时最多一个 `callAsyncJavaScript` 在途”：入队时若无在途调用，就在下一轮主队列投递；调用完成后把积压的帧一次投出；JS 端同步处理整批。只按 runloop 合批时平均每次仍只有约 1 帧，在 JS 每批耗时 2ms 时突发 2000 帧的 p99 为 141ms；一次在途规则为 8.1ms，且无掉帧。不需要计数或计时门槛，超过约 4 MiB 可拆批。
 - [ ] **S7**：标题栏拖动由 Swift 处理，可以叠原生拖动区域，也可以由 JS 请求执行拖动；使用标准交通灯按钮；`.nonactivatingPanel` 下的键盘和中文输入法正常。
 - [ ] **S8**：原生 AX 读取选中文本的覆盖范围，至少测 Safari、Chrome、VS Code 和终端，设置 250ms 消息超时；和 `selection-hook` 对比。覆盖不到的应用记录下来，不回退到模拟 Cmd+C。
 - [ ] **S9**：候选快捷键库（优先 HotKey）能报告被其他应用占用的组合键。如果库吞掉了错误码，就按复用规则记录缺口，用最薄的一层 Carbon 调用补上。
-- [ ] **S10**：开发服务热重载，按顺序尝试：`node --watch` 加 jiti 跑 `src/cli.ts` → `tsx watch` → `--watch-path` 监听 tsc 输出目录。
+- [x] **S10**：开发服务热重载，按顺序尝试：`node --watch` 加 jiti 跑 `src/cli.ts` → `tsx watch` → `--watch-path` 监听 tsc 输出目录。
+  - 结论：通过，但只有带 `--watch-path` 的第 1 种方案可用：纯 `node --watch` 加 jiti 只监听入口文件。命令为 `node --watch-path=src --watch-preserve-output --import jiti/register src/cli.ts serve --dataDir "$HOME/Library/Application Support/AgentService Dev"`，改动后约 2.7–3s 重启完成，锁、端口和 `endpoint.json` 都能干净交接。开发数据目录定为 `~/Library/Application Support/AgentService Dev`（`AI_AGENT_DATA_DIR` 仍然优先）。
 
 ### P1 剔除网页端访问（独立 PR，不影响 Electron）
 
@@ -338,6 +345,14 @@ flowchart LR
   - **spike**：原型放在 `tmp/spikes/`，不入库，结论写回本文件的对应待办。
   - **运行时**：所有运行时验证都使用隔离的数据目录，不连接日常 0.2.1 使用的默认数据目录。
   - **协调**：多代理执行时，service 契约（P2）和桥契约（P3）各只有一个写入者，Swift 外壳按模块划分写入边界。
+  - **执行中的根决策**：
+    - R1 路由清单 `GET /v1/admin/routes` 返回 `{ epoch, routes: [{ method, pathPattern, exposure }] }`，pathPattern 只用单段 `:param`，不允许通配符；epoch 前置条件头是 `x-relay-epoch`。
+    - R2 `index.html` 的 meta CSP 保留到 P8：并行期 Electron 以文件路径加载，拿不到响应头 CSP；原生 handler 另外下发头部 CSP。
+    - R3 `--mode web` 构建改名为 `--mode native`，输出 `dist-native`；仅渲染层的开发脚本改名为 `dev:renderer`。
+    - R4 epoch 不一致的 409 必须带响应头 `x-relay-epoch-current`，其他 409 不带；中继只对带这个头的 409 重拉清单并重放。
+    - R5 页面内玻璃不开私有偏好，实际走 `backdrop-filter` 回退；窗口背景透明依赖私有 KVC `drawsBackground`，列入风险。
+    - R6 导航锁定：拒绝所有子框架导航，以及主框架导航到 `ai-app://renderer` 以外的地址（替代不生效的 `frame-ancestors`）。
+    - R7 中继拒绝 `Origin` 不是 `ai-app://renderer` 的请求；非 GET/HEAD 的 `/v1` 请求必须带 `x-ai-relay: 1`，由 WebView 宿主的 HTTP 客户端发送。
   - **提交**：只在获得授权的范围内提交，遵守 Conventional Commits。
 
 ## Validation
