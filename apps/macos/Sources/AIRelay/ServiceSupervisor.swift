@@ -1,8 +1,7 @@
 import AICore
 import Foundation
 
-/// Release: runs the bundled service as a child process and keeps it running (decision Q10,
-/// mirroring `autostart.ts` and `supervisor.ts`).
+/// Release: runs the bundled service as a child process and keeps it running (decision Q10).
 ///
 /// - Start: a service already serving the data directory is reused only when it runs this
 ///   very build; otherwise it is stopped and a new one spawned with `--login-shell-path`.

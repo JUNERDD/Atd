@@ -51,8 +51,8 @@ public struct ServiceLaunchPlan: Equatable, Sendable {
     return path.count > 1 && path.hasSuffix("/") ? String(path.dropLast()) : path
   }
 
-  /// A running service is reused only when it runs this very build: both ids known and equal
-  /// (`runsCurrentCode` in `autostart.ts`). Anything else is replaced.
+  /// A running service is reused only when it runs this very build: both ids known and equal.
+  /// Anything else is replaced.
   public static func canReuse(running: String?, bundled: String?) -> Bool {
     guard let running, let bundled else { return false }
     return running == bundled
