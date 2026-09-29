@@ -3,6 +3,7 @@
 # All logic lives in the AIMac Swift package next to this file.
 name: AI
 options:
+  developmentLanguage: en
   deploymentTarget:
     macOS: '26.0'
   createIntermediateGroups: true
@@ -46,6 +47,9 @@ targets:
       path: App/Info.plist
       properties:
         CFBundleDisplayName: AI
+        CFBundleDevelopmentRegion: en
+        # The String Catalog's languages; the shell picks one at runtime (ShellStrings).
+        CFBundleLocalizations: [en, zh-Hans]
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         LSApplicationCategoryType: public.app-category.productivity
