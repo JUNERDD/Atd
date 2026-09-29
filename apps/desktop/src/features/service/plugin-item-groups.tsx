@@ -19,8 +19,8 @@ export type PluginGroupKind = 'command' | ExtensionItemKind;
  * Empty kinds are left out. Plugin pages list every item; search results pass what matched and a
  * `titlePrefix` (the plugin's name) so each group says whose items it holds. While a toggleable
  * plugin is off, every item switch is locked with the reason in a tooltip. A plugin page passes
- * the plugin's `detailItems`, which name each item inside the plugin and say whether a local
- * MCP server waits for Allow to run; search results resolve those on demand.
+ * the plugin's `detailItems`, which name each item inside the plugin; search results resolve
+ * those on demand.
  */
 export function PluginItemGroups({
   plugin,
@@ -150,6 +150,8 @@ export function PluginItemGroups({
           onConnect={actions.mcpConnect}
           onAuthStart={actions.mcpAuthStart}
           onAuthComplete={actions.mcpAuthComplete}
+          onRequestApproval={actions.mcpRequestApproval}
+          onWithdrawApproval={actions.mcpWithdrawApproval}
           onEnabled={(serverId, enabled) => toggle('mcp', serverId, enabled)}
           onRemove={actions.removeServer}
         />

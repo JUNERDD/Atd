@@ -257,6 +257,7 @@
       "disconnected": "未连接",
       "connecting": "正在连接…",
       "auth_required": "需要登录",
+      "approval_required": "等待允许",
       "ready": "就绪",
       "error": "出错",
       "closing": "正在关闭…"

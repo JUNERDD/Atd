@@ -7,7 +7,7 @@ import type { Extensions } from './use-extensions';
 /**
  * What a plugin's item rows do, shared by plugin pages and search results: switches (routed by
  * `useExtensions` to the store that keeps them), subagent permissions, built-in restore, MCP
- * connection steps, and commands, which open in the Commands section.
+ * connection steps and launch approvals, and commands, which open in the Commands section.
  */
 export function usePluginItemActions(extensions: Extensions) {
   const navigate = useSettingsNavigation();
@@ -15,6 +15,7 @@ export function usePluginItemActions(extensions: Extensions) {
   const { mutations, mcp, skills, agents } = extensions;
   const { setAgentPermissions: savePermissions, restoreBuiltin: restore, mcpRemove } = mutations;
   const { refresh: refreshMcp, connect, authStart, authComplete } = mcp;
+  const { requestApproval, withdrawApproval } = mcp;
   const { refresh: refreshSkills } = skills;
   const { refresh: refreshAgents } = agents;
 
@@ -45,6 +46,8 @@ export function usePluginItemActions(extensions: Extensions) {
     mcpConnect: (serverId: string) => void connect(serverId),
     mcpAuthStart: (serverId: string) => void authStart(serverId),
     mcpAuthComplete: (serverId: string, input: string) => void authComplete(serverId, input),
+    mcpRequestApproval: (serverId: string) => void requestApproval(serverId),
+    mcpWithdrawApproval: (serverId: string) => void withdrawApproval(serverId),
     removeServer,
   };
 }

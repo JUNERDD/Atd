@@ -1,4 +1,9 @@
-import { SubagentPermissionsSchema, parse, type SubagentPermissions } from '@ai/agent-contracts';
+import {
+  SubagentPermissionsSchema,
+  parse,
+  type McpLaunchApprovalState,
+  type SubagentPermissions,
+} from '@ai/agent-contracts';
 import { readCount, readEnabled, readFlag, readString } from './wire-read';
 
 /**
@@ -70,6 +75,8 @@ export interface ExtensionMcpRow extends ExtensionPluginRef {
   state: string;
   lastError: string;
   disabled: boolean;
+  /** Its launch approval; `notRequired` also for a service that reports none. */
+  approval: McpLaunchApprovalState;
   toolCount: number;
   resourceCount: number;
   promptCount: number;
@@ -131,6 +138,11 @@ function asRoleTool(value: unknown): ExtensionRoleTool | null {
   if (value === 'read' || value === 'write' || value === 'edit') return value;
   if (value === 'bash' || value === 'command') return value;
   return null;
+}
+
+function asApproval(value: string): McpLaunchApprovalState {
+  if (value === 'required' || value === 'changed' || value === 'approved') return value;
+  return 'notRequired';
 }
 
 function asPluginRef(value: unknown): ExtensionPluginRef {
@@ -215,6 +227,7 @@ export function asMcpRow(value: unknown): ExtensionMcpRow | null {
         state: readString(value, 'state'),
         lastError: readString(value, 'lastError'),
         disabled: readFlag(value, 'disabled'),
+        approval: asApproval(readString(value, 'approval')),
         toolCount: readCount(value, 'toolCount'),
         resourceCount: readCount(value, 'resourceCount'),
         promptCount: readCount(value, 'promptCount'),

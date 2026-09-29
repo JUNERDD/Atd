@@ -383,6 +383,24 @@
         "tokenEnvInvalid": "只能使用字母、数字和下划线，且不能以数字开头。"
       }
     },
+    "mcpApproval": {
+      "label": "运行许可",
+      "required": "需要允许",
+      "changedState": "批准后已更改",
+      "approved": "已允许运行",
+      "review": "检查并允许…",
+      "reviewNote": "系统对话框会列出将要运行的内容。",
+      "noHost": "只有桌面应用能显示允许服务器运行的系统对话框。",
+      "withdraw": "撤销允许",
+      "allowed": "已允许 {{name}} 运行。",
+      "cancelled": "未允许 {{name}} 运行。",
+      "changed": "{{name}} 在检查期间发生了更改，请重新检查。",
+      "unavailable": "系统对话框不可用，因此无法在此允许 {{name}}。",
+      "busy": "请先关闭另一个系统对话框，然后重试。",
+      "withdrawn": "已撤销 {{name}} 的允许，它已停止运行。",
+      "notice": "本地 MCP 服务器现在需要你允许后才能运行。请逐个检查并允许。",
+      "noticeDismiss": "关闭"
+    },
     "plugins": {
       "description": "插件打包提供命令、技能、子代理和 MCP 服务器。更改将在下次运行时生效。",
       "searchPlaceholder": "搜索插件、命令、技能、子代理或 MCP 服务器…",

@@ -4,11 +4,9 @@ import type { ServiceStatusView } from '../../../electron/service/ipc';
 import { showErrorToast } from '../../components/toast-store';
 import {
   asAgentRow,
-  asMcpRow,
   asRoleRow,
   asSkillRow,
   type ExtensionAgentRow,
-  type ExtensionMcpRow,
   type ExtensionRoleRow,
   type ExtensionSkillRow,
 } from './extension-rows';
@@ -130,75 +128,6 @@ export function useServiceAgents() {
     );
   }, []);
   return { agents, loading, refresh, setEnabled };
-}
-
-/** MCP status via the service bridge. */
-export function useServiceMcp() {
-  const [mcp, setMcp] = useState<{ servers: ExtensionMcpRow[] } | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [busyId, setBusyId] = useState<string | null>(null);
-  const refresh = useCallback(async () => {
-    if (!window.desktop?.service) return;
-    setLoading(true);
-    try {
-      const result = await window.desktop.service.mcpStatus();
-      setMcp({ servers: result.servers.flatMap((row) => asMcpRow(row) ?? []) });
-    } catch (error) {
-      showErrorToast(error);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-  const connect = useCallback(
-    async (serverId: string) => {
-      setBusyId(serverId);
-      try {
-        await serviceApi().mcpConnect(serverId);
-        await refresh();
-      } catch (error) {
-        showErrorToast(error);
-      } finally {
-        setBusyId(null);
-      }
-    },
-    [refresh],
-  );
-  const authStart = useCallback(async (serverId: string) => {
-    setBusyId(serverId);
-    try {
-      await serviceApi().mcpAuthStart(serverId);
-    } catch (error) {
-      showErrorToast(error);
-    } finally {
-      setBusyId(null);
-    }
-  }, []);
-  const authComplete = useCallback(
-    async (serverId: string, input: string) => {
-      setBusyId(serverId);
-      try {
-        await serviceApi().mcpAuthComplete(serverId, input);
-        await refresh();
-      } catch (error) {
-        showErrorToast(error);
-      } finally {
-        setBusyId(null);
-      }
-    },
-    [refresh],
-  );
-  const setEnabled = useCallback((serverId: string, enabled: boolean) => {
-    setMcp((current) =>
-      current
-        ? {
-            servers: current.servers.map((row) =>
-              row.serverId === serverId ? { ...row, disabled: !enabled } : row,
-            ),
-          }
-        : current,
-    );
-  }, []);
-  return { mcp, loading, busyId, refresh, setEnabled, connect, authStart, authComplete };
 }
 
 /**

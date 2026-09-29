@@ -1,4 +1,4 @@
-import { Copy, KeyRound, PlugZap } from 'lucide-react';
+import { Copy } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@ai/ui/components/button';
 import {
@@ -7,13 +7,14 @@ import {
   ExtensionDetailStatus,
   type DetailField,
 } from './extension-detail-fields';
+import { McpStatusSection } from './extension-mcp-status';
 import { draftFromConfig, EMPTY_MCP_DRAFT, type McpUpsertInput } from './extension-mcp-draft';
 import { McpEditor } from './extension-mcp-editor';
 import type { ExtensionMcpConfig } from './extension-detail-rows';
 import { ExtensionPage, type ExtensionPageBadge } from './extension-page';
 import type { ExtensionMcpRow } from './extension-rows';
 import { useMcpConfig } from './use-mcp-config';
-import { mcpCanConnect, mcpNeedsAuth, useMcpStateLabel } from './use-mcp-state-label';
+import { useMcpStateLabel } from './use-mcp-state-label';
 
 type McpPageProps = {
   serverId: string | null;
@@ -25,80 +26,12 @@ type McpPageProps = {
   onUpsert: (input: McpUpsertInput) => Promise<boolean>;
   onConnect: (serverId: string) => void;
   onAuthStart: (serverId: string) => void;
+  onRequestApproval: (serverId: string) => void;
+  onWithdrawApproval: (serverId: string) => void;
   onStartAi: (target: string | null) => void;
   /** Copies a plugin's read-only server into Personal. */
   onDuplicate: () => void;
 };
-
-/**
- * The live side of a server: its state, what it offers and its last error, with Connect or
- * Authenticate when the state calls for it. The row is absent until the status list has it.
- */
-function McpStatusSection({
-  row,
-  locked,
-  onConnect,
-  onAuthStart,
-}: {
-  row: ExtensionMcpRow | undefined;
-  locked: boolean;
-  onConnect: () => void;
-  onAuthStart: () => void;
-}) {
-  const { t } = useTranslation('settings');
-  const stateLabel = useMcpStateLabel();
-  const label = t('extensions.mcpPage.statusSection');
-  if (!row)
-    return (
-      <ExtensionDetailSection label={label}>
-        <ExtensionDetailStatus text={t('extensions.detailLoading')} error={false} />
-      </ExtensionDetailSection>
-    );
-  const fields: DetailField[] = [
-    { label: t('extensions.mcpPage.state'), value: stateLabel(row.state) },
-    {
-      label: t('extensions.detailOffers'),
-      value: t('extensions.mcpOffers', {
-        tools: row.toolCount,
-        resources: row.resourceCount,
-        prompts: row.promptCount,
-      }),
-    },
-    ...(row.lastError ? [{ label: t('extensions.detailLastError'), value: row.lastError }] : []),
-  ];
-  const showConnect = mcpCanConnect(row.state);
-  const showAuth = mcpNeedsAuth(row.state);
-  return (
-    <ExtensionDetailSection label={label}>
-      <ExtensionDetailFields fields={fields} />
-      {showConnect || showAuth ? (
-        <div className="flex flex-wrap items-center gap-2">
-          {showConnect ? (
-            <Button type="button" variant="outline" size="sm" disabled={locked} onClick={onConnect}>
-              <PlugZap data-icon="inline-start" />
-              {t('extensions.connect')}
-            </Button>
-          ) : null}
-          {showAuth ? (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={locked}
-              onClick={onAuthStart}
-            >
-              <KeyRound data-icon="inline-start" />
-              {t('extensions.authenticate')}
-            </Button>
-          ) : null}
-        </div>
-      ) : null}
-      {showAuth ? (
-        <p className="text-muted-foreground text-xs">{t('extensions.mcpPage.authCodeNote')}</p>
-      ) : null}
-    </ExtensionDetailSection>
-  );
-}
 
 /**
  * Settings in the record the form has no control for. Saving keeps them for the same kind of
@@ -170,7 +103,11 @@ function McpDetailsPage({ serverId, ...props }: McpPageProps & { serverId: strin
   const loaded = useMcpConfig(serverId, Boolean(row));
   const config = loaded && 'config' in loaded ? loaded.config : null;
   const tone: ExtensionPageBadge['tone'] =
-    row?.state === 'error' ? 'error' : row?.disabled ? 'off' : 'on';
+    row?.state === 'error'
+      ? 'error'
+      : row?.disabled || row?.state === 'approval_required'
+        ? 'off'
+        : 'on';
   const badge = row ? { label: stateLabel(row.state), tone } : null;
   const status = (
     <McpStatusSection
@@ -178,6 +115,8 @@ function McpDetailsPage({ serverId, ...props }: McpPageProps & { serverId: strin
       locked={!props.connected || props.busy}
       onConnect={() => props.onConnect(serverId)}
       onAuthStart={() => props.onAuthStart(serverId)}
+      onRequestApproval={() => props.onRequestApproval(serverId)}
+      onWithdrawApproval={() => props.onWithdrawApproval(serverId)}
     />
   );
   // A plugin's server shows its status and connection whether or not the user catalog has it.

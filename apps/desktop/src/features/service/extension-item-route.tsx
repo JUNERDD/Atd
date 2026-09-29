@@ -129,6 +129,8 @@ export function ExtensionItemRoute({
           }
           onConnect={(serverId) => void mcp.connect(serverId)}
           onAuthStart={(serverId) => void mcp.authStart(serverId)}
+          onRequestApproval={(serverId) => void mcp.requestApproval(serverId)}
+          onWithdrawApproval={(serverId) => void mcp.withdrawApproval(serverId)}
           onStartAi={(target) => onStartAi('mcp', target)}
           onDuplicate={() => void duplicate('mcp', name ?? '')}
         />

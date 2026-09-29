@@ -383,6 +383,24 @@
         "tokenEnvInvalid": "Use letters, digits, and underscores, not starting with a digit."
       }
     },
+    "mcpApproval": {
+      "label": "Approval",
+      "required": "Needs approval",
+      "changedState": "Changed since approval",
+      "approved": "Allowed to run",
+      "review": "Review and allow…",
+      "reviewNote": "A system dialog shows exactly what will run.",
+      "noHost": "Only the desktop app can show the system dialog that allows a server to run.",
+      "withdraw": "Withdraw approval",
+      "allowed": "{{name}} is allowed to run.",
+      "cancelled": "{{name}} wasn't allowed to run.",
+      "changed": "{{name}} changed during review, so review it again.",
+      "unavailable": "The system dialog isn't available, so {{name}} can't be allowed here.",
+      "busy": "Close the other system dialog, then try again.",
+      "withdrawn": "Withdrew approval for {{name}}, and it stopped.",
+      "notice": "Local MCP servers now need your approval before they run. Review each one to allow it.",
+      "noticeDismiss": "Dismiss"
+    },
     "plugins": {
       "description": "Plugins bundle commands, skills, subagents, and MCP servers. Changes apply to the next run.",
       "searchPlaceholder": "Search plugins, commands, skills, subagents, or MCP servers…",

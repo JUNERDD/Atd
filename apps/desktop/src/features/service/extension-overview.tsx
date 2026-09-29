@@ -9,6 +9,7 @@ import { showToast } from '../../components/toast-store';
 import { SettingsHeading } from '../settings/settings-heading';
 import { ExtensionAddMenu, type PersonalCreateKind } from './extension-add-menu';
 import { ExtensionGroup } from './extension-group';
+import { McpApprovalNotice } from './mcp-approval-notice';
 import { PluginItemGroups } from './plugin-item-groups';
 import { PluginCard, PluginUninstallDialog } from './plugin-card';
 import { PLUGIN_SECTIONS, pluginSection } from './plugin-rows';
@@ -22,7 +23,8 @@ import { usePluginLabels } from './use-plugin-labels';
  * The Extensions list: every plugin as a card under Built-in, then Personal & shared (Personal,
  * the shared skills folder and every installed plugin), with search and the Add menu in the heading. A search spans the plugins and everything they
  * contribute, so the sections step aside for the matching plugins' cards, then each plugin's
- * matching items by kind. The heading and search stay above the scrolling list.
+ * matching items by kind. The heading and search stay above the scrolling list, which opens with
+ * the one-time notice that MCP servers need approving until it is dismissed.
  */
 export function ExtensionOverview({
   extensions,
@@ -161,7 +163,19 @@ export function ExtensionOverview({
           onCreate={onCreate}
         />
       </SettingsHeading>
-      <div className="settings-extension-body">{scroll(searching ? results : sections)}</div>
+      <div className="settings-extension-body">
+        {scroll(
+          <>
+            {mcp.mcp?.approvalNotice ? (
+              <McpApprovalNotice
+                disabled={!connected}
+                onDismiss={() => void mcp.dismissApprovalNotice()}
+              />
+            ) : null}
+            {searching ? results : sections}
+          </>,
+        )}
+      </div>
       <PluginUninstallDialog
         name={uninstalling ? labels.name(uninstalling) : null}
         onCancel={() => setUninstalling(null)}

@@ -257,6 +257,7 @@
       "disconnected": "Disconnected",
       "connecting": "Connecting…",
       "auth_required": "Needs sign-in",
+      "approval_required": "Waiting for approval",
       "ready": "Ready",
       "error": "Error",
       "closing": "Closing…"

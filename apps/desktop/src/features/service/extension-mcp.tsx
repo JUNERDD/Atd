@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { KeyRound, Plug, PlugZap, Trash2 } from 'lucide-react';
+import { KeyRound, Plug, PlugZap, ShieldCheck, ShieldOff, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import {
   AlertDialog,
@@ -22,12 +22,15 @@ import { ExtensionGroup } from './extension-group';
 import { ExtensionRow, ExtensionRowActions } from './extension-row';
 import type { ExtensionMcpRow } from './extension-rows';
 import type { McpMatch } from './use-extension-matches';
-import { mcpCanConnect, mcpNeedsAuth } from './use-mcp-state-label';
+import { canConfirmMcpApproval } from './use-service-mcp';
+import { mcpCanConnect, mcpNeedsApproval, mcpNeedsAuth } from './use-mcp-state-label';
 
 /**
- * One server row in the shared anatomy: icon ring, id, the translated state and last error, then
- * the enable switch and More. Connect, sign-in and (for Personal servers) remove sit in More;
- * while the server asks for sign-in, the code field stays under the row so the flow is visible.
+ * One server row in the shared anatomy: icon ring, id, then its launch approval while it waits for
+ * one, the translated state and last error, then the enable switch and More. Review and
+ * allow (the host's native dialog), Connect, sign-in, Withdraw approval and (for Personal servers)
+ * remove sit in More; while the server asks for sign-in, the code field stays under the row so the
+ * flow is visible.
  */
 function McpRow({
   row,
@@ -41,6 +44,8 @@ function McpRow({
   onConnect,
   onAuthStart,
   onAuthComplete,
+  onRequestApproval,
+  onWithdrawApproval,
   onRemove,
 }: {
   row: ExtensionMcpRow;
@@ -55,13 +60,19 @@ function McpRow({
   onConnect: () => void;
   onAuthStart: () => void;
   onAuthComplete: (input: string) => void;
+  onRequestApproval: () => void;
+  onWithdrawApproval: () => void;
   onRemove: () => void;
 }) {
   const { t } = useTranslation('settings');
   const [authCode, setAuthCode] = useState('');
-  const showConnect = mcpCanConnect(row.state);
+  const showReview = mcpNeedsApproval(row.approval);
+  // A launch waiting for approval would only be refused, so Review comes before Connect.
+  const showConnect = mcpCanConnect(row.state) && !showReview;
   const showAuth = mcpNeedsAuth(row.state);
+  const showWithdraw = row.approval === 'approved';
   const locked = !connected || busy;
+  const steps = showReview || showConnect || showAuth || showWithdraw;
   return (
     <ExtensionRow name={row.serverId} onDetails={onDetails}>
       <ItemMedia variant="icon">
@@ -111,8 +122,17 @@ function McpRow({
         onDetails={onDetails}
         lockedReason={lockedReason}
         menu={
-          showConnect || showAuth || !row.readOnly ? (
+          steps || !row.readOnly ? (
             <>
+              {showReview ? (
+                <DropdownMenuItem
+                  disabled={locked || !canConfirmMcpApproval()}
+                  onSelect={onRequestApproval}
+                >
+                  <ShieldCheck />
+                  {t('extensions.mcpApproval.review')}
+                </DropdownMenuItem>
+              ) : null}
               {showConnect ? (
                 <DropdownMenuItem disabled={locked} onSelect={onConnect}>
                   <PlugZap />
@@ -125,7 +145,13 @@ function McpRow({
                   {t('extensions.authenticate')}
                 </DropdownMenuItem>
               ) : null}
-              {(showConnect || showAuth) && !row.readOnly ? <DropdownMenuSeparator /> : null}
+              {showWithdraw ? (
+                <DropdownMenuItem disabled={locked} onSelect={onWithdrawApproval}>
+                  <ShieldOff />
+                  {t('extensions.mcpApproval.withdraw')}
+                </DropdownMenuItem>
+              ) : null}
+              {steps && !row.readOnly ? <DropdownMenuSeparator /> : null}
               {row.readOnly ? null : (
                 <DropdownMenuItem disabled={locked} onSelect={onRemove}>
                   <Trash2 />
@@ -141,8 +167,8 @@ function McpRow({
 }
 
 /**
- * One plugin's MCP servers with connect/auth, enable, and remove for Personal servers; a row opens
- * that server's details page. `items` are the servers shown, with search marks.
+ * One plugin's MCP servers with connect/auth, launch approval, enable, and remove for Personal
+ * servers; a row opens that server's details page. `items` are the servers shown, with search marks.
  */
 export function ExtensionMcpGroup({
   title,
@@ -158,6 +184,8 @@ export function ExtensionMcpGroup({
   onConnect,
   onAuthStart,
   onAuthComplete,
+  onRequestApproval,
+  onWithdrawApproval,
   onEnabled,
   onRemove,
 }: {
@@ -176,6 +204,8 @@ export function ExtensionMcpGroup({
   onConnect: (serverId: string) => void;
   onAuthStart: (serverId: string) => void;
   onAuthComplete: (serverId: string, input: string) => void;
+  onRequestApproval: (serverId: string) => void;
+  onWithdrawApproval: (serverId: string) => void;
   onEnabled: (serverId: string, enabled: boolean) => void;
   onRemove: (serverId: string) => void;
 }) {
@@ -205,6 +235,8 @@ export function ExtensionMcpGroup({
             onConnect={() => onConnect(row.serverId)}
             onAuthStart={() => onAuthStart(row.serverId)}
             onAuthComplete={(input) => onAuthComplete(row.serverId, input)}
+            onRequestApproval={() => onRequestApproval(row.serverId)}
+            onWithdrawApproval={() => onWithdrawApproval(row.serverId)}
             onRemove={() => setRemoving(row.serverId)}
           />
         ))}
