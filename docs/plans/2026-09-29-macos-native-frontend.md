@@ -339,6 +339,7 @@ flowchart LR
   - 权限：权限档位、shell 白名单。
   - 扩展和其他：扩展（技能、角色、子代理、MCP、插件）、记忆、语言切换。
 - **应用**：菜单栏四种状态、在 Dock 显示、开机启动、重启服务、查看日志、退出保护。
+- **安全确认**（R13、R14）：MCP 启动许可的原生对话框（内容、Return 和 Escape 都落在取消、长参数时的滚动、中文排版、面板置顶时对话框在最前）；一次性提示和“撤销允许”；产物打开确认（文档直接打开，可执行类型弹确认，“仍要打开”后 Gatekeeper 生效）。
 - **明确不迁移**：在浏览器中打开、自动更新、迁移菜单项。语音按钮保持现有的占位行为。
 
 ### P8 删除 Electron（一个 PR）
@@ -372,6 +373,10 @@ flowchart LR
     - R7 中继拒绝 `Origin` 不是 `ai-app://renderer` 的请求；非 GET/HEAD 的 `/v1` 请求必须带 `x-ai-relay: 1`，由 WebView 宿主的 HTTP 客户端发送。
     - R8 全局快捷键用最薄的 Carbon 包装做非独占注册（与 Electron 现状一致），回报真实错误码，并检查系统保留快捷键；只借用 HotKey 的键名到键码映射。不用独占标志，避免抢走其他应用的快捷键。 macOS 无法查询其他应用的全局快捷键，所以快捷键设置页和命令编辑器里提示“按下没反应时可能被其他应用占用”。
     - R10 文件索引在词首前缀匹配之外增加内存子串回退，排在前缀命中之后；门槛为首次建索引 ≤ 60s、常驻内存 ≤ 200MB、查询 p95 ≤ 50ms、新文件 ≤ 2s 可搜到，全部达到才替换 mdfind。
+    - R11（安全复审后）MCP 的 env 和 header 值只写不读：`GET /v1/mcp/servers` 返回 `{ set: true }`；合并由 service 的 `PUT/DELETE /v1/mcp/servers/:serverId` 和 `…/enabled` 负责，删除 `/v1/mcp/configure`；换 URL 源或换命令时不能保留旧机密；`configure_mcp` 不再把机密返回给模型；复制插件服务器时不复制来自钥匙串或环境变量的值。
+    - R12 MCP 的 env 和 header 值存入系统钥匙串，`servers.json` 只留名字；启动时一次性迁移明文；删除服务器同时删除它的全部钥匙串条目。OAuth 令牌本来就由 pi-mcp-adapter 存在钥匙串里。
+    - R13 启动许可：stdio MCP 服务器（用户和插件）以及会读取服务端环境变量的 HTTP 服务器（`tokenEnv`、URL 或 header 里的 `${VAR}` 等引用），必须经过网页无法伪造的原生确认后才能运行（外壳用 NSAlert，Electron 用主进程对话框，另有 CLI `approve mcp`）。许可绑定命令指纹（HMAC，密钥在钥匙串），配置、插件版本或解析路径变化即失效；许可存储在 `<dataDir>/security/`，只有 shell 路由能写，代理文件工具不能写。已有服务器全部需要重新允许一次，并显示一次性提示。以 `!` 开头会被适配器当命令执行的值直接拒绝。页面从不调用的 MCP 路由改为 shell 专用。
+    - R14 产物打开：所有下载文件加 `com.apple.quarantine`；只有文档类型（外壳按 UTType、Electron 按扩展名白名单）直接打开，其余类型先弹原生确认（默认“在访达中显示”）。放宽权限档位和 shell 白名单不加原生确认（用户决定）。
     - R9 面板拖动用方案 C：页面推送拖动矩形 `window.dragRegions`，Swift 在 `WKWebView.mouseDown` 里命中测试后调用 `performDrag`；Electron 仍用 `-webkit-app-region`。面板隐藏用 alpha 0 加 `ignoresMouseEvents` 并放弃 key，另推送 `window.visibility`。
   - **提交**：只在获得授权的范围内提交，遵守 Conventional Commits。
 
@@ -405,14 +410,16 @@ flowchart LR
 ## Risks
 
 - **私有 WebKit 设置**（R5）：`useSystemAppearance` 和 `drawsBackground` 都没有公开替代，系统更新可能移除。代码在设置前检查选择器，缺失时分别退回 CSS 回退材质和不透明页面；`AIShellTests` 用真实 WKWebView 检查这两项仍然生效。
-- **渲染层可回读的敏感值**（P2 审计）：`GET /v1/mcp/servers` 和 `POST /v1/mcp/configure` 返回 MCP 配置里 `env`、`headers` 的明文，编辑表单需要它们；登录流程返回短时有效的设备码。XSS 能读到这些值，是否改为只写需要另行决定。
+- **页面仍是“用户本人”**（R13 之后的残余）：XSS 仍能启动任务并替用户回答 bash 确认，或利用 `always`、`auto` 档位和 shell 白名单执行命令。原生许可关闭的是绕过模型、不留痕迹和能长期驻留的路径，不能关闭这一条；真正的防线仍是 CSP 和 Markdown 净化。放宽档位和白名单不加原生确认是用户的决定。
+- **许可只绑定启动行**：`npx pkg@latest`、被 bash 改过的脚本等，所加载的代码本身不在指纹里；环境变量的值也不在指纹里，只绑定变量名。
+- **pi-mcp-adapter 的 OAuth 钥匙串服务**按服务器名共享给本机所有配置档，在一个配置档里注销会删掉另一个配置档同名服务器的登录。
 - **Release 包**：约 906MB，主要是 service 的 `node_modules`；内置 Node 和 `.node` 插件目前只作为资源被封装，Developer ID 签名和公证时需要单独签名。只跑 `xcodebuild` 而不先跑 `bundle` 会打进旧的服务包，应使用 `pnpm --filter @ai/macos build:release`。
 - **Intel Mac**：文件索引只构建 darwin-arm64，x64 上文件搜索不可用（原生版本来只支持 arm64）。
 - **私有 WebKit 属性**：`-apple-visual-effect` 可能被系统更新改掉。已接受这个风险，回退方案是 `backdrop-filter`（`@supports` 自动切换）。
 - **scheme handler 请求体和混合内容**（S1、S4）：附件上传的退路是 Swift 按路径导入，已经不再依赖大请求体；HMR 的退路是整页重载。
 - **流吞吐**（S6）：长对话流式输出可能卡顿。可以用按 runloop 合批的方式缓解，门槛由 spike 定出。
-- **XSS 仍能驱动白名单内的路由**：WebView 虽然不持有凭据，真正的防线是 CSP 和 Markdown 净化，与 Electron 渲染层的边界相同。还需要在 P2 核对白名单里有没有会回读机密的路由。
-- **既有风险（待办）**：打开产物时，会直接执行代理生成的 `.app`、`.command`、`.pkg`。本计划保留现状语义，另行决定是否加以限制。
+- **XSS 仍能驱动白名单内的路由**：WebView 虽然不持有凭据，真正的防线是 CSP 和 Markdown 净化，与 Electron 渲染层的边界相同。P2 的回读审计结论见 R11。
+- **产物打开**（已由 R14 处理）：非文档类型需要原生确认并带隔离属性；选择“仍要打开”后的安全性取决于 Gatekeeper。
 - **`selection.read` 的既有语义问题**：面板获得焦点时读不到其他应用的选区。照搬现状，不在本次修改。
 - **`minidex`**：单一维护者，没有列出公开仓库。已通过固定版本和自有 trait 隔离，必要时 vendoring 或替换。
 - **空窗期**：P1 到 P3 之间，保留的 WebView 宿主文件没有运行入口，只受类型检查保护。
@@ -420,5 +427,5 @@ flowchart LR
 
 ## Approval
 
-- Status: Draft - awaiting approval
-- Scope: 本计划只完成了规划。实施尚未授权，需要用户批准全部或部分待办；建议先批准 P0 和 P1。
+- Status: Approved by user on 2026-09-29 (execute all phases)
+- Scope: P0–P6 已实施并通过自动化验证，另加 R11–R14 的安全加固；P7 需要作者手动验收和切换，P8 在 P7 通过后进行。
