@@ -36,6 +36,7 @@ import { registerRelayRoutes, RENDERER_ROUTE, SHELL_ROUTE } from './relay-routes
 import { registerSkillRoutes } from './skills/mount.js';
 import type { SettingsStore } from './settings/store.js';
 import { StreamHub } from './stream.js';
+import { taskStatusCounts } from './task-status.js';
 
 export interface ServerDeps {
   config: ServiceConfig;
@@ -147,6 +148,8 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
     capabilities: deps.capabilities,
     snapshot: (taskId) => deps.manager.snapshot(taskId),
     summaries: () => deps.manager.summaries(),
+    status: () => taskStatusCounts(deps.ledger.data),
+    onStatusInputs: (listener) => deps.ledger.onChanged(listener),
     log: deps.log,
   });
   registerInvalidation(app, (frame) => hub.invalidate(frame));
