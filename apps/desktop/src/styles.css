@@ -196,7 +196,7 @@ body {
   border-radius: var(--radius-2xl);
   border: 1px solid var(--border);
   --ata-glass-fill: color-mix(in oklch, var(--popover) 75%, transparent);
-  box-shadow: 0 4px 12px rgb(0 0 0 / 20%);
+  --ata-glass-shadow: 0 4px 12px rgb(0 0 0 / 20%);
 }
 .settings-field {
   display: flex;

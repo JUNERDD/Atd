@@ -14,8 +14,14 @@
   --ata-surface-panel: rgb(12 12 12 / 80%);
   --ata-backdrop-blur: 20px;
   /* Overlay glass (`surface-glass`). A surface may tune `--ata-glass-fill` (default: the popover
-     fill) and `--ata-glass-blur` (default: the shared backdrop blur) for its fallback material. An
-     inactive window turns glass into the dimmed fill; reduced transparency into the opaque one. */
+     fill), `--ata-glass-blur` (default: the shared backdrop blur) and `--ata-glass-shadow` for its
+     fallback material, and `--ata-glass-material` for WebKit's system material (default
+     `-apple-system-glass-material`; a quieter surface may take `-apple-system-glass-material-subdued`).
+     An inactive window turns glass into the dimmed fill; reduced transparency into the opaque one. */
+  --ata-glass-edge: color-mix(in srgb, var(--foreground) 10%, transparent);
+  --ata-glass-shadow-default:
+    0 10px 15px -3px rgb(0 0 0 / 10%), 0 4px 6px -4px rgb(0 0 0 / 10%),
+    0 0 0 1px var(--ata-glass-edge);
   --ata-glass-fill-inactive: rgb(30 30 30 / 96%);
   --ata-glass-fill-opaque: rgb(24 24 24);
   /* Same tint as the sidebar; this inset layer raises effective opacity only to 82%. */
@@ -183,22 +189,30 @@
  * pills); nothing else writes these properties. WebKit's system glass applies where the page may
  * use it; otherwise, as in a WKWebView without WebKit's private preference, a translucent fill
  * over a backdrop blur. An inactive window (`data-window-active="false"` on the root) and reduced
- * transparency drop the blur for a flat fill. The surface keeps this one fill: consumers tune the
- * tokens above rather than setting a background of their own.
+ * transparency drop the blur for a flat fill. The surface keeps this one fill and one shadow:
+ * consumers tune the tokens above rather than setting a background or box-shadow of their own.
+ *
+ * WebKit fills the glass element's whole composited layer, which grows by every outset shadow,
+ * ring and outline on it (RenderBox::applyVisualEffectOverflow), so an outer shadow drew a second,
+ * larger glass frame around the surface. System glass therefore takes only an inset edge; the
+ * drop shadow and outer ring return wherever the glass is off.
  */
 @utility surface-glass {
   background-color: var(--ata-glass-fill, var(--popover));
   backdrop-filter: blur(var(--ata-glass-blur, var(--ata-backdrop-blur)));
+  box-shadow: var(--ata-glass-shadow, var(--ata-glass-shadow-default));
 
   @supports (-apple-visual-effect: -apple-system-glass-material) {
     background-color: transparent;
     backdrop-filter: none;
-    -apple-visual-effect: -apple-system-glass-material;
+    box-shadow: inset 0 0 0 1px var(--ata-glass-edge);
+    -apple-visual-effect: var(--ata-glass-material, -apple-system-glass-material);
   }
 
   :root[data-window-active='false'] & {
     background-color: var(--ata-glass-fill-inactive);
     backdrop-filter: none;
+    box-shadow: var(--ata-glass-shadow, var(--ata-glass-shadow-default));
     -apple-visual-effect: none;
   }
 
@@ -207,6 +221,7 @@
     :root[data-window-active='false'] & {
       background-color: var(--ata-glass-fill-opaque);
       backdrop-filter: none;
+      box-shadow: var(--ata-glass-shadow, var(--ata-glass-shadow-default));
       -apple-visual-effect: none;
     }
   }
