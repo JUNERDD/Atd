@@ -1,5 +1,5 @@
 import { WEB_FETCH_TOOL, WEB_SEARCH_TOOL } from '@ai/agent-contracts';
-import { confined } from '../service-fs.js';
+import { confined, confinedWrite } from '../service-fs.js';
 import { FORBIDDEN_CHILD_TOOLS } from './config.js';
 
 /**
@@ -90,13 +90,16 @@ export function isChildToolAllowed(allowedTools: string[], tool: string): boolea
   return allowedTools.includes(tool);
 }
 
-/** Child file check: confined to the service dataDir, inside reported. */
+/** Child file check: confined to the service dataDir, inside reported; writes skip protected roots. */
 export async function checkChildPath(input: {
   cwd: string;
   dataDir: string;
   rawPath: string;
+  write?: boolean;
 }): Promise<{ real: string; location: 'inside' | 'outside' }> {
-  return confined(input.cwd, input.dataDir, input.rawPath);
+  return input.write
+    ? confinedWrite(input.cwd, input.dataDir, input.rawPath)
+    : confined(input.cwd, input.dataDir, input.rawPath);
 }
 
 /** Child MCP check: frozen server/tool/URI only, revoked servers refused. */

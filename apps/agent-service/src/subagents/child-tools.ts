@@ -142,6 +142,7 @@ export function registerChildTools(pi: PiLike, host: ChildToolHost): void {
         cwd: host.cwd,
         dataDir: host.dataDir,
         rawPath: target,
+        write: true,
       });
       if (location === 'outside')
         throw denied(host, tool, 'Child writes outside the task output are blocked.');

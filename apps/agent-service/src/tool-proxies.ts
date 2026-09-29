@@ -20,6 +20,7 @@ import { createGate } from './harness/gate.js';
 import type { Logger } from './logging.js';
 import {
   confined,
+  confinedWrite,
   inside,
   resolveToolPath,
   userAgentsReadRoots,
@@ -111,12 +112,9 @@ export function serviceTools(host: ServiceToolHost): ExtensionFactory {
         } else {
           // A path the operation would refuse fails before the gate, so no prompt or review
           // is spent on a call that cannot run.
-          await confined(
-            host.cwd,
-            host.dataDir,
-            resolveToolPath(host.cwd, pathOf(args)),
-            name === 'read' ? await readRoots() : [],
-          );
+          const target = resolveToolPath(host.cwd, pathOf(args));
+          if (name === 'read') await confined(host.cwd, host.dataDir, target, await readRoots());
+          else await confinedWrite(host.cwd, host.dataDir, target);
           await authorize({
             toolCallId: id,
             scope,
@@ -163,7 +161,7 @@ export function serviceTools(host: ServiceToolHost): ExtensionFactory {
             },
             writeFile: async (target, content) => {
               guard();
-              const { real } = await confined(host.cwd, host.dataDir, target);
+              const { real } = await confinedWrite(host.cwd, host.dataDir, target);
               await writeFile(real, content);
             },
             access: async (target) => {
@@ -182,12 +180,12 @@ export function serviceTools(host: ServiceToolHost): ExtensionFactory {
           operations: {
             writeFile: async (target, content) => {
               guard();
-              const { real } = await confined(host.cwd, host.dataDir, target);
+              const { real } = await confinedWrite(host.cwd, host.dataDir, target);
               await writeFile(real, content);
             },
             mkdir: async (target) => {
               guard();
-              const { real } = await confined(host.cwd, host.dataDir, target);
+              const { real } = await confinedWrite(host.cwd, host.dataDir, target);
               await mkdir(real, { recursive: true });
             },
           },

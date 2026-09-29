@@ -101,6 +101,57 @@ export async function confined(
 }
 
 /**
+ * Directories under the data dir no agent file tool may write, whatever the task's cwd: the
+ * service's security state (MCP launch approvals, mcp/launch-store.ts) and the plugin store
+ * (`<dataDir>/plugins`, installed plugin code and its state). Only the service's own routes change
+ * them.
+ */
+export function protectedWriteRoots(dataDir: string): string[] {
+  return [path.join(dataDir, 'security'), path.join(dataDir, 'plugins')];
+}
+
+/**
+ * `confined` for a write or edit: additionally refuses a path under `protectedWriteRoots`. Both
+ * sides compare through their nearest existing real ancestor, so a symlinked data dir or a file
+ * not written yet cannot slip past, and case-insensitively where the file system usually is.
+ */
+export async function confinedWrite(
+  cwd: string,
+  dataDir: string,
+  rawPath: string,
+): Promise<ConfinedPath> {
+  const target = await confined(cwd, dataDir, rawPath);
+  const real = foldCase(await realAncestorPath(target.real));
+  for (const root of protectedWriteRoots(dataDir)) {
+    if (inside(foldCase(await realAncestorPath(path.resolve(root))), real))
+      throw new Error('Writing the service security state or the plugin store is blocked.');
+  }
+  return target;
+}
+
+/** The real path of the nearest existing ancestor, with the missing rest appended. */
+async function realAncestorPath(absolute: string): Promise<string> {
+  const missing: string[] = [];
+  let current = absolute;
+  for (;;) {
+    try {
+      return path.join(await realpath(current), ...missing.reverse());
+    } catch {
+      const parent = path.dirname(current);
+      if (parent === current) return absolute;
+      missing.push(path.basename(current));
+      current = parent;
+    }
+  }
+}
+
+function foldCase(value: string): string {
+  return process.platform === 'darwin' || process.platform === 'win32'
+    ? value.toLowerCase()
+    : value;
+}
+
+/**
  * Whether a file tool's `path` argument, resolved as pi resolves it, lies under
  * one of `roots`. Both sides compare as real paths, so a symlink inside a root
  * that leads elsewhere does not count.
