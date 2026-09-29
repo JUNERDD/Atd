@@ -71,7 +71,7 @@ export async function installNativeHost(
   let latest = await settings.bridge.get();
   const commands = new NativeCommands(connection, native, () => {
     requests.broadcast();
-    shortcuts?.sync();
+    shortcuts?.sync(true);
   });
   const requests = new AgentRequests<'page'>(
     connection,
@@ -92,7 +92,7 @@ export async function installNativeHost(
   const shortcuts =
     surface === 'panel'
       ? nativeShortcuts(native, commands, {
-          panelShortcut: () => latest.shortcuts.togglePanel,
+          panelShortcut: () => (settings.loaded() ? latest.shortcuts.togglePanel : null),
           applied: (shortcutAvailable) => {
             settings.setShell({ shortcutAvailable });
             requests.broadcast();
@@ -100,13 +100,16 @@ export async function installNativeHost(
           launch: (prepared, autoRun) => emit('launch', { prepared, autoRun }),
         })
       : null;
+  // The panel speaks for the service's settings only once they loaded: until then the snapshot
+  // holds defaults, which could register a shortcut the user replaced.
+  let pushedLanguage: string | null = null;
   settings.bridge.onChange((next) => {
-    const changedShortcut = next.shortcuts.togglePanel !== latest.shortcuts.togglePanel;
-    const changedLanguage = next.language !== latest.language;
     latest = next;
-    if (surface !== 'panel') return;
-    if (changedShortcut) shortcuts?.sync();
-    if (changedLanguage) native.post('language.set', { language: next.language });
+    if (surface !== 'panel' || !settings.loaded()) return;
+    shortcuts?.sync();
+    if (next.language === pushedLanguage) return;
+    pushedLanguage = next.language;
+    native.post('language.set', { language: next.language });
   });
 
   connection.onInvalidate((frame) => void requests.onInvalidate(frame));
@@ -148,11 +151,6 @@ export async function installNativeHost(
   void settings.ready.catch((error: unknown) => {
     console.error('The native shell did not report its window state:', error);
   });
-  if (surface === 'panel') {
-    native.post('language.set', { language: latest.language });
-    shortcuts?.sync();
-  }
-
   const openLink = async (url: string) => void (await native.call('link.open', { url }));
   const bridge: DesktopBridge = {
     runtime: 'native',

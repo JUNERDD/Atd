@@ -42,6 +42,8 @@ export function nativeSettings(
   providers: ProviderService;
   shell: () => ShellState;
   setShell: (patch: Partial<ShellState>) => SettingsSnapshot;
+  /** Whether the service's settings loaded; until then the snapshot holds defaults. */
+  loaded: () => boolean;
   ready: Promise<void>;
 } {
   let shared: SettingsResponse | null = null;
@@ -167,6 +169,7 @@ export function nativeSettings(
     bridge,
     providers,
     shell: () => shell,
+    loaded: () => shared !== null,
     setShell: (patch) => {
       shell = { ...shell, ...patch };
       return publish();

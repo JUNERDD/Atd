@@ -13,8 +13,12 @@ const REGISTRATION_ERRORS: Record<RegistrationFailure, string> = {
 };
 
 export interface ShortcutSync {
-  /** Pushes the current set; calls made while one is in flight collapse into one more push. */
-  sync(): void;
+  /**
+   * Pushes the current set when it changed, or always with `force` (a command changed, so its
+   * registration error must be reported again). Calls made while one is in flight collapse into
+   * one more push.
+   */
+  sync(force?: boolean): void;
 }
 
 /**
@@ -28,7 +32,8 @@ export function nativeShortcuts(
   bridge: NativeBridge,
   commands: NativeCommands,
   host: {
-    panelShortcut: () => string;
+    /** The panel accelerator, or null while the service's settings have not loaded. */
+    panelShortcut: () => string | null;
     /** Every push result: whether the panel shortcut holds, after `commands.errors` changed. */
     applied: (panelAvailable: boolean) => void;
     launch: (prepared: PreparedCommand, autoRun: boolean) => void;
@@ -36,18 +41,26 @@ export function nativeShortcuts(
 ): ShortcutSync {
   let running = false;
   let again = false;
+  /** The set the shell last took; an identical set is not pushed again. */
+  let pushed = '';
 
   async function push() {
+    const panel = host.panelShortcut();
+    if (panel === null) return;
     const list = commands.list();
-    const { results } = await bridge.call('shortcuts.set', {
+    const params = {
       registrations: [
-        { id: PANEL_SHORTCUT_ID, accelerator: host.panelShortcut() },
+        { id: PANEL_SHORTCUT_ID, accelerator: panel },
         ...list
           .filter((command) => command.enabled && command.shortcut)
           .map((command) => ({ id: command.id, accelerator: command.shortcut })),
       ],
       selectionWanted: list.some((command) => command.enabled && command.input.selection),
-    });
+    };
+    const signature = JSON.stringify(params);
+    if (signature === pushed) return;
+    const { results } = await bridge.call('shortcuts.set', params);
+    pushed = signature;
     let panelAvailable = false;
     for (const id of Object.keys(commands.errors)) delete commands.errors[id];
     for (const result of results) {
@@ -86,5 +99,10 @@ export function nativeShortcuts(
       });
   });
 
-  return { sync: () => void run() };
+  return {
+    sync: (force = false) => {
+      if (force) pushed = '';
+      void run();
+    },
+  };
 }
