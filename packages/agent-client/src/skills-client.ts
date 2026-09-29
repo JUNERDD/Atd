@@ -1,4 +1,4 @@
-import type { AgentClientOptions } from './types.js';
+import { authHeaders, type AgentClientOptions } from './types.js';
 
 /**
  * T3 standalone skill/role client functions. They reuse the base URL/token
@@ -61,7 +61,7 @@ async function request<T>(
   const response = await fetchImpl(`${options.baseUrl}${path}`, {
     method,
     headers: {
-      authorization: `Bearer ${options.token}`,
+      ...authHeaders(options),
       ...(body === undefined ? {} : { 'content-type': 'application/json' }),
     },
     body: body === undefined ? undefined : JSON.stringify(body),

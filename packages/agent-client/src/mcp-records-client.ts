@@ -1,6 +1,6 @@
 import { ErrorEnvelopeSchema, parse } from '@ai/agent-contracts';
 import type { McpClient } from './mcp-client.js';
-import { AgentClientError } from './types.js';
+import { authHeaders, AgentClientError } from './types.js';
 
 /**
  * Reads the configured MCP server records (no bearer tokens). Shape-checked
@@ -29,7 +29,7 @@ export async function mcpRecords(client: McpClient): Promise<{ servers: unknown[
   const fetchImpl = client.fetchImpl ?? fetch;
   const response = await fetchImpl(`${client.options.baseUrl}${path}`, {
     method: 'GET',
-    headers: { authorization: `Bearer ${client.options.token}` },
+    headers: authHeaders(client.options),
   });
   const json: unknown = await response.json().catch(() => null);
   if (!response.ok) throw toClientError(response.status, json);

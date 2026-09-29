@@ -1,5 +1,5 @@
 import { ErrorEnvelopeSchema, parse } from '@ai/agent-contracts';
-import { AgentClientError, type AgentClientOptions } from './types.js';
+import { authHeaders, AgentClientError, type AgentClientOptions } from './types.js';
 
 /**
  * Standalone MCP client functions (T4). Shapes mirror the canonical
@@ -53,7 +53,7 @@ async function post<T>(
   const response = await fetchImpl(`${client.options.baseUrl}${path}`, {
     method: 'POST',
     headers: {
-      authorization: `Bearer ${client.options.token}`,
+      ...authHeaders(client.options),
       'content-type': 'application/json',
     },
     body: JSON.stringify(body),
@@ -77,7 +77,7 @@ async function get<T>(
   const fetchImpl = client.fetchImpl ?? fetch;
   const response = await fetchImpl(`${client.options.baseUrl}${path}`, {
     method: 'GET',
-    headers: { authorization: `Bearer ${client.options.token}` },
+    headers: authHeaders(client.options),
   });
   const json: unknown = await response.json().catch(() => null);
   if (!response.ok) throw toClientError(response.status, json);

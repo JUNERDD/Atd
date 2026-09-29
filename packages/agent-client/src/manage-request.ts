@@ -1,5 +1,5 @@
 import { ErrorEnvelopeSchema, parse } from '@ai/agent-contracts';
-import { AgentClientError, type AgentClientOptions } from './types.js';
+import { authHeaders, AgentClientError, type AgentClientOptions } from './types.js';
 
 /**
  * Shared JSON transport for the T6b standalone management clients. Internal
@@ -16,7 +16,7 @@ export async function manageRequest<T>(
   const response = await fetchImpl(`${options.baseUrl}${path}`, {
     method,
     headers: {
-      authorization: `Bearer ${options.token}`,
+      ...authHeaders(options),
       ...(body === undefined ? {} : { 'content-type': 'application/json' }),
     },
     body: body === undefined ? undefined : JSON.stringify(body),

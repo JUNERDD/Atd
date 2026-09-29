@@ -18,7 +18,7 @@ import {
   type TaskResponse,
 } from '@ai/agent-contracts';
 import { dispositionName, manageRequest, toClientError } from './manage-request.js';
-import type { AgentClientOptions } from './types.js';
+import { authHeaders, type AgentClientOptions } from './types.js';
 
 /** Renames and/or retiers a task. */
 export function patchTask(
@@ -111,7 +111,7 @@ export async function downloadResource(
 ): Promise<{ bytes: Uint8Array; mime: string; name: string }> {
   const response = await fetchImpl(
     `${options.baseUrl}/v1/resources/${encodeURIComponent(resourceId)}`,
-    { method: 'GET', headers: { authorization: `Bearer ${options.token}` } },
+    { method: 'GET', headers: authHeaders(options) },
   );
   if (!response.ok) {
     const json: unknown = await response.json().catch(() => null);

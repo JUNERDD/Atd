@@ -1,4 +1,9 @@
-import { AgentHttpClient, AgentStreamClient, type AgentClientOptions } from '@ai/agent-client';
+import {
+  AgentHttpClient,
+  AgentStreamClient,
+  type AgentClientOptions,
+  type AgentStreamOptions,
+} from '@ai/agent-client';
 import type {
   InvalidateFrame,
   ServiceEvent,
@@ -30,7 +35,7 @@ export class WebConnection implements AgentConnection {
   private readonly connectedListeners = new Set<() => void>();
 
   constructor(
-    private readonly clientOptions: AgentClientOptions,
+    private readonly clientOptions: AgentStreamOptions,
     private readonly serviceId: string,
   ) {
     this.httpClient = new AgentHttpClient(clientOptions);

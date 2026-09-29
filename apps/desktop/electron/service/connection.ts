@@ -1,5 +1,10 @@
 import log from 'electron-log/main';
-import { AgentHttpClient, AgentStreamClient, type AgentClientOptions } from '@ai/agent-client';
+import {
+  AgentHttpClient,
+  AgentStreamClient,
+  type AgentClientOptions,
+  type TokenClientOptions,
+} from '@ai/agent-client';
 import type {
   CapabilityRequest,
   InvalidateFrame,
@@ -157,7 +162,7 @@ export class ServiceConnection {
     this.setState('connecting', 'Connecting to the agent service…');
     try {
       const endpoint = await discoverService(dataDir);
-      const clientOptions: AgentClientOptions = {
+      const clientOptions: TokenClientOptions = {
         baseUrl: endpoint.baseUrl,
         token: endpoint.token,
       };
@@ -217,7 +222,7 @@ export class ServiceConnection {
     }
   }
 
-  private openStream(options: AgentClientOptions) {
+  private openStream(options: TokenClientOptions) {
     this.closeStream();
     const caps: CapabilityContext = { ...this.caps, http: () => this.httpClient };
     const stream = new AgentStreamClient(

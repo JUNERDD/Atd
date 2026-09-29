@@ -1,4 +1,4 @@
-import type { AgentClientOptions } from '@ai/agent-client';
+import type { AgentStreamOptions } from '@ai/agent-client';
 import { AgentRequests } from '../../electron/agent/agent-requests';
 import { parseExtensionSession, type ExtensionSession } from '../../electron/agent/bridge';
 import {
@@ -34,7 +34,7 @@ const openExternal = async (url: string) => void window.open(url, '_blank', 'noo
  * (docs/plans/2026-09-29-macos-native-frontend.md); until then only type checking covers it.
  */
 export async function installWebHost(
-  options: AgentClientOptions,
+  options: AgentStreamOptions,
   serviceId: string,
 ): Promise<void> {
   const platform = detectPlatform();

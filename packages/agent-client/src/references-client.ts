@@ -5,7 +5,7 @@ import {
   type StageReferencesRequest,
   type StageReferencesResponse,
 } from '@ai/agent-contracts';
-import { AgentClientError, type AgentClientOptions } from './types.js';
+import { authHeaders, AgentClientError, type AgentClientOptions } from './types.js';
 
 /**
  * Stages composer `@` references for the next run of a task. Like skill and MCP
@@ -18,7 +18,7 @@ export async function stageReferences(
 ): Promise<StageReferencesResponse> {
   const response = await fetchImpl(`${options.baseUrl}/v1/references/stage`, {
     method: 'POST',
-    headers: { authorization: `Bearer ${options.token}`, 'content-type': 'application/json' },
+    headers: { ...authHeaders(options), 'content-type': 'application/json' },
     body: JSON.stringify(input),
   });
   const json: unknown = await response.json().catch(() => null);

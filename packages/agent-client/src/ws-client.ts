@@ -15,12 +15,20 @@ import {
   type StreamTransport,
   type StreamTransportFactory,
 } from './stream-transport.js';
-import type { AgentClientOptions, CapabilityHandler, StreamHandlers } from './types.js';
+import type {
+  CapabilityHandler,
+  RelayClientOptions,
+  StreamHandlers,
+  TokenClientOptions,
+} from './types.js';
 
-/** Stream connection options; `transport` replaces the default `WebSocket` transport. */
-export interface AgentStreamOptions extends AgentClientOptions {
-  transport?: StreamTransportFactory;
-}
+/**
+ * Stream connection options; `transport` replaces the default `WebSocket` transport. A relayed page
+ * has no token to offer a socket, so it must bring the transport its host relays through.
+ */
+export type AgentStreamOptions =
+  | (TokenClientOptions & { transport?: StreamTransportFactory })
+  | (RelayClientOptions & { transport: StreamTransportFactory });
 
 interface StreamState {
   epoch: number;
@@ -57,8 +65,10 @@ export class AgentStreamClient {
     private readonly capabilities: CapabilityHandler[] = [],
   ) {
     this.transport =
-      options.transport ??
-      webSocketTransport([STREAM_PROTOCOL, `${STREAM_AUTH_PROTOCOL_PREFIX}${options.token}`]);
+      'token' in options
+        ? (options.transport ??
+          webSocketTransport([STREAM_PROTOCOL, `${STREAM_AUTH_PROTOCOL_PREFIX}${options.token}`]))
+        : options.transport;
   }
 
   get epoch(): number {
