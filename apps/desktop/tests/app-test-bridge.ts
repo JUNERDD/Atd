@@ -156,7 +156,6 @@ export function installBridge(extras?: {
     memory: vi.fn(async () => ({ entries: [], paused: false, error: '' })),
     pauseMemory: vi.fn(async (paused) => ({ entries: [], paused, error: '' })),
     updateMemory: vi.fn(async () => ({ entries: [], paused: false, error: '' })),
-    importLegacy: vi.fn(async () => {}),
     childTranscript: vi.fn(async (taskId, childKey) => ({
       taskId,
       childKey,

@@ -265,8 +265,6 @@ export class AgentRequests<S> {
         await this.platform.openLink(url.href);
         return null;
       }
-      case 'importLegacy':
-        return null;
       case 'childTranscript':
         if (subscriber === undefined) throw new Error('A subagent transcript needs a subscriber.');
         return this.tasks.children.subscribe(subscriber, request.taskId, request.childKey);

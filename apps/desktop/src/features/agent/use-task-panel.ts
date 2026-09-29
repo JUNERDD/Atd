@@ -17,7 +17,6 @@ import {
 } from '../composer-editor/draft';
 import { useSettingsSnapshot } from '../settings/use-settings';
 import { acceleratorToHotkey } from '../../lib/shortcuts';
-import { STORAGE_KEY } from '../../lib/task-store';
 import { agentApi, useAgent, useTaskDetail } from './use-agent';
 import { useChildView } from './use-child-view';
 import { showErrorToast } from '../../components/toast-store';
@@ -99,7 +98,7 @@ export function useTaskPanel() {
   useEffect(() => {
     const bridge = window.desktop?.agent;
     if (!bridge) return;
-    const unsubscribe = bridge.onLaunch(({ prepared: value, autoRun: run }) => {
+    return bridge.onLaunch(({ prepared: value, autoRun: run }) => {
       if (run) {
         // A shortcut run never shows the command input: the panel is revealed when its task is on
         // screen, or on the input page with the failure when the run cannot start.
@@ -110,12 +109,6 @@ export function useTaskPanel() {
       setView('input');
       setRevealCount((count) => count + 1);
     });
-    void Promise.resolve()
-      .then(() =>
-        bridge.importLegacy(localStorage.getItem(STORAGE_KEY) ?? '{"version":1,"tasks":[]}'),
-      )
-      .catch((error) => showErrorToast(error));
-    return unsubscribe;
   }, []);
   // The command editor hands its work to the panel: a fresh session gets the seed text in the `new`
   // draft, so the user completes the intent and sends it with the agent's tools.

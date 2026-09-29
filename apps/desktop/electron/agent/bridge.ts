@@ -197,7 +197,6 @@ export const AgentRequestSchema = Type.Union([
   }),
   Type.Object({ action: Type.Literal('copy'), text: Type.String({ maxLength: 1000000 }) }),
   Type.Object({ action: Type.Literal('openLink'), url: Type.String({ maxLength: 8192 }) }),
-  Type.Object({ action: Type.Literal('importLegacy'), json: Type.String({ maxLength: 8000000 }) }),
   Type.Object({
     action: Type.Literal('childTranscript'),
     taskId: Identifier,
@@ -311,7 +310,6 @@ export interface AgentBridge {
   ) => Promise<FileRef | null>;
   copy: (text: string) => Promise<void>;
   openLink: (url: string) => Promise<void>;
-  importLegacy: (json: string) => Promise<void>;
   /**
    * Subscribes this window to one child's transcript and returns its current state; while held,
    * `childTranscript` events carry its patches. Pair every call with `releaseChildTranscript`.

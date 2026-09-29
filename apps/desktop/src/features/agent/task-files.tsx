@@ -5,7 +5,7 @@ import { Item, ItemContent, ItemDescription, ItemMedia, ItemTitle } from '@ai/ui
 import type { Artifact, FileRef } from '../../../electron/agent/task-schema';
 import { artifactLocation } from '../../../electron/agent/task-schema';
 import { IconButton } from '../../components/icon-button';
-import { fileSize } from '../../lib/task-store';
+import { fileSize } from '../../lib/file-size';
 import { agentApi } from './use-agent';
 import { messageOf } from '../../lib/errors';
 

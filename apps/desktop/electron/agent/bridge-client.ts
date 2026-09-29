@@ -69,7 +69,6 @@ export function createAgentBridge(
     artifact: (artifactId, operation) => invoke({ action: 'artifact', artifactId, operation }),
     copy: (text) => invoke({ action: 'copy', text }),
     openLink: (url) => invoke({ action: 'openLink', url }),
-    importLegacy: (json) => invoke({ action: 'importLegacy', json }),
     childTranscript: (taskId, childKey) => invoke({ action: 'childTranscript', taskId, childKey }),
     releaseChildTranscript: (taskId, childKey) =>
       invoke({ action: 'releaseChildTranscript', taskId, childKey }),
