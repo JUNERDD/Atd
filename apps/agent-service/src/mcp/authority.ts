@@ -104,7 +104,7 @@ export class McpAuthority {
 
   /**
    * Closes the profile's authority for a stopping service. An in-flight load
-   * (the start-up warm-up) settles first, so its control session and stdio
+   * (a first MCP use still loading) settles first, so its control session and stdio
    * children cannot outlive the service; a failed load left nothing to close.
    */
   static async closeFor(dataDir: string): Promise<void> {

@@ -1,4 +1,4 @@
-import { errorMessage, type PermissionTier } from '@ai/agent-contracts';
+import type { PermissionTier } from '@ai/agent-contracts';
 import { CapabilityRegistry } from './capabilities.js';
 import {
   clearEndpoint,
@@ -15,7 +15,7 @@ import { McpAuthority } from './mcp/index.js';
 import { recoverService, type RecoveryReport } from './recovery.js';
 import { ResourceStore } from './resources.js';
 import { RunnerManager } from './runner-manager.js';
-import { buildServer, mcpAuthorityDeps, type ServerDeps } from './server.js';
+import { buildServer, type ServerDeps } from './server.js';
 import { SettingsStore } from './settings/store.js';
 import { WebSessions } from './web/sessions.js';
 import type { RunnerContext } from './task-runner.js';
@@ -155,14 +155,9 @@ export async function createService(
         ...(buildId === undefined ? {} : { buildId }),
       });
       manager.dispatch();
-      // The MCP adapter is off the boot path, so warm it only once the
-      // endpoint is published: readiness must never wait for it. The load is
-      // cached per dataDir, so the first MCP request or run joins this one
-      // instead of starting a second; a rejection drops the cache entry, so
-      // the next caller retries on its own.
-      void McpAuthority.authorityFor(mcpAuthorityDeps(serverDeps)).catch((error: unknown) => {
-        log.warn('MCP warm-up failed; MCP loads on first use.', { error: errorMessage(error) });
-      });
+      // The MCP adapter is not warmed here: its load (the jiti-transpiled adapter and a control
+      // session) holds ~26 MB for as long as the service runs, and the desktop calls no MCP route
+      // on connect. The first MCP request or run loads it, cached per dataDir (mcp/authority.ts).
       return { url: address, port };
     },
     stop: () => (stopped ??= stopService()),
