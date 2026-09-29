@@ -19,7 +19,7 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "dev": "tsc -p tsconfig.json --watch --preserveWatchOutput",
+    "dev": "node --watch-path=src --watch-preserve-output --import jiti/register src/cli.ts serve --dataDir \"$HOME/Library/Application Support/AgentService Dev\"",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "oxlint src test",
     "test": "tsc -p tsconfig.json && tsc -p test/tsconfig.json && node --test 'test/**/*.test.ts'"

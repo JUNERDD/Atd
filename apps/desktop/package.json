@@ -7,7 +7,7 @@
   "type": "module",
   "main": "dist-electron/main.js",
   "scripts": {
-    "dev": "vite",
+    "dev:electron": "vite",
     "dev:renderer": "vite --mode native",
     "build": "vite build && vite build --mode native",
     "build:native": "vite build --mode native",
