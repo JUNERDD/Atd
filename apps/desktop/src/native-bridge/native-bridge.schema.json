@@ -40,6 +40,7 @@
       "window.visibility",
       "shortcut.command",
       "resources.imported",
+      "edit.command",
       "socket.frames"
     ]
   },
@@ -872,7 +873,7 @@
             },
             "payload": {
               "type": "object",
-              "required": ["resources"],
+              "required": ["resources", "failures"],
               "properties": {
                 "resources": {
                   "type": "array",
@@ -902,6 +903,71 @@
                     "additionalProperties": false
                   },
                   "maxItems": 10
+                },
+                "failures": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["name", "reason"],
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "maxLength": 255
+                      },
+                      "reason": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "const": "unreadable"
+                          },
+                          {
+                            "type": "string",
+                            "const": "unsupported"
+                          },
+                          {
+                            "type": "string",
+                            "const": "tooLarge"
+                          }
+                        ]
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "maxItems": 10
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "event", "payload"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "event"
+            },
+            "event": {
+              "type": "string",
+              "const": "edit.command"
+            },
+            "payload": {
+              "type": "object",
+              "required": ["command"],
+              "properties": {
+                "command": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "const": "undo"
+                    },
+                    {
+                      "type": "string",
+                      "const": "redo"
+                    }
+                  ]
                 }
               },
               "additionalProperties": false
@@ -1736,7 +1802,7 @@
     },
     "ResourcesImportedEvent": {
       "type": "object",
-      "required": ["resources"],
+      "required": ["resources", "failures"],
       "properties": {
         "resources": {
           "type": "array",
@@ -1766,6 +1832,56 @@
             "additionalProperties": false
           },
           "maxItems": 10
+        },
+        "failures": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "reason"],
+            "properties": {
+              "name": {
+                "type": "string",
+                "maxLength": 255
+              },
+              "reason": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "const": "unreadable"
+                  },
+                  {
+                    "type": "string",
+                    "const": "unsupported"
+                  },
+                  {
+                    "type": "string",
+                    "const": "tooLarge"
+                  }
+                ]
+              }
+            },
+            "additionalProperties": false
+          },
+          "maxItems": 10
+        }
+      },
+      "additionalProperties": false
+    },
+    "EditCommandEvent": {
+      "type": "object",
+      "required": ["command"],
+      "properties": {
+        "command": {
+          "anyOf": [
+            {
+              "type": "string",
+              "const": "undo"
+            },
+            {
+              "type": "string",
+              "const": "redo"
+            }
+          ]
         }
       },
       "additionalProperties": false

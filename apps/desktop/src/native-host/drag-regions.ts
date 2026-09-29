@@ -1,5 +1,4 @@
-import type { NativeBridge } from '../native-bridge/client';
-import type { PostParams } from '../native-bridge/contract';
+import type { NativeBridge, PostParams } from '../native-bridge/client';
 
 type Rect = PostParams<'window.dragRegions'>['rects'][number];
 

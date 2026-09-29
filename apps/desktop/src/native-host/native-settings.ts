@@ -20,8 +20,7 @@ import {
   parseShellAllowlistEntry,
   withShellAllowlistEntry,
 } from '../../electron/settings-shell';
-import type { NativeBridge } from '../native-bridge/client';
-import type { CallResult } from '../native-bridge/contract';
+import type { CallResult, NativeBridge } from '../native-bridge/client';
 import type { NativeConnection } from './native-connection';
 import type { WindowMessages } from './window-messages';
 

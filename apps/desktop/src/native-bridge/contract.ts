@@ -3,13 +3,14 @@
  * validates every message Swift delivers against these schemas; `scripts/export-bridge-schema.mjs`
  * exports them as JSON Schema (`native-bridge.schema.json`), from which the Swift Codable types are
  * generated. The export script loads this file with Node's type stripping, so it imports nothing
- * but TypeBox and uses only erasable TypeScript syntax.
+ * but TypeBox and uses only erasable TypeScript syntax. The page's static types derive from these
+ * schemas in `client.ts`.
  *
  * Transport: JS posts `JsMessage` values to `window.webkit.messageHandlers[MESSAGE_HANDLER]`; Swift
  * answers and pushes one `SwiftMessage` per `callAsyncJavaScript(DELIVER_SCRIPT)` call, with the
  * message bound to `DELIVER_ARGUMENT`. The delivery function is synchronous.
  */
-import { Type, type Static, type TSchema } from 'typebox';
+import { Type, type TSchema } from 'typebox';
 
 /** `WKScriptMessageHandler` name the page posts to. */
 export const MESSAGE_HANDLER = 'aiNative';
@@ -34,6 +35,19 @@ export const NativeFileRefSchema = Type.Object(
 );
 const Resources = Type.Object(
   { resources: Type.Array(NativeFileRefSchema, { maxItems: 10 }) },
+  { additionalProperties: false },
+);
+
+/** A path the import refused: the file's basename (the page never sees paths) and the reason. */
+const ImportFailureSchema = Type.Object(
+  {
+    name: Text(255),
+    reason: Type.Union([
+      Type.Literal('unreadable'),
+      Type.Literal('unsupported'),
+      Type.Literal('tooLarge'),
+    ]),
+  },
   { additionalProperties: false },
 );
 
@@ -273,23 +287,24 @@ export const NativeEvents = {
     { id: Type.String({ minLength: 1, maxLength: 128 }) },
     { additionalProperties: false },
   ),
-  /** Swift imported dropped or pasted files through `/v1/resources/import`. */
-  'resources.imported': Resources,
+  /** Swift imported files dropped or pasted into the panel through `/v1/resources/import`. */
+  'resources.imported': Type.Object(
+    {
+      resources: Type.Array(NativeFileRefSchema, { maxItems: 10 }),
+      failures: Type.Array(ImportFailureSchema, { maxItems: 10 }),
+    },
+    { additionalProperties: false },
+  ),
+  /** Edit → Undo/Redo from the shell's menu, sent in place of `undo:`/`redo:` (`edit-commands.ts`). */
+  'edit.command': Type.Object(
+    { command: Type.Union([Type.Literal('undo'), Type.Literal('redo')]) },
+    { additionalProperties: false },
+  ),
   'socket.frames': Type.Object(
     { frames: Type.Array(SocketFrameSchema, { minItems: 1 }) },
     { additionalProperties: false },
   ),
 } satisfies Record<string, TSchema>;
-
-export type NativeCallName = keyof typeof NativeCalls;
-export type NativePostName = keyof typeof NativePosts;
-export type NativeEventName = keyof typeof NativeEvents;
-export type CallParams<M extends NativeCallName> = Static<(typeof NativeCalls)[M]['params']>;
-export type CallResult<M extends NativeCallName> = Static<(typeof NativeCalls)[M]['result']>;
-export type PostParams<P extends NativePostName> = Static<(typeof NativePosts)[P]>;
-export type EventPayload<E extends NativeEventName> = Static<(typeof NativeEvents)[E]>;
-export type SocketFrame = Static<typeof SocketFrameSchema>;
-export type ShortcutResult = Static<typeof ShortcutResultSchema>;
 
 const CallId = Type.Integer({ minimum: 1 });
 
@@ -329,4 +344,3 @@ export const SwiftMessageSchema = Type.Union([
     ),
   ),
 ]);
-export type SwiftMessage = Static<typeof SwiftMessageSchema>;

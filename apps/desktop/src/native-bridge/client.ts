@@ -1,17 +1,21 @@
 import { parse } from '@ai/agent-contracts';
-import { Type } from 'typebox';
+import { Type, type Static } from 'typebox';
 import {
   MESSAGE_HANDLER,
   NativeCalls,
   NativeEvents,
-  type CallParams,
-  type CallResult,
-  type EventPayload,
-  type NativeCallName,
-  type NativeEventName,
-  type NativePostName,
-  type PostParams,
+  type NativePosts,
+  type ShortcutResultSchema,
 } from './contract';
+
+export type NativeCallName = keyof typeof NativeCalls;
+export type NativePostName = keyof typeof NativePosts;
+export type NativeEventName = keyof typeof NativeEvents;
+export type CallParams<M extends NativeCallName> = Static<(typeof NativeCalls)[M]['params']>;
+export type CallResult<M extends NativeCallName> = Static<(typeof NativeCalls)[M]['result']>;
+export type PostParams<P extends NativePostName> = Static<(typeof NativePosts)[P]>;
+export type EventPayload<E extends NativeEventName> = Static<(typeof NativeEvents)[E]>;
+export type ShortcutResult = Static<typeof ShortcutResultSchema>;
 
 interface ScriptMessageHandler {
   postMessage(message: unknown): void;
@@ -74,6 +78,7 @@ export class NativeBridge {
     'window.visibility': new Set(),
     'shortcut.command': new Set(),
     'resources.imported': new Set(),
+    'edit.command': new Set(),
     'socket.frames': new Set(),
   };
 

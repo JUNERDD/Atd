@@ -5,8 +5,8 @@ import { prepareCommand } from '../../electron/agent/command-prepare';
 import { deleteRemote, fetchCommands, saveRemote } from '../../electron/agent/command-remote';
 import type { CommandDefinition } from '../../electron/agent/command-schema';
 import { validateCommand } from '../../electron/agent/command-validation';
-import type { NativeBridge } from '../native-bridge/client';
-import { MAX_CAPTURE_LENGTH, type CallResult } from '../native-bridge/contract';
+import type { CallResult, NativeBridge } from '../native-bridge/client';
+import { MAX_CAPTURE_LENGTH } from '../native-bridge/contract';
 import type { NativeConnection } from './native-connection';
 
 type SelectionFailure = Extract<CallResult<'capture'>, { ok: false }>['reason'];
