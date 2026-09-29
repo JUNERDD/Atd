@@ -3,10 +3,12 @@ import ReactDOM from 'react-dom/client';
 import '@fontsource-variable/inter';
 import '@ai/ui/styles.css';
 import './styles.css';
-import './web/web.css';
+import './preview.css';
 import i18n, { initialLanguageReady } from './i18n';
-import { installNativeOverlayBlur } from './native-overlay-blur';
 import { installEditCommands } from './lib/edit-commands';
+import { NativeBridge } from './native-bridge/client';
+import { installNativeHost } from './native-host';
+import { followDocumentFocus } from './window-state';
 import { loadMarkdown } from './features/agent/transcript/markdown-loader';
 
 const isSettingsWindow =
@@ -30,21 +32,25 @@ const windowRoot = loadWindowRoot();
 // tree, so a transcript rarely has to show plain text first.
 if (!isSettingsWindow) void loadMarkdown();
 
-// Without the Electron preload (a plain browser on `pnpm dev:renderer`, conventionally opened with
-// `?preview`) no host installs `window.desktop`: the page is a bare renderer for layout checks.
-const runtime = window.desktop?.runtime ?? 'web';
+// The Electron preload installs `window.desktop` before any script runs; in the macOS shell the
+// page installs it from the shell's message handler, before the first render. Without either (a
+// plain browser on `pnpm dev:renderer`, conventionally opened with `?preview`) the page is a bare
+// renderer for layout checks.
+const nativeBridge = NativeBridge.connect();
+if (nativeBridge) await installNativeHost(nativeBridge, isSettingsWindow ? 'settings' : 'panel');
+const runtime = window.desktop?.runtime ?? 'preview';
 document.documentElement.dataset.runtime = runtime;
-// Platform styles describe native window surfaces, which only the Electron runtime has.
-document.documentElement.dataset.platform =
-  runtime === 'electron' ? (window.desktop?.platform ?? 'web') : 'web';
+// Platform styles describe native window surfaces, which only the desktop runtimes have.
+if (window.desktop) document.documentElement.dataset.platform = window.desktop.platform;
 document.documentElement.dataset.window = isSettingsWindow ? 'settings' : 'panel';
 const root = document.getElementById('root')!;
 // Both windows (panel and settings) run the application menu's Undo/Redo through this entry.
 const disposeEditCommands = installEditCommands();
 import.meta.hot?.dispose(disposeEditCommands);
-if (runtime === 'electron' && window.desktop?.platform === 'darwin') {
-  const disposeOverlayBlur = installNativeOverlayBlur(root);
-  import.meta.hot?.dispose(disposeOverlayBlur);
+// The shell pushes its key-window state to the native host; Electron follows document focus.
+if (runtime === 'electron') {
+  const disposeWindowFocus = followDocumentFocus();
+  import.meta.hot?.dispose(disposeWindowFocus);
 }
 
 // A non-English first language loads its translations (started when i18n loaded) before any text renders.

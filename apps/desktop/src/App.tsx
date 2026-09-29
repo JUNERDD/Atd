@@ -67,9 +67,9 @@ export function App() {
   } = useTaskPanel();
   useAppLanguage(snapshot?.language);
   const starting = useServiceStarting();
-  // macOS window management lives in the native traffic lights; the web client is a browser tab
-  // with nothing to hide.
-  const canHide = window.desktop?.runtime !== 'web' && platform !== 'darwin';
+  // macOS window management lives in the native traffic lights; the renderer preview hides the
+  // panel in the page.
+  const canHide = platform !== 'darwin';
   const reserveRef = useOverlayReserve();
   const subagents = useSubagentContextValue(
     (view === 'task' && current.detail?.blocks) || NO_BLOCKS,

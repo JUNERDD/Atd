@@ -20,24 +20,24 @@ interface TaskHandlers {
 }
 
 /**
- * The web host's link to the service: one HTTP client and one stream with the options its host
- * supplies. It serves no desktop capabilities (file picker, selection, clipboard); runs that
- * need them wait for the desktop app. The stream reconnects on its own.
+ * The WebView host's link to the service: one HTTP client and one stream, both through the shell's
+ * relay. The shell owns the service process and the credential, so the page only reports what the
+ * stream sees: `connecting` until the first stream frame (the shell may still be starting the
+ * service), then `connected`, and `reconnecting` after a later drop. The stream registers no
+ * capabilities: the shell serves file, clipboard and selection requests on its own connection.
  */
-export class WebConnection implements AgentConnection {
+export class NativeConnection implements AgentConnection {
   private readonly httpClient: AgentHttpClient;
   private readonly stream: AgentStreamClient;
   private handlers: TaskHandlers | null = null;
   private state: ServiceState = 'connecting';
   private detail = '';
+  private reached = false;
   private readonly statusListeners = new Set<(status: ServiceStatusView) => void>();
   private readonly invalidateListeners = new Set<(frame: InvalidateFrame) => void>();
   private readonly connectedListeners = new Set<() => void>();
 
-  constructor(
-    private readonly clientOptions: AgentStreamOptions,
-    private readonly serviceId: string,
-  ) {
+  constructor(private readonly clientOptions: AgentStreamOptions) {
     this.httpClient = new AgentHttpClient(clientOptions);
     this.stream = new AgentStreamClient(clientOptions, {
       onSnapshot: (snapshot) => {
@@ -56,14 +56,13 @@ export class WebConnection implements AgentConnection {
       onInvalidate: (frame) => {
         for (const listener of this.invalidateListeners) listener(frame);
       },
-      onDisconnect: (reason) => this.setState('reconnecting', reason),
+      // Until the service first answered, a drop is part of starting up, not a lost connection.
+      onDisconnect: (reason) => this.setState(this.reached ? 'reconnecting' : 'connecting', reason),
     });
   }
 
-  /** Session setup already reached the service over HTTP, so the page starts connected. */
   connect() {
     this.stream.connect();
-    this.setState('connected');
   }
 
   http(): AgentHttpClient {
@@ -82,11 +81,12 @@ export class WebConnection implements AgentConnection {
     return this.state === 'reconnecting' ? this.detail : '';
   }
 
+  /** The shell holds the service identity and data directory; the page reports neither. */
   status(): ServiceStatusView {
     return {
       state: this.state,
       detail: this.detail,
-      serviceId: this.serviceId,
+      serviceId: null,
       epoch: this.stream.epoch || null,
       draining: false,
       activeRuns: 0,
@@ -117,6 +117,7 @@ export class WebConnection implements AgentConnection {
   private setState(state: ServiceState, detail = '') {
     const connected = state === 'connected' && this.state !== 'connected';
     if (state === this.state && detail === this.detail) return;
+    if (connected) this.reached = true;
     this.state = state;
     this.detail = detail;
     const status = this.status();

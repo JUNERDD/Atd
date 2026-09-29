@@ -44,11 +44,12 @@ export interface DesktopState {
 
 export interface DesktopBridge {
   /**
-   * `electron` is the desktop app; `web` is the browser client served by the agent service. Only
-   * the Electron runtime has native window surfaces (vibrancy, traffic lights, global shortcuts).
+   * `electron` is the Electron app; `native` is the macOS shell hosting the renderer in a
+   * WKWebView (`src/native-host`). Both own native window surfaces; only Electron styles them with
+   * `-webkit-app-region`, while the shell takes the drag regions the page publishes.
    */
-  readonly runtime: 'electron' | 'web';
-  /** The OS as a Node platform name; the web client reports the OS it detected. */
+  readonly runtime: 'electron' | 'native';
+  /** The OS as a Node platform name. */
   readonly platform: string;
   readonly settings: SettingsBridge;
   readonly agent: AgentBridge;
@@ -56,14 +57,15 @@ export interface DesktopBridge {
   readonly service?: ServiceBridge;
   /**
    * Panel-only system file search: opaque result ids and home-relative folders, never paths.
-   * Absent in the web preview and tests, where the file group reads as unavailable.
+   * Absent in the macOS shell (until the service serves file search), the renderer preview and
+   * tests, where the file group reads as unavailable.
    */
   readonly files?: FileSearchBridge;
   show: () => Promise<void>;
   hide: () => Promise<void>;
   getState: () => Promise<DesktopState>;
   setPinned: (pinned: boolean) => Promise<boolean>;
-  /** macOS only: keeps or removes the Dock icon; the web client rejects it. */
+  /** macOS only: keeps or removes the Dock icon. */
   setShowInDock: (show: boolean) => Promise<boolean>;
   /**
    * Packaged macOS and Windows builds only: registers or removes the OS login item and resolves to

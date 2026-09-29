@@ -6,6 +6,8 @@
   background: var(--ata-surface-panel);
   font-size: 14px;
   line-height: 20px;
+}
+html[data-runtime='electron'] .settings-window {
   -webkit-app-region: drag;
 }
 .settings-sidebar {

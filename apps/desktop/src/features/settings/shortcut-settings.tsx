@@ -138,7 +138,8 @@ export function ShortcutSettings({
 }) {
   const { t } = useTranslation('settings');
   const settings = useShortcutSettings(snapshot);
-  const desktopApp = window.desktop?.runtime === 'electron';
+  // Both desktop runtimes register global shortcuts and own window preferences; the preview does not.
+  const desktopApp = window.desktop !== undefined;
   const recording = settings.recording !== null;
   const preferenceDisabled = settings.unavailable || settings.pending !== null || recording;
 

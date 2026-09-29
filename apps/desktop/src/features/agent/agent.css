@@ -903,6 +903,8 @@
   display: flex;
   flex: 1;
   min-height: 0;
+}
+html[data-runtime='electron'] .service-starting {
   -webkit-app-region: drag;
 }
 .service-starting-hide {
