@@ -14,6 +14,7 @@ import { setWindowActive, setWindowVisible } from '../window-state';
 import { publishDragRegions } from './drag-regions';
 import { NativeCommands } from './native-commands';
 import { NativeConnection } from './native-connection';
+import { nativeFiles } from './native-files';
 import { nativePlatform } from './native-platform';
 import { nativeSettings } from './native-settings';
 import { nativeShortcuts } from './native-shortcuts';
@@ -34,10 +35,10 @@ function pageOrigin(): string {
  * request handling, task cache and provider client as the Electron main process, reaching the
  * service through the shell's relay: HTTP as same-origin fetches the scheme handler forwards, the
  * stream over virtual sockets. Host abilities go through native calls. Only the panel owns the
- * global shortcuts and the language push; each window publishes its own drag regions.
+ * global shortcuts, the language push and file search; each window publishes its own drag regions.
  *
- * Not wired yet: file search (`files` stays absent until the service serves it) and attachments
- * the shell imports from drops and pastes (`resources.imported` has no composer entry point).
+ * Not wired yet: attachments the shell imports from drops and pastes (`resources.imported` has no
+ * composer entry point).
  */
 export async function installNativeHost(
   native: NativeBridge,
@@ -156,6 +157,7 @@ export async function installNativeHost(
     runtime: 'native',
     platform: 'darwin',
     settings: settings.bridge,
+    ...(surface === 'panel' ? { files: nativeFiles(connection) } : {}),
     agent: createAgentBridge((request) => requests.handle(request, 'page'), listen),
     service: createServiceBridge(
       async (request) => {
