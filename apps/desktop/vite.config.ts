@@ -42,6 +42,14 @@ function externalizeDependency(id: string): boolean {
   return dependencies.some((name) => id === name || id.startsWith(`${name}/`));
 }
 
+/**
+ * The dev server port. `AI_RENDERER_PORT` moves it for an isolated run beside another dev server;
+ * a Debug macOS shell then takes the same origin from `AI_RENDERER_DEV_ORIGIN`.
+ */
+const devPort = Number(process.env.AI_RENDERER_PORT ?? 5173);
+if (!Number.isInteger(devPort) || devPort < 1 || devPort > 65535)
+  throw new Error(`AI_RENDERER_PORT must be a TCP port, not ${process.env.AI_RENDERER_PORT}.`);
+
 const startElectron: NonNullable<ElectronOptions['onstart']> = async ({ startup }) => {
   // Explicit arguments retain Chromium's sandbox in development as well as production.
   await startup(['.']);
@@ -65,9 +73,12 @@ export default defineConfig(({ mode, command }) => ({
     {
       name: 'local-development-csp',
       transformIndexHtml(html) {
-        // React Fast Refresh injects a preamble only in the local development server.
+        // React Fast Refresh injects a preamble only in the local development server, whose HMR
+        // socket follows the port.
         return command === 'serve'
-          ? html.replace("script-src 'self'", "script-src 'self' 'unsafe-inline'")
+          ? html
+              .replace("script-src 'self'", "script-src 'self' 'unsafe-inline'")
+              .replace('ws://127.0.0.1:5173', `ws://127.0.0.1:${devPort}`)
           : html;
       },
     },
@@ -112,8 +123,13 @@ export default defineConfig(({ mode, command }) => ({
   },
   server: {
     host: '127.0.0.1',
-    port: 5173,
+    port: devPort,
     strictPort: true,
+    // The macOS shell's page is `ai-app://renderer`, which names no port, so the Vite client must
+    // be told where its HMR socket is; the page opens it directly (spike S4).
+    ...(mode === 'native'
+      ? { hmr: { protocol: 'ws', host: '127.0.0.1', clientPort: devPort } }
+      : {}),
     watch: { ignored: ['**/release/**', '**/test-results/**', '**/.artifacts/**'] },
   },
   preview: { host: '127.0.0.1', port: 4173, strictPort: true },
