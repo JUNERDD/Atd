@@ -8,7 +8,6 @@ import {
   previewPluginUpdate,
   setPluginEnabled,
   setPluginItemEnabled,
-  setPluginServerApproval,
   uninstallPlugin,
   type AgentClientOptions,
 } from '@ai/agent-client';
@@ -49,15 +48,6 @@ export const PluginRequestSchema = Type.Union([
       kind: PluginItemKindSchema,
       name: ItemNameSchema,
       enabled: Type.Boolean(),
-    },
-    { additionalProperties: false },
-  ),
-  Type.Object(
-    {
-      action: Type.Literal('pluginsSetApproval'),
-      id: PluginIdSchema,
-      name: ItemNameSchema,
-      approved: Type.Boolean(),
     },
     { additionalProperties: false },
   ),
@@ -121,12 +111,6 @@ export interface ServicePluginBridge {
     name: string;
     enabled: boolean;
   }) => Promise<unknown>;
-  /** Allows or stops one stdio MCP server of an installed plugin; answers its `PluginDetail`. */
-  setPluginServerApproval: (input: {
-    id: string;
-    name: string;
-    approved: boolean;
-  }) => Promise<unknown>;
   /** Saves user config values (`null` clears one); answers the `PluginDetail`. */
   configurePlugin: (id: string, values: PluginConfigRequest['values']) => Promise<unknown>;
   /** Copies an item into Personal; answers `PluginDuplicateResponse`. */
@@ -162,12 +146,6 @@ export function handlePluginRequest(
         kind: request.kind,
         name: request.name,
         enabled: request.enabled,
-      });
-    case 'pluginsSetApproval':
-      return setPluginServerApproval(options, {
-        id: request.id,
-        name: request.name,
-        approved: request.approved,
       });
     case 'pluginsConfigure':
       return configurePlugin(options, request.id, request.values);

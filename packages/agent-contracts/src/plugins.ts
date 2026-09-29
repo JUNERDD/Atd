@@ -20,7 +20,6 @@ import { Type, type Static } from 'typebox';
  * - `GET    /v1/plugins/:id`                                 → PluginDetail
  * - `POST   /v1/plugins/:id/enabled`                         PluginEnabledRequest → PluginDetail
  * - `POST   /v1/plugins/:id/items/:kind/:name/enabled`       PluginEnabledRequest → PluginDetail
- * - `POST   /v1/plugins/:id/servers/:name/approval`          PluginApprovalRequest → PluginDetail
  * - `PUT    /v1/plugins/:id/config`                          PluginConfigRequest → PluginDetail
  * - `POST   /v1/plugins/:id/items/:kind/:name/duplicate`     → PluginDuplicateResponse
  * - `POST   /v1/plugins/preview`                             PluginPreviewRequest → PluginInstallPreview
@@ -105,7 +104,6 @@ export const PluginItemSchema = Type.Object(
       Type.Union([
         Type.Literal('plugin'),
         Type.Literal('item'),
-        Type.Literal('approval'),
         Type.Literal('config'),
         Type.Literal('collision'),
       ]),
@@ -144,12 +142,6 @@ export const PluginEnabledRequestSchema = Type.Object(
   { additionalProperties: false },
 );
 export type PluginEnabledRequest = Static<typeof PluginEnabledRequestSchema>;
-
-export const PluginApprovalRequestSchema = Type.Object(
-  { approved: Type.Boolean() },
-  { additionalProperties: false },
-);
-export type PluginApprovalRequest = Static<typeof PluginApprovalRequestSchema>;
 
 /** `null` clears a value. */
 export const PluginConfigRequestSchema = Type.Object(

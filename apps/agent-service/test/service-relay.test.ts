@@ -59,6 +59,8 @@ test('the route manifest classifies every route the service serves', async () =>
     assert.ok(keys.includes(key), `${key} is missing`);
   // MCP servers are edited one at a time; no route replaces the catalog with client records.
   assert.ok(!keys.includes('POST /v1/mcp/configure'), 'POST /v1/mcp/configure is gone');
+  // One withdraw route serves both layers; the plugin route that approved from the renderer is gone.
+  assert.ok(!keys.some((key) => key.endsWith('/servers/:name/approval')), 'no plugin approval');
   for (const route of manifest.routes)
     assert.equal(
       route.exposure,

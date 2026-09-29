@@ -34,7 +34,7 @@ the kit never reads host stores.
 
 - Installing never runs code: no npm lifecycle scripts, no git hooks, no hooks from bundles.
 - Every path is realpath-checked against the plugin root.
-- New plugins land disabled; installed stdio MCP servers stay blocked until approved.
+- New plugins land disabled. Whether an MCP server may launch is the host's decision, not the kit's.
 - No bundle format defines signing. Integrity is limited to the git commit and the npm tarball
   integrity; the install preview lists executables and URLs for review.
 - Imported but never executed: Claude hooks, `bin/`, LSP, output styles, `` !`cmd` `` prompt

@@ -95,7 +95,6 @@ export interface PluginInstaller {
   readState(): Promise<PluginStateFile>;
   setPluginEnabled(pluginId: string, enabled: boolean): Promise<void>;
   setItemEnabled(pluginId: string, itemKey: string, enabled: boolean): Promise<void>;
-  setServerApproved(pluginId: string, server: string, approved: boolean): Promise<void>;
   /**
    * Validates values against `options`; sensitive values go to the SecretStore, the rest to
    * state. A `null` value clears the key.
@@ -178,14 +177,6 @@ export function createPluginInstaller(options: PluginInstallerOptions): PluginIn
     setItemEnabled: (pluginId, itemKey, enabled) =>
       updateState((state) => {
         putList(state.items, pluginId, setMembership(state.items[pluginId], itemKey, !enabled));
-      }),
-    setServerApproved: (pluginId, server, approved) =>
-      updateState((state) => {
-        putList(
-          state.approved,
-          pluginId,
-          setMembership(state.approved[pluginId], server, approved),
-        );
       }),
     setConfig: (pluginId, configOptions, values) =>
       mutex.run(async () => {

@@ -109,7 +109,6 @@ export async function handleExtensionRequest(
     case 'pluginsGet':
     case 'pluginsSetEnabled':
     case 'pluginsSetItemEnabled':
-    case 'pluginsSetApproval':
     case 'pluginsConfigure':
     case 'pluginsDuplicate':
     case 'pluginsPreview':

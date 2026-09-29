@@ -513,7 +513,6 @@
         "disabledByPlugin": "Turn on {{name}} to change its items.",
         "noItems": "This plugin contributes nothing this app can use.",
         "diagnostics": "Not imported",
-        "allowRun": "Allow to run",
         "learning": "Learn new memories",
         "memoryEntries_one": "{{count}} memory",
         "memoryEntries_other": "{{count}} memories",

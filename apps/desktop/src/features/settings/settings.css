@@ -381,18 +381,8 @@ html[data-runtime='electron'] .settings-window {
 }
 /* Actions may sit in a wrapper, as the command rows group them with the shortcut. */
 .settings-open-row [data-slot='item-actions'],
-.settings-open-row .settings-extension-mcp-auth,
-.settings-open-row .settings-extension-mcp-approval {
+.settings-open-row .settings-extension-mcp-auth {
   pointer-events: auto;
-}
-/* Allow to run under an installed plugin's local MCP server, until the user allows it. */
-.settings-extension-mcp-approval {
-  display: flex;
-  width: fit-content;
-  max-width: 100%;
-  align-items: center;
-  gap: 8px;
-  margin-top: 4px;
 }
 /* An outlined row fills inside its 1px border, so the fill's corners follow the border's inner
  * curve instead of the outer one. */

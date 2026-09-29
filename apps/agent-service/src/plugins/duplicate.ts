@@ -147,8 +147,9 @@ async function withoutSecrets(
 
 /**
  * Copies a plugin server into `servers.json` under a bare id, without its secrets (see
- * `withoutSecrets`). The copy starts disabled, like a plugin server before approval (D6): turning
- * it on is the user's decision.
+ * `withoutSecrets`). The copy starts disabled: turning it on is the user's decision, and a copy
+ * that runs a local command also needs the user's launch approval, which the plugin server's own
+ * approval never carries over to (mcp/launch-approvals.ts).
  */
 async function duplicateServer(
   actions: PluginActions,

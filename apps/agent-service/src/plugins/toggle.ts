@@ -86,24 +86,3 @@ export async function setItemEnabled(
       return;
   }
 }
-
-/** Approves (or withdraws approval of) one installed stdio MCP server, so it may run (D6). */
-export async function setServerApproved(
-  actions: PluginActions,
-  pluginId: string,
-  name: string,
-  approved: boolean,
-): Promise<void> {
-  const installed = actions.view.installed.find((entry) => entry.id === pluginId);
-  if (!installed) {
-    findPlugin(actions.view, pluginId);
-    throw new TypeError('Invalid request: only installed plugins have servers to approve.');
-  }
-  const server = installed.plugin.components.find(
-    (component) => component.kind === 'mcp' && component.name === name,
-  );
-  if (!server) throw new LedgerNotFound('MCP server', `${pluginId}/${name}`);
-  if (server.kind !== 'mcp' || server.transport.type !== 'stdio')
-    throw new TypeError(`Invalid request: "${name}" is not a local (stdio) server.`);
-  await actions.host.installer.setServerApproved(pluginId, name, approved);
-}

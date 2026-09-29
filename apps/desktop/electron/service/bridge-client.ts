@@ -40,7 +40,6 @@ export function createServiceBridge(
     plugin: (id) => invoke({ action: 'pluginsGet', id }),
     setPluginEnabled: (id, enabled) => invoke({ action: 'pluginsSetEnabled', id, enabled }),
     setPluginItemEnabled: (input) => invoke({ action: 'pluginsSetItemEnabled', ...input }),
-    setPluginServerApproval: (input) => invoke({ action: 'pluginsSetApproval', ...input }),
     configurePlugin: (id, values) => invoke({ action: 'pluginsConfigure', id, values }),
     duplicatePluginItem: (input) => invoke({ action: 'pluginsDuplicate', ...input }),
     previewPlugin: (source) => invoke({ action: 'pluginsPreview', source }),

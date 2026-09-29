@@ -199,7 +199,8 @@ function transportProblem(record: McpServerConfig): string | null {
 /**
  * A plugin MCP server as a read-only service record under its qualified id (MCP components
  * never come from standalone skills, so the id is always `<plugin>:<item>`). It is disabled unless
- * resolution made it effective, which for stdio requires the user's approval (D6). Env and headers
+ * resolution made it effective; launching it also needs the user's approval
+ * (mcp/launch-approvals.ts). Env and headers
  * carry their substituted values, secrets included; the record lives only in memory, and a Personal
  * duplicate leaves those entries out (plugins/duplicate.ts). HTTP servers use no service-managed auth. `revision` is derived from
  * the substituted config, so any change (update, config value) counts as a new revision and a

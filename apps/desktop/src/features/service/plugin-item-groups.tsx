@@ -146,11 +146,6 @@ export function PluginItemGroups({
           busyId={mcpBusyId ?? busyName('mcp')}
           busy={busy?.kind === 'plugin' && busy.id === plugin.id}
           lockedReason={lockedReason}
-          needsApproval={(serverId) => itemOf('mcp', serverId)?.blockedBy === 'approval'}
-          onApprove={(serverId) => {
-            const item = itemOf('mcp', serverId);
-            if (item) void actions.approve(plugin.id, item.localName);
-          }}
           onOpen={(serverId) => onOpen('mcp', serverId)}
           onConnect={actions.mcpConnect}
           onAuthStart={actions.mcpAuthStart}

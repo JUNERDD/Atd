@@ -513,7 +513,6 @@
         "disabledByPlugin": "开启 {{name}} 后才能更改其中的项目。",
         "noItems": "此插件没有提供本应用可用的内容。",
         "diagnostics": "未导入的部分",
-        "allowRun": "允许运行",
         "learning": "学习新记忆",
         "memoryEntries_one": "{{count}} 条记忆",
         "memoryEntries_other": "{{count}} 条记忆",
