@@ -61,7 +61,7 @@ struct ShellLocalizationTests {
   func formatSpecifiers() throws {
     let catalog = try Self.catalog()
     for (key, entry) in catalog.strings {
-      for specifier in ["%lld", "%@"] {
+      for specifier in ["%lld", "%@", "%1$@", "%2$@"] {
         let counts = ShellLanguage.allCases.map { language in
           entry.localizations[language.rawValue]?.stringUnit.value.components(
             separatedBy: specifier

@@ -61,6 +61,37 @@ public struct ShellClient: Sendable {
       fileURL: file, name: resource.name, mime: resource.mime, size: resource.bytes.count)
   }
 
+  /// `GET /v1/admin/approvals/mcp/:serverId`: what approving the server's launch would allow.
+  /// A server that needs no approval answers 400.
+  public func mcpLaunchApprovalDetails(serverId: String) async throws -> McpLaunchApprovalDetails {
+    guard !serverId.isEmpty else {
+      throw ShellClientError.invalidArgument("The server id is empty.")
+    }
+    let response = try await send(
+      "GET", "/v1/admin/approvals/mcp/\(RelayPath.encodeSegment(serverId))")
+    return try JSONDecoder().decode(McpLaunchApprovalDetails.self, from: response.data)
+  }
+
+  /// `POST /v1/admin/approvals/mcp`: approves the launch the request's fingerprint describes.
+  /// A fingerprint the service no longer computes (409 `approval_changed`) is `changed`.
+  public func approveMcpLaunch(_ request: McpLaunchApproveRequest) async throws
+    -> McpLaunchApproveOutcome
+  {
+    let response: Response
+    do {
+      response = try await send(
+        "POST", "/v1/admin/approvals/mcp", body: try JSONEncoder().encode(request),
+        contentType: "application/json")
+    } catch ShellClientError.http(let status, let code, let message) {
+      guard let outcome = McpLaunchApproveOutcome.refusal(status: status, code: code) else {
+        throw ShellClientError.http(status: status, code: code, message: message)
+      }
+      return outcome
+    }
+    _ = try JSONDecoder().decode(McpLaunchApproveResponse.self, from: response.data)
+    return .approved
+  }
+
   /// `POST /v1/admin/shutdown`: the service answers, then drains and exits. Bounded, since quit
   /// waits on it and falls back to SIGTERM.
   public func shutdown() async throws {
@@ -146,6 +177,15 @@ public struct DownloadedArtifact: Equatable, Sendable {
   public let name: String
   public let mime: String
   public let size: Int
+}
+
+extension McpApprovalGate.Service {
+  /// The gate's routes through the shell's own client.
+  public init(client: ShellClient) {
+    self.init(
+      details: { try await client.mcpLaunchApprovalDetails(serverId: $0) },
+      approve: { try await client.approveMcpLaunch($0) })
+  }
 }
 
 extension ServiceLink {
