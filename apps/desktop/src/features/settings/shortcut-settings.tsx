@@ -170,14 +170,10 @@ export function ShortcutSettings({
             {/* Only the global shortcut can collide with another app's; in-app ones cannot. */}
             <ShortcutConflictHint />
           </div>
-          {!desktopApp ? (
-            <p className="settings-status">{t('shortcuts.registeredByDesktop')}</p>
-          ) : (
-            snapshot?.shortcutAvailable === false && (
-              <p className="settings-status" data-error="true" role="alert">
-                {t('shortcuts.errors.register')}
-              </p>
-            )
+          {desktopApp && snapshot?.shortcutAvailable === false && (
+            <p className="settings-status" data-error="true" role="alert">
+              {t('shortcuts.errors.register')}
+            </p>
           )}
         </section>
         <section className="settings-shortcut-group" aria-labelledby="settings-in-app-shortcuts">

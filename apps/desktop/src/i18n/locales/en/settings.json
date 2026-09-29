@@ -106,7 +106,6 @@
       "global": "Global",
       "inApp": "In app"
     },
-    "registeredByDesktop": "The desktop app registers this shortcut while it is running.",
     "actions": {
       "togglePanel": {
         "label": "Show or hide panel",

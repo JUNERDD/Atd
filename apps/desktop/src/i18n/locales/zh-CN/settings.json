@@ -106,7 +106,6 @@
       "global": "全局",
       "inApp": "应用内"
     },
-    "registeredByDesktop": "桌面应用运行时会注册此快捷键。",
     "actions": {
       "togglePanel": {
         "label": "显示或隐藏面板",
