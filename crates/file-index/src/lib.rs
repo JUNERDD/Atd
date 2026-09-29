@@ -5,7 +5,8 @@
 //!
 //! - Scope: `scope.rs`, `exclusions.rs` (scope.ts rules merged with Raycast's), `.gitignore`
 //!   through the `ignore` crate (`walk.rs`), local internal volumes only (`volume.rs`).
-//! - Storage: `store.rs`, a `NameStore` trait whose only implementation wraps minidex.
+//! - Storage: `store.rs`, a `NameStore` trait whose only implementation wraps minidex, plus the
+//!   in-memory `names.rs` list behind it for mid-word matches.
 //! - Updates: `fsevents.rs` → `plan.rs` → `reconcile.rs`, driven by `engine.rs`.
 //! - Ordering: `rank.rs` and `fold.rs`, ported from the TypeScript ranking.
 
@@ -17,6 +18,7 @@ mod exclusions;
 mod extensions;
 mod fold;
 mod fsevents;
+mod names;
 mod plan;
 mod query;
 mod rank;

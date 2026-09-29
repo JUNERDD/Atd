@@ -1,11 +1,15 @@
 //! The persistent file-name store. `NameStore` is the only surface the rest of the crate sees;
 //! `MinidexStore` is its sole implementation and the only code that names a `minidex` type, so a
-//! breaking minidex release, a vendored copy or a replacement touches this file alone.
+//! breaking minidex release, a vendored copy or a replacement touches this file alone. It also
+//! owns the in-memory `NameList` behind `containing`, kept in step with every write.
 
 use std::fmt;
 use std::path::{Path, PathBuf};
+use std::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 
 use minidex::{FilesystemEntry, Index, Kind, SearchOptions, VolumeType};
+
+use crate::names::NameList;
 
 /// One indexed file: its root's key and its stored path, `/` + displayed location + `/` + name.
 /// Stored paths are unique across roots (iCloud Drive files start with `/iCloud Drive/`).
@@ -30,6 +34,9 @@ pub(crate) trait NameStore: Send + Sync + fmt::Debug {
     fn remove_tree(&self, root: &str, rel: &str) -> Result<(), StoreError>;
     /// Files whose path words start with the query words, at most `cap`, in no promised order.
     fn candidates(&self, query: &str, cap: usize) -> Result<Vec<StoredFile>, StoreError>;
+    /// Files whose name contains the query anywhere (case- and accent-folded), newest first, at
+    /// most `cap`. Slower than `candidates`: for mid-word matches when word matches run short.
+    fn containing(&self, query: &str, cap: usize) -> Result<Vec<StoredFile>, StoreError>;
     /// Files modified since `since_secs`, at most `cap`.
     fn recent(&self, since_secs: u64, cap: usize) -> Result<Vec<StoredFile>, StoreError>;
     /// Makes every accepted write durable.
@@ -45,8 +52,12 @@ pub(crate) trait NameStore: Send + Sync + fmt::Debug {
 /// case splits words) but not `report.md`. Paths are stored as displayed locations with the root
 /// as minidex's volume, so home's own path words (`Users`, the account name) never match a query.
 /// minidex merges results by path alone, which is why stored paths must be unique across roots.
+///
+/// minidex has no substring search, so every stored path is also held in `names` (about 100 bytes
+/// per file), loaded from the index at open and updated after each successful write.
 pub(crate) struct MinidexStore {
     index: Index,
+    names: RwLock<NameList>,
     dir: PathBuf,
 }
 
@@ -66,10 +77,24 @@ impl MinidexStore {
         std::fs::create_dir_all(dir).map_err(fail)?;
         let index = Index::open(dir).map_err(fail)?;
         index.wait_for_completed_recovery();
+        let names = RwLock::new(list_all(&index)?);
         Ok(Self {
             index,
+            names,
             dir: dir.to_path_buf(),
         })
+    }
+
+    fn names(&self) -> RwLockReadGuard<'_, NameList> {
+        self.names
+            .read()
+            .unwrap_or_else(|poison| poison.into_inner())
+    }
+
+    fn names_mut(&self) -> RwLockWriteGuard<'_, NameList> {
+        self.names
+            .write()
+            .unwrap_or_else(|poison| poison.into_inner())
     }
 
     fn options() -> SearchOptions<'static> {
@@ -82,9 +107,9 @@ impl MinidexStore {
 
 impl NameStore for MinidexStore {
     fn upsert(&self, files: Vec<StoredFile>) -> Result<(), StoreError> {
-        let entries = files.into_iter().map(|file| FilesystemEntry {
-            path: PathBuf::from(file.rel),
-            volume: file.root,
+        let entries = files.iter().map(|file| FilesystemEntry {
+            path: PathBuf::from(&file.rel),
+            volume: file.root.clone(),
             kind: Kind::File,
             last_modified: file.modified_secs.saturating_mul(MICROS),
             // Access times are not tracked: APFS updates them lazily, so they do not mean "used".
@@ -92,18 +117,27 @@ impl NameStore for MinidexStore {
             category: 0,
             volume_type: VolumeType::Local,
         });
-        self.index.insert_batch(entries, 1024).map_err(fail)
+        self.index.insert_batch(entries, 1024).map_err(fail)?;
+        let mut names = self.names_mut();
+        for file in files {
+            names.insert(file);
+        }
+        Ok(())
     }
 
-    fn remove(&self, _root: &str, rel: &str) -> Result<(), StoreError> {
+    fn remove(&self, root: &str, rel: &str) -> Result<(), StoreError> {
         // minidex deletes a path across volumes; stored paths are unique across roots.
-        self.index.delete(Path::new(rel)).map_err(fail)
+        self.index.delete(Path::new(rel)).map_err(fail)?;
+        self.names_mut().remove(root, rel);
+        Ok(())
     }
 
     fn remove_tree(&self, root: &str, rel: &str) -> Result<(), StoreError> {
         self.index
             .delete_by_volume_name(Some(root), rel)
-            .map_err(fail)
+            .map_err(fail)?;
+        self.names_mut().remove_tree(root, rel);
+        Ok(())
     }
 
     fn candidates(&self, query: &str, cap: usize) -> Result<Vec<StoredFile>, StoreError> {
@@ -112,6 +146,10 @@ impl NameStore for MinidexStore {
             .search(query, cap, 0, Self::options())
             .map_err(fail)?;
         Ok(results.into_iter().map(stored).collect())
+    }
+
+    fn containing(&self, query: &str, cap: usize) -> Result<Vec<StoredFile>, StoreError> {
+        Ok(self.names().containing(query, cap))
     }
 
     fn recent(&self, since_secs: u64, cap: usize) -> Result<Vec<StoredFile>, StoreError> {
@@ -128,13 +166,35 @@ impl NameStore for MinidexStore {
 
     fn checkpoint(&self) -> Result<(), StoreError> {
         self.index.sync().map_err(fail)?;
-        self.index.flush().map_err(fail)
+        self.index.flush().map_err(fail)?;
+        // Rebuilt after the flush freed minidex's in-memory table: names allocated during a walk
+        // sit between that table's allocations and would keep its freed pages resident.
+        let mut names = self.names_mut();
+        *names = NameList::default();
+        *names = list_all(&self.index)?;
+        Ok(())
     }
+}
+
+/// Every live file in the index. minidex has no listing call; a recency query from the epoch
+/// with no practical limit returns them all, tombstones applied.
+fn list_all(index: &Index) -> Result<NameList, StoreError> {
+    let mut names = NameList::default();
+    for result in index
+        .recent_files(0, ALL_FILES, 0, MinidexStore::options())
+        .map_err(fail)?
+    {
+        names.insert(stored(result));
+    }
+    Ok(names)
 }
 
 /// minidex timestamps are microseconds: it divides them into seconds for its recency filter and
 /// scoring, so seconds passed as-is would read as 1970 and no file would count as recent.
 const MICROS: u64 = 1_000_000;
+
+/// A `recent_files` limit that lists everything; minidex adds its own margin, so not `usize::MAX`.
+const ALL_FILES: usize = u32::MAX as usize;
 
 fn stored(result: minidex::SearchResult) -> StoredFile {
     StoredFile {

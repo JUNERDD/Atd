@@ -10,13 +10,15 @@ use std::time::{Duration, Instant};
 
 use file_index::{FileIndex, IndexOptions, Phase};
 
-/// The attachable extensions of `attachable-rules.ts` at the time of writing.
+/// `ATTACHABLE_EXTENSIONS` of `packages/agent-contracts/src/attachments.ts` at the time of writing.
 const EXTENSIONS: &[&str] = &[
     "txt", "md", "csv", "json", "log", "yaml", "yml", "xml", "html", "css", "ts", "tsx", "js", "py",
 ];
 const QUERIES: &[&str] = &[
     "", "a", "readme", "notes", "index", "config", "test", "package", "todo", "plan", "report",
     "main", "doc", "api", "log", "setup", "data", "claude", "resume", "2026",
+    // Mid-word text that only the substring fallback (R10) finds.
+    "eadm", "onfig", "ackag", "sume",
 ];
 const WALK_DEADLINE: Duration = Duration::from_secs(540);
 
@@ -48,9 +50,10 @@ fn main() {
         status.error.is_some()
     );
     println!(
-        "rss after walk: {} MiB (peak {} MiB)",
+        "rss after walk: {} MiB (peak {} MiB, footprint {} MiB)",
         rss_mib(),
-        peak_rss_mib()
+        peak_rss_mib(),
+        footprint_mib()
     );
 
     let mut latencies = Vec::new();
@@ -71,7 +74,11 @@ fn main() {
         at(0.95),
         at(1.0)
     );
-    println!("rss after queries: {} MiB", rss_mib());
+    println!(
+        "rss after queries: {} MiB (footprint {} MiB)",
+        rss_mib(),
+        footprint_mib()
+    );
     index.close().unwrap();
     drop(index);
 
@@ -139,6 +146,19 @@ fn rss_mib() -> u64 {
         .parse::<u64>()
         .unwrap_or(0)
         / 1024
+}
+
+/// Physical footprint, the figure Activity Monitor shows: unlike RSS it leaves out pages malloc
+/// has freed but not yet handed back.
+fn footprint_mib() -> u64 {
+    // SAFETY: `proc_pid_rusage` fills the zeroed `rusage_info_v2` we own for this process.
+    let usage = unsafe {
+        let mut usage: libc::rusage_info_v2 = std::mem::zeroed();
+        let buffer = (&raw mut usage).cast::<libc::rusage_info_t>();
+        libc::proc_pid_rusage(libc::getpid(), libc::RUSAGE_INFO_V2, buffer);
+        usage
+    };
+    usage.ri_phys_footprint / (1024 * 1024)
 }
 
 fn peak_rss_mib() -> u64 {

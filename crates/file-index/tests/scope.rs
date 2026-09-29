@@ -103,13 +103,14 @@ fn reports_locations_and_keeps_icloud_drive_apart_from_home() {
 }
 
 #[test]
-fn ranks_like_the_typescript_search_within_word_prefix_matching() {
+fn ranks_like_the_typescript_search() {
     let fixture = Fixture::new();
     fixture.write("deep/er/still/budget.md", "exact, deep");
     fixture.write("budgets-2026.md", "prefix");
     fixture.write("team budget notes.txt", "word start");
     fixture.write("budget/readme.md", "folder only");
     fixture.write("report.md", "substring of the query `port`");
+    fixture.write("port-notes.md", "word prefix of the query `port`");
     let index = fixture.ready();
 
     let hits = index.query("budget", 10).unwrap();
@@ -127,8 +128,15 @@ fn ranks_like_the_typescript_search_within_word_prefix_matching() {
     assert_eq!(hits[3].name_match, None);
     assert!(hits.windows(2).all(|pair| pair[0].score >= pair[1].score));
     assert_eq!(hits[0].size, Some("exact, deep".len() as u64));
-    // Known gap against the mdfind backend: minidex matches word prefixes, not mid-word text.
-    assert!(index.query("port", 10).unwrap().is_empty());
+    // Mid-word matches come from the in-memory name list (R10) and rank below word matches.
+    let hits = index.query("port", 10).unwrap();
+    assert_eq!(common::names(&hits), ["port-notes.md", "report.md"]);
+    assert_eq!(hits[1].name_match, Some((2, 6)));
+    // With enough word matches to fill the limit, the list is not consulted.
+    assert_eq!(
+        common::names(&index.query("port", 1).unwrap()),
+        ["port-notes.md"]
+    );
 }
 
 #[test]

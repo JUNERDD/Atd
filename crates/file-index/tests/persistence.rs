@@ -26,6 +26,10 @@ fn reopening_answers_from_the_saved_store_before_start() {
         finds(&reopened, "ledger", &kept),
         "the store should survive a restart"
     );
+    assert!(
+        finds(&reopened, "edge", &kept),
+        "mid-word matches should survive a restart"
+    );
     reopened.start().unwrap();
     let status = reopened.status();
     assert!(
@@ -62,6 +66,10 @@ fn a_restart_replays_changes_made_while_closed() {
     wait_for(
         || finds(&index, "moved", &moved_to),
         "the moved folder's file",
+    );
+    assert!(
+        finds(&index, "ffline", &added),
+        "replayed files are matched mid-word"
     );
     assert!(!finds(&index, "obsolete", &removed));
     assert!(!finds(&index, "before", &renamed_from));
