@@ -104,9 +104,18 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
     }
   });
 
+  // `close()` ends only the keep-alive connections idle at that moment. A request still in
+  // flight would leave its connection open for the 72 s keep-alive timeout and hold the
+  // shutdown, so every response sent once closing began ends its connection.
+  let closing = false;
+  app.addHook('preClose', async () => {
+    closing = true;
+  });
+
   app.addHook('onSend', (_request, reply, payload, done) => {
     reply.header('x-service-id', deps.config.serviceId);
     reply.header('x-protocol-version', PROTOCOL_VERSION);
+    if (closing) reply.header('connection', 'close');
     done(null, payload);
   });
 
