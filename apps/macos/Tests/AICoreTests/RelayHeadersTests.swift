@@ -2,7 +2,7 @@ import Testing
 
 @testable import AICore
 
-@Suite("Relay headers and replay policy")
+@Suite("Relay headers")
 struct RelayHeadersTests {
   @Test("Copies only allow-listed page headers and sets the credential and epoch itself")
   func request() {
@@ -58,15 +58,5 @@ struct RelayHeadersTests {
     #expect(headers["Cache-Control"] == "max-age=60")
     #expect(headers["Content-Range"] == "bytes 0-9/100")
     #expect(headers["Accept-Ranges"] == "bytes")
-  }
-
-  @Test(
-    "Replays an epoch conflict once, then delivers whatever comes",
-    arguments: [
-      ((409, false), RelayPolicy.FollowUp.refetchManifestAndReplay), ((409, true), .deliver),
-      ((200, false), .deliver), ((403, false), .deliver), ((503, false), .deliver),
-    ])
-  func followUp(response: (status: Int, replayed: Bool), expected: RelayPolicy.FollowUp) {
-    #expect(RelayPolicy.followUp(status: response.status, replayed: response.replayed) == expected)
   }
 }

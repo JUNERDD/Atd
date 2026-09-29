@@ -82,7 +82,8 @@ public enum RelayPath {
     return NormalizedPath(segments: segments)
   }
 
-  static func encodeSegment(_ segment: String) -> String {
+  /// Percent-encodes one path segment: every byte outside RFC 3986 `unreserved`.
+  public static func encodeSegment(_ segment: String) -> String {
     var encoded = ""
     for byte in segment.utf8 {
       if isUnreserved(byte) {

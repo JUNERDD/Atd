@@ -3,6 +3,9 @@ public enum RelayPolicy {
   /// Carries the manifest epoch on every relayed request; the service answers 409 when it
   /// differs from its own.
   public static let epochHeader = "x-relay-epoch"
+  /// Set by the service only on the 409 that refuses a stale ``epochHeader`` (decision R4). Other
+  /// 409s (idempotency, compaction refusals, stale capability revisions) never carry it.
+  public static let epochCurrentHeader = "x-relay-epoch-current"
   /// Main-token-only manifest route.
   public static let manifestPath = "/v1/admin/routes"
 
@@ -19,13 +22,21 @@ public enum RelayPolicy {
     /// Hand the response to the page.
     case deliver
     /// Drop the manifest, fetch a new one, and send the request once more. Safe for any
-    /// method: the service refuses a stale epoch before the route handler runs.
+    /// method: the service refuses a stale epoch in `onRequest`, before the route handler runs.
     case refetchManifestAndReplay
   }
 
-  /// What to do with an upstream response. A 409 is replayed once; a second 409 reaches the
-  /// page like any other answer.
-  public static func followUp(status: Int, replayed: Bool) -> FollowUp {
-    status == epochConflictStatus && !replayed ? .refetchManifestAndReplay : .deliver
+  /// What to do with an upstream response. Only a 409 that names the current epoch is an epoch
+  /// conflict, and it is replayed once; a second one, and every other 409, reaches the page like
+  /// any other answer. Replaying an ordinary 409 would re-run a request the handler already
+  /// refused (or, for an idempotency conflict, one it already applied).
+  public static func followUp(
+    status: Int, headers: [String: String], replayed: Bool
+  ) -> FollowUp {
+    guard status == epochConflictStatus, !replayed else { return .deliver }
+    let marked = headers.keys.contains {
+      $0.caseInsensitiveCompare(epochCurrentHeader) == .orderedSame
+    }
+    return marked ? .refetchManifestAndReplay : .deliver
   }
 }
