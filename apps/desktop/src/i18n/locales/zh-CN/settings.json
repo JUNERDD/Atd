@@ -25,6 +25,11 @@
     "close": "关闭",
     "closeLabel": "关闭设置导航"
   },
+  "search": {
+    "label": "搜索设置",
+    "placeholder": "搜索设置…",
+    "empty": "没有匹配的设置"
+  },
   "providers": {
     "overview": {
       "title": "提供商",
@@ -53,8 +58,10 @@
       }
     }
   },
-  "heading": {
-    "back": "返回"
+  "header": {
+    "back": "返回",
+    "forward": "前进",
+    "location": "当前位置"
   },
   "permissions": {
     "title": "权限",

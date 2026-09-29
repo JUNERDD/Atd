@@ -1,3 +1,20 @@
+/*
+ * The settings window follows Raycast's settings layout. The shell gives the window a unified
+ * NSToolbar, so the native title bar is 52px tall and the traffic lights sit centered in it,
+ * 19–79px from the leading edge. Below 760px the sidebar card moves above the content; below
+ * 480px it opens as a drawer from the content header.
+ */
+.settings-window,
+.settings-drawer,
+.settings-drawer-overlay {
+  /* The native title bar; the content header and the sidebar strip match it. */
+  --settings-titlebar-height: 52px;
+  /* The gap between the window edge and the sidebar card on every side. */
+  --settings-inset: 8px;
+  --settings-sidebar-width: 227px;
+  /* Where content may start beside the traffic lights (their trailing edge is at 79px). */
+  --settings-traffic-lights-inset: 92px;
+}
 .settings-window {
   display: flex;
   width: 100%;
@@ -7,28 +24,102 @@
   font-size: 14px;
   line-height: 20px;
 }
+.settings-window[data-layout='top'] {
+  flex-direction: column;
+}
+/*
+ * The sidebar card: an inset glass card whose corners follow the window's (the toolbar window's
+ * radius less the inset). Its glass is an empty layer behind the controls, so nothing on the
+ * glass element draws outside it; the edge is inset only, and an inactive window or reduced
+ * transparency turns it into a flat fill (`surface-glass`).
+ */
 .settings-sidebar {
+  position: relative;
   display: flex;
-  flex: 0 0 208px;
+  flex: 0 0 calc(var(--settings-sidebar-width) + var(--settings-inset));
   flex-direction: column;
   min-width: 0;
-  gap: 24px;
-  padding: 16px;
+  min-height: 0;
+  padding: 0 0 var(--settings-inset) var(--settings-inset);
 }
-.settings-window-controls {
-  height: 20px;
+/* The card material, shared by the sidebar and the drawer: WebKit's subdued system glass, else
+ * the approved drawer tint under a strong blur. Its edge stays inset in every state. */
+.settings-sidebar-glass,
+.settings-drawer[data-slot='sheet-content'] {
+  --ata-glass-material: -apple-system-glass-material-subdued;
+  --ata-glass-fill: var(--ata-surface-settings-content);
+  --ata-glass-blur: 40px;
+  --ata-glass-shadow: inset 0 0 0 1px var(--ata-glass-edge);
+}
+.settings-sidebar-glass {
+  position: absolute;
+  inset: var(--settings-inset) 0 var(--settings-inset) var(--settings-inset);
+  border-radius: var(--radius-2xl);
+  pointer-events: none;
+}
+.settings-sidebar-body {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  gap: 8px;
+  padding: 0 8px 8px;
+}
+/* The title bar's share of the sidebar: it drags the window, and the traffic lights sit in it
+ * 11px from the card's top and leading edges. With the body's 8px gap the search field starts
+ * where the content header ends. */
+.settings-sidebar-strip {
+  flex-shrink: 0;
+  height: calc(var(--settings-titlebar-height) - 8px);
+}
+/* 480–759px: the card spans the window above the content. The traffic lights keep the leading
+ * end of its first row, the search field fills the rest, and the sections wrap below. */
+.settings-window[data-layout='top'] .settings-sidebar {
+  flex: 0 0 auto;
+  padding: var(--settings-inset) var(--settings-inset) 0;
+}
+.settings-window[data-layout='top'] .settings-sidebar-glass {
+  inset: var(--settings-inset) var(--settings-inset) 0;
+}
+.settings-window[data-layout='top'] .settings-sidebar-body {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  padding: 0 8px 8px 0;
+}
+.settings-window[data-layout='top'] .settings-sidebar-strip {
+  width: calc(var(--settings-traffic-lights-inset) - var(--settings-inset) - 8px);
+  height: calc(var(--settings-titlebar-height) - var(--settings-inset));
+}
+.settings-window[data-layout='top'] .settings-search {
+  flex: 1 1 0;
+}
+.settings-window[data-layout='top'] .settings-nav-scroll {
+  flex: 1 0 100%;
+  margin-left: 5px;
+}
+.settings-window[data-layout='top'] .settings-navigation {
+  flex-direction: row;
+  flex-wrap: wrap;
+}
+.settings-window[data-layout='top'] .settings-nav-button {
+  flex: 1 0 auto;
+}
+.settings-search {
   flex-shrink: 0;
 }
-.settings-native-controls-space {
-  display: block;
-  width: 88px;
-  height: 20px;
-  flex-shrink: 0;
+/* The rows' focus rings reach 3px past them; the scroller gives that room back. */
+.settings-nav-scroll {
+  flex: 1;
+  margin: -3px;
 }
 .settings-navigation {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  padding: 3px;
 }
 .settings-navigation .settings-nav-button {
   justify-content: flex-start;
@@ -38,29 +129,136 @@
   color: var(--ata-text-secondary);
   flex-shrink: 0;
 }
+.settings-nav-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .settings-navigation .settings-nav-button[aria-current='page'] {
   background: var(--ata-material-selected);
   color: var(--foreground);
 }
+/* Enter in the search field opens the best match, so it reads as highlighted while typing. */
+:is(.settings-sidebar, .settings-drawer):has(.settings-search input:focus)
+  .settings-nav-button[data-best-match]:not([aria-current='page']) {
+  background: var(--ata-surface-ghost-hover);
+  color: var(--foreground);
+}
+.settings-nav-empty {
+  display: block;
+  padding: 8px 12px;
+  color: var(--ata-text-secondary);
+}
+/* The content sits on the window's own surface; its header floats over the scrolling pages. */
 .settings-content {
+  position: relative;
   display: flex;
   flex: 1;
   flex-direction: column;
   min-width: 0;
   min-height: 0;
-  margin: 12px 12px 12px 0;
-  overflow: hidden;
-  border-radius: var(--radius-2xl);
-  background: var(--ata-surface-settings-content);
 }
 .settings-content-header {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 1;
+  height: var(--settings-titlebar-height);
+}
+/* Toolbar glass once content scrolls under the bar. It switches rather than fades: a system
+ * material drawn below full opacity renders wrong, so only the non-glass hairline fades. */
+.settings-content-header-glass {
+  position: absolute;
+  inset: 0;
+  visibility: hidden;
+  pointer-events: none;
+  --ata-glass-edge: transparent;
+  --ata-glass-shadow: none;
+}
+.settings-content-header[data-scrolled] .settings-content-header-glass {
+  visibility: visible;
+}
+.settings-content-header::after {
+  position: absolute;
+  inset: auto 0 0;
+  height: 1px;
+  background: var(--border);
+  opacity: 0;
+  transition: opacity 150ms ease-out;
+  content: '';
+}
+.settings-content-header[data-scrolled]::after {
+  opacity: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .settings-content-header::after {
+    transition: none;
+  }
+}
+.settings-content-header-bar {
+  position: relative;
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
+  gap: 4px;
+  height: 100%;
+  padding: 0 12px;
+}
+.settings-window[data-layout='drawer'] .settings-content-header-bar {
+  padding-left: var(--settings-traffic-lights-inset);
+}
+.settings-breadcrumb {
+  flex: 1;
+  min-width: 0;
+  margin-left: 4px;
+}
+.settings-breadcrumb ol {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-weight: 500;
+}
+.settings-breadcrumb li {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* The section yields to the sub-page, which is the page actually shown. */
+.settings-breadcrumb li:first-child:not(:last-child) {
+  flex-shrink: 1000;
+  color: var(--ata-text-secondary);
+}
+.settings-breadcrumb li > svg {
   flex-shrink: 0;
-  height: 40px;
-  padding: 0 40px;
+  width: 16px;
+  height: 16px;
+  color: var(--ata-text-secondary);
+}
+.settings-breadcrumb li > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.settings-language {
+  flex-shrink: 0;
+}
+/* Below 480px the language control keeps only its icon; its accessible name stays "Language". */
+.settings-window[data-layout='drawer'] .settings-language [data-slot='select-value'] {
+  display: none;
+}
+.settings-content-scroll-area {
+  flex: 1;
+}
+/* The scrollbar starts below the header rather than running under it. */
+.settings-content-scroll-area > [data-slot='scroll-area-scrollbar'][data-orientation='vertical'] {
+  height: calc(100% - var(--settings-titlebar-height));
+  margin-top: var(--settings-titlebar-height);
 }
 .settings-content-scroll {
   display: flex;
@@ -68,7 +266,10 @@
   min-height: 0;
   min-width: 0;
   flex-direction: column;
-  padding: 0 40px 32px;
+  padding: calc(var(--settings-titlebar-height) + 8px) 40px 32px;
+}
+.settings-window:not([data-layout='sidebar']) .settings-content-scroll {
+  padding: calc(var(--settings-titlebar-height) + 8px) 16px 16px;
 }
 .settings-page {
   flex-shrink: 0;
@@ -158,17 +359,12 @@
   margin-bottom: 16px;
 }
 /*
- * The drawer bar already names the section, so a page-level title below it reads as a duplicate.
- * It stays in the accessibility tree as the page's heading; only sub-pages show a visible title.
- * A title hint stays visible, so its note remains reachable.
+ * The header's breadcrumb already names the section, so a page-level title below it reads as a
+ * duplicate. It stays in the accessibility tree as the page's heading; only sub-pages show a
+ * visible title. A title hint stays visible, so its note remains reachable.
  */
-.settings-window[data-layout='drawer']
-  .settings-page-heading[data-section-title]
-  .editor-heading:not(:has(> :not(h2))),
-.settings-window[data-layout='drawer']
-  .settings-page-heading[data-section-title]
-  .editor-heading
-  > h2 {
+.settings-window .settings-page-heading[data-section-title] .editor-heading:not(:has(> :not(h2))),
+.settings-window .settings-page-heading[data-section-title] .editor-heading > h2 {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -179,14 +375,14 @@
   white-space: nowrap;
 }
 /* With the title hidden, a title hint follows the description on its line instead. */
-.settings-window[data-layout='drawer']
+.settings-window
   .settings-page-heading[data-section-title]
   .settings-section-heading:has(.editor-heading > :not(h2)) {
   flex-direction: row;
   align-items: center;
   gap: 4px;
 }
-.settings-window[data-layout='drawer']
+.settings-window
   .settings-page-heading[data-section-title]
   .settings-section-heading
   > .editor-heading {
@@ -771,95 +967,35 @@
   gap: 12px;
   white-space: nowrap;
 }
-.settings-mobile-bar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  min-height: 52px;
-  flex-shrink: 0;
-}
-/* The bar carries the page title in this layout, so it reads as a heading, not as body copy. */
-.settings-current-section {
-  flex: 1;
-  min-width: 0;
-  font-size: 16px;
-  font-weight: 600;
-  line-height: 24px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
+/* The drawer presents the sidebar card over the content: inset like the sidebar, on the same
+ * subdued glass. Its content clips, so the glass element has no overflow outside its bounds. */
 .settings-drawer[data-slot='sheet-content'] {
-  inset: 0 auto 0 0;
-  width: min(264px, calc(100vw - 56px));
+  inset: var(--settings-inset) auto var(--settings-inset) var(--settings-inset);
+  width: min(var(--settings-sidebar-width), calc(100vw - 56px));
   max-width: none;
-  height: 100%;
-  max-height: 100%;
+  height: auto;
+  max-height: none;
   border: 0;
-  border-radius: 0;
+  border-radius: var(--radius-2xl);
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 16px;
-  padding: 0 16px 16px;
-  /* The approved drawer material: the settings content tint under a stronger blur. */
-  --ata-glass-fill: var(--ata-surface-settings-content);
-  --ata-glass-blur: 40px;
-  box-shadow: none;
-  --tw-ring-shadow: 0 0 #0000;
+  gap: 8px;
+  padding: 0 8px 8px;
   overflow: hidden;
 }
-.settings-drawer-scroll {
-  flex: 1;
-  margin: -3px -15px -3px -3px;
-}
-.settings-drawer-scroll .settings-navigation {
-  padding: 3px;
-}
+/* The strip under the traffic lights, as in the sidebar card, with Close at its trailing end. */
 .settings-drawer-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   flex-shrink: 0;
-  height: 52px;
+  height: calc(var(--settings-titlebar-height) - var(--settings-inset));
 }
 .settings-drawer-overlay[data-slot='sheet-overlay'] {
-  left: min(264px, calc(100vw - 56px));
+  left: calc(var(--settings-inset) + min(var(--settings-sidebar-width), calc(100vw - 56px)));
   background: rgb(0 0 0 / 30%);
   backdrop-filter: none;
-}
-.settings-drawer .settings-nav-button[aria-current='page'] {
-  background: var(--ata-material-selected);
-}
-@media (max-width: 759px) {
-  .settings-window {
-    flex-direction: column;
-  }
-  .settings-sidebar {
-    flex: 0 0 auto;
-    padding: 12px 12px 8px;
-    gap: 8px;
-  }
-  .settings-window-controls {
-    height: 28px;
-  }
-  .settings-sidebar .settings-navigation {
-    flex-direction: row;
-    flex-wrap: wrap;
-  }
-  .settings-navigation .settings-nav-button {
-    flex: 1 0 auto;
-  }
-  .settings-content {
-    margin: 12px;
-  }
-  .settings-content-header {
-    padding: 0 16px;
-  }
-  .settings-content-scroll {
-    padding: 0 16px 16px;
-  }
 }
 /* Shell allowlist: a subsection of the Permissions page below the tier choice. */
 .settings-shell-allowlist {

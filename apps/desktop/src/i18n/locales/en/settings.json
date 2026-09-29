@@ -25,6 +25,11 @@
     "close": "Close",
     "closeLabel": "Close settings navigation"
   },
+  "search": {
+    "label": "Search settings",
+    "placeholder": "Search settings…",
+    "empty": "No matching settings"
+  },
   "providers": {
     "overview": {
       "title": "Providers",
@@ -53,8 +58,10 @@
       }
     }
   },
-  "heading": {
-    "back": "Back"
+  "header": {
+    "back": "Back",
+    "forward": "Forward",
+    "location": "Current location"
   },
   "permissions": {
     "title": "Permissions",

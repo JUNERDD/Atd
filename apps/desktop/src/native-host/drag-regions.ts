@@ -4,18 +4,19 @@ type Rect = PostParams<'window.dragRegions'>['rects'][number];
 
 /**
  * The surfaces that move the window: the panel header, the service-starting surface that stands
- * in for it, the settings window, and the window-level loading splash.
+ * in for it, the settings window's title bar strips (the sidebar strip under the traffic lights
+ * and the content header), and the window-level loading splash.
  */
 const DRAG_AREAS = [
   '.panel-header',
   '.service-starting',
-  '.settings-window',
+  '.settings-titlebar',
   '#root > .settings-loading',
 ].join(',');
 
 /**
  * What stays clickable inside a drag area: controls, and regions that are interactive as a whole
- * (the settings navigation and scrolling content, the panel footer).
+ * (the panel footer).
  */
 const NO_DRAG = [
   'button',
@@ -27,8 +28,6 @@ const NO_DRAG = [
   '[role="combobox"]',
   '[role="tab"]',
   '[contenteditable="true"]',
-  '.settings-navigation',
-  '.settings-content-scroll',
   '.panel-footer',
 ].join(',');
 

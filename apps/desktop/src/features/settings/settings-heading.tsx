@@ -1,7 +1,5 @@
 import type { ReactNode } from 'react';
-import { ArrowLeft } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
-import { IconButton } from '../../components/icon-button';
+import { useSettingsSubpage } from './settings-navigation';
 
 export function SettingsHeading({
   title,
@@ -16,27 +14,23 @@ export function SettingsHeading({
   titleHint?: ReactNode;
   description?: string;
   children?: ReactNode;
+  /**
+   * Marks a sub-page: the window's content header shows Back (running this) and adds the title to
+   * its breadcrumb, so the page itself carries no back button.
+   */
   onBack?: () => void;
+  /** Accessible name of the header's Back while this sub-page is shown. */
   backLabel?: string;
 }) {
-  const { t } = useTranslation('settings');
+  useSettingsSubpage(onBack ? { title, backLabel, onBack } : null);
   return (
     <header
       className={`settings-page-heading ${children ? 'settings-overview-heading' : ''}`}
-      /* A back button marks a sub-page; without one the title only repeats the section name. */
+      /* Without a back action the title only repeats the section name the breadcrumb shows. */
       data-section-title={onBack ? undefined : ''}
     >
       <div className="settings-section-heading">
         <div className="editor-heading">
-          {onBack && (
-            <IconButton
-              label={t('heading.back')}
-              aria-label={backLabel ?? t('heading.back')}
-              onClick={onBack}
-            >
-              <ArrowLeft />
-            </IconButton>
-          )}
           <h2 title={title}>{title}</h2>
           {titleHint}
         </div>

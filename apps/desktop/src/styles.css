@@ -49,7 +49,7 @@ body {
   gap: 8px;
   height: 49px;
   /* macOS paints the native traffic lights over the header's leading edge, so the logo and title
-     clear that zone; the settings window reserves the same 88px for its native controls. */
+     clear that zone. */
   padding: 8px 12px 8px 88px;
   border-bottom: 1px solid var(--border);
   user-select: none;
