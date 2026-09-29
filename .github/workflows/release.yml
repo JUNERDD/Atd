@@ -1,5 +1,14 @@
 name: Release
 
+# DISABLED: the Electron release is retired. The native macOS app (apps/macos, first version
+# 0.3.0) replaces it with its own release workflow, which lands with signing and auto-update
+# before a public release. Until then nothing publishes: the only trigger is `workflow_call` and
+# no workflow calls this one, so neither a version bump in apps/desktop/package.json nor a manual
+# run can start it. To run it again, restore the `push` trigger (branches: [main], paths:
+# [apps/desktop/package.json]) and `workflow_dispatch`.
+#
+# Former behavior, kept for the native release to follow:
+#
 # Bumping `version` in apps/desktop/package.json on main publishes a GitHub Release
 # `v<version>` with one dmg per Mac architecture. A signed build also publishes the update feed
 # electron-updater reads (apps/desktop/electron/updater.ts): one zip and zip blockmap per
@@ -8,10 +17,7 @@ name: Release
 # yet. A manual run releases the current version unless its tag exists: use it for a first
 # release without a bump, or to retry a release whose build failed.
 on:
-  push:
-    branches: [main]
-    paths: [apps/desktop/package.json]
-  workflow_dispatch:
+  workflow_call:
 
 permissions:
   contents: read
