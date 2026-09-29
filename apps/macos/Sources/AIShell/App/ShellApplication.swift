@@ -1,45 +1,32 @@
 import AppKit
 
 /// Entry point of the macOS shell: an agent (menu bar) app with the task panel, the settings
-/// window, the status item and global hot keys. `makeServices` supplies what lives outside
-/// AIShell (the relay, the service supervisor); it runs once the application has launched.
-/// `didStart` then receives the controller, whose ``ShellController/capabilityHandler`` the
-/// relay's control stream serves `capability.request` frames with.
+/// window, the status item and global hot keys, running against the renderer and service of
+/// this build configuration (``ShellServices/forThisBuild(environment:home:)``). The services
+/// are made once the application has launched.
 @MainActor
 public enum ShellApplication {
   public static func run(
-    makeServices: @escaping @MainActor () -> ShellServices,
-    didStart: @escaping @MainActor (ShellController) -> Void = { _ in }
+    makeServices: @escaping @MainActor () -> ShellServices = { .forThisBuild() }
   ) {
     SingleInstance.ensureOnlyInstance()
     let application = NSApplication.shared
-    let delegate = ShellAppDelegate(makeServices: makeServices, didStart: didStart)
+    let delegate = ShellAppDelegate(makeServices: makeServices)
     application.delegate = delegate
     // Info.plist sets LSUIElement, so no Dock icon flashes at launch.
     application.setActivationPolicy(.accessory)
     withExtendedLifetime(delegate) { application.run() }
-  }
-
-  /// Runs without a relay: every page request fails and the service reads as unavailable.
-  /// The App target uses this until integration supplies AIRelay.
-  public static func run() {
-    run { UnconnectedServices().services }
   }
 }
 
 @MainActor
 final class ShellAppDelegate: NSObject, NSApplicationDelegate {
   private let makeServices: @MainActor () -> ShellServices
-  private let didStart: @MainActor (ShellController) -> Void
   private var controller: ShellController?
   private var launchedAtLogin = false
 
-  init(
-    makeServices: @escaping @MainActor () -> ShellServices,
-    didStart: @escaping @MainActor (ShellController) -> Void
-  ) {
+  init(makeServices: @escaping @MainActor () -> ShellServices) {
     self.makeServices = makeServices
-    self.didStart = didStart
   }
 
   func applicationWillFinishLaunching(_ notification: Notification) {
@@ -53,7 +40,6 @@ final class ShellAppDelegate: NSObject, NSApplicationDelegate {
     SingleInstance.observeLaterLaunches { [weak controller] in controller?.summon(.toggle) }
     // Opened at login, the app waits in the menu bar instead of showing the panel.
     controller.start(revealPanel: !launchedAtLogin)
-    didStart(controller)
   }
 
   func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {

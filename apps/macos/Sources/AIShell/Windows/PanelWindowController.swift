@@ -119,11 +119,11 @@ final class PanelWindowController: NSObject, NSWindowDelegate {
   }
 
   func windowDidBecomeKey(_ notification: Notification) {
-    host.setState(ShellEventName.windowActive, .bool(true))
+    host.setState(.windowActive(.init(active: true)))
   }
 
   func windowDidResignKey(_ notification: Notification) {
-    host.setState(ShellEventName.windowActive, .bool(false))
+    host.setState(.windowActive(.init(active: false)))
   }
 
   /// A display change: a panel still docked follows its corner, a moved one stays inside.

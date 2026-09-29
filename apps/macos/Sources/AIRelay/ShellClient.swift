@@ -24,14 +24,25 @@ public struct ShellClient: Sendable {
 
   /// `POST /v1/resources/import { paths }`: the service reads each file under its attachable
   /// rules and stores it as a resource. Each path succeeds or fails on its own.
-  public func importResources(paths: [String]) async throws -> ResourceImportResult {
+  public func importResources(paths: [String]) async throws -> ResourceImportResponse {
     guard (1...10).contains(paths.count), paths.allSatisfy({ $0.hasPrefix("/") }) else {
       throw ShellClientError.invalidArgument("Import takes 1 to 10 absolute paths.")
     }
     let body = try JSONEncoder().encode(["paths": paths])
     let response = try await send(
       "POST", "/v1/resources/import", body: body, contentType: "application/json")
-    return try JSONDecoder().decode(ResourceImportResult.self, from: response.data)
+    return try JSONDecoder().decode(ResourceImportResponse.self, from: response.data)
+  }
+
+  /// `GET /v1/resources/:id`: a stored resource's bytes, with the name its
+  /// `Content-Disposition` carries and its type.
+  public func resource(id: String) async throws -> ServiceResource {
+    guard !id.isEmpty else { throw ShellClientError.invalidArgument("The resource id is empty.") }
+    let response = try await send("GET", "/v1/resources/\(RelayPath.encodeSegment(id))")
+    return ServiceResource(
+      bytes: response.data,
+      name: ArtifactFileName.fromDisposition(response.headers["Content-Disposition"]),
+      mime: response.headers["Content-Type"] ?? RendererMIMEType.fallback)
   }
 
   /// Downloads a resource the agent produced into `directory` as `<id>-<name>` and returns
@@ -40,17 +51,14 @@ public struct ShellClient: Sendable {
   public func downloadArtifact(
     id: String, into directory: URL
   ) async throws -> DownloadedArtifact {
-    guard !id.isEmpty else { throw ShellClientError.invalidArgument("The artifact id is empty.") }
-    let response = try await send("GET", "/v1/resources/\(RelayPath.encodeSegment(id))")
-    let name = ArtifactFileName.fromDisposition(response.headers["Content-Disposition"])
+    let resource = try await resource(id: id)
     let file = directory.appending(
-      path: ArtifactFileName.downloadName(artifactId: id, name: name), directoryHint: .notDirectory)
+      path: ArtifactFileName.downloadName(artifactId: id, name: resource.name),
+      directoryHint: .notDirectory)
     try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-    try response.data.write(to: file, options: .atomic)
+    try resource.bytes.write(to: file, options: .atomic)
     return DownloadedArtifact(
-      fileURL: file, name: name,
-      mime: response.headers["Content-Type"] ?? RendererMIMEType.fallback,
-      size: response.data.count)
+      fileURL: file, name: resource.name, mime: resource.mime, size: resource.bytes.count)
   }
 
   /// `POST /v1/admin/shutdown`: the service answers, then drains and exits. Bounded, since quit
@@ -96,11 +104,20 @@ public struct ShellClient: Sendable {
   }
 }
 
-public enum ShellClientError: Error, Equatable, Sendable {
+public enum ShellClientError: LocalizedError, Equatable, Sendable {
   /// The service answered with an error status and, usually, its error envelope.
   case http(status: Int, code: String?, message: String?)
   case invalidResponse
   case invalidArgument(String)
+
+  /// The service's own message where it gave one; it reaches the page or the agent as is.
+  public var errorDescription: String? {
+    switch self {
+    case .http(let status, _, let message): message ?? "The agent service answered \(status)."
+    case .invalidResponse: "The agent service sent an invalid response."
+    case .invalidArgument(let message): message
+    }
+  }
 }
 
 /// The fields of `StatusResponseSchema` the shell uses.
@@ -117,30 +134,11 @@ public struct ServiceStatus: Decodable, Equatable, Sendable {
   public let pendingCapabilities: Int
 }
 
-/// `ResourceRefSchema`.
-public struct ResourceRef: Codable, Equatable, Sendable {
-  public let id: String
+/// A stored resource's content.
+public struct ServiceResource: Equatable, Sendable {
+  public let bytes: Data
   public let name: String
-  public let size: Int
   public let mime: String
-  public let taskId: String?
-  public let createdAt: String
-}
-
-/// `ResourceImportResponseSchema`.
-public struct ResourceImportResult: Codable, Equatable, Sendable {
-  public struct Imported: Codable, Equatable, Sendable {
-    public let path: String
-    public let resource: ResourceRef
-  }
-  public struct Failure: Codable, Equatable, Sendable {
-    public let path: String
-    /// `unreadable`, `unsupported` or `tooLarge`.
-    public let reason: String
-    public let message: String
-  }
-  public let imported: [Imported]
-  public let failures: [Failure]
 }
 
 public struct DownloadedArtifact: Equatable, Sendable {

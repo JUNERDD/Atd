@@ -1,15 +1,3 @@
-/// One entry of the registration set the page pushes: the panel toggle and every enabled
-/// command shortcut, by the page's own ids.
-public struct HotKeyRequest: Codable, Equatable, Sendable {
-  public let id: String
-  public let accelerator: String
-
-  public init(id: String, accelerator: String) {
-    self.id = id
-    self.accelerator = accelerator
-  }
-}
-
 /// Why an entry is not registered.
 public enum HotKeyFailure: Equatable, Sendable {
   case invalidAccelerator(AcceleratorError)
@@ -20,6 +8,13 @@ public enum HotKeyFailure: Equatable, Sendable {
   case sameCombination(asId: String)
   /// `RegisterEventHotKey` refused it with this `OSStatus`.
   case registrationFailed(status: Int32)
+
+  /// How the page words it: only an accelerator Swift cannot express is `invalid`; the other
+  /// failures mean another holder has the combination.
+  public var reason: ShortcutResult.NotRegistered.Reason {
+    if case .invalidAccelerator = self { return .invalid }
+    return .unavailable
+  }
 }
 
 extension HotKeyCombination {
@@ -74,7 +69,7 @@ public struct HotKeyPlan: Equatable, Sendable {
 /// its first entry.
 public enum HotKeyPlanner {
   public static func plan(
-    desired: [HotKeyRequest],
+    desired: [ShortcutRegistration],
     registered: [String: HotKeyCombination],
     reserved: [ReservedHotKey]
   ) -> HotKeyPlan {

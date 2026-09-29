@@ -7,13 +7,14 @@ public enum RendererOrigin {
   public static let scheme = "ai-app"
   public static let host = "renderer"
 
-  /// The page each window loads; the settings window adds its fragment.
+  /// The page each window loads; the settings window adds its fragment, which must already be
+  /// percent-encoded (`settings?commandId=…`).
   public static func pageURL(fragment: String? = nil) -> URL {
     var components = URLComponents()
     components.scheme = scheme
     components.host = host
     components.path = "/"
-    components.fragment = fragment
+    components.percentEncodedFragment = fragment
     return components.url!
   }
 
@@ -38,7 +39,7 @@ public enum RendererOrigin {
   }
 }
 
-/// Links the page may hand to the system browser (`openLink`): http and https only, checked
+/// Links the page may hand to the system browser (`link.open`): http and https only, checked
 /// again in the shell whatever the page validated.
 public enum ExternalLink {
   public static func openable(_ value: String) -> URL? {

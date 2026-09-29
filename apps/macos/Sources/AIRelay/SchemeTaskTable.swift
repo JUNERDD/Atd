@@ -57,6 +57,13 @@ final class SchemeResponder {
         url: url, statusCode: status, httpVersion: "HTTP/1.1", headerFields: headers)
     else { return }
     responded = true
+    #if DEBUG
+      // Runtime verification: which renderer and `/v1` requests the scheme handler answered.
+      let method = task.request.httpMethod ?? "GET"
+      let path = url.path(percentEncoded: true)
+      RelayLog.relay.info(
+        "ai-app \(method, privacy: .public) \(path, privacy: .public) → \(status)")
+    #endif
     task.didReceive(response)
   }
 

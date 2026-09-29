@@ -90,31 +90,3 @@ extension JSONValue {
     return members[key]
   }
 }
-
-/// Where the shell writes a downloaded artifact (apps/desktop/electron/agent/artifacts.ts).
-public enum ArtifactFiles {
-  public static let maxNameLength = 200
-
-  /// `<artifactId>-<safe name>`: path separators and reserved characters become `_`, the name
-  /// is cut to 200 UTF-16 units without splitting a character, and an empty one falls back.
-  public static func fileName(artifactId: String, name: String) -> String {
-    let reserved = Set("/\\?%*:|\"<>")
-    var safe = ""
-    var length = 0
-    for character in name.map({ reserved.contains($0) ? "_" : $0 }) {
-      length += character.utf16.count
-      guard length <= maxNameLength else { break }
-      safe.append(character)
-    }
-    return "\(artifactId)-\(safe.isEmpty ? "download.bin" : safe)"
-  }
-}
-
-/// The artifact operations of the bridge (`{ artifactId, operation }`).
-public enum ArtifactOperation: String, Codable, CaseIterable, Sendable {
-  case open
-  case reveal
-  case locate
-  case copy
-  case attach
-}

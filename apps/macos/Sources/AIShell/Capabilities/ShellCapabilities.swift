@@ -1,140 +1,117 @@
 import AICore
+import AIRelay
 import AppKit
 import UniformTypeIdentifiers
 
-/// The five desktop capabilities the service may ask the shell for. The relay's control stream
-/// decodes `capability.request`, calls ``handle(_:)`` and sends the result; integration adapts
-/// its own protocol to this one.
-@MainActor
-public protocol CapabilityHandling: AnyObject, Sendable {
-  func pickFiles(_ request: CapabilityRequest) async -> CapabilityResult
-  func saveFile(_ request: CapabilityRequest) async -> CapabilityResult
-  func readSelection(_ request: CapabilityRequest) async -> CapabilityResult
-  func readClipboard(_ request: CapabilityRequest) async -> CapabilityResult
-  func writeClipboard(_ request: CapabilityRequest) async -> CapabilityResult
-}
-
-extension CapabilityHandling {
-  public func handle(_ request: CapabilityRequest) async -> CapabilityResult {
-    switch request.capability {
-    case .filePick: await pickFiles(request)
-    case .fileSave: await saveFile(request)
-    case .selectionRead: await readSelection(request)
-    case .clipboardRead: await readClipboard(request)
-    case .clipboardWrite: await writeClipboard(request)
-    }
-  }
-}
-
-/// The shell's capability handlers, with the semantics of
+/// The shell's answers to the service's desktop capability requests, which the control stream
+/// (``ControlStreamClient``) receives, with the semantics of
 /// apps/desktop/electron/service/capabilities.ts and file-save.ts. Reads that could take text
-/// from the user's apps (selection, clipboard) answer only while the panel is visible.
+/// from the user's apps (selection, clipboard) answer only while the panel is visible. A thrown
+/// ``CapabilityFailure`` is the message the agent sees.
 @MainActor
 final class ShellCapabilities: CapabilityHandling {
-  private let resources: any ResourceImporting
+  private let services: ShellServices
   private let panelVisible: () -> Bool
   private let systemPanels: SystemPanels
 
   init(
-    resources: any ResourceImporting, panelVisible: @escaping () -> Bool,
-    systemPanels: SystemPanels
+    services: ShellServices, panelVisible: @escaping () -> Bool, systemPanels: SystemPanels
   ) {
-    self.resources = resources
+    self.services = services
     self.panelVisible = panelVisible
     self.systemPanels = systemPanels
   }
 
-  /// Text files the user picks, imported by path. The value keeps the Electron shape:
-  /// `{ files: [{ resourceId, name, size, mime }] }`.
-  func pickFiles(_ request: CapabilityRequest) async -> CapabilityResult {
-    guard let urls = await systemPanels.chooseAttachments(), !urls.isEmpty else {
-      return .failure(request, error: "No file was selected.")
-    }
-    guard urls.count <= AttachmentRules.maxPathsPerImport else {
-      return .failure(request, error: "Attach at most \(AttachmentRules.maxPathsPerImport) files.")
-    }
-    do {
-      let response = try await resources.importResources(
-        paths: urls.map { $0.path(percentEncoded: false) })
-      if let failure = response.failures.first {
-        return .failure(request, error: failure.message)
-      }
-      let files: [JSONValue] = response.imported.map { imported in
-        .object([
-          "resourceId": .string(imported.resource.id), "name": .string(imported.resource.name),
-          "size": .number(Double(imported.resource.size)), "mime": .string(imported.resource.mime),
-        ])
-      }
-      return .success(request, value: .object(["files": .array(files)]))
-    } catch {
-      return .failure(request, error: Self.message(error, "The file picker could not complete."))
+  func handle(_ request: CapabilityRequest) async throws -> JSONValue {
+    switch request.capability {
+    case .filePick: try await pickFiles()
+    case .fileSave: try await saveFile(request.input)
+    case .selectionRead: try await readSelection()
+    case .clipboardRead: try readClipboard()
+    case .clipboardWrite: try writeClipboard(request.input)
     }
   }
 
-  func saveFile(_ request: CapabilityRequest) async -> CapabilityResult {
-    let input: CapabilityInputs.FileSave
-    switch CapabilityInputs.fileSave(request.input) {
-    case .success(let value): input = value
-    case .failure(let error): return .failure(request, error: error.message)
+  /// Text files the user picks, imported by path. The value keeps the Electron shape:
+  /// `{ files: [{ resourceId, name, size, mime }] }`.
+  private func pickFiles() async throws -> JSONValue {
+    guard let urls = await systemPanels.chooseAttachments(), !urls.isEmpty else {
+      throw CapabilityFailure("No file was selected.")
     }
-    guard let url = await systemPanels.chooseSaveLocation(suggestedName: input.suggestedName)
-    else { return .failure(request, error: "The save was cancelled.") }
+    guard urls.count <= AttachmentRules.maxPathsPerImport else {
+      throw CapabilityFailure("Attach at most \(AttachmentRules.maxPathsPerImport) files.")
+    }
+    let response = try await services.client().importResources(
+      paths: urls.map { $0.path(percentEncoded: false) })
+    if let failure = response.failures.first { throw CapabilityFailure(failure.message) }
+    let files: [JSONValue] = response.imported.map { imported in
+      .object([
+        "resourceId": .string(imported.resource.id), "name": .string(imported.resource.name),
+        "size": .number(Double(imported.resource.size)), "mime": .string(imported.resource.mime),
+      ])
+    }
+    return .object(["files": .array(files)])
+  }
+
+  private func saveFile(_ input: JSONValue) async throws -> JSONValue {
+    let file: CapabilityInputs.FileSave
+    switch CapabilityInputs.fileSave(input) {
+    case .success(let value): file = value
+    case .failure(let error): throw CapabilityFailure(error.message)
+    }
+    guard let url = await systemPanels.chooseSaveLocation(suggestedName: file.suggestedName)
+    else { throw CapabilityFailure("The save was cancelled.") }
     do {
-      try input.bytes.write(to: url, options: .atomic)
-      return .success(
-        request,
-        value: CapabilityInputs.fileSaved(name: url.lastPathComponent, size: input.bytes.count))
+      try file.bytes.write(to: url, options: .atomic)
     } catch {
-      return .failure(request, error: "The file could not be saved.")
+      throw CapabilityFailure("The file could not be saved.")
     }
+    return CapabilityInputs.fileSaved(name: url.lastPathComponent, size: file.bytes.count)
   }
 
   /// A live read, not the summon stash.
-  func readSelection(_ request: CapabilityRequest) async -> CapabilityResult {
+  private func readSelection() async throws -> JSONValue {
     let visible = panelVisible()
     let trusted = SelectionReader.isTrusted
     let text =
       visible && trusted
       ? await SelectionReader.readBounded(
         frontmostPID: NSWorkspace.shared.frontmostApplication?.processIdentifier) : nil
-    return Self.result(
-      request, TextCapture.liveSelection(text, at: .now, panelVisible: visible, readable: trusted))
+    return try Self.value(
+      TextCapture.liveSelection(text, at: .now, panelVisible: visible, readable: trusted))
   }
 
-  func readClipboard(_ request: CapabilityRequest) async -> CapabilityResult {
+  private func readClipboard() throws -> JSONValue {
     let visible = panelVisible()
     let text = visible ? NSPasteboard.general.string(forType: .string) : nil
-    return Self.result(request, TextCapture.clipboard(text, at: .now, panelVisible: visible))
+    return try Self.value(TextCapture.clipboard(text, at: .now, panelVisible: visible))
   }
 
-  func writeClipboard(_ request: CapabilityRequest) async -> CapabilityResult {
-    switch CapabilityInputs.clipboardWrite(request.input) {
+  private func writeClipboard(_ input: JSONValue) throws -> JSONValue {
+    switch CapabilityInputs.clipboardWrite(input) {
     case .success(let text):
       NSPasteboard.general.clearContents()
       NSPasteboard.general.setString(text, forType: .string)
-      return .success(request, value: .object(["ok": .bool(true)]))
+      return .object(["ok": .bool(true)])
     case .failure(let error):
-      return .failure(request, error: error.message)
+      throw CapabilityFailure(error.message)
     }
   }
 
-  private static func result(
-    _ request: CapabilityRequest, _ capture: Result<CapturedText, CaptureFailure>
-  ) -> CapabilityResult {
+  private static func value(_ capture: Result<CapturedText, CaptureFailure>) throws -> JSONValue {
     switch capture {
     case .success(let captured):
-      .success(
-        request,
-        value: .object(["text": .string(captured.text), "capturedAt": .string(captured.capturedAt)])
-      )
+      .object(["text": .string(captured.text), "capturedAt": .string(captured.capturedAt)])
     case .failure(let failure):
-      .failure(request, error: failure.message)
+      throw CapabilityFailure(failure.message)
     }
   }
+}
 
-  static func message(_ error: any Error, _ fallback: String) -> String {
-    (error as? LocalizedError)?.errorDescription ?? fallback
-  }
+/// A capability request the shell refuses; the message goes to the agent as is.
+struct CapabilityFailure: LocalizedError {
+  let errorDescription: String?
+  init(_ message: String) { errorDescription = message }
 }
 
 /// Open and save panels. While one is open the panel floats no higher than normal windows

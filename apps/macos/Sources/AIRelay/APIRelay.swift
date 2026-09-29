@@ -53,6 +53,12 @@ final class APIRelay {
     upstream.httpBody = request.body
     upstream.allHTTPHeaderFields = RelayHeaders.forwardRequest(
       request.headers, token: endpoint.token, epoch: matcher.epoch)
+    #if DEBUG
+      // Runtime verification: what the relay forwarded, and under which manifest epoch.
+      RelayLog.relay.info(
+        "forward \(request.method, privacy: .public) \(request.path.encoded, privacy: .public) epoch \(matcher.epoch)"
+      )
+    #endif
 
     let exchange = UpstreamExchange(
       onResponse: { response in

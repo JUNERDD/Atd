@@ -1,93 +1,72 @@
 import AICore
 import Foundation
+import OSLog
 import WebKit
 
-/// The page's side of the bridge: `window.webkit.messageHandlers.aiShell.postMessage({ method,
-/// params })` returns a promise of the reply. Only the main frame of `ai-app://renderer` is
-/// heard, and only from the web view the host currently shows; everything else is refused
-/// before any parsing.
+/// The page's end of the bridge: `window.webkit.messageHandlers.aiNative.postMessage(message)`.
+/// Only the main frame of `ai-app://renderer` is heard, and only from the web view its host
+/// currently shows; everything else is refused before any parsing. A message is decoded and
+/// checked against the contract (``JsMessage``) and handed to the one dispatcher,
+/// ``ShellBridge``. A call that fails the check is answered with an `error` for its id, so the
+/// page's promise does not wait forever; anything else malformed is dropped and logged.
 @MainActor
-final class BridgeMessageHandler: NSObject, WKScriptMessageHandlerWithReply {
-  static let name = "aiShell"
-
-  /// Bridge plumbing the host serves itself, below any contract: the page is ready for
-  /// events, and its drag rectangles changed.
-  enum HostMethod: String {
-    case ready = "shell.ready"
-    case dragRegions = "shell.dragRegions"
-  }
-
+final class BridgeMessageHandler: NSObject, WKScriptMessageHandler {
   /// Set once the host exists; the content controller retains the handler, not the host.
   weak var host: WebViewHost?
-  private let router: any BridgeRouting
+  private let bridge: ShellBridge
+  private static let log = Logger(subsystem: "com.junerdd.ai", category: "bridge")
 
-  init(router: any BridgeRouting) {
-    self.router = router
+  init(bridge: ShellBridge) {
+    self.bridge = bridge
   }
 
   func userContentController(
     _ userContentController: WKUserContentController, didReceive message: WKScriptMessage
-  ) async -> (Any?, String?) {
+  ) {
     let origin = message.frameInfo.securityOrigin
     guard
       RendererOrigin.isTrustedSender(
         scheme: origin.protocol, host: origin.host, port: origin.port,
         isMainFrame: message.frameInfo.isMainFrame),
       let host, message.webView === host.webView
-    else { return (nil, "Untrusted bridge sender.") }
-    guard let body = JSONValue(foundation: message.body), let method = body.string("method")
-    else { return (nil, "A bridge call needs a method.") }
-    let params = body["params"] ?? .null
-    switch HostMethod(rawValue: method) {
-    case .ready:
-      host.pageDidBecomeReady()
-      return (NSNull(), nil)
-    case .dragRegions:
-      host.setDragRegions(params)
-      return (NSNull(), nil)
-    case nil:
-      do throws(BridgeError) {
-        let reply = try await router.route(
-          BridgeCall(method: method, params: params, role: host.role))
-        return (reply.foundationObject, nil)
-      } catch {
-        return (nil, error.message)
-      }
-    }
-  }
-}
-
-extension JSONValue {
-  /// A value WebKit handed over (property-list types from `postMessage`); nil when it is not
-  /// JSON (a Date, for example).
-  init?(foundation value: Any) {
-    guard JSONSerialization.isValidJSONObject([value]),
-      let data = try? JSONSerialization.data(withJSONObject: [value]),
-      let array = try? JSONDecoder().decode([JSONValue].self, from: data),
-      let first = array.first
-    else { return nil }
-    self = first
-  }
-
-  /// The value as WebKit replies to `postMessage` (Foundation objects, `NSNull` for null).
-  var foundationObject: Any {
-    switch self {
-    case .null: NSNull()
-    case .bool(let value): value
-    case .number(let value): value
-    case .string(let value): value
-    case .array(let values): values.map(\.foundationObject)
-    case .object(let members): members.mapValues(\.foundationObject)
+    else { return Self.log.error("Refused a bridge message from an untrusted sender.") }
+    guard JSONSerialization.isValidJSONObject(message.body),
+      let data = try? JSONSerialization.data(withJSONObject: message.body)
+    else { return Self.log.error("Dropped a bridge message that is not a JSON object.") }
+    do {
+      bridge.receive(try JSONDecoder().decode(JsMessage.self, from: data), from: host)
+    } catch {
+      let reason = Self.describe(error)
+      Self.log.error("Refused a bridge message: \(reason, privacy: .public)")
+      guard let call = try? JSONDecoder().decode(CallHead.self, from: data), call.type == "call"
+      else { return }
+      host.reply(
+        .error(id: call.id, message: "The app refused \(call.method): \(reason)"),
+        document: host.document)
     }
   }
 
-  /// Encodes an `Encodable` value into a JSON value.
-  init(encoding value: some Encodable) throws {
-    let data = try JSONEncoder().encode(value)
-    self = try JSONDecoder().decode(JSONValue.self, from: data)
+  /// Enough of a refused call to answer it.
+  private struct CallHead: Decodable {
+    let type: String
+    let id: Int
+    let method: String
   }
 
-  func decode<T: Decodable>(_ type: T.Type) throws -> T {
-    try JSONDecoder().decode(type, from: JSONEncoder().encode(self))
+  /// `params.url must match ^https?://.`: the member path and the broken rule.
+  private static func describe(_ error: any Error) -> String {
+    let path: [any CodingKey]
+    let detail: String
+    switch error as? DecodingError {
+    case .dataCorrupted(let context), .typeMismatch(_, let context),
+      .valueNotFound(_, let context):
+      (path, detail) = (context.codingPath, context.debugDescription)
+    case .keyNotFound(let key, let context):
+      (path, detail) = (context.codingPath + [key], "is required.")
+    default:
+      return "invalid message."
+    }
+    let members = path.map(\.stringValue).filter { !$0.isEmpty }.joined(separator: ".")
+    return String((members.isEmpty ? detail : "\(members): \(detail)").prefix(500))
   }
 }

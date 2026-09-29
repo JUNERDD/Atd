@@ -11,9 +11,9 @@ struct SummonTests {
     SummonContext(panelIsKey: key, filePanelOpen: filePanel, selectionWanted: wanted)
   }
 
-  @Test("The panel toggle id cannot collide with a command id")
+  @Test("The contract's reserved id toggles the panel; any other id is a command")
   func triggerFromID() {
-    #expect(SummonTrigger(hotKeyID: "panel.toggle") == .toggle)
+    #expect(SummonTrigger(hotKeyID: "togglePanel") == .toggle)
     #expect(SummonTrigger(hotKeyID: "panel") == .command(id: "panel"))
   }
 

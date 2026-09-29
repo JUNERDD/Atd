@@ -1,89 +1,110 @@
 import AICore
-import Foundation
+import AppKit
 
-/// The shell's own bridge methods, with every other method handed to the router integration
-/// supplies. Method names and payloads are provisional until the TypeBox bridge contract
-/// (plan P3) lands; integration renames them here. Payloads are validated at this boundary.
+/// A call the shell refused or could not complete; the page's call rejects with the message.
+struct BridgeError: Error, Equatable {
+  let message: String
+  init(_ message: String) { self.message = message }
+}
+
+/// The one dispatcher of the bridge contract (`contract.ts`): every message a page posts comes
+/// here already decoded and checked (``JsMessage``). Posts act at once; a call's answer leaves
+/// through the posting page's outbox as a document-scoped `result` or `error`, in order with
+/// everything else the shell delivers.
 @MainActor
-final class ShellBridge: BridgeRouting {
+final class ShellBridge {
   weak var shell: ShellController?
-  private let fallback: any BridgeRouting
 
-  init(fallback: any BridgeRouting) {
-    self.fallback = fallback
+  func receive(_ message: JsMessage, from host: WebViewHost) {
+    switch message {
+    case .post(let post):
+      receive(post, from: host)
+    case .call(let id, let call):
+      let document = host.document
+      Task { @MainActor in
+        let reply: SwiftMessage
+        do throws(BridgeError) {
+          reply = .result(id: id, value: try await handle(call))
+        } catch {
+          reply = .error(id: id, message: String(error.message.prefix(2000)))
+        }
+        host.reply(reply, document: document)
+      }
+    }
   }
 
-  func route(_ call: BridgeCall) async throws(BridgeError) -> JSONValue {
-    guard let shell else { throw BridgeError("The shell is shutting down.") }
-    let params = call.params
-    switch call.method {
-    case "window.show":
+  private func receive(_ post: NativePost, from host: WebViewHost) {
+    switch post {
+    case .bridgeReady: host.pageDidBecomeReady()
+    case .languageSet(let post): ShellStrings.shared.apply(appLanguage: post.language.rawValue)
+    case .windowDragRegions(let post): host.setDragRegions(post.rects)
+    case .socketOpen(let post): host.pipe?.open(post)
+    case .socketSend(let post): host.pipe?.send(post)
+    case .socketClose(let post): host.pipe?.close(post)
+    }
+  }
+
+  private func handle(_ call: NativeCall) async throws(BridgeError)
+    -> JSONValue
+  {
+    guard let shell else { throw BridgeError("The app is shutting down.") }
+    switch call {
+    case .windowShow:
       shell.showPanel()
-    case "window.hide":
+      return try Self.encode(NativeEmpty())
+    case .windowHide:
       shell.hidePanel()
-    case "window.setPinned":
-      shell.setPinned(try Self.bool(params, "pinned"))
-    case "window.preferences":
-      return shell.windowPreferences()
-    case "app.setShowInDock":
-      shell.setShowInDock(try Self.bool(params, "show"))
-    case "app.setOpenAtLogin":
+      return try Self.encode(NativeEmpty())
+    case .windowSetPinned(let params):
+      shell.setPinned(params.pinned)
+      return try Self.encode(WindowSetPinnedResult(pinned: params.pinned))
+    case .appState:
+      return try Self.encode(shell.appState())
+    case .appSetShowInDock(let params):
+      shell.setShowInDock(params.show)
+      return try Self.encode(AppSetShowInDockResult(show: params.show))
+    case .appSetOpenAtLogin(let params):
       do {
-        let applied = try AppPresence.setOpensAtLogin(try Self.bool(params, "enabled"))
-        return .object(["openAtLogin": .bool(applied)])
+        let applied = try AppPresence.setOpensAtLogin(params.open)
+        return try Self.encode(AppSetOpenAtLoginResult(open: applied))
       } catch let error as BridgeError {
         throw error
       } catch {
-        throw BridgeError(ShellCapabilities.message(error, "The login item could not change."))
+        throw BridgeError(Self.message(error, "The login item could not change."))
       }
-    case "settings.open":
-      shell.openSettings(fragment: params.string("fragment"))
-    case "shortcuts.apply":
+    case .settingsOpen(let params):
+      shell.openSettings(commandId: params.commandId)
+      return try Self.encode(NativeEmpty())
+    case .settingsClose:
+      shell.closeSettings()
+      return try Self.encode(NativeEmpty())
+    case .shortcutsSet(let params):
+      let results = shell.applyShortcuts(
+        params.registrations, selectionWanted: params.selectionWanted)
+      return try Self.encode(ShortcutsSetResult(results: results))
+    case .capture:
+      return try Self.encode(shell.captureSelection())
+    case .clipboardRead:
+      let text = NSPasteboard.general.string(forType: .string) ?? ""
+      return try Self.encode(ClipboardReadResult(text: text))
+    case .clipboardWrite(let params):
+      NSPasteboard.general.clearContents()
+      NSPasteboard.general.setString(params.text, forType: .string)
+      return try Self.encode(NativeEmpty())
+    case .linkOpen(let params):
+      guard let url = ExternalLink.openable(params.url) else {
+        throw BridgeError("Only web links can be opened.")
+      }
+      NSWorkspace.shared.open(url)
+      return try Self.encode(NativeEmpty())
+    case .artifact(let params):
       return try Self.encode(
-        shell.applyHotKeys(try Self.decode([HotKeyRequest].self, params["items"])))
-    case "selection.setWanted":
-      shell.setSelectionWanted(try Self.bool(params, "wanted"))
-    case "capture":
-      return try Self.encode(shell.capture(try Self.string(params, "source")))
-    case "language.set":
-      guard shell.setLanguage(try Self.string(params, "language")) else {
-        throw BridgeError("Unsupported language.")
-      }
-    case "attachments.pick":
-      Task { await shell.attachments.pick() }
-    case "artifact":
-      let id = try Self.string(params, "artifactId")
-      guard let operation = ArtifactOperation(rawValue: try Self.string(params, "operation")) else {
-        throw BridgeError("Unsupported artifact operation.")
-      }
-      return try await shell.artifacts.perform(artifactId: id, operation: operation)
-    case "openLink":
-      try shell.openLink(try Self.string(params, "url"))
-    case "clipboard.write":
-      shell.copy(try Self.string(params, "text"))
-    default:
-      return try await fallback.route(call)
-    }
-    return .null
-  }
-
-  private static func bool(_ params: JSONValue, _ key: String) throws(BridgeError) -> Bool {
-    guard let value = params.bool(key) else { throw BridgeError("\(key) must be a boolean.") }
-    return value
-  }
-
-  private static func string(_ params: JSONValue, _ key: String) throws(BridgeError) -> String {
-    guard let value = params.string(key) else { throw BridgeError("\(key) must be a string.") }
-    return value
-  }
-
-  private static func decode<T: Decodable>(_ type: T.Type, _ value: JSONValue?)
-    throws(BridgeError) -> T
-  {
-    do {
-      return try (value ?? .null).decode(type)
-    } catch {
-      throw BridgeError("Invalid bridge payload.")
+        await shell.artifacts.perform(artifactId: params.artifactId, operation: params.operation))
+    case .filesPick:
+      return try Self.encode(FilesPickResult(resources: await shell.attachments.pick()))
+    case .filesSave(let params):
+      let saved = try await shell.attachments.save(resourceId: params.resourceId, name: params.name)
+      return try Self.encode(FilesSaveResult(saved: saved))
     }
   }
 
@@ -93,5 +114,9 @@ final class ShellBridge: BridgeRouting {
     } catch {
       throw BridgeError("The reply could not be encoded.")
     }
+  }
+
+  static func message(_ error: any Error, _ fallback: String) -> String {
+    (error as? LocalizedError)?.errorDescription ?? fallback
   }
 }

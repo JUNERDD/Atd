@@ -64,6 +64,8 @@ public enum ShellStringKey: String, CaseIterable, Sendable {
   case errorRestartServiceMessage = "error.restartService.message"
   case errorShowLogsTitle = "error.showLogs.title"
   case errorShowLogsMessage = "error.showLogs.message"
+  case errorDevelopmentRestart = "error.developmentRestart"
+  case errorDevelopmentLogs = "error.developmentLogs"
 
   case quitTitle = "quit.title"
   case quitMessageOne = "quit.message.one"

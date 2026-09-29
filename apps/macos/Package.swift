@@ -15,10 +15,11 @@ let package = Package(
     // accelerator conversion and supervisor timing. No AppKit or WebKit, so all of it is
     // unit-testable.
     .target(name: "AICore"),
-    // AppKit/WebKit integration that applies the AICore policy.
-    .target(name: "AIShell", dependencies: ["AICore"]),
+    // The app: windows, menus, hot keys and native capabilities, composed with the relay and
+    // the service (Debug connects to `pnpm dev`, Release supervises the bundled service).
+    .target(name: "AIShell", dependencies: ["AICore", "AIRelay"]),
     // The renderer relay, virtual socket pipe, control stream and service access: Foundation,
-    // WebKit and AICore, no AppKit windows. AIShell and the app wire it to their web views.
+    // WebKit and AICore, no AppKit windows. AIShell wires it to its web views.
     .target(name: "AIRelay", dependencies: ["AICore"]),
     .testTarget(name: "AICoreTests", dependencies: ["AICore"]),
     // Runs a real WKWebView against a local stub service; see RelayIntegrationTests.

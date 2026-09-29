@@ -1,17 +1,23 @@
 import AICore
+import AIRelay
 import AppKit
 import OSLog
 import WebKit
 
 /// Owns one window's renderer web view: builds it (shared by the panel and the settings
-/// window), locks its navigation down, rebuilds it after a WebContent crash, and delivers
-/// shell events through a ``ShellEventOutbox`` once the page says it is ready.
+/// window), locks its navigation down (R6), rebuilds it after a WebContent crash, and runs its
+/// end of the bridge: the page's virtual sockets and the one delivery path for everything the
+/// shell sends it (``BridgeOutbox``, spike S6).
 @MainActor
 final class WebViewHost: NSObject {
   let role: WebViewRole
   /// The view windows embed; the web view fills it and is swapped inside it on a rebuild.
   let container = NSView()
   private(set) var webView: ShellWebView
+  /// The current page's stream connections; replaced with the web view.
+  private(set) var pipe: VirtualSocketPipe?
+  /// Counts committed documents, so a call's answer never reaches a later page.
+  private(set) var document = 0
 
   /// Receives dropped and pasted file URLs; the panel imports them as attachments.
   var onFiles: ((_ files: [URL], _ source: String) -> Void)? {
@@ -19,24 +25,21 @@ final class WebViewHost: NSObject {
   }
 
   private let fragment: String?
-  private let webContent: any WebContentProviding
-  private let router: any BridgeRouting
-  private var outbox = ShellEventOutbox()
+  private let services: ShellServices
+  private let bridge: ShellBridge
+  private var outbox = BridgeOutbox()
   private var crashes: [ContinuousClock.Instant] = []
   private static let log = Logger(subsystem: "com.junerdd.ai", category: "web")
 
-  init(
-    role: WebViewRole, fragment: String?, webContent: any WebContentProviding,
-    router: any BridgeRouting
-  ) {
+  init(role: WebViewRole, fragment: String?, services: ShellServices, bridge: ShellBridge) {
     self.role = role
     self.fragment = fragment
-    self.webContent = webContent
-    self.router = router
-    let bridge = BridgeMessageHandler(router: router)
-    webView = Self.makeWebView(role: role, webContent: webContent, bridge: bridge)
+    self.services = services
+    self.bridge = bridge
+    let handler = BridgeMessageHandler(bridge: bridge)
+    webView = Self.makeWebView(services: services, handler: handler)
     super.init()
-    bridge.host = self
+    handler.host = self
     install(webView)
   }
 
@@ -45,90 +48,88 @@ final class WebViewHost: NSObject {
   }
 
   func close() {
-    webContent.webViewWillDetach(webView, role: role)
+    pipe?.invalidate()
+    pipe = nil
     webView.configuration.userContentController.removeAllScriptMessageHandlers()
     webView.removeFromSuperview()
   }
 
-  // MARK: Events
+  // MARK: Delivery
 
-  func send(_ event: ShellEvent) {
-    outbox.post(event)
-    flush()
+  /// A state event (window activity, visibility): the latest value reaches every ready page.
+  func setState(_ event: NativeEvent) {
+    act(outbox.setState(event))
   }
 
-  func setState(_ name: String, _ payload: JSONValue) {
-    outbox.setState(name, payload)
-    flush()
+  /// An event for whichever page is ready next (`app`), or only for the current one.
+  func send(_ event: NativeEvent, scope: BridgeOutbox.Scope = .app) {
+    act(outbox.post(.event(event), scope: scope))
+  }
+
+  /// A call's answer, dropped when the page that called is gone.
+  func reply(_ message: SwiftMessage, document: Int) {
+    guard document == self.document else { return }
+    act(outbox.post(message, scope: .document))
   }
 
   func pageDidBecomeReady() {
-    outbox.pageDidBecomeReady()
-    flush()
+    act(outbox.pageDidBecomeReady())
   }
 
-  /// `[{ x, y, width, height }]` in CSS pixels; anything else clears the regions.
-  func setDragRegions(_ value: JSONValue) {
-    guard case .array(let items) = value else {
-      webView.dragRegions = []
-      return
-    }
-    webView.dragRegions = items.compactMap { item in
-      guard case .number(let x)? = item["x"], case .number(let y)? = item["y"],
-        case .number(let width)? = item["width"], case .number(let height)? = item["height"],
-        width > 0, height > 0
-      else { return nil }
-      return CGRect(x: x, y: y, width: width, height: height)
+  func setDragRegions(_ rects: [WindowDragRegionsPost.Rect]) {
+    webView.dragRegions = rects.filter { $0.width > 0 && $0.height > 0 }.map {
+      CGRect(x: $0.x, y: $0.y, width: $0.width, height: $0.height)
     }
   }
 
-  /// The page receives a batch as `globalThis.__aiShell.receive(events)`, events being
-  /// `[{ name, payload }]`, and handles it synchronously (spike S6: one call in flight).
+  private func post(frame: SocketFrame) {
+    act(outbox.post(frame: frame, bytes: frame.byteCost))
+  }
+
+  private func act(_ action: BridgeOutbox.Action) {
+    guard action == .flush else { return }
+    // The next main-queue turn, so what arrives in this one shares the call.
+    DispatchQueue.main.async { MainActor.assumeIsolated { self.flush() } }
+  }
+
+  /// Delivers one message as `window.aiNative.deliver(message)`; the page handles it
+  /// synchronously, and its completion lets the next one go.
   private func flush() {
-    guard let batch = outbox.nextBatch() else { return }
-    let target = webView
-    Task { @MainActor [weak self] in
-      var delivered = false
-      do {
-        let json = String(
-          decoding: try JSONEncoder().encode(batch.map(WireEvent.init)), as: UTF8.self)
-        _ = try await target.callAsyncJavaScript(
-          "globalThis.__aiShell.receive(JSON.parse(batch)); return true",
-          arguments: ["batch": json], contentWorld: .page)
-        delivered = true
-      } catch {
-        Self.log.error(
-          "Shell events not delivered to the \(self?.role.rawValue ?? "?") page: \(error)")
-      }
-      guard let self else { return }
-      outbox.batchDidFinish(delivered: delivered)
-      // A page that failed to receive is broken or gone; it gets everything again after its
-      // next `shell.ready`, instead of a retry loop against a broken receiver.
-      if delivered { flush() } else { outbox.pageDidUnload() }
+    guard let message = outbox.next() else { return }
+    let argument: Any
+    do {
+      argument = try JSONSerialization.jsonObject(
+        with: JSONEncoder().encode(message), options: .fragmentsAllowed)
+    } catch {
+      Self.log.fault("A bridge message could not be encoded: \(error)")
+      return act(outbox.completed(delivered: true))
     }
-  }
-
-  private struct WireEvent: Encodable {
-    let name: String
-    let payload: JSONValue
-    init(_ event: ShellEvent) {
-      name = event.name
-      payload = event.payload
+    webView.callAsyncJavaScript(
+      NativeBridgeContract.deliverScript,
+      arguments: [NativeBridgeContract.deliverArgument: argument], in: nil, in: .page
+    ) { [weak self] result in
+      MainActor.assumeIsolated {
+        guard let self else { return }
+        var delivered = true
+        if case .failure(let error) = result {
+          delivered = false
+          Self.log.error("The \(self.role.rawValue) page did not take a message: \(error)")
+        }
+        self.act(self.outbox.completed(delivered: delivered))
+      }
     }
   }
 
   // MARK: Building
 
-  private static func makeWebView(
-    role: WebViewRole, webContent: any WebContentProviding, bridge: BridgeMessageHandler
-  ) -> ShellWebView {
+  private static func makeWebView(services: ShellServices, handler: BridgeMessageHandler)
+    -> ShellWebView
+  {
     let configuration = WKWebViewConfiguration()
-    configuration.setURLSchemeHandler(
-      webContent.schemeHandler(for: role), forURLScheme: RendererOrigin.scheme)
-    configuration.userContentController.addScriptMessageHandler(
-      bridge, contentWorld: .page, name: BridgeMessageHandler.name)
+    configuration.setURLSchemeHandler(services.schemeHandler, forURLScheme: RendererOrigin.scheme)
+    configuration.userContentController.add(
+      handler, contentWorld: .page, name: NativeBridgeContract.messageHandler)
     configuration.preferences.isElementFullscreenEnabled = false
-    webContent.configure(configuration, for: role)
     let webView = ShellWebView(frame: .zero, configuration: configuration)
     // Transparent over the window's glass (spike S5, decision R5): there is no public way to
     // stop WKWebView from painting its background.
@@ -149,7 +150,14 @@ final class WebViewHost: NSObject {
     webView.onFiles = onFiles
     webView.frame = container.bounds
     container.addSubview(webView)
-    webContent.webViewDidAttach(webView, role: role)
+    pipe = VirtualSocketPipe(link: services.link) { [weak self] in self?.post(frame: $0) }
+  }
+
+  /// The page went away: its sockets close, and results and frames meant for it are dropped.
+  private func pageDidUnload() {
+    document += 1
+    pipe?.resetForNewDocument()
+    outbox.pageDidUnload()
   }
 
   /// Rebuilds the web view after its WebContent process died, keeping queued events for the
@@ -163,14 +171,12 @@ final class WebViewHost: NSObject {
       return
     }
     let old = webView
-    webContent.webViewWillDetach(old, role: role)
-    old.configuration.userContentController.removeAllScriptMessageHandlers()
     let wasFirstResponder = old.window?.firstResponder === old
-    let bridge = BridgeMessageHandler(router: router)
-    let replacement = Self.makeWebView(role: role, webContent: webContent, bridge: bridge)
-    bridge.host = self
+    close()
+    let handler = BridgeMessageHandler(bridge: bridge)
+    let replacement = Self.makeWebView(services: services, handler: handler)
+    handler.host = self
     replacement.dragRegions = old.dragRegions
-    old.removeFromSuperview()
     webView = replacement
     install(replacement)
     if wasFirstResponder { replacement.window?.makeFirstResponder(replacement) }
@@ -192,17 +198,17 @@ extension WebViewHost: WKNavigationDelegate, WKUIDelegate {
   func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {
     guard webView === self.webView else { return }
     // A committed main-frame load replaced the page; it announces itself again when ready.
-    outbox.pageDidUnload()
+    pageDidUnload()
   }
 
   func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
     guard webView === self.webView else { return }
     Self.log.error("The \(self.role.rawValue) WebContent process terminated; rebuilding.")
-    outbox.pageDidUnload()
+    pageDidUnload()
     rebuild()
   }
 
-  /// `window.open` and `target=_blank` open nothing; links go through the bridge's `openLink`.
+  /// `window.open` and `target=_blank` open nothing; links go through the bridge's `link.open`.
   func webView(
     _ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration,
     for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures

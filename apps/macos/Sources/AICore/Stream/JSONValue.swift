@@ -1,3 +1,5 @@
+import Foundation
+
 /// An arbitrary JSON value: capability inputs and results are `unknown` in the contracts and
 /// are typed by each capability's handler.
 public enum JSONValue: Codable, Equatable, Sendable {
@@ -35,5 +37,36 @@ public enum JSONValue: Codable, Equatable, Sendable {
     case .array(let value): try container.encode(value)
     case .object(let value): try container.encode(value)
     }
+  }
+}
+
+extension JSONValue {
+  /// A value WebKit handed over (property-list types from `postMessage`); nil when it is not
+  /// JSON (a Date, for example).
+  public init?(foundation value: Any) {
+    guard JSONSerialization.isValidJSONObject([value]),
+      let data = try? JSONSerialization.data(withJSONObject: [value]),
+      let array = try? JSONDecoder().decode([JSONValue].self, from: data),
+      let first = array.first
+    else { return nil }
+    self = first
+  }
+
+  /// The value as WebKit takes it for `callAsyncJavaScript` arguments (Foundation objects,
+  /// `NSNull` for null).
+  public var foundationObject: Any {
+    switch self {
+    case .null: NSNull()
+    case .bool(let value): value
+    case .number(let value): value
+    case .string(let value): value
+    case .array(let values): values.map(\.foundationObject)
+    case .object(let members): members.mapValues(\.foundationObject)
+    }
+  }
+
+  /// An `Encodable` value as JSON.
+  public init(encoding value: some Encodable) throws {
+    self = try JSONDecoder().decode(JSONValue.self, from: JSONEncoder().encode(value))
   }
 }

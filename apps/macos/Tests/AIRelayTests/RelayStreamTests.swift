@@ -9,74 +9,51 @@ import WebKit
 @Suite("Relay stream integration")
 @MainActor
 struct RelayStreamTests {
-  private static let subscribeAndPing = """
-    socket({ op: 'open', socketId: 's1' });
-    await waitFor(() => framesOf('s1').some((f) => f.kind === 'open'));
-    socket({ op: 'send', socketId: 's1', text: '{"type":"subscribe","epoch":0,"seq":0}' });
-    socket({ op: 'send', socketId: 's1', text: '{"type":"ping"}' });
-    await waitFor(() => framesOf('s1').length >= 3);
-    return framesOf('s1').map((f) => f.kind + ':' + (typeof f.data === 'string' ? f.data : ''));
-    """
-
-  private static let forbiddenFrame = """
-    socket({ op: 'send', socketId: 's1', text: '{"type":"capability.result","result":{}}' });
-    const close = await waitFor(() => framesOf('s1').find((f) => f.kind === 'close'));
-    return [close.data.code, close.data.reason];
-    """
-
-  private static let serviceClose = """
-    socket({ op: 'open', socketId: 's2' });
-    await waitFor(() => framesOf('s2').length);
-    socket({ op: 'send', socketId: 's2',
-      text: '{"type":"subscribe","epoch":0,"seq":0,"taskIds":["close-me"]}' });
-    const close = await waitFor(() => framesOf('s2').find((f) => f.kind === 'close'));
-    return [close.data.code, close.data.reason];
-    """
-
-  private static let openS3 = """
-    socket({ op: 'open', socketId: 's3' });
-    await waitFor(() => framesOf('s3').length);
-    return [];
-    """
-
-  private static let restarted = """
-    const close = await waitFor(() => framesOf('s3').find((f) => f.kind === 'close'));
-    return [close.data.code, window.__frames.filter((f) => f.kind === 'close').length];
-    """
-
   @Test("Pipes virtual sockets transparently and closes them by the rules")
   func pipesSockets() async throws {
     let h = try await RelayHarness.started()
     defer { h.tearDown() }
+    let open = { (id: String) in h.pipe.open(.init(socketId: id)) }
+    let send = { (id: String, data: String) in h.pipe.send(.init(socketId: id, data: data)) }
 
-    let opened = try await h.values(Self.subscribeAndPing).compactMap { $0 as? String }
+    open("s1")
+    #expect(await Task.until { h.frames(of: "s1") == ["open"] })
+    send("s1", #"{"type":"subscribe","epoch":0,"seq":0}"#)
+    send("s1", #"{"type":"ping"}"#)
+    #expect(await Task.until { h.frames(of: "s1").count >= 3 })
     #expect(
-      opened == [
-        "open:", #"message:{"type":"echo","frame":{"type":"subscribe","epoch":0,"seq":0}}"#,
+      h.frames(of: "s1") == [
+        "open", #"message:{"type":"echo","frame":{"type":"subscribe","epoch":0,"seq":0}}"#,
         #"message:{"type":"pong"}"#,
       ])
 
-    let policy = try await h.values(Self.forbiddenFrame)
-    #expect(policy.first as? Int == 1008)
-    #expect(policy.last as? String == "This frame type is not accepted.")
+    send("s1", #"{"type":"capability.result","result":{}}"#)
+    #expect(h.frames(of: "s1").last == "close:1008:This frame type is not accepted.")
     #expect(!h.stub.frames.contains { $0.contains("capability.result") })
 
-    let forwarded = try await h.values(Self.serviceClose)
-    #expect(forwarded.first as? Int == 4001)
-    #expect(forwarded.last as? String == "bye")
+    open("s2")
+    #expect(await Task.until { h.frames(of: "s2") == ["open"] })
+    send("s2", #"{"type":"subscribe","epoch":0,"seq":0,"taskIds":["close-me"]}"#)
+    #expect(await Task.until { h.frames(of: "s2").last == "close:4001:bye" })
 
     // A restart (a new epoch in endpoint.json) closes sockets of the old instance with 1012.
-    _ = try await h.values(Self.openS3)
+    open("s3")
+    #expect(await Task.until { h.frames(of: "s3") == ["open"] })
     let port = try #require(h.link.latest.flatMap { try? $0.get() }?.baseURL.port)
     try h.writeEndpoint(port: port, epoch: 9)
     _ = await h.link.endpoint()
-    #expect(try await h.values(Self.restarted).compactMap { $0 as? Int } == [1012, 3])
+    #expect(h.frames(of: "s3").last?.hasPrefix("close:1012:") == true)
 
-    // A new document closes the old one's sockets without delivering anything.
-    _ = try await h.values(Self.openS3.replacingOccurrences(of: "s3", with: "s4"))
+    // A page close sends nothing back; a new document closes the rest without delivering.
+    open("s4")
+    open("s5")
+    #expect(await Task.until { h.frames(of: "s5") == ["open"] })
+    h.pipe.close(.init(socketId: "s4", code: 1000, reason: ""))
     #expect(h.pipe.socketCount == 1)
+    let delivered = h.frames.count
     h.pipe.resetForNewDocument()
     #expect(h.pipe.socketCount == 0)
+    #expect(h.frames.count == delivered)
   }
 
   @Test("Runs the control stream: subscribe, register, status, capability round trip")

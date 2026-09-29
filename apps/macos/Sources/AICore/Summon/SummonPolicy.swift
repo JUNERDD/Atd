@@ -5,9 +5,9 @@ public enum SummonTrigger: Equatable, Sendable {
   /// A command's global shortcut.
   case command(id: String)
 
-  /// The id the page gives the panel toggle in its registration set. Command ids are
-  /// `Identifier`s (`^[a-zA-Z0-9_-]+$`), so the dot keeps the two apart.
-  public static let panelToggleID = "panel.toggle"
+  /// The id the page gives the panel toggle in its registration set (`shortcuts.set`); the
+  /// page reserves it, so no command uses it.
+  public static let panelToggleID = NativeBridgeContract.panelShortcutId
 
   /// The trigger of a pressed hot key registered under `id`.
   public init(hotKeyID id: String) {

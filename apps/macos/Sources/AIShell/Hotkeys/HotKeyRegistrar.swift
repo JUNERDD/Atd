@@ -1,39 +1,6 @@
 import AICore
 import Foundation
-
-/// The outcome of one entry of a pushed registration set, as the page receives it. The page
-/// words it and records failures in its shortcut errors.
-struct HotKeyReport: Encodable, Equatable {
-  let id: String
-  let registered: Bool
-  /// `invalidAccelerator`, `reservedBySystem`, `sameCombination` or `registrationFailed`.
-  let error: String?
-  /// The accelerator problem, the id holding the same combination, or the Carbon error name.
-  let detail: String?
-  /// The `OSStatus` of a failed registration.
-  let status: Int32?
-
-  static func success(_ id: String) -> HotKeyReport {
-    HotKeyReport(id: id, registered: true, error: nil, detail: nil, status: nil)
-  }
-
-  static func failure(_ id: String, _ failure: HotKeyFailure) -> HotKeyReport {
-    switch failure {
-    case .invalidAccelerator(let error):
-      HotKeyReport(
-        id: id, registered: false, error: "invalidAccelerator", detail: "\(error)", status: nil)
-    case .reservedBySystem:
-      HotKeyReport(id: id, registered: false, error: "reservedBySystem", detail: nil, status: nil)
-    case .sameCombination(let holder):
-      HotKeyReport(
-        id: id, registered: false, error: "sameCombination", detail: holder, status: nil)
-    case .registrationFailed(let status):
-      HotKeyReport(
-        id: id, registered: false, error: "registrationFailed",
-        detail: CarbonStatus(value: status).name, status: status)
-    }
-  }
-}
+import OSLog
 
 /// Keeps the registered global hot keys equal to the set the page pushes, one diff at a time.
 /// Nothing is cached across launches (grill decision Q9): the panel page loads at launch and
@@ -49,7 +16,9 @@ final class HotKeyRegistrar {
     self.onPress = onPress
   }
 
-  func apply(_ desired: [HotKeyRequest]) -> [HotKeyReport] {
+  /// Registers the difference to `desired` and reports every entry once, in order. The page
+  /// words failures by reason; the details go to the log.
+  func apply(_ desired: [ShortcutRegistration]) -> [ShortcutResult] {
     let plan = HotKeyPlanner.plan(
       desired: desired, registered: registered.mapValues(\.combination),
       reserved: CarbonHotKeys.reservedBySystem())
@@ -66,7 +35,21 @@ final class HotKeyRegistrar {
     var reported: Set<String> = []
     return desired.compactMap { request in
       guard reported.insert(request.id).inserted else { return nil }
-      return failures[request.id].map { .failure(request.id, $0) } ?? .success(request.id)
+      guard let failure = failures[request.id] else { return .registered(.init(id: request.id)) }
+      Self.log.info(
+        "Shortcut \(request.id, privacy: .public) not registered: \(Self.detail(failure))")
+      return .notRegistered(.init(id: request.id, reason: failure.reason))
+    }
+  }
+
+  private static let log = Logger(subsystem: "com.junerdd.ai", category: "hotkeys")
+
+  private static func detail(_ failure: HotKeyFailure) -> String {
+    switch failure {
+    case .invalidAccelerator(let error): "invalid accelerator (\(error))"
+    case .reservedBySystem: "reserved by a macOS keyboard shortcut"
+    case .sameCombination(let holder): "same combination as \(holder)"
+    case .registrationFailed(let status): "RegisterEventHotKey \(CarbonStatus(value: status).name)"
     }
   }
 

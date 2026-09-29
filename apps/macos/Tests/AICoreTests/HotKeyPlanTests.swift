@@ -9,8 +9,8 @@ struct HotKeyPlanTests {
     try! Accelerator.parse(accelerator)
   }
 
-  static func request(_ id: String, _ accelerator: String) -> HotKeyRequest {
-    HotKeyRequest(id: id, accelerator: accelerator)
+  static func request(_ id: String, _ accelerator: String) -> ShortcutRegistration {
+    ShortcutRegistration(id: id, accelerator: accelerator)
   }
 
   @Test("New entries register; unchanged ones are kept")

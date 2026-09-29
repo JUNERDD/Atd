@@ -72,22 +72,31 @@ public struct ResourceImportResponse: Codable, Equatable, Sendable {
   }
 }
 
-/// What the page receives for an attachment import. Absolute paths stay in the shell (the
-/// Electron rule for attachments): a failure names the file by its basename only.
-public struct AttachmentImportResult: Codable, Equatable, Sendable {
-  public struct Failure: Codable, Equatable, Sendable {
-    public let name: String
-    public let reason: ResourceImportFailureReason
-    public let message: String
-  }
-
-  public let resources: [ResourceRef]
-  public let failures: [Failure]
-
+extension ResourcesImportedEvent {
+  /// What the panel page receives for an import: the stored files and, for refused paths, the
+  /// basename only. Absolute paths stay in the shell (the Electron rule for attachments).
   public init(_ response: ResourceImportResponse) {
-    resources = response.imported.map(\.resource)
-    failures = response.failures.map {
-      Failure(name: AttachmentRules.basename($0.path), reason: $0.reason, message: $0.message)
+    self.init(
+      resources: response.imported.map { FileRef($0.resource) },
+      failures: response.failures.map {
+        Failure(name: AttachmentRules.basename($0.path), reason: Failure.Reason($0.reason))
+      })
+  }
+}
+
+extension FileRef {
+  /// A stored resource as the page's `FileRef`.
+  public init(_ resource: ResourceRef) {
+    self.init(id: resource.id, name: resource.name, size: resource.size, type: resource.mime)
+  }
+}
+
+extension ResourcesImportedEvent.Failure.Reason {
+  init(_ reason: ResourceImportFailureReason) {
+    switch reason {
+    case .unreadable: self = .unreadable
+    case .unsupported: self = .unsupported
+    case .tooLarge: self = .tooLarge
     }
   }
 }
@@ -95,7 +104,8 @@ public struct AttachmentImportResult: Codable, Equatable, Sendable {
 /// Attachment limits the shell applies before asking the service (packages/agent-contracts/src/
 /// attachments.ts). The service applies the format and size rules to the file it resolves.
 public enum AttachmentRules {
-  /// Paths per import call (`ResourceImportRequestSchema.paths.maxItems`, `MAX_ATTACHMENTS`).
+  /// Paths per import call (`ResourceImportRequestSchema.paths.maxItems`, `MAX_ATTACHMENTS`),
+  /// which is also the most the page takes from one pick, drop or paste.
   public static let maxPathsPerImport = 10
   /// Text formats the service reads back as run material (`ATTACHABLE_EXTENSIONS`). Images are
   /// not among them, so a pasted bitmap cannot become an attachment.
@@ -103,19 +113,6 @@ public enum AttachmentRules {
     "txt", "md", "csv", "json", "log", "yaml", "yml", "xml", "html", "css", "ts", "tsx", "js",
     "py",
   ]
-
-  /// Splits paths into import calls the service accepts, keeping their order.
-  public static func importBatches(_ paths: [String]) -> [[String]] {
-    stride(from: 0, to: paths.count, by: maxPathsPerImport).map {
-      Array(paths[$0..<min($0 + maxPathsPerImport, paths.count)])
-    }
-  }
-
-  /// Joins the answers of consecutive import calls, keeping request order.
-  public static func merge(_ responses: [ResourceImportResponse]) -> ResourceImportResponse {
-    ResourceImportResponse(
-      imported: responses.flatMap(\.imported), failures: responses.flatMap(\.failures))
-  }
 
   /// Node's `path.basename` for the POSIX paths the shell imports.
   public static func basename(_ path: String) -> String {

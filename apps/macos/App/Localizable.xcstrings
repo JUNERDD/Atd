@@ -37,6 +37,42 @@
         }
       }
     },
+    "error.developmentLogs" : {
+      "comment" : "Alert message when Show Service Logs is chosen in a development build",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In development the agent service logs to the terminal that runs pnpm dev."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "开发版中的代理服务日志输出在运行 pnpm dev 的终端里。"
+          }
+        }
+      }
+    },
+    "error.developmentRestart" : {
+      "comment" : "Alert message when Restart Service is chosen in a development build",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In development the agent service runs from pnpm dev. Restart it there."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "开发版中的代理服务由 pnpm dev 运行，请在那里重新启动。"
+          }
+        }
+      }
+    },
     "error.restartService.message" : {
       "comment" : "Alert message",
       "extractionState" : "manual",

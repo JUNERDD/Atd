@@ -7,6 +7,20 @@ public enum WebSocketCloseCode {
   /// RFC 6455 Service Restart: the service restarted or its endpoint changed; the page's
   /// stream client reconnects with its own backoff and resubscribes.
   public static let serviceRestart: UInt16 = 1012
+
+  /// The code a page's close takes upstream. The contract allows 1000–4999; a browser
+  /// `WebSocket.close()` only 1000 and 3000–4999, so anything else closes normally.
+  public static func upstream(pageCode code: Int) -> UInt16 {
+    code == 1000 || (3000...4999).contains(code) ? UInt16(code) : 1000
+  }
+
+  /// A close reason is at most 123 UTF-8 bytes (RFC 6455); longer ones are cut at a character.
+  /// The contract counts 123 characters, which can be more bytes.
+  public static func reason(_ reason: String) -> String {
+    var cut = reason
+    while cut.utf8.count > 123 { cut.removeLast() }
+    return cut
+  }
 }
 
 /// A frame the page sends on a virtual socket.

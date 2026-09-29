@@ -1,95 +1,99 @@
 import AICore
+import AIRelay
 import AppKit
+import OSLog
 
 /// Wires the shell together: the panel and settings windows, the summon flow, global hot keys,
-/// the selection stash, the status item, menus and the quit guard. Its methods are the entry
-/// points ``ShellBridge`` exposes to the pages.
+/// the selection stash, the service's control stream and status item, menus and the quit
+/// guard. Its methods are what ``ShellBridge`` calls for the pages.
 @MainActor
-public final class ShellController: ShellEventSending {
+public final class ShellController {
   private let services: ShellServices
   private let defaults: UserDefaults
-  private let bridge: ShellBridge
   let panelHost: WebViewHost
   let panel: PanelWindowController
   private let settings: SettingsWindowController
   private let systemPanels: SystemPanels
+  /// Serves the five desktop capabilities; the control stream holds it weakly.
+  private let capabilities: ShellCapabilities
+  private let control: ControlStreamClient
+  let artifacts: ArtifactActions
+  let attachments: AttachmentImporter
+  let quitGuard: QuitGuard
   private var statusItem: StatusItemController?
   private var registrar: HotKeyRegistrar?
-  private(set) var quitGuard: QuitGuard
-  let capabilities: ShellCapabilities
-  /// Serves the five desktop capabilities for the relay's control stream.
-  public var capabilityHandler: any CapabilityHandling { capabilities }
-  let artifacts: ArtifactActions
-  private(set) lazy var attachments = AttachmentImporter(
-    resources: services.resources, sink: eventSink, systemPanels: systemPanels)
-  /// Where command shortcuts and attachment results go; the controller's own hosts unless
-  /// integration injects another sink.
-  private let injectedSink: (any ShellEventSending)?
-  private var eventSink: any ShellEventSending { injectedSink ?? self }
+  private var menuStatus = MenuBarStatus(availability: .connecting, running: 0, attention: 0)
 
-  private(set) var selectionWanted = false
+  private var selectionWanted = false
   private var stash: CapturedText?
   private var summoning = false
   private var trustRequested = false
 
+  private static let log = Logger(subsystem: "com.junerdd.ai", category: "shell")
   private static let pinnedKey = "panel.pinned"
   private static let showInDockKey = "app.showInDock"
 
-  public init(
-    services: ShellServices, eventSink: (any ShellEventSending)? = nil,
-    defaults: UserDefaults = .standard
-  ) {
+  public init(services: ShellServices, defaults: UserDefaults = .standard) {
     self.services = services
-    self.injectedSink = eventSink
     self.defaults = defaults
-    let bridge = ShellBridge(fallback: services.router)
-    self.bridge = bridge
-    panelHost = WebViewHost(
-      role: .panel, fragment: nil, webContent: services.webContent, router: bridge)
+    let bridge = ShellBridge()
+    let panelHost = WebViewHost(role: .panel, fragment: nil, services: services, bridge: bridge)
+    self.panelHost = panelHost
     let panel = PanelWindowController(
       host: panelHost, pinned: defaults.bool(forKey: Self.pinnedKey))
     self.panel = panel
     settings = SettingsWindowController { fragment in
-      WebViewHost(
-        role: .settings, fragment: fragment, webContent: services.webContent, router: bridge)
+      WebViewHost(role: .settings, fragment: fragment, services: services, bridge: bridge)
     }
     let systemPanels = SystemPanels(
       lowerPanel: { panel.lowerForSystemPanel() }, restorePanel: { panel.restoreLevel($0) })
     self.systemPanels = systemPanels
-    capabilities = ShellCapabilities(
-      resources: services.resources, panelVisible: { panel.isVisible }, systemPanels: systemPanels)
-    artifacts = ArtifactActions(artifacts: services.artifacts, downloads: Self.downloadsFolder())
+    let capabilities = ShellCapabilities(
+      services: services, panelVisible: { panel.isVisible }, systemPanels: systemPanels)
+    self.capabilities = capabilities
+    let control = ControlStreamClient(link: services.link, capabilities: capabilities)
+    self.control = control
+    artifacts = ArtifactActions(services: services, downloads: Self.downloadsFolder())
+    attachments = AttachmentImporter(
+      services: services, panel: panelHost, systemPanels: systemPanels)
     quitGuard = QuitGuard(
-      activeRuns: services.activeRuns, control: services.control,
+      activeRuns: { await services.link.activeRunsForQuitGuard() },
+      stopService: {
+        control.stop()
+        await services.stopForQuit()
+      },
       hideWindows: {
         for window in NSApp.windows { window.orderOut(nil) }
       })
     bridge.shell = self
-    panelHost.onFiles = { [weak self] urls, source in
+    panelHost.onFiles = { [weak self] urls, _ in
       guard let self else { return }
-      Task { await self.attachments.importFiles(urls, source: source) }
+      Task { await self.attachments.importFiles(urls) }
     }
     panel.onVisibilityChange = { [weak panelHost] visible in
-      panelHost?.setState(ShellEventName.windowVisibility, .bool(visible))
+      panelHost?.setState(.windowVisibility(.init(visible: visible)))
     }
     panel.onGaveUpKey = { [weak self] in self?.passFocusOnFromPanel() }
   }
 
-  /// Starts the app-level surfaces and loads the panel page, which then pushes the hot key
-  /// set, `selectionWanted` and the language.
+  /// Starts the service connection and the app-level surfaces, then loads the panel page,
+  /// which pushes the shortcut set, `selectionWanted` and the language.
   public func start(revealPanel: Bool) {
     registrar = HotKeyRegistrar { [weak self] id in self?.summon(SummonTrigger(hotKeyID: id)) }
     statusItem = StatusItemController(
       toggle: { [weak self] in self?.summon(.toggle) },
       menu: { [weak self] in AppMenus.statusMenu(self?.menuActions ?? .inert) })
-    services.status.observeSnapshot { [weak self] snapshot in self?.statusChanged(snapshot) }
-    statusChanged(services.status.snapshot)
+    control.onConnectionState = { [weak self] _ in self?.refreshStatus() }
+    control.onStatus = { [weak self] _ in self?.refreshStatus() }
+    refreshStatus()
+    services.start()
+    control.start()
     AppPresence.setShowInDock(defaults.bool(forKey: Self.showInDockKey))
     applyLanguage()
     NotificationCenter.default.addObserver(
       forName: ShellStrings.didChange, object: nil, queue: .main
     ) { [weak self] _ in MainActor.assumeIsolated { self?.applyLanguage() } }
-    panelHost.setState(ShellEventName.windowVisibility, .bool(false))
+    panelHost.setState(.windowVisibility(.init(visible: false)))
     panelHost.load()
     if revealPanel { summon(.toggle) }
   }
@@ -116,10 +120,7 @@ public final class ShellController: ShellEventSending {
         case .showPanel:
           panel.dockAtCursor()
           panel.show()
-        case .deliverCommand(let id):
-          eventSink.send(
-            ShellEvent(name: ShellEventName.commandShortcut, payload: .object(["id": .string(id)])),
-            to: .panel)
+        case .deliverCommand(let id): panelHost.send(.shortcutCommand(.init(id: id)))
         }
       }
     }
@@ -138,7 +139,7 @@ public final class ShellController: ShellEventSending {
     return await SelectionReader.readBounded(frontmostPID: pid)
   }
 
-  /// Shows the panel where it is, as Show task panel and the page's `show` do.
+  /// Shows the panel where it is, as Show task panel and the page's `window.show` do.
   func showPanel() {
     guard !systemPanels.isOpen else { return }
     panel.show()
@@ -163,34 +164,33 @@ public final class ShellController: ShellEventSending {
 
   // MARK: Entry points for the bridge
 
-  func openSettings(fragment: String?) {
-    settings.open(
-      fragment: fragment ?? "settings", title: ShellStrings.shared.text(.windowSettingsTitle))
-  }
-
-  func applyHotKeys(_ requests: [HotKeyRequest]) -> [HotKeyReport] {
-    registrar?.apply(requests) ?? []
-  }
-
-  func setSelectionWanted(_ wanted: Bool) {
-    selectionWanted = wanted
-    if !wanted { stash = nil }
-  }
-
-  /// `capture('selection')` returns the summon stash; `capture('clipboard')` reads now.
-  func capture(_ source: String) throws(BridgeError) -> CapturedText {
-    let result: Result<CapturedText, CaptureFailure>
-    switch source {
-    case "selection":
-      result = TextCapture.selection(stash: stash, trusted: SelectionReader.isTrusted)
-    case "clipboard":
-      result = TextCapture.clipboard(NSPasteboard.general.string(forType: .string), at: .now)
-    default: throw BridgeError("Unknown capture source.")
+  /// A new settings window opens `commandId`'s editor (`#settings?commandId=…`); an open one
+  /// keeps its page, which the page's own window message steers.
+  func openSettings(commandId: String?) {
+    var fragment = "settings"
+    if let commandId {
+      var query = URLComponents()
+      query.queryItems = [URLQueryItem(name: "commandId", value: commandId)]
+      // `URLSearchParams` reads `+` as a space.
+      let encoded = query.percentEncodedQuery?.replacingOccurrences(of: "+", with: "%2B")
+      fragment += "?" + (encoded ?? "")
     }
-    switch result {
-    case .success(let captured): return captured
-    case .failure(let failure): throw BridgeError(failure.message)
-    }
+    settings.open(fragment: fragment, title: ShellStrings.shared.text(.windowSettingsTitle))
+  }
+
+  func closeSettings() { settings.close() }
+
+  func applyShortcuts(_ registrations: [ShortcutRegistration], selectionWanted: Bool)
+    -> [ShortcutResult]
+  {
+    self.selectionWanted = selectionWanted
+    if !selectionWanted { stash = nil }
+    return registrar?.apply(registrations) ?? []
+  }
+
+  /// `capture('selection')` returns the stash of the last summon, never a live read.
+  func captureSelection() -> CaptureResult {
+    TextCapture.captureResult(stash: stash, trusted: SelectionReader.isTrusted)
   }
 
   func setPinned(_ pinned: Bool) {
@@ -203,52 +203,34 @@ public final class ShellController: ShellEventSending {
     AppPresence.setShowInDock(show)
   }
 
-  /// `{ pinned, showInDock, openAtLogin }`; `openAtLogin` is null where it is unavailable.
-  func windowPreferences() -> JSONValue {
-    .object([
-      "pinned": .bool(defaults.bool(forKey: Self.pinnedKey)),
-      "showInDock": .bool(defaults.bool(forKey: Self.showInDockKey)),
-      "openAtLogin": AppPresence.opensAtLogin.map(JSONValue.bool) ?? .null,
-    ])
-  }
-
-  func setLanguage(_ language: String) -> Bool {
-    ShellStrings.shared.apply(appLanguage: language)
-  }
-
-  func openLink(_ value: String) throws(BridgeError) {
-    guard let url = ExternalLink.openable(value) else {
-      throw BridgeError("Only web links can be opened.")
-    }
-    NSWorkspace.shared.open(url)
-  }
-
-  func copy(_ text: String) {
-    NSPasteboard.general.clearContents()
-    NSPasteboard.general.setString(text, forType: .string)
-  }
-
-  // MARK: ShellEventSending
-
-  public func send(_ event: ShellEvent, to role: WebViewRole) {
-    host(for: role)?.send(event)
-  }
-
-  public func setState(_ name: String, _ payload: JSONValue, for role: WebViewRole) {
-    host(for: role)?.setState(name, payload)
-  }
-
-  private func host(for role: WebViewRole) -> WebViewHost? {
-    role == .panel ? panelHost : settings.host
+  /// `openAtLogin` is null where it is unavailable (Debug builds).
+  func appState() -> AppStateResult {
+    AppStateResult(
+      pinned: defaults.bool(forKey: Self.pinnedKey),
+      showInDock: defaults.bool(forKey: Self.showInDockKey), openAtLogin: AppPresence.opensAtLogin)
   }
 
   // MARK: App surfaces
 
-  private func statusChanged(_ snapshot: ServiceSnapshot) {
-    statusItem?.update(
-      MenuBarStatus(
-        availability: snapshot.availability, running: snapshot.running,
-        attention: snapshot.attention))
+  /// The status item follows the control stream: reachability, then the `status` counts.
+  private func refreshStatus() {
+    let availability: ServiceAvailability =
+      switch control.state {
+      case .connecting: .connecting
+      case .connected: .available
+      case .reconnecting: .unavailable(development: false)
+      case .disconnected:
+        .unavailable(development: control.unavailable == .developmentServiceNotRunning)
+      }
+    menuStatus = MenuBarStatus(
+      availability: availability, running: control.status?.running ?? 0,
+      attention: control.status?.attention ?? 0)
+    statusItem?.update(menuStatus)
+    #if DEBUG
+      Self.log.info(
+        "menu bar \(self.menuStatus.state.rawValue, privacy: .public) running \(self.menuStatus.running) attention \(self.menuStatus.attention)"
+      )
+    #endif
   }
 
   private func applyLanguage() {
@@ -258,26 +240,21 @@ public final class ShellController: ShellEventSending {
   }
 
   var menuActions: AppMenuActions {
-    let control = services.control
-    let status = services.status
+    let services = services
     return AppMenuActions(
       showPanel: { [weak self] in self?.showPanel() },
       hidePanel: { [weak self] in self?.hidePanel() },
-      openSettings: { [weak self] in self?.openSettings(fragment: nil) },
-      restartService: { try await control.restartService() },
-      showServiceLogs: { try await control.revealServiceLogs() },
+      openSettings: { [weak self] in self?.openSettings(commandId: nil) },
+      restartService: { try await services.restart() },
+      showServiceLogs: { try services.revealLogs() },
       editCommand: { [weak self] command in self?.sendEditCommand(command) },
-      developmentHint: {
-        MenuBarStatus(availability: status.snapshot.availability, running: 0, attention: 0)
-          .developmentHint
-      })
+      developmentHint: { [weak self] in self?.menuStatus.developmentHint ?? false })
   }
 
-  /// Undo and Redo go to the page of the key window.
-  private func sendEditCommand(_ command: String) {
-    let event = ShellEvent(
-      name: ShellEventName.editCommand, payload: .object(["command": .string(command)]))
-    if panel.isKey { panelHost.send(event) } else if settings.isKey { settings.host?.send(event) }
+  /// Undo and Redo go to the page of the key window, which runs them in its editor.
+  private func sendEditCommand(_ command: EditCommandEvent.Command) {
+    let host = panel.isKey ? panelHost : settings.isKey ? settings.host : nil
+    host?.send(.editCommand(.init(command: command)), scope: .document)
   }
 
   private static func downloadsFolder() -> URL {

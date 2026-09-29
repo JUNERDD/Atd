@@ -53,7 +53,7 @@ public enum CaptureFailure: String, Error, Equatable, Sendable {
 
 /// The capture rules of the shell. Limits count UTF-16 code units, JavaScript's `length`.
 public enum TextCapture {
-  public static let maxInputLength = 100_000
+  public static let maxInputLength = NativeBridgeContract.maxCaptureLength
 
   /// What a summon stashes from a selection read: whitespace-only text counts as none.
   public static func stash(_ text: String?, at date: Date) -> CapturedText? {
@@ -70,7 +70,18 @@ public enum TextCapture {
     return .success(stash)
   }
 
-  /// `capture('clipboard')` and the `clipboard.read` capability (which also needs a visible
+  /// The `capture` call's answer for ``selection(stash:trusted:)``.
+  public static func captureResult(stash: CapturedText?, trusted: Bool) -> CaptureResult {
+    switch selection(stash: stash, trusted: trusted) {
+    case .success(let captured):
+      .ok(.init(text: captured.text, capturedAt: captured.capturedAt))
+    case .failure(.accessibilityNotTrusted): .notOk(.init(reason: .notTrusted))
+    case .failure(.selectionTooLong): .notOk(.init(reason: .tooLong))
+    case .failure: .notOk(.init(reason: .noSelection))
+    }
+  }
+
+  /// The `clipboard.read` capability (which also needs a visible
   /// panel, checked by the caller through `panelVisible`).
   public static func clipboard(_ text: String?, at date: Date, panelVisible: Bool = true)
     -> Result<CapturedText, CaptureFailure>

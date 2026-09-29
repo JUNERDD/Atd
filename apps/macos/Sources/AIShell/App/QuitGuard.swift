@@ -12,11 +12,10 @@ import AppKit
 /// and the teardown starts without its answer.
 @MainActor
 final class QuitGuard {
-  /// How long a quit waits for the run count before it treats the service as idle.
-  private static let statusTimeout: Duration = .milliseconds(1500)
-
-  private let activeRuns: any ActiveRunsProviding
-  private let control: any ServiceControlling
+  /// The service's started and queued runs; an unreachable or slow service counts as idle.
+  private let activeRuns: @MainActor () async -> Int
+  /// Runs once a quit is committed, before the app terminates.
+  private let stopService: @MainActor () async -> Void
   private let hideWindows: () -> Void
   private var unattended = false
   private var tearingDown = false
@@ -24,11 +23,11 @@ final class QuitGuard {
   private var signalSources: [any DispatchSourceSignal] = []
 
   init(
-    activeRuns: any ActiveRunsProviding, control: any ServiceControlling,
-    hideWindows: @escaping () -> Void
+    activeRuns: @escaping @MainActor () async -> Int,
+    stopService: @escaping @MainActor () async -> Void, hideWindows: @escaping () -> Void
   ) {
     self.activeRuns = activeRuns
-    self.control = control
+    self.stopService = stopService
     self.hideWindows = hideWindows
     NSWorkspace.shared.notificationCenter.addObserver(
       forName: NSWorkspace.willPowerOffNotification, object: nil, queue: .main
@@ -58,7 +57,7 @@ final class QuitGuard {
     Task { @MainActor in
       var confirmed = unattended
       if !confirmed {
-        let count = await runCount()
+        let count = await activeRuns()
         confirmed = await confirm(count: count) || unattended
       }
       asking = false
@@ -68,7 +67,7 @@ final class QuitGuard {
       }
       tearingDown = true
       hideWindows()
-      await control.stopServiceForQuit()
+      await stopService()
       NSApp.reply(toApplicationShouldTerminate: true)
     }
     return .terminateLater
@@ -78,14 +77,6 @@ final class QuitGuard {
     unattended = true
     // An open prompt answers Cancel; `shouldTerminate`'s task then tears down anyway.
     if asking, NSApp.modalWindow != nil { NSApp.abortModal() }
-  }
-
-  /// The service's started and queued runs; an unreachable or slow service counts as idle.
-  private func runCount() async -> Int {
-    let activeRuns = activeRuns
-    return await Deadline.value(within: Self.statusTimeout, fallback: 0) {
-      (try? await activeRuns.activeRuns()) ?? 0
-    }
   }
 
   /// True when the user chose to quit.

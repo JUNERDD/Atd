@@ -1,103 +1,120 @@
 import AICore
+import AIRelay
 import AppKit
+import OSLog
 
-/// Attachments from the open panel, file drops on the panel's web view and pasted file URLs.
-/// Each set is imported by path through the service (`/v1/resources/import`, at most ten paths
-/// per call) and the result goes to the panel page as one `attachments.imported` event; paths
-/// never reach the page.
+/// Attachments from the open panel, file drops on the panel's web view and pasted file URLs,
+/// and saving a service resource where the user chooses. Files are imported by path through
+/// the service (`/v1/resources/import`); paths never reach the page. One pick, drop or paste
+/// takes at most ``AttachmentRules/maxPathsPerImport`` files, the page's attachment limit.
 ///
 /// Pasted images are not attachments: the service only reads the text formats of
 /// `ATTACHABLE_EXTENSIONS`, so a bitmap-only paste stays with WebKit's own paste.
 @MainActor
 final class AttachmentImporter {
-  private let resources: any ResourceImporting
-  private let sink: any ShellEventSending
+  private let services: ShellServices
+  private weak var panel: WebViewHost?
   private let systemPanels: SystemPanels
+  private static let log = Logger(subsystem: "com.junerdd.ai", category: "attachments")
 
-  init(resources: any ResourceImporting, sink: any ShellEventSending, systemPanels: SystemPanels) {
-    self.resources = resources
-    self.sink = sink
+  init(services: ShellServices, panel: WebViewHost, systemPanels: SystemPanels) {
+    self.services = services
+    self.panel = panel
     self.systemPanels = systemPanels
   }
 
-  /// Opens the chooser; a cancelled chooser sends nothing.
-  func pick() async {
-    guard let urls = await systemPanels.chooseAttachments(), !urls.isEmpty else { return }
-    await importFiles(urls, source: "pick")
+  /// `files.pick`: the chooser's files as the page's refs; none when cancelled. A pick whose
+  /// every file was refused fails with the first reason.
+  func pick() async throws(BridgeError) -> [FileRef] {
+    guard let urls = await systemPanels.chooseAttachments(), !urls.isEmpty else { return [] }
+    let response = try await importPaths(urls)
+    if response.imported.isEmpty, let failure = response.failures.first {
+      throw BridgeError(failure.message)
+    }
+    return response.imported.map { FileRef($0.resource) }
   }
 
-  /// `source` is `pick`, `drop` or `paste`.
-  func importFiles(_ urls: [URL], source: String) async {
-    let paths = urls.filter(\.isFileURL).map { $0.standardizedFileURL.path(percentEncoded: false) }
-    guard !paths.isEmpty else { return }
-    var payload: [String: JSONValue] = ["source": .string(source)]
+  /// Dropped or pasted files become one `resources.imported` event for the panel page. With
+  /// the service unreachable nothing is sent: the page already shows the service as down.
+  func importFiles(_ urls: [URL]) async {
     do {
-      var responses: [ResourceImportResponse] = []
-      for batch in AttachmentRules.importBatches(paths) {
-        responses.append(try await resources.importResources(paths: batch))
-      }
-      let result = AttachmentImportResult(AttachmentRules.merge(responses))
-      if case .object(let members) = try JSONValue(encoding: result) {
-        payload.merge(members) { current, _ in current }
-      }
+      let response = try await importPaths(urls)
+      guard !response.imported.isEmpty || !response.failures.isEmpty else { return }
+      panel?.send(.resourcesImported(ResourcesImportedEvent(response)))
     } catch {
-      payload["error"] = .string(
-        ShellCapabilities.message(error, "The files could not be attached."))
+      Self.log.error("Dropped or pasted files were not imported: \(error.message)")
     }
-    sink.send(
-      ShellEvent(name: ShellEventName.attachmentsImported, payload: .object(payload)), to: .panel)
+  }
+
+  /// `files.save`: the save panel, then the resource's bytes from the service.
+  func save(resourceId: String, name: String) async throws(BridgeError) -> Bool {
+    let suggested = AttachmentRules.basename(name)
+    guard
+      let url = await systemPanels.chooseSaveLocation(
+        suggestedName: suggested.isEmpty ? ArtifactFileName.fallback : suggested)
+    else { return false }
+    do {
+      let resource = try await services.client().resource(id: resourceId)
+      try resource.bytes.write(to: url, options: .atomic)
+      return true
+    } catch {
+      throw BridgeError(ShellBridge.message(error, "The file could not be saved."))
+    }
+  }
+
+  private func importPaths(_ urls: [URL]) async throws(BridgeError) -> ResourceImportResponse {
+    let paths = urls.filter(\.isFileURL).prefix(AttachmentRules.maxPathsPerImport).map {
+      $0.standardizedFileURL.path(percentEncoded: false)
+    }
+    guard !paths.isEmpty else { return ResourceImportResponse(imported: [], failures: []) }
+    if urls.count > paths.count {
+      Self.log.info("Imported the first \(paths.count) of \(urls.count) files.")
+    }
+    do {
+      return try await services.client().importResources(paths: Array(paths))
+    } catch {
+      throw BridgeError(ShellBridge.message(error, "The files could not be attached."))
+    }
   }
 }
 
-/// Artifact operations (apps/desktop/electron/agent/artifacts.ts): the relay downloads the
-/// bytes with the shell's credentials, the shell writes them to its downloads folder, then
-/// opens, reveals or copies the path. Opening keeps today's semantics, which run whatever the
-/// agent produced (an `.app` or `.command` too); restricting that is a separate decision.
+/// Artifact operations (apps/desktop/electron/agent/artifacts.ts): the shell downloads the
+/// bytes with its credentials into its downloads folder, then opens, reveals or copies the
+/// path. Opening keeps today's semantics, which run whatever the agent produced (an `.app` or
+/// `.command` too); restricting that is a separate decision.
 @MainActor
 final class ArtifactActions {
-  private let artifacts: any ArtifactDownloading
+  private let services: ShellServices
   private let downloads: URL
 
-  init(artifacts: any ArtifactDownloading, downloads: URL) {
-    self.artifacts = artifacts
+  init(services: ShellServices, downloads: URL) {
+    self.services = services
     self.downloads = downloads
   }
 
-  /// The downloaded file as the page's `FileRef`: `{ id, name, size, type }`.
-  func perform(artifactId: String, operation: ArtifactOperation) async throws(BridgeError)
-    -> JSONValue
+  /// The downloaded file as the page's `FileRef`.
+  func perform(artifactId: String, operation: ArtifactParams.Operation) async throws(BridgeError)
+    -> FileRef
   {
     let downloaded: DownloadedArtifact
     do {
-      downloaded = try await artifacts.downloadArtifact(id: artifactId)
-      try FileManager.default.createDirectory(at: downloads, withIntermediateDirectories: true)
+      downloaded = try await services.client().downloadArtifact(id: artifactId, into: downloads)
     } catch {
-      throw BridgeError(ShellCapabilities.message(error, "The artifact could not be downloaded."))
-    }
-    let target = downloads.appending(
-      path: ArtifactFiles.fileName(artifactId: artifactId, name: downloaded.name),
-      directoryHint: .notDirectory)
-    do {
-      try downloaded.bytes.write(to: target, options: .atomic)
-    } catch {
-      throw BridgeError("The artifact could not be saved.")
+      throw BridgeError(ShellBridge.message(error, "The artifact could not be downloaded."))
     }
     switch operation {
     case .open:
-      guard NSWorkspace.shared.open(target) else {
+      guard NSWorkspace.shared.open(downloaded.fileURL) else {
         throw BridgeError("The artifact could not be opened.")
       }
-    case .reveal, .locate:
-      NSWorkspace.shared.activateFileViewerSelecting([target])
-    case .copy:
+    case .reveal:
+      NSWorkspace.shared.activateFileViewerSelecting([downloaded.fileURL])
+    case .copyPath:
       NSPasteboard.general.clearContents()
-      NSPasteboard.general.setString(target.path(percentEncoded: false), forType: .string)
-    case .attach:
-      break
+      NSPasteboard.general.setString(
+        downloaded.fileURL.path(percentEncoded: false), forType: .string)
     }
-    return .object([
-      "id": .string(artifactId), "name": .string(downloaded.name),
-      "size": .number(Double(downloaded.bytes.count)), "type": .string(downloaded.mime),
-    ])
+    return FileRef(
+      id: artifactId, name: downloaded.name, size: downloaded.size, type: downloaded.mime)
   }
 }

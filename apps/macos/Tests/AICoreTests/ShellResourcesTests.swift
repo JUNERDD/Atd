@@ -11,30 +11,16 @@ struct ShellResourcesTests {
       createdAt: "2026-09-29T00:00:00.000Z")
   }
 
-  @Test("Imports go out in calls of at most ten paths")
-  func batches() {
-    let paths = (1...23).map { "/tmp/\($0).txt" }
-    let batches = AttachmentRules.importBatches(paths)
-    #expect(batches.map(\.count) == [10, 10, 3])
-    #expect(batches.flatMap(\.self) == paths)
-    #expect(AttachmentRules.importBatches([]).isEmpty)
-  }
-
-  @Test("The page gets resources and basenames, never absolute paths")
+  @Test("The page gets file refs and basenames, never absolute paths")
   func pageResult() throws {
-    let merged = AttachmentRules.merge([
+    let event = ResourcesImportedEvent(
       ResourceImportResponse(
-        imported: [.init(path: "/Users/me/a.md", resource: Self.resource("r1"))], failures: []),
-      ResourceImportResponse(
-        imported: [],
-        failures: [.init(path: "/Users/me/pic.png", reason: .unsupported, message: "no")]),
-    ])
-    let result = AttachmentImportResult(merged)
-    #expect(result.resources == [Self.resource("r1")])
-    #expect(result.failures.map(\.name) == ["pic.png"])
-    let json = String(decoding: try JSONEncoder().encode(result), as: UTF8.self)
+        imported: [.init(path: "/Users/me/a.md", resource: Self.resource("r1"))],
+        failures: [.init(path: "/Users/me/pic.png", reason: .unsupported, message: "no")]))
+    #expect(event.resources == [FileRef(id: "r1", name: "r1.md", size: 3, type: "text/plain")])
+    #expect(event.failures == [.init(name: "pic.png", reason: .unsupported)])
+    let json = String(decoding: try JSONEncoder().encode(event), as: UTF8.self)
     #expect(!json.contains("/Users/me"))
-    #expect(json.contains("\"taskId\":null"))
   }
 
   @Test("The import response decodes the service contract")
@@ -88,14 +74,6 @@ struct ShellResourcesTests {
     #expect(
       CapabilityInputs.clipboardWrite(.object(["text": .string(long)])).failureMessage
         == "Clipboard content exceeds the limit.")
-  }
-
-  @Test("Artifact file names are safe and bounded")
-  func artifactNames() {
-    #expect(ArtifactFiles.fileName(artifactId: "a1", name: "x/y:z?.md") == "a1-x_y_z_.md")
-    #expect(ArtifactFiles.fileName(artifactId: "a1", name: "") == "a1-download.bin")
-    let long = ArtifactFiles.fileName(artifactId: "a", name: String(repeating: "😀", count: 150))
-    #expect(long.utf16.count == 2 + 200)
   }
 
   @Test("The menu bar state ranks unavailable, attention, running, idle")

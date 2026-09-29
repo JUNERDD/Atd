@@ -59,18 +59,3 @@ enum GlassBackground {
     return glass
   }
 }
-
-/// Names of the state events the shell pushes to its pages. Provisional until the bridge
-/// contract (plan P3) defines them; integration renames them in one place.
-enum ShellEventName {
-  /// `Bool`: the window holds key status (the page dims its in-page glass when false).
-  static let windowActive = "window.active"
-  /// `Bool`: the panel is shown (R9 `window.visibility`).
-  static let windowVisibility = "window.visibility"
-  /// `{ id }`: a command's global shortcut fired.
-  static let commandShortcut = "command.shortcut"
-  /// `{ source, resources, failures }` or `{ source, error }`.
-  static let attachmentsImported = "attachments.imported"
-  /// `{ command: "undo" | "redo" }`: Edit › Undo or Redo for the focused editor.
-  static let editCommand = "edit.command"
-}

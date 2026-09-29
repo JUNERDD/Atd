@@ -9,8 +9,8 @@ struct AppMenuActions {
   var openSettings: () -> Void
   var restartService: () async throws -> Void
   var showServiceLogs: () async throws -> Void
-  /// Undo or Redo for the focused page's editor.
-  var editCommand: (_ command: String) -> Void
+  /// Undo or Redo for the key window's page (`edit.command`).
+  var editCommand: (_ command: EditCommandEvent.Command) -> Void
   /// A Debug build waiting for `pnpm dev`: the status menu says so first.
   var developmentHint: () -> Bool
 }
@@ -76,13 +76,14 @@ enum AppMenus {
     return main
   }
 
-  /// Undo and Redo go to the page: a native undo never sees the edits CodeMirror handles
-  /// itself. The page receives shortcuts first; only unhandled ones reach these items.
+  /// Undo and Redo go to the page as `edit.command`: WebKit's undo stack never sees the edits
+  /// CodeMirror handles itself. The page receives shortcuts first; only unhandled ones reach
+  /// these items. Cut, Copy, Paste and Select All stay responder-chain actions.
   private static func editMenu(_ actions: AppMenuActions) -> NSMenu {
     let strings = ShellStrings.shared
     let menu = NSMenu(title: strings.text(.menuEdit))
-    menu.addItem(ActionMenuItem(strings.text(.menuUndo), key: "z") { actions.editCommand("undo") })
-    let redo = ActionMenuItem(strings.text(.menuRedo), key: "z") { actions.editCommand("redo") }
+    menu.addItem(ActionMenuItem(strings.text(.menuUndo), key: "z") { actions.editCommand(.undo) })
+    let redo = ActionMenuItem(strings.text(.menuRedo), key: "z") { actions.editCommand(.redo) }
     redo.keyEquivalentModifierMask = [.command, .shift]
     menu.addItem(redo)
     menu.addItem(.separator())

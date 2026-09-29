@@ -8,22 +8,8 @@ import WebKit
 /// ``StubService`` whose endpoint files live in a temporary data directory. Nothing touches the
 /// user's data directories, and every port is assigned by the OS.
 @MainActor
-final class RelayHarness: NSObject, WKScriptMessageHandler, WKNavigationDelegate {
-  static let pageScript = """
-    window.__frames = [];
-    window.__aiNativeBridge = { socketFrames(frames) { window.__frames.push(...frames); } };
-    window.socket = (message) => window.webkit.messageHandlers.aiSocket.postMessage(message);
-    window.framesOf = (id) => window.__frames.filter((f) => f.socketId === id);
-    window.waitFor = async (predicate, ms = 5000) => {
-      const end = Date.now() + ms;
-      for (;;) {
-        const value = predicate();
-        if (value) return value;
-        if (Date.now() > end) throw new Error('timed out');
-        await new Promise((resolve) => setTimeout(resolve, 10));
-      }
-    };
-    """
+final class RelayHarness: NSObject, WKNavigationDelegate {
+  static let pageScript = "window.loaded = true;"
 
   let stub: StubService
   let root: URL
@@ -32,6 +18,9 @@ final class RelayHarness: NSObject, WKScriptMessageHandler, WKNavigationDelegate
   let handler: RendererSchemeHandler
   let webView: WKWebView
   let pipe: VirtualSocketPipe
+  /// What the pipe delivered, in order: the web view's outbox in the app.
+  private let delivered: FrameLog
+  var frames: [SocketFrame] { delivered.frames }
   private var loaded: CheckedContinuation<Void, Never>?
 
   /// - Parameter devServer: serve renderer files from the stub's dev-server mode instead of a
@@ -61,10 +50,11 @@ final class RelayHarness: NSObject, WKScriptMessageHandler, WKNavigationDelegate
     configuration.setURLSchemeHandler(handler, forURLScheme: RendererSchemeHandler.scheme)
     webView = WKWebView(
       frame: CGRect(x: 0, y: 0, width: 400, height: 300), configuration: configuration)
-    pipe = VirtualSocketPipe(webView: webView, link: link)
+    let log = FrameLog()
+    delivered = log
+    pipe = VirtualSocketPipe(link: link) { log.frames.append($0) }
     super.init()
     try writeEndpoint(port: port, epoch: stub.epoch)
-    configuration.userContentController.add(self, name: "aiSocket")
     webView.navigationDelegate = self
   }
 
@@ -112,25 +102,31 @@ final class RelayHarness: NSObject, WKScriptMessageHandler, WKNavigationDelegate
 
   func tearDown() {
     pipe.invalidate()
-    webView.configuration.userContentController.removeScriptMessageHandler(forName: "aiSocket")
     stub.stop()
     try? FileManager.default.removeItem(at: root)
   }
 
-  func userContentController(
-    _ controller: WKUserContentController, didReceive message: WKScriptMessage
-  ) {
-    let origin = message.frameInfo.securityOrigin
-    guard message.frameInfo.isMainFrame, origin.protocol == "ai-app", origin.host == "renderer",
-      let command = VirtualSocketCommand(messageBody: message.body)
-    else { return }
-    pipe.receive(command)
+  /// The frames of one socket, as `kind` or `kind:data` / `kind:code:reason` strings.
+  func frames(of id: String) -> [String] {
+    frames.compactMap { frame in
+      switch frame {
+      case .open(let open) where open.socketId == id: "open"
+      case .message(let message) where message.socketId == id: "message:\(message.data)"
+      case .close(let close) where close.socketId == id: "close:\(close.code):\(close.reason)"
+      default: nil
+      }
+    }
   }
 
   func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
     loaded?.resume()
     loaded = nil
   }
+}
+
+@MainActor
+final class FrameLog {
+  var frames: [SocketFrame] = []
 }
 
 /// Records capability requests and answers them.

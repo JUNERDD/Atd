@@ -65,11 +65,11 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
   }
 
   func windowDidBecomeKey(_ notification: Notification) {
-    host?.setState(ShellEventName.windowActive, .bool(true))
+    host?.setState(.windowActive(.init(active: true)))
   }
 
   func windowDidResignKey(_ notification: Notification) {
-    host?.setState(ShellEventName.windowActive, .bool(false))
+    host?.setState(.windowActive(.init(active: false)))
   }
 
   /// Keeps the window reachable when its display shrinks or disappears.
