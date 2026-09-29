@@ -1,0 +1,30 @@
+{
+  "name": "@ai/file-index",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Node-API loader for the Rust file-name index in crates/file-index-node",
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "*.node"
+  ],
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./index.js"
+    }
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs"
+  },
+  "devDependencies": {
+    "@napi-rs/cli": "3.10.5"
+  },
+  "napi": {
+    "binaryName": "file-index",
+    "targets": [
+      "aarch64-apple-darwin"
+    ]
+  }
+}

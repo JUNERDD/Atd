@@ -98,12 +98,6 @@ function foldChar(char: string): string {
     .toLowerCase();
 }
 
-/** Whether a file name contains the query at all; `query` is raw user text. */
-export function nameMatches(query: string, name: string): boolean {
-  const folded = foldText(query);
-  return !folded || nameTier(folded, name) !== null;
-}
-
 export function tooLarge(hit: SearchHit): boolean {
   return hit.size !== null && hit.size > MAX_ATTACHMENT_BYTES;
 }

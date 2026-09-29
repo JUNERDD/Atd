@@ -3,8 +3,9 @@ import path from 'node:path';
 
 /**
  * Where file search looks: the home directory, plus iCloud Drive on macOS, minus hidden entries,
- * dependency trees, build and cache output, app bundles and the OS-owned home folder. Backends
- * prune with these rules, and attach re-checks each resolved path against them before reading.
+ * dependency trees, build and cache output, app bundles and the OS-owned home folder. The native
+ * index prunes with these rules merged with its own (`crates/file-index/src/exclusions.rs`); every
+ * hit is filtered here again, and attach re-checks each resolved path before reading.
  */
 export interface SearchScope {
   readonly platform: NodeJS.Platform;

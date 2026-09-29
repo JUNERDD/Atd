@@ -18,6 +18,16 @@
       "dependsOn": ["^build"],
       "outputs": ["dist/**", "dist-electron/**", "dist-native/**"]
     },
+    "@ai/file-index#build": {
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/Cargo.toml",
+        "$TURBO_ROOT$/Cargo.lock",
+        "$TURBO_ROOT$/rust-toolchain.toml",
+        "$TURBO_ROOT$/crates/**"
+      ],
+      "outputs": ["*.node", "index.js", "index.d.ts"]
+    },
     "dev": {
       "dependsOn": ["^build", "@ai/agent-service#build"],
       "cache": false,

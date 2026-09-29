@@ -1,6 +1,5 @@
-import { HomeIndexBackend } from './home-index.js';
+import { NativeIndexBackend } from './native-index.js';
 import type { SearchScope } from './scope.js';
-import { SpotlightBackend } from './spotlight.js';
 
 /** A candidate file as a backend found it. `path` never leaves the service. */
 export interface SearchHit {
@@ -55,16 +54,9 @@ const unsupported: SearchBackend = {
 };
 
 /**
- * macOS asks the system Spotlight index and never walks folders, so typing cannot raise privacy
- * prompts. Linux walks home into a cached in-memory index.
+ * macOS searches the native file-name index (`native-index.ts`), kept in `indexDir` under the
+ * service data dir. Other platforms have no file search.
  */
-export function platformBackend(platform: NodeJS.Platform): SearchBackend {
-  switch (platform) {
-    case 'darwin':
-      return new SpotlightBackend();
-    case 'linux':
-      return new HomeIndexBackend();
-    default:
-      return unsupported;
-  }
+export function platformBackend(platform: NodeJS.Platform, indexDir: string): SearchBackend {
+  return platform === 'darwin' ? new NativeIndexBackend(indexDir) : unsupported;
 }

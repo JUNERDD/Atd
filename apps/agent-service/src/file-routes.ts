@@ -1,4 +1,5 @@
 import { homedir } from 'node:os';
+import path from 'node:path';
 import type { FastifyInstance, FastifyReply } from 'fastify';
 import {
   errorMessage,
@@ -20,6 +21,8 @@ import type { RouteExposure } from './route-exposure.js';
 
 export interface FileRouteDeps {
   resources: ResourceStore;
+  /** The service data dir; the file index keeps its store in `file-index/` below it. */
+  dataDir: string;
 }
 
 const renderer: { exposure: RouteExposure } = { exposure: 'renderer' };
@@ -32,7 +35,7 @@ const shell: { exposure: RouteExposure } = { exposure: 'shell' };
  */
 export function registerFileRoutes(app: FastifyInstance, deps: FileRouteDeps): void {
   const search = new FileSearchService(
-    () => platformBackend(process.platform),
+    () => platformBackend(process.platform, path.join(deps.dataDir, 'file-index')),
     deps.resources,
     homedir(),
     process.platform,

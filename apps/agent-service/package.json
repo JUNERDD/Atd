@@ -26,6 +26,7 @@
   },
   "dependencies": {
     "@ai/agent-contracts": "workspace:*",
+    "@ai/file-index": "workspace:*",
     "@ai/plugin-kit": "workspace:*",
     "@earendil-works/pi-ai": "0.87.1",
     "@earendil-works/pi-coding-agent": "0.87.1",
@@ -33,7 +34,6 @@
     "@juicesharp/rpiv-todo": "2.11.0",
     "@napi-rs/keyring": "2.1.0",
     "fastify": "5.12.5",
-    "fdir": "6.5.0",
     "jiti": "2.7.0",
     "pi-hermes-memory": "0.9.9",
     "pi-mcp-adapter": "3.1.0",
