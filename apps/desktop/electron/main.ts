@@ -21,7 +21,7 @@ import { chooseContextFiles } from './context-files';
 import { appItems, installAppMenu } from './app-menu';
 import { DockVisibility } from './dock-visibility';
 import { MenuBarItem } from './menu-bar';
-import { installFileSearch } from './file-search/ipc';
+import { installFileSearch } from './agent/file-search';
 import { ServiceManager } from './service/manager';
 import { SETTINGS_IPC } from './settings-contract';
 import { SettingsService } from './settings-service';

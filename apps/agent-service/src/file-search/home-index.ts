@@ -2,10 +2,10 @@ import { stat } from 'node:fs/promises';
 import path from 'node:path';
 import { fdir } from 'fdir';
 import { attachableExtension, type AttachableExtension } from '@ai/agent-contracts';
-import type { BackendReply, SearchBackend, SearchHit, SearchRequest } from './backend';
-import { foldText, nameMatches, rankCandidates, type Candidate } from './rank';
-import { recentHits } from './recents';
-import { isExcludedDirectory, type SearchScope } from './scope';
+import type { BackendReply, SearchBackend, SearchHit, SearchRequest } from './backend.js';
+import { foldText, nameMatches, rankCandidates, type Candidate } from './rank.js';
+import { recentHits } from './recents.js';
+import { isExcludedDirectory, type SearchScope } from './scope.js';
 
 const MAX_DEPTH = 8;
 const MAX_ENTRIES = 150_000;
@@ -40,24 +40,23 @@ interface Build {
 }
 
 /**
- * Windows and Linux file search over an in-memory index of attachable files below home. The first
- * query starts the walk and every query shares it; a stale index keeps answering while a newer
- * one builds in the background.
+ * Linux file search over an in-memory index of attachable files below home. The first query
+ * starts the walk and every query shares it; a stale index keeps answering while a newer one
+ * builds in the background.
  */
 export class HomeIndexBackend implements SearchBackend {
   private index: Index | null = null;
   private build: Build | null = null;
+  /** Aborted by `close`, which ends a running walk. */
+  private readonly stopped = new AbortController();
 
-  constructor(
-    private readonly platform: NodeJS.Platform,
-    private readonly now: () => number = () => performance.now(),
-  ) {}
+  constructor(private readonly now: () => number = () => performance.now()) {}
 
   async search({ query, limit, scope, signal }: SearchRequest): Promise<BackendReply> {
     const folded = foldText(query);
     // Like Spotlight: empty and one-character queries list recent files only.
     if ([...folded].length <= 1) {
-      const recents = await recentHits(this.platform, scope.home);
+      const recents = await recentHits(scope.home);
       return { state: 'ok', hits: recents.filter((hit) => nameMatches(query, name(hit.path))) };
     }
     const { entries, complete } = await this.current(scope, signal);
@@ -70,6 +69,11 @@ export class HomeIndexBackend implements SearchBackend {
       state: complete ? 'ok' : 'partial',
       hits: hits.filter((hit) => hit !== null),
     };
+  }
+
+  async close(): Promise<void> {
+    this.stopped.abort();
+    await this.build?.done;
   }
 
   private async current(
@@ -97,7 +101,7 @@ export class HomeIndexBackend implements SearchBackend {
       entries,
       // Never rejects: a background rebuild has no caller to report to. A failed walk keeps the
       // previous index, and the next query starts a new walk.
-      done: walk(scope, entries)
+      done: walk(scope, entries, this.stopped.signal)
         .then(
           (complete) => {
             this.index = { home: scope.home, entries, complete, builtAt: this.now() };
@@ -117,13 +121,13 @@ export class HomeIndexBackend implements SearchBackend {
  * Walks home without following links, applying the scope's exclusions and the attachable-type
  * filter during the walk. Resolves true when nothing cut it short.
  */
-async function walk(scope: SearchScope, entries: Entry[]): Promise<boolean> {
+async function walk(scope: SearchScope, entries: Entry[], stopped: AbortSignal): Promise<boolean> {
   const full = new AbortController();
   const budget = AbortSignal.timeout(BUILD_BUDGET_MS);
   await new fdir({ excludeSymlinks: true })
     .withFullPaths()
     .withMaxDepth(MAX_DEPTH)
-    .withAbortSignal(AbortSignal.any([budget, full.signal]))
+    .withAbortSignal(AbortSignal.any([budget, full.signal, stopped]))
     .exclude((dirName, dirPath) =>
       isExcludedDirectory(scope, dirName, path.dirname(dirPath) === scope.home),
     )
@@ -138,7 +142,7 @@ async function walk(scope: SearchScope, entries: Entry[]): Promise<boolean> {
     })
     .crawl(scope.home)
     .withPromise();
-  return !budget.aborted && !full.signal.aborted;
+  return !budget.aborted && !full.signal.aborted && !stopped.aborted;
 }
 
 function toEntry(home: string, filePath: string): Entry | null {

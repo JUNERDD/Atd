@@ -159,6 +159,9 @@ importers:
       fastify:
         specifier: 5.12.5
         version: 5.12.5
+      fdir:
+        specifier: 6.5.0
+        version: 6.5.0
       jiti:
         specifier: 2.7.0
         version: 2.7.0
@@ -193,9 +196,6 @@ importers:
       electron-updater:
         specifier: 6.8.9
         version: 6.8.9(supports-color@7.2.0)
-      fdir:
-        specifier: 6.5.0
-        version: 6.5.0(picomatch@4.0.7)
       mustache:
         specifier: 4.2.0
         version: 4.2.0
@@ -12254,6 +12254,8 @@ snapshots:
   fastq@1.20.3:
     dependencies:
       reusify: 1.1.0
+
+  fdir@6.5.0: {}
 
   fdir@6.5.0(picomatch@4.0.7):
     optionalDependencies:

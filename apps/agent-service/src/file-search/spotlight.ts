@@ -2,9 +2,9 @@ import { spawn } from 'node:child_process';
 import { readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { ATTACHABLE_EXTENSIONS, attachableExtension } from '@ai/agent-contracts';
-import type { BackendReply, SearchBackend, SearchHit, SearchRequest } from './backend';
-import { foldText, nameMatches } from './rank';
-import { isExcludedDirectory, searchableLocation, type SearchScope } from './scope';
+import type { BackendReply, SearchBackend, SearchHit, SearchRequest } from './backend.js';
+import { foldText, nameMatches } from './rank.js';
+import { isExcludedDirectory, searchableLocation, type SearchScope } from './scope.js';
 
 /** Read in this order, from the tail of each record, because paths can contain spaces. */
 const ATTRIBUTES = ['kMDItemFSSize', 'kMDItemFSContentChangeDate', 'kMDItemLastUsedDate'] as const;
@@ -56,6 +56,9 @@ export class SpotlightBackend implements SearchBackend {
       await homeFileHits(files, usable),
     );
   }
+
+  /** Every mdfind pass ends with its request signal, which the service aborts first. */
+  async close(): Promise<void> {}
 
   /** Re-checked at most once a minute; concurrent searches share one check. */
   private indexEnabled(home: string): Promise<boolean> {

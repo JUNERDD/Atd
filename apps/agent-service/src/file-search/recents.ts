@@ -1,9 +1,8 @@
-import { shell } from 'electron';
-import { readdir, readFile, realpath, stat } from 'node:fs/promises';
+import { readFile, realpath, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { attachableExtension } from '@ai/agent-contracts';
-import type { SearchHit } from './backend';
+import type { SearchHit } from './backend.js';
 
 /** Newest entries read from the desktop's recent list before any file is touched. */
 const MAX_RECENTS = 100;
@@ -14,11 +13,11 @@ interface RecentFile {
 }
 
 /**
- * Files the desktop shell recently opened, as hits with real paths and current stats. Entries
+ * Files the Linux desktop recently opened, as hits with real paths and current stats. Entries
  * whose file is gone, or is not an attachable type, are skipped.
  */
-export async function recentHits(platform: NodeJS.Platform, home: string): Promise<SearchHit[]> {
-  const recents = platform === 'win32' ? await windowsRecents() : await xdgRecents(home);
+export async function recentHits(home: string): Promise<SearchHit[]> {
+  const recents = await xdgRecents(home);
   const hits = await Promise.all(
     recents.map(async ({ path: filePath, usedAt }): Promise<SearchHit | null> => {
       try {
@@ -33,35 +32,6 @@ export async function recentHits(platform: NodeJS.Platform, home: string): Promi
     }),
   );
   return hits.filter((hit) => hit !== null);
-}
-
-/** `%APPDATA%\Microsoft\Windows\Recent\*.lnk`; a shortcut's own mtime is when it was last used. */
-async function windowsRecents(): Promise<RecentFile[]> {
-  const appData = process.env.APPDATA;
-  if (!appData) return [];
-  const folder = path.join(appData, 'Microsoft', 'Windows', 'Recent');
-  const names = await readdir(folder).catch((): string[] => []);
-  const shortcuts = await Promise.all(
-    names
-      .filter((name) => name.toLowerCase().endsWith('.lnk'))
-      .map(async (name) => {
-        const file = path.join(folder, name);
-        const info = await stat(file).catch(() => null);
-        return info ? { file, usedAt: Math.round(info.mtimeMs) } : null;
-      }),
-  );
-  return shortcuts
-    .filter((shortcut) => shortcut !== null)
-    .sort((a, b) => b.usedAt - a.usedAt)
-    .slice(0, MAX_RECENTS)
-    .flatMap(({ file, usedAt }) => {
-      try {
-        const target = shell.readShortcutLink(file).target;
-        return target && attachableExtension(target) ? [{ path: target, usedAt }] : [];
-      } catch {
-        return [];
-      }
-    });
 }
 
 /** `$XDG_DATA_HOME/recently-used.xbel` (default `~/.local/share`): bookmark `href` + `modified`. */

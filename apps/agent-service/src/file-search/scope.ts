@@ -41,7 +41,7 @@ export async function resolveSearchScope(
   home: string,
   platform: NodeJS.Platform,
 ): Promise<SearchScope> {
-  // The fs error would carry the absolute home path to the renderer.
+  // The fs error would carry the absolute home path to the client.
   const resolved = await realpath(home).catch(() => {
     throw new Error('The home folder could not be read.');
   });
@@ -72,7 +72,7 @@ export function isExcludedDirectory(scope: SearchScope, name: string, homeLevel:
  * The parent folder as the renderer sees it when `filePath` is searchable, otherwise null:
  * outside every root, inside an excluded directory, or a hidden file. Home files read as the
  * home-relative folder ('' for home itself); iCloud Drive files as `iCloud Drive[/folder]`. This is
- * the only form of a path that leaves the main process.
+ * the only form of a path that leaves the service.
  */
 export function searchableLocation(scope: SearchScope, filePath: string): string | null {
   // iCloud Drive first: its real path is inside home's excluded Library folder.

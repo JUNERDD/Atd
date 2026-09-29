@@ -1,5 +1,6 @@
+import type { FileSearchQuery, FileSearchReply } from '@ai/agent-contracts';
 import type { AgentBridge } from './agent/bridge';
-import type { FileSearchBridge } from './file-search/contract';
+import type { FileRef } from './agent/task-schema';
 import type { SettingsBridge } from './settings-contract';
 import type { ServiceBridge } from './service/ipc';
 
@@ -11,6 +12,9 @@ export const IPC = {
   setShowInDock: 'app:set-show-in-dock',
   setOpenAtLogin: 'app:set-open-at-login',
   chooseFiles: 'panel:choose-files',
+  /** Panel-only, kept apart from `agent:request`, which also trusts the settings window. */
+  searchFiles: 'files:search',
+  attachFiles: 'files:attach',
   /** Main → renderer only: Edit → Undo/Redo clicked in the application menu for this window. */
   editCommand: 'app:edit-command',
 } as const;
@@ -22,6 +26,14 @@ export interface ContextFile {
   name: string;
   size: number;
   type: string;
+}
+
+/** The panel's `@` file search; main forwards it to the service's file routes. */
+export interface FileSearchBridge {
+  /** An empty query returns recent files only. */
+  search(request: FileSearchQuery): Promise<FileSearchReply>;
+  /** Creates resources from the files behind the ids; rejects with English messages. */
+  attach(resultIds: string[]): Promise<FileRef[]>;
 }
 
 export interface DesktopState {

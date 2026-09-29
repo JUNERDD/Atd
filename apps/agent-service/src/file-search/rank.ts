@@ -4,8 +4,8 @@ import {
   MAX_ATTACHMENT_BYTES,
   type AttachableExtension,
 } from '@ai/agent-contracts';
-import type { SearchHit } from './backend';
-import { searchableLocation, type SearchScope } from './scope';
+import type { SearchHit } from './backend.js';
+import { searchableLocation, type SearchScope } from './scope.js';
 
 /** A hit the renderer may be offered, with the name and location it will see. */
 export interface Candidate {

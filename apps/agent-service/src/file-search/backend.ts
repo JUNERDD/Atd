@@ -1,8 +1,8 @@
-import { HomeIndexBackend } from './home-index';
-import type { SearchScope } from './scope';
-import { SpotlightBackend } from './spotlight';
+import { HomeIndexBackend } from './home-index.js';
+import type { SearchScope } from './scope.js';
+import { SpotlightBackend } from './spotlight.js';
 
-/** A candidate file as a backend found it. `path` never leaves the main process. */
+/** A candidate file as a backend found it. `path` never leaves the service. */
 export interface SearchHit {
   /**
    * The file's real path. Backends resolve links or skip them, so one file never appears under
@@ -29,32 +29,41 @@ export interface SearchRequest {
   limit: number;
   scope: SearchScope;
   /**
-   * Aborts on a newer search from the same sender or at the time budget. The backend then stops
-   * its work promptly and resolves with the hits it has as `partial`.
+   * Aborts on a newer search on the same channel, at shutdown, or at the time budget. The backend
+   * then stops its work promptly and resolves with the hits it has as `partial`.
    */
   signal: AbortSignal;
 }
 
+/**
+ * Where file names come from. `FileSearchService` owns the scope, ranking, result ids and
+ * attach, so a replacement index (the native file index in a worker thread) implements only this.
+ */
 export interface SearchBackend {
   /** The service filters, ranks and trims the hits, so a backend may return more than it shows. */
   search(request: SearchRequest): Promise<BackendReply>;
+  /**
+   * Stops background work (index walks, workers) at service shutdown. In-flight searches are
+   * aborted through their signals first; the backend is not used again.
+   */
+  close(): Promise<void>;
 }
 
 const unsupported: SearchBackend = {
   search: async () => ({ state: 'unavailable', reason: 'unsupported' }),
+  close: async () => undefined,
 };
 
 /**
  * macOS asks the system Spotlight index and never walks folders, so typing cannot raise privacy
- * prompts. Windows and Linux walk home into a cached in-memory index.
+ * prompts. Linux walks home into a cached in-memory index.
  */
 export function platformBackend(platform: NodeJS.Platform): SearchBackend {
   switch (platform) {
     case 'darwin':
       return new SpotlightBackend();
-    case 'win32':
     case 'linux':
-      return new HomeIndexBackend(platform);
+      return new HomeIndexBackend();
     default:
       return unsupported;
   }
