@@ -1,0 +1,12 @@
+# SwiftLint enforces only the repository's 350-line file limit; swift-format owns style.
+only_rules:
+  - file_length
+included:
+  - Package.swift
+  - App
+  - Sources
+  - Tests
+file_length:
+  warning: 350
+  error: 350
+  ignore_comment_only_lines: false
