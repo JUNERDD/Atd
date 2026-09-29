@@ -284,10 +284,10 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
   });
 
   // Live MCP mounts. Building the authority costs ~880 ms (adapter transpile
-  // plus control session) and nothing at boot needs it, so the routes take a
-  // lazy resolver and the adapter loads on first MCP use or from the warm-up
-  // index.ts kicks once the endpoint is published. `authorityFor` caches per
-  // dataDir, so all of those share one load. McpAdapterMissing still degrades
+  // plus control session) and ~26 MB for the rest of the process, and nothing
+  // at boot needs it, so the routes take a lazy resolver and the adapter loads
+  // on first MCP use (a route, a plugin toggle, or a run). `authorityFor`
+  // caches per dataDir, so all of those share one load. McpAdapterMissing still degrades
   // explicitly: MCP routes answer 503 (never 501-future nor silent success)
   // and runs continue without MCP tools; skills stay live.
   registerMcpRoutes(app, () => McpAuthority.authorityFor(mcpAuthorityDeps(deps)));
@@ -314,10 +314,10 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
 
 /**
  * The MCP authority identity for this service profile. `authorityFor` caches on
- * dataDir alone, so the boot warm-up and the route resolver must describe the
- * same profile from one place or the first caller would silently win.
+ * dataDir alone, so the plugin and MCP route resolvers must describe the same
+ * profile from one place or the first caller would silently win.
  */
-export function mcpAuthorityDeps(deps: ServerDeps): McpAuthorityDeps {
+function mcpAuthorityDeps(deps: ServerDeps): McpAuthorityDeps {
   return {
     serviceId: deps.config.serviceId,
     dataDir: deps.config.paths.root,
