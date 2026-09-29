@@ -1,0 +1,77 @@
+/// The languages the native surfaces ship. The raw value is the `.lproj` the String Catalog
+/// compiles to.
+public enum ShellLanguage: String, CaseIterable, Sendable {
+  case english = "en"
+  case simplifiedChinese = "zh-Hans"
+
+  /// The service's `language` setting (`APP_LANGUAGES`: `en`, `zh-CN`), pushed by the page.
+  public init?(appLanguage: String) {
+    switch appLanguage {
+    case "en": self = .english
+    case "zh-CN": self = .simplifiedChinese
+    default: return nil
+    }
+  }
+
+  /// Until the page pushes the setting: the renderer's `resolveLanguage` applied to the first
+  /// preferred system language, so both sides start in the same language.
+  public static func system(preferredLanguages: [String]) -> ShellLanguage {
+    preferredLanguages.first?.lowercased().hasPrefix("zh") == true ? .simplifiedChinese : .english
+  }
+}
+
+/// Every native string, by its String Catalog key (apps/macos/App/Localizable.xcstrings). A
+/// test keeps this list and the catalog identical, with both languages translated.
+public enum ShellStringKey: String, CaseIterable, Sendable {
+  case appName = "app.name"
+  case windowPanelTitle = "window.panel.title"
+  case windowSettingsTitle = "window.settings.title"
+
+  case menuShowPanel = "menu.showPanel"
+  case menuHidePanel = "menu.hidePanel"
+  case menuSettings = "menu.settings"
+  case menuRestartService = "menu.restartService"
+  case menuShowServiceLogs = "menu.showServiceLogs"
+  case menuQuit = "menu.quit"
+  case menuDevelopmentHint = "menu.developmentHint"
+
+  case menuEdit = "menu.edit"
+  case menuUndo = "menu.edit.undo"
+  case menuRedo = "menu.edit.redo"
+  case menuCut = "menu.edit.cut"
+  case menuCopy = "menu.edit.copy"
+  case menuPaste = "menu.edit.paste"
+  case menuPasteAndMatchStyle = "menu.edit.pasteAndMatchStyle"
+  case menuDelete = "menu.edit.delete"
+  case menuSelectAll = "menu.edit.selectAll"
+  case menuSubstitutions = "menu.edit.substitutions"
+  case menuShowSubstitutions = "menu.edit.showSubstitutions"
+  case menuSmartQuotes = "menu.edit.smartQuotes"
+  case menuSmartDashes = "menu.edit.smartDashes"
+  case menuTextReplacement = "menu.edit.textReplacement"
+  case menuSpeech = "menu.edit.speech"
+  case menuStartSpeaking = "menu.edit.startSpeaking"
+  case menuStopSpeaking = "menu.edit.stopSpeaking"
+  case menuView = "menu.view"
+  case menuReload = "menu.view.reload"
+
+  case statusUnavailable = "status.unavailable"
+  case statusRunning = "status.running"
+  case statusAttention = "status.attention"
+  case statusDevelopmentHint = "status.developmentHint"
+
+  case errorRestartServiceTitle = "error.restartService.title"
+  case errorRestartServiceMessage = "error.restartService.message"
+  case errorShowLogsTitle = "error.showLogs.title"
+  case errorShowLogsMessage = "error.showLogs.message"
+
+  case quitTitle = "quit.title"
+  case quitMessageOne = "quit.message.one"
+  case quitMessageOther = "quit.message.other"
+  case quitDetail = "quit.detail"
+  case quitConfirm = "quit.confirm"
+  case cancel = "common.cancel"
+
+  case filePickTitle = "file.pick.title"
+  case fileSaveTitle = "file.save.title"
+}
