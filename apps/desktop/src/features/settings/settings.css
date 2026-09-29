@@ -825,8 +825,9 @@ html[data-runtime='electron'] .settings-window {
   align-items: stretch;
   gap: 16px;
   padding: 0 16px 16px;
-  background: var(--ata-surface-settings-content);
-  backdrop-filter: blur(40px);
+  /* The approved drawer material: the settings content tint under a stronger blur. */
+  --ata-glass-fill: var(--ata-surface-settings-content);
+  --ata-glass-blur: 40px;
   box-shadow: none;
   --tw-ring-shadow: 0 0 #0000;
   overflow: hidden;

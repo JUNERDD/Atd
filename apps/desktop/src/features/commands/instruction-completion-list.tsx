@@ -28,7 +28,7 @@ export function CompletionList({
     view.requestMeasure();
   }, [options, selected, view]);
   return (
-    <ScrollArea className="flex-1 max-h-[inherit]">
+    <ScrollArea className="surface-glass flex-1 max-h-[inherit] rounded-2xl">
       <div
         id={id}
         role="listbox"

@@ -144,7 +144,6 @@
   max-height: min(440px, var(--radix-popover-content-available-height));
   display: flex;
   overflow: hidden;
-  backdrop-filter: blur(var(--ata-backdrop-blur));
 }
 .model-picker [data-slot='command'] {
   max-height: inherit;

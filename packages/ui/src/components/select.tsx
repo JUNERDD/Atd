@@ -65,8 +65,8 @@ function SelectContent({
         data-slot="select-content"
         data-align-trigger={position === 'item-aligned'}
         className={cn(
-          'relative z-50 flex max-h-(--radix-select-content-available-height) w-max min-w-[min(max(9rem,var(--radix-select-trigger-width,0px)),calc(100vw-16px))] max-w-[calc(100vw-16px)] flex-col overflow-hidden rounded-2xl bg-popover p-1 text-popover-foreground shadow-lg ring-1 ring-foreground/5 dark:ring-foreground/10',
-          'backdrop-blur-(--ata-backdrop-blur) [-webkit-app-region:no-drag]',
+          'relative z-50 flex max-h-(--radix-select-content-available-height) w-max min-w-[min(max(9rem,var(--radix-select-trigger-width,0px)),calc(100vw-16px))] max-w-[calc(100vw-16px)] flex-col overflow-hidden rounded-2xl surface-glass p-1 text-popover-foreground shadow-lg ring-1 ring-foreground/5 dark:ring-foreground/10',
+          '[-webkit-app-region:no-drag]',
           className,
         )}
         position={position}

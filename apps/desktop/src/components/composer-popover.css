@@ -1,12 +1,11 @@
 /* One surface for every view of the composer popover. Each view pads and sizes itself inside the
    morph viewport, so the surface drops the primitive's padding, gap, and 18rem floor (it would
-   overhang a narrower view in a 320px window) and adds the shared blurred-panel treatment. */
+   overhang a narrower view in a 320px window); the primitive's glass stays its material. */
 .composer-popover[data-slot='popover-content'] {
   gap: 0;
   min-width: 0;
   padding: 0;
   overflow: hidden;
-  backdrop-filter: blur(var(--ata-backdrop-blur));
 }
 
 /* Closing under a hidden composer skips the exit animation, so Radix removes the popover in the

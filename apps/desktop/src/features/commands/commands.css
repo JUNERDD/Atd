@@ -50,7 +50,6 @@
   min-width: min(280px, var(--radix-popover-content-available-width));
   max-width: min(360px, var(--radix-popover-content-available-width));
   max-height: var(--radix-popover-content-available-height);
-  backdrop-filter: blur(var(--ata-backdrop-blur));
 }
 .editor-footer {
   display: flex;

@@ -49,7 +49,7 @@
 }
 
 /* Follow-up rows move on their own compositor layer: a drag or a make-way slide then never
-   repaints the popover, whose macOS backdrop blur is a software SVG filter on the panel. */
+   repaints the popover and its backdrop blur. */
 .composer-queue-row[data-dragging] {
   will-change: transform;
 }

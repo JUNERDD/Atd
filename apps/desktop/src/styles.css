@@ -242,9 +242,9 @@ html[data-platform='darwin'] .panel-header {
   padding-bottom: 0;
 }
 /* Floating scroll-to-bottom pill pinned above the composer. The wrapper owns position and the
-   blurred translucent surface; the ghost icon button inside keeps its own radius, hover wash,
-   and focus ring, so no custom class lands on the Button itself. Tokens match the drawer and
-   popover surfaces. */
+   glass surface (`surface-glass`, a lighter fill than the popovers); the ghost icon button inside
+   keeps its own radius, hover wash, and focus ring, so no custom class lands on the Button
+   itself. */
 .scroll-to-bottom {
   position: absolute;
   bottom: calc(var(--overlay-footer-height, 0px) + 12px);
@@ -252,9 +252,7 @@ html[data-platform='darwin'] .panel-header {
   z-index: 1;
   border-radius: var(--radius-2xl);
   border: 1px solid var(--border);
-  background-color: color-mix(in oklch, var(--popover) 75%, transparent);
-  backdrop-filter: blur(var(--ata-backdrop-blur));
-  -webkit-backdrop-filter: blur(var(--ata-backdrop-blur));
+  --ata-glass-fill: color-mix(in oklch, var(--popover) 75%, transparent);
   box-shadow: 0 4px 12px rgb(0 0 0 / 20%);
 }
 .settings-field {

@@ -13,6 +13,11 @@
   /* One renderer-owned surface across platforms; native blur remains visible through the tint. */
   --ata-surface-panel: rgb(12 12 12 / 80%);
   --ata-backdrop-blur: 20px;
+  /* Overlay glass (`surface-glass`). A surface may tune `--ata-glass-fill` (default: the popover
+     fill) and `--ata-glass-blur` (default: the shared backdrop blur) for its fallback material. An
+     inactive window turns glass into the dimmed fill; reduced transparency into the opaque one. */
+  --ata-glass-fill-inactive: rgb(30 30 30 / 96%);
+  --ata-glass-fill-opaque: rgb(24 24 24);
   /* Same tint as the sidebar; this inset layer raises effective opacity only to 82%. */
   --ata-material-settings-content: rgb(12 12 12 / 10%);
   --ata-surface-settings-content: var(--ata-material-settings-content);
@@ -101,6 +106,13 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
+/* Reduced transparency: the panel surface (and the popover fill that follows it) turns opaque. */
+@media (prefers-reduced-transparency: reduce) {
+  :root {
+    --ata-surface-panel: rgb(12 12 12);
+  }
+}
+
 @theme inline {
   --font-sans: 'Inter Variable', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-heading: var(--font-sans);
@@ -163,6 +175,40 @@
   }
   button:disabled {
     cursor: default;
+  }
+}
+
+/*
+ * The one glass material for overlay surfaces (menus, selects, popovers, dialogs, sheets, floating
+ * pills); nothing else writes these properties. WebKit's system glass applies where the page may
+ * use it; otherwise, including every WKWebView without WebKit's private preference and Electron,
+ * a translucent fill over a backdrop blur. An inactive window (`data-window-active="false"` on the
+ * root) and reduced transparency drop the blur for a flat fill. The surface keeps this one fill:
+ * consumers tune the tokens above rather than setting a background of their own.
+ */
+@utility surface-glass {
+  background-color: var(--ata-glass-fill, var(--popover));
+  backdrop-filter: blur(var(--ata-glass-blur, var(--ata-backdrop-blur)));
+
+  @supports (-apple-visual-effect: -apple-system-glass-material) {
+    background-color: transparent;
+    backdrop-filter: none;
+    -apple-visual-effect: -apple-system-glass-material;
+  }
+
+  :root[data-window-active='false'] & {
+    background-color: var(--ata-glass-fill-inactive);
+    backdrop-filter: none;
+    -apple-visual-effect: none;
+  }
+
+  @media (prefers-reduced-transparency: reduce) {
+    &,
+    :root[data-window-active='false'] & {
+      background-color: var(--ata-glass-fill-opaque);
+      backdrop-filter: none;
+      -apple-visual-effect: none;
+    }
   }
 }
 

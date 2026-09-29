@@ -11,7 +11,7 @@ export function ScrollJump({ show, onJump }: { show: boolean; onJump: () => void
       <AnimatePresence>
         {show && (
           <motion.div
-            className="scroll-to-bottom"
+            className="scroll-to-bottom surface-glass"
             initial={{ opacity: 0, x: '-50%', y: 16, scale: 0.95 }}
             animate={{ opacity: 1, x: '-50%', y: 0, scale: 1 }}
             exit={{ opacity: 0, x: '-50%', y: 16, scale: 0.95 }}
