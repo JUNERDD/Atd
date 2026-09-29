@@ -24,6 +24,7 @@ export {
 export { ConnectionManager, type ConnectionDeps, type EnsuredConnection } from './connect.js';
 export { McpPolicy, type PolicyDeps } from './policy.js';
 export { serverView, upsertRecord } from './server-edits.js';
+export { migrateMcpSecrets } from './secrets-migration.js';
 export { McpAuthManager, McpConnectionStates, buildSnapshot, type AuthDeps } from './lifecycle.js';
 export {
   CredentialTransactions,

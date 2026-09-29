@@ -1,4 +1,4 @@
-import type { PermissionTier } from '@ai/agent-contracts';
+import { errorMessage, type PermissionTier } from '@ai/agent-contracts';
 import { CapabilityRegistry } from './capabilities.js';
 import {
   clearEndpoint,
@@ -11,7 +11,7 @@ import { ConfirmStore } from './confirms.js';
 import { EventLog } from './event-log.js';
 import { Ledger } from './ledger.js';
 import { createLogger, type Logger } from './logging.js';
-import { McpAuthority } from './mcp/index.js';
+import { McpAuthority, migrateMcpSecrets } from './mcp/index.js';
 import { recoverService, type RecoveryReport } from './recovery.js';
 import { ResourceStore } from './resources.js';
 import { RunnerManager } from './runner-manager.js';
@@ -85,6 +85,12 @@ export async function createService(
     newTaskTier: () => settings.newTaskTier(),
   });
   const report = await recoverService({ ledger, events, confirms, capabilities, log });
+  // Before anything reads the MCP servers, so the first MCP use finds their values in the keyring.
+  await migrateMcpSecrets(config.paths.root, config.serviceId, log).catch((error: unknown) =>
+    log.warn('MCP values were not moved into the OS keyring; the next start retries.', {
+      error: errorMessage(error),
+    }),
+  );
 
   let stopping: (() => Promise<void>) | null = null;
   const serverDeps: ServerDeps = {
