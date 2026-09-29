@@ -1,6 +1,6 @@
 # macOS 原生前端与剔除网页端
 
-Status: Approved - P0–P6 implemented; P7 awaiting manual acceptance
+Status: Approved - P0–P6 and P8 implemented; P7 awaiting manual acceptance
 Created: 2026-09-29
 Approval: Approved by user on 2026-09-29 (execute all phases)
 
@@ -61,6 +61,8 @@ flowchart LR
 - [ ] 不阻塞实施：没有设定内存和冷启动的量化目标，grill 问题 1 被调研取代，没有直接回答。当前门槛只有功能对等。如需量化目标，在 P0 里测出 0.2.1 的基线后再定。
 
 ## File And Code References
+
+下面的路径和行号是规划时的快照。P8 之后 `apps/desktop/electron/` 已删除，其中的客户端核心（`agent/`、`providers/`、`service/` 的请求、schema 和 `contract.ts`）移到了 `apps/desktop/src/client/`，`prepare-service-pack.mjs` 移到了 `apps/macos/scripts/`。
 
 **剔除网页端**
 
@@ -235,8 +237,8 @@ flowchart LR
   - 资源：附件导入结果、`{ artifactId, operation }`、openLink、剪贴板读写。
 - [x] **样式**：`data-runtime` 从 `electron` 改为 `native`；删除 SVG 模拟磨砂；在 `packages/ui` 新增唯一的玻璃令牌或工具类，内部用 `@supports` 回退；窗口失去焦点时暗化；`prefers-reduced-transparency` 生效时改为不透明；去掉 `-webkit-app-region`，改为按 S7 的结论请求原生拖动。
 - [x] **构建产物**：`--mode web` 构建改名为原生渲染层产物，输出目录、`turbo.json` 和 Electron 打包路径同步修改。
-- [ ] **CSP**：删除 `index.html` 里的 meta CSP，由 handler 分别为开发和生产生成响应头，包含 `frame-ancestors 'none'` 和 `frame-src 'none'`。
-  - 状态：按 R2 推迟到 P8。handler 已下发开发和生产两套头部 CSP；`index.html` 的 meta CSP 在并行期保留给 Electron。
+- [x] **CSP**：删除 `index.html` 里的 meta CSP，由 handler 分别为开发和生产生成响应头，包含 `frame-ancestors 'none'` 和 `frame-src 'none'`。
+  - 状态：按 R2 推迟到 P8，已在 P8 完成。handler 下发开发和生产两套头部 CSP；`index.html` 的 meta CSP 随 Electron 一起删除。
 - [x] 如果 S3 证明不是安全上下文，就实现 `crypto.randomUUID` 的替代函数并替换那 4 处调用。
   - 状态：不需要。S3 证明 `ai-app://` 是安全上下文。
 
@@ -297,7 +299,7 @@ flowchart LR
 
 - [x] **`pnpm dev`**：改为只启动开发服务（`AI_AGENT_DATA_DIR` 指向开发数据目录，热重载方式按 S10 的结论）和 Vite 渲染层开发服务器。新增 `pnpm dev:electron`，必须用 `AI_TEST_USER_DATA` 隔离启动，并且不和 `pnpm dev` 同时运行。
 - [x] **开发数据目录**：用默认目录的副本作种子时，删除 `service.json`、token 文件和陈旧的 `endpoint.json`，并在 README 写明开发环境要重新录入全部机密。
-- [x] **`apps/macos/package.json`**：提供 build、lint、`format:check`、`codegen:check`、test 脚本，由 turbo 调用 xcodebuild 和 swift。App 的构建阶段先生成渲染层产物和 service 包，再拷进 Resources；内置 Node 沿用 `prepare-service-pack.mjs`。
+- [x] **`apps/macos/package.json`**：提供 build、lint、`format:check`、`codegen:check`、test 脚本，由 turbo 调用 xcodebuild 和 swift。App 的构建阶段先生成渲染层产物和 service 包，再拷进 Resources；内置 Node 沿用 `prepare-service-pack.mjs`（P8 起位于 `apps/macos/scripts/`）。
 - [x] **Swift 检查**：`swift format` 做格式化和 lint；SwiftLint 只启用 `file_length`，上限 350，超出即报错；`codegen:check` 纳入 `pnpm check`。
 - [x] **CI**：`ci.yml` 的 macOS job 在删除 Electron 之前同时跑 `test:electron` 和 Swift 检查，删除后只跑 Swift 检查。停用 `release.yml` 的 Electron 发布。
 - [x] **AGENTS.md**：
@@ -344,9 +346,11 @@ flowchart LR
 
 ### P8 删除 Electron（一个 PR）
 
-- [ ] 删除 `apps/desktop/electron/`、electron-builder 配置、`electron-updater`、`selection-hook`、Playwright Electron 冒烟测试，以及只服务于 Electron 的 Vite 插件和脚本。渲染层保留在 `apps/desktop/src`，也可以在同一个 PR 里挪到更合适的位置。
-- [ ] 删除旧数据迁移：`electron/migration`、service 的 `src/migration` 和 `/v1/migration/*`、迁移相关的 schema 和客户端调用，并从 shell 路由清单里移除。
-- [ ] 清理 CI 和文档里剩余的 Electron 内容。原生版本号从 0.3.0 开始。
+实施状态：已完成，先于 P7 的手动验收，分支 `refactor/macos-native` 上 3 个提交。先把客户端核心从 `electron/` 移到 `apps/desktop/src/client/`；再删除 `apps/desktop/electron/`、electron-builder 配置和 `@electron/osx-sign` 补丁、`electron-updater`、`selection-hook`、Playwright Electron 冒烟测试、Electron 菜单栏资源、已停用的 `release.yml`，以及 `dev:electron`、`test:electron`、`package` 脚本和 `AI_TEST_USER_DATA`。渲染层只剩一种构建（`vite build` 输出 `dist-native`）和一个开发服务器，去掉 `--mode native`、meta CSP 和 Electron 专用样式；`prepare-service-pack.mjs` 移到 `apps/macos/scripts/`。按用户 2026-09-30 的决定同时删除 `?preview` 渲染层预览和 `data-runtime`、`data-platform`，普通浏览器打开开发服务器只显示“此页面只能在 macOS 版 AI 应用中运行”的提示。旧数据迁移整体删除（service 的 `src/migration`、`/v1/migration/*`、`migrate` 子命令、迁移契约和客户端调用），仍在用的类型移到各自的所有者；已存数据里的 `migratedAt` 字段保留，0.2.x 导入过的数据目录照常加载。CI 的 macOS job 保留 id 和名称，只跑 Swift 和 Rust 检查；`@ai/desktop` 和 `@ai/macos` 都是 0.3.0。Release 包实测约 907MB。
+
+- [x] 删除 `apps/desktop/electron/`、electron-builder 配置、`electron-updater`、`selection-hook`、Playwright Electron 冒烟测试，以及只服务于 Electron 的 Vite 插件和脚本。渲染层保留在 `apps/desktop/src`，也可以在同一个 PR 里挪到更合适的位置。
+- [x] 删除旧数据迁移：`electron/migration`、service 的 `src/migration` 和 `/v1/migration/*`、迁移相关的 schema 和客户端调用，并从 shell 路由清单里移除。
+- [x] 清理 CI 和文档里剩余的 Electron 内容。原生版本号从 0.3.0 开始。
 
 ## Grill-Me Outcome
 
@@ -428,4 +432,4 @@ flowchart LR
 ## Approval
 
 - Status: Approved by user on 2026-09-29 (execute all phases)
-- Scope: P0–P6 已实施并通过自动化验证，另加 R11–R14 的安全加固；P7 需要作者手动验收和切换，P8 在 P7 通过后进行。
+- Scope: P0–P6 已实施并通过自动化验证，另加 R11–R14 的安全加固；P8 已先于 P7 实施；P7 仍需要作者手动验收和切换。
