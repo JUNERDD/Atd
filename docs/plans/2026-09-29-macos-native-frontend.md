@@ -242,7 +242,7 @@ flowchart LR
 
 ### P4 Swift 外壳 `apps/macos`
 
-实施状态：已完成代码和自动化验证（161 项 Swift Testing，以及对隔离服务的端到端运行）。目标拆分为 `AICore`（纯逻辑）、`AIRelay`（中继、流、服务监管）、`AIShell`（窗口和输入）。Codable 类型由仓库脚本 `apps/macos/scripts/generate-bridge-types.mjs` 生成：quicktype 26.0.0 的输出在 Swift 6 下无法编译，并且会把可辨识联合压平。视觉、手感和需要真实键鼠的项目留给 P7 手动验收。
+实施状态：已完成代码和自动化验证（161 项 Swift Testing，以及对隔离服务的端到端运行）。目标拆分为 `AICore`（纯逻辑）、`AIRelay`（中继、流、服务监管）、`AIShell`（窗口和输入）。Codable 类型由仓库脚本 `apps/macos/scripts/generate-bridge-types.mjs` 生成：quicktype 26.0.0 的输出在 Swift 6 下无法编译，并且会把可辨识联合压平。另评估过 swift-openapi-generator 1.13.1：它能生成 Sendable 类型和枚举联合，但解码时不检查长度、pattern、范围和数量（13 个非法输入探针放过 7 个，包括 `link.open` 的 `file://`），还会新增 8 个依赖包，因此保留仓库脚本（证据在本机 `tmp/spikes/openapi-eval/`）。视觉、手感和需要真实键鼠的项目留给 P7 手动验收。
 
 - [x] **工程**：
   - 一个 SwiftPM 包承载全部逻辑。
@@ -370,7 +370,7 @@ flowchart LR
     - R5（2026-09-29 按用户决定修订）页面内玻璃打开 WebKit 私有偏好 `useSystemAppearance`，`surface-glass` 在壳里渲染系统玻璃；Electron、预览页和不再支持该偏好的 WebKit 走 `backdrop-filter` 回退。窗口背景透明依赖私有 KVC `drawsBackground`。两项都只在 WebKit 仍响应对应的 `_set…:` 选择器时才设置，缺失时退回公开行为，不会崩溃。实测对渲染层的常见表单控件没有像素差异。
     - R6 导航锁定：拒绝所有子框架导航，以及主框架导航到 `ai-app://renderer` 以外的地址（替代不生效的 `frame-ancestors`）。
     - R7 中继拒绝 `Origin` 不是 `ai-app://renderer` 的请求；非 GET/HEAD 的 `/v1` 请求必须带 `x-ai-relay: 1`，由 WebView 宿主的 HTTP 客户端发送。
-    - R8 全局快捷键用最薄的 Carbon 包装做非独占注册（与 Electron 现状一致），回报真实错误码，并检查系统保留快捷键；只借用 HotKey 的键名到键码映射。不用独占标志，避免抢走其他应用的快捷键。
+    - R8 全局快捷键用最薄的 Carbon 包装做非独占注册（与 Electron 现状一致），回报真实错误码，并检查系统保留快捷键；只借用 HotKey 的键名到键码映射。不用独占标志，避免抢走其他应用的快捷键。 macOS 无法查询其他应用的全局快捷键，所以快捷键设置页和命令编辑器里提示“按下没反应时可能被其他应用占用”。
     - R10 文件索引在词首前缀匹配之外增加内存子串回退，排在前缀命中之后；门槛为首次建索引 ≤ 60s、常驻内存 ≤ 200MB、查询 p95 ≤ 50ms、新文件 ≤ 2s 可搜到，全部达到才替换 mdfind。
     - R9 面板拖动用方案 C：页面推送拖动矩形 `window.dragRegions`，Swift 在 `WKWebView.mouseDown` 里命中测试后调用 `performDrag`；Electron 仍用 `-webkit-app-region`。面板隐藏用 alpha 0 加 `ignoresMouseEvents` 并放弃 key，另推送 `window.visibility`。
   - **提交**：只在获得授权的范围内提交，遵守 Conventional Commits。
