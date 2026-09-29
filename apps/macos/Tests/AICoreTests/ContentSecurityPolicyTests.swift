@@ -86,8 +86,11 @@ struct ContentSecurityPolicyTests {
   }
 
   @Test(
-    "Forwards the HMR, dependency-version and import queries unchanged",
-    arguments: ["t=1790680156788", "import", "v=8a1b2C3d", "import&t=12", "t=1&v=abc&import", ""])
+    "Forwards the HMR, dependency-version, import and URL-asset queries unchanged",
+    arguments: [
+      "t=1790680156788", "import", "v=8a1b2C3d", "import&t=12", "t=1&v=abc&import", "",
+      "import&url&no-inline", "import&url&no-inline&t=12",
+    ])
   func devQueries(query: String) throws {
     let path = try RelayPath.normalize("/src/counter.js")
     #expect(DevProxyRule.check(path, rawQuery: query) == .success(query.isEmpty ? nil : query))
@@ -98,7 +101,7 @@ struct ContentSecurityPolicyTests {
     arguments: [
       "raw", "raw??", "import&raw", "inline", "url", "import&inline", "html-proxy&index=0.js",
       "t=", "t=12a", "t", "v=", "v=../x", "v=a.b", "import=1", "worker", "direct", "t=1&&v=2",
-      "t=1&", "T=1", "x-t=1",
+      "t=1&", "T=1", "x-t=1", "url&no-inline", "no-inline", "import&url=1", "import&raw&url",
     ])
   func devQueriesRefused(query: String) throws {
     let path = try RelayPath.normalize("/src/counter.js")

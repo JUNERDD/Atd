@@ -43,8 +43,10 @@ public enum DevProxyRule {
   public static let allowedSpecialPrefixes: Set<String> = ["@vite", "@fs", "@id", "@react-refresh"]
 
   /// `t`: HMR cache-busting timestamp. `v`: optimized-dependency version hash. `import`: marks an
-  /// asset or CSS request made by a module import.
-  public static let allowedQueryKeys: Set<String> = ["t", "v", "import"]
+  /// asset or CSS request made by a module import. `url` and `no-inline`: an asset the renderer
+  /// imports as a URL (`?url&no-inline`, the brand marks), which Vite answers with the URL
+  /// string, never the file's content; they pass only as value-less flags beside `import`.
+  public static let allowedQueryKeys: Set<String> = ["t", "v", "import", "url", "no-inline"]
 
   /// The raw query to forward (nil for none), or why the request is refused.
   public static func check(_ path: NormalizedPath, rawQuery: String?) -> Result<String?, Refusal> {
@@ -54,9 +56,13 @@ public enum DevProxyRule {
       if first == "@react-refresh", path.segments.count != 1 { return .failure(.specialPrefix) }
     }
     guard let rawQuery, !rawQuery.isEmpty else { return .success(nil) }
+    var flags: Set<Substring> = []
     for item in rawQuery.split(separator: "&", omittingEmptySubsequences: false) {
       guard isAllowed(parameter: item) else { return .failure(.query) }
+      if !item.contains("=") { flags.insert(item) }
     }
+    let assetFlags = flags.intersection(["url", "no-inline"])
+    guard assetFlags.isEmpty || flags.contains("import") else { return .failure(.query) }
     return .success(rawQuery)
   }
 
@@ -65,7 +71,7 @@ public enum DevProxyRule {
     let key = String(parts[0])
     let value = parts.count == 2 ? parts[1] : nil
     switch key {
-    case "import":
+    case "import", "url", "no-inline":
       return value == nil
     case "t":
       guard let value, (1...20).contains(value.count) else { return false }
