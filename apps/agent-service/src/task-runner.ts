@@ -43,6 +43,7 @@ import {
   readChildTranscript,
   rebindSubagentsForRun,
 } from './subagents/index.js';
+import { LiveSlot } from './session-release.js';
 import { replaceFollowUps } from './tasks/queue-replace.js';
 import { rootMemoryScope, withRootMemoryTurn, type RunnerMemoryScope } from './memory/index.js';
 
@@ -62,9 +63,8 @@ export interface RunnerContext {
  * lives in pi-session.ts.
  */
 export class TaskRunner {
-  private live: LiveState | null = null;
-  /** Memory scope of the run the live session last served; its shutdown flush learns under it. */
-  private liveMemory: RunnerMemoryScope | null = null;
+  /** The live session; a release serializes against reopening it (session-release.ts). */
+  private readonly slot = new LiveSlot((scope, action) => this.memoryTurn(scope, action));
   private currentRunId = '';
   private material: RunMaterial = NO_RUN_MATERIAL;
   private aborted = false;
@@ -88,7 +88,7 @@ export class TaskRunner {
       grants: this.grants,
       review: createReviewer({
         source: () => {
-          const live = this.live;
+          const live = this.slot.live;
           if (!live) return null;
           const model = live.session.model ?? live.runModel.model;
           return { models: live.runModel.models, model, branch: () => live.manager.getBranch() };
@@ -110,12 +110,18 @@ export class TaskRunner {
   }
 
   isLive(): boolean {
-    return this.live !== null;
+    return this.slot.live !== null;
+  }
+
+  /** A release is still shutting the live session down; nothing reopens it until that ends. */
+  isReleasing(): boolean {
+    return this.slot.releasing;
   }
 
   /** The task's transcript and context state, live or read from its session file. */
   async view(): Promise<TaskView> {
-    return this.live ? liveTaskView(this.live) : coldTaskView(this.ctx, this.taskId);
+    const live = this.slot.live;
+    return live ? liveTaskView(live) : coldTaskView(this.ctx, this.taskId);
   }
 
   isCompacting(): boolean {
@@ -132,14 +138,19 @@ export class TaskRunner {
       throw compactRefused('already_compacting', 'The context is already being compacted.');
     const task = this.ctx.ledger.task(this.taskId);
     const run = task.runs.at(-1);
-    if (!run || !(this.live || task.sessionFile))
+    if (!run || !(this.slot.live || task.sessionFile))
       throw compactRefused('nothing_to_compact', NOTHING_TO_COMPACT);
     // Events of a compaction outside a run belong to the task's latest run.
     this.currentRunId ||= run.id;
-    const memory = this.live ? this.liveMemory : null;
+    const memory = this.slot.memory;
     this.compacting = true;
     return startManualCompaction({
-      live: async () => (this.live ??= await createCompactionState(this.session, run)),
+      live: async () => {
+        await this.slot.settled();
+        return (
+          this.slot.live ?? this.slot.hold(await createCompactionState(this.session, run), null)
+        );
+      },
       instructions,
       wrap: (action) => this.memoryTurn(memory, action),
       onEnd: () => {
@@ -150,7 +161,7 @@ export class TaskRunner {
 
   /** One child session's transcript (child-transcript-read.ts); null when the task has no such child. */
   async childTranscript(childKey: string): Promise<ChildTranscriptResponse | null> {
-    const live = this.live;
+    const live = this.slot.live;
     const parentSessionFile = live?.sessionFile || this.ctx.ledger.task(this.taskId).sessionFile;
     if (!parentSessionFile) return null;
     return readChildTranscript({
@@ -163,7 +174,7 @@ export class TaskRunner {
   }
 
   queueState(): QueueState {
-    return this.live?.transcript.queueState() ?? { steering: [], followUp: [] };
+    return this.slot.live?.transcript.queueState() ?? { steering: [], followUp: [] };
   }
 
   /** Executes one accepted run to a terminal ledger state. */
@@ -215,6 +226,9 @@ export class TaskRunner {
       else if (state !== 'cancelled' && state !== 'interrupted')
         await this.setStatus(run.id, 'failed', errorMessage(error));
     } finally {
+      // Only the catalog outlives the run: a compaction of the idle session re-sends it
+      // (skills/session-catalog.ts), while attachment and skill text would only hold memory.
+      this.material = { ...NO_RUN_MATERIAL, catalog: this.material.catalog };
       await releaseRunSelections(this.session, run.id);
       await this.audit?.flush();
     }
@@ -225,16 +239,16 @@ export class TaskRunner {
     this.aborted = true;
     // Pi's abort keeps its queue, and the next prompt would deliver it into an
     // unrelated run; withdraw it first, as Pi's own Stop restores it to the editor.
-    const unsent = this.live?.session.clearQueue() ?? { steering: [], followUp: [] };
+    const unsent = this.slot.live?.session.clearQueue() ?? { steering: [], followUp: [] };
     await abortSubagentsForTask(this.taskId);
     await this.ctx.confirms.cancelRun(this.taskId, runId, 'Task stopped.');
     await this.ctx.capabilities.cancelRun(this.taskId, runId, 'Task stopped.');
-    await this.live?.session.abort();
+    await this.slot.live?.session.abort();
     return unsent;
   }
 
   async queue(text: string, mode: 'followUp' | 'steer'): Promise<void> {
-    const live = this.live;
+    const live = this.slot.live;
     if (!live || this.aborted) throw new Error('The task has no active run.');
     // Pi runs skill and template expansion on every queued entry, but with no
     // skills or prompt templates loaded, `/skill:` text stays as written.
@@ -250,7 +264,7 @@ export class TaskRunner {
   }
 
   async replaceQueue(followUp: string[]): Promise<QueueState> {
-    const live = this.live;
+    const live = this.slot.live;
     if (!live || this.aborted) throw new Error('The task has no active run.');
     return live.transcript.batchQueue(async () => {
       const queue = await replaceFollowUps(live.session, followUp);
@@ -271,28 +285,15 @@ export class TaskRunner {
   }
 
   /** Releases the idle session; reopening resumes from the same session file. */
-  async release(): Promise<void> {
-    await this.closeLive('new');
+  release(): Promise<void> {
+    return this.slot.close('new');
   }
 
+  /** Shuts the session down, after any release in flight, and drops the task's subagent state. */
   async dispose(): Promise<void> {
-    await this.closeLive('quit');
+    await this.slot.close('quit');
     disposeSubagentsForTask(this.taskId);
     await this.audit?.flush();
-  }
-
-  /** Shuts the live session down; Hermes' shutdown flush runs in the session's memory scope. */
-  private async closeLive(reason: 'new' | 'quit'): Promise<void> {
-    const live = this.live;
-    const memory = this.liveMemory;
-    this.live = null;
-    this.liveMemory = null;
-    if (!live) return;
-    live.transcript.dispose();
-    await this.memoryTurn(memory, () =>
-      live.session.extensionRunner.emit({ type: 'session_shutdown', reason }),
-    );
-    live.session.dispose();
   }
 
   private memoryTurn<T>(scope: RunnerMemoryScope | null, action: () => Promise<T>): Promise<T> {
@@ -327,16 +328,18 @@ export class TaskRunner {
 
   private async ensureSession(run: TaskRun, agents: RuntimeAgent[]): Promise<LiveState> {
     const binding = await prepareRunBinding(this.session, run, agents);
-    if (this.live && (await applyRunToSession(this.live, run, binding))) {
-      this.liveMemory = rootMemoryScope(this.taskId, run);
-      return this.live;
+    // An idle or tier-change release still shutting the session down ends before it reopens.
+    await this.slot.settled();
+    const live = this.slot.live;
+    if (live && (await applyRunToSession(live, run, binding))) {
+      this.slot.rescope(rootMemoryScope(this.taskId, run));
+      return live;
     }
     // A changed run binding or another connection needs a new session;
     // reopen it from the same session file.
     await this.release();
-    this.live = await createLiveState(this.session, run, binding);
-    this.liveMemory = rootMemoryScope(this.taskId, run);
-    return this.live;
+    const opened = await createLiveState(this.session, run, binding);
+    return this.slot.hold(opened, rootMemoryScope(this.taskId, run));
   }
 }
 

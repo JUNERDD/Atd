@@ -17,6 +17,7 @@ import type { Logger } from './logging.js';
 import { ResourceStore } from './resources.js';
 import { compactRefused } from './compaction/manual.js';
 import { ConflictError, DrainingError } from './errors.js';
+import { SessionReleases } from './session-release.js';
 import { TaskRunner, type RunnerContext } from './task-runner.js';
 import { taskSnapshot, taskSummary } from './task-view.js';
 import { checkChipRanges, taskTitle } from './tasks/input-chips.js';
@@ -34,20 +35,32 @@ export interface ManagerDeps {
   log: Logger;
   /** The shared settings' default tier, frozen onto each task at creation. */
   newTaskTier: () => PermissionTier;
+  /** Idle time before a task's live session is released (session-release.ts `IDLE_RELEASE_MS`). */
+  idleReleaseMs?: number;
 }
 
 /**
- * Accepts runs idempotently and schedules them on per-task runners. The
- * service owns the ledger; runners own their Pi sessions. Tasks run
- * concurrently without a service-wide ceiling; within one task, runs share a
- * Pi session and start one at a time.
+ * Accepts runs idempotently and schedules them on per-task runners. The service owns the ledger;
+ * runners own their Pi sessions, which `releases` closes once idle (session-release.ts). Tasks run
+ * concurrently without a service-wide ceiling; within one task, runs share a Pi session and start
+ * one at a time.
  */
 export class RunnerManager {
   private readonly runners = new Map<string, TaskRunner>();
   private readonly executions = new Map<string, Promise<void>>();
   private draining = false;
+  private readonly releases: SessionReleases;
 
-  constructor(private readonly deps: ManagerDeps) {}
+  constructor(private readonly deps: ManagerDeps) {
+    this.releases = new SessionReleases({
+      ctx: deps.ctx,
+      idleMs: deps.idleReleaseMs,
+      draining: () => this.draining,
+      runner: (taskId) => this.runners.get(taskId),
+      executing: (runId) => this.executions.has(runId),
+      released: () => this.dispatch(),
+    });
+  }
 
   isDraining(): boolean {
     return this.draining;
@@ -191,6 +204,7 @@ export class RunnerManager {
   /** Disposes a deleted task's runner and forgets it, so deleted tasks hold no runner. */
   async remove(taskId: string): Promise<void> {
     const runner = this.runners.get(taskId);
+    this.releases.cancel(taskId);
     this.runners.delete(taskId);
     await runner?.dispose();
   }
@@ -222,7 +236,10 @@ export class RunnerManager {
     const task = this.deps.ctx.ledger.task(taskId);
     if (task.runs.some((run) => isActiveStatus(run.status)))
       throw compactRefused('active_run', 'Finish the active run before compacting the context.');
-    const { done } = await this.runnerFor(taskId).compact(instructions);
+    const started = this.runnerFor(taskId).compact(instructions);
+    const compaction = started.then(({ done }) => done);
+    this.releases.busy(taskId, compaction);
+    const { done } = await started;
     void done
       .catch((error: unknown) => {
         // The failure is the task's failed compaction block; the log keeps the cause.
@@ -233,13 +250,13 @@ export class RunnerManager {
 
   dispatch(): void {
     if (this.draining) return;
-    // A task's runs share one Pi session, so only its oldest queued run starts
-    // and only once no started run is active (queued counts as active for
-    // acceptance, not for dispatch) and no manual compaction holds the session.
-    // Other tasks never wait on each other.
+    // A task's runs share one Pi session: only its oldest queued run starts, once no started run
+    // is active (queued counts for acceptance, not dispatch) and no manual compaction or release
+    // holds the session; a release dispatches again once it settles. Tasks never wait on others.
     for (const task of this.deps.ctx.ledger.data.tasks) {
       if (task.runs.some((run) => run.status !== 'queued' && isActiveStatus(run.status))) continue;
-      if (this.runners.get(task.id)?.isCompacting()) continue;
+      const runner = this.runners.get(task.id);
+      if (runner?.isCompacting() || runner?.isReleasing()) continue;
       const next = task.runs.find((run) => run.status === 'queued');
       if (next && !this.executions.has(next.id)) this.start(task.id, next);
     }
@@ -252,6 +269,7 @@ export class RunnerManager {
    */
   async shutdown(): Promise<void> {
     this.draining = true;
+    this.releases.cancelAll();
     const stopping: Promise<unknown>[] = [];
     for (const task of this.deps.ctx.ledger.data.tasks)
       for (const run of task.runs) {
@@ -273,6 +291,7 @@ export class RunnerManager {
       this.dispatch();
     });
     this.executions.set(run.id, execution);
+    this.releases.busy(taskId, execution);
   }
 
   private async run(taskId: string, run: TaskRun): Promise<void> {
