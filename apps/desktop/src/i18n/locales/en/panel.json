@@ -39,6 +39,11 @@
     "answerPlaceholder": "Type your answer…",
     "interjectPlaceholder": "Send to decline and redirect now…",
     "attachAfterRun": "Attach files after this run finishes.",
+    "importFailed": {
+      "unreadable": "{{name}} could not be read.",
+      "unsupported": "{{name}} is not supported.",
+      "tooLarge": "{{name}} must be a text file smaller than 1 MB."
+    },
     "queued": "Queued messages",
     "sendNow": "Send now",
     "editQueued": "Edit queued message",

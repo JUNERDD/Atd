@@ -4,7 +4,7 @@ import { ArrowUp, Plus, Square } from 'lucide-react';
 import { ScrollArea } from '@ai/ui/components/scroll-area';
 import type { ShortcutBindings } from '../../electron/settings-contract';
 import { DEFAULT_SHORTCUTS, type TaskContextState } from '@ai/agent-contracts';
-import type { AgentTask, RunStatus } from '../../electron/agent/task-schema';
+import type { AgentTask, FileRef, RunStatus } from '../../electron/agent/task-schema';
 import { isActive } from '../../electron/agent/task-schema';
 import type { PermissionRequest } from '../../electron/agent/permission-schema';
 import { EMPTY_QUEUE, type Block, type QueueState } from '../../electron/agent/transcript-schema';
@@ -21,6 +21,7 @@ import { IconButton } from './icon-button';
 import { ComposerAttachments } from './composer-attachments';
 import { ComposerConfiguration } from './composer-configuration';
 import { ComposerPopover } from './composer-popover';
+import { useImportedFiles } from './use-imported-files';
 import { useOverlayFooter } from './use-overlay-footer';
 import { agentApi } from '../features/agent/use-agent';
 import { compactBlock } from '../features/agent/compaction/compact-availability';
@@ -126,6 +127,7 @@ export function Composer({
   const [queueRecall, setQueueRecall] = useState(0);
   const panel = useRef<QuickPanelHandle>(null);
   const { compact } = useCompactTask();
+  useImportedFiles(attach);
   const hasContent = Boolean(draft.text.trim() || draft.files.length);
   const active = isActive(status);
   const locked = status === 'stopping' || status === 'queued';
@@ -202,13 +204,15 @@ export function Composer({
     if (active) await stop();
     else await send();
   }
+  /** Picked, dropped and pasted files alike; the attachment row and file chips share the limit. */
+  function attach(files: FileRef[]) {
+    if (draftFiles(draft).length + files.length > 10) showErrorToast(t('composer.attachLimit'));
+    else onChange({ ...draft, files: [...draft.files, ...files] });
+  }
   async function choose() {
     setChoosing(true);
     try {
-      const files = await agentApi().chooseFiles();
-      // The attachment row and file chips share the 10-file limit.
-      if (draftFiles(draft).length + files.length > 10) showErrorToast(t('composer.attachLimit'));
-      else onChange({ ...draft, files: [...draft.files, ...files] });
+      attach(await agentApi().chooseFiles());
     } catch (error) {
       showErrorToast(error);
     }

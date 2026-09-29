@@ -39,6 +39,11 @@
     "answerPlaceholder": "输入你的回答…",
     "interjectPlaceholder": "直接发送将拒绝此操作并立即送达…",
     "attachAfterRun": "请等这次运行结束后再附加文件。",
+    "importFailed": {
+      "unreadable": "无法读取 {{name}}。",
+      "unsupported": "不支持附加 {{name}}。",
+      "tooLarge": "{{name}} 必须是小于 1 MB 的文本文件。"
+    },
     "queued": "排队消息",
     "sendNow": "立即发送",
     "editQueued": "编辑排队消息",

@@ -9,6 +9,7 @@ import type { DesktopBridge } from '../../electron/contract';
 import { createServiceBridge } from '../../electron/service/bridge-client';
 import { handleExtensionRequest } from '../../electron/service/extension-requests';
 import type { ServiceEvent } from '../../electron/service/ipc';
+import { publishImportedFiles } from '../lib/imported-files';
 import type { NativeBridge } from '../native-bridge/client';
 import { setWindowActive, setWindowVisible } from '../window-state';
 import { publishDragRegions } from './drag-regions';
@@ -35,10 +36,8 @@ function pageOrigin(): string {
  * request handling, task cache and provider client as the Electron main process, reaching the
  * service through the shell's relay: HTTP as same-origin fetches the scheme handler forwards, the
  * stream over virtual sockets. Host abilities go through native calls. Only the panel owns the
- * global shortcuts, the language push and file search; each window publishes its own drag regions.
- *
- * Not wired yet: attachments the shell imports from drops and pastes (`resources.imported` has no
- * composer entry point).
+ * global shortcuts, the language push, file search and the files the shell imports from drops and
+ * pastes; each window publishes its own drag regions.
  */
 export async function installNativeHost(
   native: NativeBridge,
@@ -145,6 +144,10 @@ export async function installNativeHost(
 
   native.on('window.active', ({ active }) => setWindowActive(active));
   native.on('window.visibility', ({ visible }) => setWindowVisible(visible));
+  if (surface === 'panel')
+    native.on('resources.imported', ({ resources, failures }) =>
+      publishImportedFiles({ files: resources, failures }),
+    );
   publishDragRegions(native, document.getElementById('root') ?? document.body);
   connection.connect();
   // The service may still be starting: its data follows the stream, and the shell's preferences
