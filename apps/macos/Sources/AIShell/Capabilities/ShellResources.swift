@@ -80,19 +80,26 @@ final class AttachmentImporter {
 
 /// Artifact operations (apps/desktop/electron/agent/artifacts.ts): the shell downloads the
 /// bytes with its credentials into its downloads folder, quarantined, then opens, reveals or
-/// copies the path. Opening keeps today's semantics, which run whatever the agent produced (an
-/// `.app` or `.command` too); restricting that is a separate decision.
+/// copies the path. The page can upload any file and ask to open it, so only document types
+/// (``ArtifactOpenPolicy``) open directly; any other type opens only after the user chooses
+/// Open Anyway in a native confirmation, and Gatekeeper still checks it then.
 @MainActor
 final class ArtifactActions {
   private let services: ShellServices
   private let downloads: URL
+  private let confirmations: ConfirmationPrompter
 
-  init(services: ShellServices, downloads: URL) {
-    self.services = services
-    self.downloads = downloads
+  private enum OpenChoice {
+    case reveal, open, cancel
   }
 
-  /// The downloaded file as the page's `FileRef`.
+  init(services: ShellServices, downloads: URL, confirmations: ConfirmationPrompter) {
+    self.services = services
+    self.downloads = downloads
+    self.confirmations = confirmations
+  }
+
+  /// The downloaded file as the page's `FileRef`, whatever the user chose for a confirmed open.
   func perform(artifactId: String, operation: ArtifactParams.Operation) async throws(BridgeError)
     -> FileRef
   {
@@ -104,9 +111,7 @@ final class ArtifactActions {
     }
     switch operation {
     case .open:
-      guard NSWorkspace.shared.open(downloaded.fileURL) else {
-        throw BridgeError("The artifact could not be opened.")
-      }
+      try await open(downloaded)
     case .reveal:
       NSWorkspace.shared.activateFileViewerSelecting([downloaded.fileURL])
     case .copyPath:
@@ -116,5 +121,39 @@ final class ArtifactActions {
     }
     return FileRef(
       id: artifactId, name: downloaded.name, size: downloaded.size, type: downloaded.mime)
+  }
+
+  /// Classifies the file by the content type Launch Services will open it as. Cancel, or no
+  /// answer because another confirmation is open, leaves the file downloaded and unopened.
+  private func open(_ downloaded: DownloadedArtifact) async throws(BridgeError) {
+    let url = downloaded.fileURL
+    let type = try? url.resourceValues(forKeys: [.contentTypeKey]).contentType
+    let decision = ArtifactOpenPolicy.decision(
+      typeIdentifier: type?.identifier, conformsTo: type?.supertypes.map(\.identifier) ?? [])
+    if decision == .askFirst {
+      switch await confirmations.ask(Self.prompt(name: downloaded.name)) ?? .cancel {
+      case .open: break
+      case .reveal:
+        NSWorkspace.shared.activateFileViewerSelecting([url])
+        return
+      case .cancel: return
+      }
+    }
+    guard NSWorkspace.shared.open(url) else {
+      throw BridgeError("The artifact could not be opened.")
+    }
+  }
+
+  /// Show in Finder is the default answer, Cancel the Escape one.
+  private static func prompt(name: String) -> ConfirmationPrompt<OpenChoice> {
+    let strings = ShellStrings.shared
+    return ConfirmationPrompt(
+      title: strings.text(.artifactOpenTitle, ArtifactOpenPolicy.displayName(name)),
+      message: strings.text(.artifactOpenMessage),
+      buttons: [
+        .init(title: strings.text(.artifactOpenShowInFinder), choice: .reveal, isDefault: true),
+        .init(title: strings.text(.artifactOpenAnyway), choice: .open, isDestructive: true),
+        .init(title: strings.text(.cancel), choice: .cancel, isCancel: true),
+      ])
   }
 }

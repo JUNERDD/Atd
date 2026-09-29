@@ -17,6 +17,8 @@ public final class ShellController {
   /// Serves the five desktop capabilities; the control stream holds it weakly.
   private let capabilities: ShellCapabilities
   private let control: ControlStreamClient
+  /// Security confirmations, one at a time across every surface that asks.
+  let confirmations = ConfirmationPrompter()
   let artifacts: ArtifactActions
   let attachments: AttachmentImporter
   let quitGuard: QuitGuard
@@ -53,7 +55,8 @@ public final class ShellController {
     self.capabilities = capabilities
     let control = ControlStreamClient(link: services.link, capabilities: capabilities)
     self.control = control
-    artifacts = ArtifactActions(services: services, downloads: Self.downloadsFolder())
+    artifacts = ArtifactActions(
+      services: services, downloads: Self.downloadsFolder(), confirmations: confirmations)
     attachments = AttachmentImporter(
       services: services, panel: panelHost, systemPanels: systemPanels)
     quitGuard = QuitGuard(

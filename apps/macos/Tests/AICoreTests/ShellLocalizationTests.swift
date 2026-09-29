@@ -61,11 +61,14 @@ struct ShellLocalizationTests {
   func formatSpecifiers() throws {
     let catalog = try Self.catalog()
     for (key, entry) in catalog.strings {
-      let counts = ShellLanguage.allCases.map { language in
-        entry.localizations[language.rawValue]?.stringUnit.value.components(separatedBy: "%lld")
-          .count
+      for specifier in ["%lld", "%@"] {
+        let counts = ShellLanguage.allCases.map { language in
+          entry.localizations[language.rawValue]?.stringUnit.value.components(
+            separatedBy: specifier
+          ).count
+        }
+        #expect(Set(counts).count == 1, "\(key) \(specifier)")
       }
-      #expect(Set(counts).count == 1, "\(key)")
     }
   }
 }

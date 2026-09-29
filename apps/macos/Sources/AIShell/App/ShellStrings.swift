@@ -39,6 +39,11 @@ final class ShellStrings {
     String(format: text(key), locale: Locale(identifier: language.rawValue), count)
   }
 
+  /// A catalog string with one `%@`.
+  func text(_ key: ShellStringKey, _ argument: String) -> String {
+    String(format: text(key), locale: Locale(identifier: language.rawValue), argument)
+  }
+
   /// The compiled `<language>.lproj` of the app bundle. Outside an app bundle (tests, `swift
   /// run`) the keys show, which makes a missing catalog obvious.
   private static func bundle(for language: ShellLanguage) -> Bundle {

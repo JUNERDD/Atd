@@ -76,4 +76,9 @@ public enum ShellStringKey: String, CaseIterable, Sendable {
 
   case filePickTitle = "file.pick.title"
   case fileSaveTitle = "file.save.title"
+
+  case artifactOpenTitle = "artifact.open.title"
+  case artifactOpenMessage = "artifact.open.message"
+  case artifactOpenShowInFinder = "artifact.open.showInFinder"
+  case artifactOpenAnyway = "artifact.open.openAnyway"
 }

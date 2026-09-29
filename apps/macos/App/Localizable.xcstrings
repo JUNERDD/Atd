@@ -19,6 +19,78 @@
         }
       }
     },
+    "artifact.open.message" : {
+      "comment" : "Message of the confirmation before opening a downloaded file that can run code",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This file type can run code on your Mac. Open it only if you trust where it came from."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "这种文件可以在你的 Mac 上运行代码。只有在你信任它的来源时才打开。"
+          }
+        }
+      }
+    },
+    "artifact.open.openAnyway" : {
+      "comment" : "Destructive button of the open confirmation: opens the file",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open Anyway"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "仍要打开"
+          }
+        }
+      }
+    },
+    "artifact.open.showInFinder" : {
+      "comment" : "Default button of the open confirmation: reveals the file instead of opening it",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show in Finder"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在访达中显示"
+          }
+        }
+      }
+    },
+    "artifact.open.title" : {
+      "comment" : "Title of the confirmation before opening a downloaded file that can run code; %@ is the file name",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open “%@”?"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "打开“%@”吗？"
+          }
+        }
+      }
+    },
     "common.cancel" : {
       "comment" : "Cancel button",
       "extractionState" : "manual",
