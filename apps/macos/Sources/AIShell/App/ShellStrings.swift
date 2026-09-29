@@ -44,6 +44,14 @@ final class ShellStrings {
     String(format: text(key), locale: Locale(identifier: language.rawValue), argument)
   }
 
+  /// The current language's table, for copy AICore formats (``McpApprovalDialog``).
+  var catalog: ShellText {
+    let table = table
+    return ShellText(language: language) {
+      table.localizedString(forKey: $0.rawValue, value: nil, table: nil)
+    }
+  }
+
   /// The compiled `<language>.lproj` of the app bundle. Outside an app bundle (tests, `swift
   /// run`) the keys show, which makes a missing catalog obvious.
   private static func bundle(for language: ShellLanguage) -> Bundle {

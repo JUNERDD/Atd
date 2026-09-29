@@ -105,10 +105,8 @@ final class ShellBridge {
     case .filesSave(let params):
       let saved = try await shell.attachments.save(resourceId: params.resourceId, name: params.name)
       return try Self.encode(FilesSaveResult(saved: saved))
-    case .approvalRequest:
-      // STUB (native/approval-ui): answers `unavailable` until the shell shows the native approval
-      // dialog; replace it with the handler that reads the details and approves via `shell`.
-      return try Self.encode(ApprovalRequestResult.notApproved(.init(reason: .unavailable)))
+    case .approvalRequest(let params):
+      return try Self.encode(await shell.launchApprovals.request(serverId: params.serverId))
     }
   }
 

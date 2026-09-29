@@ -21,6 +21,7 @@ public final class ShellController {
   let confirmations = ConfirmationPrompter()
   let artifacts: ArtifactActions
   let attachments: AttachmentImporter
+  let launchApprovals: LaunchApprovals
   let quitGuard: QuitGuard
   private var statusItem: StatusItemController?
   private var registrar: HotKeyRegistrar?
@@ -59,6 +60,8 @@ public final class ShellController {
       services: services, downloads: Self.downloadsFolder(), confirmations: confirmations)
     attachments = AttachmentImporter(
       services: services, panel: panelHost, systemPanels: systemPanels)
+    launchApprovals = LaunchApprovals(
+      services: services, confirmations: confirmations, systemPanels: systemPanels)
     quitGuard = QuitGuard(
       activeRuns: { await services.link.activeRunsForQuitGuard() },
       stopService: {
