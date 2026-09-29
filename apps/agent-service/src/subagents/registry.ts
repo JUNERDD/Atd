@@ -158,14 +158,20 @@ export function rebindParentRun(taskId: string, runId: string, tools: string[]):
   record.activeToolCallId = null;
 }
 
-/** Removes a parent and drops its tracked children and write locks. */
+/**
+ * Removes a parent and drops its tracked children and write locks. The task's host goes with the
+ * task's current parent: it holds that session's SessionManager and child runtime, so a released
+ * session would otherwise stay in memory, and the session reopened for the task stores its own.
+ */
 export function unregisterParentBySession(sessionId: string): void {
   const state = store();
   const record = state.parentsBySession.get(sessionId);
   if (!record) return;
   state.parentsBySession.delete(sessionId);
-  if (state.parentsByTask.get(record.taskId)?.sessionId === sessionId)
+  if (state.parentsByTask.get(record.taskId)?.sessionId === sessionId) {
     state.parentsByTask.delete(record.taskId);
+    state.hosts.delete(record.taskId);
+  }
   state.childrenByParent.delete(sessionId);
   state.activeWrites.delete(record.taskId);
 }

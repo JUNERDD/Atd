@@ -18,8 +18,8 @@ export interface TaskManageContext {
 
 /**
  * Live task management routes (T6b). PATCH renames and/or retiers (tier
- * changes refuse while a run is live: D8 no-hot-swap; the idle session is
- * released so the next accepted run builds with the new tier). DELETE
+ * changes refuse while a run is live: D8 no-hot-swap; the tier is part of
+ * the run binding, so the next run reopens the session with it). DELETE
  * refuses while any run is active and otherwise removes the task, its
  * idempotency entries and its orphaned pending requests; session files,
  * transcripts and audit logs stay on disk for forensics. POST compact starts
@@ -49,7 +49,6 @@ export function registerTaskManageRoutes(app: FastifyInstance, ctx: TaskManageCo
       if (body.permissionTier !== undefined) item.permissionTier = body.permissionTier;
       item.updatedAt = new Date().toISOString();
     });
-    if (tierChanging) await ctx.manager.runnerFor(taskId).release();
     return { task: ctx.ledger.task(taskId) };
   });
 
