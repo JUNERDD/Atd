@@ -1,3 +1,4 @@
+import type { McpApprovalRequestResult } from '@ai/agent-contracts';
 import { AgentRequests } from '../../electron/agent/agent-requests';
 import { parseExtensionSession, type ExtensionSession } from '../../electron/agent/bridge';
 import {
@@ -172,7 +173,12 @@ export async function installNativeHost(
           case 'startLocal':
             throw new Error('The app starts and connects the service on its own.');
           default:
-            return handleExtensionRequest(connection.options(), request, openLink);
+            return handleExtensionRequest(connection.options(), request, {
+              openExternal: openLink,
+              // Swift shows what would run and approves it itself; the page names the server only.
+              requestMcpApproval: (serverId): Promise<McpApprovalRequestResult> =>
+                native.call('approval.request', { kind: 'mcpServer', serverId }),
+            });
         }
       },
       (listener) => {

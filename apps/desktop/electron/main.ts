@@ -262,6 +262,7 @@ if (!app.requestSingleInstanceLock()) {
           panelVisible: () =>
             Boolean(panel && !panel.isDestroyed() && panel.isVisible() && !panel.isMinimized()),
           withDialog: withFileDialog,
+          dialogBusy: () => choosingFiles || changingPinned,
         },
         (connected) => {
           // Commands load independently of providers; catalog refresh reads the loaded providers.

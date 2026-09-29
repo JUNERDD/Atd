@@ -21,6 +21,7 @@ import {
   type AgentClientOptions,
 } from '@ai/agent-client';
 import type { ServiceRequest } from './ipc';
+import { handleMcpApprovalRequest, type RequestMcpApproval } from './mcp-approval-requests';
 import { handlePluginRequest } from './plugin-requests';
 
 /** Service bridge requests about extensions; connection lifecycle stays with each host. */
@@ -29,14 +30,21 @@ export type ExtensionRequest = Exclude<
   { action: 'status' | 'connect' | 'disconnect' | 'startLocal' }
 >;
 
+/** What each host serves in its own way: its browser, and its native approval confirmation. */
+export interface ExtensionHost {
+  /** Shows an MCP authorization page. */
+  openExternal: (url: string) => Promise<void>;
+  requestMcpApproval: RequestMcpApproval;
+}
+
 /**
  * Plugins, skills, roles, subagents, built-ins and MCP servers over the service API, shared by the
- * desktop main process and the web client. `openExternal` shows an MCP authorization page.
+ * desktop main process and the macOS shell's page (`native-host`).
  */
 export async function handleExtensionRequest(
   options: AgentClientOptions | null,
   request: ExtensionRequest,
-  openExternal: (url: string) => Promise<void>,
+  host: ExtensionHost,
 ): Promise<unknown> {
   if (!options) throw new Error('The service is not connected.');
   switch (request.action) {
@@ -80,7 +88,7 @@ export async function handleExtensionRequest(
         const url = new URL(result.authorizationUrl);
         if (!['http:', 'https:'].includes(url.protocol))
           throw new Error('Only web links can be opened.');
-        await openExternal(url.href);
+        await host.openExternal(url.href);
       }
       return result;
     }
@@ -105,6 +113,10 @@ export async function handleExtensionRequest(
       return mcpSetServerEnabled({ options }, request.serverId, request.enabled);
     case 'mcpRemove':
       return mcpRemoveServer({ options }, request.serverId);
+    case 'mcpRequestApproval':
+    case 'mcpWithdrawApproval':
+    case 'mcpDismissApprovalNotice':
+      return handleMcpApprovalRequest(options, request, host.requestMcpApproval);
     case 'plugins':
     case 'pluginsGet':
     case 'pluginsSetEnabled':

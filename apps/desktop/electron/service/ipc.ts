@@ -7,6 +7,7 @@ import {
   type SubagentPermissions,
 } from '@ai/agent-contracts';
 import { Type, type Static } from 'typebox';
+import { McpApprovalRequestSchema, type ServiceMcpApprovalBridge } from './mcp-approval-requests';
 import { PluginRequestSchema, type ServicePluginBridge } from './plugin-requests';
 
 export const ServiceStateSchema = Type.Union([
@@ -173,6 +174,7 @@ export const ServiceRequestSchema = Type.Union([
     action: Type.Literal('mcpRemove'),
     serverId: Type.String({ minLength: 1, maxLength: 128 }),
   }),
+  McpApprovalRequestSchema,
   PluginRequestSchema,
 ]);
 export type ServiceRequest = Static<typeof ServiceRequestSchema>;
@@ -186,7 +188,7 @@ export type ServiceEvent =
   | { type: 'extensions' }
   | { type: 'notice'; text: string; kind: 'info' | 'warning' | 'error' };
 
-export interface ServiceBridge extends ServicePluginBridge {
+export interface ServiceBridge extends ServicePluginBridge, ServiceMcpApprovalBridge {
   status: () => Promise<ServiceStatusView>;
   connect: (dataDir: string) => Promise<ServiceStatusView>;
   disconnect: () => Promise<ServiceStatusView>;
@@ -231,7 +233,8 @@ export interface ServiceBridge extends ServicePluginBridge {
     model: string | null;
     systemPrompt: string;
   }) => Promise<{ agent: unknown }>;
-  mcpStatus: () => Promise<{ servers: unknown[] }>;
+  /** Status rows, and whether the one-time launch approval notice still shows. */
+  mcpStatus: () => Promise<{ servers: unknown[]; approvalNotice: boolean }>;
   /** The configured MCP records (transport, command or URL, auth) behind the status rows. */
   mcpServers: () => Promise<{ servers: unknown[] }>;
   mcpConnect: (serverId: string) => Promise<{ ok: boolean }>;

@@ -1,7 +1,8 @@
 import { mkdir } from 'node:fs/promises';
-import { ipcMain, shell } from 'electron';
+import { BrowserWindow, ipcMain, shell } from 'electron';
 import type { IpcMainInvokeEvent } from 'electron';
 import { parse } from '../agent/validation';
+import { createConfirm } from '../confirm-dialog';
 import { autostartService } from './autostart';
 import { resolveServiceDataDir } from './data-dir';
 import { ServiceConnection, type ServiceStatus } from './connection';
@@ -11,6 +12,7 @@ import { ServiceSupervisor } from './supervisor';
 import { ServiceRequestSchema, type ServiceStatusView } from './ipc';
 import { SERVICE_IPC } from './ipc-channels';
 import { handleExtensionRequest } from './extension-requests';
+import { McpApprovalGate } from './mcp-approval';
 
 function view(status: ServiceStatus, fallbackDataDir: string): ServiceStatusView {
   return {
@@ -36,10 +38,16 @@ function view(status: ServiceStatus, fallbackDataDir: string): ServiceStatusView
 export class ServiceManager {
   readonly connection: ServiceConnection;
   private readonly supervisor: ServiceSupervisor;
+  private readonly approvals: McpApprovalGate;
   constructor(
     private readonly send: (channel: string, value: unknown) => void,
     private readonly assertSender: (event: IpcMainInvokeEvent) => void,
-    caps: { panelVisible: () => boolean; withDialog: <T>(op: () => Promise<T>) => Promise<T> },
+    private readonly caps: {
+      panelVisible: () => boolean;
+      withDialog: <T>(op: () => Promise<T>) => Promise<T>;
+      /** Whether a native dialog or window operation is in progress (`withDialog` would refuse). */
+      dialogBusy: () => boolean;
+    },
     /** Runs after the connection changed: on `false` its options are already gone. */
     private readonly onLive: (connected: boolean) => void = () => undefined,
   ) {
@@ -62,6 +70,10 @@ export class ServiceManager {
     this.supervisor = new ServiceSupervisor(this.connection, {
       dataDir: () => this.defaultDataDir(),
       onLive: this.onLive,
+    });
+    this.approvals = new McpApprovalGate({
+      options: () => this.connection.options(),
+      dialogBusy: caps.dialogBusy,
     });
   }
 
@@ -142,9 +154,18 @@ export class ServiceManager {
           return this.statusView();
         }
         default:
-          return handleExtensionRequest(this.connection.options(), request, (url) =>
-            shell.openExternal(url),
-          );
+          return handleExtensionRequest(this.connection.options(), request, {
+            openExternal: (url) => shell.openExternal(url),
+            // A sheet on the window that asked; only the validated server id comes from it.
+            requestMcpApproval: (serverId) =>
+              this.approvals.request(
+                serverId,
+                createConfirm(
+                  () => BrowserWindow.fromWebContents(event.sender),
+                  this.caps.withDialog,
+                ),
+              ),
+          });
       }
     });
   }
