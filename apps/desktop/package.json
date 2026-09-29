@@ -1,6 +1,6 @@
 {
   "name": "@ai/desktop",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "private": true,
   "description": "A quiet desktop task panel, built from Figma.",
   "author": "JUNERDD",
