@@ -12,8 +12,8 @@ import { ConnectionStore, serviceConfigurationId } from '../credentials/connecti
 import { KeyringBackend } from '../credentials/keyring.js';
 import { ServiceCredentialStore } from '../credentials/service-store.js';
 import { ConflictError } from '../errors.js';
-import { applyCredentialUpload, modelCheck } from '../migration/import-providers.js';
 import { getServiceCatalog } from './catalog.js';
+import { modelCheck, storeConnectionCredential, type CredentialCheck } from './credential.js';
 import { registerConnectionRoutes } from './connection-routes.js';
 import { mustConnection, presentConnection, presentStored } from './connection-view.js';
 import { ProviderLogins } from './login.js';
@@ -32,7 +32,7 @@ const CONNECTION_LIMIT = 100;
  * Live provider routes (T6b) over the T2 connection store, keyring backend
  * and credential store: list/get/status/create/connect/disconnect here, edits,
  * preferences, thinking levels, refresh, verification and sign-in in
- * connection-routes. Status, create and connect reuse the T2 local model check
+ * connection-routes. Status, create and connect run the local model check
  * (credential resolution only, never network).
  */
 export function registerProviderRoutes(app: FastifyInstance, ctx: ProviderRouteContext): void {
@@ -105,7 +105,7 @@ export function registerProviderRoutes(app: FastifyInstance, ctx: ProviderRouteC
         modelCheck: 'unchecked' as const,
       };
     try {
-      const outcome = await applyCredentialUpload(connections, keyring, {
+      const outcome = await storeConnectionCredential(connections, keyring, {
         connectionId: connection.connectionId,
         providerId: connection.provider,
         configurationId: connection.configurationId,
@@ -177,9 +177,9 @@ export function registerProviderRoutes(app: FastifyInstance, ctx: ProviderRouteC
         throw new TypeError('Invalid data: path id and body connectionId differ.');
       const { connections, keyring } = await stores();
       mustConnection(connections, pathId);
-      let outcome: { readable: boolean; modelCheck: 'unchecked' | 'passed' | 'failed' };
+      let outcome: CredentialCheck;
       try {
-        outcome = await applyCredentialUpload(connections, keyring, body);
+        outcome = await storeConnectionCredential(connections, keyring, body);
       } catch (error) {
         throw mapUploadError(error);
       }

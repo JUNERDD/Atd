@@ -10,8 +10,6 @@ import { prepareServe, readEndpoint, readLocalToken, releaseLock } from './confi
 import { createService } from './index.js';
 import { createLogger } from './logging.js';
 import { applyLoginShellPath } from './login-shell-path.js';
-import { rollbackMigration } from './migration/rollback.js';
-import { runMigration } from './migration/migrate.js';
 import { assertSupportedNode, readServiceManifest } from './node-runtime.js';
 import { resolveDataDir } from './storage.js';
 
@@ -22,11 +20,6 @@ interface Flags {
   host?: string;
   port?: number;
   tier?: 'manual' | 'auto' | 'always';
-  source?: string;
-  dryRun?: boolean;
-  assumeQuiesced?: boolean;
-  rollback?: boolean;
-  reason?: string;
   loginShellPath?: boolean;
   yes?: boolean;
 }
@@ -38,11 +31,6 @@ function parseFlags(argv: string[]): Flags {
     if (arg === '--dataDir' && argv[index + 1]) flags.dataDir = argv[(index += 1)];
     else if (arg === '--host' && argv[index + 1]) flags.host = argv[(index += 1)];
     else if (arg === '--port' && argv[index + 1]) flags.port = Number(argv[(index += 1)]);
-    else if (arg === '--source' && argv[index + 1]) flags.source = argv[(index += 1)];
-    else if (arg === '--reason' && argv[index + 1]) flags.reason = argv[(index += 1)];
-    else if (arg === '--dry-run') flags.dryRun = true;
-    else if (arg === '--assume-quiesced') flags.assumeQuiesced = true;
-    else if (arg === '--rollback') flags.rollback = true;
     else if (arg === '--login-shell-path') flags.loginShellPath = true;
     else if (arg === '--yes') flags.yes = true;
     else if (arg === '--tier' && argv[index + 1]) {
@@ -65,8 +53,6 @@ function usage(): string {
     '  serve [--dataDir <dir>] [--host 127.0.0.1] [--port 0] [--tier manual] [--login-shell-path]',
     '  status [--dataDir <dir>]',
     '  stop [--dataDir <dir>]',
-    '  migrate --source <desktopUserDataCopy> [--dataDir <dir>] [--dry-run] [--assume-quiesced]',
-    '  migrate --rollback --reason <text> [--dataDir <dir>]',
     '  approve mcp <serverId> [--dataDir <dir>] [--yes]',
     '',
     '  --help, -h       Show this help',
@@ -180,28 +166,6 @@ async function stop(flags: Flags): Promise<void> {
   process.stdout.write('Stop requested; endpoint cleared.\n');
 }
 
-/** T2 additive: offline desktop-copy migration, dry-run, or rollback. */
-async function migrate(flags: Flags): Promise<void> {
-  const log = createLogger(process.env.AI_AGENT_LOG_LEVEL === 'debug' ? 'debug' : 'info');
-  const dataDir = path.resolve(locate(flags));
-  if (flags.rollback) {
-    if (!flags.reason) throw new Error('Rollback requires --reason <text>.');
-    const result = await rollbackMigration(dataDir, flags.reason);
-    process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
-    return;
-  }
-  if (!flags.source) throw new Error('Migration requires --source <desktopUserDataCopy>.');
-  const result = await runMigration({
-    dataDir,
-    sourceRoot: flags.source,
-    dryRun: flags.dryRun ?? false,
-    assumeQuiesced: flags.assumeQuiesced ?? false,
-    log,
-  });
-  process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
-  if (result.outcomes.some((outcome) => outcome.status === 'failed')) process.exitCode = 1;
-}
-
 async function main(): Promise<void> {
   const argv = process.argv.slice(2);
   if (argv.includes('--help') || argv.includes('-h') || argv[0] === 'help') {
@@ -228,9 +192,6 @@ async function main(): Promise<void> {
         break;
       case 'stop':
         await stop(flags);
-        break;
-      case 'migrate':
-        await migrate(flags);
         break;
       case 'approve': {
         const [kind, serverId] = positionals;

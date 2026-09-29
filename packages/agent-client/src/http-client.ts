@@ -4,10 +4,7 @@ import {
   ChildTranscriptResponseSchema,
   ConfirmReplyRequestSchema,
   ConfirmReplyResponseSchema,
-  CredentialUploadRequestSchema,
-  CredentialUploadResponseSchema,
   ErrorEnvelopeSchema,
-  MigrationStatusResponseSchema,
   parse,
   QueueMessageRequestSchema,
   ResourceUploadResponseSchema,
@@ -22,9 +19,6 @@ import {
   type ChildTranscriptResponse,
   type ConfirmReplyRequest,
   type ConfirmReplyResponse,
-  type CredentialUploadRequest,
-  type CredentialUploadResponse,
-  type MigrationStatusResponse,
   type QueueMessageRequest,
   type ResourceUploadResponse,
   type SnapshotResponse,
@@ -130,23 +124,6 @@ export class AgentHttpClient {
       bytes,
       'application/octet-stream',
     ).then((json) => parse(ResourceUploadResponseSchema, json));
-  }
-
-  /** T2 additive: one-time credential upload over the authenticated channel. */
-  uploadCredential(body: CredentialUploadRequest): Promise<CredentialUploadResponse> {
-    return this.request(
-      '/v1/migration/credentials',
-      'POST',
-      parse(CredentialUploadRequestSchema, body),
-      (json) => parse(CredentialUploadResponseSchema, json),
-    );
-  }
-
-  /** T2 additive: reads the service migration manifest (secret-free). */
-  migrationStatus(): Promise<MigrationStatusResponse> {
-    return this.request('/v1/migration/status', 'GET', undefined, (json) =>
-      parse(MigrationStatusResponseSchema, json),
-    );
   }
 
   private async request<T>(

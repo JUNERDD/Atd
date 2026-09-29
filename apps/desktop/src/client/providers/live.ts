@@ -8,7 +8,7 @@ import {
   type AgentClientOptions,
 } from '@ai/agent-client';
 import type {
-  MigrationCredential,
+  ProviderCredential,
   ProviderCredentialChange,
   ServiceConnection,
 } from '@ai/agent-contracts';
@@ -93,7 +93,7 @@ export async function fetchLiveProviders(options: AgentClientOptions): Promise<{
 }
 
 /** Trims an entered API key; control characters mean a paste went wrong. */
-function apiKeyCredential(apiKey: string): MigrationCredential {
+function apiKeyCredential(apiKey: string): ProviderCredential {
   const key = apiKey.trim();
   if ([...key].some((character) => character.charCodeAt(0) < 32 || character.charCodeAt(0) === 127))
     throw new Error('Enter a valid API key.');
@@ -105,7 +105,7 @@ function apiKeyCredential(apiKey: string): MigrationCredential {
  * empty credential; API-key connections need an entered key; account-login
  * connections receive theirs from sign-in.
  */
-function initialCredential(draft: ConnectionDraft): MigrationCredential | null {
+function initialCredential(draft: ConnectionDraft): ProviderCredential | null {
   if (draft.authType === 'none' || draft.authType === 'ambient') return { type: 'api_key' };
   if (draft.authType === 'api_key' && draft.apiKey?.trim()) return apiKeyCredential(draft.apiKey);
   return null;

@@ -5,7 +5,7 @@ import { SkillName } from './skills.js';
 
 /**
  * T6b (service v1.2 candidate): live command management DTOs. The persisted
- * shape extends the migrated ServiceCommand core (id/revision/name/
+ * shape extends the stored ServiceCommand core (id/revision/name/
  * description/instructions/enabled/tools/memory) with the desktop editor
  * fields below so T6 resume can round-trip full command definitions.
  * Objects intentionally allow additional properties: known fields are
@@ -196,3 +196,32 @@ export const CommandDeleteResponseSchema = Type.Object(
   { additionalProperties: false },
 );
 export type CommandDeleteResponse = Static<typeof CommandDeleteResponseSchema>;
+
+/**
+ * Stored command core in `commands.json`. `migratedAt` stays so files written
+ * by the 0.2.x desktop import still load; new commands record it as null.
+ */
+export const ServiceCommandSchema = Type.Object(
+  {
+    id: Identifier,
+    revision: Type.Integer({ minimum: 1 }),
+    name: Type.String({ minLength: 1, maxLength: 120 }),
+    description: Type.String({ maxLength: 500 }),
+    instructions: Type.String({ minLength: 1, maxLength: 20000 }),
+    enabled: Type.Boolean(),
+    tools: Type.Array(Type.String({ maxLength: 64 }), { maxItems: 20 }),
+    memory: Type.Union([Type.Literal('inherit'), Type.Literal('off')]),
+    migratedAt: Type.Union([Type.String(), Type.Null()]),
+  },
+  { additionalProperties: true },
+);
+export type ServiceCommand = Static<typeof ServiceCommandSchema>;
+
+export const ServiceCommandsFileSchema = Type.Object(
+  {
+    version: Type.Literal(1),
+    commands: Type.Array(ServiceCommandSchema, { maxItems: 500 }),
+  },
+  { additionalProperties: false },
+);
+export type ServiceCommandsFile = Static<typeof ServiceCommandsFileSchema>;

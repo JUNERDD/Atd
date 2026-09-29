@@ -25,7 +25,6 @@ import type { Logger } from './logging.js';
 import { registerManageRoutes } from './manage.js';
 import { McpAuthority, registerMcpRoutes, type McpAuthorityDeps } from './mcp/index.js';
 import { MemoryAuthority } from './memory/index.js';
-import { registerMigrationRoutes } from './migration/routes.js';
 import { ResourceStore } from './resources.js';
 import { UpstreamError } from './errors.js';
 import { ConflictError, DrainingError, type RunnerManager } from './runner-manager.js';
@@ -270,8 +269,6 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
     setImmediate(() => deps.onShutdown());
   });
 
-  // T2 additive: authenticated credential-upload + status channel for migration.
-  registerMigrationRoutes(app, deps.config);
   // T6b additive: live management APIs (providers/commands/memory/tasks/resources).
   registerManageRoutes(app, {
     config: deps.config,

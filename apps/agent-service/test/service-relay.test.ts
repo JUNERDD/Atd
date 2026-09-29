@@ -50,7 +50,6 @@ const SHELL_MCP_PATHS = new Set(
 function isShellPath(pathPattern: string): boolean {
   return (
     pathPattern.startsWith('/v1/admin/') ||
-    pathPattern.startsWith('/v1/migration/') ||
     SHELL_MCP_PATHS.has(pathPattern) ||
     pathPattern === '/v1/capabilities/result' ||
     pathPattern === '/v1/resources/import' ||

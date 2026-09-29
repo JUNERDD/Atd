@@ -23,9 +23,8 @@ const RevisionQuery = Type.Object(
 );
 
 /**
- * Live command routes (T6b). The store loads per request like the T2
- * migration precedent; each mutation serializes through its own chain and
- * lands via atomic write. Revisions guard every mutation (409 on drift).
+ * Live command routes (T6b). The store loads per request; each mutation
+ * serializes through its own chain and lands via atomic write. Revisions guard every mutation (409 on drift).
  * Installed plugins' commands (plugins/commands.ts) are listed after the user's, carry their
  * `pluginId`, accept only an `enabled` change and cannot be deleted.
  */

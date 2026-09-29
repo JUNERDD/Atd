@@ -1,6 +1,6 @@
 import { Type, type Static } from 'typebox';
 import { Identifier } from './identifiers.js';
-import { MigrationCredentialSchema, ServiceConnectionSchema } from './migration.js';
+import { ProviderCredentialSchema, ServiceConnectionSchema } from './provider-connections.js';
 import { ServiceModelDefinitionSchema } from './models.js';
 
 /**
@@ -57,16 +57,16 @@ export const ProviderStatusResponseSchema = Type.Object(
 export type ProviderStatusResponse = Static<typeof ProviderStatusResponseSchema>;
 
 /**
- * Live connect: same binding as the migration credential upload (connection
- * + provider + configurationId + credential). Rejects when the connection
- * configuration changed since the caller read it.
+ * Live connect: binds the credential to the connection, provider and
+ * configurationId the caller read. Rejects when the connection configuration
+ * changed since then.
  */
 export const ProviderConnectRequestSchema = Type.Object(
   {
     connectionId: Identifier,
     providerId: Type.String({ minLength: 1, maxLength: 256 }),
     configurationId: Type.String({ minLength: 1, maxLength: 256 }),
-    credential: MigrationCredentialSchema,
+    credential: ProviderCredentialSchema,
   },
   { additionalProperties: false },
 );
@@ -159,7 +159,7 @@ export type ProvidersCatalogResponse = Static<typeof ProvidersCatalogResponseSch
  * that receives its credential from sign-in.
  *
  * `options` and `customModels` are stored with the connection and hashed into
- * its configurationId, the same identity the migration importer computes.
+ * its configurationId, which pins the configuration a stored credential belongs to.
  */
 export const ProviderCreateRequestSchema = Type.Object(
   {
@@ -171,7 +171,7 @@ export const ProviderCreateRequestSchema = Type.Object(
     defaultThinkingLevel: ServiceConnectionSchema.properties.defaultThinkingLevel,
     options: Type.Record(Type.String(), Type.String({ maxLength: 2048 })),
     customModels: Type.Array(ServiceModelDefinitionSchema, { maxItems: 100 }),
-    credential: Type.Union([MigrationCredentialSchema, Type.Null()]),
+    credential: Type.Union([ProviderCredentialSchema, Type.Null()]),
   },
   { additionalProperties: false },
 );
