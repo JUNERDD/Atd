@@ -11,11 +11,13 @@ import {
 import type { Logger } from '../logging.js';
 import type { AdapterServerEntry } from './adapter-types.js';
 import { McpError } from './errors.js';
+import { httpEnvReads } from './env-references.js';
 import {
   isRiskyEnvKey,
   launchCwd,
   launchFingerprint,
   launchKind,
+  tokenEnvOf,
   type LaunchPlugin,
 } from './launch-fingerprint.js';
 import { launchKey, readLaunchKey } from './launch-key.js';
@@ -26,9 +28,9 @@ import { adapterCommandValue, toAdapterServerEntry } from './servers.js';
 /**
  * Launch approvals (G1), the single owner of whether an MCP server may launch. Every stdio server
  * (user or plugin, including `configure_mcp` servers and plugin duplicates) and every HTTP server
- * whose bearer token reads a service env var is refused until the user approves it as it stands:
- * the connect path asks `assertLaunch` with the entry it is about to hand the adapter, and the
- * control session's own adapter config leaves unapproved servers out. Approving takes a
+ * that can send a service env value (`launchKind`) is refused until the user approves it as it
+ * stands: the connect path asks `assertLaunch` with the entry it is about to hand the adapter, and
+ * the control session's own adapter config leaves unapproved servers out. Approving takes a
  * shell-only route or the CLI (after a native or terminal confirmation); withdrawing and the
  * one-time notice are the renderer's.
  */
@@ -126,7 +128,7 @@ export class LaunchApprovals implements LaunchGate {
     };
   }
 
-  /** What approving would allow, for the native confirmation. Values of env entries never leave. */
+  /** What approving would allow, for the native confirmation. Env and header values never leave. */
   async details(serverId: string): Promise<McpLaunchApprovalDetails> {
     const record = this.records.record(serverId);
     const kind = launchKind(record);
@@ -147,7 +149,6 @@ export class LaunchApprovals implements LaunchGate {
     const fingerprint = launchFingerprint(await this.key(serverId), this.bound(record, entry));
     const stored = this.store.get(serverId);
     const source = this.records.pluginSource(serverId);
-    const auth = record.http?.auth;
     return {
       serverId,
       name: source?.localName ?? serverId,
@@ -174,14 +175,7 @@ export class LaunchApprovals implements LaunchGate {
           risky: isRiskyEnvKey(key),
         })),
       },
-      http:
-        kind === 'mcp-http-env' && auth?.type === 'bearer'
-          ? {
-              url: entry.url ?? record.http?.url ?? '',
-              tokenEnv: auth.tokenEnv,
-              headerKeys: Object.keys(entry.headers ?? {}).sort(),
-            }
-          : null,
+      http: kind === 'mcp-http-env' ? httpDetails(record, entry) : null,
       fingerprint,
     };
   }
@@ -283,4 +277,22 @@ function refuseCommandValues(record: McpServerConfig, entry: AdapterServerEntry)
       record.serverId,
       `MCP server ${record.serverId} sets ${field} to a value starting with "!", which would run as a command; write "!!" for a literal "!".`,
     );
+}
+
+/** An HTTP launch as the confirmation shows it: where env values go, never a value. */
+function httpDetails(
+  record: McpServerConfig,
+  entry: AdapterServerEntry,
+): McpLaunchApprovalDetails['http'] {
+  const url = entry.url ?? record.http?.url ?? '';
+  const reads = httpEnvReads(url, entry.headers ?? {});
+  const headerKeys = [...reads.headers.keys()].sort();
+  return {
+    url,
+    tokenEnv: tokenEnvOf(record),
+    headerKeys,
+    urlReadsEnv: reads.url.length > 0,
+    headers: headerKeys.map((key) => ({ key, readsEnv: !!reads.headers.get(key)?.length })),
+    envReferences: reads.names,
+  };
 }

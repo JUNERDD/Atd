@@ -105,10 +105,13 @@ function describe(details: McpLaunchApprovalDetails): string {
       );
   }
   if (details.http) {
-    lines.push(`  URL: ${q(details.http.url)}`);
-    lines.push(`  Bearer token from service env var: ${q(details.http.tokenEnv)}`);
-    if (details.http.headerKeys.length)
-      lines.push(`  Header names: ${JSON.stringify(details.http.headerKeys)}`);
+    const { url, urlReadsEnv, tokenEnv, headers, envReferences } = details.http;
+    lines.push(`  URL: ${q(url)}${urlReadsEnv ? ' (reads service env vars)' : ''}`);
+    if (tokenEnv) lines.push(`  Bearer token from service env var: ${q(tokenEnv)}`);
+    for (const header of headers)
+      lines.push(`  Header ${q(header.key)}${header.readsEnv ? ': reads service env vars' : ''}`);
+    if (envReferences.length)
+      lines.push(`  Service env vars sent: ${JSON.stringify(envReferences)}`);
   }
   return `${lines.join('\n')}\n`;
 }

@@ -2,12 +2,14 @@ import { createHmac } from 'node:crypto';
 import path from 'node:path';
 import type { McpLaunchKind, McpServerConfig } from '@ai/agent-contracts';
 import type { AdapterServerEntry } from './adapter-types.js';
+import { httpEnvReads } from './env-references.js';
 
 /**
  * What a launch approval binds (G1): a keyed digest of everything that decides what a server runs
  * or where a service env value goes, computed from the adapter entry the connect path would hand
- * the adapter. Env values enter only as their own keyed digests, so neither the fingerprint nor
- * anything derived from it can be used to test a guessed value without the profile's key.
+ * the adapter. Env and header values enter only as their own keyed digests, so neither the
+ * fingerprint nor anything derived from it can be used to test a guessed value without the
+ * profile's key.
  */
 
 /** A plugin server's plugin as its fingerprint binds it; any update is a new revision. */
@@ -17,14 +19,23 @@ export interface LaunchPlugin {
 }
 
 /**
- * Which approval a server needs: every stdio server runs a local command; an HTTP server whose
- * bearer token comes from a service env var sends that value to its URL. Other HTTP servers need
- * none (`null`).
+ * Which approval a server needs: every stdio server runs a local command; an HTTP server that can
+ * send a service env value off the machine needs `mcp-http-env`: its bearer token comes from an
+ * env var (`tokenEnv`), or its URL or a header value names one the adapter fills in
+ * (mcp/env-references.ts), plugin servers included. Other HTTP servers need none (`null`).
  */
 export function launchKind(record: McpServerConfig): McpLaunchKind | null {
   if (record.stdio) return 'mcp-stdio';
+  if (!record.http) return null;
+  const { url, headers } = record.http;
+  if (tokenEnvOf(record)) return 'mcp-http-env';
+  return httpEnvReads(url, headers).names.length ? 'mcp-http-env' : null;
+}
+
+/** The env var a bearer token comes from, as configured; empty when it comes from none. */
+export function tokenEnvOf(record: McpServerConfig): string {
   const auth = record.http?.auth;
-  return auth?.type === 'bearer' && auth.tokenEnv.trim() ? 'mcp-http-env' : null;
+  return auth?.type === 'bearer' && auth.tokenEnv.trim() ? auth.tokenEnv : '';
 }
 
 /** The absolute directory a stdio launch starts in; the service's own when the record names none. */
@@ -86,14 +97,20 @@ export function launchFingerprint(
       }),
     );
   }
-  if (kind === 'mcp-http-env' && record.http?.auth.type === 'bearer') {
-    const url = new URL(entry.url ?? record.http.url);
+  if (kind === 'mcp-http-env' && record.http) {
+    // Templates as written, before the adapter fills in env values: the approval covers which
+    // variables go where, and any edit to the URL (query included) or a header voids it.
+    const url = entry.url ?? record.http.url;
+    const headers = entry.headers ?? {};
     return digest(
       canonical({
         ...common,
-        url: `${url.origin}${url.pathname}`,
-        tokenEnv: record.http.auth.tokenEnv,
-        headerKeys: Object.keys(entry.headers ?? {}).sort(),
+        v: 2,
+        url,
+        auth: record.http.auth.type,
+        tokenEnv: tokenEnvOf(record),
+        headers: sortedEntries(headers).map(([name, template]) => [name, digest(template)]),
+        envReferences: httpEnvReads(url, headers).names,
       }),
     );
   }

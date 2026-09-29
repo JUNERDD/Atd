@@ -94,8 +94,8 @@ export function registerConfigureMcpTool(pi: ExtensionAPI, host: ConfigureMcpHos
       'Add or update one MCP server in the service catalog. Prefer this over editing servers.json. ' +
       "An update keeps the server's stored environment variables and headers, which the result " +
       'never shows; a change that would send them to another command or URL origin is refused. ' +
-      'A new or changed server that runs a local command, or whose token comes from an ' +
-      "environment variable, needs the user's approval in Settings before it can run.",
+      'A new or changed server that runs a local command, or whose token, URL or headers read ' +
+      "a service environment variable, needs the user's approval in Settings before it can run.",
     parameters: DraftSchema,
     executionMode: 'sequential',
     execute: (_id, args) => configureMcp(host, args),

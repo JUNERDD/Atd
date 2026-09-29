@@ -3,11 +3,13 @@ import { McpServerIdSchema, McpServerStatusSchema } from './mcp.js';
 
 /**
  * Launch approvals (G1). An MCP server that runs a local command (every stdio server, user or
- * plugin) or whose bearer token reads a service env var (`tokenEnv`) is refused until the user
- * approves it as it stands. An approval binds a fingerprint of everything that decides what runs
- * or where the env value goes; any change to those voids it. Granting happens only through
- * shell-only routes, after a native confirmation in the shell (Swift or Electron main), or through
- * the CLI; the renderer may only withdraw.
+ * plugin) or that can send a service env value to its URL is refused until the user approves it as
+ * it stands. An HTTP server can send one when its bearer token reads a service env var
+ * (`tokenEnv`), or when its URL or a header value names one that the connection fills in:
+ * `${NAME}`, `$env:NAME` or `{env:NAME}`, NAME being letters, digits and `_`. An approval binds a
+ * fingerprint of everything that decides what runs or where the env value goes; any change to
+ * those voids it. Granting happens only through shell-only routes, after a native confirmation in
+ * the shell (Swift or Electron main), or through the CLI; the renderer may only withdraw.
  *
  * Routes (exposure in brackets, see agent-service `route-exposure.ts`):
  * - `GET    /v1/admin/approvals/mcp/:serverId`  [shell]    → McpLaunchApprovalDetails
@@ -24,7 +26,8 @@ import { McpServerIdSchema, McpServerStatusSchema } from './mcp.js';
  */
 
 /**
- * - `notRequired`: HTTP without an env-sourced token; it never needs approval.
+ * - `notRequired`: HTTP that sends no service env value (no `tokenEnv`, no env reference in its URL
+ *   or headers); it never needs approval.
  * - `required`: never approved (or the approval was withdrawn).
  * - `changed`: approved once, but what it launches changed since.
  * - `approved`: approved as it stands.
@@ -99,6 +102,16 @@ export const McpLaunchEnvEntrySchema = Type.Object(
 );
 export type McpLaunchEnvEntry = Static<typeof McpLaunchEnvEntrySchema>;
 
+/** One header of an HTTP launch. Values are never returned; `readsEnv` marks an env reference. */
+export const McpLaunchHeaderEntrySchema = Type.Object(
+  {
+    key: Type.String({ maxLength: 1024 }),
+    readsEnv: Type.Boolean(),
+  },
+  { additionalProperties: false },
+);
+export type McpLaunchHeaderEntry = Static<typeof McpLaunchHeaderEntrySchema>;
+
 /** What an approval would allow, as the native confirmation shows it. */
 export const McpLaunchApprovalDetailsSchema = Type.Object(
   {
@@ -143,10 +156,17 @@ export const McpLaunchApprovalDetailsSchema = Type.Object(
     http: Type.Union([
       Type.Object(
         {
+          /** As configured, env references unfilled (`${NAME}` and the like). */
           url: Type.String({ maxLength: 2048 }),
-          /** The service env var whose value is sent as the bearer token. */
+          /** The service env var whose value is sent as the bearer token; empty when none. */
           tokenEnv: Type.String({ maxLength: 256 }),
           headerKeys: Type.Array(Type.String({ maxLength: 1024 })),
+          /** Whether the URL names a service env var the connection fills in. */
+          urlReadsEnv: Type.Boolean(),
+          /** Every header, sorted by key, marking those whose value names a service env var. */
+          headers: Type.Array(McpLaunchHeaderEntrySchema),
+          /** The service env vars the URL and headers read, sorted; `tokenEnv` is not repeated. */
+          envReferences: Type.Array(Type.String({ maxLength: 256 })),
         },
         { additionalProperties: false },
       ),

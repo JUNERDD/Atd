@@ -179,7 +179,14 @@ test('an env-sourced bearer is refused until approved; plain HTTP needs no appro
   assert.equal(hits, 0, 'nothing was dialed');
   const { details } = await api.details('remote-env');
   assert.equal(details.kind, 'mcp-http-env');
-  assert.deepEqual(details.http, { url, tokenEnv: 'AI_TEST_LAUNCH_TOKEN', headerKeys: [] });
+  assert.deepEqual(details.http, {
+    url,
+    tokenEnv: 'AI_TEST_LAUNCH_TOKEN',
+    headerKeys: [],
+    urlReadsEnv: false,
+    headers: [],
+    envReferences: [],
+  });
   assert.equal(details.stdio, null);
   await api.approveNow('remote-env');
   await api.send('/v1/mcp/connect', 'POST', { serverId: 'remote-env' });
