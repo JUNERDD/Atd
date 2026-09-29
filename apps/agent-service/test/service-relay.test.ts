@@ -30,6 +30,7 @@ function isShellPath(pathPattern: string): boolean {
     pathPattern.startsWith('/v1/admin/') ||
     pathPattern.startsWith('/v1/migration/') ||
     pathPattern === '/v1/capabilities/result' ||
+    pathPattern === '/v1/resources/import' ||
     pathPattern === '/v1/stream'
   );
 }
