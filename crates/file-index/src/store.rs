@@ -86,7 +86,7 @@ impl NameStore for MinidexStore {
             path: PathBuf::from(file.rel),
             volume: file.root,
             kind: Kind::File,
-            last_modified: file.modified_secs,
+            last_modified: file.modified_secs.saturating_mul(MICROS),
             // Access times are not tracked: APFS updates them lazily, so they do not mean "used".
             last_accessed: 0,
             category: 0,
@@ -132,11 +132,15 @@ impl NameStore for MinidexStore {
     }
 }
 
+/// minidex timestamps are microseconds: it divides them into seconds for its recency filter and
+/// scoring, so seconds passed as-is would read as 1970 and no file would count as recent.
+const MICROS: u64 = 1_000_000;
+
 fn stored(result: minidex::SearchResult) -> StoredFile {
     StoredFile {
         root: result.volume,
         rel: result.path.to_string_lossy().into_owned(),
-        modified_secs: result.last_modified,
+        modified_secs: result.last_modified / MICROS,
     }
 }
 

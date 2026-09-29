@@ -130,3 +130,12 @@ fn ranks_like_the_typescript_search_within_word_prefix_matching() {
     // Known gap against the mdfind backend: minidex matches word prefixes, not mid-word text.
     assert!(index.query("port", 10).unwrap().is_empty());
 }
+
+#[test]
+fn an_empty_query_lists_recently_modified_files() {
+    let fixture = Fixture::new();
+    fixture.write("Documents/fresh.md", "new");
+    let index = fixture.ready();
+    assert_eq!(common::names(&index.query("", 10).unwrap()), ["fresh.md"]);
+    assert_eq!(common::names(&index.query("f", 10).unwrap()), ["fresh.md"]);
+}

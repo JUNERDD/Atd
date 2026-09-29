@@ -14,7 +14,7 @@ use crate::walk::Focus;
 use crate::{Error, Extensions, Hit, IndexOptions, Phase, Status, reconcile};
 
 /// Names the store implementation and version in the saved identity; a change rebuilds.
-const STORE_FORMAT: &str = "minidex=0.36.0;paths=display";
+const STORE_FORMAT: &str = "minidex=0.36.0;paths=display;time=micros";
 const STORE_DIR: &str = "names";
 const STATE_FILE: &str = "state.json";
 
