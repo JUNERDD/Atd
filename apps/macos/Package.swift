@@ -17,7 +17,12 @@ let package = Package(
     .target(name: "AICore"),
     // AppKit/WebKit integration that applies the AICore policy.
     .target(name: "AIShell", dependencies: ["AICore"]),
+    // The renderer relay, virtual socket pipe, control stream and service access: Foundation,
+    // WebKit and AICore, no AppKit windows. AIShell and the app wire it to their web views.
+    .target(name: "AIRelay", dependencies: ["AICore"]),
     .testTarget(name: "AICoreTests", dependencies: ["AICore"]),
+    // Runs a real WKWebView against a local stub service; see RelayIntegrationTests.
+    .testTarget(name: "AIRelayTests", dependencies: ["AIRelay", "AICore"]),
   ],
   swiftLanguageModes: [.v6]
 )
