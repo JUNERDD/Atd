@@ -264,9 +264,16 @@ if (!app.requestSingleInstanceLock()) {
         },
         (connected) => {
           // Commands load independently of providers; catalog refresh reads the loaded providers.
-          void settings.providers.sync().then(() => {
-            if (connected) settings.providers.syncCatalogs();
-          });
+          void settings.providers
+            .sync()
+            .then(() => {
+              if (connected) settings.providers.syncCatalogs();
+            })
+            .catch((error: unknown) => {
+              // The service can stop mid-request, as when the app quits right after connecting;
+              // the next connection loads the providers again.
+              console.warn('Could not load providers from the agent service:', error);
+            });
           if (connected) void agent?.syncLive();
         },
       );
