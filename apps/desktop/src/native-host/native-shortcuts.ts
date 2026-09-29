@@ -2,7 +2,7 @@ import type { PreparedCommand } from '../../electron/agent/bridge';
 import { readyToRun } from '../../electron/agent/command-validation';
 import { errorMessage } from '../../electron/agent/validation';
 import type { NativeBridge, ShortcutResult } from '../native-bridge/client';
-import { PANEL_SHORTCUT_ID } from '../native-bridge/contract';
+import { PANEL_SHORTCUT_ID } from '../native-bridge/calls';
 import type { NativeCommands } from './native-commands';
 
 type RegistrationFailure = Extract<ShortcutResult, { registered: false }>['reason'];

@@ -2,6 +2,9 @@
   "extends": "@ai/typescript-config/react.json",
   "compilerOptions": {
     "types": ["vite/client", "node"],
+    // The native bridge contract imports its parts by `.ts` file name, which Node's type
+    // stripping needs when the schema export script loads it.
+    "allowImportingTsExtensions": true,
     "paths": { "@/*": ["./src/*"] }
   },
   "include": ["src", "electron", "tests", "*.ts", "plugins"]

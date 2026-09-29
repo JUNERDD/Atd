@@ -48,6 +48,7 @@ public enum NativeCall: Equatable, Sendable {
   case artifact(ArtifactParams)
   case filesPick(FilesPickParams)
   case filesSave(FilesSaveParams)
+  case approvalRequest(ApprovalRequestParams)
 
   /// The contract name.
   public var name: String {
@@ -68,6 +69,7 @@ public enum NativeCall: Equatable, Sendable {
     case .artifact: "artifact"
     case .filesPick: "files.pick"
     case .filesSave: "files.save"
+    case .approvalRequest: "approval.request"
     }
   }
 }
@@ -132,6 +134,8 @@ public enum JsMessage: Decodable, Equatable, Sendable {
       case "artifact": call = try .artifact(container.value(.params, ArtifactParams.self))
       case "files.pick": call = try .filesPick(container.value(.params, FilesPickParams.self))
       case "files.save": call = try .filesSave(container.value(.params, FilesSaveParams.self))
+      case "approval.request":
+        call = try .approvalRequest(container.value(.params, ApprovalRequestParams.self))
       default:
         throw DecodingError.dataCorruptedError(
           forKey: .method, in: container, debugDescription: "Unknown method \(method).")

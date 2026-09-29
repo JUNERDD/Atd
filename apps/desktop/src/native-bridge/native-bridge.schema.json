@@ -25,7 +25,8 @@
       "link.open",
       "artifact",
       "files.pick",
-      "files.save"
+      "files.save",
+      "approval.request"
     ],
     "posts": [
       "bridge.ready",
@@ -540,6 +541,42 @@
                 "name": {
                   "type": "string",
                   "maxLength": 255
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
+              "const": "approval.request"
+            },
+            "params": {
+              "type": "object",
+              "required": ["kind", "serverId"],
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "const": "mcpServer"
+                },
+                "serverId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 193,
+                  "pattern": "^(?:[a-zA-Z0-9_-]{1,128}|(?:[a-z0-9](?:[a-z0-9.-]{0,62}[a-z0-9])?:)?[A-Za-z0-9][A-Za-z0-9_-]{0,127})$"
                 }
               },
               "additionalProperties": false
@@ -1661,6 +1698,69 @@
         }
       },
       "additionalProperties": false
+    },
+    "ApprovalRequestParams": {
+      "type": "object",
+      "required": ["kind", "serverId"],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "mcpServer"
+        },
+        "serverId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 193,
+          "pattern": "^(?:[a-zA-Z0-9_-]{1,128}|(?:[a-z0-9](?:[a-z0-9.-]{0,62}[a-z0-9])?:)?[A-Za-z0-9][A-Za-z0-9_-]{0,127})$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ApprovalRequestResult": {
+      "anyOf": [
+        {
+          "type": "object",
+          "required": ["approved"],
+          "properties": {
+            "approved": {
+              "type": "boolean",
+              "const": true
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["approved", "reason"],
+          "properties": {
+            "approved": {
+              "type": "boolean",
+              "const": false
+            },
+            "reason": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "const": "cancelled"
+                },
+                {
+                  "type": "string",
+                  "const": "changed"
+                },
+                {
+                  "type": "string",
+                  "const": "unavailable"
+                },
+                {
+                  "type": "string",
+                  "const": "busy"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
     },
     "BridgeReadyPost": {
       "type": "object",

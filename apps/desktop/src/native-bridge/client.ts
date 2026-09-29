@@ -1,12 +1,7 @@
 import { parse } from '@ai/agent-contracts';
 import { Type, type Static } from 'typebox';
-import {
-  MESSAGE_HANDLER,
-  NativeCalls,
-  NativeEvents,
-  type NativePosts,
-  type ShortcutResultSchema,
-} from './contract';
+import { NativeCalls, type ShortcutResultSchema } from './calls';
+import { MESSAGE_HANDLER, NativeEvents, type NativePosts } from './contract';
 
 export type NativeCallName = keyof typeof NativeCalls;
 export type NativePostName = keyof typeof NativePosts;

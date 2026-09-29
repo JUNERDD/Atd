@@ -223,3 +223,29 @@ export const McpStatusResponseSchema = Type.Object(
   { additionalProperties: false },
 );
 export type McpStatusResponse = Static<typeof McpStatusResponseSchema>;
+
+/**
+ * What a client's request for a native approval confirmation answered. The page names only the
+ * server; the shell (Swift or Electron main) reads the details itself, shows them, and approves
+ * with the fingerprint it showed.
+ * - `cancelled`: the user dismissed the dialog, or cancelled the same launch moments ago.
+ * - `changed`: what the server launches changed between the dialog and the approve (409).
+ * - `unavailable`: this host cannot show the confirmation, or it has no service connection.
+ * - `busy`: another native dialog is already showing.
+ */
+export const McpApprovalRequestResultSchema = Type.Union([
+  Type.Object({ approved: Type.Literal(true) }, { additionalProperties: false }),
+  Type.Object(
+    {
+      approved: Type.Literal(false),
+      reason: Type.Union([
+        Type.Literal('cancelled'),
+        Type.Literal('changed'),
+        Type.Literal('unavailable'),
+        Type.Literal('busy'),
+      ]),
+    },
+    { additionalProperties: false },
+  ),
+]);
+export type McpApprovalRequestResult = Static<typeof McpApprovalRequestResultSchema>;

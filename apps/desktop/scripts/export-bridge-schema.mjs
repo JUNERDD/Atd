@@ -1,6 +1,6 @@
-// Exports the native bridge contract (src/native-bridge/contract.ts) as JSON Schema, the input the
-// Swift Codable types are generated from. `--check` compares the checked-in file instead of writing
-// it and fails when the contract changed without a new export.
+// Exports the native bridge contract (src/native-bridge/contract.ts and its calls.ts) as JSON
+// Schema, the input the Swift Codable types are generated from. `--check` compares the checked-in
+// file instead of writing it and fails when the contract changed without a new export.
 //
 //   node scripts/export-bridge-schema.mjs          write src/native-bridge/native-bridge.schema.json
 //   node scripts/export-bridge-schema.mjs --check  exit 1 when that file is stale
@@ -10,6 +10,7 @@ import { execFileSync } from 'node:child_process';
 import { isDeepStrictEqual } from 'node:util';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import * as calls from '../src/native-bridge/calls.ts';
 import * as contract from '../src/native-bridge/contract.ts';
 
 const output = fileURLToPath(
@@ -30,12 +31,12 @@ function schemaDocument() {
   const definitions = {
     JsMessage: json(contract.JsMessageSchema),
     SwiftMessage: json(contract.SwiftMessageSchema),
-    FileRef: json(contract.NativeFileRefSchema),
-    ShortcutRegistration: json(contract.ShortcutRegistrationSchema),
-    ShortcutResult: json(contract.ShortcutResultSchema),
+    FileRef: json(calls.NativeFileRefSchema),
+    ShortcutRegistration: json(calls.ShortcutRegistrationSchema),
+    ShortcutResult: json(calls.ShortcutResultSchema),
     SocketFrame: json(contract.SocketFrameSchema),
   };
-  for (const [method, { params, result }] of Object.entries(contract.NativeCalls)) {
+  for (const [method, { params, result }] of Object.entries(calls.NativeCalls)) {
     definitions[`${pascal(method)}Params`] = json(params);
     definitions[`${pascal(method)}Result`] = json(result);
   }
@@ -53,9 +54,9 @@ function schemaDocument() {
       messageHandler: contract.MESSAGE_HANDLER,
       deliverScript: contract.DELIVER_SCRIPT,
       deliverArgument: contract.DELIVER_ARGUMENT,
-      panelShortcutId: contract.PANEL_SHORTCUT_ID,
-      maxCaptureLength: contract.MAX_CAPTURE_LENGTH,
-      calls: Object.keys(contract.NativeCalls),
+      panelShortcutId: calls.PANEL_SHORTCUT_ID,
+      maxCaptureLength: calls.MAX_CAPTURE_LENGTH,
+      calls: Object.keys(calls.NativeCalls),
       posts: Object.keys(contract.NativePosts),
       events: Object.keys(contract.NativeEvents),
     },
