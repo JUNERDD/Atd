@@ -10,7 +10,17 @@ import {
   type CapabilityRequest,
   type ServiceEvent,
 } from '@ai/agent-contracts';
+import {
+  webSocketTransport,
+  type StreamTransport,
+  type StreamTransportFactory,
+} from './stream-transport.js';
 import type { AgentClientOptions, CapabilityHandler, StreamHandlers } from './types.js';
+
+/** Stream connection options; `transport` replaces the default `WebSocket` transport. */
+export interface AgentStreamOptions extends AgentClientOptions {
+  transport?: StreamTransportFactory;
+}
 
 interface StreamState {
   epoch: number;
@@ -25,18 +35,31 @@ const MAX_BACKOFF_MS = 5000;
  * (per-task snapshots when the client subscribed to named tasks).
  */
 export class AgentStreamClient {
-  private socket: WebSocket | null = null;
+  /** The latest connection attempt, open or not. */
+  private socket: StreamTransport | null = null;
+  /** The connection that has opened and not yet closed; capability results go here. */
+  private live: StreamTransport | null = null;
+  private readonly transport: StreamTransportFactory;
   private readonly state: StreamState = { epoch: 0, seq: 0 };
   private failures = 0;
   private closed = false;
   private timer: ReturnType<typeof setTimeout> | null = null;
 
+  /**
+   * Without `options.transport`, connects over the standard `WebSocket`. Browsers cannot set
+   * headers on a socket, so that transport sends the credential as the `ai.auth.<token>`
+   * subprotocol next to `ai.v1`, which is the one the service selects.
+   */
   constructor(
-    private readonly options: AgentClientOptions,
+    private readonly options: AgentStreamOptions,
     private readonly handlers: StreamHandlers,
     private readonly taskIds: string[] = [],
     private readonly capabilities: CapabilityHandler[] = [],
-  ) {}
+  ) {
+    this.transport =
+      options.transport ??
+      webSocketTransport([STREAM_PROTOCOL, `${STREAM_AUTH_PROTOCOL_PREFIX}${options.token}`]);
+  }
 
   get epoch(): number {
     return this.state.epoch;
@@ -58,51 +81,48 @@ export class AgentStreamClient {
     this.timer = null;
     this.socket?.close();
     this.socket = null;
+    this.live = null;
   }
 
-  /**
-   * Uses the standard `WebSocket` global (Node 22+, Electron, browsers). Browsers cannot set
-   * headers on a socket, so every client sends its credential as the `ai.auth.<token>`
-   * subprotocol next to `ai.v1`, which is the one the service selects.
-   */
   private open(): void {
     const url = this.options.baseUrl.replace(/^http/, 'ws');
-    const socket = new WebSocket(`${url}/v1/stream`, [
-      STREAM_PROTOCOL,
-      `${STREAM_AUTH_PROTOCOL_PREFIX}${this.options.token}`,
-    ]);
-    this.socket = socket;
-    socket.addEventListener('open', () => {
-      this.failures = 0;
-      socket.send(
-        JSON.stringify({
-          type: 'subscribe',
-          epoch: this.state.epoch,
-          seq: this.state.seq,
-          ...(this.taskIds.length ? { taskIds: this.taskIds } : {}),
-        }),
-      );
-      if (this.capabilities.length)
+    const socket = this.transport.open(`${url}/v1/stream`, {
+      onOpen: () => {
+        this.failures = 0;
+        this.live = socket;
         socket.send(
           JSON.stringify({
-            type: 'capability.register',
-            capabilities: this.capabilities.map((item) => item.capability),
+            type: 'subscribe',
+            epoch: this.state.epoch,
+            seq: this.state.seq,
+            ...(this.taskIds.length ? { taskIds: this.taskIds } : {}),
           }),
         );
+        if (this.capabilities.length)
+          socket.send(
+            JSON.stringify({
+              type: 'capability.register',
+              capabilities: this.capabilities.map((item) => item.capability),
+            }),
+          );
+      },
+      onMessage: (text) => {
+        void this.onMessage(text).catch((error: unknown) => {
+          this.handlers.onDisconnect?.(error instanceof Error ? error.message : 'Stream error.');
+        });
+      },
+      onClose: (code, reason) => {
+        if (this.socket === socket) this.socket = null;
+        if (this.live === socket) this.live = null;
+        if (this.closed) return;
+        const detail = reason ? ` ${reason}` : '';
+        this.handlers.onDisconnect?.(`Stream closed (${code}${detail}).`);
+        this.scheduleReconnect();
+      },
+      // Errors surface through close; no separate handling needed.
+      onError: () => undefined,
     });
-    socket.addEventListener('message', (event) => {
-      void this.onMessage(String(event.data)).catch((error: unknown) => {
-        this.handlers.onDisconnect?.(error instanceof Error ? error.message : 'Stream error.');
-      });
-    });
-    socket.addEventListener('close', (event) => {
-      if (this.socket === socket) this.socket = null;
-      if (this.closed) return;
-      const reason = event.reason ? ` ${event.reason}` : '';
-      this.handlers.onDisconnect?.(`Stream closed (${event.code}${reason}).`);
-      this.scheduleReconnect();
-    });
-    // Errors surface through close; no separate handling needed.
+    this.socket = socket;
   }
 
   private scheduleReconnect(): void {
@@ -173,8 +193,8 @@ export class AgentStreamClient {
 
   private async serveCapability(request: CapabilityRequest): Promise<void> {
     const handler = this.capabilities.find((item) => item.capability === request.capability);
-    const socket = this.socket;
-    if (!socket || socket.readyState !== WebSocket.OPEN) return;
+    const socket = this.live;
+    if (!socket) return;
     if (!handler) {
       socket.send(
         JSON.stringify({

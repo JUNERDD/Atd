@@ -1,5 +1,6 @@
 export * from './types.js';
 export * from './http-client.js';
+export * from './stream-transport.js';
 export * from './ws-client.js';
 export * from './skills-client.js';
 export * from './atd-agents-client.js';
