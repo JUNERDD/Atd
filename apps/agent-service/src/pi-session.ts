@@ -143,8 +143,7 @@ export async function createLiveState(
         ...loadedSkillDirs(material.catalog, manager.buildContextEntries()),
       ];
     },
-    configureMcp: binding.mcp.configureMcp,
-    configuredMcp: binding.mcp.configuredMcp,
+    upsertMcp: binding.mcp.upsertMcp,
   };
   // Harness features (ask_user, grep/find/ls, todo, web, plan, memory) plug in here; see harness/.
   const harness = await prepareHarness({

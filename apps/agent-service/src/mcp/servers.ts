@@ -8,7 +8,6 @@ import { mcpServerKey } from '../credentials/server-keys.js';
 import { atomicWrite } from '../config.js';
 import type { AdapterMcpConfig, AdapterServerEntry } from './adapter-types.js';
 import type { SecretResolver } from './errors.js';
-import { McpConfigureRequestSchema } from './requests.js';
 
 /**
  * Service MCP server records: validation, persistence, stdio/HTTP
@@ -22,6 +21,12 @@ const ServerFileSchema = Type.Object(
   { additionalProperties: false },
 );
 type ServerFile = Static<typeof ServerFileSchema>;
+
+/** The user catalog as a whole: at most 100 servers. */
+const ServerListSchema = Type.Object(
+  { servers: Type.Array(McpServerConfigSchema, { maxItems: 100 }) },
+  { additionalProperties: false },
+);
 
 export function serversFile(dataDir: string): string {
   return path.join(dataDir, 'mcp', 'servers.json');
@@ -66,7 +71,7 @@ export function reviseRecords(
 
 /** Parses + cross-checks server configs (transport halves must match). */
 export function parseServerConfigs(input: unknown): McpServerConfig[] {
-  const { servers } = parse(McpConfigureRequestSchema, input);
+  const { servers } = parse(ServerListSchema, input);
   const seen = new Set<string>();
   for (const server of servers) {
     if (seen.has(server.serverId)) throw new Error(`Duplicate MCP server ${server.serverId}.`);

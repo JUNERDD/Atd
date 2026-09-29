@@ -13,7 +13,7 @@ const PREFIX_SCOPES: ReadonlyArray<readonly [string, InvalidateScope]> = [
   ['/v1/roles', 'extensions'],
   ['/v1/agents', 'extensions'],
   ['/v1/builtins', 'extensions'],
-  ['/v1/mcp/configure', 'extensions'],
+  ['/v1/mcp/servers', 'extensions'],
   ['/v1/mcp/connect', 'extensions'],
   ['/v1/mcp/disconnect', 'extensions'],
   ['/v1/mcp/reconnect', 'extensions'],

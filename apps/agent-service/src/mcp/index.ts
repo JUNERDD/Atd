@@ -23,6 +23,7 @@ export {
 } from './errors.js';
 export { ConnectionManager, type ConnectionDeps, type EnsuredConnection } from './connect.js';
 export { McpPolicy, type PolicyDeps } from './policy.js';
+export { serverView, upsertRecord } from './server-edits.js';
 export { McpAuthManager, McpConnectionStates, buildSnapshot, type AuthDeps } from './lifecycle.js';
 export {
   CredentialTransactions,
@@ -85,7 +86,6 @@ export {
 export {
   McpAuthCompleteRequestSchema,
   McpCallToolRequestSchema,
-  McpConfigureRequestSchema,
   McpGetPromptRequestSchema,
   McpReadResourceRequestSchema,
   McpServerRequestSchema,
@@ -95,7 +95,6 @@ export {
   handleMcpAuthComplete,
   handleMcpAuthStart,
   handleMcpCallTool,
-  handleMcpConfigure,
   handleMcpConnect,
   handleMcpDisconnect,
   handleMcpGetPrompt,
@@ -106,12 +105,15 @@ export {
   handleMcpLogout,
   handleMcpReadResource,
   handleMcpRecords,
+  handleMcpRemove,
   handleMcpReconnect,
   handleMcpRefresh,
   handleMcpRevoke,
+  handleMcpSetEnabled,
   handleMcpSnapshot,
   handleMcpStage,
   handleMcpStatus,
+  handleMcpUpsert,
   mcpErrorStatus,
   registerMcpRoutes,
   type McpAuthorityResolver,

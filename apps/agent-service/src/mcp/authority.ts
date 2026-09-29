@@ -1,4 +1,9 @@
-import { errorMessage, type McpServerConfig, type McpSnapshot } from '@ai/agent-contracts';
+import {
+  errorMessage,
+  type McpServerConfig,
+  type McpServerUpsertRequest,
+  type McpSnapshot,
+} from '@ai/agent-contracts';
 import type { ConfirmStore } from '../confirms.js';
 import type { EventLog } from '../event-log.js';
 import type { Logger } from '../logging.js';
@@ -17,7 +22,8 @@ import {
 import { loadAdapterInternals, scopeAdapterEnv } from './loader.js';
 import type { AdapterInternals, AdapterManagerLike } from './adapter-types.js';
 import { McpServerRecords, type RecordChange } from './server-records.js';
-import { bearerSecrets, parseServerConfigs, reuseKey, toAdapterConfig } from './servers.js';
+import { upsertRecord } from './server-edits.js';
+import { bearerSecrets, reuseKey, toAdapterConfig } from './servers.js';
 import { prepareMcpTools, type McpProxyHost } from './tool-proxies.js';
 import { loadRunMcpSelection } from './staging.js';
 import { CredentialTransactions } from './transactions.js';
@@ -199,7 +205,7 @@ export class McpAuthority {
     this.identities.set(record.serverId, set);
   }
 
-  /** The user's servers (servers.json): the ones configure writes and clients edit. */
+  /** The user's servers (servers.json) in full; clients and the model see `serverView`s. */
   configured(): McpServerConfig[] {
     return this.servers.userRecords();
   }
@@ -209,20 +215,38 @@ export class McpAuthority {
     return this.servers.forRun(runId);
   }
 
-  /**
-   * Accepts a new user server set; revisions bump on change, removals disconnect. A set that
-   * names a plugin server is refused whole (mcp/plugin-servers.ts).
-   */
-  async configure(input: unknown): Promise<McpServerConfig[]> {
+  /** Adds or updates one user server from an edit (merged by `upsertRecord`); answers it saved. */
+  async upsert(serverId: string, request: McpServerUpsertRequest): Promise<McpServerConfig> {
+    const previous = this.configured().find((record) => record.serverId === serverId);
+    return this.put(upsertRecord(serverId, request, previous));
+  }
+
+  /** Stores one complete user record (a plugin server's copy); answers it as saved. */
+  async put(record: McpServerConfig): Promise<McpServerConfig> {
     this.assertOpen();
-    await this.apply('mcp:configure', this.servers.replaceUser(parseServerConfigs(input)));
-    return this.configured();
+    const change = this.servers.putUser(record);
+    const saved = change.next.find((entry) => entry.serverId === record.serverId);
+    if (!saved) throw new McpError('internal', record.serverId, 'The MCP server was not saved.');
+    await this.apply('mcp:upsert', change);
+    return saved;
+  }
+
+  /** Turns one user server on or off; turning it off disconnects it. */
+  async setEnabled(serverId: string, enabled: boolean): Promise<void> {
+    this.assertOpen();
+    await this.apply('mcp:enabled', this.servers.setUserEnabled(serverId, enabled));
+  }
+
+  /** Removes one user server and disconnects it; its stored credentials are not touched. */
+  async remove(serverId: string): Promise<void> {
+    this.assertOpen();
+    await this.apply('mcp:remove', this.servers.removeUser(serverId));
   }
 
   /** Revokes a user server immediately: no new calls, cancellable ones cancel. */
   async revoke(serverId: string): Promise<void> {
     this.assertOpen();
-    await this.apply('mcp:revoke', this.servers.disableUser(serverId));
+    await this.apply('mcp:revoke', this.servers.setUserEnabled(serverId, false));
   }
 
   /**

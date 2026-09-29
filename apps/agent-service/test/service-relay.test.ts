@@ -43,8 +43,17 @@ test('the route manifest classifies every route the service serves', async () =>
   const keys = manifest.routes.map((route) => `${route.method} ${route.pathPattern}`);
   assert.equal(new Set(keys).size, keys.length, 'each route appears once');
   assert.ok(manifest.routes.length > 90, `only ${manifest.routes.length} routes listed`);
-  for (const key of ['GET /v1/admin/routes', 'POST /v1/admin/shutdown', 'GET /v1/stream'])
+  for (const key of [
+    'GET /v1/admin/routes',
+    'POST /v1/admin/shutdown',
+    'GET /v1/stream',
+    'PUT /v1/mcp/servers/:serverId',
+    'POST /v1/mcp/servers/:serverId/enabled',
+    'DELETE /v1/mcp/servers/:serverId',
+  ])
     assert.ok(keys.includes(key), `${key} is missing`);
+  // MCP servers are edited one at a time; no route replaces the catalog with client records.
+  assert.ok(!keys.includes('POST /v1/mcp/configure'), 'POST /v1/mcp/configure is gone');
   for (const route of manifest.routes)
     assert.equal(
       route.exposure,

@@ -9,7 +9,12 @@ import {
   type SessionManager,
   type ToolDefinition,
 } from '@earendil-works/pi-coding-agent';
-import type { GrantScope, McpServerConfig, PermissionTier } from '@ai/agent-contracts';
+import type {
+  GrantScope,
+  McpServerConfig,
+  McpServerUpsertRequest,
+  PermissionTier,
+} from '@ai/agent-contracts';
 import type { CapabilityRegistry } from './capabilities.js';
 import { commandToolDefinition } from './commands/tool.js';
 import { registerConfigureMcpTool } from './configure-mcp-tool.js';
@@ -48,8 +53,7 @@ export interface ServiceToolHost {
    * the read tool reads inside them without a confirmation; writes keep the usual rules.
    */
   skillDirs: () => readonly string[];
-  configureMcp?: (servers: McpServerConfig[]) => Promise<McpServerConfig[]>;
-  configuredMcp?: () => McpServerConfig[];
+  upsertMcp?: (serverId: string, request: McpServerUpsertRequest) => Promise<McpServerConfig>;
 }
 
 /**

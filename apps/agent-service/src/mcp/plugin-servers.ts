@@ -13,7 +13,7 @@ import { McpError } from './errors.js';
 /**
  * The read-only plugin layer of the MCP authority, next to the user's `servers.json`. Its records
  * come from installed plugins (plugins/map.ts `mapMcp`), keyed by qualified server id; they are
- * never written to `servers.json`, never changed by configure, revoke or `configure_mcp`, and are
+ * never written to `servers.json`, never changed by user-server edits, revoke or `configure_mcp`, and are
  * disabled unless the plugin catalog made them effective (for stdio, after the user's approval).
  */
 export interface PluginServerLayer {

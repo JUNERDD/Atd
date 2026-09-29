@@ -7,7 +7,10 @@ import {
   mcpAuthStart,
   mcpConnect,
   mcpRecords,
+  mcpRemoveServer,
+  mcpSetServerEnabled,
   mcpStatus,
+  mcpUpsertServer,
   putAtdAgent,
   putRole,
   readSkillFile,
@@ -18,7 +21,6 @@ import {
   type AgentClientOptions,
 } from '@ai/agent-client';
 import type { ServiceRequest } from './ipc';
-import { removeMcpServer, setMcpServerEnabled, upsertMcpServer } from './mcp-catalog';
 import { handlePluginRequest } from './plugin-requests';
 
 /** Service bridge requests about extensions; connection lifecycle stays with each host. */
@@ -90,11 +92,19 @@ export async function handleExtensionRequest(
       return { ok: result.authenticated };
     }
     case 'mcpUpsert':
-      return upsertMcpServer(options, request);
+      // The form edits no env or header values: leaving both maps out keeps the stored ones, and
+      // the service refuses a command or URL change those kept values must not follow.
+      return mcpUpsertServer({ options }, request.serverId, {
+        transport: request.transport,
+        command: request.command,
+        args: request.args,
+        url: request.url,
+        auth: request.auth,
+      });
     case 'mcpSetEnabled':
-      return setMcpServerEnabled(options, request.serverId, request.enabled);
+      return mcpSetServerEnabled({ options }, request.serverId, request.enabled);
     case 'mcpRemove':
-      return removeMcpServer(options, request.serverId);
+      return mcpRemoveServer({ options }, request.serverId);
     case 'plugins':
     case 'pluginsGet':
     case 'pluginsSetEnabled':

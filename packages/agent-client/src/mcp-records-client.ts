@@ -1,43 +1,71 @@
-import { ErrorEnvelopeSchema, parse } from '@ai/agent-contracts';
+import {
+  McpServersResponseSchema,
+  parse,
+  type McpServersResponse,
+  type McpServerUpsertRequest,
+} from '@ai/agent-contracts';
+import { manageRequest } from './manage-request.js';
 import type { McpClient } from './mcp-client.js';
-import { authHeaders, AgentClientError } from './types.js';
 
 /**
- * Reads the configured MCP server records (no bearer tokens). Shape-checked
- * at the top level the same way `mcpStatus` checks `{ servers: array }`.
+ * The user's MCP servers over `/v1/mcp/servers` (routes in `agent-contracts/src/mcp-servers.ts`).
+ * Every answer is the whole user catalog as views: env and header values arrive only as
+ * `{ set: true }`, so edits keep them by name instead of sending them back.
  */
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
+const decode = (json: unknown) => parse(McpServersResponseSchema, json);
+const serverPath = (serverId: string) => `/v1/mcp/servers/${encodeURIComponent(serverId)}`;
+
+export function mcpRecords(client: McpClient): Promise<McpServersResponse> {
+  return manageRequest(
+    client.options,
+    '/v1/mcp/servers',
+    'GET',
+    undefined,
+    decode,
+    client.fetchImpl,
+  );
 }
 
-function hasServers(json: unknown): json is { servers: unknown[] } {
-  return isRecord(json) && Array.isArray(json['servers']);
+/** Adds or updates one server; the service merges `env` and `headers` with the stored ones. */
+export function mcpUpsertServer(
+  client: McpClient,
+  serverId: string,
+  request: McpServerUpsertRequest,
+): Promise<McpServersResponse> {
+  return manageRequest(
+    client.options,
+    serverPath(serverId),
+    'PUT',
+    request,
+    decode,
+    client.fetchImpl,
+  );
 }
 
-function toClientError(status: number, json: unknown): AgentClientError {
-  try {
-    const envelope = parse(ErrorEnvelopeSchema, json);
-    return new AgentClientError(envelope.error.code, status, envelope.error.message);
-  } catch {
-    return new AgentClientError('internal', status, `Request failed with status ${status}.`);
-  }
+export function mcpSetServerEnabled(
+  client: McpClient,
+  serverId: string,
+  enabled: boolean,
+): Promise<McpServersResponse> {
+  return manageRequest(
+    client.options,
+    `${serverPath(serverId)}/enabled`,
+    'POST',
+    { enabled },
+    decode,
+    client.fetchImpl,
+  );
 }
 
-export async function mcpRecords(client: McpClient): Promise<{ servers: unknown[] }> {
-  const path = '/v1/mcp/servers';
-  const fetchImpl = client.fetchImpl ?? fetch;
-  const response = await fetchImpl(`${client.options.baseUrl}${path}`, {
-    method: 'GET',
-    headers: authHeaders(client.options),
-  });
-  const json: unknown = await response.json().catch(() => null);
-  if (!response.ok) throw toClientError(response.status, json);
-  if (!hasServers(json))
-    throw new AgentClientError(
-      'internal',
-      response.status,
-      `Unexpected MCP response from ${path}.`,
-    );
-  return json;
+/** Removes one server; its stored bearer token or OAuth tokens are left as they are. */
+export function mcpRemoveServer(client: McpClient, serverId: string): Promise<McpServersResponse> {
+  return manageRequest(
+    client.options,
+    serverPath(serverId),
+    'DELETE',
+    undefined,
+    decode,
+    client.fetchImpl,
+  );
 }

@@ -1,13 +1,17 @@
 import { randomUUID } from 'node:crypto';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+import { Type } from 'typebox';
 import {
+  McpServerEnabledRequestSchema,
+  McpServerIdSchema,
+  McpServerUpsertRequestSchema,
   parse,
   type McpAuthCompleteResponse,
   type McpAuthStartResponse,
   type McpCallResult,
   type McpGetPromptResponse,
   type McpReadResourceResponse,
-  type McpServerConfig,
+  type McpServersResponse,
   type McpServerStatus,
   type McpSnapshot,
 } from '@ai/agent-contracts';
@@ -15,10 +19,10 @@ import type { McpAuthority } from './authority.js';
 import { McpError, type OperationContext } from './errors.js';
 import { ADAPTER_VERSION, McpAdapterMissing } from './loader.js';
 import { promptPreviewToInput } from './mapping.js';
+import { serverView } from './server-edits.js';
 import {
   McpAuthCompleteRequestSchema,
   McpCallToolRequestSchema,
-  McpConfigureRequestSchema,
   McpGetPromptRequestSchema,
   McpReadResourceRequestSchema,
   McpServerRequestSchema,
@@ -45,6 +49,11 @@ export interface McpRouteDeps {
  */
 export type McpAuthorityResolver = () => Promise<McpAuthority>;
 
+const ServerParamsSchema = Type.Object(
+  { serverId: McpServerIdSchema },
+  { additionalProperties: false },
+);
+
 const ANONYMOUS_OP: OperationContext = {
   operationId: 'mcp-direct',
   taskId: 'mcp',
@@ -70,8 +79,24 @@ export function handleMcpStatus(deps: McpRouteDeps): { servers: McpServerStatus[
   return { servers: deps.authority.snapshot().servers };
 }
 
-export function handleMcpRecords(deps: McpRouteDeps): { servers: McpServerConfig[] } {
-  return { servers: deps.authority.configured() };
+/** The user's servers with env and header values redacted (mcp/server-edits.ts). */
+export function handleMcpRecords(deps: McpRouteDeps): McpServersResponse {
+  return { servers: deps.authority.configured().map(serverView) };
+}
+
+export async function handleMcpUpsert(deps: McpRouteDeps, serverId: string, body: unknown) {
+  await deps.authority.upsert(serverId, parse(McpServerUpsertRequestSchema, body));
+  return handleMcpRecords(deps);
+}
+
+export async function handleMcpSetEnabled(deps: McpRouteDeps, serverId: string, body: unknown) {
+  await deps.authority.setEnabled(serverId, parse(McpServerEnabledRequestSchema, body).enabled);
+  return handleMcpRecords(deps);
+}
+
+export async function handleMcpRemove(deps: McpRouteDeps, serverId: string) {
+  await deps.authority.remove(serverId);
+  return handleMcpRecords(deps);
 }
 
 export function handleMcpSnapshot(deps: McpRouteDeps): McpSnapshot {
@@ -87,11 +112,6 @@ export async function handleMcpStage(dataDir: string, body: unknown) {
   const parsed = parse(McpStageRequestSchema, body);
   const staging = await stageTaskMcp(dataDir, parsed.taskId, parsed.tools);
   return { taskId: parsed.taskId, tools: staging.tools, stagedAt: staging.stagedAt };
-}
-
-export async function handleMcpConfigure(deps: McpRouteDeps, body: unknown) {
-  const parsed = parse(McpConfigureRequestSchema, body);
-  return { servers: await deps.authority.configure(parsed) };
 }
 
 export async function handleMcpConnect(deps: McpRouteDeps, body: unknown, signal?: AbortSignal) {
@@ -262,29 +282,40 @@ const ADAPTER_MISSING_MESSAGE = `MCP is unavailable: pi-mcp-adapter ${ADAPTER_VE
  * fake success) and `McpError` keeps its own status.
  */
 export function registerMcpRoutes(app: FastifyInstance, authority: McpAuthorityResolver): void {
+  const run = async <T>(reply: FastifyReply, work: (deps: McpRouteDeps) => T | Promise<T>) => {
+    try {
+      return await work({ authority: await authority() });
+    } catch (error) {
+      if (error instanceof McpAdapterMissing) {
+        reply.status(503).send({ error: { code: 'internal', message: ADAPTER_MISSING_MESSAGE } });
+        return;
+      }
+      if (error instanceof McpError) {
+        reply
+          .status(mcpErrorStatus(error.code))
+          .send({ error: { code: error.code, message: error.message } });
+        return;
+      }
+      throw error;
+    }
+  };
   const wrap =
     <T>(handler: (deps: McpRouteDeps, body: unknown) => T | Promise<T>) =>
+    (request: FastifyRequest, reply: FastifyReply) =>
+      run(reply, (deps) => handler(deps, request.body));
+  // One user server by path; a malformed id is a 400 before the authority loads.
+  const wrapServer =
+    <T>(handler: (deps: McpRouteDeps, serverId: string, body: unknown) => T | Promise<T>) =>
     async (request: FastifyRequest, reply: FastifyReply) => {
-      try {
-        return await handler({ authority: await authority() }, request.body);
-      } catch (error) {
-        if (error instanceof McpAdapterMissing) {
-          reply.status(503).send({ error: { code: 'internal', message: ADAPTER_MISSING_MESSAGE } });
-          return;
-        }
-        if (error instanceof McpError) {
-          reply
-            .status(mcpErrorStatus(error.code))
-            .send({ error: { code: error.code, message: error.message } });
-          return;
-        }
-        throw error;
-      }
+      const { serverId } = parse(ServerParamsSchema, request.params);
+      return run(reply, (deps) => handler(deps, serverId, request.body));
     };
   app.get('/v1/mcp/status', RENDERER_ROUTE, wrap(handleMcpStatus));
   app.get('/v1/mcp/servers', RENDERER_ROUTE, wrap(handleMcpRecords));
+  app.put('/v1/mcp/servers/:serverId', RENDERER_ROUTE, wrapServer(handleMcpUpsert));
+  app.post('/v1/mcp/servers/:serverId/enabled', RENDERER_ROUTE, wrapServer(handleMcpSetEnabled));
+  app.delete('/v1/mcp/servers/:serverId', RENDERER_ROUTE, wrapServer(handleMcpRemove));
   app.get('/v1/mcp/snapshot', RENDERER_ROUTE, wrap(handleMcpSnapshot));
-  app.post('/v1/mcp/configure', RENDERER_ROUTE, wrap(handleMcpConfigure));
   app.post('/v1/mcp/connect', RENDERER_ROUTE, wrap(handleMcpConnect));
   app.post('/v1/mcp/disconnect', RENDERER_ROUTE, wrap(handleMcpDisconnect));
   app.post('/v1/mcp/reconnect', RENDERER_ROUTE, wrap(handleMcpReconnect));

@@ -8,7 +8,12 @@ import {
   withPluginOwners,
   type PluginServerLayer,
 } from './plugin-servers.js';
-import { loadServerRecords, reviseRecords, saveServerRecords } from './servers.js';
+import {
+  loadServerRecords,
+  parseServerConfigs,
+  reviseRecords,
+  saveServerRecords,
+} from './servers.js';
 
 /**
  * A pending change to one layer: what it holds and what it will hold. Nothing changes until
@@ -42,7 +47,7 @@ export class McpServerRecords {
     return new McpServerRecords(dataDir, log, user, plugins);
   }
 
-  /** The user's servers: the ones configure writes and clients edit. */
+  /** The user's servers: the ones clients and `configure_mcp` edit. */
   userRecords(): McpServerConfig[] {
     return this.user.map((record) => ({ ...record }));
   }
@@ -62,25 +67,35 @@ export class McpServerRecords {
     return [...this.userRecords(), ...plugins];
   }
 
-  /** Replaces the user layer (revisions carried over); plugin ids are refused. */
-  replaceUser(parsed: McpServerConfig[]): RecordChange {
-    assertUserServers(
-      parsed.map((server) => server.serverId),
-      this.plugins,
-    );
-    return this.userChange(reviseRecords(this.user, parsed));
+  /** Adds or replaces one user server (its revision carried over); plugin ids are refused. */
+  putUser(record: McpServerConfig): RecordChange {
+    assertUserServers([record.serverId], this.plugins);
+    const next = this.user.some((entry) => entry.serverId === record.serverId)
+      ? this.user.map((entry) => (entry.serverId === record.serverId ? record : entry))
+      : [...this.user, record];
+    return this.userChange(reviseRecords(this.user, parseServerConfigs({ servers: next })));
   }
 
-  /** Marks one user server disabled; plugin servers are refused. */
-  disableUser(serverId: string): RecordChange {
+  /** Turns one user server on or off; plugin servers are refused. */
+  setUserEnabled(serverId: string, enabled: boolean): RecordChange {
+    this.assertUser(serverId);
+    return this.userChange(
+      this.user.map((entry) =>
+        entry.serverId === serverId ? { ...entry, disabled: !enabled } : entry,
+      ),
+    );
+  }
+
+  /** Drops one user server; plugin servers are refused. */
+  removeUser(serverId: string): RecordChange {
+    this.assertUser(serverId);
+    return this.userChange(this.user.filter((entry) => entry.serverId !== serverId));
+  }
+
+  private assertUser(serverId: string): void {
     assertUserServers([serverId], this.plugins);
     if (!this.user.some((entry) => entry.serverId === serverId))
       throw new McpError('not_found', serverId, `MCP server ${serverId} is not configured.`);
-    return this.userChange(
-      this.user.map((entry) =>
-        entry.serverId === serverId ? { ...entry, disabled: true } : entry,
-      ),
-    );
   }
 
   /** Reads the plugin layer anew from the plugin catalog. */

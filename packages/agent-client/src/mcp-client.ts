@@ -117,19 +117,6 @@ export function mcpSnapshot(
   );
 }
 
-export function mcpConfigure(
-  client: McpClient,
-  body: { servers: unknown[] },
-): Promise<{ servers: McpServerStatusDto[] }> {
-  return post(
-    client,
-    '/v1/mcp/configure',
-    body,
-    (json): json is { servers: McpServerStatusDto[] } =>
-      isRecord(json) && Array.isArray(json['servers']),
-  );
-}
-
 /** T6b additive: stages MCP tool selection for the next run of a task. */
 export function mcpStage(
   client: McpClient,

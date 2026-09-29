@@ -81,14 +81,9 @@ export async function setItemEnabled(
       await store.update(name, { ...command, enabled }, command.revision);
       return;
     }
-    case 'mcp': {
-      const authority = await actions.mcp();
-      const servers = authority
-        .configured()
-        .map((server) => (server.serverId === name ? { ...server, disabled: !enabled } : server));
-      await authority.configure({ servers });
+    case 'mcp':
+      await (await actions.mcp()).setEnabled(name, enabled);
       return;
-    }
   }
 }
 

@@ -122,11 +122,15 @@ async function duplicateServer(
     ({ item }) => item.pluginId === pluginId && item.localName === name,
   )?.value;
   if (!record) throw new TypeError(`Invalid request: MCP server "${name}" could not be prepared.`);
-  const configured = authority.configured();
-  const taken = new Set(configured.map((server) => server.serverId));
+  const taken = new Set(authority.configured().map((server) => server.serverId));
   const serverId = await freeName(name, async (candidate) => taken.has(candidate));
-  const copy = { ...record, serverId, connectionId: randomUUID(), revision: 1, disabled: true };
-  await authority.configure({ servers: [...configured, copy] });
+  await authority.put({
+    ...record,
+    serverId,
+    connectionId: randomUUID(),
+    revision: 1,
+    disabled: true,
+  });
   return serverId;
 }
 
