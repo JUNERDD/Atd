@@ -65,8 +65,7 @@
   padding: 0 40px;
 }
 /* The strip stays part of the window drag region; only its controls opt out. */
-.settings-content-header [data-slot='select-trigger'],
-.settings-content-header [data-slot='button'] {
+.settings-content-header [data-slot='select-trigger'] {
   -webkit-app-region: no-drag;
 }
 .settings-content-scroll {

@@ -7,7 +7,6 @@
     "label": "Settings",
     "loadError": "Settings could not be loaded."
   },
-  "openInBrowser": "Open in browser",
   "nav": {
     "label": "Settings sections",
     "navigationLabel": "Settings navigation",

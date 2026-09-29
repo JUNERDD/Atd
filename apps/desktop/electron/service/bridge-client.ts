@@ -14,7 +14,6 @@ export function createServiceBridge(
     status: () => invoke({ action: 'status' }),
     connect: (dataDir) => invoke({ action: 'connect', dataDir }),
     disconnect: () => invoke({ action: 'disconnect' }),
-    openInBrowser: () => invoke({ action: 'openInBrowser' }),
     startLocal: (dataDir, port) =>
       invoke({ action: 'startLocal', dataDir, ...(port !== undefined ? { port } : {}) }),
     skills: () => invoke({ action: 'skills' }),

@@ -88,7 +88,6 @@ export const ServiceRequestSchema = Type.Union([
     dataDir: Type.String({ minLength: 1, maxLength: 2048 }),
   }),
   Type.Object({ action: Type.Literal('disconnect') }),
-  Type.Object({ action: Type.Literal('openInBrowser') }),
   Type.Object({
     action: Type.Literal('startLocal'),
     dataDir: Type.String({ minLength: 1, maxLength: 2048 }),
@@ -192,8 +191,6 @@ export interface ServiceBridge extends ServicePluginBridge {
   connect: (dataDir: string) => Promise<ServiceStatusView>;
   disconnect: () => Promise<ServiceStatusView>;
   startLocal: (dataDir: string, port?: number) => Promise<ServiceStatusView>;
-  /** Signs the default browser in to the connected service with a one-time link (desktop only). */
-  openInBrowser: () => Promise<void>;
   skills: () => Promise<{ skills: unknown[]; diagnostics: unknown[] }>;
   /** One catalog skill (null when it left the catalog) with its folder's files. */
   skill: (name: string) => Promise<{ skill: unknown; files: string[]; truncated: boolean }>;

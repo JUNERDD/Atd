@@ -24,7 +24,7 @@ import { handlePluginRequest } from './plugin-requests';
 /** Service bridge requests about extensions; connection lifecycle stays with each host. */
 export type ExtensionRequest = Exclude<
   ServiceRequest,
-  { action: 'status' | 'connect' | 'disconnect' | 'startLocal' | 'openInBrowser' }
+  { action: 'status' | 'connect' | 'disconnect' | 'startLocal' }
 >;
 
 /**

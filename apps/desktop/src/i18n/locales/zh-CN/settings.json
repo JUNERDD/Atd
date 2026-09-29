@@ -7,7 +7,6 @@
     "label": "设置",
     "loadError": "无法加载设置。"
   },
-  "openInBrowser": "在浏览器中打开",
   "nav": {
     "label": "设置分类",
     "navigationLabel": "设置导航",

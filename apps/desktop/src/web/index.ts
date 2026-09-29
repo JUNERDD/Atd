@@ -123,7 +123,6 @@ export async function installWebHost(
           case 'connect':
           case 'disconnect':
           case 'startLocal':
-          case 'openInBrowser':
             throw new Error('Manage the service connection from the desktop app.');
           default:
             return handleExtensionRequest(connection.options(), request, openExternal);

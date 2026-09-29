@@ -81,7 +81,6 @@ export interface AppActions {
   showPanel: () => void;
   hidePanel: () => void;
   settings: SettingsService;
-  openInBrowser: () => Promise<void>;
   /** Replaces the local agent service; also the way back after automatic restarts gave up. */
   restartService: () => Promise<void>;
   /** Reveals the folder with the local agent service's log files. */
@@ -127,7 +126,7 @@ function updateItems(updates: Updater): MenuItemConstructorOptions[] {
 }
 
 /**
- * The app's everyday items: panel, settings, web client, updates, the service actions, then
+ * The app's everyday items: panel, settings, updates, the service actions, then
  * `extras` and Quit. The application menu and the menu bar status item's menu share them, since a
  * hidden Dock icon hides the application menu.
  */
@@ -150,14 +149,6 @@ export function appItems(
             ),
           );
       },
-    },
-    {
-      label: 'Open in Browser…',
-      click: reportFailure(
-        actions.openInBrowser,
-        'Could not open the web client',
-        'The browser could not be opened.',
-      ),
     },
     ...updateItems(actions.updates),
     { type: 'separator' },

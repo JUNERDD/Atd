@@ -10,7 +10,6 @@ import { serviceLogDir } from './service-log';
 import { ServiceSupervisor } from './supervisor';
 import { ServiceRequestSchema, type ServiceStatusView } from './ipc';
 import { SERVICE_IPC } from './ipc-channels';
-import { createWebPairing } from '@ai/agent-client';
 import { handleExtensionRequest } from './extension-requests';
 
 function view(status: ServiceStatus, fallbackDataDir: string): ServiceStatusView {
@@ -111,19 +110,6 @@ export class ServiceManager {
     await this.supervisor.stop();
   }
 
-  /**
-   * Opens the web client of the connected service in the default browser. The link carries a
-   * one-time pairing code, so the browser gets its own session and never sees the owner token.
-   * Under `pnpm dev` it opens the dev server, which serves the live client and proxies `/v1`.
-   */
-  async openInBrowser(): Promise<void> {
-    const options = this.connection.options();
-    if (!options) throw new Error('The service is not connected.');
-    const { code } = await createWebPairing(options);
-    const origin = new URL(process.env.VITE_DEV_SERVER_URL || options.baseUrl).origin;
-    await shell.openExternal(`${origin}/#pair=${code}`);
-  }
-
   statusView(): ServiceStatusView {
     return view(this.connection.status(), this.defaultDataDir());
   }
@@ -148,9 +134,6 @@ export class ServiceManager {
           this.onLive(false);
           return view(status, this.defaultDataDir());
         }
-        case 'openInBrowser':
-          await this.openInBrowser();
-          return null;
         case 'startLocal': {
           this.supervisor.release();
           await startLocalService({ dataDir: request.dataDir, port: request.port });

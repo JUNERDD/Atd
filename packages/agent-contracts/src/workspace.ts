@@ -77,36 +77,9 @@ export const PatchSettingsRequestSchema = Type.Object(
 );
 export type PatchSettingsRequest = Static<typeof PatchSettingsRequestSchema>;
 
-/** `POST /v1/web/pairings` (owner token only): a one-time code a browser exchanges for a session. */
-export const WebPairingResponseSchema = Type.Object(
-  {
-    code: Type.String({ minLength: 32, maxLength: 128 }),
-    expiresAt: Type.String(),
-  },
-  { additionalProperties: false },
-);
-export type WebPairingResponse = Static<typeof WebPairingResponseSchema>;
-
-export const WebSessionRequestSchema = Type.Object(
-  { code: Type.String({ minLength: 32, maxLength: 128 }) },
-  { additionalProperties: false },
-);
-export type WebSessionRequest = Static<typeof WebSessionRequestSchema>;
-
-/** The browser's bearer credential; sent as `Authorization` or as a WebSocket subprotocol. */
-export const WebSessionResponseSchema = Type.Object(
-  {
-    token: Type.String({ minLength: 32, maxLength: 256 }),
-    serviceId: Identifier,
-    expiresAt: Type.String(),
-  },
-  { additionalProperties: false },
-);
-export type WebSessionResponse = Static<typeof WebSessionResponseSchema>;
-
 /** Subprotocol every stream client offers; the service selects it on upgrade. */
 export const STREAM_PROTOCOL = 'ai.v1';
-/** Prefix of the subprotocol that carries a browser session token (browsers cannot set headers). */
+/** Prefix of the subprotocol that carries the service token (`WebSocket` cannot set headers). */
 export const STREAM_AUTH_PROTOCOL_PREFIX = 'ai.auth.';
 
 export const InvalidateScopeSchema = Type.Union([

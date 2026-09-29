@@ -301,7 +301,6 @@ if (!app.requestSingleInstanceLock()) {
         showPanel,
         hidePanel,
         settings,
-        openInBrowser: () => manager.openInBrowser(),
         restartService: () => manager.restart(),
         showServiceLogs: () => manager.revealLogs(),
         updates,
