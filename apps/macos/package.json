@@ -8,6 +8,8 @@
     "test": "swift test",
     "lint": "swiftlint lint --strict --quiet",
     "format": "swift format --in-place --recursive --parallel Package.swift App Sources Tests",
-    "format:check": "swift format lint --strict --recursive --parallel Package.swift App Sources Tests"
+    "format:check": "swift format lint --strict --recursive --parallel Package.swift App Sources Tests",
+    "codegen": "node scripts/generate-bridge-types.mjs",
+    "codegen:check": "node scripts/generate-bridge-types.mjs --check"
   }
 }
