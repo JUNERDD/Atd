@@ -17,6 +17,7 @@ import { AGENT_IPC } from './agent/ipc-channels';
 import { Identifier } from './agent/command-schema';
 import { parse } from './agent/validation';
 import { IPC, type DesktopState } from './contract';
+import { createConfirm } from './confirm-dialog';
 import { chooseContextFiles } from './context-files';
 import { appItems, installAppMenu } from './app-menu';
 import { DockVisibility } from './dock-visibility';
@@ -286,6 +287,7 @@ if (!app.requestSingleInstanceLock()) {
           panel?.webContents.send(AGENT_IPC.launch, { prepared, autoRun });
         },
         withFileDialog,
+        createConfirm(() => panel, withFileDialog),
         serviceManager.connection,
       );
       agent.installIpc();

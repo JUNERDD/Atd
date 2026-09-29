@@ -1,6 +1,7 @@
 import { app, BrowserWindow, clipboard, dialog, ipcMain, shell, type WebContents } from 'electron';
 import path from 'node:path';
 import { ATTACHABLE_EXTENSIONS } from '@ai/agent-contracts';
+import type { Confirm } from '../confirm-dialog';
 import type { SettingsService } from '../settings-service';
 import type { ServiceConnection } from '../service/connection';
 import { sendToPage } from '../window-content';
@@ -38,6 +39,7 @@ export class AgentService {
     private readonly connection: ServiceConnection,
     emitLaunch: (prepared: PreparedCommand, autoRun: boolean) => void,
     choose: <T>(operation: () => Promise<T>) => Promise<T>,
+    confirm: Confirm,
   ) {
     this.commands = new CommandService(
       store,
@@ -63,6 +65,7 @@ export class AgentService {
         handleArtifact(
           options,
           path.join(app.getPath('userData'), 'agent-v1', 'downloads'),
+          confirm,
           artifactId,
           operation,
         ),
@@ -106,10 +109,11 @@ export class AgentService {
     settings: SettingsService,
     launch: (prepared: PreparedCommand, autoRun: boolean) => void,
     choose: <T>(operation: () => Promise<T>) => Promise<T>,
+    confirm: Confirm,
     connection: ServiceConnection,
   ) {
     const store = await AgentStore.load(path.join(app.getPath('userData'), 'agent-v1'));
-    return new AgentService(store, settings, connection, launch, choose);
+    return new AgentService(store, settings, connection, launch, choose, confirm);
   }
 
   /**
