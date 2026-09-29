@@ -262,6 +262,17 @@ if (!resolved.startsWith(packDir)) {
   process.stderr.write(`Staged Pi resolved outside pack (${resolved}).\n`);
   process.exit(1);
 }
+// The file index addon is built for darwin-arm64 only (packages/file-index); without it that
+// pack would ship a service whose file search reports itself unavailable.
+if (process.platform === 'darwin' && process.arch === 'arm64') {
+  const addon = path.join(stagedModules, '@ai', 'file-index', 'file-index.darwin-arm64.node');
+  try {
+    await access(addon);
+  } catch {
+    fail(`Staged node_modules missing the file index addon at ${addon}. Run \`pnpm build\`.`);
+  }
+  process.stdout.write(`File index addon: ${await realpath(addon)}\n`);
+}
 const buildInfo = { version: 1, buildId: randomUUID() };
 await writeFile(path.join(packDir, 'build-info.json'), `${JSON.stringify(buildInfo, null, 2)}\n`);
 process.stdout.write(

@@ -79,12 +79,13 @@ mac:
   # The zip keeps the arch for x64 too, so each architecture's file is unambiguous in the merged
   # latest-mac.yml. The dmg sets its own name below.
   artifactName: ${productName}-${version}-${arch}-mac.${ext}
-  # Shown the first time an attached file sits in one of these folders. File search itself reads
-  # the Spotlight index and never opens the folders.
+  # Shown the first time the service opens one of these folders: when the file index walks home
+  # on the first file search (`crates/file-index`, run by the service's index worker), or when a
+  # file there is attached. The index keeps file names only and never reads file contents.
   extendInfo:
-    NSDesktopFolderUsageDescription: AI reads a file in your Desktop folder only when you attach it.
-    NSDocumentsFolderUsageDescription: AI reads a file in your Documents folder only when you attach it.
-    NSDownloadsFolderUsageDescription: AI reads a file in your Downloads folder only when you attach it.
+    NSDesktopFolderUsageDescription: AI lists file names in your Desktop folder for file search, and reads a file only when you attach it.
+    NSDocumentsFolderUsageDescription: AI lists file names in your Documents folder for file search, and reads a file only when you attach it.
+    NSDownloadsFolderUsageDescription: AI lists file names in your Downloads folder for file search, and reads a file only when you attach it.
     # Start as an agent app so a hidden Dock icon never flashes at launch; `dock-visibility.ts`
     # shows the icon at runtime when the user turns on Show in Dock.
     LSUIElement: true
