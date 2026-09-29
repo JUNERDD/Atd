@@ -29,7 +29,7 @@ import {
   McpStageRequestSchema,
 } from './requests.js';
 import { stageTaskMcp } from './staging.js';
-import { RENDERER_ROUTE } from '../relay-routes.js';
+import { RENDERER_ROUTE, SHELL_ROUTE } from '../relay-routes.js';
 import { registerLaunchRoutes } from './launch-routes.js';
 
 /**
@@ -314,26 +314,28 @@ export function registerMcpRoutes(app: FastifyInstance, authority: McpAuthorityR
       const { serverId } = parse(ServerParamsSchema, request.params);
       return run(reply, (deps) => handler(deps, serverId, request.body));
     };
+  // The renderer (through the shell relay) reaches only status, its server edits, connect, OAuth
+  // and approval withdrawal; direct operations on servers are for main-token clients alone.
   app.get('/v1/mcp/status', RENDERER_ROUTE, wrap(handleMcpStatus));
   app.get('/v1/mcp/servers', RENDERER_ROUTE, wrap(handleMcpRecords));
   app.put('/v1/mcp/servers/:serverId', RENDERER_ROUTE, wrapServer(handleMcpUpsert));
   app.post('/v1/mcp/servers/:serverId/enabled', RENDERER_ROUTE, wrapServer(handleMcpSetEnabled));
   app.delete('/v1/mcp/servers/:serverId', RENDERER_ROUTE, wrapServer(handleMcpRemove));
-  app.get('/v1/mcp/snapshot', RENDERER_ROUTE, wrap(handleMcpSnapshot));
+  app.get('/v1/mcp/snapshot', SHELL_ROUTE, wrap(handleMcpSnapshot));
   app.post('/v1/mcp/connect', RENDERER_ROUTE, wrap(handleMcpConnect));
-  app.post('/v1/mcp/disconnect', RENDERER_ROUTE, wrap(handleMcpDisconnect));
-  app.post('/v1/mcp/reconnect', RENDERER_ROUTE, wrap(handleMcpReconnect));
-  app.post('/v1/mcp/revoke', RENDERER_ROUTE, wrap(handleMcpRevoke));
+  app.post('/v1/mcp/disconnect', SHELL_ROUTE, wrap(handleMcpDisconnect));
+  app.post('/v1/mcp/reconnect', SHELL_ROUTE, wrap(handleMcpReconnect));
+  app.post('/v1/mcp/revoke', SHELL_ROUTE, wrap(handleMcpRevoke));
   app.post('/v1/mcp/auth/start', RENDERER_ROUTE, wrap(handleMcpAuthStart));
   app.post('/v1/mcp/auth/complete', RENDERER_ROUTE, wrap(handleMcpAuthComplete));
-  app.post('/v1/mcp/refresh', RENDERER_ROUTE, wrap(handleMcpRefresh));
-  app.post('/v1/mcp/logout', RENDERER_ROUTE, wrap(handleMcpLogout));
-  app.post('/v1/mcp/tools/list', RENDERER_ROUTE, wrap(handleMcpListTools));
-  app.post('/v1/mcp/tools/call', RENDERER_ROUTE, wrap(handleMcpCallTool));
-  app.post('/v1/mcp/resources/list', RENDERER_ROUTE, wrap(handleMcpListResources));
-  app.post('/v1/mcp/resources/templates', RENDERER_ROUTE, wrap(handleMcpListResourceTemplates));
-  app.post('/v1/mcp/resources/read', RENDERER_ROUTE, wrap(handleMcpReadResource));
-  app.post('/v1/mcp/prompts/list', RENDERER_ROUTE, wrap(handleMcpListPrompts));
-  app.post('/v1/mcp/prompts/get', RENDERER_ROUTE, wrap(handleMcpGetPrompt));
+  app.post('/v1/mcp/refresh', SHELL_ROUTE, wrap(handleMcpRefresh));
+  app.post('/v1/mcp/logout', SHELL_ROUTE, wrap(handleMcpLogout));
+  app.post('/v1/mcp/tools/list', SHELL_ROUTE, wrap(handleMcpListTools));
+  app.post('/v1/mcp/tools/call', SHELL_ROUTE, wrap(handleMcpCallTool));
+  app.post('/v1/mcp/resources/list', SHELL_ROUTE, wrap(handleMcpListResources));
+  app.post('/v1/mcp/resources/templates', SHELL_ROUTE, wrap(handleMcpListResourceTemplates));
+  app.post('/v1/mcp/resources/read', SHELL_ROUTE, wrap(handleMcpReadResource));
+  app.post('/v1/mcp/prompts/list', SHELL_ROUTE, wrap(handleMcpListPrompts));
+  app.post('/v1/mcp/prompts/get', SHELL_ROUTE, wrap(handleMcpGetPrompt));
   registerLaunchRoutes(app, wrap, wrapServer);
 }

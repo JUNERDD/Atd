@@ -24,11 +24,34 @@ async function errorCode(response: Response): Promise<string> {
   return parse(ErrorEnvelopeSchema, await response.json()).error.code;
 }
 
+/**
+ * MCP routes the renderer never calls (G1b): direct server operations stay with main-token
+ * clients, so script in the renderer cannot call tools, read resources or drive connections.
+ */
+const SHELL_MCP_PATHS = new Set(
+  [
+    'snapshot',
+    'disconnect',
+    'reconnect',
+    'revoke',
+    'refresh',
+    'logout',
+    'tools/list',
+    'tools/call',
+    'resources/list',
+    'resources/templates',
+    'resources/read',
+    'prompts/list',
+    'prompts/get',
+  ].map((name) => `/v1/mcp/${name}`),
+);
+
 /** The routes only direct main-token clients may call (the relay refuses them). */
 function isShellPath(pathPattern: string): boolean {
   return (
     pathPattern.startsWith('/v1/admin/') ||
     pathPattern.startsWith('/v1/migration/') ||
+    SHELL_MCP_PATHS.has(pathPattern) ||
     pathPattern === '/v1/capabilities/result' ||
     pathPattern === '/v1/resources/import' ||
     pathPattern === '/v1/stream'
@@ -55,6 +78,9 @@ test('the route manifest classifies every route the service serves', async () =>
     'POST /v1/admin/approvals/mcp',
     'DELETE /v1/mcp/servers/:serverId/approval',
     'POST /v1/mcp/approvals/notice/dismiss',
+    ...[...SHELL_MCP_PATHS].map((pathPattern) =>
+      pathPattern === '/v1/mcp/snapshot' ? `GET ${pathPattern}` : `POST ${pathPattern}`,
+    ),
   ])
     assert.ok(keys.includes(key), `${key} is missing`);
   // MCP servers are edited one at a time; no route replaces the catalog with client records.
