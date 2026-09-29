@@ -1,5 +1,5 @@
 import { _electron as electron, expect, test } from '@playwright/test';
-import { mkdtemp, mkdir, readFile, rm } from 'node:fs/promises';
+import { cp, mkdtemp, mkdir, readFile, rm } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
@@ -203,6 +203,15 @@ test('production app: positioning, renderer isolation, service flow, and window 
       .toBe(false);
   } finally {
     await app.close();
+    // CI uploads .artifacts/, so a slow or failed run keeps the app and service logs, whose
+    // timestamps split launch time between the app and the service. A run that failed before
+    // the service started has no service log to keep.
+    const artifacts = path.join(appDirectory, '.artifacts');
+    await mkdir(artifacts, { recursive: true });
+    for (const log of ['logs/main.log', 'AgentService/logs/service.log']) {
+      const target = path.join(artifacts, path.basename(log));
+      await cp(path.join(userData, log), target).catch(() => undefined);
+    }
     await rm(userData, { recursive: true, force: true });
   }
 });
