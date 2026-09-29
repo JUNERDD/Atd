@@ -55,6 +55,8 @@ skill's bare name. Nested component paths are flattened with `-` (`commands/db/m
 - **Claude Code**: `$ARGUMENTS[N]` and `$N` are 0-based in Claude's docs and become 1-based argument
   segments. `${CLAUDE_PLUGIN_ROOT}`, `${CLAUDE_PLUGIN_DATA}`, `${user_config.KEY}` and
   `${VAR:-default}` are substituted; sensitive config values are redacted from model-visible text.
+  In an HTTP `url` or header, a process-environment `${VAR}` stays `${VAR}` (unless its `:-`
+  default applies) for the MCP client to fill in when it connects.
 - **pi packages**: the `pi` key selects resources exactly as pi does (globs, `!` exclusions);
   prompt templates become commands; extensions and themes are reported as unsupported.
 
