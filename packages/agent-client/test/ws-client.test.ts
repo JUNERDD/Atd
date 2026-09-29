@@ -122,6 +122,60 @@ test('close() closes the transport and ignores its late close', () => {
   assert.deepEqual(disconnects, []);
 });
 
+test('a superseded connection neither reports its close nor schedules a reconnect', () => {
+  const { factory, connections } = fakeTransport();
+  const { handlers, disconnects } = recordingHandlers();
+  const client = new AgentStreamClient(
+    { baseUrl: 'http://127.0.0.1:4000', token: 'unused', transport: factory },
+    handlers,
+  );
+
+  // close() + connect(): the first transport's close arrives after the second connection opened.
+  client.connect();
+  connections[0]?.events.onOpen();
+  client.close();
+  client.connect();
+  connections[1]?.events.onOpen();
+  connections[0]?.events.onClose(1006, 'late');
+  // A second connect() without close() supersedes the current connection the same way.
+  client.connect();
+  assert.deepEqual(connections[1]?.closes, [{ code: undefined, reason: undefined }]);
+  connections[1]?.events.onOpen();
+  connections[1]?.events.onMessage(JSON.stringify({ type: 'resumed', seq: 9 }));
+  connections[1]?.events.onClose(1006, 'late');
+  mock.timers.tick(5000);
+
+  assert.equal(connections.length, 3);
+  assert.deepEqual(disconnects, []);
+  assert.equal(client.seq, 0);
+  // Only the current connection subscribed after its own open.
+  assert.deepEqual(connections[1]?.sent, [{ type: 'subscribe', epoch: 0, seq: 0 }]);
+  assert.deepEqual(connections[2]?.sent, []);
+
+  // The current connection still drives reconnect.
+  connections[2]?.events.onClose(1012, '');
+  assert.deepEqual(disconnects, ['Stream closed (1012).']);
+  mock.timers.tick(250);
+  assert.equal(connections.length, 4);
+  client.close();
+});
+
+test('connect() during a pending reconnect replaces it instead of opening twice', () => {
+  const { factory, connections } = fakeTransport();
+  const { handlers } = recordingHandlers();
+  const client = new AgentStreamClient(
+    { baseUrl: 'http://127.0.0.1:4000', token: 'unused', transport: factory },
+    handlers,
+  );
+
+  client.connect();
+  connections[0]?.events.onClose(1006, '');
+  client.connect();
+  mock.timers.tick(5000);
+  assert.equal(connections.length, 2);
+  client.close();
+});
+
 test('answers capability requests over the open transport', async () => {
   const { factory, connections } = fakeTransport();
   const { handlers } = recordingHandlers();

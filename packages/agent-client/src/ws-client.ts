@@ -69,25 +69,41 @@ export class AgentStreamClient {
     return this.state.seq;
   }
 
+  /** Opens a connection; one still current (open or pending reconnect) is superseded first. */
   connect(): void {
     this.closed = false;
     this.failures = 0;
+    this.drop();
     this.open();
   }
 
   close(): void {
     this.closed = true;
+    this.drop();
+  }
+
+  /**
+   * Forgets the current connection and any pending reconnect before closing the transport, so the
+   * superseded connection's late events (its close above all) fail the currency check in `open`.
+   */
+  private drop(): void {
     if (this.timer) clearTimeout(this.timer);
     this.timer = null;
-    this.socket?.close();
+    const socket = this.socket;
     this.socket = null;
     this.live = null;
+    socket?.close();
   }
 
   private open(): void {
     const url = this.options.baseUrl.replace(/^http/, 'ws');
+    // Only the current connection may report: after `close()` + `connect()`, or a second
+    // `connect()`, an older transport can still deliver events, and its close must neither report
+    // a disconnect nor schedule a reconnect next to the connection that replaced it.
+    const current = () => this.socket === socket;
     const socket = this.transport.open(`${url}/v1/stream`, {
       onOpen: () => {
+        if (!current()) return;
         this.failures = 0;
         this.live = socket;
         socket.send(
@@ -107,14 +123,16 @@ export class AgentStreamClient {
           );
       },
       onMessage: (text) => {
+        if (!current()) return;
         void this.onMessage(text).catch((error: unknown) => {
           this.handlers.onDisconnect?.(error instanceof Error ? error.message : 'Stream error.');
         });
       },
       onClose: (code, reason) => {
-        if (this.socket === socket) this.socket = null;
-        if (this.live === socket) this.live = null;
-        if (this.closed) return;
+        // `close()` already forgot its connection, so this is a drop the client did not ask for.
+        if (!current()) return;
+        this.socket = null;
+        this.live = null;
         const detail = reason ? ` ${reason}` : '';
         this.handlers.onDisconnect?.(`Stream closed (${code}${detail}).`);
         this.scheduleReconnect();
