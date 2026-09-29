@@ -4,6 +4,9 @@
     "dismiss": "Dismiss",
     "dismissLabel": "Dismiss notification"
   },
+  "shortcuts": {
+    "conflictHint": "If a shortcut does nothing when you press it, another app may be using the same combination. Choose a different one."
+  },
   "tools": {
     "read": {
       "label": "Read files",

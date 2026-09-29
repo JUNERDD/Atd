@@ -14,6 +14,7 @@ import { Label } from '@ai/ui/components/label';
 import { Switch } from '@ai/ui/components/switch';
 import type { SettingsSnapshot, ShortcutAction } from '../../../electron/settings-contract';
 import { shortcutKeys } from '../../lib/shortcuts';
+import { ShortcutConflictHint } from './shortcut-conflict-hint';
 import { useShortcutSettings } from './use-shortcut-settings';
 
 const IN_APP_SHORTCUTS = [
@@ -157,14 +158,18 @@ export function ShortcutSettings({
       <div className="settings-shortcut-groups" aria-busy={settings.pending !== null}>
         <section className="settings-shortcut-group" aria-labelledby="settings-global-shortcuts">
           <h3 id="settings-global-shortcuts">{t('shortcuts.groups.global')}</h3>
-          <ItemGroup>
-            <ShortcutRow
-              action="togglePanel"
-              label={t('shortcuts.actions.togglePanel.label')}
-              description={t('shortcuts.actions.togglePanel.description')}
-              settings={settings}
-            />
-          </ItemGroup>
+          <div className="flex flex-col gap-2">
+            <ItemGroup>
+              <ShortcutRow
+                action="togglePanel"
+                label={t('shortcuts.actions.togglePanel.label')}
+                description={t('shortcuts.actions.togglePanel.description')}
+                settings={settings}
+              />
+            </ItemGroup>
+            {/* Only the global shortcut can collide with another app's; in-app ones cannot. */}
+            <ShortcutConflictHint />
+          </div>
           {!desktopApp ? (
             <p className="settings-status">{t('shortcuts.registeredByDesktop')}</p>
           ) : (

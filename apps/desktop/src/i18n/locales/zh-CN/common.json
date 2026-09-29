@@ -4,6 +4,9 @@
     "dismiss": "关闭",
     "dismissLabel": "关闭通知"
   },
+  "shortcuts": {
+    "conflictHint": "如果按下快捷键后没有反应，可能是其他应用占用了相同的组合键，请换一个。"
+  },
   "tools": {
     "read": {
       "label": "读取文件",
