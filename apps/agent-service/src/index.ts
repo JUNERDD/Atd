@@ -17,7 +17,6 @@ import { ResourceStore } from './resources.js';
 import { RunnerManager } from './runner-manager.js';
 import { buildServer, type ServerDeps } from './server.js';
 import { SettingsStore } from './settings/store.js';
-import { WebSessions } from './web/sessions.js';
 import type { RunnerContext } from './task-runner.js';
 
 export type { ServiceConfig } from './config.js';
@@ -79,7 +78,6 @@ export async function createService(
     tier: options.tier ?? 'manual',
   };
   const settings = await SettingsStore.load(config.paths.root, runnerContext.tier);
-  const sessions = await WebSessions.load(config.paths.root);
   const manager = new RunnerManager({
     ctx: runnerContext,
     resources,
@@ -98,7 +96,6 @@ export async function createService(
     resources,
     manager,
     settings,
-    sessions,
     log,
     startedAt,
     onShutdown:

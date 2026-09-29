@@ -46,7 +46,7 @@ export async function startLocalService(options: {
     app.isPackaged ? path.join(process.resourcesPath, 'node') : null,
     searchPath,
   );
-  const args = ['serve', '--dataDir', dataDir, '--web-root', webRoot()];
+  const args = ['serve', '--dataDir', dataDir];
   if (options.host) args.push('--host', options.host);
   if (options.port !== undefined) args.push('--port', String(options.port));
   const atdHome = resolveServiceAtdHome();
@@ -146,17 +146,6 @@ async function waitForExit(pid: number, timeoutMs: number): Promise<boolean> {
     await new Promise((resolve) => setTimeout(resolve, 50));
   }
   return false;
-}
-
-/**
- * The web client build the service serves at `/`: bundled next to the service in a packaged app,
- * `dist-web` (`pnpm --filter @ai/desktop build:web`) otherwise. A missing build leaves the
- * service API-only; it says so on `/`.
- */
-function webRoot(): string {
-  return app.isPackaged
-    ? path.join(process.resourcesPath, 'web')
-    : path.resolve(app.getAppPath(), 'dist-web');
 }
 
 /**

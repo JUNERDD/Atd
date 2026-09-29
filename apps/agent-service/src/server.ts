@@ -12,13 +12,14 @@ import {
   type ErrorCode,
   type FutureOwner,
 } from '@ai/agent-contracts';
-import { AuthError, hostAllowed, originAllowed } from './auth.js';
+import { AuthError, authorize, hostAllowed, originAllowed } from './auth.js';
 import { CapabilityGone, DesktopUnavailable } from './capabilities.js';
 import type { CapabilityRegistry } from './capabilities.js';
 import { CommandStore } from './commands/store.js';
 import type { ServiceConfig } from './config.js';
 import { ConfirmGone, type ConfirmStore } from './confirms.js';
 import type { EventLog } from './event-log.js';
+import { registerInvalidation } from './invalidate.js';
 import { Ledger, LedgerNotFound } from './ledger.js';
 import type { Logger } from './logging.js';
 import { registerManageRoutes } from './manage.js';
@@ -34,11 +35,6 @@ import { registerPluginRoutes } from './plugins/routes.js';
 import { registerSkillRoutes } from './skills/mount.js';
 import type { SettingsStore } from './settings/store.js';
 import { StreamHub } from './stream.js';
-import { authorize, isPublic } from './web/access.js';
-import { registerInvalidation } from './web/invalidate.js';
-import { registerWebRoutes } from './web/routes.js';
-import type { WebSessions } from './web/sessions.js';
-import { registerWebClient } from './web/static.js';
 
 export interface ServerDeps {
   config: ServiceConfig;
@@ -49,7 +45,6 @@ export interface ServerDeps {
   resources: ResourceStore;
   manager: RunnerManager;
   settings: SettingsStore;
-  sessions: WebSessions;
   log: Logger;
   startedAt: string;
   onShutdown: () => void;
@@ -69,7 +64,7 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
   await app.register(websocketPlugin, {
     options: {
       maxPayload: 1024 * 1024,
-      // Browsers offer `ai.v1` plus their credential; only `ai.v1` is ever selected and echoed.
+      // Clients offer `ai.v1` plus their credential; only `ai.v1` is ever selected and echoed.
       handleProtocols: (protocols) => (protocols.has(STREAM_PROTOCOL) ? STREAM_PROTOCOL : false),
     },
   });
@@ -95,9 +90,8 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
   });
 
   app.addHook('preHandler', (request, _reply, done) => {
-    if (isPublic(request)) return done();
     try {
-      authorize(request, deps.config.token, deps.sessions);
+      authorize(request, deps.config.token);
       done();
     } catch (error) {
       done(error as Error);
@@ -270,8 +264,6 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
     settings: deps.settings,
     log: deps.log,
   });
-  registerWebRoutes(app, deps.sessions, deps.config.serviceId);
-  await registerWebClient(app, deps.config.webRoot, deps.log);
 
   registerSkillRoutes(app, deps.config);
   registerBuiltinRoutes(app, deps.config);

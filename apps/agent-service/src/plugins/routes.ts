@@ -97,7 +97,7 @@ async function checkedPreview(preview: Promise<InstallPreview>): Promise<PluginI
  * `/v1/plugins` (agent-contracts plugins.ts). Every mutation reloads the MCP authority's plugin
  * layer and announces a command-list change; install, update, configure and uninstall also
  * collect rendered skill bodies nothing references any more (plugins/rendered.ts); the `extensions` invalidation comes from
- * web/invalidate.ts, and memory switches also announce `memory` there.
+ * invalidate.ts, and memory switches also announce `memory` there.
  */
 export function registerPluginRoutes(app: FastifyInstance, ctx: PluginRouteContext): void {
   const host = () => PluginHost.for(ctx.dataDir, ctx.log);
