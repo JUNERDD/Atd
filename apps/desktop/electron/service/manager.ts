@@ -41,6 +41,7 @@ export class ServiceManager {
     private readonly send: (channel: string, value: unknown) => void,
     private readonly assertSender: (event: IpcMainInvokeEvent) => void,
     caps: { panelVisible: () => boolean; withDialog: <T>(op: () => Promise<T>) => Promise<T> },
+    /** Runs after the connection changed: on `false` its options are already gone. */
     private readonly onLive: (connected: boolean) => void = () => undefined,
   ) {
     this.connection = new ServiceConnection(
@@ -101,11 +102,12 @@ export class ServiceManager {
 
   /**
    * Drops the client connection, then stops supervision and the local service. Disconnecting
-   * first keeps the service's own close of the stream from reading as a drop to reconnect from.
+   * first keeps the service's own close of the stream from reading as a drop to reconnect from,
+   * and keeps `onLive(false)` listeners from sending requests to a service that is stopping.
    */
   async shutdown(): Promise<void> {
-    this.onLive(false);
     this.connection.disconnect('The agent service is stopping.');
+    this.onLive(false);
     await this.supervisor.stop();
   }
 
@@ -140,10 +142,12 @@ export class ServiceManager {
           await this.connection.connect(request.dataDir);
           this.onLive(true);
           return this.statusView();
-        case 'disconnect':
+        case 'disconnect': {
           this.supervisor.release();
+          const status = this.connection.disconnect();
           this.onLive(false);
-          return view(this.connection.disconnect(), this.defaultDataDir());
+          return view(status, this.defaultDataDir());
+        }
         case 'openInBrowser':
           await this.openInBrowser();
           return null;
