@@ -5,6 +5,7 @@
   "description": "Native macOS shell (Swift/AppKit). Requires Xcode 26, XcodeGen and SwiftLint.",
   "scripts": {
     "build": "xcodegen generate --quiet && xcodebuild -project AI.xcodeproj -scheme AI -configuration Debug -destination 'platform=macOS,arch=arm64' -derivedDataPath DerivedData -quiet build",
+    "dev": "node scripts/dev-open.mjs",
     "test": "swift test",
     "lint": "swiftlint lint --strict --quiet",
     "format": "swift format --in-place --recursive --parallel Package.swift App Sources Tests",

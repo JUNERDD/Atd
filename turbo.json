@@ -11,7 +11,8 @@
     "AI_AGENT_TEMP_API_KEY",
     "AI_AGENT_TEMP_BASE_URL",
     "AI_AGENT_TEMP_MODEL",
-    "AI_AGENT_TEMP_PROVIDER"
+    "AI_AGENT_TEMP_PROVIDER",
+    "AI_RENDERER_DEV_ORIGIN"
   ],
   "tasks": {
     "build": {

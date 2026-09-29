@@ -57,15 +57,17 @@ pnpm install
 pnpm dev
 ```
 
-`pnpm dev` builds the workspace packages the service imports, then starts two things: the agent service from source, and the Vite renderer dev server (`--mode native`). It does not start a desktop app. The service restarts within a few seconds when a file under `apps/agent-service/src` changes, which interrupts runs in progress; changes to other workspace packages need a restart of `pnpm dev`. Press **Ctrl + C** to stop everything.
+`pnpm dev` is the one command for development. It builds the workspace packages the service imports, then starts the agent service from source and the Vite renderer dev server (`--mode native`). On macOS it also builds the native Debug app and opens it once the service and the renderer answer; the page hot-reloads from Vite. The service restarts within a few seconds when a file under `apps/agent-service/src` changes, which interrupts runs in progress; changes to other workspace packages or to the Swift shell need a restart of `pnpm dev`. Press **Ctrl + C** to stop everything, including the app it opened. A Swift build failure is reported without stopping the service and the renderer.
 
-The development service keeps its data in its own directory, separate from the installed app (see [Development data](#development-data)). The native Debug app connects to it, and a browser can open the renderer at <http://127.0.0.1:5173/?preview>.
+`pnpm dev:headless` starts only the service and the renderer, without the app.
+
+The development service keeps its data in its own directory, separate from the installed app (see [Development data](#development-data)). A browser can also open the bare renderer at <http://127.0.0.1:5173/?preview>.
 
 To run a real model, open Settings → Providers, add a working connection, choose a default model, and make that connection the default provider.
 
 ### Development data
 
-`pnpm dev` runs the service in `~/Library/Application Support/AgentService Dev`. `AI_AGENT_DATA_DIR` still takes precedence, for example `AI_AGENT_DATA_DIR=$(mktemp -d) pnpm dev` for a throwaway service. The default directory, `~/Library/Application Support/AgentService`, belongs to the installed app; no development command uses it.
+`pnpm dev` runs the service in `~/Library/Application Support/AgentService Dev`. `AI_AGENT_DATA_DIR` still takes precedence, for example `AI_AGENT_DATA_DIR=$(mktemp -d) pnpm dev` for a throwaway service; the Debug app it opens gets the same directory. The default directory, `~/Library/Application Support/AgentService`, belongs to the installed app; no development command uses it.
 
 The development directory starts empty. To start from your real tasks and settings instead, quit the installed app (its service stops with it), copy the default directory, and remove the copy's service identity, token, and runtime files:
 
@@ -83,7 +85,7 @@ Run the copy only while `$dev` does not exist yet; otherwise `cp` nests the copy
 pnpm --filter @ai/macos build
 ```
 
-The native app is still in development and not yet at feature parity; this describes the workflow it follows. The command generates the Xcode project from `apps/macos/project.yml` and builds the Debug app into `apps/macos/DerivedData/Build/Products/Debug/AI.app`. The Debug app has the bundle ID `com.junerdd.ai.dev`, so it keeps its own Accessibility permission and never collides with the installed app. It never starts the service: each time it connects, it reads `endpoint.json` and the token from the development data directory and connects to the service `pnpm dev` runs. Without one, it asks you to run `pnpm dev`. To pair it with a throwaway service, give both the same directory: `open --env AI_AGENT_DATA_DIR=<dir> apps/macos/DerivedData/Build/Products/Debug/AI.app`.
+`pnpm dev` runs this build and opens the app for you; run it by hand only to rebuild while `pnpm dev` keeps running. The native app is still in development and not yet at feature parity; this describes the workflow it follows. The command generates the Xcode project from `apps/macos/project.yml` and builds the Debug app into `apps/macos/DerivedData/Build/Products/Debug/AI.app`. The Debug app has the bundle ID `com.junerdd.ai.dev`, so it keeps its own Accessibility permission and never collides with the installed app. It never starts the service: each time it connects, it reads `endpoint.json` and the token from the development data directory and connects to the service `pnpm dev` runs. Without one, it asks you to run `pnpm dev`. If the Debug app is already running, `pnpm dev` leaves it open instead of starting a second one. To pair it with a throwaway service, give both the same directory: `open --env AI_AGENT_DATA_DIR=<dir> apps/macos/DerivedData/Build/Products/Debug/AI.app`.
 
 The Debug web view is inspectable: in Safari, turn on Settings → Advanced → **Show features for web developers**, then open Develop → your Mac → AI.
 

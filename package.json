@@ -3,7 +3,8 @@
   "private": true,
   "scripts": {
     "prepare": "git config core.hooksPath .githooks || exit 0",
-    "dev": "node scripts/dev-guard.mjs dev && turbo run dev dev:renderer --filter=@ai/agent-service --filter=@ai/desktop",
+    "dev": "node scripts/dev-guard.mjs dev && turbo run dev dev:renderer --filter=@ai/agent-service --filter=@ai/desktop --filter=@ai/macos",
+    "dev:headless": "node scripts/dev-guard.mjs dev && turbo run dev dev:renderer --filter=@ai/agent-service --filter=@ai/desktop",
     "dev:electron": "node scripts/dev-guard.mjs electron && turbo run dev:electron --filter=@ai/desktop",
     "dev:renderer": "turbo run dev:renderer --filter=@ai/desktop",
     "build": "turbo run build",
