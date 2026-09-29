@@ -4,6 +4,15 @@ public enum SummonTrigger: Equatable, Sendable {
   case toggle
   /// A command's global shortcut.
   case command(id: String)
+
+  /// The id the page gives the panel toggle in its registration set. Command ids are
+  /// `Identifier`s (`^[a-zA-Z0-9_-]+$`), so the dot keeps the two apart.
+  public static let panelToggleID = "panel.toggle"
+
+  /// The trigger of a pressed hot key registered under `id`.
+  public init(hotKeyID id: String) {
+    self = id == Self.panelToggleID ? .toggle : .command(id: id)
+  }
 }
 
 /// The shell state a summon depends on.
