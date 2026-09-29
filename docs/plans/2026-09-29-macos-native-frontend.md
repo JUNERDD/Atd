@@ -180,9 +180,12 @@ flowchart LR
   - 结论：失败，按预案回退 `backdrop-filter`（决策 R5）。不开私有偏好时 `CSS.supports` 对 `-apple-visual-effect` 全部为 false；打开私有偏好 `useSystemAppearance` 后才是真玻璃（Raycast 疑似如此），本计划不开。透明 WKWebView 叠在 `NSGlassEffectView` 上需要私有 KVC `drawsBackground = false`，没有公开替代，已接受。
 - [x] **S6**：`callAsyncJavaScript` 按 runloop 合批推帧的吞吐。用长对话流式输出实测，定出门槛。
   - 结论：通过，但合批规则改为“每个 WKWebView 同时最多一个 `callAsyncJavaScript` 在途”：入队时若无在途调用，就在下一轮主队列投递；调用完成后把积压的帧一次投出；JS 端同步处理整批。只按 runloop 合批时平均每次仍只有约 1 帧，在 JS 每批耗时 2ms 时突发 2000 帧的 p99 为 141ms；一次在途规则为 8.1ms，且无掉帧。不需要计数或计时门槛，超过约 4 MiB 可拆批。
-- [ ] **S7**：标题栏拖动由 Swift 处理，可以叠原生拖动区域，也可以由 JS 请求执行拖动；使用标准交通灯按钮；`.nonactivatingPanel` 下的键盘和中文输入法正常。
-- [ ] **S8**：原生 AX 读取选中文本的覆盖范围，至少测 Safari、Chrome、VS Code 和终端，设置 250ms 消息超时；和 `selection-hook` 对比。覆盖不到的应用记录下来，不回退到模拟 Cmd+C。
-- [ ] **S9**：候选快捷键库（优先 HotKey）能报告被其他应用占用的组合键。如果库吞掉了错误码，就按复用规则记录缺口，用最薄的一层 Carbon 调用补上。
+- [x] **S7**：标题栏拖动由 Swift 处理，可以叠原生拖动区域，也可以由 JS 请求执行拖动；使用标准交通灯按钮；`.nonactivatingPanel` 下的键盘和中文输入法正常。
+  - 结论：部分通过，拖动和中文输入法待手动验证（`tmp/spikes/native-input/S7-MANUAL.md`）。`.nonactivatingPanel` 成为 key 后前台应用不变，WKWebView 能收到键盘；交通灯可用；`alphaValue = 0` 隐藏时计时器和动画帧保持全速，`orderOut` 会降到 1/s。隐藏时还要设 `ignoresMouseEvents` 并放弃 key；活动状态按面板的 key 通知判断，不看 `NSApp.isActive`。拖动暂定方案 C（决策 R9）。
+- [x] **S8**：原生 AX 读取选中文本的覆盖范围，至少测 Safari、Chrome、VS Code 和终端，设置 250ms 消息超时；和 `selection-hook` 对比。覆盖不到的应用记录下来，不回退到模拟 Cmd+C。
+  - 结论：部分通过，Safari、Chrome、VS Code、终端待手动验证（`tmp/spikes/native-input/S8-MANUAL.md`）。TextEdit 能读到中文和 emoji 选区，耗时 0.1–21ms；250ms 消息超时生效。系统级焦点查询在前台是 Electron 应用时会失败，必须回退到前台应用 pid（与 `selection-hook` 相同）。100000 字符上限按 UTF-16 计。面板为 key 时前台应用仍是对方应用，“面板获得焦点时读不到其他应用选区”的既有问题可能不再出现，待手动确认。
+- [x] **S9**：候选快捷键库（优先 HotKey）能报告被其他应用占用的组合键。如果库吞掉了错误码，就按复用规则记录缺口，用最薄的一层 Carbon 调用补上。
+  - 结论：通过，但前提不成立：普通（非独占）注册在应用之间从不冲突，HotKey、KeyboardShortcuts 和 Electron 都是如此，所以没有错误可吞；`eventHotKeyExistsErr` 只在同进程重复注册或双方都用独占标志时出现。HotKey 会吞掉错误且不再维护。改为决策 R8。
 - [x] **S10**：开发服务热重载，按顺序尝试：`node --watch` 加 jiti 跑 `src/cli.ts` → `tsx watch` → `--watch-path` 监听 tsc 输出目录。
   - 结论：通过，但只有带 `--watch-path` 的第 1 种方案可用：纯 `node --watch` 加 jiti 只监听入口文件。命令为 `node --watch-path=src --watch-preserve-output --import jiti/register src/cli.ts serve --dataDir "$HOME/Library/Application Support/AgentService Dev"`，改动后约 2.7–3s 重启完成，锁、端口和 `endpoint.json` 都能干净交接。开发数据目录定为 `~/Library/Application Support/AgentService Dev`（`AI_AGENT_DATA_DIR` 仍然优先）。
 
@@ -353,6 +356,8 @@ flowchart LR
     - R5 页面内玻璃不开私有偏好，实际走 `backdrop-filter` 回退；窗口背景透明依赖私有 KVC `drawsBackground`，列入风险。
     - R6 导航锁定：拒绝所有子框架导航，以及主框架导航到 `ai-app://renderer` 以外的地址（替代不生效的 `frame-ancestors`）。
     - R7 中继拒绝 `Origin` 不是 `ai-app://renderer` 的请求；非 GET/HEAD 的 `/v1` 请求必须带 `x-ai-relay: 1`，由 WebView 宿主的 HTTP 客户端发送。
+    - R8 全局快捷键用最薄的 Carbon 包装做非独占注册（与 Electron 现状一致），回报真实错误码，并检查系统保留快捷键；只借用 HotKey 的键名到键码映射。不用独占标志，避免抢走其他应用的快捷键。
+    - R9 面板拖动用方案 C：页面推送拖动矩形 `window.dragRegions`，Swift 在 `WKWebView.mouseDown` 里命中测试后调用 `performDrag`；Electron 仍用 `-webkit-app-region`。面板隐藏用 alpha 0 加 `ignoresMouseEvents` 并放弃 key，另推送 `window.visibility`。
   - **提交**：只在获得授权的范围内提交，遵守 Conventional Commits。
 
 ## Validation
