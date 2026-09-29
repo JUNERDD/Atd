@@ -19,6 +19,7 @@ import { CommandStore } from './commands/store.js';
 import type { ServiceConfig } from './config.js';
 import { ConfirmGone, type ConfirmStore } from './confirms.js';
 import type { EventLog } from './event-log.js';
+import { registerFileRoutes } from './file-routes.js';
 import { registerInvalidation } from './invalidate.js';
 import { Ledger, LedgerNotFound } from './ledger.js';
 import type { Logger } from './logging.js';
@@ -268,6 +269,7 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
   registerSkillRoutes(app, deps.config);
   registerBuiltinRoutes(app, deps.config);
   registerAtdAgentRoutes(app, deps.config);
+  registerFileRoutes(app, { resources: deps.resources });
   registerPluginRoutes(app, {
     dataDir: deps.config.paths.root,
     agentDir: deps.config.paths.agentDir,
