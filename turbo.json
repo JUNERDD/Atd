@@ -37,6 +37,8 @@
     "dev:renderer": { "cache": false, "persistent": true },
     "lint": { "dependsOn": ["^lint"] },
     "typecheck": { "dependsOn": ["^typecheck"] },
-    "test": { "dependsOn": ["^typecheck"], "outputs": [] }
+    "test": { "dependsOn": ["^typecheck"], "outputs": [] },
+    "format:check": {},
+    "@ai/macos#build": { "cache": false }
   }
 }
