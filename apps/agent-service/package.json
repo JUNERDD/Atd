@@ -21,7 +21,8 @@
     "build": "tsc -p tsconfig.json",
     "dev": "tsc -p tsconfig.json --watch --preserveWatchOutput",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "lint": "oxlint src"
+    "lint": "oxlint src test",
+    "test": "tsc -p tsconfig.json && tsc -p test/tsconfig.json && node --test 'test/**/*.test.ts'"
   },
   "dependencies": {
     "@ai/agent-contracts": "workspace:*",

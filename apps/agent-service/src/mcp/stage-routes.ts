@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { handleMcpStage } from './routes.js';
+import { RENDERER_ROUTE } from '../relay-routes.js';
 
 export interface McpStageRouteContext {
   dataDir: string;
@@ -12,5 +13,7 @@ export interface McpStageRouteContext {
  * the next run freeze with a working adapter.
  */
 export function registerMcpStageRoute(app: FastifyInstance, ctx: McpStageRouteContext): void {
-  app.post('/v1/mcp/stage', async (request) => handleMcpStage(ctx.dataDir, request.body));
+  app.post('/v1/mcp/stage', RENDERER_ROUTE, async (request) =>
+    handleMcpStage(ctx.dataDir, request.body),
+  );
 }

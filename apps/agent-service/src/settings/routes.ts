@@ -11,6 +11,7 @@ import { CommandStore } from '../commands/store.js';
 import type { Logger } from '../logging.js';
 import { warnInvalidOperatorShellEntries } from '../shell-policy.js';
 import type { SettingsStore } from './store.js';
+import { RENDERER_ROUTE } from '../relay-routes.js';
 
 /**
  * `GET/PATCH /v1/settings`: the shared user settings. `PUT /v1/settings/shell-allowlist` stays for
@@ -25,15 +26,21 @@ export function registerSettingsRoutes(
   log: Logger,
 ): void {
   warnInvalidOperatorShellEntries(log);
-  app.get('/v1/settings', async (): Promise<SettingsResponse> => settings.current());
-  app.patch('/v1/settings', async (request): Promise<SettingsResponse> =>
+  app.get('/v1/settings', RENDERER_ROUTE, async (): Promise<SettingsResponse> =>
+    settings.current(),
+  );
+  app.patch('/v1/settings', RENDERER_ROUTE, async (request): Promise<SettingsResponse> =>
     settings.patch(parse(PatchSettingsRequestSchema, request.body), async (next, previous) =>
       assertAppShortcutsFree(next, previous, (await CommandStore.load(dataDir)).list()),
     ),
   );
-  app.put('/v1/settings/shell-allowlist', async (request): Promise<PutShellAllowlistResponse> => {
-    const body = parse(PutShellAllowlistRequestSchema, request.body);
-    const next = await settings.replaceShellAllowlist(body.entries);
-    return { entries: next.settings.shellAllowlist };
-  });
+  app.put(
+    '/v1/settings/shell-allowlist',
+    RENDERER_ROUTE,
+    async (request): Promise<PutShellAllowlistResponse> => {
+      const body = parse(PutShellAllowlistRequestSchema, request.body);
+      const next = await settings.replaceShellAllowlist(body.entries);
+      return { entries: next.settings.shellAllowlist };
+    },
+  );
 }

@@ -9,6 +9,7 @@ import {
 import { LedgerNotFound } from '../ledger.js';
 import { findPluginCommand, listPluginCommands, updatePluginCommand } from '../plugins/commands.js';
 import { CommandStore } from './store.js';
+import { RENDERER_ROUTE } from '../relay-routes.js';
 
 export interface CommandRouteContext {
   dataDir: string;
@@ -31,20 +32,20 @@ const RevisionQuery = Type.Object(
 export function registerCommandRoutes(app: FastifyInstance, ctx: CommandRouteContext): void {
   const store = () => CommandStore.load(ctx.dataDir);
 
-  app.get('/v1/commands', async () => ({
+  app.get('/v1/commands', RENDERER_ROUTE, async () => ({
     commands: [...(await store()).list(), ...(await listPluginCommands(ctx.dataDir))],
   }));
 
-  app.get<{ Params: { id: string } }>('/v1/commands/:id', async (request) => {
+  app.get<{ Params: { id: string } }>('/v1/commands/:id', RENDERER_ROUTE, async (request) => {
     const id = parse(Identifier, request.params.id);
     return { command: (await pluginCommand(ctx.dataDir, id))?.value ?? (await store()).get(id) };
   });
 
-  app.post('/v1/commands', async (request) => ({
+  app.post('/v1/commands', RENDERER_ROUTE, async (request) => ({
     command: await (await store()).create(parse(CommandCreateSchema, request.body)),
   }));
 
-  app.put<{ Params: { id: string } }>('/v1/commands/:id', async (request) => {
+  app.put<{ Params: { id: string } }>('/v1/commands/:id', RENDERER_ROUTE, async (request) => {
     const id = parse(Identifier, request.params.id);
     const body = parse(CommandUpdateRequestSchema, request.body);
     const plugin = await pluginCommand(ctx.dataDir, id);
@@ -61,7 +62,7 @@ export function registerCommandRoutes(app: FastifyInstance, ctx: CommandRouteCon
     return { command };
   });
 
-  app.delete<{ Params: { id: string } }>('/v1/commands/:id', async (request) => {
+  app.delete<{ Params: { id: string } }>('/v1/commands/:id', RENDERER_ROUTE, async (request) => {
     const id = parse(Identifier, request.params.id);
     if (await pluginCommand(ctx.dataDir, id))
       throw new TypeError(

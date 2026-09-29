@@ -42,6 +42,7 @@ import {
   setServerApproved,
   type PluginActions,
 } from './toggle.js';
+import { RENDERER_ROUTE } from '../relay-routes.js';
 
 export interface PluginRouteContext {
   dataDir: string;
@@ -123,34 +124,36 @@ export function registerPluginRoutes(app: FastifyInstance, ctx: PluginRouteConte
     return pluginDetail(plugins, await plugins.view(), id);
   };
 
-  app.get('/v1/plugins', async (): Promise<PluginListResponse> => {
+  app.get('/v1/plugins', RENDERER_ROUTE, async (): Promise<PluginListResponse> => {
     const view = await (await host()).view();
     return { plugins: view.catalog.plugins.map((plugin) => toSummary(plugin)) };
   });
-  app.get('/v1/plugins/:id', async (request) => detail(parse(Params.id, request.params).id));
+  app.get('/v1/plugins/:id', RENDERER_ROUTE, async (request) =>
+    detail(parse(Params.id, request.params).id),
+  );
 
-  app.post('/v1/plugins/:id/enabled', async (request) => {
+  app.post('/v1/plugins/:id/enabled', RENDERER_ROUTE, async (request) => {
     const { id } = parse(Params.id, request.params);
     const { enabled } = parse(PluginEnabledRequestSchema, request.body);
     await setPluginEnabled(await actions(), id, enabled);
     await changed();
     return detail(id);
   });
-  app.post('/v1/plugins/:id/items/:kind/:name/enabled', async (request) => {
+  app.post('/v1/plugins/:id/items/:kind/:name/enabled', RENDERER_ROUTE, async (request) => {
     const { id, kind, name } = parse(Params.item, request.params);
     const { enabled } = parse(PluginEnabledRequestSchema, request.body);
     await setItemEnabled(await actions(), id, kind, name, enabled);
     await changed();
     return detail(id);
   });
-  app.post('/v1/plugins/:id/servers/:name/approval', async (request) => {
+  app.post('/v1/plugins/:id/servers/:name/approval', RENDERER_ROUTE, async (request) => {
     const { id, name } = parse(Params.server, request.params);
     const { approved } = parse(PluginApprovalRequestSchema, request.body);
     await setServerApproved(await actions(), id, name, approved);
     await changed();
     return detail(id);
   });
-  app.put('/v1/plugins/:id/config', async (request) => {
+  app.put('/v1/plugins/:id/config', RENDERER_ROUTE, async (request) => {
     const { id } = parse(Params.id, request.params);
     const { values } = parse(PluginConfigRequestSchema, request.body);
     const { host: plugins, view } = await actions();
@@ -162,26 +165,26 @@ export function registerPluginRoutes(app: FastifyInstance, ctx: PluginRouteConte
     await collectRenderedSkills(plugins);
     return detail(id);
   });
-  app.post('/v1/plugins/:id/items/:kind/:name/duplicate', async (request) => {
+  app.post('/v1/plugins/:id/items/:kind/:name/duplicate', RENDERER_ROUTE, async (request) => {
     const { id, kind, name } = parse(Params.item, request.params);
     const result = await duplicateItem(await actions(), id, kind, name);
     await changed();
     return result;
   });
 
-  app.post('/v1/plugins/preview', async (request) => {
+  app.post('/v1/plugins/preview', RENDERER_ROUTE, async (request) => {
     const { source } = parse(PluginPreviewRequestSchema, request.body);
     if (source.kind === 'local' && !path.isAbsolute(source.path))
       throw new TypeError('Invalid plugin source: a local folder must be an absolute path.');
     return checkedPreview((await host()).installer.preview(source));
   });
-  app.post('/v1/plugins/:id/update/preview', async (request) => {
+  app.post('/v1/plugins/:id/update/preview', RENDERER_ROUTE, async (request) => {
     const { id } = parse(Params.id, request.params);
     const plugins = await host();
     findInstalled(await plugins.view(), id);
     return checkedPreview(plugins.installer.previewUpdate(id));
   });
-  app.post('/v1/plugins/install', async (request) => {
+  app.post('/v1/plugins/install', RENDERER_ROUTE, async (request) => {
     const { previewId } = parse(PluginInstallRequestSchema, request.body);
     const plugins = await host();
     const installed = await plugins.installer
@@ -191,7 +194,7 @@ export function registerPluginRoutes(app: FastifyInstance, ctx: PluginRouteConte
     await collectRenderedSkills(plugins);
     return detail(installed.id);
   });
-  app.delete('/v1/plugins/:id', async (request) => {
+  app.delete('/v1/plugins/:id', RENDERER_ROUTE, async (request) => {
     const { id } = parse(Params.id, request.params);
     const plugins = await host();
     const view = await plugins.view();

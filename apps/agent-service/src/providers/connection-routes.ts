@@ -22,6 +22,7 @@ import { mustConnection, presentConnection, presentStored } from './connection-v
 import { connectionModelTiers, contextsResponse } from './context-tiers.js';
 import type { ProviderLogins } from './login.js';
 import { connectionModel, refreshCatalog, verifyModel, type ProviderStores } from './runtime.js';
+import { RENDERER_ROUTE } from '../relay-routes.js';
 
 const STALE = 'This connection changed. Reload its saved settings and try again.';
 
@@ -43,7 +44,7 @@ export function registerConnectionRoutes(
     return { ...opened, live: mustConnection(opened.connections, parse(Identifier, rawId)) };
   };
 
-  app.put<Params>('/v1/providers/:connectionId', async (request) => {
+  app.put<Params>('/v1/providers/:connectionId', RENDERER_ROUTE, async (request) => {
     const body = parse(ProviderUpdateRequestSchema, request.body);
     const { live, ...opened } = await load(request.params.connectionId);
     if (live.revision !== body.expectedRevision) throw new ConflictError(STALE);
@@ -71,7 +72,7 @@ export function registerConnectionRoutes(
     return { connection: await presentStored(connections, live.connectionId) };
   });
 
-  app.post<Params>('/v1/providers/:connectionId/default', async (request) => {
+  app.post<Params>('/v1/providers/:connectionId/default', RENDERER_ROUTE, async (request) => {
     const body = parse(ProviderDefaultRequestSchema, request.body);
     const { live, connections } = await load(request.params.connectionId);
     if (live.revision !== body.expectedRevision) throw new ConflictError(STALE);
@@ -91,7 +92,7 @@ export function registerConnectionRoutes(
     return { defaultConnectionId: live.connectionId };
   });
 
-  app.post<Params>('/v1/providers/:connectionId/model', async (request) => {
+  app.post<Params>('/v1/providers/:connectionId/model', RENDERER_ROUTE, async (request) => {
     const body = parse(ProviderModelRequestSchema, request.body);
     const { live, ...opened } = await load(request.params.connectionId);
     if (live.revision !== body.expectedRevision) throw new ConflictError(STALE);
@@ -116,21 +117,21 @@ export function registerConnectionRoutes(
     return { connection: await presentStored(opened.connections, live.connectionId) };
   });
 
-  app.get<Params>('/v1/providers/:connectionId/levels', async (request) => {
+  app.get<Params>('/v1/providers/:connectionId/levels', RENDERER_ROUTE, async (request) => {
     const { modelId } = parse(ProviderLevelsQuerySchema, request.query);
     const { live, ...opened } = await load(request.params.connectionId);
     const model = await connectionModel(opened, live, modelId);
     return { levels: model ? getSupportedThinkingLevels(model) : [] };
   });
 
-  app.get<Params>('/v1/providers/:connectionId/contexts', async (request) => {
+  app.get<Params>('/v1/providers/:connectionId/contexts', RENDERER_ROUTE, async (request) => {
     const { modelId } = parse(ProviderContextsQuerySchema, request.query);
     const { live } = await load(request.params.connectionId);
     const { catalog = [] } = await presentConnection(live);
     return contextsResponse(live, catalog, modelId);
   });
 
-  app.put<Params>('/v1/providers/:connectionId/context', async (request) => {
+  app.put<Params>('/v1/providers/:connectionId/context', RENDERER_ROUTE, async (request) => {
     const body = parse(ProviderContextRequestSchema, request.body);
     const { live, connections } = await load(request.params.connectionId);
     if (live.revision !== body.expectedRevision) throw new ConflictError(STALE);
@@ -151,31 +152,36 @@ export function registerConnectionRoutes(
     return { connection: await presentStored(connections, live.connectionId) };
   });
 
-  app.post<Params>('/v1/providers/:connectionId/refresh', async (request) => {
+  app.post<Params>('/v1/providers/:connectionId/refresh', RENDERER_ROUTE, async (request) => {
     const { background } = parse(ProviderRefreshRequestSchema, request.body);
     const { live, ...opened } = await load(request.params.connectionId);
     await refreshCatalog(opened, live, background);
     return { connection: await presentStored(opened.connections, live.connectionId) };
   });
 
-  app.post<Params>('/v1/providers/:connectionId/verify', async (request) => {
+  app.post<Params>('/v1/providers/:connectionId/verify', RENDERER_ROUTE, async (request) => {
     const body = parse(ProviderVerifyRequestSchema, request.body);
     const { live, ...opened } = await load(request.params.connectionId);
     await verifyModel(opened, live, body.modelId);
     return { connection: await presentStored(opened.connections, live.connectionId) };
   });
 
-  app.post<Params>('/v1/providers/:connectionId/login', async (request) => {
+  app.post<Params>('/v1/providers/:connectionId/login', RENDERER_ROUTE, async (request) => {
     const { live, ...opened } = await load(request.params.connectionId);
     return { login: await logins.start(opened, live) };
   });
 
-  app.get<{ Params: { loginId: string } }>('/v1/providers/logins/:loginId', async (request) => ({
-    login: logins.get(parse(Identifier, request.params.loginId)),
-  }));
+  app.get<{ Params: { loginId: string } }>(
+    '/v1/providers/logins/:loginId',
+    RENDERER_ROUTE,
+    async (request) => ({
+      login: logins.get(parse(Identifier, request.params.loginId)),
+    }),
+  );
 
   app.post<{ Params: { loginId: string } }>(
     '/v1/providers/logins/:loginId/answer',
+    RENDERER_ROUTE,
     async (request) => {
       const body = parse(ProviderLoginAnswerRequestSchema, request.body);
       return {
@@ -186,6 +192,7 @@ export function registerConnectionRoutes(
 
   app.post<{ Params: { loginId: string } }>(
     '/v1/providers/logins/:loginId/cancel',
+    RENDERER_ROUTE,
     async (request) => ({ login: logins.cancel(parse(Identifier, request.params.loginId)) }),
   );
 }

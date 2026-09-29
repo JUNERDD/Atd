@@ -18,6 +18,7 @@ import { registerConnectionRoutes } from './connection-routes.js';
 import { mustConnection, presentConnection, presentStored } from './connection-view.js';
 import { ProviderLogins } from './login.js';
 import type { ProviderStores } from './runtime.js';
+import { RENDERER_ROUTE } from '../relay-routes.js';
 
 export interface ProviderRouteContext {
   serviceId: string;
@@ -42,7 +43,7 @@ export function registerProviderRoutes(app: FastifyInstance, ctx: ProviderRouteC
   });
   const logins = new ProviderLogins();
 
-  app.get('/v1/providers', async () => {
+  app.get('/v1/providers', RENDERER_ROUTE, async () => {
     const { connections } = await stores();
     return {
       defaultConnectionId: connections.data.defaultConnectionId,
@@ -51,7 +52,7 @@ export function registerProviderRoutes(app: FastifyInstance, ctx: ProviderRouteC
   });
 
   // Static catalog before the :connectionId param so "catalog" never captures as an id.
-  app.get('/v1/providers/catalog', async () => {
+  app.get('/v1/providers/catalog', RENDERER_ROUTE, async () => {
     return { catalog: await getServiceCatalog() };
   });
 
@@ -62,7 +63,7 @@ export function registerProviderRoutes(app: FastifyInstance, ctx: ProviderRouteC
    * credential the connection is saved disconnected; account-login
    * connections receive theirs from sign-in.
    */
-  app.post('/v1/providers', async (request) => {
+  app.post('/v1/providers', RENDERER_ROUTE, async (request) => {
     const body = parse(ProviderCreateRequestSchema, request.body);
     const { connections, keyring } = await stores();
     const connection: ServiceConnection = {
@@ -126,15 +127,23 @@ export function registerProviderRoutes(app: FastifyInstance, ctx: ProviderRouteC
     }
   });
 
-  app.get<{ Params: { connectionId: string } }>('/v1/providers/:connectionId', async (request) => {
-    const { connections } = await stores();
-    return {
-      connection: await presentStored(connections, parse(Identifier, request.params.connectionId)),
-    };
-  });
+  app.get<{ Params: { connectionId: string } }>(
+    '/v1/providers/:connectionId',
+    RENDERER_ROUTE,
+    async (request) => {
+      const { connections } = await stores();
+      return {
+        connection: await presentStored(
+          connections,
+          parse(Identifier, request.params.connectionId),
+        ),
+      };
+    },
+  );
 
   app.get<{ Params: { connectionId: string } }>(
     '/v1/providers/:connectionId/status',
+    RENDERER_ROUTE,
     async (request) => {
       const { connections, keyring } = await stores();
       const connection = mustConnection(
@@ -160,6 +169,7 @@ export function registerProviderRoutes(app: FastifyInstance, ctx: ProviderRouteC
 
   app.post<{ Params: { connectionId: string } }>(
     '/v1/providers/:connectionId/connect',
+    RENDERER_ROUTE,
     async (request) => {
       const pathId = parse(Identifier, request.params.connectionId);
       const body = parse(ProviderConnectRequestSchema, request.body);
@@ -183,6 +193,7 @@ export function registerProviderRoutes(app: FastifyInstance, ctx: ProviderRouteC
 
   app.post<{ Params: { connectionId: string } }>(
     '/v1/providers/:connectionId/disconnect',
+    RENDERER_ROUTE,
     async (request) => {
       const pathId = parse(Identifier, request.params.connectionId);
       const body = parse(ProviderDisconnectRequestSchema, request.body);

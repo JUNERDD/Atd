@@ -9,6 +9,7 @@ import { ConnectionStore } from '../credentials/connections.js';
 import { KeyringBackend } from '../credentials/keyring.js';
 import { applyCredentialUpload } from './import-providers.js';
 import { ManifestStore } from './manifest.js';
+import { SHELL_ROUTE } from '../relay-routes.js';
 
 /**
  * Migration upload channel: the only route that accepts secret material, and
@@ -21,7 +22,7 @@ export function registerMigrationRoutes(
   app: FastifyInstance,
   config: Pick<ServiceConfig, 'serviceId' | 'paths'>,
 ): void {
-  app.post('/v1/migration/credentials', async (request) => {
+  app.post('/v1/migration/credentials', SHELL_ROUTE, async (request) => {
     const upload = parse(CredentialUploadRequestSchema, request.body);
     const connections = await ConnectionStore.load(config.paths.root);
     const keyring = new KeyringBackend(config.serviceId);
@@ -51,7 +52,7 @@ export function registerMigrationRoutes(
     };
   });
 
-  app.get('/v1/migration/status', async () => ({
+  app.get('/v1/migration/status', SHELL_ROUTE, async () => ({
     manifest: await ManifestStore.read(config.paths.root),
   }));
 }
