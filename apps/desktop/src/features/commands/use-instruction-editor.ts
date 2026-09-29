@@ -2,7 +2,7 @@ import { useLayoutEffect, useState, type RefCallback, type RefObject } from 'rea
 import { Compartment, EditorState, Prec, type Extension } from '@codemirror/state';
 import { drawSelection, dropCursor, EditorView, keymap, type ViewUpdate } from '@codemirror/view';
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
-import type { AgentTask } from '../../../electron/agent/task-schema';
+import type { AgentTask } from '../../client/agent/task-schema';
 import { chipDecorations } from '../composer-editor/chip-decorations';
 import { chipIntegrity } from '../composer-editor/chip-integrity';
 import { chipTable, plainText, segmentText } from '../composer-editor/chip-state';

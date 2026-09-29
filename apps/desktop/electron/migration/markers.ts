@@ -2,7 +2,7 @@ import { app } from 'electron';
 import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { Type, type Static } from 'typebox';
-import { parse } from '../agent/validation';
+import { parse } from '../../src/client/agent/validation';
 
 /**
  * Desktop-side migration markers (freeze candidate `migration-markers v1`).

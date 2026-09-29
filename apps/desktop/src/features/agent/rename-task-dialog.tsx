@@ -12,7 +12,7 @@ import {
 import { Input } from '@ai/ui/components/input';
 import { Label } from '@ai/ui/components/label';
 import { isComposingKey } from '@ai/ui/lib/ime';
-import type { AgentTask } from '../../../electron/agent/task-schema';
+import type { AgentTask } from '../../client/agent/task-schema';
 import { showErrorToast, showToast } from '../../components/toast-store';
 import { agentApi } from './use-agent';
 

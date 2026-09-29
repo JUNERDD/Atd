@@ -1,6 +1,6 @@
 import type { SubagentChildSummary, SubagentDetails } from '@ai/agent-contracts';
-import type { PermissionRequest } from '../../../../electron/agent/permission-schema';
-import type { Block, BlockOf } from '../../../../electron/agent/transcript-schema';
+import type { PermissionRequest } from '../../../client/agent/permission-schema';
+import type { Block, BlockOf } from '../../../client/agent/transcript-schema';
 
 /**
  * The parent transcript is the only source of subagent children: every launching `subagent`

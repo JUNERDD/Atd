@@ -1,15 +1,15 @@
 import { ipcMain } from 'electron';
 import type { IpcMainInvokeEvent } from 'electron';
 import { Type } from 'typebox';
-import { parse } from '../agent/validation';
+import { parse } from '../../src/client/agent/validation';
 import { PROVIDER_IPC } from './ipc-channels';
 import {
   ConnectionDraftSchema,
   ContextTierSchema,
   ModelReferenceSchema,
   ModelThinkingLevelSchema,
-} from './schema';
-import type { ProviderService } from './service';
+} from '../../src/client/providers/schema';
+import type { ProviderService } from '../../src/client/providers/service';
 
 const identity = Type.String({ minLength: 1, maxLength: 256, pattern: '^[a-zA-Z0-9_-]+$' });
 const revisionSchema = Type.Integer({ minimum: 1 });

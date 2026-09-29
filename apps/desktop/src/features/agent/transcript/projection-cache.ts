@@ -1,4 +1,4 @@
-import type { Block } from '../../../../electron/agent/transcript-schema';
+import type { Block } from '../../../client/agent/transcript-schema';
 
 /** A projection with the inputs it was built from, keyed by its first source block. */
 export type ProjectionCache<T> = WeakMap<Block, { inputs: readonly unknown[]; value: T }>;

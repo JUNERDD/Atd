@@ -1,6 +1,10 @@
 import { ipcRenderer, type IpcRendererEvent } from 'electron';
-import { createAgentBridge, type AgentChannel, type AgentChannelValues } from './bridge-client';
-import { AGENT_IPC } from './ipc-channels';
+import {
+  createAgentBridge,
+  type AgentChannel,
+  type AgentChannelValues,
+} from '../../src/client/agent/bridge-client';
+import { AGENT_IPC } from '../../src/client/agent/ipc-channels';
 
 export const agentBridge = createAgentBridge(
   (request) => ipcRenderer.invoke(AGENT_IPC.request, request),

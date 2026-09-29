@@ -2,10 +2,10 @@ import { randomUUID } from 'node:crypto';
 import { mkdir, open, readFile, rename, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { Type, type Static } from 'typebox';
-import { CommandSchema } from './command-schema';
-import { ArtifactSchema, TaskSchema } from './task-schema';
-import { initialCommands } from './command-templates';
-import { parse } from './validation';
+import { CommandSchema } from '../../src/client/agent/command-schema';
+import { ArtifactSchema, TaskSchema } from '../../src/client/agent/task-schema';
+import { initialCommands } from '../../src/client/agent/command-templates';
+import { parse } from '../../src/client/agent/validation';
 
 const StoreSchema = Type.Object(
   {

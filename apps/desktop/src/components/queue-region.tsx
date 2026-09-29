@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import type { QueueState } from '../../electron/agent/transcript-schema';
+import type { QueueState } from '../client/agent/transcript-schema';
 import { ComposerQueue } from './composer-queue';
 
 /**

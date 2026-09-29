@@ -1,6 +1,6 @@
 import { LOAD_SKILL_TOOL, TODO_TOOL, WEB_FETCH_TOOL, WEB_SEARCH_TOOL } from '@ai/agent-contracts';
-import type { ResolvedModel, TaskRun } from '../../../../electron/agent/task-schema';
-import type { Block, BlockOf, ToolStatus } from '../../../../electron/agent/transcript-schema';
+import type { ResolvedModel, TaskRun } from '../../../client/agent/task-schema';
+import type { Block, BlockOf, ToolStatus } from '../../../client/agent/transcript-schema';
 import { buildActivityPhase, isViewLive, type ActivityPhase } from './phases';
 import { reuseProjection, type ProjectionCache } from './projection-cache';
 import { subagentLaunches } from './subagent-call';

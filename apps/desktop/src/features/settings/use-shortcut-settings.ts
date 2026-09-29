@@ -7,7 +7,7 @@ import {
   type SettingsSnapshot,
   type ShortcutAction,
   type ShortcutBindings,
-} from '../../../electron/settings-contract';
+} from '../../client/settings-contract';
 import { recordedKeysToAccelerator } from '../../lib/shortcuts';
 import { showErrorToast, showToast } from '../../components/toast-store';
 

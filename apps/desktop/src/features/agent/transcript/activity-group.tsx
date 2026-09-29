@@ -3,7 +3,7 @@ import { Bot, ListTodo, PenLine, Search, Sparkles, Terminal, Wrench } from 'luci
 import { useTranslation } from 'react-i18next';
 import { ScrollArea } from '@ai/ui/components/scroll-area';
 import { Shimmer } from '@ai/ui/components/ai-elements/shimmer';
-import type { Artifact, FileRef } from '../../../../electron/agent/task-schema';
+import type { Artifact, FileRef } from '../../../client/agent/task-schema';
 import { TaskFiles } from '../task-files';
 import { ActivityRow } from './activity-row';
 import type { AdaptedItem, ViewBlock } from './adapter';

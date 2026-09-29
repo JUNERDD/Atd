@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Button } from '@ai/ui/components/button';
 import { Kbd, KbdGroup } from '@ai/ui/components/kbd';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@ai/ui/components/tooltip';
-import type { ConfirmationRequest } from '../../../../electron/agent/permission-schema';
+import type { ConfirmationRequest } from '../../../client/agent/permission-schema';
 import { agentApi } from '../use-agent';
 import { messageOf } from '../../../lib/errors';
 import { shortcutKeys } from '../../../lib/shortcuts';

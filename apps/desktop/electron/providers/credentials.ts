@@ -1,7 +1,7 @@
 import { safeStorage } from 'electron';
 import { Type } from 'typebox';
 import type { MigrationCredential } from '@ai/agent-contracts';
-import { parse } from '../agent/validation';
+import { parse } from '../../src/client/agent/validation';
 
 const CredentialSchema = Type.Union([
   Type.Object(

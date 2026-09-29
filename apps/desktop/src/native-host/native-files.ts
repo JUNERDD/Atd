@@ -1,5 +1,5 @@
 import { AgentClientError, attachFileResults, searchFiles } from '@ai/agent-client';
-import type { FileSearchBridge } from '../../electron/contract';
+import type { FileSearchBridge } from '../client/contract';
 import type { NativeConnection } from './native-connection';
 
 /**

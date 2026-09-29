@@ -32,8 +32,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@ai/ui/components/alert-dialog';
-import type { AgentTask } from '../../../electron/agent/task-schema';
-import { isActive } from '../../../electron/agent/task-schema';
+import type { AgentTask } from '../../client/agent/task-schema';
+import { isActive } from '../../client/agent/task-schema';
 import { IconButton } from '../../components/icon-button';
 import { agentApi } from './use-agent';
 import { RenameTaskDialog } from './rename-task-dialog';

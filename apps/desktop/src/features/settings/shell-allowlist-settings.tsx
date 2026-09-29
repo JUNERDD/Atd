@@ -14,8 +14,8 @@ import {
   normalizeShellAllowlistEntry,
   type ShellAllowlistEntryError,
 } from '@ai/agent-contracts';
-import { DEFAULT_PERMISSION_TIER } from '../../../electron/agent/permission-schema';
-import type { SettingsSnapshot } from '../../../electron/settings-contract';
+import { DEFAULT_PERMISSION_TIER } from '../../client/agent/permission-schema';
+import type { SettingsSnapshot } from '../../client/settings-contract';
 import { IconButton } from '../../components/icon-button';
 import { showErrorToast } from '../../components/toast-store';
 import { ShellAllowlistEntryDialog } from './shell-allowlist-entry-dialog';

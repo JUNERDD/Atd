@@ -1,7 +1,7 @@
 import { mkdir } from 'node:fs/promises';
 import { BrowserWindow, ipcMain, shell } from 'electron';
 import type { IpcMainInvokeEvent } from 'electron';
-import { parse } from '../agent/validation';
+import { parse } from '../../src/client/agent/validation';
 import { createConfirm } from '../confirm-dialog';
 import { autostartService } from './autostart';
 import { resolveServiceDataDir } from './data-dir';
@@ -9,9 +9,9 @@ import { ServiceConnection, type ServiceStatus } from './connection';
 import { startLocalService } from './launcher';
 import { serviceLogDir } from './service-log';
 import { ServiceSupervisor } from './supervisor';
-import { ServiceRequestSchema, type ServiceStatusView } from './ipc';
+import { ServiceRequestSchema, type ServiceStatusView } from '../../src/client/service/ipc';
 import { SERVICE_IPC } from './ipc-channels';
-import { handleExtensionRequest } from './extension-requests';
+import { handleExtensionRequest } from '../../src/client/service/extension-requests';
 import { McpApprovalGate } from './mcp-approval';
 
 function view(status: ServiceStatus, fallbackDataDir: string): ServiceStatusView {

@@ -3,7 +3,7 @@ import { FoldVertical, LoaderCircle, RotateCcw, TriangleAlert } from 'lucide-rea
 import { useTranslation } from 'react-i18next';
 import { Shimmer } from '@ai/ui/components/ai-elements/shimmer';
 import { Button } from '@ai/ui/components/button';
-import type { BlockOf } from '../../../../electron/agent/transcript-schema';
+import type { BlockOf } from '../../../client/agent/transcript-schema';
 import { formatTokenCount } from '../../providers/context-window';
 import { ActivityRow } from './activity-row';
 import { useCompactionRetry } from './compaction-context';

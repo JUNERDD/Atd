@@ -10,7 +10,7 @@ import { Type, type TSchema } from 'typebox';
 export const Empty = Type.Object({}, { additionalProperties: false });
 export const Text = (maxLength: number) => Type.String({ maxLength });
 /**
- * Mirrors `FileRefSchema` (`electron/agent/task-schema.ts`); the WebView host returns it where a
+ * Mirrors `FileRefSchema` (`src/client/agent/task-schema.ts`); the WebView host returns it where a
  * `FileRef` is expected, so type checking catches a drift.
  */
 export const NativeFileRefSchema = Type.Object(

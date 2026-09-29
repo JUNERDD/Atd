@@ -1,7 +1,7 @@
 import { CircleAlert, CircleQuestionMark, CircleSlash, CircleStop } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Alert, AlertDescription, AlertTitle } from '@ai/ui/components/alert';
-import type { TaskRun } from '../../../../electron/agent/task-schema';
+import type { TaskRun } from '../../../client/agent/task-schema';
 
 const NOTES = {
   stopped: { icon: CircleStop, key: 'conversation.stopped' },

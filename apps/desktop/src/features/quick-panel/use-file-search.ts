@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { matchFields } from '@ai/ui/lib/fuzzy-match';
-import type { FileRef } from '../../../electron/agent/task-schema';
+import type { FileRef } from '../../client/agent/task-schema';
 import type { FileSearchReply, FileSearchResult } from '@ai/agent-contracts';
 
 const DEBOUNCE_MS = 120;

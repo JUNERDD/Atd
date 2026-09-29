@@ -8,18 +8,18 @@ import {
   resolveLanguage,
   type AppLanguage,
   type ShortcutBindings,
-} from './settings-contract';
+} from '../src/client/settings-contract';
 import { Type, type Static } from 'typebox';
 import {
   DEFAULT_PERMISSION_TIER,
   PERMISSION_TIERS,
   type PermissionTier,
-} from './agent/permission-schema';
-import { parse } from './agent/validation';
-import { StoredConnectionSchema } from './providers/schema';
+} from '../src/client/agent/permission-schema';
+import { parse } from '../src/client/agent/validation';
+import { StoredConnectionSchema } from '../src/client/providers/schema';
 import { migrateProvider } from './providers/legacy';
 import { initialDefaultConnectionId } from './providers/defaults';
-import { parseStoredShellAllowlist } from './settings-shell';
+import { parseStoredShellAllowlist } from '../src/client/settings-shell';
 import { PANEL_SIZE, type PanelSize } from './window-position';
 
 const ProviderSettingsSchema = Type.Object({

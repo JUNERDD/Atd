@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Button } from '@ai/ui/components/button';
 import { Kbd, KbdGroup } from '@ai/ui/components/kbd';
 import { useTranslation } from 'react-i18next';
-import type { CommandDefinition } from '../../../electron/agent/command-schema';
+import type { CommandDefinition } from '../../client/agent/command-schema';
 import { shortcutKeys } from '../../lib/shortcuts';
 import { CommandIcon } from '../commands/command-icon';
 

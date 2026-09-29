@@ -5,8 +5,8 @@ import { downloadResource, type AgentClientOptions } from '@ai/agent-client';
 import type { Confirm } from '../confirm-dialog';
 import { writeDownloadedFile } from '../quarantine';
 import { opensWithoutAsking, safeFileName } from './artifact-open-policy';
-import { manageError } from './service-manage';
-import type { FileRef } from './task-schema';
+import { manageError } from '../../src/client/agent/service-manage';
+import type { FileRef } from '../../src/client/agent/task-schema';
 
 const SHOW_IN_FOLDER = 0;
 const OPEN_ANYWAY = 1;

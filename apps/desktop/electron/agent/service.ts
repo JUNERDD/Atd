@@ -5,15 +5,19 @@ import type { Confirm } from '../confirm-dialog';
 import type { SettingsService } from '../settings-service';
 import type { ServiceConnection } from '../service/connection';
 import { sendToPage } from '../window-content';
-import { AgentRequests, type AgentPlatform } from './agent-requests';
+import { AgentRequests, type AgentPlatform } from '../../src/client/agent/agent-requests';
 import { handleArtifact } from './artifacts';
 import { attachFiles } from './attachable-files';
-import { AgentRequestSchema, type AgentEvent, type PreparedCommand } from './bridge';
-import { AGENT_IPC } from './ipc-channels';
+import {
+  AgentRequestSchema,
+  type AgentEvent,
+  type PreparedCommand,
+} from '../../src/client/agent/bridge';
+import { AGENT_IPC } from '../../src/client/agent/ipc-channels';
 import { AgentStore } from './store';
 import { CommandService } from './command-service';
-import { parse } from './validation';
-import { activeRun, type RunStatus } from './task-schema';
+import { parse } from '../../src/client/agent/validation';
+import { activeRun, type RunStatus } from '../../src/client/agent/task-schema';
 
 /**
  * Events only the panel renders (task detail, transcripts, notices). The settings window reads the

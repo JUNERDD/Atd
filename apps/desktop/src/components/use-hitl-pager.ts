@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { PermissionRequest } from '../../electron/agent/permission-schema';
+import type { PermissionRequest } from '../client/agent/permission-schema';
 
 interface Selection {
   /** The request on screen; null while nothing waits. */

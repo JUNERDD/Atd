@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { SettingsSnapshot } from '../../../electron/settings-contract';
+import type { SettingsSnapshot } from '../../client/settings-contract';
 import { showErrorToast } from '../../components/toast-store';
 
 export function useSettingsSnapshot() {

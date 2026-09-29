@@ -1,4 +1,4 @@
-import type { RunStatus } from './agent/task-schema';
+import type { RunStatus } from '../src/client/agent/task-schema';
 import type { ConnectionState } from './service/connection';
 
 /** What the menu bar status item shows, in priority order: the first that applies wins. */

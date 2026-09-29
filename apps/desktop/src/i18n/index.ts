@@ -1,6 +1,6 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
-import { LANGUAGE_CODES, type AppLanguage } from '../../electron/settings-contract';
+import { LANGUAGE_CODES, type AppLanguage } from '../client/settings-contract';
 import enCommands from './locales/en/commands.json';
 import enCommon from './locales/en/common.json';
 import enMemory from './locales/en/memory.json';

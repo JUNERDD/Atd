@@ -7,7 +7,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@ai/ui/components/select';
-import { isAppLanguage, type AppLanguage } from '../../../electron/settings-contract';
+import { isAppLanguage, type AppLanguage } from '../../client/settings-contract';
 import { LANGUAGE_NAMES, LANGUAGE_OPTIONS } from '../../i18n/languages';
 import { showErrorToast } from '../../components/toast-store';
 

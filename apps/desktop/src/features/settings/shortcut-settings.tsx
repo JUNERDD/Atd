@@ -12,7 +12,7 @@ import {
 import { Kbd, KbdGroup } from '@ai/ui/components/kbd';
 import { Label } from '@ai/ui/components/label';
 import { Switch } from '@ai/ui/components/switch';
-import type { SettingsSnapshot, ShortcutAction } from '../../../electron/settings-contract';
+import type { SettingsSnapshot, ShortcutAction } from '../../client/settings-contract';
 import { shortcutKeys } from '../../lib/shortcuts';
 import { ShortcutConflictHint } from './shortcut-conflict-hint';
 import { useShortcutSettings } from './use-shortcut-settings';

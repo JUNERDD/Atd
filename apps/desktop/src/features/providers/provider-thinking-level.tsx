@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Label } from '@ai/ui/components/label';
-import type { Connection, ConnectionDraft } from '../../../electron/providers/schema';
+import type { Connection, ConnectionDraft } from '../../client/providers/schema';
 import { ThinkingLevelSelect } from './thinking-level-select';
 import { useThinkingLevels } from './use-thinking-levels';
 

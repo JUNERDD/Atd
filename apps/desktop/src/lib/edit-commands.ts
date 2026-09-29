@@ -1,4 +1,4 @@
-import type { EditCommand } from '../../electron/contract';
+import type { EditCommand } from '../client/contract';
 
 /**
  * Runs Edit → Undo/Redo from the application menu (Electron's, or the macOS shell's through the

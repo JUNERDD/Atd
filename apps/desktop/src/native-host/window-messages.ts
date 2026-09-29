@@ -1,4 +1,4 @@
-import type { ExtensionSessionKind } from '../../electron/agent/bridge';
+import type { ExtensionSessionKind } from '../client/agent/bridge';
 
 /**
  * Messages between the shell's panel and settings windows. Electron routes these through its main

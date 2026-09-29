@@ -12,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@ai/ui/components/select';
-import type { CommandDefinition } from '../../../electron/agent/command-schema';
+import type { CommandDefinition } from '../../client/agent/command-schema';
 import { ShortcutConflictHint } from '../settings/shortcut-conflict-hint';
 import { ShortcutInput } from './shortcut-input';
 

@@ -8,7 +8,7 @@ import type {
   LoginState,
   ModelContexts,
   ModelThinkingLevel,
-} from './schema';
+} from '../../src/client/providers/schema';
 
 export const providerBridge: ProviderBridge = {
   catalog: () => ipcRenderer.invoke(PROVIDER_IPC.catalog) as Promise<ProviderCatalogEntry[]>,

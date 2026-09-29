@@ -3,7 +3,7 @@ import { readdir, readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { Type } from 'typebox';
-import { parse } from '../agent/validation';
+import { parse } from '../../src/client/agent/validation';
 
 /**
  * Which service code the launcher executes, and whether a service that is already running still

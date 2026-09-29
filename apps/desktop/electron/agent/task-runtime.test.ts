@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import type { ConfirmationRequest, InputRequest, PermissionAnswer } from './permission-schema';
+import type {
+  ConfirmationRequest,
+  InputRequest,
+  PermissionAnswer,
+} from '../../src/client/agent/permission-schema';
 import { statusForPending, TaskRequests, validatePermissionAnswer } from './task-requests';
 
 const confirmation: ConfirmationRequest = {

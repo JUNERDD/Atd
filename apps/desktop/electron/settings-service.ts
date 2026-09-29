@@ -1,20 +1,23 @@
-import { ipcMain, shell } from 'electron';
-import type { BrowserWindow, IpcMainInvokeEvent } from 'electron';
-import { IPC, type DesktopState } from './contract';
-import { isAppLanguage, SETTINGS_IPC, type SettingsSnapshot } from './settings-contract';
-import { PermissionTierSchema } from './agent/permission-schema';
-import { parse } from './agent/validation';
+import { ipcMain, shell, type BrowserWindow, type IpcMainInvokeEvent } from 'electron';
+import { IPC, type DesktopState } from '../src/client/contract';
+import {
+  isAppLanguage,
+  SETTINGS_IPC,
+  type SettingsSnapshot,
+} from '../src/client/settings-contract';
+import { PermissionTierSchema } from '../src/client/agent/permission-schema';
+import { parse } from '../src/client/agent/validation';
 import { installProviderIpc } from './providers/ipc';
 import { PROVIDER_IPC } from './providers/ipc-channels';
-import { ProviderService } from './providers/service';
-import { publicConnection } from './providers/configuration';
+import { ProviderService } from '../src/client/providers/service';
+import { publicConnection } from '../src/client/providers/configuration';
 import { DEFAULT_SHORTCUTS, parseShortcutBindings, type UserSettings } from '@ai/agent-contracts';
 import type { ServiceConnection } from './service/connection';
 import {
   parseShellAllowlist,
   parseShellAllowlistEntry,
   withShellAllowlistEntry,
-} from './settings-shell';
+} from '../src/client/settings-shell';
 import { ServiceSettingsSync } from './settings-sync';
 import { shortcutLabel } from './accelerators';
 import { PanelShortcut } from './settings-shortcuts';

@@ -10,8 +10,8 @@ import type {
   SummariesFrame,
   TaskSnapshot,
 } from '@ai/agent-contracts';
-import type { AgentConnection } from '../../electron/agent/agent-requests';
-import type { ServiceState, ServiceStatusView } from '../../electron/service/ipc';
+import type { AgentConnection } from '../client/agent/agent-requests';
+import type { ServiceState, ServiceStatusView } from '../client/service/ipc';
 
 interface TaskHandlers {
   onSnapshot: (snapshot: TaskSnapshot) => void;

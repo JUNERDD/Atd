@@ -1,6 +1,6 @@
 import { memo, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { Artifact, FileRef, TaskRun } from '../../../../electron/agent/task-schema';
+import type { Artifact, FileRef, TaskRun } from '../../../client/agent/task-schema';
 import { TaskFiles } from '../task-files';
 import type { AdaptedTurn } from './adapter';
 import { ActivityGroup } from './activity-group';

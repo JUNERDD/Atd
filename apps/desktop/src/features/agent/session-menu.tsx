@@ -7,7 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@ai/ui/components/dropdown-menu';
-import type { TaskDetail } from '../../../electron/agent/bridge';
+import type { TaskDetail } from '../../client/agent/bridge';
 import { IconButton } from '../../components/icon-button';
 import { compactBlock } from './compaction/compact-availability';
 import { useCompactTask } from './compaction/use-compact-task';

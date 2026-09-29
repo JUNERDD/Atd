@@ -1,15 +1,15 @@
 import type { McpApprovalRequestResult } from '@ai/agent-contracts';
-import { AgentRequests } from '../../electron/agent/agent-requests';
-import { parseExtensionSession, type ExtensionSession } from '../../electron/agent/bridge';
+import { AgentRequests } from '../client/agent/agent-requests';
+import { parseExtensionSession, type ExtensionSession } from '../client/agent/bridge';
 import {
   createAgentBridge,
   type AgentChannel,
   type AgentChannelValues,
-} from '../../electron/agent/bridge-client';
-import type { DesktopBridge } from '../../electron/contract';
-import { createServiceBridge } from '../../electron/service/bridge-client';
-import { handleExtensionRequest } from '../../electron/service/extension-requests';
-import type { ServiceEvent } from '../../electron/service/ipc';
+} from '../client/agent/bridge-client';
+import type { DesktopBridge } from '../client/contract';
+import { createServiceBridge } from '../client/service/bridge-client';
+import { handleExtensionRequest } from '../client/service/extension-requests';
+import type { ServiceEvent } from '../client/service/ipc';
 import { publishImportedFiles } from '../lib/imported-files';
 import type { NativeBridge } from '../native-bridge/client';
 import { setWindowActive, setWindowVisible } from '../window-state';

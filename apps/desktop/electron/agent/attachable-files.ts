@@ -8,7 +8,7 @@ import {
   MAX_ATTACHMENTS,
 } from '@ai/agent-contracts';
 import { uploadAttachables, type AttachableUpload } from './attachable-upload';
-import type { FileRef } from './task-schema';
+import type { FileRef } from '../../src/client/agent/task-schema';
 
 /** A picked file read from disk. `realPath` stays in main. */
 export interface AttachableFile extends AttachableUpload {

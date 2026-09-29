@@ -6,12 +6,12 @@ import {
   MAX_RUN_SKILLS,
   parseInstructionTokens,
 } from '@ai/agent-contracts';
-import type { CommandDefinition } from '../../../electron/agent/command-schema';
+import type { CommandDefinition } from '../../client/agent/command-schema';
 import {
   availableVariables,
   TemplateSyntaxError,
   templateReferences,
-} from '../../../electron/agent/command-validation';
+} from '../../client/agent/command-validation';
 
 /** Why the instructions reference more skills or other items than a run stages, or ''. */
 function tokenProblem(instructions: string, t: TFunction<'commands'>): string {

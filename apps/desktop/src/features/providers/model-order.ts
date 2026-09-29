@@ -1,4 +1,4 @@
-import type { ModelDefinition } from '../../../electron/providers/schema';
+import type { ModelDefinition } from '../../client/providers/schema';
 
 /**
  * Provider catalogs ship sorted by model ID, but refresh overlays and local

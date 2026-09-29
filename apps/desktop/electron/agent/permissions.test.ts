@@ -6,9 +6,9 @@ import {
   type PermissionOutcome,
   type PermissionRecord,
   type PermissionTier,
-} from './permission-schema';
+} from '../../src/client/agent/permission-schema';
 import { locationOf, PermissionGate, type PermissionGateHost } from './permissions';
-import type { AgentTask } from './task-schema';
+import type { AgentTask } from '../../src/client/agent/task-schema';
 
 const SCOPES: GrantScope[] = [
   { tool: 'read', location: 'inside' },

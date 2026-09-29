@@ -10,7 +10,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { matchFields } from '@ai/ui/lib/fuzzy-match';
 import type { FileSearchResult } from '@ai/agent-contracts';
-import type { AgentTask, FileRef } from '../../../electron/agent/task-schema';
+import type { AgentTask, FileRef } from '../../client/agent/task-schema';
 import { showErrorToast } from '../../components/toast-store';
 import { fileSize } from '../../lib/file-size';
 import { agentApi } from '../agent/use-agent';

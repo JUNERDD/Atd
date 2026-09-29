@@ -20,7 +20,7 @@ import {
   DropdownMenuTrigger,
 } from '@ai/ui/components/dropdown-menu';
 import { matchFields, type FieldsMatch } from '@ai/ui/lib/fuzzy-match';
-import type { CommandDefinition } from '../../../electron/agent/command-schema';
+import type { CommandDefinition } from '../../client/agent/command-schema';
 import { IconButton } from '../../components/icon-button';
 import { shortcutKeys } from '../../lib/shortcuts';
 import { agentApi } from '../agent/use-agent';

@@ -1,6 +1,6 @@
 import { useEffect, useEffectEvent } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { FileRef } from '../../electron/agent/task-schema';
+import type { FileRef } from '../client/agent/task-schema';
 import { onImportedFiles, type ImportedFiles } from '../lib/imported-files';
 import { showErrorToast } from './toast-store';
 

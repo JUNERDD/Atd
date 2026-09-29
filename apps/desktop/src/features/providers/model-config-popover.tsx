@@ -3,11 +3,7 @@ import { ChevronDown, ChevronRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@ai/ui/components/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@ai/ui/components/popover';
-import type {
-  Connection,
-  ModelReference,
-  ModelThinkingLevel,
-} from '../../../electron/providers/schema';
+import type { Connection, ModelReference, ModelThinkingLevel } from '../../client/providers/schema';
 import { formatContextWindow } from './context-window';
 import { ConfigBackHeader, ContextOptions, EffortOptions } from './model-config-subviews';
 import { ModelList } from './model-list';

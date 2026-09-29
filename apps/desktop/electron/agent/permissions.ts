@@ -9,9 +9,9 @@ import {
   type PermissionAnswer,
   type PermissionOutcome,
   type PermissionRecord,
-} from './permission-schema';
-import { taskPermissionTier, type AgentTask } from './task-schema';
-import { errorMessage } from './validation';
+} from '../../src/client/agent/permission-schema';
+import { taskPermissionTier, type AgentTask } from '../../src/client/agent/task-schema';
+import { errorMessage } from '../../src/client/agent/validation';
 
 export interface PermissionDecision {
   taskId: string;

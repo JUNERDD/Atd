@@ -8,15 +8,15 @@ import {
   effectiveAccelerator,
   parseAccelerator,
 } from '@ai/agent-contracts';
-import type { ShortcutBindings } from '../settings-contract';
-import type { CommandDefinition } from './command-schema';
-import type { PreparedCommand } from './bridge';
-import { prepareCommand } from './command-prepare';
-import { readyToRun, validateCommand } from './command-validation';
-import { deleteRemote, fetchCommands, saveRemote } from './command-remote';
-import { notConnected } from './service-manage';
+import type { ShortcutBindings } from '../../src/client/settings-contract';
+import type { CommandDefinition } from '../../src/client/agent/command-schema';
+import type { PreparedCommand } from '../../src/client/agent/bridge';
+import { prepareCommand } from '../../src/client/agent/command-prepare';
+import { readyToRun, validateCommand } from '../../src/client/agent/command-validation';
+import { deleteRemote, fetchCommands, saveRemote } from '../../src/client/agent/command-remote';
+import { notConnected } from '../../src/client/agent/service-manage';
 import { AgentStore } from './store';
-import { errorMessage } from './validation';
+import { errorMessage } from '../../src/client/agent/validation';
 
 /**
  * Plugin commands are read-only apart from `enabled`, the rule the service also enforces; a new

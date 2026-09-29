@@ -18,7 +18,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@ai/ui/components/alert-dialog';
-import type { MemoryEntry, MemorySnapshot } from '../../../electron/agent/bridge';
+import type { MemoryEntry, MemorySnapshot } from '../../client/agent/bridge';
 import { FieldHint } from '../../components/field-hint';
 import { SettingsHeading } from '../settings/settings-heading';
 import { agentApi } from '../agent/use-agent';

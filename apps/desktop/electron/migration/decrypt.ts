@@ -5,8 +5,8 @@ import path from 'node:path';
 import type { MigrationCredential } from '@ai/agent-contracts';
 import { Type, type Static } from 'typebox';
 import { decryptCredential } from '../providers/credentials';
-import type { ConnectionConfig } from '../providers/schema';
-import { parse } from '../agent/validation';
+import type { ConnectionConfig } from '../../src/client/providers/schema';
+import { parse } from '../../src/client/agent/validation';
 
 /**
  * One-time credential reader for migration. Each connection's safeStorage

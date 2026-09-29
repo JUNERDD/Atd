@@ -6,7 +6,7 @@ import {
   type Text,
   type Transaction,
 } from '@codemirror/state';
-import type { FileRef } from '../../../electron/agent/task-schema';
+import type { FileRef } from '../../client/agent/task-schema';
 import { deserialize, serialize, type Chip, type ComposerDraft, type DraftSegment } from './draft';
 
 /**

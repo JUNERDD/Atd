@@ -1,5 +1,5 @@
 import type { InputChip, InputChipRange } from '@ai/agent-contracts';
-import type { RunSnapshot } from '../../../../electron/agent/task-schema';
+import type { RunSnapshot } from '../../../client/agent/task-schema';
 import { seedFromText } from '../../composer-editor/draft';
 
 /** A sent message in document order: its plain text runs and the chips between them. */

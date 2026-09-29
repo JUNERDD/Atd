@@ -5,21 +5,21 @@ import {
   type PatchSettingsRequest,
   type SettingsResponse,
 } from '@ai/agent-contracts';
-import { parseExtensionSession } from '../../electron/agent/bridge';
-import { DEFAULT_PERMISSION_TIER } from '../../electron/agent/permission-schema';
-import type { ProviderBridge } from '../../electron/providers/schema';
-import { ProviderService } from '../../electron/providers/service';
+import { parseExtensionSession } from '../client/agent/bridge';
+import { DEFAULT_PERMISSION_TIER } from '../client/agent/permission-schema';
+import type { ProviderBridge } from '../client/providers/schema';
+import { ProviderService } from '../client/providers/service';
 import {
   isAppLanguage,
   resolveLanguage,
   type SettingsBridge,
   type SettingsSnapshot,
-} from '../../electron/settings-contract';
+} from '../client/settings-contract';
 import {
   parseShellAllowlist,
   parseShellAllowlistEntry,
   withShellAllowlistEntry,
-} from '../../electron/settings-shell';
+} from '../client/settings-shell';
 import type { CallResult, NativeBridge } from '../native-bridge/client';
 import type { NativeConnection } from './native-connection';
 import type { WindowMessages } from './window-messages';

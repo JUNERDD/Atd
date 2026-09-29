@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { ServiceBridge } from '../../../electron/service/ipc';
+import type { ServiceBridge } from '../../client/service/ipc';
 import {
   asAgentRow,
   asMcpRow,

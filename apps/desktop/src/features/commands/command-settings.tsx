@@ -14,9 +14,9 @@ import {
   AlertDialogTitle,
 } from '@ai/ui/components/alert-dialog';
 import { useCompositionQuery } from '@ai/ui/lib/ime';
-import type { CommandDefinition } from '../../../electron/agent/command-schema';
-import { copyCommand, newCommand, personalCopy } from '../../../electron/agent/command-templates';
-import type { SettingsSnapshot } from '../../../electron/settings-contract';
+import type { CommandDefinition } from '../../client/agent/command-schema';
+import { copyCommand, newCommand, personalCopy } from '../../client/agent/command-templates';
+import type { SettingsSnapshot } from '../../client/settings-contract';
 import { agentApi, useAgent } from '../agent/use-agent';
 import { showErrorToast, showToast } from '../../components/toast-store';
 import { CommandList } from './command-list';

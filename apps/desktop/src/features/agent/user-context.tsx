@@ -1,5 +1,5 @@
 import { ContextBubble } from '../../components/context-bubble';
-import type { FileRef, RunSnapshot } from '../../../electron/agent/task-schema';
+import type { FileRef, RunSnapshot } from '../../client/agent/task-schema';
 import { fileSize } from '../../lib/file-size';
 
 function fileDetail(file: FileRef): string {

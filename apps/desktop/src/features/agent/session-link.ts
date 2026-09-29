@@ -1,4 +1,4 @@
-import type { AgentTask } from '../../../electron/agent/task-schema';
+import type { AgentTask } from '../../client/agent/task-schema';
 
 /**
  * Copy payload for "copy session link".

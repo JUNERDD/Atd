@@ -13,10 +13,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@ai/ui/components/select';
-import type { Parameter } from '../../../electron/agent/command-schema';
-import { ParameterSchema } from '../../../electron/agent/command-schema';
-import { parse } from '../../../electron/agent/validation';
-import { parameterError } from '../../../electron/agent/command-validation';
+import type { Parameter } from '../../client/agent/command-schema';
+import { ParameterSchema } from '../../client/agent/command-schema';
+import { parse } from '../../client/agent/validation';
+import { parameterError } from '../../client/agent/command-validation';
 import { SettingsHeading } from '../settings/settings-heading';
 import { IconButton } from '../../components/icon-button';
 import { FieldHint } from '../../components/field-hint';

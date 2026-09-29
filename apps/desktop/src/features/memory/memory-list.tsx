@@ -19,7 +19,7 @@ import {
   ItemTitle,
 } from '@ai/ui/components/item';
 import { matchFields } from '@ai/ui/lib/fuzzy-match';
-import type { MemoryEntry } from '../../../electron/agent/bridge';
+import type { MemoryEntry } from '../../client/agent/bridge';
 import { IconButton } from '../../components/icon-button';
 
 const TARGET = {

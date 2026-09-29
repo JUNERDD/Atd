@@ -15,8 +15,8 @@ import {
   AlertDialogCancel,
   AlertDialogAction,
 } from '@ai/ui/components/alert-dialog';
-import type { SettingsSnapshot } from '../../../electron/settings-contract';
-import type { Connection, ProviderCatalogEntry } from '../../../electron/providers/schema';
+import type { SettingsSnapshot } from '../../client/settings-contract';
+import type { Connection, ProviderCatalogEntry } from '../../client/providers/schema';
 import { ProviderConnections } from '../providers/provider-connections';
 import { ProviderCatalog } from '../providers/provider-catalog';
 import { ProviderForm } from '../providers/provider-form';

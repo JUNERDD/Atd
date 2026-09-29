@@ -1,4 +1,4 @@
-import type { StoredConnection } from './schema';
+import type { StoredConnection } from '../../src/client/providers/schema';
 
 /** Initialize from the saved connection, or restore a single configured connection at startup. */
 export function initialDefaultConnectionId(

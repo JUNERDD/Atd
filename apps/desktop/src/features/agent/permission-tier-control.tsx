@@ -9,8 +9,8 @@ import {
   DropdownMenuTrigger,
 } from '@ai/ui/components/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@ai/ui/components/tooltip';
-import { PERMISSION_TIERS, type PermissionTier } from '../../../electron/agent/permission-schema';
-import { taskPermissionTier, type AgentTask } from '../../../electron/agent/task-schema';
+import { PERMISSION_TIERS, type PermissionTier } from '../../client/agent/permission-schema';
+import { taskPermissionTier, type AgentTask } from '../../client/agent/task-schema';
 import { useSettingsSnapshot } from '../settings/use-settings';
 import { agentApi } from './use-agent';
 import { showErrorToast } from '../../components/toast-store';

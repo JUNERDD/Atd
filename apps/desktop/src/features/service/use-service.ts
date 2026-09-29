@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { PluginSummary } from '@ai/agent-contracts';
-import type { ServiceStatusView } from '../../../electron/service/ipc';
+import type { ServiceStatusView } from '../../client/service/ipc';
 import { showErrorToast } from '../../components/toast-store';
 import {
   asAgentRow,

@@ -1,4 +1,4 @@
-import type { FileRef } from '../../electron/agent/task-schema';
+import type { FileRef } from '../client/agent/task-schema';
 
 /** Why the service refused a dropped or pasted file (`ResourceImportFailureReason`). */
 export type ImportFailureReason = 'unreadable' | 'unsupported' | 'tooLarge';

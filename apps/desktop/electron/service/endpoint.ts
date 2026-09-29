@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { app } from 'electron';
 import { Type, type Static } from 'typebox';
-import { parse } from '../agent/validation';
+import { parse } from '../../src/client/agent/validation';
 
 const EndpointSchema = Type.Object(
   {

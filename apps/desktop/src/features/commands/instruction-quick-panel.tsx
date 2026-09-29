@@ -1,7 +1,7 @@
 import { useState, type Ref, type RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PopoverAnchor } from '@ai/ui/components/popover';
-import type { AgentTask } from '../../../electron/agent/task-schema';
+import type { AgentTask } from '../../client/agent/task-schema';
 import type { ComposerEditorCommands } from '../composer-editor/editor-commands';
 import { QuickPanelSurface } from '../quick-panel/quick-panel-surface';
 import type { TriggerState } from '../quick-panel/trigger';

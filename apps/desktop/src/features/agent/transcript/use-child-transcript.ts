@@ -1,6 +1,6 @@
 import { useQueries, useQuery } from '@tanstack/react-query';
-import type { AgentBridge, ChildTranscriptDetail } from '../../../../electron/agent/bridge';
-import { applyTranscriptPatch } from '../../../../electron/agent/transcript-schema';
+import type { AgentBridge, ChildTranscriptDetail } from '../../../client/agent/bridge';
+import { applyTranscriptPatch } from '../../../client/agent/transcript-schema';
 import { messageOf } from '../../../lib/errors';
 import { queryClient } from '../../../lib/query-client';
 

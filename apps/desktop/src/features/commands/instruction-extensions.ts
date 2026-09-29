@@ -17,8 +17,8 @@ import {
   ViewPlugin,
   type ViewUpdate,
 } from '@codemirror/view';
-import type { CommandDefinition } from '../../../electron/agent/command-schema';
-import { availableVariables } from '../../../electron/agent/command-validation';
+import type { CommandDefinition } from '../../client/agent/command-schema';
+import { availableVariables } from '../../client/agent/command-validation';
 import { composingSince } from '../composer-editor/trigger-field';
 import { instructionCompletion } from './instruction-completion';
 import { rankVariables, typedVariable } from './instruction-variable-match';

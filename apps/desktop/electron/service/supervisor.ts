@@ -1,5 +1,5 @@
 import log from 'electron-log/main';
-import { errorMessage } from '../agent/validation';
+import { errorMessage } from '../../src/client/agent/validation';
 import type { ConnectionState, ServiceConnection } from './connection';
 import { startLocalService, stopLocalService, type ServiceExit } from './launcher';
 

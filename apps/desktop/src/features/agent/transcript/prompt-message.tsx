@@ -1,5 +1,5 @@
 import { Fragment } from 'react';
-import type { RunSnapshot } from '../../../../electron/agent/task-schema';
+import type { RunSnapshot } from '../../../client/agent/task-schema';
 import { ChipToken } from '../../composer-editor/chip-content';
 import { UserContext } from '../user-context';
 import { MessageBubble } from './message-bubble';

@@ -12,7 +12,7 @@ import {
 } from '@ai/ui/components/select';
 import { Switch } from '@ai/ui/components/switch';
 import { IconButton } from '../../components/icon-button';
-import type { ModelDefinition } from '../../../electron/providers/schema';
+import type { ModelDefinition } from '../../client/providers/schema';
 import { sortModels } from './model-order';
 
 export function CustomModels({

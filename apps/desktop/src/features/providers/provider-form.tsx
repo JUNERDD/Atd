@@ -15,8 +15,8 @@ import type {
   Connection,
   ConnectionDraft,
   ProviderCatalogEntry,
-} from '../../../electron/providers/schema';
-import { CLOUD_FIELDS, isCustom, isAmbient } from '../../../electron/providers/metadata';
+} from '../../client/providers/schema';
+import { CLOUD_FIELDS, isCustom, isAmbient } from '../../client/providers/metadata';
 import { showErrorToast, showToast } from '../../components/toast-store';
 import { useOverlayFooter } from '../../components/use-overlay-footer';
 import { SettingsHeading } from '../settings/settings-heading';

@@ -1,4 +1,4 @@
-import type { DesktopBridge } from '../electron/contract';
+import type { DesktopBridge } from './client/contract';
 
 declare global {
   interface Window {

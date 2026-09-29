@@ -2,9 +2,14 @@ import { agentBridge } from './agent/preload';
 import { contextBridge, ipcRenderer } from 'electron';
 import type { IpcRendererEvent } from 'electron';
 import type { FileSearchReply } from '@ai/agent-contracts';
-import type { FileRef } from './agent/task-schema';
-import { IPC, type ContextFile, type DesktopBridge, type DesktopState } from './contract';
-import { SETTINGS_IPC, type SettingsSnapshot } from './settings-contract';
+import type { FileRef } from '../src/client/agent/task-schema';
+import {
+  IPC,
+  type ContextFile,
+  type DesktopBridge,
+  type DesktopState,
+} from '../src/client/contract';
+import { SETTINGS_IPC, type SettingsSnapshot } from '../src/client/settings-contract';
 import { providerBridge } from './providers/preload';
 import { serviceBridge } from './service/preload';
 

@@ -2,12 +2,12 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Label } from '@ai/ui/components/label';
 import { Item, ItemContent, ItemDescription, ItemGroup, ItemTitle } from '@ai/ui/components/item';
-import type { SettingsSnapshot } from '../../../electron/settings-contract';
+import type { SettingsSnapshot } from '../../client/settings-contract';
 import {
   DEFAULT_PERMISSION_TIER,
   PERMISSION_TIERS,
   type PermissionTier,
-} from '../../../electron/agent/permission-schema';
+} from '../../client/agent/permission-schema';
 import { showErrorToast } from '../../components/toast-store';
 import { SettingsHeading } from './settings-heading';
 

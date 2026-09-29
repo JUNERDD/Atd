@@ -25,8 +25,8 @@ import { TaskHistory } from './features/agent/task-history';
 import { ServiceBanner } from './features/service/service-banner';
 import { ServiceStarting } from './features/service/service-starting';
 import { useServiceStarting } from './features/service/use-service-starting';
-import { EMPTY_QUEUE, type Block } from '../electron/agent/transcript-schema';
-import type { FileRef } from '../electron/agent/task-schema';
+import { EMPTY_QUEUE, type Block } from './client/agent/transcript-schema';
+import type { FileRef } from './client/agent/task-schema';
 import './features/agent/agent.css';
 
 const NO_BLOCKS: Block[] = [];

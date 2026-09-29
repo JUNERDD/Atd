@@ -1,6 +1,6 @@
 import { downloadResource } from '@ai/agent-client';
-import type { AgentPlatform } from '../../electron/agent/agent-requests';
-import type { PreparedCommand } from '../../electron/agent/bridge';
+import type { AgentPlatform } from '../client/agent/agent-requests';
+import type { PreparedCommand } from '../client/agent/bridge';
 import type { NativeBridge } from '../native-bridge/client';
 
 /**

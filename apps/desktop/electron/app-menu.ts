@@ -6,7 +6,7 @@ import {
   webContents,
   type MenuItemConstructorOptions,
 } from 'electron';
-import { IPC, type EditCommand } from './contract';
+import { IPC, type EditCommand } from '../src/client/contract';
 import { runServiceMigration } from './migration/index';
 import type { SettingsService } from './settings-service';
 import type { Updater } from './updater';

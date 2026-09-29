@@ -14,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@ai/ui/components/select';
-import type { ProviderCatalogEntry } from '../../../electron/providers/schema';
+import type { ProviderCatalogEntry } from '../../client/providers/schema';
 import { SettingsHeading } from '../settings/settings-heading';
 import { ProviderBrand } from './provider-brand';
 

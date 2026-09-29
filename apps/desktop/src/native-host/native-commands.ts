@@ -1,10 +1,10 @@
 import { parseAccelerator } from '@ai/agent-contracts';
-import type { CommandCatalog } from '../../electron/agent/agent-requests';
-import type { PreparedCommand } from '../../electron/agent/bridge';
-import { prepareCommand } from '../../electron/agent/command-prepare';
-import { deleteRemote, fetchCommands, saveRemote } from '../../electron/agent/command-remote';
-import type { CommandDefinition } from '../../electron/agent/command-schema';
-import { validateCommand } from '../../electron/agent/command-validation';
+import type { CommandCatalog } from '../client/agent/agent-requests';
+import type { PreparedCommand } from '../client/agent/bridge';
+import { prepareCommand } from '../client/agent/command-prepare';
+import { deleteRemote, fetchCommands, saveRemote } from '../client/agent/command-remote';
+import type { CommandDefinition } from '../client/agent/command-schema';
+import { validateCommand } from '../client/agent/command-validation';
 import type { CallResult, NativeBridge } from '../native-bridge/client';
 import { MAX_CAPTURE_LENGTH } from '../native-bridge/calls';
 import type { NativeConnection } from './native-connection';

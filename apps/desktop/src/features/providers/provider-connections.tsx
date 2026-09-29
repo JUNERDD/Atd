@@ -10,7 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@ai/ui/components/dropdown-menu';
-import type { Connection } from '../../../electron/providers/schema';
+import type { Connection } from '../../client/providers/schema';
 import { IconButton } from '../../components/icon-button';
 import { ModelConfigPopover } from './model-config-popover';
 import { ProviderBrand } from './provider-brand';

@@ -1,7 +1,7 @@
 import { Bot, MessageSquare, Plug } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { rankByQuery } from '@ai/ui/lib/fuzzy-match';
-import type { AgentTask } from '../../../electron/agent/task-schema';
+import type { AgentTask } from '../../client/agent/task-schema';
 import type { Chip } from '../composer-editor/draft';
 import type { ComposerEditorCommands } from '../composer-editor/editor-commands';
 import type { ExtensionAgentRow, ExtensionMcpRow } from '../service/extension-rows';

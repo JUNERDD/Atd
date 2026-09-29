@@ -7,11 +7,11 @@ import {
   type FileSearchReply,
 } from '@ai/agent-contracts';
 import type { ServiceConnection } from '../service/connection';
-import { IPC } from '../contract';
+import { IPC } from '../../src/client/contract';
 import { isWindowSender } from '../window-content';
-import { notConnected } from './service-manage';
-import type { FileRef } from './task-schema';
-import { parse } from './validation';
+import { notConnected } from '../../src/client/agent/service-manage';
+import type { FileRef } from '../../src/client/agent/task-schema';
+import { parse } from '../../src/client/agent/validation';
 
 const AttachRequestSchema = Type.Object(
   { resultIds: FileResultIdsSchema },

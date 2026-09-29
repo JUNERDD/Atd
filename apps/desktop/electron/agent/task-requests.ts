@@ -1,5 +1,5 @@
-import type { PermissionAnswer, PermissionRequest } from './permission-schema';
-import { isActive, type RunStatus } from './task-schema';
+import type { PermissionAnswer, PermissionRequest } from '../../src/client/agent/permission-schema';
+import { isActive, type RunStatus } from '../../src/client/agent/task-schema';
 
 export type ConfirmationReply = Extract<PermissionAnswer, { decision: unknown }>;
 export type InputReply = Exclude<PermissionAnswer, { decision: unknown }>;

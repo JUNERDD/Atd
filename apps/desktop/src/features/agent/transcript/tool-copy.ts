@@ -24,8 +24,8 @@ import {
   type GrantScope,
   type ToolBlockDetails,
 } from '@ai/agent-contracts';
-import type { PermissionOutcome } from '../../../../electron/agent/permission-schema';
-import type { BlockOf, ToolStatus } from '../../../../electron/agent/transcript-schema';
+import type { PermissionOutcome } from '../../../client/agent/permission-schema';
+import type { BlockOf, ToolStatus } from '../../../client/agent/transcript-schema';
 import { subagentStepKey, subagentTarget, type SubagentStepKey } from './subagent-call';
 
 export type StepKey =

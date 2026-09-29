@@ -1,4 +1,4 @@
-import type { RunPolicy } from '../../../electron/agent/run-policy';
+import type { RunPolicy } from '../../client/agent/run-policy';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Brain, FileText, Shield, X } from 'lucide-react';
@@ -6,8 +6,8 @@ import { Button } from '@ai/ui/components/button';
 import { Label } from '@ai/ui/components/label';
 import { Textarea } from '@ai/ui/components/textarea';
 import { ScrollArea } from '@ai/ui/components/scroll-area';
-import type { PreparedCommand } from '../../../electron/agent/bridge';
-import type { TaskInput } from '../../../electron/agent/task-schema';
+import type { PreparedCommand } from '../../client/agent/bridge';
+import type { TaskInput } from '../../client/agent/task-schema';
 import { ParameterField } from '../commands/parameter-field';
 import { agentApi } from './use-agent';
 import { showErrorToast } from '../../components/toast-store';

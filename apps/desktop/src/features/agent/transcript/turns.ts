@@ -1,6 +1,6 @@
-import type { PermissionRequest } from '../../../../electron/agent/permission-schema';
-import type { Artifact } from '../../../../electron/agent/task-schema';
-import type { Block, BlockOf } from '../../../../electron/agent/transcript-schema';
+import type { PermissionRequest } from '../../../client/agent/permission-schema';
+import type { Artifact } from '../../../client/agent/task-schema';
+import type { Block, BlockOf } from '../../../client/agent/transcript-schema';
 
 export type RequestIndex = Map<string, PermissionRequest>;
 

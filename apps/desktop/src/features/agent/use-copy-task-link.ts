@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import type { AgentTask } from '../../../electron/agent/task-schema';
+import type { AgentTask } from '../../client/agent/task-schema';
 import { showErrorToast, showToast } from '../../components/toast-store';
 import { agentApi } from './use-agent';
 import { sessionLinkText } from './session-link';

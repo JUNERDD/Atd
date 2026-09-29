@@ -1,8 +1,8 @@
 import { createHash } from 'node:crypto';
 import { Type } from 'typebox';
-import { parse } from '../agent/validation';
-import { endpoint } from './configuration';
-import type { StoredConnection } from './schema';
+import { parse } from '../../src/client/agent/validation';
+import { endpoint } from '../../src/client/providers/configuration';
+import type { StoredConnection } from '../../src/client/providers/schema';
 
 const LegacyProviderSchema = Type.Object(
   {

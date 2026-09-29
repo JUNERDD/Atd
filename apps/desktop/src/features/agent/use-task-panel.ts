@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { useHotkeys, type Options } from 'react-hotkeys-hook';
 import { useTranslation } from 'react-i18next';
-import type { RunPolicy } from '../../../electron/agent/run-policy';
-import type { PreparedCommand, TaskDetail } from '../../../electron/agent/bridge';
-import { emptyInput, isActive } from '../../../electron/agent/task-schema';
-import { EMPTY_QUEUE } from '../../../electron/agent/transcript-schema';
+import type { RunPolicy } from '../../client/agent/run-policy';
+import type { PreparedCommand, TaskDetail } from '../../client/agent/bridge';
+import { emptyInput, isActive } from '../../client/agent/task-schema';
+import { EMPTY_QUEUE } from '../../client/agent/transcript-schema';
 import { DEFAULT_SHORTCUTS, type RunReference } from '@ai/agent-contracts';
 import { isComposingKey } from '@ai/ui/lib/ime';
 import {

@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { ServiceBlock } from '@ai/agent-contracts';
-import { applyTranscriptPatch } from './transcript-schema';
-import { mapBlock } from './service-map';
-import type { Block, BlockOf } from './transcript-schema';
+import { applyTranscriptPatch } from '../../src/client/agent/transcript-schema';
+import { mapBlock } from '../../src/client/agent/service-map';
+import type { Block, BlockOf } from '../../src/client/agent/transcript-schema';
 
 const RUN_ID = 'run1';
 const USER_TS = 1000;

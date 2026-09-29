@@ -1,7 +1,7 @@
 import { dialog } from 'electron';
 import { stat } from 'node:fs/promises';
 import path from 'node:path';
-import type { ContextFile } from './contract';
+import type { ContextFile } from '../src/client/contract';
 
 export async function chooseContextFiles(): Promise<ContextFile[]> {
   // An unattached modal avoids macOS moving the panel to make room for a sheet.

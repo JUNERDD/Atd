@@ -1,5 +1,5 @@
 import type { AgentHttpClient } from '@ai/agent-client';
-import type { FileRef } from './task-schema';
+import type { FileRef } from '../../src/client/agent/task-schema';
 
 /**
  * A file that passed the shared attachment rules (`@ai/agent-contracts`), held in memory until
