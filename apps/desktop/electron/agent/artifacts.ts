@@ -1,7 +1,8 @@
-import { clipboard, shell } from 'electron';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { app, clipboard, shell } from 'electron';
+import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { downloadResource, type AgentClientOptions } from '@ai/agent-client';
+import { writeDownloadedFile } from '../quarantine';
 import { manageError } from './service-manage';
 import type { FileRef } from './task-schema';
 
@@ -20,7 +21,7 @@ export async function handleArtifact(
     const downloaded = await downloadResource(options, artifactId);
     const filePath = path.join(downloadsRoot, `${artifactId}-${safeName(downloaded.name)}`);
     await mkdir(downloadsRoot, { recursive: true });
-    await writeFile(filePath, downloaded.bytes);
+    await writeDownloadedFile(filePath, downloaded.bytes, app.name);
     const file: FileRef = {
       id: artifactId,
       name: downloaded.name,

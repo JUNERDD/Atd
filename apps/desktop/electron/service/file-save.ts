@@ -1,7 +1,7 @@
-import { dialog } from 'electron';
-import { writeFile } from 'node:fs/promises';
+import { app, dialog } from 'electron';
 import path from 'node:path';
 import type { CapabilityRequest, CapabilityResult } from '@ai/agent-contracts';
+import { writeDownloadedFile } from '../quarantine';
 
 export interface FileSaveContext {
   withDialog: <T>(operation: () => Promise<T>) => Promise<T>;
@@ -18,7 +18,7 @@ function ok(request: CapabilityRequest, value: unknown): CapabilityResult {
 const BASE64 = /^[A-Za-z0-9+/]*={0,2}$/;
 
 /**
- * Desktop `file.save`: save dialog + write. Returns name/size only (no local
+ * Desktop `file.save`: save dialog + quarantined write. Returns name/size only (no local
  * path), matching file.pick's privacy posture.
  */
 export async function handleFileSave(
@@ -47,7 +47,8 @@ export async function handleFileSave(
       }),
     );
     if (picked.canceled || !picked.filePath) return denied(request, 'The save was cancelled.');
-    await writeFile(picked.filePath, bytes);
+    // The bytes come from the service, so the saved file is quarantined like a download.
+    await writeDownloadedFile(picked.filePath, bytes, app.name);
     return ok(request, { saved: true, name: path.basename(picked.filePath), size: bytes.length });
   } catch (error) {
     return denied(request, error instanceof Error ? error.message : 'The file could not be saved.');
