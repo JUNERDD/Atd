@@ -34,10 +34,37 @@ targets:
     dependencies:
       - package: AIMac
         product: AIShell
+    # Release only: embeds the renderer (`dist-native`) and the service pack with its bundled
+    # Node (`apps/desktop/scripts/prepare-service-pack.mjs`) where ServiceLaunchPlan and
+    # RendererSource expect them. `pnpm --filter @ai/macos build:release` prepares both first;
+    # Debug builds skip it and use `pnpm dev`'s dev server and service.
+    postBuildScripts:
+      - name: Embed renderer and service
+        basedOnDependencyAnalysis: false
+        script: |
+          set -euo pipefail
+          [ "$CONFIGURATION" = Release ] || exit 0
+          repo="$SRCROOT/../.."
+          renderer="$repo/apps/desktop/dist-native"
+          service="$repo/tmp/t7-agent-service-pack"
+          node="$repo/tmp/t7-node"
+          for required in "$renderer/index.html" "$service/dist/cli.js" "$service/build-info.json" "$node/bin/node"; do
+            if [ ! -e "$required" ]; then
+              echo "error: $required is missing. Run pnpm --filter @ai/macos bundle first."
+              exit 1
+            fi
+          done
+          resources="$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH"
+          rsync -a --delete "$renderer/" "$resources/renderer/"
+          rsync -a --delete --exclude .tsbuildinfo "$service/" "$resources/agent-service/"
+          rsync -a --delete "$node/" "$resources/node/"
     settings:
       base:
         PRODUCT_NAME: AI
         GENERATE_INFOPLIST_FILE: false
+        # The embed phase copies whole directory trees from outside the project, which the
+        # script sandbox only allows for individually declared files.
+        ENABLE_USER_SCRIPT_SANDBOXING: false
       configs:
         Debug:
           PRODUCT_BUNDLE_IDENTIFIER: com.junerdd.ai.dev
