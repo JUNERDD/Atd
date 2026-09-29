@@ -119,6 +119,17 @@ export class ControlSession {
     return session;
   }
 
+  /**
+   * Creates the session and waits until its adapter manager is observable. A session whose
+   * manager never appears is closed before this throws, so no half-started session lingers.
+   */
+  static async start(deps: ControlSessionDeps, timeoutMs = 30000): Promise<ControlSession> {
+    const session = await ControlSession.create(deps);
+    if (await session.waitForManager(timeoutMs)) return session;
+    await session.close('quit').catch(() => undefined);
+    throw new Error('The MCP control session did not expose its connection layer.');
+  }
+
   private adoptPlaceholder(control: ControlSessionPlaceholder): void {
     this.managers = control.managers;
     this.uninstallHook = control.uninstallHook;

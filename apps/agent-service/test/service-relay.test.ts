@@ -50,6 +50,11 @@ test('the route manifest classifies every route the service serves', async () =>
     'PUT /v1/mcp/servers/:serverId',
     'POST /v1/mcp/servers/:serverId/enabled',
     'DELETE /v1/mcp/servers/:serverId',
+    // Launch approvals: granting is shell-only, withdrawing and the notice are the renderer's.
+    'GET /v1/admin/approvals/mcp/:serverId',
+    'POST /v1/admin/approvals/mcp',
+    'DELETE /v1/mcp/servers/:serverId/approval',
+    'POST /v1/mcp/approvals/notice/dismiss',
   ])
     assert.ok(keys.includes(key), `${key} is missing`);
   // MCP servers are edited one at a time; no route replaces the catalog with client records.

@@ -21,6 +21,7 @@ import {
 } from './lifecycle.js';
 import { loadAdapterInternals, scopeAdapterEnv } from './loader.js';
 import type { AdapterInternals, AdapterManagerLike } from './adapter-types.js';
+import { LaunchApprovals } from './launch-approvals.js';
 import { McpServerRecords, type RecordChange } from './server-records.js';
 import { upsertRecord } from './server-edits.js';
 import { bearerSecrets, reuseKey, toAdapterConfig } from './servers.js';
@@ -66,6 +67,8 @@ export class McpAuthority {
     private readonly managerOverride: AdapterManagerLike | null,
     /** User servers and the read-only plugin layer (mcp/server-records.ts). */
     private readonly servers: McpServerRecords,
+    /** Whether each server may launch (mcp/launch-approvals.ts). */
+    readonly launches: LaunchApprovals,
   ) {
     this.audit = deps.audit ?? ((entry) => deps.log.debug('MCP audit.', entry));
   }
@@ -133,14 +136,9 @@ export class McpAuthority {
     states.reset(records.all());
     const holder: { control: ControlSession | null } = { control: null };
     const managerOf = () => managerOverride ?? holder.control?.manager() ?? null;
-    const servers = {
-      record: (serverId: string) => {
-        const found = records.find(serverId);
-        if (!found)
-          throw new McpError('not_found', serverId, `MCP server ${serverId} is not configured.`);
-        return found;
-      },
-    };
+    const launches = await LaunchApprovals.load(deps, records, (record) =>
+      authority.facade.connections.launchEntry(record),
+    );
     const authority = new McpAuthority(
       deps,
       internals,
@@ -151,17 +149,19 @@ export class McpAuthority {
       new McpFacade({
         internals,
         manager: managerOf,
-        servers,
+        servers: records,
         secrets: bearerSecrets(deps.serviceId),
         states,
         txns: transactions,
+        launch: launches,
         approvals,
         mapping: { resources: deps.resources, log: deps.log },
         audit,
         log: deps.log,
       }),
       new McpAuthManager({
-        servers,
+        servers: records,
+        launch: launches,
         states,
         txns: transactions,
         authFlow: internals.authFlow,
@@ -174,26 +174,23 @@ export class McpAuthority {
       null,
       managerOverride,
       records,
+      launches,
     );
     for (const record of records.all()) authority.trackIdentity(record);
     if (!managerOverride) {
       authority.envRestore = scopeAdapterEnv(deps.dataDir);
-      const control = await ControlSession.create({
+      const control = await ControlSession.start({
         agentDir: deps.agentDir,
         sessionsDir: deps.sessionsDir,
         cwd: deps.cwd,
         internals,
-        config: toAdapterConfig(records.userRecords()),
+        // Only servers that may launch: the adapter never sees an unapproved one.
+        config: toAdapterConfig(await launches.launchable(records.userRecords())),
         callbacks,
         log: deps.log,
       });
       holder.control = control;
       authority.control = control;
-      const manager = await control.waitForManager(30000);
-      if (!manager) {
-        await control.close('quit').catch(() => undefined);
-        throw new Error('The MCP control session did not expose its connection layer.');
-      }
       approvals.attachBus(control.pi()?.events ?? null, internals.approvalEvent);
     }
     return authority;
@@ -244,6 +241,7 @@ export class McpAuthority {
     const removed = change.previous.find((record) => record.serverId === serverId);
     if (removed?.http?.auth.type === 'oauth') await this.authManager.logout(serverId);
     await this.apply('mcp:remove', change);
+    await this.launches.forget(serverId);
   }
 
   /** Revokes a user server immediately: no new calls, cancellable ones cancel. */
@@ -285,13 +283,12 @@ export class McpAuthority {
     });
   }
 
-  /** Every server's status, each row naming its plugin (`user` for servers.json). */
+  /** Every server's connection status; `launches.status` makes the rows clients list. */
   snapshot(): McpSnapshot {
     const manager = this.managerOverride ?? this.control?.manager() ?? null;
-    const snapshot = buildSnapshot(this.servers.all(), this.states, this.snapshotRevision, (id) =>
+    return buildSnapshot(this.servers.all(), this.states, this.snapshotRevision, (id) =>
       connectionCounts(manager, id),
     );
-    return { ...snapshot, servers: this.servers.statusRows(snapshot.servers) };
   }
 
   /** Binds run-frozen runner proxies; catalog changes never leak into a run. */

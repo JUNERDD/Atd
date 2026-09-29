@@ -5,6 +5,7 @@
  */
 import path from 'node:path';
 import { errorMessage } from '@ai/agent-contracts';
+import { approveMcp } from './cli-approve.js';
 import { prepareServe, readEndpoint, readLocalToken, releaseLock } from './config.js';
 import { createService } from './index.js';
 import { createLogger } from './logging.js';
@@ -27,6 +28,7 @@ interface Flags {
   rollback?: boolean;
   reason?: string;
   loginShellPath?: boolean;
+  yes?: boolean;
 }
 
 function parseFlags(argv: string[]): Flags {
@@ -42,6 +44,7 @@ function parseFlags(argv: string[]): Flags {
     else if (arg === '--assume-quiesced') flags.assumeQuiesced = true;
     else if (arg === '--rollback') flags.rollback = true;
     else if (arg === '--login-shell-path') flags.loginShellPath = true;
+    else if (arg === '--yes') flags.yes = true;
     else if (arg === '--tier' && argv[index + 1]) {
       const tier = argv[(index += 1)];
       if (tier !== 'manual' && tier !== 'auto' && tier !== 'always')
@@ -64,6 +67,7 @@ function usage(): string {
     '  stop [--dataDir <dir>]',
     '  migrate --source <desktopUserDataCopy> [--dataDir <dir>] [--dry-run] [--assume-quiesced]',
     '  migrate --rollback --reason <text> [--dataDir <dir>]',
+    '  approve mcp <serverId> [--dataDir <dir>] [--yes]',
     '',
     '  --help, -h       Show this help',
     '  --version, -v    Print version and Node requirement',
@@ -71,6 +75,8 @@ function usage(): string {
     `Requires Node.js ${engines} on PATH (workspace toolchain; covers Pi 0.87.1`,
     '≥22.19.0). The Electron app binary is not Node.js; there is no auto-download.',
     'AI_AGENT_DATA_DIR overrides --dataDir.',
+    'approve asks the running service what an MCP server would launch and approves it after a',
+    'y on the terminal; without a terminal it refuses unless --yes is given.',
     '--login-shell-path makes serve adopt the login shell PATH before it starts',
     '(for launchers with a minimal GUI PATH; off by default).',
     'Default host is loopback; --port 0',
@@ -210,6 +216,8 @@ async function main(): Promise<void> {
   const [command, ...rest] = argv;
   try {
     assertSupportedNode();
+    // `approve` takes two positionals before its flags: `approve mcp <serverId>`.
+    const positionals = command === 'approve' ? rest.splice(0, 2) : [];
     const flags = parseFlags(rest);
     switch (command) {
       case 'serve':
@@ -224,6 +232,12 @@ async function main(): Promise<void> {
       case 'migrate':
         await migrate(flags);
         break;
+      case 'approve': {
+        const [kind, serverId] = positionals;
+        if (kind !== 'mcp' || !serverId) throw new Error('Usage: approve mcp <serverId>');
+        await approveMcp(path.resolve(locate(flags)), serverId, { yes: flags.yes ?? false });
+        break;
+      }
       default:
         process.stdout.write(`${usage()}\n`);
         process.exit(command === undefined ? 0 : 1);

@@ -12,8 +12,8 @@ import {
   type McpGetPromptResponse,
   type McpReadResourceResponse,
   type McpServersResponse,
-  type McpServerStatus,
   type McpSnapshot,
+  type McpStatusResponse,
 } from '@ai/agent-contracts';
 import type { McpAuthority } from './authority.js';
 import { McpError, type OperationContext } from './errors.js';
@@ -30,6 +30,7 @@ import {
 } from './requests.js';
 import { stageTaskMcp } from './staging.js';
 import { RENDERER_ROUTE } from '../relay-routes.js';
+import { registerLaunchRoutes } from './launch-routes.js';
 
 /**
  * MCP route handlers, UNMOUNTED (D6/T34int). T34int mounts them via
@@ -75,8 +76,9 @@ function opFrom(body: {
   };
 }
 
-export function handleMcpStatus(deps: McpRouteDeps): { servers: McpServerStatus[] } {
-  return { servers: deps.authority.snapshot().servers };
+/** Status rows with their plugin and launch approval, and the one-time approval notice. */
+export function handleMcpStatus(deps: McpRouteDeps): Promise<McpStatusResponse> {
+  return deps.authority.launches.status(deps.authority.snapshot());
 }
 
 /** The user's servers with env and header values redacted (mcp/server-edits.ts). */
@@ -258,10 +260,12 @@ export function mcpErrorStatus(code: McpError['code']): number {
     case 'auth_required':
       return 401;
     case 'forbidden':
+    case 'approval_required':
       return 403;
     case 'not_found':
       return 404;
     case 'conflict':
+    case 'approval_changed':
       return 409;
     case 'gone':
       return 410;
@@ -331,4 +335,5 @@ export function registerMcpRoutes(app: FastifyInstance, authority: McpAuthorityR
   app.post('/v1/mcp/resources/read', RENDERER_ROUTE, wrap(handleMcpReadResource));
   app.post('/v1/mcp/prompts/list', RENDERER_ROUTE, wrap(handleMcpListPrompts));
   app.post('/v1/mcp/prompts/get', RENDERER_ROUTE, wrap(handleMcpGetPrompt));
+  registerLaunchRoutes(app, wrap, wrapServer);
 }

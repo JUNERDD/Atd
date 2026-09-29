@@ -207,6 +207,8 @@ test('connecting gets every value, hydrated from the keyring after a restart', a
     secrets: { bearerToken: async () => null },
     states: new McpConnectionStates(log),
     txns: new CredentialTransactions(),
+    // Launch approval is not what this test covers (test/launch-approvals.test.ts is).
+    launch: { assertLaunch: async () => undefined },
     log,
   });
   await assert.rejects(connections.connect('kc-local'));

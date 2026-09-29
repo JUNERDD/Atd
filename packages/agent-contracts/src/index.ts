@@ -16,6 +16,7 @@ export * from './skills.js';
 export * from './roles.js';
 export * from './mcp.js';
 export * from './mcp-servers.js';
+export * from './mcp-approvals.js';
 export * from './subagents.js';
 export * from './subagent-permissions.js';
 export * from './providers.js';

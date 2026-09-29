@@ -14,6 +14,7 @@ import type { Logger } from '../logging.js';
 import type { AdapterInternals, AdapterToolDef } from './adapter-types.js';
 import { McpApprovalBroker } from './approval.js';
 import { ConnectionManager } from './connect.js';
+import type { LaunchGate } from './launch-approvals.js';
 import {
   isForbidden,
   isUnauthorized,
@@ -43,6 +44,7 @@ export interface FacadeDeps {
   secrets: SecretResolver;
   states: McpStateSink;
   txns: CredentialTransactions;
+  launch: LaunchGate;
   approvals: McpApprovalBroker;
   mapping: MappingDeps;
   audit: (entry: Record<string, unknown>) => void;
@@ -51,7 +53,8 @@ export interface FacadeDeps {
 }
 
 export class McpFacade {
-  private readonly connections: ConnectionManager;
+  /** Connections; `launchEntry` is also what launch approvals fingerprint. */
+  readonly connections: ConnectionManager;
   private readonly policy: McpPolicy;
 
   constructor(private readonly deps: FacadeDeps) {
@@ -61,6 +64,7 @@ export class McpFacade {
       secrets: deps.secrets,
       states: deps.states,
       txns: deps.txns,
+      launch: deps.launch,
       log: deps.log,
     });
     this.policy = new McpPolicy({

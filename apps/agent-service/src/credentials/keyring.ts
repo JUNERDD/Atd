@@ -9,6 +9,8 @@
  *   `mcp:<serverKey>:header:<Name>` (mcp/server-store.ts)
  * - sensitive plugin config: account `plugin:<pluginId>:<key>` (plugins/secrets.ts); plugin ids
  *   never contain `:` and config keys are identifiers, so accounts cannot collide
+ * - launch approval key: account `security:launch-approval-key` (mcp/launch-key.ts), the profile's
+ *   random HMAC key for MCP launch fingerprints, never written to the data dir
  *
  * Linux pins `secret-service`; keyutils is kernel memory and must never be
  * reported as persistent storage. When no durable backend exists the backend
@@ -46,6 +48,8 @@ export function keyringMcpSecretAccount(
 ): string {
   return `${keyringMcpAccount(serverKey)}:${kind}:${name}`;
 }
+
+export const LAUNCH_APPROVAL_KEY_ACCOUNT = 'security:launch-approval-key';
 
 export function keyringPluginAccount(pluginId: string, key: string): string {
   return `plugin:${pluginId}:${key}`;

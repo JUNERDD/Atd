@@ -1,5 +1,5 @@
 import type { ExtensionFactory } from '@earendil-works/pi-coding-agent';
-import type { McpServerConfig, McpServerUpsertRequest } from '@ai/agent-contracts';
+import type { UpsertMcp } from './configure-mcp-tool.js';
 import { confirmReview, type Reviewer } from './harness/auto-review.js';
 import {
   McpAdapterMissing,
@@ -26,7 +26,7 @@ export interface SessionMcpPrep {
   factory: ExtensionFactory;
   /** The proxies `factory` registers; empty while the adapter is unavailable. */
   bindings: McpToolBinding[];
-  upsertMcp?: (serverId: string, request: McpServerUpsertRequest) => Promise<McpServerConfig>;
+  upsertMcp?: UpsertMcp;
 }
 
 /**
@@ -59,7 +59,10 @@ export async function prepareSessionMcp(deps: SessionMcpDeps): Promise<SessionMc
     return {
       factory,
       bindings,
-      upsertMcp: (serverId, request) => authority.upsert(serverId, request),
+      upsertMcp: async (serverId, request) => {
+        const record = await authority.upsert(serverId, request);
+        return { record, approval: await authority.launches.state(record) };
+      },
     };
   } catch (error) {
     if (!(error instanceof McpAdapterMissing)) throw error;

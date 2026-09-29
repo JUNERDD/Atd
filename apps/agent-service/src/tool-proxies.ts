@@ -9,15 +9,10 @@ import {
   type SessionManager,
   type ToolDefinition,
 } from '@earendil-works/pi-coding-agent';
-import type {
-  GrantScope,
-  McpServerConfig,
-  McpServerUpsertRequest,
-  PermissionTier,
-} from '@ai/agent-contracts';
+import type { GrantScope, PermissionTier } from '@ai/agent-contracts';
 import type { CapabilityRegistry } from './capabilities.js';
 import { commandToolDefinition } from './commands/tool.js';
-import { registerConfigureMcpTool } from './configure-mcp-tool.js';
+import { registerConfigureMcpTool, type UpsertMcp } from './configure-mcp-tool.js';
 import { ConfirmStore } from './confirms.js';
 import { registerDesktopTool } from './desktop-tool.js';
 import type { Reviewer } from './harness/auto-review.js';
@@ -53,7 +48,7 @@ export interface ServiceToolHost {
    * the read tool reads inside them without a confirmation; writes keep the usual rules.
    */
   skillDirs: () => readonly string[];
-  upsertMcp?: (serverId: string, request: McpServerUpsertRequest) => Promise<McpServerConfig>;
+  upsertMcp?: UpsertMcp;
 }
 
 /**

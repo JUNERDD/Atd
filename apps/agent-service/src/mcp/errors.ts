@@ -53,6 +53,10 @@ export type McpUpdate = McpProgress;
 
 export type McpErrorCode =
   | 'auth_required'
+  /** The launch needs the user's approval (mcp/launch-approvals.ts); HTTP 403. */
+  | 'approval_required'
+  /** An approval named a fingerprint that no longer matches; HTTP 409. */
+  | 'approval_changed'
   | 'forbidden'
   | 'not_found'
   | 'conflict'

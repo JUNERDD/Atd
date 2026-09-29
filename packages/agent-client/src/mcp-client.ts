@@ -1,4 +1,10 @@
-import { ErrorEnvelopeSchema, parse } from '@ai/agent-contracts';
+import {
+  ErrorEnvelopeSchema,
+  McpStatusResponseSchema,
+  parse,
+  type McpStatusResponse,
+} from '@ai/agent-contracts';
+import { manageRequest } from './manage-request.js';
 import { authHeaders, AgentClientError, type AgentClientOptions } from './types.js';
 
 /**
@@ -12,22 +18,6 @@ import { authHeaders, AgentClientError, type AgentClientOptions } from './types.
 export interface McpClient {
   options: AgentClientOptions;
   fetchImpl?: typeof fetch;
-}
-
-export interface McpServerStatusDto {
-  serverId: string;
-  connectionId: string;
-  configRevision: number;
-  state: string;
-  toolCount: number;
-  resourceCount: number;
-  promptCount: number;
-  disabled: boolean;
-  lastError: string;
-  /** The plugin that contributes the server, computed by the service (`user` for Personal). */
-  pluginId: string;
-  /** Servers of installed plugins are not in the user catalog and cannot be edited or removed. */
-  readOnly: boolean;
 }
 
 export interface McpContentDto {
@@ -94,25 +84,61 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
 
-function hasServers(json: unknown): json is { servers: McpServerStatusDto[] } {
-  return isRecord(json) && Array.isArray(json['servers']);
-}
-
 function hasOk(json: unknown): json is { ok: boolean } {
   return isRecord(json) && typeof json['ok'] === 'boolean';
 }
 
-export function mcpStatus(client: McpClient): Promise<{ servers: McpServerStatusDto[] }> {
-  return get(client, '/v1/mcp/status', hasServers);
+const decodeStatus = (json: unknown) => parse(McpStatusResponseSchema, json);
+
+/** Every server's status row (plugin, connection, launch approval) and the approval notice. */
+export function mcpStatus(client: McpClient): Promise<McpStatusResponse> {
+  return manageRequest(
+    client.options,
+    '/v1/mcp/status',
+    'GET',
+    undefined,
+    decodeStatus,
+    client.fetchImpl,
+  );
+}
+
+/**
+ * Withdraws a server's launch approval (user or plugin server, `<plugin>:<server>` for the latter)
+ * and stops it. Approving again takes the shell's native confirmation.
+ */
+export function mcpWithdrawApproval(
+  client: McpClient,
+  serverId: string,
+): Promise<McpStatusResponse> {
+  return manageRequest(
+    client.options,
+    `/v1/mcp/servers/${encodeURIComponent(serverId)}/approval`,
+    'DELETE',
+    undefined,
+    decodeStatus,
+    client.fetchImpl,
+  );
+}
+
+/** Dismisses the one-time notice that existing servers need approving once. */
+export function mcpDismissApprovalNotice(client: McpClient): Promise<McpStatusResponse> {
+  return manageRequest(
+    client.options,
+    '/v1/mcp/approvals/notice/dismiss',
+    'POST',
+    {},
+    decodeStatus,
+    client.fetchImpl,
+  );
 }
 
 export function mcpSnapshot(
   client: McpClient,
-): Promise<{ revision: number; servers: McpServerStatusDto[] }> {
+): Promise<{ revision: number; servers: unknown[] }> {
   return get(
     client,
     '/v1/mcp/snapshot',
-    (json): json is { revision: number; servers: McpServerStatusDto[] } =>
+    (json): json is { revision: number; servers: unknown[] } =>
       isRecord(json) && typeof json['revision'] === 'number' && Array.isArray(json['servers']),
   );
 }

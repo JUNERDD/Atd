@@ -13,6 +13,7 @@ import { CredentialTransactions, LateWritebackProhibited, TxnAborted } from './t
 import type { McpHostCallbacks } from './callbacks.js';
 import { classifyRedirect, physicalName, reuseKey, toAdapterServerEntry } from './servers.js';
 import type { McpStateSink, ManagerAccessor, ServerResolver } from './errors.js';
+import type { LaunchGate } from './launch-approvals.js';
 
 /**
  * Connection states + explicit auth operations (D6). States are
@@ -63,6 +64,7 @@ export class McpConnectionStates implements McpStateSink {
 
 export interface AuthDeps {
   servers: ServerResolver;
+  launch: LaunchGate;
   states: McpConnectionStates;
   txns: CredentialTransactions;
   authFlow: AdapterAuthFlow;
@@ -204,6 +206,9 @@ export class McpAuthManager {
     if (!record.http) throw new Error(`MCP server ${serverId} is not an HTTP server.`);
     const identity = reuseKey(record);
     const physical = physicalName(record, taskId);
+    const entry = toAdapterServerEntry(record);
+    // Refused before anything closes or dials: a refresh is a launch like any other.
+    await this.deps.launch.assertLaunch(record, entry);
     this.deps.states.set(serverId, 'connecting', '');
     this.deps.audit({ server: serverId, tool: 'mcp:refresh', decision: 'request' });
     try {
@@ -212,7 +217,7 @@ export class McpAuthManager {
         async ({ signal: txnSignal }) => {
           await this.manager().close(physical);
           txnSignal.throwIfAborted();
-          await this.manager().connect(physical, toAdapterServerEntry(record), txnSignal);
+          await this.manager().connect(physical, entry, txnSignal);
         },
         { kind: 'refresh', ...(signal ? { signal } : {}) },
       );

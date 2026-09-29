@@ -190,7 +190,10 @@ test('configure_mcp answers a status without env or header values', async () => 
   const previous = upsertRecord('tool', stdio({ API_KEY: ENV_SECRET }), undefined);
   const result = await configureMcp(
     {
-      upsertMcp: async (serverId, request) => upsertRecord(serverId, request, previous),
+      upsertMcp: async (serverId, request) => ({
+        record: upsertRecord(serverId, request, previous),
+        approval: 'required',
+      }),
       audit: () => undefined,
       taskId: 'task',
       runId: () => 'run',
@@ -199,7 +202,12 @@ test('configure_mcp answers a status without env or header values', async () => 
   );
   const text = result.content.map((block) => block.text).join('\n');
   assert.ok(!text.includes(ENV_SECRET));
-  assert.deepEqual(JSON.parse(text), { serverId: 'tool', revision: 1, disabled: false });
+  assert.deepEqual(JSON.parse(result.content[0]?.text ?? ''), {
+    serverId: 'tool',
+    revision: 1,
+    disabled: false,
+    approval: 'required',
+  });
 });
 
 test('a plugin duplicate leaves env-sourced header values out of servers.json', async () => {

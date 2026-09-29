@@ -7,6 +7,7 @@ import type {
   AdapterServerEntry,
 } from './adapter-types.js';
 import { CredentialTransactions } from './transactions.js';
+import type { LaunchGate } from './launch-approvals.js';
 import {
   isUnauthorized,
   McpError,
@@ -31,6 +32,8 @@ export interface ConnectionDeps {
   secrets: SecretResolver;
   states: McpStateSink;
   txns: CredentialTransactions;
+  /** Refuses a launch the user has not approved as it stands (mcp/launch-approvals.ts). */
+  launch: LaunchGate;
   log: Logger;
 }
 
@@ -192,7 +195,12 @@ export class ConnectionManager {
     return [...names];
   }
 
-  private async buildEntry(record: McpServerConfig): Promise<AdapterServerEntry> {
+  /**
+   * The adapter entry a connect would spawn or dial, bearer secret aside: the resolved executable
+   * and every argument, cwd, env and header as the adapter receives them. Launch approvals
+   * fingerprint exactly this, so anything that changes what runs must be resolved here.
+   */
+  async launchEntry(record: McpServerConfig): Promise<AdapterServerEntry> {
     const entry = toAdapterServerEntry(record);
     if (record.stdio) {
       const probe = await probeStdioRuntime(record.stdio.command, {
@@ -202,6 +210,13 @@ export class ConnectionManager {
       if (!probe.ok || !probe.resolved) throw new Error(probe.detail);
       entry.command = probe.resolved;
     }
+    return entry;
+  }
+
+  /** The single spawn/dial choke point: nothing reaches the adapter before the launch gate. */
+  private async buildEntry(record: McpServerConfig): Promise<AdapterServerEntry> {
+    const entry = await this.launchEntry(record);
+    await this.deps.launch.assertLaunch(record, entry);
     if (record.http?.auth.type === 'bearer') {
       const token = await this.deps.secrets.bearerToken(record);
       if (!token) {
@@ -222,6 +237,10 @@ export class ConnectionManager {
     signal?: AbortSignal,
   ): McpError | Error {
     if (error instanceof McpError && error.code === 'auth_required') return error;
+    if (error instanceof McpError && error.code === 'approval_required') {
+      this.deps.states.set(record.serverId, 'approval_required', error.message);
+      return error;
+    }
     if (signal?.aborted) {
       this.deps.states.set(record.serverId, 'disconnected', '');
       return error instanceof Error ? error : new Error(String(error));
