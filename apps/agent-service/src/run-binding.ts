@@ -9,6 +9,7 @@ import {
 import type { SessionFactoryDeps } from './pi-session.js';
 import { prepareSessionMcp, type SessionMcpPrep } from './pi-session-mcp.js';
 import { skillProfilePaths } from './skills/profile.js';
+import { effectiveTaskTier } from './tasks/tier.js';
 import { loadRunRole } from './skills/roles.js';
 import type { RuntimeAgent } from './subagents/agents.js';
 
@@ -81,7 +82,9 @@ export async function prepareRunBinding(
       ...mcp.bindings.map((binding) => binding.proxyName),
     ]),
   ];
+  // The session's tool host freezes the task's tier (pi-session.ts), so a changed tier reopens it.
   const key = JSON.stringify({
+    tier: effectiveTaskTier(deps.ctx.ledger, deps.taskId, deps.ctx.tier),
     tools,
     mcp: mcp.bindings.map((binding) => [binding.proxyName, binding.revision, binding.ref]),
     role: role && [role.role.roleId, role.role.revision, role.capabilities.revokedTools],
