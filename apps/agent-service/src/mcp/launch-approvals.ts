@@ -21,6 +21,7 @@ import {
 import { launchKey, readLaunchKey } from './launch-key.js';
 import { LaunchStore } from './launch-store.js';
 import type { McpServerRecords } from './server-records.js';
+import { adapterCommandValue, toAdapterServerEntry } from './servers.js';
 
 /**
  * Launch approvals (G1), the single owner of whether an MCP server may launch. Every stdio server
@@ -77,6 +78,7 @@ export class LaunchApprovals implements LaunchGate {
   }
 
   async assertLaunch(record: McpServerConfig, entry: AdapterServerEntry): Promise<void> {
+    refuseCommandValues(record, entry);
     const verdict = await this.verdict(record, entry);
     if (verdict === 'approved' || verdict === 'notRequired') return;
     const why =
@@ -105,7 +107,9 @@ export class LaunchApprovals implements LaunchGate {
   async launchable(records: McpServerConfig[]): Promise<McpServerConfig[]> {
     const states = await Promise.all(records.map((record) => this.state(record)));
     return records.filter(
-      (_, index) => states[index] === 'approved' || states[index] === 'notRequired',
+      (record, index) =>
+        (states[index] === 'approved' || states[index] === 'notRequired') &&
+        !adapterCommandValue(toAdapterServerEntry(record)),
     );
   }
 
@@ -139,6 +143,7 @@ export class LaunchApprovals implements LaunchGate {
       if (error instanceof McpError) throw error;
       throw new McpError('bad_request', serverId, errorMessage(error));
     }
+    refuseCommandValues(record, entry);
     const fingerprint = launchFingerprint(await this.key(serverId), this.bound(record, entry));
     const stored = this.store.get(serverId);
     const source = this.records.pluginSource(serverId);
@@ -263,4 +268,19 @@ export class LaunchApprovals implements LaunchGate {
       );
     }
   }
+}
+
+/**
+ * Refuses a launch in which pi-mcp-adapter would run a value as a shell command in the service
+ * process. No approval can allow it: the confirmation never shows env or header values, so the
+ * user could not see the command, and a plain HTTP server needs no approval at all.
+ */
+function refuseCommandValues(record: McpServerConfig, entry: AdapterServerEntry): void {
+  const field = adapterCommandValue(entry);
+  if (field)
+    throw new McpError(
+      'forbidden',
+      record.serverId,
+      `MCP server ${record.serverId} sets ${field} to a value starting with "!", which would run as a command; write "!!" for a literal "!".`,
+    );
 }

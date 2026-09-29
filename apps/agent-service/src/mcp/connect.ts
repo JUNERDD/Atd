@@ -237,8 +237,13 @@ export class ConnectionManager {
     signal?: AbortSignal,
   ): McpError | Error {
     if (error instanceof McpError && error.code === 'auth_required') return error;
+    // The launch gate's refusals keep their codes: not approved (yet), or never launchable.
     if (error instanceof McpError && error.code === 'approval_required') {
       this.deps.states.set(record.serverId, 'approval_required', error.message);
+      return error;
+    }
+    if (error instanceof McpError && error.code === 'forbidden') {
+      this.deps.states.set(record.serverId, 'error', error.message);
       return error;
     }
     if (signal?.aborted) {

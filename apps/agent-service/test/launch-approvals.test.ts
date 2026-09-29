@@ -195,6 +195,39 @@ test('an env-sourced bearer is refused until approved; plain HTTP needs no appro
   assert.equal(none.status, 400, 'a server that needs no approval has no details');
 });
 
+test('values the adapter would run as commands are refused, approved or not', async () => {
+  const { command, marker } = await launcher(temporary);
+  const ran = path.join(path.dirname(marker), 'ran');
+  const url = `http://127.0.0.1:${port}/mcp`;
+  const before = hits;
+  await put('cmd-env', stdio(command, [], { X: `!touch '${ran}'` }));
+  const details = await api.send('/v1/admin/approvals/mcp/cmd-env', 'GET');
+  assert.equal(details.status, 403, 'there is nothing to approve');
+  await put('cmd-header', {
+    transport: 'streamable-http',
+    url,
+    auth: { type: 'none' },
+    headers: { 'X-Cmd': `!touch '${ran}'` },
+  });
+  for (const serverId of ['cmd-env', 'cmd-header']) {
+    const refused = await api.send('/v1/mcp/connect', 'POST', { serverId });
+    assert.equal(refused.status, 403, refused.text);
+    assert.equal(errorCode(refused.json), 'forbidden');
+  }
+  assert.equal(hits, before, 'nothing was dialed');
+  assert.equal(await exists(ran), false, 'no command ran');
+  assert.equal(await exists(marker), false, 'nothing was spawned');
+  await put('literal-header', {
+    transport: 'streamable-http',
+    url,
+    auth: { type: 'none' },
+    headers: { 'X-Bang': '!!literal' },
+  });
+  const literal = await api.send('/v1/mcp/connect', 'POST', { serverId: 'literal-header' });
+  assert.notEqual(literal.status, 403, 'the escaped form is a literal value');
+  assert.ok(hits > before);
+});
+
 test('configure_mcp tells the model when a server needs the user to approve it', async () => {
   const { command } = await launcher(temporary);
   const host = {

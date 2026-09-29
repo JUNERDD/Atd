@@ -212,6 +212,22 @@ export function toAdapterServerEntry(record: McpServerConfig): AdapterServerEntr
   return entry;
 }
 
+/**
+ * The env or header value pi-mcp-adapter would run as a shell command in the service process at
+ * connect time (one that starts with a single `!`; `!!` is its escape for a literal `!`), named
+ * as `env NAME` or `header Name`; null when there is none.
+ */
+export function adapterCommandValue(entry: AdapterServerEntry): string | null {
+  const fields = [
+    ['env', entry.env],
+    ['header', entry.headers],
+  ] as const;
+  for (const [kind, values] of fields)
+    for (const [name, value] of Object.entries(values ?? {}))
+      if (value.startsWith('!') && !value.startsWith('!!')) return `${kind} ${name}`;
+  return null;
+}
+
 /** Full config snapshot for createMcpAdapter; never a configPath merge. */
 export function toAdapterConfig(records: McpServerConfig[]): AdapterMcpConfig {
   const mcpServers: Record<string, AdapterServerEntry> = {};
