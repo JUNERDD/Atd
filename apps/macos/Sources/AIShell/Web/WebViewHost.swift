@@ -130,10 +130,11 @@ final class WebViewHost: NSObject {
     configuration.userContentController.add(
       handler, contentWorld: .page, name: NativeBridgeContract.messageHandler)
     configuration.preferences.isElementFullscreenEnabled = false
+    // In-page Liquid Glass for `surface-glass` overlays, and a transparent page over the
+    // window's glass (spike S5, decision R5).
+    WebKitPrivate.enableSystemAppearance(configuration.preferences)
     let webView = ShellWebView(frame: .zero, configuration: configuration)
-    // Transparent over the window's glass (spike S5, decision R5): there is no public way to
-    // stop WKWebView from painting its background.
-    webView.setValue(false, forKey: "drawsBackground")
+    WebKitPrivate.disableBackground(webView)
     webView.underPageBackgroundColor = .clear
     webView.allowsMagnification = false
     webView.allowsBackForwardNavigationGestures = false

@@ -24,6 +24,8 @@ let package = Package(
     .testTarget(name: "AICoreTests", dependencies: ["AICore"]),
     // Runs a real WKWebView against a local stub service; see RelayIntegrationTests.
     .testTarget(name: "AIRelayTests", dependencies: ["AIRelay", "AICore"]),
+    // Real WKWebView checks of the private WebKit settings the shell depends on.
+    .testTarget(name: "AIShellTests", dependencies: ["AIShell"]),
   ],
   swiftLanguageModes: [.v6]
 )

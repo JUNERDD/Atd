@@ -177,7 +177,7 @@ flowchart LR
 - [x] **S4**：开发模式下 handler 代理 Vite 的模块请求，HMR 直连 `ws://127.0.0.1:<port>` 时不会被当成混合内容拦截。失败则退回 `vite build --watch` 加整页重载。
   - 结论：通过。`server.hmr = { protocol: 'ws', host: '127.0.0.1', clientPort }` 加开发 CSP `connect-src 'self' ws://127.0.0.1:<port>`，HMR 直连不被当成混合内容，热更新约 24ms。开发代理要放行 `/@vite/*`、`/@fs/<绝对路径>` 和 `?t=`、`?import` 查询串。React 刷新前导内联脚本尚未实测。
 - [x] **S5**：`-apple-visual-effect: -apple-system-glass-material` 在我们的 WKWebView 配置下，不开私有偏好也能生效。失败则退回 `backdrop-filter`。
-  - 结论：失败，按预案回退 `backdrop-filter`（决策 R5）。不开私有偏好时 `CSS.supports` 对 `-apple-visual-effect` 全部为 false；打开私有偏好 `useSystemAppearance` 后才是真玻璃（Raycast 疑似如此），本计划不开。透明 WKWebView 叠在 `NSGlassEffectView` 上需要私有 KVC `drawsBackground = false`，没有公开替代，已接受。
+  - 结论：不开私有偏好时失败：`CSS.supports` 对 `-apple-visual-effect` 全部为 false。打开私有偏好 `useSystemAppearance` 后是真玻璃（Raycast 疑似如此）。按用户决定打开（决策 R5）。透明 WKWebView 叠在 `NSGlassEffectView` 上需要私有 KVC `drawsBackground = false`，没有公开替代，已接受。
 - [x] **S6**：`callAsyncJavaScript` 按 runloop 合批推帧的吞吐。用长对话流式输出实测，定出门槛。
   - 结论：通过，但合批规则改为“每个 WKWebView 同时最多一个 `callAsyncJavaScript` 在途”：入队时若无在途调用，就在下一轮主队列投递；调用完成后把积压的帧一次投出；JS 端同步处理整批。只按 runloop 合批时平均每次仍只有约 1 帧，在 JS 每批耗时 2ms 时突发 2000 帧的 p99 为 141ms；一次在途规则为 8.1ms，且无掉帧。不需要计数或计时门槛，超过约 4 MiB 可拆批。
 - [x] **S7**：标题栏拖动由 Swift 处理，可以叠原生拖动区域，也可以由 JS 请求执行拖动；使用标准交通灯按钮；`.nonactivatingPanel` 下的键盘和中文输入法正常。
@@ -367,7 +367,7 @@ flowchart LR
     - R2 `index.html` 的 meta CSP 保留到 P8：并行期 Electron 以文件路径加载，拿不到响应头 CSP；原生 handler 另外下发头部 CSP。
     - R3 `--mode web` 构建改名为 `--mode native`，输出 `dist-native`；仅渲染层的开发脚本改名为 `dev:renderer`。
     - R4 epoch 不一致的 409 必须带响应头 `x-relay-epoch-current`，其他 409 不带；中继只对带这个头的 409 重拉清单并重放。
-    - R5 页面内玻璃不开私有偏好，实际走 `backdrop-filter` 回退；窗口背景透明依赖私有 KVC `drawsBackground`，列入风险。
+    - R5（2026-09-29 按用户决定修订）页面内玻璃打开 WebKit 私有偏好 `useSystemAppearance`，`surface-glass` 在壳里渲染系统玻璃；Electron、预览页和不再支持该偏好的 WebKit 走 `backdrop-filter` 回退。窗口背景透明依赖私有 KVC `drawsBackground`。两项都只在 WebKit 仍响应对应的 `_set…:` 选择器时才设置，缺失时退回公开行为，不会崩溃。实测对渲染层的常见表单控件没有像素差异。
     - R6 导航锁定：拒绝所有子框架导航，以及主框架导航到 `ai-app://renderer` 以外的地址（替代不生效的 `frame-ancestors`）。
     - R7 中继拒绝 `Origin` 不是 `ai-app://renderer` 的请求；非 GET/HEAD 的 `/v1` 请求必须带 `x-ai-relay: 1`，由 WebView 宿主的 HTTP 客户端发送。
     - R8 全局快捷键用最薄的 Carbon 包装做非独占注册（与 Electron 现状一致），回报真实错误码，并检查系统保留快捷键；只借用 HotKey 的键名到键码映射。不用独占标志，避免抢走其他应用的快捷键。
@@ -404,11 +404,11 @@ flowchart LR
 
 ## Risks
 
-- **私有 KVC `drawsBackground`**（R5）：透明 WKWebView 依赖它，没有公开替代，系统更新可能改掉。
+- **私有 WebKit 设置**（R5）：`useSystemAppearance` 和 `drawsBackground` 都没有公开替代，系统更新可能移除。代码在设置前检查选择器，缺失时分别退回 CSS 回退材质和不透明页面；`AIShellTests` 用真实 WKWebView 检查这两项仍然生效。
 - **渲染层可回读的敏感值**（P2 审计）：`GET /v1/mcp/servers` 和 `POST /v1/mcp/configure` 返回 MCP 配置里 `env`、`headers` 的明文，编辑表单需要它们；登录流程返回短时有效的设备码。XSS 能读到这些值，是否改为只写需要另行决定。
 - **Release 包**：约 906MB，主要是 service 的 `node_modules`；内置 Node 和 `.node` 插件目前只作为资源被封装，Developer ID 签名和公证时需要单独签名。只跑 `xcodebuild` 而不先跑 `bundle` 会打进旧的服务包，应使用 `pnpm --filter @ai/macos build:release`。
 - **Intel Mac**：文件索引只构建 darwin-arm64，x64 上文件搜索不可用（原生版本来只支持 arm64）。
-- **私有 WebKit 属性**：`-apple-visual-effect` 可能被系统更新改掉。已接受这个风险，回退方案是 `backdrop-filter`。
+- **私有 WebKit 属性**：`-apple-visual-effect` 可能被系统更新改掉。已接受这个风险，回退方案是 `backdrop-filter`（`@supports` 自动切换）。
 - **scheme handler 请求体和混合内容**（S1、S4）：附件上传的退路是 Swift 按路径导入，已经不再依赖大请求体；HMR 的退路是整页重载。
 - **流吞吐**（S6）：长对话流式输出可能卡顿。可以用按 runloop 合批的方式缓解，门槛由 spike 定出。
 - **XSS 仍能驱动白名单内的路由**：WebView 虽然不持有凭据，真正的防线是 CSP 和 Markdown 净化，与 Electron 渲染层的边界相同。还需要在 P2 核对白名单里有没有会回读机密的路由。
