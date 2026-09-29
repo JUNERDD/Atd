@@ -30,7 +30,7 @@ const windowRoot = loadWindowRoot();
 // tree, so a transcript rarely has to show plain text first.
 if (!isSettingsWindow) void loadMarkdown();
 
-// Without the Electron preload (a plain browser on `pnpm dev:web`, conventionally opened with
+// Without the Electron preload (a plain browser on `pnpm dev:renderer`, conventionally opened with
 // `?preview`) no host installs `window.desktop`: the page is a bare renderer for layout checks.
 const runtime = window.desktop?.runtime ?? 'web';
 document.documentElement.dataset.runtime = runtime;

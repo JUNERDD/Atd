@@ -63,10 +63,10 @@ To run a real model, open Settings → Providers, add a working connection, choo
 To check layout, styling, and copy without Electron:
 
 ```sh
-pnpm dev:web
+pnpm dev:renderer
 ```
 
-Then open <http://127.0.0.1:5173/?preview> in a browser. The page is the bare React UI: it does not connect to an agent service, and there is no browser client for real data. `pnpm dev` and `pnpm dev:web` use the same port (5173), so run only one of them at a time.
+Then open <http://127.0.0.1:5173/?preview> in a browser. The page is the bare React UI: it does not connect to an agent service, and there is no browser client for real data. `pnpm dev` and `pnpm dev:renderer` use the same port (5173), so run only one of them at a time.
 
 ### Agent service CLI
 

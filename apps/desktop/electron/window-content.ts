@@ -65,7 +65,7 @@ export async function loadWindowContent(window: BrowserWindow, hash = '') {
     parsed.hash = hash;
     await window.loadURL(parsed.href);
   } else {
-    // A packaged app ships the renderer in Resources/web (the `dist-web` build); a local build
+    // A packaged app ships the renderer in Resources/web (the `dist-native` build); a local build
     // loads Vite's `dist`.
     const page = app.isPackaged
       ? path.join(process.resourcesPath, 'web', 'index.html')

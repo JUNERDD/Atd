@@ -71,7 +71,9 @@ export default defineConfig(({ mode, command }) => ({
           : html;
       },
     },
-    ...(mode === 'web'
+    // The native renderer build (`build:native`) and its dev server (`dev:renderer`) run without
+    // Electron; the same build is the renderer Electron loads from the file path.
+    ...(mode === 'native'
       ? []
       : [
           electron({
@@ -115,5 +117,5 @@ export default defineConfig(({ mode, command }) => ({
     watch: { ignored: ['**/release/**', '**/test-results/**', '**/.artifacts/**'] },
   },
   preview: { host: '127.0.0.1', port: 4173, strictPort: true },
-  build: { target: 'chrome152', outDir: mode === 'web' ? 'dist-web' : 'dist' },
+  build: { target: 'chrome152', outDir: mode === 'native' ? 'dist-native' : 'dist' },
 }));
