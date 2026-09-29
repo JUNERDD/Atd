@@ -2,7 +2,7 @@
 
 A quiet desktop agent panel. It sits in the bottom-right corner of the screen, opens with a global shortcut, and runs coding and general-purpose agent tasks on your machine.
 
-The app has two parts. An Electron desktop client provides the floating panel and a settings window. A local agent service built on the [pi](https://github.com/earendil-works/pi) SDK runs the tasks, stores data, and handles credentials. The service can also serve the same UI to a paired browser.
+The app has two parts. An Electron desktop client provides the floating panel and a settings window. A local agent service built on the [pi](https://github.com/earendil-works/pi) SDK runs the tasks, stores data, and handles credentials.
 
 ![AI task panel](docs/task-panel.png)
 
@@ -21,7 +21,6 @@ _This is an early renderer preview. On macOS, the native window material changes
 - **Memory**: long-term memory powered by [pi-hermes-memory](https://github.com/chandra447/pi-hermes-memory), with search, editing, deletion, and a pause for learning.
 - **Settings**: Permissions, Extensions, Providers, Commands, Memory, and Shortcuts. The settings navigation is a sidebar at 760px and wider, compact top navigation from 480px, and a drawer below that.
 - **Languages**: English and Simplified Chinese. The first run follows the OS locale.
-- **Web client**: open the same UI in a browser through a one-time pairing link.
 
 Default shortcuts:
 
@@ -59,17 +58,15 @@ pnpm dev
 
 To run a real model, open Settings → Providers, add a working connection, choose a default model, and make that connection the default provider.
 
-### Web client
+### Renderer preview
 
-While `pnpm dev` is running, open <http://127.0.0.1:5173> in a browser. The dev server proxies `/v1` to the service the desktop app started and signs the page in automatically through a same-origin pairing endpoint.
-
-To run the web UI without Electron:
+To check layout, styling, and copy without Electron:
 
 ```sh
 pnpm dev:web
 ```
 
-This needs a running service; set `AI_AGENT_DATA_DIR` or `AI_AGENT_URL` to choose which one. Add `?preview` to the URL to render the bare UI without a service. `pnpm dev` and `pnpm dev:web` use the same port (5173), so run only one of them at a time.
+Then open <http://127.0.0.1:5173/?preview> in a browser. The page is the bare React UI: it does not connect to an agent service, and there is no browser client for real data. `pnpm dev` and `pnpm dev:web` use the same port (5173), so run only one of them at a time.
 
 ### Agent service CLI
 
@@ -83,11 +80,10 @@ node dist/cli.js --help
 | --------- | -------------------------------------------------------------------------- |
 | `serve`   | Start the service in the foreground (loopback only; `--port 0` picks one). |
 | `status`  | Print the status of the running service.                                   |
-| `web`     | Print a one-time browser pairing link (`--open` opens it).                 |
 | `stop`    | Ask the running service to shut down.                                      |
 | `migrate` | Import a copy of older desktop data, with dry-run and rollback.            |
 
-`pnpm --filter @ai/desktop build:web` builds the web client that `serve --web-root apps/desktop/dist-web` serves at `/`.
+The service serves only the authenticated `/v1` API; it hosts no web page.
 
 ## Workspace
 
@@ -95,14 +91,14 @@ node dist/cli.js --help
 apps/
   desktop/               Electron app: main process, preload, and React renderer
     electron/            Windows, IPC, settings, shortcuts, service launcher
-    src/                 React UI, features, i18n, web client entry
+    src/                 React UI, features, i18n
     tests/               Vitest setup and the Playwright Electron smoke suite
   agent-service/         Local agent service (Fastify HTTP + WebSocket, pi SDK)
     src/                 Tasks, providers, credentials, MCP, skills, subagents, memory
     product-skills/      Built-in skills shipped with the service
 packages/
   agent-contracts/       Shared TypeBox schemas for the service protocol
-  agent-client/          HTTP and WebSocket client used by desktop and web
+  agent-client/          HTTP and WebSocket client for the agent service
   ui/                    Shared shadcn components, theme tokens, brand assets
   typescript-config/     Shared TypeScript configuration
 patches/                 pnpm patches for pinned pi extensions
@@ -140,7 +136,7 @@ Builds the app and runs the Playwright smoke suite against a real Electron windo
 pnpm package
 ```
 
-Builds an unsigned app directory for the current platform. On macOS the output is `apps/desktop/release/mac-arm64/AI.app` (`mac` on Intel). The agent service, its production dependencies, and the web client are copied into the app resources, together with the official Node.js release pinned by `.node-version` for the build machine's platform and architecture. The first pack downloads that release into `tmp/node-dist/` and checks it against the release's `SHASUMS256.txt`. Each pack also writes a new build ID; a packaged app only reuses a running service with the same build ID and replaces any other. `pnpm --filter @ai/desktop start` runs the production build without packaging.
+Builds an unsigned app directory for the current platform. On macOS the output is `apps/desktop/release/mac-arm64/AI.app` (`mac` on Intel). The agent service, its production dependencies, and the renderer build are copied into the app resources, together with the official Node.js release pinned by `.node-version` for the build machine's platform and architecture. The first pack downloads that release into `tmp/node-dist/` and checks it against the release's `SHASUMS256.txt`. Each pack also writes a new build ID; a packaged app only reuses a running service with the same build ID and replaces any other. `pnpm --filter @ai/desktop start` runs the production build without packaging.
 
 `pnpm build && pnpm --filter @ai/desktop package:installer` builds the configured installer for the current platform instead (dmg on macOS, nsis on Windows, AppImage on Linux) into `apps/desktop/release/`.
 
@@ -164,7 +160,7 @@ Signed releases also publish the update feed: one `AI-<version>-<arch>-mac.zip` 
 ## Data and Security
 
 - **Process isolation**: the renderer runs with `contextIsolation` and `sandbox`, and without `nodeIntegration`. External navigation, pop-ups, and permission requests are restricted. The preload exposes a narrow, typed API, and the main process validates the sender and the payload of every IPC call.
-- **Local service**: the agent service listens only on loopback and requires a bearer token stored in its data directory. Browsers sign in through one-time pairing codes.
+- **Local service**: the agent service listens only on loopback and requires a bearer token stored in its data directory. It hosts no web page and has no browser sign-in.
 - **Credentials**: provider and MCP secrets are stored in the OS keychain (macOS Keychain, Windows Credential Manager, or Secret Service on Linux). They never reach the renderer or task snapshots. If no persistent keyring is available, the service says so and runs only with temporary credentials from `AI_AGENT_TEMP_*` environment variables, which it never stores.
 - **Service lifecycle**: the desktop app starts the service as its child and stops it on quit. When tasks are running, quitting (or restarting to update) first asks whether to stop them; queued tasks stay queued and start the next time the app opens. OS shutdown, logout, and termination signals quit without asking. If the service exits unexpectedly, the app restarts it with an increasing delay. After 3 unexpected exits within 5 minutes it stops trying, and **Restart Agent Service** in the menu starts it again.
 - **Open at login**: an opt-in switch in Settings › Shortcuts (packaged macOS and Windows builds). The state lives in the OS login items, not in the app's settings; an app started at login stays in the menu bar without showing the panel.
