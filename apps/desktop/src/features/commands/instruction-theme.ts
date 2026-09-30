@@ -5,8 +5,10 @@ export const instructionTheme = EditorView.theme(
   {
     '&': { color: 'var(--foreground)' },
     '.cm-cursor': { borderLeftColor: 'var(--foreground)' },
-    '&.cm-focused .cm-selectionBackground, .cm-selectionBackground, ::selection': {
-      backgroundColor: 'var(--input)',
+    '.cm-selectionBackground, ::selection': { backgroundColor: 'var(--input)' },
+    // The selector mirrors the base theme's own focused rule, which a shorter one cannot outrank.
+    '&.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground': {
+      backgroundColor: 'var(--ata-text-selection)',
     },
     // The list inside paints the glass material (`surface-glass`): CodeMirror's unlayered base
     // theme would outrank the utility on the tooltip itself, so the tooltip only clears its fill.

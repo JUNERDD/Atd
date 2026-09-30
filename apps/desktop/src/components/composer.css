@@ -139,13 +139,21 @@
 .composer-input .cm-editor .cm-line {
   padding: 0;
 }
-/* The caret and selection are CodeMirror's drawn layers (`drawSelection`), not the native ones. */
+/* The caret and selection are CodeMirror's drawn layers (`drawSelection`), not the native ones.
+   The library centres the caret on its position with a negative margin; at offset 0 (an empty
+   draft) that puts most of it left of the scroller, whose `overflow-x` clips it away. Drawing it
+   from the position rightwards, like WebKit's native caret, keeps it whole at the edge. */
 .composer-input .cm-editor .cm-cursor {
+  margin-left: 0;
   border-left-color: var(--foreground);
 }
-.composer-input .cm-editor .cm-selectionBackground,
-.composer-input .cm-editor.cm-focused .cm-selectionBackground {
+/* A blurred selection keeps the faint input wash. The focused selector mirrors the library's own
+   light-theme rule (a pale lavender), which a shorter selector cannot outrank. */
+.composer-input .cm-editor .cm-selectionBackground {
   background: var(--input);
+}
+.composer-input .cm-editor.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground {
+  background: var(--ata-text-selection);
 }
 /* The placeholder is drawn by the editor root, not by a widget at the caret where `／` and `、`
    are typed. */

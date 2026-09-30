@@ -37,6 +37,10 @@
   --ata-surface-settings-sidebar: rgb(255 255 255 / 3%);
   --ata-border-settings-sidebar: rgb(255 255 255 / 6%);
   --ata-material-selected: rgb(255 255 255 / 12%);
+  /* Drawn text selection in the CodeMirror editors, matching the native one elsewhere on the page:
+     WebKit paints that from the system highlight at 80% opacity, which follows the accent colour
+     and the page's dark appearance. */
+  --ata-text-selection: color-mix(in srgb, Highlight 80%, transparent);
   --ata-surface-ghost-hover: rgb(255 255 255 / 10%);
   --ata-text-secondary: #a1a1a1;
   --ata-syntax-variable: #60a5fa;
