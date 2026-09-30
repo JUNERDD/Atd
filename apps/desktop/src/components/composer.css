@@ -106,6 +106,10 @@
   grid-area: prompt;
   min-height: 20px;
   max-height: 20px;
+  /* The glass's persistent child layer (see `surface-glass` in `@ai/ui`): a draft that scrolled and
+     is cleared or sent drops the editor's scroller layers here, not on the glass, where they
+     lingered with the old lines over the collapsed pill. */
+  will-change: transform;
 }
 /* The CodeMirror editor grows with its text; the scroll area around it owns vertical scrolling
    (20px collapsed, 100px expanded). `.cm-editor` scoping outranks the library's base theme. */
@@ -131,11 +135,11 @@
 .composer-input .cm-editor .cm-content {
   min-height: 20px;
   padding: 0;
-  caret-color: var(--foreground);
 }
 .composer-input .cm-editor .cm-line {
   padding: 0;
 }
+/* The caret and selection are CodeMirror's drawn layers (`drawSelection`), not the native ones. */
 .composer-input .cm-editor .cm-cursor {
   border-left-color: var(--foreground);
 }
@@ -191,6 +195,13 @@
   gap: 4px;
 }
 
+/* Send enables with the first character and disables when the draft empties; that switch (and the
+   placeholder it accompanies) is immediate, so the button's opacity never fades. Hover and focus
+   keep the shared Button transitions. */
+.composer-send {
+  transition-property: color, background-color, border-color, box-shadow;
+}
+
 .composer-attachments {
   grid-area: files;
   min-height: 0;
@@ -217,7 +228,7 @@
 }
 
 /* The merged model configuration stays one trailing control; the context ring sits before it as a
-   separate glass pill. When a narrow panel wraps it below the policy group, it stays at the
+   separate control. When a narrow panel wraps it below the policy group, it stays at the
    trailing edge. */
 .composer-model-group {
   display: flex;
@@ -229,7 +240,7 @@
   margin-left: auto;
 }
 
-/* Context usage ring: an icon-xs (24px) glass button around a 14px ring, like the progress pill's
+/* Context usage ring: an icon-xs (24px) ghost glass button (`glass-ghost`) around a 14px ring, like the progress pill's
    todo ring. The level colors the arc: muted, then warning from 75%, destructive from 90%. */
 .context-usage {
   color: var(--muted-foreground);

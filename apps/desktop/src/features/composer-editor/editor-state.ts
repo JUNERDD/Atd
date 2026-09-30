@@ -1,5 +1,5 @@
 import { Compartment, EditorSelection, EditorState, type Extension } from '@codemirror/state';
-import { EditorView, type ViewUpdate } from '@codemirror/view';
+import { drawSelection, EditorView, type ViewUpdate } from '@codemirror/view';
 import type { CommandIds } from '../quick-panel/trigger';
 import type { ComposerDraft } from './draft';
 import { chipDecorations } from './chip-decorations';
@@ -86,6 +86,9 @@ export function createComposerState(
       quickCommandIds.of(host.quickCommands),
       commandMarks,
       composerKeys(host),
+      // CodeMirror draws the caret and selection itself. WebKit's native caret left a ghost at the
+      // old position when the placeholder reappeared in the same frame as the caret moved back.
+      drawSelection(),
       EditorView.contentAttributes.of({
         'aria-autocomplete': 'list',
         'data-panel-autofocus': 'true',

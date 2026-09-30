@@ -70,6 +70,7 @@ export function ProviderCatalog({
         className="flex-1 min-h-0 min-w-0 m-[-3px_-15px_-3px_-3px]"
         aria-label={t('catalog.available')}
         gutter="stable"
+        scrollShadow
       >
         <div className="settings-editor-inner">
           {!visible.length && (

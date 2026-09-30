@@ -13,8 +13,8 @@ const ERROR_PERCENT = 90;
  * muted below 75%, the warning color from 75%, the destructive color from 90%. The tooltip gives
  * the token counts and says when the service compacts on its own. Hidden while the usage is
  * unknown (no run yet, or right after a compaction). Like `FieldHint`, the trigger is a button
- * only so keyboard focus can open the tooltip; it has no action. It is a glass control beside the
- * glass model trigger.
+ * only so keyboard focus can open the tooltip; it has no action. Like the model trigger beside
+ * it, it is transparent until hovered (`glass-ghost`).
  */
 export function ContextUsageRing({ context }: { context: TaskContextState }) {
   const { t } = useTranslation('panel');
@@ -36,7 +36,7 @@ export function ContextUsageRing({ context }: { context: TaskContextState }) {
       <TooltipTrigger asChild>
         <Button
           type="button"
-          variant="glass"
+          variant="glass-ghost"
           size="icon-xs"
           className="context-usage"
           data-level={level}

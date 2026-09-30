@@ -322,6 +322,7 @@ export function Composer({
               <div className="composer-actions">
                 <IconButton
                   label={label}
+                  className="composer-send"
                   variant="default"
                   tooltipSide="top"
                   disabled={disabled}

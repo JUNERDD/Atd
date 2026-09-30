@@ -168,6 +168,7 @@ export function MemorySettings() {
             className="editor-fields"
             viewportClassName="overlay-footer-fade"
             gutter="stable"
+            scrollShadow
           >
             <div className="settings-editor-inner">
               <div className="settings-field">

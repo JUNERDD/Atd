@@ -157,14 +157,24 @@ body {
 /* Applied to the ScrollArea viewport a surface's overlay footer covers. The mask reaches well above
    the bar so the content has finished fading by the time it slides under the controls. */
 .overlay-footer-fade {
-  scroll-padding-bottom: calc(var(--overlay-footer-height, 0px) + 56px);
-  mask-image: linear-gradient(
+  --overlay-footer-mask: linear-gradient(
     to bottom,
     #000 calc(100% - var(--overlay-footer-height, 0px) - 48px),
     rgb(0 0 0 / 42%) calc(100% - var(--overlay-footer-height, 0px)),
     rgb(0 0 0 / 10%) calc(100% - (var(--overlay-footer-height, 0px) / 2)),
     transparent
   );
+  scroll-padding-bottom: calc(var(--overlay-footer-height, 0px) + 56px);
+  mask-image: var(--overlay-footer-mask);
+}
+/* With `scrollShadow`, content scrolled under the top edge fades too (the shared `scroll-shadowed`
+   fade, which this rule would otherwise override); the bar's fade stays the bottom edge, so the
+   two masks intersect. */
+.overlay-footer-fade[data-top-scroll='true'] {
+  mask-image:
+    linear-gradient(to bottom, transparent, #000 var(--scroll-shadow-size)),
+    var(--overlay-footer-mask);
+  mask-composite: intersect;
 }
 /* Reserve the bar's height plus the fade so the last row stays fully opaque at full scroll. */
 .overlay-footer-fade > div {

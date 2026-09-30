@@ -63,7 +63,7 @@ function AlertDialogContent({
 
 function AlertDialogHeader({ className, ...props }: React.ComponentProps<'div'>) {
   return (
-    <ScrollArea className="-m-1 min-h-0">
+    <ScrollArea className="-m-1 min-h-0" scrollShadow>
       <div
         data-slot="alert-dialog-header"
         className={cn(

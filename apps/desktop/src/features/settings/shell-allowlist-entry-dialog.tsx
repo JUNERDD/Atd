@@ -38,7 +38,7 @@ export function ShellAllowlistEntryDialog({
             {t('permissions.shellAllowlist.detailDescription')}
           </DialogDescription>
         </DialogHeader>
-        <ScrollArea className="settings-shell-allowlist-detail">
+        <ScrollArea className="settings-shell-allowlist-detail" scrollShadow>
           <pre className="font-mono">
             <span className="settings-shell-allowlist-prompt" aria-hidden="true">
               ${' '}

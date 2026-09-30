@@ -8,6 +8,13 @@
   overflow: hidden;
 }
 
+/* The viewport is the glass's persistent child layer (see `surface-glass` in `@ai/ui`): a view's
+   list that stops scrolling while the popover stays open (fewer todos) drops its scroller layers
+   here, not on the glass, where they lingered with the old rows below the shrinking popover. */
+.composer-popover > .morph-viewport {
+  will-change: transform;
+}
+
 /* Closing under a hidden composer skips the exit animation, so Radix removes the popover in the
    same frame instead of leaving it over the view that replaced the composer. */
 .composer-popover[data-slot='popover-content'][data-instant-close] {

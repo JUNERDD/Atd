@@ -30,7 +30,7 @@ export function SessionMenu({ detail }: { detail: TaskDetail }): ReactElement {
           <IconButton
             label={t('session.menu')}
             aria-label={t('session.menu')}
-            variant="glass"
+            variant="glass-ghost"
             className="header-button"
             tooltipDismissOnClick
           >

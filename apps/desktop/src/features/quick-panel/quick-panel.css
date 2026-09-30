@@ -17,6 +17,13 @@
   border-radius: inherit;
 }
 
+/* The command is the glass's persistent child layer (see `surface-glass` in `@ai/ui`): a keystroke
+   that makes a scrolling list fit drops the list's scroller layers here, not on the glass, where
+   they lingered with the previous rows over the composer. */
+.quick-panel-content > [data-slot='command'] {
+  will-change: transform;
+}
+
 .quick-panel-content [data-slot='command-group'] {
   padding: 0;
 }

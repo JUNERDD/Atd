@@ -48,7 +48,12 @@ export function CommandInput({
   }
   return (
     <>
-      <ScrollArea className="panel-content" viewportClassName="overlay-footer-fade" gutter="none">
+      <ScrollArea
+        className="panel-content"
+        viewportClassName="overlay-footer-fade"
+        gutter="none"
+        scrollShadow
+      >
         <section className="panel-content-body command-preparation" aria-label={t('input.label')}>
           <p className="truncate text-sm text-muted-foreground" title={command.description}>
             {command.description}

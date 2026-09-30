@@ -124,7 +124,11 @@ function AgentPermissionsForm({
 
   return (
     <>
-      <ScrollArea className="panel-dialog-scroll agent-permissions-scroll" gutter="stable">
+      <ScrollArea
+        className="panel-dialog-scroll agent-permissions-scroll"
+        gutter="stable"
+        scrollShadow
+      >
         <div className="agent-permissions-body">
           <section
             className="agent-permissions-section"

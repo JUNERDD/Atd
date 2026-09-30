@@ -171,6 +171,7 @@ export function CommandEditor({
         className="flex-1 min-h-0 min-w-0 m-[-3px_-15px_-3px_-3px]"
         viewportClassName="overlay-footer-fade"
         gutter="stable"
+        scrollShadow
       >
         <fieldset disabled={Boolean(plugin)} className="editor-fields min-w-0 p-0.75">
           {plugin && (

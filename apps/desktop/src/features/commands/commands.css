@@ -145,6 +145,12 @@
 .quick-panel-content.instruction-quick-panel {
   max-height: min(22rem, var(--radix-popover-content-available-height));
 }
+/* The list's viewport is its glass's persistent child layer (see `surface-glass` in `@ai/ui`):
+   typing that makes the options fit drops the viewport's scroller layers inside it, not on the
+   glass, where they lingered with the old options around the shrunken list. */
+.completion-viewport {
+  will-change: transform;
+}
 .completion-options {
   padding: 4px;
   font-family: var(--font-sans);

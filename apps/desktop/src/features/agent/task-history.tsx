@@ -117,7 +117,7 @@ export function TaskHistory({
           </InputGroupAddon>
         </InputGroup>
       </div>
-      <ScrollArea className="flex-1 min-h-0 -mr-3" gutter="stable">
+      <ScrollArea className="flex-1 min-h-0 -mr-3" gutter="stable" scrollShadow>
         <ul className="task-list">
           {visible.map(({ task, statusLabel, match }) => {
             const status = task.runs.at(-1)?.status;

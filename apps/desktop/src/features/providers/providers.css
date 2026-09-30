@@ -237,6 +237,10 @@ button.model-config-row-nav:disabled:hover {
   min-width: 0;
   min-height: 0;
   flex: 1;
+  /* Each view mounts its own glass content, and the view is that glass's persistent child layer
+     (see `surface-glass` in `@ai/ui`): a search that makes the model list fit drops the list's
+     scroller layers here, not on the glass, where they lingered with the old rows below it. */
+  will-change: transform;
 }
 .model-config-back-header {
   display: flex;

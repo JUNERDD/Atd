@@ -210,8 +210,22 @@
  * ring and outline on it (RenderBox::applyVisualEffectOverflow), so an outer shadow drew a second,
  * larger glass frame around the surface. System glass therefore takes only an inset edge; the
  * drop shadow and outer ring return wherever the glass is off.
+ *
+ * System glass also hosts the element's child layers inside the material's SwiftUI layer
+ * (WebKit's WKMaterialHostingSupport). When the last of them leaves while the surface stays open,
+ * as a scroll area's layers do once its content fits, it keeps drawing its last contents at the
+ * surface's new geometry and fades out over about 200ms: old rows linger over whatever the
+ * shrunken surface uncovered. A surface whose scrolling content can shrink while it is open keeps
+ * one persistent composited child instead (`will-change: transform` on the element that stays for
+ * as long as the surface does), named by the composition that owns the surface.
  */
 @utility surface-glass {
+  /* On glass the neutral fills are a translucent wash, as glass controls use on hover: every item
+     highlight (menu, select and command options use `accent`, custom rows and ghost hovers use
+     `muted`) and every muted fill (keycaps, tabs) lets the material show through instead of
+     sitting on it as an opaque gray block. */
+  --accent: var(--ata-glass-control-wash);
+  --muted: var(--ata-glass-control-wash);
   background-color: var(--ata-glass-fill, var(--popover));
   backdrop-filter: blur(var(--ata-glass-blur, var(--ata-backdrop-blur)));
   box-shadow: var(--ata-glass-shadow, var(--ata-glass-shadow-default));

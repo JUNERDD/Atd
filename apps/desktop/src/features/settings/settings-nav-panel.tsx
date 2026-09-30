@@ -105,6 +105,7 @@ export function SettingsNavPanel({
       <ScrollArea
         className="settings-nav-scroll"
         gutter="none"
+        scrollShadow
         data-searching={searching || undefined}
       >
         <nav

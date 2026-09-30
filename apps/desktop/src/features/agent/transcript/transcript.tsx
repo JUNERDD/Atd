@@ -133,13 +133,18 @@ export function Transcript({
         className="flex-1 min-h-0"
         viewportClassName="overlay-footer-fade"
         gutter="none"
+        scrollShadow
         viewportProps={{ onScroll }}
       >
         <div className="conversation-messages">
           {task.legacy && (
             <div className="legacy-note">
               <p className="text-sm">{t('conversation.legacyTitle')}</p>
-              <ScrollArea className="input-preview" viewportClassName="max-h-[inherit]">
+              <ScrollArea
+                className="input-preview"
+                viewportClassName="max-h-[inherit]"
+                scrollShadow
+              >
                 <div>{task.legacy.prompt}</div>
               </ScrollArea>
               {task.legacy.attachments.length > 0 && (

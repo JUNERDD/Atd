@@ -106,6 +106,7 @@ export function ParameterEditor({
         className="flex-1 min-h-0 min-w-0 m-[-3px_-15px_-3px_-3px]"
         viewportClassName="overlay-footer-fade"
         gutter="stable"
+        scrollShadow
       >
         <div className="editor-fields p-0.75">
           <div className="field-columns aligned-fields">
