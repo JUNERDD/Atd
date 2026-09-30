@@ -1,9 +1,8 @@
 import { useState } from 'react';
-import { ChevronRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Button } from '@ai/ui/components/button';
 import { HighlightedText } from '@ai/ui/components/highlighted-text';
 import { Input } from '@ai/ui/components/input';
+import { Item, ItemContent, ItemDescription, ItemMedia, ItemTitle } from '@ai/ui/components/item';
 import { ScrollArea } from '@ai/ui/components/scroll-area';
 import { matchFields } from '@ai/ui/lib/fuzzy-match';
 import { useCompositionQuery } from '@ai/ui/lib/ime';
@@ -72,32 +71,36 @@ export function ProviderCatalog({
         aria-label={t('catalog.available')}
         gutter="stable"
       >
-        <div className="settings-editor-inner provider-directory">
+        <div className="settings-editor-inner">
           {!visible.length && (
             <p className="text-sm text-muted-foreground py-6">{t('catalog.empty')}</p>
           )}
-          {visible.map(({ provider, match }) => (
-            <Button
-              key={provider.id}
-              variant="ghost"
-              className="provider-directory-row"
-              onClick={() => onChoose(provider)}
-            >
-              <ProviderBrand provider={provider.id} />
-              <div className="min-w-0 flex-1 text-left">
-                <p className="font-medium truncate" title={provider.name}>
-                  <HighlightedText text={provider.name} ranges={match?.ranges.name} />
-                </p>
-                <p
-                  className="text-muted-foreground font-normal truncate"
-                  title={provider.auth.map((method) => method.label).join(' · ')}
-                >
-                  {provider.auth.map((method) => method.label).join(' · ')}
-                </p>
-              </div>
-              <ChevronRight className="size-4 shrink-0" />
-            </Button>
-          ))}
+          <ul className="provider-directory">
+            {visible.map(({ provider, match }) => {
+              const methods = provider.auth.map((method) => method.label).join(' · ');
+              return (
+                <li key={provider.id} className="provider-directory-cell">
+                  <Item variant="outline" size="sm" asChild>
+                    <button
+                      type="button"
+                      className="provider-directory-card"
+                      onClick={() => onChoose(provider)}
+                    >
+                      <ItemMedia>
+                        <ProviderBrand provider={provider.id} />
+                      </ItemMedia>
+                      <ItemContent className="gap-0.5">
+                        <ItemTitle title={provider.name}>
+                          <HighlightedText text={provider.name} ranges={match?.ranges.name} />
+                        </ItemTitle>
+                        <ItemDescription className="text-xs">{methods}</ItemDescription>
+                      </ItemContent>
+                    </button>
+                  </Item>
+                </li>
+              );
+            })}
+          </ul>
         </div>
       </ScrollArea>
     </section>

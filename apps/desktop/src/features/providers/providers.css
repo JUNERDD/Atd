@@ -303,21 +303,32 @@ button.model-config-row-nav:disabled:hover {
   margin: 0;
   padding: 0 12px 8px;
 }
+/* The add-provider directory: small outlined cards (a shared `Item`), as many columns of at least
+ * 220px as the page holds and one column at the narrowest widths. A card is one button: the brand
+ * mark, the name and the ways to connect, each line truncating with its full text in a title. */
 .provider-directory {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.provider-directory-cell {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  min-width: 0;
 }
-.provider-directory-row {
-  width: 100%;
-  min-height: 56px;
-  height: auto;
-  gap: 12px;
-  padding: 10px 12px;
-  white-space: normal;
+.provider-directory-card {
+  flex-wrap: nowrap;
+  min-width: 0;
+  text-align: left;
 }
-.provider-directory-row p {
-  overflow-wrap: anywhere;
+/* Item styles hover only for links; the card fills like the other settings rows. */
+.provider-directory-card:hover {
+  background: var(--muted);
+}
+.dark .provider-directory-card:hover {
+  background: var(--ata-surface-ghost-hover);
 }
 .provider-form .editor-footer {
   justify-content: flex-end;
