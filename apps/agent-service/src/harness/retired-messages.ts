@@ -5,9 +5,11 @@ import type { ContextEvent, ExtensionFactory } from '@earendil-works/pi-coding-a
  * custom message to the model on every later turn, so each prefix here stays filtered out of the
  * context. `app-plan` covers the retired planning feature's instruction and todo reminder. Its
  * custom entries and plan tool rows need nothing here: entries never reach the model, and the
- * transcript shows those rows as ordinary tool calls.
+ * transcript shows those rows as ordinary tool calls. `app-skill-catalog` is the skill catalog
+ * message after a prompt, now the `skill_catalog` system prompt section; it must never shorten
+ * to `app-skill`, which would also drop the live skill messages.
  */
-const RETIRED_PREFIXES = ['app-plan'];
+const RETIRED_PREFIXES = ['app-plan', 'app-skill-catalog'];
 
 /** Drops retired hidden messages from the model context; the session file keeps them. */
 export function retiredMessagesExtension(): ExtensionFactory {

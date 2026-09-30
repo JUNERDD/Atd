@@ -4,6 +4,7 @@ import {
   type ExtensionFactory,
   type SessionEntry,
 } from '@earendil-works/pi-coding-agent';
+import { beforePrompt } from '../prompt-context.js';
 import { CONTEXT_BUDGET } from '../tasks/run-budget.js';
 import type { LoadedSkill } from './run-skills.js';
 import {
@@ -28,10 +29,10 @@ export interface SessionSkillsHost {
 
 /**
  * Brings skills to the model as hidden `app-skill` messages, so the user text keeps its `/skill:`
- * markers as plain position hints. A run's captured skills go in once, with its prompt. When a
- * compaction removes earlier skill messages or `load_skill` results from context, their skills are
- * re-attached from those entries, not from skill files: the revisions they came from may be pruned
- * or edited by then.
+ * markers as plain position hints. A run's captured skills go in once, just before its prompt, so
+ * the user's text stays the last message the model answers. When a compaction removes earlier
+ * skill messages or `load_skill` results from context, their skills are re-attached from those
+ * entries, not from skill files: the revisions they came from may be pruned or edited by then.
  */
 export function sessionSkills(host: SessionSkillsHost): ExtensionFactory {
   return (pi) => {
@@ -42,7 +43,7 @@ export function sessionSkills(host: SessionSkillsHost): ExtensionFactory {
       // Every prompt the session sends raises this event, extension prompts included.
       if (runId === injectedRun || !skills.length) return;
       injectedRun = runId;
-      return { message: loadMessage(runId, skills) };
+      beforePrompt(pi, loadMessage(runId, skills));
     });
     pi.on('session_compact', (event, ctx) => {
       const skills = droppedSkills(ctx.sessionManager.getEntries(), event.compactionEntry);
