@@ -50,9 +50,11 @@ export function registerDesktopTool(pi: ExtensionAPI, host: DesktopToolHost): vo
         );
         return { content: [{ type: 'text', text: JSON.stringify(value) }], details: {} };
       } catch (error) {
+        // A failed request is an error result, not a success the model reads as an answer.
         return {
           content: [{ type: 'text', text: `Desktop capability failed: ${errorMessage(error)}` }],
           details: {},
+          isError: true,
         };
       }
     },
