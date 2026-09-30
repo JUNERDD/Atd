@@ -22,7 +22,7 @@ export function LanguageSelector({ language }: { language: AppLanguage }) {
         void window.desktop?.settings.setLanguage(value).catch(showErrorToast);
       }}
     >
-      <SelectTrigger aria-label={t('language.label')}>
+      <SelectTrigger aria-label={t('language.label')} data-settings-anchor="language">
         <Languages className="size-4" aria-hidden="true" />
         <SelectValue>{LANGUAGE_NAMES[language]}</SelectValue>
       </SelectTrigger>

@@ -104,7 +104,10 @@ export function ShellAllowlistSettings({ snapshot }: { snapshot: SettingsSnapsho
         <h3 id={`${inputId}-title`}>{t('permissions.shellAllowlist.title')}</h3>
         <p className="settings-field-note">{t('permissions.shellAllowlist.description')}</p>
       </div>
-      <div className="settings-shell-allowlist-card rounded-2xl border">
+      <div
+        className="settings-shell-allowlist-card rounded-2xl border"
+        data-settings-anchor="shell-allowlist"
+      >
         <form className="settings-shell-allowlist-form" onSubmit={(event) => void add(event)}>
           <InputGroup className="bg-transparent" data-disabled={unavailable || undefined}>
             <InputGroupAddon>

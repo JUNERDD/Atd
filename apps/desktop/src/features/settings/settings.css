@@ -150,6 +150,71 @@
   padding: 8px 12px;
   color: var(--ata-text-secondary);
 }
+/*
+ * Search results replace the section list: one row per section or setting with its name over the
+ * section it belongs to (a section row shows its own description). The rows grow to two lines and
+ * keep the section list's icon, gap and states; the names and descriptions truncate rather than
+ * widen the card, so no layout scrolls sideways.
+ */
+.settings-navigation .settings-result-button {
+  height: auto;
+  min-height: 44px;
+  padding: 6px 12px;
+}
+.settings-result-text {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+}
+.settings-result-text > * {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.settings-result-secondary {
+  color: var(--muted-foreground);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+}
+/* The compact bar stacks results instead of wrapping them into a row, and caps their height so a
+ * long list scrolls inside the card rather than pushing the content down. */
+.settings-window[data-layout='top'] .settings-navigation[data-searching] {
+  flex-direction: column;
+  flex-wrap: nowrap;
+}
+.settings-window[data-layout='top'] .settings-navigation[data-searching] .settings-nav-button {
+  flex: 0 0 auto;
+}
+.settings-window[data-layout='top'] .settings-nav-scroll[data-searching] {
+  flex: 1 0 100%;
+  max-height: min(280px, 45vh);
+}
+/* A setting the search opened: an outline that fades, or holds still under reduced motion. It
+ * sits outside the element, so states that draw inside a control's box are not disturbed. */
+.settings-window [data-settings-highlight] {
+  outline: 2px solid color-mix(in oklab, var(--ring) 80%, transparent);
+  outline-offset: 2px;
+  animation: settings-anchor-highlight 1.6s ease-out;
+}
+@keyframes settings-anchor-highlight {
+  0%,
+  35% {
+    outline-color: color-mix(in oklab, var(--ring) 80%, transparent);
+  }
+  100% {
+    outline-color: transparent;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .settings-window [data-settings-highlight] {
+    animation: none;
+  }
+}
 /* The content sits on the window's own surface under its header; pages scroll below the header
  * and fade at the viewport's edges (`scrollShadow`) instead of passing under a divider. */
 .settings-content {

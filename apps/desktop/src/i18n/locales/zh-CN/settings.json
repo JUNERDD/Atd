@@ -28,7 +28,41 @@
   "search": {
     "label": "搜索设置",
     "placeholder": "搜索设置…",
-    "empty": "没有匹配的设置"
+    "empty": "没有匹配的设置",
+    "general": "通用",
+    "entries": {
+      "newCommand": "新建命令"
+    },
+    "keywords": {
+      "sectionPermissions": "审批 批准 授权 安全 确认 访问 允许",
+      "sectionExtensions": "扩展 拓展 插件 技能 子代理 智能体 服务器 工具 MCP",
+      "sectionProviders": "模型 提供商 服务商 接口 密钥 连接 账号 登录 服务",
+      "sectionCommands": "命令 指令 提示词 模板 快捷指令",
+      "sectionMemory": "记忆 偏好 学习 上下文 画像",
+      "sectionShortcuts": "键盘 快捷键 热键 按键 录制 窗口偏好",
+      "tierManual": "手动 询问 每次确认 逐个确认 每个操作",
+      "tierAuto": "自动 自动批准 自动审批 模型审核 安全操作",
+      "tierAlways": "始终 总是 允许 不询问 无人值守 完全放行 免确认",
+      "allowlist": "白名单 允许列表 命令允许列表 命令前缀 终端 命令行 免询问",
+      "shortcutAction": "快捷键 热键 快捷方式 录制 修改 按键 组合键",
+      "openAtLogin": "开机 启动 自启 自动启动 登录项 登录时",
+      "showInDock": "程序坞 菜单栏 图标 隐藏",
+      "alwaysOnTop": "置顶 固定 悬浮 窗口置顶 总在最前",
+      "restoreDefaults": "重置 恢复 还原 默认 快捷键",
+      "language": "语言 界面语言 中文 英文 简体 翻译 本地化",
+      "defaultModel": "默认 提供商 模型 选择 当前",
+      "addProvider": "添加 连接 账号 接口密钥 登录 云端 本地 新增",
+      "connectedProviders": "提供商 连接 账号 断开",
+      "newCommand": "创建 添加 新增 命令 提示词 模板",
+      "memoryLearning": "自动学习 记住 暂停 偏好 纠正",
+      "memoryCreate": "添加 新增 保存 记住 记忆",
+      "memoryProfile": "画像 关于我 用户 偏好",
+      "memoryCorrections": "修正 纠正 学习记录 错误 反馈",
+      "installPlugin": "插件 安装 添加 文件夹 仓库 npm 包",
+      "skills": "技能 创建 指令 AI",
+      "subagents": "子代理 智能体 角色 委派 专家",
+      "mcp": "MCP 服务器 工具 协议 连接 认证"
+    }
   },
   "providers": {
     "overview": {

@@ -56,7 +56,7 @@ function WindowPreference({
 }) {
   // The visible label names the switch; a tooltip repeating it would add nothing.
   return (
-    <div className="settings-window-preference">
+    <div className="settings-window-preference" data-settings-anchor={id}>
       <Label htmlFor={id}>{label}</Label>
       <Switch id={id} checked={checked} disabled={disabled} onCheckedChange={onCheckedChange} />
     </div>
@@ -80,7 +80,7 @@ function ShortcutRow({
 
   return (
     <Item asChild variant={action === 'togglePanel' ? 'outline' : 'default'} size="xs">
-      <li>
+      <li data-settings-anchor={`shortcut-${action}`}>
         <ItemContent className="min-w-[min(120px,100%)]">
           <ItemTitle className="block max-w-full" title={label}>
             {label}
@@ -228,6 +228,7 @@ export function ShortcutSettings({
         <Button
           type="button"
           variant="outline"
+          data-settings-anchor="shortcuts-restore-defaults"
           // Stays at the trailing edge when the window preferences are absent (web client).
           className="ml-auto"
           disabled={preferenceDisabled}

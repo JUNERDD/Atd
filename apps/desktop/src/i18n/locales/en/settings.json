@@ -28,7 +28,41 @@
   "search": {
     "label": "Search settings",
     "placeholder": "Search settings…",
-    "empty": "No matching settings"
+    "empty": "No matching settings",
+    "general": "General",
+    "entries": {
+      "newCommand": "New command"
+    },
+    "keywords": {
+      "sectionPermissions": "approval security safety allow ask confirm access",
+      "sectionExtensions": "plugin plugins skill skills subagent agents mcp server tools marketplace add-on",
+      "sectionProviders": "model models api key connection account login sign in service openai anthropic ollama",
+      "sectionCommands": "command prompt snippet template macro instruction saved",
+      "sectionMemory": "preferences remember learn context profile",
+      "sectionShortcuts": "keyboard hotkey keybinding key binding record window preferences",
+      "tierManual": "manual ask confirm every action prompt each time",
+      "tierAuto": "auto automatic approve approval review model safe",
+      "tierAlways": "always allow unattended never ask full access yolo",
+      "allowlist": "allowlist whitelist allowed commands command prefix shell terminal bash run without asking",
+      "shortcutAction": "shortcut hotkey keybinding record change key combination",
+      "openAtLogin": "startup launch boot login item autostart start automatically",
+      "showInDock": "dock menu bar icon taskbar hide",
+      "alwaysOnTop": "pin float window topmost keep on top sticky",
+      "restoreDefaults": "reset revert default shortcuts",
+      "language": "language locale translate translation interface english chinese",
+      "defaultModel": "default provider model choose selected",
+      "addProvider": "connect account api key login sign in cloud local new",
+      "connectedProviders": "providers connections accounts disconnect",
+      "newCommand": "create add command prompt template",
+      "memoryLearning": "learn automatically remember pause preferences corrections",
+      "memoryCreate": "add new save remember memory",
+      "memoryProfile": "profile about me user preferences",
+      "memoryCorrections": "corrections learnings mistakes feedback",
+      "installPlugin": "plugin install add folder git repository npm package",
+      "skills": "skill skills create with ai instructions",
+      "subagents": "subagent subagents agent roles delegate specialist",
+      "mcp": "mcp server servers tools model context protocol stdio http oauth"
+    }
   },
   "providers": {
     "overview": {

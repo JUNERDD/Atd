@@ -73,7 +73,7 @@ export function PermissionSettings({ snapshot }: { snapshot: SettingsSnapshot | 
               size="sm"
               className="settings-permission-option"
             >
-              <li>
+              <li data-settings-anchor={`permission-tier-${tier}`}>
                 <Label htmlFor={id} className="min-w-0 flex-1 items-start gap-3.5">
                   <input
                     id={id}
