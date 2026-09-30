@@ -20,9 +20,11 @@ const buttonVariants = cva(
         link: 'text-primary underline-offset-4 hover:underline',
         // Glass controls (`glass-control` and `glass-state` in the shared styles): a control with
         // its own glass, or one flush inside another glass surface. Their states stay inside the
-        // border box, since any outset shadow or ring would grow the glass layer.
-        glass: 'surface-glass glass-control glass-state text-foreground',
-        'glass-ghost': 'glass-state text-foreground',
+        // border box, since any outset shadow or ring would grow the glass layer. They have no
+        // border: the glass edge is an inset line, which a border would push 1px in from the edge
+        // of the material, leaving a second ring outside it.
+        glass: 'border-0 surface-glass glass-control glass-state text-foreground',
+        'glass-ghost': 'border-0 glass-state text-foreground',
       },
       size: {
         default:

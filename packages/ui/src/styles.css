@@ -251,8 +251,9 @@
  * The states of a pressable glass control, drawn inside its own border box: system glass ignores
  * background-color, and an outset ring would grow the glass layer (see `surface-glass`). A layer
  * under the content carries the hover wash, the stronger wash for pressed, expanded and active,
- * and the focus-visible ring, which mirrors the shared focus ring inward: the border turns the
- * ring color and a 3px band at 30% runs just inside it.
+ * and the focus-visible ring, which mirrors the shared focus ring inward: a 1px line in the ring
+ * color at the edge (where the glass edge is; the control has no border) and a 3px band at 30%
+ * just inside it.
  */
 @utility glass-state {
   position: relative;
@@ -280,12 +281,10 @@
     background-color: var(--ata-glass-control-wash-strong);
   }
 
-  &:focus-visible {
-    border-color: var(--ring);
-  }
-
   &:focus-visible::before {
-    box-shadow: inset 0 0 0 3px color-mix(in oklab, var(--ring) 30%, transparent);
+    box-shadow:
+      inset 0 0 0 1px var(--ring),
+      inset 0 0 0 4px color-mix(in oklab, var(--ring) 30%, transparent);
   }
 }
 
