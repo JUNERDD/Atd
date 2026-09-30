@@ -142,6 +142,7 @@ export function PluginCard({
               enabled={plugin.enabled}
               disabled={locked}
               showSwitch={plugin.toggleable}
+              reserveMore={false}
               onEnabledChange={onEnabled}
               onDetails={onOpen}
               menu={

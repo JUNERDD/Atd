@@ -68,6 +68,7 @@ export function ExtensionRowActions({
   showSwitch = true,
   lockedReason = null,
   leading,
+  reserveMore = true,
 }: {
   name: string;
   enabled: boolean;
@@ -84,6 +85,11 @@ export function ExtensionRowActions({
   lockedReason?: string | null;
   /** A control before the switch, such as a link to the section that owns the item. */
   leading?: ReactNode;
+  /**
+   * Keeps More's column empty when there is no More, so the switches of a list line up. A card
+   * has no neighbouring row to line up with, so its switch takes the trailing edge instead.
+   */
+  reserveMore?: boolean;
 }) {
   const { t } = useTranslation('settings');
   const reasonId = useId();
@@ -157,9 +163,9 @@ export function ExtensionRowActions({
             ) : null}
           </DropdownMenuContent>
         </DropdownMenu>
-      ) : (
+      ) : reserveMore ? (
         <span className="size-7 shrink-0" aria-hidden />
-      )}
+      ) : null}
     </ItemActions>
   );
 }

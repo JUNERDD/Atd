@@ -525,8 +525,11 @@
 .plugin-card > [data-slot='card-header'] {
   align-items: center;
 }
-/* The switch and More center on the icon, with or without the source line under the name. */
+/* The switch and More center on the icon, with or without the source line under the name. The
+ * name block holds that line, so the header has one row: spanning CardAction's default two would
+ * add an empty row and the header's 6px gap, and drop the controls 3px below the icon. */
 .plugin-card [data-slot='card-action'] {
+  grid-row: 1;
   align-self: center;
 }
 .plugin-card-description {
