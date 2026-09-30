@@ -112,7 +112,7 @@ export function PluginInstallPage({
       note={t('extensions.plugins.install.startsOff')}
       actions={
         <>
-          <Button type="button" variant="outline" onClick={onBack}>
+          <Button type="button" variant="glass" onClick={onBack}>
             {t('extensions.cancel')}
           </Button>
           <Button type="button" disabled={locked || !preview} onClick={install}>

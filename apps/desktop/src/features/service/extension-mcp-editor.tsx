@@ -111,7 +111,7 @@ export function McpEditor({
       }}
       actions={
         <>
-          <Button type="button" variant="outline" onClick={onBack}>
+          <Button type="button" variant="glass" onClick={onBack}>
             {t('extensions.cancel')}
           </Button>
           <Button type="submit" form={FORM_ID} disabled={locked}>

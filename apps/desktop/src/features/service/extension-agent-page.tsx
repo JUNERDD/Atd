@@ -57,7 +57,7 @@ export function AgentPage({
   const save = (input: AgentInput) => void onSave(input);
   const actions = (submitLabel: string) => (
     <>
-      <Button type="button" variant="outline" onClick={onBack}>
+      <Button type="button" variant="glass" onClick={onBack}>
         {t('extensions.cancel')}
       </Button>
       <Button type="submit" form={formId} disabled={locked}>
@@ -123,7 +123,7 @@ export function AgentPage({
         {...page}
         actions={
           row.readOnly && !row.system ? (
-            <Button type="button" disabled={locked} onClick={onDuplicate}>
+            <Button type="button" variant="glass" disabled={locked} onClick={onDuplicate}>
               <Copy data-icon="inline-start" />
               {t('extensions.plugins.item.duplicate')}
             </Button>

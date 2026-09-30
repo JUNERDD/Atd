@@ -244,7 +244,7 @@ export function CommandEditor({
       <footer ref={footerRef} className="editor-footer overlay-footer">
         {plugin ? (
           <div>
-            <Button onClick={onDuplicate}>
+            <Button variant="glass" onClick={onDuplicate}>
               <Copy data-icon="inline-start" />
               {t('list.duplicateToPersonal')}
             </Button>
@@ -253,7 +253,7 @@ export function CommandEditor({
           <>
             <Button
               type="button"
-              variant="outline"
+              variant="glass"
               disabled={pending || !window.desktop?.settings}
               onClick={() => void startSession()}
             >
@@ -261,7 +261,7 @@ export function CommandEditor({
               {baseRevision ? t('session.triggerEdit') : t('session.trigger')}
             </Button>
             <div>
-              <Button variant="outline" disabled={pending} onClick={onCancel}>
+              <Button variant="glass" disabled={pending} onClick={onCancel}>
                 {t('common.cancel')}
               </Button>
               <Button disabled={pending} onClick={() => void save()}>

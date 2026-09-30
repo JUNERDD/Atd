@@ -191,7 +191,7 @@ export function MemorySettings() {
           </ScrollArea>
           <footer ref={footerRef} className="editor-footer overlay-footer">
             <Button
-              variant="ghost"
+              variant="glass"
               onClick={() => setConfirm({ kind: 'delete', entry: editing })}
               disabled={pending}
             >
@@ -199,7 +199,7 @@ export function MemorySettings() {
               {t('memory.edit.delete')}
             </Button>
             <div>
-              <Button variant="outline" onClick={history.back} disabled={pending}>
+              <Button variant="glass" onClick={history.back} disabled={pending}>
                 {t('memory.edit.cancel')}
               </Button>
               <Button onClick={save} disabled={pending}>

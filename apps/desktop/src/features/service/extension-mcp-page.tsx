@@ -131,6 +131,7 @@ function McpDetailsPage({ serverId, ...props }: McpPageProps & { serverId: strin
         actions={
           <Button
             type="button"
+            variant="glass"
             disabled={!props.connected || props.busy}
             onClick={props.onDuplicate}
           >

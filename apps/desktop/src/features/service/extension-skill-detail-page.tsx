@@ -186,7 +186,7 @@ export function SkillDetailPage({
       }
       actions={
         row?.readOnly ? (
-          <Button type="button" disabled={busy || !connected} onClick={onDuplicate}>
+          <Button type="button" variant="glass" disabled={busy || !connected} onClick={onDuplicate}>
             <Copy data-icon="inline-start" />
             {t('extensions.plugins.item.duplicate')}
           </Button>

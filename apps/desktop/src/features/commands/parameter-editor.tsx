@@ -322,7 +322,7 @@ export function ParameterEditor({
       <footer ref={footerRef} className="editor-footer overlay-footer">
         <span className="text-xs text-muted-foreground">{t('parameters.footerHint')}</span>
         <div>
-          <Button variant="outline" onClick={onCancel}>
+          <Button variant="glass" onClick={onCancel}>
             {t('common.cancel')}
           </Button>
           <Button onClick={save}>{initial ? t('parameters.save') : t('parameters.add')}</Button>

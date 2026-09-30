@@ -306,7 +306,7 @@ export function ProviderForm({
         </div>
       </ScrollArea>
       <footer ref={footerRef} className="editor-footer overlay-footer">
-        <Button variant="outline" disabled={disabled} onClick={onBack}>
+        <Button variant="glass" disabled={disabled} onClick={onBack}>
           {t('form.cancel')}
         </Button>
         <Button disabled={disabled || !draft.name.trim()} onClick={() => void save()}>

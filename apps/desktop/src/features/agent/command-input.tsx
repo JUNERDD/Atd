@@ -174,7 +174,7 @@ export function CommandInput({
       </ScrollArea>
       <footer ref={footerRef} className="command-run-footer overlay-footer">
         <div className="command-run-actions">
-          <Button variant="outline" onClick={onOpenSettings}>
+          <Button variant="glass" onClick={onOpenSettings}>
             {t('input.commandSettings')}
           </Button>
           <Button disabled={pending} onClick={() => void run()}>

@@ -78,7 +78,7 @@ export function ExtensionPage({
       {hasFooter ? (
         <footer ref={footerRef} className="editor-footer overlay-footer">
           {ai ? (
-            <Button type="button" variant="outline" disabled={ai.disabled} onClick={ai.onClick}>
+            <Button type="button" variant="glass" disabled={ai.disabled} onClick={ai.onClick}>
               <Sparkles data-icon="inline-start" />
               {ai.label}
             </Button>

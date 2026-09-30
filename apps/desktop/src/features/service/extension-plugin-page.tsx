@@ -184,7 +184,7 @@ export function ExtensionPluginPage({
             {plugin.removable ? (
               <Button
                 type="button"
-                variant="outline"
+                variant="glass"
                 disabled={locked}
                 onClick={() => setUninstalling(true)}
               >
