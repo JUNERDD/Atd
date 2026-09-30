@@ -45,7 +45,9 @@ public enum DevProxyRule {
   /// `t`: HMR cache-busting timestamp. `v`: optimized-dependency version hash. `import`: marks an
   /// asset or CSS request made by a module import. `url` and `no-inline`: an asset the renderer
   /// imports as a URL (`?url&no-inline`, the brand marks), which Vite answers with the URL
-  /// string, never the file's content; they pass only as value-less flags beside `import`.
+  /// string, never the file's content; `url` passes only beside `import`. Vite strips only `url`
+  /// from the URL it hands out, so the page then fetches the file itself as `?no-inline`: that
+  /// flag alone only stops inlining and serves the file as the bare path would.
   public static let allowedQueryKeys: Set<String> = ["t", "v", "import", "url", "no-inline"]
 
   /// The raw query to forward (nil for none), or why the request is refused.
@@ -61,8 +63,7 @@ public enum DevProxyRule {
       guard isAllowed(parameter: item) else { return .failure(.query) }
       if !item.contains("=") { flags.insert(item) }
     }
-    let assetFlags = flags.intersection(["url", "no-inline"])
-    guard assetFlags.isEmpty || flags.contains("import") else { return .failure(.query) }
+    guard !flags.contains("url") || flags.contains("import") else { return .failure(.query) }
     return .success(rawQuery)
   }
 
