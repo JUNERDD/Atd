@@ -30,9 +30,12 @@
   --ata-glass-control-shadow: 0 1px 2px rgb(0 0 0 / 18%), 0 0 0 1px var(--ata-glass-edge);
   --ata-glass-control-wash: color-mix(in srgb, var(--foreground) 10%, transparent);
   --ata-glass-control-wash-strong: color-mix(in srgb, var(--foreground) 16%, transparent);
-  /* The settings sidebar card's fallback fill, where its subdued system glass is off. */
+  /* The settings drawer's fallback fill, where its subdued system glass is off. */
   --ata-material-settings-content: rgb(12 12 12 / 10%);
   --ata-surface-settings-content: var(--ata-material-settings-content);
+  /* The settings sidebar card: a faint lift over the window surface, with a quiet hairline. */
+  --ata-surface-settings-sidebar: rgb(255 255 255 / 3%);
+  --ata-border-settings-sidebar: rgb(255 255 255 / 6%);
   --ata-material-selected: rgb(255 255 255 / 12%);
   --ata-surface-ghost-hover: rgb(255 255 255 / 10%);
   --ata-text-secondary: #a1a1a1;

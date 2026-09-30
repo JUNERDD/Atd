@@ -28,10 +28,10 @@
   flex-direction: column;
 }
 /*
- * The sidebar card: an inset glass card whose corners follow the window's (the toolbar window's
- * radius less the inset). Its glass is an empty layer behind the controls, so nothing on the
- * glass element draws outside it; the edge is inset only, and an inactive window or reduced
- * transparency turns it into a flat fill (`surface-glass`).
+ * The sidebar card: an inset card whose corners follow the window's (the toolbar window's radius
+ * less the inset). It sits on the window's own glass, so it takes a faint tint and hairline rather
+ * than glass of its own, which rendered as a much lighter slab than the content beside it. The
+ * tint is an empty layer behind the controls.
  */
 .settings-sidebar {
   position: relative;
@@ -42,20 +42,21 @@
   min-height: 0;
   padding: 0 0 var(--settings-inset) var(--settings-inset);
 }
-/* The card material, shared by the sidebar and the drawer: WebKit's subdued system glass, else
- * the approved drawer tint under a strong blur. Its edge stays inset in every state. */
-.settings-sidebar-glass,
+.settings-sidebar-surface {
+  position: absolute;
+  inset: var(--settings-inset) 0 var(--settings-inset) var(--settings-inset);
+  border-radius: var(--radius-2xl);
+  background: var(--ata-surface-settings-sidebar);
+  box-shadow: inset 0 0 0 1px var(--ata-border-settings-sidebar);
+  pointer-events: none;
+}
+/* The drawer floats over the content, so it keeps glass: WebKit's subdued system glass, else the
+ * approved drawer tint under a strong blur. Its edge stays inset in every state. */
 .settings-drawer[data-slot='sheet-content'] {
   --ata-glass-material: -apple-system-glass-material-subdued;
   --ata-glass-fill: var(--ata-surface-settings-content);
   --ata-glass-blur: 40px;
   --ata-glass-shadow: inset 0 0 0 1px var(--ata-glass-edge);
-}
-.settings-sidebar-glass {
-  position: absolute;
-  inset: var(--settings-inset) 0 var(--settings-inset) var(--settings-inset);
-  border-radius: var(--radius-2xl);
-  pointer-events: none;
 }
 .settings-sidebar-body {
   position: relative;
@@ -80,7 +81,7 @@
   flex: 0 0 auto;
   padding: var(--settings-inset) var(--settings-inset) 0;
 }
-.settings-window[data-layout='top'] .settings-sidebar-glass {
+.settings-window[data-layout='top'] .settings-sidebar-surface {
   inset: var(--settings-inset) var(--settings-inset) 0;
 }
 .settings-window[data-layout='top'] .settings-sidebar-body {
@@ -149,9 +150,9 @@
   padding: 8px 12px;
   color: var(--ata-text-secondary);
 }
-/* The content sits on the window's own surface; its header floats over the scrolling pages. */
+/* The content sits on the window's own surface under its header; pages scroll below the header
+ * and fade at the viewport's edges (`scrollShadow`) instead of passing under a divider. */
 .settings-content {
-  position: relative;
   display: flex;
   flex: 1;
   flex-direction: column;
@@ -159,40 +160,8 @@
   min-height: 0;
 }
 .settings-content-header {
-  position: absolute;
-  inset: 0 0 auto;
-  z-index: 1;
+  flex-shrink: 0;
   height: var(--settings-titlebar-height);
-}
-/* Toolbar glass once content scrolls under the bar. It switches rather than fades: a system
- * material drawn below full opacity renders wrong, so only the non-glass hairline fades. */
-.settings-content-header-glass {
-  position: absolute;
-  inset: 0;
-  visibility: hidden;
-  pointer-events: none;
-  --ata-glass-edge: transparent;
-  --ata-glass-shadow: none;
-}
-.settings-content-header[data-scrolled] .settings-content-header-glass {
-  visibility: visible;
-}
-.settings-content-header::after {
-  position: absolute;
-  inset: auto 0 0;
-  height: 1px;
-  background: var(--border);
-  opacity: 0;
-  transition: opacity 150ms ease-out;
-  content: '';
-}
-.settings-content-header[data-scrolled]::after {
-  opacity: 1;
-}
-@media (prefers-reduced-motion: reduce) {
-  .settings-content-header::after {
-    transition: none;
-  }
 }
 .settings-content-header-bar {
   position: relative;
@@ -255,21 +224,16 @@
 .settings-content-scroll-area {
   flex: 1;
 }
-/* The scrollbar starts below the header rather than running under it. */
-.settings-content-scroll-area > [data-slot='scroll-area-scrollbar'][data-orientation='vertical'] {
-  height: calc(100% - var(--settings-titlebar-height));
-  margin-top: var(--settings-titlebar-height);
-}
 .settings-content-scroll {
   display: flex;
   flex: 1;
   min-height: 0;
   min-width: 0;
   flex-direction: column;
-  padding: calc(var(--settings-titlebar-height) + 8px) 40px 32px;
+  padding: 8px 40px 32px;
 }
 .settings-window:not([data-layout='sidebar']) .settings-content-scroll {
-  padding: calc(var(--settings-titlebar-height) + 8px) 16px 16px;
+  padding: 8px 16px 16px;
 }
 .settings-page {
   flex-shrink: 0;

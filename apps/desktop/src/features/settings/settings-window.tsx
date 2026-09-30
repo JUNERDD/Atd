@@ -64,7 +64,6 @@ export function SettingsWindow() {
   });
   const [drawer, setDrawer] = useState(false);
   const [recording, setRecording] = useState(false);
-  const [scroller, setScroller] = useState<HTMLDivElement | null>(null);
   const layout = useSyncExternalStore(subscribeLayout, getLayout);
   const [previousLayout, setPreviousLayout] = useState(layout);
   if (layout !== previousLayout) {
@@ -132,7 +131,7 @@ export function SettingsWindow() {
             <div className="settings-window" data-layout={layout}>
               {layout !== 'drawer' && (
                 <aside className="settings-sidebar" aria-label={t('nav.navigationLabel')}>
-                  <div className="settings-sidebar-glass surface-glass" aria-hidden="true" />
+                  <div className="settings-sidebar-surface" aria-hidden="true" />
                   <div className="settings-sidebar-body">
                     {/* Holds the native traffic lights and drags the window. */}
                     <div className="settings-sidebar-strip settings-titlebar" />
@@ -142,7 +141,6 @@ export function SettingsWindow() {
               )}
               <main className="settings-content" aria-label={t('window.label')}>
                 <SettingsContentHeader
-                  scroller={scroller}
                   sectionLabel={t(currentSection.labelKey)}
                   subpage={history.subpage}
                   canGoBack={history.canGoBack}
@@ -168,9 +166,9 @@ export function SettingsWindow() {
                 />
                 <ScrollArea
                   className="settings-content-scroll-area"
-                  viewportRef={setScroller}
                   viewportClassName="[&>div]:flex! [&>div]:flex-col [&>div]:h-full"
                   gutter="none"
+                  scrollShadow
                 >
                   <div className="settings-content-scroll">
                     {page(
