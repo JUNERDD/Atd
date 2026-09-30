@@ -34,7 +34,7 @@ export function SettingsHeading({
           <h2 title={title}>{title}</h2>
           {titleHint}
         </div>
-        {description && <p title={description}>{description}</p>}
+        {description && <p>{description}</p>}
       </div>
       {children && <div className="settings-overview-toolbar">{children}</div>}
     </header>

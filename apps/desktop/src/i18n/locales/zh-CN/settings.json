@@ -5,13 +5,14 @@
   "window": {
     "loading": "正在加载设置…",
     "label": "设置",
-    "loadError": "无法加载设置。"
+    "loadError": "无法加载设置。",
+    "retry": "重试"
   },
   "nav": {
     "label": "设置分类",
     "navigationLabel": "设置导航",
     "permissions": "权限",
-    "extensions": "拓展",
+    "extensions": "扩展",
     "providers": "提供商",
     "commands": "命令",
     "memory": "记忆",
@@ -28,7 +29,11 @@
   "search": {
     "label": "搜索设置",
     "placeholder": "搜索设置…",
-    "empty": "没有匹配的设置",
+    "clear": "清除搜索",
+    "noResults": "没有与“{{query}}”相关的设置",
+    "noResultsHint": "请检查拼写或换个关键词。",
+    "resultCount_one": "{{count}} 个结果",
+    "resultCount_other": "{{count}} 个结果",
     "general": "通用",
     "entries": {
       "newCommand": "新建命令"
@@ -96,6 +101,12 @@
     "back": "返回",
     "forward": "前进",
     "location": "当前位置"
+  },
+  "unsaved": {
+    "title": "放弃更改？",
+    "description": "你在此页所做的修改将会丢失。",
+    "keepEditing": "继续编辑",
+    "discard": "放弃"
   },
   "permissions": {
     "title": "权限",

@@ -1,5 +1,12 @@
 import { createContext, useCallback, useContext, useLayoutEffect, useRef, useState } from 'react';
-export const SettingsNavigationContext = createContext<((section: string) => void) | null>(null);
+/**
+ * Shows a settings section. `then` runs once the section is shown, which waits for the user's
+ * answer when an editor with unsaved changes would be left (`useSettingsUnsavedChanges`); it never
+ * runs when they keep editing.
+ */
+export const SettingsNavigationContext = createContext<
+  ((section: string, then?: () => void) => void) | null
+>(null);
 export function useSettingsNavigation() {
   const navigate = useContext(SettingsNavigationContext);
   if (!navigate) throw new Error('Settings navigation requires the settings window.');
@@ -44,6 +51,8 @@ export interface SettingsSubpage {
 
 /** The shown section's page history, as the content header's Back and Forward drive it. */
 export interface SettingsPageControls {
+  /** How many pages Back can return through: 0 on the section's overview. */
+  depth: number;
   canGoBack: boolean;
   canGoForward: boolean;
   back: () => void;
@@ -63,16 +72,26 @@ export const SettingsPageHistoryContext = createContext<
 /**
  * The window's side of a registration context: the latest value registered and not yet removed,
  * so the entering page's registration wins over the leaving page's cleanup in the same commit.
+ * `latest` reads it outside rendering, already updated by registrations in the current commit.
  */
 export function useSettingsRegistry<Value>() {
   const [entries, setEntries] = useState<readonly { id: number; value: Value }[]>([]);
+  const current = useRef(entries);
   const nextId = useRef(0);
-  const register = useCallback((value: Value) => {
-    const id = nextId.current++;
-    setEntries((current) => [...current, { id, value }]);
-    return () => setEntries((current) => current.filter((entry) => entry.id !== id));
+  const update = useCallback((next: readonly { id: number; value: Value }[]) => {
+    current.current = next;
+    setEntries(next);
   }, []);
-  return [entries.at(-1)?.value ?? null, register] as const;
+  const register = useCallback(
+    (value: Value) => {
+      const id = nextId.current++;
+      update([...current.current, { id, value }]);
+      return () => update(current.current.filter((entry) => entry.id !== id));
+    },
+    [update],
+  );
+  const latest = useCallback(() => current.current.at(-1)?.value ?? null, []);
+  return [entries.at(-1)?.value ?? null, register, latest] as const;
 }
 
 /**

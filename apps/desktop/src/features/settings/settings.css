@@ -24,6 +24,10 @@
   font-size: 14px;
   line-height: 20px;
 }
+/* Chinese text sets taller ideographs in the same 14px; the extra leading keeps lines apart. */
+.settings-window:lang(zh) {
+  line-height: 22px;
+}
 .settings-window[data-layout='top'] {
   flex-direction: column;
 }
@@ -130,8 +134,12 @@
   gap: 8px;
   height: 36px;
   padding: 8px 12px;
-  color: var(--ata-text-secondary);
+  color: var(--foreground);
   flex-shrink: 0;
+}
+/* Labels read at full contrast; the icons stay secondary until their row is the one shown. */
+.settings-navigation .settings-nav-button > svg {
+  color: var(--ata-text-secondary);
 }
 .settings-nav-label {
   min-width: 0;
@@ -141,6 +149,30 @@
 .settings-navigation .settings-nav-button[aria-current='page'] {
   background-color: var(--ata-material-selected);
   color: var(--foreground);
+  font-weight: 600;
+}
+.settings-navigation .settings-nav-button[aria-current='page'] > svg {
+  color: var(--foreground);
+}
+/* A section label stacks over a hidden semibold copy of itself, so it is always as wide as its
+ * selected form: selecting a row never reflows the rows that wrap beside it. */
+.settings-nav-label[data-label] {
+  display: inline-flex;
+  flex-direction: column;
+}
+.settings-nav-label[data-label] > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.settings-nav-label[data-label]::after {
+  content: attr(data-label);
+  height: 0;
+  overflow: hidden;
+  visibility: hidden;
+  font-weight: 600;
+  user-select: none;
+  pointer-events: none;
 }
 /* Enter in the search field opens the best match, so it reads as highlighted while typing. */
 :is(.settings-sidebar, .settings-drawer):has(.settings-search input:focus)
@@ -148,10 +180,20 @@
   background-color: var(--ata-surface-ghost-hover);
   color: var(--foreground);
 }
-.settings-nav-empty {
-  display: block;
-  padding: 8px 12px;
-  color: var(--ata-text-secondary);
+/* The search's empty state, sized for the navigation card rather than a page. */
+.settings-nav-empty[data-slot='empty'] {
+  gap: 12px;
+  padding: 16px 8px;
+}
+.settings-nav-empty [data-slot='empty-title'] {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  overflow-wrap: anywhere;
+}
+.settings-nav-empty [data-slot='empty-description'] {
+  font-size: 12px;
+  line-height: 16px;
 }
 /*
  * Search results replace the section list: one row per section or setting with its name over the
@@ -197,25 +239,21 @@
   flex: 1 0 100%;
   max-height: min(280px, 45vh);
 }
-/* A setting the search opened: an outline that fades, or holds still under reduced motion. It
- * sits outside the element, so states that draw inside a control's box are not disturbed. */
+/* A setting the search opened: an outline that fades out. It only changes color, so it stays
+ * under reduced motion. It sits outside the element, so states that draw inside a control's box
+ * are not disturbed. */
 .settings-window [data-settings-highlight] {
-  outline: 2px solid color-mix(in oklab, var(--ring) 80%, transparent);
+  outline: 2px solid color-mix(in oklab, var(--foreground) 60%, transparent);
   outline-offset: 2px;
   animation: settings-anchor-highlight 1.6s ease-out;
 }
 @keyframes settings-anchor-highlight {
   0%,
   35% {
-    outline-color: color-mix(in oklab, var(--ring) 80%, transparent);
+    outline-color: color-mix(in oklab, var(--foreground) 60%, transparent);
   }
   100% {
     outline-color: transparent;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .settings-window [data-settings-highlight] {
-    animation: none;
   }
 }
 /* The content sits on the window's own surface under its header; pages scroll below the header
@@ -265,6 +303,9 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.settings-breadcrumb li[aria-current='page'] {
+  font-weight: 600;
 }
 /* The section yields to the sub-page, which is the page actually shown. */
 .settings-breadcrumb li:first-child:not(:last-child) {
@@ -317,6 +358,17 @@
 }
 .settings-window:not([data-layout='sidebar']) .settings-content-scroll {
   padding: 8px 16px 16px;
+}
+/* A failed settings read, above the pages it leaves without data, with its Retry beside it. */
+.settings-load-error {
+  display: flex;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 8px 12px;
+  width: 100%;
+  max-width: 1000px;
+  margin: 0 auto 16px;
 }
 .settings-page {
   flex-shrink: 0;
@@ -376,12 +428,17 @@
   margin: 0;
   min-width: 0;
 }
-.settings-section-heading h2,
-.settings-section-heading > p {
+.settings-section-heading h2 {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+/* A page's description explains it, so it wraps at a readable measure instead of truncating. */
+.settings-section-heading > p {
+  min-width: 0;
+  max-width: 72ch;
+  text-wrap: pretty;
 }
 .settings-section-heading h2 {
   font-size: 24px;
@@ -442,7 +499,8 @@
   align-items: center;
   flex-shrink: 0;
 }
-.settings-overview-toolbar > input {
+.settings-overview-toolbar > input,
+.settings-overview-toolbar > .settings-search-field {
   flex: 1 1 180px;
   min-width: min(180px, 100%);
 }
@@ -481,6 +539,38 @@
 }
 .settings-status[data-error='true'] {
   color: var(--destructive);
+}
+/*
+ * The title of a group inside a page (a subsection, or the label over a card of rows): one size
+ * and weight on every page, so groups read alike wherever they sit.
+ */
+.settings-section-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+}
+/*
+ * An error shown beside what caused it, as an icon and text rather than a timed toast. Render a
+ * lucide `CircleAlert` (aria-hidden) before the text and give the element `role="alert"` when it
+ * appears in response to an action.
+ */
+.settings-inline-error {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+  color: var(--destructive);
+  font-size: 13px;
+  line-height: 20px;
+  overflow-wrap: anywhere;
+}
+.settings-inline-error > svg {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
 }
 .settings-permission-settings {
   display: flex;
@@ -1081,6 +1171,15 @@
   left: calc(var(--settings-inset) + min(var(--settings-sidebar-width), calc(100vw - 56px)));
   background: rgb(0 0 0 / 30%);
   backdrop-filter: none;
+}
+/* Under reduced motion the drawer fades in and out in place instead of sliding. */
+@media (prefers-reduced-motion: reduce) {
+  .settings-drawer[data-slot='sheet-content'] {
+    --tw-enter-translate-x: 0;
+    --tw-exit-translate-x: 0;
+    --tw-enter-opacity: 0;
+    --tw-exit-opacity: 0;
+  }
 }
 /* Shell allowlist: a subsection of the Permissions page below the tier choice. */
 .settings-shell-allowlist {

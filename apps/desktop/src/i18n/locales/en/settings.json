@@ -5,7 +5,8 @@
   "window": {
     "loading": "Loading settings…",
     "label": "Settings",
-    "loadError": "Settings could not be loaded."
+    "loadError": "Settings could not be loaded.",
+    "retry": "Retry"
   },
   "nav": {
     "label": "Settings sections",
@@ -28,7 +29,11 @@
   "search": {
     "label": "Search settings",
     "placeholder": "Search settings…",
-    "empty": "No matching settings",
+    "clear": "Clear search",
+    "noResults": "No results for “{{query}}”",
+    "noResultsHint": "Check the spelling or try a different term.",
+    "resultCount_one": "{{count}} result",
+    "resultCount_other": "{{count}} results",
     "general": "General",
     "entries": {
       "newCommand": "New command"
@@ -96,6 +101,12 @@
     "back": "Back",
     "forward": "Forward",
     "location": "Current location"
+  },
+  "unsaved": {
+    "title": "Discard changes?",
+    "description": "The edits you made on this page will be lost.",
+    "keepEditing": "Keep editing",
+    "discard": "Discard"
   },
   "permissions": {
     "title": "Permissions",

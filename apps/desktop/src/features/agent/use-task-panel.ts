@@ -48,7 +48,12 @@ export function useTaskPanel() {
   const { t } = useTranslation('panel');
   const agent = useAgent();
   useAgentNotices();
-  const { snapshot } = useSettingsSnapshot();
+  const { snapshot, failed: settingsFailed } = useSettingsSnapshot();
+  const { t: tSettings } = useTranslation('settings');
+  // The panel has no place for the settings window's inline error; a failed read toasts once.
+  useEffect(() => {
+    if (settingsFailed) showErrorToast(tSettings('window.loadError'));
+  }, [settingsFailed, tSettings]);
   const { openSettings, hide } = usePanelWindow();
   const [draftRevision, setDraftRevision] = useState(0);
   const [view, setView] = useState<View>('new');

@@ -55,6 +55,12 @@ export async function changeAppLanguage(language: AppLanguage): Promise<void> {
     await i18n.changeLanguage(language);
 }
 
+/** The document's language, for fonts and line breaking: BCP 47 names Simplified Chinese `zh-Hans`. */
+function applyDocumentLanguage(language: string) {
+  document.documentElement.lang = language === 'zh-CN' ? 'zh-Hans' : language;
+}
+i18n.on('languageChanged', applyDocumentLanguage);
+
 // Bundled English keeps init synchronous, so t() is ready as soon as this module loads.
 void i18n.use(initReactI18next).init({
   lng: 'en',

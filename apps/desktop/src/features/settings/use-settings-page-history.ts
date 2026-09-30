@@ -5,6 +5,7 @@ import {
   useSettingsSectionExit,
   type SettingsPageControls,
 } from './settings-navigation';
+import { SettingsUnsavedChangesContext } from './settings-unsaved-changes';
 
 /** The pages Back returns through (oldest first), the shown page, and those Forward reopens. */
 interface PageHistory<Route> {
@@ -38,19 +39,49 @@ function stepBack<Route>(history: PageHistory<Route>): PageHistory<Route> {
  *
  * Routes are compared by identity: `leave` and `replace` take the route an asynchronous answer (a
  * save) belongs to, so it cannot move a page the user has left in the meantime.
+ *
+ * `back` asks first when it would leave an editor with unsaved changes
+ * (`useSettingsUnsavedChanges`); `leave`, `replace`, `discard` and `reset` never ask, so a save
+ * leaves through them. By default `open` and Forward never ask: the deeper page renders inside the
+ * shown one and keeps its editors mounted (the command editor's parameter page). A section whose
+ * pages replace one another (Extensions) sets `exclusivePages`, and then `open` and Forward ask
+ * as well, since the shown page unmounts.
  */
 export function useSettingsPageHistory<Route extends object>(
   root: Route,
   available: (route: Route) => boolean = () => true,
+  { exclusivePages = false }: { exclusivePages?: boolean } = {},
 ) {
   const [history, setHistory] = useState(() => start(root));
   useSettingsSectionExit(() => setHistory(start(root)));
+  const guard = useContext(SettingsUnsavedChangesContext);
+  const depth = history.past.length;
+  const shownDepth = useRef(depth);
+  useLayoutEffect(() => {
+    shownDepth.current = depth;
+  });
 
-  const open = useCallback((next: Route) => {
-    setHistory(({ past, route }) => ({ past: [...past, route], route: next, future: [] }));
-  }, []);
+  /** Runs `step` once any unsaved edits on the shown page may go, when that page unmounts. */
+  const leaveShown = useCallback(
+    (step: () => void) => {
+      if (guard && exclusivePages) guard.confirmLeave(shownDepth.current - 1, step);
+      else step();
+    },
+    [guard, exclusivePages],
+  );
+  const open = useCallback(
+    (next: Route) =>
+      leaveShown(() =>
+        setHistory(({ past, route }) => ({ past: [...past, route], route: next, future: [] })),
+      ),
+    [leaveShown],
+  );
   /** Returns to the previous page, which is what the header's Back and a page's Cancel do. */
-  const back = useCallback(() => setHistory(stepBack), []);
+  const back = useCallback(() => {
+    const step = () => setHistory(stepBack);
+    if (guard) guard.confirmLeave(shownDepth.current - 1, step);
+    else step();
+  }, [guard]);
   /** Returns to the previous page while `from` is still the shown one, as after a save. */
   const leave = useCallback((from: Route) => {
     setHistory((current) => (current.route === from ? stepBack(current) : current));
@@ -92,20 +123,22 @@ export function useSettingsPageHistory<Route extends object>(
   const next = history.future[0];
   const canGoForward = next !== undefined && available(next);
   function forward() {
-    setHistory((current) => {
-      const route = current.future[0];
-      if (route === undefined || !available(route)) return current;
-      return { past: [...current.past, current.route], route, future: current.future.slice(1) };
-    });
+    leaveShown(() =>
+      setHistory((current) => {
+        const route = current.future[0];
+        if (route === undefined || !available(route)) return current;
+        return { past: [...current.past, current.route], route, future: current.future.slice(1) };
+      }),
+    );
   }
 
-  useHeaderControls(history.past.length > 0, canGoForward, back, forward);
+  useHeaderControls(depth, canGoForward, back, forward);
   return { route: history.route, open, back, leave, replace, discard, reset };
 }
 
 /** Hands Back and Forward to the window's content header while the enclosing section is shown. */
 function useHeaderControls(
-  canGoBack: boolean,
+  depth: number,
   canGoForward: boolean,
   back: () => void,
   forward: () => void,
@@ -113,7 +146,7 @@ function useHeaderControls(
   const register = useContext(SettingsPageHistoryContext);
   const active = useContext(SettingsSectionActiveContext);
   // The latest `forward` runs, since it reads this render's `available`; registering once per
-  // change of the flags keeps the header from re-rendering on every section render.
+  // change of the depth and flags keeps the header from re-rendering on every section render.
   const latest = useRef({ back, forward });
   useLayoutEffect(() => {
     latest.current = { back, forward };
@@ -121,11 +154,12 @@ function useHeaderControls(
   useLayoutEffect(() => {
     if (!active || !register) return;
     const controls: SettingsPageControls = {
-      canGoBack,
+      depth,
+      canGoBack: depth > 0,
       canGoForward,
       back: () => latest.current.back(),
       forward: () => latest.current.forward(),
     };
     return register(controls);
-  }, [register, active, canGoBack, canGoForward]);
+  }, [register, active, depth, canGoForward]);
 }
