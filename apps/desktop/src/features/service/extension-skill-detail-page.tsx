@@ -12,6 +12,7 @@ import {
 } from './extension-detail-fields';
 import { asSkillDetail, type ExtensionSkillDetail } from './extension-detail-rows';
 import { ExtensionPage } from './extension-page';
+import { ExtensionRemoveButton } from './extension-remove-dialog';
 import { skillSourceLabelKey, type ExtensionSkillRow } from './extension-rows';
 import { SkillBuiltinStatus } from './extension-skill-builtin';
 
@@ -81,8 +82,9 @@ function aiCanEdit(row: ExtensionSkillRow): boolean {
 /**
  * One skill's details page: its state and built-in status, where it comes from, how a run may
  * load it, and its folder's files. Restore stays in the row's More menu and updates belong to the
- * plugin. A read-only skill (an installed or shared plugin's) offers Duplicate to Personal, whose
- * copy can then be edited.
+ * plugin. A Personal skill offers Delete, which removes its files after a confirmation; a read-only
+ * skill (an installed or shared plugin's) offers Duplicate to Personal, whose copy can then be
+ * edited.
  */
 export function SkillDetailPage({
   name,
@@ -92,6 +94,7 @@ export function SkillDetailPage({
   busy,
   onStartAi,
   onDuplicate,
+  onDelete,
 }: {
   name: string;
   rows: readonly ExtensionSkillRow[];
@@ -101,6 +104,8 @@ export function SkillDetailPage({
   busy: boolean;
   onStartAi: () => void;
   onDuplicate: () => void;
+  /** Deletes the Personal skill once the confirmation is accepted. */
+  onDelete: () => void;
 }) {
   const { t } = useTranslation('settings');
   const row = rows.find((item) => item.name === name) ?? null;
@@ -185,12 +190,21 @@ export function SkillDetailPage({
           : null
       }
       actions={
-        row?.readOnly ? (
+        !row ? null : row.readOnly ? (
           <Button type="button" variant="glass" disabled={busy || !connected} onClick={onDuplicate}>
             <Copy data-icon="inline-start" />
             {t('extensions.plugins.item.duplicate')}
           </Button>
-        ) : null
+        ) : (
+          <ExtensionRemoveButton
+            name={row.name}
+            label={t('extensions.delete')}
+            title={t('extensions.deleteTitle', { name: row.name })}
+            description={t('extensions.deleteSkillDescription')}
+            disabled={busy || !connected}
+            onConfirm={onDelete}
+          />
+        )
       }
     >
       {status ? <ExtensionDetailStatus text={status.text} error={status.error} /> : null}

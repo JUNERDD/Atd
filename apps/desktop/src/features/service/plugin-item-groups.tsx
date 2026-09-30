@@ -112,11 +112,12 @@ export function PluginItemGroups({
           loading={false}
           empty=""
           connected={connected}
-          busyId={busy?.kind === 'builtin' ? busy.name : null}
+          busyId={busy?.kind === 'builtin' || busy?.kind === 'skill' ? busy.name : null}
           lockedReason={lockedReason}
           onOpen={(name) => onOpen('skill', name)}
           onEnabled={(name, enabled) => toggle('skill', name, enabled)}
           onRestore={actions.restoreBuiltin}
+          onDelete={actions.deleteSkill}
         />
       ) : null}
       {shows('agent') && items.agents.length ? (
@@ -133,6 +134,7 @@ export function PluginItemGroups({
           onOpen={(name) => onOpen('agent', name)}
           onEnabled={(name, enabled) => toggle('agent', name, enabled)}
           onPermissions={actions.setAgentPermissions}
+          onDelete={actions.deleteAgent}
         />
       ) : null}
       {shows('mcp') && items.mcp.length ? (

@@ -13,9 +13,10 @@ import { usePluginLabels } from './use-plugin-labels';
 
 /**
  * The item pages of Extensions: one skill, subagent or MCP server of a plugin, and the add forms
- * that create a Personal subagent or MCP server. A save on a form leaves the page once it
- * succeeds; a failure keeps it for repair. Duplicate to Personal copies a read-only item and opens
- * its Personal copy, with Personal's page behind it, once the catalogs list it.
+ * that create a Personal subagent or MCP server. A save on a form, or deleting a Personal item,
+ * leaves the page once it succeeds; a failure keeps it for repair. Duplicate to Personal copies a
+ * read-only item and opens its Personal copy, with Personal's page behind it, once the catalogs
+ * list it.
  */
 export function ExtensionItemRoute({
   route,
@@ -52,6 +53,12 @@ export function ExtensionItemRoute({
     onBack();
     showToast({ kind: 'info', text });
     return true;
+  }
+  /** Leaves the page once the item is gone; a failure keeps it, with the error in a toast. */
+  async function removed(remove: Promise<boolean>, text: string) {
+    if (!(await remove)) return;
+    onBack();
+    showToast({ kind: 'info', text });
   }
   async function duplicate(kind: ExtensionItemKind, name: string) {
     let localName: string;
@@ -90,6 +97,12 @@ export function ExtensionItemRoute({
           busy={locked}
           onStartAi={() => onStartAi('skill', name)}
           onDuplicate={() => void duplicate('skill', name ?? '')}
+          onDelete={() =>
+            void removed(
+              mutations.deleteSkill(name ?? '', skills.refresh),
+              t('extensions.deleted', { name }),
+            )
+          }
         />
       );
     case 'agent':
@@ -111,6 +124,12 @@ export function ExtensionItemRoute({
           }
           onStartAi={(target) => onStartAi('agent', target)}
           onDuplicate={() => void duplicate('agent', name ?? '')}
+          onDelete={() =>
+            void removed(
+              mutations.deleteAgent(name ?? '', agents.refresh),
+              t('extensions.deleted', { name }),
+            )
+          }
         />
       );
     case 'mcp':
@@ -132,6 +151,12 @@ export function ExtensionItemRoute({
           onWithdrawApproval={(serverId) => void mcp.withdrawApproval(serverId)}
           onStartAi={(target) => onStartAi('mcp', target)}
           onDuplicate={() => void duplicate('mcp', name ?? '')}
+          onRemove={() =>
+            void removed(
+              mutations.mcpRemove(name ?? '', mcp.refresh),
+              t('extensions.removed', { name }),
+            )
+          }
         />
       );
     default: {

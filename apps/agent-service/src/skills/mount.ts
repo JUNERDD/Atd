@@ -12,6 +12,7 @@ import {
 } from '@ai/agent-contracts';
 import type { ServiceConfig } from '../config.js';
 import {
+  deleteSkill,
   getSkill,
   listRolesHandler,
   listSkills,
@@ -87,6 +88,10 @@ export function registerSkillRoutes(app: FastifyInstance, config: ServiceConfig)
       const body = parse(SkillHarnessRequestSchema, request.body);
       return setSkillEnabled(skillDeps, { name, enabled: body.enabled });
     },
+  );
+  // Deletes a Personal skill's files; other sources are refused by `deleteSkill`.
+  app.delete<{ Params: { name: string } }>('/v1/skills/:name', RENDERER_ROUTE, async (request) =>
+    deleteSkill(skillDeps, parse(SkillName, request.params.name)),
   );
   app.post('/v1/skills/stage', RENDERER_ROUTE, async (request) => {
     const body = parse(StageSkillsSchema, request.body);

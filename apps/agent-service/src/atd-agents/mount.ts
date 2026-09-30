@@ -3,12 +3,18 @@ import { Type } from 'typebox';
 import { SkillHarnessRequestSchema, SubagentPermissionsSchema, parse } from '@ai/agent-contracts';
 import { isItemName, parseQualifiedName } from '@ai/plugin-kit';
 import type { ServiceConfig } from '../config.js';
+import { ConflictError } from '../errors.js';
 import { currentPluginComponents } from '../plugins/components.js';
 import { CORE_PLUGIN, USER_PLUGIN } from '../plugins/host-plugins.js';
 import { PluginHost } from '../plugins/host.js';
 import { SERVICE_RUNTIME_AGENTS } from '../subagents/agents.js';
-import { listAtdAgents, putAtdAgent } from './catalog.js';
-import { readAgentHarness, setAgentHarnessEnabled, setAgentHarnessPermissions } from './harness.js';
+import { deleteAtdAgent, listAtdAgents, putAtdAgent } from './catalog.js';
+import {
+  forgetAgentHarness,
+  readAgentHarness,
+  setAgentHarnessEnabled,
+  setAgentHarnessPermissions,
+} from './harness.js';
 import { defaultPermissions, effectivePermissions, overrideToStore } from './permissions.js';
 import { RENDERER_ROUTE } from '../relay-routes.js';
 
@@ -102,7 +108,7 @@ async function catalogAgent(root: string, name: string) {
 
 /**
  * HTTP mounts for the subagent catalog: the system agents, then the ~/.atd/agents markdown
- * specialists. Only the specialists' files are writable; any catalog agent can be turned off for
+ * specialists. Only the specialists' files are writable or deletable; any catalog agent can be turned off for
  * later runs, which then neither register it nor resolve a reference to it, and any can carry a
  * permission override that later runs apply (run-freeze.ts).
  */
@@ -122,6 +128,16 @@ export function registerAtdAgentRoutes(app: FastifyInstance, config: ServiceConf
       model: body.model,
       systemPrompt: body.systemPrompt,
     });
+  });
+  // Deletes a `~/.atd/agents` specialist and what Settings kept for it; system and plugin
+  // subagents are read-only. Runs already accepted keep the agents they registered.
+  app.delete<{ Params: { name: string } }>('/v1/agents/:name', RENDERER_ROUTE, async (request) => {
+    const name = catalogName(request.params.name);
+    const { readOnly } = await catalogAgent(config.paths.root, name);
+    if (readOnly) throw new ConflictError(`Agent "${name}" is read-only and cannot be deleted.`);
+    if (!(await deleteAtdAgent(name))) throw new Error(`Agent "${name}" has no file to delete.`);
+    await forgetAgentHarness(config.paths.root, name);
+    return { name, deleted: true };
   });
   // A plugin subagent's switch is its plugin item (installer state); the others', the harness.
   app.post<{ Params: { name: string } }>(

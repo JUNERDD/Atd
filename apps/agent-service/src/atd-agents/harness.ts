@@ -88,3 +88,11 @@ export async function setAgentHarnessPermissions(
   else harness.permissions.delete(name);
   await writeHarness(root, harness);
 }
+
+/** Drops everything the harness keeps for one agent, after its file is deleted. */
+export async function forgetAgentHarness(root: string, name: string): Promise<void> {
+  const harness = await readAgentHarness(root);
+  const hadSwitch = harness.disabled.delete(name);
+  const hadOverride = harness.permissions.delete(name);
+  if (hadSwitch || hadOverride) await writeHarness(root, harness);
+}

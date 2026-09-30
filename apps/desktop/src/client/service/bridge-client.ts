@@ -19,6 +19,7 @@ export function createServiceBridge(
     skill: (name) => invoke({ action: 'skillsGet', name }),
     skillFile: (name, path) => invoke({ action: 'skillsFile', name, path }),
     setSkillEnabled: (name, enabled) => invoke({ action: 'skillsSetEnabled', name, enabled }),
+    deleteSkill: (name) => invoke({ action: 'skillsDelete', name }),
     restoreBuiltin: (id) => invoke({ action: 'builtinRestore', id }),
     roles: () => invoke({ action: 'roles' }),
     putRole: (input) => invoke({ action: 'rolesPut', ...input }),
@@ -26,6 +27,7 @@ export function createServiceBridge(
     setAgentEnabled: (name, enabled) => invoke({ action: 'agentsSetEnabled', name, enabled }),
     setAgentPermissions: (name, permissions) =>
       invoke({ action: 'agentsSetPermissions', name, permissions }),
+    deleteAgent: (name) => invoke({ action: 'agentsDelete', name }),
     putAgent: (input) => invoke({ action: 'agentsPut', ...input }),
     mcpStatus: () => invoke({ action: 'mcpStatus' }),
     mcpServers: () => invoke({ action: 'mcpServers' }),

@@ -116,3 +116,12 @@ export function putAtdAgent(
     fetchImpl,
   );
 }
+
+/** Deletes one markdown specialist from ~/.atd/agents; system and plugin agents are refused. */
+export function deleteAtdAgent(
+  options: AgentClientOptions,
+  name: string,
+  fetchImpl?: typeof fetch,
+): Promise<{ name: string; deleted: true }> {
+  return request(options, `/v1/agents/${encodeURIComponent(name)}`, 'DELETE', undefined, fetchImpl);
+}

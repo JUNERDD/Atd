@@ -53,6 +53,7 @@ export { stageTaskSkills, peekTaskStaging, takeTaskStaging } from './staging.js'
 export {
   listSkills,
   setSkillEnabled,
+  deleteSkill,
   getSkill,
   stageSkills,
   peekStaging,

@@ -17,7 +17,8 @@ const FORM_ID = 'mcp-server-form';
 /**
  * The MCP page with its connection form: the add page when `serverId` is null, otherwise that
  * server's details, with its status (`before`) above the form and anything the form cannot carry
- * over (`after`) below it. Save checks the draft here first, then hands it to `onUpsert`; the
+ * over (`after`) below it, and a Personal server's Remove (`remove`) before Cancel. Save checks the
+ * draft here first, then hands it to `onUpsert`; the
  * route returns to the list when the save succeeds, and a failure keeps the page for repair.
  */
 export function McpEditor({
@@ -31,6 +32,7 @@ export function McpEditor({
   busy,
   before,
   after,
+  remove,
   onBack,
   onUpsert,
   onStartAi,
@@ -47,6 +49,8 @@ export function McpEditor({
   busy: boolean;
   before?: ReactNode;
   after?: ReactNode;
+  /** The footer's Remove control on an existing server's page. */
+  remove?: ReactNode;
   onBack: () => void;
   onUpsert: (input: McpUpsertInput) => Promise<boolean>;
   onStartAi: (target: string | null) => void;
@@ -111,6 +115,7 @@ export function McpEditor({
       }}
       actions={
         <>
+          {remove}
           <Button type="button" variant="glass" onClick={onBack}>
             {t('extensions.cancel')}
           </Button>

@@ -12,6 +12,7 @@ import { draftFromConfig, EMPTY_MCP_DRAFT, type McpUpsertInput } from './extensi
 import { McpEditor } from './extension-mcp-editor';
 import type { ExtensionMcpConfig } from './extension-detail-rows';
 import { ExtensionPage, type ExtensionPageBadge } from './extension-page';
+import { ExtensionRemoveButton } from './extension-remove-dialog';
 import type { ExtensionMcpRow } from './extension-rows';
 import { useMcpConfig } from './use-mcp-config';
 import { useMcpStateLabel } from './use-mcp-state-label';
@@ -31,6 +32,8 @@ type McpPageProps = {
   onStartAi: (target: string | null) => void;
   /** Copies a plugin's read-only server into Personal. */
   onDuplicate: () => void;
+  /** Removes a Personal server once the confirmation is accepted. */
+  onRemove: () => void;
 };
 
 /**
@@ -95,7 +98,10 @@ function McpConnectionFacts({ config }: { config: ExtensionMcpConfig | null }) {
   );
 }
 
-/** One server's details: its status, then its connection prefilled from the configured record. */
+/**
+ * One server's details: its status, then its connection prefilled from the configured record, with
+ * Remove for a Personal server.
+ */
 function McpDetailsPage({ serverId, ...props }: McpPageProps & { serverId: string }) {
   const { t } = useTranslation('settings');
   const stateLabel = useMcpStateLabel();
@@ -173,6 +179,16 @@ function McpDetailsPage({ serverId, ...props }: McpPageProps & { serverId: strin
       busy={props.busy}
       before={status}
       after={<McpUnkeptSection config={config} />}
+      remove={
+        <ExtensionRemoveButton
+          name={serverId}
+          label={t('extensions.remove')}
+          title={t('extensions.removeTitle', { name: serverId })}
+          description={t('extensions.removeDescription')}
+          disabled={!props.connected || props.busy}
+          onConfirm={props.onRemove}
+        />
+      }
       onBack={props.onBack}
       onUpsert={props.onUpsert}
       onStartAi={props.onStartAi}

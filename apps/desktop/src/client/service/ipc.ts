@@ -106,6 +106,7 @@ export const ServiceRequestSchema = Type.Union([
     name: SkillName,
     enabled: Type.Boolean(),
   }),
+  Type.Object({ action: Type.Literal('skillsDelete'), name: PersonalItemNameSchema }),
   Type.Object({ action: Type.Literal('builtinRestore'), id: BuiltinIdSchema }),
   Type.Object({ action: Type.Literal('roles') }),
   Type.Object({
@@ -131,6 +132,7 @@ export const ServiceRequestSchema = Type.Union([
     name: AgentNameSchema,
     permissions: Type.Union([SubagentPermissionsSchema, Type.Null()]),
   }),
+  Type.Object({ action: Type.Literal('agentsDelete'), name: PersonalItemNameSchema }),
   Type.Object({
     action: Type.Literal('agentsPut'),
     name: PersonalItemNameSchema,
@@ -202,6 +204,8 @@ export interface ServiceBridge extends ServicePluginBridge, ServiceMcpApprovalBr
     path: string,
   ) => Promise<{ path: string; content: string | null; reason: 'binary' | 'too_large' | null }>;
   setSkillEnabled: (name: string, enabled: boolean) => Promise<{ name: string; enabled: boolean }>;
+  /** Deletes a Personal skill's files; built-in, plugin and shared skills are refused. */
+  deleteSkill: (name: string) => Promise<{ name: string; deleted: true }>;
   /** Backs up the user's copy of a built-in resource, then reinstalls the shipped version. */
   restoreBuiltin: (id: string) => Promise<{
     id: string;
@@ -233,6 +237,8 @@ export interface ServiceBridge extends ServicePluginBridge, ServiceMcpApprovalBr
     model: string | null;
     systemPrompt: string;
   }) => Promise<{ agent: unknown }>;
+  /** Deletes a Personal subagent's file; system and plugin subagents are refused. */
+  deleteAgent: (name: string) => Promise<{ name: string; deleted: true }>;
   /** Status rows, and whether the one-time launch approval notice still shows. */
   mcpStatus: () => Promise<{ servers: unknown[]; approvalNotice: boolean }>;
   /** The configured MCP records (transport, command or URL, auth) behind the status rows. */

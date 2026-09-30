@@ -9,11 +9,11 @@ function serviceApi() {
 }
 
 /**
- * What a write in progress holds: one built-in, role, subagent or MCP server, one plugin, or an
- * install. Rows lock while their own target is busy; pages lock while anything is.
+ * What a write in progress holds: one built-in, skill, role, subagent or MCP server, one plugin,
+ * or an install. Rows lock while their own target is busy; pages lock while anything is.
  */
 export type ExtensionBusyTarget =
-  | { kind: 'builtin' | 'role' | 'agent' | 'mcp'; name: string }
+  | { kind: 'builtin' | 'skill' | 'role' | 'agent' | 'mcp'; name: string }
   | { kind: 'plugin'; id: string }
   | { kind: 'install' };
 
@@ -36,6 +36,36 @@ export function useExtensionMutations() {
     } catch (error) {
       showErrorToast(error);
       throw error;
+    }
+  }, []);
+
+  /** Deletes a Personal skill's files; resolves to whether it was deleted. */
+  const deleteSkill = useCallback(async (name: string, refresh: () => Promise<void>) => {
+    setBusy({ kind: 'skill', name });
+    try {
+      await serviceApi().deleteSkill(name);
+      await refresh();
+      return true;
+    } catch (error) {
+      showErrorToast(error);
+      return false;
+    } finally {
+      setBusy(null);
+    }
+  }, []);
+
+  /** Deletes a Personal subagent's file and its settings; resolves to whether it was deleted. */
+  const deleteAgent = useCallback(async (name: string, refresh: () => Promise<void>) => {
+    setBusy({ kind: 'agent', name });
+    try {
+      await serviceApi().deleteAgent(name);
+      await refresh();
+      return true;
+    } catch (error) {
+      showErrorToast(error);
+      return false;
+    } finally {
+      setBusy(null);
     }
   }, []);
 
@@ -169,13 +199,16 @@ export function useExtensionMutations() {
     [],
   );
 
+  /** Removes a Personal server from the catalog; resolves to whether it was removed. */
   const mcpRemove = useCallback(async (serverId: string, refresh: () => Promise<void>) => {
     setBusy({ kind: 'mcp', name: serverId });
     try {
       await serviceApi().mcpRemove(serverId);
       await refresh();
+      return true;
     } catch (error) {
       showErrorToast(error);
+      return false;
     } finally {
       setBusy(null);
     }
@@ -185,6 +218,8 @@ export function useExtensionMutations() {
     busy,
     setSkillEnabled,
     setAgentEnabled,
+    deleteSkill,
+    deleteAgent,
     restoreBuiltin,
     putRole,
     putAgent,

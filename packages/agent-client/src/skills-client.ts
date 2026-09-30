@@ -127,6 +127,15 @@ export function setSkillEnabled(
   );
 }
 
+/** Deletes one Personal skill (`~/.atd/skills`); built-in, plugin and shared skills are refused. */
+export function deleteSkill(
+  options: AgentClientOptions,
+  name: string,
+  fetchImpl?: typeof fetch,
+): Promise<{ name: string; deleted: true }> {
+  return request(options, `/v1/skills/${encodeURIComponent(name)}`, 'DELETE', undefined, fetchImpl);
+}
+
 /** Stages skill/role selection for the next run of a task. */
 export function stageSkills(
   options: AgentClientOptions,

@@ -1,16 +1,6 @@
 import { useState } from 'react';
 import { KeyRound, Plug, PlugZap, ShieldCheck, ShieldOff, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@ai/ui/components/alert-dialog';
 import { Button } from '@ai/ui/components/button';
 import { DropdownMenuItem, DropdownMenuSeparator } from '@ai/ui/components/dropdown-menu';
 import { HighlightedText } from '@ai/ui/components/highlighted-text';
@@ -19,6 +9,7 @@ import { ItemContent, ItemDescription, ItemMedia, ItemTitle } from '@ai/ui/compo
 import type { FieldsMatch } from '@ai/ui/lib/fuzzy-match';
 import { isComposingKey } from '@ai/ui/lib/ime';
 import { ExtensionGroup } from './extension-group';
+import { ExtensionRemoveDialog } from './extension-remove-dialog';
 import { ExtensionRow, ExtensionRowActions } from './extension-row';
 import type { ExtensionMcpRow } from './extension-rows';
 import type { McpMatch } from './use-extension-matches';
@@ -153,7 +144,7 @@ function McpRow({
               ) : null}
               {steps && !row.readOnly ? <DropdownMenuSeparator /> : null}
               {row.readOnly ? null : (
-                <DropdownMenuItem disabled={locked} onSelect={onRemove}>
+                <DropdownMenuItem variant="destructive" disabled={locked} onSelect={onRemove}>
                   <Trash2 />
                   {t('extensions.remove')}
                 </DropdownMenuItem>
@@ -241,31 +232,14 @@ export function ExtensionMcpGroup({
           />
         ))}
       </ExtensionGroup>
-      <AlertDialog
-        open={removing !== null}
-        onOpenChange={(open) => {
-          if (!open) setRemoving(null);
-        }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {t('extensions.removeTitle', { name: removing ?? '' })}
-            </AlertDialogTitle>
-            <AlertDialogDescription>{t('extensions.removeDescription')}</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{t('extensions.cancel')}</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                if (removing) onRemove(removing);
-              }}
-            >
-              {t('extensions.remove')}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ExtensionRemoveDialog
+        name={removing}
+        title={t('extensions.removeTitle', { name: removing ?? '' })}
+        description={t('extensions.removeDescription')}
+        confirm={t('extensions.remove')}
+        onCancel={() => setRemoving(null)}
+        onConfirm={onRemove}
+      />
     </>
   );
 }

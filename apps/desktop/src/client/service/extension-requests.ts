@@ -1,4 +1,6 @@
 import {
+  deleteAtdAgent,
+  deleteSkill,
   getSkill,
   listAtdAgents,
   listRoles,
@@ -56,6 +58,8 @@ export async function handleExtensionRequest(
       return readSkillFile(options, request.name, request.path);
     case 'skillsSetEnabled':
       return setSkillEnabled(options, request.name, request.enabled);
+    case 'skillsDelete':
+      return deleteSkill(options, request.name);
     case 'builtinRestore':
       return restoreBuiltin(options, request.id);
     case 'roles':
@@ -68,6 +72,8 @@ export async function handleExtensionRequest(
       return setAtdAgentEnabled(options, request.name, request.enabled);
     case 'agentsSetPermissions':
       return setAtdAgentPermissions(options, request.name, request.permissions);
+    case 'agentsDelete':
+      return deleteAtdAgent(options, request.name);
     case 'agentsPut':
       return putAtdAgent(options, {
         name: request.name,
