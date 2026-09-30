@@ -1,3 +1,4 @@
+import { useRef, type MouseEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CircleAlert, RotateCcw } from 'lucide-react';
 import { Button } from '@ai/ui/components/button';
@@ -18,6 +19,8 @@ import type { useShortcutSettings } from './use-shortcut-settings';
 /**
  * One shortcut: its name and purpose, then the keys, which record a new combination when clicked.
  * A changed shortcut adds Reset before the keys, so the keys keep the trailing edge in every row.
+ * While a shortcut change saves, the controls stay focusable but ignore input, and the saving
+ * row is marked busy.
  */
 export function ShortcutRow({
   action,
@@ -34,16 +37,30 @@ export function ShortcutRow({
   error?: string;
 }) {
   const { t } = useTranslation('settings');
+  const keysButton = useRef<HTMLButtonElement>(null);
   const recording = settings.recording === action;
   const keys = shortcutKeys(settings.bindings[action], settings.platform);
-  const locked = settings.unavailable || settings.pending !== null;
+  const locked = settings.shortcutBusy !== null;
+  const busy = settings.shortcutBusy === action || settings.shortcutBusy === 'all';
+  // While another row records, this row's controls look unavailable and ignore the pointer:
+  // pressing them keeps focus (and the recording) on that row instead of moving it here.
+  const recordingElsewhere = settings.recording !== null && !recording;
+  const inert = {
+    'aria-disabled': locked || recordingElsewhere || undefined,
+    'data-recording-elsewhere': recordingElsewhere || undefined,
+    onMouseDown: (event: MouseEvent) => {
+      if (recordingElsewhere) event.preventDefault();
+    },
+  };
+  // The latest attempt's error in this row outranks the standing registration error.
+  const shownError = settings.errors[action] ?? error;
   const errorId = `settings-shortcut-${action}-error`;
 
   return (
     <Item asChild size="sm" className="settings-card-row">
-      <li data-settings-anchor={`shortcut-${action}`}>
+      <li data-settings-anchor={`shortcut-${action}`} aria-busy={busy || undefined}>
         <ItemContent className="min-w-[min(120px,100%)]">
-          <ItemTitle>{label}</ItemTitle>
+          <ItemTitle className="whitespace-normal">{label}</ItemTitle>
           <ItemDescription className="whitespace-normal">{description}</ItemDescription>
         </ItemContent>
         <ItemActions className="ml-auto">
@@ -51,26 +68,39 @@ export function ShortcutRow({
             <IconButton
               label={t('shortcuts.capture.reset')}
               aria-label={t('shortcuts.capture.resetLabel', { label })}
-              disabled={locked || settings.recording !== null}
-              onClick={() => void settings.resetShortcut(action)}
+              className="data-recording-elsewhere:opacity-50"
+              disabled={settings.unavailable}
+              {...inert}
+              onClick={() => {
+                if (recordingElsewhere) return;
+                // Reset disappears once the default is back, so focus moves on to the keys.
+                void settings.resetShortcut(action).then((reset) => {
+                  if (reset) keysButton.current?.focus();
+                });
+              }}
             >
               <RotateCcw />
             </IconButton>
           )}
           <Button
+            ref={keysButton}
             type="button"
             variant="outline"
             size="sm"
-            className="settings-shortcut-button aria-pressed:border-ring aria-pressed:ring-3 aria-pressed:ring-ring/30"
+            className="settings-shortcut-button aria-pressed:border-ring aria-pressed:ring-3 aria-pressed:ring-ring/30 data-recording-elsewhere:opacity-50"
             aria-label={
               recording
                 ? t('shortcuts.capture.cancelLabel', { label })
                 : t('shortcuts.capture.changeLabel', { label, keys: keys.join(' ') })
             }
-            aria-describedby={recording ? 'settings-shortcut-hint' : error ? errorId : undefined}
+            aria-describedby={
+              recording ? 'settings-shortcut-hint' : shownError ? errorId : undefined
+            }
             aria-pressed={recording}
-            disabled={locked || (settings.recording !== null && !recording)}
+            disabled={settings.unavailable}
+            {...inert}
             onClick={() => {
+              if (recordingElsewhere) return;
               if (recording) settings.cancelRecording();
               else settings.startRecording(action);
             }}
@@ -89,10 +119,14 @@ export function ShortcutRow({
             )}
           </Button>
         </ItemActions>
-        {error && (
-          <ItemFooter id={errorId} className="settings-shortcut-error" role="alert">
+        {shownError && (
+          <ItemFooter
+            id={errorId}
+            className="settings-inline-error items-start justify-start"
+            role="alert"
+          >
             <CircleAlert aria-hidden="true" />
-            <span>{error}</span>
+            <span>{shownError}</span>
           </ItemFooter>
         )}
       </li>

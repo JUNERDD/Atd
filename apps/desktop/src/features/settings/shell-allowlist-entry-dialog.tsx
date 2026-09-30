@@ -1,4 +1,4 @@
-import { Trash2 } from 'lucide-react';
+import { CircleAlert, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@ai/ui/components/button';
 import {
@@ -13,19 +13,26 @@ import { ScrollArea } from '@ai/ui/components/scroll-area';
 
 /**
  * One allowlist entry in full: its row shows a single truncated line, so a click on the row opens
- * this. Removing here is the same action as the row's trash button.
+ * this. Removing here is the same action as the row's trash button; a failed removal is reported
+ * here, where it was asked for.
  */
 export function ShellAllowlistEntryDialog({
   entry,
   open,
   onOpenChange,
+  unavailable,
   removing,
+  error,
   onRemove,
 }: {
   entry: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** The list cannot change at all, such as without the desktop bridge. */
+  unavailable: boolean;
+  /** A save is in flight: Remove stays focusable and ignores clicks until it settles. */
   removing: boolean;
+  error?: string;
   onRemove: () => void;
 }) {
   const { t } = useTranslation('settings');
@@ -46,8 +53,22 @@ export function ShellAllowlistEntryDialog({
             {entry}
           </pre>
         </ScrollArea>
+        {error && (
+          <p className="settings-inline-error" role="alert">
+            <CircleAlert aria-hidden="true" />
+            <span>{error}</span>
+          </p>
+        )}
         <DialogFooter>
-          <Button variant="destructive" disabled={removing} onClick={onRemove}>
+          <Button
+            variant="destructive"
+            disabled={unavailable}
+            aria-disabled={removing || undefined}
+            aria-busy={removing || undefined}
+            onClick={() => {
+              if (!removing) onRemove();
+            }}
+          >
             <Trash2 />
             {t('permissions.shellAllowlist.remove')}
           </Button>

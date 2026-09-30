@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { CircleAlert } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Label } from '@ai/ui/components/label';
 import { Item, ItemContent, ItemDescription, ItemGroup, ItemTitle } from '@ai/ui/components/item';
@@ -8,8 +9,8 @@ import {
   PERMISSION_TIERS,
   type PermissionTier,
 } from '../../client/agent/permission-schema';
-import { showErrorToast } from '../../components/toast-store';
 import { SettingsHeading } from './settings-heading';
+import { useSettingsSectionExit } from './settings-navigation';
 
 const TIER_COPY = {
   manual: {
@@ -36,19 +37,26 @@ export function PermissionSettings({ snapshot }: { snapshot: SettingsSnapshot | 
   const { t } = useTranslation('settings');
   const bridge = window.desktop?.settings;
   const [pending, setPending] = useState(false);
-  const unavailable = !bridge || !snapshot || pending;
+  const [error, setError] = useState<string | null>(null);
+  useSettingsSectionExit(() => setError(null));
+  // Without the bridge or a snapshot the tiers cannot change at all; while a save is in flight
+  // the radios stay focusable and changes are ignored until it settles.
+  const unavailable = !bridge || !snapshot;
   const value = snapshot?.permissionTier ?? DEFAULT_PERMISSION_TIER;
 
   function select(tier: PermissionTier) {
-    if (!bridge || unavailable || tier === value) return;
+    if (!bridge || unavailable || pending || tier === value) return;
     setPending(true);
+    setError(null);
     void bridge.setPermissionTier(tier).then(
       () => {
         setPending(false);
       },
       (reason: unknown) => {
         setPending(false);
-        showErrorToast(reason instanceof Error ? reason : t('permissions.errors.save'));
+        setError(
+          reason instanceof Error && reason.message ? reason.message : t('permissions.errors.save'),
+        );
       },
     );
   }
@@ -61,6 +69,8 @@ export function PermissionSettings({ snapshot }: { snapshot: SettingsSnapshot | 
         role="radiogroup"
         aria-label={t('permissions.title')}
         aria-disabled={unavailable || undefined}
+        aria-busy={pending || undefined}
+        aria-describedby={error ? 'settings-permission-error' : undefined}
       >
         {PERMISSION_TIERS.map((tier) => {
           const selected = value === tier;
@@ -97,6 +107,12 @@ export function PermissionSettings({ snapshot }: { snapshot: SettingsSnapshot | 
           );
         })}
       </ItemGroup>
+      {error && (
+        <p id="settings-permission-error" className="settings-inline-error" role="alert">
+          <CircleAlert aria-hidden="true" />
+          <span>{error}</span>
+        </p>
+      )}
     </section>
   );
 }

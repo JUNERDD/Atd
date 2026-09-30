@@ -1,10 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
-import { Plug, SearchX } from 'lucide-react';
+import { CircleAlert, Plug, Plus, SearchX } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@ai/ui/components/button';
-import { Input } from '@ai/ui/components/input';
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from '@ai/ui/components/empty';
 import { matchFields } from '@ai/ui/lib/fuzzy-match';
-import { isComposingKey, useCompositionQuery } from '@ai/ui/lib/ime';
+import { useCompositionQuery } from '@ai/ui/lib/ime';
 import {
   AlertDialog,
   AlertDialogContent,
@@ -20,8 +27,9 @@ import type { Connection, ProviderCatalogEntry } from '../../client/providers/sc
 import { ProviderConnections } from '../providers/provider-connections';
 import { ProviderCatalog } from '../providers/provider-catalog';
 import { ProviderForm } from '../providers/provider-form';
-import { showErrorToast, showToast } from '../../components/toast-store';
+import { showErrorToast } from '../../components/toast-store';
 import { SettingsHeading } from './settings-heading';
+import { SettingsSearchField } from './settings-search-field';
 import { useSettingsSectionExit } from './settings-navigation';
 import { useSettingsPageHistory } from './use-settings-page-history';
 import '../providers/providers.css';
@@ -40,6 +48,11 @@ export function ProviderSettingsForm({ snapshot }: { snapshot: SettingsSnapshot 
   const { t } = useTranslation('settings');
   const bridge = window.desktop?.settings.providers;
   const [catalog, setCatalog] = useState<ProviderCatalogEntry[]>([]);
+  // A failed load keeps an inline message with Retry, which stays (busy) while it asks again.
+  const [catalogStatus, setCatalogStatus] = useState<'loading' | 'ready' | 'failed' | 'retrying'>(
+    'loading',
+  );
+  const [catalogRequest, setCatalogRequest] = useState(0);
   const connections = snapshot?.connections ?? [];
   // Forward cannot reopen a connection that was disconnected meanwhile.
   const history = useSettingsPageHistory<ProviderRoute>(
@@ -62,26 +75,32 @@ export function ProviderSettingsForm({ snapshot }: { snapshot: SettingsSnapshot 
     let active = true;
     void bridge.catalog().then(
       (value) => {
-        if (active) setCatalog(value);
-      },
-      (error) => {
         if (!active) return;
-        setRetryable(true);
-        showErrorToast(error);
+        setCatalog(value);
+        setCatalogStatus('ready');
+      },
+      () => {
+        if (active) setCatalogStatus('failed');
       },
     );
     return () => {
       active = false;
     };
-  }, [bridge]);
-  async function perform(operation: () => Promise<void>, success = '') {
+  }, [bridge, catalogRequest]);
+  const catalogReady = catalogStatus === 'ready';
+  const catalogFailed = catalogStatus === 'failed' || catalogStatus === 'retrying';
+  /** Opens the catalog; the Add buttons stay focusable while it cannot load, and say why. */
+  function addProvider() {
+    if (bridge && catalogReady) history.open({ page: 'catalog' });
+  }
+  /** Runs an operation on a connection; a failure offers Retry until something succeeds. */
+  async function perform(operation: () => Promise<void>) {
     if (pending) return;
-    retry.current = () => perform(operation, success);
+    retry.current = () => perform(operation);
     setPending(true);
     setRetryable(false);
     try {
       await operation();
-      if (success) showToast({ kind: 'info', text: success });
       retry.current = null;
     } catch (error) {
       setRetryable(true);
@@ -125,11 +144,9 @@ export function ProviderSettingsForm({ snapshot }: { snapshot: SettingsSnapshot 
     const match = matchFields(search.query, { name: connection.name, provider });
     return match || !search.query.trim() ? [{ connection, nameRanges: match?.ranges.name }] : [];
   });
-  const emptyTitle = t(
-    connections.length
-      ? 'providers.overview.empty.noMatchesTitle'
-      : 'providers.overview.empty.firstTitle',
-  );
+  const emptyTitle = connections.length
+    ? t('providers.overview.empty.noMatchesTitle', { query: search.query.trim() })
+    : t('providers.overview.empty.firstTitle');
   const emptyDescription = t(
     connections.length
       ? 'providers.overview.empty.noMatchesDescription'
@@ -145,41 +162,52 @@ export function ProviderSettingsForm({ snapshot }: { snapshot: SettingsSnapshot 
         title={t('providers.overview.title')}
         description={t('providers.overview.description')}
       >
-        <Input
+        <SettingsSearchField
           ref={searchInput}
+          search={search}
           aria-label={t('providers.overview.searchLabel')}
           placeholder={t('providers.overview.searchPlaceholder')}
-          value={search.text}
           disabled={!connections.length}
-          onChange={(event) => search.change(event.target.value)}
-          {...search.compositionProps}
-          onKeyDown={(event) => {
-            if (event.key === 'Escape' && search.text && !isComposingKey(event)) {
-              event.stopPropagation();
-              clear();
-            }
-          }}
         />
         <Button
-          disabled={!bridge || !catalog.length}
-          onClick={() => history.open({ page: 'catalog' })}
+          className="aria-disabled:opacity-50"
+          disabled={!bridge}
+          aria-disabled={!catalogReady || undefined}
+          aria-describedby={catalogFailed ? 'provider-catalog-error' : undefined}
+          onClick={addProvider}
         >
+          <Plus />
           {t('providers.overview.addProvider')}
         </Button>
       </SettingsHeading>
+      {catalogFailed && (
+        <div className="provider-catalog-error">
+          <p id="provider-catalog-error" className="settings-inline-error" role="alert">
+            <CircleAlert aria-hidden="true" />
+            <span>{t('providers.overview.catalogError')}</span>
+          </p>
+          <Button
+            variant="outline"
+            size="xs"
+            aria-disabled={catalogStatus === 'retrying' || undefined}
+            aria-busy={catalogStatus === 'retrying' || undefined}
+            onClick={() => {
+              if (catalogStatus === 'retrying') return;
+              setCatalogStatus('retrying');
+              setCatalogRequest((count) => count + 1);
+            }}
+          >
+            {t('providers.overview.retry')}
+          </Button>
+        </div>
+      )}
       {retryable && (
         <div className="settings-status">
           <Button
             variant="outline"
             size="xs"
             disabled={pending}
-            onClick={() =>
-              void (retry.current
-                ? retry.current()
-                : perform(async () => {
-                    if (bridge) setCatalog(await bridge.catalog());
-                  }))
-            }
+            onClick={() => void retry.current?.()}
           >
             {t('providers.overview.retry')}
           </Button>
@@ -195,25 +223,39 @@ export function ProviderSettingsForm({ snapshot }: { snapshot: SettingsSnapshot 
         rows={visible}
         defaultConnectionId={snapshot?.defaultConnectionId ?? null}
         pending={pending}
+        canManage={catalogReady}
         onManage={manage}
         onDisconnect={setDisconnecting}
         perform={perform}
       />
       {!visible.length && (
-        <div className="provider-empty">
-          {connections.length ? <SearchX size={24} /> : <Plug size={24} />}
-          <h3 title={emptyTitle}>{emptyTitle}</h3>
-          <p title={emptyDescription}>{emptyDescription}</p>
-          <Button
-            variant="outline"
-            disabled={!bridge}
-            onClick={connections.length ? clear : () => history.open({ page: 'catalog' })}
-          >
-            {connections.length
-              ? t('providers.overview.empty.clearSearch')
-              : t('providers.overview.addProvider')}
-          </Button>
-        </div>
+        <Empty className="px-4 py-8">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">{connections.length ? <SearchX /> : <Plug />}</EmptyMedia>
+            <EmptyTitle>{emptyTitle}</EmptyTitle>
+            <EmptyDescription>{emptyDescription}</EmptyDescription>
+          </EmptyHeader>
+          <EmptyContent>
+            {connections.length ? (
+              <Button variant="outline" onClick={clear}>
+                {t('providers.overview.empty.clearSearch')}
+              </Button>
+            ) : (
+              // Follows the header's Add provider: unavailable, and why, while the catalog is.
+              <Button
+                variant="outline"
+                className="aria-disabled:opacity-50"
+                disabled={!bridge}
+                aria-disabled={!catalogReady || undefined}
+                aria-describedby={catalogFailed ? 'provider-catalog-error' : undefined}
+                onClick={addProvider}
+              >
+                <Plus />
+                {t('providers.overview.addProvider')}
+              </Button>
+            )}
+          </EmptyContent>
+        </Empty>
       )}
       <AlertDialog
         open={Boolean(disconnecting)}
@@ -237,6 +279,7 @@ export function ProviderSettingsForm({ snapshot }: { snapshot: SettingsSnapshot 
               {t('providers.overview.disconnect.cancel')}
             </AlertDialogCancel>
             <AlertDialogAction
+              variant="destructive"
               disabled={pending}
               onClick={(event) => {
                 event.preventDefault();
@@ -244,7 +287,7 @@ export function ProviderSettingsForm({ snapshot }: { snapshot: SettingsSnapshot 
                   void perform(async () => {
                     await bridge!.disconnect(disconnecting.connectionId, disconnecting.revision);
                     setDisconnecting(null);
-                  }, t('providers.overview.disconnect.done'));
+                  });
               }}
             >
               {t('providers.overview.disconnect.confirm')}

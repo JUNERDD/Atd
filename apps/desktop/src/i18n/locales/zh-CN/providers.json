@@ -12,13 +12,11 @@
       "apiKeyUnverified": "API 密钥已保存 · 尚未校验"
     },
     "defaultModelLabel": "{{name}} 的默认模型",
-    "defaultModelSaved": "已保存 {{name}} 的默认模型。",
-    "thinkingLevelSaved": "已保存 {{name}} 的推理强度。",
     "currentDefault": "当前默认",
     "makeDefault": "设为默认提供商",
     "chooseDefaultModel": "请先选择默认模型",
-    "madeDefault": "{{name}} 现在是默认提供商。",
     "manage": "管理连接",
+    "manageLabel": "管理 {{name}}",
     "refresh": "刷新模型",
     "disconnect": "断开连接",
     "unavailableModel": "{{model}} 不可用。请刷新模型或选择其他模型。"
@@ -38,7 +36,10 @@
       "local": "本地与自定义"
     },
     "available": "可用的提供商",
-    "empty": "没有匹配的提供商"
+    "empty": "没有匹配的提供商",
+    "noMatchesTitle": "没有与“{{query}}”匹配的提供商",
+    "noMatchesDescription": "试试其他名称或类别。",
+    "clearSearch": "清除搜索"
   },
   "form": {
     "sectionLabel": "提供商连接",

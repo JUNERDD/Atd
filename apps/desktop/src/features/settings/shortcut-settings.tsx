@@ -1,19 +1,12 @@
-import { useEffect, useId } from 'react';
+import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { CircleAlert } from 'lucide-react';
 import { Button } from '@ai/ui/components/button';
 import { Card } from '@ai/ui/components/card';
-import {
-  Item,
-  ItemActions,
-  ItemContent,
-  ItemDescription,
-  ItemGroup,
-  ItemTitle,
-} from '@ai/ui/components/item';
-import { Label } from '@ai/ui/components/label';
-import { Switch } from '@ai/ui/components/switch';
+import { ItemGroup } from '@ai/ui/components/item';
 import type { SettingsSnapshot } from '../../client/settings-contract';
 import { SettingsHeading } from './settings-heading';
+import { SettingsSwitchRow } from './settings-switch-row';
 import { ShortcutConflictHint } from './shortcut-conflict-hint';
 import { ShortcutRow } from './shortcut-row';
 import { useShortcutSettings } from './use-shortcut-settings';
@@ -41,52 +34,6 @@ const IN_APP_SHORTCUTS = [
   },
 ] as const;
 
-/**
- * A desktop window preference in the shortcut rows' anatomy, its switch in their action column.
- * The whole row toggles it; the switch is named by the title alone and described by the note.
- */
-function WindowPreference({
-  id,
-  label,
-  description,
-  checked,
-  disabled,
-  onCheckedChange,
-}: {
-  id: string;
-  label: string;
-  description: string;
-  checked: boolean;
-  disabled: boolean;
-  onCheckedChange: (value: boolean) => void;
-}) {
-  const ids = useId();
-  return (
-    <Item asChild size="sm" className="settings-card-row settings-preference-row">
-      <li data-settings-anchor={id}>
-        <Label htmlFor={id} className="min-w-[min(120px,100%)] flex-1">
-          <ItemContent>
-            <ItemTitle id={`${ids}-title`}>{label}</ItemTitle>
-            <ItemDescription id={`${ids}-description`} className="whitespace-normal">
-              {description}
-            </ItemDescription>
-          </ItemContent>
-        </Label>
-        <ItemActions className="ml-auto">
-          <Switch
-            id={id}
-            aria-labelledby={`${ids}-title`}
-            aria-describedby={`${ids}-description`}
-            checked={checked}
-            disabled={disabled}
-            onCheckedChange={onCheckedChange}
-          />
-        </ItemActions>
-      </li>
-    </Item>
-  );
-}
-
 export function ShortcutSettings({
   snapshot,
   onRecordingChange,
@@ -99,8 +46,9 @@ export function ShortcutSettings({
   // Only the desktop app registers global shortcuts and owns window preferences.
   const desktopApp = window.desktop !== undefined;
   const recording = settings.recording !== null;
-  const preferenceDisabled = settings.unavailable || settings.pending !== null || recording;
   const registerFailed = desktopApp && snapshot?.shortcutAvailable === false;
+  const restoring = settings.shortcutBusy === 'all';
+  const restoreUnavailable = settings.shortcutBusy !== null || settings.allDefault;
 
   useEffect(() => {
     onRecordingChange(recording);
@@ -110,9 +58,11 @@ export function ShortcutSettings({
   return (
     <>
       <SettingsHeading title={t('shortcuts.title')} description={t('shortcuts.description')} />
-      <div className="settings-shortcut-groups" aria-busy={settings.pending !== null}>
+      <div className="settings-shortcut-groups">
         <section className="settings-shortcut-group" aria-labelledby="settings-global-shortcuts">
-          <h3 id="settings-global-shortcuts">{t('shortcuts.groups.global')}</h3>
+          <h3 id="settings-global-shortcuts" className="settings-section-title">
+            {t('shortcuts.groups.global')}
+          </h3>
           <Card size="sm" className="settings-card">
             <ItemGroup>
               <ShortcutRow
@@ -128,7 +78,9 @@ export function ShortcutSettings({
           {!registerFailed && <ShortcutConflictHint />}
         </section>
         <section className="settings-shortcut-group" aria-labelledby="settings-in-app-shortcuts">
-          <h3 id="settings-in-app-shortcuts">{t('shortcuts.groups.inApp')}</h3>
+          <h3 id="settings-in-app-shortcuts" className="settings-section-title">
+            {t('shortcuts.groups.inApp')}
+          </h3>
           <Card size="sm" className="settings-card">
             <ItemGroup>
               {IN_APP_SHORTCUTS.map(({ action, labelKey, descriptionKey }) => (
@@ -142,61 +94,89 @@ export function ShortcutSettings({
               ))}
             </ItemGroup>
           </Card>
-          <div className="settings-shortcut-group-actions">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              data-settings-anchor="shortcuts-restore-defaults"
-              disabled={preferenceDisabled || settings.allDefault}
-              onClick={() => void settings.restoreDefaults()}
-            >
-              {settings.pending === 'restore'
-                ? t('shortcuts.restoring')
-                : t('shortcuts.restoreDefaults')}
-            </Button>
-          </div>
         </section>
         {/* Window preferences belong to the desktop app; a browser tab has none. */}
         {desktopApp && (
           <section className="settings-shortcut-group" aria-labelledby="settings-window-group">
-            <h3 id="settings-window-group">{t('shortcuts.groups.window')}</h3>
+            <h3 id="settings-window-group" className="settings-section-title">
+              {t('shortcuts.groups.window')}
+            </h3>
             <Card size="sm" className="settings-card">
               <ItemGroup>
                 {/* Null where the OS login item is unavailable: development builds and Linux. */}
                 {settings.openAtLogin !== null && (
-                  <WindowPreference
+                  <SettingsSwitchRow
                     id="settings-open-at-login"
-                    label={t('shortcuts.openAtLogin')}
+                    anchor="settings-open-at-login"
+                    title={t('shortcuts.openAtLogin')}
                     description={t('shortcuts.preferenceNotes.openAtLogin')}
                     checked={settings.openAtLogin}
-                    disabled={preferenceDisabled}
+                    disabled={settings.unavailable}
+                    pending={settings.preferencePending.login}
+                    note={
+                      settings.errors.login ??
+                      (settings.loginApprovalNeeded
+                        ? t('shortcuts.status.openAtLoginApproval')
+                        : undefined)
+                    }
                     onCheckedChange={(value) => void settings.changeOpenAtLogin(value)}
                   />
                 )}
                 {/* macOS keeps the menu bar status item either way, so the panel stays reachable. */}
                 {settings.platform === 'darwin' && (
-                  <WindowPreference
+                  <SettingsSwitchRow
                     id="settings-show-in-dock"
-                    label={t('shortcuts.showInDock')}
+                    anchor="settings-show-in-dock"
+                    title={t('shortcuts.showInDock')}
                     description={t('shortcuts.preferenceNotes.showInDock')}
                     checked={settings.showInDock}
-                    disabled={preferenceDisabled}
+                    disabled={settings.unavailable}
+                    pending={settings.preferencePending.dock}
+                    note={settings.errors.dock}
                     onCheckedChange={(value) => void settings.changeShowInDock(value)}
                   />
                 )}
-                <WindowPreference
+                <SettingsSwitchRow
                   id="settings-always-on-top"
-                  label={t('shortcuts.alwaysOnTop')}
+                  anchor="settings-always-on-top"
+                  title={t('shortcuts.alwaysOnTop')}
                   description={t('shortcuts.preferenceNotes.alwaysOnTop')}
                   checked={settings.pinned}
-                  disabled={preferenceDisabled}
+                  disabled={settings.unavailable}
+                  pending={settings.preferencePending.pin}
+                  note={settings.errors.pin}
                   onCheckedChange={(value) => void settings.changePinned(value)}
                 />
               </ItemGroup>
             </Card>
           </section>
         )}
+        {/* Restores the global shortcut as well as the in-app ones, so it follows every group. */}
+        <div className="settings-shortcut-restore">
+          {settings.errors.restore && (
+            <p id="settings-shortcut-restore-error" className="settings-inline-error" role="alert">
+              <CircleAlert aria-hidden="true" />
+              <span>{settings.errors.restore}</span>
+            </p>
+          )}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="aria-disabled:opacity-50"
+            data-settings-anchor="shortcuts-restore-defaults"
+            disabled={settings.unavailable}
+            // Stays focusable once everything is default again, so focus does not drop away.
+            aria-disabled={restoreUnavailable || undefined}
+            aria-busy={restoring || undefined}
+            aria-describedby={
+              settings.errors.restore ? 'settings-shortcut-restore-error' : undefined
+            }
+            onClick={() => void settings.restoreDefaults()}
+          >
+            {restoring ? t('shortcuts.restoring') : t('shortcuts.restoreDefaults')}
+          </Button>
+        </div>
       </div>
       {/* Read with the recording button, which itself only shows Press keys. */}
       <p id="settings-shortcut-hint" className="sr-only">

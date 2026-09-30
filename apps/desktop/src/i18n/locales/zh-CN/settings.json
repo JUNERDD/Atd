@@ -77,10 +77,11 @@
       "searchPlaceholder": "搜索提供商…",
       "addProvider": "添加提供商",
       "retry": "重试",
+      "catalogError": "无法加载提供商列表。",
       "connectedProviders": "已连接的提供商",
       "defaultModel": "默认模型",
       "empty": {
-        "noMatchesTitle": "没有匹配的提供商",
+        "noMatchesTitle": "没有与“{{query}}”匹配的提供商",
         "noMatchesDescription": "试试其他连接或提供商名称。",
         "firstTitle": "连接你的第一个提供商",
         "firstDescription": "添加账号、API 密钥、云服务或本地连接。",
@@ -92,8 +93,7 @@
         "defaultNote": "使用应用默认值的新任务将需要重新连接或改用其他默认提供商。",
         "cancel": "取消",
         "confirm": "断开连接",
-        "missingProvider": "该提供商已不再注册。",
-        "done": "已断开提供商连接。"
+        "missingProvider": "该提供商已不再注册。"
       }
     }
   },
@@ -137,7 +137,8 @@
       "add": "添加",
       "remove": "移除",
       "removeLabel": "移除 {{entry}}",
-      "empty": "还没有命令。可以在上方添加前缀，或在审批命令时选择“始终允许”。",
+      "empty": "还没有命令。可以在上方添加前缀，或在命令的审批提示中将其加入。",
+      "inactive": "“始终允许”开启时不会使用此列表，因为所有命令都会直接运行。条目会保留，切换回其他级别后继续生效。",
       "errors": {
         "empty": "请输入命令。",
         "tooLong": "条目不能超过 200 个字符。",
@@ -199,12 +200,7 @@
     "restoreDefaults": "恢复默认快捷键",
     "restoring": "正在恢复…",
     "status": {
-      "recordingCanceled": "已取消录制。",
       "recordingHint": "请按下快捷键。按 Escape 取消，按 Tab 移到下一个控件。",
-      "shortcutSaved": "已保存快捷键。",
-      "shortcutReset": "已将快捷键恢复为默认。",
-      "defaultsRestored": "已恢复默认快捷键。",
-      "windowPreferenceSaved": "已保存窗口偏好。",
       "openAtLoginApproval": "请在“系统设置 › 登录项”中允许 AI 以完成设置。"
     },
     "errors": {

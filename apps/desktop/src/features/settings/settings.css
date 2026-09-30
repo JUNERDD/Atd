@@ -1073,11 +1073,6 @@
   flex-direction: column;
   gap: 8px;
 }
-.settings-shortcut-group h3 {
-  font-size: 14px;
-  font-weight: 500;
-  line-height: 20px;
-}
 /* The keys sit 3px inside the button border, so the pill keycaps nest in the pill button. */
 .settings-shortcut-button {
   height: auto;
@@ -1101,29 +1096,26 @@
 .settings-card > [data-slot='item-group'] {
   gap: 0;
 }
-.settings-card-row[data-slot='item'] {
+/* Only inside a card: a row standing alone keeps the Item's own rounded corners. */
+.settings-card .settings-card-row[data-slot='item'] {
   border-radius: 0;
 }
 .settings-card-row + .settings-card-row {
   border-top-color: var(--border);
 }
-.settings-shortcut-error {
-  justify-content: flex-start;
-  align-items: flex-start;
-  color: var(--destructive);
-  line-height: 20px;
-}
-.settings-shortcut-error > svg {
-  flex-shrink: 0;
-  width: 16px;
-  height: 16px;
-  margin-top: 2px;
-}
-.settings-shortcut-group-actions {
+/* Restore defaults follows every group; its error sits before it on the same line. */
+.settings-shortcut-restore {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   justify-content: flex-end;
+  gap: 8px 12px;
 }
-/* The whole preference row toggles its switch, like the permission option rows. */
+.settings-shortcut-restore > .settings-inline-error {
+  flex: 1 1 200px;
+}
+/* A settings switch row (settings-switch-row.tsx): the whole row toggles its switch, like the
+   permission option rows. A busy switch keeps the fill, so a quick save does not flicker it. */
 .settings-preference-row [data-slot='label'] {
   cursor: inherit;
 }
@@ -1195,11 +1187,23 @@
   flex-direction: column;
   gap: 4px;
 }
-.settings-shell-allowlist-heading h3 {
+/* Under Always allow: why the list decides nothing right now, set apart from the description. */
+.settings-shell-allowlist-inactive {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  gap: 6px;
   margin: 0;
-  font-size: 16px;
-  font-weight: 600;
-  line-height: 24px;
+  color: var(--ata-text-secondary);
+  font-size: 13px;
+  line-height: 20px;
+  overflow-wrap: anywhere;
+}
+.settings-shell-allowlist-inactive > svg {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
 }
 /* One card: the add field on top, then the entries (or a note while there are none). */
 .settings-shell-allowlist-card {
@@ -1208,6 +1212,10 @@
 }
 .settings-shell-allowlist-form {
   padding: 6px;
+}
+/* The add field's error, inside the card directly under it, its icon under the `$`. */
+.settings-shell-allowlist-error {
+  padding: 0 14px 8px;
 }
 .settings-shell-allowlist-list {
   gap: 0;

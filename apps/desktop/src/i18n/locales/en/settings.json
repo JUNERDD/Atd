@@ -77,10 +77,11 @@
       "searchPlaceholder": "Search providers…",
       "addProvider": "Add provider",
       "retry": "Try again",
+      "catalogError": "The provider list could not be loaded.",
       "connectedProviders": "Connected providers",
       "defaultModel": "Default model",
       "empty": {
-        "noMatchesTitle": "No matching providers",
+        "noMatchesTitle": "No providers match “{{query}}”",
         "noMatchesDescription": "Try a connection or provider name.",
         "firstTitle": "Connect your first provider",
         "firstDescription": "Add an account, API key, cloud service or local connection.",
@@ -92,8 +93,7 @@
         "defaultNote": " New tasks using the app default will require reconnection or another default provider.",
         "cancel": "Cancel",
         "confirm": "Disconnect",
-        "missingProvider": "This provider is no longer registered.",
-        "done": "Provider disconnected."
+        "missingProvider": "This provider is no longer registered."
       }
     }
   },
@@ -137,7 +137,8 @@
       "add": "Add",
       "remove": "Remove",
       "removeLabel": "Remove {{entry}}",
-      "empty": "No commands yet. Add a prefix above, or choose “Always allow” when you approve a command.",
+      "empty": "No commands yet. Add a prefix above, or add a command from its approval prompt.",
+      "inactive": "Not used while Always allow is on, because every command already runs. Your entries are kept for when you switch back.",
       "errors": {
         "empty": "Enter a command.",
         "tooLong": "Keep entries to 200 characters or fewer.",
@@ -199,12 +200,7 @@
     "restoreDefaults": "Restore default shortcuts",
     "restoring": "Restoring…",
     "status": {
-      "recordingCanceled": "Recording canceled.",
       "recordingHint": "Press a shortcut. Escape cancels; Tab moves to the next control.",
-      "shortcutSaved": "Shortcut saved.",
-      "shortcutReset": "Shortcut reset to default.",
-      "defaultsRestored": "Default shortcuts restored.",
-      "windowPreferenceSaved": "Window preference saved.",
       "openAtLoginApproval": "Approve AI in System Settings › Login Items to finish."
     },
     "errors": {

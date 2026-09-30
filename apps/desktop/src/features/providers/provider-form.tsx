@@ -11,11 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@ai/ui/components/select';
-import type {
-  Connection,
-  ConnectionDraft,
-  ProviderCatalogEntry,
-} from '../../client/providers/schema';
+import type { Connection, ProviderCatalogEntry } from '../../client/providers/schema';
 import { CLOUD_FIELDS, isCustom, isAmbient } from '../../client/providers/metadata';
 import { showErrorToast, showToast } from '../../components/toast-store';
 import { useOverlayFooter } from '../../components/use-overlay-footer';
@@ -25,6 +21,7 @@ import { CustomModels } from './custom-models';
 import { ProviderSignIn } from './provider-login';
 import { ProviderThinkingLevel } from './provider-thinking-level';
 import { draftFrom } from './provider-draft';
+import { useProviderDraft } from './use-provider-draft';
 export function ProviderForm({
   provider,
   connection,
@@ -37,21 +34,7 @@ export function ProviderForm({
   onBack: () => void;
 }) {
   const { t } = useTranslation('providers');
-  const [draft, setDraft] = useState<ConnectionDraft>(() =>
-    connection
-      ? draftFrom(connection)
-      : {
-          connectionId: null,
-          expectedRevision: null,
-          provider: provider.id,
-          name: provider.name,
-          baseUrl: provider.baseUrl,
-          authType: provider.auth[0]?.type ?? 'api_key',
-          defaultModel: '',
-          options: {},
-          customModels: [],
-        },
-  );
+  const { draft, change, load, normalize } = useProviderDraft(provider, connection);
   const [pending, setPending] = useState('');
   const footerRef = useOverlayFooter<HTMLElement>();
   const bridge = window.desktop?.settings.providers;
@@ -72,9 +55,6 @@ export function ProviderForm({
     draft.defaultModel && !models.some((model) => model.id === draft.defaultModel)
       ? draft.defaultModel
       : '';
-  function change(patch: Partial<ConnectionDraft>) {
-    setDraft({ ...draft, ...patch });
-  }
   async function perform(label: string, operation: () => Promise<void>) {
     setPending(label);
     try {
@@ -88,7 +68,8 @@ export function ProviderForm({
     if (!bridge) return;
     await perform('saving', async () => {
       const result = await bridge.save(draft);
-      setDraft(draftFrom(result));
+      load(draftFrom(result));
+      // Leaves through `replace`, which never asks about unsaved changes.
       onSaved(result);
       showToast({ kind: 'info', text: t('form.saved') });
     });
@@ -110,7 +91,7 @@ export function ProviderForm({
           {saved && saved.revision !== draft.expectedRevision && (
             <output className="settings-field-note">
               {t('form.conflict')}{' '}
-              <Button size="xs" variant="outline" onClick={() => setDraft(draftFrom(saved))}>
+              <Button size="xs" variant="outline" onClick={() => load(draftFrom(saved))}>
                 {t('form.reload')}
               </Button>
             </output>
@@ -259,6 +240,7 @@ export function ProviderForm({
               saved={saved}
               disabled={disabled}
               onChange={change}
+              onNormalize={normalize}
             />
           </fieldset>
           {draft.authType === 'oauth' &&
