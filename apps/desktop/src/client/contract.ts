@@ -24,7 +24,8 @@ export interface FileSearchBridge {
 export interface DesktopState {
   pinned: boolean;
   shortcut: string;
-  shortcutAvailable: boolean;
+  /** Whether the shell registered the panel shortcut; null until the panel reports it. */
+  shortcutAvailable: boolean | null;
 }
 
 /**

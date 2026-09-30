@@ -11,7 +11,15 @@ export type WindowMessage =
   /** Settings → panel: start a create-with-AI session, or an edit session when `target` is set. */
   | { type: 'extensionSession'; kind: ExtensionSessionKind; target: string | null }
   /** Panel → settings: show one command's editor in an already open settings window. */
-  | { type: 'openCommand'; commandId: string };
+  | { type: 'openCommand'; commandId: string }
+  /**
+   * Panel → settings: what the shell answered for the latest global shortcut set, posted after
+   * every push and in reply to `shortcutStateRequest`. Only the panel pushes the set, so it alone
+   * learns the answer.
+   */
+  | { type: 'shortcutState'; panelAvailable: boolean; errors: Record<string, string> }
+  /** Settings → panel: a settings window that just loaded asks for the latest `shortcutState`. */
+  | { type: 'shortcutStateRequest' };
 
 export interface WindowMessages {
   post(message: WindowMessage): void;

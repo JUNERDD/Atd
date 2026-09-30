@@ -172,6 +172,7 @@ export const settingsSearchEntries: readonly SettingsSearchEntry[] = [
     section: 'shortcuts',
     anchor: 'settings-open-at-login',
     label: 'shortcuts.openAtLogin',
+    description: 'shortcuts.preferenceNotes.openAtLogin',
     keywords: 'search.keywords.openAtLogin',
   },
   {
@@ -179,6 +180,7 @@ export const settingsSearchEntries: readonly SettingsSearchEntry[] = [
     section: 'shortcuts',
     anchor: 'settings-show-in-dock',
     label: 'shortcuts.showInDock',
+    description: 'shortcuts.preferenceNotes.showInDock',
     keywords: 'search.keywords.showInDock',
   },
   {
@@ -186,6 +188,7 @@ export const settingsSearchEntries: readonly SettingsSearchEntry[] = [
     section: 'shortcuts',
     anchor: 'settings-always-on-top',
     label: 'shortcuts.alwaysOnTop',
+    description: 'shortcuts.preferenceNotes.alwaysOnTop',
     keywords: 'search.keywords.alwaysOnTop',
   },
   {

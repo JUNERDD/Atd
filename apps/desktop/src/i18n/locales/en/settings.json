@@ -39,7 +39,7 @@
       "sectionProviders": "model models api key connection account login sign in service openai anthropic ollama",
       "sectionCommands": "command prompt snippet template macro instruction saved",
       "sectionMemory": "preferences remember learn context profile",
-      "sectionShortcuts": "keyboard hotkey keybinding key binding record window preferences",
+      "sectionShortcuts": "keyboard hotkey keybinding key binding record window preferences dock login",
       "tierManual": "manual ask confirm every action prompt each time",
       "tierAuto": "auto automatic approve approval review model safe",
       "tierAlways": "always allow unattended never ask full access yolo",
@@ -142,10 +142,11 @@
   },
   "shortcuts": {
     "title": "Keyboard shortcuts",
-    "description": "Make the app work at your pace. Click a shortcut to edit it.",
+    "description": "Click a shortcut, then press the new keys. Escape cancels.",
     "groups": {
       "global": "Global",
-      "inApp": "In app"
+      "inApp": "In app",
+      "window": "Window"
     },
     "actions": {
       "togglePanel": {
@@ -172,23 +173,31 @@
     "capture": {
       "pressKeys": "Press keys…",
       "cancelLabel": "Cancel recording {{label}}",
-      "changeLabel": "Change {{label}}: {{keys}}"
+      "changeLabel": "Change {{label}}: {{keys}}",
+      "reset": "Reset to default",
+      "resetLabel": "Reset {{label}} to default"
     },
     "openAtLogin": "Open at login",
     "showInDock": "Show in Dock",
     "alwaysOnTop": "Always on top",
-    "restoreDefaults": "Restore defaults",
+    "preferenceNotes": {
+      "openAtLogin": "Start the app when you log in to your Mac.",
+      "showInDock": "The menu bar icon stays either way.",
+      "alwaysOnTop": "Keep the panel above other windows."
+    },
+    "restoreDefaults": "Restore default shortcuts",
     "restoring": "Restoring…",
     "status": {
       "recordingCanceled": "Recording canceled.",
       "recordingHint": "Press a shortcut. Escape cancels; Tab moves to the next control.",
       "shortcutSaved": "Shortcut saved.",
+      "shortcutReset": "Shortcut reset to default.",
       "defaultsRestored": "Default shortcuts restored.",
       "windowPreferenceSaved": "Window preference saved.",
       "openAtLoginApproval": "Approve AI in System Settings › Login Items to finish."
     },
     "errors": {
-      "register": "This shortcut could not be registered. Choose another combination.",
+      "register": "This shortcut could not be registered. macOS or another app may be using it; choose another combination.",
       "unsupportedCombination": "This key combination is not supported. Try another shortcut.",
       "modifierRequired": "Include a modifier such as Command, Control, or Alt.",
       "shortcutSave": "The shortcut could not be saved.",

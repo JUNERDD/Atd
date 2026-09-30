@@ -39,7 +39,7 @@
       "sectionProviders": "模型 提供商 服务商 接口 密钥 连接 账号 登录 服务",
       "sectionCommands": "命令 指令 提示词 模板 快捷指令",
       "sectionMemory": "记忆 偏好 学习 上下文 画像",
-      "sectionShortcuts": "键盘 快捷键 热键 按键 录制 窗口偏好",
+      "sectionShortcuts": "键盘 快捷键 热键 按键 录制 窗口偏好 程序坞 登录",
       "tierManual": "手动 询问 每次确认 逐个确认 每个操作",
       "tierAuto": "自动 自动批准 自动审批 模型审核 安全操作",
       "tierAlways": "始终 总是 允许 不询问 无人值守 完全放行 免确认",
@@ -142,10 +142,11 @@
   },
   "shortcuts": {
     "title": "键盘快捷键",
-    "description": "让应用按你的节奏工作。点击快捷键即可编辑。",
+    "description": "点击快捷键后按下新的组合键，按 Esc 取消。",
     "groups": {
       "global": "全局",
-      "inApp": "应用内"
+      "inApp": "应用内",
+      "window": "窗口"
     },
     "actions": {
       "togglePanel": {
@@ -172,23 +173,31 @@
     "capture": {
       "pressKeys": "请按下按键…",
       "cancelLabel": "取消录制“{{label}}”",
-      "changeLabel": "更改“{{label}}”快捷键：{{keys}}"
+      "changeLabel": "更改“{{label}}”快捷键：{{keys}}",
+      "reset": "恢复默认",
+      "resetLabel": "将“{{label}}”恢复为默认"
     },
     "openAtLogin": "登录时打开",
     "showInDock": "在程序坞中显示",
     "alwaysOnTop": "始终置顶",
-    "restoreDefaults": "恢复默认",
+    "preferenceNotes": {
+      "openAtLogin": "登录 Mac 时自动启动应用。",
+      "showInDock": "无论是否显示，菜单栏图标都会保留。",
+      "alwaysOnTop": "让面板始终位于其他窗口之上。"
+    },
+    "restoreDefaults": "恢复默认快捷键",
     "restoring": "正在恢复…",
     "status": {
       "recordingCanceled": "已取消录制。",
       "recordingHint": "请按下快捷键。按 Escape 取消，按 Tab 移到下一个控件。",
       "shortcutSaved": "已保存快捷键。",
+      "shortcutReset": "已将快捷键恢复为默认。",
       "defaultsRestored": "已恢复默认快捷键。",
       "windowPreferenceSaved": "已保存窗口偏好。",
       "openAtLoginApproval": "请在“系统设置 › 登录项”中允许 AI 以完成设置。"
     },
     "errors": {
-      "register": "无法注册此快捷键。请选择其他组合。",
+      "register": "无法注册此快捷键，它可能已被 macOS 或其他应用占用。请换一个组合。",
       "unsupportedCombination": "不支持此按键组合。请尝试其他快捷键。",
       "modifierRequired": "请包含 Command、Control 或 Alt 等修饰键。",
       "shortcutSave": "无法保存快捷键。",

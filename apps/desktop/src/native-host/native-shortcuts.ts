@@ -4,6 +4,7 @@ import { errorMessage } from '../client/agent/validation';
 import type { NativeBridge, ShortcutResult } from '../native-bridge/client';
 import { PANEL_SHORTCUT_ID } from '../native-bridge/calls';
 import type { NativeCommands } from './native-commands';
+import type { WindowMessage, WindowMessages } from './window-messages';
 
 type RegistrationFailure = Extract<ShortcutResult, { registered: false }>['reason'];
 
@@ -31,6 +32,7 @@ export interface ShortcutSync {
 export function nativeShortcuts(
   bridge: NativeBridge,
   commands: NativeCommands,
+  messages: WindowMessages,
   host: {
     /** The panel accelerator, or null while the service's settings have not loaded. */
     panelShortcut: () => string | null;
@@ -43,6 +45,11 @@ export function nativeShortcuts(
   let again = false;
   /** The set the shell last took; an identical set is not pushed again. */
   let pushed = '';
+  /** The shell's answer to that set, shared with settings windows; null before the first. */
+  let state: Extract<WindowMessage, { type: 'shortcutState' }> | null = null;
+  messages.listen((message) => {
+    if (message.type === 'shortcutStateRequest' && state) messages.post(state);
+  });
 
   async function push() {
     const panel = host.panelShortcut();
@@ -68,6 +75,8 @@ export function nativeShortcuts(
       else if (!result.registered) commands.errors[result.id] = REGISTRATION_ERRORS[result.reason];
     }
     host.applied(panelAvailable);
+    state = { type: 'shortcutState', panelAvailable, errors: { ...commands.errors } };
+    messages.post(state);
   }
 
   async function run() {
@@ -105,4 +114,22 @@ export function nativeShortcuts(
       void run();
     },
   };
+}
+
+/**
+ * A settings window's side of the registration results: it never pushes a set, so it takes the
+ * panel's answers into its own command errors and reports whether the panel shortcut holds.
+ */
+export function followShortcutState(
+  messages: WindowMessages,
+  commands: NativeCommands,
+  applied: (panelAvailable: boolean) => void,
+): void {
+  messages.listen((message) => {
+    if (message.type !== 'shortcutState') return;
+    for (const id of Object.keys(commands.errors)) delete commands.errors[id];
+    Object.assign(commands.errors, message.errors);
+    applied(message.panelAvailable);
+  });
+  messages.post({ type: 'shortcutStateRequest' });
 }

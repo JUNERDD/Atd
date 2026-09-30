@@ -32,7 +32,8 @@ export interface SettingsSnapshot {
    * builds, Linux, the web client).
    */
   openAtLogin: boolean | null;
-  shortcutAvailable: boolean;
+  /** Whether the shell registered the panel shortcut; null until the panel reports it. */
+  shortcutAvailable: boolean | null;
   /** Tier new tasks are created with; existing tasks keep their own tier. */
   permissionTier: PermissionTier;
   /**

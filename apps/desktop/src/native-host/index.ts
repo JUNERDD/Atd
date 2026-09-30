@@ -19,7 +19,7 @@ import { NativeConnection } from './native-connection';
 import { nativeFiles } from './native-files';
 import { nativePlatform } from './native-platform';
 import { nativeSettings } from './native-settings';
-import { nativeShortcuts } from './native-shortcuts';
+import { followShortcutState, nativeShortcuts } from './native-shortcuts';
 import { nativeSocketTransport } from './socket-transport';
 import { windowMessages } from './window-messages';
 
@@ -90,17 +90,19 @@ export async function installNativeHost(
     },
     (_page, event) => emit('changed', event),
   );
+  const shortcutsApplied = (shortcutAvailable: boolean) => {
+    settings.setShell({ shortcutAvailable });
+    requests.broadcast();
+  };
   const shortcuts =
     surface === 'panel'
-      ? nativeShortcuts(native, commands, {
+      ? nativeShortcuts(native, commands, messages, {
           panelShortcut: () => (settings.loaded() ? latest.shortcuts.togglePanel : null),
-          applied: (shortcutAvailable) => {
-            settings.setShell({ shortcutAvailable });
-            requests.broadcast();
-          },
+          applied: shortcutsApplied,
           launch: (prepared, autoRun) => emit('launch', { prepared, autoRun }),
         })
       : null;
+  if (surface === 'settings') followShortcutState(messages, commands, shortcutsApplied);
   // The panel speaks for the service's settings only once they loaded: until then the snapshot
   // holds defaults, which could register a shortcut the user replaced.
   let pushedLanguage: string | null = null;

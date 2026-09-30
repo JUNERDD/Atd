@@ -24,8 +24,11 @@ import type { CallResult, NativeBridge } from '../native-bridge/client';
 import type { NativeConnection } from './native-connection';
 import type { WindowMessages } from './window-messages';
 
-/** The preferences the shell owns, and whether it holds the panel shortcut. */
-export type ShellState = CallResult<'app.state'> & { shortcutAvailable: boolean };
+/**
+ * The preferences the shell owns, and whether it holds the panel shortcut: null until the panel's
+ * first registration answer reaches this window.
+ */
+export type ShellState = CallResult<'app.state'> & { shortcutAvailable: boolean | null };
 
 /**
  * The settings bridge for the WebView host. Language, default tier, shell allowlist and shortcuts
@@ -50,7 +53,7 @@ export function nativeSettings(
     pinned: false,
     showInDock: false,
     openAtLogin: null,
-    shortcutAvailable: false,
+    shortcutAvailable: null,
   };
   const listeners = new Set<(settings: SettingsSnapshot) => void>();
   const loginListeners = new Set<Parameters<ProviderBridge['onLogin']>[0]>();

@@ -292,13 +292,28 @@
 .settings-content-scroll-area {
   flex: 1;
 }
+/* Grows with a page taller than the viewport, so its bottom padding stays below the content;
+ * content that overflowed a viewport-high box would scroll without that padding. */
 .settings-content-scroll {
   display: flex;
-  flex: 1;
-  min-height: 0;
+  flex: 1 0 auto;
   min-width: 0;
   flex-direction: column;
   padding: 8px 40px 32px;
+}
+/* Pages that fill the viewport and scroll inside themselves keep the box at its height. */
+.settings-content-scroll:has(
+  > .settings-page:not([hidden])
+    :is(
+      .settings-editor,
+      .command-editor,
+      .settings-loading,
+      .settings-extension-settings,
+      .memory-settings
+    )
+) {
+  flex-shrink: 1;
+  min-height: 0;
 }
 .settings-window:not([data-layout='sidebar']) .settings-content-scroll {
   padding: 8px 16px 16px;
@@ -961,46 +976,75 @@
   display: flex;
   flex-direction: column;
   gap: 24px;
-  margin-top: 24px;
+  margin-top: 16px;
+}
+.settings-shortcut-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 .settings-shortcut-group h3 {
-  margin-bottom: 8px;
   font-size: 14px;
   font-weight: 500;
   line-height: 20px;
 }
+/* The keys sit 3px inside the button border, so the pill keycaps nest in the pill button. */
 .settings-shortcut-button {
   height: auto;
+  min-height: 28px;
   max-width: 100%;
-  padding: 4px;
+  padding: 3px;
+}
+.settings-shortcut-button[aria-pressed='true'] {
+  padding-inline: 12px;
 }
 .settings-shortcut-button [data-slot='kbd-group'] {
   flex-wrap: wrap;
   justify-content: flex-end;
 }
-.settings-shortcuts-footer {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin-top: 24px;
+/* A group of settings rows in one card: the card owns the edge and corners, hairlines divide
+   the rows, and each row's fill reaches the card edge. */
+.settings-card[data-slot='card'] {
+  gap: 0;
+  padding-block: 0;
 }
-/* Fills the row beside Restore defaults and wraps its switches before the button moves down; the
-   widest single-line preference is its minimum (the Figma group's Fill + min width). */
-.settings-window-preferences {
-  display: flex;
-  flex: 1 1 0;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px 16px;
-  min-width: min-content;
+.settings-card > [data-slot='item-group'] {
+  gap: 0;
 }
-.settings-window-preference {
+.settings-card-row[data-slot='item'] {
+  border-radius: 0;
+}
+.settings-card-row + .settings-card-row {
+  border-top-color: var(--border);
+}
+.settings-shortcut-error {
+  justify-content: flex-start;
+  align-items: flex-start;
+  color: var(--destructive);
+  line-height: 20px;
+}
+.settings-shortcut-error > svg {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+}
+.settings-shortcut-group-actions {
   display: flex;
-  align-items: center;
-  gap: 12px;
-  white-space: nowrap;
+  justify-content: flex-end;
+}
+/* The whole preference row toggles its switch, like the permission option rows. */
+.settings-preference-row [data-slot='label'] {
+  cursor: inherit;
+}
+.settings-preference-row:has([data-slot='switch']:not(:disabled)) {
+  cursor: pointer;
+}
+.settings-preference-row:hover:has([data-slot='switch']:not(:disabled)) {
+  background: var(--muted);
+}
+.dark .settings-preference-row:hover:has([data-slot='switch']:not(:disabled)) {
+  background: var(--ata-surface-ghost-hover);
 }
 /* The drawer presents the sidebar card over the content: inset like the sidebar, on the same
  * subdued glass. Its content clips, so the glass element has no overflow outside its bounds. */
