@@ -199,10 +199,14 @@
   align-items: center;
   gap: 12px;
 }
+/* The shortcut column is a width, not a flex-basis: the controls wrapper takes its width from
+ * its content, and WebKit counts this column's content (a narrower key group or "No shortcut")
+ * there instead of a basis, which pushed Run, the switch and More past the row's edge. */
 .command-row-shortcut {
   display: flex;
   justify-content: flex-end;
-  flex: 0 0 104px;
+  flex: none;
+  width: 104px;
   min-width: 0;
 }
 .command-row-shortcut [data-slot='kbd-group'] {
@@ -238,12 +242,13 @@
   }
   .command-row-shortcut {
     flex: 1;
+    width: auto;
     justify-content: flex-start;
   }
 }
 @container settings (min-width: 456px) and (max-width: 640px) {
   .command-row-shortcut {
-    flex-basis: 72px;
+    width: 72px;
   }
   .command-management-row {
     gap: 8px;
