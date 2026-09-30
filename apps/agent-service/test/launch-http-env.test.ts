@@ -15,8 +15,8 @@ import { installMemoryKeyring } from './memory-keyring.ts';
 import { startTestService } from './service-harness.ts';
 
 /**
- * HTTP servers that name a service env var in their URL or headers (pi-mcp-adapter fills those in
- * from the service process when it dials) need the user's approval like an env-sourced bearer:
+ * HTTP servers that name a service env var in their URL or headers (the service fills those in
+ * from its own environment when it dials) need the user's approval like an env-sourced bearer:
  * nothing is dialed before it, the details never show a value, and any change to the URL or a
  * header voids it. Plugin HTTP servers count when their `${VAR}` comes from the environment.
  */
@@ -29,17 +29,17 @@ let harness: Awaited<ReturnType<typeof startTestService>>;
 let api: ReturnType<typeof client>;
 let stub: Server;
 let base = '';
-/** What the stub listener received: the adapter's dials. */
+/** What the stub listener received: the service's dials. */
 let received: { url: string; headers: IncomingHttpHeaders }[] = [];
 
 before(async () => {
-  process.env.PI_MCP_ADAPTER_TEST_AUTH_STORE = 'memory';
   process.env[SECRET_VAR] = SECRET;
   harness = await startTestService();
   api = client(harness);
   stub = createServer((request, response) => {
     received.push({ url: request.url ?? '', headers: request.headers });
-    response.statusCode = 500;
+    // Not a transient failure (the service retries 5xx), so a dial ends at once.
+    response.statusCode = 404;
     response.end();
   });
   await new Promise<void>((resolve) => stub.listen(0, '127.0.0.1', resolve));
@@ -105,10 +105,17 @@ test('each env reference syntax is refused until approved, then sends the value'
     assert.ok(received.length > 0, `${serverId} was dialed once approved`);
     assert.ok(
       received.some((hit) => JSON.stringify(hit).includes(SECRET)),
-      'the adapter filled in the env value',
+      'the service filled in the env value',
     );
     received = [];
   }
+});
+
+test('an escaped leading "!" reaches the server as one literal "!" before the value', async () => {
+  await put('env-bang', `${base}/mcp`, { 'X-Bang': `!!\${${SECRET_VAR}}` });
+  await api.approveNow('env-bang');
+  await api.send('/v1/mcp/connect', 'POST', { serverId: 'env-bang' });
+  assert.equal(received[0]?.headers['x-bang'], `!${SECRET}`);
 });
 
 test('changing the URL query or a header template voids the approval', async () => {

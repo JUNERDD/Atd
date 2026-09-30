@@ -58,7 +58,7 @@ function usage(): string {
     '  --help, -h       Show this help',
     '  --version, -v    Print version and Node requirement',
     '',
-    `Requires Node.js ${engines} on PATH (workspace toolchain; covers Pi 0.87.1`,
+    `Requires Node.js ${engines} on PATH (workspace toolchain; covers Pi 0.99.1`,
     '≥22.19.0); there is no auto-download.',
     'AI_AGENT_DATA_DIR overrides --dataDir.',
     'approve asks the running service what an MCP server would launch and approves it after a',

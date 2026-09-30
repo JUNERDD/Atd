@@ -19,8 +19,9 @@ import { parseServerConfigs, reviseRecords } from './servers.js';
 
 /**
  * A pending change to one layer: what it holds and what it will hold. Nothing changes until
- * `commit`, so the authority can still reach every server the change drops (to disconnect it)
- * before its record is gone.
+ * `commit`, so the authority revokes what the change drops or disables while every record still
+ * resolves. It disconnects those servers only after the commit, when a dropped server's record is
+ * gone (connections close by server id) and a change that failed to commit has touched nothing.
  */
 export interface RecordChange {
   previous: McpServerConfig[];

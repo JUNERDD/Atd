@@ -9,7 +9,6 @@ import {
   type McpStatusResponse,
 } from '@ai/agent-contracts';
 import type { Logger } from '../logging.js';
-import type { AdapterServerEntry } from './adapter-types.js';
 import { McpError } from './errors.js';
 import { httpEnvReads } from './env-references.js';
 import {
@@ -23,30 +22,30 @@ import {
 import { launchKey, readLaunchKey } from './launch-key.js';
 import { LaunchStore } from './launch-store.js';
 import type { McpServerRecords } from './server-records.js';
-import { adapterCommandValue, toAdapterServerEntry } from './servers.js';
+import { commandValueField, commandValueRefusal } from './servers.js';
+import type { McpLaunchSpec } from './types.js';
 
 /**
  * Launch approvals (G1), the single owner of whether an MCP server may launch. Every stdio server
  * (user or plugin, including `configure_mcp` servers and plugin duplicates) and every HTTP server
  * that can send a service env value (`launchKind`) is refused until the user approves it as it
- * stands: the connect path asks `assertLaunch` with the entry it is about to hand the adapter, and
- * the control session's own adapter config leaves unapproved servers out. Approving takes a
- * shell-only route or the CLI (after a native or terminal confirmation); withdrawing and the
- * one-time notice are the renderer's.
+ * stands: the connect path asks `assertLaunch` with the spec it is about to resolve and run.
+ * Approving takes a shell-only route or the CLI (after a native or terminal confirmation);
+ * withdrawing and the one-time notice are the renderer's.
  */
 
 export interface LaunchGate {
-  /** Throws McpError `approval_required` unless `entry` is what the user approved. */
-  assertLaunch(record: McpServerConfig, entry: AdapterServerEntry): Promise<void>;
+  /** Throws McpError `approval_required` unless `spec` is what the user approved. */
+  assertLaunch(record: McpServerConfig, spec: McpLaunchSpec): Promise<void>;
 }
 
-/** The connect path's own launch entry (`ConnectionManager.launchEntry`), never a second resolver. */
-export type LaunchEntryOf = (record: McpServerConfig) => Promise<AdapterServerEntry>;
+/** The connect path's own launch spec (`ConnectionManager.launchSpec`), never a second resolver. */
+export type LaunchSpecOf = (record: McpServerConfig) => Promise<McpLaunchSpec>;
 
 export interface LaunchApprovalDeps {
   dataDir: string;
   serviceId: string;
-  /** Where a stdio server without its own cwd starts (the control session's cwd). */
+  /** Where a stdio server without its own cwd starts (the authority's cwd). */
   cwd: string;
   log: Logger;
 }
@@ -55,7 +54,7 @@ export class LaunchApprovals implements LaunchGate {
   private constructor(
     private readonly deps: LaunchApprovalDeps,
     private readonly records: McpServerRecords,
-    private readonly entryOf: LaunchEntryOf,
+    private readonly specOf: LaunchSpecOf,
     private readonly store: LaunchStore,
   ) {}
 
@@ -67,7 +66,7 @@ export class LaunchApprovals implements LaunchGate {
   static async load(
     deps: LaunchApprovalDeps,
     records: McpServerRecords,
-    entryOf: LaunchEntryOf,
+    specOf: LaunchSpecOf,
   ): Promise<LaunchApprovals> {
     const store = await LaunchStore.load(
       deps.dataDir,
@@ -76,12 +75,12 @@ export class LaunchApprovals implements LaunchGate {
         records.legacyPluginApprovals() ||
         records.all().some((record) => launchKind(record) !== null),
     );
-    return new LaunchApprovals(deps, records, entryOf, store);
+    return new LaunchApprovals(deps, records, specOf, store);
   }
 
-  async assertLaunch(record: McpServerConfig, entry: AdapterServerEntry): Promise<void> {
-    refuseCommandValues(record, entry);
-    const verdict = await this.verdict(record, entry);
+  async assertLaunch(record: McpServerConfig, spec: McpLaunchSpec): Promise<void> {
+    refuseCommandValues(record, spec);
+    const verdict = await this.verdict(record, spec);
     if (verdict === 'approved' || verdict === 'notRequired') return;
     const why =
       verdict === 'changed'
@@ -99,20 +98,10 @@ export class LaunchApprovals implements LaunchGate {
     if (!launchKind(record)) return 'notRequired';
     if (!this.store.get(record.serverId)) return 'required';
     try {
-      return await this.verdict(record, await this.entryOf(record));
+      return await this.verdict(record, await this.specOf(record));
     } catch {
       return 'changed';
     }
-  }
-
-  /** The records that may launch now: the control session's adapter config holds only these. */
-  async launchable(records: McpServerConfig[]): Promise<McpServerConfig[]> {
-    const states = await Promise.all(records.map((record) => this.state(record)));
-    return records.filter(
-      (record, index) =>
-        (states[index] === 'approved' || states[index] === 'notRequired') &&
-        !adapterCommandValue(toAdapterServerEntry(record)),
-    );
   }
 
   /** `/v1/mcp/status`: the snapshot's rows with their plugin and approval, and the notice. */
@@ -138,15 +127,15 @@ export class LaunchApprovals implements LaunchGate {
         serverId,
         `MCP server ${serverId} needs no launch approval.`,
       );
-    let entry: AdapterServerEntry;
+    let spec: McpLaunchSpec;
     try {
-      entry = await this.entryOf(record);
+      spec = await this.specOf(record);
     } catch (error) {
       if (error instanceof McpError) throw error;
       throw new McpError('bad_request', serverId, errorMessage(error));
     }
-    refuseCommandValues(record, entry);
-    const fingerprint = launchFingerprint(await this.key(serverId), this.bound(record, entry));
+    refuseCommandValues(record, spec);
+    const fingerprint = launchFingerprint(await this.key(serverId), this.bound(record, spec));
     const stored = this.store.get(serverId);
     const source = this.records.pluginSource(serverId);
     return {
@@ -164,18 +153,18 @@ export class LaunchApprovals implements LaunchGate {
       },
       stdio: record.stdio && {
         command: record.stdio.command,
-        resolvedCommand: entry.command ?? record.stdio.command,
-        args: entry.args ?? [],
-        cwd: launchCwd(entry, this.deps.cwd),
-        inheritEnv: entry.inheritEnv !== false,
-        env: Object.entries(entry.env ?? {}).map(([key, value]) => ({
+        resolvedCommand: spec.command ?? record.stdio.command,
+        args: spec.args ?? [],
+        cwd: launchCwd(spec, this.deps.cwd),
+        inheritEnv: spec.inheritEnv !== false,
+        env: Object.entries(spec.env ?? {}).map(([key, value]) => ({
           key,
           sensitive: true as const,
           length: value.length,
           risky: isRiskyEnvKey(key),
         })),
       },
-      http: kind === 'mcp-http-env' ? httpDetails(record, entry) : null,
+      http: kind === 'mcp-http-env' ? httpDetails(record, spec) : null,
       fingerprint,
     };
   }
@@ -228,7 +217,7 @@ export class LaunchApprovals implements LaunchGate {
 
   private async verdict(
     record: McpServerConfig,
-    entry: AdapterServerEntry,
+    spec: McpLaunchSpec,
   ): Promise<McpLaunchApprovalState> {
     if (!launchKind(record)) return 'notRequired';
     const stored = this.store.get(record.serverId);
@@ -240,15 +229,15 @@ export class LaunchApprovals implements LaunchGate {
       return null;
     });
     if (!key) return 'changed';
-    return launchFingerprint(key, this.bound(record, entry)) === stored.fingerprint
+    return launchFingerprint(key, this.bound(record, spec)) === stored.fingerprint
       ? 'approved'
       : 'changed';
   }
 
-  private bound(record: McpServerConfig, entry: AdapterServerEntry) {
+  private bound(record: McpServerConfig, spec: McpLaunchSpec) {
     const source = this.records.pluginSource(record.serverId);
     const plugin: LaunchPlugin | null = source && { id: source.id, revision: source.revision };
-    return { record, entry, plugin, defaultCwd: this.deps.cwd };
+    return { record, entry: spec, plugin, defaultCwd: this.deps.cwd };
   }
 
   private async key(serverId: string): Promise<Buffer> {
@@ -265,27 +254,23 @@ export class LaunchApprovals implements LaunchGate {
 }
 
 /**
- * Refuses a launch in which pi-mcp-adapter would run a value as a shell command in the service
- * process. No approval can allow it: the confirmation never shows env or header values, so the
- * user could not see the command, and a plain HTTP server needs no approval at all.
+ * Refuses a launch with an env or header value that starts with a single `!`. pi-mcp-adapter ran
+ * such a value as a shell command in the service process; nothing runs it now, but no approval can
+ * allow it either: the confirmation never shows env or header values, so the user could not see
+ * what the value asked for, and a plain HTTP server needs no approval at all.
  */
-function refuseCommandValues(record: McpServerConfig, entry: AdapterServerEntry): void {
-  const field = adapterCommandValue(entry);
-  if (field)
-    throw new McpError(
-      'forbidden',
-      record.serverId,
-      `MCP server ${record.serverId} sets ${field} to a value starting with "!", which would run as a command; write "!!" for a literal "!".`,
-    );
+function refuseCommandValues(record: McpServerConfig, spec: McpLaunchSpec): void {
+  const field = commandValueField(spec);
+  if (field) throw commandValueRefusal(record.serverId, field);
 }
 
 /** An HTTP launch as the confirmation shows it: where env values go, never a value. */
 function httpDetails(
   record: McpServerConfig,
-  entry: AdapterServerEntry,
+  spec: McpLaunchSpec,
 ): McpLaunchApprovalDetails['http'] {
-  const url = entry.url ?? record.http?.url ?? '';
-  const reads = httpEnvReads(url, entry.headers ?? {});
+  const url = spec.url ?? record.http?.url ?? '';
+  const reads = httpEnvReads(url, spec.headers ?? {});
   const headerKeys = [...reads.headers.keys()].sort();
   return {
     url,

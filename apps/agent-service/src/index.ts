@@ -115,8 +115,8 @@ export async function createService(
   };
   const app = await buildServer(serverDeps);
   // Runs drain and HTTP closes first, so MCP has lost its callers when the
-  // close ends every adapter connection (base and per-task aliases) and its
-  // stdio child; only then does the lock free the profile for a new service.
+  // close ends every MCP connection (base and per-task aliases) and its
+  // stdio children; only then does the lock free the profile for a new service.
   const stopService = async () => {
     await manager.shutdown();
     await app.close();
@@ -158,9 +158,9 @@ export async function createService(
         ...(buildId === undefined ? {} : { buildId }),
       });
       manager.dispatch();
-      // The MCP adapter is not warmed here: its load (the jiti-transpiled adapter and a control
-      // session) holds ~26 MB for as long as the service runs, and the desktop calls no MCP route
-      // on connect. The first MCP request or run loads it, cached per dataDir (mcp/authority.ts).
+      // The MCP authority is not loaded here: the desktop calls no MCP route on connect, and the
+      // load reads the server records, launch approvals and saved sign-ins. The first MCP request
+      // or run loads it, cached per dataDir (mcp/authority.ts).
       return { url: address, port };
     },
     stop: () => (stopped ??= stopService()),

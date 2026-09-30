@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { rm } from 'node:fs/promises';
-import { createServer, type Server } from 'node:http';
+import { createServer, type IncomingHttpHeaders, type Server } from 'node:http';
 import path from 'node:path';
 import { after, before, test } from 'node:test';
 import {
@@ -28,17 +28,19 @@ const temporary: string[] = [];
 let harness: Awaited<ReturnType<typeof startTestService>>;
 let api: ReturnType<typeof client>;
 let hits = 0;
+let lastHeaders: IncomingHttpHeaders = {};
 let dialed: Server;
 let port = 0;
 
 before(async () => {
-  process.env.PI_MCP_ADAPTER_TEST_AUTH_STORE = 'memory';
   process.env.AI_TEST_LAUNCH_TOKEN = 'launch-token';
   harness = await startTestService();
   api = client(harness);
-  dialed = createServer((_request, response) => {
+  dialed = createServer((request, response) => {
     hits += 1;
-    response.statusCode = 500;
+    lastHeaders = request.headers;
+    // Not a transient failure (the service retries 5xx), so a dial ends at once.
+    response.statusCode = 404;
     response.end();
   });
   await new Promise<void>((resolve) => dialed.listen(0, '127.0.0.1', resolve));
@@ -202,7 +204,7 @@ test('an env-sourced bearer is refused until approved; plain HTTP needs no appro
   assert.equal(none.status, 400, 'a server that needs no approval has no details');
 });
 
-test('values the adapter would run as commands are refused, approved or not', async () => {
+test('command values are refused and never run, approved or not', async () => {
   const { command, marker } = await launcher(temporary);
   const ran = path.join(path.dirname(marker), 'ran');
   const url = `http://127.0.0.1:${port}/mcp`;
@@ -233,6 +235,28 @@ test('values the adapter would run as commands are refused, approved or not', as
   const literal = await api.send('/v1/mcp/connect', 'POST', { serverId: 'literal-header' });
   assert.notEqual(literal.status, 403, 'the escaped form is a literal value');
   assert.ok(hits > before);
+});
+
+test('a bearer token that starts with "!" is sent as it is; nothing runs it', async () => {
+  const { marker } = await launcher(temporary);
+  const ran = path.join(path.dirname(marker), 'ran-bearer');
+  process.env.AI_TEST_LAUNCH_BANG = `!touch '${ran}'`;
+  try {
+    await put('bang-bearer', {
+      transport: 'streamable-http',
+      url: `http://127.0.0.1:${port}/mcp`,
+      auth: { type: 'bearer', tokenEnv: 'AI_TEST_LAUNCH_BANG' },
+      headers: { Authorization: 'Bearer from-the-header' },
+    });
+    await api.approveNow('bang-bearer');
+    const before = hits;
+    await api.send('/v1/mcp/connect', 'POST', { serverId: 'bang-bearer' });
+    assert.ok(hits > before, 'the approved server was dialed');
+    assert.equal(lastHeaders.authorization, `Bearer !touch '${ran}'`, 'the token wins, literally');
+    assert.equal(await exists(ran), false, 'no command ran');
+  } finally {
+    delete process.env.AI_TEST_LAUNCH_BANG;
+  }
 });
 
 test('configure_mcp tells the model when a server needs the user to approve it', async () => {

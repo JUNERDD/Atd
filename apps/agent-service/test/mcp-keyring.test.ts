@@ -11,13 +11,12 @@ import {
 } from '@ai/agent-contracts';
 import { keyringMcpAccount } from '../dist/credentials/keyring.js';
 import type { Logger } from '../dist/logging.js';
-import { ConnectionManager } from '../dist/mcp/connect.js';
-import { McpConnectionStates } from '../dist/mcp/lifecycle.js';
 import { migrateMcpSecrets } from '../dist/mcp/secrets-migration.js';
 import { McpServerRecords } from '../dist/mcp/server-records.js';
 import { McpServerStore, secretAccount } from '../dist/mcp/server-store.js';
 import { credentialIdentity, serversFile } from '../dist/mcp/servers.js';
-import { CredentialTransactions } from '../dist/mcp/transactions.js';
+import type { ResolvedLaunch } from '../dist/mcp/types.js';
+import { createKit } from './mcp-kit.ts';
 import { installMemoryKeyring } from './memory-keyring.ts';
 import { startTestService } from './service-harness.ts';
 
@@ -43,8 +42,6 @@ let serviceId = '';
 const temporary: string[] = [];
 
 before(async () => {
-  // The adapter's OAuth store is one OS-wide keyring service; tests never reach it.
-  process.env.PI_MCP_ADAPTER_TEST_AUTH_STORE = 'memory';
   harness = await startTestService();
   serviceId = harness.config.serviceId;
 });
@@ -180,41 +177,24 @@ test('a save the keyring refuses leaves the keyring and servers.json as they wer
 
 test('connecting gets every value, hydrated from the keyring after a restart', async () => {
   const records = await McpServerRecords.load(harness.config.paths.root, serviceId, log);
-  const captured: Array<{ env?: Record<string, string>; headers?: Record<string, string> }> = [];
-  const refuse = async () => {
-    throw new Error('not used');
-  };
-  const connections = new ConnectionManager({
-    manager: () => ({
-      connect: async (_name, definition) => {
-        captured.push(definition);
-        throw new Error('captured');
-      },
-      reconnect: refuse,
-      getPrompt: refuse,
-      readResource: refuse,
-      getConnection: () => undefined,
-      close: async () => undefined,
-      closeAll: async () => undefined,
-    }),
-    servers: {
-      record: (serverId) => {
-        const found = records.find(serverId);
-        assert.ok(found);
-        return found;
-      },
-    },
-    secrets: { bearerToken: async () => null },
-    states: new McpConnectionStates(log),
-    txns: new CredentialTransactions(),
+  const dialed: ResolvedLaunch[] = [];
+  const { connections } = createKit(records.all(), {
     // Launch approval is not what this test covers (test/launch-approvals.test.ts is).
-    launch: { assertLaunch: async () => undefined },
+    transports: (launch) => {
+      dialed.push(launch);
+      throw new Error('captured');
+    },
+    defaultCwd: harness.config.paths.root,
     log,
   });
   await assert.rejects(connections.connect('kc-local'));
   await assert.rejects(connections.connect('kc-remote'));
-  assert.deepEqual(captured[0]?.env, { API_KEY: ENV_SECRET });
-  assert.deepEqual(captured[1]?.headers, { Authorization: HEADER_SECRET });
+  const [local, remote] = dialed;
+  assert.ok(local?.kind === 'stdio');
+  assert.equal(local.env.API_KEY, ENV_SECRET);
+  assert.ok('PATH' in local.env, 'the inherited variables come along');
+  assert.ok(remote?.kind === 'streamable-http');
+  assert.deepEqual(remote.headers, { Authorization: HEADER_SECRET });
 });
 
 /** A fresh data dir whose servers.json keeps its values in plain text, as saved before. */

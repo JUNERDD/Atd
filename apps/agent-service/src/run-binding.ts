@@ -86,7 +86,13 @@ export async function prepareRunBinding(
   const key = JSON.stringify({
     tier: effectiveTaskTier(deps.ctx.ledger, deps.taskId, deps.ctx.tier),
     tools,
-    mcp: mcp.bindings.map((binding) => [binding.proxyName, binding.revision, binding.ref]),
+    // Annotations are part of what pi registers for a proxy, so a changed hint reopens the session.
+    mcp: mcp.bindings.map((binding) => [
+      binding.proxyName,
+      binding.revision,
+      binding.ref,
+      binding.annotations ?? null,
+    ]),
     role: role && [role.role.roleId, role.role.revision, role.capabilities.revokedTools],
     memory: run.snapshot.memory,
     agents: agents.map((agent) => [agent.name, agent.definition]),

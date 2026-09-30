@@ -1,12 +1,18 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { Type, type TSchema } from 'typebox';
-import type { ExtensionFactory, ToolDefinition } from '@earendil-works/pi-coding-agent';
+import type {
+  ExtensionFactory,
+  ToolAnnotations,
+  ToolDefinition,
+} from '@earendil-works/pi-coding-agent';
 import { errorMessage, type McpServerConfig, type McpToolRef } from '@ai/agent-contracts';
 import type { Logger } from '../logging.js';
-import { McpFacade } from './facade.js';
+import type { McpFacade } from './facade.js';
 import { McpError, type McpPreapproval, type McpUpdate, type OperationContext } from './errors.js';
 import { toPiText } from './mapping.js';
+import { isJsonObject, normalizeInputSchema } from './policy.js';
 import { matchToolPattern } from './servers.js';
+import type { McpToolInfo } from './types.js';
 
 /**
  * Runner MCP tool proxies (D6): one frozen proxy per authorized tool, built
@@ -37,7 +43,6 @@ export interface McpGuardedCall {
 export interface McpProxyOptions {
   facade: McpFacade;
   records: McpServerConfig[];
-  normalizeSchema?: (schema: unknown) => Record<string, unknown>;
   /**
    * T6b additive: frozen staged selection. Absent means bind-all (current
    * behavior); present binds exactly the listed connectionId+tool pairs.
@@ -61,27 +66,74 @@ export interface McpToolBinding {
   tool: string;
   revision: number;
   ref: McpToolRef;
+  /** The tool's boolean MCP hints; they inform pi and never relax an approval. */
+  annotations?: ToolAnnotations;
 }
 
-/** Proxy tool name: `mcp__<server>__<tool>`, sanitized for Pi. */
-export function mcpProxyName(serverId: string, tool: string): string {
-  return `${mcpProxyPrefix(serverId)}${cleanProxyPart(tool)}`;
+/** Providers reject tool names over 64 characters; pi's own MCP tools stay within it too. */
+const MAX_NAME_LENGTH = 64;
+/** A name over the limit ends in `_` and this many hex characters of a hash. */
+const NAME_HASH_LENGTH = 8;
+/** What such a name keeps of the original: 55 characters, so `<kept>_<hash>` is 64 long. */
+const KEPT_NAME_LENGTH = MAX_NAME_LENGTH - NAME_HASH_LENGTH - 1;
+/** Hex characters of the server id hash in a prefix that carries one. */
+const ID_HASH_LENGTH = 10;
+
+/**
+ * Proxy tool name: `mcp__<server>__<tool>`, sanitized for Pi and at most 64 characters. A longer
+ * name keeps its first 55 characters and ends in `_` and 8 hex characters of SHA-256 over the raw
+ * server id and tool name, as pi's `createMcpToolName` does, so tools that share their first 55
+ * characters stay apart.
+ *
+ * `taken` holds the names other tools of the binding already have. Sanitizing can map `a.b` and
+ * `a_b` to one name; the later tool then gets `_2`, `_3`, … after it. A numbered name that
+ * outgrows the limit is shortened like any other, with the number in its hash, or every try would
+ * shorten to the same name.
+ */
+export function mcpProxyName(
+  serverId: string,
+  tool: string,
+  taken: ReadonlySet<string> = new Set(),
+): string {
+  const name = `${mcpProxyPrefix(serverId)}${cleanProxyPart(tool)}`;
+  const seed = `${serverId}\0${tool}`;
+  let candidate = fitProxyName(name, seed);
+  for (let attempt = 2; taken.has(candidate); attempt += 1)
+    candidate = fitProxyName(`${name}_${attempt}`, `${seed}\0${attempt}`);
+  return candidate;
+}
+
+/** `name` when it fits the limit, else its first 55 characters, `_` and the hash of `seed`. */
+function fitProxyName(name: string, seed: string): string {
+  if (name.length <= MAX_NAME_LENGTH) return name;
+  const hash = createHash('sha256').update(seed).digest('hex').slice(0, NAME_HASH_LENGTH);
+  return `${name.slice(0, KEPT_NAME_LENGTH)}_${hash}`;
 }
 
 /**
- * The prefix every proxy of one server shares: `mcp__<server>__`. A plugin server's qualified id
- * (`<plugin>:<item>`) has characters the tool alphabet lacks, so cleaning alone would give
- * `kit:srv`, `kit.io:srv` and a user's `kit_srv` one prefix; it gets a readable part plus a hash
- * of the whole id instead, so its prefix names that server alone.
+ * The prefix every proxy of one server shares: `mcp__<server>__`. `references/material.ts` tells
+ * the model to look for tools named `<prefix>*`, so it has to stay a true prefix of every proxy
+ * name. A shortened name keeps only its first 55 characters (`fitProxyName`), so the prefix may
+ * not run past 55 either: when the server id would take it further, the readable part is cut to
+ * fit and a hash of the whole id follows it, so ids that share their start still get different
+ * prefixes.
+ *
+ * A plugin server's qualified id (`<plugin>:<item>`) has characters the tool alphabet lacks, so
+ * cleaning alone would give `kit:srv`, `kit.io:srv` and a user's `kit_srv` one prefix; it always
+ * gets the readable part plus the hash, so its prefix names that server alone.
  */
 export function mcpProxyPrefix(serverId: string): string {
-  if (!serverId.includes(':')) return `mcp__${cleanProxyPart(serverId)}__`;
-  const hash = createHash('sha256').update(serverId).digest('hex').slice(0, 10);
-  return `mcp__${cleanProxyPart(serverId).slice(0, 40)}_${hash}__`;
+  const readable = cleanProxyPart(serverId);
+  const plain = `mcp__${readable}__`;
+  if (!serverId.includes(':') && plain.length <= KEPT_NAME_LENGTH) return plain;
+  const hash = createHash('sha256').update(serverId).digest('hex').slice(0, ID_HASH_LENGTH);
+  const withHash = (part: string) => `mcp__${part}_${hash}__`;
+  return withHash(readable.slice(0, KEPT_NAME_LENGTH - withHash('').length));
 }
 
+/** Runs of characters outside the tool alphabet become one `_`; the callers bound the length. */
 function cleanProxyPart(value: string): string {
-  return value.replace(/[^A-Za-z0-9_]+/g, '_').slice(0, 80) || 'x';
+  return value.replace(/[^A-Za-z0-9_]+/g, '_') || 'x';
 }
 
 /**
@@ -98,9 +150,9 @@ export async function prepareMcpTools(
   const used = new Set<string>();
   for (const record of options.records) {
     if (record.disabled) continue;
-    let tools: McpToolRef[];
+    let tools: McpToolInfo[];
     try {
-      tools = await options.facade.listTools(record.serverId, signal);
+      tools = await options.facade.listToolInfo(record.serverId, signal);
     } catch (error) {
       host.audit({
         taskId: host.taskId,
@@ -115,7 +167,7 @@ export async function prepareMcpTools(
       });
       continue;
     }
-    for (const ref of tools) {
+    for (const { ref, annotations } of tools) {
       if (record.includeTools.length && !matchToolPattern(record.includeTools, [ref.name]))
         continue;
       if (record.excludeTools.length && matchToolPattern(record.excludeTools, [ref.name])) continue;
@@ -126,9 +178,7 @@ export async function prepareMcpTools(
         )
       )
         continue;
-      let proxyName = mcpProxyName(record.serverId, ref.name);
-      for (let attempt = 2; used.has(proxyName); attempt += 1)
-        proxyName = `${mcpProxyName(record.serverId, ref.name)}_${attempt}`;
+      const proxyName = mcpProxyName(record.serverId, ref.name, used);
       used.add(proxyName);
       bindings.push({
         proxyName,
@@ -137,6 +187,7 @@ export async function prepareMcpTools(
         tool: ref.name,
         revision: record.revision,
         ref,
+        ...(annotations ? { annotations } : {}),
       });
     }
   }
@@ -160,12 +211,13 @@ function mcpProxyTool(
   options: McpProxyOptions,
   binding: McpToolBinding,
 ): ToolDefinition<TSchema, McpProxyDetails, unknown> {
-  const parameters = proxyParameters(options, binding.ref.inputSchema);
+  const parameters = proxyParameters(binding.ref.inputSchema);
   return {
     name: binding.proxyName,
     label: `MCP ${binding.serverId} ${binding.tool}`,
     description: `MCP tool ${binding.tool} on ${binding.serverId}. Approval is per call.`,
     parameters,
+    ...(binding.annotations ? { annotations: binding.annotations } : {}),
     executionMode: 'sequential',
     async execute(id, args, signal, onUpdate, _ctx) {
       signal?.throwIfAborted();
@@ -177,7 +229,10 @@ function mcpProxyTool(
         toolCallId: id,
         configRevision: binding.revision,
       };
-      const input = (args ?? {}) as Record<string, unknown>;
+      const input = args ?? {};
+      if (!isJsonObject(input)) {
+        throw new Error(`MCP tool ${binding.tool} takes a JSON object as its arguments.`);
+      }
       const preapprove = host.preapprove;
       if (preapprove) {
         const call = {
@@ -208,6 +263,13 @@ function mcpProxyTool(
         return {
           content: [{ type: 'text', text: toPiText(result) }],
           details: proxyDetails(binding, result.isError, result.attachments, result.limitsNote),
+          // The server's machine-readable result, for pi's hooks; the model reads `content`.
+          ...(isJsonObject(result.structuredContent)
+            ? { structuredContent: result.structuredContent }
+            : {}),
+          // Pi (0.99+) honors the flag: the model gets an error result and the transcript shows
+          // the call as failed. Without it the error text would read as a completed call.
+          ...(result.isError ? { isError: true } : {}),
         };
       } catch (error) {
         if (
@@ -223,15 +285,10 @@ function mcpProxyTool(
   };
 }
 
-function proxyParameters(options: McpProxyOptions, inputSchema: unknown): TSchema {
+/** What models see of the tool's input: the normalized schema, or any object without one. */
+function proxyParameters(inputSchema: unknown): TSchema {
   if (inputSchema && typeof inputSchema === 'object') {
-    try {
-      const normalized =
-        options.normalizeSchema?.(inputSchema) ?? (inputSchema as Record<string, unknown>);
-      return Type.Unsafe<Record<string, unknown>>(normalized);
-    } catch {
-      return Type.Unsafe<Record<string, unknown>>(inputSchema as Record<string, unknown>);
-    }
+    return Type.Unsafe<Record<string, unknown>>(normalizeInputSchema(inputSchema));
   }
   return Type.Record(Type.String(), Type.Unknown());
 }

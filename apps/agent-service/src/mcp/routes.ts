@@ -17,7 +17,6 @@ import {
 } from '@ai/agent-contracts';
 import type { McpAuthority } from './authority.js';
 import { McpError, type OperationContext } from './errors.js';
-import { ADAPTER_VERSION, McpAdapterMissing } from './loader.js';
 import { promptPreviewToInput } from './mapping.js';
 import { serverView } from './server-edits.js';
 import {
@@ -45,8 +44,8 @@ export interface McpRouteDeps {
 
 /**
  * Defers the authority load to first use so boot never pays for it. Resolving
- * it is the adapter's own cached per-profile load, so calling it per request
- * is a no-op once warm and rejects with `McpAdapterMissing` when it is not.
+ * it is the authority's cached per-profile load (`McpAuthority.authorityFor`),
+ * so calling it per request is a no-op once warm.
  */
 export type McpAuthorityResolver = () => Promise<McpAuthority>;
 
@@ -274,26 +273,18 @@ export function mcpErrorStatus(code: McpError['code']): number {
   }
 }
 
-/** The degraded contract: every MCP route answers this when the adapter is missing. */
-const ADAPTER_MISSING_MESSAGE = `MCP is unavailable: pi-mcp-adapter ${ADAPTER_VERSION} could not be loaded.`;
-
 /**
  * Mounts the MCP handlers against a lazy authority so publishing the endpoint
- * never waits for the adapter. The resolver runs per request and the handlers
- * still see a resolved authority. Every route is authenticated by the service
- * bearer hook like all other routes, and both failure shapes are translated
- * here: `McpAdapterMissing` degrades explicitly to 503 (never a 500, never a
- * fake success) and `McpError` keeps its own status.
+ * never waits for the authority to load. The resolver runs per request and the
+ * handlers still see a resolved authority. Every route is authenticated by the
+ * service bearer hook like all other routes, and an `McpError` keeps its own
+ * status.
  */
 export function registerMcpRoutes(app: FastifyInstance, authority: McpAuthorityResolver): void {
   const run = async <T>(reply: FastifyReply, work: (deps: McpRouteDeps) => T | Promise<T>) => {
     try {
       return await work({ authority: await authority() });
     } catch (error) {
-      if (error instanceof McpAdapterMissing) {
-        reply.status(503).send({ error: { code: 'internal', message: ADAPTER_MISSING_MESSAGE } });
-        return;
-      }
       if (error instanceof McpError) {
         reply
           .status(mcpErrorStatus(error.code))

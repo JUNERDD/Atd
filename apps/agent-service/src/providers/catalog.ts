@@ -105,7 +105,15 @@ export async function directoryModels(providerId: string): Promise<ServiceModelD
 export async function getServiceCatalog(): Promise<ServiceCatalogEntry[]> {
   try {
     const models = await getDirectory();
-    const piEntries = models.getProviders().map((provider): ServiceCatalogEntry => {
+    // A provider without chat models has nothing to choose from (Pi 0.99 added the classifier-only
+    // `typesafe`). The local entries below list none on purpose and are not filtered.
+    const providers = models
+      .getProviders()
+      .filter((provider) => models.getModels(provider.id).length > 0);
+    const piEntries = providers.map((provider): ServiceCatalogEntry => {
+      // Pi 0.99 gave `openai` a ChatGPT sign-in. This product offers that sign-in as the separate
+      // "ChatGPT / Codex" (`openai-codex`) entry, so `openai` stays the API-key provider.
+      const oauth = provider.id === 'openai' ? undefined : provider.auth.oauth;
       const apiKeyType: ServiceCatalogEntry['auth'][number]['type'] = isAmbient(provider.id)
         ? 'ambient'
         : provider.id === 'llamacpp'
@@ -123,15 +131,15 @@ export async function getServiceCatalog(): Promise<ServiceCatalogEntry[]> {
           ? 'cloud'
           : provider.id === 'llamacpp'
             ? 'local'
-            : provider.auth.oauth
+            : oauth
               ? 'accounts'
               : 'api',
         auth: [
-          ...(provider.auth.oauth
+          ...(oauth
             ? [
                 {
                   type: 'oauth' as const,
-                  label: provider.auth.oauth.loginLabel ?? 'Account login',
+                  label: oauth.loginLabel ?? 'Account login',
                 },
               ]
             : []),

@@ -90,9 +90,8 @@ export function bashToolDefinition(
             decision: 'allowlist',
           }),
       });
-      return invocation.run(id, () =>
-        tool.execute(id, args, signal, onUpdate, { ...ctx, cwd: host.cwd }),
-      );
+      // Pi's context goes through untouched; see `controlled` in tool-proxies.ts.
+      return invocation.run(id, () => tool.execute(id, args, signal, onUpdate, ctx));
     },
   };
 }

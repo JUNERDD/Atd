@@ -34,7 +34,7 @@ export type ServiceBranchItem =
   | { type: 'compaction'; id: string; summary: string; tokensBefore: number; timestamp: number };
 
 /**
- * Pi 0.87 session-branch projection. `usage` entries are reported on the
+ * Pi 0.99 session-branch projection. `usage` entries are reported on the
  * settled message instead, and mid-transcript `system` entries are prompt
  * patches rather than conversation content, so both are skipped by design.
  * `context_edit` entries only change what later provider requests see; the

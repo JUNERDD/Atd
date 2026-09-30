@@ -7,8 +7,8 @@ import { createJiti } from 'jiti';
 
 /**
  * Loads the pinned `@juicesharp/rpiv-todo` extension. The package ships TypeScript only (its
- * `index.ts` uses a top-level await), so it goes through jiti like the MCP adapter
- * (mcp/loader.ts). Its config and i18n dependencies are aliased to project stubs next to this
+ * `index.ts` uses a top-level await), so it goes through jiti as pi-hermes-memory does
+ * (memory/authority.ts). Its config and i18n dependencies are aliased to project stubs next to this
  * file: the real `@juicesharp/rpiv-config` would read `~/.config/rpiv-todo`, and the optional
  * `@juicesharp/rpiv-i18n` peer is not part of the service.
  */

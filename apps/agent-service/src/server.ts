@@ -289,13 +289,10 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
     mcp: () => McpAuthority.authorityFor(mcpAuthorityDeps(deps)),
   });
 
-  // Live MCP mounts. Building the authority costs ~880 ms (adapter transpile
-  // plus control session) and ~26 MB for the rest of the process, and nothing
-  // at boot needs it, so the routes take a lazy resolver and the adapter loads
-  // on first MCP use (a route, a plugin toggle, or a run). `authorityFor`
-  // caches per dataDir, so all of those share one load. McpAdapterMissing still degrades
-  // explicitly: MCP routes answer 503 (never 501-future nor silent success)
-  // and runs continue without MCP tools; skills stay live.
+  // Live MCP mounts. Nothing at boot needs the authority (it reads the server records, launch
+  // approvals and saved sign-ins), so the routes take a lazy resolver and it loads on first MCP
+  // use (a route, a plugin toggle, or a run). `authorityFor` caches per dataDir, so all of those
+  // share one load.
   registerMcpRoutes(app, () => McpAuthority.authorityFor(mcpAuthorityDeps(deps)));
 
   // Shell, never renderer: the relay's scheme handler cannot upgrade a WebSocket, so the WebView
@@ -318,8 +315,6 @@ function mcpAuthorityDeps(deps: ServerDeps): McpAuthorityDeps {
   return {
     serviceId: deps.config.serviceId,
     dataDir: deps.config.paths.root,
-    agentDir: deps.config.paths.agentDir,
-    sessionsDir: deps.config.paths.sessionsDir,
     cwd: deps.config.paths.root,
     events: deps.events,
     confirms: deps.confirms,

@@ -27,7 +27,6 @@ let harness: Awaited<ReturnType<typeof startTestService>>;
 let api: ReturnType<typeof client>;
 
 before(async () => {
-  process.env.PI_MCP_ADAPTER_TEST_AUTH_STORE = 'memory';
   harness = await startTestService();
   api = client(harness);
 });

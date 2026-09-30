@@ -203,10 +203,11 @@ function transportProblem(record: McpServerConfig): string | null {
  * (mcp/launch-approvals.ts). Env and headers
  * carry their substituted values, secrets included; the record lives only in memory, and a Personal
  * duplicate leaves those entries out (plugins/duplicate.ts). An HTTP URL or header keeps its
- * process-environment `${VAR}` for the adapter, so the launch approval sees which variables it
- * sends (mcp/env-references.ts). HTTP servers use no service-managed auth. `revision` is derived
- * from the substituted config, so any change (update, config value) counts as a new revision and a
- * connection is never reused across it. Diagnostics from substitution name the server.
+ * process-environment `${VAR}` for the service to fill in at launch (mcp/launch-resolve.ts), so the
+ * launch approval sees which variables it sends (mcp/env-references.ts). HTTP servers use no
+ * service-managed auth. `revision` is derived from the substituted config, so any change (update,
+ * config value) counts as a new revision and a connection is never reused across it. Diagnostics
+ * from substitution name the server.
  */
 export function mapMcp(
   plugin: InstalledPlugin,

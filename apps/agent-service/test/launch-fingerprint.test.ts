@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import type { McpServerConfig } from '@ai/agent-contracts';
-import type { AdapterServerEntry } from '../dist/mcp/adapter-types.js';
 import { envReferences } from '../dist/mcp/env-references.js';
 import { isRiskyEnvKey, launchFingerprint, launchKind } from '../dist/mcp/launch-fingerprint.js';
+import type { McpLaunchSpec } from '../dist/mcp/types.js';
 
 /**
  * What a launch approval binds: every field that decides what runs (or where a service env value
@@ -29,7 +29,7 @@ const base: McpServerConfig = {
   disabled: false,
 };
 
-const entry: AdapterServerEntry = {
+const entry: McpLaunchSpec = {
   command: '/usr/local/bin/node',
   args: ['server.js'],
   env: { TOKEN: 'secret' },
@@ -52,7 +52,7 @@ const bearer: McpServerConfig = {
 
 const fingerprint = (
   record: McpServerConfig,
-  launch: AdapterServerEntry,
+  launch: McpLaunchSpec,
   plugin: { id: string; revision: string } | null = null,
   key = KEY,
 ) => launchFingerprint(key, { record, entry: launch, plugin, defaultCwd: '/service' });
@@ -69,7 +69,7 @@ test('which servers need a launch approval', () => {
   assert.equal(withAuth({ type: 'oauth', scope: null, redirectUri: null }), null);
 });
 
-test('an HTTP server whose URL or a header names an env var the adapter fills in needs approval', () => {
+test('an HTTP server whose URL or a header names an env var the service fills in needs approval', () => {
   const http = { ...bearer.http!, auth: { type: 'none' as const }, headers: {} };
   const kind = (url: string, headers: Record<string, string> = {}) =>
     launchKind({ ...bearer, http: { ...http, url, headers } });
@@ -78,7 +78,7 @@ test('an HTTP server whose URL or a header names an env var the adapter fills in
       ...bearer,
       http: { ...http, headers, auth: { type: 'oauth', scope: null, redirectUri: null } },
     });
-  // Each syntax pi-mcp-adapter's interpolateEnvVars resolves, in the URL and in a header.
+  // Each syntax the service fills in (mcp/env-references.ts), in the URL and in a header.
   for (const reference of ['${API_KEY}', '$env:API_KEY', '{env:API_KEY}']) {
     assert.deepEqual(envReferences(`x${reference}-y`), ['API_KEY'], reference);
     assert.equal(kind(`https://api.example/mcp?k=${reference}`), 'mcp-http-env', reference);
@@ -86,7 +86,7 @@ test('an HTTP server whose URL or a header names an env var the adapter fills in
     assert.equal(oauth({ A: `!!${reference}` }), 'mcp-http-env', 'an escaped value still reads');
   }
   assert.deepEqual(envReferences('${B} $env:A {env:B} ${C}'), ['A', 'B', 'C']);
-  // Literal dollars the adapter sends as they are.
+  // Literal dollars are sent as they are.
   for (const literal of [
     '$5',
     '$API_KEY',
@@ -137,7 +137,7 @@ test('a stdio fingerprint is stable and binds every launch field', () => {
 });
 
 test('an HTTP fingerprint binds the URL, token variable and header templates', () => {
-  const launch: AdapterServerEntry = {
+  const launch: McpLaunchSpec = {
     url: bearer.http!.url,
     headers: { 'X-Team': 'a', 'X-Key': '${TEAM_KEY}' },
   };

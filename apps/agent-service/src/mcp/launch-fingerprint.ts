@@ -1,15 +1,16 @@
 import { createHmac } from 'node:crypto';
 import path from 'node:path';
 import type { McpLaunchKind, McpServerConfig } from '@ai/agent-contracts';
-import type { AdapterServerEntry } from './adapter-types.js';
 import { httpEnvReads } from './env-references.js';
+import type { McpLaunchSpec } from './types.js';
 
 /**
  * What a launch approval binds (G1): a keyed digest of everything that decides what a server runs
- * or where a service env value goes, computed from the adapter entry the connect path would hand
- * the adapter. Env and header values enter only as their own keyed digests, so neither the
- * fingerprint nor anything derived from it can be used to test a guessed value without the
- * profile's key.
+ * or where a service env value goes, computed from the launch spec the connect path would resolve
+ * and run (`McpLaunchSpec`, the values pi-mcp-adapter's server entry carried, so approvals stored
+ * before the migration still match). Env and header values enter only as their own keyed digests,
+ * so neither the fingerprint nor anything derived from it can be used to test a guessed value
+ * without the profile's key.
  */
 
 /** A plugin server's plugin as its fingerprint binds it; any update is a new revision. */
@@ -21,7 +22,7 @@ export interface LaunchPlugin {
 /**
  * Which approval a server needs: every stdio server runs a local command; an HTTP server that can
  * send a service env value off the machine needs `mcp-http-env`: its bearer token comes from an
- * env var (`tokenEnv`), or its URL or a header value names one the adapter fills in
+ * env var (`tokenEnv`), or its URL or a header value names one the service fills in
  * (mcp/env-references.ts), plugin servers included. Other HTTP servers need none (`null`).
  */
 export function launchKind(record: McpServerConfig): McpLaunchKind | null {
@@ -39,7 +40,7 @@ export function tokenEnvOf(record: McpServerConfig): string {
 }
 
 /** The absolute directory a stdio launch starts in; the service's own when the record names none. */
-export function launchCwd(entry: AdapterServerEntry, defaultCwd: string): string {
+export function launchCwd(entry: McpLaunchSpec, defaultCwd: string): string {
   return path.resolve(defaultCwd, entry.cwd ?? defaultCwd);
 }
 
@@ -67,14 +68,14 @@ export function isRiskyEnvKey(key: string): boolean {
 
 /**
  * The fingerprint of one launch. `entry` must come from the connect path's own accessor
- * (`ConnectionManager.launchEntry`), so the resolved command, arguments, cwd and env values are
+ * (`ConnectionManager.launchSpec`), so the resolved command, arguments, cwd and env values are
  * exactly what would run. Throws for a server that needs no approval.
  */
 export function launchFingerprint(
   key: Buffer,
   input: {
     record: McpServerConfig;
-    entry: AdapterServerEntry;
+    entry: McpLaunchSpec;
     plugin: LaunchPlugin | null;
     defaultCwd: string;
   },
@@ -92,13 +93,13 @@ export function launchFingerprint(
         args: entry.args ?? [],
         cwd: launchCwd(entry, defaultCwd),
         env: sortedEntries(entry.env ?? {}).map(([name, value]) => [name, digest(value)]),
-        // The adapter inherits the service environment unless told otherwise.
+        // Absent means the whole service environment, as it always did (`toLaunchSpec` says false).
         inheritEnv: entry.inheritEnv !== false,
       }),
     );
   }
   if (kind === 'mcp-http-env' && record.http) {
-    // Templates as written, before the adapter fills in env values: the approval covers which
+    // Templates as written, before the service fills in env values: the approval covers which
     // variables go where, and any edit to the URL (query included) or a header voids it.
     const url = entry.url ?? record.http.url;
     const headers = entry.headers ?? {};

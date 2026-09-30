@@ -35,8 +35,6 @@ const bodies: string[] = [];
 const keyring = installMemoryKeyring();
 
 before(async () => {
-  // The adapter's OAuth store is one OS-wide keyring service; tests never reach it.
-  process.env.PI_MCP_ADAPTER_TEST_AUTH_STORE = 'memory';
   harness = await startTestService();
 });
 after(() => harness.stop());

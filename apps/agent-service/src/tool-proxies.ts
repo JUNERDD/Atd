@@ -123,9 +123,12 @@ export function serviceTools(host: ServiceToolHost): ExtensionFactory {
             signal: signal ?? undefined,
           });
         }
-        return invocation.run(id, () =>
-          tool.execute(id, args, signal, onUpdate, { ...ctx, cwd: host.cwd }),
-        );
+        // Pi's tool context goes through untouched. It defines `tools` and `executeTool` as
+        // non-enumerable properties, which a spread drops, and its `cwd` already is `host.cwd`:
+        // pi-session.ts builds the session and these tools from the same task output directory.
+        // A wrapper that needs another cwd must derive from the context, as in
+        // `Object.create(ctx, { cwd: { value } })`, never spread it.
+        return invocation.run(id, () => tool.execute(id, args, signal, onUpdate, ctx));
       },
     };
   }
