@@ -122,8 +122,11 @@
   gap: 4px;
   padding: 3px;
 }
+/* Every state fills the whole row: the Button's transparent border would otherwise inset its
+ * hover fill 1px (`bg-clip-padding`) inside the selected and best-match fills. */
 .settings-navigation .settings-nav-button {
   justify-content: flex-start;
+  background-clip: border-box;
   gap: 8px;
   height: 36px;
   padding: 8px 12px;
@@ -136,13 +139,13 @@
   text-overflow: ellipsis;
 }
 .settings-navigation .settings-nav-button[aria-current='page'] {
-  background: var(--ata-material-selected);
+  background-color: var(--ata-material-selected);
   color: var(--foreground);
 }
 /* Enter in the search field opens the best match, so it reads as highlighted while typing. */
 :is(.settings-sidebar, .settings-drawer):has(.settings-search input:focus)
   .settings-nav-button[data-best-match]:not([aria-current='page']) {
-  background: var(--ata-surface-ghost-hover);
+  background-color: var(--ata-surface-ghost-hover);
   color: var(--foreground);
 }
 .settings-nav-empty {
