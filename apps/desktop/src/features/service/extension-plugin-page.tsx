@@ -135,7 +135,7 @@ export function ExtensionPluginPage({
   if (!plugin || !detail) {
     const failed = loaded && 'error' in loaded ? loaded.error : null;
     return (
-      <ExtensionPage label={name} title={name} backLabel={backLabel} onBack={onBack}>
+      <ExtensionPage label={name} title={name} backLabel={backLabel}>
         <ExtensionDetailStatus
           text={failed ?? t('extensions.detailLoading')}
           error={failed !== null}
@@ -178,7 +178,6 @@ export function ExtensionPluginPage({
       }
       description={labels.description(plugin) || t('extensions.detailNoDescription')}
       backLabel={backLabel}
-      onBack={onBack}
       actions={
         installed && (plugin.updatable || plugin.removable) ? (
           <>

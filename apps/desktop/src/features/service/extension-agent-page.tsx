@@ -74,7 +74,6 @@ export function AgentPage({
         title={title}
         description={t('extensions.agentPage.addDescription')}
         backLabel={backLabel}
-        onBack={onBack}
         ai={{
           label: t('extensions.createWithAi'),
           disabled: locked,
@@ -97,7 +96,7 @@ export function AgentPage({
   const row = rows.find((entry) => entry.name === name);
   if (!row)
     return (
-      <ExtensionPage label={name} title={name} backLabel={backLabel} onBack={onBack}>
+      <ExtensionPage label={name} title={name} backLabel={backLabel}>
         <ExtensionDetailStatus
           text={rows.length ? t('extensions.detailMissing') : t('extensions.detailLoading')}
           error={rows.length > 0}
@@ -113,7 +112,6 @@ export function AgentPage({
       : { label: t('extensions.stateDisabled'), tone: 'off' as const },
     description: row.description || t('extensions.detailNoDescription'),
     backLabel,
-    onBack,
   };
   const permissions = (
     <AgentPermissionsSection row={row} disabled={locked} onPermissions={onPermissions} />

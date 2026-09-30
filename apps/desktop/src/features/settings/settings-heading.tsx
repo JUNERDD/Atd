@@ -6,7 +6,7 @@ export function SettingsHeading({
   titleHint,
   description,
   children,
-  onBack,
+  subpage = false,
   backLabel,
 }: {
   title: string;
@@ -15,19 +15,19 @@ export function SettingsHeading({
   description?: string;
   children?: ReactNode;
   /**
-   * Marks a sub-page: the window's content header shows Back (running this) and adds the title to
-   * its breadcrumb, so the page itself carries no back button.
+   * Marks a sub-page: the window's content header adds the title to its breadcrumb and its Back
+   * steps back through the section's page history, so the page itself carries no back button.
    */
-  onBack?: () => void;
+  subpage?: boolean;
   /** Accessible name of the header's Back while this sub-page is shown. */
   backLabel?: string;
 }) {
-  useSettingsSubpage(onBack ? { title, backLabel, onBack } : null);
+  useSettingsSubpage(subpage ? { title, backLabel } : null);
   return (
     <header
       className={`settings-page-heading ${children ? 'settings-overview-heading' : ''}`}
-      /* Without a back action the title only repeats the section name the breadcrumb shows. */
-      data-section-title={onBack ? undefined : ''}
+      /* On an overview the title only repeats the section name the breadcrumb shows. */
+      data-section-title={subpage ? undefined : ''}
     >
       <div className="settings-section-heading">
         <div className="editor-heading">

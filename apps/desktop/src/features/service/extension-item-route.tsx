@@ -88,7 +88,6 @@ export function ExtensionItemRoute({
           pluginName={pluginName}
           connected={connected}
           busy={locked}
-          onBack={onBack}
           onStartAi={() => onStartAi('skill', name)}
           onDuplicate={() => void duplicate('skill', name ?? '')}
         />

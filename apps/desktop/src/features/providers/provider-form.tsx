@@ -97,7 +97,7 @@ export function ProviderForm({
     <section className="provider-form settings-editor" aria-label={t('form.sectionLabel')}>
       <SettingsHeading
         title={saved ? draft.name : t('form.connect', { name: provider.name })}
-        onBack={onBack}
+        subpage
         backLabel={t('form.back')}
       />
       <ScrollArea

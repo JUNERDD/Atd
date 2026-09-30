@@ -23,6 +23,7 @@ import { CommandList } from './command-list';
 import './commands.css';
 import { SettingsHeading } from '../settings/settings-heading';
 import { useSettingsSectionExit } from '../settings/settings-navigation';
+import { useSettingsPageHistory } from '../settings/use-settings-page-history';
 import { lazyWithPreload } from '../../lib/lazy-with-preload';
 
 // The editor brings CodeMirror; the settings window loads it once the command settings open, so
@@ -31,27 +32,54 @@ const { Component: CommandEditor, preload: preloadCommandEditor } = lazyWithPrel
   import('./command-editor').then((module) => module.CommandEditor),
 );
 
+/**
+ * An editor page of the Commands section: a saved command's (read-only for a plugin's), where
+ * `nonce` tells repeated deep links apart, or a new or duplicated command's until it is saved.
+ */
+type EditorRoute =
+  | { page: 'command'; id: string; nonce?: number }
+  | { page: 'draft'; command: CommandDefinition };
+/** A page of the Commands section: the list, an editor, or a parameter's page over its editor. */
+type CommandRoute =
+  | { page: 'list' }
+  | EditorRoute
+  | { page: 'parameter'; editor: EditorRoute; key: string | null };
+const LIST: CommandRoute = { page: 'list' };
+
+function editorOf(route: CommandRoute): EditorRoute | null {
+  if (route.page === 'list') return null;
+  return route.page === 'parameter' ? route.editor : route;
+}
+
 export function CommandSettings({
   settings,
   activeCommand,
-  onConsumeActiveCommand,
 }: {
   settings: SettingsSnapshot | null;
+  /** The latest deep link (the task panel, a plugin's page); each new nonce opens its editor. */
   activeCommand?: { id: string; nonce: number } | null;
-  onConsumeActiveCommand?: () => void;
 }) {
   const { t } = useTranslation('commands');
   const agent = useAgent();
-  const [editing, setEditing] = useState<{ command: CommandDefinition; revision: number } | null>(
-    null,
-  );
+  const commands = agent.snapshot?.commands ?? [];
+  const history = useSettingsPageHistory<CommandRoute>(LIST, (route) => {
+    const editor = editorOf(route);
+    return (
+      editor?.page !== 'command' ||
+      !agent.snapshot ||
+      commands.some((command) => command.id === editor.id)
+    );
+  });
   const [deleting, setDeleting] = useState<CommandDefinition | null>(null);
   const search = useCompositionQuery();
   const [pending, setPending] = useState<string | null>(null);
-  useSettingsSectionExit(() => {
-    setEditing(null);
-    search.change('');
-  });
+  useSettingsSectionExit(() => search.change(''));
+  // A deep link opens its editor as a page of the history, once per request.
+  const [linked, setLinked] = useState<number | null>(null);
+  if (activeCommand && activeCommand.nonce !== linked) {
+    setLinked(activeCommand.nonce);
+    history.open({ page: 'command', id: activeCommand.id, nonce: activeCommand.nonce });
+  }
   useEffect(() => {
     void preloadCommandEditor();
   }, []);
@@ -66,70 +94,67 @@ export function CommandSettings({
     }
     setPending(null);
   }
-  function edit(command: CommandDefinition) {
-    setEditing({ command: structuredClone(command), revision: command.revision });
-  }
   function duplicate(command: CommandDefinition) {
     const id = crypto.randomUUID();
-    const names = (agent.snapshot?.commands ?? []).map((item) => item.name);
-    setEditing({
+    const names = commands.map((item) => item.name);
+    history.open({
+      page: 'draft',
       command: command.pluginId ? personalCopy(command, id, names) : copyCommand(command, id),
-      revision: 0,
     });
   }
-  if (editing)
+  const { route } = history;
+  const editor = editorOf(route);
+  const saved = editor?.page === 'command' ? commands.find((item) => item.id === editor.id) : null;
+  const opened =
+    editor?.page === 'draft'
+      ? { command: editor.command, revision: 0 }
+      : saved
+        ? { command: structuredClone(saved), revision: saved.revision }
+        : null;
+  if (editor && opened)
     return (
       <Suspense>
         <CommandEditor
-          key={editing.command.id}
-          initial={editing.command}
-          expectedRevision={editing.revision}
+          key={
+            editor.page === 'draft'
+              ? `draft-${editor.command.id}`
+              : `${editor.id}-${editor.nonce ?? ''}`
+          }
+          initial={opened.command}
+          expectedRevision={opened.revision}
           settings={settings}
           tasks={agent.snapshot?.tasks ?? []}
-          onCancel={() => setEditing(null)}
-          onDuplicate={() => duplicate(editing.command)}
+          parameterPage={{
+            shown: route.page === 'parameter' ? { key: route.key } : null,
+            open: (key) => history.open({ page: 'parameter', editor, key }),
+            close: (key) => {
+              if (key !== undefined) history.replace({ page: 'parameter', editor, key });
+              history.back();
+            },
+            discard: history.discard,
+          }}
+          onCancel={history.back}
+          onDuplicate={() => duplicate(opened.command)}
           onSaved={() => {
-            setEditing(null);
+            // A saved draft becomes its command, which Forward then reopens.
+            if (editor.page === 'draft') {
+              const command: CommandRoute = { page: 'command', id: editor.command.id };
+              history.replace(command, editor);
+              history.leave(command);
+            } else history.leave(editor);
             showToast({ kind: 'info', text: t('list.status.saved') });
           }}
         />
       </Suspense>
     );
-  const commands = agent.snapshot?.commands ?? [];
-  // A deep link (the task panel, a plugin's page) opens one command directly in the editor, which
-  // is read-only for a plugin command. Derived during
-  // render so a still-loading snapshot resolves to the editor once it arrives; the nonce remounts
-  // the same command when requested again. An unknown id falls through to the list below.
-  const linkedCommand = activeCommand
-    ? (commands.find((command) => command.id === activeCommand.id) ?? null)
-    : null;
-  if (linkedCommand && activeCommand)
-    return (
-      <Suspense>
-        <CommandEditor
-          key={`${linkedCommand.id}-${activeCommand.nonce}`}
-          initial={structuredClone(linkedCommand)}
-          expectedRevision={linkedCommand.revision}
-          settings={settings}
-          tasks={agent.snapshot?.tasks ?? []}
-          onCancel={() => onConsumeActiveCommand?.()}
-          onDuplicate={() => {
-            duplicate(linkedCommand);
-            onConsumeActiveCommand?.();
-          }}
-          onSaved={() => {
-            onConsumeActiveCommand?.();
-            showToast({ kind: 'info', text: t('list.status.saved') });
-          }}
-        />
-      </Suspense>
-    );
-  if (activeCommand && !agent.snapshot)
+  if (editor && !agent.snapshot)
     return (
       <section className="command-settings">
         <output className="settings-loading">{t('list.loading')}</output>
       </section>
     );
+  // A deep link to an unknown id, or a command deleted meanwhile, falls back to the list.
+  if (editor) history.discard();
   return (
     <section className="command-settings">
       <SettingsHeading title={t('list.title')} description={t('list.description')}>
@@ -142,7 +167,7 @@ export function CommandSettings({
         />
         <Button
           disabled={!agent.snapshot}
-          onClick={() => setEditing({ command: newCommand(crypto.randomUUID()), revision: 0 })}
+          onClick={() => history.open({ page: 'draft', command: newCommand(crypto.randomUUID()) })}
         >
           <Plus />
           {t('list.new')}
@@ -153,7 +178,7 @@ export function CommandSettings({
         query={search.query}
         pending={pending !== null}
         shortcutErrors={agent.snapshot?.shortcutErrors ?? {}}
-        onOpen={edit}
+        onOpen={(command) => history.open({ page: 'command', id: command.id })}
         onToggle={(command, enabled) => void change(command, enabled)}
         onDuplicate={duplicate}
         onDelete={setDeleting}

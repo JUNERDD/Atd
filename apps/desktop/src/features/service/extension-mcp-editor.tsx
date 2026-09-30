@@ -104,7 +104,6 @@ export function McpEditor({
         adding ? t('extensions.mcpPage.addDescription') : t('extensions.mcpDetailDescription')
       }
       backLabel={backLabel}
-      onBack={onBack}
       ai={{
         label: adding ? t('extensions.createWithAi') : t('extensions.editWithAi'),
         disabled: locked,

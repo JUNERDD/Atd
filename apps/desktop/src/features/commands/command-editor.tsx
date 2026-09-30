@@ -1,6 +1,6 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ChevronDown, ChevronUp, Copy, Pencil, Plus, Puzzle, Sparkles, Trash2 } from 'lucide-react';
+import { Copy, Puzzle, Sparkles } from 'lucide-react';
 import { Alert, AlertDescription } from '@ai/ui/components/alert';
 import { Button } from '@ai/ui/components/button';
 import { Input } from '@ai/ui/components/input';
@@ -11,7 +11,6 @@ import { renameArgument, validateCommand } from '../../client/agent/command-vali
 import { parse } from '../../client/agent/validation';
 import type { SettingsSnapshot } from '../../client/settings-contract';
 import type { AgentTask } from '../../client/agent/task-schema';
-import { IconButton } from '../../components/icon-button';
 import { useOverlayFooter } from '../../components/use-overlay-footer';
 import { agentApi } from '../agent/use-agent';
 import { showErrorToast, showToast } from '../../components/toast-store';
@@ -20,16 +19,27 @@ import { InputOptions } from './input-options';
 import { InstructionEditor } from './instruction-editor';
 import { instructionProblem } from './instruction-problem';
 import { ParameterEditor } from './parameter-editor';
+import { ParameterList } from './parameter-list';
 import { RunSettings } from './run-settings';
-import { parameterTypeTag } from './command-variables';
-import { FieldHint } from '../../components/field-hint';
 import { SettingsHeading } from '../settings/settings-heading';
+
+/** A parameter's page over the command editor, a page of the Commands section's history. */
+export interface ParameterPage {
+  /** The page shown: the parameter's key, or null for a new parameter; null shows the editor. */
+  shown: { key: string | null } | null;
+  open: (key: string | null) => void;
+  /** Leaves the page; after a save, `saved` is the key Forward then reopens. */
+  close: (saved?: string) => void;
+  /** Leaves a page whose parameter the draft no longer has, as after Back discarded the draft. */
+  discard: () => void;
+}
 
 export function CommandEditor({
   initial,
   expectedRevision,
   settings,
   tasks,
+  parameterPage,
   onSaved,
   onCancel,
   onDuplicate,
@@ -39,6 +49,7 @@ export function CommandEditor({
   settings: SettingsSnapshot | null;
   /** Snapshot tasks: the conversations instructions can mention. */
   tasks: readonly AgentTask[];
+  parameterPage: ParameterPage;
   onSaved: () => void;
   onCancel: () => void;
   /** Duplicate to Personal, offered in place of saving when `initial` belongs to a plugin. */
@@ -49,7 +60,6 @@ export function CommandEditor({
   const plugin = initial.pluginId;
   const [draft, setDraft] = useState(initial);
   const [baseRevision, setBaseRevision] = useState(expectedRevision);
-  const [parameter, setParameter] = useState<{ index: number | null } | null>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
   const [inputOptionsOpen, setInputOptionsOpen] = useState(false);
@@ -111,26 +121,27 @@ export function CommandEditor({
       showErrorToast(error);
     }
   }
-  function move(index: number, offset: number) {
-    const parameters = [...draft.parameters];
-    const item = parameters.splice(index, 1)[0]!;
-    parameters.splice(index + offset, 0, item);
-    setDraft({ ...draft, parameters });
-  }
-  if (parameter)
+  const { shown, discard } = parameterPage;
+  const index =
+    shown && shown.key !== null
+      ? draft.parameters.findIndex((item) => item.key === shown.key)
+      : null;
+  const missing = index === -1;
+  useEffect(() => {
+    if (missing) discard();
+  }, [missing, discard]);
+  if (shown && !missing)
     return (
       <ParameterEditor
-        initial={parameter.index === null ? null : draft.parameters[parameter.index]!}
+        initial={index === null ? null : draft.parameters[index]!}
         commandName={draft.name}
-        keys={draft.parameters
-          .filter((_, index) => index !== parameter.index)
-          .map((item) => item.key)}
-        onCancel={() => setParameter(null)}
+        keys={draft.parameters.filter((_, i) => i !== index).map((item) => item.key)}
+        onCancel={() => parameterPage.close()}
         onSave={(value) => {
           const parameters = [...draft.parameters];
-          const previousKey = parameter.index === null ? null : parameters[parameter.index]!.key;
-          if (parameter.index === null) parameters.push(value);
-          else parameters[parameter.index] = value;
+          const previousKey = index === null ? null : parameters[index]!.key;
+          if (index === null) parameters.push(value);
+          else parameters[index] = value;
           setDraft({
             ...draft,
             parameters,
@@ -139,7 +150,7 @@ export function CommandEditor({
                 ? renameArgument(draft.instructions, previousKey, value.key)
                 : draft.instructions,
           });
-          setParameter(null);
+          parameterPage.close(value.key);
         }}
       />
     );
@@ -153,7 +164,7 @@ export function CommandEditor({
               ? t('editor.editTitle')
               : t('editor.newTitle')
         }
-        onBack={onCancel}
+        subpage
         backLabel={t('editor.back')}
       />
       <ScrollArea
@@ -212,82 +223,11 @@ export function CommandEditor({
             open={inputOptionsOpen}
             onOpenChange={setInputOptionsOpen}
           />
-          <section className="settings-field">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5">
-                <Label>{t('editor.parameters')}</Label>
-                <FieldHint text={t('editor.parametersHint')} />
-              </div>
-              <Button
-                variant="outline"
-                disabled={draft.parameters.length >= 20}
-                onClick={() => setParameter({ index: null })}
-              >
-                <Plus />
-                {t('parameters.add')}
-              </Button>
-            </div>
-            <ul className="parameter-items">
-              {draft.parameters.map((item, index) => {
-                const type = t(parameterTypeTag(item.type));
-                const required = item.required ? ` · ${t('parameters.required')}` : '';
-                return (
-                  <li key={item.key} className="parameter-item hover:bg-muted/50">
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium" title={item.label}>
-                        {item.label}
-                      </p>
-                      <p
-                        className="truncate text-xs text-muted-foreground"
-                        title={`{{argument.${item.key}}} · ${type}${required}`}
-                      >
-                        <span className="variable-token">{`{{argument.${item.key}}}`}</span> ·{' '}
-                        {type}
-                        {required}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <IconButton
-                        label={t('editor.moveUp')}
-                        aria-label={t('editor.moveUpFor', { name: item.label })}
-                        disabled={index === 0}
-                        onClick={() => move(index, -1)}
-                      >
-                        <ChevronUp />
-                      </IconButton>
-                      <IconButton
-                        label={t('editor.moveDown')}
-                        aria-label={t('editor.moveDownFor', { name: item.label })}
-                        disabled={index === draft.parameters.length - 1}
-                        onClick={() => move(index, 1)}
-                      >
-                        <ChevronDown />
-                      </IconButton>
-                      <IconButton
-                        label={t('common.edit')}
-                        aria-label={t('editor.editFor', { name: item.label })}
-                        onClick={() => setParameter({ index })}
-                      >
-                        <Pencil />
-                      </IconButton>
-                      <IconButton
-                        label={t('common.remove')}
-                        aria-label={t('editor.removeFor', { name: item.label })}
-                        onClick={() =>
-                          setDraft({
-                            ...draft,
-                            parameters: draft.parameters.filter((_, i) => i !== index),
-                          })
-                        }
-                      >
-                        <Trash2 />
-                      </IconButton>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          </section>
+          <ParameterList
+            parameters={draft.parameters}
+            onChange={(parameters) => setDraft({ ...draft, parameters })}
+            onOpen={parameterPage.open}
+          />
           <RunSettings command={draft} onChange={setDraft} settings={settings} />
           {error && (
             <div ref={errorMessage} role="alert" className="space-y-2">

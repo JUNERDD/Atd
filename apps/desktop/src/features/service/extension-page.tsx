@@ -28,7 +28,6 @@ export function ExtensionPage({
   titleExtra,
   description,
   backLabel,
-  onBack,
   ai,
   note,
   actions,
@@ -41,8 +40,8 @@ export function ExtensionPage({
   /** Controls after the title, such as a plugin's version and its switch. */
   titleExtra?: ReactNode;
   description?: string;
+  /** Accessible name of the header's Back while the page is shown. */
   backLabel: string;
-  onBack: () => void;
   /** Create or Edit with AI: hands the item to a new panel session seeded with its skill. */
   ai?: { label: string; disabled: boolean; onClick: () => void } | null;
   /** A short note at the footer's leading edge, where the AI hand-off would sit. */
@@ -66,7 +65,7 @@ export function ExtensionPage({
           ) : null
         }
         description={description}
-        onBack={onBack}
+        subpage
         backLabel={backLabel}
       />
       <ScrollArea

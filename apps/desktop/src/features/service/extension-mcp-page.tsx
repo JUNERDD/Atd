@@ -128,7 +128,6 @@ function McpDetailsPage({ serverId, ...props }: McpPageProps & { serverId: strin
         badge={badge}
         description={t('extensions.mcpDetailDescription')}
         backLabel={props.backLabel}
-        onBack={props.onBack}
         actions={
           <Button
             type="button"
@@ -156,7 +155,6 @@ function McpDetailsPage({ serverId, ...props }: McpPageProps & { serverId: strin
         title={serverId}
         badge={badge}
         backLabel={props.backLabel}
-        onBack={props.onBack}
       >
         <ExtensionDetailStatus text={loadStatus.text} error={loadStatus.error} />
       </ExtensionPage>

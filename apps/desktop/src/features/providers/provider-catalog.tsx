@@ -21,11 +21,9 @@ import { ProviderBrand } from './provider-brand';
 export function ProviderCatalog({
   catalog,
   onChoose,
-  onBack,
 }: {
   catalog: ProviderCatalogEntry[];
   onChoose: (provider: ProviderCatalogEntry) => void;
-  onBack: () => void;
 }) {
   const { t } = useTranslation('providers');
   const search = useCompositionQuery();
@@ -45,7 +43,7 @@ export function ProviderCatalog({
       <SettingsHeading
         title={t('catalog.title')}
         description={t('catalog.description')}
-        onBack={onBack}
+        subpage
         backLabel={t('catalog.back')}
       />
       <div className="settings-overview-toolbar">

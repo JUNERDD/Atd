@@ -2,13 +2,14 @@ import type { ReactNode } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { IconButton } from '../../components/icon-button';
-import type { SettingsSubpage } from './use-settings-history';
+import type { SettingsSubpage } from './settings-navigation';
 
 /**
- * The 52px bar over the settings content: Back and Forward through the settings history, the
- * breadcrumb (section › sub-page) and trailing controls. It drags the window between its controls
- * (`settings-titlebar`, see `native-host/drag-regions.ts`). It sits above the scrolling content
- * rather than over it, so it needs no material or divider of its own.
+ * The 52px bar over the settings content: Back and Forward through the shown section's page
+ * history (`useSettingsPageHistory`), the breadcrumb (section › sub-page) and trailing controls.
+ * It drags the window between its controls (`settings-titlebar`, see
+ * `native-host/drag-regions.ts`). It sits above the scrolling content rather than over it, so it
+ * needs no material or divider of its own.
  */
 export function SettingsContentHeader({
   sectionLabel,

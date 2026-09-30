@@ -99,7 +99,7 @@ export function ParameterEditor({
       <SettingsHeading
         title={initial ? t('parameters.editTitle') : t('parameters.newTitle')}
         description={t('parameters.subtitle', { name: commandName || t('editor.newTitle') })}
-        onBack={onCancel}
+        subpage
         backLabel={t('parameters.back')}
       />
       <ScrollArea

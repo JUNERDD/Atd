@@ -27,23 +27,45 @@ import { useOverlayFooter } from '../../components/use-overlay-footer';
 import { MemoryCreateButton } from './memory-create-button';
 import { MemoryList } from './memory-list';
 import { useSettingsSectionExit } from '../settings/settings-navigation';
+import { useSettingsPageHistory } from '../settings/use-settings-page-history';
 
 type Confirm = { kind: 'pause' } | { kind: 'delete'; entry: MemoryEntry };
+/** A page of the Memory section: the list, or one entry's editor. */
+type MemoryRoute = { page: 'list' } | { page: 'edit'; entry: MemoryEntry };
+const LIST: MemoryRoute = { page: 'list' };
 
 export function MemorySettings() {
   const { t } = useTranslation('memory');
   const [snapshot, setSnapshot] = useState<MemorySnapshot | null>(null);
   const search = useCompositionQuery();
-  const [editing, setEditing] = useState<MemoryEntry | null>(null);
+  const history = useSettingsPageHistory<MemoryRoute>(
+    LIST,
+    (route) =>
+      route.page === 'list' ||
+      !snapshot ||
+      snapshot.entries.some(({ id }) => id === route.entry.id),
+  );
+  const { route } = history;
+  // The entry as the latest snapshot has it; one removed meanwhile stays as the editor opened it.
+  const editing =
+    route.page === 'edit'
+      ? (snapshot?.entries.find(({ id }) => id === route.entry.id) ?? route.entry)
+      : null;
   const [content, setContent] = useState('');
   const [confirm, setConfirm] = useState<Confirm | null>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
   useSettingsSectionExit(() => {
-    setEditing(null);
     setError('');
     search.change('');
   });
+  // Every page shown, including one Forward reopens, starts from the entry's saved content.
+  const [shownRoute, setShownRoute] = useState(route);
+  if (shownRoute !== route) {
+    setShownRoute(route);
+    setContent(editing?.content ?? '');
+    setError('');
+  }
   const errorMessage = useRef<HTMLParagraphElement>(null);
   const footerRef = useOverlayFooter<HTMLElement>();
   useEffect(() => {
@@ -82,12 +104,13 @@ export function MemorySettings() {
   }
   /** Saves `entry` with new content; empty content deletes it. Either way the editor closes. */
   async function update(entry: MemoryEntry, next: string) {
+    const from = route;
     setPending(true);
     setError('');
     const feedback = next ? t('memory.feedback.updated') : t('memory.feedback.deleted');
     try {
       setSnapshot(await agentApi().updateMemory(entry, next));
-      setEditing(null);
+      history.leave(from);
       showToast({ kind: 'info', text: feedback });
     } catch (error) {
       showErrorToast(error);
@@ -98,15 +121,6 @@ export function MemorySettings() {
     if (!editing) return;
     if (!content.trim()) setError(t('memory.feedback.emptyContent'));
     else void update(editing, content);
-  }
-  function openEditor(entry: MemoryEntry) {
-    setEditing(entry);
-    setContent(entry.content);
-    setError('');
-  }
-  function closeEditor() {
-    setEditing(null);
-    setError('');
   }
   const failure = error || snapshot?.error;
   const feedback = (
@@ -147,7 +161,7 @@ export function MemorySettings() {
         <div className="command-editor">
           <SettingsHeading
             title={t('memory.edit.title')}
-            onBack={closeEditor}
+            subpage
             backLabel={t('memory.edit.back')}
           />
           <ScrollArea
@@ -185,7 +199,7 @@ export function MemorySettings() {
               {t('memory.edit.delete')}
             </Button>
             <div>
-              <Button variant="outline" onClick={closeEditor} disabled={pending}>
+              <Button variant="outline" onClick={history.back} disabled={pending}>
                 {t('memory.edit.cancel')}
               </Button>
               <Button onClick={save} disabled={pending}>
@@ -258,7 +272,7 @@ export function MemorySettings() {
                       snapshot.entries.length ? t('memory.list.noMatches') : t('memory.list.empty')
                     }
                     disabled={pending}
-                    onEdit={openEditor}
+                    onEdit={(entry) => history.open({ page: 'edit', entry })}
                     onDelete={(entry) => setConfirm({ kind: 'delete', entry })}
                   />
                 )

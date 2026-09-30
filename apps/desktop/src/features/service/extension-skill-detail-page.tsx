@@ -90,7 +90,6 @@ export function SkillDetailPage({
   pluginName,
   connected,
   busy,
-  onBack,
   onStartAi,
   onDuplicate,
 }: {
@@ -100,7 +99,6 @@ export function SkillDetailPage({
   pluginName: string;
   connected: boolean;
   busy: boolean;
-  onBack: () => void;
   onStartAi: () => void;
   onDuplicate: () => void;
 }) {
@@ -181,7 +179,6 @@ export function SkillDetailPage({
       }
       description={row ? row.description || t('extensions.detailNoDescription') : undefined}
       backLabel={t('extensions.plugins.page.backToPlugin', { name: pluginName })}
-      onBack={onBack}
       ai={
         row && aiCanEdit(row)
           ? { label: t('extensions.editWithAi'), disabled: busy || !connected, onClick: onStartAi }

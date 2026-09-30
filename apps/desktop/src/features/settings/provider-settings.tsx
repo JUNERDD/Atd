@@ -23,26 +23,40 @@ import { ProviderForm } from '../providers/provider-form';
 import { showErrorToast, showToast } from '../../components/toast-store';
 import { SettingsHeading } from './settings-heading';
 import { useSettingsSectionExit } from './settings-navigation';
+import { useSettingsPageHistory } from './use-settings-page-history';
 import '../providers/providers.css';
+
+/**
+ * A page of the Providers section: the connections, the provider catalog, or one provider's form
+ * for a new connection (`connectionId` null) or a saved one.
+ */
+type ProviderRoute =
+  | { page: 'overview' }
+  | { page: 'catalog' }
+  | { page: 'form'; provider: ProviderCatalogEntry; connectionId: string | null };
+const OVERVIEW: ProviderRoute = { page: 'overview' };
 
 export function ProviderSettingsForm({ snapshot }: { snapshot: SettingsSnapshot | null }) {
   const { t } = useTranslation('settings');
   const bridge = window.desktop?.settings.providers;
   const [catalog, setCatalog] = useState<ProviderCatalogEntry[]>([]);
-  const [view, setView] = useState<
-    'overview' | 'catalog' | { provider: ProviderCatalogEntry; connectionId: string | null }
-  >('overview');
+  const connections = snapshot?.connections ?? [];
+  // Forward cannot reopen a connection that was disconnected meanwhile.
+  const history = useSettingsPageHistory<ProviderRoute>(
+    OVERVIEW,
+    (route) =>
+      route.page !== 'form' ||
+      route.connectionId === null ||
+      connections.some((item) => item.connectionId === route.connectionId),
+  );
+  const view = history.route;
   const search = useCompositionQuery();
-  useSettingsSectionExit(() => {
-    setView('overview');
-    search.change('');
-  });
+  useSettingsSectionExit(() => search.change(''));
   const [pending, setPending] = useState(false);
   const [retryable, setRetryable] = useState(false);
   const [disconnecting, setDisconnecting] = useState<Connection | null>(null);
   const searchInput = useRef<HTMLInputElement>(null);
   const retry = useRef<(() => Promise<void>) | null>(null);
-  const connections = snapshot?.connections ?? [];
   useEffect(() => {
     if (!bridge) return;
     let active = true;
@@ -82,27 +96,25 @@ export function ProviderSettingsForm({ snapshot }: { snapshot: SettingsSnapshot 
       showErrorToast(t('providers.overview.disconnect.missingProvider'));
       return;
     }
-    setView({ provider, connectionId: connection.connectionId });
+    history.open({ page: 'form', provider, connectionId: connection.connectionId });
   }
-  if (view === 'catalog')
+  if (view.page === 'catalog')
     return (
       <ProviderCatalog
         catalog={catalog}
-        onBack={() => setView('overview')}
-        onChoose={(provider) => setView({ provider, connectionId: null })}
+        onChoose={(provider) => history.open({ page: 'form', provider, connectionId: null })}
       />
     );
-  if (typeof view === 'object')
+  if (view.page === 'form')
     return (
       <ProviderForm
         key={view.provider.id}
         provider={view.provider}
         connection={connections.find((item) => item.connectionId === view.connectionId) ?? null}
-        onBack={() => setView('overview')}
+        onBack={history.back}
+        // A new connection's page becomes the saved connection's, which Forward then reopens.
         onSaved={(connection) =>
-          setView((current) =>
-            current === view ? { ...view, connectionId: connection.connectionId } : current,
-          )
+          history.replace({ ...view, connectionId: connection.connectionId }, view)
         }
       />
     );
@@ -148,7 +160,10 @@ export function ProviderSettingsForm({ snapshot }: { snapshot: SettingsSnapshot 
             }
           }}
         />
-        <Button disabled={!bridge || !catalog.length} onClick={() => setView('catalog')}>
+        <Button
+          disabled={!bridge || !catalog.length}
+          onClick={() => history.open({ page: 'catalog' })}
+        >
           {t('providers.overview.addProvider')}
         </Button>
       </SettingsHeading>
@@ -192,7 +207,7 @@ export function ProviderSettingsForm({ snapshot }: { snapshot: SettingsSnapshot 
           <Button
             variant="outline"
             disabled={!bridge}
-            onClick={connections.length ? clear : () => setView('catalog')}
+            onClick={connections.length ? clear : () => history.open({ page: 'catalog' })}
           >
             {connections.length
               ? t('providers.overview.empty.clearSearch')

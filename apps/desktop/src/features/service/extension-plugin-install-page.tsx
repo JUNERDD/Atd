@@ -109,7 +109,6 @@ export function PluginInstallPage({
       title={title}
       description={t('extensions.plugins.install.description')}
       backLabel={t('extensions.plugins.page.back')}
-      onBack={onBack}
       note={t('extensions.plugins.install.startsOff')}
       actions={
         <>
