@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@ai/ui/components/button';
+import { cn } from '@ai/ui/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@ai/ui/components/popover';
 import type { Connection, ModelReference, ModelThinkingLevel } from '../../client/providers/schema';
 import { formatContextWindow } from './context-window';
@@ -52,12 +53,19 @@ export function ModelConfigPopover({
   const { t } = useTranslation('providers');
   const [open, setOpen] = useState(false);
   const [view, setView] = useState<ModelConfigView>('root');
+  /** Whether the view changed since the popover opened; only opening plays the entry animation. */
+  const [switched, setSwitched] = useState(false);
   const contextRowRef = useRef<HTMLButtonElement>(null);
   const effortRowRef = useRef<HTMLButtonElement>(null);
   const modelRowRef = useRef<HTMLButtonElement>(null);
   const optionListRef = useRef<HTMLDivElement>(null);
   const modelViewRef = useRef<HTMLDivElement>(null);
   const previousView = useRef<ModelConfigView>('root');
+
+  function show(next: ModelConfigView) {
+    setView(next);
+    setSwitched(true);
+  }
 
   const connection = connections.find((item) => item.connectionId === model?.connectionId);
   const definition = connection?.catalog.find((item) => item.id === model?.modelId);
@@ -105,12 +113,15 @@ export function ModelConfigPopover({
         setOpen(next);
         // Reset on open, not on close: Radix keeps content mounted during the
         // exit animation, so resetting on close flashes the root over the subview.
-        if (next) setView('root');
+        if (next) {
+          setView('root');
+          setSwitched(false);
+        }
       }}
     >
       <PopoverTrigger asChild>
         <Button
-          variant={compact ? 'glass' : 'ghost'}
+          variant={compact ? 'glass-ghost' : 'ghost'}
           size={compact ? 'xs' : 'default'}
           className={compact ? 'composer-model' : 'provider-model-trigger'}
           disabled={disabled}
@@ -128,10 +139,22 @@ export function ModelConfigPopover({
           <ChevronDown className="shrink-0 size-4" />
         </Button>
       </PopoverTrigger>
+      {/* One content per view: resizing a live glass surface let WebKit morph it from a snapshot
+          of the previous view, overlapping both, and the popover took a frame to reposition. A
+          fresh content stays hidden until it is placed; it skips the entry animation. */}
       <PopoverContent
-        className="model-picker model-picker-scoped p-0"
+        key={view}
+        className={cn(
+          'model-picker model-picker-scoped p-0',
+          switched && 'data-open:animate-none!',
+        )}
         align="end"
         collisionPadding={8}
+        // Unmounting a view's content would hand focus back to the trigger a tick later, after the
+        // next view focused its row; only a real close returns it there.
+        onCloseAutoFocus={(event) => {
+          if (open) event.preventDefault();
+        }}
       >
         {view === 'root' && (
           <div className="model-config-root">
@@ -140,7 +163,7 @@ export function ModelConfigPopover({
                 ref={contextRowRef}
                 type="button"
                 className="model-config-row model-config-row-nav"
-                onClick={() => setView('context')}
+                onClick={() => show('context')}
               >
                 <span className="model-config-row-label">{t('modelConfig.context')}</span>
                 <span className="model-config-row-value">{contextText}</span>
@@ -164,7 +187,7 @@ export function ModelConfigPopover({
                       level: t(`thinkingLevels.levels.${thinkingLevel}`),
                     })
               }
-              onClick={() => setView('effort')}
+              onClick={() => show('effort')}
             >
               <span className="model-config-row-label">{t('thinkingLevels.label')}</span>
               <span className="model-config-row-value">{effortText}</span>
@@ -174,7 +197,7 @@ export function ModelConfigPopover({
               ref={modelRowRef}
               type="button"
               className="model-config-row model-config-row-nav"
-              onClick={() => setView('model')}
+              onClick={() => show('model')}
             >
               <span className="model-config-row-label">{t('modelConfig.model')}</span>
               <span className="model-config-row-value truncate">{displayName}</span>
@@ -184,13 +207,13 @@ export function ModelConfigPopover({
         )}
         {view === 'context' && model && connection && (
           <div className="model-config-subview">
-            <ConfigBackHeader title={t('modelConfig.context')} onBack={() => setView('root')} />
+            <ConfigBackHeader title={t('modelConfig.context')} onBack={() => show('root')} />
             <ContextOptions
               options={contexts.options}
               selected={contexts.selected}
               listRef={optionListRef}
               onSelect={(tier) => {
-                setView('root');
+                show('root');
                 if (tier !== contexts.selected)
                   void saveModelContext(model, tier, connection.revision);
               }}
@@ -199,21 +222,21 @@ export function ModelConfigPopover({
         )}
         {view === 'effort' && (
           <div className="model-config-subview">
-            <ConfigBackHeader title={t('thinkingLevels.label')} onBack={() => setView('root')} />
+            <ConfigBackHeader title={t('thinkingLevels.label')} onBack={() => show('root')} />
             <EffortOptions
               levels={levels}
               selected={selected}
               listRef={optionListRef}
               onSelect={(level) => {
                 onThinkingLevelChange(level);
-                setView('root');
+                show('root');
               }}
             />
           </div>
         )}
         {view === 'model' && (
           <div ref={modelViewRef} className="model-config-subview">
-            <ConfigBackHeader title={t('modelConfig.model')} onBack={() => setView('root')} />
+            <ConfigBackHeader title={t('modelConfig.model')} onBack={() => show('root')} />
             <ModelList
               connections={connections}
               value={model}
