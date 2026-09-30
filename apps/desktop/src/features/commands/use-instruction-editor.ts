@@ -23,6 +23,11 @@ export interface InstructionEditorOptions {
   /** The draft's instructions text, the single source of truth for the editor content. */
   instructions: string;
   onChange: (instructions: string) => void;
+  /**
+   * Loading dropped stray chip sentinels from `instructions`: the draft adopts this text as what
+   * it was loaded with, not as an edit.
+   */
+  onNormalize: (instructions: string) => void;
   onTrigger: (trigger: TriggerState | null) => void;
   panel: RefObject<QuickPanelHandle | null>;
   /** Snapshot tasks, for the titles of conversation chips. */
@@ -30,16 +35,18 @@ export interface InstructionEditorOptions {
   /** Variable highlighting and `{{` completion; a new value reconfigures the editor. */
   variables: Extension;
   aria: ComboboxAria | null;
+  /** The id of the error shown under the instructions, which marks them invalid; null when none. */
+  errorId: string | null;
 }
 
 const variables = new Compartment();
 const labelling = new Compartment();
 
-function ariaExtension(aria: ComboboxAria | null): Extension {
-  if (!aria) return [];
+function ariaExtension(aria: ComboboxAria | null, errorId: string | null): Extension {
   return EditorView.contentAttributes.of({
-    'aria-controls': aria.controls,
-    ...(aria.activeDescendant ? { 'aria-activedescendant': aria.activeDescendant } : {}),
+    ...(aria ? { 'aria-controls': aria.controls } : {}),
+    ...(aria?.activeDescendant ? { 'aria-activedescendant': aria.activeDescendant } : {}),
+    ...(errorId ? { 'aria-invalid': 'true', 'aria-describedby': errorId } : {}),
   });
 }
 
@@ -59,6 +66,7 @@ class InstructionEditorHost {
   private content: string;
   private appliedVariables: Extension;
   private appliedAria: ComboboxAria | null;
+  private appliedErrorId: string | null;
   private reported: TriggerState | null = null;
   /** The last trigger line, relative to the editor's top; see `triggerRect`. */
   private triggerLine: { top: number; height: number } | null = null;
@@ -70,6 +78,7 @@ class InstructionEditorHost {
     this.content = options.instructions;
     this.appliedVariables = options.variables;
     this.appliedAria = options.aria;
+    this.appliedErrorId = options.errorId;
     this.commands = createEditorCommands(() => this.view);
   }
 
@@ -154,7 +163,7 @@ class InstructionEditorHost {
         instructionTheme,
         EditorView.contentAttributes.of({ 'aria-autocomplete': 'list', spellcheck: 'false' }),
         variables.of(this.appliedVariables),
-        labelling.of(ariaExtension(this.appliedAria)),
+        labelling.of(ariaExtension(this.appliedAria, this.appliedErrorId)),
         EditorView.updateListener.of((update) => this.onUpdate(update)),
         EditorView.domEventObservers({
           compositionend: (_event, view) => this.onCompositionEnd(view),
@@ -162,8 +171,8 @@ class InstructionEditorHost {
       ],
     });
     this.content = this.textOf(state);
-    // Loading only drops stray chip sentinels; the draft adopts that text.
-    if (this.content !== instructions) this.options.onChange(this.content);
+    // Loading only drops stray chip sentinels; the draft adopts that text as loaded.
+    if (this.content !== instructions) this.options.onNormalize(this.content);
     return state;
   }
 
@@ -201,6 +210,7 @@ class InstructionEditorHost {
     if (instructions !== this.content) {
       this.appliedVariables = this.options.variables;
       this.appliedAria = this.options.aria;
+      this.appliedErrorId = this.options.errorId;
       view.setState(this.load(instructions));
       this.report(view.state);
       return;
@@ -210,11 +220,13 @@ class InstructionEditorHost {
       effects.push(variables.reconfigure(this.options.variables));
     if (
       this.options.aria?.controls !== this.appliedAria?.controls ||
-      this.options.aria?.activeDescendant !== this.appliedAria?.activeDescendant
+      this.options.aria?.activeDescendant !== this.appliedAria?.activeDescendant ||
+      this.options.errorId !== this.appliedErrorId
     )
-      effects.push(labelling.reconfigure(ariaExtension(this.options.aria)));
+      effects.push(labelling.reconfigure(ariaExtension(this.options.aria, this.options.errorId)));
     this.appliedVariables = this.options.variables;
     this.appliedAria = this.options.aria;
+    this.appliedErrorId = this.options.errorId;
     if (effects.length) view.dispatch({ effects });
   }
 }

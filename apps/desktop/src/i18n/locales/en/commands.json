@@ -10,9 +10,10 @@
     "description": "Reusable instructions for the things you do often.",
     "searchLabel": "Search commands",
     "searchPlaceholder": "Search commands…",
-    "new": "New",
+    "new": "New command",
     "noShortcut": "No shortcut",
     "run": "Run",
+    "runOff": "Turn on the command to run it",
     "runFor": "Run {{name}}",
     "editFor": "Edit {{name}}",
     "viewFor": "View {{name}}",
@@ -21,17 +22,17 @@
     "moreActionsFor": "More actions for {{name}}",
     "duplicate": "Duplicate",
     "duplicateToPersonal": "Duplicate to Personal",
-    "empty": "No commands yet. Create your first command.",
+    "emptyTitle": "No commands yet",
+    "emptyDescription": "Save instructions you use often, then run them from the task panel or a shortcut.",
+    "noMatches": "No commands match “{{query}}”",
+    "clearSearch": "Clear search",
     "loading": "Loading commands…",
     "personal": "Personal",
     "pluginGroupFor": "Commands from {{plugin}}",
     "deleteTitle": "Delete {{name}}?",
     "deleteDescription": "This removes the command and its shortcut. Existing tasks keep their saved command version.",
     "status": {
-      "enabled": "Command enabled.",
-      "disabled": "Command disabled.",
-      "saved": "Command saved.",
-      "deleted": "Command deleted."
+      "saved": "Command saved."
     }
   },
   "editor": {
@@ -58,6 +59,19 @@
     "saveChanges": "Save changes",
     "create": "Create command",
     "deletedError": "This command was deleted. Cancel and create a new command to keep a copy."
+  },
+  "validation": {
+    "nameRequired": "Enter a command name.",
+    "instructionsRequired": "Enter instructions.",
+    "selectionDisabled": "Turn on the selected text variable in Input options to use this source.",
+    "clipboardDisabled": "Turn on the clipboard variable in Input options to use this source.",
+    "textNotAccepted": "A command without text input can’t require text. Turn off Require text input.",
+    "duplicateKey": "Each parameter needs a unique variable key.",
+    "labelRequired": "Every parameter needs a label.",
+    "range": "{{label}}: minimum must not exceed maximum.",
+    "optionIncomplete": "Every option needs a label and a value.",
+    "optionDuplicate": "Option values must be unique.",
+    "invalidDefault": "{{label}}: the default value isn’t valid."
   },
   "parameters": {
     "newTitle": "New parameter",

@@ -1,4 +1,13 @@
-import { Bookmark, Brain, Ellipsis, Lightbulb, Pencil, Trash2, UserRound } from 'lucide-react';
+import {
+  Bookmark,
+  Brain,
+  Ellipsis,
+  Lightbulb,
+  Pencil,
+  SearchX,
+  Trash2,
+  UserRound,
+} from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import {
   DropdownMenu,
@@ -7,7 +16,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@ai/ui/components/dropdown-menu';
-import { Empty, EmptyHeader, EmptyMedia, EmptyTitle } from '@ai/ui/components/empty';
+import { Button } from '@ai/ui/components/button';
+import { Empty, EmptyContent, EmptyHeader, EmptyMedia, EmptyTitle } from '@ai/ui/components/empty';
 import { HighlightedText } from '@ai/ui/components/highlighted-text';
 import {
   Item,
@@ -36,17 +46,16 @@ const TARGET = {
 export function MemoryList({
   entries,
   query,
-  empty,
-  disabled,
+  busyIds,
+  onClearSearch,
   onEdit,
   onDelete,
 }: {
   entries: MemoryEntry[];
   query: string;
-  /** Shown when nothing is listed: no memories yet, or none matching the search. */
-  empty: string;
-  /** Locks the row actions while a change is saving. */
-  disabled: boolean;
+  /** The entries being saved, whose rows keep focus but ignore input; other rows stay usable. */
+  busyIds: ReadonlySet<string>;
+  onClearSearch: () => void;
   onEdit: (entry: MemoryEntry) => void;
   onDelete: (entry: MemoryEntry) => void;
 }) {
@@ -56,15 +65,25 @@ export function MemoryList({
     return match || !query.trim() ? [{ entry, match }] : [];
   });
   if (!shown.length) {
+    const searching = entries.length > 0;
     return (
       <div className="settings-extension-empty">
         <Empty>
           <EmptyHeader>
-            <EmptyMedia variant="icon">
-              <Brain />
-            </EmptyMedia>
-            <EmptyTitle>{empty}</EmptyTitle>
+            <EmptyMedia variant="icon">{searching ? <SearchX /> : <Brain />}</EmptyMedia>
+            <EmptyTitle>
+              {searching
+                ? t('memory.list.noMatches', { query: query.trim() })
+                : t('memory.list.empty')}
+            </EmptyTitle>
           </EmptyHeader>
+          {searching && (
+            <EmptyContent>
+              <Button variant="outline" onClick={onClearSearch}>
+                {t('memory.list.clearSearch')}
+              </Button>
+            </EmptyContent>
+          )}
         </Empty>
       </div>
     );
@@ -74,6 +93,7 @@ export function MemoryList({
       {shown.map(({ entry, match }) => {
         const { icon: Icon, labelKey } = TARGET[entry.target];
         const preview = entry.content.slice(0, 70);
+        const busy = busyIds.has(entry.id);
         return (
           <Item asChild key={entry.id} size="xs" className="settings-open-row">
             <li>
@@ -81,8 +101,11 @@ export function MemoryList({
                 type="button"
                 className="settings-open-row-button"
                 aria-label={t('memory.list.editLabel', { content: preview })}
-                disabled={disabled}
-                onClick={() => onEdit(entry)}
+                aria-disabled={busy || undefined}
+                aria-busy={busy || undefined}
+                onClick={() => {
+                  if (!busy) onEdit(entry);
+                }}
               />
               <ItemMedia variant="icon">
                 <Icon />
@@ -99,19 +122,25 @@ export function MemoryList({
                     <IconButton
                       label={t('memory.list.more')}
                       aria-label={t('memory.list.moreActionsFor', { content: preview })}
-                      disabled={disabled}
+                      aria-disabled={busy || undefined}
+                      aria-busy={busy || undefined}
+                      className="aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
                       tooltipDismissOnClick
                     >
                       <Ellipsis />
                     </IconButton>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem onSelect={() => onEdit(entry)}>
+                    <DropdownMenuItem disabled={busy} onSelect={() => onEdit(entry)}>
                       <Pencil />
                       {t('memory.list.edit')}
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onSelect={() => onDelete(entry)}>
+                    <DropdownMenuItem
+                      variant="destructive"
+                      disabled={busy}
+                      onSelect={() => onDelete(entry)}
+                    >
                       <Trash2 />
                       {t('memory.list.delete')}
                     </DropdownMenuItem>

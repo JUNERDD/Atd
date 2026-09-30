@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Copy, Puzzle, Sparkles } from 'lucide-react';
+import { CircleAlert, Copy, Puzzle, Sparkles } from 'lucide-react';
 import { Alert, AlertDescription } from '@ai/ui/components/alert';
 import { Button } from '@ai/ui/components/button';
 import { Input } from '@ai/ui/components/input';
 import { Label } from '@ai/ui/components/label';
 import { ScrollArea } from '@ai/ui/components/scroll-area';
 import { CommandSchema, type CommandDefinition } from '../../client/agent/command-schema';
-import { renameArgument, validateCommand } from '../../client/agent/command-validation';
+import { renameArgument } from '../../client/agent/command-validation';
 import { parse } from '../../client/agent/validation';
 import type { SettingsSnapshot } from '../../client/settings-contract';
 import type { AgentTask } from '../../client/agent/task-schema';
@@ -17,11 +17,13 @@ import { showErrorToast, showToast } from '../../components/toast-store';
 import { messageOf } from '../../lib/errors';
 import { InputOptions } from './input-options';
 import { InstructionEditor } from './instruction-editor';
-import { instructionProblem } from './instruction-problem';
+import { FieldError } from './field-error';
 import { ParameterEditor } from './parameter-editor';
 import { ParameterList } from './parameter-list';
 import { RunSettings } from './run-settings';
+import { errorId, useCommandProblems } from './use-command-problems';
 import { SettingsHeading } from '../settings/settings-heading';
+import { useSettingsUnsavedChanges } from '../settings/settings-unsaved-changes';
 
 /** A parameter's page over the command editor, a page of the Commands section's history. */
 export interface ParameterPage {
@@ -32,6 +34,11 @@ export interface ParameterPage {
   close: (saved?: string) => void;
   /** Leaves a page whose parameter the draft no longer has, as after Back discarded the draft. */
   discard: () => void;
+}
+
+/** A command as the unsaved-changes check compares it: allowed tools are a set, not a list. */
+function comparable(command: CommandDefinition): string {
+  return JSON.stringify({ ...command, tools: command.tools.toSorted() });
 }
 
 export function CommandEditor({
@@ -59,10 +66,16 @@ export function CommandEditor({
   // A plugin command is shown, never edited: the fieldset below disables every control.
   const plugin = initial.pluginId;
   const [draft, setDraft] = useState(initial);
+  // What the draft started from: the opened command, or the latest version after a reload.
+  const [baseline, setBaseline] = useState(initial);
+  // Commands are plain data, so their JSON tells an edit apart; a plugin's is never edited.
+  useSettingsUnsavedChanges(!plugin && comparable(draft) !== comparable(baseline));
   const [baseRevision, setBaseRevision] = useState(expectedRevision);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
   const [inputOptionsOpen, setInputOptionsOpen] = useState(false);
+  const problems = useCommandProblems(draft);
+  const nameError = problems.text('name');
   const errorMessage = useRef<HTMLDivElement>(null);
   const footerRef = useOverlayFooter<HTMLElement>();
   function showError(message: string) {
@@ -83,15 +96,12 @@ export function CommandEditor({
     }
   }
   async function save() {
+    // Save stays enabled while a request is in flight (focus stays on it); repeats are ignored.
+    if (pending) return;
     setError('');
-    // Template problems first, in the app's language; the checks below name them in English.
-    const problem = instructionProblem(draft, t);
-    if (problem) {
-      showError(problem);
-      return;
-    }
+    // Field problems show under their fields; what remains here concerns the whole command.
+    if (!problems.check()) return;
     try {
-      validateCommand(draft);
       parse(CommandSchema, draft);
     } catch (error) {
       showError(messageOf(error));
@@ -115,6 +125,7 @@ export function CommandEditor({
         return;
       }
       setDraft(current);
+      setBaseline(current);
       setBaseRevision(current.revision);
       setError('');
     } catch (error) {
@@ -142,14 +153,16 @@ export function CommandEditor({
           const previousKey = index === null ? null : parameters[index]!.key;
           if (index === null) parameters.push(value);
           else parameters[index] = value;
-          setDraft({
+          const next = {
             ...draft,
             parameters,
             instructions:
               previousKey && previousKey !== value.key
                 ? renameArgument(draft.instructions, previousKey, value.key)
                 : draft.instructions,
-          });
+          };
+          setDraft(next);
+          problems.recheck('parameters', next);
           parameterPage.close(value.key);
         }}
       />
@@ -183,13 +196,20 @@ export function CommandEditor({
           <div className="field-columns aligned-fields">
             <div className="settings-field">
               <Label htmlFor="command-name">{t('editor.name')}</Label>
-              <Input
-                id="command-name"
-                value={draft.name}
-                maxLength={120}
-                placeholder={t('editor.namePlaceholder')}
-                onChange={(event) => setDraft({ ...draft, name: event.target.value })}
-              />
+              {/* One grid row with the error, so the fields beside it stay aligned. */}
+              <div className="flex flex-col gap-2">
+                <Input
+                  id="command-name"
+                  value={draft.name}
+                  maxLength={120}
+                  placeholder={t('editor.namePlaceholder')}
+                  aria-invalid={Boolean(nameError) || undefined}
+                  aria-describedby={nameError ? errorId('name') : undefined}
+                  onChange={(event) => setDraft({ ...draft, name: event.target.value })}
+                  onBlur={() => problems.recheck('name')}
+                />
+                {nameError && <FieldError id={errorId('name')}>{nameError}</FieldError>}
+              </div>
             </div>
             <div className="settings-field">
               <Label htmlFor="command-description">{t('editor.description')}</Label>
@@ -205,8 +225,14 @@ export function CommandEditor({
           <InstructionEditor
             command={draft}
             onChange={setDraft}
+            onNormalize={(instructions) => {
+              setDraft((current) => ({ ...current, instructions }));
+              setBaseline((current) => ({ ...current, instructions }));
+            }}
             readOnly={Boolean(plugin)}
             tasks={tasks}
+            error={problems.text('instructions')}
+            onBlur={() => problems.recheck('instructions')}
             onConfigureSource={(source) => {
               setInputOptionsOpen(true);
               requestAnimationFrame(() => {
@@ -223,16 +249,27 @@ export function CommandEditor({
             onChange={setDraft}
             open={inputOptionsOpen}
             onOpenChange={setInputOptionsOpen}
+            error={problems.text('input')}
+            onBlur={() => problems.recheck('input')}
           />
           <ParameterList
             parameters={draft.parameters}
-            onChange={(parameters) => setDraft({ ...draft, parameters })}
+            onChange={(parameters) => {
+              const next = { ...draft, parameters };
+              setDraft(next);
+              // Reordering or removing is what fixes a parameter problem, so check it again then.
+              problems.recheck('parameters', next);
+            }}
             onOpen={parameterPage.open}
+            error={problems.text('parameters')}
           />
           <RunSettings command={draft} onChange={setDraft} settings={settings} />
           {error && (
-            <div ref={errorMessage} role="alert" className="space-y-2">
-              <p className="text-sm text-destructive">{error}</p>
+            <div ref={errorMessage} className="space-y-2">
+              <p role="alert" className="settings-inline-error">
+                <CircleAlert aria-hidden />
+                {error}
+              </p>
               {baseRevision > 0 && (
                 <Button variant="outline" onClick={() => void reload()}>
                   {t('editor.reload')}
@@ -255,17 +292,33 @@ export function CommandEditor({
             <Button
               type="button"
               variant="glass"
-              disabled={pending || !window.desktop?.settings}
-              onClick={() => void startSession()}
+              disabled={!window.desktop?.settings}
+              aria-disabled={pending || undefined}
+              className="aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
+              onClick={() => {
+                if (!pending) void startSession();
+              }}
             >
               <Sparkles data-icon="inline-start" />
               {baseRevision ? t('session.triggerEdit') : t('session.trigger')}
             </Button>
             <div>
-              <Button variant="glass" disabled={pending} onClick={onCancel}>
+              <Button
+                variant="glass"
+                aria-disabled={pending || undefined}
+                className="aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
+                onClick={() => {
+                  if (!pending) onCancel();
+                }}
+              >
                 {t('common.cancel')}
               </Button>
-              <Button disabled={pending} onClick={() => void save()}>
+              <Button
+                aria-disabled={pending || undefined}
+                aria-busy={pending || undefined}
+                className="aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
+                onClick={() => void save()}
+              >
                 {pending
                   ? t('editor.saving')
                   : baseRevision

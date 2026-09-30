@@ -18,6 +18,7 @@ import { ParameterSchema } from '../../client/agent/command-schema';
 import { parse } from '../../client/agent/validation';
 import { parameterError } from '../../client/agent/command-validation';
 import { SettingsHeading } from '../settings/settings-heading';
+import { useSettingsUnsavedChanges } from '../settings/settings-unsaved-changes';
 import { IconButton } from '../../components/icon-button';
 import { FieldHint } from '../../components/field-hint';
 import { useOverlayFooter } from '../../components/use-overlay-footer';
@@ -38,7 +39,7 @@ export function ParameterEditor({
   onCancel: () => void;
 }) {
   const { t } = useTranslation('commands');
-  const [draft, setDraft] = useState<Parameter>(
+  const [start] = useState<Parameter>(
     initial ?? {
       type: 'text',
       key: '',
@@ -49,6 +50,8 @@ export function ParameterEditor({
       maxLength: 120,
     },
   );
+  const [draft, setDraft] = useState(start);
+  useSettingsUnsavedChanges(JSON.stringify(draft) !== JSON.stringify(start));
   const [error, setError] = useState('');
   const errorMessage = useRef<HTMLParagraphElement>(null);
   const footerRef = useOverlayFooter<HTMLElement>();

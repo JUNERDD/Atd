@@ -1,6 +1,5 @@
 import { useTranslation } from 'react-i18next';
 import { Label } from '@ai/ui/components/label';
-import { Switch } from '@ai/ui/components/switch';
 import {
   Select,
   SelectContent,
@@ -8,15 +7,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@ai/ui/components/select';
-import {
-  Item,
-  ItemActions,
-  ItemContent,
-  ItemDescription,
-  ItemGroup,
-  ItemTitle,
-} from '@ai/ui/components/item';
+import { Card } from '@ai/ui/components/card';
+import { ItemGroup } from '@ai/ui/components/item';
 import { ModelConfigPopover } from '../providers/model-config-popover';
+import { SettingsSwitchRow } from '../settings/settings-switch-row';
 import { TOOL_DESCRIPTIONS, type CommandDefinition } from '../../client/agent/command-schema';
 import type { SettingsSnapshot } from '../../client/settings-contract';
 
@@ -37,8 +31,14 @@ export function RunSettings({
   );
   const fixedModel = command.model.mode === 'fixed' ? command.model : null;
   return (
-    <section className="settings-field" data-figma-node="1062:33204">
-      <Label>{t('run.title')}</Label>
+    <section
+      className="settings-field"
+      aria-labelledby="command-run-title"
+      data-figma-node="1062:33204"
+    >
+      <h3 id="command-run-title" className="settings-section-title">
+        {t('run.title')}
+      </h3>
       <div className="run-settings">
         <div className="field-columns aligned-fields">
           <div className="settings-field">
@@ -110,39 +110,28 @@ export function RunSettings({
           </div>
         </div>
         <div className="settings-field">
-          <Label>{t('run.allowedTools')}</Label>
-          <ItemGroup className="run-settings-tools">
-            {TOOL_DESCRIPTIONS.map((tool) => (
-              <Item
-                asChild
-                key={tool.id}
-                variant="outline"
-                size="sm"
-                className="grid grid-cols-[minmax(0,1fr)_auto]"
-              >
-                <li>
-                  <ItemContent>
-                    <ItemTitle>{tCommon(`tools.${tool.id}.label`)}</ItemTitle>
-                    <ItemDescription>{tCommon(`tools.${tool.id}.description`)}</ItemDescription>
-                  </ItemContent>
-                  <ItemActions>
-                    <Switch
-                      aria-label={tCommon(`tools.${tool.id}.label`)}
-                      checked={command.tools.includes(tool.id)}
-                      onCheckedChange={(checked) =>
-                        onChange({
-                          ...command,
-                          tools: checked
-                            ? [...command.tools, tool.id]
-                            : command.tools.filter((id) => id !== tool.id),
-                        })
-                      }
-                    />
-                  </ItemActions>
-                </li>
-              </Item>
-            ))}
-          </ItemGroup>
+          <Label id="command-tools-label">{t('run.allowedTools')}</Label>
+          <Card size="sm" className="settings-card">
+            <ItemGroup aria-labelledby="command-tools-label">
+              {TOOL_DESCRIPTIONS.map((tool) => (
+                <SettingsSwitchRow
+                  key={tool.id}
+                  id={`command-tool-${tool.id}`}
+                  title={tCommon(`tools.${tool.id}.label`)}
+                  description={tCommon(`tools.${tool.id}.description`)}
+                  checked={command.tools.includes(tool.id)}
+                  onCheckedChange={(checked) =>
+                    onChange({
+                      ...command,
+                      tools: checked
+                        ? [...command.tools, tool.id]
+                        : command.tools.filter((id) => id !== tool.id),
+                    })
+                  }
+                />
+              ))}
+            </ItemGroup>
+          </Card>
         </div>
       </div>
     </section>

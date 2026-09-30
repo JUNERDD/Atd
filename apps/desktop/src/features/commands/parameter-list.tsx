@@ -1,11 +1,12 @@
 import { useTranslation } from 'react-i18next';
 import { ChevronDown, ChevronUp, Pencil, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@ai/ui/components/button';
-import { Label } from '@ai/ui/components/label';
 import type { Parameter } from '../../client/agent/command-schema';
 import { FieldHint } from '../../components/field-hint';
 import { IconButton } from '../../components/icon-button';
 import { parameterTypeTag } from './command-variables';
+import { FieldError } from './field-error';
+import { errorId } from './use-command-problems';
 
 /**
  * The command editor's parameters: one row each, reordered and removed in place and edited on
@@ -15,10 +16,13 @@ export function ParameterList({
   parameters,
   onChange,
   onOpen,
+  error,
 }: {
   parameters: readonly Parameter[];
   onChange: (parameters: Parameter[]) => void;
   onOpen: (key: string | null) => void;
+  /** The parameters' problem in the app's language, or '' when there is none. */
+  error: string;
 }) {
   const { t } = useTranslation('commands');
   function move(index: number, offset: number) {
@@ -28,10 +32,16 @@ export function ParameterList({
     onChange(next);
   }
   return (
-    <section className="settings-field">
+    <section
+      className="settings-field"
+      aria-labelledby="command-parameters-title"
+      aria-describedby={error ? errorId('parameters') : undefined}
+    >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5">
-          <Label>{t('editor.parameters')}</Label>
+          <h3 id="command-parameters-title" className="settings-section-title">
+            {t('editor.parameters')}
+          </h3>
           <FieldHint text={t('editor.parametersHint')} />
         </div>
         <Button variant="outline" disabled={parameters.length >= 20} onClick={() => onOpen(null)}>
@@ -39,6 +49,7 @@ export function ParameterList({
           {t('parameters.add')}
         </Button>
       </div>
+      {error && <FieldError id={errorId('parameters')}>{error}</FieldError>}
       <ul className="parameter-items">
         {parameters.map((item, index) => {
           const type = t(parameterTypeTag(item.type));

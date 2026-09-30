@@ -1,5 +1,11 @@
 import Mustache from 'mustache';
-import { instructionTokenProblem } from '@ai/agent-contracts';
+import {
+  instructionCapabilities,
+  instructionTokenProblem,
+  MAX_RUN_REFERENCES,
+  MAX_RUN_SKILLS,
+  parseInstructionTokens,
+} from '@ai/agent-contracts';
 import type { ArgumentValues, CommandDefinition, Parameter } from './command-schema';
 import type { TaskInput } from './task-schema';
 
@@ -100,47 +106,150 @@ export function parameterError(
   }
 }
 
-export function validateCommand(command: CommandDefinition): void {
-  if (!command.name.trim()) throw new Error('Enter a command name.');
-  if (!command.instructions.trim()) throw new Error('Enter instructions.');
-  const tokenProblem = instructionTokenProblem(command.instructions);
-  if (tokenProblem) throw new Error(tokenProblem);
-  const keys = command.parameters.map((parameter) => parameter.key);
-  if (new Set(keys).size !== keys.length) throw new Error('Each parameter needs a unique key.');
-  if (command.input.source === 'selection' && !command.input.selection)
-    throw new Error('Enable selected text for this input source.');
-  if (command.input.source === 'clipboard' && !command.input.clipboard)
-    throw new Error('Enable clipboard for this input source.');
-  if (command.input.source === 'none' && command.input.required)
-    throw new Error('A command without text input cannot require text.');
-  for (const parameter of command.parameters) {
-    if (!parameter.label.trim()) throw new Error('Enter a parameter label.');
+/** An editor field a command problem belongs to; the editor shows the problem under it. */
+export type CommandField = 'name' | 'instructions' | 'input' | 'parameters';
+
+/**
+ * Why a command cannot be saved, as data rather than text: the editor translates `code` (with
+ * `params`) and shows it under `field`, while `validateCommand` throws it as English for the
+ * native host and the run path.
+ */
+export type CommandProblem =
+  | { field: 'name'; code: 'nameRequired' }
+  | { field: 'instructions'; code: 'instructionsRequired' | 'syntax' }
+  | { field: 'instructions'; code: 'unsupportedTag'; params: { tag: string } }
+  | { field: 'instructions'; code: 'undefinedVariables'; params: { variables: string } }
+  | { field: 'instructions'; code: 'tooManySkills' | 'tooManyReferences'; params: { max: number } }
+  | { field: 'input'; code: 'selectionDisabled' | 'clipboardDisabled' | 'textNotAccepted' }
+  | {
+      field: 'parameters';
+      code: 'duplicateKey' | 'labelRequired' | 'optionIncomplete' | 'optionDuplicate';
+    }
+  | { field: 'parameters'; code: 'range' | 'invalidDefault'; params: { label: string } };
+
+/** Each field's first problem; a field without one is absent. */
+export type CommandProblems = Partial<Record<CommandField, CommandProblem>>;
+
+/**
+ * What stops the instructions' template from being used: too many staged items, syntax the
+ * parser rejects, or variables the command does not offer. Empty instructions pass here, so the
+ * editor can show this while the user types without flagging a new command at once.
+ */
+export function templateProblem(
+  command: Pick<CommandDefinition, 'instructions' | 'input' | 'parameters'>,
+): CommandProblem | null {
+  if (instructionTokenProblem(command.instructions)) {
+    const { skills } = instructionCapabilities(parseInstructionTokens(command.instructions));
+    return skills.length > MAX_RUN_SKILLS
+      ? { field: 'instructions', code: 'tooManySkills', params: { max: MAX_RUN_SKILLS } }
+      : { field: 'instructions', code: 'tooManyReferences', params: { max: MAX_RUN_REFERENCES } };
+  }
+  const available = availableVariables(command);
+  let references: VariableReference[];
+  try {
+    references = templateReferences(command.instructions);
+  } catch (error) {
+    return error instanceof TemplateSyntaxError && error.tag
+      ? { field: 'instructions', code: 'unsupportedTag', params: { tag: error.tag } }
+      : { field: 'instructions', code: 'syntax' };
+  }
+  const unknown = references.filter((reference) => !available.includes(reference.name));
+  if (!unknown.length) return null;
+  const variables = unknown.map((reference) => `{{${reference.name}}}`).join(', ');
+  return { field: 'instructions', code: 'undefinedVariables', params: { variables } };
+}
+
+function inputProblem({ input }: CommandDefinition): CommandProblem | null {
+  if (input.source === 'selection' && !input.selection)
+    return { field: 'input', code: 'selectionDisabled' };
+  if (input.source === 'clipboard' && !input.clipboard)
+    return { field: 'input', code: 'clipboardDisabled' };
+  if (input.source === 'none' && input.required) return { field: 'input', code: 'textNotAccepted' };
+  return null;
+}
+
+function parametersProblem({ parameters }: CommandDefinition): CommandProblem | null {
+  const keys = parameters.map((parameter) => parameter.key);
+  if (new Set(keys).size !== keys.length) return { field: 'parameters', code: 'duplicateKey' };
+  for (const parameter of parameters) {
+    const { label } = parameter;
+    if (!label.trim()) return { field: 'parameters', code: 'labelRequired' };
     if (
       parameter.type === 'number' &&
       parameter.min !== undefined &&
       parameter.max !== undefined &&
       parameter.min > parameter.max
-    ) {
-      throw new Error(`${parameter.label}: minimum must not exceed maximum.`);
-    }
+    )
+      return { field: 'parameters', code: 'range', params: { label } };
     if (parameter.type === 'enum') {
       if (parameter.options.some((option) => !option.value.trim() || !option.label.trim()))
-        throw new Error('Enter a value and label for every option.');
-      if (
-        new Set(parameter.options.map((option) => option.value)).size !== parameter.options.length
-      )
-        throw new Error('Option values must be unique.');
+        return { field: 'parameters', code: 'optionIncomplete' };
+      if (new Set(parameter.options.map(({ value }) => value)).size !== parameter.options.length)
+        return { field: 'parameters', code: 'optionDuplicate' };
     }
-    if (parameter.default !== undefined) {
-      const error = parameterError(parameter, parameter.default);
-      if (error) throw new Error(`Default value: ${error}`);
-    }
+    if (parameter.default !== undefined && parameterError(parameter, parameter.default))
+      return { field: 'parameters', code: 'invalidDefault', params: { label } };
   }
-  const variables = availableVariables(command);
-  for (const reference of templateReferences(command.instructions)) {
-    if (!variables.includes(reference.name))
-      throw new Error(`Enable or define {{${reference.name}}} before saving.`);
+  return null;
+}
+
+/** Every problem that stops `command` from being saved, at most one per field. */
+export function commandProblems(command: CommandDefinition): CommandProblems {
+  const found: (CommandProblem | null)[] = [
+    command.name.trim() ? null : { field: 'name', code: 'nameRequired' },
+    command.instructions.trim()
+      ? templateProblem(command)
+      : { field: 'instructions', code: 'instructionsRequired' },
+    inputProblem(command),
+    parametersProblem(command),
+  ];
+  const problems: CommandProblems = {};
+  for (const problem of found) if (problem) problems[problem.field] = problem;
+  return problems;
+}
+
+/** English text of a problem, for callers without the renderer's translations. */
+function englishProblem(problem: CommandProblem): string {
+  switch (problem.code) {
+    case 'nameRequired':
+      return 'Enter a command name.';
+    case 'instructionsRequired':
+      return 'Enter instructions.';
+    case 'syntax':
+      return 'Check the variable syntax.';
+    case 'unsupportedTag':
+      return `Unsupported variable or template syntax: ${problem.params.tag}`;
+    case 'undefinedVariables':
+      return `Enable or define ${problem.params.variables} before saving.`;
+    case 'tooManySkills':
+      return `Instructions can load at most ${problem.params.max} skills.`;
+    case 'tooManyReferences':
+      return `Instructions can mention at most ${problem.params.max} subagents, MCP servers and conversations.`;
+    case 'selectionDisabled':
+      return 'Enable selected text for this input source.';
+    case 'clipboardDisabled':
+      return 'Enable clipboard for this input source.';
+    case 'textNotAccepted':
+      return 'A command without text input cannot require text.';
+    case 'duplicateKey':
+      return 'Each parameter needs a unique key.';
+    case 'labelRequired':
+      return 'Enter a parameter label.';
+    case 'range':
+      return `${problem.params.label}: minimum must not exceed maximum.`;
+    case 'optionIncomplete':
+      return 'Enter a value and label for every option.';
+    case 'optionDuplicate':
+      return 'Option values must be unique.';
+    case 'invalidDefault':
+      return `${problem.params.label}: the default value is not valid.`;
   }
+}
+
+/** Throws the first problem of `command` in English; the editor uses `commandProblems` instead. */
+export function validateCommand(command: CommandDefinition): void {
+  const problem = Object.values(commandProblems(command))[0];
+  if (problem) throw new Error(englishProblem(problem));
 }
 
 export function defaultArguments(command: CommandDefinition): ArgumentValues {

@@ -6,13 +6,13 @@
     "searchPlaceholder": "搜索记忆…",
     "learning": {
       "label": "自动学习",
-      "description": "在工作过程中保存稳定的偏好和明确的纠正。"
+      "description": "在工作过程中保存稳定的偏好和明确的纠正。关闭后不会保存新的记忆，Agent 仍可使用已保存的记忆。"
     },
     "create": {
       "label": "创建记忆",
       "opened": "已在任务面板中打开新的 AI 会话，用于保存记忆。",
       "pausedHint": "恢复自动学习后，Agent 才能保存记忆。",
-      "enableSkill": "请先在「拓展 → 技能」中启用 {{name}}，再使用 AI 创建。"
+      "enableSkill": "请先在「扩展 → 技能」中启用 {{name}}，再使用 AI 创建。"
     },
     "list": {
       "userProfile": "用户画像",
@@ -25,7 +25,8 @@
       "delete": "删除",
       "loading": "正在加载记忆…",
       "empty": "还没有保存的记忆。在工作过程中分享你的长期偏好。",
-      "noMatches": "没有匹配的记忆。"
+      "noMatches": "没有与“{{query}}”匹配的记忆",
+      "clearSearch": "清除搜索"
     },
     "edit": {
       "title": "编辑记忆",
@@ -42,14 +43,9 @@
       "emptyContent": "请输入记忆内容，或点击“删除记忆”将其移除。",
       "deleted": "已删除记忆。",
       "updated": "已更新记忆。",
-      "paused": "已暂停自动学习。现有记忆仍可使用。",
-      "resumed": "已恢复自动学习。",
       "storageNote": "存储在此设备上。学习会使用你配置的模型，并可能产生额外的模型调用。"
     },
     "confirm": {
-      "pauseTitle": "暂停自动学习？",
-      "pauseDescription": "将不会保存新的学习记忆。Agent 仍可使用已保存的记忆。",
-      "pauseAction": "暂停学习",
       "deleteTitle": "删除这条记忆？",
       "deleteDescription": "该偏好将被从记忆中移除。现有对话内容会保留。",
       "deleteAction": "删除记忆",

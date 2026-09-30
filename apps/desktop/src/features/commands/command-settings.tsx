@@ -1,8 +1,15 @@
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Plus } from 'lucide-react';
+import { Command, Plus } from 'lucide-react';
 import { Button } from '@ai/ui/components/button';
-import { Input } from '@ai/ui/components/input';
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from '@ai/ui/components/empty';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,6 +29,7 @@ import { showErrorToast, showToast } from '../../components/toast-store';
 import { CommandList } from './command-list';
 import './commands.css';
 import { SettingsHeading } from '../settings/settings-heading';
+import { SettingsSearchField } from '../settings/settings-search-field';
 import { useSettingsSectionExit } from '../settings/settings-navigation';
 import { useSettingsPageHistory } from '../settings/use-settings-page-history';
 import { lazyWithPreload } from '../../lib/lazy-with-preload';
@@ -72,7 +80,17 @@ export function CommandSettings({
   });
   const [deleting, setDeleting] = useState<CommandDefinition | null>(null);
   const search = useCompositionQuery();
-  const [pending, setPending] = useState<string | null>(null);
+  const searchInput = useRef<HTMLInputElement>(null);
+  // Every command with a save in flight: each row waits for its own save, not for the others'.
+  const [pending, setPending] = useState<ReadonlySet<string>>(() => new Set());
+  function track(id: string, busy: boolean) {
+    setPending((current) => {
+      const next = new Set(current);
+      if (busy) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }
   useSettingsSectionExit(() => search.change(''));
   // A deep link opens its editor as a page of the history, once per request.
   const [linked, setLinked] = useState<number | null>(null);
@@ -83,16 +101,16 @@ export function CommandSettings({
   useEffect(() => {
     void preloadCommandEditor();
   }, []);
+  // The switch flipping is the feedback; only a failure needs a message.
   async function change(command: CommandDefinition, enabled: boolean) {
-    setPending(command.id);
-    const status = enabled ? t('list.status.enabled') : t('list.status.disabled');
+    track(command.id, true);
     try {
       await agentApi().saveCommand({ ...command, enabled }, command.revision);
-      showToast({ kind: 'info', text: status });
     } catch (error) {
       showErrorToast(error);
+    } finally {
+      track(command.id, false);
     }
-    setPending(null);
   }
   function duplicate(command: CommandDefinition) {
     const id = crypto.randomUUID();
@@ -102,6 +120,7 @@ export function CommandSettings({
       command: command.pluginId ? personalCopy(command, id, names) : copyCommand(command, id),
     });
   }
+  const create = () => history.open({ page: 'draft', command: newCommand(crypto.randomUUID()) });
   const { route } = history;
   const editor = editorOf(route);
   const saved = editor?.page === 'command' ? commands.find((item) => item.id === editor.id) : null;
@@ -128,8 +147,14 @@ export function CommandSettings({
             shown: route.page === 'parameter' ? { key: route.key } : null,
             open: (key) => history.open({ page: 'parameter', editor, key }),
             close: (key) => {
-              if (key !== undefined) history.replace({ page: 'parameter', editor, key });
-              history.back();
+              // A saved parameter leaves without the unsaved-changes question; Cancel asks.
+              if (key === undefined) {
+                history.back();
+                return;
+              }
+              const saved: CommandRoute = { page: 'parameter', editor, key };
+              history.replace(saved);
+              history.leave(saved);
             },
             discard: history.discard,
           }}
@@ -158,17 +183,13 @@ export function CommandSettings({
   return (
     <section className="command-settings">
       <SettingsHeading title={t('list.title')} description={t('list.description')}>
-        <Input
+        <SettingsSearchField
+          search={search}
+          ref={searchInput}
           aria-label={t('list.searchLabel')}
           placeholder={t('list.searchPlaceholder')}
-          value={search.text}
-          onChange={(event) => search.change(event.target.value)}
-          {...search.compositionProps}
         />
-        <Button
-          disabled={!agent.snapshot}
-          onClick={() => history.open({ page: 'draft', command: newCommand(crypto.randomUUID()) })}
-        >
+        <Button disabled={!agent.snapshot} onClick={create}>
           <Plus />
           {t('list.new')}
         </Button>
@@ -176,8 +197,12 @@ export function CommandSettings({
       <CommandList
         commands={commands}
         query={search.query}
-        pending={pending !== null}
+        pendingIds={pending}
         shortcutErrors={agent.snapshot?.shortcutErrors ?? {}}
+        onClearSearch={() => {
+          search.change('');
+          searchInput.current?.focus();
+        }}
         onOpen={(command) => history.open({ page: 'command', id: command.id })}
         onToggle={(command, enabled) => void change(command, enabled)}
         onDuplicate={duplicate}
@@ -185,7 +210,23 @@ export function CommandSettings({
       />
       {commands.length === 0 &&
         (agent.snapshot ? (
-          <p className="text-sm text-muted-foreground">{t('list.empty')}</p>
+          <div className="settings-extension-empty">
+            <Empty>
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <Command />
+                </EmptyMedia>
+                <EmptyTitle>{t('list.emptyTitle')}</EmptyTitle>
+                <EmptyDescription>{t('list.emptyDescription')}</EmptyDescription>
+              </EmptyHeader>
+              <EmptyContent>
+                <Button onClick={create}>
+                  <Plus />
+                  {t('list.new')}
+                </Button>
+              </EmptyContent>
+            </Empty>
+          </div>
         ) : (
           <output className="settings-loading">{t('list.loading')}</output>
         ))}
@@ -204,12 +245,13 @@ export function CommandSettings({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+            {/* The row leaving the list confirms the deletion; only a failure needs a message. */}
             <AlertDialogAction
+              variant="destructive"
               onClick={() => {
                 if (deleting)
                   void agentApi()
                     .deleteCommand(deleting.id, deleting.revision)
-                    .then(() => showToast({ kind: 'info', text: t('list.status.deleted') }))
                     .catch((error) => showErrorToast(error));
               }}
             >
