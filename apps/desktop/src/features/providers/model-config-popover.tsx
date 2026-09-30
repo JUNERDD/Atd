@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@ai/ui/components/button';
@@ -60,9 +60,11 @@ export function ModelConfigPopover({
   const modelRowRef = useRef<HTMLButtonElement>(null);
   const optionListRef = useRef<HTMLDivElement>(null);
   const modelViewRef = useRef<HTMLDivElement>(null);
-  const previousView = useRef<ModelConfigView>('root');
+  /** The subview the root was entered from, whose row takes focus again; none on opening. */
+  const returnFrom = useRef<ModelConfigView | null>(null);
 
   function show(next: ModelConfigView) {
+    returnFrom.current = next === 'root' ? view : null;
     setView(next);
     setSwitched(true);
   }
@@ -87,24 +89,22 @@ export function ModelConfigPopover({
   const details = model ? `${displayName} · ${contextText} · ${effortText}` : displayName;
   const title = connection && model && !scoped ? `${connection.name} · ${details}` : details;
 
-  useEffect(() => {
-    if (!open) {
-      previousView.current = 'root';
-      return;
-    }
+  /** What a view focuses as its content mounts; null leaves focus on the content itself. */
+  function focusTarget(): HTMLElement | null {
     if (view === 'root') {
-      if (previousView.current === 'context') contextRowRef.current?.focus();
-      else if (previousView.current === 'effort') effortRowRef.current?.focus();
-      else if (previousView.current === 'model') modelRowRef.current?.focus();
-    } else if (view === 'context' || view === 'effort') {
-      const current = optionListRef.current?.querySelector<HTMLElement>('[data-checked="true"]');
-      const first = optionListRef.current?.querySelector<HTMLElement>('button');
-      (current ?? first)?.focus();
-    } else {
-      modelViewRef.current?.querySelector<HTMLInputElement>('input')?.focus();
+      if (returnFrom.current === 'context') return contextRowRef.current;
+      if (returnFrom.current === 'effort') return effortRowRef.current;
+      if (returnFrom.current === 'model') return modelRowRef.current;
+      return null;
     }
-    previousView.current = view;
-  }, [view, open]);
+    if (view === 'model') return modelViewRef.current?.querySelector('input') ?? null;
+    const list = optionListRef.current;
+    return (
+      list?.querySelector<HTMLElement>('[data-checked="true"]') ??
+      list?.querySelector<HTMLElement>('button') ??
+      null
+    );
+  }
 
   return (
     <Popover
@@ -114,6 +114,7 @@ export function ModelConfigPopover({
         // Reset on open, not on close: Radix keeps content mounted during the
         // exit animation, so resetting on close flashes the root over the subview.
         if (next) {
+          returnFrom.current = null;
           setView('root');
           setSwitched(false);
         }
@@ -150,6 +151,15 @@ export function ModelConfigPopover({
         )}
         align="end"
         collisionPadding={8}
+        // Each view mounts its own content, so this runs on opening and on every view change.
+        // Radix would focus the first row (usually Reasoning effort); opening leaves focus on the
+        // content instead, where Escape and Tab still work, while a view change focuses the row
+        // the root returns to or the subview's own control.
+        onOpenAutoFocus={(event) => {
+          event.preventDefault();
+          const content = event.currentTarget instanceof HTMLElement ? event.currentTarget : null;
+          (focusTarget() ?? content)?.focus();
+        }}
         // Unmounting a view's content would hand focus back to the trigger a tick later, after the
         // next view focused its row; only a real close returns it there.
         onCloseAutoFocus={(event) => {
