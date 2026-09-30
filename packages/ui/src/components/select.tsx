@@ -77,7 +77,9 @@ function SelectContent({
       >
         <ScrollAreaRoot className="flex min-h-0 flex-1 flex-col">
           <SelectPrimitive.Viewport asChild>
-            <ScrollAreaViewport className="h-auto min-h-0 flex-1">{children}</ScrollAreaViewport>
+            <ScrollAreaViewport className="h-auto min-h-0 flex-1" gutter="none">
+              {children}
+            </ScrollAreaViewport>
           </SelectPrimitive.Viewport>
           <ScrollBar />
         </ScrollAreaRoot>

@@ -89,7 +89,7 @@ function CommandInput({
 
 function CommandList({
   className,
-  gutter = 'auto',
+  gutter = 'none',
   children,
   ...props
 }: React.ComponentProps<typeof CommandPrimitive.List> & { gutter?: ScrollGutter }) {

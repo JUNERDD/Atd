@@ -64,6 +64,7 @@ function ContextMenuContent({
         <ScrollArea
           className="max-h-[calc(var(--radix-context-menu-content-available-height)-8px)]"
           viewportClassName="max-h-[inherit]"
+          gutter="none"
         >
           {children}
         </ScrollArea>
@@ -140,6 +141,7 @@ function ContextMenuSubContent({
       <ScrollArea
         className="max-h-[calc(var(--radix-context-menu-content-available-height)-8px)]"
         viewportClassName="max-h-[inherit]"
+        gutter="none"
       >
         {children}
       </ScrollArea>

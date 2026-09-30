@@ -49,6 +49,7 @@ function DropdownMenuContent({
         <ScrollArea
           className="max-h-[calc(var(--radix-dropdown-menu-content-available-height)-8px)]"
           viewportClassName="max-h-[inherit]"
+          gutter="none"
         >
           {children}
         </ScrollArea>
@@ -246,6 +247,7 @@ function DropdownMenuSubContent({
       <ScrollArea
         className="max-h-[calc(var(--radix-dropdown-menu-content-available-height)-8px)]"
         viewportClassName="max-h-[inherit]"
+        gutter="none"
       >
         {children}
       </ScrollArea>

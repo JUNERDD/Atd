@@ -12,7 +12,9 @@ type ScrollOrientation = 'vertical' | 'horizontal' | 'both';
  * - `stable`: the lanes are always reserved, so content does not reflow when overflow starts;
  *   for page-level scrollers whose content grows and shrinks while the user works.
  * - `none`: the content's own padding already clears the bars (the panel and settings pages,
- *   whose bars float in that padding); nothing is reserved.
+ *   whose bars float in that padding), or the bar floats over the content like a macOS overlay
+ *   scroller (the option lists of menus, selects and command lists, where a lane would leave an
+ *   empty strip beside every row); nothing is reserved.
  */
 type ScrollGutter = 'auto' | 'stable' | 'none';
 
