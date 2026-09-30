@@ -3,12 +3,14 @@ import { useTranslation } from 'react-i18next';
 import { Button } from '@ai/ui/components/button';
 import { ExtensionDetailSection } from './extension-detail-fields';
 import {
+  sameMcpDraft,
   toUpsertInput,
   validateDraft,
   type McpDraft,
   type McpUpsertInput,
 } from './extension-mcp-draft';
 import type { ExtensionMcpConfig } from './extension-detail-rows';
+import { useSettingsUnsavedChanges } from '../settings/settings-unsaved-changes';
 import { McpConnectionFields } from './extension-mcp-form';
 import { ExtensionPage, type ExtensionPageBadge } from './extension-page';
 
@@ -57,6 +59,8 @@ export function McpEditor({
 }) {
   const { t } = useTranslation('settings');
   const [draft, setDraft] = useState(initial);
+  // Leaving with edits asks first; the route leaves after a save without asking.
+  useSettingsUnsavedChanges(!sameMcpDraft(draft, initial));
   // Problems show once a save was tried, then follow the edits so a fix clears its message.
   const [checked, setChecked] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
@@ -119,7 +123,14 @@ export function McpEditor({
           <Button type="button" variant="glass" onClick={onBack}>
             {t('extensions.cancel')}
           </Button>
-          <Button type="submit" form={FORM_ID} disabled={locked}>
+          <Button
+            type="submit"
+            form={FORM_ID}
+            disabled={!connected}
+            aria-disabled={busy || undefined}
+            aria-busy={busy || undefined}
+            className="aria-disabled:opacity-50"
+          >
             {adding ? t('extensions.addServer') : t('extensions.mcpPage.saveChanges')}
           </Button>
         </>

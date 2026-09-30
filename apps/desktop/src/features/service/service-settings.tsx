@@ -28,8 +28,10 @@ export function ServiceSettings() {
   const search = useCompositionQuery();
   useSettingsSectionExit(() => search.change(''));
   const extensions = useExtensions();
-  const { route, open, leave, replace, openItem } = useExtensionRoute(extensions);
-  // A page's Cancel, and a save or uninstall once it finishes, leave that page only if still shown.
+  const { route, open, back, leave, replace, openItem } = useExtensionRoute(extensions);
+  // A page's Cancel steps back through `back`, which first asks about an editor's unsaved changes.
+  // A save, delete or uninstall leaves through `close` once it finishes: never asked, and only if
+  // that page is still shown.
   const close = () => leave(route);
   const actions = usePluginItemActions(extensions);
   const startAi = useExtensionAiSession(extensions.skills.skills?.skills ?? []);
@@ -70,7 +72,7 @@ export function ServiceSettings() {
           updateName={target ? labels.name(target) : undefined}
           connected={connected}
           busy={busy !== null}
-          onBack={close}
+          onBack={back}
           onPreview={pluginMutations.preview}
           onPreviewUpdate={pluginMutations.previewUpdate}
           onInstall={async (previewId) => {
@@ -110,7 +112,8 @@ export function ServiceSettings() {
         <ExtensionItemRoute
           route={route}
           extensions={extensions}
-          onBack={close}
+          onBack={back}
+          onLeave={close}
           onOpenItem={openItem}
           onStartAi={(kind, target) => void startAi(kind, target)}
         />

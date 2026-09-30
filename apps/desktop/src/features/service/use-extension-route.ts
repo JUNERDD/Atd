@@ -49,8 +49,11 @@ function routeAvailable(route: ExtensionRoute, extensions: Extensions): boolean 
  * enters at its item with the item's plugin page behind it, so Back lands on that plugin.
  */
 export function useExtensionRoute(extensions: Extensions) {
-  const { route, open, back, leave, replace, reset } = useSettingsPageHistory(LIST, (next) =>
-    routeAvailable(next, extensions),
+  // The list, plugin, item and install pages replace one another rather than nest.
+  const { route, open, back, leave, replace, reset } = useSettingsPageHistory(
+    LIST,
+    (next) => routeAvailable(next, extensions),
+    { exclusivePages: true },
   );
   /** Opens an item from the list (a search hit) with its plugin page behind it. */
   const openItem = useCallback(

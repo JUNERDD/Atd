@@ -1,4 +1,4 @@
-import { KeyRound, PlugZap, ShieldCheck, ShieldOff } from 'lucide-react';
+import { CircleAlert, KeyRound, PlugZap, ShieldCheck, ShieldOff } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@ai/ui/components/button';
 import {
@@ -21,18 +21,26 @@ import {
  * The live side of a server: its state, launch approval, what it offers and its last error, with
  * the step its state calls for: Connect, Authenticate, or Review and allow, which opens the host's
  * native dialog listing what would run. An approved server offers to withdraw the approval. The
- * row is absent until the status list has it.
+ * row is absent until the status list has it. A step's result shows in the state; a failed step
+ * says why under the steps. While a step runs, the buttons keep their focus but ignore presses.
  */
 export function McpStatusSection({
   row,
-  locked,
+  disabled,
+  pending,
+  issue,
   onConnect,
   onAuthStart,
   onRequestApproval,
   onWithdrawApproval,
 }: {
   row: ExtensionMcpRow | undefined;
-  locked: boolean;
+  /** No service to reach: the steps cannot work at all. */
+  disabled: boolean;
+  /** A step for this server is running. */
+  pending: boolean;
+  /** Why the server's last step failed, until its next one. */
+  issue: string | null;
   onConnect: () => void;
   onAuthStart: () => void;
   onRequestApproval: () => void;
@@ -68,6 +76,15 @@ export function McpStatusSection({
   const showAuth = mcpNeedsAuth(row.state);
   const showWithdraw = row.approval === 'approved';
   const canReview = canConfirmMcpApproval();
+  // Busy buttons stay focusable (`aria-disabled`, `aria-busy`) and drop presses until the step ends.
+  const busyProps = {
+    'aria-disabled': pending || undefined,
+    'aria-busy': pending || undefined,
+    className: 'aria-disabled:opacity-50',
+  };
+  const run = (action: () => void) => () => {
+    if (!pending) action();
+  };
   return (
     <ExtensionDetailSection label={label}>
       <ExtensionDetailFields fields={fields} />
@@ -78,15 +95,23 @@ export function McpStatusSection({
               type="button"
               variant="outline"
               size="sm"
-              disabled={locked || !canReview}
-              onClick={onRequestApproval}
+              disabled={disabled || !canReview}
+              {...busyProps}
+              onClick={run(onRequestApproval)}
             >
               <ShieldCheck data-icon="inline-start" />
               {t('extensions.mcpApproval.review')}
             </Button>
           ) : null}
           {showConnect ? (
-            <Button type="button" variant="outline" size="sm" disabled={locked} onClick={onConnect}>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={disabled}
+              {...busyProps}
+              onClick={run(onConnect)}
+            >
               <PlugZap data-icon="inline-start" />
               {t('extensions.connect')}
             </Button>
@@ -96,8 +121,9 @@ export function McpStatusSection({
               type="button"
               variant="outline"
               size="sm"
-              disabled={locked}
-              onClick={onAuthStart}
+              disabled={disabled}
+              {...busyProps}
+              onClick={run(onAuthStart)}
             >
               <KeyRound data-icon="inline-start" />
               {t('extensions.authenticate')}
@@ -108,14 +134,21 @@ export function McpStatusSection({
               type="button"
               variant="outline"
               size="sm"
-              disabled={locked}
-              onClick={onWithdrawApproval}
+              disabled={disabled}
+              {...busyProps}
+              onClick={run(onWithdrawApproval)}
             >
               <ShieldOff data-icon="inline-start" />
               {t('extensions.mcpApproval.withdraw')}
             </Button>
           ) : null}
         </div>
+      ) : null}
+      {issue ? (
+        <p className="settings-inline-error" role="alert">
+          <CircleAlert aria-hidden />
+          <span>{issue}</span>
+        </p>
       ) : null}
       {showReview ? (
         <p className="text-muted-foreground text-xs">

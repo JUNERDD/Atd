@@ -1,7 +1,8 @@
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { McpApprovalRequestResult } from '@ai/agent-contracts';
-import { showErrorToast, showToast } from '../../components/toast-store';
+import { showErrorToast } from '../../components/toast-store';
+import { messageOf } from '../../lib/errors';
 import { asMcpRow, type ExtensionMcpRow } from './extension-rows';
 
 function serviceApi() {
@@ -33,14 +34,27 @@ function asMcpState(result: { servers: unknown[]; approvalNotice: boolean }): Se
 
 /**
  * MCP status via the service bridge, with each server's connection steps and launch approval.
- * Approving goes through the host's native confirmation; the page only names the server and shows
- * what the confirmation answered.
+ * Approving goes through the host's native confirmation; the page only names the server. A step's
+ * result shows in the server's state, so success says nothing more; a failed step, or an approval
+ * the confirmation could not give, stays beside that server (`issues`) until its next step.
  */
 export function useServiceMcp() {
   const { t } = useTranslation('settings');
   const [mcp, setMcp] = useState<ServiceMcpState | null>(null);
   const [loading, setLoading] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [issues, setIssues] = useState<Readonly<Record<string, string>>>({});
+  const setIssue = useCallback((serverId: string, issue: string | null) => {
+    setIssues((current) => {
+      if (issue === null) {
+        if (!(serverId in current)) return current;
+        const rest = { ...current };
+        delete rest[serverId];
+        return rest;
+      }
+      return { ...current, [serverId]: issue };
+    });
+  }, []);
   const refresh = useCallback(async () => {
     if (!window.desktop?.service) return;
     setLoading(true);
@@ -56,16 +70,17 @@ export function useServiceMcp() {
   const step = useCallback(
     async (serverId: string, run: () => Promise<unknown>, reload = true) => {
       setBusyId(serverId);
+      setIssue(serverId, null);
       try {
         await run();
         if (reload) await refresh();
       } catch (error) {
-        showErrorToast(error);
+        setIssue(serverId, messageOf(error));
       } finally {
         setBusyId(null);
       }
     },
-    [refresh],
+    [refresh, setIssue],
   );
   const connect = useCallback(
     (serverId: string) => step(serverId, () => serviceApi().mcpConnect(serverId)),
@@ -80,28 +95,27 @@ export function useServiceMcp() {
       step(serverId, () => serviceApi().mcpAuthComplete(serverId, input)),
     [step],
   );
-  /** Shows the host's native confirmation for one server, then says what it answered. */
+  /**
+   * Shows the host's native confirmation for one server. An approval shows in the server's state
+   * and a cancel changes nothing; only a confirmation that could not decide leaves a note.
+   */
   const requestApproval = useCallback(
     (serverId: string) =>
       step(serverId, async () => {
         const result: McpApprovalRequestResult = await serviceApi().mcpRequestApproval(serverId);
         const name = serverId;
-        if (result.approved) {
-          showToast({ kind: 'info', text: t('extensions.mcpApproval.allowed', { name }) });
-          return;
-        }
+        if (result.approved) return;
         switch (result.reason) {
           case 'cancelled':
-            showToast({ kind: 'info', text: t('extensions.mcpApproval.cancelled', { name }) });
             return;
           case 'changed':
-            showToast({ kind: 'warning', text: t('extensions.mcpApproval.changed', { name }) });
+            setIssue(serverId, t('extensions.mcpApproval.changed', { name }));
             return;
           case 'unavailable':
-            showToast({ kind: 'warning', text: t('extensions.mcpApproval.unavailable', { name }) });
+            setIssue(serverId, t('extensions.mcpApproval.unavailable', { name }));
             return;
           case 'busy':
-            showToast({ kind: 'warning', text: t('extensions.mcpApproval.busy') });
+            setIssue(serverId, t('extensions.mcpApproval.busy'));
             return;
           default: {
             const _exhaustive: never = result.reason;
@@ -109,23 +123,22 @@ export function useServiceMcp() {
           }
         }
       }),
-    [step, t],
+    [setIssue, step, t],
   );
-  /** Withdraws a server's approval; the service stops it, so nothing approved keeps running. */
+  /**
+   * Withdraws a server's approval; the service stops it, so nothing approved keeps running. The
+   * server's approval state shows the change.
+   */
   const withdrawApproval = useCallback(
     (serverId: string) =>
       step(
         serverId,
         async () => {
           setMcp(asMcpState(await serviceApi().mcpWithdrawApproval(serverId)));
-          showToast({
-            kind: 'info',
-            text: t('extensions.mcpApproval.withdrawn', { name: serverId }),
-          });
         },
         false,
       ),
-    [step, t],
+    [step],
   );
   const dismissApprovalNotice = useCallback(async () => {
     try {
@@ -150,6 +163,7 @@ export function useServiceMcp() {
     mcp,
     loading,
     busyId,
+    issues,
     refresh,
     setEnabled,
     connect,

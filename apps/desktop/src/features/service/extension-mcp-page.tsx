@@ -23,6 +23,8 @@ type McpPageProps = {
   backLabel: string;
   connected: boolean;
   busy: boolean;
+  /** Why the server's last connection step failed, until its next one. */
+  issue: string | null;
   onBack: () => void;
   onUpsert: (input: McpUpsertInput) => Promise<boolean>;
   onConnect: (serverId: string) => void;
@@ -106,7 +108,7 @@ function McpDetailsPage({ serverId, ...props }: McpPageProps & { serverId: strin
   const { t } = useTranslation('settings');
   const stateLabel = useMcpStateLabel();
   const row = props.rows.find((item) => item.serverId === serverId);
-  const loaded = useMcpConfig(serverId, Boolean(row));
+  const { loaded, retry } = useMcpConfig(serverId, Boolean(row));
   const config = loaded && 'config' in loaded ? loaded.config : null;
   const tone: ExtensionPageBadge['tone'] =
     row?.state === 'error'
@@ -118,7 +120,9 @@ function McpDetailsPage({ serverId, ...props }: McpPageProps & { serverId: strin
   const status = (
     <McpStatusSection
       row={row}
-      locked={!props.connected || props.busy}
+      disabled={!props.connected}
+      pending={props.busy}
+      issue={props.issue}
       onConnect={() => props.onConnect(serverId)}
       onAuthStart={() => props.onAuthStart(serverId)}
       onRequestApproval={() => props.onRequestApproval(serverId)}
@@ -163,7 +167,11 @@ function McpDetailsPage({ serverId, ...props }: McpPageProps & { serverId: strin
         badge={badge}
         backLabel={props.backLabel}
       >
-        <ExtensionDetailStatus text={loadStatus.text} error={loadStatus.error} />
+        <ExtensionDetailStatus
+          text={loadStatus.text}
+          error={loadStatus.error}
+          onRetry={loaded && 'error' in loaded ? retry : undefined}
+        />
       </ExtensionPage>
     );
   }

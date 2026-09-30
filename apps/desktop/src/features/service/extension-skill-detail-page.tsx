@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useCallback, useEffect, useState } from 'react';
 import { Copy } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@ai/ui/components/button';
@@ -42,10 +42,11 @@ type Loaded = { key: string; detail: ExtensionSkillDetail | null } | { key: stri
 /**
  * Reads one skill's record and folder listing when its page opens, and again when the catalog
  * reports a new revision (an update or restore made since). A reply for an earlier skill or
- * revision is ignored.
+ * revision is ignored. `retry` reads again after a failure.
  */
-function useSkillDetail(name: string | null, revision: string): Loaded | null {
+function useSkillDetail(name: string | null, revision: string) {
   const [loaded, setLoaded] = useState<Loaded | null>(null);
+  const [attempt, setAttempt] = useState(0);
   const key = name === null ? null : `${name}\n${revision}`;
   useEffect(() => {
     const bridge = window.desktop?.service;
@@ -64,8 +65,12 @@ function useSkillDetail(name: string | null, revision: string): Loaded | null {
     return () => {
       active = false;
     };
-  }, [name, key]);
-  return loaded?.key === key ? loaded : null;
+  }, [name, key, attempt]);
+  const retry = useCallback(() => {
+    setLoaded(null);
+    setAttempt((value) => value + 1);
+  }, []);
+  return { loaded: loaded?.key === key ? loaded : null, retry };
 }
 
 /**
@@ -109,7 +114,7 @@ export function SkillDetailPage({
 }) {
   const { t } = useTranslation('settings');
   const row = rows.find((item) => item.name === name) ?? null;
-  const loaded = useSkillDetail(row ? row.name : null, row?.revision ?? '');
+  const { loaded, retry } = useSkillDetail(row ? row.name : null, row?.revision ?? '');
   const detail = loaded && 'detail' in loaded ? loaded.detail : null;
   // Rows arrive with the catalog; an empty catalog is still loading, a filled one lost the skill.
   const status = !row
@@ -119,7 +124,7 @@ export function SkillDetailPage({
     : !loaded
       ? { text: t('extensions.detailLoading'), error: false }
       : 'error' in loaded
-        ? { text: loaded.error, error: true }
+        ? { text: loaded.error, error: true, retry }
         : detail
           ? null
           : { text: t('extensions.detailMissing'), error: true };
@@ -207,7 +212,13 @@ export function SkillDetailPage({
         )
       }
     >
-      {status ? <ExtensionDetailStatus text={status.text} error={status.error} /> : null}
+      {status ? (
+        <ExtensionDetailStatus
+          text={status.text}
+          error={status.error}
+          onRetry={'retry' in status ? status.retry : undefined}
+        />
+      ) : null}
       <ExtensionDetailFields fields={fields} />
       {row && detail ? (
         <Suspense fallback={<SkillFilesFallback />}>

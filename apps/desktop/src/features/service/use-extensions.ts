@@ -202,6 +202,8 @@ export function useExtensions() {
 
   return {
     connected,
+    /** The service connection's state; null until the first status read answers. */
+    serviceState: status?.state ?? null,
     skills,
     agents,
     mcp,

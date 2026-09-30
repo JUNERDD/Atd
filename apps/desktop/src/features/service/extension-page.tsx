@@ -1,5 +1,6 @@
-import type { ReactNode } from 'react';
+import { useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { Sparkles } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Badge } from '@ai/ui/components/badge';
 import { Button } from '@ai/ui/components/button';
 import { ScrollArea } from '@ai/ui/components/scroll-area';
@@ -15,11 +16,31 @@ export interface ExtensionPageBadge {
 const BADGE_VARIANT = { on: 'secondary', off: 'outline', error: 'destructive' } as const;
 
 /**
+ * Whether the heading's description is cut off by its line clamp (settings.css), measured again
+ * whenever the page resizes or the text changes, so Show more appears only when there is more.
+ */
+function useDescriptionClamped(page: RefObject<HTMLElement | null>, text: string | undefined) {
+  const [clamped, setClamped] = useState(false);
+  useLayoutEffect(() => {
+    const paragraph = page.current?.querySelector<HTMLElement>('.settings-section-heading > p');
+    if (!paragraph) return;
+    // The observer reports the paragraph's size once on observing it, then on every change.
+    const observer = new ResizeObserver(() =>
+      setClamped(paragraph.scrollHeight > paragraph.clientHeight + 1),
+    );
+    observer.observe(paragraph);
+    return () => observer.disconnect();
+  }, [page, text]);
+  return clamped && Boolean(text);
+}
+
+/**
  * The sub-page every plugin, skill, subagent and MCP server opens into, for adding or installing
  * one or for one item's details, laid out like the command editor: a heading with Back, a scrolling body, and a footer
  * floating over it with the AI hand-off at its leading edge and the page's own actions trailing.
  * The page replaces the whole Extensions overview while it is open, so the list's search and tab
- * stay as they were when Back returns to it.
+ * stay as they were when Back returns to it. A long description stays clamped under the title so
+ * the body keeps its room in a short window; Show more below it unclamps it in place.
  */
 export function ExtensionPage({
   label,
@@ -50,10 +71,19 @@ export function ExtensionPage({
   actions?: ReactNode;
   children: ReactNode;
 }) {
+  const { t } = useTranslation('settings');
   const footerRef = useOverlayFooter<HTMLElement>();
+  const pageRef = useRef<HTMLElement>(null);
+  const [expanded, setExpanded] = useState(false);
+  const clamped = useDescriptionClamped(pageRef, description);
   const hasFooter = Boolean(ai || note || actions);
   return (
-    <section className="settings-editor extension-page" aria-label={label}>
+    <section
+      ref={pageRef}
+      className="settings-editor extension-page"
+      aria-label={label}
+      data-description={expanded ? 'full' : undefined}
+    >
       <SettingsHeading
         title={title}
         titleHint={
@@ -68,6 +98,18 @@ export function ExtensionPage({
         subpage
         backLabel={backLabel}
       />
+      {clamped || expanded ? (
+        <Button
+          type="button"
+          variant="link"
+          size="xs"
+          className="extension-page-more"
+          aria-expanded={expanded}
+          onClick={() => setExpanded(!expanded)}
+        >
+          {expanded ? t('extensions.descriptionLess') : t('extensions.descriptionMore')}
+        </Button>
+      ) : null}
       <ScrollArea
         className="flex-1 min-h-0 min-w-0 m-[-3px_-15px_-3px_-3px]"
         viewportClassName={hasFooter ? 'overlay-footer-fade' : undefined}

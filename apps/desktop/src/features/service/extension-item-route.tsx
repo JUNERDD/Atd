@@ -13,8 +13,9 @@ import { usePluginLabels } from './use-plugin-labels';
 
 /**
  * The item pages of Extensions: one skill, subagent or MCP server of a plugin, and the add forms
- * that create a Personal subagent or MCP server. A save on a form, or deleting a Personal item,
- * leaves the page once it succeeds; a failure keeps it for repair. Duplicate to Personal copies a
+ * that create a Personal subagent or MCP server. Cancel steps back (`onBack`), asking first about
+ * unsaved changes; a save on a form, or deleting a Personal item, leaves the page once it
+ * succeeds (`onLeave`, never asked); a failure keeps it for repair. Duplicate to Personal copies a
  * read-only item and opens its Personal copy, with Personal's page behind it, once the catalogs
  * list it.
  */
@@ -22,12 +23,16 @@ export function ExtensionItemRoute({
   route,
   extensions,
   onBack,
+  onLeave,
   onOpenItem,
   onStartAi,
 }: {
   route: Extract<ExtensionRoute, { level: 'item' | 'create' }>;
   extensions: Extensions;
+  /** Cancel: the page history's guarded Back. */
   onBack: () => void;
+  /** Leaves after a save or delete succeeds, without asking about unsaved changes. */
+  onLeave: () => void;
   /** Shows another item with its plugin's page behind it, as Duplicate does with the copy. */
   onOpenItem: (item: { pluginId: string; kind: ExtensionItemKind; name: string }) => void;
   onStartAi: (kind: ExtensionItemKind, target: string | null) => void;
@@ -50,14 +55,14 @@ export function ExtensionItemRoute({
   async function saved(save: Promise<boolean>, text: string) {
     const ok = await save;
     if (!ok) return false;
-    onBack();
+    onLeave();
     showToast({ kind: 'info', text });
     return true;
   }
   /** Leaves the page once the item is gone; a failure keeps it, with the error in a toast. */
   async function removed(remove: Promise<boolean>, text: string) {
     if (!(await remove)) return;
-    onBack();
+    onLeave();
     showToast({ kind: 'info', text });
   }
   async function duplicate(kind: ExtensionItemKind, name: string) {
@@ -141,6 +146,7 @@ export function ExtensionItemRoute({
           backLabel={backLabel}
           connected={connected}
           busy={locked || (name !== null && mcp.busyId === name)}
+          issue={name === null ? null : (mcp.issues[name] ?? null)}
           onBack={onBack}
           onUpsert={(input) =>
             saved(mutations.mcpUpsert(input, mcp.refresh), t('extensions.serverSaved'))

@@ -30,6 +30,7 @@ export function PluginItemGroups({
   connected,
   busy,
   mcpBusyId,
+  mcpIssues,
   detailItems = null,
   only = null,
   actions,
@@ -45,6 +46,8 @@ export function PluginItemGroups({
   busy: ExtensionBusyTarget | null;
   /** The MCP server a connection step is running for. */
   mcpBusyId: string | null;
+  /** Why each MCP server's last connection step failed, by server id. */
+  mcpIssues: Readonly<Record<string, string>>;
   detailItems?: readonly PluginItem[] | null;
   /** One kind alone, as a plugin page's tab shows it; its tab names the kind, so no title. */
   only?: PluginGroupKind | null;
@@ -129,7 +132,7 @@ export function PluginItemGroups({
           loading={false}
           empty=""
           connected={connected}
-          busy={busyName('agent') !== null}
+          busyId={busyName('agent')}
           lockedReason={lockedReason}
           onOpen={(name) => onOpen('agent', name)}
           onEnabled={(name, enabled) => toggle('agent', name, enabled)}
@@ -147,6 +150,7 @@ export function PluginItemGroups({
           connected={connected}
           busyId={mcpBusyId ?? busyName('mcp')}
           busy={busy?.kind === 'plugin' && busy.id === plugin.id}
+          issues={mcpIssues}
           lockedReason={lockedReason}
           onOpen={(serverId) => onOpen('mcp', serverId)}
           onConnect={actions.mcpConnect}

@@ -1,10 +1,9 @@
 import { useState } from 'react';
-import { BookOpen, RotateCcw, Trash2 } from 'lucide-react';
+import { BookOpen, CircleAlert, RotateCcw, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { DropdownMenuItem } from '@ai/ui/components/dropdown-menu';
+import { DropdownMenuItem, DropdownMenuSeparator } from '@ai/ui/components/dropdown-menu';
 import { HighlightedText } from '@ai/ui/components/highlighted-text';
 import { ItemContent, ItemDescription, ItemMedia, ItemTitle } from '@ai/ui/components/item';
-import { showToast } from '../../components/toast-store';
 import { ExtensionGroup } from './extension-group';
 import { ExtensionRemoveDialog } from './extension-remove-dialog';
 import { ExtensionRow, ExtensionRowActions } from './extension-row';
@@ -14,9 +13,10 @@ import type { SkillMatch } from './use-extension-matches';
 /**
  * One plugin's skills, on its page or among search results (`useExtensionMatches` marks the name
  * and the description line). A built-in skill whose copy differs from the shipped one shows its
- * state next to the name and offers a restore in its More menu; the backup path of the last
- * restore stays above the list, since a toast only carries one short sentence. A Personal skill
- * (not read-only) offers Delete, which removes its files after a confirmation; updates and removal
+ * state next to the name and offers a restore in its More menu. A restore shows in place (the
+ * state leaves the row), so only its backup path, or why it failed, stays above the list. A
+ * Personal skill (not read-only) offers Delete, last in More, which removes its files after a
+ * confirmation; updates and removal
  * of other skills belong to their plugin. A row click and More › View details both open the
  * skill's details page (`onOpen`).
  */
@@ -54,23 +54,17 @@ export function ExtensionSkillsGroup({
 }) {
   const { t } = useTranslation('settings');
   const [restoring, setRestoring] = useState<{ id: string; name: string } | null>(null);
-  const [backup, setBackup] = useState<{ name: string; path: string } | null>(null);
+  // The last restore's outcome worth keeping: where the user's copy went, or that it failed.
+  const [outcome, setOutcome] = useState<
+    { kind: 'backup'; name: string; path: string } | { kind: 'failed'; name: string } | null
+  >(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   function restore(target: { id: string; name: string }) {
+    setOutcome(null);
     void onRestore(target.id).then((result) => {
-      if (!result) {
-        showToast({ kind: 'error', text: t('extensions.restoreFailed', { name: target.name }) });
-        return;
-      }
-      const { backupPath } = result;
-      setBackup(backupPath === null ? null : { name: target.name, path: backupPath });
-      showToast({
-        kind: 'info',
-        text:
-          backupPath === null
-            ? t('extensions.restoreDoneNoBackup', { name: target.name })
-            : t('extensions.restoreDone', { name: target.name }),
-      });
+      if (!result) setOutcome({ kind: 'failed', name: target.name });
+      else if (result.backupPath !== null)
+        setOutcome({ kind: 'backup', name: target.name, path: result.backupPath });
     });
   }
   return (
@@ -83,10 +77,15 @@ export function ExtensionSkillsGroup({
         hasRows={items.length > 0}
         emptyIcon={<BookOpen />}
         status={
-          backup ? (
+          outcome?.kind === 'backup' ? (
             <output className="settings-status">
-              {t('extensions.restoreBackupPath', { name: backup.name, path: backup.path })}
+              {t('extensions.restoreBackupPath', { name: outcome.name, path: outcome.path })}
             </output>
+          ) : outcome?.kind === 'failed' ? (
+            <p className="settings-inline-error" role="alert">
+              <CircleAlert aria-hidden />
+              <span>{t('extensions.restoreFailed', { name: outcome.name })}</span>
+            </p>
           ) : null
         }
       >
@@ -116,6 +115,7 @@ export function ExtensionSkillsGroup({
                 name={row.name}
                 enabled={row.enabled}
                 disabled={!connected}
+                pending={rowBusy}
                 onEnabledChange={(enabled) => onEnabled(row.name, enabled)}
                 onDetails={() => onOpen(row.name)}
                 lockedReason={lockedReason}
@@ -132,14 +132,17 @@ export function ExtensionSkillsGroup({
                         </DropdownMenuItem>
                       ) : null}
                       {row.readOnly ? null : (
-                        <DropdownMenuItem
-                          variant="destructive"
-                          disabled={!connected || rowBusy}
-                          onSelect={() => setDeleting(row.name)}
-                        >
-                          <Trash2 />
-                          {t('extensions.delete')}
-                        </DropdownMenuItem>
+                        <>
+                          {showRestore ? <DropdownMenuSeparator /> : null}
+                          <DropdownMenuItem
+                            variant="destructive"
+                            disabled={!connected || rowBusy}
+                            onSelect={() => setDeleting(row.name)}
+                          >
+                            <Trash2 />
+                            {t('extensions.delete')}
+                          </DropdownMenuItem>
+                        </>
                       )}
                     </>
                   ) : null

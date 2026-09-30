@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { PluginSummary } from '@ai/agent-contracts';
 import type { ServiceStatusView } from '../../client/service/ipc';
 import { showErrorToast } from '../../components/toast-store';
+import { messageOf } from '../../lib/errors';
 import {
   asAgentRow,
   asRoleRow,
@@ -132,12 +133,15 @@ export function useServiceAgents() {
 
 /**
  * The plugin list via the service bridge: every host and installed plugin with its contents
- * counts. Rows outside the contract are left out, so one bad row cannot hide the rest. `epoch`
+ * counts. Rows outside the contract are left out, so one bad row cannot hide the rest. A failed
+ * read keeps the rows it had and reports `error` for the list to show beside them. `epoch`
  * moves after every reload, so an open plugin page reads its detail again with the list.
  */
 export function useServicePlugins() {
   const [plugins, setPlugins] = useState<PluginSummary[] | null>(null);
   const [loading, setLoading] = useState(false);
+  // The last read's failure, which the list shows in place with a retry; a later success clears it.
+  const [error, setError] = useState<string | null>(null);
   const [epoch, setEpoch] = useState(0);
   const loaded = useRef(false);
   const refresh = useCallback(async () => {
@@ -147,8 +151,9 @@ export function useServicePlugins() {
       const result = await window.desktop.service.plugins();
       loaded.current = true;
       setPlugins(result.plugins.flatMap((row) => asPluginSummary(row) ?? []));
-    } catch (error) {
-      showErrorToast(error);
+      setError(null);
+    } catch (failure) {
+      setError(messageOf(failure));
     } finally {
       setLoading(false);
       setEpoch((value) => value + 1);
@@ -159,5 +164,5 @@ export function useServicePlugins() {
       current ? current.map((row) => (row.id === id ? { ...row, enabled } : row)) : current,
     );
   }, []);
-  return { plugins, loading, epoch, refresh, setEnabled };
+  return { plugins, loading, error, epoch, refresh, setEnabled };
 }

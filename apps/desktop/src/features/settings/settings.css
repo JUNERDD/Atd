@@ -676,11 +676,13 @@
 .settings-extension-empty [data-slot='empty'] {
   flex: 1 0 auto;
 }
-.settings-extension-group h3 {
-  margin: 0;
-  font-size: 14px;
-  font-weight: 500;
-  line-height: 20px;
+/* A failed read and its Try again, above the list or in place of a details page's body. */
+.extension-load-error {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
 }
 /* A row opens its details from anywhere: the open button fills the row under its content, which
  * ignores the pointer, while the actions and the inline sign-in field stay above it. */
@@ -787,12 +789,6 @@
   min-width: 0;
   flex-direction: column;
   gap: 8px;
-}
-.extension-detail-section > h3 {
-  margin: 0;
-  font-size: 14px;
-  font-weight: 500;
-  line-height: 20px;
 }
 .extension-detail-text {
   min-width: 0;
@@ -945,9 +941,6 @@
   font-size: 14px;
   line-height: 20px;
 }
-.extension-detail-status[data-error='true'] {
-  color: var(--destructive);
-}
 /*
  * Subagent permissions (extension-agent-permissions.tsx): capability switch rows grouped by kind
  * and the approval select, in a body that scrolls between the dialog's fixed header and footer.
@@ -1016,23 +1009,31 @@
 .agent-permissions-select {
   flex: 0 0 auto;
 }
-.agent-permissions-error {
-  margin: 0;
-  color: var(--destructive);
-  font-size: 12px;
-  line-height: 16px;
-}
 .settings-permission-settings .settings-section-heading > p,
 .settings-extension-settings .settings-section-heading > p {
   white-space: normal;
 }
 /* An item's own description reads as content: it wraps, capped so a long one cannot push the body
- * out of a short window (the heading's title attribute still carries it in full). */
+ * out of a short window. Show more under it (extension-page.tsx) unclamps it in place; expanded,
+ * it still stops at part of the window height and scrolls, so the body keeps its room. */
 .extension-page .settings-section-heading > p {
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;
+  overflow: hidden;
   white-space: normal;
+}
+.extension-page[data-description='full'] .settings-section-heading > p {
+  display: block;
+  max-height: 40vh;
+  overflow-y: auto;
+  -webkit-line-clamp: unset;
+}
+/* Sits right under the description, level with its text, instead of a full editor gap below. */
+.extension-page-more {
+  align-self: flex-start;
+  margin-top: -12px;
+  padding-inline: 0;
 }
 .settings-permission-options {
   gap: 8px;

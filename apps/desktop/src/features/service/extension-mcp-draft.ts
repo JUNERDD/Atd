@@ -56,6 +56,11 @@ export const EMPTY_MCP_DRAFT: McpDraft = {
   tokenEnv: '',
 };
 
+/** Whether two drafts hold the same values, as an unchanged form does. */
+export function sameMcpDraft(a: McpDraft, b: McpDraft): boolean {
+  return (Object.keys(a) as (keyof McpDraft)[]).every((key) => a[key] === b[key]);
+}
+
 // The limits the desktop IPC schema enforces on `mcpUpsert`, checked here so they show inline.
 const SERVER_ID = /^[a-zA-Z0-9_-]{1,128}$/;
 const MAX_ARGS = 100;

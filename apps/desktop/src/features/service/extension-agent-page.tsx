@@ -59,14 +59,24 @@ export function AgentPage({
   const { t } = useTranslation('settings');
   const formId = useId();
   const locked = !connected || busy;
-  const save = (input: AgentInput) => void onSave(input);
+  // A save in flight keeps Save focusable (`aria-busy`) and ignores another submit.
+  const save = (input: AgentInput) => {
+    if (!busy) void onSave(input);
+  };
   const actions = (submitLabel: string, remove: ReactNode = null) => (
     <>
       {remove}
       <Button type="button" variant="glass" onClick={onBack}>
         {t('extensions.cancel')}
       </Button>
-      <Button type="submit" form={formId} disabled={locked}>
+      <Button
+        type="submit"
+        form={formId}
+        disabled={!connected}
+        aria-disabled={busy || undefined}
+        aria-busy={busy || undefined}
+        className="aria-disabled:opacity-50"
+      >
         {submitLabel}
       </Button>
     </>
@@ -120,7 +130,12 @@ export function AgentPage({
     backLabel,
   };
   const permissions = (
-    <AgentPermissionsSection row={row} disabled={locked} onPermissions={onPermissions} />
+    <AgentPermissionsSection
+      row={row}
+      disabled={!connected}
+      pending={busy}
+      onPermissions={onPermissions}
+    />
   );
 
   if (row.system || row.readOnly)

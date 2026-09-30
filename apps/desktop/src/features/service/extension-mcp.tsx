@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { KeyRound, Plug, PlugZap, ShieldCheck, ShieldOff, Trash2 } from 'lucide-react';
+import { CircleAlert, KeyRound, Plug, PlugZap, ShieldCheck, ShieldOff, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@ai/ui/components/button';
 import { DropdownMenuItem, DropdownMenuSeparator } from '@ai/ui/components/dropdown-menu';
@@ -21,7 +21,8 @@ import { mcpCanConnect, mcpNeedsApproval, mcpNeedsAuth } from './use-mcp-state-l
  * one, the translated state and last error, then the enable switch and More. Review and
  * allow (the host's native dialog), Connect, sign-in, Withdraw approval and (for Personal servers)
  * remove sit in More; while the server asks for sign-in, the code field stays under the row so the
- * flow is visible.
+ * flow is visible, and a step that failed says why under the description. While a step runs, the
+ * row's controls keep their focus but ignore input.
  */
 function McpRow({
   row,
@@ -29,6 +30,7 @@ function McpRow({
   match,
   connected,
   busy,
+  issue,
   lockedReason,
   onEnabled,
   onDetails,
@@ -45,6 +47,8 @@ function McpRow({
   match: FieldsMatch<'serverId' | 'description'> | null;
   connected: boolean;
   busy: boolean;
+  /** Why the server's last step failed, until its next one. */
+  issue: string | null;
   lockedReason: string | null;
   onEnabled: (enabled: boolean) => void;
   onDetails: () => void;
@@ -78,13 +82,20 @@ function McpRow({
             <HighlightedText text={description} ranges={match?.ranges.description} />
           </ItemDescription>
         ) : null}
+        {issue ? (
+          <p className="settings-inline-error" role="alert">
+            <CircleAlert aria-hidden />
+            <span>{issue}</span>
+          </p>
+        ) : null}
         {showAuth ? (
           <div className="settings-extension-mcp-auth">
             <Input
               aria-label={t('extensions.authCodeLabel')}
               placeholder={t('extensions.authCodePlaceholder')}
               value={authCode}
-              disabled={locked}
+              disabled={!connected}
+              readOnly={busy}
               onChange={(event) => setAuthCode(event.target.value)}
               onKeyDown={(event) => {
                 if (event.key !== 'Enter' || isComposingKey(event) || !authCode.trim() || locked)
@@ -97,8 +108,13 @@ function McpRow({
               type="button"
               variant="outline"
               size="sm"
-              disabled={locked || !authCode.trim()}
-              onClick={() => onAuthComplete(authCode.trim())}
+              disabled={!connected || !authCode.trim()}
+              aria-disabled={busy || undefined}
+              aria-busy={busy || undefined}
+              className="aria-disabled:opacity-50"
+              onClick={() => {
+                if (!busy) onAuthComplete(authCode.trim());
+              }}
             >
               {t('extensions.authSubmit')}
             </Button>
@@ -108,7 +124,8 @@ function McpRow({
       <ExtensionRowActions
         name={row.serverId}
         enabled={!row.disabled}
-        disabled={locked}
+        disabled={!connected}
+        pending={busy}
         onEnabledChange={onEnabled}
         onDetails={onDetails}
         lockedReason={lockedReason}
@@ -170,6 +187,7 @@ export function ExtensionMcpGroup({
   connected,
   busyId,
   busy,
+  issues,
   lockedReason,
   onOpen,
   onConnect,
@@ -189,6 +207,8 @@ export function ExtensionMcpGroup({
   connected: boolean;
   busyId: string | null;
   busy: boolean;
+  /** Why each server's last step failed, by server id. */
+  issues: Readonly<Record<string, string>>;
   /** Why the switches are locked (their plugin is off); null when they are not. */
   lockedReason: string | null;
   onOpen: (serverId: string) => void;
@@ -220,6 +240,7 @@ export function ExtensionMcpGroup({
             match={match}
             connected={connected}
             busy={busy || busyId === row.serverId}
+            issue={issues[row.serverId] ?? null}
             lockedReason={lockedReason}
             onEnabled={(enabled) => onEnabled(row.serverId, enabled)}
             onDetails={() => onOpen(row.serverId)}

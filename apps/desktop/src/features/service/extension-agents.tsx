@@ -29,7 +29,7 @@ export function ExtensionAgentsGroup({
   loading,
   empty,
   connected,
-  busy,
+  busyId,
   lockedReason,
   onOpen,
   onEnabled,
@@ -45,7 +45,8 @@ export function ExtensionAgentsGroup({
   loading: boolean;
   empty: string;
   connected: boolean;
-  busy: boolean;
+  /** The agent a save or delete is running for; only its row waits. */
+  busyId: string | null;
   /** Why the switches are locked (their plugin is off); null when they are not. */
   lockedReason: string | null;
   /** Opens one agent's details page. */
@@ -93,6 +94,7 @@ export function ExtensionAgentsGroup({
               name={row.name}
               enabled={row.enabled}
               disabled={!connected}
+              pending={busyId === row.name}
               onEnabledChange={(enabled) => onEnabled(row.name, enabled)}
               onDetails={() => onOpen(row.name)}
               lockedReason={lockedReason}
@@ -107,7 +109,7 @@ export function ExtensionAgentsGroup({
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
                         variant="destructive"
-                        disabled={!connected || busy}
+                        disabled={!connected || busyId === row.name}
                         onSelect={() => setDeleting(row.name)}
                       >
                         <Trash2 />
@@ -126,7 +128,8 @@ export function ExtensionAgentsGroup({
           row={permissionsRow}
           open={permissions?.open ?? false}
           onOpenChange={(open) => setPermissions({ name: permissionsRow.name, open })}
-          disabled={!connected || busy}
+          disabled={!connected}
+          pending={busyId === permissionsRow.name}
           onSave={(value) => onPermissions(permissionsRow.name, value)}
         />
       ) : null}

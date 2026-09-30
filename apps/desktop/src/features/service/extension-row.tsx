@@ -55,7 +55,8 @@ export function ExtensionRow({
  * More when the row has secondary actions (`menu`). More repeats the details first, since a click
  * on the row opens them anyway. A row without a switch (`showSwitch` false) or without More keeps
  * that column empty, so the controls line up down a page whatever each row offers. While its
- * plugin is off, an item's switch is locked and `lockedReason` says why on hover and focus.
+ * plugin is off, an item's switch is locked and `lockedReason` says why on hover and focus. While
+ * a write for the row runs (`pending`), the switch keeps its focus and ignores changes.
  */
 export function ExtensionRowActions({
   name,
@@ -67,12 +68,13 @@ export function ExtensionRowActions({
   trailing,
   showSwitch = true,
   lockedReason = null,
+  pending = false,
   leading,
   reserveMore = true,
 }: {
   name: string;
   enabled: boolean;
-  /** Locks the switch, as while the service is disconnected or the row is saving. */
+  /** Locks the switch because it cannot work at all, as while the service is disconnected. */
   disabled: boolean;
   onEnabledChange: (enabled: boolean) => void;
   onDetails: () => void;
@@ -83,6 +85,8 @@ export function ExtensionRowActions({
   showSwitch?: boolean;
   /** Why the switch is locked beyond `disabled`; shown in a tooltip. */
   lockedReason?: string | null;
+  /** A write for this row is running: the switch stays focusable (`aria-busy`) but inert. */
+  pending?: boolean;
   /** A control before the switch, such as a link to the section that owns the item. */
   leading?: ReactNode;
   /**
@@ -95,19 +99,21 @@ export function ExtensionRowActions({
   const reasonId = useId();
   const [tip, setTip] = useState(false);
   const locked = Boolean(lockedReason);
-  // Locked by its plugin, the switch stays focusable (`aria-disabled`, not `disabled`) and ignores
-  // changes, so a tooltip can say why. The tooltip hangs on a wrapper: as the trigger itself it
-  // would replace the switch's checked `data-state`. Keyboard focus opens it like hover does.
+  // Locked by its plugin or busy saving, the switch stays focusable (`aria-disabled`, not
+  // `disabled`) and ignores changes, so a tooltip can say why and a save keeps the focus. The
+  // tooltip hangs on a wrapper: as the trigger itself it would replace the switch's checked
+  // `data-state`. Keyboard focus opens it like hover does.
   const toggle = (
     <Switch
       aria-label={t('extensions.enableFor', { name })}
       aria-describedby={locked ? reasonId : undefined}
-      aria-disabled={locked || undefined}
+      aria-disabled={locked || pending || undefined}
+      aria-busy={pending || undefined}
       className="aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
       checked={enabled}
       disabled={disabled}
       onCheckedChange={(checked) => {
-        if (!locked) onEnabledChange(checked);
+        if (!locked && !pending) onEnabledChange(checked);
       }}
       onFocus={(event) => {
         if (locked && event.currentTarget.matches(':focus-visible')) setTip(true);
