@@ -59,3 +59,22 @@ enum GlassBackground {
     return glass
   }
 }
+
+/// The transparent 52pt title bar both windows share. An empty unified `NSToolbar` sets the bar's
+/// height, centers the traffic lights in it and gives the window the toolbar window's corner
+/// radius; the page lays its header out on that bar and reports it as a drag region. The toolbar
+/// has no items and cannot be customized, so the bar keeps its height and clicks under it still
+/// reach the web view.
+@MainActor
+enum UnifiedTitleBar {
+  static func apply(to window: NSWindow, identifier: String) {
+    let toolbar = NSToolbar(identifier: identifier)
+    toolbar.displayMode = .iconOnly
+    toolbar.allowsUserCustomization = false
+    window.titlebarAppearsTransparent = true
+    window.titleVisibility = .hidden
+    window.toolbar = toolbar
+    window.toolbarStyle = .unified
+    window.titlebarSeparatorStyle = .none
+  }
+}

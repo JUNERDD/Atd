@@ -47,9 +47,9 @@ body {
   flex-shrink: 0;
   align-items: center;
   gap: 8px;
-  height: 49px;
-  /* macOS paints the native traffic lights over the header's leading edge, so the logo and title
-     clear that zone. */
+  /* The native 52pt title bar (`UnifiedTitleBar` in the shell), whose traffic lights center on
+     this height; macOS paints them over the leading edge, so the logo and title clear that zone. */
+  height: 52px;
   padding: 8px 12px 8px 88px;
   border-bottom: 1px solid var(--border);
   user-select: none;

@@ -35,8 +35,8 @@ final class PanelWindowController: NSObject, NSWindowDelegate {
       backing: .buffered, defer: false)
     super.init()
     dockedWorkArea = workArea
-    panel.titlebarAppearsTransparent = true
-    panel.titleVisibility = .hidden
+    // The page's 52px header sits on this bar, so the traffic lights center on its controls.
+    UnifiedTitleBar.apply(to: panel, identifier: "panel.titleBar")
     panel.isOpaque = false
     panel.backgroundColor = .clear
     panel.hasShadow = true
