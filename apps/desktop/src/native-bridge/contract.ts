@@ -102,6 +102,14 @@ export const NativeEvents = {
   'window.active': Type.Object({ active: Type.Boolean() }, { additionalProperties: false }),
   /** The panel hides at alpha 0 and keeps running, so the page pauses optional work meanwhile. */
   'window.visibility': Type.Object({ visible: Type.Boolean() }, { additionalProperties: false }),
+  /**
+   * The system's Reduce transparency setting, on load and whenever it changes. WebKit has no
+   * `prefers-reduced-transparency`, so glass turns opaque through this instead.
+   */
+  'accessibility.reduceTransparency': Type.Object(
+    { reduce: Type.Boolean() },
+    { additionalProperties: false },
+  ),
   /** A command shortcut fired; Swift already captured the selection and showed the panel. */
   'shortcut.command': Type.Object(
     { id: Type.String({ minLength: 1, maxLength: 128 }) },

@@ -186,6 +186,7 @@ public enum JsMessage: Decodable, Equatable, Sendable {
 public enum NativeEvent: Encodable, Equatable, Sendable {
   case windowActive(WindowActiveEvent)
   case windowVisibility(WindowVisibilityEvent)
+  case accessibilityReduceTransparency(AccessibilityReduceTransparencyEvent)
   case shortcutCommand(ShortcutCommandEvent)
   case resourcesImported(ResourcesImportedEvent)
   case editCommand(EditCommandEvent)
@@ -196,6 +197,7 @@ public enum NativeEvent: Encodable, Equatable, Sendable {
     switch self {
     case .windowActive: "window.active"
     case .windowVisibility: "window.visibility"
+    case .accessibilityReduceTransparency: "accessibility.reduceTransparency"
     case .shortcutCommand: "shortcut.command"
     case .resourcesImported: "resources.imported"
     case .editCommand: "edit.command"
@@ -207,6 +209,7 @@ public enum NativeEvent: Encodable, Equatable, Sendable {
     switch self {
     case .windowActive(let payload): try payload.encode(to: encoder)
     case .windowVisibility(let payload): try payload.encode(to: encoder)
+    case .accessibilityReduceTransparency(let payload): try payload.encode(to: encoder)
     case .shortcutCommand(let payload): try payload.encode(to: encoder)
     case .resourcesImported(let payload): try payload.encode(to: encoder)
     case .editCommand(let payload): try payload.encode(to: encoder)

@@ -71,6 +71,7 @@ export class NativeBridge {
   private readonly listeners: Listeners = {
     'window.active': new Set(),
     'window.visibility': new Set(),
+    'accessibility.reduceTransparency': new Set(),
     'shortcut.command': new Set(),
     'resources.imported': new Set(),
     'edit.command': new Set(),

@@ -40,6 +40,24 @@ public struct WindowVisibilityEvent: Codable, Equatable, Sendable {
   }
 }
 
+/// Payload of the `accessibility.reduceTransparency` event.
+public struct AccessibilityReduceTransparencyEvent: Codable, Equatable, Sendable {
+  public let reduce: Bool
+
+  public init(reduce: Bool) {
+    self.reduce = reduce
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    reduce = try container.boolean(.reduce)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case reduce
+  }
+}
+
 /// Payload of the `shortcut.command` event.
 public struct ShortcutCommandEvent: Codable, Equatable, Sendable {
   public let id: String

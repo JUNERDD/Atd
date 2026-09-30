@@ -29,6 +29,7 @@ final class WebViewHost: NSObject {
   private let bridge: ShellBridge
   private var outbox = BridgeOutbox()
   private var crashes: [ContinuousClock.Instant] = []
+  private var displayOptionsObserver: NSObjectProtocol?
   private static let log = Logger(subsystem: "com.junerdd.ai", category: "web")
 
   init(role: WebViewRole, fragment: String?, services: ShellServices, bridge: ShellBridge) {
@@ -41,6 +42,7 @@ final class WebViewHost: NSObject {
     super.init()
     handler.host = self
     install(webView)
+    followReduceTransparency()
   }
 
   func load() {
@@ -48,10 +50,28 @@ final class WebViewHost: NSObject {
   }
 
   func close() {
+    if let displayOptionsObserver {
+      NSWorkspace.shared.notificationCenter.removeObserver(displayOptionsObserver)
+    }
     pipe?.invalidate()
     pipe = nil
     webView.configuration.userContentController.removeAllScriptMessageHandlers()
     webView.removeFromSuperview()
+  }
+
+  /// Keeps the page's `accessibility.reduceTransparency` state on the system setting: WebKit has
+  /// no `prefers-reduced-transparency`, so the page turns its glass opaque from this state.
+  private func followReduceTransparency() {
+    sendReduceTransparency()
+    displayOptionsObserver = NSWorkspace.shared.notificationCenter.addObserver(
+      forName: NSWorkspace.accessibilityDisplayOptionsDidChangeNotification, object: nil,
+      queue: .main
+    ) { [weak self] _ in MainActor.assumeIsolated { self?.sendReduceTransparency() } }
+  }
+
+  private func sendReduceTransparency() {
+    let reduce = NSWorkspace.shared.accessibilityDisplayShouldReduceTransparency
+    setState(.accessibilityReduceTransparency(.init(reduce: reduce)))
   }
 
   // MARK: Delivery

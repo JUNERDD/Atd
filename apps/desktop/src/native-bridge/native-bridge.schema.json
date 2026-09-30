@@ -39,6 +39,7 @@
     "events": [
       "window.active",
       "window.visibility",
+      "accessibility.reduceTransparency",
       "shortcut.command",
       "resources.imported",
       "edit.command",
@@ -861,6 +862,31 @@
               "required": ["visible"],
               "properties": {
                 "visible": {
+                  "type": "boolean"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "event", "payload"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "event"
+            },
+            "event": {
+              "type": "string",
+              "const": "accessibility.reduceTransparency"
+            },
+            "payload": {
+              "type": "object",
+              "required": ["reduce"],
+              "properties": {
+                "reduce": {
                   "type": "boolean"
                 }
               },
@@ -1883,6 +1909,16 @@
       "required": ["visible"],
       "properties": {
         "visible": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "AccessibilityReduceTransparencyEvent": {
+      "type": "object",
+      "required": ["reduce"],
+      "properties": {
+        "reduce": {
           "type": "boolean"
         }
       },

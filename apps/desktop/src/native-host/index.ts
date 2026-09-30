@@ -12,7 +12,7 @@ import { handleExtensionRequest } from '../client/service/extension-requests';
 import type { ServiceEvent } from '../client/service/ipc';
 import { publishImportedFiles } from '../lib/imported-files';
 import type { NativeBridge } from '../native-bridge/client';
-import { setWindowActive, setWindowVisible } from '../window-state';
+import { setReducedTransparency, setWindowActive, setWindowVisible } from '../window-state';
 import { publishDragRegions } from './drag-regions';
 import { NativeCommands } from './native-commands';
 import { NativeConnection } from './native-connection';
@@ -145,6 +145,7 @@ export async function installNativeHost(
 
   native.on('window.active', ({ active }) => setWindowActive(active));
   native.on('window.visibility', ({ visible }) => setWindowVisible(visible));
+  native.on('accessibility.reduceTransparency', ({ reduce }) => setReducedTransparency(reduce));
   if (surface === 'panel')
     native.on('resources.imported', ({ resources, failures }) =>
       publishImportedFiles({ files: resources, failures }),
