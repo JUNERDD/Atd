@@ -6,6 +6,7 @@ import { chipDecorations } from './chip-decorations';
 import { chipIntegrity } from './chip-integrity';
 import { chipTable, draftDocument } from './chip-state';
 import { commandMarks } from './command-mark';
+import { overflowWatcher } from './editor-overflow';
 import { composerKeys, type KeyRouting } from './editor-keys';
 import { inputFilters, textLimit } from './input-filters';
 import { quickCommandIds, triggerField } from './trigger-field';
@@ -34,6 +35,8 @@ export interface EditorHost extends KeyRouting {
   quickCommands: CommandIds;
   onUpdate(update: ViewUpdate): void;
   onCompositionEnd(view: EditorView): void;
+  /** Whether the draft needs more than one row (editor-overflow.ts), measured after each change. */
+  onOverflow(overflowing: boolean): void;
 }
 
 const wrapping = new Compartment();
@@ -104,6 +107,7 @@ export function createComposerState(
       labelling.of(labellingExtension(settings)),
       limiting.of(limitExtension(settings)),
       EditorView.updateListener.of((update) => host.onUpdate(update)),
+      overflowWatcher((overflowing) => host.onOverflow(overflowing)),
       EditorView.domEventObservers({
         compositionend: (_event, view) => host.onCompositionEnd(view),
       }),
