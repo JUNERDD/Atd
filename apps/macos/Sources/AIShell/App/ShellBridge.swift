@@ -24,7 +24,7 @@ final class ShellBridge {
       Task { @MainActor in
         let reply: SwiftMessage
         do throws(BridgeError) {
-          reply = .result(id: id, value: try await handle(call))
+          reply = .result(id: id, value: try await handle(call, from: host))
         } catch {
           reply = .error(id: id, message: String(error.message.prefix(2000)))
         }
@@ -44,7 +44,7 @@ final class ShellBridge {
     }
   }
 
-  private func handle(_ call: NativeCall) async throws(BridgeError)
+  private func handle(_ call: NativeCall, from host: WebViewHost) async throws(BridgeError)
     -> JSONValue
   {
     guard let shell else { throw BridgeError("The app is shutting down.") }
@@ -90,6 +90,18 @@ final class ShellBridge {
     case .clipboardWrite(let params):
       NSPasteboard.general.clearContents()
       NSPasteboard.general.setString(params.text, forType: .string)
+      return try Self.encode(NativeEmpty())
+    case .shareText(let params):
+      try ShareSheet.show(text: params.text, anchor: params.anchor, in: host.webView)
+      return try Self.encode(NativeEmpty())
+    case .speechSpeak(let params):
+      guard !params.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+        throw BridgeError("There is nothing to read aloud.")
+      }
+      shell.speech.speak(params.text)
+      return try Self.encode(NativeEmpty())
+    case .speechStop:
+      shell.speech.stop()
       return try Self.encode(NativeEmpty())
     case .linkOpen(let params):
       guard let url = ExternalLink.openable(params.url) else {

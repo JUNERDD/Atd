@@ -128,6 +128,12 @@ export const NativeEvents = {
     { command: Type.Union([Type.Literal('undo'), Type.Literal('redo')]) },
     { additionalProperties: false },
   ),
+  /**
+   * Whether the shell is reading text aloud (`speech.speak`), sent to every page on each change
+   * and replayed when a page becomes ready. It turns false when the speech ends, is stopped or
+   * fails; a `speech.speak` that replaces another keeps it true.
+   */
+  'speech.state': Type.Object({ speaking: Type.Boolean() }, { additionalProperties: false }),
   'socket.frames': Type.Object(
     { frames: Type.Array(SocketFrameSchema, { minItems: 1 }) },
     { additionalProperties: false },

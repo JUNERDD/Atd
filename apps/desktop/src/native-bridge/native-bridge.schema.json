@@ -22,6 +22,9 @@
       "capture",
       "clipboard.read",
       "clipboard.write",
+      "share.text",
+      "speech.speak",
+      "speech.stop",
       "link.open",
       "artifact",
       "files.pick",
@@ -43,6 +46,7 @@
       "shortcut.command",
       "resources.imported",
       "edit.command",
+      "speech.state",
       "socket.frames"
     ]
   },
@@ -407,6 +411,113 @@
                   "maxLength": 1000000
                 }
               },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
+              "const": "share.text"
+            },
+            "params": {
+              "type": "object",
+              "required": ["text", "anchor"],
+              "properties": {
+                "text": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 1000000
+                },
+                "anchor": {
+                  "type": "object",
+                  "required": ["x", "y", "width", "height"],
+                  "properties": {
+                    "x": {
+                      "type": "number"
+                    },
+                    "y": {
+                      "type": "number"
+                    },
+                    "width": {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "height": {
+                      "type": "number",
+                      "minimum": 0
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
+              "const": "speech.speak"
+            },
+            "params": {
+              "type": "object",
+              "required": ["text"],
+              "properties": {
+                "text": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 1000000
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
+              "const": "speech.stop"
+            },
+            "params": {
+              "type": "object",
+              "properties": {},
               "additionalProperties": false
             }
           },
@@ -1048,6 +1159,31 @@
             },
             "event": {
               "type": "string",
+              "const": "speech.state"
+            },
+            "payload": {
+              "type": "object",
+              "required": ["speaking"],
+              "properties": {
+                "speaking": {
+                  "type": "boolean"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "event", "payload"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "event"
+            },
+            "event": {
+              "type": "string",
               "const": "socket.frames"
             },
             "payload": {
@@ -1588,6 +1724,71 @@
       "properties": {},
       "additionalProperties": false
     },
+    "ShareTextParams": {
+      "type": "object",
+      "required": ["text", "anchor"],
+      "properties": {
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000000
+        },
+        "anchor": {
+          "type": "object",
+          "required": ["x", "y", "width", "height"],
+          "properties": {
+            "x": {
+              "type": "number"
+            },
+            "y": {
+              "type": "number"
+            },
+            "width": {
+              "type": "number",
+              "minimum": 0
+            },
+            "height": {
+              "type": "number",
+              "minimum": 0
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "ShareTextResult": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "SpeechSpeakParams": {
+      "type": "object",
+      "required": ["text"],
+      "properties": {
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000000
+        }
+      },
+      "additionalProperties": false
+    },
+    "SpeechSpeakResult": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "SpeechStopParams": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "SpeechStopResult": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
     "LinkOpenParams": {
       "type": "object",
       "required": ["url"],
@@ -2018,6 +2219,16 @@
               "const": "redo"
             }
           ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "SpeechStateEvent": {
+      "type": "object",
+      "required": ["speaking"],
+      "properties": {
+        "speaking": {
+          "type": "boolean"
         }
       },
       "additionalProperties": false

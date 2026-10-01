@@ -86,6 +86,22 @@ const ApprovalRequestResultSchema = Type.Union([
 
 /** Input text limit shared with clipboard capture and the service's command input. */
 export const MAX_CAPTURE_LENGTH = 100000;
+/** Longest text `share.text` and `speech.speak` take, the same bound as `clipboard.write`. */
+const MAX_NATIVE_TEXT_LENGTH = 1000000;
+
+/**
+ * A rectangle in CSS pixels from the web view's top-left corner (what `getBoundingClientRect()`
+ * reports in a page that is not scrolled inside the web view); Swift converts it to view points.
+ */
+const AnchorRectSchema = Type.Object(
+  {
+    x: Type.Number(),
+    y: Type.Number(),
+    width: Type.Number({ minimum: 0 }),
+    height: Type.Number({ minimum: 0 }),
+  },
+  { additionalProperties: false },
+);
 
 /**
  * Calls: JS → Swift requests that Swift answers with a `result` carrying `result`, or an `error`
@@ -182,6 +198,35 @@ export const NativeCalls = {
     params: Type.Object({ text: Text(1000000) }, { additionalProperties: false }),
     result: Empty,
   },
+  /**
+   * Shows the system share picker for `text`, anchored to `anchor` in the window the call came
+   * from. Resolves as soon as the picker is shown; whether the user picks a service or dismisses
+   * it is not reported. Rejects when the text is blank or the web view is not in a window.
+   */
+  'share.text': {
+    params: Type.Object(
+      {
+        text: Type.String({ minLength: 1, maxLength: MAX_NATIVE_TEXT_LENGTH }),
+        anchor: AnchorRectSchema,
+      },
+      { additionalProperties: false },
+    ),
+    result: Empty,
+  },
+  /**
+   * Reads `text` aloud, replacing any speech in progress. Resolves once speech is queued, not when
+   * it ends: the `speech.state` event reports when it starts and ends. The voice follows the
+   * text's dominant language and falls back to the system voice. Rejects when the text is blank.
+   */
+  'speech.speak': {
+    params: Type.Object(
+      { text: Type.String({ minLength: 1, maxLength: MAX_NATIVE_TEXT_LENGTH }) },
+      { additionalProperties: false },
+    ),
+    result: Empty,
+  },
+  /** Stops the speech in progress; resolves the same when nothing is being read. */
+  'speech.stop': { params: Empty, result: Empty },
   /** Opens an http(s) link in the default browser; Swift checks the scheme again. */
   'link.open': {
     params: Type.Object(

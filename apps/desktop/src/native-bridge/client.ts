@@ -75,6 +75,7 @@ export class NativeBridge {
     'shortcut.command': new Set(),
     'resources.imported': new Set(),
     'edit.command': new Set(),
+    'speech.state': new Set(),
     'socket.frames': new Set(),
   };
 

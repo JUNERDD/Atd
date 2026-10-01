@@ -148,6 +148,24 @@ public struct EditCommandEvent: Codable, Equatable, Sendable {
   }
 }
 
+/// Payload of the `speech.state` event.
+public struct SpeechStateEvent: Codable, Equatable, Sendable {
+  public let speaking: Bool
+
+  public init(speaking: Bool) {
+    self.speaking = speaking
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    speaking = try container.boolean(.speaking)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case speaking
+  }
+}
+
 /// Payload of the `socket.frames` event.
 public struct SocketFramesEvent: Codable, Equatable, Sendable {
   public let frames: [SocketFrame]

@@ -4,6 +4,70 @@
 
 import Foundation
 
+/// Result of the `artifact` call.
+public typealias ArtifactResult = FileRef
+
+/// Params of the `files.pick` call.
+public typealias FilesPickParams = NativeEmpty
+
+/// Result of the `files.pick` call.
+public struct FilesPickResult: Codable, Equatable, Sendable {
+  public let resources: [FileRef]
+
+  public init(resources: [FileRef]) {
+    self.resources = resources
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    resources = try container.array(.resources, of: FileRef.self, maxItems: 10)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case resources
+  }
+}
+
+/// Params of the `files.save` call.
+public struct FilesSaveParams: Codable, Equatable, Sendable {
+  public let resourceId: String
+  public let name: String
+
+  public init(resourceId: String, name: String) {
+    self.resourceId = resourceId
+    self.name = name
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    resourceId = try container.string(.resourceId, minLength: 1, maxLength: 128)
+    name = try container.string(.name, maxLength: 255)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case resourceId
+    case name
+  }
+}
+
+/// Result of the `files.save` call.
+public struct FilesSaveResult: Codable, Equatable, Sendable {
+  public let saved: Bool
+
+  public init(saved: Bool) {
+    self.saved = saved
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    saved = try container.boolean(.saved)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case saved
+  }
+}
+
 /// Params of the `approval.request` call.
 public struct ApprovalRequestParams: Codable, Equatable, Sendable {
   public let serverId: String

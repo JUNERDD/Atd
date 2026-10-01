@@ -44,6 +44,9 @@ public enum NativeCall: Equatable, Sendable {
   case capture(CaptureParams)
   case clipboardRead(ClipboardReadParams)
   case clipboardWrite(ClipboardWriteParams)
+  case shareText(ShareTextParams)
+  case speechSpeak(SpeechSpeakParams)
+  case speechStop(SpeechStopParams)
   case linkOpen(LinkOpenParams)
   case artifact(ArtifactParams)
   case filesPick(FilesPickParams)
@@ -65,6 +68,9 @@ public enum NativeCall: Equatable, Sendable {
     case .capture: "capture"
     case .clipboardRead: "clipboard.read"
     case .clipboardWrite: "clipboard.write"
+    case .shareText: "share.text"
+    case .speechSpeak: "speech.speak"
+    case .speechStop: "speech.stop"
     case .linkOpen: "link.open"
     case .artifact: "artifact"
     case .filesPick: "files.pick"
@@ -130,6 +136,9 @@ public enum JsMessage: Decodable, Equatable, Sendable {
         call = try .clipboardRead(container.value(.params, ClipboardReadParams.self))
       case "clipboard.write":
         call = try .clipboardWrite(container.value(.params, ClipboardWriteParams.self))
+      case "share.text": call = try .shareText(container.value(.params, ShareTextParams.self))
+      case "speech.speak": call = try .speechSpeak(container.value(.params, SpeechSpeakParams.self))
+      case "speech.stop": call = try .speechStop(container.value(.params, SpeechStopParams.self))
       case "link.open": call = try .linkOpen(container.value(.params, LinkOpenParams.self))
       case "artifact": call = try .artifact(container.value(.params, ArtifactParams.self))
       case "files.pick": call = try .filesPick(container.value(.params, FilesPickParams.self))
@@ -190,6 +199,7 @@ public enum NativeEvent: Encodable, Equatable, Sendable {
   case shortcutCommand(ShortcutCommandEvent)
   case resourcesImported(ResourcesImportedEvent)
   case editCommand(EditCommandEvent)
+  case speechState(SpeechStateEvent)
   case socketFrames(SocketFramesEvent)
 
   /// The contract name.
@@ -201,6 +211,7 @@ public enum NativeEvent: Encodable, Equatable, Sendable {
     case .shortcutCommand: "shortcut.command"
     case .resourcesImported: "resources.imported"
     case .editCommand: "edit.command"
+    case .speechState: "speech.state"
     case .socketFrames: "socket.frames"
     }
   }
@@ -213,6 +224,7 @@ public enum NativeEvent: Encodable, Equatable, Sendable {
     case .shortcutCommand(let payload): try payload.encode(to: encoder)
     case .resourcesImported(let payload): try payload.encode(to: encoder)
     case .editCommand(let payload): try payload.encode(to: encoder)
+    case .speechState(let payload): try payload.encode(to: encoder)
     case .socketFrames(let payload): try payload.encode(to: encoder)
     }
   }

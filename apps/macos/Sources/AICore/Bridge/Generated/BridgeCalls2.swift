@@ -132,6 +132,87 @@ public struct ClipboardWriteParams: Codable, Equatable, Sendable {
 /// Result of the `clipboard.write` call.
 public typealias ClipboardWriteResult = NativeEmpty
 
+/// Params of the `share.text` call.
+public struct ShareTextParams: Codable, Equatable, Sendable {
+  public let text: String
+  public let anchor: Anchor
+
+  public init(text: String, anchor: Anchor) {
+    self.text = text
+    self.anchor = anchor
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    text = try container.string(.text, minLength: 1, maxLength: 1_000_000)
+    anchor = try container.value(.anchor, Anchor.self)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case text
+    case anchor
+  }
+
+  public struct Anchor: Codable, Equatable, Sendable {
+    public let x: Double
+    public let y: Double
+    public let width: Double
+    public let height: Double
+
+    public init(x: Double, y: Double, width: Double, height: Double) {
+      self.x = x
+      self.y = y
+      self.width = width
+      self.height = height
+    }
+
+    public init(from decoder: any Decoder) throws {
+      let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+      x = try container.number(.x)
+      y = try container.number(.y)
+      width = try container.number(.width, minimum: 0)
+      height = try container.number(.height, minimum: 0)
+    }
+
+    private enum CodingKeys: String, CodingKey, CaseIterable {
+      case x
+      case y
+      case width
+      case height
+    }
+  }
+}
+
+/// Result of the `share.text` call.
+public typealias ShareTextResult = NativeEmpty
+
+/// Params of the `speech.speak` call.
+public struct SpeechSpeakParams: Codable, Equatable, Sendable {
+  public let text: String
+
+  public init(text: String) {
+    self.text = text
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    text = try container.string(.text, minLength: 1, maxLength: 1_000_000)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case text
+  }
+}
+
+/// Result of the `speech.speak` call.
+public typealias SpeechSpeakResult = NativeEmpty
+
+/// Params of the `speech.stop` call.
+public typealias SpeechStopParams = NativeEmpty
+
+/// Result of the `speech.stop` call.
+public typealias SpeechStopResult = NativeEmpty
+
 /// Params of the `link.open` call.
 public struct LinkOpenParams: Codable, Equatable, Sendable {
   public let url: String
@@ -178,69 +259,5 @@ public struct ArtifactParams: Codable, Equatable, Sendable {
     case open
     case reveal
     case copyPath
-  }
-}
-
-/// Result of the `artifact` call.
-public typealias ArtifactResult = FileRef
-
-/// Params of the `files.pick` call.
-public typealias FilesPickParams = NativeEmpty
-
-/// Result of the `files.pick` call.
-public struct FilesPickResult: Codable, Equatable, Sendable {
-  public let resources: [FileRef]
-
-  public init(resources: [FileRef]) {
-    self.resources = resources
-  }
-
-  public init(from decoder: any Decoder) throws {
-    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    resources = try container.array(.resources, of: FileRef.self, maxItems: 10)
-  }
-
-  private enum CodingKeys: String, CodingKey, CaseIterable {
-    case resources
-  }
-}
-
-/// Params of the `files.save` call.
-public struct FilesSaveParams: Codable, Equatable, Sendable {
-  public let resourceId: String
-  public let name: String
-
-  public init(resourceId: String, name: String) {
-    self.resourceId = resourceId
-    self.name = name
-  }
-
-  public init(from decoder: any Decoder) throws {
-    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    resourceId = try container.string(.resourceId, minLength: 1, maxLength: 128)
-    name = try container.string(.name, maxLength: 255)
-  }
-
-  private enum CodingKeys: String, CodingKey, CaseIterable {
-    case resourceId
-    case name
-  }
-}
-
-/// Result of the `files.save` call.
-public struct FilesSaveResult: Codable, Equatable, Sendable {
-  public let saved: Bool
-
-  public init(saved: Bool) {
-    self.saved = saved
-  }
-
-  public init(from decoder: any Decoder) throws {
-    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    saved = try container.boolean(.saved)
-  }
-
-  private enum CodingKeys: String, CodingKey, CaseIterable {
-    case saved
   }
 }

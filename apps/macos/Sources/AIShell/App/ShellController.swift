@@ -22,6 +22,8 @@ public final class ShellController {
   let artifacts: ArtifactActions
   let attachments: AttachmentImporter
   let launchApprovals: LaunchApprovals
+  /// `speech.speak` / `speech.stop`; its state reaches every page as `speech.state`.
+  let speech = SpeechReader()
   let quitGuard: QuitGuard
   private var statusItem: StatusItemController?
   private var registrar: HotKeyRegistrar?
@@ -72,6 +74,9 @@ public final class ShellController {
         for window in NSApp.windows { window.orderOut(nil) }
       })
     bridge.shell = self
+    speech.onChange = { [weak self] speaking in
+      self?.broadcast(.speechState(.init(speaking: speaking)))
+    }
     panelHost.onFiles = { [weak self] urls, _ in
       guard let self else { return }
       Task { await self.attachments.importFiles(urls) }
@@ -214,6 +219,12 @@ public final class ShellController {
     AppStateResult(
       pinned: defaults.bool(forKey: Self.pinnedKey),
       showInDock: defaults.bool(forKey: Self.showInDockKey), openAtLogin: AppPresence.opensAtLogin)
+  }
+
+  /// A state event for every page, so a window opened later still learns the latest value.
+  private func broadcast(_ event: NativeEvent) {
+    panelHost.setState(event)
+    settings.host?.setState(event)
   }
 
   // MARK: App surfaces
