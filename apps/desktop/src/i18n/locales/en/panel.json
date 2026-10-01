@@ -130,7 +130,7 @@
     "editMcpSeed": "Update the existing MCP server \"{{name}}\": ",
     "menu": "Session actions",
     "rename": "Rename session",
-    "copyLink": "Copy session link",
+    "copyId": "Copy session ID",
     "compact": "Compact context",
     "renameTitle": "Rename session",
     "renameDescription": "Give this session a short recognizable name.",
@@ -139,8 +139,7 @@
     "renameCancel": "Cancel",
     "renameSave": "Save",
     "renamed": "Session renamed.",
-    "linkCopied": "Session link copied. Paste the command in Pi to inspect it.",
-    "idCopied": "Session id copied. Its Pi session starts on the first run."
+    "idCopied": "Session ID copied."
   },
   "permission": {
     "tier": {

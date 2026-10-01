@@ -1,5 +1,5 @@
 import { useState, type ComponentType, type ReactNode } from 'react';
-import { Ellipsis, Link2, Pencil, SearchIcon, Trash2 } from 'lucide-react';
+import { Copy, Ellipsis, Pencil, SearchIcon, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@ai/ui/components/button';
 import {
@@ -37,7 +37,7 @@ import { isActive } from '../../client/agent/task-schema';
 import { IconButton } from '../../components/icon-button';
 import { agentApi } from './use-agent';
 import { RenameTaskDialog } from './rename-task-dialog';
-import { useCopyTaskLink } from './use-copy-task-link';
+import { useCopyTaskId } from './use-copy-task-id';
 import { messageOf } from '../../lib/errors';
 
 /** Row actions, rendered once by the More dropdown and once by the right-click context menu. */
@@ -46,14 +46,14 @@ function TaskMenuItems({
   Item,
   Separator,
   onRename,
-  onCopyLink,
+  onCopyId,
   onDelete,
 }: {
   task: AgentTask;
   Item: ComponentType<{ onSelect: () => void; disabled?: boolean; children: ReactNode }>;
   Separator: ComponentType;
   onRename: () => void;
-  onCopyLink: () => void;
+  onCopyId: () => void;
   onDelete: () => void;
 }) {
   const { t } = useTranslation('tasks');
@@ -63,9 +63,9 @@ function TaskMenuItems({
         <Pencil />
         {t('history.rename')}
       </Item>
-      <Item onSelect={onCopyLink}>
-        <Link2 />
-        {t('history.copyLink')}
+      <Item onSelect={onCopyId}>
+        <Copy />
+        {t('history.copyId')}
       </Item>
       <Separator />
       <Item disabled={isActive(task.runs.at(-1)?.status)} onSelect={onDelete}>
@@ -87,7 +87,7 @@ export function TaskHistory({
   const [deleting, setDeleting] = useState<AgentTask | null>(null);
   // The last renamed task stays mounted while its dialog closes so the exit animation keeps its content.
   const [renaming, setRenaming] = useState<{ task: AgentTask; open: boolean } | null>(null);
-  const copyLink = useCopyTaskLink();
+  const copyId = useCopyTaskId();
   const search = useCompositionQuery();
   const [error, setError] = useState('');
   const query = search.query.trim();
@@ -126,7 +126,7 @@ export function TaskHistory({
             const menuActions = {
               task,
               onRename: () => setRenaming({ task, open: true }),
-              onCopyLink: () => void copyLink(task),
+              onCopyId: () => void copyId(task),
               onDelete: () => setDeleting(task),
             };
             return (

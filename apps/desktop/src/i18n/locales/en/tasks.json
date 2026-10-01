@@ -185,7 +185,7 @@
     "more": "More",
     "moreActionsFor": "More actions for {{title}}",
     "rename": "Rename",
-    "copyLink": "Copy session link",
+    "copyId": "Copy session ID",
     "empty": "No tasks yet.",
     "noMatches": "No matching tasks.",
     "deleteTitle": "Delete this task?",
