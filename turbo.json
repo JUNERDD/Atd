@@ -1,6 +1,6 @@
 {
   "$schema": "https://turborepo.dev/schema.json",
-  "globalDependencies": [".oxlintrc.json", "pnpm-workspace.yaml"],
+  "globalDependencies": [".node-version", ".oxlintrc.json", "pnpm-workspace.yaml"],
   "globalPassThroughEnv": [
     "AI_AGENT_DATA_DIR",
     "AI_AGENT_FORCE_RESTART",
