@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import {
   CompactTaskRequestSchema,
+  ForkTaskRequestSchema,
   Identifier,
   isActiveStatus,
   parse,
@@ -8,13 +9,17 @@ import {
   ReplaceQueueRequestSchema,
 } from '@ai/agent-contracts';
 import { ConflictError } from '../errors.js';
+import { announceInvalidation } from '../invalidate.js';
 import type { Ledger } from '../ledger.js';
 import type { RunnerManager } from '../runner-manager.js';
 import { RENDERER_ROUTE } from '../relay-routes.js';
+import type { ServicePaths } from '../storage.js';
+import { forkTask } from './fork.js';
 
 export interface TaskManageContext {
   ledger: Ledger;
   manager: RunnerManager;
+  paths: ServicePaths;
 }
 
 /**
@@ -26,6 +31,8 @@ export interface TaskManageContext {
  * transcripts and audit logs stay on disk for forensics. POST compact starts
  * a manual compaction of an idle task (RunnerManager.compact) and answers once
  * it is accepted; the task's compaction block and context updates follow it.
+ * POST fork copies a task up to a turn into a new task (fork.ts) and announces
+ * the new task to every client.
  */
 export function registerTaskManageRoutes(app: FastifyInstance, ctx: TaskManageContext): void {
   app.patch<{ Params: { taskId: string } }>(
@@ -68,7 +75,9 @@ export function registerTaskManageRoutes(app: FastifyInstance, ctx: TaskManageCo
       const operationIds = new Set(task.runs.map((run) => run.operationId));
       await ctx.ledger.change((data) => {
         data.tasks = data.tasks.filter((entry) => entry.id !== taskId);
-        for (const operationId of operationIds) delete data.operations[operationId];
+        // A fork's copied runs keep their operation ids, whose entries name the source task.
+        for (const operationId of operationIds)
+          if (data.operations[operationId]?.taskId === taskId) delete data.operations[operationId];
         data.pendingConfirms = data.pendingConfirms.filter((item) => item.taskId !== taskId);
         data.pendingCapabilities = data.pendingCapabilities.filter(
           (item) => item.taskId !== taskId,
@@ -88,6 +97,18 @@ export function registerTaskManageRoutes(app: FastifyInstance, ctx: TaskManageCo
       ctx.ledger.task(taskId);
       await ctx.manager.compact(taskId, body.instructions?.trim() || undefined);
       return { ok: true as const };
+    },
+  );
+
+  app.post<{ Params: { taskId: string } }>(
+    '/v1/tasks/:taskId/fork',
+    RENDERER_ROUTE,
+    async (request) => {
+      const taskId = parse(Identifier, request.params.taskId);
+      const body = parse(ForkTaskRequestSchema, request.body);
+      const forked = await forkTask(ctx, taskId, body);
+      announceInvalidation(request, { type: 'invalidate', scope: 'task', taskId: forked.taskId });
+      return forked;
     },
   );
 

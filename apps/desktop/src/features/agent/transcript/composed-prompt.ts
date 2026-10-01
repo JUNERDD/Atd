@@ -54,6 +54,12 @@ function trimEnds(segments: SentSegment[]): SentSegment[] {
   return segments.filter((segment) => segment !== '');
 }
 
+/** The chips of a run's input text: its drawable recorded ranges, or the legacy skill token. */
+export function promptChipRanges(snapshot: RunSnapshot): InputChipRange[] {
+  const { text, chips } = snapshot.input;
+  return chips ? drawableRanges(text, chips) : legacyRanges(text);
+}
+
 /**
  * A run's prompt the way it was composed: the input text split around its chips (recorded ranges,
  * or the legacy skill token for runs without them), without the blank ends the service trims.
@@ -61,11 +67,11 @@ function trimEnds(segments: SentSegment[]): SentSegment[] {
  * (runs imported from the desktop app) or, for a blank text, the service's stand-in for the files.
  */
 export function composedPrompt(snapshot: RunSnapshot): SentSegment[] | null {
-  const { text, chips } = snapshot.input;
+  const { text } = snapshot.input;
   if (snapshot.instructions || !text.trim()) return null;
   const segments: SentSegment[] = [];
   let at = 0;
-  for (const { from, to, chip } of chips ? drawableRanges(text, chips) : legacyRanges(text)) {
+  for (const { from, to, chip } of promptChipRanges(snapshot)) {
     if (from > at) segments.push(text.slice(at, from));
     segments.push(chip);
     at = to;

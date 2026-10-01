@@ -362,6 +362,36 @@
   display: flex;
   gap: 4px;
 }
+/* An earlier turn's actions, and every user message's, appear while the pointer is over their
+   turn or message, while one of them has keyboard focus or an open menu, and while a copy's
+   feedback shows. Hidden by opacity only, so the row keeps its space (nothing shifts on hover)
+   and stays in the tab order. */
+.message-actions[data-reveal] {
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+.transcript-turn:hover > .message-actions[data-reveal],
+.user-message:hover > .message-actions[data-reveal],
+.message-actions[data-reveal]:focus-within,
+.message-actions[data-reveal]:has([aria-expanded='true']),
+.message-actions[data-reveal][data-pinned] {
+  opacity: 1;
+}
+.user-message-actions {
+  margin-top: -4px;
+}
+/* The inline editor that replaces a user bubble spans the message column. */
+.message-editor {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: 8px;
+}
+.message-editor-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
 .activity-trigger,
 .activity-row-static {
   width: 100%;

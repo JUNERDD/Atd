@@ -31,7 +31,12 @@ export async function submitTask<S>(
   const command = request.commandId ? context.findCommand(request.commandId) : null;
   const tokens = command ? commandRunTokens(command) : null;
   const previous = request.taskId ? (tasks.entries.get(request.taskId)?.task ?? null) : null;
-  if (previous?.runs.some((run) => isActive(run.status))) {
+  const busy = previous?.runs.some((run) => isActive(run.status)) ?? false;
+  // A replacement prompt branches the session, which only an idle task can do; queuing it as a
+  // follow-up would append instead of replacing. (The service refuses one without `taskId`.)
+  if (request.branchBefore && busy)
+    throw new Error('Wait for the current run to finish before changing an earlier message.');
+  if (busy && previous) {
     if (request.input.files.length) throw new Error('Attach files after the run finishes.');
     // A queued follow-up is text only; it would silently drop the chips' references and skill,
     // and a command template's tokens alike.
@@ -92,6 +97,7 @@ export async function submitTask<S>(
     ...(thinkingLevel ? { thinkingLevel } : {}),
     ...(tools ? { tools } : {}),
     ...(memory === undefined ? {} : { memory }),
+    ...(request.branchBefore ? { branchBefore: request.branchBefore } : {}),
   });
   // A command run is titled after the command. The title lives in the service like any rename,
   // so every client shows it.

@@ -2,6 +2,8 @@ import {
   CompactTaskRequestSchema,
   CompactTaskResponseSchema,
   DeleteTaskResponseSchema,
+  ForkTaskRequestSchema,
+  ForkTaskResponseSchema,
   parse,
   PatchTaskRequestSchema,
   PreviewTaskRequestSchema,
@@ -11,6 +13,8 @@ import {
   TaskResponseSchema,
   type CompactTaskResponse,
   type DeleteTaskResponse,
+  type ForkTaskRequest,
+  type ForkTaskResponse,
   type PatchTaskRequest,
   type PreviewTaskRequest,
   type PreviewTaskResponse,
@@ -83,6 +87,23 @@ export function compactTask(
     'POST',
     parse(CompactTaskRequestSchema, instructions === undefined ? {} : { instructions }),
     (json) => parse(CompactTaskResponseSchema, json),
+    fetchImpl,
+  );
+}
+
+/** Forks a task into a new one at the turn `body.entryId` starts; the source is unchanged. */
+export function forkTask(
+  options: AgentClientOptions,
+  taskId: string,
+  body: ForkTaskRequest,
+  fetchImpl?: typeof fetch,
+): Promise<ForkTaskResponse> {
+  return manageRequest(
+    options,
+    `/v1/tasks/${encodeURIComponent(taskId)}/fork`,
+    'POST',
+    parse(ForkTaskRequestSchema, body),
+    (json) => parse(ForkTaskResponseSchema, json),
     fetchImpl,
   );
 }

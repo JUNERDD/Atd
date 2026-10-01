@@ -1,6 +1,6 @@
 import { RunPolicySchema, type RunPolicy } from './run-policy';
 import { Type, type Static } from 'typebox';
-import type { CompactRefusal, TaskContextState } from '@ai/agent-contracts';
+import { SessionEntryId, type CompactRefusal, type TaskContextState } from '@ai/agent-contracts';
 import { CommandSchema, Identifier, type CommandDefinition } from './command-schema';
 import {
   InputSchema,
@@ -138,6 +138,8 @@ export const AgentRequestSchema = Type.Union([
     commandRevision: Type.Union([Type.Integer({ minimum: 1 }), Type.Null()]),
     savedRun: Type.Union([Type.Object({ taskId: Identifier, runId: Identifier }), Type.Null()]),
     input: InputSchema,
+    /** The task's user message entry this run's prompt replaces (edit and resend, regenerate). */
+    branchBefore: Type.Optional(SessionEntryId),
   }),
   Type.Object({ action: Type.Literal('stop'), taskId: Identifier, runId: Identifier }),
   Type.Object({
@@ -176,7 +178,19 @@ export const AgentRequestSchema = Type.Union([
     /** Focus for the summary (`/compact <focus>`); the service caps it at 2000 characters. */
     instructions: Type.Optional(Type.String({ minLength: 1, maxLength: 2000 })),
   }),
+  Type.Object({
+    action: Type.Literal('forkTask'),
+    taskId: Identifier,
+    /** The user message entry of the turn the fork ends with. */
+    entryId: SessionEntryId,
+    title: Type.Optional(Type.String({ minLength: 1, maxLength: 120 })),
+  }),
   Type.Object({ action: Type.Literal('chooseFiles') }),
+  Type.Object({
+    action: Type.Literal('saveMarkdown'),
+    name: Type.String({ minLength: 1, maxLength: 255 }),
+    text: Type.String({ maxLength: 1000000 }),
+  }),
   Type.Object({ action: Type.Literal('memory') }),
   Type.Object({ action: Type.Literal('pauseMemory'), paused: Type.Boolean() }),
   Type.Object({
@@ -300,7 +314,11 @@ export interface AgentBridge {
    * active, nothing to compact) resolves to its code; other failures reject.
    */
   compactTask: (taskId: string, instructions?: string) => Promise<CompactRefusal | null>;
+  /** Copies the task up to the turn `entryId` starts into a new task; resolves with its id. */
+  forkTask: (taskId: string, entryId: string, title?: string) => Promise<{ taskId: string }>;
   chooseFiles: () => Promise<FileRef[]>;
+  /** Offers `text` as a Markdown file in a save panel; false when the user cancelled. */
+  saveMarkdown: (name: string, text: string) => Promise<boolean>;
   memory: () => Promise<MemorySnapshot>;
   pauseMemory: (paused: boolean) => Promise<MemorySnapshot>;
   updateMemory: (entry: MemoryEntry, content: string) => Promise<MemorySnapshot>;

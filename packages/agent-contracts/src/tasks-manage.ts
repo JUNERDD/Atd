@@ -1,5 +1,5 @@
 import { Type, type Static } from 'typebox';
-import { Identifier } from './identifiers.js';
+import { Identifier, SessionEntryId } from './identifiers.js';
 import { PermissionTierSchema } from './confirms.js';
 import { ThinkingLevelSchema } from './models.js';
 import { QueueStateSchema } from './snapshot.js';
@@ -35,6 +35,29 @@ export const DeleteTaskResponseSchema = Type.Object(
   { additionalProperties: false },
 );
 export type DeleteTaskResponse = Static<typeof DeleteTaskResponseSchema>;
+
+/**
+ * Forks a task into a new one at a turn: the new task's session holds the source branch up to the
+ * end of the turn that `entryId` (that turn's user message entry) starts, and its output folder
+ * starts as a copy of the source's. The source task is unchanged.
+ */
+export const ForkTaskRequestSchema = Type.Object(
+  {
+    entryId: SessionEntryId,
+    /** The new task's title; absent keeps the source task's. */
+    title: Type.Optional(Type.String({ minLength: 1, maxLength: 120 })),
+  },
+  { additionalProperties: false },
+);
+export type ForkTaskRequest = Static<typeof ForkTaskRequestSchema>;
+
+export const ForkTaskResponseSchema = Type.Object(
+  {
+    taskId: Identifier,
+  },
+  { additionalProperties: false },
+);
+export type ForkTaskResponse = Static<typeof ForkTaskResponseSchema>;
 
 /** Replaces the pending follow-up list; steering messages are preserved. */
 export const ReplaceQueueRequestSchema = Type.Object(

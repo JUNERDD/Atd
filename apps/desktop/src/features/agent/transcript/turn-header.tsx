@@ -4,6 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { Shimmer } from '@ai/ui/components/ai-elements/shimmer';
 import { formatElapsed } from './elapsed';
 import { averageRate, estimateTokens, formatRate } from './token-rate';
+import { TurnUsageDetail } from './turn-usage-detail';
+import type { TurnUsage } from './turn-usage';
 
 /** Ticking clock for the live header; freezes while the turn waits on the user. */
 function useLiveElapsed(startedAt: number | null, paused: boolean): number {
@@ -87,7 +89,8 @@ function useLiveRate(
  * Per-turn elapsed header, directly under the user message. Settled turns show
  * "Worked for … · model · … tok/s" from the provider true total; the live turn shows a
  * ticking "Working · … · model · … tok/s" from the character estimate until the true average
- * replaces it on settle. Copy lives in the turn actions, not here.
+ * replaces it on settle. A settled turn with reported usage ends in a trigger for its token and
+ * cost detail. Copy lives in the turn actions, not here.
  */
 export function TurnHeader({
   startedAt,
@@ -98,6 +101,7 @@ export function TurnHeader({
   trueTokens,
   trueDurationMs,
   liveText,
+  usage,
 }: {
   startedAt: number | null;
   durationMs: number | null;
@@ -107,6 +111,7 @@ export function TurnHeader({
   trueTokens?: number | null;
   trueDurationMs?: number | null;
   liveText?: string;
+  usage?: TurnUsage | null;
 }) {
   const { t } = useTranslation('tasks');
   const elapsedMs = useLiveElapsed(live ? startedAt : null, waiting !== null);
@@ -155,6 +160,7 @@ export function TurnHeader({
       <span className="turn-header-label" title={label}>
         {label}
       </span>
+      {usage && <TurnUsageDetail usage={usage} />}
     </div>
   );
 }

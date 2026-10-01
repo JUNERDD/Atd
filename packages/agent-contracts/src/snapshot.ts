@@ -1,5 +1,5 @@
 import { Type, type Static } from 'typebox';
-import { Identifier } from './identifiers.js';
+import { Identifier, SessionEntryId } from './identifiers.js';
 import {
   CapabilityRequestSchema,
   GrantScopeSchema,
@@ -21,6 +21,25 @@ const blockBase = {
   endedAt: Type.Number(),
 };
 
+/**
+ * Provider-reported usage of the assistant message a block came from. Every block projected from
+ * one message carries the same copy, so clients dedupe by message (`timestamp`) when summing a
+ * turn. `cost` is the total in USD at the model's catalog price, 0 when the catalog has none.
+ * Absent while the message streams and on messages without usage.
+ */
+export const MessageUsageSchema = Type.Object(
+  {
+    input: Type.Integer({ minimum: 0 }),
+    output: Type.Integer({ minimum: 0 }),
+    cacheRead: Type.Integer({ minimum: 0 }),
+    cacheWrite: Type.Integer({ minimum: 0 }),
+    cost: Type.Number({ minimum: 0 }),
+  },
+  { additionalProperties: false },
+);
+export type MessageUsage = Static<typeof MessageUsageSchema>;
+const usageField = { usage: Type.Optional(MessageUsageSchema) };
+
 export const ServiceToolStatusSchema = Type.Union([
   Type.Literal('running'),
   Type.Literal('completed'),
@@ -41,6 +60,11 @@ export const ServiceBlockSchema = Type.Union([
        * a prompt from the run snapshot's input (text plus chips); queued follow-ups stay text.
        */
       prompt: Type.Optional(Type.Literal(true)),
+      /**
+       * The message's Pi session entry: edit, regenerate and fork address the turn by it. Absent
+       * only for a message not yet persisted.
+       */
+      entryId: Type.Optional(SessionEntryId),
     },
     { additionalProperties: false },
   ),
@@ -58,6 +82,7 @@ export const ServiceBlockSchema = Type.Union([
         Type.Null(),
       ]),
       error: Type.String(),
+      ...usageField,
     },
     { additionalProperties: false },
   ),
@@ -68,6 +93,7 @@ export const ServiceBlockSchema = Type.Union([
       text: Type.String(),
       streaming: Type.Boolean(),
       redacted: Type.Boolean(),
+      ...usageField,
     },
     { additionalProperties: false },
   ),
@@ -93,6 +119,7 @@ export const ServiceBlockSchema = Type.Union([
       ]),
       /** C1 additive: whitelisted per-tool result facts (tool-details.ts). */
       details: Type.Optional(ToolBlockDetailsSchema),
+      ...usageField,
     },
     { additionalProperties: false },
   ),
@@ -106,6 +133,7 @@ export const ServiceBlockSchema = Type.Union([
       status: ServiceToolStatusSchema,
       answer: Type.Union([Type.String(), Type.Null()]),
       skipped: Type.Boolean(),
+      ...usageField,
     },
     { additionalProperties: false },
   ),

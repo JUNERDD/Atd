@@ -4,8 +4,8 @@ import type { PreparedCommand } from '../client/agent/bridge';
 import type { NativeBridge } from '../native-bridge/client';
 
 /**
- * Host abilities through the shell: its open panel (which also imports the picked files), the
- * pasteboard, the default browser, and artifact files on disk.
+ * Host abilities through the shell: its open panel (which also imports the picked files), its save
+ * panel for service resources, the pasteboard, the default browser, and artifact files on disk.
  */
 export function nativePlatform(
   bridge: NativeBridge,
@@ -21,6 +21,10 @@ export function nativePlatform(
     },
     async openLink(url) {
       await bridge.call('link.open', { url });
+    },
+    async saveFile(resourceId, name) {
+      const { saved } = await bridge.call('files.save', { resourceId, name });
+      return saved;
     },
     async artifact(options, artifactId, operation) {
       // Attaching needs only the file's description, which the page reads through the relay.

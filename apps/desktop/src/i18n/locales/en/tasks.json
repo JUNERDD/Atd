@@ -246,21 +246,20 @@
       "actionWithCount": "Load {{count}} earlier messages",
       "loading": "Loading earlier messages…"
     },
-    "copy": {
-      "label": "Copy",
-      "copied": "Copied",
-      "turnLabel": "Copy turn"
-    },
-    "save": {
-      "label": "Save",
-      "saved": "Saved",
-      "turnLabel": "Save turn"
-    },
     "code": {
       "copy": "Copy code",
       "copied": "Copied",
       "download": "Download",
       "saved": "Saved"
+    },
+    "usage": {
+      "label": "Token usage",
+      "title": "Token usage",
+      "input": "Input",
+      "output": "Output",
+      "cacheRead": "Cache read",
+      "cacheWrite": "Cache write",
+      "cost": "Cost"
     }
   },
   "todo": {
@@ -300,5 +299,29 @@
     "allow": "Allow…",
     "allowedTitle": "{{name}} is allowed to run",
     "allowedDescription": "Its tools are available from your next message."
+  },
+  "turnActions": {
+    "regenerate": "Regenerate",
+    "more": "More actions",
+    "copyMarkdown": "Copy turn as Markdown",
+    "saveMarkdown": "Save as Markdown…",
+    "share": "Share…",
+    "readAloud": "Read aloud",
+    "stopReading": "Stop reading",
+    "fork": "Fork into new task",
+    "remember": "Remember this",
+    "markdownCopied": "Turn copied as Markdown.",
+    "defaultFileName": "Conversation",
+    "forkTitle": "Fork of {{title}}",
+    "markdown": {
+      "prompt": "Prompt",
+      "answer": "Answer"
+    },
+    "copyMessage": "Copy message",
+    "edit": "Edit message",
+    "editLabel": "Edit your message",
+    "editNote": "Sending replaces this message and everything after it.",
+    "cancel": "Cancel",
+    "send": "Send"
   }
 }

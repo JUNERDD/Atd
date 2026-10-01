@@ -18,6 +18,16 @@ export const Identifier = Type.String({
 });
 
 /**
+ * A Pi session entry id. Turn actions address a message by it: editing or regenerating a prompt
+ * branches the session from just before its entry, and a fork copies the branch up to a turn.
+ */
+export const SessionEntryId = Type.String({
+  minLength: 1,
+  maxLength: 128,
+  pattern: '^[a-zA-Z0-9_-]+$',
+});
+
+/**
  * Client-generated idempotency key for run acceptance. Repeating a submit with
  * the same operationId returns the original run instead of starting a new one.
  */

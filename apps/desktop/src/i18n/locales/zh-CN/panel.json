@@ -139,7 +139,8 @@
     "renameCancel": "取消",
     "renameSave": "保存",
     "renamed": "会话已重命名。",
-    "idCopied": "会话 ID 已复制。"
+    "idCopied": "会话 ID 已复制。",
+    "rememberSeed": "记住我们对话中的以下内容：\n\n{{text}}"
   },
   "permission": {
     "tier": {

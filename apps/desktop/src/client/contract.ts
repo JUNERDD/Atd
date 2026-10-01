@@ -28,6 +28,22 @@ export interface DesktopState {
   shortcutAvailable: boolean | null;
 }
 
+/** A rectangle in page CSS pixels from the web view's top-left, as `getBoundingClientRect` reports. */
+export interface AnchorRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/** Reading text aloud with the system voice; one text at a time, a new one replaces the last. */
+export interface SpeechBridge {
+  speak(text: string): Promise<void>;
+  stop(): Promise<void>;
+  /** Whether the shell is reading aloud, on every change and once on subscribe; returns the unsubscribe. */
+  onState(listener: (speaking: boolean) => void): () => void;
+}
+
 /**
  * What the page reaches beyond itself. The macOS shell hosting the renderer in a WKWebView
  * installs it as `window.desktop` (`src/native-host`); tests install their own.
@@ -56,6 +72,10 @@ export interface DesktopBridge {
    */
   setOpenAtLogin: (open: boolean) => Promise<boolean>;
   chooseFiles: () => Promise<ContextFile[]>;
+  /** The system share picker for `text`, shown at `anchor`. Optional for test compat. */
+  share?: (text: string, anchor: AnchorRect) => Promise<void>;
+  /** Optional for test compat. */
+  readonly speech?: SpeechBridge;
   /**
    * Edit → Undo/Redo from the application menu; returns the unsubscribe. The renderer moves the
    * focused CodeMirror editor's history or runs the native command. Optional for test compat.

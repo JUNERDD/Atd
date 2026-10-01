@@ -38,7 +38,6 @@ export function App() {
     view,
     setView,
     taskId,
-    setTaskId,
     prepared,
     setPrepared,
     pending,
@@ -49,6 +48,8 @@ export function App() {
     draft,
     shortcuts,
     newTask,
+    openTask,
+    remember,
     openSettings,
     changeDraft,
     chooseCommand,
@@ -157,13 +158,7 @@ export function App() {
                   </ScrollArea>
                 )}
                 {view === 'history' && (
-                  <TaskHistory
-                    tasks={agent.snapshot?.tasks ?? []}
-                    onChoose={(id) => {
-                      setTaskId(id);
-                      setView('task');
-                    }}
-                  />
+                  <TaskHistory tasks={agent.snapshot?.tasks ?? []} onChoose={openTask} />
                 )}
                 {view === 'input' && prepared && (
                   <CommandInput
@@ -184,6 +179,8 @@ export function App() {
                         covered={child.childKey !== null}
                         onAttach={attachToDraft}
                         onNewTask={newTask}
+                        onOpenTask={openTask}
+                        onRemember={remember}
                       />
                       {child.childKey && (
                         <ChildTranscriptView

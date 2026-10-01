@@ -13,6 +13,7 @@ import { pruneToolOutputs } from './compaction/prune.js';
 import { leadingSystemMessage, runMaterialContext } from './prompt-context.js';
 import { bindLiveState, type LiveState } from './live-state.js';
 import type { RunBinding } from './run-binding.js';
+import { rewindManager, rewindSession } from './session-rewind.js';
 import { openRunModel, reuseRunModel } from './run-model.js';
 import { buildSkillLoaderOptions } from './skills/loader.js';
 import { skillProfilePaths } from './skills/profile.js';
@@ -115,6 +116,8 @@ export async function createLiveState(
   const manager = task.sessionFile
     ? SessionManager.open(task.sessionFile, sessionsDir, ctx.paths.agentDir)
     : SessionManager.create(ctx.paths.agentDir, sessionsDir);
+  // Before the session is built on it, so its context and extension state start on the new branch.
+  if (run.snapshot.branchBefore) rewindManager(manager, run.snapshot.branchBefore);
   const compaction = new CompactionObserver(manager);
   const subagentsFactory = await prepareSubagentsParent(
     deps,
@@ -239,6 +242,12 @@ export async function applyRunToSession(
   if (binding.key !== live.bindingKey) return false;
   const model = await reuseRunModel(live.runModel, run);
   if (!model) return false;
+  // First, so the model, thinking and tool entries below land on the new branch; clients drop the
+  // replaced turn's blocks now rather than when the prompt's first event arrives.
+  if (run.snapshot.branchBefore) {
+    await rewindSession(live.session, live.manager, run.snapshot.branchBefore);
+    live.transcript.reproject(false);
+  }
   await live.session.setModel(model);
   live.session.settingsManager.applyOverrides(compactionSettings(model));
   live.context.update();

@@ -8,10 +8,11 @@ import { mcpNeedsApproval } from '../../service/use-mcp-state-label';
 import { mcpApprovalsIn, useMcpApproval } from './use-mcp-approval';
 
 /**
- * Asks the user to allow a server the agent configured, under the steps that configured it, so
- * the approval does not wait for a trip to Settings. Allow opens the host's native confirmation,
- * which shows what will run; the banner follows the server's current approval, so it settles
- * into a note once the server is allowed (here or in Settings) and disappears once it is removed.
+ * Asks the user to allow a server the agent configured, at the foot of the turn that configured
+ * it, so the approval does not wait for a trip to Settings. Allow opens the host's native
+ * confirmation, which shows what will run; the banner follows the server's current approval, so
+ * it settles into a note once the server is allowed (here or in Settings) and disappears once it
+ * is removed.
  */
 function McpApprovalBanner({ details }: { details: McpApprovalDetails }) {
   const { t } = useTranslation('tasks');
@@ -56,7 +57,7 @@ function McpApprovalBanner({ details }: { details: McpApprovalDetails }) {
   );
 }
 
-/** Approval banners for the servers configured in one activity group. */
+/** Approval banners for the servers configured in these steps, one per server. */
 export function McpApprovalBanners({ steps }: { steps: readonly ViewBlock[] }) {
   const approvals = mcpApprovalsIn(steps);
   if (approvals.length === 0) return null;

@@ -11,6 +11,7 @@ import type { CommandDefinition } from './command-schema';
 import {
   compactLiveTask,
   deleteLiveTask,
+  forkLiveTask,
   loadMemory,
   notConnected,
   previewRun,
@@ -44,6 +45,8 @@ export interface AgentPlatform {
   copy(text: string): Promise<void>;
   /** `url` is already checked to be http(s). */
   openLink(url: string): Promise<void>;
+  /** Offers an uploaded resource in a save panel; false when the user cancelled. */
+  saveFile(resourceId: string, name: string): Promise<boolean>;
   artifact(
     options: AgentClientOptions,
     artifactId: string,
@@ -233,8 +236,19 @@ export class AgentRequests<S> {
         return null;
       case 'compactTask':
         return compactLiveTask(this.options(), request.taskId, request.instructions);
+      case 'forkTask': {
+        const { taskId, entryId, title } = request;
+        const fork = await forkLiveTask(this.options(), taskId, { entryId, title });
+        await this.tasks.loadSummary(fork.taskId);
+        return fork;
+      }
       case 'chooseFiles':
         return this.platform.chooseFiles(this.tasks.http());
+      case 'saveMarkdown': {
+        const bytes = new TextEncoder().encode(request.text);
+        const { resource } = await this.tasks.http().upload(request.name, 'text/markdown', bytes);
+        return this.platform.saveFile(resource.id, request.name);
+      }
       case 'memory':
         // A failed load (or no connection) is reported inside the snapshot, never thrown.
         try {

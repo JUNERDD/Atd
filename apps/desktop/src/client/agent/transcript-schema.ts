@@ -1,5 +1,5 @@
 import { Type, type Static } from 'typebox';
-import { ToolBlockDetailsSchema } from '@ai/agent-contracts';
+import { SessionEntryId, ToolBlockDetailsSchema } from '@ai/agent-contracts';
 import { Identifier } from './command-schema';
 import { GrantScopeSchema, PermissionOutcomeSchema } from './permission-schema';
 
@@ -66,17 +66,21 @@ export const ToolDetailsSchema = Type.Object(
 export type ToolDetails = Static<typeof ToolDetailsSchema>;
 
 /**
- * Provider-reported generated tokens for one assistant message, plus the worker-measured
- * generation time from `message_start` to `message_end`. Absent while streaming and when
- * unknown (after compaction, or on blocks projected before usage plumbing). Every block derived
- * from the same message carries the same copy so tool-only messages keep their usage; the
- * renderer dedupes by timestamp when summing a turn. This is a rate input, never billed usage.
- * `durationMs` is absent on records written before duration capture; those turns hide the rate
- * instead of dividing by wall time.
+ * Provider-reported usage of one assistant message. The service sends `input`, `output`, both
+ * cache counts and `cost` (USD at the model's catalog price, 0 when the catalog has none); the
+ * turn header sums them for its usage detail. `durationMs` is the generation time from
+ * `message_start` to `message_end` that the settled token rate divides by; the service does not
+ * measure it, so its turns hide the rate instead of dividing by wall time. Absent while streaming
+ * and when unknown. Every block derived from the same message carries the same copy so tool-only
+ * messages keep their usage; the renderer dedupes by message when summing a turn.
  */
 export const AssistantUsageSchema = Type.Object(
   {
     output: Type.Integer({ minimum: 0 }),
+    input: Type.Optional(Type.Integer({ minimum: 0 })),
+    cacheRead: Type.Optional(Type.Integer({ minimum: 0 })),
+    cacheWrite: Type.Optional(Type.Integer({ minimum: 0 })),
+    cost: Type.Optional(Type.Number({ minimum: 0 })),
     durationMs: Type.Optional(Type.Integer({ minimum: 0 })),
   },
   { additionalProperties: false },
@@ -105,6 +109,11 @@ export const BlockSchema = Type.Union([
        * run snapshot's input, chips included; queued follow-ups stay plain text.
        */
       prompt: Type.Optional(Type.Literal(true)),
+      /**
+       * The message's Pi session entry: edit, regenerate and fork address the turn by it. Absent
+       * while the message is not persisted yet.
+       */
+      entryId: Type.Optional(SessionEntryId),
     },
     { additionalProperties: false },
   ),

@@ -15,6 +15,7 @@ import { PromptMessage } from './prompt-message';
 import { ScrollJump } from './scroll-jump';
 import { pendingMessageText } from './run-prompt';
 import { StatusBar } from './status-bar';
+import { TaskTurnsContext, type TaskTurns } from './turn-context';
 import { TurnHeader } from './turn-header';
 import { TurnView } from './turn-view';
 import { useTranscriptScroll } from './use-transcript-scroll';
@@ -82,19 +83,26 @@ function TurnList({
  * drill-in view sits on top, so expanded rows, loaded turns and the scroll offset survive the
  * round trip without being restored by hand (a `display: none` box would drop the offset).
  * A failed compaction row retries through this task; after repeated compactions the end of the
- * conversation suggests `onNewTask`.
+ * conversation suggests `onNewTask`. Turn actions that leave the transcript (opening a fork,
+ * starting a memory session) go through the panel's `onOpenTask` and `onRemember`.
  */
 export function Transcript({
   detail,
   covered = false,
   onAttach,
   onNewTask,
+  onOpenTask,
+  onRemember,
 }: {
   detail: TaskDetail;
   covered?: boolean;
   onAttach: (file: FileRef) => void;
   /** Starts a new task; without it the repeated-compaction hint stays hidden. */
   onNewTask?: () => void;
+  /** Shows another task; without it turns offer no fork. */
+  onOpenTask?: (taskId: string) => void;
+  /** Starts a memory session seeded with a turn's answer; without it turns offer no Remember. */
+  onRemember?: (text: string) => void;
 }): ReactElement {
   const { t } = useTranslation('tasks');
   const { t: tPanel } = useTranslation('panel');
@@ -125,6 +133,16 @@ export function Transcript({
     () => ({ retry: () => void compact(task.id), disabled: retryBlocked, latestCompaction }),
     [compact, task.id, retryBlocked, latestCompaction],
   );
+  // The compiler keeps this object while its fields hold: it changes with the task's runs and
+  // title, not per streamed patch, so the turns' action rows stay put while an answer streams.
+  const turnTask: TaskTurns = {
+    taskId: task.id,
+    title: task.title,
+    runs: task.runs,
+    busy: live,
+    openTask: onOpenTask,
+    remember: onRemember,
+  };
 
   return (
     <div className="conversation" data-covered={covered || undefined} inert={covered}>
@@ -167,17 +185,19 @@ export function Transcript({
             </section>
           )}
           <CompactionRetryContext value={retry}>
-            <TurnList
-              key={task.id}
-              turns={turns}
-              runs={task.runs}
-              artifacts={artifacts}
-              anchors={anchors}
-              requests={requestIndex}
-              live={live}
-              status={<StatusBar run={run} />}
-              onAttach={onAttach}
-            />
+            <TaskTurnsContext value={turnTask}>
+              <TurnList
+                key={task.id}
+                turns={turns}
+                runs={task.runs}
+                artifacts={artifacts}
+                anchors={anchors}
+                requests={requestIndex}
+                live={live}
+                status={<StatusBar run={run} />}
+                onAttach={onAttach}
+              />
+            </TaskTurnsContext>
           </CompactionRetryContext>
           {onNewTask && (
             <NewTaskHint

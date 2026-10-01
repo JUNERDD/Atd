@@ -40,7 +40,22 @@ const PRIVATE_WRITES = new Set([
 /** The plugin item switch that can be the memory pause (plugins/toggle.ts). */
 const PLUGIN_SWITCHES = new Set(['/v1/plugins/:id/items/:kind/:name/enabled']);
 
+/** Frames handlers named for their request (`announceInvalidation`). */
+const announced = new WeakMap<FastifyRequest, InvalidateFrame[]>();
+
+/**
+ * Names a frame the route alone cannot tell, such as the id of a task a write created; it is
+ * sent with the route's own frames once the write succeeds.
+ */
+export function announceInvalidation(request: FastifyRequest, frame: InvalidateFrame): void {
+  announced.set(request, [...(announced.get(request) ?? []), frame]);
+}
+
 function framesFor(request: FastifyRequest): InvalidateFrame[] {
+  return [...routeFrames(request), ...(announced.get(request) ?? [])];
+}
+
+function routeFrames(request: FastifyRequest): InvalidateFrame[] {
   const route = request.routeOptions.url ?? '';
   if (PRIVATE_WRITES.has(route)) return [];
   if (route === '/v1/tasks/:taskId') {
@@ -63,7 +78,8 @@ function framesFor(request: FastifyRequest): InvalidateFrame[] {
 
 /**
  * Tells every stream client which shared data changed after a successful write, whichever client
- * made it. One hook covers every route, so a new write route only needs a prefix entry above.
+ * made it. One hook covers every route, so a new write route only needs a prefix entry above, or
+ * an announcement when the frame depends on what the write created.
  */
 export function registerInvalidation(
   app: FastifyInstance,

@@ -139,7 +139,8 @@
     "renameCancel": "Cancel",
     "renameSave": "Save",
     "renamed": "Session renamed.",
-    "idCopied": "Session ID copied."
+    "idCopied": "Session ID copied.",
+    "rememberSeed": "Remember this from our conversation:\n\n{{text}}"
   },
   "permission": {
     "tier": {

@@ -22,6 +22,7 @@ import { nativeSettings } from './native-settings';
 import { followShortcutState, nativeShortcuts } from './native-shortcuts';
 import { nativeSocketTransport } from './socket-transport';
 import { windowMessages } from './window-messages';
+import { nativeSpeech } from './native-speech';
 
 /**
  * The page's origin, the base of every relayed request: `ai-app://renderer`. WebKit may report a
@@ -212,6 +213,8 @@ export async function installNativeHost(
     },
     // Attachments go through the agent bridge (`chooseFiles` → `files.pick`).
     chooseFiles: async () => [],
+    share: async (text, anchor) => void (await native.call('share.text', { text, anchor })),
+    speech: nativeSpeech(native),
     onEditCommand: (listener) => native.on('edit.command', ({ command }) => listener(command)),
   };
   window.desktop = bridge;

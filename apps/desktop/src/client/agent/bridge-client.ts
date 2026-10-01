@@ -59,7 +59,10 @@ export function createAgentBridge(
         taskId,
         ...(instructions === undefined ? {} : { instructions }),
       }),
+    forkTask: (taskId, entryId, title) =>
+      invoke({ action: 'forkTask', taskId, entryId, ...(title === undefined ? {} : { title }) }),
     chooseFiles: () => invoke({ action: 'chooseFiles' }),
+    saveMarkdown: (name, text) => invoke({ action: 'saveMarkdown', name, text }),
     memory: () => invoke({ action: 'memory' }),
     pauseMemory: (paused) => invoke({ action: 'pauseMemory', paused }),
     updateMemory: (entry, content) => invoke({ action: 'updateMemory', entry, content }),

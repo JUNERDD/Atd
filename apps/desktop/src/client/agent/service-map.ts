@@ -9,12 +9,13 @@ import {
   type TaskRun as ServiceRun,
   type TaskSnapshot as ServiceSnapshot,
   type TaskSummary as ServiceSummary,
+  type MessageUsage,
   type ToolBlockDetails,
 } from '@ai/agent-contracts';
 import type { ToolId } from './command-schema';
 import type { AgentTask, FileRef, RunSnapshot, TaskInput, TaskRun } from './task-schema';
 import type { PermissionRequest } from './permission-schema';
-import type { Block, QueueState, ToolDetails } from './transcript-schema';
+import type { AssistantUsage, Block, QueueState, ToolDetails } from './transcript-schema';
 import type { TaskDetail } from './bridge';
 
 const DESKTOP_TOOL_IDS: ReadonlySet<string> = new Set<ToolId>([
@@ -170,6 +171,11 @@ function mapToolDetails(details: ToolBlockDetails | undefined): ToolDetails {
   return { ...none, data: details };
 }
 
+/** The message's usage as the desktop keeps it; the service measures no generation time. */
+function mapUsage(usage: MessageUsage | undefined): { usage?: AssistantUsage } {
+  return usage ? { usage: { ...usage } } : {};
+}
+
 export function mapBlock(block: ServiceBlock): Block {
   const base = {
     id: block.id,
@@ -179,7 +185,13 @@ export function mapBlock(block: ServiceBlock): Block {
   };
   switch (block.kind) {
     case 'user':
-      return { kind: 'user', ...base, text: block.text, ...(block.prompt ? { prompt: true } : {}) };
+      return {
+        kind: 'user',
+        ...base,
+        text: block.text,
+        ...(block.prompt ? { prompt: true } : {}),
+        ...(block.entryId ? { entryId: block.entryId } : {}),
+      };
     case 'assistant':
       return {
         kind: 'assistant',
@@ -188,6 +200,7 @@ export function mapBlock(block: ServiceBlock): Block {
         streaming: block.streaming,
         stopReason: block.stopReason,
         error: block.error,
+        ...mapUsage(block.usage),
       };
     case 'thinking':
       return {
@@ -197,6 +210,7 @@ export function mapBlock(block: ServiceBlock): Block {
         streaming: block.streaming,
         redacted: block.redacted,
         durationMs: null,
+        ...mapUsage(block.usage),
       };
     case 'tool':
       return {
@@ -212,6 +226,7 @@ export function mapBlock(block: ServiceBlock): Block {
         permission: block.permission
           ? { scope: block.permission.scope, outcome: block.permission.outcome }
           : null,
+        ...mapUsage(block.usage),
       };
     case 'question':
       return {
@@ -223,6 +238,7 @@ export function mapBlock(block: ServiceBlock): Block {
         status: block.status,
         answer: block.answer,
         skipped: block.skipped,
+        ...mapUsage(block.usage),
       };
     case 'system':
       return { kind: 'system', ...base, level: block.level, text: block.text };

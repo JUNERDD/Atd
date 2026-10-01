@@ -2,6 +2,7 @@ import {
   AgentClientError,
   compactTask,
   deleteTask,
+  forkTask,
   listMemory,
   patchTask,
   pauseMemory,
@@ -14,6 +15,8 @@ import {
   CompactRefusalSchema,
   snapshotToolsFor,
   type CompactRefusal,
+  type ForkTaskRequest,
+  type ForkTaskResponse,
   type PreviewTaskRequest,
   type ServiceRunPolicy,
 } from '@ai/agent-contracts';
@@ -187,6 +190,19 @@ export async function compactLiveTask(
       Value.Check(CompactRefusalSchema, error.code)
     )
       return error.code;
+    manageError(error);
+  }
+}
+
+/** Forks a task at a turn; the service's refusal (an active turn, an unknown entry) is thrown. */
+export async function forkLiveTask(
+  options: AgentClientOptions,
+  taskId: string,
+  body: ForkTaskRequest,
+): Promise<ForkTaskResponse> {
+  try {
+    return await forkTask(options, taskId, body);
+  } catch (error) {
     manageError(error);
   }
 }
