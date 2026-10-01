@@ -3,6 +3,8 @@ import { SessionManager, type SessionEntry } from '@earendil-works/pi-coding-age
 import type { AssistantMessage } from '@earendil-works/pi-ai';
 import {
   errorMessage,
+  type AgentTask,
+  type ContextBreakdown,
   type ServiceBlock,
   type ServiceModel,
   type TaskContextState,
@@ -10,6 +12,7 @@ import {
   type TaskSummary,
   emptyContextState,
 } from '@ai/agent-contracts';
+import { contextBreakdown } from './compaction/context-breakdown.js';
 import { coldContextState } from './compaction/context-state.js';
 import { ConnectionStore } from './credentials/connections.js';
 import type { LiveState } from './live-state.js';
@@ -24,8 +27,18 @@ export interface TaskView {
   context: TaskContextState;
 }
 
-export function liveTaskView(live: LiveState): TaskView {
+function liveTaskView(live: LiveState): TaskView {
   return { ...live.transcript.snapshot(), context: live.context.current() };
+}
+
+/** The task's transcript and context state, from its live session or else its session file. */
+export function taskView(
+  ctx: RunnerContext,
+  runner: TaskRunner | undefined,
+  taskId: string,
+): Promise<TaskView> {
+  const live = runner?.liveState();
+  return live ? Promise.resolve(liveTaskView(live)) : coldTaskView(ctx, taskId);
 }
 
 /**
@@ -54,7 +67,7 @@ export async function taskSnapshot(
   runner: TaskRunner | undefined,
   taskId: string,
 ): Promise<TaskSnapshot> {
-  const view = runner ? await runner.view() : await coldTaskView(ctx, taskId);
+  const view = await taskView(ctx, runner, taskId);
   // The summary is read with `seq`, after the view's await: an event published meanwhile must be
   // in the snapshot when its seq is, or a client would cache the older state over it.
   return {
@@ -74,27 +87,66 @@ export async function taskSnapshot(
 export async function coldTaskView(ctx: RunnerContext, taskId: string): Promise<TaskView> {
   const task = ctx.ledger.task(taskId);
   const [first] = task.runs;
-  const last = task.runs.at(-1);
-  if (!task.sessionFile || !first || !last)
-    return { revision: 0, blocks: [], context: emptyContextState() };
+  if (!task.sessionFile || !first) return { revision: 0, blocks: [], context: emptyContextState() };
   try {
-    const manager = SessionManager.open(
-      task.sessionFile,
-      path.join(ctx.paths.sessionsDir, taskId),
-      ctx.paths.agentDir,
-    );
+    const manager = openSessionFile(ctx, taskId, task.sessionFile);
     const branch = fromServiceBranch(manager.getBranch());
-    const window =
-      last.snapshot.contextWindow ?? (await catalogWindow(ctx.paths.root, last.snapshot.model));
     return {
       revision: 0,
       blocks: projectServiceBlocks({ branch, firstRunId: first.id, live: false }),
-      context: coldContextState(manager, window),
+      context: coldContextState(manager, await latestWindow(ctx, task)),
     };
   } catch (error) {
     ctx.log.warn('Cold transcript projection failed.', { taskId, error: errorMessage(error) });
     return { revision: 0, blocks: [], context: emptyContextState() };
   }
+}
+
+/**
+ * A task's context usage by category (compaction/context-breakdown.ts), from the session its
+ * view reads: the live one, else its session file. A task whose runs wrote no session yet has
+ * an empty breakdown with the latest run's window.
+ */
+export async function taskContextBreakdown(
+  ctx: RunnerContext,
+  runner: TaskRunner | undefined,
+  taskId: string,
+): Promise<ContextBreakdown> {
+  const task = ctx.ledger.task(taskId);
+  const live = runner?.liveState();
+  if (live) {
+    const { tokens, contextWindow } = live.context.current();
+    return contextBreakdown({
+      projection: live.manager.buildSessionProjection(),
+      tokens,
+      contextWindow,
+    });
+  }
+  const window = await latestWindow(ctx, task);
+  if (!task.sessionFile)
+    return contextBreakdown({
+      projection: { entries: [], messages: [] },
+      tokens: null,
+      contextWindow: window,
+    });
+  const manager = openSessionFile(ctx, taskId, task.sessionFile);
+  const { tokens, contextWindow } = coldContextState(manager, window);
+  return contextBreakdown({ projection: manager.buildSessionProjection(), tokens, contextWindow });
+}
+
+function openSessionFile(ctx: RunnerContext, taskId: string, sessionFile: string): SessionManager {
+  return SessionManager.open(
+    sessionFile,
+    path.join(ctx.paths.sessionsDir, taskId),
+    ctx.paths.agentDir,
+  );
+}
+
+/** The latest run's frozen window, else its model's catalog window; null when unknown. */
+async function latestWindow(ctx: RunnerContext, task: AgentTask): Promise<number | null> {
+  const last = task.runs.at(-1);
+  if (!last) return null;
+  return last.snapshot.contextWindow ?? (await catalogWindow(ctx.paths.root, last.snapshot.model));
 }
 
 /** The catalog window of a run's model, for runs that froze none; null when unknown. */

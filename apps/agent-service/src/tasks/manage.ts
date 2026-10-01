@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import {
   CompactTaskRequestSchema,
+  type ContextBreakdownResponse,
   ForkTaskRequestSchema,
   Identifier,
   isActiveStatus,
@@ -31,8 +32,10 @@ export interface TaskManageContext {
  * transcripts and audit logs stay on disk for forensics. POST compact starts
  * a manual compaction of an idle task (RunnerManager.compact) and answers once
  * it is accepted; the task's compaction block and context updates follow it.
- * POST fork copies a task up to a turn into a new task (fork.ts) and announces
- * the new task to every client.
+ * GET context splits the task's context usage by category, computed on request
+ * from its live or stored session (compaction/context-breakdown.ts). POST fork
+ * copies a task up to a turn into a new task (fork.ts) and announces the new
+ * task to every client.
  */
 export function registerTaskManageRoutes(app: FastifyInstance, ctx: TaskManageContext): void {
   app.patch<{ Params: { taskId: string } }>(
@@ -97,6 +100,15 @@ export function registerTaskManageRoutes(app: FastifyInstance, ctx: TaskManageCo
       ctx.ledger.task(taskId);
       await ctx.manager.compact(taskId, body.instructions?.trim() || undefined);
       return { ok: true as const };
+    },
+  );
+
+  app.get<{ Params: { taskId: string } }>(
+    '/v1/tasks/:taskId/context',
+    RENDERER_ROUTE,
+    async (request): Promise<ContextBreakdownResponse> => {
+      const taskId = parse(Identifier, request.params.taskId);
+      return { breakdown: await ctx.manager.contextBreakdown(taskId) };
     },
   );
 
