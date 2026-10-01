@@ -1,21 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { CircleAlert } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@ai/ui/components/button';
 import { useCompositionQuery } from '@ai/ui/lib/ime';
 import { ItemGroup } from '@ai/ui/components/item';
 import { ScrollArea } from '@ai/ui/components/scroll-area';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@ai/ui/components/alert-dialog';
-import type { MemoryEntry, MemorySnapshot } from '../../client/agent/bridge';
+import type { MemoryEntry } from '../../client/agent/bridge';
 import { FieldHint } from '../../components/field-hint';
 import { SettingsHeading } from '../settings/settings-heading';
 import { SettingsSearchField } from '../settings/settings-search-field';
@@ -23,8 +13,10 @@ import { SettingsSwitchRow } from '../settings/settings-switch-row';
 import { agentApi } from '../agent/use-agent';
 import { showErrorToast, showToast } from '../../components/toast-store';
 import { MemoryCreateButton } from './memory-create-button';
+import { MemoryDeleteDialog } from './memory-delete-dialog';
 import { MemoryEditor } from './memory-editor';
 import { MemoryList } from './memory-list';
+import { useMemorySnapshot } from './use-memory-snapshot';
 import { useSettingsSectionExit } from '../settings/settings-navigation';
 import { useSettingsPageHistory } from '../settings/use-settings-page-history';
 
@@ -32,9 +24,18 @@ import { useSettingsPageHistory } from '../settings/use-settings-page-history';
 type MemoryRoute = { page: 'list' } | { page: 'edit'; entry: MemoryEntry };
 const LIST: MemoryRoute = { page: 'list' };
 
-export function MemorySettings() {
+/**
+ * The Memory section. `activeEntry` is a link to one entry's editor (Personal's Memory tab links
+ * here); each link carries a new nonce and opens as a page of the section's history once the entry
+ * is in the snapshot.
+ */
+export function MemorySettings({
+  activeEntry,
+}: {
+  activeEntry?: { id: string; nonce: number } | null;
+}) {
   const { t } = useTranslation('memory');
-  const [snapshot, setSnapshot] = useState<MemorySnapshot | null>(null);
+  const { snapshot, setSnapshot } = useMemorySnapshot();
   const search = useCompositionQuery();
   const history = useSettingsPageHistory<MemoryRoute>(
     LIST,
@@ -44,6 +45,12 @@ export function MemorySettings() {
       snapshot.entries.some(({ id }) => id === route.entry.id),
   );
   const { route } = history;
+  const [linked, setLinked] = useState(0);
+  const linkedEntry = activeEntry && snapshot?.entries.find(({ id }) => id === activeEntry.id);
+  if (activeEntry && linkedEntry && activeEntry.nonce !== linked) {
+    setLinked(activeEntry.nonce);
+    history.open({ page: 'edit', entry: linkedEntry });
+  }
   // The entry as the latest snapshot has it; one removed meanwhile stays as the editor opened it.
   const editing =
     route.page === 'edit'
@@ -63,25 +70,6 @@ export function MemorySettings() {
   }
   const searchInput = useRef<HTMLInputElement>(null);
   useSettingsSectionExit(() => search.change(''));
-  useEffect(() => {
-    let active = true;
-    if (!window.desktop?.agent) return;
-    const off = window.desktop.agent.onChange((event) => {
-      if (event.type === 'memory') setSnapshot(event.snapshot);
-    });
-    void window.desktop.agent.memory().then(
-      (value) => {
-        if (active) setSnapshot(value);
-      },
-      (error) => {
-        if (active) showErrorToast(error);
-      },
-    );
-    return () => {
-      active = false;
-      off();
-    };
-  }, []);
   // The switch flipping is the feedback; only a failure needs a message.
   async function pause(paused: boolean) {
     setPausing(true);
@@ -211,30 +199,11 @@ export function MemorySettings() {
           </ScrollArea>
         </>
       )}
-      <AlertDialog
-        open={Boolean(deleting)}
-        onOpenChange={(open) => {
-          if (!open) setDeleting(null);
-        }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t('memory.confirm.deleteTitle')}</AlertDialogTitle>
-            <AlertDialogDescription>{t('memory.confirm.deleteDescription')}</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{t('memory.confirm.cancel')}</AlertDialogCancel>
-            <AlertDialogAction
-              variant="destructive"
-              onClick={() => {
-                if (deleting) void update(deleting, '');
-              }}
-            >
-              {t('memory.confirm.deleteAction')}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <MemoryDeleteDialog
+        entry={deleting}
+        onCancel={() => setDeleting(null)}
+        onConfirm={(entry) => void update(entry, '')}
+      />
     </section>
   );
 }

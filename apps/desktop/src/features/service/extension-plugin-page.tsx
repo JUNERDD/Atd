@@ -147,7 +147,7 @@ export function ExtensionPluginPage({
   }
 
   const setEnabled = (enabled: boolean) => extensions.setPluginEnabled(plugin.id, enabled, replace);
-  // Personal holds the one memory item; its switch is the memory pause.
+  // Personal holds the one memory item; the Memory section owns its switch, the learning pause.
   const memory = detail.items.find((item) => item.kind === 'memory');
   const hasItems =
     items.commands.length + items.skills.length + items.agents.length + items.mcp.length > 0 ||
@@ -235,26 +235,7 @@ export function ExtensionPluginPage({
         actions={actions}
         onOpen={onOpenItem}
         onPatch={patchItem}
-        memory={
-          memory
-            ? {
-                learning: memory.itemEnabled,
-                disabled: !connected,
-                pending: pluginBusy,
-                onLearningChange: (enabled) =>
-                  extensions.setServiceItemEnabled(
-                    {
-                      pluginId: plugin.id,
-                      kind: 'memory',
-                      itemName: memory.name,
-                      localName: memory.localName,
-                    },
-                    enabled,
-                    (value) => patchItem('memory', memory.name, value),
-                  ),
-              }
-            : null
-        }
+        memory={Boolean(memory)}
       />
       {!hasItems ? (
         <ExtensionDetailStatus text={t('extensions.plugins.page.noItems')} error={false} />

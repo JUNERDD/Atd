@@ -1,100 +1,79 @@
-import { useEffect, useState } from 'react';
-import { ArrowUpRight, Brain } from 'lucide-react';
+import { useState } from 'react';
+import { CircleAlert } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { ItemContent, ItemDescription, ItemMedia, ItemTitle } from '@ai/ui/components/item';
-import { IconButton } from '../../components/icon-button';
-import { useSettingsNavigation } from '../settings/settings-navigation';
-import { ExtensionGroup } from './extension-group';
-import { ExtensionRow, ExtensionRowActions } from './extension-row';
+import type { MemoryEntry, MemorySnapshot } from '../../client/agent/bridge';
+import { showErrorToast } from '../../components/toast-store';
+import { agentApi } from '../agent/use-agent';
+import { MemoryDeleteDialog } from '../memory/memory-delete-dialog';
+import { MemoryList } from '../memory/memory-list';
+import { useOpenSettingsMemory } from '../settings/settings-navigation';
 
 /**
- * How many memories are saved, from the Memory section's own source (the agent bridge), kept
- * current by its change events. Null until it is read, or where there is no agent bridge.
- */
-function useMemoryEntryCount(): number | null {
-  const [count, setCount] = useState<number | null>(null);
-  useEffect(() => {
-    const agent = window.desktop?.agent;
-    if (!agent) return;
-    let active = true;
-    const off = agent.onChange((event) => {
-      if (event.type === 'memory') setCount(event.snapshot.entries.length);
-    });
-    agent.memory().then(
-      (snapshot) => {
-        if (active) setCount(snapshot.entries.length);
-      },
-      () => undefined,
-    );
-    return () => {
-      active = false;
-      off();
-    };
-  }, []);
-  return count;
-}
-
-/**
- * Personal's memory. Memory has one authority, managed in the Memory section, so this group only
- * counts its entries, links there (Open memory settings in More's column, as command rows open
- * the Commands section), and carries the learning switch, which is the memory item's
- * switch: turning it off pauses learning. Pausing is undone by the same switch, so it asks for no
- * confirmation; the row says what pausing does, wrapping rather than cutting the sentence off.
+ * Personal's saved memories. Memory has one authority, managed in the Memory section, which also
+ * owns the learning switch; this tab lists the same entries (`useMemorySnapshot`, read by the
+ * tabs): a row opens its editor in the Memory section, as command rows open the Commands section,
+ * and More deletes it here after the same confirmation.
  */
 export function PluginMemoryGroup({
-  learning,
-  disabled,
-  pending = false,
-  onLearningChange,
+  snapshot,
+  onSnapshot,
   showTitle = true,
 }: {
-  learning: boolean;
-  /** No service to save to: the switch cannot work at all. */
-  disabled: boolean;
-  /** A write for the plugin is running: the switch keeps focus but ignores changes. */
-  pending?: boolean;
-  onLearningChange: (learning: boolean) => void;
+  /** The saved memories; null until they are read. */
+  snapshot: MemorySnapshot | null;
+  /** Takes the snapshot a delete answers, before its change event arrives. */
+  onSnapshot: (snapshot: MemorySnapshot) => void;
   /** False when a tab names the kind; the section keeps its name for accessibility. */
   showTitle?: boolean;
 }) {
   const { t } = useTranslation('settings');
-  const navigate = useSettingsNavigation();
-  const entries = useMemoryEntryCount();
+  const openEntry = useOpenSettingsMemory();
+  const [deleting, setDeleting] = useState<MemoryEntry | null>(null);
+  // Only the entries being deleted wait; the other rows stay usable.
+  const [busy, setBusy] = useState<ReadonlySet<string>>(() => new Set());
   const title = t('extensions.plugins.kinds.memory');
-  const open = () => navigate('memory');
-  const description = [
-    entries === null ? '' : t('extensions.plugins.page.memoryEntries', { count: entries }),
-    learning ? t('extensions.plugins.page.learningOn') : t('extensions.plugins.page.learningOff'),
-  ]
-    .filter(Boolean)
-    .join(' · ');
+  async function remove(entry: MemoryEntry) {
+    setBusy((current) => new Set(current).add(entry.id));
+    try {
+      // The row leaving the list is the feedback.
+      onSnapshot(await agentApi().updateMemory(entry, ''));
+    } catch (error) {
+      showErrorToast(error);
+    } finally {
+      setBusy((current) => {
+        const next = new Set(current);
+        next.delete(entry.id);
+        return next;
+      });
+    }
+  }
   return (
-    <ExtensionGroup title={title} empty="" loading={false} hasRows showTitle={showTitle}>
-      <ExtensionRow name={title} onDetails={open}>
-        <ItemMedia variant="icon">
-          <Brain />
-        </ItemMedia>
-        <ItemContent>
-          <ItemTitle>{title}</ItemTitle>
-          <ItemDescription title={description}>{description}</ItemDescription>
-          <ItemDescription className="whitespace-normal">
-            {t('extensions.plugins.page.learningHint')}
-          </ItemDescription>
-        </ItemContent>
-        <ExtensionRowActions
-          name={t('extensions.plugins.page.learning')}
-          enabled={learning}
-          disabled={disabled}
-          pending={pending}
-          onEnabledChange={onLearningChange}
-          onDetails={open}
-          trailing={
-            <IconButton label={t('extensions.plugins.page.openMemory')} onClick={open}>
-              <ArrowUpRight />
-            </IconButton>
-          }
-        />
-      </ExtensionRow>
-    </ExtensionGroup>
+    <section className="plugin-memory" aria-label={title}>
+      {showTitle ? <h3 className="settings-section-title">{title}</h3> : null}
+      {snapshot ? (
+        snapshot.error && !snapshot.entries.length ? (
+          <p role="alert" className="settings-inline-error">
+            <CircleAlert aria-hidden />
+            {snapshot.error}
+          </p>
+        ) : (
+          <MemoryList
+            entries={snapshot.entries}
+            query=""
+            busyIds={busy}
+            onClearSearch={() => undefined}
+            onEdit={(entry) => openEntry(entry.id)}
+            onDelete={setDeleting}
+          />
+        )
+      ) : (
+        <output className="settings-loading">{t('extensions.listLoading')}</output>
+      )}
+      <MemoryDeleteDialog
+        entry={deleting}
+        onCancel={() => setDeleting(null)}
+        onConfirm={(entry) => void remove(entry)}
+      />
+    </section>
   );
 }

@@ -663,6 +663,13 @@
   gap: 8px;
   min-width: 0;
 }
+/* Personal's Memory tab: the saved memories, with its loading or error state. */
+.plugin-memory {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 8px;
+}
 /* A list holding only an empty state (no plugins, no search match) centers it in the panel. */
 .settings-extension-list > .settings-extension-group:only-child {
   flex: 1 0 auto;

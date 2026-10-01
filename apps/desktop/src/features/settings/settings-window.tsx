@@ -18,6 +18,7 @@ import { ServiceSettings } from '../service/service-settings';
 import { useSettingsSnapshot } from './use-settings';
 import {
   SettingsCommandLinkContext,
+  SettingsMemoryLinkContext,
   SettingsNavigationContext,
   SettingsPageHistoryContext,
   SettingsSectionActiveContext,
@@ -62,8 +63,17 @@ export function SettingsWindow() {
   const [pages, registerPages, latestPages] = useSettingsRegistry<SettingsPageControls>();
   const unsaved = useSettingsUnsavedChangesGuard(latestPages);
   const [recording, setRecording] = useState(false);
-  const { section, visited, commandTarget, drawer, setDrawer, navigate, showCommand } =
-    useSettingsSection(recording, unsaved.guard.confirmLeave);
+  const {
+    section,
+    visited,
+    commandTarget,
+    memoryTarget,
+    drawer,
+    setDrawer,
+    navigate,
+    showCommand,
+    showMemory,
+  } = useSettingsSection(recording, unsaved.guard.confirmLeave);
   const layout = useSyncExternalStore(subscribeLayout, getLayout);
   const [previousLayout, setPreviousLayout] = useState(layout);
   if (layout !== previousLayout) {
@@ -117,119 +127,124 @@ export function SettingsWindow() {
     <TooltipProvider delayDuration={300}>
       <SettingsNavigationContext value={navigate}>
         <SettingsCommandLinkContext value={showCommand}>
-          <SettingsSubpageContext value={registerSubpage}>
-            <SettingsPageHistoryContext value={registerPages}>
-              <SettingsUnsavedChangesContext value={unsaved.guard}>
-                <div className="settings-window" data-layout={layout}>
-                  {layout !== 'drawer' && (
-                    <aside className="settings-sidebar" aria-label={t('nav.navigationLabel')}>
-                      <div className="settings-sidebar-surface" aria-hidden="true" />
-                      <div className="settings-sidebar-body">
-                        {/* Holds the native traffic lights and drags the window. */}
-                        <div className="settings-sidebar-strip settings-titlebar" />
-                        {navPanel}
-                      </div>
-                    </aside>
-                  )}
-                  <main className="settings-content" aria-label={t('window.label')}>
-                    <SettingsContentHeader
-                      sectionLabel={t(currentSection.labelKey)}
-                      subpage={subpage}
-                      canGoBack={pages?.canGoBack ?? false}
-                      canGoForward={pages?.canGoForward ?? false}
-                      disabled={recording}
-                      onBack={() => {
-                        if (!recording) pages?.back();
-                      }}
-                      onForward={() => {
-                        if (!recording) pages?.forward();
-                      }}
-                      leading={
-                        layout === 'drawer' && (
-                          <SettingsDrawer
-                            open={drawer !== null}
-                            initialFocus={drawer ?? 'section'}
-                            onOpenChange={(open) => setDrawer(open ? 'section' : null)}
-                            disabled={recording}
-                          >
-                            {navPanel}
-                          </SettingsDrawer>
-                        )
-                      }
-                      trailing={
-                        bridge &&
-                        snapshot && (
-                          <div className="settings-language">
-                            <LanguageSelector language={snapshot.language} />
-                          </div>
-                        )
-                      }
-                    />
-                    <ScrollArea
-                      className="settings-content-scroll-area"
-                      viewportClassName="[&>div]:flex! [&>div]:flex-col [&>div]:h-full"
-                      viewportRef={viewport}
-                      gutter="none"
-                      scrollShadow
-                    >
-                      <div className="settings-content-scroll">
-                        {failed && (
-                          <div className="settings-load-error">
-                            <p className="settings-inline-error" role="alert">
-                              <CircleAlert aria-hidden="true" />
-                              {t('window.loadError')}
-                            </p>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              aria-disabled={retrying || undefined}
-                              aria-busy={retrying || undefined}
-                              onClick={retry}
+          <SettingsMemoryLinkContext value={showMemory}>
+            <SettingsSubpageContext value={registerSubpage}>
+              <SettingsPageHistoryContext value={registerPages}>
+                <SettingsUnsavedChangesContext value={unsaved.guard}>
+                  <div className="settings-window" data-layout={layout}>
+                    {layout !== 'drawer' && (
+                      <aside className="settings-sidebar" aria-label={t('nav.navigationLabel')}>
+                        <div className="settings-sidebar-surface" aria-hidden="true" />
+                        <div className="settings-sidebar-body">
+                          {/* Holds the native traffic lights and drags the window. */}
+                          <div className="settings-sidebar-strip settings-titlebar" />
+                          {navPanel}
+                        </div>
+                      </aside>
+                    )}
+                    <main className="settings-content" aria-label={t('window.label')}>
+                      <SettingsContentHeader
+                        sectionLabel={t(currentSection.labelKey)}
+                        subpage={subpage}
+                        canGoBack={pages?.canGoBack ?? false}
+                        canGoForward={pages?.canGoForward ?? false}
+                        disabled={recording}
+                        onBack={() => {
+                          if (!recording) pages?.back();
+                        }}
+                        onForward={() => {
+                          if (!recording) pages?.forward();
+                        }}
+                        leading={
+                          layout === 'drawer' && (
+                            <SettingsDrawer
+                              open={drawer !== null}
+                              initialFocus={drawer ?? 'section'}
+                              onOpenChange={(open) => setDrawer(open ? 'section' : null)}
+                              disabled={recording}
                             >
-                              {t('window.retry')}
-                            </Button>
-                          </div>
-                        )}
-                        {loading ? (
-                          <output className="settings-loading">{t('window.loading')}</output>
-                        ) : (
-                          <>
-                            {page(
-                              'permissions',
-                              <>
-                                <PermissionSettings snapshot={snapshot} />
-                                <ShellAllowlistSettings snapshot={snapshot} />
-                              </>,
-                            )}
-                            {page('extensions', <ServiceSettings />)}
-                            {page('providers', <ProviderSettingsForm snapshot={snapshot} />)}
-                            {page(
-                              'commands',
-                              <CommandSettings settings={snapshot} activeCommand={commandTarget} />,
-                            )}
-                            {page('memory', <MemorySettings />)}
-                            {page(
-                              'shortcuts',
-                              <ShortcutSettings
-                                snapshot={snapshot}
-                                onRecordingChange={setRecording}
-                              />,
-                            )}
-                          </>
-                        )}
-                      </div>
-                    </ScrollArea>
-                  </main>
-                </div>
-                <SettingsUnsavedChangesDialog
-                  open={unsaved.open}
-                  onKeepEditing={unsaved.keepEditing}
-                  onDiscard={unsaved.discard}
-                />
-                <ToastHost top={52} />
-              </SettingsUnsavedChangesContext>
-            </SettingsPageHistoryContext>
-          </SettingsSubpageContext>
+                              {navPanel}
+                            </SettingsDrawer>
+                          )
+                        }
+                        trailing={
+                          bridge &&
+                          snapshot && (
+                            <div className="settings-language">
+                              <LanguageSelector language={snapshot.language} />
+                            </div>
+                          )
+                        }
+                      />
+                      <ScrollArea
+                        className="settings-content-scroll-area"
+                        viewportClassName="[&>div]:flex! [&>div]:flex-col [&>div]:h-full"
+                        viewportRef={viewport}
+                        gutter="none"
+                        scrollShadow
+                      >
+                        <div className="settings-content-scroll">
+                          {failed && (
+                            <div className="settings-load-error">
+                              <p className="settings-inline-error" role="alert">
+                                <CircleAlert aria-hidden="true" />
+                                {t('window.loadError')}
+                              </p>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                aria-disabled={retrying || undefined}
+                                aria-busy={retrying || undefined}
+                                onClick={retry}
+                              >
+                                {t('window.retry')}
+                              </Button>
+                            </div>
+                          )}
+                          {loading ? (
+                            <output className="settings-loading">{t('window.loading')}</output>
+                          ) : (
+                            <>
+                              {page(
+                                'permissions',
+                                <>
+                                  <PermissionSettings snapshot={snapshot} />
+                                  <ShellAllowlistSettings snapshot={snapshot} />
+                                </>,
+                              )}
+                              {page('extensions', <ServiceSettings />)}
+                              {page('providers', <ProviderSettingsForm snapshot={snapshot} />)}
+                              {page(
+                                'commands',
+                                <CommandSettings
+                                  settings={snapshot}
+                                  activeCommand={commandTarget}
+                                />,
+                              )}
+                              {page('memory', <MemorySettings activeEntry={memoryTarget} />)}
+                              {page(
+                                'shortcuts',
+                                <ShortcutSettings
+                                  snapshot={snapshot}
+                                  onRecordingChange={setRecording}
+                                />,
+                              )}
+                            </>
+                          )}
+                        </div>
+                      </ScrollArea>
+                    </main>
+                  </div>
+                  <SettingsUnsavedChangesDialog
+                    open={unsaved.open}
+                    onKeepEditing={unsaved.keepEditing}
+                    onDiscard={unsaved.discard}
+                  />
+                  <ToastHost top={52} />
+                </SettingsUnsavedChangesContext>
+              </SettingsPageHistoryContext>
+            </SettingsSubpageContext>
+          </SettingsMemoryLinkContext>
         </SettingsCommandLinkContext>
       </SettingsNavigationContext>
     </TooltipProvider>
