@@ -34,7 +34,7 @@ import {
 import { prepareRunBinding } from './run-binding.js';
 import { freezeRunSelections, releaseRunSelections } from './run-freeze.js';
 import type { LiveState } from './live-state.js';
-import { coldTaskView, lastAssistant, liveTaskView, type TaskView } from './task-view.js';
+import { lastAssistant } from './task-view.js';
 import { runSkillsError } from './skills/run-skills.js';
 import type { RuntimeAgent } from './subagents/agents.js';
 import {
@@ -119,10 +119,9 @@ export class TaskRunner {
     return this.slot.releasing;
   }
 
-  /** The task's transcript and context state, live or read from its session file. */
-  async view(): Promise<TaskView> {
-    const live = this.slot.live;
-    return live ? liveTaskView(live) : coldTaskView(this.ctx, this.taskId);
+  /** The live session; null while the task has none, when its views read the session file. */
+  liveState(): LiveState | null {
+    return this.slot.live;
   }
 
   isCompacting(): boolean {

@@ -133,6 +133,17 @@ function totalsLine(loadable: number, userOnly: string[], shown: number): string
   return `${head}; ${userOnly.length} more ${userOnly.length === 1 ? 'is' : 'are'} user-only: ${rest}.`;
 }
 
+/**
+ * The skills a catalog section lists, loadable and user-only, read from its totals line (exact
+ * even when entries were left out); null for text without one.
+ */
+export function catalogSkillCount(text: string): number | null {
+  const totals = /^(\d+) skills? can be loaded(?:; (\d+) more (?:is|are) user-only:.*)?\.$/.exec(
+    text.split('\n').at(-1) ?? '',
+  );
+  return totals ? Number(totals[1]) + Number(totals[2] ?? 0) : null;
+}
+
 function truncate(text: string): string {
   return text.length > MAX_DESCRIPTION_CHARS
     ? `${text.slice(0, MAX_DESCRIPTION_CHARS - 1).trimEnd()}…`

@@ -6,6 +6,7 @@ export * from './task.js';
 export * from './confirms.js';
 export * from './events.js';
 export * from './snapshot.js';
+export * from './context-breakdown.js';
 export * from './resources.js';
 export * from './attachments.js';
 export * from './file-search.js';

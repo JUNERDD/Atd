@@ -3,6 +3,7 @@ import {
   errorMessage,
   isActiveStatus,
   type CancelRunResponse,
+  type ContextBreakdown,
   type PermissionTier,
   type SubmitTaskRequest,
   type SubmitTaskResponse,
@@ -17,7 +18,7 @@ import { compactRefused } from './compaction/manual.js';
 import { ConflictError, DrainingError } from './errors.js';
 import { SessionReleases } from './session-release.js';
 import { TaskRunner, type RunnerContext } from './task-runner.js';
-import { coldTaskView, taskSnapshot, taskSummary } from './task-view.js';
+import { taskContextBreakdown, taskSnapshot, taskSummary, taskView } from './task-view.js';
 import { checkChipRanges, taskTitle } from './tasks/input-chips.js';
 import { checkBranchBefore, freezeRunSnapshot, userEntryIds } from './tasks/run-snapshot.js';
 import { loadRunContextWindow } from './tasks/run-selection.js';
@@ -216,6 +217,11 @@ export class RunnerManager {
     return taskSnapshot(this.deps.ctx, this.runners.get(taskId), taskId);
   }
 
+  /** The task's context usage by category, from its live or stored session. */
+  contextBreakdown(taskId: string): Promise<ContextBreakdown> {
+    return taskContextBreakdown(this.deps.ctx, this.runners.get(taskId), taskId);
+  }
+
   summary(taskId: string): TaskSummary {
     return taskSummary(this.deps.ctx, this.runners.get(taskId), taskId);
   }
@@ -326,8 +332,7 @@ export class RunnerManager {
     if (branchBefore === undefined) return null;
     if (!taskId || !this.deps.ctx.ledger.data.tasks.some((task) => task.id === taskId))
       throw new TypeError('Invalid data: branchBefore needs an existing task.');
-    const runner = this.runners.get(taskId);
-    const view = runner ? await runner.view() : await coldTaskView(this.deps.ctx, taskId);
+    const view = await taskView(this.deps.ctx, this.runners.get(taskId), taskId);
     return userEntryIds(view.blocks);
   }
 }

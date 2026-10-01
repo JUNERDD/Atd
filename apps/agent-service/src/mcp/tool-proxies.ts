@@ -206,6 +206,20 @@ export async function prepareMcpTools(
   return { factory, bindings };
 }
 
+/** What a proxy declares to the model; `mcpProxyServerId` reads the server back from it. */
+function proxyDescription(tool: string, serverId: string): string {
+  return `MCP tool ${tool} on ${serverId}. Approval is per call.`;
+}
+
+/**
+ * The server a proxy's declared description names, null for any other description. Server ids
+ * hold no whitespace (`McpServerIdSchema`), while the proxy name may have lost the id to its
+ * sanitized, shortened or hashed prefix.
+ */
+export function mcpProxyServerId(description: string): string | null {
+  return /^MCP tool .+ on (\S+)\. Approval is per call\.$/s.exec(description)?.[1] ?? null;
+}
+
 function mcpProxyTool(
   host: McpProxyHost,
   options: McpProxyOptions,
@@ -215,7 +229,7 @@ function mcpProxyTool(
   return {
     name: binding.proxyName,
     label: `MCP ${binding.serverId} ${binding.tool}`,
-    description: `MCP tool ${binding.tool} on ${binding.serverId}. Approval is per call.`,
+    description: proxyDescription(binding.tool, binding.serverId),
     parameters,
     ...(binding.annotations ? { annotations: binding.annotations } : {}),
     executionMode: 'sequential',
