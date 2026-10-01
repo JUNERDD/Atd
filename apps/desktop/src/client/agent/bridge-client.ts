@@ -59,6 +59,7 @@ export function createAgentBridge(
         taskId,
         ...(instructions === undefined ? {} : { instructions }),
       }),
+    contextBreakdown: (taskId) => invoke({ action: 'contextBreakdown', taskId }),
     forkTask: (taskId, entryId, title) =>
       invoke({ action: 'forkTask', taskId, entryId, ...(title === undefined ? {} : { title }) }),
     chooseFiles: () => invoke({ action: 'chooseFiles' }),

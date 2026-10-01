@@ -38,7 +38,7 @@ export function ComposerConfiguration({
         <PermissionTierControl taskId={taskId} task={task} />
       </div>
       <div className="composer-model-group">
-        {taskId && context && <ContextUsageRing context={context} />}
+        {taskId && context && <ContextUsageRing taskId={taskId} context={context} />}
         <ModelConfigPopover
           compact
           connections={connections}

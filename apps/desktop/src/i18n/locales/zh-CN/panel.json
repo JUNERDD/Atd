@@ -70,7 +70,27 @@
       "label": "上下文用量",
       "usage": "{{tokens}} / {{window}} tokens · {{percent}}%",
       "percent": "已用 {{percent}}%",
-      "autoCompact": "上下文接近上限时会自动整理"
+      "autoCompact": "上下文接近上限时会自动整理",
+      "detail": {
+        "title": "上下文窗口",
+        "usage": "{{used}} / {{window}}（{{percent}}%）",
+        "used": "{{used}} tokens",
+        "categories": {
+          "messages": "消息",
+          "systemPrompt": "系统提示词",
+          "skills": "技能",
+          "systemTools": "工具",
+          "mcpTools": "MCP"
+        },
+        "buffer": "自动压缩缓冲区",
+        "free": "剩余空间",
+        "tools_one": "{{count}} 个工具",
+        "tools_other": "{{count}} 个工具",
+        "skills_one": "{{count}} 个技能",
+        "skills_other": "{{count}} 个技能",
+        "loading": "正在加载…",
+        "error": "无法加载上下文详情：{{message}}"
+      }
     }
   },
   "configuration": {

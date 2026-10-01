@@ -70,7 +70,27 @@
       "label": "Context usage",
       "usage": "{{tokens}} / {{window}} tokens · {{percent}}%",
       "percent": "{{percent}}% used",
-      "autoCompact": "Compacts automatically before the context fills up"
+      "autoCompact": "Compacts automatically before the context fills up",
+      "detail": {
+        "title": "Context window",
+        "usage": "{{used}} / {{window}} ({{percent}}%)",
+        "used": "{{used}} tokens",
+        "categories": {
+          "messages": "Messages",
+          "systemPrompt": "System prompt",
+          "skills": "Skills",
+          "systemTools": "Tools",
+          "mcpTools": "MCP"
+        },
+        "buffer": "Autocompact buffer",
+        "free": "Free space",
+        "tools_one": "{{count}} tool",
+        "tools_other": "{{count}} tools",
+        "skills_one": "{{count}} skill",
+        "skills_other": "{{count}} skills",
+        "loading": "Loading…",
+        "error": "Context details could not be loaded: {{message}}"
+      }
     }
   },
   "configuration": {
