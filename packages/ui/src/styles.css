@@ -30,6 +30,11 @@
   --ata-glass-control-shadow: 0 1px 2px rgb(0 0 0 / 18%), 0 0 0 1px var(--ata-glass-edge);
   --ata-glass-control-wash: color-mix(in srgb, var(--foreground) 10%, transparent);
   --ata-glass-control-wash-strong: color-mix(in srgb, var(--foreground) 16%, transparent);
+  /* A scroll area's resting thumb: the border color on solid surfaces; on glass, where that 10%
+     line all but vanishes into the material, a stronger wash (set by `surface-glass` and
+     `glass-host`). Hover and press keep the shared muted-foreground steps above both. */
+  --ata-scroll-thumb: var(--border);
+  --ata-glass-scroll-thumb: color-mix(in srgb, var(--foreground) 28%, transparent);
   /* The settings drawer's fallback fill, where its subdued system glass is off. */
   --ata-material-settings-content: rgb(12 12 12 / 10%);
   --ata-surface-settings-content: var(--ata-material-settings-content);
@@ -234,6 +239,7 @@
      sitting on it as an opaque gray block. */
   --accent: var(--ata-glass-control-wash);
   --muted: var(--ata-glass-control-wash);
+  --ata-scroll-thumb: var(--ata-glass-scroll-thumb);
   background-color: var(--ata-glass-fill, var(--popover));
   backdrop-filter: blur(var(--ata-glass-blur, var(--ata-backdrop-blur)));
   box-shadow: var(--ata-glass-shadow, var(--ata-glass-shadow-default));
@@ -275,12 +281,13 @@
 /*
  * The element over a glass backdrop (`PopoverContent material="backdrop"`): its content renders
  * above the childless glass layer behind it, outside the material, so it keeps the glass's
- * translucent neutral washes itself. The backdrop is its absolutely positioned first child,
- * stacked under the content inside this element's own stacking context.
+ * translucent neutral washes and scroll thumb itself. The backdrop is its absolutely positioned
+ * first child, stacked under the content inside this element's own stacking context.
  */
 @utility glass-host {
   --accent: var(--ata-glass-control-wash);
   --muted: var(--ata-glass-control-wash);
+  --ata-scroll-thumb: var(--ata-glass-scroll-thumb);
   position: relative;
   isolation: isolate;
 }
