@@ -24,22 +24,68 @@ jobs:
           node-version-file: .node-version
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      # On Linux this skips the Swift and Rust checks (scripts/on-macos.mjs); desktop runs them.
+      # Serves turbo's remote cache from the GitHub Actions cache, one entry per task hash, so
+      # tasks whose inputs did not change replay their logs and outputs instead of running again.
+      # GitHub evicts the least recently used entries. Pinned to the v2.5.1 commit: a
+      # third-party action that can write this repository's cache.
+      - uses: rharkor/caching-for-turbo@2238fae6eb9a9936f92356f54cb3660200d105e7
+      # On Linux this skips the Swift and Rust checks (scripts/on-macos.mjs); the swift and rust
+      # jobs run them.
       - run: pnpm check
 
-  # The Swift and Rust checks. The job id and name stay as they are because the "Protect main"
-  # ruleset requires a status check with this exact name.
-  desktop:
-    name: macOS desktop smoke test
+  # A pull request runs the Swift and Rust checks only when it touches their inputs; a push to
+  # main always runs both.
+  changes:
+    name: Detect changed areas
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      swift: ${{ steps.filter.outputs.swift }}
+      rust: ${{ steps.filter.outputs.rust }}
+    steps:
+      - id: filter
+        uses: dorny/paths-filter@v4.0.3
+        with:
+          # Besides each area's sources: the bridge schema the Swift codegen check reads, and
+          # what decides how the checks run (scripts, tool pins, lockfile, this workflow).
+          filters: |
+            shared: &shared
+              - .github/workflows/ci.yml
+              - .node-version
+              - package.json
+              - pnpm-lock.yaml
+              - pnpm-workspace.yaml
+              - turbo.json
+            swift:
+              - *shared
+              - apps/macos/**
+              - apps/desktop/src/native-bridge/native-bridge.schema.json
+            rust:
+              - *shared
+              - crates/**
+              - Cargo.toml
+              - Cargo.lock
+              - rust-toolchain.toml
+              - scripts/check-rust-file-length.mjs
+
+  # The Swift and Rust checks run as two parallel macOS jobs instead of one after the other.
+  swift:
+    name: Swift checks
+    needs: changes
+    # `changes` is skipped on push, which must not skip this job.
+    if: ${{ !cancelled() && (github.event_name != 'pull_request' || needs.changes.outputs.swift == 'true') }}
     # Pinned rather than macos-latest: the native shell targets macOS 26 and Xcode 26.
     runs-on: macos-26
     steps:
       - uses: actions/checkout@v7.0.1
       - uses: pnpm/action-setup@v6.1.0
+      # No pnpm store cache: the Swift checks need only the root tools (turbo), which download
+      # faster than the full store restores on macOS.
       - uses: actions/setup-node@v7.0.0
         with:
           node-version-file: .node-version
-          cache: pnpm
       # The same Xcode as local development, so `swift format` and SwiftLint judge the same way.
       - name: Select Xcode 26.3
         run: |
@@ -53,14 +99,57 @@ jobs:
           done
           xcodegen --version
           swiftlint version
+      # @ai/macos has no package dependencies, and its scripts use only Node built-ins.
+      - run: pnpm install --frozen-lockfile --filter ai-workspace
+      - name: Swift checks (codegen, format, lint, test, build)
+        run: pnpm check:swift
+
+  rust:
+    name: Rust checks
+    needs: changes
+    if: ${{ !cancelled() && (github.event_name != 'pull_request' || needs.changes.outputs.rust == 'true') }}
+    # The file index watches folders with FSEvents, so it builds and tests on macOS only.
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: pnpm/action-setup@v6.1.0
+      # No dependencies to install: check:rust runs a Node built-ins script and cargo.
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version-file: .node-version
       # With no argument, rustup installs the toolchain rust-toolchain.toml pins, with its
       # components (rustfmt, clippy) and targets.
       - name: Install the Rust toolchain
         run: |
           rustup toolchain install
           cargo --version
-      - run: pnpm install --frozen-lockfile
-      - name: Swift checks (format, lint, test, build)
-        run: pnpm check:swift
+      # Caches the registry and the compiled dependencies; the workspace crates always rebuild.
+      # Only main saves, so pull requests reuse its cache without each storing their own copy.
+      - uses: Swatinem/rust-cache@v2.9.2
+        with:
+          save-if: ${{ github.ref == 'refs/heads/main' }}
       - name: Rust checks (file length, fmt, clippy, test)
         run: pnpm check:rust
+
+  # The "Protect main" ruleset requires a status check with this exact name, so this job keeps
+  # the id and name of the former single macOS job. It passes when each macOS job passed or was
+  # skipped because the pull request does not touch its inputs; a failed change detection fails
+  # it, since that also skips both jobs.
+  desktop:
+    name: macOS desktop smoke test
+    needs: [changes, swift, rust]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require the Swift and Rust checks
+        env:
+          CHANGES: ${{ needs.changes.result }}
+          SWIFT: ${{ needs.swift.result }}
+          RUST: ${{ needs.rust.result }}
+          RUN_SWIFT: ${{ github.event_name != 'pull_request' || needs.changes.outputs.swift == 'true' }}
+          RUN_RUST: ${{ github.event_name != 'pull_request' || needs.changes.outputs.rust == 'true' }}
+        run: |
+          echo "Change detection: $CHANGES, Swift checks: $SWIFT, Rust checks: $RUST"
+          if [ "$CHANGES" = failure ]; then exit 1; fi
+          expected() { if [ "$1" = true ]; then echo success; else echo skipped; fi; }
+          [ "$SWIFT" = "$(expected "$RUN_SWIFT")" ] && [ "$RUST" = "$(expected "$RUN_RUST")" ]

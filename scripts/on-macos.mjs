@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Runs the given command on macOS and skips it elsewhere, so `pnpm check` stays green on Linux
- * CI while still covering the Swift shell and the Rust crates locally. The macOS CI job runs
+ * CI while still covering the Swift shell and the Rust crates locally. The macOS CI jobs run
  * those checks directly (`.github/workflows/ci.yml`).
  *
  * Usage: node scripts/on-macos.mjs <command> [args...]

@@ -30,6 +30,7 @@ import {
   copyFile,
   mkdir,
   readFile,
+  readdir,
   realpath,
   rename,
   rm,
@@ -265,6 +266,17 @@ if (process.arch === 'arm64') {
   }
   process.stdout.write(`File index addon: ${await realpath(addon)}\n`);
 }
+// The packaged service runs without --enable-source-maps, so the dependencies' source maps are
+// never read; dropping them removes about a sixth of the files the app embeds, signs and
+// compresses. Unlinking leaves the pnpm store copies alone. Type declarations, TypeScript sources
+// and docs stay: Pi and its extensions can read them at runtime.
+let sourceMaps = 0;
+for (const entry of await readdir(stagedModules, { recursive: true, withFileTypes: true })) {
+  if (!entry.isFile() || !entry.name.endsWith('.map')) continue;
+  await rm(path.join(entry.parentPath, entry.name));
+  sourceMaps += 1;
+}
+process.stdout.write(`Removed ${sourceMaps} dependency source maps\n`);
 const buildInfo = { version: 1, buildId: randomUUID() };
 await writeFile(path.join(packDir, 'build-info.json'), `${JSON.stringify(buildInfo, null, 2)}\n`);
 process.stdout.write(
