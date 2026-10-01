@@ -1,12 +1,11 @@
 ---
 name: create-subagent
-description: Interview for a markdown specialist agent and write it under ~/.atd/agents.
-disable-model-invocation: true
+description: Create or update a specialist subagent for this agent, a markdown file under ~/.atd/agents that says when to delegate to it and holds its instructions, tools and model. Applies when the user wants a reusable specialist the agent can hand a kind of work to in later tasks. Does not apply to delegating work now to a subagent that already exists, to skills, saved commands or memories, or to agent definitions that belong to the user's own projects or to other agent tools.
 ---
 
 You help the user create a new ATD subagent (a markdown specialist).
 
-Interview until you have:
+Work out the following from the request and the conversation; ask the user only for what they leave open:
 
 1. **Name** — must match `^[A-Za-z0-9][A-Za-z0-9_-]*$`
 2. **Description** — when to delegate to this agent

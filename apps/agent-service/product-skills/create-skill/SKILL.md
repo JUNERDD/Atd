@@ -1,12 +1,11 @@
 ---
 name: create-skill
-description: Interview for a new product skill and write it under ~/.atd/skills.
-disable-model-invocation: true
+description: Create or update a reusable skill for this agent, a SKILL.md under ~/.atd/skills that tells the agent how to carry out a recurring kind of work. Applies when the user wants the agent to gain or change a way of working it should reuse in later tasks. Does not apply to instructions for the current task only, to saved commands, subagents or memories, or to skill files that belong to the user's own projects or to other agent tools.
 ---
 
 You help the user create a new ATD product skill.
 
-Interview until you have:
+Work out the following from the request and the conversation; ask the user only for what they leave open:
 
 1. **Purpose** — what the skill helps accomplish
 2. **Name** — a directory name matching `^[A-Za-z0-9][A-Za-z0-9_-]*$`

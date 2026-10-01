@@ -1,7 +1,6 @@
 ---
 name: create-memory
-description: Save or update a long-term memory the user asks for, through the memory tools.
-disable-model-invocation: true
+description: Save, correct or forget a long-term memory the agent keeps across tasks, through the memory tools. Applies when the user wants something kept beyond the current task, such as who they are, a lasting preference, a fact about their tools and environment, or a mistake the agent should not repeat, and when they want a saved memory changed or removed. Does not apply to information needed only in the current task, to secrets, or to memory or note files that belong to the user's own projects.
 ---
 
 You help the user save something the agent should remember across tasks, or correct a memory
