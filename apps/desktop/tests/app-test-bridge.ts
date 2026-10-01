@@ -154,6 +154,13 @@ export function installBridge(extras?: {
     renameTask: vi.fn(async () => {}),
     deleteTask: vi.fn(async () => {}),
     compactTask: vi.fn(async () => null),
+    contextBreakdown: vi.fn(async () => ({
+      contextWindow: null,
+      usedTokens: 0,
+      estimated: true,
+      autocompactBuffer: 0,
+      categories: [],
+    })),
     forkTask: vi.fn(async () => ({ taskId: 'test-fork' })),
     chooseFiles: vi.fn(async () => []),
     saveMarkdown: vi.fn(async () => true),

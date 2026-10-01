@@ -1,4 +1,8 @@
-import type { AgentClientOptions, AgentHttpClient } from '@ai/agent-client';
+import {
+  taskContextBreakdown,
+  type AgentClientOptions,
+  type AgentHttpClient,
+} from '@ai/agent-client';
 import type { InvalidateFrame } from '@ai/agent-contracts';
 import type {
   AgentEvent,
@@ -236,6 +240,8 @@ export class AgentRequests<S> {
         return null;
       case 'compactTask':
         return compactLiveTask(this.options(), request.taskId, request.instructions);
+      case 'contextBreakdown':
+        return (await taskContextBreakdown(this.options(), request.taskId)).breakdown;
       case 'forkTask': {
         const { taskId, entryId, title } = request;
         const fork = await forkLiveTask(this.options(), taskId, { entryId, title });
