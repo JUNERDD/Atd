@@ -215,13 +215,17 @@
  * larger glass frame around the surface. System glass therefore takes only an inset edge; the
  * drop shadow and outer ring return wherever the glass is off.
  *
- * System glass also hosts the element's child layers inside the material's SwiftUI layer
- * (WebKit's WKMaterialHostingSupport). When the last of them leaves while the surface stays open,
- * as a scroll area's layers do once its content fits, it keeps drawing its last contents at the
- * surface's new geometry and fades out over about 200ms: old rows linger over whatever the
- * shrunken surface uncovered. A surface whose scrolling content can shrink while it is open keeps
- * one persistent composited child instead (`will-change: transform` on the element that stays for
- * as long as the surface does), named by the composition that owns the surface.
+ * System glass also hosts the element itself inside the material's SwiftUI view (WebKit's
+ * WKMaterialHostingSupport): the element's own painted layer and every composited child layer
+ * become sublayers of a plain CALayer that WebKit's action-disabling delegate does not cover, and
+ * a resize of a rounded glass element rebuilds the SwiftUI view. When those sublayers change
+ * while the surface stays open (a list expands or collapses, a scroll area's layers come or go)
+ * the material can keep drawing the old contents at the new geometry and fade them out: old rows
+ * linger over the new layout. Content that changes like that while open therefore does not go
+ * inside the glass: the glass goes on a childless layer behind it and the content renders above
+ * as an ordinary layer (`glass-host`; `PopoverContent material="backdrop"`). A persistent
+ * composited child (`will-change: transform` on one element that stays as long as the surface)
+ * reduces the churn for content that stays inside the glass, but does not remove it.
  */
 @utility surface-glass {
   /* On glass the neutral fills are a translucent wash, as glass controls use on hover: every item
@@ -266,6 +270,19 @@
     box-shadow: var(--ata-glass-shadow, var(--ata-glass-shadow-default));
     -apple-visual-effect: none;
   }
+}
+
+/*
+ * The element over a glass backdrop (`PopoverContent material="backdrop"`): its content renders
+ * above the childless glass layer behind it, outside the material, so it keeps the glass's
+ * translucent neutral washes itself. The backdrop is its absolutely positioned first child,
+ * stacked under the content inside this element's own stacking context.
+ */
+@utility glass-host {
+  --accent: var(--ata-glass-control-wash);
+  --muted: var(--ata-glass-control-wash);
+  position: relative;
+  isolation: isolate;
 }
 
 /*
