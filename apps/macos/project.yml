@@ -10,6 +10,8 @@ options:
 settings:
   base:
     MACOSX_DEPLOYMENT_TARGET: '26.0'
+    # Covers this project's targets only: Release builds of the AIMac package targets default to
+    # arm64 and x86_64, so `build:release` also passes ARCHS=arm64 to xcodebuild.
     ARCHS: arm64
     SWIFT_VERSION: '6.0'
     SWIFT_STRICT_CONCURRENCY: complete

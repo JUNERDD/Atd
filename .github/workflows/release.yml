@@ -118,11 +118,15 @@ jobs:
             exit 1
           fi
           codesign --verify --deep --strict "$app"
-          stage=$(mktemp -d)
-          ditto "$app" "$stage/AI.app"
+          # Moved, not copied: nothing reads the built app after this step, and a rename within
+          # the runner's work volume skips copying the service pack's tens of thousands of files.
+          stage=$(mktemp -d "$RUNNER_TEMP/dmg.XXXXXX")
+          mv "$app" "$stage/AI.app"
           ln -s /Applications "$stage/Applications"
           mkdir dist
-          hdiutil create -volname AI -srcfolder "$stage" -ov -format UDZO "dist/AI-$VERSION-arm64.dmg"
+          # LZFSE (ULFO) compresses faster and smaller than zlib (UDZO); every macOS the app
+          # supports opens it.
+          hdiutil create -volname AI -srcfolder "$stage" -ov -format ULFO "dist/AI-$VERSION-arm64.dmg"
           ls -lh dist
       - name: Create release
         env:
