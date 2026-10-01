@@ -1,0 +1,202 @@
+/* @block list | requires: base, states | layer: components | native: SwiftUI List(.insetGrouped), Form / UIKit UITableView .insetGrouped + UIListContentConfiguration | iOS 26 inset-grouped list: 53 px rows, 20 px inset, 26 px radius, 17 px semibold headers, 13 px footers, pressed/hover/selected/focus rows and switch rows (CMP-7) */
+
+/* Markup:
+   <h2 class="list-header">Connections</h2>
+   <ul class="list list--icons">
+     <li><a class="list__row" href="#wifi"><span class="list__icon" aria-hidden="true">svg</span>
+           <span class="list__label">Wi-Fi</span><span class="list__value">Home</span><span class="list__chevron" aria-hidden="true"></span></a></li>
+     <li><label class="list__row"><span class="list__label">Airplane Mode</span>
+           <input class="switch" type="checkbox" role="switch" switch></label></li>   (switch rows don't highlight)
+   </ul>
+   <p class="list-footer">…</p>
+   Selected rows: aria-current="page" or aria-selected="true". Set --list-inset (default 20px) on any ancestor,
+   or add .list--flush inside padded containers (sheets set it for you).
+   Icon tiles are gray with a white glyph by default; color one with a COL-3 pair, never a hard-coded white glyph:
+     <span class="list__icon" style="--list-icon-bg: var(--system-orange); --list-icon-fg: var(--on-orange)" aria-hidden="true">svg</span> */
+.list--flush {
+  --list-inset: 0px;
+}
+.list {
+  --glass-ink: initial; /* opaque cells: controls get their accent ink back inside a glass sheet */
+  --list-sep-inset: 16px;
+  --list-icon-bg: var(--system-gray); /* icon tile fill and glyph: set both, as a COL-3 pair */
+  --list-icon-fg: var(--on-gray);
+  box-sizing: border-box;
+  margin: 0 var(--list-inset, 20px); /* 20 px section inset */
+  padding: 0;
+  overflow: hidden; /* clips row fills to the radius; row focus is drawn inside */
+  list-style: none;
+  background: var(--secondary-system-grouped-background);
+  border-radius: var(--corner-list); /* 26 px */
+}
+.list--icons {
+  --list-sep-inset: 58px;
+} /* separator starts at the label: 16 + 30 + 12 */
+
+.list__row {
+  position: relative;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 53px; /* iOS 26 row (CMP-7); grows with text size */
+  margin: 0;
+  padding: 11px 16px;
+  border: 0;
+  background: transparent;
+  color: var(--label);
+  font: 400 var(--fs-body)/var(--lh-body) var(--ff-sans);
+  letter-spacing: calc(var(--tr-body) * var(--tracking-scale));
+  text-align: start;
+  text-decoration: none;
+}
+/* Inset hairline separators (COL-1), mirrored in RTL through the logical inset. */
+.list > li + li > .list__row::before,
+.list > .list__row + .list__row::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  inset-inline: var(--list-sep-inset) 0;
+  height: 0.5px;
+  background: var(--separator);
+}
+.list__icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  color: var(--list-icon-fg); /* decorative tile glyph; tiles are aria-hidden */
+  background: var(--list-icon-bg);
+}
+.list__icon > svg {
+  width: 18px;
+  height: 18px;
+}
+.list__label {
+  flex: 1;
+  min-width: 0;
+}
+.list__title {
+  display: block;
+}
+.list__subtitle {
+  display: block;
+  color: var(--secondary-label);
+  font-size: var(--fs-subheadline);
+  line-height: var(--lh-subheadline);
+}
+.list__value {
+  color: var(--secondary-label);
+  text-align: end;
+}
+.list__chevron {
+  flex: none;
+  width: 8px;
+  height: 14px;
+  margin-inline-end: -2px;
+  background: var(--tertiary-label);
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 14'%3E%3Cpath d='M1 1l6 6-6 6' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
+    center / contain no-repeat; /* unprefixed mask: Safari 15.4+ */
+}
+.list__chevron:dir(rtl) {
+  scale: -1 1;
+}
+
+/* Section header: 17 px emphasized Body, secondary label, never all caps; footer: 13 px (CMP-7, TYP-2). */
+.list-header,
+.list-footer {
+  box-sizing: border-box;
+  margin: 0;
+  padding-inline: calc(var(--list-inset, 20px) + 16px);
+  color: var(--secondary-label);
+}
+.list-header {
+  padding-block: 0 8px;
+  font: 600 var(--fs-body)/var(--lh-body) var(--ff-sans);
+  letter-spacing: calc(var(--tr-body) * var(--tracking-scale));
+}
+.list-footer {
+  padding-block: 8px 0;
+  font: 400 var(--fs-footnote)/var(--lh-footnote) var(--ff-sans);
+  letter-spacing: calc(var(--tr-footnote) * var(--tracking-scale));
+}
+
+/* Row states (FB-1…FB-3, FB-6). Order: hover < selected < pressed < focus. */
+:is(a, button).list__row {
+  cursor: pointer;
+  transition: background-color var(--dur-fast) var(--curve-out);
+}
+label.list__row {
+  cursor: pointer;
+} /* switch row: tapping the label toggles; no highlight */
+@media (hover: hover) and (pointer: fine) {
+  :is(a, button).list__row:where(:not(:disabled, [aria-disabled='true']):hover) {
+    background-color: var(--hover-fill);
+  }
+}
+.list__row:is([aria-current='page'], [aria-selected='true']) {
+  background-color: var(--state-selected-fill);
+}
+:where(html:not([data-press-tracking]))
+  :is(a, button).list__row:not(:disabled, [aria-disabled='true']):active,
+.list__row[data-pressed] {
+  background-color: var(--press-fill);
+  transition-duration: var(--dur-press);
+}
+/* Keyboard focus: accent row highlight plus an inset ring, both inside the row so .list never clips them
+   (FB-6). The ring keeps >= 3:1 against a dark card, where the fill alone measures 2.9:1. */
+:is(a, button).list__row:focus-visible {
+  outline: none;
+  background-color: var(--state-selected-focus-fill);
+  box-shadow: inset 0 0 0 var(--focus-ring-width) var(--focus-ring);
+  color: var(--accent-on);
+}
+:is(a, button).list__row:focus-visible :is(.list__subtitle, .list__value) {
+  color: inherit;
+}
+:is(a, button).list__row:focus-visible .list__chevron {
+  background: currentColor;
+}
+/* Disabled: dimmed, never hidden (FB-3). A switch row dims its label; the switch dims itself. */
+:is(a, button).list__row:is(:disabled, [aria-disabled='true']) {
+  opacity: var(--state-disabled-opacity);
+  cursor: default;
+}
+label.list__row:has(> input:disabled) {
+  cursor: default;
+}
+label.list__row:has(> input:disabled) > :not(input) {
+  opacity: var(--state-disabled-opacity);
+}
+
+/* Reduced motion: rows only change fills (MOT-5). */
+
+@media (forced-colors: active) {
+  .list {
+    border: 1px solid CanvasText;
+  }
+  .list > li + li > .list__row::before,
+  .list > .list__row + .list__row::before,
+  .list__chevron {
+    forced-color-adjust: none;
+    background: CanvasText;
+  }
+  .list__row:is([aria-current='page'], [aria-selected='true']) {
+    forced-color-adjust: none;
+    background: Highlight;
+    color: HighlightText;
+  }
+  .list__row:is([aria-current='page'], [aria-selected='true']) :is(.list__subtitle, .list__value) {
+    color: inherit;
+  }
+  .list__row:is([aria-current='page'], [aria-selected='true']) .list__chevron {
+    background: HighlightText;
+  }
+  :is(a, button).list__row:focus-visible {
+    outline: 3px solid Highlight;
+    outline-offset: -3px;
+  }
+}

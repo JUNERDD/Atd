@@ -1,0 +1,100 @@
+/* @block scroll-edge | requires: — | layer: components | native: SwiftUI scrollEdgeEffectStyle / UIKit UIScrollEdgeEffect | Soft fade and blur where content scrolls under floating bars, instead of a bar background or divider (GL-7) */
+
+/* Markup: first (top) or last (bottom) child of the scrolling element; it takes no layout space.
+   <div class="scroll-edge-top" aria-hidden="true"></div> … content … <div class="scroll-edge-bottom" aria-hidden="true"></div>
+   Match the page: --scroll-edge-bg (default: grouped background).
+   Hidden until scrolling reveals it: the top edge once content has scrolled under the top bar, the bottom edge while
+   more content lies below. A scroller with nothing to scroll shows neither, so nothing at rest is blurred.
+   No scroll-driven animations (Firefox): toggle .is-scrolled on an ancestor from JS, as navbar.js and motion.md §14.4
+   do; it shows both edges.
+   Put bar clearance (padding under a floating bar) on an inner wrapper, not on the scroller: the scroller's padding
+   moves where sticky edges pin (web.md §5). */
+:where(.scroll-edge-top, .scroll-edge-bottom) {
+  --scroll-edge-bg: var(--system-grouped-background);
+}
+.scroll-edge-top,
+.scroll-edge-bottom {
+  position: sticky;
+  z-index: 10;
+  display: block;
+  height: var(--_se-h);
+  pointer-events: none;
+  opacity: 0; /* hidden until scrolling reveals it (below) */
+  -webkit-backdrop-filter: blur(10px); /* static blur; never animated (MOT-6) */
+  backdrop-filter: blur(10px);
+}
+.scroll-edge-top {
+  --_se-h: calc(var(--safe-top) + 72px);
+  top: 0;
+  margin-bottom: calc(-1 * var(--_se-h));
+  background: linear-gradient(
+    color-mix(in srgb, var(--scroll-edge-bg) 85%, transparent),
+    transparent
+  );
+  mask-image: linear-gradient(#000 40%, transparent);
+}
+.scroll-edge-bottom {
+  --_se-h: calc(var(--safe-bottom) + 96px); /* covers the floating tab bar */
+  bottom: 0;
+  margin-top: calc(-1 * var(--_se-h));
+  background: linear-gradient(
+    to top,
+    color-mix(in srgb, var(--scroll-edge-bg) 85%, transparent),
+    transparent
+  );
+  mask-image: linear-gradient(to top, #000 40%, transparent);
+}
+
+/* Reveal by scroll position (the nearest scroller; no duration). A timeline with nothing to scroll is inactive and
+   applies no keyframes, so the edge keeps its hidden base state. Top: fades in over the first 24 px scrolled.
+   Bottom: shown while content lies below, fades out over the last 24 px. */
+@keyframes scroll-edge-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@supports (animation-timeline: scroll()) {
+  .scroll-edge-top,
+  .scroll-edge-bottom {
+    /* shorthand first: it resets timeline and range */
+    animation: scroll-edge-in 1ms linear both;
+    animation-timeline: scroll(nearest block);
+  }
+  .scroll-edge-top {
+    animation-range: 0px 24px;
+  }
+  .scroll-edge-bottom {
+    animation-direction: reverse;
+    animation-range: calc(100% - 24px) 100%;
+  }
+}
+@supports not (animation-timeline: scroll()) {
+  .scroll-edge-top,
+  .scroll-edge-bottom {
+    transition: opacity var(--dur-base) var(--curve-standard);
+  }
+  .is-scrolled :is(.scroll-edge-top, .scroll-edge-bottom) {
+    opacity: 1;
+  }
+}
+
+/* Fallbacks: no blur where transparency is unwanted; the masked solid fade keeps bars legible.
+   Without backdrop-filter support the gradient alone remains. Safari only takes the contrast branch. */
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+  .scroll-edge-top,
+  .scroll-edge-bottom {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    background: var(--scroll-edge-bg);
+  }
+}
+/* Reduced motion: the reveal is a scroll-linked fade, which MOT-5 keeps. */
+@media (forced-colors: active) {
+  .scroll-edge-top,
+  .scroll-edge-bottom {
+    display: none;
+  }
+}

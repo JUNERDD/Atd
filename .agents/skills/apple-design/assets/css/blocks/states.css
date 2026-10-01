@@ -1,0 +1,111 @@
+/* @block states | requires: — | layer: components | native: ButtonStyle.Configuration.isPressed, UIControl.State, focusable(), hoverEffect | Generic press, hover, focus, disabled, busy and hit-area states (.pressable, .glass-interactive, .hit-extend) */
+/* Generic rules only (web.md §2); each component block styles its own states with the same tokens (FB-3).
+   Press tracking: AppleFeedback.initPressStates() sets <html data-press-tracking>, which switches every pressed
+   rule from :active to [data-pressed] (touch-down highlight, slop cancel, release in margin; FB-1).
+   .pressable draws hover and press as an overlay on the element's own fill: give it a fill with background-color
+   (the background shorthand also clears the overlay).
+   No JS? iOS Safari applies :active only when a touch listener exists:
+     document.addEventListener('touchstart', () => {}, { passive: true });   // = AppleFeedback.enableActiveStates() */
+
+/* Touch hygiene: the kit draws its own pressed state. */
+:where(a, button, label, summary, [role='button'], .pressable, .glass-interactive) {
+  -webkit-tap-highlight-color: transparent;
+}
+:where(.pressable, .glass-interactive) {
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Focus (FB-6): one solid ring everywhere, >= 3:1 on the page backgrounds (CON-1). Its halo (--focus-halo) fills the
+   offset gap and adds a thin outer edge in the page color, so the ring keeps its contrast over glass and photos too.
+   The halo has zero specificity: a block with its own box-shadow keeps it (glass adds the halo to its shadows), and
+   blocks that draw focus another way set box-shadow: none. */
+:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+:where(:focus-visible) {
+  box-shadow: var(--focus-halo);
+}
+
+/* Hover (FB-2): fine pointers only. Declared before the pressed rules so press wins at equal specificity. */
+@media (hover: hover) and (pointer: fine) {
+  .pressable:where(:not(:disabled, [aria-disabled='true'])):hover {
+    background-image: linear-gradient(var(--hover-fill) 0 0);
+  }
+  .glass-interactive:where(:not(:disabled, [aria-disabled='true'])):hover {
+    --glow: var(--hover-glow);
+  }
+}
+
+/* .pressable: opt-in state set for custom elements such as cards and custom rows (FB-3). */
+:root:not([data-press-tracking]) .pressable:not([aria-disabled='true']):active,
+.pressable[data-pressed] {
+  background-image: linear-gradient(var(--press-fill) 0 0);
+}
+
+/* .glass-interactive: glass that scales and lights up under the finger (FB-1, FB-12: controls only).
+   MOT-11: press in fast (--dur-press, --curve-out); release on the snappy spring. Individual `scale`
+   composes with any transform the element already has. Reduce Motion: --press-scale is 1 (tokens). */
+.glass-interactive {
+  transition:
+    scale var(--dur-spring-snappy) var(--spring-snappy),
+    --glow var(--dur-base) var(--curve-out);
+}
+:root:not([data-press-tracking]) .glass-interactive:not([aria-disabled='true']):active,
+.glass-interactive[data-pressed] {
+  scale: var(--press-scale);
+  --glow: var(--press-glow);
+  transition-duration: var(--dur-press);
+  transition-timing-function: var(--curve-out);
+}
+
+/* Disabled (FB-3): dimmed, never hidden. Pointer events stay, so tooltips and the cursor still work;
+   AppleFeedback blocks clicks on [aria-disabled="true"]. */
+:is(.pressable, .glass-interactive):is(:disabled, [aria-disabled='true']) {
+  opacity: var(--state-disabled-opacity);
+  cursor: default;
+}
+
+/* Busy (FB-7): the motion block's .activity-indicator replaces the glyph and takes the label color;
+   the label itself changes in markup ("Saving…"). Markup: aria-busy="true" aria-disabled="true". */
+.pressable:not([aria-busy='true']) > .activity-indicator {
+  display: none;
+}
+.pressable > .activity-indicator {
+  inline-size: 1.1em;
+  block-size: 1.1em;
+  color: inherit;
+}
+.pressable[aria-busy='true'] > svg {
+  display: none;
+}
+
+/* Hit extension (HIT-1, FB-11): a transparent ::after grows the tappable box to --hit, centered, with no
+   layout change. Not for glass members — their ::before/::after are the material. */
+:where(.hit-extend) {
+  position: relative;
+}
+.hit-extend::after {
+  content: '';
+  position: absolute;
+  inset: min(0px, calc((100% - var(--hit)) / 2));
+}
+
+/* Forced colors: fills are repainted, so every pressed control shows the system highlight. Keyed on the press
+   contract ([data-pressed], or :active without press tracking), so it covers every block's controls. */
+@media (forced-colors: active) {
+  :is(
+    [data-pressed],
+    :root:not([data-press-tracking])
+      :is(button, a, [role='button'], .pressable, .glass-interactive):active
+  ) {
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
+  }
+  :is(.pressable, .glass-interactive):is(:disabled, [aria-disabled='true']) {
+    color: GrayText;
+  }
+}

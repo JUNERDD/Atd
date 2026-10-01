@@ -1,0 +1,67 @@
+/* @block base | requires: — | layer: base | native: — | Document defaults: box sizing, body text and colors, subtree themes, .sr-only, Reduce Motion keyframe stop */
+/* Logical properties only (LOC-1: RTL works with dir="rtl"). */
+*,
+::before,
+::after {
+  box-sizing: border-box;
+}
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+body {
+  margin: 0;
+  background: var(--system-background);
+  color: var(--label);
+  font: 400 var(--fs-body)/var(--lh-body) var(--ff-sans);
+  letter-spacing: calc(var(--tr-body) * var(--tracking-scale));
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+/* Subtree themes: light-dark() tokens re-resolve inside [data-theme], but inherited text color
+   was computed outside it — re-apply the label color. */
+:where([data-theme]) {
+  color: var(--label);
+}
+:where(button, input, select, textarea) {
+  font: inherit;
+  letter-spacing: inherit;
+  color: inherit;
+}
+
+.sr-only {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.surface-system {
+  background: var(--system-background);
+}
+.surface-grouped {
+  background: var(--system-grouped-background);
+}
+.hit-44 {
+  min-inline-size: var(--hit);
+  min-block-size: var(--hit);
+} /* HIT-1 by size; see .hit-extend (states) to extend without layout change */
+
+/* MOT-5 Reduce Motion: stop decorative KEYFRAME animation only. Transitions are never zeroed here —
+   each block's short fades are its reduced-motion substitute.
+   Essential status keeps moving: [role="progressbar"] (the .activity-indicator markup), <progress>,
+   and anything inside [aria-busy="true"] (busy buttons). This is a selector exemption on purpose:
+   !important in the apple.base layer outranks !important in every later layer, so a later
+   "restore" rule (motion block) could not win in a layered build. */
+@media (prefers-reduced-motion: reduce) {
+  :not([role='progressbar'], progress, [aria-busy='true'] *),
+  :not([role='progressbar'], progress, [aria-busy='true'] *)::before,
+  :not([role='progressbar'], progress, [aria-busy='true'] *)::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

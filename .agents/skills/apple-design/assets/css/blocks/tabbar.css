@@ -1,0 +1,198 @@
+/* @block tabbar | requires: base, glass, states, button | layer: components | native: SwiftUI TabView + Tab, Tab(role: .search) / UIKit UITabBarController, UISearchTab | Floating glass tab bar: 62 px platter, 4 px padding, 54 px capsule items, a sliding selection lens, and a search tab in either current style: a separate round button (button appearance) or an in-row item (standard tab) */
+
+/* Markup (tabs navigate, never act or disable: CMP-1, FB-3):
+   <nav class="tabbar-dock" aria-label="Primary">
+     <ul class="tabbar">
+       <li class="tabbar__indicator" aria-hidden="true"></li>                        (must be the first child)
+       <li><a class="tabbar__item" href="#today" aria-current="page"><svg aria-hidden="true">…</svg><span>Today</span></a></li>
+       …2–5 tabs. In-row search (standard tab, e.g. when another tab is prominent): <li><a class="tabbar__item" data-role="search" href="#search">…</a></li>
+     </ul>
+     <button class="btn-glass btn-icon tabbar-search" type="button" aria-label="Search">svg</button>   (button appearance: search engages at once; CMP-6)
+   </nav>
+   Both search styles are current: the separate button is the HIG's button appearance (Search as the prominent tab,
+   its default when no other tab is prominent). Selection is aria-current="page". Without the indicator the selected
+   item draws its own lens. */
+.tabbar-dock {
+  position: fixed; /* [data-app-frame] opts into absolute (framed mockups, web.md §5) */
+  inset: auto 0 0;
+  z-index: 20;
+  box-sizing: border-box;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  padding: 0 var(--margin-page) calc(var(--safe-bottom) + 10px);
+  pointer-events: none;
+}
+.tabbar-dock > * {
+  pointer-events: auto;
+}
+:where([data-app-frame]) .tabbar-dock {
+  position: absolute;
+}
+
+.tabbar {
+  --glass-radius: var(--corner-capsule);
+  --glass-density: 72%; /* labels pass CON-1 over busy content */
+  --glass-saturate: 120%; /* vivid backdrops don't go muddy */
+  --tabbar-lens: light-dark(rgb(255 255 255 / 0.7), rgb(0 0 0 / 0.35));
+  --n: 3;
+  --i: 0;
+  --_tab-dir: 1;
+  box-sizing: border-box;
+  display: flex;
+  align-items: stretch;
+  flex: 0 1 auto;
+  min-width: 0;
+  min-height: var(--tabbar-h); /* 62 px platter */
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  transition: --glow var(--dur-base) var(--curve-out);
+}
+.tabbar:dir(rtl) {
+  --_tab-dir: -1;
+}
+/* Tab count and selected index for the indicator (children counted after the indicator li). */
+.tabbar:not(:has(> li:nth-child(4))) {
+  --n: 2;
+}
+.tabbar:has(> li:nth-child(5)) {
+  --n: 4;
+}
+.tabbar:has(> li:nth-child(6)) {
+  --n: 5;
+}
+.tabbar:has(> li:nth-child(3) > [aria-current='page']) {
+  --i: 1;
+}
+.tabbar:has(> li:nth-child(4) > [aria-current='page']) {
+  --i: 2;
+}
+.tabbar:has(> li:nth-child(5) > [aria-current='page']) {
+  --i: 3;
+}
+.tabbar:has(> li:nth-child(6) > [aria-current='page']) {
+  --i: 4;
+}
+.tabbar > :not(.tabbar__indicator) {
+  display: flex;
+  flex: 0 1 94px;
+  width: 94px;
+  min-width: 0;
+} /* 3 tabs: 94 px each; shrink to fit */
+
+.tabbar__item {
+  position: relative;
+  z-index: 2;
+  box-sizing: border-box;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-width: 0;
+  min-height: var(--hit); /* stretches to the 54 px capsule; HIT-1 */
+  margin: 0;
+  padding: 6px 4px;
+  border: 0;
+  border-radius: var(--corner-capsule);
+  background: transparent;
+  color: var(--label); /* unselected stays monochrome (GL-5) */
+  font: 500 var(--fs-caption2)/1.1 var(--ff-sans);
+  letter-spacing: 0;
+  text-decoration: none;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+  transition:
+    color var(--dur-fast) var(--curve-out),
+    background-color var(--dur-fast) var(--curve-out);
+}
+.tabbar__item > svg {
+  flex: none;
+  width: 26px;
+  height: 26px;
+}
+.tabbar__item > span {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tabbar__item[aria-current='page'] {
+  color: var(--accent-text);
+  background-color: var(--tabbar-lens);
+}
+:where(.tabbar:has(> .tabbar__indicator)) .tabbar__item[aria-current='page'] {
+  background-color: transparent;
+}
+
+/* The selection lens slides between tabs; it never fades (MOT-9). */
+.tabbar__indicator {
+  position: absolute;
+  z-index: 1;
+  inset-block: 4px;
+  inset-inline-start: 4px;
+  width: calc((100% - 8px) / var(--n));
+  translate: calc(var(--i) * 100% * var(--_tab-dir)) 0;
+  border-radius: var(--corner-capsule);
+  background: var(--tabbar-lens);
+  box-shadow:
+    0 0 0 0.5px var(--glass-edge),
+    0 1px 4px rgb(0 0 0 / 0.08);
+  pointer-events: none;
+  transition: translate var(--dur-spring-snappy) var(--spring-snappy);
+}
+
+/* States: hover (FB-2) weakest; pressed highlights the item, no scale (MOT-11); light spreads to the bar. */
+@media (hover: hover) and (pointer: fine) {
+  .tabbar__item:where(:not([aria-current='page']):hover) {
+    background-color: var(--hover-fill);
+  }
+}
+:where(html:not([data-press-tracking])) .tabbar__item:active,
+.tabbar__item[data-pressed] {
+  background-color: var(--press-fill);
+  transition-duration: var(--dur-press);
+}
+:where(html:not([data-press-tracking])) .tabbar:has(.tabbar__item:active),
+.tabbar:has([data-pressed]) {
+  --glow: var(--press-glow);
+}
+
+/* Separate search button = the HIG's button appearance (CMP-6): a .btn-glass.btn-icon (material, press, glint
+   from the button block) sized to the platter, a 62 px circle. */
+.tabbar-dock > .tabbar-search {
+  flex: none;
+  width: var(--tabbar-h);
+  min-width: var(--tabbar-h);
+  height: var(--tabbar-h);
+  min-height: var(--tabbar-h);
+}
+.tabbar-search > svg {
+  width: 24px;
+  height: 24px;
+}
+
+@media (prefers-contrast: more) {
+  .tabbar__indicator {
+    box-shadow: inset 0 0 0 1px var(--opaque-separator);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tabbar__indicator {
+    transition: none;
+  } /* jump, don't slide; label color still fades (MOT-5) */
+}
+@media (forced-colors: active) {
+  .tabbar__indicator {
+    display: none;
+  }
+  .tabbar__item[aria-current='page'] {
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
+  }
+}

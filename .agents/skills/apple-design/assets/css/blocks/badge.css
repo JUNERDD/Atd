@@ -1,0 +1,72 @@
+/* @block badge | requires: — | layer: components | native: SwiftUI .badge(_:); UIKit UITabBarItem.badgeValue | count or dot badge for tab items, toolbar buttons and list rows, with a label that meets 4.5:1 on its fill (COL-3) */
+/* Markup. The number is text, so put its meaning in the host's accessible name:
+     <a class="tabbar__item" href="/inbox" aria-current="page"><svg aria-hidden="true">…</svg><span>Inbox</span>
+       <span class="badge badge--overlay">3<span class="sr-only"> unread</span></span></a>
+     In a list row (inline, trailing): <span class="badge">1</span>
+     Dot: <span class="badge badge--dot badge--overlay"></span> plus the meaning in the host's label ("Updates, new").
+   .badge--overlay pins it to the top-trailing corner of the host's centred icon (tab items, toolbar buttons).
+   Other fills use a COL-3 pair: style="--badge-bg: var(--system-blue); --badge-fg: var(--on-blue)".
+   The default red is systemRed darkened so white numerals reach 4.5:1 in light, dark and Increase Contrast
+   (systemRed with white is 3.6:1); style="--badge-bg: var(--system-red)" restores the native tone. */
+
+.badge {
+  --badge-bg: color-mix(in srgb, var(--system-red) 78%, #000);
+  --badge-fg: #fff;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-inline-size: 1.5em; /* 18 px at the default 12 px caption; scales with text in rows */
+  block-size: 1.5em;
+  padding: 0 0.42em;
+  border-radius: var(--corner-capsule);
+  background: var(--badge-bg);
+  color: var(--badge-fg);
+  font: 600 var(--fs-caption1)/1 var(--ff-sans);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+  white-space: nowrap;
+  transition:
+    scale var(--dur-spring-snappy) var(--spring-snappy),
+    opacity var(--dur-fast) var(--curve-standard);
+}
+@starting-style {
+  .badge {
+    scale: 0.5;
+    opacity: 0;
+  }
+} /* a new badge pops in once; a count change just updates */
+.badge--dot {
+  min-inline-size: 0;
+  inline-size: 10px;
+  block-size: 10px;
+  padding: 0;
+}
+.badge--overlay {
+  position: absolute;
+  z-index: 3;
+  inset-block-start: 2px;
+  inset-inline-start: calc(50% + 4px); /* just past the centre of a centred icon; mirrors in RTL */
+  font-size: min(
+    var(--fs-caption1),
+    14px
+  ); /* bar badges don't grow with text size: the icon doesn't either */
+  pointer-events: none;
+}
+:where(:has(> .badge--overlay)) {
+  position: relative;
+} /* zero specificity: any host positioning wins */
+
+@media (prefers-reduced-motion: reduce) {
+  .badge {
+    transition-property: opacity;
+  } /* fade in, no pop (MOT-5) */
+}
+@media (forced-colors: active) {
+  .badge {
+    forced-color-adjust: none;
+    background: Highlight;
+    color: HighlightText;
+  } /* a dot would vanish */
+}

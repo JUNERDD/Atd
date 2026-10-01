@@ -1,0 +1,39 @@
+/* @block status-pill | requires: glass | layer: components | native: — (non-modal status such as Mail's Undo Send bar) | Glass capsule for off-screen results with an optional Undo (FB-5, FB-9) */
+/* Only for results that land off-screen or an Undo right after an action; never for errors that need a response
+   (inline or alert). Keep it until the person acts or moves on. role="status" already speaks it — don't announce().
+   <div class="status-pill" role="status"><svg aria-hidden="true">…</svg><span>Added to Reading List</span>
+     <button class="btn-plain" type="button">Undo</button></div>
+   Motion: add .motion-pop with --motion-origin: bottom and toggle .is-open instead of hidden.
+   Centered and as wide as its content (at most 440 px, and 16 px clear of each side), then the text wraps.
+   Inside [data-app-frame] it positions in the frame. */
+.status-pill {
+  --glass-radius: var(--corner-capsule);
+  position: fixed;
+  z-index: 50;
+  inset-inline: 0;
+  margin-inline: auto; /* centered, direction-neutral */
+  bottom: calc(
+    var(--safe-bottom) + var(--tabbar-h) + 20px
+  ); /* above the tab bar; override when there is none */
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  inline-size: max-content;
+  min-block-size: var(--hit);
+  max-inline-size: min(100% - 32px, 440px); /* of the viewport, or of the frame */
+  padding-block: 0;
+  padding-inline: 16px 4px;
+  font: 400 var(--fs-subheadline)/var(--lh-subheadline) var(--ff-sans);
+  letter-spacing: calc(var(--tr-subheadline) * var(--tracking-scale));
+}
+.status-pill[hidden] {
+  display: none;
+}
+:where([data-app-frame]) .status-pill {
+  position: absolute;
+}
+.status-pill > svg {
+  flex: none;
+  inline-size: 20px;
+  block-size: 20px;
+}

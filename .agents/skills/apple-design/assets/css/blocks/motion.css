@@ -1,0 +1,141 @@
+/* @block motion | requires: — | layer: components | native: SwiftUI Animation .smooth/.snappy/.bouncy, .transition, navigationTransition(.zoom), ProgressView | Enter/exit (.motion-pop/.motion-fade), stagger, scroll-linked reveal, activity indicator, morph pacing */
+/* MOT-2: pair each --spring-* with its --dur-spring-*. MOT-4: .motion-pop grows from --motion-origin.
+   MOT-5 Reduce Motion: fades stay; scale and stagger go; bounce -> smooth (tokens); essential status keeps
+   moving (the base block exempts [role="progressbar"], <progress> and [aria-busy="true"] content from its
+   keyframe stop; the rule at the end keeps the spinner's timing in unlayered builds too). MOT-6: transform/opacity only. */
+@keyframes motion-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes motion-spin {
+  to {
+    rotate: 1turn;
+  }
+}
+
+/* Enter/exit: [popover] (:popover-open), <dialog> ([open]) or any element toggled with .is-open.
+   The individual `scale` property composes with any translate/transform the element already has. */
+.motion-pop,
+.motion-fade {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity var(--dur-fast) var(--curve-standard),
+    scale var(--dur-fast) var(--curve-standard),
+    visibility var(--dur-fast),
+    display var(--dur-fast) allow-discrete,
+    overlay var(--dur-fast) allow-discrete;
+}
+.motion-pop {
+  scale: 0.9;
+  transform-origin: var(--motion-origin, center);
+}
+.motion-pop:is(:popover-open, [open], .is-open),
+.motion-fade:is(:popover-open, [open], .is-open) {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transition:
+    opacity var(--dur-fast) var(--curve-standard),
+    scale var(--dur-spring-snappy) var(--spring-snappy),
+    visibility 0s;
+}
+.motion-pop:is(:popover-open, [open], .is-open) {
+  scale: 1;
+}
+@starting-style {
+  .motion-pop:is(:popover-open, [open], .is-open) {
+    opacity: 0;
+    scale: 0.9;
+  }
+  .motion-fade:is(:popover-open, [open], .is-open) {
+    opacity: 0;
+  }
+}
+
+/* Grouped entrance (MOT-12: stagger capped at 150ms): children set style="--motion-index: n". */
+.motion-stagger > * {
+  transition-delay: min(calc(var(--motion-index, 0) * var(--motion-stagger)), 150ms);
+}
+
+/* Scroll-linked reveal (e.g. an inline toolbar title). Scroller: .motion-scroller; the common ancestor of
+   scroller and revealed element: .motion-scroll-root (not needed when the scroller is <html>).
+   No scroll timelines (Firefox): toggle .is-scrolled on an ancestor from JS. */
+.motion-scroll-root {
+  timeline-scope: --motion-scroll;
+}
+.motion-scroller {
+  scroll-timeline: --motion-scroll block;
+}
+@supports (animation-timeline: scroll()) {
+  .motion-reveal-on-scroll {
+    animation: motion-fade-in 1ms linear both; /* shorthand first: it resets timeline and range */
+    animation-timeline: --motion-scroll;
+    animation-range: var(--motion-range, 24px 64px);
+  }
+}
+@supports not (animation-timeline: scroll()) {
+  .motion-reveal-on-scroll {
+    opacity: 0;
+    transition: opacity var(--dur-base) var(--curve-standard);
+  }
+  .is-scrolled .motion-reveal-on-scroll {
+    opacity: 1;
+  }
+}
+
+/* Indeterminate activity indicator (MOT-13, FB-7): 8 spokes stepping clockwise, 1 turn/s (approximates the
+   system spinner). Scales with its size; draws in currentColor. Delay short waits with --motion-delay.
+   Markup: <span class="activity-indicator" role="progressbar" aria-label="Loading"></span> */
+.activity-indicator {
+  display: inline-block;
+  flex: none;
+  inline-size: 20px;
+  block-size: 20px;
+  color: var(--secondary-label);
+  background: conic-gradient(
+    from 22.5deg,
+    color-mix(in srgb, currentColor 25%, transparent),
+    currentColor
+  );
+  mask:
+    repeating-conic-gradient(from -8deg, #000 0 16deg, #0000 0 45deg),
+    radial-gradient(closest-side, #0000 44%, #000 46%);
+  mask-composite: intersect;
+  animation:
+    motion-spin 1s steps(8) infinite,
+    motion-fade-in var(--dur-fast) var(--motion-delay, 0s) both;
+}
+
+@media (forced-colors: active) {
+  .activity-indicator {
+    forced-color-adjust: none;
+    color: CanvasText;
+  } /* the gradient spinner would vanish */
+}
+
+/* View Transitions: shared-element morph at the smooth-spring pace (AppleMotion.morph; root cross-fade keeps the UA 0.25s). */
+::view-transition-group(motion-morph) {
+  animation-duration: var(--dur-spring-smooth);
+  animation-timing-function: var(--spring-smooth);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .motion-pop,
+  .motion-pop:is(:popover-open, [open], .is-open) {
+    scale: none;
+  } /* fade only; after @starting-style */
+  .motion-stagger > * {
+    transition-delay: 0s;
+  }
+  /* Essential status keeps animating (HIG: keep progress indicators moving). */
+  .activity-indicator {
+    animation-duration: 1s, var(--dur-fast) !important;
+    animation-iteration-count: infinite, 1 !important;
+  }
+}

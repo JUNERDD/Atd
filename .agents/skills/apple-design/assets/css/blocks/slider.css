@@ -1,0 +1,169 @@
+/* @block slider | requires: states | layer: components | native: SwiftUI Slider; UIKit UISlider | native <input type="range">: capsule track, accent fill from --value, white pill thumb that lifts into a glass lens while dragged, optional ticks */
+/* Markup (the native input keeps keyboard, VoiceOver and form support):
+     <input class="slider" type="range" min="0" max="100" value="40" style="--value: .4" aria-label="Brightness">
+   --value is the 0–1 position of the thumb; set it for first paint. AppleBlocks.slider.init() keeps it in sync and sets
+   [data-pressed] while dragging (the lens). Firefox fills natively. Ticks: class="slider slider--ticks" style="--slider-ticks: 4"
+   draws 5 marks (4 intervals). Pair with min/max symbols or a value field when precision matters (components §4.3). */
+
+.slider {
+  --slider-track-h: 6px; /* ≈ iOS 26 */
+  --slider-thumb-w: 37px; /* ≈ the 37 × 24 pill knob of the 26 switch */
+  --slider-thumb-h: 24px;
+  --slider-fill: var(
+    --accent-text
+  ); /* ≥ 3:1 against the track (CON-1); var(--accent) = native tone */
+  --slider-track: var(--fill-secondary);
+  --slider-tick: var(--tertiary-label);
+  /* private: fill stop at the thumb centre, thumb look (switched by state below) */
+  --_stop: calc(var(--slider-thumb-w) / 2 + var(--value, 0) * (100% - var(--slider-thumb-w)));
+  --_dir: to right;
+  --_thumb-bg: #fff;
+  --_thumb-shadow: 0 0.5px 4px rgb(0 0 0 / 0.12), 0 6px 13px rgb(0 0 0 / 0.12);
+  --_thumb-ring: 0 0 #0000;
+  --_thumb-scale: 1;
+  --_thumb-dur: var(--dur-spring-snappy); /* release: spring (MOT-11) */
+  --_thumb-ease: var(--spring-snappy);
+  -webkit-appearance: none;
+  appearance: none;
+  display: block;
+  inline-size: 100%;
+  block-size: var(--hit); /* HIT-1: the whole 44 px row drags */
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.slider:dir(rtl) {
+  --_dir: to left;
+} /* the range runs right-to-left in RTL */
+
+.slider::-webkit-slider-runnable-track {
+  block-size: var(--slider-track-h);
+  border-radius: var(--corner-capsule);
+  background: linear-gradient(
+    var(--_dir),
+    var(--slider-fill) var(--_stop),
+    var(--slider-track) var(--_stop)
+  );
+}
+.slider::-moz-range-track {
+  block-size: var(--slider-track-h);
+  border-radius: var(--corner-capsule);
+  background: var(--slider-track);
+}
+.slider::-moz-range-progress {
+  block-size: var(--slider-track-h);
+  border-radius: var(--corner-capsule);
+  background: var(--slider-fill);
+}
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  inline-size: var(--slider-thumb-w);
+  block-size: var(--slider-thumb-h);
+  margin-block-start: calc((var(--slider-track-h) - var(--slider-thumb-h)) / 2);
+  border: 0;
+  border-radius: var(--corner-capsule);
+  background: var(--_thumb-bg);
+  box-shadow: var(--_thumb-ring), var(--_thumb-shadow);
+  scale: var(--_thumb-scale);
+  transition:
+    scale var(--_thumb-dur) var(--_thumb-ease),
+    background-color var(--dur-fast) var(--curve-out),
+    box-shadow var(--dur-fast) var(--curve-out);
+}
+.slider::-moz-range-thumb {
+  inline-size: var(--slider-thumb-w);
+  block-size: var(--slider-thumb-h);
+  border: 0;
+  border-radius: var(--corner-capsule);
+  background: var(--_thumb-bg);
+  box-shadow: var(--_thumb-ring), var(--_thumb-shadow);
+  scale: var(--_thumb-scale);
+  transition:
+    scale var(--_thumb-dur) var(--_thumb-ease),
+    background-color var(--dur-fast) var(--curve-out),
+    box-shadow var(--dur-fast) var(--curve-out);
+}
+
+/* Dragging: the thumb lifts into a clear lens over the track (interaction-feedback §4; ≈ the switch lens).
+   Press-in is fast (--dur-press), release springs back. slider.js sets [data-pressed]. */
+:root:not([data-press-tracking]) .slider:not(:disabled):active,
+.slider[data-pressed] {
+  --_thumb-bg: light-dark(
+    rgb(255 255 255 / 0.4),
+    rgb(255 255 255 / 0.22)
+  ); /* clearer lens over dark tracks */
+  --_thumb-shadow:
+    inset 0 0 0 0.5px rgb(255 255 255 / 0.8), inset 0 1px 1px rgb(255 255 255 / 0.9),
+    0 3px 10px rgb(0 0 0 / 0.18);
+  --_thumb-scale: 1.25;
+  --_thumb-dur: var(--dur-press);
+  --_thumb-ease: var(--curve-out);
+}
+.slider:focus-visible {
+  outline: none;
+  box-shadow: none;
+  --_thumb-ring: 0 0 0 var(--focus-ring-width) var(--focus-ring);
+} /* FB-6: ring on the thumb */
+.slider:disabled {
+  opacity: var(--state-disabled-opacity);
+  cursor: default;
+}
+
+.slider--ticks {
+  /* marks under the track at each interval of the thumb's travel */
+  --slider-ticks: 4; /* intervals; override inline */
+  background: repeating-linear-gradient(
+      to right,
+      var(--slider-tick) 0 2px,
+      transparent 0 calc((100% - 2px) / var(--slider-ticks))
+    )
+    calc(var(--slider-thumb-w) / 2 - 1px) calc(50% + var(--slider-thumb-h) / 2 + 3px) /
+    calc(100% - var(--slider-thumb-w) + 2px) 4px no-repeat;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root:not([data-press-tracking]) .slider:not(:disabled):active,
+  .slider[data-pressed] {
+    --_thumb-scale: 1;
+  } /* MOT-5: keep the lens look, drop the lift */
+}
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+  :root:not([data-press-tracking]) .slider:not(:disabled):active,
+  .slider[data-pressed] {
+    --_thumb-bg: #fff;
+  } /* opaque lens; Safari only takes the contrast branch */
+}
+@media (prefers-contrast: more) {
+  .slider {
+    --slider-track: var(--fill);
+    --_thumb-shadow: 0 0 0 1px var(--system-gray), 0 2px 6px rgb(0 0 0 / 0.2);
+  }
+}
+@media (forced-colors: active) {
+  .slider {
+    forced-color-adjust: none; /* track, fill and thumb would all become Canvas */
+    --slider-fill: Highlight;
+    --slider-track: CanvasText;
+    --slider-tick: CanvasText;
+    --_thumb-bg: ButtonFace;
+    --_thumb-shadow: 0 0 0 2px ButtonText;
+  }
+  .slider:focus-visible {
+    --_thumb-ring: 0 0 0 5px Highlight;
+  }
+  .slider:disabled {
+    --slider-fill: GrayText;
+    --slider-track: GrayText;
+    --_thumb-shadow: 0 0 0 2px GrayText;
+    opacity: 1;
+  }
+  :root:not([data-press-tracking]) .slider:not(:disabled):active,
+  .slider[data-pressed] {
+    --_thumb-bg: ButtonFace;
+    --_thumb-shadow: 0 0 0 2px Highlight;
+  }
+}
