@@ -292,5 +292,13 @@
     "fallbackName": "Subagent",
     "loading": "Loading conversation…",
     "empty": "No messages yet."
+  },
+  "mcpApproval": {
+    "requiredTitle": "{{name}} needs your approval to run",
+    "changedTitle": "{{name}} changed and needs your approval again",
+    "description": "A system dialog shows exactly what it will run before you allow it.",
+    "allow": "Allow…",
+    "allowedTitle": "{{name}} is allowed to run",
+    "allowedDescription": "Its tools are available from your next message."
   }
 }

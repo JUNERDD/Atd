@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { CircleAlert, KeyRound, Plug, PlugZap, ShieldCheck, ShieldOff, Trash2 } from 'lucide-react';
+import { CircleAlert, KeyRound, Plug, PlugZap, ShieldOff, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@ai/ui/components/button';
 import { DropdownMenuItem, DropdownMenuSeparator } from '@ai/ui/components/dropdown-menu';
@@ -18,11 +18,13 @@ import { mcpCanConnect, mcpNeedsApproval, mcpNeedsAuth } from './use-mcp-state-l
 
 /**
  * One server row in the shared anatomy: icon ring, id, then its launch approval while it waits for
- * one, the translated state and last error, then the enable switch and More. Review and
- * allow (the host's native dialog), Connect, sign-in, Withdraw approval and (for Personal servers)
- * remove sit in More; while the server asks for sign-in, the code field stays under the row so the
- * flow is visible, and a step that failed says why under the description. While a step runs, the
- * row's controls keep their focus but ignore input.
+ * one, the translated state and last error, then the switch and More. The switch is on only when
+ * the server may run: enabled and, when it needs one, approved. Turning it on enables the server
+ * and asks for the approval it lacks through the host's native dialog, which a cancel leaves off;
+ * turning it off disables the server and keeps its approval. Connect, sign-in, Withdraw approval
+ * and (for Personal servers) remove sit in More; while the server asks for sign-in, the code field
+ * stays under the row so the flow is visible, and a step that failed says why under the
+ * description. While a step runs, the row's controls keep their focus but ignore input.
  */
 function McpRow({
   row,
@@ -61,13 +63,17 @@ function McpRow({
 }) {
   const { t } = useTranslation('settings');
   const [authCode, setAuthCode] = useState('');
-  const showReview = mcpNeedsApproval(row.approval);
-  // A launch waiting for approval would only be refused, so Review comes before Connect.
-  const showConnect = mcpCanConnect(row.state) && !showReview;
+  const needsApproval = mcpNeedsApproval(row.approval);
+  // A launch waiting for approval would only be refused, so the switch asks for it first.
+  const showConnect = mcpCanConnect(row.state) && !needsApproval;
   const showAuth = mcpNeedsAuth(row.state);
   const showWithdraw = row.approval === 'approved';
   const locked = !connected || busy;
-  const steps = showReview || showConnect || showAuth || showWithdraw;
+  const steps = showConnect || showAuth || showWithdraw;
+  const setRunnable = (on: boolean) => {
+    if (!on || row.disabled) onEnabled(on);
+    if (on && needsApproval && canConfirmMcpApproval()) onRequestApproval();
+  };
   return (
     <ExtensionRow name={row.serverId} onDetails={onDetails}>
       <ItemMedia variant="icon">
@@ -123,24 +129,15 @@ function McpRow({
       </ItemContent>
       <ExtensionRowActions
         name={row.serverId}
-        enabled={!row.disabled}
+        enabled={!row.disabled && !needsApproval}
         disabled={!connected}
         pending={busy}
-        onEnabledChange={onEnabled}
+        onEnabledChange={setRunnable}
         onDetails={onDetails}
         lockedReason={lockedReason}
         menu={
           steps || !row.readOnly ? (
             <>
-              {showReview ? (
-                <DropdownMenuItem
-                  disabled={locked || !canConfirmMcpApproval()}
-                  onSelect={onRequestApproval}
-                >
-                  <ShieldCheck />
-                  {t('extensions.mcpApproval.review')}
-                </DropdownMenuItem>
-              ) : null}
               {showConnect ? (
                 <DropdownMenuItem disabled={locked} onSelect={onConnect}>
                   <PlugZap />

@@ -145,6 +145,7 @@ export async function createLiveState(
       ];
     },
     upsertMcp: binding.mcp.upsertMcp,
+    listMcp: binding.mcp.listMcp,
   };
   // Harness features (ask_user, grep/find/ls, todo, web, plan, memory) plug in here; see harness/.
   const harness = await prepareHarness({

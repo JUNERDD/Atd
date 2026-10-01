@@ -173,7 +173,8 @@ export interface KitOptions {
 export function createKit(records: McpServerConfig[], options: KitOptions) {
   const byId = new Map(records.map((record) => [record.serverId, record]));
   const log = options.log ?? memoryLog().log;
-  const states = new McpConnectionStates(log);
+  // No client listens to a kit's profile, so its state changes announce to no one.
+  const states = new McpConnectionStates(log, 'mcp-kit');
   states.reset(records);
   const txns = new CredentialTransactions();
   const connections = new ConnectionManager({

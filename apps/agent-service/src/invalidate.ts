@@ -21,6 +21,8 @@ const PREFIX_SCOPES: ReadonlyArray<readonly [string, InvalidateScope]> = [
   ['/v1/mcp/auth/complete', 'extensions'],
   ['/v1/mcp/refresh', 'extensions'],
   ['/v1/mcp/logout', 'extensions'],
+  // The shell's launch approval: the panel's approval banner and the Extensions rows show it.
+  ['/v1/admin/approvals/mcp', 'extensions'],
   ['/v1/memory', 'memory'],
   ['/v1/plugins', 'extensions'],
 ];

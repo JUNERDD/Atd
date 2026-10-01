@@ -7,6 +7,7 @@ import type { Artifact, FileRef } from '../../../client/agent/task-schema';
 import { TaskFiles } from '../task-files';
 import { ActivityRow } from './activity-row';
 import type { AdaptedItem, ViewBlock } from './adapter';
+import { McpApprovalBanners } from './mcp-approval-banner';
 import { type ActivityPhase, type ActivityPhaseKind } from './phases';
 import { phaseTitle, phaseToggleLabel } from './phase-title';
 import { PhaseStep } from './phase-step';
@@ -189,6 +190,8 @@ export const ActivityGroup = memo(function ActivityGroup({
   return (
     <div className="activity-group" data-activity={item.live ? 'live' : 'settled'}>
       <ActivityPhaseView phase={item.phase} active={active} requests={requests} />
+      {/* Outside the collapsible phase, so a collapsed group still shows what waits on the user. */}
+      <McpApprovalBanners steps={item.view} />
       {files.length > 0 && <TaskFiles files={files} onAttach={onAttach} />}
     </div>
   );

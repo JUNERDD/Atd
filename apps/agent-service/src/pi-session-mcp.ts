@@ -1,5 +1,5 @@
 import type { ExtensionFactory } from '@earendil-works/pi-coding-agent';
-import type { UpsertMcp } from './configure-mcp-tool.js';
+import type { ListMcp, UpsertMcp } from './configure-mcp-tool.js';
 import { confirmReview, type Reviewer } from './harness/auto-review.js';
 import {
   McpAuthority,
@@ -26,6 +26,7 @@ export interface SessionMcpPrep {
   /** The proxies `factory` registers. */
   bindings: McpToolBinding[];
   upsertMcp?: UpsertMcp;
+  listMcp?: ListMcp;
 }
 
 /** Prepares MCP runner tools and the catalog upsert hook for a parent session. */
@@ -56,6 +57,14 @@ export async function prepareSessionMcp(deps: SessionMcpDeps): Promise<SessionMc
       const record = await authority.upsert(serverId, request);
       return { record, approval: await authority.launches.state(record) };
     },
+    listMcp: () =>
+      Promise.all(
+        authority.configured().map(async (record) => ({
+          record,
+          approval: await authority.launches.state(record),
+          state: authority.states.get(record.serverId),
+        })),
+      ),
   };
 }
 

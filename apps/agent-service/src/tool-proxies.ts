@@ -12,7 +12,7 @@ import {
 import type { GrantScope, PermissionTier } from '@ai/agent-contracts';
 import type { CapabilityRegistry } from './capabilities.js';
 import { commandToolDefinition } from './commands/tool.js';
-import { registerConfigureMcpTool, type UpsertMcp } from './configure-mcp-tool.js';
+import { registerMcpCatalogTools, type ListMcp, type UpsertMcp } from './configure-mcp-tool.js';
 import { ConfirmStore } from './confirms.js';
 import { registerDesktopTool } from './desktop-tool.js';
 import type { Reviewer } from './harness/auto-review.js';
@@ -50,6 +50,7 @@ export interface ServiceToolHost {
    */
   skillDirs: () => readonly string[];
   upsertMcp?: UpsertMcp;
+  listMcp?: ListMcp;
 }
 
 /**
@@ -199,7 +200,7 @@ export function serviceTools(host: ServiceToolHost): ExtensionFactory {
     pi.registerTool(bashToolDefinition(host, authorize, invocation));
     pi.registerTool(commandToolDefinition(host.dataDir, authorize));
     registerDesktopTool(pi, host);
-    registerConfigureMcpTool(pi, host);
+    registerMcpCatalogTools(pi, host);
   };
 }
 

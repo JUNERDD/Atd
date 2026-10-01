@@ -23,6 +23,7 @@ import { registerInvalidation } from './invalidate.js';
 import { Ledger, LedgerNotFound } from './ledger.js';
 import type { Logger } from './logging.js';
 import { registerManageRoutes } from './manage.js';
+import { onMcpChanged } from './mcp/changes.js';
 import { McpAuthority, registerMcpRoutes, type McpAuthorityDeps } from './mcp/index.js';
 import { MemoryAuthority } from './memory/index.js';
 import { ResourceStore } from './resources.js';
@@ -160,9 +161,14 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
   const stopCommandWatch = CommandStore.onChanged(deps.config.paths.root, () =>
     hub.invalidate({ type: 'invalidate', scope: 'commands' }),
   );
+  // Likewise `configure_mcp` saves an MCP server, and a run connects one, without a route.
+  const stopMcpWatch = onMcpChanged(deps.config.paths.root, () =>
+    hub.invalidate({ type: 'invalidate', scope: 'extensions' }),
+  );
   app.addHook('onClose', async () => {
     stopMemoryWatch();
     stopCommandWatch();
+    stopMcpWatch();
   });
 
   app.get('/v1/status', RENDERER_ROUTE, async () => ({

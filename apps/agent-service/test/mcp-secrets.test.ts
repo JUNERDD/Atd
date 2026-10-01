@@ -184,7 +184,7 @@ test('kept secrets never move to another origin or command', async () => {
   assert.equal((await stored('runner')).stdio?.command, '/bin/echo', 'nothing was saved');
 });
 
-test('configure_mcp answers a status without env or header values', async () => {
+test('configure_mcp answers the saved settings with env names but not their values', async () => {
   const previous = upsertRecord('tool', stdio({ API_KEY: ENV_SECRET }), undefined);
   const result = await configureMcp(
     {
@@ -202,6 +202,10 @@ test('configure_mcp answers a status without env or header values', async () => 
   assert.ok(!text.includes(ENV_SECRET));
   assert.deepEqual(JSON.parse(result.content[0]?.text ?? ''), {
     serverId: 'tool',
+    transport: 'stdio',
+    command: '/bin/echo',
+    args: [],
+    envNames: ['API_KEY'],
     revision: 1,
     disabled: false,
     approval: 'required',

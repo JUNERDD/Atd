@@ -16,6 +16,7 @@ import {
 } from '../credentials/keyring.js';
 import type { Logger } from '../logging.js';
 import { McpError } from './errors.js';
+import { announceMcpChanged } from './changes.js';
 import { credentialIdentity, parseServerConfigs, serversFile } from './servers.js';
 
 /**
@@ -102,6 +103,7 @@ export async function readStoredServers(dataDir: string): Promise<StoredServer[]
 
 export async function writeStoredServers(dataDir: string, servers: StoredServer[]): Promise<void> {
   await atomicWrite(serversFile(dataDir), { version: 1, servers });
+  announceMcpChanged(dataDir);
 }
 
 /** A keyring value a failed save changed, and what it held before (undefined: nothing). */

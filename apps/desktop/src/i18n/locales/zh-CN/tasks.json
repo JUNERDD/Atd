@@ -292,5 +292,13 @@
     "fallbackName": "子智能体",
     "loading": "正在加载对话…",
     "empty": "暂无消息。"
+  },
+  "mcpApproval": {
+    "requiredTitle": "{{name}} 需要你允许才能运行",
+    "changedTitle": "{{name}} 已更改，需要重新允许",
+    "description": "允许前，系统对话框会列出它将要运行的内容。",
+    "allow": "允许…",
+    "allowedTitle": "已允许 {{name}} 运行",
+    "allowedDescription": "从下一条消息起即可使用它的工具。"
   }
 }

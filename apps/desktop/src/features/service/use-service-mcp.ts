@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react';
+import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import type { McpApprovalRequestResult } from '@ai/agent-contracts';
 import { showErrorToast } from '../../components/toast-store';
@@ -16,6 +17,34 @@ function serviceApi() {
  */
 export function canConfirmMcpApproval(): boolean {
   return window.desktop !== undefined;
+}
+
+/**
+ * What to tell the user after the native confirmation for `serverId` answered: nothing when it
+ * approved or the user cancelled, otherwise why the server could not be allowed. The Extensions
+ * rows and the panel's approval banner share it.
+ */
+export function mcpApprovalIssue(
+  result: McpApprovalRequestResult,
+  serverId: string,
+  t: TFunction<'settings'>,
+): string | null {
+  if (result.approved) return null;
+  const name = serverId;
+  switch (result.reason) {
+    case 'cancelled':
+      return null;
+    case 'changed':
+      return t('extensions.mcpApproval.changed', { name });
+    case 'unavailable':
+      return t('extensions.mcpApproval.unavailable', { name });
+    case 'busy':
+      return t('extensions.mcpApproval.busy');
+    default: {
+      const _exhaustive: never = result.reason;
+      return _exhaustive;
+    }
+  }
 }
 
 /** MCP status rows and the one-time approval notice, as the status route answers them. */
@@ -102,26 +131,9 @@ export function useServiceMcp() {
   const requestApproval = useCallback(
     (serverId: string) =>
       step(serverId, async () => {
-        const result: McpApprovalRequestResult = await serviceApi().mcpRequestApproval(serverId);
-        const name = serverId;
-        if (result.approved) return;
-        switch (result.reason) {
-          case 'cancelled':
-            return;
-          case 'changed':
-            setIssue(serverId, t('extensions.mcpApproval.changed', { name }));
-            return;
-          case 'unavailable':
-            setIssue(serverId, t('extensions.mcpApproval.unavailable', { name }));
-            return;
-          case 'busy':
-            setIssue(serverId, t('extensions.mcpApproval.busy'));
-            return;
-          default: {
-            const _exhaustive: never = result.reason;
-            return _exhaustive;
-          }
-        }
+        const result = await serviceApi().mcpRequestApproval(serverId);
+        const issue = mcpApprovalIssue(result, serverId, t);
+        if (issue) setIssue(serverId, issue);
       }),
     [setIssue, step, t],
   );

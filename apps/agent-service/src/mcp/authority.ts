@@ -128,7 +128,7 @@ export class McpAuthority {
   ): Promise<McpAuthority> {
     const audit =
       deps.audit ?? ((entry: Record<string, unknown>) => deps.log.debug('MCP audit.', entry));
-    const states = new McpConnectionStates(deps.log);
+    const states = new McpConnectionStates(deps.log, deps.dataDir);
     const transactions = new CredentialTransactions();
     const approvals = new McpApprovalBroker(deps.confirms, audit, deps.log);
     const records = await McpServerRecords.load(deps.dataDir, deps.serviceId, deps.log);

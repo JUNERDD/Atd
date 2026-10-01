@@ -5,22 +5,29 @@ import type {
   McpSnapshot,
 } from '@ai/agent-contracts';
 import type { Logger } from '../logging.js';
+import { announceMcpChanged } from './changes.js';
 import type { McpStateSink } from './errors.js';
 
 /**
  * Logical connection states (D6): disabled/disconnected/connecting/auth_required/ready/error/
  * closing. Connections, the sign-in flow (oauth-flow.ts) and the facade move a server between
- * them; the snapshot rows clients list are built from them.
+ * them; the snapshot rows clients list are built from them, so every change is announced for the
+ * profile in `dataDir` (changes.ts) and clients reload those rows.
  */
 
 export class McpConnectionStates implements McpStateSink {
   private readonly states = new Map<string, { state: McpConnectionState; lastError: string }>();
 
-  constructor(private readonly log: Logger) {}
+  constructor(
+    private readonly log: Logger,
+    private readonly dataDir: string,
+  ) {}
 
   set(serverId: string, state: McpConnectionState, lastError = ''): void {
+    const before = this.states.get(serverId);
     this.states.set(serverId, { state, lastError });
     this.log.debug('MCP connection state changed.', { serverId, state });
+    if (before?.state !== state || before.lastError !== lastError) announceMcpChanged(this.dataDir);
   }
 
   get(serverId: string): McpConnectionState {
