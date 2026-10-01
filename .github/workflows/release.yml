@@ -1,0 +1,141 @@
+name: Release
+
+# Bumping `version` in apps/macos/package.json on main publishes a GitHub Release `v<version>`
+# with the arm64 dmg of the Release app. The app is ad hoc signed and not notarized (project.yml
+# signs with `-` until Developer ID signing lands), so a downloaded copy is opened once from
+# Privacy & Security. There is no update feed: the native app has no updater.
+# A push that leaves the version as it was builds nothing, even when that version has no release
+# yet. A manual run releases the current version unless its tag exists: use it for a first
+# release without a bump, or to retry a release whose build failed.
+on:
+  push:
+    branches: [main]
+    paths: [apps/macos/package.json]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  version:
+    name: Detect version bump
+    # A manual run from another branch must not tag and publish unreviewed code.
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      release: ${{ steps.version.outputs.release }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          # The version before the push is read from `github.event.before`.
+          fetch-depth: 0
+      - id: version
+        env:
+          EVENT: ${{ github.event_name }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          version=$(node -p "require('./apps/macos/package.json').version")
+          if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::apps/macos/package.json version '$version' is not semver."
+            exit 1
+          fi
+          # The app bundle reads its version from project.yml, so a release must not name a
+          # version the bundle does not carry.
+          marketing=$(sed -n 's/^ *MARKETING_VERSION: *//p' apps/macos/project.yml | head -n 1)
+          if [ "$marketing" != "$version" ]; then
+            echo "::error::MARKETING_VERSION '$marketing' in apps/macos/project.yml differs from package.json version '$version'."
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          # A push releases only a version bump; other edits to package.json (dependencies,
+          # scripts) do not. An unreadable previous manifest falls through to the tag check.
+          if [ "$EVENT" = push ]; then
+            previous=$(git show "$BEFORE:apps/macos/package.json" 2> /dev/null \
+              | node -p "JSON.parse(require('fs').readFileSync(0, 'utf8')).version" 2> /dev/null \
+              || true)
+            if [ "$previous" = "$version" ]; then
+              echo "The push kept version $version; nothing to release." >> "$GITHUB_STEP_SUMMARY"
+              echo "release=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          fi
+          # --exit-code returns 2 only when the tag is absent; any other failure stops the run.
+          status=0
+          git ls-remote --exit-code --tags origin "refs/tags/v$version" > /dev/null || status=$?
+          case $status in
+            0)
+              echo "v$version is already released; nothing to build." >> "$GITHUB_STEP_SUMMARY"
+              echo "release=false" >> "$GITHUB_OUTPUT"
+              ;;
+            2) echo "release=true" >> "$GITHUB_OUTPUT" ;;
+            *) exit "$status" ;;
+          esac
+
+  release:
+    name: Publish v${{ needs.version.outputs.version }}
+    needs: version
+    if: needs.version.outputs.release == 'true'
+    # Pinned like the CI desktop job: the native shell targets macOS 26 and Xcode 26. The app is
+    # arm64 only, so one runner builds the one installer.
+    runs-on: macos-26
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: pnpm/action-setup@v6.1.0
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - name: Select Xcode 26.3
+        run: |
+          sudo xcode-select --switch /Applications/Xcode_26.3.app
+          xcodebuild -version
+      - name: Install XcodeGen
+        run: command -v xcodegen > /dev/null || brew install xcodegen
+      # The service's file index is a Rust addon that `bundle` builds through turbo; with no
+      # argument, rustup installs the toolchain rust-toolchain.toml pins.
+      - name: Install the Rust toolchain
+        run: |
+          rustup toolchain install
+          cargo --version
+      - run: pnpm install --frozen-lockfile
+      - name: Build the Release app
+        run: pnpm --filter @ai/macos build:release
+      - name: Package the dmg
+        run: |
+          app=apps/macos/DerivedData/Build/Products/Release/AI.app
+          built=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app/Contents/Info.plist")
+          if [ "$built" != "$VERSION" ]; then
+            echo "::error::The built app is version $built, not $VERSION."
+            exit 1
+          fi
+          codesign --verify --deep --strict "$app"
+          stage=$(mktemp -d)
+          ditto "$app" "$stage/AI.app"
+          ln -s /Applications "$stage/Applications"
+          mkdir dist
+          hdiutil create -volname AI -srcfolder "$stage" -ov -format UDZO "dist/AI-$VERSION-arm64.dmg"
+          ls -lh dist
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        # Creates the tag at the commit that was built. A prerelease version (1.2.0-beta.1)
+        # is published as a prerelease so it never becomes the latest release.
+        run: |
+          flags=()
+          if [[ "$VERSION" == *-* ]]; then flags+=(--prerelease); fi
+          gh release create "v$VERSION" dist/* \
+            --target "$GITHUB_SHA" \
+            --title "v$VERSION" \
+            --notes "Apple Silicon (arm64) build for macOS 26 or later. The app is ad hoc signed and not notarized: after downloading, open it once from System Settings › Privacy & Security." \
+            --generate-notes \
+            "${flags[@]}"
