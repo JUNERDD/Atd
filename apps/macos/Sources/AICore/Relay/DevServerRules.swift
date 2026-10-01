@@ -33,7 +33,8 @@ public enum DevProxyRule {
   public enum Refusal: Error, Equatable, Sendable {
     /// A `/@…` prefix Vite does not use for module serving, or `/@fs/` without a path.
     case specialPrefix
-    /// A query parameter outside ``allowedQueryKeys`` or with an unexpected value.
+    /// A query parameter outside ``allowedQueryKeys`` (``openInEditorQueryKeys`` for the inspector
+    /// endpoint) or with an unexpected value.
     case query
   }
 
@@ -50,8 +51,15 @@ public enum DevProxyRule {
   /// flag alone only stops inlining and serves the file as the bare path would.
   public static let allowedQueryKeys: Set<String> = ["t", "v", "import", "url", "no-inline"]
 
+  /// The component inspector's endpoint (`apps/desktop/plugins/component-inspector.ts`). Its
+  /// middleware answers `ok` and launches the editor CLI without a shell, never serving file
+  /// content, so it takes its own parameters instead of the module-serving ones above.
+  public static let openInEditorSegment = "__open_in_editor"
+  public static let openInEditorQueryKeys: Set<String> = ["file", "line", "col", "editor"]
+
   /// The raw query to forward (nil for none), or why the request is refused.
   public static func check(_ path: NormalizedPath, rawQuery: String?) -> Result<String?, Refusal> {
+    if path.segments == [openInEditorSegment] { return checkOpenInEditor(rawQuery: rawQuery) }
     if let first = path.segments.first, first.hasPrefix("@") {
       guard allowedSpecialPrefixes.contains(first) else { return .failure(.specialPrefix) }
       if first == "@fs", path.segments.count < 2 { return .failure(.specialPrefix) }
@@ -64,6 +72,24 @@ public enum DevProxyRule {
       if !item.contains("=") { flags.insert(item) }
     }
     guard !flags.contains("url") || flags.contains("import") else { return .failure(.query) }
+    return .success(rawQuery)
+  }
+
+  /// Each parameter at most once and with a value; `line` and `col` are decimal numbers.
+  private static func checkOpenInEditor(rawQuery: String?) -> Result<String?, Refusal> {
+    guard let rawQuery, !rawQuery.isEmpty else { return .failure(.query) }
+    var seen: Set<String> = []
+    for item in rawQuery.split(separator: "&", omittingEmptySubsequences: false) {
+      let parts = item.split(separator: "=", maxSplits: 1, omittingEmptySubsequences: false)
+      let key = String(parts[0])
+      guard parts.count == 2, !parts[1].isEmpty, openInEditorQueryKeys.contains(key),
+        seen.insert(key).inserted
+      else { return .failure(.query) }
+      if key == "line" || key == "col" {
+        guard parts[1].count <= 10, parts[1].utf8.allSatisfy({ (0x30...0x39).contains($0) })
+        else { return .failure(.query) }
+      }
+    }
     return .success(rawQuery)
   }
 
