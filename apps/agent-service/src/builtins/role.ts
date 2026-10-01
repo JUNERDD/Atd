@@ -21,7 +21,7 @@ export const SHIPPED_ROLE_FINGERPRINT = roleFingerprint(SHIPPED);
 
 /**
  * The shipped default role record. Its revision names the builtin version, so runs frozen on
- * another version (`rev-builtin-default` was version 1) stay distinguishable in role-runs.json.
+ * another version stay distinguishable in role-runs.json.
  */
 export function shippedDefaultRole(updatedAt = new Date(0).toISOString()): RoleRecord {
   return {
@@ -47,8 +47,8 @@ export interface RoleReconcile {
 /**
  * Reconciles the default role inside a roles file (null when there is none yet) against its
  * install record, by `reconcileAction`: a missing role is installed, an untouched one (the
- * recorded fingerprint, or without a record one in the shipped history, such as the version-1
- * five-tool shape) is replaced by the shipped role, and a changed one is kept.
+ * recorded fingerprint, or without a record one in the shipped history) is replaced by the shipped
+ * role, and a changed one is kept.
  */
 export function reconcileDefaultRole(
   stored: RolesFile | null,
