@@ -95,6 +95,7 @@ export class TaskRunner {
         },
         runId: () => this.currentRunId,
         cwd: path.join(ctx.paths.tasksDir, taskId, 'output'),
+        dataDir: ctx.paths.root,
         log: ctx.log,
       }),
       audit: (entry) => this.audit?.append(entry),
