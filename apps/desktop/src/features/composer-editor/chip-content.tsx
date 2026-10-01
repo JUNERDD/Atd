@@ -1,5 +1,13 @@
 import { useTranslation } from 'react-i18next';
-import { BookOpen, Bot, FileText, MessageSquare, Plug, type LucideIcon } from 'lucide-react';
+import {
+  BookOpen,
+  Bot,
+  FileText,
+  MessageSquare,
+  Plug,
+  TextQuote,
+  type LucideIcon,
+} from 'lucide-react';
 import type { Chip } from './draft';
 import './chips.css';
 
@@ -18,6 +26,8 @@ const ICONS: Record<ChipKind, LucideIcon> = {
   mcpServer: Plug,
   agent: Bot,
   skill: BookOpen,
+  // The selection toolbar's Quote in reply action, which inserts this chip.
+  quote: TextQuote,
 };
 
 const LABEL_KEYS = {
@@ -26,6 +36,7 @@ const LABEL_KEYS = {
   mcpServer: 'composer.chips.mcpServer',
   agent: 'composer.chips.agent',
   skill: 'composer.chips.skill',
+  quote: 'composer.chips.quote',
 } as const;
 
 /**
@@ -50,9 +61,23 @@ export function ChipContent({ kind, name }: ChipLabel) {
 
 /**
  * A chip outside the editor, such as in a sent message: the same root as `ChipWidget` builds
- * (`span.composer-chip[data-kind]`, inline-block in `chips.css`) around the same content.
+ * (`span.composer-chip[data-kind]`, inline-block in `chips.css`) around the same content. With
+ * `onReveal` (a quote that knows its passage) the root is a button that shows the passage.
  */
-export function ChipToken({ kind, name }: ChipLabel) {
+export function ChipToken({ kind, name, onReveal }: ChipLabel & { onReveal?: () => void }) {
+  if (onReveal) {
+    return (
+      <button
+        type="button"
+        className="composer-chip"
+        data-kind={kind}
+        data-action="reveal"
+        onClick={onReveal}
+      >
+        <ChipContent kind={kind} name={name} />
+      </button>
+    );
+  }
   return (
     <span className="composer-chip" data-kind={kind}>
       <ChipContent kind={kind} name={name} />

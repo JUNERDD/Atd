@@ -1,4 +1,5 @@
 import { useMemo, useState, type ReactElement } from 'react';
+import type { QuoteSource } from '@ai/agent-contracts';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@ai/ui/components/button';
 import { ScrollArea } from '@ai/ui/components/scroll-area';
@@ -14,6 +15,8 @@ import { artifactAnchorIds, indexRequests, sameIds, type RequestIndex } from './
 import { PromptMessage } from './prompt-message';
 import { ScrollJump } from './scroll-jump';
 import { pendingMessageText } from './run-prompt';
+import { useQuoteReveal } from './selection-toolbar/quote-reveal';
+import { SelectionToolbar } from './selection-toolbar/selection-toolbar';
 import { StatusBar } from './status-bar';
 import { TaskTurnsContext, type TaskTurns } from './turn-context';
 import { TurnHeader } from './turn-header';
@@ -84,7 +87,8 @@ function TurnList({
  * round trip without being restored by hand (a `display: none` box would drop the offset).
  * A failed compaction row retries through this task; after repeated compactions the end of the
  * conversation suggests `onNewTask`. Turn actions that leave the transcript (opening a fork,
- * starting a memory session) go through the panel's `onOpenTask` and `onRemember`.
+ * starting a memory session) go through the panel's `onOpenTask` and `onRemember`; text selected in
+ * an answer can be quoted into the reply through `onQuote`.
  */
 export function Transcript({
   detail,
@@ -93,6 +97,7 @@ export function Transcript({
   onNewTask,
   onOpenTask,
   onRemember,
+  onQuote,
 }: {
   detail: TaskDetail;
   covered?: boolean;
@@ -103,6 +108,8 @@ export function Transcript({
   onOpenTask?: (taskId: string) => void;
   /** Starts a memory session seeded with a turn's answer; without it turns offer no Remember. */
   onRemember?: (text: string) => void;
+  /** Adds selected answer text to the reply draft as a quote chip; without it there is no Quote. */
+  onQuote?: (markdown: string, source: QuoteSource | undefined) => void;
 }): ReactElement {
   const { t } = useTranslation('tasks');
   const { t: tPanel } = useTranslation('panel');
@@ -123,6 +130,10 @@ export function Transcript({
   const [anchors, setAnchors] = useState(nextAnchors);
   if (anchors !== nextAnchors && !sameIds(anchors, nextAnchors)) setAnchors(nextAnchors);
   const { viewportRef, showJump, pin, onScroll } = useTranscriptScroll(detail.revision);
+  const [messages, setMessages] = useState<HTMLDivElement | null>(null);
+  // The reveal layer: empty for React, painted by a quote chip's reveal (quote-overlay.ts).
+  const [revealLayer, setRevealLayer] = useState<HTMLDivElement | null>(null);
+  useQuoteReveal(messages, revealLayer);
   const hasUser = blocks.some((block) => block.kind === 'user');
   const pendingFiles = !hasUser && run ? artifacts.filter((file) => file.runId === run.id) : [];
   const headRequest = requests[0];
@@ -154,7 +165,7 @@ export function Transcript({
         scrollShadow
         viewportProps={{ onScroll }}
       >
-        <div className="conversation-messages">
+        <div ref={setMessages} className="conversation-messages">
           {task.legacy && (
             <div className="legacy-note">
               <p className="text-sm">{t('conversation.legacyTitle')}</p>
@@ -226,9 +237,11 @@ export function Transcript({
           )}
           {/* With turns, the note closes the last one, above its action bar. */}
           {turns.length === 0 && <StatusBar run={run} />}
+          <div ref={setRevealLayer} className="quote-reveal-layer" aria-hidden />
         </div>
       </ScrollArea>
       <ScrollJump show={showJump} onJump={pin} />
+      <SelectionToolbar root={messages} onQuote={onQuote} onRemember={onRemember} />
     </div>
   );
 }

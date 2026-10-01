@@ -20,6 +20,7 @@ import {
   readConversation,
   type Conversation,
 } from './conversation.js';
+import { quoteMaterial } from './quotes.js';
 
 /** Conversations one run may reference; later ones are listed as unavailable. */
 const MAX_TASK_REFERENCES = 3;
@@ -49,9 +50,9 @@ export interface ReferenceContext {
   pluginAgents: ReadonlyMap<string, PluginAgent>;
 }
 
-/** A run's references resolved at freeze into material and capabilities. */
+/** A run's quotes and references resolved at freeze into material and capabilities. */
 export interface RunReferences {
-  /** Text appended to the run material; empty when the run has no references. */
+  /** Text appended to the run material: quotes, then references; empty when it has neither. */
   material: string;
   /** `~/.atd/agents` and plugin specialists the run's session registers and allows. */
   agents: RuntimeAgent[];
@@ -79,12 +80,31 @@ interface Source {
 }
 
 /**
+ * Resolves the material a run's `@` tokens stand for: the passages its message quotes, read from
+ * the snapshot's chips (references/quotes.ts), then its staged references. Quotes always come
+ * through; their size already counts as the run's input, which the references' room excludes.
+ */
+export async function resolveRunReferences(
+  context: ReferenceContext,
+  references: RunReference[],
+): Promise<RunReferences> {
+  const quotes = quoteMaterial(context.run.snapshot.input);
+  const resolved = await resolveStaged(context, references);
+  if (!quotes.passages) return resolved;
+  return {
+    ...resolved,
+    material: [quotes.text, resolved.material].filter(Boolean).join(SEPARATOR),
+    audit: [{ quotes: quotes.passages, quoteChars: quotes.text.length }, ...resolved.audit],
+  };
+}
+
+/**
  * Resolves a run's staged references. A reference that no longer resolves
  * never fails the run: it is listed as unavailable with its reason, so the
  * model can tell the user. Everything the references add counts against the
  * context budget left by the run's own input and its skills (tasks/run-budget.ts).
  */
-export async function resolveRunReferences(
+async function resolveStaged(
   context: ReferenceContext,
   references: RunReference[],
 ): Promise<RunReferences> {

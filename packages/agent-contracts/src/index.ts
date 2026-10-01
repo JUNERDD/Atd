@@ -3,6 +3,7 @@ export * from './validation.js';
 export * from './protocol.js';
 export * from './relay.js';
 export * from './task.js';
+export * from './quotes.js';
 export * from './confirms.js';
 export * from './events.js';
 export * from './snapshot.js';

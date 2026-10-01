@@ -78,6 +78,10 @@ function composerChip(chip: InputChip, files: readonly FileRef[]): Chip | null {
       return { kind: 'agent', name: chip.name };
     case 'skill':
       return { kind: 'skill', name: chip.name };
+    case 'quote':
+      return chip.source
+        ? { kind: 'quote', text: chip.text, source: chip.source }
+        : { kind: 'quote', text: chip.text };
   }
 }
 

@@ -1,20 +1,27 @@
-import type {
-  InputChip,
-  InputChipRange,
-  MAX_INPUT_CHIPS,
-  MAX_RUN_REFERENCES,
-  MAX_RUN_SKILLS,
-  RunReference,
+import {
+  quoteLabel,
+  type InputChip,
+  type InputChipRange,
+  type MAX_INPUT_CHIPS,
+  type MAX_QUOTE_CHARS,
+  type MAX_RUN_REFERENCES,
+  type MAX_RUN_SKILLS,
+  type QuoteSource,
+  type RunReference,
 } from '@ai/agent-contracts';
 import type { FileRef } from '../../client/agent/task-schema';
 
-/** One inline reference inserted from the quick panel; the draft's only source of truth for it. */
+/**
+ * One inline chip, inserted from the quick panel or (a quote, holding the Markdown of a passage
+ * selected in an answer) from the transcript; the draft's only source of truth for it.
+ */
 export type Chip =
   | { kind: 'file'; file: FileRef }
   | { kind: 'task'; taskId: string; title: string }
   | { kind: 'mcpServer'; serverId: string }
   | { kind: 'agent'; name: string }
-  | { kind: 'skill'; name: string };
+  | { kind: 'skill'; name: string }
+  | { kind: 'quote'; text: string; source?: QuoteSource };
 
 /** A chip and its token range in the serialized `text`. */
 export interface ChipRange {
@@ -42,6 +49,7 @@ const LEGACY_SKILL_PREFIX = /^\/skill:([A-Za-z0-9][A-Za-z0-9_-]*) /;
 const MAX_REFERENCES: typeof MAX_RUN_REFERENCES = 16;
 const MAX_SKILLS: typeof MAX_RUN_SKILLS = 32;
 const MAX_CHIPS: typeof MAX_INPUT_CHIPS = 64;
+const MAX_QUOTE: typeof MAX_QUOTE_CHARS = 12000;
 
 export function chipName(chip: Chip): string {
   switch (chip.kind) {
@@ -54,6 +62,8 @@ export function chipName(chip: Chip): string {
     case 'agent':
     case 'skill':
       return chip.name;
+    case 'quote':
+      return quoteLabel(chip.text);
   }
 }
 
@@ -69,6 +79,8 @@ function chipKey(chip: Chip): string {
     case 'agent':
     case 'skill':
       return `${chip.kind}:${chip.name}`;
+    case 'quote':
+      return `quote:${chip.text}`;
   }
 }
 
@@ -188,6 +200,7 @@ function referenceOf(chip: Chip): RunReference | null {
       return { kind: 'agent', name: chip.name };
     case 'file':
     case 'skill':
+    case 'quote':
       return null;
   }
 }
@@ -218,16 +231,40 @@ function inputChipOf(chip: Chip): InputChip {
       return { kind: 'agent', name: chip.name };
     case 'skill':
       return { kind: 'skill', name: chip.name };
+    case 'quote':
+      return chip.source
+        ? { kind: 'quote', text: chip.text, source: chip.source }
+        : { kind: 'quote', text: chip.text };
   }
 }
 
 /**
  * Chip records for `input.chips`: each chip's range in `draft.text`, in draft order, up to the
- * contract's cap. They only let the transcript and the title show chips (a chip past the cap shows
- * as its text); files, skills and references still reach the run through `files` and staging.
+ * contract's cap. They let the transcript and the title show chips (a chip past the cap shows as
+ * its text); files, skills and references still reach the run through `files` and staging, while
+ * a quote's passage reaches it only through its record.
  */
 export function draftChips(draft: ComposerDraft): InputChipRange[] {
   return draft.chips
     .slice(0, MAX_CHIPS)
     .map(({ from, to, chip }) => ({ from, to, chip: inputChipOf(chip) }));
+}
+
+/**
+ * A quote chip for `markdown`, cut to the contract's cap with an ellipsis: a selection can span a
+ * whole long answer, and the passage travels in the chip record rather than the text. `source`
+ * lets the chip show where it was taken from.
+ */
+export function quoteChip(markdown: string, source?: QuoteSource): Chip {
+  const text =
+    markdown.length > MAX_QUOTE ? `${markdown.slice(0, MAX_QUOTE - 1).trimEnd()}…` : markdown;
+  return source ? { kind: 'quote', text, source } : { kind: 'quote', text };
+}
+
+/** `draft` with `chip` appended after its text, apart from it, and a space to type after. */
+export function appendChip(draft: ComposerDraft, chip: Chip): ComposerDraft {
+  const segments = deserialize(draft);
+  const last = segments.at(-1);
+  const apart = last === undefined || (typeof last === 'string' && /\s$/.test(last));
+  return serialize([...segments, ...(apart ? [] : [' ']), chip, ' '], draft.files);
 }

@@ -55,7 +55,8 @@
       "task": "Conversation: {{name}}",
       "mcpServer": "MCP server: {{name}}",
       "agent": "Subagent: {{name}}",
-      "skill": "Skill: {{name}}"
+      "skill": "Skill: {{name}}",
+      "quote": "Quote: {{name}}"
     },
     "progress": {
       "label": "Task progress",

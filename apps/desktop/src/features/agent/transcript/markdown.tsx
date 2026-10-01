@@ -21,6 +21,7 @@ import { CodeBlock } from './code-block';
 import { codeLanguage } from './code-language';
 import { ExternalLink } from './external-link';
 import { hasMermaidFence, loadMermaidPlugin } from './mermaid-lazy';
+import { codeSource } from './selection-toolbar/code-sources';
 
 type MarkdownProps<T extends keyof JSX.IntrinsicElements> = ComponentProps<T> & ExtraProps;
 
@@ -80,6 +81,7 @@ function fenceLabel(node: HastNode): string {
  * rendering inside the plain frame, so the diagram plugin (or its fallback) still draws it. While
  * the fence is still streaming its text stays plain in that frame: highlighting it would re-run
  * Shiki over the whole block on every patch, so the code block takes over once the fence closes.
+ * The mermaid frame records the fence's source, which a selection copies in place of the diagram.
  */
 function MarkdownPre({ children, className, node }: MarkdownProps<'pre'>) {
   const incomplete = useIsCodeFenceIncomplete();
@@ -117,7 +119,12 @@ function MarkdownPre({ children, className, node }: MarkdownProps<'pre'>) {
       viewportClassName="max-h-[inherit]"
       scrollShadow
     >
-      <pre className={className}>{children}</pre>
+      <pre
+        className={className}
+        {...(codeNode && codeSource({ contents: textOf(codeNode), language: 'mermaid' }))}
+      >
+        {children}
+      </pre>
     </ScrollArea>
   );
 }

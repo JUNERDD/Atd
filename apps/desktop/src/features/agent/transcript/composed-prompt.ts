@@ -1,4 +1,4 @@
-import type { InputChip, InputChipRange } from '@ai/agent-contracts';
+import { quoteLabel, type InputChip, type InputChipRange } from '@ai/agent-contracts';
 import type { RunSnapshot } from '../../../client/agent/task-schema';
 import { seedFromText } from '../../composer-editor/draft';
 
@@ -16,6 +16,8 @@ export function sentChipName(chip: InputChip): string {
       return chip.title;
     case 'mcpServer':
       return chip.serverId;
+    case 'quote':
+      return quoteLabel(chip.text);
   }
 }
 

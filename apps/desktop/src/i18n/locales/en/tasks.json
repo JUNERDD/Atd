@@ -300,6 +300,10 @@
     "allowedTitle": "{{name}} is allowed to run",
     "allowedDescription": "Its tools are available from your next message."
   },
+  "selection": {
+    "toolbar": "Selection actions",
+    "quote": "Quote in reply"
+  },
   "turnActions": {
     "regenerate": "Regenerate",
     "more": "More actions",

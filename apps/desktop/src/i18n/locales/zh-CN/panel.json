@@ -55,7 +55,8 @@
       "task": "对话：{{name}}",
       "mcpServer": "MCP 服务：{{name}}",
       "agent": "子代理：{{name}}",
-      "skill": "技能：{{name}}"
+      "skill": "技能：{{name}}",
+      "quote": "引用：{{name}}"
     },
     "progress": {
       "label": "任务进度",
