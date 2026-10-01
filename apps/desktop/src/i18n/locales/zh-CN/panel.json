@@ -124,7 +124,6 @@
   },
   "session": {
     "editSeed": "更新命令“{{name}}”（id：{{id}}）：",
-    "createSeed": "创建命令：",
     "editSkillSeed": "修改现有技能“{{name}}”：",
     "editSubagentSeed": "修改现有子代理“{{name}}”：",
     "editMcpSeed": "修改现有 MCP 服务器“{{name}}”：",

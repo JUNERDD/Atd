@@ -155,7 +155,8 @@
   "session": {
     "trigger": "Create with AI",
     "triggerEdit": "Edit with AI",
-    "opened": "Opened a new AI session in the task panel."
+    "opened": "Opened a new AI session in the task panel.",
+    "enableSkill": "Enable {{name}} in Extensions → Skills before creating with AI."
   },
   "run": {
     "title": "Run settings",

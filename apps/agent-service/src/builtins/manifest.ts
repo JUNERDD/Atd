@@ -52,6 +52,7 @@ export const BUILTIN_SKILLS: readonly BuiltinEntry[] = [
   skill('plan-mode', 1, []),
   skill('grill-me', 1, []),
   skill('create-memory', 1, []),
+  skill('create-command', 1, []),
 ];
 
 /** The builtin default role in `<dataDir>/skills/roles.json`. */

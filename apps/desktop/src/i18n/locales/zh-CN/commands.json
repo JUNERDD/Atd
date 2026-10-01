@@ -155,7 +155,8 @@
   "session": {
     "trigger": "用 AI 创建",
     "triggerEdit": "用 AI 编辑",
-    "opened": "已在任务面板中打开新的 AI 会话。"
+    "opened": "已在任务面板中打开新的 AI 会话。",
+    "enableSkill": "请先在「扩展 → 技能」中启用 {{name}}，再使用 AI 创建。"
   },
   "run": {
     "title": "运行设置",
