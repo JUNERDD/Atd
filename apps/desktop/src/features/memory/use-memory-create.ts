@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { showErrorToast, showToast } from '../../components/toast-store';
-import { asSkillRow } from '../service/extension-rows';
+import { isSkillDisabled } from '../service/extension-rows';
 
 const SKILL = 'create-memory';
 
@@ -27,12 +27,7 @@ export function useMemoryCreate() {
           showToast({ kind: 'error', text: t('memory.create.pausedHint') });
           return;
         }
-        // Extensions can switch the skill off; its chip would then load nothing.
-        const listed = await window.desktop?.service?.skills();
-        const skill = listed?.skills
-          .flatMap((row) => asSkillRow(row) ?? [])
-          .find((row) => row.name === SKILL);
-        if (skill && !skill.enabled) {
+        if (await isSkillDisabled(SKILL)) {
           showToast({ kind: 'error', text: t('memory.create.enableSkill', { name: SKILL }) });
           return;
         }

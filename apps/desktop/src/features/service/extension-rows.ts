@@ -181,6 +181,18 @@ export function asSkillRow(value: unknown): ExtensionSkillRow | null {
     : null;
 }
 
+/**
+ * Whether the service lists the skill `name` switched off in Extensions. A create-with-AI session
+ * seeded with a switched-off skill's chip would load nothing, so its callers refuse to start.
+ */
+export async function isSkillDisabled(name: string): Promise<boolean> {
+  const listed = await window.desktop?.service?.skills();
+  const skill = listed?.skills
+    .flatMap((row) => asSkillRow(row) ?? [])
+    .find((row) => row.name === name);
+  return skill ? !skill.enabled : false;
+}
+
 export function asRoleRow(value: unknown): ExtensionRoleRow | null {
   const id = readString(value, 'id');
   if (!id) return null;
