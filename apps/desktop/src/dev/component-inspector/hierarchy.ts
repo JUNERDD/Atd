@@ -9,16 +9,9 @@ import {
   isSupportedEditor,
   setPreferredEditor,
 } from './editor';
+import { collectHierarchy } from './component-chain';
 import { createHierarchyRows } from './hierarchy-rows';
 import { hideBadge, highlightElement } from './overlay';
-
-export interface ComponentNode {
-  comp: string;
-  file: string;
-  line: string;
-  col: string;
-  element: Element;
-}
 
 const PADDING = 16;
 const PANEL_ID = 'ai-component-inspector-hierarchy-panel';
@@ -48,45 +41,6 @@ export function isEventInsideHierarchyPanel(eventTarget: EventTarget | null): bo
     eventTarget instanceof Node &&
     hierarchyPanelEl.contains(eventTarget)
   );
-}
-
-/** Leaf-first component chain from the target element up to (excluding) body. */
-export function collectHierarchy(target: Element): ComponentNode[] {
-  let current: Element | null = target;
-  const hierarchy: ComponentNode[] = [];
-  const seenComps = new Set<string>();
-
-  while (current && current !== document.body && current !== document.documentElement) {
-    const file = current.getAttribute('data-insp-file');
-    const comp = current.getAttribute('data-insp-comp');
-
-    if (file && comp && /^[A-Z]/.test(comp) && !seenComps.has(comp)) {
-      seenComps.add(comp);
-      hierarchy.push({
-        comp,
-        file,
-        line: current.getAttribute('data-insp-line') || '1',
-        col: current.getAttribute('data-insp-col') || '1',
-        element: current,
-      });
-    }
-    current = current.parentElement;
-  }
-
-  if (hierarchy.length === 0) {
-    const file = target.getAttribute('data-insp-file');
-    if (file) {
-      hierarchy.push({
-        comp: target.getAttribute('data-insp-comp') || target.tagName.toLowerCase(),
-        file,
-        line: target.getAttribute('data-insp-line') || '1',
-        col: target.getAttribute('data-insp-col') || '1',
-        element: target,
-      });
-    }
-  }
-
-  return hierarchy;
 }
 
 function ensurePanelStyles(): void {

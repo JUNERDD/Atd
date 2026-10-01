@@ -2,6 +2,7 @@
  * Dev-only click-to-component inspector: hover overlay and cursor-following badge.
  */
 
+import type { ComponentNode } from './component-chain';
 import { getEditorLabel, getPreferredEditor } from './editor';
 
 let overlayEl: HTMLDivElement | null = null;
@@ -74,22 +75,25 @@ export function highlightElement(target: Element | null): void {
   overlayEl.style.height = `${rect.height}px`;
 }
 
-export function updateHighlight(target: Element | null, mouseX?: number, mouseY?: number): void {
+/** Outlines the element a left click would open and labels it with that component's source. */
+export function updateHighlight(
+  node: ComponentNode | null,
+  mouseX?: number,
+  mouseY?: number,
+): void {
   if (!overlayEl || !badgeEl) return;
 
-  if (!target) {
+  if (!node) {
     overlayEl.style.display = 'none';
     badgeEl.style.display = 'none';
     return;
   }
 
-  highlightElement(target);
+  highlightElement(node.element);
 
-  const rect = target.getBoundingClientRect();
-  const comp = target.getAttribute('data-insp-comp') || target.tagName.toLowerCase();
-  const file = target.getAttribute('data-insp-file') || '';
-  const line = target.getAttribute('data-insp-line') || '1';
-  const displayPath = normalizePath(file);
+  const rect = node.element.getBoundingClientRect();
+  const { comp, line } = node;
+  const displayPath = normalizePath(node.file);
   const editorLabel = getEditorLabel(getPreferredEditor());
 
   badgeEl.innerHTML = `
