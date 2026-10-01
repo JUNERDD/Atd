@@ -26,6 +26,7 @@ export interface ComposerEditorOptions extends EditorSettings {
   platform: string;
   /** Fixed for the editor's lifetime. */
   quickCommands: CommandIds;
+  onOverflow: (overflowing: boolean) => void;
 }
 
 function settingsOf({ wrap, locked, limit, label, placeholder, aria }: EditorSettings) {
@@ -104,6 +105,10 @@ class ComposerEditor implements EditorHost {
     this.report(update.state);
   }
 
+  onOverflow(overflowing: boolean) {
+    this.options.onOverflow(overflowing);
+  }
+
   onCompositionEnd(view: EditorView) {
     // CodeMirror applies the committed text in a microtask; settle after it.
     setTimeout(() => {
@@ -148,8 +153,20 @@ class ComposerEditor implements EditorHost {
   }
 }
 
-export function useComposerEditor(options: ComposerEditorOptions) {
-  const [editor] = useState(() => new ComposerEditor(options));
-  useLayoutEffect(() => editor.update(options));
-  return { container: editor.container, commands: editor.commands };
+/**
+ * The composer's editor, and whether the composer is `expanded`: the draft takes more than its
+ * one-line row, by a line break or by what it draws (editor-overflow.ts), so the prompt gets a row
+ * of its own and soft-wraps.
+ */
+export function useComposerEditor(options: Omit<ComposerEditorOptions, 'wrap' | 'onOverflow'>) {
+  const [overflowing, setOverflowing] = useState(false);
+  const expanded = options.draft.text.includes('\n') || overflowing;
+  const settings: ComposerEditorOptions = {
+    ...options,
+    wrap: expanded,
+    onOverflow: setOverflowing,
+  };
+  const [editor] = useState(() => new ComposerEditor(settings));
+  useLayoutEffect(() => editor.update(settings));
+  return { container: editor.container, commands: editor.commands, expanded };
 }

@@ -158,7 +158,6 @@ export function Composer({
   const stopDisabled = pending || status === 'stopping' || !onStop;
   const disabled = active ? stopDisabled : sendDisabled;
   const platform = window.desktop?.platform ?? 'web';
-  const expanded = draft.text.includes('\n') || draft.text.length > 90;
   /** Plain-text edits from outside the editor; chips they break are dropped. */
   const setText = (text: string) => onChange(normalizeDraft({ ...draft, text }));
   // The handlers below catch every error and reset their flags after the try statement: React
@@ -225,7 +224,7 @@ export function Composer({
       : followup
         ? t('composer.followUpPlaceholder')
         : t('composer.placeholder');
-  const { container: editorContainer, commands: editorCommands } = useComposerEditor({
+  const { container, commands, expanded } = useComposerEditor({
     draft,
     onChange,
     onTrigger: setTrigger,
@@ -234,7 +233,6 @@ export function Composer({
     shortcuts,
     platform,
     quickCommands: QUICK_COMMAND_IDS,
-    wrap: expanded,
     locked,
     limit,
     label: t('composer.promptLabel'),
@@ -270,7 +268,7 @@ export function Composer({
             trigger={trigger}
             running={active}
             pending={waiting}
-            editor={editorCommands}
+            editor={commands}
             handleRef={panel}
             onAriaChange={setAria}
             actions={{
@@ -301,7 +299,7 @@ export function Composer({
                 viewportClassName="max-h-[inherit]"
                 gutter="stable"
               >
-                <div ref={editorContainer} className="composer-input" />
+                <div ref={container} className="composer-input" />
               </ScrollArea>
               <ComposerAttachments
                 files={draft.files}
