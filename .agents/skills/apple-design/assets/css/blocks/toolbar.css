@@ -1,0 +1,125 @@
+/* @block toolbar | requires: base, glass, states | layer: components | native: SwiftUI .toolbar, ToolbarItemGroup, ToolbarSpacer / UIKit UINavigationBar + UIBarButtonItem groups | Top bar (54 px + safe area) of floating glass capsule groups holding borderless symbol or text buttons (CMP-4) */
+
+/* Markup: <header class="toolbar">
+             <div class="toolbar-group"><button class="toolbar-btn" type="button" aria-label="Back">svg</button></div>
+             <div class="toolbar-group"><button class="toolbar-btn" aria-label="Share">svg</button><button class="toolbar-btn" aria-label="More">svg</button></div>
+           </header>
+   At most 3 groups; never mix a text and a symbol button in one group (CMP-4). The single primary
+   action is its own <button class="btn-prominent btn-icon"> directly in .toolbar (GL-5, CMP-2).
+   Toggle items: aria-pressed (a selected toggle is filled with the accent, so its symbol holds 4.5:1 over any
+   backdrop). Separate groups visually with the scroll edge, not a bar background (GL-7). */
+.toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 15;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: calc(var(--safe-top) + var(--toolbar-h)); /* iOS 26 inline bar = 54 pt */
+  padding: calc(var(--safe-top) + 5px) var(--margin-page) 5px;
+  pointer-events: none; /* content under the empty bar stays tappable */
+}
+.toolbar > * {
+  pointer-events: auto;
+}
+:where([data-app-frame]) .toolbar {
+  position: absolute;
+  inset: 0 0 auto;
+}
+
+.toolbar-group {
+  --glass-radius: var(--corner-capsule);
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--hit);
+  transition: --glow var(--dur-base) var(--curve-out);
+}
+/* Light spreads to the whole group while one item is pressed (interaction-feedback.md §4). */
+:where(html:not([data-press-tracking])) .toolbar-group:has(> .toolbar-btn:active),
+.toolbar-group:has(> [data-pressed]) {
+  --glow: var(--press-glow);
+}
+
+.toolbar-btn {
+  position: relative;
+  z-index: 2;
+  box-sizing: border-box;
+  display: inline-grid;
+  place-items: center;
+  min-width: var(--hit); /* HIT-1: 44 x 44 */
+  height: var(--hit);
+  margin: 0;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--corner-capsule);
+  background: transparent;
+  color: var(--label); /* bar symbols stay monochrome (GL-5) */
+  font: 400 var(--fs-body)/1 var(--ff-sans);
+  letter-spacing: calc(var(--tr-body) * var(--tracking-scale));
+  text-decoration: none;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+  transition: background-color var(--dur-fast) var(--curve-out);
+}
+.toolbar-btn > svg {
+  width: 22px;
+  height: 22px;
+}
+
+/* Opt-in hairline between items of one group; iOS 26 groups share one capsule without it. */
+.toolbar-group--divided > .toolbar-btn + .toolbar-btn::before {
+  content: '';
+  position: absolute;
+  inset-block: 12px;
+  inset-inline-start: 0;
+  width: 0.5px;
+  background: var(--separator);
+}
+
+/* States (FB-1…FB-3): hover weakest, then selected, then pressed. */
+@media (hover: hover) and (pointer: fine) {
+  .toolbar-btn:where(:not(:disabled, [aria-disabled='true']):hover) {
+    background-color: var(--hover-fill);
+  }
+}
+/* Selected: the filled toggle (accent pair, COL-3). Accent-colored glyphs on the glass group measured 1.5:1 over
+   busy backdrops; the opaque fill keeps white >= 4.8:1 anywhere. A pressed selected toggle keeps its fill. */
+.toolbar-btn[aria-pressed='true'] {
+  background-color: var(--accent-fill);
+  color: var(--accent-on);
+}
+:where(html:not([data-press-tracking])) .toolbar-btn:not(:disabled, [aria-disabled='true']):active,
+.toolbar-btn[data-pressed] {
+  background-color: var(--press-fill);
+  transition-duration: var(--dur-press); /* press-in fast (MOT-11) */
+}
+:where(html:not([data-press-tracking])) .toolbar-btn[aria-pressed='true']:active,
+.toolbar-btn[aria-pressed='true'][data-pressed] {
+  background-color: var(--accent-fill);
+  background-image: linear-gradient(var(--press-fill) 0 0);
+}
+.toolbar-btn:is(:disabled, [aria-disabled='true']) {
+  opacity: var(--state-disabled-opacity);
+  cursor: default;
+}
+
+/* Reduced motion: nothing here moves; fills fade (MOT-5). */
+
+@media (forced-colors: active) {
+  .toolbar-btn {
+    border: 1px solid ButtonText;
+  }
+  .toolbar-btn[aria-pressed='true'] {
+    forced-color-adjust: none;
+    background: Highlight;
+    color: HighlightText;
+  }
+  .toolbar-btn:is(:disabled, [aria-disabled='true']) {
+    color: GrayText;
+    border-color: GrayText;
+  }
+}

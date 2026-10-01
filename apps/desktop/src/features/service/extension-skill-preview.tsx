@@ -25,7 +25,7 @@ export function SkillFilePreview({ path, content }: { path: string; content: str
       ? `${fenced('yaml', front[1] ?? '')}\n\n${content.slice(front[0].length)}`
       : content;
     return (
-      <ScrollArea className="skill-browser-body">
+      <ScrollArea className="skill-browser-body" scrollShadow>
         <div className="skill-browser-content">
           <StreamdownMarkdown text={markdown} streaming={false} />
         </div>
@@ -33,7 +33,7 @@ export function SkillFilePreview({ path, content }: { path: string; content: str
     );
   }
   return (
-    <ScrollArea className="skill-browser-body">
+    <ScrollArea className="skill-browser-body" scrollShadow>
       <div className="skill-browser-content">
         <CodeBlock contents={content} language={getFiletypeFromFileName(path)} />
       </div>

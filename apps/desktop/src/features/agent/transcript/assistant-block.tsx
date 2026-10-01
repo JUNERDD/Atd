@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import type { BlockOf } from '../../../../electron/agent/transcript-schema';
+import type { BlockOf } from '../../../client/agent/transcript-schema';
 import { LazyMarkdown } from './lazy-markdown';
 
 /** One assistant message; the turn's action bar (copy) sits below the whole turn instead. */

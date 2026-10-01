@@ -1,4 +1,4 @@
-import type { ToolStatus } from '../../../../electron/agent/transcript-schema';
+import type { ToolStatus } from '../../../client/agent/transcript-schema';
 
 /**
  * Reading of a pi-subagents `subagent` call from its arguments. The one tool both launches

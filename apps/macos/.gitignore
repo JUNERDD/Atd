@@ -1,0 +1,10 @@
+# SwiftPM
+.build/
+.swiftpm/
+Package.resolved
+# XcodeGen output; project.yml is the source of truth
+*.xcodeproj/
+App/Info.plist
+# xcodebuild -derivedDataPath
+DerivedData/
+xcuserdata/

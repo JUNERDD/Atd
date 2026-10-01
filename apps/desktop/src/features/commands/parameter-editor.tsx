@@ -13,11 +13,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@ai/ui/components/select';
-import type { Parameter } from '../../../electron/agent/command-schema';
-import { ParameterSchema } from '../../../electron/agent/command-schema';
-import { parse } from '../../../electron/agent/validation';
-import { parameterError } from '../../../electron/agent/command-validation';
+import type { Parameter } from '../../client/agent/command-schema';
+import { ParameterSchema } from '../../client/agent/command-schema';
+import { parse } from '../../client/agent/validation';
+import { parameterError } from '../../client/agent/command-validation';
 import { SettingsHeading } from '../settings/settings-heading';
+import { useSettingsUnsavedChanges } from '../settings/settings-unsaved-changes';
 import { IconButton } from '../../components/icon-button';
 import { FieldHint } from '../../components/field-hint';
 import { useOverlayFooter } from '../../components/use-overlay-footer';
@@ -38,7 +39,7 @@ export function ParameterEditor({
   onCancel: () => void;
 }) {
   const { t } = useTranslation('commands');
-  const [draft, setDraft] = useState<Parameter>(
+  const [start] = useState<Parameter>(
     initial ?? {
       type: 'text',
       key: '',
@@ -49,6 +50,8 @@ export function ParameterEditor({
       maxLength: 120,
     },
   );
+  const [draft, setDraft] = useState(start);
+  useSettingsUnsavedChanges(JSON.stringify(draft) !== JSON.stringify(start));
   const [error, setError] = useState('');
   const errorMessage = useRef<HTMLParagraphElement>(null);
   const footerRef = useOverlayFooter<HTMLElement>();
@@ -99,13 +102,14 @@ export function ParameterEditor({
       <SettingsHeading
         title={initial ? t('parameters.editTitle') : t('parameters.newTitle')}
         description={t('parameters.subtitle', { name: commandName || t('editor.newTitle') })}
-        onBack={onCancel}
+        subpage
         backLabel={t('parameters.back')}
       />
       <ScrollArea
         className="flex-1 min-h-0 min-w-0 m-[-3px_-15px_-3px_-3px]"
         viewportClassName="overlay-footer-fade"
         gutter="stable"
+        scrollShadow
       >
         <div className="editor-fields p-0.75">
           <div className="field-columns aligned-fields">
@@ -322,7 +326,7 @@ export function ParameterEditor({
       <footer ref={footerRef} className="editor-footer overlay-footer">
         <span className="text-xs text-muted-foreground">{t('parameters.footerHint')}</span>
         <div>
-          <Button variant="outline" onClick={onCancel}>
+          <Button variant="glass" onClick={onCancel}>
             {t('common.cancel')}
           </Button>
           <Button onClick={save}>{initial ? t('parameters.save') : t('parameters.add')}</Button>

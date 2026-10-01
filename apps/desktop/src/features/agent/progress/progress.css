@@ -1,6 +1,6 @@
 /* Row above the composer surface. It lives inside the composer popover anchor, so the popover its
    parts open stacks above the pill instead of covering it. Its height animates on enter and exit,
-   so it clips the capsule while collapsed; the margin keeps the parts' 3px focus ring visible. */
+   so it clips the capsule while collapsed; the margin keeps the capsule's edge unclipped. */
 .composer-progress-row {
   min-width: 0;
   overflow: clip;
@@ -16,8 +16,9 @@
   padding-bottom: 8px;
 }
 
-/* One 24px secondary capsule (the xs Button height) holding up to three parts. A part with a view
-   to open is its own ghost xs button, rounded to the capsule, so each part is a separate control. */
+/* One 24px glass capsule (the xs Button height, `surface-glass glass-control`) holding up to three
+   parts. A part with a view to open is its own xs button flush on that glass (`glass-ghost`),
+   rounded to the capsule, so each part is a separate control whose states stay inside it. */
 .composer-progress {
   display: inline-flex;
   align-items: center;
@@ -26,8 +27,7 @@
   max-width: 100%;
   height: 24px;
   border-radius: 999px;
-  background: var(--secondary);
-  color: var(--secondary-foreground);
+  color: var(--foreground);
   font-size: 12px;
   font-weight: 500;
   line-height: 16px;

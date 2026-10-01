@@ -1,5 +1,5 @@
 import websocketPlugin, { type WebSocket } from '@fastify/websocket';
-import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from 'fastify';
+import Fastify, { type FastifyInstance, type FastifyReply } from 'fastify';
 import {
   CapabilityReplyRequestSchema,
   ConfirmReplyRequestSchema,
@@ -10,35 +10,33 @@ import {
   STREAM_PROTOCOL,
   SubmitTaskRequestSchema,
   type ErrorCode,
-  type FutureOwner,
 } from '@ai/agent-contracts';
-import { AuthError, hostAllowed, originAllowed } from './auth.js';
+import { AuthError, authorize, hostAllowed, originAllowed } from './auth.js';
 import { CapabilityGone, DesktopUnavailable } from './capabilities.js';
 import type { CapabilityRegistry } from './capabilities.js';
 import { CommandStore } from './commands/store.js';
 import type { ServiceConfig } from './config.js';
 import { ConfirmGone, type ConfirmStore } from './confirms.js';
 import type { EventLog } from './event-log.js';
+import { registerFileRoutes } from './file-routes.js';
+import { registerInvalidation } from './invalidate.js';
 import { Ledger, LedgerNotFound } from './ledger.js';
 import type { Logger } from './logging.js';
 import { registerManageRoutes } from './manage.js';
+import { onMcpChanged } from './mcp/changes.js';
 import { McpAuthority, registerMcpRoutes, type McpAuthorityDeps } from './mcp/index.js';
 import { MemoryAuthority } from './memory/index.js';
-import { registerMigrationRoutes } from './migration/routes.js';
 import { ResourceStore } from './resources.js';
 import { UpstreamError } from './errors.js';
 import { ConflictError, DrainingError, type RunnerManager } from './runner-manager.js';
 import { registerAtdAgentRoutes } from './atd-agents/mount.js';
 import { registerBuiltinRoutes } from './builtins/mount.js';
 import { registerPluginRoutes } from './plugins/routes.js';
+import { registerRelayRoutes, RENDERER_ROUTE, SHELL_ROUTE } from './relay-routes.js';
 import { registerSkillRoutes } from './skills/mount.js';
 import type { SettingsStore } from './settings/store.js';
 import { StreamHub } from './stream.js';
-import { authorize, isPublic } from './web/access.js';
-import { registerInvalidation } from './web/invalidate.js';
-import { registerWebRoutes } from './web/routes.js';
-import type { WebSessions } from './web/sessions.js';
-import { registerWebClient } from './web/static.js';
+import { taskStatusCounts } from './task-status.js';
 
 export interface ServerDeps {
   config: ServiceConfig;
@@ -49,27 +47,22 @@ export interface ServerDeps {
   resources: ResourceStore;
   manager: RunnerManager;
   settings: SettingsStore;
-  sessions: WebSessions;
   log: Logger;
   startedAt: string;
   onShutdown: () => void;
 }
 
-/** Future routes answer 501 with the owning todo; never a fake success. */
-const PLACEHOLDERS: { prefix: string; owner: FutureOwner }[] = [
-  { prefix: '/v1/subagents', owner: 'T5' },
-];
-
 /**
  * Fastify HTTP + WS service. Fastify owns transport; this module owns DTOs,
- * auth, idempotency plumbing, live skills/MCP mounts and placeholders.
+ * auth, idempotency plumbing, live skills/MCP mounts and the relay route manifest.
  */
 export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
-  const app = Fastify({ bodyLimit: 1024 * 1024, logger: false });
+  // No automatic HEAD routes: the route manifest lists exactly the routes declared here.
+  const app = Fastify({ bodyLimit: 1024 * 1024, logger: false, exposeHeadRoutes: false });
   await app.register(websocketPlugin, {
     options: {
       maxPayload: 1024 * 1024,
-      // Browsers offer `ai.v1` plus their credential; only `ai.v1` is ever selected and echoed.
+      // Clients offer `ai.v1` plus their credential; only `ai.v1` is ever selected and echoed.
       handleProtocols: (protocols) => (protocols.has(STREAM_PROTOCOL) ? STREAM_PROTOCOL : false),
     },
   });
@@ -93,11 +86,12 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
     }
     done();
   });
+  // Before any route: it classifies every route declared from here on.
+  registerRelayRoutes(app, deps.config);
 
   app.addHook('preHandler', (request, _reply, done) => {
-    if (isPublic(request)) return done();
     try {
-      authorize(request, deps.config.token, deps.sessions);
+      authorize(request, deps.config.token);
       done();
     } catch (error) {
       done(error as Error);
@@ -154,6 +148,8 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
     capabilities: deps.capabilities,
     snapshot: (taskId) => deps.manager.snapshot(taskId),
     summaries: () => deps.manager.summaries(),
+    status: () => taskStatusCounts(deps.ledger.data),
+    onStatusInputs: (listener) => deps.ledger.onChanged(listener),
     log: deps.log,
   });
   registerInvalidation(app, (frame) => hub.invalidate(frame));
@@ -165,12 +161,17 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
   const stopCommandWatch = CommandStore.onChanged(deps.config.paths.root, () =>
     hub.invalidate({ type: 'invalidate', scope: 'commands' }),
   );
+  // Likewise `configure_mcp` saves an MCP server, and a run connects one, without a route.
+  const stopMcpWatch = onMcpChanged(deps.config.paths.root, () =>
+    hub.invalidate({ type: 'invalidate', scope: 'extensions' }),
+  );
   app.addHook('onClose', async () => {
     stopMemoryWatch();
     stopCommandWatch();
+    stopMcpWatch();
   });
 
-  app.get('/v1/status', async () => ({
+  app.get('/v1/status', RENDERER_ROUTE, async () => ({
     service: {
       serviceId: deps.config.serviceId,
       service: 'agent-service',
@@ -189,27 +190,36 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
     pendingCapabilities: deps.capabilities.pending().length,
   }));
 
-  app.post('/v1/tasks', async (request) =>
+  app.post('/v1/tasks', RENDERER_ROUTE, async (request) =>
     deps.manager.submit(parse(SubmitTaskRequestSchema, request.body)),
   );
 
-  app.get<{ Params: { taskId: string } }>('/v1/tasks/:taskId', async (request) => ({
+  app.get<{ Params: { taskId: string } }>('/v1/tasks/:taskId', RENDERER_ROUTE, async (request) => ({
     task: deps.ledger.task(request.params.taskId),
   }));
 
-  app.get<{ Params: { taskId: string } }>('/v1/tasks/:taskId/summary', async (request) => ({
-    summary: deps.manager.summary(request.params.taskId),
-    epoch: deps.events.epoch,
-    seq: deps.events.currentSeq,
-  }));
+  app.get<{ Params: { taskId: string } }>(
+    '/v1/tasks/:taskId/summary',
+    RENDERER_ROUTE,
+    async (request) => ({
+      summary: deps.manager.summary(request.params.taskId),
+      epoch: deps.events.epoch,
+      seq: deps.events.currentSeq,
+    }),
+  );
 
-  app.get<{ Params: { taskId: string } }>('/v1/tasks/:taskId/snapshot', async (request) => ({
-    snapshot: await deps.manager.snapshot(request.params.taskId),
-  }));
+  app.get<{ Params: { taskId: string } }>(
+    '/v1/tasks/:taskId/snapshot',
+    RENDERER_ROUTE,
+    async (request) => ({
+      snapshot: await deps.manager.snapshot(request.params.taskId),
+    }),
+  );
 
   // childKey arrives URL-encoded and Fastify decodes it; only the task's `app-child` entries resolve it.
   app.get<{ Params: { taskId: string; childKey: string } }>(
     '/v1/tasks/:taskId/children/:childKey/transcript',
+    RENDERER_ROUTE,
     async (request) => {
       const { taskId, childKey } = request.params;
       deps.ledger.task(taskId);
@@ -222,10 +232,11 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
 
   app.post<{ Params: { taskId: string; runId: string } }>(
     '/v1/tasks/:taskId/runs/:runId/cancel',
+    RENDERER_ROUTE,
     async (request) => deps.manager.cancel(request.params.taskId, request.params.runId),
   );
 
-  app.post('/v1/confirms', async (request) => {
+  app.post('/v1/confirms', RENDERER_ROUTE, async (request) => {
     const body = parse(ConfirmReplyRequestSchema, request.body);
     const live = deps.confirms.pending().find((item) => item.id === body.requestId);
     if (!live) throw new ConfirmGone(body.requestId);
@@ -233,19 +244,23 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
     return { request: live, resolved };
   });
 
-  app.post('/v1/capabilities/result', async (request) => {
+  app.post('/v1/capabilities/result', SHELL_ROUTE, async (request) => {
     const body = parse(CapabilityReplyRequestSchema, request.body);
     await deps.capabilities.result(body.result);
     return { ok: true };
   });
 
-  app.post<{ Params: { taskId: string } }>('/v1/tasks/:taskId/queue', async (request) => {
-    const body = parse(QueueMessageRequestSchema, request.body);
-    await deps.manager.queue(request.params.taskId, body.text, body.mode);
-    return { ok: true };
-  });
+  app.post<{ Params: { taskId: string } }>(
+    '/v1/tasks/:taskId/queue',
+    RENDERER_ROUTE,
+    async (request) => {
+      const body = parse(QueueMessageRequestSchema, request.body);
+      await deps.manager.queue(request.params.taskId, body.text, body.mode);
+      return { ok: true };
+    },
+  );
 
-  app.post('/v1/resources', async (request) => {
+  app.post('/v1/resources', RENDERER_ROUTE, async (request) => {
     const query = request.query as { name?: unknown; mime?: unknown };
     const name = typeof query.name === 'string' && query.name ? query.name : 'upload.bin';
     const mime =
@@ -255,13 +270,11 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
     return { resource };
   });
 
-  app.post('/v1/admin/shutdown', async (_request, reply) => {
+  app.post('/v1/admin/shutdown', SHELL_ROUTE, async (_request, reply) => {
     void reply.send({ ok: true });
     setImmediate(() => deps.onShutdown());
   });
 
-  // T2 additive: authenticated credential-upload + status channel for migration.
-  registerMigrationRoutes(app, deps.config);
   // T6b additive: live management APIs (providers/commands/memory/tasks/resources).
   registerManageRoutes(app, {
     config: deps.config,
@@ -270,12 +283,11 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
     settings: deps.settings,
     log: deps.log,
   });
-  registerWebRoutes(app, deps.sessions, deps.config.serviceId);
-  await registerWebClient(app, deps.config.webRoot, deps.log);
 
   registerSkillRoutes(app, deps.config);
   registerBuiltinRoutes(app, deps.config);
   registerAtdAgentRoutes(app, deps.config);
+  registerFileRoutes(app, { resources: deps.resources, dataDir: deps.config.paths.root });
   registerPluginRoutes(app, {
     dataDir: deps.config.paths.root,
     agentDir: deps.config.paths.agentDir,
@@ -283,29 +295,17 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
     mcp: () => McpAuthority.authorityFor(mcpAuthorityDeps(deps)),
   });
 
-  // Live MCP mounts. Building the authority costs ~880 ms (adapter transpile
-  // plus control session) and ~26 MB for the rest of the process, and nothing
-  // at boot needs it, so the routes take a lazy resolver and the adapter loads
-  // on first MCP use (a route, a plugin toggle, or a run). `authorityFor`
-  // caches per dataDir, so all of those share one load. McpAdapterMissing still degrades
-  // explicitly: MCP routes answer 503 (never 501-future nor silent success)
-  // and runs continue without MCP tools; skills stay live.
+  // Live MCP mounts. Nothing at boot needs the authority (it reads the server records, launch
+  // approvals and saved sign-ins), so the routes take a lazy resolver and it loads on first MCP
+  // use (a route, a plugin toggle, or a run). `authorityFor` caches per dataDir, so all of those
+  // share one load.
   registerMcpRoutes(app, () => McpAuthority.authorityFor(mcpAuthorityDeps(deps)));
 
-  for (const placeholder of PLACEHOLDERS) {
-    const handler = async (_request: FastifyRequest, reply: FastifyReply) =>
-      fail(
-        reply,
-        501,
-        'not_implemented',
-        `${placeholder.prefix} is not implemented yet.`,
-        placeholder.owner,
-      );
-    app.all(placeholder.prefix, handler);
-    app.all(`${placeholder.prefix}/*`, handler);
-  }
-
-  app.get('/v1/stream', { websocket: true }, (socket: WebSocket) => {
+  // Shell, never renderer: the relay's scheme handler cannot upgrade a WebSocket, so the WebView
+  // reaches the stream only through the native virtual-socket pipe, and that pipe's upstream
+  // frame-type whitelist (subscribe, ping) is what guards it. The manifest must not suggest that
+  // the relay may forward it.
+  app.get('/v1/stream', { websocket: true, ...SHELL_ROUTE }, (socket: WebSocket) => {
     hub.handle(socket);
   });
 
@@ -321,8 +321,6 @@ function mcpAuthorityDeps(deps: ServerDeps): McpAuthorityDeps {
   return {
     serviceId: deps.config.serviceId,
     dataDir: deps.config.paths.root,
-    agentDir: deps.config.paths.agentDir,
-    sessionsDir: deps.config.paths.sessionsDir,
     cwd: deps.config.paths.root,
     events: deps.events,
     confirms: deps.confirms,
@@ -331,12 +329,6 @@ function mcpAuthorityDeps(deps: ServerDeps): McpAuthorityDeps {
   };
 }
 
-function fail(
-  reply: FastifyReply,
-  status: number,
-  code: ErrorCode,
-  message: string,
-  owner?: FutureOwner,
-): FastifyReply {
-  return reply.status(status).send({ error: { code, message, ...(owner ? { owner } : {}) } });
+function fail(reply: FastifyReply, status: number, code: ErrorCode, message: string): FastifyReply {
+  return reply.status(status).send({ error: { code, message } });
 }

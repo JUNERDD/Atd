@@ -89,7 +89,12 @@ function MarkdownPre({ children, className, node }: MarkdownProps<'pre'>) {
   const label = codeNode ? fenceLabel(codeNode) : '';
   if (codeNode && incomplete) {
     return (
-      <ScrollArea orientation="both" className="markdown-code" viewportClassName="max-h-[inherit]">
+      <ScrollArea
+        orientation="both"
+        className="markdown-code"
+        viewportClassName="max-h-[inherit]"
+        scrollShadow
+      >
         <pre className={className}>
           <code>{textOf(codeNode)}</code>
         </pre>
@@ -106,7 +111,12 @@ function MarkdownPre({ children, className, node }: MarkdownProps<'pre'>) {
     );
   }
   return (
-    <ScrollArea orientation="both" className="markdown-code" viewportClassName="max-h-[inherit]">
+    <ScrollArea
+      orientation="both"
+      className="markdown-code"
+      viewportClassName="max-h-[inherit]"
+      scrollShadow
+    >
       <pre className={className}>{children}</pre>
     </ScrollArea>
   );
@@ -129,7 +139,7 @@ function MermaidFallback({ chart }: MermaidErrorComponentProps) {
   const [copied, setCopied] = useState(false);
   return (
     <div className="mermaid-fallback">
-      <ScrollArea orientation="both" viewportClassName="max-h-[inherit]">
+      <ScrollArea orientation="both" viewportClassName="max-h-[inherit]" scrollShadow>
         <pre>{chart}</pre>
       </ScrollArea>
       <IconButton

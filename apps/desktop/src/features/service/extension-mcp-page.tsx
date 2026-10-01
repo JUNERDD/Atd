@@ -1,4 +1,4 @@
-import { Copy, KeyRound, PlugZap } from 'lucide-react';
+import { Copy } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@ai/ui/components/button';
 import {
@@ -7,13 +7,15 @@ import {
   ExtensionDetailStatus,
   type DetailField,
 } from './extension-detail-fields';
+import { McpStatusSection } from './extension-mcp-status';
 import { draftFromConfig, EMPTY_MCP_DRAFT, type McpUpsertInput } from './extension-mcp-draft';
 import { McpEditor } from './extension-mcp-editor';
 import type { ExtensionMcpConfig } from './extension-detail-rows';
 import { ExtensionPage, type ExtensionPageBadge } from './extension-page';
+import { ExtensionRemoveButton } from './extension-remove-dialog';
 import type { ExtensionMcpRow } from './extension-rows';
 import { useMcpConfig } from './use-mcp-config';
-import { mcpCanConnect, mcpNeedsAuth, useMcpStateLabel } from './use-mcp-state-label';
+import { useMcpStateLabel } from './use-mcp-state-label';
 
 type McpPageProps = {
   serverId: string | null;
@@ -21,89 +23,25 @@ type McpPageProps = {
   backLabel: string;
   connected: boolean;
   busy: boolean;
+  /** Why the server's last connection step failed, until its next one. */
+  issue: string | null;
   onBack: () => void;
   onUpsert: (input: McpUpsertInput) => Promise<boolean>;
   onConnect: (serverId: string) => void;
   onAuthStart: (serverId: string) => void;
+  onRequestApproval: (serverId: string) => void;
+  onWithdrawApproval: (serverId: string) => void;
   onStartAi: (target: string | null) => void;
   /** Copies a plugin's read-only server into Personal. */
   onDuplicate: () => void;
+  /** Removes a Personal server once the confirmation is accepted. */
+  onRemove: () => void;
 };
 
 /**
- * The live side of a server: its state, what it offers and its last error, with Connect or
- * Authenticate when the state calls for it. The row is absent until the status list has it.
- */
-function McpStatusSection({
-  row,
-  locked,
-  onConnect,
-  onAuthStart,
-}: {
-  row: ExtensionMcpRow | undefined;
-  locked: boolean;
-  onConnect: () => void;
-  onAuthStart: () => void;
-}) {
-  const { t } = useTranslation('settings');
-  const stateLabel = useMcpStateLabel();
-  const label = t('extensions.mcpPage.statusSection');
-  if (!row)
-    return (
-      <ExtensionDetailSection label={label}>
-        <ExtensionDetailStatus text={t('extensions.detailLoading')} error={false} />
-      </ExtensionDetailSection>
-    );
-  const fields: DetailField[] = [
-    { label: t('extensions.mcpPage.state'), value: stateLabel(row.state) },
-    {
-      label: t('extensions.detailOffers'),
-      value: t('extensions.mcpOffers', {
-        tools: row.toolCount,
-        resources: row.resourceCount,
-        prompts: row.promptCount,
-      }),
-    },
-    ...(row.lastError ? [{ label: t('extensions.detailLastError'), value: row.lastError }] : []),
-  ];
-  const showConnect = mcpCanConnect(row.state);
-  const showAuth = mcpNeedsAuth(row.state);
-  return (
-    <ExtensionDetailSection label={label}>
-      <ExtensionDetailFields fields={fields} />
-      {showConnect || showAuth ? (
-        <div className="flex flex-wrap items-center gap-2">
-          {showConnect ? (
-            <Button type="button" variant="outline" size="sm" disabled={locked} onClick={onConnect}>
-              <PlugZap data-icon="inline-start" />
-              {t('extensions.connect')}
-            </Button>
-          ) : null}
-          {showAuth ? (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={locked}
-              onClick={onAuthStart}
-            >
-              <KeyRound data-icon="inline-start" />
-              {t('extensions.authenticate')}
-            </Button>
-          ) : null}
-        </div>
-      ) : null}
-      {showAuth ? (
-        <p className="text-muted-foreground text-xs">{t('extensions.mcpPage.authCodeNote')}</p>
-      ) : null}
-    </ExtensionDetailSection>
-  );
-}
-
-/**
- * Settings in the record the form has no control for. `mcpUpsert` rebuilds the transport block
- * from the form, so saving drops them; they are listed by name (never by value) with that
- * warning rather than lost silently.
+ * Settings in the record the form has no control for. Saving keeps them for the same kind of
+ * transport (env vars and headers by name: their values never reach this page) and drops them
+ * when the transport switches between stdio and HTTP, which the note says.
  */
 function McpUnkeptSection({ config }: { config: ExtensionMcpConfig }) {
   const { t } = useTranslation('settings');
@@ -162,22 +100,33 @@ function McpConnectionFacts({ config }: { config: ExtensionMcpConfig | null }) {
   );
 }
 
-/** One server's details: its status, then its connection prefilled from the configured record. */
+/**
+ * One server's details: its status, then its connection prefilled from the configured record, with
+ * Remove for a Personal server.
+ */
 function McpDetailsPage({ serverId, ...props }: McpPageProps & { serverId: string }) {
   const { t } = useTranslation('settings');
   const stateLabel = useMcpStateLabel();
   const row = props.rows.find((item) => item.serverId === serverId);
-  const loaded = useMcpConfig(serverId, Boolean(row));
+  const { loaded, retry } = useMcpConfig(serverId, Boolean(row));
   const config = loaded && 'config' in loaded ? loaded.config : null;
   const tone: ExtensionPageBadge['tone'] =
-    row?.state === 'error' ? 'error' : row?.disabled ? 'off' : 'on';
+    row?.state === 'error'
+      ? 'error'
+      : row?.disabled || row?.state === 'approval_required'
+        ? 'off'
+        : 'on';
   const badge = row ? { label: stateLabel(row.state), tone } : null;
   const status = (
     <McpStatusSection
       row={row}
-      locked={!props.connected || props.busy}
+      disabled={!props.connected}
+      pending={props.busy}
+      issue={props.issue}
       onConnect={() => props.onConnect(serverId)}
       onAuthStart={() => props.onAuthStart(serverId)}
+      onRequestApproval={() => props.onRequestApproval(serverId)}
+      onWithdrawApproval={() => props.onWithdrawApproval(serverId)}
     />
   );
   // A plugin's server shows its status and connection whether or not the user catalog has it.
@@ -189,10 +138,10 @@ function McpDetailsPage({ serverId, ...props }: McpPageProps & { serverId: strin
         badge={badge}
         description={t('extensions.mcpDetailDescription')}
         backLabel={props.backLabel}
-        onBack={props.onBack}
         actions={
           <Button
             type="button"
+            variant="glass"
             disabled={!props.connected || props.busy}
             onClick={props.onDuplicate}
           >
@@ -217,9 +166,12 @@ function McpDetailsPage({ serverId, ...props }: McpPageProps & { serverId: strin
         title={serverId}
         badge={badge}
         backLabel={props.backLabel}
-        onBack={props.onBack}
       >
-        <ExtensionDetailStatus text={loadStatus.text} error={loadStatus.error} />
+        <ExtensionDetailStatus
+          text={loadStatus.text}
+          error={loadStatus.error}
+          onRetry={loaded && 'error' in loaded ? retry : undefined}
+        />
       </ExtensionPage>
     );
   }
@@ -228,12 +180,23 @@ function McpDetailsPage({ serverId, ...props }: McpPageProps & { serverId: strin
       serverId={serverId}
       initial={draftFromConfig(config)}
       takenIds={[]}
+      saved={config}
       badge={badge}
       backLabel={props.backLabel}
       connected={props.connected}
       busy={props.busy}
       before={status}
       after={<McpUnkeptSection config={config} />}
+      remove={
+        <ExtensionRemoveButton
+          name={serverId}
+          label={t('extensions.remove')}
+          title={t('extensions.removeTitle', { name: serverId })}
+          description={t('extensions.removeDescription')}
+          disabled={!props.connected || props.busy}
+          onConfirm={props.onRemove}
+        />
+      }
       onBack={props.onBack}
       onUpsert={props.onUpsert}
       onStartAi={props.onStartAi}

@@ -13,20 +13,26 @@ import { usePluginLabels } from './use-plugin-labels';
 
 /**
  * The item pages of Extensions: one skill, subagent or MCP server of a plugin, and the add forms
- * that create a Personal subagent or MCP server. A save on a form leaves the page once it
- * succeeds; a failure keeps it for repair. Duplicate to Personal copies a read-only item and opens
- * its Personal copy, with Personal's page behind it, once the catalogs list it.
+ * that create a Personal subagent or MCP server. Cancel steps back (`onBack`), asking first about
+ * unsaved changes; a save on a form, or deleting a Personal item, leaves the page once it
+ * succeeds (`onLeave`, never asked); a failure keeps it for repair. Duplicate to Personal copies a
+ * read-only item and opens its Personal copy, with Personal's page behind it, once the catalogs
+ * list it.
  */
 export function ExtensionItemRoute({
   route,
   extensions,
   onBack,
+  onLeave,
   onOpenItem,
   onStartAi,
 }: {
   route: Extract<ExtensionRoute, { level: 'item' | 'create' }>;
   extensions: Extensions;
+  /** Cancel: the page history's guarded Back. */
   onBack: () => void;
+  /** Leaves after a save or delete succeeds, without asking about unsaved changes. */
+  onLeave: () => void;
   /** Shows another item with its plugin's page behind it, as Duplicate does with the copy. */
   onOpenItem: (item: { pluginId: string; kind: ExtensionItemKind; name: string }) => void;
   onStartAi: (kind: ExtensionItemKind, target: string | null) => void;
@@ -49,9 +55,15 @@ export function ExtensionItemRoute({
   async function saved(save: Promise<boolean>, text: string) {
     const ok = await save;
     if (!ok) return false;
-    onBack();
+    onLeave();
     showToast({ kind: 'info', text });
     return true;
+  }
+  /** Leaves the page once the item is gone; a failure keeps it, with the error in a toast. */
+  async function removed(remove: Promise<boolean>, text: string) {
+    if (!(await remove)) return;
+    onLeave();
+    showToast({ kind: 'info', text });
   }
   async function duplicate(kind: ExtensionItemKind, name: string) {
     let localName: string;
@@ -66,6 +78,12 @@ export function ExtensionItemRoute({
     await Promise.all([skills.refresh(), agents.refresh(), mcp.refresh()]);
     extensions.refreshAll();
     showToast({ kind: 'info', text: t('extensions.plugins.item.duplicated', { name: copy.name }) });
+    // An MCP copy leaves out the env vars and headers its plugin filled from secrets.
+    if (copy.omitted.length)
+      showToast({
+        kind: 'warning',
+        text: t('extensions.plugins.item.secretsNotCopied', { names: copy.omitted.join(', ') }),
+      });
     if (copy.kind === 'skill' || copy.kind === 'agent' || copy.kind === 'mcp')
       onOpenItem({ pluginId: USER_PLUGIN_ID, kind: copy.kind, name: copy.name });
   }
@@ -82,9 +100,14 @@ export function ExtensionItemRoute({
           pluginName={pluginName}
           connected={connected}
           busy={locked}
-          onBack={onBack}
           onStartAi={() => onStartAi('skill', name)}
           onDuplicate={() => void duplicate('skill', name ?? '')}
+          onDelete={() =>
+            void removed(
+              mutations.deleteSkill(name ?? '', skills.refresh),
+              t('extensions.deleted', { name }),
+            )
+          }
         />
       );
     case 'agent':
@@ -106,6 +129,12 @@ export function ExtensionItemRoute({
           }
           onStartAi={(target) => onStartAi('agent', target)}
           onDuplicate={() => void duplicate('agent', name ?? '')}
+          onDelete={() =>
+            void removed(
+              mutations.deleteAgent(name ?? '', agents.refresh),
+              t('extensions.deleted', { name }),
+            )
+          }
         />
       );
     case 'mcp':
@@ -117,14 +146,23 @@ export function ExtensionItemRoute({
           backLabel={backLabel}
           connected={connected}
           busy={locked || (name !== null && mcp.busyId === name)}
+          issue={name === null ? null : (mcp.issues[name] ?? null)}
           onBack={onBack}
           onUpsert={(input) =>
             saved(mutations.mcpUpsert(input, mcp.refresh), t('extensions.serverSaved'))
           }
           onConnect={(serverId) => void mcp.connect(serverId)}
           onAuthStart={(serverId) => void mcp.authStart(serverId)}
+          onRequestApproval={(serverId) => void mcp.requestApproval(serverId)}
+          onWithdrawApproval={(serverId) => void mcp.withdrawApproval(serverId)}
           onStartAi={(target) => onStartAi('mcp', target)}
           onDuplicate={() => void duplicate('mcp', name ?? '')}
+          onRemove={() =>
+            void removed(
+              mutations.mcpRemove(name ?? '', mcp.refresh),
+              t('extensions.removed', { name }),
+            )
+          }
         />
       );
     default: {

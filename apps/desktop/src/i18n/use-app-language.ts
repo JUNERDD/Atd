@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import type { AppLanguage } from '../../electron/settings-contract';
+import type { AppLanguage } from '../client/settings-contract';
 import { changeAppLanguage } from './index';
 
 /**

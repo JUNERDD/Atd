@@ -1,0 +1,190 @@
+/* @block menu | requires: glass, motion, states | layer: components | native: SwiftUI Menu / .popover; UIKit UIMenu / UIPopoverPresentationController | pull-down menu and generic popover card ([popover]) that pop from their source: 44 px items, leading symbols, checkmarks, separators, destructive and disabled items */
+/* Menu (a user-requested list of commands; actions tied to the button that opens it):
+     <button class="toolbar-btn" type="button" popovertarget="sort" aria-haspopup="menu" aria-label="Sort">…</button>
+     <div class="menu motion-pop" id="sort" popover role="menu" aria-label="Sort">
+       <div role="group" aria-labelledby="sort-h">
+         <p class="menu__header" id="sort-h">Sort By</p>
+         <button class="menu__item" type="button" role="menuitemradio" aria-checked="true">Date</button>
+         <button class="menu__item" type="button" role="menuitemradio" aria-checked="false">Name</button>
+       </div>
+       <hr class="menu__separator">
+       <button class="menu__item" type="button" role="menuitem"><svg class="menu__icon" aria-hidden="true">…</svg>Share</button>
+       <button class="menu__item menu__item--destructive" type="button" role="menuitem"><svg class="menu__icon" aria-hidden="true">…</svg>Delete</button>
+     </div>
+   Symbols for all items of a group or none; destructive last; dim unavailable items (aria-disabled="true"), don't hide them.
+   AppleBlocks.menu.init() anchors it to the button (CSS anchor positioning, JS placement elsewhere), sets --motion-origin,
+   adds arrow keys / Home / End / type-ahead, toggles aria-checked, closes on choose or Tab (focus returns to the button).
+   Without JS it opens centred and keeps Esc / light dismiss; anchor it with style="anchor-name: --sort" on the button and
+   style="position-anchor: --sort" on the menu, and close it from items with popovertarget="sort" popovertargetaction="hide".
+   Popover (a few related controls, iPad/Mac; a bottom card on narrow screens):
+     <div class="popover motion-pop" id="fmt" popover role="dialog" aria-label="Format">…</div> */
+
+.menu,
+.popover {
+  --glass-density: 88%; /* text on glass: legible without a transparency fallback (WEB-2) */
+  --_menu-secondary: color-mix(
+    in srgb,
+    var(--secondary-label) 70%,
+    var(--label)
+  ); /* secondary text on glass: ≥ 6:1 (CON-1) */
+  position: fixed; /* unanchored: centred, like the UA popover */
+  inset: 0;
+  margin: auto;
+  max-block-size: calc(100dvh - 2 * var(--space-4));
+  border: 1px solid transparent; /* the edge in forced colors */
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+.menu {
+  --menu-pad: 6px; /* ≈ */
+  --menu-item-h: var(--hit); /* HIT-1 */
+  --glass-radius: calc(
+    var(--menu-item-h) / 2 + var(--menu-pad)
+  ); /* concentric with the item highlight (GL-6) */
+  min-inline-size: min(15.625rem, 100vw - 2 * var(--margin-page));
+  max-inline-size: min(20rem, 100vw - 2 * var(--margin-page));
+  padding: var(--menu-pad);
+}
+.popover {
+  --glass-radius: var(--corner-xl);
+  inline-size: min(20rem, 100vw - 2 * var(--margin-page));
+  padding: var(--space-4);
+}
+@supports (position-anchor: --a) {
+  :is(.menu, .popover)[style*='position-anchor'] {
+    /* anchored to its source; flips to stay on screen */
+    --motion-origin: top right;
+    inset: auto;
+    margin: var(--space-2) 0;
+    position-area: block-end span-inline-start;
+    position-try-fallbacks:
+      flip-block,
+      flip-inline,
+      flip-block flip-inline;
+  }
+  :is(.menu, .popover)[style*='position-anchor']:dir(rtl) {
+    --motion-origin: top left;
+  }
+}
+@media (max-width: 30rem) {
+  /* compact width: a popover becomes a bottom card (components §3.2) */
+  .popover,
+  .popover[style*='position-anchor'] {
+    --glass-radius: var(--corner-sheet);
+    --motion-origin: bottom center;
+    inset: auto var(--space-2) calc(var(--safe-bottom) + var(--space-2));
+    margin: 0;
+    inline-size: auto;
+    position-area: none;
+  }
+}
+
+.menu__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  inline-size: 100%;
+  min-block-size: var(--menu-item-h);
+  margin: 0;
+  padding: var(--space-2) var(--space-4) var(--space-2) var(--space-3);
+  border: 0;
+  border-radius: calc(var(--menu-item-h) / 2);
+  background: transparent;
+  color: inherit;
+  font: 400 var(--fs-body)/var(--lh-body) var(--ff-sans);
+  letter-spacing: calc(var(--tr-body) * var(--tracking-scale));
+  text-align: start;
+  text-decoration: none;
+  cursor: default;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+  transition: background-color var(--dur-fast) var(--curve-out);
+}
+.menu__icon {
+  flex: none;
+  inline-size: 1.25em;
+  block-size: 1.25em;
+  color: inherit;
+}
+:is(.menu__item[role='menuitemcheckbox'], .menu__item[role='menuitemradio'])::before {
+  /* leading checkmark column */
+  content: '';
+  flex: none;
+  inline-size: 1.25em;
+  block-size: 1.25em;
+  background: currentColor;
+  -webkit-mask: var(--_menu-check) center / contain no-repeat;
+  mask: var(--_menu-check) center / contain no-repeat;
+  visibility: hidden;
+  --_menu-check: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='m4.5 10.5 3.8 3.8 7.2-8.6' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+.menu__item[aria-checked='true']::before {
+  visibility: visible;
+}
+.menu__trailing {
+  margin-inline-start: auto;
+  padding-inline-start: var(--space-3);
+  color: var(--_menu-secondary);
+}
+.menu__item--destructive {
+  /* ≥ 4.5:1 on this glass over any backdrop; system red is 3.6:1 */
+  color: var(--destructive-text);
+}
+.menu__header {
+  margin: 0;
+  padding: var(--space-2) var(--space-3) var(--space-1);
+  color: var(--_menu-secondary);
+  font: 600 var(--fs-footnote)/var(--lh-footnote) var(--ff-sans);
+  letter-spacing: calc(var(--tr-footnote) * var(--tracking-scale));
+}
+.menu__separator {
+  block-size: 0;
+  margin: var(--menu-pad) var(--space-3);
+  border: 0;
+  border-block-start: 1px solid var(--separator); /* a border, so forced colors keeps it */
+}
+
+/* States (FB-1…FB-3, FB-6): gray hover, then press (later wins); keyboard focus is the accent row highlight (macOS/iPadOS) */
+@media (hover: hover) and (pointer: fine) {
+  .menu__item:not(:disabled, [aria-disabled='true']):hover {
+    background-color: var(--hover-fill);
+  }
+}
+:where(html:not([data-press-tracking])) .menu__item:not(:disabled, [aria-disabled='true']):active,
+.menu__item:not(:disabled, [aria-disabled='true'])[data-pressed] {
+  background-color: var(--press-fill);
+} /* slop cancel drops it (FB-1) */
+.menu__item:focus-visible {
+  outline: none;
+  box-shadow: none;
+  background-color: var(--state-selected-focus-fill);
+  color: var(--accent-on);
+}
+.menu__item:focus-visible .menu__trailing {
+  color: inherit;
+}
+.menu__item:is(:disabled, [aria-disabled='true']) {
+  opacity: var(--state-disabled-opacity);
+}
+
+/* Reduced motion: .motion-pop fades without the scale; item fills fade (MOT-5). */
+@media (forced-colors: active) {
+  .menu__item:focus-visible {
+    forced-color-adjust: none;
+    background-color: Highlight;
+    color: HighlightText;
+  }
+  .menu__item:is(:disabled, [aria-disabled='true']) {
+    color: GrayText;
+    opacity: 1;
+  }
+  :is(.menu__item[role='menuitemcheckbox'], .menu__item[role='menuitemradio'])::before {
+    forced-color-adjust: none;
+    background: ButtonText;
+  }
+  .menu__item:focus-visible::before {
+    background: HighlightText;
+  }
+}

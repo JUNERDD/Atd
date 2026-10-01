@@ -1,6 +1,6 @@
 import { historyField, redo, undo } from '@codemirror/commands';
 import { EditorView } from '@codemirror/view';
-import type { EditCommand } from '../../electron/contract';
+import type { EditCommand } from '../client/contract';
 
 /**
  * Moves the history of the CodeMirror editor rendered in `host`. Returns false when that editor

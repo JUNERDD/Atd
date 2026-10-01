@@ -1,4 +1,4 @@
-import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { parseFrontmatter } from '@earendil-works/pi-coding-agent';
 import { isItemName } from '@ai/plugin-kit';
@@ -115,6 +115,31 @@ export async function putAtdAgent(input: {
   await mkdir(root, { recursive: true });
   await writeFile(path.join(root, `${name}.md`), formatAgentMarkdown(agent), 'utf8');
   return { agent };
+}
+
+/**
+ * Deletes every `<atdHome>/agents` file that defines `name`. A file's frontmatter name wins over
+ * its file name, so the files are matched by what they parse to, not by `<name>.md`. Returns
+ * whether any file was removed.
+ */
+export async function deleteAtdAgent(name: string): Promise<boolean> {
+  const root = atdAgentsDir();
+  let entries: string[];
+  try {
+    entries = (await readdir(root)).filter((fileName) => fileName.endsWith('.md'));
+  } catch (error) {
+    if (error instanceof Error && 'code' in error && error.code === 'ENOENT') return false;
+    throw error;
+  }
+  let deleted = false;
+  for (const fileName of entries) {
+    const filePath = path.join(root, fileName);
+    const agent = parseAgentMarkdown(await readFile(filePath, 'utf8'), fileName);
+    if (agent?.name !== name) continue;
+    await rm(filePath, { force: true });
+    deleted = true;
+  }
+  return deleted;
 }
 
 function parseAgentMarkdown(content: string, fileName: string): AtdAgent | null {

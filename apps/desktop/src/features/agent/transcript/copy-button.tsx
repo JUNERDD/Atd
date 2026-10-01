@@ -1,12 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
 import { Check, Copy } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@ai/ui/lib/utils';
-import { agentApi } from '../use-agent';
-import { showErrorToast } from '../../../components/toast-store';
 import { IconButton } from '../../../components/icon-button';
-
-const COPIED_DURATION_MS = 1_000;
+import { useCopyFeedback } from './use-copy-feedback';
 
 /**
  * Sole owner of the copy-to-clipboard button used at the top-right of every desc box. Copies
@@ -16,34 +12,14 @@ const COPIED_DURATION_MS = 1_000;
  */
 export function CopyButton({ text, className }: { text: string; className?: string }) {
   const { t } = useTranslation('tasks');
-  const [copied, setCopied] = useState(false);
-  const [pinned, setPinned] = useState(false);
-  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  useEffect(() => () => clearTimeout(timer.current), []);
-
-  async function copyAll() {
-    try {
-      await agentApi().copy(text);
-      setCopied(true);
-      setPinned(true);
-      clearTimeout(timer.current);
-      timer.current = setTimeout(() => {
-        setCopied(false);
-        setPinned(false);
-      }, COPIED_DURATION_MS);
-    } catch (error) {
-      showErrorToast(error);
-      setCopied(false);
-      setPinned(false);
-    }
-  }
+  const { copied, pinned, unpin, copy } = useCopyFeedback();
 
   return (
     <IconButton
       label={copied ? t('transcript.code.copied') : t('transcript.code.copy')}
       tooltipPinned={pinned}
-      onPointerLeave={() => setPinned(false)}
-      onClick={() => void copyAll()}
+      onPointerLeave={unpin}
+      onClick={() => void copy(text)}
       className={cn(
         'absolute top-1 right-1 transition-opacity',
         copied || pinned

@@ -1,5 +1,5 @@
 import { TODO_TOOL, type SubagentChildSummary, type TodoItem } from '@ai/agent-contracts';
-import type { Block } from '../../../../electron/agent/transcript-schema';
+import type { Block } from '../../../client/agent/transcript-schema';
 import { subagentLaunches } from '../transcript/subagent-call';
 import { subagentDetailsOf } from '../transcript/subagent-children';
 

@@ -1,5 +1,5 @@
 import type { SubagentPermissions } from '@ai/agent-contracts';
-import type { AgentClientOptions } from './types.js';
+import { authHeaders, type AgentClientOptions } from './types.js';
 
 export interface AtdAgentWire {
   name: string;
@@ -19,7 +19,7 @@ async function request<T>(
   const response = await fetchImpl(`${options.baseUrl}${path}`, {
     method,
     headers: {
-      authorization: `Bearer ${options.token}`,
+      ...authHeaders(options),
       ...(body === undefined ? {} : { 'content-type': 'application/json' }),
     },
     body: body === undefined ? undefined : JSON.stringify(body),
@@ -115,4 +115,13 @@ export function putAtdAgent(
     { description, tools, model, systemPrompt },
     fetchImpl,
   );
+}
+
+/** Deletes one markdown specialist from ~/.atd/agents; system and plugin agents are refused. */
+export function deleteAtdAgent(
+  options: AgentClientOptions,
+  name: string,
+  fetchImpl?: typeof fetch,
+): Promise<{ name: string; deleted: true }> {
+  return request(options, `/v1/agents/${encodeURIComponent(name)}`, 'DELETE', undefined, fetchImpl);
 }

@@ -2,8 +2,7 @@ import type { CommandInput, CommandParameter, ServiceCommandFull } from '@ai/age
 
 /**
  * What the user approves when the Agent saves a command: every authored field for a create, a
- * change summary for an update. Ported from the desktop command tool the service replaced
- * (`electron/agent/command-tool.ts` before the local service), so confirms read the same.
+ * change summary for an update.
  */
 
 const DETAIL_LIMIT = 2000;

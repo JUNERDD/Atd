@@ -9,11 +9,11 @@ import { findPluginItem } from './use-plugin-detail';
 import { usePluginMutations } from './use-plugin-mutations';
 import {
   useServiceAgents,
-  useServiceMcp,
   useServicePlugins,
   useServiceSkills,
   useServiceStatus,
 } from './use-service';
+import { useServiceMcp } from './use-service-mcp';
 
 /** One skill, subagent or MCP server switch, with what decides where its state is kept. */
 export interface ExtensionItemTarget {
@@ -202,6 +202,8 @@ export function useExtensions() {
 
   return {
     connected,
+    /** The service connection's state; null until the first status read answers. */
+    serviceState: status?.state ?? null,
     skills,
     agents,
     mcp,

@@ -10,6 +10,7 @@ import {
   type DesktopCapability,
   type InvalidateFrame,
   type ServiceEvent,
+  type StatusFrame,
   type SummariesFrame,
   type TaskSnapshot,
 } from '@ai/agent-contracts';
@@ -17,6 +18,7 @@ import { Value } from 'typebox/value';
 import type { CapabilityRegistry } from './capabilities.js';
 import type { EventLog } from './event-log.js';
 import type { Logger } from './logging.js';
+import type { TaskStatusCounts } from './task-status.js';
 
 export interface StreamDeps {
   events: EventLog;
@@ -24,6 +26,10 @@ export interface StreamDeps {
   snapshot: (taskId: string) => Promise<TaskSnapshot>;
   /** Every task's summary as of one stream position; must not await (see `subscribe`). */
   summaries: () => Omit<SummariesFrame, 'type'>;
+  /** The current root-task counts for `status` frames. */
+  status: () => TaskStatusCounts;
+  /** Registers a listener for every change that may move those counts. */
+  onStatusInputs: (listener: () => void) => void;
   log: Logger;
 }
 
@@ -42,13 +48,15 @@ interface Connection {
   clientId: string | null;
   /** When the connection's unsent bytes last rose above `BACKLOG_LIMIT_BYTES`; null below it. */
   backloggedSince: number | null;
+  /** The counts last sent in a `status` frame; null while its subscription did not ask for them. */
+  status: TaskStatusCounts | null;
 }
 
 /**
  * WS hub for task events, pending confirms and the desktop capability
  * channel. Subscribe replays bounded events or answers with summaries (or, for
- * named tasks, snapshots); capability frames register clients and route
- * request/result pairs.
+ * named tasks, snapshots), plus root-task `status` counts when asked; capability
+ * frames register clients and route request/result pairs.
  */
 export class StreamHub {
   private readonly connections = new Set<Connection>();
@@ -56,10 +64,17 @@ export class StreamHub {
   constructor(private readonly deps: StreamDeps) {
     deps.events.onPublish((event) => this.broadcast(event));
     deps.capabilities.deliver = (request) => this.deliver(request);
+    deps.onStatusInputs(() => this.statusChanged());
   }
 
   handle(socket: WebSocket): void {
-    const connection: Connection = { socket, tasks: null, clientId: null, backloggedSince: null };
+    const connection: Connection = {
+      socket,
+      tasks: null,
+      clientId: null,
+      backloggedSince: null,
+      status: null,
+    };
     this.connections.add(connection);
     socket.on('message', (raw: unknown) => {
       void this.onMessage(connection, String(raw)).catch((error: unknown) => {
@@ -123,6 +138,26 @@ export class StreamHub {
     for (const connection of this.connections) this.send(connection.socket, frame);
   }
 
+  /**
+   * Sends changed counts to the connections that asked for them, each deduplicated against what
+   * it last received. Counts are computed once per change, and only when someone listens.
+   */
+  private statusChanged(): void {
+    let counts: TaskStatusCounts | null = null;
+    for (const connection of this.connections) {
+      const sent = connection.status;
+      if (!sent) continue;
+      counts ??= this.deps.status();
+      if (counts.running === sent.running && counts.attention === sent.attention) continue;
+      this.sendStatus(connection, counts);
+    }
+  }
+
+  private sendStatus(connection: Connection, counts: TaskStatusCounts): void {
+    connection.status = counts;
+    this.send(connection.socket, { type: 'status', ...counts } satisfies StatusFrame);
+  }
+
   private deliver(request: CapabilityRequest): void {
     for (const connection of this.connections) {
       if (!connection.clientId) continue;
@@ -161,6 +196,9 @@ export class StreamHub {
     void _ignored;
     const subscription = parse(SubscribeSchema, rest);
     connection.tasks = subscription.taskIds ? new Set(subscription.taskIds) : null;
+    // Every subscribe replaces the last: one asking for status gets the current counts at once.
+    connection.status = null;
+    if (subscription.status) this.sendStatus(connection, this.deps.status());
     const replay = this.deps.events.replay(subscription);
     if (replay.kind === 'events') {
       for (const event of replay.events) {

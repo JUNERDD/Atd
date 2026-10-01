@@ -4,14 +4,25 @@
  * Namespace (freeze candidate `keyring-namespace v1`):
  * - keyring service: `ai-agent-service:<serviceId>`
  * - keyring account: `provider:<connectionId>`
- * - MCP server entries: account `mcp:<serverKey>` (see server-keys.ts)
+ * - MCP server entries: account `mcp:<serverKey>` (see server-keys.ts), the server's bearer token
+ * - MCP stdio env and HTTP header values: `mcp:<serverKey>:env:<NAME>` and
+ *   `mcp:<serverKey>:header:<Name>` (mcp/server-store.ts)
+ * - MCP OAuth sign-in: account `mcp:<serverKey>:oauth`, one JSON document per server with its
+ *   client registration and tokens (mcp/oauth-store.ts); it sits under the server's own account
+ *   prefix, so removing the server deletes it
  * - sensitive plugin config: account `plugin:<pluginId>:<key>` (plugins/secrets.ts); plugin ids
  *   never contain `:` and config keys are identifiers, so accounts cannot collide
+ * - launch approval key: account `security:launch-approval-key` (mcp/launch-key.ts), the profile's
+ *   random HMAC key for MCP launch fingerprints, never written to the data dir
  *
  * Linux pins `secret-service`; keyutils is kernel memory and must never be
  * reported as persistent storage. When no durable backend exists the backend
  * reports unavailable truthfully and the service keeps running on explicit
  * temporary credentials (see credentials.ts TempCredentialStore).
+ *
+ * Only `readKeyringItem` reaches outside this service's namespace: the one-time import of
+ * pi-mcp-adapter's OAuth credentials reads that product's own keychain service, and nothing here
+ * writes to or deletes from it.
  */
 export interface KeyringStatus {
   available: boolean;
@@ -30,6 +41,27 @@ export function keyringAccount(connectionId: string): string {
 export function keyringMcpAccount(serverKey: string): string {
   return `mcp:${serverKey}`;
 }
+
+/**
+ * One stdio env or HTTP header value of an MCP server. The server key has a fixed shape
+ * (`mcp:<serviceId>:<serverId>:<hash8>`, see server-keys.ts) and the name is everything after the
+ * kind, so each (server, kind, name) has its own account, and the server's own `mcp:<serverKey>`
+ * account (its bearer token) prefixes all of them.
+ */
+export function keyringMcpSecretAccount(
+  serverKey: string,
+  kind: 'env' | 'header',
+  name: string,
+): string {
+  return `${keyringMcpAccount(serverKey)}:${kind}:${name}`;
+}
+
+/** The OAuth sign-in of one MCP server (client registration and tokens); see mcp/oauth-store.ts. */
+export function keyringMcpOAuthAccount(serverKey: string): string {
+  return `${keyringMcpAccount(serverKey)}:oauth`;
+}
+
+export const LAUNCH_APPROVAL_KEY_ACCOUNT = 'security:launch-approval-key';
 
 export function keyringPluginAccount(pluginId: string, key: string): string {
   return `plugin:${pluginId}:${key}`;
@@ -180,5 +212,30 @@ export class KeyringBackend {
     } catch {
       return [];
     }
+  }
+}
+
+/**
+ * Reads one item of another keychain service by its exact name (not prefixed with
+ * `ai-agent-service:`): the one-time import of pi-mcp-adapter's OAuth credentials
+ * (mcp/oauth-migration.ts). Answers undefined when the item does not exist and throws
+ * `KeyringUnavailable` when the keychain cannot be read. There is deliberately no way to write or
+ * delete a foreign item.
+ */
+export async function readKeyringItem(
+  service: string,
+  account: string,
+  signal?: AbortSignal,
+): Promise<string | undefined> {
+  signal?.throwIfAborted();
+  const module = await loadKeyring();
+  if (!module) throw new KeyringUnavailable('The OS keyring module is not installed.');
+  try {
+    const entry = new module.AsyncEntry(service, account, entryOptions());
+    return (await entry.getPassword(signal ?? null)) ?? undefined;
+  } catch (error) {
+    throw new KeyringUnavailable(
+      `The credential could not be read: ${error instanceof Error ? error.message : 'unknown'}`,
+    );
   }
 }

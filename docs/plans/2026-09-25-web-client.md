@@ -1,5 +1,7 @@
 # 网页端：与桌面端 1:1 同步的服务客户端
 
+> **已撤销**：网页端访问（浏览器配对和会话、`/v1/web/*`、服务托管静态页面、`--web-root`、CLI `web` 子命令、开发服务器的 `/v1` 代理和配对端点、“在浏览器中打开”）已由 [macOS 原生前端计划](2026-09-29-macos-native-frontend.md) 的 P1 撤销。`src/web/` 的客户端核心保留，留给原生外壳的 WebView 宿主使用。下文保留为历史记录。
+
 Status: Implemented - P1–P6 done; Figma not synchronized (see Remaining)
 Created: 2026-09-25
 Approval: 用户选定架构 A（服务端为唯一数据源）、仅本机浏览器访问、第一期覆盖对话与全部设置

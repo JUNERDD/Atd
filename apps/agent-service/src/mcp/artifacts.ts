@@ -6,9 +6,9 @@ import type { McpAttachment } from '@ai/agent-contracts';
 import { MappingError, type MappingContext, type MappingDeps } from './errors.js';
 
 /**
- * Artifact adoption: binary MCP payloads and adapter temp output become
- * resource-service artifacts. Remote-local paths never leak to clients;
- * non-tmp paths redact instead of being read.
+ * Artifact adoption: binary MCP payloads and temp files a tool result names
+ * become resource-service artifacts. Remote-local paths never leak to
+ * clients; non-tmp paths redact instead of being read.
  */
 
 export const MAX_BLOB_BYTES = 8 * 1024 * 1024;
@@ -84,7 +84,7 @@ export async function adoptTempPaths(
         kind: 'temp-file',
         mimeType: null,
         name: resource.name,
-        note: 'Adapter temp output adopted into an artifact.',
+        note: 'Temp output adopted into an artifact.',
       });
       output = output.replaceAll(candidate, `[artifact ${resource.id}]`);
     } catch {

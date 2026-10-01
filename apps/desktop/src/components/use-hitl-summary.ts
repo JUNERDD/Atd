@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { PermissionRequest } from '../../electron/agent/permission-schema';
-import type { QueueState } from '../../electron/agent/transcript-schema';
+import type { PermissionRequest } from '../client/agent/permission-schema';
+import type { QueueState } from '../client/agent/transcript-schema';
 import type { HitlStatus } from '../features/agent/progress/progress-pill';
 import { scopeKey } from '../features/agent/transcript/tool-copy';
 

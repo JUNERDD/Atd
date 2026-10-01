@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import type { Block } from '../../../../electron/agent/transcript-schema';
+import type { Block } from '../../../client/agent/transcript-schema';
 import { taskProgress, type TaskProgress } from './selectors';
 
 /**

@@ -34,7 +34,7 @@ export function ExtensionAddMenu({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button type="button" variant="outline" disabled={disabled}>
+        <Button type="button" disabled={disabled}>
           <Plus data-icon="inline-start" />
           {t('extensions.plugins.add')}
         </Button>

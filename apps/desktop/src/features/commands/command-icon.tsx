@@ -7,7 +7,7 @@ import {
   type LucideIcon,
   type LucideProps,
 } from 'lucide-react';
-import type { CommandDefinition } from '../../../electron/agent/command-schema';
+import type { CommandDefinition } from '../../client/agent/command-schema';
 
 const templateIcons: Record<string, LucideIcon> = {
   translate: Languages,

@@ -19,8 +19,8 @@ export type PluginGroupKind = 'command' | ExtensionItemKind;
  * Empty kinds are left out. Plugin pages list every item; search results pass what matched and a
  * `titlePrefix` (the plugin's name) so each group says whose items it holds. While a toggleable
  * plugin is off, every item switch is locked with the reason in a tooltip. A plugin page passes
- * the plugin's `detailItems`, which name each item inside the plugin and say whether a local
- * MCP server waits for Allow to run; search results resolve those on demand.
+ * the plugin's `detailItems`, which name each item inside the plugin; search results resolve
+ * those on demand.
  */
 export function PluginItemGroups({
   plugin,
@@ -30,6 +30,7 @@ export function PluginItemGroups({
   connected,
   busy,
   mcpBusyId,
+  mcpIssues,
   detailItems = null,
   only = null,
   actions,
@@ -45,6 +46,8 @@ export function PluginItemGroups({
   busy: ExtensionBusyTarget | null;
   /** The MCP server a connection step is running for. */
   mcpBusyId: string | null;
+  /** Why each MCP server's last connection step failed, by server id. */
+  mcpIssues: Readonly<Record<string, string>>;
   detailItems?: readonly PluginItem[] | null;
   /** One kind alone, as a plugin page's tab shows it; its tab names the kind, so no title. */
   only?: PluginGroupKind | null;
@@ -112,11 +115,12 @@ export function PluginItemGroups({
           loading={false}
           empty=""
           connected={connected}
-          busyId={busy?.kind === 'builtin' ? busy.name : null}
+          busyId={busy?.kind === 'builtin' || busy?.kind === 'skill' ? busy.name : null}
           lockedReason={lockedReason}
           onOpen={(name) => onOpen('skill', name)}
           onEnabled={(name, enabled) => toggle('skill', name, enabled)}
           onRestore={actions.restoreBuiltin}
+          onDelete={actions.deleteSkill}
         />
       ) : null}
       {shows('agent') && items.agents.length ? (
@@ -128,11 +132,12 @@ export function PluginItemGroups({
           loading={false}
           empty=""
           connected={connected}
-          busy={busyName('agent') !== null}
+          busyId={busyName('agent')}
           lockedReason={lockedReason}
           onOpen={(name) => onOpen('agent', name)}
           onEnabled={(name, enabled) => toggle('agent', name, enabled)}
           onPermissions={actions.setAgentPermissions}
+          onDelete={actions.deleteAgent}
         />
       ) : null}
       {shows('mcp') && items.mcp.length ? (
@@ -145,16 +150,14 @@ export function PluginItemGroups({
           connected={connected}
           busyId={mcpBusyId ?? busyName('mcp')}
           busy={busy?.kind === 'plugin' && busy.id === plugin.id}
+          issues={mcpIssues}
           lockedReason={lockedReason}
-          needsApproval={(serverId) => itemOf('mcp', serverId)?.blockedBy === 'approval'}
-          onApprove={(serverId) => {
-            const item = itemOf('mcp', serverId);
-            if (item) void actions.approve(plugin.id, item.localName);
-          }}
           onOpen={(serverId) => onOpen('mcp', serverId)}
           onConnect={actions.mcpConnect}
           onAuthStart={actions.mcpAuthStart}
           onAuthComplete={actions.mcpAuthComplete}
+          onRequestApproval={actions.mcpRequestApproval}
+          onWithdrawApproval={actions.mcpWithdrawApproval}
           onEnabled={(serverId, enabled) => toggle('mcp', serverId, enabled)}
           onRemove={actions.removeServer}
         />

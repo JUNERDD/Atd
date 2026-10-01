@@ -1,14 +1,17 @@
-import { useState, type ReactNode } from 'react';
-import { Search } from 'lucide-react';
+import { useRef, useState, type ReactNode } from 'react';
+import { Blocks, PackagePlus, Search, Unplug } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { PluginSummary } from '@ai/agent-contracts';
-import { Input } from '@ai/ui/components/input';
+import { Button } from '@ai/ui/components/button';
 import { ScrollArea } from '@ai/ui/components/scroll-area';
 import type { useCompositionQuery } from '@ai/ui/lib/ime';
 import { showToast } from '../../components/toast-store';
 import { SettingsHeading } from '../settings/settings-heading';
+import { SettingsSearchField } from '../settings/settings-search-field';
 import { ExtensionAddMenu, type PersonalCreateKind } from './extension-add-menu';
+import { ExtensionLoadError } from './extension-detail-fields';
 import { ExtensionGroup } from './extension-group';
+import { McpApprovalNotice } from './mcp-approval-notice';
 import { PluginItemGroups } from './plugin-item-groups';
 import { PluginCard, PluginUninstallDialog } from './plugin-card';
 import { PLUGIN_SECTIONS, pluginSection } from './plugin-rows';
@@ -22,7 +25,10 @@ import { usePluginLabels } from './use-plugin-labels';
  * The Extensions list: every plugin as a card under Built-in, then Personal & shared (Personal,
  * the shared skills folder and every installed plugin), with search and the Add menu in the heading. A search spans the plugins and everything they
  * contribute, so the sections step aside for the matching plugins' cards, then each plugin's
- * matching items by kind. The heading and search stay above the scrolling list.
+ * matching items by kind. The heading and search stay above the scrolling list, which opens with
+ * the one-time notice that MCP servers need approving until it is dismissed. Until the list has
+ * plugins it says why: loading, a failed read (with Try again), a disconnected service, or none
+ * installed; a failed later read keeps the cards and shows its error above them.
  */
 export function ExtensionOverview({
   extensions,
@@ -47,6 +53,7 @@ export function ExtensionOverview({
   const labels = usePluginLabels();
   const { connected, plugins, skills, agents, mcp, commands, busy, pluginMutations } = extensions;
   const [uninstalling, setUninstalling] = useState<PluginSummary | null>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
   const list = plugins.plugins ?? [];
   const agentRows = agents.agents?.agents ?? [];
   const groups = usePluginMatches(search.query, list, {
@@ -107,6 +114,7 @@ export function ExtensionOverview({
           connected={connected}
           busy={busy}
           mcpBusyId={mcp.busyId}
+          mcpIssues={mcp.issues}
           actions={actions}
           onOpen={(kind, itemName) => onOpenItem(group.plugin.id, kind, itemName)}
         />
@@ -115,11 +123,60 @@ export function ExtensionOverview({
   ) : (
     <ExtensionGroup
       title={t('extensions.title')}
-      empty={t('extensions.noMatches')}
+      empty={t('extensions.noMatchesTitle', { query: search.query.trim() })}
+      emptyDescription={t('extensions.noMatchesDescription')}
       loading={plugins.loading}
       hasRows={false}
       showTitle={false}
       emptyIcon={<Search />}
+      emptyAction={
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            search.change('');
+            searchRef.current?.focus();
+          }}
+        >
+          {t('extensions.clearSearch')}
+        </Button>
+      }
+    />
+  );
+
+  // Without plugins to list, the list says why; `loading` covers the connecting service too.
+  const disconnected = extensions.serviceState === 'disconnected';
+  const unlisted = plugins.error ? (
+    <ExtensionLoadError
+      message={t('extensions.plugins.loadFailed', { message: plugins.error })}
+      onRetry={() => void plugins.refresh()}
+    />
+  ) : (
+    <ExtensionGroup
+      title={t('extensions.title')}
+      showTitle={false}
+      loading={!disconnected && plugins.plugins === null}
+      hasRows={false}
+      empty={
+        disconnected
+          ? t('extensions.plugins.disconnectedTitle')
+          : t('extensions.plugins.emptyTitle')
+      }
+      emptyDescription={
+        disconnected
+          ? t('extensions.plugins.disconnectedDescription')
+          : t('extensions.plugins.emptyDescription')
+      }
+      emptyIcon={disconnected ? <Unplug /> : <Blocks />}
+      emptyAction={
+        disconnected ? null : (
+          <Button type="button" variant="outline" size="sm" onClick={onInstall}>
+            <PackagePlus data-icon="inline-start" />
+            {t('extensions.plugins.installPlugin')}
+          </Button>
+        )
+      }
     />
   );
 
@@ -147,13 +204,12 @@ export function ExtensionOverview({
         title={t('extensions.title')}
         description={t('extensions.plugins.description')}
       >
-        <Input
+        <SettingsSearchField
+          search={search}
+          ref={searchRef}
           aria-label={t('extensions.searchLabel')}
           placeholder={t('extensions.plugins.searchPlaceholder')}
-          value={search.text}
           disabled={!list.length}
-          onChange={(event) => search.change(event.target.value)}
-          {...search.compositionProps}
         />
         <ExtensionAddMenu
           disabled={!connected || busy !== null}
@@ -161,7 +217,25 @@ export function ExtensionOverview({
           onCreate={onCreate}
         />
       </SettingsHeading>
-      <div className="settings-extension-body">{scroll(searching ? results : sections)}</div>
+      <div className="settings-extension-body">
+        {scroll(
+          <>
+            {mcp.mcp?.approvalNotice ? (
+              <McpApprovalNotice
+                disabled={!connected}
+                onDismiss={() => void mcp.dismissApprovalNotice()}
+              />
+            ) : null}
+            {list.length && plugins.error ? (
+              <ExtensionLoadError
+                message={t('extensions.plugins.loadFailed', { message: plugins.error })}
+                onRetry={() => void plugins.refresh()}
+              />
+            ) : null}
+            {!list.length ? unlisted : searching ? results : sections}
+          </>,
+        )}
+      </div>
       <PluginUninstallDialog
         name={uninstalling ? labels.name(uninstalling) : null}
         onCancel={() => setUninstalling(null)}

@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@ai/ui/lib/utils';
-import type { BlockOf } from '../../../../electron/agent/transcript-schema';
+import type { BlockOf } from '../../../client/agent/transcript-schema';
 import { bashCommand, hasToolDetail, structuredDetails, type RowDetails } from './tool-copy';
 import { DetailBox } from './detail-box';
 import { Root as JsonTree } from './json-tree';

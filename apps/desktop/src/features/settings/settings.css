@@ -1,3 +1,20 @@
+/*
+ * The settings window follows Raycast's settings layout. The shell gives the window a unified
+ * NSToolbar, so the native title bar is 52px tall and the traffic lights sit centered in it,
+ * 19–79px from the leading edge. Below 760px the sidebar card moves above the content; below
+ * 480px it opens as a drawer from the content header.
+ */
+.settings-window,
+.settings-drawer,
+.settings-drawer-overlay {
+  /* The native title bar; the content header and the sidebar strip match it. */
+  --settings-titlebar-height: 52px;
+  /* The gap between the window edge and the sidebar card on every side. */
+  --settings-inset: 8px;
+  --settings-sidebar-width: 227px;
+  /* Where content may start beside the traffic lights (their trailing edge is at 79px). */
+  --settings-traffic-lights-inset: 92px;
+}
 .settings-window {
   display: flex;
   width: 100%;
@@ -6,77 +23,352 @@
   background: var(--ata-surface-panel);
   font-size: 14px;
   line-height: 20px;
-  -webkit-app-region: drag;
 }
+/* Chinese text sets taller ideographs in the same 14px; the extra leading keeps lines apart. */
+.settings-window:lang(zh) {
+  line-height: 22px;
+}
+.settings-window[data-layout='top'] {
+  flex-direction: column;
+}
+/*
+ * The sidebar card: an inset card whose corners follow the window's (the toolbar window's radius
+ * less the inset). It sits on the window's own glass, so it takes a faint tint and hairline rather
+ * than glass of its own, which rendered as a much lighter slab than the content beside it. The
+ * tint is an empty layer behind the controls.
+ */
 .settings-sidebar {
+  position: relative;
   display: flex;
-  flex: 0 0 208px;
+  flex: 0 0 calc(var(--settings-sidebar-width) + var(--settings-inset));
   flex-direction: column;
   min-width: 0;
-  gap: 24px;
-  padding: 16px;
+  min-height: 0;
+  padding: 0 0 var(--settings-inset) var(--settings-inset);
 }
-.settings-window-controls {
-  height: 20px;
+.settings-sidebar-surface {
+  position: absolute;
+  inset: var(--settings-inset) 0 var(--settings-inset) var(--settings-inset);
+  border-radius: var(--radius-2xl);
+  background: var(--ata-surface-settings-sidebar);
+  box-shadow: inset 0 0 0 1px var(--ata-border-settings-sidebar);
+  pointer-events: none;
+}
+/* The drawer floats over the content, so it keeps glass: WebKit's subdued system glass, else the
+ * approved drawer tint under a strong blur. Its edge stays inset in every state. */
+.settings-drawer[data-slot='sheet-content'] {
+  --ata-glass-material: -apple-system-glass-material-subdued;
+  --ata-glass-fill: var(--ata-surface-settings-content);
+  --ata-glass-blur: 40px;
+  --ata-glass-shadow: inset 0 0 0 1px var(--ata-glass-edge);
+}
+.settings-sidebar-body {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  gap: 8px;
+  padding: 0 8px 8px;
+}
+/* The title bar's share of the sidebar: it drags the window, and the traffic lights sit in it
+ * 11px from the card's top and leading edges. With the body's 8px gap the search field starts
+ * where the content header ends. */
+.settings-sidebar-strip {
+  flex-shrink: 0;
+  height: calc(var(--settings-titlebar-height) - 8px);
+}
+/* 480–759px: the card spans the window above the content. The traffic lights keep the leading
+ * end of its first row, the search field fills the rest, and the sections wrap below. */
+.settings-window[data-layout='top'] .settings-sidebar {
+  flex: 0 0 auto;
+  padding: var(--settings-inset) var(--settings-inset) 0;
+}
+.settings-window[data-layout='top'] .settings-sidebar-surface {
+  inset: var(--settings-inset) var(--settings-inset) 0;
+}
+.settings-window[data-layout='top'] .settings-sidebar-body {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  padding: 0 8px 8px 0;
+}
+.settings-window[data-layout='top'] .settings-sidebar-strip {
+  width: calc(var(--settings-traffic-lights-inset) - var(--settings-inset) - 8px);
+  height: calc(var(--settings-titlebar-height) - var(--settings-inset));
+}
+.settings-window[data-layout='top'] .settings-search {
+  flex: 1 1 0;
+}
+.settings-window[data-layout='top'] .settings-nav-scroll {
+  flex: 1 0 100%;
+  margin-left: 5px;
+}
+.settings-window[data-layout='top'] .settings-navigation {
+  flex-direction: row;
+  flex-wrap: wrap;
+}
+.settings-window[data-layout='top'] .settings-nav-button {
+  flex: 1 0 auto;
+}
+.settings-search {
   flex-shrink: 0;
 }
-.settings-native-controls-space {
-  display: block;
-  width: 88px;
-  height: 20px;
-  flex-shrink: 0;
+/* The rows' focus rings reach 3px past them; the scroller gives that room back. */
+.settings-nav-scroll {
+  flex: 1;
+  margin: -3px;
 }
 .settings-navigation {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  -webkit-app-region: no-drag;
+  padding: 3px;
 }
+/* Every state fills the whole row: the Button's transparent border would otherwise inset its
+ * hover fill 1px (`bg-clip-padding`) inside the selected and best-match fills. */
 .settings-navigation .settings-nav-button {
   justify-content: flex-start;
+  background-clip: border-box;
   gap: 8px;
   height: 36px;
   padding: 8px 12px;
-  color: var(--ata-text-secondary);
+  color: var(--foreground);
   flex-shrink: 0;
 }
+/* Labels read at full contrast; the icons stay secondary until their row is the one shown. */
+.settings-navigation .settings-nav-button > svg {
+  color: var(--ata-text-secondary);
+}
+.settings-nav-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .settings-navigation .settings-nav-button[aria-current='page'] {
-  background: var(--ata-material-selected);
+  background-color: var(--ata-material-selected);
+  color: var(--foreground);
+  font-weight: 600;
+}
+.settings-navigation .settings-nav-button[aria-current='page'] > svg {
   color: var(--foreground);
 }
+/* A section label stacks over a hidden semibold copy of itself, so it is always as wide as its
+ * selected form: selecting a row never reflows the rows that wrap beside it. */
+.settings-nav-label[data-label] {
+  display: inline-flex;
+  flex-direction: column;
+}
+.settings-nav-label[data-label] > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.settings-nav-label[data-label]::after {
+  content: attr(data-label);
+  height: 0;
+  overflow: hidden;
+  visibility: hidden;
+  font-weight: 600;
+  user-select: none;
+  pointer-events: none;
+}
+/* Enter in the search field opens the best match, so it reads as highlighted while typing. */
+:is(.settings-sidebar, .settings-drawer):has(.settings-search input:focus)
+  .settings-nav-button[data-best-match]:not([aria-current='page']) {
+  background-color: var(--ata-surface-ghost-hover);
+  color: var(--foreground);
+}
+/* The search's empty state, sized for the navigation card rather than a page. */
+.settings-nav-empty[data-slot='empty'] {
+  gap: 12px;
+  padding: 16px 8px;
+}
+.settings-nav-empty [data-slot='empty-title'] {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  overflow-wrap: anywhere;
+}
+.settings-nav-empty [data-slot='empty-description'] {
+  font-size: 12px;
+  line-height: 16px;
+}
+/*
+ * Search results replace the section list: one row per section or setting with its name over the
+ * section it belongs to (a section row shows its own description). The rows grow to two lines and
+ * keep the section list's icon, gap and states; the names and descriptions truncate rather than
+ * widen the card, so no layout scrolls sideways.
+ */
+.settings-navigation .settings-result-button {
+  height: auto;
+  min-height: 44px;
+  padding: 6px 12px;
+}
+.settings-result-text {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+}
+.settings-result-text > * {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.settings-result-secondary {
+  color: var(--muted-foreground);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+}
+/* The compact bar stacks results instead of wrapping them into a row, and caps their height so a
+ * long list scrolls inside the card rather than pushing the content down. */
+.settings-window[data-layout='top'] .settings-navigation[data-searching] {
+  flex-direction: column;
+  flex-wrap: nowrap;
+}
+.settings-window[data-layout='top'] .settings-navigation[data-searching] .settings-nav-button {
+  flex: 0 0 auto;
+}
+.settings-window[data-layout='top'] .settings-nav-scroll[data-searching] {
+  flex: 1 0 100%;
+  max-height: min(280px, 45vh);
+}
+/* A setting the search opened: an outline that fades out. It only changes color, so it stays
+ * under reduced motion. It sits outside the element, so states that draw inside a control's box
+ * are not disturbed. */
+.settings-window [data-settings-highlight] {
+  outline: 2px solid color-mix(in oklab, var(--foreground) 60%, transparent);
+  outline-offset: 2px;
+  animation: settings-anchor-highlight 1.6s ease-out;
+}
+@keyframes settings-anchor-highlight {
+  0%,
+  35% {
+    outline-color: color-mix(in oklab, var(--foreground) 60%, transparent);
+  }
+  100% {
+    outline-color: transparent;
+  }
+}
+/* The content sits on the window's own surface under its header; pages scroll below the header
+ * and fade at the viewport's edges (`scrollShadow`) instead of passing under a divider. */
 .settings-content {
   display: flex;
   flex: 1;
   flex-direction: column;
   min-width: 0;
   min-height: 0;
-  margin: 12px 12px 12px 0;
-  overflow: hidden;
-  border-radius: var(--radius-2xl);
-  background: var(--ata-surface-settings-content);
 }
 .settings-content-header {
+  flex-shrink: 0;
+  height: var(--settings-titlebar-height);
+}
+.settings-content-header-bar {
+  position: relative;
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
+  gap: 4px;
+  height: 100%;
+  padding: 0 12px;
+}
+.settings-window[data-layout='drawer'] .settings-content-header-bar {
+  padding-left: var(--settings-traffic-lights-inset);
+}
+.settings-breadcrumb {
+  flex: 1;
+  min-width: 0;
+  margin-left: 4px;
+}
+.settings-breadcrumb ol {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-weight: 500;
+}
+.settings-breadcrumb li {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.settings-breadcrumb li[aria-current='page'] {
+  font-weight: 600;
+}
+/* The section yields to the sub-page, which is the page actually shown. */
+.settings-breadcrumb li:first-child:not(:last-child) {
+  flex-shrink: 1000;
+  color: var(--ata-text-secondary);
+}
+.settings-breadcrumb li > svg {
   flex-shrink: 0;
-  height: 40px;
-  padding: 0 40px;
+  width: 16px;
+  height: 16px;
+  color: var(--ata-text-secondary);
 }
-/* The strip stays part of the window drag region; only its controls opt out. */
-.settings-content-header [data-slot='select-trigger'],
-.settings-content-header [data-slot='button'] {
-  -webkit-app-region: no-drag;
+.settings-breadcrumb li > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
+.settings-language {
+  flex-shrink: 0;
+}
+/* Below 480px the language control keeps only its icon; its accessible name stays "Language". */
+.settings-window[data-layout='drawer'] .settings-language [data-slot='select-value'] {
+  display: none;
+}
+.settings-content-scroll-area {
+  flex: 1;
+}
+/* Grows with a page taller than the viewport, so its bottom padding stays below the content;
+ * content that overflowed a viewport-high box would scroll without that padding. */
 .settings-content-scroll {
   display: flex;
-  flex: 1;
-  min-height: 0;
+  flex: 1 0 auto;
   min-width: 0;
   flex-direction: column;
-  padding: 0 40px 32px;
-  -webkit-app-region: no-drag;
+  padding: 8px 40px 32px;
+}
+/* Pages that fill the viewport and scroll inside themselves keep the box at its height. */
+.settings-content-scroll:has(
+  > .settings-page:not([hidden])
+    :is(
+      .settings-editor,
+      .command-editor,
+      .settings-loading,
+      .settings-extension-settings,
+      .memory-settings
+    )
+) {
+  flex-shrink: 1;
+  min-height: 0;
+}
+.settings-window:not([data-layout='sidebar']) .settings-content-scroll {
+  padding: 8px 16px 16px;
+}
+/* A failed settings read, above the pages it leaves without data, with its Retry beside it. */
+.settings-load-error {
+  display: flex;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 8px 12px;
+  width: 100%;
+  max-width: 1000px;
+  margin: 0 auto 16px;
 }
 .settings-page {
   flex-shrink: 0;
@@ -136,12 +428,17 @@
   margin: 0;
   min-width: 0;
 }
-.settings-section-heading h2,
-.settings-section-heading > p {
+.settings-section-heading h2 {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+/* A page's description explains it, so it wraps at a readable measure instead of truncating. */
+.settings-section-heading > p {
+  min-width: 0;
+  max-width: 72ch;
+  text-wrap: pretty;
 }
 .settings-section-heading h2 {
   font-size: 24px;
@@ -166,17 +463,12 @@
   margin-bottom: 16px;
 }
 /*
- * The drawer bar already names the section, so a page-level title below it reads as a duplicate.
- * It stays in the accessibility tree as the page's heading; only sub-pages show a visible title.
- * A title hint stays visible, so its note remains reachable.
+ * The header's breadcrumb already names the section, so a page-level title below it reads as a
+ * duplicate. It stays in the accessibility tree as the page's heading; only sub-pages show a
+ * visible title. A title hint stays visible, so its note remains reachable.
  */
-.settings-window[data-layout='drawer']
-  .settings-page-heading[data-section-title]
-  .editor-heading:not(:has(> :not(h2))),
-.settings-window[data-layout='drawer']
-  .settings-page-heading[data-section-title]
-  .editor-heading
-  > h2 {
+.settings-window .settings-page-heading[data-section-title] .editor-heading:not(:has(> :not(h2))),
+.settings-window .settings-page-heading[data-section-title] .editor-heading > h2 {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -187,14 +479,14 @@
   white-space: nowrap;
 }
 /* With the title hidden, a title hint follows the description on its line instead. */
-.settings-window[data-layout='drawer']
+.settings-window
   .settings-page-heading[data-section-title]
   .settings-section-heading:has(.editor-heading > :not(h2)) {
   flex-direction: row;
   align-items: center;
   gap: 4px;
 }
-.settings-window[data-layout='drawer']
+.settings-window
   .settings-page-heading[data-section-title]
   .settings-section-heading
   > .editor-heading {
@@ -207,7 +499,8 @@
   align-items: center;
   flex-shrink: 0;
 }
-.settings-overview-toolbar > input {
+.settings-overview-toolbar > input,
+.settings-overview-toolbar > .settings-search-field {
   flex: 1 1 180px;
   min-width: min(180px, 100%);
 }
@@ -246,6 +539,38 @@
 }
 .settings-status[data-error='true'] {
   color: var(--destructive);
+}
+/*
+ * The title of a group inside a page (a subsection, or the label over a card of rows): one size
+ * and weight on every page, so groups read alike wherever they sit.
+ */
+.settings-section-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+}
+/*
+ * An error shown beside what caused it, as an icon and text rather than a timed toast. Render a
+ * lucide `CircleAlert` (aria-hidden) before the text and give the element `role="alert"` when it
+ * appears in response to an action.
+ */
+.settings-inline-error {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+  color: var(--destructive);
+  font-size: 13px;
+  line-height: 20px;
+  overflow-wrap: anywhere;
+}
+.settings-inline-error > svg {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
 }
 .settings-permission-settings {
   display: flex;
@@ -305,8 +630,11 @@
 .plugin-card > [data-slot='card-header'] {
   align-items: center;
 }
-/* The switch and More center on the icon, with or without the source line under the name. */
+/* The switch and More center on the icon, with or without the source line under the name. The
+ * name block holds that line, so the header has one row: spanning CardAction's default two would
+ * add an empty row and the header's 6px gap, and drop the controls 3px below the icon. */
 .plugin-card [data-slot='card-action'] {
+  grid-row: 1;
   align-self: center;
 }
 .plugin-card-description {
@@ -348,11 +676,13 @@
 .settings-extension-empty [data-slot='empty'] {
   flex: 1 0 auto;
 }
-.settings-extension-group h3 {
-  margin: 0;
-  font-size: 14px;
-  font-weight: 500;
-  line-height: 20px;
+/* A failed read and its Try again, above the list or in place of a details page's body. */
+.extension-load-error {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
 }
 /* A row opens its details from anywhere: the open button fills the row under its content, which
  * ignores the pointer, while the actions and the inline sign-in field stay above it. */
@@ -380,18 +710,8 @@
 }
 /* Actions may sit in a wrapper, as the command rows group them with the shortcut. */
 .settings-open-row [data-slot='item-actions'],
-.settings-open-row .settings-extension-mcp-auth,
-.settings-open-row .settings-extension-mcp-approval {
+.settings-open-row .settings-extension-mcp-auth {
   pointer-events: auto;
-}
-/* Allow to run under an installed plugin's local MCP server, until the user allows it. */
-.settings-extension-mcp-approval {
-  display: flex;
-  width: fit-content;
-  max-width: 100%;
-  align-items: center;
-  gap: 8px;
-  margin-top: 4px;
 }
 /* An outlined row fills inside its 1px border, so the fill's corners follow the border's inner
  * curve instead of the outer one. */
@@ -469,12 +789,6 @@
   min-width: 0;
   flex-direction: column;
   gap: 8px;
-}
-.extension-detail-section > h3 {
-  margin: 0;
-  font-size: 14px;
-  font-weight: 500;
-  line-height: 20px;
 }
 .extension-detail-text {
   min-width: 0;
@@ -627,9 +941,6 @@
   font-size: 14px;
   line-height: 20px;
 }
-.extension-detail-status[data-error='true'] {
-  color: var(--destructive);
-}
 /*
  * Subagent permissions (extension-agent-permissions.tsx): capability switch rows grouped by kind
  * and the approval select, in a body that scrolls between the dialog's fixed header and footer.
@@ -698,23 +1009,31 @@
 .agent-permissions-select {
   flex: 0 0 auto;
 }
-.agent-permissions-error {
-  margin: 0;
-  color: var(--destructive);
-  font-size: 12px;
-  line-height: 16px;
-}
 .settings-permission-settings .settings-section-heading > p,
 .settings-extension-settings .settings-section-heading > p {
   white-space: normal;
 }
 /* An item's own description reads as content: it wraps, capped so a long one cannot push the body
- * out of a short window (the heading's title attribute still carries it in full). */
+ * out of a short window. Show more under it (extension-page.tsx) unclamps it in place; expanded,
+ * it still stops at part of the window height and scrolls, so the body keeps its room. */
 .extension-page .settings-section-heading > p {
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;
+  overflow: hidden;
   white-space: normal;
+}
+.extension-page[data-description='full'] .settings-section-heading > p {
+  display: block;
+  max-height: 40vh;
+  overflow-y: auto;
+  -webkit-line-clamp: unset;
+}
+/* Sits right under the description, level with its text, instead of a full editor gap below. */
+.extension-page-more {
+  align-self: flex-start;
+  margin-top: -12px;
+  padding-inline: 0;
 }
 .settings-permission-options {
   gap: 8px;
@@ -748,137 +1067,111 @@
   display: flex;
   flex-direction: column;
   gap: 24px;
-  margin-top: 24px;
+  margin-top: 16px;
 }
-.settings-shortcut-group h3 {
-  margin-bottom: 8px;
-  font-size: 14px;
-  font-weight: 500;
-  line-height: 20px;
+.settings-shortcut-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
+/* The keys sit 3px inside the button border, so the pill keycaps nest in the pill button. */
 .settings-shortcut-button {
   height: auto;
+  min-height: 28px;
   max-width: 100%;
-  padding: 4px;
+  padding: 3px;
+}
+.settings-shortcut-button[aria-pressed='true'] {
+  padding-inline: 12px;
 }
 .settings-shortcut-button [data-slot='kbd-group'] {
   flex-wrap: wrap;
   justify-content: flex-end;
 }
-.settings-shortcuts-footer {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin-top: 24px;
+/* A group of settings rows in one card: the card owns the edge and corners, hairlines divide
+   the rows, and each row's fill reaches the card edge. */
+.settings-card[data-slot='card'] {
+  gap: 0;
+  padding-block: 0;
 }
-/* Fills the row beside Restore defaults and wraps its switches before the button moves down; the
-   widest single-line preference is its minimum (the Figma group's Fill + min width). */
-.settings-window-preferences {
-  display: flex;
-  flex: 1 1 0;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px 16px;
-  min-width: min-content;
+.settings-card > [data-slot='item-group'] {
+  gap: 0;
 }
-.settings-window-preference {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  white-space: nowrap;
-}
-.settings-mobile-bar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  min-height: 52px;
-  flex-shrink: 0;
-}
-/* The bar carries the page title in this layout, so it reads as a heading, not as body copy. */
-.settings-current-section {
-  flex: 1;
-  min-width: 0;
-  font-size: 16px;
-  font-weight: 600;
-  line-height: 24px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.settings-mobile-bar > button {
-  -webkit-app-region: no-drag;
-}
-.settings-drawer[data-slot='sheet-content'] {
-  inset: 0 auto 0 0;
-  width: min(264px, calc(100vw - 56px));
-  max-width: none;
-  height: 100%;
-  max-height: 100%;
-  border: 0;
+/* Only inside a card: a row standing alone keeps the Item's own rounded corners. */
+.settings-card .settings-card-row[data-slot='item'] {
   border-radius: 0;
+}
+.settings-card-row + .settings-card-row {
+  border-top-color: var(--border);
+}
+/* Restore defaults follows every group; its error sits before it on the same line. */
+.settings-shortcut-restore {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px 12px;
+}
+.settings-shortcut-restore > .settings-inline-error {
+  flex: 1 1 200px;
+}
+/* A settings switch row (settings-switch-row.tsx): the whole row toggles its switch, like the
+   permission option rows. A busy switch keeps the fill, so a quick save does not flicker it. */
+.settings-preference-row [data-slot='label'] {
+  cursor: inherit;
+}
+.settings-preference-row:has([data-slot='switch']:not(:disabled)) {
+  cursor: pointer;
+}
+.settings-preference-row:hover:has([data-slot='switch']:not(:disabled)) {
+  background: var(--muted);
+}
+.dark .settings-preference-row:hover:has([data-slot='switch']:not(:disabled)) {
+  background: var(--ata-surface-ghost-hover);
+}
+/* The drawer presents the sidebar card over the content: inset like the sidebar, on the same
+ * subdued glass. Its content clips, so the glass element has no overflow outside its bounds. */
+.settings-drawer[data-slot='sheet-content'] {
+  inset: var(--settings-inset) auto var(--settings-inset) var(--settings-inset);
+  width: min(var(--settings-sidebar-width), calc(100vw - 56px));
+  max-width: none;
+  height: auto;
+  max-height: none;
+  border: 0;
+  border-radius: var(--radius-2xl);
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 16px;
-  padding: 0 16px 16px;
-  background: var(--ata-surface-settings-content);
-  backdrop-filter: blur(40px);
-  box-shadow: none;
-  --tw-ring-shadow: 0 0 #0000;
+  gap: 8px;
+  padding: 0 8px 8px;
   overflow: hidden;
 }
-.settings-drawer-scroll {
-  flex: 1;
-  margin: -3px -15px -3px -3px;
+/* In the drawer, the section list's scroll area is the glass's persistent child layer (see
+   `surface-glass` in `@ai/ui`): narrowing a search that scrolled drops the list's scroller layers
+   here, not on the glass, where they lingered with the old results over the new ones. */
+.settings-drawer .settings-nav-scroll {
+  will-change: transform;
 }
-.settings-drawer-scroll .settings-navigation {
-  padding: 3px;
-}
+/* The strip under the traffic lights, as in the sidebar card, with Close at its trailing end. */
 .settings-drawer-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   flex-shrink: 0;
-  height: 52px;
+  height: calc(var(--settings-titlebar-height) - var(--settings-inset));
 }
 .settings-drawer-overlay[data-slot='sheet-overlay'] {
-  left: min(264px, calc(100vw - 56px));
+  left: calc(var(--settings-inset) + min(var(--settings-sidebar-width), calc(100vw - 56px)));
   background: rgb(0 0 0 / 30%);
   backdrop-filter: none;
 }
-.settings-drawer .settings-nav-button[aria-current='page'] {
-  background: var(--ata-material-selected);
-}
-@media (max-width: 759px) {
-  .settings-window {
-    flex-direction: column;
-  }
-  .settings-sidebar {
-    flex: 0 0 auto;
-    padding: 12px 12px 8px;
-    gap: 8px;
-  }
-  .settings-window-controls {
-    height: 28px;
-  }
-  .settings-sidebar .settings-navigation {
-    flex-direction: row;
-    flex-wrap: wrap;
-  }
-  .settings-navigation .settings-nav-button {
-    flex: 1 0 auto;
-  }
-  .settings-content {
-    margin: 12px;
-  }
-  .settings-content-header {
-    padding: 0 16px;
-  }
-  .settings-content-scroll {
-    padding: 0 16px 16px;
+/* Under reduced motion the drawer fades in and out in place instead of sliding. */
+@media (prefers-reduced-motion: reduce) {
+  .settings-drawer[data-slot='sheet-content'] {
+    --tw-enter-translate-x: 0;
+    --tw-exit-translate-x: 0;
+    --tw-enter-opacity: 0;
+    --tw-exit-opacity: 0;
   }
 }
 /* Shell allowlist: a subsection of the Permissions page below the tier choice. */
@@ -895,11 +1188,23 @@
   flex-direction: column;
   gap: 4px;
 }
-.settings-shell-allowlist-heading h3 {
+/* Under Always allow: why the list decides nothing right now, set apart from the description. */
+.settings-shell-allowlist-inactive {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  gap: 6px;
   margin: 0;
-  font-size: 16px;
-  font-weight: 600;
-  line-height: 24px;
+  color: var(--ata-text-secondary);
+  font-size: 13px;
+  line-height: 20px;
+  overflow-wrap: anywhere;
+}
+.settings-shell-allowlist-inactive > svg {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
 }
 /* One card: the add field on top, then the entries (or a note while there are none). */
 .settings-shell-allowlist-card {
@@ -908,6 +1213,10 @@
 }
 .settings-shell-allowlist-form {
   padding: 6px;
+}
+/* The add field's error, inside the card directly under it, its icon under the `$`. */
+.settings-shell-allowlist-error {
+  padding: 0 14px 8px;
 }
 .settings-shell-allowlist-list {
   gap: 0;

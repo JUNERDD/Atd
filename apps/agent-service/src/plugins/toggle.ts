@@ -81,34 +81,8 @@ export async function setItemEnabled(
       await store.update(name, { ...command, enabled }, command.revision);
       return;
     }
-    case 'mcp': {
-      const authority = await actions.mcp();
-      const servers = authority
-        .configured()
-        .map((server) => (server.serverId === name ? { ...server, disabled: !enabled } : server));
-      await authority.configure({ servers });
+    case 'mcp':
+      await (await actions.mcp()).setEnabled(name, enabled);
       return;
-    }
   }
-}
-
-/** Approves (or withdraws approval of) one installed stdio MCP server, so it may run (D6). */
-export async function setServerApproved(
-  actions: PluginActions,
-  pluginId: string,
-  name: string,
-  approved: boolean,
-): Promise<void> {
-  const installed = actions.view.installed.find((entry) => entry.id === pluginId);
-  if (!installed) {
-    findPlugin(actions.view, pluginId);
-    throw new TypeError('Invalid request: only installed plugins have servers to approve.');
-  }
-  const server = installed.plugin.components.find(
-    (component) => component.kind === 'mcp' && component.name === name,
-  );
-  if (!server) throw new LedgerNotFound('MCP server', `${pluginId}/${name}`);
-  if (server.kind !== 'mcp' || server.transport.type !== 'stdio')
-    throw new TypeError(`Invalid request: "${name}" is not a local (stdio) server.`);
-  await actions.host.installer.setServerApproved(pluginId, name, approved);
 }

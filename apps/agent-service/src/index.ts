@@ -1,4 +1,4 @@
-import type { PermissionTier } from '@ai/agent-contracts';
+import { errorMessage, type PermissionTier } from '@ai/agent-contracts';
 import { CapabilityRegistry } from './capabilities.js';
 import {
   clearEndpoint,
@@ -11,13 +11,12 @@ import { ConfirmStore } from './confirms.js';
 import { EventLog } from './event-log.js';
 import { Ledger } from './ledger.js';
 import { createLogger, type Logger } from './logging.js';
-import { McpAuthority } from './mcp/index.js';
+import { McpAuthority, migrateMcpSecrets } from './mcp/index.js';
 import { recoverService, type RecoveryReport } from './recovery.js';
 import { ResourceStore } from './resources.js';
 import { RunnerManager } from './runner-manager.js';
 import { buildServer, type ServerDeps } from './server.js';
 import { SettingsStore } from './settings/store.js';
-import { WebSessions } from './web/sessions.js';
 import type { RunnerContext } from './task-runner.js';
 
 export type { ServiceConfig } from './config.js';
@@ -79,7 +78,6 @@ export async function createService(
     tier: options.tier ?? 'manual',
   };
   const settings = await SettingsStore.load(config.paths.root, runnerContext.tier);
-  const sessions = await WebSessions.load(config.paths.root);
   const manager = new RunnerManager({
     ctx: runnerContext,
     resources,
@@ -87,6 +85,12 @@ export async function createService(
     newTaskTier: () => settings.newTaskTier(),
   });
   const report = await recoverService({ ledger, events, confirms, capabilities, log });
+  // Before anything reads the MCP servers, so the first MCP use finds their values in the keyring.
+  await migrateMcpSecrets(config.paths.root, config.serviceId, log).catch((error: unknown) =>
+    log.warn('MCP values were not moved into the OS keyring; the next start retries.', {
+      error: errorMessage(error),
+    }),
+  );
 
   let stopping: (() => Promise<void>) | null = null;
   const serverDeps: ServerDeps = {
@@ -98,7 +102,6 @@ export async function createService(
     resources,
     manager,
     settings,
-    sessions,
     log,
     startedAt,
     onShutdown:
@@ -112,8 +115,8 @@ export async function createService(
   };
   const app = await buildServer(serverDeps);
   // Runs drain and HTTP closes first, so MCP has lost its callers when the
-  // close ends every adapter connection (base and per-task aliases) and its
-  // stdio child; only then does the lock free the profile for a new service.
+  // close ends every MCP connection (base and per-task aliases) and its
+  // stdio children; only then does the lock free the profile for a new service.
   const stopService = async () => {
     await manager.shutdown();
     await app.close();
@@ -155,9 +158,9 @@ export async function createService(
         ...(buildId === undefined ? {} : { buildId }),
       });
       manager.dispatch();
-      // The MCP adapter is not warmed here: its load (the jiti-transpiled adapter and a control
-      // session) holds ~26 MB for as long as the service runs, and the desktop calls no MCP route
-      // on connect. The first MCP request or run loads it, cached per dataDir (mcp/authority.ts).
+      // The MCP authority is not loaded here: the desktop calls no MCP route on connect, and the
+      // load reads the server records, launch approvals and saved sign-ins. The first MCP request
+      // or run loads it, cached per dataDir (mcp/authority.ts).
       return { url: address, port };
     },
     stop: () => (stopped ??= stopService()),

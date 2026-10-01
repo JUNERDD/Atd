@@ -1,4 +1,4 @@
-import { useId } from 'react';
+import { useId, type ReactNode } from 'react';
 import { Copy } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { SubagentPermissions } from '@ai/agent-contracts';
@@ -12,6 +12,7 @@ import {
   ExtensionDetailText,
 } from './extension-detail-fields';
 import { ExtensionPage } from './extension-page';
+import { ExtensionRemoveButton } from './extension-remove-dialog';
 import type { ExtensionAgentRow } from './extension-rows';
 
 export type { AgentInput } from './extension-agent-draft';
@@ -21,8 +22,9 @@ export type { AgentInput } from './extension-agent-draft';
  * details: an editable form for a Personal markdown agent (`~/.atd/agents`, saved by overwriting
  * its file) and read-only facts for a system agent or an installed plugin's, all with its
  * permissions for later runs, which a plugin's agent may override too. A plugin's agent offers
- * Duplicate to Personal to change the rest. A name not in `rows` shows as loading while the
- * catalog is still empty (it always lists the system agents once loaded) and as missing otherwise.
+ * Duplicate to Personal to change the rest; a Personal agent offers Delete, which removes its file
+ * after a confirmation. A name not in `rows` shows as loading while the catalog is still empty (it
+ * always lists the system agents once loaded) and as missing otherwise.
  * The root leaves the page after a successful save, so it stays on a failure for repair.
  */
 export function AgentPage({
@@ -37,6 +39,7 @@ export function AgentPage({
   onPermissions,
   onStartAi,
   onDuplicate,
+  onDelete,
 }: {
   name: string | null;
   rows: readonly ExtensionAgentRow[];
@@ -50,17 +53,30 @@ export function AgentPage({
   onPermissions: (name: string, permissions: SubagentPermissions | null) => Promise<boolean>;
   onStartAi: (target: string | null) => void;
   onDuplicate: () => void;
+  /** Deletes the Personal agent once the confirmation is accepted. */
+  onDelete: () => void;
 }) {
   const { t } = useTranslation('settings');
   const formId = useId();
   const locked = !connected || busy;
-  const save = (input: AgentInput) => void onSave(input);
-  const actions = (submitLabel: string) => (
+  // A save in flight keeps Save focusable (`aria-busy`) and ignores another submit.
+  const save = (input: AgentInput) => {
+    if (!busy) void onSave(input);
+  };
+  const actions = (submitLabel: string, remove: ReactNode = null) => (
     <>
-      <Button type="button" variant="outline" onClick={onBack}>
+      {remove}
+      <Button type="button" variant="glass" onClick={onBack}>
         {t('extensions.cancel')}
       </Button>
-      <Button type="submit" form={formId} disabled={locked}>
+      <Button
+        type="submit"
+        form={formId}
+        disabled={!connected}
+        aria-disabled={busy || undefined}
+        aria-busy={busy || undefined}
+        className="aria-disabled:opacity-50"
+      >
         {submitLabel}
       </Button>
     </>
@@ -74,7 +90,6 @@ export function AgentPage({
         title={title}
         description={t('extensions.agentPage.addDescription')}
         backLabel={backLabel}
-        onBack={onBack}
         ai={{
           label: t('extensions.createWithAi'),
           disabled: locked,
@@ -97,7 +112,7 @@ export function AgentPage({
   const row = rows.find((entry) => entry.name === name);
   if (!row)
     return (
-      <ExtensionPage label={name} title={name} backLabel={backLabel} onBack={onBack}>
+      <ExtensionPage label={name} title={name} backLabel={backLabel}>
         <ExtensionDetailStatus
           text={rows.length ? t('extensions.detailMissing') : t('extensions.detailLoading')}
           error={rows.length > 0}
@@ -113,10 +128,14 @@ export function AgentPage({
       : { label: t('extensions.stateDisabled'), tone: 'off' as const },
     description: row.description || t('extensions.detailNoDescription'),
     backLabel,
-    onBack,
   };
   const permissions = (
-    <AgentPermissionsSection row={row} disabled={locked} onPermissions={onPermissions} />
+    <AgentPermissionsSection
+      row={row}
+      disabled={!connected}
+      pending={busy}
+      onPermissions={onPermissions}
+    />
   );
 
   if (row.system || row.readOnly)
@@ -125,7 +144,7 @@ export function AgentPage({
         {...page}
         actions={
           row.readOnly && !row.system ? (
-            <Button type="button" disabled={locked} onClick={onDuplicate}>
+            <Button type="button" variant="glass" disabled={locked} onClick={onDuplicate}>
               <Copy data-icon="inline-start" />
               {t('extensions.plugins.item.duplicate')}
             </Button>
@@ -158,7 +177,17 @@ export function AgentPage({
         disabled: locked,
         onClick: () => onStartAi(row.name),
       }}
-      actions={actions(t('extensions.agentPage.save'))}
+      actions={actions(
+        t('extensions.agentPage.save'),
+        <ExtensionRemoveButton
+          name={row.name}
+          label={t('extensions.delete')}
+          title={t('extensions.deleteTitle', { name: row.name })}
+          description={t('extensions.deleteAgentDescription')}
+          disabled={locked}
+          onConfirm={onDelete}
+        />,
+      )}
     >
       <ExtensionDetailFields
         fields={[

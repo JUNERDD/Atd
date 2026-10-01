@@ -1,14 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { PluginSummary } from '@ai/agent-contracts';
-import type { ServiceStatusView } from '../../../electron/service/ipc';
+import type { ServiceStatusView } from '../../client/service/ipc';
 import { showErrorToast } from '../../components/toast-store';
+import { messageOf } from '../../lib/errors';
 import {
   asAgentRow,
-  asMcpRow,
   asRoleRow,
   asSkillRow,
   type ExtensionAgentRow,
-  type ExtensionMcpRow,
   type ExtensionRoleRow,
   type ExtensionSkillRow,
 } from './extension-rows';
@@ -19,7 +18,7 @@ function serviceApi() {
   return window.desktop.service;
 }
 
-/** Service connection status via the narrow preload bridge (no token in renderer). */
+/** Service connection status via the narrow service bridge (no token in the renderer). */
 export function useServiceStatus() {
   const [status, setStatus] = useState<ServiceStatusView | null>(null);
   const [loading, setLoading] = useState(() => Boolean(window.desktop?.service));
@@ -132,83 +131,17 @@ export function useServiceAgents() {
   return { agents, loading, refresh, setEnabled };
 }
 
-/** MCP status via the service bridge. */
-export function useServiceMcp() {
-  const [mcp, setMcp] = useState<{ servers: ExtensionMcpRow[] } | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [busyId, setBusyId] = useState<string | null>(null);
-  const refresh = useCallback(async () => {
-    if (!window.desktop?.service) return;
-    setLoading(true);
-    try {
-      const result = await window.desktop.service.mcpStatus();
-      setMcp({ servers: result.servers.flatMap((row) => asMcpRow(row) ?? []) });
-    } catch (error) {
-      showErrorToast(error);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-  const connect = useCallback(
-    async (serverId: string) => {
-      setBusyId(serverId);
-      try {
-        await serviceApi().mcpConnect(serverId);
-        await refresh();
-      } catch (error) {
-        showErrorToast(error);
-      } finally {
-        setBusyId(null);
-      }
-    },
-    [refresh],
-  );
-  const authStart = useCallback(async (serverId: string) => {
-    setBusyId(serverId);
-    try {
-      await serviceApi().mcpAuthStart(serverId);
-    } catch (error) {
-      showErrorToast(error);
-    } finally {
-      setBusyId(null);
-    }
-  }, []);
-  const authComplete = useCallback(
-    async (serverId: string, input: string) => {
-      setBusyId(serverId);
-      try {
-        await serviceApi().mcpAuthComplete(serverId, input);
-        await refresh();
-      } catch (error) {
-        showErrorToast(error);
-      } finally {
-        setBusyId(null);
-      }
-    },
-    [refresh],
-  );
-  const setEnabled = useCallback((serverId: string, enabled: boolean) => {
-    setMcp((current) =>
-      current
-        ? {
-            servers: current.servers.map((row) =>
-              row.serverId === serverId ? { ...row, disabled: !enabled } : row,
-            ),
-          }
-        : current,
-    );
-  }, []);
-  return { mcp, loading, busyId, refresh, setEnabled, connect, authStart, authComplete };
-}
-
 /**
  * The plugin list via the service bridge: every host and installed plugin with its contents
- * counts. Rows outside the contract are left out, so one bad row cannot hide the rest. `epoch`
+ * counts. Rows outside the contract are left out, so one bad row cannot hide the rest. A failed
+ * read keeps the rows it had and reports `error` for the list to show beside them. `epoch`
  * moves after every reload, so an open plugin page reads its detail again with the list.
  */
 export function useServicePlugins() {
   const [plugins, setPlugins] = useState<PluginSummary[] | null>(null);
   const [loading, setLoading] = useState(false);
+  // The last read's failure, which the list shows in place with a retry; a later success clears it.
+  const [error, setError] = useState<string | null>(null);
   const [epoch, setEpoch] = useState(0);
   const loaded = useRef(false);
   const refresh = useCallback(async () => {
@@ -218,8 +151,9 @@ export function useServicePlugins() {
       const result = await window.desktop.service.plugins();
       loaded.current = true;
       setPlugins(result.plugins.flatMap((row) => asPluginSummary(row) ?? []));
-    } catch (error) {
-      showErrorToast(error);
+      setError(null);
+    } catch (failure) {
+      setError(messageOf(failure));
     } finally {
       setLoading(false);
       setEpoch((value) => value + 1);
@@ -230,5 +164,5 @@ export function useServicePlugins() {
       current ? current.map((row) => (row.id === id ? { ...row, enabled } : row)) : current,
     );
   }, []);
-  return { plugins, loading, epoch, refresh, setEnabled };
+  return { plugins, loading, error, epoch, refresh, setEnabled };
 }

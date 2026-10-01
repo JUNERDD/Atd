@@ -5,6 +5,7 @@ import {
   expander,
   ownValue,
   pluginDirectoryResolver,
+  secretDetector,
   userConfigKey,
 } from './expand.js';
 import { resolveCommand, resolveCwd } from './paths.js';
@@ -27,10 +28,13 @@ export interface SubstitutionContext {
  * Resolves variables in one MCP transport following the format's exact rules (see README):
  * Agent Plugins expands only `${PLUGIN_ROOT}` / `${PLUGIN_DATA}` in `args`, `env` values and
  * `cwd`; Claude also expands `${CLAUDE_PLUGIN_ROOT}`, `${CLAUDE_PLUGIN_DATA}`,
- * `${user_config.KEY}` and `${VAR[:-default]}` in command, args, env, url and headers. Single
- * pass, non-recursive. For stdio it also injects `PLUGIN_ROOT`, `PLUGIN_DATA` and the
- * `CLAUDE_PLUGIN_*` aliases into `env` (after the declared env), and resolves a `./` command
- * and relative `cwd` against `root`. Unresolvable variables stay literal and are reported.
+ * `${user_config.KEY}` and `${VAR[:-default]}` in command, args, env, url and headers. In an
+ * HTTP url or header, a `${VAR}` stays `${VAR}` (its `:-` default aside) for the MCP client to
+ * fill in from the same process environment when it connects, so the transport shows which
+ * variables it sends to the server rather than their values. Single pass, non-recursive. For
+ * stdio it also injects `PLUGIN_ROOT`, `PLUGIN_DATA` and the `CLAUDE_PLUGIN_*` aliases into
+ * `env` (after the declared env), and resolves a `./` command and relative `cwd` against
+ * `root`. Unresolvable variables stay literal and are reported.
  */
 export function substituteTransport(
   format: PluginFormat,
@@ -40,16 +44,17 @@ export function substituteTransport(
   if (format === 'pi' || format === 'skill') return { transport, diagnostics: [] };
   const diagnostics: PluginDiagnostic[] = [];
   const claude = format === 'claude';
+  if (transport.type === 'http') {
+    if (!claude) return { transport, diagnostics };
+    const expandHttp = expander(claudeTransportResolver(context, diagnostics, true));
+    const headers = Object.fromEntries(
+      Object.entries(transport.headers).map(([name, value]) => [name, expandHttp(value)]),
+    );
+    return { transport: { ...transport, url: expandHttp(transport.url), headers }, diagnostics };
+  }
   const expand = expander(
     claude ? claudeTransportResolver(context, diagnostics) : pluginDirectoryResolver(context),
   );
-  if (transport.type === 'http') {
-    if (!claude) return { transport, diagnostics };
-    const headers = Object.fromEntries(
-      Object.entries(transport.headers).map(([name, value]) => [name, expand(value)]),
-    );
-    return { transport: { ...transport, url: expand(transport.url), headers }, diagnostics };
-  }
   const command = resolveCommand(
     claude ? expand(transport.command) : transport.command,
     context.root,
@@ -78,6 +83,46 @@ export function substituteTransport(
   return {
     transport: { type: 'stdio', command, args, env, cwd },
     diagnostics,
+  };
+}
+
+/** The parts of a substituted MCP transport that took a secret (see `secretDetector`). */
+export interface TransportSecrets {
+  /** Env names, as substituted, whose values took a secret. */
+  env: string[];
+  /** Header names whose values took a secret. */
+  headers: string[];
+  /** Whether the command, an argument, the working directory, the URL or an env name took one. */
+  elsewhere: boolean;
+}
+
+/**
+ * Names where `substituteTransport` puts secrets into a transport, so a copy of the substituted
+ * transport outside the plugin (a Personal duplicate) can leave them out instead of storing them
+ * in plain text. Only the Claude format substitutes secrets. An HTTP `${VAR}` the environment
+ * supplies still counts, although the substituted transport keeps only the reference.
+ */
+export function transportSecrets(
+  format: PluginFormat,
+  transport: McpTransport,
+  context: SubstitutionContext,
+): TransportSecrets {
+  if (format !== 'claude') return { env: [], headers: [], elsewhere: false };
+  const secret = secretDetector(context);
+  const named = (entries: Record<string, string>) =>
+    Object.entries(entries).flatMap(([name, value]) => (secret(value) ? [name] : []));
+  if (transport.type === 'http')
+    return { env: [], headers: named(transport.headers), elsewhere: secret(transport.url) };
+  const expand = expander(claudeTransportResolver(context, []));
+  return {
+    env: named(transport.env).map(expand),
+    headers: [],
+    elsewhere: [
+      transport.command,
+      ...transport.args,
+      transport.cwd ?? '',
+      ...Object.keys(transport.env),
+    ].some(secret),
   };
 }
 

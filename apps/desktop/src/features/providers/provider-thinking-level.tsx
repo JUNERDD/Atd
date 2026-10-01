@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Label } from '@ai/ui/components/label';
-import type { Connection, ConnectionDraft } from '../../../electron/providers/schema';
+import type { Connection, ConnectionDraft } from '../../client/providers/schema';
 import { ThinkingLevelSelect } from './thinking-level-select';
 import { useThinkingLevels } from './use-thinking-levels';
 
@@ -15,11 +15,14 @@ export function ProviderThinkingLevel({
   saved,
   disabled,
   onChange,
+  onNormalize,
 }: {
   draft: ConnectionDraft;
   saved: Connection | null;
   disabled: boolean;
   onChange: (patch: Partial<ConnectionDraft>) => void;
+  /** Applies the drop of a level the model does not offer, which is no edit of the user's. */
+  onNormalize: (patch: Partial<ConnectionDraft>) => void;
 }) {
   const { t } = useTranslation('providers');
   const reference =
@@ -34,8 +37,8 @@ export function ProviderThinkingLevel({
     if (!key || loading || checked.current === key) return;
     checked.current = key;
     if (!level || !levels.length || levels.includes(level)) return;
-    onChange({ defaultThinkingLevel: undefined });
-  }, [key, loading, levels, level, onChange]);
+    onNormalize({ defaultThinkingLevel: undefined });
+  }, [key, loading, levels, level, onNormalize]);
   return (
     <div className="settings-field">
       <Label>{t('thinkingLevels.label')}</Label>

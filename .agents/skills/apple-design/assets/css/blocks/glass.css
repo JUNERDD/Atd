@@ -1,0 +1,161 @@
+/* @block glass | requires: — | layer: components | native: SwiftUI glassEffect(_:in:) + GlassEffectContainer, UIKit UIGlassEffect | The one Liquid Glass recipe: members, variants, sheen and glint, token-driven fallbacks */
+/* Use: GL-1 functional layer only (bars, controls, sheets, menus) · GL-2 never glass on glass · GL-3 at most
+   6 backdrop-filter surfaces per page · GL-4 clear only over media, with .glass-dim for text · GL-5 tint one
+   primary action · MOT-6 never animate blur. A new backdrop root (which cuts the blur off from the page) comes
+   from filter, opacity < 1, mask, clip-path, backdrop-filter, mix-blend-mode or will-change on an ancestor —
+   not from transform (CSS Filter Effects 2, Backdrop Root).
+   Members are listed once, here. Custom elements opt in with .glass; components tune the material
+   only through tokens on their own selector (--glass-density, --glass-saturate, --glass-blur, --glass-radius).
+   Legibility without any fallback (WEB-2: Safari has no prefers-reduced-transparency): with --label
+   text the default material passes CON-1 even at the worst backdrop — light 50% white fill (black text 5.3:1
+   over pure black), dark 64% #1C1C1E + saturate 130% (white text 4.7:1 over pure white; measured in headless Chrome).
+   Members also set a stronger --secondary-label and --destructive-text, so the kit's hints, field labels, list
+   headers and destructive labels keep 4.5:1 on glass over busy backdrops; your own glass text stays --label.
+   Focus: a focused member keeps its shadows and adds --focus-halo under the ring (FB-6). */
+:where(
+  .glass,
+  .btn-glass,
+  .btn-prominent,
+  .toolbar-group,
+  .tabbar,
+  .sheet,
+  .menu,
+  .popover,
+  .alert,
+  .status-pill
+) {
+  --glass-ink: var(
+    --label
+  ); /* content controls on glass stay monochrome (GL-5): accent text fails over busy backdrops */
+  --secondary-label: light-dark(
+    rgb(60 60 67 / 0.88),
+    rgb(235 235 245 / 0.88)
+  ); /* >= 4.9:1 on glass over busy backdrops (CON-1) */
+  --destructive-text: light-dark(
+    color-mix(in srgb, var(--system-red) 55%, #000),
+    color-mix(in srgb, var(--system-red) 40%, #fff)
+  );
+  --_fill: color-mix(in srgb, var(--glass-fill-color) var(--glass-density), transparent);
+  --_solid: var(--glass-solid);
+  --_blur: var(--glass-blur);
+  --_sat: var(--glass-saturate);
+  --_sheen: var(--glass-sheen);
+  --_specular: var(--glass-specular);
+  --_glint: 0.55;
+  --_shadow:
+    0 0 0 0.5px var(--glass-edge), inset 0 1px 1px var(--glass-rim),
+    inset 0 -1px 1px var(--glass-rim), inset 0 0 18px var(--glass-inner-glow), var(--elev-glass);
+  position: relative;
+  isolation: isolate;
+  color: var(--label);
+  background-color: var(--_fill);
+  -webkit-backdrop-filter: blur(var(--_blur)) saturate(var(--_sat));
+  backdrop-filter: blur(var(--_blur)) saturate(var(--_sat));
+  border-radius: var(--glass-radius, var(--corner-xl));
+  box-shadow: var(--_shadow);
+  &:focus-visible {
+    box-shadow: var(--focus-halo), var(--_shadow);
+  }
+
+  /* Specular rim: a masked 1px ring, bright at the top-leading and bottom-trailing edges. */
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    padding: 1px;
+    border-radius: inherit;
+    pointer-events: none;
+    background: linear-gradient(
+      140deg,
+      var(--_specular),
+      transparent 28% 70%,
+      var(--glass-specular2)
+    );
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    mask-composite: exclude;
+  }
+  /* Sheen (top light, gone by 46% so labels sit on the plain fill) + pointer glint (--glow 0…1 at --px/--py). */
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    pointer-events: none;
+    background:
+      radial-gradient(
+        120% 90% at var(--px, 50%) var(--py, 0%),
+        rgb(255 255 255 / calc(var(--glow) * var(--_glint))),
+        transparent 62%
+      ),
+      linear-gradient(var(--_sheen), transparent 46%);
+  }
+
+  /* Fallbacks: one place, driven by --_solid (each variant sets its own). */
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    background: var(--_solid);
+  }
+  @media (prefers-reduced-transparency: reduce) {
+    /* Chromium only */
+    background: var(--_solid);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  @media (prefers-contrast: more) {
+    /* the fallback Safari does honor */
+    background: var(--_solid);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    --_shadow: 0 0 0 1px var(--opaque-separator), var(--elev-md);
+    &::before {
+      opacity: 0;
+    }
+  }
+  @media (forced-colors: active) {
+    /* keep a boundary; system colors do the rest */
+    background: Canvas; /* forced colors keep the fill's alpha; an authored system color stays opaque */
+    border: 1px solid CanvasText;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    &::before,
+    &::after {
+      display: none;
+    }
+  }
+}
+
+/* ---- Variants (add to a member: class="glass glass-clear glass-dim") ---- */
+.glass-clear {
+  --_fill: color-mix(in srgb, var(--glass-fill-color) var(--glass-clear-density), transparent);
+  --_blur: var(--glass-clear-blur);
+  --_sat: 160%;
+  --_sheen: light-dark(rgb(255 255 255 / 0.28), rgb(255 255 255 / 0.08));
+}
+/* GL-4: dim layer over bright media. Renders as dark material in both schemes (white label, dark highlights),
+   and stays dark in every fallback: white text >= 5.17:1 even over pure white. */
+.glass-dim {
+  color-scheme: dark;
+  --_solid: rgb(0 0 0 / 0.72);
+  background-image: linear-gradient(var(--glass-dim), var(--glass-dim));
+  color: #fff;
+}
+/* GL-5: tinted = the single primary action. Fill and label come from the accent pair (--accent-fill /
+   --accent-on, COL-3), so [data-tint] re-tints it; 96% density keeps white >= 4.5:1 even over pure white. */
+:is(.glass-tinted, .btn-prominent) {
+  --glass-ink: var(--accent-on);
+  --_fill: color-mix(in srgb, var(--accent-fill) var(--glass-tint-density), transparent);
+  --_solid: var(--accent-fill);
+  --_sat: 200%;
+  --_specular: rgb(255 255 255 / 0.75);
+  --_sheen: rgb(255 255 255 / 0.08);
+  --_glint: 0.3;
+  color: var(--accent-on);
+}
+/* .glass-interactive (press scale + glint): see the states block. */

@@ -1,8 +1,10 @@
 import { createHash } from 'node:crypto';
-import { readFile, stat } from 'node:fs/promises';
+import { readFile, rm, stat } from 'node:fs/promises';
+import path from 'node:path';
 import { loadSkillsFromDir, type Skill } from '@earendil-works/pi-coding-agent';
-import type { BuiltinStatus } from '../builtins/manifest.js';
+import { isBuiltinSkill, type BuiltinStatus } from '../builtins/manifest.js';
 import { reconcileBuiltinSkills } from '../builtins/skills.js';
+import { ConflictError } from '../errors.js';
 import { atdSkillsDir } from '../service-fs.js';
 import { isItemName } from '@ai/plugin-kit';
 import { mapPiDiagnostics, type SkillDiagnostic } from './diagnostics.js';
@@ -43,6 +45,25 @@ export async function discoverAtdSkills(): Promise<{
     diagnostics: diagnostics.slice(0, MAX_DIAGNOSTICS),
     builtins: builtins.statuses,
   };
+}
+
+/**
+ * Deletes one Personal skill from `<atdHome>/skills`: a `SKILL.md` skill takes its whole folder,
+ * a loose `.md` file at the catalog root only that file. Built-in skills belong to Core and are
+ * refused, since the next reconcile would reinstall them anyway.
+ */
+export async function deleteAtdSkill(skill: SkillRevisionRecord): Promise<void> {
+  if (skill.sourceKind !== 'atd' || isBuiltinSkill(skill.name))
+    throw new ConflictError(`Skill "${skill.name}" is not a Personal skill and cannot be deleted.`);
+  const root = path.resolve(atdSkillsDir());
+  const folder = path.basename(skill.entry) === 'SKILL.md';
+  const target = path.resolve(folder ? skill.baseDir : skill.entry);
+  // The catalog root itself is never a target: a root-level file deletes only itself.
+  if (!target.startsWith(`${root}${path.sep}`))
+    throw new ConflictError(
+      `Skill "${skill.name}" is outside ~/.atd/skills and cannot be deleted.`,
+    );
+  await rm(target, { recursive: folder, force: true });
 }
 
 /** ATD skills whose names are already taken stay out of the resolvable set. */

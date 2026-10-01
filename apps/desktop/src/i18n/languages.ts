@@ -1,8 +1,4 @@
-import {
-  LANGUAGE_CODES,
-  resolveLanguage,
-  type AppLanguage,
-} from '../../electron/settings-contract';
+import { LANGUAGE_CODES, resolveLanguage, type AppLanguage } from '../client/settings-contract';
 
 /** Language names are endonyms: each option is written in its own language. */
 export const LANGUAGE_NAMES: Record<AppLanguage, string> = {

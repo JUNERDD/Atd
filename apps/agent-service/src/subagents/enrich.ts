@@ -2,7 +2,7 @@ import type { SessionFactoryDeps } from '../pi-session.js';
 import type { RunnerContext } from '../task-runner.js';
 import { MemoryAuthority } from '../memory/authority.js';
 import { childMemoryProxy } from '../memory/proxy.js';
-import { McpAdapterMissing, McpAuthority } from '../mcp/index.js';
+import { McpAuthority } from '../mcp/index.js';
 import { readServiceId } from '../storage.js';
 import { ResourceStore } from '../resources.js';
 import { skillProfilePaths } from '../skills/profile.js';
@@ -66,8 +66,6 @@ async function listMcpProxies(
     const authority = await McpAuthority.authorityFor({
       serviceId,
       dataDir: ctx.paths.root,
-      agentDir: ctx.paths.agentDir,
-      sessionsDir: ctx.paths.sessionsDir,
       cwd: ctx.paths.root,
       events: ctx.events,
       confirms: ctx.confirms,
@@ -82,8 +80,8 @@ async function listMcpProxies(
       log: ctx.log,
     });
     return bindings.map((binding) => binding.proxyName);
-  } catch (error) {
-    if (error instanceof McpAdapterMissing) return [];
+  } catch {
+    // Enrichment never widens: without a list the child ceiling holds no MCP proxies.
     return [];
   }
 }

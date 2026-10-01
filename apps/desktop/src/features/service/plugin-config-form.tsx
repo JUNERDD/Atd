@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react';
+import { CircleAlert } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { PluginConfigRequest, PluginDetail } from '@ai/agent-contracts';
 import { Badge } from '@ai/ui/components/badge';
@@ -13,7 +14,7 @@ import {
   SelectValue,
 } from '@ai/ui/components/select';
 import { Switch } from '@ai/ui/components/switch';
-import { showToast } from '../../components/toast-store';
+import { useSettingsUnsavedChanges } from '../settings/settings-unsaved-changes';
 import { ExtensionDetailSection } from './extension-detail-fields';
 import type { PluginResult } from './use-plugin-mutations';
 
@@ -32,20 +33,30 @@ function initialDraft(detail: PluginDetail): Draft {
   );
 }
 
+/** Whether the draft still holds what the plugin's stored configuration gives. */
+function sameDraft(draft: Draft, saved: Draft): boolean {
+  return Object.keys(saved).every((key) => draft[key] === saved[key]);
+}
+
 /**
  * The values a plugin asks for (Claude `userConfig`): text, number, folder or file fields, a list
  * of choices, or a switch. A secret is never shown: its field says whether one is set, takes a new
  * value, or clears it on save. Required values are checked here first; the service's answer to a
- * save replaces the page's detail, and its error stays under the form.
+ * save replaces the page's detail, and its error stays under the form. The form stays on screen,
+ * so a save says it is done beside Save rather than in a toast, until the next edit.
  */
 export function PluginConfigForm({
   detail,
   disabled,
+  pending,
   focus,
   onSave,
 }: {
   detail: PluginDetail;
+  /** No service to save to: the form cannot work at all. */
   disabled: boolean;
+  /** A write for the plugin is running: Save keeps its focus but ignores presses. */
+  pending: boolean;
   /** Scrolls the form into view when the page opens, as More › Configure asks. */
   focus: boolean;
   onSave: (values: Values) => Promise<PluginResult<PluginDetail>>;
@@ -53,8 +64,15 @@ export function PluginConfigForm({
   const { t } = useTranslation('settings');
   const formId = useId();
   const sectionRef = useRef<HTMLDivElement>(null);
-  const [draft, setDraft] = useState(() => initialDraft(detail));
+  const [draft, setDraftState] = useState(() => initialDraft(detail));
+  const [saved, setSaved] = useState(false);
+  const setDraft = (next: Draft) => {
+    setDraftState(next);
+    setSaved(false);
+  };
   const [cleared, setCleared] = useState<ReadonlySet<string>>(new Set());
+  // Leaving the plugin's page with edits asks first; a save stays on the page.
+  useSettingsUnsavedChanges(cleared.size > 0 || !sameDraft(draft, initialDraft(detail)));
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState('');
   useEffect(() => {
@@ -103,6 +121,7 @@ export function PluginConfigForm({
     const { values, errors: found } = collect();
     setErrors(found);
     setFormError('');
+    setSaved(false);
     const first = detail.userConfig.find((option) => found[option.key]);
     if (first) {
       document.getElementById(`${formId}-${first.key}`)?.focus();
@@ -113,21 +132,35 @@ export function PluginConfigForm({
         setFormError(result.error);
         return;
       }
-      setDraft(initialDraft(result.value));
+      setDraftState(initialDraft(result.value));
       setCleared(new Set());
-      showToast({ kind: 'info', text: t('extensions.plugins.config.saved') });
+      setSaved(true);
     });
   }
 
+  // While a save runs the controls keep their focus but take no input, so nothing typed then is
+  // lost when the saved values replace the draft.
+  const busy = {
+    'aria-disabled': pending || undefined,
+    'aria-busy': pending || undefined,
+  };
+  // Keeps a Select closed while pending; Tab still moves focus on.
+  const block = (event: { key?: string; preventDefault: () => void }) => {
+    if (pending && event.key !== 'Tab') event.preventDefault();
+  };
   const control = (option: ConfigOption, id: string, invalid: boolean) => {
     const value = draft[option.key];
     if (typeof value === 'boolean')
       return (
         <Switch
           id={id}
+          {...busy}
+          className="aria-disabled:opacity-50"
           checked={value}
           disabled={disabled}
-          onCheckedChange={(next) => setDraft({ ...draft, [option.key]: next })}
+          onCheckedChange={(next) => {
+            if (!pending) setDraft({ ...draft, [option.key]: next });
+          }}
         />
       );
     if (option.options?.length)
@@ -135,9 +168,18 @@ export function PluginConfigForm({
         <Select
           value={value || undefined}
           disabled={disabled}
-          onValueChange={(next) => setDraft({ ...draft, [option.key]: next })}
+          onValueChange={(next) => {
+            if (!pending) setDraft({ ...draft, [option.key]: next });
+          }}
         >
-          <SelectTrigger id={id} className="w-full" aria-invalid={invalid}>
+          <SelectTrigger
+            id={id}
+            {...busy}
+            className="w-full aria-disabled:opacity-50"
+            aria-invalid={invalid}
+            onPointerDown={block}
+            onKeyDown={block}
+          >
             <SelectValue placeholder={t('extensions.plugins.config.choose')} />
           </SelectTrigger>
           <SelectContent>
@@ -157,6 +199,8 @@ export function PluginConfigForm({
         inputMode={option.type === 'number' ? 'decimal' : undefined}
         value={value ?? ''}
         disabled={disabled || cleared.has(option.key)}
+        readOnly={pending}
+        aria-busy={pending || undefined}
         autoComplete="off"
         spellCheck={false}
         placeholder={
@@ -178,7 +222,7 @@ export function PluginConfigForm({
           noValidate
           onSubmit={(event) => {
             event.preventDefault();
-            if (!disabled) submit();
+            if (!disabled && !pending) submit();
           }}
         >
           <div className="field-columns">
@@ -211,7 +255,10 @@ export function PluginConfigForm({
                         type="button"
                         variant="outline"
                         disabled={disabled}
+                        {...busy}
+                        className="aria-disabled:opacity-50"
                         onClick={() => {
+                          if (pending) return;
                           const next = new Set(cleared);
                           if (isCleared) next.delete(option.key);
                           else next.add(option.key);
@@ -238,12 +285,24 @@ export function PluginConfigForm({
             })}
           </div>
           {formError ? (
-            <p role="alert" className="text-xs text-destructive">
-              {formError}
+            <p role="alert" className="settings-inline-error">
+              <CircleAlert aria-hidden />
+              <span>{formError}</span>
             </p>
           ) : null}
-          <div className="flex justify-end">
-            <Button type="submit" disabled={disabled}>
+          <div className="flex flex-wrap items-center justify-end gap-3">
+            {saved ? (
+              <output className="settings-field-note">
+                {t('extensions.plugins.config.saved')}
+              </output>
+            ) : null}
+            <Button
+              type="submit"
+              disabled={disabled}
+              aria-disabled={pending || undefined}
+              aria-busy={pending || undefined}
+              className="aria-disabled:opacity-50"
+            >
               {t('extensions.plugins.config.save')}
             </Button>
           </div>

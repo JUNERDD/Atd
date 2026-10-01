@@ -1,12 +1,10 @@
 {
   "header": {
-    "openPanel": "打开任务面板",
     "panelLabel": "AI 任务面板",
     "newChat": "新建对话",
     "controlsLabel": "面板控件",
     "tasks": "任务",
     "settings": "设置",
-    "hide": "隐藏面板",
     "loadingConversation": "正在加载对话…"
   },
   "welcome": {
@@ -39,6 +37,11 @@
     "answerPlaceholder": "输入你的回答…",
     "interjectPlaceholder": "直接发送将拒绝此操作并立即送达…",
     "attachAfterRun": "请等这次运行结束后再附加文件。",
+    "importFailed": {
+      "unreadable": "无法读取 {{name}}。",
+      "unsupported": "不支持附加 {{name}}。",
+      "tooLarge": "{{name}} 必须是小于 1 MB 的文本文件。"
+    },
     "queued": "排队消息",
     "sendNow": "立即发送",
     "editQueued": "编辑排队消息",
@@ -127,7 +130,7 @@
     "editMcpSeed": "修改现有 MCP 服务器“{{name}}”：",
     "menu": "会话操作",
     "rename": "重命名会话",
-    "copyLink": "复制会话链接",
+    "copyId": "复制会话 ID",
     "compact": "整理上下文",
     "renameTitle": "重命名会话",
     "renameDescription": "为此会话起一个简短易认的名称。",
@@ -136,8 +139,8 @@
     "renameCancel": "取消",
     "renameSave": "保存",
     "renamed": "会话已重命名。",
-    "linkCopied": "会话链接已复制，在 Pi 中粘贴该命令即可查看。",
-    "idCopied": "会话 ID 已复制，Pi 会话将在首次运行后创建。"
+    "idCopied": "会话 ID 已复制。",
+    "rememberSeed": "记住我们对话中的以下内容：\n\n{{text}}"
   },
   "permission": {
     "tier": {
@@ -252,6 +255,7 @@
       "disconnected": "未连接",
       "connecting": "正在连接…",
       "auth_required": "需要登录",
+      "approval_required": "等待允许",
       "ready": "就绪",
       "error": "出错",
       "closing": "正在关闭…"
@@ -273,13 +277,5 @@
     "text": "此任务的上下文已整理 {{count}} 次，新开任务效果更好。",
     "newTask": "新建任务",
     "dismiss": "关闭提示"
-  },
-  "webSignIn": {
-    "title": "请从桌面应用打开此页面",
-    "none": "此浏览器尚未登录智能体服务。请在桌面应用中打开「设置」，点击右上角的「在浏览器中打开」（地球图标），或在本机运行 `agent-service web`。",
-    "expired": "该登录链接已过期或已被使用。请在桌面应用中（设置 → 在浏览器中打开）或通过 `agent-service web` 重新获取链接。",
-    "offlineTitle": "无法连接智能体服务",
-    "offline": "请先启动桌面应用或 `agent-service serve`，然后重试。",
-    "retry": "重试"
   }
 }

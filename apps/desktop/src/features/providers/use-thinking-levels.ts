@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { ModelReference, ModelThinkingLevel } from '../../../electron/providers/schema';
+import type { ModelReference, ModelThinkingLevel } from '../../client/providers/schema';
 import { useServiceStatus } from '../service/use-service';
 
 /** One request per connection and model; concurrent consumers of the same model share it. */

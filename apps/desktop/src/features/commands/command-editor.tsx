@@ -1,35 +1,52 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ChevronDown, ChevronUp, Copy, Pencil, Plus, Puzzle, Sparkles, Trash2 } from 'lucide-react';
+import { CircleAlert, Copy, Puzzle, Sparkles } from 'lucide-react';
 import { Alert, AlertDescription } from '@ai/ui/components/alert';
 import { Button } from '@ai/ui/components/button';
 import { Input } from '@ai/ui/components/input';
 import { Label } from '@ai/ui/components/label';
 import { ScrollArea } from '@ai/ui/components/scroll-area';
-import { CommandSchema, type CommandDefinition } from '../../../electron/agent/command-schema';
-import { renameArgument, validateCommand } from '../../../electron/agent/command-validation';
-import { parse } from '../../../electron/agent/validation';
-import type { SettingsSnapshot } from '../../../electron/settings-contract';
-import type { AgentTask } from '../../../electron/agent/task-schema';
-import { IconButton } from '../../components/icon-button';
+import { CommandSchema, type CommandDefinition } from '../../client/agent/command-schema';
+import { renameArgument } from '../../client/agent/command-validation';
+import { parse } from '../../client/agent/validation';
+import type { SettingsSnapshot } from '../../client/settings-contract';
+import type { AgentTask } from '../../client/agent/task-schema';
 import { useOverlayFooter } from '../../components/use-overlay-footer';
 import { agentApi } from '../agent/use-agent';
 import { showErrorToast, showToast } from '../../components/toast-store';
 import { messageOf } from '../../lib/errors';
 import { InputOptions } from './input-options';
 import { InstructionEditor } from './instruction-editor';
-import { instructionProblem } from './instruction-problem';
+import { FieldError } from './field-error';
 import { ParameterEditor } from './parameter-editor';
+import { ParameterList } from './parameter-list';
 import { RunSettings } from './run-settings';
-import { parameterTypeTag } from './command-variables';
-import { FieldHint } from '../../components/field-hint';
+import { errorId, useCommandProblems } from './use-command-problems';
 import { SettingsHeading } from '../settings/settings-heading';
+import { useSettingsUnsavedChanges } from '../settings/settings-unsaved-changes';
+
+/** A parameter's page over the command editor, a page of the Commands section's history. */
+export interface ParameterPage {
+  /** The page shown: the parameter's key, or null for a new parameter; null shows the editor. */
+  shown: { key: string | null } | null;
+  open: (key: string | null) => void;
+  /** Leaves the page; after a save, `saved` is the key Forward then reopens. */
+  close: (saved?: string) => void;
+  /** Leaves a page whose parameter the draft no longer has, as after Back discarded the draft. */
+  discard: () => void;
+}
+
+/** A command as the unsaved-changes check compares it: allowed tools are a set, not a list. */
+function comparable(command: CommandDefinition): string {
+  return JSON.stringify({ ...command, tools: command.tools.toSorted() });
+}
 
 export function CommandEditor({
   initial,
   expectedRevision,
   settings,
   tasks,
+  parameterPage,
   onSaved,
   onCancel,
   onDuplicate,
@@ -39,6 +56,7 @@ export function CommandEditor({
   settings: SettingsSnapshot | null;
   /** Snapshot tasks: the conversations instructions can mention. */
   tasks: readonly AgentTask[];
+  parameterPage: ParameterPage;
   onSaved: () => void;
   onCancel: () => void;
   /** Duplicate to Personal, offered in place of saving when `initial` belongs to a plugin. */
@@ -48,11 +66,16 @@ export function CommandEditor({
   // A plugin command is shown, never edited: the fieldset below disables every control.
   const plugin = initial.pluginId;
   const [draft, setDraft] = useState(initial);
+  // What the draft started from: the opened command, or the latest version after a reload.
+  const [baseline, setBaseline] = useState(initial);
+  // Commands are plain data, so their JSON tells an edit apart; a plugin's is never edited.
+  useSettingsUnsavedChanges(!plugin && comparable(draft) !== comparable(baseline));
   const [baseRevision, setBaseRevision] = useState(expectedRevision);
-  const [parameter, setParameter] = useState<{ index: number | null } | null>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
   const [inputOptionsOpen, setInputOptionsOpen] = useState(false);
+  const problems = useCommandProblems(draft);
+  const nameError = problems.text('name');
   const errorMessage = useRef<HTMLDivElement>(null);
   const footerRef = useOverlayFooter<HTMLElement>();
   function showError(message: string) {
@@ -73,15 +96,12 @@ export function CommandEditor({
     }
   }
   async function save() {
+    // Save stays enabled while a request is in flight (focus stays on it); repeats are ignored.
+    if (pending) return;
     setError('');
-    // Template problems first, in the app's language; the checks below name them in English.
-    const problem = instructionProblem(draft, t);
-    if (problem) {
-      showError(problem);
-      return;
-    }
+    // Field problems show under their fields; what remains here concerns the whole command.
+    if (!problems.check()) return;
     try {
-      validateCommand(draft);
       parse(CommandSchema, draft);
     } catch (error) {
       showError(messageOf(error));
@@ -105,41 +125,45 @@ export function CommandEditor({
         return;
       }
       setDraft(current);
+      setBaseline(current);
       setBaseRevision(current.revision);
       setError('');
     } catch (error) {
       showErrorToast(error);
     }
   }
-  function move(index: number, offset: number) {
-    const parameters = [...draft.parameters];
-    const item = parameters.splice(index, 1)[0]!;
-    parameters.splice(index + offset, 0, item);
-    setDraft({ ...draft, parameters });
-  }
-  if (parameter)
+  const { shown, discard } = parameterPage;
+  const index =
+    shown && shown.key !== null
+      ? draft.parameters.findIndex((item) => item.key === shown.key)
+      : null;
+  const missing = index === -1;
+  useEffect(() => {
+    if (missing) discard();
+  }, [missing, discard]);
+  if (shown && !missing)
     return (
       <ParameterEditor
-        initial={parameter.index === null ? null : draft.parameters[parameter.index]!}
+        initial={index === null ? null : draft.parameters[index]!}
         commandName={draft.name}
-        keys={draft.parameters
-          .filter((_, index) => index !== parameter.index)
-          .map((item) => item.key)}
-        onCancel={() => setParameter(null)}
+        keys={draft.parameters.filter((_, i) => i !== index).map((item) => item.key)}
+        onCancel={() => parameterPage.close()}
         onSave={(value) => {
           const parameters = [...draft.parameters];
-          const previousKey = parameter.index === null ? null : parameters[parameter.index]!.key;
-          if (parameter.index === null) parameters.push(value);
-          else parameters[parameter.index] = value;
-          setDraft({
+          const previousKey = index === null ? null : parameters[index]!.key;
+          if (index === null) parameters.push(value);
+          else parameters[index] = value;
+          const next = {
             ...draft,
             parameters,
             instructions:
               previousKey && previousKey !== value.key
                 ? renameArgument(draft.instructions, previousKey, value.key)
                 : draft.instructions,
-          });
-          setParameter(null);
+          };
+          setDraft(next);
+          problems.recheck('parameters', next);
+          parameterPage.close(value.key);
         }}
       />
     );
@@ -153,13 +177,14 @@ export function CommandEditor({
               ? t('editor.editTitle')
               : t('editor.newTitle')
         }
-        onBack={onCancel}
+        subpage
         backLabel={t('editor.back')}
       />
       <ScrollArea
         className="flex-1 min-h-0 min-w-0 m-[-3px_-15px_-3px_-3px]"
         viewportClassName="overlay-footer-fade"
         gutter="stable"
+        scrollShadow
       >
         <fieldset disabled={Boolean(plugin)} className="editor-fields min-w-0 p-0.75">
           {plugin && (
@@ -171,13 +196,20 @@ export function CommandEditor({
           <div className="field-columns aligned-fields">
             <div className="settings-field">
               <Label htmlFor="command-name">{t('editor.name')}</Label>
-              <Input
-                id="command-name"
-                value={draft.name}
-                maxLength={120}
-                placeholder={t('editor.namePlaceholder')}
-                onChange={(event) => setDraft({ ...draft, name: event.target.value })}
-              />
+              {/* One grid row with the error, so the fields beside it stay aligned. */}
+              <div className="flex flex-col gap-2">
+                <Input
+                  id="command-name"
+                  value={draft.name}
+                  maxLength={120}
+                  placeholder={t('editor.namePlaceholder')}
+                  aria-invalid={Boolean(nameError) || undefined}
+                  aria-describedby={nameError ? errorId('name') : undefined}
+                  onChange={(event) => setDraft({ ...draft, name: event.target.value })}
+                  onBlur={() => problems.recheck('name')}
+                />
+                {nameError && <FieldError id={errorId('name')}>{nameError}</FieldError>}
+              </div>
             </div>
             <div className="settings-field">
               <Label htmlFor="command-description">{t('editor.description')}</Label>
@@ -193,8 +225,14 @@ export function CommandEditor({
           <InstructionEditor
             command={draft}
             onChange={setDraft}
+            onNormalize={(instructions) => {
+              setDraft((current) => ({ ...current, instructions }));
+              setBaseline((current) => ({ ...current, instructions }));
+            }}
             readOnly={Boolean(plugin)}
             tasks={tasks}
+            error={problems.text('instructions')}
+            onBlur={() => problems.recheck('instructions')}
             onConfigureSource={(source) => {
               setInputOptionsOpen(true);
               requestAnimationFrame(() => {
@@ -211,87 +249,27 @@ export function CommandEditor({
             onChange={setDraft}
             open={inputOptionsOpen}
             onOpenChange={setInputOptionsOpen}
+            error={problems.text('input')}
+            onBlur={() => problems.recheck('input')}
           />
-          <section className="settings-field">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5">
-                <Label>{t('editor.parameters')}</Label>
-                <FieldHint text={t('editor.parametersHint')} />
-              </div>
-              <Button
-                variant="outline"
-                disabled={draft.parameters.length >= 20}
-                onClick={() => setParameter({ index: null })}
-              >
-                <Plus />
-                {t('parameters.add')}
-              </Button>
-            </div>
-            <ul className="parameter-items">
-              {draft.parameters.map((item, index) => {
-                const type = t(parameterTypeTag(item.type));
-                const required = item.required ? ` · ${t('parameters.required')}` : '';
-                return (
-                  <li key={item.key} className="parameter-item hover:bg-muted/50">
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium" title={item.label}>
-                        {item.label}
-                      </p>
-                      <p
-                        className="truncate text-xs text-muted-foreground"
-                        title={`{{argument.${item.key}}} · ${type}${required}`}
-                      >
-                        <span className="variable-token">{`{{argument.${item.key}}}`}</span> ·{' '}
-                        {type}
-                        {required}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <IconButton
-                        label={t('editor.moveUp')}
-                        aria-label={t('editor.moveUpFor', { name: item.label })}
-                        disabled={index === 0}
-                        onClick={() => move(index, -1)}
-                      >
-                        <ChevronUp />
-                      </IconButton>
-                      <IconButton
-                        label={t('editor.moveDown')}
-                        aria-label={t('editor.moveDownFor', { name: item.label })}
-                        disabled={index === draft.parameters.length - 1}
-                        onClick={() => move(index, 1)}
-                      >
-                        <ChevronDown />
-                      </IconButton>
-                      <IconButton
-                        label={t('common.edit')}
-                        aria-label={t('editor.editFor', { name: item.label })}
-                        onClick={() => setParameter({ index })}
-                      >
-                        <Pencil />
-                      </IconButton>
-                      <IconButton
-                        label={t('common.remove')}
-                        aria-label={t('editor.removeFor', { name: item.label })}
-                        onClick={() =>
-                          setDraft({
-                            ...draft,
-                            parameters: draft.parameters.filter((_, i) => i !== index),
-                          })
-                        }
-                      >
-                        <Trash2 />
-                      </IconButton>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          </section>
+          <ParameterList
+            parameters={draft.parameters}
+            onChange={(parameters) => {
+              const next = { ...draft, parameters };
+              setDraft(next);
+              // Reordering or removing is what fixes a parameter problem, so check it again then.
+              problems.recheck('parameters', next);
+            }}
+            onOpen={parameterPage.open}
+            error={problems.text('parameters')}
+          />
           <RunSettings command={draft} onChange={setDraft} settings={settings} />
           {error && (
-            <div ref={errorMessage} role="alert" className="space-y-2">
-              <p className="text-sm text-destructive">{error}</p>
+            <div ref={errorMessage} className="space-y-2">
+              <p role="alert" className="settings-inline-error">
+                <CircleAlert aria-hidden />
+                {error}
+              </p>
               {baseRevision > 0 && (
                 <Button variant="outline" onClick={() => void reload()}>
                   {t('editor.reload')}
@@ -304,7 +282,7 @@ export function CommandEditor({
       <footer ref={footerRef} className="editor-footer overlay-footer">
         {plugin ? (
           <div>
-            <Button onClick={onDuplicate}>
+            <Button variant="glass" onClick={onDuplicate}>
               <Copy data-icon="inline-start" />
               {t('list.duplicateToPersonal')}
             </Button>
@@ -313,18 +291,34 @@ export function CommandEditor({
           <>
             <Button
               type="button"
-              variant="outline"
-              disabled={pending || !window.desktop?.settings}
-              onClick={() => void startSession()}
+              variant="glass"
+              disabled={!window.desktop?.settings}
+              aria-disabled={pending || undefined}
+              className="aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
+              onClick={() => {
+                if (!pending) void startSession();
+              }}
             >
               <Sparkles data-icon="inline-start" />
               {baseRevision ? t('session.triggerEdit') : t('session.trigger')}
             </Button>
             <div>
-              <Button variant="outline" disabled={pending} onClick={onCancel}>
+              <Button
+                variant="glass"
+                aria-disabled={pending || undefined}
+                className="aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
+                onClick={() => {
+                  if (!pending) onCancel();
+                }}
+              >
                 {t('common.cancel')}
               </Button>
-              <Button disabled={pending} onClick={() => void save()}>
+              <Button
+                aria-disabled={pending || undefined}
+                aria-busy={pending || undefined}
+                className="aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
+                onClick={() => void save()}
+              >
                 {pending
                   ? t('editor.saving')
                   : baseRevision

@@ -65,7 +65,6 @@ describe('plugin state', () => {
     const { installer } = await seeded();
     await installer.setPluginEnabled('shared:agents-skills', false);
     await installer.setItemEnabled('shared:agents-skills', 'skill:review', false);
-    await installer.setServerApproved('crafted', 'db', true);
     await installer.setPluginEnabled('crafted', false);
     await installer.setPluginEnabled('crafted', true);
     expect(await installer.readState()).toEqual({
@@ -73,11 +72,9 @@ describe('plugin state', () => {
       disabled: ['shared:agents-skills'],
       items: { 'shared:agents-skills': ['skill:review'] },
       config: {},
-      approved: { crafted: ['db'] },
     });
     await installer.setItemEnabled('shared:agents-skills', 'skill:review', true);
-    await installer.setServerApproved('crafted', 'db', false);
-    expect(await installer.readState()).toMatchObject({ items: {}, approved: {} });
+    expect(await installer.readState()).toMatchObject({ items: {} });
   });
 
   it('validates config, keeps secrets out of state and fills defaults', async () => {
@@ -124,7 +121,6 @@ describe('plugin state', () => {
   it('uninstalls: record, state, secrets and data go; unreferenced revisions are collected', async () => {
     const { root, installer, secrets } = await seeded();
     await installer.setConfig('crafted', OPTIONS, { token: 't', mode: 'fast' });
-    await installer.setServerApproved('crafted', 'db', true);
     await installer.setItemEnabled('crafted', 'skill:x', false);
     await installer.setPluginEnabled('crafted', false);
     await writeFile(path.join(await installer.dataDir('crafted'), 'cache.json'), '{}');
@@ -136,7 +132,6 @@ describe('plugin state', () => {
       disabled: [],
       items: {},
       config: {},
-      approved: {},
     });
     expect(secrets.values.size).toBe(0);
     expect(await readdir(path.join(root, 'data'))).toEqual([]);

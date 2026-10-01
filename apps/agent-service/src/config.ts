@@ -66,8 +66,6 @@ export interface ServiceConfig {
   token: string;
   host: string;
   port: number;
-  /** Directory holding the web client build served at `/`; null serves the API only. */
-  webRoot: string | null;
 }
 
 /** Acquires the dataDir owner lock; throws when another live owner holds it. */
@@ -171,7 +169,6 @@ export async function prepareServe(options: {
   flagDir?: string;
   host?: string;
   port?: number;
-  webRoot?: string;
 }): Promise<ServiceConfig> {
   const root = resolveDataDir({ envDir: options.envDir, flagDir: options.flagDir });
   const paths = servicePaths(root);
@@ -187,7 +184,6 @@ export async function prepareServe(options: {
     token,
     host: options.host ?? '127.0.0.1',
     port: options.port ?? 0,
-    webRoot: options.webRoot?.trim() || null,
   };
 }
 

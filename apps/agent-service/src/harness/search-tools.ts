@@ -49,7 +49,9 @@ function gated<T extends TSchema, D>(
         detail: JSON.stringify({ tool: tool.name, args }),
         signal: signal ?? undefined,
       });
-      return tool.execute(id, args, signal, onUpdate, { ...ctx, cwd: deps.cwd });
+      // Pi's context goes through untouched: its `cwd` is `deps.cwd`, and a spread would drop its
+      // non-enumerable `tools` and `executeTool` (see `controlled` in tool-proxies.ts).
+      return tool.execute(id, args, signal, onUpdate, ctx);
     },
   };
 }

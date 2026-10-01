@@ -1,0 +1,172 @@
+/* @block navbar | requires: toolbar, motion | layer: components | native: SwiftUI .navigationTitle + .navigationBarTitleDisplayMode(.large); UIKit UINavigationBar (prefersLargeTitles) | 54 px bar with no background: the large title in the content collapses into the inline title on scroll (scroll-driven, JS fallback) */
+/* Markup. The bar is the first child of the scroll container, which carries .motion-scroller (motion block; use
+   <html class="motion-scroller"> when the page itself scrolls). Button groups reuse the toolbar classes:
+     <main class="motion-scroller">
+       <header class="navbar">
+         <div class="navbar__leading"><div class="toolbar-group"><button class="toolbar-btn" type="button" aria-label="Back">…</button></div></div>
+         <span class="navbar__title" aria-hidden="true">Library</span>        (a visual duplicate of the h1)
+         <div class="navbar__trailing"><div class="toolbar-group">…</div></div>
+       </header>
+       <h1 class="navbar__large-title">Library</h1>
+       …
+     </main>
+   Scrolling fades the large title out and the inline title in (opacity + a small rise, MOT-6) over --motion-range, and
+   fades in a scroll edge behind the bar (GL-7: no bar background, no divider). --navbar-edge is the page color.
+   Without scroll-driven animations, AppleBlocks.navbar.init() toggles .is-scrolled on the scroller; reduced motion swaps. */
+
+.navbar {
+  --navbar-h: var(--toolbar-h); /* UINavigationBar, iOS 26.3: 54 px */
+  --navbar-edge: var(--system-grouped-background);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: grid;
+  grid-template-columns: minmax(max-content, 1fr) minmax(0, auto) minmax(max-content, 1fr);
+  align-items: center;
+  column-gap: var(--space-2);
+  box-sizing: border-box;
+  min-block-size: calc(var(--safe-top) + var(--navbar-h));
+  padding: var(--safe-top) calc(var(--margin-page) + var(--safe-right)) 0
+    calc(var(--margin-page) + var(--safe-left));
+  isolation: isolate;
+  pointer-events: none; /* like the toolbar: content under empty bar space stays tappable */
+}
+.navbar > * {
+  pointer-events: auto;
+}
+.navbar::before {
+  /* scroll edge (27 automatic: uniform, opaque behind the title), */
+  content: ''; /* shown only once content is under the bar; no blur, so no   */
+  position: absolute; /* extra backdrop-filter surface (GL-3)                        */
+  inset: 0 0 calc(-1 * var(--space-4));
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(to bottom, var(--navbar-edge) 55%, transparent);
+  opacity: 0;
+}
+.navbar__leading,
+.navbar__trailing {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-inline-size: 0;
+}
+.navbar__leading {
+  grid-column: 1;
+  justify-self: start;
+}
+.navbar__trailing {
+  grid-column: 3;
+  justify-self: end;
+}
+.navbar__title {
+  grid-column: 2;
+  min-inline-size: 0;
+  overflow: hidden;
+  color: var(--label);
+  font: 600 var(--fs-headline)/var(--lh-headline) var(--ff-sans);
+  letter-spacing: calc(var(--tr-headline) * var(--tracking-scale));
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0; /* shown by scroll; stays hidden if no timeline is found */
+}
+.navbar__large-title {
+  margin: 0;
+  padding: var(--space-1) var(--margin-page) var(--space-2);
+  color: var(--label);
+  font: 700 var(--fs-large-title)/var(--lh-large-title) var(--ff-sans); /* 34/41, bold, leading-aligned */
+  letter-spacing: calc(var(--tr-large-title) * var(--tracking-scale));
+  text-wrap: balance;
+}
+
+@keyframes navbar-title-in {
+  from {
+    opacity: 0;
+    translate: 0 0.375em;
+  }
+  to {
+    opacity: 1;
+    translate: none;
+  }
+}
+@keyframes navbar-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@supports (animation-timeline: scroll()) {
+  .navbar__title,
+  .navbar::before,
+  .navbar__large-title {
+    /* shorthand first: it resets timeline and range */
+    animation: navbar-fade-in 1ms linear both;
+    animation-timeline: --motion-scroll;
+  }
+  .navbar__title {
+    animation-name: navbar-title-in;
+    animation-range: var(--motion-range, 20px 52px);
+  }
+  .navbar::before {
+    animation-range: 0px 24px;
+  }
+  .navbar__large-title {
+    animation-direction: reverse;
+    animation-range: 4px 40px;
+  }
+}
+@supports not (animation-timeline: scroll()) {
+  .navbar__title {
+    translate: 0 0.375em;
+    transition:
+      opacity var(--dur-base) var(--curve-standard),
+      translate var(--dur-base) var(--curve-out);
+  }
+  .navbar::before,
+  .navbar__large-title {
+    transition: opacity var(--dur-base) var(--curve-standard);
+  }
+  .is-scrolled .navbar__title {
+    opacity: 1;
+    translate: none;
+  }
+  .is-scrolled .navbar::before {
+    opacity: 1;
+  }
+  .is-scrolled .navbar__large-title {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  /* a plain swap: no rise, no scrubbed fade (MOT-5) */
+  .navbar__title {
+    animation-name: navbar-fade-in;
+    animation-timing-function: steps(2, jump-none);
+    translate: none;
+    transition: none;
+  }
+  .navbar__large-title {
+    animation-timing-function: steps(2, jump-none);
+    transition: none;
+  }
+}
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+  .navbar::before {
+    /* solid bar edge with a hairline once scrolled */
+    inset-block-end: 0;
+    border-block-end: 1px solid var(--separator);
+    background: var(--navbar-edge);
+  }
+}
+@media (forced-colors: active) {
+  .navbar {
+    background-color: Canvas;
+    border-block-end: 1px solid CanvasText;
+  }
+  .navbar::before {
+    display: none;
+  }
+}

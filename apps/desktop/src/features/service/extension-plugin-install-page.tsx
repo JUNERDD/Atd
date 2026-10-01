@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Download, Package } from 'lucide-react';
+import { CircleAlert, Download, Package } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { PluginDetail, PluginInstallPreview } from '@ai/agent-contracts';
 import { Button } from '@ai/ui/components/button';
@@ -92,7 +92,7 @@ export function PluginInstallPage({
   }
 
   function install() {
-    if (!preview) return;
+    if (!preview || busy) return;
     setError('');
     void onInstall(preview.previewId).then((result) => {
       if (!result.ok) setError(result.error);
@@ -109,14 +109,20 @@ export function PluginInstallPage({
       title={title}
       description={t('extensions.plugins.install.description')}
       backLabel={t('extensions.plugins.page.back')}
-      onBack={onBack}
       note={t('extensions.plugins.install.startsOff')}
       actions={
         <>
-          <Button type="button" variant="outline" onClick={onBack}>
+          <Button type="button" variant="glass" onClick={onBack}>
             {t('extensions.cancel')}
           </Button>
-          <Button type="button" disabled={locked || !preview} onClick={install}>
+          <Button
+            type="button"
+            disabled={!connected || !preview}
+            aria-disabled={busy || undefined}
+            aria-busy={busy || undefined}
+            className="aria-disabled:opacity-50"
+            onClick={install}
+          >
             {updating || preview?.existing
               ? t('extensions.plugins.install.updateAction')
               : t('extensions.plugins.install.installAction')}
@@ -142,7 +148,8 @@ export function PluginInstallPage({
               id="plugin-install-source"
               className="min-w-0 flex-1"
               value={text}
-              disabled={locked || fetching || updating}
+              disabled={!connected || updating}
+              readOnly={busy || fetching}
               autoComplete="off"
               spellCheck={false}
               placeholder={t('extensions.plugins.install.sourcePlaceholder')}
@@ -157,7 +164,14 @@ export function PluginInstallPage({
               }}
             />
             {/* The form's submit button, so Enter in the field fetches as well. */}
-            <Button type="submit" variant="outline" disabled={locked || fetching || updating}>
+            <Button
+              type="submit"
+              variant="outline"
+              disabled={!connected || updating}
+              aria-disabled={busy || fetching || undefined}
+              aria-busy={busy || fetching || undefined}
+              className="aria-disabled:opacity-50"
+            >
               <Download data-icon="inline-start" />
               {fetching
                 ? t('extensions.plugins.install.fetching')
@@ -165,8 +179,9 @@ export function PluginInstallPage({
             </Button>
           </div>
           {error ? (
-            <p id="plugin-install-error" role="alert" className="text-xs text-destructive">
-              {error}
+            <p id="plugin-install-error" role="alert" className="settings-inline-error">
+              <CircleAlert aria-hidden />
+              <span>{error}</span>
             </p>
           ) : null}
           <p id="plugin-install-hint" className="settings-field-note">

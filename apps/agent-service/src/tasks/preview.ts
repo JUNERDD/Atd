@@ -15,6 +15,7 @@ import { defaultArguments, resolveCommandInstructions } from '../commands/templa
 import { ConnectionStore } from '../credentials/connections.js';
 import type { Ledger } from '../ledger.js';
 import { loadRunContextWindow, resolveRunModel, resolveRunThinkingLevel } from './run-selection.js';
+import { RENDERER_ROUTE } from '../relay-routes.js';
 
 export interface PreviewContext {
   dataDir: string;
@@ -29,7 +30,7 @@ export interface PreviewContext {
  * connection answers 404.
  */
 export function registerPreviewRoute(app: FastifyInstance, ctx: PreviewContext): void {
-  app.post('/v1/tasks/preview', async (request) => {
+  app.post('/v1/tasks/preview', RENDERER_ROUTE, async (request) => {
     const body = parse(PreviewTaskRequestSchema, request.body);
     return resolvePreview(ctx, body);
   });

@@ -92,6 +92,7 @@ export function ExtensionPluginPage({
     loaded,
     replace,
     setItemEnabled: patchItem,
+    retry,
   } = usePluginDetail(pluginId, extensions.epoch);
   const [uninstalling, setUninstalling] = useState(false);
   const detail = loaded && 'detail' in loaded ? loaded.detail : null;
@@ -135,10 +136,11 @@ export function ExtensionPluginPage({
   if (!plugin || !detail) {
     const failed = loaded && 'error' in loaded ? loaded.error : null;
     return (
-      <ExtensionPage label={name} title={name} backLabel={backLabel} onBack={onBack}>
+      <ExtensionPage label={name} title={name} backLabel={backLabel}>
         <ExtensionDetailStatus
           text={failed ?? t('extensions.detailLoading')}
           error={failed !== null}
+          onRetry={retry}
         />
       </ExtensionPage>
     );
@@ -168,9 +170,14 @@ export function ExtensionPluginPage({
             {plugin.toggleable ? (
               <Switch
                 aria-label={t('extensions.enableFor', { name })}
+                aria-disabled={pluginBusy || undefined}
+                aria-busy={pluginBusy || undefined}
+                className="aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
                 checked={plugin.enabled}
-                disabled={locked}
-                onCheckedChange={setEnabled}
+                disabled={!connected}
+                onCheckedChange={(enabled) => {
+                  if (!pluginBusy) setEnabled(enabled);
+                }}
               />
             ) : null}
           </div>
@@ -178,14 +185,13 @@ export function ExtensionPluginPage({
       }
       description={labels.description(plugin) || t('extensions.detailNoDescription')}
       backLabel={backLabel}
-      onBack={onBack}
       actions={
         installed && (plugin.updatable || plugin.removable) ? (
           <>
             {plugin.removable ? (
               <Button
                 type="button"
-                variant="outline"
+                variant="glass"
                 disabled={locked}
                 onClick={() => setUninstalling(true)}
               >
@@ -224,6 +230,7 @@ export function ExtensionPluginPage({
         connected={connected}
         busy={busy}
         mcpBusyId={extensions.mcp.busyId}
+        mcpIssues={extensions.mcp.issues}
         detailItems={detail.items}
         actions={actions}
         onOpen={onOpenItem}
@@ -232,7 +239,8 @@ export function ExtensionPluginPage({
           memory
             ? {
                 learning: memory.itemEnabled,
-                disabled: locked,
+                disabled: !connected,
+                pending: pluginBusy,
                 onLearningChange: (enabled) =>
                   extensions.setServiceItemEnabled(
                     {
@@ -259,7 +267,8 @@ export function ExtensionPluginPage({
         <PluginConfigForm
           key={`${plugin.id}\n${plugin.revision ?? ''}`}
           detail={detail}
-          disabled={locked}
+          disabled={!connected}
+          pending={pluginBusy}
           focus={focus === 'config'}
           onSave={async (values) => {
             const result = await pluginMutations.configure(plugin.id, values);

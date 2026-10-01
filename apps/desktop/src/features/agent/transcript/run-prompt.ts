@@ -1,5 +1,5 @@
-import type { RunSnapshot, TaskRun } from '../../../../electron/agent/task-schema';
-import type { BlockOf } from '../../../../electron/agent/transcript-schema';
+import type { RunSnapshot, TaskRun } from '../../../client/agent/task-schema';
+import type { BlockOf } from '../../../client/agent/transcript-schema';
 
 /** Pending-bubble text before the first user block arrives: instruction first. */
 export function pendingMessageText(snapshot: RunSnapshot): string {

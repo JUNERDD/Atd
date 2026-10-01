@@ -1,14 +1,12 @@
 import type { ReactNode } from 'react';
-import { ArrowLeft } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
-import { IconButton } from '../../components/icon-button';
+import { useSettingsSubpage } from './settings-navigation';
 
 export function SettingsHeading({
   title,
   titleHint,
   description,
   children,
-  onBack,
+  subpage = false,
   backLabel,
 }: {
   title: string;
@@ -16,31 +14,27 @@ export function SettingsHeading({
   titleHint?: ReactNode;
   description?: string;
   children?: ReactNode;
-  onBack?: () => void;
+  /**
+   * Marks a sub-page: the window's content header adds the title to its breadcrumb and its Back
+   * steps back through the section's page history, so the page itself carries no back button.
+   */
+  subpage?: boolean;
+  /** Accessible name of the header's Back while this sub-page is shown. */
   backLabel?: string;
 }) {
-  const { t } = useTranslation('settings');
+  useSettingsSubpage(subpage ? { title, backLabel } : null);
   return (
     <header
       className={`settings-page-heading ${children ? 'settings-overview-heading' : ''}`}
-      /* A back button marks a sub-page; without one the title only repeats the section name. */
-      data-section-title={onBack ? undefined : ''}
+      /* On an overview the title only repeats the section name the breadcrumb shows. */
+      data-section-title={subpage ? undefined : ''}
     >
       <div className="settings-section-heading">
         <div className="editor-heading">
-          {onBack && (
-            <IconButton
-              label={t('heading.back')}
-              aria-label={backLabel ?? t('heading.back')}
-              onClick={onBack}
-            >
-              <ArrowLeft />
-            </IconButton>
-          )}
           <h2 title={title}>{title}</h2>
           {titleHint}
         </div>
-        {description && <p title={description}>{description}</p>}
+        {description && <p>{description}</p>}
       </div>
       {children && <div className="settings-overview-toolbar">{children}</div>}
     </header>

@@ -4,7 +4,7 @@ import type { HostPlugin, InstalledPlugin, PluginStateFile } from '../../src/mod
 import { resolveCatalog, type ResolveInput } from '../../src/resolve/catalog.js';
 
 function state(overrides: Partial<PluginStateFile> = {}): PluginStateFile {
-  return { version: 1, disabled: [], items: {}, config: {}, approved: {}, ...overrides };
+  return { version: 1, disabled: [], items: {}, config: {}, ...overrides };
 }
 
 function skill(name: string): PluginComponent {
@@ -128,7 +128,7 @@ describe('resolveCatalog', () => {
     plugin.plugin.diagnostics.push({ level: 'info', code: 'unknown-field', message: 'x' });
     const catalog = resolve({
       installed: [plugin],
-      state: state({ items: { demo: ['skill:a'] }, approved: { demo: ['db'] } }),
+      state: state({ items: { demo: ['skill:a'] } }),
     });
     expect(catalog.plugins[0]).toEqual({
       id: 'demo',
@@ -157,15 +157,20 @@ describe('resolveCatalog', () => {
     ]);
   });
 
-  it('requires approval only for stdio MCP servers', () => {
+  it('leaves launch approval of MCP servers to the host, legacy approvals included', () => {
     const catalog = resolve({ installed: [installed('demo', [stdioMcp('db'), httpMcp('api')])] });
     expect(catalog.items.map((i) => [i.name, i.enabled, i.blockedBy])).toEqual([
-      ['demo:db', false, 'approval'],
+      ['demo:db', true, undefined],
       ['demo:api', true, undefined],
     ]);
+    const legacy = resolve({
+      installed: [installed('demo', [stdioMcp('db')])],
+      state: state({ approved: { demo: [] } }),
+    });
+    expect(legacy.items.map((i) => i.blockedBy)).toEqual([undefined]);
   });
 
-  it('applies blockers in precedence order: plugin, item, config, approval', () => {
+  it('applies blockers in precedence order: plugin, item, config', () => {
     const config = [option('TOKEN')];
     const components = [stdioMcp('db'), stdioMcp('off')];
     const blockers = (overrides: Partial<PluginStateFile>) =>
@@ -178,11 +183,7 @@ describe('resolveCatalog', () => {
       'plugin',
     ]);
     expect(blockers({ items: { demo: ['mcp:off'] } })).toEqual(['config', 'item']);
-    expect(blockers({ config: { demo: { TOKEN: 't' } } })).toEqual(['approval', 'approval']);
-    expect(blockers({ config: { demo: { TOKEN: 't' } }, approved: { demo: ['db'] } })).toEqual([
-      undefined,
-      'approval',
-    ]);
+    expect(blockers({ config: { demo: { TOKEN: 't' } } })).toEqual([undefined, undefined]);
   });
 
   it('computes needsConfig from stored values, stored secrets and defaults', () => {

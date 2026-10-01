@@ -7,7 +7,7 @@ import { atomicWrite } from '../config.js';
  * Next-run reference staging, mirroring mcp/staging.ts. SubmitTaskRequest carries
  * only what acceptance freezes, so the composer's `@` references stage per task and the run freeze
  * consumes them once (run-freeze.ts). Staging is a plain file write: it does
- * not need the MCP adapter, and staging never changes an accepted run.
+ * not need the MCP authority, and staging never changes an accepted run.
  */
 export interface ReferenceStaging {
   references: RunReference[];

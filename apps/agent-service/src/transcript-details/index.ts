@@ -1,5 +1,6 @@
 import { Compile } from 'typebox/compile';
 import {
+  CONFIGURE_MCP_TOOL,
   TODO_TOOL,
   ToolBlockDetailsSchema,
   WEB_FETCH_TOOL,
@@ -9,6 +10,7 @@ import {
 import type { Logger } from '../logging.js';
 import { SUBAGENT_TOOL } from '../subagents/tool-contract.js';
 import { projectEditDetails } from './edit.js';
+import { projectMcpApprovalDetails } from './mcp-approval.js';
 import { projectSubagentDetails, type SubagentDetailsInput } from './subagent.js';
 import { projectTodoDetails } from './todo.js';
 import { projectWebFetchDetails, projectWebSearchDetails } from './web.js';
@@ -28,6 +30,7 @@ const PROJECTORS: ReadonlyMap<string, Projector> = new Map<string, Projector>([
   ['edit', projectEditDetails],
   [WEB_SEARCH_TOOL, projectWebSearchDetails],
   [WEB_FETCH_TOOL, projectWebFetchDetails],
+  [CONFIGURE_MCP_TOOL, projectMcpApprovalDetails],
 ]);
 
 /**

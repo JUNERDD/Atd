@@ -1,12 +1,13 @@
 import { useState } from 'react';
-import { Bot, Shield } from 'lucide-react';
+import { Bot, Shield, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { SubagentPermissions } from '@ai/agent-contracts';
-import { DropdownMenuItem } from '@ai/ui/components/dropdown-menu';
+import { DropdownMenuItem, DropdownMenuSeparator } from '@ai/ui/components/dropdown-menu';
 import { HighlightedText } from '@ai/ui/components/highlighted-text';
 import { ItemContent, ItemDescription, ItemMedia, ItemTitle } from '@ai/ui/components/item';
 import { AgentPermissionsDialog } from './extension-agent-permissions';
 import { ExtensionGroup } from './extension-group';
+import { ExtensionRemoveDialog } from './extension-remove-dialog';
 import { ExtensionRow, ExtensionRowActions } from './extension-row';
 import type { ExtensionAgentRow } from './extension-rows';
 import type { AgentMatch } from './use-extension-matches';
@@ -15,9 +16,10 @@ import type { AgentMatch } from './use-extension-matches';
  * One plugin's subagents: the service's system agents (Core), the markdown specialists
  * (`~/.atd/agents`, Personal) or an installed plugin's agents. Rows share the skill row anatomy
  * (icon ring, name, a description line naming system sources and custom permissions, the enable
- * switch and More with Permissions…, which plugin agents keep as well); `items` are the rows shown,
- * with search marks. A row click and More › View details open the agent's details page. Turning
- * an agent off and permission changes apply from the next run.
+ * switch and More with Permissions…, which plugin agents keep as well, and Delete for Personal
+ * agents); `items` are the rows shown, with search marks. A row click and More › View details open
+ * the agent's details page. Turning an agent off, deleting it and permission changes apply from the
+ * next run.
  */
 export function ExtensionAgentsGroup({
   title,
@@ -27,11 +29,12 @@ export function ExtensionAgentsGroup({
   loading,
   empty,
   connected,
-  busy,
+  busyId,
   lockedReason,
   onOpen,
   onEnabled,
   onPermissions,
+  onDelete,
 }: {
   title: string;
   /** False when a tab names the kind; the section keeps its name for accessibility. */
@@ -42,7 +45,8 @@ export function ExtensionAgentsGroup({
   loading: boolean;
   empty: string;
   connected: boolean;
-  busy: boolean;
+  /** The agent a save or delete is running for; only its row waits. */
+  busyId: string | null;
   /** Why the switches are locked (their plugin is off); null when they are not. */
   lockedReason: string | null;
   /** Opens one agent's details page. */
@@ -50,10 +54,13 @@ export function ExtensionAgentsGroup({
   onEnabled: (name: string, enabled: boolean) => void;
   /** Saves one agent's permissions for later runs; null restores its defaults. */
   onPermissions: (name: string, permissions: SubagentPermissions | null) => Promise<boolean>;
+  /** Deletes a Personal agent's file. */
+  onDelete: (name: string) => void;
 }) {
   const { t } = useTranslation('settings');
   // The dialog keeps its name while it closes; its row is read live so a save shows in it.
   const [permissions, setPermissions] = useState<{ name: string; open: boolean } | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
   const permissionsRow = permissions
     ? rows.find((row) => row.name === permissions.name)
     : undefined;
@@ -87,14 +94,30 @@ export function ExtensionAgentsGroup({
               name={row.name}
               enabled={row.enabled}
               disabled={!connected}
+              pending={busyId === row.name}
               onEnabledChange={(enabled) => onEnabled(row.name, enabled)}
               onDetails={() => onOpen(row.name)}
               lockedReason={lockedReason}
               menu={
-                <DropdownMenuItem onSelect={() => setPermissions({ name: row.name, open: true })}>
-                  <Shield />
-                  {t('extensions.agentPermissionsAction')}
-                </DropdownMenuItem>
+                <>
+                  <DropdownMenuItem onSelect={() => setPermissions({ name: row.name, open: true })}>
+                    <Shield />
+                    {t('extensions.agentPermissionsAction')}
+                  </DropdownMenuItem>
+                  {row.readOnly ? null : (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        variant="destructive"
+                        disabled={!connected || busyId === row.name}
+                        onSelect={() => setDeleting(row.name)}
+                      >
+                        <Trash2 />
+                        {t('extensions.delete')}
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                </>
               }
             />
           </ExtensionRow>
@@ -105,10 +128,19 @@ export function ExtensionAgentsGroup({
           row={permissionsRow}
           open={permissions?.open ?? false}
           onOpenChange={(open) => setPermissions({ name: permissionsRow.name, open })}
-          disabled={!connected || busy}
+          disabled={!connected}
+          pending={busyId === permissionsRow.name}
           onSave={(value) => onPermissions(permissionsRow.name, value)}
         />
       ) : null}
+      <ExtensionRemoveDialog
+        name={deleting}
+        title={t('extensions.deleteTitle', { name: deleting ?? '' })}
+        description={t('extensions.deleteAgentDescription')}
+        confirm={t('extensions.delete')}
+        onCancel={() => setDeleting(null)}
+        onConfirm={onDelete}
+      />
     </>
   );
 }

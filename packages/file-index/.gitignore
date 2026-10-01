@@ -1,0 +1,2 @@
+# The addon `napi build` writes here; the loader and index.d.ts are checked in.
+*.node

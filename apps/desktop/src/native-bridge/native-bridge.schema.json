@@ -1,0 +1,2305 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ai-app://renderer/native-bridge.schema.json",
+  "title": "Native bridge",
+  "description": "Generated from apps/desktop/src/native-bridge/contract.ts by scripts/export-bridge-schema.mjs; do not edit.",
+  "x-bridge": {
+    "messageHandler": "aiNative",
+    "deliverScript": "window.aiNative.deliver(message)",
+    "deliverArgument": "message",
+    "panelShortcutId": "togglePanel",
+    "maxCaptureLength": 100000,
+    "calls": [
+      "window.show",
+      "window.hide",
+      "window.setPinned",
+      "app.state",
+      "app.setShowInDock",
+      "app.setOpenAtLogin",
+      "settings.open",
+      "settings.close",
+      "shortcuts.set",
+      "capture",
+      "clipboard.read",
+      "clipboard.write",
+      "share.text",
+      "speech.speak",
+      "speech.stop",
+      "link.open",
+      "artifact",
+      "files.pick",
+      "files.save",
+      "approval.request"
+    ],
+    "posts": [
+      "bridge.ready",
+      "language.set",
+      "window.dragRegions",
+      "socket.open",
+      "socket.send",
+      "socket.close"
+    ],
+    "events": [
+      "window.active",
+      "window.visibility",
+      "accessibility.reduceTransparency",
+      "shortcut.command",
+      "resources.imported",
+      "edit.command",
+      "speech.state",
+      "socket.frames"
+    ]
+  },
+  "anyOf": [
+    {
+      "$ref": "#/$defs/JsMessage"
+    },
+    {
+      "$ref": "#/$defs/SwiftMessage"
+    }
+  ],
+  "$defs": {
+    "JsMessage": {
+      "anyOf": [
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
+              "const": "window.show"
+            },
+            "params": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
+              "const": "window.hide"
+            },
+            "params": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
+              "const": "window.setPinned"
+            },
+            "params": {
+              "type": "object",
+              "required": ["pinned"],
+              "properties": {
+                "pinned": {
+                  "type": "boolean"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
+              "const": "app.state"
+            },
+            "params": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
+              "const": "app.setShowInDock"
+            },
+            "params": {
+              "type": "object",
+              "required": ["show"],
+              "properties": {
+                "show": {
+                  "type": "boolean"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
+              "const": "app.setOpenAtLogin"
+            },
+            "params": {
+              "type": "object",
+              "required": ["open"],
+              "properties": {
+                "open": {
+                  "type": "boolean"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
+              "const": "settings.open"
+            },
+            "params": {
+              "type": "object",
+              "required": ["commandId"],
+              "properties": {
+                "commandId": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "maxLength": 128
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
+              "const": "settings.close"
+            },
+            "params": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
+              "const": "shortcuts.set"
+            },
+            "params": {
+              "type": "object",
+              "required": ["registrations", "selectionWanted"],
+              "properties": {
+                "registrations": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["id", "accelerator"],
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 128,
+                        "pattern": "^[a-zA-Z0-9_-]+$"
+                      },
+                      "accelerator": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "maxItems": 256
+                },
+                "selectionWanted": {
+                  "type": "boolean"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
+              "const": "capture"
+            },
+            "params": {
+              "type": "object",
+              "required": ["source"],
+              "properties": {
+                "source": {
+                  "type": "string",
+                  "const": "selection"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
+              "const": "clipboard.read"
+            },
+            "params": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
+              "const": "clipboard.write"
+            },
+            "params": {
+              "type": "object",
+              "required": ["text"],
+              "properties": {
+                "text": {
+                  "type": "string",
+                  "maxLength": 1000000
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
+              "const": "share.text"
+            },
+            "params": {
+              "type": "object",
+              "required": ["text", "anchor"],
+              "properties": {
+                "text": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 1000000
+                },
+                "anchor": {
+                  "type": "object",
+                  "required": ["x", "y", "width", "height"],
+                  "properties": {
+                    "x": {
+                      "type": "number"
+                    },
+                    "y": {
+                      "type": "number"
+                    },
+                    "width": {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "height": {
+                      "type": "number",
+                      "minimum": 0
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
+              "const": "speech.speak"
+            },
+            "params": {
+              "type": "object",
+              "required": ["text"],
+              "properties": {
+                "text": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 1000000
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
+              "const": "speech.stop"
+            },
+            "params": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
+              "const": "link.open"
+            },
+            "params": {
+              "type": "object",
+              "required": ["url"],
+              "properties": {
+                "url": {
+                  "type": "string",
+                  "maxLength": 8192,
+                  "pattern": "^https?://"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
+              "const": "artifact"
+            },
+            "params": {
+              "type": "object",
+              "required": ["artifactId", "operation"],
+              "properties": {
+                "artifactId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
+                },
+                "operation": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "const": "open"
+                    },
+                    {
+                      "type": "string",
+                      "const": "reveal"
+                    },
+                    {
+                      "type": "string",
+                      "const": "copyPath"
+                    }
+                  ]
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
+              "const": "files.pick"
+            },
+            "params": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
+              "const": "files.save"
+            },
+            "params": {
+              "type": "object",
+              "required": ["resourceId", "name"],
+              "properties": {
+                "resourceId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
+                },
+                "name": {
+                  "type": "string",
+                  "maxLength": 255
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
+              "const": "approval.request"
+            },
+            "params": {
+              "type": "object",
+              "required": ["kind", "serverId"],
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "const": "mcpServer"
+                },
+                "serverId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 193,
+                  "pattern": "^(?:[a-zA-Z0-9_-]{1,128}|(?:[a-z0-9](?:[a-z0-9.-]{0,62}[a-z0-9])?:)?[A-Za-z0-9][A-Za-z0-9_-]{0,127})$"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "post"
+            },
+            "method": {
+              "type": "string",
+              "const": "bridge.ready"
+            },
+            "params": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "post"
+            },
+            "method": {
+              "type": "string",
+              "const": "language.set"
+            },
+            "params": {
+              "type": "object",
+              "required": ["language"],
+              "properties": {
+                "language": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "const": "en"
+                    },
+                    {
+                      "type": "string",
+                      "const": "zh-CN"
+                    }
+                  ]
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "post"
+            },
+            "method": {
+              "type": "string",
+              "const": "window.dragRegions"
+            },
+            "params": {
+              "type": "object",
+              "required": ["rects"],
+              "properties": {
+                "rects": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["x", "y", "width", "height"],
+                    "properties": {
+                      "x": {
+                        "type": "number"
+                      },
+                      "y": {
+                        "type": "number"
+                      },
+                      "width": {
+                        "type": "number"
+                      },
+                      "height": {
+                        "type": "number"
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "maxItems": 64
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "post"
+            },
+            "method": {
+              "type": "string",
+              "const": "socket.open"
+            },
+            "params": {
+              "type": "object",
+              "required": ["socketId", "path"],
+              "properties": {
+                "socketId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 64
+                },
+                "path": {
+                  "type": "string",
+                  "const": "/v1/stream"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "post"
+            },
+            "method": {
+              "type": "string",
+              "const": "socket.send"
+            },
+            "params": {
+              "type": "object",
+              "required": ["socketId", "data"],
+              "properties": {
+                "socketId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 64
+                },
+                "data": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "post"
+            },
+            "method": {
+              "type": "string",
+              "const": "socket.close"
+            },
+            "params": {
+              "type": "object",
+              "required": ["socketId", "code", "reason"],
+              "properties": {
+                "socketId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 64
+                },
+                "code": {
+                  "type": "integer",
+                  "minimum": 1000,
+                  "maximum": 4999
+                },
+                "reason": {
+                  "type": "string",
+                  "maxLength": 123
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "SwiftMessage": {
+      "anyOf": [
+        {
+          "type": "object",
+          "required": ["type", "id", "value"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "result"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "value": {}
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "id", "message"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "error"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "message": {
+              "type": "string",
+              "maxLength": 2000
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "event", "payload"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "event"
+            },
+            "event": {
+              "type": "string",
+              "const": "window.active"
+            },
+            "payload": {
+              "type": "object",
+              "required": ["active"],
+              "properties": {
+                "active": {
+                  "type": "boolean"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "event", "payload"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "event"
+            },
+            "event": {
+              "type": "string",
+              "const": "window.visibility"
+            },
+            "payload": {
+              "type": "object",
+              "required": ["visible"],
+              "properties": {
+                "visible": {
+                  "type": "boolean"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "event", "payload"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "event"
+            },
+            "event": {
+              "type": "string",
+              "const": "accessibility.reduceTransparency"
+            },
+            "payload": {
+              "type": "object",
+              "required": ["reduce"],
+              "properties": {
+                "reduce": {
+                  "type": "boolean"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "event", "payload"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "event"
+            },
+            "event": {
+              "type": "string",
+              "const": "shortcut.command"
+            },
+            "payload": {
+              "type": "object",
+              "required": ["id"],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "event", "payload"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "event"
+            },
+            "event": {
+              "type": "string",
+              "const": "resources.imported"
+            },
+            "payload": {
+              "type": "object",
+              "required": ["resources", "failures"],
+              "properties": {
+                "resources": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["id", "name", "size", "type"],
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 128,
+                        "pattern": "^[a-zA-Z0-9_-]+$"
+                      },
+                      "name": {
+                        "type": "string",
+                        "maxLength": 255
+                      },
+                      "size": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "type": {
+                        "type": "string",
+                        "maxLength": 100
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "maxItems": 10
+                },
+                "failures": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["name", "reason"],
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "maxLength": 255
+                      },
+                      "reason": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "const": "unreadable"
+                          },
+                          {
+                            "type": "string",
+                            "const": "unsupported"
+                          },
+                          {
+                            "type": "string",
+                            "const": "tooLarge"
+                          }
+                        ]
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "maxItems": 10
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "event", "payload"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "event"
+            },
+            "event": {
+              "type": "string",
+              "const": "edit.command"
+            },
+            "payload": {
+              "type": "object",
+              "required": ["command"],
+              "properties": {
+                "command": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "const": "undo"
+                    },
+                    {
+                      "type": "string",
+                      "const": "redo"
+                    }
+                  ]
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "event", "payload"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "event"
+            },
+            "event": {
+              "type": "string",
+              "const": "speech.state"
+            },
+            "payload": {
+              "type": "object",
+              "required": ["speaking"],
+              "properties": {
+                "speaking": {
+                  "type": "boolean"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "event", "payload"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "event"
+            },
+            "event": {
+              "type": "string",
+              "const": "socket.frames"
+            },
+            "payload": {
+              "type": "object",
+              "required": ["frames"],
+              "properties": {
+                "frames": {
+                  "type": "array",
+                  "items": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "required": ["socketId", "kind"],
+                        "properties": {
+                          "socketId": {
+                            "type": "string"
+                          },
+                          "kind": {
+                            "type": "string",
+                            "const": "open"
+                          }
+                        },
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "required": ["socketId", "kind", "data"],
+                        "properties": {
+                          "socketId": {
+                            "type": "string"
+                          },
+                          "kind": {
+                            "type": "string",
+                            "const": "message"
+                          },
+                          "data": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "required": ["socketId", "kind", "code", "reason"],
+                        "properties": {
+                          "socketId": {
+                            "type": "string"
+                          },
+                          "kind": {
+                            "type": "string",
+                            "const": "close"
+                          },
+                          "code": {
+                            "type": "integer",
+                            "minimum": 1000,
+                            "maximum": 4999
+                          },
+                          "reason": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": false
+                      }
+                    ]
+                  },
+                  "minItems": 1
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "FileRef": {
+      "type": "object",
+      "required": ["id", "name", "size", "type"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_-]+$"
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 255
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "type": {
+          "type": "string",
+          "maxLength": 100
+        }
+      },
+      "additionalProperties": false
+    },
+    "ShortcutRegistration": {
+      "type": "object",
+      "required": ["id", "accelerator"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_-]+$"
+        },
+        "accelerator": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        }
+      },
+      "additionalProperties": false
+    },
+    "ShortcutResult": {
+      "anyOf": [
+        {
+          "type": "object",
+          "required": ["id", "registered"],
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "registered": {
+              "type": "boolean",
+              "const": true
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["id", "registered", "reason"],
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "registered": {
+              "type": "boolean",
+              "const": false
+            },
+            "reason": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "const": "unavailable"
+                },
+                {
+                  "type": "string",
+                  "const": "invalid"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "SocketFrame": {
+      "anyOf": [
+        {
+          "type": "object",
+          "required": ["socketId", "kind"],
+          "properties": {
+            "socketId": {
+              "type": "string"
+            },
+            "kind": {
+              "type": "string",
+              "const": "open"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["socketId", "kind", "data"],
+          "properties": {
+            "socketId": {
+              "type": "string"
+            },
+            "kind": {
+              "type": "string",
+              "const": "message"
+            },
+            "data": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["socketId", "kind", "code", "reason"],
+          "properties": {
+            "socketId": {
+              "type": "string"
+            },
+            "kind": {
+              "type": "string",
+              "const": "close"
+            },
+            "code": {
+              "type": "integer",
+              "minimum": 1000,
+              "maximum": 4999
+            },
+            "reason": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "WindowShowParams": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "WindowShowResult": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "WindowHideParams": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "WindowHideResult": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "WindowSetPinnedParams": {
+      "type": "object",
+      "required": ["pinned"],
+      "properties": {
+        "pinned": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "WindowSetPinnedResult": {
+      "type": "object",
+      "required": ["pinned"],
+      "properties": {
+        "pinned": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "AppStateParams": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "AppStateResult": {
+      "type": "object",
+      "required": ["pinned", "showInDock", "openAtLogin"],
+      "properties": {
+        "pinned": {
+          "type": "boolean"
+        },
+        "showInDock": {
+          "type": "boolean"
+        },
+        "openAtLogin": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "AppSetShowInDockParams": {
+      "type": "object",
+      "required": ["show"],
+      "properties": {
+        "show": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "AppSetShowInDockResult": {
+      "type": "object",
+      "required": ["show"],
+      "properties": {
+        "show": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "AppSetOpenAtLoginParams": {
+      "type": "object",
+      "required": ["open"],
+      "properties": {
+        "open": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "AppSetOpenAtLoginResult": {
+      "type": "object",
+      "required": ["open"],
+      "properties": {
+        "open": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "SettingsOpenParams": {
+      "type": "object",
+      "required": ["commandId"],
+      "properties": {
+        "commandId": {
+          "anyOf": [
+            {
+              "type": "string",
+              "maxLength": 128
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "SettingsOpenResult": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "SettingsCloseParams": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "SettingsCloseResult": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "ShortcutsSetParams": {
+      "type": "object",
+      "required": ["registrations", "selectionWanted"],
+      "properties": {
+        "registrations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "accelerator"],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128,
+                "pattern": "^[a-zA-Z0-9_-]+$"
+              },
+              "accelerator": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              }
+            },
+            "additionalProperties": false
+          },
+          "maxItems": 256
+        },
+        "selectionWanted": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ShortcutsSetResult": {
+      "type": "object",
+      "required": ["results"],
+      "properties": {
+        "results": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "object",
+                "required": ["id", "registered"],
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "registered": {
+                    "type": "boolean",
+                    "const": true
+                  }
+                },
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "required": ["id", "registered", "reason"],
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "registered": {
+                    "type": "boolean",
+                    "const": false
+                  },
+                  "reason": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "const": "unavailable"
+                      },
+                      {
+                        "type": "string",
+                        "const": "invalid"
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              }
+            ]
+          },
+          "maxItems": 256
+        }
+      },
+      "additionalProperties": false
+    },
+    "CaptureParams": {
+      "type": "object",
+      "required": ["source"],
+      "properties": {
+        "source": {
+          "type": "string",
+          "const": "selection"
+        }
+      },
+      "additionalProperties": false
+    },
+    "CaptureResult": {
+      "anyOf": [
+        {
+          "type": "object",
+          "required": ["ok", "text", "capturedAt"],
+          "properties": {
+            "ok": {
+              "type": "boolean",
+              "const": true
+            },
+            "text": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100000
+            },
+            "capturedAt": {
+              "type": "string",
+              "maxLength": 64
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["ok", "reason"],
+          "properties": {
+            "ok": {
+              "type": "boolean",
+              "const": false
+            },
+            "reason": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "const": "notTrusted"
+                },
+                {
+                  "type": "string",
+                  "const": "noSelection"
+                },
+                {
+                  "type": "string",
+                  "const": "tooLong"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "ClipboardReadParams": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "ClipboardReadResult": {
+      "type": "object",
+      "required": ["text"],
+      "properties": {
+        "text": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ClipboardWriteParams": {
+      "type": "object",
+      "required": ["text"],
+      "properties": {
+        "text": {
+          "type": "string",
+          "maxLength": 1000000
+        }
+      },
+      "additionalProperties": false
+    },
+    "ClipboardWriteResult": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "ShareTextParams": {
+      "type": "object",
+      "required": ["text", "anchor"],
+      "properties": {
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000000
+        },
+        "anchor": {
+          "type": "object",
+          "required": ["x", "y", "width", "height"],
+          "properties": {
+            "x": {
+              "type": "number"
+            },
+            "y": {
+              "type": "number"
+            },
+            "width": {
+              "type": "number",
+              "minimum": 0
+            },
+            "height": {
+              "type": "number",
+              "minimum": 0
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "ShareTextResult": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "SpeechSpeakParams": {
+      "type": "object",
+      "required": ["text"],
+      "properties": {
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000000
+        }
+      },
+      "additionalProperties": false
+    },
+    "SpeechSpeakResult": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "SpeechStopParams": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "SpeechStopResult": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "LinkOpenParams": {
+      "type": "object",
+      "required": ["url"],
+      "properties": {
+        "url": {
+          "type": "string",
+          "maxLength": 8192,
+          "pattern": "^https?://"
+        }
+      },
+      "additionalProperties": false
+    },
+    "LinkOpenResult": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "ArtifactParams": {
+      "type": "object",
+      "required": ["artifactId", "operation"],
+      "properties": {
+        "artifactId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "operation": {
+          "anyOf": [
+            {
+              "type": "string",
+              "const": "open"
+            },
+            {
+              "type": "string",
+              "const": "reveal"
+            },
+            {
+              "type": "string",
+              "const": "copyPath"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "ArtifactResult": {
+      "type": "object",
+      "required": ["id", "name", "size", "type"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_-]+$"
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 255
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "type": {
+          "type": "string",
+          "maxLength": 100
+        }
+      },
+      "additionalProperties": false
+    },
+    "FilesPickParams": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "FilesPickResult": {
+      "type": "object",
+      "required": ["resources"],
+      "properties": {
+        "resources": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "name", "size", "type"],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128,
+                "pattern": "^[a-zA-Z0-9_-]+$"
+              },
+              "name": {
+                "type": "string",
+                "maxLength": 255
+              },
+              "size": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "type": {
+                "type": "string",
+                "maxLength": 100
+              }
+            },
+            "additionalProperties": false
+          },
+          "maxItems": 10
+        }
+      },
+      "additionalProperties": false
+    },
+    "FilesSaveParams": {
+      "type": "object",
+      "required": ["resourceId", "name"],
+      "properties": {
+        "resourceId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 255
+        }
+      },
+      "additionalProperties": false
+    },
+    "FilesSaveResult": {
+      "type": "object",
+      "required": ["saved"],
+      "properties": {
+        "saved": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ApprovalRequestParams": {
+      "type": "object",
+      "required": ["kind", "serverId"],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "mcpServer"
+        },
+        "serverId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 193,
+          "pattern": "^(?:[a-zA-Z0-9_-]{1,128}|(?:[a-z0-9](?:[a-z0-9.-]{0,62}[a-z0-9])?:)?[A-Za-z0-9][A-Za-z0-9_-]{0,127})$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ApprovalRequestResult": {
+      "anyOf": [
+        {
+          "type": "object",
+          "required": ["approved"],
+          "properties": {
+            "approved": {
+              "type": "boolean",
+              "const": true
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["approved", "reason"],
+          "properties": {
+            "approved": {
+              "type": "boolean",
+              "const": false
+            },
+            "reason": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "const": "cancelled"
+                },
+                {
+                  "type": "string",
+                  "const": "changed"
+                },
+                {
+                  "type": "string",
+                  "const": "unavailable"
+                },
+                {
+                  "type": "string",
+                  "const": "busy"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "BridgeReadyPost": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "LanguageSetPost": {
+      "type": "object",
+      "required": ["language"],
+      "properties": {
+        "language": {
+          "anyOf": [
+            {
+              "type": "string",
+              "const": "en"
+            },
+            {
+              "type": "string",
+              "const": "zh-CN"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "WindowDragRegionsPost": {
+      "type": "object",
+      "required": ["rects"],
+      "properties": {
+        "rects": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["x", "y", "width", "height"],
+            "properties": {
+              "x": {
+                "type": "number"
+              },
+              "y": {
+                "type": "number"
+              },
+              "width": {
+                "type": "number"
+              },
+              "height": {
+                "type": "number"
+              }
+            },
+            "additionalProperties": false
+          },
+          "maxItems": 64
+        }
+      },
+      "additionalProperties": false
+    },
+    "SocketOpenPost": {
+      "type": "object",
+      "required": ["socketId", "path"],
+      "properties": {
+        "socketId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "path": {
+          "type": "string",
+          "const": "/v1/stream"
+        }
+      },
+      "additionalProperties": false
+    },
+    "SocketSendPost": {
+      "type": "object",
+      "required": ["socketId", "data"],
+      "properties": {
+        "socketId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "data": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "SocketClosePost": {
+      "type": "object",
+      "required": ["socketId", "code", "reason"],
+      "properties": {
+        "socketId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "code": {
+          "type": "integer",
+          "minimum": 1000,
+          "maximum": 4999
+        },
+        "reason": {
+          "type": "string",
+          "maxLength": 123
+        }
+      },
+      "additionalProperties": false
+    },
+    "WindowActiveEvent": {
+      "type": "object",
+      "required": ["active"],
+      "properties": {
+        "active": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "WindowVisibilityEvent": {
+      "type": "object",
+      "required": ["visible"],
+      "properties": {
+        "visible": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "AccessibilityReduceTransparencyEvent": {
+      "type": "object",
+      "required": ["reduce"],
+      "properties": {
+        "reduce": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ShortcutCommandEvent": {
+      "type": "object",
+      "required": ["id"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        }
+      },
+      "additionalProperties": false
+    },
+    "ResourcesImportedEvent": {
+      "type": "object",
+      "required": ["resources", "failures"],
+      "properties": {
+        "resources": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "name", "size", "type"],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128,
+                "pattern": "^[a-zA-Z0-9_-]+$"
+              },
+              "name": {
+                "type": "string",
+                "maxLength": 255
+              },
+              "size": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "type": {
+                "type": "string",
+                "maxLength": 100
+              }
+            },
+            "additionalProperties": false
+          },
+          "maxItems": 10
+        },
+        "failures": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "reason"],
+            "properties": {
+              "name": {
+                "type": "string",
+                "maxLength": 255
+              },
+              "reason": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "const": "unreadable"
+                  },
+                  {
+                    "type": "string",
+                    "const": "unsupported"
+                  },
+                  {
+                    "type": "string",
+                    "const": "tooLarge"
+                  }
+                ]
+              }
+            },
+            "additionalProperties": false
+          },
+          "maxItems": 10
+        }
+      },
+      "additionalProperties": false
+    },
+    "EditCommandEvent": {
+      "type": "object",
+      "required": ["command"],
+      "properties": {
+        "command": {
+          "anyOf": [
+            {
+              "type": "string",
+              "const": "undo"
+            },
+            {
+              "type": "string",
+              "const": "redo"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "SpeechStateEvent": {
+      "type": "object",
+      "required": ["speaking"],
+      "properties": {
+        "speaking": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "SocketFramesEvent": {
+      "type": "object",
+      "required": ["frames"],
+      "properties": {
+        "frames": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "object",
+                "required": ["socketId", "kind"],
+                "properties": {
+                  "socketId": {
+                    "type": "string"
+                  },
+                  "kind": {
+                    "type": "string",
+                    "const": "open"
+                  }
+                },
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "required": ["socketId", "kind", "data"],
+                "properties": {
+                  "socketId": {
+                    "type": "string"
+                  },
+                  "kind": {
+                    "type": "string",
+                    "const": "message"
+                  },
+                  "data": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "required": ["socketId", "kind", "code", "reason"],
+                "properties": {
+                  "socketId": {
+                    "type": "string"
+                  },
+                  "kind": {
+                    "type": "string",
+                    "const": "close"
+                  },
+                  "code": {
+                    "type": "integer",
+                    "minimum": 1000,
+                    "maximum": 4999
+                  },
+                  "reason": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false
+              }
+            ]
+          },
+          "minItems": 1
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

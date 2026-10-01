@@ -1,7 +1,14 @@
 import { Check, Ellipsis, RefreshCw, Settings2, Unplug } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { HighlightedText } from '@ai/ui/components/highlighted-text';
-import { Item, ItemContent, ItemDescription, ItemGroup, ItemTitle } from '@ai/ui/components/item';
+import {
+  Item,
+  ItemActions,
+  ItemContent,
+  ItemDescription,
+  ItemGroup,
+  ItemTitle,
+} from '@ai/ui/components/item';
 import type { MatchRange } from '@ai/ui/lib/fuzzy-match';
 import {
   DropdownMenu,
@@ -10,7 +17,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@ai/ui/components/dropdown-menu';
-import type { Connection } from '../../../electron/providers/schema';
+import type { Connection } from '../../client/providers/schema';
 import { IconButton } from '../../components/icon-button';
 import { ModelConfigPopover } from './model-config-popover';
 import { ProviderBrand } from './provider-brand';
@@ -21,10 +28,16 @@ interface ConnectionRow {
   nameRanges?: readonly MatchRange[];
 }
 
+/**
+ * The connections on the Providers overview. A click anywhere on a row manages the connection,
+ * like the other settings lists; the default model and More stay interactive above it. Changes
+ * show in place (the badge, the model, the status line), so none of them adds a toast.
+ */
 export function ProviderConnections({
   rows,
   defaultConnectionId,
   pending,
+  canManage,
   onManage,
   onDisconnect,
   perform,
@@ -32,9 +45,11 @@ export function ProviderConnections({
   rows: ConnectionRow[];
   defaultConnectionId: string | null;
   pending: boolean;
+  /** Whether the provider catalog is loaded, which a connection's page needs. */
+  canManage: boolean;
   onManage: (connection: Connection) => void;
   onDisconnect: (connection: Connection) => void;
-  perform: (operation: () => Promise<void>, success?: string) => Promise<void>;
+  perform: (operation: () => Promise<void>) => Promise<void>;
 }) {
   const { t } = useTranslation('providers');
   const bridge = window.desktop?.settings.providers;
@@ -66,9 +81,16 @@ export function ProviderConnections({
             asChild
             variant="outline"
             key={connection.connectionId}
-            className="provider-connection-row"
+            className="provider-connection-row settings-open-row"
           >
             <li>
+              <button
+                type="button"
+                className="settings-open-row-button"
+                aria-label={t('connections.manageLabel', { name: connection.name })}
+                disabled={!canManage}
+                onClick={() => onManage(connection)}
+              />
               <div className="provider-identity">
                 <ProviderBrand provider={connection.provider} />
                 <ItemContent>
@@ -82,10 +104,10 @@ export function ProviderConnections({
                       </span>
                     )}
                   </div>
-                  <ItemDescription title={description}>{description}</ItemDescription>
+                  <ItemDescription className="whitespace-normal">{description}</ItemDescription>
                 </ItemContent>
               </div>
-              <div className="provider-model-controls">
+              <ItemActions className="provider-model-controls">
                 <ModelConfigPopover
                   connections={[connection]}
                   model={model}
@@ -94,18 +116,12 @@ export function ProviderConnections({
                   scopeLabel={t('connections.defaultModelLabel', { name: connection.name })}
                   disabled={pending}
                   onModelChange={(reference) =>
-                    void perform(
-                      () => bridge!.setModel(reference, connection.revision),
-                      t('connections.defaultModelSaved', { name: connection.name }),
-                    )
+                    void perform(() => bridge!.setModel(reference, connection.revision))
                   }
                   onThinkingLevelChange={(level) => {
                     // The popover offers levels only once a model is chosen.
                     if (!model) return;
-                    void perform(
-                      () => bridge!.setModel(model, connection.revision, level),
-                      t('connections.thinkingLevelSaved', { name: connection.name }),
-                    );
+                    void perform(() => bridge!.setModel(model, connection.revision, level));
                   }}
                 />
                 <DropdownMenu>
@@ -123,9 +139,8 @@ export function ProviderConnections({
                     <DropdownMenuItem
                       disabled={isDefault || !connection.defaultModel || !connection.connected}
                       onSelect={() =>
-                        void perform(
-                          () => bridge!.setDefault(connection.connectionId, connection.revision),
-                          t('connections.madeDefault', { name: connection.name }),
+                        void perform(() =>
+                          bridge!.setDefault(connection.connectionId, connection.revision),
                         )
                       }
                     >
@@ -140,7 +155,7 @@ export function ProviderConnections({
                       </div>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onSelect={() => onManage(connection)}>
+                    <DropdownMenuItem disabled={!canManage} onSelect={() => onManage(connection)}>
                       <Settings2 />
                       {t('connections.manage')}
                     </DropdownMenuItem>
@@ -151,7 +166,9 @@ export function ProviderConnections({
                       <RefreshCw />
                       {t('connections.refresh')}
                     </DropdownMenuItem>
+                    <DropdownMenuSeparator />
                     <DropdownMenuItem
+                      variant="destructive"
                       disabled={!connection.connected}
                       onSelect={() => onDisconnect(connection)}
                     >
@@ -160,7 +177,7 @@ export function ProviderConnections({
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
-              </div>
+              </ItemActions>
               {connection.catalogError && (
                 <output className="provider-row-notice">{connection.catalogError}</output>
               )}

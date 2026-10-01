@@ -9,7 +9,7 @@ import {
   type ExtensionSkillRow,
 } from './extension-rows';
 import { usePluginLabels } from './use-plugin-labels';
-import { useMcpStateLabel } from './use-mcp-state-label';
+import { mcpNeedsApproval, useMcpApprovalLabel, useMcpStateLabel } from './use-mcp-state-label';
 
 /** One catalog row as listed: its description line and where the search marked it. */
 export interface ExtensionMatch<Row, Field extends string> {
@@ -59,7 +59,8 @@ function filterRows<Row, Field extends string>(
 }
 
 /**
- * Builds the description line each command, skill, subagent and MCP row shows and filters the
+ * Builds the description line each command, skill, subagent and MCP row shows (an MCP server's
+ * launch approval when it waits for one, its state and last error) and filters the
  * catalogs by one query, which matches and marks the name (or server id) and that line. An empty
  * query keeps every row, as a plugin page lists them.
  */
@@ -69,6 +70,7 @@ export function useExtensionMatches(
 ): ExtensionItemMatches {
   const { t } = useTranslation('settings');
   const stateLabel = useMcpStateLabel();
+  const approvalLabel = useMcpApprovalLabel();
   const line = (parts: (string | null | undefined)[]) => parts.filter(Boolean).join(' · ');
   return {
     commands: filterRows(catalogs.commands, query, (row) => ({
@@ -96,7 +98,13 @@ export function useExtensionMatches(
       return { description, fields: { name: row.name, description } };
     }),
     mcp: filterRows(catalogs.mcp, query, (row) => {
-      const description = line([stateLabel(row.state), row.lastError]);
+      // A launch waiting for approval leads the line; its connection state then says no more.
+      const waiting = mcpNeedsApproval(row.approval);
+      const description = line([
+        waiting ? approvalLabel(row.approval) : null,
+        waiting && row.state === 'approval_required' ? null : stateLabel(row.state),
+        row.lastError,
+      ]);
       return { description, fields: { serverId: row.serverId, description } };
     }),
   };

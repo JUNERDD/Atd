@@ -1,36 +1,30 @@
-import { useId, useState } from 'react';
-import { KeyRound, Plug, PlugZap, Trash2 } from 'lucide-react';
+import { useState } from 'react';
+import { CircleAlert, KeyRound, Plug, PlugZap, ShieldOff, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@ai/ui/components/alert-dialog';
 import { Button } from '@ai/ui/components/button';
 import { DropdownMenuItem, DropdownMenuSeparator } from '@ai/ui/components/dropdown-menu';
 import { HighlightedText } from '@ai/ui/components/highlighted-text';
 import { Input } from '@ai/ui/components/input';
 import { ItemContent, ItemDescription, ItemMedia, ItemTitle } from '@ai/ui/components/item';
-import { Label } from '@ai/ui/components/label';
-import { Switch } from '@ai/ui/components/switch';
 import type { FieldsMatch } from '@ai/ui/lib/fuzzy-match';
 import { isComposingKey } from '@ai/ui/lib/ime';
 import { ExtensionGroup } from './extension-group';
+import { ExtensionRemoveDialog } from './extension-remove-dialog';
 import { ExtensionRow, ExtensionRowActions } from './extension-row';
 import type { ExtensionMcpRow } from './extension-rows';
 import type { McpMatch } from './use-extension-matches';
-import { mcpCanConnect, mcpNeedsAuth } from './use-mcp-state-label';
+import { canConfirmMcpApproval } from './use-service-mcp';
+import { mcpCanConnect, mcpNeedsApproval, mcpNeedsAuth } from './use-mcp-state-label';
 
 /**
- * One server row in the shared anatomy: icon ring, id, the translated state and last error, then
- * the enable switch and More. Connect, sign-in and (for Personal servers) remove sit in More;
- * while the server asks for sign-in, the code field stays under the row so the flow is visible.
- * An installed plugin's local command waits for Allow to run, which also stays under the row.
+ * One server row in the shared anatomy: icon ring, id, then its launch approval while it waits for
+ * one, the translated state and last error, then the switch and More. The switch is on only when
+ * the server may run: enabled and, when it needs one, approved. Turning it on enables the server
+ * and asks for the approval it lacks through the host's native dialog, which a cancel leaves off;
+ * turning it off disables the server and keeps its approval. Connect, sign-in, Withdraw approval
+ * and (for Personal servers) remove sit in More; while the server asks for sign-in, the code field
+ * stays under the row so the flow is visible, and a step that failed says why under the
+ * description. While a step runs, the row's controls keep their focus but ignore input.
  */
 function McpRow({
   row,
@@ -38,13 +32,15 @@ function McpRow({
   match,
   connected,
   busy,
+  issue,
   lockedReason,
-  onApprove,
   onEnabled,
   onDetails,
   onConnect,
   onAuthStart,
   onAuthComplete,
+  onRequestApproval,
+  onWithdrawApproval,
   onRemove,
 }: {
   row: ExtensionMcpRow;
@@ -53,22 +49,31 @@ function McpRow({
   match: FieldsMatch<'serverId' | 'description'> | null;
   connected: boolean;
   busy: boolean;
+  /** Why the server's last step failed, until its next one. */
+  issue: string | null;
   lockedReason: string | null;
-  /** Set while the server waits for the user to allow its local command to run. */
-  onApprove: (() => void) | null;
   onEnabled: (enabled: boolean) => void;
   onDetails: () => void;
   onConnect: () => void;
   onAuthStart: () => void;
   onAuthComplete: (input: string) => void;
+  onRequestApproval: () => void;
+  onWithdrawApproval: () => void;
   onRemove: () => void;
 }) {
   const { t } = useTranslation('settings');
   const [authCode, setAuthCode] = useState('');
-  const approveId = useId();
-  const showConnect = mcpCanConnect(row.state);
+  const needsApproval = mcpNeedsApproval(row.approval);
+  // A launch waiting for approval would only be refused, so the switch asks for it first.
+  const showConnect = mcpCanConnect(row.state) && !needsApproval;
   const showAuth = mcpNeedsAuth(row.state);
+  const showWithdraw = row.approval === 'approved';
   const locked = !connected || busy;
+  const steps = showConnect || showAuth || showWithdraw;
+  const setRunnable = (on: boolean) => {
+    if (!on || row.disabled) onEnabled(on);
+    if (on && needsApproval && canConfirmMcpApproval()) onRequestApproval();
+  };
   return (
     <ExtensionRow name={row.serverId} onDetails={onDetails}>
       <ItemMedia variant="icon">
@@ -83,13 +88,20 @@ function McpRow({
             <HighlightedText text={description} ranges={match?.ranges.description} />
           </ItemDescription>
         ) : null}
+        {issue ? (
+          <p className="settings-inline-error" role="alert">
+            <CircleAlert aria-hidden />
+            <span>{issue}</span>
+          </p>
+        ) : null}
         {showAuth ? (
           <div className="settings-extension-mcp-auth">
             <Input
               aria-label={t('extensions.authCodeLabel')}
               placeholder={t('extensions.authCodePlaceholder')}
               value={authCode}
-              disabled={locked}
+              disabled={!connected}
+              readOnly={busy}
               onChange={(event) => setAuthCode(event.target.value)}
               onKeyDown={(event) => {
                 if (event.key !== 'Enter' || isComposingKey(event) || !authCode.trim() || locked)
@@ -102,37 +114,29 @@ function McpRow({
               type="button"
               variant="outline"
               size="sm"
-              disabled={locked || !authCode.trim()}
-              onClick={() => onAuthComplete(authCode.trim())}
+              disabled={!connected || !authCode.trim()}
+              aria-disabled={busy || undefined}
+              aria-busy={busy || undefined}
+              className="aria-disabled:opacity-50"
+              onClick={() => {
+                if (!busy) onAuthComplete(authCode.trim());
+              }}
             >
               {t('extensions.authSubmit')}
             </Button>
           </div>
         ) : null}
-        {onApprove ? (
-          <div className="settings-extension-mcp-approval">
-            <Switch
-              id={approveId}
-              size="sm"
-              checked={false}
-              disabled={locked}
-              onCheckedChange={(approved) => {
-                if (approved) onApprove();
-              }}
-            />
-            <Label htmlFor={approveId}>{t('extensions.plugins.page.allowRun')}</Label>
-          </div>
-        ) : null}
       </ItemContent>
       <ExtensionRowActions
         name={row.serverId}
-        enabled={!row.disabled}
-        disabled={locked}
-        onEnabledChange={onEnabled}
+        enabled={!row.disabled && !needsApproval}
+        disabled={!connected}
+        pending={busy}
+        onEnabledChange={setRunnable}
         onDetails={onDetails}
         lockedReason={lockedReason}
         menu={
-          showConnect || showAuth || !row.readOnly ? (
+          steps || !row.readOnly ? (
             <>
               {showConnect ? (
                 <DropdownMenuItem disabled={locked} onSelect={onConnect}>
@@ -146,9 +150,15 @@ function McpRow({
                   {t('extensions.authenticate')}
                 </DropdownMenuItem>
               ) : null}
-              {(showConnect || showAuth) && !row.readOnly ? <DropdownMenuSeparator /> : null}
+              {showWithdraw ? (
+                <DropdownMenuItem disabled={locked} onSelect={onWithdrawApproval}>
+                  <ShieldOff />
+                  {t('extensions.mcpApproval.withdraw')}
+                </DropdownMenuItem>
+              ) : null}
+              {steps && !row.readOnly ? <DropdownMenuSeparator /> : null}
               {row.readOnly ? null : (
-                <DropdownMenuItem disabled={locked} onSelect={onRemove}>
+                <DropdownMenuItem variant="destructive" disabled={locked} onSelect={onRemove}>
                   <Trash2 />
                   {t('extensions.remove')}
                 </DropdownMenuItem>
@@ -162,8 +172,8 @@ function McpRow({
 }
 
 /**
- * One plugin's MCP servers with connect/auth, enable, and remove for Personal servers; a row opens
- * that server's details page. `items` are the servers shown, with search marks.
+ * One plugin's MCP servers with connect/auth, launch approval, enable, and remove for Personal
+ * servers; a row opens that server's details page. `items` are the servers shown, with search marks.
  */
 export function ExtensionMcpGroup({
   title,
@@ -174,13 +184,14 @@ export function ExtensionMcpGroup({
   connected,
   busyId,
   busy,
+  issues,
   lockedReason,
-  needsApproval,
-  onApprove,
   onOpen,
   onConnect,
   onAuthStart,
   onAuthComplete,
+  onRequestApproval,
+  onWithdrawApproval,
   onEnabled,
   onRemove,
 }: {
@@ -193,15 +204,16 @@ export function ExtensionMcpGroup({
   connected: boolean;
   busyId: string | null;
   busy: boolean;
+  /** Why each server's last step failed, by server id. */
+  issues: Readonly<Record<string, string>>;
   /** Why the switches are locked (their plugin is off); null when they are not. */
   lockedReason: string | null;
-  /** Whether a server waits for Allow to run (an installed plugin's local command). */
-  needsApproval: (serverId: string) => boolean;
-  onApprove: (serverId: string) => void;
   onOpen: (serverId: string) => void;
   onConnect: (serverId: string) => void;
   onAuthStart: (serverId: string) => void;
   onAuthComplete: (serverId: string, input: string) => void;
+  onRequestApproval: (serverId: string) => void;
+  onWithdrawApproval: (serverId: string) => void;
   onEnabled: (serverId: string, enabled: boolean) => void;
   onRemove: (serverId: string) => void;
 }) {
@@ -225,42 +237,27 @@ export function ExtensionMcpGroup({
             match={match}
             connected={connected}
             busy={busy || busyId === row.serverId}
+            issue={issues[row.serverId] ?? null}
             lockedReason={lockedReason}
-            onApprove={needsApproval(row.serverId) ? () => onApprove(row.serverId) : null}
             onEnabled={(enabled) => onEnabled(row.serverId, enabled)}
             onDetails={() => onOpen(row.serverId)}
             onConnect={() => onConnect(row.serverId)}
             onAuthStart={() => onAuthStart(row.serverId)}
             onAuthComplete={(input) => onAuthComplete(row.serverId, input)}
+            onRequestApproval={() => onRequestApproval(row.serverId)}
+            onWithdrawApproval={() => onWithdrawApproval(row.serverId)}
             onRemove={() => setRemoving(row.serverId)}
           />
         ))}
       </ExtensionGroup>
-      <AlertDialog
-        open={removing !== null}
-        onOpenChange={(open) => {
-          if (!open) setRemoving(null);
-        }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {t('extensions.removeTitle', { name: removing ?? '' })}
-            </AlertDialogTitle>
-            <AlertDialogDescription>{t('extensions.removeDescription')}</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{t('extensions.cancel')}</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                if (removing) onRemove(removing);
-              }}
-            >
-              {t('extensions.remove')}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ExtensionRemoveDialog
+        name={removing}
+        title={t('extensions.removeTitle', { name: removing ?? '' })}
+        description={t('extensions.removeDescription')}
+        confirm={t('extensions.remove')}
+        onCancel={() => setRemoving(null)}
+        onConfirm={onRemove}
+      />
     </>
   );
 }

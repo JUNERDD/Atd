@@ -1,9 +1,8 @@
 import { LOAD_SKILL_TOOL } from '@ai/agent-contracts';
 import { roleAllowedSkills, type RoleSnapshotRecord } from './roles.js';
-import { skillRevision } from './skill-message.js';
 import type { SkillCatalog, SkillRevisionRecord } from './versions.js';
 
-/** Most characters the catalog message puts into context; it counts against the run's budget. */
+/** Most characters the catalog section puts into context; it counts against the run's budget. */
 const MAX_CATALOG_CHARS = 8000;
 /** A longer description is cut here, before any entry loses its description. */
 const MAX_DESCRIPTION_CHARS = 250;
@@ -21,21 +20,19 @@ export interface CatalogSkill {
 /**
  * The skills a run's model is told about, frozen with the run (run-freeze.ts). `invocable` may be
  * loaded with `load_skill`; `userOnly` skills (`disable-model-invocation`) start only from the
- * user's `/` selection. `text` is the hidden catalog message, empty when both lists are, and
- * `digest` identifies it so an unchanged catalog is not sent again (skills/session-catalog.ts).
+ * user's `/` selection. `text` is the system prompt's catalog section (skills/session-catalog.ts),
+ * empty when both lists are.
  */
 export interface RunSkillCatalog {
   invocable: CatalogSkill[];
   userOnly: CatalogSkill[];
   text: string;
-  digest: string;
 }
 
 export const EMPTY_SKILL_CATALOG: RunSkillCatalog = {
   invocable: [],
   userOnly: [],
   text: '',
-  digest: '',
 };
 
 /**
@@ -65,8 +62,7 @@ export function freezeSkillCatalog(
   });
   const invocable = records.filter((record) => !record.disableModelInvocation).map(toSkill);
   const userOnly = records.filter((record) => record.disableModelInvocation).map(toSkill);
-  const text = catalogText(invocable, userOnly);
-  return { invocable, userOnly, text, digest: text ? skillRevision(text) : '' };
+  return { invocable, userOnly, text: catalogText(invocable, userOnly) };
 }
 
 const INTRO =
@@ -76,7 +72,7 @@ const USER_ONLY_RULE =
   'User-only skills can only be started by the user, by typing / in the composer.';
 
 /**
- * The catalog message text, at most MAX_CATALOG_CHARS. Over budget, trailing entries lose their
+ * The catalog section text, at most MAX_CATALOG_CHARS. Over budget, trailing entries lose their
  * descriptions first, then are left out with a count line, then trailing user-only names are
  * left out with a count; the totals line always gives exact counts. Empty when there is nothing
  * to list.

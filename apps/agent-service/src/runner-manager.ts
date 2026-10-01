@@ -1,11 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import {
-  DEFAULT_RUN_TOOLS,
   errorMessage,
   isActiveStatus,
   type CancelRunResponse,
   type PermissionTier,
-  type RunSnapshot,
   type SubmitTaskRequest,
   type SubmitTaskResponse,
   type TaskRun,
@@ -19,15 +17,10 @@ import { compactRefused } from './compaction/manual.js';
 import { ConflictError, DrainingError } from './errors.js';
 import { SessionReleases } from './session-release.js';
 import { TaskRunner, type RunnerContext } from './task-runner.js';
-import { taskSnapshot, taskSummary } from './task-view.js';
+import { coldTaskView, taskSnapshot, taskSummary } from './task-view.js';
 import { checkChipRanges, taskTitle } from './tasks/input-chips.js';
-import { CONTEXT_BUDGET, runInputSize } from './tasks/run-budget.js';
-import {
-  loadRunContextWindow,
-  resolveRunModel,
-  resolveRunThinkingLevel,
-  type RunContextWindow,
-} from './tasks/run-selection.js';
+import { checkBranchBefore, freezeRunSnapshot, userEntryIds } from './tasks/run-snapshot.js';
+import { loadRunContextWindow } from './tasks/run-selection.js';
 
 export interface ManagerDeps {
   ctx: RunnerContext;
@@ -49,6 +42,12 @@ export class RunnerManager {
   private readonly runners = new Map<string, TaskRunner>();
   private readonly executions = new Map<string, Promise<void>>();
   private draining = false;
+  /**
+   * Tasks whose accepted run is still being written. The ledger publishes a change only after its
+   * write lands, so without this two submits to one task could both pass the active-run check,
+   * and a replacing run (`branchBefore`) could then cut the other off the branch.
+   */
+  private readonly accepting = new Set<string>();
   private readonly releases: SessionReleases;
 
   constructor(private readonly deps: ManagerDeps) {
@@ -89,6 +88,7 @@ export class RunnerManager {
     // Read before the checks below so acceptance stays free of awaits until the ledger write.
     const connections = await ConnectionStore.load(this.deps.ctx.paths.root);
     const contextWindowOf = await loadRunContextWindow(connections, request.model);
+    const onBranch = await this.userEntries(request);
     const ledger = this.deps.ctx.ledger;
     const duplicate = ledger.operation(request.operationId);
     if (duplicate) return { taskId: duplicate.taskId, runId: duplicate.runId, duplicate: true };
@@ -98,49 +98,52 @@ export class RunnerManager {
       // A fresh uuid collided; retry once rather than merging into a stranger.
       return this.submit({ ...request, taskId: randomUUID() });
     }
-    if (previous?.runs.some((run) => isActiveStatus(run.status)))
+    if (previous?.runs.some((run) => isActiveStatus(run.status)) || this.accepting.has(taskId))
       throw new ConflictError('Finish the active run before starting a new one.');
+    checkBranchBefore(request.branchBefore, onBranch);
     for (const file of request.input.files) {
       if (!ledger.data.resources.some((resource) => resource.id === file.id))
         throw new Error(`Attachment ${file.id} was not uploaded.`);
     }
-    const snapshot = this.freezeSnapshot(
+    const snapshot = freezeRunSnapshot(
       request,
       connections,
       contextWindowOf,
       previous?.runs.at(-1),
     );
-    this.checkBudget(snapshot);
     const runId = randomUUID();
     const now = new Date().toISOString();
-    await ledger.change((data) => {
-      let task = data.tasks.find((item) => item.id === taskId);
-      if (!task) {
-        task = {
-          id: taskId,
-          title: taskTitle(snapshot),
+    this.accepting.add(taskId);
+    await ledger
+      .change((data) => {
+        let task = data.tasks.find((item) => item.id === taskId);
+        if (!task) {
+          task = {
+            id: taskId,
+            title: taskTitle(snapshot),
+            createdAt: now,
+            updatedAt: now,
+            sessionFile: null,
+            runs: [],
+            rootTaskId: null,
+            parentExecutionId: null,
+            // A task keeps the tier it was created with; later default changes leave it alone.
+            permissionTier: this.deps.newTaskTier(),
+          };
+          data.tasks.unshift(task);
+        }
+        task.runs.push({
+          id: runId,
+          operationId: request.operationId,
           createdAt: now,
-          updatedAt: now,
-          sessionFile: null,
-          runs: [],
-          rootTaskId: null,
-          parentExecutionId: null,
-          // A task keeps the tier it was created with; later default changes leave it alone.
-          permissionTier: this.deps.newTaskTier(),
-        };
-        data.tasks.unshift(task);
-      }
-      task.runs.push({
-        id: runId,
-        operationId: request.operationId,
-        createdAt: now,
-        status: 'queued',
-        error: '',
-        snapshot,
-      });
-      task.updatedAt = now;
-      data.operations[request.operationId] = { taskId, runId };
-    });
+          status: 'queued',
+          error: '',
+          snapshot,
+        });
+        task.updatedAt = now;
+        data.operations[request.operationId] = { taskId, runId };
+      })
+      .finally(() => this.accepting.delete(taskId));
     this.deps.ctx.events.publish({
       taskId,
       runId,
@@ -315,34 +318,17 @@ export class RunnerManager {
   }
 
   /**
-   * Tools and memory come from the request, else carry over from the task's last run (a command
-   * that turned memory off keeps it off for the task's follow-ups), else the defaults. The context
-   * window freezes like the thinking level: later tier changes never reach an accepted run.
+   * The user message entries a request's `branchBefore` may name: those its task's transcript
+   * shows, live or read from the session file; null when it replaces nothing.
    */
-  private freezeSnapshot(
-    request: SubmitTaskRequest,
-    connections: ConnectionStore,
-    contextWindowOf: RunContextWindow,
-    last: TaskRun | undefined,
-  ): RunSnapshot {
-    const model = resolveRunModel(connections, request.model);
-    const thinkingLevel = resolveRunThinkingLevel(connections, model, request.thinkingLevel);
-    const contextWindow = contextWindowOf(model);
-    return {
-      input: request.input,
-      instructions: '',
-      model,
-      tools: [...(request.tools ?? last?.snapshot.tools ?? DEFAULT_RUN_TOOLS)],
-      // Runs with memory search and learn through the service memory authority (harness slot).
-      memory: request.memory ?? last?.snapshot.memory ?? true,
-      ...(thinkingLevel ? { thinkingLevel } : {}),
-      ...(contextWindow ? { contextWindow } : {}),
-    };
-  }
-
-  private checkBudget(snapshot: RunSnapshot): void {
-    if (runInputSize(snapshot) > CONTEXT_BUDGET)
-      throw new Error('The combined input and parameters exceed the context budget.');
+  private async userEntries(request: SubmitTaskRequest): Promise<Set<string> | null> {
+    const { taskId, branchBefore } = request;
+    if (branchBefore === undefined) return null;
+    if (!taskId || !this.deps.ctx.ledger.data.tasks.some((task) => task.id === taskId))
+      throw new TypeError('Invalid data: branchBefore needs an existing task.');
+    const runner = this.runners.get(taskId);
+    const view = runner ? await runner.view() : await coldTaskView(this.deps.ctx, taskId);
+    return userEntryIds(view.blocks);
   }
 }
 

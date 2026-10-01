@@ -1,9 +1,5 @@
 import { useEffect, useState } from 'react';
-import type {
-  ContextTier,
-  ModelContexts,
-  ModelReference,
-} from '../../../electron/providers/schema';
+import type { ContextTier, ModelContexts, ModelReference } from '../../client/providers/schema';
 import { showErrorToast } from '../../components/toast-store';
 import i18n from '../../i18n';
 import { useServiceStatus } from '../service/use-service';

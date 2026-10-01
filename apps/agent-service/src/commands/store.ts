@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { readFile, stat } from 'node:fs/promises';
+import path from 'node:path';
 import {
   parse,
   ServiceCommandFullSchema,
@@ -12,11 +13,15 @@ import {
 import { atomicWrite } from '../config.js';
 import { ConflictError } from '../errors.js';
 import { LedgerNotFound } from '../ledger.js';
-import { commandsFile } from '../migration/import-tasks.js';
 import { SettingsStore } from '../settings/store.js';
 import { withoutLegacySelection } from './legacy-selection.js';
 import { assertShortcutFree, withCanonicalShortcut } from './shortcuts.js';
 import { validateCommandShape } from './templates.js';
+
+/** The command store file; its path and format are persisted data and stay fixed. */
+function commandsFile(dataDir: string): string {
+  return path.join(dataDir, 'commands.json');
+}
 
 /**
  * Service-owned command store (T6b live surface over the T2 `commands.json`).

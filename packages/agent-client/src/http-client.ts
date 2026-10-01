@@ -4,10 +4,7 @@ import {
   ChildTranscriptResponseSchema,
   ConfirmReplyRequestSchema,
   ConfirmReplyResponseSchema,
-  CredentialUploadRequestSchema,
-  CredentialUploadResponseSchema,
   ErrorEnvelopeSchema,
-  MigrationStatusResponseSchema,
   parse,
   QueueMessageRequestSchema,
   ResourceUploadResponseSchema,
@@ -22,9 +19,6 @@ import {
   type ChildTranscriptResponse,
   type ConfirmReplyRequest,
   type ConfirmReplyResponse,
-  type CredentialUploadRequest,
-  type CredentialUploadResponse,
-  type MigrationStatusResponse,
   type QueueMessageRequest,
   type ResourceUploadResponse,
   type SnapshotResponse,
@@ -34,7 +28,7 @@ import {
   type TaskResponse,
   type TaskSummaryResponse,
 } from '@ai/agent-contracts';
-import { AgentClientError, type AgentClientOptions } from './types.js';
+import { authHeaders, AgentClientError, type AgentClientOptions } from './types.js';
 
 const CapabilityOkSchema = Type.Object({ ok: Type.Boolean() }, { additionalProperties: false });
 
@@ -132,23 +126,6 @@ export class AgentHttpClient {
     ).then((json) => parse(ResourceUploadResponseSchema, json));
   }
 
-  /** T2 additive: one-time credential upload over the authenticated channel. */
-  uploadCredential(body: CredentialUploadRequest): Promise<CredentialUploadResponse> {
-    return this.request(
-      '/v1/migration/credentials',
-      'POST',
-      parse(CredentialUploadRequestSchema, body),
-      (json) => parse(CredentialUploadResponseSchema, json),
-    );
-  }
-
-  /** T2 additive: reads the service migration manifest (secret-free). */
-  migrationStatus(): Promise<MigrationStatusResponse> {
-    return this.request('/v1/migration/status', 'GET', undefined, (json) =>
-      parse(MigrationStatusResponseSchema, json),
-    );
-  }
-
   private async request<T>(
     path: string,
     method: string,
@@ -158,7 +135,7 @@ export class AgentHttpClient {
     const response = await this.fetchImpl(`${this.options.baseUrl}${path}`, {
       method,
       headers: {
-        authorization: `Bearer ${this.options.token}`,
+        ...authHeaders(this.options),
         ...(body === undefined ? {} : { 'content-type': 'application/json' }),
       },
       body: body === undefined ? undefined : JSON.stringify(body),
@@ -176,7 +153,7 @@ export class AgentHttpClient {
   ): Promise<T> {
     const response = await this.fetchImpl(`${this.options.baseUrl}${path}`, {
       method,
-      headers: { authorization: `Bearer ${this.options.token}`, 'content-type': contentType },
+      headers: { ...authHeaders(this.options), 'content-type': contentType },
       body: body as Uint8Array<ArrayBuffer>,
     });
     const json: unknown = await response.json().catch(() => null);

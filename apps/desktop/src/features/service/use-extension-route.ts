@@ -1,5 +1,6 @@
-import { useCallback, useState } from 'react';
-import { useSettingsSectionExit } from '../settings/settings-navigation';
+import { useCallback } from 'react';
+import { useSettingsPageHistory } from '../settings/use-settings-page-history';
+import type { Extensions } from './use-extensions';
 
 /** Item kinds with their own details page here; commands and memory open their own sections. */
 export type ExtensionItemKind = 'skill' | 'agent' | 'mcp';
@@ -20,31 +21,45 @@ export type ExtensionRoute =
 const LIST: ExtensionRoute = { level: 'list' };
 
 /**
- * The page stack inside Extensions. Back pops one page and never leaves the list; a search hit
- * enters at its item with the item's plugin below it, so Back lands on that plugin. Leaving the
- * section resets the stack to the list, like every settings section (`useSettingsSectionExit`).
+ * Whether a route's plugin and item are still there, for Forward. A catalog that has not loaded
+ * (null or, like the item pages read it, empty) cannot tell, so it counts as there.
  */
-export function useExtensionRoute() {
-  const [stack, setStack] = useState<ExtensionRoute[]>([LIST]);
-  useSettingsSectionExit(() => setStack([LIST]));
-  const route = stack[stack.length - 1] ?? LIST;
-  const push = useCallback((next: ExtensionRoute) => setStack((current) => [...current, next]), []);
-  const back = useCallback(
-    () => setStack((current) => (current.length > 1 ? current.slice(0, -1) : current)),
-    [],
-  );
-  /** Swaps the current page, as an install landing on the plugin it installed. */
-  const replace = useCallback(
-    (next: ExtensionRoute) =>
-      setStack((current) => [...current.slice(0, Math.max(current.length - 1, 1)), next]),
-    [],
+function routeAvailable(route: ExtensionRoute, extensions: Extensions): boolean {
+  const pluginId =
+    route.level === 'install'
+      ? route.updateOf
+      : route.level === 'plugin' || route.level === 'item'
+        ? route.pluginId
+        : undefined;
+  const plugins = extensions.plugins.plugins;
+  if (pluginId !== undefined && plugins && !plugins.some((plugin) => plugin.id === pluginId))
+    return false;
+  if (route.level !== 'item') return true;
+  const names =
+    route.kind === 'skill'
+      ? extensions.skills.skills?.skills.map((row) => row.name)
+      : route.kind === 'agent'
+        ? extensions.agents.agents?.agents.map((row) => row.name)
+        : extensions.mcp.mcp?.servers.map((row) => row.serverId);
+  return !names?.length || names.includes(route.name);
+}
+
+/**
+ * The Extensions section's page history (`useSettingsPageHistory`) over the list. A search hit
+ * enters at its item with the item's plugin page behind it, so Back lands on that plugin.
+ */
+export function useExtensionRoute(extensions: Extensions) {
+  // The list, plugin, item and install pages replace one another rather than nest.
+  const { route, open, back, leave, replace, reset } = useSettingsPageHistory(
+    LIST,
+    (next) => routeAvailable(next, extensions),
+    { exclusivePages: true },
   );
   /** Opens an item from the list (a search hit) with its plugin page behind it. */
   const openItem = useCallback(
     (item: { pluginId: string; kind: ExtensionItemKind; name: string }) =>
-      setStack([LIST, { level: 'plugin', pluginId: item.pluginId }, { level: 'item', ...item }]),
-    [],
+      reset({ level: 'plugin', pluginId: item.pluginId }, { level: 'item', ...item }),
+    [reset],
   );
-  const reset = useCallback(() => setStack([LIST]), []);
-  return { route, push, back, replace, openItem, reset };
+  return { route, open, back, leave, replace, openItem };
 }

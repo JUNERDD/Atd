@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Brain } from 'lucide-react';
+import { ArrowUpRight, Brain } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Button } from '@ai/ui/components/button';
 import { ItemContent, ItemDescription, ItemMedia, ItemTitle } from '@ai/ui/components/item';
+import { IconButton } from '../../components/icon-button';
 import { useSettingsNavigation } from '../settings/settings-navigation';
 import { ExtensionGroup } from './extension-group';
 import { ExtensionRow, ExtensionRowActions } from './extension-row';
@@ -36,17 +36,23 @@ function useMemoryEntryCount(): number | null {
 
 /**
  * Personal's memory. Memory has one authority, managed in the Memory section, so this group only
- * counts its entries, links there, and carries the learning switch, which is the memory item's
- * switch: turning it off pauses learning.
+ * counts its entries, links there (Open memory settings in More's column, as command rows open
+ * the Commands section), and carries the learning switch, which is the memory item's
+ * switch: turning it off pauses learning. Pausing is undone by the same switch, so it asks for no
+ * confirmation; the row says what pausing does, wrapping rather than cutting the sentence off.
  */
 export function PluginMemoryGroup({
   learning,
   disabled,
+  pending = false,
   onLearningChange,
   showTitle = true,
 }: {
   learning: boolean;
+  /** No service to save to: the switch cannot work at all. */
   disabled: boolean;
+  /** A write for the plugin is running: the switch keeps focus but ignores changes. */
+  pending?: boolean;
   onLearningChange: (learning: boolean) => void;
   /** False when a tab names the kind; the section keeps its name for accessibility. */
   showTitle?: boolean;
@@ -71,17 +77,21 @@ export function PluginMemoryGroup({
         <ItemContent>
           <ItemTitle>{title}</ItemTitle>
           <ItemDescription title={description}>{description}</ItemDescription>
+          <ItemDescription className="whitespace-normal">
+            {t('extensions.plugins.page.learningHint')}
+          </ItemDescription>
         </ItemContent>
         <ExtensionRowActions
           name={t('extensions.plugins.page.learning')}
           enabled={learning}
           disabled={disabled}
+          pending={pending}
           onEnabledChange={onLearningChange}
           onDetails={open}
-          leading={
-            <Button type="button" variant="outline" size="sm" onClick={open}>
-              {t('extensions.plugins.page.openMemory')}
-            </Button>
+          trailing={
+            <IconButton label={t('extensions.plugins.page.openMemory')} onClick={open}>
+              <ArrowUpRight />
+            </IconButton>
           }
         />
       </ExtensionRow>

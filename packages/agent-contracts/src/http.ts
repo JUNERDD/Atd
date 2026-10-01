@@ -1,5 +1,5 @@
 import { Type, type Static } from 'typebox';
-import { Identifier, OperationId } from './identifiers.js';
+import { Identifier, OperationId, SessionEntryId } from './identifiers.js';
 import {
   CapabilityResultSchema,
   PermissionAnswerSchema,
@@ -36,6 +36,11 @@ export const SubmitTaskRequestSchema = Type.Object(
     tools: Type.Optional(Type.Array(ServiceToolIdSchema, { uniqueItems: true })),
     /** Whether the run reads and learns memory. Absent keeps the task's last run's flag, else on. */
     memory: Type.Optional(Type.Boolean()),
+    /**
+     * Replace this user message entry of the task instead of appending (`RunSnapshot.branchBefore`).
+     * Requires `taskId`; the entry must be a user message on the task's current branch.
+     */
+    branchBefore: Type.Optional(SessionEntryId),
   },
   { additionalProperties: false },
 );

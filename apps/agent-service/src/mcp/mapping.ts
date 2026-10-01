@@ -11,10 +11,10 @@ import type {
 
 /**
  * Result mapping (D6): tool results keep their original MCP blocks for API
- * consumers; images/files become resource-service artifacts; adapter temp
- * paths are adopted into artifacts (never leaked); resource links are never
- * implicitly downloaded or executed; prompt output becomes previewable input,
- * never a system instruction.
+ * consumers; images/files become resource-service artifacts; temp file paths
+ * a result names are adopted into artifacts (never leaked); resource links are
+ * never implicitly downloaded or executed; prompt output becomes previewable
+ * input, never a system instruction.
  */
 
 const MAX_INLINE_TEXT_BYTES = 50 * 1024;
@@ -89,6 +89,8 @@ export async function mapCallResult(
     // resource_link: a typed reference only; never fetched or executed here.
     content.push(narrowed);
   }
+  // Kept whole for API consumers. The model reads it only when the result has nothing else
+  // (`toPiText`).
   const structuredContent = record['structuredContent'];
   if (structuredContent !== undefined) {
     const size = jsonSize(structuredContent);
@@ -175,6 +177,7 @@ export function promptPreviewToInput(response: McpGetPromptResponse): string {
 /** Transcript form: text plus artifact references; binaries stay in storage. */
 export function toPiText(result: McpCallResult): string {
   const parts: string[] = [];
+  const notes = result.limitsNote ? [result.limitsNote] : [];
   for (const block of result.content) parts.push(blockToText(block));
   for (const attachment of result.attachments) {
     if (attachment.artifactId) {
@@ -185,7 +188,15 @@ export function toPiText(result: McpCallResult): string {
       parts.push(`[${attachment.kind}: ${attachment.note}]`);
     }
   }
-  if (result.limitsNote) parts.push(`(limits: ${result.limitsNote})`);
+  // A server may answer in `structuredContent` alone, and the model would read an empty result.
+  // Like pi-mcp's `toLlmContent`, it then gets that data as JSON, clipped like any text.
+  const structured = result.structuredContent ?? null;
+  if (!parts.length && structured !== null) {
+    const json = enforceTextLimits(JSON.stringify(structured, null, 2));
+    parts.push(json.text);
+    if (json.note) notes.push(json.note);
+  }
+  if (notes.length) parts.push(`(limits: ${notes.join('; ')})`);
   const text = parts.filter(Boolean).join('\n\n');
   return result.isError ? `MCP tool reported an error:\n${text}` : text;
 }

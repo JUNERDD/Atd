@@ -68,6 +68,18 @@ export function agentDraftOf(row: ExtensionAgentRow): AgentDraft {
   };
 }
 
+/** Whether two drafts hold the same values, as an unchanged form does. */
+export function sameAgentDraft(a: AgentDraft, b: AgentDraft): boolean {
+  return (
+    a.name === b.name &&
+    a.description === b.description &&
+    a.model === b.model &&
+    a.systemPrompt === b.systemPrompt &&
+    a.tools.length === b.tools.length &&
+    a.tools.every((tool, index) => tool === b.tools[index])
+  );
+}
+
 /** Turns one tool on or off, keeping the list in ROLE_TOOLS order. */
 export function withAgentTool(draft: AgentDraft, tool: ExtensionRoleTool, on: boolean): AgentDraft {
   return {

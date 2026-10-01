@@ -362,12 +362,44 @@
   display: flex;
   gap: 4px;
 }
+/* An earlier turn's actions, and every user message's, appear while the pointer is over their
+   turn or message, while one of them has keyboard focus or an open menu, and while a copy's
+   feedback shows. Hidden by opacity only, so the row keeps its space (nothing shifts on hover)
+   and stays in the tab order. */
+.message-actions[data-reveal] {
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+.transcript-turn:hover > .message-actions[data-reveal],
+.user-message:hover > .message-actions[data-reveal],
+.message-actions[data-reveal]:focus-within,
+.message-actions[data-reveal]:has([aria-expanded='true']),
+.message-actions[data-reveal][data-pinned] {
+  opacity: 1;
+}
+.user-message-actions {
+  margin-top: -4px;
+}
+/* The inline editor that replaces a user bubble spans the message column. */
+.message-editor {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: 8px;
+}
+.message-editor-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
 .activity-trigger,
 .activity-row-static {
   width: 100%;
   min-height: 32px;
   gap: 8px;
-  padding: 4px 6px;
+  /* No side padding: the row's icon lines up with the prose around it. Hover changes only the
+     text color, so there is no fill to inset from. */
+  padding: 4px 0;
 }
 .activity-trigger {
   height: auto;
@@ -533,10 +565,9 @@
   gap: 8px;
 }
 .phase-single > .phase-icon {
-  /* Left inset and gap mirror the trigger box so the glyph and step text start where a group
-     header's icon and title start; the top offset centers the 14px glyph on the 20px first line. */
+  /* The gap mirrors the trigger box so the glyph and step text start where a group header's icon
+     and title start; the top offset centers the 14px glyph on the 20px first line. */
   margin-top: 3px;
-  margin-left: 6px;
 }
 .phase-single-step {
   min-width: 0;
@@ -553,15 +584,15 @@
 }
 .phase-step {
   position: relative;
-  padding-left: 20px;
+  padding-left: 14px;
 }
 .phase-step::before,
 .phase-step::after {
   content: '';
   position: absolute;
-  /* 6px trigger padding + 7px half icon, minus the 1px line: the spine meets the header
-   * icon's center, and the 8px branch lands exactly on the 20px content edge. */
-  left: 12px;
+  /* 7px half icon minus the 1px line: the spine meets the header icon's center, and the 8px
+   * branch lands exactly on the 14px content edge, where the step's own icon starts. */
+  left: 6px;
 }
 .phase-step::before {
   top: 0;
@@ -638,7 +669,7 @@
 }
 .compaction-error {
   margin: 0;
-  padding: 0 6px 4px 28px;
+  padding: 0 0 4px 22px;
   color: var(--muted-foreground);
   font-size: 12px;
   line-height: 16px;
@@ -897,18 +928,12 @@
 }
 
 /* The service-starting surface replaces the whole panel, header included, so it drags the window
-   in the header's place. The hide action sits where the header put it. */
+   in the header's place (`native-host/drag-regions.ts`). */
 .service-starting {
   position: relative;
   display: flex;
   flex: 1;
   min-height: 0;
-  -webkit-app-region: drag;
-}
-.service-starting-hide {
-  position: absolute;
-  top: 10px;
-  right: 12px;
 }
 /* A service that is already running settles within a moment, so the loading fades in late
    instead of flashing before the panel content. */

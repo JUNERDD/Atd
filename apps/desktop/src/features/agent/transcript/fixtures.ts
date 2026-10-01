@@ -1,14 +1,14 @@
 import { vi } from 'vitest';
-import type { AgentBridge, TaskDetail } from '../../../../electron/agent/bridge';
-import type { DesktopBridge } from '../../../../electron/contract';
-import type { PermissionRequest } from '../../../../electron/agent/permission-schema';
-import { emptyInput, type RunStatus, type TaskRun } from '../../../../electron/agent/task-schema';
+import type { AgentBridge, TaskDetail } from '../../../client/agent/bridge';
+import type { DesktopBridge } from '../../../client/contract';
+import type { PermissionRequest } from '../../../client/agent/permission-schema';
+import { emptyInput, type RunStatus, type TaskRun } from '../../../client/agent/task-schema';
 import {
   EMPTY_QUEUE,
   type Block,
   type BlockOf,
   type ToolDetails,
-} from '../../../../electron/agent/transcript-schema';
+} from '../../../client/agent/transcript-schema';
 
 const DETAILS: ToolDetails = { diff: '', truncated: false, fullOutputPath: '' };
 
@@ -154,7 +154,6 @@ export function installAgent() {
   const copy = vi.fn(async () => {});
   const openLink = vi.fn(async () => {});
   window.desktop = {
-    runtime: 'electron',
     platform: 'darwin',
     agent: { answer, copy, openLink } as unknown as AgentBridge,
   } as DesktopBridge;

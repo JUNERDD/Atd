@@ -70,17 +70,6 @@ export function usePluginMutations() {
     [],
   );
 
-  const setApproval = useCallback(
-    async (input: { id: string; name: string; approved: boolean }) => {
-      const result = await hold({ kind: 'plugin', id: input.id }, async () =>
-        asPluginDetail(await serviceApi().setPluginServerApproval(input)),
-      );
-      if (!result.ok) showErrorToast(result.error);
-      return result;
-    },
-    [hold],
-  );
-
   const configure = useCallback(
     (id: string, values: PluginConfigRequest['values']) =>
       hold({ kind: 'plugin', id }, async () =>
@@ -142,7 +131,6 @@ export function usePluginMutations() {
     busy,
     setEnabled,
     setItemEnabled,
-    setApproval,
     configure,
     duplicate,
     preview,

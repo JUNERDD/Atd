@@ -1,0 +1,99 @@
+/* @block progress | requires: motion | layer: components | native: SwiftUI ProgressView(value:); UIKit UIProgressView | determinate progress bar (native <progress> or role=progressbar + --value) and an optional ring; indeterminate = core .activity-indicator */
+/* Markup. Describe the task, not "Loading…" (FB-7); show determinate progress whenever it is known:
+     <progress class="progress" max="100" value="40" aria-label="Downloading 12 photos"></progress>
+     <div class="progress" role="progressbar" aria-label="Uploading" aria-valuenow="40" style="--value: .4"></div>
+     <div class="progress progress--ring" role="progressbar" aria-label="Downloading" aria-valuenow="40" style="--value: .4"></div>
+   --value is 0–1. The div form animates its fill on the compositor (MOT-6); the ring needs the div form.
+   Indeterminate: <span class="activity-indicator" role="progressbar" aria-label="Loading messages"></span> (motion block),
+   never an indeterminate bar, and never swap a spinner for a bar mid-task. */
+
+.progress {
+  --progress-h: 4px; /* ≈ UIProgressView */
+  --progress-track: var(--fill-secondary);
+  -webkit-appearance: none;
+  appearance: none;
+  position: relative;
+  display: block;
+  inline-size: 100%;
+  block-size: var(--progress-h);
+  margin: 0;
+  border: 0;
+  border-radius: var(--corner-capsule);
+  overflow: hidden;
+  background: var(--progress-track);
+  color: var(--accent-text); /* the fill, ≥ 3:1 on the track (CON-1); set color to re-tint */
+}
+/* div form: a full-width capsule slides in from the leading edge, so its rounded end keeps its shape */
+.progress:not(progress, .progress--ring)::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: currentColor;
+  translate: calc((clamp(0, var(--value, 0), 1) - 1) * 100%) 0;
+  transition: translate var(--dur-slow) var(--spring-smooth);
+}
+.progress:not(progress, .progress--ring):dir(rtl)::before {
+  translate: calc((1 - clamp(0, var(--value, 0), 1)) * 100%) 0;
+}
+/* native form */
+progress.progress::-webkit-progress-bar {
+  background: transparent;
+}
+progress.progress::-webkit-progress-value {
+  border-radius: var(--corner-capsule);
+  background: currentColor;
+}
+progress.progress::-moz-progress-bar {
+  border-radius: var(--corner-capsule);
+  background: currentColor;
+}
+progress.progress:indeterminate::-moz-progress-bar {
+  background: transparent;
+} /* use .activity-indicator instead */
+
+.progress--ring {
+  /* download-style ring (App Store); decorative track */
+  --progress-ring: 28px;
+  --progress-ring-w: 3px;
+  inline-size: var(--progress-ring);
+  block-size: var(--progress-ring);
+  border-radius: 50%;
+  background: conic-gradient(
+    currentColor calc(clamp(0, var(--value, 0), 1) * 1turn),
+    var(--progress-track) 0
+  );
+  -webkit-mask: radial-gradient(
+    farthest-side,
+    #0000 calc(100% - var(--progress-ring-w) - 0.5px),
+    #000 calc(100% - var(--progress-ring-w))
+  );
+  mask: radial-gradient(
+    farthest-side,
+    #0000 calc(100% - var(--progress-ring-w) - 0.5px),
+    #000 calc(100% - var(--progress-ring-w))
+  );
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .progress:not(progress, .progress--ring)::before {
+    transition: none;
+  } /* the value still updates, without the slide (MOT-5) */
+}
+@media (prefers-contrast: more) {
+  .progress {
+    --progress-track: var(--fill);
+  }
+}
+@media (forced-colors: active) {
+  .progress {
+    forced-color-adjust: none;
+    --progress-track: Canvas;
+    outline: 1px solid CanvasText;
+    color: Highlight;
+  }
+  .progress--ring {
+    --progress-track: GrayText;
+    outline: 0;
+  }
+}

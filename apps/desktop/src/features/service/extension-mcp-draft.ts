@@ -39,6 +39,8 @@ export type McpDraftProblem =
   | 'argumentsInvalid'
   | 'urlRequired'
   | 'urlInvalid'
+  | 'urlKeepsCredentials'
+  | 'commandKeepsEnv'
   | 'tokenEnvRequired'
   | 'tokenEnvInvalid';
 
@@ -53,6 +55,11 @@ export const EMPTY_MCP_DRAFT: McpDraft = {
   authKind: 'none',
   tokenEnv: '',
 };
+
+/** Whether two drafts hold the same values, as an unchanged form does. */
+export function sameMcpDraft(a: McpDraft, b: McpDraft): boolean {
+  return (Object.keys(a) as (keyof McpDraft)[]).every((key) => a[key] === b[key]);
+}
 
 // The limits the desktop IPC schema enforces on `mcpUpsert`, checked here so they show inline.
 const SERVER_ID = /^[a-zA-Z0-9_-]{1,128}$/;
@@ -87,11 +94,22 @@ function isHttpUrl(value: string): boolean {
   return protocol === 'http:' || protocol === 'https:';
 }
 
+function originOf(url: string): string | null {
+  return URL.canParse(url) ? new URL(url).origin : null;
+}
+
 /**
  * Problems the service would reject or that would leave the server unusable. `takenIds` are the
  * other servers' ids; the add page passes the catalog so an add never silently replaces one.
+ * `saved` is the stored server: saving keeps its env vars and headers, which the service never
+ * lets follow another command or URL origin (agent-service `mcp/server-edits.ts`), and neither
+ * does a bearer token.
  */
-export function validateDraft(draft: McpDraft, takenIds: readonly string[]): McpDraftProblems {
+export function validateDraft(
+  draft: McpDraft,
+  takenIds: readonly string[],
+  saved: ExtensionMcpConfig | null = null,
+): McpDraftProblems {
   const problems: McpDraftProblems = {};
   const serverId = draft.serverId.trim();
   if (!serverId) problems.serverId = 'serverIdRequired';
@@ -99,6 +117,12 @@ export function validateDraft(draft: McpDraft, takenIds: readonly string[]): Mcp
   else if (takenIds.includes(serverId)) problems.serverId = 'serverIdTaken';
   if (draft.transport === 'stdio') {
     if (!draft.command.trim()) problems.command = 'commandRequired';
+    else if (
+      saved?.transport === 'stdio' &&
+      saved.envNames.length &&
+      draft.command.trim() !== saved.command
+    )
+      problems.command = 'commandKeepsEnv';
     const args = parseArgs(draft.argsText);
     if (args.length > MAX_ARGS || args.some((arg) => arg.length > MAX_ARG_LENGTH))
       problems.args = 'argumentsInvalid';
@@ -107,6 +131,13 @@ export function validateDraft(draft: McpDraft, takenIds: readonly string[]): Mcp
   const url = draft.url.trim();
   if (!url) problems.url = 'urlRequired';
   else if (!isHttpUrl(url)) problems.url = 'urlInvalid';
+  else if (
+    saved &&
+    saved.transport !== 'stdio' &&
+    (saved.headerNames.length || (saved.auth === 'bearer' && draft.authKind === 'bearer')) &&
+    originOf(url) !== originOf(saved.url)
+  )
+    problems.url = 'urlKeepsCredentials';
   if (draft.authKind === 'bearer') {
     const tokenEnv = draft.tokenEnv.trim();
     if (!tokenEnv) problems.tokenEnv = 'tokenEnvRequired';

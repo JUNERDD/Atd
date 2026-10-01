@@ -1,4 +1,5 @@
 import { useId, useState } from 'react';
+import { CircleAlert } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import {
   SUBAGENT_TOOLS,
@@ -62,18 +63,23 @@ function permissionsOf(draft: Draft): SubagentPermissions {
   };
 }
 
-/** A capability switch with its label and one-line explanation; the label toggles the switch. */
+/**
+ * A capability switch with its label and one-line explanation; the label toggles the switch.
+ * While a save runs (`pending`) it keeps its focus but ignores changes.
+ */
 function PermissionSwitch({
   label,
   description,
   checked,
   disabled,
+  pending,
   onCheckedChange,
 }: {
   label: string;
   description: React.ReactNode;
   checked: boolean;
   disabled: boolean;
+  pending: boolean;
   onCheckedChange: (checked: boolean) => void;
 }) {
   const id = useId();
@@ -83,7 +89,17 @@ function PermissionSwitch({
         <span className="agent-permissions-row-title">{label}</span>
         <span className="agent-permissions-row-description">{description}</span>
       </Label>
-      <Switch id={id} checked={checked} disabled={disabled} onCheckedChange={onCheckedChange} />
+      <Switch
+        id={id}
+        aria-disabled={pending || undefined}
+        aria-busy={pending || undefined}
+        className="aria-disabled:opacity-50"
+        checked={checked}
+        disabled={disabled}
+        onCheckedChange={(next) => {
+          if (!pending) onCheckedChange(next);
+        }}
+      />
     </div>
   );
 }
@@ -96,11 +112,13 @@ function PermissionSwitch({
 function AgentPermissionsForm({
   row,
   disabled,
+  pending,
   onClose,
   onSave,
 }: {
   row: ExtensionAgentRow;
   disabled: boolean;
+  pending: boolean;
   onClose: () => void;
   onSave: (permissions: SubagentPermissions | null) => Promise<boolean>;
 }) {
@@ -109,6 +127,7 @@ function AgentPermissionsForm({
   const approvalId = useId();
   const noTools = draft.limit && draft.tools.length === 0;
   const save = (permissions: SubagentPermissions | null) => {
+    if (pending) return;
     void onSave(permissions).then((ok) => {
       if (!ok) return;
       // No agent name: toasts keep one sentence, and names like service.reviewer hold a dot.
@@ -124,7 +143,11 @@ function AgentPermissionsForm({
 
   return (
     <>
-      <ScrollArea className="panel-dialog-scroll agent-permissions-scroll" gutter="stable">
+      <ScrollArea
+        className="panel-dialog-scroll agent-permissions-scroll"
+        gutter="stable"
+        scrollShadow
+      >
         <div className="agent-permissions-body">
           <section
             className="agent-permissions-section"
@@ -135,6 +158,7 @@ function AgentPermissionsForm({
               description={t('extensions.agentPermissions.limitToolsDescription')}
               checked={draft.limit}
               disabled={disabled}
+              pending={pending}
               onCheckedChange={(limit) => setDraft({ ...draft, limit })}
             />
             {draft.limit
@@ -154,6 +178,7 @@ function AgentPermissionsForm({
                         }
                         checked={draft.tools.includes(tool)}
                         disabled={disabled}
+                        pending={pending}
                         onCheckedChange={(on) => toggleTool(tool, on)}
                       />
                     ))}
@@ -161,8 +186,9 @@ function AgentPermissionsForm({
                 ))
               : null}
             {noTools ? (
-              <p className="agent-permissions-error" role="alert">
-                {t('extensions.agentPermissions.noTools')}
+              <p className="settings-inline-error" role="alert">
+                <CircleAlert aria-hidden />
+                <span>{t('extensions.agentPermissions.noTools')}</span>
               </p>
             ) : null}
           </section>
@@ -178,9 +204,24 @@ function AgentPermissionsForm({
             <Select
               value={draft.approval}
               disabled={disabled}
-              onValueChange={(value: ApprovalChoice) => setDraft({ ...draft, approval: value })}
+              onValueChange={(value: ApprovalChoice) => {
+                if (!pending) setDraft({ ...draft, approval: value });
+              }}
             >
-              <SelectTrigger id={approvalId} className="agent-permissions-select">
+              <SelectTrigger
+                id={approvalId}
+                aria-disabled={pending || undefined}
+                aria-busy={pending || undefined}
+                className="agent-permissions-select aria-disabled:opacity-50"
+                // A pending save keeps the trigger focusable but closed.
+                onPointerDown={(event) => {
+                  if (pending) event.preventDefault();
+                }}
+                onKeyDown={(event) => {
+                  // Only the keys that open the list; Tab still moves focus on.
+                  if (pending && event.key !== 'Tab') event.preventDefault();
+                }}
+              >
                 <SelectValue />
               </SelectTrigger>
               <SelectContent align="end">
@@ -198,8 +239,10 @@ function AgentPermissionsForm({
         {row.customized ? (
           <Button
             variant="ghost"
-            className="sm:mr-auto"
+            className="aria-disabled:opacity-50 sm:mr-auto"
             disabled={disabled}
+            aria-disabled={pending || undefined}
+            aria-busy={pending || undefined}
             onClick={() => save(null)}
           >
             {t('extensions.agentPermissions.restore')}
@@ -208,7 +251,13 @@ function AgentPermissionsForm({
         <Button variant="outline" onClick={onClose}>
           {t('extensions.cancel')}
         </Button>
-        <Button disabled={disabled || noTools} onClick={() => save(permissionsOf(draft))}>
+        <Button
+          className="aria-disabled:opacity-50"
+          disabled={disabled || noTools}
+          aria-disabled={pending || undefined}
+          aria-busy={pending || undefined}
+          onClick={() => save(permissionsOf(draft))}
+        >
           {t('extensions.agentPermissions.save')}
         </Button>
       </DialogFooter>
@@ -219,19 +268,22 @@ function AgentPermissionsForm({
 /**
  * Settings for what one catalog subagent may do in later runs: its tools and its approval tier,
  * each only ever narrower than the task's own. `disabled` locks the form while the service is
- * disconnected or a save is running.
+ * disconnected; while a save for this agent runs (`pending`), Save and Restore keep their focus
+ * but ignore presses.
  */
 export function AgentPermissionsDialog({
   row,
   open,
   onOpenChange,
   disabled,
+  pending,
   onSave,
 }: {
   row: ExtensionAgentRow;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   disabled: boolean;
+  pending: boolean;
   onSave: (permissions: SubagentPermissions | null) => Promise<boolean>;
 }) {
   const { t } = useTranslation('settings');
@@ -249,6 +301,7 @@ export function AgentPermissionsDialog({
         <AgentPermissionsForm
           row={row}
           disabled={disabled}
+          pending={pending}
           onClose={() => onOpenChange(false)}
           onSave={onSave}
         />

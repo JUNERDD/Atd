@@ -13,11 +13,13 @@ import { Label } from '@ai/ui/components/label';
 import { Switch } from '@ai/ui/components/switch';
 import { Textarea } from '@ai/ui/components/textarea';
 import { FieldHint } from '../../components/field-hint';
+import { useSettingsUnsavedChanges } from '../settings/settings-unsaved-changes';
 import {
   AGENT_CHECKED_FIELDS,
   AGENT_LIMITS,
   agentDraftErrors,
   agentInputOf,
+  sameAgentDraft,
   withAgentTool,
   type AgentDraft,
   type AgentDraftError,
@@ -84,6 +86,8 @@ export function AgentForm({
   const { t } = useTranslation('settings');
   const id = useId();
   const [draft, setDraft] = useState(initial);
+  // Leaving with edits asks first; the page leaves after a save without asking.
+  useSettingsUnsavedChanges(!sameAgentDraft(draft, initial));
   const [attempted, setAttempted] = useState(false);
   const editing = takenNames === null;
   const errors = attempted ? agentDraftErrors(draft, takenNames) : {};

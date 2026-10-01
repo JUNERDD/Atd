@@ -47,7 +47,10 @@ export async function readChildTranscript(
   const entry = findChild(lookups.children.values(), childKey);
   const parentRunId = entry ? parseChildExecutionId(entry.executionId)?.parentRunId : undefined;
   if (!entry || !parentRunId) return null;
-  const sessionFile = await containedChildFile(query.parentSessionFile, entry.sessionFile);
+  const sessionFile = await containedChildFile(
+    query.parentSessionFile,
+    forkedChildPath(query.parentSessionFile, entry.sessionFile),
+  );
   if (!sessionFile) {
     query.log.warn('A child session file lies outside its parent child root.', {
       taskId: query.taskId,
@@ -101,6 +104,30 @@ async function readSessionBranch(file: string): Promise<SessionEntry[] | null> {
 }
 
 /**
+ * The folder pi-subagents keeps a session's child sessions in (extension/index.js
+ * `getSubagentSessionRoot`): beside the session file, named after it.
+ */
+export function subagentChildRoot(sessionFile: string): string {
+  return path.join(path.dirname(sessionFile), path.basename(sessionFile, '.jsonl'));
+}
+
+/**
+ * Where a recorded child file lives for this parent. A fork copies its source's child root into
+ * its own (tasks/fork.ts) while its `app-child` entries keep the paths they were written with,
+ * under the source task's child root: `<sessions>/<task>/<session>/<rest>`. Such a path maps to
+ * `<rest>` inside the parent's own child root; any other path is returned as recorded, and the
+ * containment check below still decides.
+ */
+function forkedChildPath(parentSessionFile: string, recorded: string): string {
+  const own = subagentChildRoot(parentSessionFile);
+  if (!path.isAbsolute(recorded) || inside(own, recorded)) return recorded;
+  const sessions = path.dirname(path.dirname(parentSessionFile));
+  const parts = path.relative(sessions, recorded).split(path.sep);
+  if (parts[0] === '..' || path.isAbsolute(parts[0] ?? '') || parts.length < 3) return recorded;
+  return path.join(own, ...parts.slice(2));
+}
+
+/**
  * The real path of `sessionFile` when it lies inside the parent's child root
  * (`<dirname(parent)>/<basename(parent, .jsonl)>`, pi-subagents extension/index.js
  * `getSubagentSessionRoot`); null otherwise. A child file not written yet keeps its resolved name
@@ -111,10 +138,7 @@ async function containedChildFile(
   sessionFile: string,
 ): Promise<string | null> {
   if (!path.isAbsolute(sessionFile)) return null;
-  const root = path.join(
-    path.dirname(parentSessionFile),
-    path.basename(parentSessionFile, '.jsonl'),
-  );
+  const root = subagentChildRoot(parentSessionFile);
   try {
     const realRoot = await realpath(root);
     const file = path.join(await realpath(path.dirname(sessionFile)), path.basename(sessionFile));

@@ -1,0 +1,522 @@
+/* ==========================================================================
+   tokens.css — apple-design web kit, core tokens (reference: web.md §2–§3)
+   Unlayered: custom properties, color-scheme, [data-theme] / [data-tint] scopes and
+   media-query token overrides only. Rules live in assets/css/blocks/*.css.
+   Don't paste this file by hand — build what you use (WEB-1):
+     python3 scripts/build_kit.py base type glass states button --minify --css kit.css
+   Browser floor: Safari 17.5+, Chrome/Edge 123+, Firefox 128+ (MDN browser-compat-data). No legacy fallback.
+   Provenance: system hues/grays = HIG Color (iOS 26, verified). Semantic colors, fills,
+   separators and increased-contrast (IC) values = UIKit resolved on the iOS 26.3 runtime (fills and
+   backgrounds re-measured). Type = HIG Typography. Radii, shadows, glass = tuned approximations.
+   Fonts: SF Pro / New York are Apple-licensed; never self-host them (system stacks only).
+   ========================================================================== */
+
+/* @hooks  Author hooks — set inline or on your own selectors; the kit reads them with fallbacks
+   and never defines them on :root.
+   --motion-index   item index for .motion-stagger children (fallback 0)
+   --motion-origin  transform-origin of .motion-pop (fallback center)
+   --motion-range   animation-range of .motion-reveal-on-scroll (fallback 24px 64px)
+   --motion-delay   reveal delay of .activity-indicator (fallback 0s; 300–500ms for short waits)
+   --px --py        glass glint position in % (set by AppleFeedback.initGlassGlint; fallback 50% 0%)
+   --value          slider / progress fill (blocks that use it define the unit)
+   --n --i          segment or tab count and selected index (segmented, tab bar)
+   --glass-radius   corner radius of one glass member (fallback: the xl corner token)
+   --glass-ink      text/glyph color for content-layer controls placed on glass; the glass block sets it on its
+                    members (monochrome --label, --accent-on on tinted glass; GL-5) and button reads it, falling
+                    back to its accent ink outside glass
+   Timeline name (not a custom property): --motion-scroll, declared by the motion block. */
+
+/* Registered so the glint can transition (glass + states blocks). */
+@property --glow {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 0;
+}
+
+:root {
+  color-scheme: light dark;
+
+  /* ---- System hues: light-dark(LIGHT, DARK). HIG Color, iOS 26 (COL-1) ---- */
+  --system-red: light-dark(#ff383c, #ff4245);
+  --system-orange: light-dark(#ff8d28, #ff9230);
+  --system-yellow: light-dark(#ffcc00, #ffd600);
+  --system-green: light-dark(#34c759, #30d158);
+  --system-mint: light-dark(#00c8b3, #00dac3);
+  --system-teal: light-dark(#00c3d0, #00d2e0);
+  --system-cyan: light-dark(#00c0e8, #3cd3fe);
+  --system-blue: light-dark(#0088ff, #0091ff);
+  --system-indigo: light-dark(#6155f5, #6d7cff);
+  --system-purple: light-dark(#cb30e0, #db34f2);
+  --system-pink: light-dark(#ff2d55, #ff375f);
+  --system-brown: light-dark(#ac7f5e, #b78a66);
+  --system-gray: #8e8e93;
+  --system-gray2: light-dark(#aeaeb2, #636366);
+  --system-gray3: light-dark(#c7c7cc, #48484a);
+  --system-gray4: light-dark(#d1d1d6, #3a3a3c);
+  --system-gray5: light-dark(#e5e5ea, #2c2c2e);
+  --system-gray6: light-dark(#f2f2f7, #1c1c1e);
+
+  /* ---- On-color (COL-3): label/glyph color on a solid --system-<hue> fill ----
+     Rule: white where white reaches 3:1 (glyphs, bold or >= 18pt text; CON-1), black where it
+     doesn't. WCAG ratios, white / black on the hue (computed from the hex values above):
+              light             dark              IC light     IC dark
+     red      3.57* / 5.88  W   3.43* / 6.12  W   4.56 / 4.61 W  2.94 / 7.15  B
+     orange   2.31 / 9.09   B   2.23 / 9.41   B   4.55 / 4.61 W  2.02 / 10.41 B
+     yellow   1.51 / 13.89  B   1.41 / 14.87  B   4.59 / 4.58 W  1.32 / 15.85 B
+     green    2.22 / 9.46   B   2.02 / 10.39  B   4.54 / 4.62 W  1.84 / 11.42 B
+     mint     2.12 / 9.91   B   1.78 / 11.82  B   4.55 / 4.61 W  1.64 / 12.79 B
+     teal     2.16 / 9.72   B   1.86 / 11.30  B   4.57 / 4.59 W  1.65 / 12.74 B
+     cyan     2.16 / 9.71   B   1.76 / 11.94  B   4.57 / 4.60 W  1.61 / 13.02 B
+     blue     3.52* / 5.97  W   3.23* / 6.49  W   4.57 / 4.59 W  2.15 / 9.76  B
+     indigo   5.09 / 4.13   W   3.51* / 5.98  W   6.12 / 3.43 W  2.13 / 9.84  B
+     purple   4.17* / 5.04  W   3.63* / 5.79  W   5.21 / 4.03 W  2.15 / 9.75  B
+     pink     3.65* / 5.76  W   3.52* / 5.96  W   4.57 / 4.59 W  2.17 / 9.68  B
+     brown    3.53* / 5.95  W   3.07* / 6.84  W   4.58 / 4.58 W  2.16 / 9.74  B
+     gray     3.26* / 6.44  W   3.26* / 6.44  W   5.23 / 4.02 W  2.21 / 9.50  B
+     * white passes 3:1 only: fine for glyphs and bold text; regular text <= 17pt on that fill needs
+       a darker fill (e.g. --accent-fill via [data-tint]) or the black label. */
+  --on-red: #fff;
+  --on-orange: #000;
+  --on-yellow: #000;
+  --on-green: #000;
+  --on-mint: #000;
+  --on-teal: #000;
+  --on-cyan: #000;
+  --on-blue: #fff;
+  --on-indigo: #fff;
+  --on-purple: #fff;
+  --on-pink: #fff;
+  --on-brown: #fff;
+  --on-gray: #fff;
+
+  /* ---- Accent (COL-2). Derived tokens (--accent-fill/-text/-on, --focus-ring,
+     --state-selected-focus-fill) are re-derived below under :where(:root, [data-tint]). ---- */
+  --accent: var(--system-blue);
+
+  /* ---- Labels (COL-1, CON-1). --secondary-label is AA by default (.74 alpha =
+     5.02:1 on #FFF, 4.72:1 on #F2F2F7; dark .60 = 5.27:1 on #2C2C2E). Apple's exact alphas are the
+     -native tokens (3.44 / 3.30:1 in light: supplementary text only). Tertiary and quaternary are
+     native (1.7:1 in light): hints, disabled looks and decoration, never essential text. ---- */
+  --label: light-dark(#000, #fff);
+  --secondary-label: light-dark(rgb(60 60 67 / 0.74), rgb(235 235 245 / 0.6));
+  --secondary-label-native: light-dark(rgb(60 60 67 / 0.6), rgb(235 235 245 / 0.6));
+  --tertiary-label-native: light-dark(rgb(60 60 67 / 0.3), rgb(235 235 245 / 0.3));
+  --tertiary-label: var(--tertiary-label-native);
+  --quaternary-label: light-dark(rgb(60 60 67 / 0.18), rgb(235 235 245 / 0.16));
+  --placeholder-text: var(
+    --tertiary-label-native
+  ); /* = UIKit placeholderText; never the only label */
+  /* Links: AA by default with apple.com's link blues — 5.57:1 on #FFF, 4.99:1 on #F2F2F7,
+     5.64:1 on #1C1C1E, 4.62:1 on #2C2C2E. UIKit's link is the -native twin: 4.0:1 on white. */
+  --link: light-dark(#0066cc, #2997ff);
+  --link-native: light-dark(#007aff, #0984ff);
+  --destructive-text: light-dark(
+    color-mix(in srgb, var(--system-red) 72%, #000),
+    color-mix(in srgb, var(--system-red) 62%, #fff)
+  ); /* red text >= 4.5:1 on opaque fills (system red is 3.6:1 on white); glass members set a stronger one */
+
+  /* ---- Separators (iOS 26: .12 / .50; IC unchanged) and fills ---- */
+  --separator: light-dark(rgb(60 60 67 / 0.12), rgb(84 84 88 / 0.5));
+  --opaque-separator: light-dark(#c6c6c8, #38383a);
+  --fill: light-dark(rgb(120 120 128 / 0.2), rgb(120 120 128 / 0.36)); /* systemFill */
+  --fill-secondary: light-dark(rgb(120 120 128 / 0.16), rgb(120 120 128 / 0.32));
+  --fill-tertiary: light-dark(rgb(118 118 128 / 0.12), rgb(118 118 128 / 0.24));
+  --fill-quaternary: light-dark(rgb(116 116 128 / 0.08), rgb(118 118 128 / 0.18));
+
+  /* ---- Backgrounds: plain stack and grouped stack (one stack per screen) ---- */
+  --system-background: light-dark(#fff, #000);
+  --secondary-system-background: light-dark(#f2f2f7, #1c1c1e);
+  --tertiary-system-background: light-dark(#fff, #2c2c2e);
+  --system-grouped-background: light-dark(#f2f2f7, #000);
+  --secondary-system-grouped-background: light-dark(#fff, #1c1c1e);
+  --tertiary-system-grouped-background: light-dark(#f2f2f7, #2c2c2e);
+
+  /* ---- Type (TYP-1): iOS Dynamic Type "Large", rem so the browser text size scales it ---- */
+  --ff-sans:
+    -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', system-ui, 'Helvetica Neue',
+    'Segoe UI', Roboto, Arial, 'PingFang SC', 'Hiragino Sans', 'Noto Sans CJK SC',
+    'Microsoft YaHei', /* CJK fallbacks (LOC-1); set lang */ sans-serif, 'Apple Color Emoji',
+    'Segoe UI Emoji';
+  --ff-rounded: ui-rounded, 'SF Pro Rounded', var(--ff-sans);
+  --ff-serif: ui-serif, 'New York', 'Iowan Old Style', Georgia, 'Times New Roman', serif;
+  --ff-mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --fs-large-title: 2.125rem;
+  --lh-large-title: 2.5625rem; /* 34 / 41 */
+  --fs-title1: 1.75rem;
+  --lh-title1: 2.125rem; /* 28 / 34 */
+  --fs-title2: 1.375rem;
+  --lh-title2: 1.75rem; /* 22 / 28 */
+  --fs-title3: 1.25rem;
+  --lh-title3: 1.5625rem; /* 20 / 25 */
+  --fs-headline: 1.0625rem;
+  --lh-headline: 1.375rem; /* 17 / 22 semibold */
+  --fs-body: 1.0625rem;
+  --lh-body: 1.375rem; /* 17 / 22 */
+  --fs-callout: 1rem;
+  --lh-callout: 1.3125rem; /* 16 / 21 */
+  --fs-subheadline: 0.9375rem;
+  --lh-subheadline: 1.25rem; /* 15 / 20 */
+  --fs-footnote: 0.8125rem;
+  --lh-footnote: 1.125rem; /* 13 / 18 */
+  --fs-caption1: 0.75rem;
+  --lh-caption1: 1rem; /* 12 / 16 */
+  --fs-caption2: 0.6875rem;
+  --lh-caption2: 0.8125rem; /* 11 / 13 */
+  /* SF Pro tracking (HIG table, 1/1000 em at each style's size). Used as --tr-* x --tracking-scale;
+     the type block sets the scale to 0 for zh/ja/ko (LOC-1). */
+  --tracking-scale: 1;
+  --tr-large-title: 0.012em;
+  --tr-title1: 0.014em;
+  --tr-title2: -0.012em;
+  --tr-title3: -0.023em;
+  --tr-headline: -0.026em;
+  --tr-body: -0.026em;
+  --tr-callout: -0.02em;
+  --tr-subheadline: -0.016em;
+  --tr-footnote: -0.006em;
+  --tr-caption1: 0em;
+  --tr-caption2: 0.006em;
+
+  /* ---- Spacing (4/8 rhythm is convention, not HIG) and system margin (LAY-2) ---- */
+  --space-0: 0;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --margin-page: 16px; /* 20px from 440px wide (below), as UIKit */
+
+  /* ---- Sizes ---- */
+  --hit: 44px; /* HIT-1 minimum hit region */
+  --toolbar-h: 54px; /* inline bar below the safe area: iOS 26 nav bar and toolbar (toolbar, navbar) */
+  --tabbar-h: 62px; /* floating tab-bar platter, measured on iOS 26.3 */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+
+  /* ---- Radii (approximations; GL-6: inner = outer - padding) ---- */
+  --corner-xs: 6px;
+  --corner-sm: 10px;
+  --corner-md: 14px;
+  --corner-lg: 20px;
+  --corner-xl: 26px;
+  --corner-2xl: 34px;
+  --corner-sheet: 38px;
+  --corner-list: 26px; /* iOS 26 inset-grouped section radius */
+  --corner-capsule: 9999px;
+
+  /* ---- Elevation ---- */
+  --elev-sm: 0 1px 2px rgb(0 0 0 / 0.06), 0 1px 1px rgb(0 0 0 / 0.04);
+  --elev-md: 0 4px 12px rgb(0 0 0 / 0.08), 0 1px 3px rgb(0 0 0 / 0.05);
+  --elev-lg: 0 12px 32px rgb(0 0 0 / 0.14), 0 2px 8px rgb(0 0 0 / 0.06);
+  --elev-glass:
+    0 10px 30px light-dark(rgb(20 20 40 / 0.16), rgb(0 0 0 / 0.45)),
+    0 2px 8px light-dark(rgb(20 20 40 / 0.08), rgb(0 0 0 / 0.3));
+
+  /* ---- Motion (MOT-2, MOT-11). Pair each spring with its --dur-spring-* (SwiftUI preset pace, 0.5s
+     perceptual); other paces: duration = perceptual s x settle factor (smooth 1.48, snappy 1.40,
+     bouncy 1.64), e.g. --dur-slow + --spring-snappy ~ .snappy(duration: 0.29). ---- */
+  --dur-press: 90ms; /* press-in (MOT-11); release rides a spring */
+  --dur-fast: 150ms;
+  --dur-base: 250ms;
+  --dur-slow: 400ms;
+  --dur-sheet: 550ms;
+  --dur-spring-smooth: 740ms;
+  --dur-spring-snappy: 700ms;
+  --dur-spring-bouncy: 820ms;
+  --motion-stagger: 30ms; /* per-item delay for grouped entrances (capped at 150ms in use) */
+  --curve-standard: cubic-bezier(0.25, 0.1, 0.25, 1);
+  --curve-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --curve-sheet: cubic-bezier(0.32, 0.72, 0, 1);
+  --spring-smooth: var(--curve-out); /* no-linear() fallback; real curves below */
+  --spring-snappy: var(--curve-out);
+  --spring-bouncy: var(--curve-out);
+
+  /* ---- Interaction states (FB-1, FB-2, FB-3, FB-5, FB-6) ---- */
+  --press-scale: 0.96;
+  --press-fill: var(--fill-tertiary);
+  --press-glow: 1;
+  --hover-fill: var(--fill-quaternary);
+  --hover-glow: 0.5;
+  --focus-ring-width: 3px;
+  --focus-ring-offset: 2px;
+  /* The ring's halo: fills the offset gap and adds a 1px outer edge in the page color, so the ring keeps its contrast
+     against its neighbors over any backdrop (glass, photos): 5.96:1 light, 8.92:1 dark with the default accent.
+     A box-shadow; the states and glass blocks apply it. */
+  --focus-halo: 0 0 0 calc(var(--focus-ring-offset) + var(--focus-ring-width) + 1px)
+    var(--system-background);
+  --state-disabled-opacity: 0.4;
+  --state-selected-fill: var(--fill-secondary);
+  --state-error: var(--system-red); /* tone for icons, borders, fills — not small text (CON-1) */
+  --state-warning: var(--system-orange);
+  --state-success: var(--system-green);
+
+  /* ---- Liquid Glass material (glass block). --glass-density and --glass-saturate are
+     scheme-dependent numbers, set below (light-dark() only takes colors). ---- */
+  --glass-fill-color: light-dark(#fff, #1c1c1e);
+  --glass-clear-density: 10%;
+  --glass-blur: 22px;
+  --glass-clear-blur: 6px;
+  --glass-tint-density: 96%; /* tinted/prominent: white label >= 4.5:1 even over pure white */
+  --glass-solid: light-dark(#f6f6f8, #2c2c2e); /* opaque fallback surface */
+  --glass-specular: light-dark(rgb(255 255 255 / 0.95), rgb(255 255 255 / 0.34));
+  --glass-specular2: light-dark(rgb(255 255 255 / 0.55), rgb(255 255 255 / 0.14));
+  --glass-rim: light-dark(rgb(255 255 255 / 0.55), rgb(255 255 255 / 0.12));
+  --glass-inner-glow: light-dark(rgb(255 255 255 / 0.45), rgb(255 255 255 / 0.07));
+  --glass-edge: light-dark(rgb(0 0 0 / 0.1), rgb(0 0 0 / 0.55)); /* darkened outer edge (27) */
+  --glass-sheen: light-dark(
+    rgb(255 255 255 / 0.55),
+    rgb(255 255 255 / 0.1)
+  ); /* dark .10: white labels stay >= 4.5:1 */
+  --glass-dim: rgb(
+    0 0 0 / 0.55
+  ); /* GL-4 asks ~35%, but white text needs more: 35% gave 4.04:1 over bright
+                                        art; 55% measures 5.17:1 over pure white. Icon-only chips may use .35. */
+}
+
+/* ---- Themes: whole page or any subtree. Tokens resolve where used, so a forced
+   subtree re-resolves every light-dark() token inside it (base block sets its text color). ---- */
+[data-theme='light'] {
+  color-scheme: light;
+}
+[data-theme='dark'] {
+  color-scheme: dark;
+}
+
+/* Scheme-dependent numbers, zero specificity so any author rule wins. Dark glass is denser and
+   less saturated so white labels hold over bright content and vivid backdrops don't turn muddy. */
+:where(:root, [data-theme='light']) {
+  --glass-density: 50%;
+  --glass-saturate: 180%;
+}
+@media (prefers-color-scheme: dark) {
+  :where(:root:not([data-theme='light'])) {
+    --glass-density: 64%;
+    --glass-saturate: 130%;
+  }
+}
+:where([data-theme='dark']) {
+  --glass-density: 64%;
+  --glass-saturate: 130%;
+}
+
+/* ---- Accent derivation (COL-3). Re-tint the page with :root { --accent: … } or a subtree with
+   <section data-tint style="--accent: var(--system-green)"> (set --accent on the [data-tint] element).
+   Pairing: --accent-on is the label for --accent-fill — set both together if you override the fill.
+   · Relative-color path: fill = accent at OKLCH L <= .50 -> white >= 4.86:1 for EVERY sRGB accent
+     (RGB-cube sweep, sRGB-clipped; system hues 5.2–6.9:1). --accent-on is computed from the fill's
+     luminance (white below Y .179, black above), so it stays right for any fill set here.
+     Text: L <= .50 in light (all hues >= 4.71:1 on #F2F2F7), L >= .75 in dark (>= 4.68:1 on #2C2C2E).
+   · Fallback (no relative color syntax, e.g. Safari < 18): fill = accent mixed 55% with black in OKLab
+     -> white >= 4.85:1 for every sRGB accent; text = accessible blue (hex). ---- */
+:where(:root, [data-tint]) {
+  --accent-fill: color-mix(in oklab, var(--accent) 55%, black);
+  --accent-text: light-dark(#1c67e5, #3da5ff); /* 4.54:1 on #F2F2F7 / 5.33:1 on #2C2C2E */
+  --accent-on: #fff;
+  --focus-ring: var(
+    --accent-text
+  ); /* solid: measured 5.96:1 on #FFF, 5.34:1 on #F2F2F7, 8.92:1 on #000 */
+  --state-selected-focus-fill: var(--accent-fill); /* focused row; label --accent-on */
+}
+@supports (color: oklch(from red min(l, 0.5) c h)) and
+  (color: color(from red srgb-linear clamp(0, r * 2, 1) g b)) {
+  :where(:root, [data-tint]) {
+    --accent-fill: oklch(from var(--accent) min(l, 0.5) c h);
+    --accent-text: light-dark(
+      oklch(from var(--accent) min(l, 0.5) c h),
+      oklch(from var(--accent) max(l, 0.75) c h)
+    );
+    --_on: clamp(0, (0.179 - 0.2126 * r - 0.7152 * g - 0.0722 * b) * 1e4, 1);
+    --accent-on: color(from var(--accent-fill) srgb-linear var(--_on) var(--_on) var(--_on));
+  }
+}
+
+/* ---- Spring curves (motion.md §3): exact SwiftUI .smooth / .snappy / .bouncy (bounce 0 / .15 / .3;
+   overshoot 0 / 0.6% / 4.6%) as linear(); max error < 0.3% of the distance. ---- */
+@supports (transition-timing-function: linear(0, 1)) {
+  :root {
+    --spring-smooth: linear(
+      0,
+      0.005 1.1%,
+      0.019 2.3%,
+      0.04 3.4%,
+      0.067 4.5%,
+      0.097 5.6%,
+      0.167 7.9%,
+      0.358 13.5%,
+      0.466 16.9%,
+      0.562 20.3%,
+      0.645 23.6%,
+      0.715 27%,
+      0.774 30.4%,
+      0.821 33.8%,
+      0.859 37.2%,
+      0.899 41.7%,
+      0.928 46.2%,
+      0.953 51.8%,
+      0.972 58.6%,
+      0.984 65.3%,
+      0.991 73.2%,
+      1
+    );
+    --spring-snappy: linear(
+      0,
+      0.005 1.2%,
+      0.019 2.4%,
+      0.041 3.6%,
+      0.069 4.8%,
+      0.102 6%,
+      0.177 8.3%,
+      0.43 15.5%,
+      0.509 17.9%,
+      0.618 21.4%,
+      0.681 23.8%,
+      0.737 26.2%,
+      0.808 29.8%,
+      0.864 33.3%,
+      0.908 36.9%,
+      0.94 40.5%,
+      0.97 45.2%,
+      0.988 50%,
+      0.998 54.8%,
+      1.004 59.5%,
+      1.006 66.7%,
+      1
+    );
+    --spring-bouncy: linear(
+      0,
+      0.005 1%,
+      0.02 2%,
+      0.043 3%,
+      0.072 4.1%,
+      0.107 5.1%,
+      0.146 6.1%,
+      0.233 8.1%,
+      0.47 13.2%,
+      0.605 16.3%,
+      0.685 18.3%,
+      0.722 19.3%,
+      0.79 21.3%,
+      0.848 23.4%,
+      0.874 24.4%,
+      0.919 26.4%,
+      0.971 29.5%,
+      1.006 32.5%,
+      1.023 34.6%,
+      1.038 37.6%,
+      1.043 39.6%,
+      1.046 42.7%,
+      1.041 47.8%,
+      1.014 61%,
+      1.003 70.1%,
+      0.998 82.3%,
+      1
+    );
+  }
+}
+
+/* LAY-2: 16pt margins up to ~402pt windows, 20pt from 440pt. */
+@media (min-width: 440px) {
+  :root {
+    --margin-page: 20px;
+  }
+}
+
+/* ---- Increase Contrast (COL-1). Hues/grays = HIG accessible variants; semantic values =
+   UIKit IC on the iOS 26.3 runtime. The accent re-derives from the IC hue automatically. Safari
+   honors this query (unlike prefers-reduced-transparency), so glass goes opaque here too. ---- */
+@media (prefers-contrast: more) {
+  :root {
+    --system-red: light-dark(#e9152d, #ff6165);
+    --system-orange: light-dark(#c55300, #ffa056);
+    --system-yellow: light-dark(#a16a00, #fedf43);
+    --system-green: light-dark(#008932, #4ad968);
+    --system-mint: light-dark(#008575, #54dfcb);
+    --system-teal: light-dark(#008198, #3bddec);
+    --system-cyan: light-dark(#007eae, #6dd9ff);
+    --system-blue: light-dark(#1e6ef4, #5cb8ff);
+    --system-indigo: light-dark(#564ade, #a7aaff);
+    --system-purple: light-dark(#b02fc2, #ea8dff);
+    --system-pink: light-dark(#e7124d, #ff8ac4);
+    --system-brown: light-dark(#956d51, #dba679);
+    --system-gray: light-dark(#6c6c70, #aeaeb2);
+    --system-gray2: light-dark(#8e8e93, #7c7c80);
+    --system-gray3: light-dark(#aeaeb2, #545456);
+    --system-gray4: light-dark(#bcbcc0, #444446);
+    --system-gray5: light-dark(#d8d8dc, #363638);
+    --system-gray6: light-dark(#ebebf0, #242426);
+    /* IC hues: light ones take white (4.54–6.12:1), dark ones black (7.15–15.85:1) — table above */
+    --on-red: light-dark(#fff, #000);
+    --on-orange: light-dark(#fff, #000);
+    --on-yellow: light-dark(#fff, #000);
+    --on-green: light-dark(#fff, #000);
+    --on-mint: light-dark(#fff, #000);
+    --on-teal: light-dark(#fff, #000);
+    --on-cyan: light-dark(#fff, #000);
+    --on-blue: light-dark(#fff, #000);
+    --on-indigo: light-dark(#fff, #000);
+    --on-purple: light-dark(#fff, #000);
+    --on-pink: light-dark(#fff, #000);
+    --on-brown: light-dark(#fff, #000);
+    --on-gray: light-dark(#fff, #000);
+    --secondary-label: light-dark(rgb(60 60 67 / 0.8), rgb(235 235 245 / 0.7));
+    --secondary-label-native: light-dark(rgb(60 60 67 / 0.8), rgb(235 235 245 / 0.7));
+    --tertiary-label-native: light-dark(rgb(60 60 67 / 0.7), rgb(235 235 245 / 0.55));
+    --quaternary-label: light-dark(rgb(60 60 67 / 0.55), rgb(235 235 245 / 0.4));
+    --link: light-dark(
+      #0040dd,
+      #53a6ff
+    ); /* 4.75:1 on the IC dark cell #363638, 8.27:1 on #000; --link-native unchanged */
+    --destructive-text: light-dark(
+      color-mix(in srgb, var(--system-red) 72%, #000),
+      color-mix(in srgb, var(--system-red) 55%, #fff)
+    ); /* dark: 4.73:1 on a fill over #363638 */
+    --fill: light-dark(rgb(120 120 128 / 0.28), rgb(120 120 128 / 0.44));
+    --fill-secondary: light-dark(rgb(120 120 128 / 0.24), rgb(120 120 128 / 0.4));
+    --fill-tertiary: light-dark(rgb(118 118 128 / 0.2), rgb(118 118 128 / 0.32));
+    --fill-quaternary: light-dark(rgb(116 116 128 / 0.16), rgb(118 118 128 / 0.26));
+    --secondary-system-background: light-dark(#ebebf0, #242426);
+    --tertiary-system-background: light-dark(#fff, #363638);
+    --system-grouped-background: light-dark(#ebebf0, #000);
+    --secondary-system-grouped-background: light-dark(#fff, #242426);
+    --tertiary-system-grouped-background: light-dark(#ebebf0, #363638);
+    --press-fill: var(--fill);
+    --hover-fill: var(--fill-tertiary);
+    --press-glow: 0;
+    --hover-glow: 0;
+  }
+}
+
+/* ---- Reduce Motion (MOT-5): springs lose their bounce, press keeps its fill but not its scale.
+   After the linear() block on purpose. ---- */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --spring-snappy: var(--spring-smooth);
+    --spring-bouncy: var(--spring-smooth);
+    --press-scale: 1;
+  }
+}
+
+/* ---- Reduce Transparency: glint off. Chromium only — Safari never matches (WEB-2). ---- */
+@media (prefers-reduced-transparency: reduce) {
+  :root {
+    --press-glow: 0;
+    --hover-glow: 0;
+  }
+}
+
+/* ---- Forced colors: keep the ring a system color the UA won't repaint. ---- */
+@media (forced-colors: active) {
+  :where(:root, [data-tint]) {
+    --focus-ring: Highlight;
+  }
+  :root {
+    --focus-halo: 0 0 0 calc(var(--focus-ring-offset) + var(--focus-ring-width) + 1px) Canvas;
+  }
+}

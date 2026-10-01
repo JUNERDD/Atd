@@ -6,7 +6,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@ai/ui/components/select';
-import type { ModelReference, ModelThinkingLevel } from '../../../electron/providers/schema';
+import type { ModelReference, ModelThinkingLevel } from '../../client/providers/schema';
 import { useThinkingLevels } from './use-thinking-levels';
 
 /**

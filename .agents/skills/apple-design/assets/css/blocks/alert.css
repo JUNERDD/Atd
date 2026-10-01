@@ -1,0 +1,253 @@
+/* @block alert | requires: glass, motion, states | layer: components | native: SwiftUI .alert / .confirmationDialog; UIKit UIAlertController (.alert / .actionSheet) | centered modal alert (<dialog>) with 1–3 capsule actions, and a confirmation dialog anchored to its source ([popover]); draws its own actions like UIAlertController */
+/* Alert: only for problems or uncommon, irreversible actions (FB-5, FB-9). Specific title, verb buttons. Cancel keeps
+   initial focus for safety (Return can't confirm a destructive action) but is never styled as the default.
+     <dialog class="alert motion-pop" id="del" role="alertdialog" aria-labelledby="del-t" aria-describedby="del-m">
+       <form method="dialog">
+         <h2 class="alert__title" id="del-t">Delete “Trip Notes”?</h2>
+         <p class="alert__message" id="del-m">This note will be deleted from all your devices.</p>
+         <div class="alert__actions">
+           <button class="alert__action" value="cancel" autofocus>Cancel</button>
+           <button class="alert__action alert__action--destructive" value="delete">Delete</button>
+         </div>
+       </form>
+     </dialog>
+   dialog.showModal() gives the inert background, Esc and focus return; read dialog.returnValue on "close".
+   Two actions sit side by side; three (or .alert__actions--stacked for long labels) stack. .alert__action--primary fills the
+   one preferred, non-destructive action; never autofocus a destructive one. Slow action: type="button", aria-busy="true"
+   aria-disabled="true", an .activity-indicator child and a progressive label ("Deleting…"); close when done (FB-7).
+   Confirmation dialog (destructive first; anchored, it has no Cancel: tapping outside cancels):
+     <button class="toolbar-btn" popovertarget="trash-ask" style="anchor-name: --trash" aria-label="Delete">…</button>
+     <div class="confirm-dialog glass motion-pop" id="trash-ask" popover role="dialog" aria-labelledby="trash-m" style="position-anchor: --trash">
+       <p class="confirm-dialog__message" id="trash-m">This photo will be deleted from all your devices.</p>
+       <div class="confirm-dialog__actions"><button class="alert__action alert__action--destructive" type="button">Delete Photo</button></div>
+       <button class="alert__action confirm-dialog__cancel" type="button" popovertarget="trash-ask" popovertargetaction="hide">Cancel</button>
+     </div>
+   With CSS anchor positioning it springs from the button (set --motion-origin to the corner nearest it); elsewhere it is a
+   bottom action sheet that shows its Cancel row. Reduced motion: .motion-pop fades without scaling; the dim fades (MOT-5). */
+
+.alert,
+.confirm-dialog {
+  --alert-pad: 14px; /* ≈ inset of the capsules */
+  --alert-btn-h: 48px; /* ≈ iOS 26 alert capsules */
+  --glass-radius: calc(
+    var(--alert-btn-h) / 2 + var(--alert-pad)
+  ); /* concentric with the capsules (GL-6) */
+  --glass-density: 94%; /* modal and text-heavy: near-opaque, so AA holds over any backdrop
+                                                           with no transparency fallback (Safari) */
+  position: fixed; /* glass's :where() rule would make it relative */
+  border: 1px solid transparent; /* the edge in forced colors */
+}
+.alert {
+  inset: 0;
+  margin: auto;
+  inline-size: min(calc(100% - 2 * var(--space-8)), 20rem);
+  max-inline-size: none;
+  max-block-size: calc(100% - 2 * var(--space-8));
+  padding: calc(var(--alert-pad) + var(--space-2)) var(--alert-pad) var(--alert-pad);
+  overflow: hidden;
+  text-align: start; /* 26: bolder, leading-aligned alert text */
+}
+.alert[open] {
+  display: flex;
+  flex-direction: column;
+}
+.alert > form {
+  display: contents;
+}
+.alert::backdrop {
+  background: rgb(0 0 0 / 0);
+  transition:
+    background-color var(--dur-fast) var(--curve-standard),
+    overlay var(--dur-fast) allow-discrete,
+    display var(--dur-fast) allow-discrete;
+}
+.alert[open]::backdrop {
+  background: rgb(0 0 0 / 0.3);
+}
+@starting-style {
+  .alert[open]::backdrop {
+    background: rgb(0 0 0 / 0);
+  }
+}
+
+.alert__title,
+.alert__message {
+  margin: 0 var(--space-2);
+  color: var(--label);
+} /* label, never secondary, on glass (CON-1) */
+.alert__title {
+  margin-block-end: var(--space-1);
+  font: 600 var(--fs-headline)/var(--lh-headline) var(--ff-sans);
+  letter-spacing: calc(var(--tr-headline) * var(--tracking-scale));
+  text-wrap: balance;
+}
+.alert__message {
+  min-block-size: 0;
+  overflow-y: auto; /* long messages scroll; title and actions stay */
+  font: 400 var(--fs-subheadline)/var(--lh-subheadline) var(--ff-sans);
+  letter-spacing: calc(var(--tr-subheadline) * var(--tracking-scale));
+}
+.alert__actions {
+  display: flex;
+  flex: none;
+  gap: var(--space-2);
+  margin-block-start: var(--space-5);
+}
+.alert__actions > .alert__action {
+  flex: 1 1 0;
+}
+.alert__actions:has(> :nth-child(3)),
+.alert__actions--stacked {
+  flex-direction: column;
+}
+:is(.alert__actions:has(> :nth-child(3)), .alert__actions--stacked) > .alert__action {
+  flex: none;
+}
+
+/* ---- Actions: capsules on a fill inside the glass (GL-8), label text; destructive red darkened/lightened to ≥ 4.5:1 ---- */
+.alert__action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-inline-size: 0;
+  min-block-size: var(--alert-btn-h); /* HIT-1 */
+  margin: 0;
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid transparent;
+  border-radius: var(--corner-capsule);
+  background-color: var(--fill-tertiary);
+  color: var(--label);
+  font: 600 var(--fs-body)/var(--lh-body) var(--ff-sans);
+  letter-spacing: calc(var(--tr-body) * var(--tracking-scale));
+  text-align: center;
+  text-decoration: none;
+  text-wrap: balance;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+  transition:
+    scale var(--dur-spring-snappy) var(--spring-snappy),
+    background-color var(--dur-fast) var(--curve-out);
+}
+.alert__action--primary {
+  background-color: var(--accent-fill);
+  color: var(--accent-on);
+} /* on-accent pair (COL-3) */
+.alert__action--destructive {
+  color: var(--destructive-text);
+}
+/* States (FB-1…FB-3): the fill stays, a press/hover layer goes on top; press in fast, release on the spring (MOT-11).
+   Pressed follows the press-tracking contract, so sliding off drops it (forced colors: the states block's outline). */
+@media (hover: hover) and (pointer: fine) {
+  .alert__action:not(:disabled, [aria-disabled='true']):hover {
+    background-image: linear-gradient(var(--hover-fill) 0 0);
+  }
+}
+:where(html:not([data-press-tracking]))
+  .alert__action:not(:disabled, [aria-disabled='true']):active,
+.alert__action:not(:disabled, [aria-disabled='true'])[data-pressed] {
+  background-image: linear-gradient(var(--press-fill) 0 0);
+  scale: var(--press-scale); /* 1 under reduced motion (tokens) */
+  transition-duration: var(--dur-press);
+  transition-timing-function: var(--curve-out);
+}
+.alert__action:is(:disabled, [aria-disabled='true']:not([aria-busy='true'])) {
+  opacity: var(--state-disabled-opacity);
+  cursor: default;
+}
+.alert__action:not([aria-busy='true']) > .activity-indicator {
+  display: none;
+} /* busy: core spinner, label color */
+.alert__action > .activity-indicator {
+  inline-size: 1.1em;
+  block-size: 1.1em;
+  color: inherit;
+}
+.alert__action[aria-busy='true'] > svg {
+  display: none;
+}
+
+/* ---- Confirmation dialog / action sheet ---- */
+.confirm-dialog {
+  --alert-pad: 10px;
+  --motion-origin: bottom center;
+  inset: auto var(--margin-page) calc(var(--safe-bottom) + var(--space-2)); /* fallback: bottom action sheet */
+  margin: 0 auto;
+  inline-size: auto;
+  max-inline-size: 30rem;
+  max-block-size: calc(100dvh - 2 * var(--space-4));
+  padding: var(--alert-pad);
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+.confirm-dialog:not(.glass) {
+  border-radius: var(--glass-radius);
+  background: var(--glass-solid);
+  color: var(--label);
+} /* forgot .glass: stay opaque */
+.confirm-dialog:popover-open {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.confirm-dialog::backdrop {
+  background: rgb(0 0 0 / 0.2);
+}
+.confirm-dialog__title,
+.confirm-dialog__message {
+  margin: var(--space-1) var(--space-3) 0;
+  color: var(--label);
+  text-align: center;
+  font: 400 var(--fs-footnote)/var(--lh-footnote) var(--ff-sans);
+  letter-spacing: calc(var(--tr-footnote) * var(--tracking-scale));
+}
+.confirm-dialog__title {
+  font-weight: 600;
+}
+.confirm-dialog__actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.confirm-dialog .alert__action {
+  inline-size: 100%;
+}
+@supports (position-anchor: --a) {
+  .confirm-dialog[style*='position-anchor'] {
+    /* anchored to its source (26 behaviour, MOT-4) */
+    --motion-origin: top right;
+    inset: auto;
+    margin: var(--space-2) 0;
+    inline-size: min(17rem, 100vw - 2 * var(--margin-page));
+    position-area: block-end span-inline-start;
+    position-try-fallbacks:
+      flip-block,
+      flip-inline,
+      flip-block flip-inline;
+  }
+  .confirm-dialog[style*='position-anchor']:dir(rtl) {
+    --motion-origin: top left;
+  }
+  .confirm-dialog[style*='position-anchor']::backdrop {
+    background: none;
+  }
+  .confirm-dialog[style*='position-anchor'] > .confirm-dialog__cancel {
+    display: none;
+  }
+}
+
+@media (forced-colors: active) {
+  .alert__action--primary {
+    forced-color-adjust: none;
+    border-color: Highlight;
+    background-color: Highlight;
+    color: HighlightText;
+  }
+  .alert__action:is(:disabled, [aria-disabled='true']) {
+    color: GrayText;
+    border-color: GrayText;
+  }
+}

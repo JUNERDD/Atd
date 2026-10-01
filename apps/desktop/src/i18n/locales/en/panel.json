@@ -1,12 +1,10 @@
 {
   "header": {
-    "openPanel": "Open task panel",
     "panelLabel": "AI task panel",
     "newChat": "New chat",
     "controlsLabel": "Panel controls",
     "tasks": "Tasks",
     "settings": "Settings",
-    "hide": "Hide panel",
     "loadingConversation": "Loading conversation…"
   },
   "welcome": {
@@ -39,6 +37,11 @@
     "answerPlaceholder": "Type your answer…",
     "interjectPlaceholder": "Send to decline and redirect now…",
     "attachAfterRun": "Attach files after this run finishes.",
+    "importFailed": {
+      "unreadable": "{{name}} could not be read.",
+      "unsupported": "{{name}} is not supported.",
+      "tooLarge": "{{name}} must be a text file smaller than 1 MB."
+    },
     "queued": "Queued messages",
     "sendNow": "Send now",
     "editQueued": "Edit queued message",
@@ -127,7 +130,7 @@
     "editMcpSeed": "Update the existing MCP server \"{{name}}\": ",
     "menu": "Session actions",
     "rename": "Rename session",
-    "copyLink": "Copy session link",
+    "copyId": "Copy session ID",
     "compact": "Compact context",
     "renameTitle": "Rename session",
     "renameDescription": "Give this session a short recognizable name.",
@@ -136,8 +139,8 @@
     "renameCancel": "Cancel",
     "renameSave": "Save",
     "renamed": "Session renamed.",
-    "linkCopied": "Session link copied. Paste the command in Pi to inspect it.",
-    "idCopied": "Session id copied. Its Pi session starts on the first run."
+    "idCopied": "Session ID copied.",
+    "rememberSeed": "Remember this from our conversation:\n\n{{text}}"
   },
   "permission": {
     "tier": {
@@ -252,6 +255,7 @@
       "disconnected": "Disconnected",
       "connecting": "Connecting…",
       "auth_required": "Needs sign-in",
+      "approval_required": "Waiting for approval",
       "ready": "Ready",
       "error": "Error",
       "closing": "Closing…"
@@ -273,13 +277,5 @@
     "text": "This task's context has been compacted {{count}} times. A new task may work better.",
     "newTask": "New task",
     "dismiss": "Dismiss"
-  },
-  "webSignIn": {
-    "title": "Open this page from the desktop app",
-    "none": "This browser is not signed in to the agent service yet. In the desktop app, open Settings and choose Open in browser (the globe button), or run `agent-service web` on this computer.",
-    "expired": "That sign-in link expired or was already used. Open a new one from the desktop app (Settings → Open in browser) or with `agent-service web`.",
-    "offlineTitle": "The agent service is not reachable",
-    "offline": "Start the desktop app or `agent-service serve`, then try again.",
-    "retry": "Try again"
   }
 }

@@ -99,24 +99,17 @@ export function installedEntry(
   const { id, plugin } = installed;
   const enabled = !state.disabled.includes(id);
   const disabledItems = own(state.items, id) ?? [];
-  const approved = own(state.approved, id) ?? [];
   const missing = missingConfigKeys(installed, state, secretsSet);
   const needsConfig = missing.length > 0;
   const items = plugin.components.map((component) => {
     const itemEnabled = !disabledItems.includes(`${component.kind}:${component.name}`);
-    const needsApproval =
-      component.kind === 'mcp' &&
-      component.transport.type === 'stdio' &&
-      !approved.includes(component.name);
     const blockedBy: Blocker | undefined = !enabled
       ? 'plugin'
       : !itemEnabled
         ? 'item'
         : needsConfig
           ? 'config'
-          : needsApproval
-            ? 'approval'
-            : undefined;
+          : undefined;
     return item(
       {
         pluginId: id,

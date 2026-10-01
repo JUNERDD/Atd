@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { useHotkeys, type Options } from 'react-hotkeys-hook';
 import { useTranslation } from 'react-i18next';
-import type { RunPolicy } from '../../../electron/agent/run-policy';
-import type { PreparedCommand, TaskDetail } from '../../../electron/agent/bridge';
-import { emptyInput, isActive } from '../../../electron/agent/task-schema';
-import { EMPTY_QUEUE } from '../../../electron/agent/transcript-schema';
+import type { RunPolicy } from '../../client/agent/run-policy';
+import type { ExtensionSessionKind, PreparedCommand, TaskDetail } from '../../client/agent/bridge';
+import { emptyInput, isActive } from '../../client/agent/task-schema';
+import { EMPTY_QUEUE } from '../../client/agent/transcript-schema';
 import { DEFAULT_SHORTCUTS, type RunReference } from '@ai/agent-contracts';
 import { isComposingKey } from '@ai/ui/lib/ime';
 import {
@@ -15,14 +15,18 @@ import {
   serialize,
   type ComposerDraft,
 } from '../composer-editor/draft';
+import { useMemoryCreate } from '../memory/use-memory-create';
+import { extensionSeed } from './extension-seed';
 import { useSettingsSnapshot } from '../settings/use-settings';
 import { acceleratorToHotkey } from '../../lib/shortcuts';
-import { STORAGE_KEY } from '../../lib/task-store';
 import { agentApi, useAgent, useTaskDetail } from './use-agent';
 import { useChildView } from './use-child-view';
 import { showErrorToast } from '../../components/toast-store';
 import { useAgentNotices } from './use-notices';
 import { focusPanelInput, showPanel, usePanelWindow } from './use-panel-window';
+
+/** Longest answer a Remember seed quotes in full. */
+const REMEMBER_LIMIT = 90_000;
 
 type View = 'new' | 'history' | 'task' | 'input';
 /** The edit-with-AI sentence per extension kind; memory sessions never carry a target. */
@@ -49,8 +53,13 @@ export function useTaskPanel() {
   const { t } = useTranslation('panel');
   const agent = useAgent();
   useAgentNotices();
-  const { snapshot } = useSettingsSnapshot();
-  const { hidden, setHidden, openSettings, hide } = usePanelWindow();
+  const { snapshot, failed: settingsFailed } = useSettingsSnapshot();
+  const { t: tSettings } = useTranslation('settings');
+  // The panel has no place for the settings window's inline error; a failed read toasts once.
+  useEffect(() => {
+    if (settingsFailed) showErrorToast(tSettings('window.loadError'));
+  }, [settingsFailed, tSettings]);
+  const { openSettings, hide } = usePanelWindow();
   const [draftRevision, setDraftRevision] = useState(0);
   const [view, setView] = useState<View>('new');
   const [taskId, setTaskId] = useState<string | null>(null);
@@ -62,6 +71,7 @@ export function useTaskPanel() {
   const [drafts, setDrafts] = useState<Record<string, ComposerDraft>>({});
   const [pending, setPending] = useState(false);
   const submission = useRef<{ key: string; id: string } | null>(null);
+  const memoryCreate = useMemoryCreate();
   const current = useTaskDetail(taskId);
   const child = useChildView(view === 'task' ? taskId : null, current.detail?.requests ?? []);
   const draftKey = view === 'task' && taskId ? taskId : 'new';
@@ -99,7 +109,7 @@ export function useTaskPanel() {
   useEffect(() => {
     const bridge = window.desktop?.agent;
     if (!bridge) return;
-    const unsubscribe = bridge.onLaunch(({ prepared: value, autoRun: run }) => {
+    return bridge.onLaunch(({ prepared: value, autoRun: run }) => {
       if (run) {
         // A shortcut run never shows the command input: the panel is revealed when its task is on
         // screen, or on the input page with the failure when the run cannot start.
@@ -110,12 +120,6 @@ export function useTaskPanel() {
       setView('input');
       setRevealCount((count) => count + 1);
     });
-    void Promise.resolve()
-      .then(() =>
-        bridge.importLegacy(localStorage.getItem(STORAGE_KEY) ?? '{"version":1,"tasks":[]}'),
-      )
-      .catch((error) => showErrorToast(error));
-    return unsubscribe;
   }, []);
   // The command editor hands its work to the panel: a fresh session gets the seed text in the `new`
   // draft, so the user completes the intent and sends it with the agent's tools.
@@ -131,31 +135,17 @@ export function useTaskPanel() {
       focusPanelInput();
     });
   }, [t]);
-  // Create-with-AI (Extensions, Memory) seeds a `create-*` skill chip and a space on the new
-  // draft; edit-with-AI adds a sentence naming the existing item after the space. Submit stages the
-  // chip's skill, so removing the chip also drops the skill.
+  // Create-with-AI (Extensions, Memory) seeds a `create-*` skill chip on the new draft;
+  // edit-with-AI adds a sentence naming the existing item.
   useEffect(() => {
     const bridge = window.desktop?.agent;
     if (!bridge) return;
-    return bridge.onExtensionSession(({ kind, target }) => {
-      newTask();
-      const edit =
-        target === null || kind === 'memory' ? '' : t(EDIT_SEEDS[kind], { name: target });
-      const seed = serialize([{ kind: 'skill', name: `create-${kind}` }, ' ', edit], []);
-      setDrafts((previous) => ({ ...previous, new: seed }));
-      setPolicies((previous) => ({
-        ...previous,
-        new: {
-          // Memory writes use the memory tools `memory` enables; `read` (with its search tools)
-          // lets the user point at a file to remember from. The other skills write files.
-          tools: kind === 'memory' ? ['read'] : ['read', 'write', 'edit', 'bash', 'command'],
-          memory: true,
-          useDefaultModel: false,
-          confirmExpansion: false,
-        },
-      }));
-      focusPanelInput();
-    });
+    return bridge.onExtensionSession(({ kind, target }) =>
+      startSeeded(
+        kind,
+        target === null || kind === 'memory' ? '' : t(EDIT_SEEDS[kind], { name: target }),
+      ),
+    );
   }, [t]);
   // A failed start restores the command input for repair. The reveal counter is raised together
   // with the launched view, so the commit that reveals the panel already renders that view; every
@@ -192,6 +182,28 @@ export function useTaskPanel() {
     setView('new');
     setTaskId(null);
     setPrepared(null);
+  }
+  /** A create-with-AI session on the new draft (`extensionSeed`). */
+  function startSeeded(kind: ExtensionSessionKind, sentence: string) {
+    newTask();
+    const seed = extensionSeed(kind, sentence);
+    setDrafts((previous) => ({ ...previous, new: seed.draft }));
+    setPolicies((previous) => ({ ...previous, new: seed.policy }));
+    focusPanelInput();
+  }
+  /** Shows a task, as choosing it from the history does. */
+  function openTask(id: string) {
+    setTaskId(id);
+    setView('task');
+  }
+  /** A memory session seeded with `text` (a turn's answer), once memory can save it. */
+  function remember(text: string) {
+    // The seed becomes the draft, whose text the service caps at 100,000 characters; a longer
+    // answer is cut with an ellipsis, leaving room for the chip and the sentence around it.
+    const quoted = text.length > REMEMBER_LIMIT ? `${text.slice(0, REMEMBER_LIMIT)}…` : text;
+    void memoryCreate.start(null, () =>
+      startSeeded('memory', t('session.rememberSeed', { text: quoted })),
+    );
   }
   function changeDraft(value: ComposerDraft) {
     setDrafts((previous) => ({ ...previous, [draftKey]: value }));
@@ -304,11 +316,8 @@ export function useTaskPanel() {
     view,
     setView,
     taskId,
-    setTaskId,
     prepared,
     setPrepared,
-    hidden,
-    setHidden,
     pending,
     current,
     child,
@@ -316,10 +325,10 @@ export function useTaskPanel() {
     draftRevision,
     draft,
     shortcuts,
-    platform,
     newTask,
+    openTask,
+    remember,
     openSettings,
-    hide,
     changeDraft,
     chooseCommand,
     submit,

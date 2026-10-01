@@ -1,30 +1,35 @@
 import { randomUUID } from 'node:crypto';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+import { Type } from 'typebox';
 import {
+  McpServerEnabledRequestSchema,
+  McpServerIdSchema,
+  McpServerUpsertRequestSchema,
   parse,
   type McpAuthCompleteResponse,
   type McpAuthStartResponse,
   type McpCallResult,
   type McpGetPromptResponse,
   type McpReadResourceResponse,
-  type McpServerConfig,
-  type McpServerStatus,
+  type McpServersResponse,
   type McpSnapshot,
+  type McpStatusResponse,
 } from '@ai/agent-contracts';
 import type { McpAuthority } from './authority.js';
 import { McpError, type OperationContext } from './errors.js';
-import { ADAPTER_VERSION, McpAdapterMissing } from './loader.js';
 import { promptPreviewToInput } from './mapping.js';
+import { serverView } from './server-edits.js';
 import {
   McpAuthCompleteRequestSchema,
   McpCallToolRequestSchema,
-  McpConfigureRequestSchema,
   McpGetPromptRequestSchema,
   McpReadResourceRequestSchema,
   McpServerRequestSchema,
   McpStageRequestSchema,
 } from './requests.js';
 import { stageTaskMcp } from './staging.js';
+import { RENDERER_ROUTE, SHELL_ROUTE } from '../relay-routes.js';
+import { registerLaunchRoutes } from './launch-routes.js';
 
 /**
  * MCP route handlers, UNMOUNTED (D6/T34int). T34int mounts them via
@@ -39,10 +44,15 @@ export interface McpRouteDeps {
 
 /**
  * Defers the authority load to first use so boot never pays for it. Resolving
- * it is the adapter's own cached per-profile load, so calling it per request
- * is a no-op once warm and rejects with `McpAdapterMissing` when it is not.
+ * it is the authority's cached per-profile load (`McpAuthority.authorityFor`),
+ * so calling it per request is a no-op once warm.
  */
 export type McpAuthorityResolver = () => Promise<McpAuthority>;
+
+const ServerParamsSchema = Type.Object(
+  { serverId: McpServerIdSchema },
+  { additionalProperties: false },
+);
 
 const ANONYMOUS_OP: OperationContext = {
   operationId: 'mcp-direct',
@@ -65,12 +75,29 @@ function opFrom(body: {
   };
 }
 
-export function handleMcpStatus(deps: McpRouteDeps): { servers: McpServerStatus[] } {
-  return { servers: deps.authority.snapshot().servers };
+/** Status rows with their plugin and launch approval, and the one-time approval notice. */
+export function handleMcpStatus(deps: McpRouteDeps): Promise<McpStatusResponse> {
+  return deps.authority.launches.status(deps.authority.snapshot());
 }
 
-export function handleMcpRecords(deps: McpRouteDeps): { servers: McpServerConfig[] } {
-  return { servers: deps.authority.configured() };
+/** The user's servers with env and header values redacted (mcp/server-edits.ts). */
+export function handleMcpRecords(deps: McpRouteDeps): McpServersResponse {
+  return { servers: deps.authority.configured().map(serverView) };
+}
+
+export async function handleMcpUpsert(deps: McpRouteDeps, serverId: string, body: unknown) {
+  await deps.authority.upsert(serverId, parse(McpServerUpsertRequestSchema, body));
+  return handleMcpRecords(deps);
+}
+
+export async function handleMcpSetEnabled(deps: McpRouteDeps, serverId: string, body: unknown) {
+  await deps.authority.setEnabled(serverId, parse(McpServerEnabledRequestSchema, body).enabled);
+  return handleMcpRecords(deps);
+}
+
+export async function handleMcpRemove(deps: McpRouteDeps, serverId: string) {
+  await deps.authority.remove(serverId);
+  return handleMcpRecords(deps);
 }
 
 export function handleMcpSnapshot(deps: McpRouteDeps): McpSnapshot {
@@ -86,11 +113,6 @@ export async function handleMcpStage(dataDir: string, body: unknown) {
   const parsed = parse(McpStageRequestSchema, body);
   const staging = await stageTaskMcp(dataDir, parsed.taskId, parsed.tools);
   return { taskId: parsed.taskId, tools: staging.tools, stagedAt: staging.stagedAt };
-}
-
-export async function handleMcpConfigure(deps: McpRouteDeps, body: unknown) {
-  const parsed = parse(McpConfigureRequestSchema, body);
-  return { servers: await deps.authority.configure(parsed) };
 }
 
 export async function handleMcpConnect(deps: McpRouteDeps, body: unknown, signal?: AbortSignal) {
@@ -237,10 +259,12 @@ export function mcpErrorStatus(code: McpError['code']): number {
     case 'auth_required':
       return 401;
     case 'forbidden':
+    case 'approval_required':
       return 403;
     case 'not_found':
       return 404;
     case 'conflict':
+    case 'approval_changed':
       return 409;
     case 'gone':
       return 410;
@@ -249,54 +273,60 @@ export function mcpErrorStatus(code: McpError['code']): number {
   }
 }
 
-/** The degraded contract: every MCP route answers this when the adapter is missing. */
-const ADAPTER_MISSING_MESSAGE = `MCP is unavailable: pi-mcp-adapter ${ADAPTER_VERSION} could not be loaded.`;
-
 /**
  * Mounts the MCP handlers against a lazy authority so publishing the endpoint
- * never waits for the adapter. The resolver runs per request and the handlers
- * still see a resolved authority. Every route is authenticated by the service
- * bearer hook like all other routes, and both failure shapes are translated
- * here: `McpAdapterMissing` degrades explicitly to 503 (never a 500, never a
- * fake success) and `McpError` keeps its own status.
+ * never waits for the authority to load. The resolver runs per request and the
+ * handlers still see a resolved authority. Every route is authenticated by the
+ * service bearer hook like all other routes, and an `McpError` keeps its own
+ * status.
  */
 export function registerMcpRoutes(app: FastifyInstance, authority: McpAuthorityResolver): void {
+  const run = async <T>(reply: FastifyReply, work: (deps: McpRouteDeps) => T | Promise<T>) => {
+    try {
+      return await work({ authority: await authority() });
+    } catch (error) {
+      if (error instanceof McpError) {
+        reply
+          .status(mcpErrorStatus(error.code))
+          .send({ error: { code: error.code, message: error.message } });
+        return;
+      }
+      throw error;
+    }
+  };
   const wrap =
     <T>(handler: (deps: McpRouteDeps, body: unknown) => T | Promise<T>) =>
+    (request: FastifyRequest, reply: FastifyReply) =>
+      run(reply, (deps) => handler(deps, request.body));
+  // One user server by path; a malformed id is a 400 before the authority loads.
+  const wrapServer =
+    <T>(handler: (deps: McpRouteDeps, serverId: string, body: unknown) => T | Promise<T>) =>
     async (request: FastifyRequest, reply: FastifyReply) => {
-      try {
-        return await handler({ authority: await authority() }, request.body);
-      } catch (error) {
-        if (error instanceof McpAdapterMissing) {
-          reply.status(503).send({ error: { code: 'internal', message: ADAPTER_MISSING_MESSAGE } });
-          return;
-        }
-        if (error instanceof McpError) {
-          reply
-            .status(mcpErrorStatus(error.code))
-            .send({ error: { code: error.code, message: error.message } });
-          return;
-        }
-        throw error;
-      }
+      const { serverId } = parse(ServerParamsSchema, request.params);
+      return run(reply, (deps) => handler(deps, serverId, request.body));
     };
-  app.get('/v1/mcp/status', wrap(handleMcpStatus));
-  app.get('/v1/mcp/servers', wrap(handleMcpRecords));
-  app.get('/v1/mcp/snapshot', wrap(handleMcpSnapshot));
-  app.post('/v1/mcp/configure', wrap(handleMcpConfigure));
-  app.post('/v1/mcp/connect', wrap(handleMcpConnect));
-  app.post('/v1/mcp/disconnect', wrap(handleMcpDisconnect));
-  app.post('/v1/mcp/reconnect', wrap(handleMcpReconnect));
-  app.post('/v1/mcp/revoke', wrap(handleMcpRevoke));
-  app.post('/v1/mcp/auth/start', wrap(handleMcpAuthStart));
-  app.post('/v1/mcp/auth/complete', wrap(handleMcpAuthComplete));
-  app.post('/v1/mcp/refresh', wrap(handleMcpRefresh));
-  app.post('/v1/mcp/logout', wrap(handleMcpLogout));
-  app.post('/v1/mcp/tools/list', wrap(handleMcpListTools));
-  app.post('/v1/mcp/tools/call', wrap(handleMcpCallTool));
-  app.post('/v1/mcp/resources/list', wrap(handleMcpListResources));
-  app.post('/v1/mcp/resources/templates', wrap(handleMcpListResourceTemplates));
-  app.post('/v1/mcp/resources/read', wrap(handleMcpReadResource));
-  app.post('/v1/mcp/prompts/list', wrap(handleMcpListPrompts));
-  app.post('/v1/mcp/prompts/get', wrap(handleMcpGetPrompt));
+  // The renderer (through the shell relay) reaches only status, its server edits, connect, OAuth
+  // and approval withdrawal; direct operations on servers are for main-token clients alone.
+  app.get('/v1/mcp/status', RENDERER_ROUTE, wrap(handleMcpStatus));
+  app.get('/v1/mcp/servers', RENDERER_ROUTE, wrap(handleMcpRecords));
+  app.put('/v1/mcp/servers/:serverId', RENDERER_ROUTE, wrapServer(handleMcpUpsert));
+  app.post('/v1/mcp/servers/:serverId/enabled', RENDERER_ROUTE, wrapServer(handleMcpSetEnabled));
+  app.delete('/v1/mcp/servers/:serverId', RENDERER_ROUTE, wrapServer(handleMcpRemove));
+  app.get('/v1/mcp/snapshot', SHELL_ROUTE, wrap(handleMcpSnapshot));
+  app.post('/v1/mcp/connect', RENDERER_ROUTE, wrap(handleMcpConnect));
+  app.post('/v1/mcp/disconnect', SHELL_ROUTE, wrap(handleMcpDisconnect));
+  app.post('/v1/mcp/reconnect', SHELL_ROUTE, wrap(handleMcpReconnect));
+  app.post('/v1/mcp/revoke', SHELL_ROUTE, wrap(handleMcpRevoke));
+  app.post('/v1/mcp/auth/start', RENDERER_ROUTE, wrap(handleMcpAuthStart));
+  app.post('/v1/mcp/auth/complete', RENDERER_ROUTE, wrap(handleMcpAuthComplete));
+  app.post('/v1/mcp/refresh', SHELL_ROUTE, wrap(handleMcpRefresh));
+  app.post('/v1/mcp/logout', SHELL_ROUTE, wrap(handleMcpLogout));
+  app.post('/v1/mcp/tools/list', SHELL_ROUTE, wrap(handleMcpListTools));
+  app.post('/v1/mcp/tools/call', SHELL_ROUTE, wrap(handleMcpCallTool));
+  app.post('/v1/mcp/resources/list', SHELL_ROUTE, wrap(handleMcpListResources));
+  app.post('/v1/mcp/resources/templates', SHELL_ROUTE, wrap(handleMcpListResourceTemplates));
+  app.post('/v1/mcp/resources/read', SHELL_ROUTE, wrap(handleMcpReadResource));
+  app.post('/v1/mcp/prompts/list', SHELL_ROUTE, wrap(handleMcpListPrompts));
+  app.post('/v1/mcp/prompts/get', SHELL_ROUTE, wrap(handleMcpGetPrompt));
+  registerLaunchRoutes(app, wrap, wrapServer);
 }

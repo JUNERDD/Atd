@@ -20,7 +20,6 @@ import { Type, type Static } from 'typebox';
  * - `GET    /v1/plugins/:id`                                 → PluginDetail
  * - `POST   /v1/plugins/:id/enabled`                         PluginEnabledRequest → PluginDetail
  * - `POST   /v1/plugins/:id/items/:kind/:name/enabled`       PluginEnabledRequest → PluginDetail
- * - `POST   /v1/plugins/:id/servers/:name/approval`          PluginApprovalRequest → PluginDetail
  * - `PUT    /v1/plugins/:id/config`                          PluginConfigRequest → PluginDetail
  * - `POST   /v1/plugins/:id/items/:kind/:name/duplicate`     → PluginDuplicateResponse
  * - `POST   /v1/plugins/preview`                             PluginPreviewRequest → PluginInstallPreview
@@ -105,7 +104,6 @@ export const PluginItemSchema = Type.Object(
       Type.Union([
         Type.Literal('plugin'),
         Type.Literal('item'),
-        Type.Literal('approval'),
         Type.Literal('config'),
         Type.Literal('collision'),
       ]),
@@ -145,12 +143,6 @@ export const PluginEnabledRequestSchema = Type.Object(
 );
 export type PluginEnabledRequest = Static<typeof PluginEnabledRequestSchema>;
 
-export const PluginApprovalRequestSchema = Type.Object(
-  { approved: Type.Boolean() },
-  { additionalProperties: false },
-);
-export type PluginApprovalRequest = Static<typeof PluginApprovalRequestSchema>;
-
 /** `null` clears a value. */
 export const PluginConfigRequestSchema = Type.Object(
   {
@@ -163,8 +155,16 @@ export const PluginConfigRequestSchema = Type.Object(
 );
 export type PluginConfigRequest = Static<typeof PluginConfigRequestSchema>;
 
+/**
+ * `omitted` names the env and header entries an MCP copy left out because the plugin filled them
+ * from a sensitive setting or an environment variable; they need re-entry. Empty for other kinds.
+ */
 export const PluginDuplicateResponseSchema = Type.Object(
-  { kind: PluginItemKindSchema, name: Type.String({ maxLength: 256 }) },
+  {
+    kind: PluginItemKindSchema,
+    name: Type.String({ maxLength: 256 }),
+    omitted: Type.Array(Type.String({ maxLength: 256 })),
+  },
   { additionalProperties: false },
 );
 export type PluginDuplicateResponse = Static<typeof PluginDuplicateResponseSchema>;

@@ -54,7 +54,7 @@ const catalog: ResolvedCatalog = {
     item('builtin:core', 'skill', 'plan'),
     item('builtin:core', 'memory', 'hermes'),
     item('beta', 'skill', 'beta:z'),
-    item('beta', 'mcp', 'beta:db', 'approval'),
+    item('beta', 'mcp', 'beta:db', 'config'),
     item('beta', 'skill', 'beta:a'),
     item('alpha', 'command', 'alpha:go'),
     item('idle', 'agent', 'idle:x', 'collision'),

@@ -1,0 +1,43 @@
+/* @block field-message | requires: — | layer: components | native: an inline Label (symbol + text) under a TextField | Inline validation and status text for fields (FB-5) */
+/* Pair each message with its field: aria-describedby, plus aria-invalid="true" on an error.
+   The text stays --label: system red is 3.57:1 on white, green and orange ~2.2:1 (fail CON-1 for footnote
+   text), so the tone goes on the icon and the field border and the meaning goes in the words. */
+.field-message {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+  margin-block-start: 6px;
+  font: 400 var(--fs-footnote)/var(--lh-footnote) var(--ff-sans);
+  letter-spacing: calc(var(--tr-footnote) * var(--tracking-scale));
+  color: var(--secondary-label); /* neutral hint */
+}
+.field-message > :is(svg, .activity-indicator) {
+  flex: none;
+  inline-size: 1.1em;
+  block-size: 1.1em;
+  margin-block-start: 0.1em;
+  fill: currentColor;
+}
+.field-message[data-tone] {
+  color: var(--label);
+}
+.field-message[data-tone='error'] > svg {
+  color: var(--state-error);
+}
+.field-message[data-tone='warning'] > svg {
+  color: var(--state-warning);
+}
+.field-message[data-tone='success'] > svg {
+  color: var(--state-success);
+}
+:is(input, textarea, select)[aria-invalid='true'] {
+  box-shadow: inset 0 0 0 1px var(--state-error);
+}
+@media (forced-colors: active) {
+  /* box-shadow is dropped in forced colors: keep a visible invalid mark */
+  :is(input, textarea, select)[aria-invalid='true'] {
+    outline: 2px dashed CanvasText;
+    outline-offset: 1px;
+  }
+}

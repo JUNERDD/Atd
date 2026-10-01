@@ -1,48 +1,28 @@
 import { createHash } from 'node:crypto';
-import { readFile, stat } from 'node:fs/promises';
+import { stat } from 'node:fs/promises';
 import path from 'node:path';
-import { Type, type Static } from 'typebox';
+import { Type } from 'typebox';
 import { McpServerConfigSchema, parse, type McpServerConfig } from '@ai/agent-contracts';
 import { KeyringBackend, keyringMcpAccount } from '../credentials/keyring.js';
 import { mcpServerKey } from '../credentials/server-keys.js';
-import { atomicWrite } from '../config.js';
-import type { AdapterMcpConfig, AdapterServerEntry } from './adapter-types.js';
-import type { SecretResolver } from './errors.js';
-import { McpConfigureRequestSchema } from './requests.js';
+import { McpError, type SecretResolver } from './errors.js';
+import type { McpLaunchSpec } from './types.js';
 
 /**
- * Service MCP server records: validation, persistence, stdio/HTTP
- * diagnostics and the adapter config snapshot. Persisted records never
- * carry secrets; bearer tokens resolve at connect time from the keyring
- * (or an explicit env var) into an in-memory adapter entry only.
+ * Service MCP server records: validation, stdio/HTTP diagnostics and the launch spec of a record.
+ * Records at rest live in `servers.json` and the keyring (mcp/server-store.ts); bearer tokens
+ * resolve at connect time from the keyring (or an explicit env var) into the in-memory resolved
+ * launch only (mcp/launch-resolve.ts).
  */
 
-const ServerFileSchema = Type.Object(
-  { version: Type.Literal(1), servers: Type.Array(McpServerConfigSchema) },
+/** The user catalog as a whole: at most 100 servers. */
+const ServerListSchema = Type.Object(
+  { servers: Type.Array(McpServerConfigSchema, { maxItems: 100 }) },
   { additionalProperties: false },
 );
-type ServerFile = Static<typeof ServerFileSchema>;
 
 export function serversFile(dataDir: string): string {
   return path.join(dataDir, 'mcp', 'servers.json');
-}
-
-export async function loadServerRecords(dataDir: string): Promise<McpServerConfig[]> {
-  try {
-    const raw = JSON.parse(await readFile(serversFile(dataDir), 'utf8')) as unknown;
-    const file: ServerFile = parse(ServerFileSchema, raw);
-    return parseServerConfigs({ servers: file.servers });
-  } catch (error) {
-    if (error instanceof Error && 'code' in error && error.code === 'ENOENT') return [];
-    throw new Error('Saved MCP servers could not be read. The file is preserved.');
-  }
-}
-
-export async function saveServerRecords(
-  dataDir: string,
-  servers: McpServerConfig[],
-): Promise<void> {
-  await atomicWrite(serversFile(dataDir), { version: 1, servers });
 }
 
 /**
@@ -66,7 +46,7 @@ export function reviseRecords(
 
 /** Parses + cross-checks server configs (transport halves must match). */
 export function parseServerConfigs(input: unknown): McpServerConfig[] {
-  const { servers } = parse(McpConfigureRequestSchema, input);
+  const { servers } = parse(ServerListSchema, input);
   const seen = new Set<string>();
   for (const server of servers) {
     if (seen.has(server.serverId)) throw new Error(`Duplicate MCP server ${server.serverId}.`);
@@ -189,69 +169,58 @@ function missingDetail(command: string, searched: string[]): string {
 }
 
 /**
- * Builds one adapter entry from a record. Secrets resolve separately at
- * connect time; this output carries only non-secret configuration.
+ * What connecting `record` would run or dial, before any env reference is filled in and with the
+ * command as configured (`ConnectionManager.launchSpec` swaps in the probed executable). Launch
+ * approvals fingerprint exactly these values, which are the ones pi-mcp-adapter's server entry
+ * carried, so approvals stored before the migration still match. Secrets resolve separately at
+ * connect time; this output carries only what the record holds.
  */
-export function toAdapterServerEntry(record: McpServerConfig): AdapterServerEntry {
-  const entry: AdapterServerEntry = {
-    lifecycle: 'lazy',
-    exposeResources: record.exposeResources,
-    directTools: false,
-    includeTools: [...record.includeTools],
-    excludeTools: [...record.excludeTools],
-    approveTools: Array.isArray(record.approveTools)
-      ? [...record.approveTools]
-      : record.approveTools,
-    disabled: record.disabled,
-    protocolVersion: 'legacy',
+export function toLaunchSpec(record: McpServerConfig): McpLaunchSpec {
+  const { stdio, http } = record;
+  return {
+    ...(stdio
+      ? {
+          command: stdio.command,
+          args: [...stdio.args],
+          env: { ...stdio.env },
+          inheritEnv: false,
+          ...(stdio.cwd ? { cwd: stdio.cwd } : {}),
+        }
+      : {}),
+    ...(http ? { url: http.url, headers: { ...http.headers } } : {}),
   };
-  if (record.requestTimeoutMs !== null) entry.requestTimeoutMs = record.requestTimeoutMs;
-  if (record.stdio) {
-    entry.command = record.stdio.command;
-    entry.args = [...record.stdio.args];
-    entry.env = { ...record.stdio.env };
-    entry.inheritEnv = false;
-    if (record.stdio.cwd) entry.cwd = record.stdio.cwd;
-  }
-  if (record.http) {
-    entry.url = record.http.url;
-    entry.headers = { ...record.http.headers };
-    entry.httpTransport = record.http.transport;
-    if (record.http.auth.type === 'none') entry.auth = false;
-    else if (record.http.auth.type === 'bearer') entry.auth = 'bearer';
-    else {
-      entry.auth = 'oauth';
-      const oauth: { scope?: string; redirectUri?: string; clientName?: string } = {
-        clientName: 'Agent Service',
-      };
-      if (record.http.auth.scope) oauth.scope = record.http.auth.scope;
-      if (record.http.auth.redirectUri) oauth.redirectUri = record.http.auth.redirectUri;
-      entry.oauth = oauth;
-    }
-  }
-  return entry;
 }
 
-/** Full config snapshot for createMcpAdapter; never a configPath merge. */
-export function toAdapterConfig(records: McpServerConfig[]): AdapterMcpConfig {
-  const mcpServers: Record<string, AdapterServerEntry> = {};
-  for (const record of records) mcpServers[record.serverId] = toAdapterServerEntry(record);
-  return {
-    mcpServers,
-    settings: {
-      directTools: false,
-      scriptMode: false,
-      autoAuth: false,
-      sampling: false,
-      elicitation: false,
-      outputGuard: true,
-    },
-  };
+/**
+ * The env or header value that starts with a single `!` (`!!` is the escape for a literal `!`),
+ * named as `env NAME` or `header Name`; null when there is none. pi-mcp-adapter ran such a value
+ * as a shell command in the service process. Nothing runs it now: the launch gate refuses the
+ * launch, and the resolver (mcp/launch-resolve.ts) throws if one ever reaches it.
+ */
+export function commandValueField(spec: McpLaunchSpec): string | null {
+  const fields = [
+    ['env', spec.env],
+    ['header', spec.headers],
+  ] as const;
+  for (const [kind, values] of fields)
+    for (const [name, value] of Object.entries(values ?? {}))
+      if (value.startsWith('!') && !value.startsWith('!!')) return `${kind} ${name}`;
+  return null;
+}
+
+/** The refusal for a `commandValueField` hit, worded as it always was: a field, never a value. */
+export function commandValueRefusal(serverId: string, field: string): McpError {
+  return new McpError(
+    'forbidden',
+    serverId,
+    `MCP server ${serverId} sets ${field} to a value starting with "!", which would run as a command; write "!!" for a literal "!".`,
+  );
 }
 
 /**
  * Connection reuse key: connectionId + configRevision + credential
  * principal + cwd/env scope. Secret VALUES never enter the key, only names.
+ * A pooled connection opened for another key is never reused (mcp/pool.ts).
  */
 export function reuseKey(record: McpServerConfig): string {
   const scope = record.stdio
@@ -264,7 +233,10 @@ export function reuseKey(record: McpServerConfig): string {
 }
 
 /** Stable credential identity from migration v1 server keys. */
-export function credentialIdentity(serviceId: string, record: McpServerConfig): string {
+export function credentialIdentity(
+  serviceId: string,
+  record: Pick<McpServerConfig, 'serverId' | 'principal'>,
+): string {
   return mcpServerKey(serviceId, record.serverId, record.principal);
 }
 
@@ -308,7 +280,7 @@ export function isTaskAlias(record: McpServerConfig, name: string): boolean {
   return name !== record.serverId && name.startsWith(`${record.serverId}__t__`);
 }
 
-/** Minimal include/exclude matcher (`*` wildcards); adapter stays authoritative. */
+/** Minimal include/exclude matcher (`*` wildcards). */
 export function matchToolPattern(patterns: string[], candidates: string[]): boolean {
   return patterns.some((pattern) => candidates.some((candidate) => glob(pattern, candidate)));
 }

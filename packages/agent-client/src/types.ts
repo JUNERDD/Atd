@@ -8,13 +8,36 @@ import type {
   TaskSnapshot,
 } from '@ai/agent-contracts';
 
-/**
- * Connection options. The token is the service owner token (desktop, CLI) or a paired browser
- * session token; both travel as `Authorization: Bearer`.
- */
-export interface AgentClientOptions {
+/** A client that holds the service owner token (desktop main process, CLI) and sends it itself. */
+export interface TokenClientOptions {
   baseUrl: string;
   token: string;
+}
+
+/**
+ * A page whose host relays its requests to the service (the macOS shell's `ai-app:` scheme
+ * handler and its stream bridge). The relay adds the credential, so the page holds none.
+ */
+export interface RelayClientOptions {
+  baseUrl: string;
+  relay: true;
+}
+
+/** Connection options: exactly one way to authenticate, chosen by the caller's host. */
+export type AgentClientOptions = TokenClientOptions | RelayClientOptions;
+
+/**
+ * Marks a request as the page's own call through the relay. WebKit sends no CORS preflight for a
+ * custom scheme, so the relay refuses state-changing requests without this header; every relayed
+ * request carries it.
+ */
+export const RELAY_HEADER = 'x-ai-relay';
+
+/** The authentication headers for one request: the bearer token, or the relay marker. */
+export function authHeaders(options: AgentClientOptions): Record<string, string> {
+  return 'token' in options
+    ? { authorization: `Bearer ${options.token}` }
+    : { [RELAY_HEADER]: '1' };
 }
 
 /** Typed failure for HTTP error envelopes. */

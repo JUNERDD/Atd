@@ -95,6 +95,7 @@ export class TaskRunner {
         },
         runId: () => this.currentRunId,
         cwd: path.join(ctx.paths.tasksDir, taskId, 'output'),
+        dataDir: ctx.paths.root,
         log: ctx.log,
       }),
       audit: (entry) => this.audit?.append(entry),
@@ -226,8 +227,8 @@ export class TaskRunner {
       else if (state !== 'cancelled' && state !== 'interrupted')
         await this.setStatus(run.id, 'failed', errorMessage(error));
     } finally {
-      // Only the catalog outlives the run: a compaction of the idle session re-sends it
-      // (skills/session-catalog.ts), while attachment and skill text would only hold memory.
+      // Only the catalog outlives the run: a prompt the idle session sends keeps its system prompt
+      // section (skills/session-catalog.ts), while attachment and skill text would only hold memory.
       this.material = { ...NO_RUN_MATERIAL, catalog: this.material.catalog };
       await releaseRunSelections(this.session, run.id);
       await this.audit?.flush();

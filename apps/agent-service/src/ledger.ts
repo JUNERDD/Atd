@@ -42,6 +42,7 @@ function emptyLedger(): LedgerData {
  */
 export class Ledger {
   private chain: Promise<void> = Promise.resolve();
+  private readonly listeners = new Set<() => void>();
   private constructor(
     private readonly file: string,
     public data: LedgerData,
@@ -70,6 +71,7 @@ export class Ledger {
       const result = await update(draft);
       await atomicWrite(this.file, parseLedger(draft));
       this.data = draft;
+      this.notify();
       return result;
     });
     this.chain = operation.then(
@@ -77,6 +79,24 @@ export class Ledger {
       () => undefined,
     );
     return operation;
+  }
+
+  /** Runs `listener` after each change lands, with `data` already updated; failures are isolated. */
+  onChanged(listener: () => void): () => void {
+    this.listeners.add(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
+  }
+
+  private notify(): void {
+    for (const listener of this.listeners) {
+      try {
+        listener();
+      } catch {
+        // A broken listener must not fail the change that already landed.
+      }
+    }
   }
 
   task(taskId: string): AgentTask {

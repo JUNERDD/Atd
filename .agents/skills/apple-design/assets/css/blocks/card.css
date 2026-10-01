@@ -1,0 +1,110 @@
+/* @block card | requires: states | layer: components | native: — | opaque rounded content card (grouped fill, concentric inner radius), whole-card link via .pressable; never glass (GL-1, CMP-3) */
+/* Markup. One tap target per card, plus at most one secondary control (components §5.3):
+     <a class="card pressable" href="/trips/kyoto">
+       <img class="card__media" src="kyoto.jpg" alt="" width="640" height="360">
+       <h3 class="card__title">Kyoto</h3>
+       <p class="card__subtitle">12 photos · Updated today</p>
+     </a>
+   With a secondary control, make the card a <div> and the title the link: <a class="card__link" href="…">Kyoto</a>;
+   its ::after covers the card and other controls stay on top. .card__media--bleed runs the image edge to edge.
+   Separate cards with spacing, not shadows or strokes. On a plain white page set --card-bg: var(--secondary-system-background). */
+
+.card {
+  --glass-ink: initial; /* opaque card: accent ink even inside glass */
+  --card-pad: var(--space-4);
+  --card-radius: var(--corner-list); /* 26 px, like inset-grouped sections (CMP-7) */
+  --card-bg: var(--secondary-system-grouped-background);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--card-pad);
+  border-radius: var(--card-radius);
+  outline: 1px solid transparent; /* invisible; the card's edge in forced colors */
+  outline-offset: -1px;
+  background-color: var(--card-bg);
+  color: var(--label);
+  text-decoration: none;
+}
+.card__media {
+  display: block;
+  inline-size: 100%;
+  block-size: auto;
+  border-radius: max(
+    var(--corner-xs),
+    calc(var(--card-radius) - var(--card-pad))
+  ); /* concentric (GL-6) */
+  object-fit: cover;
+}
+.card__media--bleed {
+  inline-size: calc(100% + 2 * var(--card-pad));
+  max-inline-size: none;
+  margin: calc(-1 * var(--card-pad)) calc(-1 * var(--card-pad)) var(--space-2);
+  border-radius: var(--card-radius) var(--card-radius) 0 0;
+}
+.card__title {
+  margin: 0;
+  font: 600 var(--fs-headline)/var(--lh-headline) var(--ff-sans);
+  letter-spacing: calc(var(--tr-headline) * var(--tracking-scale));
+}
+.card__subtitle {
+  margin: 0;
+  color: var(--secondary-label);
+  font: 400 var(--fs-subheadline)/var(--lh-subheadline) var(--ff-sans);
+  letter-spacing: calc(var(--tr-subheadline) * var(--tracking-scale));
+}
+.card__link {
+  color: inherit;
+  text-decoration: none;
+}
+.card__link::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
+}
+.card:has(.card__link) :is(a:not(.card__link), button, input, select, textarea, label) {
+  position: relative;
+  z-index: 1;
+}
+.card__link:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+/* Keyboard focus rings the whole card (FB-6); these beat .card's own transparent outline above. */
+.card.pressable:focus-visible,
+.card:has(.card__link:focus-visible) {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+  box-shadow: var(--focus-halo);
+}
+
+/* Interactive: the fill stays and a press/hover layer goes on top (never swap the fill for --press-fill);
+   press-in is quick, release springs back (MOT-11). --press-scale is 1 under reduced motion, so only the tint remains. */
+.card.pressable,
+.card:has(.card__link) {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transition:
+    scale var(--dur-spring-snappy) var(--spring-snappy),
+    background-color var(--dur-fast) var(--curve-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .card.pressable:not([aria-disabled='true']):hover,
+  .card:has(.card__link:hover) {
+    background-color: var(--card-bg);
+    background-image: linear-gradient(var(--hover-fill), var(--hover-fill));
+  }
+}
+:root:not([data-press-tracking]) .card.pressable:not([aria-disabled='true']):active,
+.card.pressable:not([aria-disabled='true'])[data-pressed],
+.card:has(.card__link:active) {
+  /* the link isn't press-tracked, so :active serves it */
+  background-color: var(--card-bg);
+  background-image: linear-gradient(var(--press-fill), var(--press-fill));
+  scale: var(--press-scale);
+  transition-duration: var(--dur-press);
+  transition-timing-function: var(--curve-out);
+}

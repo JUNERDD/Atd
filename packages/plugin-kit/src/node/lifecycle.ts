@@ -184,7 +184,7 @@ export function installPreview(
 
 /**
  * Removes an installed plugin. Its state is cleared while it stays in `disabled`, so a failure
- * before the registry write can never leave it enabled with stale approvals.
+ * before the registry write can never leave it enabled with stale item switches or config.
  */
 export function uninstallPlugin(context: InstallerContext, pluginId: string): Promise<void> {
   const { paths, store } = context;
@@ -195,7 +195,6 @@ export function uninstallPlugin(context: InstallerContext, pluginId: string): Pr
     await store.updateState((state) => {
       delete state.items[pluginId];
       delete state.config[pluginId];
-      delete state.approved[pluginId];
       if (!state.disabled.includes(pluginId)) state.disabled.push(pluginId);
     });
     registry.plugins = registry.plugins.filter((installed) => installed.id !== pluginId);
