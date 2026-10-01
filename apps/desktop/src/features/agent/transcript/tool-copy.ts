@@ -24,8 +24,8 @@ import {
   type GrantScope,
   type ToolBlockDetails,
 } from '@ai/agent-contracts';
-import type { PermissionOutcome } from '../../../../electron/agent/permission-schema';
-import type { BlockOf, ToolStatus } from '../../../../electron/agent/transcript-schema';
+import type { PermissionOutcome } from '../../../client/agent/permission-schema';
+import type { BlockOf, ToolStatus } from '../../../client/agent/transcript-schema';
 import { subagentStepKey, subagentTarget, type SubagentStepKey } from './subagent-call';
 
 export type StepKey =
@@ -213,16 +213,19 @@ export function bashCommand(args: Record<string, unknown>): string {
 }
 
 /** Structured details a transcript row renders as its body. */
-export type RowDetails = Exclude<ToolBlockDetails, { type: 'subagent' | 'todo' }>;
+export type RowDetails = Exclude<ToolBlockDetails, { type: 'subagent' | 'todo' | 'mcpApproval' }>;
 
 /**
  * The structured body a row renders, if any. A launching `subagent` call's child summaries feed
- * the progress pill's subagent list and the drill-in view, and a `todo` call's list feeds the
- * progress pill's Todos view; neither renders in the message.
+ * the progress pill's subagent list and the drill-in view, a `todo` call's list feeds the
+ * progress pill's Todos view, and a `configure_mcp` approval renders as a banner under its
+ * activity group (mcp-approval-banner.tsx); none renders in the row.
  */
 export function structuredDetails(block: BlockOf<'tool'>): RowDetails | null {
   const data = block.details.data;
-  return !data || data.type === 'subagent' || data.type === 'todo' ? null : data;
+  return !data || data.type === 'subagent' || data.type === 'todo' || data.type === 'mcpApproval'
+    ? null
+    : data;
 }
 
 /**

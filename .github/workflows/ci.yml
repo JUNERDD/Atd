@@ -24,11 +24,15 @@ jobs:
           node-version-file: .node-version
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # On Linux this skips the Swift and Rust checks (scripts/on-macos.mjs); desktop runs them.
       - run: pnpm check
 
+  # The Swift and Rust checks. The job id and name stay as they are because the "Protect main"
+  # ruleset requires a status check with this exact name.
   desktop:
     name: macOS desktop smoke test
-    runs-on: macos-latest
+    # Pinned rather than macos-latest: the native shell targets macOS 26 and Xcode 26.
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@v7.0.1
       - uses: pnpm/action-setup@v6.1.0
@@ -36,15 +40,27 @@ jobs:
         with:
           node-version-file: .node-version
           cache: pnpm
+      # The same Xcode as local development, so `swift format` and SwiftLint judge the same way.
+      - name: Select Xcode 26.3
+        run: |
+          sudo xcode-select --switch /Applications/Xcode_26.3.app
+          xcodebuild -version
+          swift --version
+      - name: Install XcodeGen and SwiftLint
+        run: |
+          for tool in xcodegen swiftlint; do
+            command -v "$tool" > /dev/null || brew install "$tool"
+          done
+          xcodegen --version
+          swiftlint version
+      # With no argument, rustup installs the toolchain rust-toolchain.toml pins, with its
+      # components (rustfmt, clippy) and targets.
+      - name: Install the Rust toolchain
+        run: |
+          rustup toolchain install
+          cargo --version
       - run: pnpm install --frozen-lockfile
-      - run: pnpm test:electron
-      - run: pnpm --filter @ai/desktop package
-      - uses: actions/upload-artifact@v7.0.1
-        if: always()
-        with:
-          name: desktop-smoke-test
-          path: |
-            apps/desktop/.artifacts/
-            apps/desktop/test-results/
-          include-hidden-files: true
-          retention-days: 7
+      - name: Swift checks (format, lint, test, build)
+        run: pnpm check:swift
+      - name: Rust checks (file length, fmt, clippy, test)
+        run: pnpm check:rust

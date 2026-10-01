@@ -37,9 +37,9 @@ async function loadHermes(agentDir: string): Promise<HermesDesktop> {
   // The patch's desktop-host switch: with it, a failed or policy-aborted direct review/flush never
   // falls back to spawning an external `pi` (which would write memory outside this authority and
   // its write guard), and better-sqlite3 is never rebuilt at runtime. The service process is that
-  // host, and this is the only place it loads Hermes; Electron's former utility process set it.
+  // host, and this is the only place it loads Hermes.
   process.env.AI_DESKTOP_AGENT = '1';
-  // The transpile cache (as for the MCP adapter, mcp/loader.ts) roughly halves the first load.
+  // The transpile cache roughly halves the first load.
   // Entries are keyed by source hash, so the pnpm patch applied to Hermes is never served stale.
   const jiti = createJiti(import.meta.url, { moduleCache: true, fsCache: true });
   const module = await jiti.import<{

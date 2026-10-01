@@ -1,6 +1,6 @@
 import { Type, type Static } from 'typebox';
 import type { CommandTool } from './commands.js';
-import { Identifier, OperationId } from './identifiers.js';
+import { Identifier, OperationId, SessionEntryId } from './identifiers.js';
 import { PermissionTierSchema } from './confirms.js';
 import { McpServerIdSchema } from './mcp.js';
 import { ThinkingLevelSchema } from './models.js';
@@ -186,6 +186,12 @@ export const RunSnapshotSchema = Type.Object(
      * means the model catalog's window.
      */
     contextWindow: Type.Optional(Type.Integer({ minimum: 1 })),
+    /**
+     * The user message entry this run's prompt replaces (edit and resend, regenerate): before
+     * prompting, the session branch moves to just before that entry, so the replaced message and
+     * everything after it leave the transcript while staying in the session file.
+     */
+    branchBefore: Type.Optional(SessionEntryId),
   },
   { additionalProperties: false },
 );

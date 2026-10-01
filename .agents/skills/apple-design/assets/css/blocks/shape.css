@@ -1,0 +1,21 @@
+/* @block shape | requires: — | layer: base | native: SwiftUI ConcentricRectangle / Capsule / RoundedRectangle(style: .continuous) | Concentric, capsule and continuous-corner utilities */
+/* GL-6: nested shapes are concentric — inner radius = outer radius - padding.
+   <div class="concentric" style="--shape-radius: 28px; --shape-pad: 8px"><div class="concentric-inner">…</div></div> */
+.concentric {
+  --shape-radius: var(--corner-xl);
+  --shape-pad: 8px;
+  border-radius: var(--shape-radius);
+  padding: var(--shape-pad);
+}
+.concentric-inner {
+  border-radius: max(0px, calc(var(--shape-radius) - var(--shape-pad)));
+}
+.capsule {
+  border-radius: var(--corner-capsule);
+}
+/* Continuous ("squircle") corners where supported (Chromium 139+; elsewhere plain rounded corners). */
+@supports (corner-shape: squircle) {
+  .squircle {
+    corner-shape: squircle;
+  }
+}

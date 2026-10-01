@@ -140,8 +140,10 @@ export function PluginCard({
             <ExtensionRowActions
               name={name}
               enabled={plugin.enabled}
-              disabled={locked}
+              disabled={!connected}
+              pending={busy}
               showSwitch={plugin.toggleable}
+              reserveMore={false}
               onEnabledChange={onEnabled}
               onDetails={onOpen}
               menu={

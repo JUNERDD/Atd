@@ -1,5 +1,7 @@
 import { useTranslation } from 'react-i18next';
-import { Copy, MoreHorizontal, Pencil, Play, Trash2 } from 'lucide-react';
+import { Copy, MoreHorizontal, Pencil, Play, SearchX, Trash2 } from 'lucide-react';
+import { Button } from '@ai/ui/components/button';
+import { Empty, EmptyContent, EmptyHeader, EmptyMedia, EmptyTitle } from '@ai/ui/components/empty';
 import { HighlightedText } from '@ai/ui/components/highlighted-text';
 import { Switch } from '@ai/ui/components/switch';
 import {
@@ -20,7 +22,7 @@ import {
   DropdownMenuTrigger,
 } from '@ai/ui/components/dropdown-menu';
 import { matchFields, type FieldsMatch } from '@ai/ui/lib/fuzzy-match';
-import type { CommandDefinition } from '../../../electron/agent/command-schema';
+import type { CommandDefinition } from '../../client/agent/command-schema';
 import { IconButton } from '../../components/icon-button';
 import { shortcutKeys } from '../../lib/shortcuts';
 import { agentApi } from '../agent/use-agent';
@@ -46,15 +48,17 @@ export interface CommandRowActions {
 export function CommandList({
   commands,
   query,
-  pending,
+  pendingIds,
   shortcutErrors,
+  onClearSearch,
   ...actions
 }: {
   commands: readonly CommandDefinition[];
   query: string;
-  /** While a command saves, every row's run and enable controls wait. */
-  pending: boolean;
+  /** The commands being saved, whose rows' run and enable controls wait; other rows stay usable. */
+  pendingIds: ReadonlySet<string>;
   shortcutErrors: Readonly<Record<string, string>>;
+  onClearSearch: () => void;
 } & CommandRowActions) {
   const { t } = useTranslation('commands');
   const groups = new Map<string, Row[]>([['', []]]);
@@ -70,11 +74,29 @@ export function CommandList({
       key={command.id}
       command={command}
       match={match}
-      pending={pending}
+      busy={pendingIds.has(command.id)}
       shortcutError={shortcutErrors[command.id]}
       {...actions}
     />
   );
+  if (query.trim() && commands.length && [...groups.values()].every((rows) => !rows.length))
+    return (
+      <div className="settings-extension-empty">
+        <Empty>
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <SearchX />
+            </EmptyMedia>
+            <EmptyTitle>{t('list.noMatches', { query: query.trim() })}</EmptyTitle>
+          </EmptyHeader>
+          <EmptyContent>
+            <Button variant="outline" onClick={onClearSearch}>
+              {t('list.clearSearch')}
+            </Button>
+          </EmptyContent>
+        </Empty>
+      </div>
+    );
   if (!titled) return <ItemGroup>{groups.get('')!.map(row)}</ItemGroup>;
   return (
     <div className="command-groups">
@@ -102,7 +124,7 @@ export function CommandList({
 function CommandRow({
   command,
   match,
-  pending,
+  busy,
   shortcutError,
   onOpen,
   onToggle,
@@ -111,7 +133,8 @@ function CommandRow({
 }: {
   command: CommandDefinition;
   match: Match;
-  pending: boolean;
+  /** The command is saving: its controls stay focusable but ignore input. */
+  busy: boolean;
   shortcutError: string | undefined;
 } & CommandRowActions) {
   const { t } = useTranslation('commands');
@@ -158,11 +181,15 @@ function CommandRow({
             )}
           </div>
           <ItemActions className="shrink-0">
+            {/* Off or saving, Run stays focusable so its tooltip can say why it does nothing. */}
             <IconButton
-              label={t('list.run')}
+              label={command.enabled ? t('list.run') : t('list.runOff')}
               aria-label={t('list.runFor', { name: command.name })}
-              disabled={!command.enabled || pending}
+              aria-disabled={!command.enabled || busy || undefined}
+              aria-busy={busy || undefined}
+              className="aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
               onClick={() => {
+                if (!command.enabled || busy) return;
                 void agentApi()
                   .launch(command.id)
                   .catch((error) => showErrorToast(error));
@@ -173,8 +200,12 @@ function CommandRow({
             <Switch
               aria-label={t('list.enableFor', { name: command.name })}
               checked={command.enabled}
-              disabled={pending}
-              onCheckedChange={(enabled) => onToggle(command, enabled)}
+              aria-disabled={busy || undefined}
+              aria-busy={busy || undefined}
+              className="aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
+              onCheckedChange={(enabled) => {
+                if (!busy) onToggle(command, enabled);
+              }}
             />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -203,7 +234,7 @@ function CommandRow({
                       {t('list.duplicate')}
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onSelect={() => onDelete(command)}>
+                    <DropdownMenuItem variant="destructive" onSelect={() => onDelete(command)}>
                       <Trash2 />
                       {t('common.delete')}
                     </DropdownMenuItem>

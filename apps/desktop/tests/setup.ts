@@ -10,7 +10,7 @@ beforeEach(() => {
 
 afterEach(cleanup);
 
-// jsdom has no layout engine; geometry and ScrollArea behavior are checked in Electron.
+// jsdom has no layout engine; geometry and ScrollArea behavior are checked in the macOS app.
 // CodeMirror (the composer editor) measures text through Range geometry; the quick panel and
 // cmdk scroll the active option into view.
 Range.prototype.getBoundingClientRect = () => new DOMRect();

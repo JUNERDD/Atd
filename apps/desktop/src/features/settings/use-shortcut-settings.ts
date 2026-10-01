@@ -1,17 +1,23 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
+import { useSettingsSectionExit } from './settings-navigation';
 import { useShortcutCapture } from './use-shortcut-capture';
-import { DEFAULT_SHORTCUTS } from '@ai/agent-contracts';
+import { DEFAULT_SHORTCUTS, effectiveAccelerator } from '@ai/agent-contracts';
 import {
   type SettingsSnapshot,
   type ShortcutAction,
   type ShortcutBindings,
-} from '../../../electron/settings-contract';
+} from '../../client/settings-contract';
 import { recordedKeysToAccelerator } from '../../lib/shortcuts';
-import { showErrorToast, showToast } from '../../components/toast-store';
 
 const MODIFIER_KEYS = new Set(['meta', 'ctrl', 'alt', 'shift']);
+
+/** A desktop window preference the Shortcuts page switches. */
+type WindowPreference = 'pin' | 'dock' | 'login';
+
+/** Where an error shows: a shortcut's row, a window preference's row, or Restore defaults. */
+type ErrorOwner = ShortcutAction | WindowPreference | 'restore';
 
 function shortcutError(
   t: TFunction<'settings'>,
@@ -30,6 +36,16 @@ function shortcutError(
   return '';
 }
 
+/** The service's own message when it gave one (such as a default another action uses). */
+function failureText(reason: unknown, fallback: string) {
+  return reason instanceof Error && reason.message ? reason.message : fallback;
+}
+
+/**
+ * The Shortcuts page's state. The bindings save as one document, so one shortcut change runs at a
+ * time and the others ignore input meanwhile; each window preference saves on its own. Results
+ * show in place (the keys, a switch), and errors show in the row that caused them.
+ */
 export function useShortcutSettings(snapshot: SettingsSnapshot | null) {
   const { t } = useTranslation('settings');
   const desktop = window.desktop;
@@ -41,43 +57,63 @@ export function useShortcutSettings(snapshot: SettingsSnapshot | null) {
   const openAtLogin = snapshot?.openAtLogin ?? null;
   const { keys, start, stop, resetKeys, isRecording } = useShortcutCapture();
   const [recordingAction, setRecordingAction] = useState<ShortcutAction | null>(null);
-  const [mutationPending, setPending] = useState<'restore' | 'pin' | 'dock' | 'login' | null>(null);
+  // `all` while Restore defaults runs; an action while its Reset runs.
+  const [mutation, setMutation] = useState<ShortcutAction | 'all' | null>(null);
+  const [preferencePending, setPreferencePending] = useState<
+    Partial<Record<WindowPreference, boolean>>
+  >({});
+  const [errors, setErrors] = useState<Partial<Record<ErrorOwner, string>>>({});
+  // macOS keeps a new login item off until the user approves it in System Settings.
+  const [loginApproval, setLoginApproval] = useState(false);
+  // Errors answer the last attempt, so leaving the section clears them. The section can't be left
+  // while a row records; dropping the row also drops a rejected capture's error, and the next
+  // `start()` clears its leftover keys. The login-item note describes current state and stays.
+  useSettingsSectionExit(() => {
+    setRecordingAction(null);
+    setErrors({});
+  });
   const unavailable = !snapshot || !bridge;
   const hasRecordedKey = [...keys].some((key) => !MODIFIER_KEYS.has(key));
   const capturedShortcut = recordedKeysToAccelerator(keys, platform);
   const captureError =
     recordingAction && hasRecordedKey ? shortcutError(t, recordingAction, capturedShortcut) : '';
   const capturePending = recordingAction !== null && hasRecordedKey && !captureError;
-  const pending = capturePending ? 'shortcut' : mutationPending;
+  /** The shortcut change in flight: the action whose row is saving, or `all` for every row. */
+  const shortcutBusy = capturePending ? recordingAction : mutation;
   const recording = isRecording && !hasRecordedKey ? recordingAction : null;
+  /** Whether `action` presses its default keys; a spelling that differs but collides counts. */
+  const isDefault = (action: ShortcutAction) =>
+    effectiveAccelerator(bindings[action], platform) ===
+    effectiveAccelerator(DEFAULT_SHORTCUTS[action], platform);
+  const allDefault = (Object.keys(DEFAULT_SHORTCUTS) as ShortcutAction[]).every(isDefault);
 
-  const cancelRecording = useCallback(() => {
+  const setError = useCallback((owner: ErrorOwner, text: string | undefined) => {
+    setErrors((current) => ({ ...current, [owner]: text }));
+  }, []);
+
+  const endRecording = useCallback(() => {
     stop();
     resetKeys();
     setRecordingAction(null);
-    showToast({ kind: 'info', text: t('shortcuts.status.recordingCanceled') });
-  }, [resetKeys, stop, t]);
+  }, [resetKeys, stop]);
 
   useEffect(() => {
     if (!isRecording || !recordingAction || !hasRecordedKey) return;
     stop();
-    // Stopping alone ends a rejected attempt: `recording` and `pending` derive from the stopped
-    // recorder, and the next `start()` clears the leftover keys.
-    if (captureError) {
-      showErrorToast(captureError);
-      return;
-    }
+    // Stopping alone ends a rejected attempt: `recording`, `shortcutBusy` and the row's error
+    // derive from the stopped recorder, and the next `start()` clears the leftover keys.
+    if (captureError) return;
     if (!bridge || !capturedShortcut) return;
-    void bridge.saveShortcuts({ ...bindings, [recordingAction]: capturedShortcut }).then(
+    const action = recordingAction;
+    void bridge.saveShortcuts({ ...bindings, [action]: capturedShortcut }).then(
       () => {
         resetKeys();
         setRecordingAction(null);
-        showToast({ kind: 'info', text: t('shortcuts.status.shortcutSaved') });
       },
       (reason: unknown) => {
         resetKeys();
         setRecordingAction(null);
-        showErrorToast(reason instanceof Error ? reason : t('shortcuts.errors.shortcutSave'));
+        setError(action, failureText(reason, t('shortcuts.errors.shortcutSave')));
       },
     );
   }, [
@@ -89,56 +125,72 @@ export function useShortcutSettings(snapshot: SettingsSnapshot | null) {
     isRecording,
     recordingAction,
     resetKeys,
+    setError,
     stop,
     t,
   ]);
+  // A rejected combination stays the row's error until the next attempt clears its keys.
+  const rowErrors =
+    recordingAction && captureError ? { ...errors, [recordingAction]: captureError } : errors;
 
   function startRecording(action: ShortcutAction) {
-    if (unavailable || pending) return;
+    if (unavailable || shortcutBusy) return;
+    setError(action, undefined);
     setRecordingAction(action);
     start();
   }
 
   async function restoreDefaults() {
-    if (!bridge || unavailable || pending || recording) return;
-    resetKeys();
-    setRecordingAction(null);
-    setPending('restore');
+    if (!bridge || unavailable || shortcutBusy || recording || allDefault) return;
+    endRecording();
+    // Every shortcut row starts over; the window preferences keep their own errors.
+    setErrors(({ pin, dock, login }) => ({ pin, dock, login }));
+    setMutation('all');
     try {
       await bridge.restoreShortcuts();
-      showToast({ kind: 'info', text: t('shortcuts.status.defaultsRestored') });
     } catch (reason) {
-      if (reason instanceof Error) showErrorToast(reason);
-      else showErrorToast(t('shortcuts.errors.defaultsRestore'));
+      setError('restore', failureText(reason, t('shortcuts.errors.defaultsRestore')));
     }
-    setPending(null);
+    setMutation(null);
   }
 
-  /** Saves one desktop window preference; all share the pending state and the feedback. */
+  /** Puts one action back on its default keys, keeping every other binding. Resolves true once saved. */
+  async function resetShortcut(action: ShortcutAction) {
+    if (!bridge || unavailable || shortcutBusy || recording) return false;
+    endRecording();
+    setError(action, undefined);
+    setMutation(action);
+    try {
+      await bridge.saveShortcuts({ ...bindings, [action]: DEFAULT_SHORTCUTS[action] });
+      return true;
+    } catch (reason) {
+      // A default another action now uses is rejected with the service's own message.
+      setError(action, failureText(reason, t('shortcuts.errors.shortcutSave')));
+      return false;
+    } finally {
+      setMutation(null);
+    }
+  }
+
+  /** Saves one desktop window preference; each has its own pending state and error. */
   async function changeWindowPreference(
-    kind: 'pin' | 'dock' | 'login',
+    kind: WindowPreference,
     value: boolean,
     save: (desktop: NonNullable<typeof window.desktop>) => Promise<boolean>,
   ) {
-    if (!desktop || unavailable || pending || recording) return;
-    resetKeys();
-    setRecordingAction(null);
-    setPending(kind);
+    if (!desktop || unavailable || preferencePending[kind]) return;
+    if (recordingAction) endRecording();
+    setError(kind, undefined);
+    if (kind === 'login') setLoginApproval(false);
+    setPreferencePending((current) => ({ ...current, [kind]: true }));
     try {
       const applied = await save(desktop);
       // Only a login item differs: macOS keeps it off until the user approves it.
-      showToast({
-        kind: 'info',
-        text:
-          applied === value
-            ? t('shortcuts.status.windowPreferenceSaved')
-            : t('shortcuts.status.openAtLoginApproval'),
-      });
+      if (kind === 'login' && applied !== value) setLoginApproval(true);
     } catch (reason) {
-      if (reason instanceof Error) showErrorToast(reason);
-      else showErrorToast(t('shortcuts.errors.windowPreferenceSave'));
+      setError(kind, failureText(reason, t('shortcuts.errors.windowPreferenceSave')));
     }
-    setPending(null);
+    setPreferencePending((current) => ({ ...current, [kind]: false }));
   }
 
   return {
@@ -147,12 +199,19 @@ export function useShortcutSettings(snapshot: SettingsSnapshot | null) {
     showInDock,
     openAtLogin,
     recording,
-    pending,
+    shortcutBusy,
+    preferencePending,
+    errors: rowErrors,
+    /** The login item waits for approval in System Settings while it is still off. */
+    loginApprovalNeeded: loginApproval && openAtLogin === false,
     unavailable,
     platform,
+    isDefault,
+    allDefault,
     startRecording,
-    cancelRecording,
+    cancelRecording: endRecording,
     restoreDefaults,
+    resetShortcut,
     changePinned: (value: boolean) =>
       changeWindowPreference('pin', value, (desktop) => desktop.setPinned(value)),
     changeShowInDock: (value: boolean) =>

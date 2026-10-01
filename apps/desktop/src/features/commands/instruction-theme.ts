@@ -5,15 +5,18 @@ export const instructionTheme = EditorView.theme(
   {
     '&': { color: 'var(--foreground)' },
     '.cm-cursor': { borderLeftColor: 'var(--foreground)' },
-    '&.cm-focused .cm-selectionBackground, .cm-selectionBackground, ::selection': {
-      backgroundColor: 'var(--input)',
+    '.cm-selectionBackground, ::selection': { backgroundColor: 'var(--input)' },
+    // The selector mirrors the base theme's own focused rule, which a shorter one cannot outrank.
+    '&.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground': {
+      backgroundColor: 'var(--ata-text-selection)',
     },
+    // The list inside paints the glass material (`surface-glass`): CodeMirror's unlayered base
+    // theme would outrank the utility on the tooltip itself, so the tooltip only clears its fill.
     '.cm-tooltip.cm-tooltip-autocomplete': {
-      backgroundColor: 'var(--popover)',
+      backgroundColor: 'transparent',
       color: 'var(--popover-foreground)',
       border: 'none',
       borderRadius: 'var(--radius-2xl)',
-      backdropFilter: 'blur(var(--ata-backdrop-blur))',
       boxShadow:
         '0 0 0 1px color-mix(in oklab, var(--foreground) 10%, transparent), 0 10px 15px -3px rgb(0 0 0 / 10%), 0 4px 6px -4px rgb(0 0 0 / 10%)',
     },

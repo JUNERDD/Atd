@@ -8,6 +8,7 @@ import {
 import type { Logger } from '../logging.js';
 import { ConflictError } from '../errors.js';
 import { logMemoryEvents, MemoryAuthority } from './authority.js';
+import { RENDERER_ROUTE } from '../relay-routes.js';
 
 export interface MemoryRouteContext {
   agentDir: string;
@@ -22,7 +23,7 @@ export interface MemoryRouteContext {
 export function registerMemoryRoutes(app: FastifyInstance, ctx: MemoryRouteContext): void {
   const authority = () => MemoryAuthority.authorityFor(ctx.agentDir, logMemoryEvents(ctx.log));
 
-  app.get('/v1/memory', async () => {
+  app.get('/v1/memory', RENDERER_ROUTE, async () => {
     const memory = await authority();
     return {
       entries: await memory.list().catch(mapHermesError),
@@ -31,14 +32,14 @@ export function registerMemoryRoutes(app: FastifyInstance, ctx: MemoryRouteConte
     };
   });
 
-  app.post('/v1/memory/pause', async (request) => {
+  app.post('/v1/memory/pause', RENDERER_ROUTE, async (request) => {
     const body = parse(MemoryPauseRequestSchema, request.body);
     const memory = await authority();
     const version = await memory.setPaused(body.paused);
     return { paused: memory.isPaused(), version };
   });
 
-  app.post('/v1/memory/update', async (request) => {
+  app.post('/v1/memory/update', RENDERER_ROUTE, async (request) => {
     const body = parse(MemoryUpdateRequestSchema, request.body);
     const memory = await authority();
     try {

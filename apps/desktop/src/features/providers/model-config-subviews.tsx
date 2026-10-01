@@ -2,11 +2,7 @@ import type { ReactNode, Ref } from 'react';
 import { Check, ChevronLeft } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@ai/ui/components/button';
-import type {
-  ContextTier,
-  ModelContexts,
-  ModelThinkingLevel,
-} from '../../../electron/providers/schema';
+import type { ContextTier, ModelContexts, ModelThinkingLevel } from '../../client/providers/schema';
 import { formatContextWindow, formatTokenCount } from './context-window';
 
 /** The drill-in header every subview shares: a back button and the subview's title. */

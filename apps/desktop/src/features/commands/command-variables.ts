@@ -1,5 +1,5 @@
 import type { TFunction } from 'i18next';
-import type { CommandDefinition, Parameter } from '../../../electron/agent/command-schema';
+import type { CommandDefinition, Parameter } from '../../client/agent/command-schema';
 
 export type ContextVariable = 'input' | 'files' | 'selection' | 'clipboard';
 

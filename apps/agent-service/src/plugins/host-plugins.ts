@@ -5,7 +5,7 @@ import { isBuiltinSkill } from '../builtins/manifest.js';
 import { CommandStore } from '../commands/store.js';
 import { logMemoryEvents, MemoryAuthority } from '../memory/authority.js';
 import { readMemoryPause } from '../memory/pause.js';
-import { loadServerRecords } from '../mcp/servers.js';
+import { readStoredServers } from '../mcp/server-store.js';
 import { discoverAtdSkills } from '../skills/atd-skills.js';
 import { readDisabledSkillNames } from '../skills/harness.js';
 import { skillProfilePaths } from '../skills/profile.js';
@@ -76,7 +76,7 @@ export async function loadHostPlugins(
         'commands',
         log,
       ),
-      listed(loadServerRecords(dataDir), [], 'mcp', log),
+      listed(readStoredServers(dataDir), [], 'mcp', log),
       listed(readMemoryPause(agentDir), false, 'memory pause', log),
       listed(
         MemoryAuthority.authorityFor(agentDir, logMemoryEvents(log)).then(

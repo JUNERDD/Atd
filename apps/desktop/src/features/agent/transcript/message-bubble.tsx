@@ -8,7 +8,11 @@ import { ScrollArea } from '@ai/ui/components/scroll-area';
  */
 export function MessageBubble({ children }: { children: ReactNode }) {
   return (
-    <ScrollArea className="message-bubble-frame" viewportClassName="message-bubble-viewport">
+    <ScrollArea
+      className="message-bubble-frame"
+      viewportClassName="message-bubble-viewport"
+      scrollShadow
+    >
       <div className="message-bubble">{children}</div>
     </ScrollArea>
   );

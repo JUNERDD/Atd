@@ -3,9 +3,8 @@ import { homedir, platform } from 'node:os';
 import path from 'node:path';
 
 /**
- * Storage layout owned by the service. T2 extends the ledger with migrated
- * desktop data; paths below stay stable so migration is a data move, not a
- * rewrite.
+ * Storage layout owned by the service. Paths below are persisted data and stay
+ * stable, so existing data dirs keep loading without a rewrite.
  */
 export interface ServicePaths {
   root: string;
@@ -67,11 +66,6 @@ export function servicePaths(root: string): ServicePaths {
     resourcesDir: path.join(root, 'resources'),
     auditDir: path.join(root, 'audit'),
   };
-}
-
-/** TODO-owner T2: task/command/resource/provider migration + persistent credentials. */
-export interface MigrationAuthority {
-  readonly owner: 'T2';
 }
 
 /** TODO-owner T3: hosted skill profile, loader options, role snapshots. */

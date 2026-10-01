@@ -1,6 +1,6 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
-import { LANGUAGE_CODES, type AppLanguage } from '../../electron/settings-contract';
+import { LANGUAGE_CODES, type AppLanguage } from '../client/settings-contract';
 import enCommands from './locales/en/commands.json';
 import enCommon from './locales/en/common.json';
 import enMemory from './locales/en/memory.json';
@@ -54,6 +54,12 @@ export async function changeAppLanguage(language: AppLanguage): Promise<void> {
   if (requested === language && i18n.resolvedLanguage !== language)
     await i18n.changeLanguage(language);
 }
+
+/** The document's language, for fonts and line breaking: BCP 47 names Simplified Chinese `zh-Hans`. */
+function applyDocumentLanguage(language: string) {
+  document.documentElement.lang = language === 'zh-CN' ? 'zh-Hans' : language;
+}
+i18n.on('languageChanged', applyDocumentLanguage);
 
 // Bundled English keeps init synchronous, so t() is ready as soon as this module loads.
 void i18n.use(initReactI18next).init({

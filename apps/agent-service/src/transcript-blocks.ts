@@ -7,6 +7,7 @@ import {
   SUBAGENT_CHILD_ENTRY,
   SubagentChildEntrySchema,
   type GrantScope,
+  type MessageUsage,
   type PermissionOutcome,
   type ServiceBlock,
   type ServiceToolStatus,
@@ -40,10 +41,31 @@ const QuestionRecordSchema = Type.Object(
   { additionalProperties: false },
 );
 
+/**
+ * The part of pi-ai's `Usage` a block reports. A stored message is untrusted: files written by
+ * older Pi builds or failed requests may lack counts, and then the blocks carry no usage.
+ */
+const StoredUsageSchema = Type.Object({
+  input: Type.Integer({ minimum: 0 }),
+  output: Type.Integer({ minimum: 0 }),
+  cacheRead: Type.Integer({ minimum: 0 }),
+  cacheWrite: Type.Integer({ minimum: 0 }),
+  cost: Type.Object({ total: Type.Number({ minimum: 0 }) }),
+});
+
 // Compiled once: every live reprojection checks each record on the branch.
 const PermissionRecordValidator = Compile(PermissionRecordSchema);
 const QuestionRecordValidator = Compile(QuestionRecordSchema);
 const SubagentChildEntryValidator = Compile(SubagentChildEntrySchema);
+const StoredUsageValidator = Compile(StoredUsageSchema);
+
+/** A settled assistant message's usage as blocks report it; undefined without valid counts. */
+export function messageUsage(message: AssistantMessage): MessageUsage | undefined {
+  const usage: unknown = message.usage;
+  if (!StoredUsageValidator.Check(usage)) return undefined;
+  const { input, output, cacheRead, cacheWrite, cost } = usage;
+  return { input, output, cacheRead, cacheWrite, cost: cost.total };
+}
 
 export const ASK_USER_TOOL = 'ask_user';
 
@@ -165,6 +187,11 @@ export interface AssistantBlockInput {
   subagentProgress: ReadonlyMap<string, readonly SubagentRow[]>;
   /** Session entry time of this message (its end); null for live partials. */
   messageEndedAt: number | null;
+  /**
+   * The message's usage (`messageUsage`), copied onto every block it yields; undefined while it
+   * streams, since a partial's counts are not final.
+   */
+  usage: MessageUsage | undefined;
   outputOf: (result: ToolResultMessage) => string;
   /** Receives diagnostics for tool details dropped by the projection. */
   log?: Pick<Logger, 'debug'>;
@@ -205,6 +232,7 @@ export function projectAssistantServiceBlocks(input: AssistantBlockInput): Servi
   const { message, runId, streaming, live, lookups, partials, messageEndedAt, outputOf } = input;
   const timestamp = message.timestamp;
   const endedAt = messageEndedAt ?? timestamp;
+  const usage = input.usage ? { usage: input.usage } : {};
   const blocks: ServiceBlock[] = [];
   const stopReason = mapStopReason(message.stopReason, streaming);
   message.content.forEach((part, index) => {
@@ -224,6 +252,7 @@ export function projectAssistantServiceBlocks(input: AssistantBlockInput): Servi
           streaming: partStreaming,
           stopReason,
           error: message.errorMessage ?? '',
+          ...usage,
         });
         return;
       case 'thinking':
@@ -236,6 +265,7 @@ export function projectAssistantServiceBlocks(input: AssistantBlockInput): Servi
           text: part.thinking,
           streaming: partStreaming,
           redacted: Boolean(part.redacted),
+          ...usage,
         });
         return;
       case 'toolCall': {
@@ -256,6 +286,7 @@ export function projectAssistantServiceBlocks(input: AssistantBlockInput): Servi
             status: resolveStatus(result, false, live),
             answer,
             skipped: answered && answer === null,
+            ...usage,
           });
           return;
         }
@@ -276,6 +307,7 @@ export function projectAssistantServiceBlocks(input: AssistantBlockInput): Servi
           partial: result ? '' : (partials.get(part.id) ?? ''),
           permission: permission ? { scope: permission.scope, outcome: permission.outcome } : null,
           ...(details ? { details } : {}),
+          ...usage,
         });
         return;
       }

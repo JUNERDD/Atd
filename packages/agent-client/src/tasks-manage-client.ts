@@ -2,6 +2,8 @@ import {
   CompactTaskRequestSchema,
   CompactTaskResponseSchema,
   DeleteTaskResponseSchema,
+  ForkTaskRequestSchema,
+  ForkTaskResponseSchema,
   parse,
   PatchTaskRequestSchema,
   PreviewTaskRequestSchema,
@@ -11,6 +13,8 @@ import {
   TaskResponseSchema,
   type CompactTaskResponse,
   type DeleteTaskResponse,
+  type ForkTaskRequest,
+  type ForkTaskResponse,
   type PatchTaskRequest,
   type PreviewTaskRequest,
   type PreviewTaskResponse,
@@ -18,7 +22,7 @@ import {
   type TaskResponse,
 } from '@ai/agent-contracts';
 import { dispositionName, manageRequest, toClientError } from './manage-request.js';
-import type { AgentClientOptions } from './types.js';
+import { authHeaders, type AgentClientOptions } from './types.js';
 
 /** Renames and/or retiers a task. */
 export function patchTask(
@@ -87,6 +91,23 @@ export function compactTask(
   );
 }
 
+/** Forks a task into a new one at the turn `body.entryId` starts; the source is unchanged. */
+export function forkTask(
+  options: AgentClientOptions,
+  taskId: string,
+  body: ForkTaskRequest,
+  fetchImpl?: typeof fetch,
+): Promise<ForkTaskResponse> {
+  return manageRequest(
+    options,
+    `/v1/tasks/${encodeURIComponent(taskId)}/fork`,
+    'POST',
+    parse(ForkTaskRequestSchema, body),
+    (json) => parse(ForkTaskResponseSchema, json),
+    fetchImpl,
+  );
+}
+
 /** Read-only run preview: the snapshot a submit would freeze. */
 export function previewTask(
   options: AgentClientOptions,
@@ -111,7 +132,7 @@ export async function downloadResource(
 ): Promise<{ bytes: Uint8Array; mime: string; name: string }> {
   const response = await fetchImpl(
     `${options.baseUrl}/v1/resources/${encodeURIComponent(resourceId)}`,
-    { method: 'GET', headers: { authorization: `Bearer ${options.token}` } },
+    { method: 'GET', headers: authHeaders(options) },
   );
   if (!response.ok) {
     const json: unknown = await response.json().catch(() => null);

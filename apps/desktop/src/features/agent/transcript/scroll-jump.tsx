@@ -18,7 +18,12 @@ export function ScrollJump({ show, onJump }: { show: boolean; onJump: () => void
             transition={{ type: 'spring', stiffness: 380, damping: 28 }}
             whileTap={{ scale: 0.85 }}
           >
-            <IconButton label={t('conversation.scrollToBottom')} tooltip={false} onClick={onJump}>
+            <IconButton
+              label={t('conversation.scrollToBottom')}
+              tooltip={false}
+              variant="glass"
+              onClick={onJump}
+            >
               <ArrowDown />
             </IconButton>
           </motion.div>

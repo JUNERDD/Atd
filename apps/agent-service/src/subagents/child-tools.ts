@@ -1,10 +1,10 @@
-import { spawn } from 'node:child_process';
 import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { Type } from 'typebox';
 import { childCommandTool } from '../commands/tool.js';
 import { childSearchTools } from '../harness/search/tools.js';
 import { childWebTools } from '../harness/web-extension.js';
 import { authorizeShellCommand } from '../shell-policy.js';
+import { boundedExec, SHELL_TIMEOUT_CEILING_SECONDS } from '../shell-tool.js';
 import { checkChildPath, isChildToolAllowed } from './intersection.js';
 import { hostForTask, releaseWrite, tryAcquireWrite } from './registry.js';
 
@@ -35,17 +35,21 @@ export interface ChildToolHost {
   audit: (entry: Record<string, unknown>) => void;
 }
 
+/** What a child tool answers; the bridge hands it to pi as is. */
+export interface ChildToolResult {
+  content: { type: string; text: string }[];
+  details: unknown;
+  /** A failed call whose text is still returned, such as a command's output. */
+  isError?: boolean;
+}
+
 /** A tool as the child bridge registers it. */
 export interface ChildTool {
   name: string;
   label: string;
   description: string;
   parameters: unknown;
-  execute: (
-    id: string,
-    args: unknown,
-    signal?: AbortSignal,
-  ) => Promise<{ content: { type: string; text: string }[]; details: unknown }>;
+  execute: (id: string, args: unknown, signal?: AbortSignal) => Promise<ChildToolResult>;
 }
 
 interface PiLike {
@@ -142,6 +146,7 @@ export function registerChildTools(pi: PiLike, host: ChildToolHost): void {
         cwd: host.cwd,
         dataDir: host.dataDir,
         rawPath: target,
+        write: true,
       });
       if (location === 'outside')
         throw denied(host, tool, 'Child writes outside the task output are blocked.');
@@ -211,8 +216,7 @@ export function registerChildTools(pi: PiLike, host: ChildToolHost): void {
           detail: JSON.stringify({ tool: 'bash', args: { command } }),
           auditAllowlisted: () => allow('bash', 'allowlist'),
         });
-        const output = await runCommand(command, host.cwd, signal);
-        return { content: [{ type: 'text', text: output }], details: {} };
+        return runCommand(command, host.cwd, signal);
       },
     });
   }
@@ -229,21 +233,42 @@ function isResourcePath(host: ChildToolHost, real: string): boolean {
   );
 }
 
-function runCommand(command: string, cwd: string, signal?: AbortSignal): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const child = spawn(command, { cwd, shell: true, timeout: 120000 });
-    let output = '';
-    child.stdout?.on('data', (chunk: Buffer) => {
-      output += chunk.toString();
+/** The most output of one command a child receives, in characters; its head is kept. */
+const COMMAND_OUTPUT_LIMIT = 200000;
+
+/**
+ * Runs one child command on the service's bash backend (shell-tool.ts), so Stop and the ceiling
+ * kill its process group. Like pi's own bash tool, a failure keeps what the command printed: a
+ * non-zero exit is an error result with the output and an exit line, and an abort or a timeout
+ * throws the same output with its status line.
+ */
+async function runCommand(
+  command: string,
+  cwd: string,
+  signal?: AbortSignal,
+): Promise<ChildToolResult> {
+  let output = '';
+  /** The head of the output, then the status line when there is one. */
+  const answer = (status?: string) => {
+    const head = output.slice(0, COMMAND_OUTPUT_LIMIT);
+    return status ? `${head}${head ? '\n\n' : ''}${status}` : head;
+  };
+  try {
+    const { exitCode } = await boundedExec(command, cwd, {
+      onData: (chunk) => {
+        output += chunk.toString();
+      },
+      signal,
     });
-    child.stderr?.on('data', (chunk: Buffer) => {
-      output += chunk.toString();
-    });
-    signal?.addEventListener('abort', () => child.kill(), { once: true });
-    child.on('error', reject);
-    child.on('close', (code) => {
-      if (code === 0) resolve(output.slice(0, 200000));
-      else reject(new Error(`The command exited with code ${code ?? 'unknown'}.`));
-    });
-  });
+    if (exitCode === 0) return { content: [{ type: 'text', text: answer() }], details: {} };
+    const text = answer(`Command exited with code ${exitCode ?? 'unknown'}`);
+    return { content: [{ type: 'text', text }], details: {}, isError: true };
+  } catch (error) {
+    // A bash backend rejects with `aborted` or `timeout:<seconds>`; pi's bash tool reads them too.
+    if (error instanceof Error && error.message === 'aborted')
+      throw new Error(answer('Command aborted'));
+    if (error instanceof Error && error.message.startsWith('timeout:'))
+      throw new Error(answer(`Command timed out after ${SHELL_TIMEOUT_CEILING_SECONDS} seconds`));
+    throw error;
+  }
 }

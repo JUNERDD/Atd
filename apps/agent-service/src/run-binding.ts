@@ -1,4 +1,6 @@
 import {
+  CONFIGURE_MCP_TOOL,
+  LIST_MCP_TOOL,
   LOAD_SKILL_TOOL,
   MEMORY_TOOLS,
   TODO_TOOL,
@@ -21,7 +23,8 @@ import type { RuntimeAgent } from './subagents/agents.js';
 const SERVICE_TOOLS = [
   'ask_user',
   'desktop',
-  'configure_mcp',
+  CONFIGURE_MCP_TOOL,
+  LIST_MCP_TOOL,
   TODO_TOOL,
   WEB_SEARCH_TOOL,
   WEB_FETCH_TOOL,
@@ -86,7 +89,13 @@ export async function prepareRunBinding(
   const key = JSON.stringify({
     tier: effectiveTaskTier(deps.ctx.ledger, deps.taskId, deps.ctx.tier),
     tools,
-    mcp: mcp.bindings.map((binding) => [binding.proxyName, binding.revision, binding.ref]),
+    // Annotations are part of what pi registers for a proxy, so a changed hint reopens the session.
+    mcp: mcp.bindings.map((binding) => [
+      binding.proxyName,
+      binding.revision,
+      binding.ref,
+      binding.annotations ?? null,
+    ]),
     role: role && [role.role.roleId, role.role.revision, role.capabilities.revokedTools],
     memory: run.snapshot.memory,
     agents: agents.map((agent) => [agent.name, agent.definition]),

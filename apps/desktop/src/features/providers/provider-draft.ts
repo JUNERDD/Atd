@@ -1,4 +1,4 @@
-import type { Connection, ConnectionDraft } from '../../../electron/providers/schema';
+import type { Connection, ConnectionDraft } from '../../client/providers/schema';
 
 /** Keep the saved revision with editable settings so saving preserves conflict detection. */
 export function draftFrom(connection: Connection): ConnectionDraft {

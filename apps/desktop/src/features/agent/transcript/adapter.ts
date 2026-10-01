@@ -1,11 +1,12 @@
 import { LOAD_SKILL_TOOL, TODO_TOOL, WEB_FETCH_TOOL, WEB_SEARCH_TOOL } from '@ai/agent-contracts';
-import type { ResolvedModel, TaskRun } from '../../../../electron/agent/task-schema';
-import type { Block, BlockOf, ToolStatus } from '../../../../electron/agent/transcript-schema';
+import type { ResolvedModel, TaskRun } from '../../../client/agent/task-schema';
+import type { Block, BlockOf, ToolStatus } from '../../../client/agent/transcript-schema';
 import { buildActivityPhase, isViewLive, type ActivityPhase } from './phases';
 import { reuseProjection, type ProjectionCache } from './projection-cache';
 import { subagentLaunches } from './subagent-call';
 import { hasCompactionMarker, sumTurnGeneration } from './token-rate';
 import type { TurnWaitingKind } from './turn-header';
+import { sumTurnUsage, type TurnUsage } from './turn-usage';
 import { deriveTurns, requestFor, type RequestIndex, type Turn } from './turns';
 
 /**
@@ -91,6 +92,8 @@ export type AdaptedTurn = {
   trueTokens: number | null;
   /** Worker-measured generation time for settled turns; null while streaming or when unknown. */
   trueDurationMs: number | null;
+  /** Provider-reported usage summed over the turn's messages; null when none reported any. */
+  usage: TurnUsage | null;
 };
 
 function toolKindForName(name: string): ViewToolKind {
@@ -310,6 +313,7 @@ function adaptTurn(turn: Turn, requests: RequestIndex, runs: TaskRun[]): Adapted
       modelName: modelNameForRun(run),
       trueTokens: generation?.tokens ?? null,
       trueDurationMs: generation?.durationMs ?? null,
+      usage: sumTurnUsage(source),
     };
   });
 }

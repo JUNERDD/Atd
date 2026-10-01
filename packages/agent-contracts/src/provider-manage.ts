@@ -1,6 +1,6 @@
 import { Type, type Static } from 'typebox';
 import { Identifier } from './identifiers.js';
-import { MigrationCredentialSchema, ServiceConnectionSchema } from './migration.js';
+import { ProviderCredentialSchema, ServiceConnectionSchema } from './provider-connections.js';
 import { ContextTierSchema, ServiceModelDefinitionSchema, ThinkingLevelSchema } from './models.js';
 
 /**
@@ -18,7 +18,7 @@ export const ProviderCredentialChangeSchema = Type.Union([
   Type.Object({ action: Type.Literal('keep') }, { additionalProperties: false }),
   Type.Object({ action: Type.Literal('remove') }, { additionalProperties: false }),
   Type.Object(
-    { action: Type.Literal('replace'), credential: MigrationCredentialSchema },
+    { action: Type.Literal('replace'), credential: ProviderCredentialSchema },
     { additionalProperties: false },
   ),
 ]);

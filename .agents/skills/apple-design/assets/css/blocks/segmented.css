@@ -1,0 +1,192 @@
+/* @block segmented | requires: base, states | layer: components | native: SwiftUI Picker(.segmented) / UIKit UISegmentedControl | 32 px capsule segmented control on native radios: sliding thumb that lifts into a glass lens while pressed, 44 px hit rows, auto segment count, RTL */
+
+/* Markup (arrow keys move the selection, as in any radio group):
+   <div class="segmented" role="radiogroup" aria-label="Filter">
+     <label><input type="radio" name="filter" checked><span>All</span></label>
+     <label><input type="radio" name="filter"><span>Music</span></label>
+   </div>
+   2–5 segments (the count is detected); all text or all icons; noun labels. Icon segments name themselves:
+     <label><input type="radio" name="view" aria-label="Grid"><span><svg aria-hidden="true" viewBox="0 0 24 24">…</svg></span></label> */
+.segmented {
+  --seg-h: 32px; /* iOS 26 visual height */
+  --seg-pad: 2px;
+  --n: 2;
+  --i: 0;
+  --_seg-dir: 1;
+  --_seg-thumb: light-dark(#fff, #636366);
+  --_seg-lens: color-mix(in srgb, var(--glass-fill-color) 45%, transparent);
+  --_seg-lens-fx: blur(2px) saturate(180%);
+  --_seg-lift: 1.04 1.12;
+  position: relative;
+  box-sizing: border-box;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr); /* equal segments; long labels ellipsize */
+  align-items: stretch;
+  min-height: var(--seg-h);
+  margin: 0;
+  padding: var(--seg-pad);
+  border: 0;
+  border-radius: var(--corner-capsule);
+  background: var(--fill-tertiary);
+}
+.segmented:dir(rtl) {
+  --_seg-dir: -1;
+}
+.segmented:has(> label:nth-of-type(3)) {
+  --n: 3;
+} /* no manual --n */
+.segmented:has(> label:nth-of-type(4)) {
+  --n: 4;
+}
+.segmented:has(> label:nth-of-type(5)) {
+  --n: 5;
+}
+.segmented:has(> label:nth-of-type(2) > :checked) {
+  --i: 1;
+}
+.segmented:has(> label:nth-of-type(3) > :checked) {
+  --i: 2;
+}
+.segmented:has(> label:nth-of-type(4) > :checked) {
+  --i: 3;
+}
+.segmented:has(> label:nth-of-type(5) > :checked) {
+  --i: 4;
+}
+
+/* The thumb slides on the snappy spring; the lift uses its own property, so press and slide compose. */
+.segmented::before {
+  content: '';
+  position: absolute;
+  inset-block: var(--seg-pad);
+  inset-inline-start: var(--seg-pad);
+  width: calc((100% - 2 * var(--seg-pad)) / var(--n));
+  translate: calc(var(--i) * 100% * var(--_seg-dir)) 0;
+  border-radius: var(--corner-capsule);
+  background: var(--_seg-thumb);
+  box-shadow:
+    0 3px 8px rgb(0 0 0 / 0.12),
+    0 1px 1px rgb(0 0 0 / 0.14),
+    inset 0 0 0 0.5px rgb(0 0 0 / 0.04);
+  transition:
+    translate var(--dur-spring-snappy) var(--spring-snappy),
+    scale var(--dur-spring-snappy) var(--spring-snappy),
+    background-color var(--dur-fast) var(--curve-out);
+}
+
+.segmented > label {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  border-radius: var(--corner-capsule);
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+  transition: background-color var(--dur-fast) var(--curve-out);
+}
+/* HIT-1 / CMP-8: each segment's hit row is 44 px tall around the 28 px label, without changing layout. */
+.segmented > label::after {
+  content: '';
+  position: absolute;
+  inset: min(0px, calc((var(--seg-h) - 2 * var(--seg-pad) - var(--hit)) / 2)) 0;
+}
+.segmented input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: inherit;
+}
+.segmented span {
+  box-sizing: border-box;
+  max-width: 100%; /* clamp to the segment so long labels ellipsize */
+  padding: 0 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 500 var(--fs-footnote)/var(--lh-footnote) var(--ff-sans);
+  letter-spacing: 0;
+  color: var(--label);
+  transition: opacity var(--dur-fast) var(--curve-out);
+}
+.segmented :checked + span {
+  font-weight: 600;
+}
+.segmented span > svg {
+  display: block;
+  inline-size: 1.25em;
+  block-size: 1.25em;
+} /* icon segments (SYM-1) */
+
+/* States (FB-1…FB-3, FB-6). */
+@media (hover: hover) and (pointer: fine) {
+  .segmented > label:where(:has(> input:enabled:not(:checked)):hover) {
+    background-color: var(--hover-fill);
+  }
+}
+/* Pressed: the touched label dims and the thumb lifts into a glass lens (interaction-feedback.md §4). */
+:where(html:not([data-press-tracking]))
+  .segmented
+  > label:active
+  > input:enabled:not(:checked)
+  + span,
+.segmented > label[data-pressed] > :not(:checked) + span {
+  opacity: 0.55;
+}
+:where(html:not([data-press-tracking])) .segmented:has(> label:active > input:enabled)::before,
+.segmented:has(> label[data-pressed] > input:enabled)::before {
+  scale: var(--_seg-lift);
+  background-color: var(--_seg-lens);
+  -webkit-backdrop-filter: var(--_seg-lens-fx);
+  backdrop-filter: var(--_seg-lens-fx);
+  box-shadow:
+    inset 0 0 0 0.5px var(--glass-rim),
+    0 3px 10px rgb(0 0 0 / 0.14);
+  transition-duration: var(--dur-press); /* press-in fast, release on the spring (MOT-11) */
+  transition-timing-function: var(--curve-out);
+}
+.segmented > label:has(> :disabled) {
+  opacity: var(--state-disabled-opacity);
+  cursor: default;
+}
+.segmented:has(:focus-visible) {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+  box-shadow: var(--focus-halo);
+}
+
+/* Opaque lens where transparency is unwanted; Safari only takes the contrast branch. */
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+  .segmented {
+    --_seg-lens: var(--_seg-thumb);
+    --_seg-lens-fx: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .segmented {
+    --_seg-lift: none;
+  }
+  .segmented::before {
+    transition: background-color var(--dur-fast) var(--curve-out);
+  } /* jump, no slide (MOT-5) */
+}
+@media (forced-colors: active) {
+  .segmented {
+    --_seg-lens: Highlight;
+    --_seg-lens-fx: none;
+    border: 1px solid ButtonText;
+  } /* the selection stays Highlight while pressed */
+  .segmented::before {
+    forced-color-adjust: none;
+    background: Highlight;
+    box-shadow: none;
+  }
+  .segmented :checked + span {
+    forced-color-adjust: none;
+    color: HighlightText;
+  }
+}

@@ -7,31 +7,41 @@ import { Button } from '@ai/ui/components/button';
 import { Label } from '@ai/ui/components/label';
 import { contextVariables, variableDetails, type ContextVariable } from './command-variables';
 import { FieldHint } from '../../components/field-hint';
-import type { CommandDefinition } from '../../../electron/agent/command-schema';
-import type { AgentTask } from '../../../electron/agent/task-schema';
-import { availableVariables } from '../../../electron/agent/command-validation';
+import type { CommandDefinition } from '../../client/agent/command-schema';
+import type { AgentTask } from '../../client/agent/task-schema';
+import { availableVariables } from '../../client/agent/command-validation';
 import type { ComboboxAria } from '../composer-editor/editor-state';
 import type { TriggerState } from '../quick-panel/trigger';
 import type { QuickPanelHandle } from '../quick-panel/use-quick-panel';
 import { instructionExtensions } from './instruction-extensions';
-import { instructionProblem } from './instruction-problem';
+import { FieldError } from './field-error';
+import { errorId } from './use-command-problems';
 import { InstructionQuickPanel } from './instruction-quick-panel';
 import { useInstructionEditor } from './use-instruction-editor';
 
 export function InstructionEditor({
   command,
   onChange,
+  onNormalize,
   onConfigureSource,
   readOnly,
   tasks,
+  error,
+  onBlur,
 }: {
   command: CommandDefinition;
   onChange: Dispatch<SetStateAction<CommandDefinition>>;
+  /** The instructions as loaded, without stray chip sentinels; not an edit of the draft. */
+  onNormalize: (instructions: string) => void;
   onConfigureSource: (source: ContextVariable) => void;
   /** Shows the instructions without accepting edits (a plugin command). */
   readOnly: boolean;
   /** Snapshot tasks: `@` conversations and the titles of conversation chips. */
   tasks: readonly AgentTask[];
+  /** The instructions' problem in the app's language, or '' when there is none. */
+  error: string;
+  /** Focus left the instructions, so the editor can check them again. */
+  onBlur: () => void;
 }) {
   const { t } = useTranslation('commands');
   const [trigger, setTrigger] = useState<TriggerState | null>(null);
@@ -71,11 +81,13 @@ export function InstructionEditor({
   const editor = useInstructionEditor({
     instructions: command.instructions,
     onChange: changeInstructions,
+    onNormalize,
     onTrigger: setTrigger,
     panel,
     tasks,
     variables,
     aria,
+    errorId: error ? errorId('instructions') : null,
   });
   const { container } = editor;
   const host = useCallback(
@@ -100,7 +112,6 @@ export function InstructionEditor({
     }),
     [editor],
   );
-  const referenceError = instructionProblem(command, t);
   return (
     <div className="settings-field" data-figma-node="1554:58480">
       <div className="instruction-toolbar">
@@ -109,7 +120,7 @@ export function InstructionEditor({
           <FieldHint text={t('instruction.hint')} />
         </div>
       </div>
-      <div ref={host} className="instruction-editor" />
+      <div ref={host} className="instruction-editor" onBlur={onBlur} />
       <InstructionQuickPanel
         trigger={trigger}
         editor={editor.commands}
@@ -119,11 +130,7 @@ export function InstructionEditor({
         anchor={caret}
         owner={owner}
       />
-      {referenceError && (
-        <p role="alert" className="text-xs text-destructive">
-          {referenceError}
-        </p>
-      )}
+      {error && <FieldError id={errorId('instructions')}>{error}</FieldError>}
       <div className="variable-chips" aria-label={t('instruction.available')}>
         {chips.map(({ name, enabled, source }) =>
           enabled || !source ? (

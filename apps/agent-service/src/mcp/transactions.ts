@@ -71,34 +71,29 @@ export class CredentialTransactions {
     if (options.signal?.aborted) return Promise.reject(new TxnAborted());
     if (state.lifecycle.signal.aborted) return Promise.reject(new TxnRevoked(identity));
     return new Promise<T>((resolve, reject) => {
+      // The queue holds this very entry, so an abort while it waits finds it, drops it and rejects
+      // at once; once it runs, the op sees the abort through its own signal.
+      const onAbort = () => {
+        const index = state.queue.indexOf(entry as QueueEntry<unknown>);
+        if (index < 0) return;
+        state.queue.splice(index, 1);
+        entry.reject(new TxnAborted());
+      };
       const entry: QueueEntry<T> = {
         op,
         invocation: options.signal,
         generation: state.generation,
-        resolve,
-        reject,
-      };
-      const onAbort = () => {
-        const index = state.queue.indexOf(entry as QueueEntry<unknown>);
-        if (index >= 0) {
-          state.queue.splice(index, 1);
-          reject(new TxnAborted());
-        }
+        resolve: (value) => {
+          options.signal?.removeEventListener('abort', onAbort);
+          resolve(value);
+        },
+        reject: (error) => {
+          options.signal?.removeEventListener('abort', onAbort);
+          reject(error);
+        },
       };
       options.signal?.addEventListener('abort', onAbort, { once: true });
-      const wrappedResolve = (value: T) => {
-        options.signal?.removeEventListener('abort', onAbort);
-        resolve(value);
-      };
-      const wrappedReject = (error: Error) => {
-        options.signal?.removeEventListener('abort', onAbort);
-        reject(error);
-      };
-      state.queue.push({
-        ...entry,
-        resolve: wrappedResolve,
-        reject: wrappedReject,
-      } as QueueEntry<unknown>);
+      state.queue.push(entry as QueueEntry<unknown>);
       void this.drain(identity);
     });
   }

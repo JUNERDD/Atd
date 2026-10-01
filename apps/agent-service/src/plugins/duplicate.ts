@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import { cp, readFile, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import type { PluginDuplicateResponse, PluginItemKind } from '@ai/agent-contracts';
-import { toItemName } from '@ai/plugin-kit';
+import type { McpServerConfig, PluginDuplicateResponse, PluginItemKind } from '@ai/agent-contracts';
+import { toItemName, transportSecrets } from '@ai/plugin-kit';
 import { listAtdAgents, putAtdAgent } from '../atd-agents/catalog.js';
 import { atdSkillsDir } from '../service-fs.js';
 import { discoverAtdSkills } from '../skills/atd-skills.js';
@@ -108,26 +108,71 @@ async function duplicateAgent(
 }
 
 /**
- * Copies a plugin server into `servers.json` under a bare id. The copy starts disabled, like a
- * plugin server before approval (D6): turning it on is the user's decision.
+ * A plugin server's record without the env and header entries its plugin filled from a secret,
+ * so the copy never stores in plain text what the plugin keeps in the keychain or the service's
+ * environment. Refused when a secret sits where no entry can be left out.
+ */
+async function withoutSecrets(
+  actions: PluginActions,
+  pluginId: string,
+  name: string,
+  record: McpServerConfig,
+): Promise<{ record: McpServerConfig; omitted: string[] }> {
+  const plugin = actions.view.installed.find((entry) => entry.id === pluginId);
+  const component = plugin?.plugin.components.find(
+    (entry) => entry.kind === 'mcp' && entry.name === name,
+  );
+  if (!plugin || component?.kind !== 'mcp')
+    throw new TypeError(`Invalid request: MCP server "${name}" could not be prepared.`);
+  const secrets = transportSecrets(
+    plugin.plugin.format,
+    component.transport,
+    await actions.host.substitution(plugin),
+  );
+  if (secrets.elsewhere)
+    throw new TypeError(
+      `Invalid request: MCP server "${name}" passes a secret in its command, arguments or URL, so it cannot be copied to Personal.`,
+    );
+  const keep = (values: Record<string, string>, omit: readonly string[]) =>
+    Object.fromEntries(Object.entries(values).filter(([key]) => !omit.includes(key)));
+  return {
+    record: {
+      ...record,
+      stdio: record.stdio && { ...record.stdio, env: keep(record.stdio.env, secrets.env) },
+      http: record.http && { ...record.http, headers: keep(record.http.headers, secrets.headers) },
+    },
+    omitted: [...secrets.env, ...secrets.headers],
+  };
+}
+
+/**
+ * Copies a plugin server into `servers.json` under a bare id, without its secrets (see
+ * `withoutSecrets`). The copy starts disabled: turning it on is the user's decision, and a copy
+ * that runs a local command also needs the user's launch approval, which the plugin server's own
+ * approval never carries over to (mcp/launch-approvals.ts).
  */
 async function duplicateServer(
   actions: PluginActions,
   pluginId: string,
   name: string,
-): Promise<string> {
+): Promise<{ name: string; omitted: string[] }> {
   const authority = await actions.mcp();
   const all = await mapPluginComponents(actions.host, actions.view, new Set(['mcp']));
-  const record = all.mcp.find(
+  const found = all.mcp.find(
     ({ item }) => item.pluginId === pluginId && item.localName === name,
   )?.value;
-  if (!record) throw new TypeError(`Invalid request: MCP server "${name}" could not be prepared.`);
-  const configured = authority.configured();
-  const taken = new Set(configured.map((server) => server.serverId));
+  if (!found) throw new TypeError(`Invalid request: MCP server "${name}" could not be prepared.`);
+  const { record, omitted } = await withoutSecrets(actions, pluginId, name, found);
+  const taken = new Set(authority.configured().map((server) => server.serverId));
   const serverId = await freeName(name, async (candidate) => taken.has(candidate));
-  const copy = { ...record, serverId, connectionId: randomUUID(), revision: 1, disabled: true };
-  await authority.configure({ servers: [...configured, copy] });
-  return serverId;
+  await authority.put({
+    ...record,
+    serverId,
+    connectionId: randomUUID(),
+    revision: 1,
+    disabled: true,
+  });
+  return { name: serverId, omitted };
 }
 
 /** Duplicates one plugin item into the Personal plugin (D8) and answers its Personal name. */
@@ -147,12 +192,12 @@ export async function duplicateItem(
   if (kind === 'skill') {
     const record = await sourceSkill(actions, pluginId, name);
     if (!record) throw new TypeError(`Invalid request: skill "${name}" could not be read.`);
-    return { kind, name: await duplicateSkill(record, base) };
+    return { kind, name: await duplicateSkill(record, base), omitted: [] };
   }
   if (kind === 'agent') {
     const agent = await sourceAgent(actions, pluginId, name);
     if (!agent) throw new TypeError(`Invalid request: subagent "${name}" could not be read.`);
-    return { kind, name: await duplicateAgent(agent, base) };
+    return { kind, name: await duplicateAgent(agent, base), omitted: [] };
   }
-  return { kind, name: await duplicateServer(actions, pluginId, name) };
+  return { kind, ...(await duplicateServer(actions, pluginId, name)) };
 }

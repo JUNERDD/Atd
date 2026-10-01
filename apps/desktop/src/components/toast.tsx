@@ -33,6 +33,8 @@ export function ToastCard({ item, kind, text }: { item: Toast; kind: ToastKind; 
       <IconButton
         label={t('toast.dismiss')}
         aria-label={t('toast.dismissLabel')}
+        // The X is self-explanatory, and a tooltip would cover the toast's text.
+        tooltip={false}
         onClick={() => toast.dismiss(item.id)}
       >
         <X />

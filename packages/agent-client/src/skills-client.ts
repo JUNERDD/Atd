@@ -1,4 +1,4 @@
-import type { AgentClientOptions } from './types.js';
+import { authHeaders, type AgentClientOptions } from './types.js';
 
 /**
  * T3 standalone skill/role client functions. They reuse the base URL/token
@@ -61,7 +61,7 @@ async function request<T>(
   const response = await fetchImpl(`${options.baseUrl}${path}`, {
     method,
     headers: {
-      authorization: `Bearer ${options.token}`,
+      ...authHeaders(options),
       ...(body === undefined ? {} : { 'content-type': 'application/json' }),
     },
     body: body === undefined ? undefined : JSON.stringify(body),
@@ -125,6 +125,15 @@ export function setSkillEnabled(
     { enabled },
     fetchImpl,
   );
+}
+
+/** Deletes one Personal skill (`~/.atd/skills`); built-in, plugin and shared skills are refused. */
+export function deleteSkill(
+  options: AgentClientOptions,
+  name: string,
+  fetchImpl?: typeof fetch,
+): Promise<{ name: string; deleted: true }> {
+  return request(options, `/v1/skills/${encodeURIComponent(name)}`, 'DELETE', undefined, fetchImpl);
 }
 
 /** Stages skill/role selection for the next run of a task. */

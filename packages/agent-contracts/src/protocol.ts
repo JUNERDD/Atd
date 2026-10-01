@@ -26,10 +26,19 @@ export const ErrorCodeSchema = Type.Union([
   Type.Literal('gone'),
   Type.Literal('payload_too_large'),
   Type.Literal('auth_required'),
+  /** 403: an MCP server's launch is not approved as it stands (mcp-approvals.ts). */
+  Type.Literal('approval_required'),
+  /** 409: an MCP launch approval named a fingerprint that no longer matches. */
+  Type.Literal('approval_changed'),
   Type.Literal('desktop_unavailable'),
   Type.Literal('draining'),
   /** 502: a model provider the service called on the user's behalf failed. */
   Type.Literal('upstream_failed'),
+  /**
+   * 409 before any handler ran: the request's `x-relay-epoch` names another service epoch than
+   * the running one. The response also carries `x-relay-epoch-current` (see relay.ts).
+   */
+  Type.Literal('epoch_mismatch'),
   Type.Literal('not_implemented'),
   Type.Literal('internal'),
 ]);

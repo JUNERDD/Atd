@@ -11,6 +11,11 @@ export const TODO_TOOL = 'todo';
 export const WEB_SEARCH_TOOL = 'web_search';
 export const WEB_FETCH_TOOL = 'fetch_content';
 
+/** Adds or updates one MCP server in the user's catalog. Parent-only. */
+export const CONFIGURE_MCP_TOOL = 'configure_mcp';
+/** Lists the user's MCP servers as `configure_mcp` edits them. Parent-only. */
+export const LIST_MCP_TOOL = 'list_mcp_servers';
+
 /**
  * Loads one skill from the run's model-invocable catalog. Parent-only, and registered only when
  * that catalog is not empty.

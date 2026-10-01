@@ -37,13 +37,19 @@ export function pluginDirectoryResolver(context: SubstitutionContext): Placehold
 }
 
 /**
- * Claude `.mcp.json` rule: plugin directories, user config (sensitive values included, since
- * transports are never model-visible) and process environment with POSIX `:-` defaults, which
+ * Claude `.mcp.json` rule: plugin directories, user config (sensitive values included, since the
+ * service keeps transports from the model and redacts env and header values from its clients;
+ * `transportSecrets` names the entries that took one) and process environment with POSIX `:-` defaults, which
  * apply when the variable is unset or empty. Each unresolved reference is reported once.
+ *
+ * With `deferEnv`, a process-environment reference whose default does not apply is written back
+ * as `${NAME}` instead of its value, for the MCP client to fill in when it connects. The host then
+ * sees which variables an HTTP transport sends, and no environment value enters the transport.
  */
 export function claudeTransportResolver(
   context: SubstitutionContext,
   diagnostics: PluginDiagnostic[],
+  deferEnv = false,
 ): PlaceholderResolver {
   const reported = new Set<string>();
   const report = (diagnostic: PluginDiagnostic) => {
@@ -69,9 +75,10 @@ export function claudeTransportResolver(
     if (!reference) return undefined;
     const [, name = '', fallback] = reference;
     const value = ownValue(context.env, name);
-    if (value !== undefined && value !== '') return value;
+    const env = deferEnv ? `\${${name}}` : value;
+    if (value !== undefined && value !== '') return env;
     if (fallback !== undefined) return fallback;
-    if (value !== undefined) return value;
+    if (value !== undefined) return env;
     report({
       level: 'warning',
       code: 'invalid-component',
@@ -79,4 +86,22 @@ export function claudeTransportResolver(
     });
     return undefined;
   };
+}
+
+/**
+ * Whether Claude transport text takes a secret when substituted: a sensitive
+ * `${user_config.KEY}`, or a `${VAR}` whose value the process environment supplies (the service's
+ * own environment may hold credentials). Plugin directories and `:-` defaults are not secrets.
+ */
+export function secretDetector(context: SubstitutionContext): (text: string) => boolean {
+  return (text) =>
+    [...text.matchAll(PLACEHOLDER)].some(([, expression = '']) => {
+      if (expression === 'CLAUDE_PLUGIN_ROOT' || expression === 'CLAUDE_PLUGIN_DATA') return false;
+      const key = userConfigKey(expression);
+      if (key !== undefined) return context.sensitive.has(key);
+      const name = ENV_REFERENCE.exec(expression)?.[1];
+      if (name === undefined) return false;
+      const value = ownValue(context.env, name);
+      return value !== undefined && value !== '';
+    });
 }

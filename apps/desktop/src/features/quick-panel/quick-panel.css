@@ -1,4 +1,4 @@
-/* Radix content: exactly the composer surface width with the shared blurred-panel material, as
+/* Radix content: exactly the composer surface width with the popover's glass material, as
    `hitl-queue-popover.css`. Height follows the HITL cap and the room between the surface and the
    top of the panel body (the collision boundary, below the header); the list scrolls inside and
    the footer stays, so the panel never has to flip below the input. */
@@ -10,12 +10,18 @@
   /* Same composition as the scoped model picker: one 4px inset (the command's own padding)
      keeps the 18px surface concentric with the 14px options. */
   border-radius: var(--radius-2xl);
-  backdrop-filter: blur(var(--ata-backdrop-blur));
 }
 
 .quick-panel-content [data-slot='command'] {
   gap: var(--spacing);
   border-radius: inherit;
+}
+
+/* The command is the glass's persistent child layer (see `surface-glass` in `@ai/ui`): a keystroke
+   that makes a scrolling list fit drops the list's scroller layers here, not on the glass, where
+   they lingered with the previous rows over the composer. */
+.quick-panel-content > [data-slot='command'] {
+  will-change: transform;
 }
 
 .quick-panel-content [data-slot='command-group'] {

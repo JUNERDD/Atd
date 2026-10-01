@@ -2,10 +2,10 @@ import { useState } from 'react';
 import { Copy, ExternalLink, FileText, FolderOpen, FolderSearch, Plus } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Item, ItemContent, ItemDescription, ItemMedia, ItemTitle } from '@ai/ui/components/item';
-import type { Artifact, FileRef } from '../../../electron/agent/task-schema';
-import { artifactLocation } from '../../../electron/agent/task-schema';
+import type { Artifact, FileRef } from '../../client/agent/task-schema';
+import { artifactLocation } from '../../client/agent/task-schema';
 import { IconButton } from '../../components/icon-button';
-import { fileSize } from '../../lib/task-store';
+import { fileSize } from '../../lib/file-size';
 import { agentApi } from './use-agent';
 import { messageOf } from '../../lib/errors';
 
@@ -24,7 +24,8 @@ export function TaskFiles({
     setFeedback(null);
     try {
       const result = await agentApi().artifact(file.id, operation);
-      if (result) onAttach(result);
+      // Every host resolves the file for each operation; only Attach adds it to the follow-up.
+      if (operation === 'attach' && result) onAttach(result);
       if (operation === 'copy') {
         setFeedback({ id: file.id, text: t('files.pathCopied'), error: false });
       }

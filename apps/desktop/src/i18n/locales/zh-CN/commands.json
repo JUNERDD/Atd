@@ -10,9 +10,10 @@
     "description": "把常用操作保存为可复用的命令。",
     "searchLabel": "搜索命令",
     "searchPlaceholder": "搜索命令…",
-    "new": "新建",
+    "new": "新建命令",
     "noShortcut": "无快捷键",
     "run": "运行",
+    "runOff": "启用该命令后才能运行",
     "runFor": "运行 {{name}}",
     "editFor": "编辑 {{name}}",
     "viewFor": "查看 {{name}}",
@@ -21,17 +22,17 @@
     "moreActionsFor": "{{name}} 的更多操作",
     "duplicate": "创建副本",
     "duplicateToPersonal": "复制到个人",
-    "empty": "还没有命令。创建你的第一个命令。",
+    "emptyTitle": "还没有命令",
+    "emptyDescription": "把常用的指令保存为命令，之后可在任务面板或通过快捷键运行。",
+    "noMatches": "没有与“{{query}}”匹配的命令",
+    "clearSearch": "清除搜索",
     "loading": "正在加载命令…",
     "personal": "个人",
     "pluginGroupFor": "来自 {{plugin}} 的命令",
     "deleteTitle": "删除 {{name}}？",
     "deleteDescription": "将删除该命令及其快捷键。已有任务会保留其保存的命令版本。",
     "status": {
-      "enabled": "命令已启用。",
-      "disabled": "命令已停用。",
-      "saved": "命令已保存。",
-      "deleted": "命令已删除。"
+      "saved": "命令已保存。"
     }
   },
   "editor": {
@@ -58,6 +59,19 @@
     "saveChanges": "保存更改",
     "create": "创建命令",
     "deletedError": "该命令已被删除。请取消并新建一个命令以保留副本。"
+  },
+  "validation": {
+    "nameRequired": "请输入命令名称。",
+    "instructionsRequired": "请输入指令。",
+    "selectionDisabled": "请在“输入选项”中开启选中文本变量，才能使用此来源。",
+    "clipboardDisabled": "请在“输入选项”中开启剪贴板变量，才能使用此来源。",
+    "textNotAccepted": "没有文本输入的命令不能要求输入文本。请关闭“要求输入文本”。",
+    "duplicateKey": "每个参数都需要唯一的变量键。",
+    "labelRequired": "每个参数都需要标签。",
+    "range": "{{label}}：最小值不能大于最大值。",
+    "optionIncomplete": "每个选项都需要标签和值。",
+    "optionDuplicate": "选项的值不能重复。",
+    "invalidDefault": "{{label}}：默认值无效。"
   },
   "parameters": {
     "newTitle": "新建参数",

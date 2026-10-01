@@ -1,0 +1,220 @@
+/* @block button | requires: base, glass, states | layer: components | native: SwiftUI .glass, .glassProminent, .bordered, .borderedProminent, .borderless / UIKit UIButton.Configuration .glass(), .prominentGlass(), .gray(), .tinted(), .filled(), .plain() | Capsule buttons: glass for bars and floating controls, opaque bordered/tinted/filled/plain in content (CMP-3), with pressed, hover, focus, selected, disabled and busy states */
+
+/* Markup: <button class="btn-filled" type="button">Continue</button>
+   Modifiers: .btn-destructive .btn-icon (aria-label required) .btn-block .btn-large.
+   Busy (FB-7): aria-busy="true" aria-disabled="true" + <span class="activity-indicator" aria-hidden="true"></span>
+   first, and a progressive label ("Saving…"); the indicator itself comes from the motion block: add `motion` to the build.
+   Toggles: aria-pressed="true" fills bordered and tinted buttons with the accent (plain: gray fill; glass: tint).
+   Labels wrap (balanced) rather than overflow when space runs out, e.g. at 200% text on a narrow phone.
+   Size: 44 px by default so the hit region needs no pseudo-element (glass uses both; HIT-1).
+   iOS 26 measures a regular .glass button at 34.3 pt and large at 50.3 pt (.btn-large). */
+:is(.btn-glass, .btn-prominent, .btn-bordered, .btn-tinted, .btn-filled, .btn-plain) {
+  --glass-radius: var(--corner-capsule);
+  --_btn-h: var(--hit);
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: var(--_btn-h);
+  min-height: var(--_btn-h);
+  margin: 0;
+  padding: 0 20px;
+  border: 0;
+  font: 600 var(--fs-body)/var(--lh-body) var(--ff-sans);
+  letter-spacing: calc(var(--tr-body) * var(--tracking-scale));
+  text-decoration: none;
+  white-space: normal;
+  text-wrap: balance;
+  text-align: center;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+  /* Release settles on the snappy spring; press-in shortens it below (MOT-11). */
+  transition:
+    scale var(--dur-spring-snappy) var(--spring-snappy),
+    --glow var(--dur-base) var(--curve-out),
+    background-color var(--dur-fast) var(--curve-out);
+}
+
+/* Opaque in-content styles. The transparent border becomes visible in forced colors. */
+:is(.btn-bordered, .btn-tinted, .btn-filled, .btn-plain) {
+  border: 1px solid transparent;
+  border-radius: var(--corner-capsule);
+  background-color: var(--_btn-bg);
+  color: var(--_btn-fg);
+}
+/* Accent text on a gray or tinted fill needs a darker ink in light mode to keep 4.5:1 on the grouped
+   background, also under Increase Contrast's darker fills (measured, CON-1). */
+.btn-filled {
+  --_btn-bg: var(--accent-fill);
+  --_btn-fg: var(--accent-on);
+} /* on-accent label (COL-3) */
+.btn-tinted {
+  --_btn-bg: color-mix(in srgb, var(--accent) 15%, transparent);
+  --_btn-fg: var(--_btn-ink);
+}
+.btn-bordered {
+  --_btn-bg: var(--fill-tertiary);
+  --_btn-fg: var(--_btn-ink);
+} /* UIKit .gray() */
+.btn-plain {
+  --_btn-bg: transparent;
+  --_btn-fg: var(--glass-ink, var(--accent-text));
+}
+:is(.btn-tinted, .btn-bordered) {
+  --_btn-ink: var(
+    --glass-ink,
+    light-dark(color-mix(in oklab, var(--accent-text) 85%, black), var(--accent-text))
+  );
+}
+/* Inside a glass member (sheet, menu, popover, alert) --glass-ink makes these labels monochrome: accent ink measured
+   4.0–4.4:1 there over busy backdrops, and GL-5 keeps glass labels monochrome anyway. */
+
+/* Destructive: system red on white is 3.57:1 and on dark glass 2.7:1, so text uses --destructive-text (CON-1). */
+.btn-destructive {
+  --_btn-fg: var(--destructive-text);
+  color: var(--_btn-fg);
+}
+.btn-destructive.btn-tinted {
+  --_btn-bg: color-mix(in srgb, var(--system-red) 15%, transparent);
+}
+.btn-destructive.btn-filled {
+  --_btn-bg: color-mix(in srgb, var(--system-red) 75%, black);
+  --_btn-fg: var(--accent-on);
+}
+.btn-destructive.btn-prominent {
+  --accent-fill: color-mix(in srgb, var(--system-red) 75%, black);
+  --_btn-fg: var(--accent-on);
+}
+/* On glass, a translucent fill can't hold red text at 4.5:1 over every backdrop: bordered and tinted destructive
+   buttons turn into the opaque red fill with a white label (opaque .list and .card cells keep the tinted look).
+   Glass bar buttons keep a monochrome label (GL-5); the word or symbol carries the meaning. */
+:where(.glass, .sheet, .menu, .popover, .alert, .status-pill)
+  :is(.btn-bordered, .btn-tinted).btn-destructive:not(:where(.list, .card) *) {
+  --_btn-bg: color-mix(in srgb, var(--system-red) 75%, black);
+  --_btn-fg: var(--accent-on);
+}
+.btn-glass.btn-destructive {
+  color: var(--glass-ink);
+}
+
+:is(.btn-glass, .btn-prominent, .btn-bordered, .btn-tinted, .btn-filled, .btn-plain) > svg {
+  flex: none;
+  width: 1.3em;
+  height: 1.3em;
+}
+.btn-icon {
+  width: var(--_btn-h);
+  padding: 0;
+}
+.btn-block {
+  display: flex;
+  width: 100%;
+}
+.btn-large {
+  --_btn-h: 50px;
+  padding-inline: 24px;
+}
+
+/* Hover: fine pointers only (FB-2); :where() keeps it weaker than pressed and selected. */
+@media (hover: hover) and (pointer: fine) {
+  :is(.btn-glass, .btn-prominent):where(:not(:disabled, [aria-disabled='true']):hover) {
+    --glow: var(--hover-glow);
+  }
+  :is(.btn-bordered, .btn-tinted, .btn-filled, .btn-plain):where(
+    :not(:disabled, [aria-disabled='true']):hover
+  ) {
+    background-image: linear-gradient(var(--hover-fill) 0 0);
+  }
+}
+
+/* Selected toggle (aria-pressed): a background change, not color alone (FB-3, COL-2); also swap to a
+   filled symbol. Plain labels stay --label: accent text on the gray fill measured below 4.5:1. Bordered and
+   tinted toggles fill with the accent pair when selected (UIKit: tinted becomes filled). */
+.btn-plain[aria-pressed='true'] {
+  --_btn-bg: var(--state-selected-fill);
+  --_btn-fg: var(--label);
+}
+:is(.btn-bordered, .btn-tinted)[aria-pressed='true'] {
+  --_btn-bg: var(--accent-fill);
+  --_btn-fg: var(--accent-on);
+}
+.btn-glass[aria-pressed='true'] {
+  background-image: linear-gradient(color-mix(in srgb, var(--accent) 22%, transparent) 0 0);
+}
+
+/* Pressed on touch-down (FB-1): :active until AppleFeedback.initPressStates() sets [data-pressed].
+   Capsules scale; in-content styles keep their fill and add an overlay; plain only gets the overlay. */
+:where(html:not([data-press-tracking]))
+  :is(.btn-glass, .btn-prominent, .btn-bordered, .btn-tinted, .btn-filled):not(
+    :disabled,
+    [aria-disabled='true']
+  ):active,
+:is(.btn-glass, .btn-prominent, .btn-bordered, .btn-tinted, .btn-filled)[data-pressed] {
+  scale: var(--press-scale); /* 1 under reduced motion (token) */
+  --glow: var(--press-glow);
+  transition-duration: var(--dur-press);
+  transition-timing-function: var(--curve-out);
+}
+:where(html:not([data-press-tracking]))
+  :is(.btn-bordered, .btn-tinted, .btn-filled, .btn-plain):not(
+    :disabled,
+    [aria-disabled='true']
+  ):active,
+:is(.btn-bordered, .btn-tinted, .btn-filled, .btn-plain)[data-pressed] {
+  background-image: linear-gradient(var(--press-fill) 0 0);
+}
+
+/* Disabled: dimmed, never hidden; pointer events stay for tooltips (FB-3). A busy button keeps full color. */
+:is(.btn-glass, .btn-prominent, .btn-bordered, .btn-tinted, .btn-filled, .btn-plain):is(
+  :disabled,
+  [aria-disabled='true']:not([aria-busy='true'])
+) {
+  opacity: var(--state-disabled-opacity);
+  cursor: default;
+}
+
+/* Busy (FB-7): the indicator replaces the glyph and takes the label color. */
+:is(.btn-glass, .btn-prominent, .btn-bordered, .btn-tinted, .btn-filled, .btn-plain):not(
+    [aria-busy='true']
+  )
+  > .activity-indicator,
+:is(
+    .btn-glass,
+    .btn-prominent,
+    .btn-bordered,
+    .btn-tinted,
+    .btn-filled,
+    .btn-plain
+  )[aria-busy='true']
+  > svg {
+  display: none;
+}
+:is(.btn-glass, .btn-prominent, .btn-bordered, .btn-tinted, .btn-filled, .btn-plain)
+  > .activity-indicator {
+  inline-size: 1.1em;
+  block-size: 1.1em;
+  color: inherit;
+}
+
+/* Reduced motion (MOT-5): --press-scale resolves to 1 in the tokens; overlays and glow still change. */
+
+@media (forced-colors: active) {
+  :is(.btn-glass, .btn-prominent) {
+    border: 1px solid ButtonText;
+  }
+  :is(.btn-glass, .btn-plain, .btn-bordered, .btn-tinted, .btn-filled)[aria-pressed='true'] {
+    forced-color-adjust: none;
+    background: Highlight;
+    color: HighlightText;
+  }
+  :is(.btn-glass, .btn-prominent, .btn-bordered, .btn-tinted, .btn-filled, .btn-plain):is(
+    :disabled,
+    [aria-disabled='true']
+  ) {
+    color: GrayText;
+    border-color: GrayText;
+  }
+}

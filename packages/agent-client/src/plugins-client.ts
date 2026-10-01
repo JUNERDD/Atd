@@ -86,22 +86,6 @@ export function setPluginItemEnabled(
   );
 }
 
-/** Allows or stops one stdio MCP server of an installed plugin from running. */
-export function setPluginServerApproval(
-  options: AgentClientOptions,
-  input: { id: string; name: string; approved: boolean },
-  fetchImpl?: typeof fetch,
-): Promise<PluginDetail> {
-  return manageRequest(
-    options,
-    `${pluginPath(input.id)}/servers/${encodeURIComponent(input.name)}/approval`,
-    'POST',
-    { approved: input.approved },
-    detail,
-    fetchImpl,
-  );
-}
-
 /** Saves user config values; `null` clears one. */
 export function configurePlugin(
   options: AgentClientOptions,

@@ -21,8 +21,8 @@ export interface ResolveInput {
  * Merges host and installed plugins into one catalog. Host plugins come first in the given
  * order, then installed plugins by name. Effective enablement per item is: plugin enabled
  * (state.disabled; non-toggleable host plugins are always on) AND item enabled (host item flag,
- * or not in state.items for installed plugins) AND, for installed stdio MCP servers, approved
- * AND, for installed plugins, no required user config missing. Two items of one kind with the
+ * or not in state.items for installed plugins) AND, for installed plugins, no required user config
+ * missing. Launching an MCP server is not decided here: the host approves each launch itself. Two items of one kind with the
  * same qualified name: the first keeps it, later ones are blocked with `collision` and a
  * diagnostic on their plugin. `counts` counts every item, effective or not.
  */

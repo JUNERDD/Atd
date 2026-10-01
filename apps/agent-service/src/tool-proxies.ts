@@ -9,10 +9,10 @@ import {
   type SessionManager,
   type ToolDefinition,
 } from '@earendil-works/pi-coding-agent';
-import type { GrantScope, McpServerConfig, PermissionTier } from '@ai/agent-contracts';
+import type { GrantScope, PermissionTier } from '@ai/agent-contracts';
 import type { CapabilityRegistry } from './capabilities.js';
 import { commandToolDefinition } from './commands/tool.js';
-import { registerConfigureMcpTool } from './configure-mcp-tool.js';
+import { registerMcpCatalogTools, type ListMcp, type UpsertMcp } from './configure-mcp-tool.js';
 import { ConfirmStore } from './confirms.js';
 import { registerDesktopTool } from './desktop-tool.js';
 import type { Reviewer } from './harness/auto-review.js';
@@ -20,6 +20,7 @@ import { createGate } from './harness/gate.js';
 import type { Logger } from './logging.js';
 import {
   confined,
+  confinedWrite,
   inside,
   resolveToolPath,
   userAgentsReadRoots,
@@ -48,8 +49,8 @@ export interface ServiceToolHost {
    * the read tool reads inside them without a confirmation; writes keep the usual rules.
    */
   skillDirs: () => readonly string[];
-  configureMcp?: (servers: McpServerConfig[]) => Promise<McpServerConfig[]>;
-  configuredMcp?: () => McpServerConfig[];
+  upsertMcp?: UpsertMcp;
+  listMcp?: ListMcp;
 }
 
 /**
@@ -112,12 +113,9 @@ export function serviceTools(host: ServiceToolHost): ExtensionFactory {
         } else {
           // A path the operation would refuse fails before the gate, so no prompt or review
           // is spent on a call that cannot run.
-          await confined(
-            host.cwd,
-            host.dataDir,
-            resolveToolPath(host.cwd, pathOf(args)),
-            name === 'read' ? await readRoots() : [],
-          );
+          const target = resolveToolPath(host.cwd, pathOf(args));
+          if (name === 'read') await confined(host.cwd, host.dataDir, target, await readRoots());
+          else await confinedWrite(host.cwd, host.dataDir, target);
           await authorize({
             toolCallId: id,
             scope,
@@ -126,9 +124,12 @@ export function serviceTools(host: ServiceToolHost): ExtensionFactory {
             signal: signal ?? undefined,
           });
         }
-        return invocation.run(id, () =>
-          tool.execute(id, args, signal, onUpdate, { ...ctx, cwd: host.cwd }),
-        );
+        // Pi's tool context goes through untouched. It defines `tools` and `executeTool` as
+        // non-enumerable properties, which a spread drops, and its `cwd` already is `host.cwd`:
+        // pi-session.ts builds the session and these tools from the same task output directory.
+        // A wrapper that needs another cwd must derive from the context, as in
+        // `Object.create(ctx, { cwd: { value } })`, never spread it.
+        return invocation.run(id, () => tool.execute(id, args, signal, onUpdate, ctx));
       },
     };
   }
@@ -164,7 +165,7 @@ export function serviceTools(host: ServiceToolHost): ExtensionFactory {
             },
             writeFile: async (target, content) => {
               guard();
-              const { real } = await confined(host.cwd, host.dataDir, target);
+              const { real } = await confinedWrite(host.cwd, host.dataDir, target);
               await writeFile(real, content);
             },
             access: async (target) => {
@@ -183,12 +184,12 @@ export function serviceTools(host: ServiceToolHost): ExtensionFactory {
           operations: {
             writeFile: async (target, content) => {
               guard();
-              const { real } = await confined(host.cwd, host.dataDir, target);
+              const { real } = await confinedWrite(host.cwd, host.dataDir, target);
               await writeFile(real, content);
             },
             mkdir: async (target) => {
               guard();
-              const { real } = await confined(host.cwd, host.dataDir, target);
+              const { real } = await confinedWrite(host.cwd, host.dataDir, target);
               await mkdir(real, { recursive: true });
             },
           },
@@ -199,7 +200,7 @@ export function serviceTools(host: ServiceToolHost): ExtensionFactory {
     pi.registerTool(bashToolDefinition(host, authorize, invocation));
     pi.registerTool(commandToolDefinition(host.dataDir, authorize));
     registerDesktopTool(pi, host);
-    registerConfigureMcpTool(pi, host);
+    registerMcpCatalogTools(pi, host);
   };
 }
 

@@ -53,8 +53,12 @@ export const PluginStateFileSchema = Type.Object(
       Type.String(),
       Type.Record(Type.String(), Type.Union([Type.String(), Type.Number(), Type.Boolean()])),
     ),
-    /** Per plugin: stdio MCP server names the user approved to run. */
-    approved: Type.Record(Type.String(), Type.Array(Type.String())),
+    /**
+     * Legacy, never written: per plugin, the stdio MCP server names approved before the service
+     * took over launch approvals. The service reads it only to know that a one-time re-approval
+     * notice is due; its presence approves nothing.
+     */
+    approved: Type.Optional(Type.Record(Type.String(), Type.Array(Type.String()))),
   },
   { additionalProperties: false },
 );
@@ -97,7 +101,7 @@ export interface ResolvedItem {
   /** Plugin on, item on, and nothing below blocks it. */
   enabled: boolean;
   /** First reason the item is not effective, in precedence order. */
-  blockedBy?: 'plugin' | 'item' | 'approval' | 'config' | 'collision';
+  blockedBy?: 'plugin' | 'item' | 'config' | 'collision';
 }
 
 export interface ResolvedPlugin {

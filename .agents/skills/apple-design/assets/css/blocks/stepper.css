@@ -1,0 +1,169 @@
+/* @block stepper | requires: states | layer: components | native: SwiftUI Stepper; UIKit UIStepper | −/+ capsule beside a visible value: hold to repeat (stepper.js), dims at its limits, busy spinner */
+/* Markup. A stepper shows no value itself, so pair it with the number it changes (the field is the JS-free fallback):
+     <label for="guests">Guests</label>
+     <input class="stepper__value" id="guests" type="number" min="1" max="12" value="2" inputmode="numeric">
+     <div class="stepper" role="group" aria-label="Guests" aria-controls="guests">
+       <button class="stepper__btn" type="button" data-step="-1" aria-label="Fewer guests"></button>
+       <button class="stepper__btn" type="button" data-step="1" aria-label="More guests"></button>
+       <span class="activity-indicator" aria-hidden="true"></span>        (optional, shown while aria-busy="true")
+     </div>
+   AppleBlocks.stepper.init() adds press-and-hold repeat, aria-disabled at the limits and value announcements.
+   data-step is a multiple of the field's step (data-step="10" for big jumps). No JS: the capsule hides, the field stays. */
+
+.stepper {
+  --stepper-h: 32px; /* ≈ UIStepper; each half's target is extended to --hit */
+  --stepper-w: 47px;
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  vertical-align: middle;
+  block-size: var(--stepper-h);
+  border-radius: var(--corner-capsule);
+  background: var(--fill-tertiary);
+}
+.stepper__btn {
+  position: relative;
+  flex: none;
+  inline-size: var(--stepper-w);
+  block-size: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background-color: transparent;
+  background-image: linear-gradient(currentColor 0 0); /* minus */
+  background-position: center;
+  background-size: 14px 2px;
+  background-repeat: no-repeat;
+  color: var(--label);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+  transition: background-color var(--dur-fast) var(--curve-out);
+}
+.stepper__btn:not([data-step^='-']) {
+  /* plus */
+  background-image: linear-gradient(currentColor 0 0), linear-gradient(currentColor 0 0);
+  background-size:
+    14px 2px,
+    2px 14px;
+}
+.stepper__btn:first-of-type {
+  border-start-start-radius: calc(var(--stepper-h) / 2);
+  border-end-start-radius: calc(var(--stepper-h) / 2);
+}
+.stepper__btn:last-of-type {
+  border-start-end-radius: calc(var(--stepper-h) / 2);
+  border-end-end-radius: calc(var(--stepper-h) / 2);
+}
+.stepper__btn + .stepper__btn::before {
+  /* divider */
+  content: '';
+  position: absolute;
+  inset-block: 8px;
+  inset-inline-start: 0;
+  inline-size: 1px;
+  background: var(--opaque-separator);
+}
+.stepper__btn::after {
+  /* HIT-1: 47 × 32 visual, 47 × 44 target */
+  content: '';
+  position: absolute;
+  inset: min(0px, calc((100% - var(--hit)) / 2)) 0;
+}
+
+/* States (FB-1…FB-3): hover, then press (later wins). stepper.js sets [data-pressed] while a half is held, even
+   with press tracking on. */
+@media (hover: hover) and (pointer: fine) {
+  .stepper__btn:not(:disabled, [aria-disabled='true']):hover {
+    background-color: var(--hover-fill);
+  }
+}
+:root:not([data-press-tracking]) .stepper__btn:not([aria-disabled='true']):active,
+.stepper__btn:not([aria-disabled='true'])[data-pressed] {
+  background-color: var(--press-fill);
+}
+.stepper__btn:is(:disabled, [aria-disabled='true']) {
+  /* at a limit: glyph dims, focus stays */
+  color: color-mix(in srgb, var(--label) calc(var(--state-disabled-opacity) * 100%), transparent);
+  cursor: default;
+}
+
+/* Busy (FB-7): core's spinner replaces the glyphs; stepper.js ignores presses meanwhile */
+.stepper > .activity-indicator {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  inline-size: 18px;
+  block-size: 18px;
+}
+.stepper:not([aria-busy='true']) > .activity-indicator {
+  display: none;
+}
+.stepper[aria-busy='true'] > .stepper__btn {
+  color: transparent;
+  pointer-events: none;
+}
+.stepper[aria-busy='true'] > .stepper__btn::before {
+  visibility: hidden;
+}
+
+.stepper__value {
+  -moz-appearance: textfield;
+  appearance: textfield;
+  inline-size: 3ch;
+  min-inline-size: var(--hit);
+  min-block-size: var(--hit);
+  field-sizing: content;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--corner-xs);
+  background: transparent;
+  color: var(--label);
+  font: 400 var(--fs-body)/var(--lh-body) var(--ff-sans);
+  font-variant-numeric: tabular-nums;
+  text-align: end;
+}
+.stepper__value::-webkit-inner-spin-button,
+.stepper__value::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.stepper__value:disabled {
+  /* dims like the halves (FB-3) */
+  opacity: var(--state-disabled-opacity);
+  -webkit-text-fill-color: currentColor; /* Safari would dim the text a second time */
+}
+@media (pointer: coarse) {
+  .stepper__value {
+    font-size: max(16px, var(--fs-body));
+  } /* no iOS zoom on focus */
+}
+
+/* Reduced motion: nothing moves; fills fade (MOT-5). */
+@media (scripting: none) {
+  .stepper {
+    display: none;
+  } /* no dead buttons; the number field still works */
+}
+@media (forced-colors: active) {
+  .stepper {
+    outline: 1px solid ButtonText;
+  }
+  .stepper__btn {
+    forced-color-adjust: none;
+    color: ButtonText;
+  } /* keep the drawn − and + */
+  .stepper__btn:is(:disabled, [aria-disabled='true']) {
+    color: GrayText;
+  }
+  .stepper__btn + .stepper__btn::before {
+    background: ButtonText;
+  }
+  .stepper__btn:focus-visible {
+    outline-color: Highlight;
+  }
+}

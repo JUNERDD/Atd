@@ -27,10 +27,11 @@ type Loaded = { id: string; detail: PluginDetail } | { id: string; error: string
  * One plugin's detail, read when its page opens and again whenever `epoch` moves (the extensions,
  * commands or memory changed, here or in another client). A reply for another plugin or an older
  * read is dropped. Mutations answer the new detail, which `replace` shows at once; `setItemEnabled`
- * shows a switch change before its save answers.
+ * shows a switch change before its save answers; `retry` reads again after a failure.
  */
 export function usePluginDetail(id: string, epoch: number) {
   const [loaded, setLoaded] = useState<Loaded | null>(null);
+  const [attempt, setAttempt] = useState(0);
   useEffect(() => {
     const bridge = window.desktop?.service;
     if (!bridge) return;
@@ -51,7 +52,11 @@ export function usePluginDetail(id: string, epoch: number) {
     return () => {
       active = false;
     };
-  }, [id, epoch]);
+  }, [id, epoch, attempt]);
+  const retry = useCallback(() => {
+    setLoaded(null);
+    setAttempt((value) => value + 1);
+  }, []);
   const replace = useCallback((detail: PluginDetail) => {
     setLoaded((current) =>
       current?.id === detail.plugin.id ? { id: current.id, detail } : current,
@@ -75,5 +80,5 @@ export function usePluginDetail(id: string, epoch: number) {
     },
     [],
   );
-  return { loaded: loaded?.id === id ? loaded : null, replace, setItemEnabled };
+  return { loaded: loaded?.id === id ? loaded : null, replace, setItemEnabled, retry };
 }

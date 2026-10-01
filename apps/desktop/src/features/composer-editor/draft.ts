@@ -6,7 +6,7 @@ import type {
   MAX_RUN_SKILLS,
   RunReference,
 } from '@ai/agent-contracts';
-import type { FileRef } from '../../../electron/agent/task-schema';
+import type { FileRef } from '../../client/agent/task-schema';
 
 /** One inline reference inserted from the quick panel; the draft's only source of truth for it. */
 export type Chip =

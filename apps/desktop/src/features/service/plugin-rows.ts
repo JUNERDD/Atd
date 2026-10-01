@@ -147,6 +147,8 @@ export function pluginKindRows(
             state: '',
             lastError: '',
             disabled: !item.itemEnabled,
+            // Unknown until the status list has the server, which then offers its approval.
+            approval: 'notRequired' as const,
             toolCount: 0,
             resourceCount: 0,
             promptCount: 0,

@@ -116,35 +116,4 @@ export class ConnectionStore {
     if (!found) throw new Error(`Connection ${connectionId} no longer exists.`);
     return found;
   }
-
-  /** Upserts migrated metadata; conflicts on changed content fail loudly. */
-  async upsertMigrated(connection: ServiceConnection): Promise<'inserted' | 'identical'> {
-    return this.change((data) => {
-      const existing = data.connections.find(
-        (item) => item.connectionId === connection.connectionId,
-      );
-      if (!existing) {
-        data.connections.push(connection);
-        data.defaultConnectionId ??= connection.connectionId;
-        return 'inserted';
-      }
-      const { migratedAt: _a, ...rest } = existing;
-      const { migratedAt: _b, ...next } = connection;
-      if (
-        JSON.stringify(rest) !==
-        JSON.stringify({
-          ...next,
-          hasCredential: existing.hasCredential,
-          connected: existing.connected,
-        })
-      ) {
-        // A live connection's credential flags win; metadata drift is a conflict.
-        const { hasCredential: _c, connected: _d, ...existingMeta } = rest;
-        const { hasCredential: _e, connected: _f, ...nextMeta } = next;
-        if (JSON.stringify(existingMeta) !== JSON.stringify(nextMeta))
-          throw new Error(`Connection ${connection.connectionId} changed since migration.`);
-      }
-      return 'identical';
-    });
-  }
 }

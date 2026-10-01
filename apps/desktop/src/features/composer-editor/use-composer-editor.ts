@@ -2,7 +2,7 @@ import { useLayoutEffect, useState, type RefCallback, type RefObject } from 'rea
 import { flushSync } from 'react-dom';
 import type { EditorState } from '@codemirror/state';
 import { EditorView, type ViewUpdate } from '@codemirror/view';
-import type { ShortcutBindings } from '../../../electron/settings-contract';
+import type { ShortcutBindings } from '../../client/settings-contract';
 import type { CommandIds, TriggerState } from '../quick-panel/trigger';
 import type { QuickPanelHandle } from '../quick-panel/use-quick-panel';
 import { editorDraft } from './chip-state';

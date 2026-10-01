@@ -1,4 +1,4 @@
-import type { Block } from '../../../../electron/agent/transcript-schema';
+import type { Block } from '../../../client/agent/transcript-schema';
 import { AssistantBlock } from './assistant-block';
 import { CompactionBlock } from './compaction-block';
 import { QuestionBlock } from './question-block';

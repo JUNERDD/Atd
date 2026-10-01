@@ -1,0 +1,88 @@
+/* @block type | requires: — | layer: base | native: SwiftUI Font.TextStyle / UIFont.TextStyle (Dynamic Type, Large) | Text-style classes .t-*, font and text-color utilities, CJK tracking reset */
+/* TYP-1: sizes are rem, so the browser's text size scales them like Dynamic Type.
+   Tracking = --tr-* x --tracking-scale (SF Pro table at each style's size). Emphasized weights: .t-emph (TYP-2). */
+.t-large-title {
+  font: 400 var(--fs-large-title)/var(--lh-large-title) var(--ff-sans);
+  letter-spacing: calc(var(--tr-large-title) * var(--tracking-scale));
+}
+.t-title1 {
+  font: 400 var(--fs-title1)/var(--lh-title1) var(--ff-sans);
+  letter-spacing: calc(var(--tr-title1) * var(--tracking-scale));
+}
+.t-title2 {
+  font: 400 var(--fs-title2)/var(--lh-title2) var(--ff-sans);
+  letter-spacing: calc(var(--tr-title2) * var(--tracking-scale));
+}
+.t-title3 {
+  font: 400 var(--fs-title3)/var(--lh-title3) var(--ff-sans);
+  letter-spacing: calc(var(--tr-title3) * var(--tracking-scale));
+}
+.t-headline {
+  font: 600 var(--fs-headline)/var(--lh-headline) var(--ff-sans);
+  letter-spacing: calc(var(--tr-headline) * var(--tracking-scale));
+}
+.t-body {
+  font: 400 var(--fs-body)/var(--lh-body) var(--ff-sans);
+  letter-spacing: calc(var(--tr-body) * var(--tracking-scale));
+}
+.t-callout {
+  font: 400 var(--fs-callout)/var(--lh-callout) var(--ff-sans);
+  letter-spacing: calc(var(--tr-callout) * var(--tracking-scale));
+}
+.t-subheadline {
+  font: 400 var(--fs-subheadline)/var(--lh-subheadline) var(--ff-sans);
+  letter-spacing: calc(var(--tr-subheadline) * var(--tracking-scale));
+}
+.t-footnote {
+  font: 400 var(--fs-footnote)/var(--lh-footnote) var(--ff-sans);
+  letter-spacing: calc(var(--tr-footnote) * var(--tracking-scale));
+}
+.t-caption1 {
+  font: 400 var(--fs-caption1)/var(--lh-caption1) var(--ff-sans);
+  letter-spacing: calc(var(--tr-caption1) * var(--tracking-scale));
+}
+.t-caption2 {
+  font: 400 var(--fs-caption2)/var(--lh-caption2) var(--ff-sans);
+  letter-spacing: calc(var(--tr-caption2) * var(--tracking-scale));
+}
+/* Emphasized (HIG): Large Title, Title 1, Title 2 -> Bold; the others -> Semibold. */
+.t-emph {
+  font-weight: 600;
+}
+:is(.t-large-title, .t-title1, .t-title2).t-emph {
+  font-weight: 700;
+}
+
+.font-sans {
+  font-family: var(--ff-sans);
+}
+.font-rounded {
+  font-family: var(--ff-rounded);
+}
+.font-serif {
+  font-family: var(--ff-serif);
+}
+.font-mono {
+  font-family: var(--ff-mono);
+}
+
+/* Text colors by role (COL-1). Secondary is AA by default; tertiary is for non-essential text (CON-1). */
+.text-label {
+  color: var(--label);
+}
+.text-secondary {
+  color: var(--secondary-label);
+}
+.text-tertiary {
+  color: var(--tertiary-label);
+}
+.text-accent {
+  color: var(--accent-text);
+}
+
+/* LOC-1: SF tracking is for Latin text; CJK glyphs carry their own spacing. letter-spacing: 0 also
+   clears tracking inherited from an ancestor in another language. Set lang (zh-Hans, zh-Hant, ja, ko). */
+:is(:lang(zh), :lang(ja), :lang(ko)) {
+  --tracking-scale: 0;
+  letter-spacing: 0;
+}

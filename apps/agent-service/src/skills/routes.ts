@@ -14,7 +14,7 @@ import {
 } from './roles.js';
 import { peekTaskStaging, stageTaskSkills, takeTaskStaging, type TaskStaging } from './staging.js';
 import { readDisabledSkillNames, setSkillHarnessEnabled } from './harness.js';
-import { discoverAtdSkills, mergeSkillCatalog } from './atd-skills.js';
+import { deleteAtdSkill, discoverAtdSkills, mergeSkillCatalog } from './atd-skills.js';
 import { discoverUserAgentSkills } from './user-agents.js';
 import { isBuiltinSkill, type BuiltinStatus } from '../builtins/manifest.js';
 import { reconcileBuiltinSkills } from '../builtins/skills.js';
@@ -107,6 +107,24 @@ export async function setSkillEnabled(
     await host.installer.setItemEnabled(item.pluginId, `skill:${item.localName}`, input.enabled);
   } else await setSkillHarnessEnabled(deps.profile, input.name, input.enabled);
   return { name: input.name, enabled: input.enabled };
+}
+
+/**
+ * Deletes one Personal catalog skill (`~/.atd/skills`, not built in) and forgets its harness
+ * switch, so a later skill of the same name starts enabled. Plugin and shared skills are refused:
+ * a plugin is uninstalled as a whole, and `~/.agents/skills` belongs to other apps as well.
+ * A session that already loaded the skill keeps its text; loading it afterwards fails.
+ */
+export async function deleteSkill(
+  deps: SkillRouteDeps,
+  name: string,
+): Promise<{ name: string; deleted: true }> {
+  await ensureSkillProfile(deps.profile);
+  const { skill } = await getSkill(deps, name);
+  if (!skill) throw new Error(`Skill "${name}" is not in the harness catalog.`);
+  await deleteAtdSkill(skill);
+  await setSkillHarnessEnabled(deps.profile, name, true);
+  return { name, deleted: true };
 }
 
 /**

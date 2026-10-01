@@ -115,7 +115,6 @@ export const emptyState = (): PluginStateFile => ({
   disabled: [],
   items: {},
   config: {},
-  approved: {},
 });
 export const emptyRefs = (): PluginRefsFile => ({ version: 1, runs: {} });
 

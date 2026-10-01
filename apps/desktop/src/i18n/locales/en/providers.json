@@ -12,13 +12,11 @@
       "apiKeyUnverified": "API key saved · Not yet verified"
     },
     "defaultModelLabel": "Default model for {{name}}",
-    "defaultModelSaved": "Default model saved for {{name}}.",
-    "thinkingLevelSaved": "Effort saved for {{name}}.",
     "currentDefault": "Current default",
     "makeDefault": "Make default provider",
     "chooseDefaultModel": "Choose a default model first",
-    "madeDefault": "{{name}} is now the default provider.",
     "manage": "Manage connection",
+    "manageLabel": "Manage {{name}}",
     "refresh": "Refresh models",
     "disconnect": "Disconnect",
     "unavailableModel": "{{model}} is unavailable. Refresh models or choose another model."
@@ -38,7 +36,10 @@
       "local": "Local and custom"
     },
     "available": "Available providers",
-    "empty": "No matching providers"
+    "empty": "No matching providers",
+    "noMatchesTitle": "No providers match “{{query}}”",
+    "noMatchesDescription": "Try another name or category.",
+    "clearSearch": "Clear search"
   },
   "form": {
     "sectionLabel": "Provider connection",

@@ -9,8 +9,6 @@ export {
   McpError,
   isForbidden,
   isUnauthorized,
-  requireManager,
-  type ManagerAccessor,
   type MappingContext,
   type MappingDeps,
   type McpErrorCode,
@@ -21,9 +19,17 @@ export {
   type SecretResolver,
   type ServerResolver,
 } from './errors.js';
-export { ConnectionManager, type ConnectionDeps, type EnsuredConnection } from './connect.js';
+export { ConnectionManager, type ConnectionDeps } from './connect.js';
+export { createTransport } from './transports.js';
+export { resolveHttpUrl, resolveLaunch } from './launch-resolve.js';
 export { McpPolicy, type PolicyDeps } from './policy.js';
-export { McpAuthManager, McpConnectionStates, buildSnapshot, type AuthDeps } from './lifecycle.js';
+export { serverView, upsertRecord } from './server-edits.js';
+export { migrateMcpSecrets } from './secrets-migration.js';
+export { McpConnectionStates, buildSnapshot } from './lifecycle.js';
+export { McpAuthManager, type AuthDeps } from './oauth-flow.js';
+export { OAuthProviders } from './oauth-provider.js';
+export { KeychainOAuthStore } from './oauth-store.js';
+export { migrateAdapterOAuth } from './oauth-migration.js';
 export {
   CredentialTransactions,
   LateWritebackProhibited,
@@ -32,40 +38,9 @@ export {
   type TokenOp,
   type TokenOpKind,
 } from './transactions.js';
-export {
-  McpHostCallbacks,
-  redactUrl,
-  withUiViewerNone,
-  type HostCallbackScope,
-} from './callbacks.js';
-export { McpApprovalBroker, type ApprovalBus, type McpApprovalContext } from './approval.js';
-export {
-  ControlSession,
-  type ControlSessionDeps,
-  type ControlSettingsProof,
-  type ModelCallCounts,
-} from './control-session.js';
-export {
-  McpAdapterMissing,
-  forgetAdapterForTests,
-  loadAdapterInternals,
-  resolveAdapterDir,
-  scopeAdapterEnv,
-  setAdapterInternalsForTests,
-} from './loader.js';
-export type {
-  AdapterApprovalRequest,
-  AdapterAuthFlow,
-  AdapterClientLike,
-  AdapterConnectionLike,
-  AdapterFactory,
-  AdapterInternals,
-  AdapterManagerClass,
-  AdapterManagerLike,
-  AdapterMcpConfig,
-  AdapterModuleSource,
-  AdapterServerEntry,
-} from './adapter-types.js';
+export { McpNotices, redactUrl } from './callbacks.js';
+export { McpApprovalBroker, type McpApprovalContext } from './approval.js';
+export type * from './types.js';
 export {
   mapCallResult,
   mapGetPrompt,
@@ -85,7 +60,6 @@ export {
 export {
   McpAuthCompleteRequestSchema,
   McpCallToolRequestSchema,
-  McpConfigureRequestSchema,
   McpGetPromptRequestSchema,
   McpReadResourceRequestSchema,
   McpServerRequestSchema,
@@ -95,7 +69,6 @@ export {
   handleMcpAuthComplete,
   handleMcpAuthStart,
   handleMcpCallTool,
-  handleMcpConfigure,
   handleMcpConnect,
   handleMcpDisconnect,
   handleMcpGetPrompt,
@@ -106,12 +79,15 @@ export {
   handleMcpLogout,
   handleMcpReadResource,
   handleMcpRecords,
+  handleMcpRemove,
   handleMcpReconnect,
   handleMcpRefresh,
   handleMcpRevoke,
+  handleMcpSetEnabled,
   handleMcpSnapshot,
   handleMcpStage,
   handleMcpStatus,
+  handleMcpUpsert,
   mcpErrorStatus,
   registerMcpRoutes,
   type McpAuthorityResolver,
@@ -121,17 +97,14 @@ export {
   classifyRedirect,
   credentialIdentity,
   isTaskAlias,
-  loadServerRecords,
   matchToolPattern,
   matchUriTemplate,
   parseServerConfigs,
   physicalName,
   probeStdioRuntime,
   reuseKey,
-  saveServerRecords,
   serversFile,
-  toAdapterConfig,
-  toAdapterServerEntry,
+  toLaunchSpec,
   type StdioProbe,
 } from './servers.js';
 export {

@@ -1,17 +1,17 @@
 import { memo, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { Artifact, FileRef, TaskRun } from '../../../../electron/agent/task-schema';
+import type { Artifact, FileRef, TaskRun } from '../../../client/agent/task-schema';
 import { TaskFiles } from '../task-files';
 import type { AdaptedTurn } from './adapter';
 import { ActivityGroup } from './activity-group';
 import { BlockView } from './block-view';
-import { MessageBubble } from './message-bubble';
-import { PromptMessage } from './prompt-message';
+import { McpApprovalBanners } from './mcp-approval-banner';
 import { promptRun } from './run-prompt';
 import { buildLiveText } from './token-rate';
 import { TurnActions } from './turn-actions';
 import { TurnHeader } from './turn-header';
 import type { RequestIndex } from './turns';
+import { UserMessage } from './user-message';
 
 /**
  * The turn's final answer: the last assistant text. A stopped turn can end in tool activity or an
@@ -24,6 +24,11 @@ function lastAnswerText(turn: AdaptedTurn): string {
       return item.block.text;
   }
   return '';
+}
+
+/** Every step of the turn's activity groups, in order. */
+function activitySteps(items: AdaptedTurn['items']) {
+  return items.flatMap((item) => (item.type === 'activity' ? item.view : []));
 }
 
 /**
@@ -67,7 +72,10 @@ export const TurnView = memo(function TurnView({
   requests: RequestIndex;
   live: boolean;
   last: boolean;
-  /** Offer copying the settled answer; a subagent's drill-in view leaves that to its parent. */
+  /**
+   * Offer the message and turn actions (copy, edit, regenerate, exports); a subagent's drill-in
+   * view leaves them to its parent.
+   */
   copyable?: boolean;
   /** Names the model instead of the turn's run; a subagent's view knows its child's own model. */
   modelName?: string;
@@ -76,7 +84,6 @@ export const TurnView = memo(function TurnView({
   onAttach: (file: FileRef) => void;
 }) {
   const { t } = useTranslation('tasks');
-  const copyText = live || !copyable ? '' : lastAnswerText(turn);
   const settled = !(live && last);
   const openId = settled ? null : openActivityId(turn.items);
   const liveFooter = live && last;
@@ -86,15 +93,7 @@ export const TurnView = memo(function TurnView({
   const run = turn.user ? promptRun(runs, turn.user) : undefined;
   return (
     <section className={sectionClass}>
-      {turn.user && (
-        <article className="user-message" aria-label={t('conversation.yourMessage')}>
-          {run ? (
-            <PromptMessage snapshot={run.snapshot} fallback={turn.user.text} />
-          ) : (
-            <MessageBubble>{turn.user.text}</MessageBubble>
-          )}
-        </article>
-      )}
+      {turn.user && <UserMessage user={turn.user} run={run} last={last} copyable={copyable} />}
       {(liveFooter || settled) && (
         <TurnHeader
           startedAt={turn.startedAt}
@@ -105,6 +104,7 @@ export const TurnView = memo(function TurnView({
           trueTokens={turn.trueTokens}
           trueDurationMs={turn.trueDurationMs}
           liveText={liveText}
+          usage={liveFooter ? null : turn.usage}
         />
       )}
       {turn.items.map((item) => {
@@ -139,7 +139,14 @@ export const TurnView = memo(function TurnView({
         );
       })}
       {status}
-      {copyText && <TurnActions text={copyText} />}
+      {/* Collected from every activity group and held until the turn settles, so the banners sit
+          together above the actions instead of interrupting the stream; the approval only
+          applies from the next message anyway. */}
+      {settled && <McpApprovalBanners steps={activitySteps(turn.items)} />}
+      {/* Held back only while this turn streams; earlier turns keep theirs during a run. */}
+      {settled && copyable && (
+        <TurnActions turn={turn} run={run} answer={lastAnswerText(turn)} last={last} />
+      )}
     </section>
   );
 });

@@ -27,7 +27,7 @@
           {
             "patterns": [
               {
-                "group": ["@ai/*", "@earendil-works/*", "electron", "react", "react-dom"],
+                "group": ["@ai/*", "@earendil-works/*", "react", "react-dom"],
                 "message": "plugin-kit is host-agnostic and will be published on its own; take host behavior through a port."
               }
             ]
@@ -43,5 +43,5 @@
       }
     }
   ],
-  "ignorePatterns": ["**/dist/**", "**/dist-electron/**", "**/release/**", "**/.artifacts/**"]
+  "ignorePatterns": ["**/dist/**", "**/.artifacts/**"]
 }

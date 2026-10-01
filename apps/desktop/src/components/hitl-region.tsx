@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import type { PermissionRequest } from '../../electron/agent/permission-schema';
+import type { PermissionRequest } from '../client/agent/permission-schema';
 import { ApprovalControls } from '../features/agent/transcript/approval-controls';
 import { QuestionControls } from '../features/agent/transcript/question-block';
 

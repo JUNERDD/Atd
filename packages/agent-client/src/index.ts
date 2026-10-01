@@ -1,5 +1,6 @@
 export * from './types.js';
 export * from './http-client.js';
+export * from './stream-transport.js';
 export * from './ws-client.js';
 export * from './skills-client.js';
 export * from './atd-agents-client.js';
@@ -14,3 +15,4 @@ export * from './workspace-client.js';
 export * from './subagents-client.js';
 export * from './references-client.js';
 export * from './plugins-client.js';
+export * from './files-client.js';

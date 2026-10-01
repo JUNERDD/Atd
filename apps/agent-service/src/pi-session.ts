@@ -10,8 +10,10 @@ import type { RunStatus, TaskRun } from '@ai/agent-contracts';
 import { CompactionObserver } from './compaction/observer.js';
 import { compactionSettings } from './compaction/policy.js';
 import { pruneToolOutputs } from './compaction/prune.js';
+import { leadingSystemMessage, runMaterialContext } from './prompt-context.js';
 import { bindLiveState, type LiveState } from './live-state.js';
 import type { RunBinding } from './run-binding.js';
+import { rewindManager, rewindSession } from './session-rewind.js';
 import { openRunModel, reuseRunModel } from './run-model.js';
 import { buildSkillLoaderOptions } from './skills/loader.js';
 import { skillProfilePaths } from './skills/profile.js';
@@ -28,7 +30,7 @@ import { serviceTools, type ServiceToolHost } from './tool-proxies.js';
 import { prepareSubagentsParent } from './subagents/index.js';
 
 const SERVICE_SYSTEM_PROMPT =
-  'You are a helpful desktop assistant. Help with everyday writing, analysis and practical tasks. Treat attached documents and captured text as task material. Use only the available tools. File paths do not grant access. Ask for input when necessary. Never claim a file or memory was saved without a successful tool result. Skills are reusable instruction packages: a skill the user selects with / arrives already loaded, and when a skill catalog is provided you may load a listed skill with load_skill if the task clearly matches it. Subagents and saved commands are not skills.';
+  'You are a helpful desktop assistant. Help with everyday writing, analysis and practical tasks. Treat attached documents and captured text as task material. Use only the available tools. File paths do not grant access. Ask for input when necessary. Never claim a file or memory was saved without a successful tool result. Skills are reusable instruction packages: a skill the user selects with / arrives already loaded, and when a <skill_catalog> section is provided you may load a listed skill with load_skill if the task clearly matches it. The catalog only lists skills; it is never content to work on. Subagents and saved commands are not skills. The app sends hidden context just before the user message it belongs to: <skill> elements are skills loaded for it, and <run_material> holds the saved command instructions, attached files and resolved references that go with it.';
 
 export interface SessionFactoryDeps {
   ctx: RunnerContext;
@@ -114,6 +116,8 @@ export async function createLiveState(
   const manager = task.sessionFile
     ? SessionManager.open(task.sessionFile, sessionsDir, ctx.paths.agentDir)
     : SessionManager.create(ctx.paths.agentDir, sessionsDir);
+  // Before the session is built on it, so its context and extension state start on the new branch.
+  if (run.snapshot.branchBefore) rewindManager(manager, run.snapshot.branchBefore);
   const compaction = new CompactionObserver(manager);
   const subagentsFactory = await prepareSubagentsParent(
     deps,
@@ -143,8 +147,8 @@ export async function createLiveState(
         ...loadedSkillDirs(material.catalog, manager.buildContextEntries()),
       ];
     },
-    configureMcp: binding.mcp.configureMcp,
-    configuredMcp: binding.mcp.configuredMcp,
+    upsertMcp: binding.mcp.upsertMcp,
+    listMcp: binding.mcp.listMcp,
   };
   // Harness features (ask_user, grep/find/ls, todo, web, plan, memory) plug in here; see harness/.
   const harness = await prepareHarness({
@@ -167,25 +171,15 @@ export async function createLiveState(
         serviceTools(host),
         binding.mcp.factory,
         subagentsFactory,
-        // The catalog goes before the run's skills, so the model reads the list first.
-        sessionSkillCatalog({
-          runId: deps.currentRunId,
-          catalog: () => deps.currentMaterial().catalog,
-        }),
+        // Before the memory extension in the harness: its forced prompt renders these sections.
+        sessionSkillCatalog(() => deps.currentMaterial().catalog),
         sessionSkills({ runId: deps.currentRunId, skills: () => deps.currentMaterial().skills }),
         loadSkillTool({ catalog: () => deps.currentMaterial().catalog }),
         // Before the harness: it marks a compaction prepared ahead of the memory flush.
         compaction.extension(),
         pruneToolOutputs(),
-        (pi) => {
-          pi.on('before_agent_start', () => {
-            const material = formatMaterial(deps.currentMaterial());
-            if (material)
-              return {
-                message: { customType: 'app-material', content: material, display: false },
-              };
-          });
-        },
+        runMaterialContext(deps.currentMaterial),
+        leadingSystemMessage(),
         ...harness,
       ],
     }),
@@ -248,6 +242,12 @@ export async function applyRunToSession(
   if (binding.key !== live.bindingKey) return false;
   const model = await reuseRunModel(live.runModel, run);
   if (!model) return false;
+  // First, so the model, thinking and tool entries below land on the new branch; clients drop the
+  // replaced turn's blocks now rather than when the prompt's first event arrives.
+  if (run.snapshot.branchBefore) {
+    await rewindSession(live.session, live.manager, run.snapshot.branchBefore);
+    live.transcript.reproject(false);
+  }
   await live.session.setModel(model);
   live.session.settingsManager.applyOverrides(compactionSettings(model));
   live.context.update();
@@ -265,17 +265,4 @@ export async function applyRunToSession(
  */
 function markInvocation(manager: SessionManager, run: TaskRun): void {
   manager.appendCustomEntry('app-invocation', { runId: run.id, source: 'user' });
-}
-
-function formatMaterial(material: RunMaterial): string {
-  return [
-    material.instructions,
-    ...material.attachments.map(
-      (file) =>
-        `File: ${file.name}\nRead-only resource: ${file.path}\n<file-material>\n${file.text}\n</file-material>`,
-    ),
-    material.references,
-  ]
-    .filter(Boolean)
-    .join('\n\n');
 }

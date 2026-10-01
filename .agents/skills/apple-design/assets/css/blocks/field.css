@@ -1,0 +1,233 @@
+/* @block field | requires: states, field-message | layer: components | native: SwiftUI TextField / SecureField / .searchable; UIKit UITextField / UISearchTextField | text field, text area and search field (clear, Cancel, busy): 44 px box, ≥ 16 px text on touch, focus ring, aria-invalid wired to .field-message */
+/* Markup. Give every field a visible label or aria-label, and the right inputmode / autocomplete / enterkeyhint (web.md §11):
+     <label class="field__label" for="email">Email</label>
+     <input class="field" id="email" type="email" inputmode="email" autocomplete="email" enterkeyhint="next" aria-describedby="email-msg">
+     <p class="field-message" id="email-msg">We send the receipt here.</p>
+   Invalid (FB-5): aria-invalid="true" on the field + data-tone="error", an icon and the fix in words on the message.
+   Checking something slow: <p class="field-message" aria-busy="true"> with an .activity-indicator first ("Checking
+   availability…"); aria-busy keeps the indicator turning under Reduce Motion (base block). Remove it when done.
+   Search: its own <form>, so type="reset" clears only the query. Listen for `input` AND `reset`. Needs a placeholder.
+     <form class="field--search" role="search">
+       <input class="field" type="search" name="q" placeholder="Search" aria-label="Search" enterkeyhint="search" autocomplete="off">
+       <span class="activity-indicator" aria-hidden="true"></span>   (optional: replaces the magnifier while aria-busy="true")
+       <button class="field__clear" type="reset" aria-label="Clear text"></button>
+       <button class="field__cancel" type="reset">Cancel</button>
+     </form>
+   In a glass toolbar (CMP-6), put the form inside the glass group and add .field--plain to the input.
+   In a list row: <div class="list__row"><label class="list__label" for="nm">Name</label><input class="field field--plain" id="nm">
+   (the label keeps its width; the value fills the rest, trailing-aligned). */
+
+.field {
+  -webkit-appearance: none;
+  appearance: none;
+  display: block;
+  inline-size: 100%;
+  min-block-size: var(--hit); /* HIT-1: the box itself is the target */
+  margin: 0;
+  padding: 0 var(--space-3);
+  border: 1px solid transparent; /* invisible; the edge in forced colors */
+  border-radius: var(--corner-sm);
+  background: var(--fill-tertiary);
+  color: var(--label);
+  caret-color: var(--accent);
+  font: 400 var(--fs-body)/var(--lh-body) var(--ff-sans);
+  letter-spacing: calc(var(--tr-body) * var(--tracking-scale));
+  text-align: start;
+}
+@media (pointer: coarse) {
+  .field {
+    font-size: max(16px, var(--fs-body));
+  } /* iOS Safari zooms into inputs under 16 px */
+}
+/* Placeholder is text (CON-1): darker than the native placeholderText so it keeps 4.5:1 on the gray fill */
+.field::placeholder {
+  color: color-mix(in srgb, var(--secondary-label) 85%, var(--label));
+  opacity: 1;
+}
+textarea.field {
+  min-block-size: calc(3 * var(--lh-body) + 2 * var(--space-3));
+  max-block-size: 50dvh;
+  padding-block: calc(var(--space-3) - 1px);
+  resize: vertical;
+  field-sizing: content; /* grows with the text where supported */
+}
+.field--plain {
+  /* inside a list row or a glass group, which provides the surface */
+  padding-inline: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.list__row > .field--plain {
+  flex: 1 1 60%;
+  inline-size: auto;
+  min-inline-size: 0;
+  text-align: end;
+}
+.list__row > .list__label:has(+ .field--plain) {
+  flex: 0 0 auto;
+}
+.field[aria-invalid='true'] {
+  border-color: var(--state-error);
+} /* + field-message's inset line; the words carry the meaning */
+.field:disabled {
+  opacity: var(--state-disabled-opacity);
+  -webkit-text-fill-color: currentColor; /* Safari would dim the text a second time */
+  cursor: default;
+}
+
+/* ---- Search: capsule, leading magnifier, clear button while there is text, Cancel while focused ---- */
+.field--search {
+  --_glyph: var(--fs-body);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: center;
+  column-gap: var(--space-2);
+  margin: 0;
+}
+.field--search::before,
+.field--search > .activity-indicator {
+  grid-area: 1 / 1;
+  z-index: 1;
+  justify-self: start;
+  inline-size: var(--_glyph);
+  block-size: var(--_glyph);
+  margin-inline-start: 11px;
+  pointer-events: none;
+}
+.field--search::before {
+  content: '';
+  background: var(--secondary-label);
+  -webkit-mask: var(--_field-magnifier) center / contain no-repeat;
+  mask: var(--_field-magnifier) center / contain no-repeat;
+  --_field-magnifier: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Ccircle cx='8.5' cy='8.5' r='6' fill='none' stroke='black' stroke-width='2.2'/%3E%3Cpath d='m13 13 5 5' stroke='black' stroke-width='2.4' stroke-linecap='round'/%3E%3C/svg%3E");
+}
+.field--search > .activity-indicator {
+  color: var(--secondary-label);
+} /* FB-7: core spinner, no second one */
+.field--search:not([aria-busy='true']) > .activity-indicator {
+  display: none;
+}
+.field--search[aria-busy='true']::before {
+  visibility: hidden;
+}
+.field--search > .field {
+  grid-area: 1 / 1;
+  padding-inline: calc(var(--_glyph) + 17px) var(--hit);
+  border-radius: var(--corner-capsule);
+}
+.field--search > .field::-webkit-search-decoration,
+.field--search > .field::-webkit-search-cancel-button,
+.field--search > .field::-webkit-search-results-button {
+  -webkit-appearance: none;
+  display: none;
+}
+
+.field__clear,
+.field__cancel {
+  margin: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transition:
+    background-color var(--dur-fast) var(--curve-out),
+    color var(--dur-fast) var(--curve-out);
+}
+.field__clear {
+  grid-area: 1 / 1;
+  z-index: 1;
+  justify-self: end;
+  display: grid;
+  place-items: center;
+  inline-size: var(--hit); /* 44 × 44 target around a 17 px glyph (HIT-1) */
+  block-size: var(--hit);
+  padding: 0;
+  border-radius: 50%;
+  color: var(--secondary-label);
+}
+.field__clear::before {
+  content: '';
+  inline-size: var(--_glyph, 17px);
+  block-size: var(--_glyph, 17px);
+  background: currentColor;
+  -webkit-mask: var(--_field-clear) center / contain no-repeat;
+  mask: var(--_field-clear) center / contain no-repeat;
+  --_field-clear: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cmask id='m'%3E%3Crect width='20' height='20' fill='white'/%3E%3Cpath d='m6.6 6.6 6.8 6.8m0-6.8-6.8 6.8' stroke='black' stroke-width='2' stroke-linecap='round'/%3E%3C/mask%3E%3Ccircle cx='10' cy='10' r='10' mask='url(%23m)'/%3E%3C/svg%3E");
+}
+.field--search:has(> .field:placeholder-shown) > .field__clear {
+  visibility: hidden;
+}
+.field__cancel {
+  grid-area: 1 / 2;
+  min-inline-size: var(--hit);
+  min-block-size: var(--hit);
+  padding: 0 var(--space-2);
+  border-radius: var(--corner-capsule);
+  color: var(--accent-text);
+  font: 400 var(--fs-body)/var(--lh-body) var(--ff-sans);
+  letter-spacing: calc(var(--tr-body) * var(--tracking-scale));
+  white-space: nowrap;
+  transition-property: background-color, opacity; /* fades in when it appears (@starting-style) */
+}
+/* Cancel shows while the query is focused or not empty (a mouse press on it would otherwise hide it before the click lands) */
+.field--search:not(
+    :has(> .field:focus, > .field:not(:placeholder-shown), > .field__cancel:focus-visible)
+  )
+  > .field__cancel {
+  display: none;
+}
+@starting-style {
+  .field__cancel {
+    opacity: 0;
+  }
+}
+
+/* States (FB-1, FB-2): hover only for fine pointers, then press on touch-down (later wins) */
+@media (hover: hover) and (pointer: fine) {
+  .field__clear:hover {
+    color: var(--label);
+  }
+  .field__cancel:hover {
+    background-color: var(--hover-fill);
+  }
+}
+:where(html:not([data-press-tracking])) .field__clear:active,
+.field__clear[data-pressed] {
+  color: var(--label);
+  background-color: var(--press-fill);
+}
+:where(html:not([data-press-tracking])) .field__cancel:active,
+.field__cancel[data-pressed] {
+  background-color: var(--press-fill);
+}
+
+.field__label {
+  display: block;
+  margin: 0 0 var(--space-2);
+  padding-inline: var(--space-1);
+  color: var(--secondary-label);
+  font: 400 var(--fs-subheadline)/var(--lh-subheadline) var(--ff-sans);
+  letter-spacing: calc(var(--tr-subheadline) * var(--tracking-scale));
+}
+
+/* Reduced motion: only fades here (Cancel fades in), which MOT-5 keeps. */
+@media (prefers-contrast: more) {
+  .field:not(.field--plain) {
+    border-color: var(--opaque-separator);
+  }
+  .field[aria-invalid='true'] {
+    border-color: var(--state-error);
+  }
+}
+@media (forced-colors: active) {
+  /* masked glyphs paint with background-color, which forced colors would turn into Canvas */
+  .field--search::before {
+    forced-color-adjust: none;
+    background: CanvasText;
+  }
+  .field__clear::before {
+    forced-color-adjust: none;
+    background: ButtonText;
+  }
+}

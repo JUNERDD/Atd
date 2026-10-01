@@ -9,20 +9,20 @@ import {
   DropdownMenuTrigger,
 } from '@ai/ui/components/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@ai/ui/components/tooltip';
-import { PERMISSION_TIERS, type PermissionTier } from '../../../electron/agent/permission-schema';
-import { taskPermissionTier, type AgentTask } from '../../../electron/agent/task-schema';
+import { PERMISSION_TIERS, type PermissionTier } from '../../client/agent/permission-schema';
+import { taskPermissionTier, type AgentTask } from '../../client/agent/task-schema';
 import { useSettingsSnapshot } from '../settings/use-settings';
 import { agentApi } from './use-agent';
 import { showErrorToast } from '../../components/toast-store';
 
-function TierIcon({ tier }: { tier: PermissionTier }) {
+function TierIcon({ tier, className }: { tier: PermissionTier; className?: string }) {
   switch (tier) {
     case 'manual':
-      return <ShieldAlert />;
+      return <ShieldAlert className={className} />;
     case 'auto':
-      return <Shield />;
+      return <Shield className={className} />;
     case 'always':
-      return <ShieldCheck />;
+      return <ShieldCheck className={className} />;
     default: {
       const exhaustive: never = tier;
       return exhaustive;
@@ -47,12 +47,14 @@ export function PermissionTierControl({
   const trigger = (
     <Button
       type="button"
-      variant="ghost"
+      variant="glass-ghost"
       size="xs"
       disabled={!writable}
       aria-label={t('permission.tierLabel')}
     >
-      <TierIcon tier={tier} />
+      {/* The xs button centers the icon on Inter's cap height; CJK ideographs and lowercase
+          labels sit about 1px lower, so the icon drops 1px to meet the label optically. */}
+      <TierIcon tier={tier} className="translate-y-px" />
       <span className="composer-config-label">{t(`permission.tier.${tier}`)}</span>
     </Button>
   );

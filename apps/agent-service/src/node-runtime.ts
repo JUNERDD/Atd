@@ -3,7 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 /**
- * Workspace toolchain range (root `engines.node`). Pi 0.87.1 needs ≥22.19.0;
+ * Workspace toolchain range (root `engines.node`). Pi 0.99.1 needs ≥22.19.0;
  * this range is a strict subset and matches what we typecheck/build against.
  */
 export const DEFAULT_NODE_ENGINES = '^24.15.0 || >=26.0.0';
@@ -49,7 +49,7 @@ export function nodeSatisfiesEngines(found: string, range: string): boolean {
 
 export function nodeRequirementError(required: string, found: string): Error {
   return new Error(
-    `Node.js ${required} is required. Found: ${found}. Install a matching Node.js from https://nodejs.org and put \`node\` on PATH. The Electron app binary is not Node.js.`,
+    `Node.js ${required} is required. Found: ${found}. Install a matching Node.js from https://nodejs.org and put \`node\` on PATH.`,
   );
 }
 
@@ -67,11 +67,6 @@ export function readServiceManifest(fromDir = path.dirname(fileURLToPath(import.
 }
 
 export function assertSupportedNode(): void {
-  if (process.versions.electron) {
-    throw new Error(
-      'The Electron binary is not Node.js. Run this CLI with system Node.js on PATH.',
-    );
-  }
   const { engines } = readServiceManifest();
   if (!nodeSatisfiesEngines(process.version, engines))
     throw nodeRequirementError(engines, process.version);

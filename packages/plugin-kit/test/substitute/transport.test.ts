@@ -141,6 +141,26 @@ describe('substituteTransport: claude', () => {
     expect(transport.type === 'stdio' && transport.args).toEqual(['set', 'two', 'three', '', '']);
   });
 
+  it('keeps process environment references in http url and headers for the client', () => {
+    const { transport, diagnostics } = substituteTransport(
+      'claude',
+      {
+        type: 'http',
+        protocol: 'streamable-http',
+        url: '${HOST:-https://h.test}/mcp?key=${KEY:-none}&d=${CLAUDE_PLUGIN_DATA}',
+        headers: { Authorization: 'Bearer ${TOKEN}', 'X-Empty': '${EMPTY:-fallback}' },
+      },
+      context({ env: { HOST: 'https://api.test', KEY: 'k-value', TOKEN: 't-value', EMPTY: '' } }),
+    );
+    expect(diagnostics).toEqual([]);
+    expect(transport).toEqual({
+      type: 'http',
+      protocol: 'streamable-http',
+      url: `\${HOST}/mcp?key=\${KEY}&d=${DATA}`,
+      headers: { Authorization: 'Bearer ${TOKEN}', 'X-Empty': 'fallback' },
+    });
+  });
+
   it('expands http url and header values', () => {
     const { transport } = substituteTransport(
       'claude',

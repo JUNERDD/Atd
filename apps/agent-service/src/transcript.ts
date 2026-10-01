@@ -13,6 +13,7 @@ import {
 } from './compaction/records.js';
 import {
   collectBlockLookups,
+  messageUsage,
   projectAssistantServiceBlocks,
   type BlockLookups,
   type PermissionLookup,
@@ -25,6 +26,8 @@ export type ServiceBranchItem =
   | {
       type: 'message';
       message: AgentMessage;
+      /** The message's session entry; absent only for the live partial, which is not persisted. */
+      entryId?: string;
       endedAt?: number;
       /** A failed attempt an overflow compaction replaced with its retry (`supersededEntries`). */
       superseded?: true;
@@ -34,7 +37,7 @@ export type ServiceBranchItem =
   | { type: 'compaction'; id: string; summary: string; tokensBefore: number; timestamp: number };
 
 /**
- * Pi 0.87 session-branch projection. `usage` entries are reported on the
+ * Pi 0.99 session-branch projection. `usage` entries are reported on the
  * settled message instead, and mid-transcript `system` entries are prompt
  * patches rather than conversation content, so both are skipped by design.
  * `context_edit` entries only change what later provider requests see; the
@@ -51,6 +54,7 @@ export function fromServiceBranch(entries: readonly SessionEntry[]): ServiceBran
         items.push({
           type: 'message',
           message: entry.message,
+          entryId: entry.id,
           ...(Number.isNaN(endedAt) ? {} : { endedAt }),
           ...(superseded.has(entry.id) ? { superseded: true as const } : {}),
         });
@@ -135,7 +139,8 @@ function outputOf(result: ToolResultMessage): string {
   return contentText(result.content);
 }
 
-function invocationRunId(data: unknown): string | undefined {
+/** The run an `app-invocation` marker's data names; undefined for a malformed marker. */
+export function invocationRunId(data: unknown): string | undefined {
   if (!data || typeof data !== 'object' || !('runId' in data)) return undefined;
   return typeof data.runId === 'string' && data.runId ? data.runId : undefined;
 }
@@ -246,6 +251,7 @@ export function projectServiceBlocks(input: ProjectServiceBlocksInput): ServiceB
           endedAt: item.message.timestamp,
           text: contentText(item.message.content),
           ...(awaitingPrompt ? { prompt: true } : {}),
+          ...(item.entryId ? { entryId: item.entryId } : {}),
         });
         awaitingPrompt = false;
         break;
@@ -263,6 +269,7 @@ export function projectServiceBlocks(input: ProjectServiceBlocksInput): ServiceB
             partials,
             subagentProgress,
             messageEndedAt: item.endedAt ?? null,
+            usage: streaming ? undefined : messageUsage(item.message),
             outputOf,
             log: input.log,
           }),

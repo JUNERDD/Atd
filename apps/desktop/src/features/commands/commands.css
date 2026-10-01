@@ -38,19 +38,11 @@
   display: grid;
   gap: 16px;
 }
-/* Tools follow the same responsive column rule as the parallel fields around them, capped at three
-   columns: the 32px subtracted below are the two 16px gutters of a three-column row. */
-.run-settings-tools[data-slot='item-group'] {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(max(220px, (100% - 32px) / 3), 1fr));
-  gap: 16px;
-}
 .input-options-popover {
   width: max-content;
   min-width: min(280px, var(--radix-popover-content-available-width));
   max-width: min(360px, var(--radix-popover-content-available-width));
   max-height: var(--radix-popover-content-available-height);
-  backdrop-filter: blur(var(--ata-backdrop-blur));
 }
 .editor-footer {
   display: flex;
@@ -146,6 +138,12 @@
 .quick-panel-content.instruction-quick-panel {
   max-height: min(22rem, var(--radix-popover-content-available-height));
 }
+/* The list's viewport is its glass's persistent child layer (see `surface-glass` in `@ai/ui`):
+   typing that makes the options fit drops the viewport's scroller layers inside it, not on the
+   glass, where they lingered with the old options around the shrunken list. */
+.completion-viewport {
+  will-change: transform;
+}
 .completion-options {
   padding: 4px;
   font-family: var(--font-sans);
@@ -200,10 +198,14 @@
   align-items: center;
   gap: 12px;
 }
+/* The shortcut column is a width, not a flex-basis: the controls wrapper takes its width from
+ * its content, and WebKit counts this column's content (a narrower key group or "No shortcut")
+ * there instead of a basis, which pushed Run, the switch and More past the row's edge. */
 .command-row-shortcut {
   display: flex;
   justify-content: flex-end;
-  flex: 0 0 104px;
+  flex: none;
+  width: 104px;
   min-width: 0;
 }
 .command-row-shortcut [data-slot='kbd-group'] {
@@ -239,12 +241,13 @@
   }
   .command-row-shortcut {
     flex: 1;
+    width: auto;
     justify-content: flex-start;
   }
 }
 @container settings (min-width: 456px) and (max-width: 640px) {
   .command-row-shortcut {
-    flex-basis: 72px;
+    width: 72px;
   }
   .command-management-row {
     gap: 8px;
@@ -261,16 +264,8 @@
   flex-direction: column;
 }
 .memory-learning {
-  display: flex;
   flex-shrink: 0;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
   margin-bottom: 8px;
-}
-.memory-learning label {
-  display: block;
-  margin-bottom: 2px;
 }
 /* Rows, feedback, and the storage note; an empty state fills the rest. */
 .memory-list {

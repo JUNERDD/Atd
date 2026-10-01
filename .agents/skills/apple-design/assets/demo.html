@@ -1,0 +1,4966 @@
+<!doctype html>
+<!-- Rebuild (run from the skill root): python3 scripts/build_kit.py navbar segmented list switch stepper slider card tabbar badge empty-state sheet field menu alert status-pill progress --minify --inline assets/demo.html -->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#F2F2F7" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#000000" />
+    <title>Garden: apple-design web kit demo</title>
+    <style data-kit>
+      /*! apple-design web kit | scripts/build_kit.py | blocks: base, glass, states, toolbar, motion, navbar, segmented, list, switch, stepper, slider, card, button, tabbar, badge, empty-state, sheet, field-message, field, menu, alert, status-pill, progress */
+      @layer apple.base,apple.components;
+      @property --glow {
+        syntax: '<number>';
+        inherits: true;
+        initial-value: 0;
+      }
+      :root {
+        color-scheme: light dark;
+        --system-red: light-dark(#ff383c, #ff4245);
+        --system-orange: light-dark(#ff8d28, #ff9230);
+        --system-yellow: light-dark(#ffcc00, #ffd600);
+        --system-green: light-dark(#34c759, #30d158);
+        --system-mint: light-dark(#00c8b3, #00dac3);
+        --system-teal: light-dark(#00c3d0, #00d2e0);
+        --system-cyan: light-dark(#00c0e8, #3cd3fe);
+        --system-blue: light-dark(#0088ff, #0091ff);
+        --system-indigo: light-dark(#6155f5, #6d7cff);
+        --system-purple: light-dark(#cb30e0, #db34f2);
+        --system-pink: light-dark(#ff2d55, #ff375f);
+        --system-brown: light-dark(#ac7f5e, #b78a66);
+        --system-gray: #8e8e93;
+        --system-gray2: light-dark(#aeaeb2, #636366);
+        --system-gray3: light-dark(#c7c7cc, #48484a);
+        --system-gray4: light-dark(#d1d1d6, #3a3a3c);
+        --system-gray5: light-dark(#e5e5ea, #2c2c2e);
+        --system-gray6: light-dark(#f2f2f7, #1c1c1e);
+        --on-red: #fff;
+        --on-orange: #000;
+        --on-yellow: #000;
+        --on-green: #000;
+        --on-mint: #000;
+        --on-teal: #000;
+        --on-cyan: #000;
+        --on-blue: #fff;
+        --on-indigo: #fff;
+        --on-purple: #fff;
+        --on-pink: #fff;
+        --on-brown: #fff;
+        --on-gray: #fff;
+        --accent: var(--system-blue);
+        --label: light-dark(#000, #fff);
+        --secondary-label: light-dark(rgb(60 60 67/0.74), rgb(235 235 245/0.6));
+        --secondary-label-native: light-dark(rgb(60 60 67/0.6), rgb(235 235 245/0.6));
+        --tertiary-label-native: light-dark(rgb(60 60 67/0.3), rgb(235 235 245/0.3));
+        --tertiary-label: var(--tertiary-label-native);
+        --quaternary-label: light-dark(rgb(60 60 67/0.18), rgb(235 235 245/0.16));
+        --placeholder-text: var(--tertiary-label-native);
+        --link: light-dark(#0066cc, #2997ff);
+        --link-native: light-dark(#007aff, #0984ff);
+        --destructive-text: light-dark(
+          color-mix(in srgb, var(--system-red) 72%, #000),
+          color-mix(in srgb, var(--system-red) 62%, #fff)
+        );
+        --separator: light-dark(rgb(60 60 67/0.12), rgb(84 84 88/0.5));
+        --opaque-separator: light-dark(#c6c6c8, #38383a);
+        --fill: light-dark(rgb(120 120 128/0.2), rgb(120 120 128/0.36));
+        --fill-secondary: light-dark(rgb(120 120 128/0.16), rgb(120 120 128/0.32));
+        --fill-tertiary: light-dark(rgb(118 118 128/0.12), rgb(118 118 128/0.24));
+        --fill-quaternary: light-dark(rgb(116 116 128/0.08), rgb(118 118 128/0.18));
+        --system-background: light-dark(#fff, #000);
+        --secondary-system-background: light-dark(#f2f2f7, #1c1c1e);
+        --tertiary-system-background: light-dark(#fff, #2c2c2e);
+        --system-grouped-background: light-dark(#f2f2f7, #000);
+        --secondary-system-grouped-background: light-dark(#fff, #1c1c1e);
+        --tertiary-system-grouped-background: light-dark(#f2f2f7, #2c2c2e);
+        --ff-sans:
+          -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', system-ui,
+          'Helvetica Neue', 'Segoe UI', Roboto, Arial, 'PingFang SC', 'Hiragino Sans',
+          'Noto Sans CJK SC', 'Microsoft YaHei', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
+        --ff-rounded: ui-rounded, 'SF Pro Rounded', var(--ff-sans);
+        --ff-serif: ui-serif, 'New York', 'Iowan Old Style', Georgia, 'Times New Roman', serif;
+        --ff-mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        --fs-large-title: 2.125rem;
+        --lh-large-title: 2.5625rem;
+        --fs-title1: 1.75rem;
+        --lh-title1: 2.125rem;
+        --fs-title2: 1.375rem;
+        --lh-title2: 1.75rem;
+        --fs-title3: 1.25rem;
+        --lh-title3: 1.5625rem;
+        --fs-headline: 1.0625rem;
+        --lh-headline: 1.375rem;
+        --fs-body: 1.0625rem;
+        --lh-body: 1.375rem;
+        --fs-callout: 1rem;
+        --lh-callout: 1.3125rem;
+        --fs-subheadline: 0.9375rem;
+        --lh-subheadline: 1.25rem;
+        --fs-footnote: 0.8125rem;
+        --lh-footnote: 1.125rem;
+        --fs-caption1: 0.75rem;
+        --lh-caption1: 1rem;
+        --fs-caption2: 0.6875rem;
+        --lh-caption2: 0.8125rem;
+        --tracking-scale: 1;
+        --tr-large-title: 0.012em;
+        --tr-title1: 0.014em;
+        --tr-title2: -0.012em;
+        --tr-title3: -0.023em;
+        --tr-headline: -0.026em;
+        --tr-body: -0.026em;
+        --tr-callout: -0.02em;
+        --tr-subheadline: -0.016em;
+        --tr-footnote: -0.006em;
+        --tr-caption1: 0em;
+        --tr-caption2: 0.006em;
+        --space-0: 0;
+        --space-1: 4px;
+        --space-2: 8px;
+        --space-3: 12px;
+        --space-4: 16px;
+        --space-5: 20px;
+        --space-6: 24px;
+        --space-8: 32px;
+        --space-10: 40px;
+        --space-12: 48px;
+        --space-16: 64px;
+        --margin-page: 16px;
+        --hit: 44px;
+        --toolbar-h: 54px;
+        --tabbar-h: 62px;
+        --safe-top: env(safe-area-inset-top, 0px);
+        --safe-right: env(safe-area-inset-right, 0px);
+        --safe-bottom: env(safe-area-inset-bottom, 0px);
+        --safe-left: env(safe-area-inset-left, 0px);
+        --corner-xs: 6px;
+        --corner-sm: 10px;
+        --corner-md: 14px;
+        --corner-lg: 20px;
+        --corner-xl: 26px;
+        --corner-2xl: 34px;
+        --corner-sheet: 38px;
+        --corner-list: 26px;
+        --corner-capsule: 9999px;
+        --elev-sm: 0 1px 2px rgb(0 0 0/0.06), 0 1px 1px rgb(0 0 0/0.04);
+        --elev-md: 0 4px 12px rgb(0 0 0/0.08), 0 1px 3px rgb(0 0 0/0.05);
+        --elev-lg: 0 12px 32px rgb(0 0 0/0.14), 0 2px 8px rgb(0 0 0/0.06);
+        --elev-glass:
+          0 10px 30px light-dark(rgb(20 20 40/0.16), rgb(0 0 0/0.45)),
+          0 2px 8px light-dark(rgb(20 20 40/0.08), rgb(0 0 0/0.3));
+        --dur-press: 90ms;
+        --dur-fast: 150ms;
+        --dur-base: 250ms;
+        --dur-slow: 400ms;
+        --dur-sheet: 550ms;
+        --dur-spring-smooth: 740ms;
+        --dur-spring-snappy: 700ms;
+        --dur-spring-bouncy: 820ms;
+        --motion-stagger: 30ms;
+        --curve-standard: cubic-bezier(0.25, 0.1, 0.25, 1);
+        --curve-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+        --curve-sheet: cubic-bezier(0.32, 0.72, 0, 1);
+        --spring-smooth: var(--curve-out);
+        --spring-snappy: var(--curve-out);
+        --spring-bouncy: var(--curve-out);
+        --press-scale: 0.96;
+        --press-fill: var(--fill-tertiary);
+        --press-glow: 1;
+        --hover-fill: var(--fill-quaternary);
+        --hover-glow: 0.5;
+        --focus-ring-width: 3px;
+        --focus-ring-offset: 2px;
+        --focus-halo: 0 0 0 calc(var(--focus-ring-offset) + var(--focus-ring-width) + 1px)
+          var(--system-background);
+        --state-disabled-opacity: 0.4;
+        --state-selected-fill: var(--fill-secondary);
+        --state-error: var(--system-red);
+        --state-warning: var(--system-orange);
+        --state-success: var(--system-green);
+        --glass-fill-color: light-dark(#fff, #1c1c1e);
+        --glass-clear-density: 10%;
+        --glass-blur: 22px;
+        --glass-clear-blur: 6px;
+        --glass-tint-density: 96%;
+        --glass-solid: light-dark(#f6f6f8, #2c2c2e);
+        --glass-specular: light-dark(rgb(255 255 255/0.95), rgb(255 255 255/0.34));
+        --glass-specular2: light-dark(rgb(255 255 255/0.55), rgb(255 255 255/0.14));
+        --glass-rim: light-dark(rgb(255 255 255/0.55), rgb(255 255 255/0.12));
+        --glass-inner-glow: light-dark(rgb(255 255 255/0.45), rgb(255 255 255/0.07));
+        --glass-edge: light-dark(rgb(0 0 0/0.1), rgb(0 0 0/0.55));
+        --glass-sheen: light-dark(rgb(255 255 255/0.55), rgb(255 255 255/0.1));
+        --glass-dim: rgb(0 0 0/0.55);
+      }
+      [data-theme='light'] {
+        color-scheme: light;
+      }
+      [data-theme='dark'] {
+        color-scheme: dark;
+      }
+      :where(:root, [data-theme='light']) {
+        --glass-density: 50%;
+        --glass-saturate: 180%;
+      }
+      @media (prefers-color-scheme: dark) {
+        :where(:root:not([data-theme='light'])) {
+          --glass-density: 64%;
+          --glass-saturate: 130%;
+        }
+      }
+      :where([data-theme='dark']) {
+        --glass-density: 64%;
+        --glass-saturate: 130%;
+      }
+      :where(:root, [data-tint]) {
+        --accent-fill: color-mix(in oklab, var(--accent) 55%, black);
+        --accent-text: light-dark(#1c67e5, #3da5ff);
+        --accent-on: #fff;
+        --focus-ring: var(--accent-text);
+        --state-selected-focus-fill: var(--accent-fill);
+      }
+      @supports (color: oklch(from red min(l, 0.5) c h)) and
+        (color: color(from red srgb-linear clamp(0, r * 2, 1) g b)) {
+        :where(:root, [data-tint]) {
+          --accent-fill: oklch(from var(--accent) min(l, 0.5) c h);
+          --accent-text: light-dark(
+            oklch(from var(--accent) min(l, 0.5) c h),
+            oklch(from var(--accent) max(l, 0.75) c h)
+          );
+          --_on: clamp(0, (0.179 - 0.2126 * r - 0.7152 * g - 0.0722 * b) * 1e4, 1);
+          --accent-on: color(from var(--accent-fill) srgb-linear var(--_on) var(--_on) var(--_on));
+        }
+      }
+      @supports (transition-timing-function: linear(0, 1)) {
+        :root {
+          --spring-smooth: linear(
+            0,
+            0.005 1.1%,
+            0.019 2.3%,
+            0.04 3.4%,
+            0.067 4.5%,
+            0.097 5.6%,
+            0.167 7.9%,
+            0.358 13.5%,
+            0.466 16.9%,
+            0.562 20.3%,
+            0.645 23.6%,
+            0.715 27%,
+            0.774 30.4%,
+            0.821 33.8%,
+            0.859 37.2%,
+            0.899 41.7%,
+            0.928 46.2%,
+            0.953 51.8%,
+            0.972 58.6%,
+            0.984 65.3%,
+            0.991 73.2%,
+            1
+          );
+          --spring-snappy: linear(
+            0,
+            0.005 1.2%,
+            0.019 2.4%,
+            0.041 3.6%,
+            0.069 4.8%,
+            0.102 6%,
+            0.177 8.3%,
+            0.43 15.5%,
+            0.509 17.9%,
+            0.618 21.4%,
+            0.681 23.8%,
+            0.737 26.2%,
+            0.808 29.8%,
+            0.864 33.3%,
+            0.908 36.9%,
+            0.94 40.5%,
+            0.97 45.2%,
+            0.988 50%,
+            0.998 54.8%,
+            1.004 59.5%,
+            1.006 66.7%,
+            1
+          );
+          --spring-bouncy: linear(
+            0,
+            0.005 1%,
+            0.02 2%,
+            0.043 3%,
+            0.072 4.1%,
+            0.107 5.1%,
+            0.146 6.1%,
+            0.233 8.1%,
+            0.47 13.2%,
+            0.605 16.3%,
+            0.685 18.3%,
+            0.722 19.3%,
+            0.79 21.3%,
+            0.848 23.4%,
+            0.874 24.4%,
+            0.919 26.4%,
+            0.971 29.5%,
+            1.006 32.5%,
+            1.023 34.6%,
+            1.038 37.6%,
+            1.043 39.6%,
+            1.046 42.7%,
+            1.041 47.8%,
+            1.014 61%,
+            1.003 70.1%,
+            0.998 82.3%,
+            1
+          );
+        }
+      }
+      @media (min-width: 440px) {
+        :root {
+          --margin-page: 20px;
+        }
+      }
+      @media (prefers-contrast: more) {
+        :root {
+          --system-red: light-dark(#e9152d, #ff6165);
+          --system-orange: light-dark(#c55300, #ffa056);
+          --system-yellow: light-dark(#a16a00, #fedf43);
+          --system-green: light-dark(#008932, #4ad968);
+          --system-mint: light-dark(#008575, #54dfcb);
+          --system-teal: light-dark(#008198, #3bddec);
+          --system-cyan: light-dark(#007eae, #6dd9ff);
+          --system-blue: light-dark(#1e6ef4, #5cb8ff);
+          --system-indigo: light-dark(#564ade, #a7aaff);
+          --system-purple: light-dark(#b02fc2, #ea8dff);
+          --system-pink: light-dark(#e7124d, #ff8ac4);
+          --system-brown: light-dark(#956d51, #dba679);
+          --system-gray: light-dark(#6c6c70, #aeaeb2);
+          --system-gray2: light-dark(#8e8e93, #7c7c80);
+          --system-gray3: light-dark(#aeaeb2, #545456);
+          --system-gray4: light-dark(#bcbcc0, #444446);
+          --system-gray5: light-dark(#d8d8dc, #363638);
+          --system-gray6: light-dark(#ebebf0, #242426);
+          --on-red: light-dark(#fff, #000);
+          --on-orange: light-dark(#fff, #000);
+          --on-yellow: light-dark(#fff, #000);
+          --on-green: light-dark(#fff, #000);
+          --on-mint: light-dark(#fff, #000);
+          --on-teal: light-dark(#fff, #000);
+          --on-cyan: light-dark(#fff, #000);
+          --on-blue: light-dark(#fff, #000);
+          --on-indigo: light-dark(#fff, #000);
+          --on-purple: light-dark(#fff, #000);
+          --on-pink: light-dark(#fff, #000);
+          --on-brown: light-dark(#fff, #000);
+          --on-gray: light-dark(#fff, #000);
+          --secondary-label: light-dark(rgb(60 60 67/0.8), rgb(235 235 245/0.7));
+          --secondary-label-native: light-dark(rgb(60 60 67/0.8), rgb(235 235 245/0.7));
+          --tertiary-label-native: light-dark(rgb(60 60 67/0.7), rgb(235 235 245/0.55));
+          --quaternary-label: light-dark(rgb(60 60 67/0.55), rgb(235 235 245/0.4));
+          --link: light-dark(#0040dd, #53a6ff);
+          --destructive-text: light-dark(
+            color-mix(in srgb, var(--system-red) 72%, #000),
+            color-mix(in srgb, var(--system-red) 55%, #fff)
+          );
+          --fill: light-dark(rgb(120 120 128/0.28), rgb(120 120 128/0.44));
+          --fill-secondary: light-dark(rgb(120 120 128/0.24), rgb(120 120 128/0.4));
+          --fill-tertiary: light-dark(rgb(118 118 128/0.2), rgb(118 118 128/0.32));
+          --fill-quaternary: light-dark(rgb(116 116 128/0.16), rgb(118 118 128/0.26));
+          --secondary-system-background: light-dark(#ebebf0, #242426);
+          --tertiary-system-background: light-dark(#fff, #363638);
+          --system-grouped-background: light-dark(#ebebf0, #000);
+          --secondary-system-grouped-background: light-dark(#fff, #242426);
+          --tertiary-system-grouped-background: light-dark(#ebebf0, #363638);
+          --press-fill: var(--fill);
+          --hover-fill: var(--fill-tertiary);
+          --press-glow: 0;
+          --hover-glow: 0;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        :root {
+          --spring-snappy: var(--spring-smooth);
+          --spring-bouncy: var(--spring-smooth);
+          --press-scale: 1;
+        }
+      }
+      @media (prefers-reduced-transparency: reduce) {
+        :root {
+          --press-glow: 0;
+          --hover-glow: 0;
+        }
+      }
+      @media (forced-colors: active) {
+        :where(:root, [data-tint]) {
+          --focus-ring: Highlight;
+        }
+        :root {
+          --focus-halo: 0 0 0 calc(var(--focus-ring-offset) + var(--focus-ring-width) + 1px) Canvas;
+        }
+      }
+      @layer apple.base {
+        *,
+        ::before,
+        ::after {
+          box-sizing: border-box;
+        }
+        html {
+          -webkit-text-size-adjust: 100%;
+          text-size-adjust: 100%;
+        }
+        body {
+          margin: 0;
+          background: var(--system-background);
+          color: var(--label);
+          font: 400 var(--fs-body)/var(--lh-body) var(--ff-sans);
+          letter-spacing: calc(var(--tr-body) * var(--tracking-scale));
+          -webkit-font-smoothing: antialiased;
+          -moz-osx-font-smoothing: grayscale;
+        }
+        :where([data-theme]) {
+          color: var(--label);
+        }
+        :where(button, input, select, textarea) {
+          font: inherit;
+          letter-spacing: inherit;
+          color: inherit;
+        }
+        .sr-only {
+          position: absolute;
+          inline-size: 1px;
+          block-size: 1px;
+          margin: -1px;
+          padding: 0;
+          border: 0;
+          overflow: hidden;
+          clip-path: inset(50%);
+          white-space: nowrap;
+        }
+        .surface-system {
+          background: var(--system-background);
+        }
+        .surface-grouped {
+          background: var(--system-grouped-background);
+        }
+        .hit-44 {
+          min-inline-size: var(--hit);
+          min-block-size: var(--hit);
+        }
+        @media (prefers-reduced-motion: reduce) {
+          :not([role='progressbar'], progress, [aria-busy='true'] *),
+          :not([role='progressbar'], progress, [aria-busy='true'] *)::before,
+          :not([role='progressbar'], progress, [aria-busy='true'] *)::after {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+          }
+        }
+      }
+      @layer apple.components {
+        :where(
+          .glass,
+          .btn-glass,
+          .btn-prominent,
+          .toolbar-group,
+          .tabbar,
+          .sheet,
+          .menu,
+          .popover,
+          .alert,
+          .status-pill
+        ) {
+          --glass-ink: var(--label);
+          --secondary-label: light-dark(rgb(60 60 67/0.88), rgb(235 235 245/0.88));
+          --destructive-text: light-dark(
+            color-mix(in srgb, var(--system-red) 55%, #000),
+            color-mix(in srgb, var(--system-red) 40%, #fff)
+          );
+          --_fill: color-mix(in srgb, var(--glass-fill-color) var(--glass-density), transparent);
+          --_solid: var(--glass-solid);
+          --_blur: var(--glass-blur);
+          --_sat: var(--glass-saturate);
+          --_sheen: var(--glass-sheen);
+          --_specular: var(--glass-specular);
+          --_glint: 0.55;
+          --_shadow:
+            0 0 0 0.5px var(--glass-edge), inset 0 1px 1px var(--glass-rim),
+            inset 0 -1px 1px var(--glass-rim), inset 0 0 18px var(--glass-inner-glow),
+            var(--elev-glass);
+          position: relative;
+          isolation: isolate;
+          color: var(--label);
+          background-color: var(--_fill);
+          -webkit-backdrop-filter: blur(var(--_blur)) saturate(var(--_sat));
+          backdrop-filter: blur(var(--_blur)) saturate(var(--_sat));
+          border-radius: var(--glass-radius, var(--corner-xl));
+          box-shadow: var(--_shadow);
+          &:focus-visible {
+            box-shadow: var(--focus-halo), var(--_shadow);
+          }
+          &::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            z-index: 1;
+            padding: 1px;
+            border-radius: inherit;
+            pointer-events: none;
+            background: linear-gradient(
+              140deg,
+              var(--_specular),
+              transparent 28% 70%,
+              var(--glass-specular2)
+            );
+            -webkit-mask:
+              linear-gradient(#000 0 0) content-box,
+              linear-gradient(#000 0 0);
+            -webkit-mask-composite: xor;
+            mask:
+              linear-gradient(#000 0 0) content-box,
+              linear-gradient(#000 0 0);
+            mask-composite: exclude;
+          }
+          &::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            z-index: -1;
+            border-radius: inherit;
+            pointer-events: none;
+            background:
+              radial-gradient(
+                120% 90% at var(--px, 50%) var(--py, 0%),
+                rgb(255 255 255 / calc(var(--glow) * var(--_glint))),
+                transparent 62%
+              ),
+              linear-gradient(var(--_sheen), transparent 46%);
+          }
+          @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+            background: var(--_solid);
+          }
+          @media (prefers-reduced-transparency: reduce) {
+            background: var(--_solid);
+            -webkit-backdrop-filter: none;
+            backdrop-filter: none;
+          }
+          @media (prefers-contrast: more) {
+            background: var(--_solid);
+            -webkit-backdrop-filter: none;
+            backdrop-filter: none;
+            --_shadow: 0 0 0 1px var(--opaque-separator), var(--elev-md);
+            &::before {
+              opacity: 0;
+            }
+          }
+          @media (forced-colors: active) {
+            background: Canvas;
+            border: 1px solid CanvasText;
+            -webkit-backdrop-filter: none;
+            backdrop-filter: none;
+            &::before,
+            &::after {
+              display: none;
+            }
+          }
+        }
+        .glass-clear {
+          --_fill: color-mix(
+            in srgb,
+            var(--glass-fill-color) var(--glass-clear-density),
+            transparent
+          );
+          --_blur: var(--glass-clear-blur);
+          --_sat: 160%;
+          --_sheen: light-dark(rgb(255 255 255/0.28), rgb(255 255 255/0.08));
+        }
+        .glass-dim {
+          color-scheme: dark;
+          --_solid: rgb(0 0 0/0.72);
+          background-image: linear-gradient(var(--glass-dim), var(--glass-dim));
+          color: #fff;
+        }
+        :is(.glass-tinted, .btn-prominent) {
+          --glass-ink: var(--accent-on);
+          --_fill: color-mix(in srgb, var(--accent-fill) var(--glass-tint-density), transparent);
+          --_solid: var(--accent-fill);
+          --_sat: 200%;
+          --_specular: rgb(255 255 255/0.75);
+          --_sheen: rgb(255 255 255/0.08);
+          --_glint: 0.3;
+          color: var(--accent-on);
+        }
+        :where(a, button, label, summary, [role='button'], .pressable, .glass-interactive) {
+          -webkit-tap-highlight-color: transparent;
+        }
+        :where(.pressable, .glass-interactive) {
+          cursor: pointer;
+          touch-action: manipulation;
+          -webkit-user-select: none;
+          user-select: none;
+        }
+        :focus-visible {
+          outline: var(--focus-ring-width) solid var(--focus-ring);
+          outline-offset: var(--focus-ring-offset);
+        }
+        :where(:focus-visible) {
+          box-shadow: var(--focus-halo);
+        }
+        @media (hover: hover) and (pointer: fine) {
+          .pressable:where(:not(:disabled, [aria-disabled='true'])):hover {
+            background-image: linear-gradient(var(--hover-fill) 0 0);
+          }
+          .glass-interactive:where(:not(:disabled, [aria-disabled='true'])):hover {
+            --glow: var(--hover-glow);
+          }
+        }
+        :root:not([data-press-tracking]) .pressable:not([aria-disabled='true']):active,
+        .pressable[data-pressed] {
+          background-image: linear-gradient(var(--press-fill) 0 0);
+        }
+        .glass-interactive {
+          transition:
+            scale var(--dur-spring-snappy) var(--spring-snappy),
+            --glow var(--dur-base) var(--curve-out);
+        }
+        :root:not([data-press-tracking]) .glass-interactive:not([aria-disabled='true']):active,
+        .glass-interactive[data-pressed] {
+          scale: var(--press-scale);
+          --glow: var(--press-glow);
+          transition-duration: var(--dur-press);
+          transition-timing-function: var(--curve-out);
+        }
+        :is(.pressable, .glass-interactive):is(:disabled, [aria-disabled='true']) {
+          opacity: var(--state-disabled-opacity);
+          cursor: default;
+        }
+        .pressable:not([aria-busy='true']) > .activity-indicator {
+          display: none;
+        }
+        .pressable > .activity-indicator {
+          inline-size: 1.1em;
+          block-size: 1.1em;
+          color: inherit;
+        }
+        .pressable[aria-busy='true'] > svg {
+          display: none;
+        }
+        :where(.hit-extend) {
+          position: relative;
+        }
+        .hit-extend::after {
+          content: '';
+          position: absolute;
+          inset: min(0px, calc((100% - var(--hit)) / 2));
+        }
+        @media (forced-colors: active) {
+          :is(
+            [data-pressed],
+            :root:not([data-press-tracking])
+              :is(button, a, [role='button'], .pressable, .glass-interactive):active
+          ) {
+            outline: 2px solid Highlight;
+            outline-offset: -2px;
+          }
+          :is(.pressable, .glass-interactive):is(:disabled, [aria-disabled='true']) {
+            color: GrayText;
+          }
+        }
+        .toolbar {
+          position: sticky;
+          top: 0;
+          z-index: 15;
+          box-sizing: border-box;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: var(--space-3);
+          min-height: calc(var(--safe-top) + var(--toolbar-h));
+          padding: calc(var(--safe-top) + 5px) var(--margin-page) 5px;
+          pointer-events: none;
+        }
+        .toolbar > * {
+          pointer-events: auto;
+        }
+        :where([data-app-frame]) .toolbar {
+          position: absolute;
+          inset: 0 0 auto;
+        }
+        .toolbar-group {
+          --glass-radius: var(--corner-capsule);
+          display: inline-flex;
+          align-items: center;
+          min-height: var(--hit);
+          transition: --glow var(--dur-base) var(--curve-out);
+        }
+        :where(html:not([data-press-tracking])) .toolbar-group:has(> .toolbar-btn:active),
+        .toolbar-group:has(> [data-pressed]) {
+          --glow: var(--press-glow);
+        }
+        .toolbar-btn {
+          position: relative;
+          z-index: 2;
+          box-sizing: border-box;
+          display: inline-grid;
+          place-items: center;
+          min-width: var(--hit);
+          height: var(--hit);
+          margin: 0;
+          padding: 0 10px;
+          border: 0;
+          border-radius: var(--corner-capsule);
+          background: transparent;
+          color: var(--label);
+          font: 400 var(--fs-body)/1 var(--ff-sans);
+          letter-spacing: calc(var(--tr-body) * var(--tracking-scale));
+          text-decoration: none;
+          cursor: pointer;
+          touch-action: manipulation;
+          -webkit-user-select: none;
+          user-select: none;
+          transition: background-color var(--dur-fast) var(--curve-out);
+        }
+        .toolbar-btn > svg {
+          width: 22px;
+          height: 22px;
+        }
+        .toolbar-group--divided > .toolbar-btn + .toolbar-btn::before {
+          content: '';
+          position: absolute;
+          inset-block: 12px;
+          inset-inline-start: 0;
+          width: 0.5px;
+          background: var(--separator);
+        }
+        @media (hover: hover) and (pointer: fine) {
+          .toolbar-btn:where(:not(:disabled, [aria-disabled='true']):hover) {
+            background-color: var(--hover-fill);
+          }
+        }
+        .toolbar-btn[aria-pressed='true'] {
+          background-color: var(--accent-fill);
+          color: var(--accent-on);
+        }
+        :where(html:not([data-press-tracking]))
+          .toolbar-btn:not(:disabled, [aria-disabled='true']):active,
+        .toolbar-btn[data-pressed] {
+          background-color: var(--press-fill);
+          transition-duration: var(--dur-press);
+        }
+        :where(html:not([data-press-tracking])) .toolbar-btn[aria-pressed='true']:active,
+        .toolbar-btn[aria-pressed='true'][data-pressed] {
+          background-color: var(--accent-fill);
+          background-image: linear-gradient(var(--press-fill) 0 0);
+        }
+        .toolbar-btn:is(:disabled, [aria-disabled='true']) {
+          opacity: var(--state-disabled-opacity);
+          cursor: default;
+        }
+        @media (forced-colors: active) {
+          .toolbar-btn {
+            border: 1px solid ButtonText;
+          }
+          .toolbar-btn[aria-pressed='true'] {
+            forced-color-adjust: none;
+            background: Highlight;
+            color: HighlightText;
+          }
+          .toolbar-btn:is(:disabled, [aria-disabled='true']) {
+            color: GrayText;
+            border-color: GrayText;
+          }
+        }
+        @keyframes motion-fade-in {
+          from {
+            opacity: 0;
+          }
+          to {
+            opacity: 1;
+          }
+        }
+        @keyframes motion-spin {
+          to {
+            rotate: 1turn;
+          }
+        }
+        .motion-pop,
+        .motion-fade {
+          opacity: 0;
+          visibility: hidden;
+          pointer-events: none;
+          transition:
+            opacity var(--dur-fast) var(--curve-standard),
+            scale var(--dur-fast) var(--curve-standard),
+            visibility var(--dur-fast),
+            display var(--dur-fast) allow-discrete,
+            overlay var(--dur-fast) allow-discrete;
+        }
+        .motion-pop {
+          scale: 0.9;
+          transform-origin: var(--motion-origin, center);
+        }
+        .motion-pop:is(:popover-open, [open], .is-open),
+        .motion-fade:is(:popover-open, [open], .is-open) {
+          opacity: 1;
+          visibility: visible;
+          pointer-events: auto;
+          transition:
+            opacity var(--dur-fast) var(--curve-standard),
+            scale var(--dur-spring-snappy) var(--spring-snappy),
+            visibility 0s;
+        }
+        .motion-pop:is(:popover-open, [open], .is-open) {
+          scale: 1;
+        }
+        @starting-style {
+          .motion-pop:is(:popover-open, [open], .is-open) {
+            opacity: 0;
+            scale: 0.9;
+          }
+          .motion-fade:is(:popover-open, [open], .is-open) {
+            opacity: 0;
+          }
+        }
+        .motion-stagger > * {
+          transition-delay: min(calc(var(--motion-index, 0) * var(--motion-stagger)), 150ms);
+        }
+        .motion-scroll-root {
+          timeline-scope: --motion-scroll;
+        }
+        .motion-scroller {
+          scroll-timeline: --motion-scroll block;
+        }
+        @supports (animation-timeline: scroll()) {
+          .motion-reveal-on-scroll {
+            animation: motion-fade-in 1ms linear both;
+            animation-timeline: --motion-scroll;
+            animation-range: var(--motion-range, 24px 64px);
+          }
+        }
+        @supports not (animation-timeline: scroll()) {
+          .motion-reveal-on-scroll {
+            opacity: 0;
+            transition: opacity var(--dur-base) var(--curve-standard);
+          }
+          .is-scrolled .motion-reveal-on-scroll {
+            opacity: 1;
+          }
+        }
+        .activity-indicator {
+          display: inline-block;
+          flex: none;
+          inline-size: 20px;
+          block-size: 20px;
+          color: var(--secondary-label);
+          background: conic-gradient(
+            from 22.5deg,
+            color-mix(in srgb, currentColor 25%, transparent),
+            currentColor
+          );
+          mask:
+            repeating-conic-gradient(from -8deg, #000 0 16deg, #0000 0 45deg),
+            radial-gradient(closest-side, #0000 44%, #000 46%);
+          mask-composite: intersect;
+          animation:
+            motion-spin 1s steps(8) infinite,
+            motion-fade-in var(--dur-fast) var(--motion-delay, 0s) both;
+        }
+        @media (forced-colors: active) {
+          .activity-indicator {
+            forced-color-adjust: none;
+            color: CanvasText;
+          }
+        }
+        ::view-transition-group(motion-morph) {
+          animation-duration: var(--dur-spring-smooth);
+          animation-timing-function: var(--spring-smooth);
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .motion-pop,
+          .motion-pop:is(:popover-open, [open], .is-open) {
+            scale: none;
+          }
+          .motion-stagger > * {
+            transition-delay: 0s;
+          }
+          .activity-indicator {
+            animation-duration: 1s, var(--dur-fast) !important;
+            animation-iteration-count: infinite, 1 !important;
+          }
+        }
+        .navbar {
+          --navbar-h: var(--toolbar-h);
+          --navbar-edge: var(--system-grouped-background);
+          position: sticky;
+          top: 0;
+          z-index: 10;
+          display: grid;
+          grid-template-columns: minmax(max-content, 1fr) minmax(0, auto) minmax(max-content, 1fr);
+          align-items: center;
+          column-gap: var(--space-2);
+          box-sizing: border-box;
+          min-block-size: calc(var(--safe-top) + var(--navbar-h));
+          padding: var(--safe-top) calc(var(--margin-page) + var(--safe-right)) 0
+            calc(var(--margin-page) + var(--safe-left));
+          isolation: isolate;
+          pointer-events: none;
+        }
+        .navbar > * {
+          pointer-events: auto;
+        }
+        .navbar::before {
+          content: '';
+          position: absolute;
+          inset: 0 0 calc(-1 * var(--space-4));
+          z-index: -1;
+          pointer-events: none;
+          background: linear-gradient(to bottom, var(--navbar-edge) 55%, transparent);
+          opacity: 0;
+        }
+        .navbar__leading,
+        .navbar__trailing {
+          display: flex;
+          align-items: center;
+          gap: var(--space-2);
+          min-inline-size: 0;
+        }
+        .navbar__leading {
+          grid-column: 1;
+          justify-self: start;
+        }
+        .navbar__trailing {
+          grid-column: 3;
+          justify-self: end;
+        }
+        .navbar__title {
+          grid-column: 2;
+          min-inline-size: 0;
+          overflow: hidden;
+          color: var(--label);
+          font: 600 var(--fs-headline)/var(--lh-headline) var(--ff-sans);
+          letter-spacing: calc(var(--tr-headline) * var(--tracking-scale));
+          text-align: center;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          opacity: 0;
+        }
+        .navbar__large-title {
+          margin: 0;
+          padding: var(--space-1) var(--margin-page) var(--space-2);
+          color: var(--label);
+          font: 700 var(--fs-large-title)/var(--lh-large-title) var(--ff-sans);
+          letter-spacing: calc(var(--tr-large-title) * var(--tracking-scale));
+          text-wrap: balance;
+        }
+        @keyframes navbar-title-in {
+          from {
+            opacity: 0;
+            translate: 0 0.375em;
+          }
+          to {
+            opacity: 1;
+            translate: none;
+          }
+        }
+        @keyframes navbar-fade-in {
+          from {
+            opacity: 0;
+          }
+          to {
+            opacity: 1;
+          }
+        }
+        @supports (animation-timeline: scroll()) {
+          .navbar__title,
+          .navbar::before,
+          .navbar__large-title {
+            animation: navbar-fade-in 1ms linear both;
+            animation-timeline: --motion-scroll;
+          }
+          .navbar__title {
+            animation-name: navbar-title-in;
+            animation-range: var(--motion-range, 20px 52px);
+          }
+          .navbar::before {
+            animation-range: 0px 24px;
+          }
+          .navbar__large-title {
+            animation-direction: reverse;
+            animation-range: 4px 40px;
+          }
+        }
+        @supports not (animation-timeline: scroll()) {
+          .navbar__title {
+            translate: 0 0.375em;
+            transition:
+              opacity var(--dur-base) var(--curve-standard),
+              translate var(--dur-base) var(--curve-out);
+          }
+          .navbar::before,
+          .navbar__large-title {
+            transition: opacity var(--dur-base) var(--curve-standard);
+          }
+          .is-scrolled .navbar__title {
+            opacity: 1;
+            translate: none;
+          }
+          .is-scrolled .navbar::before {
+            opacity: 1;
+          }
+          .is-scrolled .navbar__large-title {
+            opacity: 0;
+          }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .navbar__title {
+            animation-name: navbar-fade-in;
+            animation-timing-function: steps(2, jump-none);
+            translate: none;
+            transition: none;
+          }
+          .navbar__large-title {
+            animation-timing-function: steps(2, jump-none);
+            transition: none;
+          }
+        }
+        @media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+          .navbar::before {
+            inset-block-end: 0;
+            border-block-end: 1px solid var(--separator);
+            background: var(--navbar-edge);
+          }
+        }
+        @media (forced-colors: active) {
+          .navbar {
+            background-color: Canvas;
+            border-block-end: 1px solid CanvasText;
+          }
+          .navbar::before {
+            display: none;
+          }
+        }
+        .segmented {
+          --seg-h: 32px;
+          --seg-pad: 2px;
+          --n: 2;
+          --i: 0;
+          --_seg-dir: 1;
+          --_seg-thumb: light-dark(#fff, #636366);
+          --_seg-lens: color-mix(in srgb, var(--glass-fill-color) 45%, transparent);
+          --_seg-lens-fx: blur(2px) saturate(180%);
+          --_seg-lift: 1.04 1.12;
+          position: relative;
+          box-sizing: border-box;
+          display: grid;
+          grid-auto-flow: column;
+          grid-auto-columns: minmax(0, 1fr);
+          align-items: stretch;
+          min-height: var(--seg-h);
+          margin: 0;
+          padding: var(--seg-pad);
+          border: 0;
+          border-radius: var(--corner-capsule);
+          background: var(--fill-tertiary);
+        }
+        .segmented:dir(rtl) {
+          --_seg-dir: -1;
+        }
+        .segmented:has(> label:nth-of-type(3)) {
+          --n: 3;
+        }
+        .segmented:has(> label:nth-of-type(4)) {
+          --n: 4;
+        }
+        .segmented:has(> label:nth-of-type(5)) {
+          --n: 5;
+        }
+        .segmented:has(> label:nth-of-type(2) > :checked) {
+          --i: 1;
+        }
+        .segmented:has(> label:nth-of-type(3) > :checked) {
+          --i: 2;
+        }
+        .segmented:has(> label:nth-of-type(4) > :checked) {
+          --i: 3;
+        }
+        .segmented:has(> label:nth-of-type(5) > :checked) {
+          --i: 4;
+        }
+        .segmented::before {
+          content: '';
+          position: absolute;
+          inset-block: var(--seg-pad);
+          inset-inline-start: var(--seg-pad);
+          width: calc((100% - 2 * var(--seg-pad)) / var(--n));
+          translate: calc(var(--i) * 100% * var(--_seg-dir)) 0;
+          border-radius: var(--corner-capsule);
+          background: var(--_seg-thumb);
+          box-shadow:
+            0 3px 8px rgb(0 0 0/0.12),
+            0 1px 1px rgb(0 0 0/0.14),
+            inset 0 0 0 0.5px rgb(0 0 0/0.04);
+          transition:
+            translate var(--dur-spring-snappy) var(--spring-snappy),
+            scale var(--dur-spring-snappy) var(--spring-snappy),
+            background-color var(--dur-fast) var(--curve-out);
+        }
+        .segmented > label {
+          position: relative;
+          z-index: 1;
+          display: grid;
+          place-items: center;
+          min-width: 0;
+          border-radius: var(--corner-capsule);
+          cursor: pointer;
+          touch-action: manipulation;
+          -webkit-user-select: none;
+          user-select: none;
+          transition: background-color var(--dur-fast) var(--curve-out);
+        }
+        .segmented > label::after {
+          content: '';
+          position: absolute;
+          inset: min(0px, calc((var(--seg-h) - 2 * var(--seg-pad) - var(--hit)) / 2)) 0;
+        }
+        .segmented input {
+          position: absolute;
+          inset: 0;
+          margin: 0;
+          opacity: 0;
+          cursor: inherit;
+        }
+        .segmented span {
+          box-sizing: border-box;
+          max-width: 100%;
+          padding: 0 12px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          font: 500 var(--fs-footnote)/var(--lh-footnote) var(--ff-sans);
+          letter-spacing: 0;
+          color: var(--label);
+          transition: opacity var(--dur-fast) var(--curve-out);
+        }
+        .segmented :checked + span {
+          font-weight: 600;
+        }
+        .segmented span > svg {
+          display: block;
+          inline-size: 1.25em;
+          block-size: 1.25em;
+        }
+        @media (hover: hover) and (pointer: fine) {
+          .segmented > label:where(:has(> input:enabled:not(:checked)):hover) {
+            background-color: var(--hover-fill);
+          }
+        }
+        :where(html:not([data-press-tracking]))
+          .segmented
+          > label:active
+          > input:enabled:not(:checked)
+          + span,
+        .segmented > label[data-pressed] > :not(:checked) + span {
+          opacity: 0.55;
+        }
+        :where(html:not([data-press-tracking]))
+          .segmented:has(> label:active > input:enabled)::before,
+        .segmented:has(> label[data-pressed] > input:enabled)::before {
+          scale: var(--_seg-lift);
+          background-color: var(--_seg-lens);
+          -webkit-backdrop-filter: var(--_seg-lens-fx);
+          backdrop-filter: var(--_seg-lens-fx);
+          box-shadow:
+            inset 0 0 0 0.5px var(--glass-rim),
+            0 3px 10px rgb(0 0 0/0.14);
+          transition-duration: var(--dur-press);
+          transition-timing-function: var(--curve-out);
+        }
+        .segmented > label:has(> :disabled) {
+          opacity: var(--state-disabled-opacity);
+          cursor: default;
+        }
+        .segmented:has(:focus-visible) {
+          outline: var(--focus-ring-width) solid var(--focus-ring);
+          outline-offset: var(--focus-ring-offset);
+          box-shadow: var(--focus-halo);
+        }
+        @media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+          .segmented {
+            --_seg-lens: var(--_seg-thumb);
+            --_seg-lens-fx: none;
+          }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .segmented {
+            --_seg-lift: none;
+          }
+          .segmented::before {
+            transition: background-color var(--dur-fast) var(--curve-out);
+          }
+        }
+        @media (forced-colors: active) {
+          .segmented {
+            --_seg-lens: Highlight;
+            --_seg-lens-fx: none;
+            border: 1px solid ButtonText;
+          }
+          .segmented::before {
+            forced-color-adjust: none;
+            background: Highlight;
+            box-shadow: none;
+          }
+          .segmented :checked + span {
+            forced-color-adjust: none;
+            color: HighlightText;
+          }
+        }
+        .list--flush {
+          --list-inset: 0px;
+        }
+        .list {
+          --glass-ink: initial;
+          --list-sep-inset: 16px;
+          --list-icon-bg: var(--system-gray);
+          --list-icon-fg: var(--on-gray);
+          box-sizing: border-box;
+          margin: 0 var(--list-inset, 20px);
+          padding: 0;
+          overflow: hidden;
+          list-style: none;
+          background: var(--secondary-system-grouped-background);
+          border-radius: var(--corner-list);
+        }
+        .list--icons {
+          --list-sep-inset: 58px;
+        }
+        .list__row {
+          position: relative;
+          box-sizing: border-box;
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          width: 100%;
+          min-height: 53px;
+          margin: 0;
+          padding: 11px 16px;
+          border: 0;
+          background: transparent;
+          color: var(--label);
+          font: 400 var(--fs-body)/var(--lh-body) var(--ff-sans);
+          letter-spacing: calc(var(--tr-body) * var(--tracking-scale));
+          text-align: start;
+          text-decoration: none;
+        }
+        .list > li + li > .list__row::before,
+        .list > .list__row + .list__row::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          inset-inline: var(--list-sep-inset) 0;
+          height: 0.5px;
+          background: var(--separator);
+        }
+        .list__icon {
+          flex: none;
+          display: grid;
+          place-items: center;
+          width: 30px;
+          height: 30px;
+          border-radius: 8px;
+          color: var(--list-icon-fg);
+          background: var(--list-icon-bg);
+        }
+        .list__icon > svg {
+          width: 18px;
+          height: 18px;
+        }
+        .list__label {
+          flex: 1;
+          min-width: 0;
+        }
+        .list__title {
+          display: block;
+        }
+        .list__subtitle {
+          display: block;
+          color: var(--secondary-label);
+          font-size: var(--fs-subheadline);
+          line-height: var(--lh-subheadline);
+        }
+        .list__value {
+          color: var(--secondary-label);
+          text-align: end;
+        }
+        .list__chevron {
+          flex: none;
+          width: 8px;
+          height: 14px;
+          margin-inline-end: -2px;
+          background: var(--tertiary-label);
+          mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 14'%3E%3Cpath d='M1 1l6 6-6 6' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
+            center/contain no-repeat;
+        }
+        .list__chevron:dir(rtl) {
+          scale: -1 1;
+        }
+        .list-header,
+        .list-footer {
+          box-sizing: border-box;
+          margin: 0;
+          padding-inline: calc(var(--list-inset, 20px) + 16px);
+          color: var(--secondary-label);
+        }
+        .list-header {
+          padding-block: 0 8px;
+          font: 600 var(--fs-body)/var(--lh-body) var(--ff-sans);
+          letter-spacing: calc(var(--tr-body) * var(--tracking-scale));
+        }
+        .list-footer {
+          padding-block: 8px 0;
+          font: 400 var(--fs-footnote)/var(--lh-footnote) var(--ff-sans);
+          letter-spacing: calc(var(--tr-footnote) * var(--tracking-scale));
+        }
+        :is(a, button).list__row {
+          cursor: pointer;
+          transition: background-color var(--dur-fast) var(--curve-out);
+        }
+        label.list__row {
+          cursor: pointer;
+        }
+        @media (hover: hover) and (pointer: fine) {
+          :is(a, button).list__row:where(:not(:disabled, [aria-disabled='true']):hover) {
+            background-color: var(--hover-fill);
+          }
+        }
+        .list__row:is([aria-current='page'], [aria-selected='true']) {
+          background-color: var(--state-selected-fill);
+        }
+        :where(html:not([data-press-tracking]))
+          :is(a, button).list__row:not(:disabled, [aria-disabled='true']):active,
+        .list__row[data-pressed] {
+          background-color: var(--press-fill);
+          transition-duration: var(--dur-press);
+        }
+        :is(a, button).list__row:focus-visible {
+          outline: none;
+          background-color: var(--state-selected-focus-fill);
+          box-shadow: inset 0 0 0 var(--focus-ring-width) var(--focus-ring);
+          color: var(--accent-on);
+        }
+        :is(a, button).list__row:focus-visible :is(.list__subtitle, .list__value) {
+          color: inherit;
+        }
+        :is(a, button).list__row:focus-visible .list__chevron {
+          background: currentColor;
+        }
+        :is(a, button).list__row:is(:disabled, [aria-disabled='true']) {
+          opacity: var(--state-disabled-opacity);
+          cursor: default;
+        }
+        label.list__row:has(> input:disabled) {
+          cursor: default;
+        }
+        label.list__row:has(> input:disabled) > :not(input) {
+          opacity: var(--state-disabled-opacity);
+        }
+        @media (forced-colors: active) {
+          .list {
+            border: 1px solid CanvasText;
+          }
+          .list > li + li > .list__row::before,
+          .list > .list__row + .list__row::before,
+          .list__chevron {
+            forced-color-adjust: none;
+            background: CanvasText;
+          }
+          .list__row:is([aria-current='page'], [aria-selected='true']) {
+            forced-color-adjust: none;
+            background: Highlight;
+            color: HighlightText;
+          }
+          .list__row:is([aria-current='page'], [aria-selected='true'])
+            :is(.list__subtitle, .list__value) {
+            color: inherit;
+          }
+          .list__row:is([aria-current='page'], [aria-selected='true']) .list__chevron {
+            background: HighlightText;
+          }
+          :is(a, button).list__row:focus-visible {
+            outline: 3px solid Highlight;
+            outline-offset: -3px;
+          }
+        }
+        .switch {
+          --switch-on: var(--system-green);
+          --switch-off: var(--fill);
+          --_sw-dir: 1;
+          --_sw-lens: color-mix(in srgb, #fff 40%, transparent);
+          --_sw-lens-fx: blur(1px) saturate(180%);
+          --_sw-lift: 1.25;
+          -webkit-appearance: none;
+          appearance: none;
+          position: relative;
+          flex: none;
+          box-sizing: border-box;
+          width: 63px;
+          height: 28px;
+          margin: 0;
+          border: 0;
+          border-radius: var(--corner-capsule);
+          background: var(--switch-off);
+          vertical-align: middle;
+          cursor: pointer;
+          touch-action: manipulation;
+          transition: background-color var(--dur-base) var(--curve-standard);
+        }
+        .switch:dir(rtl) {
+          --_sw-dir: -1;
+        }
+        .switch::before {
+          content: '';
+          position: absolute;
+          top: 2px;
+          inset-inline-start: 2px;
+          width: 37px;
+          height: 24px;
+          border-radius: var(--corner-capsule);
+          background-color: #fff;
+          box-shadow:
+            0 3px 8px rgb(0 0 0/0.15),
+            0 1px 1px rgb(0 0 0/0.16),
+            0 3px 1px rgb(0 0 0/0.1);
+          transition:
+            translate var(--dur-spring-snappy) var(--spring-snappy),
+            scale var(--dur-spring-snappy) var(--spring-snappy),
+            background-color var(--dur-fast) var(--curve-out);
+        }
+        .switch::after {
+          content: '';
+          position: absolute;
+          inset: -8px 0;
+        }
+        .switch:checked {
+          background-color: var(--switch-on);
+        }
+        .switch:checked::before {
+          translate: calc(22px * var(--_sw-dir)) 0;
+        }
+        :where(html:not([data-press-tracking])) .switch:enabled:active::before,
+        .switch[data-pressed]::before {
+          scale: var(--_sw-lift);
+          background-color: var(--_sw-lens);
+          -webkit-backdrop-filter: var(--_sw-lens-fx);
+          backdrop-filter: var(--_sw-lens-fx);
+          box-shadow:
+            inset 0 0 0 0.5px rgb(255 255 255/0.8),
+            inset 0 1px 1px rgb(255 255 255/0.9),
+            0 3px 10px rgb(0 0 0/0.18);
+          transition-duration: var(--dur-press);
+          transition-timing-function: var(--curve-out);
+        }
+        .switch:disabled {
+          opacity: var(--state-disabled-opacity);
+          cursor: default;
+        }
+        @media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+          .switch {
+            --_sw-lens: #fff;
+            --_sw-lens-fx: none;
+          }
+        }
+        @media (prefers-contrast: more) {
+          .switch {
+            --switch-off: var(--system-gray2);
+          }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .switch {
+            --_sw-lift: none;
+          }
+          .switch::before {
+            transition: background-color var(--dur-fast) var(--curve-out);
+          }
+        }
+        @media (forced-colors: active) {
+          .switch {
+            --_sw-lens: ButtonText;
+            forced-color-adjust: none;
+            background: Canvas;
+            border: 1px solid ButtonText;
+          }
+          .switch::before {
+            background-color: ButtonText;
+            box-shadow: none;
+          }
+          .switch:checked {
+            --_sw-lens: HighlightText;
+            background: Highlight;
+            border-color: Highlight;
+          }
+          .switch:checked::before {
+            background-color: HighlightText;
+          }
+          .switch:disabled {
+            border-color: GrayText;
+          }
+          .switch:disabled::before {
+            background-color: GrayText;
+          }
+        }
+        .stepper {
+          --stepper-h: 32px;
+          --stepper-w: 47px;
+          position: relative;
+          display: inline-flex;
+          flex: none;
+          vertical-align: middle;
+          block-size: var(--stepper-h);
+          border-radius: var(--corner-capsule);
+          background: var(--fill-tertiary);
+        }
+        .stepper__btn {
+          position: relative;
+          flex: none;
+          inline-size: var(--stepper-w);
+          block-size: 100%;
+          margin: 0;
+          padding: 0;
+          border: 0;
+          background-color: transparent;
+          background-image: linear-gradient(currentColor 0 0);
+          background-position: center;
+          background-size: 14px 2px;
+          background-repeat: no-repeat;
+          color: var(--label);
+          cursor: pointer;
+          -webkit-tap-highlight-color: transparent;
+          -webkit-touch-callout: none;
+          touch-action: manipulation;
+          -webkit-user-select: none;
+          user-select: none;
+          transition: background-color var(--dur-fast) var(--curve-out);
+        }
+        .stepper__btn:not([data-step^='-']) {
+          background-image: linear-gradient(currentColor 0 0), linear-gradient(currentColor 0 0);
+          background-size:
+            14px 2px,
+            2px 14px;
+        }
+        .stepper__btn:first-of-type {
+          border-start-start-radius: calc(var(--stepper-h) / 2);
+          border-end-start-radius: calc(var(--stepper-h) / 2);
+        }
+        .stepper__btn:last-of-type {
+          border-start-end-radius: calc(var(--stepper-h) / 2);
+          border-end-end-radius: calc(var(--stepper-h) / 2);
+        }
+        .stepper__btn + .stepper__btn::before {
+          content: '';
+          position: absolute;
+          inset-block: 8px;
+          inset-inline-start: 0;
+          inline-size: 1px;
+          background: var(--opaque-separator);
+        }
+        .stepper__btn::after {
+          content: '';
+          position: absolute;
+          inset: min(0px, calc((100% - var(--hit)) / 2)) 0;
+        }
+        @media (hover: hover) and (pointer: fine) {
+          .stepper__btn:not(:disabled, [aria-disabled='true']):hover {
+            background-color: var(--hover-fill);
+          }
+        }
+        :root:not([data-press-tracking]) .stepper__btn:not([aria-disabled='true']):active,
+        .stepper__btn:not([aria-disabled='true'])[data-pressed] {
+          background-color: var(--press-fill);
+        }
+        .stepper__btn:is(:disabled, [aria-disabled='true']) {
+          color: color-mix(
+            in srgb,
+            var(--label) calc(var(--state-disabled-opacity) * 100%),
+            transparent
+          );
+          cursor: default;
+        }
+        .stepper > .activity-indicator {
+          position: absolute;
+          inset: 0;
+          margin: auto;
+          inline-size: 18px;
+          block-size: 18px;
+        }
+        .stepper:not([aria-busy='true']) > .activity-indicator {
+          display: none;
+        }
+        .stepper[aria-busy='true'] > .stepper__btn {
+          color: transparent;
+          pointer-events: none;
+        }
+        .stepper[aria-busy='true'] > .stepper__btn::before {
+          visibility: hidden;
+        }
+        .stepper__value {
+          -moz-appearance: textfield;
+          appearance: textfield;
+          inline-size: 3ch;
+          min-inline-size: var(--hit);
+          min-block-size: var(--hit);
+          field-sizing: content;
+          margin: 0;
+          padding: 0;
+          border: 0;
+          border-radius: var(--corner-xs);
+          background: transparent;
+          color: var(--label);
+          font: 400 var(--fs-body)/var(--lh-body) var(--ff-sans);
+          font-variant-numeric: tabular-nums;
+          text-align: end;
+        }
+        .stepper__value::-webkit-inner-spin-button,
+        .stepper__value::-webkit-outer-spin-button {
+          -webkit-appearance: none;
+          margin: 0;
+        }
+        .stepper__value:disabled {
+          opacity: var(--state-disabled-opacity);
+          -webkit-text-fill-color: currentColor;
+        }
+        @media (pointer: coarse) {
+          .stepper__value {
+            font-size: max(16px, var(--fs-body));
+          }
+        }
+        @media (scripting: none) {
+          .stepper {
+            display: none;
+          }
+        }
+        @media (forced-colors: active) {
+          .stepper {
+            outline: 1px solid ButtonText;
+          }
+          .stepper__btn {
+            forced-color-adjust: none;
+            color: ButtonText;
+          }
+          .stepper__btn:is(:disabled, [aria-disabled='true']) {
+            color: GrayText;
+          }
+          .stepper__btn + .stepper__btn::before {
+            background: ButtonText;
+          }
+          .stepper__btn:focus-visible {
+            outline-color: Highlight;
+          }
+        }
+        .slider {
+          --slider-track-h: 6px;
+          --slider-thumb-w: 37px;
+          --slider-thumb-h: 24px;
+          --slider-fill: var(--accent-text);
+          --slider-track: var(--fill-secondary);
+          --slider-tick: var(--tertiary-label);
+          --_stop: calc(var(--slider-thumb-w)/2 + var(--value, 0) * (100% - var(--slider-thumb-w)));
+          --_dir: to right;
+          --_thumb-bg: #fff;
+          --_thumb-shadow: 0 0.5px 4px rgb(0 0 0/0.12), 0 6px 13px rgb(0 0 0/0.12);
+          --_thumb-ring: 0 0 #0000;
+          --_thumb-scale: 1;
+          --_thumb-dur: var(--dur-spring-snappy);
+          --_thumb-ease: var(--spring-snappy);
+          -webkit-appearance: none;
+          appearance: none;
+          display: block;
+          inline-size: 100%;
+          block-size: var(--hit);
+          margin: 0;
+          padding: 0;
+          border: 0;
+          background: transparent;
+          cursor: pointer;
+          -webkit-tap-highlight-color: transparent;
+        }
+        .slider:dir(rtl) {
+          --_dir: to left;
+        }
+        .slider::-webkit-slider-runnable-track {
+          block-size: var(--slider-track-h);
+          border-radius: var(--corner-capsule);
+          background: linear-gradient(
+            var(--_dir),
+            var(--slider-fill) var(--_stop),
+            var(--slider-track) var(--_stop)
+          );
+        }
+        .slider::-moz-range-track {
+          block-size: var(--slider-track-h);
+          border-radius: var(--corner-capsule);
+          background: var(--slider-track);
+        }
+        .slider::-moz-range-progress {
+          block-size: var(--slider-track-h);
+          border-radius: var(--corner-capsule);
+          background: var(--slider-fill);
+        }
+        .slider::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          appearance: none;
+          inline-size: var(--slider-thumb-w);
+          block-size: var(--slider-thumb-h);
+          margin-block-start: calc((var(--slider-track-h) - var(--slider-thumb-h)) / 2);
+          border: 0;
+          border-radius: var(--corner-capsule);
+          background: var(--_thumb-bg);
+          box-shadow: var(--_thumb-ring), var(--_thumb-shadow);
+          scale: var(--_thumb-scale);
+          transition:
+            scale var(--_thumb-dur) var(--_thumb-ease),
+            background-color var(--dur-fast) var(--curve-out),
+            box-shadow var(--dur-fast) var(--curve-out);
+        }
+        .slider::-moz-range-thumb {
+          inline-size: var(--slider-thumb-w);
+          block-size: var(--slider-thumb-h);
+          border: 0;
+          border-radius: var(--corner-capsule);
+          background: var(--_thumb-bg);
+          box-shadow: var(--_thumb-ring), var(--_thumb-shadow);
+          scale: var(--_thumb-scale);
+          transition:
+            scale var(--_thumb-dur) var(--_thumb-ease),
+            background-color var(--dur-fast) var(--curve-out),
+            box-shadow var(--dur-fast) var(--curve-out);
+        }
+        :root:not([data-press-tracking]) .slider:not(:disabled):active,
+        .slider[data-pressed] {
+          --_thumb-bg: light-dark(rgb(255 255 255/0.4), rgb(255 255 255/0.22));
+          --_thumb-shadow:
+            inset 0 0 0 0.5px rgb(255 255 255/0.8), inset 0 1px 1px rgb(255 255 255/0.9),
+            0 3px 10px rgb(0 0 0/0.18);
+          --_thumb-scale: 1.25;
+          --_thumb-dur: var(--dur-press);
+          --_thumb-ease: var(--curve-out);
+        }
+        .slider:focus-visible {
+          outline: none;
+          box-shadow: none;
+          --_thumb-ring: 0 0 0 var(--focus-ring-width) var(--focus-ring);
+        }
+        .slider:disabled {
+          opacity: var(--state-disabled-opacity);
+          cursor: default;
+        }
+        .slider--ticks {
+          --slider-ticks: 4;
+          background: repeating-linear-gradient(
+              to right,
+              var(--slider-tick) 0 2px,
+              transparent 0 calc((100% - 2px) / var(--slider-ticks))
+            )
+            calc(var(--slider-thumb-w) / 2 - 1px) calc(50% + var(--slider-thumb-h) / 2 + 3px) /
+            calc(100% - var(--slider-thumb-w) + 2px) 4px no-repeat;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          :root:not([data-press-tracking]) .slider:not(:disabled):active,
+          .slider[data-pressed] {
+            --_thumb-scale: 1;
+          }
+        }
+        @media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+          :root:not([data-press-tracking]) .slider:not(:disabled):active,
+          .slider[data-pressed] {
+            --_thumb-bg: #fff;
+          }
+        }
+        @media (prefers-contrast: more) {
+          .slider {
+            --slider-track: var(--fill);
+            --_thumb-shadow: 0 0 0 1px var(--system-gray), 0 2px 6px rgb(0 0 0/0.2);
+          }
+        }
+        @media (forced-colors: active) {
+          .slider {
+            forced-color-adjust: none;
+            --slider-fill: Highlight;
+            --slider-track: CanvasText;
+            --slider-tick: CanvasText;
+            --_thumb-bg: ButtonFace;
+            --_thumb-shadow: 0 0 0 2px ButtonText;
+          }
+          .slider:focus-visible {
+            --_thumb-ring: 0 0 0 5px Highlight;
+          }
+          .slider:disabled {
+            --slider-fill: GrayText;
+            --slider-track: GrayText;
+            --_thumb-shadow: 0 0 0 2px GrayText;
+            opacity: 1;
+          }
+          :root:not([data-press-tracking]) .slider:not(:disabled):active,
+          .slider[data-pressed] {
+            --_thumb-bg: ButtonFace;
+            --_thumb-shadow: 0 0 0 2px Highlight;
+          }
+        }
+        .card {
+          --glass-ink: initial;
+          --card-pad: var(--space-4);
+          --card-radius: var(--corner-list);
+          --card-bg: var(--secondary-system-grouped-background);
+          position: relative;
+          display: flex;
+          flex-direction: column;
+          gap: var(--space-1);
+          padding: var(--card-pad);
+          border-radius: var(--card-radius);
+          outline: 1px solid transparent;
+          outline-offset: -1px;
+          background-color: var(--card-bg);
+          color: var(--label);
+          text-decoration: none;
+        }
+        .card__media {
+          display: block;
+          inline-size: 100%;
+          block-size: auto;
+          border-radius: max(var(--corner-xs), calc(var(--card-radius) - var(--card-pad)));
+          object-fit: cover;
+        }
+        .card__media--bleed {
+          inline-size: calc(100% + 2 * var(--card-pad));
+          max-inline-size: none;
+          margin: calc(-1 * var(--card-pad)) calc(-1 * var(--card-pad)) var(--space-2);
+          border-radius: var(--card-radius) var(--card-radius) 0 0;
+        }
+        .card__title {
+          margin: 0;
+          font: 600 var(--fs-headline)/var(--lh-headline) var(--ff-sans);
+          letter-spacing: calc(var(--tr-headline) * var(--tracking-scale));
+        }
+        .card__subtitle {
+          margin: 0;
+          color: var(--secondary-label);
+          font: 400 var(--fs-subheadline)/var(--lh-subheadline) var(--ff-sans);
+          letter-spacing: calc(var(--tr-subheadline) * var(--tracking-scale));
+        }
+        .card__link {
+          color: inherit;
+          text-decoration: none;
+        }
+        .card__link::after {
+          content: '';
+          position: absolute;
+          inset: 0;
+          z-index: 0;
+          border-radius: inherit;
+        }
+        .card:has(.card__link) :is(a:not(.card__link), button, input, select, textarea, label) {
+          position: relative;
+          z-index: 1;
+        }
+        .card__link:focus-visible {
+          outline: none;
+          box-shadow: none;
+        }
+        .card.pressable:focus-visible,
+        .card:has(.card__link:focus-visible) {
+          outline: var(--focus-ring-width) solid var(--focus-ring);
+          outline-offset: var(--focus-ring-offset);
+          box-shadow: var(--focus-halo);
+        }
+        .card.pressable,
+        .card:has(.card__link) {
+          cursor: pointer;
+          -webkit-tap-highlight-color: transparent;
+          touch-action: manipulation;
+          transition:
+            scale var(--dur-spring-snappy) var(--spring-snappy),
+            background-color var(--dur-fast) var(--curve-out);
+        }
+        @media (hover: hover) and (pointer: fine) {
+          .card.pressable:not([aria-disabled='true']):hover,
+          .card:has(.card__link:hover) {
+            background-color: var(--card-bg);
+            background-image: linear-gradient(var(--hover-fill), var(--hover-fill));
+          }
+        }
+        :root:not([data-press-tracking]) .card.pressable:not([aria-disabled='true']):active,
+        .card.pressable:not([aria-disabled='true'])[data-pressed],
+        .card:has(.card__link:active) {
+          background-color: var(--card-bg);
+          background-image: linear-gradient(var(--press-fill), var(--press-fill));
+          scale: var(--press-scale);
+          transition-duration: var(--dur-press);
+          transition-timing-function: var(--curve-out);
+        }
+        :is(.btn-glass, .btn-prominent, .btn-bordered, .btn-tinted, .btn-filled, .btn-plain) {
+          --glass-radius: var(--corner-capsule);
+          --_btn-h: var(--hit);
+          box-sizing: border-box;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          min-width: var(--_btn-h);
+          min-height: var(--_btn-h);
+          margin: 0;
+          padding: 0 20px;
+          border: 0;
+          font: 600 var(--fs-body)/var(--lh-body) var(--ff-sans);
+          letter-spacing: calc(var(--tr-body) * var(--tracking-scale));
+          text-decoration: none;
+          white-space: normal;
+          text-wrap: balance;
+          text-align: center;
+          cursor: pointer;
+          touch-action: manipulation;
+          -webkit-user-select: none;
+          user-select: none;
+          transition:
+            scale var(--dur-spring-snappy) var(--spring-snappy),
+            --glow var(--dur-base) var(--curve-out),
+            background-color var(--dur-fast) var(--curve-out);
+        }
+        :is(.btn-bordered, .btn-tinted, .btn-filled, .btn-plain) {
+          border: 1px solid transparent;
+          border-radius: var(--corner-capsule);
+          background-color: var(--_btn-bg);
+          color: var(--_btn-fg);
+        }
+        .btn-filled {
+          --_btn-bg: var(--accent-fill);
+          --_btn-fg: var(--accent-on);
+        }
+        .btn-tinted {
+          --_btn-bg: color-mix(in srgb, var(--accent) 15%, transparent);
+          --_btn-fg: var(--_btn-ink);
+        }
+        .btn-bordered {
+          --_btn-bg: var(--fill-tertiary);
+          --_btn-fg: var(--_btn-ink);
+        }
+        .btn-plain {
+          --_btn-bg: transparent;
+          --_btn-fg: var(--glass-ink, var(--accent-text));
+        }
+        :is(.btn-tinted, .btn-bordered) {
+          --_btn-ink: var(
+            --glass-ink,
+            light-dark(color-mix(in oklab, var(--accent-text) 85%, black), var(--accent-text))
+          );
+        }
+        .btn-destructive {
+          --_btn-fg: var(--destructive-text);
+          color: var(--_btn-fg);
+        }
+        .btn-destructive.btn-tinted {
+          --_btn-bg: color-mix(in srgb, var(--system-red) 15%, transparent);
+        }
+        .btn-destructive.btn-filled {
+          --_btn-bg: color-mix(in srgb, var(--system-red) 75%, black);
+          --_btn-fg: var(--accent-on);
+        }
+        .btn-destructive.btn-prominent {
+          --accent-fill: color-mix(in srgb, var(--system-red) 75%, black);
+          --_btn-fg: var(--accent-on);
+        }
+        :where(.glass, .sheet, .menu, .popover, .alert, .status-pill)
+          :is(.btn-bordered, .btn-tinted).btn-destructive:not(:where(.list, .card) *) {
+          --_btn-bg: color-mix(in srgb, var(--system-red) 75%, black);
+          --_btn-fg: var(--accent-on);
+        }
+        .btn-glass.btn-destructive {
+          color: var(--glass-ink);
+        }
+        :is(.btn-glass, .btn-prominent, .btn-bordered, .btn-tinted, .btn-filled, .btn-plain) > svg {
+          flex: none;
+          width: 1.3em;
+          height: 1.3em;
+        }
+        .btn-icon {
+          width: var(--_btn-h);
+          padding: 0;
+        }
+        .btn-block {
+          display: flex;
+          width: 100%;
+        }
+        .btn-large {
+          --_btn-h: 50px;
+          padding-inline: 24px;
+        }
+        @media (hover: hover) and (pointer: fine) {
+          :is(.btn-glass, .btn-prominent):where(:not(:disabled, [aria-disabled='true']):hover) {
+            --glow: var(--hover-glow);
+          }
+          :is(.btn-bordered, .btn-tinted, .btn-filled, .btn-plain):where(
+            :not(:disabled, [aria-disabled='true']):hover
+          ) {
+            background-image: linear-gradient(var(--hover-fill) 0 0);
+          }
+        }
+        .btn-plain[aria-pressed='true'] {
+          --_btn-bg: var(--state-selected-fill);
+          --_btn-fg: var(--label);
+        }
+        :is(.btn-bordered, .btn-tinted)[aria-pressed='true'] {
+          --_btn-bg: var(--accent-fill);
+          --_btn-fg: var(--accent-on);
+        }
+        .btn-glass[aria-pressed='true'] {
+          background-image: linear-gradient(color-mix(in srgb, var(--accent) 22%, transparent) 0 0);
+        }
+        :where(html:not([data-press-tracking]))
+          :is(.btn-glass, .btn-prominent, .btn-bordered, .btn-tinted, .btn-filled):not(
+            :disabled,
+            [aria-disabled='true']
+          ):active,
+        :is(.btn-glass, .btn-prominent, .btn-bordered, .btn-tinted, .btn-filled)[data-pressed] {
+          scale: var(--press-scale);
+          --glow: var(--press-glow);
+          transition-duration: var(--dur-press);
+          transition-timing-function: var(--curve-out);
+        }
+        :where(html:not([data-press-tracking]))
+          :is(.btn-bordered, .btn-tinted, .btn-filled, .btn-plain):not(
+            :disabled,
+            [aria-disabled='true']
+          ):active,
+        :is(.btn-bordered, .btn-tinted, .btn-filled, .btn-plain)[data-pressed] {
+          background-image: linear-gradient(var(--press-fill) 0 0);
+        }
+        :is(.btn-glass, .btn-prominent, .btn-bordered, .btn-tinted, .btn-filled, .btn-plain):is(
+          :disabled,
+          [aria-disabled='true']:not([aria-busy='true'])
+        ) {
+          opacity: var(--state-disabled-opacity);
+          cursor: default;
+        }
+        :is(.btn-glass, .btn-prominent, .btn-bordered, .btn-tinted, .btn-filled, .btn-plain):not(
+            [aria-busy='true']
+          )
+          > .activity-indicator,
+        :is(
+            .btn-glass,
+            .btn-prominent,
+            .btn-bordered,
+            .btn-tinted,
+            .btn-filled,
+            .btn-plain
+          )[aria-busy='true']
+          > svg {
+          display: none;
+        }
+        :is(.btn-glass, .btn-prominent, .btn-bordered, .btn-tinted, .btn-filled, .btn-plain)
+          > .activity-indicator {
+          inline-size: 1.1em;
+          block-size: 1.1em;
+          color: inherit;
+        }
+        @media (forced-colors: active) {
+          :is(.btn-glass, .btn-prominent) {
+            border: 1px solid ButtonText;
+          }
+          :is(
+            .btn-glass,
+            .btn-plain,
+            .btn-bordered,
+            .btn-tinted,
+            .btn-filled
+          )[aria-pressed='true'] {
+            forced-color-adjust: none;
+            background: Highlight;
+            color: HighlightText;
+          }
+          :is(.btn-glass, .btn-prominent, .btn-bordered, .btn-tinted, .btn-filled, .btn-plain):is(
+            :disabled,
+            [aria-disabled='true']
+          ) {
+            color: GrayText;
+            border-color: GrayText;
+          }
+        }
+        .tabbar-dock {
+          position: fixed;
+          inset: auto 0 0;
+          z-index: 20;
+          box-sizing: border-box;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          gap: 12px;
+          padding: 0 var(--margin-page) calc(var(--safe-bottom) + 10px);
+          pointer-events: none;
+        }
+        .tabbar-dock > * {
+          pointer-events: auto;
+        }
+        :where([data-app-frame]) .tabbar-dock {
+          position: absolute;
+        }
+        .tabbar {
+          --glass-radius: var(--corner-capsule);
+          --glass-density: 72%;
+          --glass-saturate: 120%;
+          --tabbar-lens: light-dark(rgb(255 255 255/0.7), rgb(0 0 0/0.35));
+          --n: 3;
+          --i: 0;
+          --_tab-dir: 1;
+          box-sizing: border-box;
+          display: flex;
+          align-items: stretch;
+          flex: 0 1 auto;
+          min-width: 0;
+          min-height: var(--tabbar-h);
+          margin: 0;
+          padding: 4px;
+          list-style: none;
+          transition: --glow var(--dur-base) var(--curve-out);
+        }
+        .tabbar:dir(rtl) {
+          --_tab-dir: -1;
+        }
+        .tabbar:not(:has(> li:nth-child(4))) {
+          --n: 2;
+        }
+        .tabbar:has(> li:nth-child(5)) {
+          --n: 4;
+        }
+        .tabbar:has(> li:nth-child(6)) {
+          --n: 5;
+        }
+        .tabbar:has(> li:nth-child(3) > [aria-current='page']) {
+          --i: 1;
+        }
+        .tabbar:has(> li:nth-child(4) > [aria-current='page']) {
+          --i: 2;
+        }
+        .tabbar:has(> li:nth-child(5) > [aria-current='page']) {
+          --i: 3;
+        }
+        .tabbar:has(> li:nth-child(6) > [aria-current='page']) {
+          --i: 4;
+        }
+        .tabbar > :not(.tabbar__indicator) {
+          display: flex;
+          flex: 0 1 94px;
+          width: 94px;
+          min-width: 0;
+        }
+        .tabbar__item {
+          position: relative;
+          z-index: 2;
+          box-sizing: border-box;
+          display: flex;
+          flex: 1;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 2px;
+          min-width: 0;
+          min-height: var(--hit);
+          margin: 0;
+          padding: 6px 4px;
+          border: 0;
+          border-radius: var(--corner-capsule);
+          background: transparent;
+          color: var(--label);
+          font: 500 var(--fs-caption2)/1.1 var(--ff-sans);
+          letter-spacing: 0;
+          text-decoration: none;
+          cursor: pointer;
+          touch-action: manipulation;
+          -webkit-user-select: none;
+          user-select: none;
+          transition:
+            color var(--dur-fast) var(--curve-out),
+            background-color var(--dur-fast) var(--curve-out);
+        }
+        .tabbar__item > svg {
+          flex: none;
+          width: 26px;
+          height: 26px;
+        }
+        .tabbar__item > span {
+          max-width: 100%;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .tabbar__item[aria-current='page'] {
+          color: var(--accent-text);
+          background-color: var(--tabbar-lens);
+        }
+        :where(.tabbar:has(> .tabbar__indicator)) .tabbar__item[aria-current='page'] {
+          background-color: transparent;
+        }
+        .tabbar__indicator {
+          position: absolute;
+          z-index: 1;
+          inset-block: 4px;
+          inset-inline-start: 4px;
+          width: calc((100% - 8px) / var(--n));
+          translate: calc(var(--i) * 100% * var(--_tab-dir)) 0;
+          border-radius: var(--corner-capsule);
+          background: var(--tabbar-lens);
+          box-shadow:
+            0 0 0 0.5px var(--glass-edge),
+            0 1px 4px rgb(0 0 0/0.08);
+          pointer-events: none;
+          transition: translate var(--dur-spring-snappy) var(--spring-snappy);
+        }
+        @media (hover: hover) and (pointer: fine) {
+          .tabbar__item:where(:not([aria-current='page']):hover) {
+            background-color: var(--hover-fill);
+          }
+        }
+        :where(html:not([data-press-tracking])) .tabbar__item:active,
+        .tabbar__item[data-pressed] {
+          background-color: var(--press-fill);
+          transition-duration: var(--dur-press);
+        }
+        :where(html:not([data-press-tracking])) .tabbar:has(.tabbar__item:active),
+        .tabbar:has([data-pressed]) {
+          --glow: var(--press-glow);
+        }
+        .tabbar-dock > .tabbar-search {
+          flex: none;
+          width: var(--tabbar-h);
+          min-width: var(--tabbar-h);
+          height: var(--tabbar-h);
+          min-height: var(--tabbar-h);
+        }
+        .tabbar-search > svg {
+          width: 24px;
+          height: 24px;
+        }
+        @media (prefers-contrast: more) {
+          .tabbar__indicator {
+            box-shadow: inset 0 0 0 1px var(--opaque-separator);
+          }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .tabbar__indicator {
+            transition: none;
+          }
+        }
+        @media (forced-colors: active) {
+          .tabbar__indicator {
+            display: none;
+          }
+          .tabbar__item[aria-current='page'] {
+            outline: 2px solid Highlight;
+            outline-offset: -2px;
+          }
+        }
+        .badge {
+          --badge-bg: color-mix(in srgb, var(--system-red) 78%, #000);
+          --badge-fg: #fff;
+          display: inline-flex;
+          flex: none;
+          align-items: center;
+          justify-content: center;
+          box-sizing: border-box;
+          min-inline-size: 1.5em;
+          block-size: 1.5em;
+          padding: 0 0.42em;
+          border-radius: var(--corner-capsule);
+          background: var(--badge-bg);
+          color: var(--badge-fg);
+          font: 600 var(--fs-caption1)/1 var(--ff-sans);
+          font-variant-numeric: tabular-nums;
+          letter-spacing: 0;
+          white-space: nowrap;
+          transition:
+            scale var(--dur-spring-snappy) var(--spring-snappy),
+            opacity var(--dur-fast) var(--curve-standard);
+        }
+        @starting-style {
+          .badge {
+            scale: 0.5;
+            opacity: 0;
+          }
+        }
+        .badge--dot {
+          min-inline-size: 0;
+          inline-size: 10px;
+          block-size: 10px;
+          padding: 0;
+        }
+        .badge--overlay {
+          position: absolute;
+          z-index: 3;
+          inset-block-start: 2px;
+          inset-inline-start: calc(50% + 4px);
+          font-size: min(var(--fs-caption1), 14px);
+          pointer-events: none;
+        }
+        :where(:has(> .badge--overlay)) {
+          position: relative;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .badge {
+            transition-property: opacity;
+          }
+        }
+        @media (forced-colors: active) {
+          .badge {
+            forced-color-adjust: none;
+            background: Highlight;
+            color: HighlightText;
+          }
+        }
+        .empty-state {
+          display: flex;
+          flex: 1 0 auto;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: var(--space-2);
+          min-block-size: min(50dvh, 22rem);
+          padding: var(--space-10) var(--margin-page);
+          color: var(--label);
+          text-align: center;
+        }
+        .empty-state__symbol {
+          flex: none;
+          inline-size: 3.25rem;
+          block-size: 3.25rem;
+          margin-block-end: var(--space-2);
+          color: var(--secondary-label);
+        }
+        .empty-state__title {
+          max-inline-size: 22rem;
+          margin: 0;
+          font: 700 var(--fs-title2)/var(--lh-title2) var(--ff-sans);
+          letter-spacing: calc(var(--tr-title2) * var(--tracking-scale));
+          text-wrap: balance;
+        }
+        .empty-state__description {
+          max-inline-size: 22rem;
+          margin: 0;
+          color: var(--secondary-label);
+          font: 400 var(--fs-subheadline)/var(--lh-subheadline) var(--ff-sans);
+          letter-spacing: calc(var(--tr-subheadline) * var(--tracking-scale));
+          text-wrap: pretty;
+        }
+        .empty-state__actions {
+          display: flex;
+          flex-wrap: wrap;
+          justify-content: center;
+          gap: var(--space-3);
+          margin-block-start: var(--space-3);
+        }
+        .sheet {
+          --glass-radius: var(--corner-sheet);
+          --glass-density: 78%;
+          position: fixed;
+          z-index: 40;
+          inset: auto 8px calc(var(--safe-bottom) + 8px);
+          box-sizing: border-box;
+          flex-direction: column;
+          width: auto;
+          max-width: 640px;
+          height: auto;
+          max-height: calc(100% - var(--safe-top) - 16px);
+          margin: 0 auto;
+          padding: 0;
+          border: 0;
+          overflow: hidden;
+          transform: translateY(calc(100% + var(--safe-bottom) + 24px));
+          transition:
+            transform var(--dur-spring-smooth) var(--spring-smooth),
+            display var(--dur-spring-smooth),
+            overlay var(--dur-spring-smooth),
+            outline-color var(--dur-base) var(--curve-standard);
+          transition-behavior: allow-discrete;
+        }
+        .sheet[open] {
+          display: flex;
+          transform: none;
+        }
+        @starting-style {
+          .sheet[open] {
+            transform: translateY(calc(100% + var(--safe-bottom) + 24px));
+          }
+        }
+        .sheet::backdrop {
+          background: rgb(0 0 0/0.32);
+          opacity: 0;
+          transition: opacity var(--dur-base) var(--curve-standard);
+        }
+        .sheet[open]::backdrop {
+          opacity: 1;
+        }
+        @starting-style {
+          .sheet[open]::backdrop {
+            opacity: 0;
+          }
+        }
+        .sheet[data-detent='medium'] {
+          height: 50%;
+        }
+        .sheet[data-detent='large'] {
+          --glass-radius: var(--corner-sheet) var(--corner-sheet) 0 0;
+          --glass-density: 94%;
+          inset: auto 0 0;
+          height: calc(100% - var(--safe-top) - 10px);
+          max-height: none;
+        }
+        .sheet[data-detent='large'] .sheet__body {
+          padding-bottom: calc(var(--safe-bottom) + 20px);
+        }
+        .sheet[data-morphing] {
+          --glass-density: 96%;
+        }
+        :where([data-app-frame]) .sheet:not(:modal) {
+          position: absolute;
+          outline: 100vmax solid rgb(0 0 0/0);
+        }
+        :where([data-app-frame]) .sheet[open]:not(:modal) {
+          outline-color: rgb(0 0 0/0.32);
+        }
+        .sheet__grabber {
+          position: absolute;
+          z-index: 3;
+          top: 5px;
+          left: 50%;
+          translate: -50% 0;
+          width: 36px;
+          height: 5px;
+          border-radius: var(--corner-capsule);
+          background: var(--tertiary-label);
+          cursor: grab;
+          touch-action: none;
+        }
+        .sheet__grabber::after {
+          content: '';
+          position: absolute;
+          inset: -5px -24px -34px;
+        }
+        .sheet__header {
+          flex: none;
+          box-sizing: border-box;
+          display: grid;
+          grid-template-columns: minmax(max-content, 1fr) minmax(0, auto) minmax(max-content, 1fr);
+          align-items: center;
+          gap: 8px;
+          min-height: var(--hit);
+          padding: 16px 16px 8px;
+          touch-action: none;
+        }
+        .sheet__header > * {
+          grid-row: 1;
+        }
+        .sheet__header > :first-child:not(.sheet__title) {
+          grid-column: 1;
+          justify-self: start;
+        }
+        .sheet__title {
+          grid-column: 2;
+          min-width: 0;
+          margin: 0;
+          overflow: hidden;
+          text-align: center;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          font: 600 var(--fs-headline)/var(--lh-headline) var(--ff-sans);
+          letter-spacing: calc(var(--tr-headline) * var(--tracking-scale));
+        }
+        .sheet__title ~ * {
+          grid-column: 3;
+          justify-self: end;
+        }
+        .sheet__body {
+          --list-inset: 0px;
+          flex: 1 1 auto;
+          min-height: 0;
+          overflow: auto;
+          overscroll-behavior: contain;
+          padding: 0 16px 20px;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .sheet {
+            transform: none;
+            opacity: 0;
+            transition:
+              opacity var(--dur-base) var(--curve-standard),
+              display var(--dur-base),
+              overlay var(--dur-base),
+              outline-color var(--dur-base) var(--curve-standard);
+            transition-behavior: allow-discrete;
+          }
+          .sheet[open] {
+            opacity: 1;
+          }
+          @starting-style {
+            .sheet[open] {
+              opacity: 0;
+            }
+          }
+        }
+        @media (forced-colors: active) {
+          .sheet {
+            border: 1px solid CanvasText;
+          }
+          :where([data-app-frame]) .sheet:not(:modal) {
+            outline: none;
+          }
+          .sheet__grabber {
+            forced-color-adjust: none;
+            background: CanvasText;
+          }
+        }
+        .field-message {
+          display: flex;
+          align-items: flex-start;
+          gap: 6px;
+          margin: 0;
+          margin-block-start: 6px;
+          font: 400 var(--fs-footnote)/var(--lh-footnote) var(--ff-sans);
+          letter-spacing: calc(var(--tr-footnote) * var(--tracking-scale));
+          color: var(--secondary-label);
+        }
+        .field-message > :is(svg, .activity-indicator) {
+          flex: none;
+          inline-size: 1.1em;
+          block-size: 1.1em;
+          margin-block-start: 0.1em;
+          fill: currentColor;
+        }
+        .field-message[data-tone] {
+          color: var(--label);
+        }
+        .field-message[data-tone='error'] > svg {
+          color: var(--state-error);
+        }
+        .field-message[data-tone='warning'] > svg {
+          color: var(--state-warning);
+        }
+        .field-message[data-tone='success'] > svg {
+          color: var(--state-success);
+        }
+        :is(input, textarea, select)[aria-invalid='true'] {
+          box-shadow: inset 0 0 0 1px var(--state-error);
+        }
+        @media (forced-colors: active) {
+          :is(input, textarea, select)[aria-invalid='true'] {
+            outline: 2px dashed CanvasText;
+            outline-offset: 1px;
+          }
+        }
+        .field {
+          -webkit-appearance: none;
+          appearance: none;
+          display: block;
+          inline-size: 100%;
+          min-block-size: var(--hit);
+          margin: 0;
+          padding: 0 var(--space-3);
+          border: 1px solid transparent;
+          border-radius: var(--corner-sm);
+          background: var(--fill-tertiary);
+          color: var(--label);
+          caret-color: var(--accent);
+          font: 400 var(--fs-body)/var(--lh-body) var(--ff-sans);
+          letter-spacing: calc(var(--tr-body) * var(--tracking-scale));
+          text-align: start;
+        }
+        @media (pointer: coarse) {
+          .field {
+            font-size: max(16px, var(--fs-body));
+          }
+        }
+        .field::placeholder {
+          color: color-mix(in srgb, var(--secondary-label) 85%, var(--label));
+          opacity: 1;
+        }
+        textarea.field {
+          min-block-size: calc(3 * var(--lh-body) + 2 * var(--space-3));
+          max-block-size: 50dvh;
+          padding-block: calc(var(--space-3) - 1px);
+          resize: vertical;
+          field-sizing: content;
+        }
+        .field--plain {
+          padding-inline: 0;
+          border-radius: 0;
+          background: transparent;
+        }
+        .list__row > .field--plain {
+          flex: 1 1 60%;
+          inline-size: auto;
+          min-inline-size: 0;
+          text-align: end;
+        }
+        .list__row > .list__label:has(+ .field--plain) {
+          flex: 0 0 auto;
+        }
+        .field[aria-invalid='true'] {
+          border-color: var(--state-error);
+        }
+        .field:disabled {
+          opacity: var(--state-disabled-opacity);
+          -webkit-text-fill-color: currentColor;
+          cursor: default;
+        }
+        .field--search {
+          --_glyph: var(--fs-body);
+          display: grid;
+          grid-template-columns: minmax(0, 1fr);
+          align-items: center;
+          column-gap: var(--space-2);
+          margin: 0;
+        }
+        .field--search::before,
+        .field--search > .activity-indicator {
+          grid-area: 1/1;
+          z-index: 1;
+          justify-self: start;
+          inline-size: var(--_glyph);
+          block-size: var(--_glyph);
+          margin-inline-start: 11px;
+          pointer-events: none;
+        }
+        .field--search::before {
+          content: '';
+          background: var(--secondary-label);
+          -webkit-mask: var(--_field-magnifier) center/contain no-repeat;
+          mask: var(--_field-magnifier) center/contain no-repeat;
+          --_field-magnifier: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Ccircle cx='8.5' cy='8.5' r='6' fill='none' stroke='black' stroke-width='2.2'/%3E%3Cpath d='m13 13 5 5' stroke='black' stroke-width='2.4' stroke-linecap='round'/%3E%3C/svg%3E");
+        }
+        .field--search > .activity-indicator {
+          color: var(--secondary-label);
+        }
+        .field--search:not([aria-busy='true']) > .activity-indicator {
+          display: none;
+        }
+        .field--search[aria-busy='true']::before {
+          visibility: hidden;
+        }
+        .field--search > .field {
+          grid-area: 1/1;
+          padding-inline: calc(var(--_glyph) + 17px) var(--hit);
+          border-radius: var(--corner-capsule);
+        }
+        .field--search > .field::-webkit-search-decoration,
+        .field--search > .field::-webkit-search-cancel-button,
+        .field--search > .field::-webkit-search-results-button {
+          -webkit-appearance: none;
+          display: none;
+        }
+        .field__clear,
+        .field__cancel {
+          margin: 0;
+          border: 0;
+          background: transparent;
+          cursor: pointer;
+          -webkit-tap-highlight-color: transparent;
+          touch-action: manipulation;
+          transition:
+            background-color var(--dur-fast) var(--curve-out),
+            color var(--dur-fast) var(--curve-out);
+        }
+        .field__clear {
+          grid-area: 1/1;
+          z-index: 1;
+          justify-self: end;
+          display: grid;
+          place-items: center;
+          inline-size: var(--hit);
+          block-size: var(--hit);
+          padding: 0;
+          border-radius: 50%;
+          color: var(--secondary-label);
+        }
+        .field__clear::before {
+          content: '';
+          inline-size: var(--_glyph, 17px);
+          block-size: var(--_glyph, 17px);
+          background: currentColor;
+          -webkit-mask: var(--_field-clear) center/contain no-repeat;
+          mask: var(--_field-clear) center/contain no-repeat;
+          --_field-clear: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cmask id='m'%3E%3Crect width='20' height='20' fill='white'/%3E%3Cpath d='m6.6 6.6 6.8 6.8m0-6.8-6.8 6.8' stroke='black' stroke-width='2' stroke-linecap='round'/%3E%3C/mask%3E%3Ccircle cx='10' cy='10' r='10' mask='url(%23m)'/%3E%3C/svg%3E");
+        }
+        .field--search:has(> .field:placeholder-shown) > .field__clear {
+          visibility: hidden;
+        }
+        .field__cancel {
+          grid-area: 1/2;
+          min-inline-size: var(--hit);
+          min-block-size: var(--hit);
+          padding: 0 var(--space-2);
+          border-radius: var(--corner-capsule);
+          color: var(--accent-text);
+          font: 400 var(--fs-body)/var(--lh-body) var(--ff-sans);
+          letter-spacing: calc(var(--tr-body) * var(--tracking-scale));
+          white-space: nowrap;
+          transition-property: background-color, opacity;
+        }
+        .field--search:not(
+            :has(> .field:focus, > .field:not(:placeholder-shown), > .field__cancel:focus-visible)
+          )
+          > .field__cancel {
+          display: none;
+        }
+        @starting-style {
+          .field__cancel {
+            opacity: 0;
+          }
+        }
+        @media (hover: hover) and (pointer: fine) {
+          .field__clear:hover {
+            color: var(--label);
+          }
+          .field__cancel:hover {
+            background-color: var(--hover-fill);
+          }
+        }
+        :where(html:not([data-press-tracking])) .field__clear:active,
+        .field__clear[data-pressed] {
+          color: var(--label);
+          background-color: var(--press-fill);
+        }
+        :where(html:not([data-press-tracking])) .field__cancel:active,
+        .field__cancel[data-pressed] {
+          background-color: var(--press-fill);
+        }
+        .field__label {
+          display: block;
+          margin: 0 0 var(--space-2);
+          padding-inline: var(--space-1);
+          color: var(--secondary-label);
+          font: 400 var(--fs-subheadline)/var(--lh-subheadline) var(--ff-sans);
+          letter-spacing: calc(var(--tr-subheadline) * var(--tracking-scale));
+        }
+        @media (prefers-contrast: more) {
+          .field:not(.field--plain) {
+            border-color: var(--opaque-separator);
+          }
+          .field[aria-invalid='true'] {
+            border-color: var(--state-error);
+          }
+        }
+        @media (forced-colors: active) {
+          .field--search::before {
+            forced-color-adjust: none;
+            background: CanvasText;
+          }
+          .field__clear::before {
+            forced-color-adjust: none;
+            background: ButtonText;
+          }
+        }
+        .menu,
+        .popover {
+          --glass-density: 88%;
+          --_menu-secondary: color-mix(in srgb, var(--secondary-label) 70%, var(--label));
+          position: fixed;
+          inset: 0;
+          margin: auto;
+          max-block-size: calc(100dvh - 2 * var(--space-4));
+          border: 1px solid transparent;
+          overflow: auto;
+          overscroll-behavior: contain;
+        }
+        .menu {
+          --menu-pad: 6px;
+          --menu-item-h: var(--hit);
+          --glass-radius: calc(var(--menu-item-h)/2 + var(--menu-pad));
+          min-inline-size: min(15.625rem, 100vw - 2 * var(--margin-page));
+          max-inline-size: min(20rem, 100vw - 2 * var(--margin-page));
+          padding: var(--menu-pad);
+        }
+        .popover {
+          --glass-radius: var(--corner-xl);
+          inline-size: min(20rem, 100vw - 2 * var(--margin-page));
+          padding: var(--space-4);
+        }
+        @supports (position-anchor: --a) {
+          :is(.menu, .popover)[style*='position-anchor'] {
+            --motion-origin: top right;
+            inset: auto;
+            margin: var(--space-2) 0;
+            position-area: block-end span-inline-start;
+            position-try-fallbacks:
+              flip-block,
+              flip-inline,
+              flip-block flip-inline;
+          }
+          :is(.menu, .popover)[style*='position-anchor']:dir(rtl) {
+            --motion-origin: top left;
+          }
+        }
+        @media (max-width: 30rem) {
+          .popover,
+          .popover[style*='position-anchor'] {
+            --glass-radius: var(--corner-sheet);
+            --motion-origin: bottom center;
+            inset: auto var(--space-2) calc(var(--safe-bottom) + var(--space-2));
+            margin: 0;
+            inline-size: auto;
+            position-area: none;
+          }
+        }
+        .menu__item {
+          display: flex;
+          align-items: center;
+          gap: var(--space-3);
+          inline-size: 100%;
+          min-block-size: var(--menu-item-h);
+          margin: 0;
+          padding: var(--space-2) var(--space-4) var(--space-2) var(--space-3);
+          border: 0;
+          border-radius: calc(var(--menu-item-h) / 2);
+          background: transparent;
+          color: inherit;
+          font: 400 var(--fs-body)/var(--lh-body) var(--ff-sans);
+          letter-spacing: calc(var(--tr-body) * var(--tracking-scale));
+          text-align: start;
+          text-decoration: none;
+          cursor: default;
+          -webkit-tap-highlight-color: transparent;
+          touch-action: manipulation;
+          -webkit-user-select: none;
+          user-select: none;
+          transition: background-color var(--dur-fast) var(--curve-out);
+        }
+        .menu__icon {
+          flex: none;
+          inline-size: 1.25em;
+          block-size: 1.25em;
+          color: inherit;
+        }
+        :is(.menu__item[role='menuitemcheckbox'], .menu__item[role='menuitemradio'])::before {
+          content: '';
+          flex: none;
+          inline-size: 1.25em;
+          block-size: 1.25em;
+          background: currentColor;
+          -webkit-mask: var(--_menu-check) center/contain no-repeat;
+          mask: var(--_menu-check) center/contain no-repeat;
+          visibility: hidden;
+          --_menu-check: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='m4.5 10.5 3.8 3.8 7.2-8.6' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+        }
+        .menu__item[aria-checked='true']::before {
+          visibility: visible;
+        }
+        .menu__trailing {
+          margin-inline-start: auto;
+          padding-inline-start: var(--space-3);
+          color: var(--_menu-secondary);
+        }
+        .menu__item--destructive {
+          color: var(--destructive-text);
+        }
+        .menu__header {
+          margin: 0;
+          padding: var(--space-2) var(--space-3) var(--space-1);
+          color: var(--_menu-secondary);
+          font: 600 var(--fs-footnote)/var(--lh-footnote) var(--ff-sans);
+          letter-spacing: calc(var(--tr-footnote) * var(--tracking-scale));
+        }
+        .menu__separator {
+          block-size: 0;
+          margin: var(--menu-pad) var(--space-3);
+          border: 0;
+          border-block-start: 1px solid var(--separator);
+        }
+        @media (hover: hover) and (pointer: fine) {
+          .menu__item:not(:disabled, [aria-disabled='true']):hover {
+            background-color: var(--hover-fill);
+          }
+        }
+        :where(html:not([data-press-tracking]))
+          .menu__item:not(:disabled, [aria-disabled='true']):active,
+        .menu__item:not(:disabled, [aria-disabled='true'])[data-pressed] {
+          background-color: var(--press-fill);
+        }
+        .menu__item:focus-visible {
+          outline: none;
+          box-shadow: none;
+          background-color: var(--state-selected-focus-fill);
+          color: var(--accent-on);
+        }
+        .menu__item:focus-visible .menu__trailing {
+          color: inherit;
+        }
+        .menu__item:is(:disabled, [aria-disabled='true']) {
+          opacity: var(--state-disabled-opacity);
+        }
+        @media (forced-colors: active) {
+          .menu__item:focus-visible {
+            forced-color-adjust: none;
+            background-color: Highlight;
+            color: HighlightText;
+          }
+          .menu__item:is(:disabled, [aria-disabled='true']) {
+            color: GrayText;
+            opacity: 1;
+          }
+          :is(.menu__item[role='menuitemcheckbox'], .menu__item[role='menuitemradio'])::before {
+            forced-color-adjust: none;
+            background: ButtonText;
+          }
+          .menu__item:focus-visible::before {
+            background: HighlightText;
+          }
+        }
+        .alert,
+        .confirm-dialog {
+          --alert-pad: 14px;
+          --alert-btn-h: 48px;
+          --glass-radius: calc(var(--alert-btn-h)/2 + var(--alert-pad));
+          --glass-density: 94%;
+          position: fixed;
+          border: 1px solid transparent;
+        }
+        .alert {
+          inset: 0;
+          margin: auto;
+          inline-size: min(calc(100% - 2 * var(--space-8)), 20rem);
+          max-inline-size: none;
+          max-block-size: calc(100% - 2 * var(--space-8));
+          padding: calc(var(--alert-pad) + var(--space-2)) var(--alert-pad) var(--alert-pad);
+          overflow: hidden;
+          text-align: start;
+        }
+        .alert[open] {
+          display: flex;
+          flex-direction: column;
+        }
+        .alert > form {
+          display: contents;
+        }
+        .alert::backdrop {
+          background: rgb(0 0 0/0);
+          transition:
+            background-color var(--dur-fast) var(--curve-standard),
+            overlay var(--dur-fast) allow-discrete,
+            display var(--dur-fast) allow-discrete;
+        }
+        .alert[open]::backdrop {
+          background: rgb(0 0 0/0.3);
+        }
+        @starting-style {
+          .alert[open]::backdrop {
+            background: rgb(0 0 0/0);
+          }
+        }
+        .alert__title,
+        .alert__message {
+          margin: 0 var(--space-2);
+          color: var(--label);
+        }
+        .alert__title {
+          margin-block-end: var(--space-1);
+          font: 600 var(--fs-headline)/var(--lh-headline) var(--ff-sans);
+          letter-spacing: calc(var(--tr-headline) * var(--tracking-scale));
+          text-wrap: balance;
+        }
+        .alert__message {
+          min-block-size: 0;
+          overflow-y: auto;
+          font: 400 var(--fs-subheadline)/var(--lh-subheadline) var(--ff-sans);
+          letter-spacing: calc(var(--tr-subheadline) * var(--tracking-scale));
+        }
+        .alert__actions {
+          display: flex;
+          flex: none;
+          gap: var(--space-2);
+          margin-block-start: var(--space-5);
+        }
+        .alert__actions > .alert__action {
+          flex: 1 1 0;
+        }
+        .alert__actions:has(> :nth-child(3)),
+        .alert__actions--stacked {
+          flex-direction: column;
+        }
+        :is(.alert__actions:has(> :nth-child(3)), .alert__actions--stacked) > .alert__action {
+          flex: none;
+        }
+        .alert__action {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: var(--space-2);
+          min-inline-size: 0;
+          min-block-size: var(--alert-btn-h);
+          margin: 0;
+          padding: var(--space-2) var(--space-4);
+          border: 1px solid transparent;
+          border-radius: var(--corner-capsule);
+          background-color: var(--fill-tertiary);
+          color: var(--label);
+          font: 600 var(--fs-body)/var(--lh-body) var(--ff-sans);
+          letter-spacing: calc(var(--tr-body) * var(--tracking-scale));
+          text-align: center;
+          text-decoration: none;
+          text-wrap: balance;
+          cursor: pointer;
+          -webkit-tap-highlight-color: transparent;
+          touch-action: manipulation;
+          -webkit-user-select: none;
+          user-select: none;
+          transition:
+            scale var(--dur-spring-snappy) var(--spring-snappy),
+            background-color var(--dur-fast) var(--curve-out);
+        }
+        .alert__action--primary {
+          background-color: var(--accent-fill);
+          color: var(--accent-on);
+        }
+        .alert__action--destructive {
+          color: var(--destructive-text);
+        }
+        @media (hover: hover) and (pointer: fine) {
+          .alert__action:not(:disabled, [aria-disabled='true']):hover {
+            background-image: linear-gradient(var(--hover-fill) 0 0);
+          }
+        }
+        :where(html:not([data-press-tracking]))
+          .alert__action:not(:disabled, [aria-disabled='true']):active,
+        .alert__action:not(:disabled, [aria-disabled='true'])[data-pressed] {
+          background-image: linear-gradient(var(--press-fill) 0 0);
+          scale: var(--press-scale);
+          transition-duration: var(--dur-press);
+          transition-timing-function: var(--curve-out);
+        }
+        .alert__action:is(:disabled, [aria-disabled='true']:not([aria-busy='true'])) {
+          opacity: var(--state-disabled-opacity);
+          cursor: default;
+        }
+        .alert__action:not([aria-busy='true']) > .activity-indicator {
+          display: none;
+        }
+        .alert__action > .activity-indicator {
+          inline-size: 1.1em;
+          block-size: 1.1em;
+          color: inherit;
+        }
+        .alert__action[aria-busy='true'] > svg {
+          display: none;
+        }
+        .confirm-dialog {
+          --alert-pad: 10px;
+          --motion-origin: bottom center;
+          inset: auto var(--margin-page) calc(var(--safe-bottom) + var(--space-2));
+          margin: 0 auto;
+          inline-size: auto;
+          max-inline-size: 30rem;
+          max-block-size: calc(100dvh - 2 * var(--space-4));
+          padding: var(--alert-pad);
+          overflow: auto;
+          overscroll-behavior: contain;
+        }
+        .confirm-dialog:not(.glass) {
+          border-radius: var(--glass-radius);
+          background: var(--glass-solid);
+          color: var(--label);
+        }
+        .confirm-dialog:popover-open {
+          display: flex;
+          flex-direction: column;
+          gap: var(--space-2);
+        }
+        .confirm-dialog::backdrop {
+          background: rgb(0 0 0/0.2);
+        }
+        .confirm-dialog__title,
+        .confirm-dialog__message {
+          margin: var(--space-1) var(--space-3) 0;
+          color: var(--label);
+          text-align: center;
+          font: 400 var(--fs-footnote)/var(--lh-footnote) var(--ff-sans);
+          letter-spacing: calc(var(--tr-footnote) * var(--tracking-scale));
+        }
+        .confirm-dialog__title {
+          font-weight: 600;
+        }
+        .confirm-dialog__actions {
+          display: flex;
+          flex-direction: column;
+          gap: var(--space-2);
+        }
+        .confirm-dialog .alert__action {
+          inline-size: 100%;
+        }
+        @supports (position-anchor: --a) {
+          .confirm-dialog[style*='position-anchor'] {
+            --motion-origin: top right;
+            inset: auto;
+            margin: var(--space-2) 0;
+            inline-size: min(17rem, 100vw - 2 * var(--margin-page));
+            position-area: block-end span-inline-start;
+            position-try-fallbacks:
+              flip-block,
+              flip-inline,
+              flip-block flip-inline;
+          }
+          .confirm-dialog[style*='position-anchor']:dir(rtl) {
+            --motion-origin: top left;
+          }
+          .confirm-dialog[style*='position-anchor']::backdrop {
+            background: none;
+          }
+          .confirm-dialog[style*='position-anchor'] > .confirm-dialog__cancel {
+            display: none;
+          }
+        }
+        @media (forced-colors: active) {
+          .alert__action--primary {
+            forced-color-adjust: none;
+            border-color: Highlight;
+            background-color: Highlight;
+            color: HighlightText;
+          }
+          .alert__action:is(:disabled, [aria-disabled='true']) {
+            color: GrayText;
+            border-color: GrayText;
+          }
+        }
+        .status-pill {
+          --glass-radius: var(--corner-capsule);
+          position: fixed;
+          z-index: 50;
+          inset-inline: 0;
+          margin-inline: auto;
+          bottom: calc(var(--safe-bottom) + var(--tabbar-h) + 20px);
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          inline-size: max-content;
+          min-block-size: var(--hit);
+          max-inline-size: min(100% - 32px, 440px);
+          padding-block: 0;
+          padding-inline: 16px 4px;
+          font: 400 var(--fs-subheadline)/var(--lh-subheadline) var(--ff-sans);
+          letter-spacing: calc(var(--tr-subheadline) * var(--tracking-scale));
+        }
+        .status-pill[hidden] {
+          display: none;
+        }
+        :where([data-app-frame]) .status-pill {
+          position: absolute;
+        }
+        .status-pill > svg {
+          flex: none;
+          inline-size: 20px;
+          block-size: 20px;
+        }
+        .progress {
+          --progress-h: 4px;
+          --progress-track: var(--fill-secondary);
+          -webkit-appearance: none;
+          appearance: none;
+          position: relative;
+          display: block;
+          inline-size: 100%;
+          block-size: var(--progress-h);
+          margin: 0;
+          border: 0;
+          border-radius: var(--corner-capsule);
+          overflow: hidden;
+          background: var(--progress-track);
+          color: var(--accent-text);
+        }
+        .progress:not(progress, .progress--ring)::before {
+          content: '';
+          position: absolute;
+          inset: 0;
+          border-radius: inherit;
+          background: currentColor;
+          translate: calc((clamp(0, var(--value, 0), 1) - 1) * 100%) 0;
+          transition: translate var(--dur-slow) var(--spring-smooth);
+        }
+        .progress:not(progress, .progress--ring):dir(rtl)::before {
+          translate: calc((1 - clamp(0, var(--value, 0), 1)) * 100%) 0;
+        }
+        progress.progress::-webkit-progress-bar {
+          background: transparent;
+        }
+        progress.progress::-webkit-progress-value {
+          border-radius: var(--corner-capsule);
+          background: currentColor;
+        }
+        progress.progress::-moz-progress-bar {
+          border-radius: var(--corner-capsule);
+          background: currentColor;
+        }
+        progress.progress:indeterminate::-moz-progress-bar {
+          background: transparent;
+        }
+        .progress--ring {
+          --progress-ring: 28px;
+          --progress-ring-w: 3px;
+          inline-size: var(--progress-ring);
+          block-size: var(--progress-ring);
+          border-radius: 50%;
+          background: conic-gradient(
+            currentColor calc(clamp(0, var(--value, 0), 1) * 1turn),
+            var(--progress-track) 0
+          );
+          -webkit-mask: radial-gradient(
+            farthest-side,
+            #0000 calc(100% - var(--progress-ring-w) - 0.5px),
+            #000 calc(100% - var(--progress-ring-w))
+          );
+          mask: radial-gradient(
+            farthest-side,
+            #0000 calc(100% - var(--progress-ring-w) - 0.5px),
+            #000 calc(100% - var(--progress-ring-w))
+          );
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .progress:not(progress, .progress--ring)::before {
+            transition: none;
+          }
+        }
+        @media (prefers-contrast: more) {
+          .progress {
+            --progress-track: var(--fill);
+          }
+        }
+        @media (forced-colors: active) {
+          .progress {
+            forced-color-adjust: none;
+            --progress-track: Canvas;
+            outline: 1px solid CanvasText;
+            color: Highlight;
+          }
+          .progress--ring {
+            --progress-track: GrayText;
+            outline: 0;
+          }
+        }
+      }
+    </style>
+    <style>
+      /* Page CSS (unlayered): the stage, the frame and spacing. The kit draws every control. */
+      body {
+        background: var(--system-gray5);
+      }
+      svg {
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .solid,
+      .list__icon svg,
+      .tabbar__item[aria-current='page'] svg {
+        fill: currentColor;
+      }
+      .solid {
+        stroke: none;
+      }
+      .sprite {
+        position: absolute;
+        inline-size: 0;
+        block-size: 0;
+      }
+      .stage {
+        box-sizing: border-box;
+        min-height: 100dvh;
+        display: grid;
+        grid-template-columns: 1fr 402px 1fr;
+        align-items: center;
+        column-gap: 48px;
+        padding: 13px 24px;
+      }
+      .about {
+        justify-self: end;
+        max-inline-size: 20rem;
+        color: var(--secondary-label);
+        font: var(--fs-subheadline)/var(--lh-subheadline) var(--ff-sans);
+      }
+      .about h1 {
+        margin: 0 0 12px;
+        color: var(--label);
+        font: 700 var(--fs-title1)/var(--lh-title1) var(--ff-sans);
+      }
+      .app {
+        --safe-top: 62px;
+        --safe-bottom: 34px;
+        position: relative;
+        grid-column: 2;
+        inline-size: 402px;
+        block-size: 874px;
+        overflow: hidden;
+        border-radius: 56px;
+        background: var(--system-grouped-background);
+        box-shadow:
+          0 0 0 9px light-dark(#1d1d1f, #000),
+          0 0 0 10px light-dark(#8e8e93, #48484a),
+          0 24px 60px rgb(0 0 0 / 0.28);
+      }
+      .time {
+        position: absolute;
+        z-index: 30;
+        inset-block-start: 21px;
+        inset-inline-start: 52px;
+        font: 600 var(--fs-body)/var(--lh-body) var(--ff-sans);
+        pointer-events: none;
+      }
+      @media (max-width: 600px), (max-height: 600px) {
+        body {
+          background: var(--system-grouped-background);
+        }
+        .stage {
+          display: block;
+          padding: 0;
+        }
+        .about,
+        .time {
+          display: none;
+        }
+        .app {
+          --safe-top: env(safe-area-inset-top, 0px);
+          --safe-bottom: env(safe-area-inset-bottom, 0px);
+          inline-size: 100%;
+          block-size: 100dvh;
+          border-radius: 0;
+          box-shadow: none;
+        }
+      }
+      .view {
+        position: absolute;
+        inset: 0;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        scrollbar-width: none;
+        padding-block-end: calc(var(--safe-bottom) + 104px);
+      }
+      .view > :is(.segmented, .card, .field--search) {
+        margin: 8px 20px 0;
+      }
+      .view > .card {
+        margin-block-start: 20px;
+      }
+      .view > .list-header {
+        margin-block-start: 28px;
+      }
+      .view > .field--search + .list {
+        margin-block-start: 20px;
+      }
+      .card__meta {
+        margin: 0;
+        color: var(--secondary-label);
+        font: var(--fs-footnote)/var(--lh-footnote) var(--ff-sans);
+      }
+      .card > .progress {
+        margin-block: 10px 2px;
+      }
+      .card > .btn-bordered {
+        align-self: flex-start;
+        margin-block-start: 10px;
+      }
+      .list__row > .slider {
+        flex: 1;
+      }
+      .list__row > svg {
+        flex: none;
+        inline-size: 18px;
+        block-size: 18px;
+        color: var(--secondary-label);
+      }
+      .list__row > svg:last-child {
+        inline-size: 24px;
+        block-size: 24px;
+      }
+      .green {
+        --list-icon-bg: var(--system-green);
+        --list-icon-fg: var(--on-green);
+      }
+      .red {
+        --list-icon-bg: var(--system-red);
+        --list-icon-fg: var(--on-red);
+      }
+      .indigo {
+        --list-icon-bg: var(--system-indigo);
+        --list-icon-fg: var(--on-indigo);
+      }
+      .blue {
+        --list-icon-bg: var(--system-blue);
+        --list-icon-fg: var(--on-blue);
+      }
+      .sheet .field__label {
+        display: block;
+        margin-block-end: 6px;
+      }
+      .sheet .list-header {
+        margin-block-start: 24px;
+      }
+    </style>
+  </head>
+  <body>
+    <svg class="sprite" aria-hidden="true">
+      <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" /></symbol>
+      <symbol id="i-more" viewBox="0 0 24 24">
+        <g class="solid">
+          <circle cx="5" cy="12" r="1.8" />
+          <circle cx="12" cy="12" r="1.8" />
+          <circle cx="19" cy="12" r="1.8" />
+        </g>
+      </symbol>
+      <symbol id="i-share" viewBox="0 0 24 24">
+        <path
+          d="M12 14.5V3M8 7l4-4 4 4M8 10H6.5A1.5 1.5 0 0 0 5 11.5v7A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5v-7a1.5 1.5 0 0 0-1.5-1.5H16"
+        />
+      </symbol>
+      <symbol id="i-x" viewBox="0 0 24 24"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11" /></symbol>
+      <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" /></symbol>
+      <symbol id="i-drop" viewBox="0 0 24 24">
+        <path d="M12 3.5c3.6 4.3 6 7.6 6 10.6a6 6 0 0 1-12 0c0-3 2.4-6.3 6-10.6z" />
+      </symbol>
+      <symbol id="i-sun" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="4" />
+        <path
+          d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"
+        />
+      </symbol>
+      <symbol id="i-bell" viewBox="0 0 24 24">
+        <path d="M6 16v-5a6 6 0 0 1 12 0v5l1.5 2h-15zM10 20.5a2 2 0 0 0 4 0" />
+      </symbol>
+      <symbol id="i-moon" viewBox="0 0 24 24">
+        <path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" />
+      </symbol>
+      <symbol id="i-leaf" viewBox="0 0 24 24">
+        <path d="M5 19C5 10 10 5 20 4c0 10-5 15-14 15zM5 19l7-7" />
+      </symbol>
+      <symbol id="i-book" viewBox="0 0 24 24">
+        <path
+          d="M4 5.5A1.5 1.5 0 0 1 5.5 4H11v16H5.5A1.5 1.5 0 0 1 4 18.5zM20 5.5A1.5 1.5 0 0 0 18.5 4H13v16h5.5a1.5 1.5 0 0 0 1.5-1.5z"
+        />
+      </symbol>
+      <symbol id="i-trash" viewBox="0 0 24 24">
+        <path d="M4 7h16M9.5 7V4.5h5V7M6.5 7l1 13h9l1-13" />
+      </symbol>
+      <symbol id="i-search" viewBox="0 0 24 24">
+        <circle cx="11" cy="11" r="6.5" />
+        <path d="M16 16l4.5 4.5" />
+      </symbol>
+      <symbol id="i-alert" viewBox="0 0 24 24">
+        <path
+          class="solid"
+          fill-rule="evenodd"
+          d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-1.2 5h2.4l-.3 7h-1.8zM12 15.4a1.4 1.4 0 1 1 0 2.8 1.4 1.4 0 0 1 0-2.8z"
+        />
+      </symbol>
+    </svg>
+
+    <div class="stage">
+      <aside class="about" aria-label="About this demo">
+        <h1>Garden</h1>
+        <p>
+          An iOS-style app built only from the apple-design web kit: glass in the bars, sheet, menu
+          and alert; opaque content beneath. It follows your system appearance.
+        </p>
+        <p>
+          Scroll to collapse the title, press any control, add a plant with + (drag or tap the
+          grabber), and choose More › Delete History… for the alert and Undo.
+        </p>
+        <p>A demo, not affiliated with Apple.</p>
+      </aside>
+
+      <div class="app" data-app-frame>
+        <div class="time" aria-hidden="true">10:30</div>
+
+        <main class="view motion-scroller" id="today" aria-labelledby="t-today">
+          <header class="navbar">
+            <span class="navbar__title" aria-hidden="true">Today</span>
+            <div class="navbar__trailing">
+              <div class="toolbar-group">
+                <button class="toolbar-btn" type="button" id="share" aria-label="Share">
+                  <svg aria-hidden="true"><use href="#i-share" /></svg>
+                </button>
+                <button
+                  class="toolbar-btn"
+                  type="button"
+                  id="more-btn"
+                  popovertarget="more"
+                  aria-haspopup="menu"
+                  aria-label="More"
+                >
+                  <svg aria-hidden="true"><use href="#i-more" /></svg>
+                </button>
+              </div>
+              <button class="btn-prominent btn-icon" type="button" data-add aria-label="Add Plant">
+                <svg aria-hidden="true"><use href="#i-plus" /></svg>
+              </button>
+            </div>
+          </header>
+          <h1 class="navbar__large-title" id="t-today">Today</h1>
+          <div class="segmented" role="radiogroup" aria-label="Period">
+            <label><input type="radio" name="period" value="day" /><span>Day</span></label>
+            <label
+              ><input type="radio" name="period" value="week" checked /><span>Week</span></label
+            >
+            <label><input type="radio" name="period" value="month" /><span>Month</span></label>
+          </div>
+          <section class="card" aria-labelledby="goal-t">
+            <h2 class="card__title" id="goal-t">Watering Goal</h2>
+            <p class="card__subtitle" id="goal-sub">Last watered 2 days ago</p>
+            <progress
+              class="progress"
+              id="goal"
+              max="7"
+              value="5"
+              aria-labelledby="goal-t"
+              aria-describedby="goal-meta"
+            ></progress>
+            <p class="card__meta" id="goal-meta">5 of 7 waterings this week</p>
+            <button class="btn-bordered" type="button" id="log">
+              <span
+                class="activity-indicator"
+                aria-hidden="true"
+                style="--motion-delay: 300ms"
+              ></span
+              ><svg aria-hidden="true"><use href="#i-drop" /></svg><span>Log Watering</span>
+            </button>
+          </section>
+          <h2 class="list-header">Up Next</h2>
+          <ul class="list list--icons" id="up-next">
+            <li data-due="0">
+              <a class="list__row" href="#plants"
+                ><span class="list__icon green" aria-hidden="true"
+                  ><svg><use href="#i-leaf" /></svg></span
+                ><span class="list__label">Pothos</span><span class="list__value">Today</span
+                ><span class="list__chevron" aria-hidden="true"></span
+              ></a>
+            </li>
+            <li data-due="0">
+              <a class="list__row" href="#plants"
+                ><span class="list__icon green" aria-hidden="true"
+                  ><svg><use href="#i-leaf" /></svg></span
+                ><span class="list__label">Monstera</span><span class="list__value">Today</span
+                ><span class="list__chevron" aria-hidden="true"></span
+              ></a>
+            </li>
+            <li data-due="3">
+              <a class="list__row" href="#plants"
+                ><span class="list__icon green" aria-hidden="true"
+                  ><svg><use href="#i-leaf" /></svg></span
+                ><span class="list__label">Fiddle Leaf Fig</span
+                ><span class="list__value">In 3 days</span
+                ><span class="list__chevron" aria-hidden="true"></span
+              ></a>
+            </li>
+          </ul>
+          <h2 class="list-header">Reminders</h2>
+          <ul class="list list--icons">
+            <li>
+              <label class="list__row"
+                ><span class="list__icon red" aria-hidden="true"
+                  ><svg><use href="#i-bell" /></svg></span
+                ><span class="list__label">Watering Reminders</span
+                ><input class="switch" type="checkbox" role="switch" switch checked id="remind"
+              /></label>
+            </li>
+            <li>
+              <label class="list__row"
+                ><span class="list__icon indigo" aria-hidden="true"
+                  ><svg><use href="#i-moon" /></svg></span
+                ><span class="list__label">Quiet Hours</span
+                ><input class="switch" type="checkbox" role="switch" switch id="quiet"
+              /></label>
+            </li>
+            <li>
+              <div class="list__row">
+                <span class="list__icon blue" aria-hidden="true"
+                  ><svg><use href="#i-drop" /></svg></span
+                ><label class="list__label" for="days">Days Ahead</label>
+                <input
+                  class="stepper__value"
+                  id="days"
+                  type="number"
+                  min="0"
+                  max="3"
+                  value="1"
+                  inputmode="numeric"
+                />
+                <div class="stepper" role="group" aria-label="Days ahead" aria-controls="days">
+                  <button
+                    class="stepper__btn"
+                    type="button"
+                    data-step="-1"
+                    aria-label="Fewer days"
+                  ></button
+                  ><button
+                    class="stepper__btn"
+                    type="button"
+                    data-step="1"
+                    aria-label="More days"
+                  ></button>
+                </div>
+              </div>
+            </li>
+            <li>
+              <div class="list__row">
+                <svg aria-hidden="true"><use href="#i-sun" /></svg
+                ><input
+                  class="slider"
+                  id="light"
+                  type="range"
+                  min="0"
+                  max="100"
+                  value="60"
+                  style="--value: 0.6"
+                  aria-label="Grow light"
+                  aria-valuetext="60%"
+                /><svg aria-hidden="true"><use href="#i-sun" /></svg>
+              </div>
+            </li>
+          </ul>
+          <p class="list-footer">
+            Reminders arrive at 8:00 AM. Quiet Hours needs Watering Reminders on.
+          </p>
+        </main>
+
+        <main class="view motion-scroller" id="plants" aria-labelledby="t-plants" hidden>
+          <header class="navbar">
+            <span class="navbar__title" aria-hidden="true">Plants</span>
+          </header>
+          <h1 class="navbar__large-title" id="t-plants">Plants</h1>
+          <form class="field--search" role="search" id="q-form">
+            <input
+              class="field"
+              id="q"
+              type="search"
+              placeholder="Plants and Rooms"
+              aria-label="Search plants and rooms"
+              enterkeyhint="search"
+              autocomplete="off"
+            />
+            <button class="field__clear" type="reset" aria-label="Clear text"></button>
+            <button class="field__cancel" type="reset">Cancel</button>
+          </form>
+          <ul class="list" id="results">
+            <li>
+              <div class="list__row">
+                <span class="list__label"
+                  ><span class="list__title">Pothos</span
+                  ><span class="list__subtitle">Kitchen</span></span
+                ><span class="list__value">Today</span>
+              </div>
+            </li>
+            <li>
+              <div class="list__row">
+                <span class="list__label"
+                  ><span class="list__title">Monstera</span
+                  ><span class="list__subtitle">Living Room</span></span
+                ><span class="list__value">Today</span>
+              </div>
+            </li>
+            <li>
+              <div class="list__row">
+                <span class="list__label"
+                  ><span class="list__title">Fiddle Leaf Fig</span
+                  ><span class="list__subtitle">Bedroom</span></span
+                ><span class="list__value">In 3 days</span>
+              </div>
+            </li>
+          </ul>
+          <p class="list-footer" id="no-results" hidden>No Results</p>
+        </main>
+
+        <main class="view motion-scroller" id="journal" aria-labelledby="t-journal" hidden>
+          <header class="navbar">
+            <span class="navbar__title" aria-hidden="true">Journal</span>
+          </header>
+          <h1 class="navbar__large-title" id="t-journal">Journal</h1>
+          <div class="empty-state">
+            <svg class="empty-state__symbol" aria-hidden="true"><use href="#i-book" /></svg>
+            <h2 class="empty-state__title">No Entries Yet</h2>
+            <p class="empty-state__description">
+              Entries appear here when you add a plant or log a watering.
+            </p>
+            <div class="empty-state__actions">
+              <button class="btn-bordered" type="button" data-add>Add Plant</button>
+            </div>
+          </div>
+        </main>
+
+        <div class="status-pill motion-pop" id="pill" role="status" style="--motion-origin: bottom">
+          <svg aria-hidden="true"><use href="#i-trash" /></svg><span id="pill-text"></span>
+          <button class="btn-plain" type="button" id="undo">Undo</button>
+        </div>
+
+        <nav class="tabbar-dock" aria-label="Main">
+          <ul class="tabbar">
+            <li class="tabbar__indicator" aria-hidden="true"></li>
+            <li>
+              <a class="tabbar__item" href="#today" aria-current="page"
+                ><svg aria-hidden="true"><use href="#i-sun" /></svg><span>Today</span></a
+              >
+            </li>
+            <li>
+              <a class="tabbar__item" href="#plants"
+                ><svg aria-hidden="true"><use href="#i-leaf" /></svg><span>Plants</span
+                ><span class="badge badge--overlay"
+                  >2<span class="sr-only"> due today</span></span
+                ></a
+              >
+            </li>
+            <li>
+              <a class="tabbar__item" href="#journal"
+                ><svg aria-hidden="true"><use href="#i-book" /></svg><span>Journal</span></a
+              >
+            </li>
+          </ul>
+          <button
+            class="btn-glass btn-icon tabbar-search"
+            type="button"
+            id="search-btn"
+            aria-label="Search"
+          >
+            <svg aria-hidden="true"><use href="#i-search" /></svg>
+          </button>
+        </nav>
+
+        <dialog class="sheet" id="new-plant" aria-labelledby="np-title" data-detent="medium">
+          <div class="sheet__grabber" aria-hidden="true"></div>
+          <header class="sheet__header">
+            <button
+              class="btn-bordered btn-icon"
+              type="button"
+              aria-label="Cancel"
+              commandfor="new-plant"
+              command="close"
+            >
+              <svg aria-hidden="true"><use href="#i-x" /></svg>
+            </button>
+            <h2 class="sheet__title" id="np-title">New Plant</h2>
+            <button class="btn-filled btn-icon" type="submit" form="np-form" aria-label="Done">
+              <svg aria-hidden="true"><use href="#i-check" /></svg>
+            </button>
+          </header>
+          <form class="sheet__body" id="np-form" novalidate>
+            <label class="field__label" for="np-name">Name</label>
+            <input
+              class="field"
+              id="np-name"
+              type="text"
+              autocomplete="off"
+              autocapitalize="words"
+              enterkeyhint="done"
+              aria-describedby="np-msg"
+              autofocus
+            />
+            <p class="field-message" id="np-msg">Shown on reminders and in your journal.</p>
+            <h3 class="list-header">Care</h3>
+            <ul class="list">
+              <li>
+                <label class="list__row"
+                  ><span class="list__label">Remind Me</span
+                  ><input class="switch" type="checkbox" role="switch" switch checked
+                /></label>
+              </li>
+            </ul>
+          </form>
+        </dialog>
+
+        <div class="menu motion-pop" id="more" popover role="menu" aria-label="More">
+          <div role="group" aria-labelledby="sort-h">
+            <p class="menu__header" id="sort-h">Sort By</p>
+            <button
+              class="menu__item"
+              type="button"
+              role="menuitemradio"
+              aria-checked="true"
+              data-sort="due"
+            >
+              Next Watering
+            </button>
+            <button
+              class="menu__item"
+              type="button"
+              role="menuitemradio"
+              aria-checked="false"
+              data-sort="name"
+            >
+              Name
+            </button>
+          </div>
+          <hr class="menu__separator" />
+          <button
+            class="menu__item menu__item--destructive"
+            type="button"
+            role="menuitem"
+            id="delete-item"
+          >
+            <svg class="menu__icon" aria-hidden="true"><use href="#i-trash" /></svg>Delete History…
+          </button>
+        </div>
+
+        <dialog
+          class="alert motion-pop"
+          id="confirm"
+          role="alertdialog"
+          aria-labelledby="confirm-t"
+          aria-describedby="confirm-m"
+        >
+          <form method="dialog">
+            <h2 class="alert__title" id="confirm-t">Delete Watering History?</h2>
+            <p class="alert__message" id="confirm-m">
+              This removes every logged watering for all plants.
+            </p>
+            <div class="alert__actions">
+              <button class="alert__action" value="cancel" autofocus>Cancel</button>
+              <button class="alert__action alert__action--destructive" value="delete">
+                Delete
+              </button>
+            </div>
+          </form>
+        </dialog>
+      </div>
+    </div>
+
+    <script data-kit>
+      /*! apple-design web kit JS (classic script) | scripts/build_kit.py | blocks: base, glass, states, toolbar, motion, navbar, segmented, list, switch, stepper, slider, card, button, tabbar, badge, empty-state, sheet, field-message, field, menu, alert, status-pill, progress */
+      (() => {
+        const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+        function springAt(t, { duration = 0.5, bounce = 0, velocity = 0 } = {}) {
+          const w = (2 * Math.PI) / duration,
+            z = bounce >= 0 ? 1 - bounce : 1 / (1 + bounce);
+          if (Math.abs(z - 1) < 1e-6) return 1 - Math.exp(-w * t) * (1 + (w - velocity) * t);
+          if (z < 1) {
+            const wd = w * Math.sqrt(1 - z * z);
+            return (
+              1 -
+              Math.exp(-z * w * t) *
+                (Math.cos(wd * t) + ((z * w - velocity) / wd) * Math.sin(wd * t))
+            );
+          }
+          const r = w * Math.sqrt(z * z - 1),
+            a = -z * w;
+          return 1 - Math.exp(a * t) * (Math.cosh(r * t) - ((a + velocity) / r) * Math.sinh(r * t));
+        }
+        function settleTime(opts, eps = 1e-3) {
+          let T = 0;
+          for (let t = 0; t < 10; t += 1e-3) if (Math.abs(springAt(t, opts) - 1) >= eps) T = t;
+          return Math.ceil(T * 100) / 100;
+        }
+        function springEasing(opts = {}) {
+          const T = settleTime(opts),
+            n = Math.max(2, Math.ceil(T * 60)),
+            stops = [];
+          for (let i = 0; i <= n; i++)
+            stops.push(i === n ? 1 : +springAt((i / n) * T, opts).toFixed(4));
+          return { easing: `linear(${stops.join(', ')})`, duration: Math.round(T * 1000) };
+        }
+        function animateSpring(
+          from,
+          to,
+          { duration = 0.5, bounce = 0, velocity = 0, onUpdate, onDone } = {},
+        ) {
+          const dist = to - from,
+            opts = { duration, bounce, velocity: dist ? velocity / dist : 0 };
+          let raf = 0,
+            t0 = 0,
+            value = from,
+            vel = velocity;
+          const frame = (now) => {
+            t0 ||= now;
+            const t = (now - t0) / 1000,
+              p = springAt(t, opts),
+              h = 1e-3;
+            const dp = (springAt(t + h, opts) - springAt(t - h, opts)) / (2 * h);
+            value = from + dist * p;
+            vel = dist * dp;
+            const done = Math.abs(1 - p) < 1e-3 && Math.abs(dp) < 1e-2;
+            if (done) {
+              value = to;
+              vel = 0;
+              onUpdate?.(to);
+              onDone?.();
+            } else {
+              onUpdate?.(value);
+              raf = requestAnimationFrame(frame);
+            }
+          };
+          if (!dist) {
+            onUpdate?.(to);
+            onDone?.();
+          } else raf = requestAnimationFrame(frame);
+          return { stop: () => (cancelAnimationFrame(raf), { value, velocity: vel }) };
+        }
+        const rubberBand = (offset, dimension, c = 0.55) =>
+          (1 - 1 / ((offset * c) / dimension + 1)) * dimension;
+        const project = (velocity, rate = 0.998) => ((velocity / 1000) * rate) / (1 - rate);
+        class VelocityTracker {
+          #s = [];
+          add(x, t = performance.now()) {
+            this.#s.push([t, x]);
+            while (this.#s.length > 2 && t - this.#s[0][0] > 100) this.#s.shift();
+          }
+          velocity(now = performance.now()) {
+            const s = this.#s;
+            if (s.length < 2 || now - s[s.length - 1][0] > 60) return 0;
+            const [ta, xa] = s[0],
+              [tb, xb] = s[s.length - 1];
+            return tb > ta ? ((xb - xa) / (tb - ta)) * 1000 : 0;
+          }
+        }
+        function morph(update, { from, to } = {}) {
+          if (!document.startViewTransition) {
+            update();
+            return Promise.resolve();
+          }
+          const named = !reducedMotion();
+          let target = null;
+          if (named && from) from.style.viewTransitionName = 'motion-morph';
+          const vt = document.startViewTransition(() => {
+            if (from) from.style.viewTransitionName = '';
+            update();
+            target = typeof to === 'function' ? to() : to;
+            if (named && target) target.style.viewTransitionName = 'motion-morph';
+          });
+          return vt.finished.finally(() => {
+            if (target) target.style.viewTransitionName = '';
+          });
+        }
+        function flip(el, mutate, { duration = 0.5, bounce = 0 } = {}) {
+          const a = el.getBoundingClientRect();
+          mutate();
+          const b = el.getBoundingClientRect();
+          if (reducedMotion())
+            return el.animate({ opacity: [0, 1] }, { duration: 200, easing: 'ease' });
+          const { easing, duration: ms } = springEasing({ duration, bounce });
+          return el.animate(
+            [
+              {
+                transformOrigin: '0 0',
+                transform: `translate(${a.left - b.left}px, ${a.top - b.top}px) scale(${a.width / b.width}, ${a.height / b.height})`,
+              },
+              { transformOrigin: '0 0', transform: 'none' },
+            ],
+            { duration: ms, easing },
+          );
+        }
+        const AppleMotion = {
+          reducedMotion,
+          springAt,
+          settleTime,
+          springEasing,
+          animateSpring,
+          rubberBand,
+          project,
+          VelocityTracker,
+          morph,
+          flip,
+        };
+        globalThis.AppleMotion = AppleMotion;
+        const PRESSABLE =
+          '.pressable, .btn-glass, .btn-prominent, .btn-bordered, .btn-tinted, .btn-filled, .btn-plain, ' +
+          '.toolbar-btn, .tabbar__item, a.list__row, button.list__row, .segmented > label, .switch, ' +
+          '.glass-interactive, .alert__action, .menu__item, .field__clear, .field__cancel';
+        const IN_SCROLL = 'a.list__row, button.list__row';
+        const GLASS = '.glass-interactive, .btn-glass, .btn-prominent, .toolbar-group, .tabbar';
+        const initialized = { press: new WeakSet(), glint: new WeakSet(), active: new WeakSet() };
+        function enableActiveStates(root = document) {
+          if (initialized.active.has(root)) return;
+          initialized.active.add(root);
+          root.addEventListener('touchstart', () => {}, { passive: true });
+        }
+        function initPressStates(root = document, { slop = 24, rowDelay = 100 } = {}) {
+          enableActiveStates(root);
+          if (initialized.press.has(root)) return;
+          initialized.press.add(root);
+          let el = null,
+            id = null,
+            box = null,
+            timer = 0,
+            ready = false,
+            over = false,
+            echo = null;
+          const near = (e, pad) =>
+            e.clientX >= box.left - pad &&
+            e.clientX <= box.right + pad &&
+            e.clientY >= box.top - pad &&
+            e.clientY <= box.bottom + pad;
+          const show = () => el?.toggleAttribute('data-pressed', ready && over);
+          const end = () => {
+            clearTimeout(timer);
+            el?.removeAttribute('data-pressed');
+            el = id = box = null;
+          };
+          document.documentElement.setAttribute('data-press-tracking', '');
+          root.addEventListener('pointerdown', (e) => {
+            if (!e.isPrimary || e.button !== 0) return;
+            const target = e.target.closest?.(PRESSABLE);
+            if (!target || target.matches(':disabled, [aria-disabled="true"]')) return;
+            end();
+            el = target;
+            id = e.pointerId;
+            box = el.getBoundingClientRect();
+            over = true;
+            ready = !(e.pointerType === 'touch' && el.matches(IN_SCROLL));
+            if (!ready)
+              timer = setTimeout(() => {
+                ready = true;
+                show();
+              }, rowDelay);
+            show();
+          });
+          root.addEventListener(
+            'pointermove',
+            (e) => {
+              if (e.pointerId !== id || !el) return;
+              over = near(e, slop);
+              show();
+            },
+            { passive: true },
+          );
+          root.addEventListener('pointerup', (e) => {
+            if (e.pointerId !== id || !el) return;
+            const target = el,
+              inMargin = near(e, slop),
+              inside = near(e, 0),
+              quickRowTap = !ready && inside;
+            end();
+            if (quickRowTap) {
+              target.setAttribute('data-pressed', '');
+              setTimeout(() => target.removeAttribute('data-pressed'), rowDelay);
+            }
+            if (inMargin && !inside) {
+              echo = target;
+              setTimeout(() => {
+                echo = null;
+              }, 400);
+              target.click();
+            }
+          });
+          root.addEventListener('pointercancel', (e) => {
+            if (e.pointerId === id) end();
+          });
+          root.addEventListener('dragstart', (e) => {
+            if (e.target.closest?.(PRESSABLE)) e.preventDefault();
+          });
+          root.addEventListener('keydown', (e) => {
+            if (e.repeat || !(e.key === 'Enter' || (e.key === ' ' && !e.target.closest?.('a'))))
+              return;
+            e.target.closest?.(PRESSABLE)?.setAttribute('data-pressed', '');
+          });
+          for (const type of ['keyup', 'focusout']) {
+            root.addEventListener(type, (e) =>
+              e.target.closest?.(PRESSABLE)?.removeAttribute('data-pressed'),
+            );
+          }
+          root.addEventListener(
+            'click',
+            (e) => {
+              const nativeEcho = e.isTrusted && echo?.contains(e.target);
+              if (nativeEcho) echo = null;
+              if (nativeEcho || e.target.closest?.('[aria-disabled="true"]')) {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+              }
+            },
+            true,
+          );
+        }
+        function initGlassGlint(root = document) {
+          if (initialized.glint.has(root)) return;
+          initialized.glint.add(root);
+          const place = (e) => {
+            const el = e.target.closest?.(GLASS);
+            if (!el) return;
+            const r = el.getBoundingClientRect();
+            el.style.setProperty('--px', `${((e.clientX - r.left) / r.width) * 100}%`);
+            el.style.setProperty('--py', `${((e.clientY - r.top) / r.height) * 100}%`);
+          };
+          root.addEventListener('pointerdown', place);
+          root.addEventListener(
+            'pointermove',
+            (e) => {
+              if (e.pointerType !== 'touch') place(e);
+            },
+            { passive: true },
+          );
+        }
+        function announce(message, { assertive = false } = {}) {
+          const id = assertive ? 'feedback-alert' : 'feedback-status';
+          let region = document.getElementById(id);
+          if (!region) {
+            region = document.createElement('div');
+            region.id = id;
+            region.className = 'sr-only';
+            region.setAttribute('role', assertive ? 'alert' : 'status');
+            document.body.append(region);
+          }
+          region.textContent = '';
+          setTimeout(() => {
+            region.textContent = message;
+          }, 100);
+        }
+        const AppleFeedback = { initPressStates, initGlassGlint, announce, enableActiveStates };
+        globalThis.AppleFeedback = AppleFeedback;
+      })();
+      (() => {
+        const blocks = (globalThis.AppleBlocks = globalThis.AppleBlocks || {});
+        const native = typeof CSS !== 'undefined' && CSS.supports('animation-timeline: scroll()');
+        const bound = new WeakSet();
+        function bind(bar) {
+          if (bound.has(bar)) return;
+          bound.add(bar);
+          const found = bar.closest('.motion-scroller');
+          const page = !found || found === document.documentElement || found === document.body;
+          const scroller = page ? document.scrollingElement || document.documentElement : found;
+          const flag = page ? document.documentElement : found;
+          const threshold = Number(bar.dataset.scrollThreshold) || 40;
+          const update = () => flag.classList.toggle('is-scrolled', scroller.scrollTop > threshold);
+          (page ? window : scroller).addEventListener('scroll', update, { passive: true });
+          update();
+        }
+        function init(root = document) {
+          if (native) return;
+          const bars =
+            root.matches && root.matches('.navbar')
+              ? [root]
+              : root.querySelectorAll
+                ? root.querySelectorAll('.navbar')
+                : [];
+          for (const bar of bars) bind(bar);
+        }
+        blocks.navbar = { init };
+      })();
+      (() => {
+        const DELAY = 500,
+          FIRST = 150,
+          FASTEST = 40,
+          SPEEDUP = 0.86,
+          SLOP = 24;
+        const bound = new WeakSet();
+        const fieldOf = (stepper) => {
+          const id = stepper.getAttribute('aria-controls');
+          const el = id
+            ? document.getElementById(id)
+            : stepper.parentElement && stepper.parentElement.querySelector('input[type="number"]');
+          return el instanceof HTMLInputElement ? el : null;
+        };
+        const isOff = (btn) => btn.disabled || btn.getAttribute('aria-disabled') === 'true';
+        function sync(stepper, field) {
+          const v = field.valueAsNumber;
+          const min = field.min === '' ? -Infinity : Number(field.min);
+          const max = field.max === '' ? Infinity : Number(field.max);
+          for (const btn of stepper.querySelectorAll('.stepper__btn')) {
+            if (btn.disabled) continue;
+            const down = Number(btn.dataset.step) < 0;
+            const atLimit = field.disabled || (Number.isFinite(v) && (down ? v <= min : v >= max));
+            if (atLimit) btn.setAttribute('aria-disabled', 'true');
+            else btn.removeAttribute('aria-disabled');
+          }
+        }
+        function step(stepper, field, btn) {
+          if (isOff(btn) || field.disabled || stepper.getAttribute('aria-busy') === 'true')
+            return false;
+          const n = Math.abs(Number(btn.dataset.step)) || 1;
+          const before = field.value;
+          try {
+            Number(btn.dataset.step) < 0 ? field.stepDown(n) : field.stepUp(n);
+          } catch {
+            return false;
+          }
+          if (field.value === before) return false;
+          field.dispatchEvent(new Event('input', { bubbles: true }));
+          field.dispatchEvent(new Event('change', { bubbles: true }));
+          sync(stepper, field);
+          return true;
+        }
+        let lastSaid = 0,
+          sayTimer = 0;
+        function say(field) {
+          const announce = globalThis.AppleFeedback && globalThis.AppleFeedback.announce;
+          if (typeof announce !== 'function') return;
+          clearTimeout(sayTimer);
+          sayTimer = setTimeout(
+            () => {
+              lastSaid = performance.now();
+              announce(field.value);
+            },
+            Math.max(0, 300 - (performance.now() - lastSaid)),
+          );
+        }
+        function bind(stepper) {
+          const field = fieldOf(stepper);
+          if (!field || bound.has(stepper)) {
+            if (field) sync(stepper, field);
+            return;
+          }
+          bound.add(stepper);
+          let held = null,
+            box = null,
+            timer = 0,
+            wait = FIRST,
+            stepped = null,
+            press = 0;
+          const stop = () => {
+            clearTimeout(timer);
+            if (held) held.removeAttribute('data-pressed');
+            held = box = null;
+          };
+          const repeat = () => {
+            if (!held || !step(stepper, field, held)) return stop();
+            say(field);
+            wait = Math.max(FASTEST, wait * SPEEDUP);
+            timer = setTimeout(repeat, wait);
+          };
+          stepper.addEventListener('pointerdown', (e) => {
+            const btn = e.target.closest && e.target.closest('.stepper__btn');
+            if (!btn || !stepper.contains(btn) || e.button !== 0 || !e.isPrimary || isOff(btn))
+              return;
+            stop();
+            held = btn;
+            box = btn.getBoundingClientRect();
+            stepped = btn;
+            press += 1;
+            try {
+              btn.setPointerCapture(e.pointerId);
+            } catch {}
+            btn.setAttribute('data-pressed', '');
+            if (step(stepper, field, btn)) say(field);
+            wait = FIRST;
+            timer = setTimeout(repeat, DELAY);
+          });
+          stepper.addEventListener(
+            'pointermove',
+            (e) => {
+              if (!held || !box) return;
+              const out =
+                e.clientX < box.left - SLOP ||
+                e.clientX > box.right + SLOP ||
+                e.clientY < box.top - SLOP ||
+                e.clientY > box.bottom + SLOP;
+              if (out) stop();
+            },
+            { passive: true },
+          );
+          const release = () => {
+            stop();
+            const id = press;
+            setTimeout(() => {
+              if (id === press) stepped = null;
+            }, 400);
+          };
+          for (const type of ['pointerup', 'pointercancel', 'lostpointercapture'])
+            stepper.addEventListener(type, release);
+          addEventListener('blur', stop);
+          stepper.addEventListener('contextmenu', (e) => {
+            if (e.target.closest && e.target.closest('.stepper__btn')) e.preventDefault();
+          });
+          stepper.addEventListener(
+            'keydown',
+            (e) => {
+              if (e.key === 'Enter' || e.key === ' ') stepped = null;
+            },
+            true,
+          );
+          stepper.addEventListener('click', (e) => {
+            const btn = e.target.closest && e.target.closest('.stepper__btn');
+            if (!btn || !stepper.contains(btn)) return;
+            if (stepped === btn) {
+              stepped = null;
+              return;
+            }
+            if (step(stepper, field, btn)) say(field);
+          });
+          field.addEventListener('input', () => sync(stepper, field));
+          if (field.form)
+            field.form.addEventListener('reset', () => setTimeout(() => sync(stepper, field)));
+          sync(stepper, field);
+        }
+        function init(root = document) {
+          const list =
+            root.matches && root.matches('.stepper')
+              ? [root]
+              : root.querySelectorAll
+                ? root.querySelectorAll('.stepper')
+                : [];
+          for (const stepper of list) bind(stepper);
+        }
+        (globalThis.AppleBlocks = globalThis.AppleBlocks || {}).stepper = { init };
+      })();
+      (() => {
+        const bound = new WeakSet();
+        const sync = (el) => {
+          const min = el.min === '' ? 0 : Number(el.min);
+          const max = el.max === '' ? 100 : Number(el.max);
+          const v = el.valueAsNumber;
+          const f =
+            max > min && Number.isFinite(v) ? Math.min(1, Math.max(0, (v - min) / (max - min))) : 0;
+          el.style.setProperty('--value', String(Math.round(f * 1e4) / 1e4));
+        };
+        function bind(el) {
+          if (bound.has(el)) return;
+          bound.add(el);
+          const release = () => {
+            el.removeAttribute('data-pressed');
+            removeEventListener('pointerup', release, true);
+            removeEventListener('pointercancel', release, true);
+          };
+          el.addEventListener('pointerdown', (e) => {
+            if (e.button !== 0 || !e.isPrimary || el.disabled) return;
+            el.setAttribute('data-pressed', '');
+            addEventListener('pointerup', release, true);
+            addEventListener('pointercancel', release, true);
+          });
+          el.addEventListener('lostpointercapture', release);
+          el.addEventListener('blur', release);
+          el.addEventListener('input', () => sync(el));
+          el.addEventListener('change', () => sync(el));
+          if (el.form) el.form.addEventListener('reset', () => setTimeout(() => sync(el)));
+        }
+        function init(root = document) {
+          const list =
+            root.matches && root.matches('input.slider')
+              ? [root]
+              : root.querySelectorAll
+                ? root.querySelectorAll('input.slider')
+                : [];
+          for (const el of list) {
+            if (el.type !== 'range') continue;
+            bind(el);
+            sync(el);
+          }
+        }
+        (globalThis.AppleBlocks = globalThis.AppleBlocks || {}).slider = { init };
+      })();
+      (() => {
+        const blocks = (globalThis.AppleBlocks ||= {});
+        if (blocks.sheet) return;
+        const motion = () => globalThis.AppleMotion;
+        const bound = new WeakSet();
+        const state = new WeakMap();
+        const INTERACTIVE = 'button, a[href], input, select, textarea, label, [tabindex]';
+        const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+        const canMorph = (from) =>
+          !!(motion() && document.startViewTransition && !reduced() && from?.isConnected);
+        function open(sheet, source) {
+          if (!sheet || sheet.open) return;
+          const frame = sheet.closest('[data-app-frame]');
+          const st = { source: source || document.activeElement, inerted: [], frame };
+          state.set(sheet, st);
+          sheet.style.translate = '';
+          const show = () => {
+            if (sheet.open) return;
+            if (!frame) {
+              sheet.showModal();
+              return;
+            }
+            sheet.show();
+            for (let el = sheet; el !== document.body && el.parentElement; el = el.parentElement) {
+              for (const sib of el.parentElement.children) {
+                if (sib !== el && !sib.inert) {
+                  sib.inert = true;
+                  st.inerted.push(sib);
+                }
+              }
+            }
+            st.onFrameClick = (e) => {
+              if (!sheet.contains(e.target)) close(sheet);
+            };
+            setTimeout(() => {
+              if (state.get(sheet) === st) frame.addEventListener('click', st.onFrameClick);
+            });
+          };
+          if (canMorph(st.source)) morph(sheet, show, st.source, sheet);
+          else show();
+        }
+        function morph(sheet, update, from, to) {
+          sheet.style.transition = 'none';
+          sheet.style.outlineColor = 'transparent';
+          sheet.dataset.morphing = '';
+          motion()
+            .morph(update, { from, to })
+            .finally(() => {
+              sheet.style.transition = sheet.style.outlineColor = '';
+              delete sheet.dataset.morphing;
+            });
+        }
+        function close(sheet, { morph: back = true } = {}) {
+          if (!sheet?.open) return;
+          const source = state.get(sheet)?.source;
+          if (back && canMorph(source)) morph(sheet, () => sheet.close(), sheet, source);
+          else sheet.close();
+        }
+        function cleanup(sheet) {
+          const st = state.get(sheet);
+          if (!st) return;
+          state.delete(sheet);
+          st.inerted.forEach((el) => {
+            el.inert = false;
+          });
+          if (st.onFrameClick) st.frame.removeEventListener('click', st.onFrameClick);
+          if (st.source?.isConnected) st.source.focus({ preventScroll: true });
+        }
+        function setDetent(sheet, detent, y, v) {
+          const M = motion();
+          const top = sheet.getBoundingClientRect().top;
+          sheet.dataset.detent = detent;
+          const dy = top - (sheet.getBoundingClientRect().top - y);
+          if (!M || reduced()) {
+            sheet.style.translate = '';
+            return null;
+          }
+          sheet.style.translate = `0 ${dy}px`;
+          return M.animateSpring(dy, 0, {
+            velocity: v,
+            bounce: 0,
+            onUpdate: (p) => {
+              sheet.style.translate = p ? `0 ${p}px` : '';
+            },
+          });
+        }
+        function bindDrag(sheet) {
+          let y = 0,
+            grabY = 0,
+            startY = 0,
+            id = null,
+            moved = false,
+            vt = null,
+            anim = null,
+            handle = null;
+          const set = (p) => {
+            y = p;
+            sheet.style.translate = p ? `0 ${p}px` : '';
+          };
+          sheet.addEventListener('pointerdown', (e) => {
+            const M = motion();
+            handle = e.target.closest('.sheet__grabber, .sheet__header');
+            const onControl = e.target.closest(INTERACTIVE) && !e.target.closest('.sheet__grabber');
+            if (!M || !handle || onControl || e.button !== 0 || !sheet.open) return;
+            anim?.stop();
+            y = parseFloat(sheet.style.translate.split(' ')[1]) || 0;
+            vt = new M.VelocityTracker();
+            id = e.pointerId;
+            grabY = e.clientY - y;
+            startY = e.clientY;
+            moved = false;
+            handle.setPointerCapture(id);
+          });
+          sheet.addEventListener(
+            'pointermove',
+            (e) => {
+              if (e.pointerId !== id || !vt) return;
+              if (!moved && Math.abs(e.clientY - startY) < 10) return;
+              moved = true;
+              const raw = e.clientY - grabY;
+              set(raw >= 0 ? raw : -motion().rubberBand(-raw, sheet.offsetHeight));
+              vt.add(y, e.timeStamp);
+            },
+            { passive: true },
+          );
+          const release = (e) => {
+            if (e.pointerId !== id || !vt) return;
+            const M = motion(),
+              v = vt.velocity(e.timeStamp);
+            id = null;
+            vt = null;
+            const detent = sheet.dataset.detent;
+            if (!moved) {
+              if (e.type === 'pointerup' && handle.matches('.sheet__grabber') && detent) {
+                anim = setDetent(sheet, detent === 'large' ? 'medium' : 'large', 0, 0);
+              }
+              return;
+            }
+            const h = sheet.offsetHeight,
+              end = y + M.project(v);
+            if (end > h / 2) {
+              const r = sheet.getBoundingClientRect();
+              const bottom = sheet.matches(':modal')
+                ? innerHeight
+                : (sheet.offsetParent?.getBoundingClientRect().bottom ?? innerHeight);
+              anim = M.animateSpring(y, y + bottom - r.top + 24, {
+                velocity: v,
+                bounce: 0,
+                onUpdate: set,
+                onDone: () => close(sheet, { morph: false }),
+              });
+            } else if (detent && (detent === 'large' ? end > h / 4 : end < -h / 4)) {
+              anim = setDetent(sheet, detent === 'large' ? 'medium' : 'large', y, v);
+              y = 0;
+            } else {
+              anim = M.animateSpring(y, 0, {
+                velocity: v,
+                bounce: M.reducedMotion() ? 0 : 0.2,
+                onUpdate: set,
+              });
+            }
+          };
+          sheet.addEventListener('pointerup', release);
+          sheet.addEventListener('pointercancel', release);
+        }
+        function bind(sheet) {
+          if (bound.has(sheet)) return;
+          bound.add(sheet);
+          sheet.addEventListener('command', (e) => {
+            if (e.command === 'show-modal' || e.command === 'show') {
+              e.preventDefault();
+              open(sheet, e.source);
+            } else if (e.command === 'close' || e.command === 'request-close') {
+              e.preventDefault();
+              close(sheet);
+            }
+          });
+          sheet.addEventListener('cancel', (e) => {
+            e.preventDefault();
+            close(sheet);
+          });
+          sheet.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && !sheet.matches(':modal')) {
+              e.preventDefault();
+              close(sheet);
+            }
+          });
+          sheet.addEventListener('close', () => cleanup(sheet));
+          sheet.addEventListener('click', (e) => {
+            if (e.target !== sheet) return;
+            const r = sheet.getBoundingClientRect();
+            if (
+              e.clientX < r.left ||
+              e.clientX > r.right ||
+              e.clientY < r.top ||
+              e.clientY > r.bottom
+            )
+              close(sheet);
+          });
+          bindDrag(sheet);
+        }
+        let fallback = false;
+        function init(root = document) {
+          root.querySelectorAll('dialog.sheet').forEach(bind);
+          if (!fallback && !('commandForElement' in HTMLButtonElement.prototype)) {
+            fallback = true;
+            document.addEventListener('click', (e) => {
+              const btn = e.target.closest?.('button[commandfor]');
+              const sheet = btn && document.getElementById(btn.getAttribute('commandfor'));
+              if (!sheet?.matches('dialog.sheet')) return;
+              bind(sheet);
+              const cmd = btn.getAttribute('command');
+              if (cmd === 'show-modal' || cmd === 'show') open(sheet, btn);
+              else if (cmd === 'close' || cmd === 'request-close') close(sheet);
+            });
+          }
+        }
+        blocks.sheet = { init, open, close };
+      })();
+      (() => {
+        const blocks = (globalThis.AppleBlocks = globalThis.AppleBlocks || {});
+        if (typeof HTMLElement === 'undefined' || !('popover' in HTMLElement.prototype)) {
+          blocks.menu = { init() {} };
+          return;
+        }
+        const ITEM = '[role="menuitem"], [role="menuitemcheckbox"], [role="menuitemradio"]';
+        const anchorable =
+          CSS.supports('position-anchor: --a') && CSS.supports('position-area: bottom span-left');
+        const compact = matchMedia('(max-width: 30rem)');
+        const bound = new WeakSet(),
+          opener = new WeakMap(),
+          atEnd = new WeakMap(),
+          refocus = new WeakMap(),
+          placed = new Set();
+        let seq = 0,
+          frame = 0;
+        const root = () => document.documentElement;
+        const isCard = (pop) => compact.matches && pop.matches('.popover');
+        const invokersOf = (pop) =>
+          (pop.id
+            ? [...document.querySelectorAll(`[popovertarget="${CSS.escape(pop.id)}"]`)]
+            : []
+          ).filter((b) => !pop.contains(b) && b.getAttribute('popovertargetaction') !== 'hide');
+        const items = (menu) =>
+          [...menu.querySelectorAll(ITEM)].filter(
+            (el) => el.closest('[popover]') === menu && el.getClientRects().length > 0,
+          );
+        const isOff = (el) => el.disabled || el.getAttribute('aria-disabled') === 'true';
+        function side(btn) {
+          const r = btn.getBoundingClientRect();
+          return {
+            r,
+            below: r.top + r.height / 2 < root().clientHeight / 2,
+            end: r.left + r.width / 2 > root().clientWidth / 2,
+          };
+        }
+        function place(pop, btn) {
+          const { r, below, end } = side(btn),
+            gap = 8,
+            pad = 8,
+            vw = root().clientWidth,
+            vh = root().clientHeight,
+            s = pop.style;
+          s.inset = 'auto';
+          s.margin = '0';
+          if (below) {
+            s.top = `${r.bottom + gap}px`;
+            s.maxHeight = `${vh - r.bottom - gap - pad}px`;
+          } else {
+            s.bottom = `${vh - r.top + gap}px`;
+            s.maxHeight = `${r.top - gap - pad}px`;
+          }
+          if (end) s.right = `${Math.max(pad, vw - r.right)}px`;
+          else s.left = `${Math.max(pad, r.left)}px`;
+        }
+        function unplace(pop) {
+          for (const p of ['inset', 'margin', 'maxHeight', 'positionArea']) pop.style[p] = '';
+        }
+        function anchor(pop, btn, below, end) {
+          let name = (btn.style.anchorName || getComputedStyle(btn).anchorName || 'none')
+            .split(',')[0]
+            .trim();
+          if (name === 'none' || !name) {
+            name = `--apple-menu-${++seq}`;
+            btn.style.anchorName = name;
+          }
+          pop.style.positionAnchor = name;
+          pop.style.positionArea = `${below ? 'bottom' : 'top'} ${end ? 'span-left' : 'span-right'}`;
+        }
+        function onBeforeToggle(e) {
+          const pop = e.currentTarget;
+          if (e.newState === 'open') {
+            const btn = e.source || opener.get(pop) || invokersOf(pop)[0];
+            if (!btn) return;
+            opener.set(pop, btn);
+            if (isCard(pop)) {
+              unplace(pop);
+              pop.style.removeProperty('--motion-origin');
+            } else {
+              const { below, end } = side(btn);
+              pop.style.setProperty(
+                '--motion-origin',
+                `${below ? 'top' : 'bottom'} ${end ? 'right' : 'left'}`,
+              );
+              if (anchorable) anchor(pop, btn, below, end);
+              else {
+                place(pop, btn);
+                placed.add(pop);
+              }
+            }
+            btn.setAttribute('aria-expanded', 'true');
+          } else {
+            placed.delete(pop);
+            refocus.set(pop, pop.contains(document.activeElement));
+            for (const b of invokersOf(pop)) b.setAttribute('aria-expanded', 'false');
+          }
+        }
+        function onToggle(e) {
+          const pop = e.currentTarget,
+            btn = opener.get(pop);
+          if (e.newState === 'closed') {
+            const now = document.activeElement;
+            if (refocus.get(pop) && btn && (!now || now === document.body || pop.contains(now)))
+              btn.focus({ preventScroll: true });
+            return;
+          }
+          if (!pop.matches('.menu') || pop.contains(document.activeElement)) return;
+          const list = items(pop);
+          const first = atEnd.get(pop)
+            ? list[list.length - 1]
+            : list.find((el) => el.getAttribute('aria-checked') === 'true') || list[0];
+          atEnd.delete(pop);
+          if (first) first.focus({ preventScroll: true });
+        }
+        function onMenuKey(e) {
+          const menu = e.currentTarget,
+            list = items(menu);
+          if (!list.length || e.altKey || e.ctrlKey || e.metaKey) return;
+          const i = list.indexOf(document.activeElement);
+          let next = -1;
+          switch (e.key) {
+            case 'ArrowDown':
+              next = (i + 1) % list.length;
+              break;
+            case 'ArrowUp':
+              next = i <= 0 ? list.length - 1 : i - 1;
+              break;
+            case 'Home':
+            case 'PageUp':
+              next = 0;
+              break;
+            case 'End':
+            case 'PageDown':
+              next = list.length - 1;
+              break;
+            case 'Tab': {
+              const btn = opener.get(menu);
+              menu.hidePopover();
+              if (btn) btn.focus({ preventScroll: true });
+              return;
+            }
+            case ' ':
+              if (document.activeElement && document.activeElement.matches('a[role^="menuitem"]')) {
+                e.preventDefault();
+                document.activeElement.click();
+              }
+              return;
+            default:
+              if (e.key.length !== 1) return;
+              for (let n = 1; n <= list.length; n++) {
+                const el = list[(i + n) % list.length];
+                if (el.textContent.trim().toLowerCase().startsWith(e.key.toLowerCase())) {
+                  next = list.indexOf(el);
+                  break;
+                }
+              }
+          }
+          if (next >= 0) {
+            e.preventDefault();
+            list[next].focus();
+          }
+        }
+        function onMenuClick(e) {
+          const menu = e.currentTarget,
+            item = e.target.closest && e.target.closest(ITEM);
+          if (!item || !menu.contains(item) || isOff(item)) return;
+          const role = item.getAttribute('role');
+          if (role === 'menuitemcheckbox')
+            item.setAttribute('aria-checked', String(item.getAttribute('aria-checked') !== 'true'));
+          if (role === 'menuitemradio') {
+            const group = item.closest('[role="group"]');
+            for (const r of (group || menu).querySelectorAll('[role="menuitemradio"]')) {
+              if (r.closest('[role="group"]') === group)
+                r.setAttribute('aria-checked', String(r === item));
+            }
+          }
+          const sub = item.getAttribute('aria-haspopup');
+          if (sub && sub !== 'false') return;
+          if (menu.matches(':popover-open')) menu.hidePopover();
+        }
+        function bindInvoker(btn, pop) {
+          if (bound.has(btn)) return;
+          bound.add(btn);
+          if (!btn.hasAttribute('aria-expanded'))
+            btn.setAttribute('aria-expanded', String(pop.matches(':popover-open')));
+          btn.addEventListener('click', () => opener.set(pop, btn));
+          if (!pop.matches('.menu')) return;
+          if (!btn.hasAttribute('aria-haspopup')) btn.setAttribute('aria-haspopup', 'menu');
+          btn.addEventListener('keydown', (e) => {
+            if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+            e.preventDefault();
+            opener.set(pop, btn);
+            atEnd.set(pop, e.key === 'ArrowUp');
+            if (!pop.matches(':popover-open')) pop.showPopover({ source: btn });
+          });
+        }
+        function init(scope = document) {
+          const pops = scope.querySelectorAll
+            ? [...scope.querySelectorAll('.menu[popover], .popover[popover]')]
+            : [];
+          if (scope.matches && scope.matches('.menu[popover], .popover[popover]')) pops.push(scope);
+          for (const pop of pops) {
+            if (!bound.has(pop)) {
+              bound.add(pop);
+              pop.addEventListener('beforetoggle', onBeforeToggle);
+              pop.addEventListener('toggle', onToggle);
+              if (pop.matches('.menu')) {
+                pop.addEventListener('keydown', onMenuKey);
+                pop.addEventListener('click', onMenuClick);
+              }
+            }
+            for (const btn of invokersOf(pop)) bindInvoker(btn, pop);
+          }
+        }
+        const follow = () => {
+          frame = 0;
+          for (const pop of placed) {
+            const btn = opener.get(pop);
+            if (btn) place(pop, btn);
+          }
+        };
+        const schedule = () => {
+          if (placed.size && !frame) frame = requestAnimationFrame(follow);
+        };
+        addEventListener('resize', schedule, { passive: true });
+        addEventListener('scroll', schedule, { passive: true, capture: true });
+        blocks.menu = { init };
+      })();
+    </script>
+    <script>
+      AppleFeedback.initPressStates();
+      AppleFeedback.initGlassGlint();
+      Object.values(globalThis.AppleBlocks ?? {}).forEach((b) => b.init());
+
+      const $ = (s) => document.querySelector(s),
+        $$ = (s) => document.querySelectorAll(s);
+      const sheet = $('#new-plant'),
+        form = $('#np-form'),
+        nameField = $('#np-name'),
+        msg = $('#np-msg'),
+        hint = msg.innerHTML;
+      const pill = $('#pill'),
+        menu = $('#more'),
+        confirmDlg = $('#confirm'),
+        upNext = $('#up-next'),
+        moreBtn = $('#more-btn');
+      let back = 'today',
+        pendingConfirm = false,
+        saved = null;
+
+      // Tabs navigate, toolbars act. The search button focuses the Plants search field at once; Cancel goes back.
+      function show(id) {
+        $$('.view').forEach((v) => {
+          v.hidden = v.id !== id;
+        });
+        $$('.tabbar__item').forEach((t) =>
+          t.hash === '#' + id
+            ? t.setAttribute('aria-current', 'page')
+            : t.removeAttribute('aria-current'),
+        );
+        hidePill();
+      }
+      document.addEventListener('click', (e) => {
+        const a = e.target.closest('a[href^="#"]'),
+          view = a && document.getElementById(a.hash.slice(1));
+        if (view?.matches('.view')) {
+          e.preventDefault();
+          show((back = view.id));
+        }
+      });
+      $('#search-btn').addEventListener('click', () => {
+        show('plants');
+        $('#q').focus();
+      });
+      const filter = () => {
+        const q = $('#q').value.trim().toLowerCase();
+        $$('#results li').forEach((li) => {
+          li.hidden = !li.textContent.toLowerCase().includes(q);
+        });
+        $('#no-results').hidden = !!$('#results li:not([hidden])');
+      };
+      $('#q-form').addEventListener('input', filter);
+      $('#q-form').addEventListener('reset', () => setTimeout(filter));
+      $('#q-form').addEventListener('submit', (e) => e.preventDefault());
+      $('.field__cancel').addEventListener('click', () => show(back));
+
+      // Goal card: the segmented control changes one view; Log Watering shows progress in place, then confirms the result in place.
+      const goal = {
+        day: [1, 2, 'today'],
+        week: [5, 7, 'this week'],
+        month: [21, 30, 'this month'],
+      };
+      let sub = 'Last watered 2 days ago';
+      function render() {
+        const [done, max, span] = goal[$('[name="period"]:checked').value];
+        Object.assign($('#goal'), { max, value: done });
+        $('#goal-meta').textContent = `${done} of ${max} waterings ${span}`;
+        $('#goal-sub').textContent = sub;
+      }
+      $$('[name="period"]').forEach((r) => r.addEventListener('change', render));
+      $('#log').addEventListener('click', ({ currentTarget: b }) => {
+        const busy = (on, text) => {
+          for (const a of ['aria-busy', 'aria-disabled'])
+            b.toggleAttribute(a, on) && b.setAttribute(a, 'true');
+          b.lastElementChild.textContent = text;
+        };
+        busy(true, 'Logging…');
+        setTimeout(() => {
+          for (const k in goal) goal[k][0] += 1;
+          sub = 'Last watered just now';
+          render();
+          busy(false, 'Log Watering');
+          AppleFeedback.announce('Watering logged');
+        }, 1200);
+      });
+
+      // A dependent setting is dimmed and explained, never hidden; the slider speaks its unit.
+      $('#remind').addEventListener('change', (e) => {
+        $('#quiet').disabled = !e.target.checked;
+      });
+      $('#light').addEventListener('input', (e) =>
+        e.target.setAttribute('aria-valuetext', e.target.value + '%'),
+      );
+
+      // The sheet grows out of the button that opened it (sheet.js morphs from the source, inside the frame too).
+      function openSheet(src) {
+        hidePill();
+        form.reset();
+        setError(false);
+        AppleBlocks.sheet.open(sheet, src);
+      }
+      $$('[data-add]').forEach((b) => b.addEventListener('click', () => openSheet(b)));
+      function setError(on) {
+        // inline validation: aria-invalid + a field-message that says how to fix it
+        nameField.toggleAttribute('aria-invalid', on) &&
+          nameField.setAttribute('aria-invalid', 'true');
+        if (on) msg.dataset.tone = 'error';
+        else delete msg.dataset.tone;
+        msg.innerHTML = on
+          ? '<svg aria-hidden="true"><use href="#i-alert"/></svg>Enter a name for the plant.'
+          : hint;
+      }
+      nameField.addEventListener('input', () => nameField.value.trim() && setError(false));
+      form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const name = nameField.value.trim();
+        if (!name) {
+          setError(true);
+          nameField.focus();
+          return;
+        }
+        const li = upNext.lastElementChild.cloneNode(true);
+        li.dataset.due = 7;
+        li.querySelector('.list__label').textContent = name;
+        li.querySelector('.list__value').textContent = 'In 7 days';
+        upNext.append(li);
+        AppleBlocks.sheet.close(sheet);
+        AppleFeedback.announce(`${name} added to Up Next`);
+      });
+
+      // More menu: sort, plus a destructive item that asks first (an uncommon, bulk loss) and still offers Undo afterwards.
+      menu.addEventListener('click', (e) => {
+        const by = e.target.closest('[data-sort]')?.dataset.sort;
+        if (by)
+          [...upNext.children]
+            .sort((a, b) =>
+              by === 'name'
+                ? a.textContent.localeCompare(b.textContent)
+                : a.dataset.due - b.dataset.due,
+            )
+            .forEach((li) => upNext.append(li));
+        pendingConfirm = !!e.target.closest('#delete-item');
+      });
+      menu.addEventListener('toggle', (e) => {
+        // after menu.js returned focus to More, so the alert returns it there too
+        if (e.newState !== 'closed' || !pendingConfirm) return;
+        pendingConfirm = false;
+        const f = document.activeElement;
+        if (!f || f === document.body || menu.contains(f)) moreBtn.focus();
+        confirmDlg.returnValue = '';
+        confirmDlg.showModal();
+      });
+      confirmDlg.addEventListener('close', () => {
+        if (confirmDlg.returnValue !== 'delete') return;
+        saved = { goal: JSON.stringify(goal), sub };
+        for (const k in goal) goal[k][0] = 0;
+        sub = 'No waterings logged';
+        render();
+        $('#pill-text').textContent = 'Watering history deleted';
+        pill.classList.add('is-open');
+      });
+      $('#undo').addEventListener('click', () => {
+        if (saved) {
+          Object.assign(goal, JSON.parse(saved.goal));
+          sub = saved.sub;
+          saved = null;
+          render();
+        }
+        hidePill();
+        AppleFeedback.announce('History restored');
+      });
+      function hidePill() {
+        if (pill.contains(document.activeElement)) moreBtn.focus();
+        pill.classList.remove('is-open');
+      }
+
+      $('#share').addEventListener('click', async () => {
+        // system share sheet, or copy the link
+        const data = { title: document.title, url: location.href };
+        if (navigator.canShare?.(data)) await navigator.share(data).catch(() => {});
+        else {
+          await navigator.clipboard?.writeText(data.url).catch(() => {});
+          AppleFeedback.announce('Link copied');
+        }
+      });
+    </script>
+  </body>
+</html>

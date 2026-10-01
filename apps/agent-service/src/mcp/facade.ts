@@ -1,48 +1,49 @@
 import { randomUUID } from 'node:crypto';
-import {
-  errorMessage,
-  type McpCallResult,
-  type McpGetPromptResponse,
-  type McpPromptRef,
-  type McpReadResourceResponse,
-  type McpResourceRef,
-  type McpResourceTemplateRef,
-  type McpServerConfig,
-  type McpToolRef,
+import type {
+  McpCallResult,
+  McpGetPromptResponse,
+  McpPromptRef,
+  McpReadResourceResponse,
+  McpResourceRef,
+  McpResourceTemplateRef,
+  McpServerConfig,
+  McpToolRef,
 } from '@ai/agent-contracts';
+import type { ProgressNotification, Tool } from '@earendil-works/pi-mcp';
 import type { Logger } from '../logging.js';
-import type { AdapterInternals, AdapterToolDef } from './adapter-types.js';
 import { McpApprovalBroker } from './approval.js';
-import { ConnectionManager } from './connect.js';
 import {
-  isForbidden,
-  isUnauthorized,
+  listAllPrompts,
+  listTemplatesOrNone,
+  toPromptRef,
+  toResourceRef,
+  toTemplateRef,
+  toToolInfo,
+  type RawPrompt,
+} from './catalog.js';
+import {
   McpError,
-  type ManagerAccessor,
   type MappingDeps,
   type McpStateSink,
   type McpUpdate,
   type OperationContext,
-  type SecretResolver,
-  type ServerResolver,
 } from './errors.js';
 import { mapCallResult, mapGetPrompt, mapReadResource } from './mapping.js';
+import { OperationSession, translateCallError, type OperationTarget } from './operation.js';
 import { McpPolicy } from './policy.js';
-import { CredentialTransactions } from './transactions.js';
+import type { McpConnections, McpLiveConnection, McpToolInfo } from './types.js';
 
 /**
- * Typed control facade (D6): the only path runners use to reach MCP, reusing
- * the adapter Clients for lists, reads, prompts and calls. Connections,
- * policy and errors live in their own modules.
+ * Typed control facade (D6): the only path runners and routes use to reach MCP. It takes its
+ * connections from `McpConnections` and sends every request through `McpLiveConnection.use`;
+ * `tools/call` is reachable only from `callTool`, behind the revision pin, the live catalog,
+ * argument validation and approval. Connections, policy and errors live in their own modules.
  */
 
 export interface FacadeDeps {
-  internals: AdapterInternals;
-  manager: ManagerAccessor;
-  servers: ServerResolver;
-  secrets: SecretResolver;
+  connections: McpConnections;
+  /** A request the server answers 401 or 403 moves the logical server to `auth_required`. */
   states: McpStateSink;
-  txns: CredentialTransactions;
   approvals: McpApprovalBroker;
   mapping: MappingDeps;
   audit: (entry: Record<string, unknown>) => void;
@@ -51,23 +52,13 @@ export interface FacadeDeps {
 }
 
 export class McpFacade {
-  private readonly connections: ConnectionManager;
+  /** Connections; `launchSpec` is also what launch approvals fingerprint. */
+  readonly connections: McpConnections;
   private readonly policy: McpPolicy;
 
   constructor(private readonly deps: FacadeDeps) {
-    this.connections = new ConnectionManager({
-      manager: deps.manager,
-      servers: deps.servers,
-      secrets: deps.secrets,
-      states: deps.states,
-      txns: deps.txns,
-      log: deps.log,
-    });
-    this.policy = new McpPolicy({
-      internals: deps.internals,
-      connections: this.connections,
-      audit: deps.audit,
-    });
+    this.connections = deps.connections;
+    this.policy = new McpPolicy({ audit: deps.audit });
   }
 
   connect(serverId: string, signal?: AbortSignal, taskId?: string): Promise<void> {
@@ -83,73 +74,54 @@ export class McpFacade {
   }
 
   async listTools(serverId: string, signal?: AbortSignal, taskId?: string): Promise<McpToolRef[]> {
-    const ensured = await this.connections.ensure(serverId, signal, taskId);
-    const options = this.connections.requestOptions(ensured.physical, signal);
-    const live = await ensured.connection.client.listTools(undefined, options);
-    return live.tools.map((tool) => toToolRef(ensured.record, tool));
+    return (await this.listToolInfo(serverId, signal, taskId)).map((info) => info.ref);
   }
 
-  async listResources(
+  /** The tools with their boolean annotation hints, which inform pi and never relax an approval. */
+  listToolInfo(serverId: string, signal?: AbortSignal, taskId?: string): Promise<McpToolInfo[]> {
+    return this.operation({ serverId, signal, taskId }, (session) =>
+      session.run(async (ensured) => {
+        const tools = await this.liveTools(ensured.connection, signal);
+        return tools.map((tool) => toToolInfo(ensured.record, tool));
+      }),
+    );
+  }
+
+  listResources(
     serverId: string,
     signal?: AbortSignal,
     taskId?: string,
   ): Promise<McpResourceRef[]> {
-    const ensured = await this.connections.ensure(serverId, signal, taskId);
-    if (!ensured.record.exposeResources) return [];
-    const options = this.connections.requestOptions(ensured.physical, signal);
-    const live = await ensured.connection.client.listResources(undefined, options);
-    return live.resources.map((resource) => ({
-      serverId: ensured.record.serverId,
-      connectionId: ensured.record.connectionId,
-      uri: resource.uri,
-      name: resource.name,
-      description: typeof resource.description === 'string' ? resource.description : null,
-      mimeType: typeof resource.mimeType === 'string' ? resource.mimeType : null,
-      meta: resource._meta ?? null,
-    }));
+    return this.operation({ serverId, signal, taskId }, (session) =>
+      session.run(async ({ record, connection }) => {
+        if (!record.exposeResources || !connection.capabilities.resources) return [];
+        const resources = await connection.use((client) => client.listResources({ signal }));
+        return resources.map((resource) => toResourceRef(record, resource));
+      }),
+    );
   }
 
-  async listResourceTemplates(
+  listResourceTemplates(
     serverId: string,
     signal?: AbortSignal,
     taskId?: string,
   ): Promise<McpResourceTemplateRef[]> {
-    const ensured = await this.connections.ensure(serverId, signal, taskId);
-    if (!ensured.record.exposeResources) return [];
-    const options = this.connections.requestOptions(ensured.physical, signal);
-    const live = await ensured.connection.client.listResourceTemplates(undefined, options);
-    return live.resourceTemplates.map((template) => ({
-      serverId: ensured.record.serverId,
-      connectionId: ensured.record.connectionId,
-      uriTemplate: template.uriTemplate,
-      name: template.name,
-      description: typeof template.description === 'string' ? template.description : null,
-      mimeType: typeof template.mimeType === 'string' ? template.mimeType : null,
-      meta: template._meta ?? null,
-    }));
+    return this.operation({ serverId, signal, taskId }, (session) =>
+      session.run(async ({ record, connection }) => {
+        if (!record.exposeResources || !connection.capabilities.resources) return [];
+        const templates = await connection.use((client) => listTemplatesOrNone(client, { signal }));
+        return templates.map((template) => toTemplateRef(record, template));
+      }),
+    );
   }
 
-  async listPrompts(
-    serverId: string,
-    signal?: AbortSignal,
-    taskId?: string,
-  ): Promise<McpPromptRef[]> {
-    const ensured = await this.connections.ensure(serverId, signal, taskId);
-    const options = this.connections.requestOptions(ensured.physical, signal);
-    const live = await ensured.connection.client.listPrompts(undefined, options);
-    return live.prompts.map((prompt) => ({
-      serverId: ensured.record.serverId,
-      connectionId: ensured.record.connectionId,
-      name: prompt.name,
-      title: typeof prompt.title === 'string' ? prompt.title : null,
-      description: typeof prompt.description === 'string' ? prompt.description : null,
-      args: (prompt.arguments ?? []).map((arg) => ({
-        name: arg.name,
-        description: typeof arg.description === 'string' ? arg.description : null,
-        required: typeof arg.required === 'boolean' ? arg.required : null,
-      })),
-      meta: prompt._meta ?? null,
-    }));
+  listPrompts(serverId: string, signal?: AbortSignal, taskId?: string): Promise<McpPromptRef[]> {
+    return this.operation({ serverId, signal, taskId }, (session) =>
+      session.run(async ({ record, connection }) => {
+        const prompts = await this.livePrompts(connection, signal);
+        return prompts.map((prompt) => toPromptRef(record, prompt));
+      }),
+    );
   }
 
   async readResource(
@@ -159,21 +131,21 @@ export class McpFacade {
     signal?: AbortSignal,
   ): Promise<McpReadResourceResponse> {
     signal?.throwIfAborted();
-    const { record, physical } = await this.connections.ensure(serverId, signal, op.taskId);
-    this.policy.checkRevision(record, op);
-    await this.policy.authorizeUri(record, physical, uri, signal);
-    this.deps.audit({
-      ...this.base(op),
-      server: serverId,
-      tool: `resource:${uri.slice(0, 256)}`,
-      decision: 'allow',
-    });
-    try {
-      const raw = await this.connections.manager().readResource(physical, uri, signal);
+    return this.operation({ serverId, signal, taskId: op.taskId, op }, async (session) => {
+      await session.run(({ record, connection }) =>
+        this.policy.authorizeUri(record, connection, uri, signal),
+      );
+      this.deps.audit({
+        ...this.base(op),
+        server: serverId,
+        tool: `resource:${uri.slice(0, 256)}`,
+        decision: 'allow',
+      });
+      const raw = await session.run(({ connection }) =>
+        connection.use((client) => client.readResource(uri, { signal })),
+      );
       return mapReadResource(raw, { serverId, uri, taskId: op.taskId });
-    } catch (error) {
-      throw this.translateCallError(serverId, error);
-    }
+    });
   }
 
   async getPrompt(
@@ -184,26 +156,28 @@ export class McpFacade {
     signal?: AbortSignal,
   ): Promise<McpGetPromptResponse> {
     signal?.throwIfAborted();
-    const ensured = await this.connections.ensure(serverId, signal, op.taskId);
-    const record = ensured.record;
-    this.policy.checkRevision(record, op);
-    const options = this.connections.requestOptions(ensured.physical, signal);
-    const prompts = await ensured.connection.client.listPrompts(undefined, options);
-    this.policy.authorizePrompt(prompts.prompts, record, name);
-    this.deps.audit({
-      ...this.base(op),
-      server: serverId,
-      tool: `prompt:${name}`,
-      decision: 'allow',
-    });
-    try {
-      const raw = await this.connections.manager().getPrompt(ensured.physical, name, args, signal);
+    return this.operation({ serverId, signal, taskId: op.taskId, op }, async (session) => {
+      await session.run(async ({ record, connection }) => {
+        this.policy.authorizePrompt(await this.livePrompts(connection, signal), record, name);
+      });
+      this.deps.audit({
+        ...this.base(op),
+        server: serverId,
+        tool: `prompt:${name}`,
+        decision: 'allow',
+      });
+      const params = { name, ...(args ? { arguments: args } : {}) };
+      const raw = await session.run(({ connection }) =>
+        connection.use((client) => client.request('prompts/get', params, { signal })),
+      );
       return mapGetPrompt(raw, { serverId, name, taskId: op.taskId });
-    } catch (error) {
-      throw this.translateCallError(serverId, error);
-    }
+    });
   }
 
+  /**
+   * Runs a tool: revision pin, live catalog, authorization, validation, approval, dispatch. The
+   * arguments approved and sent are the validated copy, so the user sees what the server gets.
+   */
   async callTool(
     op: OperationContext,
     serverId: string,
@@ -213,106 +187,109 @@ export class McpFacade {
     onUpdate?: (update: McpUpdate) => void,
   ): Promise<McpCallResult> {
     signal?.throwIfAborted();
-    const ensured = await this.connections.ensure(serverId, signal, op.taskId);
-    const record = ensured.record;
-    const connection = ensured.connection;
-    const physical = ensured.physical;
-    this.policy.checkRevision(record, op);
-    const catalog = await connection.client.listTools(
-      undefined,
-      this.connections.requestOptions(physical, signal),
-    );
-    const definition = this.policy.authorizeTool(record, catalog.tools, tool);
-    const input = args ?? {};
-    this.policy.validateToolInput(record, definition, input);
-    const guarded = McpApprovalBroker.approvalRequired(record.approveTools, definition.name);
-    // The preapproval audits its own decision; a refused one hands its review to the confirm.
-    const preapproval = guarded ? await op.preapprove?.(signal) : undefined;
-    if (guarded && !preapproval?.allowed) {
-      const decision = await this.deps.approvals.decide(
-        {
-          taskId: op.taskId,
-          runId: op.runId,
-          executionId: op.executionId,
-          toolCallId: op.toolCallId ?? randomUUID(),
-          serverId,
-          connectionId: record.connectionId,
-          toolName: definition.name,
-          origin: 'facade',
-          args: input,
-          ...(preapproval?.review ? { review: preapproval.review } : {}),
-        },
-        signal,
+    return this.operation({ serverId, signal, taskId: op.taskId, op }, async (session) => {
+      const { record, definition } = await session.run(async ({ record, connection }) => ({
+        record,
+        definition: this.policy.authorizeTool(
+          record,
+          await this.liveTools(connection, signal),
+          tool,
+        ),
+      }));
+      const input = this.policy.validateToolInput(record, definition, args ?? {});
+      await this.approve(op, record, definition.name, input, signal);
+      this.deps.onDispatch?.({ serverId, tool: definition.name });
+      signal?.throwIfAborted();
+      const onProgress =
+        onUpdate && ((progress: ProgressNotification) => onUpdate(update(progress)));
+      const raw = await session.run(({ connection }) =>
+        connection.use((client) => client.callTool(definition.name, input, { signal, onProgress })),
       );
-      if (decision === 'deny') {
-        throw new McpError(
-          'forbidden',
-          serverId,
-          `The user declined MCP tool ${definition.name} on ${serverId}.`,
-        );
-      }
-    } else if (!guarded) {
-      this.deps.audit({
-        ...this.base(op),
-        server: serverId,
-        tool: definition.name,
-        decision: 'policy-allow',
-      });
-    }
-    this.deps.onDispatch?.({ serverId, tool: definition.name });
-    signal?.throwIfAborted();
-    try {
-      const raw = await connection.client.callTool(
-        { name: definition.name, arguments: input },
-        {
-          ...this.connections.requestOptions(physical, signal),
-          ...(signal ? { signal } : {}),
-          onprogress: onUpdate
-            ? (progress) => {
-                onUpdate({
-                  kind: 'progress',
-                  progress: progress.progress,
-                  ...(progress.total !== undefined ? { total: progress.total } : {}),
-                  ...(progress.message ? { message: progress.message } : {}),
-                });
-              }
-            : undefined,
-        },
-      );
-      return await mapCallResult(this.deps.mapping, raw, {
+      return mapCallResult(this.deps.mapping, raw, {
         serverId,
         tool: definition.name,
         taskId: op.taskId,
       });
-    } catch (error) {
-      if (signal?.aborted) throw error;
-      throw this.translateCallError(serverId, error);
+    });
+  }
+
+  /** The tools the server lists now; a server without the tools capability lists none. */
+  private liveTools(connection: McpLiveConnection, signal?: AbortSignal): Promise<Tool[]> {
+    if (!connection.capabilities.tools) return Promise.resolve([]);
+    return connection.use((client) => client.listTools({ signal }));
+  }
+
+  private livePrompts(connection: McpLiveConnection, signal?: AbortSignal): Promise<RawPrompt[]> {
+    if (!connection.capabilities.prompts) return Promise.resolve([]);
+    return connection.use((client) => listAllPrompts(client, { signal }));
+  }
+
+  /**
+   * The server policy's say on one call: tools it does not guard run; a guarded one runs when
+   * the task tier preapproves it, else the user confirms it (a decline throws `forbidden`).
+   */
+  private async approve(
+    op: OperationContext,
+    record: McpServerConfig,
+    toolName: string,
+    input: Record<string, unknown>,
+    signal?: AbortSignal,
+  ): Promise<void> {
+    const serverId = record.serverId;
+    if (!McpApprovalBroker.approvalRequired(record.approveTools, toolName)) {
+      this.deps.audit({
+        ...this.base(op),
+        server: serverId,
+        tool: toolName,
+        decision: 'policy-allow',
+      });
+      return;
+    }
+    // The preapproval audits its own decision; a refused one hands its review to the confirm.
+    const preapproval = await op.preapprove?.(signal);
+    if (preapproval?.allowed) return;
+    const decision = await this.deps.approvals.decide(
+      {
+        taskId: op.taskId,
+        runId: op.runId,
+        executionId: op.executionId,
+        toolCallId: op.toolCallId ?? randomUUID(),
+        serverId,
+        connectionId: record.connectionId,
+        toolName,
+        origin: 'facade',
+        args: input,
+        ...(preapproval?.review ? { review: preapproval.review } : {}),
+      },
+      signal,
+    );
+    if (decision === 'deny') {
+      throw new McpError(
+        'forbidden',
+        serverId,
+        `The user declined MCP tool ${toolName} on ${serverId}.`,
+      );
     }
   }
 
-  private translateCallError(serverId: string, error: unknown): McpError {
-    if (error instanceof McpError) return error;
-    if (isUnauthorized(error)) {
-      this.deps.states.set(serverId, 'auth_required', '');
-      return new McpError(
-        'auth_required',
-        serverId,
-        `MCP server ${serverId} needs authentication.`,
-      );
+  /**
+   * Opens the operation's connection and translates what fails on it into `McpError`s. A caller
+   * that hung up gets its own abort back.
+   */
+  private async operation<T>(
+    target: OperationTarget,
+    work: (session: OperationSession) => Promise<T>,
+  ): Promise<T> {
+    const { op } = target;
+    const pin = (record: McpServerConfig) => {
+      if (op) this.policy.checkRevision(record, op);
+    };
+    try {
+      return await work(await OperationSession.open(this.connections, this.deps.log, target, pin));
+    } catch (error) {
+      if (target.signal?.aborted) throw error;
+      throw translateCallError(this.deps.states, target.serverId, error);
     }
-    if (isForbidden(error)) {
-      // 403 scope step-up is an explicit reauth, never a silent replay.
-      this.deps.states.set(serverId, 'auth_required', '');
-      return new McpError(
-        'auth_required',
-        serverId,
-        `MCP server ${serverId} refused the credential (reauthentication required).`,
-      );
-    }
-    if (error instanceof Error && error.name === 'AbortError') {
-      return new McpError('internal', serverId, 'The MCP call was cancelled.');
-    }
-    return new McpError('internal', serverId, errorMessage(error));
   }
 
   private base(op: OperationContext): Record<string, unknown> {
@@ -325,15 +302,11 @@ export class McpFacade {
   }
 }
 
-function toToolRef(record: McpServerConfig, tool: AdapterToolDef): McpToolRef {
+function update(progress: ProgressNotification): McpUpdate {
   return {
-    serverId: record.serverId,
-    connectionId: record.connectionId,
-    name: tool.name,
-    title: typeof tool.title === 'string' ? tool.title : null,
-    description: typeof tool.description === 'string' ? tool.description : null,
-    inputSchema: tool.inputSchema ?? null,
-    outputSchema: tool.outputSchema ?? null,
-    meta: tool._meta ?? null,
+    kind: 'progress',
+    progress: progress.progress,
+    ...(progress.total !== undefined ? { total: progress.total } : {}),
+    ...(progress.message ? { message: progress.message } : {}),
   };
 }

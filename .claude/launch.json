@@ -8,9 +8,9 @@
       "port": 3000
     },
     {
-      "name": "web",
+      "name": "renderer",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["run", "dev:web"],
+      "runtimeArgs": ["run", "dev:renderer"],
       "port": 5173
     }
   ]

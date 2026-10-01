@@ -1,7 +1,7 @@
 import { FoldVertical, Layers } from 'lucide-react';
 import type { TFunction } from 'i18next';
 import { rankByQuery } from '@ai/ui/lib/fuzzy-match';
-import type { Connection, ModelReference } from '../../../electron/providers/schema';
+import type { Connection, ModelReference } from '../../client/providers/schema';
 import {
   MAX_COMPACT_INSTRUCTIONS,
   type CompactBlock,

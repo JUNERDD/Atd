@@ -3,17 +3,19 @@
   "private": true,
   "scripts": {
     "prepare": "git config core.hooksPath .githooks || exit 0",
-    "dev": "turbo run dev --filter=@ai/desktop --filter=@ai/agent-service",
-    "dev:web": "turbo run dev:web --filter=@ai/desktop",
+    "dev": "node scripts/dev-guard.mjs && turbo run dev dev:renderer --filter=@ai/agent-service --filter=@ai/desktop --filter=@ai/macos",
+    "dev:headless": "node scripts/dev-guard.mjs && turbo run dev dev:renderer --filter=@ai/agent-service --filter=@ai/desktop",
+    "dev:renderer": "turbo run dev:renderer --filter=@ai/desktop",
     "build": "turbo run build",
     "typecheck": "turbo run typecheck",
     "lint": "turbo run lint",
     "test": "turbo run test",
-    "test:electron": "pnpm build && pnpm --filter @ai/desktop test:electron",
     "format": "oxfmt .",
     "format:check": "oxfmt --check .",
-    "check": "pnpm format:check && turbo run lint typecheck test build",
-    "package": "pnpm build && pnpm --filter @ai/desktop package"
+    "check": "pnpm format:check && turbo run lint typecheck test build --filter=!@ai/macos && node scripts/on-macos.mjs pnpm check:macos",
+    "check:macos": "pnpm check:swift && pnpm check:rust",
+    "check:swift": "turbo run codegen:check format:check lint test build --filter=@ai/macos",
+    "check:rust": "node scripts/check-rust-file-length.mjs && cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test"
   },
   "devDependencies": {
     "@shadcn/lint": "0.2.0",

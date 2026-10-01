@@ -44,9 +44,12 @@ export function PluginItemTabs({
         if (tab) setChosen(tab[0]);
       }}
     >
+      {/* Scrolls sideways when the tabs outgrow a narrow page. `overflow-x` alone makes the y axis
+          scroll too, and each trigger's hidden underline (`::after`, 5px below it) would then
+          give the list a vertical scrollbar; the focus ring stays within the list's padding. */}
       <TabsList
         aria-label={t('extensions.plugins.page.kindsLabel')}
-        className="max-w-full justify-start overflow-x-auto"
+        className="max-w-full justify-start overflow-x-auto overflow-y-hidden"
       >
         {tabs.map(([kind, count]) => (
           <TabsTrigger key={kind} value={kind} className="flex-none px-2.5">

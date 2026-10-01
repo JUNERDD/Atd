@@ -1,12 +1,17 @@
 import { vi } from 'vitest';
 import { DEFAULT_SHORTCUTS } from '@ai/agent-contracts';
-import type { SettingsSnapshot } from '../electron/settings-contract';
-import type { AgentBridge, AgentEvent, AgentSnapshot, TaskDetail } from '../electron/agent/bridge';
-import { initialCommands } from '../electron/agent/command-templates';
-import { emptyInput, type RunStatus } from '../electron/agent/task-schema';
-import type { PermissionRequest } from '../electron/agent/permission-schema';
-import type { QueueState } from '../electron/agent/transcript-schema';
-import type { ModelThinkingLevel } from '../electron/providers/schema';
+import type { SettingsSnapshot } from '../src/client/settings-contract';
+import type {
+  AgentBridge,
+  AgentEvent,
+  AgentSnapshot,
+  TaskDetail,
+} from '../src/client/agent/bridge';
+import { initialCommands } from '../src/client/agent/command-templates';
+import { emptyInput, type RunStatus } from '../src/client/agent/task-schema';
+import type { PermissionRequest } from '../src/client/agent/permission-schema';
+import type { QueueState } from '../src/client/agent/transcript-schema';
+import type { ModelThinkingLevel } from '../src/client/providers/schema';
 
 /** Desktop bridge used by `App.test.tsx`; keep the TaskDetail shape aligned with the frozen contract. */
 export function installBridge(extras?: {
@@ -149,14 +154,15 @@ export function installBridge(extras?: {
     renameTask: vi.fn(async () => {}),
     deleteTask: vi.fn(async () => {}),
     compactTask: vi.fn(async () => null),
+    forkTask: vi.fn(async () => ({ taskId: 'test-fork' })),
     chooseFiles: vi.fn(async () => []),
+    saveMarkdown: vi.fn(async () => true),
     artifact: vi.fn(async () => null),
     copy: vi.fn(async () => {}),
     openLink: vi.fn(async () => {}),
     memory: vi.fn(async () => ({ entries: [], paused: false, error: '' })),
     pauseMemory: vi.fn(async (paused) => ({ entries: [], paused, error: '' })),
     updateMemory: vi.fn(async () => ({ entries: [], paused: false, error: '' })),
-    importLegacy: vi.fn(async () => {}),
     childTranscript: vi.fn(async (taskId, childKey) => ({
       taskId,
       childKey,
@@ -189,7 +195,6 @@ export function installBridge(extras?: {
   const open = vi.fn(async () => {});
   const openCommand = vi.fn(async (_commandId: string) => {});
   window.desktop = {
-    runtime: 'electron',
     platform: 'darwin',
     agent: api,
     getState: vi.fn(async () => ({

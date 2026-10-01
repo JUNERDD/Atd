@@ -1,20 +1,64 @@
-import type { AdapterInternals, AdapterToolDef } from './adapter-types.js';
-import type { ConnectionManager } from './connect.js';
+import { errorMessage, type McpServerConfig } from '@ai/agent-contracts';
+import { validateToolArguments, type JsonObject, type JsonValue } from '@earendil-works/pi-ai';
+import type { ResourceTemplate, Tool } from '@earendil-works/pi-mcp';
+import { Type } from 'typebox';
 import { McpError, type OperationContext } from './errors.js';
 import { matchToolPattern, matchUriTemplate } from './servers.js';
-import type { McpServerConfig } from '@ai/agent-contracts';
+import type { McpLiveConnection } from './types.js';
 
 /**
- * Per-connection/tool/URI authorization plus input validation. The adapter
- * stays authoritative for gateway filtering; the facade pre-checks every
- * direct Client call here so nothing reaches the wire unauthorized or
- * malformed. Schemas validate through the adapter's own JSON validator.
+ * Per-connection/tool/URI authorization plus input validation. The facade checks every client
+ * call here first, so nothing reaches the wire unauthorized or malformed. Arguments are
+ * validated by pi-ai, the validator pi's agent loop runs on every proxy call, so a direct call
+ * and a proxy call agree on what is valid and how loosely typed values are coerced.
  */
 
 export interface PolicyDeps {
-  internals: AdapterInternals;
-  connections: ConnectionManager;
   audit: (entry: Record<string, unknown>) => void;
+}
+
+/** Longest list of argument failures a `bad_request` message carries. */
+const MAX_FAILURE_TEXT = 1000;
+
+/**
+ * The schema tool arguments are validated against and models see: the server's input schema
+ * without its top-level `$schema` and `additionalProperties`, or `{ type: 'object', properties:
+ * {} }` for anything that is not an object. This is the rule of pi-mcp-adapter's
+ * `normalizeDirectToolInputSchema`, which proxies used before the migration; keeping it exactly
+ * keeps the parameters of every proxy byte-identical.
+ */
+export function normalizeInputSchema(schema: unknown): Record<string, unknown> {
+  const normalized: Record<string, unknown> =
+    typeof schema === 'object' && schema !== null && !Array.isArray(schema)
+      ? { ...schema }
+      : { type: 'object', properties: {} };
+  delete normalized['$schema'];
+  delete normalized['additionalProperties'];
+  return normalized;
+}
+
+/** Whether `value` is plain data JSON can carry: what pi-ai's `JsonObject` promises. */
+export function isJsonObject(value: unknown): value is JsonObject {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
+  const prototype: unknown = Object.getPrototypeOf(value);
+  if (prototype !== Object.prototype && prototype !== null) return false;
+  return Object.values(value).every(isJsonValue);
+}
+
+function isJsonValue(value: unknown): value is JsonValue {
+  switch (typeof value) {
+    case 'string':
+    case 'boolean':
+      return true;
+    case 'number':
+      return Number.isFinite(value);
+    case 'object':
+      return (
+        value === null || (Array.isArray(value) ? value.every(isJsonValue) : isJsonObject(value))
+      );
+    default:
+      return false;
+  }
 }
 
 export class McpPolicy {
@@ -30,7 +74,7 @@ export class McpPolicy {
     }
   }
 
-  authorizeTool(record: McpServerConfig, catalog: AdapterToolDef[], tool: string): AdapterToolDef {
+  authorizeTool(record: McpServerConfig, catalog: readonly Tool[], tool: string): Tool {
     const definition = catalog.find((entry) => entry.name === tool);
     if (!definition) {
       this.deps.audit({
@@ -64,9 +108,14 @@ export class McpPolicy {
     return definition;
   }
 
+  /**
+   * A URI is readable when the connection lists it or a listed template matches it. A server
+   * without the resources capability lists nothing, and templates are optional: a server that
+   * cannot list them has none.
+   */
   async authorizeUri(
     record: McpServerConfig,
-    physical: string,
+    connection: McpLiveConnection,
     uri: string,
     signal?: AbortSignal,
   ): Promise<void> {
@@ -77,29 +126,16 @@ export class McpPolicy {
         `Resources are not exposed on ${record.serverId}.`,
       );
     }
-    const connection = this.deps.connections.manager().getConnection(physical);
-    if (!connection || connection.status !== 'connected') {
-      throw new McpError(
-        'auth_required',
-        record.serverId,
-        `MCP server ${record.serverId} is not connected.`,
-      );
-    }
-    const [resources, templates] = await Promise.all([
-      connection.client.listResources(
-        undefined,
-        this.deps.connections.requestOptions(physical, signal),
-      ),
-      connection.client
-        .listResourceTemplates(undefined, this.deps.connections.requestOptions(physical, signal))
-        .catch((): { resourceTemplates: Array<{ uriTemplate: string }> } => ({
-          resourceTemplates: [],
-        })),
-    ]);
-    const exact = resources.resources.some((resource) => resource.uri === uri);
-    const templated = templates.resourceTemplates.some((template) =>
-      matchUriTemplate(template.uriTemplate, uri),
-    );
+    const [resources, templates] = connection.capabilities.resources
+      ? await connection.use((client) =>
+          Promise.all([
+            client.listResources({ signal }),
+            client.listResourceTemplates({ signal }).catch((): ResourceTemplate[] => []),
+          ]),
+        )
+      : [[], []];
+    const exact = resources.some((resource) => resource.uri === uri);
+    const templated = templates.some((template) => matchUriTemplate(template.uriTemplate, uri));
     if (!exact && !templated) {
       throw new McpError(
         'forbidden',
@@ -109,7 +145,11 @@ export class McpPolicy {
     }
   }
 
-  authorizePrompt(catalog: Array<{ name: string }>, record: McpServerConfig, name: string): void {
+  authorizePrompt(
+    catalog: ReadonlyArray<{ name: string }>,
+    record: McpServerConfig,
+    name: string,
+  ): void {
     if (!catalog.some((prompt) => prompt.name === name)) {
       throw new McpError(
         'forbidden',
@@ -119,37 +159,54 @@ export class McpPolicy {
     }
   }
 
+  /**
+   * Validates `input` against the tool's normalized input schema and answers the arguments to
+   * send: pi-ai's copy, with loosely typed values coerced (`"5"` for an integer) and nulls
+   * dropped from optional properties. The caller approves and sends this copy, never `input`.
+   */
   validateToolInput(
     record: McpServerConfig,
-    definition: AdapterToolDef,
+    definition: Tool,
     input: Record<string, unknown>,
-  ): void {
-    const schema = definition.inputSchema;
-    if (!schema || typeof schema !== 'object') return;
-    let normalized: Record<string, unknown> = schema as Record<string, unknown>;
-    try {
-      normalized = this.deps.internals.normalizeDirectToolInputSchema?.(schema) ?? normalized;
-    } catch {
-      normalized = schema as Record<string, unknown>;
+  ): Record<string, unknown> {
+    const name = definition.name;
+    if (!isJsonObject(input)) {
+      throw new McpError('bad_request', record.serverId, `Tool ${name} arguments must be JSON.`);
     }
+    const parameters = Type.Unsafe<Record<string, unknown>>(
+      normalizeInputSchema(definition.inputSchema),
+    );
+    let checked: unknown;
     try {
-      const provider = this.deps.internals.createJsonSchemaValidator();
-      const validate = provider.getValidator(normalized);
-      const outcome = validate(input);
-      if (!outcome.valid) {
-        throw new McpError(
-          'bad_request',
-          record.serverId,
-          `Tool ${definition.name} arguments are invalid: ${outcome.errorMessage ?? 'schema mismatch'}.`,
-        );
-      }
+      checked = validateToolArguments(
+        { name, description: '', parameters },
+        { type: 'toolCall', id: '', name, arguments: input },
+      );
     } catch (error) {
-      if (error instanceof McpError) throw error;
+      throw new McpError('bad_request', record.serverId, argumentProblem(name, error));
+    }
+    if (!isJsonObject(checked)) {
       throw new McpError(
         'bad_request',
         record.serverId,
-        `Tool ${definition.name} arguments could not be validated.`,
+        `Tool ${name} arguments could not be validated.`,
       );
     }
+    return checked;
   }
+}
+
+/**
+ * The message of a failed validation. pi-ai lists each failure as `  - <path>: <message>`
+ * between a heading and the arguments it echoes; only the failures go on, capped. A schema
+ * that could not even be compiled has none, and says so.
+ */
+function argumentProblem(name: string, error: unknown): string {
+  const report = errorMessage(error).split('\n\nReceived arguments:')[0] ?? '';
+  const failures = report
+    .split('\n')
+    .filter((line) => line.startsWith('  - '))
+    .map((line) => line.slice(4));
+  if (failures.length === 0) return `Tool ${name} arguments could not be validated.`;
+  return `Tool ${name} arguments are invalid: ${failures.join('; ').slice(0, MAX_FAILURE_TEXT)}.`;
 }

@@ -1,4 +1,4 @@
-import type { RunPolicy } from '../../../electron/agent/run-policy';
+import type { RunPolicy } from '../../client/agent/run-policy';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Brain, FileText, Shield, X } from 'lucide-react';
@@ -6,8 +6,8 @@ import { Button } from '@ai/ui/components/button';
 import { Label } from '@ai/ui/components/label';
 import { Textarea } from '@ai/ui/components/textarea';
 import { ScrollArea } from '@ai/ui/components/scroll-area';
-import type { PreparedCommand } from '../../../electron/agent/bridge';
-import type { TaskInput } from '../../../electron/agent/task-schema';
+import type { PreparedCommand } from '../../client/agent/bridge';
+import type { TaskInput } from '../../client/agent/task-schema';
 import { ParameterField } from '../commands/parameter-field';
 import { agentApi } from './use-agent';
 import { showErrorToast } from '../../components/toast-store';
@@ -48,7 +48,12 @@ export function CommandInput({
   }
   return (
     <>
-      <ScrollArea className="panel-content" viewportClassName="overlay-footer-fade" gutter="none">
+      <ScrollArea
+        className="panel-content"
+        viewportClassName="overlay-footer-fade"
+        gutter="none"
+        scrollShadow
+      >
         <section className="panel-content-body command-preparation" aria-label={t('input.label')}>
           <p className="truncate text-sm text-muted-foreground" title={command.description}>
             {command.description}
@@ -174,7 +179,7 @@ export function CommandInput({
       </ScrollArea>
       <footer ref={footerRef} className="command-run-footer overlay-footer">
         <div className="command-run-actions">
-          <Button variant="outline" onClick={onOpenSettings}>
+          <Button variant="glass" onClick={onOpenSettings}>
             {t('input.commandSettings')}
           </Button>
           <Button disabled={pending} onClick={() => void run()}>

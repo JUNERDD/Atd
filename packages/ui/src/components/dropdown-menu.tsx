@@ -40,8 +40,7 @@ function DropdownMenuContent({
         align={align}
         collisionPadding={collisionPadding}
         className={cn(
-          'z-50 max-h-(--radix-dropdown-menu-content-available-height) w-max min-w-[min(8rem,var(--radix-dropdown-menu-content-available-width))] max-w-(--radix-dropdown-menu-content-available-width) origin-(--radix-dropdown-menu-content-transform-origin) overflow-hidden rounded-2xl bg-popover p-1 wrap-anywhere text-popover-foreground shadow-lg ring-1 ring-foreground/5 duration-100 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-[state=closed]:overflow-hidden dark:ring-foreground/10 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95',
-          'backdrop-blur-(--ata-backdrop-blur) [-webkit-app-region:no-drag]',
+          'z-50 max-h-(--radix-dropdown-menu-content-available-height) w-max min-w-[min(8rem,var(--radix-dropdown-menu-content-available-width))] max-w-(--radix-dropdown-menu-content-available-width) origin-(--radix-dropdown-menu-content-transform-origin) overflow-hidden rounded-2xl surface-glass p-1 wrap-anywhere text-popover-foreground duration-100 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-[state=closed]:overflow-hidden data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95',
           className,
         )}
         {...props}
@@ -50,6 +49,7 @@ function DropdownMenuContent({
         <ScrollArea
           className="max-h-[calc(var(--radix-dropdown-menu-content-available-height)-8px)]"
           viewportClassName="max-h-[inherit]"
+          gutter="none"
         >
           {children}
         </ScrollArea>
@@ -237,8 +237,7 @@ function DropdownMenuSubContent({
     <DropdownMenuPrimitive.SubContent
       data-slot="dropdown-menu-sub-content"
       className={cn(
-        'z-50 w-max min-w-[min(8rem,var(--radix-dropdown-menu-content-available-width))] max-w-(--radix-dropdown-menu-content-available-width) origin-(--radix-dropdown-menu-content-transform-origin) overflow-hidden rounded-2xl bg-popover p-1 wrap-anywhere text-popover-foreground shadow-lg ring-1 ring-foreground/5 duration-100 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 dark:ring-foreground/10 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95',
-        'backdrop-blur-(--ata-backdrop-blur) [-webkit-app-region:no-drag]',
+        'z-50 w-max min-w-[min(8rem,var(--radix-dropdown-menu-content-available-width))] max-w-(--radix-dropdown-menu-content-available-width) origin-(--radix-dropdown-menu-content-transform-origin) overflow-hidden rounded-2xl surface-glass p-1 wrap-anywhere text-popover-foreground duration-100 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95',
         className,
       )}
       collisionPadding={collisionPadding}
@@ -248,6 +247,7 @@ function DropdownMenuSubContent({
       <ScrollArea
         className="max-h-[calc(var(--radix-dropdown-menu-content-available-height)-8px)]"
         viewportClassName="max-h-[inherit]"
+        gutter="none"
       >
         {children}
       </ScrollArea>

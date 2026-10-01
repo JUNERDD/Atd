@@ -1,4 +1,4 @@
-import type { Block } from '../../../../electron/agent/transcript-schema';
+import type { Block } from '../../../client/agent/transcript-schema';
 
 /**
  * Turn rate, two faces. Settled turns show the provider true output total over worker-measured

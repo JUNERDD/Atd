@@ -1,0 +1,51 @@
+/* @block empty-state | requires: — | layer: components | native: SwiftUI ContentUnavailableView; UIKit UIContentUnavailableConfiguration | empty, no-results or offline placeholder: symbol, title, one-line explanation, optional action */
+/* Markup. Say why it's empty and what to do next; never a blank screen or a disabled tab (FB-5):
+     <div class="empty-state">
+       <svg class="empty-state__symbol" aria-hidden="true" viewBox="0 0 24 24">…</svg>
+       <h2 class="empty-state__title">No Results for “kiwi”</h2>
+       <p class="empty-state__description">Check the spelling or try a new search.</p>
+       <div class="empty-state__actions"><button class="btn-bordered" type="button">Clear Filters</button></div>
+     </div>
+   Loading instead of empty? Show placeholders or an .activity-indicator with a specific label (FB-7). */
+
+.empty-state {
+  display: flex;
+  flex: 1 0 auto;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-block-size: min(50dvh, 22rem);
+  padding: var(--space-10) var(--margin-page);
+  color: var(--label);
+  text-align: center;
+}
+.empty-state__symbol {
+  flex: none;
+  inline-size: 3.25rem;
+  block-size: 3.25rem;
+  margin-block-end: var(--space-2);
+  color: var(--secondary-label);
+}
+.empty-state__title {
+  max-inline-size: 22rem;
+  margin: 0;
+  font: 700 var(--fs-title2)/var(--lh-title2) var(--ff-sans);
+  letter-spacing: calc(var(--tr-title2) * var(--tracking-scale));
+  text-wrap: balance;
+}
+.empty-state__description {
+  max-inline-size: 22rem;
+  margin: 0;
+  color: var(--secondary-label);
+  font: 400 var(--fs-subheadline)/var(--lh-subheadline) var(--ff-sans);
+  letter-spacing: calc(var(--tr-subheadline) * var(--tracking-scale));
+  text-wrap: pretty;
+}
+.empty-state__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-3);
+  margin-block-start: var(--space-3);
+}

@@ -13,10 +13,34 @@
   /* One renderer-owned surface across platforms; native blur remains visible through the tint. */
   --ata-surface-panel: rgb(12 12 12 / 80%);
   --ata-backdrop-blur: 20px;
-  /* Same tint as the sidebar; this inset layer raises effective opacity only to 82%. */
+  /* Overlay glass (`surface-glass`). A surface may tune `--ata-glass-fill` (default: the popover
+     fill), `--ata-glass-blur` (default: the shared backdrop blur) and `--ata-glass-shadow` for its
+     fallback material, and `--ata-glass-material` for WebKit's system material (default
+     `-apple-system-glass-material`; a quieter surface may take `-apple-system-glass-material-subdued`).
+     An inactive window turns glass into the dimmed fill; reduced transparency into the opaque one. */
+  --ata-glass-edge: color-mix(in srgb, var(--foreground) 10%, transparent);
+  --ata-glass-shadow-default:
+    0 10px 15px -3px rgb(0 0 0 / 10%), 0 4px 6px -4px rgb(0 0 0 / 10%),
+    0 0 0 1px var(--ata-glass-edge);
+  --ata-glass-fill-inactive: rgb(30 30 30 / 96%);
+  --ata-glass-fill-opaque: rgb(24 24 24);
+  /* Glass controls (`glass-control`, `glass-state`): the fallback fill and shadow of control-sized
+     glass, and the washes a control draws inside its bounds on hover, and when pressed or open. */
+  --ata-glass-control-fill: color-mix(in oklch, var(--secondary) 72%, transparent);
+  --ata-glass-control-shadow: 0 1px 2px rgb(0 0 0 / 18%), 0 0 0 1px var(--ata-glass-edge);
+  --ata-glass-control-wash: color-mix(in srgb, var(--foreground) 10%, transparent);
+  --ata-glass-control-wash-strong: color-mix(in srgb, var(--foreground) 16%, transparent);
+  /* The settings drawer's fallback fill, where its subdued system glass is off. */
   --ata-material-settings-content: rgb(12 12 12 / 10%);
   --ata-surface-settings-content: var(--ata-material-settings-content);
+  /* The settings sidebar card: a faint lift over the window surface, with a quiet hairline. */
+  --ata-surface-settings-sidebar: rgb(255 255 255 / 3%);
+  --ata-border-settings-sidebar: rgb(255 255 255 / 6%);
   --ata-material-selected: rgb(255 255 255 / 12%);
+  /* Drawn text selection in the CodeMirror editors, matching the native one elsewhere on the page:
+     WebKit paints that from the system highlight at 80% opacity, which follows the accent colour
+     and the page's dark appearance. */
+  --ata-text-selection: color-mix(in srgb, Highlight 80%, transparent);
   --ata-surface-ghost-hover: rgb(255 255 255 / 10%);
   --ata-text-secondary: #a1a1a1;
   --ata-syntax-variable: #60a5fa;
@@ -101,6 +125,18 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
+/* Reduced transparency: the panel surface (and the popover fill that follows it) turns opaque. The
+   shell reports the setting as `data-reduced-transparency` (`window-state.ts`), since WebKit has no
+   `prefers-reduced-transparency`; the media query covers engines that do. */
+@media (prefers-reduced-transparency: reduce) {
+  :root {
+    --ata-surface-panel: rgb(12 12 12);
+  }
+}
+:root[data-reduced-transparency='true'] {
+  --ata-surface-panel: rgb(12 12 12);
+}
+
 @theme inline {
   --font-sans: 'Inter Variable', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-heading: var(--font-sans);
@@ -163,6 +199,127 @@
   }
   button:disabled {
     cursor: default;
+  }
+}
+
+/*
+ * The one glass material for overlay surfaces (menus, selects, popovers, dialogs, sheets, floating
+ * pills); nothing else writes these properties. WebKit's system glass applies where the page may
+ * use it; otherwise, as in a WKWebView without WebKit's private preference, a translucent fill
+ * over a backdrop blur. An inactive window (`data-window-active="false"` on the root) and reduced
+ * transparency drop the blur for a flat fill. The surface keeps this one fill and one shadow:
+ * consumers tune the tokens above rather than setting a background or box-shadow of their own.
+ *
+ * WebKit fills the glass element's whole composited layer, which grows by every outset shadow,
+ * ring and outline on it (RenderBox::applyVisualEffectOverflow), so an outer shadow drew a second,
+ * larger glass frame around the surface. System glass therefore takes only an inset edge; the
+ * drop shadow and outer ring return wherever the glass is off.
+ *
+ * System glass also hosts the element's child layers inside the material's SwiftUI layer
+ * (WebKit's WKMaterialHostingSupport). When the last of them leaves while the surface stays open,
+ * as a scroll area's layers do once its content fits, it keeps drawing its last contents at the
+ * surface's new geometry and fades out over about 200ms: old rows linger over whatever the
+ * shrunken surface uncovered. A surface whose scrolling content can shrink while it is open keeps
+ * one persistent composited child instead (`will-change: transform` on the element that stays for
+ * as long as the surface does), named by the composition that owns the surface.
+ */
+@utility surface-glass {
+  /* On glass the neutral fills are a translucent wash, as glass controls use on hover: every item
+     highlight (menu, select and command options use `accent`, custom rows and ghost hovers use
+     `muted`) and every muted fill (keycaps, tabs) lets the material show through instead of
+     sitting on it as an opaque gray block. */
+  --accent: var(--ata-glass-control-wash);
+  --muted: var(--ata-glass-control-wash);
+  background-color: var(--ata-glass-fill, var(--popover));
+  backdrop-filter: blur(var(--ata-glass-blur, var(--ata-backdrop-blur)));
+  box-shadow: var(--ata-glass-shadow, var(--ata-glass-shadow-default));
+
+  @supports (-apple-visual-effect: -apple-system-glass-material) {
+    background-color: transparent;
+    backdrop-filter: none;
+    box-shadow: inset 0 0 0 1px var(--ata-glass-edge);
+    -apple-visual-effect: var(--ata-glass-material, -apple-system-glass-material);
+  }
+
+  :root[data-window-active='false'] & {
+    background-color: var(--ata-glass-fill-inactive);
+    backdrop-filter: none;
+    box-shadow: var(--ata-glass-shadow, var(--ata-glass-shadow-default));
+    -apple-visual-effect: none;
+  }
+
+  @media (prefers-reduced-transparency: reduce) {
+    &,
+    :root[data-window-active='false'] & {
+      background-color: var(--ata-glass-fill-opaque);
+      backdrop-filter: none;
+      box-shadow: var(--ata-glass-shadow, var(--ata-glass-shadow-default));
+      -apple-visual-effect: none;
+    }
+  }
+
+  /* The shell's report of the same setting (see the reduced-transparency tokens above); it follows
+     the inactive-window rule, which has the same specificity, so it wins in both states. */
+  :root[data-reduced-transparency='true'] & {
+    background-color: var(--ata-glass-fill-opaque);
+    backdrop-filter: none;
+    box-shadow: var(--ata-glass-shadow, var(--ata-glass-shadow-default));
+    -apple-visual-effect: none;
+  }
+}
+
+/*
+ * Glass controls: the task panel's buttons, composer field and floating capsules, after iOS 26 and
+ * Raycast's glass pills. A control keeps the one material above and only tunes it: `surface-glass
+ * glass-control` gives it the control-sized fallback fill and shadow, and clips its content so
+ * nothing inside can widen the glass layer. The shared `Button` owns the pressable forms:
+ * `variant="glass"` is a control with its own glass; `variant="glass-ghost"` sits flush inside
+ * another glass surface without glass of its own, so glass never stacks.
+ */
+@utility glass-control {
+  --ata-glass-fill: var(--ata-glass-control-fill);
+  --ata-glass-shadow: var(--ata-glass-control-shadow);
+  overflow: clip;
+}
+
+/*
+ * The states of a pressable glass control, drawn inside its own border box: system glass ignores
+ * background-color, and an outset ring would grow the glass layer (see `surface-glass`). A layer
+ * under the content carries the hover wash, the stronger wash for pressed, expanded and active,
+ * and the focus-visible ring, which mirrors the shared focus ring inward: a 1px line in the ring
+ * color at the edge (where the glass edge is; the control has no border) and a 3px band at 30%
+ * just inside it.
+ */
+@utility glass-state {
+  position: relative;
+  isolation: isolate;
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    pointer-events: none;
+    transition:
+      background-color 150ms ease-out,
+      box-shadow 150ms ease-out;
+  }
+
+  &:hover::before {
+    background-color: var(--ata-glass-control-wash);
+  }
+
+  &:active::before,
+  &[aria-expanded='true']::before,
+  &[aria-pressed='true']::before {
+    background-color: var(--ata-glass-control-wash-strong);
+  }
+
+  &:focus-visible::before {
+    box-shadow:
+      inset 0 0 0 1px var(--ring),
+      inset 0 0 0 4px color-mix(in oklab, var(--ring) 30%, transparent);
   }
 }
 

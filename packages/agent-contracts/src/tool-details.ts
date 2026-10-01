@@ -1,4 +1,5 @@
 import { Type, type Static } from 'typebox';
+import { McpServerIdSchema } from './mcp.js';
 
 /**
  * Structured, renderable facts of one tool result (`ServiceBlock` tool `details`). The service
@@ -174,11 +175,27 @@ export const SubagentDetailsSchema = Type.Object(
 );
 export type SubagentDetails = Static<typeof SubagentDetailsSchema>;
 
+/**
+ * A `configure_mcp` call that saved a server which cannot launch until the user approves it. The
+ * approval it names is the one at the call; the desktop reads the server's current approval to
+ * render the banner that asks for it, so a later approval or removal shows without a new call.
+ */
+export const McpApprovalDetailsSchema = Type.Object(
+  {
+    type: Type.Literal('mcpApproval'),
+    serverId: McpServerIdSchema,
+    approval: Type.Union([Type.Literal('required'), Type.Literal('changed')]),
+  },
+  { additionalProperties: false },
+);
+export type McpApprovalDetails = Static<typeof McpApprovalDetailsSchema>;
+
 export const ToolBlockDetailsSchema = Type.Union([
   TodoDetailsSchema,
   EditDiffDetailsSchema,
   WebSearchDetailsSchema,
   WebFetchDetailsSchema,
   SubagentDetailsSchema,
+  McpApprovalDetailsSchema,
 ]);
 export type ToolBlockDetails = Static<typeof ToolBlockDetailsSchema>;

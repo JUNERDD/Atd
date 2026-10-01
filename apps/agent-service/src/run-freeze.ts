@@ -1,6 +1,6 @@
 import { errorMessage, type TaskRun } from '@ai/agent-contracts';
 import { readAgentHarness } from './atd-agents/harness.js';
-import { McpAdapterMissing, McpAuthority } from './mcp/index.js';
+import { McpAuthority } from './mcp/index.js';
 import { freezeRunMcp, releaseRunMcp } from './mcp/staging.js';
 import { inSnapshot, mapPluginComponents } from './plugins/components.js';
 import type { PluginAgent } from './plugins/map.js';
@@ -195,47 +195,36 @@ async function freezeSkills(
   return { toolCeiling: capabilities.tools, skills, catalog };
 }
 
-/** Freezes the run's MCP selection; answers the servers and selection, or null while degraded. */
-async function freezeMcp(deps: RunFreezeDeps, run: TaskRun): Promise<ReferenceContext['mcp']> {
+/** Freezes the run's MCP servers and its staged tool selection, if any. */
+async function freezeMcp(
+  deps: RunFreezeDeps,
+  run: TaskRun,
+): Promise<NonNullable<ReferenceContext['mcp']>> {
   // MCP run freeze: captures the authority snapshot revision once at accept.
   // Pi binds proxies from this revision; later config edits bump the live
-  // revision and apply next run. McpAdapterMissing degrades explicitly with
-  // audit + warning; the run continues without MCP (never silent, never
-  // fatal to skills).
+  // revision and apply next run.
   const { ctx } = deps;
-  try {
-    const serviceId = await readServiceId(ctx.paths);
-    const authority = await McpAuthority.authorityFor({
-      serviceId,
-      dataDir: ctx.paths.root,
-      agentDir: ctx.paths.agentDir,
-      sessionsDir: ctx.paths.sessionsDir,
-      cwd: ctx.paths.root,
-      events: ctx.events,
-      confirms: ctx.confirms,
-      resources: new ResourceStore(ctx.ledger, ctx.paths),
-      log: ctx.log,
-    });
-    const snapshot = authority.snapshot();
-    const staged = await freezeRunMcp(ctx.paths.root, deps.taskId, run.id);
-    deps.audit({
-      taskId: deps.taskId,
-      runId: run.id,
-      mcpRevision: snapshot.revision,
-      mcpServers: snapshot.servers.length,
-      mcpStaged: staged ? staged.tools.length : null,
-    });
-    return {
-      servers: await authority.runServers(run.id),
-      selected: staged ? staged.tools : null,
-    };
-  } catch (error) {
-    if (!(error instanceof McpAdapterMissing)) throw error;
-    ctx.log.warn('MCP freeze degraded: adapter is unavailable.', {
-      taskId: deps.taskId,
-      error: errorMessage(error),
-    });
-    deps.audit({ taskId: deps.taskId, runId: run.id, mcpRevision: null, mcpDegraded: true });
-    return null;
-  }
+  const serviceId = await readServiceId(ctx.paths);
+  const authority = await McpAuthority.authorityFor({
+    serviceId,
+    dataDir: ctx.paths.root,
+    cwd: ctx.paths.root,
+    events: ctx.events,
+    confirms: ctx.confirms,
+    resources: new ResourceStore(ctx.ledger, ctx.paths),
+    log: ctx.log,
+  });
+  const snapshot = authority.snapshot();
+  const staged = await freezeRunMcp(ctx.paths.root, deps.taskId, run.id);
+  deps.audit({
+    taskId: deps.taskId,
+    runId: run.id,
+    mcpRevision: snapshot.revision,
+    mcpServers: snapshot.servers.length,
+    mcpStaged: staged ? staged.tools.length : null,
+  });
+  return {
+    servers: await authority.runServers(run.id),
+    selected: staged ? staged.tools : null,
+  };
 }

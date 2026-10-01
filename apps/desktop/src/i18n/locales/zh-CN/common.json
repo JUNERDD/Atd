@@ -1,8 +1,12 @@
 {
   "close": "关闭",
+  "hostRequired": "此页面只能在 macOS 版 AI 应用中运行。",
   "toast": {
     "dismiss": "关闭",
     "dismissLabel": "关闭通知"
+  },
+  "shortcuts": {
+    "conflictHint": "如果按下快捷键后没有反应，可能是其他应用占用了相同的组合键，请换一个。"
   },
   "tools": {
     "read": {

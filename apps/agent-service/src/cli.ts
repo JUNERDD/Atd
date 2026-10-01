@@ -1,16 +1,15 @@
 #!/usr/bin/env node
 /**
  * Agent service CLI: foreground `serve`, plus `status` and `stop` against the
- * dataDir endpoint file. No Electron, no app.getPath, no utilityProcess.
+ * dataDir endpoint file.
  */
-import { spawn } from 'node:child_process';
 import path from 'node:path';
-import { errorMessage, parse, WebPairingResponseSchema } from '@ai/agent-contracts';
+import { errorMessage } from '@ai/agent-contracts';
+import { approveMcp } from './cli-approve.js';
 import { prepareServe, readEndpoint, readLocalToken, releaseLock } from './config.js';
 import { createService } from './index.js';
 import { createLogger } from './logging.js';
-import { rollbackMigration } from './migration/rollback.js';
-import { runMigration } from './migration/migrate.js';
+import { applyLoginShellPath } from './login-shell-path.js';
 import { assertSupportedNode, readServiceManifest } from './node-runtime.js';
 import { resolveDataDir } from './storage.js';
 
@@ -21,14 +20,8 @@ interface Flags {
   host?: string;
   port?: number;
   tier?: 'manual' | 'auto' | 'always';
-  source?: string;
-  dryRun?: boolean;
-  assumeQuiesced?: boolean;
-  rollback?: boolean;
-  reason?: string;
-  webRoot?: string;
-  base?: string;
-  open?: boolean;
+  loginShellPath?: boolean;
+  yes?: boolean;
 }
 
 function parseFlags(argv: string[]): Flags {
@@ -38,14 +31,8 @@ function parseFlags(argv: string[]): Flags {
     if (arg === '--dataDir' && argv[index + 1]) flags.dataDir = argv[(index += 1)];
     else if (arg === '--host' && argv[index + 1]) flags.host = argv[(index += 1)];
     else if (arg === '--port' && argv[index + 1]) flags.port = Number(argv[(index += 1)]);
-    else if (arg === '--source' && argv[index + 1]) flags.source = argv[(index += 1)];
-    else if (arg === '--reason' && argv[index + 1]) flags.reason = argv[(index += 1)];
-    else if (arg === '--web-root' && argv[index + 1]) flags.webRoot = argv[(index += 1)];
-    else if (arg === '--base' && argv[index + 1]) flags.base = argv[(index += 1)];
-    else if (arg === '--open') flags.open = true;
-    else if (arg === '--dry-run') flags.dryRun = true;
-    else if (arg === '--assume-quiesced') flags.assumeQuiesced = true;
-    else if (arg === '--rollback') flags.rollback = true;
+    else if (arg === '--login-shell-path') flags.loginShellPath = true;
+    else if (arg === '--yes') flags.yes = true;
     else if (arg === '--tier' && argv[index + 1]) {
       const tier = argv[(index += 1)];
       if (tier !== 'manual' && tier !== 'auto' && tier !== 'always')
@@ -63,19 +50,21 @@ function usage(): string {
     '',
     'Usage: node dist/cli.js <command> [flags]',
     '',
-    '  serve [--dataDir <dir>] [--host 127.0.0.1] [--port 0] [--tier manual] [--web-root <dir>]',
+    '  serve [--dataDir <dir>] [--host 127.0.0.1] [--port 0] [--tier manual] [--login-shell-path]',
     '  status [--dataDir <dir>]',
-    '  web [--dataDir <dir>] [--open] [--base <origin>]   Print a one-time browser pairing link',
     '  stop [--dataDir <dir>]',
-    '  migrate --source <desktopUserDataCopy> [--dataDir <dir>] [--dry-run] [--assume-quiesced]',
-    '  migrate --rollback --reason <text> [--dataDir <dir>]',
+    '  approve mcp <serverId> [--dataDir <dir>] [--yes]',
     '',
     '  --help, -h       Show this help',
     '  --version, -v    Print version and Node requirement',
     '',
-    `Requires Node.js ${engines} on PATH (workspace toolchain; covers Pi 0.87.1`,
-    '≥22.19.0). The Electron app binary is not Node.js; there is no auto-download.',
-    'AI_AGENT_DATA_DIR overrides --dataDir; AI_AGENT_WEB_ROOT overrides --web-root.',
+    `Requires Node.js ${engines} on PATH (workspace toolchain; covers Pi 0.99.1`,
+    '≥22.19.0); there is no auto-download.',
+    'AI_AGENT_DATA_DIR overrides --dataDir.',
+    'approve asks the running service what an MCP server would launch and approves it after a',
+    'y on the terminal; without a terminal it refuses unless --yes is given.',
+    '--login-shell-path makes serve adopt the login shell PATH before it starts',
+    '(for launchers with a minimal GUI PATH; off by default).',
     'Default host is loopback; --port 0',
     'lets the OS assign a port (never 5173). Runs without a saved provider',
     'connection use AI_AGENT_TEMP_API_KEY (+PROVIDER/MODEL/BASE_URL), never stored.',
@@ -93,12 +82,13 @@ async function serve(flags: Flags): Promise<void> {
     flags.host !== 'localhost'
   )
     throw new Error('Only loopback hosts are supported in T1.');
+  // Before anything reads PATH: MCP stdio servers, ripgrep and tool runs use process.env.PATH.
+  if (flags.loginShellPath) await applyLoginShellPath(log);
   const config = await prepareServe({
     envDir: process.env.AI_AGENT_DATA_DIR,
     flagDir: flags.dataDir,
     host: flags.host,
     port: flags.port,
-    webRoot: process.env.AI_AGENT_WEB_ROOT || flags.webRoot,
   });
   // SIGINT, SIGTERM and `POST /v1/admin/shutdown` all end here. The exit is
   // what ends the process once the service has stopped; nothing else would.
@@ -176,57 +166,6 @@ async function stop(flags: Flags): Promise<void> {
   process.stdout.write('Stop requested; endpoint cleared.\n');
 }
 
-/**
- * Mints a one-time pairing code with the local owner token and prints the link that signs a
- * browser in. `--base` points the link at another origin serving the web client (the Vite dev
- * server, which proxies `/v1` here); `--open` also opens it in the default browser.
- */
-async function web(flags: Flags): Promise<void> {
-  const dataDir = path.resolve(locate(flags));
-  const endpoint = await readEndpoint(dataDir);
-  if (!endpoint) throw new Error(`No endpoint metadata in ${dataDir}; is the service running?`);
-  const token = await readLocalToken(dataDir);
-  if (!token) throw new Error('Local service token is missing.');
-  const response = await fetch(`${endpoint.url}/v1/web/pairings`, {
-    method: 'POST',
-    headers: { authorization: `Bearer ${token}` },
-  });
-  if (!response.ok) throw new Error(`Pairing failed with HTTP ${response.status}.`);
-  const { code } = parse(WebPairingResponseSchema, await response.json());
-  const link = `${new URL(flags.base ?? endpoint.url).origin}/#pair=${code}`;
-  process.stdout.write(`${link}\n`);
-  if (!flags.open) return;
-  const [command, ...args] =
-    process.platform === 'darwin'
-      ? ['open', link]
-      : process.platform === 'win32'
-        ? ['cmd', '/c', 'start', '', link]
-        : ['xdg-open', link];
-  spawn(command!, args, { stdio: 'ignore', detached: true }).unref();
-}
-
-/** T2 additive: offline desktop-copy migration, dry-run, or rollback. */
-async function migrate(flags: Flags): Promise<void> {
-  const log = createLogger(process.env.AI_AGENT_LOG_LEVEL === 'debug' ? 'debug' : 'info');
-  const dataDir = path.resolve(locate(flags));
-  if (flags.rollback) {
-    if (!flags.reason) throw new Error('Rollback requires --reason <text>.');
-    const result = await rollbackMigration(dataDir, flags.reason);
-    process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
-    return;
-  }
-  if (!flags.source) throw new Error('Migration requires --source <desktopUserDataCopy>.');
-  const result = await runMigration({
-    dataDir,
-    sourceRoot: flags.source,
-    dryRun: flags.dryRun ?? false,
-    assumeQuiesced: flags.assumeQuiesced ?? false,
-    log,
-  });
-  process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
-  if (result.outcomes.some((outcome) => outcome.status === 'failed')) process.exitCode = 1;
-}
-
 async function main(): Promise<void> {
   const argv = process.argv.slice(2);
   if (argv.includes('--help') || argv.includes('-h') || argv[0] === 'help') {
@@ -241,6 +180,8 @@ async function main(): Promise<void> {
   const [command, ...rest] = argv;
   try {
     assertSupportedNode();
+    // `approve` takes two positionals before its flags: `approve mcp <serverId>`.
+    const positionals = command === 'approve' ? rest.splice(0, 2) : [];
     const flags = parseFlags(rest);
     switch (command) {
       case 'serve':
@@ -252,12 +193,12 @@ async function main(): Promise<void> {
       case 'stop':
         await stop(flags);
         break;
-      case 'web':
-        await web(flags);
+      case 'approve': {
+        const [kind, serverId] = positionals;
+        if (kind !== 'mcp' || !serverId) throw new Error('Usage: approve mcp <serverId>');
+        await approveMcp(path.resolve(locate(flags)), serverId, { yes: flags.yes ?? false });
         break;
-      case 'migrate':
-        await migrate(flags);
-        break;
+      }
       default:
         process.stdout.write(`${usage()}\n`);
         process.exit(command === undefined ? 0 : 1);

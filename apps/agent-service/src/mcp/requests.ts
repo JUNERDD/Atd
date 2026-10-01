@@ -1,5 +1,5 @@
 import { Type, type Static } from 'typebox';
-import { Identifier, McpServerConfigSchema, McpServerIdSchema } from '@ai/agent-contracts';
+import { Identifier, McpServerIdSchema } from '@ai/agent-contracts';
 
 /**
  * MCP route request bodies (service parsing concern). Canonical placement
@@ -61,12 +61,6 @@ export const McpGetPromptRequestSchema = Type.Object(
   { additionalProperties: false },
 );
 export type McpGetPromptRequest = Static<typeof McpGetPromptRequestSchema>;
-
-export const McpConfigureRequestSchema = Type.Object(
-  { servers: Type.Array(McpServerConfigSchema, { maxItems: 100 }) },
-  { additionalProperties: false },
-);
-export type McpConfigureRequest = Static<typeof McpConfigureRequestSchema>;
 
 /** T6b additive: per-task MCP tool selection staged for the next run. */
 export const McpStageRequestSchema = Type.Object(

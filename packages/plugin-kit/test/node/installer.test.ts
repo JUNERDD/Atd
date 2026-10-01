@@ -77,7 +77,6 @@ describe('PluginInstaller (local)', () => {
     const id = first.id;
     await installer.setPluginEnabled(id, true);
     await installer.setItemEnabled(id, 'skill:hello-skill', false);
-    await installer.setServerApproved(id, 'db', true);
     await installer.retain('run-1', {
       plugins: [{ id, revision: first.revision }],
       items: EMPTY_ITEMS,

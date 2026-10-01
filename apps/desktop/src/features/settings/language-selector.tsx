@@ -7,7 +7,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@ai/ui/components/select';
-import { isAppLanguage, type AppLanguage } from '../../../electron/settings-contract';
+import { isAppLanguage, type AppLanguage } from '../../client/settings-contract';
 import { LANGUAGE_NAMES, LANGUAGE_OPTIONS } from '../../i18n/languages';
 import { showErrorToast } from '../../components/toast-store';
 
@@ -22,7 +22,7 @@ export function LanguageSelector({ language }: { language: AppLanguage }) {
         void window.desktop?.settings.setLanguage(value).catch(showErrorToast);
       }}
     >
-      <SelectTrigger aria-label={t('language.label')}>
+      <SelectTrigger aria-label={t('language.label')} data-settings-anchor="language">
         <Languages className="size-4" aria-hidden="true" />
         <SelectValue>{LANGUAGE_NAMES[language]}</SelectValue>
       </SelectTrigger>

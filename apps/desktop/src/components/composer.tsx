@@ -2,14 +2,14 @@ import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ArrowUp, Plus, Square } from 'lucide-react';
 import { ScrollArea } from '@ai/ui/components/scroll-area';
-import type { ShortcutBindings } from '../../electron/settings-contract';
+import type { ShortcutBindings } from '../client/settings-contract';
 import { DEFAULT_SHORTCUTS, type TaskContextState } from '@ai/agent-contracts';
-import type { AgentTask, RunStatus } from '../../electron/agent/task-schema';
-import { isActive } from '../../electron/agent/task-schema';
-import type { PermissionRequest } from '../../electron/agent/permission-schema';
-import { EMPTY_QUEUE, type Block, type QueueState } from '../../electron/agent/transcript-schema';
-import type { Connection, ModelReference } from '../../electron/providers/schema';
-import type { RunPolicy } from '../../electron/agent/run-policy';
+import type { AgentTask, FileRef, RunStatus } from '../client/agent/task-schema';
+import { isActive } from '../client/agent/task-schema';
+import type { PermissionRequest } from '../client/agent/permission-schema';
+import { EMPTY_QUEUE, type Block, type QueueState } from '../client/agent/transcript-schema';
+import type { Connection, ModelReference } from '../client/providers/schema';
+import type { RunPolicy } from '../client/agent/run-policy';
 import { draftFiles, normalizeDraft, type ComposerDraft } from '../features/composer-editor/draft';
 import type { ComboboxAria } from '../features/composer-editor/editor-state';
 import { useComposerEditor } from '../features/composer-editor/use-composer-editor';
@@ -21,6 +21,7 @@ import { IconButton } from './icon-button';
 import { ComposerAttachments } from './composer-attachments';
 import { ComposerConfiguration } from './composer-configuration';
 import { ComposerPopover } from './composer-popover';
+import { useImportedFiles } from './use-imported-files';
 import { useOverlayFooter } from './use-overlay-footer';
 import { agentApi } from '../features/agent/use-agent';
 import { compactBlock } from '../features/agent/compaction/compact-availability';
@@ -126,6 +127,7 @@ export function Composer({
   const [queueRecall, setQueueRecall] = useState(0);
   const panel = useRef<QuickPanelHandle>(null);
   const { compact } = useCompactTask();
+  useImportedFiles(attach);
   const hasContent = Boolean(draft.text.trim() || draft.files.length);
   const active = isActive(status);
   const locked = status === 'stopping' || status === 'queued';
@@ -202,13 +204,15 @@ export function Composer({
     if (active) await stop();
     else await send();
   }
+  /** Picked, dropped and pasted files alike; the attachment row and file chips share the limit. */
+  function attach(files: FileRef[]) {
+    if (draftFiles(draft).length + files.length > 10) showErrorToast(t('composer.attachLimit'));
+    else onChange({ ...draft, files: [...draft.files, ...files] });
+  }
   async function choose() {
     setChoosing(true);
     try {
-      const files = await agentApi().chooseFiles();
-      // The attachment row and file chips share the 10-file limit.
-      if (draftFiles(draft).length + files.length > 10) showErrorToast(t('composer.attachLimit'));
-      else onChange({ ...draft, files: [...draft.files, ...files] });
+      attach(await agentApi().chooseFiles());
     } catch (error) {
       showErrorToast(error);
     }
@@ -288,7 +292,7 @@ export function Composer({
             boundary={overlayBoundary}
           >
             <div
-              className="composer-surface"
+              className="composer-surface surface-glass glass-control"
               data-expanded={expanded}
               data-has-attachments={draft.files.length > 0}
             >
@@ -309,7 +313,7 @@ export function Composer({
                 label={t('composer.attachContext')}
                 className="composer-attach"
                 tooltipSide="top"
-                variant="secondary"
+                variant="glass-ghost"
                 disabled={choosing || locked}
                 onClick={() => void choose()}
               >
@@ -318,6 +322,7 @@ export function Composer({
               <div className="composer-actions">
                 <IconButton
                   label={label}
+                  className="composer-send"
                   variant="default"
                   tooltipSide="top"
                   disabled={disabled}

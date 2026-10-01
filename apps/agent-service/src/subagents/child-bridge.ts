@@ -60,7 +60,7 @@ export default function serviceChildBridge(pi: BridgePi): void {
     // Memory search arrives from the service singleton factory (child scope
     // pins canLearn false); MCP proxies bind per child execution id. Both are
     // closures over the service authority singletons, so no second store or
-    // second adapter is ever created inside the child.
+    // second MCP connection layer is ever created inside the child.
     try {
       host.memoryFactory?.(pi);
     } catch {
@@ -69,7 +69,7 @@ export default function serviceChildBridge(pi: BridgePi): void {
     try {
       host.mcpBuilder?.(executionId)?.(pi);
     } catch {
-      // MCP stays unavailable rather than loading a second adapter.
+      // MCP stays unavailable rather than building a second connection layer.
     }
     host.audit({
       taskId: parent.taskId,

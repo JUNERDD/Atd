@@ -16,9 +16,10 @@ import { usePluginLabels } from './use-plugin-labels';
 
 /**
  * The Extensions settings section: plugins and what they contribute. The list, one plugin's page,
- * one item's page, the install page and the Personal add forms replace each other as a page stack
- * (`useExtensionRoute`); commands and memory open their own sections. The search text survives
- * visiting a page and returning, and resets with the stack when the section is left.
+ * one item's page, the install page and the Personal add forms replace each other as pages of the
+ * section's history (`useExtensionRoute`); commands and memory open their own sections. The search
+ * text survives visiting a page and returning, and resets with the history when the section is
+ * left.
  */
 export function ServiceSettings() {
   const { t } = useTranslation('settings');
@@ -26,8 +27,12 @@ export function ServiceSettings() {
   const navigateSection = useSettingsNavigation();
   const search = useCompositionQuery();
   useSettingsSectionExit(() => search.change(''));
-  const { route, push, back, replace, openItem } = useExtensionRoute();
   const extensions = useExtensions();
+  const { route, open, back, leave, replace, openItem } = useExtensionRoute(extensions);
+  // A page's Cancel steps back through `back`, which first asks about an editor's unsaved changes.
+  // A save, delete or uninstall leaves through `close` once it finishes: never asked, and only if
+  // that page is still shown.
+  const close = () => leave(route);
   const actions = usePluginItemActions(extensions);
   const startAi = useExtensionAiSession(extensions.skills.skills?.skills ?? []);
   const memoryCreate = useMemoryCreate();
@@ -37,7 +42,7 @@ export function ServiceSettings() {
     if (kind === 'command') navigateSection('commands');
     else if (kind === 'memory') void memoryCreate.start(null);
     else if (kind === 'skill') void startAi('skill', null);
-    else push({ level: 'create', kind });
+    else open({ level: 'create', kind });
   }
 
   switch (route.level) {
@@ -48,11 +53,11 @@ export function ServiceSettings() {
           search={search}
           actions={actions}
           onOpenPlugin={(pluginId, focus) =>
-            push({ level: 'plugin', pluginId, ...(focus ? { focus } : {}) })
+            open({ level: 'plugin', pluginId, ...(focus ? { focus } : {}) })
           }
           onOpenItem={(pluginId, kind, name) => openItem({ pluginId, kind, name })}
-          onInstall={() => push({ level: 'install' })}
-          onUpdate={(updateOf) => push({ level: 'install', updateOf })}
+          onInstall={() => open({ level: 'install' })}
+          onUpdate={(updateOf) => open({ level: 'install', updateOf })}
           onCreate={create}
         />
       );
@@ -82,7 +87,7 @@ export function ServiceSettings() {
                 : t('extensions.plugins.install.installed', { name }),
             });
             extensions.refreshAll();
-            replace({ level: 'plugin', pluginId: plugin.id });
+            replace({ level: 'plugin', pluginId: plugin.id }, route);
             return result;
           }}
         />
@@ -96,9 +101,9 @@ export function ServiceSettings() {
           focus={route.focus}
           extensions={extensions}
           actions={actions}
-          onBack={back}
-          onOpenItem={(kind, name) => push({ level: 'item', pluginId: route.pluginId, kind, name })}
-          onUpdate={() => push({ level: 'install', updateOf: route.pluginId })}
+          onBack={close}
+          onOpenItem={(kind, name) => open({ level: 'item', pluginId: route.pluginId, kind, name })}
+          onUpdate={() => open({ level: 'install', updateOf: route.pluginId })}
         />
       );
     case 'item':
@@ -108,6 +113,7 @@ export function ServiceSettings() {
           route={route}
           extensions={extensions}
           onBack={back}
+          onLeave={close}
           onOpenItem={openItem}
           onStartAi={(kind, target) => void startAi(kind, target)}
         />

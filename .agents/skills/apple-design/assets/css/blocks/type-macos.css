@@ -1,0 +1,55 @@
+/* @block type-macos | requires: type | layer: base | native: macOS built-in text styles (NSFont.TextStyle) | macOS sizes, weights and tracking under [data-platform="macos"] */
+/* Opt in with <html data-platform="macos"> (or any subtree). macOS has no Dynamic Type; Body is 13/16 (TYP-1).
+   Tracking uses the same SF Pro table at the macOS sizes (foundations.md §4); 26pt = +8/1000 em (between the 24 and 28pt entries). */
+[data-platform='macos'] {
+  --fs-large-title: 1.625rem;
+  --lh-large-title: 2rem;
+  --tr-large-title: 0.008em; /* 26 / 32 */
+  --fs-title1: 1.375rem;
+  --lh-title1: 1.625rem;
+  --tr-title1: -0.012em; /* 22 / 26 */
+  --fs-title2: 1.0625rem;
+  --lh-title2: 1.375rem;
+  --tr-title2: -0.026em; /* 17 / 22 */
+  --fs-title3: 0.9375rem;
+  --lh-title3: 1.25rem;
+  --tr-title3: -0.016em; /* 15 / 20 */
+  --fs-headline: 0.8125rem;
+  --lh-headline: 1rem;
+  --tr-headline: -0.006em; /* 13 / 16 bold */
+  --fs-body: 0.8125rem;
+  --lh-body: 1rem;
+  --tr-body: -0.006em; /* 13 / 16 */
+  --fs-callout: 0.75rem;
+  --lh-callout: 0.9375rem;
+  --tr-callout: 0em; /* 12 / 15 */
+  --fs-subheadline: 0.6875rem;
+  --lh-subheadline: 0.875rem;
+  --tr-subheadline: 0.006em; /* 11 / 14 */
+  --fs-footnote: 0.625rem;
+  --lh-footnote: 0.8125rem;
+  --tr-footnote: 0.012em; /* 10 / 13 */
+  --fs-caption1: 0.625rem;
+  --lh-caption1: 0.8125rem;
+  --tr-caption1: 0.012em; /* 10 / 13 */
+  --fs-caption2: 0.625rem;
+  --lh-caption2: 0.8125rem;
+  --tr-caption2: 0.012em; /* 10 / 13 medium */
+}
+/* macOS weights (foundations.md §4): Headline is Bold (emphasized Heavy); Caption 2 is Medium (emphasized Semibold);
+   Caption 1 emphasized is Medium. */
+[data-platform='macos'] .t-headline {
+  font-weight: 700;
+}
+[data-platform='macos'] .t-headline.t-emph {
+  font-weight: 800;
+}
+[data-platform='macos'] .t-caption2 {
+  font-weight: 500;
+}
+[data-platform='macos'] .t-caption2.t-emph {
+  font-weight: 600;
+}
+[data-platform='macos'] .t-caption1.t-emph {
+  font-weight: 500;
+}

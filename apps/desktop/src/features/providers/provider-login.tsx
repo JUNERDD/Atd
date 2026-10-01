@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@ai/ui/components/select';
-import type { LoginState } from '../../../electron/providers/schema';
+import type { LoginState } from '../../client/providers/schema';
 import { showErrorToast } from '../../components/toast-store';
 
 export function ProviderSignIn({

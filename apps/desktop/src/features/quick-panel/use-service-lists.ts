@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { ServiceBridge } from '../../../electron/service/ipc';
+import type { ServiceBridge } from '../../client/service/ipc';
 import {
   asAgentRow,
   asMcpRow,
@@ -80,7 +80,7 @@ function useLazyList<T>(
 
 /**
  * Quiet counterparts of the Extensions lists for the quick panel (plan 1.10): nothing loads until
- * a group opens, and failures never toast. Without the desktop bridge (web preview, tests) every
+ * a group opens, and failures never toast. Without the desktop bridge (tests) every
  * list reports itself unavailable.
  */
 export function useServiceLists(wanted: { skills: boolean; agents: boolean; mcp: boolean }): {

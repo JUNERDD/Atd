@@ -1,15 +1,13 @@
 import { errorMessage, mcpCapabilityId, type ConfirmReview } from '@ai/agent-contracts';
 import type { ConfirmStore } from '../confirms.js';
 import type { Logger } from '../logging.js';
-import type { AdapterApprovalRequest } from './adapter-types.js';
 import { matchToolPattern } from './servers.js';
 
 /**
  * Service-claimed MCP approval (D6). Facade tool calls approve per
  * operation through the task ConfirmStore (`allow_once`/`deny`); a `session`
- * answer is downgraded to once and NEVER cached. Stray adapter approval
- * events (gateway/direct paths the facade never uses) are claimed and
- * denied so nothing falls back to a shared-session cache.
+ * answer is downgraded to once and NEVER cached. The facade is the only
+ * caller of `tools/call`, so no other path can reach a tool unapproved.
  */
 
 export interface McpApprovalContext {
@@ -26,14 +24,7 @@ export interface McpApprovalContext {
   review?: ConfirmReview;
 }
 
-/** Minimal event-bus surface the broker subscribes to. */
-export interface ApprovalBus {
-  on(event: string, handler: (request: unknown) => void): () => void;
-}
-
 export class McpApprovalBroker {
-  private detachBus: (() => void) | null = null;
-
   constructor(
     private readonly confirms: ConfirmStore,
     private readonly audit: (entry: Record<string, unknown>) => void,
@@ -105,64 +96,4 @@ export class McpApprovalBroker {
       return 'deny';
     }
   }
-
-  /**
-   * Claims every adapter approval event and denies it: the facade approves
-   * before reaching adapter execution, so bus arrivals are strays that must
-   * never consult the session cache or an interactive fallback.
-   */
-  attachBus(bus: ApprovalBus | null, approvalEvent: string): void {
-    this.detach();
-    if (!bus) return;
-    this.detachBus = bus.on(approvalEvent, (request: unknown) => {
-      const narrowed = narrowApprovalRequest(request);
-      if (!narrowed) return;
-      const claimed = narrowed.claim(() => Promise.resolve('deny' as const));
-      this.audit({
-        tool: mcpCapabilityId(narrowed.serverName, narrowed.originalToolName),
-        toolCallId: narrowed.requestId,
-        server: narrowed.serverName,
-        origin: narrowed.origin,
-        decision: 'deny',
-        reason: claimed ? 'stray-claimed' : 'claim-raced',
-      });
-      if (!claimed) {
-        this.log.warn('A stray MCP approval was already claimed; served deny by audit.', {
-          server: narrowed.serverName,
-          tool: narrowed.originalToolName,
-        });
-      }
-    });
-  }
-
-  detach(): void {
-    this.detachBus?.();
-    this.detachBus = null;
-  }
-}
-
-function narrowApprovalRequest(value: unknown): AdapterApprovalRequest | null {
-  if (typeof value !== 'object' || value === null) return null;
-  const record = value as Record<string, unknown>;
-  if (
-    typeof record['requestId'] !== 'string' ||
-    typeof record['serverName'] !== 'string' ||
-    typeof record['originalToolName'] !== 'string' ||
-    typeof record['claim'] !== 'function'
-  ) {
-    return null;
-  }
-  return {
-    requestId: record['requestId'],
-    serverName: record['serverName'],
-    originalToolName: record['originalToolName'],
-    prefixedToolName:
-      typeof record['prefixedToolName'] === 'string'
-        ? record['prefixedToolName']
-        : record['originalToolName'],
-    args: (record['args'] ?? {}) as Record<string, unknown>,
-    origin: typeof record['origin'] === 'string' ? record['origin'] : 'proxy',
-    ...(record['signal'] instanceof AbortSignal ? { signal: record['signal'] } : {}),
-    claim: record['claim'] as AdapterApprovalRequest['claim'],
-  };
 }

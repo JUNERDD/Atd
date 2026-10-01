@@ -1,0 +1,21 @@
+[package]
+name = "file-index-node"
+version = "0.1.0"
+description = "Node-API binding for the file-index crate"
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+file-index = { path = "../file-index" }
+napi = { version = "3.13.0", default-features = false, features = ["napi4"] }
+napi-derive = "3.6.9"
+
+[build-dependencies]
+napi-build = "2.5.0"

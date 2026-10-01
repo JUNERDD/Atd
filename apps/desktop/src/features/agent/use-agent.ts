@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import type { AgentSnapshot, TaskDetail, TaskState } from '../../../electron/agent/bridge';
-import { applyTranscriptPatch } from '../../../electron/agent/transcript-schema';
+import type { AgentSnapshot, TaskDetail, TaskState } from '../../client/agent/bridge';
+import { applyTranscriptPatch } from '../../client/agent/transcript-schema';
 import { showErrorToast } from '../../components/toast-store';
 import i18n from '../../i18n';
 

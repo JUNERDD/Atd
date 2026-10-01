@@ -50,7 +50,7 @@ describe('installedItemName', () => {
         },
       ],
       installed: [installed('notes', 'skill', 'notes')],
-      state: { version: 1, disabled: [], items: {}, config: {}, approved: {} },
+      state: { version: 1, disabled: [], items: {}, config: {} },
       secretsSet: {},
     });
     const standalone = catalog.items.find((item) => item.pluginId === 'notes');

@@ -1,8 +1,12 @@
 {
   "close": "Close",
+  "hostRequired": "This page runs only inside the AI app for macOS.",
   "toast": {
     "dismiss": "Dismiss",
     "dismissLabel": "Dismiss notification"
+  },
+  "shortcuts": {
+    "conflictHint": "If a shortcut does nothing when you press it, another app may be using the same combination. Choose a different one."
   },
   "tools": {
     "read": {

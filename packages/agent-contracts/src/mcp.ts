@@ -27,6 +27,11 @@ export const McpConnectionStateSchema = Type.Union([
   Type.Literal('ready'),
   Type.Literal('error'),
   Type.Literal('closing'),
+  /**
+   * The last launch was refused: the server runs a local command or reads a service env var, and
+   * the user has not approved it as it stands (see mcp-approvals.ts).
+   */
+  Type.Literal('approval_required'),
 ]);
 export type McpConnectionState = Static<typeof McpConnectionStateSchema>;
 
@@ -111,24 +116,6 @@ export const McpServerStatusSchema = Type.Object(
   { additionalProperties: false },
 );
 export type McpServerStatus = Static<typeof McpServerStatusSchema>;
-
-/**
- * A status row as `/v1/mcp/status` lists it: the connection status plus the plugin that contributes
- * the server. Plugin servers (`readOnly`) are configured by their plugin, never through MCP writes.
- */
-export const McpServerStatusRowSchema = Type.Object(
-  {
-    ...McpServerStatusSchema.properties,
-    pluginId: Type.String({ minLength: 1, maxLength: 128 }),
-    readOnly: Type.Boolean(),
-  },
-  { additionalProperties: false },
-);
-export type McpServerStatusRow = Static<typeof McpServerStatusRowSchema>;
-
-export interface McpStatusResponse {
-  servers: McpServerStatusRow[];
-}
 
 export const McpToolRefSchema = Type.Object(
   {

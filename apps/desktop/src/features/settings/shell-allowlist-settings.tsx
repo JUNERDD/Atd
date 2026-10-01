@@ -1,5 +1,5 @@
 import { useId, useState, type FormEvent } from 'react';
-import { Plus, Trash2 } from 'lucide-react';
+import { CircleAlert, Info, Plus, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import {
   InputGroup,
@@ -14,10 +14,10 @@ import {
   normalizeShellAllowlistEntry,
   type ShellAllowlistEntryError,
 } from '@ai/agent-contracts';
-import { DEFAULT_PERMISSION_TIER } from '../../../electron/agent/permission-schema';
-import type { SettingsSnapshot } from '../../../electron/settings-contract';
+import { DEFAULT_PERMISSION_TIER } from '../../client/agent/permission-schema';
+import type { SettingsSnapshot } from '../../client/settings-contract';
 import { IconButton } from '../../components/icon-button';
-import { showErrorToast } from '../../components/toast-store';
+import { useSettingsSectionExit } from './settings-navigation';
 import { ShellAllowlistEntryDialog } from './shell-allowlist-entry-dialog';
 
 type AddError = ShellAllowlistEntryError | 'save';
@@ -36,11 +36,12 @@ function checkEntry(
 
 /**
  * The user's shell allowlist: commands starting with an entry run without a confirm (Manual) or
- * without review (Auto); under Always allow the section is not shown. One card holds the add
- * field and the entries, each one line after a `$` prompt; a click on a row opens it in full. The list
- * comes from the settings snapshot; every change saves the whole list through main, which
- * validates it again, persists it, and pushes it to the agent service. The renderer checks
- * entries first so each problem gets its own message; main only rejects generically.
+ * without review (Auto). Under Always allow the list decides nothing, since every command already
+ * runs; the section stays, says so, and keeps its entries manageable for a switch back. One card
+ * holds the add field and the entries, each one line after a `$` prompt; a click on a row opens it
+ * in full. The list comes from the settings snapshot; every change saves the whole list through
+ * main, which validates it again, persists it, and pushes it to the agent service. The renderer
+ * checks entries first so each problem gets its own message; main only rejects generically.
  */
 export function ShellAllowlistSettings({ snapshot }: { snapshot: SettingsSnapshot | null }) {
   const { t } = useTranslation('settings');
@@ -49,15 +50,25 @@ export function ShellAllowlistSettings({ snapshot }: { snapshot: SettingsSnapsho
   const errorId = useId();
   const [value, setValue] = useState('');
   const [error, setError] = useState<AddError | null>(null);
+  // An error answers the last attempt; after leaving the section the field starts clean.
+  useSettingsSectionExit(() => setError(null));
   const [pending, setPending] = useState(false);
   // The saved list until the next settings broadcast replaces the snapshot, so a quick second
   // edit never builds on the list from before the first save.
   // The entry stays set while its dialog closes, so the closing dialog keeps its text.
-  const [detail, setDetail] = useState<{ entry: string; open: boolean } | null>(null);
+  // `failed` marks a Remove from the dialog that did not save, which the dialog itself reports.
+  const [detail, setDetail] = useState<{
+    entry: string;
+    open: boolean;
+    failed?: boolean;
+  } | null>(null);
   const [saved, setSaved] = useState<{ basis: SettingsSnapshot; entries: string[] } | null>(null);
   const entries =
     saved && saved.basis === snapshot ? saved.entries : (snapshot?.shellAllowlist ?? []);
-  const unavailable = !bridge || !snapshot || pending;
+  // Without the bridge or a snapshot nothing can change. While a save is in flight the field and
+  // the buttons stay focusable, so the next entry can be typed, and submits wait for it.
+  const unavailable = !bridge || !snapshot;
+  const inactive = (snapshot?.permissionTier ?? DEFAULT_PERMISSION_TIER) === 'always';
 
   async function save(next: string[]) {
     if (!bridge || !snapshot) return false;
@@ -75,37 +86,51 @@ export function ShellAllowlistSettings({ snapshot }: { snapshot: SettingsSnapsho
 
   async function add(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (unavailable) return;
-    const checked = checkEntry(value, entries);
+    if (unavailable || pending) return;
+    const submitted = value;
+    const checked = checkEntry(submitted, entries);
     if ('error' in checked) {
       setError(checked.error);
       return;
     }
+    setError(null);
     if (await save([...entries, checked.entry])) {
-      setValue('');
-      setError(null);
+      // Keeps whatever was typed meanwhile.
+      setValue((current) => (current === submitted ? '' : current));
     } else setError('save');
   }
 
   async function remove(entry: string) {
-    if (unavailable) return false;
+    if (unavailable || pending) return false;
+    setError(null);
     const removed = await save(entries.filter((item) => item !== entry));
-    if (!removed) showErrorToast(t('permissions.shellAllowlist.errors.save'));
+    if (!removed) setError('save');
     return removed;
   }
-
-  // The list only decides anything when a tier asks: under Always allow every command already
-  // runs, so the section would describe a setting with no effect.
-  if ((snapshot?.permissionTier ?? DEFAULT_PERMISSION_TIER) === 'always') return null;
 
   return (
     <section className="settings-shell-allowlist" aria-labelledby={`${inputId}-title`}>
       <div className="settings-shell-allowlist-heading">
-        <h3 id={`${inputId}-title`}>{t('permissions.shellAllowlist.title')}</h3>
+        <h3 id={`${inputId}-title`} className="settings-section-title">
+          {t('permissions.shellAllowlist.title')}
+        </h3>
         <p className="settings-field-note">{t('permissions.shellAllowlist.description')}</p>
+        {inactive && (
+          <p className="settings-shell-allowlist-inactive">
+            <Info aria-hidden="true" />
+            <span>{t('permissions.shellAllowlist.inactive')}</span>
+          </p>
+        )}
       </div>
-      <div className="settings-shell-allowlist-card rounded-2xl border">
-        <form className="settings-shell-allowlist-form" onSubmit={(event) => void add(event)}>
+      <div
+        className="settings-shell-allowlist-card rounded-2xl border"
+        data-settings-anchor="shell-allowlist"
+      >
+        <form
+          className="settings-shell-allowlist-form"
+          aria-busy={pending || undefined}
+          onSubmit={(event) => void add(event)}
+        >
           <InputGroup className="bg-transparent" data-disabled={unavailable || undefined}>
             <InputGroupAddon>
               <InputGroupText className="font-mono">$</InputGroupText>
@@ -119,7 +144,7 @@ export function ShellAllowlistSettings({ snapshot }: { snapshot: SettingsSnapsho
               autoComplete="off"
               spellCheck={false}
               disabled={unavailable}
-              aria-invalid={error !== null}
+              aria-invalid={(error !== null && error !== 'save') || undefined}
               aria-describedby={error ? errorId : undefined}
               onChange={(event) => {
                 setValue(event.target.value);
@@ -127,13 +152,28 @@ export function ShellAllowlistSettings({ snapshot }: { snapshot: SettingsSnapsho
               }}
             />
             <InputGroupAddon align="inline-end">
-              <InputGroupButton type="submit" variant="secondary" disabled={unavailable}>
+              <InputGroupButton
+                type="submit"
+                variant="secondary"
+                disabled={unavailable}
+                aria-disabled={pending || undefined}
+              >
                 <Plus />
                 {t('permissions.shellAllowlist.add')}
               </InputGroupButton>
             </InputGroupAddon>
           </InputGroup>
         </form>
+        {error && (
+          <p
+            id={errorId}
+            role="alert"
+            className="settings-inline-error settings-shell-allowlist-error"
+          >
+            <CircleAlert aria-hidden="true" />
+            <span>{t(`permissions.shellAllowlist.errors.${error}`)}</span>
+          </p>
+        )}
         {entries.length === 0 ? (
           <p className="settings-shell-allowlist-empty">{t('permissions.shellAllowlist.empty')}</p>
         ) : (
@@ -162,6 +202,7 @@ export function ShellAllowlistSettings({ snapshot }: { snapshot: SettingsSnapsho
                       label={t('permissions.shellAllowlist.remove')}
                       aria-label={t('permissions.shellAllowlist.removeLabel', { entry })}
                       disabled={unavailable}
+                      aria-disabled={pending || undefined}
                       onClick={() => void remove(entry)}
                     >
                       <Trash2 />
@@ -178,19 +219,16 @@ export function ShellAllowlistSettings({ snapshot }: { snapshot: SettingsSnapsho
           entry={detail.entry}
           open={detail.open}
           onOpenChange={(open) => setDetail({ entry: detail.entry, open })}
-          removing={unavailable}
+          unavailable={unavailable}
+          removing={pending}
+          error={detail.failed ? t('permissions.shellAllowlist.errors.save') : undefined}
           onRemove={() =>
-            void remove(detail.entry).then((removed) => {
-              if (removed) setDetail({ entry: detail.entry, open: false });
-            })
+            void remove(detail.entry).then((removed) =>
+              setDetail({ entry: detail.entry, open: !removed, failed: !removed }),
+            )
           }
         />
       ) : null}
-      {error && (
-        <p id={errorId} role="alert" className="text-xs text-destructive">
-          {t(`permissions.shellAllowlist.errors.${error}`)}
-        </p>
-      )}
     </section>
   );
 }

@@ -18,11 +18,14 @@ import type { ExtensionAgentRow } from './extension-rows';
 export function AgentPermissionsSection({
   row,
   disabled,
+  pending,
   onPermissions,
 }: {
   row: ExtensionAgentRow;
-  /** Locks Edit permissions… and the dialog's saves while disconnected or busy. */
+  /** Locks Edit permissions… and the dialog while the service is disconnected. */
   disabled: boolean;
+  /** A save is running: the dialog's actions keep their focus but ignore presses. */
+  pending: boolean;
   onPermissions: (name: string, permissions: SubagentPermissions | null) => Promise<boolean>;
 }) {
   const { t } = useTranslation('settings');
@@ -63,6 +66,7 @@ export function AgentPermissionsSection({
         open={open}
         onOpenChange={setOpen}
         disabled={disabled}
+        pending={pending}
         onSave={(value) => onPermissions(row.name, value)}
       />
     </section>

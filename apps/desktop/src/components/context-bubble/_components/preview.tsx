@@ -27,6 +27,7 @@ export function Preview({ className, children, ...props }: ContextBubblePreviewP
       data-state="open"
       className={cn('input-preview', className)}
       viewportClassName="max-h-[inherit]"
+      scrollShadow
     >
       {children}
     </ScrollArea>

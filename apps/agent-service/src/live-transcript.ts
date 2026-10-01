@@ -34,7 +34,7 @@ export interface LiveTranscriptSink {
 
 /**
  * Live transcript of one Pi session. Subscribes to session events, reprojects
- * the 0.87 branch on every change, and publishes patches; the cold path in
+ * the 0.99 branch on every change, and publishes patches; the cold path in
  * the runner reuses the same projection so the two cannot diverge. It also
  * publishes Pi's mid-run queue whenever it changes.
  *

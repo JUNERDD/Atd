@@ -6,6 +6,7 @@ import { ensureSkillProfile, skillProfilePaths } from '../skills/profile.js';
 import { restoreDefaultRole } from '../skills/roles.js';
 import { builtinEntry } from './manifest.js';
 import { restoreBuiltinSkill } from './skills.js';
+import { RENDERER_ROUTE } from '../relay-routes.js';
 
 /** `skill:<name>` or `role:<id>`, with the service's skill-name rules. */
 const BuiltinId = Type.String({ pattern: '^(skill|role):[A-Za-z0-9][A-Za-z0-9_-]{0,127}$' });
@@ -18,15 +19,19 @@ const RestoreBody = Type.Object({}, { additionalProperties: false });
  */
 export function registerBuiltinRoutes(app: FastifyInstance, config: ServiceConfig): void {
   const profile = skillProfilePaths(config.paths.root, config.paths.agentDir);
-  app.post<{ Params: { id: string } }>('/v1/builtins/:id/restore', async (request) => {
-    const id = parse(BuiltinId, request.params.id);
-    parse(RestoreBody, request.body ?? {});
-    const entry = builtinEntry(id);
-    if (!entry) throw new TypeError(`Unknown built-in resource "${id}".`);
-    if (entry.kind === 'role') {
-      await ensureSkillProfile(profile);
-      return { id, ...(await restoreDefaultRole(profile)) };
-    }
-    return { id, ...(await restoreBuiltinSkill(entry)) };
-  });
+  app.post<{ Params: { id: string } }>(
+    '/v1/builtins/:id/restore',
+    RENDERER_ROUTE,
+    async (request) => {
+      const id = parse(BuiltinId, request.params.id);
+      parse(RestoreBody, request.body ?? {});
+      const entry = builtinEntry(id);
+      if (!entry) throw new TypeError(`Unknown built-in resource "${id}".`);
+      if (entry.kind === 'role') {
+        await ensureSkillProfile(profile);
+        return { id, ...(await restoreDefaultRole(profile)) };
+      }
+      return { id, ...(await restoreBuiltinSkill(entry)) };
+    },
+  );
 }

@@ -1,8 +1,8 @@
 import { useRef, useState, type ReactElement, type Ref } from 'react';
 import { PopoverAnchor } from '@ai/ui/components/popover';
-import type { RunPolicy } from '../../../electron/agent/run-policy';
-import type { AgentTask } from '../../../electron/agent/task-schema';
-import type { Connection, ModelReference } from '../../../electron/providers/schema';
+import type { RunPolicy } from '../../client/agent/run-policy';
+import type { AgentTask } from '../../client/agent/task-schema';
+import type { Connection, ModelReference } from '../../client/providers/schema';
 import type { CompactBlock } from '../agent/compaction/compact-availability';
 import type { ComposerEditorCommands } from '../composer-editor/editor-commands';
 import type { QuickCommandActions } from './quick-commands';

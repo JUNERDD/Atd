@@ -12,7 +12,7 @@ export const APP_SKILL = 'app-skill';
 const COMPANION_RULE =
   'A skill marked companion-of="<name>" is loaded for that skill: use it only where that skill\'s instructions call for it; it does not apply to the message on its own.';
 
-const LOAD_PREAMBLE = `The /skill:<name> markers in the user message refer to the skills below. Their SKILL.md bodies are already loaded here, so do not read SKILL.md again. Apply each skill to the request where its marker appears; a skill without a marker applies to the whole message. ${COMPANION_RULE}`;
+const LOAD_PREAMBLE = `The /skill:<name> markers in the user message that follows refer to the skills below. Their SKILL.md bodies are already loaded here, so do not read SKILL.md again. Apply each skill to the request where its marker appears; a skill without a marker applies to the whole message. ${COMPANION_RULE}`;
 
 const REATTACH_PREAMBLE = `Earlier parts of this conversation were compacted into a summary. The skills below were loaded in them and are re-attached here with their SKILL.md bodies, so do not read SKILL.md again. Keep applying each skill as the earlier requests asked. ${COMPANION_RULE}`;
 

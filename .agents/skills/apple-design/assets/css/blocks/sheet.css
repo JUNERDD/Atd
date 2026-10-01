@@ -1,0 +1,190 @@
+/* @block sheet | requires: base, glass, states | layer: components | native: SwiftUI .sheet + presentationDetents / UIKit UISheetPresentationController | Modal glass sheet on <dialog>: inset at partial height, grabber, centered-title header, scrolling body, detents, spring slide or reduced-motion cross-fade (CMP-5) */
+
+/* Markup (open with showModal(): inert background, Esc, ::backdrop scrim; sheet.js adds morph, drag and focus return):
+   <dialog class="sheet" id="settings" aria-labelledby="settings-title" data-detent="medium">
+     <div class="sheet__grabber" aria-hidden="true"></div>            decorative; drag handle with a 84 x 44 hit area
+     <header class="sheet__header">
+       <button class="btn-bordered btn-icon" type="button" aria-label="Close" commandfor="settings" command="close">svg</button>
+       <h2 class="sheet__title" id="settings-title">Appearance</h2>
+       <button class="btn-filled btn-icon" type="button" aria-label="Done">svg</button>
+     </header>
+     <div class="sheet__body">…</div>
+   </dialog>
+   Cancel/Close leading, Done trailing (CMP-5); opaque buttons inside the sheet, never glass on glass (GL-2).
+   Focus lands on the first control (the grabber isn't focusable). data-detent: medium | large (optional).
+   No JS: commandfor/command needs Invoker Commands (newer than the kit's browser floor); sheet.js adds a fallback,
+   or call showModal()/close() yourself. */
+.sheet {
+  --glass-radius: var(--corner-sheet);
+  --glass-density: 78%; /* denser than bars: sheets carry text */
+  position: fixed; /* [data-app-frame] opts into absolute (framed mockups, web.md §5) */
+  z-index: 40;
+  inset: auto 8px calc(var(--safe-bottom) + 8px);
+  box-sizing: border-box;
+  flex-direction: column;
+  width: auto;
+  max-width: 640px;
+  height: auto;
+  max-height: calc(100% - var(--safe-top) - 16px);
+  margin: 0 auto;
+  padding: 0;
+  border: 0;
+  overflow: hidden; /* the header stays put; .sheet__body scrolls */
+  transform: translateY(calc(100% + var(--safe-bottom) + 24px));
+  /* Opens and closes at SwiftUI .smooth pace (motion.md §3); display/overlay keep the exit visible. */
+  transition:
+    transform var(--dur-spring-smooth) var(--spring-smooth),
+    display var(--dur-spring-smooth),
+    overlay var(--dur-spring-smooth),
+    outline-color var(--dur-base) var(--curve-standard);
+  transition-behavior: allow-discrete;
+}
+.sheet[open] {
+  display: flex;
+  transform: none;
+}
+@starting-style {
+  .sheet[open] {
+    transform: translateY(calc(100% + var(--safe-bottom) + 24px));
+  }
+}
+.sheet::backdrop {
+  background: rgb(0 0 0 / 0.32);
+  opacity: 0;
+  transition: opacity var(--dur-base) var(--curve-standard); /* the scrim always fades, reduced motion too (MOT-5) */
+}
+.sheet[open]::backdrop {
+  opacity: 1;
+}
+@starting-style {
+  .sheet[open]::backdrop {
+    opacity: 0;
+  }
+}
+
+/* Detents: partial height stays inset glass; full height meets the edges and turns more opaque (CMP-5). */
+.sheet[data-detent='medium'] {
+  height: 50%;
+}
+.sheet[data-detent='large'] {
+  --glass-radius: var(--corner-sheet) var(--corner-sheet) 0 0;
+  --glass-density: 94%;
+  inset: auto 0 0;
+  height: calc(100% - var(--safe-top) - 10px);
+  max-height: none;
+}
+.sheet[data-detent='large'] .sheet__body {
+  padding-bottom: calc(var(--safe-bottom) + 20px);
+}
+/* While sheet.js morphs it from its source (MOT-4), the view-transition snapshot can't blur what's behind it:
+   near-opaque, so it doesn't read as a see-through card. */
+.sheet[data-morphing] {
+  --glass-density: 96%;
+}
+
+/* Framed mockups (web.md §5): a non-modal sheet (show()) positions inside [data-app-frame]; sheet.js makes
+   the rest of the page inert, and a wide outline dims the frame in place of ::backdrop. */
+:where([data-app-frame]) .sheet:not(:modal) {
+  position: absolute;
+  outline: 100vmax solid rgb(0 0 0 / 0);
+}
+:where([data-app-frame]) .sheet[open]:not(:modal) {
+  outline-color: rgb(0 0 0 / 0.32);
+}
+
+/* Grabber: decorative, 36 x 5; its transparent ::after is the drag target (HIT-1). */
+.sheet__grabber {
+  position: absolute;
+  z-index: 3;
+  top: 5px;
+  left: 50%;
+  translate: -50% 0;
+  width: 36px;
+  height: 5px;
+  border-radius: var(--corner-capsule);
+  background: var(--tertiary-label);
+  cursor: grab;
+  touch-action: none;
+}
+.sheet__grabber::after {
+  content: '';
+  position: absolute;
+  inset: -5px -24px -34px;
+} /* 84 x 44 from the sheet's top edge */
+
+/* Header: leading control, centered title, trailing control (44px 1fr 44px; side columns grow for text buttons). */
+.sheet__header {
+  flex: none;
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: minmax(max-content, 1fr) minmax(0, auto) minmax(max-content, 1fr);
+  align-items: center;
+  gap: 8px;
+  min-height: var(--hit);
+  padding: 16px 16px 8px;
+  touch-action: none; /* the header also drags the sheet (sheet.js) */
+}
+.sheet__header > * {
+  grid-row: 1;
+}
+.sheet__header > :first-child:not(.sheet__title) {
+  grid-column: 1;
+  justify-self: start;
+}
+.sheet__title {
+  grid-column: 2;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 600 var(--fs-headline)/var(--lh-headline) var(--ff-sans);
+  letter-spacing: calc(var(--tr-headline) * var(--tracking-scale));
+}
+.sheet__title ~ * {
+  grid-column: 3;
+  justify-self: end;
+}
+.sheet__body {
+  --list-inset: 0px; /* lists sit flush with the body padding */
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 0 16px 20px;
+}
+
+/* Reduced motion: no slide; the sheet and its backdrop cross-fade (MOT-5). */
+@media (prefers-reduced-motion: reduce) {
+  .sheet {
+    transform: none;
+    opacity: 0;
+    transition:
+      opacity var(--dur-base) var(--curve-standard),
+      display var(--dur-base),
+      overlay var(--dur-base),
+      outline-color var(--dur-base) var(--curve-standard);
+    transition-behavior: allow-discrete;
+  }
+  .sheet[open] {
+    opacity: 1;
+  }
+  @starting-style {
+    .sheet[open] {
+      opacity: 0;
+    }
+  }
+}
+@media (forced-colors: active) {
+  .sheet {
+    border: 1px solid CanvasText;
+  }
+  :where([data-app-frame]) .sheet:not(:modal) {
+    outline: none;
+  }
+  .sheet__grabber {
+    forced-color-adjust: none;
+    background: CanvasText;
+  }
+}

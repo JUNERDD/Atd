@@ -11,8 +11,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@ai/ui/components/select';
-import type { Parameter } from '../../../electron/agent/command-schema';
-import { parameterError } from '../../../electron/agent/command-validation';
+import type { Parameter } from '../../client/agent/command-schema';
+import { parameterError } from '../../client/agent/command-validation';
 
 export function ParameterField({
   parameter,

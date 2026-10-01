@@ -1,6 +1,6 @@
 import { createContext, useContext, useMemo, useState } from 'react';
-import type { PermissionRequest } from '../../../../electron/agent/permission-schema';
-import type { Block } from '../../../../electron/agent/transcript-schema';
+import type { PermissionRequest } from '../../../client/agent/permission-schema';
+import type { Block } from '../../../client/agent/transcript-schema';
 import {
   EMPTY_CHILD_INDEX,
   indexSubagentChildren,

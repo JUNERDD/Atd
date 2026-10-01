@@ -1,9 +1,17 @@
-import { useState } from 'react';
-import { ChevronRight } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { SearchX } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@ai/ui/components/button';
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from '@ai/ui/components/empty';
 import { HighlightedText } from '@ai/ui/components/highlighted-text';
-import { Input } from '@ai/ui/components/input';
+import { Item, ItemContent, ItemDescription, ItemMedia, ItemTitle } from '@ai/ui/components/item';
 import { ScrollArea } from '@ai/ui/components/scroll-area';
 import { matchFields } from '@ai/ui/lib/fuzzy-match';
 import { useCompositionQuery } from '@ai/ui/lib/ime';
@@ -14,21 +22,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@ai/ui/components/select';
-import type { ProviderCatalogEntry } from '../../../electron/providers/schema';
+import type { ProviderCatalogEntry } from '../../client/providers/schema';
 import { SettingsHeading } from '../settings/settings-heading';
+import { SettingsSearchField } from '../settings/settings-search-field';
 import { ProviderBrand } from './provider-brand';
 
 export function ProviderCatalog({
   catalog,
   onChoose,
-  onBack,
 }: {
   catalog: ProviderCatalogEntry[];
   onChoose: (provider: ProviderCatalogEntry) => void;
-  onBack: () => void;
 }) {
   const { t } = useTranslation('providers');
   const search = useCompositionQuery();
+  const searchInput = useRef<HTMLInputElement>(null);
   const [category, setCategory] = useState('all');
   // Directory order stays; the search matches and marks the provider name the row shows.
   const visible = catalog.flatMap((provider) => {
@@ -45,14 +53,13 @@ export function ProviderCatalog({
       <SettingsHeading
         title={t('catalog.title')}
         description={t('catalog.description')}
-        onBack={onBack}
+        subpage
         backLabel={t('catalog.back')}
       />
       <div className="settings-overview-toolbar">
-        <Input
-          value={search.text}
-          onChange={(event) => search.change(event.target.value)}
-          {...search.compositionProps}
+        <SettingsSearchField
+          ref={searchInput}
+          search={search}
           aria-label={t('catalog.searchLabel')}
           placeholder={t('catalog.searchPlaceholder')}
         />
@@ -73,33 +80,72 @@ export function ProviderCatalog({
         className="flex-1 min-h-0 min-w-0 m-[-3px_-15px_-3px_-3px]"
         aria-label={t('catalog.available')}
         gutter="stable"
+        scrollShadow
       >
-        <div className="settings-editor-inner provider-directory">
-          {!visible.length && (
-            <p className="text-sm text-muted-foreground py-6">{t('catalog.empty')}</p>
-          )}
-          {visible.map(({ provider, match }) => (
-            <Button
-              key={provider.id}
-              variant="ghost"
-              className="provider-directory-row"
-              onClick={() => onChoose(provider)}
-            >
-              <ProviderBrand provider={provider.id} />
-              <div className="min-w-0 flex-1 text-left">
-                <p className="font-medium truncate" title={provider.name}>
-                  <HighlightedText text={provider.name} ranges={match?.ranges.name} />
-                </p>
-                <p
-                  className="text-muted-foreground font-normal truncate"
-                  title={provider.auth.map((method) => method.label).join(' · ')}
-                >
-                  {provider.auth.map((method) => method.label).join(' · ')}
-                </p>
-              </div>
-              <ChevronRight className="size-4 shrink-0" />
-            </Button>
-          ))}
+        <div className="settings-editor-inner">
+          {!visible.length &&
+            (search.query.trim() ? (
+              <Empty className="px-4 py-8">
+                <EmptyHeader>
+                  <EmptyMedia variant="icon">
+                    <SearchX />
+                  </EmptyMedia>
+                  <EmptyTitle>
+                    {t('catalog.noMatchesTitle', { query: search.query.trim() })}
+                  </EmptyTitle>
+                  <EmptyDescription>{t('catalog.noMatchesDescription')}</EmptyDescription>
+                </EmptyHeader>
+                <EmptyContent>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      search.change('');
+                      searchInput.current?.focus();
+                    }}
+                  >
+                    {t('catalog.clearSearch')}
+                  </Button>
+                </EmptyContent>
+              </Empty>
+            ) : (
+              // Only a category can empty the list without a search; All providers restores it.
+              <Empty className="px-4 py-8">
+                <EmptyHeader>
+                  <EmptyTitle>{t('catalog.empty')}</EmptyTitle>
+                </EmptyHeader>
+                <EmptyContent>
+                  <Button variant="outline" onClick={() => setCategory('all')}>
+                    {t('catalog.category.all')}
+                  </Button>
+                </EmptyContent>
+              </Empty>
+            ))}
+          <ul className="provider-directory">
+            {visible.map(({ provider, match }) => {
+              const methods = provider.auth.map((method) => method.label).join(' · ');
+              return (
+                <li key={provider.id} className="provider-directory-cell">
+                  <Item variant="outline" size="sm" asChild>
+                    <button
+                      type="button"
+                      className="provider-directory-card"
+                      onClick={() => onChoose(provider)}
+                    >
+                      <ItemMedia>
+                        <ProviderBrand provider={provider.id} />
+                      </ItemMedia>
+                      <ItemContent className="gap-0.5">
+                        <ItemTitle title={provider.name}>
+                          <HighlightedText text={provider.name} ranges={match?.ranges.name} />
+                        </ItemTitle>
+                        <ItemDescription className="text-xs">{methods}</ItemDescription>
+                      </ItemContent>
+                    </button>
+                  </Item>
+                </li>
+              );
+            })}
+          </ul>
         </div>
       </ScrollArea>
     </section>

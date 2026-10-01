@@ -50,19 +50,15 @@ describe('task panel', () => {
     expect(api.submit).not.toHaveBeenCalled();
   });
 
-  it('preserves a draft while viewing history, settings, and hiding the web preview', async () => {
+  it('preserves a draft while viewing history and settings', async () => {
+    const { open } = installBridge();
     const user = userEvent.setup();
-    const focus = vi.spyOn(window, 'focus').mockImplementation(() => {});
-    const open = vi.spyOn(window, 'open').mockReturnValue(window);
     render(<App />);
     await user.type(screen.getByRole('textbox'), 'A work in progress');
     await user.click(screen.getByRole('button', { name: 'Settings' }));
-    expect(open).toHaveBeenCalledWith(expect.any(URL), 'ai-settings', 'width=1000,height=720');
-    expect(focus).toHaveBeenCalledOnce();
+    expect(open).toHaveBeenCalledOnce();
     await user.click(screen.getByRole('button', { name: 'Tasks' }));
     await user.click(screen.getByRole('button', { name: 'Tasks' }));
-    await user.click(screen.getByRole('button', { name: 'Hide panel' }));
-    await user.click(screen.getByRole('button', { name: 'Open task panel' }));
     expect(draftText(screen.getByRole('textbox'))).toBe('A work in progress');
   });
 
@@ -103,7 +99,6 @@ describe('task panel', () => {
     settingsView.unmount();
     // macOS dismisses the panel through the native traffic lights, so Escape is the only
     // renderer-side path to the hide bridge.
-    expect(screen.queryByRole('button', { name: 'Hide panel' })).toBeNull();
     await user.keyboard('{Escape}');
     expect(hide).toHaveBeenCalledOnce();
   });

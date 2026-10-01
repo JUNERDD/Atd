@@ -1,5 +1,5 @@
 import type { TaskContextState } from '@ai/agent-contracts';
-import { isActive, type AgentTask } from '../../../../electron/agent/task-schema';
+import { isActive, type AgentTask } from '../../../client/agent/task-schema';
 
 /** The service's cap on `/compact <focus>` instructions (`CompactTaskRequest`). */
 export const MAX_COMPACT_INSTRUCTIONS = 2000;

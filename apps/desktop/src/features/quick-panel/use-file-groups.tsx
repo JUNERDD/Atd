@@ -9,10 +9,10 @@ import {
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { matchFields } from '@ai/ui/lib/fuzzy-match';
-import type { AgentTask, FileRef } from '../../../electron/agent/task-schema';
-import type { FileSearchResult } from '../../../electron/file-search/contract';
+import type { FileSearchResult } from '@ai/agent-contracts';
+import type { AgentTask, FileRef } from '../../client/agent/task-schema';
 import { showErrorToast } from '../../components/toast-store';
-import { fileSize } from '../../lib/task-store';
+import { fileSize } from '../../lib/file-size';
 import { agentApi } from '../agent/use-agent';
 import type { ComposerEditorCommands } from '../composer-editor/editor-commands';
 import type { QuickGroup, QuickOption } from './quick-options';

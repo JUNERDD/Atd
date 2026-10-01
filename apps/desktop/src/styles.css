@@ -12,10 +12,8 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-html[data-runtime='web'] body {
-  background: #202020;
-}
-
+/* A wait that ends quickly shows no notice; a longer one fades its text in after 400ms. The text
+   fades rather than the element, so the window splash paints its surface from the start. */
 .settings-loading {
   display: flex;
   flex: 1;
@@ -26,61 +24,30 @@ html[data-runtime='web'] body {
   color: var(--ata-text-secondary);
   font-size: 14px;
   line-height: 20px;
+  animation: settings-loading-in 200ms ease-out 400ms both;
+}
+@keyframes settings-loading-in {
+  from {
+    color: transparent;
+  }
 }
 
-/* The window-level splash (Suspense fallback and the settings snapshot wait) fills #root and paints
-   the settings surface, matching the mounted settings shell it replaces. */
+/* The window-level splash (the Suspense fallback before a window's tree renders) fills #root and
+   paints the settings surface, matching the settings shell it replaces. */
 #root > .settings-loading {
   min-height: 100%;
   background: var(--ata-surface-panel);
-  -webkit-app-region: drag;
 }
 
 .task-panel {
   position: fixed;
-  right: 16px;
-  bottom: 16px;
+  inset: 0;
   display: flex;
   flex-direction: column;
-  width: min(420px, calc(100dvw - 32px));
-  height: min(580px, calc(100dvh - 32px));
   overflow: hidden;
   isolation: isolate;
-  border-radius: var(--ata-radius-panel);
+  /* The shared content fill; the native window owns the outer clipping, edge, blur and shadow. */
   background: var(--ata-surface-panel);
-  backdrop-filter: blur(var(--ata-backdrop-blur));
-  box-shadow: 0 14px 40px rgb(0 0 0 / 28%);
-}
-
-.task-panel::after {
-  position: absolute;
-  z-index: 3;
-  inset: 0;
-  border: 1px solid var(--ata-border-subtle);
-  border-radius: inherit;
-  content: '';
-  pointer-events: none;
-}
-
-html[data-runtime='electron'] .task-panel {
-  inset: 0;
-  width: 100%;
-  height: 100%;
-}
-
-/* Keep the shared content fill; macOS owns the outer clipping, edge, blur and shadow. */
-html[data-platform='darwin'] .task-panel {
-  border-radius: 0;
-  backdrop-filter: none;
-  box-shadow: none;
-}
-
-html[data-platform='darwin'] .task-panel::after {
-  display: none;
-}
-
-.task-panel[hidden] {
-  display: none;
 }
 
 .panel-header {
@@ -88,17 +55,12 @@ html[data-platform='darwin'] .task-panel::after {
   flex-shrink: 0;
   align-items: center;
   gap: 8px;
-  height: 49px;
-  padding: 8px 12px 8px 18px;
+  /* The native 52pt title bar (`UnifiedTitleBar` in the shell), whose traffic lights center on
+     this height; macOS paints them over the leading edge, so the logo and title clear that zone. */
+  height: 52px;
+  padding: 8px 12px 8px 88px;
   border-bottom: 1px solid var(--border);
   user-select: none;
-  -webkit-app-region: drag;
-}
-
-/* macOS paints the native traffic lights over the header's leading edge, so the logo and title
-   clear that zone; the settings window reserves the same 88px for its native controls. */
-html[data-platform='darwin'] .panel-header {
-  padding-left: 88px;
 }
 
 .panel-header h1 {
@@ -116,10 +78,6 @@ html[data-platform='darwin'] .panel-header {
   display: flex;
   flex-shrink: 0;
   gap: 6px;
-}
-.header-button,
-.panel-footer {
-  -webkit-app-region: no-drag;
 }
 /* Everything below the header. The composer's quick panel uses it as its collision boundary, so
    the panel never reaches the header's drag region or the macOS traffic lights. */
@@ -182,7 +140,10 @@ html[data-platform='darwin'] .panel-header {
 /* Bottom action bars float over the surface's scrolling content instead of ending it with a hard
    edge. `useOverlayFooter` publishes the bar's measured height as `--overlay-footer-height` on the
    bar's parent, and the parent's flex gap as `--overlay-footer-gap`; both feed the negative margin
-   that lets the scroller run underneath and the fade that dissolves the content behind the bar. */
+   that lets the scroller run underneath and the fade that dissolves the content behind the bar.
+   Its buttons float over the fading rows, so like the task panel's floating controls they are
+   glass (`Button variant="glass"`); only a commit action (Save, Create, Run) stays a solid
+   primary, as the composer's Send does. */
 .overlay-footer {
   position: relative;
   z-index: 1;
@@ -201,29 +162,27 @@ html[data-platform='darwin'] .panel-header {
 .overlay-footer:is(button, a, input, [role='button']) {
   pointer-events: auto;
 }
-/* Buttons on the bar sit over the fading rows instead of over a surface, so the outline variant's
-   dark-mode transparency would let content show through their fill and border ring. Hover and
-   expanded repeat the lift the variant would have painted, because this rule outranks those variant
-   utilities. */
-.overlay-footer [data-slot='button'][data-variant='outline'] {
-  background-color: var(--secondary);
-  border-color: color-mix(in oklch, var(--secondary), var(--foreground) 10%);
-}
-.overlay-footer [data-slot='button'][data-variant='outline']:is(:hover, [aria-expanded='true']) {
-  background-color: color-mix(in oklch, var(--secondary), var(--foreground) 6%);
-}
-
 /* Applied to the ScrollArea viewport a surface's overlay footer covers. The mask reaches well above
    the bar so the content has finished fading by the time it slides under the controls. */
 .overlay-footer-fade {
-  scroll-padding-bottom: calc(var(--overlay-footer-height, 0px) + 56px);
-  mask-image: linear-gradient(
+  --overlay-footer-mask: linear-gradient(
     to bottom,
     #000 calc(100% - var(--overlay-footer-height, 0px) - 48px),
     rgb(0 0 0 / 42%) calc(100% - var(--overlay-footer-height, 0px)),
     rgb(0 0 0 / 10%) calc(100% - (var(--overlay-footer-height, 0px) / 2)),
     transparent
   );
+  scroll-padding-bottom: calc(var(--overlay-footer-height, 0px) + 56px);
+  mask-image: var(--overlay-footer-mask);
+}
+/* With `scrollShadow`, content scrolled under the top edge fades too (the shared `scroll-shadowed`
+   fade, which this rule would otherwise override); the bar's fade stays the bottom edge, so the
+   two masks intersect. */
+.overlay-footer-fade[data-top-scroll='true'] {
+  mask-image:
+    linear-gradient(to bottom, transparent, #000 var(--scroll-shadow-size)),
+    var(--overlay-footer-mask);
+  mask-composite: intersect;
 }
 /* Reserve the bar's height plus the fade so the last row stays fully opaque at full scroll. */
 .overlay-footer-fade > div {
@@ -234,21 +193,14 @@ html[data-platform='darwin'] .panel-header {
 .overlay-footer-fade[data-reserve='off'] > div {
   padding-bottom: 0;
 }
-/* Floating scroll-to-bottom pill pinned above the composer. The wrapper owns position and the
-   blurred translucent surface; the ghost icon button inside keeps its own radius, hover wash,
-   and focus ring, so no custom class lands on the Button itself. Tokens match the drawer and
-   popover surfaces. */
+/* Floating scroll-to-bottom pill pinned above the composer. The wrapper owns only position and
+   motion; the icon button inside is the panel's shared glass control (`variant="glass"`), so it
+   matches the header and composer controls. */
 .scroll-to-bottom {
   position: absolute;
   bottom: calc(var(--overlay-footer-height, 0px) + 12px);
   left: 50%;
   z-index: 1;
-  border-radius: var(--radius-2xl);
-  border: 1px solid var(--border);
-  background-color: color-mix(in oklch, var(--popover) 75%, transparent);
-  backdrop-filter: blur(var(--ata-backdrop-blur));
-  -webkit-backdrop-filter: blur(var(--ata-backdrop-blur));
-  box-shadow: 0 4px 12px rgb(0 0 0 / 20%);
 }
 .settings-field {
   display: flex;

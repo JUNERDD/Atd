@@ -1,4 +1,7 @@
 import type { ReactNode } from 'react';
+import { CircleAlert } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { Button } from '@ai/ui/components/button';
 import { LazyMarkdown } from '../agent/transcript/lazy-markdown';
 
 export interface DetailField {
@@ -40,7 +43,7 @@ export function ExtensionDetailSection({
       className={className ? `extension-detail-section ${className}` : 'extension-detail-section'}
       aria-label={label}
     >
-      <h3>{label}</h3>
+      <h3 className="settings-section-title">{label}</h3>
       {children}
     </section>
   );
@@ -57,11 +60,46 @@ export function ExtensionDetailText({ label, value }: { label: string; value: st
   );
 }
 
-/** Replaces a details page's body while it loads or after it failed to load. */
-export function ExtensionDetailStatus({ text, error }: { text: string; error: boolean }) {
+/**
+ * A read that failed, beside what it would have shown: the error, then Try again when the read can
+ * be repeated.
+ */
+export function ExtensionLoadError({
+  message,
+  onRetry,
+}: {
+  message: string;
+  onRetry?: () => void;
+}) {
+  const { t } = useTranslation('settings');
   return (
-    <output className="extension-detail-status" data-error={error}>
-      {text}
-    </output>
+    <div className="extension-load-error">
+      <p className="settings-inline-error" role="alert">
+        <CircleAlert aria-hidden />
+        <span>{message}</span>
+      </p>
+      {onRetry ? (
+        <Button type="button" variant="outline" size="sm" onClick={onRetry}>
+          {t('extensions.retry')}
+        </Button>
+      ) : null}
+    </div>
   );
+}
+
+/**
+ * Replaces a details page's body while it loads or after it failed to load; a failure offers
+ * `onRetry` when the read can be repeated.
+ */
+export function ExtensionDetailStatus({
+  text,
+  error,
+  onRetry,
+}: {
+  text: string;
+  error: boolean;
+  onRetry?: () => void;
+}) {
+  if (error) return <ExtensionLoadError message={text} onRetry={onRetry} />;
+  return <output className="extension-detail-status">{text}</output>;
 }

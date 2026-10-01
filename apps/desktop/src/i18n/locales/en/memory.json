@@ -6,7 +6,7 @@
     "searchPlaceholder": "Search memory…",
     "learning": {
       "label": "Learn automatically",
-      "description": "Save stable preferences and clear corrections as you work."
+      "description": "Save stable preferences and clear corrections as you work. When off, nothing new is saved, and the agent can still use saved memories."
     },
     "create": {
       "label": "Create memory",
@@ -25,7 +25,8 @@
       "delete": "Delete",
       "loading": "Loading memory…",
       "empty": "No saved memories yet. Share a lasting preference as you work.",
-      "noMatches": "No matching memories."
+      "noMatches": "No memories match “{{query}}”",
+      "clearSearch": "Clear search"
     },
     "edit": {
       "title": "Edit memory",
@@ -42,14 +43,9 @@
       "emptyContent": "Enter the memory, or use Delete to remove it.",
       "deleted": "Memory deleted.",
       "updated": "Memory updated.",
-      "paused": "Automatic learning paused. Existing memories remain available.",
-      "resumed": "Automatic learning resumed.",
       "storageNote": "Stored on this device. Learning uses your configured model and may make additional model calls."
     },
     "confirm": {
-      "pauseTitle": "Pause automatic learning?",
-      "pauseDescription": "Pending learning will not save new memories. The Agent can still use memories already saved.",
-      "pauseAction": "Pause learning",
       "deleteTitle": "Delete this memory?",
       "deleteDescription": "This preference will be removed from memory. Existing conversation text will remain.",
       "deleteAction": "Delete memory",

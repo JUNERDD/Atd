@@ -44,18 +44,26 @@ function skill(name: string, version: number, history: string[]): BuiltinEntry {
  * Product skills, installed as whole directories into `<atdHome>/skills/<name>`. The first three
  * shipped in 69fd222 (version 1); create-subagent's second fingerprint is the oxfmt reformat
  * (d6e959d) that v0.1.0 and v0.2.0 shipped. Version 2 adds updating an existing item for
- * edit-with-AI sessions.
+ * edit-with-AI sessions. The next version of the four create skills (create-memory's second) drops
+ * `disable-model-invocation`, so the model may load them when a request matches.
  */
 export const BUILTIN_SKILLS: readonly BuiltinEntry[] = [
-  skill('create-skill', 2, ['52ab561a0217ae8a36d38f325cac6ad50fef2e9a08ebe2b909cf583a49c1f4ae']),
-  skill('create-subagent', 2, [
+  skill('create-skill', 3, [
+    '52ab561a0217ae8a36d38f325cac6ad50fef2e9a08ebe2b909cf583a49c1f4ae',
+    'd1a926174cf39e889bb828f533cd6e5025753dd5f5b58a907d1298207240a261',
+  ]),
+  skill('create-subagent', 3, [
     'a02e98d75cf61c4dcd02b3f2d00b18e9c0bb6d764693f6ca38cf845ff6f7561e',
     'afcd5e17fcd95c7a24175b9ad23b1d34fa5d7ec91a2ba2535b3708d2f8a18716',
+    '8d375554aef2b10a951ae07c8fa1b08e8ca14a4099fbb160c61e74ccd43217f9',
   ]),
-  skill('create-mcp', 2, ['a6b2db9e4c7a64c07d796c9a185485c3066891e5347cabca2c60e9493fe53a9a']),
+  skill('create-mcp', 3, [
+    'a6b2db9e4c7a64c07d796c9a185485c3066891e5347cabca2c60e9493fe53a9a',
+    '8c2ce8ae97bf2dbeeb1a5a5da8cd2ed97127e03fa22e7e7a715da015ba7185a2',
+  ]),
   skill('plan-mode', 1, []),
   skill('grill-me', 1, []),
-  skill('create-memory', 1, []),
+  skill('create-memory', 2, ['f313bd78fc680783f18d1eacc387bb04acac33890c5d9e51121ab3f9a2ebdf2e']),
 ];
 
 /**

@@ -4,7 +4,7 @@ import type {
   CredentialInfo,
   CredentialStore,
 } from '@earendil-works/pi-ai';
-import { parse, MigrationCredentialSchema } from '@ai/agent-contracts';
+import { parse, ProviderCredentialSchema } from '@ai/agent-contracts';
 import { TempCredentialStore } from '../credentials.js';
 import { ConnectionStore } from './connections.js';
 import { keyringAccount, KeyringBackend, KeyringUnavailable } from './keyring.js';
@@ -39,7 +39,7 @@ export class ServiceCredentialStore implements CredentialStore {
 
   private static decode(raw: string | undefined): Credential | undefined {
     if (!raw) return undefined;
-    return parse(MigrationCredentialSchema, JSON.parse(raw)) as Credential;
+    return parse(ProviderCredentialSchema, JSON.parse(raw)) as Credential;
   }
 
   async read(providerId: string, options?: AuthOperationOptions): Promise<Credential | undefined> {
