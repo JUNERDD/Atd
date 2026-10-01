@@ -21,6 +21,14 @@ export function useOpenSettingsCommand() {
   return open;
 }
 
+/** Opens the Memory section at one entry's editor, as Personal's Memory tab links there. */
+export const SettingsMemoryLinkContext = createContext<((entryId: string) => void) | null>(null);
+export function useOpenSettingsMemory() {
+  const open = useContext(SettingsMemoryLinkContext);
+  if (!open) throw new Error('Opening a memory requires the settings window.');
+  return open;
+}
+
 /** Whether the enclosing settings section is the one shown; pages outside the window count as shown. */
 export const SettingsSectionActiveContext = createContext(true);
 

@@ -468,3 +468,12 @@ Figma 侧未同步：本会话云端 Figma 工具不可用，本地 Figma MCP �
 - 已知差异：Figma 换行网格无法保留空列，少于列数的卡片会被拉宽；320px 下放不下的 Tabs 在 Figma 中被裁切，代码为横向滚动；插件详情页头部的徽标位置沿用旧头部组件；搜索结果只在组件说明中描述，未单独绘制。
 - 设置导航 [Settings sidebar](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=256-1024) 已包含 Extensions 与 Permissions，两项文案现在同样由 `Content/Settings navigation/*` 字符串变量拥有。上文 2026-09-12 记录的四项导航是当时状态。
 - 已知差异：共享 Badge 使用 Geist SemiBold 12/16，代码 Badge 为 Inter 12 Medium（与现有技能行相同）；诊断块使用项目自有的 Rhea Alert 版本，因为共享库只有 Nova Alert。
+
+## 2026-10-01 个人 › 记忆标签显示真实列表
+
+用户要求插件详情的记忆标签显示真实记忆，而不是一个入口行；随后确认学习开关只由「记忆」分区拥有（标签里不再重复），标签里也不再保留跳转到「记忆」分区的入口。上文「记忆除外」与 Memory 分组的开关、计数描述已被取代。
+
+- 代码：`features/service/plugin-memory-group.tsx` 复用 `features/memory/memory-list.tsx` 的行与 `memory-delete-dialog.tsx`，与「记忆」分区共用 `use-memory-snapshot.ts`；行点击经 `useOpenSettingsMemory` 打开「记忆」分区的编辑页，More 可在原地删除。标签内只有记忆列表，没有开关或入口按钮。记忆 Tab 与其他 Tab 一样显示条目数。
+- Figma：[Personal · Memory tab](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=1614-75986) 移除学习行，只保留记忆列表；[Plugin kind tabs](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=1614-74934) 的 Memory 带数量；[Plugin item row](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=1590-66093) 新增「More only」记忆行类型并删除旧 Memory 变体。S5 消费者已继承。
+- 记忆来源追溯经评估暂不实现：写入路径已限于任务内的记忆工具调用与根运行学习器，Hermes 补丁冻结且条目以内容哈希为 id、学习器只报告「已变化」，旁路账本只能靠差异推断，会与单一权威（D7）产生漂移。
+- 已知差异：「记忆」分区画面（C · 04.01–04.05）仍用较旧的 [App / Memory item](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=339-1153)（无类型图标、编辑按钮而非 More），与代码列表不一致，尚未迁移。

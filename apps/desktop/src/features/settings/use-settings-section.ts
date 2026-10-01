@@ -52,6 +52,7 @@ export function useSettingsSection(
     const id = readCommandIdFromHash();
     return id ? { id, nonce: 0 } : null;
   });
+  const [memoryTarget, setMemoryTarget] = useState<{ id: string; nonce: number } | null>(null);
   const [drawer, setDrawer] = useState<SettingsDrawerState>(null);
   // Every way into a section (the list, search, a link) mounts it on its first visit.
   if (!visited.includes(section)) setVisited([...visited, section]);
@@ -88,10 +89,32 @@ export function useSettingsSection(
     },
     [locked, leave],
   );
+  /** Shows one memory's editor, as `showCommand` does for a command. */
+  const showMemory = useCallback(
+    (entryId: string) => {
+      if (locked) return;
+      leave(-1, () => {
+        setSection('memory');
+        setDrawer(null);
+        setMemoryTarget((current) => ({ id: entryId, nonce: (current?.nonce ?? 0) + 1 }));
+      });
+    },
+    [locked, leave],
+  );
   // The task panel can request the editor for one command while this window is already open.
   useEffect(
     () => window.desktop?.settings.onOpenCommand?.((commandId) => showCommand(commandId)),
     [showCommand],
   );
-  return { section, visited, commandTarget, drawer, setDrawer, navigate, showCommand };
+  return {
+    section,
+    visited,
+    commandTarget,
+    memoryTarget,
+    drawer,
+    setDrawer,
+    navigate,
+    showCommand,
+    showMemory,
+  };
 }
