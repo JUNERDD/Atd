@@ -397,7 +397,9 @@
   width: 100%;
   min-height: 32px;
   gap: 8px;
-  padding: 4px 6px;
+  /* No side padding: the row's icon lines up with the prose around it. Hover changes only the
+     text color, so there is no fill to inset from. */
+  padding: 4px 0;
 }
 .activity-trigger {
   height: auto;
@@ -563,10 +565,9 @@
   gap: 8px;
 }
 .phase-single > .phase-icon {
-  /* Left inset and gap mirror the trigger box so the glyph and step text start where a group
-     header's icon and title start; the top offset centers the 14px glyph on the 20px first line. */
+  /* The gap mirrors the trigger box so the glyph and step text start where a group header's icon
+     and title start; the top offset centers the 14px glyph on the 20px first line. */
   margin-top: 3px;
-  margin-left: 6px;
 }
 .phase-single-step {
   min-width: 0;
@@ -583,15 +584,15 @@
 }
 .phase-step {
   position: relative;
-  padding-left: 20px;
+  padding-left: 14px;
 }
 .phase-step::before,
 .phase-step::after {
   content: '';
   position: absolute;
-  /* 6px trigger padding + 7px half icon, minus the 1px line: the spine meets the header
-   * icon's center, and the 8px branch lands exactly on the 20px content edge. */
-  left: 12px;
+  /* 7px half icon minus the 1px line: the spine meets the header icon's center, and the 8px
+   * branch lands exactly on the 14px content edge, where the step's own icon starts. */
+  left: 6px;
 }
 .phase-step::before {
   top: 0;
@@ -668,7 +669,7 @@
 }
 .compaction-error {
   margin: 0;
-  padding: 0 6px 4px 28px;
+  padding: 0 0 4px 22px;
   color: var(--muted-foreground);
   font-size: 12px;
   line-height: 16px;
