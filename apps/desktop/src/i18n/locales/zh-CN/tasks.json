@@ -300,6 +300,10 @@
     "allowedTitle": "已允许 {{name}} 运行",
     "allowedDescription": "从下一条消息起即可使用它的工具。"
   },
+  "selection": {
+    "toolbar": "所选内容操作",
+    "quote": "引用到回复"
+  },
   "turnActions": {
     "regenerate": "重新生成",
     "more": "更多操作",

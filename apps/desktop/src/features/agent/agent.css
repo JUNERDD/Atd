@@ -963,3 +963,48 @@
   white-space: nowrap;
   color: var(--muted-foreground);
 }
+
+/* A quote chip's passage, marked briefly when the chip is clicked (quote-reveal.ts). The messages
+   column isolates its stacking so the reveal layer's tints sit behind the text (z-index -1) and
+   its rings over code blocks and diagrams, whose own fill would hide a tint. The layer itself has
+   no z-index, so its boxes stack in the column, and it scrolls with the content it covers. */
+.conversation-messages {
+  position: relative;
+  isolation: isolate;
+}
+.quote-reveal-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.quote-reveal-tint,
+.quote-reveal-ring {
+  position: absolute;
+  opacity: 0;
+}
+/* Shown once a box scrolls into view: fade in over 300ms, hold, fade out over 400ms (of 2650ms). */
+.quote-reveal-tint[data-state='shown'],
+.quote-reveal-ring[data-state='shown'] {
+  animation: quote-reveal 2.65s ease-in-out forwards;
+}
+.quote-reveal-tint {
+  z-index: -1;
+  border-radius: 4px;
+  background: var(--ata-quote-highlight);
+}
+.quote-reveal-ring {
+  z-index: 1;
+  box-shadow: inset 0 0 0 2px var(--ata-quote-ring);
+}
+@keyframes quote-reveal {
+  0% {
+    opacity: 0;
+  }
+  11.3%,
+  84.9% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}

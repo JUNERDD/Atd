@@ -29,3 +29,17 @@
   text-overflow: ellipsis;
   vertical-align: top;
 }
+
+/* A quote chip that knows its passage reveals it on click (quote-reveal.ts), in the composer and
+   as a button in a sent message, which also takes keyboard focus. */
+.composer-chip[data-action='reveal'] {
+  font-family: inherit;
+  cursor: pointer;
+}
+.composer-chip[data-action='reveal']:hover {
+  background: var(--accent);
+}
+.composer-chip[data-action='reveal']:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 30%, transparent);
+}

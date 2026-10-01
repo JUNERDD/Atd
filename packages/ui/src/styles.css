@@ -56,6 +56,10 @@
   --ata-status-progress: #22c55e;
   /* Warning status, such as context usage nearing its limit. */
   --ata-status-warning: #f59e0b;
+  /* A quote chip's passage when the chip reveals it: a pale yellow behind the text (which keeps its
+     own colour), and the ring over a code block or diagram, whose own fill would hide a tint. */
+  --ata-quote-highlight: color-mix(in srgb, #facc15 35%, transparent);
+  --ata-quote-ring: color-mix(in srgb, #facc15 70%, transparent);
   --ata-radius-panel: 22px;
   /* Figma activity/connector: the opaque rail shared by the activity tree. */
   --activity-connector: #3c3c3c;

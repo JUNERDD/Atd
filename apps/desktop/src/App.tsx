@@ -9,6 +9,7 @@ import { useOverlayReserve } from './components/use-overlay-footer';
 import { ToastHost } from './components/toast';
 import { useAppLanguage } from './i18n/use-app-language';
 import { agentApi } from './features/agent/use-agent';
+import { focusPanelInput } from './features/agent/use-panel-window';
 import { useTaskPanel } from './features/agent/use-task-panel';
 import { CommandLauncher } from './features/agent/command-launcher';
 import { CommandInput } from './features/agent/command-input';
@@ -24,7 +25,9 @@ import { TaskHistory } from './features/agent/task-history';
 import { ServiceBanner } from './features/service/service-banner';
 import { ServiceStarting } from './features/service/service-starting';
 import { useServiceStarting } from './features/service/use-service-starting';
+import type { QuoteSource } from '@ai/agent-contracts';
 import { EMPTY_QUEUE, type Block } from './client/agent/transcript-schema';
+import { appendChip, quoteChip } from './features/composer-editor/draft';
 import type { FileRef } from './client/agent/task-schema';
 import './features/agent/agent.css';
 
@@ -79,6 +82,13 @@ export function App() {
   const attachToDraft = useCallback((file: FileRef) => {
     const latest = latestDraft.current;
     latest.changeDraft({ ...latest.draft, files: [...latest.draft.files, file] });
+  }, []);
+  // A quote lands as a chip after the draft's content with the caret after it: the editor takes an
+  // outside draft in its layout effect with the caret at the end, before the next frame.
+  const quoteToDraft = useCallback((markdown: string, source: QuoteSource | undefined) => {
+    const latest = latestDraft.current;
+    latest.changeDraft(appendChip(latest.draft, quoteChip(markdown, source)));
+    requestAnimationFrame(focusPanelInput);
   }, []);
   const defaultConnection = snapshot?.connections.find(
     (connection) => connection.connectionId === snapshot.defaultConnectionId,
@@ -181,6 +191,7 @@ export function App() {
                         onNewTask={newTask}
                         onOpenTask={openTask}
                         onRemember={remember}
+                        onQuote={quoteToDraft}
                       />
                       {child.childKey && (
                         <ChildTranscriptView
@@ -190,6 +201,13 @@ export function App() {
                           childKey={child.childKey}
                           requests={requests}
                           onBack={child.close}
+                          // The composer is hidden under the drill-in, so a quote returns to it. Its
+                          // passage stays in the subagent's view, which the chip cannot reopen.
+                          onQuote={(markdown) => {
+                            child.close();
+                            quoteToDraft(markdown, undefined);
+                          }}
+                          onRemember={remember}
                         />
                       )}
                     </div>

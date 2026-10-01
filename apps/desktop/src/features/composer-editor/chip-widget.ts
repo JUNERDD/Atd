@@ -1,6 +1,7 @@
 import { createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { WidgetType } from '@codemirror/view';
+import { revealQuote } from '../agent/transcript/selection-toolbar/quote-reveal';
 import { ChipContent } from './chip-content';
 import { chipName, type Chip } from './draft';
 
@@ -27,6 +28,13 @@ export class ChipWidget extends WidgetType {
     const dom = document.createElement('span');
     dom.className = 'composer-chip';
     dom.dataset.kind = this.chip.kind;
+    // A quote that knows its passage shows it on click; the click still places the cursor.
+    const { chip } = this;
+    if (chip.kind === 'quote' && chip.source) {
+      const source = chip.source;
+      dom.dataset.action = 'reveal';
+      dom.addEventListener('click', () => revealQuote(source));
+    }
     const root = createRoot(dom);
     root.render(createElement(ChipContent, { kind: this.chip.kind, name: chipName(this.chip) }));
     roots.set(dom, root);

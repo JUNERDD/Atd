@@ -8,6 +8,8 @@ import type { Artifact, TaskRun } from '../../../client/agent/task-schema';
 import { IconButton } from '../../../components/icon-button';
 import { adaptTranscript } from './adapter';
 import { ScrollJump } from './scroll-jump';
+import { useQuoteReveal } from './selection-toolbar/quote-reveal';
+import { SelectionToolbar } from './selection-toolbar/selection-toolbar';
 import { useSubagents } from './subagent-context';
 import { TurnView } from './turn-view';
 import { indexRequests } from './turns';
@@ -77,7 +79,8 @@ function ChildHeader({
  * answer rendering, fed from the child's own transcript subscription. Pending approvals come
  * from the task-level requests because the child's tool calls raise them on the parent task;
  * the transcript only labels them, and the parent's composer (hidden while this view is open)
- * answers them.
+ * answers them. Text selected in an answer offers the same actions as in the parent transcript;
+ * `onQuote` lands in that composer, so the caller closes this view to show it.
  */
 export function ChildTranscriptView({
   taskId,
@@ -85,12 +88,18 @@ export function ChildTranscriptView({
   childKey,
   requests,
   onBack,
+  onQuote,
+  onRemember,
 }: {
   taskId: string;
   taskTitle: string;
   childKey: string;
   requests: PermissionRequest[];
   onBack: () => void;
+  /** Adds selected answer text to the parent's reply draft as a quote chip. */
+  onQuote?: (markdown: string) => void;
+  /** Starts a memory session seeded with selected answer text. */
+  onRemember?: (text: string) => void;
 }) {
   const { t } = useTranslation('tasks');
   const { index } = useSubagents();
@@ -112,6 +121,10 @@ export function ChildTranscriptView({
   );
   const live = child ? child.status === 'running' : Boolean(detail?.live);
   const { viewportRef, showJump, pin, onScroll } = useTranscriptScroll(detail?.revision ?? 0);
+  const [messages, setMessages] = useState<HTMLDivElement | null>(null);
+  // The reveal layer: empty for React, painted by a quote chip's reveal (quote-overlay.ts).
+  const [revealLayer, setRevealLayer] = useState<HTMLDivElement | null>(null);
+  useQuoteReveal(messages, revealLayer);
 
   return (
     <div className="conversation child-conversation">
@@ -124,7 +137,7 @@ export function ChildTranscriptView({
         scrollShadow
         viewportProps={{ onScroll }}
       >
-        <div className="conversation-messages">
+        <div ref={setMessages} className="conversation-messages">
           {turns.map((turn, position) => (
             <TurnView
               key={turn.id}
@@ -151,9 +164,11 @@ export function ChildTranscriptView({
               <p className="m-0 text-sm text-muted-foreground">{t('subagent.empty')}</p>
             )
           )}
+          <div ref={setRevealLayer} className="quote-reveal-layer" aria-hidden />
         </div>
       </ScrollArea>
       <ScrollJump show={showJump} onJump={pin} />
+      <SelectionToolbar root={messages} onQuote={onQuote} onRemember={onRemember} />
     </div>
   );
 }

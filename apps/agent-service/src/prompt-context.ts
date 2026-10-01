@@ -36,7 +36,8 @@ export function leadingSystemMessage(): ExtensionFactory {
 
 /**
  * Tag of the run's material, which the service system prompt explains: the saved command's
- * instructions, attached files and resolved references that go with the user's next message.
+ * instructions, attached files, quoted passages and resolved references that go with the user's
+ * next message.
  */
 const RUN_MATERIAL_TAG = 'run_material';
 
