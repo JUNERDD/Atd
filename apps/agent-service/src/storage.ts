@@ -22,24 +22,24 @@ export interface ServicePaths {
 
 export function defaultDataDir(): string {
   const home = homedir();
-  switch (platform()) {
-    case 'darwin':
-      return path.join(home, 'Library', 'Application Support', 'AgentService');
-    case 'win32':
-      return path.join(process.env.LOCALAPPDATA ?? home, 'AgentService');
-    default:
-      return path.join(
-        process.env.XDG_DATA_HOME ?? path.join(home, '.local', 'share'),
-        'agent-service',
-      );
-  }
+  const os = platform();
+  if (os === 'darwin') return path.join(home, 'Library', 'Application Support', 'AgentService');
+  if (os === 'win32') return path.join(process.env.LOCALAPPDATA ?? home, 'AgentService');
+  // Every other platform follows the XDG base directory layout.
+  return path.join(
+    process.env.XDG_DATA_HOME ?? path.join(home, '.local', 'share'),
+    'agent-service',
+  );
 }
 
 /**
  * Data-dir priority: explicit AI_AGENT_DATA_DIR wins, then the CLI flag, then
  * the platform user-service directory. Never derived from an isolated HOME.
  */
-export function resolveDataDir(options: { envDir?: string; flagDir?: string }): string {
+export function resolveDataDir(options: {
+  envDir?: string | undefined;
+  flagDir?: string | undefined;
+}): string {
   const raw = options.envDir?.trim() || options.flagDir?.trim() || defaultDataDir();
   return path.resolve(raw);
 }

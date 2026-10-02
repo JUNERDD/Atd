@@ -31,7 +31,13 @@ export function parseMarkdown(text: string): MarkdownDocument {
     // parseDocument collects errors instead of throwing or logging; warnings are not fatal.
     const parsed = parseDocument(source);
     const [failure] = parsed.errors;
-    if (failure) return { frontmatter: {}, body, source, error: failure.message.split('\n')[0] };
+    if (failure)
+      return {
+        frontmatter: {},
+        body,
+        source,
+        error: failure.message.split('\n')[0] ?? 'invalid YAML',
+      };
     const value: unknown = parsed.toJS();
     if (value === null || value === undefined) return { frontmatter: {}, body, source };
     if (!isRecord(value)) {

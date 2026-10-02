@@ -11,6 +11,7 @@ import {
 import { acceptServer, invalid, unsupported, type ServerResult } from './mcp-common.js';
 import { readManifestPath } from './paths.js';
 import { parseAbsoluteUrl } from './url.js';
+import type { McpOAuthClient } from '../model/manifest.js';
 
 const MANIFEST = '.claude-plugin/plugin.json';
 const DEFAULT_FILE = '.mcp.json';
@@ -91,12 +92,13 @@ function mergeMap(servers: Declared, path: string, map: Record<string, unknown>)
 
 /**
  * Claude server entries: no `type` or `stdio` → stdio; `http` / `streamable-http` / `sse` →
- * remote. `ws` and any entry using `headersHelper` or `oauth` have no normalized form.
+ * remote, with its `oauth` client when it names one. `ws` and any entry using `headersHelper`
+ * have no normalized form.
  */
 export function readServer(entry: unknown): ServerResult {
   if (!isRecord(entry)) return invalid('the entry must be an object.');
-  if (entry.headersHelper !== undefined || entry.oauth !== undefined) {
-    return unsupported('"headersHelper" and "oauth" authentication are not supported.');
+  if (entry.headersHelper !== undefined) {
+    return unsupported('"headersHelper" authentication is not supported.');
   }
   const type = entry.type ?? 'stdio';
   if (type === 'stdio') return readStdio(entry);
@@ -144,5 +146,40 @@ function readRemote(
   }
   const headers = entry.headers === undefined ? {} : stringRecord(entry.headers);
   if (headers === null) return invalid('"headers" must map names to strings.');
-  return { ok: true, transport: { type: 'http', protocol, url, headers } };
+  const oauth = entry.oauth === undefined ? undefined : readOAuth(entry.oauth);
+  if (typeof oauth === 'string') return invalid(oauth);
+  return {
+    ok: true,
+    transport: { type: 'http', protocol, url, headers, ...(oauth ? { oauth } : {}) },
+  };
+}
+
+/**
+ * Claude's `oauth` object: `clientId`, `callbackPort` and `authServerMetadataUrl`. Other fields
+ * are ignored; a client secret never comes from a plugin. Answers why it is unusable instead.
+ */
+function readOAuth(raw: unknown): McpOAuthClient | string {
+  if (!isRecord(raw)) return '"oauth" must be an object.';
+  const { clientId, callbackPort, authServerMetadataUrl } = raw;
+  if (clientId !== undefined && (typeof clientId !== 'string' || !clientId.trim()))
+    return '"oauth.clientId" must be a non-empty string.';
+  if (
+    callbackPort !== undefined &&
+    (typeof callbackPort !== 'number' ||
+      !Number.isInteger(callbackPort) ||
+      callbackPort < 1 ||
+      callbackPort > 65535)
+  )
+    return '"oauth.callbackPort" must be a port number.';
+  if (authServerMetadataUrl !== undefined) {
+    const parsed =
+      typeof authServerMetadataUrl === 'string' ? parseAbsoluteUrl(authServerMetadataUrl) : null;
+    if (parsed === null || (parsed.scheme !== 'http' && parsed.scheme !== 'https'))
+      return '"oauth.authServerMetadataUrl" must be an absolute http(s) URL.';
+  }
+  return {
+    ...(typeof clientId === 'string' ? { clientId } : {}),
+    ...(typeof callbackPort === 'number' ? { callbackPort } : {}),
+    ...(typeof authServerMetadataUrl === 'string' ? { authServerMetadataUrl } : {}),
+  };
 }

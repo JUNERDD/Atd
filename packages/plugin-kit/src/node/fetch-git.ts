@@ -73,7 +73,11 @@ export async function fetchGit(
   const subdir = normalizeSubdir(spec.subdir);
   const cloneDir = path.join(paths.workDir, 'clone');
   try {
-    const { commit } = await clone({ url: spec.url, ref: spec.ref, dir: cloneDir });
+    const { commit } = await clone({
+      url: spec.url,
+      ...(spec.ref === undefined ? {} : { ref: spec.ref }),
+      dir: cloneDir,
+    });
     if (!COMMIT.test(commit)) throw new Error(`git returned an invalid commit id "${commit}".`);
     const realClone = await realpath(cloneDir);
     let pluginRoot: string;

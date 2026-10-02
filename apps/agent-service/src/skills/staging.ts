@@ -43,7 +43,7 @@ export async function stageTaskSkills(
   const file = await readPending(profile);
   const staging: TaskStaging = {
     skills: runSkillRefs(skills),
-    roleId,
+    ...(roleId !== undefined && { roleId }),
     stagedAt: new Date().toISOString(),
   };
   file.tasks[taskId] = staging;

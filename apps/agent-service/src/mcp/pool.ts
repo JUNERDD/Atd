@@ -16,6 +16,7 @@ import {
   type ConnectionContext,
   type ConnectionIdentity,
 } from './pooled-connection.js';
+import { McpServerLog } from './server-log.js';
 import type {
   McpCatalogCounter,
   McpCatalogCounts,
@@ -256,6 +257,7 @@ export class McpConnectionPool {
         error: target.hideUrl(errorMessage(error)),
       });
     });
+    McpServerLog.attach(client, this.deps.log, target, () => this.context.now());
     // connect() takes no signal, so an abort closes the client, which fails the pending initialize.
     const onAbort = () => void client.close().catch(() => undefined);
     signal.addEventListener('abort', onAbort, { once: true });

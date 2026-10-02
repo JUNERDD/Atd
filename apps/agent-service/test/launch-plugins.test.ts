@@ -160,6 +160,7 @@ const legacyServer = (command: string) => ({
   principal: '',
   isolateByTask: false,
   exposeResources: false,
+  exposure: 'auto' as const,
   approveTools: true,
   includeTools: [],
   excludeTools: [],

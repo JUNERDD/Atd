@@ -61,8 +61,8 @@ export async function resolvePreview(
   const policy = body.policy;
   // A preview has no task, so only the policy's pick and the command's fixed model can select.
   const selection = selectRunModel(connections, {
-    requested: policy?.model,
-    command: command?.model,
+    requested: policy?.model ?? null,
+    command: command?.model ?? null,
   });
   const model = resolveRunModel(connections, selection, warnings);
   // Without a command, mirror what RunnerManager.freezeSnapshot freezes for a new task.

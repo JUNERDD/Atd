@@ -9,7 +9,7 @@ import {
   McpSessionExpiredError,
 } from '@earendil-works/pi-mcp';
 import type { McpUpdate } from '../dist/mcp/errors.js';
-import { toPiText } from '../dist/mcp/mapping.js';
+import { toPiContent } from '../dist/mcp/model-content.js';
 import { FakeMcpServer, waitFor, type FakeTool } from './mcp-fake-server.ts';
 import { fixedTool, recordingTool, standardTools, tool } from './mcp-fake-tools.ts';
 import { answerConfirm, at, facadeKit, httpRecord, operation } from './mcp-kit.ts';
@@ -30,6 +30,7 @@ before(async () => {
 after(() => harness.stop());
 
 const PICTURE = Buffer.from('not really a png');
+const pathOf = (id: string) => path.join(harness.config.paths.resourcesDir, id);
 const extras: FakeTool[] = [
   recordingTool('typed'),
   fixedTool('link', { content: [{ type: 'resource_link', uri: 'mem://linked', name: 'linked' }] }),
@@ -64,14 +65,16 @@ test('a text result keeps its blocks, structured content and error flag', async 
   });
   const failed = await call('fail');
   assert.equal(failed.isError, true);
-  assert.equal(toPiText(failed), 'MCP tool reported an error:\nboom');
+  assert.deepEqual(toPiContent(failed, pathOf), [
+    { type: 'text', text: 'MCP tool reported an error:\nboom' },
+  ]);
 });
 
 test('a structured-only result reads to the model as JSON', async (t) => {
   const { call } = setup(t);
   const result = await call('structured');
   assert.deepEqual([result.content, result.structuredContent], [[], { value: 42 }]);
-  assert.equal(toPiText(result), '{\n  "value": 42\n}');
+  assert.deepEqual(toPiContent(result, pathOf), [{ type: 'text', text: '{\n  "value": 42\n}' }]);
 });
 
 test('an image becomes an artifact; a resource link is a reference that is never fetched', async (t) => {
@@ -83,11 +86,17 @@ test('an image becomes an artifact; a resource link is a reference that is never
   assert.ok(attachment.artifactId);
   const file = path.join(harness.config.paths.resourcesDir, attachment.artifactId);
   assert.deepEqual(await readFile(file), PICTURE, 'the artifact holds the image bytes');
-  assert.match(toPiText(picture), new RegExp(`saved as artifact ${attachment.artifactId}`));
+  // The model gets the image itself, then where it was saved.
+  assert.deepEqual(toPiContent(picture, pathOf), [
+    { type: 'image', data: PICTURE.toString('base64'), mimeType: 'image/png' },
+    { type: 'text', text: `[image image/png saved at ${file}]` },
+  ]);
 
   const link = await call('link');
   assert.deepEqual(link.content, [{ type: 'resource_link', uri: 'mem://linked', name: 'linked' }]);
-  assert.equal(toPiText(link), '[link linked: mem://linked] (not fetched)');
+  assert.deepEqual(toPiContent(link, pathOf), [
+    { type: 'text', text: '[link linked: mem://linked] (not fetched)' },
+  ]);
   assert.deepEqual(fake.requests('resources/read'), []);
 });
 

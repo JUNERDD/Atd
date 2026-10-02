@@ -250,7 +250,7 @@ export class McpAuthority {
     this.assertOpen();
     const change = this.servers.removeUser(serverId);
     const removed = change.previous.find((record) => record.serverId === serverId);
-    if (removed?.http?.auth.type === 'oauth') await this.authManager.logout(serverId);
+    if (removed) await this.authManager.forget(removed);
     await this.apply('mcp:remove', change);
     await this.launches.forget(serverId);
   }

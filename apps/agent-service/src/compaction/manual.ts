@@ -40,25 +40,20 @@ export async function startManualCompaction(input: {
   wrap: <T>(action: () => Promise<T>) => Promise<T>;
   onEnd: () => void;
 }): Promise<{ done: Promise<void> }> {
-  let accept: () => void = () => undefined;
-  let refuse: (error: Error) => void = () => undefined;
-  const accepted = new Promise<void>((resolve, reject) => {
-    accept = resolve;
-    refuse = reject;
-  });
+  const accepted = Promise.withResolvers<void>();
   const done = (async () => {
     try {
       const live = await input.live();
-      void live.compaction.nextPrepared().then(accept);
+      void live.compaction.nextPrepared().then(accepted.resolve);
       await input.wrap(() => live.session.compact(input.instructions));
     } catch (error) {
       // Settling again is a no-op once the compaction was accepted.
-      refuse(refusal(error));
+      accepted.reject(refusal(error));
       throw error;
     }
   })().finally(input.onEnd);
   try {
-    await accepted;
+    await accepted.promise;
   } catch (error) {
     // Refused: the thrown error carries the reason; the ended attempt has nothing to report.
     void done.catch(() => undefined);

@@ -9,9 +9,7 @@ export {
   rebindSubagentsForRun,
 } from './lifecycle.js';
 export {
-  SUBAGENT_LIMITS,
-  SERVICE_PARALLEL_WORKFLOW,
-  SERVICE_CHAIN_WORKFLOW,
+  DISABLED_SUBAGENT_FEATURES,
   ensureManagedSubagentConfig,
   readManagedSubagentConfig,
   auditManagedConfig,
@@ -35,18 +33,10 @@ export {
   hostForTask,
 } from './registry.js';
 export { intersectChildTools, isChildToolAllowed } from './intersection.js';
-export {
-  validateParallelArgs,
-  validateChainArgs,
-  buildParallelScript,
-  buildChainScript,
-  resolveParallelResource,
-  resolveChainResource,
-} from './workflows.js';
 export { serviceAgentNames, SERVICE_RUNTIME_AGENTS } from './agents.js';
 export {
-  installManagedSettingsTrigger,
-  pinManagedSettings,
+  installManagedLaunchTrigger,
+  pinManagedLaunch,
   abortTaskChildren,
   liveChildCount,
   isTriggerInstalled,

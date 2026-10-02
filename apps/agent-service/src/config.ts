@@ -165,12 +165,12 @@ async function loadToken(paths: ServicePaths, serviceId: string): Promise<string
  * the epoch and loads the bearer token. Callers must release the lock on exit.
  */
 export async function prepareServe(options: {
-  envDir?: string;
-  flagDir?: string;
-  host?: string;
-  port?: number;
+  envDir?: string | undefined;
+  flagDir?: string | undefined;
+  host?: string | undefined;
+  port?: number | undefined;
 }): Promise<ServiceConfig> {
-  const root = resolveDataDir({ envDir: options.envDir, flagDir: options.flagDir });
+  const root = resolveDataDir(options);
   const paths = servicePaths(root);
   await acquireLock(paths);
   const service = await loadServiceFile(paths);

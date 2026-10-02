@@ -9,7 +9,7 @@ import {
   type SecretKind,
   type StoredServer,
   type StoredValues,
-} from './server-store.js';
+} from './server-file.js';
 
 /**
  * Moves MCP env and header values that `servers.json` still keeps in plain text (saved before the

@@ -19,6 +19,7 @@ import {
   type SkillComponent,
   type SubstitutionContext,
 } from '@ai/plugin-kit';
+import { oauthClientProblem } from '../mcp/oauth-client.js';
 import type { SkillRevisionRecord } from '../skills/versions.js';
 import type { PluginHost } from './host.js';
 
@@ -192,6 +193,7 @@ function transportProblem(record: McpServerConfig): string | null {
     if (record.http.url.length > 2048) return 'its URL is too long';
     if (values(record.http.headers).some((value) => value.length > 8192))
       return 'a header value is too long';
+    if (record.http.auth.type === 'oauth') return oauthClientProblem(record.http.auth);
   }
   return null;
 }
@@ -204,8 +206,8 @@ function transportProblem(record: McpServerConfig): string | null {
  * carry their substituted values, secrets included; the record lives only in memory, and a Personal
  * duplicate leaves those entries out (plugins/duplicate.ts). An HTTP URL or header keeps its
  * process-environment `${VAR}` for the service to fill in at launch (mcp/launch-resolve.ts), so the
- * launch approval sees which variables it sends (mcp/env-references.ts). HTTP servers use no
- * service-managed auth. `revision` is derived from the substituted config, so any change (update,
+ * launch approval sees which variables it sends (mcp/env-references.ts). An HTTP server signs in
+ * with OAuth: with the client its plugin declares, else when it answers 401. `revision` is derived from the substituted config, so any change (update,
  * config value) counts as a new revision and a connection is never reused across it. Diagnostics
  * from substitution name the server.
  */
@@ -242,12 +244,19 @@ export function mapMcp(
             url: transport.url,
             transport: transport.protocol,
             headers: transport.headers,
-            auth: { type: 'none' },
+            // A declared OAuth client signs in with it; any other server is offered OAuth when
+            // it answers 401 without a configured Authorization header (mcp/oauth-capable.ts).
+            auth: transport.oauth
+              ? { type: 'oauth', scope: null, redirectUri: null, ...transport.oauth }
+              : { type: 'none' },
           }
         : null,
     principal: '',
     isolateByTask: false,
+    // Plugin servers are read-only: their tools reach the model by tool count, their resources
+    // never; a Personal duplicate can change either.
     exposeResources: false,
+    exposure: 'auto',
     approveTools: true,
     includeTools: [],
     excludeTools: [],

@@ -41,13 +41,8 @@ export {
 export { McpNotices, redactUrl } from './callbacks.js';
 export { McpApprovalBroker, type McpApprovalContext } from './approval.js';
 export type * from './types.js';
-export {
-  mapCallResult,
-  mapGetPrompt,
-  mapReadResource,
-  promptPreviewToInput,
-  toPiText,
-} from './mapping.js';
+export { mapCallResult, mapGetPrompt, mapReadResource, promptPreviewToInput } from './mapping.js';
+export { toPiContent } from './model-content.js';
 export { MAX_BLOB_BYTES, adoptTempPaths, materializeBlob } from './artifacts.js';
 export {
   mcpCapabilityId,
@@ -108,6 +103,14 @@ export {
   type StdioProbe,
 } from './servers.js';
 export {
+  LIST_MCP_RESOURCE_TEMPLATES_TOOL,
+  LIST_MCP_RESOURCES_TOOL,
+  MCP_RESOURCE_TOOLS,
+  READ_MCP_RESOURCE_TOOL,
+  type McpResourceServer,
+} from './resource-tools.js';
+export {
+  bindingExposure,
   mcpProxyName,
   mcpProxyPrefix,
   prepareMcpTools,
@@ -115,5 +118,6 @@ export {
   type McpGuardedCall,
   type McpProxyHost,
   type McpProxyOptions,
+  type McpRunTools,
   type McpToolBinding,
 } from './tool-proxies.js';

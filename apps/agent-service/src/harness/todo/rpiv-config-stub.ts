@@ -5,7 +5,7 @@
  * every tool registration; the service must not pick up a user's personal rpiv configuration, so
  * this module answers with fixed defaults and never touches the filesystem.
  *
- * Only the two runtime exports rpiv-todo 2.11.0 imports are provided.
+ * Only the two runtime exports rpiv-todo 2.12.0 imports are provided.
  */
 
 /** rpiv-todo's `TodoConfig`, fixed: no guidance override and no overlay collapse shortcut. */
@@ -36,7 +36,7 @@ export function loadJsonConfigWithLegacyFallback(name: string): ServiceTodoConfi
 }
 
 /**
- * Same contract as upstream `validateGuidanceFields` (rpiv-config 2.11.0): keeps only non-empty
+ * Same contract as upstream `validateGuidanceFields` (rpiv-config 2.12.0): keeps only non-empty
  * string fields and a non-empty all-string `promptGuidelines`, and returns `{}` for anything that
  * is not an object. With the fixed config above it always receives `undefined`, so rpiv-todo
  * keeps its default prompt snippet and guidelines.

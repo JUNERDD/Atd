@@ -83,7 +83,7 @@ export function registryFetch(
 ) {
   const requests: string[] = [];
   const fetch: typeof globalThis.fetch = async (input) => {
-    const url = String(input);
+    const url = input instanceof Request ? input.url : String(input);
     requests.push(url);
     if (url === `${registry}/${name.replace('/', '%2f')}`) return Response.json(packument);
     const tarball = tarballs[url];

@@ -28,17 +28,22 @@ function parseFlags(argv: string[]): Flags {
   const flags: Flags = {};
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index] ?? '';
-    if (arg === '--dataDir' && argv[index + 1]) flags.dataDir = argv[(index += 1)];
-    else if (arg === '--host' && argv[index + 1]) flags.host = argv[(index += 1)];
-    else if (arg === '--port' && argv[index + 1]) flags.port = Number(argv[(index += 1)]);
-    else if (arg === '--login-shell-path') flags.loginShellPath = true;
+    // The value of a valued flag; a flag missing its value falls through to "Unknown argument".
+    const value = argv[index + 1];
+    if (arg === '--login-shell-path') flags.loginShellPath = true;
     else if (arg === '--yes') flags.yes = true;
-    else if (arg === '--tier' && argv[index + 1]) {
-      const tier = argv[(index += 1)];
-      if (tier !== 'manual' && tier !== 'auto' && tier !== 'always')
-        throw new Error('--tier must be manual, auto or always.');
-      flags.tier = tier;
-    } else throw new Error(`Unknown argument: ${arg}`);
+    else if (!value) throw new Error(`Unknown argument: ${arg}`);
+    else {
+      index += 1;
+      if (arg === '--dataDir') flags.dataDir = value;
+      else if (arg === '--host') flags.host = value;
+      else if (arg === '--port') flags.port = Number(value);
+      else if (arg === '--tier') {
+        if (value !== 'manual' && value !== 'auto' && value !== 'always')
+          throw new Error('--tier must be manual, auto or always.');
+        flags.tier = value;
+      } else throw new Error(`Unknown argument: ${arg}`);
+    }
   }
   return flags;
 }
@@ -58,7 +63,7 @@ function usage(): string {
     '  --help, -h       Show this help',
     '  --version, -v    Print version and Node requirement',
     '',
-    `Requires Node.js ${engines} on PATH (workspace toolchain; covers Pi 0.99.1`,
+    `Requires Node.js ${engines} on PATH (workspace toolchain; covers Pi 1.0.0`,
     '≥22.19.0); there is no auto-download.',
     'AI_AGENT_DATA_DIR overrides --dataDir.',
     'approve asks the running service what an MCP server would launch and approves it after a',
@@ -199,6 +204,7 @@ async function main(): Promise<void> {
         await approveMcp(path.resolve(locate(flags)), serverId, { yes: flags.yes ?? false });
         break;
       }
+      case undefined:
       default:
         process.stdout.write(`${usage()}\n`);
         process.exit(command === undefined ? 0 : 1);

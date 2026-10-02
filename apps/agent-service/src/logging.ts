@@ -17,7 +17,7 @@ export function createLogger(level: LogLevel = 'info'): Logger {
       ts: new Date().toISOString(),
       level: entryLevel,
       msg: message,
-      ...(fields ?? {}),
+      ...fields,
     });
     if (entryLevel === 'error') process.stderr.write(`${line}\n`);
     else process.stdout.write(`${line}\n`);

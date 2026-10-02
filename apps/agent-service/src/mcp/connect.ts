@@ -140,7 +140,7 @@ export class ConnectionManager implements McpConnections {
     const spec = toLaunchSpec(record);
     if (record.stdio) {
       const probe = await probeStdioRuntime(record.stdio.command, {
-        cwd: record.stdio.cwd ?? undefined,
+        cwd: record.stdio.cwd,
         env: record.stdio.env,
       });
       if (!probe.ok || !probe.resolved) throw new Error(probe.detail);

@@ -64,7 +64,7 @@ const UNICODE_SPACES = /[\u00A0\u2000-\u200A\u202F\u205F\u3000]/g;
  * path read opens unless it falls back to a macOS spelling of a missing name. Classify tool
  * calls with it rather than `path.resolve`, which keeps an `@`, `~` or `file://` path inside
  * `cwd` while pi reaches outside it. Mirrors the unexported `resolveToCwd` of
- * `@earendil-works/pi-coding-agent` 0.99.1 (`dist/core/tools/path-utils.js`, which calls
+ * `@earendil-works/pi-coding-agent` 1.0.0 (`dist/core/tools/path-utils.js`, which calls
  * `resolvePath` in `dist/utils/paths.js`); re-check it when upgrading pi.
  */
 export function resolveToolPath(cwd: string, rawPath: string): string {
@@ -92,9 +92,12 @@ export async function confined(
   rawPath: string,
   readRoots: readonly string[] = [],
 ): Promise<ConfinedPath> {
-  const real = await realTarget(path.resolve(cwd, rawPath));
-  if (inside(cwd, real)) return { real, location: 'inside' };
-  if (inside(dataDir, real)) return { real, location: 'outside' };
+  // Both sides compare as real paths (a file not written yet through its nearest existing
+  // ancestor), so a data dir reached through a link, such as the system temp dir on macOS, still
+  // holds its own files.
+  const real = await realAncestorPath(path.resolve(cwd, rawPath));
+  if (inside(await resolveRoot(cwd), real)) return { real, location: 'inside' };
+  if (inside(await resolveRoot(dataDir), real)) return { real, location: 'outside' };
   const roots = [atdSkillsDir(), atdAgentsDir(), ...readRoots];
   if (await underAny(roots, real)) return { real, location: 'outside' };
   throw new Error('File access outside the service data directory is blocked.');
@@ -162,6 +165,21 @@ export async function withinRoots(
   rawPath: string,
 ): Promise<boolean> {
   return underAny(roots, await realTarget(resolveToolPath(cwd, rawPath)));
+}
+
+/**
+ * The resource id a file tool's `path` argument names, resolved as pi resolves it: the name of a
+ * file directly in `resourcesDir` (a resource's file is `<resourcesDir>/<id>`), compared as real
+ * paths so a link elsewhere does not count; null for any other path. Whose resource it is stays
+ * the caller's question.
+ */
+export async function resourceIdAt(
+  resourcesDir: string,
+  cwd: string,
+  rawPath: string,
+): Promise<string | null> {
+  const real = await realTarget(resolveToolPath(cwd, rawPath));
+  return path.dirname(real) === (await resolveRoot(resourcesDir)) ? path.basename(real) : null;
 }
 
 async function realTarget(absolute: string): Promise<string> {

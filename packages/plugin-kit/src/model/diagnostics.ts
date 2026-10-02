@@ -8,7 +8,7 @@ import { Type, type Static } from 'typebox';
  * - `unsupported-component`: a component type the kit does not import (hooks, `bin/`, LSP,
  *   output styles, pi extensions/themes, reverse-domain extension directories, …); ignored.
  * - `unsupported-transport`: an MCP server whose transport has no normalized form (`ws`,
- *   `headersHelper`, `oauth`, `.mcpb`); skipped.
+ *   `headersHelper`, `.mcpb`); skipped.
  * - `invalid-component`: a component that failed its own validation; skipped.
  * - `path-escape`: a path that resolves outside the plugin root; skipped (or fatal for the root).
  * - `renamed`: a name normalized to the kit alphabet; the item loads under the new name.

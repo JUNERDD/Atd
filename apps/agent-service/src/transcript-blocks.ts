@@ -2,6 +2,7 @@ import type { AssistantMessage, ToolResultMessage } from '@earendil-works/pi-ai'
 import { Type } from 'typebox';
 import { Compile } from 'typebox/compile';
 import {
+  CODEMODE_TOOL,
   GrantScopeSchema,
   PermissionOutcomeSchema,
   SUBAGENT_CHILD_ENTRY,
@@ -16,7 +17,12 @@ import {
 } from '@ai/agent-contracts';
 import type { Logger } from './logging.js';
 import { isSubagentLaunch, SUBAGENT_TOOL } from './subagents/tool-contract.js';
-import { projectSubagentToolDetails, projectToolDetails } from './transcript-details/index.js';
+import type { StepList } from './transcript-details/codemode.js';
+import {
+  projectCodemodeToolDetails,
+  projectSubagentToolDetails,
+  projectToolDetails,
+} from './transcript-details/index.js';
 import { subagentRows, type SubagentRow } from './transcript-details/subagent.js';
 import type { ServiceBranchItem } from './transcript.js';
 
@@ -185,6 +191,8 @@ export interface AssistantBlockInput {
   partials: ReadonlyMap<string, string>;
   /** Latest streamed result rows of running `subagent` calls (live-transcript.ts). */
   subagentProgress: ReadonlyMap<string, readonly SubagentRow[]>;
+  /** Steps of running `codemode` calls by call id (live-transcript.ts). */
+  codemodeProgress: ReadonlyMap<string, StepList>;
   /** Session entry time of this message (its end); null for live partials. */
   messageEndedAt: number | null;
   /**
@@ -193,13 +201,14 @@ export interface AssistantBlockInput {
    */
   usage: MessageUsage | undefined;
   outputOf: (result: ToolResultMessage) => string;
-  /** Receives diagnostics for tool details dropped by the projection. */
-  log?: Pick<Logger, 'debug'>;
+  /** Receives diagnostics for tool details dropped by the projection; passed through from the caller. */
+  log?: Pick<Logger, 'debug'> | undefined;
 }
 
 /**
  * Raw result details stop here: a tool gets the whitelisted projection once completed, except a
- * launching `subagent` call, whose child cards exist in every status.
+ * launching `subagent` call, whose child cards exist in every status, and a `codemode` call, whose
+ * nested calls do.
  */
 function toolDetails(
   input: AssistantBlockInput,
@@ -219,6 +228,16 @@ function toolDetails(
         status,
         children: input.lookups.children.get(id) ?? [],
         rows: result ? subagentRows(result.details) : (input.subagentProgress.get(id) ?? []),
+      },
+      input.log,
+    );
+  if (name === CODEMODE_TOOL)
+    return projectCodemodeToolDetails(
+      {
+        status,
+        result,
+        live: input.codemodeProgress.get(id),
+        permissions: input.lookups.permissions,
       },
       input.log,
     );

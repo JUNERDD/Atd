@@ -1,24 +1,37 @@
-import { createHash, randomUUID } from 'node:crypto';
-import { Type, type TSchema } from 'typebox';
 import type {
   ExtensionFactory,
   ToolAnnotations,
-  ToolDefinition,
+  ToolExposure,
+  ToolNamespace,
 } from '@earendil-works/pi-coding-agent';
-import { errorMessage, type McpServerConfig, type McpToolRef } from '@ai/agent-contracts';
+import {
+  errorMessage,
+  MCP_DEFERRED_TOOL_THRESHOLD,
+  type McpServerConfig,
+  type McpServerExposure,
+  type McpToolRef,
+} from '@ai/agent-contracts';
 import type { Logger } from '../logging.js';
+import { McpApprovalBroker } from './approval.js';
+import type { McpPreapproval } from './errors.js';
 import type { McpFacade } from './facade.js';
-import { McpError, type McpPreapproval, type McpUpdate, type OperationContext } from './errors.js';
-import { toPiText } from './mapping.js';
-import { isJsonObject, normalizeInputSchema } from './policy.js';
+import { mcpProxyName, mcpProxyPrefix } from './proxy-names.js';
+import { mcpProxyTool, proxyNamespace } from './proxy-tool.js';
+import { mcpResourceTools, type McpResourceServer } from './resource-tools.js';
 import { matchToolPattern } from './servers.js';
+import type { McpListedServer } from './types.js';
+
+export { mcpProxyName, mcpProxyPrefix } from './proxy-names.js';
 
 /**
  * Runner MCP tool proxies (D6): one frozen proxy per authorized tool, built
  * asynchronously at session assembly and registered through the authority
- * facade. Approval is claimed per operation (`allow_once`/`deny`), inputs
- * are validated, AuditSignal cancels, and MCP progress bridges to Pi
- * partial updates. Catalog changes never reach an already-bound run.
+ * facade. Each binding pins its server revision and carries what pi 1.0
+ * declares for it: the server's tool namespace with its instructions, and the
+ * tool's exposure. Names: proxy-names.ts; the registered tool: proxy-tool.ts.
+ * Catalog changes never reach an already-bound run: a deferred proxy is
+ * registered at bind like a direct one, and `tool_search` only declares it.
+ * Servers that expose resources add the resource tools (resource-tools.ts).
  */
 
 export interface McpProxyHost {
@@ -67,72 +80,31 @@ export interface McpToolBinding {
   ref: McpToolRef;
   /** The tool's boolean MCP hints; they inform pi and never relax an approval. */
   annotations?: ToolAnnotations;
-}
-
-/** Providers reject tool names over 64 characters; pi's own MCP tools stay within it too. */
-const MAX_NAME_LENGTH = 64;
-/** A name over the limit ends in `_` and this many hex characters of a hash. */
-const NAME_HASH_LENGTH = 8;
-/** What such a name keeps of the original: 55 characters, so `<kept>_<hash>` is 64 long. */
-const KEPT_NAME_LENGTH = MAX_NAME_LENGTH - NAME_HASH_LENGTH - 1;
-/** Hex characters of the server id hash in a prefix that carries one. */
-const ID_HASH_LENGTH = 10;
-
-/**
- * Proxy tool name: `mcp__<server>__<tool>`, sanitized for Pi and at most 64 characters. A longer
- * name keeps its first 55 characters and ends in `_` and 8 hex characters of SHA-256 over the raw
- * server id and tool name, as pi's `createMcpToolName` does, so tools that share their first 55
- * characters stay apart.
- *
- * `taken` holds the names other tools of the binding already have. Sanitizing can map `a.b` and
- * `a_b` to one name; the later tool then gets `_2`, `_3`, … after it. A numbered name that
- * outgrows the limit is shortened like any other, with the number in its hash, or every try would
- * shorten to the same name.
- */
-export function mcpProxyName(
-  serverId: string,
-  tool: string,
-  taken: ReadonlySet<string> = new Set(),
-): string {
-  const name = `${mcpProxyPrefix(serverId)}${cleanProxyPart(tool)}`;
-  const seed = `${serverId}\0${tool}`;
-  let candidate = fitProxyName(name, seed);
-  for (let attempt = 2; taken.has(candidate); attempt += 1)
-    candidate = fitProxyName(`${name}_${attempt}`, `${seed}\0${attempt}`);
-  return candidate;
-}
-
-/** `name` when it fits the limit, else its first 55 characters, `_` and the hash of `seed`. */
-function fitProxyName(name: string, seed: string): string {
-  if (name.length <= MAX_NAME_LENGTH) return name;
-  const hash = createHash('sha256').update(seed).digest('hex').slice(0, NAME_HASH_LENGTH);
-  return `${name.slice(0, KEPT_NAME_LENGTH)}_${hash}`;
+  /** The server's namespace, shared by all its proxies (proxy-tool.ts `proxyNamespace`). */
+  namespace: ToolNamespace;
+  /** How the model reaches the proxy: its server's exposure for this run (`bindingExposure`). */
+  exposure: Extract<ToolExposure, 'direct' | 'deferred'>;
+  /** The server's policy asks the user about each call (`approveTools`), unless the tier allows it. */
+  guarded: boolean;
 }
 
 /**
- * The prefix every proxy of one server shares: `mcp__<server>__`. `references/material.ts` tells
- * the model to look for tools named `<prefix>*`, so it has to stay a true prefix of every proxy
- * name. A shortened name keeps only its first 55 characters (`fitProxyName`), so the prefix may
- * not run past 55 either: when the server id would take it further, the readable part is cut to
- * fit and a hash of the whole id follows it, so ids that share their start still get different
- * prefixes.
- *
- * A plugin server's qualified id (`<plugin>:<item>`) has characters the tool alphabet lacks, so
- * cleaning alone would give `kit:srv`, `kit.io:srv` and a user's `kit_srv` one prefix; it always
- * gets the readable part plus the hash, so its prefix names that server alone.
+ * A server's exposure in one run: as configured, or for `auto` by how many tools the run binds
+ * from it (`MCP_DEFERRED_TOOL_THRESHOLD`).
  */
-export function mcpProxyPrefix(serverId: string): string {
-  const readable = cleanProxyPart(serverId);
-  const plain = `mcp__${readable}__`;
-  if (!serverId.includes(':') && plain.length <= KEPT_NAME_LENGTH) return plain;
-  const hash = createHash('sha256').update(serverId).digest('hex').slice(0, ID_HASH_LENGTH);
-  const withHash = (part: string) => `mcp__${part}_${hash}__`;
-  return withHash(readable.slice(0, KEPT_NAME_LENGTH - withHash('').length));
+export function bindingExposure(
+  setting: McpServerExposure,
+  tools: number,
+): McpToolBinding['exposure'] {
+  if (setting !== 'auto') return setting;
+  return tools > MCP_DEFERRED_TOOL_THRESHOLD ? 'deferred' : 'direct';
 }
 
-/** Runs of characters outside the tool alphabet become one `_`; the callers bound the length. */
-function cleanProxyPart(value: string): string {
-  return value.replace(/[^A-Za-z0-9_]+/g, '_') || 'x';
+/** What a run binds: its proxies, and the servers its resource tools reach (maybe none). */
+export interface McpRunTools {
+  factory: ExtensionFactory;
+  bindings: McpToolBinding[];
+  resourceServers: McpResourceServer[];
 }
 
 /**
@@ -144,17 +116,18 @@ export async function prepareMcpTools(
   host: McpProxyHost,
   options: McpProxyOptions,
   signal?: AbortSignal,
-): Promise<{ factory: ExtensionFactory; bindings: McpToolBinding[] }> {
+): Promise<McpRunTools> {
   const bindings: McpToolBinding[] = [];
+  const resourceServers: McpResourceServer[] = [];
   const used = new Set<string>();
   // Servers list at once; binding follows record order, so proxy names do not depend on timing.
   const listed = await Promise.all(
     options.records
       .filter((record) => !record.disabled)
       .map(async (record) => {
-        const tools = await options.facade
-          .listedToolInfo(record.serverId, signal)
-          .catch((error: unknown) => {
+        const listed = await options.facade
+          .listedServer(record.serverId, signal)
+          .catch((error: unknown): McpListedServer => {
             host.audit({
               taskId: host.taskId,
               runId: host.runId(),
@@ -166,23 +139,33 @@ export async function prepareMcpTools(
               serverId: record.serverId,
               error: errorMessage(error),
             });
-            return [];
+            return { instructions: null, tools: [], resources: false };
           });
-        return { record, tools };
+        return { record, ...listed };
       }),
   );
-  for (const { record, tools } of listed) {
-    for (const { ref, annotations } of tools) {
+  for (const { record, instructions, tools, resources } of listed) {
+    if (resources && record.exposeResources)
+      resourceServers.push({ serverId: record.serverId, revision: record.revision });
+    const namespace = proxyNamespace(
+      mcpProxyPrefix(record.serverId),
+      record.serverId,
+      instructions,
+    );
+    const bound = tools.filter(({ ref }) => {
       if (record.includeTools.length && !matchToolPattern(record.includeTools, [ref.name]))
-        continue;
-      if (record.excludeTools.length && matchToolPattern(record.excludeTools, [ref.name])) continue;
-      if (
-        options.selected &&
-        !options.selected.some(
+        return false;
+      if (record.excludeTools.length && matchToolPattern(record.excludeTools, [ref.name]))
+        return false;
+      return (
+        !options.selected ||
+        options.selected.some(
           (item) => item.connectionId === record.connectionId && item.tool === ref.name,
         )
-      )
-        continue;
+      );
+    });
+    const exposure = bindingExposure(record.exposure, bound.length);
+    for (const { ref, annotations } of bound) {
       const proxyName = mcpProxyName(record.serverId, ref.name, used);
       used.add(proxyName);
       bindings.push({
@@ -193,11 +176,17 @@ export async function prepareMcpTools(
         revision: record.revision,
         ref,
         ...(annotations ? { annotations } : {}),
+        namespace,
+        exposure,
+        guarded: McpApprovalBroker.approvalRequired(record.approveTools, ref.name),
       });
     }
   }
   const factory: ExtensionFactory = (pi) => {
     for (const binding of bindings) pi.registerTool(mcpProxyTool(host, options, binding));
+    if (resourceServers.length)
+      for (const tool of mcpResourceTools(host, options.facade, resourceServers))
+        pi.registerTool(tool);
   };
   if (options.selected)
     host.audit({
@@ -208,135 +197,5 @@ export async function prepareMcpTools(
       selected: options.selected.length,
       bound: bindings.length,
     });
-  return { factory, bindings };
-}
-
-/** What a proxy declares to the model; `mcpProxyServerId` reads the server back from it. */
-function proxyDescription(tool: string, serverId: string): string {
-  return `MCP tool ${tool} on ${serverId}. Approval is per call.`;
-}
-
-/**
- * The server a proxy's declared description names, null for any other description. Server ids
- * hold no whitespace (`McpServerIdSchema`), while the proxy name may have lost the id to its
- * sanitized, shortened or hashed prefix.
- */
-export function mcpProxyServerId(description: string): string | null {
-  return /^MCP tool .+ on (\S+)\. Approval is per call\.$/s.exec(description)?.[1] ?? null;
-}
-
-function mcpProxyTool(
-  host: McpProxyHost,
-  options: McpProxyOptions,
-  binding: McpToolBinding,
-): ToolDefinition<TSchema, McpProxyDetails, unknown> {
-  const parameters = proxyParameters(binding.ref.inputSchema);
-  return {
-    name: binding.proxyName,
-    label: `MCP ${binding.serverId} ${binding.tool}`,
-    description: proxyDescription(binding.tool, binding.serverId),
-    parameters,
-    ...(binding.annotations ? { annotations: binding.annotations } : {}),
-    executionMode: 'sequential',
-    async execute(id, args, signal, onUpdate, _ctx) {
-      signal?.throwIfAborted();
-      const op: OperationContext = {
-        operationId: randomUUID(),
-        taskId: host.taskId,
-        runId: host.runId(),
-        executionId: host.executionId(),
-        toolCallId: id,
-        configRevision: binding.revision,
-      };
-      const input = args ?? {};
-      if (!isJsonObject(input)) {
-        throw new Error(`MCP tool ${binding.tool} takes a JSON object as its arguments.`);
-      }
-      const preapprove = host.preapprove;
-      if (preapprove) {
-        const call = {
-          toolCallId: id,
-          serverId: binding.serverId,
-          tool: binding.tool,
-          args: input,
-        };
-        op.preapprove = (callSignal) => preapprove(call, callSignal);
-      }
-      const bridge = onUpdate
-        ? (update: McpUpdate) => {
-            onUpdate({
-              content: [{ type: 'text', text: progressText(binding, update) }],
-              details: proxyDetails(binding, false, [], '', update),
-            });
-          }
-        : undefined;
-      try {
-        const result = await options.facade.callTool(
-          op,
-          binding.serverId,
-          binding.tool,
-          input,
-          signal,
-          bridge,
-        );
-        return {
-          content: [{ type: 'text', text: toPiText(result) }],
-          details: proxyDetails(binding, result.isError, result.attachments, result.limitsNote),
-          // The server's machine-readable result, for pi's hooks; the model reads `content`.
-          ...(isJsonObject(result.structuredContent)
-            ? { structuredContent: result.structuredContent }
-            : {}),
-          // Pi (0.99+) honors the flag: the model gets an error result and the transcript shows
-          // the call as failed. Without it the error text would read as a completed call.
-          ...(result.isError ? { isError: true } : {}),
-        };
-      } catch (error) {
-        if (
-          error instanceof McpError &&
-          error.code === 'forbidden' &&
-          /declined/i.test(error.message)
-        ) {
-          throw new Error('The user declined this action.');
-        }
-        throw new Error(errorMessage(error));
-      }
-    },
-  };
-}
-
-/** What models see of the tool's input: the normalized schema, or any object without one. */
-function proxyParameters(inputSchema: unknown): TSchema {
-  if (inputSchema && typeof inputSchema === 'object') {
-    return Type.Unsafe<Record<string, unknown>>(normalizeInputSchema(inputSchema));
-  }
-  return Type.Record(Type.String(), Type.Unknown());
-}
-
-function proxyDetails(
-  binding: McpToolBinding,
-  isError: boolean,
-  attachments: Array<{ artifactId: string | null; kind: string; note: string }>,
-  limitsNote: string,
-  progress?: { progress: number; total?: number; message?: string },
-): McpProxyDetails {
-  return {
-    server: binding.serverId,
-    tool: binding.tool,
-    isError,
-    attachments: attachments.map((attachment) => ({
-      artifactId: attachment.artifactId,
-      kind: attachment.kind,
-      note: attachment.note,
-    })),
-    limitsNote,
-    ...(progress ? { progress } : {}),
-  };
-}
-
-function progressText(binding: McpToolBinding, update: McpUpdate): string {
-  const ratio =
-    update.total === undefined ? `${update.progress}` : `${update.progress}/${update.total}`;
-  return update.message
-    ? `MCP ${binding.serverId}/${binding.tool}: ${update.message} (${ratio})`
-    : `MCP ${binding.serverId}/${binding.tool}: ${ratio}`;
+  return { factory, bindings, resourceServers };
 }

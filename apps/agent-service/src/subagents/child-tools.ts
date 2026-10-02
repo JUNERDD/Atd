@@ -1,10 +1,25 @@
-import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
-import { Type } from 'typebox';
+import { writeFile } from 'node:fs/promises';
+import {
+  createBashToolDefinition,
+  createEditToolDefinition,
+  createReadToolDefinition,
+  createWriteToolDefinition,
+  type ExtensionAPI,
+  type ToolDefinition,
+} from '@earendil-works/pi-coding-agent';
+import type { TSchema } from 'typebox';
 import { childCommandTool } from '../commands/tool.js';
 import { childSearchTools } from '../harness/search/tools.js';
 import { childWebTools } from '../harness/web-extension.js';
 import { authorizeShellCommand } from '../shell-policy.js';
-import { boundedExec, SHELL_TIMEOUT_CEILING_SECONDS } from '../shell-tool.js';
+import { boundedExec } from '../shell-tool.js';
+import {
+  editOperations,
+  readOperations,
+  writeOperations,
+  type ResolvePath,
+  type WriteResolved,
+} from '../tool-proxies.js';
 import { checkChildPath, isChildToolAllowed } from './intersection.js';
 import { hostForTask, releaseWrite, tryAcquireWrite } from './registry.js';
 
@@ -13,8 +28,10 @@ import { hostForTask, releaseWrite, tryAcquireWrite } from './registry.js';
  * in every foreground child: service dataDir confinement, the service shell
  * policy, no parallel same-file writes, explicit blocks. Child writes stay
  * inside the task output dir; outside paths are blocked without a prompt.
- * grep/find/ls are the parent's confined pi tools (harness/search), and
- * web_search/fetch_content the parent's keyless web tools (harness/web-extension).
+ * read/write/edit/bash are pi's own tools, built on the parent's operation
+ * builders (tool-proxies.ts) with the child's path decision; grep/find/ls are
+ * the parent's confined pi tools (harness/search), and web_search/fetch_content
+ * the parent's keyless web tools (harness/web-extension).
  *
  * bash, command saves and web calls decide exactly as the parent's do: through the
  * parent task's tier and the service gate (`SubagentHost.approvals`), with
@@ -35,7 +52,7 @@ export interface ChildToolHost {
   audit: (entry: Record<string, unknown>) => void;
 }
 
-/** What a child tool answers; the bridge hands it to pi as is. */
+/** What a service child tool answers; `childDefinition` hands it to pi as text content. */
 export interface ChildToolResult {
   content: { type: string; text: string }[];
   details: unknown;
@@ -43,22 +60,20 @@ export interface ChildToolResult {
   isError?: boolean;
 }
 
-/** A tool as the child bridge registers it. */
+/**
+ * A service tool shared with children (search, web, command) before it becomes a pi tool
+ * definition; its arguments are checked against `parameters` by pi and again by the tool.
+ */
 export interface ChildTool {
   name: string;
   label: string;
   description: string;
-  parameters: unknown;
+  parameters: TSchema;
   execute: (id: string, args: unknown, signal?: AbortSignal) => Promise<ChildToolResult>;
 }
 
-interface PiLike {
-  registerTool(tool: ChildTool): void;
-  on(
-    event: 'tool_call',
-    handler: (event: { toolName: string }) => { block?: boolean; reason?: string } | undefined,
-  ): void;
-}
+/** What the child tools use of a child's `pi`; the bridge hands over the real one. */
+export type ChildPi = Pick<ExtensionAPI, 'on' | 'registerTool'>;
 
 function denied(host: ChildToolHost, tool: string, reason: string): Error {
   host.audit({
@@ -73,7 +88,7 @@ function denied(host: ChildToolHost, tool: string, reason: string): Error {
 }
 
 /** Registers the ceiling gate: names outside the ceiling never execute. */
-export function registerChildCeiling(pi: PiLike, host: ChildToolHost): void {
+export function registerChildCeiling(pi: ChildPi, host: ChildToolHost): void {
   pi.on('tool_call', (event) => {
     if (isChildToolAllowed(host.allowedTools, event.toolName)) return undefined;
     host.audit({
@@ -88,7 +103,7 @@ export function registerChildCeiling(pi: PiLike, host: ChildToolHost): void {
 }
 
 /** Registers confined file, shell, command, search and web proxies for one child. */
-export function registerChildTools(pi: PiLike, host: ChildToolHost): void {
+export function registerChildTools(pi: ChildPi, host: ChildToolHost): void {
   registerChildCeiling(pi, host);
   const parent = hostForTask(host.taskId);
   if (!parent) throw new Error('Child tools have no host record for this task; refusing to start.');
@@ -105,43 +120,81 @@ export function registerChildTools(pi: PiLike, host: ChildToolHost): void {
       tool,
       decision,
     });
-  for (const tool of childSearchTools(host.cwd, host.allowedTools, allow)) pi.registerTool(tool);
-  for (const tool of childWebTools(approvals.gate, host.allowedTools)) pi.registerTool(tool);
-  if (host.allowedTools.includes('read')) {
+  const tools: ChildTool[] = [
+    ...childSearchTools(host.cwd, host.allowedTools, allow),
+    ...childWebTools(approvals.gate, host.allowedTools),
+  ];
+  if (host.allowedTools.includes('command'))
+    tools.push(
+      childCommandTool(host.dataDir, approvals.gate, (decision) => allow('command', decision)),
+    );
+  for (const tool of tools) pi.registerTool(childDefinition(tool));
+  registerFileTools(pi, host);
+  if (host.allowedTools.includes('bash')) {
+    const bash = createBashToolDefinition(host.cwd, {
+      exposeSessionEnvironment: false,
+      operations: { exec: boundedExec },
+    });
     pi.registerTool({
-      name: 'read',
-      label: 'Read a file',
-      description: 'Read a file inside the task output or a ledger resource.',
-      parameters: Type.Object({ path: Type.String() }),
-      async execute(_id, args) {
-        void _id;
-        const target = (args as { path?: unknown }).path;
-        if (typeof target !== 'string' || !target)
-          throw denied(host, 'read', 'A path is required.');
-        const { real, location } = await checkChildPath({
-          cwd: host.cwd,
-          dataDir: host.dataDir,
-          rawPath: target,
+      ...bash,
+      async execute(id, args, signal, onUpdate, ctx) {
+        signal?.throwIfAborted();
+        await authorizeShellCommand({
+          command: args.command,
+          toolCallId: id,
+          tier: approvals.tier,
+          gate: approvals.gate,
+          signal,
+          detail: JSON.stringify({ tool: 'bash', args }),
+          auditAllowlisted: () => allow('bash', 'allowlist'),
         });
-        if (location === 'outside' && !isResourcePath(host, real))
-          throw denied(host, 'read', 'Child reads outside the task output are blocked.');
-        host.audit({
-          taskId: host.taskId,
-          runId: host.parentRunId,
-          executionId: host.executionId,
-          tool: 'read',
-          decision: 'allow',
-        });
-        await stat(real);
-        const text = await readFile(real, 'utf8');
-        return { content: [{ type: 'text', text }], details: {} };
+        return bash.execute(id, args, signal, onUpdate, ctx);
       },
     });
   }
-  if (host.allowedTools.includes('write') || host.allowedTools.includes('edit')) {
-    const writeOne = async (tool: string, target: unknown, content: unknown) => {
-      if (typeof target !== 'string' || !target) throw denied(host, tool, 'A path is required.');
-      if (typeof content !== 'string') throw denied(host, tool, 'Content must be text.');
+}
+
+/** A service child tool as a pi tool definition; its text-only result passes through. */
+function childDefinition(tool: ChildTool): ToolDefinition {
+  return {
+    name: tool.name,
+    label: tool.label,
+    description: tool.description,
+    parameters: tool.parameters,
+    async execute(id, args, signal) {
+      const result = await tool.execute(id, args, signal);
+      return {
+        content: result.content.map((part) => ({ type: 'text' as const, text: part.text })),
+        details: result.details,
+        ...(result.isError ? { isError: true } : {}),
+      };
+    },
+  };
+}
+
+/**
+ * pi's read, write and edit for one child. `checkChildPath` decides every path the operations
+ * touch: reads stay in the task output or a ledger resource, writes and edits in the task output
+ * (an edit only reads files it may write), and a write holds the sibling lock, so parallel
+ * children never write one file at the same time. A call is audited once it succeeds; a refused
+ * path is audited as a denial.
+ */
+function registerFileTools(pi: ChildPi, host: ChildToolHost): void {
+  const readable =
+    (tool: string): ResolvePath =>
+    async (target) => {
+      const { real, location } = await checkChildPath({
+        cwd: host.cwd,
+        dataDir: host.dataDir,
+        rawPath: target,
+      });
+      if (location === 'outside' && !isResourcePath(host, real))
+        throw denied(host, tool, 'Child reads outside the task output are blocked.');
+      return real;
+    };
+  const writable =
+    (tool: string): ResolvePath =>
+    async (target) => {
       const { real, location } = await checkChildPath({
         cwd: host.cwd,
         dataDir: host.dataDir,
@@ -150,80 +203,56 @@ export function registerChildTools(pi: PiLike, host: ChildToolHost): void {
       });
       if (location === 'outside')
         throw denied(host, tool, 'Child writes outside the task output are blocked.');
+      return real;
+    };
+  const locked =
+    (tool: string): WriteResolved =>
+    async (real, content) => {
       const lock = tryAcquireWrite(host.taskId, real, host.executionId);
       if (!lock.ok)
-        throw denied(host, tool, `Parallel write to ${target} is blocked; a sibling holds it.`);
+        throw denied(host, tool, `Parallel write to ${real} is blocked; a sibling holds it.`);
       try {
-        await mkdir(real.split('/').slice(0, -1).join('/') || host.cwd, { recursive: true });
         await writeFile(real, content);
       } finally {
         releaseWrite(host.taskId, real, host.executionId);
       }
+    };
+  const register = <T extends TSchema, D, S>(tool: ToolDefinition<T, D, S>): void => {
+    if (host.allowedTools.includes(tool.name)) pi.registerTool(audited(host, tool));
+  };
+  register(createReadToolDefinition(host.cwd, { operations: readOperations(readable('read')) }));
+  register(
+    createWriteToolDefinition(host.cwd, {
+      operations: writeOperations(writable('write'), locked('write')),
+    }),
+  );
+  register(
+    createEditToolDefinition(host.cwd, {
+      operations: editOperations(writable('edit'), writable('edit'), locked('edit')),
+    }),
+  );
+}
+
+/** Audits a pi tool's call once it returns; pi's tool context passes through untouched. */
+function audited<T extends TSchema, D, S>(
+  host: ChildToolHost,
+  tool: ToolDefinition<T, D, S>,
+): ToolDefinition<T, D, S> {
+  return {
+    ...tool,
+    async execute(id, args, signal, onUpdate, ctx) {
+      signal?.throwIfAborted();
+      const result = await tool.execute(id, args, signal, onUpdate, ctx);
       host.audit({
         taskId: host.taskId,
         runId: host.parentRunId,
         executionId: host.executionId,
-        tool,
+        tool: tool.name,
         decision: 'allow',
       });
-      return { content: [{ type: 'text', text: `Wrote ${target}.` }], details: {} };
-    };
-    if (host.allowedTools.includes('write')) {
-      pi.registerTool({
-        name: 'write',
-        label: 'Write a file',
-        description: 'Write a file inside the task output dir.',
-        parameters: Type.Object({ path: Type.String(), content: Type.String() }),
-        async execute(_id, args) {
-          void _id;
-          const record = args as { path?: unknown; content?: unknown };
-          return writeOne('write', record.path, record.content);
-        },
-      });
-    }
-    if (host.allowedTools.includes('edit')) {
-      pi.registerTool({
-        name: 'edit',
-        label: 'Edit a file',
-        description: 'Replace file content inside the task output dir.',
-        parameters: Type.Object({ path: Type.String(), content: Type.String() }),
-        async execute(_id, args) {
-          void _id;
-          const record = args as { path?: unknown; content?: unknown };
-          return writeOne('edit', record.path, record.content);
-        },
-      });
-    }
-  }
-  if (host.allowedTools.includes('bash')) {
-    pi.registerTool({
-      name: 'bash',
-      label: 'Run a shell command',
-      description:
-        'Run a shell command in the task output dir. Commands off the shell allowlist ask the user first.',
-      parameters: Type.Object({ command: Type.String() }),
-      async execute(id, args, signal) {
-        signal?.throwIfAborted();
-        const command = (args as { command?: unknown }).command;
-        if (typeof command !== 'string' || !command.trim())
-          throw denied(host, 'bash', 'A command is required.');
-        await authorizeShellCommand({
-          command,
-          toolCallId: id,
-          tier: approvals.tier,
-          gate: approvals.gate,
-          signal,
-          detail: JSON.stringify({ tool: 'bash', args: { command } }),
-          auditAllowlisted: () => allow('bash', 'allowlist'),
-        });
-        return runCommand(command, host.cwd, signal);
-      },
-    });
-  }
-  if (host.allowedTools.includes('command'))
-    pi.registerTool(
-      childCommandTool(host.dataDir, approvals.gate, (decision) => allow('command', decision)),
-    );
+      return result;
+    },
+  };
 }
 
 function isResourcePath(host: ChildToolHost, real: string): boolean {
@@ -231,44 +260,4 @@ function isResourcePath(host: ChildToolHost, real: string): boolean {
   return host.resourceIds.some(
     (id) => real.endsWith(`/${id}`) || real.includes(`/resources/${id}`),
   );
-}
-
-/** The most output of one command a child receives, in characters; its head is kept. */
-const COMMAND_OUTPUT_LIMIT = 200000;
-
-/**
- * Runs one child command on the service's bash backend (shell-tool.ts), so Stop and the ceiling
- * kill its process group. Like pi's own bash tool, a failure keeps what the command printed: a
- * non-zero exit is an error result with the output and an exit line, and an abort or a timeout
- * throws the same output with its status line.
- */
-async function runCommand(
-  command: string,
-  cwd: string,
-  signal?: AbortSignal,
-): Promise<ChildToolResult> {
-  let output = '';
-  /** The head of the output, then the status line when there is one. */
-  const answer = (status?: string) => {
-    const head = output.slice(0, COMMAND_OUTPUT_LIMIT);
-    return status ? `${head}${head ? '\n\n' : ''}${status}` : head;
-  };
-  try {
-    const { exitCode } = await boundedExec(command, cwd, {
-      onData: (chunk) => {
-        output += chunk.toString();
-      },
-      signal,
-    });
-    if (exitCode === 0) return { content: [{ type: 'text', text: answer() }], details: {} };
-    const text = answer(`Command exited with code ${exitCode ?? 'unknown'}`);
-    return { content: [{ type: 'text', text }], details: {}, isError: true };
-  } catch (error) {
-    // A bash backend rejects with `aborted` or `timeout:<seconds>`; pi's bash tool reads them too.
-    if (error instanceof Error && error.message === 'aborted')
-      throw new Error(answer('Command aborted'));
-    if (error instanceof Error && error.message.startsWith('timeout:'))
-      throw new Error(answer(`Command timed out after ${SHELL_TIMEOUT_CEILING_SECONDS} seconds`));
-    throw error;
-  }
 }

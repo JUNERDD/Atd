@@ -90,7 +90,13 @@ export async function recoverService(options: {
           }
           break;
         }
-        default:
+        case 'cancelled':
+        case 'completed':
+        case 'failed':
+        case 'interrupted':
+        case 'stopped':
+        case 'unknown':
+          // Settled before the restart: nothing to recover.
           break;
       }
     }
