@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Label } from '@ai/ui/components/label';
 import type { Connection, ConnectionDraft } from '../../client/providers/schema';
 import { ThinkingLevelSelect } from './thinking-level-select';
+import type { ConnectionDraftPatch } from './use-provider-draft';
 import { useThinkingLevels } from './use-thinking-levels';
 
 /**
@@ -20,9 +21,9 @@ export function ProviderThinkingLevel({
   draft: ConnectionDraft;
   saved: Connection | null;
   disabled: boolean;
-  onChange: (patch: Partial<ConnectionDraft>) => void;
+  onChange: (patch: ConnectionDraftPatch) => void;
   /** Applies the drop of a level the model does not offer, which is no edit of the user's. */
-  onNormalize: (patch: Partial<ConnectionDraft>) => void;
+  onNormalize: (patch: ConnectionDraftPatch) => void;
 }) {
   const { t } = useTranslation('providers');
   const reference =

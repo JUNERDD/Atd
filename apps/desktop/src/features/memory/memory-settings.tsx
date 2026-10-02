@@ -8,14 +8,14 @@ import type { MemoryEntry } from '../../client/agent/bridge';
 import { FieldHint } from '../../components/field-hint';
 import { SettingsHeading } from '../settings/settings-heading';
 import { SettingsSearchField } from '../settings/settings-search-field';
-import { agentApi } from '../agent/use-agent';
-import { showErrorToast, showToast } from '../../components/toast-store';
+import { showToast } from '../../components/toast-store';
 import { MemoryCreateButton } from './memory-create-button';
 import { MemoryDeleteDialog } from './memory-delete-dialog';
 import { MemoryEditor } from './memory-editor';
 import { MemoryLearningFooter } from './memory-learning-footer';
 import { MemoryList } from './memory-list';
-import { useMemorySnapshot } from './use-memory-snapshot';
+import { useMemoryWrites } from './memory-writes';
+import { reloadMemory, useMemorySnapshot } from './use-memory-snapshot';
 import { useSettingsSectionExit } from '../settings/settings-navigation';
 import { useSettingsPageHistory } from '../settings/use-settings-page-history';
 
@@ -34,7 +34,8 @@ export function MemorySettings({
   activeEntry?: { id: string; nonce: number } | null;
 }) {
   const { t } = useTranslation('memory');
-  const { snapshot, setSnapshot } = useMemorySnapshot();
+  const { snapshot } = useMemorySnapshot();
+  const writes = useMemoryWrites();
   const search = useCompositionQuery();
   const history = useSettingsPageHistory<MemoryRoute>(
     LIST,
@@ -56,46 +57,23 @@ export function MemorySettings({
       ? (snapshot?.entries.find(({ id }) => id === route.entry.id) ?? route.entry)
       : null;
   const [deleting, setDeleting] = useState<MemoryEntry | null>(null);
-  // Only the controls in flight wait: the learning switch, or each entry being saved.
-  const [pausing, setPausing] = useState(false);
-  const [saving, setSaving] = useState<ReadonlySet<string>>(() => new Set());
-  function track(id: string, busy: boolean) {
-    setSaving((current) => {
-      const next = new Set(current);
-      if (busy) next.add(id);
-      else next.delete(id);
-      return next;
-    });
-  }
   const searchInput = useRef<HTMLInputElement>(null);
   useSettingsSectionExit(() => search.change(''));
-  // The switch flipping is the feedback; only a failure needs a message.
-  async function pause(paused: boolean) {
-    setPausing(true);
-    try {
-      setSnapshot(await agentApi().pauseMemory(paused));
-    } catch (error) {
-      showErrorToast(error);
-    }
-    setPausing(false);
-  }
   /**
    * Saves `entry` with new content; empty content deletes it. Either way the editor closes, and
-   * only then is a toast needed: from the list, the row changing in place is the feedback.
+   * only then is a toast needed: from the list, the row changing in place is the feedback. A
+   * failure keeps the page, with its toast.
    */
-  async function update(entry: MemoryEntry, next: string) {
+  function update(entry: MemoryEntry, next: string) {
     const from = route;
-    track(entry.id, true);
     const feedback = next ? t('memory.feedback.updated') : t('memory.feedback.deleted');
-    try {
-      setSnapshot(await agentApi().updateMemory(entry, next));
-      history.leave(from);
-      if (from.page === 'edit') showToast({ kind: 'info', text: feedback });
-    } catch (error) {
-      showErrorToast(error);
-    } finally {
-      track(entry.id, false);
-    }
+    void writes.update(entry, next).then(
+      () => {
+        history.leave(from);
+        if (from.page === 'edit') showToast({ kind: 'info', text: feedback });
+      },
+      () => {},
+    );
   }
   const feedback = snapshot?.error ? (
     <>
@@ -103,16 +81,7 @@ export function MemorySettings({
         <CircleAlert aria-hidden />
         {snapshot.error}
       </p>
-      <Button
-        variant="outline"
-        className="mt-3"
-        onClick={() => {
-          void agentApi()
-            .memory()
-            .then(setSnapshot)
-            .catch((error) => showErrorToast(error));
-        }}
-      >
+      <Button variant="outline" className="mt-3" onClick={reloadMemory}>
         {t('memory.feedback.reload')}
       </Button>
     </>
@@ -123,9 +92,9 @@ export function MemorySettings({
         <MemoryEditor
           key={editing.id}
           entry={editing}
-          busy={saving.has(editing.id)}
+          busy={writes.savingIds.has(editing.id)}
           feedback={feedback}
-          onSave={(content) => void update(editing, content)}
+          onSave={(content) => update(editing, content)}
           onDelete={() => setDeleting(editing)}
           onCancel={history.back}
         />
@@ -167,7 +136,7 @@ export function MemorySettings({
                   <MemoryList
                     entries={snapshot.entries}
                     query={search.query}
-                    busyIds={saving}
+                    busyIds={writes.savingIds}
                     onClearSearch={() => {
                       search.change('');
                       searchInput.current?.focus();
@@ -184,16 +153,17 @@ export function MemorySettings({
           </ScrollArea>
           <MemoryLearningFooter
             checked={snapshot ? !snapshot.paused : false}
-            pending={pausing}
+            pending={writes.pausing}
             disabled={!snapshot || Boolean(snapshot.error)}
-            onCheckedChange={(checked) => void pause(!checked)}
+            // The switch flipping is the feedback; only a failure needs a message.
+            onCheckedChange={(checked) => writes.pause(!checked)}
           />
         </>
       )}
       <MemoryDeleteDialog
         entry={deleting}
         onCancel={() => setDeleting(null)}
-        onConfirm={(entry) => void update(entry, '')}
+        onConfirm={(entry) => update(entry, '')}
       />
     </section>
   );

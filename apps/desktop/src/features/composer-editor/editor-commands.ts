@@ -4,31 +4,34 @@ import { addChips, chipEntry, tokenOf } from './chip-state';
 import type { Chip, FileChip } from './draft';
 import { currentTrigger, dismissTrigger } from './trigger-field';
 
-/** Edits the quick panel applies to the composer editor; stable for the editor's lifetime. */
+/**
+ * Edits the quick panel applies to the composer editor; stable for the editor's lifetime and free
+ * of `this`, so callers may pass them on as callbacks.
+ */
 export interface ComposerEditorCommands {
   /**
    * One transaction: replaces the active trigger text, wherever it starts, with chip tokens
    * (space-separated, one trailing space). Every kind, skills included, lands at the trigger, and
    * the same item may be inserted any number of times.
    */
-  insertChips(chips: Chip[]): void;
+  insertChips: (chips: Chip[]) => void;
   /**
    * Inserts attached files (picked, captured, dropped or pasted) as chips at the caret, like
    * `insertChips` but leaving an open trigger's text in place, and focuses the editor.
    */
-  attachFiles(chips: FileChip[]): void;
+  attachFiles: (chips: FileChip[]) => void;
   /** Replaces the active trigger text, e.g. `/model ` to drill. */
-  replaceTrigger(text: string): void;
+  replaceTrigger: (text: string) => void;
   /** Deletes the active trigger text including leading whitespace (a quick command ran). */
-  clearTrigger(): void;
+  clearTrigger: () => void;
   /** Closes the panel for the current trigger token without editing text (Esc). */
-  dismissTrigger(): void;
+  dismissTrigger: () => void;
   /**
    * Types `@` at the caret, after a space when the caret follows a word, and focuses the editor,
    * so the trigger opens the mention panel as if the user had typed it (the attach menu's
    * Mention item).
    */
-  insertMention(): void;
+  insertMention: () => void;
 }
 
 /**

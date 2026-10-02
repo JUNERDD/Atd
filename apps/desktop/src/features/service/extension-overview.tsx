@@ -150,7 +150,7 @@ export function ExtensionOverview({
   const unlisted = plugins.error ? (
     <ExtensionLoadError
       message={t('extensions.plugins.loadFailed', { message: plugins.error })}
-      onRetry={() => void plugins.refresh()}
+      onRetry={() => plugins.refresh()}
     />
   ) : (
     <ExtensionGroup
@@ -223,13 +223,13 @@ export function ExtensionOverview({
             {mcp.mcp?.approvalNotice ? (
               <McpApprovalNotice
                 disabled={!connected}
-                onDismiss={() => void mcp.dismissApprovalNotice()}
+                onDismiss={() => mcp.dismissApprovalNotice()}
               />
             ) : null}
             {list.length && plugins.error ? (
               <ExtensionLoadError
                 message={t('extensions.plugins.loadFailed', { message: plugins.error })}
-                onRetry={() => void plugins.refresh()}
+                onRetry={() => plugins.refresh()}
               />
             ) : null}
             {!list.length ? unlisted : searching ? results : sections}
@@ -249,7 +249,6 @@ export function ExtensionOverview({
               kind: 'info',
               text: t('extensions.plugins.uninstalled', { name: labels.name(target) }),
             });
-            extensions.refreshAll();
           });
         }}
       />

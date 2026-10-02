@@ -82,7 +82,7 @@ export function ProviderForm({
         backLabel={t('form.back')}
       />
       <ScrollArea
-        className="flex-1 min-h-0 min-w-0 m-[-3px_-15px_-3px_-3px]"
+        className="m-[-3px_-15px_-3px_-3px] min-h-0 min-w-0 flex-1"
         viewportClassName="overlay-footer-fade"
         gutter="stable"
         scrollShadow

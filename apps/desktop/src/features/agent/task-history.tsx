@@ -123,7 +123,8 @@ export function TaskHistory({
   const search = useCompositionQuery();
   const [error, setError] = useState('');
   const query = search.query.trim();
-  const now = new Date();
+  // Sections are dated against when the history opened, so they hold still while it is browsed.
+  const [now] = useState(() => new Date());
   function statusLabelOf(task: AgentTask) {
     const status = task.runs.at(-1)?.status;
     if (status === 'completed') return '';
@@ -156,7 +157,7 @@ export function TaskHistory({
           placeholder={t('history.searchPlaceholder')}
         />
       </div>
-      <ScrollArea className="flex-1 min-h-0 -mr-3" gutter="stable" scrollShadow>
+      <ScrollArea className="-mr-3 min-h-0 flex-1" gutter="stable" scrollShadow>
         <div className="history-sections">
           {sections.map((section) => (
             <section

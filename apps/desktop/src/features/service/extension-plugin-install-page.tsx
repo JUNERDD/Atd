@@ -37,8 +37,8 @@ export function PluginInstallPage({
   onInstall,
 }: {
   /** The installed plugin to update, or undefined to install a new one. */
-  updateOf?: string;
-  updateName?: string;
+  updateOf?: string | undefined;
+  updateName?: string | undefined;
   connected: boolean;
   busy: boolean;
   onBack: () => void;

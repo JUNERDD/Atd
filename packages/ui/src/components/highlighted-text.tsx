@@ -11,7 +11,7 @@ export function HighlightedText({
   ranges = [],
 }: {
   text: string;
-  ranges?: readonly MatchRange[];
+  ranges?: readonly MatchRange[] | undefined;
 }) {
   const value = text.normalize('NFC');
   const parts: ReactNode[] = [];

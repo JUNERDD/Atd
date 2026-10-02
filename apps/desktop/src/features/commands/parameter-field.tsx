@@ -103,7 +103,7 @@ export function ParameterField({
         // hiding its end behind a hover.
         <p
           className={
-            error ? 'text-destructive text-xs' : 'text-pretty text-muted-foreground text-xs'
+            error ? 'text-xs text-destructive' : 'text-xs text-pretty text-muted-foreground'
           }
           role={error ? 'alert' : undefined}
         >

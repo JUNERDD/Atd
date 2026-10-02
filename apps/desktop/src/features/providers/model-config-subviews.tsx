@@ -49,7 +49,7 @@ function ConfigOption({
     >
       <span className="model-config-option-text">{children}</span>
       {value && <span className="model-config-option-value">{value}</span>}
-      {checked ? <Check className="shrink-0 size-4" /> : <span className="shrink-0 size-4" />}
+      {checked ? <Check className="size-4 shrink-0" /> : <span className="size-4 shrink-0" />}
     </button>
   );
 }

@@ -43,8 +43,8 @@ export interface ComposerProps {
   onChange: (draft: ComposerDraft) => void;
   onSubmit: () => Promise<unknown>;
   /** Resolves with the queued messages Stop withdrew; they return to the draft. */
-  onStop?: () => Promise<QueueState>;
-  status?: RunStatus;
+  onStop?: (() => Promise<QueueState>) | undefined;
+  status?: RunStatus | undefined;
   pending?: boolean;
   followup?: boolean;
   shortcuts?: ShortcutBindings;
@@ -52,12 +52,12 @@ export interface ComposerProps {
   model: ModelReference | null;
   onOpenSettings: () => void;
   taskId?: string | null;
-  runId?: string;
+  runId?: string | undefined;
   task?: AgentTask | null;
   requests?: PermissionRequest[];
   queue?: QueueState;
   /** The open task's transcript; the progress pill above the input derives from it. */
-  blocks?: readonly Block[];
+  blocks?: readonly Block[] | undefined;
   /** The open task's context usage: the usage ring, `/compact`, and the pill's compacting part. */
   context?: TaskContextState | null;
   /** Panel actions the `/new` and `/history` quick commands run. */
@@ -289,7 +289,7 @@ export function Composer({
             tasks={tasks}
             boundary={overlayBoundary}
           >
-            <div className="composer-surface surface-glass glass-control" data-expanded={expanded}>
+            <div className="composer-surface glass-control surface-glass" data-expanded={expanded}>
               <ScrollArea
                 className="composer-input-scroll"
                 viewportClassName="max-h-[inherit]"
@@ -313,7 +313,7 @@ export function Composer({
                   disabled={disabled}
                   onClick={() => void act()}
                 >
-                  {active ? <Square className="fill-current size-3" /> : <ArrowUp />}
+                  {active ? <Square className="size-3 fill-current" /> : <ArrowUp />}
                 </IconButton>
               </div>
             </div>

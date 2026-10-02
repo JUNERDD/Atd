@@ -31,21 +31,21 @@ export function SettingsSwitchRow({
   /** The switch's id, which the row's label points at. */
   id: string;
   title: string;
-  description?: string;
+  description?: string | undefined;
   checked: boolean;
   onCheckedChange: (checked: boolean) => void;
   /**
    * A save of this setting is in flight: the switch stays focusable, is marked busy and
    * unavailable, and ignores input until the save settles.
    */
-  pending?: boolean;
+  pending?: boolean | undefined;
   /** The setting cannot change at all, such as without the desktop bridge or a snapshot. */
   disabled?: boolean;
   /**
    * An error or a next step shown under the row, beside what caused it (`.settings-inline-error`).
    * It is announced when it appears.
    */
-  note?: string;
+  note?: string | undefined;
   /** The `data-settings-anchor` that settings search reveals. */
   anchor?: string;
 }) {

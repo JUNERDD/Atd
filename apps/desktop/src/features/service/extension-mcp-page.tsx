@@ -7,6 +7,7 @@ import {
   ExtensionDetailStatus,
   type DetailField,
 } from './extension-detail-fields';
+import { McpAccessFacts } from './extension-mcp-access';
 import { McpStatusSection } from './extension-mcp-status';
 import { draftFromConfig, EMPTY_MCP_DRAFT, type McpUpsertInput } from './extension-mcp-draft';
 import { McpEditor } from './extension-mcp-editor';
@@ -72,7 +73,7 @@ function McpUnkeptSection({ config }: { config: ExtensionMcpConfig }) {
   return (
     <ExtensionDetailSection label={t('extensions.mcpPage.unkeptSection')}>
       <ExtensionDetailFields fields={fields} />
-      <p className="text-muted-foreground text-xs">{t('extensions.mcpPage.unkeptNote')}</p>
+      <p className="text-xs text-muted-foreground">{t('extensions.mcpPage.unkeptNote')}</p>
     </ExtensionDetailSection>
   );
 }
@@ -152,6 +153,7 @@ function McpDetailsPage({ serverId, ...props }: McpPageProps & { serverId: strin
       >
         {status}
         <McpConnectionFacts config={config} />
+        <McpAccessFacts />
       </ExtensionPage>
     );
   if (!config) {
@@ -183,6 +185,7 @@ function McpDetailsPage({ serverId, ...props }: McpPageProps & { serverId: strin
       saved={config}
       badge={badge}
       backLabel={props.backLabel}
+      toolCount={row?.state === 'ready' ? row.toolCount : null}
       connected={props.connected}
       busy={props.busy}
       before={status}

@@ -2,10 +2,13 @@ import '@testing-library/jest-dom/vitest';
 import { cleanup } from '@testing-library/react';
 import { afterEach, beforeEach } from 'vitest';
 import '../src/i18n';
+import { queryClient } from '../src/lib/query-client';
 
 beforeEach(() => {
   localStorage.clear();
   delete window.desktop;
+  // Each case installs its own bridge; nothing it cached may answer the next case.
+  queryClient.clear();
 });
 
 afterEach(cleanup);

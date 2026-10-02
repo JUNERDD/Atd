@@ -26,7 +26,7 @@ export function MemoryCreateButton({
       aria-disabled={paused || undefined}
       className="aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
       onClick={() => {
-        if (!paused) void start(false);
+        if (!paused) start(false);
       }}
     >
       <Sparkles data-icon="inline-start" />

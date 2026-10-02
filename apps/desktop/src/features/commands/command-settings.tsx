@@ -1,4 +1,5 @@
 import { Suspense, useEffect, useRef, useState } from 'react';
+import { mutationOptions, useMutation, useMutationState } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { Command, Plus } from 'lucide-react';
 import { Button } from '@ai/ui/components/button';
@@ -33,6 +34,8 @@ import { SettingsSearchField } from '../settings/settings-search-field';
 import { useSettingsSectionExit } from '../settings/settings-navigation';
 import { useSettingsPageHistory } from '../settings/use-settings-page-history';
 import { lazyWithPreload } from '../../lib/lazy-with-preload';
+import { queryClient } from '../../lib/query-client';
+import { readString } from '../service/wire-read';
 
 // The editor brings CodeMirror; the settings window loads it once the command settings open, so
 // opening a command for editing renders it at once.
@@ -59,6 +62,19 @@ function editorOf(route: CommandRoute): EditorRoute | null {
   return route.page === 'parameter' ? route.editor : route;
 }
 
+const TOGGLE_KEY = ['commands', 'enabled'] as const;
+const toggleCommand = mutationOptions({
+  mutationKey: TOGGLE_KEY,
+  mutationFn: ({
+    command,
+    enabled,
+  }: {
+    id: string;
+    command: CommandDefinition;
+    enabled: boolean;
+  }) => agentApi().saveCommand({ ...command, enabled }, command.revision),
+});
+
 export function CommandSettings({
   settings,
   activeCommand,
@@ -81,16 +97,18 @@ export function CommandSettings({
   const [deleting, setDeleting] = useState<CommandDefinition | null>(null);
   const search = useCompositionQuery();
   const searchInput = useRef<HTMLInputElement>(null);
-  // Every command with a save in flight: each row waits for its own save, not for the others'.
-  const [pending, setPending] = useState<ReadonlySet<string>>(() => new Set());
-  function track(id: string, busy: boolean) {
-    setPending((current) => {
-      const next = new Set(current);
-      if (busy) next.add(id);
-      else next.delete(id);
-      return next;
-    });
-  }
+  // Every command with a switch save in flight: each row waits for its own save, not for the
+  // others'. The switch flipping is the feedback; only a failure needs a message (its toast).
+  const { mutate: saveEnabled } = useMutation(toggleCommand, queryClient);
+  const pending = new Set(
+    useMutationState(
+      {
+        filters: { mutationKey: TOGGLE_KEY, status: 'pending' },
+        select: (mutation) => readString(mutation.state.variables, 'id'),
+      },
+      queryClient,
+    ),
+  );
   useSettingsSectionExit(() => search.change(''));
   // A deep link opens its editor as a page of the history, once per request.
   const [linked, setLinked] = useState<number | null>(null);
@@ -101,17 +119,8 @@ export function CommandSettings({
   useEffect(() => {
     void preloadCommandEditor();
   }, []);
-  // The switch flipping is the feedback; only a failure needs a message.
-  async function change(command: CommandDefinition, enabled: boolean) {
-    track(command.id, true);
-    try {
-      await agentApi().saveCommand({ ...command, enabled }, command.revision);
-    } catch (error) {
-      showErrorToast(error);
-    } finally {
-      track(command.id, false);
-    }
-  }
+  const change = (command: CommandDefinition, enabled: boolean) =>
+    saveEnabled({ id: command.id, command, enabled });
   function duplicate(command: CommandDefinition) {
     const id = crypto.randomUUID();
     const names = commands.map((item) => item.name);
@@ -204,7 +213,7 @@ export function CommandSettings({
           searchInput.current?.focus();
         }}
         onOpen={(command) => history.open({ page: 'command', id: command.id })}
-        onToggle={(command, enabled) => void change(command, enabled)}
+        onToggle={change}
         onDuplicate={duplicate}
         onDelete={setDeleting}
       />

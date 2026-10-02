@@ -163,7 +163,7 @@ function ContextRows({ breakdown }: { breakdown: ContextBreakdown }) {
             ) : (
               <Collapsible key={category.id} className="col-span-full grid grid-cols-subgrid">
                 {/* Hover and focus stay inside the row: it sits on the popover's glass. */}
-                <CollapsibleTrigger className="context-row-trigger col-span-full grid grid-cols-subgrid items-center rounded-lg px-1.5 py-1 text-left outline-none hover:bg-accent focus-visible:inset-ring focus-visible:inset-ring-ring focus-visible:ring-3 focus-visible:ring-ring/30 focus-visible:ring-inset">
+                <CollapsibleTrigger className="context-row-trigger col-span-full grid grid-cols-subgrid items-center rounded-lg px-1.5 py-1 text-left outline-none hover:bg-accent focus-visible:ring-3 focus-visible:inset-ring focus-visible:ring-ring/30 focus-visible:inset-ring-ring focus-visible:ring-inset">
                   {cells(category, true)}
                 </CollapsibleTrigger>
                 <CollapsibleContent className="col-span-full">

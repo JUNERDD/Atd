@@ -175,7 +175,7 @@ function QuickRow({
     <CommandItem
       ref={track}
       value={option.value}
-      disabled={option.disabled}
+      disabled={option.disabled ?? false}
       data-checked={option.checked}
       onSelect={option.select}
     >

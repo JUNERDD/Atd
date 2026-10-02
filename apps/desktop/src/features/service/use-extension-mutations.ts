@@ -1,231 +1,146 @@
-import { useCallback, useState } from 'react';
+import { useMemo } from 'react';
+import { mutationOptions, useMutation } from '@tanstack/react-query';
 import type { SubagentPermissions } from '@ai/agent-contracts';
-import { showErrorToast } from '../../components/toast-store';
+import type { McpUpsertInput } from '../../client/service/ipc';
+import { queryClient } from '../../lib/query-client';
 import type { ExtensionRoleTool } from './extension-rows';
+import { extensionWrite, serviceApi, SWITCH_KEY } from './extension-writes';
+import { serviceListKeys } from './use-service';
 
-function serviceApi() {
-  if (!window.desktop?.service) throw new Error('Open the desktop app to manage the service.');
-  return window.desktop.service;
-}
+export type { ExtensionBusyTarget } from './extension-writes';
+
+const setSkillEnabled = mutationOptions({
+  mutationKey: [SWITCH_KEY, 'skill'],
+  mutationFn: ({ name, enabled }: { name: string; enabled: boolean }) =>
+    serviceApi().setSkillEnabled(name, enabled),
+});
+const setAgentEnabled = mutationOptions({
+  mutationKey: [SWITCH_KEY, 'agent'],
+  mutationFn: ({ name, enabled }: { name: string; enabled: boolean }) =>
+    serviceApi().setAgentEnabled(name, enabled),
+});
+const deleteSkill = extensionWrite(
+  'skill',
+  ({ name }: { name: string }) => serviceApi().deleteSkill(name),
+  { reload: serviceListKeys.skills },
+);
+const deleteAgent = extensionWrite(
+  'agent',
+  ({ name }: { name: string }) => serviceApi().deleteAgent(name),
+  { reload: serviceListKeys.agents },
+);
+// A failed restore says nothing here: the row keeps its state and the caller reports it.
+const restoreBuiltin = extensionWrite(
+  'builtin',
+  ({ id }: { id: string }) => serviceApi().restoreBuiltin(id),
+  { reload: serviceListKeys.skills, quiet: true },
+);
+const putRole = extensionWrite(
+  'role',
+  (input: {
+    id: string;
+    title: string;
+    allows: { tools: ExtensionRoleTool[]; skills: string[] };
+  }) => serviceApi().putRole(input),
+  { reload: serviceListKeys.roles },
+);
+const putAgent = extensionWrite(
+  'agent',
+  (input: {
+    name: string;
+    description: string;
+    tools: ExtensionRoleTool[];
+    model: string | null;
+    systemPrompt: string;
+  }) => serviceApi().putAgent(input),
+  { reload: serviceListKeys.agents },
+);
+const setAgentPermissions = extensionWrite(
+  'agent',
+  ({ name, permissions }: { name: string; permissions: SubagentPermissions | null }) =>
+    serviceApi().setAgentPermissions(name, permissions),
+  { reload: serviceListKeys.agents },
+);
+const mcpUpsert = extensionWrite('mcp', (input: McpUpsertInput) => serviceApi().mcpUpsert(input), {
+  reload: serviceListKeys.mcp,
+});
+const mcpSetEnabled = extensionWrite(
+  'mcp',
+  ({ serverId, enabled }: { serverId: string; enabled: boolean }) =>
+    serviceApi().mcpSetEnabled(serverId, enabled),
+  { reload: serviceListKeys.mcp },
+);
+const mcpRemove = extensionWrite(
+  'mcp',
+  ({ serverId }: { serverId: string }) => serviceApi().mcpRemove(serverId),
+  { reload: serviceListKeys.mcp },
+);
+
+const succeeded = () => true;
+const failed = () => false;
 
 /**
- * What a write in progress holds: one built-in, skill, role, subagent or MCP server, one plugin,
- * or an install. Rows lock while their own target is busy; pages lock while anything is.
+ * Skill, subagent, role and MCP catalog writes. A failure shows its error toast; each write that
+ * changes a list reloads it before it resolves. Switches reject after the toast, so a switch can
+ * revert; the other writes resolve to whether they succeeded.
  */
-export type ExtensionBusyTarget =
-  | { kind: 'builtin' | 'skill' | 'role' | 'agent' | 'mcp'; name: string }
-  | { kind: 'plugin'; id: string }
-  | { kind: 'install' };
-
-/** Skill, subagent and MCP catalog writes; refresh is owned by the caller. */
 export function useExtensionMutations() {
-  const [busy, setBusy] = useState<ExtensionBusyTarget | null>(null);
-
-  const setSkillEnabled = useCallback(async (name: string, enabled: boolean) => {
-    try {
-      await serviceApi().setSkillEnabled(name, enabled);
-    } catch (error) {
-      showErrorToast(error);
-      throw error;
-    }
-  }, []);
-
-  const setAgentEnabled = useCallback(async (name: string, enabled: boolean) => {
-    try {
-      await serviceApi().setAgentEnabled(name, enabled);
-    } catch (error) {
-      showErrorToast(error);
-      throw error;
-    }
-  }, []);
-
-  /** Deletes a Personal skill's files; resolves to whether it was deleted. */
-  const deleteSkill = useCallback(async (name: string, refresh: () => Promise<void>) => {
-    setBusy({ kind: 'skill', name });
-    try {
-      await serviceApi().deleteSkill(name);
-      await refresh();
-      return true;
-    } catch (error) {
-      showErrorToast(error);
-      return false;
-    } finally {
-      setBusy(null);
-    }
-  }, []);
-
-  /** Deletes a Personal subagent's file and its settings; resolves to whether it was deleted. */
-  const deleteAgent = useCallback(async (name: string, refresh: () => Promise<void>) => {
-    setBusy({ kind: 'agent', name });
-    try {
-      await serviceApi().deleteAgent(name);
-      await refresh();
-      return true;
-    } catch (error) {
-      showErrorToast(error);
-      return false;
-    } finally {
-      setBusy(null);
-    }
-  }, []);
-
-  /**
-   * Reinstalls the shipped version of a built-in resource after the service backs up the user's
-   * copy; the builtin id (`skill:<name>` for skill rows) is busy meanwhile. Resolves to the
-   * backup path (null when there was nothing to back up), or undefined when the restore failed.
-   */
-  const restoreBuiltin = useCallback(async (id: string, refresh: () => Promise<void>) => {
-    setBusy({ kind: 'builtin', name: id });
-    try {
-      const result = await serviceApi().restoreBuiltin(id);
-      await refresh();
-      return { backupPath: result.backupPath };
-    } catch {
-      return undefined;
-    } finally {
-      setBusy(null);
-    }
-  }, []);
-
-  const putRole = useCallback(
-    async (
-      input: {
-        id: string;
-        title: string;
-        allows: { tools: ExtensionRoleTool[]; skills: string[] };
-      },
-      refresh: () => Promise<void>,
-    ) => {
-      setBusy({ kind: 'role', name: input.id });
-      try {
-        await serviceApi().putRole(input);
-        await refresh();
-        return true;
-      } catch (error) {
-        showErrorToast(error);
-        return false;
-      } finally {
-        setBusy(null);
-      }
-    },
-    [],
+  const skillSwitch = useMutation(setSkillEnabled, queryClient).mutateAsync;
+  const agentSwitch = useMutation(setAgentEnabled, queryClient).mutateAsync;
+  const removeSkill = useMutation(deleteSkill, queryClient).mutateAsync;
+  const removeAgent = useMutation(deleteAgent, queryClient).mutateAsync;
+  const restore = useMutation(restoreBuiltin, queryClient).mutateAsync;
+  const saveRole = useMutation(putRole, queryClient).mutateAsync;
+  const saveAgent = useMutation(putAgent, queryClient).mutateAsync;
+  const savePermissions = useMutation(setAgentPermissions, queryClient).mutateAsync;
+  const saveServer = useMutation(mcpUpsert, queryClient).mutateAsync;
+  const serverSwitch = useMutation(mcpSetEnabled, queryClient).mutateAsync;
+  const removeServer = useMutation(mcpRemove, queryClient).mutateAsync;
+  // Each `mutateAsync` is stable, so the writes are too: pages may run them from effects.
+  return useMemo(
+    () => ({
+      setSkillEnabled: (name: string, enabled: boolean) => skillSwitch({ name, enabled }),
+      setAgentEnabled: (name: string, enabled: boolean) => agentSwitch({ name, enabled }),
+      /** Deletes a Personal skill's files; resolves to whether it was deleted. */
+      deleteSkill: (name: string) => removeSkill({ name }).then(succeeded, failed),
+      /** Deletes a Personal subagent's file and its settings; resolves to whether it was deleted. */
+      deleteAgent: (name: string) => removeAgent({ name }).then(succeeded, failed),
+      /**
+       * Reinstalls the shipped version of a built-in resource after the service backs up the user's
+       * copy; the builtin id (`skill:<name>` for skill rows) is busy meanwhile. Resolves to the
+       * backup path (null when there was nothing to back up), or undefined when the restore failed.
+       */
+      restoreBuiltin: (id: string) =>
+        restore({ id }).then(
+          (result) => ({ backupPath: result.backupPath }),
+          () => undefined,
+        ),
+      putRole: (input: Parameters<typeof saveRole>[0]) => saveRole(input).then(succeeded, failed),
+      putAgent: (input: Parameters<typeof saveAgent>[0]) =>
+        saveAgent(input).then(succeeded, failed),
+      /** Saves one subagent's permissions for later runs, or with null restores its defaults. */
+      setAgentPermissions: (name: string, permissions: SubagentPermissions | null) =>
+        savePermissions({ name, permissions }).then(succeeded, failed),
+      mcpUpsert: (input: Parameters<typeof saveServer>[0]) =>
+        saveServer(input).then(succeeded, failed),
+      /** Turns a Personal server on or off; rejects after showing the error, so a switch can revert. */
+      mcpSetEnabled: (serverId: string, enabled: boolean) =>
+        serverSwitch({ serverId, enabled }).then(() => undefined),
+      /** Removes a Personal server from the catalog; resolves to whether it was removed. */
+      mcpRemove: (serverId: string) => removeServer({ serverId }).then(succeeded, failed),
+    }),
+    [
+      agentSwitch,
+      removeAgent,
+      removeServer,
+      removeSkill,
+      restore,
+      saveAgent,
+      savePermissions,
+      saveRole,
+      saveServer,
+      serverSwitch,
+      skillSwitch,
+    ],
   );
-
-  const putAgent = useCallback(
-    async (
-      input: {
-        name: string;
-        description: string;
-        tools: ExtensionRoleTool[];
-        model: string | null;
-        systemPrompt: string;
-      },
-      refresh: () => Promise<void>,
-    ) => {
-      setBusy({ kind: 'agent', name: input.name });
-      try {
-        await serviceApi().putAgent(input);
-        await refresh();
-        return true;
-      } catch (error) {
-        showErrorToast(error);
-        return false;
-      } finally {
-        setBusy(null);
-      }
-    },
-    [],
-  );
-
-  /** Saves one subagent's permissions for later runs, or with null restores its defaults. */
-  const setAgentPermissions = useCallback(
-    async (name: string, permissions: SubagentPermissions | null, refresh: () => Promise<void>) => {
-      setBusy({ kind: 'agent', name });
-      try {
-        await serviceApi().setAgentPermissions(name, permissions);
-        await refresh();
-        return true;
-      } catch (error) {
-        showErrorToast(error);
-        return false;
-      } finally {
-        setBusy(null);
-      }
-    },
-    [],
-  );
-
-  const mcpUpsert = useCallback(
-    async (
-      input: {
-        serverId: string;
-        transport: 'stdio' | 'streamable-http' | 'sse';
-        command?: string;
-        args?: string[];
-        url?: string;
-        auth: { type: 'none' } | { type: 'bearer'; tokenEnv: string } | { type: 'oauth' };
-      },
-      refresh: () => Promise<void>,
-    ) => {
-      setBusy({ kind: 'mcp', name: input.serverId });
-      try {
-        await serviceApi().mcpUpsert(input);
-        await refresh();
-        return true;
-      } catch (error) {
-        showErrorToast(error);
-        return false;
-      } finally {
-        setBusy(null);
-      }
-    },
-    [],
-  );
-
-  /** Turns a Personal server on or off; rejects after showing the error, so a switch can revert. */
-  const mcpSetEnabled = useCallback(
-    async (serverId: string, enabled: boolean, refresh: () => Promise<void>) => {
-      setBusy({ kind: 'mcp', name: serverId });
-      try {
-        await serviceApi().mcpSetEnabled(serverId, enabled);
-        await refresh();
-      } catch (error) {
-        showErrorToast(error);
-        throw error;
-      } finally {
-        setBusy(null);
-      }
-    },
-    [],
-  );
-
-  /** Removes a Personal server from the catalog; resolves to whether it was removed. */
-  const mcpRemove = useCallback(async (serverId: string, refresh: () => Promise<void>) => {
-    setBusy({ kind: 'mcp', name: serverId });
-    try {
-      await serviceApi().mcpRemove(serverId);
-      await refresh();
-      return true;
-    } catch (error) {
-      showErrorToast(error);
-      return false;
-    } finally {
-      setBusy(null);
-    }
-  }, []);
-
-  return {
-    busy,
-    setSkillEnabled,
-    setAgentEnabled,
-    deleteSkill,
-    deleteAgent,
-    restoreBuiltin,
-    putRole,
-    putAgent,
-    setAgentPermissions,
-    mcpUpsert,
-    mcpSetEnabled,
-    mcpRemove,
-  };
 }

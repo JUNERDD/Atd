@@ -78,7 +78,7 @@ export function ExtensionPluginPage({
   onUpdate,
 }: {
   pluginId: string;
-  focus?: 'config';
+  focus?: 'config' | undefined;
   extensions: Extensions;
   actions: PluginItemActions;
   onBack: () => void;
@@ -88,12 +88,7 @@ export function ExtensionPluginPage({
   const { t } = useTranslation('settings');
   const labels = usePluginLabels();
   const { connected, busy, pluginMutations } = extensions;
-  const {
-    loaded,
-    replace,
-    setItemEnabled: patchItem,
-    retry,
-  } = usePluginDetail(pluginId, extensions.epoch);
+  const { loaded, replace, setItemEnabled: patchItem, retry } = usePluginDetail(pluginId);
   const [uninstalling, setUninstalling] = useState(false);
   const detail = loaded && 'detail' in loaded ? loaded.detail : null;
   const listed = extensions.plugins.plugins?.find((plugin) => plugin.id === pluginId);
@@ -266,7 +261,6 @@ export function ExtensionPluginPage({
           void pluginMutations.uninstall(plugin.id).then((ok) => {
             if (!ok) return;
             showToast({ kind: 'info', text: t('extensions.plugins.uninstalled', { name }) });
-            extensions.refreshAll();
             onBack();
           });
         }}

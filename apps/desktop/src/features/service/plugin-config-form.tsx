@@ -166,7 +166,7 @@ export function PluginConfigForm({
     if (option.options?.length)
       return (
         <Select
-          value={value || undefined}
+          {...(value ? { value } : {})}
           disabled={disabled}
           onValueChange={(next) => {
             if (!pending) setDraft({ ...draft, [option.key]: next });

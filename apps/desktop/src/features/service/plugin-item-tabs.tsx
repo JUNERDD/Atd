@@ -27,7 +27,7 @@ export function PluginItemTabs({
   const { t } = useTranslation('settings');
   const { items } = groups;
   // Only Personal reads its memories; other plugins have no Memory tab.
-  const { snapshot, setSnapshot } = useMemorySnapshot(memory);
+  const { snapshot } = useMemorySnapshot(memory);
   const counts: [PluginKindTab, number][] = [
     ['command', items.commands.length],
     ['skill', items.skills.length],
@@ -69,7 +69,7 @@ export function PluginItemTabs({
       {tabs.map(([kind]) => (
         <TabsContent key={kind} value={kind} className="plugin-item-tab">
           {kind === 'memory' ? (
-            <PluginMemoryGroup snapshot={snapshot} onSnapshot={setSnapshot} showTitle={false} />
+            <PluginMemoryGroup snapshot={snapshot} showTitle={false} />
           ) : (
             <PluginItemGroups {...groups} only={kind} />
           )}

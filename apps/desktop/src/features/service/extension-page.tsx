@@ -57,10 +57,10 @@ export function ExtensionPage({
   /** Accessible name of the page region. */
   label: string;
   title: string;
-  badge?: ExtensionPageBadge | null;
+  badge?: ExtensionPageBadge | null | undefined;
   /** Controls after the title, such as a plugin's version and its switch. */
   titleExtra?: ReactNode;
-  description?: string;
+  description?: string | undefined;
   /** Accessible name of the header's Back while the page is shown. */
   backLabel: string;
   /** Create or Edit with AI: hands the item to a new panel session seeded with its skill. */
@@ -111,8 +111,8 @@ export function ExtensionPage({
         </Button>
       ) : null}
       <ScrollArea
-        className="flex-1 min-h-0 min-w-0 m-[-3px_-15px_-3px_-3px]"
-        viewportClassName={hasFooter ? 'overlay-footer-fade' : undefined}
+        className="m-[-3px_-15px_-3px_-3px] min-h-0 min-w-0 flex-1"
+        {...(hasFooter ? { viewportClassName: 'overlay-footer-fade' } : {})}
         gutter="stable"
         scrollShadow
       >
