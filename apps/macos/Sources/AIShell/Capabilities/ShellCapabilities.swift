@@ -140,9 +140,12 @@ final class SystemPanels {
     return await run(panel) ? panel.urls : nil
   }
 
-  func chooseSaveLocation(suggestedName: String) async -> URL? {
+  /// Where to save under `suggestedName`; `contentType` restricts the panel to that type. Nil
+  /// when cancelled or another system panel is open.
+  func chooseSaveLocation(suggestedName: String, contentType: UTType? = nil) async -> URL? {
     let panel = NSSavePanel()
     panel.title = ShellStrings.shared.text(.fileSaveTitle)
+    if let contentType { panel.allowedContentTypes = [contentType] }
     panel.nameFieldStringValue = suggestedName
     return await run(panel) ? panel.url : nil
   }
