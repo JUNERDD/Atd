@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { SelectionToolbarSettings } from '@atd/agent-contracts';
-import { initialCommands } from '../client/agent/command-templates';
+import { fixtureCommands } from '../../tests/command-fixtures';
 import type { NativeBridge } from '../native-bridge/client';
 import { nativeToolbar, toolbarParams } from './native-toolbar';
 
@@ -17,7 +17,7 @@ function fakeShell() {
 
 describe('selection toolbar push', () => {
   it('offers the enabled selection commands in list order, with the excluded bundle ids', () => {
-    const commands = initialCommands().map((command) => ({ ...command, enabled: true }));
+    const commands = fixtureCommands().map((command) => ({ ...command, enabled: true }));
     const extract = commands.find((command) => command.id === 'extract');
     if (!extract) throw new Error('The extract template is missing.');
     extract.enabled = false;
@@ -35,7 +35,7 @@ describe('selection toolbar push', () => {
   it('waits for the service settings, then pushes only a changed set', async () => {
     const { bridge, call } = fakeShell();
     let current: SelectionToolbarSettings | null = null;
-    const commands = initialCommands().map((command) => ({ ...command, enabled: true }));
+    const commands = fixtureCommands().map((command) => ({ ...command, enabled: true }));
     const toolbar = nativeToolbar(bridge, { settings: () => current, commands: () => commands });
     toolbar.sync();
     // Let the queued push run: before the settings loaded it has nothing to send.

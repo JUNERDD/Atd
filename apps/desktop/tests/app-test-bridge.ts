@@ -8,7 +8,7 @@ import type {
   AgentSnapshot,
   TaskDetail,
 } from '../src/client/agent/bridge';
-import { initialCommands } from '../src/client/agent/command-templates';
+import { fixtureCommands } from './command-fixtures';
 import { emptyInput, type RunStatus } from '../src/client/agent/task-schema';
 import type { PermissionRequest } from '../src/client/agent/permission-schema';
 import type { QueueState } from '../src/client/agent/transcript-schema';
@@ -59,7 +59,7 @@ export function installBridge(extras?: {
   const snapshot: AgentSnapshot = {
     revision: 1,
     connectionId: 'test',
-    commands: initialCommands(),
+    commands: fixtureCommands(),
     tasks: [],
     shortcutErrors: {},
     error: '',
@@ -141,7 +141,7 @@ export function installBridge(extras?: {
       return structuredClone(detail);
     }),
     prepare: vi.fn(async () => ({
-      command: initialCommands()[0]!,
+      command: fixtureCommands()[0]!,
       input: emptyInput(),
       notice: '',
     })),
