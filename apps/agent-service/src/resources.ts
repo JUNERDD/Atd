@@ -48,13 +48,6 @@ export class ResourceStore {
     return resource;
   }
 
-  async readText(id: string): Promise<{ resource: ResourceRef; text: string }> {
-    const resource = this.ledger.data.resources.find((item) => item.id === id);
-    if (!resource) throw new Error(`Resource ${id} was not found.`);
-    const text = await readFile(path.join(this.paths.resourcesDir, id), 'utf8');
-    return { resource, text };
-  }
-
   /**
    * Download choke point (T6b). Missing resources and task-scoped resources
    * whose task is gone both answer 404; bytes never ride a JSON envelope.

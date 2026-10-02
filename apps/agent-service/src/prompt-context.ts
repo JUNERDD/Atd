@@ -59,9 +59,15 @@ export function runMaterialContext(material: () => RunMaterial): ExtensionFactor
 function formatMaterial(material: RunMaterial): string {
   return [
     material.instructions,
-    ...material.attachments.map(
-      (file) =>
-        `File: ${file.name}\nRead-only resource: ${file.path}\n<file-material>\n${file.text}\n</file-material>`,
+    ...material.attachments.map((file) =>
+      file.kind === 'image'
+        ? [
+            `Image: ${file.name}`,
+            `Read-only resource: ${file.path}`,
+            "Sent with the user's message as image input.",
+            ...(file.note ? [file.note] : []),
+          ].join('\n')
+        : `File: ${file.name}\nRead-only resource: ${file.path}\n<file-material>\n${file.text}\n</file-material>`,
     ),
     material.references,
   ]

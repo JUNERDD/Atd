@@ -32,6 +32,7 @@ import {
   type SessionFactoryDeps,
 } from './pi-session.js';
 import { prepareRunBinding } from './run-binding.js';
+import { runPromptOptions, runPromptText } from './run-prompt.js';
 import { freezeRunSelections, releaseRunSelections } from './run-freeze.js';
 import type { LiveState } from './live-state.js';
 import { lastAssistant } from './task-view.js';
@@ -208,7 +209,7 @@ export class TaskRunner {
       // and the skills themselves arrive in a hidden message (skills/session-skills.ts).
       // Memory tool writes and Hermes' review learners pass only inside the root memory scope.
       await this.memoryTurn(rootMemoryScope(this.taskId, run), () =>
-        live.session.prompt(promptText(run), { expandPromptTemplates: false }),
+        live.session.prompt(runPromptText(run), runPromptOptions(attachments)),
       );
       const last = lastAssistant(live.manager.getBranch());
       const failed = last?.stopReason === 'error';
@@ -343,8 +344,4 @@ export class TaskRunner {
     const opened = await createLiveState(this.session, run, binding);
     return this.slot.hold(opened, rootMemoryScope(this.taskId, run));
   }
-}
-
-function promptText(run: TaskRun): string {
-  return run.snapshot.input.text.trim() || run.snapshot.instructions || 'Use the attached context.';
 }

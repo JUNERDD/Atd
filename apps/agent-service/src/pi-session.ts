@@ -1,5 +1,6 @@
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
+import type { ImageContent } from '@earendil-works/pi-ai';
 import {
   createAgentSession,
   DefaultResourceLoader,
@@ -51,11 +52,28 @@ export interface SessionFactoryDeps {
   stopRequested: () => boolean;
 }
 
-export interface RunAttachment {
+/** A text file; its content goes into the run material. */
+export interface RunTextAttachment {
+  kind: 'text';
   name: string;
   path: string;
   text: string;
 }
+
+/**
+ * An image file. It reaches the model as image input with the run's prompt (task-runner.ts), so
+ * the run material only names it (and notes how it was scaled).
+ */
+export interface RunImageAttachment {
+  kind: 'image';
+  name: string;
+  path: string;
+  image: ImageContent;
+  /** How the image was scaled, when it was, so the model can map coordinates back. */
+  note?: string;
+}
+
+export type RunAttachment = RunTextAttachment | RunImageAttachment;
 
 /** Material a run injects before its first turn: its instructions, files, references and skills. */
 export interface RunMaterial {

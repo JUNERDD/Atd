@@ -34,7 +34,7 @@ export type ResourceImportRequest = Static<typeof ResourceImportRequestSchema>;
 
 /**
  * Why a path was not imported, for the client's own wording: the file could not be read,
- * its format is not attachable, or it is not a regular file within `MAX_ATTACHMENT_BYTES`.
+ * its format is not attachable, or it is not a regular file within `attachmentByteLimit`.
  */
 export const ResourceImportFailureReasonSchema = Type.Union([
   Type.Literal('unreadable'),

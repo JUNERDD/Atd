@@ -1,7 +1,7 @@
 import path from 'node:path';
 import {
   attachableExtension,
-  MAX_ATTACHMENT_BYTES,
+  attachmentByteLimit,
   type AttachableExtension,
 } from '@ai/agent-contracts';
 import type { SearchHit } from './backend.js';
@@ -98,8 +98,9 @@ function foldChar(char: string): string {
     .toLowerCase();
 }
 
-export function tooLarge(hit: SearchHit): boolean {
-  return hit.size !== null && hit.size > MAX_ATTACHMENT_BYTES;
+/** Whether the file exceeds the size limit of its own format (images read larger than text). */
+export function tooLarge(hit: SearchHit, extension: AttachableExtension): boolean {
+  return hit.size !== null && hit.size > attachmentByteLimit(extension);
 }
 
 /**
@@ -149,7 +150,14 @@ export function rankCandidates(query: string, candidates: Candidate[], now: numb
     }
     const used = candidate.hit.usedAt !== null;
     const match = named?.range ?? null;
-    scored.push({ candidate, match, score, used, recency, last: tooLarge(candidate.hit) });
+    scored.push({
+      candidate,
+      match,
+      score,
+      used,
+      recency,
+      last: tooLarge(candidate.hit, candidate.extension),
+    });
   }
   scored.sort(
     (a, b) =>
