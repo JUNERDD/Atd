@@ -1124,20 +1124,6 @@
   flex-direction: column;
   gap: 8px;
 }
-/* The keys sit 3px inside the button border, so the pill keycaps nest in the pill button. */
-.settings-shortcut-button {
-  height: auto;
-  min-height: 28px;
-  max-width: 100%;
-  padding: 3px;
-}
-.settings-shortcut-button[aria-pressed='true'] {
-  padding-inline: 12px;
-}
-.settings-shortcut-button [data-slot='kbd-group'] {
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
 /* A group of settings rows in one card: the card owns the edge and corners, hairlines divide
    the rows, and each row's fill reaches the card edge. */
 .settings-card[data-slot='card'] {

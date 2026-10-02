@@ -140,7 +140,6 @@
   "shortcut": {
     "error": "请将 Command、Control 或 Alt 与支持的按键组合使用。",
     "record": "录制命令快捷键",
-    "recording": "请按下按键…",
     "recordShortcut": "录制快捷键",
     "clear": "清除快捷键"
   },

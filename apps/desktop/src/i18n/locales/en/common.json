@@ -6,7 +6,9 @@
     "dismissLabel": "Dismiss notification"
   },
   "shortcuts": {
-    "conflictHint": "If a shortcut does nothing when you press it, another app may be using the same combination. Choose a different one."
+    "conflictHint": "If a shortcut does nothing when you press it, another app may be using the same combination. Choose a different one.",
+    "pressKeys": "Press keys…",
+    "recordingHint": "Press a shortcut. Escape cancels; Tab moves to the next control."
   },
   "tools": {
     "read": {

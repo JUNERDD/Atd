@@ -189,7 +189,6 @@
       }
     },
     "capture": {
-      "pressKeys": "请按下按键…",
       "cancelLabel": "取消录制“{{label}}”",
       "changeLabel": "更改“{{label}}”快捷键：{{keys}}",
       "reset": "恢复默认",
@@ -206,7 +205,6 @@
     "restoreDefaults": "恢复默认快捷键",
     "restoring": "正在恢复…",
     "status": {
-      "recordingHint": "请按下快捷键。按 Escape 取消，按 Tab 移到下一个控件。",
       "openAtLoginApproval": "请在“系统设置 › 登录项”中允许 Atd 以完成设置。"
     },
     "errors": {

@@ -308,3 +308,7 @@
 .parameter-item > div {
   overflow-wrap: anywhere;
 }
+/* The recorder's 28px pill centers on the 32px track of the Select beside it. */
+.input-shortcut-field .shortcut-recorder {
+  min-height: 32px;
+}
