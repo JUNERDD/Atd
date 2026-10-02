@@ -3,13 +3,15 @@ import AIRelay
 import AppKit
 import OSLog
 
-/// Attachments from the open panel, file drops on the panel's web view and pasted file URLs,
-/// and saving a service resource where the user chooses. Files are imported by path through
+/// Attachments from the open panel, file drops on the panel's web view, pasted file URLs and
+/// pasted bitmaps, and saving a service resource where the user chooses. Files are imported by path through
 /// the service (`/v1/resources/import`); paths never reach the page. One pick, drop or paste
 /// takes at most ``AttachmentRules/maxPathsPerImport`` files, the page's attachment limit.
 ///
-/// Pasted images are not attachments: the service only reads the text formats of
-/// `ATTACHABLE_EXTENSIONS`, so a bitmap-only paste stays with WebKit's own paste.
+/// A paste with a bitmap but neither file URL nor text (a screenshot copied to the clipboard)
+/// is stored as `Pasted image <date>.png` in a temporary folder and imported like a file;
+/// ``PastedImageExport`` scales and encodes it. Screenshots arrive through ``ScreenshotTaker``,
+/// which imports its capture through ``importPaths(_:)``.
 @MainActor
 final class AttachmentImporter {
   private let services: ShellServices
@@ -21,6 +23,11 @@ final class AttachmentImporter {
     self.services = services
     self.panel = panel
     self.systemPanels = systemPanels
+    // The panel's web view is the only one that turns a bitmap paste into an attachment.
+    panel.onPastedImage = { [weak self] data in
+      guard let self else { return }
+      Task { await self.importPastedImage(data) }
+    }
   }
 
   /// `files.pick`: the chooser's files as the page's refs; none when cancelled. A pick whose
@@ -43,6 +50,29 @@ final class AttachmentImporter {
       panel?.send(.resourcesImported(ResourcesImportedEvent(response)))
     } catch {
       Self.log.error("Dropped or pasted files were not imported: \(error.message)")
+    }
+  }
+
+  /// A pasted bitmap as an image attachment, announced to the page like any import. A bitmap
+  /// that cannot be stored is reported as a failure under its would-be name, since WebKit no
+  /// longer pastes it. The temporary file is gone once the service has read it.
+  func importPastedImage(_ data: Data) async {
+    let now = Date.now
+    let folder = URL.temporaryDirectory.appending(path: "pasted-image-\(UUID().uuidString)")
+    defer { try? FileManager.default.removeItem(at: folder) }
+    do {
+      try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+      let file = try await PastedImageExport.store(data, pastedAt: now, in: folder)
+      await importFiles([file])
+    } catch {
+      Self.log.error("A pasted image was not attached: \(String(describing: error))")
+      let reason: ResourcesImportedEvent.Failure.Reason =
+        (error as? PastedImageExport.Failure) == .tooLarge ? .tooLarge : .unreadable
+      panel?.send(
+        .resourcesImported(
+          ResourcesImportedEvent(
+            resources: [],
+            failures: [.init(name: PastedImageName.fileName(pastedAt: now), reason: reason)])))
     }
   }
 

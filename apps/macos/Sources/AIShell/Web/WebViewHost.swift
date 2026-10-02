@@ -23,6 +23,11 @@ final class WebViewHost: NSObject {
   var onFiles: ((_ files: [URL], _ source: String) -> Void)? {
     didSet { webView.onFiles = onFiles }
   }
+  /// Receives a pasted bitmap that came without file URLs or text; the panel imports it as an
+  /// image attachment.
+  var onPastedImage: ((_ data: Data) -> Void)? {
+    didSet { webView.onPastedImage = onPastedImage }
+  }
 
   private let fragment: String?
   private let services: ShellServices
@@ -169,6 +174,7 @@ final class WebViewHost: NSObject {
     webView.navigationDelegate = self
     webView.uiDelegate = self
     webView.onFiles = onFiles
+    webView.onPastedImage = onPastedImage
     webView.frame = container.bounds
     container.addSubview(webView)
     pipe = VirtualSocketPipe(link: services.link) { [weak self] in self?.post(frame: $0) }
