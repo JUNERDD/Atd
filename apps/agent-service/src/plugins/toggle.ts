@@ -32,7 +32,7 @@ export function findItem(
 }
 
 /**
- * Turns a whole plugin on or off. An installed or shared plugin's switch is installer state; Core
+ * Turns a whole plugin on or off. An installed or shared plugin's switch is installer state; System
  * and Personal have no switch.
  */
 export async function setPluginEnabled(
