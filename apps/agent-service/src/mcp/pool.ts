@@ -265,7 +265,7 @@ export class McpConnectionPool {
       await client.connect(transport);
       const connection = new PooledConnection(target, client, transport, this.context);
       // A counter that ignores the signal must not hold up an abort or a close.
-      connection.setCounts(await raceAbort(this.deps.counter(client, signal), signal));
+      connection.setCatalog(await raceAbort(this.deps.counter(client, signal), signal));
       signal.throwIfAborted();
       if (client.connectionState !== 'connected' || !connection.isOpen()) {
         throw new McpConnectionClosedError('MCP connection closed during setup');

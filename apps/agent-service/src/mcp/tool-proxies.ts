@@ -12,7 +12,6 @@ import { McpError, type McpPreapproval, type McpUpdate, type OperationContext } 
 import { toPiText } from './mapping.js';
 import { isJsonObject, normalizeInputSchema } from './policy.js';
 import { matchToolPattern } from './servers.js';
-import type { McpToolInfo } from './types.js';
 
 /**
  * Runner MCP tool proxies (D6): one frozen proxy per authorized tool, built
@@ -137,8 +136,8 @@ function cleanProxyPart(value: string): string {
 }
 
 /**
- * Resolves the run-frozen catalog and returns the registration factory.
- * Unreachable servers are skipped with audit + warning, never fatal to
+ * Resolves the run-frozen catalog from the tools each connection last listed and returns the
+ * registration factory. Unreachable servers are skipped with audit + warning, never fatal to
  * the bind; every registered proxy pins its server revision.
  */
 export async function prepareMcpTools(
@@ -148,25 +147,31 @@ export async function prepareMcpTools(
 ): Promise<{ factory: ExtensionFactory; bindings: McpToolBinding[] }> {
   const bindings: McpToolBinding[] = [];
   const used = new Set<string>();
-  for (const record of options.records) {
-    if (record.disabled) continue;
-    let tools: McpToolInfo[];
-    try {
-      tools = await options.facade.listToolInfo(record.serverId, signal);
-    } catch (error) {
-      host.audit({
-        taskId: host.taskId,
-        runId: host.runId(),
-        tool: `mcp:${record.serverId}`,
-        decision: 'bind-skip',
-        reason: errorMessage(error).slice(0, 500),
-      });
-      host.log.warn('MCP server skipped while binding run tools.', {
-        serverId: record.serverId,
-        error: errorMessage(error),
-      });
-      continue;
-    }
+  // Servers list at once; binding follows record order, so proxy names do not depend on timing.
+  const listed = await Promise.all(
+    options.records
+      .filter((record) => !record.disabled)
+      .map(async (record) => {
+        const tools = await options.facade
+          .listedToolInfo(record.serverId, signal)
+          .catch((error: unknown) => {
+            host.audit({
+              taskId: host.taskId,
+              runId: host.runId(),
+              tool: `mcp:${record.serverId}`,
+              decision: 'bind-skip',
+              reason: errorMessage(error).slice(0, 500),
+            });
+            host.log.warn('MCP server skipped while binding run tools.', {
+              serverId: record.serverId,
+              error: errorMessage(error),
+            });
+            return [];
+          });
+        return { record, tools };
+      }),
+  );
+  for (const { record, tools } of listed) {
     for (const { ref, annotations } of tools) {
       if (record.includeTools.length && !matchToolPattern(record.includeTools, [ref.name]))
         continue;
