@@ -44,6 +44,9 @@
     "lint": {
       "dependsOn": ["transit"]
     },
+    "@atd/agent-service#lint": {
+      "dependsOn": ["transit", "build"]
+    },
     "typecheck": {
       "dependsOn": ["transit"]
     },
