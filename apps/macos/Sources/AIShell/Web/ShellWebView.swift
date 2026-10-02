@@ -1,3 +1,4 @@
+import AICore
 import AppKit
 import WebKit
 
@@ -8,14 +9,18 @@ import WebKit
 ///   bar action.
 /// - **File drops.** Dropped file URLs go to the shell, which imports them by path; WebKit
 ///   would otherwise hand the page `File` objects the relay cannot upload (spike S1).
-/// - **Pasted files.** Edit › Paste runs ``pasteAttachingFiles(_:)``: file URLs on the
-///   pasteboard are imported, anything else pastes into the page as usual.
+/// - **Pasted files and bitmaps.** Edit › Paste runs ``pasteAttachingFiles(_:)``: file URLs on
+///   the pasteboard are imported, and so is a bitmap when no text came with it; anything else
+///   pastes into the page as usual.
 @MainActor
 final class ShellWebView: WKWebView {
   /// Drag rectangles in CSS pixels from the page's top-left corner.
   var dragRegions: [CGRect] = []
   /// Receives dropped (`drop`) or pasted (`paste`) file URLs; nil leaves both to WebKit.
   var onFiles: ((_ files: [URL], _ source: String) -> Void)?
+  /// Receives the encoded bitmap (PNG, TIFF or JPEG data) of a paste that carries no file URLs
+  /// and no text; nil leaves such a paste to WebKit, which would insert it into the editor.
+  var onPastedImage: ((_ data: Data) -> Void)?
 
   override func mouseDown(with event: NSEvent) {
     guard let window, isInDragRegion(event) else {
@@ -86,15 +91,27 @@ final class ShellWebView: WKWebView {
   // MARK: Paste
 
   /// The Edit › Paste action. WebKit's own `paste:` is not visible to Swift, so it is reached
-  /// through the responder chain instead of `super`.
+  /// through the responder chain instead of `super`. ``PasteboardPaste`` decides; a window
+  /// without the matching callback always pastes through WebKit.
   @objc func pasteAttachingFiles(_ sender: Any?) {
+    let board = NSPasteboard.general
     let options: [NSPasteboard.ReadingOptionKey: Any] = [.urlReadingFileURLsOnly: true]
-    let files =
-      NSPasteboard.general.readObjects(forClasses: [NSURL.self], options: options) as? [URL] ?? []
-    if let onFiles, !files.isEmpty {
-      onFiles(files, "paste")
-    } else {
-      NSApp.sendAction(#selector(NSText.paste(_:)), to: self, from: sender)
+    let files = board.readObjects(forClasses: [NSURL.self], options: options) as? [URL] ?? []
+    let image = onPastedImage == nil ? nil : Self.imageData(on: board)
+    let route = PasteboardPaste.route(
+      hasFileURLs: onFiles != nil && !files.isEmpty,
+      hasText: board.string(forType: .string)?.isEmpty == false, hasImage: image != nil)
+    switch route {
+    case .files: onFiles?(files, "paste")
+    case .image: if let image { onPastedImage?(image) }
+    case .webKit: NSApp.sendAction(#selector(NSText.paste(_:)), to: self, from: sender)
     }
+  }
+
+  /// The pasteboard's bitmap in the first format ImageIO decodes that it offers: a screenshot
+  /// copy is PNG, most apps copy TIFF.
+  private static func imageData(on board: NSPasteboard) -> Data? {
+    [NSPasteboard.PasteboardType.png, .tiff, NSPasteboard.PasteboardType("public.jpeg")]
+      .lazy.compactMap { board.data(forType: $0) }.first
   }
 }
