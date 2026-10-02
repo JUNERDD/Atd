@@ -39,8 +39,8 @@ const TARGET = {
 } as const;
 
 /**
- * Saved memories in the same row anatomy as the skills list: the kind's icon, the entry on one
- * line with its kind below, and More for secondary actions. A click anywhere on the row opens the
+ * Saved memories as outlined rows, like the Commands and Models lists: the kind's icon, the entry
+ * on one line with its kind below, and More for secondary actions. A click anywhere on the row opens the
  * editor, which shows the entry in full. Saved order stays; the search matches and marks the text.
  */
 export function MemoryList({
@@ -95,7 +95,7 @@ export function MemoryList({
         const preview = entry.content.slice(0, 70);
         const busy = busyIds.has(entry.id);
         return (
-          <Item asChild key={entry.id} size="xs" className="settings-open-row">
+          <Item asChild key={entry.id} size="sm" variant="outline" className="settings-open-row">
             <li>
               <button
                 type="button"

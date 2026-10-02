@@ -65,10 +65,10 @@ export function PluginBadges({ plugin }: { plugin: PluginSummary }) {
 /**
  * One plugin in the Extensions list, as a card: its icon and name (with the source and version of
  * an installed plugin) over the description, and what it contributes at the foot beside what
- * keeps it from working. The switch (a plugin that cannot be turned off keeps the column empty)
- * and More, when the plugin has Update, Configure or Uninstall, sit at the top right. A click
- * anywhere else on the card (and More › View details) opens the plugin's page; the open button
- * fills the card beneath its content, as on the shared rows (`.settings-open-row`).
+ * keeps it from working. The switch (unless the plugin cannot be turned off) and More, when the
+ * plugin has Update, Configure or Uninstall, sit at the top right. A click anywhere else on the
+ * card (and More › View details) opens the plugin's page; the open button fills the card beneath
+ * its content, as on the shared rows (`.settings-open-row`).
  */
 export function PluginCard({
   plugin,

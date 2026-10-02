@@ -26,17 +26,6 @@
   mask-position: center;
   mask-image: var(--brand-mask-image);
 }
-.provider-column-headings {
-  display: flex;
-  gap: 12px;
-  justify-content: space-between;
-  padding: 0 16px;
-  margin-bottom: 12px;
-  font-weight: 500;
-}
-.provider-column-headings > :last-child {
-  width: 256px;
-}
 .provider-connections {
   gap: 10px;
 }
@@ -355,9 +344,6 @@ button.model-config-row-nav:disabled:hover {
   overflow-wrap: anywhere;
 }
 @container settings (max-width: 475px) {
-  .provider-column-headings > :last-child {
-    display: none;
-  }
   .provider-model-controls {
     flex-basis: 100%;
     max-width: none;

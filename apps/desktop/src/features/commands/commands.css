@@ -263,9 +263,12 @@
   min-height: 0;
   flex-direction: column;
 }
-.memory-learning {
-  flex-shrink: 0;
-  margin-bottom: 8px;
+/* The list scrolls under the overview heading with no gap of its own, like the Models and
+   Commands lists. The negative margin, given back as the list's padding, keeps room for the rows'
+   focus rings; the extra 12px on the right puts the scrollbar lane past the rows, so they line up
+   with the toolbar. */
+.memory-scroll {
+  margin: -4px -16px -4px -4px;
 }
 /* Rows, feedback, and the storage note; an empty state fills the rest. */
 .memory-list {
@@ -274,7 +277,7 @@
   min-width: 0;
   flex-direction: column;
   gap: 8px;
-  padding-bottom: 16px;
+  padding: 4px 4px 16px;
 }
 
 .instruction-toolbar {
