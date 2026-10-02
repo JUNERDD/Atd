@@ -97,10 +97,17 @@ async function serve(flags: Flags): Promise<void> {
   });
   // SIGINT, SIGTERM and `POST /v1/admin/shutdown` all end here. The exit is
   // what ends the process once the service has stopped; nothing else would.
-  const shutdown = () => {
+  // Exit joins libuv's thread pool, so a pool thread stuck in a blocking call
+  // holds the process past "stopped"; the supervisor kills it then.
+  const shutdown = (trigger = 'shutdown request') => {
+    const started = performance.now();
+    log.info('Stopping the agent service.', { trigger });
     void handle
       .stop()
-      .then(() => process.exit(0))
+      .then(() => {
+        log.info('Agent service stopped.', { elapsedMs: Math.round(performance.now() - started) });
+        process.exit(0);
+      })
       .catch((error: unknown) => {
         log.error('Shutdown failed.', { error: errorMessage(error) });
         process.exit(1);

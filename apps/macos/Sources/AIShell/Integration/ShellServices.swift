@@ -111,8 +111,8 @@ public final class ShellServices {
     NSWorkspace.shared.activateFileViewerSelecting([log])
   }
 
-  /// A committed quit: stops the supervised service (shutdown, then SIGTERM). Debug leaves the
-  /// development service running.
+  /// A committed quit: stops the supervised service (shutdown, then SIGKILL if it does not exit).
+  /// Debug leaves the development service running.
   func stopForQuit() async {
     await supervisor?.stop()
   }

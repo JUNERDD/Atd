@@ -59,7 +59,11 @@ export class NativeIndexBackend implements SearchBackend {
     }
   }
 
-  /** Lets the index save its resume point; shutdown does not wait longer than the timeout. */
+  /**
+   * Lets the index save its resume point; shutdown does not wait longer than the timeout. A close
+   * that outlasts it still occupies a libuv pool thread, which process exit then waits for, so
+   * the native supervisor ends that process (`ServiceStopper.ensureExit`).
+   */
   async close(): Promise<void> {
     this.closed = true;
     // Never opened: nothing to save, and opening now would start a walk.
