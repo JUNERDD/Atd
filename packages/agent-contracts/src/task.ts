@@ -2,6 +2,7 @@ import { Type, type Static } from 'typebox';
 import type { CommandTool } from './commands.js';
 import { Identifier, OperationId, SessionEntryId } from './identifiers.js';
 import { PermissionTierSchema } from './confirms.js';
+import { MAX_FOLDERS } from './folders.js';
 import { McpServerIdSchema } from './mcp.js';
 import { MemoryTargetSchema } from './memory.js';
 import { MAX_QUOTE_CHARS, QuoteSourceSchema } from './quotes.js';
@@ -63,13 +64,23 @@ export const MAX_INPUT_CHIPS = 64;
 /**
  * Display record of one composer chip, kept with the submitted text so the transcript and the
  * title show the message the way it was composed. Each kind holds only what the chip shows and
- * identifies; what the run does with it still comes from staging (skills, references) and `files`.
+ * identifies; what the run does with it still comes from staging (skills, references), `files`
+ * and `folders`.
  * A quote is the exception: it identifies nothing outside the message, so its record carries the
  * quoted Markdown itself, which the run reads into its material and a resend restores.
  */
 export const InputChipSchema = Type.Union([
   Type.Object(
     { kind: Type.Literal('file'), fileId: Identifier, name: Type.String({ maxLength: 255 }) },
+    { additionalProperties: false },
+  ),
+  Type.Object(
+    {
+      kind: Type.Literal('folder'),
+      folderId: Identifier,
+      /** The folder's basename when it was added; the record keeps no path. */
+      name: Type.String({ minLength: 1, maxLength: 255 }),
+    },
     { additionalProperties: false },
   ),
   Type.Object(
@@ -155,6 +166,12 @@ export const TaskInputSchema = Type.Object(
      * client): the transcript then reads a leading `/skill:<name> ` as the skill chip it was.
      */
     chips: Type.Optional(Type.Array(InputChipRangeSchema, { maxItems: MAX_INPUT_CHIPS })),
+    /**
+     * Ids of folders from `/v1/folders/register` this message grants to its task. The desktop
+     * always sends the array; an absent field marks input from before folders. The service grants
+     * them at submit and rejects the submit when an id is unknown.
+     */
+    folders: Type.Optional(Type.Array(Identifier, { maxItems: MAX_FOLDERS })),
   },
   { additionalProperties: false },
 );
