@@ -2,7 +2,7 @@ import { tmpdir } from 'node:os';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
-import type { McpAttachment } from '@ai/agent-contracts';
+import type { McpAttachment } from '@atd/agent-contracts';
 import { MappingError, type MappingContext, type MappingDeps } from './errors.js';
 
 /**

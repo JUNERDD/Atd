@@ -23,10 +23,11 @@ export const createTransport: McpTransportFactory = (launch, auth): McpTransport
       stderr: 'pipe',
     });
   }
+  const authProvider = authProviderOf(launch, auth);
   const options = {
     url: launch.url,
     headers: launch.headers,
-    authProvider: authProviderOf(launch, auth),
+    ...(authProvider && { authProvider }),
   };
   return launch.kind === 'sse'
     ? new LegacySseTransport(options)

@@ -63,6 +63,20 @@ body {
   user-select: none;
 }
 
+.panel-brand {
+  width: 26px;
+  height: 26px;
+  mask: url('@atd/ui/assets/brands/atd/symbol.png') center / contain no-repeat;
+}
+.panel-brand-button[data-dev] {
+  width: auto;
+  padding-inline: 6px;
+  margin-right: 0;
+}
+.panel-brand-button[data-dev] .panel-brand {
+  width: 54px;
+  mask-image: url('@atd/ui/assets/brands/atd/symbol-dev.png');
+}
 .panel-header h1 {
   flex: 1;
   min-width: 0;
@@ -73,6 +87,28 @@ body {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* A task's title renames in place (`PanelTitle`). The button and the field share one box: 28px
+   tall with an 8px text inset, pulled 4px toward the logo so the text moves only 4px while the
+   hover wash stays clear of the logo button. The button hugs its title and leaves the rest of the
+   header to the window drag; the field fills the row while it is open. Both truncate on their
+   own, so the heading stops clipping, which would cut the pulled edge off their fill. */
+.panel-header h1:has(> .panel-title-button, > .panel-title-field) {
+  overflow: visible;
+}
+.panel-title-button,
+.panel-title-field {
+  height: 28px;
+  margin-left: -4px;
+  padding-inline: 8px;
+}
+.panel-title-button {
+  max-width: calc(100% + 4px);
+  justify-content: flex-start;
+}
+.panel-title-field {
+  width: calc(100% + 4px);
+  font-weight: 500;
+}
 
 .header-controls {
   display: flex;
@@ -82,6 +118,7 @@ body {
 /* Everything below the header. The composer's quick panel uses it as its collision boundary, so
    the panel never reaches the header's drag region or the macOS traffic lights. */
 .panel-body {
+  position: relative;
   display: flex;
   flex: 1;
   flex-direction: column;
@@ -215,6 +252,25 @@ body {
   flex-direction: column;
   padding: 20px 16px 16px;
 }
+.history-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.history-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+/* The section names the day range, so rows below it only need the time or date within it. The
+   title starts at the row text's 12px inset. */
+.history-section-title {
+  padding: 0 12px;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+}
 .task-list {
   display: flex;
   flex-direction: column;
@@ -265,6 +321,9 @@ body {
   margin-right: 4px;
   content: '·' / '';
 }
+.task-row-status[data-tone='error'] {
+  color: var(--destructive);
+}
 
 .saved-prompt {
   padding: 14px 16px;
@@ -297,28 +356,6 @@ body {
 }
 .saved-attachments li span:last-child {
   flex-shrink: 0;
-}
-.attachment-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-.attachment-chip {
-  display: inline-flex;
-  max-width: 100%;
-  align-items: center;
-  gap: 4px;
-  padding: 3px 3px 3px 8px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-xl);
-  color: var(--muted-foreground);
-  font-size: 11px;
-}
-.attachment-chip > span {
-  max-width: 220px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 @media (max-height: 420px) {

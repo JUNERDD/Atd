@@ -21,14 +21,28 @@ export function useOpenSettingsCommand() {
   return open;
 }
 
-/** Whether the enclosing settings section is the one shown; pages outside the window count as shown. */
+/** Opens the Memory section at one entry's editor, as Personal's Memory tab links there. */
+export const SettingsMemoryLinkContext = createContext<((entryId: string) => void) | null>(null);
+export function useOpenSettingsMemory() {
+  const open = useContext(SettingsMemoryLinkContext);
+  if (!open) throw new Error('Opening a memory requires the settings window.');
+  return open;
+}
+
+/**
+ * Whether the enclosing settings section is the one shown; pages outside the window count as
+ * shown. Only `useSettingsSectionExit` reads it: a hidden section (an `Activity` in the background)
+ * runs no effects, so effects need no check of their own.
+ */
 export const SettingsSectionActiveContext = createContext(true);
 
 /**
- * Runs `reset` while rendering once the enclosing section is left. Sections stay mounted to keep
- * their data, so each page returns its own view state (page history, search, segment) to the
- * initial top-level page here; switching back then shows that page afresh. `reset` may only update
- * the calling component's state.
+ * Runs `reset` while rendering once the enclosing section is left. Sections stay mounted in the
+ * background to keep their data, so each page returns its own view state (page history, search,
+ * segment) to the initial top-level page here; switching back then shows that page afresh. It
+ * resets during the hidden render rather than in an effect cleanup, so a link that enters the
+ * section at a page (queued after the leave) is never undone. `reset` may only update the calling
+ * component's state.
  */
 export function useSettingsSectionExit(reset: () => void) {
   const active = useContext(SettingsSectionActiveContext);
@@ -101,14 +115,13 @@ export function useSettingsRegistry<Value>() {
  */
 export function useSettingsSubpage(page: SettingsSubpage | null) {
   const register = useContext(SettingsSubpageContext);
-  const active = useContext(SettingsSectionActiveContext);
   if (page && !register) throw new Error('A settings sub-page requires the settings window.');
-  const shown = page !== null && active;
   const title = page?.title;
   const backLabel = page?.backLabel;
-  // A layout effect, so the header never paints a page that has just closed or a stale section.
+  // A layout effect, so the header never paints a page that has just closed or a stale section;
+  // a hidden section's registration ends with its effects.
   useLayoutEffect(() => {
-    if (!shown || !register || title === undefined) return;
-    return register({ title, backLabel });
-  }, [register, shown, title, backLabel]);
+    if (!register || title === undefined) return;
+    return register({ title, ...(backLabel === undefined ? {} : { backLabel }) });
+  }, [register, title, backLabel]);
 }

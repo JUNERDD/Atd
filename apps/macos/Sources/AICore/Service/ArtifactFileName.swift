@@ -1,6 +1,6 @@
 import Foundation
 
-/// File names for downloaded artifacts, as `dispositionName` in `@ai/agent-client` derives them.
+/// File names for downloaded artifacts, as `dispositionName` in `@atd/agent-client` derives them.
 public enum ArtifactFileName {
   public static let fallback = "download.bin"
 

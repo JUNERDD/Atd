@@ -14,7 +14,7 @@ import {
   ProviderVerifyRequestSchema,
   type ProviderUpdateRequest,
   type ServiceConnection,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import { serviceConfigurationId } from '../credentials/connections.js';
 import { keyringAccount } from '../credentials/keyring.js';
 import { ConflictError } from '../errors.js';

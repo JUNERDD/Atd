@@ -2,24 +2,47 @@ packages:
   - apps/*
   - packages/*
 
+saveExact: true
+engineStrict: true
+minimumReleaseAgeExcludePrune: true
+catalogPrune: true
+catalogMode: prefer
+
+catalog:
+  typebox: 1.3.34
+  react: 19.3.0
+  react-dom: 19.3.0
+  '@types/react': 19.3.0
+  '@types/react-dom': 19.3.0
+  lucide-react: 1.49.0
+  motion: 13.4.6
+  tailwindcss: 4.3.3
+  vitest: 5.0.3
+  oxc-transform-react: 0.145.0
+  shiki: 4.4.3
+  oxlint-tsgolint: 7.0.2003
+
 allowBuilds:
   '@google/genai': false
-  better-sqlite3: false
   esbuild: true
   protobufjs: false
 
 minimumReleaseAgeExclude:
-  - '@earendil-works/chord@0.99.1'
-  - '@earendil-works/pi-agent-core@0.99.1'
-  - '@earendil-works/pi-ai@0.99.1'
-  - '@earendil-works/pi-codemode@0.99.1'
-  - '@earendil-works/pi-coding-agent@0.99.1'
-  - '@earendil-works/pi-mcp@0.99.1'
-  - '@earendil-works/pi-telemetry@0.99.1'
-  - '@earendil-works/pi-tui@0.99.1'
-  - pi-subagents@0.73.1
-  - pi-web-access@0.33.0
+  - '@earendil-works/chord@1.0.0'
+  - '@earendil-works/pi-agent-core@1.0.0'
+  - '@earendil-works/pi-ai@1.0.0'
+  - '@earendil-works/pi-codemode@1.0.0'
+  - '@earendil-works/pi-coding-agent@1.0.0'
+  - '@earendil-works/pi-mcp@1.0.0'
+  - '@earendil-works/pi-telemetry@1.0.0'
+  - '@earendil-works/pi-tui@1.0.0'
+  - pi-subagents@0.74.0
+  - pi-web-access@0.35.0
+
+overrides:
+  pi-hermes-memory>better-sqlite3: '-'
 
 patchedDependencies:
+  '@earendil-works/pi-coding-agent@1.0.0': patches/@earendil-works__pi-coding-agent@1.0.0.patch
   pi-hermes-memory@0.9.9: patches/pi-hermes-memory@0.9.9.patch
-  pi-subagents@0.73.1: patches/pi-subagents@0.73.1.patch
+  pi-subagents@0.74.0: patches/pi-subagents@0.74.0.patch

@@ -3,7 +3,7 @@
  */
 
 import { getEditorLabel, getPreferredEditor, openInEditor } from './editor';
-import type { ComponentNode } from './hierarchy';
+import type { ComponentNode } from './component-chain';
 import { highlightElement, normalizePath } from './overlay';
 
 export function createHierarchyRows(

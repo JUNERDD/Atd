@@ -6,7 +6,6 @@ import WebKit
 /// stopped task is called, so every answer goes through a ``SchemeResponder`` that goes quiet
 /// once the task stops or finishes. Entries hold the task itself: an `ObjectIdentifier` alone
 /// would let a freed task's address be reused by a new one while still listed.
-@MainActor
 final class SchemeTaskTable {
   private var live: [ObjectIdentifier: SchemeResponder] = [:]
 
@@ -32,7 +31,6 @@ final class SchemeTaskTable {
 }
 
 /// Answers one scheme task at most once: a response head, body chunks, then finish or fail.
-@MainActor
 final class SchemeResponder {
   let id: ObjectIdentifier
   private var task: (any WKURLSchemeTask)?

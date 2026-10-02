@@ -1,6 +1,6 @@
 /**
  * Window state on the root element for styles: `data-window-active="false"` turns the glass
- * surfaces into their dimmed fill (`surface-glass` in `@ai/ui`), `data-window-visible="false"`
+ * surfaces into their dimmed fill (`surface-glass` in `@atd/ui`), `data-window-visible="false"`
  * marks a panel the shell hid at alpha 0, which keeps running, and
  * `data-reduced-transparency="true"` carries the system's Reduce transparency setting, which WebKit
  * does not expose as a media feature. Unset reads as active, visible and transparent.

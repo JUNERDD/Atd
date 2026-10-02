@@ -1,4 +1,4 @@
-import type { SubagentPermissions } from '@ai/agent-contracts';
+import type { SubagentPermissions } from '@atd/agent-contracts';
 import { authHeaders, type AgentClientOptions } from './types.js';
 
 export interface AtdAgentWire {
@@ -22,7 +22,7 @@ async function request<T>(
       ...authHeaders(options),
       ...(body === undefined ? {} : { 'content-type': 'application/json' }),
     },
-    body: body === undefined ? undefined : JSON.stringify(body),
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   });
   const json: unknown = await response.json().catch(() => null);
   if (!response.ok)

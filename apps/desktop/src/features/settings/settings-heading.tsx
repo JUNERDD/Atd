@@ -12,7 +12,7 @@ export function SettingsHeading({
   title: string;
   /** A note beside the title, such as a FieldHint whose text shows on hover or focus. */
   titleHint?: ReactNode;
-  description?: string;
+  description?: string | undefined;
   children?: ReactNode;
   /**
    * Marks a sub-page: the window's content header adds the title to its breadcrumb and its Back
@@ -20,9 +20,9 @@ export function SettingsHeading({
    */
   subpage?: boolean;
   /** Accessible name of the header's Back while this sub-page is shown. */
-  backLabel?: string;
+  backLabel?: string | undefined;
 }) {
-  useSettingsSubpage(subpage ? { title, backLabel } : null);
+  useSettingsSubpage(subpage ? { title, ...(backLabel === undefined ? {} : { backLabel }) } : null);
   return (
     <header
       className={`settings-page-heading ${children ? 'settings-overview-heading' : ''}`}

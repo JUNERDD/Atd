@@ -1,5 +1,5 @@
 import { Type, type Static } from 'typebox';
-import { Identifier, McpServerIdSchema } from '@ai/agent-contracts';
+import { Identifier, McpServerIdSchema } from '@atd/agent-contracts';
 
 /**
  * MCP route request bodies (service parsing concern). Canonical placement

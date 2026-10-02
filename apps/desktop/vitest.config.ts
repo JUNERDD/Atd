@@ -1,10 +1,10 @@
 import { defineConfig } from 'vitest/config';
-import react from '@vitejs/plugin-react';
-import { reactCompiler } from './plugins/react-compiler.js';
+import { reactPlugin, workspaceResolve } from './vite.shared.js';
 
 export default defineConfig({
-  // Tests run the same compiled components the app ships.
-  plugins: [react(), reactCompiler()],
+  // Tests run the same compiled components and resolve workspace packages like the app.
+  plugins: [reactPlugin()],
+  resolve: workspaceResolve,
   test: {
     environment: 'jsdom',
     setupFiles: ['./tests/setup.ts'],

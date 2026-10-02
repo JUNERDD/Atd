@@ -138,11 +138,17 @@
 .quick-panel-content.instruction-quick-panel {
   max-height: min(22rem, var(--radix-popover-content-available-height));
 }
-/* The list's viewport is its glass's persistent child layer (see `surface-glass` in `@ai/ui`):
+/* The list's viewport is its glass's persistent child layer (see `surface-glass` in `@atd/ui`):
    typing that makes the options fit drops the viewport's scroller layers inside it, not on the
    glass, where they lingered with the old options around the shrunken list. */
 .completion-viewport {
   will-change: transform;
+}
+/* The bar keeps 4px off the glass's edge and rounded corners, like a Select's inside its padding;
+   the list's lane still keeps it off the options. */
+.completion-scroll > [data-slot='scroll-area-scrollbar'][data-orientation='vertical'] {
+  height: auto;
+  margin: 4px 4px 4px 0;
 }
 .completion-options {
   padding: 4px;
@@ -263,9 +269,11 @@
   min-height: 0;
   flex-direction: column;
 }
-.memory-learning {
-  flex-shrink: 0;
-  margin-bottom: 8px;
+/* The list scrolls under the overview heading with no gap of its own, like the Models and
+   Commands lists. The page scroller gives back the list's padding, which keeps room for the rows'
+   focus rings, so the rows line up with the toolbar. */
+.memory-scroll {
+  --settings-scroll-ring: 4px;
 }
 /* Rows, feedback, and the storage note; an empty state fills the rest. */
 .memory-list {
@@ -274,7 +282,7 @@
   min-width: 0;
   flex-direction: column;
   gap: 8px;
-  padding-bottom: 16px;
+  padding: 4px 4px 16px;
 }
 
 .instruction-toolbar {
@@ -299,4 +307,8 @@
 }
 .parameter-item > div {
   overflow-wrap: anywhere;
+}
+/* The recorder's 28px pill centers on the 32px track of the Select beside it. */
+.input-shortcut-field .shortcut-recorder {
+  min-height: 32px;
 }

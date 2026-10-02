@@ -1,4 +1,4 @@
-import type { ExtensionSessionKind } from '../client/agent/bridge';
+import type { AgentRequest, ExtensionSessionKind } from '../client/agent/bridge';
 
 /**
  * Messages between the shell's panel and settings windows. The shell's web views share the
@@ -8,6 +8,11 @@ import type { ExtensionSessionKind } from '../client/agent/bridge';
 export type WindowMessage =
   /** Settings → panel: open the command editor session (`null` creates a command). */
   | { type: 'commandSession'; commandId: string | null }
+  /**
+   * Settings → panel: run a command from the settings list. The panel shows a launched command,
+   * so it also prepares it: a screenshot command then captures with the panel out of the way.
+   */
+  | { type: 'launchCommand'; request: Extract<AgentRequest, { action: 'launch' }> }
   /** Settings → panel: start a create-with-AI session, or an edit session when `target` is set. */
   | { type: 'extensionSession'; kind: ExtensionSessionKind; target: string | null }
   /** Panel → settings: show one command's editor in an already open settings window. */
@@ -17,7 +22,12 @@ export type WindowMessage =
    * every push and in reply to `shortcutStateRequest`. Only the panel pushes the set, so it alone
    * learns the answer.
    */
-  | { type: 'shortcutState'; panelAvailable: boolean; errors: Record<string, string> }
+  | {
+      type: 'shortcutState';
+      panelAvailable: boolean;
+      screenshotAvailable: boolean;
+      errors: Record<string, string>;
+    }
   /** Settings → panel: a settings window that just loaded asks for the latest `shortcutState`. */
   | { type: 'shortcutStateRequest' };
 

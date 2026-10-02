@@ -1,4 +1,10 @@
-import type { InputChip, InputChipRange, RunSnapshot, TaskInput } from '@ai/agent-contracts';
+import {
+  quoteLabel,
+  type InputChip,
+  type InputChipRange,
+  type RunSnapshot,
+  type TaskInput,
+} from '@atd/agent-contracts';
 
 /**
  * Chip ranges must lie inside `text`, ascending and without overlap, or clients could not draw the
@@ -22,11 +28,15 @@ function chipName(chip: InputChip): string {
     case 'file':
     case 'agent':
     case 'skill':
+    case 'command':
       return chip.name;
     case 'task':
+    case 'memory':
       return chip.title;
     case 'mcpServer':
       return chip.serverId;
+    case 'quote':
+      return quoteLabel(chip.text);
   }
 }
 

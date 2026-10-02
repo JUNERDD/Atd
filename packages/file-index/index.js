@@ -92,8 +92,8 @@ function requireNative() {
         loadErrors.push(e);
       }
       try {
-        const binding = require('@ai/file-index-android-arm64');
-        const bindingPackageVersion = require('@ai/file-index-android-arm64/package.json').version;
+        const binding = require('@atd/file-index-android-arm64');
+        const bindingPackageVersion = require('@atd/file-index-android-arm64/package.json').version;
         if (
           bindingPackageVersion !== '0.1.0' &&
           process.env.NAPI_RS_ENFORCE_VERSION_CHECK &&
@@ -114,9 +114,9 @@ function requireNative() {
         loadErrors.push(e);
       }
       try {
-        const binding = require('@ai/file-index-android-arm-eabi');
+        const binding = require('@atd/file-index-android-arm-eabi');
         const bindingPackageVersion =
-          require('@ai/file-index-android-arm-eabi/package.json').version;
+          require('@atd/file-index-android-arm-eabi/package.json').version;
         if (
           bindingPackageVersion !== '0.1.0' &&
           process.env.NAPI_RS_ENFORCE_VERSION_CHECK &&
@@ -149,9 +149,9 @@ function requireNative() {
           loadErrors.push(e);
         }
         try {
-          const binding = require('@ai/file-index-win32-x64-gnu');
+          const binding = require('@atd/file-index-win32-x64-gnu');
           const bindingPackageVersion =
-            require('@ai/file-index-win32-x64-gnu/package.json').version;
+            require('@atd/file-index-win32-x64-gnu/package.json').version;
           if (
             bindingPackageVersion !== '0.1.0' &&
             process.env.NAPI_RS_ENFORCE_VERSION_CHECK &&
@@ -172,9 +172,9 @@ function requireNative() {
           loadErrors.push(e);
         }
         try {
-          const binding = require('@ai/file-index-win32-x64-msvc');
+          const binding = require('@atd/file-index-win32-x64-msvc');
           const bindingPackageVersion =
-            require('@ai/file-index-win32-x64-msvc/package.json').version;
+            require('@atd/file-index-win32-x64-msvc/package.json').version;
           if (
             bindingPackageVersion !== '0.1.0' &&
             process.env.NAPI_RS_ENFORCE_VERSION_CHECK &&
@@ -196,9 +196,9 @@ function requireNative() {
         loadErrors.push(e);
       }
       try {
-        const binding = require('@ai/file-index-win32-ia32-msvc');
+        const binding = require('@atd/file-index-win32-ia32-msvc');
         const bindingPackageVersion =
-          require('@ai/file-index-win32-ia32-msvc/package.json').version;
+          require('@atd/file-index-win32-ia32-msvc/package.json').version;
         if (
           bindingPackageVersion !== '0.1.0' &&
           process.env.NAPI_RS_ENFORCE_VERSION_CHECK &&
@@ -219,9 +219,9 @@ function requireNative() {
         loadErrors.push(e);
       }
       try {
-        const binding = require('@ai/file-index-win32-arm64-msvc');
+        const binding = require('@atd/file-index-win32-arm64-msvc');
         const bindingPackageVersion =
-          require('@ai/file-index-win32-arm64-msvc/package.json').version;
+          require('@atd/file-index-win32-arm64-msvc/package.json').version;
         if (
           bindingPackageVersion !== '0.1.0' &&
           process.env.NAPI_RS_ENFORCE_VERSION_CHECK &&
@@ -245,8 +245,9 @@ function requireNative() {
       loadErrors.push(e);
     }
     try {
-      const binding = require('@ai/file-index-darwin-universal');
-      const bindingPackageVersion = require('@ai/file-index-darwin-universal/package.json').version;
+      const binding = require('@atd/file-index-darwin-universal');
+      const bindingPackageVersion =
+        require('@atd/file-index-darwin-universal/package.json').version;
       if (
         bindingPackageVersion !== '0.1.0' &&
         process.env.NAPI_RS_ENFORCE_VERSION_CHECK &&
@@ -267,8 +268,8 @@ function requireNative() {
         loadErrors.push(e);
       }
       try {
-        const binding = require('@ai/file-index-darwin-x64');
-        const bindingPackageVersion = require('@ai/file-index-darwin-x64/package.json').version;
+        const binding = require('@atd/file-index-darwin-x64');
+        const bindingPackageVersion = require('@atd/file-index-darwin-x64/package.json').version;
         if (
           bindingPackageVersion !== '0.1.0' &&
           process.env.NAPI_RS_ENFORCE_VERSION_CHECK &&
@@ -289,8 +290,8 @@ function requireNative() {
         loadErrors.push(e);
       }
       try {
-        const binding = require('@ai/file-index-darwin-arm64');
-        const bindingPackageVersion = require('@ai/file-index-darwin-arm64/package.json').version;
+        const binding = require('@atd/file-index-darwin-arm64');
+        const bindingPackageVersion = require('@atd/file-index-darwin-arm64/package.json').version;
         if (
           bindingPackageVersion !== '0.1.0' &&
           process.env.NAPI_RS_ENFORCE_VERSION_CHECK &&
@@ -315,8 +316,8 @@ function requireNative() {
         loadErrors.push(e);
       }
       try {
-        const binding = require('@ai/file-index-freebsd-x64');
-        const bindingPackageVersion = require('@ai/file-index-freebsd-x64/package.json').version;
+        const binding = require('@atd/file-index-freebsd-x64');
+        const bindingPackageVersion = require('@atd/file-index-freebsd-x64/package.json').version;
         if (
           bindingPackageVersion !== '0.1.0' &&
           process.env.NAPI_RS_ENFORCE_VERSION_CHECK &&
@@ -337,8 +338,8 @@ function requireNative() {
         loadErrors.push(e);
       }
       try {
-        const binding = require('@ai/file-index-freebsd-arm64');
-        const bindingPackageVersion = require('@ai/file-index-freebsd-arm64/package.json').version;
+        const binding = require('@atd/file-index-freebsd-arm64');
+        const bindingPackageVersion = require('@atd/file-index-freebsd-arm64/package.json').version;
         if (
           bindingPackageVersion !== '0.1.0' &&
           process.env.NAPI_RS_ENFORCE_VERSION_CHECK &&
@@ -364,9 +365,9 @@ function requireNative() {
           loadErrors.push(e);
         }
         try {
-          const binding = require('@ai/file-index-linux-x64-musl');
+          const binding = require('@atd/file-index-linux-x64-musl');
           const bindingPackageVersion =
-            require('@ai/file-index-linux-x64-musl/package.json').version;
+            require('@atd/file-index-linux-x64-musl/package.json').version;
           if (
             bindingPackageVersion !== '0.1.0' &&
             process.env.NAPI_RS_ENFORCE_VERSION_CHECK &&
@@ -387,9 +388,9 @@ function requireNative() {
           loadErrors.push(e);
         }
         try {
-          const binding = require('@ai/file-index-linux-x64-gnu');
+          const binding = require('@atd/file-index-linux-x64-gnu');
           const bindingPackageVersion =
-            require('@ai/file-index-linux-x64-gnu/package.json').version;
+            require('@atd/file-index-linux-x64-gnu/package.json').version;
           if (
             bindingPackageVersion !== '0.1.0' &&
             process.env.NAPI_RS_ENFORCE_VERSION_CHECK &&
@@ -412,9 +413,9 @@ function requireNative() {
           loadErrors.push(e);
         }
         try {
-          const binding = require('@ai/file-index-linux-arm64-musl');
+          const binding = require('@atd/file-index-linux-arm64-musl');
           const bindingPackageVersion =
-            require('@ai/file-index-linux-arm64-musl/package.json').version;
+            require('@atd/file-index-linux-arm64-musl/package.json').version;
           if (
             bindingPackageVersion !== '0.1.0' &&
             process.env.NAPI_RS_ENFORCE_VERSION_CHECK &&
@@ -435,9 +436,9 @@ function requireNative() {
           loadErrors.push(e);
         }
         try {
-          const binding = require('@ai/file-index-linux-arm64-gnu');
+          const binding = require('@atd/file-index-linux-arm64-gnu');
           const bindingPackageVersion =
-            require('@ai/file-index-linux-arm64-gnu/package.json').version;
+            require('@atd/file-index-linux-arm64-gnu/package.json').version;
           if (
             bindingPackageVersion !== '0.1.0' &&
             process.env.NAPI_RS_ENFORCE_VERSION_CHECK &&
@@ -460,9 +461,9 @@ function requireNative() {
           loadErrors.push(e);
         }
         try {
-          const binding = require('@ai/file-index-linux-arm-musleabihf');
+          const binding = require('@atd/file-index-linux-arm-musleabihf');
           const bindingPackageVersion =
-            require('@ai/file-index-linux-arm-musleabihf/package.json').version;
+            require('@atd/file-index-linux-arm-musleabihf/package.json').version;
           if (
             bindingPackageVersion !== '0.1.0' &&
             process.env.NAPI_RS_ENFORCE_VERSION_CHECK &&
@@ -483,9 +484,9 @@ function requireNative() {
           loadErrors.push(e);
         }
         try {
-          const binding = require('@ai/file-index-linux-arm-gnueabihf');
+          const binding = require('@atd/file-index-linux-arm-gnueabihf');
           const bindingPackageVersion =
-            require('@ai/file-index-linux-arm-gnueabihf/package.json').version;
+            require('@atd/file-index-linux-arm-gnueabihf/package.json').version;
           if (
             bindingPackageVersion !== '0.1.0' &&
             process.env.NAPI_RS_ENFORCE_VERSION_CHECK &&
@@ -508,9 +509,9 @@ function requireNative() {
           loadErrors.push(e);
         }
         try {
-          const binding = require('@ai/file-index-linux-loong64-musl');
+          const binding = require('@atd/file-index-linux-loong64-musl');
           const bindingPackageVersion =
-            require('@ai/file-index-linux-loong64-musl/package.json').version;
+            require('@atd/file-index-linux-loong64-musl/package.json').version;
           if (
             bindingPackageVersion !== '0.1.0' &&
             process.env.NAPI_RS_ENFORCE_VERSION_CHECK &&
@@ -531,9 +532,9 @@ function requireNative() {
           loadErrors.push(e);
         }
         try {
-          const binding = require('@ai/file-index-linux-loong64-gnu');
+          const binding = require('@atd/file-index-linux-loong64-gnu');
           const bindingPackageVersion =
-            require('@ai/file-index-linux-loong64-gnu/package.json').version;
+            require('@atd/file-index-linux-loong64-gnu/package.json').version;
           if (
             bindingPackageVersion !== '0.1.0' &&
             process.env.NAPI_RS_ENFORCE_VERSION_CHECK &&
@@ -556,9 +557,9 @@ function requireNative() {
           loadErrors.push(e);
         }
         try {
-          const binding = require('@ai/file-index-linux-riscv64-musl');
+          const binding = require('@atd/file-index-linux-riscv64-musl');
           const bindingPackageVersion =
-            require('@ai/file-index-linux-riscv64-musl/package.json').version;
+            require('@atd/file-index-linux-riscv64-musl/package.json').version;
           if (
             bindingPackageVersion !== '0.1.0' &&
             process.env.NAPI_RS_ENFORCE_VERSION_CHECK &&
@@ -579,9 +580,9 @@ function requireNative() {
           loadErrors.push(e);
         }
         try {
-          const binding = require('@ai/file-index-linux-riscv64-gnu');
+          const binding = require('@atd/file-index-linux-riscv64-gnu');
           const bindingPackageVersion =
-            require('@ai/file-index-linux-riscv64-gnu/package.json').version;
+            require('@atd/file-index-linux-riscv64-gnu/package.json').version;
           if (
             bindingPackageVersion !== '0.1.0' &&
             process.env.NAPI_RS_ENFORCE_VERSION_CHECK &&
@@ -603,9 +604,9 @@ function requireNative() {
         loadErrors.push(e);
       }
       try {
-        const binding = require('@ai/file-index-linux-ppc64-gnu');
+        const binding = require('@atd/file-index-linux-ppc64-gnu');
         const bindingPackageVersion =
-          require('@ai/file-index-linux-ppc64-gnu/package.json').version;
+          require('@atd/file-index-linux-ppc64-gnu/package.json').version;
         if (
           bindingPackageVersion !== '0.1.0' &&
           process.env.NAPI_RS_ENFORCE_VERSION_CHECK &&
@@ -626,9 +627,9 @@ function requireNative() {
         loadErrors.push(e);
       }
       try {
-        const binding = require('@ai/file-index-linux-s390x-gnu');
+        const binding = require('@atd/file-index-linux-s390x-gnu');
         const bindingPackageVersion =
-          require('@ai/file-index-linux-s390x-gnu/package.json').version;
+          require('@atd/file-index-linux-s390x-gnu/package.json').version;
         if (
           bindingPackageVersion !== '0.1.0' &&
           process.env.NAPI_RS_ENFORCE_VERSION_CHECK &&
@@ -653,9 +654,9 @@ function requireNative() {
         loadErrors.push(e);
       }
       try {
-        const binding = require('@ai/file-index-openharmony-arm64');
+        const binding = require('@atd/file-index-openharmony-arm64');
         const bindingPackageVersion =
-          require('@ai/file-index-openharmony-arm64/package.json').version;
+          require('@atd/file-index-openharmony-arm64/package.json').version;
         if (
           bindingPackageVersion !== '0.1.0' &&
           process.env.NAPI_RS_ENFORCE_VERSION_CHECK &&
@@ -676,9 +677,9 @@ function requireNative() {
         loadErrors.push(e);
       }
       try {
-        const binding = require('@ai/file-index-openharmony-x64');
+        const binding = require('@atd/file-index-openharmony-x64');
         const bindingPackageVersion =
-          require('@ai/file-index-openharmony-x64/package.json').version;
+          require('@atd/file-index-openharmony-x64/package.json').version;
         if (
           bindingPackageVersion !== '0.1.0' &&
           process.env.NAPI_RS_ENFORCE_VERSION_CHECK &&
@@ -699,9 +700,9 @@ function requireNative() {
         loadErrors.push(e);
       }
       try {
-        const binding = require('@ai/file-index-openharmony-arm');
+        const binding = require('@atd/file-index-openharmony-arm');
         const bindingPackageVersion =
-          require('@ai/file-index-openharmony-arm/package.json').version;
+          require('@atd/file-index-openharmony-arm/package.json').version;
         if (
           bindingPackageVersion !== '0.1.0' &&
           process.env.NAPI_RS_ENFORCE_VERSION_CHECK &&
@@ -841,21 +842,21 @@ if (!nativeBinding || forceWasi) {
     let candidateError = null;
     let candidateFailed = false;
     try {
-      candidateError = __napiWasiResolveCandidate('@ai/file-index-wasm32-wasi', true, undefined);
+      candidateError = __napiWasiResolveCandidate('@atd/file-index-wasm32-wasi', true, undefined);
       candidateFailed = candidateError !== null;
       if (!candidateFailed) {
         if (
           process.env.NAPI_RS_ENFORCE_VERSION_CHECK &&
           process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0'
         ) {
-          const bindingPackageVersion = require('@ai/file-index-wasm32-wasi/package.json').version;
+          const bindingPackageVersion = require('@atd/file-index-wasm32-wasi/package.json').version;
           if (bindingPackageVersion !== '0.1.0') {
             throw new Error(
               `WASI binding package version mismatch, expected 0.1.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`,
             );
           }
         }
-        wasiBinding = require('@ai/file-index-wasm32-wasi');
+        wasiBinding = require('@atd/file-index-wasm32-wasi');
         nativeBinding = wasiBinding;
         __napiLoadedBindingTarget = 'wasm32-wasi';
         wasiBindingLoaded = true;
@@ -898,6 +899,7 @@ if (!nativeBinding) {
   throw new Error(`Failed to load native binding`);
 }
 
-const { FileIndex } = nativeBinding;
+const { FileIndex, Phase } = nativeBinding;
 export { FileIndex };
+export { Phase };
 export const __napiBindingTarget = __napiLoadedBindingTarget;

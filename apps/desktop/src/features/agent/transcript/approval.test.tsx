@@ -1,8 +1,9 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { TooltipProvider } from '@ai/ui/components/tooltip';
+import { TooltipProvider } from '@atd/ui/components/tooltip';
 import { ComposerPopover } from '../../../components/composer-popover';
+import { ToolBlock } from './tool-block';
 import { Transcript } from './transcript';
 import { installAgent, makeDetail, toolBlock, userBlock } from './fixtures';
 
@@ -83,5 +84,64 @@ describe('approval controls', () => {
     const { answer } = renderApproval();
     await user.click(screen.getByRole('button', { name: /Decline/ }));
     expect(answer).toHaveBeenCalledWith('task-1', 'run-1', 'req-1', { decision: 'declined' });
+  });
+
+  it("shows a codemode step's pending approval on the step that asks", () => {
+    const block = toolBlock({
+      name: 'codemode',
+      status: 'running',
+      output: '',
+      args: { code: "await tools.read({ path: 'a.txt' });" },
+      details: {
+        diff: '',
+        truncated: false,
+        fullOutputPath: '',
+        data: {
+          type: 'codemode',
+          truncated: false,
+          steps: [
+            {
+              id: 'call-1/1',
+              name: 'read',
+              args: { path: 'a.txt' },
+              status: 'completed',
+              output: 'ok',
+            },
+            {
+              id: 'call-1/2',
+              name: 'write',
+              args: { path: 'b.txt' },
+              status: 'running',
+              output: '',
+            },
+          ],
+        },
+      },
+    });
+    render(
+      <TooltipProvider>
+        <ToolBlock
+          block={block}
+          forceOpen
+          confirmation={{
+            kind: 'confirmation',
+            id: 'req-2',
+            taskId: 'task-1',
+            runId: 'run-1',
+            toolCallId: 'call-1/2',
+            scope: { tool: 'write', location: 'inside' },
+            title: 'write: b.txt',
+            detail: 'b.txt',
+          }}
+        />
+      </TooltipProvider>,
+    );
+    const steps = screen.getByLabelText('Tool calls made by the script');
+    const rows = within(steps).getAllByRole('listitem');
+    expect(rows).toHaveLength(2);
+    expect(within(rows[0]!).queryByText(/Waiting for your approval/)).toBeNull();
+    expect(within(rows[1]!).getByText(/Waiting for your approval/)).toBeVisible();
+    // The script's row keeps the waiting summary beside its steps.
+    expect(screen.getAllByText(/Waiting for your approval/)).toHaveLength(2);
   });
 });

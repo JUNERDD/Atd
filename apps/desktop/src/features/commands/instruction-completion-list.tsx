@@ -3,8 +3,8 @@ import { useLayoutEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { EditorView } from '@codemirror/view';
 import { acceptCompletion, type Completion, setSelectedCompletion } from '@codemirror/autocomplete';
-import { HighlightedText } from '@ai/ui/components/highlighted-text';
-import { ScrollArea } from '@ai/ui/components/scroll-area';
+import { HighlightedText } from '@atd/ui/components/highlighted-text';
+import { ScrollArea } from '@atd/ui/components/scroll-area';
 import { typedVariable, variableRanges } from './instruction-variable-match';
 
 export function CompletionList({
@@ -29,7 +29,7 @@ export function CompletionList({
   }, [options, selected, view]);
   return (
     <ScrollArea
-      className="surface-glass flex-1 max-h-[inherit] rounded-2xl"
+      className="completion-scroll max-h-[inherit] flex-1 rounded-2xl surface-glass"
       viewportClassName="completion-viewport"
     >
       <div

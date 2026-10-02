@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { AgentTask, PermissionRequest, RunStatus } from '@ai/agent-contracts';
+import type { AgentTask, PermissionRequest, RunStatus } from '@atd/agent-contracts';
 
 /** A ledger task whose latest run has `status` (no run when undefined). */
 export function task(

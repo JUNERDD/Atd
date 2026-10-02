@@ -7,7 +7,7 @@ import {
   type ForkTaskRequest,
   type ForkTaskResponse,
   type TaskRun,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import { ConflictError } from '../errors.js';
 import { subagentChildRoot } from '../subagents/child-transcript-read.js';
 import type { Ledger } from '../ledger.js';

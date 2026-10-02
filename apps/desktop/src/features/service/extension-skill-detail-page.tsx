@@ -1,7 +1,7 @@
 import { Suspense, useCallback, useEffect, useState } from 'react';
 import { Copy } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Button } from '@ai/ui/components/button';
+import { Button } from '@atd/ui/components/button';
 import { messageOf } from '../../lib/errors';
 import { lazyWithPreload } from '../../lib/lazy-with-preload';
 import {

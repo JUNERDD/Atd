@@ -7,34 +7,9 @@
  */
 
 import { childBySession, hostForTask, parentForChildCwd } from './registry.js';
-import { registerChildTools } from './child-tools.js';
+import { registerChildTools, type ChildPi } from './child-tools.js';
 
-interface BridgePi {
-  on(
-    event: 'session_start',
-    handler: (
-      event: unknown,
-      ctx: { cwd: string; sessionManager: { getSessionId(): string | undefined } },
-    ) => void,
-  ): void;
-  registerTool(tool: {
-    name: string;
-    label: string;
-    description: string;
-    parameters: unknown;
-    execute: (
-      id: string,
-      args: unknown,
-      signal?: AbortSignal,
-    ) => Promise<{ content: { type: string; text: string }[]; details: unknown }>;
-  }): void;
-  on(
-    event: 'tool_call',
-    handler: (event: { toolName: string }) => { block?: boolean; reason?: string } | undefined,
-  ): void;
-}
-
-export default function serviceChildBridge(pi: BridgePi): void {
+export default function serviceChildBridge(pi: ChildPi): void {
   pi.on('session_start', (_event, ctx) => {
     const cwd = ctx.cwd;
     const parent = parentForChildCwd(cwd);

@@ -1,43 +1,48 @@
 import { useEffect, useState } from 'react';
+import { queryOptions, useQuery } from '@tanstack/react-query';
 import type { AgentSnapshot, TaskDetail, TaskState } from '../../client/agent/bridge';
 import { applyTranscriptPatch } from '../../client/agent/transcript-schema';
 import { showErrorToast } from '../../components/toast-store';
 import i18n from '../../i18n';
+import { bridgeKeys, newerAgentSnapshot, wireAgentBridge } from '../../lib/bridge-cache';
+import { queryClient } from '../../lib/query-client';
 
 export function agentApi() {
   if (!window.desktop?.agent) throw new Error(i18n.t('panel:errors.openDesktopApp'));
   return window.desktop.agent;
 }
 
-export function useAgent() {
-  const [snapshot, setSnapshot] = useState<AgentSnapshot | null>(null);
-  useEffect(() => {
-    const bridge = window.desktop?.agent;
-    if (!bridge) return;
-    let active = true;
-    const update = (next: AgentSnapshot) =>
-      setSnapshot((previous) => (!previous || next.revision > previous.revision ? next : previous));
-    const unsubscribe = bridge.onChange((event) => {
-      if (event.type === 'snapshot') update(event.snapshot);
-    });
-    void bridge.get().then(
-      (next) => {
-        if (active) update(next);
-      },
-      (error) => {
-        if (active) showErrorToast(error);
-      },
-    );
-    return () => {
-      active = false;
-      unsubscribe();
-    };
-  }, []);
-  const error = snapshot?.error ?? '';
-  useEffect(() => {
-    if (error) showErrorToast(error);
-  }, [error]);
-  return { snapshot };
+function agentSnapshotQuery() {
+  const bridge = window.desktop?.agent;
+  return queryOptions({
+    queryKey: bridgeKeys.agentSnapshot,
+    queryFn: () => {
+      if (!bridge) throw new Error(i18n.t('panel:errors.openDesktopApp'));
+      wireAgentBridge(bridge);
+      // A snapshot pushed while the read ran may be newer than its answer.
+      return bridge
+        .get()
+        .then((next) =>
+          newerAgentSnapshot(
+            queryClient.getQueryData<AgentSnapshot>(bridgeKeys.agentSnapshot),
+            next,
+          ),
+        );
+    },
+    enabled: Boolean(bridge),
+    // Pushes keep the snapshot current, so it never needs a refetch.
+    staleTime: Infinity,
+    gcTime: Infinity,
+  });
+}
+
+/**
+ * The agent snapshot (commands and tasks), shared by every caller in the window and kept current
+ * by the bridge's pushes. A failed read, and a snapshot error, show their toasts once.
+ */
+export function useAgent(): { snapshot: AgentSnapshot | null } {
+  const { data } = useQuery(agentSnapshotQuery(), queryClient);
+  return { snapshot: data ?? null };
 }
 
 function mergeState(detail: TaskDetail, state: TaskState): TaskDetail {

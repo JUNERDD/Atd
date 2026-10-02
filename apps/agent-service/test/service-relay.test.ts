@@ -7,7 +7,7 @@ import {
   parse,
   RELAY_EPOCH_CURRENT_HEADER,
   RouteManifestResponseSchema,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import { startTestService } from './service-harness.ts';
 
 let harness: Awaited<ReturnType<typeof startTestService>>;

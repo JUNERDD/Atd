@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { after, before, test } from 'node:test';
-import type { McpAuthUrlNotice } from '@ai/agent-contracts';
+import type { McpAuthUrlNotice } from '@atd/agent-contracts';
 import { oauthAccount } from '../dist/mcp/oauth-store.js';
 import { serversFile } from '../dist/mcp/servers.js';
 import { approveAuthorization, isRecord } from './mcp-http-kit.ts';

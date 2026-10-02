@@ -5,7 +5,7 @@ import {
   type GrantScope,
   type PermissionAnswer,
   type PermissionRequest,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import type { EventLog } from './event-log.js';
 import { ConflictError } from './errors.js';
 import { Ledger } from './ledger.js';
@@ -67,7 +67,8 @@ export class ConfirmStore {
       const waiter: ConfirmWaiter = {
         resolve,
         reject,
-        timer: setTimeout(() => this.expire(created.id), CONFIRM_TTL_MS),
+        // `expire` logs its own write failure, so nothing awaits it.
+        timer: setTimeout(() => void this.expire(created.id), CONFIRM_TTL_MS),
       };
       waiter.timer?.unref?.();
       this.waiters.set(created.id, waiter);

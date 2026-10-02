@@ -1,4 +1,4 @@
-import { errorMessage, type McpServerConfig } from '@ai/agent-contracts';
+import { errorMessage, type McpServerConfig } from '@atd/agent-contracts';
 import type { Logger } from '../logging.js';
 import type { CountMemory } from './catalog-memory.js';
 import { MCP_REQUEST_TIMEOUT_MS } from './constants.js';
@@ -140,7 +140,7 @@ export class ConnectionManager implements McpConnections {
     const spec = toLaunchSpec(record);
     if (record.stdio) {
       const probe = await probeStdioRuntime(record.stdio.command, {
-        cwd: record.stdio.cwd ?? undefined,
+        cwd: record.stdio.cwd,
         env: record.stdio.env,
       });
       if (!probe.ok || !probe.resolved) throw new Error(probe.detail);

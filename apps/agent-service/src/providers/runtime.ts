@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { ModelRuntime } from '@earendil-works/pi-coding-agent';
-import type { ServiceConnection, ServiceModelDefinition } from '@ai/agent-contracts';
+import type { ServiceConnection, ServiceModelDefinition } from '@atd/agent-contracts';
 import type { ConnectionStore } from '../credentials/connections.js';
 import type { KeyringBackend } from '../credentials/keyring.js';
 import { ServiceCredentialStore } from '../credentials/service-store.js';
@@ -10,7 +10,8 @@ import { ConflictError, UpstreamError } from '../errors.js';
 import { isLocalProvider, toServiceModel } from './catalog.js';
 import { uniqueModels } from './connection-view.js';
 import { contextOverrideFile, type ContextOverride } from './context-override.js';
-import { discoverCompatibleModels, discoverLlamaModels } from './discovery.js';
+import { discoverCompatibleModels } from './discovery.js';
+import { LLAMA_PROVIDER, llamaProvider } from './llama.js';
 
 export interface ProviderStores {
   dataDir: string;
@@ -59,7 +60,9 @@ export async function connectionRuntime(
     modelsStorePath: path.join(root, 'models-store.json'),
     refreshOnCreate: false,
   });
-  if (isLocalProvider(connection.provider)) {
+  if (connection.provider === LLAMA_PROVIDER)
+    models.registerNativeProvider(await llamaProvider(connection));
+  else if (isLocalProvider(connection.provider)) {
     models.registerProvider(connection.provider, {
       name: connection.name,
       baseUrl: connection.baseUrl,
@@ -70,13 +73,13 @@ export async function connectionRuntime(
     models.registerProvider(connection.provider, { baseUrl: connection.baseUrl });
   const provider = models.getProvider(connection.provider);
   if (!provider) throw new ConflictError('This provider is no longer registered in Pi.');
-  const apiKey = provider.auth.apiKey;
+  const { apiKey, oauth } = provider.auth;
   const options = connection.options ?? {};
   models.registerNativeProvider({
     ...provider,
     auth:
       connection.authType === 'oauth'
-        ? { oauth: provider.auth.oauth }
+        ? { ...(oauth && { oauth }) }
         : {
             apiKey: {
               name: apiKey?.name ?? 'Connection credentials',
@@ -95,7 +98,7 @@ export async function connectionRuntime(
                 if (!apiKey) return undefined;
                 const resolved = await apiKey.resolve({
                   ...input,
-                  credential: input.credential ? { ...input.credential, env: options } : undefined,
+                  ...(input.credential && { credential: { ...input.credential, env: options } }),
                   ctx: {
                     ...input.ctx,
                     env: (name) =>
@@ -136,9 +139,8 @@ async function loadCatalog(
   if (isLocalProvider(connection.provider)) {
     const auth = await models.getAuth(connection.provider);
     if (!auth) throw new ConflictError('Complete authentication before refreshing.');
-    return connection.provider === 'llamacpp'
-      ? discoverLlamaModels(connection, auth)
-      : discoverCompatibleModels(connection, auth);
+    // llama.cpp refreshes through Pi's provider (llama.ts), like the directory providers below.
+    if (connection.provider !== LLAMA_PROVIDER) return discoverCompatibleModels(connection, auth);
   }
   const result = await models.refresh({
     providers: [connection.provider],

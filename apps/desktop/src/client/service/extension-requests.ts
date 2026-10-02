@@ -21,7 +21,7 @@ import {
   setAtdAgentPermissions,
   setSkillEnabled,
   type AgentClientOptions,
-} from '@ai/agent-client';
+} from '@atd/agent-client';
 import type { ServiceRequest } from './ipc';
 import { handleMcpApprovalRequest, type RequestMcpApproval } from './mcp-approval-requests';
 import { handlePluginRequest } from './plugin-requests';
@@ -110,10 +110,14 @@ export async function handleExtensionRequest(
       // the service refuses a command or URL change those kept values must not follow.
       return mcpUpsertServer({ options }, request.serverId, {
         transport: request.transport,
-        command: request.command,
-        args: request.args,
-        url: request.url,
         auth: request.auth,
+        ...(request.command === undefined ? {} : { command: request.command }),
+        ...(request.args === undefined ? {} : { args: request.args }),
+        ...(request.url === undefined ? {} : { url: request.url }),
+        ...(request.exposure === undefined ? {} : { exposure: request.exposure }),
+        ...(request.exposeResources === undefined
+          ? {}
+          : { exposeResources: request.exposeResources }),
       });
     case 'mcpSetEnabled':
       return mcpSetServerEnabled({ options }, request.serverId, request.enabled);

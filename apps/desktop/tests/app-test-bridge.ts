@@ -1,5 +1,5 @@
 import { vi } from 'vitest';
-import { DEFAULT_SHORTCUTS } from '@ai/agent-contracts';
+import { DEFAULT_SHORTCUTS } from '@atd/agent-contracts';
 import type { SettingsSnapshot } from '../src/client/settings-contract';
 import type {
   AgentBridge,
@@ -45,6 +45,7 @@ export function installBridge(extras?: {
     showInDock: false,
     openAtLogin: null,
     shortcutAvailable: true,
+    screenshotShortcutAvailable: true,
     permissionTier: 'manual',
     shellAllowlist: [],
   };
@@ -154,9 +155,16 @@ export function installBridge(extras?: {
     renameTask: vi.fn(async () => {}),
     deleteTask: vi.fn(async () => {}),
     compactTask: vi.fn(async () => null),
+    contextBreakdown: vi.fn(async () => ({
+      contextWindow: null,
+      usedTokens: 0,
+      estimated: true,
+      autocompactBuffer: 0,
+      categories: [],
+    })),
     forkTask: vi.fn(async () => ({ taskId: 'test-fork' })),
     chooseFiles: vi.fn(async () => []),
-    saveMarkdown: vi.fn(async () => true),
+    saveFile: vi.fn(async () => true),
     artifact: vi.fn(async () => null),
     copy: vi.fn(async () => {}),
     openLink: vi.fn(async () => {}),
@@ -208,6 +216,9 @@ export function installBridge(extras?: {
     show: vi.fn(async () => {}),
     hide,
     chooseFiles: vi.fn(async () => []),
+    screenshot: vi.fn(async () => null),
+    editScreenshot: vi.fn(async () => null),
+    resource: vi.fn(async () => new Blob()),
     settings: {
       open,
       openCommand,

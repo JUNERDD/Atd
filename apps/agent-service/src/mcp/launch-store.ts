@@ -5,7 +5,7 @@ import {
   McpLaunchApprovalRecordSchema,
   parse,
   type McpLaunchApprovalRecord,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import { atomicWrite } from '../config.js';
 import type { Logger } from '../logging.js';
 

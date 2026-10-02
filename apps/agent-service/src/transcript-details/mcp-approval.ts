@@ -1,6 +1,6 @@
 import { Type } from 'typebox';
 import { Compile } from 'typebox/compile';
-import { McpServerIdSchema, type McpApprovalDetails } from '@ai/agent-contracts';
+import { McpServerIdSchema, type McpApprovalDetails } from '@atd/agent-contracts';
 
 /**
  * `configure_mcp`'s details (configure-mcp-tool.ts): present only when the saved server waits for

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { isCommandId } from '../commands/open-command-settings';
-import { findSettingsSection, type SettingsSectionId } from './settings-sections';
+import { findSettingsSection, settingsSections, type SettingsSectionId } from './settings-sections';
 
 /** Where the window remembers the section shown last, for the next time it opens. */
 const LAST_SECTION_KEY = 'settings.lastSection';
@@ -45,13 +45,14 @@ export function useSettingsSection(
 ) {
   // Only the shown section: each section keeps its own page history (`useSettingsPageHistory`).
   const [section, setSection] = useState<SettingsSectionId>(() =>
-    readCommandIdFromHash() ? 'commands' : (readLastSection() ?? 'permissions'),
+    readCommandIdFromHash() ? 'commands' : (readLastSection() ?? settingsSections[0].id),
   );
   const [visited, setVisited] = useState<readonly SettingsSectionId[]>([section]);
   const [commandTarget, setCommandTarget] = useState<{ id: string; nonce: number } | null>(() => {
     const id = readCommandIdFromHash();
     return id ? { id, nonce: 0 } : null;
   });
+  const [memoryTarget, setMemoryTarget] = useState<{ id: string; nonce: number } | null>(null);
   const [drawer, setDrawer] = useState<SettingsDrawerState>(null);
   // Every way into a section (the list, search, a link) mounts it on its first visit.
   if (!visited.includes(section)) setVisited([...visited, section]);
@@ -88,10 +89,32 @@ export function useSettingsSection(
     },
     [locked, leave],
   );
+  /** Shows one memory's editor, as `showCommand` does for a command. */
+  const showMemory = useCallback(
+    (entryId: string) => {
+      if (locked) return;
+      leave(-1, () => {
+        setSection('memory');
+        setDrawer(null);
+        setMemoryTarget((current) => ({ id: entryId, nonce: (current?.nonce ?? 0) + 1 }));
+      });
+    },
+    [locked, leave],
+  );
   // The task panel can request the editor for one command while this window is already open.
   useEffect(
     () => window.desktop?.settings.onOpenCommand?.((commandId) => showCommand(commandId)),
     [showCommand],
   );
-  return { section, visited, commandTarget, drawer, setDrawer, navigate, showCommand };
+  return {
+    section,
+    visited,
+    commandTarget,
+    memoryTarget,
+    drawer,
+    setDrawer,
+    navigate,
+    showCommand,
+    showMemory,
+  };
 }

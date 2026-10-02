@@ -8,7 +8,6 @@ import WebKit
 /// window), locks its navigation down (R6), rebuilds it after a WebContent crash, and runs its
 /// end of the bridge: the page's virtual sockets and the one delivery path for everything the
 /// shell sends it (``BridgeOutbox``, spike S6).
-@MainActor
 final class WebViewHost: NSObject {
   let role: WebViewRole
   /// The view windows embed; the web view fills it and is swapped inside it on a rebuild.
@@ -22,6 +21,15 @@ final class WebViewHost: NSObject {
   /// Receives dropped and pasted file URLs; the panel imports them as attachments.
   var onFiles: ((_ files: [URL], _ source: String) -> Void)? {
     didSet { webView.onFiles = onFiles }
+  }
+  /// Receives a file drag entering the web view (its summary) and leaving it (nil).
+  var onFileDrag: ((FileDragSummary?) -> Void)? {
+    didSet { webView.onFileDrag = onFileDrag }
+  }
+  /// Receives a pasted bitmap that came without file URLs or text; the panel imports it as an
+  /// image attachment.
+  var onPastedImage: ((_ data: Data) -> Void)? {
+    didSet { webView.onPastedImage = onPastedImage }
   }
 
   private let fragment: String?
@@ -169,6 +177,8 @@ final class WebViewHost: NSObject {
     webView.navigationDelegate = self
     webView.uiDelegate = self
     webView.onFiles = onFiles
+    webView.onFileDrag = onFileDrag
+    webView.onPastedImage = onPastedImage
     webView.frame = container.bounds
     container.addSubview(webView)
     pipe = VirtualSocketPipe(link: services.link) { [weak self] in self?.post(frame: $0) }

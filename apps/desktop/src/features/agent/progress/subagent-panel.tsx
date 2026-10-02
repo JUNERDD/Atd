@@ -8,11 +8,11 @@ import {
   ShieldAlert,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import type { SubagentChildSummary } from '@ai/agent-contracts';
-import { Button } from '@ai/ui/components/button';
-import { PopoverHeader, PopoverTitle } from '@ai/ui/components/popover';
-import { ScrollArea } from '@ai/ui/components/scroll-area';
-import { cn } from '@ai/ui/lib/utils';
+import type { SubagentChildSummary } from '@atd/agent-contracts';
+import { Button } from '@atd/ui/components/button';
+import { PopoverHeader, PopoverTitle } from '@atd/ui/components/popover';
+import { ScrollArea } from '@atd/ui/components/scroll-area';
+import { cn } from '@atd/ui/lib/utils';
 import { subtaskLabel, type PendingByExecution } from '../transcript/subagent-children';
 import { useSubagents } from '../transcript/subagent-context';
 import { usePrefetchChildTranscripts } from '../transcript/use-child-transcript';

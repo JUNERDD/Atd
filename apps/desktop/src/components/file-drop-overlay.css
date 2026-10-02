@@ -1,0 +1,40 @@
+/* The drop target over the panel body (`FileDropOverlay`): overlay glass inset from the window
+   edge, covering the content and the composer while the header stays visible above it. Its dashed
+   frame, concentric with the glass, carries the state: brighter when the drop attaches, the
+   destructive color when it would not. */
+.file-drop-overlay {
+  position: absolute;
+  inset: 8px;
+  z-index: 40;
+  display: flex;
+  padding: 6px;
+  border-radius: 18px;
+  pointer-events: none;
+  animation: file-drop-in 120ms ease-out both;
+}
+.file-drop-target {
+  padding: 24px 16px;
+  border-radius: 12px;
+  border-color: var(--ata-border-subtle);
+  transition: border-color 150ms ease-out;
+}
+.file-drop-overlay[data-state='accept'] .file-drop-target {
+  border-color: color-mix(in srgb, var(--foreground) 48%, transparent);
+}
+.file-drop-overlay[data-state='refuse'] .file-drop-target {
+  border-color: color-mix(in srgb, var(--destructive) 60%, transparent);
+}
+.file-drop-overlay[data-state='refuse'] [data-slot='empty-icon'] {
+  color: var(--destructive);
+}
+@keyframes file-drop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .file-drop-overlay {
+    animation: none;
+  }
+}

@@ -10,7 +10,7 @@ import {
   subagentChildKey,
   type ChildTranscriptResponse,
   type SubagentChildEntry,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import type { Logger } from '../logging.js';
 import { inside } from '../service-fs.js';
 import { collectBlockLookups } from '../transcript-blocks.js';

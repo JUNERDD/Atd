@@ -36,13 +36,13 @@ export interface SearchRequest {
 
 /**
  * Where file names come from. `FileSearchService` owns the scope, ranking, result ids and
- * attach, so a replacement index (the native file index in a worker thread) implements only this.
+ * attach, so a replacement index (the native file index) implements only this.
  */
 export interface SearchBackend {
   /** The service filters, ranks and trims the hits, so a backend may return more than it shows. */
   search(request: SearchRequest): Promise<BackendReply>;
   /**
-   * Stops background work (index walks, workers) at service shutdown. In-flight searches are
+   * Stops background work (the index's walk and event stream) at service shutdown. In-flight searches are
    * aborted through their signals first; the backend is not used again.
    */
   close(): Promise<void>;

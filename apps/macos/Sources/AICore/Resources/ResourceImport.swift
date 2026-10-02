@@ -107,11 +107,11 @@ public enum AttachmentRules {
   /// Paths per import call (`ResourceImportRequestSchema.paths.maxItems`, `MAX_ATTACHMENTS`),
   /// which is also the most the page takes from one pick, drop or paste.
   public static let maxPathsPerImport = 10
-  /// Text formats the service reads back as run material (`ATTACHABLE_EXTENSIONS`). Images are
-  /// not among them, so a pasted bitmap cannot become an attachment.
+  /// Every attachable format (`ATTACHABLE_EXTENSIONS`): the text formats the service reads back
+  /// as run material, then the image formats it sends to the model as image input.
   public static let extensions = [
     "txt", "md", "csv", "json", "log", "yaml", "yml", "xml", "html", "css", "ts", "tsx", "js",
-    "py",
+    "py", "png", "jpg", "jpeg", "gif", "webp",
   ]
 
   /// Node's `path.basename` for the POSIX paths the shell imports.

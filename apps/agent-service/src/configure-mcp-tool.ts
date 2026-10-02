@@ -9,7 +9,8 @@ import {
   type McpLaunchApprovalState,
   type McpServerConfig,
   type McpServerUpsertRequest,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
+import { serverView } from './mcp/server-edits.js';
 import { servicePaths } from './storage.js';
 
 /** A saved server and whether it may launch as saved (mcp/launch-approvals.ts). */
@@ -57,7 +58,14 @@ function modelView(
     ...(stdio
       ? { command: stdio.command, args: stdio.args, envNames: Object.keys(stdio.env) }
       : {}),
-    ...(http ? { url: http.url, headerNames: Object.keys(http.headers), auth: http.auth } : {}),
+    // The view's auth: an OAuth client secret only as `{ set: true }`, never its value.
+    ...(http
+      ? {
+          url: http.url,
+          headerNames: Object.keys(http.headers),
+          auth: serverView(record).http?.auth,
+        }
+      : {}),
     revision: record.revision,
     disabled: record.disabled,
     approval,
@@ -68,8 +76,23 @@ function modelView(
 const request = McpServerUpsertRequestSchema.properties;
 
 /**
- * An upsert without `env` or `headers`: the model never sets or sees their values, and leaving
- * them out keeps the stored ones (see `McpServerUpsertRequestSchema`).
+ * Auth as the model may set it: an OAuth server keeps its stored client. A pre-registered client
+ * and its authorization server decide where sign-in codes, tokens and the client secret go, so
+ * only the user sets them (`McpOAuthClientDraftSchema`, in Settings).
+ */
+const ModelAuthSchema = Type.Union([
+  Type.Object({ type: Type.Literal('none') }, { additionalProperties: false }),
+  Type.Object(
+    { type: Type.Literal('bearer'), tokenEnv: Type.String({ minLength: 1, maxLength: 256 }) },
+    { additionalProperties: false },
+  ),
+  Type.Object({ type: Type.Literal('oauth') }, { additionalProperties: false }),
+]);
+
+/**
+ * An upsert without `env`, `headers`, an OAuth client, `exposure` or `exposeResources`: the model
+ * never sets or sees secret values, and leaving these out keeps the stored ones (see
+ * `McpServerUpsertRequestSchema`). How tools and resources reach the model is the user's setting.
  */
 const DraftSchema = Type.Object(
   {
@@ -78,7 +101,7 @@ const DraftSchema = Type.Object(
     command: request.command,
     args: request.args,
     url: request.url,
-    auth: request.auth,
+    auth: ModelAuthSchema,
   },
   { additionalProperties: false },
 );
@@ -188,6 +211,8 @@ export function registerMcpCatalogTools(
       `such as --workspace=${tasksDir}; never pass an option that lifts its path restriction.`,
     parameters: DraftSchema,
     executionMode: 'sequential',
+    // The launch approval banner reads the call's persisted result, which a nested call never has.
+    exposure: 'model-only',
     execute: (_id, args) => configureMcp(host, args),
   });
 }

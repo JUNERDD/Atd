@@ -4,9 +4,10 @@ import {
   type RunReference,
   type SubagentPermissions,
   type TaskRun,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import { listAtdAgents, type AtdAgent } from '../atd-agents/catalog.js';
 import type { Ledger } from '../ledger.js';
+import type { Logger } from '../logging.js';
 import { mcpProxyPrefix } from '../mcp/index.js';
 import type { McpToolSelection } from '../mcp/staging.js';
 import type { PluginAgent } from '../plugins/map.js';
@@ -20,6 +21,8 @@ import {
   readConversation,
   type Conversation,
 } from './conversation.js';
+import { quoteMaterial } from './quotes.js';
+import { savedItems, type SavedItems } from './saved.js';
 
 /** Conversations one run may reference; later ones are listed as unavailable. */
 const MAX_TASK_REFERENCES = 3;
@@ -32,6 +35,11 @@ const NOTES_HEADER = 'Unavailable references (tell the user when this matters fo
 /** What the run freeze knows when it resolves references. */
 export interface ReferenceContext {
   ledger: Ledger;
+  /** The service data dir, which holds the saved commands. */
+  dataDir: string;
+  /** The agent dir, which holds the memory store. */
+  agentDir: string;
+  log: Logger;
   /** The task whose run is freezing. */
   taskId: string;
   run: TaskRun;
@@ -49,9 +57,9 @@ export interface ReferenceContext {
   pluginAgents: ReadonlyMap<string, PluginAgent>;
 }
 
-/** A run's references resolved at freeze into material and capabilities. */
+/** A run's quotes and references resolved at freeze into material and capabilities. */
 export interface RunReferences {
-  /** Text appended to the run material; empty when the run has no references. */
+  /** Text appended to the run material: quotes, then references; empty when it has neither. */
   material: string;
   /** `~/.atd/agents` and plugin specialists the run's session registers and allows. */
   agents: RuntimeAgent[];
@@ -79,12 +87,31 @@ interface Source {
 }
 
 /**
+ * Resolves the material a run's `@` tokens stand for: the passages its message quotes, read from
+ * the snapshot's chips (references/quotes.ts), then its staged references. Quotes always come
+ * through; their size already counts as the run's input, which the references' room excludes.
+ */
+export async function resolveRunReferences(
+  context: ReferenceContext,
+  references: RunReference[],
+): Promise<RunReferences> {
+  const quotes = quoteMaterial(context.run.snapshot.input);
+  const resolved = await resolveStaged(context, references);
+  if (!quotes.passages) return resolved;
+  return {
+    ...resolved,
+    material: [quotes.text, resolved.material].filter(Boolean).join(SEPARATOR),
+    audit: [{ quotes: quotes.passages, quoteChars: quotes.text.length }, ...resolved.audit],
+  };
+}
+
+/**
  * Resolves a run's staged references. A reference that no longer resolves
  * never fails the run: it is listed as unavailable with its reason, so the
  * model can tell the user. Everything the references add counts against the
  * context budget left by the run's own input and its skills (tasks/run-budget.ts).
  */
-export async function resolveRunReferences(
+async function resolveStaged(
   context: ReferenceContext,
   references: RunReference[],
 ): Promise<RunReferences> {
@@ -93,30 +120,48 @@ export async function resolveRunReferences(
   const hints: Hint[] = [];
   const sources: Source[] = [];
   let catalog: Promise<AtdAgent[] | string> | null = null;
+  const saved: SavedItems = savedItems(context);
   for (const reference of references) {
-    if (reference.kind === 'task') {
-      if (sources.length >= MAX_TASK_REFERENCES) {
-        const reason = `only ${MAX_TASK_REFERENCES} conversations can be referenced per message`;
-        notes.push({ reference, label: taskLabel(context, reference.taskId), reason });
-        continue;
+    switch (reference.kind) {
+      case 'task': {
+        if (sources.length >= MAX_TASK_REFERENCES) {
+          const reason = `only ${MAX_TASK_REFERENCES} conversations can be referenced per message`;
+          notes.push({ reference, label: taskLabel(context, reference.taskId), reason });
+          break;
+        }
+        const resolved = await resolveTask(context, reference.taskId);
+        if ('reason' in resolved) notes.push({ reference, ...resolved });
+        else sources.push({ reference, ...resolved });
+        break;
       }
-      const resolved = await resolveTask(context, reference.taskId);
-      if ('reason' in resolved) notes.push({ reference, ...resolved });
-      else sources.push({ reference, ...resolved });
-    } else if (reference.kind === 'mcpServer') {
-      const resolved = resolveMcpServer(context, reference.serverId);
-      const label = `MCP server "${reference.serverId}"`;
-      if (typeof resolved === 'string') notes.push({ reference, label, reason: resolved });
-      else hints.push({ reference, ...resolved });
-    } else {
-      catalog ??= listAtdAgents().then(
-        ({ agents }) => agents,
-        (error: unknown) => `the agent catalog could not be read (${errorMessage(error)})`,
-      );
-      const resolved = await resolveAgentReference(reference.name, context, catalog);
-      const label = `Agent "${reference.name}"`;
-      if (typeof resolved === 'string') notes.push({ reference, label, reason: resolved });
-      else hints.push({ reference, ...resolved });
+      case 'mcpServer': {
+        const resolved = resolveMcpServer(context, reference.serverId);
+        const label = `MCP server "${reference.serverId}"`;
+        if (typeof resolved === 'string') notes.push({ reference, label, reason: resolved });
+        else hints.push({ reference, ...resolved });
+        break;
+      }
+      case 'agent': {
+        catalog ??= listAtdAgents().then(
+          ({ agents }) => agents,
+          (error: unknown) => `the agent catalog could not be read (${errorMessage(error)})`,
+        );
+        const resolved = await resolveAgentReference(reference.name, context, catalog);
+        const label = `Agent "${reference.name}"`;
+        if (typeof resolved === 'string') notes.push({ reference, label, reason: resolved });
+        else hints.push({ reference, ...resolved });
+        break;
+      }
+      case 'command':
+      case 'memory': {
+        const resolved =
+          reference.kind === 'command'
+            ? await saved.command(reference.commandId)
+            : await saved.memory(reference.target, reference.entryId);
+        if ('reason' in resolved) notes.push({ reference, ...resolved });
+        else hints.push({ reference, ...resolved });
+        break;
+      }
     }
   }
   return compose(context, { notes, hints, sources });
@@ -251,8 +296,14 @@ function resolveMcpServer(
   if (selected && !selected.some((tool) => tool.connectionId === server.connectionId))
     return 'none of its tools are selected for this message';
   const prefix = mcpProxyPrefix(serverId);
+  // How many tools the run binds decides an `auto` server's exposure, and that is known only once
+  // the run binds; a `direct` server's tools are always declared, so it needs no search.
+  const search =
+    server.exposure === 'direct'
+      ? ''
+      : ' Load any that are not among your tools yet with tool_search.';
   return {
-    text: `MCP server "${serverId}": prefer its tools, the ones named ${prefix}*, where they fit this request. Every other tool stays available.`,
+    text: `MCP server "${serverId}": prefer its tools, the ones named ${prefix}*, where they fit this request.${search} Every other tool stays available.`,
     audit: { reference: 'mcpServer', target: serverId, decision: 'included', prefix },
   };
 }
@@ -270,5 +321,9 @@ function target(reference: RunReference): { reference: string; target: string } 
       return { reference: 'agent', target: reference.name };
     case 'mcpServer':
       return { reference: 'mcpServer', target: reference.serverId };
+    case 'command':
+      return { reference: 'command', target: reference.commandId };
+    case 'memory':
+      return { reference: 'memory', target: `${reference.target}:${reference.entryId}` };
   }
 }

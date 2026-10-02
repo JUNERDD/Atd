@@ -1,0 +1,18 @@
+{
+  "images": [
+    {
+      "filename": "attentionDevTemplate.png",
+      "idiom": "mac",
+      "scale": "1x"
+    },
+    {
+      "filename": "attentionDevTemplate@2x.png",
+      "idiom": "mac",
+      "scale": "2x"
+    }
+  ],
+  "info": {
+    "author": "xcode",
+    "version": 1
+  }
+}

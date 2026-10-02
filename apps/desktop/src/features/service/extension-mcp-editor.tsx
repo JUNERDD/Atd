@@ -1,6 +1,6 @@
 import { useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button } from '@ai/ui/components/button';
+import { Button } from '@atd/ui/components/button';
 import { ExtensionDetailSection } from './extension-detail-fields';
 import {
   sameMcpDraft,
@@ -11,17 +11,20 @@ import {
 } from './extension-mcp-draft';
 import type { ExtensionMcpConfig } from './extension-detail-rows';
 import { useSettingsUnsavedChanges } from '../settings/settings-unsaved-changes';
+import { McpAccessFields } from './extension-mcp-access';
 import { McpConnectionFields } from './extension-mcp-form';
+import { McpOAuthClientFields } from './extension-mcp-oauth-fields';
 import { ExtensionPage, type ExtensionPageBadge } from './extension-page';
 
 const FORM_ID = 'mcp-server-form';
 
 /**
- * The MCP page with its connection form: the add page when `serverId` is null, otherwise that
- * server's details, with its status (`before`) above the form and anything the form cannot carry
- * over (`after`) below it, and a Personal server's Remove (`remove`) before Cancel. Save checks the
- * draft here first, then hands it to `onUpsert`; the
- * route returns to the list when the save succeeds, and a failure keeps the page for repair.
+ * The MCP page with its form: the add page when `serverId` is null, otherwise that server's
+ * details, with its status (`before`) above the form and anything the form cannot carry over
+ * (`after`) below it, and a Personal server's Remove (`remove`) before Cancel. The form groups the
+ * connection, a remote OAuth server's client, and how the agent reaches the server's tools and
+ * resources. Save checks the draft here first, then hands it to `onUpsert`; the route returns to
+ * the list when the save succeeds, and a failure keeps the page for repair.
  */
 export function McpEditor({
   serverId,
@@ -30,6 +33,7 @@ export function McpEditor({
   saved = null,
   badge,
   backLabel,
+  toolCount = null,
   connected,
   busy,
   before,
@@ -45,8 +49,10 @@ export function McpEditor({
   takenIds: readonly string[];
   /** The stored server, whose kept env vars, headers and token limit what may change. */
   saved?: ExtensionMcpConfig | null;
-  badge?: ExtensionPageBadge | null;
+  badge?: ExtensionPageBadge | null | undefined;
   backLabel: string;
+  /** The server's listed tools once it is connected; null before (and on the add page). */
+  toolCount?: number | null;
   connected: boolean;
   busy: boolean;
   before?: ReactNode;
@@ -82,24 +88,49 @@ export function McpEditor({
     void onUpsert(toUpsertInput(draft));
   }
 
+  // Each group locks while the service is away or a write runs.
+  const group = (label: string, fields: ReactNode) => (
+    <ExtensionDetailSection label={label}>
+      <fieldset className="settings-fields" disabled={locked}>
+        {fields}
+      </fieldset>
+    </ExtensionDetailSection>
+  );
   const form = (
     <form
       ref={formRef}
       id={FORM_ID}
+      className="extension-page-body"
       noValidate
       onSubmit={(event) => {
         event.preventDefault();
         submit();
       }}
     >
-      <fieldset className="settings-fields" disabled={locked}>
+      {group(
+        t('extensions.mcpPage.connectionSection'),
         <McpConnectionFields
           draft={draft}
           problems={problems}
           idReadOnly={!adding}
           onChange={setDraft}
-        />
-      </fieldset>
+        />,
+      )}
+      {draft.transport !== 'stdio' && draft.authKind === 'oauth'
+        ? group(
+            t('extensions.mcpPage.oauthSection'),
+            <McpOAuthClientFields
+              draft={draft}
+              problems={problems}
+              secretSaved={saved?.clientSecretSet ?? false}
+              onChange={setDraft}
+            />,
+          )
+        : null}
+      {group(
+        t('extensions.mcpPage.accessSection'),
+        <McpAccessFields draft={draft} toolCount={toolCount} onChange={setDraft} />,
+      )}
     </form>
   );
 
@@ -137,13 +168,7 @@ export function McpEditor({
       }
     >
       {before}
-      {adding ? (
-        form
-      ) : (
-        <ExtensionDetailSection label={t('extensions.mcpPage.connectionSection')}>
-          {form}
-        </ExtensionDetailSection>
-      )}
+      {form}
       {after}
     </ExtensionPage>
   );

@@ -1,10 +1,12 @@
 {
   "header": {
-    "panelLabel": "AI 任务面板",
+    "panelLabel": "Atd 任务面板",
     "newChat": "新建对话",
     "controlsLabel": "面板控件",
     "tasks": "任务",
     "settings": "设置",
+    "update": "更新",
+    "updateTooltip": "重启以安装 {{version}} 版本",
     "loadingConversation": "正在加载对话…"
   },
   "welcome": {
@@ -29,18 +31,36 @@
     "promptLabel": "任务提示词",
     "placeholder": "输入任何内容…",
     "followUpPlaceholder": "继续追问…",
-    "attachedContext": "已附加的上下文",
     "attachContext": "附加上下文",
     "attachLimit": "最多附加 10 个文件。",
-    "removeFile": "移除 {{name}}",
+    "editImage": "编辑 {{name}}",
+    "attachMenu": {
+      "screenshot": "截图",
+      "upload": "上传文件",
+      "mention": "提及文件、对话或工具…"
+    },
     "stopAndDecline": "停止并拒绝",
     "answerPlaceholder": "输入你的回答…",
     "interjectPlaceholder": "直接发送将拒绝此操作并立即送达…",
     "attachAfterRun": "请等这次运行结束后再附加文件。",
+    "drop": {
+      "title": "松开以添加为上下文",
+      "attach_one": "将把 {{count}} 个文件附加到消息中。",
+      "attach_other": "将把 {{count}} 个文件附加到消息中。",
+      "attachSome": "将附加 {{total}} 个文件中的 {{count}} 个。",
+      "rules": "可附加文本、代码和图片文件，每条消息最多 {{max}} 个。",
+      "unsupported": "无法附加这些文件",
+      "full": "附件已达上限",
+      "fullDescription": "每条消息最多 {{max}} 个文件，移除一些后再添加。",
+      "tooMany": "文件过多",
+      "tooManyDescription_one": "这条消息还能再添加 {{count}} 个文件。",
+      "tooManyDescription_other": "这条消息还能再添加 {{count}} 个文件。",
+      "importing": "正在添加文件…"
+    },
     "importFailed": {
       "unreadable": "无法读取 {{name}}。",
       "unsupported": "不支持附加 {{name}}。",
-      "tooLarge": "{{name}} 必须是小于 1 MB 的文本文件。"
+      "tooLarge": "{{name}} 太大，无法附加。"
     },
     "queued": "排队消息",
     "sendNow": "立即发送",
@@ -55,7 +75,10 @@
       "task": "对话：{{name}}",
       "mcpServer": "MCP 服务：{{name}}",
       "agent": "子代理：{{name}}",
-      "skill": "技能：{{name}}"
+      "skill": "技能：{{name}}",
+      "command": "命令：{{name}}",
+      "memory": "记忆：{{name}}",
+      "quote": "引用：{{name}}"
     },
     "progress": {
       "label": "任务进度",
@@ -70,7 +93,27 @@
       "label": "上下文用量",
       "usage": "{{tokens}} / {{window}} tokens · {{percent}}%",
       "percent": "已用 {{percent}}%",
-      "autoCompact": "上下文接近上限时会自动整理"
+      "autoCompact": "上下文接近上限时会自动整理",
+      "detail": {
+        "title": "上下文窗口",
+        "usage": "{{used}} / {{window}}（{{percent}}%）",
+        "used": "{{used}} tokens",
+        "categories": {
+          "messages": "消息",
+          "systemPrompt": "系统提示词",
+          "skills": "技能",
+          "systemTools": "工具",
+          "mcpTools": "MCP"
+        },
+        "buffer": "自动压缩缓冲区",
+        "free": "剩余空间",
+        "tools_one": "{{count}} 个工具",
+        "tools_other": "{{count}} 个工具",
+        "skills_one": "{{count}} 个技能",
+        "skills_other": "{{count}} 个技能",
+        "loading": "正在加载…",
+        "error": "无法加载上下文详情：{{message}}"
+      }
     }
   },
   "configuration": {
@@ -94,6 +137,11 @@
     "starting": "正在启动…",
     "selectedText": "选中的文本",
     "clipboardText": "剪贴板文本",
+    "screenshot": "截图",
+    "takeScreenshot": "截取屏幕",
+    "retakeScreenshot": "重新截图",
+    "editScreenshot": "编辑截图",
+    "screenshotMissing": "截图后才能运行此命令。",
     "text": "输入内容",
     "textPlaceholder": "输入要用于此命令的文本…",
     "captured": "捕获于 {{time}}",
@@ -124,10 +172,9 @@
   },
   "session": {
     "editSeed": "更新命令“{{name}}”（id：{{id}}）：",
-    "createSeed": "创建命令：",
     "editSkillSeed": "修改现有技能“{{name}}”：",
     "editSubagentSeed": "修改现有子代理“{{name}}”：",
-    "editMcpSeed": "修改现有 MCP 服务器“{{name}}”：",
+    "editMcpSeed": "修改现有 MCP“{{name}}”：",
     "menu": "会话操作",
     "rename": "重命名会话",
     "copyId": "复制会话 ID",
@@ -184,7 +231,9 @@
       "files": "文件",
       "conversations": "对话",
       "mcp": "MCP",
-      "agents": "子代理"
+      "agents": "子代理",
+      "savedCommands": "命令",
+      "memory": "记忆"
     },
     "commands": {
       "new": {
@@ -262,11 +311,11 @@
     },
     "files": {
       "browse": "浏览文件…",
-      "browseDescription": "从这台电脑选择文本文件",
+      "browseDescription": "从这台电脑选择文本文件或图片",
       "partial": "结果可能不完整。",
       "indexDisabled": "Spotlight 索引未开启，无法搜索文件。",
       "unsupported": "此系统不支持文件搜索。",
-      "tooLarge": "超过 1 MB",
+      "tooLarge": "文件过大，无法附加",
       "limit": "已附加 10 个文件",
       "failed": "文件搜索失败，请重试。",
       "attaching": "正在附加…",
@@ -277,5 +326,9 @@
     "text": "此任务的上下文已整理 {{count}} 次，新开任务效果更好。",
     "newTask": "新建任务",
     "dismiss": "关闭提示"
+  },
+  "attachments": {
+    "noVision": "{{model}} 无法识别图片，附加的图片不会发送给它。",
+    "noVisionWithText": "{{model}} 无法识别图片，附加的图片不会发送给它；屏幕上下文等附加文本仍会发送。"
   }
 }

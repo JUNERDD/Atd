@@ -92,7 +92,7 @@ export interface OAuthMock {
   /** Every request in the order it arrived. */
   requests: MockRequest[];
   /** Whether `token` is a live access token this mock issued. */
-  accepts(token: string): boolean;
+  accepts: (token: string) => boolean;
   setTokenTtl(seconds: number): void;
   seedGrant(options?: { redirectUris?: string[]; ttlSeconds?: number }): SeededGrant;
   /** Issued access tokens stop working; refresh tokens still do. */

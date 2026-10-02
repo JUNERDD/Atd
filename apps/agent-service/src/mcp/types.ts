@@ -1,10 +1,12 @@
-import type { McpServerConfig, McpToolRef } from '@ai/agent-contracts';
+import type { McpServerConfig, McpToolRef } from '@atd/agent-contracts';
 import type { ToolAnnotations } from '@earendil-works/pi-coding-agent';
 import type {
   AuthProvider,
   McpClient,
   McpTransport,
   ServerCapabilities,
+  Tool,
+  UnauthorizedContext,
 } from '@earendil-works/pi-mcp';
 
 /**
@@ -103,15 +105,22 @@ export interface McpCatalogCounts {
   prompts: number;
 }
 
+/** One read of a live connection's catalog: the sizes status rows show and the tools it lists. */
+export interface McpCatalogRead {
+  counts: McpCatalogCounts;
+  /** Empty when the server does not advertise tools. */
+  tools: Tool[];
+}
+
 /**
- * Lists a freshly connected client's catalog sizes (catalog.ts `countCatalog`), each only when the
+ * Reads a freshly connected client's catalog (catalog.ts `countCatalog`), each list only when the
  * server advertises it: a tools failure fails the connect, a resources or prompts failure counts
  * zero, and authentication errors always propagate. Re-run on every `list_changed`.
  */
 export type McpCatalogCounter = (
   client: McpClient,
   signal: AbortSignal | undefined,
-) => Promise<McpCatalogCounts>;
+) => Promise<McpCatalogRead>;
 
 /** One open physical connection of the pool (pool.ts), shared by every caller of its name. */
 export interface McpLiveConnection {
@@ -123,8 +132,15 @@ export interface McpLiveConnection {
   readonly reuseKey: string;
   /** What the server advertised at initialize. */
   readonly capabilities: ServerCapabilities;
+  /**
+   * The server's `instructions` from initialize, trimmed; null when it sent none. They describe
+   * its tools as a group (the proxies' `ToolNamespace` and the `mcp_servers` prompt section).
+   */
+  readonly instructions: string | null;
   /** Counts from the connect, refreshed on `list_changed`. */
   counts(): McpCatalogCounts;
+  /** The tools listed with `counts`: at the connect, and again on every `list_changed`. */
+  tools(): readonly Tool[];
   /** False once the transport closed (dropped, idle-closed or closed on purpose). */
   isOpen(): boolean;
   /**
@@ -199,6 +215,8 @@ export type McpConnectionControl = Pick<McpConnections, 'disconnect' | 'reconnec
  * and never opens a browser; sign-in belongs to the user-started flow (oauth-flow.ts).
  */
 export interface OAuthConnectionAuth extends AuthProvider {
+  /** Always present: every OAuth connection reacts to a 401 (or a step-up 403). */
+  onUnauthorized: (context: UnauthorizedContext) => Promise<void>;
   /** Resolves once no refresh is in flight, so a rotated refresh token is saved before close. */
   settled(): Promise<void>;
   /**
@@ -251,6 +269,17 @@ export interface OAuthMigrationOutcome {
 export interface McpToolInfo {
   ref: McpToolRef;
   annotations?: ToolAnnotations;
+}
+
+/**
+ * One server's tools as runner proxies bind them (facade.ts `listedServer`): the instructions and
+ * tools its connection last read, at the connect and on every `tools/list_changed`.
+ */
+export interface McpListedServer {
+  instructions: string | null;
+  tools: McpToolInfo[];
+  /** Whether the server advertises the resources capability. */
+  resources: boolean;
 }
 
 /** Test seams of `McpAuthority.createAuthority`; production passes none. */

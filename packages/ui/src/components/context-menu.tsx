@@ -1,11 +1,11 @@
 'use client';
 
 import * as React from 'react';
-import { cn } from '@ai/ui/lib/utils';
-import { ignoreComposingEscape } from '@ai/ui/lib/ime';
+import { cn } from '@atd/ui/lib/utils';
+import { ignoreComposingEscape } from '@atd/ui/lib/ime';
 import { ContextMenu as ContextMenuPrimitive } from 'radix-ui';
 import { ChevronRightIcon, CheckIcon } from 'lucide-react';
-import { ScrollArea } from '@ai/ui/components/scroll-area';
+import { ScrollArea } from '@atd/ui/components/scroll-area';
 
 function ContextMenu({ ...props }: React.ComponentProps<typeof ContextMenuPrimitive.Root>) {
   return <ContextMenuPrimitive.Root data-slot="context-menu" {...props} />;
@@ -152,7 +152,6 @@ function ContextMenuSubContent({
 function ContextMenuCheckboxItem({
   className,
   children,
-  checked,
   inset,
   ...props
 }: React.ComponentProps<typeof ContextMenuPrimitive.CheckboxItem> & {
@@ -166,7 +165,6 @@ function ContextMenuCheckboxItem({
         "relative flex min-h-7 cursor-pointer items-center gap-2 rounded-xl py-1.5 pr-8 pl-2 text-sm outline-hidden select-none focus:bg-accent focus:text-accent-foreground data-inset:pl-7 data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
         className,
       )}
-      checked={checked}
       {...props}
     >
       <span className="pointer-events-none absolute right-2">

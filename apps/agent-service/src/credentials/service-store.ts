@@ -4,7 +4,7 @@ import type {
   CredentialInfo,
   CredentialStore,
 } from '@earendil-works/pi-ai';
-import { parse, ProviderCredentialSchema } from '@ai/agent-contracts';
+import { parse, ProviderCredentialSchema } from '@atd/agent-contracts';
 import { TempCredentialStore } from '../credentials.js';
 import { ConnectionStore } from './connections.js';
 import { keyringAccount, KeyringBackend, KeyringUnavailable } from './keyring.js';
@@ -74,11 +74,8 @@ export class ServiceCredentialStore implements CredentialStore {
   ): Promise<Credential | undefined> {
     if (providerId !== this.providerId) throw new Error('Credential connection mismatch.');
     const prior = ServiceCredentialStore.transactions.get(this.connectionId) ?? Promise.resolve();
-    let release: () => void = () => undefined;
-    const gate = new Promise<void>((resolve) => {
-      release = resolve;
-    });
-    const tail = prior.then(() => gate);
+    const gate = Promise.withResolvers<void>();
+    const tail = prior.then(() => gate.promise);
     // Unhandled tail rejections must not surface; modify awaits prior only.
     tail.catch(() => undefined);
     ServiceCredentialStore.transactions.set(this.connectionId, tail);
@@ -106,7 +103,7 @@ export class ServiceCredentialStore implements CredentialStore {
       }
       return next ?? stored;
     } finally {
-      release();
+      gate.resolve();
       if (ServiceCredentialStore.transactions.get(this.connectionId) === tail)
         ServiceCredentialStore.transactions.delete(this.connectionId);
     }

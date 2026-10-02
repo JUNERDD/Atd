@@ -1,5 +1,9 @@
-import type { AgentClientOptions, AgentHttpClient } from '@ai/agent-client';
-import type { InvalidateFrame } from '@ai/agent-contracts';
+import {
+  taskContextBreakdown,
+  type AgentClientOptions,
+  type AgentHttpClient,
+} from '@atd/agent-client';
+import type { InvalidateFrame } from '@atd/agent-contracts';
 import type {
   AgentEvent,
   AgentRequest,
@@ -8,6 +12,7 @@ import type {
   PreparedCommand,
 } from './bridge';
 import type { CommandDefinition } from './command-schema';
+import type { Screenshot } from './screenshot-input';
 import {
   compactLiveTask,
   deleteLiveTask,
@@ -24,6 +29,7 @@ import {
 import { TaskClient, type TaskConnection } from './service-tasks';
 import { submitTask } from './task-submit';
 import type { FileRef } from './task-schema';
+import type { SaveContent } from '../../native-bridge/calls';
 
 /** The command list as each client keeps it: the desktop also binds global shortcuts. */
 export interface CommandCatalog {
@@ -32,6 +38,11 @@ export interface CommandCatalog {
   find(id: string): CommandDefinition;
   prepare(id: string): Promise<PreparedCommand>;
   capture(source: 'selection' | 'clipboard'): Promise<{ text: string; capturedAt: string }>;
+  /**
+   * Lets the user capture the screen and imports the image; null when the user cancelled. Rejects
+   * with an English message when the capture is not permitted or the import fails.
+   */
+  screenshot(): Promise<Screenshot | null>;
   save(command: CommandDefinition, expectedRevision: number): Promise<CommandDefinition>;
   delete(id: string, revision: number): Promise<void>;
   /** Reloads the list from the service (connect, or another client changed it). */
@@ -45,8 +56,8 @@ export interface AgentPlatform {
   copy(text: string): Promise<void>;
   /** `url` is already checked to be http(s). */
   openLink(url: string): Promise<void>;
-  /** Offers an uploaded resource in a save panel; false when the user cancelled. */
-  saveFile(resourceId: string, name: string): Promise<boolean>;
+  /** Offers `content` under the suggested `name` in a save panel; false when cancelled. */
+  saveFile(name: string, content: SaveContent): Promise<boolean>;
   artifact(
     options: AgentClientOptions,
     artifactId: string,
@@ -63,7 +74,6 @@ export interface AgentConnection extends TaskConnection {
 export interface AgentHost {
   emit(event: AgentEvent): void;
   defaultConnectionId(): string | null;
-  defaultModel(): { connectionId: string; modelId: string } | undefined;
 }
 
 /**
@@ -91,7 +101,6 @@ export class AgentRequests<S> {
       {
         emit: (event) => host.emit(event),
         broadcast: () => this.scheduleBroadcast(),
-        defaultModel: () => host.defaultModel(),
       },
       forward,
     );
@@ -142,7 +151,10 @@ export class AgentRequests<S> {
       case 'task.deleted':
         await this.tasks.onInvalidate(frame);
         return;
-      default:
+      // The native host reloads these itself (extensions, settings and providers).
+      case 'extensions':
+      case 'providers':
+      case 'settings':
         return;
     }
   }
@@ -236,19 +248,21 @@ export class AgentRequests<S> {
         return null;
       case 'compactTask':
         return compactLiveTask(this.options(), request.taskId, request.instructions);
+      case 'contextBreakdown':
+        return (await taskContextBreakdown(this.options(), request.taskId)).breakdown;
       case 'forkTask': {
         const { taskId, entryId, title } = request;
-        const fork = await forkLiveTask(this.options(), taskId, { entryId, title });
+        const fork = await forkLiveTask(this.options(), taskId, {
+          entryId,
+          ...(title === undefined ? {} : { title }),
+        });
         await this.tasks.loadSummary(fork.taskId);
         return fork;
       }
       case 'chooseFiles':
         return this.platform.chooseFiles(this.tasks.http());
-      case 'saveMarkdown': {
-        const bytes = new TextEncoder().encode(request.text);
-        const { resource } = await this.tasks.http().upload(request.name, 'text/markdown', bytes);
-        return this.platform.saveFile(resource.id, request.name);
-      }
+      case 'saveFile':
+        return this.platform.saveFile(request.name, request.content);
       case 'memory':
         // A failed load (or no connection) is reported inside the snapshot, never thrown.
         try {

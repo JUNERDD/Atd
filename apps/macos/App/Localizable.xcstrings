@@ -8,13 +8,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "AI"
+            "value" : "Atd"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "AI"
+            "value" : "Atd"
           }
         }
       }
@@ -87,6 +87,654 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "打开“%@”吗？"
+          }
+        }
+      }
+    },
+    "capture.color.black" : {
+      "comment" : "Annotation colour swatch",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Black"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "黑色"
+          }
+        }
+      }
+    },
+    "capture.color.blue" : {
+      "comment" : "Annotation colour swatch",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Blue"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "蓝色"
+          }
+        }
+      }
+    },
+    "capture.color.green" : {
+      "comment" : "Annotation colour swatch",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Green"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "绿色"
+          }
+        }
+      }
+    },
+    "capture.color.red" : {
+      "comment" : "Annotation colour swatch",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Red"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "红色"
+          }
+        }
+      }
+    },
+    "capture.color.white" : {
+      "comment" : "Annotation colour swatch",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "White"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "白色"
+          }
+        }
+      }
+    },
+    "capture.color.yellow" : {
+      "comment" : "Annotation colour swatch",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yellow"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "黄色"
+          }
+        }
+      }
+    },
+    "capture.confirm" : {
+      "comment" : "Annotation toolbar button: finish and use the screenshot",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Done"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "完成"
+          }
+        }
+      }
+    },
+    "capture.copy" : {
+      "comment" : "Screenshot toolbar button: copy the annotated screenshot to the clipboard and close, without attaching it",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "复制"
+          }
+        }
+      }
+    },
+    "capture.hint.accessibility" : {
+      "comment" : "Capture overlay hint shown when Accessibility is not allowed; clicking it asks for the permission",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Allow Accessibility to detect interface elements"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "允许辅助功能以识别界面元素"
+          }
+        }
+      }
+    },
+    "capture.hint.idle" : {
+      "comment" : "Hint at the bottom of the capture overlay before an area is selected",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Click a highlighted area or drag to select · Scroll for a larger area · ⌘A for the whole screen · Esc to cancel"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "点击高亮区域或拖动选择 · 滚动切换更大区域 · ⌘A 选择整个屏幕 · Esc 取消"
+          }
+        }
+      }
+    },
+    "capture.hint.recall" : {
+      "comment" : "Capture overlay hint shown while a previous area exists on this display; R commits it",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "R to reuse the last area"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "R 复用上次区域"
+          }
+        }
+      }
+    },
+    "capture.hint.selected" : {
+      "comment" : "Hint at the bottom of the capture overlay once an area is selected",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Drag the edges to resize · Return to confirm · Esc to go back"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "拖动边缘调整大小 · 回车确认 · Esc 返回"
+          }
+        }
+      }
+    },
+    "capture.hint.windowsOnly" : {
+      "comment" : "Capture overlay hint shown while element detection is limited to windows; W toggles it",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Windows only · W to detect elements again"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "仅识别窗口 · 按 W 恢复识别元素"
+          }
+        }
+      }
+    },
+    "capture.redaction.blur" : {
+      "comment" : "Style bar choice: the mosaic blurs what is under it",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Blur"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "模糊"
+          }
+        }
+      }
+    },
+    "capture.redaction.pixelate" : {
+      "comment" : "Style bar choice: the mosaic pixelates what is under it into blocks",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mosaic"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "马赛克"
+          }
+        }
+      }
+    },
+    "capture.redaction.solid" : {
+      "comment" : "Style bar choice: the mosaic covers what is under it with an opaque black box",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cover"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "遮盖"
+          }
+        }
+      }
+    },
+    "capture.redo" : {
+      "comment" : "Annotation toolbar button: redo the undone annotation change",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Redo"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重做"
+          }
+        }
+      }
+    },
+    "capture.size" : {
+      "comment" : "Style bar slider: how big an annotation is drawn (line width, text size, mosaic blocks…)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Size"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "大小"
+          }
+        }
+      }
+    },
+    "capture.size.tooltip" : {
+      "comment" : "Tooltip of the style bar's size slider: the scroll wheel and the keys do the same",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Size — scroll anywhere, or press - and ="
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "大小：在任意位置滚动滚轮，或按 - 和 ="
+          }
+        }
+      }
+    },
+    "capture.styleBar" : {
+      "comment" : "Accessibility label of the screenshot annotation style bar (colours and stroke widths)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Annotation Style"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "标注样式"
+          }
+        }
+      }
+    },
+    "capture.textBackground" : {
+      "comment" : "Annotation style bar toggle: draws text on a rounded plate in the chosen colour",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Text background"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "文字背景"
+          }
+        }
+      }
+    },
+    "capture.tool.arrow" : {
+      "comment" : "Annotation tool that draws an arrow",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Arrow"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "箭头"
+          }
+        }
+      }
+    },
+    "capture.tool.ellipse" : {
+      "comment" : "Annotation tool that draws an ellipse",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ellipse"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "椭圆"
+          }
+        }
+      }
+    },
+    "capture.tool.highlighter" : {
+      "comment" : "Annotation tool that draws a translucent freehand highlight",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Highlighter"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "荧光笔"
+          }
+        }
+      }
+    },
+    "capture.tool.line" : {
+      "comment" : "Annotation tool that draws a straight line",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Line"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "直线"
+          }
+        }
+      }
+    },
+    "capture.tool.mosaic" : {
+      "comment" : "Annotation tool that pixelates an area",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mosaic"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "马赛克"
+          }
+        }
+      }
+    },
+    "capture.tool.pen" : {
+      "comment" : "Annotation tool that draws freehand",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pen"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "画笔"
+          }
+        }
+      }
+    },
+    "capture.tool.rectangle" : {
+      "comment" : "Annotation tool that draws a rectangle",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rectangle"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "矩形"
+          }
+        }
+      }
+    },
+    "capture.tool.select" : {
+      "comment" : "Annotation tool that selects, moves and resizes annotations",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Select"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "选择"
+          }
+        }
+      }
+    },
+    "capture.tool.spotlight" : {
+      "comment" : "Annotation tool name: dims everything in the screenshot outside the drawn rectangles",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spotlight"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "聚光灯"
+          }
+        }
+      }
+    },
+    "capture.tool.step" : {
+      "comment" : "Annotation tool that places numbered markers (1, 2, 3…)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Step Number"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "序号"
+          }
+        }
+      }
+    },
+    "capture.tool.text" : {
+      "comment" : "Annotation tool that places text",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Text"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "文字"
+          }
+        }
+      }
+    },
+    "capture.toolbar" : {
+      "comment" : "Accessibility label of the screenshot annotation toolbar",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Annotation Tools"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "标注工具"
+          }
+        }
+      }
+    },
+    "capture.toolbar.move" : {
+      "comment" : "Tooltip of the screenshot annotation toolbar's drag handle",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Drag to move · Double-click to put back"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "拖动以移动 · 双击放回原位"
+          }
+        }
+      }
+    },
+    "capture.tooltip.shortcut" : {
+      "comment" : "Tooltip of an annotation toolbar button: the action, then its key",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ (%2$@)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@（%2$@）"
+          }
+        }
+      }
+    },
+    "capture.undo" : {
+      "comment" : "Annotation toolbar button: undo the last annotation change",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Undo"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "撤销"
           }
         }
       }
@@ -231,6 +879,42 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "附加文本文件"
+          }
+        }
+      }
+    },
+    "file.save.failed" : {
+      "comment" : "Error the page shows when a save panel's file could not be written",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The file could not be saved."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法保存文件。"
+          }
+        }
+      }
+    },
+    "file.save.invalidImage" : {
+      "comment" : "Error the page shows when an image to save is not a valid PNG",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The image could not be saved because it is not a valid PNG."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法保存该图片：它不是有效的 PNG。"
           }
         }
       }
@@ -680,7 +1364,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "这个 MCP 服务器会把下面的服务端值发送到 %@。只有在你信任这个地址时才允许。"
+            "value" : "这个 MCP 会把下面的服务端值发送到 %@。只有在你信任这个地址时才允许。"
           }
         }
       }
@@ -716,7 +1400,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "这个本地 MCP 服务器会以你的权限运行下面的命令。只有在你自己添加并信任它时才允许。"
+            "value" : "这个本地 MCP 会以你的权限运行下面的命令。只有在你自己添加并信任它时才允许。"
           }
         }
       }
@@ -753,6 +1437,24 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "允许“%@”在这台 Mac 上运行吗？"
+          }
+        }
+      }
+    },
+    "menu.checkForUpdates" : {
+      "comment" : "Menu item that checks for a newer version of the app",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Check for Updates…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "检查更新…"
           }
         }
       }
@@ -1106,13 +1808,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Quit AI"
+            "value" : "Quit Atd"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "退出 AI"
+            "value" : "退出 Atd"
           }
         }
       }
@@ -1250,13 +1952,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Quitting stops them. Queued tasks stay queued and start the next time AI opens."
+            "value" : "Quitting stops them. Queued tasks stay queued and start the next time Atd opens."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "退出会停止这些任务。排队中的任务会保留，下次打开 AI 时开始运行。"
+            "value" : "退出会停止这些任务。排队中的任务会保留，下次打开 Atd 时开始运行。"
           }
         }
       }
@@ -1304,13 +2006,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Quit AI?"
+            "value" : "Quit Atd?"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "要退出 AI 吗？"
+            "value" : "要退出 Atd 吗？"
           }
         }
       }
@@ -1394,13 +2096,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "AI"
+            "value" : "Atd"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "AI"
+            "value" : "Atd"
           }
         }
       }
@@ -1412,13 +2114,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "AI Settings"
+            "value" : "Atd Settings"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "AI 设置"
+            "value" : "Atd 设置"
           }
         }
       }

@@ -6,9 +6,9 @@ import {
   InputGroupAddon,
   InputGroupButton,
   InputGroupInput,
-} from '@ai/ui/components/input-group';
-import { isComposingKey, type useCompositionQuery } from '@ai/ui/lib/ime';
-import { cn } from '@ai/ui/lib/utils';
+} from '@atd/ui/components/input-group';
+import { isComposingKey, type useCompositionQuery } from '@atd/ui/lib/ime';
+import { cn } from '@atd/ui/lib/utils';
 
 /**
  * The search field of the settings window: the section search in the navigation card and each

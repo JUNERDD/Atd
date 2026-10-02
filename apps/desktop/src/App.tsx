@@ -1,14 +1,17 @@
 import { useCallback, useLayoutEffect, useRef, useState } from 'react';
-import { Astroid, History, Settings } from 'lucide-react';
+import { History, Settings } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { TooltipProvider } from '@ai/ui/components/tooltip';
-import { ScrollArea } from '@ai/ui/components/scroll-area';
+import { TooltipProvider } from '@atd/ui/components/tooltip';
+import { ScrollArea } from '@atd/ui/components/scroll-area';
 import { Composer } from './components/composer';
+import { FileDropOverlay } from './components/file-drop-overlay';
 import { IconButton } from './components/icon-button';
 import { useOverlayReserve } from './components/use-overlay-footer';
 import { ToastHost } from './components/toast';
 import { useAppLanguage } from './i18n/use-app-language';
 import { agentApi } from './features/agent/use-agent';
+import { focusPanelInput } from './features/agent/use-panel-window';
+import { useScreenshotShortcut } from './features/agent/use-screenshot-shortcut';
 import { useTaskPanel } from './features/agent/use-task-panel';
 import { CommandLauncher } from './features/agent/command-launcher';
 import { CommandInput } from './features/agent/command-input';
@@ -19,12 +22,16 @@ import {
   SubagentContext,
   useSubagentContextValue,
 } from './features/agent/transcript/subagent-context';
+import { PanelTitle } from './features/agent/panel-title';
 import { SessionMenu } from './features/agent/session-menu';
 import { TaskHistory } from './features/agent/task-history';
+import { UpdateButton } from './features/agent/update-button';
 import { ServiceBanner } from './features/service/service-banner';
 import { ServiceStarting } from './features/service/service-starting';
 import { useServiceStarting } from './features/service/use-service-starting';
+import { MAX_ATTACHMENTS, runModelSelection, type QuoteSource } from '@atd/agent-contracts';
 import { EMPTY_QUEUE, type Block } from './client/agent/transcript-schema';
+import { appendChip, draftFiles, quoteChip } from './features/composer-editor/draft';
 import type { FileRef } from './client/agent/task-schema';
 import './features/agent/agent.css';
 
@@ -78,18 +85,41 @@ export function App() {
   });
   const attachToDraft = useCallback((file: FileRef) => {
     const latest = latestDraft.current;
-    latest.changeDraft({ ...latest.draft, files: [...latest.draft.files, file] });
+    latest.changeDraft(appendChip(latest.draft, { kind: 'file', file }));
+  }, []);
+  // The views without a composer give way to the new conversation, whose draft they share.
+  useScreenshotShortcut({
+    draft,
+    changeDraft,
+    showComposer: () => {
+      if (child.childKey) child.close();
+      if (view === 'history' || view === 'input') setView('new');
+    },
+  });
+  // A quote lands as a chip after the draft's content with the caret after it: the editor takes an
+  // outside draft in its layout effect with the caret at the end, before the next frame.
+  const quoteToDraft = useCallback((markdown: string, source: QuoteSource | undefined) => {
+    const latest = latestDraft.current;
+    latest.changeDraft(appendChip(latest.draft, quoteChip(markdown, source)));
+    requestAnimationFrame(focusPanelInput);
   }, []);
   const defaultConnection = snapshot?.connections.find(
     (connection) => connection.connectionId === snapshot.defaultConnectionId,
   );
+  // The run's model as the service selects it (`runModelSelection`), else the default: the
+  // composer's picker shows it, and the composer and the command input check it for image input
+  // before images are sent.
   const selectedModel =
-    policy.model ??
-    (!policy.useDefaultModel && run && view === 'task'
-      ? run.snapshot.model
-      : defaultConnection?.defaultModel
-        ? { connectionId: defaultConnection.connectionId, modelId: defaultConnection.defaultModel }
-        : null);
+    runModelSelection({
+      requested: policy.model ?? null,
+      command: view === 'input' ? (prepared?.command.model ?? null) : null,
+      last: view === 'task' ? (run?.snapshot.model ?? null) : null,
+      hasConnection: (connectionId) =>
+        snapshot?.connections.some((item) => item.connectionId === connectionId) ?? false,
+    }) ??
+    (defaultConnection?.defaultModel
+      ? { connectionId: defaultConnection.connectionId, modelId: defaultConnection.defaultModel }
+      : null);
   return (
     <TooltipProvider delayDuration={350}>
       <SubagentContext value={subagents}>
@@ -104,13 +134,22 @@ export function App() {
                 <IconButton
                   label={t('header.newChat')}
                   variant="glass-ghost"
-                  className="header-button -mx-1"
+                  className="header-button panel-brand-button -mx-1"
+                  data-dev={import.meta.env.DEV || undefined}
                   onClick={newTask}
                 >
-                  <Astroid />
+                  <span
+                    aria-hidden="true"
+                    className="panel-brand pointer-events-none shrink-0 bg-current"
+                  />
                 </IconButton>
-                <h1 title={title}>{title}</h1>
+                <PanelTitle
+                  key={view === 'task' ? taskId : view}
+                  title={title}
+                  task={view === 'task' ? (current.detail?.task ?? null) : null}
+                />
                 <nav className="header-controls" aria-label={t('header.controlsLabel')}>
+                  <UpdateButton />
                   {view === 'task' && current.detail && <SessionMenu detail={current.detail} />}
                   <IconButton
                     label={t('header.tasks')}
@@ -169,6 +208,8 @@ export function App() {
                     onRun={() => submit()}
                     onOpenSettings={() => void openCommandSettings(prepared.command.id)}
                     pending={pending}
+                    connections={snapshot?.connections ?? []}
+                    model={selectedModel}
                   />
                 )}
                 {view === 'task' &&
@@ -181,6 +222,7 @@ export function App() {
                         onNewTask={newTask}
                         onOpenTask={openTask}
                         onRemember={remember}
+                        onQuote={quoteToDraft}
                       />
                       {child.childKey && (
                         <ChildTranscriptView
@@ -190,6 +232,13 @@ export function App() {
                           childKey={child.childKey}
                           requests={requests}
                           onBack={child.close}
+                          // The composer is hidden under the drill-in, so a quote returns to it. Its
+                          // passage stays in the subagent's view, which the chip cannot reopen.
+                          onQuote={(markdown) => {
+                            child.close();
+                            quoteToDraft(markdown, undefined);
+                          }}
+                          onRemember={remember}
                         />
                       )}
                     </div>
@@ -227,7 +276,7 @@ export function App() {
                     runId={run?.id}
                     task={view === 'task' ? (current.detail?.task ?? null) : null}
                     blocks={view === 'task' ? current.detail?.blocks : undefined}
-                    context={view === 'task' ? current.detail?.context : null}
+                    context={view === 'task' ? (current.detail?.context ?? null) : null}
                     requests={view === 'task' ? requests : []}
                     queue={view === 'task' ? queue : EMPTY_QUEUE}
                     quickActions={{ newTask, openHistory: () => setView('history') }}
@@ -236,6 +285,8 @@ export function App() {
                     hidden={view === 'task' && child.childKey !== null}
                   />
                 )}
+                {/* Dropped files land in the draft whichever view is open. */}
+                <FileDropOverlay room={MAX_ATTACHMENTS - draftFiles(draft).length} />
               </div>
             </>
           )}

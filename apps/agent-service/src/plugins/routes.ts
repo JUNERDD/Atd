@@ -11,14 +11,14 @@ import {
   type PluginDetail,
   type PluginInstallPreview,
   type PluginListResponse,
-} from '@ai/agent-contracts';
-import { InvalidPluginError, PathEscapeError, type InstallPreview } from '@ai/plugin-kit';
+} from '@atd/agent-contracts';
+import { InvalidPluginError, PathEscapeError, type InstallPreview } from '@atd/plugin-kit';
 import {
   FetchLimitError,
   PluginConfigError,
   PluginConflictError,
   PluginStoreError,
-} from '@ai/plugin-kit/node';
+} from '@atd/plugin-kit/node';
 import { Type } from 'typebox';
 import { CommandStore } from '../commands/store.js';
 import { ConflictError } from '../errors.js';

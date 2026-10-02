@@ -30,6 +30,11 @@
   --ata-glass-control-shadow: 0 1px 2px rgb(0 0 0 / 18%), 0 0 0 1px var(--ata-glass-edge);
   --ata-glass-control-wash: color-mix(in srgb, var(--foreground) 10%, transparent);
   --ata-glass-control-wash-strong: color-mix(in srgb, var(--foreground) 16%, transparent);
+  /* A scroll area's resting thumb: the border color on solid surfaces; on glass, where that 10%
+     line all but vanishes into the material, a stronger wash (set by `surface-glass` and
+     `glass-host`). Hover and press keep the shared muted-foreground steps above both. */
+  --ata-scroll-thumb: var(--border);
+  --ata-glass-scroll-thumb: color-mix(in srgb, var(--foreground) 28%, transparent);
   /* The settings drawer's fallback fill, where its subdued system glass is off. */
   --ata-material-settings-content: rgb(12 12 12 / 10%);
   --ata-surface-settings-content: var(--ata-material-settings-content);
@@ -49,8 +54,22 @@
   --ata-border-subtle: rgb(255 255 255 / 14%);
   /* Progress fill, such as the todo ring's completed arc. */
   --ata-status-progress: #22c55e;
+  /* Added and removed lines as text (diff counts and diff lines): the progress green pulled toward
+     the foreground so small text stays readable on light and dark surfaces. Declared on the root
+     element, which also carries `.dark`, so each theme's foreground resolves here. */
+  --ata-diff-added: color-mix(in oklab, var(--ata-status-progress) 65%, var(--foreground));
+  --ata-diff-removed: var(--destructive);
+  /* The one surface every transcript detail reads on (tool cards, reasoning, compaction summaries,
+     approval and answer details): a faint wash of the muted fill under a hairline, so details sit
+     a step above the panel without a second, darker slab for code. */
+  --ata-surface-detail: color-mix(in oklab, var(--muted) 55%, transparent);
+  --ata-border-detail: var(--border);
   /* Warning status, such as context usage nearing its limit. */
   --ata-status-warning: #f59e0b;
+  /* A quote chip's passage when the chip reveals it: a pale yellow behind the text (which keeps its
+     own colour), and the ring over a code block or diagram, whose own fill would hide a tint. */
+  --ata-quote-highlight: color-mix(in srgb, #facc15 35%, transparent);
+  --ata-quote-ring: color-mix(in srgb, #facc15 70%, transparent);
   --ata-radius-panel: 22px;
   /* Figma activity/connector: the opaque rail shared by the activity tree. */
   --activity-connector: #3c3c3c;
@@ -215,13 +234,17 @@
  * larger glass frame around the surface. System glass therefore takes only an inset edge; the
  * drop shadow and outer ring return wherever the glass is off.
  *
- * System glass also hosts the element's child layers inside the material's SwiftUI layer
- * (WebKit's WKMaterialHostingSupport). When the last of them leaves while the surface stays open,
- * as a scroll area's layers do once its content fits, it keeps drawing its last contents at the
- * surface's new geometry and fades out over about 200ms: old rows linger over whatever the
- * shrunken surface uncovered. A surface whose scrolling content can shrink while it is open keeps
- * one persistent composited child instead (`will-change: transform` on the element that stays for
- * as long as the surface does), named by the composition that owns the surface.
+ * System glass also hosts the element itself inside the material's SwiftUI view (WebKit's
+ * WKMaterialHostingSupport): the element's own painted layer and every composited child layer
+ * become sublayers of a plain CALayer that WebKit's action-disabling delegate does not cover, and
+ * a resize of a rounded glass element rebuilds the SwiftUI view. When those sublayers change
+ * while the surface stays open (a list expands or collapses, a scroll area's layers come or go)
+ * the material can keep drawing the old contents at the new geometry and fade them out: old rows
+ * linger over the new layout. Content that changes like that while open therefore does not go
+ * inside the glass: the glass goes on a childless layer behind it and the content renders above
+ * as an ordinary layer (`glass-host`; `PopoverContent material="backdrop"`). A persistent
+ * composited child (`will-change: transform` on one element that stays as long as the surface)
+ * reduces the churn for content that stays inside the glass, but does not remove it.
  */
 @utility surface-glass {
   /* On glass the neutral fills are a translucent wash, as glass controls use on hover: every item
@@ -230,6 +253,7 @@
      sitting on it as an opaque gray block. */
   --accent: var(--ata-glass-control-wash);
   --muted: var(--ata-glass-control-wash);
+  --ata-scroll-thumb: var(--ata-glass-scroll-thumb);
   background-color: var(--ata-glass-fill, var(--popover));
   backdrop-filter: blur(var(--ata-glass-blur, var(--ata-backdrop-blur)));
   box-shadow: var(--ata-glass-shadow, var(--ata-glass-shadow-default));
@@ -269,6 +293,20 @@
 }
 
 /*
+ * The element over a glass backdrop (`PopoverContent material="backdrop"`): its content renders
+ * above the childless glass layer behind it, outside the material, so it keeps the glass's
+ * translucent neutral washes and scroll thumb itself. The backdrop is its absolutely positioned
+ * first child, stacked under the content inside this element's own stacking context.
+ */
+@utility glass-host {
+  --accent: var(--ata-glass-control-wash);
+  --muted: var(--ata-glass-control-wash);
+  --ata-scroll-thumb: var(--ata-glass-scroll-thumb);
+  position: relative;
+  isolation: isolate;
+}
+
+/*
  * Glass controls: the task panel's buttons, composer field and floating capsules, after iOS 26 and
  * Raycast's glass pills. A control keeps the one material above and only tunes it: `surface-glass
  * glass-control` gives it the control-sized fallback fill and shadow, and clips its content so
@@ -287,8 +325,9 @@
  * background-color, and an outset ring would grow the glass layer (see `surface-glass`). A layer
  * under the content carries the hover wash, the stronger wash for pressed, expanded and active,
  * and the focus-visible ring, which mirrors the shared focus ring inward: a 1px line in the ring
- * color at the edge (where the glass edge is; the control has no border) and a 3px band at 30%
- * just inside it.
+ * color at the layer's edge and a 3px band at 30% just inside it. The layer fills the padding box:
+ * the whole control for borderless glass, where that edge is the glass edge, and the area inside
+ * the transparent border for a control that keeps one, like a `ghost` button's fill.
  */
 @utility glass-state {
   position: relative;
@@ -356,5 +395,60 @@
       #000 calc(100% - var(--scroll-shadow-size)),
       transparent
     );
+  }
+}
+
+/*
+ * Running-text shimmer (`Shimmer`): a foreground-colored band sweeping across muted text. The
+ * band is a 250%-wide gradient layer clipped to the glyphs, and the keyframes move its position
+ * from 100% to 0%, so the sweep runs on CSS alone: it does not wait for the renderer's main thread
+ * to be free of script work (a transcript streaming in) and does not restart when React re-renders
+ * the element. The element sets `--ai-shimmer-spread` (band half-width, scaled to the text length)
+ * and `--ai-shimmer-duration`.
+ */
+@keyframes ai-shimmer-sweep {
+  from {
+    background-position:
+      100% center,
+      0 0;
+  }
+  to {
+    background-position:
+      0% center,
+      0 0;
+  }
+}
+
+@layer components {
+  .ai-shimmer {
+    background-image:
+      linear-gradient(
+        90deg,
+        #0000 calc(50% - var(--ai-shimmer-spread)),
+        var(--foreground),
+        #0000 calc(50% + var(--ai-shimmer-spread))
+      ),
+      linear-gradient(var(--muted-foreground), var(--muted-foreground));
+    background-size:
+      250% 100%,
+      auto;
+    background-repeat: no-repeat;
+    background-position:
+      100% center,
+      0 0;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: ai-shimmer-sweep var(--ai-shimmer-duration) linear infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ai-shimmer {
+      background-image: none;
+      -webkit-background-clip: border-box;
+      background-clip: border-box;
+      color: var(--muted-foreground);
+      animation: none;
+    }
   }
 }

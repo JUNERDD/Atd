@@ -1,4 +1,4 @@
-import { parse } from '@ai/agent-contracts';
+import { parse } from '@atd/agent-contracts';
 import { Type, type Static } from 'typebox';
 import { NativeCalls, type ShortcutResultSchema } from './calls';
 import { MESSAGE_HANDLER, NativeEvents, type NativePosts } from './contract';
@@ -73,9 +73,12 @@ export class NativeBridge {
     'window.visibility': new Set(),
     'accessibility.reduceTransparency': new Set(),
     'shortcut.command': new Set(),
+    'shortcut.screenshot': new Set(),
     'resources.imported': new Set(),
+    'files.drag': new Set(),
     'edit.command': new Set(),
     'speech.state': new Set(),
+    'update.state': new Set(),
     'socket.frames': new Set(),
   };
 

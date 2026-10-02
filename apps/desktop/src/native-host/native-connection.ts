@@ -3,13 +3,13 @@ import {
   AgentStreamClient,
   type AgentClientOptions,
   type AgentStreamOptions,
-} from '@ai/agent-client';
+} from '@atd/agent-client';
 import type {
   InvalidateFrame,
   ServiceEvent,
   SummariesFrame,
   TaskSnapshot,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import type { AgentConnection } from '../client/agent/agent-requests';
 import type { ServiceState, ServiceStatusView } from '../client/service/ipc';
 

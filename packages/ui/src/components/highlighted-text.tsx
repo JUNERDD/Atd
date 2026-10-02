@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import type { MatchRange } from '@ai/ui/lib/fuzzy-match';
+import type { MatchRange } from '@atd/ui/lib/fuzzy-match';
 
 /**
  * Renders `text` in NFC, the form `matchFields` ranges point into, with each range in a `<mark>`:
@@ -11,7 +11,7 @@ export function HighlightedText({
   ranges = [],
 }: {
   text: string;
-  ranges?: readonly MatchRange[];
+  ranges?: readonly MatchRange[] | undefined;
 }) {
   const value = text.normalize('NFC');
   const parts: ReactNode[] = [];

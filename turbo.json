@@ -1,5 +1,6 @@
 {
   "$schema": "https://turborepo.dev/schema.json",
+  "agentGuidance": false,
   "globalDependencies": [".node-version", ".oxlintrc.json", "pnpm-workspace.yaml"],
   "globalPassThroughEnv": [
     "AI_AGENT_DATA_DIR",
@@ -11,6 +12,8 @@
     "AI_AGENT_TEMP_BASE_URL",
     "AI_AGENT_TEMP_MODEL",
     "AI_AGENT_TEMP_PROVIDER",
+    "AI_CODE_SIGN_IDENTITY",
+    "AI_DEVELOPMENT_TEAM",
     "AI_RENDERER_DEV_ORIGIN",
     "AI_RENDERER_PORT"
   ],
@@ -19,7 +22,7 @@
       "dependsOn": ["^build"],
       "outputs": ["dist/**", "dist-native/**"]
     },
-    "@ai/file-index#build": {
+    "@atd/file-index#build": {
       "inputs": [
         "$TURBO_DEFAULT$",
         "$TURBO_ROOT$/Cargo.toml",
@@ -29,19 +32,41 @@
       ],
       "outputs": ["*.node", "index.js", "index.d.ts"]
     },
-    "dev": { "dependsOn": ["^build"], "cache": false, "persistent": true },
-    "dev:renderer": { "cache": false, "persistent": true },
-    "lint": { "dependsOn": ["^lint"] },
-    "typecheck": { "dependsOn": ["^typecheck"] },
-    "test": { "dependsOn": ["^typecheck"], "outputs": [] },
+    "dev": {
+      "dependsOn": ["^build"],
+      "cache": false,
+      "persistent": true
+    },
+    "dev:renderer": {
+      "cache": false,
+      "persistent": true
+    },
+    "lint": {
+      "dependsOn": ["transit"]
+    },
+    "@atd/agent-service#lint": {
+      "dependsOn": ["transit", "build"]
+    },
+    "typecheck": {
+      "dependsOn": ["transit"]
+    },
+    "test": {
+      "dependsOn": ["^build"],
+      "outputs": []
+    },
     "format:check": {},
-    "@ai/macos#build": { "cache": false },
+    "@atd/macos#build": {
+      "cache": false
+    },
     "codegen:check": {
       "inputs": [
         "$TURBO_DEFAULT$",
         "$TURBO_ROOT$/apps/desktop/src/native-bridge/native-bridge.schema.json"
       ],
       "outputs": []
+    },
+    "transit": {
+      "dependsOn": ["^transit"]
     }
   }
 }

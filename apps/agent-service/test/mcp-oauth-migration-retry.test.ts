@@ -3,7 +3,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { test, type TestContext } from 'node:test';
 import { Type } from 'typebox';
-import { parse } from '@ai/agent-contracts';
+import { parse } from '@atd/agent-contracts';
 import { McpAuthority } from '../dist/mcp/authority.js';
 import { securityDir } from '../dist/mcp/launch-store.js';
 import { serversFile } from '../dist/mcp/servers.js';

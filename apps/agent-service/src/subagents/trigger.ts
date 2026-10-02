@@ -19,32 +19,29 @@ import {
 } from './registry.js';
 
 /**
- * T5 managedSettings trigger. The patched child session honors
- * `launch.managedSettings`, but the foreground executor never sets it, so the
- * service installs a process-wide factory wrapper that pins it on every
- * launch: projectTrusted:false plus forced noContextFiles plus explicit
- * system/append prompts, plus a model runtime built like the parent's so the
- * child authenticates and resolves the parent's model to the same catalog
- * definition. The child's settings get the service compaction policy for its
- * model, which carries the parent's frozen window through that runtime, so a
- * model compacts alike in the parent and its children (compaction/policy.ts).
- * The wrapper also tracks per-parent
- * children for UI aggregation and per-task abort without touching siblings,
- * links each created child to its parent call (`app-child`) and follows its
- * transcript until it disposes.
+ * T5 managed launch trigger. The foreground executor builds child launches
+ * without the service's limits, so the service installs a process-wide
+ * factory wrapper that pins them on every launch through pi-subagents' own
+ * launch fields: an untrusted project, no context files, explicit
+ * system/append prompts, and (through the patched `hostModelRuntime` seam) a
+ * model runtime built like the parent's so the child authenticates and
+ * resolves the parent's model to the same catalog definition. The child's
+ * settings get the service compaction policy for its model, which carries the
+ * parent's frozen window through that runtime, so a model compacts alike in
+ * the parent and its children (compaction/policy.ts). The wrapper also tracks
+ * per-parent children for UI aggregation and per-task abort without touching
+ * siblings, links each created child to its parent call (`app-child`) and
+ * follows its transcript until it disposes.
  */
 
-type ManagedSettings = {
-  systemPrompt?: string;
-  appendSystemPrompt?: string;
-  modelRuntime?: ChildModelRuntime;
-};
-
+/** The `ChildSessionLaunch` fields the trigger reads or pins. */
 interface ChildLaunchLike {
   cwd: string;
+  projectTrusted?: boolean;
+  noContextFiles: boolean;
   systemPrompt?: string;
   appendSystemPrompt?: string;
-  managedSettings?: ManagedSettings;
+  hostModelRuntime?: ChildModelRuntime;
   runtime?: { parentSessionId?: string; agent?: string };
 }
 
@@ -95,24 +92,30 @@ async function loadChildSessionModule(): Promise<ChildSessionModule> {
   );
 }
 
-/** Pins managedSettings on a launch, preserving the agent prompts. */
-export function pinManagedSettings<T extends ChildLaunchLike>(
+/**
+ * Pins the service limits on a launch, keeping the agent's own prompts. An empty append prompt is
+ * still an explicit source, so pi skips APPEND_SYSTEM.md discovery and appends nothing. The host
+ * model runtime only applies to parent-bound launches (`parentProviderRegistry`).
+ */
+export function pinManagedLaunch<T extends ChildLaunchLike>(
   launch: T,
   modelRuntime?: ChildModelRuntime,
 ): T {
-  const systemPrompt = launch.systemPrompt ?? SUBAGENT_CHILD_SYSTEM_PROMPT;
-  const managed: ManagedSettings = { systemPrompt };
-  if (launch.appendSystemPrompt !== undefined)
-    managed.appendSystemPrompt = launch.appendSystemPrompt;
-  if (modelRuntime) managed.modelRuntime = modelRuntime;
-  return { ...launch, managedSettings: managed };
+  return {
+    ...launch,
+    projectTrusted: false,
+    noContextFiles: true,
+    systemPrompt: launch.systemPrompt ?? SUBAGENT_CHILD_SYSTEM_PROMPT,
+    appendSystemPrompt: launch.appendSystemPrompt ?? '',
+    ...(modelRuntime ? { hostModelRuntime: modelRuntime } : {}),
+  };
 }
 
 /**
  * Installs the wrapper once per process. Idempotent: repeats return the
  * original install count. Must run before the first parent prompt.
  */
-export async function installManagedSettingsTrigger(): Promise<{ installed: boolean }> {
+export async function installManagedLaunchTrigger(): Promise<{ installed: boolean }> {
   if (installed) return { installed: true };
   const module = await loadChildSessionModule();
   const inner = module.childSessionFactory();
@@ -129,7 +132,7 @@ export async function installManagedSettingsTrigger(): Promise<{ installed: bool
       }
       try {
         const modelRuntime = taskId ? hostForTask(taskId)?.childRuntime : undefined;
-        const child = await inner.create(pinManagedSettings(launch, modelRuntime));
+        const child = await inner.create(pinManagedLaunch(launch, modelRuntime));
         // Before the child's first prompt: children read settings from the agent dir otherwise.
         child.settingsManager.applyOverrides(compactionSettings(child.model));
         if (!tracked) return child;

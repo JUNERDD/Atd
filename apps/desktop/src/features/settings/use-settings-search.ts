@@ -1,6 +1,6 @@
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
-import { rankByQuery, type FieldsMatch } from '@ai/ui/lib/fuzzy-match';
+import { rankByQuery, type FieldsMatch } from '@atd/ui/lib/fuzzy-match';
 import { settingsSections, type SettingsSectionId } from './settings-sections';
 import {
   SEARCH_NAMESPACES,

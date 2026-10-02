@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Check, LoaderCircle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Shimmer } from '@ai/ui/components/ai-elements/shimmer';
+import { Shimmer } from '@atd/ui/components/ai-elements/shimmer';
 import { formatElapsed } from './elapsed';
 import { averageRate, estimateTokens, formatRate } from './token-rate';
 import { TurnUsageDetail } from './turn-usage-detail';
@@ -110,7 +110,7 @@ export function TurnHeader({
   waiting: TurnWaitingKind;
   trueTokens?: number | null;
   trueDurationMs?: number | null;
-  liveText?: string;
+  liveText?: string | undefined;
   usage?: TurnUsage | null;
 }) {
   const { t } = useTranslation('tasks');

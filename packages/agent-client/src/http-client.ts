@@ -27,7 +27,7 @@ import {
   type SubmitTaskResponse,
   type TaskResponse,
   type TaskSummaryResponse,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import { authHeaders, AgentClientError, type AgentClientOptions } from './types.js';
 
 const CapabilityOkSchema = Type.Object({ ok: Type.Boolean() }, { additionalProperties: false });
@@ -138,7 +138,7 @@ export class AgentHttpClient {
         ...authHeaders(this.options),
         ...(body === undefined ? {} : { 'content-type': 'application/json' }),
       },
-      body: body === undefined ? undefined : JSON.stringify(body),
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
     });
     const json: unknown = await response.json().catch(() => null);
     if (!response.ok) throw toClientError(response.status, json);

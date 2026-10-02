@@ -1,9 +1,5 @@
-import type { McpServerConfig } from '@ai/agent-contracts';
-import {
-  OAuthCallbackServer,
-  type McpOAuthProvider,
-  type McpOAuthState,
-} from '@earendil-works/pi-mcp/oauth';
+import type { McpServerConfig } from '@atd/agent-contracts';
+import { OAuthCallbackServer, type McpOAuthState } from '@earendil-works/pi-mcp/oauth';
 import {
   MCP_OAUTH_CALLBACK_HOST,
   MCP_OAUTH_CALLBACK_PATH,
@@ -11,12 +7,13 @@ import {
   MCP_OAUTH_REDIRECT_HOST,
 } from './constants.js';
 import { McpError } from './errors.js';
+import { oauthAuthOf } from './oauth-client.js';
 import type { KeychainOAuthStore } from './oauth-store.js';
 import { classifyRedirect } from './servers.js';
 
 /**
- * Where a sign-in's browser redirect lands, how the answer is read (a callback, or a pasted URL
- * or code) and what is checked on it. The service never opens a browser: it publishes the
+ * Where a sign-in's browser redirect lands and how the answer is read (a callback, or a pasted URL
+ * or code); pi-mcp checks its RFC 9207 issuer during the exchange. The service never opens a browser: it publishes the
  * authorization URL, and the loopback callback server or the paste brings the answer back.
  */
 
@@ -51,21 +48,23 @@ const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]', '::1']);
 
 /**
  * Plans the redirect of a sign-in. Without a configured `redirectUri` the callback listens on the
+ * configured `callbackPort` (strict: a pre-registered client's redirect URI names it), else on the
  * port of the client's registered loopback redirect, so the registration stays valid, else on any
  * free port. A configured loopback URI keeps its port (strict) or, with `{port}`, gets a free one;
  * an https URI on another host is completed by pasting its URL (no server).
  */
 export function callbackPlan(record: McpServerConfig, registered: readonly string[]): CallbackPlan {
-  const configured =
-    record.http?.auth.type === 'oauth' ? (record.http.auth.redirectUri?.trim() ?? '') : '';
+  const auth = oauthAuthOf(record);
+  const configured = auth?.redirectUri?.trim() ?? '';
   if (!configured) {
     const remembered = registered.find((uri) => classifyRedirect(uri) === 'loopback');
+    const fixed = auth?.callbackPort;
     return {
       kind: 'loopback',
       host: MCP_OAUTH_CALLBACK_HOST,
       redirectHost: MCP_OAUTH_REDIRECT_HOST,
-      port: remembered ? Number(new URL(remembered).port) || 0 : 0,
-      strictPort: false,
+      port: fixed ?? (remembered ? Number(new URL(remembered).port) || 0 : 0),
+      strictPort: fixed !== undefined,
       path: MCP_OAUTH_CALLBACK_PATH,
     };
   }
@@ -253,34 +252,5 @@ export class IssuerRequiredError extends TypeError {
         'Paste the full redirect URL from the browser address bar (not just the authorization code).',
     );
     this.name = 'IssuerRequiredError';
-  }
-}
-
-/**
- * RFC 9207: the response's `iss`, when it has one, must name the authorization server the flow
- * discovered, and a server that says it sends one must have. Bare codes carry none.
- */
-export async function checkIssuer(
-  provider: Pick<McpOAuthProvider, 'discoveryState'>,
-  serverId: string,
-  iss: string | undefined,
-): Promise<void> {
-  const discovery = await provider.discoveryState();
-  const metadata = discovery?.authorizationServerMetadata;
-  const expected = metadata?.issuer ?? discovery?.authorizationServerUrl;
-  if (expected === undefined) return;
-  if (iss === undefined) {
-    if (metadata?.['authorization_response_iss_parameter_supported'] === true) {
-      throw new IssuerRequiredError(serverId);
-    }
-    return;
-  }
-  const bare = (url: string) => (url.endsWith('/') ? url.slice(0, -1) : url);
-  if (bare(iss) !== bare(expected)) {
-    throw new McpError(
-      'bad_request',
-      serverId,
-      `The OAuth authorization response issuer does not match the discovered issuer for ${serverId}.`,
-    );
   }
 }

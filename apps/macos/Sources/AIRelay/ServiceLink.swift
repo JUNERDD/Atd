@@ -21,7 +21,6 @@ public enum ServiceUnavailable: Error, Equatable, Sendable {
 
 /// Where the relay, the virtual sockets and the control stream get the service from: the
 /// Debug connect-only reader or the Release supervisor.
-@MainActor
 public protocol ServiceEndpointSource: AnyObject {
   /// The endpoint for a new request or connection.
   func resolveEndpoint() async -> Result<ServiceEndpoint, ServiceUnavailable>
@@ -54,7 +53,6 @@ public enum ServiceDiscovery {
 /// Debug: connects to the service `pnpm dev` runs for the development data directory, and never
 /// starts, replaces or stops it (decision Q10). Every resolve reads `endpoint.json` again,
 /// because the dev service's hot reload restarts it on a new port and epoch.
-@MainActor
 public final class DevelopmentServiceSource: ServiceEndpointSource {
   public let dataDirectory: URL
   public var endpointMayHaveChanged: (@MainActor () -> Void)?
@@ -76,7 +74,6 @@ public final class DevelopmentServiceSource: ServiceEndpointSource {
 /// The shell's single view of the service. Everything that talks to the service resolves the
 /// endpoint here, and observers learn when the instance behind it changed (a restart or a new
 /// port), which is when virtual sockets close with 1012 and the control stream reconnects.
-@MainActor
 public final class ServiceLink {
   public let source: any ServiceEndpointSource
   /// The latest resolve; nil before the first.
@@ -87,7 +84,7 @@ public final class ServiceLink {
     self.source = source
     source.endpointMayHaveChanged = { [weak self] in
       guard let self else { return }
-      Task { @MainActor in _ = await self.endpoint() }
+      Task { _ = await self.endpoint() }
     }
   }
 
@@ -119,7 +116,6 @@ public final class ServiceLink {
 }
 
 /// Removes its observer when cancelled or released.
-@MainActor
 public final class ServiceLinkObservation {
   private var remove: (@MainActor () -> Void)?
 

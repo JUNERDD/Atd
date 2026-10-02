@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
-import { errorMessage, parse, type McpServerConfig } from '@ai/agent-contracts';
+import { errorMessage, parse, type McpServerConfig } from '@atd/agent-contracts';
 import { Type, type Static } from 'typebox';
 import { atomicWrite } from '../config.js';
 import type { Logger } from '../logging.js';

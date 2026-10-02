@@ -1,9 +1,12 @@
 import {
+  attachableExtension,
   instructionTokenProblem,
+  isImageExtension,
+  isImageMime,
   type CommandInput,
   type CommandParameter,
   type ServiceCommandFull,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 
 /**
  * Command template + validation port (T6b). The desktop resolves command
@@ -98,6 +101,8 @@ export function validateCommandShape(command: ServiceCommandFull): void {
     throw new TypeError('Enable selected text for this input source.');
   if (command.input.source === 'clipboard' && !command.input.clipboard)
     throw new TypeError('Enable clipboard for this input source.');
+  if (command.input.source === 'screenshot' && !command.input.files)
+    throw new TypeError('Enable files for this input source.');
   if (command.input.source === 'none' && command.input.required)
     throw new TypeError('A command without text input cannot require text.');
   for (const parameter of command.parameters) {
@@ -140,6 +145,13 @@ export function defaultArguments(
   );
 }
 
+/** Whether an attached file is an image, by the media type it carries or else its name. */
+function isImageFile(file: { name: string; type: string }): boolean {
+  if (isImageMime(file.type)) return true;
+  const extension = attachableExtension(file.name);
+  return extension !== undefined && isImageExtension(extension);
+}
+
 export interface ResolveInput {
   text: string;
   source: string;
@@ -162,6 +174,8 @@ export function resolveCommandInstructions(
     throw new TypeError('Add the required text before running.');
   if (!command.input.files && input.files.length)
     throw new TypeError('This command does not accept files.');
+  if (command.input.source === 'screenshot' && !input.files.some(isImageFile))
+    throw new TypeError('Take a screenshot before running this command.');
   if (input.source === 'selection' && !command.input.selection)
     throw new TypeError('Selected text is not enabled.');
   if (input.source === 'clipboard' && !command.input.clipboard)

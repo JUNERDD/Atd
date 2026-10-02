@@ -1,5 +1,5 @@
 import type { SessionFactoryDeps } from '../pi-session.js';
-import { SUBAGENT_CHILD_ENTRY } from '@ai/agent-contracts';
+import { SUBAGENT_CHILD_ENTRY } from '@atd/agent-contracts';
 import {
   SessionManager,
   type ExtensionAPI,
@@ -9,11 +9,7 @@ import { collectPermissionLookups } from '../transcript-blocks.js';
 import { fromServiceBranch } from '../transcript.js';
 import { registerRuntimeAgents, type RuntimeAgent } from './agents.js';
 import { childApprovals } from './approvals.js';
-import {
-  SERVICE_CHAIN_WORKFLOW,
-  SERVICE_PARALLEL_WORKFLOW,
-  ensureManagedSubagentConfig,
-} from './config.js';
+import { ensureManagedSubagentConfig } from './config.js';
 import { enrichParentAsync } from './enrich.js';
 import { CHILD_WEB_TOOLS } from './intersection.js';
 import {
@@ -30,20 +26,14 @@ import {
 } from './registry.js';
 import { resolveRequiredExtensionPath, REQUIRED_EXTENSION_ID } from './required-extension.js';
 import { withServiceSubagentTool } from './tool-contract.js';
-import { installManagedSettingsTrigger } from './trigger.js';
-import {
-  validateChainArgs,
-  validateParallelArgs,
-  buildChainScript,
-  buildParallelScript,
-} from './workflows.js';
+import { installManagedLaunchTrigger } from './trigger.js';
 
 /**
  * T5 parent delegator integration. Reuses the pi-subagents delegator; no
  * custom delegate loop, no Pi loop rewrite. The parent factory composes the
  * upstream extension with service registrations: managed config, required
- * bridge, ceiling, named workflows and runtime agents. Guards live in
- * guard.ts, async narrowing in enrich.ts.
+ * bridge, ceiling and runtime agents. Multi-child calls are pi-subagents' own
+ * `tasks` and `chain`. Guards live in guard.ts, async narrowing in enrich.ts.
  */
 
 /** A pi-subagents registration that must be released with its parent session. */
@@ -52,7 +42,8 @@ interface Registration {
 }
 
 interface Preloaded {
-  subagents: ExtensionFactory;
+  /** pi-subagents' extension; it registers synchronously, so `assertInstalled` can follow it. */
+  subagents: (pi: ExtensionAPI) => void;
   registerRequired(input: {
     sessionId: string;
     extensions: readonly { id: string; path: string }[];
@@ -65,14 +56,6 @@ interface Preloaded {
     dispose(): void;
     update(ceiling: { allowedTools: string[]; allowedAgents: string[] }): void;
   };
-  registerWorkflow(input: {
-    sessionId: string;
-    definition: {
-      name: string;
-      version: number;
-      resolve: (args: Readonly<Record<string, unknown>>) => { script: string } | { error: string };
-    };
-  }): { dispose(): void };
   registerAgent(input: { pi: unknown; name: string; definition: Record<string, unknown> }): {
     dispose(): void;
   };
@@ -80,14 +63,13 @@ interface Preloaded {
 
 /** Preloads delegator seams; fails closed before the parent loader runs. */
 async function preload(): Promise<Preloaded> {
-  const [main, required, ceiling, workflows, agents] = await Promise.all([
+  const [main, required, ceiling, agents] = await Promise.all([
     import('pi-subagents'),
     import('pi-subagents/required-child-extensions'),
     import('pi-subagents/capability-ceiling'),
-    import('pi-subagents/workflow-resources'),
     import('pi-subagents/agents'),
   ]);
-  const subagents = (main as { default: ExtensionFactory }).default;
+  const subagents = (main as { default: Preloaded['subagents'] }).default;
   if (typeof subagents !== 'function') throw new Error('pi-subagents extension is missing.');
   return {
     subagents,
@@ -101,9 +83,6 @@ async function preload(): Promise<Preloaded> {
         registerSubagentCapabilityCeiling: Preloaded['registerCeiling'];
       }
     ).registerSubagentCapabilityCeiling,
-    registerWorkflow: (
-      workflows as unknown as { registerWorkflowResource: Preloaded['registerWorkflow'] }
-    ).registerWorkflowResource,
     registerAgent: (agents as unknown as { registerAgent: Preloaded['registerAgent'] })
       .registerAgent,
   };
@@ -126,7 +105,7 @@ export async function prepareSubagentsParent(
   process.env.PI_CODING_AGENT_DIR = agentDir;
   const { config } = await ensureManagedSubagentConfig(agentDir);
   deps.audit({ taskId: deps.taskId, subagentsConfig: true, maxDepth: config['maxSubagentDepth'] });
-  await installManagedSettingsTrigger();
+  await installManagedLaunchTrigger();
   const bridgePath = await resolveRequiredExtensionPath();
   deps.audit({ taskId: deps.taskId, requiredExtension: REQUIRED_EXTENSION_ID });
   const preloaded = await preload();
@@ -254,33 +233,5 @@ function registerParentSession(
     ceiling: { allowedTools: childTools, allowedAgents: agents },
   });
   registrations.push(ceiling);
-  registrations.push(
-    preloaded.registerWorkflow({
-      sessionId,
-      definition: {
-        name: SERVICE_PARALLEL_WORKFLOW,
-        version: 1,
-        resolve: (args) => {
-          const validated = validateParallelArgs(args);
-          if (!validated.ok) return { error: validated.error };
-          return { script: buildParallelScript(validated.args) };
-        },
-      },
-    }),
-  );
-  registrations.push(
-    preloaded.registerWorkflow({
-      sessionId,
-      definition: {
-        name: SERVICE_CHAIN_WORKFLOW,
-        version: 1,
-        resolve: (args) => {
-          const validated = validateChainArgs(args);
-          if (!validated.ok) return { error: validated.error };
-          return { script: buildChainScript(validated.args) };
-        },
-      },
-    }),
-  );
   void enrichParentAsync(deps, taskId, runId, ceiling, agents);
 }

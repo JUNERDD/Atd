@@ -8,7 +8,7 @@ import {
   SheetDescription,
   SheetTitle,
   SheetTrigger,
-} from '@ai/ui/components/sheet';
+} from '@atd/ui/components/sheet';
 import { IconButton } from '../../components/icon-button';
 
 /**

@@ -6,7 +6,6 @@ import OSLog
 /// Wires the shell together: the panel and settings windows, the summon flow, global hot keys,
 /// the selection stash, the service's control stream and status item, menus and the quit
 /// guard. Its methods are what ``ShellBridge`` calls for the pages.
-@MainActor
 public final class ShellController {
   private let services: ShellServices
   private let defaults: UserDefaults
@@ -21,9 +20,12 @@ public final class ShellController {
   let confirmations = ConfirmationPrompter()
   let artifacts: ArtifactActions
   let attachments: AttachmentImporter
+  private let screenshots: ScreenshotTaker
   let launchApprovals: LaunchApprovals
   /// `speech.speak` / `speech.stop`; its state reaches every page as `speech.state`.
   let speech = SpeechReader()
+  /// Release builds' Sparkle updater; a waiting update reaches the panel as `update.state`.
+  let updater = AppUpdater()
   let quitGuard: QuitGuard
   private var statusItem: StatusItemController?
   private var registrar: HotKeyRegistrar?
@@ -60,26 +62,41 @@ public final class ShellController {
     self.control = control
     artifacts = ArtifactActions(
       services: services, downloads: Self.downloadsFolder(), confirmations: confirmations)
-    attachments = AttachmentImporter(
+    let attachments = AttachmentImporter(
       services: services, panel: panelHost, systemPanels: systemPanels)
+    self.attachments = attachments
+    // `screenshot.edit` reads an image that is no longer archived from the service.
+    let library = CaptureLibrary(attachments: attachments) { id in
+      try await services.client().resource(id: id).bytes
+    }
+    let screenshots = ScreenshotTaker(
+      library: library, panel: panel, targeting: ElementResolver(),
+      makeEditor: { AnnotationEditor() })
+    self.screenshots = screenshots
     launchApprovals = LaunchApprovals(
       services: services, confirmations: confirmations, systemPanels: systemPanels)
+    // A quit ends a capture session first: `activeRuns` runs before the quit alert could open
+    // beneath the overlays, `hideWindows` on an unattended quit that skips it.
     quitGuard = QuitGuard(
-      activeRuns: { await services.link.activeRunsForQuitGuard() },
+      activeRuns: {
+        screenshots.cancel()
+        return await services.link.activeRunsForQuitGuard()
+      },
       stopService: {
         control.stop()
         await services.stopForQuit()
       },
       hideWindows: {
+        screenshots.cancel()
         for window in NSApp.windows { window.orderOut(nil) }
       })
     bridge.shell = self
     speech.onChange = { [weak self] speaking in
       self?.broadcast(.speechState(.init(speaking: speaking)))
     }
-    panelHost.onFiles = { [weak self] urls, _ in
+    updater.onChange = { [weak self] in
       guard let self else { return }
-      Task { await self.attachments.importFiles(urls) }
+      panelHost.setState(.updateState(.init(version: updater.readyVersion)))
     }
     panel.onVisibilityChange = { [weak panelHost] visible in
       panelHost?.setState(.windowVisibility(.init(visible: visible)))
@@ -99,6 +116,7 @@ public final class ShellController {
     refreshStatus()
     services.start()
     control.start()
+    updater.start()
     AppPresence.setShowInDock(defaults.bool(forKey: Self.showInDockKey))
     applyLanguage()
     NotificationCenter.default.addObserver(
@@ -113,7 +131,8 @@ public final class ShellController {
 
   /// Runs the summon flow of `SummonPolicy`: capture before the panel can take focus.
   func summon(_ trigger: SummonTrigger) {
-    guard !summoning else { return }
+    // A summon during a capture session would show the panel against the overlays.
+    guard !summoning, !screenshots.isCapturing else { return }
     let steps = SummonPolicy.steps(
       for: trigger,
       in: SummonContext(
@@ -132,6 +151,7 @@ public final class ShellController {
           panel.dockAtCursor()
           panel.show()
         case .deliverCommand(let id): panelHost.send(.shortcutCommand(.init(id: id)))
+        case .deliverScreenshot: panelHost.send(.shortcutScreenshot(.init()))
         }
       }
     }
@@ -152,12 +172,12 @@ public final class ShellController {
 
   /// Shows the panel where it is, as Show task panel and the page's `window.show` do.
   func showPanel() {
-    guard !systemPanels.isOpen else { return }
+    guard !systemPanels.isOpen, !screenshots.isCapturing else { return }
     panel.show()
   }
 
   func hidePanel() {
-    guard !systemPanels.isOpen else { return }
+    guard !systemPanels.isOpen, !screenshots.isCapturing else { return }
     panel.hide()
   }
 
@@ -178,6 +198,8 @@ public final class ShellController {
   /// A new settings window opens `commandId`'s editor (`#settings?commandId=…`); an open one
   /// keeps its page, which the page's own window message steers.
   func openSettings(commandId: String?) {
+    // The settings window would activate and order in against the capture overlays.
+    guard !screenshots.isCapturing else { return }
     var fragment = "settings"
     if let commandId {
       var query = URLComponents()
@@ -203,6 +225,30 @@ public final class ShellController {
   func captureSelection() -> CaptureResult {
     TextCapture.captureResult(stash: stash, trusted: SelectionReader.isTrusted)
   }
+
+  /// `screenshot.capture`, which hides the panel while it runs. A summon still moving the panel
+  /// would fight over it, and an open file dialog or confirmation would sit beneath the
+  /// overlays, so the call is refused then.
+  func captureScreenshot() async throws(BridgeError) -> ScreenshotCaptureResult {
+    try checkScreenshotAllowed()
+    return try await screenshots.capture()
+  }
+
+  /// `screenshot.edit`, under the same conditions as a capture.
+  func editScreenshot(resourceId: String) async throws(BridgeError) -> ScreenshotEditResult {
+    try checkScreenshotAllowed()
+    return try await screenshots.edit(resourceId: resourceId)
+  }
+
+  private func checkScreenshotAllowed() throws(BridgeError) {
+    guard !summoning else { throw BridgeError("The panel is still opening; try again.") }
+    guard !systemPanels.isOpen, !confirmations.isShowing else {
+      throw BridgeError("Close the open dialog before taking a screenshot.")
+    }
+  }
+
+  /// A capture session covers every display; calls that would open a dialog wait for it.
+  var isCapturingScreenshot: Bool { screenshots.isCapturing }
 
   func setPinned(_ pinned: Bool) {
     defaults.set(pinned, forKey: Self.pinnedKey)
@@ -262,6 +308,8 @@ public final class ShellController {
       showPanel: { [weak self] in self?.showPanel() },
       hidePanel: { [weak self] in self?.hidePanel() },
       openSettings: { [weak self] in self?.openSettings(commandId: nil) },
+      checkForUpdates: updater.isAvailable
+        ? { [weak self] in self?.updater.checkForUpdates() } : nil,
       restartService: { try await services.restart() },
       showServiceLogs: { try services.revealLogs() },
       editCommand: { [weak self] command in self?.sendEditCommand(command) },
@@ -286,7 +334,8 @@ extension AppMenuActions {
   /// Actions of a controller that is gone; the menu still builds.
   static var inert: AppMenuActions {
     AppMenuActions(
-      showPanel: {}, hidePanel: {}, openSettings: {}, restartService: {}, showServiceLogs: {},
+      showPanel: {}, hidePanel: {}, openSettings: {}, checkForUpdates: nil, restartService: {},
+      showServiceLogs: {},
       editCommand: { _ in }, developmentHint: { false })
   }
 }

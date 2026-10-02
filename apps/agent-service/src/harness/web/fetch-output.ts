@@ -1,4 +1,4 @@
-import { WEB_FETCH_MAX_PAGES } from '@ai/agent-contracts';
+import { WEB_FETCH_MAX_PAGES } from '@atd/agent-contracts';
 import { clip } from './bounds.js';
 import type { FetchedPage } from './fetch.js';
 

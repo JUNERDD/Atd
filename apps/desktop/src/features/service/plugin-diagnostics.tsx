@@ -1,6 +1,6 @@
 import { CircleAlert, Info, TriangleAlert } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import type { PluginSummary } from '@ai/agent-contracts';
+import type { PluginSummary } from '@atd/agent-contracts';
 import { ExtensionDetailSection } from './extension-detail-fields';
 
 type PluginDiagnostic = PluginSummary['diagnostics'][number];

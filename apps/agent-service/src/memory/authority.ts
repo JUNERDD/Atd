@@ -1,6 +1,6 @@
 import { createJiti } from 'jiti';
 import type { ExtensionFactory } from '@earendil-works/pi-coding-agent';
-import { MEMORY_TOOLS } from '@ai/agent-contracts';
+import { MEMORY_TOOLS } from '@atd/agent-contracts';
 import type { Logger } from '../logging.js';
 import { readMemoryPause, writeMemoryPause } from './pause.js';
 import type { MemoryTarget } from './policy.js';
@@ -36,8 +36,9 @@ export interface HermesDesktop {
 async function loadHermes(agentDir: string): Promise<HermesDesktop> {
   // The patch's desktop-host switch: with it, a failed or policy-aborted direct review/flush never
   // falls back to spawning an external `pi` (which would write memory outside this authority and
-  // its write guard), and better-sqlite3 is never rebuilt at runtime. The service process is that
-  // host, and this is the only place it loads Hermes.
+  // its write guard). The service process is that host, and this is the only place it loads
+  // Hermes. The patch also runs Hermes's SQLite on the runtime's built-in `node:sqlite`, so no
+  // native module ships with the service.
   process.env.AI_DESKTOP_AGENT = '1';
   // The transpile cache roughly halves the first load.
   // Entries are keyed by source hash, so the pnpm patch applied to Hermes is never served stale.

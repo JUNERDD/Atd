@@ -6,7 +6,6 @@ import Foundation
 /// push it follows the system like the renderer's first run. A change applies at once: owners
 /// of long-lived surfaces (menus, the status item, window titles) rebuild on
 /// ``didChange``; alerts and panels read the current language when they open.
-@MainActor
 final class ShellStrings {
   static let shared = ShellStrings()
   static let didChange = Notification.Name("com.junerdd.ai.shellStringsDidChange")

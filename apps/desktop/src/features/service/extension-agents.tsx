@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { Bot, Shield, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import type { SubagentPermissions } from '@ai/agent-contracts';
-import { DropdownMenuItem, DropdownMenuSeparator } from '@ai/ui/components/dropdown-menu';
-import { HighlightedText } from '@ai/ui/components/highlighted-text';
-import { ItemContent, ItemDescription, ItemMedia, ItemTitle } from '@ai/ui/components/item';
+import type { SubagentPermissions } from '@atd/agent-contracts';
+import { DropdownMenuItem, DropdownMenuSeparator } from '@atd/ui/components/dropdown-menu';
+import { HighlightedText } from '@atd/ui/components/highlighted-text';
+import { ItemContent, ItemDescription, ItemMedia, ItemTitle } from '@atd/ui/components/item';
 import { AgentPermissionsDialog } from './extension-agent-permissions';
 import { ExtensionGroup } from './extension-group';
 import { ExtensionRemoveDialog } from './extension-remove-dialog';

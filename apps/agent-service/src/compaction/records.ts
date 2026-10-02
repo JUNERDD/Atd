@@ -1,7 +1,7 @@
 import type { SessionManager } from '@earendil-works/pi-coding-agent';
 import { Type, type Static } from 'typebox';
 import { Compile } from 'typebox/compile';
-import type { ServiceBlock } from '@ai/agent-contracts';
+import type { ServiceBlock } from '@atd/agent-contracts';
 
 /**
  * Service session entries (`app-compaction`) that complete what Pi persists about a compaction.

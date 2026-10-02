@@ -26,21 +26,21 @@ export interface SettingsSearchEntry {
 
 /** Each section's own description, shown under its row in the results. */
 export const SECTION_DESCRIPTIONS = {
-  permissions: 'permissions.description',
-  extensions: 'extensions.plugins.description',
+  general: 'general.description',
   providers: 'providers.overview.description',
+  permissions: 'permissions.description',
   commands: 'commands:list.description',
   memory: 'memory:memory.description',
-  shortcuts: 'shortcuts.description',
+  extensions: 'extensions.plugins.description',
 } as const satisfies Record<SettingsSectionId, SearchKey>;
 
 export const SECTION_KEYWORDS = {
-  permissions: 'search.keywords.sectionPermissions',
-  extensions: 'search.keywords.sectionExtensions',
+  general: 'search.keywords.sectionGeneral',
   providers: 'search.keywords.sectionProviders',
+  permissions: 'search.keywords.sectionPermissions',
   commands: 'search.keywords.sectionCommands',
   memory: 'search.keywords.sectionMemory',
-  shortcuts: 'search.keywords.sectionShortcuts',
+  extensions: 'search.keywords.sectionExtensions',
 } as const satisfies Record<SettingsSectionId, SearchKey>;
 
 /**
@@ -49,6 +49,73 @@ export const SECTION_KEYWORDS = {
  * `data-settings-anchor`; entries of pages without markers open the section overview.
  */
 export const settingsSearchEntries: readonly SettingsSearchEntry[] = [
+  ...(
+    [
+      'togglePanel',
+      'captureScreenshot',
+      'newConversation',
+      'openSettings',
+      'sendMessage',
+      'newLine',
+    ] as const
+  ).map((action): SettingsSearchEntry => ({
+    id: `shortcut-${action}`,
+    section: 'general',
+    anchor: `shortcut-${action}`,
+    label: `shortcuts.actions.${action}.label`,
+    description: `shortcuts.actions.${action}.description`,
+    keywords: 'search.keywords.shortcutAction',
+  })),
+  {
+    id: 'window-open-at-login',
+    section: 'general',
+    anchor: 'settings-open-at-login',
+    label: 'shortcuts.openAtLogin',
+    description: 'shortcuts.preferenceNotes.openAtLogin',
+    keywords: 'search.keywords.openAtLogin',
+  },
+  {
+    id: 'window-show-in-dock',
+    section: 'general',
+    anchor: 'settings-show-in-dock',
+    label: 'shortcuts.showInDock',
+    description: 'shortcuts.preferenceNotes.showInDock',
+    keywords: 'search.keywords.showInDock',
+  },
+  {
+    id: 'window-always-on-top',
+    section: 'general',
+    anchor: 'settings-always-on-top',
+    label: 'shortcuts.alwaysOnTop',
+    description: 'shortcuts.preferenceNotes.alwaysOnTop',
+    keywords: 'search.keywords.alwaysOnTop',
+  },
+  {
+    id: 'shortcuts-restore-defaults',
+    section: 'general',
+    anchor: 'shortcuts-restore-defaults',
+    label: 'shortcuts.restoreDefaults',
+    keywords: 'search.keywords.restoreDefaults',
+  },
+  {
+    id: 'providers-default-model',
+    section: 'providers',
+    label: 'providers.overview.defaultModel',
+    description: 'providers.overview.description',
+    keywords: 'search.keywords.defaultModel',
+  },
+  {
+    id: 'providers-connected',
+    section: 'providers',
+    label: 'providers.overview.connectedProviders',
+    keywords: 'search.keywords.connectedProviders',
+  },
+  {
+    id: 'providers-add',
+    section: 'providers',
+    label: 'providers.overview.addProvider',
+    keywords: 'search.keywords.addProvider',
+  },
   {
     id: 'permission-manual',
     section: 'permissions',
@@ -82,50 +149,6 @@ export const settingsSearchEntries: readonly SettingsSearchEntry[] = [
     keywords: 'search.keywords.allowlist',
   },
   {
-    id: 'extensions-install-plugin',
-    section: 'extensions',
-    label: 'extensions.plugins.installPlugin',
-    description: 'extensions.plugins.description',
-    keywords: 'search.keywords.installPlugin',
-  },
-  {
-    id: 'extensions-skills',
-    section: 'extensions',
-    label: 'extensions.plugins.kinds.skill',
-    keywords: 'search.keywords.skills',
-  },
-  {
-    id: 'extensions-subagents',
-    section: 'extensions',
-    label: 'extensions.plugins.kinds.agent',
-    keywords: 'search.keywords.subagents',
-  },
-  {
-    id: 'extensions-mcp',
-    section: 'extensions',
-    label: 'extensions.plugins.kinds.mcp',
-    keywords: 'search.keywords.mcp',
-  },
-  {
-    id: 'providers-default-model',
-    section: 'providers',
-    label: 'providers.overview.defaultModel',
-    description: 'providers.overview.description',
-    keywords: 'search.keywords.defaultModel',
-  },
-  {
-    id: 'providers-connected',
-    section: 'providers',
-    label: 'providers.overview.connectedProviders',
-    keywords: 'search.keywords.connectedProviders',
-  },
-  {
-    id: 'providers-add',
-    section: 'providers',
-    label: 'providers.overview.addProvider',
-    keywords: 'search.keywords.addProvider',
-  },
-  {
     id: 'commands-new',
     section: 'commands',
     label: 'search.entries.newCommand',
@@ -157,46 +180,30 @@ export const settingsSearchEntries: readonly SettingsSearchEntry[] = [
     label: 'memory:memory.list.corrections',
     keywords: 'search.keywords.memoryCorrections',
   },
-  ...(['togglePanel', 'newConversation', 'openSettings', 'sendMessage', 'newLine'] as const).map(
-    (action): SettingsSearchEntry => ({
-      id: `shortcut-${action}`,
-      section: 'shortcuts',
-      anchor: `shortcut-${action}`,
-      label: `shortcuts.actions.${action}.label`,
-      description: `shortcuts.actions.${action}.description`,
-      keywords: 'search.keywords.shortcutAction',
-    }),
-  ),
   {
-    id: 'window-open-at-login',
-    section: 'shortcuts',
-    anchor: 'settings-open-at-login',
-    label: 'shortcuts.openAtLogin',
-    description: 'shortcuts.preferenceNotes.openAtLogin',
-    keywords: 'search.keywords.openAtLogin',
+    id: 'extensions-install-plugin',
+    section: 'extensions',
+    label: 'extensions.plugins.installPlugin',
+    description: 'extensions.plugins.description',
+    keywords: 'search.keywords.installPlugin',
   },
   {
-    id: 'window-show-in-dock',
-    section: 'shortcuts',
-    anchor: 'settings-show-in-dock',
-    label: 'shortcuts.showInDock',
-    description: 'shortcuts.preferenceNotes.showInDock',
-    keywords: 'search.keywords.showInDock',
+    id: 'extensions-skills',
+    section: 'extensions',
+    label: 'extensions.plugins.kinds.skill',
+    keywords: 'search.keywords.skills',
   },
   {
-    id: 'window-always-on-top',
-    section: 'shortcuts',
-    anchor: 'settings-always-on-top',
-    label: 'shortcuts.alwaysOnTop',
-    description: 'shortcuts.preferenceNotes.alwaysOnTop',
-    keywords: 'search.keywords.alwaysOnTop',
+    id: 'extensions-subagents',
+    section: 'extensions',
+    label: 'extensions.plugins.kinds.agent',
+    keywords: 'search.keywords.subagents',
   },
   {
-    id: 'shortcuts-restore-defaults',
-    section: 'shortcuts',
-    anchor: 'shortcuts-restore-defaults',
-    label: 'shortcuts.restoreDefaults',
-    keywords: 'search.keywords.restoreDefaults',
+    id: 'extensions-mcp',
+    section: 'extensions',
+    label: 'extensions.plugins.kinds.mcp',
+    keywords: 'search.keywords.mcp',
   },
   {
     id: 'language',

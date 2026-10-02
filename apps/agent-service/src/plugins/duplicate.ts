@@ -1,8 +1,12 @@
 import { randomUUID } from 'node:crypto';
 import { cp, readFile, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import type { McpServerConfig, PluginDuplicateResponse, PluginItemKind } from '@ai/agent-contracts';
-import { toItemName, transportSecrets } from '@ai/plugin-kit';
+import type {
+  McpServerConfig,
+  PluginDuplicateResponse,
+  PluginItemKind,
+} from '@atd/agent-contracts';
+import { toItemName, transportSecrets } from '@atd/plugin-kit';
 import { listAtdAgents, putAtdAgent } from '../atd-agents/catalog.js';
 import { atdSkillsDir } from '../service-fs.js';
 import { discoverAtdSkills } from '../skills/atd-skills.js';

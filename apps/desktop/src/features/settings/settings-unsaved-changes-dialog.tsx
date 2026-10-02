@@ -8,7 +8,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '@ai/ui/components/alert-dialog';
+} from '@atd/ui/components/alert-dialog';
 
 /** Asks before a navigation discards unsaved changes; Keep editing has the initial focus. */
 export function SettingsUnsavedChangesDialog({

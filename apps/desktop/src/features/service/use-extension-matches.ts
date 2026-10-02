@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
-import type { PluginSummary } from '@ai/agent-contracts';
-import { matchFields, type FieldsMatch } from '@ai/ui/lib/fuzzy-match';
+import type { PluginSummary } from '@atd/agent-contracts';
+import { matchFields, type FieldsMatch } from '@atd/ui/lib/fuzzy-match';
 import type { ExtensionCommandRow } from './extension-commands';
 import {
   skillSourceLabelKey,

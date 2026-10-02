@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import type { McpServerConfig } from '@ai/agent-contracts';
+import type { McpServerConfig } from '@atd/agent-contracts';
 import { envReferences } from '../dist/mcp/env-references.js';
 import { isRiskyEnvKey, launchFingerprint, launchKind } from '../dist/mcp/launch-fingerprint.js';
 import type { McpLaunchSpec } from '../dist/mcp/types.js';
@@ -22,6 +22,7 @@ const base: McpServerConfig = {
   principal: '',
   isolateByTask: false,
   exposeResources: false,
+  exposure: 'auto' as const,
   approveTools: true,
   includeTools: [],
   excludeTools: [],
@@ -105,13 +106,14 @@ test('a stdio fingerprint is stable and binds every launch field', () => {
   const approved = fingerprint(base, entry);
   assert.match(approved, /^[0-9a-f]{64}$/);
   assert.equal(fingerprint(base, { ...entry, env: { TOKEN: 'secret' } }), approved, 'stable');
+  const { cwd: _cwd, ...defaultCwd } = entry;
   const changed: [string, string][] = [
     ['command', fingerprint({ ...base, stdio: { ...base.stdio!, command: 'nodejs' } }, entry)],
     ['resolved command (PATH)', fingerprint(base, { ...entry, command: '/opt/node' })],
     ['args', fingerprint(base, { ...entry, args: ['server.js', '--x'] })],
     ['arg order', fingerprint(base, { ...entry, args: ['--x', 'server.js'] })],
     ['cwd', fingerprint(base, { ...entry, cwd: '/elsewhere' })],
-    ['default cwd', fingerprint(base, { ...entry, cwd: undefined })],
+    ['default cwd', fingerprint(base, defaultCwd)],
     ['env value', fingerprint(base, { ...entry, env: { TOKEN: 'other' } })],
     ['env key', fingerprint(base, { ...entry, env: { TOKEN2: 'secret' } })],
     ['added env', fingerprint(base, { ...entry, env: { TOKEN: 'secret', NODE_OPTIONS: '-r x' } })],
@@ -177,6 +179,27 @@ test('an HTTP fingerprint binds the URL, token variable and header templates', (
   };
   assert.match(fingerprint(referenced, launch), /^[0-9a-f]{64}$/);
   assert.notEqual(fingerprint(referenced, launch), approved, 'token variable dropped');
+  // Where a sign-in sends codes and tokens is bound once a record names it; naming none keeps
+  // approvals given before the field existed.
+  const signIn = (authServerMetadataUrl?: string) =>
+    fingerprint(
+      {
+        ...referenced,
+        http: {
+          ...referenced.http,
+          auth: {
+            type: 'oauth',
+            scope: null,
+            redirectUri: null,
+            ...(authServerMetadataUrl ? { authServerMetadataUrl } : {}),
+          },
+        },
+      },
+      launch,
+    );
+  assert.equal(signIn(), signIn(undefined));
+  assert.notEqual(signIn('https://as.example/meta'), signIn(), 'metadata URL added');
+  assert.notEqual(signIn('https://as.example/meta'), signIn('https://evil.example/meta'));
   assert.throws(() =>
     fingerprint(
       { ...referenced, http: { ...referenced.http, headers: {} } },

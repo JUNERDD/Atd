@@ -1,4 +1,5 @@
-import type { RunSnapshot } from '@ai/agent-contracts';
+import type { RunSnapshot } from '@atd/agent-contracts';
+import { quoteMaterial } from '../references/quotes.js';
 
 /**
  * Character budget for the text one run brings into context. Acceptance
@@ -9,11 +10,15 @@ import type { RunSnapshot } from '@ai/agent-contracts';
  */
 export const CONTEXT_BUDGET = 120000;
 
-/** Characters of a run's own input that count against the budget. */
+/**
+ * Characters of a run's own input that count against the budget, including the passages its
+ * message quotes as the run material renders them (references/quotes.ts).
+ */
 export function runInputSize(snapshot: RunSnapshot): number {
   return (
     snapshot.input.text.length +
     snapshot.instructions.length +
-    JSON.stringify(snapshot.input.arguments).length
+    JSON.stringify(snapshot.input.arguments).length +
+    quoteMaterial(snapshot.input).text.length
   );
 }

@@ -4,7 +4,6 @@ import AppKit
 /// window, the status item and global hot keys, running against the renderer and service of
 /// this build configuration (``ShellServices/forThisBuild(environment:home:)``). The services
 /// are made once the application has launched.
-@MainActor
 public enum ShellApplication {
   public static func run(
     makeServices: @escaping @MainActor () -> ShellServices = { .forThisBuild() }
@@ -19,7 +18,6 @@ public enum ShellApplication {
   }
 }
 
-@MainActor
 final class ShellAppDelegate: NSObject, NSApplicationDelegate {
   private let makeServices: @MainActor () -> ShellServices
   private var controller: ShellController?

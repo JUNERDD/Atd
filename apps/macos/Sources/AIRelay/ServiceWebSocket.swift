@@ -5,6 +5,9 @@ import Foundation
 /// open, each text frame, and exactly one close with the peer's code and reason unchanged; a
 /// connection that fails without a close frame reports 1006 (abnormal closure). Callbacks arrive
 /// on the main queue and stop after ``close(code:reason:)``.
+///
+/// Explicitly main-actor: a type conforming to the `Sendable` URLSession delegate protocols is
+/// otherwise inferred nonisolated, not given the target's default isolation.
 @MainActor
 final class ServiceWebSocket: NSObject, URLSessionWebSocketDelegate {
   struct Events {

@@ -5,7 +5,7 @@ import {
   type CommandParameter,
   type CommandTool,
   type ServiceCommandFull,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import {
   installedItemName,
   substituteBody,
@@ -13,7 +13,7 @@ import {
   type InstalledPlugin,
   type PluginDiagnostic,
   type SubstitutionContext,
-} from '@ai/plugin-kit';
+} from '@atd/plugin-kit';
 import { validateCommandShape } from '../commands/templates.js';
 import { mapToolNames } from './map.js';
 

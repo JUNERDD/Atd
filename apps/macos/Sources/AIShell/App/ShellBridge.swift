@@ -11,7 +11,6 @@ struct BridgeError: Error, Equatable {
 /// here already decoded and checked (``JsMessage``). Posts act at once; a call's answer leaves
 /// through the posting page's outbox as a document-scoped `result` or `error`, in order with
 /// everything else the shell delivers.
-@MainActor
 final class ShellBridge {
   weak var shell: ShellController?
 
@@ -21,7 +20,7 @@ final class ShellBridge {
       receive(post, from: host)
     case .call(let id, let call):
       let document = host.document
-      Task { @MainActor in
+      Task {
         let reply: SwiftMessage
         do throws(BridgeError) {
           reply = .result(id: id, value: try await handle(call, from: host))
@@ -41,6 +40,7 @@ final class ShellBridge {
     case .socketOpen(let post): host.pipe?.open(post)
     case .socketSend(let post): host.pipe?.send(post)
     case .socketClose(let post): host.pipe?.close(post)
+    case .updateInstall: shell?.updater.installNow()
     }
   }
 
@@ -48,6 +48,17 @@ final class ShellBridge {
     -> JSONValue
   {
     guard let shell else { throw BridgeError("The app is shutting down.") }
+    // A dialog opened during a capture would run modal beneath the overlays and freeze them.
+    if shell.isCapturingScreenshot {
+      switch call {
+      case .approvalRequest:
+        return try Self.encode(ApprovalRequestResult.notApproved(.init(reason: .busy)))
+      case .filesPick, .filesSave, .artifact, .shareText:
+        throw BridgeError("Finish the screenshot first.")
+      default:
+        break
+      }
+    }
     switch call {
     case .windowShow:
       shell.showPanel()
@@ -87,6 +98,10 @@ final class ShellBridge {
     case .clipboardRead:
       let text = NSPasteboard.general.string(forType: .string) ?? ""
       return try Self.encode(ClipboardReadResult(text: text))
+    case .screenshotCapture:
+      return try Self.encode(await shell.captureScreenshot())
+    case .screenshotEdit(let params):
+      return try Self.encode(await shell.editScreenshot(resourceId: params.resourceId))
     case .clipboardWrite(let params):
       NSPasteboard.general.clearContents()
       NSPasteboard.general.setString(params.text, forType: .string)
@@ -115,7 +130,7 @@ final class ShellBridge {
     case .filesPick:
       return try Self.encode(FilesPickResult(resources: await shell.attachments.pick()))
     case .filesSave(let params):
-      let saved = try await shell.attachments.save(resourceId: params.resourceId, name: params.name)
+      let saved = try await shell.attachments.save(params)
       return try Self.encode(FilesSaveResult(saved: saved))
     case .approvalRequest(let params):
       return try Self.encode(await shell.launchApprovals.request(serverId: params.serverId))

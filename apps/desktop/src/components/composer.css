@@ -25,17 +25,6 @@
   border-radius: var(--radius-2xl);
 }
 
-.composer-surface[data-has-attachments='true'] {
-  grid-template-areas: 'attach prompt actions' 'files files files';
-  border-radius: var(--radius-2xl);
-}
-
-.composer-surface[data-expanded='true'][data-has-attachments='true'] {
-  grid-template-areas: 'prompt prompt prompt' 'files files files' 'attach . actions';
-  grid-template-rows: minmax(20px, 1fr) minmax(32px, 1fr) 28px;
-  max-height: min(260px, calc(100dvh - 180px));
-}
-
 /* Queue layout moved to the composer popover (`hitl-queue-popover.css`); only inner row styles
    stay here so queue changes never resize the surface or churn the footer height. */
 .composer-queue-row {
@@ -96,23 +85,17 @@
   color: var(--muted-foreground);
 }
 
-.composer-surface[data-expanded='true'][data-has-attachments='true'] {
-  grid-template-areas: 'prompt prompt prompt' 'files files files' 'attach . actions';
-  grid-template-rows: minmax(20px, 1fr) minmax(32px, 1fr) 28px;
-  max-height: min(260px, calc(100dvh - 180px));
-}
-
 .composer-input-scroll {
   grid-area: prompt;
   min-height: 20px;
   max-height: 20px;
-  /* The glass's persistent child layer (see `surface-glass` in `@ai/ui`): a draft that scrolled and
+  /* The glass's persistent child layer (see `surface-glass` in `@atd/ui`): a draft that scrolled and
      is cleared or sent drops the editor's scroller layers here, not on the glass, where they
      lingered with the old lines over the collapsed pill. */
   will-change: transform;
 }
 /* The CodeMirror editor grows with its text; the scroll area around it owns vertical scrolling
-   (20px collapsed, 100px expanded). `.cm-editor` scoping outranks the library's base theme. */
+   (20px collapsed, 120px expanded). `.cm-editor` scoping outranks the library's base theme. */
 .composer-input {
   width: 100%;
   min-width: 0;
@@ -178,18 +161,18 @@
 .composer-input .cm-composer-command {
   color: var(--ata-syntax-variable);
 }
-.composer-surface[data-expanded='true'][data-has-attachments='true'] .composer-input-scroll {
-  height: 100%;
-  max-height: 100%;
-}
-.composer-surface[data-expanded='true'][data-has-attachments='true'] .composer-attachments {
-  align-self: stretch;
-  height: 100%;
-  max-height: 100%;
-}
-
+/* Expanded, the draft wraps onto rows of 24px like a sent bubble: a chip's 20px box sits centred
+   in its row, so chips on consecutive rows keep a gap instead of touching. The collapsed pill
+   keeps its 20px row, which a chip fills exactly. Five rows stay visible before scrolling. */
 .composer-surface[data-expanded='true'] .composer-input-scroll {
-  max-height: 100px;
+  max-height: 120px;
+}
+.composer-surface[data-expanded='true'] .composer-input .cm-editor,
+.composer-surface[data-expanded='true'] .composer-input .cm-editor .cm-scroller {
+  line-height: 24px;
+}
+.composer-surface[data-expanded='true'] .composer-input .composer-chip {
+  margin-block: 2px;
 }
 
 .composer-attach {
@@ -210,11 +193,6 @@
   transition-property: color, background-color, border-color, box-shadow;
 }
 
-.composer-attachments {
-  grid-area: files;
-  min-height: 0;
-  max-height: 100px;
-}
 .composer-configuration {
   display: flex;
   align-items: center;

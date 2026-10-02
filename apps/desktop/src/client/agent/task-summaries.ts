@@ -1,4 +1,4 @@
-import type { SummariesFrame } from '@ai/agent-contracts';
+import type { SummariesFrame } from '@atd/agent-contracts';
 import type { TaskClient } from './service-tasks';
 
 /**
@@ -9,7 +9,8 @@ import type { TaskClient } from './service-tasks';
  */
 export function applySummaries<S>(tasks: TaskClient<S>, frame: SummariesFrame): void {
   const listed = new Set(frame.tasks.map((summary) => summary.task.id));
-  for (const taskId of [...tasks.entries.keys()]) if (!listed.has(taskId)) tasks.forget(taskId);
+  // Deleting the visited key while iterating a Map is safe: iteration goes on with the next key.
+  for (const taskId of tasks.entries.keys()) if (!listed.has(taskId)) tasks.forget(taskId);
   tasks.revisions.clear();
   for (const summary of frame.tasks) tasks.storeSummary(summary);
   tasks.host.broadcast();

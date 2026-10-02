@@ -4,7 +4,6 @@ import Foundation
 /// Serves the five desktop capabilities the control stream registers. Implemented by the window
 /// side of the shell (panels, pasteboard, selection); called on the main actor, possibly for
 /// several requests at once.
-@MainActor
 public protocol CapabilityHandling: AnyObject {
   /// Returns the capability's result value, or throws; the error's description becomes the
   /// failure message the agent sees (cut to 2000 characters).
@@ -15,7 +14,6 @@ public protocol CapabilityHandling: AnyObject {
 /// reconnects itself. On every open it subscribes with no tasks and `status: true`, registers
 /// the five desktop capabilities, and pings inside the capability lease. It decodes only the six
 /// control frames and drops everything else.
-@MainActor
 public final class ControlStreamClient {
   public enum ConnectionState: Equatable, Sendable {
     /// Trying to connect, and never connected since ``start()``: keep the last known status.
@@ -64,7 +62,7 @@ public final class ControlStreamClient {
       socket.close(code: WebSocketCloseCode.serviceRestart, reason: "The agent service restarted.")
       connectionEnded()
     }
-    loop = Task { @MainActor in await run() }
+    loop = Task { await run() }
   }
 
   public func stop() {
@@ -130,7 +128,7 @@ public final class ControlStreamClient {
     socket.send(ControlStream.subscribe())
     socket.send(ControlStream.register(DesktopCapability.allCases))
     state = .connected
-    pinger = Task { @MainActor [weak self] in
+    pinger = Task { [weak self] in
       while !Task.isCancelled {
         try? await Task.sleep(for: ControlStream.pingInterval)
         guard !Task.isCancelled else { return }
@@ -175,7 +173,7 @@ public final class ControlStreamClient {
   /// them by request id and revision, not by connection. With none live the result is lost and
   /// the request expires.
   private func serve(_ request: CapabilityRequest) {
-    Task { @MainActor in
+    Task {
       let result: CapabilityResult
       if let capabilities {
         do {

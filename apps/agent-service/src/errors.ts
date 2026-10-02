@@ -1,4 +1,4 @@
-import type { ErrorCode } from '@ai/agent-contracts';
+import type { ErrorCode } from '@atd/agent-contracts';
 
 /**
  * 409: the target changed or is busy; refresh and retry with current state. `code` becomes the

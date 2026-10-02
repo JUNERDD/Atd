@@ -7,7 +7,6 @@ import AppKit
 ///
 /// The title bar is `UnifiedTitleBar`; the page lays its sidebar strip and content header out on
 /// that 52pt bar (`settings.css`).
-@MainActor
 final class SettingsWindowController: NSObject, NSWindowDelegate {
   private var window: NSWindow?
   private(set) var host: WebViewHost?

@@ -1,5 +1,5 @@
-import type { AgentHttpClient } from '@ai/agent-client';
-import { ChildTranscriptPatchDataSchema, ServiceBlockSchema } from '@ai/agent-contracts';
+import type { AgentHttpClient } from '@atd/agent-client';
+import { ChildTranscriptPatchDataSchema, ServiceBlockSchema } from '@atd/agent-contracts';
 import type { AgentEvent, ChildTranscriptDetail } from './bridge';
 import { mapBlock } from './service-map';
 import { applyTranscriptPatch, type Block, type ChildTranscriptPatch } from './transcript-schema';

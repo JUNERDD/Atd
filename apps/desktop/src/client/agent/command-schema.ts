@@ -91,7 +91,7 @@ export const ModelPolicySchema = Type.Union([
 ]);
 /**
  * A saved command. Skills, subagents, MCP servers and conversations are tokens in `instructions`
- * (`instruction-tokens.ts` in `@ai/agent-contracts`), so there is no separate skill or role field.
+ * (`instruction-tokens.ts` in `@atd/agent-contracts`), so there is no separate skill or role field.
  */
 export const CommandSchema = Type.Object(
   {
@@ -109,6 +109,7 @@ export const CommandSchema = Type.Object(
           Type.Literal('manual'),
           Type.Literal('selection'),
           Type.Literal('clipboard'),
+          Type.Literal('screenshot'),
           Type.Literal('none'),
         ]),
         required: Type.Boolean(),

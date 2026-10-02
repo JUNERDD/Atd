@@ -1,4 +1,4 @@
-import type { SkillListItem } from '@ai/agent-contracts';
+import type { SkillListItem } from '@atd/agent-contracts';
 import { ensureSkillProfile, type SkillProfilePaths } from './profile.js';
 import { checkSkillExecution } from './capability-check.js';
 import type { SkillDiagnostic } from './diagnostics.js';

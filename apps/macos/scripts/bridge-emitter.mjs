@@ -283,6 +283,8 @@ export function createEmitter({ defs, shared }) {
         `  public static let deliverArgument = ${literal(bridge.deliverArgument)}`,
         '  /// The id of the panel toggle registration in `shortcuts.set`.',
         `  public static let panelShortcutId = ${literal(bridge.panelShortcutId)}`,
+        '  /// The id of the screenshot registration in `shortcuts.set`.',
+        `  public static let screenshotShortcutId = ${literal(bridge.screenshotShortcutId)}`,
         '  /// The longest text a capture returns.',
         `  public static let maxCaptureLength = ${int(bridge.maxCaptureLength)}`,
         '}',

@@ -6,9 +6,7 @@ import { KeyringBackend } from '../dist/credentials/keyring.js';
 import { McpError } from '../dist/mcp/errors.js';
 import {
   callbackPlan,
-  checkIssuer,
   forSignIn,
-  IssuerRequiredError,
   openRedirect,
   parseAuthorizationInput,
 } from '../dist/mcp/oauth-callback.js';
@@ -60,30 +58,6 @@ test('a pasted answer is read from a URL, a query, a fragment or a bare code', (
   refuses('?state=st', /Could not find an OAuth authorization code/);
   refuses('not a code!', /Could not find an OAuth authorization code/);
   refuses('abc', /full OAuth callback URL/, true);
-});
-
-test('the issuer of a response must be the discovered one; a server that sends one must have', async () => {
-  const discovered = (advertised = false) => ({
-    discoveryState: async () => ({
-      authorizationServerUrl: 'https://as.example',
-      authorizationServerMetadata: {
-        issuer: 'https://as.example',
-        authorization_endpoint: 'https://as.example/authorize',
-        token_endpoint: 'https://as.example/token',
-        response_types_supported: ['code'],
-        authorization_response_iss_parameter_supported: advertised,
-      },
-    }),
-  });
-  await checkIssuer({ discoveryState: async () => undefined }, 'srv', 'https://other.example');
-  await checkIssuer(discovered(), 'srv', 'https://as.example/');
-  await checkIssuer(discovered(), 'srv', undefined);
-  await assert.rejects(checkIssuer(discovered(true), 'srv', undefined), IssuerRequiredError);
-  await assert.rejects(checkIssuer(discovered(), 'srv', 'https://evil.example'), (error) => {
-    assert.ok(error instanceof McpError && error.code === 'bad_request');
-    assert.match(error.message, /issuer does not match the discovered issuer for srv/);
-    return true;
-  });
 });
 
 test('where the redirect lands follows the record: loopback, a port of its own, or a page elsewhere', () => {

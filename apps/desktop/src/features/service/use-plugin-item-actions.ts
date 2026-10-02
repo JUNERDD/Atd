@@ -1,5 +1,3 @@
-import { useCallback } from 'react';
-import type { SubagentPermissions } from '@ai/agent-contracts';
 import { useOpenSettingsCommand, useSettingsNavigation } from '../settings/settings-navigation';
 import type { ExtensionCommandRow } from './extension-commands';
 import type { Extensions } from './use-extensions';
@@ -13,54 +11,25 @@ import type { Extensions } from './use-extensions';
 export function usePluginItemActions(extensions: Extensions) {
   const navigate = useSettingsNavigation();
   const showCommand = useOpenSettingsCommand();
-  const { mutations, mcp, skills, agents } = extensions;
-  const { setAgentPermissions: savePermissions, restoreBuiltin: restore } = mutations;
-  const { deleteSkill: removeSkillFiles, deleteAgent: removeAgentFile, mcpRemove } = mutations;
-  const { refresh: refreshMcp, connect, authStart, authComplete } = mcp;
-  const { requestApproval, withdrawApproval } = mcp;
-  const { refresh: refreshSkills } = skills;
-  const { refresh: refreshAgents } = agents;
+  const { mutations, mcp } = extensions;
 
   /** A command not yet in the agent snapshot opens the Commands list instead of its editor. */
-  const openCommand = useCallback(
-    (row: ExtensionCommandRow) => (row.id ? showCommand(row.id) : navigate('commands')),
-    [navigate, showCommand],
-  );
-  const setAgentPermissions = useCallback(
-    (name: string, permissions: SubagentPermissions | null) =>
-      savePermissions(name, permissions, refreshAgents),
-    [refreshAgents, savePermissions],
-  );
-  const restoreBuiltin = useCallback(
-    (id: string) => restore(id, refreshSkills),
-    [refreshSkills, restore],
-  );
-  const deleteSkill = useCallback(
-    (name: string) => void removeSkillFiles(name, refreshSkills),
-    [refreshSkills, removeSkillFiles],
-  );
-  const deleteAgent = useCallback(
-    (name: string) => void removeAgentFile(name, refreshAgents),
-    [refreshAgents, removeAgentFile],
-  );
-  const removeServer = useCallback(
-    (serverId: string) => void mcpRemove(serverId, refreshMcp),
-    [mcpRemove, refreshMcp],
-  );
+  const openCommand = (row: ExtensionCommandRow) =>
+    row.id ? showCommand(row.id) : navigate('commands');
   return {
     openCommand,
     setItemEnabled: extensions.setItemEnabled,
     setServiceItemEnabled: extensions.setServiceItemEnabled,
-    setAgentPermissions,
-    restoreBuiltin,
-    mcpConnect: (serverId: string) => void connect(serverId),
-    mcpAuthStart: (serverId: string) => void authStart(serverId),
-    mcpAuthComplete: (serverId: string, input: string) => void authComplete(serverId, input),
-    mcpRequestApproval: (serverId: string) => void requestApproval(serverId),
-    mcpWithdrawApproval: (serverId: string) => void withdrawApproval(serverId),
-    deleteSkill,
-    deleteAgent,
-    removeServer,
+    setAgentPermissions: mutations.setAgentPermissions,
+    restoreBuiltin: mutations.restoreBuiltin,
+    mcpConnect: (serverId: string) => void mcp.connect(serverId),
+    mcpAuthStart: (serverId: string) => void mcp.authStart(serverId),
+    mcpAuthComplete: (serverId: string, input: string) => void mcp.authComplete(serverId, input),
+    mcpRequestApproval: (serverId: string) => void mcp.requestApproval(serverId),
+    mcpWithdrawApproval: (serverId: string) => void mcp.withdrawApproval(serverId),
+    deleteSkill: (name: string) => void mutations.deleteSkill(name),
+    deleteAgent: (name: string) => void mutations.deleteAgent(name),
+    removeServer: (serverId: string) => void mutations.mcpRemove(serverId),
   };
 }
 

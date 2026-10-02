@@ -1,4 +1,4 @@
-import { WEB_FETCH_TOOL, WEB_SEARCH_TOOL } from '@ai/agent-contracts';
+import { WEB_FETCH_TOOL, WEB_SEARCH_TOOL } from '@atd/agent-contracts';
 import { confined, confinedWrite } from '../service-fs.js';
 import { FORBIDDEN_CHILD_TOOLS } from './config.js';
 

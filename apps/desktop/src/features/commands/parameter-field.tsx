@@ -1,16 +1,16 @@
 import { useId } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Input } from '@ai/ui/components/input';
-import { Textarea } from '@ai/ui/components/textarea';
-import { Switch } from '@ai/ui/components/switch';
-import { Label } from '@ai/ui/components/label';
+import { Input } from '@atd/ui/components/input';
+import { Textarea } from '@atd/ui/components/textarea';
+import { Switch } from '@atd/ui/components/switch';
+import { Label } from '@atd/ui/components/label';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@ai/ui/components/select';
+} from '@atd/ui/components/select';
 import type { Parameter } from '../../client/agent/command-schema';
 import { parameterError } from '../../client/agent/command-validation';
 
@@ -99,10 +99,13 @@ export function ParameterField({
         </>
       )}
       {(error || parameter.description) && (
+        // The description explains the choice, so it wraps under the control rather than
+        // hiding its end behind a hover.
         <p
-          className={error ? 'text-destructive text-xs' : 'truncate text-muted-foreground text-xs'}
+          className={
+            error ? 'text-xs text-destructive' : 'text-xs text-pretty text-muted-foreground'
+          }
           role={error ? 'alert' : undefined}
-          title={error ? undefined : parameter.description}
         >
           {error || parameter.description}
         </p>

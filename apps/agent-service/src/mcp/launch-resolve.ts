@@ -1,10 +1,11 @@
 import { stat } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import path from 'node:path';
-import type { McpHttp, McpServerConfig } from '@ai/agent-contracts';
+import type { McpHttp, McpServerConfig } from '@atd/agent-contracts';
 import { MCP_INHERITED_ENV_KEYS } from './constants.js';
 import { envReferences, interpolateEnvReferences, unsetEnvReferences } from './env-references.js';
 import { McpError } from './errors.js';
+import { httpUsesOAuth } from './oauth-client.js';
 import { commandValueField, commandValueRefusal } from './servers.js';
 import type {
   McpHttpCredential,
@@ -212,7 +213,9 @@ function credentialOf(
 ): McpHttpCredential {
   switch (http.auth.type) {
     case 'none':
-      return { type: 'none' };
+      // A server without auth or an Authorization header is offered OAuth on a 401
+      // (oauth-client.ts): its connections carry the OAuth auth, which sends no token until one.
+      return httpUsesOAuth(http) ? { type: 'oauth' } : { type: 'none' };
     case 'oauth':
       return { type: 'oauth' };
     case 'bearer':

@@ -13,9 +13,9 @@ export interface TaskTurns {
   /** A run is active: no message is replaced and no turn regenerated until it ends. */
   busy: boolean;
   /** Shows another task in the panel, as choosing it from the history does. */
-  openTask?: (taskId: string) => void;
+  openTask?: ((taskId: string) => void) | undefined;
   /** Starts a memory session seeded with `text`. */
-  remember?: (text: string) => void;
+  remember?: ((text: string) => void) | undefined;
 }
 
 export const TaskTurnsContext = createContext<TaskTurns | null>(null);

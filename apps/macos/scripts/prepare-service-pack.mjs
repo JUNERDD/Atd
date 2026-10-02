@@ -149,7 +149,7 @@ async function stageNode() {
   const { engines } = JSON.parse(await readFile(serviceManifest, 'utf8'));
   if (!nodeSatisfiesEngines(version, engines.node))
     fail(
-      `.node-version ${version} does not satisfy @ai/agent-service engines.node ${engines.node}.`,
+      `.node-version ${version} does not satisfy @atd/agent-service engines.node ${engines.node}.`,
     );
 
   const archive = nodeArchive(version);
@@ -215,7 +215,7 @@ await rm(packDir, { recursive: true, force: true });
 
 const deploy = spawnSync(
   'pnpm',
-  ['--filter', '@ai/agent-service', 'deploy', '--prod', '--legacy', packDir],
+  ['--filter', '@atd/agent-service', 'deploy', '--prod', '--legacy', packDir],
   {
     cwd: repoRoot,
     stdio: 'inherit',
@@ -258,7 +258,7 @@ if (!resolved.startsWith(packDir)) {
 // The file index addon is built for darwin-arm64 only (packages/file-index); without it that
 // pack would ship a service whose file search reports itself unavailable.
 if (process.arch === 'arm64') {
-  const addon = path.join(stagedModules, '@ai', 'file-index', 'file-index.darwin-arm64.node');
+  const addon = path.join(stagedModules, '@atd', 'file-index', 'file-index.darwin-arm64.node');
   try {
     await access(addon);
   } catch {

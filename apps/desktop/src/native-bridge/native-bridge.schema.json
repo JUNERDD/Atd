@@ -8,6 +8,7 @@
     "deliverScript": "window.aiNative.deliver(message)",
     "deliverArgument": "message",
     "panelShortcutId": "togglePanel",
+    "screenshotShortcutId": "captureScreenshot",
     "maxCaptureLength": 100000,
     "calls": [
       "window.show",
@@ -22,6 +23,8 @@
       "capture",
       "clipboard.read",
       "clipboard.write",
+      "screenshot.capture",
+      "screenshot.edit",
       "share.text",
       "speech.speak",
       "speech.stop",
@@ -37,6 +40,7 @@
       "window.dragRegions",
       "socket.open",
       "socket.send",
+      "update.install",
       "socket.close"
     ],
     "events": [
@@ -44,9 +48,12 @@
       "window.visibility",
       "accessibility.reduceTransparency",
       "shortcut.command",
+      "shortcut.screenshot",
       "resources.imported",
+      "files.drag",
       "edit.command",
       "speech.state",
+      "update.state",
       "socket.frames"
     ]
   },
@@ -430,6 +437,62 @@
             },
             "method": {
               "type": "string",
+              "const": "screenshot.capture"
+            },
+            "params": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
+              "const": "screenshot.edit"
+            },
+            "params": {
+              "type": "object",
+              "required": ["resourceId"],
+              "properties": {
+                "resourceId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128,
+                  "pattern": "^[a-zA-Z0-9_-]+$"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
               "const": "share.text"
             },
             "params": {
@@ -643,16 +706,47 @@
             },
             "params": {
               "type": "object",
-              "required": ["resourceId", "name"],
+              "required": ["name", "content"],
               "properties": {
-                "resourceId": {
-                  "type": "string",
-                  "minLength": 1,
-                  "maxLength": 128
-                },
                 "name": {
                   "type": "string",
+                  "minLength": 1,
                   "maxLength": 255
+                },
+                "content": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "required": ["type", "text"],
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "const": "text"
+                        },
+                        "text": {
+                          "type": "string",
+                          "maxLength": 1000000
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "required": ["type", "base64"],
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "const": "png"
+                        },
+                        "base64": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 22369624
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  ]
                 }
               },
               "additionalProperties": false
@@ -866,6 +960,26 @@
             },
             "method": {
               "type": "string",
+              "const": "update.install"
+            },
+            "params": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "post"
+            },
+            "method": {
+              "type": "string",
               "const": "socket.close"
             },
             "params": {
@@ -1043,6 +1157,26 @@
             },
             "event": {
               "type": "string",
+              "const": "shortcut.screenshot"
+            },
+            "payload": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "event", "payload"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "event"
+            },
+            "event": {
+              "type": "string",
               "const": "resources.imported"
             },
             "payload": {
@@ -1125,6 +1259,53 @@
             },
             "event": {
               "type": "string",
+              "const": "files.drag"
+            },
+            "payload": {
+              "type": "object",
+              "required": ["phase", "files", "attachable"],
+              "properties": {
+                "phase": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "const": "over"
+                    },
+                    {
+                      "type": "string",
+                      "const": "importing"
+                    },
+                    {
+                      "type": "string",
+                      "const": "none"
+                    }
+                  ]
+                },
+                "files": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "attachable": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 10
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "event", "payload"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "event"
+            },
+            "event": {
+              "type": "string",
               "const": "edit.command"
             },
             "payload": {
@@ -1167,6 +1348,39 @@
               "properties": {
                 "speaking": {
                   "type": "boolean"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "event", "payload"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "event"
+            },
+            "event": {
+              "type": "string",
+              "const": "update.state"
+            },
+            "payload": {
+              "type": "object",
+              "required": ["version"],
+              "properties": {
+                "version": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "maxLength": 64
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 }
               },
               "additionalProperties": false
@@ -1724,6 +1938,222 @@
       "properties": {},
       "additionalProperties": false
     },
+    "ScreenshotCaptureParams": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "ScreenshotCaptureResult": {
+      "anyOf": [
+        {
+          "type": "object",
+          "required": ["ok", "file", "context", "capturedAt"],
+          "properties": {
+            "ok": {
+              "type": "boolean",
+              "const": true
+            },
+            "file": {
+              "type": "object",
+              "required": ["id", "name", "size", "type"],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128,
+                  "pattern": "^[a-zA-Z0-9_-]+$"
+                },
+                "name": {
+                  "type": "string",
+                  "maxLength": 255
+                },
+                "size": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "type": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "additionalProperties": false
+            },
+            "context": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "required": ["id", "name", "size", "type"],
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 128,
+                      "pattern": "^[a-zA-Z0-9_-]+$"
+                    },
+                    "name": {
+                      "type": "string",
+                      "maxLength": 255
+                    },
+                    "size": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "type": {
+                      "type": "string",
+                      "maxLength": 100
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "capturedAt": {
+              "type": "string",
+              "maxLength": 64
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["ok", "reason"],
+          "properties": {
+            "ok": {
+              "type": "boolean",
+              "const": false
+            },
+            "reason": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "const": "cancelled"
+                },
+                {
+                  "type": "string",
+                  "const": "notPermitted"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "ScreenshotEditParams": {
+      "type": "object",
+      "required": ["resourceId"],
+      "properties": {
+        "resourceId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_-]+$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ScreenshotEditResult": {
+      "anyOf": [
+        {
+          "type": "object",
+          "required": ["ok", "file", "context", "capturedAt"],
+          "properties": {
+            "ok": {
+              "type": "boolean",
+              "const": true
+            },
+            "file": {
+              "type": "object",
+              "required": ["id", "name", "size", "type"],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128,
+                  "pattern": "^[a-zA-Z0-9_-]+$"
+                },
+                "name": {
+                  "type": "string",
+                  "maxLength": 255
+                },
+                "size": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "type": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "additionalProperties": false
+            },
+            "context": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "required": ["id", "name", "size", "type"],
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 128,
+                      "pattern": "^[a-zA-Z0-9_-]+$"
+                    },
+                    "name": {
+                      "type": "string",
+                      "maxLength": 255
+                    },
+                    "size": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "type": {
+                      "type": "string",
+                      "maxLength": 100
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "capturedAt": {
+              "type": "string",
+              "maxLength": 64
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["ok", "reason"],
+          "properties": {
+            "ok": {
+              "type": "boolean",
+              "const": false
+            },
+            "reason": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "const": "cancelled"
+                },
+                {
+                  "type": "string",
+                  "const": "notPermitted"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
     "ShareTextParams": {
       "type": "object",
       "required": ["text", "anchor"],
@@ -1902,16 +2332,47 @@
     },
     "FilesSaveParams": {
       "type": "object",
-      "required": ["resourceId", "name"],
+      "required": ["name", "content"],
       "properties": {
-        "resourceId": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 128
-        },
         "name": {
           "type": "string",
+          "minLength": 1,
           "maxLength": 255
+        },
+        "content": {
+          "anyOf": [
+            {
+              "type": "object",
+              "required": ["type", "text"],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "const": "text"
+                },
+                "text": {
+                  "type": "string",
+                  "maxLength": 1000000
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "required": ["type", "base64"],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "const": "png"
+                },
+                "base64": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 22369624
+                }
+              },
+              "additionalProperties": false
+            }
+          ]
         }
       },
       "additionalProperties": false
@@ -2074,6 +2535,11 @@
       },
       "additionalProperties": false
     },
+    "UpdateInstallPost": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
     "SocketClosePost": {
       "type": "object",
       "required": ["socketId", "code", "reason"],
@@ -2135,6 +2601,11 @@
           "maxLength": 128
         }
       },
+      "additionalProperties": false
+    },
+    "ShortcutScreenshotEvent": {
+      "type": "object",
+      "properties": {},
       "additionalProperties": false
     },
     "ResourcesImportedEvent": {
@@ -2204,6 +2675,38 @@
       },
       "additionalProperties": false
     },
+    "FilesDragEvent": {
+      "type": "object",
+      "required": ["phase", "files", "attachable"],
+      "properties": {
+        "phase": {
+          "anyOf": [
+            {
+              "type": "string",
+              "const": "over"
+            },
+            {
+              "type": "string",
+              "const": "importing"
+            },
+            {
+              "type": "string",
+              "const": "none"
+            }
+          ]
+        },
+        "files": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "attachable": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        }
+      },
+      "additionalProperties": false
+    },
     "EditCommandEvent": {
       "type": "object",
       "required": ["command"],
@@ -2229,6 +2732,24 @@
       "properties": {
         "speaking": {
           "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "UpdateStateEvent": {
+      "type": "object",
+      "required": ["version"],
+      "properties": {
+        "version": {
+          "anyOf": [
+            {
+              "type": "string",
+              "maxLength": 64
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
       "additionalProperties": false

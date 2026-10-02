@@ -1,5 +1,5 @@
 import { Type, type Static } from 'typebox';
-import type { ProviderContextsResponse } from '@ai/agent-contracts';
+import type { ProviderContextsResponse } from '@atd/agent-contracts';
 
 const text = Type.String({ maxLength: 2048 });
 const id = Type.String({ minLength: 1, maxLength: 256 });

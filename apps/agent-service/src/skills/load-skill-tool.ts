@@ -1,4 +1,4 @@
-import { LOAD_SKILL_TOOL } from '@ai/agent-contracts';
+import { LOAD_SKILL_TOOL } from '@atd/agent-contracts';
 import type { ExtensionFactory, SessionEntry } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
 import { CONTEXT_BUDGET } from '../tasks/run-budget.js';
@@ -25,7 +25,8 @@ export interface LoadSkillHost {
  * compaction re-attach and the dedupe read it through readCarriedSkills. Reading an installed,
  * enabled skill's own instructions is read-only, so no gate applies. Parent sessions only: the run
  * binding allows it when the catalog lists a loadable skill (run-binding.ts), and children never
- * inherit it (subagents/intersection.ts).
+ * inherit it (subagents/intersection.ts). Model-only: a loaded skill is its persisted result, which
+ * a codemode script's nested call does not leave.
  */
 export function loadSkillTool(host: LoadSkillHost): ExtensionFactory {
   return (pi) => {
@@ -38,6 +39,7 @@ export function loadSkillTool(host: LoadSkillHost): ExtensionFactory {
       // QualifiedNameSchema); the catalog decides.
       parameters: Type.Object({ name: Type.String({ minLength: 1, maxLength: 193 }) }),
       executionMode: 'sequential',
+      exposure: 'model-only',
       async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
         const { name } = params;
         const catalog = host.catalog();

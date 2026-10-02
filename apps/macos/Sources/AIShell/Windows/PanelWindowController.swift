@@ -8,7 +8,6 @@ import AppKit
 /// Hiding follows spike S7 and plan decision R9: the panel stays ordered in at alpha 0, ignores
 /// the mouse and gives up key status, because `orderOut` drops WebKit's timers to 1/s. Alpha 0
 /// alone keeps timers and animation frames at full rate, so occlusion detection stays on.
-@MainActor
 final class PanelWindowController: NSObject, NSWindowDelegate {
   let panel: ShellPanel
   let host: WebViewHost
@@ -101,6 +100,21 @@ final class PanelWindowController: NSObject, NSWindowDelegate {
     panel.ignoresMouseEvents = true
     if wasKey { onGaveUpKey?() }
     onVisibilityChange?(false)
+  }
+
+  /// Takes the panel off screen for a capture session and returns what puts it back as it was.
+  /// A resident panel is ordered out too, not only a visible one, so no panel state can take
+  /// key status or events while the overlays are up; `orderOut`'s timer throttling (R9) only
+  /// lasts as long as the session. A miniaturized panel is left alone.
+  func withdrawForCapture() -> @MainActor () -> Void {
+    guard !panel.isMiniaturized else { return {} }
+    let visible = isVisible
+    if visible { hide() }
+    panel.orderOut(nil)
+    return { [weak self] in
+      guard let self else { return }
+      if visible { show() } else { panel.orderFrontRegardless() }
+    }
   }
 
   // MARK: NSWindowDelegate

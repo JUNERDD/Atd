@@ -2,10 +2,13 @@ import '@testing-library/jest-dom/vitest';
 import { cleanup } from '@testing-library/react';
 import { afterEach, beforeEach } from 'vitest';
 import '../src/i18n';
+import { queryClient } from '../src/lib/query-client';
 
 beforeEach(() => {
   localStorage.clear();
   delete window.desktop;
+  // Each case installs its own bridge; nothing it cached may answer the next case.
+  queryClient.clear();
 });
 
 afterEach(cleanup);
@@ -20,6 +23,19 @@ globalThis.ResizeObserver = class implements ResizeObserver {
   observe() {}
   unobserve() {}
   disconnect() {}
+};
+// Nothing ever scrolls into view without layout: lazily loaded images keep their placeholder.
+globalThis.IntersectionObserver = class implements IntersectionObserver {
+  readonly root = null;
+  readonly rootMargin = '0px';
+  readonly scrollMargin = '0px';
+  readonly thresholds = [0];
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+  takeRecords() {
+    return [];
+  }
 };
 
 window.matchMedia = (media) => ({

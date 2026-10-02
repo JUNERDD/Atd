@@ -1,10 +1,12 @@
 {
   "header": {
-    "panelLabel": "AI task panel",
+    "panelLabel": "Atd task panel",
     "newChat": "New chat",
     "controlsLabel": "Panel controls",
     "tasks": "Tasks",
     "settings": "Settings",
+    "update": "Update",
+    "updateTooltip": "Restart to install version {{version}}",
     "loadingConversation": "Loading conversation…"
   },
   "welcome": {
@@ -29,18 +31,36 @@
     "promptLabel": "Task prompt",
     "placeholder": "Ask anything…",
     "followUpPlaceholder": "Ask a follow-up…",
-    "attachedContext": "Attached context",
     "attachContext": "Attach context",
     "attachLimit": "Attach at most 10 files.",
-    "removeFile": "Remove {{name}}",
+    "editImage": "Edit {{name}}",
+    "attachMenu": {
+      "screenshot": "Screenshot",
+      "upload": "Upload files",
+      "mention": "Mention files, conversations or tools…"
+    },
     "stopAndDecline": "Stop and decline",
     "answerPlaceholder": "Type your answer…",
     "interjectPlaceholder": "Send to decline and redirect now…",
     "attachAfterRun": "Attach files after this run finishes.",
+    "drop": {
+      "title": "Drop to add as context",
+      "attach_one": "{{count}} file will be attached to your message.",
+      "attach_other": "{{count}} files will be attached to your message.",
+      "attachSome": "{{count}} of {{total}} files will be attached.",
+      "rules": "Text, code and image files can be attached, up to {{max}} per message.",
+      "unsupported": "These files can't be attached",
+      "full": "Attachment limit reached",
+      "fullDescription": "A message takes up to {{max}} files. Remove one to add more.",
+      "tooMany": "Too many files",
+      "tooManyDescription_one": "This message has room for {{count}} more file.",
+      "tooManyDescription_other": "This message has room for {{count}} more files.",
+      "importing": "Adding files…"
+    },
     "importFailed": {
       "unreadable": "{{name}} could not be read.",
       "unsupported": "{{name}} is not supported.",
-      "tooLarge": "{{name}} must be a text file smaller than 1 MB."
+      "tooLarge": "{{name}} is too large to attach."
     },
     "queued": "Queued messages",
     "sendNow": "Send now",
@@ -55,7 +75,10 @@
       "task": "Conversation: {{name}}",
       "mcpServer": "MCP server: {{name}}",
       "agent": "Subagent: {{name}}",
-      "skill": "Skill: {{name}}"
+      "skill": "Skill: {{name}}",
+      "command": "Command: {{name}}",
+      "memory": "Memory: {{name}}",
+      "quote": "Quote: {{name}}"
     },
     "progress": {
       "label": "Task progress",
@@ -70,7 +93,27 @@
       "label": "Context usage",
       "usage": "{{tokens}} / {{window}} tokens · {{percent}}%",
       "percent": "{{percent}}% used",
-      "autoCompact": "Compacts automatically before the context fills up"
+      "autoCompact": "Compacts automatically before the context fills up",
+      "detail": {
+        "title": "Context window",
+        "usage": "{{used}} / {{window}} ({{percent}}%)",
+        "used": "{{used}} tokens",
+        "categories": {
+          "messages": "Messages",
+          "systemPrompt": "System prompt",
+          "skills": "Skills",
+          "systemTools": "Tools",
+          "mcpTools": "MCP"
+        },
+        "buffer": "Autocompact buffer",
+        "free": "Free space",
+        "tools_one": "{{count}} tool",
+        "tools_other": "{{count}} tools",
+        "skills_one": "{{count}} skill",
+        "skills_other": "{{count}} skills",
+        "loading": "Loading…",
+        "error": "Context details could not be loaded: {{message}}"
+      }
     }
   },
   "configuration": {
@@ -94,6 +137,11 @@
     "starting": "Starting…",
     "selectedText": "Selected text",
     "clipboardText": "Clipboard text",
+    "screenshot": "Screenshot",
+    "takeScreenshot": "Take screenshot",
+    "retakeScreenshot": "Retake screenshot",
+    "editScreenshot": "Edit screenshot",
+    "screenshotMissing": "Take a screenshot to run this command.",
     "text": "Input",
     "textPlaceholder": "Enter text to use with this command…",
     "captured": "Captured {{time}}",
@@ -124,7 +172,6 @@
   },
   "session": {
     "editSeed": "Update the command \"{{name}}\" (id: {{id}}): ",
-    "createSeed": "Create a command: ",
     "editSkillSeed": "Update the existing skill \"{{name}}\": ",
     "editSubagentSeed": "Update the existing subagent \"{{name}}\": ",
     "editMcpSeed": "Update the existing MCP server \"{{name}}\": ",
@@ -184,7 +231,9 @@
       "files": "Files",
       "conversations": "Conversations",
       "mcp": "MCP",
-      "agents": "Subagents"
+      "agents": "Subagents",
+      "savedCommands": "Commands",
+      "memory": "Memory"
     },
     "commands": {
       "new": {
@@ -262,11 +311,11 @@
     },
     "files": {
       "browse": "Browse files…",
-      "browseDescription": "Choose text files on this computer",
+      "browseDescription": "Choose text files or images on this computer",
       "partial": "Some results may be missing.",
       "indexDisabled": "Spotlight indexing is off, so file search is unavailable.",
       "unsupported": "File search isn't available on this system.",
-      "tooLarge": "Larger than 1 MB",
+      "tooLarge": "Too large to attach",
       "limit": "10 files already attached",
       "failed": "File search failed. Try again.",
       "attaching": "Attaching…",
@@ -277,5 +326,9 @@
     "text": "This task's context has been compacted {{count}} times. A new task may work better.",
     "newTask": "New task",
     "dismiss": "Dismiss"
+  },
+  "attachments": {
+    "noVision": "{{model}} can't see images, so attached images won't reach it.",
+    "noVisionWithText": "{{model}} can't see images, so attached images won't reach it. Attached text, such as the screen context, is still sent."
   }
 }

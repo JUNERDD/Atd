@@ -1,9 +1,9 @@
 import * as React from 'react';
-import { cn } from '@ai/ui/lib/utils';
-import { ignoreComposingEscape } from '@ai/ui/lib/ime';
+import { cn } from '@atd/ui/lib/utils';
+import { ignoreComposingEscape } from '@atd/ui/lib/ime';
 import { Select as SelectPrimitive } from 'radix-ui';
 import { ChevronDownIcon, CheckIcon, ChevronUpIcon } from 'lucide-react';
-import { ScrollAreaRoot, ScrollAreaViewport, ScrollBar } from '@ai/ui/components/scroll-area';
+import { ScrollAreaRoot, ScrollAreaViewport, ScrollBar } from '@atd/ui/components/scroll-area';
 
 function Select({ ...props }: React.ComponentProps<typeof SelectPrimitive.Root>) {
   return <SelectPrimitive.Root data-slot="select" {...props} />;

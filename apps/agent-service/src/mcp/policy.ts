@@ -1,7 +1,8 @@
-import { errorMessage, type McpServerConfig } from '@ai/agent-contracts';
+import { errorMessage, type McpServerConfig } from '@atd/agent-contracts';
 import { validateToolArguments, type JsonObject, type JsonValue } from '@earendil-works/pi-ai';
 import type { ResourceTemplate, Tool } from '@earendil-works/pi-mcp';
 import { Type } from 'typebox';
+import { withSignal } from './catalog.js';
 import { McpError, type OperationContext } from './errors.js';
 import { matchToolPattern, matchUriTemplate } from './servers.js';
 import type { McpLiveConnection } from './types.js';
@@ -56,7 +57,10 @@ function isJsonValue(value: unknown): value is JsonValue {
       return (
         value === null || (Array.isArray(value) ? value.every(isJsonValue) : isJsonObject(value))
       );
-    default:
+    case 'bigint':
+    case 'function':
+    case 'symbol':
+    case 'undefined':
       return false;
   }
 }
@@ -129,8 +133,8 @@ export class McpPolicy {
     const [resources, templates] = connection.capabilities.resources
       ? await connection.use((client) =>
           Promise.all([
-            client.listResources({ signal }),
-            client.listResourceTemplates({ signal }).catch((): ResourceTemplate[] => []),
+            client.listResources(withSignal(signal)),
+            client.listResourceTemplates(withSignal(signal)).catch((): ResourceTemplate[] => []),
           ]),
         )
       : [[], []];

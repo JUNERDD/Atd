@@ -26,17 +26,6 @@
   mask-position: center;
   mask-image: var(--brand-mask-image);
 }
-.provider-column-headings {
-  display: flex;
-  gap: 12px;
-  justify-content: space-between;
-  padding: 0 16px;
-  margin-bottom: 12px;
-  font-weight: 500;
-}
-.provider-column-headings > :last-child {
-  width: 256px;
-}
 .provider-connections {
   gap: 10px;
 }
@@ -89,21 +78,18 @@
   font-weight: 500;
   line-height: 16px;
 }
+/* The model trigger hugs its full summary (model, context, effort); a summary too long for the
+   row's line moves the controls to their own line, where the model name truncates last. */
 .provider-model-controls {
   display: flex;
   align-items: center;
   gap: 8px;
-  flex: 1 1 200px;
-  min-width: min(200px, 100%);
-  max-width: 256px;
-}
-.provider-model-controls > :first-child {
-  flex: 1;
+  flex: 0 1 auto;
   min-width: 0;
+  margin-left: auto;
 }
 .provider-model-trigger {
   height: 32px;
-  width: 100%;
   min-width: 0;
   background: color-mix(in oklab, var(--input) 50%, transparent);
   padding: 4px 10px;
@@ -230,7 +216,7 @@ button.model-config-row-nav:disabled:hover {
   min-height: 0;
   flex: 1;
   /* Each view mounts its own glass content, and the view is that glass's persistent child layer
-     (see `surface-glass` in `@ai/ui`): a search that makes the model list fit drops the list's
+     (see `surface-glass` in `@atd/ui`): a search that makes the model list fit drops the list's
      scroller layers here, not on the glass, where they lingered with the old rows below it. */
   will-change: transform;
 }
@@ -326,8 +312,9 @@ button.model-config-row-nav:disabled:hover {
 .dark .provider-directory-card:hover {
   background: var(--ata-surface-ghost-hover);
 }
-.provider-form .editor-footer {
-  justify-content: flex-end;
+/* The leading group of the footer; `.editor-footer > div` pushes the trailing one to the end. */
+.provider-form .editor-footer > .provider-form-tools {
+  margin-left: 0;
 }
 .provider-form .settings-section-heading h2 {
   display: block;
@@ -355,11 +342,10 @@ button.model-config-row-nav:disabled:hover {
   overflow-wrap: anywhere;
 }
 @container settings (max-width: 475px) {
-  .provider-column-headings > :last-child {
-    display: none;
-  }
   .provider-model-controls {
     flex-basis: 100%;
-    max-width: none;
+  }
+  .provider-model-controls > :first-child {
+    flex: 1;
   }
 }

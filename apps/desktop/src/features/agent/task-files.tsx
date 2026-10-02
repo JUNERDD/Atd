@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Copy, ExternalLink, FileText, FolderOpen, FolderSearch, Plus } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Item, ItemContent, ItemDescription, ItemMedia, ItemTitle } from '@ai/ui/components/item';
+import { Item, ItemContent, ItemDescription, ItemMedia, ItemTitle } from '@atd/ui/components/item';
 import type { Artifact, FileRef } from '../../client/agent/task-schema';
 import { artifactLocation } from '../../client/agent/task-schema';
 import { IconButton } from '../../components/icon-button';

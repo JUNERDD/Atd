@@ -1,7 +1,10 @@
-import { useCallback, useEffect, useState } from 'react';
-import type { PluginDetail, PluginItem } from '@ai/agent-contracts';
+import { useQuery } from '@tanstack/react-query';
+import type { PluginDetail, PluginItem } from '@atd/agent-contracts';
+import { wireServiceBridge } from '../../lib/bridge-cache';
 import { messageOf } from '../../lib/errors';
+import { queryClient } from '../../lib/query-client';
 import { asPluginDetail } from './plugin-rows';
+import { serviceListKeys } from './use-service';
 
 /**
  * One item of a plugin as the service lists it, for a caller that holds only the catalog name (a
@@ -24,61 +27,48 @@ export async function findPluginItem(
 type Loaded = { id: string; detail: PluginDetail } | { id: string; error: string };
 
 /**
- * One plugin's detail, read when its page opens and again whenever `epoch` moves (the extensions,
- * commands or memory changed, here or in another client). A reply for another plugin or an older
- * read is dropped. Mutations answer the new detail, which `replace` shows at once; `setItemEnabled`
- * shows a switch change before its save answers; `retry` reads again after a failure.
+ * One plugin's detail, read when its page opens and again with every reload of the plugin list
+ * (the extensions, commands or memory changed, here or in another client). A detail stays shown
+ * when a later read fails. Mutations answer the new detail, which `replace` shows at once;
+ * `setItemEnabled` shows a switch change before its save answers; `retry` reads again after a
+ * failure.
  */
-export function usePluginDetail(id: string, epoch: number) {
-  const [loaded, setLoaded] = useState<Loaded | null>(null);
-  const [attempt, setAttempt] = useState(0);
-  useEffect(() => {
-    const bridge = window.desktop?.service;
-    if (!bridge) return;
-    let active = true;
-    bridge.plugin(id).then(
-      (value) => {
-        if (!active) return;
-        try {
-          setLoaded({ id, detail: asPluginDetail(value) });
-        } catch (error) {
-          setLoaded({ id, error: messageOf(error) });
-        }
+export function usePluginDetail(id: string) {
+  const bridge = window.desktop?.service;
+  const { data, error, refetch } = useQuery(
+    {
+      queryKey: serviceListKeys.plugin(id),
+      queryFn: async () => {
+        if (!bridge) throw new Error('Open the desktop app to manage the service.');
+        wireServiceBridge(bridge);
+        return asPluginDetail(await bridge.plugin(id));
       },
-      (error: unknown) => {
-        if (active) setLoaded({ id, error: messageOf(error) });
-      },
-    );
-    return () => {
-      active = false;
-    };
-  }, [id, epoch, attempt]);
-  const retry = useCallback(() => {
-    setLoaded(null);
-    setAttempt((value) => value + 1);
-  }, []);
-  const replace = useCallback((detail: PluginDetail) => {
-    setLoaded((current) =>
-      current?.id === detail.plugin.id ? { id: current.id, detail } : current,
-    );
-  }, []);
-  const setItemEnabled = useCallback(
-    (kind: PluginItem['kind'], name: string, itemEnabled: boolean) => {
-      setLoaded((current) =>
-        current && 'detail' in current
+      enabled: Boolean(bridge),
+      // The page shows a failed read in place, with its retry.
+      meta: { errorToast: false },
+    },
+    queryClient,
+  );
+  const loaded: Loaded | null = data
+    ? { id, detail: data }
+    : error
+      ? { id, error: messageOf(error) }
+      : null;
+  return {
+    loaded,
+    replace: (detail: PluginDetail) =>
+      queryClient.setQueryData<PluginDetail>(serviceListKeys.plugin(detail.plugin.id), detail),
+    setItemEnabled: (kind: PluginItem['kind'], name: string, itemEnabled: boolean) =>
+      queryClient.setQueryData<PluginDetail>(serviceListKeys.plugin(id), (current) =>
+        current
           ? {
-              id: current.id,
-              detail: {
-                ...current.detail,
-                items: current.detail.items.map((item) =>
-                  item.kind === kind && item.name === name ? { ...item, itemEnabled } : item,
-                ),
-              },
+              ...current,
+              items: current.items.map((item) =>
+                item.kind === kind && item.name === name ? { ...item, itemEnabled } : item,
+              ),
             }
           : current,
-      );
-    },
-    [],
-  );
-  return { loaded: loaded?.id === id ? loaded : null, replace, setItemEnabled, retry };
+      ),
+    retry: () => void refetch(),
+  };
 }

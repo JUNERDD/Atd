@@ -1,4 +1,4 @@
-import { cn } from '@ai/ui/lib/utils';
+import { cn } from '@atd/ui/lib/utils';
 import { Loader2Icon } from 'lucide-react';
 
 /**

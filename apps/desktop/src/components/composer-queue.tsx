@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { MotionConfig, Reorder, useDragControls } from 'motion/react';
 import { ArrowUp, GripVertical, LoaderCircle, Pencil, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Item, ItemActions, ItemContent, ItemMedia, ItemTitle } from '@ai/ui/components/item';
+import { Item, ItemActions, ItemContent, ItemMedia, ItemTitle } from '@atd/ui/components/item';
 import type { QueueState } from '../client/agent/transcript-schema';
 import { IconButton } from './icon-button';
 import { agentApi } from '../features/agent/use-agent';

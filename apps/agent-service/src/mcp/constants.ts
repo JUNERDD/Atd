@@ -1,6 +1,6 @@
 /**
  * Values the MCP layer on `@earendil-works/pi-mcp` keeps from what pi-mcp-adapter 3.1.0 did as the
- * service configured it, or takes from pi's own MCP runtime (pi-coding-agent 0.99.1
+ * service configured it, or takes from pi's own MCP runtime (pi-coding-agent 1.0.0
  * `dist/extensions/mcp`). Each value names its source; changing one changes user-visible
  * behavior.
  */

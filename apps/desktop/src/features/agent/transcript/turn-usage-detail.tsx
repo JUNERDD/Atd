@@ -1,6 +1,6 @@
 import { Info } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@ai/ui/components/popover';
+import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@atd/ui/components/popover';
 import { IconButton } from '../../../components/icon-button';
 import type { TurnUsage } from './turn-usage';
 

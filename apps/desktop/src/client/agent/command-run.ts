@@ -5,11 +5,12 @@ import {
   instructionCapabilities,
   instructionReferenceKey,
   parseInstructionTokens,
+  runReferenceKey,
   type InputChip,
   type InputChipRange,
   type InstructionReference,
   type RunReference,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import type { CommandDefinition } from './command-schema';
 import type { RunStaging } from './run-staging';
 
@@ -49,9 +50,9 @@ export function withCommandTokens(
   for (const name of tokens.skills)
     if (!skills.some((skill) => skill.name === name)) skills.push({ name });
   const references = [...(staging?.references ?? [])];
-  const keys = new Set(references.map(instructionReferenceKey));
+  const keys = new Set(references.map(runReferenceKey));
   for (const reference of tokens.references)
-    if (!keys.has(instructionReferenceKey(reference))) references.push(reference);
+    if (!keys.has(runReferenceKey(reference))) references.push(reference);
   if (skills.length > MAX_RUN_SKILLS)
     throw new Error(`This command and your selection load more than ${MAX_RUN_SKILLS} skills.`);
   if (references.length > MAX_RUN_REFERENCES)

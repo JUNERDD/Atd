@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { cn } from '@ai/ui/lib/utils';
+import { cn } from '@atd/ui/lib/utils';
 import { Avatar as AvatarPrimitive } from 'radix-ui';
 
 function Avatar({

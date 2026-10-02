@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises';
 import { homedir, tmpdir } from 'node:os';
 import path from 'node:path';
 import { after, before, test } from 'node:test';
-import type { McpServerConfig } from '@ai/agent-contracts';
+import type { McpServerConfig } from '@atd/agent-contracts';
 import { McpError } from '../dist/mcp/errors.js';
 import {
   expandHome,

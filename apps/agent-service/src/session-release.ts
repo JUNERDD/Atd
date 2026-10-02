@@ -1,4 +1,4 @@
-import { errorMessage, isActiveStatus } from '@ai/agent-contracts';
+import { errorMessage, isActiveStatus } from '@atd/agent-contracts';
 import type { CapabilityRegistry } from './capabilities.js';
 import type { ConfirmStore } from './confirms.js';
 import type { Ledger } from './ledger.js';
@@ -114,8 +114,6 @@ export interface SessionReleaseDeps {
   runner: (taskId: string) => ReleasableRunner | undefined;
   /** Whether an execution of the run has not settled yet (runner-manager.ts `executions`). */
   executing: (runId: string) => boolean;
-  /** Runs once a release settles: runs that dispatch held back meanwhile start then. */
-  released: () => void;
 }
 
 /**
@@ -148,16 +146,10 @@ export class SessionReleases {
     this.timers.clear();
   }
 
-  /** Releases the task's live session now; runs held back meanwhile dispatch once it settles. */
+  /** Releases the task's live session now; a run started meanwhile reopens it once it settles. */
   async release(taskId: string): Promise<void> {
     this.cancel(taskId);
-    const runner = this.deps.runner(taskId);
-    if (!runner) return;
-    try {
-      await runner.release();
-    } finally {
-      this.deps.released();
-    }
+    await this.deps.runner(taskId)?.release();
   }
 
   private schedule(taskId: string): void {

@@ -1,6 +1,6 @@
 import { Blocks, Box, FolderSymlink, RefreshCw, Settings2, Trash2, UserRound } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import type { PluginSummary } from '@ai/agent-contracts';
+import type { PluginSummary } from '@atd/agent-contracts';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -10,8 +10,8 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '@ai/ui/components/alert-dialog';
-import { Badge } from '@ai/ui/components/badge';
+} from '@atd/ui/components/alert-dialog';
+import { Badge } from '@atd/ui/components/badge';
 import {
   Card,
   CardAction,
@@ -19,11 +19,11 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from '@ai/ui/components/card';
-import { DropdownMenuItem, DropdownMenuSeparator } from '@ai/ui/components/dropdown-menu';
-import { HighlightedText } from '@ai/ui/components/highlighted-text';
-import { ItemMedia } from '@ai/ui/components/item';
-import type { FieldsMatch } from '@ai/ui/lib/fuzzy-match';
+} from '@atd/ui/components/card';
+import { DropdownMenuItem, DropdownMenuSeparator } from '@atd/ui/components/dropdown-menu';
+import { HighlightedText } from '@atd/ui/components/highlighted-text';
+import { ItemMedia } from '@atd/ui/components/item';
+import type { FieldsMatch } from '@atd/ui/lib/fuzzy-match';
 import { ExtensionRowActions } from './extension-row';
 import { USER_PLUGIN_ID, pluginSourceBadge } from './plugin-rows';
 import { usePluginLabels } from './use-plugin-labels';
@@ -65,10 +65,10 @@ export function PluginBadges({ plugin }: { plugin: PluginSummary }) {
 /**
  * One plugin in the Extensions list, as a card: its icon and name (with the source and version of
  * an installed plugin) over the description, and what it contributes at the foot beside what
- * keeps it from working. The switch (a plugin that cannot be turned off keeps the column empty)
- * and More, when the plugin has Update, Configure or Uninstall, sit at the top right. A click
- * anywhere else on the card (and More › View details) opens the plugin's page; the open button
- * fills the card beneath its content, as on the shared rows (`.settings-open-row`).
+ * keeps it from working. The switch (unless the plugin cannot be turned off) and More, when the
+ * plugin has Update, Configure or Uninstall, sit at the top right. A click anywhere else on the
+ * card (and More › View details) opens the plugin's page; the open button fills the card beneath
+ * its content, as on the shared rows (`.settings-open-row`).
  */
 export function PluginCard({
   plugin,

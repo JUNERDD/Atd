@@ -1,5 +1,5 @@
 import { BlockList, isIP } from 'node:net';
-import type { McpServerConfig } from '@ai/agent-contracts';
+import type { McpServerConfig } from '@atd/agent-contracts';
 import {
   causeChain,
   causesOf,

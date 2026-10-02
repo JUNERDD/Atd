@@ -16,7 +16,6 @@ import Foundation
 /// - call ``resetForNewDocument()`` when the main frame commits a new document (navigation,
 ///   reload) and when the web content process terminates;
 /// - call ``invalidate()`` when the web view is torn down.
-@MainActor
 public final class VirtualSocketPipe {
   /// Far above the page's needs (one stream client per window), low enough to bound a page
   /// that opens sockets in a loop.
@@ -60,7 +59,7 @@ public final class VirtualSocketPipe {
     let socket = VirtualSocket()
     sockets[id] = socket
     let document = document
-    Task { @MainActor in
+    Task {
       let resolved = await link.endpoint()
       guard document == self.document, sockets[id] === socket else { return }
       guard case .success(let endpoint) = resolved else {
@@ -174,7 +173,6 @@ public final class VirtualSocketPipe {
   }
 }
 
-@MainActor
 private final class VirtualSocket {
   var upstream: ServiceWebSocket?
   var isOpen = false

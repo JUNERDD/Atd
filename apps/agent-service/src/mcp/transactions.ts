@@ -36,7 +36,7 @@ export class LateWritebackProhibited extends Error {
 
 interface QueueEntry<T> {
   op: (ctx: { signal: AbortSignal; generation: number }) => Promise<T>;
-  invocation?: AbortSignal;
+  invocation: AbortSignal | undefined;
   generation: number;
   resolve: (value: T) => void;
   reject: (error: Error) => void;
@@ -157,14 +157,14 @@ export class CredentialTransactions {
         next.reject(new TxnRevoked(identity));
         return;
       }
-      const combined = combine(state.lifecycle.signal, next.invocation);
+      // Either the lifecycle (revoke, close) or the caller ends the op.
+      const signal = next.invocation
+        ? AbortSignal.any([state.lifecycle.signal, next.invocation])
+        : state.lifecycle.signal;
       try {
-        const value = await next.op({ signal: combined.signal, generation: next.generation });
-        next.resolve(value);
+        next.resolve(await next.op({ signal, generation: next.generation }));
       } catch (error) {
         next.reject(error instanceof Error ? error : new Error(String(error)));
-      } finally {
-        combined.cleanup();
       }
     } finally {
       // Settle-then-release: the lock frees only after the op settles.
@@ -172,28 +172,4 @@ export class CredentialTransactions {
       if (state.queue.length) void this.drain(identity);
     }
   }
-}
-
-/** Combines lifecycle + invocation signals without AbortSignal.any. */
-function combine(
-  first: AbortSignal,
-  second?: AbortSignal,
-): { signal: AbortSignal; cleanup: () => void } {
-  const controller = new AbortController();
-  const propagate = () => {
-    if (!controller.signal.aborted) controller.abort(first.aborted ? first.reason : second?.reason);
-  };
-  if (first.aborted || second?.aborted) {
-    controller.abort(first.aborted ? first.reason : second?.reason);
-    return { signal: controller.signal, cleanup: () => undefined };
-  }
-  first.addEventListener('abort', propagate, { once: true });
-  second?.addEventListener('abort', propagate, { once: true });
-  return {
-    signal: controller.signal,
-    cleanup: () => {
-      first.removeEventListener('abort', propagate);
-      second?.removeEventListener('abort', propagate);
-    },
-  };
 }

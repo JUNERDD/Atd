@@ -7,7 +7,7 @@ import {
   type QueueState,
   type RunStatus,
   type TaskRun,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import {
   createCompactionState,
   compactRefused,
@@ -32,9 +32,10 @@ import {
   type SessionFactoryDeps,
 } from './pi-session.js';
 import { prepareRunBinding } from './run-binding.js';
+import { runPromptOptions, runPromptText } from './run-prompt.js';
 import { freezeRunSelections, releaseRunSelections } from './run-freeze.js';
 import type { LiveState } from './live-state.js';
-import { coldTaskView, lastAssistant, liveTaskView, type TaskView } from './task-view.js';
+import { lastAssistant } from './task-view.js';
 import { runSkillsError } from './skills/run-skills.js';
 import type { RuntimeAgent } from './subagents/agents.js';
 import {
@@ -119,10 +120,9 @@ export class TaskRunner {
     return this.slot.releasing;
   }
 
-  /** The task's transcript and context state, live or read from its session file. */
-  async view(): Promise<TaskView> {
-    const live = this.slot.live;
-    return live ? liveTaskView(live) : coldTaskView(this.ctx, this.taskId);
+  /** The live session; null while the task has none, when its views read the session file. */
+  liveState(): LiveState | null {
+    return this.slot.live;
   }
 
   isCompacting(): boolean {
@@ -209,7 +209,7 @@ export class TaskRunner {
       // and the skills themselves arrive in a hidden message (skills/session-skills.ts).
       // Memory tool writes and Hermes' review learners pass only inside the root memory scope.
       await this.memoryTurn(rootMemoryScope(this.taskId, run), () =>
-        live.session.prompt(promptText(run), { expandPromptTemplates: false }),
+        live.session.prompt(runPromptText(run), runPromptOptions(attachments)),
       );
       const last = lastAssistant(live.manager.getBranch());
       const failed = last?.stopReason === 'error';
@@ -329,8 +329,10 @@ export class TaskRunner {
 
   private async ensureSession(run: TaskRun, agents: RuntimeAgent[]): Promise<LiveState> {
     const binding = await prepareRunBinding(this.session, run, agents);
-    // An idle or tier-change release still shutting the session down ends before it reopens.
+    // An idle or tier-change release still shutting the session down ends before it reopens. A
+    // run stopped while it waited ends here, leaving the session untouched.
     await this.slot.settled();
+    if (this.aborted) throw new Error('The run stopped before its session opened.');
     const live = this.slot.live;
     if (live && (await applyRunToSession(live, run, binding))) {
       this.slot.rescope(rootMemoryScope(this.taskId, run));
@@ -342,8 +344,4 @@ export class TaskRunner {
     const opened = await createLiveState(this.session, run, binding);
     return this.slot.hold(opened, rootMemoryScope(this.taskId, run));
   }
-}
-
-function promptText(run: TaskRun): string {
-  return run.snapshot.input.text.trim() || run.snapshot.instructions || 'Use the attached context.';
 }

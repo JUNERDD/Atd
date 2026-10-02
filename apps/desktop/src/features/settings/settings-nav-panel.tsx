@@ -1,7 +1,7 @@
 import { useRef, type KeyboardEvent } from 'react';
 import { Search, SearchX } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Button } from '@ai/ui/components/button';
+import { Button } from '@atd/ui/components/button';
 import {
   Empty,
   EmptyContent,
@@ -9,10 +9,10 @@ import {
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
-} from '@ai/ui/components/empty';
-import { HighlightedText } from '@ai/ui/components/highlighted-text';
-import { ScrollArea } from '@ai/ui/components/scroll-area';
-import { isComposingKey, useCompositionQuery } from '@ai/ui/lib/ime';
+} from '@atd/ui/components/empty';
+import { HighlightedText } from '@atd/ui/components/highlighted-text';
+import { ScrollArea } from '@atd/ui/components/scroll-area';
+import { isComposingKey, useCompositionQuery } from '@atd/ui/lib/ime';
 import { revealSettingsAnchor } from './reveal-settings-anchor';
 import { SettingsSearchField } from './settings-search-field';
 import { settingsSections, type SettingsSectionId } from './settings-sections';

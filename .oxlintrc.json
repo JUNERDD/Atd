@@ -1,22 +1,48 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["typescript", "react", "jsx-a11y"],
+  "plugins": ["typescript", "react", "jsx-a11y", "unicorn", "oxc"],
   "jsPlugins": ["@shadcn/lint"],
-  "categories": { "correctness": "error" },
+  "categories": {
+    "correctness": "error"
+  },
   "rules": {
-    "react/only-export-components": ["error", { "allowConstantExport": true }],
+    "react/only-export-components": [
+      "error",
+      {
+        "allowConstantExport": true
+      }
+    ],
     "shadcn/no-raw-colors": "error",
-    "shadcn/no-arbitrary-values": ["error", { "allow": ["layout"] }],
+    "shadcn/no-arbitrary-values": [
+      "error",
+      {
+        "allow": ["layout"]
+      }
+    ],
     "shadcn/no-inline-styles": "error",
     "shadcn/require-static-classes": "error",
-    "shadcn/no-unknown-classes": "off"
+    "shadcn/no-unknown-classes": "off",
+    "react/rules-of-hooks": "error",
+    "typescript/switch-exhaustiveness-check": "error",
+    "typescript/no-misused-promises": "error",
+    "typescript/only-throw-error": "error"
   },
-  "env": { "browser": true, "node": true },
+  "env": {
+    "browser": true,
+    "node": true
+  },
   "overrides": [
     {
       "files": ["**/*.ts", "**/*.tsx"],
       "rules": {
-        "max-lines": ["error", { "max": 350, "skipBlankLines": false, "skipComments": false }]
+        "max-lines": [
+          "error",
+          {
+            "max": 350,
+            "skipBlankLines": false,
+            "skipComments": false
+          }
+        ]
       }
     },
     {
@@ -27,7 +53,7 @@
           {
             "patterns": [
               {
-                "group": ["@ai/*", "@earendil-works/*", "react", "react-dom"],
+                "group": ["@atd/*", "@earendil-works/*", "react", "react-dom"],
                 "message": "plugin-kit is host-agnostic and will be published on its own; take host behavior through a port."
               }
             ]
@@ -41,7 +67,16 @@
         "shadcn/no-arbitrary-values": "off",
         "shadcn/require-static-classes": "off"
       }
+    },
+    {
+      "files": ["**/test/**", "**/tests/**", "**/*.test.ts", "**/*.test.tsx"],
+      "rules": {
+        "typescript/no-floating-promises": "off"
+      }
     }
   ],
-  "ignorePatterns": ["**/dist/**", "**/.artifacts/**"]
+  "ignorePatterns": ["**/dist/**", "**/.artifacts/**"],
+  "options": {
+    "typeAware": true
+  }
 }

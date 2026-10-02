@@ -1,7 +1,7 @@
 import { Sparkles } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Button } from '@ai/ui/components/button';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@ai/ui/components/tooltip';
+import { Button } from '@atd/ui/components/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@atd/ui/components/tooltip';
 import { useMemoryCreate } from './use-memory-create';
 
 /**
@@ -26,7 +26,7 @@ export function MemoryCreateButton({
       aria-disabled={paused || undefined}
       className="aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
       onClick={() => {
-        if (!paused) void start(false);
+        if (!paused) start(false);
       }}
     >
       <Sparkles data-icon="inline-start" />

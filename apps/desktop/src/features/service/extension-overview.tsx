@@ -1,10 +1,10 @@
 import { useRef, useState, type ReactNode } from 'react';
 import { Blocks, PackagePlus, Search, Unplug } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import type { PluginSummary } from '@ai/agent-contracts';
-import { Button } from '@ai/ui/components/button';
-import { ScrollArea } from '@ai/ui/components/scroll-area';
-import type { useCompositionQuery } from '@ai/ui/lib/ime';
+import type { PluginSummary } from '@atd/agent-contracts';
+import { Button } from '@atd/ui/components/button';
+import { ScrollArea } from '@atd/ui/components/scroll-area';
+import type { useCompositionQuery } from '@atd/ui/lib/ime';
 import { showToast } from '../../components/toast-store';
 import { SettingsHeading } from '../settings/settings-heading';
 import { SettingsSearchField } from '../settings/settings-search-field';
@@ -81,9 +81,9 @@ export function ExtensionOverview({
   // The panel owns the scrollbar; the heading and search stay put above it.
   const scroll = (content: ReactNode) => (
     <ScrollArea
-      className="settings-extension-scroll flex-1"
+      className="settings-extension-scroll settings-page-scroll"
       viewportClassName="[&>div]:flex! [&>div]:flex-col [&>div]:min-h-full"
-      gutter="stable"
+      gutter="none"
       scrollShadow
     >
       <div className="settings-extension-list">{content}</div>
@@ -150,7 +150,7 @@ export function ExtensionOverview({
   const unlisted = plugins.error ? (
     <ExtensionLoadError
       message={t('extensions.plugins.loadFailed', { message: plugins.error })}
-      onRetry={() => void plugins.refresh()}
+      onRetry={() => plugins.refresh()}
     />
   ) : (
     <ExtensionGroup
@@ -223,13 +223,13 @@ export function ExtensionOverview({
             {mcp.mcp?.approvalNotice ? (
               <McpApprovalNotice
                 disabled={!connected}
-                onDismiss={() => void mcp.dismissApprovalNotice()}
+                onDismiss={() => mcp.dismissApprovalNotice()}
               />
             ) : null}
             {list.length && plugins.error ? (
               <ExtensionLoadError
                 message={t('extensions.plugins.loadFailed', { message: plugins.error })}
-                onRetry={() => void plugins.refresh()}
+                onRetry={() => plugins.refresh()}
               />
             ) : null}
             {!list.length ? unlisted : searching ? results : sections}
@@ -249,7 +249,6 @@ export function ExtensionOverview({
               kind: 'info',
               text: t('extensions.plugins.uninstalled', { name: labels.name(target) }),
             });
-            extensions.refreshAll();
           });
         }}
       />

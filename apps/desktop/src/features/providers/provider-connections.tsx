@@ -1,6 +1,6 @@
 import { Check, Ellipsis, RefreshCw, Settings2, Unplug } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { HighlightedText } from '@ai/ui/components/highlighted-text';
+import { HighlightedText } from '@atd/ui/components/highlighted-text';
 import {
   Item,
   ItemActions,
@@ -8,15 +8,15 @@ import {
   ItemDescription,
   ItemGroup,
   ItemTitle,
-} from '@ai/ui/components/item';
-import type { MatchRange } from '@ai/ui/lib/fuzzy-match';
+} from '@atd/ui/components/item';
+import type { MatchRange } from '@atd/ui/lib/fuzzy-match';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@ai/ui/components/dropdown-menu';
+} from '@atd/ui/components/dropdown-menu';
 import type { Connection } from '../../client/providers/schema';
 import { IconButton } from '../../components/icon-button';
 import { ModelConfigPopover } from './model-config-popover';
@@ -25,7 +25,7 @@ import { ProviderBrand } from './provider-brand';
 /** One overview row: a connection and where the overview search matched its name. */
 interface ConnectionRow {
   connection: Connection;
-  nameRanges?: readonly MatchRange[];
+  nameRanges?: readonly MatchRange[] | undefined;
 }
 
 /**

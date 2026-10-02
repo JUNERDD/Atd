@@ -1,3 +1,4 @@
+import type { McpServerExposure } from '@atd/agent-contracts';
 import { readFlag, readKeys, readObject, readString, readStrings } from './wire-read';
 
 /**
@@ -42,6 +43,17 @@ export interface ExtensionMcpConfig {
   /** OAuth overrides; empty when the defaults apply. */
   oauthScope: string;
   redirectUri: string;
+  /** The pre-registered OAuth client; empty (null for the port) when the service registers one. */
+  clientId: string;
+  clientName: string;
+  callbackPort: number | null;
+  authServerMetadataUrl: string;
+  /** A client secret is stored; its value never reaches the page. */
+  clientSecretSet: boolean;
+  /** How the server's tools reach the model; `auto` also for a record that predates the field. */
+  exposure: McpServerExposure;
+  /** Whether the model may list and read the server's resources. */
+  exposeResources: boolean;
 }
 
 /** The `skillsGet` answer; null when the skill left the catalog or its record is unreadable. */
@@ -65,6 +77,16 @@ export function asSkillDetail(value: {
     files: readStrings(value, 'files'),
     truncated: readFlag(value, 'truncated'),
   };
+}
+
+function asMcpExposure(value: string): McpServerExposure {
+  return value === 'direct' || value === 'deferred' ? value : 'auto';
+}
+
+function asPort(value: unknown): number | null {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= 65535
+    ? value
+    : null;
 }
 
 function asMcpTransport(value: string): ExtensionMcpTransport | null {
@@ -93,5 +115,12 @@ export function asMcpConfig(value: unknown): ExtensionMcpConfig | null {
     tokenEnv: readString(authRecord, 'tokenEnv'),
     oauthScope: readString(authRecord, 'scope'),
     redirectUri: readString(authRecord, 'redirectUri'),
+    clientId: readString(authRecord, 'clientId'),
+    clientName: readString(authRecord, 'clientName'),
+    callbackPort: asPort(readObject(authRecord, 'callbackPort')),
+    authServerMetadataUrl: readString(authRecord, 'authServerMetadataUrl'),
+    clientSecretSet: readFlag(readObject(authRecord, 'clientSecret'), 'set'),
+    exposure: asMcpExposure(readString(value, 'exposure')),
+    exposeResources: readFlag(value, 'exposeResources'),
   };
 }

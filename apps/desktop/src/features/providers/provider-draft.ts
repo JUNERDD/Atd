@@ -22,7 +22,7 @@ export function draftFrom(connection: Connection): ConnectionDraft {
     baseUrl,
     authType,
     defaultModel,
-    defaultThinkingLevel,
+    ...(defaultThinkingLevel === undefined ? {} : { defaultThinkingLevel }),
     options,
     customModels,
   };

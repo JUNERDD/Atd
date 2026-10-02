@@ -22,6 +22,8 @@ export function problemText(problem: CommandProblem, t: TFunction<'commands'>): 
       return t('validation.selectionDisabled');
     case 'clipboardDisabled':
       return t('validation.clipboardDisabled');
+    case 'filesDisabled':
+      return t('validation.filesDisabled');
     case 'textNotAccepted':
       return t('validation.textNotAccepted');
     case 'duplicateKey':

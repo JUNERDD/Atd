@@ -1,15 +1,17 @@
 import { useRef, useState, type ReactElement, type Ref } from 'react';
-import { PopoverAnchor } from '@ai/ui/components/popover';
+import { PopoverAnchor } from '@atd/ui/components/popover';
 import type { RunPolicy } from '../../client/agent/run-policy';
 import type { AgentTask } from '../../client/agent/task-schema';
 import type { Connection, ModelReference } from '../../client/providers/schema';
 import type { CompactBlock } from '../agent/compaction/compact-availability';
+import { useAgent } from '../agent/use-agent';
 import type { ComposerEditorCommands } from '../composer-editor/editor-commands';
 import type { QuickCommandActions } from './quick-commands';
 import { QuickPanelSurface } from './quick-panel-surface';
 import type { TriggerState } from './trigger';
 import { useMentionView } from './use-mention-view';
 import { isQuickPanelOpen, type QuickPanelAria, type QuickPanelHandle } from './use-quick-panel';
+import { useMemoryList } from './use-saved-groups';
 import { useServiceLists } from './use-service-lists';
 import { useSlashView } from './use-slash-view';
 
@@ -28,7 +30,7 @@ export interface QuickPanelProps {
   onPolicyChange: (policy: RunPolicy) => void;
   connections: Connection[];
   model: ModelReference | null;
-  /** `draft.files` plus file chips, against the 10-file limit. */
+  /** Files the draft's file chips send, against the 10-file limit. */
   attachmentCount: number;
   /** Why the open task cannot be compacted now (`/compact`); null when it can. */
   compact: CompactBlock | null;
@@ -82,6 +84,8 @@ export function QuickPanel({
     agents: open && mention !== null,
     mcp: open && mention !== null,
   });
+  const { snapshot } = useAgent();
+  const memories = useMemoryList(open && mention !== null);
   const slashView = useSlashView({
     trigger: slash,
     running,
@@ -104,6 +108,8 @@ export function QuickPanel({
     attachmentCount,
     agents: lists.agents,
     mcp: lists.mcp,
+    commands: snapshot?.commands ?? [],
+    memories,
     files: true,
   });
   const view = slash ? slashView : mentionView;

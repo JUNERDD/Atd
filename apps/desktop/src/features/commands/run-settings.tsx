@@ -1,14 +1,14 @@
 import { useTranslation } from 'react-i18next';
-import { Label } from '@ai/ui/components/label';
+import { Label } from '@atd/ui/components/label';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@ai/ui/components/select';
-import { Card } from '@ai/ui/components/card';
-import { ItemGroup } from '@ai/ui/components/item';
+} from '@atd/ui/components/select';
+import { Card } from '@atd/ui/components/card';
+import { ItemGroup } from '@atd/ui/components/item';
 import { ModelConfigPopover } from '../providers/model-config-popover';
 import { SettingsSwitchRow } from '../settings/settings-switch-row';
 import { TOOL_DESCRIPTIONS, type CommandDefinition } from '../../client/agent/command-schema';

@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { ChevronDown, ChevronUp, Pencil, Plus, Trash2 } from 'lucide-react';
-import { Button } from '@ai/ui/components/button';
+import { Button } from '@atd/ui/components/button';
 import type { Parameter } from '../../client/agent/command-schema';
 import { FieldHint } from '../../components/field-hint';
 import { IconButton } from '../../components/icon-button';

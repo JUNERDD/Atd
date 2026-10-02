@@ -2,5 +2,17 @@
   "$schema": "./node_modules/oxfmt/configuration_schema.json",
   "semi": true,
   "singleQuote": true,
-  "ignorePatterns": ["pnpm-lock.yaml", "**/dist/**", "**/.artifacts/**"]
+  "ignorePatterns": ["pnpm-lock.yaml", "**/dist/**", "**/.artifacts/**"],
+  "sortTailwindcss": {
+    "stylesheet": "packages/ui/src/styles.css",
+    "functions": ["cn", "cva"]
+  },
+  "overrides": [
+    {
+      "files": ["packages/ui/src/components/**"],
+      "options": {
+        "sortTailwindcss": false
+      }
+    }
+  ]
 }

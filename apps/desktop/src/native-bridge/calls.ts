@@ -4,7 +4,7 @@
  * file with Node's type stripping, so it imports nothing but TypeBox and uses only erasable
  * TypeScript syntax.
  */
-import { Type, type TSchema } from 'typebox';
+import { Type, type Static, type TSchema } from 'typebox';
 
 /** A call or post without params, or a result without a value. */
 export const Empty = Type.Object({}, { additionalProperties: false });
@@ -27,12 +27,13 @@ const Resources = Type.Object(
   { additionalProperties: false },
 );
 
-/** The id of the panel toggle registration; every other shortcut registration is a command id. */
+/** Reserved registration ids: the panel toggle and the screenshot; others are command ids. */
 export const PANEL_SHORTCUT_ID = 'togglePanel';
+export const SCREENSHOT_SHORTCUT_ID = 'captureScreenshot';
 
 export const ShortcutRegistrationSchema = Type.Object(
   {
-    /** `togglePanel`, or the id of the command the shortcut launches. */
+    /** `togglePanel`, `captureScreenshot`, or the id of the command the shortcut launches. */
     id: Type.String({ minLength: 1, maxLength: 128, pattern: '^[a-zA-Z0-9_-]+$' }),
     /** Electron accelerator grammar (`CommandOrControl+Shift+Space`), converted by Swift. */
     accelerator: Type.String({ minLength: 1, maxLength: 100 }),
@@ -84,10 +85,52 @@ const ApprovalRequestResultSchema = Type.Union([
   ),
 ]);
 
+/** What `screenshot.capture` and `screenshot.edit` answer. */
+const ScreenshotResultSchema = Type.Union([
+  Type.Object(
+    {
+      ok: Type.Literal(true),
+      file: NativeFileRefSchema,
+      context: Type.Union([NativeFileRefSchema, Type.Null()]),
+      capturedAt: Type.String({ maxLength: 64 }),
+    },
+    { additionalProperties: false },
+  ),
+  Type.Object(
+    {
+      ok: Type.Literal(false),
+      reason: Type.Union([Type.Literal('cancelled'), Type.Literal('notPermitted')]),
+    },
+    { additionalProperties: false },
+  ),
+]);
+
 /** Input text limit shared with clipboard capture and the service's command input. */
 export const MAX_CAPTURE_LENGTH = 100000;
 /** Longest text `share.text` and `speech.speak` take, the same bound as `clipboard.write`. */
 const MAX_NATIVE_TEXT_LENGTH = 1000000;
+
+/** Longest base64 PNG `files.save` takes: 16 MiB of image, four characters per three bytes. */
+export const MAX_SAVE_PNG_BASE64_LENGTH = Math.ceil((16 * 1024 * 1024) / 3) * 4;
+
+/**
+ * What `files.save` writes: text as UTF-8 (code, Markdown, SVG, a diagram's source), or a PNG as
+ * base64. The file name carries the type for text; Swift checks a PNG's signature.
+ */
+export const SaveContentSchema = Type.Union([
+  Type.Object(
+    { type: Type.Literal('text'), text: Text(MAX_NATIVE_TEXT_LENGTH) },
+    { additionalProperties: false },
+  ),
+  Type.Object(
+    {
+      type: Type.Literal('png'),
+      base64: Type.String({ minLength: 1, maxLength: MAX_SAVE_PNG_BASE64_LENGTH }),
+    },
+    { additionalProperties: false },
+  ),
+]);
+export type SaveContent = Static<typeof SaveContentSchema>;
 
 /**
  * A rectangle in CSS pixels from the web view's top-left corner (what `getBoundingClientRect()`
@@ -199,6 +242,30 @@ export const NativeCalls = {
     result: Empty,
   },
   /**
+   * Lets the user capture an area, a window or the screen on the native capture overlay (element
+   * detection, annotation), with the panel out of the way, and imports the image through
+   * `/v1/resources/import`. The panel's visibility is restored afterwards. `context` is a Markdown
+   * attachment imported beside the image (app and window, the picked interface element,
+   * recognised text), or null when there is nothing to say. `notPermitted`: Screen Recording is
+   * not granted (Swift asks once per launch); `cancelled`: the user dismissed the capture. An
+   * import the service refuses rejects with its message.
+   */
+  'screenshot.capture': { params: Empty, result: ScreenshotResultSchema },
+  /**
+   * Opens an image attachment (`resourceId`, an image resource) on the capture overlay for more
+   * annotation and cropping, and imports the result as a new resource; the original is left as it
+   * is. A capture taken during this app run reopens with its annotations still editable; any other
+   * image is annotated on top of its pixels. `context` is always null (the caller keeps any context
+   * it had); `cancelled` leaves the attachment unchanged.
+   */
+  'screenshot.edit': {
+    params: Type.Object(
+      { resourceId: Type.String({ minLength: 1, maxLength: 128, pattern: '^[a-zA-Z0-9_-]+$' }) },
+      { additionalProperties: false },
+    ),
+    result: ScreenshotResultSchema,
+  },
+  /**
    * Shows the system share picker for `text`, anchored to `anchor` in the window the call came
    * from. Resolves as soon as the picker is shown; whether the user picks a service or dismisses
    * it is not reported. Rejects when the text is blank or the web view is not in a window.
@@ -252,10 +319,14 @@ export const NativeCalls = {
   },
   /** Open panel for attachments, imported through `/v1/resources/import`; `[]` when cancelled. */
   'files.pick': { params: Empty, result: Resources },
-  /** Save panel for a service resource; `saved` is false when cancelled. */
+  /**
+   * Save panel offering `content` under the suggested `name` (its basename, with `.png` for a PNG);
+   * `saved` is false when the user cancelled or another save panel is open. A content Swift
+   * refuses or a failed write rejects with a message in the shell's language.
+   */
   'files.save': {
     params: Type.Object(
-      { resourceId: Type.String({ minLength: 1, maxLength: 128 }), name: Text(255) },
+      { name: Type.String({ minLength: 1, maxLength: 255 }), content: SaveContentSchema },
       { additionalProperties: false },
     ),
     result: Type.Object({ saved: Type.Boolean() }, { additionalProperties: false }),

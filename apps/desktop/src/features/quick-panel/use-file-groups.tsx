@@ -2,14 +2,15 @@ import { useState } from 'react';
 import {
   FileBraces,
   FileCode,
+  FileImage,
   FileText,
   FolderOpen,
   Paperclip,
   type LucideIcon,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { matchFields } from '@ai/ui/lib/fuzzy-match';
-import type { FileSearchResult } from '@ai/agent-contracts';
+import { matchFields } from '@atd/ui/lib/fuzzy-match';
+import type { FileSearchResult } from '@atd/agent-contracts';
 import type { AgentTask, FileRef } from '../../client/agent/task-schema';
 import { showErrorToast } from '../../components/toast-store';
 import { fileSize } from '../../lib/file-size';
@@ -19,13 +20,14 @@ import type { QuickGroup, QuickOption } from './quick-options';
 import { relativeTime } from './relative-time';
 import { useFileSearch } from './use-file-search';
 
-/** Run input limit (`InputSchema.files`), counted over the attachment row and file chips together. */
+/** Run input limit (`InputSchema.files`), counted over the draft's file chips. */
 const ATTACHMENT_LIMIT = 10;
 const RECENT_ATTACHED_LIMIT = 3;
 const KIND_ICONS: Record<FileSearchResult['kind'], LucideIcon> = {
   text: FileText,
   code: FileCode,
   data: FileBraces,
+  image: FileImage,
 };
 /** Main names iCloud Drive results from their own root; every other location is home-relative. */
 const ICLOUD = 'iCloud Drive';
@@ -97,19 +99,18 @@ export function useFileGroups({
   const full = attachmentCount >= ATTACHMENT_LIMIT;
   const limitReason = t('quickPanel.files.limit');
 
-  async function pick(id: string, load: () => Promise<FileRef[]>) {
+  /** Inserts the files a row loads; one pick runs at a time, and a failure shows its toast. */
+  function pick(id: string, load: () => Promise<FileRef[]>) {
     if (busy !== null) return;
     setBusy(id);
-    try {
-      const files = await load();
-      if (attachmentCount + files.length > ATTACHMENT_LIMIT)
-        throw new Error(t('composer.attachLimit'));
-      if (files.length) editor.insertChips(files.map((file) => ({ kind: 'file', file })));
-    } catch (error) {
-      showErrorToast(error);
-    } finally {
-      setBusy(null);
-    }
+    void load()
+      .then((files) => {
+        if (attachmentCount + files.length > ATTACHMENT_LIMIT)
+          throw new Error(t('composer.attachLimit'));
+        if (files.length) editor.insertChips(files.map((file) => ({ kind: 'file', file })));
+      })
+      .catch(showErrorToast)
+      .then(() => setBusy(null));
   }
 
   const attached = query
@@ -159,7 +160,7 @@ export function useFileGroups({
                   ? undefined
                   : relativeTime(at, language),
             disabled: full || !result.attachable,
-            select: () => void pick(result.resultId, () => search.attach([result.resultId])),
+            select: () => pick(result.resultId, () => search.attach([result.resultId])),
           };
         });
   // Without the desktop bridge nothing here works, so there is no reason worth showing.
@@ -173,7 +174,7 @@ export function useFileGroups({
     title: t('quickPanel.files.browse'),
     description: full ? limitReason : (searchOff ?? t('quickPanel.files.browseDescription')),
     disabled: full,
-    select: () => void pick('browse', () => agentApi().chooseFiles()),
+    select: () => pick('browse', () => agentApi().chooseFiles()),
   };
   return {
     lists: [

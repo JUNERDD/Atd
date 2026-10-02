@@ -1,4 +1,5 @@
-import type { McpApprovalRequestResult } from '@ai/agent-contracts';
+import { downloadResource } from '@atd/agent-client';
+import type { McpApprovalRequestResult } from '@atd/agent-contracts';
 import { AgentRequests } from '../client/agent/agent-requests';
 import { parseExtensionSession, type ExtensionSession } from '../client/agent/bridge';
 import {
@@ -10,6 +11,7 @@ import type { DesktopBridge } from '../client/contract';
 import { createServiceBridge } from '../client/service/bridge-client';
 import { handleExtensionRequest } from '../client/service/extension-requests';
 import type { ServiceEvent } from '../client/service/ipc';
+import { publishFileDrag } from '../lib/file-drag';
 import { publishImportedFiles } from '../lib/imported-files';
 import type { NativeBridge } from '../native-bridge/client';
 import { setReducedTransparency, setWindowActive, setWindowVisible } from '../window-state';
@@ -19,10 +21,11 @@ import { NativeConnection } from './native-connection';
 import { nativeFiles } from './native-files';
 import { nativePlatform } from './native-platform';
 import { nativeSettings } from './native-settings';
-import { followShortcutState, nativeShortcuts } from './native-shortcuts';
+import { followShortcutState, nativeShortcuts, type GlobalShortcutState } from './native-shortcuts';
 import { nativeSocketTransport } from './socket-transport';
 import { windowMessages } from './window-messages';
 import { nativeSpeech } from './native-speech';
+import { nativeUpdate } from './native-update';
 
 /**
  * The page's origin, the base of every relayed request: `ai-app://renderer`. WebKit may report a
@@ -38,13 +41,16 @@ function pageOrigin(): string {
  * request handling, task cache and provider client (`src/client`), reaching the service through
  * the shell's relay: HTTP as same-origin fetches the scheme handler forwards, the
  * stream over virtual sockets. Host abilities go through native calls. Only the panel owns the
- * global shortcuts, the language push, file search and the files the shell imports from drops and
- * pastes; each window publishes its own drag regions and runs the menu's Undo/Redo.
+ * global shortcuts (the screenshot one included), the language push, file search and the files the
+ * shell imports from drops and pastes; each window publishes its own drag regions and runs the
+ * menu's Undo/Redo.
  */
 export async function installNativeHost(
   native: NativeBridge,
   surface: 'panel' | 'settings',
 ): Promise<void> {
+  // Before the first await: the shell replays `update.state` as soon as the page is ready.
+  const update = surface === 'panel' ? nativeUpdate(native) : undefined;
   const connection = new NativeConnection({
     baseUrl: pageOrigin(),
     relay: true,
@@ -82,23 +88,20 @@ export async function installNativeHost(
     {
       emit: (event) => emit('changed', event),
       defaultConnectionId: () => settings.providers.overlay()?.defaultConnectionId ?? null,
-      defaultModel: () => {
-        const live = settings.providers.overlay();
-        const id = live?.defaultConnectionId;
-        const model = live?.connections.find((item) => item.connectionId === id)?.defaultModel;
-        return id && model ? { connectionId: id, modelId: model } : undefined;
-      },
     },
     (_page, event) => emit('changed', event),
   );
-  const shortcutsApplied = (shortcutAvailable: boolean) => {
-    settings.setShell({ shortcutAvailable });
+  const shortcutsApplied = ({ panelAvailable, screenshotAvailable }: GlobalShortcutState) => {
+    settings.setShell({
+      shortcutAvailable: panelAvailable,
+      screenshotShortcutAvailable: screenshotAvailable,
+    });
     requests.broadcast();
   };
   const shortcuts =
     surface === 'panel'
       ? nativeShortcuts(native, commands, messages, {
-          panelShortcut: () => (settings.loaded() ? latest.shortcuts.togglePanel : null),
+          appShortcuts: () => (settings.loaded() ? latest.shortcuts : null),
           applied: shortcutsApplied,
           launch: (prepared, autoRun) => emit('launch', { prepared, autoRun }),
         })
@@ -119,7 +122,11 @@ export async function installNativeHost(
   connection.onInvalidate((frame) => void requests.onInvalidate(frame));
   connection.onConnected(() => void commands.refreshFromService().catch(() => undefined));
   messages.listen((message) => {
-    if (message.type === 'commandSession') {
+    if (message.type === 'launchCommand') {
+      void requests.handle(message.request, 'page').catch((error: unknown) => {
+        console.error('The command launched from settings could not open:', error);
+      });
+    } else if (message.type === 'commandSession') {
       const name = commands.list().find((item) => item.id === message.commandId)?.name ?? '';
       emit('session', { commandId: message.commandId, name });
       void native.call('window.show', {});
@@ -149,10 +156,12 @@ export async function installNativeHost(
   native.on('window.active', ({ active }) => setWindowActive(active));
   native.on('window.visibility', ({ visible }) => setWindowVisible(visible));
   native.on('accessibility.reduceTransparency', ({ reduce }) => setReducedTransparency(reduce));
-  if (surface === 'panel')
+  if (surface === 'panel') {
     native.on('resources.imported', ({ resources, failures }) =>
       publishImportedFiles({ files: resources, failures }),
     );
+    native.on('files.drag', publishFileDrag);
+  }
   publishDragRegions(native, document.getElementById('root') ?? document.body);
   connection.connect();
   // The service may still be starting: its data follows the stream, and the shell's preferences
@@ -165,24 +174,31 @@ export async function installNativeHost(
     platform: 'darwin',
     settings: settings.bridge,
     ...(surface === 'panel' ? { files: nativeFiles(connection) } : {}),
-    agent: createAgentBridge((request) => requests.handle(request, 'page'), listen),
+    ...(update ? { update } : {}),
+    agent: createAgentBridge(async (request) => {
+      // Only the panel receives `launch` events, so the settings window hands its launches over.
+      if (surface === 'settings' && request.action === 'launch') {
+        messages.post({ type: 'launchCommand', request });
+        return null;
+      }
+      return requests.handle(request, 'page');
+    }, listen),
     service: createServiceBridge(
       async (request) => {
-        switch (request.action) {
-          case 'status':
-            return connection.status();
-          case 'connect':
-          case 'disconnect':
-          case 'startLocal':
-            throw new Error('The app starts and connects the service on its own.');
-          default:
-            return handleExtensionRequest(connection.options(), request, {
-              openExternal: openLink,
-              // Swift shows what would run and approves it itself; the page names the server only.
-              requestMcpApproval: (serverId): Promise<McpApprovalRequestResult> =>
-                native.call('approval.request', { kind: 'mcpServer', serverId }),
-            });
-        }
+        if (request.action === 'status') return connection.status();
+        if (
+          request.action === 'connect' ||
+          request.action === 'disconnect' ||
+          request.action === 'startLocal'
+        )
+          throw new Error('The app starts and connects the service on its own.');
+        // Every other action is an extension request.
+        return handleExtensionRequest(connection.options(), request, {
+          openExternal: openLink,
+          // Swift shows what would run and approves it itself; the page names the server only.
+          requestMcpApproval: (serverId): Promise<McpApprovalRequestResult> =>
+            native.call('approval.request', { kind: 'mcpServer', serverId }),
+        });
       },
       (listener) => {
         serviceListeners.add(listener);
@@ -213,9 +229,19 @@ export async function installNativeHost(
     },
     // Attachments go through the agent bridge (`chooseFiles` → `files.pick`).
     chooseFiles: async () => [],
+    screenshot: () => commands.screenshot(),
+    editScreenshot: (resourceId) => commands.editScreenshot(resourceId),
+    resource: async (resourceId) => {
+      const { bytes, mime } = await downloadResource(connection.options(), resourceId);
+      // The client types the bytes over any buffer; a Blob takes an ArrayBuffer-backed copy.
+      return new Blob([bytes.slice()], { type: mime });
+    },
     share: async (text, anchor) => void (await native.call('share.text', { text, anchor })),
     speech: nativeSpeech(native),
     onEditCommand: (listener) => native.on('edit.command', ({ command }) => listener(command)),
+    ...(surface === 'panel'
+      ? { onScreenshotShortcut: (listener) => native.on('shortcut.screenshot', () => listener()) }
+      : {}),
   };
   window.desktop = bridge;
 }

@@ -1,6 +1,6 @@
 import { useCallback, useEffect } from 'react';
 import { useRecordHotkeys } from 'react-hotkeys-hook';
-import { isComposingKey } from '@ai/ui/lib/ime';
+import { isComposingKey } from '@atd/ui/lib/ime';
 
 /** The existing recorder owns key collection; this adapter handles native focus and IME boundaries. */
 export function useShortcutCapture() {

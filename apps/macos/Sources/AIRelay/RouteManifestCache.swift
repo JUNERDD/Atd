@@ -6,7 +6,6 @@ import Foundation
 /// for a fetch in flight up to ``RelayPolicy/manifestWait`` and then answer 503. A manifest that
 /// cannot be fetched, decoded or compiled denies everything (fail closed): no stale or partial
 /// allow-list is ever used.
-@MainActor
 final class RouteManifestCache {
   typealias Fetch = @MainActor (ServiceEndpoint) async throws -> RouteManifest
 
@@ -54,7 +53,7 @@ final class RouteManifestCache {
   private func load(_ endpoint: ServiceEndpoint) {
     loading = true
     let generation = generation
-    Task { @MainActor in
+    Task {
       var compiled: RouteMatcher?
       do {
         compiled = try RouteMatcher(manifest: try await fetch(endpoint))

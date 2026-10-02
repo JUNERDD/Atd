@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { ChevronRight } from 'lucide-react';
-import { cn } from '@ai/ui/lib/utils';
+import { cn } from '@atd/ui/lib/utils';
 import { agentApi } from '../../../use-agent';
 import { showErrorToast } from '../../../../../components/toast-store';
 import type { JsonNodeType, JsonRenderNode } from '../_types/node';
@@ -11,7 +11,7 @@ interface NodeProps {
   value: unknown;
   depth: number;
   defaultExpandedDepth: number;
-  renderNode?: (node: JsonRenderNode) => ReactNode;
+  renderNode?: ((node: JsonRenderNode) => ReactNode) | undefined;
 }
 
 function nodeTypeOf(value: unknown): JsonNodeType {
@@ -58,7 +58,7 @@ export function Node({ nodeKey, value, depth, defaultExpandedDepth, renderNode }
         {nodeKey === null ? null : (
           <span className="shrink-0 text-muted-foreground">{formatKey(nodeKey)}:</span>
         )}
-        <span className={cn(typeof value === 'string' && 'whitespace-pre-wrap wrap-anywhere')}>
+        <span className={cn(typeof value === 'string' && 'wrap-anywhere whitespace-pre-wrap')}>
           {formatLeaf(value)}
         </span>
       </div>

@@ -1,11 +1,11 @@
 'use client';
 
 import * as React from 'react';
-import { cn } from '@ai/ui/lib/utils';
-import { ignoreComposingEscape } from '@ai/ui/lib/ime';
+import { cn } from '@atd/ui/lib/utils';
+import { ignoreComposingEscape } from '@atd/ui/lib/ime';
 import { Dialog as DialogPrimitive } from 'radix-ui';
 
-import { Button } from '@ai/ui/components/button';
+import { Button } from '@atd/ui/components/button';
 import { XIcon } from 'lucide-react';
 
 function Dialog({ ...props }: React.ComponentProps<typeof DialogPrimitive.Root>) {

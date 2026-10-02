@@ -1,17 +1,24 @@
+import type { McpServerExposure } from '@atd/agent-contracts';
+import type { McpUpsertInput } from '../../client/service/ipc';
 import type { ExtensionMcpConfig, ExtensionMcpTransport } from './extension-detail-rows';
+import {
+  EMPTY_OAUTH_CLIENT,
+  oauthClientFromConfig,
+  toOAuthClientDraft,
+  validateOAuthClient,
+  type McpOAuthClientField,
+  type McpOAuthClientFields,
+  type McpOAuthClientProblem,
+} from './extension-mcp-oauth-draft';
 
 export type McpTransport = ExtensionMcpTransport;
 export type McpAuthKind = 'none' | 'bearer' | 'oauth';
 
-/** What `mcpUpsert` accepts: main replaces the record's transport, command or URL, and auth. */
-export type McpUpsertInput = {
-  serverId: string;
-  transport: McpTransport;
-  command?: string;
-  args?: string[];
-  url?: string;
-  auth: { type: 'none' } | { type: 'bearer'; tokenEnv: string } | { type: 'oauth' };
-};
+/**
+ * What `mcpUpsert` accepts: main replaces the record's transport, command or URL, auth (with the
+ * OAuth client), tool exposure and resource access.
+ */
+export type { McpUpsertInput };
 
 /**
  * The MCP page's form state. Arguments are edited one per line, so an argument may contain
@@ -25,10 +32,18 @@ export type McpDraft = {
   url: string;
   authKind: McpAuthKind;
   tokenEnv: string;
-};
+  exposure: McpServerExposure;
+  exposeResources: boolean;
+} & McpOAuthClientFields;
 
 /** The fields a problem can point at; each maps to one form control. */
-export type McpDraftField = 'serverId' | 'command' | 'args' | 'url' | 'tokenEnv';
+export type McpDraftField =
+  | 'serverId'
+  | 'command'
+  | 'args'
+  | 'url'
+  | 'tokenEnv'
+  | McpOAuthClientField;
 
 /** Client-side problems, named after their `extensions.mcpPage.errors.*` copy. */
 export type McpDraftProblem =
@@ -42,7 +57,8 @@ export type McpDraftProblem =
   | 'urlKeepsCredentials'
   | 'commandKeepsEnv'
   | 'tokenEnvRequired'
-  | 'tokenEnvInvalid';
+  | 'tokenEnvInvalid'
+  | McpOAuthClientProblem;
 
 export type McpDraftProblems = Partial<Record<McpDraftField, McpDraftProblem>>;
 
@@ -54,6 +70,9 @@ export const EMPTY_MCP_DRAFT: McpDraft = {
   url: '',
   authKind: 'none',
   tokenEnv: '',
+  exposure: 'auto',
+  exposeResources: false,
+  ...EMPTY_OAUTH_CLIENT,
 };
 
 /** Whether two drafts hold the same values, as an unchanged form does. */
@@ -77,6 +96,9 @@ export function draftFromConfig(config: ExtensionMcpConfig): McpDraft {
     url: config.url,
     authKind: config.auth ?? 'none',
     tokenEnv: config.tokenEnv,
+    exposure: config.exposure,
+    exposeResources: config.exposeResources,
+    ...oauthClientFromConfig(config),
   };
 }
 
@@ -143,12 +165,20 @@ export function validateDraft(
     if (!tokenEnv) problems.tokenEnv = 'tokenEnvRequired';
     else if (!ENV_NAME.test(tokenEnv)) problems.tokenEnv = 'tokenEnvInvalid';
   }
+  if (draft.authKind === 'oauth') {
+    const sameOrigin = saved !== null && originOf(url) === originOf(saved.url);
+    Object.assign(problems, validateOAuthClient(draft, saved, sameOrigin));
+  }
   return problems;
 }
 
-/** The upsert for a valid draft; stdio carries no auth, since only HTTP records keep one. */
+/**
+ * The upsert for a valid draft; stdio carries no auth, since only HTTP records keep one. OAuth
+ * always sends its client, so emptied fields clear the stored ones.
+ */
 export function toUpsertInput(draft: McpDraft): McpUpsertInput {
   const serverId = draft.serverId.trim();
+  const access = { exposure: draft.exposure, exposeResources: draft.exposeResources };
   if (draft.transport === 'stdio') {
     return {
       serverId,
@@ -156,11 +186,14 @@ export function toUpsertInput(draft: McpDraft): McpUpsertInput {
       command: draft.command.trim(),
       args: parseArgs(draft.argsText),
       auth: { type: 'none' },
+      ...access,
     };
   }
   const auth: McpUpsertInput['auth'] =
     draft.authKind === 'bearer'
       ? { type: 'bearer', tokenEnv: draft.tokenEnv.trim() }
-      : { type: draft.authKind };
-  return { serverId, transport: draft.transport, url: draft.url.trim(), auth };
+      : draft.authKind === 'oauth'
+        ? { type: 'oauth', client: toOAuthClientDraft(draft) }
+        : { type: 'none' };
+  return { serverId, transport: draft.transport, url: draft.url.trim(), auth, ...access };
 }

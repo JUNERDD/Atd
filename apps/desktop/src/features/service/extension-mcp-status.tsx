@@ -1,6 +1,6 @@
 import { CircleAlert, KeyRound, PlugZap, ShieldCheck, ShieldOff } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Button } from '@ai/ui/components/button';
+import { Button } from '@atd/ui/components/button';
 import {
   ExtensionDetailFields,
   ExtensionDetailSection,
@@ -151,12 +151,12 @@ export function McpStatusSection({
         </p>
       ) : null}
       {showReview ? (
-        <p className="text-muted-foreground text-xs">
+        <p className="text-xs text-muted-foreground">
           {canReview ? t('extensions.mcpApproval.reviewNote') : t('extensions.mcpApproval.noHost')}
         </p>
       ) : null}
       {showAuth ? (
-        <p className="text-muted-foreground text-xs">{t('extensions.mcpPage.authCodeNote')}</p>
+        <p className="text-xs text-muted-foreground">{t('extensions.mcpPage.authCodeNote')}</p>
       ) : null}
     </ExtensionDetailSection>
   );

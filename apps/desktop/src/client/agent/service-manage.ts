@@ -10,7 +10,7 @@ import {
   replaceQueue,
   updateMemory,
   type AgentClientOptions,
-} from '@ai/agent-client';
+} from '@atd/agent-client';
 import {
   CompactRefusalSchema,
   snapshotToolsFor,
@@ -19,7 +19,7 @@ import {
   type ForkTaskResponse,
   type PreviewTaskRequest,
   type ServiceRunPolicy,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import { Value } from 'typebox/value';
 import type { MemoryEntry, MemorySnapshot } from './bridge';
 import type { RunPolicy } from './run-policy';
@@ -38,12 +38,10 @@ export function manageError(error: unknown): never {
   throw error instanceof Error ? error : new Error('The service request failed.');
 }
 
-export function mapRunPolicy(policy: RunPolicy | null | undefined): ServiceRunPolicy | undefined {
-  if (!policy) return undefined;
+export function mapRunPolicy(policy: RunPolicy): ServiceRunPolicy {
   return {
     tools: snapshotToolsFor(policy.tools),
     memory: policy.memory,
-    useDefaultModel: policy.useDefaultModel,
     confirmExpansion: policy.confirmExpansion,
     ...(policy.model ? { model: policy.model } : {}),
     ...(policy.thinkingLevel ? { thinkingLevel: policy.thinkingLevel } : {}),

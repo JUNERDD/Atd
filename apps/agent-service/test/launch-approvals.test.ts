@@ -7,7 +7,7 @@ import {
   McpLaunchApproveResponseSchema,
   parse,
   type McpServerUpsertRequest,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import { approveMcp } from '../dist/cli-approve.js';
 import { configureMcp } from '../dist/configure-mcp-tool.js';
 import { LAUNCH_APPROVAL_KEY_ACCOUNT } from '../dist/credentials/keyring.js';

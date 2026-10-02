@@ -13,7 +13,7 @@ import {
   type StatusFrame,
   type SummariesFrame,
   type TaskSnapshot,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import { Value } from 'typebox/value';
 import type { CapabilityRegistry } from './capabilities.js';
 import type { EventLog } from './event-log.js';

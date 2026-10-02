@@ -5,8 +5,8 @@ import {
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
-} from '@ai/ui/components/empty';
-import { Spinner } from '@ai/ui/components/spinner';
+} from '@atd/ui/components/empty';
+import { Spinner } from '@atd/ui/components/spinner';
 
 /**
  * Fills the whole panel, header included, while the service starts. The surface drags the window

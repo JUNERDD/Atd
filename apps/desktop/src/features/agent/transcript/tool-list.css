@@ -1,0 +1,265 @@
+/*
+ * Content of the lookup-family tool cards (`search-*.tsx`, `web-*.tsx`, `generic-body.tsx`): lists
+ * of files, matches, and web sources inside a `ToolCard` body. Hierarchy comes from weight and the
+ * foreground/muted pair; the one accent is the match highlight, which is a fill, not a text color.
+ */
+.tool-list-plain {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--muted-foreground);
+}
+.tool-list-empty {
+  margin: 0;
+  color: var(--muted-foreground);
+}
+
+/*
+ * A file or folder row: glyph, name (hugs, truncates last), folder (fills and truncates; it also
+ * pushes a trailing count to the edge when empty), count.
+ */
+.tool-list-paths {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.tool-list-row {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+}
+.tool-list-glyph {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  color: var(--muted-foreground);
+}
+.tool-list-name {
+  min-width: 0;
+  flex: 0 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--foreground);
+}
+.tool-list-dir {
+  min-width: 0;
+  flex: 1 1 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted-foreground);
+}
+/* A directory's trailing slash: kept as text so the kind never rests on the glyph alone. */
+.tool-list-slash {
+  color: var(--muted-foreground);
+}
+.tool-list-count {
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted-foreground);
+}
+
+/*
+ * grep: one two-column grid for the whole card, so every file's line numbers share one
+ * right-aligned gutter; file groups, their line lists, and lines are subgrids of it.
+ */
+.tool-grep {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  column-gap: 10px;
+  row-gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.tool-grep-file,
+.tool-grep-lines,
+.tool-grep-line {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+}
+.tool-grep-file > .tool-list-row {
+  grid-column: 1 / -1;
+  margin-bottom: 2px;
+}
+.tool-grep-file .tool-list-name {
+  font-weight: 500;
+}
+.tool-grep-lines {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+/* Context mode skipped lines between two blocks here. */
+.tool-grep-line[data-gap] {
+  margin-top: 6px;
+}
+.tool-grep-gutter {
+  min-width: 2ch;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted-foreground);
+  user-select: none;
+}
+.tool-grep-text {
+  min-width: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--foreground);
+}
+.tool-grep-line[data-match='false'] .tool-grep-text {
+  color: var(--muted-foreground);
+}
+/* The searched pattern: a tinted fill plus weight, so the mark never rests on hue alone. */
+.tool-grep-mark {
+  border-radius: 3px;
+  background: color-mix(in oklab, var(--ata-syntax-variable) 26%, transparent);
+  color: inherit;
+  font-weight: 600;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+/* Web sources: a 16px host monogram beside the title, host, and the source's own text. */
+.web-sources {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.web-source {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  column-gap: 8px;
+}
+.web-source-mark {
+  display: flex;
+  width: 16px;
+  height: 16px;
+  margin-top: 1px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  background: color-mix(in oklab, var(--foreground) 8%, transparent);
+  color: var(--muted-foreground);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+}
+.web-source-main {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+.web-source-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+  color: var(--foreground);
+  text-decoration: none;
+  text-underline-offset: 3px;
+}
+.web-source-title:hover {
+  text-decoration: underline;
+}
+.web-source-title:focus-visible {
+  border-radius: 2px;
+  outline: 2px solid var(--ring);
+  outline-offset: 1px;
+}
+.web-source-host {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted-foreground);
+}
+.web-source-snippet,
+.web-source-excerpt {
+  display: -webkit-box;
+  min-width: 0;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  color: var(--muted-foreground);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.web-source-snippet {
+  margin: 2px 0 0;
+}
+/* A fetched page's excerpt: three lines under a light quote rule on the leading edge. */
+.web-source-excerpt {
+  margin: 4px 0 0;
+  padding-inline-start: 8px;
+  border-inline-start: 2px solid var(--border);
+  -webkit-line-clamp: 3;
+}
+.web-source-error {
+  display: flex;
+  margin: 2px 0 0;
+  align-items: center;
+  gap: 4px;
+  color: var(--destructive);
+}
+.web-source-error > svg {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+}
+/* Several queries of one search, as quiet monospace chips above the results. */
+.web-queries {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 0 0 10px;
+  padding: 0;
+  list-style: none;
+}
+.web-query {
+  max-width: 100%;
+  overflow: hidden;
+  padding: 0 6px;
+  border-radius: 6px;
+  background: color-mix(in oklab, var(--foreground) 6%, transparent);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--foreground);
+}
+
+/* Generic calls: the arguments and the result as two labeled sections of one card. */
+.generic-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.generic-section {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+.generic-section-label {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+  color: var(--muted-foreground);
+}
+.generic-section-content {
+  min-width: 0;
+}
+/* Output that is not JSON is the tool's own words: secondary content, like shell output. */
+.generic-section-content > pre {
+  color: var(--muted-foreground);
+}

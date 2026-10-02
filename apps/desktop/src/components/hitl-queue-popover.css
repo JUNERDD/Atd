@@ -68,9 +68,9 @@
   flex-direction: column;
 }
 
-.approval-detail > .tool-output {
+/* The detail box caps itself at 160px (`size="sm"`); a short detail still keeps a usable floor. */
+.approval-detail .tool-card-body {
   min-height: 96px;
-  max-height: 160px;
 }
 
 .hitl-region {

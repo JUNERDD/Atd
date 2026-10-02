@@ -1,4 +1,4 @@
-import type { ConfirmReview, McpConnectionState, McpServerConfig } from '@ai/agent-contracts';
+import type { ConfirmReview, McpConnectionState, McpServerConfig } from '@atd/agent-contracts';
 import { McpAuthRequiredError, McpHttpError, McpSessionExpiredError } from '@earendil-works/pi-mcp';
 import { McpOAuthAuthorizationRequiredError } from '@earendil-works/pi-mcp/oauth';
 import type { Logger } from '../logging.js';

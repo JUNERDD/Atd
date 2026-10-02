@@ -6,8 +6,9 @@ import Testing
 @testable import AIRelay
 
 /// Supervises a fake bundled "node": a shell script that publishes an endpoint for its own pid
-/// and exits on SIGTERM. Its port has no listener, so the shutdown request fails at once and the
-/// supervisor falls back to SIGTERM. Everything lives in a temporary directory.
+/// and, by default, clears it and exits on SIGTERM. Its port has no listener, so the shutdown
+/// request fails at once and the supervisor falls back to SIGTERM. Everything lives in a
+/// temporary directory.
 @Suite("Service supervisor", .serialized)
 @MainActor
 struct ServiceSupervisorTests {
@@ -16,7 +17,10 @@ struct ServiceSupervisorTests {
 
   private var data: URL { root.appending(path: "data", directoryHint: .isDirectory) }
 
-  private func makeSupervisor() throws -> ServiceSupervisor {
+  /// `onTerm` is the fake's SIGTERM trap, run with `dir` (the data directory) and `end` set.
+  private func makeSupervisor(
+    onTerm: String = #"rm -f "$dir/endpoint.json"; exit 0"#
+  ) throws -> ServiceSupervisor {
     let resources = root.appending(path: "Resources", directoryHint: .isDirectory)
     let bin = resources.appending(path: "node/bin", directoryHint: .isDirectory)
     try FileManager.default.createDirectory(at: bin, withIntermediateDirectories: true)
@@ -35,7 +39,7 @@ struct ServiceSupervisorTests {
       printf '{"version":1,"serviceId":"fake","protocolVersion":"1","epoch":1,"host":"127.0.0.1","port":\(port),"url":"http://127.0.0.1:\(port)","pid":%s,"startedAt":"x","buildId":"b0"}' $$ > "$dir/endpoint.json.tmp"
       mv "$dir/endpoint.json.tmp" "$dir/endpoint.json"
       echo "fake service $$ up"
-      trap 'rm -f "$dir/endpoint.json"; exit 0' TERM
+      trap '\(onTerm)' TERM
       # Never outlive a failed test by more than 30 s.
       end=$(( $(date +%s) + 30 ))
       while [ "$(date +%s)" -lt "$end" ]; do sleep 0.05; done
@@ -107,6 +111,25 @@ struct ServiceSupervisorTests {
     #expect(supervisor.state == .unavailable(.stopped))
     #expect(!isProcessAlive(fourth))
     #expect(!FileManager.default.fileExists(atPath: data.appending(path: "endpoint.json").path))
+  }
+
+  @Test("Kills a service whose process outlives its finished stop")
+  func stuckExit() async throws {
+    defer { try? FileManager.default.removeItem(at: root) }
+    // What a libuv pool thread stuck in a blocking call does to Node: the stop finishes and
+    // clears the endpoint, but the exit never completes and SIGTERM goes unanswered.
+    let supervisor = try makeSupervisor(
+      onTerm:
+        #"rm -f "$dir/endpoint.json"; while [ "$(date +%s)" -lt "$end" ]; do sleep 0.05; done"#
+    )
+    await supervisor.start()
+    let pid = try #require(runningPid(supervisor))
+    defer { kill(pid, SIGKILL) }
+    let started = ContinuousClock.now
+    await supervisor.stop()
+    #expect(!isProcessAlive(pid))
+    // Killed after the exit grace that follows the cleared endpoint, not the graceful budget.
+    #expect(ContinuousClock.now - started < ServiceStopper.gracefulStop / 2)
   }
 
   @Test("Shows a failed first start instead of retrying it")

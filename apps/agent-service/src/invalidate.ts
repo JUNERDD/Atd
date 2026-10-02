@@ -1,5 +1,5 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
-import type { InvalidateFrame, InvalidateScope } from '@ai/agent-contracts';
+import type { InvalidateFrame, InvalidateScope } from '@atd/agent-contracts';
 
 /**
  * Successful writes that change shared data, by route prefix. Staging routes, tool and resource

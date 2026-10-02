@@ -1,28 +1,29 @@
-import { readFile } from 'node:fs/promises';
-import { Type, type Static } from 'typebox';
-import {
-  errorMessage,
-  McpHttpSchema,
-  McpServerConfigSchema,
-  McpStdioSchema,
-  parse,
-  type McpServerConfig,
-} from '@ai/agent-contracts';
-import { atomicWrite } from '../config.js';
-import {
-  KeyringBackend,
-  keyringMcpAccount,
-  keyringMcpSecretAccount,
-} from '../credentials/keyring.js';
+import { errorMessage, type McpHttpAuth, type McpServerConfig } from '@atd/agent-contracts';
+import { KeyringBackend, keyringMcpAccount } from '../credentials/keyring.js';
 import type { Logger } from '../logging.js';
 import { McpError } from './errors.js';
-import { announceMcpChanged } from './changes.js';
-import { credentialIdentity, parseServerConfigs, serversFile } from './servers.js';
+import {
+  clientSecretAccount,
+  KEYRING_REF,
+  readStoredServers,
+  secretAccount,
+  writeStoredServers,
+  type SecretKind,
+  type StoredAuth,
+  type StoredServer,
+  type StoredValue,
+  type StoredValues,
+} from './server-file.js';
+import { credentialIdentity, parseServerConfigs } from './servers.js';
+
+/** Plugin listings read the stored servers without touching the keyring (plugins/host-plugins.ts). */
+export { readStoredServers, secretAccount, type StoredServer } from './server-file.js';
 
 /**
  * The user's MCP servers at rest. `servers.json` keeps each server with the NAMES of its stdio env
- * and HTTP header entries; the OS keyring keeps their values, one account per entry
- * (`mcp:<serverKey>:env:<NAME>`, `mcp:<serverKey>:header:<Name>`, credentials/keyring.ts). The
+ * and HTTP header entries (server-file.ts); the OS keyring keeps their values, one account per
+ * entry (`mcp:<serverKey>:env:<NAME>`, `mcp:<serverKey>:header:<Name>`, credentials/keyring.ts),
+ * and an OAuth client secret under `mcp:<serverKey>:oauth-client-secret`. The
  * server key derives from the service, the server id and its principal, none of which an edit can
  * change, so an entry keeps its account until its name or server goes away. A value stays in plain
  * text only where no keyring could take it (secrets-migration.ts). Loading hydrates full records,
@@ -37,79 +38,17 @@ import { credentialIdentity, parseServerConfigs, serversFile } from './servers.j
  *   warning; a keyring that cannot be read at all fails the load and changes nothing.
  */
 
-/** Marks an env or header value the keyring holds. */
-const KeyringRefSchema = Type.Object(
-  { keyring: Type.Literal(true) },
-  { additionalProperties: false },
-);
-export const KEYRING_REF: Static<typeof KeyringRefSchema> = { keyring: true };
-
-const StoredValuesSchema = Type.Record(
-  Type.String(),
-  Type.Union([Type.String({ maxLength: 8192 }), KeyringRefSchema]),
-);
-export type StoredValues = Static<typeof StoredValuesSchema>;
-
-const StoredServerSchema = Type.Object(
-  {
-    ...McpServerConfigSchema.properties,
-    stdio: Type.Union([
-      Type.Object(
-        { ...McpStdioSchema.properties, env: StoredValuesSchema },
-        { additionalProperties: false },
-      ),
-      Type.Null(),
-    ]),
-    http: Type.Union([
-      Type.Object(
-        { ...McpHttpSchema.properties, headers: StoredValuesSchema },
-        { additionalProperties: false },
-      ),
-      Type.Null(),
-    ]),
-  },
-  { additionalProperties: false },
-);
-/** A server as `servers.json` stores it: each env and header value in plain text or a keyring ref. */
-export type StoredServer = Static<typeof StoredServerSchema>;
-
-const ServerFileSchema = Type.Object(
-  { version: Type.Literal(1), servers: Type.Array(StoredServerSchema) },
-  { additionalProperties: false },
-);
-
-export type SecretKind = 'env' | 'header';
-
-/** The keyring account of one env or header entry of a server. */
-export function secretAccount(
-  serviceId: string,
-  server: Pick<McpServerConfig, 'serverId' | 'principal'>,
-  kind: SecretKind,
-  name: string,
-): string {
-  return keyringMcpSecretAccount(credentialIdentity(serviceId, server), kind, name);
-}
-
-/** The stored servers without touching the keyring: names, never values, for listings. */
-export async function readStoredServers(dataDir: string): Promise<StoredServer[]> {
-  try {
-    const raw = JSON.parse(await readFile(serversFile(dataDir), 'utf8')) as unknown;
-    return parse(ServerFileSchema, raw).servers;
-  } catch (error) {
-    if (error instanceof Error && 'code' in error && error.code === 'ENOENT') return [];
-    throw new Error('Saved MCP servers could not be read. The file is preserved.');
-  }
-}
-
-export async function writeStoredServers(dataDir: string, servers: StoredServer[]): Promise<void> {
-  await atomicWrite(serversFile(dataDir), { version: 1, servers });
-  announceMcpChanged(dataDir);
-}
-
 /** A keyring value a failed save changed, and what it held before (undefined: nothing). */
 interface Written {
   account: string;
   before: string | undefined;
+}
+
+/** What one save has written, named and left in plain text so far. */
+interface SaveState {
+  written: Written[];
+  named: Set<string>;
+  plain: Map<string, string>;
 }
 
 export class McpServerStore {
@@ -152,28 +91,43 @@ export class McpServerStore {
 
   private async hydrate(server: StoredServer): Promise<McpServerConfig> {
     const missing: string[] = [];
+    const value = async (account: string, stored: StoredValue, label: string) => {
+      if (typeof stored === 'string') {
+        this.plain.set(account, stored);
+        return stored;
+      }
+      const held = await this.read(account);
+      if (held === undefined) missing.push(label);
+      else this.held.set(account, held);
+      return held;
+    };
     const values = async (kind: SecretKind, stored: StoredValues) => {
       const out: Record<string, string> = {};
-      for (const [name, value] of Object.entries(stored)) {
+      for (const [name, entry] of Object.entries(stored)) {
         const account = secretAccount(this.serviceId, server, kind, name);
-        if (typeof value === 'string') {
-          this.plain.set(account, value);
-          out[name] = value;
-          continue;
-        }
-        const held = await this.read(account);
-        if (held === undefined) missing.push(`${kind}:${name}`);
-        else {
-          this.held.set(account, held);
-          out[name] = held;
-        }
+        const held = await value(account, entry, `${kind}:${name}`);
+        if (held !== undefined) out[name] = held;
       }
       return out;
     };
+    const auth = async (stored: StoredAuth): Promise<McpHttpAuth> => {
+      if (stored.type !== 'oauth') return stored;
+      const { clientSecret, ...rest } = stored;
+      if (clientSecret === undefined) return rest;
+      const account = clientSecretAccount(this.serviceId, server);
+      const held = await value(account, clientSecret, 'oauth:clientSecret');
+      return held === undefined ? rest : { ...rest, clientSecret: held };
+    };
+    const { stdio, http } = server;
     const record: McpServerConfig = {
       ...server,
-      stdio: server.stdio && { ...server.stdio, env: await values('env', server.stdio.env) },
-      http: server.http && { ...server.http, headers: await values('header', server.http.headers) },
+      exposure: server.exposure ?? 'auto',
+      stdio: stdio && { ...stdio, env: await values('env', stdio.env) },
+      http: http && {
+        ...http,
+        headers: await values('header', http.headers),
+        auth: await auth(http.auth),
+      },
     };
     if (!missing.length) return record;
     this.log.warn(
@@ -212,14 +166,17 @@ export class McpServerStore {
     try {
       const servers: StoredServer[] = [];
       for (const record of next) {
+        const save = { written, named, plain };
         const stash = (kind: SecretKind, values: Record<string, string>) =>
-          this.stash(record, kind, values, { written, named, plain });
+          this.stash(record, kind, values, save);
+        const { stdio, http } = record;
         servers.push({
           ...record,
-          stdio: record.stdio && { ...record.stdio, env: await stash('env', record.stdio.env) },
-          http: record.http && {
-            ...record.http,
-            headers: await stash('header', record.http.headers),
+          stdio: stdio && { ...stdio, env: await stash('env', stdio.env) },
+          http: http && {
+            ...http,
+            headers: await stash('header', http.headers),
+            auth: await this.stashAuth(record, http.auth, save),
           },
         });
       }
@@ -233,41 +190,73 @@ export class McpServerStore {
     this.remember(next);
   }
 
-  /** One env or header map as stored: unchanged plain values stay, everything else is written. */
+  /** One env or header map as stored (see `stashValue`). */
   private async stash(
     server: Pick<McpServerConfig, 'serverId' | 'principal'>,
     kind: SecretKind,
     values: Record<string, string>,
-    save: { written: Written[]; named: Set<string>; plain: Map<string, string> },
+    save: SaveState,
   ): Promise<StoredValues> {
-    const { serverId } = server;
+    const what = kind === 'env' ? 'environment variable' : 'header';
     const stored: StoredValues = {};
     for (const [name, value] of Object.entries(values)) {
       const account = secretAccount(this.serviceId, server, kind, name);
-      const before = this.held.get(account);
-      if (before !== value && this.plain.get(account) === value) {
-        // The startup migration moves it once a keyring is there; a save never has to.
-        save.plain.set(account, value);
-        stored[name] = value;
-        continue;
-      }
-      if (before !== value) {
-        try {
-          await this.keyring.set(account, value);
-        } catch (error) {
-          throw new McpError(
-            'internal',
-            serverId,
-            `MCP server ${serverId} was not saved: its ${kind === 'env' ? 'environment variable' : 'header'} "${name}" could not be stored in the OS keyring (${errorMessage(error)}).`,
-          );
-        }
-        save.written.push({ account, before });
-        this.held.set(account, value);
-      }
-      save.named.add(account);
-      stored[name] = KEYRING_REF;
+      stored[name] = await this.stashValue(
+        server.serverId,
+        account,
+        value,
+        `${what} "${name}"`,
+        save,
+      );
     }
     return stored;
+  }
+
+  /** The auth as stored: an OAuth client secret goes to the keyring like a header value. */
+  private async stashAuth(
+    server: Pick<McpServerConfig, 'serverId' | 'principal'>,
+    auth: McpHttpAuth,
+    save: SaveState,
+  ): Promise<StoredAuth> {
+    if (auth.type !== 'oauth' || auth.clientSecret === undefined) return auth;
+    const account = clientSecretAccount(this.serviceId, server);
+    const { serverId } = server;
+    const what = 'OAuth client secret';
+    return {
+      ...auth,
+      clientSecret: await this.stashValue(serverId, account, auth.clientSecret, what, save),
+    };
+  }
+
+  /** One value as stored: an unchanged plain value stays, everything else is written. */
+  private async stashValue(
+    serverId: string,
+    account: string,
+    value: string,
+    what: string,
+    save: SaveState,
+  ): Promise<StoredValue> {
+    const before = this.held.get(account);
+    if (before !== value && this.plain.get(account) === value) {
+      // The startup migration moves it once a keyring is there; a save never has to.
+      save.plain.set(account, value);
+      return value;
+    }
+    if (before !== value) {
+      try {
+        await this.keyring.set(account, value);
+      } catch (error) {
+        throw new McpError(
+          'internal',
+          serverId,
+          `MCP server ${serverId} was not saved: its ${what} could not be stored in the OS keyring (${errorMessage(error)}).`,
+        );
+      }
+      save.written.push({ account, before });
+      this.held.set(account, value);
+    }
+    save.named.add(account);
+    return KEYRING_REF;
   }
 
   /** Puts back what a failed save wrote; a value that cannot be put back is no longer trusted. */

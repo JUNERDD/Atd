@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import type { MatchRange } from '@ai/ui/lib/fuzzy-match';
+import type { MatchRange } from '@atd/ui/lib/fuzzy-match';
 
 /** One selectable row of the quick panel; every source maps its candidates to this shape. */
 export interface QuickOption {
@@ -7,20 +7,20 @@ export interface QuickOption {
   value: string;
   icon: ReactNode;
   title: string;
-  description?: string;
+  description?: string | undefined;
   /**
    * Query matches to emphasize. Views match their visible text as the `title` and `description`
    * fields, so a match object fits here as is; other fields (command keywords) match unmarked.
    */
-  ranges?: { title?: readonly MatchRange[]; description?: readonly MatchRange[] };
+  ranges?: { title?: readonly MatchRange[]; description?: readonly MatchRange[] } | undefined;
   /** Trailing muted text, such as a state or a relative time. */
-  status?: string;
+  status?: string | undefined;
   /** Greyed rows stay visible with their reason but are skipped by keyboard and pointer. */
-  disabled?: boolean;
+  disabled?: boolean | undefined;
   /** The current choice in a drill list (model, effort). */
-  checked?: boolean;
+  checked?: boolean | undefined;
   /** 0–1 relevance to the query (`FieldsMatch.score`); absent without a query. */
-  score?: number;
+  score?: number | undefined;
   /** Runs for a click, Enter, or Tab alike. */
   select: () => void;
 }
@@ -29,12 +29,12 @@ export interface QuickOption {
 export interface QuickGroup {
   id: string;
   /** Omitted for the trailing "Browse files…" row, which ends the list without a heading. */
-  heading?: string;
+  heading?: string | undefined;
   /** Query matches in the heading, when the options also match on it (a model's connection). */
-  headingRanges?: readonly MatchRange[];
+  headingRanges?: readonly MatchRange[] | undefined;
   options: QuickOption[];
   /** A remark above the options, such as incomplete file results. */
-  notice?: string;
+  notice?: string | undefined;
 }
 
 /** Groups for one panel view, plus the line shown when no group with a heading has options. */

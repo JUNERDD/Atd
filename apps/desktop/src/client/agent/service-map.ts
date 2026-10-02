@@ -11,7 +11,7 @@ import {
   type TaskSummary as ServiceSummary,
   type MessageUsage,
   type ToolBlockDetails,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import type { ToolId } from './command-schema';
 import type { AgentTask, FileRef, RunSnapshot, TaskInput, TaskRun } from './task-schema';
 import type { PermissionRequest } from './permission-schema';

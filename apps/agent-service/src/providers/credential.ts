@@ -4,7 +4,7 @@ import {
   ProviderCredentialSchema,
   type ProviderConnectRequest,
   type ProviderConnectResponse,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import { ConnectionStore } from '../credentials/connections.js';
 import { KeyringBackend, keyringAccount } from '../credentials/keyring.js';
 import { ServiceCredentialStore } from '../credentials/service-store.js';
@@ -74,7 +74,7 @@ export async function modelCheck(
     if (!models.getProvider(connection.provider))
       models.registerProvider(connection.provider, {
         api: 'openai-completions',
-        baseUrl: connection.baseUrl || undefined,
+        ...(connection.baseUrl ? { baseUrl: connection.baseUrl } : {}),
         models: [],
       });
     const ok = await models.checkAuth(connection.provider);

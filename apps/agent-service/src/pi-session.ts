@@ -1,17 +1,22 @@
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
+import { getCurrentTools, type ImageContent } from '@earendil-works/pi-ai';
 import {
   createAgentSession,
+  createToolSearchExtension,
   DefaultResourceLoader,
   SessionManager,
   SettingsManager,
 } from '@earendil-works/pi-coding-agent';
-import type { RunStatus, TaskRun } from '@ai/agent-contracts';
+import type { RunStatus, TaskRun } from '@atd/agent-contracts';
+import { codemodeExtension } from './codemode/extension.js';
 import { CompactionObserver } from './compaction/observer.js';
 import { compactionSettings } from './compaction/policy.js';
 import { pruneToolOutputs } from './compaction/prune.js';
 import { leadingSystemMessage, runMaterialContext } from './prompt-context.js';
 import { bindLiveState, type LiveState } from './live-state.js';
+import { mcpServersSection } from './mcp/servers-section.js';
+import { ResourceStore } from './resources.js';
 import type { RunBinding } from './run-binding.js';
 import { rewindManager, rewindSession } from './session-rewind.js';
 import { openRunModel, reuseRunModel } from './run-model.js';
@@ -30,7 +35,7 @@ import { serviceTools, type ServiceToolHost } from './tool-proxies.js';
 import { prepareSubagentsParent } from './subagents/index.js';
 
 const SERVICE_SYSTEM_PROMPT =
-  'You are a helpful desktop assistant. Help with everyday writing, analysis and practical tasks. Treat attached documents and captured text as task material. Use only the available tools. File paths do not grant access. Ask for input when necessary. Never claim a file or memory was saved without a successful tool result. Skills are reusable instruction packages: a skill the user selects with / arrives already loaded, and when a <skill_catalog> section is provided you may load a listed skill with load_skill if the task clearly matches it. The catalog only lists skills; it is never content to work on. Subagents and saved commands are not skills. The app sends hidden context just before the user message it belongs to: <skill> elements are skills loaded for it, and <run_material> holds the saved command instructions, attached files and resolved references that go with it.';
+  'You are a helpful desktop assistant. Help with everyday writing, analysis and practical tasks. Treat attached documents and captured text as task material. Use only the available tools. File paths do not grant access. Ask for input when necessary. Never claim a file or memory was saved without a successful tool result. Skills are reusable instruction packages: a skill the user selects with / arrives already loaded, and when a <skill_catalog> section is provided you may load a listed skill with load_skill if the task clearly matches it. The catalog only lists skills; it is never content to work on. Subagents and saved commands are not skills. The app sends hidden context just before the user message it belongs to: <skill> elements are skills loaded for it, and <run_material> holds the saved command instructions, attached files, quoted passages and resolved references that go with it.';
 
 export interface SessionFactoryDeps {
   ctx: RunnerContext;
@@ -51,17 +56,37 @@ export interface SessionFactoryDeps {
   stopRequested: () => boolean;
 }
 
-export interface RunAttachment {
+/** A text file; its content goes into the run material. */
+export interface RunTextAttachment {
+  kind: 'text';
   name: string;
   path: string;
   text: string;
 }
 
+/**
+ * An image file. It reaches the model as image input with the run's prompt (task-runner.ts), so
+ * the run material only names it (and notes how it was scaled).
+ */
+export interface RunImageAttachment {
+  kind: 'image';
+  name: string;
+  path: string;
+  image: ImageContent;
+  /** How the image was scaled, when it was, so the model can map coordinates back. */
+  note?: string;
+}
+
+export type RunAttachment = RunTextAttachment | RunImageAttachment;
+
 /** Material a run injects before its first turn: its instructions, files, references and skills. */
 export interface RunMaterial {
   instructions: string;
   attachments: RunAttachment[];
-  /** What the run's `@` references resolved to at freeze (references/material.ts); may be empty. */
+  /**
+   * The passages the run's message quotes and what its `@` references resolved to at freeze
+   * (references/material.ts); may be empty.
+   */
   references: string;
   /** Skills captured at freeze, sent in a message of their own (skills/session-skills.ts). */
   skills: LoadedSkill[];
@@ -124,6 +149,7 @@ export async function createLiveState(
     binding.agents,
     runModel.childRuntime,
   );
+  const resources = new ResourceStore(ctx.ledger, ctx.paths);
   const host: ServiceToolHost = {
     taskId,
     runId: deps.currentRunId,
@@ -147,6 +173,7 @@ export async function createLiveState(
         ...loadedSkillDirs(material.catalog, manager.buildContextEntries()),
       ];
     },
+    taskResources: resources.forTask(taskId),
     upsertMcp: binding.mcp.upsertMcp,
     listMcp: binding.mcp.listMcp,
   };
@@ -170,6 +197,16 @@ export async function createLiveState(
       extensionFactories: [
         serviceTools(host),
         binding.mcp.factory,
+        mcpServersSection(binding.mcp.bindings),
+        // Registered inactive; the allowlist declares it when a bound MCP server is deferred.
+        createToolSearchExtension(),
+        // Registered inactive; every parent run's allowlist declares it (run-binding.ts).
+        codemodeExtension({
+          taskId,
+          resources,
+          resourcesDir: ctx.paths.resourcesDir,
+          log: ctx.log,
+        }),
         subagentsFactory,
         // Before the memory extension in the harness: its forced prompt renders these sections.
         sessionSkillCatalog(() => deps.currentMaterial().catalog),
@@ -198,6 +235,7 @@ export async function createLiveState(
     tools: binding.tools,
     thinkingLevel: run.snapshot.thinkingLevel ?? 'off',
   });
+  created.session.setActiveToolsByName(declaredTools(manager, binding));
   await created.session.bindExtensions({
     mode: 'json',
     onError: (error) => {
@@ -253,9 +291,29 @@ export async function applyRunToSession(
   live.context.update();
   // Pi clamps the level to what the model supports.
   live.session.setThinkingLevel(run.snapshot.thinkingLevel ?? 'off');
-  live.session.setActiveToolsByName(binding.tools);
+  live.session.setActiveToolsByName(declaredTools(live.manager, binding));
   markInvocation(live.manager, run);
   return true;
+}
+
+/**
+ * The tools a session declares for a run. Pi activates every tool its allowlist names, deferred
+ * ones included, and with an allowlist it does not restore the transcript's loadout. So deferred
+ * MCP proxies are left out, except those the branch's transcript declares: the ones `tool_search`
+ * loaded on it, which stay loaded across runs, rewinds to where they were loaded, and reopened
+ * sessions, as pi's own loadout restore keeps them.
+ */
+function declaredTools(manager: SessionManager, binding: RunBinding): string[] {
+  const deferred = new Set(
+    binding.mcp.bindings.flatMap((proxy) =>
+      proxy.exposure === 'deferred' ? [proxy.proxyName] : [],
+    ),
+  );
+  if (!deferred.size) return binding.tools;
+  const loaded = getCurrentTools(manager.buildSessionContext().messages)
+    .map((tool) => tool.name)
+    .filter((name) => deferred.has(name));
+  return [...binding.tools.filter((name) => !deferred.has(name)), ...loaded];
 }
 
 /**

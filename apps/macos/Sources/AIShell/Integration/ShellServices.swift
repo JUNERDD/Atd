@@ -17,7 +17,6 @@ public enum WebViewRole: String, Sendable {
 ///
 /// `AI_AGENT_DATA_DIR` overrides the data directory in both; in Debug `AI_RENDERER_DEV_ORIGIN`
 /// overrides the dev server origin (`http://127.0.0.1:5173`), for isolated runs.
-@MainActor
 public final class ShellServices {
   public static let devOriginVariable = "AI_RENDERER_DEV_ORIGIN"
   public static let defaultDevOrigin = "http://127.0.0.1:5173"
@@ -112,8 +111,8 @@ public final class ShellServices {
     NSWorkspace.shared.activateFileViewerSelecting([log])
   }
 
-  /// A committed quit: stops the supervised service (shutdown, then SIGTERM). Debug leaves the
-  /// development service running.
+  /// A committed quit: stops the supervised service (shutdown, then SIGKILL if it does not exit).
+  /// Debug leaves the development service running.
   func stopForQuit() async {
     await supervisor?.stop()
   }

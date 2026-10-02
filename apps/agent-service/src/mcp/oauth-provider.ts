@@ -1,4 +1,4 @@
-import type { McpServerConfig } from '@ai/agent-contracts';
+import type { McpServerConfig } from '@atd/agent-contracts';
 import type { McpFetch } from '@earendil-works/pi-mcp';
 import {
   authorizeMcp,
@@ -11,12 +11,15 @@ import {
 } from '@earendil-works/pi-mcp/oauth';
 import type { KeyringBackend } from '../credentials/keyring.js';
 import type { Logger } from '../logging.js';
-import {
-  MCP_OAUTH_CLIENT_NAME,
-  MCP_OAUTH_FALLBACK_REDIRECT_URL,
-  MCP_OAUTH_REFRESH_SKEW_MS,
-} from './constants.js';
+import { MCP_OAUTH_FALLBACK_REDIRECT_URL, MCP_OAUTH_REFRESH_SKEW_MS } from './constants.js';
 import { registeredRedirects } from './oauth-callback.js';
+import {
+  flowTargets,
+  oauthAuthOf,
+  oauthClientSettings,
+  providerClientOptions,
+  type OAuthClientSettings,
+} from './oauth-client.js';
 import { oauthFlowFetch, type OAuthFlowFetch, type ServiceHeaders } from './oauth-fetch.js';
 import { KeychainOAuthStore, oauthAccount, oauthServerUrl } from './oauth-store.js';
 import type { McpCredentialAuth, OAuthConnectionAuth } from './types.js';
@@ -33,7 +36,7 @@ import type { McpCredentialAuth, OAuthConnectionAuth } from './types.js';
 
 /** The scope a record configures for its OAuth sign-in, if any. */
 export function configuredScope(record: McpServerConfig): string | undefined {
-  return record.http?.auth.type === 'oauth' ? (record.http.auth.scope ?? undefined) : undefined;
+  return oauthAuthOf(record)?.scope ?? undefined;
 }
 
 /** Each scope of the lists once, or nothing. */
@@ -80,6 +83,8 @@ export interface ConnectionAuthOptions {
   store: KeychainOAuthStore;
   /** The configured scope, sent along with a refresh. */
   scope: string | undefined;
+  /** The record's OAuth client (oauth-client.ts): a pre-registered one refreshes as itself. */
+  client: OAuthClientSettings;
   log: Logger;
   /** Sees the challenge of every 401 or step-up 403, for the sign-in that may follow. */
   onChallenge?: (challenge: OAuthChallenge) => void;
@@ -94,7 +99,7 @@ export interface ConnectionAuthOptions {
  * takes the credential transaction lock: it runs inside connects that hold it.
  */
 export function createOAuthConnectionAuth(options: ConnectionAuthOptions): OAuthConnectionAuth {
-  const { store, scope, log } = options;
+  const { store, scope, log, client } = options;
   const serverUrl = oauthServerUrl(options.serverUrl);
   let refreshing: Promise<void> | undefined;
   /** What the server last asked for when it refused a request; a renewal asks its way. */
@@ -114,7 +119,8 @@ export function createOAuthConnectionAuth(options: ConnectionAuthOptions): OAuth
   ) => {
     const state = await load();
     if (state?.tokens?.access_token !== stale) return;
-    if (!state?.tokens?.refresh_token || !state.clientInformation) {
+    // A pre-registered client is configured, not stored; a registered one must be stored.
+    if (!state?.tokens?.refresh_token || (!state.clientInformation && !client.clientId)) {
       throw new McpOAuthAuthorizationRequiredError();
     }
     let missingClient = false;
@@ -122,7 +128,8 @@ export function createOAuthConnectionAuth(options: ConnectionAuthOptions): OAuth
     const provider = new McpOAuthProvider({
       serverUrl,
       redirectUrl: registeredRedirects(state)[0] ?? MCP_OAUTH_FALLBACK_REDIRECT_URL,
-      clientMetadata: { client_name: MCP_OAUTH_CLIENT_NAME },
+      clientMetadata: { client_name: client.clientName },
+      ...providerClientOptions(client),
       store,
       onRedirect: () => undefined,
     });
@@ -133,8 +140,7 @@ export function createOAuthConnectionAuth(options: ConnectionAuthOptions): OAuth
         }),
         {
           serverUrl,
-          resourceMetadataUrl: challenge?.resourceMetadataUrl,
-          scope: challenge?.scope ?? scope,
+          ...flowTargets(client, challenge?.scope ?? scope, challenge),
           fetch: flow.fetch,
         },
       );
@@ -198,7 +204,8 @@ interface ServerAuth {
   /** The latest record seen, so a header edit reaches the next flow of a cached auth. */
   record: McpServerConfig;
   store: KeychainOAuthStore;
-  auth?: { serverUrl: string; scope: string | undefined; provider: OAuthConnectionAuth };
+  /** What the cached auth was built for: the URL, scope and client (`authKey`). */
+  auth?: { key: string; provider: OAuthConnectionAuth };
   challenge?: { serverUrl: string; value: OAuthChallenge };
 }
 
@@ -232,19 +239,22 @@ export class OAuthProviders implements McpCredentialAuth {
     const entry = this.entryFor(record);
     const url = oauthServerUrl(serverUrl);
     const scope = configuredScope(record);
-    if (entry.auth?.serverUrl === url && entry.auth.scope === scope) return entry.auth.provider;
+    const client = oauthClientSettings(record);
+    const key = JSON.stringify([url, scope ?? null, client]);
+    if (entry.auth?.key === key) return entry.auth.provider;
     if (entry.auth) this.retire(entry.auth.provider);
     const provider = createOAuthConnectionAuth({
       serverUrl: url,
       store: entry.store,
       scope,
+      client,
       log: this.deps.log,
       onChallenge: (value) => {
         entry.challenge = { serverUrl: url, value };
       },
       service: this.serviceHeaders(record.serverId, () => entry.record),
     });
-    entry.auth = { serverUrl: url, scope, provider };
+    entry.auth = { key, provider };
     return provider;
   }
 

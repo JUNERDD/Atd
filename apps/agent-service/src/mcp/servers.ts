@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { stat } from 'node:fs/promises';
 import path from 'node:path';
 import { Type } from 'typebox';
-import { McpServerConfigSchema, parse, type McpServerConfig } from '@ai/agent-contracts';
+import { McpServerConfigSchema, parse, type McpServerConfig } from '@atd/agent-contracts';
 import { KeyringBackend, keyringMcpAccount } from '../credentials/keyring.js';
 import { mcpServerKey } from '../credentials/server-keys.js';
 import { McpError, type SecretResolver } from './errors.js';
@@ -112,7 +112,7 @@ export interface StdioProbe {
  */
 export async function probeStdioRuntime(
   command: string,
-  options: { cwd?: string; env?: Record<string, string> } = {},
+  options: { cwd?: string | null; env?: Record<string, string> } = {},
 ): Promise<StdioProbe> {
   const searched: string[] = [];
   const trimmed = command.trim();
@@ -232,12 +232,20 @@ export function reuseKey(record: McpServerConfig): string {
   return `${record.connectionId}\0${record.revision}\0${record.principal}\0${record.stdio?.cwd ?? ''}\0${hash}`;
 }
 
-/** Stable credential identity from migration v1 server keys. */
+/**
+ * Stable credential identity: a user server's migration v1 server key. A plugin server's qualified
+ * id (`<plugin>:<item>`) has no v1 key, and its OAuth sign-in still needs keyring accounts, so it
+ * gets `mcp:<serviceId>:~plugin:<hash16>`: `~` is outside the user id alphabet, so no user server's
+ * key, nor any account under one, can equal it or start with it.
+ */
 export function credentialIdentity(
   serviceId: string,
   record: Pick<McpServerConfig, 'serverId' | 'principal'>,
 ): string {
-  return mcpServerKey(serviceId, record.serverId, record.principal);
+  if (!record.serverId.includes(':'))
+    return mcpServerKey(serviceId, record.serverId, record.principal);
+  const hash = createHash('sha256').update(`${record.serverId}\0${record.principal}`);
+  return `mcp:${serviceId}:~plugin:${hash.digest('hex').slice(0, 16)}`;
 }
 
 /**

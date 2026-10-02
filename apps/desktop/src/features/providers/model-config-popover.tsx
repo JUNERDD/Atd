@@ -1,9 +1,9 @@
 import { useRef, useState } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Button } from '@ai/ui/components/button';
-import { cn } from '@ai/ui/lib/utils';
-import { Popover, PopoverContent, PopoverTrigger } from '@ai/ui/components/popover';
+import { Button } from '@atd/ui/components/button';
+import { cn } from '@atd/ui/lib/utils';
+import { Popover, PopoverContent, PopoverTrigger } from '@atd/ui/components/popover';
 import type { Connection, ModelReference, ModelThinkingLevel } from '../../client/providers/schema';
 import { formatContextWindow } from './context-window';
 import { ConfigBackHeader, ContextOptions, EffortOptions } from './model-config-subviews';
@@ -137,7 +137,7 @@ export function ModelConfigPopover({
           <span className="min-w-0 flex-1 truncate text-left">{displayName}</span>
           {model && <span className="model-config-context shrink-0">{contextText}</span>}
           {model && <span className="model-config-effort shrink-0">{effortText}</span>}
-          <ChevronDown className="shrink-0 size-4" />
+          <ChevronDown className="size-4 shrink-0" />
         </Button>
       </PopoverTrigger>
       {/* One content per view: resizing a live glass surface let WebKit morph it from a snapshot
@@ -177,7 +177,7 @@ export function ModelConfigPopover({
               >
                 <span className="model-config-row-label">{t('modelConfig.context')}</span>
                 <span className="model-config-row-value">{contextText}</span>
-                <ChevronRight className="shrink-0 size-4" />
+                <ChevronRight className="size-4 shrink-0" />
               </button>
             ) : (
               <div className="model-config-row">
@@ -201,7 +201,7 @@ export function ModelConfigPopover({
             >
               <span className="model-config-row-label">{t('thinkingLevels.label')}</span>
               <span className="model-config-row-value">{effortText}</span>
-              <ChevronRight className="shrink-0 size-4" />
+              <ChevronRight className="size-4 shrink-0" />
             </button>
             <button
               ref={modelRowRef}
@@ -211,7 +211,7 @@ export function ModelConfigPopover({
             >
               <span className="model-config-row-label">{t('modelConfig.model')}</span>
               <span className="model-config-row-value truncate">{displayName}</span>
-              <ChevronRight className="shrink-0 size-4" />
+              <ChevronRight className="size-4 shrink-0" />
             </button>
           </div>
         )}

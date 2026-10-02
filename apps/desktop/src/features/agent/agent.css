@@ -94,6 +94,12 @@
 .command-run-actions {
   margin-left: auto;
 }
+/* The Run shortcut sits on the solid primary button, so its keycaps take the button's own
+   foreground instead of the muted keycap fill meant for plain surfaces. */
+.run-shortcut-key {
+  background: color-mix(in oklab, var(--primary-foreground) 12%, transparent);
+  color: color-mix(in oklab, var(--primary-foreground) 70%, transparent);
+}
 .panel-dialog {
   display: flex;
   max-height: calc(100dvh - 32px);
@@ -327,31 +333,26 @@
   padding-left: 12px;
   color: var(--muted-foreground);
 }
-.markdown [data-streamdown='code-block'],
 .markdown [data-streamdown='table-wrapper'] {
   gap: 0;
   padding: 0;
+  overflow: hidden;
   border: 1px solid var(--border);
   border-radius: 10px;
   background: color-mix(in oklab, var(--muted) 60%, transparent);
 }
-.markdown [data-streamdown='code-block'] {
+/* A mermaid diagram: Streamdown's block, with the transcript's copy action in its header row. The
+   frame takes the block's place in the message flow, so the block drops its own margin. */
+.markdown-mermaid {
+  position: relative;
   min-width: 0;
   max-width: 100%;
-  overflow: hidden;
-}
-.markdown [data-streamdown='table-wrapper'] {
-  overflow: hidden;
-}
-.mermaid-fallback {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  max-width: 100%;
-  padding: 12px;
   border-radius: var(--radius-xl);
-  background: var(--muted);
 }
+.markdown-mermaid > [data-streamdown='mermaid-block'] {
+  margin: 0;
+}
+/* A diagram that fails to draw shows its source in the plain code frame, wrapped to its width. */
 .mermaid-fallback pre {
   margin: 0;
   font-size: 12px;
@@ -520,8 +521,9 @@
   width: 14px;
   height: 14px;
   opacity: 0;
-  /* Only the open/close rotation animates; the hover swap itself is instant. */
-  transition: rotate 200ms;
+  /* Only the open/close rotation animates, on the body's expand curve; the hover swap itself is
+     instant. */
+  transition: rotate 240ms cubic-bezier(0.22, 1, 0.36, 1);
   color: var(--muted-foreground);
 }
 .activity-trigger:hover .row-chevron {
@@ -558,24 +560,24 @@
 .phase-trigger:hover .phase-icon {
   opacity: 0;
 }
-.phase-single {
+/* A column so the trigger stays a flex item, as it is directly under the group: an inline-flex
+   button in a block box would sit on a line box and gain descender space. */
+.phase-header {
   display: flex;
   min-width: 0;
-  align-items: flex-start;
-  gap: 8px;
+  flex-direction: column;
 }
-.phase-single > .phase-icon {
-  /* The gap mirrors the trigger box so the glyph and step text start where a group header's icon
-     and title start; the top offset centers the 14px glyph on the 20px first line. */
-  margin-top: 3px;
-}
-.phase-single-step {
+/* The rail's own region (not Radix content, which unmounts while closed). Wide step content stays
+   clipped to the column as before; `clip` does not make the region a scroll container. */
+.phase-body {
   min-width: 0;
-  flex: 1;
+  overflow-x: clip;
 }
 /*
  * The rail: a spine down the group with a step branching off it on a curve, drawn on the step
- * itself so it follows however tall that step turns out to be.
+ * itself so it follows however tall that step turns out to be. A step's first row is the shared
+ * 32px activity row, so its 14px icon centers 16px down: `--rail-branch-top` drops the 8px
+ * branch until its 1px stroke is centered there too.
  */
 .phase-steps {
   display: flex;
@@ -583,16 +585,41 @@
   flex-direction: column;
 }
 .phase-step {
+  --rail-branch-top: 8.5px;
   position: relative;
-  padding-left: 14px;
+  /* The branch ends at 14.5px; the gap keeps it off the step's icon. */
+  padding-left: 18px;
+  /* A lone step gains its indent when a second step turns it into a group: ease into it rather
+     than snapping sideways while the header grows in above. */
+  transition: padding-left 240ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 .phase-step::before,
 .phase-step::after {
   content: '';
   position: absolute;
-  /* 7px half icon minus the 1px line: the spine meets the header icon's center, and the 8px
-   * branch lands exactly on the 14px content edge, where the step's own icon starts. */
-  left: 6px;
+  /* 7px half icon minus half the 1px line: the spine's center meets the header icon's center,
+   * and the 8px branch stops 3.5px short of the step's own icon. */
+  left: 6.5px;
+  transition: opacity 240ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+/* A lone step has no header and no rail: it sits flush with the prose around it. */
+.phase-step-lone {
+  padding-left: 0;
+}
+.phase-step-lone::before,
+.phase-step-lone::after {
+  opacity: 0;
+}
+/* A lone step without an icon of its own carries the phase glyph in its indent. The indent
+   mirrors the trigger box (14px icon + 8px gap) so the glyph and step text start where a group
+   header's icon and title start; the top offset centers the 14px glyph on the 20px first line. */
+.phase-step-marked {
+  padding-left: 22px;
+}
+.phase-step > .phase-icon {
+  position: absolute;
+  top: 3px;
+  left: 0;
 }
 .phase-step::before {
   top: 0;
@@ -600,30 +627,18 @@
   width: 1px;
   background: var(--activity-connector);
 }
-/* The last step is where the spine leaves off, curve and all. */
+/* The last step is where the spine leaves off, overlapping its curve by a pixel so they join. */
 .phase-step:last-child::before {
   bottom: auto;
-  height: 7px;
+  height: calc(var(--rail-branch-top) + 1px);
 }
 .phase-step::after {
-  top: 6px;
+  top: var(--rail-branch-top);
   width: 8px;
   height: 8px;
   border-left: 1px solid var(--activity-connector);
   border-bottom: 1px solid var(--activity-connector);
   border-bottom-left-radius: 8px;
-}
-/* Live steps fade in place. A slide or blur hitch the autoscroll. */
-@keyframes step-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-.step-in {
-  animation: step-in 180ms ease-out both;
 }
 @keyframes turn-spin {
   to {
@@ -631,13 +646,18 @@
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .step-in,
   .turn-header-spinner,
   .markdown [data-sd-animate],
   .markdown [data-sd-animate-marker]::marker,
   [data-slot='collapsible-content'][data-state='open'],
   [data-slot='collapsible-content'][data-state='closed'] {
     animation: none;
+  }
+  .row-chevron,
+  .phase-step,
+  .phase-step::before,
+  .phase-step::after {
+    transition: none;
   }
 }
 .thinking-row {
@@ -654,11 +674,10 @@
   text-align: left;
   font-size: 14px;
 }
+/* Same inset as an expanded tool body (`.tool-body`), so their detail surfaces line up. */
 .thinking-full {
   min-width: 0;
-  padding: 0 0 8px 8px;
-  color: var(--muted-foreground);
-  font-size: 13px;
+  padding: 4px 0 8px 8px;
 }
 /* A compaction row sits between turns' prose like a thinking row; a failed one keeps its reason
    under the title, indented to the title's edge (row padding + icon + gap). */
@@ -700,16 +719,47 @@
   margin-left: auto;
 }
 /*
- * Same tinted region as a tool body: the reasoning reads inside one box, not on the bare page.
- * Capped like tool output so a long trace scrolls instead of pushing the answer away.
+ * Prose on the shared detail surface (`DetailBox variant="plain"`: reasoning, compaction
+ * summaries) reads as secondary content: muted 13/20 sans, and the markdown inside keeps that
+ * tone. Bold and headings step up to the foreground at weight 600 as the only emphasis; inline
+ * code takes the faint chip fill used across tool cards. The `.tool-card` prefix outranks the
+ * card's own 12/18 content metrics.
  */
-.thinking-detail {
-  max-height: 240px;
-  border-radius: var(--radius-xl);
-  background: var(--muted);
+.tool-card .thinking-detail {
+  color: var(--muted-foreground);
+  font-size: 13px;
+  line-height: 20px;
 }
-.thinking-detail-pre {
-  padding: 8px;
+.thinking-detail .markdown > * + * {
+  margin-top: 8px;
+}
+.thinking-detail .markdown :is(h1, h2, h3, h4, h5, h6) {
+  margin: 0;
+  font-size: inherit;
+  line-height: inherit;
+  font-weight: 600;
+  color: var(--foreground);
+}
+/* A heading opens a section, so it keeps a little more air above it than a paragraph does. */
+.thinking-detail .markdown > * + :is(h1, h2, h3, h4, h5, h6) {
+  margin-top: 12px;
+}
+.thinking-detail :is(strong, b, [data-streamdown='strong']) {
+  font-weight: 600;
+  color: var(--foreground);
+}
+.thinking-detail [data-streamdown='inline-code'] {
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: color-mix(in oklab, var(--foreground) 6%, transparent);
+  font-size: 12px;
+}
+/* Fenced code inside prose keeps a hairline frame so it stays apart from the sentences around
+   it; the card's own rule strips that frame from code that is the card's whole content. */
+.tool-card .thinking-detail :is(.code-block, .markdown-code) {
+  border: 1px solid var(--ata-border-detail);
+  border-radius: var(--radius-lg);
+  background: transparent;
 }
 .turn-header {
   display: flex;
@@ -749,50 +799,6 @@
   flex-direction: column;
   gap: 8px;
   padding: 4px 0 8px 8px;
-}
-.tool-command,
-.tool-diff-pre {
-  margin: 0;
-  font-size: 12px;
-  line-height: 18px;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-.tool-command {
-  color: var(--muted-foreground);
-}
-/* Type badge at the top of a tool body box (e.g. `Shell` for bash). */
-.tool-kind {
-  font-size: 12px;
-  color: var(--muted-foreground);
-}
-.tool-output {
-  max-height: 240px;
-  border-radius: var(--radius-xl);
-  background: var(--muted);
-}
-.tool-output-pre {
-  padding: 8px;
-}
-.tool-diff {
-  max-height: 320px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-}
-.tool-diff-pre {
-  padding: 8px;
-  font-variant-ligatures: none;
-}
-.diff-line.diff-add {
-  color: var(--foreground);
-  background: color-mix(in oklab, var(--primary) 12%, transparent);
-}
-.diff-line.diff-del {
-  color: var(--destructive);
-  background: color-mix(in oklab, var(--destructive) 12%, transparent);
-}
-.diff-line.diff-hunk {
-  color: var(--muted-foreground);
 }
 .approval-controls,
 .question-block,
@@ -918,13 +924,99 @@
 .history-row .task-row {
   flex: 1;
 }
+/* With a pointer that hovers, the More button waits for its row: a column of identical ellipses
+   competes with the titles. It keeps its space so titles never reflow, and keyboard focus, an
+   open menu, or the right-click menu still show it. */
+.history-row-more {
+  transition: opacity 150ms;
+}
+@media (hover: hover) {
+  .history-row:not(:hover, :has(:focus-visible), [data-state='open'], :has([aria-expanded='true']))
+    .history-row-more {
+    opacity: 0;
+  }
+}
+/* Attachments sit flush with the bubble's trailing edge: thumbnails and file rows hug their content
+   and align right, like the bubble itself. */
 .user-message [data-slot='context-bubble'] {
   align-self: stretch;
+  align-items: flex-end;
   width: 100%;
 }
-.user-message [data-slot='context-bubble'] :focus-visible {
+/* Capped at the column: a truncating file name's min-content is its whole width, so the list
+   would otherwise size to the longest name and push the items past the column's leading edge. */
+.user-message [data-slot='context-bubble-files'] {
+  max-width: 100%;
+  align-items: flex-end;
+  justify-content: flex-end;
+}
+/* A capped file item stays on the trailing edge even when a long name widens its row. */
+.user-message [data-slot='context-bubble-files'] > li {
+  display: flex;
+  max-width: 100%;
+  justify-content: flex-end;
+}
+.user-message .image-lightbox-trigger:focus-visible {
   outline: 1px solid var(--ring);
   box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 30%, transparent);
+}
+/* An attached image opens in the lightbox, an attached file shows in Finder (`user-context.tsx`). */
+.image-lightbox-trigger {
+  display: block;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-lg);
+  background: none;
+  cursor: pointer;
+}
+/* An attached file (`attachment-file.tsx`): an opaque card in the message's content layer with the
+   bubble's fill and no border, so it reads as part of the sent message; the tile and the two text
+   lines are both 36px, so the card is 52px with its 8px inset. It hugs its name up to the
+   bubble's width cap. Hover answers only a fine pointer; a press lands at once and eases back on
+   release, with no scale, as list rows press. */
+.user-context-file {
+  width: auto;
+  max-width: min(304px, 100%);
+  background-color: var(--muted);
+  text-align: start;
+  cursor: pointer;
+  transition: background-color 200ms ease-out;
+}
+@media (hover: hover) and (pointer: fine) {
+  .user-context-file:hover {
+    background-color: color-mix(in oklab, var(--foreground) 6%, var(--muted));
+  }
+}
+.user-context-file:active {
+  background-color: color-mix(in oklab, var(--foreground) 10%, var(--muted));
+  transition-duration: 0s;
+}
+/* The kind tile, concentric with the card: the card's 18px radius less its 8px inset. It centres
+   on the two text lines instead of the Item media's top alignment. */
+.user-context-file-icon {
+  width: 36px;
+  height: 36px;
+  align-self: center;
+  translate: none;
+  border-radius: var(--radius-lg);
+  background: color-mix(in oklab, var(--foreground) 10%, transparent);
+  color: var(--muted-foreground);
+}
+/* The lightbox is the shared glass dialog sized to its image. The image's limits come from the
+   viewport, not the dialog, so its size never depends on the fit-content box around it: the window
+   less the dialog's 1rem margins and 8px padding on each side. */
+.image-lightbox {
+  width: fit-content;
+  max-width: calc(100vw - 2rem);
+  padding: 8px;
+}
+.image-lightbox-image {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: calc(100vw - 2rem - 16px);
+  max-height: calc(100dvh - 2rem - 16px);
+  border-radius: var(--radius-xl);
 }
 
 /* The service-starting surface replaces the whole panel, header included, so it drags the window
@@ -962,4 +1054,49 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--muted-foreground);
+}
+
+/* A quote chip's passage, marked briefly when the chip is clicked (quote-reveal.ts). The messages
+   column isolates its stacking so the reveal layer's tints sit behind the text (z-index -1) and
+   its rings over code blocks and diagrams, whose own fill would hide a tint. The layer itself has
+   no z-index, so its boxes stack in the column, and it scrolls with the content it covers. */
+.conversation-messages {
+  position: relative;
+  isolation: isolate;
+}
+.quote-reveal-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.quote-reveal-tint,
+.quote-reveal-ring {
+  position: absolute;
+  opacity: 0;
+}
+/* Shown once a box scrolls into view: fade in over 300ms, hold, fade out over 400ms (of 2650ms). */
+.quote-reveal-tint[data-state='shown'],
+.quote-reveal-ring[data-state='shown'] {
+  animation: quote-reveal 2.65s ease-in-out forwards;
+}
+.quote-reveal-tint {
+  z-index: -1;
+  border-radius: 4px;
+  background: var(--ata-quote-highlight);
+}
+.quote-reveal-ring {
+  z-index: 1;
+  box-shadow: inset 0 0 0 2px var(--ata-quote-ring);
+}
+@keyframes quote-reveal {
+  0% {
+    opacity: 0;
+  }
+  11.3%,
+  84.9% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
 }

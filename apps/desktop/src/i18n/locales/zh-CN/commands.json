@@ -65,6 +65,7 @@
     "instructionsRequired": "请输入指令。",
     "selectionDisabled": "请在“输入选项”中开启选中文本变量，才能使用此来源。",
     "clipboardDisabled": "请在“输入选项”中开启剪贴板变量，才能使用此来源。",
+    "filesDisabled": "请在“输入选项”中开启“允许附加文件”，才能使用此来源。",
     "textNotAccepted": "没有文本输入的命令不能要求输入文本。请关闭“要求输入文本”。",
     "duplicateKey": "每个参数都需要唯一的变量键。",
     "labelRequired": "每个参数都需要标签。",
@@ -127,6 +128,7 @@
     "sourceManual": "手动输入",
     "sourceSelection": "选中的文本",
     "sourceClipboard": "剪贴板",
+    "sourceScreenshot": "截图",
     "sourceNone": "无文本输入",
     "shortcut": "快捷键",
     "options": "输入选项",
@@ -138,7 +140,6 @@
   "shortcut": {
     "error": "请将 Command、Control 或 Alt 与支持的按键组合使用。",
     "record": "录制命令快捷键",
-    "recording": "请按下按键…",
     "recordShortcut": "录制快捷键",
     "clear": "清除快捷键"
   },
@@ -155,7 +156,8 @@
   "session": {
     "trigger": "用 AI 创建",
     "triggerEdit": "用 AI 编辑",
-    "opened": "已在任务面板中打开新的 AI 会话。"
+    "opened": "已在任务面板中打开新的 AI 会话。",
+    "enableSkill": "请先在「扩展 → 技能」中启用 {{name}}，再使用 AI 创建。"
   },
   "run": {
     "title": "运行设置",

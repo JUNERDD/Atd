@@ -1,4 +1,4 @@
-import type { SubagentChildSummary, SubagentDetails } from '@ai/agent-contracts';
+import type { SubagentChildSummary, SubagentDetails } from '@atd/agent-contracts';
 import type { PermissionRequest } from '../../../client/agent/permission-schema';
 import type { Block, BlockOf } from '../../../client/agent/transcript-schema';
 

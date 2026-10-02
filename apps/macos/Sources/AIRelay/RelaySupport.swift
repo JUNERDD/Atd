@@ -3,7 +3,7 @@ import Foundation
 import os
 
 /// Loopback sessions for everything the shell sends to the service and the Vite dev server.
-enum RelaySession {
+nonisolated enum RelaySession {
   /// No cookies, cache, credential storage or proxies; callbacks on the main queue, where the
   /// scheme tasks and web views they feed live, and in order.
   static let shared: URLSession = {
@@ -21,7 +21,7 @@ enum RelaySession {
   }()
 }
 
-enum RelayLog {
+nonisolated enum RelayLog {
   static let relay = Logger(subsystem: "com.junerdd.ai", category: "relay")
   static let sockets = Logger(subsystem: "com.junerdd.ai", category: "sockets")
   static let control = Logger(subsystem: "com.junerdd.ai", category: "control")
@@ -30,7 +30,6 @@ enum RelayLog {
 
 /// Callers waiting, with a bound, for a value another task produces (a route manifest, a
 /// supervised service coming up). A waiter still waiting when its bound passes gets nil.
-@MainActor
 final class BoundedWaiters<Value: Sendable> {
   private var waiters: [UUID: CheckedContinuation<Value?, Never>] = [:]
 
@@ -39,7 +38,7 @@ final class BoundedWaiters<Value: Sendable> {
     return await withCheckedContinuation { continuation in
       waiters[id] = continuation
       // Holds `self` until the bound passes, so no waiter is ever left unresumed.
-      Task { @MainActor in
+      Task {
         try? await Task.sleep(for: limit)
         self.waiters.removeValue(forKey: id)?.resume(returning: nil)
       }
@@ -53,7 +52,7 @@ final class BoundedWaiters<Value: Sendable> {
   }
 }
 
-extension HTTPURLResponse {
+nonisolated extension HTTPURLResponse {
   /// Header fields as strings, as Foundation already joined repeated fields.
   var stringHeaders: [String: String] {
     var headers: [String: String] = [:]
@@ -70,7 +69,7 @@ func isProcessAlive(_ pid: Int32) -> Bool {
   return kill(pid, 0) == 0 || errno == EPERM
 }
 
-extension ServiceEndpoint {
+nonisolated extension ServiceEndpoint {
   /// `baseURL` plus an already percent-encoded path and raw query. Built from the string, so a
   /// query with a malformed escape yields nil instead of a URLComponents trap.
   func url(encodedPath: String, query: String? = nil) -> URL? {

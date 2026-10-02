@@ -1,4 +1,4 @@
-import type { ServiceConnection, ServiceModelDefinition } from '@ai/agent-contracts';
+import type { ServiceConnection, ServiceModelDefinition } from '@atd/agent-contracts';
 import type { ConnectionStore } from '../credentials/connections.js';
 import { LedgerNotFound } from '../ledger.js';
 import { directoryModels } from './catalog.js';

@@ -1,5 +1,5 @@
 import { getFiletypeFromFileName } from '@pierre/diffs';
-import { ScrollArea } from '@ai/ui/components/scroll-area';
+import { ScrollArea } from '@atd/ui/components/scroll-area';
 import { CodeBlock } from '../agent/transcript/code-block';
 import { StreamdownMarkdown } from '../agent/transcript/markdown';
 

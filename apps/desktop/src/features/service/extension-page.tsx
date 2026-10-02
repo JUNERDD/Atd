@@ -1,9 +1,9 @@
 import { useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { Sparkles } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Badge } from '@ai/ui/components/badge';
-import { Button } from '@ai/ui/components/button';
-import { ScrollArea } from '@ai/ui/components/scroll-area';
+import { Badge } from '@atd/ui/components/badge';
+import { Button } from '@atd/ui/components/button';
+import { ScrollArea } from '@atd/ui/components/scroll-area';
 import { useOverlayFooter } from '../../components/use-overlay-footer';
 import { SettingsHeading } from '../settings/settings-heading';
 
@@ -57,10 +57,10 @@ export function ExtensionPage({
   /** Accessible name of the page region. */
   label: string;
   title: string;
-  badge?: ExtensionPageBadge | null;
+  badge?: ExtensionPageBadge | null | undefined;
   /** Controls after the title, such as a plugin's version and its switch. */
   titleExtra?: ReactNode;
-  description?: string;
+  description?: string | undefined;
   /** Accessible name of the header's Back while the page is shown. */
   backLabel: string;
   /** Create or Edit with AI: hands the item to a new panel session seeded with its skill. */
@@ -111,9 +111,9 @@ export function ExtensionPage({
         </Button>
       ) : null}
       <ScrollArea
-        className="flex-1 min-h-0 min-w-0 m-[-3px_-15px_-3px_-3px]"
-        viewportClassName={hasFooter ? 'overlay-footer-fade' : undefined}
-        gutter="stable"
+        className="settings-page-scroll"
+        {...(hasFooter ? { viewportClassName: 'overlay-footer-fade' } : {})}
+        gutter="none"
         scrollShadow
       >
         <div className="settings-editor-inner extension-page-body">{children}</div>

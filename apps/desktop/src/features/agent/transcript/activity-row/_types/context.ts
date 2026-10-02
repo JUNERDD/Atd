@@ -4,7 +4,7 @@ export interface ActivityRowState {
   /** Whether the expandable body region is visible. */
   open: boolean;
   /** Row status, reflected as `data-status` when provided. */
-  status?: string;
+  status?: string | undefined;
 }
 
 export interface ActivityRowActions {

@@ -2,9 +2,9 @@ import { Fragment, type ReactNode } from 'react';
 import { Bot, ListOrdered, LoaderCircle, MessageCircleQuestion, ShieldAlert } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotion, type Transition } from 'motion/react';
 import { useTranslation } from 'react-i18next';
-import { Button } from '@ai/ui/components/button';
-import { Separator } from '@ai/ui/components/separator';
-import { cn } from '@ai/ui/lib/utils';
+import { Button } from '@atd/ui/components/button';
+import { Separator } from '@atd/ui/components/separator';
+import { cn } from '@atd/ui/lib/utils';
 import type { TaskProgress } from './selectors';
 import './progress.css';
 
@@ -59,6 +59,8 @@ const HITL_ICONS = {
 /**
  * A part that opens its view: an xs button flush on the capsule's glass (`glass-ghost`), rounded to
  * the capsule, expanded while its view shows. `data-pill-view` lets the popover return focus to it.
+ * It drops the button's transparent border so its washes reach the capsule's edge and its padding
+ * matches the plain parts beside it.
  */
 function PartButton({
   view,
@@ -80,7 +82,7 @@ function PartButton({
       type="button"
       variant="glass-ghost"
       size="xs"
-      className={cn('composer-progress-part composer-progress-trigger', className)}
+      className={cn('composer-progress-part composer-progress-trigger border-0', className)}
       data-pill-view={view}
       aria-expanded={open}
       aria-haspopup="dialog"
@@ -236,7 +238,7 @@ export function ProgressPill({
             exit={{ opacity: 0, scale: 0.96, transition: reduced ? INSTANT : EXIT }}
           >
             <output
-              className="composer-progress surface-glass glass-control"
+              className="composer-progress glass-control surface-glass"
               aria-label={t('composer.progress.label')}
             >
               {parts.map(({ key, node }, index) => (

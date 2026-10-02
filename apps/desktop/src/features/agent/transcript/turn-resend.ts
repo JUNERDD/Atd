@@ -1,4 +1,4 @@
-import type { InputChip, InputChipRange, RunReference } from '@ai/agent-contracts';
+import type { InputChip, InputChipRange, RunReference } from '@atd/agent-contracts';
 import type { SubmitRequest } from '../../../client/agent/bridge';
 import type { RunPolicy } from '../../../client/agent/run-policy';
 import {
@@ -11,7 +11,6 @@ import {
 import type { BlockOf } from '../../../client/agent/transcript-schema';
 import {
   draftChips,
-  draftFiles,
   draftReferences,
   draftSkills,
   type Chip,
@@ -78,6 +77,14 @@ function composerChip(chip: InputChip, files: readonly FileRef[]): Chip | null {
       return { kind: 'agent', name: chip.name };
     case 'skill':
       return { kind: 'skill', name: chip.name };
+    case 'command':
+      return { kind: 'command', commandId: chip.commandId, name: chip.name };
+    case 'memory':
+      return { kind: 'memory', target: chip.target, entryId: chip.entryId, title: chip.title };
+    case 'quote':
+      return chip.source
+        ? { kind: 'quote', text: chip.text, source: chip.source }
+        : { kind: 'quote', text: chip.text };
   }
 }
 
@@ -90,7 +97,6 @@ function runPolicy(snapshot: RunSnapshot, skills: string[], references: RunRefer
   return {
     tools: snapshot.tools,
     memory: snapshot.memory,
-    useDefaultModel: false,
     confirmExpansion: false,
     model: { connectionId: snapshot.model.connectionId, modelId: snapshot.model.modelId },
     ...(snapshot.thinkingLevel ? { thinkingLevel: snapshot.thinkingLevel } : {}),
@@ -111,8 +117,8 @@ function promptResend(
     return draft ? [{ from, to, chip: draft }] : [];
   });
   // Every file of the run stays attached, including those whose chip the edit removed.
-  const draft = { text, files: base.files, chips };
-  const input: TaskInput = { ...base, text, files: draftFiles(draft), chips: draftChips(draft) };
+  const draft = { text, chips };
+  const input: TaskInput = { ...base, text, chips: draftChips(draft) };
   return { input, policy: runPolicy(snapshot, draftSkills(draft), draftReferences(draft)) };
 }
 

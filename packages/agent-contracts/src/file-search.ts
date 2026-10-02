@@ -53,7 +53,12 @@ export const FileSearchResultSchema = Type.Object(
      * never absolute.
      */
     location: Type.String(),
-    kind: Type.Union([Type.Literal('text'), Type.Literal('code'), Type.Literal('data')]),
+    kind: Type.Union([
+      Type.Literal('text'),
+      Type.Literal('code'),
+      Type.Literal('data'),
+      Type.Literal('image'),
+    ]),
     /** Bytes. */
     size: Type.Union([Type.Integer({ minimum: 0 }), Type.Null()]),
     /** Epoch milliseconds. */
