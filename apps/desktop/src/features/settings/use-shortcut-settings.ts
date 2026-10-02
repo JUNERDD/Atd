@@ -27,7 +27,7 @@ function shortcutError(
 ): string {
   if (!shortcut) return t('shortcuts.errors.unsupportedCombination');
   if (
-    ['togglePanel', 'newConversation', 'openSettings'].includes(action) &&
+    ['togglePanel', 'captureScreenshot', 'newConversation', 'openSettings'].includes(action) &&
     !shortcut
       .split('+')
       .some((key) => ['CommandOrControl', 'Control', 'Alt', 'Super'].includes(key))

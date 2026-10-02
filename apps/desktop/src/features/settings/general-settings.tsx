@@ -46,7 +46,8 @@ export function GeneralSettings({
   // Only the desktop app registers global shortcuts and owns window preferences.
   const desktopApp = window.desktop !== undefined;
   const recording = settings.recording !== null;
-  const registerFailed = desktopApp && snapshot?.shortcutAvailable === false;
+  const panelFailed = desktopApp && snapshot?.shortcutAvailable === false;
+  const screenshotFailed = desktopApp && snapshot?.screenshotShortcutAvailable === false;
   const restoring = settings.shortcutBusy === 'all';
   const restoreUnavailable = settings.shortcutBusy !== null || settings.allDefault;
 
@@ -70,12 +71,19 @@ export function GeneralSettings({
                 label={t('shortcuts.actions.togglePanel.label')}
                 description={t('shortcuts.actions.togglePanel.description')}
                 settings={settings}
-                error={registerFailed ? t('shortcuts.errors.register') : undefined}
+                error={panelFailed ? t('shortcuts.errors.register') : undefined}
+              />
+              <ShortcutRow
+                action="captureScreenshot"
+                label={t('shortcuts.actions.captureScreenshot.label')}
+                description={t('shortcuts.actions.captureScreenshot.description')}
+                settings={settings}
+                error={screenshotFailed ? t('shortcuts.errors.register') : undefined}
               />
             </ItemGroup>
           </Card>
-          {/* Only the global shortcut can collide with another app's; the error says it itself. */}
-          {!registerFailed && <ShortcutConflictHint />}
+          {/* Only global shortcuts can collide with another app's; an error says it itself. */}
+          {!panelFailed && !screenshotFailed && <ShortcutConflictHint />}
         </section>
         <section className="settings-shortcut-group" aria-labelledby="settings-in-app-shortcuts">
           <h3 id="settings-in-app-shortcuts" className="settings-section-title">

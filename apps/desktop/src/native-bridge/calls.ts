@@ -27,12 +27,13 @@ const Resources = Type.Object(
   { additionalProperties: false },
 );
 
-/** The id of the panel toggle registration; every other shortcut registration is a command id. */
+/** Reserved registration ids: the panel toggle and the screenshot; others are command ids. */
 export const PANEL_SHORTCUT_ID = 'togglePanel';
+export const SCREENSHOT_SHORTCUT_ID = 'captureScreenshot';
 
 export const ShortcutRegistrationSchema = Type.Object(
   {
-    /** `togglePanel`, or the id of the command the shortcut launches. */
+    /** `togglePanel`, `captureScreenshot`, or the id of the command the shortcut launches. */
     id: Type.String({ minLength: 1, maxLength: 128, pattern: '^[a-zA-Z0-9_-]+$' }),
     /** Electron accelerator grammar (`CommandOrControl+Shift+Space`), converted by Swift. */
     accelerator: Type.String({ minLength: 1, maxLength: 100 }),

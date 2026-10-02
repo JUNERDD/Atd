@@ -21,7 +21,7 @@ import { NativeConnection } from './native-connection';
 import { nativeFiles } from './native-files';
 import { nativePlatform } from './native-platform';
 import { nativeSettings } from './native-settings';
-import { followShortcutState, nativeShortcuts } from './native-shortcuts';
+import { followShortcutState, nativeShortcuts, type GlobalShortcutState } from './native-shortcuts';
 import { nativeSocketTransport } from './socket-transport';
 import { windowMessages } from './window-messages';
 import { nativeSpeech } from './native-speech';
@@ -40,8 +40,9 @@ function pageOrigin(): string {
  * request handling, task cache and provider client (`src/client`), reaching the service through
  * the shell's relay: HTTP as same-origin fetches the scheme handler forwards, the
  * stream over virtual sockets. Host abilities go through native calls. Only the panel owns the
- * global shortcuts, the language push, file search and the files the shell imports from drops and
- * pastes; each window publishes its own drag regions and runs the menu's Undo/Redo.
+ * global shortcuts (the screenshot one included), the language push, file search and the files the
+ * shell imports from drops and pastes; each window publishes its own drag regions and runs the
+ * menu's Undo/Redo.
  */
 export async function installNativeHost(
   native: NativeBridge,
@@ -87,14 +88,17 @@ export async function installNativeHost(
     },
     (_page, event) => emit('changed', event),
   );
-  const shortcutsApplied = (shortcutAvailable: boolean) => {
-    settings.setShell({ shortcutAvailable });
+  const shortcutsApplied = ({ panelAvailable, screenshotAvailable }: GlobalShortcutState) => {
+    settings.setShell({
+      shortcutAvailable: panelAvailable,
+      screenshotShortcutAvailable: screenshotAvailable,
+    });
     requests.broadcast();
   };
   const shortcuts =
     surface === 'panel'
       ? nativeShortcuts(native, commands, messages, {
-          panelShortcut: () => (settings.loaded() ? latest.shortcuts.togglePanel : null),
+          appShortcuts: () => (settings.loaded() ? latest.shortcuts : null),
           applied: shortcutsApplied,
           launch: (prepared, autoRun) => emit('launch', { prepared, autoRun }),
         })
@@ -231,6 +235,9 @@ export async function installNativeHost(
     share: async (text, anchor) => void (await native.call('share.text', { text, anchor })),
     speech: nativeSpeech(native),
     onEditCommand: (listener) => native.on('edit.command', ({ command }) => listener(command)),
+    ...(surface === 'panel'
+      ? { onScreenshotShortcut: (listener) => native.on('shortcut.screenshot', () => listener()) }
+      : {}),
   };
   window.desktop = bridge;
 }

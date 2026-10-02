@@ -13,6 +13,8 @@ public enum NativeBridgeContract {
   public static let deliverArgument = "message"
   /// The id of the panel toggle registration in `shortcuts.set`.
   public static let panelShortcutId = "togglePanel"
+  /// The id of the screenshot registration in `shortcuts.set`.
+  public static let screenshotShortcutId = "captureScreenshot"
   /// The longest text a capture returns.
   public static let maxCaptureLength = 100_000
 }
@@ -205,6 +207,7 @@ public enum NativeEvent: Encodable, Equatable, Sendable {
   case windowVisibility(WindowVisibilityEvent)
   case accessibilityReduceTransparency(AccessibilityReduceTransparencyEvent)
   case shortcutCommand(ShortcutCommandEvent)
+  case shortcutScreenshot(ShortcutScreenshotEvent)
   case resourcesImported(ResourcesImportedEvent)
   case filesDrag(FilesDragEvent)
   case editCommand(EditCommandEvent)
@@ -218,6 +221,7 @@ public enum NativeEvent: Encodable, Equatable, Sendable {
     case .windowVisibility: "window.visibility"
     case .accessibilityReduceTransparency: "accessibility.reduceTransparency"
     case .shortcutCommand: "shortcut.command"
+    case .shortcutScreenshot: "shortcut.screenshot"
     case .resourcesImported: "resources.imported"
     case .filesDrag: "files.drag"
     case .editCommand: "edit.command"
@@ -232,6 +236,7 @@ public enum NativeEvent: Encodable, Equatable, Sendable {
     case .windowVisibility(let payload): try payload.encode(to: encoder)
     case .accessibilityReduceTransparency(let payload): try payload.encode(to: encoder)
     case .shortcutCommand(let payload): try payload.encode(to: encoder)
+    case .shortcutScreenshot(let payload): try payload.encode(to: encoder)
     case .resourcesImported(let payload): try payload.encode(to: encoder)
     case .filesDrag(let payload): try payload.encode(to: encoder)
     case .editCommand(let payload): try payload.encode(to: encoder)

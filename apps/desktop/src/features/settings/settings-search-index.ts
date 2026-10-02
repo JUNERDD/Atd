@@ -49,16 +49,23 @@ export const SECTION_KEYWORDS = {
  * `data-settings-anchor`; entries of pages without markers open the section overview.
  */
 export const settingsSearchEntries: readonly SettingsSearchEntry[] = [
-  ...(['togglePanel', 'newConversation', 'openSettings', 'sendMessage', 'newLine'] as const).map(
-    (action): SettingsSearchEntry => ({
-      id: `shortcut-${action}`,
-      section: 'general',
-      anchor: `shortcut-${action}`,
-      label: `shortcuts.actions.${action}.label`,
-      description: `shortcuts.actions.${action}.description`,
-      keywords: 'search.keywords.shortcutAction',
-    }),
-  ),
+  ...(
+    [
+      'togglePanel',
+      'captureScreenshot',
+      'newConversation',
+      'openSettings',
+      'sendMessage',
+      'newLine',
+    ] as const
+  ).map((action): SettingsSearchEntry => ({
+    id: `shortcut-${action}`,
+    section: 'general',
+    anchor: `shortcut-${action}`,
+    label: `shortcuts.actions.${action}.label`,
+    description: `shortcuts.actions.${action}.description`,
+    keywords: 'search.keywords.shortcutAction',
+  })),
   {
     id: 'window-open-at-login',
     section: 'general',

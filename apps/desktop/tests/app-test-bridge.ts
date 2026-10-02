@@ -45,6 +45,7 @@ export function installBridge(extras?: {
     showInDock: false,
     openAtLogin: null,
     shortcutAvailable: true,
+    screenshotShortcutAvailable: true,
     permissionTier: 'manual',
     shellAllowlist: [],
   };

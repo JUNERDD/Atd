@@ -23,6 +23,7 @@ const AcceleratorSchema = Type.String({ minLength: 1, maxLength: 100 });
 export const ShortcutBindingsSchema = Type.Object(
   {
     togglePanel: AcceleratorSchema,
+    captureScreenshot: AcceleratorSchema,
     newConversation: AcceleratorSchema,
     openSettings: AcceleratorSchema,
     sendMessage: AcceleratorSchema,

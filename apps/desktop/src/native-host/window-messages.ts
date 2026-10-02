@@ -22,7 +22,12 @@ export type WindowMessage =
    * every push and in reply to `shortcutStateRequest`. Only the panel pushes the set, so it alone
    * learns the answer.
    */
-  | { type: 'shortcutState'; panelAvailable: boolean; errors: Record<string, string> }
+  | {
+      type: 'shortcutState';
+      panelAvailable: boolean;
+      screenshotAvailable: boolean;
+      errors: Record<string, string>;
+    }
   /** Settings → panel: a settings window that just loaded asks for the latest `shortcutState`. */
   | { type: 'shortcutStateRequest' };
 

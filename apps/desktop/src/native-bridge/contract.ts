@@ -115,6 +115,11 @@ export const NativeEvents = {
     { id: Type.String({ minLength: 1, maxLength: 128 }) },
     { additionalProperties: false },
   ),
+  /**
+   * The screenshot shortcut fired; Swift already captured the selection. The panel takes the
+   * screenshot itself (`screenshot.capture`), so it can refuse a full draft before the overlay opens.
+   */
+  'shortcut.screenshot': Empty,
   /** Swift imported files dropped or pasted into the panel through `/v1/resources/import`. */
   'resources.imported': Type.Object(
     {

@@ -9,6 +9,7 @@ import type { ShortcutBindingsWire } from './workspace.js';
 /** The application shortcuts in effect while the shared settings hold none (`shortcuts: null`). */
 export const DEFAULT_SHORTCUTS = {
   togglePanel: 'CommandOrControl+Shift+Space',
+  captureScreenshot: 'CommandOrControl+Shift+2',
   newConversation: 'CommandOrControl+N',
   openSettings: 'CommandOrControl+,',
   sendMessage: 'Enter',
@@ -86,6 +87,7 @@ export function parseShortcutBindings(value: unknown, platform: string): Shortcu
     Array.isArray(value) ||
     Object.keys(value).length !== Object.keys(DEFAULT_SHORTCUTS).length ||
     !('togglePanel' in value) ||
+    !('captureScreenshot' in value) ||
     !('newConversation' in value) ||
     !('openSettings' in value) ||
     !('sendMessage' in value) ||
@@ -95,6 +97,7 @@ export function parseShortcutBindings(value: unknown, platform: string): Shortcu
   }
   const shortcuts = {
     togglePanel: parseAccelerator(value.togglePanel, true, platform),
+    captureScreenshot: parseAccelerator(value.captureScreenshot, true, platform),
     newConversation: parseAccelerator(value.newConversation, true, platform),
     openSettings: parseAccelerator(value.openSettings, true, platform),
     sendMessage: parseAccelerator(value.sendMessage, false, platform),

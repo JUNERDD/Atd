@@ -10,6 +10,7 @@ import {
   type QuoteSource,
   type RunReference,
 } from '@atd/agent-contracts';
+import type { Screenshot } from '../../client/agent/screenshot-input';
 import type { FileRef } from '../../client/agent/task-schema';
 
 /**
@@ -35,6 +36,13 @@ export interface FileChip {
   kind: 'file';
   file: FileRef;
   context?: FileRef;
+}
+
+/** A capture's chip: the image, with its screen context while `room` leaves space for it. */
+export function screenshotChip(shot: Screenshot, room: number): FileChip {
+  return shot.context && room > 1
+    ? { kind: 'file', file: shot.file, context: shot.context }
+    : { kind: 'file', file: shot.file };
 }
 
 /** A chip and its token range in the serialized `text`. */

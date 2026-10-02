@@ -167,6 +167,10 @@
         "label": "显示或隐藏面板",
         "description": "在 Mac 上随时可用。"
       },
+      "captureScreenshot": {
+        "label": "截图",
+        "description": "截取屏幕并添加到输入框。"
+      },
       "newConversation": {
         "label": "新建对话",
         "description": "从空白输入框开始。"

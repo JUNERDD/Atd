@@ -34,6 +34,8 @@ export interface SettingsSnapshot {
   openAtLogin: boolean | null;
   /** Whether the shell registered the panel shortcut; null until the panel reports it. */
   shortcutAvailable: boolean | null;
+  /** Whether the shell registered the screenshot shortcut; null until the panel reports it. */
+  screenshotShortcutAvailable: boolean | null;
   /** Tier new tasks are created with; existing tasks keep their own tier. */
   permissionTier: PermissionTier;
   /**
