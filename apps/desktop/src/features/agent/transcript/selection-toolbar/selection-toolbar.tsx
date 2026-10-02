@@ -3,6 +3,7 @@ import { useMemo, useState, type SyntheticEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { QuoteSource } from '@ai/agent-contracts';
 import { Popover, PopoverAnchor, PopoverContent } from '@ai/ui/components/popover';
+import { Toolbar, ToolbarButton } from '@ai/ui/components/toolbar';
 import { IconButton } from '../../../../components/icon-button';
 import { showErrorToast } from '../../../../components/toast-store';
 import { useCopyFeedback } from '../use-copy-feedback';
@@ -22,7 +23,8 @@ function keep(event: Event | SyntheticEvent) {
 /**
  * Actions on text or elements selected in settled assistant messages under `root`: Quote in
  * reply, Copy, Read aloud and Remember, beside where the selection ends. The toolbar never takes
- * focus, so the selection stays visible and editable while it shows. Quote, Copy and Remember carry
+ * focus, so the selection stays visible and editable while it shows; once a keyboard reaches it,
+ * it is one tab stop whose arrow keys move between the actions. Quote, Copy and Remember carry
  * the selection as Markdown (a code block it touches whole); reading aloud takes the text as
  * selected.
  */
@@ -36,9 +38,9 @@ export function SelectionToolbar({
    * Adds the selection's Markdown to the reply draft as a quote, with where it was taken from;
    * without it there is no Quote.
    */
-  onQuote?: (markdown: string, source: QuoteSource | undefined) => void;
+  onQuote?: ((markdown: string, source: QuoteSource | undefined) => void) | undefined;
   /** Starts a memory session seeded with the selection; without it the toolbar offers no Remember. */
-  onRemember?: (text: string) => void;
+  onRemember?: ((text: string) => void) | undefined;
 }) {
   const { t } = useTranslation('tasks');
   const { selection, dismiss } = useMessageSelection(root);
@@ -69,6 +71,10 @@ export function SelectionToolbar({
     take(text);
     document.getSelection()?.removeAllRanges();
   }
+  async function copySelection() {
+    const text = await markdown();
+    if (text) await copy.copy(text);
+  }
 
   return (
     <Popover
@@ -80,63 +86,68 @@ export function SelectionToolbar({
       {anchor && <PopoverAnchor virtualRef={anchor} />}
       <PopoverContent
         data-selection-toolbar
-        role="toolbar"
-        aria-label={t('selection.toolbar')}
         side={side}
         sideOffset={8}
         hideWhenDetached
-        className="min-w-0 flex-row gap-0.5 rounded-full p-1"
+        className="min-w-0 rounded-full p-1"
         onOpenAutoFocus={keep}
         onCloseAutoFocus={keep}
         onMouseDown={keep}
       >
-        {onQuote && (
-          <IconButton
-            label={t('selection.quote')}
-            variant="glass-ghost"
-            tooltipSide={side}
-            onClick={() => {
-              // Read before the hand-off clears the selection and the composer takes focus.
-              const source = shown ? quoteSource(shown.parts) : undefined;
-              void handOff((text) => onQuote(text, source));
-            }}
-          >
-            <TextQuote />
-          </IconButton>
-        )}
-        <IconButton
-          label={copy.copied ? t('conversation.copied') : t('conversation.copy')}
-          variant="glass-ghost"
-          tooltipSide={side}
-          tooltipPinned={copy.pinned}
-          onPointerLeave={copy.unpin}
-          onClick={async () => {
-            const text = await markdown();
-            if (text) await copy.copy(text);
-          }}
-        >
-          {copy.copied ? <Check /> : <Copy />}
-        </IconButton>
-        {speech && (
-          <IconButton
-            label={speech.reading ? t('turnActions.stopReading') : t('turnActions.readAloud')}
-            variant="glass-ghost"
-            tooltipSide={side}
-            onClick={() => void speech.toggle().catch(showErrorToast)}
-          >
-            {speech.reading ? <Square /> : <Volume2 />}
-          </IconButton>
-        )}
-        {onRemember && (
-          <IconButton
-            label={t('turnActions.remember')}
-            variant="glass-ghost"
-            tooltipSide={side}
-            onClick={() => void handOff(onRemember)}
-          >
-            <Brain />
-          </IconButton>
-        )}
+        <Toolbar aria-label={t('selection.toolbar')}>
+          {onQuote && (
+            <ToolbarButton asChild>
+              <IconButton
+                label={t('selection.quote')}
+                variant="glass-ghost"
+                tooltipSide={side}
+                onClick={() => {
+                  // Read before the hand-off clears the selection and the composer takes focus.
+                  const source = shown ? quoteSource(shown.parts) : undefined;
+                  void handOff((text) => onQuote(text, source));
+                }}
+              >
+                <TextQuote />
+              </IconButton>
+            </ToolbarButton>
+          )}
+          <ToolbarButton asChild>
+            <IconButton
+              label={copy.copied ? t('conversation.copied') : t('conversation.copy')}
+              variant="glass-ghost"
+              tooltipSide={side}
+              tooltipPinned={copy.pinned}
+              onPointerLeave={copy.unpin}
+              onClick={() => void copySelection()}
+            >
+              {copy.copied ? <Check /> : <Copy />}
+            </IconButton>
+          </ToolbarButton>
+          {speech && (
+            <ToolbarButton asChild>
+              <IconButton
+                label={speech.reading ? t('turnActions.stopReading') : t('turnActions.readAloud')}
+                variant="glass-ghost"
+                tooltipSide={side}
+                onClick={() => void speech.toggle().catch(showErrorToast)}
+              >
+                {speech.reading ? <Square /> : <Volume2 />}
+              </IconButton>
+            </ToolbarButton>
+          )}
+          {onRemember && (
+            <ToolbarButton asChild>
+              <IconButton
+                label={t('turnActions.remember')}
+                variant="glass-ghost"
+                tooltipSide={side}
+                onClick={() => void handOff(onRemember)}
+              >
+                <Brain />
+              </IconButton>
+            </ToolbarButton>
+          )}
+        </Toolbar>
       </PopoverContent>
     </Popover>
   );

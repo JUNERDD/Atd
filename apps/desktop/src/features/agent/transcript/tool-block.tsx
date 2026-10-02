@@ -4,6 +4,7 @@ import { Shimmer } from '@ai/ui/components/ai-elements/shimmer';
 import type { ConfirmationRequest } from '../../../client/agent/permission-schema';
 import type { BlockOf } from '../../../client/agent/transcript-schema';
 import { ActivityRow } from './activity-row';
+import { NestedConfirmation } from './codemode-call';
 import { PermissionNote, ToolBody } from './tool-body';
 import {
   hasToolDetail,
@@ -31,7 +32,7 @@ export function ToolBlock({
   forceOpen,
 }: {
   block: BlockOf<'tool'>;
-  confirmation?: ConfirmationRequest;
+  confirmation?: ConfirmationRequest | undefined;
   forceOpen?: boolean;
 }) {
   const { t } = useTranslation('tasks');
@@ -51,6 +52,9 @@ export function ToolBlock({
       : target;
   const memoryKey = rawTarget ? memoryTargetKey(rawTarget) : null;
   const outcome = confirmation ? undefined : block.permission?.outcome;
+  // A codemode row's request may be one of its nested calls' (turns.ts): the step that asks shows
+  // it, and this row keeps the waiting summary.
+  const nested = confirmation?.toolCallId === block.callId ? undefined : confirmation;
   // A decline is the one outcome the row keeps, standing in for a missing target when there is one.
   const declined = outcome === 'declined' ? t(outcomeKey(outcome)) : null;
   // A pending approval reads as tool name plus waiting text; the decision lives in the composer
@@ -127,7 +131,9 @@ export function ToolBlock({
         </ActivityRow.Trigger>
         <ActivityRow.Content>
           <ActivityRow.Body className="tool-body">
-            <ToolBody block={block} />
+            <NestedConfirmation value={nested}>
+              <ToolBody block={block} />
+            </NestedConfirmation>
             {outcome && <PermissionNote outcome={outcome} />}
           </ActivityRow.Body>
         </ActivityRow.Content>

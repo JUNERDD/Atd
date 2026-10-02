@@ -128,12 +128,11 @@ export function paintQuote(layer: HTMLElement, { ranges, blocks }: FoundQuote): 
     painted.push(tint);
   }
   for (const block of blocks) {
-    // A diagram's source element scrolls inside its frame; the frame is what the reader sees.
-    const frame = block.closest('.markdown-code') ?? block;
+    // Each atomic block's root is its visible frame (`codeSource`), so the ring follows it.
     const ring = document.createElement('span');
     ring.className = 'quote-reveal-ring';
-    place(ring, within(frame.getBoundingClientRect(), origin));
-    ring.style.borderRadius = getComputedStyle(frame).borderRadius;
+    place(ring, within(block.getBoundingClientRect(), origin));
+    ring.style.borderRadius = getComputedStyle(block).borderRadius;
     painted.push(ring);
   }
   layer.append(...painted);

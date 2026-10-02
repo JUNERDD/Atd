@@ -333,31 +333,26 @@
   padding-left: 12px;
   color: var(--muted-foreground);
 }
-.markdown [data-streamdown='code-block'],
 .markdown [data-streamdown='table-wrapper'] {
   gap: 0;
   padding: 0;
+  overflow: hidden;
   border: 1px solid var(--border);
   border-radius: 10px;
   background: color-mix(in oklab, var(--muted) 60%, transparent);
 }
-.markdown [data-streamdown='code-block'] {
+/* A mermaid diagram: Streamdown's block, with the transcript's copy action in its header row. The
+   frame takes the block's place in the message flow, so the block drops its own margin. */
+.markdown-mermaid {
+  position: relative;
   min-width: 0;
   max-width: 100%;
-  overflow: hidden;
-}
-.markdown [data-streamdown='table-wrapper'] {
-  overflow: hidden;
-}
-.mermaid-fallback {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  max-width: 100%;
-  padding: 12px;
   border-radius: var(--radius-xl);
-  background: var(--muted);
 }
+.markdown-mermaid > [data-streamdown='mermaid-block'] {
+  margin: 0;
+}
+/* A diagram that fails to draw shows its source in the plain code frame, wrapped to its width. */
 .mermaid-fallback pre {
   margin: 0;
   font-size: 12px;

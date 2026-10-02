@@ -10,7 +10,7 @@ export interface ActivityRowRootProps extends ComponentProps<'div'> {
   defaultOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
   /** Row status, reflected as `data-status` when provided. */
-  status?: string;
+  status?: string | undefined;
 }
 
 /**

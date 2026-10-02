@@ -4,7 +4,7 @@ import { DetailBox } from '../../detail-box';
 export function Fallback({ text }: { text: string }) {
   return (
     <DetailBox variant="output" copyText={text}>
-      <pre className="m-0 whitespace-pre-wrap wrap-anywhere">{text}</pre>
+      <pre className="m-0 wrap-anywhere whitespace-pre-wrap">{text}</pre>
     </DetailBox>
   );
 }

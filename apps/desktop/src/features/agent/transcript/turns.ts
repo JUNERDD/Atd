@@ -14,10 +14,25 @@ export type Turn = {
   items: TurnItem[];
 };
 
+/**
+ * A tool call a `codemode` script made has the id `<codemode call id>/<n>`; its requests show on
+ * the script's row, the one the transcript has.
+ */
+const NESTED_CALL_ID = /^(.+?)(?:\/(?:\d+|\?))+$/;
+
+/**
+ * Pending requests by the call id of the row that shows them: a call's own, and a nested call's
+ * under its codemode call too. Exact ids are indexed first, so a row's own request wins and a
+ * provider id that happens to end like a nested one still finds its own row.
+ */
 export function indexRequests(requests: PermissionRequest[]): RequestIndex {
   const index: RequestIndex = new Map();
   for (const request of requests) {
     if (!index.has(request.toolCallId)) index.set(request.toolCallId, request);
+  }
+  for (const request of requests) {
+    const parent = NESTED_CALL_ID.exec(request.toolCallId)?.[1];
+    if (parent && !index.has(parent)) index.set(parent, request);
   }
   return index;
 }

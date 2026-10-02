@@ -45,6 +45,7 @@
     "failed": "失败",
     "interrupted": "已中断",
     "interruptedNote": "执行在记录最终工具结果前结束。继续前请检查已有的文件更改。",
+    "codemodeSteps": "脚本发起的工具调用",
     "step": {
       "read": "读取文件",
       "write": "写入文件",
@@ -71,7 +72,11 @@
       "todo": "更新待办",
       "webSearch": "搜索网页",
       "webFetch": "获取网页",
-      "loadSkill": "加载技能"
+      "loadSkill": "加载技能",
+      "codemode": "运行脚本",
+      "listMcpResources": "列出 MCP 资源",
+      "listMcpResourceTemplates": "列出 MCP 资源模板",
+      "readMcpResource": "读取 MCP 资源"
     },
     "target": {
       "user": "用户",
@@ -261,7 +266,21 @@
       "copy": "复制代码",
       "copied": "已复制",
       "download": "下载",
-      "saved": "已保存"
+      "saved": "已保存",
+      "fileName": "代码"
+    },
+    "diagram": {
+      "fullscreen": "全屏查看",
+      "exitFullscreen": "退出全屏",
+      "zoomIn": "放大",
+      "zoomOut": "缩小",
+      "resetView": "重置视图",
+      "download": "下载图表",
+      "downloadFailed": "无法导出图表。",
+      "svg": "SVG 图像",
+      "png": "PNG 图像",
+      "source": "Mermaid 源码",
+      "fileName": "图表"
     },
     "usage": {
       "label": "Token 用量",

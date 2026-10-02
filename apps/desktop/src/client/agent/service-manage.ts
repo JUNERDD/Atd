@@ -38,8 +38,7 @@ export function manageError(error: unknown): never {
   throw error instanceof Error ? error : new Error('The service request failed.');
 }
 
-export function mapRunPolicy(policy: RunPolicy | null | undefined): ServiceRunPolicy | undefined {
-  if (!policy) return undefined;
+export function mapRunPolicy(policy: RunPolicy): ServiceRunPolicy {
   return {
     tools: snapshotToolsFor(policy.tools),
     memory: policy.memory,

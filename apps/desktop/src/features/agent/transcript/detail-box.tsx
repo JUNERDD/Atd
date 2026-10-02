@@ -19,7 +19,7 @@ export function DetailBox({
   className,
 }: {
   variant: DetailBoxVariant;
-  copyText?: string;
+  copyText?: string | undefined;
   children: ReactNode;
   className?: string;
 }) {

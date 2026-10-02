@@ -45,6 +45,7 @@
     "failed": "Failed",
     "interrupted": "Interrupted",
     "interruptedNote": "Execution ended before a final tool result was recorded. Review any existing file changes before continuing.",
+    "codemodeSteps": "Tool calls made by the script",
     "step": {
       "read": "Read file",
       "write": "Write file",
@@ -71,7 +72,11 @@
       "todo": "Update todos",
       "webSearch": "Search the web",
       "webFetch": "Fetch web page",
-      "loadSkill": "Load skill"
+      "loadSkill": "Load skill",
+      "codemode": "Run script",
+      "listMcpResources": "List MCP resources",
+      "listMcpResourceTemplates": "List MCP resource templates",
+      "readMcpResource": "Read MCP resource"
     },
     "target": {
       "user": "User",
@@ -261,7 +266,21 @@
       "copy": "Copy code",
       "copied": "Copied",
       "download": "Download",
-      "saved": "Saved"
+      "saved": "Saved",
+      "fileName": "code"
+    },
+    "diagram": {
+      "fullscreen": "View fullscreen",
+      "exitFullscreen": "Exit fullscreen",
+      "zoomIn": "Zoom in",
+      "zoomOut": "Zoom out",
+      "resetView": "Reset view",
+      "download": "Download diagram",
+      "downloadFailed": "The diagram could not be exported.",
+      "svg": "SVG image",
+      "png": "PNG image",
+      "source": "Mermaid source",
+      "fileName": "diagram"
     },
     "usage": {
       "label": "Token usage",
