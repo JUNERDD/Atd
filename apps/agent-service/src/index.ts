@@ -1,5 +1,6 @@
 import { errorMessage, type PermissionTier } from '@atd/agent-contracts';
 import { CapabilityRegistry } from './capabilities.js';
+import { seedStarterCommands } from './commands/starters.js';
 import {
   clearEndpoint,
   readBuildId,
@@ -92,6 +93,11 @@ export async function createService(
   // Before anything reads the MCP servers, so the first MCP use finds their values in the keyring.
   await migrateMcpSecrets(config.paths.root, config.serviceId, log).catch((error: unknown) =>
     log.warn('MCP values were not moved into the OS keyring; the next start retries.', {
+      error: errorMessage(error),
+    }),
+  );
+  await seedStarterCommands(config.paths.root).catch((error: unknown) =>
+    log.warn('The starter commands were not added; the next start retries.', {
       error: errorMessage(error),
     }),
   );
