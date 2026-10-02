@@ -386,3 +386,58 @@
     );
   }
 }
+
+/*
+ * Running-text shimmer (`Shimmer`): a foreground-colored band sweeping across muted text. The
+ * band is a 250%-wide gradient layer clipped to the glyphs, and the keyframes move its position
+ * from 100% to 0%, so the sweep runs on CSS alone: it does not wait for the renderer's main thread
+ * to be free of script work (a transcript streaming in) and does not restart when React re-renders
+ * the element. The element sets `--ai-shimmer-spread` (band half-width, scaled to the text length)
+ * and `--ai-shimmer-duration`.
+ */
+@keyframes ai-shimmer-sweep {
+  from {
+    background-position:
+      100% center,
+      0 0;
+  }
+  to {
+    background-position:
+      0% center,
+      0 0;
+  }
+}
+
+@layer components {
+  .ai-shimmer {
+    background-image:
+      linear-gradient(
+        90deg,
+        #0000 calc(50% - var(--ai-shimmer-spread)),
+        var(--foreground),
+        #0000 calc(50% + var(--ai-shimmer-spread))
+      ),
+      linear-gradient(var(--muted-foreground), var(--muted-foreground));
+    background-size:
+      250% 100%,
+      auto;
+    background-repeat: no-repeat;
+    background-position:
+      100% center,
+      0 0;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: ai-shimmer-sweep var(--ai-shimmer-duration) linear infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ai-shimmer {
+      background-image: none;
+      -webkit-background-clip: border-box;
+      background-clip: border-box;
+      color: var(--muted-foreground);
+      animation: none;
+    }
+  }
+}
