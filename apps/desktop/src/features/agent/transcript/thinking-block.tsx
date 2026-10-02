@@ -57,7 +57,8 @@ export function ThinkingBlock({ block }: { block: BlockOf<'thinking'> }) {
       <ActivityRow.Content>
         <ActivityRow.Body className="thinking-full">
           <DetailBox variant="plain" copyText={block.text}>
-            <LazyMarkdown text={block.text} streaming={block.streaming} />
+            {/* Reasoning streams long and fast into a muted detail box: no per-character reveal. */}
+            <LazyMarkdown text={block.text} streaming={block.streaming} animated={false} />
           </DetailBox>
         </ActivityRow.Body>
       </ActivityRow.Content>
