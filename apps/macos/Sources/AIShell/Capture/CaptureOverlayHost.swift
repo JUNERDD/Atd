@@ -8,6 +8,9 @@ import AppKit
 final class AnnotationHostView: NSView {
   /// Takes points in this view's (equally, the overlay's) coordinates.
   var passThrough: ((CGPoint) -> Bool)?
+  /// Offered every scroll-wheel event over the overlay first, wherever it lands (canvas, bars or
+  /// the overlay itself); true when the editor took it.
+  var scroll: ((NSEvent) -> Bool)?
 
   override var isFlipped: Bool { true }
 

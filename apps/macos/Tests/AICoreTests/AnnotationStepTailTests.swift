@@ -6,7 +6,7 @@ import Testing
 
 @Suite("Annotation step tail and document extras")
 struct AnnotationStepTailTests {
-  let style = AnnotationStyle(color: .red, stroke: .medium)
+  let style = AnnotationStyle(color: .red)
   let center = CGPoint(x: 100, y: 100)
   let tip = CGPoint(x: 200, y: 100)
 
@@ -100,13 +100,12 @@ struct AnnotationStepTailTests {
     #expect(document.stepNumber(of: second.id) == 2)
   }
 
-  @Test("Stepping the stroke clamps at both ends")
+  @Test("Stepping the size moves twentieths of its range and clamps at both ends")
   func strokeSteps() {
-    #expect(AnnotationStroke.thin.stepped(by: 1) == .medium)
-    #expect(AnnotationStroke.medium.stepped(by: 1) == .thick)
-    #expect(AnnotationStroke.thick.stepped(by: 1) == .thick)
-    #expect(AnnotationStroke.medium.stepped(by: -1) == .thin)
-    #expect(AnnotationStroke.thin.stepped(by: -1) == .thin)
+    #expect(abs(AnnotationStroke(0.5).stepped(by: 1).value - 0.55) < 1e-9)
+    #expect(abs(AnnotationStroke(0.5).stepped(by: -5).value - 0.25) < 1e-9)
+    #expect(AnnotationStroke(0.98).stepped(by: 1) == AnnotationStroke(1))
+    #expect(AnnotationStroke(0.02).stepped(by: -1) == AnnotationStroke(0))
   }
 
   @Test("Translating a document moves every annotation and round-trips")

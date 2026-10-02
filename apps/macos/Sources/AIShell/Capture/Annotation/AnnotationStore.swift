@@ -31,6 +31,9 @@ final class AnnotationStore {
   /// Called after anything drawn or the undo state changed.
   var onChange: (() -> Void)?
 
+  /// The burst the last commit belonged to, if any (``commit(_:burst:)``).
+  private var burst: UUID?
+
   init() {
     // Groups are opened per commit, so `canUndo` is right at once rather than after the event
     // loop closes an automatic group.
@@ -42,13 +45,18 @@ final class AnnotationStore {
   var selected: Annotation? { selectedID.flatMap { shown[$0] } }
 
   /// Makes `next` the document as one undo step; ends any preview. Unchanged documents add no
-  /// step.
-  func commit(_ next: AnnotationDocument) {
+  /// step. Commits sharing a `burst` (one drag of the size slider, one run of scroll-wheel
+  /// ticks) make one step together: each moves the document on at once, and undoing restores
+  /// what was there before the burst began.
+  func commit(_ next: AnnotationDocument, burst: UUID? = nil) {
     preview = nil
     guard next != document else { return }
-    undoManager.beginUndoGrouping()
-    registerRestore(document)
-    undoManager.endUndoGrouping()
+    if burst == nil || burst != self.burst {
+      undoManager.beginUndoGrouping()
+      registerRestore(document)
+      undoManager.endUndoGrouping()
+    }
+    self.burst = burst
     document = next
     dropMissingSelection()
     onChange?()
@@ -57,12 +65,14 @@ final class AnnotationStore {
   func undo() {
     guard undoManager.canUndo else { return }
     preview = nil
+    burst = nil
     undoManager.undo()
   }
 
   func redo() {
     guard undoManager.canRedo else { return }
     preview = nil
+    burst = nil
     undoManager.redo()
   }
 
@@ -70,6 +80,7 @@ final class AnnotationStore {
   /// capture starts from its annotations, not from an edit of nothing.
   func load(_ next: AnnotationDocument) {
     undoManager.removeAllActions()
+    burst = nil
     document = next
     preview = nil
     selectedID = nil
@@ -80,6 +91,7 @@ final class AnnotationStore {
   /// Forgets the document and its history (a new session).
   func reset() {
     undoManager.removeAllActions()
+    burst = nil
     document = AnnotationDocument()
     preview = nil
     selectedID = nil

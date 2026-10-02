@@ -50,7 +50,7 @@ final class AnnotationCanvasView: NSView {
   var onChooseTool: ((AnnotationTool) -> Void)?
   /// Esc: steps back one level; false when there was nothing to step back.
   var onEscape: (() -> Bool)?
-  /// `[` (-1) or `]` (1): steps the style bar's stroke; false when it shows none.
+  /// `[` `-` (-1) or `]` `=` (1): steps the style bar's size; false when it shows none.
   var onStepStroke: ((Int) -> Bool)?
   /// ⌘Delete: ends open text and clears every annotation; false when there was nothing to do.
   var onClearAll: (() -> Bool)?
@@ -242,8 +242,9 @@ final class AnnotationCanvasView: NSView {
       return interaction.nudgeSelection(by: offset)
     default:
       let characters = event.charactersIgnoringModifiers ?? ""
-      if characters == "[" || characters == "]" {
-        return onStepStroke?(characters == "[" ? -1 : 1) ?? false
+      // `[` `]`, and PixPin's wheel keys `-` `=` (with Shift `_` `+`).
+      if let step = ["[": -1, "-": -1, "_": -1, "]": 1, "=": 1, "+": 1][characters] {
+        return onStepStroke?(step) ?? false
       }
       guard let tool = AnnotationTool(key: characters) else { return false }
       onChooseTool?(tool)

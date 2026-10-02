@@ -6,7 +6,7 @@ import Testing
 
 @Suite("Annotation geometry")
 struct AnnotationGeometryTests {
-  let style = AnnotationStyle(color: .red, stroke: .medium)
+  let style = AnnotationStyle(color: .red)
 
   func annotation(_ shape: AnnotationShape) -> Annotation {
     Annotation(shape: shape, style: style)

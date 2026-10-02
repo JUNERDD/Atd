@@ -96,6 +96,7 @@ extension CaptureSession: CaptureOverlayDelegate {
     editor = nil
     interiorClaimed = false
     owner.annotationHost.passThrough = nil
+    owner.annotationHost.scroll = nil
     phase = .idle
     refreshHints()
     renderIdle()
@@ -191,6 +192,7 @@ extension CaptureSession: CaptureOverlayDelegate {
       return await elementTargets(at: point, on: owner)
     }
     owner.annotationHost.passThrough = { [weak self] in self?.ownsPress(at: $0) ?? false }
+    owner.annotationHost.scroll = { [weak editor] in editor?.scroll($0) ?? false }
     editor.show(in: owner.annotationHost, selection: rect, display: owner.display)
     owner.window?.makeKey()
   }

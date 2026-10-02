@@ -8,7 +8,7 @@ import AppKit
 ///
 /// Source: unmodified SVGs from lucide-static 1.48.0 (ISC), the `lucide-react` version pinned in
 /// `apps/desktop/package.json`, each from `https://unpkg.com/lucide-static@1.48.0/icons/<name>.svg`
-/// for the names below. Swatches and stroke widths depict their values, so they are drawn here.
+/// for the names below. Swatches and the cover box depict their values, so they are drawn here.
 enum AnnotationIcons {
   static let undo = "undo-2"
   static let redo = "redo-2"
@@ -16,6 +16,23 @@ enum AnnotationIcons {
   static let confirm = "check"
   static let textBackground = "square-text"
   static let grip = "grip-vertical"
+
+  /// The Lucide glyph for pixelate and blur; a drawn black box for solid, which depicts itself.
+  static func redaction(_ redaction: AnnotationRedaction, label: String) -> NSImage {
+    switch redaction {
+    case .pixelate: return glyph("grid-3x3", label: label)
+    case .blur: return glyph("droplet", label: label)
+    case .solid:
+      let image = NSImage(size: NSSize(width: 16, height: 16), flipped: false) { rect in
+        NSColor.black.setFill()
+        NSBezierPath(roundedRect: rect.insetBy(dx: 2, dy: 3), xRadius: 2, yRadius: 2).fill()
+        return true
+      }
+      image.isTemplate = true
+      image.accessibilityDescription = label
+      return image
+    }
+  }
 
   static func lucideName(for tool: AnnotationTool) -> String {
     switch tool {
@@ -55,27 +72,6 @@ enum AnnotationIcons {
       dot.stroke()
       return true
     }
-    image.accessibilityDescription = label
-    return image
-  }
-
-  /// A template dot as wide as the stroke it stands for (scaled to fit the control).
-  static func stroke(_ stroke: AnnotationStroke, label: String) -> NSImage {
-    let diameter: CGFloat =
-      switch stroke {
-      case .thin: 4
-      case .medium: 7
-      case .thick: 11
-      }
-    let image = NSImage(size: NSSize(width: 14, height: 14), flipped: false) { rect in
-      NSColor.black.setFill()
-      let dot = CGRect(
-        x: rect.midX - diameter / 2, y: rect.midY - diameter / 2, width: diameter,
-        height: diameter)
-      NSBezierPath(ovalIn: dot).fill()
-      return true
-    }
-    image.isTemplate = true
     image.accessibilityDescription = label
     return image
   }

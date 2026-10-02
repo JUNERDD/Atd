@@ -6,7 +6,7 @@ import Testing
 
 @Suite("Annotation drawing")
 struct AnnotationDrawingTests {
-  let style = AnnotationStyle(color: .red, stroke: .medium)
+  let style = AnnotationStyle(color: .red)
 
   func annotation(_ shape: AnnotationShape, style: AnnotationStyle? = nil) -> Annotation {
     Annotation(shape: shape, style: style ?? self.style)
@@ -111,16 +111,16 @@ struct AnnotationDrawingTests {
     let frame = CGRect(x: 100, y: 100, width: 80, height: 26)
     let plain = annotation(.text("Hi", frame: frame))
     let plated = annotation(
-      .text("Hi", frame: frame), style: AnnotationStyle(stroke: .medium, textBackground: true))
+      .text("Hi", frame: frame), style: AnnotationStyle(textBackground: true))
     #expect(plain.bounds == frame)
-    let plate = AnnotationPath.textPlate(around: frame, fontSize: AnnotationStroke.medium.fontSize)
+    let plate = AnnotationPath.textPlate(around: frame, fontSize: AnnotationStroke.default.fontSize)
     #expect(plated.bounds == plate)
     #expect(plate.contains(frame))
     #expect(plate.minX < frame.minX && plate.minY < frame.minY)
     let edge = CGPoint(x: plate.minX + 1, y: frame.midY)
     #expect(plated.contains(edge, tolerance: 0))
     #expect(!plain.contains(edge, tolerance: 0))
-    let small = AnnotationPath.textPlate(around: frame, fontSize: AnnotationStroke.thin.fontSize)
+    let small = AnnotationPath.textPlate(around: frame, fontSize: AnnotationStroke(0).fontSize)
     #expect(small.width < plate.width)
   }
 }
