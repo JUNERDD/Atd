@@ -6,6 +6,8 @@ struct AppMenuActions {
   var showPanel: () -> Void
   var hidePanel: () -> Void
   var openSettings: () -> Void
+  /// Nil where the build does not update (Debug).
+  var checkForUpdates: (() -> Void)?
   var restartService: () async throws -> Void
   var showServiceLogs: () async throws -> Void
   /// Undo or Redo for the key window's page (`edit.command`).
@@ -23,10 +25,15 @@ enum AppMenus {
     let quit = NSMenuItem(
       title: strings.text(.menuQuit), action: #selector(NSApplication.terminate(_:)),
       keyEquivalent: "q")
-    return [
+    var items: [NSMenuItem] = [
       ActionMenuItem(strings.text(.menuShowPanel), actions.showPanel),
       ActionMenuItem(strings.text(.menuHidePanel), actions.hidePanel),
       ActionMenuItem(strings.text(.menuSettings), key: ",", actions.openSettings),
+    ]
+    if let checkForUpdates = actions.checkForUpdates {
+      items.append(ActionMenuItem(strings.text(.menuCheckForUpdates), checkForUpdates))
+    }
+    return items + [
       .separator(),
       ActionMenuItem(strings.text(.menuRestartService)) {
         reportFailure(

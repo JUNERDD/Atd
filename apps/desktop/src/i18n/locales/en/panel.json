@@ -5,6 +5,8 @@
     "controlsLabel": "Panel controls",
     "tasks": "Tasks",
     "settings": "Settings",
+    "update": "Update",
+    "updateTooltip": "Restart to install version {{version}}",
     "loadingConversation": "Loading conversation…"
   },
   "welcome": {

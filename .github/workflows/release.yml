@@ -3,7 +3,10 @@ name: Release
 # Bumping `version` in apps/macos/package.json on main publishes a GitHub Release `v<version>`
 # with the arm64 dmg of the Release app. The app is ad hoc signed and not notarized (project.yml
 # signs with `-` until Developer ID signing lands), so a downloaded copy is opened once from
-# Privacy & Security. There is no update feed: the native app has no updater.
+# Privacy & Security. Installed copies update themselves with Sparkle (AppUpdater): each release
+# also publishes `appcast.xml`, the feed `SUFeedURL` reads from the latest release, with the dmg's
+# EdDSA signature made with the `SPARKLE_ED_PRIVATE_KEY` secret (the private half of
+# `SUPublicEDKey` in project.yml). A prerelease is never the latest release, so it is not offered.
 # A push that leaves the version as it was builds nothing, even when that version has no release
 # yet. A manual run releases the current version unless its tag exists: use it for a first
 # release without a bump, or to retry a release whose build failed.
@@ -112,11 +115,14 @@ jobs:
       - name: Package the dmg
         run: |
           app=apps/macos/DerivedData/Build/Products/Release/Atd.app
-          built=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app/Contents/Info.plist")
-          if [ "$built" != "$VERSION" ]; then
-            echo "::error::The built app is version $built, not $VERSION."
-            exit 1
-          fi
+          # Sparkle compares CFBundleVersion, so the appcast names this version for both.
+          for key in CFBundleShortVersionString CFBundleVersion; do
+            built=$(/usr/libexec/PlistBuddy -c "Print :$key" "$app/Contents/Info.plist")
+            if [ "$built" != "$VERSION" ]; then
+              echo "::error::The built app's $key is $built, not $VERSION."
+              exit 1
+            fi
+          done
           codesign --verify --deep --strict "$app"
           # Moved, not copied: nothing reads the built app after this step, and a rename within
           # the runner's work volume skips copying the service pack's tens of thousands of files.
@@ -128,6 +134,43 @@ jobs:
           # supports opens it.
           hdiutil create -volname Atd -srcfolder "$stage" -ov -format ULFO "dist/Atd-$VERSION-arm64.dmg"
           ls -lh dist
+      - name: Write the update feed
+        env:
+          SPARKLE_ED_PRIVATE_KEY: ${{ secrets.SPARKLE_ED_PRIVATE_KEY }}
+          REPO: ${{ github.repository }}
+          # The Sparkle the app embeds (Package.swift), whose sign_update signs the dmg.
+          SPARKLE: 2.10.0
+          SPARKLE_SHA256: c2bf58aa8387266ac179357b1415d6f2635f044da8be41042af32425dae6da0c
+        run: |
+          if [ -z "$SPARKLE_ED_PRIVATE_KEY" ]; then
+            echo "::error::The SPARKLE_ED_PRIVATE_KEY secret is missing; installed apps would reject an unsigned update."
+            exit 1
+          fi
+          tools=$(mktemp -d "$RUNNER_TEMP/sparkle.XXXXXX")
+          curl -fsSL -o "$tools/sparkle.tar.xz" \
+            "https://github.com/sparkle-project/Sparkle/releases/download/$SPARKLE/Sparkle-$SPARKLE.tar.xz"
+          echo "$SPARKLE_SHA256  $tools/sparkle.tar.xz" | shasum -a 256 -c -
+          tar -xf "$tools/sparkle.tar.xz" -C "$tools"
+          dmg="Atd-$VERSION-arm64.dmg"
+          # Prints the enclosure's `sparkle:edSignature="…" length="…"` attributes.
+          signature=$(printf '%s' "$SPARKLE_ED_PRIVATE_KEY" | "$tools/bin/sign_update" --ed-key-file - "dist/$dmg")
+          cat > dist/appcast.xml <<EOF
+          <?xml version="1.0" encoding="utf-8"?>
+          <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
+            <channel>
+              <title>Atd</title>
+              <item>
+                <title>$VERSION</title>
+                <pubDate>$(LC_ALL=C date -u '+%a, %d %b %Y %H:%M:%S +0000')</pubDate>
+                <sparkle:version>$VERSION</sparkle:version>
+                <sparkle:shortVersionString>$VERSION</sparkle:shortVersionString>
+                <link>https://github.com/$REPO/releases/tag/v$VERSION</link>
+                <enclosure url="https://github.com/$REPO/releases/download/v$VERSION/$dmg" type="application/octet-stream" $signature/>
+              </item>
+            </channel>
+          </rss>
+          EOF
+          cat dist/appcast.xml
       - name: Create release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -140,6 +183,6 @@ jobs:
           gh release create "v$VERSION" dist/* \
             --target "$GITHUB_SHA" \
             --title "v$VERSION" \
-            --notes "Apple Silicon (arm64) build for macOS 26 or later. The app is ad hoc signed and not notarized: after downloading, open it once from System Settings › Privacy & Security." \
+            --notes "Apple Silicon (arm64) build for macOS 26 or later. The app is ad hoc signed and not notarized: after downloading, open it once from System Settings › Privacy & Security. Installed copies of 0.4.0 or later update themselves." \
             --generate-notes \
             "${flags[@]}"

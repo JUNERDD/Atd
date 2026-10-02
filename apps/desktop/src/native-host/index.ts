@@ -25,6 +25,7 @@ import { followShortcutState, nativeShortcuts, type GlobalShortcutState } from '
 import { nativeSocketTransport } from './socket-transport';
 import { windowMessages } from './window-messages';
 import { nativeSpeech } from './native-speech';
+import { nativeUpdate } from './native-update';
 
 /**
  * The page's origin, the base of every relayed request: `ai-app://renderer`. WebKit may report a
@@ -48,6 +49,8 @@ export async function installNativeHost(
   native: NativeBridge,
   surface: 'panel' | 'settings',
 ): Promise<void> {
+  // Before the first await: the shell replays `update.state` as soon as the page is ready.
+  const update = surface === 'panel' ? nativeUpdate(native) : undefined;
   const connection = new NativeConnection({
     baseUrl: pageOrigin(),
     relay: true,
@@ -171,6 +174,7 @@ export async function installNativeHost(
     platform: 'darwin',
     settings: settings.bridge,
     ...(surface === 'panel' ? { files: nativeFiles(connection) } : {}),
+    ...(update ? { update } : {}),
     agent: createAgentBridge(async (request) => {
       // Only the panel receives `launch` events, so the settings window hands its launches over.
       if (surface === 'settings' && request.action === 'launch') {

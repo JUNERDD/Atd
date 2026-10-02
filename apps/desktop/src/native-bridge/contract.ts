@@ -64,6 +64,11 @@ export const NativePosts = {
     { socketId: Type.String({ minLength: 1, maxLength: 64 }), data: Type.String() },
     { additionalProperties: false },
   ),
+  /**
+   * Installs the update `update.state` names and relaunches, through the app's quit flow (which
+   * still asks before stopping running tasks). Ignored while no update waits.
+   */
+  'update.install': Empty,
   'socket.close': Type.Object(
     {
       socketId: Type.String({ minLength: 1, maxLength: 64 }),
@@ -153,6 +158,14 @@ export const NativeEvents = {
    * fails; a `speech.speak` that replaces another keeps it true.
    */
   'speech.state': Type.Object({ speaking: Type.Boolean() }, { additionalProperties: false }),
+  /**
+   * The version of a downloaded update that installs when the app quits, null while none waits.
+   * Sent to the panel on each change and replayed when its page becomes ready.
+   */
+  'update.state': Type.Object(
+    { version: Type.Union([Text(64), Type.Null()]) },
+    { additionalProperties: false },
+  ),
   'socket.frames': Type.Object(
     { frames: Type.Array(SocketFrameSchema, { minItems: 1 }) },
     { additionalProperties: false },

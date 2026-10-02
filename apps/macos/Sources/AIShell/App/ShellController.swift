@@ -24,6 +24,8 @@ public final class ShellController {
   let launchApprovals: LaunchApprovals
   /// `speech.speak` / `speech.stop`; its state reaches every page as `speech.state`.
   let speech = SpeechReader()
+  /// Release builds' Sparkle updater; a waiting update reaches the panel as `update.state`.
+  let updater = AppUpdater()
   let quitGuard: QuitGuard
   private var statusItem: StatusItemController?
   private var registrar: HotKeyRegistrar?
@@ -92,6 +94,10 @@ public final class ShellController {
     speech.onChange = { [weak self] speaking in
       self?.broadcast(.speechState(.init(speaking: speaking)))
     }
+    updater.onChange = { [weak self] in
+      guard let self else { return }
+      panelHost.setState(.updateState(.init(version: updater.readyVersion)))
+    }
     panel.onVisibilityChange = { [weak panelHost] visible in
       panelHost?.setState(.windowVisibility(.init(visible: visible)))
     }
@@ -110,6 +116,7 @@ public final class ShellController {
     refreshStatus()
     services.start()
     control.start()
+    updater.start()
     AppPresence.setShowInDock(defaults.bool(forKey: Self.showInDockKey))
     applyLanguage()
     NotificationCenter.default.addObserver(
@@ -301,6 +308,8 @@ public final class ShellController {
       showPanel: { [weak self] in self?.showPanel() },
       hidePanel: { [weak self] in self?.hidePanel() },
       openSettings: { [weak self] in self?.openSettings(commandId: nil) },
+      checkForUpdates: updater.isAvailable
+        ? { [weak self] in self?.updater.checkForUpdates() } : nil,
       restartService: { try await services.restart() },
       showServiceLogs: { try services.revealLogs() },
       editCommand: { [weak self] command in self?.sendEditCommand(command) },
@@ -325,7 +334,8 @@ extension AppMenuActions {
   /// Actions of a controller that is gone; the menu still builds.
   static var inert: AppMenuActions {
     AppMenuActions(
-      showPanel: {}, hidePanel: {}, openSettings: {}, restartService: {}, showServiceLogs: {},
+      showPanel: {}, hidePanel: {}, openSettings: {}, checkForUpdates: nil, restartService: {},
+      showServiceLogs: {},
       editCommand: { _ in }, developmentHint: { false })
   }
 }

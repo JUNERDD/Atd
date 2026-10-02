@@ -93,6 +93,7 @@ public enum NativePost: Equatable, Sendable {
   case windowDragRegions(WindowDragRegionsPost)
   case socketOpen(SocketOpenPost)
   case socketSend(SocketSendPost)
+  case updateInstall(UpdateInstallPost)
   case socketClose(SocketClosePost)
 
   /// The contract name.
@@ -103,6 +104,7 @@ public enum NativePost: Equatable, Sendable {
     case .windowDragRegions: "window.dragRegions"
     case .socketOpen: "socket.open"
     case .socketSend: "socket.send"
+    case .updateInstall: "update.install"
     case .socketClose: "socket.close"
     }
   }
@@ -171,6 +173,8 @@ public enum JsMessage: Decodable, Equatable, Sendable {
         post = try .windowDragRegions(container.value(.params, WindowDragRegionsPost.self))
       case "socket.open": post = try .socketOpen(container.value(.params, SocketOpenPost.self))
       case "socket.send": post = try .socketSend(container.value(.params, SocketSendPost.self))
+      case "update.install":
+        post = try .updateInstall(container.value(.params, UpdateInstallPost.self))
       case "socket.close": post = try .socketClose(container.value(.params, SocketClosePost.self))
       default:
         throw DecodingError.dataCorruptedError(
@@ -212,6 +216,7 @@ public enum NativeEvent: Encodable, Equatable, Sendable {
   case filesDrag(FilesDragEvent)
   case editCommand(EditCommandEvent)
   case speechState(SpeechStateEvent)
+  case updateState(UpdateStateEvent)
   case socketFrames(SocketFramesEvent)
 
   /// The contract name.
@@ -226,6 +231,7 @@ public enum NativeEvent: Encodable, Equatable, Sendable {
     case .filesDrag: "files.drag"
     case .editCommand: "edit.command"
     case .speechState: "speech.state"
+    case .updateState: "update.state"
     case .socketFrames: "socket.frames"
     }
   }
@@ -241,6 +247,7 @@ public enum NativeEvent: Encodable, Equatable, Sendable {
     case .filesDrag(let payload): try payload.encode(to: encoder)
     case .editCommand(let payload): try payload.encode(to: encoder)
     case .speechState(let payload): try payload.encode(to: encoder)
+    case .updateState(let payload): try payload.encode(to: encoder)
     case .socketFrames(let payload): try payload.encode(to: encoder)
     }
   }

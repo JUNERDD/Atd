@@ -125,6 +125,9 @@ public struct SocketSendPost: Codable, Equatable, Sendable {
   }
 }
 
+/// Params of the `update.install` post.
+public typealias UpdateInstallPost = NativeEmpty
+
 /// Params of the `socket.close` post.
 public struct SocketClosePost: Codable, Equatable, Sendable {
   public let socketId: String
