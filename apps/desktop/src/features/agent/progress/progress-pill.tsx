@@ -59,6 +59,8 @@ const HITL_ICONS = {
 /**
  * A part that opens its view: an xs button flush on the capsule's glass (`glass-ghost`), rounded to
  * the capsule, expanded while its view shows. `data-pill-view` lets the popover return focus to it.
+ * It drops the button's transparent border so its washes reach the capsule's edge and its padding
+ * matches the plain parts beside it.
  */
 function PartButton({
   view,
@@ -80,7 +82,7 @@ function PartButton({
       type="button"
       variant="glass-ghost"
       size="xs"
-      className={cn('composer-progress-part composer-progress-trigger', className)}
+      className={cn('composer-progress-part composer-progress-trigger border-0', className)}
       data-pill-view={view}
       aria-expanded={open}
       aria-haspopup="dialog"

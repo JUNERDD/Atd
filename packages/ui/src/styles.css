@@ -315,8 +315,9 @@
  * background-color, and an outset ring would grow the glass layer (see `surface-glass`). A layer
  * under the content carries the hover wash, the stronger wash for pressed, expanded and active,
  * and the focus-visible ring, which mirrors the shared focus ring inward: a 1px line in the ring
- * color at the edge (where the glass edge is; the control has no border) and a 3px band at 30%
- * just inside it.
+ * color at the layer's edge and a 3px band at 30% just inside it. The layer fills the padding box:
+ * the whole control for borderless glass, where that edge is the glass edge, and the area inside
+ * the transparent border for a control that keeps one, like a `ghost` button's fill.
  */
 @utility glass-state {
   position: relative;
