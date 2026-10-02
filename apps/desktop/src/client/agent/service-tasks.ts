@@ -77,9 +77,14 @@ export class TaskClient<S> {
     });
   }
 
+  /**
+   * The cached tasks, newest first, as copies. Stream events update the entries in place, and the
+   * page's views read what this cache publishes without a process boundary cloning it, so handing
+   * out an entry would let a later event change a value a view already compared by identity.
+   */
   tasks() {
     return [...this.entries.values()]
-      .map((entry) => entry.task)
+      .map((entry) => structuredClone(entry.task))
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
   }
 
@@ -154,14 +159,25 @@ export class TaskClient<S> {
     return entry;
   }
 
-  /** Publishes a task change: its state to the views that load it, the task list to all. */
+  /**
+   * Publishes a task change: its state to the views that load it, the task list to all. The state
+   * is a copy, like `detail()` and `tasks()`: a run's status changes on the cached run in place, so
+   * publishing the entry itself would hand a view the same `runs` it already holds, and a view
+   * memoized on that identity would keep the run's earlier status.
+   */
   publishTask(taskId: string) {
     const entry = this.entries.get(taskId);
     if (entry?.transcript) {
       const { task, requests, queue } = entry;
       this.host.emit({
         type: 'task',
-        state: { task, artifacts: [], requests, queue, context: entry.transcript.context },
+        state: structuredClone({
+          task,
+          artifacts: [],
+          requests,
+          queue,
+          context: entry.transcript.context,
+        }),
       });
     }
     this.host.broadcast();
