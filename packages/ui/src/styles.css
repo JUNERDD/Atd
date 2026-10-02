@@ -54,6 +54,16 @@
   --ata-border-subtle: rgb(255 255 255 / 14%);
   /* Progress fill, such as the todo ring's completed arc. */
   --ata-status-progress: #22c55e;
+  /* Added and removed lines as text (diff counts and diff lines): the progress green pulled toward
+     the foreground so small text stays readable on light and dark surfaces. Declared on the root
+     element, which also carries `.dark`, so each theme's foreground resolves here. */
+  --ata-diff-added: color-mix(in oklab, var(--ata-status-progress) 65%, var(--foreground));
+  --ata-diff-removed: var(--destructive);
+  /* The one surface every transcript detail reads on (tool cards, reasoning, compaction summaries,
+     approval and answer details): a faint wash of the muted fill under a hairline, so details sit
+     a step above the panel without a second, darker slab for code. */
+  --ata-surface-detail: color-mix(in oklab, var(--muted) 55%, transparent);
+  --ata-border-detail: var(--border);
   /* Warning status, such as context usage nearing its limit. */
   --ata-status-warning: #f59e0b;
   /* A quote chip's passage when the chip reveals it: a pale yellow behind the text (which keeps its

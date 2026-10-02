@@ -1,0 +1,36 @@
+/*
+ * Collapsed tool row extras (`tool-block.tsx`, `tool-row-summary.tsx`): a code-face target and a
+ * trailing summary. The row's own anatomy (icon, verb, meta) stays in `agent.css`.
+ */
+
+/* A row with a summary lets its target hug its text, so the summary follows the target instead of
+   sitting at the far edge; the target still shrinks and truncates first on narrow rows. */
+.tool-block .tool-row-hug {
+  flex: 0 1 auto;
+}
+
+/* Commands and search patterns read as code (`font-mono` on the element). The monospace face's
+   larger x-height at 13px optically matches the 14px sans verb beside it. */
+.tool-block .tool-row-code {
+  font-size: 13px;
+}
+
+.tool-row-summary {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--muted-foreground);
+}
+.tool-row-figures {
+  display: inline-flex;
+  gap: 4px;
+}
+.tool-row-added {
+  color: var(--ata-diff-added);
+}
+.tool-row-removed {
+  color: var(--ata-diff-removed);
+}

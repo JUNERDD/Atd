@@ -1,0 +1,114 @@
+/*
+ * The tool card (`tool-card.tsx`): an opaque content surface, never glass. One hairline and one
+ * 14px corner own the shape; header, body, and footer are flat bands inside it, separated by the
+ * same hairline, so nested code or lists never draw a second frame.
+ */
+.tool-card {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--ata-border-detail);
+  border-radius: var(--radius-xl);
+  background: var(--ata-surface-detail);
+}
+.tool-card-header {
+  display: flex;
+  min-width: 0;
+  min-height: 28px;
+  align-items: center;
+  gap: 6px;
+  /* The copy action is a 24px control; 2px keeps it concentric with the card's corner. */
+  padding: 2px 2px 2px 10px;
+  border-bottom: 1px solid var(--ata-border-detail);
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--muted-foreground);
+}
+.tool-card-icon {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+}
+.tool-card-icon > svg {
+  width: 12px;
+  height: 12px;
+}
+.tool-card-label {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+  color: var(--foreground);
+}
+.tool-card-meta {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 6px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+/* In the header the copy action sits in the flow at the trailing edge instead of on a corner. */
+.tool-card-header .tool-card-copy {
+  position: static;
+  width: 24px;
+  height: 24px;
+}
+/* With no copy action the trailing meta keeps the leading inset on its side too. */
+.tool-card-header:not(:has(.tool-card-copy)) {
+  padding-right: 10px;
+}
+.tool-card-body {
+  position: relative;
+  min-width: 0;
+}
+.tool-card-body[data-size='sm'] {
+  max-height: 160px;
+}
+.tool-card-body[data-size='md'] {
+  max-height: 240px;
+}
+.tool-card-body[data-size='lg'] {
+  max-height: 320px;
+}
+.tool-card-scroll {
+  max-height: inherit;
+}
+.tool-card-content {
+  min-width: 0;
+  padding: 8px 10px;
+  font-size: 12px;
+  line-height: 18px;
+}
+.tool-card-flush {
+  padding: 0;
+}
+.tool-card-footer {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-top: 1px solid var(--ata-border-detail);
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--muted-foreground);
+}
+.tool-card-footer[data-tone='destructive'] {
+  color: var(--destructive);
+}
+/*
+ * A code block inside a card reads as the card's content: the card owns the frame, so the block
+ * drops its own hairline and corner, and its hover copy gives way to the header's.
+ */
+.tool-card .code-block {
+  border: 0;
+  border-radius: 0;
+}
+.tool-card:has(.tool-card-header .tool-card-copy) .code-block > [data-slot='tooltip-trigger'] {
+  display: none;
+}

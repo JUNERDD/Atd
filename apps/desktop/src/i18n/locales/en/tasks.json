@@ -357,5 +357,54 @@
     "editNote": "Sending replaces this message and everything after it.",
     "cancel": "Cancel",
     "send": "Send"
+  },
+  "toolRow": {
+    "added_one": "{{count}} line added",
+    "added_other": "{{count}} lines added",
+    "removed_one": "{{count}} line removed",
+    "removed_other": "{{count}} lines removed",
+    "addedRemoved": "{{added}}, {{removed}}",
+    "range": "L{{start}}–{{end}}",
+    "rangeLabel": "Lines {{start}} to {{end}}",
+    "empty": {
+      "match": "No matches",
+      "file": "None",
+      "item": "None",
+      "result": "No results",
+      "page": "None"
+    }
+  },
+  "toolCode": {
+    "lineCount_one": "{{count}} line",
+    "lineCount_other": "{{count}} lines",
+    "lineRange": "Lines {{start}}–{{end}}",
+    "showingLines": "Showing lines {{start}}–{{end}} of {{total}}",
+    "moreLines_one": "{{count}} more line in the file",
+    "moreLines_other": "{{count}} more lines in the file",
+    "exitCode": "Exit code {{code}}",
+    "terminated": "Terminated",
+    "diffSummary": "Lines added: {{added}}, removed: {{removed}}"
+  },
+  "toolList": {
+    "matchesInFiles": "{{matches}} in {{files}}",
+    "noMatches": "No matches.",
+    "noFiles": "No files found.",
+    "emptyFolder": "This folder is empty.",
+    "input": "Input",
+    "output": "Output"
+  },
+  "toolCount": {
+    "match_one": "{{count}} match",
+    "match_other": "{{count}} matches",
+    "file_one": "{{count}} file",
+    "file_other": "{{count}} files",
+    "item_one": "{{count}} item",
+    "item_other": "{{count}} items",
+    "result_one": "{{count}} result",
+    "result_other": "{{count}} results",
+    "page_one": "{{count}} page",
+    "page_other": "{{count}} pages",
+    "query_one": "{{count}} query",
+    "query_other": "{{count}} queries"
   }
 }

@@ -357,5 +357,54 @@
     "editNote": "发送后将替换此消息及其后的全部内容。",
     "cancel": "取消",
     "send": "发送"
+  },
+  "toolRow": {
+    "added_one": "新增 {{count}} 行",
+    "added_other": "新增 {{count}} 行",
+    "removed_one": "删除 {{count}} 行",
+    "removed_other": "删除 {{count}} 行",
+    "addedRemoved": "{{added}}，{{removed}}",
+    "range": "L{{start}}–{{end}}",
+    "rangeLabel": "第 {{start}} 至 {{end}} 行",
+    "empty": {
+      "match": "无匹配",
+      "file": "无",
+      "item": "无",
+      "result": "无结果",
+      "page": "无"
+    }
+  },
+  "toolCode": {
+    "lineCount_one": "{{count}} 行",
+    "lineCount_other": "{{count}} 行",
+    "lineRange": "第 {{start}}–{{end}} 行",
+    "showingLines": "显示第 {{start}}–{{end}} 行，共 {{total}} 行",
+    "moreLines_one": "文件中还有 {{count}} 行",
+    "moreLines_other": "文件中还有 {{count}} 行",
+    "exitCode": "退出码 {{code}}",
+    "terminated": "已终止",
+    "diffSummary": "新增 {{added}} 行，删除 {{removed}} 行"
+  },
+  "toolList": {
+    "matchesInFiles": "{{files}}中有 {{matches}}",
+    "noMatches": "没有匹配项。",
+    "noFiles": "没有找到文件。",
+    "emptyFolder": "此文件夹为空。",
+    "input": "输入",
+    "output": "输出"
+  },
+  "toolCount": {
+    "match_one": "{{count}} 处匹配",
+    "match_other": "{{count}} 处匹配",
+    "file_one": "{{count}} 个文件",
+    "file_other": "{{count}} 个文件",
+    "item_one": "{{count}} 项",
+    "item_other": "{{count}} 项",
+    "result_one": "{{count}} 条结果",
+    "result_other": "{{count}} 条结果",
+    "page_one": "{{count}} 个网页",
+    "page_other": "{{count}} 个网页",
+    "query_one": "{{count}} 个查询",
+    "query_other": "{{count}} 个查询"
   }
 }

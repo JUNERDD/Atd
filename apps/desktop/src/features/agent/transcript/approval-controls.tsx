@@ -128,7 +128,7 @@ export function ApprovalControls({
       )}
       {review && <p className="text-xs text-muted-foreground">{reviewNote}</p>}
       {detail ? (
-        <DetailBox variant="output" copyText={detail} className="approval-detail">
+        <DetailBox variant="output" size="sm" copyText={detail} className="approval-detail">
           <pre className="m-0 wrap-anywhere whitespace-pre-wrap">{preview}</pre>
         </DetailBox>
       ) : null}
