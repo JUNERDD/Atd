@@ -1,9 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { Check, Copy, Pencil } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { TaskRun } from '../../../client/agent/task-schema';
 import type { BlockOf } from '../../../client/agent/transcript-schema';
-import { IconButton } from '../../../components/icon-button';
 import { showErrorToast } from '../../../components/toast-store';
 import { agentApi } from '../use-agent';
 import { MessageBubble } from './message-bubble';
@@ -11,13 +9,13 @@ import { MessageEditor } from './message-editor';
 import { PromptMessage } from './prompt-message';
 import { useTaskTurns } from './turn-context';
 import { canResend, editableText, promptText, replacementRequest } from './turn-resend';
-import { useCopyFeedback } from './use-copy-feedback';
+import { UserMessageActions } from './user-message-actions';
 
 /**
  * A turn's user message: a run's prompt as composed (`run`), or a queued follow-up as plain text.
- * Under the bubble, revealed on hover or keyboard focus, Copy takes the message and Edit (for a
- * persisted message of an idle task) swaps the bubble for an editor whose Send replaces the
- * message, branching the task before it. `copyable` is false in a subagent's view, which offers
+ * Under the bubble (`UserMessageActions`), Copy takes the message and Edit — enabled for a
+ * persisted message of an idle task, disabled otherwise — swaps the bubble for an editor whose
+ * Send replaces the message, branching the task before it. `copyable` is false in a subagent's view, which offers
  * no message actions.
  */
 export function UserMessage({
@@ -33,7 +31,6 @@ export function UserMessage({
 }) {
   const { t } = useTranslation('tasks');
   const task = useTaskTurns();
-  const copy = useCopyFeedback();
   const [editing, setEditing] = useState(false);
   /** Cancelling returns focus to Edit, which only exists again once the bubble is back. */
   const restoreFocus = useRef(false);
@@ -87,29 +84,11 @@ export function UserMessage({
             <MessageBubble>{user.text}</MessageBubble>
           )}
           {copyable && (
-            <div
-              className="message-actions user-message-actions"
-              data-reveal="hover"
-              data-pinned={copy.pinned || undefined}
-            >
-              <IconButton
-                label={copy.copied ? t('conversation.copied') : t('turnActions.copyMessage')}
-                tooltipPinned={copy.pinned}
-                onPointerLeave={copy.unpin}
-                onClick={() => void copy.copy(promptText(user, run))}
-              >
-                {copy.copied ? <Check /> : <Copy />}
-              </IconButton>
-              {editable && (
-                <IconButton
-                  ref={editButton}
-                  label={t('turnActions.edit')}
-                  onClick={() => setEditing(true)}
-                >
-                  <Pencil />
-                </IconButton>
-              )}
-            </div>
+            <UserMessageActions
+              copyText={promptText(user, run)}
+              onEdit={editable ? () => setEditing(true) : null}
+              editRef={editButton}
+            />
           )}
         </>
       )}
