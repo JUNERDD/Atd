@@ -213,12 +213,6 @@ export function ProviderSettingsForm({ snapshot }: { snapshot: SettingsSnapshot 
           </Button>
         </div>
       )}
-      {connections.length > 0 && (
-        <div className="provider-column-headings">
-          <span>{t('providers.overview.connectedProviders')}</span>
-          <span>{t('providers.overview.defaultModel')}</span>
-        </div>
-      )}
       <ProviderConnections
         rows={visible}
         defaultConnectionId={snapshot?.defaultConnectionId ?? null}

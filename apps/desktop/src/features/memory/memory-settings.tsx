@@ -3,18 +3,17 @@ import { CircleAlert } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@ai/ui/components/button';
 import { useCompositionQuery } from '@ai/ui/lib/ime';
-import { ItemGroup } from '@ai/ui/components/item';
 import { ScrollArea } from '@ai/ui/components/scroll-area';
 import type { MemoryEntry } from '../../client/agent/bridge';
 import { FieldHint } from '../../components/field-hint';
 import { SettingsHeading } from '../settings/settings-heading';
 import { SettingsSearchField } from '../settings/settings-search-field';
-import { SettingsSwitchRow } from '../settings/settings-switch-row';
 import { agentApi } from '../agent/use-agent';
 import { showErrorToast, showToast } from '../../components/toast-store';
 import { MemoryCreateButton } from './memory-create-button';
 import { MemoryDeleteDialog } from './memory-delete-dialog';
 import { MemoryEditor } from './memory-editor';
+import { MemoryLearningFooter } from './memory-learning-footer';
 import { MemoryList } from './memory-list';
 import { useMemorySnapshot } from './use-memory-snapshot';
 import { useSettingsSectionExit } from '../settings/settings-navigation';
@@ -157,26 +156,12 @@ export function MemorySettings({
           </SettingsHeading>
           {/* The panel owns the scrollbar; the heading and search stay put above it. */}
           <ScrollArea
-            className="mt-4 flex-1"
-            viewportClassName="[&>div]:flex! [&>div]:flex-col [&>div]:min-h-full"
+            className="memory-scroll flex-1"
+            viewportClassName="overlay-footer-fade [&>div]:flex! [&>div]:flex-col [&>div]:min-h-full"
             gutter="stable"
             scrollShadow
           >
             <div className="memory-list">
-              {/* A setting, not a memory: a switch row, unlike the list rows below it. The
-                  switch is its own undo, so pausing asks no confirmation; the description says
-                  what turning it off does. */}
-              <ItemGroup className="memory-learning">
-                <SettingsSwitchRow
-                  id="memory-learning"
-                  title={t('memory.learning.label')}
-                  description={t('memory.learning.description')}
-                  checked={snapshot ? !snapshot.paused : false}
-                  pending={pausing}
-                  disabled={!snapshot || Boolean(snapshot.error)}
-                  onCheckedChange={(checked) => void pause(!checked)}
-                />
-              </ItemGroup>
               {snapshot ? (
                 snapshot.error && !snapshot.entries.length ? null : (
                   <MemoryList
@@ -197,6 +182,12 @@ export function MemorySettings({
               {feedback}
             </div>
           </ScrollArea>
+          <MemoryLearningFooter
+            checked={snapshot ? !snapshot.paused : false}
+            pending={pausing}
+            disabled={!snapshot || Boolean(snapshot.error)}
+            onCheckedChange={(checked) => void pause(!checked)}
+          />
         </>
       )}
       <MemoryDeleteDialog

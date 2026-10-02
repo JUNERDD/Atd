@@ -720,6 +720,15 @@
 .settings-open-row .settings-extension-mcp-auth {
   pointer-events: auto;
 }
+/* A row without More holds an empty slot in More's column. It takes space only while another list
+ * row on the same page fills that column, so the switches line up there; elsewhere the switch
+ * keeps the trailing edge instead of leaving a blank column beside it. */
+.settings-row-more-slot {
+  display: none;
+}
+.settings-page:has([data-slot='item-group'] [data-more-column]) .settings-row-more-slot {
+  display: block;
+}
 /* An outlined row fills inside its 1px border, so the fill's corners follow the border's inner
  * curve instead of the outer one. */
 .settings-open-row[data-variant='outline'] > .settings-open-row-button {
@@ -739,10 +748,10 @@
   outline: 1px solid var(--ring);
   box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 30%, transparent);
 }
-/* Extension and memory icons sit in a ring and center on the title plus description, on the
+/* Extension icons sit in a ring and center on the title plus description, on the
  * plugin list and on a plugin's page alike. */
-:is(.settings-extension-settings, .extension-page, .memory-settings) [data-slot='item-media'],
-:is(.settings-extension-settings, .extension-page, .memory-settings)
+:is(.settings-extension-settings, .extension-page) [data-slot='item-media'],
+:is(.settings-extension-settings, .extension-page)
   .group\/item:has([data-slot='item-description'])
   [data-slot='item-media'] {
   align-self: center;

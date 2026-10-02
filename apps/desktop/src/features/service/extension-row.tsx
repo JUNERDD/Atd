@@ -53,8 +53,9 @@ export function ExtensionRow({
 /**
  * The trailing actions every plugin, skill, subagent and MCP row shares: the enable switch, then
  * More when the row has secondary actions (`menu`). More repeats the details first, since a click
- * on the row opens them anyway. A row without a switch (`showSwitch` false) or without More keeps
- * that column empty, so the controls line up down a page whatever each row offers. While its
+ * on the row opens them anyway. A row without More holds an empty slot in More's column, which
+ * settings.css shows only while another list row on the same page fills that column, so the
+ * switches line up without leaving a blank column on a page where no row has More. While its
  * plugin is off, an item's switch is locked and `lockedReason` says why on hover and focus. While
  * a write for the row runs (`pending`), the switch keeps its focus and ignores changes.
  */
@@ -90,8 +91,8 @@ export function ExtensionRowActions({
   /** A control before the switch, such as a link to the section that owns the item. */
   leading?: ReactNode;
   /**
-   * Keeps More's column empty when there is no More, so the switches of a list line up. A card
-   * has no neighbouring row to line up with, so its switch takes the trailing edge instead.
+   * Holds More's slot when there is no More, so the switches of a list can line up. A card has no
+   * neighbouring row to line up with, so its switch takes the trailing edge instead.
    */
   reserveMore?: boolean;
 }) {
@@ -122,11 +123,9 @@ export function ExtensionRowActions({
     />
   );
   return (
-    <ItemActions>
+    <ItemActions data-more-column={trailing || menu ? '' : undefined}>
       {leading}
-      {!showSwitch ? (
-        <span className="w-8 shrink-0" aria-hidden />
-      ) : locked ? (
+      {!showSwitch ? null : locked ? (
         <Tooltip open={tip} onOpenChange={setTip}>
           <TooltipTrigger asChild>
             <span className="inline-flex">
@@ -170,7 +169,7 @@ export function ExtensionRowActions({
           </DropdownMenuContent>
         </DropdownMenu>
       ) : reserveMore ? (
-        <span className="size-7 shrink-0" aria-hidden />
+        <span className="settings-row-more-slot size-7 shrink-0" aria-hidden />
       ) : null}
     </ItemActions>
   );
