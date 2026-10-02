@@ -9,6 +9,9 @@ import UniformTypeIdentifiers
 /// the service (`/v1/resources/import`); paths never reach the page. One pick, drop or paste
 /// takes at most ``AttachmentRules/maxPathsPerImport`` files, the page's attachment limit.
 ///
+/// A file drag over the panel and the import of its drop reach the page as `files.drag`
+/// (``FileDropState``), so it can show what the drop attaches and that it is being added.
+///
 /// A paste with a bitmap but neither file URL nor text (a screenshot copied to the clipboard)
 /// is stored as `Pasted image <date>.png` in a temporary folder and imported like a file;
 /// ``PastedImageExport`` scales and encodes it. Screenshots arrive through ``ScreenshotTaker``,
@@ -17,17 +20,35 @@ final class AttachmentImporter {
   private let services: ShellServices
   private weak var panel: WebViewHost?
   private let systemPanels: SystemPanels
+  private var drop = FileDropState()
   private static let log = Logger(subsystem: "com.junerdd.ai", category: "attachments")
 
   init(services: ShellServices, panel: WebViewHost, systemPanels: SystemPanels) {
     self.services = services
     self.panel = panel
     self.systemPanels = systemPanels
-    // The panel's web view is the only one that turns a bitmap paste into an attachment.
+    // The panel's web view is the only one that takes file drops and turns pastes into
+    // attachments.
+    panel.onFiles = { [weak self] urls, source in
+      guard let self else { return }
+      if source == "drop" { updateDrop { $0.beginImport() } }
+      Task {
+        await self.importFiles(urls)
+        if source == "drop" { self.updateDrop { $0.endImport() } }
+      }
+    }
+    panel.onFileDrag = { [weak self] summary in self?.updateDrop { $0.setDrag(summary) } }
     panel.onPastedImage = { [weak self] data in
       guard let self else { return }
       Task { await self.importPastedImage(data) }
     }
+  }
+
+  /// Applies a drop change and sends the page the phase when it changed.
+  private func updateDrop(_ change: (inout FileDropState) -> Void) {
+    let before = drop.event
+    change(&drop)
+    if drop.event != before { panel?.setState(.filesDrag(drop.event)) }
   }
 
   /// `files.pick`: the chooser's files as the page's refs; none when cancelled. A pick whose

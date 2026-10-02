@@ -125,6 +125,38 @@ public struct ResourcesImportedEvent: Codable, Equatable, Sendable {
   }
 }
 
+/// Payload of the `files.drag` event.
+public struct FilesDragEvent: Codable, Equatable, Sendable {
+  public let phase: Phase
+  public let files: Int
+  public let attachable: Int
+
+  public init(phase: Phase, files: Int, attachable: Int) {
+    self.phase = phase
+    self.files = files
+    self.attachable = attachable
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    phase = try container.value(.phase, Phase.self)
+    files = try container.integer(.files, minimum: 0)
+    attachable = try container.integer(.attachable, minimum: 0, maximum: 10)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case phase
+    case files
+    case attachable
+  }
+
+  public enum Phase: String, Codable, Equatable, Sendable {
+    case over
+    case importing
+    case none
+  }
+}
+
 /// Payload of the `edit.command` event.
 public struct EditCommandEvent: Codable, Equatable, Sendable {
   public let command: Command

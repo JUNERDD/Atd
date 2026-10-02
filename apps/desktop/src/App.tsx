@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { TooltipProvider } from '@atd/ui/components/tooltip';
 import { ScrollArea } from '@atd/ui/components/scroll-area';
 import { Composer } from './components/composer';
+import { FileDropOverlay } from './components/file-drop-overlay';
 import { IconButton } from './components/icon-button';
 import { useOverlayReserve } from './components/use-overlay-footer';
 import { ToastHost } from './components/toast';
@@ -25,9 +26,9 @@ import { TaskHistory } from './features/agent/task-history';
 import { ServiceBanner } from './features/service/service-banner';
 import { ServiceStarting } from './features/service/service-starting';
 import { useServiceStarting } from './features/service/use-service-starting';
-import { runModelSelection, type QuoteSource } from '@atd/agent-contracts';
+import { MAX_ATTACHMENTS, runModelSelection, type QuoteSource } from '@atd/agent-contracts';
 import { EMPTY_QUEUE, type Block } from './client/agent/transcript-schema';
-import { appendChip, quoteChip } from './features/composer-editor/draft';
+import { appendChip, draftFiles, quoteChip } from './features/composer-editor/draft';
 import type { FileRef } from './client/agent/task-schema';
 import './features/agent/agent.css';
 
@@ -267,6 +268,8 @@ export function App() {
                     hidden={view === 'task' && child.childKey !== null}
                   />
                 )}
+                {/* Dropped files land in the draft whichever view is open. */}
+                <FileDropOverlay room={MAX_ATTACHMENTS - draftFiles(draft).length} />
               </div>
             </>
           )}

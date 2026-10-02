@@ -123,6 +123,20 @@ export const NativeEvents = {
     },
     { additionalProperties: false },
   ),
+  /**
+   * The panel's file drop, a state the shell replays: `over` while files are dragged over the
+   * panel, `importing` from a drop until its import answered, `none` otherwise. `files` counts the
+   * dragged files, `attachable` those of the drop's import (its first 10) that have an attachable
+   * format; both are 0 outside `over`.
+   */
+  'files.drag': Type.Object(
+    {
+      phase: Type.Union([Type.Literal('over'), Type.Literal('importing'), Type.Literal('none')]),
+      files: Type.Integer({ minimum: 0 }),
+      attachable: Type.Integer({ minimum: 0, maximum: 10 }),
+    },
+    { additionalProperties: false },
+  ),
   /** Edit → Undo/Redo from the shell's menu, sent in place of `undo:`/`redo:` (`edit-commands.ts`). */
   'edit.command': Type.Object(
     { command: Type.Union([Type.Literal('undo'), Type.Literal('redo')]) },

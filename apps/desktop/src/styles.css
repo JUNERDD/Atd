@@ -96,6 +96,7 @@ body {
 /* Everything below the header. The composer's quick panel uses it as its collision boundary, so
    the panel never reaches the header's drag region or the macOS traffic lights. */
 .panel-body {
+  position: relative;
   display: flex;
   flex: 1;
   flex-direction: column;

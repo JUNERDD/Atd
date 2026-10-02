@@ -41,6 +41,20 @@
     "answerPlaceholder": "输入你的回答…",
     "interjectPlaceholder": "直接发送将拒绝此操作并立即送达…",
     "attachAfterRun": "请等这次运行结束后再附加文件。",
+    "drop": {
+      "title": "松开以添加为上下文",
+      "attach_one": "将把 {{count}} 个文件附加到消息中。",
+      "attach_other": "将把 {{count}} 个文件附加到消息中。",
+      "attachSome": "将附加 {{total}} 个文件中的 {{count}} 个。",
+      "rules": "可附加文本、代码和图片文件，每条消息最多 {{max}} 个。",
+      "unsupported": "无法附加这些文件",
+      "full": "附件已达上限",
+      "fullDescription": "每条消息最多 {{max}} 个文件，移除一些后再添加。",
+      "tooMany": "文件过多",
+      "tooManyDescription_one": "这条消息还能再添加 {{count}} 个文件。",
+      "tooManyDescription_other": "这条消息还能再添加 {{count}} 个文件。",
+      "importing": "正在添加文件…"
+    },
     "importFailed": {
       "unreadable": "无法读取 {{name}}。",
       "unsupported": "不支持附加 {{name}}。",

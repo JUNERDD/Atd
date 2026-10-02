@@ -206,6 +206,7 @@ public enum NativeEvent: Encodable, Equatable, Sendable {
   case accessibilityReduceTransparency(AccessibilityReduceTransparencyEvent)
   case shortcutCommand(ShortcutCommandEvent)
   case resourcesImported(ResourcesImportedEvent)
+  case filesDrag(FilesDragEvent)
   case editCommand(EditCommandEvent)
   case speechState(SpeechStateEvent)
   case socketFrames(SocketFramesEvent)
@@ -218,6 +219,7 @@ public enum NativeEvent: Encodable, Equatable, Sendable {
     case .accessibilityReduceTransparency: "accessibility.reduceTransparency"
     case .shortcutCommand: "shortcut.command"
     case .resourcesImported: "resources.imported"
+    case .filesDrag: "files.drag"
     case .editCommand: "edit.command"
     case .speechState: "speech.state"
     case .socketFrames: "socket.frames"
@@ -231,45 +233,10 @@ public enum NativeEvent: Encodable, Equatable, Sendable {
     case .accessibilityReduceTransparency(let payload): try payload.encode(to: encoder)
     case .shortcutCommand(let payload): try payload.encode(to: encoder)
     case .resourcesImported(let payload): try payload.encode(to: encoder)
+    case .filesDrag(let payload): try payload.encode(to: encoder)
     case .editCommand(let payload): try payload.encode(to: encoder)
     case .speechState(let payload): try payload.encode(to: encoder)
     case .socketFrames(let payload): try payload.encode(to: encoder)
     }
-  }
-}
-
-/// Everything Swift delivers: a call's result or error, or an event.
-public enum SwiftMessage: Encodable, Equatable, Sendable {
-  /// `value` must match the call's result schema; the page checks it.
-  case result(id: Int, value: JSONValue)
-  /// At most 2000 characters, which the page shows as is.
-  case error(id: Int, message: String)
-  case event(NativeEvent)
-
-  public func encode(to encoder: any Encoder) throws {
-    var container = encoder.container(keyedBy: CodingKeys.self)
-    switch self {
-    case .result(let id, let value):
-      try container.encode("result", forKey: .type)
-      try container.encode(id, forKey: .id)
-      try container.encode(value, forKey: .value)
-    case .error(let id, let message):
-      try container.encode("error", forKey: .type)
-      try container.encode(id, forKey: .id)
-      try container.encode(message, forKey: .message)
-    case .event(let event):
-      try container.encode("event", forKey: .type)
-      try container.encode(event.name, forKey: .event)
-      try container.encode(event, forKey: .payload)
-    }
-  }
-
-  private enum CodingKeys: String, CodingKey {
-    case type
-    case id
-    case value
-    case message
-    case event
-    case payload
   }
 }

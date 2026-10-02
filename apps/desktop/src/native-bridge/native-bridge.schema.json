@@ -47,6 +47,7 @@
       "accessibility.reduceTransparency",
       "shortcut.command",
       "resources.imported",
+      "files.drag",
       "edit.command",
       "speech.state",
       "socket.frames"
@@ -1197,6 +1198,53 @@
                     "additionalProperties": false
                   },
                   "maxItems": 10
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "event", "payload"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "event"
+            },
+            "event": {
+              "type": "string",
+              "const": "files.drag"
+            },
+            "payload": {
+              "type": "object",
+              "required": ["phase", "files", "attachable"],
+              "properties": {
+                "phase": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "const": "over"
+                    },
+                    {
+                      "type": "string",
+                      "const": "importing"
+                    },
+                    {
+                      "type": "string",
+                      "const": "none"
+                    }
+                  ]
+                },
+                "files": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "attachable": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 10
                 }
               },
               "additionalProperties": false
@@ -2536,6 +2584,38 @@
             "additionalProperties": false
           },
           "maxItems": 10
+        }
+      },
+      "additionalProperties": false
+    },
+    "FilesDragEvent": {
+      "type": "object",
+      "required": ["phase", "files", "attachable"],
+      "properties": {
+        "phase": {
+          "anyOf": [
+            {
+              "type": "string",
+              "const": "over"
+            },
+            {
+              "type": "string",
+              "const": "importing"
+            },
+            {
+              "type": "string",
+              "const": "none"
+            }
+          ]
+        },
+        "files": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "attachable": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
         }
       },
       "additionalProperties": false
