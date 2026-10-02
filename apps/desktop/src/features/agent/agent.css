@@ -674,11 +674,10 @@
   text-align: left;
   font-size: 14px;
 }
+/* Same inset as an expanded tool body (`.tool-body`), so their detail surfaces line up. */
 .thinking-full {
   min-width: 0;
-  padding: 0 0 8px 8px;
-  color: var(--muted-foreground);
-  font-size: 13px;
+  padding: 4px 0 8px 8px;
 }
 /* A compaction row sits between turns' prose like a thinking row; a failed one keeps its reason
    under the title, indented to the title's edge (row padding + icon + gap). */
@@ -720,16 +719,47 @@
   margin-left: auto;
 }
 /*
- * Same tinted region as a tool body: the reasoning reads inside one box, not on the bare page.
- * Capped like tool output so a long trace scrolls instead of pushing the answer away.
+ * Prose on the shared detail surface (`DetailBox variant="plain"`: reasoning, compaction
+ * summaries) reads as secondary content: muted 13/20 sans, and the markdown inside keeps that
+ * tone. Bold and headings step up to the foreground at weight 600 as the only emphasis; inline
+ * code takes the faint chip fill used across tool cards. The `.tool-card` prefix outranks the
+ * card's own 12/18 content metrics.
  */
-.thinking-detail {
-  max-height: 240px;
-  border-radius: var(--radius-xl);
-  background: var(--muted);
+.tool-card .thinking-detail {
+  color: var(--muted-foreground);
+  font-size: 13px;
+  line-height: 20px;
 }
-.thinking-detail-pre {
-  padding: 8px;
+.thinking-detail .markdown > * + * {
+  margin-top: 8px;
+}
+.thinking-detail .markdown :is(h1, h2, h3, h4, h5, h6) {
+  margin: 0;
+  font-size: inherit;
+  line-height: inherit;
+  font-weight: 600;
+  color: var(--foreground);
+}
+/* A heading opens a section, so it keeps a little more air above it than a paragraph does. */
+.thinking-detail .markdown > * + :is(h1, h2, h3, h4, h5, h6) {
+  margin-top: 12px;
+}
+.thinking-detail :is(strong, b, [data-streamdown='strong']) {
+  font-weight: 600;
+  color: var(--foreground);
+}
+.thinking-detail [data-streamdown='inline-code'] {
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: color-mix(in oklab, var(--foreground) 6%, transparent);
+  font-size: 12px;
+}
+/* Fenced code inside prose keeps a hairline frame so it stays apart from the sentences around
+   it; the card's own rule strips that frame from code that is the card's whole content. */
+.tool-card .thinking-detail :is(.code-block, .markdown-code) {
+  border: 1px solid var(--ata-border-detail);
+  border-radius: var(--radius-lg);
+  background: transparent;
 }
 .turn-header {
   display: flex;
@@ -769,50 +799,6 @@
   flex-direction: column;
   gap: 8px;
   padding: 4px 0 8px 8px;
-}
-.tool-command,
-.tool-diff-pre {
-  margin: 0;
-  font-size: 12px;
-  line-height: 18px;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-.tool-command {
-  color: var(--muted-foreground);
-}
-/* Type badge at the top of a tool body box (e.g. `Shell` for bash). */
-.tool-kind {
-  font-size: 12px;
-  color: var(--muted-foreground);
-}
-.tool-output {
-  max-height: 240px;
-  border-radius: var(--radius-xl);
-  background: var(--muted);
-}
-.tool-output-pre {
-  padding: 8px;
-}
-.tool-diff {
-  max-height: 320px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-}
-.tool-diff-pre {
-  padding: 8px;
-  font-variant-ligatures: none;
-}
-.diff-line.diff-add {
-  color: var(--foreground);
-  background: color-mix(in oklab, var(--primary) 12%, transparent);
-}
-.diff-line.diff-del {
-  color: var(--destructive);
-  background: color-mix(in oklab, var(--destructive) 12%, transparent);
-}
-.diff-line.diff-hunk {
-  color: var(--muted-foreground);
 }
 .approval-controls,
 .question-block,

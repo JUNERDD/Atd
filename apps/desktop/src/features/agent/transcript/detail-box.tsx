@@ -1,61 +1,38 @@
 import type { ReactNode } from 'react';
-import { ScrollArea } from '@atd/ui/components/scroll-area';
-import { cn } from '@atd/ui/lib/utils';
-import { CopyButton } from './copy-button';
+import { ToolCard } from './tool-card';
 
-export type DetailBoxVariant = 'output' | 'diff' | 'plain';
+export type DetailBoxVariant = 'output' | 'plain';
 
 /**
- * The single shared desc box behind every tool body and thinking detail: one tinted region with
- * an optional copy button that reveals on hover. Variants only change the skin/scroll contract,
- * never the shape: `output` scrolls a muted box with dense output typography, `diff` scrolls a
- * bordered box both ways, `plain` scrolls the same muted box for thinking text. Empty `copyText`
- * renders no button.
+ * The desc box for detail that is not a tool body: reasoning, compaction summaries, approval and
+ * question detail, the JSON fallback. It is a headerless `ToolCard`, so every detail surface in
+ * the transcript shares one fill, hairline, corner, content inset and corner copy action (hidden
+ * until the box is hovered or focused; empty `copyText` renders none). `output` holds dense
+ * output text in the host's color; `plain` holds prose in the secondary tone (`.thinking-detail`
+ * in `agent.css`). `size` caps the height like `ToolCard.Body` (default `md`, 240px).
  */
 export function DetailBox({
   variant,
+  size = 'md',
   copyText,
   children,
   className,
 }: {
   variant: DetailBoxVariant;
+  size?: 'sm' | 'md';
   copyText?: string | undefined;
   children: ReactNode;
   className?: string;
 }) {
   return (
-    <div className={cn('group relative', className)}>
-      {variant === 'plain' ? (
-        <ScrollArea
-          className="thinking-detail"
-          viewportClassName="max-h-[inherit]"
-          gutter="stable"
-          scrollShadow
-        >
-          <div className="thinking-detail-pre">{children}</div>
-        </ScrollArea>
-      ) : variant === 'diff' ? (
-        <ScrollArea
-          orientation="both"
-          className="tool-diff"
-          viewportClassName="max-h-[inherit]"
-          gutter="stable"
-        >
-          <div className="tool-diff-pre">{children}</div>
-        </ScrollArea>
-      ) : (
-        <ScrollArea
-          className="tool-output"
-          viewportClassName="max-h-[inherit]"
-          gutter="stable"
-          scrollShadow
-        >
-          <div className="tool-output-pre m-0 flex flex-col gap-2 text-xs leading-4.5">
-            {children}
-          </div>
-        </ScrollArea>
-      )}
-      {copyText && <CopyButton text={copyText} />}
-    </div>
+    <ToolCard.Root className={className}>
+      <ToolCard.Body
+        size={size}
+        copyText={copyText}
+        className={variant === 'plain' ? 'thinking-detail' : 'flex flex-col gap-2'}
+      >
+        {children}
+      </ToolCard.Body>
+    </ToolCard.Root>
   );
 }

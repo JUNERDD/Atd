@@ -1,12 +1,14 @@
 import { useContext } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { CodemodeDetails } from '@atd/agent-contracts';
-import { ScrollArea } from '@atd/ui/components/scroll-area';
+import { SquareCode } from 'lucide-react';
 import type { BlockOf } from '../../../client/agent/transcript-schema';
 import { ActivityRow } from './activity-row';
 import { CodeBlock } from './code-block';
 import { codemodeSource, codemodeStepBlock, NestedConfirmation } from './codemode-call';
 import { ToolBlock } from './tool-block';
+import { ToolCard } from './tool-card';
+import './tool-code.css';
 
 /**
  * The detail of a `codemode` row: the script, then every tool call it made as the row that call
@@ -21,10 +23,14 @@ export function CodemodeBody({ block, data }: { block: BlockOf<'tool'>; data: Co
   return (
     <>
       {code && (
-        // The code block leaves its height to its owner: a long script scrolls inside the row.
-        <ScrollArea className="max-h-80" viewportClassName="max-h-[inherit]" gutter="stable">
-          <CodeBlock contents={code} language="javascript" />
-        </ScrollArea>
+        // The code block leaves its height to its owner: a long script scrolls inside the card.
+        // `JavaScript` stays untranslated, like the `Shell` label.
+        <ToolCard.Root className="tool-code">
+          <ToolCard.Header icon={<SquareCode />} label="JavaScript" copyText={code} />
+          <ToolCard.Body size="lg" flush>
+            <CodeBlock contents={code} language="javascript" flush />
+          </ToolCard.Body>
+        </ToolCard.Root>
       )}
       {data.steps.length > 0 && (
         <ActivityRow.Steps aria-label={t('activity.codemodeSteps')}>

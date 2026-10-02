@@ -1,10 +1,13 @@
 import { createElement, useState } from 'react';
+import { Plug } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Shimmer } from '@atd/ui/components/ai-elements/shimmer';
+import { cn } from '@atd/ui/lib/utils';
 import type { ConfirmationRequest } from '../../../client/agent/permission-schema';
 import type { BlockOf } from '../../../client/agent/transcript-schema';
 import { ActivityRow } from './activity-row';
 import { NestedConfirmation } from './codemode-call';
+import { mcpProxy } from './mcp-proxy';
 import { PermissionNote, ToolBody } from './tool-body';
 import {
   hasToolDetail,
@@ -15,6 +18,9 @@ import {
   toolStepKey,
   toolTarget,
 } from './tool-copy';
+import { ToolRowSummary } from './tool-row-summary';
+import { toolSummary } from './tool-summary';
+import { presentTarget } from './tool-target';
 
 /** Tools whose target is a file or search subject, shown as the read-style chip. */
 const CHIP_TOOLS: ReadonlySet<string> = new Set(['read', 'write', 'edit', 'grep', 'find', 'ls']);
@@ -25,6 +31,8 @@ const CHIP_TOOLS: ReadonlySet<string> = new Set(['read', 'write', 'edit', 'grep'
  * in a chip, and no trailing status icon is rendered — the row reads the same settled or failed.
  * A recorded permission outcome reads in the row's detail, which it makes expandable on its own;
  * the row shows only a decline, since rows carry no failure mark and it says why nothing ran.
+ * A completed row adds a compact trailing summary of what the call did (`toolSummary`), so rows
+ * of different tools read differently at a glance; commands and patterns read in the code face.
  */
 export function ToolBlock({
   block,
@@ -38,10 +46,12 @@ export function ToolBlock({
   const { t } = useTranslation('tasks');
   const [open, setOpen] = useState(Boolean(forceOpen));
   const expanded = Boolean(forceOpen) || open;
-  const Icon = toolIcon(block.name);
+  // An MCP call reads as its own tool on its server, like the card it expands into.
+  const proxy = mcpProxy(block.name);
+  const Icon = proxy ? Plug : toolIcon(block.name);
   const label = toolStepKey(block.name, block.args);
-  const title = label ? t(label) : block.name;
-  const target = toolTarget(block.name, block.args);
+  const title = label ? t(label) : (proxy?.tool ?? block.name);
+  const target = toolTarget(block.name, block.args) ?? proxy?.server ?? null;
   // What the call looked at or changed — a file, a search pattern, a folder — sits in a chip.
   const chip = CHIP_TOOLS.has(block.name) && target !== null;
   // A refused launch still names its agents, so the row keeps the failure beside them: the group
@@ -69,6 +79,10 @@ export function ToolBlock({
         {declined}
       </ActivityRow.Meta>
     ) : null;
+  // The plain target, presented for its kind: code face, readable URL, full value in the tooltip.
+  const shown = target !== null && meta === target ? presentTarget(block, target) : null;
+  const metaText = shown?.text ?? meta;
+  const summary = toolSummary(block);
   const running = block.status === 'running';
   // While running the whole line reads as one live unit: the meta joins the title inside a
   // single shimmer via plain string concatenation, instead of sitting beside it as static
@@ -77,7 +91,7 @@ export function ToolBlock({
     running && meta ? (
       <>
         <ActivityRow.Title className="flex-initial" title={block.name}>
-          <Shimmer as="span">{`${title} ${meta}`}</Shimmer>
+          <Shimmer as="span">{`${title} ${metaText}`}</Shimmer>
         </ActivityRow.Title>
         {mark}
       </>
@@ -85,22 +99,25 @@ export function ToolBlock({
       <>
         {/*
          * `flex-initial` overrides the generic `flex-1` title so it hugs the verb; the summary meta
-         * is itself `flex: 1` (see `agent.css`) and fills the rest of the row at the same text size.
-         * Both truncate, and the title shrinks first on narrow rows.
+         * is itself `flex: 1` (see `agent.css`) and fills the rest of the row at the same text size,
+         * unless a summary follows it, when it hugs its text (`tool-row.css`). Both truncate, and
+         * the title shrinks first on narrow rows.
          */}
         <ActivityRow.Title className="flex-initial" title={block.name}>
           {running ? <Shimmer as="span">{title}</Shimmer> : title}
         </ActivityRow.Title>
-        {chip ? (
-          // No file glyph here: the row's leading icon already names the tool.
-          <ActivityRow.Meta className="tool-chip" title={meta}>
-            {meta}
-          </ActivityRow.Meta>
-        ) : (
-          <ActivityRow.Meta className="activity-meta" title={meta}>
-            {meta}
-          </ActivityRow.Meta>
-        )}
+        {/* No file glyph in the chip: the row's leading icon already names the tool. */}
+        <ActivityRow.Meta
+          className={cn(
+            chip ? 'tool-chip' : 'activity-meta',
+            shown?.code && 'tool-row-code font-mono',
+            summary && 'tool-row-hug',
+          )}
+          title={shown?.title ?? meta}
+        >
+          {metaText}
+        </ActivityRow.Meta>
+        {summary && <ToolRowSummary summary={summary} />}
         {mark}
       </>
     );
