@@ -92,7 +92,7 @@ describe('task panel', () => {
     await user.click(screen.getByRole('button', { name: 'Settings' }));
     expect(open).toHaveBeenCalledOnce();
     const settingsView = render(<SettingsWindow />);
-    await user.click(await screen.findByRole('button', { name: 'Shortcuts' }));
+    await user.click(await screen.findByRole('button', { name: 'General' }));
     await user.click(screen.getByRole('switch', { name: 'Always on top' }));
     await waitFor(() => expect(setPinned).toHaveBeenLastCalledWith(false));
     expect(screen.getByRole('switch', { name: 'Always on top' })).not.toBeChecked();

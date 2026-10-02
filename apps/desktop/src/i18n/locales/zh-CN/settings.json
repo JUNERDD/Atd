@@ -13,10 +13,10 @@
     "navigationLabel": "设置导航",
     "permissions": "权限",
     "extensions": "扩展",
-    "providers": "提供商",
+    "providers": "模型",
     "commands": "命令",
     "memory": "记忆",
-    "shortcuts": "快捷键"
+    "general": "通用"
   },
   "drawer": {
     "title": "设置导航",
@@ -44,7 +44,7 @@
       "sectionProviders": "模型 提供商 服务商 接口 密钥 连接 账号 登录 服务",
       "sectionCommands": "命令 指令 提示词 模板 快捷指令",
       "sectionMemory": "记忆 偏好 学习 上下文 画像",
-      "sectionShortcuts": "键盘 快捷键 热键 按键 录制 窗口偏好 程序坞 登录",
+      "sectionGeneral": "通用 常规 键盘 快捷键 热键 按键 录制 窗口偏好 程序坞 登录 启动",
       "tierManual": "手动 询问 每次确认 逐个确认 每个操作",
       "tierAuto": "自动 自动批准 自动审批 模型审核 安全操作",
       "tierAlways": "始终 总是 允许 不询问 无人值守 完全放行 免确认",
@@ -71,7 +71,7 @@
   },
   "providers": {
     "overview": {
-      "title": "提供商",
+      "title": "模型",
       "description": "选择默认提供商，并为每个连接设置默认模型。",
       "searchLabel": "搜索提供商",
       "searchPlaceholder": "搜索提供商…",
@@ -152,9 +152,11 @@
       "detailDescription": "以此前缀开头的命令将直接运行。"
     }
   },
+  "general": {
+    "title": "通用",
+    "description": "快捷键、启动与窗口行为。点击快捷键后按下新的组合键，按 Esc 取消。"
+  },
   "shortcuts": {
-    "title": "键盘快捷键",
-    "description": "点击快捷键后按下新的组合键，按 Esc 取消。",
     "groups": {
       "global": "全局",
       "inApp": "应用内",
