@@ -30,6 +30,11 @@ final class AnnotationEditor: AnnotationEditing {
 
   private var display: FrozenDisplay?
   private var selection = CGRect.zero
+  /// Where the user dragged the toolbar to, in the host's points: it stays there for the rest
+  /// of the session, whatever the selection does. Nil while the bars follow the selection.
+  private var movedOrigin: CGPoint?
+  /// The toolbar's origin when the drag in progress began.
+  private var dragOrigin = CGPoint.zero
 
   /// `defaults` keeps the remembered styles.
   init(defaults: UserDefaults = .standard) {
@@ -63,6 +68,8 @@ final class AnnotationEditor: AnnotationEditing {
     toolbar.onRedo = { [weak self] in self?.store.redo() }
     toolbar.onCancel = { [weak self] in self?.onCancel?() }
     toolbar.onConfirm = { [weak self] in self?.confirm() }
+    toolbar.onDrag = { [weak self] in self?.moveBars($0) }
+    styleBar.onDrag = { [weak self] in self?.moveBars($0) }
   }
 
   func show(in host: NSView, selection: CGRect, display: FrozenDisplay) {
@@ -117,6 +124,7 @@ final class AnnotationEditor: AnnotationEditing {
     picker.reset()
     store.reset()
     display = nil
+    movedOrigin = nil
   }
 
   /// Annotations are in view points: they are moved into the crop's pixels and clipped to the
@@ -198,6 +206,17 @@ final class AnnotationEditor: AnnotationEditing {
     return wasEditing || cleared
   }
 
+  /// Either bar dragged: both move as one block, led by the toolbar.
+  private func moveBars(_ drag: AnnotationGlassBar.Drag) {
+    switch drag {
+    case .began: dragOrigin = toolbar.frame.origin
+    case .moved(let travel):
+      movedOrigin = CGPoint(x: dragOrigin.x + travel.dx, y: dragOrigin.y + travel.dy)
+    case .reset: movedOrigin = nil
+    }
+    placeToolbar()
+  }
+
   private func editText(at point: CGPoint, _ existing: Annotation?) {
     textEditor.begin(at: point, editing: existing, style: interaction.styles.shared, in: canvas)
   }
@@ -244,13 +263,21 @@ final class AnnotationEditor: AnnotationEditing {
     return target.controls.isEmpty ? nil : target
   }
 
-  /// Both bars as one block (``AnnotationToolbarLayout``), with room kept for the style bar's
-  /// widest form so the toolbar stays put while the style bar comes and goes or narrows.
+  /// Both bars as one block (``AnnotationToolbarLayout``), beside the selection or where the
+  /// user dragged them, with room kept for the style bar's widest form so the toolbar stays put
+  /// while the style bar comes and goes or narrows.
   private func placeToolbar() {
     guard let host = toolbar.superview else { return }
-    let frames = AnnotationToolbarLayout.frames(
-      toolbar: toolbar.fittingSize, styleBar: styleBar.fullSize, beside: selection,
-      within: host.bounds)
+    let frames =
+      if let movedOrigin {
+        AnnotationToolbarLayout.frames(
+          toolbar: toolbar.fittingSize, styleBar: styleBar.fullSize, at: movedOrigin,
+          within: host.bounds)
+      } else {
+        AnnotationToolbarLayout.frames(
+          toolbar: toolbar.fittingSize, styleBar: styleBar.fullSize, beside: selection,
+          within: host.bounds)
+      }
     toolbar.frame = frames.toolbar
     styleBar.frame = CGRect(origin: frames.styleBar.origin, size: styleBar.fittingSize)
   }

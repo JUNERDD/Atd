@@ -18,9 +18,11 @@ final class AnnotationHostView: NSView {
     return hit
   }
 
-  /// Whether `point` (the overlay's coordinates) is on one of the editor's bars.
-  func isBar(at point: CGPoint) -> Bool {
-    super.hitTest(point).map(Self.isInBar) ?? false
+  /// The cursor at `point` (the overlay's coordinates) when it is on one of the editor's bars:
+  /// the arrow over a control, an open hand over the bar's surface, which drags it; nil off them.
+  func barCursor(at point: CGPoint) -> NSCursor? {
+    guard let hit = super.hitTest(point), Self.isInBar(hit) else { return nil }
+    return sequence(first: hit, next: \.superview).contains { $0 is NSControl } ? .arrow : .openHand
   }
 
   private static func isInBar(_ view: NSView) -> Bool {

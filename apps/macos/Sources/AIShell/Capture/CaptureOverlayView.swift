@@ -208,10 +208,10 @@ final class CaptureOverlayView: NSView {
     hoverCursor(at: convert(window.mouseLocationOutsideOfEventStream, from: nil))
   }
 
-  /// The arrow over the editor's bars, else the session's cursor where it has one (D15).
+  /// The editor's bars' cursor over them, else the session's cursor where it has one (D15).
   private func hoverCursor(at point: CGPoint) {
-    if annotationHost.isBar(at: point) {
-      NSCursor.arrow.set()
+    if let cursor = annotationHost.barCursor(at: point) {
+      cursor.set()
     } else {
       delegate?.overlay(self, cursorAt: point)?.set()
     }

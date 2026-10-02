@@ -11,6 +11,12 @@ final class AnnotationStyleBar: NSView {
   /// A change the user picked: only the part the control stands for.
   var onChange: ((AnnotationStyleChange) -> Void)?
 
+  /// The bar being dragged by its surface; it moves with the toolbar.
+  var onDrag: ((AnnotationGlassBar.Drag) -> Void)? {
+    get { bar.onDrag }
+    set { bar.onDrag = newValue }
+  }
+
   private let colors = AnnotationColor.allCases.map { _ in
     AnnotationToolbarButton(selection: .ring, action: #selector(colorClicked))
   }

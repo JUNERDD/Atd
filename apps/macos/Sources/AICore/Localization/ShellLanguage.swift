@@ -119,6 +119,7 @@ public enum ShellStringKey: String, CaseIterable, Sendable {
   case captureHintRecall = "capture.hint.recall"
   case captureHintWindowsOnly = "capture.hint.windowsOnly"
   case captureToolbar = "capture.toolbar"
+  case captureToolbarMove = "capture.toolbar.move"
   case captureStyleBar = "capture.styleBar"
   /// `%1$@` the action, `%2$@` its key.
   case captureTooltipShortcut = "capture.tooltip.shortcut"
