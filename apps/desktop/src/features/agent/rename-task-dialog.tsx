@@ -14,9 +14,8 @@ import { Label } from '@atd/ui/components/label';
 import { isComposingKey } from '@atd/ui/lib/ime';
 import type { AgentTask } from '../../client/agent/task-schema';
 import { showErrorToast, showToast } from '../../components/toast-store';
+import { renamedTitle, TASK_TITLE_LIMIT } from './task-title';
 import { agentApi } from './use-agent';
-
-const TITLE_LIMIT = 120;
 
 /** Rename form for one task; the name resets to the task's current title each time it opens. */
 export function RenameTaskDialog({
@@ -36,15 +35,13 @@ export function RenameTaskDialog({
     setWasOpen(open);
     if (open) setName(task.title);
   }
-  const trimmed = name.trim();
-  const unchanged = trimmed === task.title.trim();
-  const invalid = trimmed.length === 0 || trimmed.length > TITLE_LIMIT || unchanged;
+  const title = renamedTitle(task.title, name);
 
   async function save() {
-    if (invalid || saving) return;
+    if (title === null || saving) return;
     setSaving(true);
     try {
-      await agentApi().renameTask(task.id, trimmed);
+      await agentApi().renameTask(task.id, title);
       showToast({ kind: 'info', text: t('session.renamed') });
       onOpenChange(false);
     } catch (error) {
@@ -70,7 +67,7 @@ export function RenameTaskDialog({
           <Input
             id="session-name"
             value={name}
-            maxLength={TITLE_LIMIT}
+            maxLength={TASK_TITLE_LIMIT}
             placeholder={t('session.renamePlaceholder')}
             onChange={(event) => setName(event.target.value)}
             onKeyDown={(event) => {
@@ -82,7 +79,7 @@ export function RenameTaskDialog({
           <Button variant="outline" disabled={saving} onClick={() => onOpenChange(false)}>
             {t('session.renameCancel')}
           </Button>
-          <Button disabled={invalid || saving} onClick={() => void save()}>
+          <Button disabled={title === null || saving} onClick={() => void save()}>
             {t('session.renameSave')}
           </Button>
         </DialogFooter>

@@ -106,14 +106,19 @@ export function publishDragRegions(bridge: NativeBridge, root: HTMLElement): () 
   };
   const resizeObserver = new ResizeObserver(schedule);
   let observed: Element[] = [];
-  // Streamed transcript DOM mutates constantly; only a changed set of drag areas re-observes.
+  // The areas and the holes in them: a hole can resize while the DOM keeps its shape, such as
+  // the header's title button when its text changes. Streamed transcript DOM mutates constantly;
+  // only a changed set of elements re-observes.
   const observeAreas = () => {
-    const areas = [...document.querySelectorAll(DRAG_AREAS)];
-    if (areas.length === observed.length && areas.every((item, index) => item === observed[index]))
-      return;
+    const targets = [...document.querySelectorAll(DRAG_AREAS)].flatMap((area) => [
+      area,
+      ...area.querySelectorAll(NO_DRAG),
+    ]);
+    const same = targets.every((item, index) => item === observed[index]);
+    if (targets.length === observed.length && same) return;
     resizeObserver.disconnect();
-    observed = areas;
-    for (const element of areas) resizeObserver.observe(element);
+    observed = targets;
+    for (const element of targets) resizeObserver.observe(element);
   };
   const mutationObserver = new MutationObserver(() => {
     observeAreas();
