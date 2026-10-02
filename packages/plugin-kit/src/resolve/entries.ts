@@ -134,13 +134,15 @@ export function installedEntry(
       id,
       origin: 'installed',
       name: id,
-      displayName: plugin.manifest.displayName,
+      ...(plugin.manifest.displayName === undefined
+        ? {}
+        : { displayName: plugin.manifest.displayName }),
       description: plugin.manifest.description ?? '',
-      version: plugin.manifest.version,
+      ...(plugin.manifest.version === undefined ? {} : { version: plugin.manifest.version }),
       format: plugin.format,
       source: installed.source,
       revision: installed.revision,
-      license: plugin.manifest.license,
+      ...(plugin.manifest.license === undefined ? {} : { license: plugin.manifest.license }),
       installedAt: installed.installedAt,
       enabled,
       toggleable: true,

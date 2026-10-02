@@ -4,27 +4,37 @@ import {
   parse,
   type McpAuthDraft,
   type McpHttpAuth,
+  type McpHttpAuthView,
+  type McpOAuthAuth,
   type McpSecretInput,
   type McpServerConfig,
   type McpServerUpsertRequest,
   type McpServerView,
 } from '@ai/agent-contracts';
 import { McpError } from './errors.js';
+import { oauthClientProblem } from './oauth-client.js';
 
 /**
  * How clients see and edit the user's MCP servers. The store and the authority keep full records,
  * since connecting needs them; everything that leaves the service goes through `serverView`, and
- * every edit through `upsertRecord`, so env and header values are never read back and a stored
- * secret never follows a server to a new destination.
+ * every edit through `upsertRecord`, so env, header and client secret values are never read back
+ * and a stored secret never follows a server to a new destination.
  */
 
-/** A record with each env and header value replaced by `{ set: true }`. */
+/** A record with each env, header and client secret value replaced by `{ set: true }`. */
 export function serverView(record: McpServerConfig): McpServerView {
+  const { stdio, http } = record;
   return {
     ...record,
-    stdio: record.stdio ? { ...record.stdio, env: redacted(record.stdio.env) } : null,
-    http: record.http ? { ...record.http, headers: redacted(record.http.headers) } : null,
+    stdio: stdio ? { ...stdio, env: redacted(stdio.env) } : null,
+    http: http ? { ...http, headers: redacted(http.headers), auth: authView(http.auth) } : null,
   };
+}
+
+function authView(auth: McpHttpAuth): McpHttpAuthView {
+  if (auth.type !== 'oauth') return auth;
+  const { clientSecret, ...rest } = auth;
+  return clientSecret === undefined ? rest : { ...rest, clientSecret: { set: true } };
 }
 
 function redacted(values: Record<string, string>): Record<string, { set: true }> {
@@ -79,22 +89,69 @@ function originOf(serverId: string, url: string): string {
   return parsed.origin;
 }
 
-function httpAuth(auth: McpAuthDraft, previous: McpHttpAuth | undefined): McpHttpAuth {
+/**
+ * The auth an edit stores, and whether it kept a stored client secret. An OAuth server keeps its
+ * scope and redirect URI, and its client unless the edit sends one (`McpOAuthClientDraftSchema`).
+ */
+function httpAuth(
+  serverId: string,
+  auth: McpAuthDraft,
+  previous: McpHttpAuth | undefined,
+): { auth: McpHttpAuth; keptSecret: boolean } {
   switch (auth.type) {
     case 'none':
-      return { type: 'none' };
+      return { auth: { type: 'none' }, keptSecret: false };
     case 'bearer':
-      return { type: 'bearer', tokenEnv: auth.tokenEnv };
+      return { auth: { type: 'bearer', tokenEnv: auth.tokenEnv }, keptSecret: false };
     case 'oauth':
-      // The request has no scope or redirect fields; an OAuth server keeps the ones it had.
-      return previous?.type === 'oauth'
-        ? { type: 'oauth', scope: previous.scope, redirectUri: previous.redirectUri }
-        : { type: 'oauth', scope: null, redirectUri: null };
+      return oauthAuth(serverId, auth.client, previous?.type === 'oauth' ? previous : undefined);
     default: {
       const _exhaustive: never = auth;
       throw new Error(`Unsupported MCP auth: ${JSON.stringify(_exhaustive)}`);
     }
   }
+}
+
+function oauthAuth(
+  serverId: string,
+  client: Extract<McpAuthDraft, { type: 'oauth' }>['client'],
+  stored: McpOAuthAuth | undefined,
+): { auth: McpOAuthAuth; keptSecret: boolean } {
+  const base = { type: 'oauth' as const, scope: stored?.scope ?? null };
+  const redirectUri = stored?.redirectUri ?? null;
+  if (!client) {
+    const kept = stored ?? { ...base, redirectUri };
+    return { auth: kept, keptSecret: kept.clientSecret !== undefined };
+  }
+  const { clientSecret: secret, ...settings } = client;
+  const problem = oauthClientProblem(settings);
+  if (problem) throw new McpError('bad_request', serverId, `MCP server ${serverId}: ${problem}.`);
+  let clientSecret: string | undefined;
+  if (typeof secret === 'string') clientSecret = secret;
+  else if (secret) {
+    // The secret only ever goes to the token endpoint of the client it was stored for.
+    const same =
+      stored?.clientSecret !== undefined &&
+      stored.clientId === settings.clientId &&
+      stored.authServerMetadataUrl === settings.authServerMetadataUrl;
+    if (!same)
+      throw new McpError(
+        'bad_request',
+        serverId,
+        `MCP server ${serverId} has no stored OAuth client secret for this client id and authorization server to keep; send it again.`,
+      );
+    clientSecret = stored.clientSecret;
+  }
+  if (clientSecret !== undefined && !settings.clientId)
+    throw new McpError(
+      'bad_request',
+      serverId,
+      `MCP server ${serverId} needs an OAuth client id for its client secret.`,
+    );
+  return {
+    auth: { ...base, redirectUri, ...settings, ...(clientSecret ? { clientSecret } : {}) },
+    keptSecret: typeof secret === 'object',
+  };
 }
 
 function stdioFields(
@@ -139,15 +196,20 @@ function httpFields(
   const origin = originOf(serverId, url);
   const stored = previous?.http;
   const headers = mergeSecrets(serverId, 'headers', request.headers, stored?.headers ?? {});
-  const auth = httpAuth(request.auth, stored?.auth);
+  const { auth, keptSecret } = httpAuth(serverId, request.auth, stored?.auth);
   if (stored && originOf(serverId, stored.url) !== origin) {
     // The keyring bearer token is keyed by server, not URL, so any bearer auth would carry it.
     const bearer = stored.auth.type === 'bearer' && auth.type === 'bearer';
-    if (headers.kept.length || bearer)
+    const saved = bearer
+      ? 'bearer credential'
+      : keptSecret
+        ? 'OAuth client secret'
+        : `headers (${headers.kept.join(', ')})`;
+    if (headers.kept.length || bearer || keptSecret)
       throw new McpError(
         'bad_request',
         serverId,
-        `MCP server ${serverId} cannot move its saved ${bearer ? 'bearer credential' : `headers (${headers.kept.join(', ')})`} to another origin; send new values or remove the server and add it again.`,
+        `MCP server ${serverId} cannot move its saved ${saved} to another origin; send new values or remove the server and add it again.`,
       );
   }
   return { transport, stdio: null, http: { url, transport, headers: headers.values, auth } };
@@ -176,11 +238,17 @@ export function upsertRecord(
     principal: '',
     isolateByTask: false,
     exposeResources: false,
+    exposure: 'auto',
     approveTools: true,
     includeTools: [],
     excludeTools: [],
     requestTimeoutMs: null,
     disabled: false,
   };
-  return parse(McpServerConfigSchema, { ...base, ...fields });
+  return parse(McpServerConfigSchema, {
+    ...base,
+    ...fields,
+    ...(request.exposure ? { exposure: request.exposure } : {}),
+    ...(request.exposeResources === undefined ? {} : { exposeResources: request.exposeResources }),
+  });
 }

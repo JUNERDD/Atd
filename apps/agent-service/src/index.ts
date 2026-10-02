@@ -52,7 +52,8 @@ export interface ServiceHandle {
 export async function createService(
   config: ServiceConfig,
   options: {
-    tier?: PermissionTier;
+    /** The CLI's `--tier` flag, passed through when given. */
+    tier?: PermissionTier | undefined;
     /**
      * Answers `POST /v1/admin/shutdown` once the reply is out. Only the process
      * host may exit, so the CLI passes the stop-then-exit handler its signals

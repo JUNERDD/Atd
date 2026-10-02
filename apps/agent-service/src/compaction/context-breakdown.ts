@@ -5,7 +5,7 @@ import type {
   ContextBreakdownCategory,
   ContextBreakdownItem,
 } from '@ai/agent-contracts';
-import { mcpProxyServerId } from '../mcp/tool-proxies.js';
+import { mcpProxyNamespace } from '../mcp/proxy-names.js';
 import { SKILL_CATALOG_SECTION } from '../skills/session-catalog.js';
 import { catalogSkillCount } from '../skills/skill-catalog.js';
 import { readCarriedSkills } from '../skills/skill-message.js';
@@ -20,9 +20,6 @@ export interface ContextBreakdownInput {
   contextWindow: number | null;
 }
 
-/** Prefix of every MCP proxy tool (mcp/tool-proxies.ts `mcpProxyPrefix`). */
-const MCP_TOOL_PREFIX = 'mcp__';
-
 /**
  * Splits a task's context into the `ContextBreakdown` categories. The overhead categories are
  * estimated from the current system message (prompt sections and tool declarations) and the
@@ -33,8 +30,8 @@ export function contextBreakdown(input: ContextBreakdownInput): ContextBreakdown
   const { projection, contextWindow } = input;
   const system = getCurrentSystemMessage(projection.messages);
   const tools = system?.toolsAdded ?? [];
-  const mcpTools = tools.filter((tool) => tool.name.startsWith(MCP_TOOL_PREFIX));
-  const ownTools = tools.filter((tool) => !tool.name.startsWith(MCP_TOOL_PREFIX));
+  const mcpTools = tools.filter((tool) => mcpProxyNamespace(tool.name) !== null);
+  const ownTools = tools.filter((tool) => mcpProxyNamespace(tool.name) === null);
   const skills = skillsCategory(projection, system?.sections?.[SKILL_CATALOG_SECTION] ?? '');
   const overhead: ContextBreakdownCategory[] = [
     { id: 'systemPrompt', tokens: promptTokens(system), count: null, items: [] },
@@ -139,11 +136,15 @@ function toolsCategory(tools: readonly Tool[]): ContextBreakdownCategory {
   return { id: 'systemTools', tokens: totalTokens(items), count: tools.length, items };
 }
 
-/** One item per MCP server, named by the server id its proxies declare. */
+/**
+ * One item per MCP server: its proxies share a tool namespace, which their names carry
+ * (mcp/proxy-names.ts), so transcripts group alike whatever the tools' descriptions say. An item
+ * is named by the namespace without `mcp__`: the server id as tool names spell it.
+ */
 function mcpCategory(tools: readonly Tool[]): ContextBreakdownCategory {
   const servers = new Map<string, Tool[]>();
   for (const tool of tools) {
-    const server = mcpProxyServerId(tool.description) ?? tool.name;
+    const server = (mcpProxyNamespace(tool.name) ?? tool.name).replace(/^mcp__/, '');
     servers.set(server, [...(servers.get(server) ?? []), tool]);
   }
   const items = largestFirst(

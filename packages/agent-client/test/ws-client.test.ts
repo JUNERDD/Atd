@@ -12,7 +12,7 @@ interface FakeConnection {
   url: string;
   events: StreamTransportEvents;
   sent: unknown[];
-  closes: { code?: number; reason?: string }[];
+  closes: { code: number | undefined; reason: string | undefined }[];
 }
 
 /** Records every connection the client opens so a test can drive it like a relay would. */

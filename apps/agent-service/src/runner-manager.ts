@@ -292,7 +292,7 @@ export class RunnerManager {
           stopping.push(this.cancel(task.id, run.id).catch(() => undefined));
       }
     await Promise.allSettled(stopping);
-    await Promise.allSettled([...this.executions.values()]);
+    await Promise.allSettled(this.executions.values());
     for (const runner of this.runners.values()) {
       await runner.dispose().catch((error: unknown) => {
         this.deps.log.warn('Runner dispose failed.', { error: errorMessage(error) });

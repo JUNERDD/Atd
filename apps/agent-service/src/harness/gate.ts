@@ -33,7 +33,8 @@ export interface GateRequest {
   title: string;
   /** What the user approves (command, path, arguments); clamped to the confirm bound. */
   detail: string;
-  signal?: AbortSignal;
+  /** The tool call's abort signal, passed through from `execute` (pi may give none). */
+  signal?: AbortSignal | undefined;
   /** Bash only: the allowlist entry the confirm offers to add (shell.ts `suggestShellAllowlistEntry`). */
   allowlistEntry?: string;
   /**

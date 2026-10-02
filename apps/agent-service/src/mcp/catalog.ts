@@ -28,6 +28,11 @@ import type { McpCatalogCounter, McpToolInfo } from './types.js';
 /** pi-mcp's cap on the pages of one list. */
 const MAX_LIST_PAGES = 1_000;
 
+/** Request options carrying the caller's abort signal when it has one. */
+export function withSignal(signal: AbortSignal | undefined): McpRequestOptions {
+  return signal ? { signal } : {};
+}
+
 const ANNOTATION_HINTS: readonly (keyof ToolAnnotations)[] = [
   'readOnlyHint',
   'destructiveHint',
@@ -170,7 +175,7 @@ export async function listAllPrompts(
  * authentication error, which propagate.
  */
 export const countCatalog: McpCatalogCounter = async (client, signal) => {
-  const options: McpRequestOptions = { signal };
+  const options = withSignal(signal);
   const capabilities = client.serverCapabilities;
   const [tools, resources, prompts] = await Promise.all([
     capabilities?.tools ? client.listTools(options) : [],

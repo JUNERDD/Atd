@@ -59,6 +59,7 @@ export class PooledConnection implements McpLiveConnection {
   readonly idleClose: boolean;
   readonly hideUrl: (text: string) => string;
   readonly capabilities: ServerCapabilities;
+  readonly instructions: string | null;
   /** Set by the pool when it closes the connection itself, so the close is not a loss to report. */
   onPurpose = false;
   private known: McpCatalogCounts = { tools: 0, resources: 0, prompts: 0 };
@@ -70,7 +71,10 @@ export class PooledConnection implements McpLiveConnection {
   private recounting = false;
   private recountAgain = false;
 
-  /** Follows the client: `list_changed` rereads the catalog, and a close is reported once. */
+  /**
+   * Follows the client: `list_changed` rereads the catalog and a close is reported once. Server log
+   * messages go to the service log from before the connect (pool.ts, server-log.ts).
+   */
   constructor(
     identity: ConnectionIdentity,
     readonly client: McpClient,
@@ -86,6 +90,7 @@ export class PooledConnection implements McpLiveConnection {
     const capabilities = client.serverCapabilities;
     if (!capabilities) throw new McpConnectionClosedError('MCP client has not initialized');
     this.capabilities = capabilities;
+    this.instructions = client.instructions?.trim() || null;
     this.lastUsedAt = context.now();
     for (const family of ['tools', 'resources', 'prompts']) {
       client.onNotification(`notifications/${family}/list_changed`, () => this.recount());

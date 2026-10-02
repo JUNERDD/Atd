@@ -77,7 +77,6 @@ async function rejectedBy(
   header = 'Bearer',
   fetch: McpFetch = globalThis.fetch,
 ) {
-  assert.ok(auth.onUnauthorized, 'the auth reacts to a 401');
   await auth.onUnauthorized({
     response: new Response(null, { status: 401, headers: { 'www-authenticate': header } }),
     serverUrl: new URL(mock.url),
@@ -115,6 +114,7 @@ async function signedIn(options: SignInOptions = {}) {
     serverUrl: server.url,
     store,
     scope: undefined,
+    client: { clientName: 'Agent Service' },
     log: memoryLog().log,
     onChallenge: (challenge) => void challenges.push(challenge),
     service: noHeaders,
@@ -166,7 +166,10 @@ test('an unreachable server is an error to try again, not a sign-in to redo', as
       assert.equal(await session.auth.token(), carried?.access_token, 'the request still goes out');
     }
     await assert.rejects(rejectedBy(session.auth, carried?.access_token), (error) => {
-      assert.ok(!(error instanceof McpOAuthAuthorizationRequiredError), `${cached}: ${error}`);
+      assert.ok(
+        !(error instanceof McpOAuthAuthorizationRequiredError),
+        `${cached}: ${String(error)}`,
+      );
       return true;
     });
     assert.equal((await session.store.load())?.tokens?.refresh_token, carried?.refresh_token);

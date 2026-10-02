@@ -5,9 +5,12 @@ import {
   createEditToolDefinition,
   createReadToolDefinition,
   createWriteToolDefinition,
+  type EditOperations,
   type ExtensionFactory,
+  type ReadOperations,
   type SessionManager,
   type ToolDefinition,
+  type WriteOperations,
 } from '@earendil-works/pi-coding-agent';
 import type { GrantScope, PermissionTier } from '@ai/agent-contracts';
 import type { CapabilityRegistry } from './capabilities.js';
@@ -18,11 +21,13 @@ import { registerDesktopTool } from './desktop-tool.js';
 import type { Reviewer } from './harness/auto-review.js';
 import { createGate } from './harness/gate.js';
 import type { Logger } from './logging.js';
+import type { TaskResources } from './resources.js';
 import {
   confined,
   confinedWrite,
   inside,
   resolveToolPath,
+  resourceIdAt,
   userAgentsReadRoots,
   withinRoots,
 } from './service-fs.js';
@@ -49,6 +54,12 @@ export interface ServiceToolHost {
    * the read tool reads inside them without a confirmation; writes keep the usual rules.
    */
   skillDirs: () => readonly string[];
+  /**
+   * The task's own resources: codemode's spilled output, an MCP result's whole text, the run's
+   * attachments. The read tool reads them without a confirmation, since the task made or was given
+   * them; other tasks' resources and the rest of the data dir keep the usual rules.
+   */
+  taskResources: TaskResources;
   upsertMcp?: UpsertMcp;
   listMcp?: ListMcp;
 }
@@ -59,7 +70,59 @@ export interface ServiceToolHost {
  */
 export interface ToolInvocation {
   run<T>(toolCallId: string, operation: () => T): T;
-  guard(): string;
+  /** Detached use is safe: file operations take it as a plain callback. */
+  guard: () => string;
+}
+
+/**
+ * Resolves the real path one file operation may touch, or throws to refuse it. The parent and
+ * every subagent child build pi's file tools from the same operations and differ only here: the
+ * parent confines to the data directory inside a tool invocation, a child decides through
+ * `checkChildPath` (subagents/child-tools.ts).
+ */
+export type ResolvePath = (target: string) => Promise<string>;
+
+/** Writes one file at an already resolved path; a child holds its sibling write lock around it. */
+export type WriteResolved = (real: string, content: string) => Promise<void>;
+
+const plainWrite: WriteResolved = (real, content) => writeFile(real, content);
+
+/** pi's read operations on confined paths. Images are not detected, so files read as text. */
+export function readOperations(readable: ResolvePath): ReadOperations {
+  return {
+    readFile: async (target) => readFile(await readable(target)),
+    access: async (target) => {
+      await stat(await readable(target));
+    },
+  };
+}
+
+/** pi's edit operations: reads resolve as readable, the rewrite as writable. */
+export function editOperations(
+  readable: ResolvePath,
+  writable: ResolvePath,
+  write: WriteResolved = plainWrite,
+): EditOperations {
+  return {
+    readFile: async (target) => readFile(await readable(target)),
+    writeFile: async (target, content) => write(await writable(target), content),
+    access: async (target) => {
+      await stat(await readable(target));
+    },
+  };
+}
+
+/** pi's write operations, including the parent directories it creates first. */
+export function writeOperations(
+  writable: ResolvePath,
+  write: WriteResolved = plainWrite,
+): WriteOperations {
+  return {
+    writeFile: async (target, content) => write(await writable(target), content),
+    mkdir: async (target) => {
+      await mkdir(await writable(target), { recursive: true });
+    },
+  };
 }
 
 /**
@@ -92,9 +155,26 @@ export function serviceTools(host: ServiceToolHost): ExtensionFactory {
     return target !== '' && (await withinRoots(host.skillDirs(), host.cwd, target));
   }
 
+  /** Whether a read targets a file of one of the task's own resources (`taskResources`). */
+  async function readsTaskResource(args: unknown): Promise<boolean> {
+    const target = pathOf(args);
+    if (target === '') return false;
+    const id = await resourceIdAt(host.taskResources.dir, host.cwd, target);
+    return id !== null && host.taskResources.owns(id);
+  }
+
   /** Roots only the read tool may reach beyond the data directory (service-fs.ts `confined`). */
   async function readRoots(): Promise<string[]> {
     return [...(await userAgentsReadRoots()), ...host.skillDirs()];
+  }
+
+  /**
+   * Which of the run's own read-only material a read targets, if any. Reading it needs no
+   * confirmation; the read operation still confines the path to the data dir and the read roots.
+   */
+  async function ownMaterial(args: unknown): Promise<'skill' | 'resource' | null> {
+    if (await readsRunSkill(args)) return 'skill';
+    return (await readsTaskResource(args)) ? 'resource' : null;
   }
 
   function controlled<T extends TSchema, D, S>(
@@ -107,9 +187,10 @@ export function serviceTools(host: ServiceToolHost): ExtensionFactory {
       async execute(id, args, signal, onUpdate, ctx) {
         signal?.throwIfAborted();
         const scope = scopeOf(name, args, host);
-        if (name === 'read' && (await readsRunSkill(args))) {
+        const own = name === 'read' ? await ownMaterial(args) : null;
+        if (own) {
           const base = { taskId: host.taskId, runId: host.runId(), toolCallId: id };
-          host.audit({ ...base, tool: 'read:skill', decision: 'skill' });
+          host.audit({ ...base, tool: `read:${own}`, decision: own });
         } else {
           // A path the operation would refuse fails before the gate, so no prompt or review
           // is spent on a call that cannot run.
@@ -134,66 +215,37 @@ export function serviceTools(host: ServiceToolHost): ExtensionFactory {
     };
   }
 
+  /** The confined real path of a file a tool reads, inside a tool invocation only. */
+  const readable =
+    (roots: () => Promise<readonly string[]>): ResolvePath =>
+    async (target) => {
+      guard();
+      return (await confined(host.cwd, host.dataDir, target, await roots())).real;
+    };
+  const writable: ResolvePath = async (target) => {
+    guard();
+    return (await confinedWrite(host.cwd, host.dataDir, target)).real;
+  };
+  const noRoots = async () => [];
+
   return (pi) => {
     pi.registerTool(
       controlled(
-        createReadToolDefinition(host.cwd, {
-          operations: {
-            readFile: async (target) => {
-              guard();
-              const { real } = await confined(host.cwd, host.dataDir, target, await readRoots());
-              return readFile(real);
-            },
-            access: async (target) => {
-              guard();
-              const { real } = await confined(host.cwd, host.dataDir, target, await readRoots());
-              await stat(real);
-            },
-          },
-        }),
+        createReadToolDefinition(host.cwd, { operations: readOperations(readable(readRoots)) }),
         'read',
       ),
     );
     pi.registerTool(
       controlled(
         createEditToolDefinition(host.cwd, {
-          operations: {
-            readFile: async (target) => {
-              guard();
-              const { real } = await confined(host.cwd, host.dataDir, target);
-              return readFile(real);
-            },
-            writeFile: async (target, content) => {
-              guard();
-              const { real } = await confinedWrite(host.cwd, host.dataDir, target);
-              await writeFile(real, content);
-            },
-            access: async (target) => {
-              guard();
-              const { real } = await confined(host.cwd, host.dataDir, target);
-              await stat(real);
-            },
-          },
+          operations: editOperations(readable(noRoots), writable),
         }),
         'edit',
       ),
     );
     pi.registerTool(
       controlled(
-        createWriteToolDefinition(host.cwd, {
-          operations: {
-            writeFile: async (target, content) => {
-              guard();
-              const { real } = await confinedWrite(host.cwd, host.dataDir, target);
-              await writeFile(real, content);
-            },
-            mkdir: async (target) => {
-              guard();
-              const { real } = await confinedWrite(host.cwd, host.dataDir, target);
-              await mkdir(real, { recursive: true });
-            },
-          },
-        }),
+        createWriteToolDefinition(host.cwd, { operations: writeOperations(writable) }),
         'write',
       ),
     );

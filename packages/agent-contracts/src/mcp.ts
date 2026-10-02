@@ -1,6 +1,7 @@
 import { QualifiedNameSchema } from '@ai/plugin-kit/model';
 import { Type, type Static } from 'typebox';
 import { Identifier } from './identifiers.js';
+import { McpHttpAuthSchema } from './mcp-auth.js';
 
 /**
  * T4 MCP contracts (freeze candidate `mcp v1`, owned by root). Wire DTOs
@@ -53,22 +54,6 @@ export const McpStdioSchema = Type.Object(
 );
 export type McpStdio = Static<typeof McpStdioSchema>;
 
-const NoneAuth = Type.Object({ type: Type.Literal('none') }, { additionalProperties: false });
-const BearerAuth = Type.Object(
-  { type: Type.Literal('bearer'), tokenEnv: Type.String({ maxLength: 256 }) },
-  { additionalProperties: false },
-);
-const OAuthAuth = Type.Object(
-  {
-    type: Type.Literal('oauth'),
-    scope: Type.Union([Type.String({ maxLength: 2048 }), Type.Null()]),
-    redirectUri: Type.Union([Type.String({ maxLength: 2048 }), Type.Null()]),
-  },
-  { additionalProperties: false },
-);
-export const McpHttpAuthSchema = Type.Union([NoneAuth, BearerAuth, OAuthAuth]);
-export type McpHttpAuth = Static<typeof McpHttpAuthSchema>;
-
 export const McpHttpSchema = Type.Object(
   {
     url: Type.String({ minLength: 1, maxLength: 2048 }),
@@ -80,6 +65,27 @@ export const McpHttpSchema = Type.Object(
 );
 export type McpHttp = Static<typeof McpHttpSchema>;
 
+/**
+ * How a server's tools reach the model. `direct` declares every tool to the model up front;
+ * `deferred` keeps them out of the declared tools until the model finds them with `tool_search`
+ * (pi's deferred exposure); `auto`, the default, picks `deferred` for a server that lists more
+ * tools than `MCP_DEFERRED_TOOL_THRESHOLD` and `direct` otherwise.
+ */
+export const McpServerExposureSchema = Type.Union([
+  Type.Literal('auto'),
+  Type.Literal('direct'),
+  Type.Literal('deferred'),
+]);
+export type McpServerExposure = Static<typeof McpServerExposureSchema>;
+
+/**
+ * An `auto` server whose run binds more tools than this is `deferred`. Each declared tool costs
+ * its whole schema on every model request and many similar tools make a model choose less
+ * reliably, while a search costs an extra step: ten keeps single-purpose servers direct and
+ * defers broad ones (GitHub's, a cloud console's) that list dozens. Shared so settings can name it.
+ */
+export const MCP_DEFERRED_TOOL_THRESHOLD = 10;
+
 export const McpServerConfigSchema = Type.Object(
   {
     serverId: McpServerIdSchema,
@@ -90,7 +96,9 @@ export const McpServerConfigSchema = Type.Object(
     http: Type.Union([McpHttpSchema, Type.Null()]),
     principal: Type.String({ maxLength: 256 }),
     isolateByTask: Type.Boolean(),
+    /** Whether the model may list and read the server's resources (`read_mcp_resource`). */
     exposeResources: Type.Boolean(),
+    exposure: McpServerExposureSchema,
     approveTools: Type.Union([Type.Boolean(), Type.Array(Type.String({ maxLength: 256 }))]),
     includeTools: Type.Array(Type.String({ maxLength: 256 })),
     excludeTools: Type.Array(Type.String({ maxLength: 256 })),

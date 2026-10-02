@@ -271,8 +271,14 @@ function resolveMcpServer(
   if (selected && !selected.some((tool) => tool.connectionId === server.connectionId))
     return 'none of its tools are selected for this message';
   const prefix = mcpProxyPrefix(serverId);
+  // How many tools the run binds decides an `auto` server's exposure, and that is known only once
+  // the run binds; a `direct` server's tools are always declared, so it needs no search.
+  const search =
+    server.exposure === 'direct'
+      ? ''
+      : ' Load any that are not among your tools yet with tool_search.';
   return {
-    text: `MCP server "${serverId}": prefer its tools, the ones named ${prefix}*, where they fit this request. Every other tool stays available.`,
+    text: `MCP server "${serverId}": prefer its tools, the ones named ${prefix}*, where they fit this request.${search} Every other tool stays available.`,
     audit: { reference: 'mcpServer', target: serverId, decision: 'included', prefix },
   };
 }

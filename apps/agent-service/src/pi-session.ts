@@ -1,18 +1,22 @@
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
-import type { ImageContent } from '@earendil-works/pi-ai';
+import { getCurrentTools, type ImageContent } from '@earendil-works/pi-ai';
 import {
   createAgentSession,
+  createToolSearchExtension,
   DefaultResourceLoader,
   SessionManager,
   SettingsManager,
 } from '@earendil-works/pi-coding-agent';
 import type { RunStatus, TaskRun } from '@ai/agent-contracts';
+import { codemodeExtension } from './codemode/extension.js';
 import { CompactionObserver } from './compaction/observer.js';
 import { compactionSettings } from './compaction/policy.js';
 import { pruneToolOutputs } from './compaction/prune.js';
 import { leadingSystemMessage, runMaterialContext } from './prompt-context.js';
 import { bindLiveState, type LiveState } from './live-state.js';
+import { mcpServersSection } from './mcp/servers-section.js';
+import { ResourceStore } from './resources.js';
 import type { RunBinding } from './run-binding.js';
 import { rewindManager, rewindSession } from './session-rewind.js';
 import { openRunModel, reuseRunModel } from './run-model.js';
@@ -145,6 +149,7 @@ export async function createLiveState(
     binding.agents,
     runModel.childRuntime,
   );
+  const resources = new ResourceStore(ctx.ledger, ctx.paths);
   const host: ServiceToolHost = {
     taskId,
     runId: deps.currentRunId,
@@ -168,6 +173,7 @@ export async function createLiveState(
         ...loadedSkillDirs(material.catalog, manager.buildContextEntries()),
       ];
     },
+    taskResources: resources.forTask(taskId),
     upsertMcp: binding.mcp.upsertMcp,
     listMcp: binding.mcp.listMcp,
   };
@@ -191,6 +197,16 @@ export async function createLiveState(
       extensionFactories: [
         serviceTools(host),
         binding.mcp.factory,
+        mcpServersSection(binding.mcp.bindings),
+        // Registered inactive; the allowlist declares it when a bound MCP server is deferred.
+        createToolSearchExtension(),
+        // Registered inactive; every parent run's allowlist declares it (run-binding.ts).
+        codemodeExtension({
+          taskId,
+          resources,
+          resourcesDir: ctx.paths.resourcesDir,
+          log: ctx.log,
+        }),
         subagentsFactory,
         // Before the memory extension in the harness: its forced prompt renders these sections.
         sessionSkillCatalog(() => deps.currentMaterial().catalog),
@@ -219,6 +235,7 @@ export async function createLiveState(
     tools: binding.tools,
     thinkingLevel: run.snapshot.thinkingLevel ?? 'off',
   });
+  created.session.setActiveToolsByName(declaredTools(manager, binding));
   await created.session.bindExtensions({
     mode: 'json',
     onError: (error) => {
@@ -274,9 +291,29 @@ export async function applyRunToSession(
   live.context.update();
   // Pi clamps the level to what the model supports.
   live.session.setThinkingLevel(run.snapshot.thinkingLevel ?? 'off');
-  live.session.setActiveToolsByName(binding.tools);
+  live.session.setActiveToolsByName(declaredTools(live.manager, binding));
   markInvocation(live.manager, run);
   return true;
+}
+
+/**
+ * The tools a session declares for a run. Pi activates every tool its allowlist names, deferred
+ * ones included, and with an allowlist it does not restore the transcript's loadout. So deferred
+ * MCP proxies are left out, except those the branch's transcript declares: the ones `tool_search`
+ * loaded on it, which stay loaded across runs, rewinds to where they were loaded, and reopened
+ * sessions, as pi's own loadout restore keeps them.
+ */
+function declaredTools(manager: SessionManager, binding: RunBinding): string[] {
+  const deferred = new Set(
+    binding.mcp.bindings.flatMap((proxy) =>
+      proxy.exposure === 'deferred' ? [proxy.proxyName] : [],
+    ),
+  );
+  if (!deferred.size) return binding.tools;
+  const loaded = getCurrentTools(manager.buildSessionContext().messages)
+    .map((tool) => tool.name)
+    .filter((name) => deferred.has(name));
+  return [...binding.tools.filter((name) => !deferred.has(name)), ...loaded];
 }
 
 /**

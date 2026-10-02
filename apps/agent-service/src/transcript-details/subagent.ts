@@ -28,7 +28,10 @@ const PATH_MAX_LENGTH = 4096;
 /** One pi-subagents result row reduced to what a card shows; bounded so live state stays small. */
 export interface SubagentRow {
   sessionFile: string;
-  /** Workflow lane key (`p<i>` / `c<i>` in service workflows); names the lane's task. */
+  /**
+   * Workflow lane key: `task-<n>`, `step-<n>` or `step-<n>-<m>` for pi-subagents' `tasks` and
+   * `chain` (`p<i>` / `c<i>` in the former service workflows); names the lane's task.
+   */
   workflowKey?: string;
   status: SubagentChildStatus;
   model?: string;
@@ -115,23 +118,60 @@ export function subagentRows(details: unknown): SubagentRow[] {
   return rows;
 }
 
+/** One child of a multi-child call: its workflow lane key and the task the call gave it. */
+interface Lane {
+  key: string;
+  task: string;
+}
+
+function laneTask(item: unknown): string {
+  return isRecord(item) ? (text(item['task']) ?? '') : '';
+}
+
+/**
+ * The children a `tasks` or `chain` call names, in launch order and keyed as pi-subagents keys
+ * their lanes (1-based; a chain's parallel step `step-<n>-<m>`). Sessions from before these kept
+ * the service's named workflows, `workflow` with `args.tasks` (`p<i>`) or `args.steps` (`c<i>`).
+ * Null for a single child.
+ */
+function lanesOf(args: Record<string, unknown>): Lane[] | null {
+  const tasks = args['tasks'];
+  if (Array.isArray(tasks))
+    return tasks.map((item: unknown, index) => ({
+      key: `task-${index + 1}`,
+      task: laneTask(item),
+    }));
+  const chain = args['chain'];
+  if (Array.isArray(chain))
+    return chain.flatMap((step: unknown, index): Lane[] => {
+      const parallel = isRecord(step) ? step['parallel'] : undefined;
+      if (!Array.isArray(parallel)) return [{ key: `step-${index + 1}`, task: laneTask(step) }];
+      return parallel.map((item: unknown, member) => ({
+        key: `step-${index + 1}-${member + 1}`,
+        task: laneTask(item),
+      }));
+    });
+  if (args['workflow'] == null) return null;
+  const workflowArgs = isRecord(args['args']) ? args['args'] : {};
+  const legacy = Array.isArray(workflowArgs['tasks'])
+    ? { prefix: 'p', list: workflowArgs['tasks'] }
+    : { prefix: 'c', list: Array.isArray(workflowArgs['steps']) ? workflowArgs['steps'] : [] };
+  return legacy.list.map((item: unknown, index) => ({
+    key: `${legacy.prefix}${index}`,
+    task: laneTask(item),
+  }));
+}
+
 /**
  * The task a child ran, from the call's own arguments: pi-subagents redacts its copy once a child
- * ends. A single call has one task for every attempt; a workflow names the lane by its result
- * row's key when one matched, otherwise by launch order.
+ * ends. A single call has one task for every attempt; a multi-child call names the lane by its
+ * result row's key when one matched, otherwise by launch order.
  */
 function taskFor(args: Record<string, unknown>, seq: number, row: SubagentRow | undefined): string {
-  if (args['workflow'] == null) return text(args['task']) ?? '';
-  const workflowArgs = isRecord(args['args']) ? args['args'] : {};
-  const lanes = Array.isArray(workflowArgs['tasks'])
-    ? workflowArgs['tasks']
-    : Array.isArray(workflowArgs['steps'])
-      ? workflowArgs['steps']
-      : [];
-  const lane = /^[pc](\d+)$/.exec(row?.workflowKey ?? '');
-  const index = lane?.[1] !== undefined ? Number(lane[1]) : seq;
-  const entry: unknown = lanes[index];
-  return isRecord(entry) ? (text(entry['task']) ?? '') : '';
+  const lanes = lanesOf(args);
+  if (!lanes) return text(args['task']) ?? '';
+  const lane = lanes.find((entry) => entry.key === row?.workflowKey) ?? lanes[seq];
+  return lane?.task ?? '';
 }
 
 /**

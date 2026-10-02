@@ -1,5 +1,13 @@
 import { MAX_BLOB_BYTES, adoptTempPaths, materializeBlob } from './artifacts.js';
 import { MappingError, type MappingContext, type MappingDeps } from './errors.js';
+import { structuredJson } from './model-content.js';
+import {
+  FULL_JSON_KIND,
+  FULL_TEXT_KIND,
+  exceedsInlineLimit,
+  limitText,
+  type LimitedText,
+} from './text-limits.js';
 import type {
   McpAttachment,
   McpCallResult,
@@ -12,13 +20,13 @@ import type {
 /**
  * Result mapping (D6): tool results keep their original MCP blocks for API
  * consumers; images/files become resource-service artifacts; temp file paths
- * a result names are adopted into artifacts (never leaked); resource links are
- * never implicitly downloaded or executed; prompt output becomes previewable
- * input, never a system instruction.
+ * a result names are adopted into artifacts (never leaked); long text keeps its
+ * start and end, its whole text saved as an artifact (text-limits.ts);
+ * resource links are never implicitly downloaded or executed; prompt output
+ * becomes previewable input, never a system instruction. What the model reads
+ * of a result is model-content.ts.
  */
 
-const MAX_INLINE_TEXT_BYTES = 50 * 1024;
-const MAX_INLINE_TEXT_LINES = 2000;
 const MAX_STRUCTURED_BYTES = 16 * 1024;
 
 /** Narrows a raw CallToolResult into the typed service result. */
@@ -48,15 +56,13 @@ export async function mapCallResult(
       continue;
     }
     if (narrowed.type === 'text') {
-      const { text, note } = enforceTextLimits(narrowed.text);
-      content.push({ type: 'text', text });
-      if (note) notes.push(note);
-      const adopted = await adoptTempPaths(deps, text, ctx);
+      // Paths are adopted (or redacted) in the whole text, so the saved whole text leaks none.
+      const adopted = await adoptTempPaths(deps, narrowed.text, ctx);
       attachments.push(...adopted.attachments);
-      if (adopted.attachments.length) {
-        content[content.length - 1] = { type: 'text', text: adopted.text };
-        notes.push('local temp paths were adopted into artifacts');
-      }
+      if (adopted.attachments.length) notes.push('local temp paths were adopted into artifacts');
+      const limited = await limitText(deps, adopted.text, ctx, FULL_TEXT_KIND, 'text/plain');
+      content.push({ type: 'text', text: limited.text });
+      keepLimit(limited, attachments, notes);
       continue;
     }
     if (narrowed.type === 'image' || narrowed.type === 'audio') {
@@ -72,7 +78,13 @@ export async function mapCallResult(
       continue;
     }
     if (narrowed.type === 'resource') {
-      const blob = narrowed.resource.blob;
+      const { blob, text } = narrowed.resource;
+      let resource = narrowed.resource;
+      if (text !== undefined) {
+        const limited = await limitText(deps, text, ctx, FULL_TEXT_KIND, 'text/plain');
+        resource = { ...resource, text: limited.text };
+        keepLimit(limited, attachments, notes);
+      }
       if (blob) {
         const artifact = await materializeBlob(
           deps,
@@ -83,18 +95,24 @@ export async function mapCallResult(
         );
         attachments.push({ ...artifact, name: narrowed.resource.uri.slice(0, 256) });
       }
-      content.push(narrowed);
+      content.push({ type: 'resource', resource });
       continue;
     }
     // resource_link: a typed reference only; never fetched or executed here.
     content.push(narrowed);
   }
-  // Kept whole for API consumers. The model reads it only when the result has nothing else
-  // (`toPiText`).
+  // Kept whole for API consumers. The model reads it only when the result has no content blocks
+  // (model-content.ts `toPiContent`), as its JSON cut like any long text; the whole JSON is then
+  // kept the same way.
   const structuredContent = record['structuredContent'];
-  if (structuredContent !== undefined) {
+  if (structuredContent !== undefined && structuredContent !== null) {
     const size = jsonSize(structuredContent);
     if (size > MAX_STRUCTURED_BYTES) notes.push(`structured content is large (${size} bytes)`);
+    const json = content.length ? '' : structuredJson(structuredContent);
+    if (exceedsInlineLimit(json)) {
+      const limited = await limitText(deps, json, ctx, FULL_JSON_KIND, 'application/json');
+      keepLimit(limited, attachments, notes);
+    }
   }
   return {
     content,
@@ -174,33 +192,6 @@ export function promptPreviewToInput(response: McpGetPromptResponse): string {
     .slice(0, 20000);
 }
 
-/** Transcript form: text plus artifact references; binaries stay in storage. */
-export function toPiText(result: McpCallResult): string {
-  const parts: string[] = [];
-  const notes = result.limitsNote ? [result.limitsNote] : [];
-  for (const block of result.content) parts.push(blockToText(block));
-  for (const attachment of result.attachments) {
-    if (attachment.artifactId) {
-      parts.push(
-        `[${attachment.kind}${attachment.mimeType ? ` ${attachment.mimeType}` : ''} saved as artifact ${attachment.artifactId}]`,
-      );
-    } else {
-      parts.push(`[${attachment.kind}: ${attachment.note}]`);
-    }
-  }
-  // A server may answer in `structuredContent` alone, and the model would read an empty result.
-  // Like pi-mcp's `toLlmContent`, it then gets that data as JSON, clipped like any text.
-  const structured = result.structuredContent ?? null;
-  if (!parts.length && structured !== null) {
-    const json = enforceTextLimits(JSON.stringify(structured, null, 2));
-    parts.push(json.text);
-    if (json.note) notes.push(json.note);
-  }
-  if (notes.length) parts.push(`(limits: ${notes.join('; ')})`);
-  const text = parts.filter(Boolean).join('\n\n');
-  return result.isError ? `MCP tool reported an error:\n${text}` : text;
-}
-
 function blockToText(block: McpContentBlock): string {
   switch (block.type) {
     case 'text':
@@ -257,19 +248,10 @@ function narrowContentBlock(value: unknown): McpContentBlock | null {
   }
 }
 
-function enforceTextLimits(text: string): { text: string; note: string | null } {
-  const bytes = Buffer.byteLength(text);
-  const lines = text.split('\n').length;
-  if (bytes <= MAX_INLINE_TEXT_BYTES && lines <= MAX_INLINE_TEXT_LINES) return { text, note: null };
-  let clipped = text;
-  if (lines > MAX_INLINE_TEXT_LINES)
-    clipped = clipped.split('\n').slice(0, MAX_INLINE_TEXT_LINES).join('\n');
-  while (Buffer.byteLength(clipped) > MAX_INLINE_TEXT_BYTES)
-    clipped = clipped.slice(0, Math.floor(clipped.length * 0.9));
-  return {
-    text: `${clipped}\n…[truncated]`,
-    note: `text clipped to ${MAX_INLINE_TEXT_BYTES} bytes / ${MAX_INLINE_TEXT_LINES} lines`,
-  };
+/** Records what limiting one text kept: its whole-text artifact and the note on it. */
+function keepLimit(limited: LimitedText, attachments: McpAttachment[], notes: string[]): void {
+  if (limited.attachment) attachments.push(limited.attachment);
+  if (limited.note) notes.push(limited.note);
 }
 
 function jsonSize(value: unknown): number {

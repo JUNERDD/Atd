@@ -38,7 +38,10 @@ function submitModelSelection(
   request: SubmitTaskRequest,
   last: TaskRun | undefined,
 ): ModelSelection | undefined {
-  return selectRunModel(connections, { requested: request.model, last: last?.snapshot.model });
+  return selectRunModel(connections, {
+    requested: request.model ?? null,
+    last: last?.snapshot.model ?? null,
+  });
 }
 
 /**

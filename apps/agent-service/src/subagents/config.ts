@@ -8,15 +8,35 @@ import { TODO_TOOL } from '@ai/agent-contracts';
  * these pinned values. No detach shortcut, no scheduling/missions/intercom.
  */
 
-export const SUBAGENT_LIMITS = {
-  namedArgsLimit: 16384,
-} as const;
-
 export const SUBAGENT_CONFIG_DIR = 'extensions/subagent';
 export const SUBAGENT_CONFIG_FILE = 'config.json';
 
-export const SERVICE_PARALLEL_WORKFLOW = 'service.parallel';
-export const SERVICE_CHAIN_WORKFLOW = 'service.chain';
+/**
+ * Every pi-subagents feature group (`src/shared/disabled-features.js` `SUBAGENT_FEATURES`) the
+ * service turns off. With `workflow-scripts` off, pi-subagents admits the data-only `tasks` and
+ * `chain` inputs and compiles them into its own scripts, the only multi-child shapes the service
+ * offers; raw scripts, script files and named workflow resources are refused. The other groups own
+ * parameters and actions the service tool contract never declares (agent management, watchdog,
+ * panes, missions, lanes, budgets, gates, overrides, extension bindings, external machines).
+ * pi-subagents rejects an unknown name, so an upstream rename fails the parent's start closed.
+ */
+export const DISABLED_SUBAGENT_FEATURES = [
+  'agent-management',
+  'watchdog',
+  'panes',
+  'missions',
+  'lane-management',
+  'spawn-budget-grants',
+  'preflight',
+  'lane-metadata',
+  'gates',
+  'usage-budgets',
+  'tool-budgets',
+  'control-overrides',
+  'extension-bindings',
+  'external-machines',
+  'workflow-scripts',
+] as const;
 
 /**
  * Tools a child may never receive: re-delegation, role/config planes, and the parent-only todo
@@ -33,9 +53,12 @@ export const SUBAGENT_CHILD_SYSTEM_PROMPT =
 /**
  * Managed config pinned for every parent; unknown keys are never added. Child concurrency keeps
  * pi-subagents' own bounds: its default global child limit and per-run fan-out budget.
+ * `toolActivation: 'eager'` keeps `subagent` in the parent's tool list from the first turn, so
+ * the `subagents_enable` loader and its mid-conversation tool changes never register.
  */
 export function managedSubagentConfig(): Record<string, unknown> {
   return {
+    toolActivation: 'eager',
     asyncByDefault: false,
     forceTopLevelAsync: false,
     maxSubagentDepth: 1,
@@ -44,6 +67,7 @@ export function managedSubagentConfig(): Record<string, unknown> {
     intercomBridge: { mode: 'off' },
     proactiveSkillSubagents: false,
     missions: { enabled: false },
+    disabledFeatures: [...DISABLED_SUBAGENT_FEATURES],
   };
 }
 
@@ -101,10 +125,13 @@ export function auditManagedConfig(config: Record<string, unknown>): {
   intercomOff: boolean;
   missionsOff: boolean;
   detachAbsent: boolean;
+  /** Every service-disabled feature group is listed, `workflow-scripts` included. */
+  featuresOff: boolean;
 } {
   const scheduled = config['scheduledRuns'] as { enabled?: unknown } | undefined;
   const intercom = config['intercomBridge'] as { mode?: unknown } | undefined;
   const missions = config['missions'] as { enabled?: unknown } | undefined;
+  const disabled: unknown = config['disabledFeatures'];
   return {
     asyncByDefault: config['asyncByDefault'],
     forceTopLevelAsync: config['forceTopLevelAsync'],
@@ -113,5 +140,8 @@ export function auditManagedConfig(config: Record<string, unknown>): {
     intercomOff: intercom?.mode === 'off',
     missionsOff: missions?.enabled === false,
     detachAbsent: config['foregroundDetachShortcut'] === undefined,
+    featuresOff:
+      Array.isArray(disabled) &&
+      DISABLED_SUBAGENT_FEATURES.every((feature) => disabled.includes(feature)),
   };
 }

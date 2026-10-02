@@ -8,6 +8,16 @@ import type { ServicePaths } from './storage.js';
 const MAX_RESOURCE_BYTES = 8 * 1024 * 1024;
 
 /**
+ * One task's view of the resource store: where resource files live (a resource's file is
+ * `<dir>/<id>`) and which resources belong to the task. The parent read tool reads those without
+ * a confirmation (tool-proxies.ts); every other resource reads as any other data-dir file.
+ */
+export interface TaskResources {
+  dir: string;
+  owns(id: string): boolean;
+}
+
+/**
  * Uploaded bytes referenced by runs. Binaries stay out of the WS stream;
  * the runner reads them from disk as read-only task material.
  */
@@ -46,6 +56,32 @@ export class ResourceStore {
       data.resources.push(resource);
     });
     return resource;
+  }
+
+  /** The file holding resource `id`, as the model reads it with the read tool. */
+  pathOf(id: string): string {
+    return path.join(this.paths.resourcesDir, id);
+  }
+
+  /**
+   * `taskId`'s resources: those saved for it (codemode's spilled output, an MCP result's whole
+   * text or binary content) and the uploaded files attached to one of its runs. Decided from the ledger on
+   * every call, so a resource saved mid-run counts at once.
+   */
+  forTask(taskId: string): TaskResources {
+    return {
+      dir: this.paths.resourcesDir,
+      owns: (id) => {
+        const resource = this.ledger.data.resources.find((item) => item.id === id);
+        // A resource saved for another task stays that task's, even when attached here.
+        if (!resource || (resource.taskId !== null && resource.taskId !== taskId)) return false;
+        if (resource.taskId === taskId) return true;
+        const task = this.ledger.data.tasks.find((item) => item.id === taskId);
+        return Boolean(
+          task?.runs.some((run) => run.snapshot.input.files.some((file) => file.id === id)),
+        );
+      },
+    };
   }
 
   /**

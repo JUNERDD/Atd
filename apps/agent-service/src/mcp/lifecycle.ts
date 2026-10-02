@@ -40,7 +40,7 @@ export class McpConnectionStates implements McpStateSink {
 
   reset(records: McpServerConfig[]): void {
     const known = new Set(records.map((record) => record.serverId));
-    for (const id of [...this.states.keys()]) {
+    for (const id of this.states.keys()) {
       if (!known.has(id)) this.states.delete(id);
     }
     for (const record of records) {

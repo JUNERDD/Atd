@@ -1,6 +1,7 @@
 import type { McpServerConfig } from '@ai/agent-contracts';
 import {
   authorizeMcp,
+  OAuthIssuerMismatchError,
   type McpOAuthProvider,
   type OAuthCallbackServer,
 } from '@earendil-works/pi-mcp/oauth';
@@ -8,7 +9,8 @@ import type { Logger } from '../logging.js';
 import { McpError, type ServerResolver } from './errors.js';
 import type { LaunchGate } from './launch-approvals.js';
 import type { McpConnectionStates } from './lifecycle.js';
-import { checkIssuer, type AuthorizationInput } from './oauth-callback.js';
+import { IssuerRequiredError, type AuthorizationInput } from './oauth-callback.js';
+import { flowTargets, oauthClientSettings } from './oauth-client.js';
 import type { OAuthProviders } from './oauth-provider.js';
 import type { KeychainOAuthStore } from './oauth-store.js';
 import { reuseKey } from './servers.js';
@@ -72,15 +74,20 @@ export async function exchangeSignIn(
     throw new McpError('conflict', serverId, 'The server changed during sign-in.');
   }
   await launch.assertLaunch(record, await connections.launchSpec(record));
-  await checkIssuer(pending.provider, serverId, iss);
   await txns.runTokenOp(
     pending.identity,
     async (context) => {
       const flow = providers.flowFetch(record, pending.serverUrl, context.signal);
+      // pi-mcp checks RFC 9207 `iss` against the discovered issuer before the code is sent.
       await authorizeMcp(pending.provider, {
         serverUrl: pending.serverUrl,
         authorizationCode: code,
+        ...(iss !== undefined ? { iss } : {}),
+        // The authorization server the sign-in started with, if its record configures one.
+        ...flowTargets(oauthClientSettings(pending.record), undefined, undefined),
         fetch: flow.fetch,
+      }).catch((error: unknown) => {
+        throw issuerError(error, serverId);
       });
       flow.check();
       // A retired store drops writes silently, and that must not read as a sign-in.
@@ -104,6 +111,20 @@ export async function exchangeSignIn(
   }
   await closeCallback(pending);
   await signedIn(deps, record, 'mcp:auth-complete');
+}
+
+/**
+ * pi-mcp's RFC 9207 refusal in the service's terms. A missing `iss` the server promised keeps the
+ * sign-in open for the full redirect URL; any other issuer ends it. Other errors pass through.
+ */
+function issuerError(error: unknown, serverId: string): unknown {
+  if (!(error instanceof OAuthIssuerMismatchError)) return error;
+  if (error.received === undefined) return new IssuerRequiredError(serverId);
+  return new McpError(
+    'bad_request',
+    serverId,
+    `The OAuth authorization response issuer does not match the discovered issuer for ${serverId}.`,
+  );
 }
 
 /**

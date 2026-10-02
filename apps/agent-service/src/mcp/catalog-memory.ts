@@ -95,7 +95,7 @@ export class CatalogMemory {
   retain(serverIds: Iterable<string>): void {
     const keep = new Set(serverIds);
     let dropped = false;
-    for (const serverId of [...this.entries.keys()]) {
+    for (const serverId of this.entries.keys()) {
       if (keep.has(serverId)) continue;
       this.entries.delete(serverId);
       dropped = true;

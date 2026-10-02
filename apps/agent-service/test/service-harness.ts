@@ -20,7 +20,7 @@ export async function startTestService() {
   /** Fetches with the main token (unless `anonymous`), a JSON body type and an optional relay epoch. */
   function call(
     pathname: string,
-    init: RequestInit & { epoch?: string; anonymous?: boolean } = {},
+    init: RequestInit & { epoch?: string | undefined; anonymous?: boolean } = {},
   ) {
     const { epoch, anonymous, ...rest } = init;
     const headers = new Headers(rest.headers);

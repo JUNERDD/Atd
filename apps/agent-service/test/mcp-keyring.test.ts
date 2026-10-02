@@ -66,7 +66,7 @@ const stdio = (env: McpServerUpsertRequest['env']): McpServerUpsertRequest => ({
   command: '/bin/echo',
   args: [],
   auth: { type: 'none' },
-  env,
+  ...(env && { env }),
 });
 
 const http = (
@@ -207,6 +207,7 @@ async function plainDataDir(): Promise<string> {
     principal: '',
     isolateByTask: false,
     exposeResources: false,
+    exposure: 'auto' as const,
     approveTools: true,
     includeTools: [],
     excludeTools: [],

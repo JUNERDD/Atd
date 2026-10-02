@@ -213,16 +213,16 @@ export class LegacySseTransport implements McpTransport {
       this.options.authProvider,
     );
     for (let attempt = 0; ; attempt++) {
-      const { headers, token } = await this.headers(extra);
+      const { headers, ...carried } = await this.headers(extra);
       const response = await this.fetch(target, {
         method,
         headers,
-        body,
+        ...(body !== undefined && { body }),
         signal: this.controller.signal,
       });
       if (attempt > 0 || !onUnauthorized || !needsAuthorization(response)) return response;
       try {
-        await onUnauthorized({ response, serverUrl: this.url, fetch: this.fetch, token });
+        await onUnauthorized({ response, serverUrl: this.url, fetch: this.fetch, ...carried });
       } finally {
         await discard(response);
       }

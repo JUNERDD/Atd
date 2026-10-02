@@ -40,8 +40,8 @@ function selectVersion(
     version,
     dist: {
       tarball: dist.tarball,
-      integrity: typeof dist.integrity === 'string' ? dist.integrity : undefined,
-      shasum: typeof dist.shasum === 'string' ? dist.shasum : undefined,
+      ...(typeof dist.integrity === 'string' ? { integrity: dist.integrity } : {}),
+      ...(typeof dist.shasum === 'string' ? { shasum: dist.shasum } : {}),
     },
   };
 }
@@ -95,36 +95,32 @@ async function extractTarball(file: string, tree: string, limits: FetchLimits): 
       const readEntry = entry as ReadEntry;
       const stripped = stripFirst(entryPath);
       try {
-        switch (readEntry.type) {
-          case 'Directory':
-            return true;
-          case 'File':
-          case 'OldFile':
-          case 'ContiguousFile':
-            budget.add(readEntry.size);
-            return true;
-          case 'SymbolicLink': {
-            const link = readEntry.linkpath ?? '';
-            const target = path.posix.normalize(
-              path.posix.join(path.posix.dirname(stripped), link),
-            );
-            if (path.posix.isAbsolute(link) || escapes(target)) {
-              dropped.push(stripped);
-              return false;
-            }
-            budget.add(0);
-            return true;
-          }
-          case 'Link':
-            if (escapes(path.posix.normalize(stripFirst(readEntry.linkpath ?? '')))) {
-              dropped.push(stripped);
-              return false;
-            }
-            budget.add(0);
-            return true;
-          default:
-            throw new Error(`The npm tarball contains an unsupported ${readEntry.type} entry.`);
+        // An if-chain rather than a switch: tar has many entry types and every unlisted one is refused.
+        const { type } = readEntry;
+        if (type === 'Directory') return true;
+        if (type === 'File' || type === 'OldFile' || type === 'ContiguousFile') {
+          budget.add(readEntry.size);
+          return true;
         }
+        if (type === 'SymbolicLink') {
+          const link = readEntry.linkpath ?? '';
+          const target = path.posix.normalize(path.posix.join(path.posix.dirname(stripped), link));
+          if (path.posix.isAbsolute(link) || escapes(target)) {
+            dropped.push(stripped);
+            return false;
+          }
+          budget.add(0);
+          return true;
+        }
+        if (type === 'Link') {
+          if (escapes(path.posix.normalize(stripFirst(readEntry.linkpath ?? '')))) {
+            dropped.push(stripped);
+            return false;
+          }
+          budget.add(0);
+          return true;
+        }
+        throw new Error(`The npm tarball contains an unsupported ${type} entry.`);
       } catch (error) {
         failure = error as Error;
         return false;

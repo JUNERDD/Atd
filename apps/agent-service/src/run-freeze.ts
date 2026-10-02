@@ -175,7 +175,7 @@ async function freezeSkills(
   const snapshot = await freezeRunSkills(profile, run.id, staging.skills, catalogRecords);
   const { role, capabilities } = await freezeRunRole(profile, {
     runId: run.id,
-    roleId: staging.roleId,
+    ...(staging.roleId !== undefined && { roleId: staging.roleId }),
     requestedTools: [...run.snapshot.tools],
     requestedSkills: snapshot.skills.map((skill) => skill.name),
   });
