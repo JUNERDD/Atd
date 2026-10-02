@@ -44,6 +44,8 @@ public enum NativeCall: Equatable, Sendable {
   case capture(CaptureParams)
   case clipboardRead(ClipboardReadParams)
   case clipboardWrite(ClipboardWriteParams)
+  case screenshotCapture(ScreenshotCaptureParams)
+  case screenshotEdit(ScreenshotEditParams)
   case shareText(ShareTextParams)
   case speechSpeak(SpeechSpeakParams)
   case speechStop(SpeechStopParams)
@@ -68,6 +70,8 @@ public enum NativeCall: Equatable, Sendable {
     case .capture: "capture"
     case .clipboardRead: "clipboard.read"
     case .clipboardWrite: "clipboard.write"
+    case .screenshotCapture: "screenshot.capture"
+    case .screenshotEdit: "screenshot.edit"
     case .shareText: "share.text"
     case .speechSpeak: "speech.speak"
     case .speechStop: "speech.stop"
@@ -136,6 +140,10 @@ public enum JsMessage: Decodable, Equatable, Sendable {
         call = try .clipboardRead(container.value(.params, ClipboardReadParams.self))
       case "clipboard.write":
         call = try .clipboardWrite(container.value(.params, ClipboardWriteParams.self))
+      case "screenshot.capture":
+        call = try .screenshotCapture(container.value(.params, ScreenshotCaptureParams.self))
+      case "screenshot.edit":
+        call = try .screenshotEdit(container.value(.params, ScreenshotEditParams.self))
       case "share.text": call = try .shareText(container.value(.params, ShareTextParams.self))
       case "speech.speak": call = try .speechSpeak(container.value(.params, SpeechSpeakParams.self))
       case "speech.stop": call = try .speechStop(container.value(.params, SpeechStopParams.self))

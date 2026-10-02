@@ -22,6 +22,8 @@
       "capture",
       "clipboard.read",
       "clipboard.write",
+      "screenshot.capture",
+      "screenshot.edit",
       "share.text",
       "speech.speak",
       "speech.stop",
@@ -409,6 +411,62 @@
                 "text": {
                   "type": "string",
                   "maxLength": 1000000
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
+              "const": "screenshot.capture"
+            },
+            "params": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
+              "const": "screenshot.edit"
+            },
+            "params": {
+              "type": "object",
+              "required": ["resourceId"],
+              "properties": {
+                "resourceId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128,
+                  "pattern": "^[a-zA-Z0-9_-]+$"
                 }
               },
               "additionalProperties": false
@@ -1723,6 +1781,222 @@
       "type": "object",
       "properties": {},
       "additionalProperties": false
+    },
+    "ScreenshotCaptureParams": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "ScreenshotCaptureResult": {
+      "anyOf": [
+        {
+          "type": "object",
+          "required": ["ok", "file", "context", "capturedAt"],
+          "properties": {
+            "ok": {
+              "type": "boolean",
+              "const": true
+            },
+            "file": {
+              "type": "object",
+              "required": ["id", "name", "size", "type"],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128,
+                  "pattern": "^[a-zA-Z0-9_-]+$"
+                },
+                "name": {
+                  "type": "string",
+                  "maxLength": 255
+                },
+                "size": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "type": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "additionalProperties": false
+            },
+            "context": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "required": ["id", "name", "size", "type"],
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 128,
+                      "pattern": "^[a-zA-Z0-9_-]+$"
+                    },
+                    "name": {
+                      "type": "string",
+                      "maxLength": 255
+                    },
+                    "size": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "type": {
+                      "type": "string",
+                      "maxLength": 100
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "capturedAt": {
+              "type": "string",
+              "maxLength": 64
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["ok", "reason"],
+          "properties": {
+            "ok": {
+              "type": "boolean",
+              "const": false
+            },
+            "reason": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "const": "cancelled"
+                },
+                {
+                  "type": "string",
+                  "const": "notPermitted"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "ScreenshotEditParams": {
+      "type": "object",
+      "required": ["resourceId"],
+      "properties": {
+        "resourceId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_-]+$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ScreenshotEditResult": {
+      "anyOf": [
+        {
+          "type": "object",
+          "required": ["ok", "file", "context", "capturedAt"],
+          "properties": {
+            "ok": {
+              "type": "boolean",
+              "const": true
+            },
+            "file": {
+              "type": "object",
+              "required": ["id", "name", "size", "type"],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128,
+                  "pattern": "^[a-zA-Z0-9_-]+$"
+                },
+                "name": {
+                  "type": "string",
+                  "maxLength": 255
+                },
+                "size": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "type": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "additionalProperties": false
+            },
+            "context": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "required": ["id", "name", "size", "type"],
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 128,
+                      "pattern": "^[a-zA-Z0-9_-]+$"
+                    },
+                    "name": {
+                      "type": "string",
+                      "maxLength": 255
+                    },
+                    "size": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "type": {
+                      "type": "string",
+                      "maxLength": 100
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "capturedAt": {
+              "type": "string",
+              "maxLength": 64
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["ok", "reason"],
+          "properties": {
+            "ok": {
+              "type": "boolean",
+              "const": false
+            },
+            "reason": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "const": "cancelled"
+                },
+                {
+                  "type": "string",
+                  "const": "notPermitted"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
     },
     "ShareTextParams": {
       "type": "object",

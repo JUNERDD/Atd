@@ -36,6 +36,14 @@ enum Screens {
   }
 }
 
+extension NSScreen {
+  /// The Core Graphics display this screen shows (`NSScreenNumber`), which ScreenCaptureKit and
+  /// `CGDisplayBounds` name displays by.
+  var displayID: CGDirectDisplayID? {
+    (deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.uint32Value
+  }
+}
+
 extension ScreenRect {
   init(_ rect: NSRect) {
     self.init(

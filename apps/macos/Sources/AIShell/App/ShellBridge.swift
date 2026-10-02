@@ -48,6 +48,17 @@ final class ShellBridge {
     -> JSONValue
   {
     guard let shell else { throw BridgeError("The app is shutting down.") }
+    // A dialog opened during a capture would run modal beneath the overlays and freeze them.
+    if shell.isCapturingScreenshot {
+      switch call {
+      case .approvalRequest:
+        return try Self.encode(ApprovalRequestResult.notApproved(.init(reason: .busy)))
+      case .filesPick, .filesSave, .artifact, .shareText:
+        throw BridgeError("Finish the screenshot first.")
+      default:
+        break
+      }
+    }
     switch call {
     case .windowShow:
       shell.showPanel()
@@ -87,6 +98,10 @@ final class ShellBridge {
     case .clipboardRead:
       let text = NSPasteboard.general.string(forType: .string) ?? ""
       return try Self.encode(ClipboardReadResult(text: text))
+    case .screenshotCapture:
+      return try Self.encode(await shell.captureScreenshot())
+    case .screenshotEdit(let params):
+      return try Self.encode(await shell.editScreenshot(resourceId: params.resourceId))
     case .clipboardWrite(let params):
       NSPasteboard.general.clearContents()
       NSPasteboard.general.setString(params.text, forType: .string)
