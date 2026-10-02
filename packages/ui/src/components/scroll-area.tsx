@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { ScrollArea as ScrollAreaPrimitive } from 'radix-ui';
-import { cn } from '@ai/ui/lib/utils';
+import { cn } from '@atd/ui/lib/utils';
 
 type ScrollOrientation = 'vertical' | 'horizontal' | 'both';
 

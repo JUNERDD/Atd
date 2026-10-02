@@ -1,6 +1,6 @@
 import { createElement, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Shimmer } from '@ai/ui/components/ai-elements/shimmer';
+import { Shimmer } from '@atd/ui/components/ai-elements/shimmer';
 import type { ConfirmationRequest } from '../../../client/agent/permission-schema';
 import type { BlockOf } from '../../../client/agent/transcript-schema';
 import { ActivityRow } from './activity-row';

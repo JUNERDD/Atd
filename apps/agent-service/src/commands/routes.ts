@@ -5,7 +5,7 @@ import {
   CommandUpdateRequestSchema,
   Identifier,
   parse,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import { LedgerNotFound } from '../ledger.js';
 import { findPluginCommand, listPluginCommands, updatePluginCommand } from '../plugins/commands.js';
 import { CommandStore } from './store.js';

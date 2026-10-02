@@ -1,6 +1,6 @@
 import { useCallback, useId, useMemo, useState, type ComponentProps } from 'react';
-import { Collapsible } from '@ai/ui/components/collapsible';
-import { cn } from '@ai/ui/lib/utils';
+import { Collapsible } from '@atd/ui/components/collapsible';
+import { cn } from '@atd/ui/lib/utils';
 import { ActivityRowContext } from '../_hooks/use-activity-row';
 
 export interface ActivityRowRootProps extends ComponentProps<'div'> {

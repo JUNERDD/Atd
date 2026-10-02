@@ -1,5 +1,5 @@
-import { downloadResource } from '@ai/agent-client';
-import type { McpApprovalRequestResult } from '@ai/agent-contracts';
+import { downloadResource } from '@atd/agent-client';
+import type { McpApprovalRequestResult } from '@atd/agent-contracts';
 import { AgentRequests } from '../client/agent/agent-requests';
 import { parseExtensionSession, type ExtensionSession } from '../client/agent/bridge';
 import {

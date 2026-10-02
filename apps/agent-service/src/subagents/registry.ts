@@ -4,7 +4,7 @@ import {
   subagentChildKey,
   type ChildTranscriptPatchData,
   type SubagentChildEntry,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import type { ModelRuntime } from '@earendil-works/pi-coding-agent';
 import type { PermissionLookups } from '../transcript-blocks.js';
 import type { ChildApprovals, ChildApprovalsRequest } from './approvals.js';

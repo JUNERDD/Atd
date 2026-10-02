@@ -4,7 +4,7 @@ import {
   StageReferencesResponseSchema,
   type StageReferencesRequest,
   type StageReferencesResponse,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import { authHeaders, AgentClientError, type AgentClientOptions } from './types.js';
 
 /**

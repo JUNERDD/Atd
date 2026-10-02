@@ -7,7 +7,7 @@ import {
   ProviderCreateRequestSchema,
   ProviderDisconnectRequestSchema,
   type ServiceConnection,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import { ConnectionStore, serviceConfigurationId } from '../credentials/connections.js';
 import { KeyringBackend } from '../credentials/keyring.js';
 import { ServiceCredentialStore } from '../credentials/service-store.js';

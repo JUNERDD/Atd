@@ -77,9 +77,9 @@ Not supported yet: npm semver ranges (use an exact version or a dist-tag), priva
 ## Development
 
 ```sh
-pnpm --filter @ai/plugin-kit test
-pnpm --filter @ai/plugin-kit typecheck   # also checks the pure entry without Node types
-pnpm --filter @ai/plugin-kit build
+pnpm --filter @atd/plugin-kit test
+pnpm --filter @atd/plugin-kit typecheck   # also checks the pure entry without Node types
+pnpm --filter @atd/plugin-kit build
 ```
 
 ## Non-goals

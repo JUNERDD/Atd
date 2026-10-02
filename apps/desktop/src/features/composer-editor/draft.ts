@@ -9,7 +9,7 @@ import {
   type MAX_RUN_SKILLS,
   type QuoteSource,
   type RunReference,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import type { FileRef } from '../../client/agent/task-schema';
 
 /**

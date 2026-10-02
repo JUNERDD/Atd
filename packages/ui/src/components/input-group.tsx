@@ -2,11 +2,11 @@
 
 import * as React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
-import { cn } from '@ai/ui/lib/utils';
+import { cn } from '@atd/ui/lib/utils';
 
-import { Button } from '@ai/ui/components/button';
-import { Input } from '@ai/ui/components/input';
-import { Textarea } from '@ai/ui/components/textarea';
+import { Button } from '@atd/ui/components/button';
+import { Input } from '@atd/ui/components/input';
+import { Textarea } from '@atd/ui/components/textarea';
 
 function InputGroup({ className, ...props }: React.ComponentProps<'fieldset'>) {
   return (

@@ -5,7 +5,7 @@ import {
   type CompactRefusal,
   type ContextBreakdown,
   type TaskContextState,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import { CommandSchema, Identifier, type CommandDefinition } from './command-schema';
 import {
   InputSchema,

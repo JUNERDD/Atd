@@ -99,8 +99,8 @@ jobs:
           done
           xcodegen --version
           swiftlint version
-      # @ai/macos has no package dependencies, and its scripts use only Node built-ins.
-      - run: pnpm install --frozen-lockfile --filter ai-workspace
+      # @atd/macos has no package dependencies, and its scripts use only Node built-ins.
+      - run: pnpm install --frozen-lockfile --filter atd
       - name: Swift checks (codegen, format, lint, test, build)
         run: pnpm check:swift
 

@@ -1,11 +1,11 @@
-import type { AgentClientOptions, AgentHttpClient } from '@ai/agent-client';
+import type { AgentClientOptions, AgentHttpClient } from '@atd/agent-client';
 import type {
   InvalidateFrame,
   ServiceEvent,
   SummariesFrame,
   TaskSnapshot,
   TaskSummary,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import type { AgentEvent, TaskDetail } from './bridge';
 import { ChildTranscripts } from './child-transcripts';
 import { notConnected } from './service-manage';

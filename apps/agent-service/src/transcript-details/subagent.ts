@@ -9,7 +9,7 @@ import {
   type SubagentChildStatus,
   type SubagentChildSummary,
   type SubagentDetails,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import { createClamp, isRecord } from './clamp.js';
 
 /**

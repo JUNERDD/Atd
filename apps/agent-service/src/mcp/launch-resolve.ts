@@ -1,7 +1,7 @@
 import { stat } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import path from 'node:path';
-import type { McpHttp, McpServerConfig } from '@ai/agent-contracts';
+import type { McpHttp, McpServerConfig } from '@atd/agent-contracts';
 import { MCP_INHERITED_ENV_KEYS } from './constants.js';
 import { envReferences, interpolateEnvReferences, unsetEnvReferences } from './env-references.js';
 import { McpError } from './errors.js';

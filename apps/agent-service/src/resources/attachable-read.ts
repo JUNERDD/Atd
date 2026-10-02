@@ -8,7 +8,7 @@ import {
   MAX_ATTACHMENT_BYTES,
   type AttachableExtension,
   type ResourceImportFailureReason,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 
 const MIB = 1024 * 1024;
 

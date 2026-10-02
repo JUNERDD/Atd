@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { McpApprovalDetails, McpLaunchApprovalState } from '@ai/agent-contracts';
+import type { McpApprovalDetails, McpLaunchApprovalState } from '@atd/agent-contracts';
 import { messageOf } from '../../../lib/errors';
 import { asMcpRow } from '../../service/extension-rows';
 import { mcpApprovalIssue } from '../../service/use-service-mcp';

@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import type { WebFetchDetails, WebFetchPage, WebSearchDetails } from '@ai/agent-contracts';
+import type { WebFetchDetails, WebFetchPage, WebSearchDetails } from '@atd/agent-contracts';
 import { DetailBox } from './detail-box';
 import { ExternalLink } from './external-link';
 

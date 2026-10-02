@@ -1,5 +1,5 @@
 import type { ExtensionAPI, ExtensionFactory } from '@earendil-works/pi-coding-agent';
-import { TODO_TOOL } from '@ai/agent-contracts';
+import { TODO_TOOL } from '@atd/agent-contracts';
 import type { HarnessDeps } from './deps.js';
 import { loadRpivTodo } from './todo/loader.js';
 

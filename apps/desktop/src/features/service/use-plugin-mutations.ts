@@ -6,7 +6,7 @@ import type {
   PluginDuplicateResponse,
   PluginInstallPreview,
   PluginItemKind,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import { bridgeKeys } from '../../lib/bridge-cache';
 import { messageOf } from '../../lib/errors';
 import { queryClient } from '../../lib/query-client';

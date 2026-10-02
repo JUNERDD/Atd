@@ -1,5 +1,5 @@
 {
-  "name": "@ai/file-index",
+  "name": "@atd/file-index",
   "version": "0.1.0",
   "private": true,
   "description": "Node-API loader for the Rust file-name index in crates/file-index-node",

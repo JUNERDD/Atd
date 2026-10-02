@@ -1,4 +1,4 @@
-import { ErrorEnvelopeSchema, parse } from '@ai/agent-contracts';
+import { ErrorEnvelopeSchema, parse } from '@atd/agent-contracts';
 import { authHeaders, AgentClientError, type AgentClientOptions } from './types.js';
 
 /**

@@ -149,7 +149,7 @@ async function stageNode() {
   const { engines } = JSON.parse(await readFile(serviceManifest, 'utf8'));
   if (!nodeSatisfiesEngines(version, engines.node))
     fail(
-      `.node-version ${version} does not satisfy @ai/agent-service engines.node ${engines.node}.`,
+      `.node-version ${version} does not satisfy @atd/agent-service engines.node ${engines.node}.`,
     );
 
   const archive = nodeArchive(version);
@@ -215,7 +215,7 @@ await rm(packDir, { recursive: true, force: true });
 
 const deploy = spawnSync(
   'pnpm',
-  ['--filter', '@ai/agent-service', 'deploy', '--prod', '--legacy', packDir],
+  ['--filter', '@atd/agent-service', 'deploy', '--prod', '--legacy', packDir],
   {
     cwd: repoRoot,
     stdio: 'inherit',

@@ -10,7 +10,7 @@ import {
   type McpServerConfig,
   type McpServerUpsertRequest,
   type McpServerView,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import { McpError } from './errors.js';
 import { oauthClientProblem } from './oauth-client.js';
 

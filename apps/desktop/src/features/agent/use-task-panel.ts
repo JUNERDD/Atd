@@ -5,8 +5,8 @@ import type { RunPolicy } from '../../client/agent/run-policy';
 import type { PreparedCommand, TaskDetail } from '../../client/agent/bridge';
 import { emptyInput, isActive } from '../../client/agent/task-schema';
 import { EMPTY_QUEUE } from '../../client/agent/transcript-schema';
-import { DEFAULT_SHORTCUTS, type RunReference } from '@ai/agent-contracts';
-import { isComposingKey } from '@ai/ui/lib/ime';
+import { DEFAULT_SHORTCUTS, type RunReference } from '@atd/agent-contracts';
+import { isComposingKey } from '@atd/ui/lib/ime';
 import {
   draftChips,
   draftFiles,

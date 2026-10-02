@@ -1,5 +1,5 @@
 {
-  "name": "@ai/agent-client",
+  "name": "@atd/agent-client",
   "version": "0.1.0",
   "private": true,
   "files": [
@@ -22,10 +22,10 @@
     "test": "tsc -p tsconfig.json && node --test 'test/**/*.test.ts'"
   },
   "dependencies": {
-    "@ai/agent-contracts": "workspace:*",
+    "@atd/agent-contracts": "workspace:*",
     "typebox": "catalog:"
   },
   "devDependencies": {
-    "@ai/typescript-config": "workspace:*"
+    "@atd/typescript-config": "workspace:*"
   }
 }

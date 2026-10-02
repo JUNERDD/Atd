@@ -7,8 +7,8 @@ import {
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
-} from '@ai/ui/components/empty';
-import { ItemGroup } from '@ai/ui/components/item';
+} from '@atd/ui/components/empty';
+import { ItemGroup } from '@atd/ui/components/item';
 
 /**
  * Shared plugin, skill, subagent and MCP group shell with loading, empty, and row or card slots.

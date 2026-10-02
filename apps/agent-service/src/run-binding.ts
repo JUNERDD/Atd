@@ -8,7 +8,7 @@ import {
   WEB_FETCH_TOOL,
   WEB_SEARCH_TOOL,
   type TaskRun,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import { MCP_RESOURCE_TOOLS } from './mcp/index.js';
 import type { SessionFactoryDeps } from './pi-session.js';
 import { prepareSessionMcp, type SessionMcpPrep } from './pi-session-mcp.js';

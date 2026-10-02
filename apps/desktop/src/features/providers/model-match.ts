@@ -1,4 +1,4 @@
-import { rankByQuery, type FieldsMatch } from '@ai/ui/lib/fuzzy-match';
+import { rankByQuery, type FieldsMatch } from '@atd/ui/lib/fuzzy-match';
 
 /** Where a query matched one model row. */
 export type ModelMatch = FieldsMatch<'name' | 'id' | 'connection'>;

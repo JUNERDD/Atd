@@ -3,7 +3,7 @@ import type {
   ProviderContextsResponse,
   ServiceConnection,
   ServiceModelDefinition,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import { isLocalProvider } from './catalog.js';
 
 /**

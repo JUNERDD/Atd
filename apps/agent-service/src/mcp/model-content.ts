@@ -1,4 +1,4 @@
-import type { McpAttachment, McpCallResult, McpContentBlock } from '@ai/agent-contracts';
+import type { McpAttachment, McpCallResult, McpContentBlock } from '@atd/agent-contracts';
 import { toLlmContent, type LlmContent } from '@earendil-works/pi-mcp';
 import { FULL_JSON_KIND, cutMiddle } from './text-limits.js';
 

@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Label } from '@ai/ui/components/label';
+import { Label } from '@atd/ui/components/label';
 import { FieldHint } from '../../components/field-hint';
 
 /**

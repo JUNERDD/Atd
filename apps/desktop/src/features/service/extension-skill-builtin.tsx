@@ -8,8 +8,8 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '@ai/ui/components/alert-dialog';
-import { Badge } from '@ai/ui/components/badge';
+} from '@atd/ui/components/alert-dialog';
+import { Badge } from '@atd/ui/components/badge';
 import type { ExtensionBuiltin } from './extension-rows';
 
 /**

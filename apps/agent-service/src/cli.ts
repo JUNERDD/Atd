@@ -4,7 +4,7 @@
  * dataDir endpoint file.
  */
 import path from 'node:path';
-import { errorMessage } from '@ai/agent-contracts';
+import { errorMessage } from '@atd/agent-contracts';
 import { approveMcp } from './cli-approve.js';
 import { prepareServe, readEndpoint, readLocalToken, releaseLock } from './config.js';
 import { createService } from './index.js';

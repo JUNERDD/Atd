@@ -1,8 +1,8 @@
 import { Circle, CircleCheck, LoaderCircle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { PopoverDescription, PopoverHeader, PopoverTitle } from '@ai/ui/components/popover';
-import { ScrollArea } from '@ai/ui/components/scroll-area';
-import { cn } from '@ai/ui/lib/utils';
+import { PopoverDescription, PopoverHeader, PopoverTitle } from '@atd/ui/components/popover';
+import { ScrollArea } from '@atd/ui/components/scroll-area';
+import { cn } from '@atd/ui/lib/utils';
 import type { VisibleTodo } from './selectors';
 
 /**

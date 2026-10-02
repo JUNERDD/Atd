@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { Type } from 'typebox';
-import { parse } from '@ai/agent-contracts';
+import { parse } from '@atd/agent-contracts';
 import { oauthAccount } from '../dist/mcp/oauth-store.js';
 import { client } from './launch-helpers.ts';
 import { approveAuthorization } from './mcp-http-kit.ts';

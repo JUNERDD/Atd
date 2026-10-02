@@ -4,7 +4,7 @@ import type {
   ContextBreakdown,
   ContextBreakdownCategory,
   ContextBreakdownItem,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import { mcpProxyNamespace } from '../mcp/proxy-names.js';
 import { SKILL_CATALOG_SECTION } from '../skills/session-catalog.js';
 import { catalogSkillCount } from '../skills/skill-catalog.js';

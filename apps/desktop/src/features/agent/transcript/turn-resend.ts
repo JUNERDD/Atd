@@ -1,4 +1,4 @@
-import type { InputChip, InputChipRange, RunReference } from '@ai/agent-contracts';
+import type { InputChip, InputChipRange, RunReference } from '@atd/agent-contracts';
 import type { SubmitRequest } from '../../../client/agent/bridge';
 import type { RunPolicy } from '../../../client/agent/run-policy';
 import {

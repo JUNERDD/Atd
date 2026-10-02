@@ -10,7 +10,7 @@ import {
   type TaskRun,
   type TaskSnapshot,
   type TaskSummary,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import { ConnectionStore } from './credentials/connections.js';
 import type { Logger } from './logging.js';
 import { ResourceStore } from './resources.js';

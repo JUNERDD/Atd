@@ -1,7 +1,7 @@
 import { useContext } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { CodemodeDetails } from '@ai/agent-contracts';
-import { ScrollArea } from '@ai/ui/components/scroll-area';
+import type { CodemodeDetails } from '@atd/agent-contracts';
+import { ScrollArea } from '@atd/ui/components/scroll-area';
 import type { BlockOf } from '../../../client/agent/transcript-schema';
 import { ActivityRow } from './activity-row';
 import { CodeBlock } from './code-block';

@@ -1,4 +1,4 @@
-import { parse } from '@ai/agent-contracts';
+import { parse } from '@atd/agent-contracts';
 import { Type, type Static } from 'typebox';
 import { NativeCalls, type ShortcutResultSchema } from './calls';
 import { MESSAGE_HANDLER, NativeEvents, type NativePosts } from './contract';

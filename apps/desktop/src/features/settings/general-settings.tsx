@@ -1,9 +1,9 @@
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CircleAlert } from 'lucide-react';
-import { Button } from '@ai/ui/components/button';
-import { Card } from '@ai/ui/components/card';
-import { ItemGroup } from '@ai/ui/components/item';
+import { Button } from '@atd/ui/components/button';
+import { Card } from '@atd/ui/components/card';
+import { ItemGroup } from '@atd/ui/components/item';
 import type { SettingsSnapshot } from '../../client/settings-contract';
 import { SettingsHeading } from './settings-heading';
 import { SettingsSwitchRow } from './settings-switch-row';

@@ -1,4 +1,4 @@
-import { LOAD_SKILL_TOOL } from '@ai/agent-contracts';
+import { LOAD_SKILL_TOOL } from '@atd/agent-contracts';
 import { roleAllowedSkills, type RoleSnapshotRecord } from './roles.js';
 import type { SkillCatalog, SkillRevisionRecord } from './versions.js';
 

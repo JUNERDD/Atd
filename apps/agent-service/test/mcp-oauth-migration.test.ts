@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { after, before, test } from 'node:test';
 import { Type } from 'typebox';
-import { parse } from '@ai/agent-contracts';
+import { parse } from '@atd/agent-contracts';
 import { McpAuthority } from '../dist/mcp/authority.js';
 import { securityDir } from '../dist/mcp/launch-store.js';
 import { errorCode } from './launch-helpers.ts';

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import type { McpServerConfig } from '@ai/agent-contracts';
+import type { McpServerConfig } from '@atd/agent-contracts';
 import { envReferences } from '../dist/mcp/env-references.js';
 import { isRiskyEnvKey, launchFingerprint, launchKind } from '../dist/mcp/launch-fingerprint.js';
 import type { McpLaunchSpec } from '../dist/mcp/types.js';

@@ -1,5 +1,5 @@
 import { Type, type Static } from 'typebox';
-import { ConfirmReviewSchema, ShellAllowlistEntrySchema } from '@ai/agent-contracts';
+import { ConfirmReviewSchema, ShellAllowlistEntrySchema } from '@atd/agent-contracts';
 import { Identifier } from './command-schema';
 
 /**

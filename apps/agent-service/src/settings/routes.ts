@@ -5,7 +5,7 @@ import {
   PutShellAllowlistRequestSchema,
   type PutShellAllowlistResponse,
   type SettingsResponse,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import { assertAppShortcutsFree } from '../commands/shortcuts.js';
 import { CommandStore } from '../commands/store.js';
 import type { Logger } from '../logging.js';

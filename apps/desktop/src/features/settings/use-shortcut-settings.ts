@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useSettingsSectionExit } from './settings-navigation';
 import { useShortcutCapture } from './use-shortcut-capture';
 import { showSettingsSnapshot } from './use-settings';
-import { DEFAULT_SHORTCUTS, effectiveAccelerator } from '@ai/agent-contracts';
+import { DEFAULT_SHORTCUTS, effectiveAccelerator } from '@atd/agent-contracts';
 import {
   type SettingsSnapshot,
   type ShortcutAction,

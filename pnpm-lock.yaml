@@ -236,13 +236,13 @@ importers:
 
   apps/agent-service:
     dependencies:
-      '@ai/agent-contracts':
+      '@atd/agent-contracts':
         specifier: workspace:*
         version: link:../../packages/agent-contracts
-      '@ai/file-index':
+      '@atd/file-index':
         specifier: workspace:*
         version: link:../../packages/file-index
-      '@ai/plugin-kit':
+      '@atd/plugin-kit':
         specifier: workspace:*
         version: link:../../packages/plugin-kit
       '@earendil-works/pi-ai':
@@ -285,7 +285,7 @@ importers:
         specifier: 'catalog:'
         version: 1.3.34
     devDependencies:
-      '@ai/typescript-config':
+      '@atd/typescript-config':
         specifier: workspace:*
         version: link:../../packages/typescript-config
       '@types/ws':
@@ -294,16 +294,16 @@ importers:
 
   apps/desktop:
     devDependencies:
-      '@ai/agent-client':
+      '@atd/agent-client':
         specifier: workspace:*
         version: link:../../packages/agent-client
-      '@ai/agent-contracts':
+      '@atd/agent-contracts':
         specifier: workspace:*
         version: link:../../packages/agent-contracts
-      '@ai/typescript-config':
+      '@atd/typescript-config':
         specifier: workspace:*
         version: link:../../packages/typescript-config
-      '@ai/ui':
+      '@atd/ui':
         specifier: workspace:*
         version: link:../../packages/ui
       '@babel/core':
@@ -443,27 +443,27 @@ importers:
 
   packages/agent-client:
     dependencies:
-      '@ai/agent-contracts':
+      '@atd/agent-contracts':
         specifier: workspace:*
         version: link:../agent-contracts
       typebox:
         specifier: 'catalog:'
         version: 1.3.34
     devDependencies:
-      '@ai/typescript-config':
+      '@atd/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
 
   packages/agent-contracts:
     dependencies:
-      '@ai/plugin-kit':
+      '@atd/plugin-kit':
         specifier: workspace:*
         version: link:../plugin-kit
       typebox:
         specifier: 'catalog:'
         version: 1.3.34
     devDependencies:
-      '@ai/typescript-config':
+      '@atd/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
 
@@ -488,7 +488,7 @@ importers:
         specifier: 2.9.1
         version: 2.9.1
     devDependencies:
-      '@ai/typescript-config':
+      '@atd/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
       vitest:
@@ -530,7 +530,7 @@ importers:
         specifier: 1.4.0
         version: 1.4.0
     devDependencies:
-      '@ai/typescript-config':
+      '@atd/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
       '@types/react':

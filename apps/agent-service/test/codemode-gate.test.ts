@@ -17,7 +17,7 @@ import {
   SessionManager,
   SettingsManager,
 } from '@earendil-works/pi-coding-agent';
-import type { ServiceBlock } from '@ai/agent-contracts';
+import type { ServiceBlock } from '@atd/agent-contracts';
 import { codemodeExtension } from '../dist/codemode/extension.js';
 import { serviceTools } from '../dist/tool-proxies.js';
 import { fromServiceBranch, projectServiceBlocks } from '../dist/transcript.js';

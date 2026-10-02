@@ -33,7 +33,7 @@ import {
   ZoomInIcon,
   ZoomOutIcon,
 } from 'lucide-react';
-import { ScrollArea } from '@ai/ui/components/scroll-area';
+import { ScrollArea } from '@atd/ui/components/scroll-area';
 import { CodeBlock } from './code-block';
 import { codeLanguage } from './code-language';
 import { CopyButton } from './copy-button';

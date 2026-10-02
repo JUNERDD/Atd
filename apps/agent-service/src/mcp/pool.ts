@@ -1,5 +1,5 @@
 import { setTimeout as delay } from 'node:timers/promises';
-import { errorMessage } from '@ai/agent-contracts';
+import { errorMessage } from '@atd/agent-contracts';
 import { McpClient, McpConnectionClosedError, type McpTransport } from '@earendil-works/pi-mcp';
 import type { Logger } from '../logging.js';
 import {

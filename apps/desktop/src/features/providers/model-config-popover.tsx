@@ -1,9 +1,9 @@
 import { useRef, useState } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Button } from '@ai/ui/components/button';
-import { cn } from '@ai/ui/lib/utils';
-import { Popover, PopoverContent, PopoverTrigger } from '@ai/ui/components/popover';
+import { Button } from '@atd/ui/components/button';
+import { cn } from '@atd/ui/lib/utils';
+import { Popover, PopoverContent, PopoverTrigger } from '@atd/ui/components/popover';
 import type { Connection, ModelReference, ModelThinkingLevel } from '../../client/providers/schema';
 import { formatContextWindow } from './context-window';
 import { ConfigBackHeader, ContextOptions, EffortOptions } from './model-config-subviews';

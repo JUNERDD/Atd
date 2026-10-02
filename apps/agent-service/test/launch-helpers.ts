@@ -10,7 +10,7 @@ import {
   McpStatusResponseSchema,
   parse,
   type McpLaunchApprovalState,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import { launchStoreFile } from '../dist/mcp/launch-store.js';
 import type { startTestService } from './service-harness.ts';
 

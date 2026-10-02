@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import type { PluginDetail, PluginItem } from '@ai/agent-contracts';
+import type { PluginDetail, PluginItem } from '@atd/agent-contracts';
 import { wireServiceBridge } from '../../lib/bridge-cache';
 import { messageOf } from '../../lib/errors';
 import { queryClient } from '../../lib/query-client';

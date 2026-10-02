@@ -7,7 +7,7 @@ import {
   setProviderModel,
   verifyProvider,
   type AgentClientOptions,
-} from '@ai/agent-client';
+} from '@atd/agent-client';
 import { CatalogSync } from './catalog-sync';
 import { disconnectLive, fetchCatalog, fetchLiveProviders, saveLive } from './live';
 import { ProviderLoginClient } from './login-client';

@@ -1,8 +1,8 @@
 import { useState, type ReactNode } from 'react';
 import { FoldVertical, LoaderCircle, RotateCcw, TriangleAlert } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Shimmer } from '@ai/ui/components/ai-elements/shimmer';
-import { Button } from '@ai/ui/components/button';
+import { Shimmer } from '@atd/ui/components/ai-elements/shimmer';
+import { Button } from '@atd/ui/components/button';
 import type { BlockOf } from '../../../client/agent/transcript-schema';
 import { formatTokenCount } from '../../providers/context-window';
 import { ActivityRow } from './activity-row';

@@ -10,7 +10,7 @@ import {
   McpStdioSchema,
   parse,
   type McpServerConfig,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import { atomicWrite } from '../config.js';
 import { keyringMcpAccount, keyringMcpSecretAccount } from '../credentials/keyring.js';
 import { announceMcpChanged } from './changes.js';

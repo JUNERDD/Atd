@@ -6,7 +6,7 @@ import {
   UserConfigOptionSchema,
   PluginFormatSchema,
   PluginManifestSchema,
-} from '@ai/plugin-kit/model';
+} from '@atd/plugin-kit/model';
 import { Type, type Static } from 'typebox';
 
 /**

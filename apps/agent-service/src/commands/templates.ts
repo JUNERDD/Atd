@@ -6,7 +6,7 @@ import {
   type CommandInput,
   type CommandParameter,
   type ServiceCommandFull,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 
 /**
  * Command template + validation port (T6b). The desktop resolves command

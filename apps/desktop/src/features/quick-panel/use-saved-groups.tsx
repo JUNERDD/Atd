@@ -1,6 +1,6 @@
 import { Brain, Command } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { rankByQuery } from '@ai/ui/lib/fuzzy-match';
+import { rankByQuery } from '@atd/ui/lib/fuzzy-match';
 import type { MemoryEntry } from '../../client/agent/bridge';
 import type { CommandDefinition } from '../../client/agent/command-schema';
 import type { Chip } from '../composer-editor/draft';

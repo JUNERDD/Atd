@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, ChevronRight } from 'lucide-react';
-import type { SubagentChildSummary } from '@ai/agent-contracts';
-import { ScrollArea } from '@ai/ui/components/scroll-area';
+import type { SubagentChildSummary } from '@atd/agent-contracts';
+import { ScrollArea } from '@atd/ui/components/scroll-area';
 import type { PermissionRequest } from '../../../client/agent/permission-schema';
 import type { Artifact, TaskRun } from '../../../client/agent/task-schema';
 import { IconButton } from '../../../components/icon-button';

@@ -1,9 +1,9 @@
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ArrowUp, Square } from 'lucide-react';
-import { ScrollArea } from '@ai/ui/components/scroll-area';
+import { ScrollArea } from '@atd/ui/components/scroll-area';
 import type { ShortcutBindings } from '../client/settings-contract';
-import { DEFAULT_SHORTCUTS, MAX_ATTACHMENTS, type TaskContextState } from '@ai/agent-contracts';
+import { DEFAULT_SHORTCUTS, MAX_ATTACHMENTS, type TaskContextState } from '@atd/agent-contracts';
 import type { AgentTask, RunStatus } from '../client/agent/task-schema';
 import { isActive } from '../client/agent/task-schema';
 import type { PermissionRequest } from '../client/agent/permission-schema';

@@ -1,6 +1,6 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { TODO_TOOL } from '@ai/agent-contracts';
+import { TODO_TOOL } from '@atd/agent-contracts';
 
 /**
  * T5 managed subagent config (D4). Written to the service profile before the

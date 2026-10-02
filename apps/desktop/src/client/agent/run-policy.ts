@@ -1,5 +1,5 @@
 import { Type, type Static } from 'typebox';
-import { MAX_RUN_REFERENCES, MAX_RUN_SKILLS, RunReferenceSchema } from '@ai/agent-contracts';
+import { MAX_RUN_REFERENCES, MAX_RUN_SKILLS, RunReferenceSchema } from '@atd/agent-contracts';
 import { ToolIdSchema } from './command-schema';
 import { ModelReferenceSchema, ModelThinkingLevelSchema } from '../providers/schema';
 

@@ -1,5 +1,5 @@
 import { createContext } from 'react';
-import type { CodemodeStep, CodemodeStepDetails } from '@ai/agent-contracts';
+import type { CodemodeStep, CodemodeStepDetails } from '@atd/agent-contracts';
 import type { ConfirmationRequest } from '../../../client/agent/permission-schema';
 import type { BlockOf, ToolDetails } from '../../../client/agent/transcript-schema';
 

@@ -3,7 +3,7 @@ import { readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { homedir } from 'node:os';
 import { loadSkillsFromDir, type Skill } from '@earendil-works/pi-coding-agent';
-import { isItemName } from '@ai/plugin-kit';
+import { isItemName } from '@atd/plugin-kit';
 import { mapPiDiagnostics, type SkillDiagnostic } from './diagnostics.js';
 import type { SkillRevisionRecord } from './versions.js';
 

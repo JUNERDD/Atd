@@ -1,7 +1,7 @@
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { RELAY_EPOCH_HEADER } from '@ai/agent-contracts';
+import { RELAY_EPOCH_HEADER } from '@atd/agent-contracts';
 import { prepareServe } from '../dist/config.js';
 import { createService } from '../dist/index.js';
 

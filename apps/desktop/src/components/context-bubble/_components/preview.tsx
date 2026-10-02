@@ -1,6 +1,6 @@
 import type { ComponentProps } from 'react';
-import { ScrollArea } from '@ai/ui/components/scroll-area';
-import { cn } from '@ai/ui/lib/utils';
+import { ScrollArea } from '@atd/ui/components/scroll-area';
+import { cn } from '@atd/ui/lib/utils';
 import { useContextBubble } from '../_hooks/use-context-bubble';
 
 export interface ContextBubblePreviewProps extends Omit<

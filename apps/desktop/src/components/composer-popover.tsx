@@ -1,8 +1,8 @@
 import { useMemo, useRef, useState, type KeyboardEvent, type ReactElement } from 'react';
 import { useReducedMotion } from 'motion/react';
 import { useTranslation } from 'react-i18next';
-import { Popover, PopoverAnchor, PopoverContent } from '@ai/ui/components/popover';
-import { isComposingKey } from '@ai/ui/lib/ime';
+import { Popover, PopoverAnchor, PopoverContent } from '@atd/ui/components/popover';
+import { isComposingKey } from '@atd/ui/lib/ime';
 import type { PermissionRequest } from '../client/agent/permission-schema';
 import type { Block, QueueState } from '../client/agent/transcript-schema';
 import { ProgressPill, type PillView } from '../features/agent/progress/progress-pill';

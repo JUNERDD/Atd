@@ -1,6 +1,6 @@
 import { FileStream } from '@pierre/diffs';
 import { useEffect, useRef, useSyncExternalStore, type UIEvent } from 'react';
-import { cn } from '@ai/ui/lib/utils';
+import { cn } from '@atd/ui/lib/utils';
 import { CopyButton } from './copy-button';
 import { codeSource } from './selection-toolbar/code-sources';
 

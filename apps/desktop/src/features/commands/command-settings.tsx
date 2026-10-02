@@ -2,7 +2,7 @@ import { Suspense, useEffect, useRef, useState } from 'react';
 import { mutationOptions, useMutation, useMutationState } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { Command, Plus } from 'lucide-react';
-import { Button } from '@ai/ui/components/button';
+import { Button } from '@atd/ui/components/button';
 import {
   Empty,
   EmptyContent,
@@ -10,7 +10,7 @@ import {
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
-} from '@ai/ui/components/empty';
+} from '@atd/ui/components/empty';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,8 +20,8 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '@ai/ui/components/alert-dialog';
-import { useCompositionQuery } from '@ai/ui/lib/ime';
+} from '@atd/ui/components/alert-dialog';
+import { useCompositionQuery } from '@atd/ui/lib/ime';
 import type { CommandDefinition } from '../../client/agent/command-schema';
 import { copyCommand, newCommand, personalCopy } from '../../client/agent/command-templates';
 import type { SettingsSnapshot } from '../../client/settings-contract';

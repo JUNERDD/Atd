@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Button } from '@ai/ui/components/button';
-import { Kbd, KbdGroup } from '@ai/ui/components/kbd';
+import { Button } from '@atd/ui/components/button';
+import { Kbd, KbdGroup } from '@atd/ui/components/kbd';
 import { useTranslation } from 'react-i18next';
 import type { CommandDefinition } from '../../client/agent/command-schema';
 import { shortcutKeys } from '../../lib/shortcuts';

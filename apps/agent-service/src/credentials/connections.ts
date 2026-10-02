@@ -6,7 +6,7 @@ import {
   ServiceConnectionsFileSchema,
   type ServiceConnection,
   type ServiceConnectionsFile,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import { atomicWrite } from '../config.js';
 
 /**

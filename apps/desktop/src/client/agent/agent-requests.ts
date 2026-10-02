@@ -2,8 +2,8 @@ import {
   taskContextBreakdown,
   type AgentClientOptions,
   type AgentHttpClient,
-} from '@ai/agent-client';
-import type { InvalidateFrame } from '@ai/agent-contracts';
+} from '@atd/agent-client';
+import type { InvalidateFrame } from '@atd/agent-contracts';
 import type {
   AgentEvent,
   AgentRequest,

@@ -27,7 +27,7 @@ import {
   WEB_SEARCH_TOOL,
   type GrantScope,
   type ToolBlockDetails,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import type { PermissionOutcome } from '../../../client/agent/permission-schema';
 import type { BlockOf, ToolStatus } from '../../../client/agent/transcript-schema';
 import { codemodeTarget } from './codemode-call';

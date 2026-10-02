@@ -2,7 +2,7 @@ import { spawn, type ChildProcess } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { userInfo } from 'node:os';
 import path from 'node:path';
-import { errorMessage } from '@ai/agent-contracts';
+import { errorMessage } from '@atd/agent-contracts';
 import type { Logger } from './logging.js';
 
 // A macOS app started by launchd (Finder, Dock, login item) or a Linux desktop entry inherits a

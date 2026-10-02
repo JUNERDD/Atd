@@ -4,7 +4,7 @@ import {
   SettingsResponseSchema,
   type PatchSettingsRequest,
   type SettingsResponse,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import { manageRequest } from './manage-request.js';
 import type { AgentClientOptions } from './types.js';
 

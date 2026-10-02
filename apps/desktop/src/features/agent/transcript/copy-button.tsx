@@ -1,6 +1,6 @@
 import { Check, Copy } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { cn } from '@ai/ui/lib/utils';
+import { cn } from '@atd/ui/lib/utils';
 import { IconButton } from '../../../components/icon-button';
 import { useCopyFeedback } from './use-copy-feedback';
 

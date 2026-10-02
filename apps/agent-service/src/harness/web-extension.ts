@@ -6,7 +6,7 @@ import {
   WEB_FETCH_TOOL,
   WEB_SEARCH_TOOL,
   WEB_URL_MAX_LENGTH,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import type { ChildTool } from '../subagents/child-tools.js';
 import type { HarnessDeps } from './deps.js';
 import type { Gate } from './gate.js';

@@ -1,4 +1,4 @@
-import { isImageMime, MAX_ATTACHMENTS } from '@ai/agent-contracts';
+import { isImageMime, MAX_ATTACHMENTS } from '@atd/agent-contracts';
 import type { FileRef, TaskInput } from './task-schema';
 
 /** A screenshot the shell captured (or edited) and imported as a resource. */

@@ -8,7 +8,7 @@
   overflow: hidden;
 }
 
-/* The viewport is the glass's persistent child layer (see `surface-glass` in `@ai/ui`): a view's
+/* The viewport is the glass's persistent child layer (see `surface-glass` in `@atd/ui`): a view's
    list that stops scrolling while the popover stays open (fewer todos) drops its scroller layers
    here, not on the glass, where they lingered with the old rows below the shrinking popover. */
 .composer-popover > .morph-viewport {

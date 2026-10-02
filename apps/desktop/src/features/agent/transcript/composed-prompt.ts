@@ -1,4 +1,4 @@
-import { quoteLabel, type InputChip, type InputChipRange } from '@ai/agent-contracts';
+import { quoteLabel, type InputChip, type InputChipRange } from '@atd/agent-contracts';
 import type { RunSnapshot } from '../../../client/agent/task-schema';
 import { seedFromText } from '../../composer-editor/draft';
 

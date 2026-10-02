@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { Identifier, parse } from '@ai/agent-contracts';
+import { Identifier, parse } from '@atd/agent-contracts';
 import type { Ledger } from '../ledger.js';
 import { ResourceStore } from '../resources.js';
 import type { ServicePaths } from '../storage.js';

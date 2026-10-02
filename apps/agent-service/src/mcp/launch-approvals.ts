@@ -7,7 +7,7 @@ import {
   type McpServerConfig,
   type McpSnapshot,
   type McpStatusResponse,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import type { Logger } from '../logging.js';
 import { McpError } from './errors.js';
 import { httpEnvReads } from './env-references.js';

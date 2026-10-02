@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import type { TestContext } from 'node:test';
-import type { PermissionRequest } from '@ai/agent-contracts';
-import type { McpServerConfig } from '@ai/agent-contracts';
+import type { PermissionRequest } from '@atd/agent-contracts';
+import type { McpServerConfig } from '@atd/agent-contracts';
 import type { ExtensionAPI, ExtensionFactory } from '@earendil-works/pi-coding-agent';
 import { McpOAuthAuthorizationRequiredError } from '@earendil-works/pi-mcp/oauth';
 import type { ServiceHandle } from '../dist/index.js';

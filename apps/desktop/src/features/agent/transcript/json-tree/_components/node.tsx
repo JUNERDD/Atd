@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { ChevronRight } from 'lucide-react';
-import { cn } from '@ai/ui/lib/utils';
+import { cn } from '@atd/ui/lib/utils';
 import { agentApi } from '../../../use-agent';
 import { showErrorToast } from '../../../../../components/toast-store';
 import type { JsonNodeType, JsonRenderNode } from '../_types/node';

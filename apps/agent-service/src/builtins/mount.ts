@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { Type } from 'typebox';
-import { parse } from '@ai/agent-contracts';
+import { parse } from '@atd/agent-contracts';
 import type { ServiceConfig } from '../config.js';
 import { ensureSkillProfile, skillProfilePaths } from '../skills/profile.js';
 import { restoreDefaultRole } from '../skills/roles.js';

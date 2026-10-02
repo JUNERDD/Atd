@@ -22,7 +22,7 @@
       "dependsOn": ["^build"],
       "outputs": ["dist/**", "dist-native/**"]
     },
-    "@ai/file-index#build": {
+    "@atd/file-index#build": {
       "inputs": [
         "$TURBO_DEFAULT$",
         "$TURBO_ROOT$/Cargo.toml",
@@ -52,7 +52,7 @@
       "outputs": []
     },
     "format:check": {},
-    "@ai/macos#build": {
+    "@atd/macos#build": {
       "cache": false
     },
     "codegen:check": {

@@ -1,5 +1,5 @@
 import { useRef, useState, type ReactElement, type Ref } from 'react';
-import { PopoverAnchor } from '@ai/ui/components/popover';
+import { PopoverAnchor } from '@atd/ui/components/popover';
 import type { RunPolicy } from '../../client/agent/run-policy';
 import type { AgentTask } from '../../client/agent/task-schema';
 import type { Connection, ModelReference } from '../../client/providers/schema';

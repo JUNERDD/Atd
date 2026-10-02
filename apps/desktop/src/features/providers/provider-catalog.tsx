@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { SearchX } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Button } from '@ai/ui/components/button';
+import { Button } from '@atd/ui/components/button';
 import {
   Empty,
   EmptyContent,
@@ -9,19 +9,19 @@ import {
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
-} from '@ai/ui/components/empty';
-import { HighlightedText } from '@ai/ui/components/highlighted-text';
-import { Item, ItemContent, ItemDescription, ItemMedia, ItemTitle } from '@ai/ui/components/item';
-import { ScrollArea } from '@ai/ui/components/scroll-area';
-import { matchFields } from '@ai/ui/lib/fuzzy-match';
-import { useCompositionQuery } from '@ai/ui/lib/ime';
+} from '@atd/ui/components/empty';
+import { HighlightedText } from '@atd/ui/components/highlighted-text';
+import { Item, ItemContent, ItemDescription, ItemMedia, ItemTitle } from '@atd/ui/components/item';
+import { ScrollArea } from '@atd/ui/components/scroll-area';
+import { matchFields } from '@atd/ui/lib/fuzzy-match';
+import { useCompositionQuery } from '@atd/ui/lib/ime';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@ai/ui/components/select';
+} from '@atd/ui/components/select';
 import type { ProviderCatalogEntry } from '../../client/providers/schema';
 import { SettingsHeading } from '../settings/settings-heading';
 import { SettingsSearchField } from '../settings/settings-search-field';

@@ -4,8 +4,8 @@ import {
   listCommands,
   updateCommand,
   type AgentClientOptions,
-} from '@ai/agent-client';
-import type { CommandCreate, ServiceCommandFull } from '@ai/agent-contracts';
+} from '@atd/agent-client';
+import type { CommandCreate, ServiceCommandFull } from '@atd/agent-contracts';
 import type { CommandDefinition } from './command-schema';
 
 /** Maps a service command to the desktop editor shape (drops migratedAt, keeps pluginId). */

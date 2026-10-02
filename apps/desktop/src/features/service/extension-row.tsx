@@ -7,10 +7,10 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@ai/ui/components/dropdown-menu';
-import { Item, ItemActions } from '@ai/ui/components/item';
-import { Switch } from '@ai/ui/components/switch';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@ai/ui/components/tooltip';
+} from '@atd/ui/components/dropdown-menu';
+import { Item, ItemActions } from '@atd/ui/components/item';
+import { Switch } from '@atd/ui/components/switch';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@atd/ui/components/tooltip';
 import { IconButton } from '../../components/icon-button';
 
 /**

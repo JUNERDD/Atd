@@ -1,4 +1,4 @@
-import type { McpServerExposure } from '@ai/agent-contracts';
+import type { McpServerExposure } from '@atd/agent-contracts';
 import type { McpUpsertInput } from '../../client/service/ipc';
 import type { ExtensionMcpConfig, ExtensionMcpTransport } from './extension-detail-rows';
 import {

@@ -6,7 +6,7 @@ import {
   SessionManager,
   SettingsManager,
 } from '@earendil-works/pi-coding-agent';
-import { errorMessage, type CompactRefusal, type TaskRun } from '@ai/agent-contracts';
+import { errorMessage, type CompactRefusal, type TaskRun } from '@atd/agent-contracts';
 import { ConflictError } from '../errors.js';
 import { bindLiveState, type LiveState } from '../live-state.js';
 import type { SessionFactoryDeps } from '../pi-session.js';

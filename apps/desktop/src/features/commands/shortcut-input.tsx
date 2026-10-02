@@ -1,8 +1,8 @@
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { X } from 'lucide-react';
-import { Button } from '@ai/ui/components/button';
-import { Kbd, KbdGroup } from '@ai/ui/components/kbd';
+import { Button } from '@atd/ui/components/button';
+import { Kbd, KbdGroup } from '@atd/ui/components/kbd';
 import { IconButton } from '../../components/icon-button';
 import { recordedKeysToAccelerator, shortcutKeys } from '../../lib/shortcuts';
 import { useShortcutCapture } from '../settings/use-shortcut-capture';

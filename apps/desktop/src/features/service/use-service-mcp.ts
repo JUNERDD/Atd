@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { mutationOptions, useMutation, useMutationState } from '@tanstack/react-query';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
-import type { McpApprovalRequestResult } from '@ai/agent-contracts';
+import type { McpApprovalRequestResult } from '@atd/agent-contracts';
 import { messageOf } from '../../lib/errors';
 import { queryClient } from '../../lib/query-client';
 import { serviceApi } from './extension-writes';

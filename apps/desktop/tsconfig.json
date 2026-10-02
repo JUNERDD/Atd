@@ -1,5 +1,5 @@
 {
-  "extends": "@ai/typescript-config/react.json",
+  "extends": "@atd/typescript-config/react.json",
   "compilerOptions": {
     // The renderer runs only in WKWebView on macOS 26, which ships ES2025 (Set methods,
     // iterator helpers, `Promise.try`).

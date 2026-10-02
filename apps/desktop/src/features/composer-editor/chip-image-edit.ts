@@ -1,5 +1,5 @@
 import type { EditorView } from '@codemirror/view';
-import { isImageMime } from '@ai/agent-contracts';
+import { isImageMime } from '@atd/agent-contracts';
 import { showErrorToast } from '../../components/toast-store';
 import { addChips, chipEntry, chipTable, chipTokens, tokenOf } from './chip-state';
 import type { Chip, FileChip } from './draft';

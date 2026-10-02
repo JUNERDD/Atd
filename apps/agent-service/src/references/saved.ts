@@ -3,7 +3,7 @@ import {
   type CommandParameter,
   type MemoryTarget,
   type ServiceCommandFull,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import { CommandStore } from '../commands/store.js';
 import { LedgerNotFound } from '../ledger.js';
 import { logMemoryEvents, MemoryAuthority, type HermesEntry } from '../memory/authority.js';

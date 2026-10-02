@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { stat } from 'node:fs/promises';
 import path from 'node:path';
 import { Type } from 'typebox';
-import { McpServerConfigSchema, parse, type McpServerConfig } from '@ai/agent-contracts';
+import { McpServerConfigSchema, parse, type McpServerConfig } from '@atd/agent-contracts';
 import { KeyringBackend, keyringMcpAccount } from '../credentials/keyring.js';
 import { mcpServerKey } from '../credentials/server-keys.js';
 import { McpError, type SecretResolver } from './errors.js';

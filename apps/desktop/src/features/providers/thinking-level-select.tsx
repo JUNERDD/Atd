@@ -5,7 +5,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@ai/ui/components/select';
+} from '@atd/ui/components/select';
 import type { ModelReference, ModelThinkingLevel } from '../../client/providers/schema';
 import { useThinkingLevels } from './use-thinking-levels';
 

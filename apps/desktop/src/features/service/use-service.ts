@@ -1,5 +1,5 @@
 import { queryOptions, useQuery, type QueryKey } from '@tanstack/react-query';
-import type { PluginSummary } from '@ai/agent-contracts';
+import type { PluginSummary } from '@atd/agent-contracts';
 import type { ServiceBridge } from '../../client/service/ipc';
 import { bridgeKeys, guardedRead, wireServiceBridge } from '../../lib/bridge-cache';
 import { messageOf } from '../../lib/errors';

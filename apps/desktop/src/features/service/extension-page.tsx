@@ -1,9 +1,9 @@
 import { useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { Sparkles } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Badge } from '@ai/ui/components/badge';
-import { Button } from '@ai/ui/components/button';
-import { ScrollArea } from '@ai/ui/components/scroll-area';
+import { Badge } from '@atd/ui/components/badge';
+import { Button } from '@atd/ui/components/button';
+import { ScrollArea } from '@atd/ui/components/scroll-area';
 import { useOverlayFooter } from '../../components/use-overlay-footer';
 import { SettingsHeading } from '../settings/settings-heading';
 

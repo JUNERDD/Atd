@@ -6,7 +6,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@ai/ui/components/dropdown-menu';
+} from '@atd/ui/components/dropdown-menu';
 import type { Screenshot } from '../client/agent/screenshot-input';
 import type { FileChip } from '../features/composer-editor/draft';
 import { agentApi } from '../features/agent/use-agent';

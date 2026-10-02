@@ -1,6 +1,6 @@
 import type { ComponentProps, ReactNode } from 'react';
 import { CircleQuestionMark } from 'lucide-react';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@ai/ui/components/tooltip';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@atd/ui/components/tooltip';
 
 /**
  * A compact label affordance for item hints: the hint copy lives in the tooltip instead of a

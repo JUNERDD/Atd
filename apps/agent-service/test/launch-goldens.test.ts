@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import type { McpHttp, McpServerConfig } from '@ai/agent-contracts';
+import type { McpHttp, McpServerConfig } from '@atd/agent-contracts';
 import { envReferences, httpEnvReads } from '../dist/mcp/env-references.js';
 import { launchFingerprint, launchKind } from '../dist/mcp/launch-fingerprint.js';
 import { commandValueField, toLaunchSpec } from '../dist/mcp/servers.js';

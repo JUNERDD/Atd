@@ -40,7 +40,7 @@ async function main() {
   const build = spawnSync('pnpm', ['run', 'build'], { cwd: packageRoot, stdio: 'inherit' });
   if (build.error || build.status !== 0) {
     idle(
-      'The Debug app did not build (it needs Xcode 26, XcodeGen and SwiftLint). The service and the renderer keep running; fix the build and run `pnpm --filter @ai/macos dev` to open the app.',
+      'The Debug app did not build (it needs Xcode 26, XcodeGen and SwiftLint). The service and the renderer keep running; fix the build and run `pnpm --filter @atd/macos dev` to open the app.',
     );
     return;
   }

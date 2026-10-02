@@ -1,6 +1,6 @@
 /**
  * MCP authority public surface for service wiring and T5. Canonical MCP
- * schemas come from `@ai/agent-contracts`; requests stay service-side.
+ * schemas come from `@atd/agent-contracts`; requests stay service-side.
  */
 export { McpAuthority, type McpAuthorityDeps } from './authority.js';
 export { McpFacade, type FacadeDeps } from './facade.js';
@@ -51,7 +51,7 @@ export {
   type McpServerConfig,
   type McpServerStatus,
   type McpSnapshot,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 export {
   McpAuthCompleteRequestSchema,
   McpCallToolRequestSchema,

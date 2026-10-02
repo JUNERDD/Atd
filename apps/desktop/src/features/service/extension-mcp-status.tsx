@@ -1,6 +1,6 @@
 import { CircleAlert, KeyRound, PlugZap, ShieldCheck, ShieldOff } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Button } from '@ai/ui/components/button';
+import { Button } from '@atd/ui/components/button';
 import {
   ExtensionDetailFields,
   ExtensionDetailSection,

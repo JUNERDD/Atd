@@ -1,5 +1,5 @@
-import { ATTACHABLE_EXTENSIONS } from '@ai/agent-contracts';
-import type { FileIndex } from '@ai/file-index';
+import { ATTACHABLE_EXTENSIONS } from '@atd/agent-contracts';
+import type { FileIndex } from '@atd/file-index';
 import type { BackendReply, SearchBackend, SearchHit, SearchRequest } from './backend.js';
 import { foldText } from './rank.js';
 
@@ -12,7 +12,7 @@ const QUERY_LIMIT = 100;
 const CLOSE_TIMEOUT_MS = 5000;
 
 /**
- * File names from the native index (`@ai/file-index`, `crates/file-index`): home and iCloud
+ * File names from the native index (`@atd/file-index`, `crates/file-index`): home and iCloud
  * Drive walked once, then kept current through FSEvents, with the index saved under the service
  * data dir so a restart resumes instead of walking again.
  *
@@ -72,7 +72,7 @@ export class NativeIndexBackend implements SearchBackend {
   /** Opens the index and starts its walk, or resumes from its saved event id. */
   private async open(): Promise<FileIndex | null> {
     try {
-      const { FileIndex } = await import('@ai/file-index');
+      const { FileIndex } = await import('@atd/file-index');
       const index = await FileIndex.open(this.dataDir, { extensions: [...ATTACHABLE_EXTENSIONS] });
       try {
         index.start();

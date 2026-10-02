@@ -8,8 +8,8 @@ import {
   type SubagentApproval,
   type SubagentPermissions,
   type SubagentTool,
-} from '@ai/agent-contracts';
-import { Button } from '@ai/ui/components/button';
+} from '@atd/agent-contracts';
+import { Button } from '@atd/ui/components/button';
 import {
   Dialog,
   DialogContent,
@@ -17,17 +17,17 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@ai/ui/components/dialog';
-import { Label } from '@ai/ui/components/label';
-import { ScrollArea } from '@ai/ui/components/scroll-area';
+} from '@atd/ui/components/dialog';
+import { Label } from '@atd/ui/components/label';
+import { ScrollArea } from '@atd/ui/components/scroll-area';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@ai/ui/components/select';
-import { Switch } from '@ai/ui/components/switch';
+} from '@atd/ui/components/select';
+import { Switch } from '@atd/ui/components/switch';
 import { showToast } from '../../components/toast-store';
 import type { ExtensionAgentRow } from './extension-rows';
 

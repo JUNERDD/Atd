@@ -1,7 +1,7 @@
 import { useRef, type MouseEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CircleAlert, RotateCcw } from 'lucide-react';
-import { Button } from '@ai/ui/components/button';
+import { Button } from '@atd/ui/components/button';
 import {
   Item,
   ItemActions,
@@ -9,8 +9,8 @@ import {
   ItemDescription,
   ItemFooter,
   ItemTitle,
-} from '@ai/ui/components/item';
-import { Kbd, KbdGroup } from '@ai/ui/components/kbd';
+} from '@atd/ui/components/item';
+import { Kbd, KbdGroup } from '@atd/ui/components/kbd';
 import type { ShortcutAction } from '../../client/settings-contract';
 import { IconButton } from '../../components/icon-button';
 import { shortcutKeys } from '../../lib/shortcuts';

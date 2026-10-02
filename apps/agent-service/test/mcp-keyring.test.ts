@@ -8,7 +8,7 @@ import {
   parse,
   type McpServerConfig,
   type McpServerUpsertRequest,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import { keyringMcpAccount } from '../dist/credentials/keyring.js';
 import type { Logger } from '../dist/logging.js';
 import { migrateMcpSecrets } from '../dist/mcp/secrets-migration.js';

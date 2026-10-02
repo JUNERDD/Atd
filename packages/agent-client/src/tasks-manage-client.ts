@@ -22,7 +22,7 @@ import {
   type PreviewTaskResponse,
   type ReplaceQueueResponse,
   type TaskResponse,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import { dispositionName, manageRequest, toClientError } from './manage-request.js';
 import { authHeaders, type AgentClientOptions } from './types.js';
 

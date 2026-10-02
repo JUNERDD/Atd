@@ -1,5 +1,5 @@
 import { stat } from 'node:fs/promises';
-import { rootExecutionId, type RunStatus } from '@ai/agent-contracts';
+import { rootExecutionId, type RunStatus } from '@atd/agent-contracts';
 import type { CapabilityRegistry } from './capabilities.js';
 import type { ConfirmStore } from './confirms.js';
 import type { EventLog } from './event-log.js';

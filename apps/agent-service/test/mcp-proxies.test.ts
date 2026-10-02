@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { after, before, test, type TestContext } from 'node:test';
-import type { McpServerConfig } from '@ai/agent-contracts';
+import type { McpServerConfig } from '@atd/agent-contracts';
 import { McpError as McpRpcError } from '@earendil-works/pi-mcp';
 import { normalizeInputSchema } from '../dist/mcp/policy.js';
 import { renderMcpServersSection } from '../dist/mcp/servers-section.js';

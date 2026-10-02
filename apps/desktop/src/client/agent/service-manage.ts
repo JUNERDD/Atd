@@ -10,7 +10,7 @@ import {
   replaceQueue,
   updateMemory,
   type AgentClientOptions,
-} from '@ai/agent-client';
+} from '@atd/agent-client';
 import {
   CompactRefusalSchema,
   snapshotToolsFor,
@@ -19,7 +19,7 @@ import {
   type ForkTaskResponse,
   type PreviewTaskRequest,
   type ServiceRunPolicy,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import { Value } from 'typebox/value';
 import type { MemoryEntry, MemorySnapshot } from './bridge';
 import type { RunPolicy } from './run-policy';

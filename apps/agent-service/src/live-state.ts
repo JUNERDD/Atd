@@ -1,5 +1,5 @@
 import type { AgentSession, SessionManager } from '@earendil-works/pi-coding-agent';
-import { rootExecutionId } from '@ai/agent-contracts';
+import { rootExecutionId } from '@atd/agent-contracts';
 import { ContextTracker } from './compaction/context-state.js';
 import type { CompactionObserver } from './compaction/observer.js';
 import { LiveTranscript } from './live-transcript.js';

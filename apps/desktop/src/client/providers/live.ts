@@ -6,12 +6,12 @@ import {
   listProviders,
   updateProvider,
   type AgentClientOptions,
-} from '@ai/agent-client';
+} from '@atd/agent-client';
 import type {
   ProviderCredential,
   ProviderCredentialChange,
   ServiceConnection,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import { validateConfig } from './configuration';
 import { LOCAL_PROVIDERS } from './metadata';
 import type { Connection, ConnectionDraft, ProviderCatalogEntry } from './schema';

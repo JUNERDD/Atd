@@ -82,7 +82,7 @@ Run the copy only while `$dev` does not exist yet; otherwise `cp` nests the copy
 ### Native app
 
 ```sh
-pnpm --filter @ai/macos build
+pnpm --filter @atd/macos build
 ```
 
 `pnpm dev` runs this build and opens the app for you; run it by hand only to rebuild while `pnpm dev` keeps running. The command generates the Xcode project from `apps/macos/project.yml` and builds the Debug app into `apps/macos/DerivedData/Build/Products/Debug/AI.app`. The Debug app has the bundle ID `com.junerdd.ai.dev`, so it keeps its own Accessibility permission and never collides with the installed app. It never starts the service: each time it connects, it reads `endpoint.json` and the token from the development data directory and connects to the service `pnpm dev` runs. Without one, it asks you to run `pnpm dev`. If the Debug app is already running, `pnpm dev` leaves it open instead of starting a second one. To pair it with a throwaway service, give both the same directory: `open --env AI_AGENT_DATA_DIR=<dir> apps/macos/DerivedData/Build/Products/Debug/AI.app`.
@@ -169,7 +169,7 @@ GitHub Actions runs `pnpm check` on Linux, where it skips the Swift and Rust che
 ### Release build
 
 ```sh
-pnpm --filter @ai/macos build:release
+pnpm --filter @atd/macos build:release
 ```
 
 Builds the Release app into `apps/macos/DerivedData/Build/Products/Release/AI.app`. Its `bundle` step first builds the service and the renderer, then `apps/macos/scripts/prepare-service-pack.mjs` stages the service with its production dependencies, together with the official Node.js release pinned by `.node-version` for the build machine's architecture. The first pack downloads that release into `tmp/node-dist/` and checks it against the release's `SHASUMS256.txt`. Each pack also writes a new build ID; the app only reuses a running service with the same build ID and replaces any other. The app is about 907 MB, mostly the service's `node_modules`. Run the full `build:release` rather than `xcodebuild` alone, which would embed a stale service pack.

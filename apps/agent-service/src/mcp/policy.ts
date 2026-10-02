@@ -1,4 +1,4 @@
-import { errorMessage, type McpServerConfig } from '@ai/agent-contracts';
+import { errorMessage, type McpServerConfig } from '@atd/agent-contracts';
 import { validateToolArguments, type JsonObject, type JsonValue } from '@earendil-works/pi-ai';
 import type { ResourceTemplate, Tool } from '@earendil-works/pi-mcp';
 import { Type } from 'typebox';

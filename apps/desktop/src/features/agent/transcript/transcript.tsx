@@ -1,8 +1,8 @@
 import { useMemo, useState, type ReactElement, type ReactNode } from 'react';
-import type { QuoteSource } from '@ai/agent-contracts';
+import type { QuoteSource } from '@atd/agent-contracts';
 import { useTranslation } from 'react-i18next';
-import { Button } from '@ai/ui/components/button';
-import { ScrollArea } from '@ai/ui/components/scroll-area';
+import { Button } from '@atd/ui/components/button';
+import { ScrollArea } from '@atd/ui/components/scroll-area';
 import type { TaskDetail } from '../../../client/agent/bridge';
 import { isActive, type FileRef, type TaskRun } from '../../../client/agent/task-schema';
 import { compactBlock } from '../compaction/compact-availability';

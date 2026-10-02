@@ -2,9 +2,9 @@ import { Fragment, type ReactNode } from 'react';
 import { Bot, ListOrdered, LoaderCircle, MessageCircleQuestion, ShieldAlert } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotion, type Transition } from 'motion/react';
 import { useTranslation } from 'react-i18next';
-import { Button } from '@ai/ui/components/button';
-import { Separator } from '@ai/ui/components/separator';
-import { cn } from '@ai/ui/lib/utils';
+import { Button } from '@atd/ui/components/button';
+import { Separator } from '@atd/ui/components/separator';
+import { cn } from '@atd/ui/lib/utils';
 import type { TaskProgress } from './selectors';
 import './progress.css';
 

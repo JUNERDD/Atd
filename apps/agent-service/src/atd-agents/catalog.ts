@@ -1,7 +1,7 @@
 import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { parseFrontmatter } from '@earendil-works/pi-coding-agent';
-import { isItemName } from '@ai/plugin-kit';
+import { isItemName } from '@atd/plugin-kit';
 import { atdAgentsDir } from '../service-fs.js';
 
 const TOOLS = new Set(['read', 'write', 'edit', 'bash', 'command']);

@@ -1,5 +1,5 @@
 import { File } from '@pierre/diffs/react';
-import { cn } from '@ai/ui/lib/utils';
+import { cn } from '@atd/ui/lib/utils';
 import { CopyButton } from './copy-button';
 import { CodeDownloadButton } from './download-button';
 import { codeSource } from './selection-toolbar/code-sources';

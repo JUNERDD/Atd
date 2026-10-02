@@ -1,11 +1,11 @@
-import type { PluginDetail, PluginItem, PluginSummary } from '@ai/agent-contracts';
+import type { PluginDetail, PluginItem, PluginSummary } from '@atd/agent-contracts';
 import type {
   InstalledPlugin,
   PluginComponent,
   PluginDiagnostic,
   ResolvedItem,
   ResolvedPlugin,
-} from '@ai/plugin-kit';
+} from '@atd/plugin-kit';
 import { LedgerNotFound } from '../ledger.js';
 import { mapPluginComponents } from './components.js';
 import type { PluginHost, PluginView } from './host.js';

@@ -10,7 +10,7 @@ import {
   type McpServerConfig,
   type McpServerExposure,
   type McpToolRef,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import type { Logger } from '../logging.js';
 import { McpApprovalBroker } from './approval.js';
 import type { McpPreapproval } from './errors.js';

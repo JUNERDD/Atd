@@ -1,5 +1,5 @@
 {
-  "name": "@ai/agent-contracts",
+  "name": "@atd/agent-contracts",
   "version": "0.1.0",
   "private": true,
   "files": [
@@ -21,10 +21,10 @@
     "lint": "oxlint src"
   },
   "dependencies": {
-    "@ai/plugin-kit": "workspace:*",
+    "@atd/plugin-kit": "workspace:*",
     "typebox": "catalog:"
   },
   "devDependencies": {
-    "@ai/typescript-config": "workspace:*"
+    "@atd/typescript-config": "workspace:*"
   }
 }

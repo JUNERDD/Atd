@@ -1,5 +1,5 @@
 import { readFile, rm } from 'node:fs/promises';
-import type { PluginRunSnapshot } from '@ai/plugin-kit';
+import type { PluginRunSnapshot } from '@atd/plugin-kit';
 import { atomicWrite } from '../config.js';
 import { PluginHost, pluginHostPath, type PluginView } from './host.js';
 import { collectRenderedSkills, renderedHashes } from './rendered.js';

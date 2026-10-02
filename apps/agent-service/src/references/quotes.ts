@@ -1,4 +1,4 @@
-import type { TaskInput } from '@ai/agent-contracts';
+import type { TaskInput } from '@atd/agent-contracts';
 
 const INTRO =
   "The user quoted the following passages from answers earlier in this task. Each quote's @ token in the message stands for the passage quoted under it.";

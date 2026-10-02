@@ -3,7 +3,7 @@ import type {
   McpServerConfig,
   McpServerStatus,
   McpServerStatusRow,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import type { Logger } from '../logging.js';
 import { McpError, type ServerResolver } from './errors.js';
 import {

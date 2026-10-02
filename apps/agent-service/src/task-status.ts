@@ -1,4 +1,4 @@
-import type { LedgerData, RunStatus, StatusFrame } from '@ai/agent-contracts';
+import type { LedgerData, RunStatus, StatusFrame } from '@atd/agent-contracts';
 
 /** The counts a `status` frame carries. */
 export type TaskStatusCounts = Omit<StatusFrame, 'type'>;

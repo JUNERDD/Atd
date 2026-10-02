@@ -1,7 +1,7 @@
 import { isDeepStrictEqual } from 'node:util';
 import type { AgentSession, SessionEntry } from '@earendil-works/pi-coding-agent';
 import type { AssistantMessage, ToolResultMessage } from '@earendil-works/pi-ai';
-import type { ServiceBlock } from '@ai/agent-contracts';
+import type { ServiceBlock } from '@atd/agent-contracts';
 import type { Logger } from './logging.js';
 import {
   collectCompleted,

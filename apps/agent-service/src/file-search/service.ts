@@ -5,7 +5,7 @@ import type {
   FileSearchReply,
   FileSearchResult,
   ResourceRef,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import { readAttachable, type AttachableFile } from '../resources/attachable-read.js';
 import type { ResourceStore } from '../resources.js';
 import type { SearchBackend } from './backend.js';

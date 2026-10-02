@@ -1,4 +1,4 @@
-import { QualifiedNameSchema } from '@ai/plugin-kit/model';
+import { QualifiedNameSchema } from '@atd/plugin-kit/model';
 import { Type, type Static } from 'typebox';
 import { Identifier } from './identifiers.js';
 import { McpHttpAuthSchema } from './mcp-auth.js';

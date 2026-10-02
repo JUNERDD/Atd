@@ -1,4 +1,4 @@
-import { parseAccelerator } from '@ai/agent-contracts';
+import { parseAccelerator } from '@atd/agent-contracts';
 import type { CommandCatalog } from '../client/agent/agent-requests';
 import type { PreparedCommand } from '../client/agent/bridge';
 import { prepareCommand } from '../client/agent/command-prepare';

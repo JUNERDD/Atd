@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { CircleAlert } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Label } from '@ai/ui/components/label';
-import { Item, ItemContent, ItemDescription, ItemGroup, ItemTitle } from '@ai/ui/components/item';
+import { Label } from '@atd/ui/components/label';
+import { Item, ItemContent, ItemDescription, ItemGroup, ItemTitle } from '@atd/ui/components/item';
 import type { SettingsSnapshot } from '../../client/settings-contract';
 import {
   DEFAULT_PERMISSION_TIER,

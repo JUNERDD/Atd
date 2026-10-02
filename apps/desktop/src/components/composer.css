@@ -89,7 +89,7 @@
   grid-area: prompt;
   min-height: 20px;
   max-height: 20px;
-  /* The glass's persistent child layer (see `surface-glass` in `@ai/ui`): a draft that scrolled and
+  /* The glass's persistent child layer (see `surface-glass` in `@atd/ui`): a draft that scrolled and
      is cleared or sent drops the editor's scroller layers here, not on the glass, where they
      lingered with the old lines over the collapsed pill. */
   will-change: transform;

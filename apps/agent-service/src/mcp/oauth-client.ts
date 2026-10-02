@@ -1,4 +1,4 @@
-import type { McpHttp, McpOAuthAuth, McpOAuthClient, McpServerConfig } from '@ai/agent-contracts';
+import type { McpHttp, McpOAuthAuth, McpOAuthClient, McpServerConfig } from '@atd/agent-contracts';
 import type { OAuthChallenge, OAuthFlowOptions } from '@earendil-works/pi-mcp/oauth';
 import { MCP_OAUTH_CLIENT_NAME } from './constants.js';
 

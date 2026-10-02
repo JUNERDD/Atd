@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { LOAD_SKILL_TOOL } from '@ai/agent-contracts';
+import { LOAD_SKILL_TOOL } from '@atd/agent-contracts';
 import type { TextContent } from '@earendil-works/pi-ai';
 import type { SessionEntry } from '@earendil-works/pi-coding-agent';
 import { Type, type Static } from 'typebox';

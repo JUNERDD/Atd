@@ -1,4 +1,4 @@
-import type { FileSearchQuery, FileSearchReply } from '@ai/agent-contracts';
+import type { FileSearchQuery, FileSearchReply } from '@atd/agent-contracts';
 import type { AgentBridge } from './agent/bridge';
 import type { Screenshot } from './agent/screenshot-input';
 import type { FileRef } from './agent/task-schema';

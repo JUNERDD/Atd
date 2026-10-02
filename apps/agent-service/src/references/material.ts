@@ -4,7 +4,7 @@ import {
   type RunReference,
   type SubagentPermissions,
   type TaskRun,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import { listAtdAgents, type AtdAgent } from '../atd-agents/catalog.js';
 import type { Ledger } from '../ledger.js';
 import type { Logger } from '../logging.js';

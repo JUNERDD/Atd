@@ -1,8 +1,8 @@
 import { useId } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button } from '@ai/ui/components/button';
-import { Switch } from '@ai/ui/components/switch';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@ai/ui/components/tooltip';
+import { Button } from '@atd/ui/components/button';
+import { Switch } from '@atd/ui/components/switch';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@atd/ui/components/tooltip';
 import { useOverlayFooter } from '../../components/use-overlay-footer';
 
 /**

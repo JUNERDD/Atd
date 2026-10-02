@@ -1,4 +1,4 @@
-import { errorMessage, isActiveStatus } from '@ai/agent-contracts';
+import { errorMessage, isActiveStatus } from '@atd/agent-contracts';
 import type { CapabilityRegistry } from './capabilities.js';
 import type { ConfirmStore } from './confirms.js';
 import type { Ledger } from './ledger.js';

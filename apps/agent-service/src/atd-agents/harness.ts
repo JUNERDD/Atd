@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
-import { SubagentPermissionsSchema, parse, type SubagentPermissions } from '@ai/agent-contracts';
+import { SubagentPermissionsSchema, parse, type SubagentPermissions } from '@atd/agent-contracts';
 import { atomicWrite } from '../config.js';
 
 /**

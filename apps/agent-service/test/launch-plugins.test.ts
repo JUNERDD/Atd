@@ -9,7 +9,7 @@ import {
   PluginDetailSchema,
   PluginDuplicateResponseSchema,
   PluginInstallPreviewSchema,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import { launchStoreFile } from '../dist/mcp/launch-store.js';
 import { serversFile } from '../dist/mcp/servers.js';
 import { client, errorCode, exists, launcher } from './launch-helpers.ts';

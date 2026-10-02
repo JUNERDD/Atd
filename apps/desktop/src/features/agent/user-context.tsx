@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { isImageMime } from '@ai/agent-contracts';
+import { isImageMime } from '@atd/agent-contracts';
 import { ContextBubble } from '../../components/context-bubble';
 import { showErrorToast } from '../../components/toast-store';
 import { isCaptureContext } from '../../client/agent/screenshot-input';

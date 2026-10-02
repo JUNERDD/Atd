@@ -5,7 +5,7 @@ import {
   createLsTool,
   type AgentToolResult,
 } from '@earendil-works/pi-coding-agent';
-import { parse } from '@ai/agent-contracts';
+import { parse } from '@atd/agent-contracts';
 import type { ChildTool } from '../../subagents/child-tools.js';
 import { confineToolArgument, searchOperations } from './confine.js';
 import { resolveRipgrep } from './ripgrep.js';

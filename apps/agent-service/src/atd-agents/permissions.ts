@@ -1,4 +1,4 @@
-import { SUBAGENT_TOOLS, type SubagentPermissions, type SubagentTool } from '@ai/agent-contracts';
+import { SUBAGENT_TOOLS, type SubagentPermissions, type SubagentTool } from '@atd/agent-contracts';
 
 /**
  * Subagent permissions as Settings shows and stores them. An agent's defaults come from its

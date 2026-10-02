@@ -1,4 +1,4 @@
-import { TaskContextStateSchema, type ServiceEvent } from '@ai/agent-contracts';
+import { TaskContextStateSchema, type ServiceEvent } from '@atd/agent-contracts';
 import type { TaskClient } from './service-tasks';
 import { mapBlock, mapRequest } from './service-map';
 import { applyTranscriptPatch, QueueStateSchema } from './transcript-schema';

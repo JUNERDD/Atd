@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { TaskContextState } from '@ai/agent-contracts';
-import { Button } from '@ai/ui/components/button';
-import { Popover, PopoverContent, PopoverTrigger } from '@ai/ui/components/popover';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@ai/ui/components/tooltip';
+import type { TaskContextState } from '@atd/agent-contracts';
+import { Button } from '@atd/ui/components/button';
+import { Popover, PopoverContent, PopoverTrigger } from '@atd/ui/components/popover';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@atd/ui/components/tooltip';
 import { formatContextWindow, formatTokenCount } from '../../providers/context-window';
 import { ContextUsageDetail } from './context-usage-detail';
 import { useContextBreakdown } from './use-context-breakdown';

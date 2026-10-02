@@ -8,7 +8,7 @@ import {
   type McpContentBlock,
   type McpResourceRef,
   type McpResourceTemplateRef,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import type { McpFacade } from './facade.js';
 import { mapCallResult } from './mapping.js';
 import { toPiContent } from './model-content.js';

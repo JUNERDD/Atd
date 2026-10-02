@@ -5,7 +5,7 @@ import {
   tierAllows,
   type GrantScope,
   type PermissionTier,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import type { Gate } from './harness/gate.js';
 import type { Logger } from './logging.js';
 

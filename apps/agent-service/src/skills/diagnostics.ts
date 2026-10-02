@@ -1,5 +1,5 @@
 import type { ResourceDiagnostic } from '@earendil-works/pi-coding-agent';
-import { parseQualifiedName } from '@ai/plugin-kit';
+import { parseQualifiedName } from '@atd/plugin-kit';
 
 /**
  * T3-owned diagnostic codes. Pi diagnostics are preserved verbatim in

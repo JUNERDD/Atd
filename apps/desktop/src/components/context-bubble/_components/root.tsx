@@ -1,5 +1,5 @@
 import { useCallback, useId, useMemo, useState, type ComponentProps } from 'react';
-import { cn } from '@ai/ui/lib/utils';
+import { cn } from '@atd/ui/lib/utils';
 import { ContextBubbleContext } from '../_hooks/use-context-bubble';
 
 export interface ContextBubbleRootProps extends ComponentProps<'div'> {

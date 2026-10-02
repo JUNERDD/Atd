@@ -1,5 +1,5 @@
 {
-  "name": "@ai/plugin-kit",
+  "name": "@atd/plugin-kit",
   "version": "0.1.0",
   "private": true,
   "description": "Install, normalize and resolve agent plugin bundles (Agent Plugins 1.0, Claude Code plugins, pi packages and Agent Skills) for any agent harness.",
@@ -59,7 +59,7 @@
     "yaml": "2.9.1"
   },
   "devDependencies": {
-    "@ai/typescript-config": "workspace:*",
+    "@atd/typescript-config": "workspace:*",
     "vitest": "catalog:"
   },
   "engines": {

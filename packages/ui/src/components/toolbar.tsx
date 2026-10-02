@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { Toolbar as ToolbarPrimitive } from 'radix-ui';
-import { cn } from '@ai/ui/lib/utils';
+import { cn } from '@atd/ui/lib/utils';
 
 /**
  * A row of controls with one tab stop: Radix moves focus between its buttons with the arrow keys

@@ -1,4 +1,4 @@
-import { normalizeShellAllowlistEntry, SHELL_ALLOWLIST_MAX_ENTRIES } from '@ai/agent-contracts';
+import { normalizeShellAllowlistEntry, SHELL_ALLOWLIST_MAX_ENTRIES } from '@atd/agent-contracts';
 
 /**
  * Validates one entry from an IPC payload. The renderer pre-validates to show the specific error

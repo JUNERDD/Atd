@@ -7,9 +7,9 @@ import {
   ItemDescription,
   ItemFooter,
   ItemTitle,
-} from '@ai/ui/components/item';
-import { Label } from '@ai/ui/components/label';
-import { Switch } from '@ai/ui/components/switch';
+} from '@atd/ui/components/item';
+import { Label } from '@atd/ui/components/label';
+import { Switch } from '@atd/ui/components/switch';
 
 /**
  * One on/off setting as a settings row: the title and a wrapping description, with the switch at

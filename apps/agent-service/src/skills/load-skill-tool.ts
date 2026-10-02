@@ -1,4 +1,4 @@
-import { LOAD_SKILL_TOOL } from '@ai/agent-contracts';
+import { LOAD_SKILL_TOOL } from '@atd/agent-contracts';
 import type { ExtensionFactory, SessionEntry } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
 import { CONTEXT_BUDGET } from '../tasks/run-budget.js';

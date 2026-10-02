@@ -1,6 +1,6 @@
 import { InMemoryCredentialStore, type Api, type Model } from '@earendil-works/pi-ai';
 import { ModelRuntime } from '@earendil-works/pi-coding-agent';
-import type { ServiceCatalogEntry, ServiceModelDefinition } from '@ai/agent-contracts';
+import type { ServiceCatalogEntry, ServiceModelDefinition } from '@atd/agent-contracts';
 import { LLAMA_PROVIDER } from './llama.js';
 
 /**

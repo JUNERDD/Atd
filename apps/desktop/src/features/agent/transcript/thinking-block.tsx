@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Sparkles } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Shimmer } from '@ai/ui/components/ai-elements/shimmer';
+import { Shimmer } from '@atd/ui/components/ai-elements/shimmer';
 import type { BlockOf } from '../../../client/agent/transcript-schema';
 import { ActivityRow } from './activity-row';
 import { DetailBox } from './detail-box';

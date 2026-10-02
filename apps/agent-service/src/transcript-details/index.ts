@@ -7,7 +7,7 @@ import {
   WEB_FETCH_TOOL,
   WEB_SEARCH_TOOL,
   type ToolBlockDetails,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import type { Logger } from '../logging.js';
 import { SUBAGENT_TOOL } from '../subagents/tool-contract.js';
 import { projectCodemodeDetails, type CodemodeDetailsInput } from './codemode.js';
