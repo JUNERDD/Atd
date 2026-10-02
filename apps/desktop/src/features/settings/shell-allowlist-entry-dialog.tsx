@@ -32,7 +32,7 @@ export function ShellAllowlistEntryDialog({
   unavailable: boolean;
   /** A save is in flight: Remove stays focusable and ignores clicks until it settles. */
   removing: boolean;
-  error?: string;
+  error?: string | undefined;
   onRemove: () => void;
 }) {
   const { t } = useTranslation('settings');

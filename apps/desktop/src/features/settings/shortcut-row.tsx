@@ -34,7 +34,7 @@ export function ShortcutRow({
   description: string;
   settings: ReturnType<typeof useShortcutSettings>;
   /** Why the keys do not work, such as a failed system registration; shown inside the row. */
-  error?: string;
+  error?: string | undefined;
 }) {
   const { t } = useTranslation('settings');
   const keysButton = useRef<HTMLButtonElement>(null);

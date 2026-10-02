@@ -92,11 +92,18 @@ export async function fetchLiveProviders(options: AgentClientOptions): Promise<{
   };
 }
 
+function hasControlCharacter(value: string): boolean {
+  for (const character of value) {
+    const code = character.charCodeAt(0);
+    if (code < 32 || code === 127) return true;
+  }
+  return false;
+}
+
 /** Trims an entered API key; control characters mean a paste went wrong. */
 function apiKeyCredential(apiKey: string): ProviderCredential {
   const key = apiKey.trim();
-  if ([...key].some((character) => character.charCodeAt(0) < 32 || character.charCodeAt(0) === 127))
-    throw new Error('Enter a valid API key.');
+  if (hasControlCharacter(key)) throw new Error('Enter a valid API key.');
   return { type: 'api_key', key };
 }
 

@@ -67,7 +67,11 @@ export function ChipContent({ kind, name, image = false }: ChipLabel) {
  * (`span.composer-chip[data-kind]`, inline-block in `chips.css`) around the same content. With
  * `onReveal` (a quote that knows its passage) the root is a button that shows the passage.
  */
-export function ChipToken({ kind, name, onReveal }: ChipLabel & { onReveal?: () => void }) {
+export function ChipToken({
+  kind,
+  name,
+  onReveal,
+}: ChipLabel & { onReveal?: (() => void) | undefined }) {
   if (onReveal) {
     return (
       <button

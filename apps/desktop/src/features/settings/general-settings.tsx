@@ -172,7 +172,7 @@ export function GeneralSettings({
             aria-describedby={
               settings.errors.restore ? 'settings-shortcut-restore-error' : undefined
             }
-            onClick={() => void settings.restoreDefaults()}
+            onClick={settings.restoreDefaults}
           >
             {restoring ? t('shortcuts.restoring') : t('shortcuts.restoreDefaults')}
           </Button>

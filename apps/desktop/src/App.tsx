@@ -98,9 +98,9 @@ export function App() {
   // before images are sent.
   const selectedModel =
     runModelSelection({
-      requested: policy.model,
-      command: view === 'input' ? prepared?.command.model : null,
-      last: view === 'task' ? run?.snapshot.model : null,
+      requested: policy.model ?? null,
+      command: view === 'input' ? (prepared?.command.model ?? null) : null,
+      last: view === 'task' ? (run?.snapshot.model ?? null) : null,
       hasConnection: (connectionId) =>
         snapshot?.connections.some((item) => item.connectionId === connectionId) ?? false,
     }) ??
@@ -254,7 +254,7 @@ export function App() {
                     runId={run?.id}
                     task={view === 'task' ? (current.detail?.task ?? null) : null}
                     blocks={view === 'task' ? current.detail?.blocks : undefined}
-                    context={view === 'task' ? current.detail?.context : null}
+                    context={view === 'task' ? (current.detail?.context ?? null) : null}
                     requests={view === 'task' ? requests : []}
                     queue={view === 'task' ? queue : EMPTY_QUEUE}
                     quickActions={{ newTask, openHistory: () => setView('history') }}

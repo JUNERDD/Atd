@@ -15,7 +15,7 @@ import { isInstructionChip } from './instruction-chips';
 interface CaretAnchor {
   getBoundingClientRect(): DOMRect;
   /** Lets the positioning find the editor's scroll containers. */
-  contextElement?: Element;
+  contextElement?: Element | undefined;
 }
 
 /**

@@ -74,7 +74,7 @@ export function ShortcutInput({
         )}
       </div>
       {error && (
-        <p role="alert" className="text-xs text-destructive mt-2">
+        <p role="alert" className="mt-2 text-xs text-destructive">
           {error}
         </p>
       )}

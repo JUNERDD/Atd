@@ -29,7 +29,8 @@ export function useContextBreakdown(
       // Only this task's previous breakdown stands in; another task's would mislead.
       placeholderData: (previous, previousQuery) =>
         previousQuery?.queryKey[1] === taskId ? previous : undefined,
-      retry: false,
+      // The popover shows a failure in place.
+      meta: { errorToast: false },
     },
     queryClient,
   );

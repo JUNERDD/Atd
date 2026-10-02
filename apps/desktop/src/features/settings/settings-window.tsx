@@ -1,4 +1,11 @@
-import { useLayoutEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
+import {
+  Activity,
+  useLayoutEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type ReactNode,
+} from 'react';
 import { CircleAlert } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@ai/ui/components/button';
@@ -109,15 +116,24 @@ export function SettingsWindow() {
     },
   });
 
-  /** Mounts a section on its first visit and keeps it mounted, so its data survives switching. */
+  /**
+   * Mounts a section on its first visit and keeps it in the background while another is shown, so
+   * its data and state survive switching. A hidden section runs no effects: its subscriptions,
+   * header registrations and unsaved-changes reports end, and come back (with fresh data) when it
+   * is shown again.
+   */
   function page(id: SettingsSectionId, content: ReactNode) {
     if (!visited.includes(id)) return null;
+    const shown = section === id;
     return (
-      <SettingsSectionActiveContext value={section === id}>
-        <div className="settings-page" hidden={section !== id}>
-          {content}
-        </div>
-      </SettingsSectionActiveContext>
+      <Activity mode={shown ? 'visible' : 'hidden'}>
+        <SettingsSectionActiveContext value={shown}>
+          {/* `hidden` lets the layout rules find the shown page (settings.css). */}
+          <div className="settings-page" hidden={!shown}>
+            {content}
+          </div>
+        </SettingsSectionActiveContext>
+      </Activity>
     );
   }
   const navPanel = (

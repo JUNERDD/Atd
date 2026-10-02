@@ -238,7 +238,7 @@ export function ProgressPill({
             exit={{ opacity: 0, scale: 0.96, transition: reduced ? INSTANT : EXIT }}
           >
             <output
-              className="composer-progress surface-glass glass-control"
+              className="composer-progress glass-control surface-glass"
               aria-label={t('composer.progress.label')}
             >
               {parts.map(({ key, node }, index) => (

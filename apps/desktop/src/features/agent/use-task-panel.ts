@@ -193,7 +193,7 @@ export function useTaskPanel() {
     // The seed becomes the draft, whose text the service caps at 100,000 characters; a longer
     // answer is cut with an ellipsis, leaving room for the chip and the sentence around it.
     const quoted = text.length > REMEMBER_LIMIT ? `${text.slice(0, REMEMBER_LIMIT)}…` : text;
-    void memoryCreate.start(null, () =>
+    memoryCreate.start(null, () =>
       startSeeded('memory', t('session.rememberSeed', { text: quoted })),
     );
   }

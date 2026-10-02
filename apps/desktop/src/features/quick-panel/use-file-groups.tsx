@@ -99,19 +99,18 @@ export function useFileGroups({
   const full = attachmentCount >= ATTACHMENT_LIMIT;
   const limitReason = t('quickPanel.files.limit');
 
-  async function pick(id: string, load: () => Promise<FileRef[]>) {
+  /** Inserts the files a row loads; one pick runs at a time, and a failure shows its toast. */
+  function pick(id: string, load: () => Promise<FileRef[]>) {
     if (busy !== null) return;
     setBusy(id);
-    try {
-      const files = await load();
-      if (attachmentCount + files.length > ATTACHMENT_LIMIT)
-        throw new Error(t('composer.attachLimit'));
-      if (files.length) editor.insertChips(files.map((file) => ({ kind: 'file', file })));
-    } catch (error) {
-      showErrorToast(error);
-    } finally {
-      setBusy(null);
-    }
+    void load()
+      .then((files) => {
+        if (attachmentCount + files.length > ATTACHMENT_LIMIT)
+          throw new Error(t('composer.attachLimit'));
+        if (files.length) editor.insertChips(files.map((file) => ({ kind: 'file', file })));
+      })
+      .catch(showErrorToast)
+      .then(() => setBusy(null));
   }
 
   const attached = query
@@ -161,7 +160,7 @@ export function useFileGroups({
                   ? undefined
                   : relativeTime(at, language),
             disabled: full || !result.attachable,
-            select: () => void pick(result.resultId, () => search.attach([result.resultId])),
+            select: () => pick(result.resultId, () => search.attach([result.resultId])),
           };
         });
   // Without the desktop bridge nothing here works, so there is no reason worth showing.
@@ -175,7 +174,7 @@ export function useFileGroups({
     title: t('quickPanel.files.browse'),
     description: full ? limitReason : (searchOff ?? t('quickPanel.files.browseDescription')),
     disabled: full,
-    select: () => void pick('browse', () => agentApi().chooseFiles()),
+    select: () => pick('browse', () => agentApi().chooseFiles()),
   };
   return {
     lists: [

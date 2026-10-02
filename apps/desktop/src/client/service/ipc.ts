@@ -1,5 +1,7 @@
 import type { AgentPermissionsWire, BuiltinStatusWire } from '@ai/agent-client';
 import {
+  McpAuthDraftSchema,
+  McpServerExposureSchema,
   McpServerIdSchema,
   SkillName,
   SubagentNameSchema,
@@ -70,17 +72,30 @@ const BuiltinIdSchema = Type.String({
   pattern: '^(skill|role):[A-Za-z0-9][A-Za-z0-9_-]{0,127}$',
 });
 
-const McpAuthDraftSchema = Type.Union([
-  Type.Object({ type: Type.Literal('none') }, { additionalProperties: false }),
-  Type.Object(
-    {
-      type: Type.Literal('bearer'),
-      tokenEnv: Type.String({ minLength: 1, maxLength: 256 }),
-    },
-    { additionalProperties: false },
-  ),
-  Type.Object({ type: Type.Literal('oauth') }, { additionalProperties: false }),
-]);
+/**
+ * What the MCP form saves (`McpServerUpsertRequest` plus the server id). Auth is the contract's
+ * draft, OAuth client included; `exposure` and `exposeResources` replace the stored ones when sent.
+ * The page never sends env or header values, so the service keeps the stored ones.
+ */
+const McpUpsertFieldsSchema = Type.Object({
+  serverId: Type.String({
+    minLength: 1,
+    maxLength: 128,
+    pattern: '^[a-zA-Z0-9_-]+$',
+  }),
+  transport: Type.Union([
+    Type.Literal('stdio'),
+    Type.Literal('streamable-http'),
+    Type.Literal('sse'),
+  ]),
+  command: Type.Optional(Type.String({ maxLength: 1024 })),
+  args: Type.Optional(Type.Array(Type.String({ maxLength: 4096 }), { maxItems: 100 })),
+  url: Type.Optional(Type.String({ maxLength: 2048 })),
+  auth: McpAuthDraftSchema,
+  exposure: Type.Optional(McpServerExposureSchema),
+  exposeResources: Type.Optional(Type.Boolean()),
+});
+export type McpUpsertInput = Static<typeof McpUpsertFieldsSchema>;
 
 export const ServiceRequestSchema = Type.Union([
   Type.Object({ action: Type.Literal('status') }),
@@ -150,23 +165,7 @@ export const ServiceRequestSchema = Type.Union([
     serverId: McpServerIdSchema,
     input: Type.String({ minLength: 1, maxLength: 8192 }),
   }),
-  Type.Object({
-    action: Type.Literal('mcpUpsert'),
-    serverId: Type.String({
-      minLength: 1,
-      maxLength: 128,
-      pattern: '^[a-zA-Z0-9_-]+$',
-    }),
-    transport: Type.Union([
-      Type.Literal('stdio'),
-      Type.Literal('streamable-http'),
-      Type.Literal('sse'),
-    ]),
-    command: Type.Optional(Type.String({ maxLength: 1024 })),
-    args: Type.Optional(Type.Array(Type.String({ maxLength: 4096 }), { maxItems: 100 })),
-    url: Type.Optional(Type.String({ maxLength: 2048 })),
-    auth: McpAuthDraftSchema,
-  }),
+  Type.Object({ action: Type.Literal('mcpUpsert'), ...McpUpsertFieldsSchema.properties }),
   Type.Object({
     action: Type.Literal('mcpSetEnabled'),
     serverId: Type.String({ minLength: 1, maxLength: 128 }),
@@ -251,14 +250,7 @@ export interface ServiceBridge extends ServicePluginBridge, ServiceMcpApprovalBr
     mode: string;
   }>;
   mcpAuthComplete: (serverId: string, input: string) => Promise<{ ok: boolean }>;
-  mcpUpsert: (input: {
-    serverId: string;
-    transport: 'stdio' | 'streamable-http' | 'sse';
-    command?: string;
-    args?: string[];
-    url?: string;
-    auth: { type: 'none' } | { type: 'bearer'; tokenEnv: string } | { type: 'oauth' };
-  }) => Promise<{ servers: unknown[] }>;
+  mcpUpsert: (input: McpUpsertInput) => Promise<{ servers: unknown[] }>;
   mcpSetEnabled: (serverId: string, enabled: boolean) => Promise<{ servers: unknown[] }>;
   mcpRemove: (serverId: string) => Promise<{ servers: unknown[] }>;
   onChange: (listener: (event: ServiceEvent) => void) => () => void;

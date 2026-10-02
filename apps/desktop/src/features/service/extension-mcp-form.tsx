@@ -1,7 +1,5 @@
-import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Input } from '@ai/ui/components/input';
-import { Label } from '@ai/ui/components/label';
 import {
   Select,
   SelectContent,
@@ -10,14 +8,9 @@ import {
   SelectValue,
 } from '@ai/ui/components/select';
 import { Textarea } from '@ai/ui/components/textarea';
-import { FieldHint } from '../../components/field-hint';
-import type {
-  McpAuthKind,
-  McpDraft,
-  McpDraftField,
-  McpDraftProblems,
-  McpTransport,
-} from './extension-mcp-draft';
+import type { McpAuthKind, McpDraft, McpDraftProblems, McpTransport } from './extension-mcp-draft';
+import { McpField } from './extension-mcp-field';
+import { MCP_FIELD_ID as FIELD_ID, useMcpProblems } from './extension-mcp-problems';
 
 const TRANSPORTS: readonly McpTransport[] = ['stdio', 'streamable-http', 'sse'];
 const AUTH_KINDS: readonly McpAuthKind[] = ['none', 'bearer', 'oauth'];
@@ -28,60 +21,6 @@ function isTransport(value: string): value is McpTransport {
 
 function isAuthKind(value: string): value is McpAuthKind {
   return AUTH_KINDS.some((kind) => kind === value);
-}
-
-/** Control ids; a problem's message is `<id>-message`, which the control names as its description. */
-const FIELD_ID: Record<McpDraftField | 'transport' | 'auth', string> = {
-  serverId: 'mcp-server-id',
-  transport: 'mcp-transport',
-  command: 'mcp-command',
-  args: 'mcp-arguments',
-  url: 'mcp-url',
-  auth: 'mcp-auth',
-  tokenEnv: 'mcp-token-env',
-};
-
-/**
- * One labelled control. The label row and the control stack are the field's only two children,
- * so parallel fields keep their shared label and control tracks (`aligned-fields`) while a
- * message grows below the control.
- */
-function McpField({
-  id,
-  label,
-  hint,
-  message,
-  error,
-  children,
-}: {
-  id: string;
-  label: string;
-  hint?: string;
-  /** An inline problem (`error`) or a note about the current choice. */
-  message?: string;
-  error?: boolean;
-  children: ReactNode;
-}) {
-  return (
-    <div className="settings-field">
-      <div className="flex min-w-0 items-center gap-1.5">
-        <Label htmlFor={id}>{label}</Label>
-        {hint ? <FieldHint text={hint} /> : null}
-      </div>
-      <div className="settings-field">
-        {children}
-        {message ? (
-          <p
-            id={`${id}-message`}
-            className={error ? 'text-destructive text-xs' : 'text-muted-foreground text-xs'}
-            role={error ? 'alert' : undefined}
-          >
-            {message}
-          </p>
-        ) : null}
-      </div>
-    </div>
-  );
 }
 
 /**
@@ -102,15 +41,7 @@ export function McpConnectionFields({
   onChange: (next: McpDraft) => void;
 }) {
   const { t } = useTranslation('settings');
-  const problem = (field: McpDraftField) => {
-    const key = problems[field];
-    return key ? t(`extensions.mcpPage.errors.${key}`) : undefined;
-  };
-  /** Wires a control to its problem: invalid state plus the message as its description. */
-  const invalid = (field: McpDraftField) =>
-    problems[field]
-      ? { 'aria-invalid': true, 'aria-describedby': `${FIELD_ID[field]}-message` }
-      : {};
+  const { problem, invalid } = useMcpProblems(problems);
   const transportNote = {
     stdio: t('extensions.mcpPage.transportStdioHint'),
     'streamable-http': t('extensions.mcpPage.transportHttpHint'),
@@ -221,7 +152,13 @@ export function McpConnectionFields({
             <McpField
               id={FIELD_ID.auth}
               label={t('extensions.authentication')}
-              message={draft.authKind === 'oauth' ? t('extensions.mcpPage.oauthHint') : undefined}
+              message={
+                draft.authKind === 'oauth'
+                  ? t('extensions.mcpPage.oauthHint')
+                  : draft.authKind === 'none'
+                    ? t('extensions.mcpPage.authNoneHint')
+                    : undefined
+              }
             >
               <Select
                 value={draft.authKind}

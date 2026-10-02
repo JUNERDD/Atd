@@ -29,7 +29,7 @@ export function CompletionList({
   }, [options, selected, view]);
   return (
     <ScrollArea
-      className="surface-glass flex-1 max-h-[inherit] rounded-2xl"
+      className="max-h-[inherit] flex-1 rounded-2xl surface-glass"
       viewportClassName="completion-viewport"
     >
       <div

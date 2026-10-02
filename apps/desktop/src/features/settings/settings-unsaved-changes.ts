@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { SettingsSectionActiveContext, type SettingsPageControls } from './settings-navigation';
+import type { SettingsPageControls } from './settings-navigation';
 
 /**
  * The settings window's guard over editors with unsaved changes. An editor's edits live in its
@@ -36,16 +36,16 @@ export const SettingsUnsavedChangesContext = createContext<SettingsUnsavedChange
  */
 export function useSettingsUnsavedChanges(dirty: boolean) {
   const guard = useContext(SettingsUnsavedChangesContext);
-  const active = useContext(SettingsSectionActiveContext);
   // A passive effect reads the depth after the page history has registered the new page.
   const depth = useRef<number | null>(null);
   useEffect(() => {
     if (guard && depth.current === null) depth.current = guard.depth();
   }, [guard]);
+  // A hidden section's report ends with its effects.
   useEffect(() => {
-    if (!guard || !dirty || !active) return;
+    if (!guard || !dirty) return;
     return guard.register(depth.current ?? guard.depth());
-  }, [guard, dirty, active]);
+  }, [guard, dirty]);
 }
 
 /**

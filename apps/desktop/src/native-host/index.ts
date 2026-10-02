@@ -174,21 +174,20 @@ export async function installNativeHost(
     }, listen),
     service: createServiceBridge(
       async (request) => {
-        switch (request.action) {
-          case 'status':
-            return connection.status();
-          case 'connect':
-          case 'disconnect':
-          case 'startLocal':
-            throw new Error('The app starts and connects the service on its own.');
-          default:
-            return handleExtensionRequest(connection.options(), request, {
-              openExternal: openLink,
-              // Swift shows what would run and approves it itself; the page names the server only.
-              requestMcpApproval: (serverId): Promise<McpApprovalRequestResult> =>
-                native.call('approval.request', { kind: 'mcpServer', serverId }),
-            });
-        }
+        if (request.action === 'status') return connection.status();
+        if (
+          request.action === 'connect' ||
+          request.action === 'disconnect' ||
+          request.action === 'startLocal'
+        )
+          throw new Error('The app starts and connects the service on its own.');
+        // Every other action is an extension request.
+        return handleExtensionRequest(connection.options(), request, {
+          openExternal: openLink,
+          // Swift shows what would run and approves it itself; the page names the server only.
+          requestMcpApproval: (serverId): Promise<McpApprovalRequestResult> =>
+            native.call('approval.request', { kind: 'mcpServer', serverId }),
+        });
       },
       (listener) => {
         serviceListeners.add(listener);

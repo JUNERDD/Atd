@@ -20,7 +20,7 @@ export function ResourceImage({
 }: {
   file: FileRef;
   variant: 'icon' | 'thumbnail' | 'preview';
-  onLoad?: (image: HTMLImageElement) => void;
+  onLoad?: ((image: HTMLImageElement) => void) | undefined;
 }) {
   const loaded = useResourceUrl(file.id);
   const url = loaded && 'url' in loaded ? loaded.url : null;

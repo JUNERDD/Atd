@@ -25,7 +25,7 @@ import { ProviderBrand } from './provider-brand';
 /** One overview row: a connection and where the overview search matched its name. */
 interface ConnectionRow {
   connection: Connection;
-  nameRanges?: readonly MatchRange[];
+  nameRanges?: readonly MatchRange[] | undefined;
 }
 
 /**

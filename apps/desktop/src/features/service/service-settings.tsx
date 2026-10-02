@@ -36,11 +36,11 @@ export function ServiceSettings() {
   const actions = usePluginItemActions(extensions);
   const startAi = useExtensionAiSession(extensions.skills.skills?.skills ?? []);
   const memoryCreate = useMemoryCreate();
-  const { connected, busy, pluginMutations } = extensions;
+  const { connected, locked, pluginMutations } = extensions;
 
   function create(kind: PersonalCreateKind) {
     if (kind === 'command') navigateSection('commands');
-    else if (kind === 'memory') void memoryCreate.start(null);
+    else if (kind === 'memory') memoryCreate.start(null);
     else if (kind === 'skill') void startAi('skill', null);
     else open({ level: 'create', kind });
   }
@@ -71,7 +71,7 @@ export function ServiceSettings() {
           updateOf={route.updateOf}
           updateName={target ? labels.name(target) : undefined}
           connected={connected}
-          busy={busy !== null}
+          busy={locked}
           onBack={back}
           onPreview={pluginMutations.preview}
           onPreviewUpdate={pluginMutations.previewUpdate}
@@ -86,7 +86,6 @@ export function ServiceSettings() {
                 ? t('extensions.plugins.install.updated', { name })
                 : t('extensions.plugins.install.installed', { name }),
             });
-            extensions.refreshAll();
             replace({ level: 'plugin', pluginId: plugin.id }, route);
             return result;
           }}

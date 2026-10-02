@@ -69,7 +69,7 @@ export function ExtensionLoadError({
   onRetry,
 }: {
   message: string;
-  onRetry?: () => void;
+  onRetry?: (() => void) | undefined;
 }) {
   const { t } = useTranslation('settings');
   return (
@@ -98,7 +98,7 @@ export function ExtensionDetailStatus({
 }: {
   text: string;
   error: boolean;
-  onRetry?: () => void;
+  onRetry?: (() => void) | undefined;
 }) {
   if (error) return <ExtensionLoadError message={text} onRetry={onRetry} />;
   return <output className="extension-detail-status">{text}</output>;
