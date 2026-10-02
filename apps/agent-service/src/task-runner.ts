@@ -328,8 +328,10 @@ export class TaskRunner {
 
   private async ensureSession(run: TaskRun, agents: RuntimeAgent[]): Promise<LiveState> {
     const binding = await prepareRunBinding(this.session, run, agents);
-    // An idle or tier-change release still shutting the session down ends before it reopens.
+    // An idle or tier-change release still shutting the session down ends before it reopens. A
+    // run stopped while it waited ends here, leaving the session untouched.
     await this.slot.settled();
+    if (this.aborted) throw new Error('The run stopped before its session opened.');
     const live = this.slot.live;
     if (live && (await applyRunToSession(live, run, binding))) {
       this.slot.rescope(rootMemoryScope(this.taskId, run));
