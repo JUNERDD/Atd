@@ -187,12 +187,20 @@
     "moreActionsFor": "More actions for {{title}}",
     "rename": "Rename",
     "copyId": "Copy session ID",
-    "empty": "No tasks yet.",
-    "noMatches": "No matching tasks.",
-    "deleteTitle": "Delete this task?",
+    "empty": "No tasks yet",
+    "noMatches": "No results for “{{query}}”",
+    "deleteTitle": "Delete “{{title}}”?",
     "deleteDescription": "This removes its conversation, input copies and files in the app’s task folder. Files saved elsewhere and your memories remain.",
     "cancel": "Cancel",
-    "deleteAction": "Delete task"
+    "deleteAction": "Delete task",
+    "emptyDescription": "Tasks you start from a command or a message appear here.",
+    "noMatchesDescription": "Check the spelling or try a different search.",
+    "section": {
+      "today": "Today",
+      "yesterday": "Yesterday",
+      "previous7Days": "Previous 7 Days",
+      "previous30Days": "Previous 30 Days"
+    }
   },
   "transcript": {
     "footer": {

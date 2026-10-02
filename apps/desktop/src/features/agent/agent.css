@@ -937,6 +937,18 @@
 .history-row .task-row {
   flex: 1;
 }
+/* With a pointer that hovers, the More button waits for its row: a column of identical ellipses
+   competes with the titles. It keeps its space so titles never reflow, and keyboard focus, an
+   open menu, or the right-click menu still show it. */
+.history-row-more {
+  transition: opacity 150ms;
+}
+@media (hover: hover) {
+  .history-row:not(:hover, :has(:focus-visible), [data-state='open'], :has([aria-expanded='true']))
+    .history-row-more {
+    opacity: 0;
+  }
+}
 .user-message [data-slot='context-bubble'] {
   align-self: stretch;
   width: 100%;
