@@ -333,6 +333,38 @@
 .settings-content-scroll-area {
   flex: 1;
 }
+/* The page bar floats in the content padding (`gutter="none"`), off the window edge like the task
+ * panel's (4px, which the 16px narrow-layout padding still clears), and ends above the window's
+ * rounded bottom corner. Radix pins the bar's top and right inline, so the insets are margins;
+ * `height: auto` lets the bottom margin shorten the bar instead of `h-full` overriding it. */
+.settings-content-scroll-area > [data-slot='scroll-area-scrollbar'][data-orientation='vertical'] {
+  height: auto;
+  margin: 0 4px var(--settings-inset) 0;
+}
+/*
+ * The body scroller of a page that keeps its heading (and footer) in place, such as an editor or
+ * the Memory and Extensions lists. It reaches from the page column to 4px inside the window edge,
+ * so its bar sits where the content scroller's does at every width, and pads its content back to
+ * the column. The column is centered in the content area (`100cqw` is the page, the nearest size
+ * container), so the reach is half of what the window, less the sidebar, leaves beside it. The
+ * other sides give back `--settings-scroll-ring` (3px unless a list sets its own), the inner
+ * padding that holds the focus rings.
+ */
+.settings-window {
+  --settings-content-start: 0px;
+}
+.settings-window[data-layout='sidebar'] {
+  --settings-content-start: calc(var(--settings-sidebar-width) + var(--settings-inset));
+}
+.settings-page-scroll {
+  --settings-page-reach: calc((100vw - var(--settings-content-start) - 100cqw) / 2 - 4px);
+  flex: 1;
+  margin: calc(-1 * var(--settings-scroll-ring, 3px));
+  margin-right: calc(-1 * var(--settings-page-reach));
+}
+.settings-page-scroll > [data-slot='scroll-area-viewport'] {
+  padding-right: calc(var(--settings-page-reach) - var(--settings-scroll-ring, 3px));
+}
 /* Grows with a page taller than the viewport, so its bottom padding stays below the content;
  * content that overflowed a viewport-high box would scroll without that padding. */
 .settings-content-scroll {
@@ -410,12 +442,6 @@
   min-width: 0;
   gap: 16px;
   --overlay-footer-gap: 16px;
-}
-.command-editor > [data-slot='scroll-area'].editor-fields {
-  flex: 1;
-  min-height: 0;
-  min-width: 0;
-  margin: -3px -15px -3px -3px;
 }
 .settings-editor-inner,
 .settings-editor-inner.settings-fields {
@@ -593,10 +619,10 @@
   flex-direction: column;
 }
 /* Cards draw their ring, shadow and focus ring outside their box, which the viewport would clip
- * at its edges; the list insets them by that much and the scroller gives the inset back, so the
- * cards still line up with the search field. */
+ * at its edges; the list insets them by that much and the page scroller gives the inset back, so
+ * the cards still line up with the search field. */
 .settings-extension-scroll {
-  margin: -4px;
+  --settings-scroll-ring: 4px;
 }
 /* The scrolling plugin list: its sections, or the search results. */
 .settings-extension-list {
@@ -881,6 +907,14 @@
 .skill-browser-body {
   flex: 1 1 auto;
   min-height: 0;
+}
+/* A bar inside a rounded box (the file preview, the allowlisted command) keeps 4px off the box's
+ * edge and corners, as a menu's bar does inside the menu's padding. Radix pins the bar's top and
+ * right inline, so the insets are margins, with `height: auto` in place of `h-full`. */
+:is(.skill-browser-body, .settings-shell-allowlist-detail)
+  > [data-slot='scroll-area-scrollbar'][data-orientation='vertical'] {
+  height: auto;
+  margin: 4px 4px 4px 0;
 }
 .skill-browser-content {
   padding: 12px;

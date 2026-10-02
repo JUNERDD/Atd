@@ -49,9 +49,9 @@ export function MemoryEditor({
     <div className="command-editor">
       <SettingsHeading title={t('memory.edit.title')} subpage backLabel={t('memory.edit.back')} />
       <ScrollArea
-        className="editor-fields"
+        className="settings-page-scroll"
         viewportClassName="overlay-footer-fade"
-        gutter="stable"
+        gutter="none"
         scrollShadow
       >
         <div className="settings-editor-inner">
