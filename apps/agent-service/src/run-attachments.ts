@@ -6,11 +6,12 @@ import type { ResourceStore } from './resources.js';
 
 /**
  * Reads a run's files as its material: an image (by the media type it was stored with) becomes
- * image input for the model, anything else is text read into the material. A file that cannot be
- * read is skipped so the run still starts without it.
+ * image input for the model, anything else is text read into the material. Each names its
+ * resource's file, which the task's read tool opens without asking. A file that cannot be read is
+ * skipped so the run still starts without it.
  */
 export async function loadRunAttachments(
-  resources: Pick<ResourceStore, 'readBytes'>,
+  resources: Pick<ResourceStore, 'readBytes' | 'pathOf'>,
   files: readonly FileRef[],
   log: Logger,
   taskId: string,
@@ -20,10 +21,11 @@ export async function loadRunAttachments(
     try {
       const { resource, bytes } = await resources.readBytes(file.id);
       const { name } = file;
+      const path = resources.pathOf(file.id);
       attachments.push(
         isImageMime(resource.mime)
-          ? await imageAttachment(name, file.id, resource.mime, bytes)
-          : { kind: 'text', name, path: file.id, text: Buffer.from(bytes).toString('utf8') },
+          ? await imageAttachment(name, path, resource.mime, bytes)
+          : { kind: 'text', name, path, text: Buffer.from(bytes).toString('utf8') },
       );
     } catch (error) {
       log.warn('Attachment unreadable; continuing without it.', {

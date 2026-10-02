@@ -5,6 +5,7 @@ import {
   createEditToolDefinition,
   createReadToolDefinition,
   createWriteToolDefinition,
+  detectSupportedImageMimeTypeFromFile,
   type EditOperations,
   type ExtensionFactory,
   type ReadOperations,
@@ -87,13 +88,18 @@ export type WriteResolved = (real: string, content: string) => Promise<void>;
 
 const plainWrite: WriteResolved = (real, content) => writeFile(real, content);
 
-/** pi's read operations on confined paths. Images are not detected, so files read as text. */
+/**
+ * pi's read operations on confined paths. An image is detected by its content, so the read returns
+ * it as image input (fitted to the model's limits) instead of its bytes as text.
+ */
 export function readOperations(readable: ResolvePath): ReadOperations {
   return {
     readFile: async (target) => readFile(await readable(target)),
     access: async (target) => {
       await stat(await readable(target));
     },
+    detectImageMimeType: async (target) =>
+      detectSupportedImageMimeTypeFromFile(await readable(target)),
   };
 }
 
