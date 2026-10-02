@@ -60,6 +60,8 @@
       "mcpServer": "MCP server: {{name}}",
       "agent": "Subagent: {{name}}",
       "skill": "Skill: {{name}}",
+      "command": "Command: {{name}}",
+      "memory": "Memory: {{name}}",
       "quote": "Quote: {{name}}"
     },
     "progress": {
@@ -213,7 +215,9 @@
       "files": "Files",
       "conversations": "Conversations",
       "mcp": "MCP",
-      "agents": "Subagents"
+      "agents": "Subagents",
+      "savedCommands": "Commands",
+      "memory": "Memory"
     },
     "commands": {
       "new": {

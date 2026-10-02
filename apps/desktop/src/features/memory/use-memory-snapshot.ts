@@ -31,10 +31,11 @@ export function showMemorySnapshot(snapshot: MemorySnapshot) {
 
 /**
  * Saved memories as the agent bridge reports them, kept current by its `memory` change events, so
- * every page that shows memory (the Memory section, Personal's Memory tab) reads one source. Null
- * until the first read answers, or while `enabled` is false; a failed read shows its error toast.
+ * every page that shows memory (the Memory section, Personal's Memory tab, the `@` panel) reads one
+ * source. Null until the first read answers, or while `enabled` is false; a failed read shows its
+ * error toast and sets `failed` until a read answers.
  */
 export function useMemorySnapshot(enabled = true) {
-  const { data } = useQuery(memoryQuery(enabled), queryClient);
-  return { snapshot: enabled ? (data ?? null) : null };
+  const { data, isError } = useQuery(memoryQuery(enabled), queryClient);
+  return { snapshot: enabled ? (data ?? null) : null, failed: enabled && !data && isError };
 }

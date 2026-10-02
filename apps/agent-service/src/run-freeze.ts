@@ -149,7 +149,15 @@ async function freezeReferencesForRun(
 ): Promise<RunReferences> {
   const references = await takeTaskReferences(deps.ctx.paths.root, deps.taskId);
   const resolved = await resolveRunReferences(
-    { ledger: deps.ctx.ledger, taskId: deps.taskId, run, ...frozen },
+    {
+      ledger: deps.ctx.ledger,
+      dataDir: deps.ctx.paths.root,
+      agentDir: deps.ctx.paths.agentDir,
+      log: deps.ctx.log,
+      taskId: deps.taskId,
+      run,
+      ...frozen,
+    },
     references,
   );
   for (const entry of resolved.audit) deps.audit({ taskId: deps.taskId, runId: run.id, ...entry });

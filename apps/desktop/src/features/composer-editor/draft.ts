@@ -3,6 +3,7 @@ import {
   type InputChip,
   type InputChipRange,
   type MAX_INPUT_CHIPS,
+  type MemoryTarget,
   type MAX_QUOTE_CHARS,
   type MAX_RUN_REFERENCES,
   type MAX_RUN_SKILLS,
@@ -22,6 +23,8 @@ export type Chip =
   | { kind: 'mcpServer'; serverId: string }
   | { kind: 'agent'; name: string }
   | { kind: 'skill'; name: string }
+  | { kind: 'command'; commandId: string; name: string }
+  | { kind: 'memory'; target: MemoryTarget; entryId: string; title: string }
   | { kind: 'quote'; text: string; source?: QuoteSource };
 
 /**
@@ -71,7 +74,10 @@ export function chipName(chip: Chip): string {
       return chip.serverId;
     case 'agent':
     case 'skill':
+    case 'command':
       return chip.name;
+    case 'memory':
+      return chip.title;
     case 'quote':
       return quoteLabel(chip.text);
   }
@@ -89,6 +95,10 @@ function chipKey(chip: Chip): string {
     case 'agent':
     case 'skill':
       return `${chip.kind}:${chip.name}`;
+    case 'command':
+      return `command:${chip.commandId}`;
+    case 'memory':
+      return `memory:${chip.target}:${chip.entryId}`;
     case 'quote':
       return `quote:${chip.text}`;
   }
@@ -214,6 +224,10 @@ function referenceOf(chip: Chip): RunReference | null {
       return { kind: 'mcpServer', serverId: chip.serverId };
     case 'agent':
       return { kind: 'agent', name: chip.name };
+    case 'command':
+      return { kind: 'command', commandId: chip.commandId };
+    case 'memory':
+      return { kind: 'memory', target: chip.target, entryId: chip.entryId };
     case 'file':
     case 'skill':
     case 'quote':
@@ -222,7 +236,8 @@ function referenceOf(chip: Chip): RunReference | null {
 }
 
 /**
- * Run references for the conversation, MCP server and subagent chips, each item once, in draft
+ * Run references for the conversation, MCP server, subagent, command and memory chips, each item
+ * once, in draft
  * order, up to the contract's cap. Submit stages them, so deleting a chip drops its reference.
  */
 export function draftReferences(draft: ComposerDraft): RunReference[] {
@@ -247,6 +262,10 @@ function inputChipOf(chip: Chip): InputChip {
       return { kind: 'agent', name: chip.name };
     case 'skill':
       return { kind: 'skill', name: chip.name };
+    case 'command':
+      return { kind: 'command', commandId: chip.commandId, name: chip.name };
+    case 'memory':
+      return { kind: 'memory', target: chip.target, entryId: chip.entryId, title: chip.title };
     case 'quote':
       return chip.source
         ? { kind: 'quote', text: chip.text, source: chip.source }

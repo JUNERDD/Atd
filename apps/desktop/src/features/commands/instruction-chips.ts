@@ -33,6 +33,8 @@ function referenceOf(chip: Chip): InstructionReference | null {
       return { kind: 'task', taskId: chip.taskId };
     case 'file':
     case 'quote':
+    case 'command':
+    case 'memory':
       return null;
   }
 }

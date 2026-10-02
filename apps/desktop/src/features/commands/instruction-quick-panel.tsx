@@ -66,6 +66,9 @@ export function InstructionQuickPanel({
     attachmentCount: 0,
     agents: lists.agents,
     mcp: lists.mcp,
+    // Instructions hold no command or memory tokens (instruction-tokens.ts).
+    commands: [],
+    memories: { status: 'unavailable' },
     files: false,
     accepts: isInstructionChip,
   });

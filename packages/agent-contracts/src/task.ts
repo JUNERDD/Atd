@@ -3,6 +3,7 @@ import type { CommandTool } from './commands.js';
 import { Identifier, OperationId, SessionEntryId } from './identifiers.js';
 import { PermissionTierSchema } from './confirms.js';
 import { McpServerIdSchema } from './mcp.js';
+import { MemoryTargetSchema } from './memory.js';
 import { MAX_QUOTE_CHARS, QuoteSourceSchema } from './quotes.js';
 import { ThinkingLevelSchema } from './models.js';
 import { SkillName } from './skills.js';
@@ -84,6 +85,25 @@ export const InputChipSchema = Type.Union([
     { additionalProperties: false },
   ),
   Type.Object({ kind: Type.Literal('skill'), name: SkillName }, { additionalProperties: false }),
+  Type.Object(
+    {
+      kind: Type.Literal('command'),
+      commandId: Identifier,
+      /** The command's name when it was picked; a plugin command's is `<plugin>:<item>`. */
+      name: Type.String({ minLength: 1, maxLength: 256 }),
+    },
+    { additionalProperties: false },
+  ),
+  Type.Object(
+    {
+      kind: Type.Literal('memory'),
+      target: MemoryTargetSchema,
+      entryId: Identifier,
+      /** One line of the entry's content, shown in place of the whole entry. */
+      title: Type.String({ minLength: 1, maxLength: 1024 }),
+    },
+    { additionalProperties: false },
+  ),
   Type.Object(
     {
       kind: Type.Literal('quote'),

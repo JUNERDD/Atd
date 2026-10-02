@@ -2,6 +2,8 @@ import { useTranslation } from 'react-i18next';
 import {
   BookOpen,
   Bot,
+  Brain,
+  Command,
   FileText,
   Image,
   MessageSquare,
@@ -29,6 +31,9 @@ const ICONS: Record<ChipKind, LucideIcon> = {
   mcpServer: Plug,
   agent: Bot,
   skill: BookOpen,
+  // The Settings marks for Commands and Memory.
+  command: Command,
+  memory: Brain,
   // The selection toolbar's Quote in reply action, which inserts this chip.
   quote: TextQuote,
 };
@@ -39,6 +44,8 @@ const LABEL_KEYS = {
   mcpServer: 'composer.chips.mcpServer',
   agent: 'composer.chips.agent',
   skill: 'composer.chips.skill',
+  command: 'composer.chips.command',
+  memory: 'composer.chips.memory',
   quote: 'composer.chips.quote',
 } as const;
 

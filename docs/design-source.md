@@ -512,3 +512,11 @@ Figma 侧未同步：本会话云端 Figma 工具不可用，本地 Figma MCP �
 - MCP 设置：[App / Extension sub-page · Rhea](https://www.figma.com/design/D9YK1tEeBTEBgstcepesW5/ai?node-id=1584-63172) 的添加、详情、需审批、已审批页增加 Connection、OAuth client（客户端 ID、名称、回调端口、元数据 URL、客户端密钥）与 Agent access（工具加载方式、允许读取资源）分区；新增 MCP details · Plugin（只读事实与「复制到个人」提示）、MCP add · Remote（认证为 None 时的登录提示）与 MCP add · OAuth · Invalid（行内错误）；新增组件 [App / Settings switch row · Rhea](https://www.figma.com/design/D9YK1tEeBTEBgstcepesW5/ai?node-id=1723-89709) 与 [App / MCP client secret input · Rhea](https://www.figma.com/design/D9YK1tEeBTEBgstcepesW5/ai?node-id=1723-89787)（Saved / Replacing / None）。[App / Extension detail row · Rhea](https://www.figma.com/design/D9YK1tEeBTEBgstcepesW5/ai?node-id=1576-62091) 去掉固定 20px 高度，换行内容不再溢出。
 - 审阅画面：S7（`1727:92460`，六个 MCP 页面 1000 宽全长，以及 480 卡片与 320 抽屉宽度下双列堆叠，另有英文行 `1731:80242`），T2（`1731:94988`，420 与 320 面板宽度下的代码块、展开菜单的图表与两种脚本状态）。选区工具栏改为 Radix Toolbar 只影响键盘焦点，外观不变，未改 Figma。
 - 已知差异：工具加载下拉的展开态、另两个选项的说明、保存成功与导出失败提示、插件命令（stdio）事实只写在说明中，未单独绘制；语法色与行号宽度为近似，Geist Mono 代替 SF Mono，`=>` 因连字显示为 ⇒；`App / Activity step` 在窄行中长目标会挤压标题（代码中目标截断），320 示例改用短目标；S4/S7 1000 宽窗口实例的面包屑仍为旧的「Models」。
+
+## 2026-10-02 输入框 @ 面板提及命令与记忆
+
+用户要求 Composer 的 `@` 面板也能提及已保存命令和记忆（此前引用类条目常常只剩 MCP），并确认两者都作为引用芯片：命令把定义（名称、说明、指令模板、参数）作为上下文交给本次运行而不执行它，记忆只引用单条条目的内容。`/` 仍不列已保存命令（Q2 不变）。
+
+- 代码：`features/quick-panel/use-saved-groups.tsx` 提供 Commands（已启用命令）与 Memory 分组，`use-mention-view.tsx` 把它们排在子代理之后；芯片新增 `command` / `memory` 两种（`composer-editor/draft.ts`、`chip-content.tsx`），契约 `RunReference` / `InputChip` 同步新增；服务端在 `references/saved.ts` 解析，记忆按内容哈希 id 定位，条目改过或本条消息关闭记忆时列为不可用。命令指令编辑器不提供这两类（指令令牌不含它们）。
+- Figma：[App / Composer quick panel](https://www.figma.com/design/D9YK1tEeBTEBgstcepesW5/ai?node-id=1447-51964) 的 `View=Mention root` 在 Subagents 后新增 Group / Commands 与 Group / Memory（Lucide / command、Lucide / brain，记忆类型作为尾部状态）；[App / Composer chip](https://www.figma.com/design/D9YK1tEeBTEBgstcepesW5/ai?node-id=1451-53451) 新增 `Kind=Command` / `Kind=Memory`（Default、Selected）；两处组件说明已更新。
+- 已知差异：Mention root 的 Options 区域固定高度并裁剪，新分组位于滚动区下方，整体预览中不可见；`View=Mention query` 未绘制命中命令或记忆的示例。
