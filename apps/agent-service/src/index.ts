@@ -118,6 +118,8 @@ export async function createService(
   // Runs drain and HTTP closes first, so MCP has lost its callers when the
   // close ends every MCP connection (base and per-task aliases) and its
   // stdio children; only then does the lock free the profile for a new service.
+  // Clearing the endpoint tells the native supervisor the stop has finished
+  // (`ServiceStopper`): it gives the process a short grace to exit, then kills it.
   const stopService = async () => {
     await manager.shutdown();
     await app.close();
