@@ -22,6 +22,7 @@ import {
   SubagentContext,
   useSubagentContextValue,
 } from './features/agent/transcript/subagent-context';
+import { PanelTitle } from './features/agent/panel-title';
 import { SessionMenu } from './features/agent/session-menu';
 import { TaskHistory } from './features/agent/task-history';
 import { ServiceBanner } from './features/service/service-banner';
@@ -141,7 +142,11 @@ export function App() {
                     className="panel-brand pointer-events-none shrink-0 bg-current"
                   />
                 </IconButton>
-                <h1 title={title}>{title}</h1>
+                <PanelTitle
+                  key={view === 'task' ? taskId : view}
+                  title={title}
+                  task={view === 'task' ? (current.detail?.task ?? null) : null}
+                />
                 <nav className="header-controls" aria-label={t('header.controlsLabel')}>
                   {view === 'task' && current.detail && <SessionMenu detail={current.detail} />}
                   <IconButton

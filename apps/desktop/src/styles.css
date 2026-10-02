@@ -87,6 +87,28 @@ body {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* A task's title renames in place (`PanelTitle`). The button and the field share one box: 28px
+   tall with an 8px text inset, pulled 4px toward the logo so the text moves only 4px while the
+   hover wash stays clear of the logo button. The button hugs its title and leaves the rest of the
+   header to the window drag; the field fills the row while it is open. Both truncate on their
+   own, so the heading stops clipping, which would cut the pulled edge off their fill. */
+.panel-header h1:has(> .panel-title-button, > .panel-title-field) {
+  overflow: visible;
+}
+.panel-title-button,
+.panel-title-field {
+  height: 28px;
+  margin-left: -4px;
+  padding-inline: 8px;
+}
+.panel-title-button {
+  max-width: calc(100% + 4px);
+  justify-content: flex-start;
+}
+.panel-title-field {
+  width: calc(100% + 4px);
+  font-weight: 500;
+}
 
 .header-controls {
   display: flex;
