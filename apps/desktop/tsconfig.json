@@ -1,13 +1,13 @@
 {
   "extends": "@ai/typescript-config/react.json",
   "compilerOptions": {
-    // The renderer runs only in WKWebView on macOS 26, which ships ES2023 (`findLast`).
-    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    // The renderer runs only in WKWebView on macOS 26, which ships ES2025 (Set methods,
+    // iterator helpers, `Promise.try`).
+    "lib": ["ES2025", "DOM", "DOM.Iterable"],
     "types": ["vite/client", "node"],
     // The native bridge contract imports its parts by `.ts` file name, which Node's type
     // stripping needs when the schema export script loads it.
-    "allowImportingTsExtensions": true,
-    "paths": { "@/*": ["./src/*"] }
+    "allowImportingTsExtensions": true
   },
   "include": ["src", "tests", "*.ts", "plugins"]
 }
