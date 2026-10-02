@@ -42,6 +42,63 @@ struct ShellResourcesTests {
     #expect(AttachmentRules.basename("/a/b/") == "b")
   }
 
+  @Test("A screenshot scales down only when its long edge exceeds 2560 px")
+  func screenshotScaling() {
+    #expect(ScreenshotRules.scaledLongEdge(width: 5120, height: 2880) == 2560)
+    #expect(ScreenshotRules.scaledLongEdge(width: 1200, height: 4000) == 2560)
+    #expect(ScreenshotRules.scaledLongEdge(width: 2560, height: 1600) == nil)
+    #expect(ScreenshotRules.scaledLongEdge(width: 40, height: 30) == nil)
+  }
+
+  @Test("The size label shows points, and the stored pixels when they differ")
+  func screenshotSizeLabel() {
+    func label(_ rect: CGRect, scale: CGFloat, image: (Int, Int)) -> String {
+      ScreenshotRules.sizeLabel(
+        selection: rect, scale: scale, imageWidth: image.0, imageHeight: image.1)
+    }
+    let area = CGRect(x: 10, y: 20, width: 400, height: 300)
+    // A 1x capture stores what it shows; a Retina one stores twice the points.
+    #expect(label(area, scale: 1, image: (1920, 1080)) == "400 × 300")
+    #expect(label(area, scale: 2, image: (3024, 1964)) == "400 × 300 · 800 × 600 px")
+    // The 2560 px long-edge cap applies to 1x and Retina alike.
+    let whole = CGRect(x: 0, y: 0, width: 1512, height: 982)
+    #expect(label(whole, scale: 2, image: (3024, 1964)) == "1512 × 982 · 2560 × 1663 px")
+    let wide = CGRect(x: 0, y: 0, width: 3000, height: 1000)
+    #expect(label(wide, scale: 1, image: (3000, 1000)) == "3000 × 1000 · 2560 × 853 px")
+    // Fractional points round for the label; a selection past the image shows what is left.
+    #expect(
+      label(CGRect(x: 0, y: 0, width: 99.5, height: 50), scale: 2, image: (400, 400))
+        == "100 × 50 · 199 × 100 px")
+    #expect(
+      label(CGRect(x: 90, y: 0, width: 50, height: 10), scale: 1, image: (100, 100))
+        == "50 × 10 · 10 × 10 px")
+  }
+
+  @Test("The stored size is the first attempt's, so the label and the file agree")
+  func screenshotExportSize() {
+    for (width, height) in [(3024, 1964), (800, 600), (6016, 3384), (10, 5000)] {
+      let first = ScreenshotRules.firstAttempt(width: width, height: height)
+      #expect(
+        ScreenshotRules.exportSize(width: width, height: height)
+          == ScreenshotRules.pixelSize(width: width, height: height, longEdge: first.longEdge))
+    }
+  }
+
+  @Test("A screenshot is named like the system's, in the given time zone")
+  func screenshotName() throws {
+    let date = try Date.ISO8601FormatStyle().parse("2026-10-01T02:16:11Z")
+    let shanghai = try #require(TimeZone(identifier: "Asia/Shanghai"))
+    #expect(
+      ScreenshotRules.fileName(capturedAt: date, timeZone: shanghai)
+        == "Screenshot 2026-10-01 at 10.16.11.png")
+    #expect(
+      ScreenshotRules.fileName(capturedAt: date, timeZone: .gmt)
+        == "Screenshot 2026-10-01 at 02.16.11.png")
+    #expect(
+      ScreenshotRules.contextFileName(capturedAt: date, timeZone: shanghai)
+        == "Screenshot 2026-10-01 at 10.16.11 context.md")
+  }
+
   static func save(_ name: String, _ content: String) -> JSONValue {
     .object(["name": .string(name), "contentBase64": .string(content)])
   }

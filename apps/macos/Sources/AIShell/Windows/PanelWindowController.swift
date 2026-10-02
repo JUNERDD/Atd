@@ -103,6 +103,21 @@ final class PanelWindowController: NSObject, NSWindowDelegate {
     onVisibilityChange?(false)
   }
 
+  /// Takes the panel off screen for a capture session and returns what puts it back as it was.
+  /// A resident panel is ordered out too, not only a visible one, so no panel state can take
+  /// key status or events while the overlays are up; `orderOut`'s timer throttling (R9) only
+  /// lasts as long as the session. A miniaturized panel is left alone.
+  func withdrawForCapture() -> @MainActor () -> Void {
+    guard !panel.isMiniaturized else { return {} }
+    let visible = isVisible
+    if visible { hide() }
+    panel.orderOut(nil)
+    return { [weak self] in
+      guard let self else { return }
+      if visible { show() } else { panel.orderFrontRegardless() }
+    }
+  }
+
   // MARK: NSWindowDelegate
 
   /// The close button dismisses like the in-panel hide control; quitting releases the panel.

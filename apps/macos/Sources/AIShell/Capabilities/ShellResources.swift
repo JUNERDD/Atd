@@ -62,7 +62,8 @@ final class AttachmentImporter {
     }
   }
 
-  private func importPaths(_ urls: [URL]) async throws(BridgeError) -> ResourceImportResponse {
+  /// The service's import of local files, at most ``AttachmentRules/maxPathsPerImport``.
+  func importPaths(_ urls: [URL]) async throws(BridgeError) -> ResourceImportResponse {
     let paths = urls.filter(\.isFileURL).prefix(AttachmentRules.maxPathsPerImport).map {
       $0.standardizedFileURL.path(percentEncoded: false)
     }
