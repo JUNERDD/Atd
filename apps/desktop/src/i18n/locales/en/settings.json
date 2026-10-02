@@ -598,7 +598,7 @@
       "disconnectedDescription": "Plugins appear here once the agent service is running again.",
       "host": {
         "core": {
-          "name": "Core",
+          "name": "System",
           "description": "Skills and subagents that ship with the app."
         },
         "personal": {

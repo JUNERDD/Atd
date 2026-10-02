@@ -596,7 +596,7 @@
       "disconnectedDescription": "Agent 服务重新运行后，插件会显示在这里。",
       "host": {
         "core": {
-          "name": "核心",
+          "name": "系统",
           "description": "随应用提供的技能和子代理。"
         },
         "personal": {

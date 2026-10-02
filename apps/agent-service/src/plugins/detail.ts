@@ -41,7 +41,7 @@ function componentDescription(component: PluginComponent): string {
 }
 
 /**
- * Items of installed and shared plugins are toggled or duplicated, never edited (D8); Core's
+ * Items of installed and shared plugins are toggled or duplicated, never edited (D8); System's
  * items are restored rather than edited. Only Personal items are editable.
  */
 function isReadOnly(plugin: ResolvedPlugin): boolean {

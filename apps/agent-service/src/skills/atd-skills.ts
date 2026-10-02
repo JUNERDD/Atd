@@ -49,7 +49,7 @@ export async function discoverAtdSkills(): Promise<{
 
 /**
  * Deletes one Personal skill from `<atdHome>/skills`: a `SKILL.md` skill takes its whole folder,
- * a loose `.md` file at the catalog root only that file. Built-in skills belong to Core and are
+ * a loose `.md` file at the catalog root only that file. Built-in skills belong to System and are
  * refused, since the next reconcile would reinstall them anyway.
  */
 export async function deleteAtdSkill(skill: SkillRevisionRecord): Promise<void> {
