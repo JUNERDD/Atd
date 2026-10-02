@@ -96,4 +96,9 @@ export interface DesktopBridge {
    * focused CodeMirror editor's history or runs the native command. Optional for test compat.
    */
   onEditCommand?: (listener: (command: EditCommand) => void) => () => void;
+  /**
+   * The global screenshot shortcut, which the shell hands to the panel page only (absent in the
+   * settings window and in tests); returns the unsubscribe. The page takes the screenshot itself.
+   */
+  onScreenshotShortcut?: (listener: () => void) => () => void;
 }

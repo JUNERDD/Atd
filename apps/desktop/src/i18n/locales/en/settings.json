@@ -167,6 +167,10 @@
         "label": "Show or hide panel",
         "description": "Available anywhere on your Mac."
       },
+      "captureScreenshot": {
+        "label": "Take screenshot",
+        "description": "Capture the screen and attach it to the composer."
+      },
       "newConversation": {
         "label": "New conversation",
         "description": "Start with a clean composer."

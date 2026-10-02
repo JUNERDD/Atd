@@ -73,6 +73,7 @@ export class NativeBridge {
     'window.visibility': new Set(),
     'accessibility.reduceTransparency': new Set(),
     'shortcut.command': new Set(),
+    'shortcut.screenshot': new Set(),
     'resources.imported': new Set(),
     'files.drag': new Set(),
     'edit.command': new Set(),

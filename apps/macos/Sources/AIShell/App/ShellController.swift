@@ -144,6 +144,7 @@ public final class ShellController {
           panel.dockAtCursor()
           panel.show()
         case .deliverCommand(let id): panelHost.send(.shortcutCommand(.init(id: id)))
+        case .deliverScreenshot: panelHost.send(.shortcutScreenshot(.init()))
         }
       }
     }

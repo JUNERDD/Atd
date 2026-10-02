@@ -55,6 +55,7 @@ function schemaDocument() {
       deliverScript: contract.DELIVER_SCRIPT,
       deliverArgument: contract.DELIVER_ARGUMENT,
       panelShortcutId: calls.PANEL_SHORTCUT_ID,
+      screenshotShortcutId: calls.SCREENSHOT_SHORTCUT_ID,
       maxCaptureLength: calls.MAX_CAPTURE_LENGTH,
       calls: Object.keys(calls.NativeCalls),
       posts: Object.keys(contract.NativePosts),

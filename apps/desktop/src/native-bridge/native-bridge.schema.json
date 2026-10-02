@@ -8,6 +8,7 @@
     "deliverScript": "window.aiNative.deliver(message)",
     "deliverArgument": "message",
     "panelShortcutId": "togglePanel",
+    "screenshotShortcutId": "captureScreenshot",
     "maxCaptureLength": 100000,
     "calls": [
       "window.show",
@@ -46,6 +47,7 @@
       "window.visibility",
       "accessibility.reduceTransparency",
       "shortcut.command",
+      "shortcut.screenshot",
       "resources.imported",
       "files.drag",
       "edit.command",
@@ -1118,6 +1120,26 @@
                   "maxLength": 128
                 }
               },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "event", "payload"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "event"
+            },
+            "event": {
+              "type": "string",
+              "const": "shortcut.screenshot"
+            },
+            "payload": {
+              "type": "object",
+              "properties": {},
               "additionalProperties": false
             }
           },
@@ -2519,6 +2541,11 @@
           "maxLength": 128
         }
       },
+      "additionalProperties": false
+    },
+    "ShortcutScreenshotEvent": {
+      "type": "object",
+      "properties": {},
       "additionalProperties": false
     },
     "ResourcesImportedEvent": {

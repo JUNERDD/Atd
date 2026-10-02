@@ -7,18 +7,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@atd/ui/components/dropdown-menu';
-import type { Screenshot } from '../client/agent/screenshot-input';
-import type { FileChip } from '../features/composer-editor/draft';
+import { screenshotChip, type FileChip } from '../features/composer-editor/draft';
 import { agentApi } from '../features/agent/use-agent';
 import { IconButton } from './icon-button';
 import { showErrorToast } from './toast-store';
-
-/** A capture's chip: the image, with its screen context while `room` leaves space for it. */
-function shotChip(shot: Screenshot, room: number): FileChip {
-  return shot.context && room > 1
-    ? { kind: 'file', file: shot.file, context: shot.context }
-    : { kind: 'file', file: shot.file };
-}
 
 /**
  * The composer's attach control: a menu of the context a draft can take. Screenshot captures on
@@ -69,7 +61,7 @@ export function ComposerAttachMenu({
     setBusy(true);
     try {
       const shot = await desktop.screenshot();
-      if (shot) attach([shotChip(shot, room)]);
+      if (shot) attach([screenshotChip(shot, room)]);
     } catch (error) {
       showErrorToast(error);
     }

@@ -11,6 +11,7 @@ import { ToastHost } from './components/toast';
 import { useAppLanguage } from './i18n/use-app-language';
 import { agentApi } from './features/agent/use-agent';
 import { focusPanelInput } from './features/agent/use-panel-window';
+import { useScreenshotShortcut } from './features/agent/use-screenshot-shortcut';
 import { useTaskPanel } from './features/agent/use-task-panel';
 import { CommandLauncher } from './features/agent/command-launcher';
 import { CommandInput } from './features/agent/command-input';
@@ -84,6 +85,15 @@ export function App() {
     const latest = latestDraft.current;
     latest.changeDraft(appendChip(latest.draft, { kind: 'file', file }));
   }, []);
+  // The views without a composer give way to the new conversation, whose draft they share.
+  useScreenshotShortcut({
+    draft,
+    changeDraft,
+    showComposer: () => {
+      if (child.childKey) child.close();
+      if (view === 'history' || view === 'input') setView('new');
+    },
+  });
   // A quote lands as a chip after the draft's content with the caret after it: the editor takes an
   // outside draft in its layout effect with the caret at the end, before the next frame.
   const quoteToDraft = useCallback((markdown: string, source: QuoteSource | undefined) => {
