@@ -11,17 +11,30 @@ workspace = true
 
 [dependencies]
 # Exact pin: 0.x with frequent breaking releases, no public repository. Only `store.rs` may use it.
-minidex = "=0.36.0"
+minidex = "=0.37.0"
 ignore = "0.4.33"
-libc = "0.2.186"
+libc = "0.2.189"
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.151"
-thiserror = "2.0.17"
+thiserror = "2.0.21"
 unicode-normalization = "0.1.25"
 
 [target.'cfg(target_os = "macos")'.dependencies]
-# 4.1.0, not 5.x: 5.x is `#[deprecated]` at crate level; 4.1.0 is what notify 8.2 builds on.
-fsevent-sys = "=4.1.0"
+# FSEvents through the objc2 bindings, with streams delivered on a dispatch queue. Features are
+# listed exactly because these crates default to wrapping every framework API.
+dispatch2 = { version = "0.3.1", default-features = false, features = ["std", "alloc"] }
+objc2-core-foundation = { version = "0.3.2", default-features = false, features = [
+  "std",
+  "CFString",
+  "CFArray",
+  "CFUUID",
+] }
+objc2-core-services = { version = "0.3.2", default-features = false, features = [
+  "std",
+  "FSEvents",
+  "libc",
+  "dispatch2",
+] }
 
 [dev-dependencies]
 tempfile = "3.27.0"

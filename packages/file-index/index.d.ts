@@ -10,20 +10,32 @@
 export declare const __napiBindingTarget: 'native' | 'wasm32-wasi' | 'wasm32-wasip1';
 
 export declare class FileIndex {
-  /** Opens (or creates) the index stored in `dataDir`. */
-  static open(dataDir: string, options: OpenOptions): FileIndex;
-  /** Starts watching and, when the saved state cannot be resumed, the first walk. */
+  /**
+   * Opens (or creates) the index stored in `dataDir`. Loading a large saved index takes a
+   * moment, hence a promise.
+   */
+  static open(dataDir: string, options: OpenOptions): Promise<FileIndex>;
+  /**
+   * Starts watching and, when the saved state cannot be resumed, the first walk in the
+   * background. Returns once the event stream runs.
+   */
   start(): void;
-  /** Best matches first; `limit` is clamped to 1-100. */
-  query(text: string, limit: number): Array<QueryHit>;
+  /**
+   * Best matches first; `limit` is clamped to 1-100. Aborting `signal` rejects with an
+   * `AbortError` while the query is still queued; a query that already runs finishes.
+   */
+  query(
+    text: string,
+    limit: number,
+    signal?: AbortSignal | undefined | null,
+  ): Promise<Array<QueryHit>>;
   status(): IndexStatus;
   /** Stops background work and saves the resume point. Also runs when the object is collected. */
-  close(): void;
+  close(): Promise<void>;
 }
 
 export interface IndexStatus {
-  /** `idle` | `scanning` | `watching` | `stopped`. */
-  phase: string;
+  phase: Phase;
   resumed: boolean;
   scannedFiles: number;
   /** FSEvents ids can exceed 2^53, so the id travels as a decimal string. */
@@ -38,6 +50,9 @@ export interface OpenOptions {
   /** Home folder to index; defaults to `$HOME`. iCloud Drive inside it is indexed as well. */
   home?: string;
 }
+
+/** Where the index is in its life. */
+export type Phase = 'idle' | 'scanning' | 'watching' | 'stopped';
 
 export interface QueryHit {
   /** Stable per path across queries and restarts. */

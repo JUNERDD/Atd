@@ -898,6 +898,7 @@ if (!nativeBinding) {
   throw new Error(`Failed to load native binding`);
 }
 
-const { FileIndex } = nativeBinding;
+const { FileIndex, Phase } = nativeBinding;
 export { FileIndex };
+export { Phase };
 export const __napiBindingTarget = __napiLoadedBindingTarget;
