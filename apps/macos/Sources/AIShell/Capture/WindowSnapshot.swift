@@ -54,7 +54,6 @@ struct WindowSnapshot {
 
   /// The app and window frontmost at `point` (Quartz): the app's localized name and the
   /// window's title, each nil when unknown.
-  @MainActor
   func describe(at point: CGPoint) -> (app: String?, window: String?) {
     let windows = entries.map {
       ElementChain.Window(id: $0.window.windowID, pid: $0.window.pid, frame: $0.window.quartzFrame)

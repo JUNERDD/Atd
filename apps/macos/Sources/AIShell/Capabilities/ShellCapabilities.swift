@@ -7,7 +7,6 @@ import UniformTypeIdentifiers
 /// (``ControlStreamClient``) receives. Reads that could take text
 /// from the user's apps (selection, clipboard) answer only while the panel is visible. A thrown
 /// ``CapabilityFailure`` is the message the agent sees.
-@MainActor
 final class ShellCapabilities: CapabilityHandling {
   private let services: ShellServices
   private let panelVisible: () -> Bool
@@ -116,7 +115,6 @@ struct CapabilityFailure: LocalizedError {
 
 /// Open and save panels. While one is open the panel floats no higher than normal windows
 /// (so the system panel is never hidden behind it) and summons are ignored.
-@MainActor
 final class SystemPanels {
   private(set) var isOpen = false
   private let lowerPanel: () -> NSWindow.Level

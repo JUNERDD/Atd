@@ -6,7 +6,6 @@ import AppKit
 /// y down (the flipped canvas, whose bounds are view points, or the export context after
 /// ``CaptureCoordinates/cropTransform(selection:scale:)``); Retina sharpness comes from the
 /// context's own pixel density.
-@MainActor
 final class AnnotationRenderer {
   private let mosaic = AnnotationMosaic()
 

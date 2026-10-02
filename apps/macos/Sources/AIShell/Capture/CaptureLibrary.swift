@@ -6,7 +6,6 @@ import AppKit
 /// around it, a `… context.md` attachment in the same import call. The raw pixels, scale and
 /// annotations of the last ``capacity`` imports stay in memory for this app run, keyed by the
 /// image's resource id; any other image is downloaded from the service to be edited.
-@MainActor
 final class CaptureLibrary {
   /// Imported files: the image and its screen context, when one was attached.
   struct Imported {

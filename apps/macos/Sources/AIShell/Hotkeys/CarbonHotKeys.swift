@@ -7,7 +7,6 @@ import Carbon.HIToolbox
 /// fail. Real errors (a repeat within this process, an invalid key) still come back as status.
 /// HotKey is not used: it drops the status and is unmaintained; only its idea of mapping key
 /// names to codes survives, in `Accelerator`.
-@MainActor
 final class CarbonHotKeys {
   private static let signature: OSType = 0x4149_4B59  // 'AIKY'
 

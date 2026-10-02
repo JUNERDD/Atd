@@ -7,7 +7,6 @@ import NaturalLanguage
 ///
 /// The state follows the current utterance alone: the synthesizer reports the end of a replaced
 /// utterance after the next one was queued, and that late callback must not clear the new state.
-@MainActor
 final class SpeechReader: NSObject {
   /// Whether the shell is speaking; unchanged values are not reported again.
   var onChange: (Bool) -> Void = { _ in }

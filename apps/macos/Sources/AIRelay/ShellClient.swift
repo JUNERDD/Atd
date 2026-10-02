@@ -2,8 +2,9 @@ import AICore
 import Foundation
 
 /// Authenticated calls the shell makes for itself with the main token, including the
-/// `shell`-exposure routes the relay never lets the page reach.
-public struct ShellClient: Sendable {
+/// `shell`-exposure routes the relay never lets the page reach. Nonisolated: a value any task
+/// may hold (the quit guard races it against a timeout); its calls run on the caller's executor.
+public nonisolated struct ShellClient: Sendable {
   public let endpoint: ServiceEndpoint
   private let session: URLSession
 
@@ -46,7 +47,9 @@ public struct ShellClient: Sendable {
   }
 
   /// Downloads a resource the agent produced into `directory` as `<id>-<name>`, quarantined,
-  /// and returns where it went. Opening, revealing and copying the path are the caller's.
+  /// and returns where it went. Opening, revealing and copying the path are the caller's. The
+  /// file write runs off the main actor.
+  @concurrent
   public func downloadArtifact(
     id: String, into directory: URL
   ) async throws -> DownloadedArtifact {
@@ -134,7 +137,7 @@ public struct ShellClient: Sendable {
   }
 }
 
-public enum ShellClientError: LocalizedError, Equatable, Sendable {
+public nonisolated enum ShellClientError: LocalizedError, Equatable, Sendable {
   /// The service answered with an error status and, usually, its error envelope.
   case http(status: Int, code: String?, message: String?)
   case invalidResponse
@@ -151,7 +154,7 @@ public enum ShellClientError: LocalizedError, Equatable, Sendable {
 }
 
 /// The fields of `StatusResponseSchema` the shell uses.
-public struct ServiceStatus: Decodable, Equatable, Sendable {
+public nonisolated struct ServiceStatus: Decodable, Equatable, Sendable {
   public struct Service: Decodable, Equatable, Sendable {
     public let serviceId: String
     public let epoch: Int
@@ -165,13 +168,13 @@ public struct ServiceStatus: Decodable, Equatable, Sendable {
 }
 
 /// A stored resource's content.
-public struct ServiceResource: Equatable, Sendable {
+public nonisolated struct ServiceResource: Equatable, Sendable {
   public let bytes: Data
   public let name: String
   public let mime: String
 }
 
-public struct DownloadedArtifact: Equatable, Sendable {
+public nonisolated struct DownloadedArtifact: Equatable, Sendable {
   public let fileURL: URL
   public let name: String
   public let mime: String

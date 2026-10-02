@@ -29,7 +29,6 @@ enum CaptureExport {
   /// annotations, at the display's native scale. Both are copies: a crop of the frozen image
   /// alone would keep the whole display's pixels alive while the raw image is archived.
   /// Annotation drawing belongs to the editor on the main actor.
-  @MainActor
   static func render(
     selection: CGRect, display: FrozenDisplay, editor: (any AnnotationEditing)?
   ) -> Rendered? {

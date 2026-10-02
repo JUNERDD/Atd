@@ -8,7 +8,6 @@ import AppKit
 /// keeps the text; an edit left empty removes the annotation. With a text background the canvas
 /// draws the plate behind the text view (the view itself stays transparent). The finished edit
 /// is one undo step in the document; keystrokes have their own history while the editor is open.
-@MainActor
 final class AnnotationTextEditor: NSObject, NSTextViewDelegate {
   private struct Session {
     let view: NSTextView

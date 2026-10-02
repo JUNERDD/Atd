@@ -6,7 +6,6 @@ import CoreImage.CIFilterBuiltins
 /// annotations), so the exported image holds only the blocks. Results are cached per region,
 /// because the live canvas redraws on every pointer move and selection change while the
 /// backdrop stays the same.
-@MainActor
 final class AnnotationMosaic {
   private struct Key: Hashable {
     let backdrop: ObjectIdentifier

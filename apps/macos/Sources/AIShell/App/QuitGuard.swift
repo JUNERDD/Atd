@@ -10,7 +10,6 @@ import AppKit
 /// Unattended quits never ask: logout, restart or shutdown (the quit Apple event's reason, or
 /// `willPowerOff`) and termination signals. A prompt already open when one arrives is aborted
 /// and the teardown starts without its answer.
-@MainActor
 final class QuitGuard {
   /// The service's started and queued runs; an unreachable or slow service counts as idle.
   private let activeRuns: @MainActor () async -> Int
@@ -54,7 +53,7 @@ final class QuitGuard {
     if Self.quitIsUnattended() { unattended = true }
     if asking { return .terminateCancel }
     asking = true
-    Task { @MainActor in
+    Task {
       var confirmed = unattended
       if !confirmed {
         let count = await activeRuns()

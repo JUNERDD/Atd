@@ -12,7 +12,6 @@ import WebKit
 /// - **Pasted files and bitmaps.** Edit › Paste runs ``pasteAttachingFiles(_:)``: file URLs on
 ///   the pasteboard are imported, and so is a bitmap when no text came with it; anything else
 ///   pastes into the page as usual.
-@MainActor
 final class ShellWebView: WKWebView {
   /// Drag rectangles in CSS pixels from the page's top-left corner.
   var dragRegions: [CGRect] = []

@@ -9,7 +9,6 @@ import AppKit
 /// The images are the App target's `<state>Template` image sets, exported at 1x and 2x from the
 /// Figma component set `1562:59933`; re-export them from Figma instead of editing them. The
 /// `Template` suffix makes macOS tint them for the menu bar appearance.
-@MainActor
 final class StatusItemController: NSObject {
   private let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
   private let toggle: () -> Void

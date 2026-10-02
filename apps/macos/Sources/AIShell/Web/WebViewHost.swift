@@ -8,7 +8,6 @@ import WebKit
 /// window), locks its navigation down (R6), rebuilds it after a WebContent crash, and runs its
 /// end of the bridge: the page's virtual sockets and the one delivery path for everything the
 /// shell sends it (``BridgeOutbox``, spike S6).
-@MainActor
 final class WebViewHost: NSObject {
   let role: WebViewRole
   /// The view windows embed; the web view fills it and is swapped inside it on a rebuild.

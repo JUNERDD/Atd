@@ -12,7 +12,6 @@ public enum RendererSource: Equatable, Sendable {
 /// Serves non-`/v1` paths: files of the bundle, or in development the dev server's answer.
 /// HTML documents get the generated CSP header; every answer gets an explicit type and
 /// `nosniff`.
-@MainActor
 final class RendererAssets {
   private let source: RendererSource
   private let resolver: StaticFileResolver?

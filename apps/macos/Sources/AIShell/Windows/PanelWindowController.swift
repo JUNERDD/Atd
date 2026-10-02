@@ -8,7 +8,6 @@ import AppKit
 /// Hiding follows spike S7 and plan decision R9: the panel stays ordered in at alpha 0, ignores
 /// the mouse and gives up key status, because `orderOut` drops WebKit's timers to 1/s. Alpha 0
 /// alone keeps timers and animation frames at full rate, so occlusion detection stays on.
-@MainActor
 final class PanelWindowController: NSObject, NSWindowDelegate {
   let panel: ShellPanel
   let host: WebViewHost

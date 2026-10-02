@@ -6,7 +6,6 @@ import ScreenCaptureKit
 /// are ever in the image. Displays are taken one at a time, the one under the cursor first:
 /// `replayd` serialises concurrent requests and charges each queued one, so a sequential run
 /// gets the cursor's display interactive soonest.
-@MainActor
 struct DisplayFreezer {
   /// A display ScreenCaptureKit offers, with the screen its overlay goes on.
   struct Target {

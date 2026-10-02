@@ -12,7 +12,6 @@ import AppKit
 ///
 /// A session that reopens a screenshot for editing (decision F2) never starts detection: the
 /// caller preselects the image with ``preselect(_:onDisplay:restoring:)`` instead.
-@MainActor
 final class CaptureSession {
   enum Outcome {
     case cancelled

@@ -31,7 +31,6 @@ import AppKit
 /// only where the host routes the pointer here, so it never fights the session's cursors over
 /// the handles, the edge band or the bars. The same routing decides where the element preview
 /// of a tool that boxes elements shows (E10).
-@MainActor
 final class AnnotationCanvasView: NSView {
   let store: AnnotationStore
   let interaction: AnnotationInteraction

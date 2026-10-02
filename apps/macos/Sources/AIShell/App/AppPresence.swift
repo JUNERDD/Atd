@@ -2,7 +2,6 @@ import AppKit
 import ServiceManagement
 
 /// Show in Dock and Open at Login, the two app-level preferences the settings page drives.
-@MainActor
 enum AppPresence {
   /// Info.plist starts the app as an agent (`LSUIElement`), so a hidden Dock icon never
   /// flashes at launch; showing it turns the app into a regular one at runtime. Becoming an
@@ -74,7 +73,6 @@ enum AppPresence {
 /// One running copy per bundle id. A second launch (a double-click while the app runs, or the
 /// binary started by hand) asks the first to show its panel and exits before it touches
 /// anything, so two shells never race for hot keys or the service.
-@MainActor
 enum SingleInstance {
   private static var notification: Notification.Name {
     Notification.Name("\(Bundle.main.bundleIdentifier ?? "com.junerdd.ai").showPanel")

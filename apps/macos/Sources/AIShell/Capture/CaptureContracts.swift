@@ -10,7 +10,7 @@ import CoreGraphics
 // Quartz points minus the display's Quartz origin.
 
 /// One display frozen at the start of a session.
-struct FrozenDisplay {
+nonisolated struct FrozenDisplay {
   let displayID: CGDirectDisplayID
   /// The display's bounds in Quartz points (`CGDisplayBounds`); may have a negative origin.
   let quartzFrame: CGRect
@@ -24,7 +24,7 @@ struct FrozenDisplay {
 /// A window on screen when the session started, front to back. Taken before any overlay
 /// appears, so the session decides which app is under a point (AX hit-testing cannot: it would
 /// answer with the overlay).
-struct CaptureWindow: Equatable, Sendable {
+nonisolated struct CaptureWindow: Equatable, Sendable {
   let windowID: CGWindowID
   let pid: pid_t
   /// Window bounds in Quartz points.
@@ -34,7 +34,7 @@ struct CaptureWindow: Equatable, Sendable {
 }
 
 /// What element detection can offer for this session.
-enum ElementDetection: Equatable, Sendable {
+nonisolated enum ElementDetection: Equatable, Sendable {
   /// Accessibility is trusted: elements inside windows are detected.
   case elements
   /// Accessibility is not trusted: only whole windows are offered, and the overlay shows the
@@ -44,7 +44,7 @@ enum ElementDetection: Equatable, Sendable {
 
 /// What Accessibility says about one detected interface element, for the screen-context
 /// attachment. Strings are as the app reports them, trimmed; empty ones are nil.
-struct ElementDescription: Equatable, Sendable {
+nonisolated struct ElementDescription: Equatable, Sendable {
   /// The AX role, e.g. `AXButton`.
   let role: String
   /// `AXTitle`, else `AXDescription`.
@@ -57,7 +57,7 @@ struct ElementDescription: Equatable, Sendable {
 
 /// Candidate areas under the pointer. Implementations run their Accessibility work off the main
 /// actor and hand back plain rects only.
-protocol ElementTargeting: Sendable {
+nonisolated protocol ElementTargeting: Sendable {
   /// Starts a session over `windows` (front to back, the app's own windows already removed).
   func begin(windows: [CaptureWindow]) async -> ElementDetection
   /// The areas containing `point` (Quartz), smallest first and ending with the window; empty
@@ -77,7 +77,6 @@ protocol ElementTargeting: Sendable {
 /// belong to the session), so annotation geometry is in the host overlay view's points: an
 /// annotation stays where it was drawn on the screen while the selection moves or resizes, and
 /// the selection only decides what is exported.
-@MainActor
 protocol AnnotationEditing: AnyObject {
   /// The user confirmed (toolbar or a shortcut the editor handles while it has focus).
   var onConfirm: (() -> Void)? { get set }

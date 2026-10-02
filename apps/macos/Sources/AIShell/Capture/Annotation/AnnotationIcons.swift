@@ -9,7 +9,6 @@ import AppKit
 /// Source: unmodified SVGs from lucide-static 1.48.0 (ISC), the `lucide-react` version pinned in
 /// `apps/desktop/package.json`, each from `https://unpkg.com/lucide-static@1.48.0/icons/<name>.svg`
 /// for the names below. Swatches and stroke widths depict their values, so they are drawn here.
-@MainActor
 enum AnnotationIcons {
   static let undo = "undo-2"
   static let redo = "redo-2"

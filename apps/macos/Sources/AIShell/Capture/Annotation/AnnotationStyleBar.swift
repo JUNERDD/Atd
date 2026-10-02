@@ -7,7 +7,6 @@ import AppKit
 /// controls that apply (``AnnotationStyleControls``): a mosaic has no colour, so it gets the
 /// stroke widths alone (which set how coarse its blocks are). Stroke widths also set text size
 /// and step-badge size.
-@MainActor
 final class AnnotationStyleBar: NSView {
   /// A change the user picked: only the part the control stands for.
   var onChange: ((AnnotationStyleChange) -> Void)?

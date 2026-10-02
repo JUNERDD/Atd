@@ -2,7 +2,6 @@ import AICore
 import AppKit
 
 /// `share.text`: the system share picker for a text, anchored to a rectangle of the page.
-@MainActor
 enum ShareSheet {
   /// Shows the picker below `anchor` and returns; the choice is not reported back. Throws when
   /// the text is blank or the web view is not in a window.

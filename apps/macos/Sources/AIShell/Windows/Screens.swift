@@ -3,7 +3,6 @@ import AppKit
 
 /// Conversions between AppKit screens and the AICore geometry, which uses the same y-up
 /// global coordinates in points.
-@MainActor
 enum Screens {
   /// The work area (`visibleFrame`) of the display under the cursor, or the nearest one.
   static func workAreaUnderCursor() -> ScreenRect {
@@ -59,7 +58,6 @@ extension NSRect {
 }
 
 /// The window background both windows share: Liquid Glass behind a transparent web view.
-@MainActor
 enum GlassBackground {
   static func make(content: NSView) -> NSView {
     let glass = NSGlassEffectView()
@@ -73,7 +71,6 @@ enum GlassBackground {
 /// radius; the page lays its header out on that bar and reports it as a drag region. The toolbar
 /// has no items and cannot be customized, so the bar keeps its height and clicks under it still
 /// reach the web view.
-@MainActor
 enum UnifiedTitleBar {
   static func apply(to window: NSWindow, identifier: String) {
     let toolbar = NSToolbar(identifier: identifier)

@@ -12,7 +12,6 @@ import OSLog
 /// is stored as `Pasted image <date>.png` in a temporary folder and imported like a file;
 /// ``PastedImageExport`` scales and encodes it. Screenshots arrive through ``ScreenshotTaker``,
 /// which imports its capture through ``importPaths(_:)``.
-@MainActor
 final class AttachmentImporter {
   private let services: ShellServices
   private weak var panel: WebViewHost?
@@ -114,7 +113,6 @@ final class AttachmentImporter {
 /// copies the path. The page can upload any file and ask to open it, so only document types
 /// (``ArtifactOpenPolicy``) open directly; any other type opens only after the user chooses
 /// Open Anyway in a native confirmation, and Gatekeeper still checks it then.
-@MainActor
 final class ArtifactActions {
   private let services: ShellServices
   private let downloads: URL

@@ -9,14 +9,14 @@ import Vision
 /// correction and automatic language detection over Simplified and Traditional Chinese and
 /// English. Recognition never holds a capture up for long: past ``timeout`` the capture goes on
 /// without text.
-enum ScreenText {
+nonisolated enum ScreenText {
   static let timeout = Duration.seconds(3)
   static let languages = ["zh-Hans", "zh-Hant", "en-US"].map { Locale.Language(identifier: $0) }
 
   /// The text in `image` in reading order, or no lines when recognition fails or runs past
   /// `timeout`. The work runs off the main actor; a timed-out request is cancelled and its late
   /// answer dropped.
-  nonisolated static func lines(in image: CGImage, timeout: Duration = timeout) async -> [String] {
+  static func lines(in image: CGImage, timeout: Duration = timeout) async -> [String] {
     let gate = ResumeGate()
     return await withCheckedContinuation { continuation in
       let work = Task.detached(priority: .userInitiated) {
@@ -32,7 +32,7 @@ enum ScreenText {
   }
 
   @concurrent
-  private nonisolated static func recognize(_ image: CGImage) async -> [String] {
+  private static func recognize(_ image: CGImage) async -> [String] {
     var request = RecognizeTextRequest()
     request.recognitionLevel = .accurate
     request.usesLanguageCorrection = true
@@ -52,7 +52,7 @@ enum ScreenText {
 }
 
 /// Lets exactly one of two racing tasks resume a continuation.
-private final class ResumeGate: Sendable {
+private nonisolated final class ResumeGate: Sendable {
   private let claimed = Mutex(false)
 
   /// True for the first caller only.
