@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { Copy, MoreHorizontal, Pencil, Play, SearchX, Trash2 } from 'lucide-react';
+import { Copy, KeyboardOff, MoreHorizontal, Pencil, Play, SearchX, Trash2 } from 'lucide-react';
 import { Button } from '@atd/ui/components/button';
 import { Empty, EmptyContent, EmptyHeader, EmptyMedia, EmptyTitle } from '@atd/ui/components/empty';
 import { HighlightedText } from '@atd/ui/components/highlighted-text';
@@ -24,10 +24,12 @@ import {
 import { matchFields, type FieldsMatch } from '@atd/ui/lib/fuzzy-match';
 import type { CommandDefinition } from '../../client/agent/command-schema';
 import { IconButton } from '../../components/icon-button';
+import { ShortcutRecorder } from '../../components/shortcut-recorder';
 import { shortcutKeys } from '../../lib/shortcuts';
 import { agentApi } from '../agent/use-agent';
 import { showErrorToast } from '../../components/toast-store';
 import { CommandIcon } from './command-icon';
+import { useCommandShortcutCapture } from './use-command-shortcut-capture';
 
 type Match = FieldsMatch<'name' | 'description'> | null;
 type Row = { command: CommandDefinition; match: Match };
@@ -36,6 +38,8 @@ export interface CommandRowActions {
   /** Opens the editor; a plugin command opens it read-only. */
   onOpen: (command: CommandDefinition) => void;
   onToggle: (command: CommandDefinition, enabled: boolean) => void;
+  /** Saves a shortcut recorded on the row; an empty one removes it. */
+  onShortcut: (command: CommandDefinition, shortcut: string) => void;
   /** A Personal copy: a plain copy of the user's command, or Duplicate to Personal for a plugin's. */
   onDuplicate: (command: CommandDefinition) => void;
   onDelete: (command: CommandDefinition) => void;
@@ -118,8 +122,10 @@ export function CommandList({
 
 /**
  * One row anatomy for every command: identity, shortcut, then Run, the enable Switch and More in
- * fixed positions. A plugin command keeps the same columns; only its More menu narrows to
- * Duplicate to Personal, since it cannot be edited or deleted.
+ * fixed positions. The user's own command records a new shortcut when its shortcut is clicked,
+ * and More removes a set one, so no action appears beside the keys to shift the columns. A plugin
+ * command keeps the same columns with its shortcut read-only; its More menu narrows to Duplicate
+ * to Personal, since it cannot be edited or deleted.
  */
 function CommandRow({
   command,
@@ -128,6 +134,7 @@ function CommandRow({
   shortcutError,
   onOpen,
   onToggle,
+  onShortcut,
   onDuplicate,
   onDelete,
 }: {
@@ -139,6 +146,11 @@ function CommandRow({
 } & CommandRowActions) {
   const { t } = useTranslation('commands');
   const plugin = Boolean(command.pluginId);
+  const recorder = useCommandShortcutCapture((shortcut) => onShortcut(command, shortcut));
+  const { capture, platform } = recorder;
+  const keys = command.shortcut ? shortcutKeys(command.shortcut, platform) : [];
+  // A combination the row cannot use outranks the standing registration error.
+  const error = recorder.error || shortcutError;
   return (
     <Item asChild size="sm" variant="outline" className="command-management-row settings-open-row">
       <li>
@@ -165,14 +177,34 @@ function CommandRow({
             <ItemDescription>
               <HighlightedText text={command.description} ranges={match?.ranges.description} />
             </ItemDescription>
-            {shortcutError && <p className="text-xs text-destructive">{shortcutError}</p>}
+            {error && <p className="text-xs text-destructive">{error}</p>}
           </ItemContent>
         </div>
         <div className="command-row-controls">
           <div className="command-row-shortcut">
-            {command.shortcut ? (
+            {!plugin ? (
+              <ShortcutRecorder
+                keys={keys}
+                recording={capture.isRecording}
+                emptyText={t('list.setShortcut')}
+                aria-label={
+                  capture.isRecording
+                    ? t('list.shortcutCancelFor', { name: command.name })
+                    : t('list.shortcutFor', { name: command.name })
+                }
+                aria-disabled={busy || undefined}
+                aria-busy={busy || undefined}
+                className="aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
+                onBlur={capture.cancel}
+                onClick={() => {
+                  if (busy) return;
+                  if (capture.isRecording) capture.cancel();
+                  else capture.start();
+                }}
+              />
+            ) : keys.length ? (
               <KbdGroup>
-                {shortcutKeys(command.shortcut, window.desktop?.platform ?? 'web').map((key) => (
+                {keys.map((key) => (
                   <Kbd key={key}>{key}</Kbd>
                 ))}
               </KbdGroup>
@@ -233,6 +265,12 @@ function CommandRow({
                       <Copy />
                       {t('list.duplicate')}
                     </DropdownMenuItem>
+                    {command.shortcut ? (
+                      <DropdownMenuItem disabled={busy} onSelect={() => onShortcut(command, '')}>
+                        <KeyboardOff />
+                        {t('list.removeShortcut')}
+                      </DropdownMenuItem>
+                    ) : null}
                     <DropdownMenuSeparator />
                     <DropdownMenuItem variant="destructive" onSelect={() => onDelete(command)}>
                       <Trash2 />
