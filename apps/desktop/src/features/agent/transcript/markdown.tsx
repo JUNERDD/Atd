@@ -190,7 +190,20 @@ const COMPONENTS = {
   table: MarkdownTable,
 };
 
-export function StreamdownMarkdown({ text, streaming }: { text: string; streaming: boolean }) {
+/**
+ * `animated: false` drops the per-character reveal for long streams read as detail (thinking):
+ * the reveal keeps one styled, animated span per visible character, so a long stream grows the
+ * DOM, the reconcile and WebKit's style work with every character on every frame.
+ */
+export function StreamdownMarkdown({
+  text,
+  streaming,
+  animated = true,
+}: {
+  text: string;
+  streaming: boolean;
+  animated?: boolean;
+}) {
   const { t } = useTranslation('tasks');
   const [mermaid, setMermaid] = useState<DiagramPlugin | null>(null);
 
@@ -227,8 +240,8 @@ export function StreamdownMarkdown({ text, streaming }: { text: string; streamin
   return (
     <Streamdown
       className="markdown"
-      animated={STREAM_ANIMATION}
-      isAnimating={streaming}
+      animated={animated ? STREAM_ANIMATION : false}
+      isAnimating={animated && streaming}
       mode={streaming ? 'streaming' : 'static'}
       controls={CONTROLS}
       linkSafety={LINK_SAFETY}
