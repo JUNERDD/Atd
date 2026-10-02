@@ -107,6 +107,7 @@
       "reviewed": "已审查并自动批准",
       "declined": "已拒绝"
     },
+    "detail": "权限：{{outcome}}",
     "allowOnce": "允许一次",
     "allowSession": "允许此工具",
     "allowSessionHint": "本次会话内此工具不再询问。",

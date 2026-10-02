@@ -1,8 +1,15 @@
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@ai/ui/lib/utils';
+import type { PermissionOutcome } from '../../../client/agent/permission-schema';
 import type { BlockOf } from '../../../client/agent/transcript-schema';
-import { bashCommand, hasToolDetail, structuredDetails, type RowDetails } from './tool-copy';
+import {
+  bashCommand,
+  hasToolDetail,
+  outcomeKey,
+  structuredDetails,
+  type RowDetails,
+} from './tool-copy';
 import { DetailBox } from './detail-box';
 import { Root as JsonTree } from './json-tree';
 import { WebFetchBody, WebSearchBody } from './web-body';
@@ -148,4 +155,17 @@ export function ToolBody({ block }: { block: BlockOf<'tool'> }) {
         </>
       );
   }
+}
+
+/**
+ * The call's recorded permission outcome, last in its detail. The row itself shows only a
+ * decline, so this line is where every approval reads.
+ */
+export function PermissionNote({ outcome }: { outcome: PermissionOutcome }) {
+  const { t } = useTranslation('tasks');
+  return (
+    <p className="m-0 text-xs text-muted-foreground">
+      {t('permission.detail', { outcome: t(outcomeKey(outcome)) })}
+    </p>
+  );
 }

@@ -4,7 +4,7 @@ import { Shimmer } from '@ai/ui/components/ai-elements/shimmer';
 import type { ConfirmationRequest } from '../../../client/agent/permission-schema';
 import type { BlockOf } from '../../../client/agent/transcript-schema';
 import { ActivityRow } from './activity-row';
-import { ToolBody } from './tool-body';
+import { PermissionNote, ToolBody } from './tool-body';
 import {
   hasToolDetail,
   memoryTargetKey,
@@ -22,8 +22,8 @@ const CHIP_TOOLS: ReadonlySet<string> = new Set(['read', 'write', 'edit', 'grep'
  * One step of the agent's work. The leading icon names the tool type and swaps to the expanding
  * chevron on hover (see `ActivityRow.Icon`); the verb reads at full strength, the file target sits
  * in a chip, and no trailing status icon is rendered — the row reads the same settled or failed.
- * A recorded permission outcome rides the row too — replacing the status fallback when the call
- * has no target — instead of floating on its own line.
+ * A recorded permission outcome reads in the row's detail, which it makes expandable on its own;
+ * the row shows only a decline, since rows carry no failure mark and it says why nothing ran.
  */
 export function ToolBlock({
   block,
@@ -50,14 +50,21 @@ export function ToolBlock({
       ? `${target} · ${t(statusLabelKey(block.status))}`
       : target;
   const memoryKey = rawTarget ? memoryTargetKey(rawTarget) : null;
-  const outcome =
-    !confirmation && block.permission?.outcome ? t(outcomeKey(block.permission.outcome)) : null;
+  const outcome = confirmation ? undefined : block.permission?.outcome;
+  // A decline is the one outcome the row keeps, standing in for a missing target when there is one.
+  const declined = outcome === 'declined' ? t(outcomeKey(outcome)) : null;
   // A pending approval reads as tool name plus waiting text; the decision lives in the composer
-  // popover. Settled calls keep the recorded outcome chip instead.
+  // popover. Settled calls carry a decline on the row and every outcome in the detail.
   const waiting = confirmation ? t('permission.waitingApproval') : null;
   const meta =
     waiting ??
-    (memoryKey ? t(memoryKey) : (rawTarget ?? outcome ?? t(statusLabelKey(block.status))));
+    (memoryKey ? t(memoryKey) : (rawTarget ?? declined ?? t(statusLabelKey(block.status))));
+  const mark =
+    declined && meta !== declined ? (
+      <ActivityRow.Meta className="permission-chip" title={declined}>
+        {declined}
+      </ActivityRow.Meta>
+    ) : null;
   const running = block.status === 'running';
   // While running the whole line reads as one live unit: the meta joins the title inside a
   // single shimmer via plain string concatenation, instead of sitting beside it as static
@@ -68,11 +75,7 @@ export function ToolBlock({
         <ActivityRow.Title className="flex-initial" title={block.name}>
           <Shimmer as="span">{`${title} ${meta}`}</Shimmer>
         </ActivityRow.Title>
-        {outcome && meta !== outcome && (
-          <ActivityRow.Meta className="permission-chip" title={outcome}>
-            {outcome}
-          </ActivityRow.Meta>
-        )}
+        {mark}
       </>
     ) : (
       <>
@@ -94,16 +97,12 @@ export function ToolBlock({
             {meta}
           </ActivityRow.Meta>
         )}
-        {outcome && meta !== outcome && (
-          <ActivityRow.Meta className="permission-chip" title={outcome}>
-            {outcome}
-          </ActivityRow.Meta>
-        )}
+        {mark}
       </>
     );
   // No detail to expand into: the same row frame without a trigger, so hover offers no
   // expanding chevron. The icon box keeps its geometry via `chevron={false}`.
-  if (!hasToolDetail(block)) {
+  if (!hasToolDetail(block) && !outcome) {
     return (
       <div className="tool-block">
         <ActivityRow.Root status={block.status}>
@@ -129,6 +128,7 @@ export function ToolBlock({
         <ActivityRow.Content>
           <ActivityRow.Body className="tool-body">
             <ToolBody block={block} />
+            {outcome && <PermissionNote outcome={outcome} />}
           </ActivityRow.Body>
         </ActivityRow.Content>
       </ActivityRow.Root>

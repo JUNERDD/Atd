@@ -107,6 +107,7 @@
       "reviewed": "Auto-approved after review",
       "declined": "Declined"
     },
+    "detail": "Permission: {{outcome}}",
     "allowOnce": "Allow once",
     "allowSession": "Allow this tool",
     "allowSessionHint": "Won’t ask again for this tool in this session.",
