@@ -5,7 +5,7 @@ type MarkdownProps = {
   text: string;
   streaming: boolean;
   /** Per-character reveal while streaming; see `StreamdownMarkdown`. Defaults to on. */
-  animated?: boolean;
+  animated?: boolean | undefined;
 };
 
 /** The text as written, in the rendered markdown's container, until the renderer can take over. */

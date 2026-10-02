@@ -31,9 +31,9 @@ function SourceRow({
 }: {
   url: string;
   title: string;
-  meta?: string;
+  meta?: string | undefined;
   text: string;
-  error?: string;
+  error?: string | undefined;
 }) {
   const { t } = useTranslation('tasks');
   const host = hostOf(url);

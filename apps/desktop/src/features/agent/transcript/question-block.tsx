@@ -23,7 +23,7 @@ export function QuestionBlock({
   request,
 }: {
   block: BlockOf<'question'>;
-  request?: InputRequest;
+  request?: InputRequest | undefined;
 }) {
   const { t } = useTranslation('tasks');
   const [open, setOpen] = useState(false);

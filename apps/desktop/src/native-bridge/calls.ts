@@ -4,7 +4,7 @@
  * file with Node's type stripping, so it imports nothing but TypeBox and uses only erasable
  * TypeScript syntax.
  */
-import { Type, type TSchema } from 'typebox';
+import { Type, type Static, type TSchema } from 'typebox';
 
 /** A call or post without params, or a result without a value. */
 export const Empty = Type.Object({}, { additionalProperties: false });
@@ -108,6 +108,28 @@ const ScreenshotResultSchema = Type.Union([
 export const MAX_CAPTURE_LENGTH = 100000;
 /** Longest text `share.text` and `speech.speak` take, the same bound as `clipboard.write`. */
 const MAX_NATIVE_TEXT_LENGTH = 1000000;
+
+/** Longest base64 PNG `files.save` takes: 16 MiB of image, four characters per three bytes. */
+export const MAX_SAVE_PNG_BASE64_LENGTH = Math.ceil((16 * 1024 * 1024) / 3) * 4;
+
+/**
+ * What `files.save` writes: text as UTF-8 (code, Markdown, SVG, a diagram's source), or a PNG as
+ * base64. The file name carries the type for text; Swift checks a PNG's signature.
+ */
+export const SaveContentSchema = Type.Union([
+  Type.Object(
+    { type: Type.Literal('text'), text: Text(MAX_NATIVE_TEXT_LENGTH) },
+    { additionalProperties: false },
+  ),
+  Type.Object(
+    {
+      type: Type.Literal('png'),
+      base64: Type.String({ minLength: 1, maxLength: MAX_SAVE_PNG_BASE64_LENGTH }),
+    },
+    { additionalProperties: false },
+  ),
+]);
+export type SaveContent = Static<typeof SaveContentSchema>;
 
 /**
  * A rectangle in CSS pixels from the web view's top-left corner (what `getBoundingClientRect()`
@@ -296,10 +318,14 @@ export const NativeCalls = {
   },
   /** Open panel for attachments, imported through `/v1/resources/import`; `[]` when cancelled. */
   'files.pick': { params: Empty, result: Resources },
-  /** Save panel for a service resource; `saved` is false when cancelled. */
+  /**
+   * Save panel offering `content` under the suggested `name` (its basename, with `.png` for a PNG);
+   * `saved` is false when the user cancelled or another save panel is open. A content Swift
+   * refuses or a failed write rejects with a message in the shell's language.
+   */
   'files.save': {
     params: Type.Object(
-      { resourceId: Type.String({ minLength: 1, maxLength: 128 }), name: Text(255) },
+      { name: Type.String({ minLength: 1, maxLength: 255 }), content: SaveContentSchema },
       { additionalProperties: false },
     ),
     result: Type.Object({ saved: Type.Boolean() }, { additionalProperties: false }),

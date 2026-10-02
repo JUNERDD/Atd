@@ -10,6 +10,7 @@ import {
   structuredDetails,
   type RowDetails,
 } from './tool-copy';
+import { CodemodeBody } from './codemode-body';
 import { DetailBox } from './detail-box';
 import { Root as JsonTree } from './json-tree';
 import { WebFetchBody, WebSearchBody } from './web-body';
@@ -92,17 +93,31 @@ export function ToolOutput({
     <DetailBox variant="output" copyText={text}>
       {kind}
       {header}
-      {text && <pre className="m-0 whitespace-pre-wrap wrap-anywhere">{text}</pre>}
+      {text && <pre className="m-0 wrap-anywhere whitespace-pre-wrap">{text}</pre>}
     </DetailBox>
   );
 }
 
 /**
- * Structured result of a settled call (`details.data`, validated at the main boundary). The
- * model-facing output stays the copy text so the box copies what the agent actually read.
+ * Structured result of a call (`details.data`, validated at the main boundary): settled calls,
+ * and a `codemode` call in any status. The model-facing output stays the copy text so the box
+ * copies what the agent actually read.
  */
 function DetailsBody({ block, data }: { block: BlockOf<'tool'>; data: RowDetails }) {
+  const { t } = useTranslation('tasks');
   switch (data.type) {
+    case 'codemode': {
+      const text = block.status === 'running' ? block.partial : block.output;
+      return (
+        <>
+          <CodemodeBody block={block} data={data} />
+          {text && <ToolOutput text={text} />}
+          {block.status === 'interrupted' && (
+            <p className="m-0 text-xs text-muted-foreground">{t('activity.interruptedNote')}</p>
+          )}
+        </>
+      );
+    }
     case 'webSearch':
       return <WebSearchBody details={data} copyText={block.output} />;
     case 'webFetch':

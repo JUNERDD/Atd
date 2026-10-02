@@ -57,7 +57,8 @@ export const ToolDetailsSchema = Type.Object(
      * Structured result of a completed `todo`, `web_search`, or `fetch_content` call,
      * discriminated by `type`; each variant carries its own `truncated`. Absent for every other
      * tool, while running, and on failure, except the launching `subagent` call, whose child
-     * summaries are present in every state. The edit diff is never duplicated here.
+     * summaries are present in every state, and a `codemode` call, whose script's tool calls
+     * (`steps`) are too. The edit diff is never duplicated here.
      */
     data: Type.Optional(ToolBlockDetailsSchema),
   },

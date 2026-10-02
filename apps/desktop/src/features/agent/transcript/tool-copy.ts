@@ -6,10 +6,13 @@ import {
   FilePlus,
   FileSearch,
   FileText,
+  FileBox,
   FolderOpen,
   Globe,
+  Library,
   Link,
   ListTodo,
+  SquareCode,
   SquareTerminal,
   Terminal,
   TextSearch,
@@ -17,6 +20,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import {
+  CODEMODE_TOOL,
   LOAD_SKILL_TOOL,
   TODO_TOOL,
   WEB_FETCH_TOOL,
@@ -26,6 +30,7 @@ import {
 } from '@ai/agent-contracts';
 import type { PermissionOutcome } from '../../../client/agent/permission-schema';
 import type { BlockOf, ToolStatus } from '../../../client/agent/transcript-schema';
+import { codemodeTarget } from './codemode-call';
 import { subagentStepKey, subagentTarget, type SubagentStepKey } from './subagent-call';
 
 export type StepKey =
@@ -49,7 +54,16 @@ export type StepKey =
   | 'activity.step.webSearch'
   | 'activity.step.webFetch'
   | 'activity.step.loadSkill'
+  | 'activity.step.codemode'
+  | 'activity.step.listMcpResources'
+  | 'activity.step.listMcpResourceTemplates'
+  | 'activity.step.readMcpResource'
   | SubagentStepKey;
+
+/** The service's MCP resource tools (agent-service `mcp/resource-tools.ts`). */
+const LIST_MCP_RESOURCES = 'list_mcp_resources';
+const LIST_MCP_RESOURCE_TEMPLATES = 'list_mcp_resource_templates';
+const READ_MCP_RESOURCE = 'read_mcp_resource';
 
 export type MemoryTargetKey =
   | 'activity.target.user'
@@ -94,6 +108,10 @@ const STEP_KEYS: Record<string, StepKey> = {
   [WEB_SEARCH_TOOL]: 'activity.step.webSearch',
   [WEB_FETCH_TOOL]: 'activity.step.webFetch',
   [LOAD_SKILL_TOOL]: 'activity.step.loadSkill',
+  [CODEMODE_TOOL]: 'activity.step.codemode',
+  [LIST_MCP_RESOURCES]: 'activity.step.listMcpResources',
+  [LIST_MCP_RESOURCE_TEMPLATES]: 'activity.step.listMcpResourceTemplates',
+  [READ_MCP_RESOURCE]: 'activity.step.readMcpResource',
 };
 
 const MEMORY_TARGETS: Record<string, MemoryTargetKey> = {
@@ -122,6 +140,10 @@ const ICONS: Record<string, LucideIcon> = {
   [WEB_FETCH_TOOL]: Link,
   // Same mark as skill chips in the composer and the extension settings.
   [LOAD_SKILL_TOOL]: BookOpen,
+  [CODEMODE_TOOL]: SquareCode,
+  [LIST_MCP_RESOURCES]: Library,
+  [LIST_MCP_RESOURCE_TEMPLATES]: Library,
+  [READ_MCP_RESOURCE]: FileBox,
 };
 
 function stepKey(name: string): StepKey | null {
@@ -196,6 +218,10 @@ export function toolTarget(name: string, args: Record<string, unknown>): string 
   if (name === WEB_SEARCH_TOOL) return stringArg(args.query) ?? firstString(args.queries);
   if (name === WEB_FETCH_TOOL) return stringArg(args.url) ?? firstString(args.urls);
   if (name === LOAD_SKILL_TOOL) return stringArg(args.name);
+  if (name === CODEMODE_TOOL) return codemodeTarget(args);
+  if (name === LIST_MCP_RESOURCES || name === LIST_MCP_RESOURCE_TEMPLATES)
+    return stringArg(args.server);
+  if (name === READ_MCP_RESOURCE) return stringArg(args.uri);
   return null;
 }
 
@@ -219,7 +245,8 @@ export type RowDetails = Exclude<ToolBlockDetails, { type: 'subagent' | 'todo' |
  * The structured body a row renders, if any. A launching `subagent` call's child summaries feed
  * the progress pill's subagent list and the drill-in view, a `todo` call's list feeds the
  * progress pill's Todos view, and a `configure_mcp` approval renders as a banner under its
- * activity group (mcp-approval-banner.tsx); none renders in the row.
+ * activity group (mcp-approval-banner.tsx); none renders in the row. A `codemode` call's steps
+ * render in its row while it runs too.
  */
 export function structuredDetails(block: BlockOf<'tool'>): RowDetails | null {
   const data = block.details.data;

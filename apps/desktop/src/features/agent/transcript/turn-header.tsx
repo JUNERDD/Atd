@@ -110,7 +110,7 @@ export function TurnHeader({
   waiting: TurnWaitingKind;
   trueTokens?: number | null;
   trueDurationMs?: number | null;
-  liveText?: string;
+  liveText?: string | undefined;
   usage?: TurnUsage | null;
 }) {
   const { t } = useTranslation('tasks');

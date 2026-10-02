@@ -29,6 +29,7 @@ import {
 import { TaskClient, type TaskConnection } from './service-tasks';
 import { submitTask } from './task-submit';
 import type { FileRef } from './task-schema';
+import type { SaveContent } from '../../native-bridge/calls';
 
 /** The command list as each client keeps it: the desktop also binds global shortcuts. */
 export interface CommandCatalog {
@@ -55,8 +56,8 @@ export interface AgentPlatform {
   copy(text: string): Promise<void>;
   /** `url` is already checked to be http(s). */
   openLink(url: string): Promise<void>;
-  /** Offers an uploaded resource in a save panel; false when the user cancelled. */
-  saveFile(resourceId: string, name: string): Promise<boolean>;
+  /** Offers `content` under the suggested `name` in a save panel; false when cancelled. */
+  saveFile(name: string, content: SaveContent): Promise<boolean>;
   artifact(
     options: AgentClientOptions,
     artifactId: string,
@@ -150,7 +151,10 @@ export class AgentRequests<S> {
       case 'task.deleted':
         await this.tasks.onInvalidate(frame);
         return;
-      default:
+      // The native host reloads these itself (extensions, settings and providers).
+      case 'extensions':
+      case 'providers':
+      case 'settings':
         return;
     }
   }
@@ -248,17 +252,17 @@ export class AgentRequests<S> {
         return (await taskContextBreakdown(this.options(), request.taskId)).breakdown;
       case 'forkTask': {
         const { taskId, entryId, title } = request;
-        const fork = await forkLiveTask(this.options(), taskId, { entryId, title });
+        const fork = await forkLiveTask(this.options(), taskId, {
+          entryId,
+          ...(title === undefined ? {} : { title }),
+        });
         await this.tasks.loadSummary(fork.taskId);
         return fork;
       }
       case 'chooseFiles':
         return this.platform.chooseFiles(this.tasks.http());
-      case 'saveMarkdown': {
-        const bytes = new TextEncoder().encode(request.text);
-        const { resource } = await this.tasks.http().upload(request.name, 'text/markdown', bytes);
-        return this.platform.saveFile(resource.id, request.name);
-      }
+      case 'saveFile':
+        return this.platform.saveFile(request.name, request.content);
       case 'memory':
         // A failed load (or no connection) is reported inside the snapshot, never thrown.
         try {

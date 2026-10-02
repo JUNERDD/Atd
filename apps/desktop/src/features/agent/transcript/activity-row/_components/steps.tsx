@@ -12,7 +12,7 @@ export function Steps({ className, style, children, ...props }: ActivityRowSteps
     <ul
       {...props}
       data-slot="activity-row-steps"
-      className={cn('phase-steps list-none m-0 p-0', className)}
+      className={cn('phase-steps m-0 list-none p-0', className)}
       style={style}
     >
       {children}

@@ -159,7 +159,7 @@ export function Transcript({
     <div className="conversation" data-covered={covered || undefined} inert={covered}>
       <ScrollArea
         viewportRef={viewportRef}
-        className="flex-1 min-h-0"
+        className="min-h-0 flex-1"
         viewportClassName="overlay-footer-fade"
         gutter="none"
         scrollShadow

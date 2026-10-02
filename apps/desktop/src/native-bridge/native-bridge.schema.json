@@ -701,16 +701,47 @@
             },
             "params": {
               "type": "object",
-              "required": ["resourceId", "name"],
+              "required": ["name", "content"],
               "properties": {
-                "resourceId": {
-                  "type": "string",
-                  "minLength": 1,
-                  "maxLength": 128
-                },
                 "name": {
                   "type": "string",
+                  "minLength": 1,
                   "maxLength": 255
+                },
+                "content": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "required": ["type", "text"],
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "const": "text"
+                        },
+                        "text": {
+                          "type": "string",
+                          "maxLength": 1000000
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "required": ["type", "base64"],
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "const": "png"
+                        },
+                        "base64": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 22369624
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  ]
                 }
               },
               "additionalProperties": false
@@ -2176,16 +2207,47 @@
     },
     "FilesSaveParams": {
       "type": "object",
-      "required": ["resourceId", "name"],
+      "required": ["name", "content"],
       "properties": {
-        "resourceId": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 128
-        },
         "name": {
           "type": "string",
+          "minLength": 1,
           "maxLength": 255
+        },
+        "content": {
+          "anyOf": [
+            {
+              "type": "object",
+              "required": ["type", "text"],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "const": "text"
+                },
+                "text": {
+                  "type": "string",
+                  "maxLength": 1000000
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "required": ["type", "base64"],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "const": "png"
+                },
+                "base64": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 22369624
+                }
+              },
+              "additionalProperties": false
+            }
+          ]
         }
       },
       "additionalProperties": false

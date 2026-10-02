@@ -30,6 +30,7 @@ import {
   type TranscriptPatch,
 } from './transcript-schema';
 import { parse } from './validation';
+import { SaveContentSchema, type SaveContent } from '../../native-bridge/calls';
 
 export const MemoryEntrySchema = Type.Object(
   {
@@ -193,9 +194,9 @@ export const AgentRequestSchema = Type.Union([
   }),
   Type.Object({ action: Type.Literal('chooseFiles') }),
   Type.Object({
-    action: Type.Literal('saveMarkdown'),
+    action: Type.Literal('saveFile'),
     name: Type.String({ minLength: 1, maxLength: 255 }),
-    text: Type.String({ maxLength: 1000000 }),
+    content: SaveContentSchema,
   }),
   Type.Object({ action: Type.Literal('memory') }),
   Type.Object({ action: Type.Literal('pauseMemory'), paused: Type.Boolean() }),
@@ -325,8 +326,8 @@ export interface AgentBridge {
   /** Copies the task up to the turn `entryId` starts into a new task; resolves with its id. */
   forkTask: (taskId: string, entryId: string, title?: string) => Promise<{ taskId: string }>;
   chooseFiles: () => Promise<FileRef[]>;
-  /** Offers `text` as a Markdown file in a save panel; false when the user cancelled. */
-  saveMarkdown: (name: string, text: string) => Promise<boolean>;
+  /** Offers `content` under the suggested `name` in a save panel; false when cancelled. */
+  saveFile: (name: string, content: SaveContent) => Promise<boolean>;
   memory: () => Promise<MemorySnapshot>;
   pauseMemory: (paused: boolean) => Promise<MemorySnapshot>;
   updateMemory: (entry: MemoryEntry, content: string) => Promise<MemorySnapshot>;
