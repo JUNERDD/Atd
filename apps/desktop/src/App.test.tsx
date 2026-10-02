@@ -5,13 +5,17 @@ import { EditorView } from '@codemirror/view';
 import { App } from './App';
 import { installBridge } from '../tests/app-test-bridge';
 import { SettingsWindow } from './features/settings/settings-window';
-import { editorDraft } from './features/composer-editor/chip-state';
+import { chipTable, chipTokens, editorDraft } from './features/composer-editor/chip-state';
+
+function composerView(textbox: HTMLElement) {
+  const view = EditorView.findFromDOM(textbox);
+  if (!view) throw new Error('The composer editor is not mounted.');
+  return view;
+}
 
 /** The composer's serialized draft text, read from its CodeMirror view. */
 function draftText(textbox: HTMLElement) {
-  const view = EditorView.findFromDOM(textbox);
-  if (!view) throw new Error('The composer editor is not mounted.');
-  return editorDraft(view.state, []).text;
+  return editorDraft(composerView(textbox).state).text;
 }
 
 describe('task panel', () => {
@@ -62,7 +66,7 @@ describe('task panel', () => {
     expect(draftText(screen.getByRole('textbox'))).toBe('A work in progress');
   });
 
-  it('uses persistent attachment IDs, allows removal, and rejects more than ten files', async () => {
+  it('attaches files as chips with persistent IDs, drops a deleted chip, and rejects more than ten files', async () => {
     const { api } = installBridge();
     const user = userEvent.setup();
     const files = Array.from({ length: 11 }, (_, index) => ({
@@ -75,10 +79,19 @@ describe('task panel', () => {
       .mockResolvedValueOnce(files)
       .mockResolvedValueOnce(files.slice(0, 2));
     render(<App />);
+    // Attach context opens a menu of the context a draft takes; Upload files is the file picker.
     await user.click(screen.getByRole('button', { name: 'Attach context' }));
+    await user.click(await screen.findByRole('menuitem', { name: 'Upload files' }));
     expect(await screen.findByRole('status')).toHaveTextContent('Attach at most 10 files.');
     await user.click(screen.getByRole('button', { name: 'Attach context' }));
-    await user.click(await screen.findByRole('button', { name: 'Remove file-0.txt' }));
+    await user.click(await screen.findByRole('menuitem', { name: 'Upload files' }));
+    const textbox = screen.getByRole('textbox', { name: 'Task prompt' });
+    await waitFor(() => expect(draftText(textbox)).toBe('@file-0.txt @file-1.txt '));
+    // Deleting a chip's text, as Backspace over the atom does, detaches its file.
+    const view = composerView(textbox);
+    const [first] = chipTokens(view.state.doc.toString(), view.state.field(chipTable));
+    if (!first) throw new Error('The file chips are missing.');
+    view.dispatch({ changes: { from: first.from, to: first.to + 1 } });
     await user.click(screen.getByRole('button', { name: 'Send task' }));
     expect(api.submit).toHaveBeenCalledWith(
       expect.objectContaining({ input: expect.objectContaining({ files: [files[1]] }) }),

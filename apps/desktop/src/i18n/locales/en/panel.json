@@ -29,10 +29,14 @@
     "promptLabel": "Task prompt",
     "placeholder": "Ask anything…",
     "followUpPlaceholder": "Ask a follow-up…",
-    "attachedContext": "Attached context",
     "attachContext": "Attach context",
     "attachLimit": "Attach at most 10 files.",
-    "removeFile": "Remove {{name}}",
+    "editImage": "Edit {{name}}",
+    "attachMenu": {
+      "screenshot": "Screenshot",
+      "upload": "Upload files",
+      "mention": "Mention files, conversations or tools…"
+    },
     "stopAndDecline": "Stop and decline",
     "answerPlaceholder": "Type your answer…",
     "interjectPlaceholder": "Send to decline and redirect now…",
@@ -115,6 +119,11 @@
     "starting": "Starting…",
     "selectedText": "Selected text",
     "clipboardText": "Clipboard text",
+    "screenshot": "Screenshot",
+    "takeScreenshot": "Take screenshot",
+    "retakeScreenshot": "Retake screenshot",
+    "editScreenshot": "Edit screenshot",
+    "screenshotMissing": "Take a screenshot to run this command.",
     "text": "Input",
     "textPlaceholder": "Enter text to use with this command…",
     "captured": "Captured {{time}}",
@@ -297,5 +306,9 @@
     "text": "This task's context has been compacted {{count}} times. A new task may work better.",
     "newTask": "New task",
     "dismiss": "Dismiss"
+  },
+  "attachments": {
+    "noVision": "{{model}} can't see images, so attached images won't reach it.",
+    "noVisionWithText": "{{model}} can't see images, so attached images won't reach it. Attached text, such as the screen context, is still sent."
   }
 }

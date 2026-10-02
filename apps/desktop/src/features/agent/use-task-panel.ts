@@ -34,7 +34,7 @@ const EDIT_SEEDS = {
   subagent: 'session.editSubagentSeed',
   mcp: 'session.editMcpSeed',
 } as const;
-const EMPTY_DRAFT: ComposerDraft = { text: '', files: [], chips: [] };
+const EMPTY_DRAFT: ComposerDraft = { text: '', chips: [] };
 
 /**
  * Stages what the draft's chips select: the skills are the draft's skill chips, and the references

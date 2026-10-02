@@ -31,12 +31,13 @@
 }
 
 /* A quote chip that knows its passage reveals it on click (quote-reveal.ts), in the composer and
-   as a button in a sent message, which also takes keyboard focus. */
-.composer-chip[data-action='reveal'] {
+   as a button in a sent message, which also takes keyboard focus. An image chip in the composer
+   opens the screenshot editor on click (chip-image-edit.ts). */
+.composer-chip[data-action] {
   font-family: inherit;
   cursor: pointer;
 }
-.composer-chip[data-action='reveal']:hover {
+.composer-chip[data-action]:hover {
   background: var(--accent);
 }
 .composer-chip[data-action='reveal']:focus-visible {

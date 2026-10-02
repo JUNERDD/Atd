@@ -81,7 +81,7 @@ export function App() {
   });
   const attachToDraft = useCallback((file: FileRef) => {
     const latest = latestDraft.current;
-    latest.changeDraft({ ...latest.draft, files: [...latest.draft.files, file] });
+    latest.changeDraft(appendChip(latest.draft, { kind: 'file', file }));
   }, []);
   // A quote lands as a chip after the draft's content with the caret after it: the editor takes an
   // outside draft in its layout effect with the caret at the end, before the next frame.
@@ -94,7 +94,8 @@ export function App() {
     (connection) => connection.connectionId === snapshot.defaultConnectionId,
   );
   // The run's model as the service selects it (`runModelSelection`), else the default: the
-  // composer's picker shows it.
+  // composer's picker shows it, and the composer and the command input check it for image input
+  // before images are sent.
   const selectedModel =
     runModelSelection({
       requested: policy.model,
@@ -185,6 +186,8 @@ export function App() {
                     onRun={() => submit()}
                     onOpenSettings={() => void openCommandSettings(prepared.command.id)}
                     pending={pending}
+                    connections={snapshot?.connections ?? []}
+                    model={selectedModel}
                   />
                 )}
                 {view === 'task' &&

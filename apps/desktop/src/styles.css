@@ -320,28 +320,6 @@ body {
 .saved-attachments li span:last-child {
   flex-shrink: 0;
 }
-.attachment-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-.attachment-chip {
-  display: inline-flex;
-  max-width: 100%;
-  align-items: center;
-  gap: 4px;
-  padding: 3px 3px 3px 8px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-xl);
-  color: var(--muted-foreground);
-  font-size: 11px;
-}
-.attachment-chip > span {
-  max-width: 220px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
 
 @media (max-height: 420px) {
   .panel-content-body {

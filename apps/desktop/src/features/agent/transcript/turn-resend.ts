@@ -11,7 +11,6 @@ import {
 import type { BlockOf } from '../../../client/agent/transcript-schema';
 import {
   draftChips,
-  draftFiles,
   draftReferences,
   draftSkills,
   type Chip,
@@ -114,8 +113,8 @@ function promptResend(
     return draft ? [{ from, to, chip: draft }] : [];
   });
   // Every file of the run stays attached, including those whose chip the edit removed.
-  const draft = { text, files: base.files, chips };
-  const input: TaskInput = { ...base, text, files: draftFiles(draft), chips: draftChips(draft) };
+  const draft = { text, chips };
+  const input: TaskInput = { ...base, text, chips: draftChips(draft) };
   return { input, policy: runPolicy(snapshot, draftSkills(draft), draftReferences(draft)) };
 }
 

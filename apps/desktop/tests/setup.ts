@@ -21,6 +21,19 @@ globalThis.ResizeObserver = class implements ResizeObserver {
   unobserve() {}
   disconnect() {}
 };
+// Nothing ever scrolls into view without layout: lazily loaded images keep their placeholder.
+globalThis.IntersectionObserver = class implements IntersectionObserver {
+  readonly root = null;
+  readonly rootMargin = '0px';
+  readonly scrollMargin = '0px';
+  readonly thresholds = [0];
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+  takeRecords() {
+    return [];
+  }
+};
 
 window.matchMedia = (media) => ({
   media,

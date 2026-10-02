@@ -94,6 +94,12 @@
 .command-run-actions {
   margin-left: auto;
 }
+/* The Run shortcut sits on the solid primary button, so its keycaps take the button's own
+   foreground instead of the muted keycap fill meant for plain surfaces. */
+.run-shortcut-key {
+  background: color-mix(in oklab, var(--primary-foreground) 12%, transparent);
+  color: color-mix(in oklab, var(--primary-foreground) 70%, transparent);
+}
 .panel-dialog {
   display: flex;
   max-height: calc(100dvh - 32px);
@@ -949,13 +955,67 @@
     opacity: 0;
   }
 }
+/* Attachments sit flush with the bubble's trailing edge: thumbnails and file rows hug their content
+   and align right, like the bubble itself. */
 .user-message [data-slot='context-bubble'] {
   align-self: stretch;
+  align-items: flex-end;
   width: 100%;
+}
+.user-message [data-slot='context-bubble-files'] {
+  align-items: flex-end;
+  justify-content: flex-end;
+}
+.user-message [data-slot='context-bubble-files'] > li {
+  max-width: 100%;
 }
 .user-message [data-slot='context-bubble'] :focus-visible {
   outline: 1px solid var(--ring);
   box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 30%, transparent);
+}
+/* An attached image opens in the lightbox, an attached file shows in Finder (`user-context.tsx`). */
+.image-lightbox-trigger {
+  display: block;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-lg);
+  background: none;
+  cursor: pointer;
+}
+.user-context-file {
+  display: flex;
+  max-width: 100%;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 6px;
+  border: 0;
+  border-radius: var(--radius-lg);
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 14px;
+  text-align: start;
+  cursor: pointer;
+}
+.user-context-file:hover {
+  background: var(--accent);
+}
+/* The lightbox is the shared glass dialog sized to its image. The image's limits come from the
+   viewport, not the dialog, so its size never depends on the fit-content box around it: the window
+   less the dialog's 1rem margins and 8px padding on each side. */
+.image-lightbox {
+  width: fit-content;
+  max-width: calc(100vw - 2rem);
+  padding: 8px;
+}
+.image-lightbox-image {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: calc(100vw - 2rem - 16px);
+  max-height: calc(100dvh - 2rem - 16px);
+  border-radius: var(--radius-xl);
 }
 
 /* The service-starting surface replaces the whole panel, header included, so it drags the window

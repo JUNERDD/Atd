@@ -12,6 +12,7 @@ import type {
   PreparedCommand,
 } from './bridge';
 import type { CommandDefinition } from './command-schema';
+import type { Screenshot } from './screenshot-input';
 import {
   compactLiveTask,
   deleteLiveTask,
@@ -36,6 +37,11 @@ export interface CommandCatalog {
   find(id: string): CommandDefinition;
   prepare(id: string): Promise<PreparedCommand>;
   capture(source: 'selection' | 'clipboard'): Promise<{ text: string; capturedAt: string }>;
+  /**
+   * Lets the user capture the screen and imports the image; null when the user cancelled. Rejects
+   * with an English message when the capture is not permitted or the import fails.
+   */
+  screenshot(): Promise<Screenshot | null>;
   save(command: CommandDefinition, expectedRevision: number): Promise<CommandDefinition>;
   delete(id: string, revision: number): Promise<void>;
   /** Reloads the list from the service (connect, or another client changed it). */

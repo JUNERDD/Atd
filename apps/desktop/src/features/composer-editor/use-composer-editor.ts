@@ -101,7 +101,7 @@ class ComposerEditor implements EditorHost {
   }
 
   onUpdate(update: ViewUpdate) {
-    if (update.docChanged) this.emit(editorDraft(update.state, this.options.draft.files));
+    if (update.docChanged) this.emit(editorDraft(update.state));
     this.report(update.state);
   }
 

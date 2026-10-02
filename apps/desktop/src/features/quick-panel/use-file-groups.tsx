@@ -20,7 +20,7 @@ import type { QuickGroup, QuickOption } from './quick-options';
 import { relativeTime } from './relative-time';
 import { useFileSearch } from './use-file-search';
 
-/** Run input limit (`InputSchema.files`), counted over the attachment row and file chips together. */
+/** Run input limit (`InputSchema.files`), counted over the draft's file chips. */
 const ATTACHMENT_LIMIT = 10;
 const RECENT_ATTACHED_LIMIT = 3;
 const KIND_ICONS: Record<FileSearchResult['kind'], LucideIcon> = {

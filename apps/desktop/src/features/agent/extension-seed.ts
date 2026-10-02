@@ -25,7 +25,7 @@ export function extensionSeed(
   sentence: string,
 ): { draft: ComposerDraft; policy: RunPolicy } {
   return {
-    draft: serialize([{ kind: 'skill', name: `create-${kind}` }, ' ', sentence], []),
+    draft: serialize([{ kind: 'skill', name: `create-${kind}` }, ' ', sentence]),
     policy: {
       tools: TOOLS[kind] ?? ['read', 'write', 'edit', 'bash', 'command'],
       memory: true,

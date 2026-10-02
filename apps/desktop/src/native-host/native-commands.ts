@@ -5,6 +5,7 @@ import { prepareCommand } from '../client/agent/command-prepare';
 import { deleteRemote, fetchCommands, saveRemote } from '../client/agent/command-remote';
 import type { CommandDefinition } from '../client/agent/command-schema';
 import { validateCommand } from '../client/agent/command-validation';
+import type { Screenshot } from '../client/agent/screenshot-input';
 import type { CallResult, NativeBridge } from '../native-bridge/client';
 import { MAX_CAPTURE_LENGTH } from '../native-bridge/calls';
 import type { NativeConnection } from './native-connection';
@@ -17,6 +18,17 @@ const SELECTION_ERRORS: Record<SelectionFailure, string> = {
   noSelection: 'No selected text — select text in another app, then use the command shortcut.',
   tooLong: 'Selected text exceeds the input limit — select a smaller passage.',
 };
+/** macOS applies a new Screen Recording grant only to a relaunched app. */
+const SCREENSHOT_NOT_PERMITTED =
+  'Enable Screen Recording for AI: System Settings → Privacy & Security → Screen & System Audio Recording, then quit and reopen AI.';
+
+/** A capture or edit result as the page's screenshot; null when the user cancelled. */
+function shotOf(result: CallResult<'screenshot.capture'>): Screenshot | null {
+  if (result.ok)
+    return { file: result.file, context: result.context, capturedAt: result.capturedAt };
+  if (result.reason === 'notPermitted') throw new Error(SCREENSHOT_NOT_PERMITTED);
+  return null;
+}
 
 /**
  * The command list as the WebView host keeps it: the service's commands, cached for the page.
@@ -46,7 +58,7 @@ export class NativeCommands implements CommandCatalog {
 
   /** `expectCapture`: the command shortcut launched it, so a failed capture becomes a notice. */
   prepare(id: string, expectCapture = false): Promise<PreparedCommand> {
-    return prepareCommand(this.find(id), (source) => this.capture(source), expectCapture);
+    return prepareCommand(this.find(id), this, expectCapture);
   }
 
   async capture(source: 'selection' | 'clipboard') {
@@ -60,6 +72,16 @@ export class NativeCommands implements CommandCatalog {
     if (text.length > MAX_CAPTURE_LENGTH)
       throw new Error('Clipboard text exceeds the input limit.');
     return { text, capturedAt: new Date().toISOString() };
+  }
+
+  /** The shell hides the panel while the user picks an area, a window or the screen. */
+  async screenshot() {
+    return shotOf(await this.bridge.call('screenshot.capture', {}));
+  }
+
+  /** Reopens an image attachment on the capture overlay; the result is a new resource. */
+  async editScreenshot(resourceId: string) {
+    return shotOf(await this.bridge.call('screenshot.edit', { resourceId }));
   }
 
   /** Conflicts with another action's shortcut are the service's to refuse. */

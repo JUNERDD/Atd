@@ -81,11 +81,3 @@ export function composedPrompt(snapshot: RunSnapshot): SentSegment[] | null {
   if (at < text.length) segments.push(text.slice(at));
   return trimEnds(segments);
 }
-
-/** Files a prompt shows as chips; its attachment row lists only the other files. */
-export function chipFileIds(segments: readonly SentSegment[] | null): ReadonlySet<string> {
-  const ids = new Set<string>();
-  for (const segment of segments ?? [])
-    if (typeof segment !== 'string' && segment.kind === 'file') ids.add(segment.fileId);
-  return ids;
-}

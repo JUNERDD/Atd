@@ -1,5 +1,6 @@
 import type { FileSearchQuery, FileSearchReply } from '@ai/agent-contracts';
 import type { AgentBridge } from './agent/bridge';
+import type { Screenshot } from './agent/screenshot-input';
 import type { FileRef } from './agent/task-schema';
 import type { SettingsBridge } from './settings-contract';
 import type { ServiceBridge } from './service/ipc';
@@ -72,6 +73,20 @@ export interface DesktopBridge {
    */
   setOpenAtLogin: (open: boolean) => Promise<boolean>;
   chooseFiles: () => Promise<ContextFile[]>;
+  /**
+   * Captures the screen for a screenshot command's input with the commands' own capture (the one
+   * preparing a command uses); null when the user cancelled. Rejects with an English message when
+   * Screen Recording is not permitted or the import fails.
+   */
+  screenshot: () => Promise<Screenshot | null>;
+  /**
+   * Reopens an image attachment (`resourceId`) on the capture overlay for more annotation and
+   * cropping and imports the result as a new resource (`context` is always null); null when the
+   * user cancelled, which leaves the attachment as it was. Rejects like `screenshot`.
+   */
+  editScreenshot: (resourceId: string) => Promise<Screenshot | null>;
+  /** A stored resource's bytes through the relay (`GET /v1/resources/:id`), typed by its mime. */
+  resource: (resourceId: string) => Promise<Blob>;
   /** The system share picker for `text`, shown at `anchor`. Optional for test compat. */
   share?: (text: string, anchor: AnchorRect) => Promise<void>;
   /** Optional for test compat. */
