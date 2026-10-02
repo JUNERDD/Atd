@@ -1,29 +1,11 @@
-import path from 'node:path';
-import { fileURLToPath, URL } from 'node:url';
 import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
 import babel from '@rolldown/plugin-babel';
 import tailwindcss from '@tailwindcss/vite';
-import { reactCompiler } from './plugins/react-compiler.js';
 import {
   componentInspector,
   componentInspectorBabelPlugin,
 } from './plugins/component-inspector.js';
-
-const repoRoot = fileURLToPath(new URL('../..', import.meta.url));
-
-/**
- * These packages export `dist` at runtime and `src` for types. The renderer bundles their
- * TypeScript source, so a new export needs no separate package build first.
- */
-const workspaceSource = {
-  '@ai/agent-client': path.join(repoRoot, 'packages/agent-client/src/index.ts'),
-  '@ai/agent-contracts': path.join(repoRoot, 'packages/agent-contracts/src/index.ts'),
-  // Contracts use only the data model; the model entry keeps format parsers (and their Node
-  // dependencies) out of the renderer. Listed before the package root so it wins.
-  '@ai/plugin-kit/model': path.join(repoRoot, 'packages/plugin-kit/src/model.ts'),
-  '@ai/plugin-kit': path.join(repoRoot, 'packages/plugin-kit/src/index.ts'),
-};
+import { reactPlugin, workspaceResolve } from './vite.shared.js';
 
 /**
  * The dev server port. `AI_RENDERER_PORT` moves it for an isolated run beside another dev server;
@@ -40,25 +22,18 @@ if (!Number.isInteger(devPort) || devPort < 1 || devPort > 65535)
 export default defineConfig(({ command }) => ({
   base: './',
   plugins: [
-    react(),
     ...(command === 'serve'
       ? [
-          // Tags JSX with source locations for the component inspector.
+          // Tags JSX with source locations for the component inspector. Babel runs before the
+          // React plugin because the compiler transform rewrites JSX away.
           babel({ plugins: [componentInspectorBabelPlugin], include: /\.(tsx|jsx)$/ }),
           componentInspector(),
         ]
       : []),
-    // The compiler's Babel pass is synchronous and made a cold dev start ~2 s slower, so the dev
-    // server serves uncompiled components; builds and tests (vitest.config.ts) run compiled code.
-    ...(command === 'build' ? [reactCompiler()] : []),
+    reactPlugin(),
     tailwindcss(),
   ],
-  resolve: {
-    alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url)),
-      ...workspaceSource,
-    },
-  },
+  resolve: workspaceResolve,
   server: {
     host: '127.0.0.1',
     port: devPort,
