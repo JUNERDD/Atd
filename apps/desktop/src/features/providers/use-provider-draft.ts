@@ -67,15 +67,5 @@ export function useProviderDraft(provider: ProviderCatalogEntry, connection: Con
       setBaseline(next);
       setDraft(next);
     },
-    /**
-     * Applies a correction the form makes itself, such as dropping a reasoning level the model
-     * does not offer. On the baseline's own model that is how the connection opens, not an edit.
-     */
-    normalize: (patch: ConnectionDraftPatch) => {
-      setDraft((current) => patchDraft(current, patch));
-      setBaseline((current) =>
-        current.defaultModel === draft.defaultModel ? patchDraft(current, patch) : current,
-      );
-    },
   };
 }
