@@ -13,7 +13,10 @@ use crate::store::{MinidexStore, NameStore};
 use crate::walk::Focus;
 use crate::{Error, Extensions, Hit, IndexOptions, Phase, Status, reconcile};
 
-/// Names the store implementation and version in the saved identity; a change rebuilds.
+/// Names the store's on-disk layout in the saved identity; a change rebuilds the index. The
+/// `minidex` part is the release that last changed minidex's file format, not the pinned version:
+/// 0.37.0 reads 0.36.0's segments and write-ahead log unchanged, so the bump kept existing indexes.
+/// Change it when a minidex release alters its format or when the stored paths or times change.
 const STORE_FORMAT: &str = "minidex=0.36.0;paths=display;time=micros";
 const STORE_DIR: &str = "names";
 const STATE_FILE: &str = "state.json";
