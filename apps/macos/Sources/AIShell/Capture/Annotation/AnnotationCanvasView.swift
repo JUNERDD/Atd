@@ -46,6 +46,8 @@ final class AnnotationCanvasView: NSView {
   }
   var pixelScale: CGFloat = 1
 
+  /// ⌘C outside open text.
+  var onCopy: (() -> Void)?
   var onConfirm: (() -> Void)?
   var onChooseTool: ((AnnotationTool) -> Void)?
   /// Esc: steps back one level; false when there was nothing to step back.
@@ -252,11 +254,19 @@ final class AnnotationCanvasView: NSView {
     }
   }
 
-  /// ⌘Z and ⇧⌘Z undo the document, or the typing while text is open; ⌘Delete clears it. They
-  /// are taken here rather than through the Edit menu, whose `undo:` would reach the window's
-  /// undo manager, and ahead of an open text view's own handling of the keys.
+  /// ⌘Z and ⇧⌘Z undo the document, or the typing while text is open; ⌘Delete clears it; ⌘C
+  /// copies the result, except while text is open, where it copies the text selected in it.
+  /// They are taken here rather than through the Edit menu, whose `undo:` would reach the
+  /// window's undo manager, and ahead of an open text view's own handling of the keys.
   override func performKeyEquivalent(with event: NSEvent) -> Bool {
     let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+    if event.type == .keyDown, window?.isKeyWindow == true, modifiers == .command,
+      event.charactersIgnoringModifiers?.lowercased() == "c", !textEditor.isEditing,
+      let onCopy
+    {
+      onCopy()
+      return true
+    }
     if event.type == .keyDown, window?.isKeyWindow == true, modifiers == .command,
       event.keyCode == 51, onClearAll?() == true
     {

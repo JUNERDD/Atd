@@ -1,7 +1,7 @@
 import AICore
 import AppKit
 
-/// The annotation toolbar beside the selection: a grip, the tools, undo and redo, cancel
+/// The annotation toolbar beside the selection: a grip, the tools, undo and redo, cancel, copy
 /// and confirm, on the shared glass capsule (``AnnotationGlassBar``), which the grip or its surface
 /// drags. Colours and stroke widths live on the
 /// separate ``AnnotationStyleBar``, which appears next to this bar only when there is something
@@ -12,6 +12,7 @@ final class AnnotationToolbar: NSView {
   var onUndo: (() -> Void)?
   var onRedo: (() -> Void)?
   var onCancel: (() -> Void)?
+  var onCopy: (() -> Void)?
   var onConfirm: (() -> Void)?
   /// The bar being dragged by its grip or surface.
   var onDrag: ((AnnotationGlassBar.Drag) -> Void)? {
@@ -27,15 +28,16 @@ final class AnnotationToolbar: NSView {
   private let redoButton = AnnotationToolbarButton(selection: nil, action: #selector(redoClicked))
   private let cancelButton = AnnotationToolbarButton(
     selection: nil, action: #selector(cancelClicked))
+  private let copyButton = AnnotationToolbarButton(selection: nil, action: #selector(copyClicked))
   private let confirmButton = AnnotationToolbarButton(
     selection: nil, tint: .controlAccentColor, action: #selector(confirmClicked))
   private let bar: AnnotationGlassBar
 
   override init(frame: NSRect) {
-    let actions = [undoButton, redoButton, cancelButton, confirmButton]
+    let actions = [undoButton, redoButton, cancelButton, copyButton, confirmButton]
     bar = AnnotationGlassBar(groups: [
       [grip] + (tools as [NSView]), [undoButton, redoButton],
-      [cancelButton, confirmButton],
+      [cancelButton, copyButton, confirmButton],
     ])
     super.init(frame: frame)
     for button in tools + actions { button.target = self }
@@ -73,6 +75,7 @@ final class AnnotationToolbar: NSView {
       (undoButton, AnnotationIcons.undo, ShellStringKey.captureUndo, "⌘Z"),
       (redoButton, AnnotationIcons.redo, .captureRedo, "⇧⌘Z"),
       (cancelButton, AnnotationIcons.cancel, .cancel, "Esc"),
+      (copyButton, AnnotationIcons.copy, .captureCopy, "⌘C"),
       (confirmButton, AnnotationIcons.confirm, .captureConfirm, "↩"),
     ] {
       let name = strings.text(key)
@@ -101,6 +104,7 @@ final class AnnotationToolbar: NSView {
   @objc private func undoClicked() { onUndo?() }
   @objc private func redoClicked() { onRedo?() }
   @objc private func cancelClicked() { onCancel?() }
+  @objc private func copyClicked() { onCopy?() }
   @objc private func confirmClicked() { onConfirm?() }
 
   private static func key(for tool: AnnotationTool) -> ShellStringKey {

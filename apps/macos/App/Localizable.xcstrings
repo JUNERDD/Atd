@@ -217,6 +217,24 @@
         }
       }
     },
+    "capture.copy" : {
+      "comment" : "Screenshot toolbar button: copy the annotated screenshot to the clipboard and close, without attaching it",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "复制"
+          }
+        }
+      }
+    },
     "capture.hint.accessibility" : {
       "comment" : "Capture overlay hint shown when Accessibility is not allowed; clicking it asks for the permission",
       "extractionState" : "manual",

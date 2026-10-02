@@ -19,6 +19,8 @@ final class CaptureSession {
     /// are gone, since the system's prompt would open beneath them.
     case wantsAccessibility
     case confirmed(CaptureConfirmation)
+    /// The same result as `confirmed`, for the clipboard rather than an attachment.
+    case copied(CaptureConfirmation)
     case failed
   }
 
@@ -165,14 +167,19 @@ final class CaptureSession {
   func cancel() { finish(.cancelled) }
 
   /// Renders the selection with and without its annotations and ends the session with them.
+  func confirm() { end(as: Outcome.confirmed) }
+
+  /// Ends the session like ``confirm()``, with the result meant for the clipboard.
+  func copy() { end(as: Outcome.copied) }
+
   /// The editor's document is read before ``finish(_:)`` hides it.
-  func confirm() {
+  private func end(as outcome: (CaptureConfirmation) -> Outcome) {
     guard case .selected(let owner, let rect) = phase else { return }
     guard
       let rendered = CaptureExport.render(selection: rect, display: owner.display, editor: editor)
     else { return finish(.failed) }
     finish(
-      .confirmed(
+      outcome(
         CaptureConfirmation(
           image: rendered.image, raw: rendered.raw, pixelScale: owner.display.pixelScale,
           document: editor?.document ?? AnnotationDocument(), displayID: owner.display.displayID,

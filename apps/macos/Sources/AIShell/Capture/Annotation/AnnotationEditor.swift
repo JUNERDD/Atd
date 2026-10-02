@@ -16,6 +16,7 @@ import AppKit
 final class AnnotationEditor: AnnotationEditing {
   var onConfirm: (() -> Void)?
   var onCancel: (() -> Void)?
+  var onCopy: (() -> Void)?
   var onInteriorClaimChange: ((Bool) -> Void)?
 
   private let store = AnnotationStore()
@@ -61,6 +62,7 @@ final class AnnotationEditor: AnnotationEditing {
     interaction.onConfirm = { [weak self] in self?.confirm() }
     textEditor.onEnd = { [weak self] in self?.focusCanvas() }
     canvas.onConfirm = { [weak self] in self?.confirm() }
+    canvas.onCopy = { [weak self] in self?.copy() }
     canvas.onChooseTool = { [weak self] in self?.choose($0) }
     canvas.onEscape = { [weak self] in self?.stepBack() ?? false }
     canvas.onStepStroke = { [weak self] in self?.stepStroke($0) ?? false }
@@ -71,6 +73,7 @@ final class AnnotationEditor: AnnotationEditing {
     toolbar.onRedo = { [weak self] in self?.store.redo() }
     toolbar.onCancel = { [weak self] in self?.onCancel?() }
     toolbar.onConfirm = { [weak self] in self?.confirm() }
+    toolbar.onCopy = { [weak self] in self?.copy() }
     toolbar.onDrag = { [weak self] in self?.moveBars($0) }
     styleBar.onDrag = { [weak self] in self?.moveBars($0) }
   }
@@ -256,6 +259,12 @@ final class AnnotationEditor: AnnotationEditing {
   private func confirm() {
     textEditor.end()
     onConfirm?()
+  }
+
+  /// The same export as ``confirm()``, for the clipboard.
+  private func copy() {
+    textEditor.end()
+    onCopy?()
   }
 
   private func focusCanvas() {
