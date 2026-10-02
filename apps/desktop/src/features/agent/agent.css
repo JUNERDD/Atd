@@ -520,8 +520,9 @@
   width: 14px;
   height: 14px;
   opacity: 0;
-  /* Only the open/close rotation animates; the hover swap itself is instant. */
-  transition: rotate 200ms;
+  /* Only the open/close rotation animates, on the body's expand curve; the hover swap itself is
+     instant. */
+  transition: rotate 240ms cubic-bezier(0.22, 1, 0.36, 1);
   color: var(--muted-foreground);
 }
 .activity-trigger:hover .row-chevron {
@@ -558,24 +559,24 @@
 .phase-trigger:hover .phase-icon {
   opacity: 0;
 }
-.phase-single {
+/* A column so the trigger stays a flex item, as it is directly under the group: an inline-flex
+   button in a block box would sit on a line box and gain descender space. */
+.phase-header {
   display: flex;
   min-width: 0;
-  align-items: flex-start;
-  gap: 8px;
+  flex-direction: column;
 }
-.phase-single > .phase-icon {
-  /* The gap mirrors the trigger box so the glyph and step text start where a group header's icon
-     and title start; the top offset centers the 14px glyph on the 20px first line. */
-  margin-top: 3px;
-}
-.phase-single-step {
+/* The rail's own region (not Radix content, which unmounts while closed). Wide step content stays
+   clipped to the column as before; `clip` does not make the region a scroll container. */
+.phase-body {
   min-width: 0;
-  flex: 1;
+  overflow-x: clip;
 }
 /*
  * The rail: a spine down the group with a step branching off it on a curve, drawn on the step
- * itself so it follows however tall that step turns out to be.
+ * itself so it follows however tall that step turns out to be. A step's first row is the shared
+ * 32px activity row, so its 14px icon centers 16px down: `--rail-branch-top` drops the 8px
+ * branch until its 1px stroke is centered there too.
  */
 .phase-steps {
   display: flex;
@@ -583,16 +584,41 @@
   flex-direction: column;
 }
 .phase-step {
+  --rail-branch-top: 8.5px;
   position: relative;
-  padding-left: 14px;
+  /* The branch ends at 14.5px; the gap keeps it off the step's icon. */
+  padding-left: 18px;
+  /* A lone step gains its indent when a second step turns it into a group: ease into it rather
+     than snapping sideways while the header grows in above. */
+  transition: padding-left 240ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 .phase-step::before,
 .phase-step::after {
   content: '';
   position: absolute;
-  /* 7px half icon minus the 1px line: the spine meets the header icon's center, and the 8px
-   * branch lands exactly on the 14px content edge, where the step's own icon starts. */
-  left: 6px;
+  /* 7px half icon minus half the 1px line: the spine's center meets the header icon's center,
+   * and the 8px branch stops 3.5px short of the step's own icon. */
+  left: 6.5px;
+  transition: opacity 240ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+/* A lone step has no header and no rail: it sits flush with the prose around it. */
+.phase-step-lone {
+  padding-left: 0;
+}
+.phase-step-lone::before,
+.phase-step-lone::after {
+  opacity: 0;
+}
+/* A lone step without an icon of its own carries the phase glyph in its indent. The indent
+   mirrors the trigger box (14px icon + 8px gap) so the glyph and step text start where a group
+   header's icon and title start; the top offset centers the 14px glyph on the 20px first line. */
+.phase-step-marked {
+  padding-left: 22px;
+}
+.phase-step > .phase-icon {
+  position: absolute;
+  top: 3px;
+  left: 0;
 }
 .phase-step::before {
   top: 0;
@@ -600,30 +626,18 @@
   width: 1px;
   background: var(--activity-connector);
 }
-/* The last step is where the spine leaves off, curve and all. */
+/* The last step is where the spine leaves off, overlapping its curve by a pixel so they join. */
 .phase-step:last-child::before {
   bottom: auto;
-  height: 7px;
+  height: calc(var(--rail-branch-top) + 1px);
 }
 .phase-step::after {
-  top: 6px;
+  top: var(--rail-branch-top);
   width: 8px;
   height: 8px;
   border-left: 1px solid var(--activity-connector);
   border-bottom: 1px solid var(--activity-connector);
   border-bottom-left-radius: 8px;
-}
-/* Live steps fade in place. A slide or blur hitch the autoscroll. */
-@keyframes step-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-.step-in {
-  animation: step-in 180ms ease-out both;
 }
 @keyframes turn-spin {
   to {
@@ -631,13 +645,18 @@
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .step-in,
   .turn-header-spinner,
   .markdown [data-sd-animate],
   .markdown [data-sd-animate-marker]::marker,
   [data-slot='collapsible-content'][data-state='open'],
   [data-slot='collapsible-content'][data-state='closed'] {
     animation: none;
+  }
+  .row-chevron,
+  .phase-step,
+  .phase-step::before,
+  .phase-step::after {
+    transition: none;
   }
 }
 .thinking-row {

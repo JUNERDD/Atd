@@ -1,15 +1,15 @@
-import { memo, useLayoutEffect, useRef, useState, type UIEvent, type WheelEvent } from 'react';
+import { memo, useState } from 'react';
 import { Bot, ListTodo, PenLine, Search, Sparkles, Terminal, Wrench } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { ScrollArea } from '@ai/ui/components/scroll-area';
 import { Shimmer } from '@ai/ui/components/ai-elements/shimmer';
 import type { Artifact, FileRef } from '../../../client/agent/task-schema';
 import { TaskFiles } from '../task-files';
 import { ActivityRow } from './activity-row';
-import type { AdaptedItem, ViewBlock } from './adapter';
+import type { AdaptedItem } from './adapter';
 import { type ActivityPhase, type ActivityPhaseKind } from './phases';
 import { phaseTitle, phaseToggleLabel } from './phase-title';
-import { PhaseStep } from './phase-step';
+import { PhaseHeader, PhaseRail } from './phase-rail';
+import { usePhaseMotion, visiblePhaseSteps } from './phase-reveal';
 import type { RequestIndex } from './turns';
 
 /** What the group was for, at a glance: look, change, run, plan, think. */
@@ -34,43 +34,12 @@ function PhaseGlyph({ kind }: { kind: ActivityPhaseKind }) {
 }
 
 /**
- * Keeps a live phase body on its newest step. Pinning happens in layout before paint so the
- * window follows without a visible hitch; only a real wheel away from the bottom pauses that.
- */
-function useLivePhasePin(active: boolean, steps: ViewBlock[]) {
-  const ref = useRef<HTMLDivElement>(null);
-  const stick = useRef(true);
-
-  useLayoutEffect(() => {
-    const node = ref.current;
-    if (!active || !node || !stick.current) return;
-    node.scrollTop = node.scrollHeight;
-  }, [active, steps]);
-
-  const onScroll = (event: UIEvent<HTMLDivElement>) => {
-    const node = event.currentTarget;
-    if (node.scrollHeight - node.scrollTop - node.clientHeight <= 16) stick.current = true;
-  };
-
-  const onWheel = (event: WheelEvent<HTMLDivElement>) => {
-    if (event.deltaY >= 0) return;
-    const node = event.currentTarget;
-    if (node.scrollHeight <= node.clientHeight + 1) return;
-    stick.current = false;
-    event.stopPropagation();
-  };
-
-  return { ref, onScroll, onWheel };
-}
-
-/**
  * One phase: a header the whole group hangs off, and the steps under it on a rail. The header
  * always carries the group's tally; while running it grows under a shimmer instead of switching
  * to the latest step. Groups start collapsed unless a step is waiting on the user, which opens
- * its group by default. The toggle always wins after that: a collapsed or
- * expanded group stays put across new steps, phase switches, and settling. While live, the open
- * body stays a short scrolling window pinned to the newest step; after the turn settles an
- * opened group is full height again.
+ * its group by default. The toggle always wins after that: a collapsed or expanded group stays
+ * put across new steps, phase switches, and settling. A collapsed live group keeps its newest two
+ * steps in view under the header; once it settles only the header stays.
  */
 function ActivityPhaseView({
   phase,
@@ -83,41 +52,23 @@ function ActivityPhaseView({
 }) {
   const { t } = useTranslation('tasks');
   const [override, setOverride] = useState<boolean | null>(null);
+  const { motion, header, arm } = usePhaseMotion(active);
   const waiting = phase.steps.some((step) => step.approvalPending);
   // The manual toggle wins over the waiting default: once touched, the group stays put across
   // new steps, phase switches, and settling — nothing reopens or snap-shuts behind the user.
   const open = override ?? waiting;
-  const { ref, onScroll, onWheel } = useLivePhasePin(active && open, phase.steps);
   const title = phaseTitle(phase, active, t);
-  const first = phase.steps[0];
-  const single = phase.steps.length === 1 && first ? first : undefined;
-
   // A lone call the agent never introduced is not a group: a header repeating the single row
-  // under it says nothing twice. Thinking, tool, and question steps already render their own
-  // leading icon, so an outer phase glyph would double it (two Sparkles for a lone thought,
-  // two Terminals for a lone bash). Only steps without an inner icon keep the outer glyph as
-  // their sole marker.
-  if (single) {
-    const innerHasIcon =
-      single.role === 'reasoning' || single.role === 'tool' || single.role === 'question';
-    if (innerHasIcon) {
-      return (
-        <div className="phase-single">
-          <div className="phase-single-step">
-            <PhaseStep view={single} requests={requests} />
-          </div>
-        </div>
-      );
-    }
-    return (
-      <div className="phase-single">
-        <PhaseGlyph kind={phase.kind} />
-        <div className="phase-single-step">
-          <PhaseStep view={single} requests={requests} />
-        </div>
-      </div>
-    );
-  }
+  // under it says nothing twice. It renders through the same rail as a group, so the step keeps
+  // its state when a second step arrives and the header grows in above it.
+  const grouped = phase.steps.length !== 1;
+  const first = phase.steps[0];
+  // Thinking, tool, and question steps already render their own leading icon, so an outer phase
+  // glyph would double it (two Sparkles for a lone thought, two Terminals for a lone bash). Only
+  // a lone step without an inner icon keeps the outer glyph as its sole marker.
+  const innerHasIcon =
+    first?.role === 'reasoning' || first?.role === 'tool' || first?.role === 'question';
+  const marker = grouped || innerHasIcon ? null : <PhaseGlyph kind={phase.kind} />;
 
   // The outer Title already carries `phase-title` (truncation included): repeating it on the
   // inner span would put `overflow: hidden` on the live Shimmer's inline box, moving its
@@ -134,34 +85,32 @@ function ActivityPhaseView({
   return (
     <ActivityRow.Root
       open={open}
-      onOpenChange={setOverride}
+      onOpenChange={(next) => {
+        arm();
+        setOverride(next);
+      }}
       status={active ? 'running' : 'completed'}
       className="phase-group"
     >
-      <ActivityRow.Trigger aria-label={`${toggle}, ${title}`} className="phase-trigger">
-        <ActivityRow.Icon>
-          <PhaseGlyph kind={phase.kind} />
-        </ActivityRow.Icon>
-        <ActivityRow.Title className="phase-title" title={title}>
-          {label}
-        </ActivityRow.Title>
-      </ActivityRow.Trigger>
-      <ActivityRow.Content>
-        <ScrollArea
-          viewportRef={ref}
-          viewportProps={{ onScroll, onWheel }}
-          className="phase-scroll"
-          scrollShadow
-        >
-          <ActivityRow.Steps>
-            {phase.steps.map((step) => (
-              <ActivityRow.Step key={step.id} className={active ? 'step-in' : ''}>
-                <PhaseStep view={step} requests={requests} />
-              </ActivityRow.Step>
-            ))}
-          </ActivityRow.Steps>
-        </ScrollArea>
-      </ActivityRow.Content>
+      <PhaseHeader show={grouped} animated={header}>
+        <ActivityRow.Trigger aria-label={`${toggle}, ${title}`} className="phase-trigger">
+          <ActivityRow.Icon>
+            <PhaseGlyph kind={phase.kind} />
+          </ActivityRow.Icon>
+          <ActivityRow.Title className="phase-title" title={title}>
+            {label}
+          </ActivityRow.Title>
+        </ActivityRow.Trigger>
+      </PhaseHeader>
+      <PhaseRail
+        steps={visiblePhaseSteps(phase.steps, { grouped, open, active })}
+        lone={!grouped}
+        marker={marker}
+        motion={motion}
+        // A collapsed live group is the peek window: its steps trade places at a fixed height.
+        mode={grouped && !open && active ? 'peek' : 'flow'}
+        requests={requests}
+      />
     </ActivityRow.Root>
   );
 }
@@ -180,7 +129,7 @@ export const ActivityGroup = memo(function ActivityGroup({
   artifacts: Artifact[];
   anchors: Set<string>;
   onAttach: (file: FileRef) => void;
-  /** The round of work is still going: the tally shimmers and the open body follows new steps. */
+  /** The round of work is still going: the tally shimmers and a collapsed group peeks its newest steps. */
   active: boolean;
 }) {
   const files = anchors.has(item.anchorBlockId)
