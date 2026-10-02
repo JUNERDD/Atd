@@ -215,6 +215,9 @@ export function installBridge(extras?: {
     show: vi.fn(async () => {}),
     hide,
     chooseFiles: vi.fn(async () => []),
+    screenshot: vi.fn(async () => null),
+    editScreenshot: vi.fn(async () => null),
+    resource: vi.fn(async () => new Blob()),
     settings: {
       open,
       openCommand,

@@ -175,7 +175,9 @@
     "changed": "Opening uses the current file. Saved messages still describe the original run.",
     "partialOutput": "Partial output",
     "available": "Available",
-    "relinked": "Re-linked file"
+    "relinked": "Re-linked file",
+    "previewImage": "Preview {{name}}",
+    "showInFinder": "Show {{name}} in Finder"
   },
   "history": {
     "label": "Task history",

@@ -6,7 +6,6 @@ import {
   type Text,
   type Transaction,
 } from '@codemirror/state';
-import type { FileRef } from '../../client/agent/task-schema';
 import { deserialize, serialize, type Chip, type ComposerDraft, type DraftSegment } from './draft';
 
 /**
@@ -91,9 +90,9 @@ function segmentsOf(text: string, table: ReadonlyMap<string, Chip>): DraftSegmen
   return segments;
 }
 
-/** The serialized draft of an editor state; attachments come from the caller. */
-export function editorDraft(state: EditorState, files: FileRef[]): ComposerDraft {
-  return serialize(segmentsOf(state.doc.toString(), state.field(chipTable)), files);
+/** The serialized draft of an editor state. */
+export function editorDraft(state: EditorState): ComposerDraft {
+  return serialize(segmentsOf(state.doc.toString(), state.field(chipTable)));
 }
 
 /** Writes document segments as the text the editor stands for. */
@@ -105,7 +104,7 @@ export type SegmentWriter = (segments: readonly DraftSegment[]) => string;
  * as its instruction token).
  */
 export const segmentText = Facet.define<SegmentWriter, SegmentWriter>({
-  combine: (values) => values[0] ?? ((segments) => serialize(segments, []).text),
+  combine: (values) => values[0] ?? ((segments) => serialize(segments).text),
 });
 
 /** Document text with every token written as its chip's text. */

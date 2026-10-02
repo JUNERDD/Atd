@@ -1,3 +1,4 @@
+import { downloadResource } from '@ai/agent-client';
 import type { McpApprovalRequestResult } from '@ai/agent-contracts';
 import { AgentRequests } from '../client/agent/agent-requests';
 import { parseExtensionSession, type ExtensionSession } from '../client/agent/bridge';
@@ -113,7 +114,11 @@ export async function installNativeHost(
   connection.onInvalidate((frame) => void requests.onInvalidate(frame));
   connection.onConnected(() => void commands.refreshFromService().catch(() => undefined));
   messages.listen((message) => {
-    if (message.type === 'commandSession') {
+    if (message.type === 'launchCommand') {
+      void requests.handle(message.request, 'page').catch((error: unknown) => {
+        console.error('The command launched from settings could not open:', error);
+      });
+    } else if (message.type === 'commandSession') {
       const name = commands.list().find((item) => item.id === message.commandId)?.name ?? '';
       emit('session', { commandId: message.commandId, name });
       void native.call('window.show', {});
@@ -159,7 +164,14 @@ export async function installNativeHost(
     platform: 'darwin',
     settings: settings.bridge,
     ...(surface === 'panel' ? { files: nativeFiles(connection) } : {}),
-    agent: createAgentBridge((request) => requests.handle(request, 'page'), listen),
+    agent: createAgentBridge(async (request) => {
+      // Only the panel receives `launch` events, so the settings window hands its launches over.
+      if (surface === 'settings' && request.action === 'launch') {
+        messages.post({ type: 'launchCommand', request });
+        return null;
+      }
+      return requests.handle(request, 'page');
+    }, listen),
     service: createServiceBridge(
       async (request) => {
         switch (request.action) {
@@ -207,6 +219,13 @@ export async function installNativeHost(
     },
     // Attachments go through the agent bridge (`chooseFiles` → `files.pick`).
     chooseFiles: async () => [],
+    screenshot: () => commands.screenshot(),
+    editScreenshot: (resourceId) => commands.editScreenshot(resourceId),
+    resource: async (resourceId) => {
+      const { bytes, mime } = await downloadResource(connection.options(), resourceId);
+      // The client types the bytes over any buffer; a Blob takes an ArrayBuffer-backed copy.
+      return new Blob([bytes.slice()], { type: mime });
+    },
     share: async (text, anchor) => void (await native.call('share.text', { text, anchor })),
     speech: nativeSpeech(native),
     onEditCommand: (listener) => native.on('edit.command', ({ command }) => listener(command)),

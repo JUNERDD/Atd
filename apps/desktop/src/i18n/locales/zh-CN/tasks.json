@@ -175,7 +175,9 @@
     "changed": "打开时使用当前文件。已保存的消息仍描述原始运行。",
     "partialOutput": "部分输出",
     "available": "可用",
-    "relinked": "重新关联的文件"
+    "relinked": "重新关联的文件",
+    "previewImage": "预览 {{name}}",
+    "showInFinder": "在访达中显示 {{name}}"
   },
   "history": {
     "label": "任务历史",

@@ -12,16 +12,27 @@ import {
 import type { FileRef } from '../../client/agent/task-schema';
 
 /**
- * One inline chip, inserted from the quick panel or (a quote, holding the Markdown of a passage
- * selected in an answer) from the transcript; the draft's only source of truth for it.
+ * One inline chip, inserted from the quick panel, the attach menu, a drop or paste, or (a quote,
+ * holding the Markdown of a passage selected in an answer) from the transcript; the draft's only
+ * source of truth for it.
  */
 export type Chip =
-  | { kind: 'file'; file: FileRef }
+  | FileChip
   | { kind: 'task'; taskId: string; title: string }
   | { kind: 'mcpServer'; serverId: string }
   | { kind: 'agent'; name: string }
   | { kind: 'skill'; name: string }
   | { kind: 'quote'; text: string; source?: QuoteSource };
+
+/**
+ * A file the draft sends. A screenshot is one chip for its image and `context`, the screen context
+ * the shell imported beside the capture: both are sent, while only the image is shown.
+ */
+export interface FileChip {
+  kind: 'file';
+  file: FileRef;
+  context?: FileRef;
+}
 
 /** A chip and its token range in the serialized `text`. */
 export interface ChipRange {
@@ -32,7 +43,6 @@ export interface ChipRange {
 
 export interface ComposerDraft {
   text: string;
-  files: FileRef[];
   chips: ChipRange[];
 }
 
@@ -95,7 +105,7 @@ export function chipText(chip: Chip): string {
   return /\s/.test(name) ? `@"${name}"` : `@${name}`;
 }
 
-export function serialize(segments: readonly DraftSegment[], files: FileRef[]): ComposerDraft {
+export function serialize(segments: readonly DraftSegment[]): ComposerDraft {
   let text = '';
   const chips: ChipRange[] = [];
   for (const segment of segments) {
@@ -107,7 +117,7 @@ export function serialize(segments: readonly DraftSegment[], files: FileRef[]): 
     chips.push({ from: text.length, to: text.length + serialized.length, chip: segment });
     text += serialized;
   }
-  return { text, files, chips };
+  return { text, chips };
 }
 
 export function deserialize(draft: ComposerDraft): DraftSegment[] {
@@ -151,10 +161,10 @@ export function normalizeDraft(draft: ComposerDraft): ComposerDraft {
 export function seedFromText(text: string): ComposerDraft {
   const name = LEGACY_SKILL_PREFIX.exec(text)?.[1];
   const chip: Chip | null = name ? { kind: 'skill', name } : null;
-  return { text, files: [], chips: chip ? [{ from: 0, to: chipText(chip).length, chip }] : [] };
+  return { text, chips: chip ? [{ from: 0, to: chipText(chip).length, chip }] : [] };
 }
 
-/** Whether two drafts hold the same editor content; attachments live outside the editor. */
+/** Whether two drafts hold the same editor content. */
 export function sameContent(a: ComposerDraft, b: ComposerDraft): boolean {
   return (
     a.text === b.text &&
@@ -171,12 +181,18 @@ export function sameContent(a: ComposerDraft, b: ComposerDraft): boolean {
   );
 }
 
-/** Files sent with the draft: the attachment row, then file chips, each file once. */
+/** A file chip's files: the file, then a screenshot's context. */
+export function chipFiles(chip: FileChip): FileRef[] {
+  return chip.context ? [chip.file, chip.context] : [chip.file];
+}
+
+/** Files sent with the draft: each file chip's files in draft order, each file once. */
 export function draftFiles(draft: ComposerDraft): FileRef[] {
-  const files = [...draft.files];
+  const files: FileRef[] = [];
   for (const { chip } of draft.chips)
-    if (chip.kind === 'file' && !files.some((file) => file.id === chip.file.id))
-      files.push(chip.file);
+    if (chip.kind === 'file')
+      for (const file of chipFiles(chip))
+        if (!files.some((item) => item.id === file.id)) files.push(file);
   return files;
 }
 
@@ -266,5 +282,5 @@ export function appendChip(draft: ComposerDraft, chip: Chip): ComposerDraft {
   const segments = deserialize(draft);
   const last = segments.at(-1);
   const apart = last === undefined || (typeof last === 'string' && /\s$/.test(last));
-  return serialize([...segments, ...(apart ? [] : [' ']), chip, ' '], draft.files);
+  return serialize([...segments, ...(apart ? [] : [' ']), chip, ' ']);
 }

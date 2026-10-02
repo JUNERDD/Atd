@@ -29,10 +29,14 @@
     "promptLabel": "任务提示词",
     "placeholder": "输入任何内容…",
     "followUpPlaceholder": "继续追问…",
-    "attachedContext": "已附加的上下文",
     "attachContext": "附加上下文",
     "attachLimit": "最多附加 10 个文件。",
-    "removeFile": "移除 {{name}}",
+    "editImage": "编辑 {{name}}",
+    "attachMenu": {
+      "screenshot": "截图",
+      "upload": "上传文件",
+      "mention": "提及文件、对话或工具…"
+    },
     "stopAndDecline": "停止并拒绝",
     "answerPlaceholder": "输入你的回答…",
     "interjectPlaceholder": "直接发送将拒绝此操作并立即送达…",
@@ -115,6 +119,11 @@
     "starting": "正在启动…",
     "selectedText": "选中的文本",
     "clipboardText": "剪贴板文本",
+    "screenshot": "截图",
+    "takeScreenshot": "截取屏幕",
+    "retakeScreenshot": "重新截图",
+    "editScreenshot": "编辑截图",
+    "screenshotMissing": "截图后才能运行此命令。",
     "text": "输入内容",
     "textPlaceholder": "输入要用于此命令的文本…",
     "captured": "捕获于 {{time}}",
@@ -297,5 +306,9 @@
     "text": "此任务的上下文已整理 {{count}} 次，新开任务效果更好。",
     "newTask": "新建任务",
     "dismiss": "关闭提示"
+  },
+  "attachments": {
+    "noVision": "{{model}} 无法识别图片，附加的图片不会发送给它。",
+    "noVisionWithText": "{{model}} 无法识别图片，附加的图片不会发送给它；屏幕上下文等附加文本仍会发送。"
   }
 }

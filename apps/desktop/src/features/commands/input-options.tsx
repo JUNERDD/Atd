@@ -40,14 +40,22 @@ export function InputOptions({
   const isOpen = open ?? internalOpen;
   const setIsOpen = onOpenChange ?? setInternalOpen;
   function source(value: string) {
-    if (value !== 'manual' && value !== 'selection' && value !== 'clipboard' && value !== 'none')
+    if (
+      value !== 'manual' &&
+      value !== 'selection' &&
+      value !== 'clipboard' &&
+      value !== 'screenshot' &&
+      value !== 'none'
+    )
       return;
+    // A source turns on what it fills (the screenshot is an attached image) and keeps it on.
     onChange({
       ...command,
       input: {
         ...command.input,
         source: value,
         required: value === 'none' ? false : command.input.required,
+        files: command.input.files || value === 'screenshot',
         selection: command.input.selection || value === 'selection',
         clipboard: command.input.clipboard || value === 'clipboard',
       },
@@ -72,6 +80,7 @@ export function InputOptions({
                 <SelectItem value="manual">{t('input.sourceManual')}</SelectItem>
                 <SelectItem value="selection">{t('input.sourceSelection')}</SelectItem>
                 <SelectItem value="clipboard">{t('input.sourceClipboard')}</SelectItem>
+                <SelectItem value="screenshot">{t('input.sourceScreenshot')}</SelectItem>
                 <SelectItem value="none">{t('input.sourceNone')}</SelectItem>
               </SelectContent>
             </Select>
@@ -115,6 +124,7 @@ export function InputOptions({
                   id={`input-${key}`}
                   disabled={
                     (key === 'required' && command.input.source === 'none') ||
+                    (key === 'files' && command.input.source === 'screenshot') ||
                     (key === 'selection' && command.input.source === 'selection') ||
                     (key === 'clipboard' && command.input.source === 'clipboard')
                   }

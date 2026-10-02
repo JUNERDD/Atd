@@ -6,8 +6,6 @@ import { isComposingKey } from '@ai/ui/lib/ime';
 import type { RunSnapshot } from '../../../client/agent/task-schema';
 import { UserContext } from '../user-context';
 
-const NO_CHIP_FILES: ReadonlySet<string> = new Set();
-
 /**
  * Edits a sent message in place of its bubble. ⌘↩ sends and Esc cancels; an IME composition keeps
  * both keys. Every file of the run stays listed above the field, chip files included, because the
@@ -69,7 +67,7 @@ export function MessageEditor({
 
   return (
     <div className="message-editor">
-      {snapshot && <UserContext snapshot={snapshot} chipFileIds={NO_CHIP_FILES} />}
+      {snapshot && <UserContext snapshot={snapshot} />}
       <Textarea
         aria-label={t('turnActions.editLabel')}
         ref={field}

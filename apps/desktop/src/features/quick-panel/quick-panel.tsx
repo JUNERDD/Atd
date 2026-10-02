@@ -28,7 +28,7 @@ export interface QuickPanelProps {
   onPolicyChange: (policy: RunPolicy) => void;
   connections: Connection[];
   model: ModelReference | null;
-  /** `draft.files` plus file chips, against the 10-file limit. */
+  /** Files the draft's file chips send, against the 10-file limit. */
   attachmentCount: number;
   /** Why the open task cannot be compacted now (`/compact`); null when it can. */
   compact: CompactBlock | null;

@@ -4,7 +4,7 @@ import { ChipToken } from '../../composer-editor/chip-content';
 import { revealQuote } from './selection-toolbar/quote-reveal';
 import { UserContext } from '../user-context';
 import { MessageBubble } from './message-bubble';
-import { chipFileIds, composedPrompt, sentChipName, type SentSegment } from './composed-prompt';
+import { composedPrompt, sentChipName, type SentSegment } from './composed-prompt';
 
 /** Shows the passage a quote chip was taken from, when it records where. */
 function revealerOf(segment: Exclude<SentSegment, string>) {
@@ -42,7 +42,7 @@ export function PromptMessage({ snapshot, fallback }: { snapshot: RunSnapshot; f
   const composed = composedPrompt(snapshot);
   return (
     <>
-      <UserContext snapshot={snapshot} chipFileIds={chipFileIds(composed)} />
+      <UserContext snapshot={snapshot} />
       <MessageBubble>{composed ? <SentText segments={composed} /> : fallback}</MessageBubble>
     </>
   );

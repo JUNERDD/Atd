@@ -3,6 +3,7 @@ import {
   BookOpen,
   Bot,
   FileText,
+  Image,
   MessageSquare,
   Plug,
   TextQuote,
@@ -17,6 +18,8 @@ export type ChipKind = Chip['kind'];
 export interface ChipLabel {
   kind: ChipKind;
   name: string;
+  /** An image file in the composer: an image icon, and a tooltip that clicking edits it. */
+  image?: boolean;
 }
 
 /** Same marks as the extension settings (skills, subagents, MCP) and the transcript file rows. */
@@ -41,17 +44,17 @@ const LABEL_KEYS = {
 
 /**
  * A chip's icon and name. Screen readers get the kind with the name ("File: notes.txt"); the
- * tooltip repeats it because long names are truncated. The spoken label is not selectable, so
- * copying text that spans a chip copies only its visible name.
+ * tooltip repeats it because long names are truncated, or names the edit an image chip opens. The
+ * spoken label is not selectable, so copying text that spans a chip copies only its visible name.
  */
-export function ChipContent({ kind, name }: ChipLabel) {
+export function ChipContent({ kind, name, image = false }: ChipLabel) {
   const { t } = useTranslation('panel');
-  const Icon = ICONS[kind];
+  const Icon = image ? Image : ICONS[kind];
   const label = t(LABEL_KEYS[kind], { name });
   return (
     <>
       <span className="sr-only select-none">{label}</span>
-      <span aria-hidden="true" title={label}>
+      <span aria-hidden="true" title={image ? t('composer.editImage', { name }) : label}>
         <Icon className="composer-chip-icon" />
         <span className="composer-chip-name">{name}</span>
       </span>

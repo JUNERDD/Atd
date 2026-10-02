@@ -109,6 +109,7 @@ export const CommandSchema = Type.Object(
           Type.Literal('manual'),
           Type.Literal('selection'),
           Type.Literal('clipboard'),
+          Type.Literal('screenshot'),
           Type.Literal('none'),
         ]),
         required: Type.Boolean(),

@@ -99,10 +99,13 @@ export function ParameterField({
         </>
       )}
       {(error || parameter.description) && (
+        // The description explains the choice, so it wraps under the control rather than
+        // hiding its end behind a hover.
         <p
-          className={error ? 'text-destructive text-xs' : 'truncate text-muted-foreground text-xs'}
+          className={
+            error ? 'text-destructive text-xs' : 'text-pretty text-muted-foreground text-xs'
+          }
           role={error ? 'alert' : undefined}
-          title={error ? undefined : parameter.description}
         >
           {error || parameter.description}
         </p>
