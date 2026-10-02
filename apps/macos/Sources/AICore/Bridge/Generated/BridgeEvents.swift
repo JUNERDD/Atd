@@ -201,6 +201,29 @@ public struct SpeechStateEvent: Codable, Equatable, Sendable {
   }
 }
 
+/// Payload of the `update.state` event.
+public struct UpdateStateEvent: Codable, Equatable, Sendable {
+  public let version: String?
+
+  public init(version: String?) {
+    self.version = version
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    version = try container.nullable(.version) { try container.string($0, maxLength: 64) }
+  }
+
+  public func encode(to encoder: any Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(version, forKey: .version)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case version
+  }
+}
+
 /// Payload of the `socket.frames` event.
 public struct SocketFramesEvent: Codable, Equatable, Sendable {
   public let frames: [SocketFrame]

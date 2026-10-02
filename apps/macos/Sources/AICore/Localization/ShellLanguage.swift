@@ -30,6 +30,7 @@ public enum ShellStringKey: String, CaseIterable, Sendable {
   case menuShowPanel = "menu.showPanel"
   case menuHidePanel = "menu.hidePanel"
   case menuSettings = "menu.settings"
+  case menuCheckForUpdates = "menu.checkForUpdates"
   case menuRestartService = "menu.restartService"
   case menuShowServiceLogs = "menu.showServiceLogs"
   case menuQuit = "menu.quit"

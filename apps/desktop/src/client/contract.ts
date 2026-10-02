@@ -45,6 +45,17 @@ export interface SpeechBridge {
   onState(listener: (speaking: boolean) => void): () => void;
 }
 
+/** A newer version of the app, downloaded by the shell and waiting to install. */
+export interface UpdateBridge {
+  /** Installs the waiting update and relaunches; the shell still asks before stopping running tasks. */
+  install(): void;
+  /**
+   * The waiting update's version, or null while none waits, on every change and once on subscribe;
+   * returns the unsubscribe.
+   */
+  onState(listener: (version: string | null) => void): () => void;
+}
+
 /**
  * What the page reaches beyond itself. The macOS shell hosting the renderer in a WKWebView
  * installs it as `window.desktop` (`src/native-host`); tests install their own.
@@ -91,6 +102,8 @@ export interface DesktopBridge {
   share?: (text: string, anchor: AnchorRect) => Promise<void>;
   /** Optional for test compat. */
   readonly speech?: SpeechBridge;
+  /** Panel-only app updates; absent in the settings window and in tests. */
+  readonly update?: UpdateBridge;
   /**
    * Edit → Undo/Redo from the application menu; returns the unsubscribe. The renderer moves the
    * focused CodeMirror editor's history or runs the native command. Optional for test compat.

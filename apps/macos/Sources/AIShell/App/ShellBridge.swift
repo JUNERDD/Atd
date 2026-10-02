@@ -40,6 +40,7 @@ final class ShellBridge {
     case .socketOpen(let post): host.pipe?.open(post)
     case .socketSend(let post): host.pipe?.send(post)
     case .socketClose(let post): host.pipe?.close(post)
+    case .updateInstall: shell?.updater.installNow()
     }
   }
 

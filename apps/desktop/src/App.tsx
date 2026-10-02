@@ -25,6 +25,7 @@ import {
 import { PanelTitle } from './features/agent/panel-title';
 import { SessionMenu } from './features/agent/session-menu';
 import { TaskHistory } from './features/agent/task-history';
+import { UpdateButton } from './features/agent/update-button';
 import { ServiceBanner } from './features/service/service-banner';
 import { ServiceStarting } from './features/service/service-starting';
 import { useServiceStarting } from './features/service/use-service-starting';
@@ -148,6 +149,7 @@ export function App() {
                   task={view === 'task' ? (current.detail?.task ?? null) : null}
                 />
                 <nav className="header-controls" aria-label={t('header.controlsLabel')}>
+                  <UpdateButton />
                   {view === 'task' && current.detail && <SessionMenu detail={current.detail} />}
                   <IconButton
                     label={t('header.tasks')}

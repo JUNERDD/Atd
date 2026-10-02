@@ -40,6 +40,7 @@
       "window.dragRegions",
       "socket.open",
       "socket.send",
+      "update.install",
       "socket.close"
     ],
     "events": [
@@ -52,6 +53,7 @@
       "files.drag",
       "edit.command",
       "speech.state",
+      "update.state",
       "socket.frames"
     ]
   },
@@ -958,6 +960,26 @@
             },
             "method": {
               "type": "string",
+              "const": "update.install"
+            },
+            "params": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "post"
+            },
+            "method": {
+              "type": "string",
               "const": "socket.close"
             },
             "params": {
@@ -1326,6 +1348,39 @@
               "properties": {
                 "speaking": {
                   "type": "boolean"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "event", "payload"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "event"
+            },
+            "event": {
+              "type": "string",
+              "const": "update.state"
+            },
+            "payload": {
+              "type": "object",
+              "required": ["version"],
+              "properties": {
+                "version": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "maxLength": 64
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 }
               },
               "additionalProperties": false
@@ -2480,6 +2535,11 @@
       },
       "additionalProperties": false
     },
+    "UpdateInstallPost": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
     "SocketClosePost": {
       "type": "object",
       "required": ["socketId", "code", "reason"],
@@ -2672,6 +2732,24 @@
       "properties": {
         "speaking": {
           "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "UpdateStateEvent": {
+      "type": "object",
+      "required": ["version"],
+      "properties": {
+        "version": {
+          "anyOf": [
+            {
+              "type": "string",
+              "maxLength": 64
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
       "additionalProperties": false
