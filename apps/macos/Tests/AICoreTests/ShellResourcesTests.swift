@@ -14,9 +14,10 @@ struct ShellResourcesTests {
   @Test("The page gets file refs and basenames, never absolute paths")
   func pageResult() throws {
     let event = ResourcesImportedEvent(
-      ResourceImportResponse(
+      files: ResourceImportResponse(
         imported: [.init(path: "/Users/me/a.md", resource: Self.resource("r1"))],
-        failures: [.init(path: "/Users/me/pic.png", reason: .unsupported, message: "no")]))
+        failures: [.init(path: "/Users/me/pic.png", reason: .unsupported, message: "no")]),
+      folders: .empty)
     #expect(event.resources == [FileRef(id: "r1", name: "r1.md", size: 3, type: "text/plain")])
     #expect(event.failures == [.init(name: "pic.png", reason: .unsupported)])
     let json = String(decoding: try JSONEncoder().encode(event), as: UTF8.self)

@@ -9,6 +9,7 @@ export type SentSegment = string | InputChip;
 export function sentChipName(chip: InputChip): string {
   switch (chip.kind) {
     case 'file':
+    case 'folder':
     case 'agent':
     case 'skill':
     case 'command':

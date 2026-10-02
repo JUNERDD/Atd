@@ -178,3 +178,13 @@ extension NSMenu {
     addItem(item)
   }
 }
+
+extension AppMenuActions {
+  /// Actions of a controller that is gone; the menu still builds.
+  static var inert: AppMenuActions {
+    AppMenuActions(
+      showPanel: {}, hidePanel: {}, openSettings: {}, checkForUpdates: nil, restartService: {},
+      showServiceLogs: {},
+      editCommand: { _ in }, developmentHint: { false })
+  }
+}

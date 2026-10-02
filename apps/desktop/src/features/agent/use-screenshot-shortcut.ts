@@ -3,12 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { MAX_ATTACHMENTS } from '@atd/agent-contracts';
 import type { Screenshot } from '../../client/agent/screenshot-input';
 import { showErrorToast } from '../../components/toast-store';
-import {
-  appendChip,
-  draftFiles,
-  screenshotChip,
-  type ComposerDraft,
-} from '../composer-editor/draft';
+import { appendChip, type ComposerDraft } from '../composer-editor/draft';
+import { draftFiles, screenshotChip } from '../composer-editor/draft-attachments';
 import { showPanel } from './use-panel-window';
 
 /**

@@ -9,11 +9,11 @@ import { DEFAULT_SHORTCUTS, type RunReference } from '@atd/agent-contracts';
 import { isComposingKey } from '@atd/ui/lib/ime';
 import {
   draftChips,
-  draftFiles,
   draftReferences,
   draftSkills,
   type ComposerDraft,
 } from '../composer-editor/draft';
+import { draftFiles, draftFolders } from '../composer-editor/draft-attachments';
 import { useMemoryCreate } from '../memory/use-memory-create';
 import { extensionSeed, type SeedKind } from './extension-seed';
 import { useSettingsSnapshot } from '../settings/use-settings';
@@ -228,6 +228,7 @@ export function useTaskPanel() {
       text: draft.text,
       files,
       chips: draftChips(draft),
+      folders: draftFolders(draft),
     };
     const skills = commandInput ? [] : draftSkills(draft);
     const references = commandInput ? [] : draftReferences(draft);

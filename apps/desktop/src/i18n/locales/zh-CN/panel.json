@@ -33,10 +33,12 @@
     "followUpPlaceholder": "继续追问…",
     "attachContext": "附加上下文",
     "attachLimit": "最多附加 10 个文件。",
+    "folderLimit": "最多添加 {{max}} 个文件夹。",
     "editImage": "编辑 {{name}}",
     "attachMenu": {
       "screenshot": "截图",
       "upload": "上传文件",
+      "folder": "添加文件夹…",
       "mention": "提及文件、对话或工具…"
     },
     "stopAndDecline": "停止并拒绝",
@@ -45,10 +47,10 @@
     "attachAfterRun": "请等这次运行结束后再附加文件。",
     "drop": {
       "title": "松开以添加为上下文",
-      "attach_one": "将把 {{count}} 个文件附加到消息中。",
-      "attach_other": "将把 {{count}} 个文件附加到消息中。",
-      "attachSome": "将附加 {{total}} 个文件中的 {{count}} 个。",
-      "rules": "可附加文本、代码和图片文件，每条消息最多 {{max}} 个。",
+      "attach_one": "将把 {{count}} 项添加到消息中。",
+      "attach_other": "将把 {{count}} 项添加到消息中。",
+      "attachSome": "将添加 {{total}} 项中的 {{count}} 项。",
+      "rules": "可添加文件夹，以及文本、代码和图片文件（最多 {{max}} 个）。",
       "unsupported": "无法附加这些文件",
       "full": "附件已达上限",
       "fullDescription": "每条消息最多 {{max}} 个文件，移除一些后再添加。",
@@ -60,7 +62,9 @@
     "importFailed": {
       "unreadable": "无法读取 {{name}}。",
       "unsupported": "不支持附加 {{name}}。",
-      "tooLarge": "{{name}} 太大，无法附加。"
+      "tooLarge": "{{name}} 太大，无法附加。",
+      "notDirectory": "{{name}} 不是文件夹。",
+      "forbidden": "无法将 {{name}} 添加为可读文件夹，请选择更具体的文件夹。"
     },
     "queued": "排队消息",
     "sendNow": "立即发送",
@@ -72,6 +76,7 @@
     "chipsAfterRun": "请等这次运行结束后再发送提及和技能。",
     "chips": {
       "file": "文件：{{name}}",
+      "folder": "文件夹：{{name}}",
       "task": "对话：{{name}}",
       "mcpServer": "MCP 服务：{{name}}",
       "agent": "子代理：{{name}}",
@@ -179,6 +184,12 @@
     "rename": "重命名会话",
     "copyId": "复制会话 ID",
     "compact": "整理上下文",
+    "folders": {
+      "title": "可读文件夹",
+      "revoke": "撤销对 {{name}} 的访问",
+      "revokeHint": "撤销对 {{path}} 的访问",
+      "revoked": "已撤销对 {{name}} 的访问。"
+    },
     "renameTitle": "重命名会话",
     "renameDescription": "为此会话起一个简短易认的名称。",
     "renameLabel": "会话名称",

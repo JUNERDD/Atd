@@ -1,0 +1,42 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "Add to Atd" : {
+      "comment" : "Finder service title for selected files and folders (Release builds)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add to Atd"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "添加到 Atd"
+          }
+        }
+      }
+    },
+    "Add to Atd Dev" : {
+      "comment" : "Finder service title for selected files and folders (Debug builds)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add to Atd Dev"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "添加到 Atd Dev"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

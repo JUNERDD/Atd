@@ -10,6 +10,7 @@ import { DEFAULT_PERMISSION_TIER } from '../client/agent/permission-schema';
 import type { ProviderBridge } from '../client/providers/schema';
 import { ProviderService } from '../client/providers/service';
 import {
+  DEFAULT_SELECTION_TOOLBAR,
   isAppLanguage,
   resolveLanguage,
   type SettingsBridge,
@@ -25,12 +26,14 @@ import type { NativeConnection } from './native-connection';
 import type { WindowMessages } from './window-messages';
 
 /**
- * The preferences the shell owns, and whether it holds the panel and screenshot shortcuts: null
- * until the panel's first registration answer reaches this window.
+ * The preferences the shell owns, whether it holds the panel and screenshot shortcuts (null until
+ * the panel's first registration answer reaches this window), and whether macOS trusts the app for
+ * Accessibility (null until the shell's `accessibility.trust` arrives).
  */
 export type ShellState = CallResult<'app.state'> & {
   shortcutAvailable: boolean | null;
   screenshotShortcutAvailable: boolean | null;
+  accessibilityTrusted: boolean | null;
 };
 
 /**
@@ -58,6 +61,7 @@ export function nativeSettings(
     openAtLogin: null,
     shortcutAvailable: null,
     screenshotShortcutAvailable: null,
+    accessibilityTrusted: null,
   };
   const listeners = new Set<(settings: SettingsSnapshot) => void>();
   const loginListeners = new Set<Parameters<ProviderBridge['onLogin']>[0]>();
@@ -73,6 +77,7 @@ export function nativeSettings(
       ...shell,
       permissionTier: settings?.permissionTier ?? DEFAULT_PERMISSION_TIER,
       shellAllowlist: [...(settings?.shellAllowlist ?? [])],
+      selectionToolbar: structuredClone(settings?.selectionToolbar ?? DEFAULT_SELECTION_TOOLBAR),
     };
   };
   const publish = () => {
@@ -162,6 +167,9 @@ export function nativeSettings(
       const next = withShellAllowlistEntry(current, parseShellAllowlistEntry(entry));
       return next === current ? snapshot() : write({ shellAllowlist: next });
     },
+    saveSelectionToolbar: (value) => write({ selectionToolbar: value }),
+    requestAccessibility: async () => void (await native.call('accessibility.request', {})),
+    pickApps: async () => (await native.call('apps.pick', {})).apps,
     onChange: (listener) => {
       listeners.add(listener);
       return () => listeners.delete(listener);

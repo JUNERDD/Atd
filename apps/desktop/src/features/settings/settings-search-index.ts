@@ -91,6 +91,22 @@ export const settingsSearchEntries: readonly SettingsSearchEntry[] = [
     keywords: 'search.keywords.alwaysOnTop',
   },
   {
+    id: 'selection-toolbar',
+    section: 'general',
+    anchor: 'settings-selection-toolbar',
+    label: 'selectionToolbar.enabled',
+    description: 'selectionToolbar.enabledDescription',
+    keywords: 'search.keywords.selectionToolbar',
+  },
+  {
+    id: 'selection-toolbar-apps',
+    section: 'general',
+    anchor: 'settings-selection-toolbar-apps',
+    label: 'selectionToolbar.excluded.title',
+    description: 'selectionToolbar.excluded.description',
+    keywords: 'search.keywords.selectionToolbarApps',
+  },
+  {
     id: 'shortcuts-restore-defaults',
     section: 'general',
     anchor: 'shortcuts-restore-defaults',

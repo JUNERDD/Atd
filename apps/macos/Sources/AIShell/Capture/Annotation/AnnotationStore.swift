@@ -62,18 +62,24 @@ final class AnnotationStore {
     onChange?()
   }
 
+  /// The restore inside the undo already announced the new document, but while the undo manager
+  /// is still undoing it reports the step being undone; announcing again once it has finished
+  /// gives the toolbar the final `canUndo` and `canRedo` (undo greys out at the oldest step).
   func undo() {
     guard undoManager.canUndo else { return }
     preview = nil
     burst = nil
     undoManager.undo()
+    onChange?()
   }
 
+  /// Like ``undo()``: announced again once the redo has finished.
   func redo() {
     guard undoManager.canRedo else { return }
     preview = nil
     burst = nil
     undoManager.redo()
+    onChange?()
   }
 
   /// Makes `next` the document without an undo step and forgets the history: a reopened

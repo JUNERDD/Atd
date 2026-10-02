@@ -3,16 +3,18 @@ import AIRelay
 import AppKit
 import OSLog
 
-/// Wires the shell together: the panel and settings windows, the summon flow, global hot keys,
-/// the selection stash, the service's control stream and status item, menus and the quit
-/// guard. Its methods are what ``ShellBridge`` calls for the pages.
+/// Wires the shell together: the panel and settings windows, the summon flow and its selection
+/// stash (``Summoner``), global hot keys, the selection toolbar and the Accessibility trust it
+/// needs, files and folders opened from outside the panel, the service's control stream and
+/// status item, menus and the quit guard. Its methods are what ``ShellBridge`` calls for the
+/// pages.
 public final class ShellController {
   private let services: ShellServices
   private let defaults: UserDefaults
   let panelHost: WebViewHost
   let panel: PanelWindowController
   private let settings: SettingsWindowController
-  private let systemPanels: SystemPanels
+  let systemPanels: SystemPanels
   /// Serves the five desktop capabilities; the control stream holds it weakly.
   private let capabilities: ShellCapabilities
   private let control: ControlStreamClient
@@ -27,14 +29,15 @@ public final class ShellController {
   /// Release builds' Sparkle updater; a waiting update reaches the panel as `update.state`.
   let updater = AppUpdater()
   let quitGuard: QuitGuard
+  /// Accessibility trust; every page learns it as `accessibility.trust`.
+  let trust: AccessibilityTrust
+  private let summoner: Summoner
+  private let toolbar: SelectionToolbarController
   private var statusItem: StatusItemController?
   private var registrar: HotKeyRegistrar?
   private var menuStatus = MenuBarStatus(availability: .connecting, running: 0, attention: 0)
-
-  private var selectionWanted = false
-  private var stash: CapturedText?
-  private var summoning = false
-  private var trustRequested = false
+  /// The first `toolbar.set` of this launch has arrived.
+  private var toolbarConfigured = false
 
   private static let log = Logger(subsystem: "com.junerdd.ai", category: "shell")
   private static let pinnedKey = "panel.pinned"
@@ -43,6 +46,8 @@ public final class ShellController {
   public init(services: ShellServices, defaults: UserDefaults = .standard) {
     self.services = services
     self.defaults = defaults
+    let trust = AccessibilityTrust(defaults: defaults)
+    self.trust = trust
     let bridge = ShellBridge()
     let panelHost = WebViewHost(role: .panel, fragment: nil, services: services, bridge: bridge)
     self.panelHost = panelHost
@@ -50,7 +55,10 @@ public final class ShellController {
       host: panelHost, pinned: defaults.bool(forKey: Self.pinnedKey))
     self.panel = panel
     settings = SettingsWindowController { fragment in
-      WebViewHost(role: .settings, fragment: fragment, services: services, bridge: bridge)
+      let host = WebViewHost(
+        role: .settings, fragment: fragment, services: services, bridge: bridge)
+      host.setState(.accessibilityTrust(.init(trusted: trust.isTrusted)))
+      return host
     }
     let systemPanels = SystemPanels(
       lowerPanel: { panel.lowerForSystemPanel() }, restorePanel: { panel.restoreLevel($0) })
@@ -61,7 +69,8 @@ public final class ShellController {
     let control = ControlStreamClient(link: services.link, capabilities: capabilities)
     self.control = control
     artifacts = ArtifactActions(
-      services: services, downloads: Self.downloadsFolder(), confirmations: confirmations)
+      services: services, downloads: ArtifactActions.downloadsFolder(), confirmations: confirmations
+    )
     let attachments = AttachmentImporter(
       services: services, panel: panelHost, systemPanels: systemPanels)
     self.attachments = attachments
@@ -75,6 +84,10 @@ public final class ShellController {
     self.screenshots = screenshots
     launchApprovals = LaunchApprovals(
       services: services, confirmations: confirmations, systemPanels: systemPanels)
+    summoner = Summoner(
+      panel: panel, panelHost: panelHost, systemPanels: systemPanels, trust: trust,
+      isCapturing: { screenshots.isCapturing })
+    toolbar = SelectionToolbarController(trust: trust)
     // A quit ends a capture session first: `activeRuns` runs before the quit alert could open
     // beneath the overlays, `hideWindows` on an unattended quit that skips it.
     quitGuard = QuitGuard(
@@ -102,6 +115,13 @@ public final class ShellController {
       panelHost?.setState(.windowVisibility(.init(visible: visible)))
     }
     panel.onGaveUpKey = { [weak self] in self?.passFocusOnFromPanel() }
+    panelHost.setState(.accessibilityTrust(.init(trusted: trust.isTrusted)))
+    trust.onChange = { [weak self] trusted in
+      self?.broadcast(.accessibilityTrust(.init(trusted: trusted)))
+      self?.toolbar.update()
+    }
+    toolbar.onAsk = { [weak self] in self?.summon(.ask) }
+    toolbar.onCommand = { [weak self] id in self?.summon(.toolbarCommand(id: id)) }
   }
 
   /// Starts the service connection and the app-level surfaces, then loads the panel page,
@@ -111,12 +131,16 @@ public final class ShellController {
     statusItem = StatusItemController(
       toggle: { [weak self] in self?.summon(.toggle) },
       menu: { [weak self] in AppMenus.statusMenu(self?.menuActions ?? .inert) })
-    control.onConnectionState = { [weak self] _ in self?.refreshStatus() }
+    control.onConnectionState = { [weak self] state in
+      self?.refreshStatus()
+      if state == .connected { self?.attachments.serviceDidConnect() }
+    }
     control.onStatus = { [weak self] _ in self?.refreshStatus() }
     refreshStatus()
     services.start()
     control.start()
     updater.start()
+    trust.start()
     AppPresence.setShowInDock(defaults.bool(forKey: Self.showInDockKey))
     applyLanguage()
     NotificationCenter.default.addObserver(
@@ -131,43 +155,16 @@ public final class ShellController {
 
   /// Runs the summon flow of `SummonPolicy`: capture before the panel can take focus.
   func summon(_ trigger: SummonTrigger) {
-    // A summon during a capture session would show the panel against the overlays.
-    guard !summoning, !screenshots.isCapturing else { return }
-    let steps = SummonPolicy.steps(
-      for: trigger,
-      in: SummonContext(
-        panelIsKey: panel.isKey, filePanelOpen: systemPanels.isOpen,
-        selectionWanted: selectionWanted))
-    guard !steps.isEmpty else { return }
-    summoning = true
-    Task {
-      defer { summoning = false }
-      for step in steps {
-        switch step {
-        case .hidePanel: panel.hide()
-        case .captureSelection: stash = TextCapture.stash(await readSelection(), at: .now)
-        case .clearSelection: stash = nil
-        case .showPanel:
-          panel.dockAtCursor()
-          panel.show()
-        case .deliverCommand(let id): panelHost.send(.shortcutCommand(.init(id: id)))
-        case .deliverScreenshot: panelHost.send(.shortcutScreenshot(.init()))
-        }
-      }
-    }
+    summoner.summon(trigger)
   }
 
-  /// The frontmost app's selection, asking for Accessibility once per launch when needed.
-  private func readSelection() async -> String? {
-    guard SelectionReader.isTrusted else {
-      if !trustRequested {
-        trustRequested = true
-        SelectionReader.requestTrust()
-      }
-      return nil
-    }
-    let pid = NSWorkspace.shared.frontmostApplication?.processIdentifier
-    return await SelectionReader.readBounded(frontmostPID: pid)
+  /// Files and folders from the Finder service, a drop on the Dock icon or `open -a`: the panel
+  /// shows as it is, and the items go into its composer once imported, never sent by
+  /// themselves.
+  func openItems(_ urls: [URL]) {
+    guard !urls.isEmpty else { return }
+    showPanel()
+    attachments.importOpened(urls)
   }
 
   /// Shows the panel where it is, as Show task panel and the page's `window.show` do.
@@ -216,14 +213,22 @@ public final class ShellController {
   func applyShortcuts(_ registrations: [ShortcutRegistration], selectionWanted: Bool)
     -> [ShortcutResult]
   {
-    self.selectionWanted = selectionWanted
-    if !selectionWanted { stash = nil }
+    summoner.setSelectionWanted(selectionWanted)
     return registrar?.apply(registrations) ?? []
+  }
+
+  /// `toolbar.set`. The first one of a launch with the toolbar on is when a first launch asks
+  /// for Accessibility (once ever).
+  func applyToolbar(_ settings: SelectionToolbarSettings) {
+    toolbar.apply(settings)
+    guard !toolbarConfigured else { return }
+    toolbarConfigured = true
+    if settings.enabled { trust.promptOnFirstLaunch() }
   }
 
   /// `capture('selection')` returns the stash of the last summon, never a live read.
   func captureSelection() -> CaptureResult {
-    TextCapture.captureResult(stash: stash, trusted: SelectionReader.isTrusted)
+    summoner.captureResult()
   }
 
   /// `screenshot.capture`, which hides the panel while it runs. A summon still moving the panel
@@ -241,7 +246,9 @@ public final class ShellController {
   }
 
   private func checkScreenshotAllowed() throws(BridgeError) {
-    guard !summoning else { throw BridgeError("The panel is still opening; try again.") }
+    guard !summoner.isSummoning else {
+      throw BridgeError("The panel is still opening; try again.")
+    }
     guard !systemPanels.isOpen, !confirmations.isShowing else {
       throw BridgeError("Close the open dialog before taking a screenshot.")
     }
@@ -320,22 +327,5 @@ public final class ShellController {
   private func sendEditCommand(_ command: EditCommandEvent.Command) {
     let host = panel.isKey ? panelHost : settings.isKey ? settings.host : nil
     host?.send(.editCommand(.init(command: command)), scope: .document)
-  }
-
-  private static func downloadsFolder() -> URL {
-    let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)
-    let base = support.first ?? URL(filePath: NSTemporaryDirectory())
-    return base.appending(path: Bundle.main.bundleIdentifier ?? "com.junerdd.ai")
-      .appending(path: "downloads")
-  }
-}
-
-extension AppMenuActions {
-  /// Actions of a controller that is gone; the menu still builds.
-  static var inert: AppMenuActions {
-    AppMenuActions(
-      showPanel: {}, hidePanel: {}, openSettings: {}, checkForUpdates: nil, restartService: {},
-      showServiceLogs: {},
-      editCommand: { _ in }, developmentHint: { false })
   }
 }

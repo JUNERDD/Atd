@@ -2,7 +2,8 @@ import type { EditorView } from '@codemirror/view';
 import { isImageMime } from '@atd/agent-contracts';
 import { showErrorToast } from '../../components/toast-store';
 import { addChips, chipEntry, chipTable, chipTokens, tokenOf } from './chip-state';
-import type { Chip, FileChip } from './draft';
+import type { Chip } from './draft';
+import type { FileChip } from './draft-attachments';
 
 /** Whether a chip opens the screenshot editor on click: a file chip holding an image. */
 export function isEditableImage(chip: Chip): chip is FileChip {

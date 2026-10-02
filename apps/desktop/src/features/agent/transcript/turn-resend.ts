@@ -16,6 +16,7 @@ import {
   type Chip,
   type ChipRange,
 } from '../../composer-editor/draft';
+import { draftFolders } from '../../composer-editor/draft-attachments';
 import { promptChipRanges } from './composed-prompt';
 
 /**
@@ -62,13 +63,18 @@ function relocate(text: string, next: string, ranges: readonly InputChipRange[])
   return moved;
 }
 
-/** The composer chip a recorded chip stands for; a file chip needs the run's file record. */
+/**
+ * The composer chip a recorded chip stands for; a file chip needs the run's file record, and a
+ * folder chip comes back without its path, which the record does not keep.
+ */
 function composerChip(chip: InputChip, files: readonly FileRef[]): Chip | null {
   switch (chip.kind) {
     case 'file': {
       const file = files.find((item) => item.id === chip.fileId);
       return file ? { kind: 'file', file } : null;
     }
+    case 'folder':
+      return { kind: 'folder', folderId: chip.folderId, name: chip.name };
     case 'task':
       return { kind: 'task', taskId: chip.taskId, title: chip.title };
     case 'mcpServer':
@@ -116,9 +122,16 @@ function promptResend(
     const draft = composerChip(chip, base.files);
     return draft ? [{ from, to, chip: draft }] : [];
   });
-  // Every file of the run stays attached, including those whose chip the edit removed.
+  // Every file of the run stays attached, including those whose chip the edit removed. Folders
+  // follow their chips: the task keeps its grants either way, and a chip the edit removed must not
+  // grant again a folder revoked since.
   const draft = { text, chips };
-  const input: TaskInput = { ...base, text, chips: draftChips(draft) };
+  const input: TaskInput = {
+    ...base,
+    text,
+    chips: draftChips(draft),
+    folders: draftFolders(draft),
+  };
   return { input, policy: runPolicy(snapshot, draftSkills(draft), draftReferences(draft)) };
 }
 

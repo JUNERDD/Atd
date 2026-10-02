@@ -19,12 +19,15 @@ import { publishDragRegions } from './drag-regions';
 import { NativeCommands } from './native-commands';
 import { NativeConnection } from './native-connection';
 import { nativeFiles } from './native-files';
+import { nativeFolders } from './native-folders';
 import { nativePlatform } from './native-platform';
 import { nativeSettings } from './native-settings';
+import { nativeSelectionAsk } from './native-selection-ask';
 import { followShortcutState, nativeShortcuts, type GlobalShortcutState } from './native-shortcuts';
 import { nativeSocketTransport } from './socket-transport';
 import { windowMessages } from './window-messages';
 import { nativeSpeech } from './native-speech';
+import { nativeToolbar } from './native-toolbar';
 import { nativeUpdate } from './native-update';
 
 /**
@@ -49,8 +52,10 @@ export async function installNativeHost(
   native: NativeBridge,
   surface: 'panel' | 'settings',
 ): Promise<void> {
-  // Before the first await: the shell replays `update.state` as soon as the page is ready.
+  // Before the first await: the shell replays `update.state` as soon as the page is ready, and
+  // can send an Ask that showed the panel before this host is installed.
   const update = surface === 'panel' ? nativeUpdate(native) : undefined;
+  const onSelectionAsk = surface === 'panel' ? nativeSelectionAsk(native) : undefined;
   const connection = new NativeConnection({
     baseUrl: pageOrigin(),
     relay: true,
@@ -76,10 +81,15 @@ export async function installNativeHost(
     };
   };
   const settings = nativeSettings(connection, messages, native);
+  // Replayed when the page becomes ready, so subscribed before the first await too.
+  native.on('accessibility.trust', ({ trusted }) =>
+    settings.setShell({ accessibilityTrusted: trusted }),
+  );
   let latest = await settings.bridge.get();
   const commands = new NativeCommands(connection, native, () => {
     requests.broadcast();
     shortcuts?.sync(true);
+    toolbar?.sync();
   });
   const requests = new AgentRequests<'page'>(
     connection,
@@ -107,6 +117,13 @@ export async function installNativeHost(
         })
       : null;
   if (surface === 'settings') followShortcutState(messages, commands, shortcutsApplied);
+  const toolbar =
+    surface === 'panel'
+      ? nativeToolbar(native, {
+          settings: () => (settings.loaded() ? latest.selectionToolbar : null),
+          commands: () => commands.list(),
+        })
+      : null;
   // The panel speaks for the service's settings only once they loaded: until then the snapshot
   // holds defaults, which could register a shortcut the user replaced.
   let pushedLanguage: string | null = null;
@@ -114,6 +131,7 @@ export async function installNativeHost(
     latest = next;
     if (surface !== 'panel' || !settings.loaded()) return;
     shortcuts?.sync();
+    toolbar?.sync();
     if (next.language === pushedLanguage) return;
     pushedLanguage = next.language;
     native.post('language.set', { language: next.language });
@@ -157,8 +175,8 @@ export async function installNativeHost(
   native.on('window.visibility', ({ visible }) => setWindowVisible(visible));
   native.on('accessibility.reduceTransparency', ({ reduce }) => setReducedTransparency(reduce));
   if (surface === 'panel') {
-    native.on('resources.imported', ({ resources, failures }) =>
-      publishImportedFiles({ files: resources, failures }),
+    native.on('resources.imported', ({ resources, folders, failures }) =>
+      publishImportedFiles({ files: resources, folders, failures }),
     );
     native.on('files.drag', publishFileDrag);
   }
@@ -173,7 +191,9 @@ export async function installNativeHost(
   const bridge: DesktopBridge = {
     platform: 'darwin',
     settings: settings.bridge,
-    ...(surface === 'panel' ? { files: nativeFiles(connection) } : {}),
+    ...(surface === 'panel'
+      ? { files: nativeFiles(connection), folders: nativeFolders(connection, native) }
+      : {}),
     ...(update ? { update } : {}),
     agent: createAgentBridge(async (request) => {
       // Only the panel receives `launch` events, so the settings window hands its launches over.
@@ -242,6 +262,7 @@ export async function installNativeHost(
     ...(surface === 'panel'
       ? { onScreenshotShortcut: (listener) => native.on('shortcut.screenshot', () => listener()) }
       : {}),
+    ...(onSelectionAsk ? { onSelectionAsk } : {}),
   };
   window.desktop = bridge;
 }

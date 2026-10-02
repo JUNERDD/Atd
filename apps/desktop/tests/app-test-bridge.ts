@@ -1,5 +1,6 @@
 import { vi } from 'vitest';
 import { DEFAULT_SHORTCUTS } from '@atd/agent-contracts';
+import type { FolderBridge } from '../src/client/contract';
 import type { SettingsSnapshot } from '../src/client/settings-contract';
 import type {
   AgentBridge,
@@ -18,6 +19,8 @@ export function installBridge(extras?: {
   status?: RunStatus;
   requests?: PermissionRequest[];
   queue?: QueueState;
+  /** The panel's readable folders; tests without it run like the settings window. */
+  folders?: FolderBridge;
 }) {
   let settings: SettingsSnapshot = {
     connections: [
@@ -48,6 +51,8 @@ export function installBridge(extras?: {
     screenshotShortcutAvailable: true,
     permissionTier: 'manual',
     shellAllowlist: [],
+    selectionToolbar: { enabled: true, excludedApps: [] },
+    accessibilityTrusted: true,
   };
   const settingsListeners = new Set<(value: SettingsSnapshot) => void>();
   const listeners = new Set<(event: AgentEvent) => void>();
@@ -202,7 +207,15 @@ export function installBridge(extras?: {
   const hide = vi.fn(async () => {});
   const open = vi.fn(async () => {});
   const openCommand = vi.fn(async (_commandId: string) => {});
+  const askListeners = new Set<() => void>();
+  /** The selection toolbar's Ask Atd, as the shell sends it to the panel. */
+  const askSelection = () => askListeners.forEach((listener) => listener());
   window.desktop = {
+    ...(extras?.folders ? { folders: extras.folders } : {}),
+    onSelectionAsk: (listener) => {
+      askListeners.add(listener);
+      return () => askListeners.delete(listener);
+    },
     platform: 'darwin',
     agent: api,
     getState: vi.fn(async () => ({
@@ -275,8 +288,15 @@ export function installBridge(extras?: {
           settingsListeners.delete(listener);
         };
       },
+      saveSelectionToolbar: vi.fn(async (selectionToolbar) => {
+        settings = { ...settings, selectionToolbar };
+        settingsListeners.forEach((listener) => listener(settings));
+        return settings;
+      }),
+      requestAccessibility: vi.fn(async () => {}),
+      pickApps: vi.fn(async () => []),
       onOpenCommand: () => () => {},
     },
   };
-  return { api, setPinned, hide, open, openCommand };
+  return { api, setPinned, hide, open, openCommand, askSelection };
 }

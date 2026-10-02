@@ -76,11 +76,15 @@ targets:
         # script sandbox only allows for individually declared files.
         ENABLE_USER_SCRIPT_SANDBOXING: false
       configs:
+        # AI_SERVICE_MENU_TITLE: the Finder service's title (NSServices below), distinct in Debug
+        # so both builds can be installed side by side.
         Debug:
           PRODUCT_BUNDLE_IDENTIFIER: com.junerdd.ai.dev
           ASSETCATALOG_COMPILER_APPICON_NAME: AppIconDev
+          AI_SERVICE_MENU_TITLE: Add to Atd Dev
         Release:
           PRODUCT_BUNDLE_IDENTIFIER: com.junerdd.ai
+          AI_SERVICE_MENU_TITLE: Add to Atd
     info:
       path: App/Info.plist
       properties:
@@ -107,6 +111,25 @@ targets:
         NSDesktopFolderUsageDescription: Atd reads a file in your Desktop folder only when you attach it.
         NSDocumentsFolderUsageDescription: Atd reads a file in your Documents folder only when you attach it.
         NSDownloadsFolderUsageDescription: Atd reads a file in your Downloads folder only when you attach it.
+        # The Finder entry (FinderService): selected files and folders go to the panel's composer.
+        # It sits in the context menu's Services / Quick Actions section; the empty
+        # NSRequiredContext enables it by default. ServicesMenu.xcstrings localizes the title
+        # (keyed by the English one). Development builds may need
+        # `/System/Library/CoreServices/pbs -update` before Finder lists it.
+        NSServices:
+          - NSMenuItem:
+              default: $(AI_SERVICE_MENU_TITLE)
+            NSMessage: addToAtd
+            NSPortName: $(PRODUCT_NAME)
+            NSRequiredContext: {}
+            NSSendFileTypes: [public.item]
+        # Lets files and folders be dropped on the Dock icon and opened with `open -a`
+        # (application(_:open:)) without making Atd their default app.
+        CFBundleDocumentTypes:
+          - CFBundleTypeName: Files and folders
+            CFBundleTypeRole: Viewer
+            LSHandlerRank: None
+            LSItemContentTypes: [public.item, public.folder]
 schemes:
   AI:
     build:
