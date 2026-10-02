@@ -7,6 +7,7 @@ import {
 } from '@ai/agent-contracts';
 import { listAtdAgents, type AtdAgent } from '../atd-agents/catalog.js';
 import type { Ledger } from '../ledger.js';
+import type { Logger } from '../logging.js';
 import { mcpProxyPrefix } from '../mcp/index.js';
 import type { McpToolSelection } from '../mcp/staging.js';
 import type { PluginAgent } from '../plugins/map.js';
@@ -21,6 +22,7 @@ import {
   type Conversation,
 } from './conversation.js';
 import { quoteMaterial } from './quotes.js';
+import { savedItems, type SavedItems } from './saved.js';
 
 /** Conversations one run may reference; later ones are listed as unavailable. */
 const MAX_TASK_REFERENCES = 3;
@@ -33,6 +35,11 @@ const NOTES_HEADER = 'Unavailable references (tell the user when this matters fo
 /** What the run freeze knows when it resolves references. */
 export interface ReferenceContext {
   ledger: Ledger;
+  /** The service data dir, which holds the saved commands. */
+  dataDir: string;
+  /** The agent dir, which holds the memory store. */
+  agentDir: string;
+  log: Logger;
   /** The task whose run is freezing. */
   taskId: string;
   run: TaskRun;
@@ -113,30 +120,48 @@ async function resolveStaged(
   const hints: Hint[] = [];
   const sources: Source[] = [];
   let catalog: Promise<AtdAgent[] | string> | null = null;
+  const saved: SavedItems = savedItems(context);
   for (const reference of references) {
-    if (reference.kind === 'task') {
-      if (sources.length >= MAX_TASK_REFERENCES) {
-        const reason = `only ${MAX_TASK_REFERENCES} conversations can be referenced per message`;
-        notes.push({ reference, label: taskLabel(context, reference.taskId), reason });
-        continue;
+    switch (reference.kind) {
+      case 'task': {
+        if (sources.length >= MAX_TASK_REFERENCES) {
+          const reason = `only ${MAX_TASK_REFERENCES} conversations can be referenced per message`;
+          notes.push({ reference, label: taskLabel(context, reference.taskId), reason });
+          break;
+        }
+        const resolved = await resolveTask(context, reference.taskId);
+        if ('reason' in resolved) notes.push({ reference, ...resolved });
+        else sources.push({ reference, ...resolved });
+        break;
       }
-      const resolved = await resolveTask(context, reference.taskId);
-      if ('reason' in resolved) notes.push({ reference, ...resolved });
-      else sources.push({ reference, ...resolved });
-    } else if (reference.kind === 'mcpServer') {
-      const resolved = resolveMcpServer(context, reference.serverId);
-      const label = `MCP server "${reference.serverId}"`;
-      if (typeof resolved === 'string') notes.push({ reference, label, reason: resolved });
-      else hints.push({ reference, ...resolved });
-    } else {
-      catalog ??= listAtdAgents().then(
-        ({ agents }) => agents,
-        (error: unknown) => `the agent catalog could not be read (${errorMessage(error)})`,
-      );
-      const resolved = await resolveAgentReference(reference.name, context, catalog);
-      const label = `Agent "${reference.name}"`;
-      if (typeof resolved === 'string') notes.push({ reference, label, reason: resolved });
-      else hints.push({ reference, ...resolved });
+      case 'mcpServer': {
+        const resolved = resolveMcpServer(context, reference.serverId);
+        const label = `MCP server "${reference.serverId}"`;
+        if (typeof resolved === 'string') notes.push({ reference, label, reason: resolved });
+        else hints.push({ reference, ...resolved });
+        break;
+      }
+      case 'agent': {
+        catalog ??= listAtdAgents().then(
+          ({ agents }) => agents,
+          (error: unknown) => `the agent catalog could not be read (${errorMessage(error)})`,
+        );
+        const resolved = await resolveAgentReference(reference.name, context, catalog);
+        const label = `Agent "${reference.name}"`;
+        if (typeof resolved === 'string') notes.push({ reference, label, reason: resolved });
+        else hints.push({ reference, ...resolved });
+        break;
+      }
+      case 'command':
+      case 'memory': {
+        const resolved =
+          reference.kind === 'command'
+            ? await saved.command(reference.commandId)
+            : await saved.memory(reference.target, reference.entryId);
+        if ('reason' in resolved) notes.push({ reference, ...resolved });
+        else hints.push({ reference, ...resolved });
+        break;
+      }
     }
   }
   return compose(context, { notes, hints, sources });
@@ -296,5 +321,9 @@ function target(reference: RunReference): { reference: string; target: string } 
       return { reference: 'agent', target: reference.name };
     case 'mcpServer':
       return { reference: 'mcpServer', target: reference.serverId };
+    case 'command':
+      return { reference: 'command', target: reference.commandId };
+    case 'memory':
+      return { reference: 'memory', target: `${reference.target}:${reference.entryId}` };
   }
 }

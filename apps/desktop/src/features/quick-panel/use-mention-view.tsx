@@ -1,6 +1,8 @@
 import { Bot, MessageSquare, Plug } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { rankByQuery } from '@ai/ui/lib/fuzzy-match';
+import type { MemoryEntry } from '../../client/agent/bridge';
+import type { CommandDefinition } from '../../client/agent/command-schema';
 import type { AgentTask } from '../../client/agent/task-schema';
 import type { Chip } from '../composer-editor/draft';
 import type { ComposerEditorCommands } from '../composer-editor/editor-commands';
@@ -10,6 +12,7 @@ import { orderGroups, type QuickGroup, type QuickOption, type QuickView } from '
 import { relativeTime } from './relative-time';
 import type { TriggerState } from './trigger';
 import { useFileGroups } from './use-file-groups';
+import { useSavedGroups } from './use-saved-groups';
 import type { ServiceListView } from './use-service-lists';
 
 export type MentionTrigger = Extract<TriggerState, { kind: 'mention' }>;
@@ -19,7 +22,8 @@ const CONVERSATIONS_RECENT = 5;
 const CONVERSATIONS_MATCHES = 20;
 
 /**
- * The `@` panel: files, conversations, MCP servers, and subagents. A pick inserts a chip; the
+ * The `@` panel: files, conversations, MCP servers, subagents, saved commands and memories
+ * (use-saved-groups.tsx). A pick inserts a chip; the
  * references themselves are derived from the chips when the draft is sent. Only conversations
  * with a session transcript can be referenced, and the current task is left out. A source with
  * nothing to offer takes no room; a query that leaves only "Browse files…" gets the empty line.
@@ -34,6 +38,8 @@ export function useMentionView({
   attachmentCount,
   agents,
   mcp,
+  commands,
+  memories,
   files: offerFiles,
   accepts = () => true,
 }: {
@@ -46,6 +52,9 @@ export function useMentionView({
   attachmentCount: number;
   agents: ServiceListView<ExtensionAgentRow>;
   mcp: ServiceListView<ExtensionMcpRow>;
+  /** Snapshot commands; none where the editor offers no command chips. */
+  commands: readonly CommandDefinition[];
+  memories: ServiceListView<MemoryEntry>;
   /** Whether files and "Browse files…" are offered (the composer). */
   files: boolean;
   /** Whether the editor can hold this chip; items it cannot are not offered. */
@@ -62,6 +71,7 @@ export function useMentionView({
     tasks,
     attachmentCount,
   });
+  const saved = useSavedGroups({ query, editor, commands, memories, accepts });
   if (!trigger || (offerFiles && !files)) return { groups: [], empty: null };
   const language = i18n.resolvedLanguage ?? i18n.language;
 
@@ -158,8 +168,9 @@ export function useMentionView({
   };
 
   // A source still answering may yet match, so it is not reported as no match.
-  const loading = files?.loading || mcp.status === 'loading' || agents.status === 'loading';
-  const references = [conversations, mcpGroup, agentGroup];
+  const loading =
+    files?.loading || mcp.status === 'loading' || agents.status === 'loading' || saved.loading;
+  const references = [conversations, mcpGroup, agentGroup, ...saved.groups];
   return {
     // "Browse files…" ends the list, so the first candidate, not the picker, is active by default.
     groups: orderGroups(files ? [...files.lists, ...references, files.browse] : references, query),

@@ -60,6 +60,8 @@
       "mcpServer": "MCP 服务：{{name}}",
       "agent": "子代理：{{name}}",
       "skill": "技能：{{name}}",
+      "command": "命令：{{name}}",
+      "memory": "记忆：{{name}}",
       "quote": "引用：{{name}}"
     },
     "progress": {
@@ -213,7 +215,9 @@
       "files": "文件",
       "conversations": "对话",
       "mcp": "MCP",
-      "agents": "子代理"
+      "agents": "子代理",
+      "savedCommands": "命令",
+      "memory": "记忆"
     },
     "commands": {
       "new": {

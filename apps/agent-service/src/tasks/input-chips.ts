@@ -28,8 +28,10 @@ function chipName(chip: InputChip): string {
     case 'file':
     case 'agent':
     case 'skill':
+    case 'command':
       return chip.name;
     case 'task':
+    case 'memory':
       return chip.title;
     case 'mcpServer':
       return chip.serverId;
