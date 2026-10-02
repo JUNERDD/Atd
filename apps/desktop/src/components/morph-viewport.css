@@ -10,7 +10,7 @@
     height 200ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-/* Set for the opening size report only (see `MorphViewport`). */
+/* Set until the hosting overlay has opened (see `MorphViewport`): sizes land at once. */
 .morph-viewport[data-instant] {
   transition: none;
 }
@@ -21,23 +21,8 @@
   left: 0;
 }
 
-/* Each view fades in as it replaces the last one while the viewport resizes around it. */
-.morph-viewport-content > * {
-  animation: morph-viewport-in 160ms ease-out;
-}
-
-@keyframes morph-viewport-in {
-  from {
-    opacity: 0;
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .morph-viewport {
     transition: none;
-  }
-
-  .morph-viewport-content > * {
-    animation: none;
   }
 }

@@ -24,7 +24,8 @@ const NO_BLOCKS: readonly Block[] = [];
  * content (requests and the queue), Todos, or Subagents. Like a navigation menu's viewport, the
  * popover stays open while the user moves between parts and morphs to the next view instead of
  * stacking a second popover, sliding to center on the part that opened it; clicking the expanded
- * part closes it. `useComposerView` decides what shows.
+ * part closes it. Opening and closing are the popover primitive's own animation at the view's
+ * final size; the morph runs only while it stays open. `useComposerView` decides what shows.
  *
  * Focus and Esc are split by intent. Radix auto-focus is off, so an arriving request never steals
  * the composer; only the HITL controls autofocus, and only when the user is not typing. Opening
@@ -98,6 +99,10 @@ export function ComposerPopover({
     setPrevious(shown);
     setMoved(previous !== null && shown !== null);
   }
+  // The popover's own enter animation has finished; until then its viewport does not morph, so
+  // opening is the primitive's fade and zoom at the final size.
+  const [entered, setEntered] = useState(false);
+  if (!open && entered) setEntered(false);
   const reduced = useReducedMotion();
   const [anchorFor] = useState(createViewAnchor);
   // A new reference per view makes Radix re-anchor when the view changes.
@@ -194,8 +199,11 @@ export function ComposerPopover({
             event.preventDefault();
         }}
         onKeyDown={onContentKeyDown}
+        onAnimationEnd={(event) => {
+          if (open && event.target === event.currentTarget) setEntered(true);
+        }}
       >
-        <MorphViewport>
+        <MorphViewport view={rendered} open={open} morph={open && entered}>
           {rendered === 'hitl' && (
             <HitlPanel
               key="hitl"
