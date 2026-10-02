@@ -164,20 +164,20 @@ export async function listAllPrompts(
 }
 
 /**
- * Tool, resource and prompt counts of a freshly connected client, each only when the server
- * advertises the capability. A tools failure fails the connect. A resources or prompts failure
- * counts zero (the server still connects), except an aborted request or an authentication
- * error, which propagate.
+ * The tools and the tool, resource and prompt counts of a freshly connected client, each only
+ * when the server advertises the capability. A tools failure fails the connect. A resources or
+ * prompts failure counts zero (the server still connects), except an aborted request or an
+ * authentication error, which propagate.
  */
 export const countCatalog: McpCatalogCounter = async (client, signal) => {
   const options: McpRequestOptions = { signal };
   const capabilities = client.serverCapabilities;
   const [tools, resources, prompts] = await Promise.all([
-    capabilities?.tools ? client.listTools(options).then((list) => list.length) : 0,
+    capabilities?.tools ? client.listTools(options) : [],
     capabilities?.resources ? optionalCount(() => client.listResources(options), signal) : 0,
     capabilities?.prompts ? optionalCount(() => listAllPrompts(client, options), signal) : 0,
   ]);
-  return { tools, resources, prompts };
+  return { counts: { tools: tools.length, resources, prompts }, tools };
 };
 
 async function optionalCount(

@@ -73,17 +73,27 @@ export class McpFacade {
     return this.connections.reconnect(serverId, signal, taskId);
   }
 
-  async listTools(serverId: string, signal?: AbortSignal, taskId?: string): Promise<McpToolRef[]> {
-    return (await this.listToolInfo(serverId, signal, taskId)).map((info) => info.ref);
+  /** The tools the server lists now; route listings read the server, not the connection's list. */
+  listTools(serverId: string, signal?: AbortSignal, taskId?: string): Promise<McpToolRef[]> {
+    return this.operation({ serverId, signal, taskId }, (session) =>
+      session.run(async ({ record, connection }) => {
+        const tools = await this.liveTools(connection, signal);
+        return tools.map((tool) => toToolInfo(record, tool).ref);
+      }),
+    );
   }
 
-  /** The tools with their boolean annotation hints, which inform pi and never relax an approval. */
-  listToolInfo(serverId: string, signal?: AbortSignal, taskId?: string): Promise<McpToolInfo[]> {
-    return this.operation({ serverId, signal, taskId }, (session) =>
-      session.run(async (ensured) => {
-        const tools = await this.liveTools(ensured.connection, signal);
-        return tools.map((tool) => toToolInfo(ensured.record, tool));
-      }),
+  /**
+   * The tools with their boolean annotation hints (which inform pi and never relax an approval)
+   * as the connection last listed them: at the connect, and on every `tools/list_changed`. So
+   * binding a run's proxies sends no request while the connection stays open; a call still
+   * authorizes against the live list (`callTool`).
+   */
+  listedToolInfo(serverId: string, signal?: AbortSignal): Promise<McpToolInfo[]> {
+    return this.operation({ serverId, signal, taskId: undefined }, (session) =>
+      session.run(async ({ record, connection }) =>
+        connection.tools().map((tool) => toToolInfo(record, tool)),
+      ),
     );
   }
 

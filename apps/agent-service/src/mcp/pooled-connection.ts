@@ -5,16 +5,22 @@ import {
   type McpClient,
   type McpTransport,
   type ServerCapabilities,
+  type Tool,
 } from '@earendil-works/pi-mcp';
 import type { Logger } from '../logging.js';
 import { MCP_IDLE_CLOSE_MS } from './constants.js';
-import type { McpCatalogCounter, McpCatalogCounts, McpLiveConnection } from './types.js';
+import type {
+  McpCatalogCounter,
+  McpCatalogCounts,
+  McpCatalogRead,
+  McpLiveConnection,
+} from './types.js';
 
 /**
  * One open client of the pool (mcp/pool.ts) as its callers see it: the server's capabilities, the
- * catalog counts kept current on `list_changed`, and `use`, which counts requests in flight so an
- * idle close never takes a busy connection. Which map it sits in and when it closes are the
- * pool's; this class only reports that its client closed.
+ * catalog counts and tool list kept current on `list_changed`, and `use`, which counts requests in
+ * flight so an idle close never takes a busy connection. Which map it sits in and when it closes
+ * are the pool's; this class only reports that its client closed.
  */
 
 /** Which server and record state a connection serves. */
@@ -56,6 +62,7 @@ export class PooledConnection implements McpLiveConnection {
   /** Set by the pool when it closes the connection itself, so the close is not a loss to report. */
   onPurpose = false;
   private known: McpCatalogCounts = { tools: 0, resources: 0, prompts: 0 };
+  private listed: Tool[] = [];
   private open = true;
   private retired = false;
   private inflight = 0;
@@ -63,7 +70,7 @@ export class PooledConnection implements McpLiveConnection {
   private recounting = false;
   private recountAgain = false;
 
-  /** Follows the client: `list_changed` recounts the catalog, and a close is reported once. */
+  /** Follows the client: `list_changed` rereads the catalog, and a close is reported once. */
   constructor(
     identity: ConnectionIdentity,
     readonly client: McpClient,
@@ -93,8 +100,13 @@ export class PooledConnection implements McpLiveConnection {
     return { ...this.known };
   }
 
-  setCounts(counts: McpCatalogCounts): void {
-    this.known = counts;
+  tools(): readonly Tool[] {
+    return this.listed;
+  }
+
+  setCatalog(read: McpCatalogRead): void {
+    this.known = read.counts;
+    this.listed = read.tools;
     this.context.counted(this);
   }
 
@@ -140,7 +152,7 @@ export class PooledConnection implements McpLiveConnection {
       do {
         this.recountAgain = false;
         try {
-          this.setCounts(await this.context.counter(this.client, undefined));
+          this.setCatalog(await this.context.counter(this.client, undefined));
         } catch (error) {
           this.context.log.debug('MCP catalog recount failed.', {
             serverId: this.serverId,

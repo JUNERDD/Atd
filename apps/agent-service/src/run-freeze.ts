@@ -52,15 +52,17 @@ export async function freezeRunSelections(
   run: TaskRun,
 ): Promise<FrozenSelections> {
   // The plugin catalog freezes first (D4): skills, agents and MCP below all read the run's
-  // snapshot, so a plugin or item toggled later never changes what this run may use.
+  // snapshot, so a plugin or item toggled later never changes what this run may use. Skills, MCP
+  // and the agent harness do not read each other, so they freeze together.
   const plugins = await freezePlugins(deps, run);
-  const { toolCeiling, skills, catalog } = await freezeSkills(deps, run, plugins.skills);
-  const mcp = await freezeMcp(deps, run);
-  // Agents turned off in Settings stay off for this run even if they are turned on during it, and
-  // a permission change made during the run applies from the next one.
-  const { disabled: disabledAgents, permissions: agentPermissions } = await readAgentHarness(
-    deps.ctx.paths.root,
-  );
+  const [{ toolCeiling, skills, catalog }, mcp, harness] = await Promise.all([
+    freezeSkills(deps, run, plugins.skills),
+    freezeMcp(deps, run),
+    // Agents turned off in Settings stay off for this run even if they are turned on during it,
+    // and a permission change made during the run applies from the next one.
+    readAgentHarness(deps.ctx.paths.root),
+  ]);
+  const { disabled: disabledAgents, permissions: agentPermissions } = harness;
   const references = await freezeReferencesForRun(deps, run, {
     toolCeiling,
     mcp,

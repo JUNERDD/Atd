@@ -5,6 +5,7 @@ import type {
   McpClient,
   McpTransport,
   ServerCapabilities,
+  Tool,
 } from '@earendil-works/pi-mcp';
 
 /**
@@ -103,15 +104,22 @@ export interface McpCatalogCounts {
   prompts: number;
 }
 
+/** One read of a live connection's catalog: the sizes status rows show and the tools it lists. */
+export interface McpCatalogRead {
+  counts: McpCatalogCounts;
+  /** Empty when the server does not advertise tools. */
+  tools: Tool[];
+}
+
 /**
- * Lists a freshly connected client's catalog sizes (catalog.ts `countCatalog`), each only when the
+ * Reads a freshly connected client's catalog (catalog.ts `countCatalog`), each list only when the
  * server advertises it: a tools failure fails the connect, a resources or prompts failure counts
  * zero, and authentication errors always propagate. Re-run on every `list_changed`.
  */
 export type McpCatalogCounter = (
   client: McpClient,
   signal: AbortSignal | undefined,
-) => Promise<McpCatalogCounts>;
+) => Promise<McpCatalogRead>;
 
 /** One open physical connection of the pool (pool.ts), shared by every caller of its name. */
 export interface McpLiveConnection {
@@ -125,6 +133,8 @@ export interface McpLiveConnection {
   readonly capabilities: ServerCapabilities;
   /** Counts from the connect, refreshed on `list_changed`. */
   counts(): McpCatalogCounts;
+  /** The tools listed with `counts`: at the connect, and again on every `list_changed`. */
+  tools(): readonly Tool[];
   /** False once the transport closed (dropped, idle-closed or closed on purpose). */
   isOpen(): boolean;
   /**
