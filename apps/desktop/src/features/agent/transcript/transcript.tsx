@@ -1,25 +1,23 @@
-import { useMemo, useState, type ReactElement } from 'react';
+import { useMemo, useState, type ReactElement, type ReactNode } from 'react';
 import type { QuoteSource } from '@ai/agent-contracts';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@ai/ui/components/button';
 import { ScrollArea } from '@ai/ui/components/scroll-area';
 import type { TaskDetail } from '../../../client/agent/bridge';
 import { isActive, type FileRef, type TaskRun } from '../../../client/agent/task-schema';
-import { TaskFiles } from '../task-files';
 import { compactBlock } from '../compaction/compact-availability';
 import { NewTaskHint } from '../compaction/new-task-hint';
 import { useCompactTask } from '../compaction/use-compact-task';
-import { adaptTranscript, modelNameForRun, type AdaptedTurn } from './adapter';
+import { adaptTranscript, type AdaptedTurn } from './adapter';
 import { CompactionRetryContext, type CompactionRetry } from './compaction-context';
 import { artifactAnchorIds, indexRequests, sameIds, type RequestIndex } from './turns';
-import { PromptMessage } from './prompt-message';
+import { PendingTurn } from './pending-turn';
 import { ScrollJump } from './scroll-jump';
-import { pendingMessageText } from './run-prompt';
+import { pendingPromptRun } from './run-prompt';
 import { useQuoteReveal } from './selection-toolbar/quote-reveal';
 import { SelectionToolbar } from './selection-toolbar/selection-toolbar';
 import { StatusBar } from './status-bar';
 import { TaskTurnsContext, type TaskTurns } from './turn-context';
-import { TurnHeader } from './turn-header';
 import { TurnView } from './turn-view';
 import { useTranscriptScroll } from './use-transcript-scroll';
 
@@ -41,7 +39,7 @@ function TurnList({
   anchors: Set<string>;
   requests: RequestIndex;
   live: boolean;
-  status: ReactElement;
+  status: ReactNode;
   onAttach: (file: FileRef) => void;
 }) {
   const { t } = useTranslation('tasks');
@@ -134,8 +132,10 @@ export function Transcript({
   // The reveal layer: empty for React, painted by a quote chip's reveal (quote-overlay.ts).
   const [revealLayer, setRevealLayer] = useState<HTMLDivElement | null>(null);
   useQuoteReveal(messages, revealLayer);
-  const hasUser = blocks.some((block) => block.kind === 'user');
-  const pendingFiles = !hasUser && run ? artifacts.filter((file) => file.runId === run.id) : [];
+  // The latest run before its prompt reaches the transcript: it closes the conversation as its
+  // own turn, so the turns above stay settled instead of borrowing its live header and note.
+  const pending = pendingPromptRun(task.runs, blocks);
+  const pendingFiles = pending ? artifacts.filter((file) => file.runId === pending.id) : [];
   const headRequest = requests[0];
   const { compact, pending: compacting } = useCompactTask();
   const retryBlocked = compacting || compactBlock(task, detail.context) !== null;
@@ -185,16 +185,6 @@ export function Transcript({
               )}
             </div>
           )}
-          {!hasUser && run && (
-            <section className="transcript-turn">
-              <article className="user-message" aria-label={t('conversation.yourMessage')}>
-                <PromptMessage
-                  snapshot={run.snapshot}
-                  fallback={pendingMessageText(run.snapshot)}
-                />
-              </article>
-            </section>
-          )}
           <CompactionRetryContext value={retry}>
             <TaskTurnsContext value={turnTask}>
               <TurnList
@@ -204,12 +194,21 @@ export function Transcript({
                 artifacts={artifacts}
                 anchors={anchors}
                 requests={requestIndex}
-                live={live}
-                status={<StatusBar run={run} />}
+                live={live && !pending}
+                status={pending ? null : <StatusBar run={run} />}
                 onAttach={onAttach}
               />
             </TaskTurnsContext>
           </CompactionRetryContext>
+          {pending && (
+            <PendingTurn
+              run={pending}
+              live={live}
+              waiting={headRequest?.kind === 'input' ? 'answer' : headRequest ? 'approval' : null}
+              files={pendingFiles}
+              onAttach={onAttach}
+            />
+          )}
           {onNewTask && (
             <NewTaskHint
               key={task.id}
@@ -218,16 +217,6 @@ export function Transcript({
               onNewTask={onNewTask}
             />
           )}
-          {turns.length === 0 && live && (
-            <TurnHeader
-              startedAt={null}
-              durationMs={null}
-              modelName={modelNameForRun(run)}
-              live
-              waiting={headRequest?.kind === 'input' ? 'answer' : headRequest ? 'approval' : null}
-            />
-          )}
-          {pendingFiles.length > 0 && <TaskFiles files={pendingFiles} onAttach={onAttach} />}
           {(detail.capabilities?.length ?? 0) > 0 && (
             <output className="text-sm text-muted-foreground">
               {tPanel('capability.waitingDesktop', {
@@ -235,8 +224,6 @@ export function Transcript({
               })}
             </output>
           )}
-          {/* With turns, the note closes the last one, above its action bar. */}
-          {turns.length === 0 && <StatusBar run={run} />}
           <div ref={setRevealLayer} className="quote-reveal-layer" aria-hidden />
         </div>
       </ScrollArea>
