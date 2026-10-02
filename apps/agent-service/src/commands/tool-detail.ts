@@ -12,6 +12,7 @@ const INPUT_SOURCES = {
   manual: 'typed text',
   selection: 'selected text',
   clipboard: 'clipboard',
+  screenshot: 'screenshot',
   none: 'no text',
 } as const;
 

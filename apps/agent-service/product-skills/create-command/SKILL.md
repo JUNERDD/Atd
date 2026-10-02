@@ -19,9 +19,9 @@ Work out the following from the request and the conversation; ask the user only 
    It may also carry tokens, each after a space or at the start of the text: `/skill:<name>` loads a skill, `@agent:<name>` allows a subagent, `@mcp:<serverId>` suggests that MCP server's tools, and `@task:<taskId>` includes an excerpt of a conversation. A command has no separate skill or subagent setting; these tokens are how it uses one.
 
 4. **input** — where `{{input}}` comes from and what the run may attach:
-   - `source`: `manual` (typed), `selection`, `clipboard`, or `none` (no text input)
+   - `source`: `manual` (typed), `selection`, `clipboard`, `screenshot` (the user captures an image each run, which the model receives as image input), or `none` (no text input)
    - `required`: whether a run needs text; not allowed with `none`
-   - `files`, `selection`, `clipboard`: whether each may be attached. A `selection` or `clipboard` source needs its own flag on.
+   - `files`, `selection`, `clipboard`: whether each may be attached. A `selection`, `clipboard` or `screenshot` source needs its own flag on (`files` for a screenshot); `{{input}}` then holds any text the user types beside the screenshot.
 5. **parameters** (optional) — named values the user fills in on each run, at most 20, each with a unique `key` (`^[a-zA-Z][a-zA-Z0-9_]*$`), a `label`, a `description` and `required`, and one type: `text` (`multiline`, `maxLength`), `number` (`min`, `max`), `boolean`, or `enum` (`options` of unique `value`/`label` pairs). A `default` must itself be valid.
 6. **tools** — what a run may use: any of `read`, `write`, `edit`, `bash`, `command`. Grant only what the instructions need; a command that only writes text needs none.
 7. **memory** — `inherit` to use the agent's long-term memory, or `off`.
