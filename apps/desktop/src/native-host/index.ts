@@ -82,12 +82,6 @@ export async function installNativeHost(
     {
       emit: (event) => emit('changed', event),
       defaultConnectionId: () => settings.providers.overlay()?.defaultConnectionId ?? null,
-      defaultModel: () => {
-        const live = settings.providers.overlay();
-        const id = live?.defaultConnectionId;
-        const model = live?.connections.find((item) => item.connectionId === id)?.defaultModel;
-        return id && model ? { connectionId: id, modelId: model } : undefined;
-      },
     },
     (_page, event) => emit('changed', event),
   );

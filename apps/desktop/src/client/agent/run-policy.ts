@@ -7,7 +7,6 @@ export const RunPolicySchema = Type.Object(
   {
     tools: Type.Array(ToolIdSchema, { uniqueItems: true }),
     memory: Type.Boolean(),
-    useDefaultModel: Type.Boolean(),
     confirmExpansion: Type.Boolean(),
     model: Type.Optional(ModelReferenceSchema),
     /** Thinking level for this run; omitted runs use the connection's saved level. */

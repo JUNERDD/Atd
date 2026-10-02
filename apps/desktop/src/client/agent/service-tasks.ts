@@ -35,7 +35,6 @@ export interface TaskHost {
   emit: (event: AgentEvent) => void;
   /** Republishes the agent snapshot (task list, commands); a burst of calls publishes once. */
   broadcast: () => void;
-  defaultModel: () => { connectionId: string; modelId: string } | undefined;
 }
 
 /** A cached task: its summary always, its transcript only while some view holds the task. */

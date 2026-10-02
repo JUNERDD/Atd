@@ -75,9 +75,9 @@ export function skillsView(
 /**
  * The `/` panel. A leading `/` lists quick commands and enabled skills, or the `/model`,
  * `/effort` and `/context` drill lists and the `/compact <focus>` row; an inline `/` lists skills
- * only, since commands act on the whole draft. Model and effort changes stay on this draft
- * (`useDefaultModel: false` for a model pick) and never touch the app defaults; a context tier is
- * the connection's remembered choice for the model. Every drill pick clears the trigger text.
+ * only, since commands act on the whole draft. Model and effort changes stay on this draft's
+ * policy and never touch the app defaults; a context tier is the connection's remembered choice
+ * for the model. Every drill pick clears the trigger text.
  */
 export function useSlashView({
   trigger,
@@ -152,7 +152,7 @@ export function useSlashView({
           checked: shown?.connectionId === connection.connectionId && shown.modelId === entry.id,
           select: () => {
             const next = { connectionId: connection.connectionId, modelId: entry.id };
-            onPolicyChange({ ...policy, useDefaultModel: false, model: next });
+            onPolicyChange({ ...policy, model: next });
             editor.clearTrigger();
           },
         })),

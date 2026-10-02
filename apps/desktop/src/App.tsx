@@ -25,7 +25,7 @@ import { TaskHistory } from './features/agent/task-history';
 import { ServiceBanner } from './features/service/service-banner';
 import { ServiceStarting } from './features/service/service-starting';
 import { useServiceStarting } from './features/service/use-service-starting';
-import type { QuoteSource } from '@ai/agent-contracts';
+import { runModelSelection, type QuoteSource } from '@ai/agent-contracts';
 import { EMPTY_QUEUE, type Block } from './client/agent/transcript-schema';
 import { appendChip, quoteChip } from './features/composer-editor/draft';
 import type { FileRef } from './client/agent/task-schema';
@@ -93,13 +93,19 @@ export function App() {
   const defaultConnection = snapshot?.connections.find(
     (connection) => connection.connectionId === snapshot.defaultConnectionId,
   );
+  // The run's model as the service selects it (`runModelSelection`), else the default: the
+  // composer's picker shows it.
   const selectedModel =
-    policy.model ??
-    (!policy.useDefaultModel && run && view === 'task'
-      ? run.snapshot.model
-      : defaultConnection?.defaultModel
-        ? { connectionId: defaultConnection.connectionId, modelId: defaultConnection.defaultModel }
-        : null);
+    runModelSelection({
+      requested: policy.model,
+      command: view === 'input' ? prepared?.command.model : null,
+      last: view === 'task' ? run?.snapshot.model : null,
+      hasConnection: (connectionId) =>
+        snapshot?.connections.some((item) => item.connectionId === connectionId) ?? false,
+    }) ??
+    (defaultConnection?.defaultModel
+      ? { connectionId: defaultConnection.connectionId, modelId: defaultConnection.defaultModel }
+      : null);
   return (
     <TooltipProvider delayDuration={350}>
       <SubagentContext value={subagents}>

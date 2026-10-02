@@ -20,8 +20,12 @@ import { SessionReleases } from './session-release.js';
 import { TaskRunner, type RunnerContext } from './task-runner.js';
 import { taskContextBreakdown, taskSnapshot, taskSummary, taskView } from './task-view.js';
 import { checkChipRanges, taskTitle } from './tasks/input-chips.js';
-import { checkBranchBefore, freezeRunSnapshot, userEntryIds } from './tasks/run-snapshot.js';
-import { loadRunContextWindow } from './tasks/run-selection.js';
+import {
+  checkBranchBefore,
+  freezeRunSnapshot,
+  loadSubmitContextWindow,
+  userEntryIds,
+} from './tasks/run-snapshot.js';
 
 export interface ManagerDeps {
   ctx: RunnerContext;
@@ -87,9 +91,10 @@ export class RunnerManager {
     checkChipRanges(request.input);
     // Read before the checks below so acceptance stays free of awaits until the ledger write.
     const connections = await ConnectionStore.load(this.deps.ctx.paths.root);
-    const contextWindowOf = await loadRunContextWindow(connections, request.model);
-    const onBranch = await this.userEntries(request);
     const ledger = this.deps.ctx.ledger;
+    const last = ledger.data.tasks.find((item) => item.id === request.taskId)?.runs.at(-1);
+    const contextWindowOf = await loadSubmitContextWindow(connections, request, last);
+    const onBranch = await this.userEntries(request);
     const duplicate = ledger.operation(request.operationId);
     if (duplicate) return { taskId: duplicate.taskId, runId: duplicate.runId, duplicate: true };
     const taskId = request.taskId ?? randomUUID();

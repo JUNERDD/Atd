@@ -296,7 +296,6 @@ export function useTaskPanel() {
         : view === 'task' && run
           ? run.snapshot.memory
           : true,
-    useDefaultModel: false,
     confirmExpansion: false,
   };
   const policy = policies[policyKey] ?? defaultPolicy;

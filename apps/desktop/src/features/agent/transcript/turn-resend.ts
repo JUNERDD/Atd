@@ -94,7 +94,6 @@ function runPolicy(snapshot: RunSnapshot, skills: string[], references: RunRefer
   return {
     tools: snapshot.tools,
     memory: snapshot.memory,
-    useDefaultModel: false,
     confirmExpansion: false,
     model: { connectionId: snapshot.model.connectionId, modelId: snapshot.model.modelId },
     ...(snapshot.thinkingLevel ? { thinkingLevel: snapshot.thinkingLevel } : {}),

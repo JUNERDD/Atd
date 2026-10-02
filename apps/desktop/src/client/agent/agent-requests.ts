@@ -67,7 +67,6 @@ export interface AgentConnection extends TaskConnection {
 export interface AgentHost {
   emit(event: AgentEvent): void;
   defaultConnectionId(): string | null;
-  defaultModel(): { connectionId: string; modelId: string } | undefined;
 }
 
 /**
@@ -95,7 +94,6 @@ export class AgentRequests<S> {
       {
         emit: (event) => host.emit(event),
         broadcast: () => this.scheduleBroadcast(),
-        defaultModel: () => host.defaultModel(),
       },
       forward,
     );
