@@ -1,4 +1,4 @@
-import { errorMessage, type McpServerConfig } from '@ai/agent-contracts';
+import { errorMessage, type McpServerConfig } from '@atd/agent-contracts';
 import {
   authorizeMcp,
   McpOAuthAuthorizationRequiredError,

@@ -4,7 +4,7 @@ import {
   getProviderLogin,
   startProviderLogin,
   type AgentClientOptions,
-} from '@ai/agent-client';
+} from '@atd/agent-client';
 import type { LoginState } from './schema';
 
 const POLL_INTERVAL_MS = 1000;

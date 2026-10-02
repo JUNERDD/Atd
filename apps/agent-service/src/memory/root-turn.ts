@@ -1,4 +1,4 @@
-import { errorMessage, rootExecutionId, type TaskRun } from '@ai/agent-contracts';
+import { errorMessage, rootExecutionId, type TaskRun } from '@atd/agent-contracts';
 import type { Logger } from '../logging.js';
 import { logMemoryEvents, MemoryAuthority } from './authority.js';
 import { runRootMemoryOperation, type RunnerMemoryScope } from './proxy.js';

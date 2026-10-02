@@ -4,7 +4,7 @@ import type {
   McpResourceTemplateRef,
   McpServerConfig,
   McpToolRef,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import type { ToolAnnotations } from '@earendil-works/pi-coding-agent';
 import {
   JSON_RPC_ERROR_CODES,

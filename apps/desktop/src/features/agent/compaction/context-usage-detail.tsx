@@ -6,10 +6,14 @@ import type {
   ContextBreakdownCategory,
   ContextCategoryId,
   TaskContextState,
-} from '@ai/agent-contracts';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@ai/ui/components/collapsible';
-import { ScrollArea } from '@ai/ui/components/scroll-area';
-import { Spinner } from '@ai/ui/components/spinner';
+} from '@atd/agent-contracts';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@atd/ui/components/collapsible';
+import { ScrollArea } from '@atd/ui/components/scroll-area';
+import { Spinner } from '@atd/ui/components/spinner';
 import { formatContextWindow, formatTokenCount } from '../../providers/context-window';
 import './context-usage.css';
 

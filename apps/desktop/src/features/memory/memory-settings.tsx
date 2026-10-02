@@ -1,9 +1,9 @@
 import { useRef, useState } from 'react';
 import { CircleAlert } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Button } from '@ai/ui/components/button';
-import { useCompositionQuery } from '@ai/ui/lib/ime';
-import { ScrollArea } from '@ai/ui/components/scroll-area';
+import { Button } from '@atd/ui/components/button';
+import { useCompositionQuery } from '@atd/ui/lib/ime';
+import { ScrollArea } from '@atd/ui/components/scroll-area';
 import type { MemoryEntry } from '../../client/agent/bridge';
 import { FieldHint } from '../../components/field-hint';
 import { SettingsHeading } from '../settings/settings-heading';

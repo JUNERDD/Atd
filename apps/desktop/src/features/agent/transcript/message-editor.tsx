@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button } from '@ai/ui/components/button';
-import { Textarea } from '@ai/ui/components/textarea';
-import { isComposingKey } from '@ai/ui/lib/ime';
+import { Button } from '@atd/ui/components/button';
+import { Textarea } from '@atd/ui/components/textarea';
+import { isComposingKey } from '@atd/ui/lib/ime';
 import type { RunSnapshot } from '../../../client/agent/task-schema';
 import { UserContext } from '../user-context';
 

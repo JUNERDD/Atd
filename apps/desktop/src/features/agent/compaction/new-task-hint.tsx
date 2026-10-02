@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Button } from '@ai/ui/components/button';
+import { Button } from '@atd/ui/components/button';
 import { IconButton } from '../../../components/icon-button';
 
 /** Compactions after which a fresh task usually works better than another summary. */

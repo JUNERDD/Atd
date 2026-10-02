@@ -15,7 +15,7 @@ import type {
   McpGetPromptResponse,
   McpPromptMessage,
   McpReadResourceResponse,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 
 /**
  * Result mapping (D6): tool results keep their original MCP blocks for API

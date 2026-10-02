@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { mkdir, open, readFile } from 'node:fs/promises';
 import path from 'node:path';
-import type { ResourceRef } from '@ai/agent-contracts';
+import type { ResourceRef } from '@atd/agent-contracts';
 import { Ledger, LedgerNotFound } from './ledger.js';
 import type { ServicePaths } from './storage.js';
 

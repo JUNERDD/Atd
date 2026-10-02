@@ -7,7 +7,7 @@ import {
   type CapabilityRequest,
   type CapabilityResult,
   type DesktopCapability,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import type { EventLog } from './event-log.js';
 import { ConflictError } from './errors.js';
 import { Ledger } from './ledger.js';

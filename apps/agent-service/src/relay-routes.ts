@@ -8,7 +8,7 @@ import {
   type ErrorEnvelope,
   type RouteManifestEntry,
   type RouteManifestResponse,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import { authorize } from './auth.js';
 import type { RouteExposure } from './route-exposure.js';
 

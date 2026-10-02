@@ -8,7 +8,7 @@ import {
   PROTOCOL_VERSION,
   ServiceTokenFileSchema,
   type ServiceTokenFile,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import { Type, type Static } from 'typebox';
 import { resolveDataDir, servicePaths, type ServicePaths } from './storage.js';
 

@@ -3,7 +3,7 @@ import {
   attachableExtension,
   attachmentByteLimit,
   type AttachableExtension,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import type { SearchHit } from './backend.js';
 import { searchableLocation, type SearchScope } from './scope.js';
 

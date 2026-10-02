@@ -1,6 +1,6 @@
 import { useId, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Input } from '@ai/ui/components/input';
+import { Input } from '@atd/ui/components/input';
 import {
   Item,
   ItemActions,
@@ -8,10 +8,10 @@ import {
   ItemDescription,
   ItemGroup,
   ItemTitle,
-} from '@ai/ui/components/item';
-import { Label } from '@ai/ui/components/label';
-import { Switch } from '@ai/ui/components/switch';
-import { Textarea } from '@ai/ui/components/textarea';
+} from '@atd/ui/components/item';
+import { Label } from '@atd/ui/components/label';
+import { Switch } from '@atd/ui/components/switch';
+import { Textarea } from '@atd/ui/components/textarea';
 import { FieldHint } from '../../components/field-hint';
 import { useSettingsUnsavedChanges } from '../settings/settings-unsaved-changes';
 import {

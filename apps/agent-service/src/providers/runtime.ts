@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { ModelRuntime } from '@earendil-works/pi-coding-agent';
-import type { ServiceConnection, ServiceModelDefinition } from '@ai/agent-contracts';
+import type { ServiceConnection, ServiceModelDefinition } from '@atd/agent-contracts';
 import type { ConnectionStore } from '../credentials/connections.js';
 import type { KeyringBackend } from '../credentials/keyring.js';
 import { ServiceCredentialStore } from '../credentials/service-store.js';

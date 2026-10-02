@@ -7,9 +7,9 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-} from '@ai/ui/components/command';
-import { HighlightedText } from '@ai/ui/components/highlighted-text';
-import { useCompositionQuery } from '@ai/ui/lib/ime';
+} from '@atd/ui/components/command';
+import { HighlightedText } from '@atd/ui/components/highlighted-text';
+import { useCompositionQuery } from '@atd/ui/lib/ime';
 import type { Connection, ModelReference } from '../../client/providers/schema';
 import { IconButton } from '../../components/icon-button';
 import { rankModels } from './model-match';

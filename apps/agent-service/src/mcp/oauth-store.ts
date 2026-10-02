@@ -1,4 +1,4 @@
-import { errorMessage, parse, type McpServerConfig } from '@ai/agent-contracts';
+import { errorMessage, parse, type McpServerConfig } from '@atd/agent-contracts';
 import type { McpOAuthState, McpOAuthStateStore } from '@earendil-works/pi-mcp/oauth';
 import { Type } from 'typebox';
 import { keyringMcpOAuthAccount, type KeyringBackend } from '../credentials/keyring.js';

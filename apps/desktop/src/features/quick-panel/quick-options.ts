@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import type { MatchRange } from '@ai/ui/lib/fuzzy-match';
+import type { MatchRange } from '@atd/ui/lib/fuzzy-match';
 
 /** One selectable row of the quick panel; every source maps its candidates to this shape. */
 export interface QuickOption {

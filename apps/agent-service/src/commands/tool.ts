@@ -7,7 +7,7 @@ import {
   parse,
   ServiceCommandFullSchema,
   type ServiceCommandFull,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import type { Gate } from '../harness/gate.js';
 import type { ChildTool } from '../subagents/child-tools.js';
 import { withCanonicalShortcut } from './shortcuts.js';

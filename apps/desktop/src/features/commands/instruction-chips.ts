@@ -2,7 +2,7 @@ import {
   instructionTokenText,
   parseInstructionTokens,
   type InstructionReference,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import { ChangeSet, EditorState } from '@codemirror/state';
 import {
   addChips,

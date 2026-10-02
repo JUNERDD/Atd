@@ -1163,7 +1163,7 @@
   overflow: hidden;
 }
 /* In the drawer, the section list's scroll area is the glass's persistent child layer (see
-   `surface-glass` in `@ai/ui`): narrowing a search that scrolled drops the list's scroller layers
+   `surface-glass` in `@atd/ui`): narrowing a search that scrolled drops the list's scroller layers
    here, not on the glass, where they lingered with the old results over the new ones. */
 .settings-drawer .settings-nav-scroll {
   will-change: transform;

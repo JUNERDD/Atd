@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { AuthEvent, AuthPrompt } from '@earendil-works/pi-ai';
-import type { ProviderLoginState, ServiceConnection } from '@ai/agent-contracts';
+import type { ProviderLoginState, ServiceConnection } from '@atd/agent-contracts';
 import { ConflictError } from '../errors.js';
 import { LedgerNotFound } from '../ledger.js';
 import { connectionRuntime, type ProviderStores } from './runtime.js';

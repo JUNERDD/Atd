@@ -8,7 +8,7 @@ import type {
   McpResourceTemplateRef,
   McpServerConfig,
   McpToolRef,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import type { McpRequestOptions, ProgressNotification, Tool } from '@earendil-works/pi-mcp';
 import type { Logger } from '../logging.js';
 import { McpApprovalBroker } from './approval.js';

@@ -1,9 +1,9 @@
 import { Brain, Check, Copy, Square, TextQuote, Volume2 } from 'lucide-react';
 import { useMemo, useState, type SyntheticEvent } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { QuoteSource } from '@ai/agent-contracts';
-import { Popover, PopoverAnchor, PopoverContent } from '@ai/ui/components/popover';
-import { Toolbar, ToolbarButton } from '@ai/ui/components/toolbar';
+import type { QuoteSource } from '@atd/agent-contracts';
+import { Popover, PopoverAnchor, PopoverContent } from '@atd/ui/components/popover';
+import { Toolbar, ToolbarButton } from '@atd/ui/components/toolbar';
 import { IconButton } from '../../../../components/icon-button';
 import { showErrorToast } from '../../../../components/toast-store';
 import { useCopyFeedback } from '../use-copy-feedback';

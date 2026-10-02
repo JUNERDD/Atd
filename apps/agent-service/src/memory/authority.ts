@@ -1,6 +1,6 @@
 import { createJiti } from 'jiti';
 import type { ExtensionFactory } from '@earendil-works/pi-coding-agent';
-import { MEMORY_TOOLS } from '@ai/agent-contracts';
+import { MEMORY_TOOLS } from '@atd/agent-contracts';
 import type { Logger } from '../logging.js';
 import { readMemoryPause, writeMemoryPause } from './pause.js';
 import type { MemoryTarget } from './policy.js';

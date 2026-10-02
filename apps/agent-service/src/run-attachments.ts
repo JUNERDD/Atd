@@ -1,5 +1,5 @@
 import { formatDimensionNote, resizeImage } from '@earendil-works/pi-coding-agent';
-import { errorMessage, isImageMime, type FileRef } from '@ai/agent-contracts';
+import { errorMessage, isImageMime, type FileRef } from '@atd/agent-contracts';
 import type { Logger } from './logging.js';
 import type { RunAttachment } from './pi-session.js';
 import type { ResourceStore } from './resources.js';

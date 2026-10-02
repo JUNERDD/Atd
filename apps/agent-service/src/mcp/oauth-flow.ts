@@ -3,7 +3,7 @@ import {
   type McpAuthCompleteResponse,
   type McpAuthStartResponse,
   type McpServerConfig,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import type { McpNotices } from './callbacks.js';
 import { McpError } from './errors.js';
 import { oauthAuthOf, usesOAuth } from './oauth-client.js';

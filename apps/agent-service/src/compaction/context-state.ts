@@ -8,7 +8,7 @@ import {
   type SessionManager,
   type SessionProjection,
 } from '@earendil-works/pi-coding-agent';
-import type { TaskContextState } from '@ai/agent-contracts';
+import type { TaskContextState } from '@atd/agent-contracts';
 import type { CompactionObserver } from './observer.js';
 
 /** Compactions Pi completed on the branch. */

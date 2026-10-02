@@ -1,7 +1,7 @@
 import { memo, useState } from 'react';
 import { Bot, ListTodo, PenLine, Search, Sparkles, Terminal, Wrench } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Shimmer } from '@ai/ui/components/ai-elements/shimmer';
+import { Shimmer } from '@atd/ui/components/ai-elements/shimmer';
 import type { Artifact, FileRef } from '../../../client/agent/task-schema';
 import { TaskFiles } from '../task-files';
 import { ActivityRow } from './activity-row';

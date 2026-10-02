@@ -1,4 +1,4 @@
-import type { McpOAuthClientDraft } from '@ai/agent-contracts';
+import type { McpOAuthClientDraft } from '@atd/agent-contracts';
 import type { ExtensionMcpConfig } from './extension-detail-rows';
 
 /**

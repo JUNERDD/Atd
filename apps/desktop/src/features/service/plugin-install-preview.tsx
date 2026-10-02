@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
-import type { PluginInstallPreview } from '@ai/agent-contracts';
-import { Alert, AlertDescription } from '@ai/ui/components/alert';
+import type { PluginInstallPreview } from '@atd/agent-contracts';
+import { Alert, AlertDescription } from '@atd/ui/components/alert';
 import {
   ExtensionDetailFields,
   ExtensionDetailSection,

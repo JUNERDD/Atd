@@ -5,7 +5,7 @@ import {
   type ServiceBlock,
   type SubmitTaskRequest,
   type TaskRun,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import type { ConnectionStore } from '../credentials/connections.js';
 import { CONTEXT_BUDGET, runInputSize } from './run-budget.js';
 import {

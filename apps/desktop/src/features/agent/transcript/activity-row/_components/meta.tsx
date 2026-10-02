@@ -1,5 +1,5 @@
 import type { ComponentProps } from 'react';
-import { cn } from '@ai/ui/lib/utils';
+import { cn } from '@atd/ui/lib/utils';
 import { useActivityRow } from '../_hooks/use-activity-row';
 
 export interface ActivityRowMetaProps extends ComponentProps<'span'> {}

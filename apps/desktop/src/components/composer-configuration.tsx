@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import type { TaskContextState } from '@ai/agent-contracts';
+import type { TaskContextState } from '@atd/agent-contracts';
 import type { RunPolicy } from '../client/agent/run-policy';
 import type { AgentTask } from '../client/agent/task-schema';
 import type { Connection, ModelReference } from '../client/providers/schema';

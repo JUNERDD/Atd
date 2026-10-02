@@ -1,20 +1,20 @@
 {
-  "name": "ai-workspace",
+  "name": "atd",
   "private": true,
   "scripts": {
     "prepare": "git config core.hooksPath .githooks || exit 0",
-    "dev": "node scripts/dev-guard.mjs && turbo run dev dev:renderer --filter=@ai/agent-service --filter=@ai/desktop --filter=@ai/macos",
-    "dev:headless": "node scripts/dev-guard.mjs && turbo run dev dev:renderer --filter=@ai/agent-service --filter=@ai/desktop",
-    "dev:renderer": "turbo run dev:renderer --filter=@ai/desktop",
+    "dev": "node scripts/dev-guard.mjs && turbo run dev dev:renderer --filter=@atd/agent-service --filter=@atd/desktop --filter=@atd/macos",
+    "dev:headless": "node scripts/dev-guard.mjs && turbo run dev dev:renderer --filter=@atd/agent-service --filter=@atd/desktop",
+    "dev:renderer": "turbo run dev:renderer --filter=@atd/desktop",
     "build": "turbo run build",
     "typecheck": "turbo run typecheck",
     "lint": "turbo run lint",
     "test": "turbo run test",
     "format": "oxfmt .",
     "format:check": "oxfmt --check .",
-    "check": "pnpm format:check && turbo run lint typecheck test build --filter=!@ai/macos && node scripts/on-macos.mjs pnpm check:macos",
+    "check": "pnpm format:check && turbo run lint typecheck test build --filter=!@atd/macos && node scripts/on-macos.mjs pnpm check:macos",
     "check:macos": "pnpm check:swift && pnpm check:rust",
-    "check:swift": "turbo run codegen:check format:check lint test build --filter=@ai/macos",
+    "check:swift": "turbo run codegen:check format:check lint test build --filter=@atd/macos",
     "check:rust": "node scripts/check-rust-file-length.mjs && cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test"
   },
   "devDependencies": {

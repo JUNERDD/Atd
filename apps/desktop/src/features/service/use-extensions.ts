@@ -1,5 +1,5 @@
 import { useMemo, useRef } from 'react';
-import type { PluginDetail } from '@ai/agent-contracts';
+import type { PluginDetail } from '@atd/agent-contracts';
 import { useAgent } from '../agent/use-agent';
 import type { ExtensionCommandRow } from './extension-commands';
 import { USER_PLUGIN_ID } from './plugin-rows';

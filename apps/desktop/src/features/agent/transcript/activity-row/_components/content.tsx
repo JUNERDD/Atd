@@ -1,5 +1,5 @@
 import type { ComponentProps } from 'react';
-import { CollapsibleContent } from '@ai/ui/components/collapsible';
+import { CollapsibleContent } from '@atd/ui/components/collapsible';
 import { useActivityRow } from '../_hooks/use-activity-row';
 
 export type ActivityRowContentProps = ComponentProps<typeof CollapsibleContent>;

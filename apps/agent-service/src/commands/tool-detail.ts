@@ -1,4 +1,4 @@
-import type { CommandInput, CommandParameter, ServiceCommandFull } from '@ai/agent-contracts';
+import type { CommandInput, CommandParameter, ServiceCommandFull } from '@atd/agent-contracts';
 
 /**
  * What the user approves when the Agent saves a command: every authored field for a create, a

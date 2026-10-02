@@ -1,4 +1,4 @@
-import type { McpServerConfig } from '@ai/agent-contracts';
+import type { McpServerConfig } from '@atd/agent-contracts';
 import { OAuthCallbackServer, type McpOAuthState } from '@earendil-works/pi-mcp/oauth';
 import {
   MCP_OAUTH_CALLBACK_HOST,

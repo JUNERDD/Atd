@@ -1,7 +1,7 @@
 import { Sparkles } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Button } from '@ai/ui/components/button';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@ai/ui/components/tooltip';
+import { Button } from '@atd/ui/components/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@atd/ui/components/tooltip';
 import { useMemoryCreate } from './use-memory-create';
 
 /**

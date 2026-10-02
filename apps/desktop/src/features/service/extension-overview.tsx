@@ -1,10 +1,10 @@
 import { useRef, useState, type ReactNode } from 'react';
 import { Blocks, PackagePlus, Search, Unplug } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import type { PluginSummary } from '@ai/agent-contracts';
-import { Button } from '@ai/ui/components/button';
-import { ScrollArea } from '@ai/ui/components/scroll-area';
-import type { useCompositionQuery } from '@ai/ui/lib/ime';
+import type { PluginSummary } from '@atd/agent-contracts';
+import { Button } from '@atd/ui/components/button';
+import { ScrollArea } from '@atd/ui/components/scroll-area';
+import type { useCompositionQuery } from '@atd/ui/lib/ime';
 import { showToast } from '../../components/toast-store';
 import { SettingsHeading } from '../settings/settings-heading';
 import { SettingsSearchField } from '../settings/settings-search-field';

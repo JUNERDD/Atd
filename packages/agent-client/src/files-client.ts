@@ -12,7 +12,7 @@ import {
   type FileSearchRequest,
   type ResourceImportRequest,
   type ResourceImportResponse,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import { manageRequest } from './manage-request.js';
 import type { AgentClientOptions } from './types.js';
 

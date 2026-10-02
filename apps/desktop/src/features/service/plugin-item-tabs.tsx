@@ -1,6 +1,6 @@
 import { useState, type ComponentProps } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@ai/ui/components/tabs';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@atd/ui/components/tabs';
 import { PluginItemGroups, type PluginGroupKind } from './plugin-item-groups';
 import { useMemorySnapshot } from '../memory/use-memory-snapshot';
 import { PluginMemoryGroup } from './plugin-memory-group';

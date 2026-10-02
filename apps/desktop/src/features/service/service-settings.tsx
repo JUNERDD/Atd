@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { useCompositionQuery } from '@ai/ui/lib/ime';
+import { useCompositionQuery } from '@atd/ui/lib/ime';
 import { useMemoryCreate } from '../memory/use-memory-create';
 import { showToast } from '../../components/toast-store';
 import { useSettingsNavigation, useSettingsSectionExit } from '../settings/settings-navigation';

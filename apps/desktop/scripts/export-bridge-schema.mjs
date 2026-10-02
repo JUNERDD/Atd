@@ -75,7 +75,7 @@ if (process.argv.includes('--check')) {
   }
   if (!isDeepStrictEqual(current, document)) {
     console.error(
-      `${output} is out of date with the bridge contract. Run: pnpm --filter @ai/desktop bridge-schema`,
+      `${output} is out of date with the bridge contract. Run: pnpm --filter @atd/desktop bridge-schema`,
     );
     process.exit(1);
   }

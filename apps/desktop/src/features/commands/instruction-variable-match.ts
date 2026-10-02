@@ -1,6 +1,6 @@
 import type { Completion } from '@codemirror/autocomplete';
 import type { EditorState } from '@codemirror/state';
-import { matchFields, rankByQuery, type MatchRange } from '@ai/ui/lib/fuzzy-match';
+import { matchFields, rankByQuery, type MatchRange } from '@atd/ui/lib/fuzzy-match';
 
 /*
  * The `{{` completion query. The completion source ranks the variables with it and the

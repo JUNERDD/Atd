@@ -53,7 +53,7 @@
           {
             "patterns": [
               {
-                "group": ["@ai/*", "@earendil-works/*", "react", "react-dom"],
+                "group": ["@atd/*", "@earendil-works/*", "react", "react-dom"],
                 "message": "plugin-kit is host-agnostic and will be published on its own; take host behavior through a port."
               }
             ]

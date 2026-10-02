@@ -1,5 +1,5 @@
 import type { SessionManager } from '@earendil-works/pi-coding-agent';
-import type { TaskRun } from '@ai/agent-contracts';
+import type { TaskRun } from '@atd/agent-contracts';
 import type { SessionFactoryDeps } from '../pi-session.js';
 import type { RunBinding } from '../run-binding.js';
 import type { Gate } from './gate.js';

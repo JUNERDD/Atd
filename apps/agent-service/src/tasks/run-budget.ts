@@ -1,4 +1,4 @@
-import type { RunSnapshot } from '@ai/agent-contracts';
+import type { RunSnapshot } from '@atd/agent-contracts';
 import { quoteMaterial } from '../references/quotes.js';
 
 /**

@@ -1,4 +1,4 @@
-import type { SecretStore } from '@ai/plugin-kit';
+import type { SecretStore } from '@atd/plugin-kit';
 import {
   KeyringBackend,
   KeyringUnavailable,

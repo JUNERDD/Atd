@@ -12,7 +12,7 @@ import {
   type ToolDefinition,
   type WriteOperations,
 } from '@earendil-works/pi-coding-agent';
-import type { GrantScope, PermissionTier } from '@ai/agent-contracts';
+import type { GrantScope, PermissionTier } from '@atd/agent-contracts';
 import type { CapabilityRegistry } from './capabilities.js';
 import { commandToolDefinition } from './commands/tool.js';
 import { registerMcpCatalogTools, type ListMcp, type UpsertMcp } from './configure-mcp-tool.js';

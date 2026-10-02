@@ -108,7 +108,7 @@ jobs:
           cargo --version
       - run: pnpm install --frozen-lockfile
       - name: Build the Release app
-        run: pnpm --filter @ai/macos build:release
+        run: pnpm --filter @atd/macos build:release
       - name: Package the dmg
         run: |
           app=apps/macos/DerivedData/Build/Products/Release/AI.app

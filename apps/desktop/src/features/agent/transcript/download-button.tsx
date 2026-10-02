@@ -7,8 +7,8 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@ai/ui/components/dropdown-menu';
-import { cn } from '@ai/ui/lib/utils';
+} from '@atd/ui/components/dropdown-menu';
+import { cn } from '@atd/ui/lib/utils';
 import { MAX_SAVE_PNG_BASE64_LENGTH, type SaveContent } from '../../../native-bridge/calls';
 import { IconButton } from '../../../components/icon-button';
 import { showErrorToast, showToast } from '../../../components/toast-store';

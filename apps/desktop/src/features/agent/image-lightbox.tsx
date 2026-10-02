@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Dialog, DialogContent, DialogTitle, DialogTrigger } from '@ai/ui/components/dialog';
+import { Dialog, DialogContent, DialogTitle, DialogTrigger } from '@atd/ui/components/dialog';
 import type { FileRef } from '../../client/agent/task-schema';
 import { LazyResourceImage } from './resource-image';
 

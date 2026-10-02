@@ -1,33 +1,33 @@
 import { useState, type ComponentType, type ReactNode } from 'react';
 import { Copy, Ellipsis, History, Pencil, SearchIcon, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Button } from '@ai/ui/components/button';
+import { Button } from '@atd/ui/components/button';
 import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuSeparator,
   ContextMenuTrigger,
-} from '@ai/ui/components/context-menu';
+} from '@atd/ui/components/context-menu';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@ai/ui/components/dropdown-menu';
-import { HighlightedText } from '@ai/ui/components/highlighted-text';
+} from '@atd/ui/components/dropdown-menu';
+import { HighlightedText } from '@atd/ui/components/highlighted-text';
 import {
   Empty,
   EmptyDescription,
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
-} from '@ai/ui/components/empty';
-import { useCompositionQuery } from '@ai/ui/lib/ime';
-import { Shimmer } from '@ai/ui/components/ai-elements/shimmer';
-import { ScrollArea } from '@ai/ui/components/scroll-area';
-import { matchFields, type FieldsMatch } from '@ai/ui/lib/fuzzy-match';
+} from '@atd/ui/components/empty';
+import { useCompositionQuery } from '@atd/ui/lib/ime';
+import { Shimmer } from '@atd/ui/components/ai-elements/shimmer';
+import { ScrollArea } from '@atd/ui/components/scroll-area';
+import { matchFields, type FieldsMatch } from '@atd/ui/lib/fuzzy-match';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,7 +37,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '@ai/ui/components/alert-dialog';
+} from '@atd/ui/components/alert-dialog';
 import type { AgentTask } from '../../client/agent/task-schema';
 import { isActive } from '../../client/agent/task-schema';
 import { IconButton } from '../../components/icon-button';

@@ -14,7 +14,7 @@ import {
   type ServiceToolStatus,
   type SubagentChildEntry,
   type ToolBlockDetails,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import type { Logger } from './logging.js';
 import { isSubagentLaunch, SUBAGENT_TOOL } from './subagents/tool-contract.js';
 import type { StepList } from './transcript-details/codemode.js';

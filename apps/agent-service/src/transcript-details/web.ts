@@ -12,7 +12,7 @@ import {
   type WebFetchPage,
   type WebSearchDetails,
   type WebSearchResult,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import { createClamp, stringItems, type Clamp } from './clamp.js';
 
 const QUERY_MAX_LENGTH = 500;

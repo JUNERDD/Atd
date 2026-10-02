@@ -11,7 +11,7 @@ import {
   type TaskSnapshot,
   type TaskSummary,
   emptyContextState,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import { contextBreakdown } from './compaction/context-breakdown.js';
 import { coldContextState } from './compaction/context-state.js';
 import { ConnectionStore } from './credentials/connections.js';

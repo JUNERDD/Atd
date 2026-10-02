@@ -7,7 +7,7 @@ import {
   type QueueState,
   type RunStatus,
   type TaskRun,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import {
   createCompactionState,
   compactRefused,

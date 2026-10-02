@@ -10,7 +10,7 @@ import {
   STREAM_PROTOCOL,
   SubmitTaskRequestSchema,
   type ErrorCode,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import { AuthError, authorize, hostAllowed, originAllowed } from './auth.js';
 import { CapabilityGone, DesktopUnavailable } from './capabilities.js';
 import type { CapabilityRegistry } from './capabilities.js';

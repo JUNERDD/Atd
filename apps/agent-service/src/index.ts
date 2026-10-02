@@ -1,4 +1,4 @@
-import { errorMessage, type PermissionTier } from '@ai/agent-contracts';
+import { errorMessage, type PermissionTier } from '@atd/agent-contracts';
 import { CapabilityRegistry } from './capabilities.js';
 import {
   clearEndpoint,

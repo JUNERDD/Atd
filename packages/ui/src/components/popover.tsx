@@ -1,6 +1,6 @@
 import * as React from 'react';
-import { cn } from '@ai/ui/lib/utils';
-import { ignoreComposingEscape } from '@ai/ui/lib/ime';
+import { cn } from '@atd/ui/lib/utils';
+import { ignoreComposingEscape } from '@atd/ui/lib/ime';
 import { Popover as PopoverPrimitive } from 'radix-ui';
 
 function Popover({ ...props }: React.ComponentProps<typeof PopoverPrimitive.Root>) {

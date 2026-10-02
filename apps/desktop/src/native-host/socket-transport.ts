@@ -1,4 +1,4 @@
-import type { StreamTransportEvents, StreamTransportFactory } from '@ai/agent-client';
+import type { StreamTransportEvents, StreamTransportFactory } from '@atd/agent-client';
 import type { NativeBridge } from '../native-bridge/client';
 
 /**

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { cn } from '@ai/ui/lib/utils';
+import { cn } from '@atd/ui/lib/utils';
 import { ActivityRow } from './activity-row';
 import type { ViewBlock } from './adapter';
 import { PhaseStep } from './phase-step';

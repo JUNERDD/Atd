@@ -1,6 +1,6 @@
 import type { AssistantMessage } from '@earendil-works/pi-ai';
 import type { AgentSession, SessionManager } from '@earendil-works/pi-coding-agent';
-import { CODEMODE_TOOL, type QueueState, type ServiceBlock } from '@ai/agent-contracts';
+import { CODEMODE_TOOL, type QueueState, type ServiceBlock } from '@atd/agent-contracts';
 import { NestedStepLog } from './codemode/steps.js';
 import type { RunningCompaction } from './compaction/records.js';
 import { SUBAGENT_TOOL } from './subagents/tool-contract.js';

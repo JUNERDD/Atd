@@ -4,7 +4,7 @@ import {
   type RunModelSources,
   type ServiceModel,
   type ThinkingLevel,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import type { ConnectionStore } from '../credentials/connections.js';
 import { LedgerNotFound } from '../ledger.js';
 import { presentConnection } from '../providers/connection-view.js';

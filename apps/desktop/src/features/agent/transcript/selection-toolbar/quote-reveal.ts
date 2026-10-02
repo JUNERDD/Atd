@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import type { QuoteSource } from '@ai/agent-contracts';
+import type { QuoteSource } from '@atd/agent-contracts';
 import { paintQuote } from './quote-overlay';
 import { findQuote, type FoundQuote } from './quote-source';
 

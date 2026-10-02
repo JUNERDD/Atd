@@ -219,7 +219,7 @@ button.model-config-row-nav:disabled:hover {
   min-height: 0;
   flex: 1;
   /* Each view mounts its own glass content, and the view is that glass's persistent child layer
-     (see `surface-glass` in `@ai/ui`): a search that makes the model list fit drops the list's
+     (see `surface-glass` in `@atd/ui`): a search that makes the model list fit drops the list's
      scroller layers here, not on the glass, where they lingered with the old rows below it. */
   will-change: transform;
 }

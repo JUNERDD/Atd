@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { FileImage } from 'lucide-react';
-import { Spinner } from '@ai/ui/components/spinner';
+import { Spinner } from '@atd/ui/components/spinner';
 import type { FileRef } from '../../client/agent/task-schema';
 
 type Loaded = { resourceId: string; url: string } | { resourceId: string; failed: true };

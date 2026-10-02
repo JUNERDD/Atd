@@ -9,8 +9,8 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { matchFields } from '@ai/ui/lib/fuzzy-match';
-import type { FileSearchResult } from '@ai/agent-contracts';
+import { matchFields } from '@atd/ui/lib/fuzzy-match';
+import type { FileSearchResult } from '@atd/agent-contracts';
 import type { AgentTask, FileRef } from '../../client/agent/task-schema';
 import { showErrorToast } from '../../components/toast-store';
 import { fileSize } from '../../lib/file-size';

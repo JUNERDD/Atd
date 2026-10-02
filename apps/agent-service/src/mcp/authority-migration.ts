@@ -1,4 +1,4 @@
-import { errorMessage } from '@ai/agent-contracts';
+import { errorMessage } from '@atd/agent-contracts';
 import type { Logger } from '../logging.js';
 import { resolveHttpUrl } from './launch-resolve.js';
 import type { McpConnectionStates } from './lifecycle.js';

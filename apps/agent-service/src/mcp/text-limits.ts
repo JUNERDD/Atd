@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { errorMessage, type McpAttachment } from '@ai/agent-contracts';
+import { errorMessage, type McpAttachment } from '@atd/agent-contracts';
 import { MAX_BLOB_BYTES } from './artifacts.js';
 import type { MappingContext, MappingDeps } from './errors.js';
 

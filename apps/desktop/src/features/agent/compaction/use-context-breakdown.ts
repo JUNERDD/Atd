@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import type { ContextBreakdown, TaskContextState } from '@ai/agent-contracts';
+import type { ContextBreakdown, TaskContextState } from '@atd/agent-contracts';
 import { messageOf } from '../../../lib/errors';
 import { queryClient } from '../../../lib/query-client';
 import { agentApi } from '../use-agent';

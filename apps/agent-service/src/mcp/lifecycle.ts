@@ -3,7 +3,7 @@ import type {
   McpServerConfig,
   McpServerStatus,
   McpSnapshot,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import type { Logger } from '../logging.js';
 import { announceMcpChanged } from './changes.js';
 import type { McpStateSink } from './errors.js';

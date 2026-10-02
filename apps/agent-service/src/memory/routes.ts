@@ -4,7 +4,7 @@ import {
   MemoryPauseRequestSchema,
   MemoryUpdateRequestSchema,
   parse,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import type { Logger } from '../logging.js';
 import { ConflictError } from '../errors.js';
 import { logMemoryEvents, MemoryAuthority } from './authority.js';

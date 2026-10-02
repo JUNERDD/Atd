@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import type { ImageContent, TextContent } from '@earendil-works/pi-ai';
 import { createCodemodeExtension, type ExtensionFactory } from '@earendil-works/pi-coding-agent';
-import { CODEMODE_TOOL, errorMessage } from '@ai/agent-contracts';
+import { CODEMODE_TOOL, errorMessage } from '@atd/agent-contracts';
 import type { Logger } from '../logging.js';
 import type { ResourceStore } from '../resources.js';
 import { isRecord } from '../transcript-details/clamp.js';

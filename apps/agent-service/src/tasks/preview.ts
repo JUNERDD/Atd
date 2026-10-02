@@ -8,7 +8,7 @@ import {
   type PreviewTaskResponse,
   type ServiceCommandFull,
   snapshotToolsFor,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import { CommandStore } from '../commands/store.js';
 import { findPluginCommand } from '../plugins/commands.js';
 import { defaultArguments, resolveCommandInstructions } from '../commands/templates.js';

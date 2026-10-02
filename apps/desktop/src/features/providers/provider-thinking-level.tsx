@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Label } from '@ai/ui/components/label';
+import { Label } from '@atd/ui/components/label';
 import type { Connection, ConnectionDraft } from '../../client/providers/schema';
 import { ThinkingLevelSelect } from './thinking-level-select';
 import type { ConnectionDraftPatch } from './use-provider-draft';

@@ -1,5 +1,5 @@
 {
-  "name": "@ai/desktop",
+  "name": "@atd/desktop",
   "version": "0.4.0",
   "private": true,
   "description": "A quiet desktop task panel, built from Figma.",
@@ -15,10 +15,10 @@
     "test:watch": "vitest"
   },
   "devDependencies": {
-    "@ai/agent-client": "workspace:*",
-    "@ai/agent-contracts": "workspace:*",
-    "@ai/typescript-config": "workspace:*",
-    "@ai/ui": "workspace:*",
+    "@atd/agent-client": "workspace:*",
+    "@atd/agent-contracts": "workspace:*",
+    "@atd/typescript-config": "workspace:*",
+    "@atd/ui": "workspace:*",
     "@babel/core": "7.29.7",
     "@codemirror/autocomplete": "6.20.3",
     "@codemirror/commands": "6.11.1",

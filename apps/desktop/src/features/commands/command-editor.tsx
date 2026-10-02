@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CircleAlert, Copy, Puzzle, Sparkles } from 'lucide-react';
-import { Alert, AlertDescription } from '@ai/ui/components/alert';
-import { Button } from '@ai/ui/components/button';
-import { Input } from '@ai/ui/components/input';
-import { Label } from '@ai/ui/components/label';
-import { ScrollArea } from '@ai/ui/components/scroll-area';
+import { Alert, AlertDescription } from '@atd/ui/components/alert';
+import { Button } from '@atd/ui/components/button';
+import { Input } from '@atd/ui/components/input';
+import { Label } from '@atd/ui/components/label';
+import { ScrollArea } from '@atd/ui/components/scroll-area';
 import { CommandSchema, type CommandDefinition } from '../../client/agent/command-schema';
 import { renameArgument } from '../../client/agent/command-validation';
 import { parse } from '../../client/agent/validation';

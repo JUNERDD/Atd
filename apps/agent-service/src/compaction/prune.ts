@@ -4,7 +4,7 @@ import {
   type ExtensionFactory,
   type ProjectedSessionEntry,
 } from '@earendil-works/pi-coding-agent';
-import { LOAD_SKILL_TOOL, MEMORY_TOOLS } from '@ai/agent-contracts';
+import { LOAD_SKILL_TOOL, MEMORY_TOOLS } from '@atd/agent-contracts';
 import { SUBAGENT_TOOL } from '../subagents/tool-contract.js';
 
 /** Share of the effective window from which older tool output is cleared. */

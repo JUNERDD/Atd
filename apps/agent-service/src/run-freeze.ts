@@ -1,4 +1,4 @@
-import { errorMessage, type TaskRun } from '@ai/agent-contracts';
+import { errorMessage, type TaskRun } from '@atd/agent-contracts';
 import { readAgentHarness } from './atd-agents/harness.js';
 import { McpAuthority } from './mcp/index.js';
 import { freezeRunMcp, releaseRunMcp } from './mcp/staging.js';

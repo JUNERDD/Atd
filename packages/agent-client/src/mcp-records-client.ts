@@ -3,7 +3,7 @@ import {
   parse,
   type McpServersResponse,
   type McpServerUpsertRequest,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import { manageRequest } from './manage-request.js';
 import type { McpClient } from './mcp-client.js';
 

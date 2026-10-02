@@ -3,7 +3,7 @@ import {
   type McpServerConfig,
   type McpServerUpsertRequest,
   type McpSnapshot,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import type { ConfirmStore } from '../confirms.js';
 import { KeyringBackend } from '../credentials/keyring.js';
 import type { EventLog } from '../event-log.js';

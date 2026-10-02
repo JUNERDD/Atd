@@ -7,7 +7,7 @@ import {
   WEB_SEARCH_TOOL,
   type McpServerConfig,
   type SubagentTool,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import {
   installedItemName,
   substituteBody,
@@ -18,7 +18,7 @@ import {
   type PluginDiagnostic,
   type SkillComponent,
   type SubstitutionContext,
-} from '@ai/plugin-kit';
+} from '@atd/plugin-kit';
 import { oauthClientProblem } from '../mcp/oauth-client.js';
 import type { SkillRevisionRecord } from '../skills/versions.js';
 import type { PluginHost } from './host.js';

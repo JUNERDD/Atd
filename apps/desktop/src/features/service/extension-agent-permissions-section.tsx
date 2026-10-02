@@ -1,10 +1,10 @@
 import { useId, useState } from 'react';
 import { Shield } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import type { SubagentPermissions } from '@ai/agent-contracts';
-import { Badge } from '@ai/ui/components/badge';
-import { Button } from '@ai/ui/components/button';
-import { Label } from '@ai/ui/components/label';
+import type { SubagentPermissions } from '@atd/agent-contracts';
+import { Badge } from '@atd/ui/components/badge';
+import { Button } from '@atd/ui/components/button';
+import { Label } from '@atd/ui/components/label';
 import { AgentPermissionsDialog } from './extension-agent-permissions';
 import { ExtensionDetailFields } from './extension-detail-fields';
 import type { ExtensionAgentRow } from './extension-rows';

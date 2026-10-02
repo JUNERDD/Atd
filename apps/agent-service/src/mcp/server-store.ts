@@ -1,4 +1,4 @@
-import { errorMessage, type McpHttpAuth, type McpServerConfig } from '@ai/agent-contracts';
+import { errorMessage, type McpHttpAuth, type McpServerConfig } from '@atd/agent-contracts';
 import { KeyringBackend, keyringMcpAccount } from '../credentials/keyring.js';
 import type { Logger } from '../logging.js';
 import { McpError } from './errors.js';

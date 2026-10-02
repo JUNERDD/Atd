@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { ScrollArea } from '@ai/ui/components/scroll-area';
+import { ScrollArea } from '@atd/ui/components/scroll-area';
 
 /**
  * The user's message bubble. The frame owns the shape, fill and height cap; a long message scrolls

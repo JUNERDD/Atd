@@ -1,4 +1,4 @@
-import type { SummariesFrame } from '@ai/agent-contracts';
+import type { SummariesFrame } from '@atd/agent-contracts';
 import type { TaskClient } from './service-tasks';
 
 /**

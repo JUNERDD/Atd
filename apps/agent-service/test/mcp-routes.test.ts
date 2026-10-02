@@ -15,7 +15,7 @@ import {
   McpServersResponseSchema,
   McpToolRefSchema,
   parse,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import { McpAuthority } from '../dist/mcp/authority.js';
 import { catalogCountsFile } from '../dist/mcp/catalog-memory.js';
 import type { McpError } from '../dist/mcp/errors.js';

@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { RefreshCw, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import type { PluginDetail, PluginSummary } from '@ai/agent-contracts';
-import { Alert, AlertAction, AlertDescription } from '@ai/ui/components/alert';
-import { Button } from '@ai/ui/components/button';
-import { Switch } from '@ai/ui/components/switch';
+import type { PluginDetail, PluginSummary } from '@atd/agent-contracts';
+import { Alert, AlertAction, AlertDescription } from '@atd/ui/components/alert';
+import { Button } from '@atd/ui/components/button';
+import { Switch } from '@atd/ui/components/switch';
 import { showToast } from '../../components/toast-store';
 import {
   ExtensionDetailFields,

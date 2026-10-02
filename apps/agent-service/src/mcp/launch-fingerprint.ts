@@ -1,6 +1,6 @@
 import { createHmac } from 'node:crypto';
 import path from 'node:path';
-import type { McpLaunchKind, McpServerConfig } from '@ai/agent-contracts';
+import type { McpLaunchKind, McpServerConfig } from '@atd/agent-contracts';
 import { httpEnvReads } from './env-references.js';
 import { oauthAuthOf } from './oauth-client.js';
 import type { McpLaunchSpec } from './types.js';

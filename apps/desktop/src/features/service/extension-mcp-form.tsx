@@ -1,13 +1,13 @@
 import { useTranslation } from 'react-i18next';
-import { Input } from '@ai/ui/components/input';
+import { Input } from '@atd/ui/components/input';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@ai/ui/components/select';
-import { Textarea } from '@ai/ui/components/textarea';
+} from '@atd/ui/components/select';
+import { Textarea } from '@atd/ui/components/textarea';
 import type { McpAuthKind, McpDraft, McpDraftProblems, McpTransport } from './extension-mcp-draft';
 import { McpField } from './extension-mcp-field';
 import { MCP_FIELD_ID as FIELD_ID, useMcpProblems } from './extension-mcp-problems';

@@ -4,7 +4,7 @@ import {
   ProviderCredentialSchema,
   type ProviderConnectRequest,
   type ProviderConnectResponse,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import { ConnectionStore } from '../credentials/connections.js';
 import { KeyringBackend, keyringAccount } from '../credentials/keyring.js';
 import { ServiceCredentialStore } from '../credentials/service-store.js';

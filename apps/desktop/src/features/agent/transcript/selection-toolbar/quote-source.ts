@@ -1,4 +1,4 @@
-import { MAX_QUOTE_PARTS, type QuoteSource } from '@ai/agent-contracts';
+import { MAX_QUOTE_PARTS, type QuoteSource } from '@atd/agent-contracts';
 import { ATOMIC_BLOCKS } from './code-sources';
 import type { MessagePart } from './use-message-selection';
 

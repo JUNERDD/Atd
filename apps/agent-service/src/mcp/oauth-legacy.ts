@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
-import { parse } from '@ai/agent-contracts';
+import { parse } from '@atd/agent-contracts';
 import type { McpOAuthState } from '@earendil-works/pi-mcp/oauth';
 import { Type, type Static } from 'typebox';
 import { Value } from 'typebox/value';

@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Camera, Pencil } from 'lucide-react';
-import { Button } from '@ai/ui/components/button';
-import { Label } from '@ai/ui/components/label';
-import { Spinner } from '@ai/ui/components/spinner';
-import { MAX_ATTACHMENTS } from '@ai/agent-contracts';
+import { Button } from '@atd/ui/components/button';
+import { Label } from '@atd/ui/components/label';
+import { Spinner } from '@atd/ui/components/spinner';
+import { MAX_ATTACHMENTS } from '@atd/agent-contracts';
 import {
   missingScreenshot,
   replaceFile,

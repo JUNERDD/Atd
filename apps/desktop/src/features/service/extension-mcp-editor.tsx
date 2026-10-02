@@ -1,6 +1,6 @@
 import { useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button } from '@ai/ui/components/button';
+import { Button } from '@atd/ui/components/button';
 import { ExtensionDetailSection } from './extension-detail-fields';
 import {
   sameMcpDraft,

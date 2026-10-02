@@ -1,4 +1,4 @@
-import type { SubagentPermissions } from '@ai/agent-contracts';
+import type { SubagentPermissions } from '@atd/agent-contracts';
 import { authHeaders, type AgentClientOptions } from './types.js';
 
 export interface AtdAgentWire {

@@ -4,8 +4,8 @@ import {
   type McpServerConfig,
   type McpServerStatus,
   type McpServerStatusRow,
-} from '@ai/agent-contracts';
-import type { InstalledPlugin } from '@ai/plugin-kit';
+} from '@atd/agent-contracts';
+import type { InstalledPlugin } from '@atd/plugin-kit';
 import type { Logger } from '../logging.js';
 import { currentPluginComponents } from '../plugins/components.js';
 import { USER_PLUGIN } from '../plugins/host-plugins.js';

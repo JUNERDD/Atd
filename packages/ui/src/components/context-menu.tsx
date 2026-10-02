@@ -1,11 +1,11 @@
 'use client';
 
 import * as React from 'react';
-import { cn } from '@ai/ui/lib/utils';
-import { ignoreComposingEscape } from '@ai/ui/lib/ime';
+import { cn } from '@atd/ui/lib/utils';
+import { ignoreComposingEscape } from '@atd/ui/lib/ime';
 import { ContextMenu as ContextMenuPrimitive } from 'radix-ui';
 import { ChevronRightIcon, CheckIcon } from 'lucide-react';
-import { ScrollArea } from '@ai/ui/components/scroll-area';
+import { ScrollArea } from '@atd/ui/components/scroll-area';
 
 function ContextMenu({ ...props }: React.ComponentProps<typeof ContextMenuPrimitive.Root>) {
   return <ContextMenuPrimitive.Root data-slot="context-menu" {...props} />;

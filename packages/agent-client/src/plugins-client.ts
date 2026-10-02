@@ -11,7 +11,7 @@ import {
   type PluginItemKind,
   type PluginListResponse,
   type PluginPreviewRequest,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import { Type } from 'typebox';
 import { manageRequest } from './manage-request.js';
 import type { AgentClientOptions } from './types.js';

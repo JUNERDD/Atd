@@ -11,7 +11,7 @@ import {
   type GrantScope,
   type PermissionOutcome,
   type ServiceToolStatus,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import { createClamp, isRecord } from './clamp.js';
 
 /**

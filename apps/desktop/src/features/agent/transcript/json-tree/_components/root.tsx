@@ -1,5 +1,5 @@
 import { useMemo, type ComponentProps, type ReactNode } from 'react';
-import { cn } from '@ai/ui/lib/utils';
+import { cn } from '@atd/ui/lib/utils';
 import type { JsonRenderNode } from '../_types/node';
 import { DEFAULT_EXPANDED_DEPTH, MAX_JSON_TREE_CHARS } from '../_constants/limits';
 import { safeParseJson } from '../_helpers/parse-json';

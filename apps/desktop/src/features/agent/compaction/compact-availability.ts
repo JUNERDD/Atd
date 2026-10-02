@@ -1,4 +1,4 @@
-import type { TaskContextState } from '@ai/agent-contracts';
+import type { TaskContextState } from '@atd/agent-contracts';
 import { isActive, type AgentTask } from '../../../client/agent/task-schema';
 
 /** The service's cap on `/compact <focus>` instructions (`CompactTaskRequest`). */

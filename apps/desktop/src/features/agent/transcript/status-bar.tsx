@@ -1,6 +1,6 @@
 import { CircleAlert, CircleQuestionMark, CircleSlash, CircleStop } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Alert, AlertDescription, AlertTitle } from '@ai/ui/components/alert';
+import { Alert, AlertDescription, AlertTitle } from '@atd/ui/components/alert';
 import type { TaskRun } from '../../../client/agent/task-schema';
 
 const NOTES = {

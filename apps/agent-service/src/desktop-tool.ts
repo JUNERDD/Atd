@@ -1,6 +1,10 @@
 import { Type } from 'typebox';
 import type { ExtensionAPI } from '@earendil-works/pi-coding-agent';
-import { DesktopCapabilitySchema, errorMessage, type DesktopCapability } from '@ai/agent-contracts';
+import {
+  DesktopCapabilitySchema,
+  errorMessage,
+  type DesktopCapability,
+} from '@atd/agent-contracts';
 import type { CapabilityRegistry } from './capabilities.js';
 
 /** What the desktop tool needs from the service tool host (tool-proxies.ts). */

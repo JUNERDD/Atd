@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
-import { ScrollArea } from '@ai/ui/components/scroll-area';
-import { cn } from '@ai/ui/lib/utils';
+import { ScrollArea } from '@atd/ui/components/scroll-area';
+import { cn } from '@atd/ui/lib/utils';
 import { CopyButton } from './copy-button';
 
 export type DetailBoxVariant = 'output' | 'diff' | 'plain';

@@ -2,12 +2,12 @@ import {
   mcpDismissApprovalNotice,
   mcpWithdrawApproval,
   type AgentClientOptions,
-} from '@ai/agent-client';
+} from '@atd/agent-client';
 import {
   McpServerIdSchema,
   type McpApprovalRequestResult,
   type McpStatusResponse,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import { Type, type Static } from 'typebox';
 
 /**

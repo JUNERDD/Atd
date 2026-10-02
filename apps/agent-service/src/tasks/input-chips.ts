@@ -4,7 +4,7 @@ import {
   type InputChipRange,
   type RunSnapshot,
   type TaskInput,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 
 /**
  * Chip ranges must lie inside `text`, ascending and without overlap, or clients could not draw the

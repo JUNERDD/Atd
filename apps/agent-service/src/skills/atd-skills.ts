@@ -6,7 +6,7 @@ import { isBuiltinSkill, type BuiltinStatus } from '../builtins/manifest.js';
 import { reconcileBuiltinSkills } from '../builtins/skills.js';
 import { ConflictError } from '../errors.js';
 import { atdSkillsDir } from '../service-fs.js';
-import { isItemName } from '@ai/plugin-kit';
+import { isItemName } from '@atd/plugin-kit';
 import { mapPiDiagnostics, type SkillDiagnostic } from './diagnostics.js';
 import type { SkillRevisionRecord } from './versions.js';
 

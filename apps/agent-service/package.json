@@ -1,5 +1,5 @@
 {
-  "name": "@ai/agent-service",
+  "name": "@atd/agent-service",
   "version": "0.1.0",
   "private": true,
   "bin": {
@@ -25,9 +25,9 @@
     "test": "tsc -p tsconfig.json && tsc -p test/tsconfig.json && node --test 'test/**/*.test.ts'"
   },
   "dependencies": {
-    "@ai/agent-contracts": "workspace:*",
-    "@ai/file-index": "workspace:*",
-    "@ai/plugin-kit": "workspace:*",
+    "@atd/agent-contracts": "workspace:*",
+    "@atd/file-index": "workspace:*",
+    "@atd/plugin-kit": "workspace:*",
     "@earendil-works/pi-ai": "1.0.0",
     "@earendil-works/pi-coding-agent": "1.0.0",
     "@earendil-works/pi-mcp": "1.0.0",
@@ -43,7 +43,7 @@
     "typebox": "catalog:"
   },
   "devDependencies": {
-    "@ai/typescript-config": "workspace:*",
+    "@atd/typescript-config": "workspace:*",
     "@types/ws": "8.18.2"
   },
   "engines": {

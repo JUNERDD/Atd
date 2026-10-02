@@ -3,7 +3,7 @@ import {
   instructionTokenText,
   MAX_RUN_SKILLS,
   parseInstructionTokens,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 
 /** `ServiceCommandFullSchema`'s instructions limit, which a folded command must still meet. */
 const INSTRUCTIONS_LIMIT = 20000;

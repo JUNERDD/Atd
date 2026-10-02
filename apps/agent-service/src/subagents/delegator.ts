@@ -1,5 +1,5 @@
 import type { SessionFactoryDeps } from '../pi-session.js';
-import { SUBAGENT_CHILD_ENTRY } from '@ai/agent-contracts';
+import { SUBAGENT_CHILD_ENTRY } from '@atd/agent-contracts';
 import {
   SessionManager,
   type ExtensionAPI,

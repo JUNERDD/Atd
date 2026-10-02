@@ -5,8 +5,8 @@ import {
   type StreamHandlers,
   type StreamTransportEvents,
   type StreamTransportFactory,
-} from '@ai/agent-client';
-import { STREAM_AUTH_PROTOCOL_PREFIX, STREAM_PROTOCOL } from '@ai/agent-contracts';
+} from '@atd/agent-client';
+import { STREAM_AUTH_PROTOCOL_PREFIX, STREAM_PROTOCOL } from '@atd/agent-contracts';
 
 interface FakeConnection {
   url: string;

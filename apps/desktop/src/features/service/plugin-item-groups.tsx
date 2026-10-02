@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import type { PluginItem, PluginSummary } from '@ai/agent-contracts';
+import type { PluginItem, PluginSummary } from '@atd/agent-contracts';
 import { ExtensionAgentsGroup } from './extension-agents';
 import { ExtensionCommandsGroup } from './extension-commands';
 import { ExtensionMcpGroup } from './extension-mcp';

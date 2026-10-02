@@ -8,9 +8,9 @@ import {
 } from 'react';
 import { CircleAlert } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Button } from '@ai/ui/components/button';
-import { TooltipProvider } from '@ai/ui/components/tooltip';
-import { ScrollArea } from '@ai/ui/components/scroll-area';
+import { Button } from '@atd/ui/components/button';
+import { TooltipProvider } from '@atd/ui/components/tooltip';
+import { ScrollArea } from '@atd/ui/components/scroll-area';
 import { CommandSettings } from '../commands/command-settings';
 import { MemorySettings } from '../memory/memory-settings';
 import { ToastHost } from '../../components/toast';

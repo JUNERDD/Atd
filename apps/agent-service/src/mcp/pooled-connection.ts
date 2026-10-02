@@ -1,4 +1,4 @@
-import { errorMessage } from '@ai/agent-contracts';
+import { errorMessage } from '@atd/agent-contracts';
 import {
   McpConnectionClosedError,
   StdioTransport,

@@ -1,5 +1,5 @@
 import { Type, type Static } from 'typebox';
-import { SessionEntryId, ToolBlockDetailsSchema } from '@ai/agent-contracts';
+import { SessionEntryId, ToolBlockDetailsSchema } from '@atd/agent-contracts';
 import { Identifier } from './command-schema';
 import { GrantScopeSchema, PermissionOutcomeSchema } from './permission-schema';
 

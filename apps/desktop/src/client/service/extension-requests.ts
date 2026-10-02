@@ -21,7 +21,7 @@ import {
   setAtdAgentPermissions,
   setSkillEnabled,
   type AgentClientOptions,
-} from '@ai/agent-client';
+} from '@atd/agent-client';
 import type { ServiceRequest } from './ipc';
 import { handleMcpApprovalRequest, type RequestMcpApproval } from './mcp-approval-requests';
 import { handlePluginRequest } from './plugin-requests';

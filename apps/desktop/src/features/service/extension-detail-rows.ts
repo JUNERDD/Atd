@@ -1,4 +1,4 @@
-import type { McpServerExposure } from '@ai/agent-contracts';
+import type { McpServerExposure } from '@atd/agent-contracts';
 import { readFlag, readKeys, readObject, readString, readStrings } from './wire-read';
 
 /**

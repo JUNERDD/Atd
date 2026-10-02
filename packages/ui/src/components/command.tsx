@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { Command as CommandPrimitive } from 'cmdk';
-import { cn } from '@ai/ui/lib/utils';
+import { cn } from '@atd/ui/lib/utils';
 
 import {
   Dialog,
@@ -8,10 +8,10 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from '@ai/ui/components/dialog';
-import { InputGroup, InputGroupAddon } from '@ai/ui/components/input-group';
+} from '@atd/ui/components/dialog';
+import { InputGroup, InputGroupAddon } from '@atd/ui/components/input-group';
 import { SearchIcon, CheckIcon } from 'lucide-react';
-import { ScrollArea, type ScrollGutter } from '@ai/ui/components/scroll-area';
+import { ScrollArea, type ScrollGutter } from '@atd/ui/components/scroll-area';
 
 function Command({ className, ...props }: React.ComponentProps<typeof CommandPrimitive>) {
   return (

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { after, before, test } from 'node:test';
 import { Type } from 'typebox';
-import { parse } from '@ai/agent-contracts';
+import { parse } from '@atd/agent-contracts';
 import { errorCode } from './launch-helpers.ts';
 import { approveAuthorization } from './mcp-http-kit.ts';
 import { waitFor } from './mcp-kit.ts';

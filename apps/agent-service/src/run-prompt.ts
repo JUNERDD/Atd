@@ -1,5 +1,5 @@
 import type { ImageContent } from '@earendil-works/pi-ai';
-import type { TaskRun } from '@ai/agent-contracts';
+import type { TaskRun } from '@atd/agent-contracts';
 import type { RunAttachment } from './pi-session.js';
 
 /** The user message a run prompts with: its text, else the command's instructions. */

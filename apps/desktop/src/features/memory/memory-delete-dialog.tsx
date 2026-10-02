@@ -8,7 +8,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '@ai/ui/components/alert-dialog';
+} from '@atd/ui/components/alert-dialog';
 import type { MemoryEntry } from '../../client/agent/bridge';
 
 /** Confirms deleting one memory; open while `entry` is set. */

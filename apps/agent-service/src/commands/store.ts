@@ -9,7 +9,7 @@ import {
   type ServiceCommand,
   type ServiceCommandFull,
   type ServiceCommandsFile,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import { atomicWrite } from '../config.js';
 import { ConflictError } from '../errors.js';
 import { LedgerNotFound } from '../ledger.js';

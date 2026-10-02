@@ -1,8 +1,8 @@
 import { ShieldAlert, ShieldCheck } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import type { McpApprovalDetails } from '@ai/agent-contracts';
-import { Alert, AlertAction, AlertDescription, AlertTitle } from '@ai/ui/components/alert';
-import { Button } from '@ai/ui/components/button';
+import type { McpApprovalDetails } from '@atd/agent-contracts';
+import { Alert, AlertAction, AlertDescription, AlertTitle } from '@atd/ui/components/alert';
+import { Button } from '@atd/ui/components/button';
 import type { ViewBlock } from './adapter';
 import { mcpNeedsApproval } from '../../service/use-mcp-state-label';
 import { mcpApprovalsIn, useMcpApproval } from './use-mcp-approval';

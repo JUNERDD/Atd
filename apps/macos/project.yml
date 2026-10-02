@@ -43,7 +43,7 @@ targets:
         product: AIShell
     # Release only: embeds the renderer (`apps/desktop/dist-native`) and the service pack with its
     # bundled Node (`scripts/prepare-service-pack.mjs`) where ServiceLaunchPlan and
-    # RendererSource expect them. `pnpm --filter @ai/macos build:release` prepares both first;
+    # RendererSource expect them. `pnpm --filter @atd/macos build:release` prepares both first;
     # Debug builds skip it and use `pnpm dev`'s dev server and service.
     postBuildScripts:
       - name: Embed renderer and service
@@ -57,7 +57,7 @@ targets:
           node="$repo/tmp/t7-node"
           for required in "$renderer/index.html" "$service/dist/cli.js" "$service/build-info.json" "$node/bin/node"; do
             if [ ! -e "$required" ]; then
-              echo "error: $required is missing. Run pnpm --filter @ai/macos bundle first."
+              echo "error: $required is missing. Run pnpm --filter @atd/macos bundle first."
               exit 1
             fi
           done

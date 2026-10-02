@@ -7,7 +7,7 @@ import {
   type McpAttachment,
   type McpCallResult,
   type McpToolRef,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import { McpError, type McpUpdate, type OperationContext } from './errors.js';
 import { toPiContent } from './model-content.js';
 import { isJsonObject, normalizeInputSchema } from './policy.js';

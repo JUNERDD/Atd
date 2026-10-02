@@ -1,14 +1,14 @@
-import { MCP_DEFERRED_TOOL_THRESHOLD, type McpServerExposure } from '@ai/agent-contracts';
+import { MCP_DEFERRED_TOOL_THRESHOLD, type McpServerExposure } from '@atd/agent-contracts';
 import { useTranslation } from 'react-i18next';
-import { Label } from '@ai/ui/components/label';
+import { Label } from '@atd/ui/components/label';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@ai/ui/components/select';
-import { Switch } from '@ai/ui/components/switch';
+} from '@atd/ui/components/select';
+import { Switch } from '@atd/ui/components/switch';
 import { ExtensionDetailFields, ExtensionDetailSection } from './extension-detail-fields';
 import type { McpDraft } from './extension-mcp-draft';
 import { McpField } from './extension-mcp-field';

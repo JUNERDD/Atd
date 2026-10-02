@@ -3,7 +3,7 @@ import {
   parse,
   type McpLaunchApprovalState,
   type SubagentPermissions,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import { readCount, readEnabled, readFlag, readString } from './wire-read';
 
 /**

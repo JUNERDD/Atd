@@ -14,7 +14,7 @@ import {
   type McpOAuthClientDraft,
   type McpServerConfig,
   type McpServerUpsertRequest,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import { configureMcp } from '../dist/configure-mcp-tool.js';
 import { serversFile } from '../dist/mcp/servers.js';
 import { upsertRecord } from '../dist/mcp/server-edits.js';

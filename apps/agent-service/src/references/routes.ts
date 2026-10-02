@@ -3,7 +3,7 @@ import {
   parse,
   StageReferencesRequestSchema,
   type StageReferencesResponse,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import { stageTaskReferences } from './staging.js';
 import { RENDERER_ROUTE } from '../relay-routes.js';
 

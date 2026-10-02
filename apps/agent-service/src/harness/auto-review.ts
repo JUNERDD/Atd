@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { Api, Model } from '@earendil-works/pi-ai';
 import type { ModelRuntime, SessionEntry } from '@earendil-works/pi-coding-agent';
-import { errorMessage, type ConfirmReview, type GrantScope } from '@ai/agent-contracts';
+import { errorMessage, type ConfirmReview, type GrantScope } from '@atd/agent-contracts';
 import type { Logger } from '../logging.js';
 
 /** One guarded call the task's tier did not allow outright, as the confirm would show it. */

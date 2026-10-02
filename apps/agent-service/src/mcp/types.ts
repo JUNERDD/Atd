@@ -1,4 +1,4 @@
-import type { McpServerConfig, McpToolRef } from '@ai/agent-contracts';
+import type { McpServerConfig, McpToolRef } from '@atd/agent-contracts';
 import type { ToolAnnotations } from '@earendil-works/pi-coding-agent';
 import type {
   AuthProvider,

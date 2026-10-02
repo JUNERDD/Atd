@@ -10,7 +10,7 @@ import {
   type InputChipRange,
   type InstructionReference,
   type RunReference,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import type { CommandDefinition } from './command-schema';
 import type { RunStaging } from './run-staging';
 

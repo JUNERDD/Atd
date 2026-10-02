@@ -8,7 +8,7 @@ import {
   parse,
   PatchTaskRequestSchema,
   ReplaceQueueRequestSchema,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import { ConflictError } from '../errors.js';
 import { announceInvalidation } from '../invalidate.js';
 import type { Ledger } from '../ledger.js';

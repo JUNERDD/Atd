@@ -1,7 +1,7 @@
 // AI Elements Shimmer (Apache-2.0): https://elements.ai-sdk.dev/components/shimmer
 // Copyright 2023 Vercel, Inc. Adapted for semantic colors, static elements and a CSS-only
-// animation (the `ai-shimmer` class and its keyframes live in `@ai/ui/styles.css`).
-import { cn } from '@ai/ui/lib/utils';
+// animation (the `ai-shimmer` class and its keyframes live in `@atd/ui/styles.css`).
+import { cn } from '@atd/ui/lib/utils';
 import type { CSSProperties } from 'react';
 import { memo } from 'react';
 

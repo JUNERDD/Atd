@@ -1,7 +1,7 @@
 import { BookOpen, Gauge } from 'lucide-react';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
-import { rankByQuery } from '@ai/ui/lib/fuzzy-match';
+import { rankByQuery } from '@atd/ui/lib/fuzzy-match';
 import type { RunPolicy } from '../../client/agent/run-policy';
 import type { Connection, ModelReference } from '../../client/providers/schema';
 import type { ComposerEditorCommands } from '../composer-editor/editor-commands';

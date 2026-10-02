@@ -1,6 +1,6 @@
 import { Type } from 'typebox';
 import type { AuthResult } from '@earendil-works/pi-ai';
-import { parse, type ServiceConnection, type ServiceModelDefinition } from '@ai/agent-contracts';
+import { parse, type ServiceConnection, type ServiceModelDefinition } from '@atd/agent-contracts';
 
 /**
  * Model discovery for OpenAI-compatible local and custom endpoints, which have no Pi directory

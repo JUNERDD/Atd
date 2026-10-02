@@ -2,7 +2,7 @@ import {
   CODEMODE_MAX_STEPS,
   CODEMODE_STEP_OUTPUT_MAX_LENGTH,
   type CodemodeStepDetails,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import { createClamp, isRecord } from '../transcript-details/clamp.js';
 import type { StepList, StoredStep } from '../transcript-details/codemode.js';
 import { projectToolDetails } from '../transcript-details/index.js';

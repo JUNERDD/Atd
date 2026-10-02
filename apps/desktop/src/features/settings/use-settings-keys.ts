@@ -1,5 +1,5 @@
 import { useHotkeys } from 'react-hotkeys-hook';
-import { isComposingKey } from '@ai/ui/lib/ime';
+import { isComposingKey } from '@atd/ui/lib/ime';
 
 /** ⌘ plus these keys run the window's actions, as in the macOS apps that have them. */
 const ACTIONS = { f: 'search', '[': 'back', ']': 'forward' } as const;

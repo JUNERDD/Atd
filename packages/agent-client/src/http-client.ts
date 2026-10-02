@@ -27,7 +27,7 @@ import {
   type SubmitTaskResponse,
   type TaskResponse,
   type TaskSummaryResponse,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import { authHeaders, AgentClientError, type AgentClientOptions } from './types.js';
 
 const CapabilityOkSchema = Type.Object({ ok: Type.Boolean() }, { additionalProperties: false });

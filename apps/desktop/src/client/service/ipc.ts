@@ -1,4 +1,4 @@
-import type { AgentPermissionsWire, BuiltinStatusWire } from '@ai/agent-client';
+import type { AgentPermissionsWire, BuiltinStatusWire } from '@atd/agent-client';
 import {
   McpAuthDraftSchema,
   McpServerExposureSchema,
@@ -7,7 +7,7 @@ import {
   SubagentNameSchema,
   SubagentPermissionsSchema,
   type SubagentPermissions,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import { Type, type Static } from 'typebox';
 import { McpApprovalRequestSchema, type ServiceMcpApprovalBridge } from './mcp-approval-requests';
 import { PluginRequestSchema, type ServicePluginBridge } from './plugin-requests';

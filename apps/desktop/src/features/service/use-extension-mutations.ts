@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { mutationOptions, useMutation } from '@tanstack/react-query';
-import type { SubagentPermissions } from '@ai/agent-contracts';
+import type { SubagentPermissions } from '@atd/agent-contracts';
 import type { McpUpsertInput } from '../../client/service/ipc';
 import { queryClient } from '../../lib/query-client';
 import type { ExtensionRoleTool } from './extension-rows';

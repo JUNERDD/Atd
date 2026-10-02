@@ -14,7 +14,7 @@ import {
   type McpServersResponse,
   type McpSnapshot,
   type McpStatusResponse,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import type { McpAuthority } from './authority.js';
 import { McpError, type OperationContext } from './errors.js';
 import { promptPreviewToInput } from './mapping.js';

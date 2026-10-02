@@ -9,7 +9,7 @@ import type {
   Provider,
   RefreshModelsContext,
 } from '@earendil-works/pi-ai';
-import type { ServiceConnection, ServiceModelDefinition } from '@ai/agent-contracts';
+import type { ServiceConnection, ServiceModelDefinition } from '@atd/agent-contracts';
 
 /** The service's llama.cpp provider id; stored connections, catalogs and runs keep it. */
 export const LLAMA_PROVIDER = 'llamacpp';

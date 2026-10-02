@@ -9,7 +9,7 @@ import {
   SkillName,
   SkillRefSchema,
   parse,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import type { ServiceConfig } from '../config.js';
 import {
   deleteSkill,

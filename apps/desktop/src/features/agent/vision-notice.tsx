@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { EyeOff } from 'lucide-react';
-import { isImageMime } from '@ai/agent-contracts';
-import { cn } from '@ai/ui/lib/utils';
+import { isImageMime } from '@atd/agent-contracts';
+import { cn } from '@atd/ui/lib/utils';
 import type { FileRef } from '../../client/agent/task-schema';
 import type { Connection, ModelReference } from '../../client/providers/schema';
 

@@ -15,10 +15,10 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@ai/ui/components/dropdown-menu';
-import { Button } from '@ai/ui/components/button';
-import { Empty, EmptyContent, EmptyHeader, EmptyMedia, EmptyTitle } from '@ai/ui/components/empty';
-import { HighlightedText } from '@ai/ui/components/highlighted-text';
+} from '@atd/ui/components/dropdown-menu';
+import { Button } from '@atd/ui/components/button';
+import { Empty, EmptyContent, EmptyHeader, EmptyMedia, EmptyTitle } from '@atd/ui/components/empty';
+import { HighlightedText } from '@atd/ui/components/highlighted-text';
 import {
   Item,
   ItemActions,
@@ -27,8 +27,8 @@ import {
   ItemGroup,
   ItemMedia,
   ItemTitle,
-} from '@ai/ui/components/item';
-import { matchFields } from '@ai/ui/lib/fuzzy-match';
+} from '@atd/ui/components/item';
+import { matchFields } from '@atd/ui/lib/fuzzy-match';
 import type { MemoryEntry } from '../../client/agent/bridge';
 import { IconButton } from '../../components/icon-button';
 

@@ -4,7 +4,7 @@ import {
   effectiveAccelerator,
   parseAccelerator,
   type ShortcutBindingsWire,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import { ConflictError } from '../errors.js';
 
 /**

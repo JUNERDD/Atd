@@ -4,7 +4,7 @@ import type {
   CredentialInfo,
   CredentialStore,
 } from '@earendil-works/pi-ai';
-import { parse, ProviderCredentialSchema } from '@ai/agent-contracts';
+import { parse, ProviderCredentialSchema } from '@atd/agent-contracts';
 import { TempCredentialStore } from '../credentials.js';
 import { ConnectionStore } from './connections.js';
 import { keyringAccount, KeyringBackend, KeyringUnavailable } from './keyring.js';

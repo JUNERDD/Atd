@@ -1,12 +1,12 @@
 import { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Input } from '@ai/ui/components/input';
+import { Input } from '@atd/ui/components/input';
 import {
   InputGroup,
   InputGroupAddon,
   InputGroupButton,
   InputGroupInput,
-} from '@ai/ui/components/input-group';
+} from '@atd/ui/components/input-group';
 import type { McpDraft, McpDraftProblems } from './extension-mcp-draft';
 import { McpField } from './extension-mcp-field';
 import { MCP_FIELD_ID as FIELD_ID, useMcpProblems } from './extension-mcp-problems';

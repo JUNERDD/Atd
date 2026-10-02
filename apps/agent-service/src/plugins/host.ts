@@ -8,8 +8,8 @@ import {
   type ResolvedCatalog,
   type SecretStore,
   type SubstitutionContext,
-} from '@ai/plugin-kit';
-import { createPluginInstaller, type PluginInstaller } from '@ai/plugin-kit/node';
+} from '@atd/plugin-kit';
+import { createPluginInstaller, type PluginInstaller } from '@atd/plugin-kit/node';
 import { createLogger, type Logger } from '../logging.js';
 import { readServiceId, servicePaths } from '../storage.js';
 import { loadHostPlugins, type HostCatalog } from './host-plugins.js';

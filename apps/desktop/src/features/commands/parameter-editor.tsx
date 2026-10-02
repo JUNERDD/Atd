@@ -1,18 +1,18 @@
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Plus, Trash2 } from 'lucide-react';
-import { Button } from '@ai/ui/components/button';
-import { Input } from '@ai/ui/components/input';
-import { Label } from '@ai/ui/components/label';
-import { Switch } from '@ai/ui/components/switch';
-import { ScrollArea } from '@ai/ui/components/scroll-area';
+import { Button } from '@atd/ui/components/button';
+import { Input } from '@atd/ui/components/input';
+import { Label } from '@atd/ui/components/label';
+import { Switch } from '@atd/ui/components/switch';
+import { ScrollArea } from '@atd/ui/components/scroll-area';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@ai/ui/components/select';
+} from '@atd/ui/components/select';
 import type { Parameter } from '../../client/agent/command-schema';
 import { ParameterSchema } from '../../client/agent/command-schema';
 import { parse } from '../../client/agent/validation';

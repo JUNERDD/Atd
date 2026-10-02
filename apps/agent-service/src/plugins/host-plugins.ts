@@ -1,4 +1,4 @@
-import type { HostPlugin, HostPluginItem, PluginItemKind } from '@ai/plugin-kit';
+import type { HostPlugin, HostPluginItem, PluginItemKind } from '@atd/plugin-kit';
 import { listAtdAgents } from '../atd-agents/catalog.js';
 import { readAgentHarness } from '../atd-agents/harness.js';
 import { isBuiltinSkill } from '../builtins/manifest.js';

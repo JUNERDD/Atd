@@ -1,16 +1,16 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button } from '@ai/ui/components/button';
-import { Input } from '@ai/ui/components/input';
-import { Label } from '@ai/ui/components/label';
-import { ScrollArea } from '@ai/ui/components/scroll-area';
+import { Button } from '@atd/ui/components/button';
+import { Input } from '@atd/ui/components/input';
+import { Label } from '@atd/ui/components/label';
+import { ScrollArea } from '@atd/ui/components/scroll-area';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@ai/ui/components/select';
+} from '@atd/ui/components/select';
 import type { Connection, ProviderCatalogEntry } from '../../client/providers/schema';
 import { CLOUD_FIELDS, isCustom, isAmbient } from '../../client/providers/metadata';
 import { showErrorToast, showToast } from '../../components/toast-store';

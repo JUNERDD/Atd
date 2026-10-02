@@ -1,4 +1,4 @@
-import { APP_LANGUAGES, DEFAULT_SHORTCUTS, type AppLanguage } from '@ai/agent-contracts';
+import { APP_LANGUAGES, DEFAULT_SHORTCUTS, type AppLanguage } from '@atd/agent-contracts';
 import type { Connection, ProviderBridge } from './providers/schema';
 import type { ExtensionSessionKind } from './agent/bridge';
 import type { PermissionTier } from './agent/permission-schema';
@@ -38,7 +38,7 @@ export interface SettingsSnapshot {
   permissionTier: PermissionTier;
   /**
    * The user's shell allowlist, in the user's order: commands matching an entry run without a
-   * confirm (`isShellAllowlisted` in `@ai/agent-contracts`). Main persists it and pushes the full
+   * confirm (`isShellAllowlisted` in `@atd/agent-contracts`). Main persists it and pushes the full
    * list to the service on every connection and change; the operator's
    * `AI_AGENT_SHELL_ALLOWLIST` applies on the service side and is not listed here.
    */

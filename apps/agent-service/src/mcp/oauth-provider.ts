@@ -1,4 +1,4 @@
-import type { McpServerConfig } from '@ai/agent-contracts';
+import type { McpServerConfig } from '@atd/agent-contracts';
 import type { McpFetch } from '@earendil-works/pi-mcp';
 import {
   authorizeMcp,

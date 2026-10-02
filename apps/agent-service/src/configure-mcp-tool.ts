@@ -9,7 +9,7 @@ import {
   type McpLaunchApprovalState,
   type McpServerConfig,
   type McpServerUpsertRequest,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import { serverView } from './mcp/server-edits.js';
 import { servicePaths } from './storage.js';
 

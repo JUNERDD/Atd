@@ -1,5 +1,5 @@
-import { previewTask, type AgentClientOptions } from '@ai/agent-client';
-import { snapshotToolsFor } from '@ai/agent-contracts';
+import { previewTask, type AgentClientOptions } from '@atd/agent-client';
+import { snapshotToolsFor } from '@atd/agent-contracts';
 import type { AgentRequest, TaskDetail } from './bridge';
 import type { CommandDefinition } from './command-schema';
 import { commandRunChips, commandRunTokens, withCommandTokens } from './command-run';

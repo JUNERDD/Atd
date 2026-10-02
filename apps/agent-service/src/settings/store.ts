@@ -10,7 +10,7 @@ import {
   type PermissionTier,
   type SettingsResponse,
   type UserSettings,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import { Type, type Static } from 'typebox';
 import { atomicWrite } from '../config.js';
 import { setUserShellAllowlist } from '../shell-policy.js';

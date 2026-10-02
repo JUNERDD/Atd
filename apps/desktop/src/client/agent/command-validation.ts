@@ -5,7 +5,7 @@ import {
   MAX_RUN_REFERENCES,
   MAX_RUN_SKILLS,
   parseInstructionTokens,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import type { ArgumentValues, CommandDefinition, Parameter } from './command-schema';
 import { missingScreenshot } from './screenshot-input';
 import type { TaskInput } from './task-schema';

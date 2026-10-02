@@ -8,13 +8,13 @@ import {
   InputGroupButton,
   InputGroupInput,
   InputGroupText,
-} from '@ai/ui/components/input-group';
-import { Item, ItemActions, ItemContent, ItemGroup, ItemTitle } from '@ai/ui/components/item';
+} from '@atd/ui/components/input-group';
+import { Item, ItemActions, ItemContent, ItemGroup, ItemTitle } from '@atd/ui/components/item';
 import {
   SHELL_ALLOWLIST_MAX_ENTRIES,
   normalizeShellAllowlistEntry,
   type ShellAllowlistEntryError,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import { DEFAULT_PERMISSION_TIER } from '../../client/agent/permission-schema';
 import type { SettingsSnapshot } from '../../client/settings-contract';
 import { IconButton } from '../../components/icon-button';

@@ -1,10 +1,10 @@
-import { getSettings, patchSettings } from '@ai/agent-client';
+import { getSettings, patchSettings } from '@atd/agent-client';
 import {
   DEFAULT_SHORTCUTS,
   parseShortcutBindings,
   type PatchSettingsRequest,
   type SettingsResponse,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import { parseExtensionSession } from '../client/agent/bridge';
 import { DEFAULT_PERMISSION_TIER } from '../client/agent/permission-schema';
 import type { ProviderBridge } from '../client/providers/schema';

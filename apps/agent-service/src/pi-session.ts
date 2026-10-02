@@ -8,7 +8,7 @@ import {
   SessionManager,
   SettingsManager,
 } from '@earendil-works/pi-coding-agent';
-import type { RunStatus, TaskRun } from '@ai/agent-contracts';
+import type { RunStatus, TaskRun } from '@atd/agent-contracts';
 import { codemodeExtension } from './codemode/extension.js';
 import { CompactionObserver } from './compaction/observer.js';
 import { compactionSettings } from './compaction/policy.js';

@@ -1,4 +1,4 @@
-import { isChildExecutionId, parseChildExecutionId, type ServiceEvent } from '@ai/agent-contracts';
+import { isChildExecutionId, parseChildExecutionId, type ServiceEvent } from '@atd/agent-contracts';
 
 /**
  * T5 standalone subagent client helpers. No new HTTP routes: status and

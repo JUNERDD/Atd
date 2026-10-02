@@ -1,5 +1,5 @@
 import { vi } from 'vitest';
-import { DEFAULT_SHORTCUTS } from '@ai/agent-contracts';
+import { DEFAULT_SHORTCUTS } from '@atd/agent-contracts';
 import type { SettingsSnapshot } from '../src/client/settings-contract';
 import type {
   AgentBridge,
