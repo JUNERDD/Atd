@@ -957,14 +957,20 @@
   align-items: flex-end;
   width: 100%;
 }
+/* Capped at the column: a truncating file name's min-content is its whole width, so the list
+   would otherwise size to the longest name and push the items past the column's leading edge. */
 .user-message [data-slot='context-bubble-files'] {
+  max-width: 100%;
   align-items: flex-end;
   justify-content: flex-end;
 }
+/* A capped file item stays on the trailing edge even when a long name widens its row. */
 .user-message [data-slot='context-bubble-files'] > li {
+  display: flex;
   max-width: 100%;
+  justify-content: flex-end;
 }
-.user-message [data-slot='context-bubble'] :focus-visible {
+.user-message .image-lightbox-trigger:focus-visible {
   outline: 1px solid var(--ring);
   box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 30%, transparent);
 }
@@ -977,24 +983,38 @@
   background: none;
   cursor: pointer;
 }
+/* An attached file (`attachment-file.tsx`): an opaque card in the message's content layer with the
+   bubble's fill and no border, so it reads as part of the sent message; the tile and the two text
+   lines are both 36px, so the card is 52px with its 8px inset. It hugs its name up to the
+   bubble's width cap. Hover answers only a fine pointer; a press lands at once and eases back on
+   release, with no scale, as list rows press. */
 .user-context-file {
-  display: flex;
-  max-width: 100%;
-  min-width: 0;
-  align-items: center;
-  gap: 8px;
-  padding: 2px 6px;
-  border: 0;
-  border-radius: var(--radius-lg);
-  background: none;
-  color: inherit;
-  font: inherit;
-  font-size: 14px;
+  width: auto;
+  max-width: min(304px, 100%);
+  background-color: var(--muted);
   text-align: start;
   cursor: pointer;
+  transition: background-color 200ms ease-out;
 }
-.user-context-file:hover {
-  background: var(--accent);
+@media (hover: hover) and (pointer: fine) {
+  .user-context-file:hover {
+    background-color: color-mix(in oklab, var(--foreground) 6%, var(--muted));
+  }
+}
+.user-context-file:active {
+  background-color: color-mix(in oklab, var(--foreground) 10%, var(--muted));
+  transition-duration: 0s;
+}
+/* The kind tile, concentric with the card: the card's 18px radius less its 8px inset. It centres
+   on the two text lines instead of the Item media's top alignment. */
+.user-context-file-icon {
+  width: 36px;
+  height: 36px;
+  align-self: center;
+  translate: none;
+  border-radius: var(--radius-lg);
+  background: color-mix(in oklab, var(--foreground) 10%, transparent);
+  color: var(--muted-foreground);
 }
 /* The lightbox is the shared glass dialog sized to its image. The image's limits come from the
    viewport, not the dialog, so its size never depends on the fit-content box around it: the window
