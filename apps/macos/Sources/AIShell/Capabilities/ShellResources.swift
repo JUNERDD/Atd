@@ -2,9 +2,10 @@ import AICore
 import AIRelay
 import AppKit
 import OSLog
+import UniformTypeIdentifiers
 
 /// Attachments from the open panel, file drops on the panel's web view, pasted file URLs and
-/// pasted bitmaps, and saving a service resource where the user chooses. Files are imported by path through
+/// pasted bitmaps, and saving the page's content where the user chooses. Files are imported by path through
 /// the service (`/v1/resources/import`); paths never reach the page. One pick, drop or paste
 /// takes at most ``AttachmentRules/maxPathsPerImport`` files, the page's attachment limit.
 ///
@@ -75,19 +76,23 @@ final class AttachmentImporter {
     }
   }
 
-  /// `files.save`: the save panel, then the resource's bytes from the service, quarantined.
-  func save(resourceId: String, name: String) async throws(BridgeError) -> Bool {
-    let suggested = AttachmentRules.basename(name)
+  /// `files.save`: the page's content (``SavedFile``) where the user chooses, quarantined like
+  /// any download. False when the user cancelled or another system panel is open.
+  func save(_ params: FilesSaveParams) async throws(BridgeError) -> Bool {
+    let file: SavedFile
+    switch SavedFile.validate(params) {
+    case .success(let value): file = value
+    case .failure: throw BridgeError(ShellStrings.shared.text(.fileSaveInvalidImage))
+    }
     guard
       let url = await systemPanels.chooseSaveLocation(
-        suggestedName: suggested.isEmpty ? ArtifactFileName.fallback : suggested)
+        suggestedName: file.suggestedName, contentType: file.isPNG ? .png : nil)
     else { return false }
     do {
-      let resource = try await services.client().resource(id: resourceId)
-      try DownloadQuarantine.app.write(resource.bytes, to: url)
+      try DownloadQuarantine.app.write(file.bytes, to: url)
       return true
     } catch {
-      throw BridgeError(ShellBridge.message(error, "The file could not be saved."))
+      throw BridgeError(ShellStrings.shared.text(.fileSaveFailed))
     }
   }
 

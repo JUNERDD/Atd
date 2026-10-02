@@ -58,8 +58,9 @@ struct BridgeDecodingTests {
         #"{"type":"post","method":"socket.send","params":{"socketId":"","data":"x"}}"#
       ),
       (
-        "empty resource id",
-        #"{"type":"call","id":1,"method":"files.save","params":{"resourceId":"","name":"a"}}"#
+        "save content outside its variants",
+        #"{"type":"call","id":1,"method":"files.save","params":{"name":"a","#
+          + #""content":{"type":"pdf","text":"x"}}}"#
       ),
       (
         "missing required nullable member",

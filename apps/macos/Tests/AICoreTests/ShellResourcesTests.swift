@@ -42,6 +42,26 @@ struct ShellResourcesTests {
     #expect(AttachmentRules.basename("/a/b/") == "b")
   }
 
+  @Test("files.save suggests a visible basename and writes only real PNG bytes as an image")
+  func savedFile() throws {
+    typealias Outcome = Result<SavedFile, SavedFile.Failure>
+    func check(_ name: String, _ content: FilesSaveParams.Content) -> Outcome {
+      SavedFile.validate(FilesSaveParams(name: name, content: content))
+    }
+    let text = try check("../a/code.py", .text(.init(text: "print(1)"))).get()
+    #expect(text == SavedFile(suggestedName: "code.py", bytes: Data("print(1)".utf8), isPNG: false))
+    #expect(try check(" ..", .text(.init(text: ""))).get().suggestedName == "download.txt")
+    let png = SavedFile.pngSignature + Data([1, 2, 3])
+    let image = try check("diagram", .png(.init(base64: png.base64EncodedString()))).get()
+    #expect(image == SavedFile(suggestedName: "diagram.png", bytes: png, isPNG: true))
+    #expect(
+      try check("a.PNG", .png(.init(base64: png.base64EncodedString()))).get().suggestedName
+        == "a.PNG")
+    let notPNG = Data("<svg/>".utf8).base64EncodedString()
+    #expect(check("a.png", .png(.init(base64: notPNG))) == .failure(.invalidImage))
+    #expect(check("a.png", .png(.init(base64: "not base64!"))) == .failure(.invalidImage))
+  }
+
   @Test("A screenshot scales down only when its long edge exceeds 2560 px")
   func screenshotScaling() {
     #expect(ScreenshotRules.scaledLongEdge(width: 5120, height: 2880) == 2560)

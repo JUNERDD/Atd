@@ -811,6 +811,42 @@
         }
       }
     },
+    "file.save.failed" : {
+      "comment" : "Error the page shows when a save panel's file could not be written",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The file could not be saved."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法保存文件。"
+          }
+        }
+      }
+    },
+    "file.save.invalidImage" : {
+      "comment" : "Error the page shows when an image to save is not a valid PNG",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The image could not be saved because it is not a valid PNG."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法保存该图片：它不是有效的 PNG。"
+          }
+        }
+      }
+    },
     "file.save.title" : {
       "comment" : "Save panel title",
       "extractionState" : "manual",

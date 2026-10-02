@@ -129,7 +129,7 @@ final class ShellBridge {
     case .filesPick:
       return try Self.encode(FilesPickResult(resources: await shell.attachments.pick()))
     case .filesSave(let params):
-      let saved = try await shell.attachments.save(resourceId: params.resourceId, name: params.name)
+      let saved = try await shell.attachments.save(params)
       return try Self.encode(FilesSaveResult(saved: saved))
     case .approvalRequest(let params):
       return try Self.encode(await shell.launchApprovals.request(serverId: params.serverId))
