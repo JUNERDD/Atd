@@ -9,6 +9,7 @@ import {
 } from './config.js';
 import { ConfirmStore } from './confirms.js';
 import { EventLog } from './event-log.js';
+import { FolderStore } from './folders/store.js';
 import { Ledger } from './ledger.js';
 import { createLogger, type Logger } from './logging.js';
 import { McpAuthority, migrateMcpSecrets } from './mcp/index.js';
@@ -79,9 +80,11 @@ export async function createService(
     tier: options.tier ?? 'manual',
   };
   const settings = await SettingsStore.load(config.paths.root, runnerContext.tier);
+  const folders = await FolderStore.load(config.paths.root);
   const manager = new RunnerManager({
     ctx: runnerContext,
     resources,
+    folders,
     log,
     newTaskTier: () => settings.newTaskTier(),
   });
@@ -103,6 +106,7 @@ export async function createService(
     resources,
     manager,
     settings,
+    folders,
     log,
     startedAt,
     onShutdown:

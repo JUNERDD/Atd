@@ -9,6 +9,7 @@ import {
   type TaskRun,
 } from '@atd/agent-contracts';
 import { ConflictError } from '../errors.js';
+import type { FolderStore } from '../folders/store.js';
 import { subagentChildRoot } from '../subagents/child-transcript-read.js';
 import type { Ledger } from '../ledger.js';
 import type { ServicePaths } from '../storage.js';
@@ -17,17 +18,20 @@ import { NOT_ON_BRANCH, pathRunIds, turnEnd } from './turns.js';
 export interface ForkContext {
   ledger: Ledger;
   paths: ServicePaths;
+  folders: FolderStore;
 }
 
 /**
  * Forks a task at a turn into a new task (`POST /v1/tasks/:taskId/fork`). The new session file
  * holds the source branch up to the end of the turn `entryId` starts (tasks/turns.ts `turnEnd`),
  * written by Pi from a manager of its own on the source file: the source's live manager, if any,
- * keeps its leaf and its file. The new task keeps the source's title (unless one is given) and
- * permission tier, starts its output and subagent folders as copies of the source's, and carries
- * copies of the runs its branch's entries belong to, which transcript projection looks up by id
- * (the first run and each invocation marker's run). Those copies are history: they never execute
- * again, and their idempotency entries keep pointing at the source task.
+ * keeps its leaf and its file. The new task keeps the source's title (unless one is given),
+ * permission tier and folder grants (its copied messages may rely on them, and the overviews
+ * already sent travel with the branch), starts its output and subagent folders as copies of the
+ * source's, and carries copies of the runs its branch's entries belong to, which transcript
+ * projection looks up by id (the first run and each invocation marker's run). Those copies are
+ * history: they never execute again, and their idempotency entries keep pointing at the source
+ * task.
  */
 export async function forkTask(
   ctx: ForkContext,
@@ -57,6 +61,7 @@ export async function forkTask(
     // Subagent sessions the copied turns ran; child-transcript-read.ts maps their recorded paths.
     await copyFolder(subagentChildRoot(source.sessionFile), subagentChildRoot(sessionFile));
     await copyFolder(path.join(ctx.paths.tasksDir, sourceId, 'output'), outputDir);
+    await ctx.folders.copy(sourceId, taskId);
     const now = new Date().toISOString();
     await ctx.ledger.change((data) => {
       data.tasks.unshift({
@@ -76,6 +81,7 @@ export async function forkTask(
     // Nothing references a fork that failed before its ledger write; drop what it left on disk.
     await rm(sessionsDir, { recursive: true, force: true });
     await rm(path.dirname(outputDir), { recursive: true, force: true });
+    await ctx.folders.forget(taskId);
     throw error;
   }
 }

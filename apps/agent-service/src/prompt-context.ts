@@ -1,4 +1,5 @@
 import type { ExtensionAPI, ExtensionFactory } from '@earendil-works/pi-coding-agent';
+import { formatFolders } from './folders/material.js';
 import type { RunMaterial } from './pi-session.js';
 
 type ContextMessage = Parameters<ExtensionAPI['sendMessage']>[0];
@@ -36,8 +37,8 @@ export function leadingSystemMessage(): ExtensionFactory {
 
 /**
  * Tag of the run's material, which the service system prompt explains: the saved command's
- * instructions, attached files, quoted passages and resolved references that go with the user's
- * next message.
+ * instructions, attached files, readable folders, quoted passages and resolved references that go
+ * with the user's next message.
  */
 const RUN_MATERIAL_TAG = 'run_material';
 
@@ -69,6 +70,7 @@ function formatMaterial(material: RunMaterial): string {
           ].join('\n')
         : `File: ${file.name}\nRead-only resource: ${file.path}\n<file-material>\n${file.text}\n</file-material>`,
     ),
+    formatFolders(material.folders),
     material.references,
   ]
     .filter(Boolean)

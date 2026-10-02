@@ -133,7 +133,7 @@ export async function confinedWrite(
 }
 
 /** The real path of the nearest existing ancestor, with the missing rest appended. */
-async function realAncestorPath(absolute: string): Promise<string> {
+export async function realAncestorPath(absolute: string): Promise<string> {
   const missing: string[] = [];
   let current = absolute;
   for (;;) {

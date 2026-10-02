@@ -20,6 +20,7 @@ import { registerMcpCatalogTools, type ListMcp, type UpsertMcp } from './configu
 import { ConfirmStore } from './confirms.js';
 import { registerDesktopTool } from './desktop-tool.js';
 import type { Reviewer } from './harness/auto-review.js';
+import { inGrantedFolder } from './folders/access.js';
 import { createGate } from './harness/gate.js';
 import type { Logger } from './logging.js';
 import type { TaskResources } from './resources.js';
@@ -61,6 +62,11 @@ export interface ServiceToolHost {
    * them; other tasks' resources and the rest of the data dir keep the usual rules.
    */
   taskResources: TaskResources;
+  /**
+   * Realpaths of the folders the task was granted, as the current run started: read-only
+   * material the read tool (and grep/find/ls) reads without a confirmation; writes never reach it.
+   */
+  folders: () => readonly string[];
   upsertMcp?: UpsertMcp;
   listMcp?: ListMcp;
 }
@@ -171,16 +177,22 @@ export function serviceTools(host: ServiceToolHost): ExtensionFactory {
 
   /** Roots only the read tool may reach beyond the data directory (service-fs.ts `confined`). */
   async function readRoots(): Promise<string[]> {
-    return [...(await userAgentsReadRoots()), ...host.skillDirs()];
+    return [...(await userAgentsReadRoots()), ...host.skillDirs(), ...host.folders()];
   }
 
   /**
-   * Which of the run's own read-only material a read targets, if any. Reading it needs no
-   * confirmation; the read operation still confines the path to the data dir and the read roots.
+   * Which of the run's own read-only material a read targets, if any: its skills, the task's
+   * resources or a folder granted to the task. Reading it needs no confirmation; the read
+   * operation still confines the path to the data dir and the read roots.
    */
-  async function ownMaterial(args: unknown): Promise<'skill' | 'resource' | null> {
+  async function ownMaterial(args: unknown): Promise<'skill' | 'resource' | 'folder' | null> {
     if (await readsRunSkill(args)) return 'skill';
-    return (await readsTaskResource(args)) ? 'resource' : null;
+    if (await readsTaskResource(args)) return 'resource';
+    const target = pathOf(args);
+    const folders = host.folders();
+    return target !== '' && (await inGrantedFolder(folders, host.dataDir, host.cwd, target, false))
+      ? 'folder'
+      : null;
   }
 
   function controlled<T extends TSchema, D, S>(
