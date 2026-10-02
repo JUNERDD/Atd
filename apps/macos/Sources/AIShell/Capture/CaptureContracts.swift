@@ -98,6 +98,9 @@ protocol AnnotationEditing: AnyObject {
   func selectionDidChange(_ selection: CGRect)
   /// Removes the canvas and the bars; annotations are discarded.
   func hide()
+  /// A scroll-wheel event anywhere over the selection's overlay; true when the editor used it
+  /// (to resize what the style bar targets), false to leave it to the session.
+  func scroll(_ event: NSEvent) -> Bool
   /// The annotations in selection-local points (origin at the selection's top-left), for
   /// reopening this capture later (`screenshot.edit`).
   var document: AnnotationDocument { get }

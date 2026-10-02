@@ -32,97 +32,100 @@ public enum AnnotationColor: String, CaseIterable, Sendable {
   }
 }
 
-/// The three stroke widths; each tool reads the measure it draws with. The raw values are what
-/// style memory stores, so they must not change.
-public enum AnnotationStroke: String, CaseIterable, Sendable {
-  case thin, medium, thick
+/// How big an annotation is drawn, from 0 (smallest) to 1 (largest), as the style bar's size
+/// slider (like PixPin's) and the scroll wheel set it; each tool reads the measure it draws with.
+/// Every measure grows linearly and is rounded to a quarter point; each range is chosen so the
+/// default 0.3 gives exactly the size the medium of the former three widths had. Always within
+/// 0...1.
+public struct AnnotationStroke: Equatable, Sendable {
+  public let value: Double
 
-  /// Outline width of rectangles, ellipses, arrows, lines and the pen.
-  public var lineWidth: CGFloat {
-    switch self {
-    case .thin: 2
-    case .medium: 4
-    case .thick: 7
-    }
+  public init(_ value: Double) {
+    self.value = value.isFinite ? min(max(value, 0), 1) : Self.default.value
   }
 
-  /// The highlighter is a broad translucent marker, several times the line width.
-  public var highlighterWidth: CGFloat {
-    switch self {
-    case .thin: 12
-    case .medium: 20
-    case .thick: 30
-    }
-  }
+  public static let `default` = Self(0.3)
 
-  /// Point size of text annotations.
-  public var fontSize: CGFloat {
-    switch self {
-    case .thin: 16
-    case .medium: 22
-    case .thick: 30
-    }
-  }
+  /// Outline width of rectangles, ellipses, arrows, lines and the pen: 1 to 11 pt.
+  public var lineWidth: CGFloat { measure(1, 11) }
 
-  /// How coarse a mosaic's blocks are, relative to the region's own block size
-  /// (``AnnotationPath/mosaicBlock(for:stroke:)``).
-  public var mosaicScale: CGFloat {
-    switch self {
-    case .thin: 0.75
-    case .medium: 1
-    case .thick: 1.6
-    }
-  }
+  /// The highlighter is a broad translucent marker, several times the line width: 8 to 48 pt.
+  public var highlighterWidth: CGFloat { measure(8, 48) }
 
-  /// Diameter of a step-number badge.
-  public var stepDiameter: CGFloat {
-    switch self {
-    case .thin: 22
-    case .medium: 28
-    case .thick: 36
-    }
-  }
+  /// Point size of text annotations: 13 to 43 pt.
+  public var fontSize: CGFloat { measure(13, 43) }
 
-  /// The stroke one step thinner (`-1`) or thicker (`1`); the same stroke at either end, so
-  /// stepping never wraps.
-  public func stepped(by direction: Int) -> AnnotationStroke {
-    let all = Self.allCases
-    guard let index = all.firstIndex(of: self) else { return self }
-    return all[min(max(index + direction, 0), all.count - 1)]
-  }
+  /// Diameter of a step-number badge: 19 to 49 pt.
+  public var stepDiameter: CGFloat { measure(19, 49) }
+
+  /// Edge of a pixelating mosaic's blocks: 3 to 33 pt. It does not scale with the region, so a
+  /// region being drawn, resized or moved keeps the same blocks.
+  public var mosaicBlock: CGFloat { measure(3, 33) }
+
+  /// Gaussian blur radius of a blurring mosaic: 1 to 31 pt.
+  public var blurRadius: CGFloat { measure(1, 31) }
 
   /// Width of a step badge's tail, scaled with the badge.
   public var stepTailWidth: CGFloat { stepDiameter / 8 }
 
   /// Length of a step badge tail's arrowhead: small, so it does not outweigh the badge.
   public var stepTailHeadLength: CGFloat { stepDiameter * 0.4 }
+
+  /// The size `steps` twentieths of the range larger (or smaller, when negative): one scroll-wheel
+  /// notch or one press of `[` `]` `-` `=` moves it one step. Clamped at either end, so it never
+  /// wraps.
+  public func stepped(by steps: Double) -> Self { Self(value + steps / 20) }
+
+  private func measure(_ smallest: CGFloat, _ largest: CGFloat) -> CGFloat {
+    ((smallest + (largest - smallest) * value) * 4).rounded() / 4
+  }
 }
 
-/// Colour, stroke and text background of one annotation; also the style bar's current choice
-/// for new ones.
+/// How a mosaic hides the screenshot under it. The raw values are what style memory stores, so
+/// they must not change.
+public enum AnnotationRedaction: String, CaseIterable, Sendable {
+  /// Blocks of ``AnnotationStroke/mosaicBlock``, each the average colour of the pixels it covers,
+  /// on a grid fixed to the display rather than to the region.
+  case pixelate
+  /// A Gaussian blur of ``AnnotationStroke/blurRadius`` over the whole display, seen through the
+  /// region.
+  case blur
+  /// An opaque black box. Pixelation and blur keep some of what they hide (their averages can be
+  /// matched against rendered text), so this is the one form that keeps none; it has no size.
+  case solid
+}
+
+/// Colour, stroke, text background and redaction of one annotation; also the style bar's current
+/// choice for new ones.
 public struct AnnotationStyle: Equatable, Sendable {
   public var color: AnnotationColor
   public var stroke: AnnotationStroke
   /// Text only: the text sits on a rounded plate in ``color`` and its glyphs turn black or
   /// white for contrast (decision E9). Other shapes ignore it.
   public var textBackground: Bool
+  /// Mosaic only; other shapes ignore it.
+  public var redaction: AnnotationRedaction
 
   public init(
-    color: AnnotationColor = .red, stroke: AnnotationStroke = .medium, textBackground: Bool = false
+    color: AnnotationColor = .red, stroke: AnnotationStroke = .default,
+    textBackground: Bool = false, redaction: AnnotationRedaction = .pixelate
   ) {
     self.color = color
     self.stroke = stroke
     self.textBackground = textBackground
+    self.redaction = redaction
   }
 
   /// This style with only what the style bar changed replaced, so picking a colour keeps an
   /// annotation's stroke and the other way round.
   public func with(
-    color: AnnotationColor? = nil, stroke: AnnotationStroke? = nil, textBackground: Bool? = nil
+    color: AnnotationColor? = nil, stroke: AnnotationStroke? = nil, textBackground: Bool? = nil,
+    redaction: AnnotationRedaction? = nil
   ) -> Self {
     Self(
       color: color ?? self.color, stroke: stroke ?? self.stroke,
-      textBackground: textBackground ?? self.textBackground)
+      textBackground: textBackground ?? self.textBackground,
+      redaction: redaction ?? self.redaction)
   }
 }
 
@@ -131,17 +134,21 @@ public struct AnnotationStyleChange: Equatable, Sendable {
   public var color: AnnotationColor?
   public var stroke: AnnotationStroke?
   public var textBackground: Bool?
+  public var redaction: AnnotationRedaction?
 
   public init(
-    color: AnnotationColor? = nil, stroke: AnnotationStroke? = nil, textBackground: Bool? = nil
+    color: AnnotationColor? = nil, stroke: AnnotationStroke? = nil, textBackground: Bool? = nil,
+    redaction: AnnotationRedaction? = nil
   ) {
     self.color = color
     self.stroke = stroke
     self.textBackground = textBackground
+    self.redaction = redaction
   }
 
   public func applied(to style: AnnotationStyle) -> AnnotationStyle {
-    style.with(color: color, stroke: stroke, textBackground: textBackground)
+    style.with(
+      color: color, stroke: stroke, textBackground: textBackground, redaction: redaction)
   }
 }
 
@@ -157,7 +164,7 @@ public enum AnnotationShape: Equatable, Sendable {
   /// `frame` is the laid-out text's box: its origin is where the first line starts and its size
   /// is what the editor measured, so hit-testing needs no text layout.
   case text(String, frame: CGRect)
-  /// Pixelates the screenshot under the rect.
+  /// Pixelates or blurs the screenshot under the rect, as its style's ``AnnotationRedaction``.
   case mosaic(CGRect)
   /// A numbered badge, optionally with a tail from its edge to `tip` that ends in a small
   /// arrowhead (``AnnotationPath/stepTailStart(center:tip:diameter:)``). The number is not

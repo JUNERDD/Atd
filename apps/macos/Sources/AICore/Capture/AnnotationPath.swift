@@ -2,7 +2,7 @@ import CoreGraphics
 import Foundation
 
 /// Shape construction rules shared by the canvas (while drawing) and the renderer: drag
-/// constraints, arrow heads, freehand smoothing and mosaic block size.
+/// constraints, arrow heads and freehand smoothing.
 public enum AnnotationPath {
   /// One element of a smoothed freehand path, in drawing order.
   public enum Segment: Equatable, Sendable {
@@ -136,12 +136,5 @@ public enum AnnotationPath {
   /// Corner radius of a text plate.
   public static func textPlateRadius(fontSize: CGFloat) -> CGFloat {
     (fontSize * 0.3).rounded()
-  }
-
-  /// The mosaic block edge in points for `rect`: about a twelfth of its short side and at least
-  /// 8 pt, so small text under a narrow region is still unreadable, scaled by the stroke the
-  /// user picked (finer or coarser, never below 6 pt).
-  public static func mosaicBlock(for rect: CGRect, stroke: AnnotationStroke) -> CGFloat {
-    max(8, min(rect.width, rect.height) / 12) * stroke.mosaicScale
   }
 }

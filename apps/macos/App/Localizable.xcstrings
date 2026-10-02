@@ -307,6 +307,60 @@
         }
       }
     },
+    "capture.redaction.blur" : {
+      "comment" : "Style bar choice: the mosaic blurs what is under it",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Blur"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "模糊"
+          }
+        }
+      }
+    },
+    "capture.redaction.pixelate" : {
+      "comment" : "Style bar choice: the mosaic pixelates what is under it into blocks",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mosaic"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "马赛克"
+          }
+        }
+      }
+    },
+    "capture.redaction.solid" : {
+      "comment" : "Style bar choice: the mosaic covers what is under it with an opaque black box",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cover"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "遮盖"
+          }
+        }
+      }
+    },
     "capture.redo" : {
       "comment" : "Annotation toolbar button: redo the undone annotation change",
       "extractionState" : "manual",
@@ -325,56 +379,38 @@
         }
       }
     },
-    "capture.stroke.medium" : {
-      "comment" : "Annotation stroke width option",
+    "capture.size" : {
+      "comment" : "Style bar slider: how big an annotation is drawn (line width, text size, mosaic blocks…)",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Medium"
+            "value" : "Size"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "中"
+            "value" : "大小"
           }
         }
       }
     },
-    "capture.stroke.thick" : {
-      "comment" : "Annotation stroke width option",
+    "capture.size.tooltip" : {
+      "comment" : "Tooltip of the style bar's size slider: the scroll wheel and the keys do the same",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Thick"
+            "value" : "Size — scroll anywhere, or press - and ="
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "粗"
-          }
-        }
-      }
-    },
-    "capture.stroke.thin" : {
-      "comment" : "Annotation stroke width option",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Thin"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "细"
+            "value" : "大小：在任意位置滚动滚轮，或按 - 和 ="
           }
         }
       }

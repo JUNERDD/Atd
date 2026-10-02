@@ -54,7 +54,7 @@ final class AnnotationRenderer {
       draw(annotation, number: document.stepNumber(of: annotation.id), in: context) { rect in
         guard
           let (image, area) = backdrop.flatMap({
-            self.mosaic.pixelate(rect, stroke: annotation.style.stroke, backdrop: $0, scale: scale)
+            self.mosaic.render(rect, style: annotation.style, backdrop: $0, scale: scale)
           })
         else { return nil }
         return (image, area, spotlights)
@@ -100,8 +100,8 @@ final class AnnotationRenderer {
     context.restoreGState()
   }
 
-  /// `pixelate` answers a mosaic's blocks, the area they cover and the spotlights to keep
-  /// bright over them.
+  /// `pixelate` answers a mosaic's blocks or blur, the area they cover and the spotlights to
+  /// keep bright over them.
   private func draw(
     _ annotation: Annotation, number: Int?, in context: CGContext,
     pixelate: (CGRect) -> (CGImage, CGRect, [CGRect])?
@@ -144,6 +144,9 @@ final class AnnotationRenderer {
         NSAttributedString(string: string, attributes: Self.textAttributes(annotation.style))
           .draw(with: frame, options: [.usesLineFragmentOrigin])
       }
+    case .mosaic(let rect) where annotation.style.redaction == .solid:
+      context.setFillColor(NSColor.black.cgColor)
+      context.fill(rect)
     case .mosaic(let rect):
       // Without a backdrop (never in practice) the region still reads as redacted.
       guard let (image, area, spotlights) = pixelate(rect)
@@ -152,6 +155,8 @@ final class AnnotationRenderer {
         context.fill(rect)
         return
       }
+      // The image covers whole blocks around the region; only the region shows.
+      context.clip(to: rect)
       context.interpolationQuality = .none
       Self.drawImage(image, in: area, context: context)
       if !spotlights.isEmpty { Self.dim(area, except: spotlights, in: context) }

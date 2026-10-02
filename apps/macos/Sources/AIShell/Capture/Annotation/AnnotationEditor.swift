@@ -33,6 +33,9 @@ final class AnnotationEditor: AnnotationEditing {
   /// Where the user dragged the toolbar to, in the host's points: it stays there for the rest
   /// of the session, whatever the selection does. Nil while the bars follow the selection.
   private var movedOrigin: CGPoint?
+  /// The run of wheel ticks in progress (``scroll(_:)``) and when its last tick came.
+  private var wheelBurst = UUID()
+  private var lastWheel: TimeInterval = 0
   /// The toolbar's origin when the drag in progress began.
   private var dragOrigin = CGPoint.zero
 
@@ -63,7 +66,7 @@ final class AnnotationEditor: AnnotationEditing {
     canvas.onStepStroke = { [weak self] in self?.stepStroke($0) ?? false }
     canvas.onClearAll = { [weak self] in self?.clearAll() ?? false }
     toolbar.onTool = { [weak self] in self?.choose($0) }
-    styleBar.onChange = { [weak self] in self?.restyle($0) }
+    styleBar.onChange = { [weak self] in self?.restyle($0, burst: $1) }
     toolbar.onUndo = { [weak self] in self?.store.undo() }
     toolbar.onRedo = { [weak self] in self?.store.redo() }
     toolbar.onCancel = { [weak self] in self?.onCancel?() }
@@ -176,23 +179,51 @@ final class AnnotationEditor: AnnotationEditing {
 
   /// A style bar change: it restyles the open text, else the selected annotation, and becomes
   /// the style of the next new annotation of the same slot. Only the part picked changes.
-  private func restyle(_ change: AnnotationStyleChange) {
+  /// Changes sharing a `burst` (a size slider drag, a run of wheel ticks) are one undo step.
+  private func restyle(_ change: AnnotationStyleChange, burst: UUID? = nil) {
     if let editing = textEditor.style {
       interaction.styles.shared = change.applied(to: interaction.styles.shared)
       textEditor.setStyle(change.applied(to: editing))
     } else {
-      interaction.apply(change)
+      interaction.apply(change, burst: burst)
       focusCanvas()
     }
     refresh()
   }
 
-  /// `[` and `]`: the same change as clicking the thinner or thicker stroke in the style bar,
-  /// for whatever it targets, and none at either end. False when the bar shows no stroke.
+  /// `[` `-` and `]` `=`: one wheel notch smaller or larger (PixPin's keys for a wheel), one undo
+  /// step each, for whatever the style bar targets; none at either end. False when the bar
+  /// shows no size.
   private func stepStroke(_ direction: Int) -> Bool {
+    resize(by: Double(direction), burst: nil)
+  }
+
+  /// The scroll wheel anywhere over the overlay while the style bar shows a size, as in PixPin:
+  /// the same as dragging the size slider, one ``AnnotationStroke/stepped(by:)`` step per wheel
+  /// notch (or per 20 pt of trackpad travel), up for larger. A run of ticks no more than half a second apart, or one trackpad
+  /// gesture, is one undo step; momentum after a flick is ignored, so the size stops where the
+  /// fingers did. False when there is no size to change, so the session keeps the wheel.
+  func scroll(_ event: NSEvent) -> Bool {
+    guard styleTarget?.controls.contains(.strokes) == true else { return false }
+    guard event.momentumPhase.isEmpty else { return true }
+    if event.phase == .began || (event.phase.isEmpty && event.timestamp - lastWheel > 0.5) {
+      wheelBurst = UUID()
+    }
+    lastWheel = event.timestamp
+    // Physical direction: up is larger whether or not scrolling is natural.
+    let delta = event.isDirectionInvertedFromDevice ? -event.scrollingDeltaY : event.scrollingDeltaY
+    let steps = event.hasPreciseScrollingDeltas ? delta / 20 : delta
+    if steps != 0 { resize(by: Double(steps), burst: wheelBurst) }
+    return true
+  }
+
+  /// Moves the size `steps` steps (``AnnotationStroke/stepped(by:)``).
+  private func resize(by steps: Double, burst: UUID?) -> Bool {
     guard let target = styleTarget, target.controls.contains(.strokes) else { return false }
-    let stroke = target.style.stroke.stepped(by: direction)
-    if stroke != target.style.stroke { restyle(AnnotationStyleChange(stroke: stroke)) }
+    let stroke = target.style.stroke.stepped(by: steps)
+    if stroke != target.style.stroke {
+      restyle(AnnotationStyleChange(stroke: stroke), burst: burst)
+    }
     return true
   }
 
@@ -260,7 +291,8 @@ final class AnnotationEditor: AnnotationEditing {
     } else {
       return nil
     }
-    return target.controls.isEmpty ? nil : target
+    let controls = target.controls.shown(for: target.style)
+    return controls.isEmpty ? nil : (target.style, controls)
   }
 
   /// Both bars as one block (``AnnotationToolbarLayout``), beside the selection or where the

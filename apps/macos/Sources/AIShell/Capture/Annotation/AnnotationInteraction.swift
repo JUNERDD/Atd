@@ -157,16 +157,16 @@ final class AnnotationInteraction {
     store.selectedID = annotation.id
   }
 
-  /// Applies a style bar change to the selected annotation (one undo step) and to the style
-  /// new annotations of its slot take; with nothing selected, to the active tool's slot. Only
-  /// the parts picked change.
-  func apply(_ change: AnnotationStyleChange) {
+  /// Applies a style bar change to the selected annotation (one undo step, or one per `burst`;
+  /// see ``AnnotationStore/commit(_:burst:)``) and to the style new annotations of its slot
+  /// take; with nothing selected, to the active tool's slot. Only the parts picked change.
+  func apply(_ change: AnnotationStyleChange, burst: UUID? = nil) {
     let selected = store.selectedID.flatMap { store.document[$0] }
     let slot = selected?.shape.styleSlot ?? tool?.styleSlot ?? .shared
     styles[slot] = change.applied(to: styles[slot])
     guard var selected else { return }
     selected.style = change.applied(to: selected.style)
-    store.commit(Self.document(store.document, replacing: selected))
+    store.commit(Self.document(store.document, replacing: selected), burst: burst)
   }
 
   /// Deletes the selected annotation; false when nothing is selected.

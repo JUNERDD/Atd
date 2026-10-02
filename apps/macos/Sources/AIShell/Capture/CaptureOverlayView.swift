@@ -180,7 +180,9 @@ final class CaptureOverlayView: NSView {
 
   override func rightMouseDown(with event: NSEvent) { delegate?.overlayRightClicked(self) }
 
+  /// Events over the editor's canvas and bars arrive here too, up the responder chain.
   override func scrollWheel(with event: NSEvent) {
+    if annotationHost.scroll?(event) == true { return }
     guard event.hasPreciseScrollingDeltas else {
       if event.scrollingDeltaY != 0 { delegate?.overlay(self, perform: .walk(step(event))) }
       return

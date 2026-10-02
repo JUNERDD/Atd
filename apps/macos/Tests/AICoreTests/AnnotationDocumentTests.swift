@@ -98,25 +98,32 @@ struct AnnotationDocumentTests {
     #expect(AnnotationPath.smoothed([]).isEmpty)
   }
 
-  @Test("Mosaic blocks scale with the region and the stroke, and never get finer than 6 pt")
-  func mosaicBlock() {
-    let narrow = CGRect(x: 0, y: 0, width: 400, height: 20)
-    let wide = CGRect(x: 0, y: 0, width: 600, height: 240)
-    #expect(AnnotationPath.mosaicBlock(for: narrow, stroke: .medium) == 8)
-    #expect(AnnotationPath.mosaicBlock(for: wide, stroke: .medium) == 20)
-    #expect(AnnotationPath.mosaicBlock(for: narrow, stroke: .thin) == 6)
-    #expect(AnnotationPath.mosaicBlock(for: wide, stroke: .thick) == 32)
+  @Test("Every measure grows with the size, which stays within 0...1")
+  func strokeMeasures() {
+    let smallest = AnnotationStroke(0)
+    let largest = AnnotationStroke(1)
+    #expect(smallest.lineWidth == 1 && largest.lineWidth == 11)
+    #expect(smallest.mosaicBlock == 3 && largest.mosaicBlock == 33)
+    #expect(smallest.blurRadius == 1 && largest.blurRadius == 31)
+    // The default is the former medium width exactly.
+    #expect(AnnotationStroke.default.lineWidth == 4 && AnnotationStroke.default.fontSize == 22)
+    #expect(smallest.fontSize < AnnotationStroke.default.fontSize)
+    #expect(AnnotationStroke(7) == largest)
+    #expect(AnnotationStroke(-1) == smallest)
+    #expect(AnnotationStroke(.nan) == .default)
   }
 
   @Test("A style bar change replaces only the part it names")
   func partialRestyle() {
-    let style = AnnotationStyle(color: .blue, stroke: .thick, textBackground: true)
+    let thick = AnnotationStroke(0.6)
+    let thin = AnnotationStroke(0.1)
+    let style = AnnotationStyle(color: .blue, stroke: thick, textBackground: true)
     #expect(
       style.with(color: .red)
-        == AnnotationStyle(color: .red, stroke: .thick, textBackground: true))
+        == AnnotationStyle(color: .red, stroke: thick, textBackground: true))
     #expect(
-      style.with(stroke: .thin)
-        == AnnotationStyle(color: .blue, stroke: .thin, textBackground: true))
+      style.with(stroke: thin)
+        == AnnotationStyle(color: .blue, stroke: thin, textBackground: true))
     #expect(AnnotationStyleChange(textBackground: false).applied(to: style).color == .blue)
     #expect(!AnnotationStyleChange(textBackground: false).applied(to: style).textBackground)
     #expect(style.with() == style)
