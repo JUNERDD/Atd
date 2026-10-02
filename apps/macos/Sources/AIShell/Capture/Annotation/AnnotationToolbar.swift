@@ -1,8 +1,9 @@
 import AICore
 import AppKit
 
-/// The annotation toolbar beside the selection: the tools, undo and redo, cancel and confirm,
-/// on the shared glass capsule (``AnnotationGlassBar``). Colours and stroke widths live on the
+/// The annotation toolbar beside the selection: a grip, the tools, undo and redo, cancel
+/// and confirm, on the shared glass capsule (``AnnotationGlassBar``), which the grip or its surface
+/// drags. Colours and stroke widths live on the
 /// separate ``AnnotationStyleBar``, which appears next to this bar only when there is something
 /// to style. Every control has a localized tooltip naming its shortcut, and its glyph a
 /// VoiceOver description.
@@ -12,7 +13,13 @@ final class AnnotationToolbar: NSView {
   var onRedo: (() -> Void)?
   var onCancel: (() -> Void)?
   var onConfirm: (() -> Void)?
+  /// The bar being dragged by its grip or surface.
+  var onDrag: ((AnnotationGlassBar.Drag) -> Void)? {
+    get { bar.onDrag }
+    set { bar.onDrag = newValue }
+  }
 
+  private let grip = AnnotationBarGrip()
   private let tools = AnnotationTool.allCases.map { _ in
     AnnotationToolbarButton(selection: .fill, action: #selector(toolClicked))
   }
@@ -25,10 +32,13 @@ final class AnnotationToolbar: NSView {
   private let bar: AnnotationGlassBar
 
   override init(frame: NSRect) {
-    let groups = [tools, [undoButton, redoButton], [cancelButton, confirmButton]]
-    bar = AnnotationGlassBar(groups: groups)
+    let actions = [undoButton, redoButton, cancelButton, confirmButton]
+    bar = AnnotationGlassBar(groups: [
+      [grip] + (tools as [NSView]), [undoButton, redoButton],
+      [cancelButton, confirmButton],
+    ])
     super.init(frame: frame)
-    for button in groups.joined() { button.target = self }
+    for button in tools + actions { button.target = self }
     addSubview(bar)
     setAccessibilityElement(true)
     setAccessibilityRole(.toolbar)
@@ -52,6 +62,8 @@ final class AnnotationToolbar: NSView {
       String(format: strings.text(.captureTooltipShortcut), name, key)
     }
     setAccessibilityLabel(strings.text(.captureToolbar))
+    grip.image = AnnotationIcons.glyph(AnnotationIcons.grip, label: "")
+    grip.toolTip = strings.text(.captureToolbarMove)
     for (button, tool) in zip(tools, AnnotationTool.allCases) {
       let name = strings.text(Self.key(for: tool))
       button.image = AnnotationIcons.glyph(AnnotationIcons.lucideName(for: tool), label: name)

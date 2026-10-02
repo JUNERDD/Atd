@@ -15,6 +15,7 @@ enum AnnotationIcons {
   static let cancel = "x"
   static let confirm = "check"
   static let textBackground = "square-text"
+  static let grip = "grip-vertical"
 
   static func lucideName(for tool: AnnotationTool) -> String {
     switch tool {

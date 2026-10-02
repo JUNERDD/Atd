@@ -3,8 +3,9 @@ import AppKit
 
 // The capture overlay's cursors (decision D15) in one place. The session sets the selection's
 // (``CaptureSession``'s `overlay(_:cursorAt:)`): frame-resize over its handles and edge band,
-// an open hand inside it before a tool is chosen (closed while moving), the arrow outside it
-// and over the bars. The annotation canvas sets its own over the interior a tool claimed:
+// an open hand inside it before a tool is chosen (closed while moving), the arrow outside it.
+// Over the bars, the arrow on a control and an open hand on the surface that drags them (closed
+// while dragging). The annotation canvas sets its own over the interior a tool claimed:
 //
 // | Under the pointer (or the gesture running)       | Cursor                        |
 // | ------------------------------------------------ | ----------------------------- |

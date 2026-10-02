@@ -631,6 +631,24 @@
         }
       }
     },
+    "capture.toolbar.move" : {
+      "comment" : "Tooltip of the screenshot annotation toolbar's drag handle",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Drag to move · Double-click to put back"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "拖动以移动 · 双击放回原位"
+          }
+        }
+      }
+    },
     "capture.tooltip.shortcut" : {
       "comment" : "Tooltip of an annotation toolbar button: the action, then its key",
       "extractionState" : "manual",
