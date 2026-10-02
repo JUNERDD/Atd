@@ -115,7 +115,7 @@ function webTools(gate: Gate) {
     name: WEB_FETCH_TOOL,
     label: 'Fetch web content',
     description:
-      'Fetch http(s) URLs and return their readable content (Markdown for HTML pages, raw text otherwise). Long pages are truncated.',
+      'Fetch http(s) URLs and return their readable content (Markdown for HTML pages, extracted text for PDFs, raw text otherwise). Long pages are truncated.',
     parameters: FetchParams,
     async execute(toolCallId: string, params: Static<typeof FetchParams>, signal?: AbortSignal) {
       const urls = remoteUrls(
