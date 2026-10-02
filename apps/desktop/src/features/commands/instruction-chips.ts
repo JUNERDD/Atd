@@ -32,6 +32,7 @@ function referenceOf(chip: Chip): InstructionReference | null {
     case 'task':
       return { kind: 'task', taskId: chip.taskId };
     case 'file':
+    case 'folder':
     case 'quote':
     case 'command':
     case 'memory':
@@ -66,7 +67,7 @@ export function isInstructionChip(chip: Chip): boolean {
 /**
  * The instructions text of editor segments: each chip as its token. A chip the user joined to a
  * word, or to another chip, is set apart by a space so that it still reads back as a token.
- * File and quote chips never occur here (the `@` panel offers neither); they would keep their
+ * File, folder and quote chips never occur here (the `@` panel offers none); they would keep their
  * composer text.
  */
 export function instructionText(segments: readonly DraftSegment[]): string {

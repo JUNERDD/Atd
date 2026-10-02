@@ -5,6 +5,7 @@ import { Button } from '@atd/ui/components/button';
 import { Card } from '@atd/ui/components/card';
 import { ItemGroup } from '@atd/ui/components/item';
 import type { SettingsSnapshot } from '../../client/settings-contract';
+import { SelectionToolbarSettings } from './selection-toolbar-settings';
 import { SettingsHeading } from './settings-heading';
 import { SettingsSwitchRow } from './settings-switch-row';
 import { ShortcutConflictHint } from './shortcut-conflict-hint';
@@ -159,6 +160,8 @@ export function GeneralSettings({
             </Card>
           </section>
         )}
+        {/* The toolbar over other apps' selected text is the desktop app's, like its window. */}
+        {desktopApp && <SelectionToolbarSettings snapshot={snapshot} />}
         {/* Restores the global shortcut as well as the in-app ones, so it follows every group. */}
         <div className="settings-shortcut-restore">
           {settings.errors.restore && (

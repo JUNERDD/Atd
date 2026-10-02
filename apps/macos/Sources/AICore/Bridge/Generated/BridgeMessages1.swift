@@ -54,8 +54,12 @@ public enum NativeCall: Equatable, Sendable {
   case linkOpen(LinkOpenParams)
   case artifact(ArtifactParams)
   case filesPick(FilesPickParams)
+  case filesPickFolder(FilesPickFolderParams)
   case filesSave(FilesSaveParams)
   case approvalRequest(ApprovalRequestParams)
+  case toolbarSet(ToolbarSetParams)
+  case accessibilityRequest(AccessibilityRequestParams)
+  case appsPick(AppsPickParams)
 
   /// The contract name.
   public var name: String {
@@ -80,8 +84,12 @@ public enum NativeCall: Equatable, Sendable {
     case .linkOpen: "link.open"
     case .artifact: "artifact"
     case .filesPick: "files.pick"
+    case .filesPickFolder: "files.pickFolder"
     case .filesSave: "files.save"
     case .approvalRequest: "approval.request"
+    case .toolbarSet: "toolbar.set"
+    case .accessibilityRequest: "accessibility.request"
+    case .appsPick: "apps.pick"
     }
   }
 }
@@ -154,9 +162,15 @@ public enum JsMessage: Decodable, Equatable, Sendable {
       case "link.open": call = try .linkOpen(container.value(.params, LinkOpenParams.self))
       case "artifact": call = try .artifact(container.value(.params, ArtifactParams.self))
       case "files.pick": call = try .filesPick(container.value(.params, FilesPickParams.self))
+      case "files.pickFolder":
+        call = try .filesPickFolder(container.value(.params, FilesPickFolderParams.self))
       case "files.save": call = try .filesSave(container.value(.params, FilesSaveParams.self))
       case "approval.request":
         call = try .approvalRequest(container.value(.params, ApprovalRequestParams.self))
+      case "toolbar.set": call = try .toolbarSet(container.value(.params, ToolbarSetParams.self))
+      case "accessibility.request":
+        call = try .accessibilityRequest(container.value(.params, AccessibilityRequestParams.self))
+      case "apps.pick": call = try .appsPick(container.value(.params, AppsPickParams.self))
       default:
         throw DecodingError.dataCorruptedError(
           forKey: .method, in: container, debugDescription: "Unknown method \(method).")
@@ -216,6 +230,8 @@ public enum NativeEvent: Encodable, Equatable, Sendable {
   case filesDrag(FilesDragEvent)
   case editCommand(EditCommandEvent)
   case speechState(SpeechStateEvent)
+  case selectionAsk(SelectionAskEvent)
+  case accessibilityTrust(AccessibilityTrustEvent)
   case updateState(UpdateStateEvent)
   case socketFrames(SocketFramesEvent)
 
@@ -231,6 +247,8 @@ public enum NativeEvent: Encodable, Equatable, Sendable {
     case .filesDrag: "files.drag"
     case .editCommand: "edit.command"
     case .speechState: "speech.state"
+    case .selectionAsk: "selection.ask"
+    case .accessibilityTrust: "accessibility.trust"
     case .updateState: "update.state"
     case .socketFrames: "socket.frames"
     }
@@ -247,6 +265,8 @@ public enum NativeEvent: Encodable, Equatable, Sendable {
     case .filesDrag(let payload): try payload.encode(to: encoder)
     case .editCommand(let payload): try payload.encode(to: encoder)
     case .speechState(let payload): try payload.encode(to: encoder)
+    case .selectionAsk(let payload): try payload.encode(to: encoder)
+    case .accessibilityTrust(let payload): try payload.encode(to: encoder)
     case .updateState(let payload): try payload.encode(to: encoder)
     case .socketFrames(let payload): try payload.encode(to: encoder)
     }

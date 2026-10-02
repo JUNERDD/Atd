@@ -12,6 +12,7 @@ import { useAppLanguage } from './i18n/use-app-language';
 import { agentApi } from './features/agent/use-agent';
 import { focusPanelInput } from './features/agent/use-panel-window';
 import { useScreenshotShortcut } from './features/agent/use-screenshot-shortcut';
+import { useSelectionAsk } from './features/agent/use-selection-ask';
 import { useTaskPanel } from './features/agent/use-task-panel';
 import { CommandLauncher } from './features/agent/command-launcher';
 import { CommandInput } from './features/agent/command-input';
@@ -31,7 +32,8 @@ import { ServiceStarting } from './features/service/service-starting';
 import { useServiceStarting } from './features/service/use-service-starting';
 import { MAX_ATTACHMENTS, runModelSelection, type QuoteSource } from '@atd/agent-contracts';
 import { EMPTY_QUEUE, type Block } from './client/agent/transcript-schema';
-import { appendChip, draftFiles, quoteChip } from './features/composer-editor/draft';
+import { appendChip, quoteChip } from './features/composer-editor/draft';
+import { draftFiles } from './features/composer-editor/draft-attachments';
 import type { FileRef } from './client/agent/task-schema';
 import './features/agent/agent.css';
 
@@ -88,14 +90,11 @@ export function App() {
     latest.changeDraft(appendChip(latest.draft, { kind: 'file', file }));
   }, []);
   // The views without a composer give way to the new conversation, whose draft they share.
-  useScreenshotShortcut({
-    draft,
-    changeDraft,
-    showComposer: () => {
-      if (child.childKey) child.close();
-      if (view === 'history' || view === 'input') setView('new');
-    },
-  });
+  const showComposer = () => {
+    if (child.childKey) child.close();
+    if (view === 'history' || view === 'input') setView('new');
+  };
+  useScreenshotShortcut({ draft, changeDraft, showComposer });
   // A quote lands as a chip after the draft's content with the caret after it: the editor takes an
   // outside draft in its layout effect with the caret at the end, before the next frame.
   const quoteToDraft = useCallback((markdown: string, source: QuoteSource | undefined) => {
@@ -103,6 +102,7 @@ export function App() {
     latest.changeDraft(appendChip(latest.draft, quoteChip(markdown, source)));
     requestAnimationFrame(focusPanelInput);
   }, []);
+  useSelectionAsk({ quote: (markdown) => quoteToDraft(markdown, undefined), showComposer });
   const defaultConnection = snapshot?.connections.find(
     (connection) => connection.connectionId === snapshot.defaultConnectionId,
   );

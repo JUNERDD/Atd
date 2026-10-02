@@ -31,8 +31,12 @@
       "link.open",
       "artifact",
       "files.pick",
+      "files.pickFolder",
       "files.save",
-      "approval.request"
+      "approval.request",
+      "toolbar.set",
+      "accessibility.request",
+      "apps.pick"
     ],
     "posts": [
       "bridge.ready",
@@ -53,6 +57,8 @@
       "files.drag",
       "edit.command",
       "speech.state",
+      "selection.ask",
+      "accessibility.trust",
       "update.state",
       "socket.frames"
     ]
@@ -702,6 +708,30 @@
             },
             "method": {
               "type": "string",
+              "const": "files.pickFolder"
+            },
+            "params": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
               "const": "files.save"
             },
             "params": {
@@ -785,6 +815,113 @@
                   "pattern": "^(?:[a-zA-Z0-9_-]{1,128}|(?:[a-z0-9](?:[a-z0-9.-]{0,62}[a-z0-9])?:)?[A-Za-z0-9][A-Za-z0-9_-]{0,127})$"
                 }
               },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
+              "const": "toolbar.set"
+            },
+            "params": {
+              "type": "object",
+              "required": ["enabled", "excludedBundleIds", "commands"],
+              "properties": {
+                "enabled": {
+                  "type": "boolean"
+                },
+                "excludedBundleIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 255
+                  },
+                  "maxItems": 100
+                },
+                "commands": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["id", "name"],
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 128
+                      },
+                      "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 256
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "maxItems": 64
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
+              "const": "accessibility.request"
+            },
+            "params": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
+              "const": "apps.pick"
+            },
+            "params": {
+              "type": "object",
+              "properties": {},
               "additionalProperties": false
             }
           },
@@ -1181,7 +1318,7 @@
             },
             "payload": {
               "type": "object",
-              "required": ["resources", "failures"],
+              "required": ["resources", "folders", "failures"],
               "properties": {
                 "resources": {
                   "type": "array",
@@ -1212,6 +1349,33 @@
                   },
                   "maxItems": 10
                 },
+                "folders": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["id", "name", "path"],
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 128,
+                        "pattern": "^[a-zA-Z0-9_-]+$"
+                      },
+                      "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 255
+                      },
+                      "path": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 4096
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "maxItems": 10
+                },
                 "failures": {
                   "type": "array",
                   "items": {
@@ -1235,13 +1399,21 @@
                           {
                             "type": "string",
                             "const": "tooLarge"
+                          },
+                          {
+                            "type": "string",
+                            "const": "notDirectory"
+                          },
+                          {
+                            "type": "string",
+                            "const": "forbidden"
                           }
                         ]
                       }
                     },
                     "additionalProperties": false
                   },
-                  "maxItems": 10
+                  "maxItems": 20
                 }
               },
               "additionalProperties": false
@@ -1288,7 +1460,7 @@
                 "attachable": {
                   "type": "integer",
                   "minimum": 0,
-                  "maximum": 10
+                  "maximum": 20
                 }
               },
               "additionalProperties": false
@@ -1347,6 +1519,51 @@
               "required": ["speaking"],
               "properties": {
                 "speaking": {
+                  "type": "boolean"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "event", "payload"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "event"
+            },
+            "event": {
+              "type": "string",
+              "const": "selection.ask"
+            },
+            "payload": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "event", "payload"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "event"
+            },
+            "event": {
+              "type": "string",
+              "const": "accessibility.trust"
+            },
+            "payload": {
+              "type": "object",
+              "required": ["trusted"],
+              "properties": {
+                "trusted": {
                   "type": "boolean"
                 }
               },
@@ -2330,6 +2547,84 @@
       },
       "additionalProperties": false
     },
+    "FilesPickFolderParams": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "FilesPickFolderResult": {
+      "type": "object",
+      "required": ["folders", "failures"],
+      "properties": {
+        "folders": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "name", "path"],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128,
+                "pattern": "^[a-zA-Z0-9_-]+$"
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 255
+              },
+              "path": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              }
+            },
+            "additionalProperties": false
+          },
+          "maxItems": 10
+        },
+        "failures": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "reason"],
+            "properties": {
+              "name": {
+                "type": "string",
+                "maxLength": 255
+              },
+              "reason": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "const": "unreadable"
+                  },
+                  {
+                    "type": "string",
+                    "const": "unsupported"
+                  },
+                  {
+                    "type": "string",
+                    "const": "tooLarge"
+                  },
+                  {
+                    "type": "string",
+                    "const": "notDirectory"
+                  },
+                  {
+                    "type": "string",
+                    "const": "forbidden"
+                  }
+                ]
+              }
+            },
+            "additionalProperties": false
+          },
+          "maxItems": 10
+        }
+      },
+      "additionalProperties": false
+    },
     "FilesSaveParams": {
       "type": "object",
       "required": ["name", "content"],
@@ -2449,6 +2744,94 @@
           "additionalProperties": false
         }
       ]
+    },
+    "ToolbarSetParams": {
+      "type": "object",
+      "required": ["enabled", "excludedBundleIds", "commands"],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "excludedBundleIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255
+          },
+          "maxItems": 100
+        },
+        "commands": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "name"],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              }
+            },
+            "additionalProperties": false
+          },
+          "maxItems": 64
+        }
+      },
+      "additionalProperties": false
+    },
+    "ToolbarSetResult": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "AccessibilityRequestParams": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "AccessibilityRequestResult": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "AppsPickParams": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "AppsPickResult": {
+      "type": "object",
+      "required": ["apps"],
+      "properties": {
+        "apps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["bundleId", "name"],
+            "properties": {
+              "bundleId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 255
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 255
+              }
+            },
+            "additionalProperties": false
+          },
+          "maxItems": 20
+        }
+      },
+      "additionalProperties": false
     },
     "BridgeReadyPost": {
       "type": "object",
@@ -2610,7 +2993,7 @@
     },
     "ResourcesImportedEvent": {
       "type": "object",
-      "required": ["resources", "failures"],
+      "required": ["resources", "folders", "failures"],
       "properties": {
         "resources": {
           "type": "array",
@@ -2641,6 +3024,33 @@
           },
           "maxItems": 10
         },
+        "folders": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "name", "path"],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128,
+                "pattern": "^[a-zA-Z0-9_-]+$"
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 255
+              },
+              "path": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              }
+            },
+            "additionalProperties": false
+          },
+          "maxItems": 10
+        },
         "failures": {
           "type": "array",
           "items": {
@@ -2664,13 +3074,21 @@
                   {
                     "type": "string",
                     "const": "tooLarge"
+                  },
+                  {
+                    "type": "string",
+                    "const": "notDirectory"
+                  },
+                  {
+                    "type": "string",
+                    "const": "forbidden"
                   }
                 ]
               }
             },
             "additionalProperties": false
           },
-          "maxItems": 10
+          "maxItems": 20
         }
       },
       "additionalProperties": false
@@ -2702,7 +3120,7 @@
         "attachable": {
           "type": "integer",
           "minimum": 0,
-          "maximum": 10
+          "maximum": 20
         }
       },
       "additionalProperties": false
@@ -2731,6 +3149,21 @@
       "required": ["speaking"],
       "properties": {
         "speaking": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "SelectionAskEvent": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "AccessibilityTrustEvent": {
+      "type": "object",
+      "required": ["trusted"],
+      "properties": {
+        "trusted": {
           "type": "boolean"
         }
       },

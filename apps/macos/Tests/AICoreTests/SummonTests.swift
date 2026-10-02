@@ -70,6 +70,28 @@ struct SummonTests {
     #expect(SummonPolicy.steps(for: .screenshot, in: Self.context(filePanel: true)).isEmpty)
   }
 
+  @Test("Ask Atd always captures, then shows the panel and has the page quote the stash")
+  func askCapturesAndShows() {
+    for context in [Self.context(), Self.context(key: true, wanted: true)] {
+      #expect(
+        SummonPolicy.steps(for: .ask, in: context) == [
+          .captureSelection, .showPanel, .deliverAsk,
+        ])
+    }
+    #expect(SummonPolicy.steps(for: .ask, in: Self.context(filePanel: true)).isEmpty)
+  }
+
+  @Test("A toolbar command captures even when no shortcut wants the selection")
+  func toolbarCommandCaptures() {
+    #expect(
+      SummonPolicy.steps(for: .toolbarCommand(id: "c1"), in: Self.context()) == [
+        .captureSelection, .deliverCommand(id: "c1"),
+      ])
+    #expect(
+      SummonPolicy.steps(for: .toolbarCommand(id: "c1"), in: Self.context(filePanel: true))
+        .isEmpty)
+  }
+
   static let now = Date(timeIntervalSince1970: 1_790_000_000.5)
 
   @Test("Timestamps match JavaScript's toISOString")

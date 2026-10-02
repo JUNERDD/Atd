@@ -6,6 +6,9 @@ import AppKit
 /// concentrically), a wash on hover and a deeper one while pressed, the selected state, a
 /// dimmed disabled glyph, and the keyboard focus ring drawn inside the toolbar's padding.
 ///
+/// The selection toolbar uses the same control with a label (``init(label:image:action:)``): a
+/// capsule ``side`` points tall around a leading glyph and its text, with the same washes.
+///
 /// A choice among several (tools, colours, strokes) reads as a selected radio button to
 /// VoiceOver, an on/off control (the text background) as a checkbox; the bars set
 /// ``isSelected`` from the editor's state after every change.
@@ -19,9 +22,29 @@ final class AnnotationToolbarButton: NSButton {
 
   static let side: CGFloat = 28
 
+  /// A disabled glyph or label: the system's disabled form of the label colour, as AppKit
+  /// dims a disabled button in a key window (about 42% in dark, 30% in light), clearly off yet
+  /// still legible.
+  static let disabledColor = NSColor.labelColor.withSystemEffect(.disabled)
+
   private let selection: Selection?
-  private var hovering = false
+  /// The text and leading glyph of a labelled button, which draws them itself.
+  private let label: (text: String, image: NSImage?)?
   private var trackingArea: NSTrackingArea?
+
+  /// Whether the button follows the pointer itself, through a tracking area and cursor rects.
+  /// Set before the button joins a window. The selection toolbar turns it off: its app stays
+  /// inactive, where tracking events arrive late or not at all, so the toolbar reads the pointer
+  /// on every frame and sets ``isHovered`` and the cursor itself.
+  var followsPointer = true
+
+  /// The pointer is over the button: a light wash, unless it is pressed or disabled.
+  var isHovered = false {
+    didSet {
+      guard isHovered != oldValue else { return }
+      needsDisplay = true
+    }
+  }
 
   var isSelected = false {
     didSet {
@@ -35,17 +58,33 @@ final class AnnotationToolbarButton: NSButton {
   /// The owner sets `target` once it exists.
   init(selection: Selection?, tint: NSColor? = nil, action: Selector) {
     self.selection = selection
+    label = nil
     super.init(frame: CGRect(x: 0, y: 0, width: Self.side, height: Self.side))
+    configure(width: Self.side, action: action)
+    contentTintColor = tint
+  }
+
+  /// A labelled action: `image` (a template glyph drawn at ``Label/iconSide``) then `text`, cut
+  /// with an ellipsis past ``Label/maxTextWidth``, ``Label/padding`` in from each end.
+  init(label text: String, image: NSImage?, action: Selector) {
+    selection = nil
+    label = (text, image)
+    let width = Label.width(text: text, hasImage: image != nil)
+    super.init(frame: CGRect(x: 0, y: 0, width: width, height: Self.side))
+    configure(width: width, action: action)
+    setAccessibilityLabel(text)
+  }
+
+  private func configure(width: CGFloat, action: Selector) {
     isBordered = false
     imagePosition = .imageOnly
     imageScaling = .scaleNone
     title = ""
     focusRingType = .exterior
-    contentTintColor = tint
     self.action = action
     translatesAutoresizingMaskIntoConstraints = false
     NSLayoutConstraint.activate([
-      widthAnchor.constraint(equalToConstant: Self.side),
+      widthAnchor.constraint(equalToConstant: width),
       heightAnchor.constraint(equalToConstant: Self.side),
     ])
   }
@@ -62,7 +101,7 @@ final class AnnotationToolbarButton: NSButton {
   // MARK: Drawing
 
   override func draw(_ dirtyRect: NSRect) {
-    let circle = NSBezierPath(ovalIn: bounds)
+    let circle = capsule
     if selection == .fill || selection == .toggle, isSelected {
       NSColor.controlAccentColor.withAlphaComponent(isHighlighted ? 0.8 : 1).setFill()
       circle.fill()
@@ -76,14 +115,33 @@ final class AnnotationToolbarButton: NSButton {
       NSColor.controlAccentColor.setStroke()
       ring.stroke()
     }
-    super.draw(dirtyRect)
+    if let label {
+      Label.draw(text: label.text, image: label.image, in: bounds, enabled: isEnabled)
+    } else if let image, image.isTemplate {
+      // Drawn here rather than tinted by AppKit, which dims a template image whenever the window
+      // is not key (the selection toolbar's app never activates): glyphs take the label colour
+      // of the toolbar's text in either toolbar, or the button's own tint.
+      let color = isEnabled ? contentTintColor ?? .labelColor : Self.disabledColor
+      let rect = NSRect(
+        x: bounds.midX - image.size.width / 2, y: bounds.midY - image.size.height / 2,
+        width: image.size.width, height: image.size.height)
+      Label.tinted(image, color, size: image.size).draw(in: rect)
+    } else {
+      super.draw(dirtyRect)
+    }
+  }
+
+  /// A circle for a square button, a capsule for a labelled one.
+  private var capsule: NSBezierPath {
+    let radius = min(bounds.width, bounds.height) / 2
+    return NSBezierPath(roundedRect: bounds, xRadius: radius, yRadius: radius)
   }
 
   /// The neutral wash: none at rest, light on hover, deeper while pressed; never when disabled.
   private var wash: CGFloat? {
     guard isEnabled else { return nil }
     if isHighlighted { return 0.16 }
-    return hovering ? 0.09 : nil
+    return isHovered ? 0.09 : nil
   }
 
   override var isHighlighted: Bool {
@@ -100,6 +158,8 @@ final class AnnotationToolbarButton: NSButton {
   override func updateTrackingAreas() {
     super.updateTrackingAreas()
     if let trackingArea { removeTrackingArea(trackingArea) }
+    trackingArea = nil
+    guard followsPointer else { return }
     // `.activeAlways`: the overlay panel is non-activating, so hover must not wait for key.
     let area = NSTrackingArea(
       rect: .zero, options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect], owner: self)
@@ -108,16 +168,15 @@ final class AnnotationToolbarButton: NSButton {
   }
 
   override func mouseEntered(with event: NSEvent) {
-    hovering = true
-    needsDisplay = true
+    isHovered = true
   }
 
   override func mouseExited(with event: NSEvent) {
-    hovering = false
-    needsDisplay = true
+    isHovered = false
   }
 
   override func resetCursorRects() {
+    guard followsPointer else { return }
     addCursorRect(bounds, cursor: .arrow)
   }
 
@@ -126,7 +185,7 @@ final class AnnotationToolbarButton: NSButton {
   override var focusRingMaskBounds: NSRect { bounds }
 
   override func drawFocusRingMask() {
-    NSBezierPath(ovalIn: bounds).fill()
+    capsule.fill()
   }
 
   override func accessibilityRole() -> NSAccessibility.Role? {
@@ -139,5 +198,55 @@ final class AnnotationToolbarButton: NSButton {
 
   override func accessibilityValue() -> Any? {
     selection == nil ? super.accessibilityValue() : NSNumber(value: isSelected)
+  }
+}
+
+extension AnnotationToolbarButton {
+  /// The labelled button's metrics (visual spec, contracts §6) and drawing.
+  enum Label {
+    static let padding: CGFloat = 10
+    static let iconSide: CGFloat = 14
+    static let iconGap: CGFloat = 6
+    static let maxTextWidth: CGFloat = 160
+    static let font = NSFont.systemFont(ofSize: 13, weight: .medium)
+
+    static func width(text: String, hasImage: Bool) -> CGFloat {
+      let textWidth = min(ceil(text.size(withAttributes: [.font: font]).width), maxTextWidth)
+      return padding * 2 + (hasImage ? iconSide + iconGap : 0) + textWidth
+    }
+
+    /// The glyph tinted like the text (the label colour, as the capture toolbar's glyphs draw
+    /// in its key window), then the text on one line, cut with an ellipsis.
+    static func draw(text: String, image: NSImage?, in bounds: NSRect, enabled: Bool) {
+      let color = enabled ? NSColor.labelColor : AnnotationToolbarButton.disabledColor
+      var x = bounds.minX + padding
+      if let image {
+        let icon = NSRect(
+          x: x, y: bounds.midY - iconSide / 2, width: iconSide, height: iconSide)
+        tinted(image, color, size: icon.size).draw(in: icon)
+        x += iconSide + iconGap
+      }
+      let style = NSMutableParagraphStyle()
+      style.lineBreakMode = .byTruncatingTail
+      let attributes: [NSAttributedString.Key: Any] = [
+        .font: font, .foregroundColor: color, .paragraphStyle: style,
+      ]
+      let height = ceil(font.ascender - font.descender + font.leading)
+      let rect = NSRect(
+        x: x, y: bounds.midY - height / 2, width: max(0, bounds.maxX - padding - x),
+        height: height)
+      NSAttributedString(string: text, attributes: attributes).draw(in: rect)
+    }
+
+    /// A template glyph in `color` at `size`; it draws in the appearance of the view being
+    /// drawn.
+    static func tinted(_ image: NSImage, _ color: NSColor, size: NSSize) -> NSImage {
+      NSImage(size: size, flipped: false) { rect in
+        image.draw(in: rect)
+        color.set()
+        rect.fill(using: .sourceAtop)
+        return true
+      }
+    }
   }
 }

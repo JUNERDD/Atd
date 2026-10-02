@@ -7,9 +7,10 @@ import WebKit
 ///   page pushes its drag rectangles and a mouse-down inside one starts a native window drag
 ///   synchronously, while the event is still current. A double-click runs the system's title
 ///   bar action.
-/// - **File drops.** Dropped file URLs go to the shell, which imports them by path; WebKit
-///   would otherwise hand the page `File` objects the relay cannot upload (spike S1). The page
-///   gets no drag events for them, so the shell reports the drag (`onFileDrag`) instead.
+/// - **File drops.** Dropped file and folder URLs go to the shell, which imports files by path
+///   and registers folders; WebKit would otherwise hand the page `File` objects the relay cannot
+///   upload (spike S1). The page gets no drag events for them, so the shell reports the drag
+///   (`onFileDrag`) instead.
 /// - **Pasted files and bitmaps.** Edit › Paste runs ``pasteAttachingFiles(_:)``: file URLs on
 ///   the pasteboard are imported, and so is a bitmap when no text came with it; anything else
 ///   pastes into the page as usual.
@@ -76,7 +77,7 @@ final class ShellWebView: WKWebView {
   override func draggingEntered(_ sender: any NSDraggingInfo) -> NSDragOperation {
     let files = droppedFiles(sender)
     guard onFiles != nil, !files.isEmpty else { return super.draggingEntered(sender) }
-    fileDrag = FileDragSummary(urls: files)
+    fileDrag = FileDragSummary(items: files.map(ImportItem.init(fileURL:)))
     return fileDragOperation
   }
 

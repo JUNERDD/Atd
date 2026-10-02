@@ -49,7 +49,10 @@ export class ChipWidget extends WidgetType {
       dom.addEventListener('click', () => void editImageChip(view, id, chip));
     }
     const root = createRoot(dom);
-    root.render(createElement(ChipContent, { kind: chip.kind, name: chipName(chip), image }));
+    const detail = chip.kind === 'folder' ? chip.path : undefined;
+    root.render(
+      createElement(ChipContent, { kind: chip.kind, name: chipName(chip), image, detail }),
+    );
     const resize = new ResizeObserver(() => {
       if (view.composing) return;
       view.dispatch({

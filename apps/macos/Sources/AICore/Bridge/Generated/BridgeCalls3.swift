@@ -247,3 +247,6 @@ public struct FilesPickResult: Codable, Equatable, Sendable {
     case resources
   }
 }
+
+/// Params of the `files.pickFolder` call.
+public typealias FilesPickFolderParams = NativeEmpty

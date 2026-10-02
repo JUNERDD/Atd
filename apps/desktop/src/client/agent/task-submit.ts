@@ -37,7 +37,8 @@ export async function submitTask<S>(
   if (request.branchBefore && busy)
     throw new Error('Wait for the current run to finish before changing an earlier message.');
   if (busy && previous) {
-    if (request.input.files.length) throw new Error('Attach files after the run finishes.');
+    if (request.input.files.length || request.input.folders?.length)
+      throw new Error('Attach files and folders after the run finishes.');
     // A queued follow-up is text only; it would silently drop the chips' references and skill,
     // and a command template's tokens alike.
     if (request.policy?.references?.length || request.policy?.skills?.length || tokens?.keys.size)
@@ -52,6 +53,8 @@ export async function submitTask<S>(
   // treats the run as sent before chips were recorded and shows a leading `/skill:` token as a
   // skill chip.
   let chips = request.input.chips ?? [];
+  // Likewise always sent: an absent list marks input stored before folders.
+  const folders = request.input.folders ?? [];
   let staging: RunStaging | null = request.policy;
   // Only a model picked for this run, or a command's, travels: the service selects the rest
   // (`runModelSelection`), so a follow-up stays on its last run's model as the picker shows.
@@ -94,7 +97,7 @@ export async function submitTask<S>(
   const submitted = await http.submit({
     operationId: request.invocationId,
     ...(taskId ? { taskId } : {}),
-    input: { ...request.input, text, chips },
+    input: { ...request.input, text, chips, folders },
     ...(model ? { model } : {}),
     ...(thinkingLevel ? { thinkingLevel } : {}),
     ...(tools ? { tools } : {}),

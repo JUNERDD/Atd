@@ -9,6 +9,14 @@ import UniformTypeIdentifiers
 /// the service (`/v1/resources/import`); paths never reach the page. One pick, drop or paste
 /// takes at most ``AttachmentRules/maxPathsPerImport`` files, the page's attachment limit.
 ///
+/// Folders become folder refs through `/v1/folders/register`, at most ``ImportBatch/maxFolders``
+/// per gesture. Every gesture that hands the app files or folders — a drop or paste on the
+/// panel, the Finder service, a drop on the Dock icon, `open -a` — goes through
+/// ``importItems(_:queueWhenUnavailable:)``: its items split into files and folders
+/// (``ImportBatch``), both requests run, and the page gets one `resources.imported` event. The
+/// gestures from outside the panel (``importOpened(_:)``) wait in the shell while the service
+/// is unreachable and are imported once the control stream connects (``serviceDidConnect()``).
+///
 /// A file drag over the panel and the import of its drop reach the page as `files.drag`
 /// (``FileDropState``), so it can show what the drop attaches and that it is being added.
 ///
@@ -21,6 +29,8 @@ final class AttachmentImporter {
   private weak var panel: WebViewHost?
   private let systemPanels: SystemPanels
   private var drop = FileDropState()
+  /// Opened items waiting for the service.
+  private var pending: [ImportBatch] = []
   private static let log = Logger(subsystem: "com.junerdd.ai", category: "attachments")
 
   init(services: ShellServices, panel: WebViewHost, systemPanels: SystemPanels) {
@@ -33,7 +43,7 @@ final class AttachmentImporter {
       guard let self else { return }
       if source == "drop" { updateDrop { $0.beginImport() } }
       Task {
-        await self.importFiles(urls)
+        await self.importItems(urls, queueWhenUnavailable: false)
         if source == "drop" { self.updateDrop { $0.endImport() } }
       }
     }
@@ -62,15 +72,67 @@ final class AttachmentImporter {
     return response.imported.map { FileRef($0.resource) }
   }
 
-  /// Dropped or pasted files become one `resources.imported` event for the panel page. With
-  /// the service unreachable nothing is sent: the page already shows the service as down.
-  func importFiles(_ urls: [URL]) async {
+  /// `files.pickFolder`: the chosen folders registered as the page's refs; both lists are
+  /// empty when the user cancelled.
+  func pickFolders() async throws(BridgeError) -> FilesPickFolderResult {
+    guard let urls = await systemPanels.chooseFolders(), !urls.isEmpty else {
+      return FilesPickFolderResult(folders: [], failures: [])
+    }
+    let batch = ImportBatch(urls.map { ImportItem(url: $0, isDirectory: true) })
+    if batch.skipped > 0 {
+      Self.log.info("Registered the first \(batch.folders.count) of \(urls.count) folders.")
+    }
     do {
-      let response = try await importPaths(urls)
-      guard !response.imported.isEmpty || !response.failures.isEmpty else { return }
-      panel?.send(.resourcesImported(ResourcesImportedEvent(response)))
+      let client = try await services.client()
+      return FilesPickFolderResult(try await client.registerFolders(paths: batch.folderPaths))
     } catch {
-      Self.log.error("Dropped or pasted files were not imported: \(error.message)")
+      throw BridgeError(ShellBridge.message(error, "The folders could not be added."))
+    }
+  }
+
+  /// Files and folders from outside the panel: the Finder service, the Dock icon, `open -a`.
+  func importOpened(_ urls: [URL]) {
+    Task { await importItems(urls, queueWhenUnavailable: true) }
+  }
+
+  /// The control stream connected: opened items that waited for the service go in now.
+  func serviceDidConnect() {
+    let batches = pending
+    pending = []
+    Task {
+      for batch in batches { await importBatch(batch, queueWhenUnavailable: true) }
+    }
+  }
+
+  /// One gesture's files and folders become one `resources.imported` event for the panel page.
+  /// With the service unreachable, a drop or paste sends nothing (the page already shows the
+  /// service as down) while opened items wait for it.
+  func importItems(_ urls: [URL], queueWhenUnavailable: Bool) async {
+    await importBatch(
+      ImportBatch(urls.map(ImportItem.init(fileURL:))), queueWhenUnavailable: queueWhenUnavailable)
+  }
+
+  private func importBatch(_ batch: ImportBatch, queueWhenUnavailable: Bool) async {
+    guard !batch.isEmpty else { return }
+    if batch.skipped > 0 {
+      Self.log.info("Left out \(batch.skipped) items past the attachment and folder limits.")
+    }
+    do {
+      let client = try await services.client()
+      async let files =
+        batch.files.isEmpty ? .empty : client.importResources(paths: batch.filePaths)
+      async let folders =
+        batch.folders.isEmpty ? .empty : client.registerFolders(paths: batch.folderPaths)
+      let event = ResourcesImportedEvent(files: try await files, folders: try await folders)
+      panel?.send(.resourcesImported(event))
+    } catch {
+      // No endpoint, or none answering: the service is down, not the request refused.
+      if queueWhenUnavailable, error is ShellServiceError || error is URLError {
+        pending.append(batch)
+        Self.log.info("Holding opened items until the service is available.")
+      } else {
+        Self.log.error("Files or folders were not imported: \(String(describing: error))")
+      }
     }
   }
 
@@ -84,7 +146,7 @@ final class AttachmentImporter {
     do {
       try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
       let file = try await PastedImageExport.store(data, pastedAt: now, in: folder)
-      await importFiles([file])
+      await importItems([file], queueWhenUnavailable: false)
     } catch {
       Self.log.error("A pasted image was not attached: \(String(describing: error))")
       let reason: ResourcesImportedEvent.Failure.Reason =
@@ -92,7 +154,7 @@ final class AttachmentImporter {
       panel?.send(
         .resourcesImported(
           ResourcesImportedEvent(
-            resources: [],
+            resources: [], folders: [],
             failures: [.init(name: PastedImageName.fileName(pastedAt: now), reason: reason)])))
     }
   }
@@ -134,81 +196,11 @@ final class AttachmentImporter {
   }
 }
 
-/// Artifact operations: the shell downloads the
-/// bytes with its credentials into its downloads folder, quarantined, then opens, reveals or
-/// copies the path. The page can upload any file and ask to open it, so only document types
-/// (``ArtifactOpenPolicy``) open directly; any other type opens only after the user chooses
-/// Open Anyway in a native confirmation, and Gatekeeper still checks it then.
-final class ArtifactActions {
-  private let services: ShellServices
-  private let downloads: URL
-  private let confirmations: ConfirmationPrompter
-
-  private enum OpenChoice {
-    case reveal, open, cancel
-  }
-
-  init(services: ShellServices, downloads: URL, confirmations: ConfirmationPrompter) {
-    self.services = services
-    self.downloads = downloads
-    self.confirmations = confirmations
-  }
-
-  /// The downloaded file as the page's `FileRef`, whatever the user chose for a confirmed open.
-  func perform(artifactId: String, operation: ArtifactParams.Operation) async throws(BridgeError)
-    -> FileRef
-  {
-    let downloaded: DownloadedArtifact
-    do {
-      downloaded = try await services.client().downloadArtifact(id: artifactId, into: downloads)
-    } catch {
-      throw BridgeError(ShellBridge.message(error, "The artifact could not be downloaded."))
-    }
-    switch operation {
-    case .open:
-      try await open(downloaded)
-    case .reveal:
-      NSWorkspace.shared.activateFileViewerSelecting([downloaded.fileURL])
-    case .copyPath:
-      NSPasteboard.general.clearContents()
-      NSPasteboard.general.setString(
-        downloaded.fileURL.path(percentEncoded: false), forType: .string)
-    }
-    return FileRef(
-      id: artifactId, name: downloaded.name, size: downloaded.size, type: downloaded.mime)
-  }
-
-  /// Classifies the file by the content type Launch Services will open it as. Cancel, or no
-  /// answer because another confirmation is open, leaves the file downloaded and unopened.
-  private func open(_ downloaded: DownloadedArtifact) async throws(BridgeError) {
-    let url = downloaded.fileURL
-    let type = try? url.resourceValues(forKeys: [.contentTypeKey]).contentType
-    let decision = ArtifactOpenPolicy.decision(
-      typeIdentifier: type?.identifier, conformsTo: type?.supertypes.map(\.identifier) ?? [])
-    if decision == .askFirst {
-      switch await confirmations.ask(Self.prompt(name: downloaded.name)) ?? .cancel {
-      case .open: break
-      case .reveal:
-        NSWorkspace.shared.activateFileViewerSelecting([url])
-        return
-      case .cancel: return
-      }
-    }
-    guard NSWorkspace.shared.open(url) else {
-      throw BridgeError("The artifact could not be opened.")
-    }
-  }
-
-  /// Show in Finder is the default answer, Cancel the Escape one.
-  private static func prompt(name: String) -> ConfirmationPrompt<OpenChoice> {
-    let strings = ShellStrings.shared
-    return ConfirmationPrompt(
-      title: strings.text(.artifactOpenTitle, ArtifactOpenPolicy.displayName(name)),
-      message: strings.text(.artifactOpenMessage),
-      buttons: [
-        .init(title: strings.text(.artifactOpenShowInFinder), choice: .reveal, isDefault: true),
-        .init(title: strings.text(.artifactOpenAnyway), choice: .open, isDestructive: true),
-        .init(title: strings.text(.cancel), choice: .cancel, isCancel: true),
-      ])
+extension ImportItem {
+  /// `url` as the import sees it: a directory (after following links) is a folder; anything
+  /// else, unreadable paths included, is a file whose import then reports why it failed.
+  init(fileURL url: URL) {
+    let values = try? url.resolvingSymlinksInPath().resourceValues(forKeys: [.isDirectoryKey])
+    self.init(url: url, isDirectory: values?.isDirectory ?? false)
   }
 }

@@ -53,7 +53,7 @@ final class ShellBridge {
       switch call {
       case .approvalRequest:
         return try Self.encode(ApprovalRequestResult.notApproved(.init(reason: .busy)))
-      case .filesPick, .filesSave, .artifact, .shareText:
+      case .filesPick, .filesPickFolder, .filesSave, .artifact, .shareText, .appsPick:
         throw BridgeError("Finish the screenshot first.")
       default:
         break
@@ -129,11 +129,21 @@ final class ShellBridge {
         await shell.artifacts.perform(artifactId: params.artifactId, operation: params.operation))
     case .filesPick:
       return try Self.encode(FilesPickResult(resources: await shell.attachments.pick()))
+    case .filesPickFolder:
+      return try Self.encode(await shell.attachments.pickFolders())
     case .filesSave(let params):
       let saved = try await shell.attachments.save(params)
       return try Self.encode(FilesSaveResult(saved: saved))
     case .approvalRequest(let params):
       return try Self.encode(await shell.launchApprovals.request(serverId: params.serverId))
+    case .toolbarSet(let params):
+      shell.applyToolbar(SelectionToolbarSettings(params))
+      return try Self.encode(NativeEmpty())
+    case .accessibilityRequest:
+      shell.trust.openSystemSettings()
+      return try Self.encode(NativeEmpty())
+    case .appsPick:
+      return try Self.encode(await ExcludedAppPicker.pick(with: shell.systemPanels))
     }
   }
 

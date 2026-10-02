@@ -66,7 +66,9 @@
       "installPlugin": "plugin install add folder git repository npm package",
       "skills": "skill skills create with ai instructions",
       "subagents": "subagent subagents agent roles delegate specialist",
-      "mcp": "mcp server servers tools model context protocol stdio http oauth"
+      "mcp": "mcp server servers tools model context protocol stdio http oauth",
+      "selectionToolbar": "selection select text highlight toolbar popup popclip ask accessibility",
+      "selectionToolbarApps": "exclude excluded apps applications ignore block toolbar selection"
     }
   },
   "providers": {
@@ -155,6 +157,30 @@
   "general": {
     "title": "General",
     "description": "Shortcuts, startup, and window behavior. Click a shortcut, then press the new keys; Escape cancels."
+  },
+  "selectionToolbar": {
+    "title": "Selection toolbar",
+    "enabled": "Show toolbar when selecting text",
+    "enabledDescription": "Ask Atd or run a selection command on text you select in other apps.",
+    "accessibility": {
+      "title": "Accessibility access needed",
+      "description": "Atd needs Accessibility access to notice selected text. The toolbar starts working as soon as you allow it.",
+      "open": "Open System Settings"
+    },
+    "excluded": {
+      "title": "Excluded apps",
+      "description": "The toolbar doesn't appear over text selected in these apps.",
+      "empty": "The toolbar appears in every app. Add an app to keep it out of the way there.",
+      "add": "Add app…",
+      "remove": "Remove",
+      "removeLabel": "Remove {{name}} from excluded apps"
+    },
+    "errors": {
+      "save": "The selection toolbar setting couldn't be saved. Try again.",
+      "pick": "The app picker couldn't open. Try again.",
+      "limit": "Exclude at most {{max}} apps.",
+      "accessibility": "System Settings couldn't open. Open Privacy & Security › Accessibility yourself."
+    }
   },
   "shortcuts": {
     "groups": {

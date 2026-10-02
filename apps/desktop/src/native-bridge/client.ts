@@ -78,6 +78,8 @@ export class NativeBridge {
     'files.drag': new Set(),
     'edit.command': new Set(),
     'speech.state': new Set(),
+    'selection.ask': new Set(),
+    'accessibility.trust': new Set(),
     'update.state': new Set(),
     'socket.frames': new Set(),
   };

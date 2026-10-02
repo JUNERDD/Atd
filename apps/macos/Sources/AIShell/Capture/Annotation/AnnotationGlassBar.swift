@@ -6,7 +6,8 @@ import AppKit
 /// concentrically. A divider shows only between visible groups, and the capsule shrinks to fit.
 ///
 /// The bar's own surface (anywhere but a control, including an ``AnnotationBarGrip``) moves it:
-/// a drag reports ``Drag`` to the owner, which places the bars.
+/// a drag reports ``Drag`` to the owner, which places the bars. A bar without ``onDrag`` (the
+/// selection toolbar) stays put.
 final class AnnotationGlassBar: NSView {
   /// A press on the bar's surface.
   enum Drag {
@@ -28,16 +29,19 @@ final class AnnotationGlassBar: NSView {
   private let groups: [[NSView]]
   /// Each group's divider (none before the first group).
   private var dividers: [NSView?] = []
-  /// Where the press that is moving the bar went down, in window coordinates.
+  /// Where the press that is moving the bar went down, in screen coordinates. Travel is
+  /// measured on screen, not in the window: the selection toolbar moves its own window while it
+  /// is dragged, so a window-relative point would shift under the pointer with every move and
+  /// make the drag jitter. (The capture overlay's window never moves, so both agree there.)
   private var dragStart: CGPoint?
 
-  init(groups: [[NSView]]) {
+  init(groups: [[NSView]], padding: CGFloat = AnnotationGlassBar.padding) {
     self.groups = groups
     super.init(frame: .zero)
     stack.orientation = .horizontal
     stack.alignment = .centerY
     stack.spacing = 2
-    let inset = Self.padding
+    let inset = padding
     stack.edgeInsets = NSEdgeInsets(top: inset, left: inset, bottom: inset, right: inset)
     for (index, group) in groups.enumerated() {
       var divider: NSView?
@@ -74,18 +78,20 @@ final class AnnotationGlassBar: NSView {
   /// Taken here rather than passed up, so a press between the controls never reaches the
   /// overlay under the bar, where it would start a new selection.
   override func mouseDown(with event: NSEvent) {
+    guard let onDrag else { return }
     guard event.clickCount < 2 else {
-      onDrag?(.reset)
+      onDrag(.reset)
       return
     }
-    dragStart = event.locationInWindow
-    onDrag?(.began)
+    dragStart = NSEvent.mouseLocation
+    onDrag(.began)
     NSCursor.closedHand.set()
   }
 
   override func mouseDragged(with event: NSEvent) {
     guard let dragStart else { return }
-    let point = event.locationInWindow
+    // The pointer now, which is never older than the event being handled.
+    let point = NSEvent.mouseLocation
     onDrag?(.moved(CGVector(dx: point.x - dragStart.x, dy: dragStart.y - point.y)))
     NSCursor.closedHand.set()
   }
@@ -132,7 +138,8 @@ final class AnnotationBarGrip: NSView {
   init() {
     super.init(frame: CGRect(x: 0, y: 0, width: 16, height: AnnotationToolbarButton.side))
     glyph.imageScaling = .scaleNone
-    glyph.contentTintColor = .secondaryLabelColor
+    // The toolbar text's colour, like every glyph on the bar.
+    glyph.contentTintColor = .labelColor
     glyph.frame = bounds
     glyph.autoresizingMask = [.width, .height]
     glyph.setAccessibilityElement(false)
