@@ -63,6 +63,20 @@ body {
   user-select: none;
 }
 
+.panel-brand {
+  width: 26px;
+  height: 26px;
+  mask: url('@atd/ui/assets/brands/atd/symbol.png') center / contain no-repeat;
+}
+.panel-brand-button[data-dev] {
+  width: auto;
+  padding-inline: 6px;
+  margin-right: 0;
+}
+.panel-brand-button[data-dev] .panel-brand {
+  width: 54px;
+  mask-image: url('@atd/ui/assets/brands/atd/symbol-dev.png');
+}
 .panel-header h1 {
   flex: 1;
   min-width: 0;

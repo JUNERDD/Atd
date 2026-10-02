@@ -9,8 +9,13 @@ import AppKit
 /// The images are the App target's `<state>Template` image sets, exported at 1x and 2x from the
 /// Figma component set `1562:59933`; re-export them from Figma instead of editing them. The
 /// `Template` suffix makes macOS tint them for the menu bar appearance.
+/// Debug uses wider `<state>DevTemplate` exports that include the DEV label.
 final class StatusItemController: NSObject {
-  private let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+  #if DEBUG
+    private let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+  #else
+    private let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+  #endif
   private let toggle: () -> Void
   private let menu: () -> NSMenu
   private var shown: MenuBarState?
@@ -31,7 +36,12 @@ final class StatusItemController: NSObject {
 
   func update(_ status: MenuBarStatus) {
     self.status = status
-    if status.state != shown, let image = NSImage(named: "\(status.state.rawValue)Template") {
+    #if DEBUG
+      let imageName = "\(status.state.rawValue)DevTemplate"
+    #else
+      let imageName = "\(status.state.rawValue)Template"
+    #endif
+    if status.state != shown, let image = NSImage(named: imageName) {
       // The asset catalog renders these as template images, tinted for the menu bar.
       image.isTemplate = true
       item.button?.image = image
@@ -41,10 +51,13 @@ final class StatusItemController: NSObject {
     item.button?.setAccessibilityLabel(Self.tooltip(status))
   }
 
-  /// `AI · 2 running · 1 waiting for you`, or the service problem.
+  /// `Atd · 2 running · 1 waiting for you`, or the service problem.
   static func tooltip(_ status: MenuBarStatus) -> String {
     let strings = ShellStrings.shared
     var parts = [strings.text(.appName)]
+    #if DEBUG
+      parts[0] += " DEV"
+    #endif
     if status.state == .unavailable {
       parts.append(
         strings.text(status.developmentHint ? .statusDevelopmentHint : .statusUnavailable))

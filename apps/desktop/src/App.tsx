@@ -1,5 +1,5 @@
 import { useCallback, useLayoutEffect, useRef, useState } from 'react';
-import { Astroid, History, Settings } from 'lucide-react';
+import { History, Settings } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { TooltipProvider } from '@atd/ui/components/tooltip';
 import { ScrollArea } from '@atd/ui/components/scroll-area';
@@ -121,10 +121,14 @@ export function App() {
                 <IconButton
                   label={t('header.newChat')}
                   variant="glass-ghost"
-                  className="header-button -mx-1"
+                  className="header-button panel-brand-button -mx-1"
+                  data-dev={import.meta.env.DEV || undefined}
                   onClick={newTask}
                 >
-                  <Astroid />
+                  <span
+                    aria-hidden="true"
+                    className="panel-brand pointer-events-none shrink-0 bg-current"
+                  />
                 </IconButton>
                 <h1 title={title}>{title}</h1>
                 <nav className="header-controls" aria-label={t('header.controlsLabel')}>

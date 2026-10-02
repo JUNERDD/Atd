@@ -6,7 +6,7 @@ Agent 流程与 Providers / Shortcuts 设置已合并到同一设计页：[统�
 
 ## 设计与组件映射
 
-通过云端 Figma MCP 读取画面、主组件、变量、样式与截图。项目画面与适配组件保留在 [ai 项目文件](https://www.figma.com/design/PROJECT_FILE_KEY/ai)；共享 Radix / Rhea 控件与 Lucide 实例保留 [shadcn UI kit](https://www.figma.com/design/UI_KIT_FILE_KEY/shadcn-ui-kit-community-edition--Community-) 连接。本次没有修改共享库。
+通过云端 Figma MCP 读取画面、主组件、变量、样式与截图。项目画面与适配组件保留在 [Atd 项目文件](https://www.figma.com/design/PROJECT_FILE_KEY/Atd)；共享 Radix / Rhea 控件与 Lucide 实例保留 [shadcn UI kit](https://www.figma.com/design/UI_KIT_FILE_KEY/shadcn-ui-kit-community-edition--Community-) 连接。本次没有修改共享库。
 
 以下代码路径相对于 `apps/desktop/src/`。
 
@@ -520,3 +520,13 @@ Figma 侧未同步：本会话云端 Figma 工具不可用，本地 Figma MCP �
 - 代码：`features/quick-panel/use-saved-groups.tsx` 提供 Commands（已启用命令）与 Memory 分组，`use-mention-view.tsx` 把它们排在子代理之后；芯片新增 `command` / `memory` 两种（`composer-editor/draft.ts`、`chip-content.tsx`），契约 `RunReference` / `InputChip` 同步新增；服务端在 `references/saved.ts` 解析，记忆按内容哈希 id 定位，条目改过或本条消息关闭记忆时列为不可用。命令指令编辑器不提供这两类（指令令牌不含它们）。
 - Figma：[App / Composer quick panel](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=1447-51964) 的 `View=Mention root` 在 Subagents 后新增 Group / Commands 与 Group / Memory（Lucide / command、Lucide / brain，记忆类型作为尾部状态）；[App / Composer chip](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=1451-53451) 新增 `Kind=Command` / `Kind=Memory`（Default、Selected）；两处组件说明已更新。
 - 已知差异：Mention root 的 Options 区域固定高度并裁剪，新分组位于滚动区下方，整体预览中不可见；`View=Mention query` 未绘制命中命令或记忆的示例。
+
+## 2026-10-02 Atd 名称与品牌标识
+
+项目对外名称统一为 `Atd`，Figma 文件标题也已更名。应用显示名、菜单、窗口标题、应用包及安装包名称已同步；工作区包名和导入路径统一为 `@atd/*`。Bundle ID、数据目录、钥匙串和通信协议标识保留，以保持现有数据与连接兼容。
+
+- 标识：使用完整的抽象折带轮廓与圆形端部，不含产品名字母。原始透明 PNG 保留在 `packages/ui/src/assets/brands/atd/symbol.png`；Figma [原始标识组件](https://www.figma.com/design/PROJECT_FILE_KEY/Atd?node-id=1741-95290) 与 [前景色组件](https://www.figma.com/design/PROJECT_FILE_KEY/Atd?node-id=1741-95292) 共用该图像，没有重绘轮廓。
+- 面板：[Panel header](https://www.figma.com/design/PROJECT_FILE_KEY/Atd?node-id=71-112) 的新建任务入口替换为新标识。26px 图像占位保留原始透明留白，实际标识约 16px 宽，按钮保持 28px；返回箭头的覆盖实例继续使用 16px。代码通过 `currentColor` alpha mask 着色，按比例完整显示。设置导航继续不显示 Logo。
+- 菜单栏：[四种状态](https://www.figma.com/design/PROJECT_FILE_KEY/Atd?node-id=1562-59933) 共用新标识，保留运行圆点、待处理标记和不可用时的 40% 不透明度，导出 18px／36px 透明模板图片。状态栏专用实例放大到约 17.1px 的可见宽度，图框外只保留原图的透明留白，完整轮廓留在 18px 图框内。
+- 应用图标：[1024px 母版](https://www.figma.com/design/PROJECT_FILE_KEY/Atd?node-id=1741-95296) 使用 864px 浅色底板，四周留 80px 透明边距。正式 PNG 通过 Figma `exportAsync` 导出，未包含画布底色；macOS AppIcon 的 10 个尺寸从该母版等比导出。图片资源与生成提示词见 `packages/ui/src/assets/brands/atd/README.md`。
+- 开发环境：[开发版应用图标](https://www.figma.com/design/PROJECT_FILE_KEY/Atd?node-id=1757-95728) 在完整图形旁加入琥珀色 `DEV` 标签。标签右下圆角为 134px，与外框 190px 圆角同心，右侧和底部等距内缩 56px。Debug 构建使用 `AppIconDev`，Release 使用 `AppIcon`；面板按 `import.meta.env.DEV` 显示 54 × 26 的标识，按钮为 68 × 28，水平内边距 6px，与标题相距 8px；开发版菜单栏使用 44 × 18 的模板图片和自适应宽度，完整显示图形、状态标记与 `DEV`。

@@ -111,7 +111,7 @@ jobs:
         run: pnpm --filter @atd/macos build:release
       - name: Package the dmg
         run: |
-          app=apps/macos/DerivedData/Build/Products/Release/AI.app
+          app=apps/macos/DerivedData/Build/Products/Release/Atd.app
           built=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app/Contents/Info.plist")
           if [ "$built" != "$VERSION" ]; then
             echo "::error::The built app is version $built, not $VERSION."
@@ -121,12 +121,12 @@ jobs:
           # Moved, not copied: nothing reads the built app after this step, and a rename within
           # the runner's work volume skips copying the service pack's tens of thousands of files.
           stage=$(mktemp -d "$RUNNER_TEMP/dmg.XXXXXX")
-          mv "$app" "$stage/AI.app"
+          mv "$app" "$stage/Atd.app"
           ln -s /Applications "$stage/Applications"
           mkdir dist
           # LZFSE (ULFO) compresses faster and smaller than zlib (UDZO); every macOS the app
           # supports opens it.
-          hdiutil create -volname AI -srcfolder "$stage" -ov -format ULFO "dist/AI-$VERSION-arm64.dmg"
+          hdiutil create -volname Atd -srcfolder "$stage" -ov -format ULFO "dist/Atd-$VERSION-arm64.dmg"
           ls -lh dist
       - name: Create release
         env:

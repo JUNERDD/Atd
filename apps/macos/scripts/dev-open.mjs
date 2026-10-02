@@ -22,7 +22,7 @@ const rendererOrigin = new URL(
 );
 const WAIT_LIMIT_MS = 180_000;
 const packageRoot = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-const appPath = path.join(packageRoot, 'DerivedData/Build/Products/Debug/AI.app');
+const appPath = path.join(packageRoot, 'DerivedData/Build/Products/Debug/Atd.app');
 /** Mirrors the service's resolution: AI_AGENT_DATA_DIR wins over the `dev` script's flag. */
 const dataDir =
   process.env.AI_AGENT_DATA_DIR?.trim() ||
