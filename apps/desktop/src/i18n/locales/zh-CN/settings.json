@@ -203,7 +203,7 @@
     "restoring": "正在恢复…",
     "status": {
       "recordingHint": "请按下快捷键。按 Escape 取消，按 Tab 移到下一个控件。",
-      "openAtLoginApproval": "请在“系统设置 › 登录项”中允许 AI 以完成设置。"
+      "openAtLoginApproval": "请在“系统设置 › 登录项”中允许 Atd 以完成设置。"
     },
     "errors": {
       "register": "无法注册此快捷键，它可能已被 macOS 或其他应用占用。请换一个组合。",
@@ -345,7 +345,7 @@
     "sourceNpm": "npm",
     "sourceGit": "Git",
     "sourceAgents": "~/.agents/skills",
-    "sourceAtd": "atd",
+    "sourceAtd": "Atd",
     "sourceSystem": "系统",
     "addSubagent": "添加子代理",
     "createWithAi": "用 AI 创建",

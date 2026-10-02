@@ -203,7 +203,7 @@
     "restoring": "Restoring…",
     "status": {
       "recordingHint": "Press a shortcut. Escape cancels; Tab moves to the next control.",
-      "openAtLoginApproval": "Approve AI in System Settings › Login Items to finish."
+      "openAtLoginApproval": "Approve Atd in System Settings › Login Items to finish."
     },
     "errors": {
       "register": "This shortcut could not be registered. macOS or another app may be using it; choose another combination.",
@@ -345,7 +345,7 @@
     "sourceNpm": "npm",
     "sourceGit": "Git",
     "sourceAgents": "~/.agents/skills",
-    "sourceAtd": "atd",
+    "sourceAtd": "Atd",
     "sourceSystem": "System",
     "addSubagent": "Add subagent",
     "createWithAi": "Create with AI",

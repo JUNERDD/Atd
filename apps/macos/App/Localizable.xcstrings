@@ -8,13 +8,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "AI"
+            "value" : "Atd"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "AI"
+            "value" : "Atd"
           }
         }
       }
@@ -1718,13 +1718,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Quit AI"
+            "value" : "Quit Atd"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "退出 AI"
+            "value" : "退出 Atd"
           }
         }
       }
@@ -1862,13 +1862,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Quitting stops them. Queued tasks stay queued and start the next time AI opens."
+            "value" : "Quitting stops them. Queued tasks stay queued and start the next time Atd opens."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "退出会停止这些任务。排队中的任务会保留，下次打开 AI 时开始运行。"
+            "value" : "退出会停止这些任务。排队中的任务会保留，下次打开 Atd 时开始运行。"
           }
         }
       }
@@ -1916,13 +1916,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Quit AI?"
+            "value" : "Quit Atd?"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "要退出 AI 吗？"
+            "value" : "要退出 Atd 吗？"
           }
         }
       }
@@ -2006,13 +2006,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "AI"
+            "value" : "Atd"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "AI"
+            "value" : "Atd"
           }
         }
       }
@@ -2024,13 +2024,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "AI Settings"
+            "value" : "Atd Settings"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "AI 设置"
+            "value" : "Atd 设置"
           }
         }
       }

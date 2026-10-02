@@ -67,7 +67,8 @@ targets:
           rsync -a --delete "$node/" "$resources/node/"
     settings:
       base:
-        PRODUCT_NAME: AI
+        PRODUCT_NAME: Atd
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         GENERATE_INFOPLIST_FILE: false
         # The embed phase copies whole directory trees from outside the project, which the
         # script sandbox only allows for individually declared files.
@@ -75,12 +76,13 @@ targets:
       configs:
         Debug:
           PRODUCT_BUNDLE_IDENTIFIER: com.junerdd.ai.dev
+          ASSETCATALOG_COMPILER_APPICON_NAME: AppIconDev
         Release:
           PRODUCT_BUNDLE_IDENTIFIER: com.junerdd.ai
     info:
       path: App/Info.plist
       properties:
-        CFBundleDisplayName: AI
+        CFBundleDisplayName: Atd
         CFBundleDevelopmentRegion: en
         # The String Catalog's languages; the shell picks one at runtime (ShellStrings).
         CFBundleLocalizations: [en, zh-Hans]
@@ -93,9 +95,9 @@ targets:
         # setting changes the activation policy at runtime.
         LSUIElement: true
         # Shown the first time an attached file sits in one of these folders.
-        NSDesktopFolderUsageDescription: AI reads a file in your Desktop folder only when you attach it.
-        NSDocumentsFolderUsageDescription: AI reads a file in your Documents folder only when you attach it.
-        NSDownloadsFolderUsageDescription: AI reads a file in your Downloads folder only when you attach it.
+        NSDesktopFolderUsageDescription: Atd reads a file in your Desktop folder only when you attach it.
+        NSDocumentsFolderUsageDescription: Atd reads a file in your Documents folder only when you attach it.
+        NSDownloadsFolderUsageDescription: Atd reads a file in your Downloads folder only when you attach it.
 schemes:
   AI:
     build:

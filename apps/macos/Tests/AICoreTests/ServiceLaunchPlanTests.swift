@@ -6,23 +6,23 @@ import Testing
 @Suite("Service launch plan and artifact names")
 struct ServiceLaunchPlanTests {
   private static let plan = ServiceLaunchPlan(
-    resources: URL(fileURLWithPath: "/Applications/AI.app/Contents/Resources", isDirectory: true),
+    resources: URL(fileURLWithPath: "/Applications/Atd.app/Contents/Resources", isDirectory: true),
     dataDirectory: URL(
       fileURLWithPath: "/Users/u/Library/Application Support/AgentService", isDirectory: true))
 
   @Test("Runs the bundled Node and service by absolute path with the login-shell flag")
   func arguments() {
-    #expect(Self.plan.node.path == "/Applications/AI.app/Contents/Resources/node/bin/node")
+    #expect(Self.plan.node.path == "/Applications/Atd.app/Contents/Resources/node/bin/node")
     #expect(
       Self.plan.arguments == [
-        "/Applications/AI.app/Contents/Resources/agent-service/dist/cli.js", "serve", "--dataDir",
+        "/Applications/Atd.app/Contents/Resources/agent-service/dist/cli.js", "serve", "--dataDir",
         "/Users/u/Library/Application Support/AgentService", "--login-shell-path",
       ])
   }
 
   @Test("Appends the bundled Node's directory to PATH once and drops the data-dir override")
   func environment() {
-    let bin = "/Applications/AI.app/Contents/Resources/node/bin"
+    let bin = "/Applications/Atd.app/Contents/Resources/node/bin"
     let environment = Self.plan.environment(inheriting: [
       "PATH": "/usr/bin:\(bin):/bin", "AI_AGENT_DATA_DIR": "/elsewhere", "HOME": "/Users/u",
     ])
