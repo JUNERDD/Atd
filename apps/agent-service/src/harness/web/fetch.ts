@@ -1,17 +1,22 @@
-import { failure, oneLine } from './bounds.js';
+import { failure, urlTitle } from './bounds.js';
+import { isCloudflareChallenge, readableHtml, type ReadablePage } from './html.js';
 import { loadWebPackage, WEB_PACKAGE_VERSION, type WebPackage } from './package.js';
+import { readablePdf } from './pdf.js';
 
-/** Per-URL request budget (headers and body), the package's default fetch timeout. */
+/** Per-URL request budget (headers, body and extraction), the package's default fetch timeout. */
 const FETCH_TIMEOUT_MS = 30_000;
 /** Largest body read, the package's default response limit. */
 const MAX_RESPONSE_BYTES = 5 * 1024 * 1024;
+/** Largest PDF read, pdf-extract.ts `DEFAULT_PDF_MAX_SIZE_MB`. */
+const MAX_PDF_BYTES = 20 * 1024 * 1024;
 const HEADERS = {
   'User-Agent': `Mozilla/5.0 (compatible; pi-web-access/${WEB_PACKAGE_VERSION})`,
-  Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,text/plain;q=0.8,*/*;q=0.5',
+  Accept:
+    'text/html,application/xhtml+xml,application/xml;q=0.9,application/pdf;q=0.9,text/plain;q=0.8,*/*;q=0.5',
   'Accept-Language': 'en-US,en;q=0.9',
 };
 
-/** One fetched URL: its readable text (Markdown for HTML) or why it failed. */
+/** One fetched URL: its readable text (Markdown for HTML, extracted text for PDFs) or why it failed. */
 export interface FetchedPage {
   url: string;
   title: string;
@@ -31,62 +36,89 @@ function isTextual(mime: string): boolean {
   );
 }
 
-/** Reads at most `MAX_RESPONSE_BYTES`; a larger body fails instead of being cut mid-document. */
-async function readBody(response: Response): Promise<string> {
+/**
+ * A PDF by its type, or by a `.pdf` path served with a generic binary type (pdf-extract.ts
+ * `isPDF` takes the path alone, which would also send an HTML error page to the PDF reader).
+ */
+function isPdf(url: string, mime: string): boolean {
+  if (mime === 'application/pdf') return true;
+  const generic =
+    mime === '' || mime === 'application/octet-stream' || mime === 'binary/octet-stream';
+  return generic && new URL(url).pathname.toLowerCase().endsWith('.pdf');
+}
+
+/** Reads at most `limit` bytes; a larger body fails instead of being cut mid-document. */
+async function readBody(response: Response, limit: number): Promise<Uint8Array> {
+  const tooLarge = () => new Error(`Response too large (over ${limit / 1024 / 1024} MB).`);
   const declared = Number.parseInt(response.headers.get('content-length') ?? '', 10);
-  if (Number.isFinite(declared) && declared > MAX_RESPONSE_BYTES)
-    throw new Error(`Response too large (${Math.round(declared / 1024 / 1024)} MB).`);
-  if (!response.body) return '';
+  if (Number.isFinite(declared) && declared > limit) {
+    await response.body?.cancel();
+    throw tooLarge();
+  }
+  if (!response.body) return new Uint8Array();
   const reader = response.body.getReader();
-  const decoder = new TextDecoder();
+  const chunks: Uint8Array[] = [];
   let bytes = 0;
-  let text = '';
   for (;;) {
     const { done, value } = await reader.read();
     if (done) break;
     bytes += value.byteLength;
-    if (bytes > MAX_RESPONSE_BYTES) {
+    if (bytes > limit) {
       await reader.cancel();
-      throw new Error('Response too large (over 5 MB).');
+      throw tooLarge();
     }
-    text += decoder.decode(value, { stream: true });
+    chunks.push(value);
   }
-  return text + decoder.decode();
+  const body = new Uint8Array(bytes);
+  let offset = 0;
+  for (const chunk of chunks) {
+    body.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return body;
 }
 
-function urlTitle(url: string): string {
-  const { hostname, pathname } = new URL(url);
-  return pathname.split('/').filter(Boolean).pop() ?? hostname;
+/** Decodes with the declared charset, falling back to UTF-8 for an unknown label. */
+function decode(body: Uint8Array, contentType: string): string {
+  const charset = /charset\s*=\s*["']?([^;"'\s]+)/i.exec(contentType)?.[1];
+  try {
+    return new TextDecoder(charset ?? 'utf-8').decode(body);
+  } catch {
+    return new TextDecoder('utf-8').decode(body);
+  }
+}
+
+/** A Markdown text's first level-1 or level-2 heading (extract.ts `extractHeadingTitle`). */
+function headingTitle(text: string): string {
+  return /^#{1,2}\s+(.+)/m.exec(text)?.[1]?.replace(/\*+/g, '').trim() ?? '';
 }
 
 /**
- * The package's readable-HTML path (extract.ts `extractViaHttp`): linkedom parses, Readability
- * picks the article, Turndown converts it to Markdown. Pages Readability cannot parse fall back
- * to the body text instead of the package's keyed or browser fallbacks.
+ * The page's readable text, following the package's HTTP path (extract.ts `extractViaHttp`)
+ * without its keyed or browser fallbacks: PDFs through unpdf, Cloudflare challenge pages
+ * refused, HTML through html.ts, other text as it is.
  */
-function readableHtml(
+async function readResponse(
   web: WebPackage,
-  html: string,
   url: string,
-): { title: string; content: string } {
-  const { document } = web.parseHTML(html);
-  const documentTitle = oneLine(document.title ?? '');
-  const bodyText = document.body?.textContent ?? '';
-  const article = new web.Readability(document).parse();
-  if (article && typeof article.content === 'string') {
-    const markdown = new web.Turndown({ headingStyle: 'atx', codeBlockStyle: 'fenced' })
-      .turndown(article.content)
-      .trim();
-    if (markdown)
-      return {
-        title: oneLine(article.title ?? '') || documentTitle || urlTitle(url),
-        content: markdown,
-      };
+  response: Response,
+  signal: AbortSignal,
+): Promise<ReadablePage> {
+  const contentType = response.headers.get('content-type') ?? '';
+  const mime = contentType.split(';', 1)[0]?.trim().toLowerCase() ?? '';
+  const responseUrl = response.url || url;
+  if (isPdf(responseUrl, mime))
+    return readablePdf(web, await readBody(response, MAX_PDF_BYTES), responseUrl, signal);
+  const isHtml = mime === 'text/html' || mime === 'application/xhtml+xml';
+  if (!isHtml && !isTextual(mime)) {
+    await response.body?.cancel();
+    throw new Error(`Unsupported content type: ${mime}`);
   }
-  return {
-    title: documentTitle || urlTitle(url),
-    content: bodyText.replace(/\n\s*\n+/g, '\n\n').trim(),
-  };
+  const text = decode(await readBody(response, MAX_RESPONSE_BYTES), contentType);
+  if (isCloudflareChallenge(response, text, isHtml))
+    throw new Error(`HTTP ${response.status}: Blocked by a Cloudflare challenge page.`);
+  if (isHtml) return readableHtml(web, text, responseUrl, response.headers.get('link'), signal);
+  return { title: headingTitle(text) || urlTitle(url), content: text };
 }
 
 async function fetchPage(
@@ -112,15 +144,9 @@ async function fetchPage(
         error: `HTTP ${response.status} ${response.statusText}`.trim(),
       };
     }
-    const mime =
-      (response.headers.get('content-type') ?? '').split(';', 1)[0]?.trim().toLowerCase() ?? '';
-    const isHtml = mime === 'text/html' || mime === 'application/xhtml+xml';
-    if (!isHtml && !isTextual(mime)) {
-      await response.body?.cancel();
-      return { url, title: '', content: '', error: `Unsupported content type: ${mime}` };
-    }
-    const body = await readBody(response);
-    const page = isHtml ? readableHtml(web, body, url) : { title: urlTitle(url), content: body };
+    const page = await readResponse(web, url, response, requestSignal);
+    // Parsing and PDF reading do not observe the signal: a budget spent meanwhile still fails.
+    requestSignal.throwIfAborted();
     // As the package does for fetched text: inline base64 data URIs are replaced by markers.
     const content = web.sanitizeInlineDataUris(page.content, url).text;
     if (!content)
@@ -143,7 +169,7 @@ export async function fetchPages(
   signal: AbortSignal | undefined,
 ): Promise<FetchedPage[]> {
   const web = await loadWebPackage();
-  const pages: FetchedPage[] = new Array<FetchedPage>(urls.length);
+  const pages: FetchedPage[] = Array.from({ length: urls.length });
   let next = 0;
   const worker = async () => {
     while (next < urls.length) {
