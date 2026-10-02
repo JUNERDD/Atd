@@ -13,7 +13,7 @@ import { LanguageSelector } from './language-selector';
 import { PermissionSettings } from './permission-settings';
 import { ShellAllowlistSettings } from './shell-allowlist-settings';
 import { ProviderSettingsForm } from './provider-settings';
-import { ShortcutSettings } from './shortcut-settings';
+import { GeneralSettings } from './general-settings';
 import { ServiceSettings } from '../service/service-settings';
 import { useSettingsSnapshot } from './use-settings';
 import {
@@ -223,8 +223,8 @@ export function SettingsWindow() {
                               )}
                               {page('memory', <MemorySettings activeEntry={memoryTarget} />)}
                               {page(
-                                'shortcuts',
-                                <ShortcutSettings
+                                'general',
+                                <GeneralSettings
                                   snapshot={snapshot}
                                   onRecordingChange={setRecording}
                                 />,

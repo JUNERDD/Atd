@@ -34,7 +34,7 @@ const IN_APP_SHORTCUTS = [
   },
 ] as const;
 
-export function ShortcutSettings({
+export function GeneralSettings({
   snapshot,
   onRecordingChange,
 }: {
@@ -57,7 +57,7 @@ export function ShortcutSettings({
 
   return (
     <>
-      <SettingsHeading title={t('shortcuts.title')} description={t('shortcuts.description')} />
+      <SettingsHeading title={t('general.title')} description={t('general.description')} />
       <div className="settings-shortcut-groups">
         <section className="settings-shortcut-group" aria-labelledby="settings-global-shortcuts">
           <h3 id="settings-global-shortcuts" className="settings-section-title">

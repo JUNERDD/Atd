@@ -13,10 +13,10 @@
     "navigationLabel": "Settings navigation",
     "permissions": "Permissions",
     "extensions": "Extensions",
-    "providers": "Providers",
+    "providers": "Models",
     "commands": "Commands",
     "memory": "Memory",
-    "shortcuts": "Shortcuts"
+    "general": "General"
   },
   "drawer": {
     "title": "Settings navigation",
@@ -41,10 +41,10 @@
     "keywords": {
       "sectionPermissions": "approval security safety allow ask confirm access",
       "sectionExtensions": "plugin plugins skill skills subagent agents mcp server tools marketplace add-on",
-      "sectionProviders": "model models api key connection account login sign in service openai anthropic ollama",
+      "sectionProviders": "model models provider providers api key connection account login sign in service openai anthropic ollama",
       "sectionCommands": "command prompt snippet template macro instruction saved",
       "sectionMemory": "preferences remember learn context profile",
-      "sectionShortcuts": "keyboard hotkey keybinding key binding record window preferences dock login",
+      "sectionGeneral": "general keyboard shortcut hotkey keybinding key binding record window preferences dock login startup",
       "tierManual": "manual ask confirm every action prompt each time",
       "tierAuto": "auto automatic approve approval review model safe",
       "tierAlways": "always allow unattended never ask full access yolo",
@@ -71,7 +71,7 @@
   },
   "providers": {
     "overview": {
-      "title": "Providers",
+      "title": "Models",
       "description": "Choose a default provider and set a default model for each connection.",
       "searchLabel": "Search providers",
       "searchPlaceholder": "Search providers…",
@@ -152,9 +152,11 @@
       "detailDescription": "Commands that start with this prefix run right away."
     }
   },
+  "general": {
+    "title": "General",
+    "description": "Shortcuts, startup, and window behavior. Click a shortcut, then press the new keys; Escape cancels."
+  },
   "shortcuts": {
-    "title": "Keyboard shortcuts",
-    "description": "Click a shortcut, then press the new keys. Escape cancels.",
     "groups": {
       "global": "Global",
       "inApp": "In app",

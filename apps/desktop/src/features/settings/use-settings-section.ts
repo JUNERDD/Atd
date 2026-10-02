@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { isCommandId } from '../commands/open-command-settings';
-import { findSettingsSection, type SettingsSectionId } from './settings-sections';
+import { findSettingsSection, settingsSections, type SettingsSectionId } from './settings-sections';
 
 /** Where the window remembers the section shown last, for the next time it opens. */
 const LAST_SECTION_KEY = 'settings.lastSection';
@@ -45,7 +45,7 @@ export function useSettingsSection(
 ) {
   // Only the shown section: each section keeps its own page history (`useSettingsPageHistory`).
   const [section, setSection] = useState<SettingsSectionId>(() =>
-    readCommandIdFromHash() ? 'commands' : (readLastSection() ?? 'permissions'),
+    readCommandIdFromHash() ? 'commands' : (readLastSection() ?? settingsSections[0].id),
   );
   const [visited, setVisited] = useState<readonly SettingsSectionId[]>([section]);
   const [commandTarget, setCommandTarget] = useState<{ id: string; nonce: number } | null>(() => {
