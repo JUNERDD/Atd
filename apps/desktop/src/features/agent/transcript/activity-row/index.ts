@@ -1,6 +1,7 @@
 export { Root } from './_components/root';
 export { Trigger } from './_components/trigger';
 export { Content } from './_components/content';
+export { Region } from './_components/region';
 export { Icon } from './_components/icon';
 export { Title } from './_components/title';
 export { Meta } from './_components/meta';
@@ -16,6 +17,7 @@ export type {
 export type { ActivityRowRootProps } from './_components/root';
 export type { ActivityRowTriggerProps } from './_components/trigger';
 export type { ActivityRowContentProps } from './_components/content';
+export type { ActivityRowRegionProps } from './_components/region';
 export type { ActivityRowIconProps } from './_components/icon';
 export type { ActivityRowTitleProps } from './_components/title';
 export type { ActivityRowMetaProps } from './_components/meta';
@@ -27,11 +29,15 @@ import { Body } from './_components/body';
 import { Content } from './_components/content';
 import { Icon } from './_components/icon';
 import { Meta } from './_components/meta';
+import { Region } from './_components/region';
 import { Root } from './_components/root';
 import { Step } from './_components/step';
 import { Steps } from './_components/steps';
 import { Title } from './_components/title';
 import { Trigger } from './_components/trigger';
 
-/** Compound entry point: `ActivityRow.Root`, `Trigger`, `Content`, `Icon`, `Title`, `Meta`, `Body`, `Steps`, `Step`. */
-export const ActivityRow = { Root, Trigger, Content, Icon, Title, Meta, Body, Steps, Step };
+/**
+ * Compound entry point: `ActivityRow.Root`, `Trigger`, `Content`, `Region`, `Icon`, `Title`, `Meta`,
+ * `Body`, `Steps`, `Step`.
+ */
+export const ActivityRow = { Root, Trigger, Content, Region, Icon, Title, Meta, Body, Steps, Step };
