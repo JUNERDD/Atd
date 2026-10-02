@@ -1,0 +1,27 @@
+diff --git a/dist/utils/image-resize.js b/dist/utils/image-resize.js
+index 686c9f32ea6ae5858ab560014bdfe102edd78804..fce5b14a56b6964f8e984c9cba6ea8bf56e85975 100644
+--- a/dist/utils/image-resize.js
++++ b/dist/utils/image-resize.js
+@@ -6,7 +6,7 @@ function toTransferableBytes(input) {
+     return new Uint8Array(input);
+ }
+ function isResizeImageWorkerResponse(value) {
+-    return value !== null && typeof value === "object";
++    return value !== null && typeof value === "object" && ("result" in value || "error" in value);
+ }
+ function createResizeWorker(workerSpecifier) {
+     return new Worker(workerSpecifier);
+@@ -29,9 +29,11 @@ async function resizeImageInWorker(workerSpecifier, inputBytes, mimeType, option
+                 settled = true;
+                 reject(error);
+             };
+-            worker.once("message", (message) => {
++            // Host patch (not upstream): under `node --watch`, Node posts `{ "watch:require": [...] }`
++            // from every worker before the worker's own reply, so the first message is not
++            // necessarily the response. Wait for the message that carries `result` or `error`.
++            worker.on("message", (message) => {
+                 if (!isResizeImageWorkerResponse(message)) {
+-                    fail(new Error("Invalid image resize worker response"));
+                     return;
+                 }
+                 if (message.error) {
