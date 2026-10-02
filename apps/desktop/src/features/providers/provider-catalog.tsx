@@ -77,9 +77,9 @@ export function ProviderCatalog({
         </Select>
       </div>
       <ScrollArea
-        className="m-[-3px_-15px_-3px_-3px] min-h-0 min-w-0 flex-1"
+        className="settings-page-scroll"
         aria-label={t('catalog.available')}
-        gutter="stable"
+        gutter="none"
         scrollShadow
       >
         <div className="settings-editor-inner">

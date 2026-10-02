@@ -125,9 +125,9 @@ export function MemorySettings({
           </SettingsHeading>
           {/* The panel owns the scrollbar; the heading and search stay put above it. */}
           <ScrollArea
-            className="memory-scroll flex-1"
+            className="memory-scroll settings-page-scroll"
             viewportClassName="overlay-footer-fade [&>div]:flex! [&>div]:flex-col [&>div]:min-h-full"
-            gutter="stable"
+            gutter="none"
             scrollShadow
           >
             <div className="memory-list">

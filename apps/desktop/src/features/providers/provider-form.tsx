@@ -73,9 +73,9 @@ export function ProviderForm({
         backLabel={t('form.back')}
       />
       <ScrollArea
-        className="m-[-3px_-15px_-3px_-3px] min-h-0 min-w-0 flex-1"
+        className="settings-page-scroll"
         viewportClassName="overlay-footer-fade"
-        gutter="stable"
+        gutter="none"
         scrollShadow
       >
         <div className="settings-editor-inner settings-fields">

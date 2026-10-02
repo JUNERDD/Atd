@@ -172,9 +172,9 @@ export function CommandEditor({
         backLabel={t('editor.back')}
       />
       <ScrollArea
-        className="m-[-3px_-15px_-3px_-3px] min-h-0 min-w-0 flex-1"
+        className="settings-page-scroll"
         viewportClassName="overlay-footer-fade"
-        gutter="stable"
+        gutter="none"
         scrollShadow
       >
         <fieldset disabled={Boolean(plugin)} className="editor-fields min-w-0 p-0.75">
