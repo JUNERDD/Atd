@@ -92,10 +92,6 @@ public final class ShellController {
     speech.onChange = { [weak self] speaking in
       self?.broadcast(.speechState(.init(speaking: speaking)))
     }
-    panelHost.onFiles = { [weak self] urls, _ in
-      guard let self else { return }
-      Task { await self.attachments.importFiles(urls) }
-    }
     panel.onVisibilityChange = { [weak panelHost] visible in
       panelHost?.setState(.windowVisibility(.init(visible: visible)))
     }

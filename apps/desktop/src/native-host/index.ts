@@ -11,6 +11,7 @@ import type { DesktopBridge } from '../client/contract';
 import { createServiceBridge } from '../client/service/bridge-client';
 import { handleExtensionRequest } from '../client/service/extension-requests';
 import type { ServiceEvent } from '../client/service/ipc';
+import { publishFileDrag } from '../lib/file-drag';
 import { publishImportedFiles } from '../lib/imported-files';
 import type { NativeBridge } from '../native-bridge/client';
 import { setReducedTransparency, setWindowActive, setWindowVisible } from '../window-state';
@@ -148,10 +149,12 @@ export async function installNativeHost(
   native.on('window.active', ({ active }) => setWindowActive(active));
   native.on('window.visibility', ({ visible }) => setWindowVisible(visible));
   native.on('accessibility.reduceTransparency', ({ reduce }) => setReducedTransparency(reduce));
-  if (surface === 'panel')
+  if (surface === 'panel') {
     native.on('resources.imported', ({ resources, failures }) =>
       publishImportedFiles({ files: resources, failures }),
     );
+    native.on('files.drag', publishFileDrag);
+  }
   publishDragRegions(native, document.getElementById('root') ?? document.body);
   connection.connect();
   // The service may still be starting: its data follows the stream, and the shell's preferences
