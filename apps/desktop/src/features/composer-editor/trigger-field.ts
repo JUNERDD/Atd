@@ -64,8 +64,15 @@ export const triggerField = StateField.define<TriggerSlot>({
     if (transaction.isUserEvent('input.type.compose')) return { ...slot, dismissed, stale: true };
     const refresh = transaction.effects.some((effect) => effect.is(refreshTrigger));
     // Other transactions during the composition (effects, reconfiguration) keep it frozen too; the
-    // editor's composition end, a real edit or a pointer selection reads the trigger again.
-    if (slot.stale && !refresh && !transaction.docChanged && !transaction.isUserEvent('select'))
+    // editor's composition end, a real edit or a pointer selection reads the trigger again. A plain
+    // `select` is the IME moving the caret inside its marked text (WebKit reports it apart from the
+    // text), and reading then would search the uncommitted pinyin.
+    if (
+      slot.stale &&
+      !refresh &&
+      !transaction.docChanged &&
+      !transaction.isUserEvent('select.pointer')
+    )
       return { ...slot, dismissed };
     const refreshing = slot.stale || transaction.reconfigured || refresh;
     if (!transaction.docChanged && !transaction.selection && !dismissing && !refreshing)
