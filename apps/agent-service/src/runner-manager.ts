@@ -58,7 +58,6 @@ export class RunnerManager {
       draining: () => this.draining,
       runner: (taskId) => this.runners.get(taskId),
       executing: (runId) => this.executions.has(runId),
-      released: () => this.dispatch(),
     });
   }
 
@@ -260,12 +259,13 @@ export class RunnerManager {
   dispatch(): void {
     if (this.draining) return;
     // A task's runs share one Pi session: only its oldest queued run starts, once no started run
-    // is active (queued counts for acceptance, not dispatch) and no manual compaction or release
-    // holds the session; a release dispatches again once it settles. Tasks never wait on others.
+    // is active (queued counts for acceptance, not dispatch) and no manual compaction holds the
+    // session. A release still shutting the session down does not hold the run back: it freezes
+    // and binds meanwhile, and reopens the session only once the release settles (task-runner.ts
+    // `ensureSession`). Tasks never wait on others.
     for (const task of this.deps.ctx.ledger.data.tasks) {
       if (task.runs.some((run) => run.status !== 'queued' && isActiveStatus(run.status))) continue;
-      const runner = this.runners.get(task.id);
-      if (runner?.isCompacting() || runner?.isReleasing()) continue;
+      if (this.runners.get(task.id)?.isCompacting()) continue;
       const next = task.runs.find((run) => run.status === 'queued');
       if (next && !this.executions.has(next.id)) this.start(task.id, next);
     }
