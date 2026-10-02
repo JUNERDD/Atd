@@ -215,6 +215,25 @@ body {
   flex-direction: column;
   padding: 20px 16px 16px;
 }
+.history-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.history-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+/* The section names the day range, so rows below it only need the time or date within it. The
+   title starts at the row text's 12px inset. */
+.history-section-title {
+  padding: 0 12px;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+}
 .task-list {
   display: flex;
   flex-direction: column;
@@ -264,6 +283,9 @@ body {
 .task-row-meta > * + *::before {
   margin-right: 4px;
   content: '·' / '';
+}
+.task-row-status[data-tone='error'] {
+  color: var(--destructive);
 }
 
 .saved-prompt {

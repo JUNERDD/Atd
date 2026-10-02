@@ -187,12 +187,20 @@
     "moreActionsFor": "{{title}} 的更多操作",
     "rename": "重命名",
     "copyId": "复制会话 ID",
-    "empty": "还没有任务。",
-    "noMatches": "没有匹配的任务。",
-    "deleteTitle": "删除此任务？",
+    "empty": "还没有任务",
+    "noMatches": "没有与“{{query}}”匹配的结果",
+    "deleteTitle": "删除“{{title}}”？",
     "deleteDescription": "这会移除其对话、输入副本和应用任务文件夹中的文件。保存在其他位置的文件和你的记忆会保留。",
     "cancel": "取消",
-    "deleteAction": "删除任务"
+    "deleteAction": "删除任务",
+    "emptyDescription": "通过命令或消息开始的任务会显示在这里。",
+    "noMatchesDescription": "请检查拼写，或换个关键词搜索。",
+    "section": {
+      "today": "今天",
+      "yesterday": "昨天",
+      "previous7Days": "过去 7 天",
+      "previous30Days": "过去 30 天"
+    }
   },
   "transcript": {
     "footer": {
