@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { Type } from 'typebox';
-import { SkillHarnessRequestSchema, SubagentPermissionsSchema, parse } from '@ai/agent-contracts';
-import { isItemName, parseQualifiedName } from '@ai/plugin-kit';
+import { SkillHarnessRequestSchema, SubagentPermissionsSchema, parse } from '@atd/agent-contracts';
+import { isItemName, parseQualifiedName } from '@atd/plugin-kit';
 import type { ServiceConfig } from '../config.js';
 import { ConflictError } from '../errors.js';
 import { currentPluginComponents } from '../plugins/components.js';

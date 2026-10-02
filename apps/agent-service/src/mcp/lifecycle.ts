@@ -3,7 +3,7 @@ import type {
   McpServerConfig,
   McpServerStatus,
   McpSnapshot,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import type { Logger } from '../logging.js';
 import { announceMcpChanged } from './changes.js';
 import type { McpStateSink } from './errors.js';
@@ -40,7 +40,7 @@ export class McpConnectionStates implements McpStateSink {
 
   reset(records: McpServerConfig[]): void {
     const known = new Set(records.map((record) => record.serverId));
-    for (const id of [...this.states.keys()]) {
+    for (const id of this.states.keys()) {
       if (!known.has(id)) this.states.delete(id);
     }
     for (const record of records) {

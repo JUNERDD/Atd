@@ -1,72 +1,20 @@
+import { CircleAlert, Globe, Link } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import type { WebFetchDetails, WebFetchPage, WebSearchDetails } from '@ai/agent-contracts';
-import { DetailBox } from './detail-box';
-import { ExternalLink } from './external-link';
+import type { WebFetchDetails, WebFetchPage, WebSearchDetails } from '@atd/agent-contracts';
+import { ToolCard } from './tool-card';
+import { SourceItem } from './web-source';
+import './tool-list.css';
 
-/** Host of a result URL for the compact source line; the raw value when it does not parse. */
-function hostOf(url: string): string {
-  try {
-    return new URL(url).host || url;
-  } catch {
-    return url;
-  }
-}
-
-function TruncatedNote({ truncated }: { truncated: boolean }) {
+/** The closing note when the projection dropped results or cut text. */
+function TruncatedFooter({ truncated }: { truncated: boolean }) {
   const { t } = useTranslation('tasks');
-  return truncated ? <p className="m-0 text-muted-foreground">{t('web.truncated')}</p> : null;
+  return truncated ? <ToolCard.Footer>{t('web.truncated')}</ToolCard.Footer> : null;
 }
 
 /**
- * One source row shared by search results and fetched pages: the title opens the URL in the
- * system browser, the host names the source, and the body text clamps with the full value on
- * hover. Every line truncates so a long URL never widens the panel.
- */
-function SourceRow({
-  url,
-  title,
-  meta,
-  text,
-  error,
-}: {
-  url: string;
-  title: string;
-  meta?: string;
-  text: string;
-  error?: string;
-}) {
-  const { t } = useTranslation('tasks');
-  const host = hostOf(url);
-  return (
-    <li className="flex min-w-0 flex-col">
-      <ExternalLink
-        href={url}
-        title={url}
-        className="min-w-0 truncate font-medium text-foreground underline-offset-4 hover:underline"
-      >
-        {title || t('web.openLink')}
-      </ExternalLink>
-      <p className="m-0 min-w-0 truncate text-muted-foreground" title={url}>
-        {meta ? `${host} · ${meta}` : host}
-      </p>
-      {error ? (
-        <p className="m-0 line-clamp-3 min-w-0 wrap-anywhere text-destructive" title={error}>
-          {t('web.fetchFailed')} <span className="text-muted-foreground">{error}</span>
-        </p>
-      ) : (
-        text && (
-          <p className="m-0 line-clamp-3 min-w-0 wrap-anywhere text-muted-foreground" title={text}>
-            {text}
-          </p>
-        )
-      )}
-    </li>
-  );
-}
-
-/**
- * `web_search` results: the tally and provider, the queries when the call ran several, then one
- * source row per result.
+ * `web_search` results in one card: the header names the query (or how many ran) with the
+ * result tally and provider, several queries list as chips, and each result reads as a source
+ * with its snippet clamped to two lines.
  */
 export function WebSearchBody({
   details,
@@ -78,40 +26,54 @@ export function WebSearchBody({
   const { t } = useTranslation('tasks');
   const count = details.results.length;
   const tally = count === 1 ? t('web.resultsOne') : t('web.results', { count });
+  const queries = details.queries;
+  const label =
+    queries.length === 1
+      ? queries[0]
+      : queries.length > 1
+        ? t('toolCount.query', { count: queries.length })
+        : tally;
+  const facts = queries.length > 0 ? [tally, details.provider] : [details.provider];
+  const meta = facts.filter(Boolean).join(' · ');
   return (
-    <DetailBox variant="output" copyText={copyText}>
-      <p className="m-0 min-w-0 truncate text-muted-foreground">
-        {details.provider ? `${tally} · ${details.provider}` : tally}
-      </p>
-      {details.queries.length > 1 && (
-        <ul className="m-0 flex list-none flex-col p-0 text-muted-foreground">
-          {details.queries.map((query, index) => (
-            <li key={`${index}:${query}`} className="min-w-0 truncate" title={query}>
-              {query}
-            </li>
-          ))}
-        </ul>
-      )}
-      {count === 0 ? (
-        <p className="m-0 text-muted-foreground">{t('web.noResults')}</p>
-      ) : (
-        <ul className="m-0 flex list-none flex-col gap-2 p-0">
-          {details.results.map((result, index) => (
-            <SourceRow
-              key={`${index}:${result.url}`}
-              url={result.url}
-              title={result.title}
-              text={result.snippet}
-            />
-          ))}
-        </ul>
-      )}
-      <TruncatedNote truncated={details.truncated} />
-    </DetailBox>
+    <ToolCard.Root>
+      <ToolCard.Header icon={<Globe />} label={label} meta={meta} copyText={copyText} />
+      <ToolCard.Body size="lg">
+        {queries.length > 1 && (
+          <ul className="web-queries">
+            {queries.map((query, index) => (
+              <li key={`${index}:${query}`} className="web-query font-mono" title={query}>
+                {query}
+              </li>
+            ))}
+          </ul>
+        )}
+        {count === 0 ? (
+          <p className="tool-list-empty">{t('web.noResults')}</p>
+        ) : (
+          <ul className="web-sources">
+            {details.results.map((result, index) => (
+              <SourceItem key={`${index}:${result.url}`} url={result.url} title={result.title}>
+                {result.snippet && (
+                  <p className="web-source-snippet" title={result.snippet}>
+                    {result.snippet}
+                  </p>
+                )}
+              </SourceItem>
+            ))}
+          </ul>
+        )}
+      </ToolCard.Body>
+      <TruncatedFooter truncated={details.truncated} />
+    </ToolCard.Root>
   );
 }
 
-function PageRow({ page }: { page: WebFetchPage }) {
+/**
+ * One fetched page: its length beside the host, then the excerpt under a quote rule, or why the
+ * page could not be fetched (an icon and words, not color alone).
+ */
+function PageItem({ page }: { page: WebFetchPage }) {
   const { t, i18n } = useTranslation('tasks');
   const length = page.error
     ? undefined
@@ -119,17 +81,29 @@ function PageRow({ page }: { page: WebFetchPage }) {
         length: page.length.toLocaleString(i18n.resolvedLanguage ?? i18n.language),
       });
   return (
-    <SourceRow
-      url={page.url}
-      title={page.title}
-      meta={length}
-      text={page.excerpt}
-      error={page.error}
-    />
+    <SourceItem url={page.url} title={page.title} meta={length}>
+      {page.error ? (
+        <>
+          <p className="web-source-error">
+            <CircleAlert aria-hidden />
+            {t('web.fetchFailed')}
+          </p>
+          <p className="web-source-snippet" title={page.error}>
+            {page.error}
+          </p>
+        </>
+      ) : (
+        page.excerpt && (
+          <blockquote className="web-source-excerpt" title={page.excerpt}>
+            {page.excerpt}
+          </blockquote>
+        )
+      )}
+    </SourceItem>
   );
 }
 
-/** `fetch_content` pages: one source row per URL, with its length, excerpt, or error. */
+/** `fetch_content` pages in one card: one source per URL with its length and excerpt or error. */
 export function WebFetchBody({
   details,
   copyText,
@@ -137,14 +111,22 @@ export function WebFetchBody({
   details: WebFetchDetails;
   copyText: string;
 }) {
+  const { t } = useTranslation('tasks');
   return (
-    <DetailBox variant="output" copyText={copyText}>
-      <ul className="m-0 flex list-none flex-col gap-2 p-0">
-        {details.pages.map((page, index) => (
-          <PageRow key={`${index}:${page.url}`} page={page} />
-        ))}
-      </ul>
-      <TruncatedNote truncated={details.truncated} />
-    </DetailBox>
+    <ToolCard.Root>
+      <ToolCard.Header
+        icon={<Link />}
+        label={t('toolCount.page', { count: details.pages.length })}
+        copyText={copyText}
+      />
+      <ToolCard.Body size="lg">
+        <ul className="web-sources">
+          {details.pages.map((page, index) => (
+            <PageItem key={`${index}:${page.url}`} page={page} />
+          ))}
+        </ul>
+      </ToolCard.Body>
+      <TruncatedFooter truncated={details.truncated} />
+    </ToolCard.Root>
   );
 }

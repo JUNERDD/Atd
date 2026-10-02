@@ -1,6 +1,6 @@
 import { BookOpen, Bot, Brain, Command, PackagePlus, Plug, Plus } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Button } from '@ai/ui/components/button';
+import { Button } from '@atd/ui/components/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,7 +9,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@ai/ui/components/dropdown-menu';
+} from '@atd/ui/components/dropdown-menu';
 
 /** What Create makes in Personal; commands open the Commands section's own editor. */
 export type PersonalCreateKind = 'skill' | 'agent' | 'mcp' | 'command' | 'memory';

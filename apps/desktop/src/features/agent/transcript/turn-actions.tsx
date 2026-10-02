@@ -18,7 +18,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@ai/ui/components/dropdown-menu';
+} from '@atd/ui/components/dropdown-menu';
 import type { TaskRun } from '../../../client/agent/task-schema';
 import { IconButton } from '../../../components/icon-button';
 import type { AdaptedTurn } from './adapter';

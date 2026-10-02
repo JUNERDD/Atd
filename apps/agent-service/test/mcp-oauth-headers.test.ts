@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { after, before, test } from 'node:test';
 import type { McpFetch } from '@earendil-works/pi-mcp';
-import { ErrorEnvelopeSchema, parse } from '@ai/agent-contracts';
+import { ErrorEnvelopeSchema, parse } from '@atd/agent-contracts';
 import { McpError } from '../dist/mcp/errors.js';
 import { oauthFlowFetch, type ServiceHeaders } from '../dist/mcp/oauth-fetch.js';
 import { shownError } from '../dist/mcp/oauth-signin.js';

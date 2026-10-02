@@ -1,4 +1,5 @@
 import { useId, useState, type FormEvent } from 'react';
+import { useMutation } from '@tanstack/react-query';
 import { CircleAlert, Info, Plus, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -7,18 +8,20 @@ import {
   InputGroupButton,
   InputGroupInput,
   InputGroupText,
-} from '@ai/ui/components/input-group';
-import { Item, ItemActions, ItemContent, ItemGroup, ItemTitle } from '@ai/ui/components/item';
+} from '@atd/ui/components/input-group';
+import { Item, ItemActions, ItemContent, ItemGroup, ItemTitle } from '@atd/ui/components/item';
 import {
   SHELL_ALLOWLIST_MAX_ENTRIES,
   normalizeShellAllowlistEntry,
   type ShellAllowlistEntryError,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import { DEFAULT_PERMISSION_TIER } from '../../client/agent/permission-schema';
 import type { SettingsSnapshot } from '../../client/settings-contract';
 import { IconButton } from '../../components/icon-button';
+import { queryClient } from '../../lib/query-client';
 import { useSettingsSectionExit } from './settings-navigation';
 import { ShellAllowlistEntryDialog } from './shell-allowlist-entry-dialog';
+import { showSettingsSnapshot } from './use-settings';
 
 type AddError = ShellAllowlistEntryError | 'save';
 
@@ -52,9 +55,21 @@ export function ShellAllowlistSettings({ snapshot }: { snapshot: SettingsSnapsho
   const [error, setError] = useState<AddError | null>(null);
   // An error answers the last attempt; after leaving the section the field starts clean.
   useSettingsSectionExit(() => setError(null));
-  const [pending, setPending] = useState(false);
-  // The saved list until the next settings broadcast replaces the snapshot, so a quick second
-  // edit never builds on the list from before the first save.
+  // Each save answers the saved snapshot, which replaces the cached one at once, so a quick
+  // second edit never builds on the list from before the first save. A failure shows in place.
+  const saving = useMutation(
+    {
+      mutationKey: ['settings', 'shellAllowlist'],
+      mutationFn: (entries: string[]) => {
+        if (!bridge) throw new Error('Open the desktop app to change settings.');
+        return bridge.saveShellAllowlist(entries);
+      },
+      onSuccess: showSettingsSnapshot,
+      meta: { errorToast: false },
+    },
+    queryClient,
+  );
+  const pending = saving.isPending;
   // The entry stays set while its dialog closes, so the closing dialog keeps its text.
   // `failed` marks a Remove from the dialog that did not save, which the dialog itself reports.
   const [detail, setDetail] = useState<{
@@ -62,26 +77,19 @@ export function ShellAllowlistSettings({ snapshot }: { snapshot: SettingsSnapsho
     open: boolean;
     failed?: boolean;
   } | null>(null);
-  const [saved, setSaved] = useState<{ basis: SettingsSnapshot; entries: string[] } | null>(null);
-  const entries =
-    saved && saved.basis === snapshot ? saved.entries : (snapshot?.shellAllowlist ?? []);
+  const entries = snapshot?.shellAllowlist ?? [];
   // Without the bridge or a snapshot nothing can change. While a save is in flight the field and
   // the buttons stay focusable, so the next entry can be typed, and submits wait for it.
   const unavailable = !bridge || !snapshot;
   const inactive = (snapshot?.permissionTier ?? DEFAULT_PERMISSION_TIER) === 'always';
 
-  async function save(next: string[]) {
-    if (!bridge || !snapshot) return false;
-    setPending(true);
-    try {
-      const result = await bridge.saveShellAllowlist(next);
-      setSaved({ basis: snapshot, entries: result.shellAllowlist });
-      return true;
-    } catch {
-      return false;
-    } finally {
-      setPending(false);
-    }
+  /** Saves the whole list; resolves to whether it saved. */
+  function save(next: string[]) {
+    if (unavailable) return Promise.resolve(false);
+    return saving.mutateAsync(next).then(
+      () => true,
+      () => false,
+    );
   }
 
   async function add(event: FormEvent<HTMLFormElement>) {

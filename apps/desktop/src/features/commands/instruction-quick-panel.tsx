@@ -1,6 +1,6 @@
 import { useState, type Ref, type RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
-import { PopoverAnchor } from '@ai/ui/components/popover';
+import { PopoverAnchor } from '@atd/ui/components/popover';
 import type { AgentTask } from '../../client/agent/task-schema';
 import type { ComposerEditorCommands } from '../composer-editor/editor-commands';
 import { QuickPanelSurface } from '../quick-panel/quick-panel-surface';
@@ -15,7 +15,7 @@ import { isInstructionChip } from './instruction-chips';
 interface CaretAnchor {
   getBoundingClientRect(): DOMRect;
   /** Lets the positioning find the editor's scroll containers. */
-  contextElement?: Element;
+  contextElement?: Element | undefined;
 }
 
 /**
@@ -66,6 +66,9 @@ export function InstructionQuickPanel({
     attachmentCount: 0,
     agents: lists.agents,
     mcp: lists.mcp,
+    // Instructions hold no command or memory tokens (instruction-tokens.ts).
+    commands: [],
+    memories: { status: 'unavailable' },
     files: false,
     accepts: isInstructionChip,
   });

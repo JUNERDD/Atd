@@ -10,8 +10,8 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '@ai/ui/components/alert-dialog';
-import { Button } from '@ai/ui/components/button';
+} from '@atd/ui/components/alert-dialog';
+import { Button } from '@atd/ui/components/button';
 
 /**
  * Confirms removing one Personal skill, subagent or MCP server. The caller names the item and says

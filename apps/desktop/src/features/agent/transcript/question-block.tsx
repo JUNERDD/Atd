@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MessageCircleQuestion } from 'lucide-react';
-import { Button } from '@ai/ui/components/button';
-import { Input } from '@ai/ui/components/input';
-import { Shimmer } from '@ai/ui/components/ai-elements/shimmer';
+import { Button } from '@atd/ui/components/button';
+import { Input } from '@atd/ui/components/input';
+import { Shimmer } from '@atd/ui/components/ai-elements/shimmer';
 import type { BlockOf } from '../../../client/agent/transcript-schema';
 import type { InputRequest } from '../../../client/agent/permission-schema';
 import { agentApi } from '../use-agent';
@@ -23,7 +23,7 @@ export function QuestionBlock({
   request,
 }: {
   block: BlockOf<'question'>;
-  request?: InputRequest;
+  request?: InputRequest | undefined;
 }) {
   const { t } = useTranslation('tasks');
   const [open, setOpen] = useState(false);

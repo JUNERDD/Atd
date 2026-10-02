@@ -5,6 +5,7 @@
  * - Right click opens the Component Hierarchy panel with an editor switcher.
  */
 
+import { resolveOpenTarget } from './component-chain';
 import { openInEditor } from './editor';
 import {
   closeHierarchyPanel,
@@ -45,15 +46,11 @@ function activate(): void {
 }
 
 function openTargetInEditor(target: Element): void {
-  const file = target.getAttribute('data-insp-file');
-  if (!file) return;
+  const node = resolveOpenTarget(target);
+  if (!node) return;
 
   showOpeningFeedback();
-  openInEditor(
-    file,
-    target.getAttribute('data-insp-line') || '1',
-    target.getAttribute('data-insp-col') || '1',
-  );
+  openInEditor(node.file, node.line, node.col);
   window.setTimeout(() => {
     resetBadgeFeedback();
     deactivate();
@@ -103,7 +100,8 @@ export function initComponentInspector(): void {
     'mousemove',
     (event) => {
       if (!active || isHierarchyOpen()) return;
-      updateHighlight(resolveInspectableTarget(event.target), event.clientX, event.clientY);
+      const target = resolveInspectableTarget(event.target);
+      updateHighlight(target && resolveOpenTarget(target), event.clientX, event.clientY);
     },
     true,
   );

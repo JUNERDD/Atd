@@ -1,5 +1,5 @@
 {
-  "name": "@ai/plugin-kit",
+  "name": "@atd/plugin-kit",
   "version": "0.1.0",
   "private": true,
   "description": "Install, normalize and resolve agent plugin bundles (Agent Plugins 1.0, Claude Code plugins, pi packages and Agent Skills) for any agent harness.",
@@ -13,16 +13,19 @@
   "exports": {
     ".": {
       "types": "./src/index.ts",
+      "source": "./src/index.ts",
       "import": "./dist/index.js",
       "default": "./dist/index.js"
     },
     "./model": {
       "types": "./src/model.ts",
+      "source": "./src/model.ts",
       "import": "./dist/model.js",
       "default": "./dist/model.js"
     },
     "./node": {
       "types": "./src/node.ts",
+      "source": "./src/node.ts",
       "import": "./dist/node.js",
       "default": "./dist/node.js"
     }
@@ -50,14 +53,14 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "isomorphic-git": "1.42.2",
+    "isomorphic-git": "1.42.5",
     "tar": "7.5.22",
-    "typebox": "1.3.34",
+    "typebox": "catalog:",
     "yaml": "2.9.1"
   },
   "devDependencies": {
-    "@ai/typescript-config": "workspace:*",
-    "vitest": "5.0.2"
+    "@atd/typescript-config": "workspace:*",
+    "vitest": "catalog:"
   },
   "engines": {
     "node": ">=22"

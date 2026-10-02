@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { RefreshCw, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import type { PluginDetail, PluginSummary } from '@ai/agent-contracts';
-import { Alert, AlertAction, AlertDescription } from '@ai/ui/components/alert';
-import { Button } from '@ai/ui/components/button';
-import { Switch } from '@ai/ui/components/switch';
+import type { PluginDetail, PluginSummary } from '@atd/agent-contracts';
+import { Alert, AlertAction, AlertDescription } from '@atd/ui/components/alert';
+import { Button } from '@atd/ui/components/button';
+import { Switch } from '@atd/ui/components/switch';
 import { showToast } from '../../components/toast-store';
 import {
   ExtensionDetailFields,
@@ -78,7 +78,7 @@ export function ExtensionPluginPage({
   onUpdate,
 }: {
   pluginId: string;
-  focus?: 'config';
+  focus?: 'config' | undefined;
   extensions: Extensions;
   actions: PluginItemActions;
   onBack: () => void;
@@ -88,12 +88,7 @@ export function ExtensionPluginPage({
   const { t } = useTranslation('settings');
   const labels = usePluginLabels();
   const { connected, busy, pluginMutations } = extensions;
-  const {
-    loaded,
-    replace,
-    setItemEnabled: patchItem,
-    retry,
-  } = usePluginDetail(pluginId, extensions.epoch);
+  const { loaded, replace, setItemEnabled: patchItem, retry } = usePluginDetail(pluginId);
   const [uninstalling, setUninstalling] = useState(false);
   const detail = loaded && 'detail' in loaded ? loaded.detail : null;
   const listed = extensions.plugins.plugins?.find((plugin) => plugin.id === pluginId);
@@ -147,7 +142,7 @@ export function ExtensionPluginPage({
   }
 
   const setEnabled = (enabled: boolean) => extensions.setPluginEnabled(plugin.id, enabled, replace);
-  // Personal holds the one memory item; its switch is the memory pause.
+  // Personal holds the one memory item; the Memory section owns its switch, the learning pause.
   const memory = detail.items.find((item) => item.kind === 'memory');
   const hasItems =
     items.commands.length + items.skills.length + items.agents.length + items.mcp.length > 0 ||
@@ -235,26 +230,7 @@ export function ExtensionPluginPage({
         actions={actions}
         onOpen={onOpenItem}
         onPatch={patchItem}
-        memory={
-          memory
-            ? {
-                learning: memory.itemEnabled,
-                disabled: !connected,
-                pending: pluginBusy,
-                onLearningChange: (enabled) =>
-                  extensions.setServiceItemEnabled(
-                    {
-                      pluginId: plugin.id,
-                      kind: 'memory',
-                      itemName: memory.name,
-                      localName: memory.localName,
-                    },
-                    enabled,
-                    (value) => patchItem('memory', memory.name, value),
-                  ),
-              }
-            : null
-        }
+        memory={Boolean(memory)}
       />
       {!hasItems ? (
         <ExtensionDetailStatus text={t('extensions.plugins.page.noItems')} error={false} />
@@ -285,7 +261,6 @@ export function ExtensionPluginPage({
           void pluginMutations.uninstall(plugin.id).then((ok) => {
             if (!ok) return;
             showToast({ kind: 'info', text: t('extensions.plugins.uninstalled', { name }) });
-            extensions.refreshAll();
             onBack();
           });
         }}

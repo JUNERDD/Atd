@@ -1,7 +1,6 @@
 import { useRef, type MouseEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CircleAlert, RotateCcw } from 'lucide-react';
-import { Button } from '@ai/ui/components/button';
 import {
   Item,
   ItemActions,
@@ -9,16 +8,16 @@ import {
   ItemDescription,
   ItemFooter,
   ItemTitle,
-} from '@ai/ui/components/item';
-import { Kbd, KbdGroup } from '@ai/ui/components/kbd';
+} from '@atd/ui/components/item';
 import type { ShortcutAction } from '../../client/settings-contract';
 import { IconButton } from '../../components/icon-button';
+import { ShortcutRecorder } from '../../components/shortcut-recorder';
 import { shortcutKeys } from '../../lib/shortcuts';
 import type { useShortcutSettings } from './use-shortcut-settings';
 
 /**
- * One shortcut: its name and purpose, then the keys, which record a new combination when clicked.
- * A changed shortcut adds Reset before the keys, so the keys keep the trailing edge in every row.
+ * One shortcut: its name and purpose, then the shared recorder, which records a new combination
+ * when its keys are clicked. A changed shortcut adds Reset as the recorder's leading action.
  * While a shortcut change saves, the controls stay focusable but ignore input, and the saving
  * row is marked busy.
  */
@@ -34,7 +33,7 @@ export function ShortcutRow({
   description: string;
   settings: ReturnType<typeof useShortcutSettings>;
   /** Why the keys do not work, such as a failed system registration; shown inside the row. */
-  error?: string;
+  error?: string | undefined;
 }) {
   const { t } = useTranslation('settings');
   const keysButton = useRef<HTMLButtonElement>(null);
@@ -64,39 +63,17 @@ export function ShortcutRow({
           <ItemDescription className="whitespace-normal">{description}</ItemDescription>
         </ItemContent>
         <ItemActions className="ml-auto">
-          {!settings.isDefault(action) && !recording && (
-            <IconButton
-              label={t('shortcuts.capture.reset')}
-              aria-label={t('shortcuts.capture.resetLabel', { label })}
-              className="data-recording-elsewhere:opacity-50"
-              disabled={settings.unavailable}
-              {...inert}
-              onClick={() => {
-                if (recordingElsewhere) return;
-                // Reset disappears once the default is back, so focus moves on to the keys.
-                void settings.resetShortcut(action).then((reset) => {
-                  if (reset) keysButton.current?.focus();
-                });
-              }}
-            >
-              <RotateCcw />
-            </IconButton>
-          )}
-          <Button
+          <ShortcutRecorder
             ref={keysButton}
-            type="button"
-            variant="outline"
-            size="sm"
-            className="settings-shortcut-button aria-pressed:border-ring aria-pressed:ring-3 aria-pressed:ring-ring/30 data-recording-elsewhere:opacity-50"
+            keys={keys}
+            recording={recording}
+            className="data-recording-elsewhere:opacity-50"
             aria-label={
               recording
                 ? t('shortcuts.capture.cancelLabel', { label })
                 : t('shortcuts.capture.changeLabel', { label, keys: keys.join(' ') })
             }
-            aria-describedby={
-              recording ? 'settings-shortcut-hint' : shownError ? errorId : undefined
-            }
-            aria-pressed={recording}
+            aria-describedby={shownError ? errorId : undefined}
             disabled={settings.unavailable}
             {...inert}
             onClick={() => {
@@ -107,17 +84,27 @@ export function ShortcutRow({
             onBlur={() => {
               if (recording) settings.cancelRecording();
             }}
-          >
-            {recording ? (
-              t('shortcuts.capture.pressKeys')
-            ) : (
-              <KbdGroup aria-hidden="true">
-                {keys.map((key, index) => (
-                  <Kbd key={`${index}-${key}`}>{key}</Kbd>
-                ))}
-              </KbdGroup>
-            )}
-          </Button>
+            action={
+              !settings.isDefault(action) && (
+                <IconButton
+                  label={t('shortcuts.capture.reset')}
+                  aria-label={t('shortcuts.capture.resetLabel', { label })}
+                  className="data-recording-elsewhere:opacity-50"
+                  disabled={settings.unavailable}
+                  {...inert}
+                  onClick={() => {
+                    if (recordingElsewhere) return;
+                    // Reset disappears once the default is back, so focus moves on to the keys.
+                    void settings.resetShortcut(action).then((reset) => {
+                      if (reset) keysButton.current?.focus();
+                    });
+                  }}
+                >
+                  <RotateCcw />
+                </IconButton>
+              )
+            }
+          />
         </ItemActions>
         {shownError && (
           <ItemFooter

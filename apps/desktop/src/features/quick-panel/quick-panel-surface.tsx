@@ -7,10 +7,10 @@ import {
   CommandList,
   CommandSeparator,
   CommandShortcut,
-} from '@ai/ui/components/command';
-import { HighlightedText } from '@ai/ui/components/highlighted-text';
-import { Kbd, KbdGroup } from '@ai/ui/components/kbd';
-import { Popover, PopoverContent } from '@ai/ui/components/popover';
+} from '@atd/ui/components/command';
+import { HighlightedText } from '@atd/ui/components/highlighted-text';
+import { Kbd, KbdGroup } from '@atd/ui/components/kbd';
+import { Popover, PopoverContent } from '@atd/ui/components/popover';
 import { visibleGroups, type QuickOption, type QuickView } from './quick-options';
 import { useQuickPanel, type QuickPanelAria, type QuickPanelHandle } from './use-quick-panel';
 import './quick-panel.css';
@@ -175,7 +175,7 @@ function QuickRow({
     <CommandItem
       ref={track}
       value={option.value}
-      disabled={option.disabled}
+      disabled={option.disabled ?? false}
       data-checked={option.checked}
       onSelect={option.select}
     >

@@ -1,17 +1,17 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Label } from '@ai/ui/components/label';
-import { Button } from '@ai/ui/components/button';
+import { Label } from '@atd/ui/components/label';
+import { Button } from '@atd/ui/components/button';
 import { ChevronDown } from 'lucide-react';
-import { Switch } from '@ai/ui/components/switch';
-import { Popover, PopoverContent, PopoverTrigger } from '@ai/ui/components/popover';
+import { Switch } from '@atd/ui/components/switch';
+import { Popover, PopoverContent, PopoverTrigger } from '@atd/ui/components/popover';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@ai/ui/components/select';
+} from '@atd/ui/components/select';
 import type { CommandDefinition } from '../../client/agent/command-schema';
 import { ShortcutConflictHint } from '../settings/shortcut-conflict-hint';
 import { FieldError } from './field-error';
@@ -40,14 +40,22 @@ export function InputOptions({
   const isOpen = open ?? internalOpen;
   const setIsOpen = onOpenChange ?? setInternalOpen;
   function source(value: string) {
-    if (value !== 'manual' && value !== 'selection' && value !== 'clipboard' && value !== 'none')
+    if (
+      value !== 'manual' &&
+      value !== 'selection' &&
+      value !== 'clipboard' &&
+      value !== 'screenshot' &&
+      value !== 'none'
+    )
       return;
+    // A source turns on what it fills (the screenshot is an attached image) and keeps it on.
     onChange({
       ...command,
       input: {
         ...command.input,
         source: value,
         required: value === 'none' ? false : command.input.required,
+        files: command.input.files || value === 'screenshot',
         selection: command.input.selection || value === 'selection',
         clipboard: command.input.clipboard || value === 'clipboard',
       },
@@ -72,6 +80,7 @@ export function InputOptions({
                 <SelectItem value="manual">{t('input.sourceManual')}</SelectItem>
                 <SelectItem value="selection">{t('input.sourceSelection')}</SelectItem>
                 <SelectItem value="clipboard">{t('input.sourceClipboard')}</SelectItem>
+                <SelectItem value="screenshot">{t('input.sourceScreenshot')}</SelectItem>
                 <SelectItem value="none">{t('input.sourceNone')}</SelectItem>
               </SelectContent>
             </Select>
@@ -115,6 +124,7 @@ export function InputOptions({
                   id={`input-${key}`}
                   disabled={
                     (key === 'required' && command.input.source === 'none') ||
+                    (key === 'files' && command.input.source === 'screenshot') ||
                     (key === 'selection' && command.input.source === 'selection') ||
                     (key === 'clipboard' && command.input.source === 'clipboard')
                   }

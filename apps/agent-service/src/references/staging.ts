@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
-import { MAX_RUN_REFERENCES, type RunReference } from '@ai/agent-contracts';
+import { MAX_RUN_REFERENCES, runReferenceKey, type RunReference } from '@atd/agent-contracts';
 import { atomicWrite } from '../config.js';
 
 /**
@@ -33,18 +33,6 @@ async function readPending(dataDir: string): Promise<PendingFile> {
   }
 }
 
-/** Identity of a reference; one staging holds each target once. */
-export function referenceKey(reference: RunReference): string {
-  switch (reference.kind) {
-    case 'task':
-      return `task:${reference.taskId}`;
-    case 'agent':
-      return `agent:${reference.name}`;
-    case 'mcpServer':
-      return `mcpServer:${reference.serverId}`;
-  }
-}
-
 /** Replaces the task's staged references for its next run, deduped in order. */
 export async function stageTaskReferences(
   dataDir: string,
@@ -54,7 +42,7 @@ export async function stageTaskReferences(
   const file = await readPending(dataDir);
   const seen = new Set<string>();
   const deduped = references.slice(0, MAX_RUN_REFERENCES).filter((reference) => {
-    const key = referenceKey(reference);
+    const key = runReferenceKey(reference);
     if (seen.has(key)) return false;
     seen.add(key);
     return true;

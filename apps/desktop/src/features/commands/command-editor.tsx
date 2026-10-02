@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CircleAlert, Copy, Puzzle, Sparkles } from 'lucide-react';
-import { Alert, AlertDescription } from '@ai/ui/components/alert';
-import { Button } from '@ai/ui/components/button';
-import { Input } from '@ai/ui/components/input';
-import { Label } from '@ai/ui/components/label';
-import { ScrollArea } from '@ai/ui/components/scroll-area';
+import { Alert, AlertDescription } from '@atd/ui/components/alert';
+import { Button } from '@atd/ui/components/button';
+import { Input } from '@atd/ui/components/input';
+import { Label } from '@atd/ui/components/label';
+import { ScrollArea } from '@atd/ui/components/scroll-area';
 import { CommandSchema, type CommandDefinition } from '../../client/agent/command-schema';
 import { renameArgument } from '../../client/agent/command-validation';
 import { parse } from '../../client/agent/validation';
@@ -13,7 +13,7 @@ import type { SettingsSnapshot } from '../../client/settings-contract';
 import type { AgentTask } from '../../client/agent/task-schema';
 import { useOverlayFooter } from '../../components/use-overlay-footer';
 import { agentApi } from '../agent/use-agent';
-import { showErrorToast, showToast } from '../../components/toast-store';
+import { showErrorToast } from '../../components/toast-store';
 import { messageOf } from '../../lib/errors';
 import { InputOptions } from './input-options';
 import { InstructionEditor } from './instruction-editor';
@@ -21,6 +21,7 @@ import { FieldError } from './field-error';
 import { ParameterEditor } from './parameter-editor';
 import { ParameterList } from './parameter-list';
 import { RunSettings } from './run-settings';
+import { useCommandAiSession } from './use-command-ai-session';
 import { errorId, useCommandProblems } from './use-command-problems';
 import { SettingsHeading } from '../settings/settings-heading';
 import { useSettingsUnsavedChanges } from '../settings/settings-unsaved-changes';
@@ -78,22 +79,12 @@ export function CommandEditor({
   const nameError = problems.text('name');
   const errorMessage = useRef<HTMLDivElement>(null);
   const footerRef = useOverlayFooter<HTMLElement>();
+  // Hands the work to a fresh panel session where the agent edits the command with its tools.
+  const startSession = useCommandAiSession();
   function showError(message: string) {
     setError(message);
     if (message)
       requestAnimationFrame(() => errorMessage.current?.scrollIntoView({ block: 'nearest' }));
-  }
-  /** Hands the work to a fresh panel session where the agent edits the command with its tools. */
-  async function startSession() {
-    const bridge = window.desktop?.settings;
-    if (!bridge) return;
-    const commandId = baseRevision ? draft.id : null;
-    try {
-      await bridge.startCommandSession(commandId);
-      showToast({ kind: 'info', text: t('session.opened') });
-    } catch (error) {
-      showErrorToast(error);
-    }
   }
   async function save() {
     // Save stays enabled while a request is in flight (focus stays on it); repeats are ignored.
@@ -181,9 +172,9 @@ export function CommandEditor({
         backLabel={t('editor.back')}
       />
       <ScrollArea
-        className="flex-1 min-h-0 min-w-0 m-[-3px_-15px_-3px_-3px]"
+        className="settings-page-scroll"
         viewportClassName="overlay-footer-fade"
-        gutter="stable"
+        gutter="none"
         scrollShadow
       >
         <fieldset disabled={Boolean(plugin)} className="editor-fields min-w-0 p-0.75">
@@ -296,7 +287,7 @@ export function CommandEditor({
               aria-disabled={pending || undefined}
               className="aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
               onClick={() => {
-                if (!pending) void startSession();
+                if (!pending) void startSession(baseRevision ? draft.id : null);
               }}
             >
               <Sparkles data-icon="inline-start" />

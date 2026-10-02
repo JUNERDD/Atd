@@ -1,4 +1,4 @@
-import type { McpAuthUrlNotice } from '@ai/agent-contracts';
+import type { McpAuthUrlNotice } from '@atd/agent-contracts';
 import type { EventLog } from '../event-log.js';
 import type { Logger } from '../logging.js';
 

@@ -45,6 +45,7 @@
     "failed": "失败",
     "interrupted": "已中断",
     "interruptedNote": "执行在记录最终工具结果前结束。继续前请检查已有的文件更改。",
+    "codemodeSteps": "脚本发起的工具调用",
     "step": {
       "read": "读取文件",
       "write": "写入文件",
@@ -71,7 +72,11 @@
       "todo": "更新待办",
       "webSearch": "搜索网页",
       "webFetch": "获取网页",
-      "loadSkill": "加载技能"
+      "loadSkill": "加载技能",
+      "codemode": "运行脚本",
+      "listMcpResources": "列出 MCP 资源",
+      "listMcpResourceTemplates": "列出 MCP 资源模板",
+      "readMcpResource": "读取 MCP 资源"
     },
     "target": {
       "user": "用户",
@@ -107,6 +112,7 @@
       "reviewed": "已审查并自动批准",
       "declined": "已拒绝"
     },
+    "detail": "权限：{{outcome}}",
     "allowOnce": "允许一次",
     "allowSession": "允许此工具",
     "allowSessionHint": "本次会话内此工具不再询问。",
@@ -174,7 +180,9 @@
     "changed": "打开时使用当前文件。已保存的消息仍描述原始运行。",
     "partialOutput": "部分输出",
     "available": "可用",
-    "relinked": "重新关联的文件"
+    "relinked": "重新关联的文件",
+    "previewImage": "预览 {{name}}",
+    "showInFinder": "在访达中显示 {{name}}"
   },
   "history": {
     "label": "任务历史",
@@ -186,12 +194,20 @@
     "moreActionsFor": "{{title}} 的更多操作",
     "rename": "重命名",
     "copyId": "复制会话 ID",
-    "empty": "还没有任务。",
-    "noMatches": "没有匹配的任务。",
-    "deleteTitle": "删除此任务？",
+    "empty": "还没有任务",
+    "noMatches": "没有与“{{query}}”匹配的结果",
+    "deleteTitle": "删除“{{title}}”？",
     "deleteDescription": "这会移除其对话、输入副本和应用任务文件夹中的文件。保存在其他位置的文件和你的记忆会保留。",
     "cancel": "取消",
-    "deleteAction": "删除任务"
+    "deleteAction": "删除任务",
+    "emptyDescription": "通过命令或消息开始的任务会显示在这里。",
+    "noMatchesDescription": "请检查拼写，或换个关键词搜索。",
+    "section": {
+      "today": "今天",
+      "yesterday": "昨天",
+      "previous7Days": "过去 7 天",
+      "previous30Days": "过去 30 天"
+    }
   },
   "transcript": {
     "footer": {
@@ -250,7 +266,21 @@
       "copy": "复制代码",
       "copied": "已复制",
       "download": "下载",
-      "saved": "已保存"
+      "saved": "已保存",
+      "fileName": "代码"
+    },
+    "diagram": {
+      "fullscreen": "全屏查看",
+      "exitFullscreen": "退出全屏",
+      "zoomIn": "放大",
+      "zoomOut": "缩小",
+      "resetView": "重置视图",
+      "download": "下载图表",
+      "downloadFailed": "无法导出图表。",
+      "svg": "SVG 图像",
+      "png": "PNG 图像",
+      "source": "Mermaid 源码",
+      "fileName": "图表"
     },
     "usage": {
       "label": "Token 用量",
@@ -300,6 +330,10 @@
     "allowedTitle": "已允许 {{name}} 运行",
     "allowedDescription": "从下一条消息起即可使用它的工具。"
   },
+  "selection": {
+    "toolbar": "所选内容操作",
+    "quote": "引用到回复"
+  },
   "turnActions": {
     "regenerate": "重新生成",
     "more": "更多操作",
@@ -323,5 +357,54 @@
     "editNote": "发送后将替换此消息及其后的全部内容。",
     "cancel": "取消",
     "send": "发送"
+  },
+  "toolRow": {
+    "added_one": "新增 {{count}} 行",
+    "added_other": "新增 {{count}} 行",
+    "removed_one": "删除 {{count}} 行",
+    "removed_other": "删除 {{count}} 行",
+    "addedRemoved": "{{added}}，{{removed}}",
+    "range": "L{{start}}–{{end}}",
+    "rangeLabel": "第 {{start}} 至 {{end}} 行",
+    "empty": {
+      "match": "无匹配",
+      "file": "无",
+      "item": "无",
+      "result": "无结果",
+      "page": "无"
+    }
+  },
+  "toolCode": {
+    "lineCount_one": "{{count}} 行",
+    "lineCount_other": "{{count}} 行",
+    "lineRange": "第 {{start}}–{{end}} 行",
+    "showingLines": "显示第 {{start}}–{{end}} 行，共 {{total}} 行",
+    "moreLines_one": "文件中还有 {{count}} 行",
+    "moreLines_other": "文件中还有 {{count}} 行",
+    "exitCode": "退出码 {{code}}",
+    "terminated": "已终止",
+    "diffSummary": "新增 {{added}} 行，删除 {{removed}} 行"
+  },
+  "toolList": {
+    "matchesInFiles": "{{files}}中有 {{matches}}",
+    "noMatches": "没有匹配项。",
+    "noFiles": "没有找到文件。",
+    "emptyFolder": "此文件夹为空。",
+    "input": "输入",
+    "output": "输出"
+  },
+  "toolCount": {
+    "match_one": "{{count}} 处匹配",
+    "match_other": "{{count}} 处匹配",
+    "file_one": "{{count}} 个文件",
+    "file_other": "{{count}} 个文件",
+    "item_one": "{{count}} 项",
+    "item_other": "{{count}} 项",
+    "result_one": "{{count}} 条结果",
+    "result_other": "{{count}} 条结果",
+    "page_one": "{{count}} 个网页",
+    "page_other": "{{count}} 个网页",
+    "query_one": "{{count}} 个查询",
+    "query_other": "{{count}} 个查询"
   }
 }

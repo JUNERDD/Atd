@@ -1,6 +1,11 @@
 import { RunPolicySchema, type RunPolicy } from './run-policy';
 import { Type, type Static } from 'typebox';
-import { SessionEntryId, type CompactRefusal, type TaskContextState } from '@ai/agent-contracts';
+import {
+  SessionEntryId,
+  type CompactRefusal,
+  type ContextBreakdown,
+  type TaskContextState,
+} from '@atd/agent-contracts';
 import { CommandSchema, Identifier, type CommandDefinition } from './command-schema';
 import {
   InputSchema,
@@ -25,6 +30,7 @@ import {
   type TranscriptPatch,
 } from './transcript-schema';
 import { parse } from './validation';
+import { SaveContentSchema, type SaveContent } from '../../native-bridge/calls';
 
 export const MemoryEntrySchema = Type.Object(
   {
@@ -178,6 +184,7 @@ export const AgentRequestSchema = Type.Union([
     /** Focus for the summary (`/compact <focus>`); the service caps it at 2000 characters. */
     instructions: Type.Optional(Type.String({ minLength: 1, maxLength: 2000 })),
   }),
+  Type.Object({ action: Type.Literal('contextBreakdown'), taskId: Identifier }),
   Type.Object({
     action: Type.Literal('forkTask'),
     taskId: Identifier,
@@ -187,9 +194,9 @@ export const AgentRequestSchema = Type.Union([
   }),
   Type.Object({ action: Type.Literal('chooseFiles') }),
   Type.Object({
-    action: Type.Literal('saveMarkdown'),
+    action: Type.Literal('saveFile'),
     name: Type.String({ minLength: 1, maxLength: 255 }),
-    text: Type.String({ maxLength: 1000000 }),
+    content: SaveContentSchema,
   }),
   Type.Object({ action: Type.Literal('memory') }),
   Type.Object({ action: Type.Literal('pauseMemory'), paused: Type.Boolean() }),
@@ -314,11 +321,13 @@ export interface AgentBridge {
    * active, nothing to compact) resolves to its code; other failures reject.
    */
   compactTask: (taskId: string, instructions?: string) => Promise<CompactRefusal | null>;
+  /** What fills the task's context, by category; the service computes it on each request. */
+  contextBreakdown: (taskId: string) => Promise<ContextBreakdown>;
   /** Copies the task up to the turn `entryId` starts into a new task; resolves with its id. */
   forkTask: (taskId: string, entryId: string, title?: string) => Promise<{ taskId: string }>;
   chooseFiles: () => Promise<FileRef[]>;
-  /** Offers `text` as a Markdown file in a save panel; false when the user cancelled. */
-  saveMarkdown: (name: string, text: string) => Promise<boolean>;
+  /** Offers `content` under the suggested `name` in a save panel; false when cancelled. */
+  saveFile: (name: string, content: SaveContent) => Promise<boolean>;
   memory: () => Promise<MemorySnapshot>;
   pauseMemory: (paused: boolean) => Promise<MemorySnapshot>;
   updateMemory: (entry: MemoryEntry, content: string) => Promise<MemorySnapshot>;

@@ -4,7 +4,7 @@ import {
   effectiveAccelerator,
   parseAccelerator,
   type ShortcutBindingsWire,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import { ConflictError } from '../errors.js';
 
 /**
@@ -17,6 +17,7 @@ import { ConflictError } from '../errors.js';
 /** Application shortcut actions as the settings name them, for conflict messages. */
 const APP_SHORTCUT_NAMES: Record<keyof ShortcutBindingsWire, string> = {
   togglePanel: 'Toggle panel',
+  captureScreenshot: 'Capture screenshot',
   newConversation: 'New conversation',
   openSettings: 'Open settings',
   sendMessage: 'Send message',

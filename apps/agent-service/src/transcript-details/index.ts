@@ -1,14 +1,16 @@
 import { Compile } from 'typebox/compile';
 import {
+  CODEMODE_TOOL,
   CONFIGURE_MCP_TOOL,
   TODO_TOOL,
   ToolBlockDetailsSchema,
   WEB_FETCH_TOOL,
   WEB_SEARCH_TOOL,
   type ToolBlockDetails,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import type { Logger } from '../logging.js';
 import { SUBAGENT_TOOL } from '../subagents/tool-contract.js';
+import { projectCodemodeDetails, type CodemodeDetailsInput } from './codemode.js';
 import { projectEditDetails } from './edit.js';
 import { projectMcpApprovalDetails } from './mcp-approval.js';
 import { projectSubagentDetails, type SubagentDetailsInput } from './subagent.js';
@@ -23,7 +25,8 @@ const ToolBlockDetailsValidator = Compile(ToolBlockDetailsSchema);
 /**
  * Per-tool projectors from a result's raw `details` (Pi `ToolResultMessage.details`, untrusted
  * JSON) to the whitelisted `ServiceBlock` details. Tools missing here never carry details, except
- * launching `subagent` calls (`projectSubagentToolDetails`), whose cards need more than the result.
+ * launching `subagent` calls (`projectSubagentToolDetails`) and `codemode` calls
+ * (`projectCodemodeToolDetails`), whose rows need more than the result.
  */
 const PROJECTORS: ReadonlyMap<string, Projector> = new Map<string, Projector>([
   [TODO_TOOL, projectTodoDetails],
@@ -59,6 +62,17 @@ export function projectSubagentToolDetails(
   log?: Pick<Logger, 'debug'>,
 ): ToolBlockDetails | undefined {
   return checked(SUBAGENT_TOOL, projectSubagentDetails(input), log);
+}
+
+/**
+ * Details for a `codemode` call in any status (codemode.ts): its nested calls show as rows while
+ * the script runs, and a failed script keeps the calls it made before it failed.
+ */
+export function projectCodemodeToolDetails(
+  input: CodemodeDetailsInput,
+  log?: Pick<Logger, 'debug'>,
+): ToolBlockDetails | undefined {
+  return checked(CODEMODE_TOOL, projectCodemodeDetails(input), log);
 }
 
 function checked(

@@ -10,7 +10,7 @@ import {
   type PermissionTier,
   type SettingsResponse,
   type UserSettings,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import { Type, type Static } from 'typebox';
 import { atomicWrite } from '../config.js';
 import { setUserShellAllowlist } from '../shell-policy.js';
@@ -39,7 +39,21 @@ async function readStored(file: string): Promise<Static<typeof SettingsFileSchem
     if (error instanceof Error && 'code' in error && error.code === 'ENOENT') return null;
     throw error;
   }
-  return parse(SettingsFileSchema, JSON.parse(raw));
+  return parse(SettingsFileSchema, withAddedShortcuts(JSON.parse(raw)));
+}
+
+/**
+ * A file written before an application shortcut action existed (`captureScreenshot`) stores
+ * bindings without it; the missing actions take their defaults, so the file still reads and the
+ * next write stores every action.
+ */
+function withAddedShortcuts(file: unknown): unknown {
+  if (typeof file !== 'object' || file === null || !('settings' in file)) return file;
+  const { settings } = file;
+  if (typeof settings !== 'object' || settings === null || !('shortcuts' in settings)) return file;
+  const { shortcuts } = settings;
+  if (typeof shortcuts !== 'object' || shortcuts === null) return file;
+  return { ...file, settings: { ...settings, shortcuts: { ...DEFAULT_SHORTCUTS, ...shortcuts } } };
 }
 
 /**

@@ -10,7 +10,7 @@ import {
   setPluginItemEnabled,
   uninstallPlugin,
   type AgentClientOptions,
-} from '@ai/agent-client';
+} from '@atd/agent-client';
 import {
   PluginConfigRequestSchema,
   PluginIdSchema,
@@ -20,7 +20,7 @@ import {
   type PluginConfigRequest,
   type PluginItemKind,
   type PluginPreviewRequest,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import { Type, type Static } from 'typebox';
 
 /** An item's name inside its plugin, as the plugin routes take it. */

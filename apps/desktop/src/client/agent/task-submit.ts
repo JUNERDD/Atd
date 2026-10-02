@@ -1,5 +1,5 @@
-import { previewTask, type AgentClientOptions } from '@ai/agent-client';
-import { snapshotToolsFor } from '@ai/agent-contracts';
+import { previewTask, type AgentClientOptions } from '@atd/agent-client';
+import { snapshotToolsFor } from '@atd/agent-contracts';
 import type { AgentRequest, TaskDetail } from './bridge';
 import type { CommandDefinition } from './command-schema';
 import { commandRunChips, commandRunTokens, withCommandTokens } from './command-run';
@@ -53,7 +53,9 @@ export async function submitTask<S>(
   // skill chip.
   let chips = request.input.chips ?? [];
   let staging: RunStaging | null = request.policy;
-  let model = request.policy?.model ?? tasks.host.defaultModel();
+  // Only a model picked for this run, or a command's, travels: the service selects the rest
+  // (`runModelSelection`), so a follow-up stays on its last run's model as the picker shows.
+  let model = request.policy?.model;
   let thinkingLevel = request.policy?.thinkingLevel;
   // Without a policy the service keeps the task's last tools and memory flag (or its defaults).
   let tools = request.policy ? snapshotToolsFor(request.policy.tools) : undefined;
@@ -76,11 +78,11 @@ export async function submitTask<S>(
       (taskId) => tasks.entries.get(taskId)?.task.title || taskId,
     );
     staging = withCommandTokens(request.policy, tokens);
-    if (!request.policy?.model)
-      model = {
-        connectionId: previewed.snapshot.model.connectionId,
-        modelId: previewed.snapshot.model.modelId,
-      };
+    // The preview applied the command's fixed model, which submit cannot see on its own.
+    model ??= {
+      connectionId: previewed.snapshot.model.connectionId,
+      modelId: previewed.snapshot.model.modelId,
+    };
     thinkingLevel ??= previewed.snapshot.thinkingLevel;
     // The preview resolved the policy, else the command's own tools and memory setting.
     tools = previewed.snapshot.tools;

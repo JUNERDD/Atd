@@ -1,5 +1,5 @@
 import { Type, type Static } from 'typebox';
-import { InputChipRangeSchema, MAX_INPUT_CHIPS } from '@ai/agent-contracts';
+import { InputChipRangeSchema, MAX_INPUT_CHIPS } from '@atd/agent-contracts';
 import { ArgumentValuesSchema, CommandSchema, Identifier, ToolIdSchema } from './command-schema';
 import {
   FrozenModelSchema,
@@ -29,6 +29,7 @@ export const InputSchema = Type.Object(
       Type.Literal('manual'),
       Type.Literal('selection'),
       Type.Literal('clipboard'),
+      Type.Literal('screenshot'),
       Type.Literal('none'),
     ]),
     capturedAt: Type.String(),

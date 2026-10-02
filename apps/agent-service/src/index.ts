@@ -1,4 +1,4 @@
-import { errorMessage, type PermissionTier } from '@ai/agent-contracts';
+import { errorMessage, type PermissionTier } from '@atd/agent-contracts';
 import { CapabilityRegistry } from './capabilities.js';
 import {
   clearEndpoint,
@@ -52,7 +52,8 @@ export interface ServiceHandle {
 export async function createService(
   config: ServiceConfig,
   options: {
-    tier?: PermissionTier;
+    /** The CLI's `--tier` flag, passed through when given. */
+    tier?: PermissionTier | undefined;
     /**
      * Answers `POST /v1/admin/shutdown` once the reply is out. Only the process
      * host may exit, so the CLI passes the stop-then-exit handler its signals
@@ -117,6 +118,8 @@ export async function createService(
   // Runs drain and HTTP closes first, so MCP has lost its callers when the
   // close ends every MCP connection (base and per-task aliases) and its
   // stdio children; only then does the lock free the profile for a new service.
+  // Clearing the endpoint tells the native supervisor the stop has finished
+  // (`ServiceStopper`): it gives the process a short grace to exit, then kills it.
   const stopService = async () => {
     await manager.shutdown();
     await app.close();

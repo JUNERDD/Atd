@@ -1,5 +1,5 @@
 import type { ComponentProps } from 'react';
-import { cn } from '@ai/ui/lib/utils';
+import { cn } from '@atd/ui/lib/utils';
 import { useContextBubble } from '../_hooks/use-context-bubble';
 
 export interface ContextBubbleMetaProps extends ComponentProps<'p'> {}

@@ -1,7 +1,7 @@
 import type { ReactNode, Ref } from 'react';
 import { Check, ChevronLeft } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Button } from '@ai/ui/components/button';
+import { Button } from '@atd/ui/components/button';
 import type { ContextTier, ModelContexts, ModelThinkingLevel } from '../../client/providers/schema';
 import { formatContextWindow, formatTokenCount } from './context-window';
 
@@ -49,7 +49,7 @@ function ConfigOption({
     >
       <span className="model-config-option-text">{children}</span>
       {value && <span className="model-config-option-value">{value}</span>}
-      {checked ? <Check className="shrink-0 size-4" /> : <span className="shrink-0 size-4" />}
+      {checked ? <Check className="size-4 shrink-0" /> : <span className="size-4 shrink-0" />}
     </button>
   );
 }

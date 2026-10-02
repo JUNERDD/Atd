@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict';
 import type { TestContext } from 'node:test';
-import type { PermissionRequest } from '@ai/agent-contracts';
-import type { McpServerConfig } from '@ai/agent-contracts';
+import type { PermissionRequest } from '@atd/agent-contracts';
+import type { McpServerConfig } from '@atd/agent-contracts';
 import type { ExtensionAPI, ExtensionFactory } from '@earendil-works/pi-coding-agent';
+import { McpOAuthAuthorizationRequiredError } from '@earendil-works/pi-mcp/oauth';
 import type { ServiceHandle } from '../dist/index.js';
 import type { Logger } from '../dist/logging.js';
 import { McpApprovalBroker } from '../dist/mcp/approval.js';
@@ -53,6 +54,7 @@ const defaults = {
   principal: '',
   isolateByTask: false,
   exposeResources: true,
+  exposure: 'auto' as const,
   approveTools: false,
   includeTools: [],
   excludeTools: [],
@@ -107,11 +109,22 @@ export const edited = (record: McpServerConfig): McpServerConfig => ({
   revision: record.revision + 1,
 });
 
-/** OAuth is not what these tests cover: no server they connect to signs in. */
+/**
+ * OAuth is not what these tests cover: no server they connect to has signed in. A server without
+ * auth still carries the OAuth connection auth (mcp/oauth-client.ts), which sends no token and
+ * answers a 401 with "sign in".
+ */
 const noOAuth: McpCredentialAuth = {
-  authFor: () => {
-    throw new Error('This test has no OAuth server.');
-  },
+  authFor: () => ({
+    token: async () => undefined,
+    onUnauthorized: async () => {
+      throw new McpOAuthAuthorizationRequiredError();
+    },
+    renew: async () => {
+      throw new McpOAuthAuthorizationRequiredError();
+    },
+    settled: async () => undefined,
+  }),
   forget: () => undefined,
   settled: async () => undefined,
 };
@@ -248,12 +261,14 @@ export function piStandIn<T extends object>(members: Record<string, unknown> = {
   });
 }
 
-/** A registered MCP proxy as the tests call it (tool-proxies.ts `mcpProxyTool`). */
+/** A registered MCP proxy as the tests call it (proxy-tool.ts `mcpProxyTool`). */
 export interface ProxyTool {
   name: string;
   description: string;
   parameters: unknown;
   annotations?: unknown;
+  namespace?: unknown;
+  exposure?: unknown;
   executionMode?: unknown;
   execute(
     id: string,

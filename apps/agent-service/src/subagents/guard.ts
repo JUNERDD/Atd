@@ -1,6 +1,4 @@
-import { SUBAGENT_WORKFLOWS } from '@ai/agent-contracts';
 import type { SessionFactoryDeps } from '../pi-session.js';
-import { SERVICE_PARALLEL_WORKFLOW } from './config.js';
 import {
   beginDelegation,
   endDelegation,
@@ -11,10 +9,10 @@ import {
 import {
   isSubagentLaunch,
   SUBAGENT_ACTION_KEYS,
+  SUBAGENT_TASK_MAX_LENGTH,
   SUBAGENT_TOOL,
   SUBAGENT_TOOL_KEYS,
 } from './tool-contract.js';
-import { validateChainArgs, validateParallelArgs } from './workflows.js';
 
 /**
  * T5 foreground dispatch guard: the authority on which `subagent` calls dispatch. It admits exactly
@@ -22,7 +20,7 @@ import { validateChainArgs, validateParallelArgs } from './workflows.js';
  * before the delegator runs, naming the shape to use instead so a model can correct its next call.
  * An admitted launching call becomes the parent's active delegation (registry.ts), which owns every
  * child launched until its result lands; one launching call runs at a time, as the tool contract
- * tells the model. Child and workflow concurrency within that call is not capped here. Never throws.
+ * tells the model. Child concurrency within that call is pi-subagents' to bound. Never throws.
  */
 
 export interface GuardInput {
@@ -34,9 +32,7 @@ export interface GuardInput {
 type GuardResult = { block?: boolean; reason?: string } | undefined;
 
 const LAUNCH_SHAPES =
-  'Use { agent, task } for one child, { workflow: "service.parallel", args: { tasks: [{ agent, task }] } } for children at the same time, or { workflow: "service.chain", args: { steps: [{ agent, task }] } } for children in order.';
-
-const WORKFLOWS = new Set<string>(SUBAGENT_WORKFLOWS);
+  'Use { agent, task } for one child, { tasks: [{ agent, task }] } for children at the same time, or { chain: [{ agent, task }, { parallel: [{ agent, task }] }] } for children in order.';
 
 function refuse(reason: string): GuardResult {
   return { block: true, reason };
@@ -67,9 +63,8 @@ function checkSubagentCall(deps: SessionFactoryDeps, input: Record<string, unkno
   // would take over the first call's children; pi-subagents would reject its dispatch anyway.
   if (parent.activeToolCallId)
     return refuse('Another subagent call is still running; wait for its result.');
-  if (input['workflow'] !== undefined) return guardWorkflowCall(deps, parent.agents, input);
-  if (input['args'] !== undefined)
-    return refuse(`Subagent args belong to a workflow call. ${LAUNCH_SHAPES}`);
+  if (input['tasks'] !== undefined || input['chain'] !== undefined)
+    return guardBatch(parent.agents, input);
   const problem = delegationProblem(parent.agents, input['agent'], input['task']);
   return problem ? refuse(problem) : undefined;
 }
@@ -94,40 +89,61 @@ function guardAction(input: Record<string, unknown>): GuardResult {
   return undefined;
 }
 
-function guardWorkflowCall(
-  deps: SessionFactoryDeps,
-  agents: string[],
-  input: Record<string, unknown>,
-): GuardResult {
-  const workflow = input['workflow'];
-  if (typeof workflow !== 'string' || !WORKFLOWS.has(workflow))
-    return refuse(`Unknown workflow ${String(workflow)}. ${LAUNCH_SHAPES}`);
+/**
+ * A `tasks` or `chain` call: each child names an agent and a task inside the list, so the call
+ * itself carries neither, and every child passes the same check as a single delegation, those of
+ * a chain's parallel steps included.
+ */
+function guardBatch(agents: string[], input: Record<string, unknown>): GuardResult {
+  if (input['tasks'] !== undefined && input['chain'] !== undefined)
+    return refuse(`Pass either tasks or chain, not both. ${LAUNCH_SHAPES}`);
   if (input['agent'] !== undefined || input['task'] !== undefined)
-    return refuse(`Workflow calls put each agent and task inside args. ${LAUNCH_SHAPES}`);
-  const args = input['args'] ?? {};
-  const validated =
-    workflow === SERVICE_PARALLEL_WORKFLOW ? validateParallelArgs(args) : validateChainArgs(args);
-  if (!validated.ok) return refuse(`${validated.error} ${LAUNCH_SHAPES}`);
-  const tasks = 'tasks' in validated.args ? validated.args.tasks : validated.args.steps;
-  const known = new Set(deps.ctx.ledger.data.resources.map((resource) => resource.id));
-  for (const [index, task] of tasks.entries()) {
-    const problem = delegationProblem(agents, task.agent, task.task);
-    if (problem) return refuse(`Workflow task ${index}: ${problem}`);
-    const missing = (task.resources ?? []).find((id) => !known.has(id));
-    if (missing) return refuse(`Resource ${missing} is not in the ledger.`);
+    return refuse(`tasks and chain carry each agent and task inside the list. ${LAUNCH_SHAPES}`);
+  const field = input['tasks'] !== undefined ? 'tasks' : 'chain';
+  const list = input[field];
+  if (!Array.isArray(list) || !list.length)
+    return refuse(`${field} must list at least one child. ${LAUNCH_SHAPES}`);
+  for (const [index, item] of list.entries()) {
+    const problem = field === 'tasks' ? childProblem(agents, item) : stepProblem(agents, item);
+    if (problem) return refuse(`${field}[${index}]: ${problem}`);
   }
   return undefined;
 }
 
+/** One chain step: a single child, or a `parallel` group of children and nothing else. */
+function stepProblem(agents: string[], step: unknown): string | null {
+  if (!isRecord(step)) return 'A chain step must be { agent, task } or { parallel: [...] }.';
+  const parallel = step['parallel'];
+  if (parallel === undefined) return childProblem(agents, step);
+  if (step['agent'] !== undefined || step['task'] !== undefined)
+    return 'A parallel step carries only parallel: [{ agent, task }, ...].';
+  if (!Array.isArray(parallel) || !parallel.length) return 'parallel must list at least one child.';
+  for (const [index, item] of parallel.entries()) {
+    const problem = childProblem(agents, item);
+    if (problem) return `parallel[${index}]: ${problem}`;
+  }
+  return null;
+}
+
+function childProblem(agents: string[], child: unknown): string | null {
+  if (!isRecord(child)) return 'Each child must be { agent, task }.';
+  return delegationProblem(agents, child['agent'], child['task']);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
 /**
  * Why one delegation is refused: the agent must be registered for this session (service agents plus
- * the atd agents the message referenced) and the task sized. Workflows apply it to every task.
+ * the atd agents the message referenced) and the task sized. `tasks` and `chain` apply it to every
+ * child.
  */
 function delegationProblem(agents: string[], agent: unknown, task: unknown): string | null {
   if (typeof agent !== 'string' || !agents.includes(agent))
     return `Subagent agent must be one of: ${agents.join(', ')}.`;
-  if (typeof task !== 'string' || !task.trim() || task.length > 8000)
-    return 'Subagent task must hold 1-8000 characters.';
+  if (typeof task !== 'string' || !task.trim() || task.length > SUBAGENT_TASK_MAX_LENGTH)
+    return `Subagent task must hold 1-${SUBAGENT_TASK_MAX_LENGTH} characters.`;
   return null;
 }
 

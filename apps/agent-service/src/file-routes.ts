@@ -11,7 +11,7 @@ import {
   type FileAttachResponse,
   type FileSearchReply,
   type ResourceImportResponse,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import { platformBackend } from './file-search/backend.js';
 import { AttachRefused, FileSearchService, SearchResultGone } from './file-search/service.js';
 import type { ResourceStore } from './resources.js';

@@ -1,6 +1,6 @@
 import { appendFile, mkdir } from 'node:fs/promises';
 import path from 'node:path';
-import { errorMessage } from '@ai/agent-contracts';
+import { errorMessage } from '@atd/agent-contracts';
 import type { Logger } from './logging.js';
 
 /** Ordered per-run JSONL audit; flushed before a run reaches its terminal state. */

@@ -5,7 +5,7 @@ import {
   tierAllows,
   type GrantScope,
   type PermissionTier,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import type { Gate } from './harness/gate.js';
 import type { Logger } from './logging.js';
 
@@ -106,7 +106,8 @@ export interface ShellDecision {
   toolCallId: string;
   tier: PermissionTier;
   gate: Gate;
-  signal?: AbortSignal;
+  /** The tool call's abort signal, passed through to the gate. */
+  signal?: AbortSignal | undefined;
   /** What the confirm shows as approved (the call's arguments). */
   detail: string;
   /** Audits a run the allowlist allowed without a confirm. */
@@ -126,6 +127,7 @@ export async function authorizeShellCommand(decision: ShellDecision): Promise<vo
     decision.auditAllowlisted();
     return;
   }
+  const allowlistEntry = suggestShellAllowlistEntry(command);
   await decision.gate({
     toolCallId: decision.toolCallId,
     scope: BASH_SCOPE,
@@ -133,7 +135,7 @@ export async function authorizeShellCommand(decision: ShellDecision): Promise<vo
     detail: decision.detail,
     signal: decision.signal,
     sessionGrant: false,
-    allowlistEntry: suggestShellAllowlistEntry(command) ?? undefined,
+    ...(allowlistEntry !== null && { allowlistEntry }),
     declinedMessage: SHELL_DECLINED_MESSAGE,
   });
 }

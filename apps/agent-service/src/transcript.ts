@@ -1,7 +1,7 @@
 import { isDeepStrictEqual } from 'node:util';
 import type { AgentSession, SessionEntry } from '@earendil-works/pi-coding-agent';
 import type { AssistantMessage, ToolResultMessage } from '@earendil-works/pi-ai';
-import type { ServiceBlock } from '@ai/agent-contracts';
+import type { ServiceBlock } from '@atd/agent-contracts';
 import type { Logger } from './logging.js';
 import {
   collectCompleted,
@@ -18,6 +18,7 @@ import {
   type BlockLookups,
   type PermissionLookup,
 } from './transcript-blocks.js';
+import type { StepList } from './transcript-details/codemode.js';
 import type { SubagentRow } from './transcript-details/subagent.js';
 
 type AgentMessage = AgentSession['messages'][number];
@@ -153,10 +154,13 @@ function stampSequence(counts: Map<number, number>, timestamp: number): number {
 
 export interface ProjectServiceBlocksInput {
   branch: readonly ServiceBranchItem[];
-  partial?: AssistantMessage;
+  /** The assistant message streaming now, if any; live views pass their slot through. */
+  partial?: AssistantMessage | undefined;
   partials?: ReadonlyMap<string, string>;
   /** Latest streamed result rows of running `subagent` calls, by call id. */
   subagentProgress?: ReadonlyMap<string, readonly SubagentRow[]>;
+  /** Steps of running `codemode` calls, by call id. */
+  codemodeProgress?: ReadonlyMap<string, StepList>;
   /** Permission outcomes recorded outside this branch: a child's live in its parent session. */
   permissions?: ReadonlyMap<string, PermissionLookup>;
   /**
@@ -186,6 +190,7 @@ export function projectServiceBlocks(input: ProjectServiceBlocksInput): ServiceB
   const lookups: BlockLookups = collectBlockLookups(branch, input.permissions);
   const partials = input.partials ?? new Map<string, string>();
   const subagentProgress = input.subagentProgress ?? new Map<string, readonly SubagentRow[]>();
+  const codemodeProgress = input.codemodeProgress ?? new Map<string, StepList>();
   const userCounts = new Map<number, number>();
   const compactionCounts = new Map<number, number>();
   const completed = collectCompleted(branch);
@@ -268,6 +273,7 @@ export function projectServiceBlocks(input: ProjectServiceBlocksInput): ServiceB
             lookups,
             partials,
             subagentProgress,
+            codemodeProgress,
             messageEndedAt: item.endedAt ?? null,
             usage: streaming ? undefined : messageUsage(item.message),
             outputOf,

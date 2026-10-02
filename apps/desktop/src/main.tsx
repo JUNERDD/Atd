@@ -1,7 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import '@fontsource-variable/inter';
-import '@ai/ui/styles.css';
+import '@atd/ui/styles.css';
 import './styles.css';
 import i18n, { initialLanguageReady } from './i18n';
 import { installEditCommands } from './lib/edit-commands';

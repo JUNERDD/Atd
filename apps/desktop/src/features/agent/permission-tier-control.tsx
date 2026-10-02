@@ -1,14 +1,14 @@
 import { Shield, ShieldAlert, ShieldCheck } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Button } from '@ai/ui/components/button';
+import { Button } from '@atd/ui/components/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
-} from '@ai/ui/components/dropdown-menu';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@ai/ui/components/tooltip';
+} from '@atd/ui/components/dropdown-menu';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@atd/ui/components/tooltip';
 import { PERMISSION_TIERS, type PermissionTier } from '../../client/agent/permission-schema';
 import { taskPermissionTier, type AgentTask } from '../../client/agent/task-schema';
 import { useSettingsSnapshot } from '../settings/use-settings';

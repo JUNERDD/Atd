@@ -2,9 +2,10 @@ import type { ToolStatus } from '../../../client/agent/transcript-schema';
 
 /**
  * Reading of a pi-subagents `subagent` call from its arguments. The one tool both launches
- * children (`agent` + `task`, `tasks`, `chain`, a named `workflow` or a raw workflow script) and
- * manages them (`action: list | guide | status | …`), so its row label, target, and the group's
- * launch count all come from the call shape rather than the tool name.
+ * children (`agent` + `task`, `tasks`, `chain`, whose steps may run a `parallel` group, and, in
+ * older transcripts, a named `workflow` or a raw workflow script) and manages them
+ * (`action: list | guide | status | …`), so its row label, target, and the group's launch count
+ * all come from the call shape rather than the tool name.
  */
 
 export type SubagentStepKey =
@@ -22,7 +23,7 @@ function text(args: Args, key: string): string | null {
   return typeof value === 'string' && value ? value : null;
 }
 
-/** A named workflow carries its parallel `tasks` or `steps` inside `args`. */
+/** A named workflow (older transcripts) carries its parallel `tasks` or `steps` inside `args`. */
 function launchSource(args: Args): Args {
   const nested = args['args'];
   return text(args, 'workflow') && typeof nested === 'object' && nested !== null
@@ -30,11 +31,19 @@ function launchSource(args: Args): Args {
     : args;
 }
 
+/** A chain step that runs a `parallel` group stands for each of its children. */
+function launchItems(item: unknown): unknown[] {
+  const parallel =
+    typeof item === 'object' && item !== null ? (item as Args)['parallel'] : undefined;
+  return Array.isArray(parallel) ? parallel : [item];
+}
+
+/** Every child a multi-child call names, a chain's parallel groups flattened; null for one child. */
 function launchList(args: Args): unknown[] | null {
   const source = launchSource(args);
   for (const key of ['tasks', 'steps', 'chain']) {
     const list = source[key];
-    if (Array.isArray(list)) return list;
+    if (Array.isArray(list)) return list.flatMap(launchItems);
   }
   return null;
 }
@@ -47,7 +56,7 @@ function isWorkflow(args: Args): boolean {
 
 /**
  * How many subagents the call dispatched: one per delegation (times its `count`), and one per task
- * or step of a parallel batch, a chain, or a named workflow's `args`. Only a completed call counts:
+ * of a parallel batch, per chain step (per child of a parallel step), or per named workflow task. Only a completed call counts:
  * a running one may still wait for approval or be refused, and a failed, declined, or interrupted
  * one dispatched nothing it could report. Management actions and raw scripts count none.
  */

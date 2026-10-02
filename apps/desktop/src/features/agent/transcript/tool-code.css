@@ -1,0 +1,109 @@
+/*
+ * Code-family tool cards (bash, read, write, edit) inside the shared `ToolCard` frame. The card
+ * owns the hairline, corner and fill; these rules only set the content's typography and the few
+ * semantic tints. Colors come from tokens: added lines use `--ata-diff-added`, removed lines and
+ * failures `--ata-diff-removed` / `--destructive`, always paired with a sign or words.
+ */
+
+/* `@pierre/diffs` reads its size from these inherited properties: match the card's 12/18 body. */
+.tool-code {
+  --diffs-font-size: 12px;
+  --diffs-line-height: 18px;
+}
+
+/*
+ * Code drawn flush on its owner's surface (`CodeBlock flush`, `DiffView`). `@pierre/diffs` paints
+ * the Shiki theme's background from `--diffs-light-bg` / `--diffs-dark-bg`, which its `rendered`
+ * layer declares on the host's `:host`; a declaration on the host from this document wins over a
+ * shadow `:host` rule, so clearing both lets the card's fill show through. Pierre derives every
+ * band (added and removed lines, word emphasis, hunk separators, context and buffer fills, hover)
+ * by mixing that background with a color, and a mix with `transparent` keeps the color at the
+ * mix's weight as alpha, so each band stays a tint over the card. The documented color overrides
+ * put line numbers in the muted tone and base the diff tints, signs, and changed-line numbers on
+ * the same tokens as the header tally; untokenized text takes the app's foreground.
+ */
+.code-block-flush {
+  --diffs-light-bg: transparent;
+  --diffs-dark-bg: transparent;
+  --diffs-light: var(--foreground);
+  --diffs-dark: var(--foreground);
+  --diffs-fg-number-override: var(--muted-foreground);
+  --diffs-addition-color-override: var(--ata-diff-added);
+  --diffs-deletion-color-override: var(--ata-diff-removed);
+}
+
+/* Plain text bodies (errors, images, unparsed output) wrap inside the card. */
+.tool-code-plain {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* A footer note can be a long path or sentence; it wraps instead of widening the card. */
+.tool-code-note {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.tool-code-note + .tool-code-note::before {
+  content: '·';
+  margin-right: 6px;
+  color: var(--muted-foreground);
+}
+.tool-code-note[data-tone='muted'] {
+  color: var(--muted-foreground);
+}
+
+/*
+ * Shell: the command as a prompt line, then its output in the secondary text color. The prompt
+ * takes its own column, so a multi-line command's continuation lines hang under its first
+ * character rather than under the `$`.
+ */
+.tool-shell-command,
+.tool-shell-output {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-variant-ligatures: none;
+}
+.tool-shell-command {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: 1ch;
+  color: var(--foreground);
+}
+.tool-shell-prompt {
+  color: var(--muted-foreground);
+  user-select: none;
+}
+.tool-shell-output {
+  color: var(--muted-foreground);
+}
+.tool-shell-command + .tool-shell-output {
+  margin-top: 6px;
+}
+
+/* Edit header tally: the sign carries the meaning, the color only reinforces it. */
+.tool-code-added {
+  color: var(--ata-diff-added);
+}
+.tool-code-removed {
+  color: var(--ata-diff-removed);
+}
+
+/* Fallback diff (the edit diff did not convert): Pi's lines with a muted number gutter. */
+.tool-code-diff {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-variant-ligatures: none;
+}
+.tool-code-diff-line[data-kind='add'] {
+  background: color-mix(in oklab, var(--ata-diff-added) 12%, transparent);
+}
+.tool-code-diff-line[data-kind='del'] {
+  color: var(--ata-diff-removed);
+  background: color-mix(in oklab, var(--ata-diff-removed) 12%, transparent);
+}
+.tool-code-diff-line[data-kind='gap'],
+.tool-code-diff-gutter {
+  color: var(--muted-foreground);
+}

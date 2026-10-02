@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { createServer } from 'node:net';
 import { after, before, test } from 'node:test';
 import { Type } from 'typebox';
-import { ErrorEnvelopeSchema, parse } from '@ai/agent-contracts';
+import { ErrorEnvelopeSchema, parse } from '@atd/agent-contracts';
 import { approveAuthorization } from './mcp-http-kit.ts';
 import { sleep } from './mcp-fake-server.ts';
 import { at, waitFor } from './mcp-kit.ts';

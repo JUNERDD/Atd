@@ -37,6 +37,9 @@ const napi = spawnSync(
     'index.js',
     '--dts',
     'index.d.ts',
+    // `Phase` becomes a string-literal union instead of a `const enum`, which the service's
+    // isolated-modules compilation cannot import.
+    '--no-const-enum',
   ],
   { cwd: packageRoot, stdio: 'inherit' },
 );

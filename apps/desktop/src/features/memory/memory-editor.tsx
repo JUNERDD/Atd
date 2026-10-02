@@ -1,10 +1,10 @@
 import { useState, type ReactNode } from 'react';
 import { Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Button } from '@ai/ui/components/button';
-import { Label } from '@ai/ui/components/label';
-import { ScrollArea } from '@ai/ui/components/scroll-area';
-import { Textarea } from '@ai/ui/components/textarea';
+import { Button } from '@atd/ui/components/button';
+import { Label } from '@atd/ui/components/label';
+import { ScrollArea } from '@atd/ui/components/scroll-area';
+import { Textarea } from '@atd/ui/components/textarea';
 import type { MemoryEntry } from '../../client/agent/bridge';
 import { useOverlayFooter } from '../../components/use-overlay-footer';
 import { FieldError } from '../commands/field-error';
@@ -49,9 +49,9 @@ export function MemoryEditor({
     <div className="command-editor">
       <SettingsHeading title={t('memory.edit.title')} subpage backLabel={t('memory.edit.back')} />
       <ScrollArea
-        className="editor-fields"
+        className="settings-page-scroll"
         viewportClassName="overlay-footer-fade"
-        gutter="stable"
+        gutter="none"
         scrollShadow
       >
         <div className="settings-editor-inner">

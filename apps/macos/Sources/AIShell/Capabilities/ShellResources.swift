@@ -2,25 +2,53 @@ import AICore
 import AIRelay
 import AppKit
 import OSLog
+import UniformTypeIdentifiers
 
-/// Attachments from the open panel, file drops on the panel's web view and pasted file URLs,
-/// and saving a service resource where the user chooses. Files are imported by path through
+/// Attachments from the open panel, file drops on the panel's web view, pasted file URLs and
+/// pasted bitmaps, and saving the page's content where the user chooses. Files are imported by path through
 /// the service (`/v1/resources/import`); paths never reach the page. One pick, drop or paste
 /// takes at most ``AttachmentRules/maxPathsPerImport`` files, the page's attachment limit.
 ///
-/// Pasted images are not attachments: the service only reads the text formats of
-/// `ATTACHABLE_EXTENSIONS`, so a bitmap-only paste stays with WebKit's own paste.
-@MainActor
+/// A file drag over the panel and the import of its drop reach the page as `files.drag`
+/// (``FileDropState``), so it can show what the drop attaches and that it is being added.
+///
+/// A paste with a bitmap but neither file URL nor text (a screenshot copied to the clipboard)
+/// is stored as `Pasted image <date>.png` in a temporary folder and imported like a file;
+/// ``PastedImageExport`` scales and encodes it. Screenshots arrive through ``ScreenshotTaker``,
+/// which imports its capture through ``importPaths(_:)``.
 final class AttachmentImporter {
   private let services: ShellServices
   private weak var panel: WebViewHost?
   private let systemPanels: SystemPanels
+  private var drop = FileDropState()
   private static let log = Logger(subsystem: "com.junerdd.ai", category: "attachments")
 
   init(services: ShellServices, panel: WebViewHost, systemPanels: SystemPanels) {
     self.services = services
     self.panel = panel
     self.systemPanels = systemPanels
+    // The panel's web view is the only one that takes file drops and turns pastes into
+    // attachments.
+    panel.onFiles = { [weak self] urls, source in
+      guard let self else { return }
+      if source == "drop" { updateDrop { $0.beginImport() } }
+      Task {
+        await self.importFiles(urls)
+        if source == "drop" { self.updateDrop { $0.endImport() } }
+      }
+    }
+    panel.onFileDrag = { [weak self] summary in self?.updateDrop { $0.setDrag(summary) } }
+    panel.onPastedImage = { [weak self] data in
+      guard let self else { return }
+      Task { await self.importPastedImage(data) }
+    }
+  }
+
+  /// Applies a drop change and sends the page the phase when it changed.
+  private func updateDrop(_ change: (inout FileDropState) -> Void) {
+    let before = drop.event
+    change(&drop)
+    if drop.event != before { panel?.setState(.filesDrag(drop.event)) }
   }
 
   /// `files.pick`: the chooser's files as the page's refs; none when cancelled. A pick whose
@@ -46,23 +74,51 @@ final class AttachmentImporter {
     }
   }
 
-  /// `files.save`: the save panel, then the resource's bytes from the service, quarantined.
-  func save(resourceId: String, name: String) async throws(BridgeError) -> Bool {
-    let suggested = AttachmentRules.basename(name)
-    guard
-      let url = await systemPanels.chooseSaveLocation(
-        suggestedName: suggested.isEmpty ? ArtifactFileName.fallback : suggested)
-    else { return false }
+  /// A pasted bitmap as an image attachment, announced to the page like any import. A bitmap
+  /// that cannot be stored is reported as a failure under its would-be name, since WebKit no
+  /// longer pastes it. The temporary file is gone once the service has read it.
+  func importPastedImage(_ data: Data) async {
+    let now = Date.now
+    let folder = URL.temporaryDirectory.appending(path: "pasted-image-\(UUID().uuidString)")
+    defer { try? FileManager.default.removeItem(at: folder) }
     do {
-      let resource = try await services.client().resource(id: resourceId)
-      try DownloadQuarantine.app.write(resource.bytes, to: url)
-      return true
+      try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+      let file = try await PastedImageExport.store(data, pastedAt: now, in: folder)
+      await importFiles([file])
     } catch {
-      throw BridgeError(ShellBridge.message(error, "The file could not be saved."))
+      Self.log.error("A pasted image was not attached: \(String(describing: error))")
+      let reason: ResourcesImportedEvent.Failure.Reason =
+        (error as? PastedImageExport.Failure) == .tooLarge ? .tooLarge : .unreadable
+      panel?.send(
+        .resourcesImported(
+          ResourcesImportedEvent(
+            resources: [],
+            failures: [.init(name: PastedImageName.fileName(pastedAt: now), reason: reason)])))
     }
   }
 
-  private func importPaths(_ urls: [URL]) async throws(BridgeError) -> ResourceImportResponse {
+  /// `files.save`: the page's content (``SavedFile``) where the user chooses, quarantined like
+  /// any download. False when the user cancelled or another system panel is open.
+  func save(_ params: FilesSaveParams) async throws(BridgeError) -> Bool {
+    let file: SavedFile
+    switch SavedFile.validate(params) {
+    case .success(let value): file = value
+    case .failure: throw BridgeError(ShellStrings.shared.text(.fileSaveInvalidImage))
+    }
+    guard
+      let url = await systemPanels.chooseSaveLocation(
+        suggestedName: file.suggestedName, contentType: file.isPNG ? .png : nil)
+    else { return false }
+    do {
+      try DownloadQuarantine.app.write(file.bytes, to: url)
+      return true
+    } catch {
+      throw BridgeError(ShellStrings.shared.text(.fileSaveFailed))
+    }
+  }
+
+  /// The service's import of local files, at most ``AttachmentRules/maxPathsPerImport``.
+  func importPaths(_ urls: [URL]) async throws(BridgeError) -> ResourceImportResponse {
     let paths = urls.filter(\.isFileURL).prefix(AttachmentRules.maxPathsPerImport).map {
       $0.standardizedFileURL.path(percentEncoded: false)
     }
@@ -83,7 +139,6 @@ final class AttachmentImporter {
 /// copies the path. The page can upload any file and ask to open it, so only document types
 /// (``ArtifactOpenPolicy``) open directly; any other type opens only after the user chooses
 /// Open Anyway in a native confirmation, and Gatekeeper still checks it then.
-@MainActor
 final class ArtifactActions {
   private let services: ShellServices
   private let downloads: URL

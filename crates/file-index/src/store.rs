@@ -46,7 +46,7 @@ pub(crate) trait NameStore: Send + Sync + fmt::Debug {
     fn checkpoint(&self) -> Result<(), StoreError>;
 }
 
-/// minidex 0.36.0: FST segments + mmap + write-ahead log, with background flush and compaction.
+/// minidex 0.37.0: FST segments + mmap + write-ahead log, with background flush and compaction.
 ///
 /// Word-prefix matching only: the query `port` finds `port-notes.md` and `reportPort.md` (camel
 /// case splits words) but not `report.md`. Paths are stored as displayed locations with the root
@@ -176,15 +176,23 @@ impl NameStore for MinidexStore {
     }
 }
 
-/// Every live file in the index. minidex has no listing call; a recency query from the epoch
-/// with no practical limit returns them all, tombstones applied.
+/// Every live file in the index: all stored paths start with `/`, so the empty prefix matches
+/// them all, prefix tombstones applied. `None` means minidex's scan budget was exceeded, which an
+/// unbounded limit cannot reach; it is reported rather than treated as an empty index.
 fn list_all(index: &Index) -> Result<NameList, StoreError> {
-    let mut names = NameList::default();
-    for result in index
-        .recent_files(0, ALL_FILES, 0, MinidexStore::options())
+    let entries = index
+        .with_prefix(None, "", usize::MAX)
         .map_err(fail)?
-    {
-        names.insert(stored(result));
+        .ok_or_else(|| StoreError("the index listing exceeded minidex's scan budget".into()))?;
+    let mut names = NameList::default();
+    for entry in entries {
+        if entry.kind == Kind::File {
+            names.insert(StoredFile {
+                root: entry.volume,
+                rel: entry.path.to_string_lossy().into_owned(),
+                modified_secs: entry.last_modified / MICROS,
+            });
+        }
     }
     Ok(names)
 }
@@ -192,9 +200,6 @@ fn list_all(index: &Index) -> Result<NameList, StoreError> {
 /// minidex timestamps are microseconds: it divides them into seconds for its recency filter and
 /// scoring, so seconds passed as-is would read as 1970 and no file would count as recent.
 const MICROS: u64 = 1_000_000;
-
-/// A `recent_files` limit that lists everything; minidex adds its own margin, so not `usize::MAX`.
-const ALL_FILES: usize = u32::MAX as usize;
 
 fn stored(result: minidex::SearchResult) -> StoredFile {
     StoredFile {

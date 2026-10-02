@@ -6,7 +6,7 @@ Agent 流程与 Providers / Shortcuts 设置已合并到同一设计页：[统�
 
 ## 设计与组件映射
 
-通过云端 Figma MCP 读取画面、主组件、变量、样式与截图。项目画面与适配组件保留在 [ai 项目文件](https://www.figma.com/design/PROJECT_FILE_KEY/ai)；共享 Radix / Rhea 控件与 Lucide 实例保留 [shadcn UI kit](https://www.figma.com/design/UI_KIT_FILE_KEY/shadcn-ui-kit-community-edition--Community-) 连接。本次没有修改共享库。
+通过云端 Figma MCP 读取画面、主组件、变量、样式与截图。项目画面与适配组件保留在 [Atd 项目文件](https://www.figma.com/design/PROJECT_FILE_KEY/Atd)；共享 Radix / Rhea 控件与 Lucide 实例保留 [shadcn UI kit](https://www.figma.com/design/UI_KIT_FILE_KEY/shadcn-ui-kit-community-edition--Community-) 连接。本次没有修改共享库。
 
 以下代码路径相对于 `apps/desktop/src/`。
 
@@ -414,6 +414,7 @@ Figma 侧未同步：本会话云端 Figma 工具不可用，本地 Figma MCP �
 | App / Model config option · Rhea `1557:58872`（Default / Hover / Focus；32px、6/8 内边距、14 圆角、16px 勾选槽）                                                                                       | `model-config-subviews.tsx` 的档位选项                                   |
 | 15 · Context window & compaction `1557:59218`：App / Compaction activity `1557:59298`（Running / Completed / Completed expanded / Failed）                                                             | `transcript/compaction-block.tsx`、`agent.css`                           |
 | App / Context usage ring `1557:59243`（Normal / Warning / Error × Default / Focus）                                                                                                                    | `compaction/context-usage-ring.tsx`、`composer.css`                      |
+| App / Context usage popover `1651:78274`（Loaded × Expanded、Loading、Error）；示例帧 `1651:78275`；变量 `status/progress` `1650:65606`、`context/skills` `1650:65607`、`chart-2` `1650:65608`         | `compaction/context-usage-{detail,ring}.tsx`、`context-usage.css`        |
 | App / New task hint `1558:58935`                                                                                                                                                                       | `compaction/new-task-hint.tsx`                                           |
 | App / Progress pill segment `1523:57936` 新增 `Kind=Compacting` `1558:59086`；App / Progress pill `1499:53918` 新增 `Compacting` 轴 `1558:59091`                                                       | `progress/progress-pill.tsx`                                             |
 | App / Composer `72:150` 新增 `Show context usage` 属性；App / Composer quick panel `1447:51964` 新增 `View=Context drill` `1558:60190`、`View=Compact query` `1558:60271`                              | `composer.tsx`、`quick-commands.ts`、`slash-drills.tsx`                  |
@@ -468,3 +469,70 @@ Figma 侧未同步：本会话云端 Figma 工具不可用，本地 Figma MCP �
 - 已知差异：Figma 换行网格无法保留空列，少于列数的卡片会被拉宽；320px 下放不下的 Tabs 在 Figma 中被裁切，代码为横向滚动；插件详情页头部的徽标位置沿用旧头部组件；搜索结果只在组件说明中描述，未单独绘制。
 - 设置导航 [Settings sidebar](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=256-1024) 已包含 Extensions 与 Permissions，两项文案现在同样由 `Content/Settings navigation/*` 字符串变量拥有。上文 2026-09-12 记录的四项导航是当时状态。
 - 已知差异：共享 Badge 使用 Geist SemiBold 12/16，代码 Badge 为 Inter 12 Medium（与现有技能行相同）；诊断块使用项目自有的 Rhea Alert 版本，因为共享库只有 Nova Alert。
+
+## 2026-10-01 个人 › 记忆标签显示真实列表
+
+用户要求插件详情的记忆标签显示真实记忆，而不是一个入口行；随后确认学习开关只由「记忆」分区拥有（标签里不再重复），标签里也不再保留跳转到「记忆」分区的入口。上文「记忆除外」与 Memory 分组的开关、计数描述已被取代。
+
+- 代码：`features/service/plugin-memory-group.tsx` 复用 `features/memory/memory-list.tsx` 的行与 `memory-delete-dialog.tsx`，与「记忆」分区共用 `use-memory-snapshot.ts`；行点击经 `useOpenSettingsMemory` 打开「记忆」分区的编辑页，More 可在原地删除。标签内只有记忆列表，没有开关或入口按钮。记忆 Tab 与其他 Tab 一样显示条目数。
+- Figma：[Personal · Memory tab](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=1614-75986) 移除学习行，只保留记忆列表；[Plugin kind tabs](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=1614-74934) 的 Memory 带数量；[Plugin item row](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=1590-66093) 新增「More only」记忆行类型并删除旧 Memory 变体。S5 消费者已继承。
+- 记忆来源追溯经评估暂不实现：写入路径已限于任务内的记忆工具调用与根运行学习器，Hermes 补丁冻结且条目以内容哈希为 id、学习器只报告「已变化」，旁路账本只能靠差异推断，会与单一权威（D7）产生漂移。
+- 已知差异：「记忆」分区画面（C · 04.01–04.05）仍用较旧的 [App / Memory item](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=339-1153)（无类型图标、编辑按钮而非 More），与代码列表不一致，尚未迁移。
+
+## 2026-10-01 命令输入来源新增截图
+
+代码已支持把截图作为命令输入来源，本次只同步 Figma，没有修改应用代码。
+
+- 代码：`features/commands/input-options.tsx` 的 Input source 选项依次为 Manual input、Selected text、Clipboard、Screenshot、No text input；选 Screenshot 时 Input options 里的 Allow attached files 开启并禁用。输入页 `features/agent/command-input.tsx` 在 Screenshot 来源下渲染 `screenshot-field.tsx`：标签行右侧是 outline `sm` 按钮（Lucide `camera`，Take / Retake screenshot），下方是截图预览（`resource-image.tsx`：最高 192px、宽度不超过内容宽、`rounded-xl`、描边、`object-contain`）；没有任何图片时显示 “Take a screenshot to run this command.” 且 Run 禁用。附加的其他图片在 Files 列表里用 16px 缩略图代替文件图标。
+- 组件（02 · App components）：新增 [App / Command screenshot field · Rhea](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=1686-79500)（State=Missing / Preview，按钮为连接的 App / Settings action · Rhea Small Outline 加共享 `Lucide / camera`）、[App / Command attachment row · Rhea](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=1687-79488)（Kind=Image / File，移除按钮为 App / Icon button Ghost icon-xs）和 [App / Command input source menu · Rhea](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=1687-79572)（与 Command actions menu 同构：Popover surface 材质层加连接的 Dropdown Menu Item，按 SelectItem 调整为 6/8px 内边距、14px 圆角、尾部 16px 勾选列）。[App / Settings switch · Rhea](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=284-988) 增加 Checked disabled / Unchecked disabled（50% 不透明度）。`shadcn · Project` 新增 `radius/image-preview`（别名 `radius/tooltip`，14px）与 `radius/thumbnail`（6px，`rounded-sm`）。
+- 审阅画面：新区块 [C2 · 截图输入](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=1688-79581) 包含 05.07 输入来源菜单展开、08.09 Screenshot 来源下 Allow files 锁定开启，以及输入页 02.07 已拍摄预览、02.08 未拍摄（提示加 Run 禁用）、02.09 附加图片代替截图（缩略图行）、02.10 面板 320 宽预览。输入页文件没有现成的宽度变体，因此以 420 为主，另加一帧 320 用于窄宽检查。截图样例图取自 08.01 画面导出。
+- 已知差异：Figma 输入页沿用旧的 Command run footer（Review / Ask first / Change input / Run），代码页脚为 Command settings 加带 ⌘↵ 的 Run；编辑器里 Input options 仍是二级页（08.xx）而不是代码的 Popover，字段标签仍为 “Input” / “Main text source”，代码是 “Input source”。拍摄中状态（按钮禁用、Spinner 代替相机）只写在组件说明里，没有单独绘制。
+
+## 2026-10-01 原生截图浮层与标注工具栏
+
+代码已实现原生截图浮层（`apps/macos/Sources/AIShell/Capture/`），本次只同步 Figma，没有修改应用代码。浮层与工具栏都是 AppKit 原生界面，不是网页；Figma 只是预览。
+
+- 组件（02 · App components 新区块 [21 · Screenshot capture overlay](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=1694-87769)）：[App / Capture annotation toolbar](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=1695-88345)（`AnnotationToolbar.swift`：Tools 10 段、Colours 6 段、Stroke widths 3 段、Undo/Redo、Cancel/Done；内边距 6/8、间距 4，组间 12；变体 Tool=None 与各工具 × History=None / Undo / Undo and redo）由 App / Capture tool segment、colour swatch、stroke segment、toolbar button 组成，图标连接共享库 `Lucide / *`（D9 的 14 个名称）。浮层部件：[App / Capture selection](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=1694-87797)（State=Highlight / Selected / Locked：1.5pt 强调色外描边、8pt 白色手柄、尺寸标签）、App / Capture size label（`1694:87770`）、[App / Capture loupe](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=1694-87798)（15 × 15 像素、8 倍、读数为 Quartz 坐标与 hex）、App / Capture hint pill（`1694:87776`，Kind=Idle / Accessibility）。
+- 令牌：`ATA · Panel semantics` 新增 `capture/*`（强调色即系统 controlAccentColor、40% 遮罩、72% 标签底、六种标注色等）；效果样式 `ATA/Capture toolbar glass` 仅用于预览工具栏胶囊。代码中的材质是 `NSGlassEffectView`（Liquid Glass，圆角 = 高度 / 2），由系统绘制，Figma 用 material/glass 填充、popover/ring 内描边和该效果近似。
+- 审阅画面：产品页新区块 [C3 · 截图捕获浮层](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=1696-74490)：C3.01 空闲（元素高亮、放大镜、两条提示）、C3.02 已选区与下方工具栏、C3.03 标注中（矩形、箭头、文字、马赛克、序号 1–3，Arrow 选中、可撤销）、C3.04 靠近底边时工具栏翻到上方、C3.05 zh-Hans 提示。冻结屏幕为示例桌面组件（仅原型内容）。
+- 已知差异：分段控件与工具栏按钮的高度、选中填充和禁用透明度是对系统控件的近似，只绘制深色外观；尺寸标签字体用 SF Pro，未开启等宽数字特性。
+- 同日修正（代码与 Figma 已同步）：工具栏翻到上方时让出尺寸标签（`AnnotationToolbarLayout.sizeLabelReach = 30`，y = 选区顶 − 30 − 8 − 工具栏高），C3.04 已更新；所有色板都有 1pt `labelColor` 40% 描边（`capture/swatch-edge`，深色外观为白色 40%），黑色色板在玻璃上可见。
+- 同日按用户修正重做工具栏（取代上文分段控件的结构与近似说明）：所有控件都是 28 × 28 圆形按钮 [App / Capture toolbar button](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=1701-88788)（Kind=Glyph / Accent glyph / Swatch / Stroke × State=Rest / Hover 9% / Pressed 16% / Selected / Disabled），内边距四边 6、按钮间距 2、组间 16pt 分隔线两侧各 6，胶囊 740 × 40、圆角 20 = 14 + 6 同心；工具与线宽选中为强调色圆加白色图形，颜色选中为内缩 2pt 的 2pt 强调色环；旧的 tool segment / colour swatch / stroke segment 组件已删除，色板与线宽图形改为 App / Capture swatch dot、stroke dot，C3.02–C3.04 实例已继承并按 740 宽右对齐。
+- 标注可在绘制后改样式：颜色与线宽按钮显示并修改选中标注（或正在编辑的文字）的样式，未选中时作用于下一个标注；线宽同时决定文字大小、序号尺寸与马赛克粗细。App / Capture toolbar button 新增 Kind=Swatch, State=Disabled（`1703:88838`），工具栏新增 Colours 变体属性与 Tool=Mosaic, Colours=Disabled（`1703:88841`，选中马赛克或马赛克工具且无选中时六个颜色均禁用）；新画的标注保持选中，C3.03 中最后画的箭头两端显示抓手。
+- 样式控件按用户要求移出主工具栏（取代上两条中颜色禁用的做法）：工具栏只剩 10 个工具 | 撤销、重做 | 取消、完成（450 × 40，Colours 属性与禁用色板状态已删除）；新增 [App / Capture style bar](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=1704-88999)（Kind=Default 290 × 40：6 色板 | 3 线宽；Kind=Mosaic 100 × 40：只有线宽），仅在有可设置样式的对象时显示，与工具栏叠成一组、间距 6、左缘对齐（下方时样式栏在工具栏下，上方时样式栏在最外侧）。C3.02 无样式栏，C3.03 显示选中箭头的样式，C3.04 改为 Rectangle 工具并在上方叠放，新增 C3.06 马赛克工具帧（`1704:89064`）。
+- 同步 v4/v5：选区全程可调、标注时也显示手柄（删除 State=Locked）；工具栏 11 个工具（Mosaic 后新增 Spotlight `focus`，S），480 × 40，新增 Tool=Spotlight 变体；样式栏新增 Kind=Text（330 × 40，第三组为 `square-text` 文字背景开关，开启为强调色填充），Spotlight 无样式不显示样式栏；尺寸标签在导出像素不同时追加「 · W × H px」；提示新增 Kind=Selected（`capture.hint.selected`），底部会碰到选区带时移到顶部；新增 C3.07（`1706:75264`）展示聚光灯 50% 压暗、带黄色底板的文字（选中虚线框）与元素框悬停预览。调整选区时的放大镜只写在组件说明中，未单独绘制。
+- 同步 v6：面板端新增 [App / Composer attach menu · Rhea](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=1709-88967)（`composer-attach-menu.tsx`：截图 / 上传文件 / 提及…，向上展开、左对齐）、App / Vision notice（`1709:89025`）、App / Composer attachment chip（`1709:89042`，图片带编辑铅笔）、App / Composer `State=Ready attachments`（`1710:89043`）、截图字段 Preview 增加「Edit screenshot」、App / Message image thumbnail（64px，`1710:89210`）与 App / User message `Content=Images`（`1710:89211`），审阅区块 [C4](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=1712-75731)；原生端提示新增 Kind=Recall / Windows only，新增 C3.08（`1711:89126`）、C3.09（`1711:89269`），C3.03 的序号 2 带尾巴指向柱形。
+- 2026-10-02 工具栏可拖动（代码与 Figma 已同步）：工具栏最左侧新增 [App / Capture toolbar grip](https://www.figma.com/design/PROJECT_FILE_KEY/Atd?node-id=1774-95884)（16 × 28，`Lucide / grip-vertical`，muted-foreground），工具栏变为 498 × 40；拖动抓手或任一栏的非按钮区域，两栏作为一组移动，本次截图内停在放下处（距显示器边 8），样式栏有空间时在下方、否则在上方；双击恢复到选区旁。C3.02–C3.07 的工具栏与样式栏左移 18，保持与选区右对齐。
+- 2026-10-02 马赛克稳定化与模糊形态（代码与 Figma 已同步）：`CIPixellate` 实测为每块点采样且网格锚在区域左上角，区域移动 1px 即整体跳变；改为网格锚定冻结屏幕左上角、每块取块内像素精确平均，块边长按线宽固定 8 / 12 / 18 pt（不再随区域大小变化）。新增模糊形态：整屏高斯模糊（半径 6 / 10 / 16 pt），区域只取窗口。App / Capture style bar Kind=Mosaic 前置「马赛克（grid-3x3）/ 模糊（droplet）」二选一组，记忆为 `capture.annotation.style.redaction`；C3.06 实例已继承。
+- 同日补充遮盖与随机扰动（代码与 Figma 已同步）：马赛克形态新增「遮盖」（`solid`，不透明黑框，不保留任何原像素，选中时隐藏线宽），图标为新组件 [App / Capture cover glyph](https://www.figma.com/design/PROJECT_FILE_KEY/Atd?node-id=1776-95940)，样式栏 Kind=Mosaic 变为三选一，新增 Kind=Cover 变体；马赛克块在精确平均后加按块位置与大小确定的 ±12 级扰动（参照 CleanShot X 的随机化，对抗 Depix 一类的块平均匹配），同一块始终相同，移动仍稳定。随后按用户反馈（深色界面上呈棋盘噪点，“太花”）参照 PixPin（文档：块内平均值替换整块，无扰动）撤除扰动；需要确保不可还原时用「遮盖」。
+- 同日按用户要求改为 PixPin 式强度滑块（代码与 Figma 已同步）：马赛克不再用三档线宽，样式新增连续强度 `strength`（0–1，默认 0.3，记忆为 `capture.annotation.style.strength`），马赛克块 4–32 pt、模糊半径 2–28 pt；样式栏为 AppKit `NSSlider`（small，112 pt），拖动时只预览、不进撤销栈，松手提交一步，`[` / `]` 按 0.1 步进，选「遮盖」时隐藏。新组件 [App / Capture strength slider](https://www.figma.com/design/PROJECT_FILE_KEY/Atd?node-id=1778-95951) 为系统滑块的深色近似，Kind=Mosaic 变为 224 × 40，C3.06 实例已继承。
+- 同日按用户要求把所有三档大小改为同一个滑块，并参照 PixPin 加滚轮（代码与 Figma 已同步）：`AnnotationStroke` 由 thin/medium/thick 改为 0–1 连续值，默认 0.3 正好等于原中档；各工具尺寸线性映射并取整到 ¼ pt（线宽 1–11、荧光笔 8–48、文字 13–43、序号 19–49、马赛克块 3–33、模糊 1–31 pt），马赛克单独的强度并入其中。滚轮在浮层任意位置调整样式栏当前目标的大小（向上变大，每格 1/20），`-` `=`（及 `[` `]`、Shift 下 `_` `+`）为键盘等效，与 PixPin 的滚轮和 -/= 快捷键一致；一次拖动或一串滚轮（间隔不超过 0.5 秒或同一触控板手势）为一步撤销。PixPin 的 Ctrl + 滚轮调透明度未采用（没有透明度样式）。组件改名 [App / Capture size slider](https://www.figma.com/design/PROJECT_FILE_KEY/Atd?node-id=1778-95951)，样式栏 Kind=Default 314、Kind=Text 354 宽；记忆键仍为 `capture.annotation.style.stroke`（改存数字，旧的档位名回落为默认值）。
+- 同日新增「复制」（代码与 Figma 已同步）：工具栏完成组变为 取消 | 复制（Lucide `copy`，⌘C）| 完成，宽 528 × 40；复制导出与完成相同的带标注图像，以 PNG 与 TIFF 按完整像素写入剪贴板（尺寸按点计，粘贴为屏幕大小）后结束截图，不附加到输入框，页面调用按 `cancelled` 收到；选区同样记为 `R` 的上次区域；打开文字编辑时 ⌘C 仍复制所选文字。C3.02–C3.07 工具栏左移 30，保持与选区右对齐。
+
+## 2026-10-02 依赖升级带来的界面变化
+
+依赖升级（pi 1.0 codemode、streamdown 2.7、MCP 新字段）改动了代码中的界面，本次同步 Figma，并以代码为准。链接节点均在 [ai](https://www.figma.com/design/PROJECT_FILE_KEY/ai) 文件中。
+
+- 代码块：[App / Markdown code block](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=229-907) 改为 `@pierre/diffs` 版式（1px 描边、14px 圆角、行号、13/20 等宽），删除旧的语言标签头部与 `Language` 属性，新增 `Hover=Off/On`：完成态悬停显示 Download（`download-button.tsx`，Lucide `download`）与 Copy，流式态（`streaming-code-block.tsx`）悬停只显示 Copy。新增令牌 `code/*`（ATA · Panel semantics）、`radius/code-block`、`sidebar`（shadcn · Project）。
+- 图表与脚本（新区块 [22 · Transcript diagrams & scripts](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=1722-89369)）：[App / Mermaid diagram](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=1722-89500)（Streamdown 全屏胶囊旁为 Copy 与下载菜单触发器）、[App / Diagram download menu · Rhea](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=1722-89509)（SVG / PNG / Mermaid 源码）、[App / Tool body · Codemode](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=1723-89570)（脚本代码块最高 320，随后为活动轨道上的嵌套步骤；变体为等待审批与已拒绝步骤）。
+- MCP 设置：[App / Extension sub-page · Rhea](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=1584-63172) 的添加、详情、需审批、已审批页增加 Connection、OAuth client（客户端 ID、名称、回调端口、元数据 URL、客户端密钥）与 Agent access（工具加载方式、允许读取资源）分区；新增 MCP details · Plugin（只读事实与「复制到个人」提示）、MCP add · Remote（认证为 None 时的登录提示）与 MCP add · OAuth · Invalid（行内错误）；新增组件 [App / Settings switch row · Rhea](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=1723-89709) 与 [App / MCP client secret input · Rhea](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=1723-89787)（Saved / Replacing / None）。[App / Extension detail row · Rhea](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=1576-62091) 去掉固定 20px 高度，换行内容不再溢出。
+- 审阅画面：S7（`1727:92460`，六个 MCP 页面 1000 宽全长，以及 480 卡片与 320 抽屉宽度下双列堆叠，另有英文行 `1731:80242`），T2（`1731:94988`，420 与 320 面板宽度下的代码块、展开菜单的图表与两种脚本状态）。选区工具栏改为 Radix Toolbar 只影响键盘焦点，外观不变，未改 Figma。
+- 已知差异：工具加载下拉的展开态、另两个选项的说明、保存成功与导出失败提示、插件命令（stdio）事实只写在说明中，未单独绘制；语法色与行号宽度为近似，Geist Mono 代替 SF Mono，`=>` 因连字显示为 ⇒；`App / Activity step` 在窄行中长目标会挤压标题（代码中目标截断），320 示例改用短目标；S4/S7 1000 宽窗口实例的面包屑仍为旧的「Models」。
+
+## 2026-10-02 输入框 @ 面板提及命令与记忆
+
+用户要求 Composer 的 `@` 面板也能提及已保存命令和记忆（此前引用类条目常常只剩 MCP），并确认两者都作为引用芯片：命令把定义（名称、说明、指令模板、参数）作为上下文交给本次运行而不执行它，记忆只引用单条条目的内容。`/` 仍不列已保存命令（Q2 不变）。
+
+- 代码：`features/quick-panel/use-saved-groups.tsx` 提供 Commands（已启用命令）与 Memory 分组，`use-mention-view.tsx` 把它们排在子代理之后；芯片新增 `command` / `memory` 两种（`composer-editor/draft.ts`、`chip-content.tsx`），契约 `RunReference` / `InputChip` 同步新增；服务端在 `references/saved.ts` 解析，记忆按内容哈希 id 定位，条目改过或本条消息关闭记忆时列为不可用。命令指令编辑器不提供这两类（指令令牌不含它们）。
+- Figma：[App / Composer quick panel](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=1447-51964) 的 `View=Mention root` 在 Subagents 后新增 Group / Commands 与 Group / Memory（Lucide / command、Lucide / brain，记忆类型作为尾部状态）；[App / Composer chip](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=1451-53451) 新增 `Kind=Command` / `Kind=Memory`（Default、Selected）；两处组件说明已更新。
+- 已知差异：Mention root 的 Options 区域固定高度并裁剪，新分组位于滚动区下方，整体预览中不可见；`View=Mention query` 未绘制命中命令或记忆的示例。
+
+## 2026-10-02 Atd 名称与品牌标识
+
+项目对外名称统一为 `Atd`，Figma 文件标题也已更名。应用显示名、菜单、窗口标题、应用包及安装包名称已同步；工作区包名和导入路径统一为 `@atd/*`。Bundle ID、数据目录、钥匙串和通信协议标识保留，以保持现有数据与连接兼容。
+
+- 标识：使用完整的抽象折带轮廓与圆形端部，不含产品名字母。原始透明 PNG 保留在 `packages/ui/src/assets/brands/atd/symbol.png`；Figma [原始标识组件](https://www.figma.com/design/PROJECT_FILE_KEY/Atd?node-id=1741-95290) 与 [前景色组件](https://www.figma.com/design/PROJECT_FILE_KEY/Atd?node-id=1741-95292) 共用该图像，没有重绘轮廓。
+- 面板：[Panel header](https://www.figma.com/design/PROJECT_FILE_KEY/Atd?node-id=71-112) 的新建任务入口替换为新标识。26px 图像占位保留原始透明留白，实际标识约 16px 宽，按钮保持 28px；返回箭头的覆盖实例继续使用 16px。代码通过 `currentColor` alpha mask 着色，按比例完整显示。设置导航继续不显示 Logo。
+- 菜单栏：[四种状态](https://www.figma.com/design/PROJECT_FILE_KEY/Atd?node-id=1562-59933) 共用新标识，保留运行圆点、待处理标记和不可用时的 40% 不透明度，导出 18px／36px 透明模板图片。状态栏专用实例放大到约 17.1px 的可见宽度，图框外只保留原图的透明留白，完整轮廓留在 18px 图框内。
+- 应用图标：[1024px 母版](https://www.figma.com/design/PROJECT_FILE_KEY/Atd?node-id=1741-95296) 使用 864px 浅色底板，四周留 80px 透明边距。正式 PNG 通过 Figma `exportAsync` 导出，未包含画布底色；macOS AppIcon 的 10 个尺寸从该母版等比导出。图片资源与生成提示词见 `packages/ui/src/assets/brands/atd/README.md`。
+- 开发环境：[开发版应用图标](https://www.figma.com/design/PROJECT_FILE_KEY/Atd?node-id=1757-95728) 在完整图形旁加入琥珀色 `DEV` 标签。标签右下圆角为 134px，与外框 190px 圆角同心，右侧和底部等距内缩 56px。Debug 构建使用 `AppIconDev`，Release 使用 `AppIcon`；面板按 `import.meta.env.DEV` 显示 54 × 26 的标识，按钮为 68 × 28，水平内边距 6px，与标题相距 8px；开发版菜单栏使用 44 × 18 的模板图片和自适应宽度，完整显示图形、状态标记与 `DEV`。

@@ -54,8 +54,9 @@ export interface OAuthFlowFetch {
 export function oauthFlowFetch(options: {
   serverUrl: string;
   service: ServiceHeaders;
-  base?: McpFetch;
-  signal?: AbortSignal;
+  /** The fetch to wrap; the caller's own, when it has one. */
+  base?: McpFetch | undefined;
+  signal?: AbortSignal | undefined;
 }): OAuthFlowFetch {
   const { service, base } = options;
   const origin = new URL(options.serverUrl).origin;

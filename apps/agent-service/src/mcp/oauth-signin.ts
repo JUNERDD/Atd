@@ -1,12 +1,13 @@
-import { errorMessage, type McpServerConfig } from '@ai/agent-contracts';
+import { errorMessage, type McpServerConfig } from '@atd/agent-contracts';
 import {
   authorizeMcp,
   McpOAuthAuthorizationRequiredError,
   McpOAuthProvider,
   type OAuthCallback,
   type OAuthChallenge,
+  stepUpScope,
 } from '@earendil-works/pi-mcp/oauth';
-import { MCP_OAUTH_CLIENT_NAME, MCP_OAUTH_FLOW_TTL_MS } from './constants.js';
+import { MCP_OAUTH_FLOW_TTL_MS } from './constants.js';
 import { McpError } from './errors.js';
 import { withConfiguredUrl } from './launch-resolve.js';
 import {
@@ -21,6 +22,7 @@ import {
   type PendingSignIn,
   type SignInDeps,
 } from './oauth-exchange.js';
+import { flowTargets, oauthClientSettings, providerClientOptions } from './oauth-client.js';
 import { configuredScope, mergeScopes } from './oauth-provider.js';
 import { LateWritebackProhibited, TxnAborted, TxnRevoked } from './transactions.js';
 import type { OAuthConnectionAuth } from './types.js';
@@ -96,21 +98,29 @@ export class SignIns {
     let adopted = false;
     try {
       const scope = configuredScope(record);
+      const client = oauthClientSettings(record);
       let redirect: URL | undefined;
+      // A pre-registered client is used as configured; without one pi-mcp registers a client.
       const provider = new McpOAuthProvider({
         serverUrl,
         redirectUrl,
-        clientMetadata: { client_name: MCP_OAUTH_CLIENT_NAME, ...(scope ? { scope } : {}) },
+        clientMetadata: { client_name: client.clientName, ...(scope ? { scope } : {}) },
+        ...providerClientOptions(client),
         store,
         onRedirect: (url) => {
           redirect = url;
         },
       });
       const flow = providers.flowFetch(record, serverUrl, context.signal);
+      // A step-up challenge may name only the missing scopes; the new token must keep the ones
+      // granted so far (SEP-2350), as pi's own sign-in does.
+      const wanted =
+        challenge?.error === 'insufficient_scope'
+          ? stepUpScope((await store.load())?.tokens?.scope, challenge.scope)
+          : challenge?.scope;
       await authorizeMcp(provider, {
         serverUrl,
-        scope: mergeScopes(scope, challenge?.scope),
-        resourceMetadataUrl: challenge?.resourceMetadataUrl,
+        ...flowTargets(client, mergeScopes(scope, wanted), challenge),
         skipRefresh: true, // the renewal was tried, or there was nothing to renew
         fetch: flow.fetch,
       });
@@ -181,7 +191,7 @@ export class SignIns {
         pending.phase = 'done';
       },
       async (error: unknown) => {
-        pending.finishing = undefined;
+        delete pending.finishing;
         if (error instanceof IssuerRequiredError) pending.phase = 'waiting';
         else await this.discard(pending);
         throw error;

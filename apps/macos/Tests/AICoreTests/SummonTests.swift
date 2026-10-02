@@ -11,9 +11,10 @@ struct SummonTests {
     SummonContext(panelIsKey: key, filePanelOpen: filePanel, selectionWanted: wanted)
   }
 
-  @Test("The contract's reserved id toggles the panel; any other id is a command")
+  @Test("The contract's reserved ids toggle the panel and screenshot; any other id is a command")
   func triggerFromID() {
     #expect(SummonTrigger(hotKeyID: "togglePanel") == .toggle)
+    #expect(SummonTrigger(hotKeyID: "captureScreenshot") == .screenshot)
     #expect(SummonTrigger(hotKeyID: "panel") == .command(id: "panel"))
   }
 
@@ -53,6 +54,20 @@ struct SummonTests {
       SummonPolicy.steps(for: .command(id: "c2"), in: Self.context()) == [
         .clearSelection, .deliverCommand(id: "c2"),
       ])
+  }
+
+  @Test(
+    "The screenshot shortcut captures, then hands the capture to the page, even over a key panel")
+  func screenshotDelivers() {
+    #expect(
+      SummonPolicy.steps(for: .screenshot, in: Self.context(key: true, wanted: true)) == [
+        .captureSelection, .deliverScreenshot,
+      ])
+    #expect(
+      SummonPolicy.steps(for: .screenshot, in: Self.context()) == [
+        .clearSelection, .deliverScreenshot,
+      ])
+    #expect(SummonPolicy.steps(for: .screenshot, in: Self.context(filePanel: true)).isEmpty)
   }
 
   static let now = Date(timeIntervalSince1970: 1_790_000_000.5)

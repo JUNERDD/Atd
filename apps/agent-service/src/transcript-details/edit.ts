@@ -1,6 +1,6 @@
 import { Type } from 'typebox';
 import { Compile } from 'typebox/compile';
-import { EDIT_DIFF_MAX_LENGTH, type EditDiffDetails } from '@ai/agent-contracts';
+import { EDIT_DIFF_MAX_LENGTH, type EditDiffDetails } from '@atd/agent-contracts';
 import { createClamp } from './clamp.js';
 
 /**

@@ -8,14 +8,14 @@ struct DownloadQuarantineTests {
   @Test("The properties name the app and mark a non-web download")
   func properties() {
     #expect(
-      DownloadQuarantine(agentName: "AI", agentBundleIdentifier: "com.junerdd.ai").properties == [
-        "LSQuarantineAgentName": "AI",
+      DownloadQuarantine(agentName: "Atd", agentBundleIdentifier: "com.junerdd.ai").properties == [
+        "LSQuarantineAgentName": "Atd",
         "LSQuarantineAgentBundleIdentifier": "com.junerdd.ai",
         "LSQuarantineType": "LSQuarantineTypeOtherDownload",
       ])
     #expect(
-      DownloadQuarantine(agentName: "AI", agentBundleIdentifier: nil).properties == [
-        "LSQuarantineAgentName": "AI", "LSQuarantineType": "LSQuarantineTypeOtherDownload",
+      DownloadQuarantine(agentName: "Atd", agentBundleIdentifier: nil).properties == [
+        "LSQuarantineAgentName": "Atd", "LSQuarantineType": "LSQuarantineTypeOtherDownload",
       ])
   }
 
@@ -27,7 +27,7 @@ struct DownloadQuarantineTests {
     try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
     defer { try? FileManager.default.removeItem(at: directory) }
     let file = directory.appending(path: "run.command")
-    try DownloadQuarantine(agentName: "AI Test", agentBundleIdentifier: nil)
+    try DownloadQuarantine(agentName: "Atd Test", agentBundleIdentifier: nil)
       .write(Data("echo hi\n".utf8), to: file)
     #expect(try Data(contentsOf: file) == Data("echo hi\n".utf8))
     // `flags;timestamp;agent;event`. The agent field names the calling app's bundle, which a
@@ -36,7 +36,7 @@ struct DownloadQuarantineTests {
     #expect(value.split(separator: ";", omittingEmptySubsequences: false).count == 4)
     let stored = try #require(
       try file.resourceValues(forKeys: [.quarantinePropertiesKey]).quarantineProperties)
-    #expect(stored["LSQuarantineAgentName"] as? String == "AI Test")
+    #expect(stored["LSQuarantineAgentName"] as? String == "Atd Test")
     #expect(stored["LSQuarantineType"] as? String == "LSQuarantineTypeOtherDownload")
   }
 

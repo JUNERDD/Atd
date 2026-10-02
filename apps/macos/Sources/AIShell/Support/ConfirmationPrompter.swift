@@ -25,7 +25,6 @@ struct ConfirmationPrompt<Choice: Sendable>: Sendable {
 /// actor tasks keep running while one is open. A request made while another confirmation is
 /// open gets no answer (`nil`) instead of a queued dialog, so the page cannot stack prompts;
 /// an alert aborted by an unattended quit answers `nil` too. Callers treat `nil` as a refusal.
-@MainActor
 final class ConfirmationPrompter {
   private(set) var isShowing = false
 

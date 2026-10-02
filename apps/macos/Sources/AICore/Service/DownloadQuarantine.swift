@@ -18,7 +18,7 @@ public struct DownloadQuarantine: Equatable, Sendable {
     let bundle = Bundle.main
     let name = bundle.object(forInfoDictionaryKey: "CFBundleName") as? String
     return DownloadQuarantine(
-      agentName: name.flatMap { $0.isEmpty ? nil : $0 } ?? "AI",
+      agentName: name.flatMap { $0.isEmpty ? nil : $0 } ?? "Atd",
       agentBundleIdentifier: bundle.bundleIdentifier)
   }
 

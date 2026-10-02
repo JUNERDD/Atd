@@ -1,6 +1,6 @@
 import type { ComponentProps } from 'react';
-import { Button } from '@ai/ui/components/button';
-import { cn } from '@ai/ui/lib/utils';
+import { Button } from '@atd/ui/components/button';
+import { cn } from '@atd/ui/lib/utils';
 import { useActivityRow } from '../_hooks/use-activity-row';
 import { composeEventHandlers } from '../_utils/compose-event-handlers';
 
@@ -13,8 +13,8 @@ export interface ActivityRowTriggerProps extends ComponentProps<'button'> {}
  *
  * v1 renders the shared ghost Button host only. A custom trigger host was
  * deliberately cut: no v1 consumer replaces it, and the Slot primitive lives
- * in `@ai/ui`'s dependency closure, which desktop files cannot import
- * directly under pnpm isolation. Revisit with an `@ai/ui` Slot re-export if a
+ * in `@atd/ui`'s dependency closure, which desktop files cannot import
+ * directly under pnpm isolation. Revisit with an `@atd/ui` Slot re-export if a
  * consumer ever needs host replacement.
  */
 export function Trigger({

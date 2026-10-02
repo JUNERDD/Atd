@@ -7,7 +7,6 @@ import UniformTypeIdentifiers
 /// (``ControlStreamClient``) receives. Reads that could take text
 /// from the user's apps (selection, clipboard) answer only while the panel is visible. A thrown
 /// ``CapabilityFailure`` is the message the agent sees.
-@MainActor
 final class ShellCapabilities: CapabilityHandling {
   private let services: ShellServices
   private let panelVisible: () -> Bool
@@ -31,7 +30,7 @@ final class ShellCapabilities: CapabilityHandling {
     }
   }
 
-  /// Text files the user picks, imported by path. The value's shape:
+  /// Attachable files the user picks, imported by path. The value's shape:
   /// `{ files: [{ resourceId, name, size, mime }] }`.
   private func pickFiles() async throws -> JSONValue {
     guard let urls = await systemPanels.chooseAttachments(), !urls.isEmpty else {
@@ -116,7 +115,6 @@ struct CapabilityFailure: LocalizedError {
 
 /// Open and save panels. While one is open the panel floats no higher than normal windows
 /// (so the system panel is never hidden behind it) and summons are ignored.
-@MainActor
 final class SystemPanels {
   private(set) var isOpen = false
   private let lowerPanel: () -> NSWindow.Level
@@ -129,7 +127,7 @@ final class SystemPanels {
     self.restorePanel = restorePanel
   }
 
-  /// Attachable text files; nil when cancelled or another system panel is open.
+  /// Attachable files (text and images); nil when cancelled or another system panel is open.
   func chooseAttachments() async -> [URL]? {
     let panel = NSOpenPanel()
     panel.message = ShellStrings.shared.text(.filePickTitle)
@@ -142,9 +140,12 @@ final class SystemPanels {
     return await run(panel) ? panel.urls : nil
   }
 
-  func chooseSaveLocation(suggestedName: String) async -> URL? {
+  /// Where to save under `suggestedName`; `contentType` restricts the panel to that type. Nil
+  /// when cancelled or another system panel is open.
+  func chooseSaveLocation(suggestedName: String, contentType: UTType? = nil) async -> URL? {
     let panel = NSSavePanel()
     panel.title = ShellStrings.shared.text(.fileSaveTitle)
+    if let contentType { panel.allowedContentTypes = [contentType] }
     panel.nameFieldStringValue = suggestedName
     return await run(panel) ? panel.url : nil
   }

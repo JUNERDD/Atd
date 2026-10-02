@@ -1,6 +1,6 @@
 import { CircleAlert, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Button } from '@ai/ui/components/button';
+import { Button } from '@atd/ui/components/button';
 import {
   Dialog,
   DialogContent,
@@ -8,8 +8,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@ai/ui/components/dialog';
-import { ScrollArea } from '@ai/ui/components/scroll-area';
+} from '@atd/ui/components/dialog';
+import { ScrollArea } from '@atd/ui/components/scroll-area';
 
 /**
  * One allowlist entry in full: its row shows a single truncated line, so a click on the row opens
@@ -32,7 +32,7 @@ export function ShellAllowlistEntryDialog({
   unavailable: boolean;
   /** A save is in flight: Remove stays focusable and ignores clicks until it settles. */
   removing: boolean;
-  error?: string;
+  error?: string | undefined;
   onRemove: () => void;
 }) {
   const { t } = useTranslation('settings');

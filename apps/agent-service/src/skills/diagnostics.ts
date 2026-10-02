@@ -1,5 +1,5 @@
 import type { ResourceDiagnostic } from '@earendil-works/pi-coding-agent';
-import { parseQualifiedName } from '@ai/plugin-kit';
+import { parseQualifiedName } from '@atd/plugin-kit';
 
 /**
  * T3-owned diagnostic codes. Pi diagnostics are preserved verbatim in
@@ -41,12 +41,13 @@ export function diagnoseInvalidRef(name: string): SkillDiagnostic | null {
 
 /** Maps one Pi resource diagnostic to a service skill diagnostic. */
 export function fromPiDiagnostic(diagnostic: ResourceDiagnostic): SkillDiagnostic {
+  const location = diagnostic.path === undefined ? {} : { path: diagnostic.path };
   if (diagnostic.collision)
     return {
       type: 'collision',
       code: 'same_name',
       message: diagnostic.message,
-      path: diagnostic.path,
+      ...location,
       winnerPath: diagnostic.collision.winnerPath,
       loserPath: diagnostic.collision.loserPath,
       skill: diagnostic.collision.name.slice(0, 128),
@@ -55,7 +56,7 @@ export function fromPiDiagnostic(diagnostic: ResourceDiagnostic): SkillDiagnosti
     type: diagnostic.type === 'collision' ? 'collision' : diagnostic.type,
     code: 'invalid_skill',
     message: diagnostic.message,
-    path: diagnostic.path,
+    ...location,
   };
 }
 

@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button } from '@ai/ui/components/button';
-import { Kbd, KbdGroup } from '@ai/ui/components/kbd';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@ai/ui/components/tooltip';
+import { Button } from '@atd/ui/components/button';
+import { Kbd, KbdGroup } from '@atd/ui/components/kbd';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@atd/ui/components/tooltip';
 import type { ConfirmationRequest } from '../../../client/agent/permission-schema';
 import { agentApi } from '../use-agent';
 import { messageOf } from '../../../lib/errors';
@@ -128,8 +128,8 @@ export function ApprovalControls({
       )}
       {review && <p className="text-xs text-muted-foreground">{reviewNote}</p>}
       {detail ? (
-        <DetailBox variant="output" copyText={detail} className="approval-detail">
-          <pre className="m-0 whitespace-pre-wrap wrap-anywhere">{preview}</pre>
+        <DetailBox variant="output" size="sm" copyText={detail} className="approval-detail">
+          <pre className="m-0 wrap-anywhere whitespace-pre-wrap">{preview}</pre>
         </DetailBox>
       ) : null}
       <div className="approval-actions">

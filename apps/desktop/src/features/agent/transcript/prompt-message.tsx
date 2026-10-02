@@ -1,9 +1,17 @@
 import { Fragment } from 'react';
 import type { RunSnapshot } from '../../../client/agent/task-schema';
 import { ChipToken } from '../../composer-editor/chip-content';
+import { revealQuote } from './selection-toolbar/quote-reveal';
 import { UserContext } from '../user-context';
 import { MessageBubble } from './message-bubble';
-import { chipFileIds, composedPrompt, sentChipName, type SentSegment } from './composed-prompt';
+import { composedPrompt, sentChipName, type SentSegment } from './composed-prompt';
+
+/** Shows the passage a quote chip was taken from, when it records where. */
+function revealerOf(segment: Exclude<SentSegment, string>) {
+  if (segment.kind !== 'quote' || !segment.source) return undefined;
+  const source = segment.source;
+  return () => revealQuote(source);
+}
 
 /** Text runs and chips in document order; the bubble's `pre-wrap` keeps the text's own breaks. */
 function SentText({ segments }: { segments: readonly SentSegment[] }) {
@@ -13,7 +21,12 @@ function SentText({ segments }: { segments: readonly SentSegment[] }) {
         typeof segment === 'string' ? (
           <Fragment key={index}>{segment}</Fragment>
         ) : (
-          <ChipToken key={index} kind={segment.kind} name={sentChipName(segment)} />
+          <ChipToken
+            key={index}
+            kind={segment.kind}
+            name={sentChipName(segment)}
+            onReveal={revealerOf(segment)}
+          />
         ),
       )}
     </>
@@ -29,7 +42,7 @@ export function PromptMessage({ snapshot, fallback }: { snapshot: RunSnapshot; f
   const composed = composedPrompt(snapshot);
   return (
     <>
-      <UserContext snapshot={snapshot} chipFileIds={chipFileIds(composed)} />
+      <UserContext snapshot={snapshot} />
       <MessageBubble>{composed ? <SentText segments={composed} /> : fallback}</MessageBubble>
     </>
   );

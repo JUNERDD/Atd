@@ -22,7 +22,7 @@ import {
   type ProviderLoginResponse,
   type ProviderUpdateRequest,
   type ThinkingLevel,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import { manageRequest } from './manage-request.js';
 import type { AgentClientOptions } from './types.js';
 
@@ -134,7 +134,7 @@ export function getProviderLevels(
   const query = new URLSearchParams(parse(ProviderLevelsQuerySchema, { modelId }));
   return manageRequest(
     options,
-    connectionPath(connectionId, `/levels?${query}`),
+    connectionPath(connectionId, `/levels?${query.toString()}`),
     'GET',
     undefined,
     (json) => parse(ProviderLevelsResponseSchema, json),
@@ -152,7 +152,7 @@ export function getProviderContexts(
   const query = new URLSearchParams(parse(ProviderContextsQuerySchema, { modelId }));
   return manageRequest(
     options,
-    connectionPath(connectionId, `/contexts?${query}`),
+    connectionPath(connectionId, `/contexts?${query.toString()}`),
     'GET',
     undefined,
     (json) => parse(ProviderContextsResponseSchema, json),

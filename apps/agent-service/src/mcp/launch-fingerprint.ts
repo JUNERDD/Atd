@@ -1,7 +1,8 @@
 import { createHmac } from 'node:crypto';
 import path from 'node:path';
-import type { McpLaunchKind, McpServerConfig } from '@ai/agent-contracts';
+import type { McpLaunchKind, McpServerConfig } from '@atd/agent-contracts';
 import { httpEnvReads } from './env-references.js';
+import { oauthAuthOf } from './oauth-client.js';
 import type { McpLaunchSpec } from './types.js';
 
 /**
@@ -112,6 +113,9 @@ export function launchFingerprint(
         tokenEnv: tokenEnvOf(record),
         headers: sortedEntries(headers).map(([name, template]) => [name, digest(template)]),
         envReferences: httpEnvReads(url, headers).names,
+        // Where a sign-in sends codes, tokens and the client secret when the record names the
+        // authorization server itself. Absent (undefined) leaves earlier approvals valid.
+        authServerMetadataUrl: oauthAuthOf(record)?.authServerMetadataUrl,
       }),
     );
   }

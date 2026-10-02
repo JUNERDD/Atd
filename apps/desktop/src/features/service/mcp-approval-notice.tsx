@@ -1,7 +1,7 @@
 import { ShieldAlert } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Alert, AlertAction, AlertDescription } from '@ai/ui/components/alert';
-import { Button } from '@ai/ui/components/button';
+import { Alert, AlertAction, AlertDescription } from '@atd/ui/components/alert';
+import { Button } from '@atd/ui/components/button';
 
 /**
  * The one-time notice that launch approvals arrived: servers configured before them stay off until

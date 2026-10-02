@@ -1,6 +1,6 @@
 import { Check, Copy } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { cn } from '@ai/ui/lib/utils';
+import { cn } from '@atd/ui/lib/utils';
 import { IconButton } from '../../../components/icon-button';
 import { useCopyFeedback } from './use-copy-feedback';
 
@@ -24,7 +24,7 @@ export function CopyButton({ text, className }: { text: string; className?: stri
         'absolute top-1 right-1 transition-opacity',
         copied || pinned
           ? 'opacity-100'
-          : 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100',
+          : 'opacity-0 group-focus-within:opacity-100 group-hover:opacity-100',
         className,
       )}
     >

@@ -1,4 +1,4 @@
-import { errorMessage, type TaskRun } from '@ai/agent-contracts';
+import { errorMessage, type TaskRun } from '@atd/agent-contracts';
 import { CONTEXT_BUDGET, runInputSize } from '../tasks/run-budget.js';
 import { diagnoseNotRunAvailable, type SkillDiagnostic } from './diagnostics.js';
 import { readSkillBody } from './resources.js';

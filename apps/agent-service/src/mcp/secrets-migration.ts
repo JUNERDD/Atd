@@ -1,4 +1,4 @@
-import { errorMessage } from '@ai/agent-contracts';
+import { errorMessage } from '@atd/agent-contracts';
 import { KeyringBackend } from '../credentials/keyring.js';
 import type { Logger } from '../logging.js';
 import {
@@ -9,7 +9,7 @@ import {
   type SecretKind,
   type StoredServer,
   type StoredValues,
-} from './server-store.js';
+} from './server-file.js';
 
 /**
  * Moves MCP env and header values that `servers.json` still keeps in plain text (saved before the

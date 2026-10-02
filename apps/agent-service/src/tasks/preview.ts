@@ -8,13 +8,18 @@ import {
   type PreviewTaskResponse,
   type ServiceCommandFull,
   snapshotToolsFor,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import { CommandStore } from '../commands/store.js';
 import { findPluginCommand } from '../plugins/commands.js';
 import { defaultArguments, resolveCommandInstructions } from '../commands/templates.js';
 import { ConnectionStore } from '../credentials/connections.js';
 import type { Ledger } from '../ledger.js';
-import { loadRunContextWindow, resolveRunModel, resolveRunThinkingLevel } from './run-selection.js';
+import {
+  loadRunContextWindow,
+  resolveRunModel,
+  resolveRunThinkingLevel,
+  selectRunModel,
+} from './run-selection.js';
 import { RENDERER_ROUTE } from '../relay-routes.js';
 
 export interface PreviewContext {
@@ -54,7 +59,11 @@ export async function resolvePreview(
       warnings.push(`Attachment ${file.name} was not uploaded.`);
   }
   const policy = body.policy;
-  const selection = policy && policy.useDefaultModel !== true ? policy.model : undefined;
+  // A preview has no task, so only the policy's pick and the command's fixed model can select.
+  const selection = selectRunModel(connections, {
+    requested: policy?.model ?? null,
+    command: command?.model ?? null,
+  });
   const model = resolveRunModel(connections, selection, warnings);
   // Without a command, mirror what RunnerManager.freezeSnapshot freezes for a new task.
   const tools =

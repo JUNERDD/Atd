@@ -1,7 +1,7 @@
 import path from 'node:path';
 import type { Api, Model } from '@earendil-works/pi-ai';
 import { ModelRuntime } from '@earendil-works/pi-coding-agent';
-import type { ServiceConnection, TaskRun } from '@ai/agent-contracts';
+import type { ServiceConnection, TaskRun } from '@atd/agent-contracts';
 import { AuthRequired, TempCredentialStore } from './credentials.js';
 import { ConnectionStore } from './credentials/connections.js';
 import { KeyringBackend } from './credentials/keyring.js';

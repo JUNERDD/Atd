@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { CircleAlert, Plug, Plus, SearchX } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Button } from '@ai/ui/components/button';
+import { Button } from '@atd/ui/components/button';
 import {
   Empty,
   EmptyContent,
@@ -9,9 +10,9 @@ import {
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
-} from '@ai/ui/components/empty';
-import { matchFields } from '@ai/ui/lib/fuzzy-match';
-import { useCompositionQuery } from '@ai/ui/lib/ime';
+} from '@atd/ui/components/empty';
+import { matchFields } from '@atd/ui/lib/fuzzy-match';
+import { useCompositionQuery } from '@atd/ui/lib/ime';
 import {
   AlertDialog,
   AlertDialogContent,
@@ -21,13 +22,14 @@ import {
   AlertDialogFooter,
   AlertDialogCancel,
   AlertDialogAction,
-} from '@ai/ui/components/alert-dialog';
+} from '@atd/ui/components/alert-dialog';
 import type { SettingsSnapshot } from '../../client/settings-contract';
 import type { Connection, ProviderCatalogEntry } from '../../client/providers/schema';
 import { ProviderConnections } from '../providers/provider-connections';
 import { ProviderCatalog } from '../providers/provider-catalog';
 import { ProviderForm } from '../providers/provider-form';
 import { showErrorToast } from '../../components/toast-store';
+import { queryClient } from '../../lib/query-client';
 import { SettingsHeading } from './settings-heading';
 import { SettingsSearchField } from './settings-search-field';
 import { useSettingsSectionExit } from './settings-navigation';
@@ -47,12 +49,30 @@ const OVERVIEW: ProviderRoute = { page: 'overview' };
 export function ProviderSettingsForm({ snapshot }: { snapshot: SettingsSnapshot | null }) {
   const { t } = useTranslation('settings');
   const bridge = window.desktop?.settings.providers;
-  const [catalog, setCatalog] = useState<ProviderCatalogEntry[]>([]);
   // A failed load keeps an inline message with Retry, which stays (busy) while it asks again.
-  const [catalogStatus, setCatalogStatus] = useState<'loading' | 'ready' | 'failed' | 'retrying'>(
-    'loading',
+  const catalogQuery = useQuery(
+    {
+      queryKey: ['providers', 'catalog'],
+      queryFn: () => {
+        if (!bridge) throw new Error('Open the desktop app to manage providers.');
+        return bridge.catalog();
+      },
+      enabled: Boolean(bridge),
+      // Read once, as when the section kept its own copy; Retry reads again after a failure.
+      staleTime: Infinity,
+      gcTime: Infinity,
+      meta: { errorToast: false },
+    },
+    queryClient,
   );
-  const [catalogRequest, setCatalogRequest] = useState(0);
+  const catalog = catalogQuery.data ?? [];
+  const catalogStatus = catalogQuery.data
+    ? 'ready'
+    : catalogQuery.errorUpdateCount === 0
+      ? 'loading'
+      : catalogQuery.isFetching
+        ? 'retrying'
+        : 'failed';
   const connections = snapshot?.connections ?? [];
   // Forward cannot reopen a connection that was disconnected meanwhile.
   const history = useSettingsPageHistory<ProviderRoute>(
@@ -65,49 +85,29 @@ export function ProviderSettingsForm({ snapshot }: { snapshot: SettingsSnapshot 
   const view = history.route;
   const search = useCompositionQuery();
   useSettingsSectionExit(() => search.change(''));
-  const [pending, setPending] = useState(false);
-  const [retryable, setRetryable] = useState(false);
+  // An operation on a connection; a failure shows its toast and offers Retry, which runs the
+  // failed operation again, until something succeeds.
+  const operation = useMutation(
+    {
+      mutationKey: ['providers', 'operation'],
+      mutationFn: (run: () => Promise<void>) => run(),
+    },
+    queryClient,
+  );
+  const pending = operation.isPending;
+  const retryable = operation.isError;
   const [disconnecting, setDisconnecting] = useState<Connection | null>(null);
   const searchInput = useRef<HTMLInputElement>(null);
-  const retry = useRef<(() => Promise<void>) | null>(null);
-  useEffect(() => {
-    if (!bridge) return;
-    let active = true;
-    void bridge.catalog().then(
-      (value) => {
-        if (!active) return;
-        setCatalog(value);
-        setCatalogStatus('ready');
-      },
-      () => {
-        if (active) setCatalogStatus('failed');
-      },
-    );
-    return () => {
-      active = false;
-    };
-  }, [bridge, catalogRequest]);
   const catalogReady = catalogStatus === 'ready';
   const catalogFailed = catalogStatus === 'failed' || catalogStatus === 'retrying';
   /** Opens the catalog; the Add buttons stay focusable while it cannot load, and say why. */
   function addProvider() {
     if (bridge && catalogReady) history.open({ page: 'catalog' });
   }
-  /** Runs an operation on a connection; a failure offers Retry until something succeeds. */
-  async function perform(operation: () => Promise<void>) {
-    if (pending) return;
-    retry.current = () => perform(operation);
-    setPending(true);
-    setRetryable(false);
-    try {
-      await operation();
-      retry.current = null;
-    } catch (error) {
-      setRetryable(true);
-      showErrorToast(error);
-    } finally {
-      setPending(false);
-    }
+  /** Runs an operation on a connection, unless one is already running. */
+  function perform(run: () => Promise<void>) {
+    if (pending) return Promise.resolve();
+    return operation.mutateAsync(run).catch(() => {});
   }
   function manage(connection: Connection) {
     const provider = catalog.find((item) => item.id === connection.provider);
@@ -192,9 +192,7 @@ export function ProviderSettingsForm({ snapshot }: { snapshot: SettingsSnapshot 
             aria-disabled={catalogStatus === 'retrying' || undefined}
             aria-busy={catalogStatus === 'retrying' || undefined}
             onClick={() => {
-              if (catalogStatus === 'retrying') return;
-              setCatalogStatus('retrying');
-              setCatalogRequest((count) => count + 1);
+              if (catalogStatus !== 'retrying') void catalogQuery.refetch();
             }}
           >
             {t('providers.overview.retry')}
@@ -207,16 +205,13 @@ export function ProviderSettingsForm({ snapshot }: { snapshot: SettingsSnapshot 
             variant="outline"
             size="xs"
             disabled={pending}
-            onClick={() => void retry.current?.()}
+            onClick={() => {
+              const failed = operation.variables;
+              if (failed) void perform(failed);
+            }}
           >
             {t('providers.overview.retry')}
           </Button>
-        </div>
-      )}
-      {connections.length > 0 && (
-        <div className="provider-column-headings">
-          <span>{t('providers.overview.connectedProviders')}</span>
-          <span>{t('providers.overview.defaultModel')}</span>
         </div>
       )}
       <ProviderConnections

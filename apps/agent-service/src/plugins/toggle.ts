@@ -1,5 +1,5 @@
-import type { PluginItemKind } from '@ai/agent-contracts';
-import type { ResolvedItem } from '@ai/plugin-kit';
+import type { PluginItemKind } from '@atd/agent-contracts';
+import type { ResolvedItem } from '@atd/plugin-kit';
 import { setAgentHarnessEnabled } from '../atd-agents/harness.js';
 import { CommandStore } from '../commands/store.js';
 import { LedgerNotFound } from '../ledger.js';

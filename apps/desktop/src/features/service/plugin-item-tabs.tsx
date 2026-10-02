@@ -1,7 +1,8 @@
 import { useState, type ComponentProps } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@ai/ui/components/tabs';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@atd/ui/components/tabs';
 import { PluginItemGroups, type PluginGroupKind } from './plugin-item-groups';
+import { useMemorySnapshot } from '../memory/use-memory-snapshot';
 import { PluginMemoryGroup } from './plugin-memory-group';
 
 /** A plugin page's tabs: the item kinds in page order, then Personal's memory. */
@@ -11,7 +12,8 @@ type GroupProps = Omit<ComponentProps<typeof PluginItemGroups>, 'only' | 'titleP
 
 /**
  * What one plugin contributes, one tab per kind it has: Commands, Skills, Subagents, MCP servers,
- * and Memory for Personal. Each tab names its kind and count, so its group drops its own title.
+ * and Memory for Personal. Each tab names its kind and count (Memory's counts saved memories once
+ * they are read), so its group drops its own title.
  * The first tab opens by default; when the open kind empties (its last item left the plugin), the
  * first remaining one shows instead.
  */
@@ -19,11 +21,13 @@ export function PluginItemTabs({
   memory,
   ...groups
 }: GroupProps & {
-  /** Personal's memory: the learning switch, which is the memory pause. */
-  memory: ComponentProps<typeof PluginMemoryGroup> | null;
+  /** The plugin is Personal and holds the memory item: it gets the Memory tab. */
+  memory: boolean;
 }) {
   const { t } = useTranslation('settings');
   const { items } = groups;
+  // Only Personal reads its memories; other plugins have no Memory tab.
+  const { snapshot } = useMemorySnapshot(memory);
   const counts: [PluginKindTab, number][] = [
     ['command', items.commands.length],
     ['skill', items.skills.length],
@@ -54,8 +58,10 @@ export function PluginItemTabs({
         {tabs.map(([kind, count]) => (
           <TabsTrigger key={kind} value={kind} className="flex-none px-2.5">
             {t(`extensions.plugins.kinds.${kind}`)}
-            {kind === 'memory' ? null : (
-              <span className="text-muted-foreground tabular-nums">{count}</span>
+            {kind === 'memory' && !snapshot ? null : (
+              <span className="text-muted-foreground tabular-nums">
+                {kind === 'memory' ? snapshot?.entries.length : count}
+              </span>
             )}
           </TabsTrigger>
         ))}
@@ -63,9 +69,7 @@ export function PluginItemTabs({
       {tabs.map(([kind]) => (
         <TabsContent key={kind} value={kind} className="plugin-item-tab">
           {kind === 'memory' ? (
-            memory ? (
-              <PluginMemoryGroup {...memory} showTitle={false} />
-            ) : null
+            <PluginMemoryGroup snapshot={snapshot} showTitle={false} />
           ) : (
             <PluginItemGroups {...groups} only={kind} />
           )}

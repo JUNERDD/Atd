@@ -4,7 +4,6 @@ import WebKit
 /// equivalent. Both are applied through key-value coding, which raises an Objective-C exception on
 /// an unknown key, so each is set only when WebKit still answers the setter; a WebKit without it
 /// keeps the public behavior (an opaque page, or the CSS glass fallback) instead of crashing.
-@MainActor
 public enum WebKitPrivate {
   /// Lets pages use `-apple-visual-effect: -apple-system-glass-material`, WebKit's in-page system
   /// glass (spike S5). Without it `CSS.supports` reports the property unsupported and

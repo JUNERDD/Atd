@@ -1,4 +1,4 @@
-import { errorMessage, mcpCapabilityId, type ConfirmReview } from '@ai/agent-contracts';
+import { errorMessage, mcpCapabilityId, type ConfirmReview } from '@atd/agent-contracts';
 import type { ConfirmStore } from '../confirms.js';
 import type { Logger } from '../logging.js';
 import { matchToolPattern } from './servers.js';

@@ -3,7 +3,8 @@ import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { useSettingsSectionExit } from './settings-navigation';
 import { useShortcutCapture } from './use-shortcut-capture';
-import { DEFAULT_SHORTCUTS, effectiveAccelerator } from '@ai/agent-contracts';
+import { showSettingsSnapshot } from './use-settings';
+import { DEFAULT_SHORTCUTS, effectiveAccelerator } from '@atd/agent-contracts';
 import {
   type SettingsSnapshot,
   type ShortcutAction,
@@ -26,7 +27,7 @@ function shortcutError(
 ): string {
   if (!shortcut) return t('shortcuts.errors.unsupportedCombination');
   if (
-    ['togglePanel', 'newConversation', 'openSettings'].includes(action) &&
+    ['togglePanel', 'captureScreenshot', 'newConversation', 'openSettings'].includes(action) &&
     !shortcut
       .split('+')
       .some((key) => ['CommandOrControl', 'Control', 'Alt', 'Super'].includes(key))
@@ -62,7 +63,8 @@ export function useShortcutSettings(snapshot: SettingsSnapshot | null) {
   const [preferencePending, setPreferencePending] = useState<
     Partial<Record<WindowPreference, boolean>>
   >({});
-  const [errors, setErrors] = useState<Partial<Record<ErrorOwner, string>>>({});
+  // An owner's undefined entry is a cleared error.
+  const [errors, setErrors] = useState<Partial<Record<ErrorOwner, string | undefined>>>({});
   // macOS keeps a new login item off until the user approves it in System Settings.
   const [loginApproval, setLoginApproval] = useState(false);
   // Errors answer the last attempt, so leaving the section clears them. The section can't be left
@@ -140,36 +142,43 @@ export function useShortcutSettings(snapshot: SettingsSnapshot | null) {
     start();
   }
 
-  async function restoreDefaults() {
+  function restoreDefaults() {
     if (!bridge || unavailable || shortcutBusy || recording || allDefault) return;
     endRecording();
     // Every shortcut row starts over; the window preferences keep their own errors.
     setErrors(({ pin, dock, login }) => ({ pin, dock, login }));
     setMutation('all');
-    try {
-      await bridge.restoreShortcuts();
-    } catch (reason) {
-      setError('restore', failureText(reason, t('shortcuts.errors.defaultsRestore')));
-    }
-    setMutation(null);
+    void bridge.restoreShortcuts().then(
+      (snapshot) => {
+        showSettingsSnapshot(snapshot);
+        setMutation(null);
+      },
+      (reason: unknown) => {
+        setError('restore', failureText(reason, t('shortcuts.errors.defaultsRestore')));
+        setMutation(null);
+      },
+    );
   }
 
   /** Puts one action back on its default keys, keeping every other binding. Resolves true once saved. */
-  async function resetShortcut(action: ShortcutAction) {
-    if (!bridge || unavailable || shortcutBusy || recording) return false;
+  function resetShortcut(action: ShortcutAction): Promise<boolean> {
+    if (!bridge || unavailable || shortcutBusy || recording) return Promise.resolve(false);
     endRecording();
     setError(action, undefined);
     setMutation(action);
-    try {
-      await bridge.saveShortcuts({ ...bindings, [action]: DEFAULT_SHORTCUTS[action] });
-      return true;
-    } catch (reason) {
-      // A default another action now uses is rejected with the service's own message.
-      setError(action, failureText(reason, t('shortcuts.errors.shortcutSave')));
-      return false;
-    } finally {
-      setMutation(null);
-    }
+    return bridge.saveShortcuts({ ...bindings, [action]: DEFAULT_SHORTCUTS[action] }).then(
+      (snapshot) => {
+        showSettingsSnapshot(snapshot);
+        setMutation(null);
+        return true;
+      },
+      (reason: unknown) => {
+        // A default another action now uses is rejected with the service's own message.
+        setError(action, failureText(reason, t('shortcuts.errors.shortcutSave')));
+        setMutation(null);
+        return false;
+      },
+    );
   }
 
   /** Saves one desktop window preference; each has its own pending state and error. */

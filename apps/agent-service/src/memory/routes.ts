@@ -4,7 +4,7 @@ import {
   MemoryPauseRequestSchema,
   MemoryUpdateRequestSchema,
   parse,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import type { Logger } from '../logging.js';
 import { ConflictError } from '../errors.js';
 import { logMemoryEvents, MemoryAuthority } from './authority.js';
@@ -49,7 +49,7 @@ export function registerMemoryRoutes(app: FastifyInstance, ctx: MemoryRouteConte
       // the pinned host): a client-state conflict (409), not a server fault.
       const message = errorMessage(error);
       if (/changed/i.test(message)) throw new ConflictError(message);
-      throw mapHermesError(error);
+      mapHermesError(error);
     }
     return { ok: true as const, version: memory.currentPolicyVersion() };
   });

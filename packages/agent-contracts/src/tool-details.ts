@@ -1,4 +1,5 @@
 import { Type, type Static } from 'typebox';
+import { GrantScopeSchema, PermissionOutcomeSchema } from './confirms.js';
 import { McpServerIdSchema } from './mcp.js';
 
 /**
@@ -7,8 +8,8 @@ import { McpServerIdSchema } from './mcp.js';
  * and clamping every string and list to the bounds below; raw tool details never cross the
  * service boundary. A block has no `details` when its tool has no variant here, while it runs,
  * or when its result is an error; `subagent` is the one exception and also carries details while
- * running and on failure (see `SubagentDetailsSchema`). `truncated` reports that the projection
- * dropped items or characters.
+ * running and on failure (see `SubagentDetailsSchema`), and so does `codemode` (see
+ * `CodemodeDetailsSchema`). `truncated` reports that the projection dropped items or characters.
  */
 
 export const TODO_DETAILS_MAX_ITEMS = 100;
@@ -27,6 +28,11 @@ export const SUBAGENT_DETAILS_MAX_CHILDREN = 32;
 export const SUBAGENT_TASK_MAX_LENGTH = 500;
 export const SUBAGENT_OUTPUT_MAX_LENGTH = 8000;
 export const SUBAGENT_ERROR_MAX_LENGTH = 2000;
+export const CODEMODE_MAX_STEPS = 100;
+export const CODEMODE_STEP_OUTPUT_MAX_LENGTH = 4000;
+
+/** pi's `codemode` tool: the model writes a script whose `tools.<name>()` calls run other tools. */
+export const CODEMODE_TOOL = 'codemode';
 
 /** rpiv-todo task status; `deleted` is a tombstone the UI hides. */
 export const TodoStatusSchema = Type.Union([
@@ -190,6 +196,74 @@ export const McpApprovalDetailsSchema = Type.Object(
 );
 export type McpApprovalDetails = Static<typeof McpApprovalDetailsSchema>;
 
+/** A nested call's state; the same states a tool block has. */
+export const CodemodeStepStatusSchema = Type.Union([
+  Type.Literal('running'),
+  Type.Literal('completed'),
+  Type.Literal('failed'),
+  Type.Literal('declined'),
+  Type.Literal('interrupted'),
+]);
+export type CodemodeStepStatus = Static<typeof CodemodeStepStatusSchema>;
+
+/**
+ * Result facts a nested row renders like the direct call's. Tools whose state replays from their
+ * persisted results (todo, configure_mcp, subagent) are model-only and never run from a script.
+ */
+export const CodemodeStepDetailsSchema = Type.Union([
+  EditDiffDetailsSchema,
+  WebSearchDetailsSchema,
+  WebFetchDetailsSchema,
+]);
+export type CodemodeStepDetails = Static<typeof CodemodeStepDetailsSchema>;
+
+/** One tool call a `codemode` script made, in the order the script started them. */
+export const CodemodeStepSchema = Type.Object(
+  {
+    /**
+     * The nested call id, `<codemode call id>/<n>`: the confirm the call raised and its
+     * `app-permission` record carry it. A call cut off before pi numbered it ends in `/?`.
+     */
+    id: Type.String({ maxLength: 512 }),
+    name: Type.String({ maxLength: 128 }),
+    /** The call's arguments; empty when they exceeded pi's per-call bound (8 KiB of JSON). */
+    args: Type.Record(Type.String(), Type.Unknown()),
+    status: CodemodeStepStatusSchema,
+    durationMs: Type.Optional(Type.Integer({ minimum: 0 })),
+    /**
+     * The result text the call returned (the error text when it failed or was declined), clamped;
+     * empty while it runs. A script receives structured values for some tools, but the row shows
+     * what the direct call's row would.
+     */
+    output: Type.String({ maxLength: CODEMODE_STEP_OUTPUT_MAX_LENGTH }),
+    /** The call's recorded permission outcome, like a tool block's. */
+    permission: Type.Optional(
+      Type.Object(
+        { scope: GrantScopeSchema, outcome: PermissionOutcomeSchema },
+        { additionalProperties: false },
+      ),
+    ),
+    details: Type.Optional(CodemodeStepDetailsSchema),
+  },
+  { additionalProperties: false },
+);
+export type CodemodeStep = Static<typeof CodemodeStepSchema>;
+
+/**
+ * The steps of one `codemode` call, in every status: running calls appear as they start. The
+ * script source stays in the block's `args.code` and the script's output in the block's
+ * `output`, so neither is repeated here. `truncated` reports dropped steps or clamped text.
+ */
+export const CodemodeDetailsSchema = Type.Object(
+  {
+    type: Type.Literal('codemode'),
+    steps: Type.Array(CodemodeStepSchema, { maxItems: CODEMODE_MAX_STEPS }),
+    truncated: Type.Boolean(),
+  },
+  { additionalProperties: false },
+);
+export type CodemodeDetails = Static<typeof CodemodeDetailsSchema>;
+
 export const ToolBlockDetailsSchema = Type.Union([
   TodoDetailsSchema,
   EditDiffDetailsSchema,
@@ -197,5 +271,6 @@ export const ToolBlockDetailsSchema = Type.Union([
   WebFetchDetailsSchema,
   SubagentDetailsSchema,
   McpApprovalDetailsSchema,
+  CodemodeDetailsSchema,
 ]);
 export type ToolBlockDetails = Static<typeof ToolBlockDetailsSchema>;

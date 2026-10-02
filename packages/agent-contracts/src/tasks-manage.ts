@@ -81,7 +81,6 @@ export const ServiceRunPolicySchema = Type.Object(
   {
     tools: Type.Optional(Type.Array(ServiceToolIdSchema, { uniqueItems: true })),
     memory: Type.Optional(Type.Boolean()),
-    useDefaultModel: Type.Optional(Type.Boolean()),
     confirmExpansion: Type.Optional(Type.Boolean()),
     model: Type.Optional(ModelSelectionSchema),
     thinkingLevel: Type.Optional(ThinkingLevelSchema),

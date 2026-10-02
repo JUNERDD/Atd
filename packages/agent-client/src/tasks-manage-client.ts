@@ -1,6 +1,7 @@
 import {
   CompactTaskRequestSchema,
   CompactTaskResponseSchema,
+  ContextBreakdownResponseSchema,
   DeleteTaskResponseSchema,
   ForkTaskRequestSchema,
   ForkTaskResponseSchema,
@@ -12,6 +13,7 @@ import {
   ReplaceQueueResponseSchema,
   TaskResponseSchema,
   type CompactTaskResponse,
+  type ContextBreakdownResponse,
   type DeleteTaskResponse,
   type ForkTaskRequest,
   type ForkTaskResponse,
@@ -20,7 +22,7 @@ import {
   type PreviewTaskResponse,
   type ReplaceQueueResponse,
   type TaskResponse,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import { dispositionName, manageRequest, toClientError } from './manage-request.js';
 import { authHeaders, type AgentClientOptions } from './types.js';
 
@@ -87,6 +89,22 @@ export function compactTask(
     'POST',
     parse(CompactTaskRequestSchema, instructions === undefined ? {} : { instructions }),
     (json) => parse(CompactTaskResponseSchema, json),
+    fetchImpl,
+  );
+}
+
+/** A task's context usage split by category, computed from its live or stored session. */
+export function taskContextBreakdown(
+  options: AgentClientOptions,
+  taskId: string,
+  fetchImpl?: typeof fetch,
+): Promise<ContextBreakdownResponse> {
+  return manageRequest(
+    options,
+    `/v1/tasks/${encodeURIComponent(taskId)}/context`,
+    'GET',
+    undefined,
+    (json) => parse(ContextBreakdownResponseSchema, json),
     fetchImpl,
   );
 }

@@ -3,7 +3,7 @@ import {
   McpStatusResponseSchema,
   parse,
   type McpStatusResponse,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import { manageRequest } from './manage-request.js';
 import { authHeaders, AgentClientError, type AgentClientOptions } from './types.js';
 

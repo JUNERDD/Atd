@@ -1,4 +1,4 @@
-import { PROTOCOL_VERSION, type EventType, type ServiceEvent } from '@ai/agent-contracts';
+import { PROTOCOL_VERSION, type EventType, type ServiceEvent } from '@atd/agent-contracts';
 
 /** Bounded in-memory event buffer; slow clients fall back to snapshots. */
 const BUFFER_LIMIT = 500;

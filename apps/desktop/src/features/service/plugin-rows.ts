@@ -10,7 +10,7 @@ import {
   type PluginItem,
   type PluginPreviewRequest,
   type PluginSummary,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import type { ExtensionAgentRow, ExtensionMcpRow, ExtensionSkillRow } from './extension-rows';
 
 /**

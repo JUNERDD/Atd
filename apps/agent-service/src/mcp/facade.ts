@@ -8,18 +8,19 @@ import type {
   McpResourceTemplateRef,
   McpServerConfig,
   McpToolRef,
-} from '@ai/agent-contracts';
-import type { ProgressNotification, Tool } from '@earendil-works/pi-mcp';
+} from '@atd/agent-contracts';
+import type { McpRequestOptions, ProgressNotification, Tool } from '@earendil-works/pi-mcp';
 import type { Logger } from '../logging.js';
 import { McpApprovalBroker } from './approval.js';
 import {
   listAllPrompts,
   listTemplatesOrNone,
+  type RawPrompt,
   toPromptRef,
   toResourceRef,
   toTemplateRef,
   toToolInfo,
-  type RawPrompt,
+  withSignal,
 } from './catalog.js';
 import {
   McpError,
@@ -31,7 +32,7 @@ import {
 import { mapCallResult, mapGetPrompt, mapReadResource } from './mapping.js';
 import { OperationSession, translateCallError, type OperationTarget } from './operation.js';
 import { McpPolicy } from './policy.js';
-import type { McpConnections, McpLiveConnection, McpToolInfo } from './types.js';
+import type { McpConnections, McpListedServer, McpLiveConnection } from './types.js';
 
 /**
  * Typed control facade (D6): the only path runners and routes use to reach MCP. It takes its
@@ -54,10 +55,13 @@ export interface FacadeDeps {
 export class McpFacade {
   /** Connections; `launchSpec` is also what launch approvals fingerprint. */
   readonly connections: McpConnections;
+  /** Where results keep their artifacts, for the runner tools that map them (resource-tools.ts). */
+  readonly mapping: MappingDeps;
   private readonly policy: McpPolicy;
 
   constructor(private readonly deps: FacadeDeps) {
     this.connections = deps.connections;
+    this.mapping = deps.mapping;
     this.policy = new McpPolicy({ audit: deps.audit });
   }
 
@@ -73,17 +77,29 @@ export class McpFacade {
     return this.connections.reconnect(serverId, signal, taskId);
   }
 
-  async listTools(serverId: string, signal?: AbortSignal, taskId?: string): Promise<McpToolRef[]> {
-    return (await this.listToolInfo(serverId, signal, taskId)).map((info) => info.ref);
+  /** The tools the server lists now; route listings read the server, not the connection's list. */
+  listTools(serverId: string, signal?: AbortSignal, taskId?: string): Promise<McpToolRef[]> {
+    return this.operation({ serverId, signal, taskId }, (session) =>
+      session.run(async ({ record, connection }) => {
+        const tools = await this.liveTools(connection, signal);
+        return tools.map((tool) => toToolInfo(record, tool).ref);
+      }),
+    );
   }
 
-  /** The tools with their boolean annotation hints, which inform pi and never relax an approval. */
-  listToolInfo(serverId: string, signal?: AbortSignal, taskId?: string): Promise<McpToolInfo[]> {
-    return this.operation({ serverId, signal, taskId }, (session) =>
-      session.run(async (ensured) => {
-        const tools = await this.liveTools(ensured.connection, signal);
-        return tools.map((tool) => toToolInfo(ensured.record, tool));
-      }),
+  /**
+   * The server's instructions, whether it offers resources, and its tools with their boolean
+   * annotation hints (which inform pi and never relax an approval) as the connection last listed
+   * them: at the connect, and on every `tools/list_changed`. So binding a run's proxies sends no request while the connection stays
+   * open; a call still authorizes against the live list (`callTool`).
+   */
+  listedServer(serverId: string, signal?: AbortSignal): Promise<McpListedServer> {
+    return this.operation({ serverId, signal, taskId: undefined }, (session) =>
+      session.run(async ({ record, connection }) => ({
+        instructions: connection.instructions,
+        tools: connection.tools().map((tool) => toToolInfo(record, tool)),
+        resources: connection.capabilities.resources !== undefined,
+      })),
     );
   }
 
@@ -95,7 +111,9 @@ export class McpFacade {
     return this.operation({ serverId, signal, taskId }, (session) =>
       session.run(async ({ record, connection }) => {
         if (!record.exposeResources || !connection.capabilities.resources) return [];
-        const resources = await connection.use((client) => client.listResources({ signal }));
+        const resources = await connection.use((client) =>
+          client.listResources(withSignal(signal)),
+        );
         return resources.map((resource) => toResourceRef(record, resource));
       }),
     );
@@ -109,7 +127,9 @@ export class McpFacade {
     return this.operation({ serverId, signal, taskId }, (session) =>
       session.run(async ({ record, connection }) => {
         if (!record.exposeResources || !connection.capabilities.resources) return [];
-        const templates = await connection.use((client) => listTemplatesOrNone(client, { signal }));
+        const templates = await connection.use((client) =>
+          listTemplatesOrNone(client, withSignal(signal)),
+        );
         return templates.map((template) => toTemplateRef(record, template));
       }),
     );
@@ -142,7 +162,7 @@ export class McpFacade {
         decision: 'allow',
       });
       const raw = await session.run(({ connection }) =>
-        connection.use((client) => client.readResource(uri, { signal })),
+        connection.use((client) => client.readResource(uri, withSignal(signal))),
       );
       return mapReadResource(raw, { serverId, uri, taskId: op.taskId });
     });
@@ -168,7 +188,7 @@ export class McpFacade {
       });
       const params = { name, ...(args ? { arguments: args } : {}) };
       const raw = await session.run(({ connection }) =>
-        connection.use((client) => client.request('prompts/get', params, { signal })),
+        connection.use((client) => client.request('prompts/get', params, withSignal(signal))),
       );
       return mapGetPrompt(raw, { serverId, name, taskId: op.taskId });
     });
@@ -200,10 +220,14 @@ export class McpFacade {
       await this.approve(op, record, definition.name, input, signal);
       this.deps.onDispatch?.({ serverId, tool: definition.name });
       signal?.throwIfAborted();
-      const onProgress =
-        onUpdate && ((progress: ProgressNotification) => onUpdate(update(progress)));
+      const options: McpRequestOptions = {
+        ...withSignal(signal),
+        ...(onUpdate && {
+          onProgress: (progress: ProgressNotification) => onUpdate(update(progress)),
+        }),
+      };
       const raw = await session.run(({ connection }) =>
-        connection.use((client) => client.callTool(definition.name, input, { signal, onProgress })),
+        connection.use((client) => client.callTool(definition.name, input, options)),
       );
       return mapCallResult(this.deps.mapping, raw, {
         serverId,
@@ -216,12 +240,12 @@ export class McpFacade {
   /** The tools the server lists now; a server without the tools capability lists none. */
   private liveTools(connection: McpLiveConnection, signal?: AbortSignal): Promise<Tool[]> {
     if (!connection.capabilities.tools) return Promise.resolve([]);
-    return connection.use((client) => client.listTools({ signal }));
+    return connection.use((client) => client.listTools(withSignal(signal)));
   }
 
   private livePrompts(connection: McpLiveConnection, signal?: AbortSignal): Promise<RawPrompt[]> {
     if (!connection.capabilities.prompts) return Promise.resolve([]);
-    return connection.use((client) => listAllPrompts(client, { signal }));
+    return connection.use((client) => listAllPrompts(client, withSignal(signal)));
   }
 
   /**

@@ -1,6 +1,7 @@
 import { InMemoryCredentialStore, type Api, type Model } from '@earendil-works/pi-ai';
 import { ModelRuntime } from '@earendil-works/pi-coding-agent';
-import type { ServiceCatalogEntry, ServiceModelDefinition } from '@ai/agent-contracts';
+import type { ServiceCatalogEntry, ServiceModelDefinition } from '@atd/agent-contracts';
+import { LLAMA_PROVIDER } from './llama.js';
 
 /**
  * Service-owned provider catalog: Pi directory plus local entries. The Pi
@@ -8,7 +9,7 @@ import type { ServiceCatalogEntry, ServiceModelDefinition } from '@ai/agent-cont
  * endpoint never throws 500 for catalog reads and never returns [].
  */
 const LOCAL_PROVIDERS: Array<{ id: string; name: string; baseUrl: string }> = [
-  { id: 'llamacpp', name: 'llama.cpp', baseUrl: 'http://127.0.0.1:8080/v1' },
+  { id: LLAMA_PROVIDER, name: 'llama.cpp', baseUrl: 'http://127.0.0.1:8080/v1' },
   { id: 'ollama', name: 'Ollama', baseUrl: 'http://localhost:11434/v1' },
   { id: 'lm-studio', name: 'LM Studio', baseUrl: 'http://localhost:1234/v1' },
   { id: 'vllm', name: 'vLLM', baseUrl: 'http://localhost:8000/v1' },
@@ -116,9 +117,7 @@ export async function getServiceCatalog(): Promise<ServiceCatalogEntry[]> {
       const oauth = provider.id === 'openai' ? undefined : provider.auth.oauth;
       const apiKeyType: ServiceCatalogEntry['auth'][number]['type'] = isAmbient(provider.id)
         ? 'ambient'
-        : provider.id === 'llamacpp'
-          ? 'none'
-          : 'api_key';
+        : 'api_key';
       return {
         id: provider.id,
         name:
@@ -127,13 +126,7 @@ export async function getServiceCatalog(): Promise<ServiceCatalogEntry[]> {
             : provider.id === 'openai-codex'
               ? 'ChatGPT / Codex'
               : (provider.name ?? provider.id),
-        category: isCloud(provider.id)
-          ? 'cloud'
-          : provider.id === 'llamacpp'
-            ? 'local'
-            : oauth
-              ? 'accounts'
-              : 'api',
+        category: isCloud(provider.id) ? 'cloud' : oauth ? 'accounts' : 'api',
         auth: [
           ...(oauth
             ? [

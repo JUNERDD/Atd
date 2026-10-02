@@ -3,24 +3,30 @@ import {
   errorMessage,
   isActiveStatus,
   type CancelRunResponse,
+  type ContextBreakdown,
   type PermissionTier,
   type SubmitTaskRequest,
   type SubmitTaskResponse,
   type TaskRun,
   type TaskSnapshot,
   type TaskSummary,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import { ConnectionStore } from './credentials/connections.js';
 import type { Logger } from './logging.js';
 import { ResourceStore } from './resources.js';
+import { loadRunAttachments } from './run-attachments.js';
 import { compactRefused } from './compaction/manual.js';
 import { ConflictError, DrainingError } from './errors.js';
 import { SessionReleases } from './session-release.js';
 import { TaskRunner, type RunnerContext } from './task-runner.js';
-import { coldTaskView, taskSnapshot, taskSummary } from './task-view.js';
+import { taskContextBreakdown, taskSnapshot, taskSummary, taskView } from './task-view.js';
 import { checkChipRanges, taskTitle } from './tasks/input-chips.js';
-import { checkBranchBefore, freezeRunSnapshot, userEntryIds } from './tasks/run-snapshot.js';
-import { loadRunContextWindow } from './tasks/run-selection.js';
+import {
+  checkBranchBefore,
+  freezeRunSnapshot,
+  loadSubmitContextWindow,
+  userEntryIds,
+} from './tasks/run-snapshot.js';
 
 export interface ManagerDeps {
   ctx: RunnerContext;
@@ -57,7 +63,6 @@ export class RunnerManager {
       draining: () => this.draining,
       runner: (taskId) => this.runners.get(taskId),
       executing: (runId) => this.executions.has(runId),
-      released: () => this.dispatch(),
     });
   }
 
@@ -87,9 +92,10 @@ export class RunnerManager {
     checkChipRanges(request.input);
     // Read before the checks below so acceptance stays free of awaits until the ledger write.
     const connections = await ConnectionStore.load(this.deps.ctx.paths.root);
-    const contextWindowOf = await loadRunContextWindow(connections, request.model);
-    const onBranch = await this.userEntries(request);
     const ledger = this.deps.ctx.ledger;
+    const last = ledger.data.tasks.find((item) => item.id === request.taskId)?.runs.at(-1);
+    const contextWindowOf = await loadSubmitContextWindow(connections, request, last);
+    const onBranch = await this.userEntries(request);
     const duplicate = ledger.operation(request.operationId);
     if (duplicate) return { taskId: duplicate.taskId, runId: duplicate.runId, duplicate: true };
     const taskId = request.taskId ?? randomUUID();
@@ -216,6 +222,11 @@ export class RunnerManager {
     return taskSnapshot(this.deps.ctx, this.runners.get(taskId), taskId);
   }
 
+  /** The task's context usage by category, from its live or stored session. */
+  contextBreakdown(taskId: string): Promise<ContextBreakdown> {
+    return taskContextBreakdown(this.deps.ctx, this.runners.get(taskId), taskId);
+  }
+
   summary(taskId: string): TaskSummary {
     return taskSummary(this.deps.ctx, this.runners.get(taskId), taskId);
   }
@@ -254,12 +265,13 @@ export class RunnerManager {
   dispatch(): void {
     if (this.draining) return;
     // A task's runs share one Pi session: only its oldest queued run starts, once no started run
-    // is active (queued counts for acceptance, not dispatch) and no manual compaction or release
-    // holds the session; a release dispatches again once it settles. Tasks never wait on others.
+    // is active (queued counts for acceptance, not dispatch) and no manual compaction holds the
+    // session. A release still shutting the session down does not hold the run back: it freezes
+    // and binds meanwhile, and reopens the session only once the release settles (task-runner.ts
+    // `ensureSession`). Tasks never wait on others.
     for (const task of this.deps.ctx.ledger.data.tasks) {
       if (task.runs.some((run) => run.status !== 'queued' && isActiveStatus(run.status))) continue;
-      const runner = this.runners.get(task.id);
-      if (runner?.isCompacting() || runner?.isReleasing()) continue;
+      if (this.runners.get(task.id)?.isCompacting()) continue;
       const next = task.runs.find((run) => run.status === 'queued');
       if (next && !this.executions.has(next.id)) this.start(task.id, next);
     }
@@ -280,7 +292,7 @@ export class RunnerManager {
           stopping.push(this.cancel(task.id, run.id).catch(() => undefined));
       }
     await Promise.allSettled(stopping);
-    await Promise.allSettled([...this.executions.values()]);
+    await Promise.allSettled(this.executions.values());
     for (const runner of this.runners.values()) {
       await runner.dispose().catch((error: unknown) => {
         this.deps.log.warn('Runner dispose failed.', { error: errorMessage(error) });
@@ -299,18 +311,12 @@ export class RunnerManager {
 
   private async run(taskId: string, run: TaskRun): Promise<void> {
     try {
-      const attachments = [];
-      for (const file of run.snapshot.input.files) {
-        try {
-          const { text } = await this.deps.resources.readText(file.id);
-          attachments.push({ name: file.name, path: file.id, text });
-        } catch (error) {
-          this.deps.log.warn('Attachment unreadable; continuing without it.', {
-            taskId,
-            error: errorMessage(error),
-          });
-        }
-      }
+      const attachments = await loadRunAttachments(
+        this.deps.resources,
+        run.snapshot.input.files,
+        this.deps.log,
+        taskId,
+      );
       await this.runnerFor(taskId).execute(run, attachments);
     } catch (error) {
       this.deps.log.warn('Run execution failed.', { taskId, error: errorMessage(error) });
@@ -326,8 +332,7 @@ export class RunnerManager {
     if (branchBefore === undefined) return null;
     if (!taskId || !this.deps.ctx.ledger.data.tasks.some((task) => task.id === taskId))
       throw new TypeError('Invalid data: branchBefore needs an existing task.');
-    const runner = this.runners.get(taskId);
-    const view = runner ? await runner.view() : await coldTaskView(this.deps.ctx, taskId);
+    const view = await taskView(this.deps.ctx, this.runners.get(taskId), taskId);
     return userEntryIds(view.blocks);
   }
 }

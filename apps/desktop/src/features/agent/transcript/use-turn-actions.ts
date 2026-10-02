@@ -90,7 +90,7 @@ export function useTurnActions(
       ? () =>
           act(async () => {
             const name = markdownFileName(task.title, t('turnActions.defaultFileName'));
-            await agentApi().saveMarkdown(name, markdown);
+            await agentApi().saveFile(name, { type: 'text', text: markdown });
           })
       : null;
 

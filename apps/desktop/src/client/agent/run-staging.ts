@@ -1,4 +1,4 @@
-import { mcpStage, stageReferences, stageSkills, type AgentClientOptions } from '@ai/agent-client';
+import { mcpStage, stageReferences, stageSkills, type AgentClientOptions } from '@atd/agent-client';
 import type { RunPolicy } from './run-policy';
 import { parseMcpTools } from './service-manage';
 

@@ -6,7 +6,7 @@ import type {
   ServiceEvent,
   SummariesFrame,
   TaskSnapshot,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 
 /** A client that holds the service owner token (desktop main process, CLI) and sends it itself. */
 export interface TokenClientOptions {

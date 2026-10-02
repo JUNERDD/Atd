@@ -64,6 +64,11 @@ export const NativePosts = {
     { socketId: Type.String({ minLength: 1, maxLength: 64 }), data: Type.String() },
     { additionalProperties: false },
   ),
+  /**
+   * Installs the update `update.state` names and relaunches, through the app's quit flow (which
+   * still asks before stopping running tasks). Ignored while no update waits.
+   */
+  'update.install': Empty,
   'socket.close': Type.Object(
     {
       socketId: Type.String({ minLength: 1, maxLength: 64 }),
@@ -115,11 +120,30 @@ export const NativeEvents = {
     { id: Type.String({ minLength: 1, maxLength: 128 }) },
     { additionalProperties: false },
   ),
+  /**
+   * The screenshot shortcut fired; Swift already captured the selection. The panel takes the
+   * screenshot itself (`screenshot.capture`), so it can refuse a full draft before the overlay opens.
+   */
+  'shortcut.screenshot': Empty,
   /** Swift imported files dropped or pasted into the panel through `/v1/resources/import`. */
   'resources.imported': Type.Object(
     {
       resources: Type.Array(NativeFileRefSchema, { maxItems: 10 }),
       failures: Type.Array(ImportFailureSchema, { maxItems: 10 }),
+    },
+    { additionalProperties: false },
+  ),
+  /**
+   * The panel's file drop, a state the shell replays: `over` while files are dragged over the
+   * panel, `importing` from a drop until its import answered, `none` otherwise. `files` counts the
+   * dragged files, `attachable` those of the drop's import (its first 10) that have an attachable
+   * format; both are 0 outside `over`.
+   */
+  'files.drag': Type.Object(
+    {
+      phase: Type.Union([Type.Literal('over'), Type.Literal('importing'), Type.Literal('none')]),
+      files: Type.Integer({ minimum: 0 }),
+      attachable: Type.Integer({ minimum: 0, maximum: 10 }),
     },
     { additionalProperties: false },
   ),
@@ -134,6 +158,14 @@ export const NativeEvents = {
    * fails; a `speech.speak` that replaces another keeps it true.
    */
   'speech.state': Type.Object({ speaking: Type.Boolean() }, { additionalProperties: false }),
+  /**
+   * The version of a downloaded update that installs when the app quits, null while none waits.
+   * Sent to the panel on each change and replayed when its page becomes ready.
+   */
+  'update.state': Type.Object(
+    { version: Type.Union([Text(64), Type.Null()]) },
+    { additionalProperties: false },
+  ),
   'socket.frames': Type.Object(
     { frames: Type.Array(SocketFrameSchema, { minItems: 1 }) },
     { additionalProperties: false },

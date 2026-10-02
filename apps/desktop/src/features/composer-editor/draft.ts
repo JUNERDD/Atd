@@ -1,20 +1,49 @@
-import type {
-  InputChip,
-  InputChipRange,
-  MAX_INPUT_CHIPS,
-  MAX_RUN_REFERENCES,
-  MAX_RUN_SKILLS,
-  RunReference,
-} from '@ai/agent-contracts';
+import {
+  quoteLabel,
+  type InputChip,
+  type InputChipRange,
+  type MAX_INPUT_CHIPS,
+  type MemoryTarget,
+  type MAX_QUOTE_CHARS,
+  type MAX_RUN_REFERENCES,
+  type MAX_RUN_SKILLS,
+  type QuoteSource,
+  type RunReference,
+} from '@atd/agent-contracts';
+import type { Screenshot } from '../../client/agent/screenshot-input';
 import type { FileRef } from '../../client/agent/task-schema';
 
-/** One inline reference inserted from the quick panel; the draft's only source of truth for it. */
+/**
+ * One inline chip, inserted from the quick panel, the attach menu, a drop or paste, or (a quote,
+ * holding the Markdown of a passage selected in an answer) from the transcript; the draft's only
+ * source of truth for it.
+ */
 export type Chip =
-  | { kind: 'file'; file: FileRef }
+  | FileChip
   | { kind: 'task'; taskId: string; title: string }
   | { kind: 'mcpServer'; serverId: string }
   | { kind: 'agent'; name: string }
-  | { kind: 'skill'; name: string };
+  | { kind: 'skill'; name: string }
+  | { kind: 'command'; commandId: string; name: string }
+  | { kind: 'memory'; target: MemoryTarget; entryId: string; title: string }
+  | { kind: 'quote'; text: string; source?: QuoteSource };
+
+/**
+ * A file the draft sends. A screenshot is one chip for its image and `context`, the screen context
+ * the shell imported beside the capture: both are sent, while only the image is shown.
+ */
+export interface FileChip {
+  kind: 'file';
+  file: FileRef;
+  context?: FileRef;
+}
+
+/** A capture's chip: the image, with its screen context while `room` leaves space for it. */
+export function screenshotChip(shot: Screenshot, room: number): FileChip {
+  return shot.context && room > 1
+    ? { kind: 'file', file: shot.file, context: shot.context }
+    : { kind: 'file', file: shot.file };
+}
 
 /** A chip and its token range in the serialized `text`. */
 export interface ChipRange {
@@ -25,7 +54,6 @@ export interface ChipRange {
 
 export interface ComposerDraft {
   text: string;
-  files: FileRef[];
   chips: ChipRange[];
 }
 
@@ -42,6 +70,7 @@ const LEGACY_SKILL_PREFIX = /^\/skill:([A-Za-z0-9][A-Za-z0-9_-]*) /;
 const MAX_REFERENCES: typeof MAX_RUN_REFERENCES = 16;
 const MAX_SKILLS: typeof MAX_RUN_SKILLS = 32;
 const MAX_CHIPS: typeof MAX_INPUT_CHIPS = 64;
+const MAX_QUOTE: typeof MAX_QUOTE_CHARS = 12000;
 
 export function chipName(chip: Chip): string {
   switch (chip.kind) {
@@ -53,7 +82,12 @@ export function chipName(chip: Chip): string {
       return chip.serverId;
     case 'agent':
     case 'skill':
+    case 'command':
       return chip.name;
+    case 'memory':
+      return chip.title;
+    case 'quote':
+      return quoteLabel(chip.text);
   }
 }
 
@@ -69,6 +103,12 @@ function chipKey(chip: Chip): string {
     case 'agent':
     case 'skill':
       return `${chip.kind}:${chip.name}`;
+    case 'command':
+      return `command:${chip.commandId}`;
+    case 'memory':
+      return `memory:${chip.target}:${chip.entryId}`;
+    case 'quote':
+      return `quote:${chip.text}`;
   }
 }
 
@@ -83,7 +123,7 @@ export function chipText(chip: Chip): string {
   return /\s/.test(name) ? `@"${name}"` : `@${name}`;
 }
 
-export function serialize(segments: readonly DraftSegment[], files: FileRef[]): ComposerDraft {
+export function serialize(segments: readonly DraftSegment[]): ComposerDraft {
   let text = '';
   const chips: ChipRange[] = [];
   for (const segment of segments) {
@@ -95,7 +135,7 @@ export function serialize(segments: readonly DraftSegment[], files: FileRef[]): 
     chips.push({ from: text.length, to: text.length + serialized.length, chip: segment });
     text += serialized;
   }
-  return { text, files, chips };
+  return { text, chips };
 }
 
 export function deserialize(draft: ComposerDraft): DraftSegment[] {
@@ -139,10 +179,10 @@ export function normalizeDraft(draft: ComposerDraft): ComposerDraft {
 export function seedFromText(text: string): ComposerDraft {
   const name = LEGACY_SKILL_PREFIX.exec(text)?.[1];
   const chip: Chip | null = name ? { kind: 'skill', name } : null;
-  return { text, files: [], chips: chip ? [{ from: 0, to: chipText(chip).length, chip }] : [] };
+  return { text, chips: chip ? [{ from: 0, to: chipText(chip).length, chip }] : [] };
 }
 
-/** Whether two drafts hold the same editor content; attachments live outside the editor. */
+/** Whether two drafts hold the same editor content. */
 export function sameContent(a: ComposerDraft, b: ComposerDraft): boolean {
   return (
     a.text === b.text &&
@@ -159,12 +199,18 @@ export function sameContent(a: ComposerDraft, b: ComposerDraft): boolean {
   );
 }
 
-/** Files sent with the draft: the attachment row, then file chips, each file once. */
+/** A file chip's files: the file, then a screenshot's context. */
+export function chipFiles(chip: FileChip): FileRef[] {
+  return chip.context ? [chip.file, chip.context] : [chip.file];
+}
+
+/** Files sent with the draft: each file chip's files in draft order, each file once. */
 export function draftFiles(draft: ComposerDraft): FileRef[] {
-  const files = [...draft.files];
+  const files: FileRef[] = [];
   for (const { chip } of draft.chips)
-    if (chip.kind === 'file' && !files.some((file) => file.id === chip.file.id))
-      files.push(chip.file);
+    if (chip.kind === 'file')
+      for (const file of chipFiles(chip))
+        if (!files.some((item) => item.id === file.id)) files.push(file);
   return files;
 }
 
@@ -186,14 +232,20 @@ function referenceOf(chip: Chip): RunReference | null {
       return { kind: 'mcpServer', serverId: chip.serverId };
     case 'agent':
       return { kind: 'agent', name: chip.name };
+    case 'command':
+      return { kind: 'command', commandId: chip.commandId };
+    case 'memory':
+      return { kind: 'memory', target: chip.target, entryId: chip.entryId };
     case 'file':
     case 'skill':
+    case 'quote':
       return null;
   }
 }
 
 /**
- * Run references for the conversation, MCP server and subagent chips, each item once, in draft
+ * Run references for the conversation, MCP server, subagent, command and memory chips, each item
+ * once, in draft
  * order, up to the contract's cap. Submit stages them, so deleting a chip drops its reference.
  */
 export function draftReferences(draft: ComposerDraft): RunReference[] {
@@ -218,16 +270,44 @@ function inputChipOf(chip: Chip): InputChip {
       return { kind: 'agent', name: chip.name };
     case 'skill':
       return { kind: 'skill', name: chip.name };
+    case 'command':
+      return { kind: 'command', commandId: chip.commandId, name: chip.name };
+    case 'memory':
+      return { kind: 'memory', target: chip.target, entryId: chip.entryId, title: chip.title };
+    case 'quote':
+      return chip.source
+        ? { kind: 'quote', text: chip.text, source: chip.source }
+        : { kind: 'quote', text: chip.text };
   }
 }
 
 /**
  * Chip records for `input.chips`: each chip's range in `draft.text`, in draft order, up to the
- * contract's cap. They only let the transcript and the title show chips (a chip past the cap shows
- * as its text); files, skills and references still reach the run through `files` and staging.
+ * contract's cap. They let the transcript and the title show chips (a chip past the cap shows as
+ * its text); files, skills and references still reach the run through `files` and staging, while
+ * a quote's passage reaches it only through its record.
  */
 export function draftChips(draft: ComposerDraft): InputChipRange[] {
   return draft.chips
     .slice(0, MAX_CHIPS)
     .map(({ from, to, chip }) => ({ from, to, chip: inputChipOf(chip) }));
+}
+
+/**
+ * A quote chip for `markdown`, cut to the contract's cap with an ellipsis: a selection can span a
+ * whole long answer, and the passage travels in the chip record rather than the text. `source`
+ * lets the chip show where it was taken from.
+ */
+export function quoteChip(markdown: string, source?: QuoteSource): Chip {
+  const text =
+    markdown.length > MAX_QUOTE ? `${markdown.slice(0, MAX_QUOTE - 1).trimEnd()}…` : markdown;
+  return source ? { kind: 'quote', text, source } : { kind: 'quote', text };
+}
+
+/** `draft` with `chip` appended after its text, apart from it, and a space to type after. */
+export function appendChip(draft: ComposerDraft, chip: Chip): ComposerDraft {
+  const segments = deserialize(draft);
+  const last = segments.at(-1);
+  const apart = last === undefined || (typeof last === 'string' && /\s$/.test(last));
+  return serialize([...segments, ...(apart ? [] : [' ']), chip, ' ']);
 }

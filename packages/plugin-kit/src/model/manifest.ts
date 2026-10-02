@@ -183,6 +183,17 @@ export const CommandComponentSchema = Type.Object(
   { additionalProperties: false },
 );
 
+/** A remote server's pre-registered OAuth client, as Claude's `.mcp.json` `oauth` names it. */
+export const McpOAuthClientSchema = Type.Object(
+  {
+    clientId: Type.Optional(Type.String({ minLength: 1, maxLength: 512 })),
+    callbackPort: Type.Optional(Type.Integer({ minimum: 1, maximum: 65535 })),
+    authServerMetadataUrl: Type.Optional(Type.String({ minLength: 1, maxLength: 2048 })),
+  },
+  { additionalProperties: false },
+);
+export type McpOAuthClient = Static<typeof McpOAuthClientSchema>;
+
 /** MCP transports the kit normalizes. Values still contain unsubstituted variables. */
 export const McpTransportSchema = Type.Union([
   Type.Object(
@@ -202,6 +213,11 @@ export const McpTransportSchema = Type.Union([
       protocol: Type.Union([Type.Literal('streamable-http'), Type.Literal('sse')]),
       url: Type.String({ minLength: 1, maxLength: 2048 }),
       headers: Type.Record(Type.String(), Type.String({ maxLength: 8192 })),
+      /**
+       * The OAuth client a sign-in uses, for servers without dynamic client registration (Claude's
+       * `oauth`). A client secret is never part of a plugin: the user supplies it, if needed.
+       */
+      oauth: Type.Optional(McpOAuthClientSchema),
     },
     { additionalProperties: false },
   ),

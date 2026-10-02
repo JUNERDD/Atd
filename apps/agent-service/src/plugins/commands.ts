@@ -1,4 +1,4 @@
-import type { ServiceCommandFull } from '@ai/agent-contracts';
+import type { ServiceCommandFull } from '@atd/agent-contracts';
 import { ConflictError } from '../errors.js';
 import { currentPluginComponents, type Mapped } from './components.js';
 import { PluginHost } from './host.js';

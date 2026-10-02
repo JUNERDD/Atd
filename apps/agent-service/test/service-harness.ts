@@ -1,7 +1,7 @@
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { RELAY_EPOCH_HEADER } from '@ai/agent-contracts';
+import { RELAY_EPOCH_HEADER } from '@atd/agent-contracts';
 import { prepareServe } from '../dist/config.js';
 import { createService } from '../dist/index.js';
 
@@ -20,7 +20,7 @@ export async function startTestService() {
   /** Fetches with the main token (unless `anonymous`), a JSON body type and an optional relay epoch. */
   function call(
     pathname: string,
-    init: RequestInit & { epoch?: string; anonymous?: boolean } = {},
+    init: RequestInit & { epoch?: string | undefined; anonymous?: boolean } = {},
   ) {
     const { epoch, anonymous, ...rest } = init;
     const headers = new Headers(rest.headers);

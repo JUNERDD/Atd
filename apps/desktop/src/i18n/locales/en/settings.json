@@ -13,10 +13,10 @@
     "navigationLabel": "Settings navigation",
     "permissions": "Permissions",
     "extensions": "Extensions",
-    "providers": "Providers",
+    "providers": "Models",
     "commands": "Commands",
     "memory": "Memory",
-    "shortcuts": "Shortcuts"
+    "general": "General"
   },
   "drawer": {
     "title": "Settings navigation",
@@ -41,10 +41,10 @@
     "keywords": {
       "sectionPermissions": "approval security safety allow ask confirm access",
       "sectionExtensions": "plugin plugins skill skills subagent agents mcp server tools marketplace add-on",
-      "sectionProviders": "model models api key connection account login sign in service openai anthropic ollama",
+      "sectionProviders": "model models provider providers api key connection account login sign in service openai anthropic ollama",
       "sectionCommands": "command prompt snippet template macro instruction saved",
       "sectionMemory": "preferences remember learn context profile",
-      "sectionShortcuts": "keyboard hotkey keybinding key binding record window preferences dock login",
+      "sectionGeneral": "general keyboard shortcut hotkey keybinding key binding record window preferences dock login startup",
       "tierManual": "manual ask confirm every action prompt each time",
       "tierAuto": "auto automatic approve approval review model safe",
       "tierAlways": "always allow unattended never ask full access yolo",
@@ -71,7 +71,7 @@
   },
   "providers": {
     "overview": {
-      "title": "Providers",
+      "title": "Models",
       "description": "Choose a default provider and set a default model for each connection.",
       "searchLabel": "Search providers",
       "searchPlaceholder": "Search providers…",
@@ -152,9 +152,11 @@
       "detailDescription": "Commands that start with this prefix run right away."
     }
   },
+  "general": {
+    "title": "General",
+    "description": "Shortcuts, startup, and window behavior. Click a shortcut, then press the new keys; Escape cancels."
+  },
   "shortcuts": {
-    "title": "Keyboard shortcuts",
-    "description": "Click a shortcut, then press the new keys. Escape cancels.",
     "groups": {
       "global": "Global",
       "inApp": "In app",
@@ -164,6 +166,10 @@
       "togglePanel": {
         "label": "Show or hide panel",
         "description": "Available anywhere on your Mac."
+      },
+      "captureScreenshot": {
+        "label": "Take screenshot",
+        "description": "Capture the screen and attach it to the composer."
       },
       "newConversation": {
         "label": "New conversation",
@@ -183,7 +189,6 @@
       }
     },
     "capture": {
-      "pressKeys": "Press keys…",
       "cancelLabel": "Cancel recording {{label}}",
       "changeLabel": "Change {{label}}: {{keys}}",
       "reset": "Reset to default",
@@ -200,8 +205,7 @@
     "restoreDefaults": "Restore default shortcuts",
     "restoring": "Restoring…",
     "status": {
-      "recordingHint": "Press a shortcut. Escape cancels; Tab moves to the next control.",
-      "openAtLoginApproval": "Approve AI in System Settings › Login Items to finish."
+      "openAtLoginApproval": "Approve Atd in System Settings › Login Items to finish."
     },
     "errors": {
       "register": "This shortcut could not be registered. macOS or another app may be using it; choose another combination.",
@@ -343,7 +347,7 @@
     "sourceNpm": "npm",
     "sourceGit": "Git",
     "sourceAgents": "~/.agents/skills",
-    "sourceAtd": "atd",
+    "sourceAtd": "Atd",
     "sourceSystem": "System",
     "addSubagent": "Add subagent",
     "createWithAi": "Create with AI",
@@ -436,6 +440,42 @@
       "headers": "Request headers",
       "oauthScope": "OAuth scope",
       "redirectUri": "Redirect URI",
+      "authNoneHint": "If the server asks you to sign in, choose Authenticate in its status.",
+      "oauthSection": "OAuth client",
+      "oauthSectionNote": "All optional. Fill these in when the server needs a client registered in advance or points to the wrong authorization server. Left empty, the app registers a client itself.",
+      "optionalPlaceholder": "Optional",
+      "clientId": "Client ID",
+      "clientName": "Client name",
+      "clientNameHint": "The name the app registers its own client under. Leave empty to use the app's name.",
+      "clientSecret": "Client secret",
+      "clientSecretHint": "Kept in the system credential store and sent only to this client's authorization server. It needs a client ID.",
+      "clientSecretSet": "Set",
+      "clientSecretReplace": "Replace",
+      "clientSecretKeep": "Keep saved",
+      "clientSecretReplacePlaceholder": "New secret, or empty to remove it",
+      "callbackPort": "Callback port",
+      "callbackPortHint": "The local port in the redirect URI the client was registered with. Leave empty to use any free port.",
+      "callbackPortPlaceholder": "Any free port",
+      "metadataUrl": "Authorization server metadata URL",
+      "metadataUrlHint": "Where sign-in finds the authorization server instead of asking the MCP server. Codes, tokens, and the client secret go where it says, so it must use https:// (http:// only on localhost).",
+      "metadataUrlPlaceholder": "https://auth.example.com/.well-known/oauth-authorization-server",
+      "accessSection": "Agent access",
+      "exposure": "Tool loading",
+      "exposureAuto": "Automatic",
+      "exposureDirect": "Always available",
+      "exposureDeferred": "Load on demand",
+      "exposureAutoHint": "Tools are always available when the server has up to {{threshold}}; with more, the agent searches for them when it needs them.",
+      "exposureAutoNowDirect_one": "This server lists {{count}} tool, no more than {{threshold}}, so it's always available.",
+      "exposureAutoNowDirect_other": "This server lists {{count}} tools, no more than {{threshold}}, so they're always available.",
+      "exposureAutoNowDeferred_one": "This server lists {{count}} tool, more than {{threshold}}, so the agent searches for it when it needs it.",
+      "exposureAutoNowDeferred_other": "This server lists {{count}} tools, more than {{threshold}}, so the agent searches for them when it needs them.",
+      "exposureDirectHint": "Every tool is offered to the agent with each request. Best for servers with a few tools.",
+      "exposureDeferredHint": "Tools stay out of each request until the agent searches for them, which saves context on servers with many tools.",
+      "resources": "Let the agent read resources",
+      "resourcesHint": "The agent can list and read the files and data this server shares as resources.",
+      "resourcesFact": "Resources",
+      "resourcesBlocked": "Not shared with the agent",
+      "pluginAccessNote": "Plugin servers load tools automatically and don't share resources with the agent. To change this, duplicate the server to Personal.",
       "errors": {
         "serverIdRequired": "Enter a server ID.",
         "serverIdInvalid": "Use up to 128 letters, digits, hyphens, or underscores.",
@@ -447,7 +487,12 @@
         "urlKeepsCredentials": "This server's saved headers and token only go to its current site. To connect to another site, remove the server and add it again.",
         "commandKeepsEnv": "This server's environment variables only go to its current command. To run another command, remove the server and add it again.",
         "tokenEnvRequired": "Enter the environment variable that holds the token.",
-        "tokenEnvInvalid": "Use letters, digits, and underscores, not starting with a digit."
+        "tokenEnvInvalid": "Use letters, digits, and underscores, not starting with a digit.",
+        "clientIdRequiredForSecret": "Enter the client ID this secret belongs to.",
+        "callbackPortInvalid": "Enter a port from 1 to 65535.",
+        "metadataUrlInvalid": "Enter a valid URL without a user name or password.",
+        "metadataUrlInsecure": "Use https://. Plain http:// works only for localhost.",
+        "clientSecretNotKept": "The saved secret only goes to its current client ID, metadata URL, and site. Enter it again, or choose Replace and leave it empty to remove it."
       }
     },
     "mcpApproval": {
@@ -600,13 +645,6 @@
         "disabledByPlugin": "Turn on {{name}} to change its items.",
         "noItems": "This plugin contributes nothing this app can use.",
         "diagnostics": "Not imported",
-        "learning": "Learn new memories",
-        "memoryEntries_one": "{{count}} memory",
-        "memoryEntries_other": "{{count}} memories",
-        "learningOn": "Learning",
-        "learningOff": "Learning paused",
-        "openMemory": "Open memory settings",
-        "learningHint": "Pausing stops saving new memories. The agent still uses the ones already saved.",
         "openInCommands": "Open in Commands",
         "openInCommandsFor": "Open {{name}} in Commands",
         "readOnlyNote": "Items from this plugin are read-only. Duplicate one to Personal to change it.",

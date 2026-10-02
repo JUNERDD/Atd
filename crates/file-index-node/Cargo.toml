@@ -14,8 +14,8 @@ crate-type = ["cdylib"]
 
 [dependencies]
 file-index = { path = "../file-index" }
-napi = { version = "3.13.0", default-features = false, features = ["napi4"] }
-napi-derive = "3.6.9"
+napi = { version = "3.14.0", default-features = false, features = ["napi4"] }
+napi-derive = "3.6.10"
 
 [build-dependencies]
-napi-build = "2.5.0"
+napi-build = "2.6.0"

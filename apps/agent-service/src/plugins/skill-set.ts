@@ -1,4 +1,4 @@
-import type { PluginRunSnapshot, ResolvedItem } from '@ai/plugin-kit';
+import type { PluginRunSnapshot, ResolvedItem } from '@atd/plugin-kit';
 import type { SkillRevisionRecord } from '../skills/versions.js';
 import { mapPluginComponents } from './components.js';
 import { PluginHost, type PluginView } from './host.js';

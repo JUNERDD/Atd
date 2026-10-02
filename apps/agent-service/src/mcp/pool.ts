@@ -1,5 +1,5 @@
 import { setTimeout as delay } from 'node:timers/promises';
-import { errorMessage } from '@ai/agent-contracts';
+import { errorMessage } from '@atd/agent-contracts';
 import { McpClient, McpConnectionClosedError, type McpTransport } from '@earendil-works/pi-mcp';
 import type { Logger } from '../logging.js';
 import {
@@ -16,6 +16,7 @@ import {
   type ConnectionContext,
   type ConnectionIdentity,
 } from './pooled-connection.js';
+import { McpServerLog } from './server-log.js';
 import type {
   McpCatalogCounter,
   McpCatalogCounts,
@@ -256,6 +257,7 @@ export class McpConnectionPool {
         error: target.hideUrl(errorMessage(error)),
       });
     });
+    McpServerLog.attach(client, this.deps.log, target, () => this.context.now());
     // connect() takes no signal, so an abort closes the client, which fails the pending initialize.
     const onAbort = () => void client.close().catch(() => undefined);
     signal.addEventListener('abort', onAbort, { once: true });
@@ -265,7 +267,7 @@ export class McpConnectionPool {
       await client.connect(transport);
       const connection = new PooledConnection(target, client, transport, this.context);
       // A counter that ignores the signal must not hold up an abort or a close.
-      connection.setCounts(await raceAbort(this.deps.counter(client, signal), signal));
+      connection.setCatalog(await raceAbort(this.deps.counter(client, signal), signal));
       signal.throwIfAborted();
       if (client.connectionState !== 'connected' || !connection.isOpen()) {
         throw new McpConnectionClosedError('MCP connection closed during setup');

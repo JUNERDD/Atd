@@ -1,4 +1,4 @@
-import type { InputChip, InputChipRange } from '@ai/agent-contracts';
+import { quoteLabel, type InputChip, type InputChipRange } from '@atd/agent-contracts';
 import type { RunSnapshot } from '../../../client/agent/task-schema';
 import { seedFromText } from '../../composer-editor/draft';
 
@@ -11,11 +11,15 @@ export function sentChipName(chip: InputChip): string {
     case 'file':
     case 'agent':
     case 'skill':
+    case 'command':
       return chip.name;
     case 'task':
+    case 'memory':
       return chip.title;
     case 'mcpServer':
       return chip.serverId;
+    case 'quote':
+      return quoteLabel(chip.text);
   }
 }
 
@@ -78,12 +82,4 @@ export function composedPrompt(snapshot: RunSnapshot): SentSegment[] | null {
   }
   if (at < text.length) segments.push(text.slice(at));
   return trimEnds(segments);
-}
-
-/** Files a prompt shows as chips; its attachment row lists only the other files. */
-export function chipFileIds(segments: readonly SentSegment[] | null): ReadonlySet<string> {
-  const ids = new Set<string>();
-  for (const segment of segments ?? [])
-    if (typeof segment !== 'string' && segment.kind === 'file') ids.add(segment.fileId);
-  return ids;
 }

@@ -1,6 +1,6 @@
 import type { AssistantMessage } from '@earendil-works/pi-ai';
 import type { AgentSession } from '@earendil-works/pi-coding-agent';
-import type { ServiceBlock } from '@ai/agent-contracts';
+import type { ServiceBlock } from '@atd/agent-contracts';
 import { STREAM_COALESCE_MS } from '../live-transcript.js';
 import { TrailingFlush } from '../trailing-flush.js';
 import {

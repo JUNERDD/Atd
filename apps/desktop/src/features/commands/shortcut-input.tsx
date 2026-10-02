@@ -1,12 +1,15 @@
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { X } from 'lucide-react';
-import { Button } from '@ai/ui/components/button';
-import { Kbd, KbdGroup } from '@ai/ui/components/kbd';
 import { IconButton } from '../../components/icon-button';
+import { ShortcutRecorder } from '../../components/shortcut-recorder';
 import { recordedKeysToAccelerator, shortcutKeys } from '../../lib/shortcuts';
 import { useShortcutCapture } from '../settings/use-shortcut-capture';
+import { FieldError } from './field-error';
 
+const ERROR_ID = 'command-shortcut-error';
+
+/** A command's shortcut on the shared recorder; a set shortcut adds Clear as its leading action. */
 export function ShortcutInput({
   value,
   onChange,
@@ -33,51 +36,34 @@ export function ShortcutInput({
     resetKeys();
   }, [hasKey, invalid, shortcut, isRecording, stop, resetKeys, onChange]);
   return (
-    <div>
-      <div className="relative">
-        <Button
-          id="command-shortcut"
-          type="button"
-          variant="outline"
-          className="w-full pr-9"
-          aria-label={t('shortcut.record')}
-          aria-pressed={isRecording}
-          onBlur={capture.cancel}
-          onClick={() => {
-            if (isRecording) capture.cancel();
-            else capture.start();
-          }}
-        >
-          {isRecording ? (
-            t('shortcut.recording')
-          ) : value ? (
-            <KbdGroup>
-              {shortcutKeys(value, platform).map((key) => (
-                <Kbd key={key}>{key}</Kbd>
-              ))}
-            </KbdGroup>
-          ) : (
-            t('shortcut.recordShortcut')
-          )}
-        </Button>
-        {value && (
-          <IconButton
-            label={t('shortcut.clear')}
-            className="absolute top-1/2 right-1 -translate-y-1/2"
-            onClick={() => {
-              capture.cancel();
-              onChange('');
-            }}
-          >
-            <X />
-          </IconButton>
-        )}
-      </div>
-      {error && (
-        <p role="alert" className="text-xs text-destructive mt-2">
-          {error}
-        </p>
-      )}
+    <div className="flex flex-col gap-2">
+      <ShortcutRecorder
+        id="command-shortcut"
+        keys={value ? shortcutKeys(value, platform) : []}
+        recording={isRecording}
+        emptyText={t('shortcut.recordShortcut')}
+        aria-label={t('shortcut.record')}
+        aria-describedby={error ? ERROR_ID : undefined}
+        onBlur={capture.cancel}
+        onClick={() => {
+          if (isRecording) capture.cancel();
+          else capture.start();
+        }}
+        action={
+          value && (
+            <IconButton
+              label={t('shortcut.clear')}
+              onClick={() => {
+                capture.cancel();
+                onChange('');
+              }}
+            >
+              <X />
+            </IconButton>
+          )
+        }
+      />
+      {error && <FieldError id={ERROR_ID}>{error}</FieldError>}
     </div>
   );
 }

@@ -1,0 +1,64 @@
+/*
+ * The context usage popover: one color per part of the context, shared by the bar's segments and
+ * the rows' swatches through `data-category`. The track itself is the free space.
+ */
+.context-category {
+  /* Skills have no status or syntax hue of their own; a violet keeps them apart from the blue
+     messages and the indigo-leaning sidebar primary. */
+  --context-skills: #a78bfa;
+  --context-color: var(--border);
+}
+.context-category[data-category='messages'] {
+  --context-color: var(--ata-syntax-variable);
+}
+.context-category[data-category='systemPrompt'] {
+  --context-color: var(--chart-2);
+}
+.context-category[data-category='skills'] {
+  --context-color: var(--context-skills);
+}
+.context-category[data-category='systemTools'] {
+  --context-color: var(--ata-status-warning);
+}
+.context-category[data-category='mcpTools'] {
+  --context-color: var(--ata-status-progress);
+}
+.context-category[data-category='buffer'] {
+  --context-color: color-mix(in oklab, var(--muted-foreground) 45%, transparent);
+}
+
+.context-bar {
+  background-color: var(--border);
+}
+rect.context-category {
+  fill: var(--context-color);
+}
+.context-swatch {
+  background-color: var(--context-color);
+}
+
+/* Swatch, label, tokens, percent. Every column but the label has a fixed width (the tokens column
+   fits "1.05M", the last one "100.0%" and an item's tool count), so opening a group or a long
+   label moves no column. */
+.context-rows {
+  grid-template-columns: 0.625rem minmax(0, 1fr) 3.5rem 4.5rem;
+}
+
+/* An expanded group's list ends where the row text ends, 6px short of the rows, whose own right
+   padding comes out of their last track (they are subgrids); its last column is narrower by the
+   same 6px, so its tokens and counts line up with the rows' tokens and percentages. */
+.context-items {
+  grid-template-columns: 0.625rem minmax(0, 1fr) 3.5rem 4.125rem;
+}
+
+.context-row-chevron {
+  transition: transform 150ms ease-out;
+}
+.context-row-trigger[data-state='open'] .context-row-chevron {
+  transform: rotate(90deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .context-row-chevron {
+    transition: none;
+  }
+}

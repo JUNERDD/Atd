@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test, type TestContext } from 'node:test';
-import type { McpConnectionState, McpServerConfig } from '@ai/agent-contracts';
+import type { McpConnectionState, McpServerConfig } from '@atd/agent-contracts';
 import { ConnectOvertaken, translateConnectError } from '../dist/mcp/connect-errors.js';
 import type { LaunchGate } from '../dist/mcp/launch-approvals.js';
 import { mcpErrorStatus } from '../dist/mcp/routes.js';

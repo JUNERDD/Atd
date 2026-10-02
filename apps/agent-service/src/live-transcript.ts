@@ -1,6 +1,7 @@
 import type { AssistantMessage } from '@earendil-works/pi-ai';
 import type { AgentSession, SessionManager } from '@earendil-works/pi-coding-agent';
-import type { QueueState, ServiceBlock } from '@ai/agent-contracts';
+import { CODEMODE_TOOL, type QueueState, type ServiceBlock } from '@atd/agent-contracts';
+import { NestedStepLog } from './codemode/steps.js';
 import type { RunningCompaction } from './compaction/records.js';
 import { SUBAGENT_TOOL } from './subagents/tool-contract.js';
 import { TrailingFlush } from './trailing-flush.js';
@@ -53,6 +54,11 @@ export class LiveTranscript {
    * track children while the call runs. Other tools' partial details are not kept.
    */
   private readonly subagentProgress = new Map<string, SubagentRow[]>();
+  /**
+   * Calls running `codemode` scripts made, from the nested `tool_execution_*` events pi reports
+   * with `parentToolCallId`; a call's steps leave once it ends, when its result details hold them.
+   */
+  private readonly codemodeSteps = new NestedStepLog();
   private partial: AssistantMessage | undefined;
   private queue: QueueState = { steering: [], followUp: [] };
   /** Open `batchQueue` edits; their intermediate queue states stay unpublished. */
@@ -89,9 +95,19 @@ export class LiveTranscript {
         if (event.toolName === SUBAGENT_TOOL)
           this.subagentProgress.set(event.toolCallId, subagentRows(partialDetails(event)));
       }
+      if (event.type === 'tool_execution_start' && event.parentToolCallId)
+        this.codemodeSteps.start(
+          event.parentToolCallId,
+          event.toolCallId,
+          event.toolName,
+          event.args,
+        );
       if (event.type === 'tool_execution_end') {
         this.partials.delete(event.toolCallId);
         this.subagentProgress.delete(event.toolCallId);
+        if (event.parentToolCallId)
+          this.codemodeSteps.end(event.toolCallId, resultParts(event.result), event.isError);
+        else if (event.toolName === CODEMODE_TOOL) this.codemodeSteps.take(event.toolCallId);
       }
       if (event.type === 'message_update' || event.type === 'tool_execution_update')
         this.streamed.schedule();
@@ -138,6 +154,7 @@ export class LiveTranscript {
       partial: this.partial,
       partials: this.partials,
       subagentProgress: this.subagentProgress,
+      codemodeProgress: this.codemodeSteps.lists,
       firstRunId: this.firstRunId,
       live: true,
       compacting: this.compacting(),
@@ -161,4 +178,9 @@ function partialDetails(event: { partialResult: unknown }): unknown {
   return partial && typeof partial === 'object' && 'details' in partial
     ? partial.details
     : undefined;
+}
+
+/** A tool result's `content` and `details` (`AgentToolResult`); untrusted until projected. */
+function resultParts(result: unknown): { content?: unknown; details?: unknown } {
+  return result && typeof result === 'object' ? result : {};
 }

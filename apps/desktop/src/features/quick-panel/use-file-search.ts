@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { matchFields } from '@ai/ui/lib/fuzzy-match';
+import { matchFields } from '@atd/ui/lib/fuzzy-match';
 import type { FileRef } from '../../client/agent/task-schema';
-import type { FileSearchReply, FileSearchResult } from '@ai/agent-contracts';
+import type { FileSearchReply, FileSearchResult } from '@atd/agent-contracts';
 
 const DEBOUNCE_MS = 120;
 /** Recent files for an empty query, search matches otherwise (plan 1.9). */

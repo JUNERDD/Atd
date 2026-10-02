@@ -5,7 +5,7 @@ import type { RunSkillCatalog } from './skill-catalog.js';
  * System prompt section that lists a run's skill catalog. Pi wraps it as `<skill_catalog>` and
  * must not share the name `skills`, which is Pi's own skills listing (disabled in this app).
  */
-const SKILL_CATALOG_SECTION = 'skill_catalog';
+export const SKILL_CATALOG_SECTION = 'skill_catalog';
 
 /**
  * Tells the model which skills exist through a system prompt section, never a message in the

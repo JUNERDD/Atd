@@ -1,4 +1,8 @@
-# AI
+# Atd
+
+<img src="packages/ui/src/assets/brands/atd/app-icon.png" width="96" alt="Atd logo" />
+
+Development builds carry a `DEV` label in the app, panel, and menu bar icons.
 
 A quiet desktop agent panel. It sits in the bottom-right corner of the screen, opens with a global shortcut, and runs coding and general-purpose agent tasks on your machine.
 
@@ -6,7 +10,7 @@ The app has two parts. A native macOS app provides the floating panel and a sett
 
 The app in `apps/macos` is a Swift/AppKit shell with Liquid Glass windows. It hosts the React UI from `apps/desktop` in a WKWebView and relays the page's service requests, so the page never holds the service token. It needs macOS 26 on Apple silicon and starts at version 0.3.0. It replaces the Electron client of the 0.2.x releases, which has been removed from this repository.
 
-![AI task panel](docs/task-panel.png)
+![Atd task panel](docs/task-panel.png)
 
 _The screenshot shows the React UI without the native window material, which changes with the desktop behind it._
 
@@ -37,8 +41,8 @@ You can change all of them in Settings → Shortcuts. If macOS refuses the globa
 
 ## Requirements
 
-- Node.js **24.19.0** (see `.node-version`). The service requires `^24.15.0 || >=26.0.0`.
-- pnpm **12.3.4** (see `packageManager` in `package.json`).
+- Node.js **24.21.0** (see `.node-version`). The service requires `^24.15.0 || >=26.0.0`.
+- pnpm **12.8.1** (see `packageManager` in `package.json`).
 - For the native app and the full check: macOS 26 on Apple silicon, Xcode 26, [XcodeGen](https://github.com/yonaskolb/XcodeGen), and [SwiftLint](https://github.com/realm/SwiftLint) (`brew install xcodegen swiftlint`), plus [rustup](https://rustup.rs) for the Rust file index; `rust-toolchain.toml` pins the toolchain.
 - At runtime, `pnpm dev` runs the agent service with the Node.js on your `PATH`. A Release app ships its own Node.js and needs nothing installed.
 - Commands the agent runs use your own tools. A Release app's service asks your login shell (`$SHELL -il`) for its `PATH` once per launch, waiting at most 5 seconds, so tools from nvm, pyenv, cargo, Homebrew and your rc files resolve as they do in a terminal. The bundled Node.js comes last on the `PATH` the app starts the service with, as a fallback when you have none. Only `PATH` is taken from the shell; a service started from a terminal keeps that terminal's `PATH`.
@@ -82,14 +86,14 @@ Run the copy only while `$dev` does not exist yet; otherwise `cp` nests the copy
 ### Native app
 
 ```sh
-pnpm --filter @ai/macos build
+pnpm --filter @atd/macos build
 ```
 
-`pnpm dev` runs this build and opens the app for you; run it by hand only to rebuild while `pnpm dev` keeps running. The command generates the Xcode project from `apps/macos/project.yml` and builds the Debug app into `apps/macos/DerivedData/Build/Products/Debug/AI.app`. The Debug app has the bundle ID `com.junerdd.ai.dev`, so it keeps its own Accessibility permission and never collides with the installed app. It never starts the service: each time it connects, it reads `endpoint.json` and the token from the development data directory and connects to the service `pnpm dev` runs. Without one, it asks you to run `pnpm dev`. If the Debug app is already running, `pnpm dev` leaves it open instead of starting a second one. To pair it with a throwaway service, give both the same directory: `open --env AI_AGENT_DATA_DIR=<dir> apps/macos/DerivedData/Build/Products/Debug/AI.app`.
+`pnpm dev` runs this build and opens the app for you; run it by hand only to rebuild while `pnpm dev` keeps running. The command generates the Xcode project from `apps/macos/project.yml` and builds the Debug app into `apps/macos/DerivedData/Build/Products/Debug/Atd.app`. The Debug app has the bundle ID `com.junerdd.ai.dev`, so it keeps its own Accessibility permission and never collides with the installed app. It never starts the service: each time it connects, it reads `endpoint.json` and the token from the development data directory and connects to the service `pnpm dev` runs. Without one, it asks you to run `pnpm dev`. If the Debug app is already running, `pnpm dev` leaves it open instead of starting a second one. To pair it with a throwaway service, give both the same directory: `open --env AI_AGENT_DATA_DIR=<dir> apps/macos/DerivedData/Build/Products/Debug/Atd.app`.
 
-The Debug web view is inspectable: in Safari, turn on Settings → Advanced → **Show features for web developers**, then open Develop → your Mac → AI.
+The Debug web view is inspectable: in Safari, turn on Settings → Advanced → **Show features for web developers**, then open Develop → your Mac → Atd.
 
-Release builds (`com.junerdd.ai`) start their own bundled service (see [Release build](#release-build)). They share the bundle ID with the installed app, which stays the Electron 0.2.1 release until the switch to the native app, so test one only with the installed app quit and a separate data directory: `open --env AI_AGENT_DATA_DIR=<dir> AI.app`. Feature-parity acceptance and that switch are still open (P7 of the [native frontend plan](docs/plans/2026-09-29-macos-native-frontend.md)).
+Release builds (`com.junerdd.ai`) start their own bundled service (see [Release build](#release-build)). They share the bundle ID with the installed app, which stays the Electron 0.2.1 release until the switch to the native app, so test one only with the installed app quit and a separate data directory: `open --env AI_AGENT_DATA_DIR=<dir> Atd.app`. Feature-parity acceptance and that switch are still open (P7 of the [native frontend plan](docs/plans/2026-09-29-macos-native-frontend.md)).
 
 ### Agent service CLI
 
@@ -169,10 +173,10 @@ GitHub Actions runs `pnpm check` on Linux, where it skips the Swift and Rust che
 ### Release build
 
 ```sh
-pnpm --filter @ai/macos build:release
+pnpm --filter @atd/macos build:release
 ```
 
-Builds the Release app into `apps/macos/DerivedData/Build/Products/Release/AI.app`. Its `bundle` step first builds the service and the renderer, then `apps/macos/scripts/prepare-service-pack.mjs` stages the service with its production dependencies, together with the official Node.js release pinned by `.node-version` for the build machine's architecture. The first pack downloads that release into `tmp/node-dist/` and checks it against the release's `SHASUMS256.txt`. Each pack also writes a new build ID; the app only reuses a running service with the same build ID and replaces any other. The app is about 907 MB, mostly the service's `node_modules`. Run the full `build:release` rather than `xcodebuild` alone, which would embed a stale service pack.
+Builds the Release app into `apps/macos/DerivedData/Build/Products/Release/Atd.app`. Its `bundle` step first builds the service and the renderer, then `apps/macos/scripts/prepare-service-pack.mjs` stages the service with its production dependencies, together with the official Node.js release pinned by `.node-version` for the build machine's architecture. The first pack downloads that release into `tmp/node-dist/` and checks it against the release's `SHASUMS256.txt`. Each pack also writes a new build ID; the app only reuses a running service with the same build ID and replaces any other. The app is about 907 MB, mostly the service's `node_modules`. Run the full `build:release` rather than `xcodebuild` alone, which would embed a stale service pack.
 
 The Release app is ad-hoc signed and not notarized; Developer ID signing and notarization are not set up yet.
 
@@ -200,7 +204,7 @@ Releases are paused. There is no release workflow; the native app's releases, st
 
 ## Design
 
-Screens and project components live in the [project Figma file](https://www.figma.com/design/PROJECT_FILE_KEY/ai). Shared controls and Lucide icons come from the approved [shadcn UI kit](https://www.figma.com/design/UI_KIT_FILE_KEY/shadcn-ui-kit-community-edition--Community-). Brand SVGs are kept in `packages/ui/src/assets/brands/`.
+Screens and project components live in the [project Figma file](https://www.figma.com/design/PROJECT_FILE_KEY/Atd). Shared controls and Lucide icons come from the approved [shadcn UI kit](https://www.figma.com/design/UI_KIT_FILE_KEY/shadcn-ui-kit-community-edition--Community-). Brand assets are kept in `packages/ui/src/assets/brands/`.
 
 To add a shadcn component:
 

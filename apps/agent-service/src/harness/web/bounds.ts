@@ -25,3 +25,9 @@ export function failure(error: unknown): string {
 export function throwIfAborted(signal: AbortSignal | undefined): void {
   if (signal?.aborted) throw new Error('The operation was aborted.');
 }
+
+/** A title for a page that declares none: the last path segment, or the host name. */
+export function urlTitle(url: string): string {
+  const { hostname, pathname } = new URL(url);
+  return pathname.split('/').filter(Boolean).pop() ?? hostname;
+}

@@ -1,25 +1,24 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button } from '@ai/ui/components/button';
-import { Input } from '@ai/ui/components/input';
-import { Label } from '@ai/ui/components/label';
-import { ScrollArea } from '@ai/ui/components/scroll-area';
+import { Button } from '@atd/ui/components/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@atd/ui/components/tooltip';
+import { Input } from '@atd/ui/components/input';
+import { Label } from '@atd/ui/components/label';
+import { ScrollArea } from '@atd/ui/components/scroll-area';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@ai/ui/components/select';
+} from '@atd/ui/components/select';
 import type { Connection, ProviderCatalogEntry } from '../../client/providers/schema';
 import { CLOUD_FIELDS, isCustom, isAmbient } from '../../client/providers/metadata';
 import { showErrorToast, showToast } from '../../components/toast-store';
 import { useOverlayFooter } from '../../components/use-overlay-footer';
 import { SettingsHeading } from '../settings/settings-heading';
-import { sortModels } from './model-order';
 import { CustomModels } from './custom-models';
 import { ProviderSignIn } from './provider-login';
-import { ProviderThinkingLevel } from './provider-thinking-level';
 import { draftFrom } from './provider-draft';
 import { useProviderDraft } from './use-provider-draft';
 export function ProviderForm({
@@ -34,7 +33,7 @@ export function ProviderForm({
   onBack: () => void;
 }) {
   const { t } = useTranslation('providers');
-  const { draft, change, load, normalize } = useProviderDraft(provider, connection);
+  const { draft, change, load } = useProviderDraft(provider, connection);
   const [pending, setPending] = useState('');
   const footerRef = useOverlayFooter<HTMLElement>();
   const bridge = window.desktop?.settings.providers;
@@ -46,15 +45,7 @@ export function ProviderForm({
     provider.auth.length && cloud && !provider.auth.some((auth) => auth.type === 'api_key')
       ? [...provider.auth, { type: 'api_key' as const, label: t('form.authFallback') }]
       : provider.auth;
-  const available = [
-    ...(saved ? saved.catalog : provider.models),
-    ...draft.customModels.filter((model) => model.id.trim()),
-  ].filter((model, index, all) => !all.slice(index + 1).some((item) => item.id === model.id));
-  const models = sortModels(available);
-  const staleModel =
-    draft.defaultModel && !models.some((model) => model.id === draft.defaultModel)
-      ? draft.defaultModel
-      : '';
+  const verifyBlocked = disabled || !saved?.connected || !saved.defaultModel;
   async function perform(label: string, operation: () => Promise<void>) {
     setPending(label);
     try {
@@ -82,9 +73,9 @@ export function ProviderForm({
         backLabel={t('form.back')}
       />
       <ScrollArea
-        className="flex-1 min-h-0 min-w-0 m-[-3px_-15px_-3px_-3px]"
+        className="settings-page-scroll"
         viewportClassName="overlay-footer-fade"
-        gutter="stable"
+        gutter="none"
         scrollShadow
       >
         <div className="settings-editor-inner settings-fields">
@@ -204,44 +195,6 @@ export function ProviderForm({
                 onChange={(customModels) => change({ customModels })}
               />
             )}
-            <div className="settings-field">
-              <Label htmlFor="provider-default-model">{t('form.defaultModel')}</Label>
-              <Select
-                value={draft.defaultModel}
-                onValueChange={(defaultModel) => change({ defaultModel })}
-              >
-                <SelectTrigger
-                  id="provider-default-model"
-                  aria-label={t('form.defaultModelLabel', { name: draft.name })}
-                >
-                  <SelectValue placeholder={t('models.choose')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {staleModel && (
-                    <SelectItem value={staleModel}>
-                      {t('models.unavailable', { name: staleModel })}
-                    </SelectItem>
-                  )}
-                  {models.map((model) => (
-                    <SelectItem key={model.id} value={model.id}>
-                      {model.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {!available.length && (
-                <p className="settings-field-note">
-                  {saved ? t('form.catalogNote') : t('form.saveNote')}
-                </p>
-              )}
-            </div>
-            <ProviderThinkingLevel
-              draft={draft}
-              saved={saved}
-              disabled={disabled}
-              onChange={change}
-              onNormalize={normalize}
-            />
           </fieldset>
           {draft.authType === 'oauth' &&
             (saved ? (
@@ -252,53 +205,63 @@ export function ProviderForm({
           {saved?.catalogError && (
             <output className="settings-field-note">{saved.catalogError}</output>
           )}
-          {saved && (
-            <div className="settings-fields">
-              <div className="flex flex-wrap gap-2">
+        </div>
+      </ScrollArea>
+      <footer ref={footerRef} className="editor-footer overlay-footer">
+        {/* The saved connection's catalog actions lead; the edit's own Cancel and Save trail. */}
+        {saved && (
+          <div className="provider-form-tools">
+            <Button
+              variant="glass"
+              disabled={disabled || !saved.connected}
+              onClick={() =>
+                void perform('refreshing', async () => {
+                  await bridge!.refresh(saved.connectionId);
+                  showToast({ kind: 'info', text: t('form.catalogUpdated') });
+                })
+              }
+            >
+              {pending === 'refreshing' ? t('form.refreshing') : t('form.refresh')}
+            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                {/* aria-disabled, not disabled: the cost note stays reachable while it is blocked. */}
                 <Button
-                  variant="outline"
-                  disabled={disabled || !saved.connected}
-                  onClick={() =>
-                    void perform('refreshing', async () => {
-                      await bridge!.refresh(saved.connectionId);
-                      showToast({ kind: 'info', text: t('form.catalogUpdated') });
-                    })
-                  }
-                >
-                  {pending === 'refreshing' ? t('form.refreshing') : t('form.refresh')}
-                </Button>
-                <Button
-                  variant="outline"
-                  disabled={disabled || !saved.connected || !saved.defaultModel}
-                  onClick={() =>
+                  variant="glass"
+                  aria-disabled={verifyBlocked || undefined}
+                  className="aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
+                  onClick={() => {
+                    if (verifyBlocked) return;
                     void perform('verifying', async () => {
                       await bridge!.verify({
                         connectionId: saved.connectionId,
                         modelId: saved.defaultModel,
                       });
                       showToast({ kind: 'info', text: t('form.verified') });
-                    })
-                  }
+                    });
+                  }}
                 >
                   {pending === 'verifying' ? t('form.verifying') : t('form.verify')}
                 </Button>
-              </div>
-              <p className="settings-field-note">{t('form.verifyNote')}</p>
-            </div>
-          )}
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-80">
+                {t('form.verifyNote')}
+              </TooltipContent>
+            </Tooltip>
+          </div>
+        )}
+        <div>
+          <Button variant="glass" disabled={disabled} onClick={onBack}>
+            {t('form.cancel')}
+          </Button>
+          <Button disabled={disabled || !draft.name.trim()} onClick={() => void save()}>
+            {pending === 'saving'
+              ? t('form.saving')
+              : saved
+                ? t('form.saveChanges')
+                : t('form.saveConnection')}
+          </Button>
         </div>
-      </ScrollArea>
-      <footer ref={footerRef} className="editor-footer overlay-footer">
-        <Button variant="glass" disabled={disabled} onClick={onBack}>
-          {t('form.cancel')}
-        </Button>
-        <Button disabled={disabled || !draft.name.trim()} onClick={() => void save()}>
-          {pending === 'saving'
-            ? t('form.saving')
-            : saved
-              ? t('form.saveChanges')
-              : t('form.saveConnection')}
-        </Button>
       </footer>
     </section>
   );

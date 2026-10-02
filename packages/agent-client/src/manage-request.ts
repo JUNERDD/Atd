@@ -1,4 +1,4 @@
-import { ErrorEnvelopeSchema, parse } from '@ai/agent-contracts';
+import { ErrorEnvelopeSchema, parse } from '@atd/agent-contracts';
 import { authHeaders, AgentClientError, type AgentClientOptions } from './types.js';
 
 /**
@@ -19,7 +19,7 @@ export async function manageRequest<T>(
       ...authHeaders(options),
       ...(body === undefined ? {} : { 'content-type': 'application/json' }),
     },
-    body: body === undefined ? undefined : JSON.stringify(body),
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   });
   const json: unknown = await response.json().catch(() => null);
   if (!response.ok) throw toClientError(response.status, json);

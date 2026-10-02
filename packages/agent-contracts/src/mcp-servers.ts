@@ -1,15 +1,22 @@
 import { Type, type Static } from 'typebox';
 import {
+  McpBearerAuthSchema,
+  McpNoneAuthSchema,
+  McpOAuthAuthSchema,
+  McpOAuthClientSchema,
+} from './mcp-auth.js';
+import {
   McpHttpSchema,
   McpServerConfigSchema,
+  McpServerExposureSchema,
   McpStdioSchema,
   McpTransportKindSchema,
 } from './mcp.js';
 
 /**
  * The user's MCP servers as clients read and edit them (`/v1/mcp/servers`). Reads never carry a
- * stdio env or HTTP header value: those can hold credentials, and no client needs them back, so a
- * view names each entry and says only that it is set. Edits send new values or keep stored ones
+ * stdio env or HTTP header value or an OAuth client secret: those are credentials, and no client
+ * needs them back, so a view names each entry and says only that it is set. Edits send new values or keep stored ones
  * by name, and the service merges them (agent-service `mcp/server-edits.ts`).
  *
  * - `GET    /v1/mcp/servers`                    → McpServersResponse
@@ -33,13 +40,24 @@ export const McpStdioViewSchema = Type.Object(
 );
 export type McpStdioView = Static<typeof McpStdioViewSchema>;
 
+/** HTTP auth as a read shows it: an OAuth client secret only as `{ set: true }`. */
+export const McpHttpAuthViewSchema = Type.Union([
+  McpNoneAuthSchema,
+  McpBearerAuthSchema,
+  Type.Object(
+    { ...McpOAuthAuthSchema.properties, clientSecret: Type.Optional(McpSecretSetSchema) },
+    { additionalProperties: false },
+  ),
+]);
+export type McpHttpAuthView = Static<typeof McpHttpAuthViewSchema>;
+
 export const McpHttpViewSchema = Type.Object(
-  { ...McpHttpSchema.properties, headers: SecretNamesSchema },
+  { ...McpHttpSchema.properties, headers: SecretNamesSchema, auth: McpHttpAuthViewSchema },
   { additionalProperties: false },
 );
 export type McpHttpView = Static<typeof McpHttpViewSchema>;
 
-/** A user server record with every env and header value redacted to `{ set: true }`. */
+/** A user server record with every env, header and client secret value redacted to `{ set: true }`. */
 export const McpServerViewSchema = Type.Object(
   {
     ...McpServerConfigSchema.properties,
@@ -63,21 +81,39 @@ export const McpSecretInputSchema = Type.Union([
 ]);
 export type McpSecretInput = Static<typeof McpSecretInputSchema>;
 
-/** HTTP auth as an edit names it; an OAuth server keeps its stored scope and redirect URI. */
+/**
+ * The OAuth client of an edit. Sent, it is the whole new client: a field it leaves out is cleared,
+ * and `clientSecret` is a new value or `{ keep: true }` for the stored one, which is refused when
+ * the client id, the authorization server metadata URL or the URL origin changes.
+ */
+export const McpOAuthClientDraftSchema = Type.Object(
+  { ...McpOAuthClientSchema.properties, clientSecret: Type.Optional(McpSecretInputSchema) },
+  { additionalProperties: false },
+);
+export type McpOAuthClientDraft = Static<typeof McpOAuthClientDraftSchema>;
+
+/**
+ * HTTP auth as an edit names it. An OAuth server keeps its stored scope and redirect URI, and its
+ * stored client unless `client` is sent.
+ */
 export const McpAuthDraftSchema = Type.Union([
   Type.Object({ type: Type.Literal('none') }, { additionalProperties: false }),
   Type.Object(
     { type: Type.Literal('bearer'), tokenEnv: Type.String({ minLength: 1, maxLength: 256 }) },
     { additionalProperties: false },
   ),
-  Type.Object({ type: Type.Literal('oauth') }, { additionalProperties: false }),
+  Type.Object(
+    { type: Type.Literal('oauth'), client: Type.Optional(McpOAuthClientDraftSchema) },
+    { additionalProperties: false },
+  ),
 ]);
 export type McpAuthDraft = Static<typeof McpAuthDraftSchema>;
 
 /**
  * Adds or updates one user server. The transport, command and args or URL, and auth replace the
- * stored ones; everything else a stored server has (working directory, OAuth scope, tool
- * settings, enabled state) is kept. `env` (stdio) and `headers` (HTTP) merge by name:
+ * stored ones; `exposure` and `exposeResources` replace them when sent; everything else a stored
+ * server has (working directory, OAuth scope, tool settings, enabled state) is kept. A new server
+ * starts with `exposure: 'auto'` and `exposeResources: false`. `env` (stdio) and `headers` (HTTP) merge by name:
  *
  * - an omitted map keeps every stored entry of the same kind of transport;
  * - a sent map is the whole new set, so a stored name it leaves out is cleared;
@@ -96,6 +132,8 @@ export const McpServerUpsertRequestSchema = Type.Object(
     auth: McpAuthDraftSchema,
     env: Type.Optional(Type.Record(Type.String(), McpSecretInputSchema)),
     headers: Type.Optional(Type.Record(Type.String(), McpSecretInputSchema)),
+    exposure: Type.Optional(McpServerExposureSchema),
+    exposeResources: Type.Optional(Type.Boolean()),
   },
   { additionalProperties: false },
 );

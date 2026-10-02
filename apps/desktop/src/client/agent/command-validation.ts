@@ -5,8 +5,9 @@ import {
   MAX_RUN_REFERENCES,
   MAX_RUN_SKILLS,
   parseInstructionTokens,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import type { ArgumentValues, CommandDefinition, Parameter } from './command-schema';
+import { missingScreenshot } from './screenshot-input';
 import type { TaskInput } from './task-schema';
 
 export interface VariableReference {
@@ -120,7 +121,10 @@ export type CommandProblem =
   | { field: 'instructions'; code: 'unsupportedTag'; params: { tag: string } }
   | { field: 'instructions'; code: 'undefinedVariables'; params: { variables: string } }
   | { field: 'instructions'; code: 'tooManySkills' | 'tooManyReferences'; params: { max: number } }
-  | { field: 'input'; code: 'selectionDisabled' | 'clipboardDisabled' | 'textNotAccepted' }
+  | {
+      field: 'input';
+      code: 'selectionDisabled' | 'clipboardDisabled' | 'filesDisabled' | 'textNotAccepted';
+    }
   | {
       field: 'parameters';
       code: 'duplicateKey' | 'labelRequired' | 'optionIncomplete' | 'optionDuplicate';
@@ -164,6 +168,8 @@ function inputProblem({ input }: CommandDefinition): CommandProblem | null {
     return { field: 'input', code: 'selectionDisabled' };
   if (input.source === 'clipboard' && !input.clipboard)
     return { field: 'input', code: 'clipboardDisabled' };
+  if (input.source === 'screenshot' && !input.files)
+    return { field: 'input', code: 'filesDisabled' };
   if (input.source === 'none' && input.required) return { field: 'input', code: 'textNotAccepted' };
   return null;
 }
@@ -229,6 +235,8 @@ function englishProblem(problem: CommandProblem): string {
       return 'Enable selected text for this input source.';
     case 'clipboardDisabled':
       return 'Enable clipboard for this input source.';
+    case 'filesDisabled':
+      return 'Enable attached files for this input source.';
     case 'textNotAccepted':
       return 'A command without text input cannot require text.';
     case 'duplicateKey':
@@ -270,6 +278,7 @@ export function resolveInstructions(command: CommandDefinition, input: TaskInput
     throw new Error('Selected text is not enabled.');
   if (input.source === 'clipboard' && !command.input.clipboard)
     throw new Error('Clipboard input is not enabled.');
+  if (missingScreenshot(input)) throw new Error('Take a screenshot before running.');
   if (
     Object.keys(input.arguments).some(
       (key) => !command.parameters.some((parameter) => parameter.key === key),

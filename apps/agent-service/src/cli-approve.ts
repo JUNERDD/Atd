@@ -6,7 +6,7 @@ import {
   parse,
   type McpLaunchApprovalDetails,
   type McpLaunchApproveRequest,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import { readEndpoint, readLocalToken } from './config.js';
 
 /**

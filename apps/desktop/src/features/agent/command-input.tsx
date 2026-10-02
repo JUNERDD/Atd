@@ -1,17 +1,32 @@
 import type { RunPolicy } from '../../client/agent/run-policy';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Brain, FileText, Shield, X } from 'lucide-react';
-import { Button } from '@ai/ui/components/button';
-import { Label } from '@ai/ui/components/label';
-import { Textarea } from '@ai/ui/components/textarea';
-import { ScrollArea } from '@ai/ui/components/scroll-area';
+import { Brain, FileText, Paperclip, Shield, X } from 'lucide-react';
+import { useHotkeys } from 'react-hotkeys-hook';
+import { Button } from '@atd/ui/components/button';
+import { Kbd, KbdGroup } from '@atd/ui/components/kbd';
+import { Spinner } from '@atd/ui/components/spinner';
+import { isComposingKey } from '@atd/ui/lib/ime';
+import { Label } from '@atd/ui/components/label';
+import { Textarea } from '@atd/ui/components/textarea';
+import { ScrollArea } from '@atd/ui/components/scroll-area';
 import type { PreparedCommand } from '../../client/agent/bridge';
 import type { TaskInput } from '../../client/agent/task-schema';
+import { missingScreenshot, screenshotOf } from '../../client/agent/screenshot-input';
 import { ParameterField } from '../commands/parameter-field';
 import { agentApi } from './use-agent';
 import { showErrorToast } from '../../components/toast-store';
 import { useOverlayFooter } from '../../components/use-overlay-footer';
+import { acceleratorToHotkey, shortcutKeys } from '../../lib/shortcuts';
+import { isImageMime } from '@atd/agent-contracts';
+import { ResourceImage } from './resource-image';
+import { ScreenshotField } from './screenshot-field';
+import { VisionNotice } from './vision-notice';
+import type { Connection, ModelReference } from '../../client/providers/schema';
+
+/** Runs the command from anywhere in the form, like a sheet's default button. */
+const RUN_SHORTCUT = 'CommandOrControl+Enter';
+const SCREENSHOT_HINT_ID = 'command-screenshot-hint';
 
 export function CommandInput({
   prepared,
@@ -21,9 +36,14 @@ export function CommandInput({
   pending,
   policy,
   runLabel: customRunLabel,
+  connections,
+  model,
 }: {
   runLabel?: string;
   policy: RunPolicy;
+  connections: Connection[];
+  /** The model the run would use, resolved as the panel resolves it for the run. */
+  model: ModelReference | null;
   prepared: PreparedCommand;
   onChange: (input: TaskInput) => void;
   onRun: () => Promise<unknown>;
@@ -35,6 +55,9 @@ export function CommandInput({
   const runLabel = customRunLabel ?? t('input.run');
   const { command, input } = prepared;
   const [validate, setValidate] = useState(false);
+  // A screenshot command runs with an image only; the field below says so while Run is off.
+  const needsScreenshot = missingScreenshot(input);
+  const shot = screenshotOf(input);
   useEffect(() => {
     if (prepared.notice) showErrorToast(prepared.notice);
   }, [prepared.notice]);
@@ -46,6 +69,20 @@ export function CommandInput({
       showErrorToast(error);
     }
   }
+  const platform = window.desktop?.platform ?? 'web';
+  useHotkeys(
+    acceleratorToHotkey(RUN_SHORTCUT, platform),
+    () => void run(),
+    {
+      delimiter: '|',
+      useKey: false,
+      enableOnFormTags: true,
+      preventDefault: true,
+      enabled: (event) => !event.repeat && !pending && !needsScreenshot,
+      ignoreEventWhen: (event) => event.defaultPrevented || isComposingKey(event),
+    },
+    [pending, needsScreenshot, onRun],
+  );
   return (
     <>
       <ScrollArea
@@ -55,9 +92,17 @@ export function CommandInput({
         scrollShadow
       >
         <section className="panel-content-body command-preparation" aria-label={t('input.label')}>
-          <p className="truncate text-sm text-muted-foreground" title={command.description}>
+          {/* The description says what the command will do, so it wraps instead of truncating;
+              only an unusually long one is clamped, with the full text on hover. */}
+          <p
+            className="line-clamp-3 text-sm text-pretty text-muted-foreground"
+            title={command.description}
+          >
             {command.description}
           </p>
+          {command.input.source === 'screenshot' && (
+            <ScreenshotField input={input} onChange={onChange} hintId={SCREENSHOT_HINT_ID} />
+          )}
           {(command.input.source !== 'none' || input.text) && (
             <div className="settings-field">
               <Label htmlFor="command-text">
@@ -76,8 +121,14 @@ export function CommandInput({
                   value={input.text}
                   maxLength={100000}
                   placeholder={t('input.textPlaceholder')}
+                  // Edited text is no longer the captured selection or clipboard; the screenshot
+                  // stays the input's image.
                   onChange={(event) =>
-                    onChange({ ...input, text: event.target.value, source: 'manual' })
+                    onChange({
+                      ...input,
+                      text: event.target.value,
+                      source: input.source === 'screenshot' ? 'screenshot' : 'manual',
+                    })
                   }
                 />
               </ScrollArea>
@@ -103,6 +154,7 @@ export function CommandInput({
                 <Label>{t('input.files')}</Label>
                 <Button
                   variant="outline"
+                  size="sm"
                   onClick={() => {
                     void agentApi()
                       .chooseFiles()
@@ -114,44 +166,40 @@ export function CommandInput({
                       .catch((error) => showErrorToast(error));
                   }}
                 >
+                  <Paperclip />
                   {t('input.attachFiles')}
                 </Button>
               </div>
-              {input.files.map((file) => (
-                <div className="flex items-center gap-2 text-sm" key={file.id}>
-                  <FileText size={16} />
-                  <span className="min-w-0 flex-1 truncate" title={file.name}>
-                    {file.name}
-                  </span>
-                  <Button
-                    size="icon-xs"
-                    variant="ghost"
-                    aria-label={t('input.removeFile', { name: file.name })}
-                    onClick={() =>
-                      onChange({
-                        ...input,
-                        files: input.files.filter((item) => item.id !== file.id),
-                      })
-                    }
-                  >
-                    <X />
-                  </Button>
-                </div>
-              ))}
+              {input.files
+                .filter((file) => file.id !== shot?.id)
+                .map((file) => (
+                  <div className="flex items-center gap-2 text-sm" key={file.id}>
+                    {isImageMime(file.type) ? (
+                      <ResourceImage file={file} variant="icon" />
+                    ) : (
+                      <FileText size={16} className="shrink-0 text-muted-foreground" />
+                    )}
+                    <span className="min-w-0 flex-1 truncate" title={file.name}>
+                      {file.name}
+                    </span>
+                    <Button
+                      size="icon-xs"
+                      variant="ghost"
+                      aria-label={t('input.removeFile', { name: file.name })}
+                      onClick={() =>
+                        onChange({
+                          ...input,
+                          files: input.files.filter((item) => item.id !== file.id),
+                        })
+                      }
+                    >
+                      <X />
+                    </Button>
+                  </div>
+                ))}
+              <VisionNotice files={input.files} connections={connections} model={model} />
             </div>
           )}
-          <div className="run-policy">
-            <p>
-              <Shield size={16} />
-              {policy.tools.length
-                ? t('input.toolsAskFirst', { n: policy.tools.length })
-                : t('input.noFileTools')}
-            </p>
-            <p>
-              <Brain size={16} />
-              {!policy.memory ? t('input.memoryOff') : t('input.memoryOn')}
-            </p>
-          </div>
           {Object.keys(input.arguments)
             .filter((key) => !command.parameters.some((parameter) => parameter.key === key))
             .map((key) => (
@@ -175,6 +223,18 @@ export function CommandInput({
                 </Button>
               </div>
             ))}
+          <div className="run-policy">
+            <p>
+              <Shield size={14} aria-hidden="true" />
+              {policy.tools.length
+                ? t('input.toolsAskFirst', { n: policy.tools.length })
+                : t('input.noFileTools')}
+            </p>
+            <p>
+              <Brain size={14} aria-hidden="true" />
+              {!policy.memory ? t('input.memoryOff') : t('input.memoryOn')}
+            </p>
+          </div>
         </section>
       </ScrollArea>
       <footer ref={footerRef} className="command-run-footer overlay-footer">
@@ -182,8 +242,28 @@ export function CommandInput({
           <Button variant="glass" onClick={onOpenSettings}>
             {t('input.commandSettings')}
           </Button>
-          <Button disabled={pending} onClick={() => void run()}>
-            {pending ? t('input.starting') : runLabel}
+          <Button
+            disabled={pending || needsScreenshot}
+            aria-describedby={needsScreenshot ? SCREENSHOT_HINT_ID : undefined}
+            onClick={() => void run()}
+          >
+            {pending ? (
+              <>
+                <Spinner />
+                {t('input.starting')}
+              </>
+            ) : (
+              <>
+                {runLabel}
+                <KbdGroup aria-hidden="true">
+                  {shortcutKeys(RUN_SHORTCUT, platform).map((key) => (
+                    <Kbd key={key} className="run-shortcut-key">
+                      {key}
+                    </Kbd>
+                  ))}
+                </KbdGroup>
+              </>
+            )}
           </Button>
         </div>
       </footer>

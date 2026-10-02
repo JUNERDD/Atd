@@ -1,4 +1,4 @@
-import type { McpServerConfig, ServiceCommandFull } from '@ai/agent-contracts';
+import type { McpServerConfig, ServiceCommandFull } from '@atd/agent-contracts';
 import type {
   ComponentKind,
   InstalledPlugin,
@@ -6,7 +6,7 @@ import type {
   PluginRunSnapshot,
   ResolvedItem,
   SubstitutionContext,
-} from '@ai/plugin-kit';
+} from '@atd/plugin-kit';
 import type { SkillRevisionRecord } from '../skills/versions.js';
 import { PluginHost, type PluginView } from './host.js';
 import { mapCommand } from './map-commands.js';

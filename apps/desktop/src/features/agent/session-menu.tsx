@@ -6,7 +6,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@ai/ui/components/dropdown-menu';
+} from '@atd/ui/components/dropdown-menu';
 import type { TaskDetail } from '../../client/agent/bridge';
 import { IconButton } from '../../components/icon-button';
 import { compactBlock } from './compaction/compact-availability';

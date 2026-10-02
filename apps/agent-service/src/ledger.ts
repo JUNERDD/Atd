@@ -6,7 +6,7 @@ import {
   type AgentTask,
   type LedgerData,
   type TaskRun,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import { atomicWrite } from './config.js';
 import type { ServicePaths } from './storage.js';
 

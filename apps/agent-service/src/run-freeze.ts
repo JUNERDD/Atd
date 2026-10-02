@@ -1,4 +1,4 @@
-import { errorMessage, type TaskRun } from '@ai/agent-contracts';
+import { errorMessage, type TaskRun } from '@atd/agent-contracts';
 import { readAgentHarness } from './atd-agents/harness.js';
 import { McpAuthority } from './mcp/index.js';
 import { freezeRunMcp, releaseRunMcp } from './mcp/staging.js';
@@ -52,15 +52,17 @@ export async function freezeRunSelections(
   run: TaskRun,
 ): Promise<FrozenSelections> {
   // The plugin catalog freezes first (D4): skills, agents and MCP below all read the run's
-  // snapshot, so a plugin or item toggled later never changes what this run may use.
+  // snapshot, so a plugin or item toggled later never changes what this run may use. Skills, MCP
+  // and the agent harness do not read each other, so they freeze together.
   const plugins = await freezePlugins(deps, run);
-  const { toolCeiling, skills, catalog } = await freezeSkills(deps, run, plugins.skills);
-  const mcp = await freezeMcp(deps, run);
-  // Agents turned off in Settings stay off for this run even if they are turned on during it, and
-  // a permission change made during the run applies from the next one.
-  const { disabled: disabledAgents, permissions: agentPermissions } = await readAgentHarness(
-    deps.ctx.paths.root,
-  );
+  const [{ toolCeiling, skills, catalog }, mcp, harness] = await Promise.all([
+    freezeSkills(deps, run, plugins.skills),
+    freezeMcp(deps, run),
+    // Agents turned off in Settings stay off for this run even if they are turned on during it,
+    // and a permission change made during the run applies from the next one.
+    readAgentHarness(deps.ctx.paths.root),
+  ]);
+  const { disabled: disabledAgents, permissions: agentPermissions } = harness;
   const references = await freezeReferencesForRun(deps, run, {
     toolCeiling,
     mcp,
@@ -147,7 +149,15 @@ async function freezeReferencesForRun(
 ): Promise<RunReferences> {
   const references = await takeTaskReferences(deps.ctx.paths.root, deps.taskId);
   const resolved = await resolveRunReferences(
-    { ledger: deps.ctx.ledger, taskId: deps.taskId, run, ...frozen },
+    {
+      ledger: deps.ctx.ledger,
+      dataDir: deps.ctx.paths.root,
+      agentDir: deps.ctx.paths.agentDir,
+      log: deps.ctx.log,
+      taskId: deps.taskId,
+      run,
+      ...frozen,
+    },
     references,
   );
   for (const entry of resolved.audit) deps.audit({ taskId: deps.taskId, runId: run.id, ...entry });
@@ -173,7 +183,7 @@ async function freezeSkills(
   const snapshot = await freezeRunSkills(profile, run.id, staging.skills, catalogRecords);
   const { role, capabilities } = await freezeRunRole(profile, {
     runId: run.id,
-    roleId: staging.roleId,
+    ...(staging.roleId !== undefined && { roleId: staging.roleId }),
     requestedTools: [...run.snapshot.tools],
     requestedSkills: snapshot.skills.map((skill) => skill.name),
   });

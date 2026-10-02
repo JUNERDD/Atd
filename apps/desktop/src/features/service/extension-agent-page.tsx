@@ -1,8 +1,8 @@
 import { useId, type ReactNode } from 'react';
 import { Copy } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import type { SubagentPermissions } from '@ai/agent-contracts';
-import { Button } from '@ai/ui/components/button';
+import type { SubagentPermissions } from '@atd/agent-contracts';
+import { Button } from '@atd/ui/components/button';
 import { EMPTY_AGENT_DRAFT, agentDraftOf, type AgentInput } from './extension-agent-draft';
 import { AgentForm } from './extension-agent-form';
 import { AgentPermissionsSection } from './extension-agent-permissions-section';

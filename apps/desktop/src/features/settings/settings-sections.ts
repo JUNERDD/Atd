@@ -1,13 +1,13 @@
-import { Blocks, Brain, Command, Keyboard, Plug, Shield } from 'lucide-react';
+import { Blocks, Brain, Command, Plug, Settings, Shield } from 'lucide-react';
 
 /** The settings destinations, in navigation order. */
 export const settingsSections = [
-  { id: 'permissions', labelKey: 'nav.permissions', icon: Shield },
-  { id: 'extensions', labelKey: 'nav.extensions', icon: Blocks },
+  { id: 'general', labelKey: 'nav.general', icon: Settings },
   { id: 'providers', labelKey: 'nav.providers', icon: Plug },
+  { id: 'permissions', labelKey: 'nav.permissions', icon: Shield },
   { id: 'commands', labelKey: 'nav.commands', icon: Command },
   { id: 'memory', labelKey: 'nav.memory', icon: Brain },
-  { id: 'shortcuts', labelKey: 'nav.shortcuts', icon: Keyboard },
+  { id: 'extensions', labelKey: 'nav.extensions', icon: Blocks },
 ] as const;
 
 export type SettingsSection = (typeof settingsSections)[number];

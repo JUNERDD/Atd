@@ -10,13 +10,20 @@ import {
   PluginDetailSchema,
   PluginInstallPreviewSchema,
   PluginDuplicateResponseSchema,
+  type McpHttpAuth,
+  type McpOAuthClientDraft,
   type McpServerConfig,
   type McpServerUpsertRequest,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import { configureMcp } from '../dist/configure-mcp-tool.js';
 import { serversFile } from '../dist/mcp/servers.js';
 import { upsertRecord } from '../dist/mcp/server-edits.js';
-import { secretAccount, type StoredServer } from '../dist/mcp/server-store.js';
+import {
+  clientSecretAccount,
+  secretAccount,
+  type StoredAuth,
+  type StoredServer,
+} from '../dist/mcp/server-file.js';
 import { installMemoryKeyring } from './memory-keyring.ts';
 import { startTestService } from './service-harness.ts';
 
@@ -29,6 +36,7 @@ import { startTestService } from './service-harness.ts';
 const ENV_SECRET = 'sentinel-env-5f1c9a';
 const HEADER_SECRET = 'sentinel-header-8b2e4d';
 const PLUGIN_SECRET = 'sentinel-plugin-3a7f0e';
+const CLIENT_SECRET = 'sentinel-client-6d9b21';
 
 let harness: Awaited<ReturnType<typeof startTestService>>;
 const bodies: string[] = [];
@@ -71,10 +79,24 @@ async function stored(serverId: string): Promise<McpServerConfig> {
         return [name, secret];
       }),
     );
+  const auth = (saved: StoredAuth): McpHttpAuth => {
+    if (saved.type !== 'oauth') return saved;
+    const { clientSecret, ...rest } = saved;
+    if (clientSecret === undefined) return rest;
+    assert.deepEqual(clientSecret, { keyring: true }, 'the client secret is held by the keyring');
+    const secret = held.get(clientSecretAccount(serviceId, record));
+    assert.ok(secret !== undefined, 'the client secret has a keyring value');
+    return { ...rest, clientSecret: secret };
+  };
   return {
     ...record,
+    exposure: record.exposure ?? 'auto',
     stdio: record.stdio && { ...record.stdio, env: values('env', record.stdio.env) },
-    http: record.http && { ...record.http, headers: values('header', record.http.headers) },
+    http: record.http && {
+      ...record.http,
+      headers: values('header', record.http.headers),
+      auth: auth(record.http.auth),
+    },
   };
 }
 
@@ -182,6 +204,61 @@ test('kept secrets never move to another origin or command', async () => {
   assert.equal(command.status, 400);
   assert.equal(errorCode(command.json), 'bad_request');
   assert.equal((await stored('runner')).stdio?.command, '/bin/echo', 'nothing was saved');
+});
+
+test('an OAuth client secret is held by the keyring, read as set, and stays with its client', async () => {
+  const metadata = 'https://as.example/.well-known/oauth-authorization-server';
+  const oauth = (url: string, client?: McpOAuthClientDraft): McpServerUpsertRequest => ({
+    ...http(url),
+    auth: { type: 'oauth', ...(client ? { client } : {}) },
+  });
+  const client = { clientId: 'app', clientSecret: CLIENT_SECRET, authServerMetadataUrl: metadata };
+  const first = await put('signin', {
+    ...oauth('https://e.example/mcp', client),
+    exposure: 'deferred',
+    exposeResources: true,
+  });
+  assert.equal(first.status, 200, JSON.stringify(first.json));
+  const views = parse(McpServersResponseSchema, (await send('/v1/mcp/servers', 'GET')).json);
+  const view = views.servers.find((server) => server.serverId === 'signin');
+  assert.deepEqual(view?.http?.auth, {
+    type: 'oauth',
+    scope: null,
+    redirectUri: null,
+    clientId: 'app',
+    authServerMetadataUrl: metadata,
+    clientSecret: { set: true },
+  });
+  assert.deepEqual([view?.exposure, view?.exposeResources], ['deferred', true]);
+  const secretOf = async () => {
+    const auth = (await stored('signin')).http?.auth;
+    return auth?.type === 'oauth' ? auth.clientSecret : undefined;
+  };
+  assert.equal(await secretOf(), CLIENT_SECRET);
+  // Without a client the edit keeps it, and the exposure settings too.
+  assert.equal((await put('signin', oauth('https://e.example/v2'))).status, 200);
+  assert.equal(await secretOf(), CLIENT_SECRET);
+  assert.equal((await stored('signin')).exposure, 'deferred');
+  const kept = { ...client, clientSecret: { keep: true as const } };
+  assert.equal((await put('signin', oauth('https://e.example/v2', kept))).status, 200);
+  assert.equal(await secretOf(), CLIENT_SECRET, 'kept by name');
+  const other = await put('signin', oauth('https://e.example/v2', { ...kept, clientId: 'x' }));
+  assert.equal(other.status, 400, 'a kept secret stays with its client id');
+  assert.equal((await put('signin', oauth('https://evil.example/mcp'))).status, 400, 'origin');
+  const plain = { authServerMetadataUrl: 'http://as.example/meta' };
+  assert.equal((await put('signin', oauth('https://e.example/v2', plain))).status, 400, 'https');
+  for (const text of bodies) assert.ok(!text.includes(CLIENT_SECRET), 'no response carries it');
+  const file = await readFile(serversFile(harness.config.paths.root), 'utf8');
+  assert.ok(!file.includes(CLIENT_SECRET), 'servers.json holds no client secret');
+  // The model can neither set a client nor read the secret.
+  const host = {
+    upsertMcp: async () => assert.fail('a client draft never reaches the upsert'),
+    audit: () => undefined,
+    taskId: 'task',
+    runId: () => 'run',
+  };
+  const draft = { serverId: 'signin', transport: 'streamable-http', url: 'https://e.example/v2' };
+  await assert.rejects(configureMcp(host, { ...draft, auth: { type: 'oauth', client } }));
 });
 
 test('configure_mcp answers the saved settings with env names but not their values', async () => {

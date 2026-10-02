@@ -5,7 +5,6 @@ import AppKit
 /// dispatch source, a notification on the main queue — such a loop cannot drain the main
 /// queue it runs inside, so every main-actor task stalls until it ends. Entering it from a
 /// run-loop block instead keeps the main queue, and with it the main actor, running.
-@MainActor
 enum NestedRunLoop {
   /// Runs `alert` app-modally and returns its response.
   static func runModal(_ alert: NSAlert) async -> NSApplication.ModalResponse {

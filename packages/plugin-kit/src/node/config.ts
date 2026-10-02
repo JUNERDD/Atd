@@ -29,7 +29,9 @@ function checkValue(pluginId: string, option: UserConfigOption, value: UserConfi
       else if (option.max !== undefined && value > option.max)
         fail(`must be at most ${option.max}.`);
       return;
-    default:
+    case 'string':
+    case 'directory':
+    case 'file':
       if (typeof value !== 'string') fail('must be text.');
       else if (option.options !== undefined && !option.options.includes(value)) {
         fail(`must be one of: ${option.options.join(', ')}.`);

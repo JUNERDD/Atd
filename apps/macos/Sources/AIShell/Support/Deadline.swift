@@ -2,7 +2,7 @@ import Synchronization
 
 /// Bounded waits for operations that cannot be cancelled (a blocking AX read, a request to a
 /// slow service).
-enum Deadline {
+nonisolated enum Deadline {
   /// The operation's value, or `fallback` once `limit` passes, whichever comes first. A late
   /// operation keeps running and its value is dropped.
   static func value<T: Sendable>(
@@ -21,7 +21,7 @@ enum Deadline {
 }
 
 /// Resumes a continuation with the first value only.
-private final class FirstAnswer<Value: Sendable>: Sendable {
+private nonisolated final class FirstAnswer<Value: Sendable>: Sendable {
   private struct State {
     var continuation: CheckedContinuation<Value, Never>?
     var answered = false

@@ -1,6 +1,6 @@
 import { ArrowUpRight } from 'lucide-react';
-import { HighlightedText } from '@ai/ui/components/highlighted-text';
-import { ItemContent, ItemDescription, ItemMedia, ItemTitle } from '@ai/ui/components/item';
+import { HighlightedText } from '@atd/ui/components/highlighted-text';
+import { ItemContent, ItemDescription, ItemMedia, ItemTitle } from '@atd/ui/components/item';
 import { useTranslation } from 'react-i18next';
 import { IconButton } from '../../components/icon-button';
 import { CommandIcon } from '../commands/command-icon';

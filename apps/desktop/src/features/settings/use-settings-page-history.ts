@@ -1,7 +1,6 @@
 import { useCallback, useContext, useLayoutEffect, useRef, useState } from 'react';
 import {
   SettingsPageHistoryContext,
-  SettingsSectionActiveContext,
   useSettingsSectionExit,
   type SettingsPageControls,
 } from './settings-navigation';
@@ -136,7 +135,10 @@ export function useSettingsPageHistory<Route extends object>(
   return { route: history.route, open, back, leave, replace, discard, reset };
 }
 
-/** Hands Back and Forward to the window's content header while the enclosing section is shown. */
+/**
+ * Hands Back and Forward to the window's content header while the enclosing section is shown; a
+ * hidden section's registration ends with its effects.
+ */
 function useHeaderControls(
   depth: number,
   canGoForward: boolean,
@@ -144,7 +146,6 @@ function useHeaderControls(
   forward: () => void,
 ) {
   const register = useContext(SettingsPageHistoryContext);
-  const active = useContext(SettingsSectionActiveContext);
   // The latest `forward` runs, since it reads this render's `available`; registering once per
   // change of the depth and flags keeps the header from re-rendering on every section render.
   const latest = useRef({ back, forward });
@@ -152,7 +153,7 @@ function useHeaderControls(
     latest.current = { back, forward };
   });
   useLayoutEffect(() => {
-    if (!active || !register) return;
+    if (!register) return;
     const controls: SettingsPageControls = {
       depth,
       canGoBack: depth > 0,
@@ -161,5 +162,5 @@ function useHeaderControls(
       forward: () => latest.current.forward(),
     };
     return register(controls);
-  }, [register, active, depth, canGoForward]);
+  }, [register, depth, canGoForward]);
 }

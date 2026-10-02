@@ -14,7 +14,6 @@ struct RelayedRequest {
 /// R4). The upstream request is built from scratch: allow-listed headers, the credential, the
 /// manifest epoch, the canonical path and the raw query. The response head and body stream back
 /// through the scheme task as they arrive.
-@MainActor
 final class APIRelay {
   private let link: ServiceLink
   private let manifests: RouteManifestCache
@@ -25,7 +24,7 @@ final class APIRelay {
   }
 
   func forward(_ request: RelayedRequest, to responder: SchemeResponder) {
-    Task { @MainActor in await attempt(request, responder: responder, replayed: false) }
+    Task { await attempt(request, responder: responder, replayed: false) }
   }
 
   private func attempt(_ request: RelayedRequest, responder: SchemeResponder, replayed: Bool)
@@ -87,6 +86,6 @@ final class APIRelay {
     RelayLog.relay.info("Epoch conflict; refetching the route manifest and replaying once.")
     manifests.invalidate()
     responder.onStop = nil
-    Task { @MainActor in await attempt(request, responder: responder, replayed: true) }
+    Task { await attempt(request, responder: responder, replayed: true) }
   }
 }

@@ -6,7 +6,6 @@ import AppKit
 /// (busy, cooldown, fingerprint, `changed`) are ``McpApprovalGate``'s and the copy is
 /// ``McpApprovalDialog``'s; this puts them in a warning alert through the shared
 /// ``ConfirmationPrompter``, so it never stacks on another confirmation.
-@MainActor
 final class LaunchApprovals {
   private let services: ShellServices
   private let gate: McpApprovalGate

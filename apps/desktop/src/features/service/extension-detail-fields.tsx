@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { CircleAlert } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Button } from '@ai/ui/components/button';
+import { Button } from '@atd/ui/components/button';
 import { LazyMarkdown } from '../agent/transcript/lazy-markdown';
 
 export interface DetailField {
@@ -69,7 +69,7 @@ export function ExtensionLoadError({
   onRetry,
 }: {
   message: string;
-  onRetry?: () => void;
+  onRetry?: (() => void) | undefined;
 }) {
   const { t } = useTranslation('settings');
   return (
@@ -98,7 +98,7 @@ export function ExtensionDetailStatus({
 }: {
   text: string;
   error: boolean;
-  onRetry?: () => void;
+  onRetry?: (() => void) | undefined;
 }) {
   if (error) return <ExtensionLoadError message={text} onRetry={onRetry} />;
   return <output className="extension-detail-status">{text}</output>;

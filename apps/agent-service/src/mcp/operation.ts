@@ -1,4 +1,4 @@
-import { errorMessage, type McpServerConfig } from '@ai/agent-contracts';
+import { errorMessage, type McpServerConfig } from '@atd/agent-contracts';
 import { McpTimeoutError } from '@earendil-works/pi-mcp';
 import type { Logger } from '../logging.js';
 import {

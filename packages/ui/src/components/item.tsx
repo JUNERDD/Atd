@@ -1,9 +1,9 @@
 import * as React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
-import { cn } from '@ai/ui/lib/utils';
+import { cn } from '@atd/ui/lib/utils';
 import { Slot } from 'radix-ui';
 
-import { Separator } from '@ai/ui/components/separator';
+import { Separator } from '@atd/ui/components/separator';
 
 /** Compose each child as `Item asChild` wrapping an `li` to retain native list semantics. */
 function ItemGroup({ className, ...props }: React.ComponentProps<'ul'>) {

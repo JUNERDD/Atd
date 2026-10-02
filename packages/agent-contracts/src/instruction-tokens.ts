@@ -1,4 +1,4 @@
-import { parseQualifiedName } from '@ai/plugin-kit/model';
+import { parseQualifiedName } from '@atd/plugin-kit/model';
 import { MAX_RUN_REFERENCES, type RunReference } from './references.js';
 import { MAX_RUN_SKILLS } from './skills.js';
 

@@ -1,9 +1,11 @@
 import assert from 'node:assert/strict';
 import { after, before, test, type TestContext } from 'node:test';
-import type { McpServerConfig } from '@ai/agent-contracts';
+import type { McpServerConfig } from '@atd/agent-contracts';
 import { McpError as McpRpcError } from '@earendil-works/pi-mcp';
 import { normalizeInputSchema } from '../dist/mcp/policy.js';
+import { renderMcpServersSection } from '../dist/mcp/servers-section.js';
 import {
+  bindingExposure,
   mcpProxyName,
   mcpProxyPrefix,
   prepareMcpTools,
@@ -50,8 +52,13 @@ const extras = [
 ];
 
 /** Proxies of `records` as a run binds them; `tier` answers what the task tier is asked. */
-async function bind(t: TestContext, records: McpServerConfig[], tier?: McpProxyHost['preapprove']) {
-  const fake = new FakeMcpServer({ tools: [...standardTools(), ...extras] });
+async function bind(
+  t: TestContext,
+  records: McpServerConfig[],
+  tier?: McpProxyHost['preapprove'],
+  init: ConstructorParameters<typeof FakeMcpServer>[0] = { tools: [...standardTools(), ...extras] },
+) {
+  const fake = new FakeMcpServer(init);
   const kit = facadeKit(t, records, { transports: fake.factory, services: harness.service });
   const host: McpProxyHost = {
     taskId: 'task-1',
@@ -105,8 +112,16 @@ test('proxy names are tool-safe, at most 64 characters, and keep their server pr
 });
 
 test('each authorized tool is bound with the parameters and hints models see', async (t) => {
-  const { prepared, named, tools } = await bind(t, [httpRecord('srv'), httpRecord('other')]);
-  assert.equal(tools.length, prepared.bindings.length);
+  const records = [httpRecord('srv'), httpRecord('other')].map((record) => ({
+    ...record,
+    exposeResources: false,
+  }));
+  const { prepared, named, tools } = await bind(t, records);
+  assert.equal(
+    tools.length,
+    prepared.bindings.length,
+    'no resource tools without exposed resources',
+  );
   const mine = prepared.bindings.filter((b) => b.serverId === 'srv').map((b) => b.proxyName);
   assert.deepEqual(mine.slice(0, 3), ['mcp__srv__echo', 'mcp__srv__fail', 'mcp__srv__structured']);
   assert.ok(mine.every((name) => name.startsWith(mcpProxyPrefix('srv'))));
@@ -118,7 +133,11 @@ test('each authorized tool is bound with the parameters and hints models see', a
   assert.deepEqual(parameters, normalizeInputSchema(at(extras, 1).definition.inputSchema));
   assert.deepEqual(hinted.annotations, { readOnlyHint: true, destructiveHint: false });
   assert.equal(named('mcp__srv__plain').annotations, undefined);
-  assert.equal(hinted.description, 'MCP tool hinted on srv. Approval is per call.');
+  // Without a description or title the tool is named; an unguarded call notes no approval.
+  assert.equal(hinted.description, 'MCP tool hinted on srv.');
+  assert.equal(named('mcp__srv__echo').description, 'Echo', 'the title stands in');
+  assert.deepEqual(hinted.namespace, { name: 'mcp__srv', description: 'MCP server srv' });
+  assert.equal(hinted.exposure, 'direct');
   assert.equal(hinted.executionMode, 'sequential');
   const binding = prepared.bindings.find((b) => b.serverId === 'srv' && b.tool === 'hinted');
   assert.deepEqual([binding?.revision, binding?.annotations], [1, hinted.annotations]);
@@ -169,7 +188,7 @@ test('a server that cannot be reached is skipped and audited, not fatal', async 
   assert.ok(audit.some((e) => e.decision === 'bind-skip' && e.tool === 'mcp:down'));
 });
 
-test('a call returns the result as text, structured content and details', async (t) => {
+test('a call returns the result as text, a script value and details', async (t) => {
   const asked: McpGuardedCall[] = [];
   const tier = async (call: McpGuardedCall) => (asked.push(call), { allowed: true as const });
   const { named } = await bind(t, [httpRecord('srv')], tier);
@@ -184,7 +203,12 @@ test('a call returns the result as text, structured content and details', async 
   assert.deepEqual(echoed, {
     content: [{ type: 'text', text: 'hi' }],
     details: { server: 'srv', tool: 'echo', isError: false, attachments: [], limitsNote: '' },
-    structuredContent: { echoed: 'hi' },
+    // A codemode script's call resolves to the `CallToolResult` the output schema declares.
+    structuredContent: {
+      content: [{ type: 'text', text: 'hi' }],
+      structuredContent: { echoed: 'hi' },
+      isError: false,
+    },
   });
   const failed = await named('mcp__srv__fail').execute('call-2', {}, undefined, undefined, ctx);
   assert.equal(failed.isError, true, 'pi shows the call as failed');
@@ -198,7 +222,11 @@ test('a call returns the result as text, structured content and details', async 
     ctx,
   );
   assert.equal(at(structured.content).text, '{\n  "value": 42\n}');
-  assert.deepEqual(structured.structuredContent, { value: 42 });
+  assert.deepEqual(structured.structuredContent, {
+    content: [],
+    structuredContent: { value: 42 },
+    isError: false,
+  });
   assert.equal('isError' in structured, false);
   assert.deepEqual(asked, [], 'a tool the record does not guard never asks the tier');
 });
@@ -237,4 +265,80 @@ test('a declined call and a server error reach the model as plain errors', async
   await assert.rejects(
     named('mcp__srv__echo').execute('call-7', { text: 'x' }, cancelled.signal, undefined, ctx),
   );
+});
+
+test('auto exposure defers a server that binds more than ten tools; a set exposure wins', async (t) => {
+  const many = Array.from({ length: 11 }, (_, index) => tool(`t${index}`));
+  const records = [
+    httpRecord('big'),
+    httpRecord('small', { includeTools: ['t1', 't2'] }),
+    httpRecord('pinned', { exposure: 'direct' }),
+    httpRecord('lazy', { exposure: 'deferred', includeTools: ['t1'] }),
+  ];
+  const { prepared, named } = await bind(t, records, undefined, { tools: many });
+  const exposures = new Map(prepared.bindings.map((b) => [b.serverId, b.exposure]));
+  assert.deepEqual(Object.fromEntries(exposures), {
+    big: 'deferred',
+    small: 'direct',
+    pinned: 'direct',
+    lazy: 'deferred',
+  });
+  assert.equal(named('mcp__big__t0').exposure, 'deferred', 'pi registers it deferred');
+  assert.deepEqual(
+    [bindingExposure('auto', 10), bindingExposure('auto', 11), bindingExposure('direct', 99)],
+    ['direct', 'deferred', 'direct'],
+  );
+  // Deferred servers are listed even without instructions, so the model knows to search.
+  const section = renderMcpServersSection(prepared.bindings) ?? '';
+  assert.match(
+    section,
+    /## mcp__big \(server big\)\nIts tools are not loaded yet: find .*tool_search/,
+  );
+  assert.match(section, /## mcp__lazy \(server lazy\)/);
+  assert.doesNotMatch(section, /mcp__small|mcp__pinned/, 'declared servers without instructions');
+});
+
+test('servers that expose resources get the resource tools, which reach only them', async (t) => {
+  const greeting = { uri: 'mem://greeting', mimeType: 'text/plain', text: 'hello' };
+  const records = [httpRecord('srv'), httpRecord('closed', { exposeResources: false })];
+  const { prepared, named, fake } = await bind(t, records, undefined, {
+    tools: standardTools(),
+    resources: [
+      { uri: greeting.uri, name: 'greeting', mimeType: 'text/plain' },
+      { uri: 'ui://widget', name: 'widget' },
+    ],
+    templates: [{ uriTemplate: 'mem://items/{id}', name: 'item', description: 'An item.' }],
+  });
+  fake.contents.set(greeting.uri, greeting);
+  assert.deepEqual(prepared.resourceServers, [{ serverId: 'srv', revision: 1 }]);
+  const ctx = piStandIn();
+  const run = (name: string, args: Record<string, unknown>) =>
+    named(name).execute(`call-${name}`, args, undefined, undefined, ctx);
+  const listed = await run('list_mcp_resources', {});
+  assert.deepEqual(JSON.parse(at(listed.content).text), {
+    resources: [{ server: 'srv', uri: greeting.uri, name: 'greeting', mimeType: 'text/plain' }],
+  });
+  const templates = await run('list_mcp_resource_templates', { server: 'srv' });
+  assert.deepEqual(templates.structuredContent, {
+    server: 'srv',
+    resourceTemplates: [
+      { server: 'srv', uriTemplate: 'mem://items/{id}', name: 'item', description: 'An item.' },
+    ],
+  });
+  const read = await run('read_mcp_resource', { server: 'srv', uri: greeting.uri });
+  assert.deepEqual(read.content, [{ type: 'text', text: 'hello' }]);
+  assert.deepEqual(read.structuredContent, {
+    server: 'srv',
+    uri: greeting.uri,
+    contents: [greeting],
+  });
+  await assert.rejects(run('read_mcp_resource', { server: 'closed', uri: greeting.uri }), {
+    message: /"closed" has no resources\. Servers with resources: srv/,
+  });
+  await assert.rejects(run('read_mcp_resource', { server: 'srv', uri: 'mem://unlisted' }), {
+    message: /not authorized on srv/,
+  });
+  await assert.rejects(run('list_mcp_resources', { server: 'srv', cursor: 'page-2' }), {
+    message: /always complete/,
+  });
 });

@@ -1,5 +1,6 @@
-import type { FileSearchQuery, FileSearchReply } from '@ai/agent-contracts';
+import type { FileSearchQuery, FileSearchReply } from '@atd/agent-contracts';
 import type { AgentBridge } from './agent/bridge';
+import type { Screenshot } from './agent/screenshot-input';
 import type { FileRef } from './agent/task-schema';
 import type { SettingsBridge } from './settings-contract';
 import type { ServiceBridge } from './service/ipc';
@@ -44,6 +45,17 @@ export interface SpeechBridge {
   onState(listener: (speaking: boolean) => void): () => void;
 }
 
+/** A newer version of the app, downloaded by the shell and waiting to install. */
+export interface UpdateBridge {
+  /** Installs the waiting update and relaunches; the shell still asks before stopping running tasks. */
+  install(): void;
+  /**
+   * The waiting update's version, or null while none waits, on every change and once on subscribe;
+   * returns the unsubscribe.
+   */
+  onState(listener: (version: string | null) => void): () => void;
+}
+
 /**
  * What the page reaches beyond itself. The macOS shell hosting the renderer in a WKWebView
  * installs it as `window.desktop` (`src/native-host`); tests install their own.
@@ -72,13 +84,34 @@ export interface DesktopBridge {
    */
   setOpenAtLogin: (open: boolean) => Promise<boolean>;
   chooseFiles: () => Promise<ContextFile[]>;
+  /**
+   * Captures the screen for a screenshot command's input with the commands' own capture (the one
+   * preparing a command uses); null when the user cancelled. Rejects with an English message when
+   * Screen Recording is not permitted or the import fails.
+   */
+  screenshot: () => Promise<Screenshot | null>;
+  /**
+   * Reopens an image attachment (`resourceId`) on the capture overlay for more annotation and
+   * cropping and imports the result as a new resource (`context` is always null); null when the
+   * user cancelled, which leaves the attachment as it was. Rejects like `screenshot`.
+   */
+  editScreenshot: (resourceId: string) => Promise<Screenshot | null>;
+  /** A stored resource's bytes through the relay (`GET /v1/resources/:id`), typed by its mime. */
+  resource: (resourceId: string) => Promise<Blob>;
   /** The system share picker for `text`, shown at `anchor`. Optional for test compat. */
   share?: (text: string, anchor: AnchorRect) => Promise<void>;
   /** Optional for test compat. */
   readonly speech?: SpeechBridge;
+  /** Panel-only app updates; absent in the settings window and in tests. */
+  readonly update?: UpdateBridge;
   /**
    * Edit → Undo/Redo from the application menu; returns the unsubscribe. The renderer moves the
    * focused CodeMirror editor's history or runs the native command. Optional for test compat.
    */
   onEditCommand?: (listener: (command: EditCommand) => void) => () => void;
+  /**
+   * The global screenshot shortcut, which the shell hands to the panel page only (absent in the
+   * settings window and in tests); returns the unsubscribe. The page takes the screenshot itself.
+   */
+  onScreenshotShortcut?: (listener: () => void) => () => void;
 }

@@ -1,14 +1,19 @@
-import { useEffect, useRef, useState } from 'react';
+import { useQuery, type QueryKey, type UseQueryResult } from '@tanstack/react-query';
 import type { ServiceBridge } from '../../client/service/ipc';
+import { queryClient } from '../../lib/query-client';
 import {
-  asAgentRow,
   asMcpRow,
-  asSkillRow,
   type ExtensionAgentRow,
   type ExtensionMcpRow,
   type ExtensionSkillRow,
 } from '../service/extension-rows';
-import { useServiceStatus } from '../service/use-service';
+import {
+  readAgents,
+  readSkills,
+  serviceListKeys,
+  serviceListQuery,
+  useServiceStatus,
+} from '../service/use-service';
 
 /**
  * A service-backed list as a quick-panel view sees it. Only rows are shown: a list that is still
@@ -20,68 +25,37 @@ export type ServiceListView<T> =
   | { status: 'loading' }
   | { status: 'unavailable' };
 
-type Loaded<T> = { status: 'loading' } | { status: 'ready'; rows: T[] } | { status: 'failed' };
-
-const loadSkills = (bridge: ServiceBridge) =>
-  bridge.skills().then((result) => result.skills.flatMap((row) => asSkillRow(row) ?? []));
-const loadAgents = (bridge: ServiceBridge) =>
-  bridge.agents().then((result) => result.agents.flatMap((row) => asAgentRow(row) ?? []));
-const loadMcp = (bridge: ServiceBridge) =>
+const readMcp = (bridge: ServiceBridge) =>
   bridge.mcpStatus().then((result) => result.servers.flatMap((row) => asMcpRow(row) ?? []));
 
 /**
- * Loads one list the first time its group is wanted while the service is connected. A failure
- * retries on the next opening; a reconnect may reach another service, and another client may
- * change the extensions, so both load it again. Late replies from a superseded request are
- * dropped.
+ * One list the first time its group is wanted while the service is connected, under its own key
+ * beside the Extensions section's (quiet: a failure never toasts, and the list just leaves its
+ * group out). A failure reads again on the next opening; the bridge cache reloads the list after
+ * a reconnect, which may reach another service, and after another client changed the extensions.
  */
-function useLazyList<T>(
-  load: (bridge: ServiceBridge) => Promise<T[]>,
+function useQuietList<T>(
+  key: QueryKey,
+  read: (bridge: ServiceBridge) => Promise<T[]>,
   wanted: boolean,
   connected: boolean,
-): Loaded<T> | null {
-  const [loaded, setLoaded] = useState<Loaded<T> | null>(null);
-  const requested = useRef(false);
-  const generation = useRef(0);
-  const [changes, setChanges] = useState(0);
-  useEffect(
-    () =>
-      window.desktop?.service?.onChange((event) => {
-        if (event.type !== 'extensions') return;
-        requested.current = false;
-        setChanges((count) => count + 1);
-      }),
-    [],
+) {
+  // The query runs only while the group is wanted as well as connected.
+  const query = serviceListQuery([...key, 'quiet'], read, connected && wanted);
+  return useQuery(
+    {
+      ...query,
+      staleTime: Infinity,
+      meta: { errorToast: false },
+    },
+    queryClient,
   );
-  useEffect(() => {
-    if (!connected) {
-      requested.current = false;
-      generation.current += 1;
-      return;
-    }
-    const bridge = window.desktop?.service;
-    if (!bridge || !wanted || requested.current) return;
-    requested.current = true;
-    const request = ++generation.current;
-    setLoaded({ status: 'loading' });
-    load(bridge).then(
-      (rows) => {
-        if (request === generation.current) setLoaded({ status: 'ready', rows });
-      },
-      () => {
-        if (request !== generation.current) return;
-        requested.current = false;
-        setLoaded({ status: 'failed' });
-      },
-    );
-  }, [connected, wanted, load, changes]);
-  return loaded;
 }
 
 /**
  * Quiet counterparts of the Extensions lists for the quick panel (plan 1.10): nothing loads until
- * a group opens, and failures never toast. Without the desktop bridge (tests) every
- * list reports itself unavailable.
+ * a group opens, and failures never toast. Without the desktop bridge (tests) every list reports
+ * itself unavailable.
  */
 export function useServiceLists(wanted: { skills: boolean; agents: boolean; mcp: boolean }): {
   skills: ServiceListView<ExtensionSkillRow>;
@@ -91,14 +65,14 @@ export function useServiceLists(wanted: { skills: boolean; agents: boolean; mcp:
   const { status, loading } = useServiceStatus();
   const connected = status?.state === 'connected';
   const settling = loading || status?.state === 'connecting' || status?.state === 'reconnecting';
-  const skills = useLazyList(loadSkills, wanted.skills, connected);
-  const agents = useLazyList(loadAgents, wanted.agents, connected);
-  const mcp = useLazyList(loadMcp, wanted.mcp, connected);
-  function view<T>(loaded: Loaded<T> | null): ServiceListView<T> {
+  const skills = useQuietList(serviceListKeys.skills, readSkills, wanted.skills, connected);
+  const agents = useQuietList(serviceListKeys.agents, readAgents, wanted.agents, connected);
+  const mcp = useQuietList(serviceListKeys.mcp, readMcp, wanted.mcp, connected);
+  function view<T>(list: UseQueryResult<T[]>): ServiceListView<T> {
     if (!window.desktop?.service) return { status: 'unavailable' };
     if (connected) {
-      if (!loaded) return { status: 'loading' };
-      return loaded.status === 'failed' ? { status: 'unavailable' } : loaded;
+      if (list.data) return { status: 'ready', rows: list.data };
+      return list.isError ? { status: 'unavailable' } : { status: 'loading' };
     }
     return settling ? { status: 'loading' } : { status: 'unavailable' };
   }

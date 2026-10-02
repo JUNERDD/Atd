@@ -1,4 +1,4 @@
-import { subagentTier, type PermissionTier } from '@ai/agent-contracts';
+import { subagentTier, type PermissionTier } from '@atd/agent-contracts';
 import type { SessionManager } from '@earendil-works/pi-coding-agent';
 import { createGate, type Gate } from '../harness/gate.js';
 import type { SessionFactoryDeps } from '../pi-session.js';

@@ -39,7 +39,7 @@ export function ExtensionItemRoute({
 }) {
   const { t } = useTranslation('settings');
   const labels = usePluginLabels();
-  const { connected, busy, skills, agents, mcp, mutations, pluginMutations } = extensions;
+  const { connected, locked, skills, agents, mcp, mutations, pluginMutations } = extensions;
   const pluginId = route.level === 'item' ? route.pluginId : USER_PLUGIN_ID;
   const plugin = extensions.plugins.plugins?.find((entry) => entry.id === pluginId);
   const pluginName = plugin ? labels.name(plugin) : pluginId;
@@ -47,7 +47,6 @@ export function ExtensionItemRoute({
     route.level === 'item'
       ? t('extensions.plugins.page.backToPlugin', { name: pluginName })
       : t('extensions.plugins.page.back');
-  const locked = busy !== null;
   const agentRows = agents.agents?.agents ?? [];
   const mcpRows = mcp.mcp?.servers ?? [];
 
@@ -74,9 +73,8 @@ export function ExtensionItemRoute({
       return;
     }
     const copy = await pluginMutations.duplicate({ id: pluginId, kind, name: localName });
+    // The duplicate resolves once every list shows the copy.
     if (!copy) return;
-    await Promise.all([skills.refresh(), agents.refresh(), mcp.refresh()]);
-    extensions.refreshAll();
     showToast({ kind: 'info', text: t('extensions.plugins.item.duplicated', { name: copy.name }) });
     // An MCP copy leaves out the env vars and headers its plugin filled from secrets.
     if (copy.omitted.length)
@@ -103,10 +101,7 @@ export function ExtensionItemRoute({
           onStartAi={() => onStartAi('skill', name)}
           onDuplicate={() => void duplicate('skill', name ?? '')}
           onDelete={() =>
-            void removed(
-              mutations.deleteSkill(name ?? '', skills.refresh),
-              t('extensions.deleted', { name }),
-            )
+            void removed(mutations.deleteSkill(name ?? ''), t('extensions.deleted', { name }))
           }
         />
       );
@@ -121,19 +116,12 @@ export function ExtensionItemRoute({
           connected={connected}
           busy={locked}
           onBack={onBack}
-          onSave={(input) =>
-            saved(mutations.putAgent(input, agents.refresh), t('extensions.subagentSaved'))
-          }
-          onPermissions={(agent, value) =>
-            mutations.setAgentPermissions(agent, value, agents.refresh)
-          }
+          onSave={(input) => saved(mutations.putAgent(input), t('extensions.subagentSaved'))}
+          onPermissions={(agent, value) => mutations.setAgentPermissions(agent, value)}
           onStartAi={(target) => onStartAi('agent', target)}
           onDuplicate={() => void duplicate('agent', name ?? '')}
           onDelete={() =>
-            void removed(
-              mutations.deleteAgent(name ?? '', agents.refresh),
-              t('extensions.deleted', { name }),
-            )
+            void removed(mutations.deleteAgent(name ?? ''), t('extensions.deleted', { name }))
           }
         />
       );
@@ -148,9 +136,7 @@ export function ExtensionItemRoute({
           busy={locked || (name !== null && mcp.busyId === name)}
           issue={name === null ? null : (mcp.issues[name] ?? null)}
           onBack={onBack}
-          onUpsert={(input) =>
-            saved(mutations.mcpUpsert(input, mcp.refresh), t('extensions.serverSaved'))
-          }
+          onUpsert={(input) => saved(mutations.mcpUpsert(input), t('extensions.serverSaved'))}
           onConnect={(serverId) => void mcp.connect(serverId)}
           onAuthStart={(serverId) => void mcp.authStart(serverId)}
           onRequestApproval={(serverId) => void mcp.requestApproval(serverId)}
@@ -158,10 +144,7 @@ export function ExtensionItemRoute({
           onStartAi={(target) => onStartAi('mcp', target)}
           onDuplicate={() => void duplicate('mcp', name ?? '')}
           onRemove={() =>
-            void removed(
-              mutations.mcpRemove(name ?? '', mcp.refresh),
-              t('extensions.removed', { name }),
-            )
+            void removed(mutations.mcpRemove(name ?? ''), t('extensions.removed', { name }))
           }
         />
       );

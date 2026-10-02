@@ -1,16 +1,22 @@
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ArrowUp, Plus, Square } from 'lucide-react';
-import { ScrollArea } from '@ai/ui/components/scroll-area';
+import { ArrowUp, Square } from 'lucide-react';
+import { ScrollArea } from '@atd/ui/components/scroll-area';
 import type { ShortcutBindings } from '../client/settings-contract';
-import { DEFAULT_SHORTCUTS, type TaskContextState } from '@ai/agent-contracts';
-import type { AgentTask, FileRef, RunStatus } from '../client/agent/task-schema';
+import { DEFAULT_SHORTCUTS, MAX_ATTACHMENTS, type TaskContextState } from '@atd/agent-contracts';
+import type { AgentTask, RunStatus } from '../client/agent/task-schema';
 import { isActive } from '../client/agent/task-schema';
 import type { PermissionRequest } from '../client/agent/permission-schema';
 import { EMPTY_QUEUE, type Block, type QueueState } from '../client/agent/transcript-schema';
 import type { Connection, ModelReference } from '../client/providers/schema';
 import type { RunPolicy } from '../client/agent/run-policy';
-import { draftFiles, normalizeDraft, type ComposerDraft } from '../features/composer-editor/draft';
+import {
+  chipFiles,
+  draftFiles,
+  normalizeDraft,
+  type ComposerDraft,
+  type FileChip,
+} from '../features/composer-editor/draft';
 import type { ComboboxAria } from '../features/composer-editor/editor-state';
 import { useComposerEditor } from '../features/composer-editor/use-composer-editor';
 import { QUICK_COMMAND_IDS, type QuickActions } from '../features/quick-panel/quick-commands';
@@ -18,12 +24,13 @@ import { QuickPanel } from '../features/quick-panel/quick-panel';
 import type { TriggerState } from '../features/quick-panel/trigger';
 import { isQuickPanelOpen, type QuickPanelHandle } from '../features/quick-panel/use-quick-panel';
 import { IconButton } from './icon-button';
-import { ComposerAttachments } from './composer-attachments';
+import { ComposerAttachMenu } from './composer-attach-menu';
 import { ComposerConfiguration } from './composer-configuration';
 import { ComposerPopover } from './composer-popover';
 import { useImportedFiles } from './use-imported-files';
 import { useOverlayFooter } from './use-overlay-footer';
 import { agentApi } from '../features/agent/use-agent';
+import { VisionNotice } from '../features/agent/vision-notice';
 import { compactBlock } from '../features/agent/compaction/compact-availability';
 import { useCompactTask } from '../features/agent/compaction/use-compact-task';
 import { showErrorToast } from './toast-store';
@@ -36,8 +43,8 @@ export interface ComposerProps {
   onChange: (draft: ComposerDraft) => void;
   onSubmit: () => Promise<unknown>;
   /** Resolves with the queued messages Stop withdrew; they return to the draft. */
-  onStop?: () => Promise<QueueState>;
-  status?: RunStatus;
+  onStop?: (() => Promise<QueueState>) | undefined;
+  status?: RunStatus | undefined;
   pending?: boolean;
   followup?: boolean;
   shortcuts?: ShortcutBindings;
@@ -45,12 +52,12 @@ export interface ComposerProps {
   model: ModelReference | null;
   onOpenSettings: () => void;
   taskId?: string | null;
-  runId?: string;
+  runId?: string | undefined;
   task?: AgentTask | null;
   requests?: PermissionRequest[];
   queue?: QueueState;
   /** The open task's transcript; the progress pill above the input derives from it. */
-  blocks?: readonly Block[];
+  blocks?: readonly Block[] | undefined;
   /** The open task's context usage: the usage ring, `/compact`, and the pill's compacting part. */
   context?: TaskContextState | null;
   /** Panel actions the `/new` and `/history` quick commands run. */
@@ -119,7 +126,6 @@ export function Composer({
 }: ComposerProps) {
   const { t } = useTranslation('panel');
   const footerRef = useOverlayFooter<HTMLElement>();
-  const [choosing, setChoosing] = useState(false);
   const [sending, setSending] = useState(false);
   const [trigger, setTrigger] = useState<TriggerState | null>(null);
   const [aria, setAria] = useState<ComboboxAria | null>(null);
@@ -127,8 +133,8 @@ export function Composer({
   const [queueRecall, setQueueRecall] = useState(0);
   const panel = useRef<QuickPanelHandle>(null);
   const { compact } = useCompactTask();
-  useImportedFiles(attach);
-  const hasContent = Boolean(draft.text.trim() || draft.files.length);
+  const files = draftFiles(draft);
+  const hasContent = Boolean(draft.text.trim() || files.length);
   const active = isActive(status);
   const locked = status === 'stopping' || status === 'queued';
   // Harmless fallback: the popover owns the primary answer path (chips + free text), but Enter in
@@ -158,7 +164,6 @@ export function Composer({
   const stopDisabled = pending || status === 'stopping' || !onStop;
   const disabled = active ? stopDisabled : sendDisabled;
   const platform = window.desktop?.platform ?? 'web';
-  const expanded = draft.text.includes('\n') || draft.text.length > 90;
   /** Plain-text edits from outside the editor; chips they break are dropped. */
   const setText = (text: string) => onChange(normalizeDraft({ ...draft, text }));
   // The handlers below catch every error and reset their flags after the try statement: React
@@ -175,7 +180,7 @@ export function Composer({
       return;
     }
     // Queued messages and answers are plain text, so chips wait for the run to finish.
-    if (draft.files.length) return showErrorToast(t('composer.attachAfterRun'));
+    if (files.length) return showErrorToast(t('composer.attachAfterRun'));
     if (draft.chips.length) return showErrorToast(t('composer.chipsAfterRun'));
     const text = draft.text.trim();
     if (!taskId || !text) return;
@@ -204,19 +209,12 @@ export function Composer({
     if (active) await stop();
     else await send();
   }
-  /** Picked, dropped and pasted files alike; the attachment row and file chips share the limit. */
-  function attach(files: FileRef[]) {
-    if (draftFiles(draft).length + files.length > 10) showErrorToast(t('composer.attachLimit'));
-    else onChange({ ...draft, files: [...draft.files, ...files] });
-  }
-  async function choose() {
-    setChoosing(true);
-    try {
-      attach(await agentApi().chooseFiles());
-    } catch (error) {
-      showErrorToast(error);
-    }
-    setChoosing(false);
+  /** Room left for files, a screenshot's context included. */
+  const room = MAX_ATTACHMENTS - files.length;
+  /** Picked, captured, dropped and pasted files alike, as chips at the caret. */
+  function attach(chips: FileChip[]) {
+    if (chips.flatMap(chipFiles).length > room) showErrorToast(t('composer.attachLimit'));
+    else commands.attachFiles(chips);
   }
   const placeholder = pendingInput
     ? t('composer.answerPlaceholder')
@@ -225,7 +223,7 @@ export function Composer({
       : followup
         ? t('composer.followUpPlaceholder')
         : t('composer.placeholder');
-  const { container: editorContainer, commands: editorCommands } = useComposerEditor({
+  const { container, commands, expanded } = useComposerEditor({
     draft,
     onChange,
     onTrigger: setTrigger,
@@ -234,13 +232,13 @@ export function Composer({
     shortcuts,
     platform,
     quickCommands: QUICK_COMMAND_IDS,
-    wrap: expanded,
     locked,
     limit,
     label: t('composer.promptLabel'),
     placeholder,
     aria,
   });
+  useImportedFiles((imported) => attach(imported.map((file) => ({ kind: 'file', file }))));
   return (
     <footer ref={footerRef} className="panel-footer overlay-footer" hidden={hidden}>
       <form
@@ -270,7 +268,7 @@ export function Composer({
             trigger={trigger}
             running={active}
             pending={waiting}
-            editor={editorCommands}
+            editor={commands}
             handleRef={panel}
             onAriaChange={setAria}
             actions={{
@@ -286,39 +284,26 @@ export function Composer({
             onPolicyChange={onPolicyChange}
             connections={connections}
             model={model}
-            attachmentCount={draftFiles(draft).length}
+            attachmentCount={files.length}
             taskId={taskId}
             tasks={tasks}
             boundary={overlayBoundary}
           >
-            <div
-              className="composer-surface surface-glass glass-control"
-              data-expanded={expanded}
-              data-has-attachments={draft.files.length > 0}
-            >
+            <div className="composer-surface glass-control surface-glass" data-expanded={expanded}>
               <ScrollArea
                 className="composer-input-scroll"
                 viewportClassName="max-h-[inherit]"
                 gutter="stable"
               >
-                <div ref={editorContainer} className="composer-input" />
+                <div ref={container} className="composer-input" />
               </ScrollArea>
-              <ComposerAttachments
-                files={draft.files}
-                onRemove={(id) =>
-                  onChange({ ...draft, files: draft.files.filter((file) => file.id !== id) })
-                }
+              <ComposerAttachMenu
+                disabled={locked}
+                running={active}
+                room={room}
+                attach={attach}
+                onMention={commands.insertMention}
               />
-              <IconButton
-                label={t('composer.attachContext')}
-                className="composer-attach"
-                tooltipSide="top"
-                variant="glass-ghost"
-                disabled={choosing || locked}
-                onClick={() => void choose()}
-              >
-                <Plus />
-              </IconButton>
               <div className="composer-actions">
                 <IconButton
                   label={label}
@@ -328,12 +313,13 @@ export function Composer({
                   disabled={disabled}
                   onClick={() => void act()}
                 >
-                  {active ? <Square className="fill-current size-3" /> : <ArrowUp />}
+                  {active ? <Square className="size-3 fill-current" /> : <ArrowUp />}
                 </IconButton>
               </div>
             </div>
           </QuickPanel>
         </ComposerPopover>
+        <VisionNotice className="px-2" files={files} connections={connections} model={model} />
         <ComposerConfiguration
           connections={connections}
           model={model}

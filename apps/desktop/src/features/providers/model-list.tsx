@@ -7,9 +7,9 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-} from '@ai/ui/components/command';
-import { HighlightedText } from '@ai/ui/components/highlighted-text';
-import { useCompositionQuery } from '@ai/ui/lib/ime';
+} from '@atd/ui/components/command';
+import { HighlightedText } from '@atd/ui/components/highlighted-text';
+import { useCompositionQuery } from '@atd/ui/lib/ime';
 import type { Connection, ModelReference } from '../../client/providers/schema';
 import { IconButton } from '../../components/icon-button';
 import { rankModels } from './model-match';
@@ -56,14 +56,14 @@ export function ModelList({
    */
   scoped?: boolean;
   onSelect: (value: ModelReference) => void;
-  onOpenProviders?: () => void;
+  onOpenProviders?: (() => void) | undefined;
 }) {
   const { t } = useTranslation('providers');
   const search = useCompositionQuery();
   // Popover content mounts only while shown, so mounting is opening the list.
   useCatalogRefresh(true);
   return (
-    <Command shouldFilter={false} className="bg-transparent min-h-0">
+    <Command shouldFilter={false} className="min-h-0 bg-transparent">
       <CommandInput
         value={search.text}
         onValueChange={search.change}
@@ -78,7 +78,7 @@ export function ModelList({
           )
         }
       />
-      <CommandList className="min-h-0 flex-1 max-h-none">
+      <CommandList className="max-h-none min-h-0 flex-1">
         {connections
           .filter((connection) => connection.catalogError)
           .map((connection) => (
@@ -123,7 +123,7 @@ export function ModelList({
                     <HighlightedText text={model.name} ranges={match?.ranges.name} />
                   </p>
                   {model.name !== model.id && (
-                    <p className="text-xs text-muted-foreground truncate" title={model.id}>
+                    <p className="truncate text-xs text-muted-foreground" title={model.id}>
                       <HighlightedText text={model.id} ranges={match?.ranges.id} />
                     </p>
                   )}

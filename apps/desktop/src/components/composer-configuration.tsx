@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import type { TaskContextState } from '@ai/agent-contracts';
+import type { TaskContextState } from '@atd/agent-contracts';
 import type { RunPolicy } from '../client/agent/run-policy';
 import type { AgentTask } from '../client/agent/task-schema';
 import type { Connection, ModelReference } from '../client/providers/schema';
@@ -38,15 +38,13 @@ export function ComposerConfiguration({
         <PermissionTierControl taskId={taskId} task={task} />
       </div>
       <div className="composer-model-group">
-        {taskId && context && <ContextUsageRing context={context} />}
+        {taskId && context && <ContextUsageRing taskId={taskId} context={context} />}
         <ModelConfigPopover
           compact
           connections={connections}
           model={shown}
           thinkingLevel={policy.thinkingLevel ?? connection?.defaultThinkingLevel ?? 'off'}
-          onModelChange={(next) =>
-            onPolicyChange({ ...policy, useDefaultModel: false, model: next })
-          }
+          onModelChange={(next) => onPolicyChange({ ...policy, model: next })}
           onThinkingLevelChange={(thinkingLevel) => onPolicyChange({ ...policy, thinkingLevel })}
           onOpenProviders={onOpenSettings}
         />

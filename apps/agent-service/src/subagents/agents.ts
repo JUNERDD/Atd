@@ -5,7 +5,7 @@ import {
   type SubagentApproval,
   type SubagentPermissions,
   type SubagentTool,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import type { AtdAgent } from '../atd-agents/catalog.js';
 import { CHILD_WEB_TOOLS } from './intersection.js';
 

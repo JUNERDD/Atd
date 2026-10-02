@@ -9,7 +9,6 @@ import WebKit
 /// checked against the contract (``JsMessage``) and handed to the one dispatcher,
 /// ``ShellBridge``. A call that fails the check is answered with an `error` for its id, so the
 /// page's promise does not wait forever; anything else malformed is dropped and logged.
-@MainActor
 final class BridgeMessageHandler: NSObject, WKScriptMessageHandler {
   /// Set once the host exists; the content controller retains the handler, not the host.
   weak var host: WebViewHost?

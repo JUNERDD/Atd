@@ -8,7 +8,7 @@ import {
   TodoStatusSchema,
   type TodoDetails,
   type TodoItem,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import { createClamp } from './clamp.js';
 
 /**

@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { Type, type Static } from 'typebox';
-import { errorMessage, parse } from '@ai/agent-contracts';
+import { errorMessage, parse } from '@atd/agent-contracts';
 import { atomicWrite } from '../config.js';
 import type { Logger } from '../logging.js';
 import type { McpCatalogCounts } from './types.js';
@@ -95,7 +95,7 @@ export class CatalogMemory {
   retain(serverIds: Iterable<string>): void {
     const keep = new Set(serverIds);
     let dropped = false;
-    for (const serverId of [...this.entries.keys()]) {
+    for (const serverId of this.entries.keys()) {
       if (keep.has(serverId)) continue;
       this.entries.delete(serverId);
       dropped = true;

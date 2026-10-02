@@ -1,6 +1,6 @@
 import { timingSafeEqual } from 'node:crypto';
 import type { FastifyRequest } from 'fastify';
-import { STREAM_AUTH_PROTOCOL_PREFIX } from '@ai/agent-contracts';
+import { STREAM_AUTH_PROTOCOL_PREFIX } from '@atd/agent-contracts';
 
 /** Loopback-only hosts accepted by default; remote access needs explicit config. */
 const LOOPBACK_HOSTS = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1', 'localhost']);

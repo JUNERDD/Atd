@@ -89,7 +89,7 @@ describe('Claude adapter: MCP servers', () => {
     expect(Value.Check(NormalizedPluginSchema, plugin)).toBe(true);
   });
 
-  it('skips unsupported transports, bundles and invalid entries with diagnostics', async () => {
+  it('maps OAuth clients and skips unsupported transports, bundles and invalid entries', async () => {
     const plugin = await load(
       {
         mcpServers: [
@@ -99,7 +99,12 @@ describe('Claude adapter: MCP servers', () => {
           {
             socket: { type: 'ws', url: 'wss://example.com' },
             helper: { type: 'http', url: 'https://x.example.com', headersHelper: './h.sh' },
-            oauth: { type: 'http', url: 'https://x.example.com', oauth: { clientId: 'a' } },
+            oauth: {
+              type: 'http',
+              url: 'https://x.example.com',
+              oauth: { clientId: 'a', callbackPort: 8080, extra: true },
+            },
+            badoauth: { type: 'http', url: 'https://x.example.com', oauth: { callbackPort: 0 } },
             nocommand: { args: ['x'] },
             badurl: { type: 'http', url: 'not a url' },
             weird: { type: 'grpc' },
@@ -109,7 +114,10 @@ describe('Claude adapter: MCP servers', () => {
       },
       { '.mcp.json': '{ not json' },
     );
-    expect(plugin.components.map((component) => component.name)).toEqual(['odd-name']);
+    expect(plugin.components.map((component) => component.name)).toEqual(['oauth', 'odd-name']);
+    expect(plugin.components[0]).toMatchObject({
+      transport: { type: 'http', oauth: { clientId: 'a', callbackPort: 8080 } },
+    });
     expect(plugin.diagnostics.map((d) => `${d.code}:${d.component?.name ?? d.path}`)).toEqual([
       'invalid-component:.mcp.json',
       `unsupported-transport:${MANIFEST}`,
@@ -117,7 +125,7 @@ describe('Claude adapter: MCP servers', () => {
       'path-escape:./../outside.json',
       'unsupported-transport:socket',
       'unsupported-transport:helper',
-      'unsupported-transport:oauth',
+      'invalid-component:badoauth',
       'invalid-component:nocommand',
       'invalid-component:badurl',
       'invalid-component:weird',

@@ -2,21 +2,20 @@ import { useEffect, useRef, useState } from 'react';
 import { useHotkeys, type Options } from 'react-hotkeys-hook';
 import { useTranslation } from 'react-i18next';
 import type { RunPolicy } from '../../client/agent/run-policy';
-import type { ExtensionSessionKind, PreparedCommand, TaskDetail } from '../../client/agent/bridge';
+import type { PreparedCommand, TaskDetail } from '../../client/agent/bridge';
 import { emptyInput, isActive } from '../../client/agent/task-schema';
 import { EMPTY_QUEUE } from '../../client/agent/transcript-schema';
-import { DEFAULT_SHORTCUTS, type RunReference } from '@ai/agent-contracts';
-import { isComposingKey } from '@ai/ui/lib/ime';
+import { DEFAULT_SHORTCUTS, type RunReference } from '@atd/agent-contracts';
+import { isComposingKey } from '@atd/ui/lib/ime';
 import {
   draftChips,
   draftFiles,
   draftReferences,
   draftSkills,
-  serialize,
   type ComposerDraft,
 } from '../composer-editor/draft';
 import { useMemoryCreate } from '../memory/use-memory-create';
-import { extensionSeed } from './extension-seed';
+import { extensionSeed, type SeedKind } from './extension-seed';
 import { useSettingsSnapshot } from '../settings/use-settings';
 import { acceleratorToHotkey } from '../../lib/shortcuts';
 import { agentApi, useAgent, useTaskDetail } from './use-agent';
@@ -35,7 +34,7 @@ const EDIT_SEEDS = {
   subagent: 'session.editSubagentSeed',
   mcp: 'session.editMcpSeed',
 } as const;
-const EMPTY_DRAFT: ComposerDraft = { text: '', files: [], chips: [] };
+const EMPTY_DRAFT: ComposerDraft = { text: '', chips: [] };
 
 /**
  * Stages what the draft's chips select: the skills are the draft's skill chips, and the references
@@ -121,22 +120,15 @@ export function useTaskPanel() {
       setRevealCount((count) => count + 1);
     });
   }, []);
-  // The command editor hands its work to the panel: a fresh session gets the seed text in the `new`
-  // draft, so the user completes the intent and sends it with the agent's tools.
+  // Create-with-AI (Extensions, Memory, the command editor) seeds a `create-*` skill chip on the
+  // new draft; edit-with-AI adds a sentence naming the existing item.
   useEffect(() => {
     const bridge = window.desktop?.agent;
     if (!bridge) return;
-    return bridge.onCommandSession(({ commandId, name }) => {
-      newTask();
-      const seed = commandId
-        ? t('session.editSeed', { name, id: commandId })
-        : t('session.createSeed');
-      setDrafts((previous) => ({ ...previous, new: serialize([seed], []) }));
-      focusPanelInput();
-    });
+    return bridge.onCommandSession(({ commandId, name }) =>
+      startSeeded('command', commandId ? t('session.editSeed', { name, id: commandId }) : ''),
+    );
   }, [t]);
-  // Create-with-AI (Extensions, Memory) seeds a `create-*` skill chip on the new draft;
-  // edit-with-AI adds a sentence naming the existing item.
   useEffect(() => {
     const bridge = window.desktop?.agent;
     if (!bridge) return;
@@ -184,7 +176,7 @@ export function useTaskPanel() {
     setPrepared(null);
   }
   /** A create-with-AI session on the new draft (`extensionSeed`). */
-  function startSeeded(kind: ExtensionSessionKind, sentence: string) {
+  function startSeeded(kind: SeedKind, sentence: string) {
     newTask();
     const seed = extensionSeed(kind, sentence);
     setDrafts((previous) => ({ ...previous, new: seed.draft }));
@@ -201,7 +193,7 @@ export function useTaskPanel() {
     // The seed becomes the draft, whose text the service caps at 100,000 characters; a longer
     // answer is cut with an ellipsis, leaving room for the chip and the sentence around it.
     const quoted = text.length > REMEMBER_LIMIT ? `${text.slice(0, REMEMBER_LIMIT)}…` : text;
-    void memoryCreate.start(null, () =>
+    memoryCreate.start(null, () =>
       startSeeded('memory', t('session.rememberSeed', { text: quoted })),
     );
   }
@@ -304,7 +296,6 @@ export function useTaskPanel() {
         : view === 'task' && run
           ? run.snapshot.memory
           : true,
-    useDefaultModel: false,
     confirmExpansion: false,
   };
   const policy = policies[policyKey] ?? defaultPolicy;

@@ -5,6 +5,7 @@ import {
   McpAuthority,
   type McpGuardedCall,
   type McpPreapproval,
+  type McpResourceServer,
   type McpToolBinding,
 } from './mcp/index.js';
 import { ResourceStore } from './resources.js';
@@ -25,8 +26,10 @@ export interface SessionMcpPrep {
   factory: ExtensionFactory;
   /** The proxies `factory` registers. */
   bindings: McpToolBinding[];
-  upsertMcp?: UpsertMcp;
-  listMcp?: ListMcp;
+  /** The servers whose resources `factory`'s resource tools reach (mcp/resource-tools.ts). */
+  resourceServers: McpResourceServer[];
+  upsertMcp: UpsertMcp;
+  listMcp: ListMcp;
 }
 
 /** Prepares MCP runner tools and the catalog upsert hook for a parent session. */
@@ -41,7 +44,7 @@ export async function prepareSessionMcp(deps: SessionMcpDeps): Promise<SessionMc
     resources: new ResourceStore(deps.ctx.ledger, deps.ctx.paths),
     log: deps.ctx.log,
   });
-  const { factory, bindings } = await authority.prepareRunnerTools({
+  const { factory, bindings, resourceServers } = await authority.prepareRunnerTools({
     taskId: deps.taskId,
     runId: deps.currentRunId,
     executionId: deps.executionId,
@@ -53,6 +56,7 @@ export async function prepareSessionMcp(deps: SessionMcpDeps): Promise<SessionMc
   return {
     factory,
     bindings,
+    resourceServers,
     upsertMcp: async (serverId, request) => {
       const record = await authority.upsert(serverId, request);
       return { record, approval: await authority.launches.state(record) };

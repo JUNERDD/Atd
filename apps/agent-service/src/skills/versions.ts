@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
-import { MAX_RUN_SKILLS } from '@ai/agent-contracts';
+import { MAX_RUN_SKILLS } from '@atd/agent-contracts';
 import { atomicWrite } from '../config.js';
 import {
   diagnoseHarnessDisabled,

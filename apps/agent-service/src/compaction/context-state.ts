@@ -8,7 +8,7 @@ import {
   type SessionManager,
   type SessionProjection,
 } from '@earendil-works/pi-coding-agent';
-import type { TaskContextState } from '@ai/agent-contracts';
+import type { TaskContextState } from '@atd/agent-contracts';
 import type { CompactionObserver } from './observer.js';
 
 /** Compactions Pi completed on the branch. */
@@ -78,7 +78,7 @@ export class ContextTracker {
 
 /**
  * The context state of a task without a live session, read from its session file the way Pi's
- * `AgentSession.getContextUsage()` reads a live one (0.99.1, with `estimateProjectedContextTokens`):
+ * `AgentSession.getContextUsage()` reads a live one (1.0.0, with `estimateProjectedContextTokens`):
  * unknown after a compaction until a response reports usage again; else the last reported usage
  * plus an estimate of what followed it, unless a later context edit or compaction invalidated
  * that usage, in which case the whole projected context is estimated.

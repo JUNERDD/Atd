@@ -5,7 +5,6 @@ import OSLog
 /// Keeps the registered global hot keys equal to the set the page pushes, one diff at a time.
 /// Nothing is cached across launches (grill decision Q9): the panel page loads at launch and
 /// pushes the set, and until then no shortcut is registered.
-@MainActor
 final class HotKeyRegistrar {
   private let carbon = CarbonHotKeys()
   private var registered: [String: (combination: HotKeyCombination, token: UInt32)] = [:]

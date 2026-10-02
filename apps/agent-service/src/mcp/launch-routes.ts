@@ -5,7 +5,7 @@ import {
   type McpLaunchApprovalDetails,
   type McpLaunchApproveResponse,
   type McpStatusResponse,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import { RENDERER_ROUTE, SHELL_ROUTE } from '../relay-routes.js';
 import type { McpRouteDeps } from './routes.js';
 

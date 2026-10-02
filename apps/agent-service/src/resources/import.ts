@@ -1,5 +1,5 @@
 import path from 'node:path';
-import type { ResourceImportResponse } from '@ai/agent-contracts';
+import type { ResourceImportResponse } from '@atd/agent-contracts';
 import type { ResourceStore } from '../resources.js';
 import { AttachableRejected, readAttachable } from './attachable-read.js';
 

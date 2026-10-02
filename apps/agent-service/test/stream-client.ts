@@ -1,4 +1,4 @@
-import { STREAM_AUTH_PROTOCOL_PREFIX, STREAM_PROTOCOL } from '@ai/agent-contracts';
+import { STREAM_AUTH_PROTOCOL_PREFIX, STREAM_PROTOCOL } from '@atd/agent-contracts';
 
 export interface Frame {
   type: string;

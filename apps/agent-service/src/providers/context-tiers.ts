@@ -3,14 +3,14 @@ import type {
   ProviderContextsResponse,
   ServiceConnection,
   ServiceModelDefinition,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import { isLocalProvider } from './catalog.js';
 
 /**
  * Larger context windows a provider offers beyond the one Pi's catalog pins, by
  * `<provider>/<modelId>`. Only first-hand sources qualify; each entry names its source.
  * Pi pins these models at 272,000 tokens so requests stay below OpenAI's long-context price
- * (pi-ai 0.99.1 `providers/data/openai.json`: contextWindow 272000, cost tier above 272000).
+ * (pi-ai 1.0.0 `providers/data/openai.json`: contextWindow 272000, cost tier above 272000).
  */
 const EXTENDED_WINDOWS: Readonly<Record<string, number>> = {
   // developers.openai.com/api/docs/models/gpt-5.5: 1,050,000-token context window. Pi's own

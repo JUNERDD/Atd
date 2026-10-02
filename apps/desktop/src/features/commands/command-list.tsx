@@ -1,9 +1,9 @@
 import { useTranslation } from 'react-i18next';
 import { Copy, MoreHorizontal, Pencil, Play, SearchX, Trash2 } from 'lucide-react';
-import { Button } from '@ai/ui/components/button';
-import { Empty, EmptyContent, EmptyHeader, EmptyMedia, EmptyTitle } from '@ai/ui/components/empty';
-import { HighlightedText } from '@ai/ui/components/highlighted-text';
-import { Switch } from '@ai/ui/components/switch';
+import { Button } from '@atd/ui/components/button';
+import { Empty, EmptyContent, EmptyHeader, EmptyMedia, EmptyTitle } from '@atd/ui/components/empty';
+import { HighlightedText } from '@atd/ui/components/highlighted-text';
+import { Switch } from '@atd/ui/components/switch';
 import {
   Item,
   ItemActions,
@@ -12,16 +12,16 @@ import {
   ItemGroup,
   ItemMedia,
   ItemTitle,
-} from '@ai/ui/components/item';
-import { Kbd, KbdGroup } from '@ai/ui/components/kbd';
+} from '@atd/ui/components/item';
+import { Kbd, KbdGroup } from '@atd/ui/components/kbd';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@ai/ui/components/dropdown-menu';
-import { matchFields, type FieldsMatch } from '@ai/ui/lib/fuzzy-match';
+} from '@atd/ui/components/dropdown-menu';
+import { matchFields, type FieldsMatch } from '@atd/ui/lib/fuzzy-match';
 import type { CommandDefinition } from '../../client/agent/command-schema';
 import { IconButton } from '../../components/icon-button';
 import { shortcutKeys } from '../../lib/shortcuts';

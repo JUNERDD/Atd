@@ -96,7 +96,7 @@ function queryWords(query: string): Word[] {
   for (const text of query.normalize('NFC').replace(FOLDED_MARKS, '').split(/\s+/u)) {
     const folded = fold(text);
     if (text && !words.has(folded)) {
-      words.set(folded, { text, folded, verbatim: [...text].length > 1 });
+      words.set(folded, { text, folded, verbatim: Array.from(text).length > 1 });
     }
   }
   return [...words.values()];

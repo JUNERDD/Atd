@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import type { PluginSummary } from '@ai/agent-contracts';
+import type { PluginSummary } from '@atd/agent-contracts';
 import type { PluginSourceBadge } from './plugin-rows';
 
 type HostKey = 'core' | 'personal' | 'shared';

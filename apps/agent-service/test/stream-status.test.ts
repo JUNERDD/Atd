@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { after, before, test } from 'node:test';
-import { parse, StatusFrameSchema } from '@ai/agent-contracts';
+import { parse, StatusFrameSchema } from '@atd/agent-contracts';
 import { inputRequest, task } from './fixtures.ts';
 import { startTestService } from './service-harness.ts';
 import { openStream, type Frame } from './stream-client.ts';

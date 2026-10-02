@@ -9,7 +9,7 @@ import {
   TaskSnapshotSchema,
   type CapabilityRequest,
   type ServiceEvent,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import {
   webSocketTransport,
   type StreamTransport,

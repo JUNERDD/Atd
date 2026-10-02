@@ -7,7 +7,7 @@ import {
   parse,
   ServiceCommandFullSchema,
   type ServiceCommandFull,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import type { Gate } from '../harness/gate.js';
 import type { ChildTool } from '../subagents/child-tools.js';
 import { withCanonicalShortcut } from './shortcuts.js';
@@ -31,13 +31,20 @@ const InstructionsField = {
   description: `The prompt the command runs. It may use {{input}}, {{files}}, {{selection}}, {{clipboard}} and {{argument.<key>}} for declared parameters, and these tokens, each after a space or at the start: /skill:<name> loads that skill, @agent:<name> allows that subagent, @mcp:<serverId> suggests that MCP server's tools, @task:<taskId> includes an excerpt of that conversation. At most ${MAX_RUN_SKILLS} skills and ${MAX_RUN_REFERENCES} other tokens.`,
 };
 
+/** The input field, described for the model that writes it. */
+const InputField = {
+  ...Fields.input,
+  description:
+    'Where a run takes its input. source: manual (typed text), selection (text selected in another app), clipboard, screenshot (an image the user captures when the command runs; it needs files: true, and the image reaches the model as image input) or none. required: the user must supply text before running. files, selection and clipboard enable file attachments and the {{files}}, {{selection}} and {{clipboard}} variables.',
+};
+
 /** What the Agent may author; identity, enabled state and model stay with the stored command. */
 const CommandFieldsSchema = Type.Object(
   {
     name: Fields.name,
     description: Fields.description,
     instructions: InstructionsField,
-    input: Fields.input,
+    input: InputField,
     parameters: Fields.parameters,
     tools: Fields.tools,
     memory: Fields.memory,

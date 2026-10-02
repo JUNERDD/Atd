@@ -9,7 +9,7 @@ import {
   PluginDetailSchema,
   PluginInstallPreviewSchema,
   type McpServerUpsertRequest,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import { client, errorCode } from './launch-helpers.ts';
 import { installMemoryKeyring } from './memory-keyring.ts';
 import { startTestService } from './service-harness.ts';

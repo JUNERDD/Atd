@@ -3,9 +3,10 @@ import {
   type McpAuthCompleteResponse,
   type McpAuthStartResponse,
   type McpServerConfig,
-} from '@ai/agent-contracts';
+} from '@atd/agent-contracts';
 import type { McpNotices } from './callbacks.js';
 import { McpError } from './errors.js';
+import { oauthAuthOf, usesOAuth } from './oauth-client.js';
 import { idleState, signedIn, type SignInDeps } from './oauth-exchange.js';
 import { isAbortLike, noSignIn, shownError, SignIns } from './oauth-signin.js';
 import { oauthServerUrl } from './oauth-store.js';
@@ -70,9 +71,7 @@ export class McpAuthManager {
       states.set(serverId, 'auth_required', '');
       notices.authUrl(serverId, url);
       audit({ server: serverId, tool: 'mcp:auth-start', decision: 'url-issued' });
-      const redirectKind = classifyRedirect(
-        record.http?.auth.type === 'oauth' ? (record.http.auth.redirectUri ?? null) : null,
-      );
+      const redirectKind = classifyRedirect(oauthAuthOf(record)?.redirectUri ?? null);
       return {
         serverId,
         authenticated: false,
@@ -147,7 +146,7 @@ export class McpAuthManager {
     const record = this.deps.servers.record(serverId);
     for (const identity of this.deps.identitiesFor(serverId)) this.deps.txns.revoke(identity);
     await this.signIns.discardServer(serverId);
-    if (record.http?.auth.type === 'oauth') {
+    if (usesOAuth(record)) {
       await providers.settled();
       await providers
         .storeFor(record)
@@ -162,6 +161,11 @@ export class McpAuthManager {
     this.deps.audit({ server: serverId, tool: 'mcp:logout', decision: 'logged-out' });
   }
 
+  /** Logs a removed server out when it signs in with OAuth, so its sign-in goes with it. */
+  async forget(record: McpServerConfig): Promise<void> {
+    if (usesOAuth(record)) await this.logout(record.serverId);
+  }
+
   /** Ends every sign-in in progress and closes its callback server (the service is stopping). */
   closeAll(): Promise<void> {
     return this.signIns.closeAll();
@@ -172,8 +176,13 @@ export class McpAuthManager {
   }
 }
 
+/** OAuth servers, and HTTP servers without auth that are offered a sign-in (oauth-client.ts). */
 function assertOAuthHttp(record: McpServerConfig): void {
-  if (!record.http || record.http.auth.type !== 'oauth') {
-    throw new Error(`MCP server ${record.serverId} is not configured for OAuth over HTTP.`);
+  if (!usesOAuth(record)) {
+    throw new McpError(
+      'bad_request',
+      record.serverId,
+      `MCP server ${record.serverId} does not sign in with OAuth: it is not an HTTP server, or it sends its own credential.`,
+    );
   }
 }

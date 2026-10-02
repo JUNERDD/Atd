@@ -6,7 +6,8 @@ const ASK_USER_CANCELLED = 'The user cancelled the request.';
 
 /**
  * `ask_user`: asks the user for missing input through the confirm store. The answer is recorded
- * as the `app-question` custom entry so the transcript shows it after reopen.
+ * as the `app-question` custom entry so the transcript shows it after reopen. Model-only: the
+ * transcript renders the question from the model's own call, which a codemode script's call is not.
  */
 export function askUserExtension(deps: HarnessDeps): ExtensionFactory {
   const { runner, sessions } = deps;
@@ -19,6 +20,7 @@ export function askUserExtension(deps: HarnessDeps): ExtensionFactory {
         question: Type.String(),
         options: Type.Optional(Type.Array(Type.String(), { maxItems: 8 })),
       }),
+      exposure: 'model-only',
       async execute(id, args) {
         const params = args as { question: string; options?: string[] };
         const runId = runner.currentRunId();

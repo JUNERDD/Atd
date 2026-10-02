@@ -1,17 +1,17 @@
 import { useEffect, useState } from 'react';
 import { CircleAlert, Download, Package } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import type { PluginDetail, PluginInstallPreview } from '@ai/agent-contracts';
-import { Button } from '@ai/ui/components/button';
+import type { PluginDetail, PluginInstallPreview } from '@atd/agent-contracts';
+import { Button } from '@atd/ui/components/button';
 import {
   Empty,
   EmptyDescription,
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
-} from '@ai/ui/components/empty';
-import { Input } from '@ai/ui/components/input';
-import { Label } from '@ai/ui/components/label';
+} from '@atd/ui/components/empty';
+import { Input } from '@atd/ui/components/input';
+import { Label } from '@atd/ui/components/label';
 import { ExtensionDetailStatus } from './extension-detail-fields';
 import { ExtensionPage } from './extension-page';
 import { PluginInstallPreviewView } from './plugin-install-preview';
@@ -37,8 +37,8 @@ export function PluginInstallPage({
   onInstall,
 }: {
   /** The installed plugin to update, or undefined to install a new one. */
-  updateOf?: string;
-  updateName?: string;
+  updateOf?: string | undefined;
+  updateName?: string | undefined;
   connected: boolean;
   busy: boolean;
   onBack: () => void;

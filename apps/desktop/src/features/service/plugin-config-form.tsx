@@ -1,19 +1,19 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { CircleAlert } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import type { PluginConfigRequest, PluginDetail } from '@ai/agent-contracts';
-import { Badge } from '@ai/ui/components/badge';
-import { Button } from '@ai/ui/components/button';
-import { Input } from '@ai/ui/components/input';
-import { Label } from '@ai/ui/components/label';
+import type { PluginConfigRequest, PluginDetail } from '@atd/agent-contracts';
+import { Badge } from '@atd/ui/components/badge';
+import { Button } from '@atd/ui/components/button';
+import { Input } from '@atd/ui/components/input';
+import { Label } from '@atd/ui/components/label';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@ai/ui/components/select';
-import { Switch } from '@ai/ui/components/switch';
+} from '@atd/ui/components/select';
+import { Switch } from '@atd/ui/components/switch';
 import { useSettingsUnsavedChanges } from '../settings/settings-unsaved-changes';
 import { ExtensionDetailSection } from './extension-detail-fields';
 import type { PluginResult } from './use-plugin-mutations';
@@ -166,7 +166,7 @@ export function PluginConfigForm({
     if (option.options?.length)
       return (
         <Select
-          value={value || undefined}
+          {...(value ? { value } : {})}
           disabled={disabled}
           onValueChange={(next) => {
             if (!pending) setDraft({ ...draft, [option.key]: next });

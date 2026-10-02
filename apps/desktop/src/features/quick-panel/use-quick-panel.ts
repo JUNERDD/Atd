@@ -145,7 +145,10 @@ export function useQuickPanel({
       }
       scrolled.current = target;
     } else if (!open) scrolled.current = '';
-    const aria = open && list ? { controls: list.id, activeDescendant: option?.id } : null;
+    const aria: QuickPanelAria | null =
+      open && list
+        ? { controls: list.id, ...(option ? { activeDescendant: option.id } : {}) }
+        : null;
     const signature = aria ? `${aria.controls}\n${aria.activeDescendant ?? ''}` : '';
     if (signature === reported.current) return;
     reported.current = signature;

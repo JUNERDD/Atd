@@ -7,9 +7,13 @@ import { say, sleep, type FakeTool, type FakeToolHandler } from './mcp-fake-serv
  */
 
 /** A tool with an empty-object input schema unless `definition` gives one. */
-export const tool = (name: string, handler?: FakeToolHandler, definition: Partial<Tool> = {}) => ({
+export const tool = (
+  name: string,
+  handler?: FakeToolHandler,
+  definition: Partial<Tool> = {},
+): FakeTool => ({
   definition: { name, inputSchema: { type: 'object', properties: {} }, ...definition },
-  handler,
+  ...(handler && { handler }),
 });
 
 const object = (properties: Record<string, unknown>, required: string[] = []) => ({
@@ -37,11 +41,12 @@ export function standardTools(): FakeTool[] {
     tool(
       'slow',
       async ({ steps = 3 }, ctx) => {
-        for (let step = 1; step <= Number(steps) && !ctx.signal.aborted; step += 1) {
+        const total = Number(steps);
+        for (let step = 1; step <= total && !ctx.signal.aborted; step += 1) {
           await sleep(5);
-          await ctx.progress(step, Number(steps), `step ${step}`);
+          await ctx.progress(step, total, `step ${step}`);
         }
-        return { content: [say(`done after ${steps}`)] };
+        return { content: [say(`done after ${total}`)] };
       },
       { inputSchema: object({ steps: { type: 'integer' } }) },
     ),

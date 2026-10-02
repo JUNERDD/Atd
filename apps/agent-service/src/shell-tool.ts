@@ -3,7 +3,7 @@ import {
   createLocalBashOperations,
   type BashOperations,
 } from '@earendil-works/pi-coding-agent';
-import type { PermissionTier } from '@ai/agent-contracts';
+import type { PermissionTier } from '@atd/agent-contracts';
 import type { Gate } from './harness/gate.js';
 import { authorizeShellCommand } from './shell-policy.js';
 import type { ToolInvocation } from './tool-proxies.js';

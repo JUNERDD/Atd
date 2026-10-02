@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useTranslation } from 'react-i18next';
 import { describe, expect, it, vi } from 'vitest';
-import { TooltipProvider } from '@ai/ui/components/tooltip';
+import { TooltipProvider } from '@atd/ui/components/tooltip';
 import type { ViewBlock } from './adapter';
 import { phaseTitle } from './phase-title';
 import { Transcript } from './transcript';

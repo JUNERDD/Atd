@@ -9,11 +9,11 @@ import Foundation
 /// - An unexpected exit restarts it after the ``SupervisorPolicy`` backoff (500 ms doubling to
 ///   15 s); three within five minutes open the circuit (``ServiceUnavailable/stoppedTooOften``)
 ///   until ``restart()``.
-/// - ``stop()`` (quit) asks the service to shut down, then sends SIGTERM if it does not go.
+/// - ``stop()`` (quit) asks the service to shut down, then kills it if it does not exit
+///   (``ServiceStopper``).
 ///
 /// Every intentional transition bumps a generation; exits, timers and spawns of an older one are
 /// ignored, which is what keeps quit and restart from respawning.
-@MainActor
 public final class ServiceSupervisor: ServiceEndpointSource {
   public enum State: Equatable, Sendable {
     case idle
@@ -115,7 +115,7 @@ public final class ServiceSupervisor: ServiceEndpointSource {
     // A child that never published its endpoint cannot be asked to shut down.
     if let spawned, spawned.isRunning {
       spawned.process.terminate()
-      _ = await ServiceStopper.waitForExit(spawned.pid, timeout: .seconds(5))
+      await ServiceStopper.ensureExit(spawned.pid)
     }
   }
 
@@ -148,7 +148,7 @@ public final class ServiceSupervisor: ServiceEndpointSource {
     state = .running(endpoint)
     ready.resumeAll(with: endpoint)
     guard adopted else { return }
-    watcher = Task { @MainActor [weak self] in
+    watcher = Task { [weak self] in
       while !Task.isCancelled {
         try? await Task.sleep(for: Self.adoptedPoll)
         guard !Task.isCancelled else { return }
@@ -173,7 +173,7 @@ public final class ServiceSupervisor: ServiceEndpointSource {
     case .restart(let delay):
       RelayLog.service.error("\(reason). Restarting in \(delay).")
       state = .restarting
-      watcher = Task { @MainActor [weak self] in
+      watcher = Task { [weak self] in
         try? await Task.sleep(for: delay)
         guard let self, !Task.isCancelled, generation == self.generation else { return }
         // An earlier attempt may have left a process that started but never connected.

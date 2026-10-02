@@ -1,168 +1,198 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import type { PluginSummary } from '@ai/agent-contracts';
-import type { ServiceStatusView } from '../../client/service/ipc';
-import { showErrorToast } from '../../components/toast-store';
+import { queryOptions, useQuery, type QueryKey } from '@tanstack/react-query';
+import type { PluginSummary } from '@atd/agent-contracts';
+import type { ServiceBridge } from '../../client/service/ipc';
+import { bridgeKeys, guardedRead, wireServiceBridge } from '../../lib/bridge-cache';
 import { messageOf } from '../../lib/errors';
+import { queryClient } from '../../lib/query-client';
 import {
   asAgentRow,
+  asMcpRow,
   asRoleRow,
   asSkillRow,
   type ExtensionAgentRow,
+  type ExtensionMcpRow,
   type ExtensionRoleRow,
   type ExtensionSkillRow,
 } from './extension-rows';
 import { asPluginSummary } from './plugin-rows';
 
-function serviceApi() {
-  if (!window.desktop?.service) throw new Error('Open the desktop app to manage the service.');
-  return window.desktop.service;
+/** MCP status rows and the one-time approval notice, as the status route answers them. */
+export interface ServiceMcpState {
+  servers: ExtensionMcpRow[];
+  /** Launch approvals are new: servers configured before them need approving once. */
+  approvalNotice: boolean;
 }
 
-/** Service connection status via the narrow service bridge (no token in the renderer). */
+export function asMcpState(result: { servers: unknown[]; approvalNotice: boolean }) {
+  return {
+    servers: result.servers.flatMap((row) => asMcpRow(row) ?? []),
+    approvalNotice: result.approvalNotice,
+  } satisfies ServiceMcpState;
+}
+
+/** Keys of the service's lists; all sit under `bridgeKeys.serviceLists`. */
+export const serviceListKeys = {
+  skills: [...bridgeKeys.serviceLists, 'skills'],
+  agents: [...bridgeKeys.serviceLists, 'agents'],
+  roles: [...bridgeKeys.serviceLists, 'roles'],
+  mcp: [...bridgeKeys.serviceLists, 'mcp'],
+  plugins: bridgeKeys.plugins,
+  plugin: (id: string) => [...bridgeKeys.plugins, id],
+} as const;
+
+function serviceStatusQuery() {
+  const bridge = window.desktop?.service;
+  return queryOptions({
+    queryKey: bridgeKeys.serviceStatus,
+    queryFn: () => {
+      if (!bridge) throw new Error('Open the desktop app to manage the service.');
+      wireServiceBridge(bridge);
+      return guardedRead(bridgeKeys.serviceStatus, () => bridge.status());
+    },
+    enabled: Boolean(bridge),
+    // Status pushes keep it current.
+    staleTime: Infinity,
+    gcTime: Infinity,
+  });
+}
+
+/**
+ * Service connection status via the narrow service bridge (no token in the renderer), shared by
+ * every caller in the window. `loading` covers the first read; a failed read shows its toast.
+ */
 export function useServiceStatus() {
-  const [status, setStatus] = useState<ServiceStatusView | null>(null);
-  const [loading, setLoading] = useState(() => Boolean(window.desktop?.service));
-  useEffect(() => {
-    const bridge = window.desktop?.service;
-    if (!bridge) return;
-    let active = true;
-    void bridge.status().then(
-      (value) => {
-        if (active) {
-          setStatus(value);
-          setLoading(false);
-        }
-      },
-      (error) => {
-        if (active) {
-          showErrorToast(error);
-          setLoading(false);
-        }
-      },
-    );
-    return bridge.onChange((event) => {
-      if (event.type === 'status' && active) setStatus(event.status);
-    });
-  }, []);
-  const connect = useCallback(async (dataDir: string) => {
-    setStatus(await serviceApi().connect(dataDir));
-  }, []);
-  const disconnect = useCallback(async () => {
-    setStatus(await serviceApi().disconnect());
-  }, []);
-  const startLocal = useCallback(async (dataDir: string) => {
-    setStatus(await serviceApi().startLocal(dataDir));
-  }, []);
-  return { status, loading, connect, disconnect, startLocal };
+  const { data, isLoading } = useQuery(serviceStatusQuery(), queryClient);
+  return { status: data ?? null, loading: isLoading };
 }
 
-/** Skills list via the service bridge; empty when disconnected. */
+/**
+ * One list the service answers while it is connected. Each read checks the rows against their
+ * contract and leaves out the rows outside it, so one bad row cannot hide the rest. The lists
+ * reload when anything invalidates them (`wireServiceBridge`, a write) and whenever a page that
+ * shows them mounts or comes back into view, since the service changes some (MCP connection
+ * states) without an event.
+ */
+export function serviceListQuery<T>(
+  queryKey: QueryKey,
+  read: (bridge: ServiceBridge) => Promise<T>,
+  connected: boolean,
+) {
+  const bridge = window.desktop?.service;
+  return queryOptions({
+    queryKey,
+    queryFn: () => {
+      if (!bridge) throw new Error('Open the desktop app to manage the service.');
+      wireServiceBridge(bridge);
+      return read(bridge);
+    },
+    enabled: Boolean(bridge) && connected,
+    // A section hidden in the settings window keeps its rows to show while they reload.
+    gcTime: Infinity,
+  });
+}
+
+export const readSkills = (bridge: ServiceBridge) =>
+  bridge.skills().then((result) => result.skills.flatMap((row) => asSkillRow(row) ?? []));
+export const readAgents = (bridge: ServiceBridge) =>
+  bridge.agents().then((result) => result.agents.flatMap((row) => asAgentRow(row) ?? []));
+const readRoles = (bridge: ServiceBridge) =>
+  bridge.roles().then((result) => result.roles.flatMap((row) => asRoleRow(row) ?? []));
+const readMcp = (bridge: ServiceBridge) => bridge.mcpStatus().then(asMcpState);
+const readPlugins = (bridge: ServiceBridge) =>
+  bridge.plugins().then((result) => result.plugins.flatMap((row) => asPluginSummary(row) ?? []));
+
+/** Shows a switch change in a cached list before the service answers it. */
+function patchList<T>(queryKey: QueryKey, update: (rows: T) => T) {
+  queryClient.setQueryData<T>(queryKey, (current) => (current ? update(current) : current));
+}
+
+/** Skills list via the service bridge; null until the first read while connected. */
 export function useServiceSkills() {
-  const [skills, setSkills] = useState<{ skills: ExtensionSkillRow[] } | null>(null);
-  const [loading, setLoading] = useState(false);
-  const loaded = useRef(false);
-  const refresh = useCallback(async () => {
-    if (!window.desktop?.service) return;
-    if (!loaded.current) setLoading(true);
-    try {
-      const result = await window.desktop.service.skills();
-      loaded.current = true;
-      setSkills({ skills: result.skills.flatMap((row) => asSkillRow(row) ?? []) });
-    } catch (error) {
-      showErrorToast(error);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-  const setEnabled = useCallback((name: string, enabled: boolean) => {
-    setSkills((current) =>
-      current
-        ? {
-            skills: current.skills.map((row) => (row.name === name ? { ...row, enabled } : row)),
-          }
-        : current,
-    );
-  }, []);
-  return { skills, loading, refresh, setEnabled };
+  const connected = useServiceStatus().status?.state === 'connected';
+  const { data, isLoading } = useQuery(
+    serviceListQuery(serviceListKeys.skills, readSkills, connected),
+    queryClient,
+  );
+  return {
+    skills: data ? { skills: data } : null,
+    loading: isLoading,
+    setEnabled: (name: string, enabled: boolean) =>
+      patchList<ExtensionSkillRow[]>(serviceListKeys.skills, (rows) =>
+        rows.map((row) => (row.name === name ? { ...row, enabled } : row)),
+      ),
+  };
 }
 
 /** Roles list via the service bridge. */
 export function useServiceRoles() {
-  const [roles, setRoles] = useState<{ roles: ExtensionRoleRow[] } | null>(null);
-  const [loading, setLoading] = useState(false);
-  const refresh = useCallback(async () => {
-    if (!window.desktop?.service) return;
-    setLoading(true);
-    try {
-      const result = await window.desktop.service.roles();
-      setRoles({ roles: result.roles.flatMap((row) => asRoleRow(row) ?? []) });
-    } catch (error) {
-      showErrorToast(error);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-  return { roles, loading, refresh };
+  const connected = useServiceStatus().status?.state === 'connected';
+  const { data, isFetching } = useQuery(
+    serviceListQuery(serviceListKeys.roles, readRoles, connected),
+    queryClient,
+  );
+  return { roles: data ? { roles: data satisfies ExtensionRoleRow[] } : null, loading: isFetching };
 }
 
 /** Markdown subagent catalog via the service bridge (`~/.atd/agents`). */
 export function useServiceAgents() {
-  const [agents, setAgents] = useState<{ agents: ExtensionAgentRow[] } | null>(null);
-  const [loading, setLoading] = useState(false);
-  const refresh = useCallback(async () => {
-    if (!window.desktop?.service) return;
-    setLoading(true);
-    try {
-      const result = await window.desktop.service.agents();
-      setAgents({ agents: result.agents.flatMap((row) => asAgentRow(row) ?? []) });
-    } catch (error) {
-      showErrorToast(error);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-  const setEnabled = useCallback((name: string, enabled: boolean) => {
-    setAgents((current) =>
-      current
-        ? { agents: current.agents.map((row) => (row.name === name ? { ...row, enabled } : row)) }
-        : current,
-    );
-  }, []);
-  return { agents, loading, refresh, setEnabled };
+  const connected = useServiceStatus().status?.state === 'connected';
+  const { data, isFetching } = useQuery(
+    serviceListQuery(serviceListKeys.agents, readAgents, connected),
+    queryClient,
+  );
+  return {
+    agents: data ? { agents: data } : null,
+    loading: isFetching,
+    setEnabled: (name: string, enabled: boolean) =>
+      patchList<ExtensionAgentRow[]>(serviceListKeys.agents, (rows) =>
+        rows.map((row) => (row.name === name ? { ...row, enabled } : row)),
+      ),
+  };
+}
+
+/** MCP status rows and the approval notice; a failed read shows its toast. */
+export function useServiceMcpState() {
+  const connected = useServiceStatus().status?.state === 'connected';
+  const { data, isFetching } = useQuery(
+    serviceListQuery(serviceListKeys.mcp, readMcp, connected),
+    queryClient,
+  );
+  return {
+    mcp: data ?? null,
+    loading: isFetching,
+    setEnabled: (serverId: string, enabled: boolean) =>
+      patchList<ServiceMcpState>(serviceListKeys.mcp, (current) => ({
+        ...current,
+        servers: current.servers.map((row) =>
+          row.serverId === serverId ? { ...row, disabled: !enabled } : row,
+        ),
+      })),
+  };
 }
 
 /**
  * The plugin list via the service bridge: every host and installed plugin with its contents
- * counts. Rows outside the contract are left out, so one bad row cannot hide the rest. A failed
- * read keeps the rows it had and reports `error` for the list to show beside them. `epoch`
- * moves after every reload, so an open plugin page reads its detail again with the list.
+ * counts. A failed read keeps the rows it had and reports `error` for the list to show beside
+ * them, with `refresh` to read again; a later success clears it. Open plugin pages read their
+ * detail again with every reload of the list (`usePluginDetail`).
  */
 export function useServicePlugins() {
-  const [plugins, setPlugins] = useState<PluginSummary[] | null>(null);
-  const [loading, setLoading] = useState(false);
-  // The last read's failure, which the list shows in place with a retry; a later success clears it.
-  const [error, setError] = useState<string | null>(null);
-  const [epoch, setEpoch] = useState(0);
-  const loaded = useRef(false);
-  const refresh = useCallback(async () => {
-    if (!window.desktop?.service) return;
-    if (!loaded.current) setLoading(true);
-    try {
-      const result = await window.desktop.service.plugins();
-      loaded.current = true;
-      setPlugins(result.plugins.flatMap((row) => asPluginSummary(row) ?? []));
-      setError(null);
-    } catch (failure) {
-      setError(messageOf(failure));
-    } finally {
-      setLoading(false);
-      setEpoch((value) => value + 1);
-    }
-  }, []);
-  const setEnabled = useCallback((id: string, enabled: boolean) => {
-    setPlugins((current) =>
-      current ? current.map((row) => (row.id === id ? { ...row, enabled } : row)) : current,
-    );
-  }, []);
-  return { plugins, loading, error, epoch, refresh, setEnabled };
+  const connected = useServiceStatus().status?.state === 'connected';
+  const { data, error, isLoading, refetch } = useQuery(
+    {
+      ...serviceListQuery(serviceListKeys.plugins, readPlugins, connected),
+      meta: { errorToast: false },
+    },
+    queryClient,
+  );
+  return {
+    plugins: data ?? null,
+    loading: isLoading,
+    error: error ? messageOf(error) : null,
+    refresh: () => void refetch(),
+    setEnabled: (id: string, enabled: boolean) =>
+      patchList<PluginSummary[]>(serviceListKeys.plugins, (rows) =>
+        rows.map((row) => (row.id === id ? { ...row, enabled } : row)),
+      ),
+  };
 }

@@ -1,4 +1,4 @@
-import type { PermissionTier } from '@ai/agent-contracts';
+import type { PermissionTier } from '@atd/agent-contracts';
 import type { Ledger } from '../ledger.js';
 
 /**
