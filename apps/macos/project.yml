@@ -17,8 +17,13 @@ settings:
     SWIFT_STRICT_CONCURRENCY: complete
     MARKETING_VERSION: 0.4.0
     CURRENT_PROJECT_VERSION: '1'
-    # Ad hoc signing until Developer ID signing and notarization land with packaging.
-    CODE_SIGN_IDENTITY: '-'
+    # Ad hoc signing until Developer ID signing and notarization land with packaging. Privacy
+    # grants (Screen Recording, Accessibility) follow an ad hoc build's cdhash, so every rebuild
+    # loses them; a local build signed by a trusted identity keeps them. `AI_CODE_SIGN_IDENTITY`
+    # names it (e.g. `Apple Development`) and `AI_DEVELOPMENT_TEAM` its team, which Xcode requires
+    # for Apple-issued identities. CI sets neither.
+    CODE_SIGN_IDENTITY: '$(AI_CODE_SIGN_IDENTITY:default=-)'
+    DEVELOPMENT_TEAM: '$(AI_DEVELOPMENT_TEAM)'
     CODE_SIGN_STYLE: Manual
     ENABLE_USER_SCRIPT_SANDBOXING: true
     DEAD_CODE_STRIPPING: true
