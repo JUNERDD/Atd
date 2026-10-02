@@ -95,7 +95,7 @@
   will-change: transform;
 }
 /* The CodeMirror editor grows with its text; the scroll area around it owns vertical scrolling
-   (20px collapsed, 100px expanded). `.cm-editor` scoping outranks the library's base theme. */
+   (20px collapsed, 120px expanded). `.cm-editor` scoping outranks the library's base theme. */
 .composer-input {
   width: 100%;
   min-width: 0;
@@ -161,8 +161,18 @@
 .composer-input .cm-composer-command {
   color: var(--ata-syntax-variable);
 }
+/* Expanded, the draft wraps onto rows of 24px like a sent bubble: a chip's 20px box sits centred
+   in its row, so chips on consecutive rows keep a gap instead of touching. The collapsed pill
+   keeps its 20px row, which a chip fills exactly. Five rows stay visible before scrolling. */
 .composer-surface[data-expanded='true'] .composer-input-scroll {
-  max-height: 100px;
+  max-height: 120px;
+}
+.composer-surface[data-expanded='true'] .composer-input .cm-editor,
+.composer-surface[data-expanded='true'] .composer-input .cm-editor .cm-scroller {
+  line-height: 24px;
+}
+.composer-surface[data-expanded='true'] .composer-input .composer-chip {
+  margin-block: 2px;
 }
 
 .composer-attach {
