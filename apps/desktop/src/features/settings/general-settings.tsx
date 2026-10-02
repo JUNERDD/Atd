@@ -186,10 +186,6 @@ export function GeneralSettings({
           </Button>
         </div>
       </div>
-      {/* Read with the recording button, which itself only shows Press keys. */}
-      <p id="settings-shortcut-hint" className="sr-only">
-        {t('shortcuts.status.recordingHint')}
-      </p>
     </>
   );
 }

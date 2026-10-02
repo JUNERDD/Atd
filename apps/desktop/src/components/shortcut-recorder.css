@@ -1,0 +1,23 @@
+/* The leading action (Reset, Clear) and the keys, with the keys on the trailing edge. */
+.shortcut-recorder {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  max-width: 100%;
+}
+/* The keys sit 3px inside the button border, so the pill keycaps nest in the pill button. Text
+   (Press keys, or an unset shortcut's prompt) takes the button's usual inset instead. */
+.shortcut-recorder-keys {
+  height: auto;
+  min-height: 28px;
+  max-width: 100%;
+  padding: 3px;
+}
+.shortcut-recorder-keys:not(:has([data-slot='kbd-group'])) {
+  padding-inline: 12px;
+}
+.shortcut-recorder-keys [data-slot='kbd-group'] {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}

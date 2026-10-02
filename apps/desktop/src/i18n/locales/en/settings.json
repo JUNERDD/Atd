@@ -189,7 +189,6 @@
       }
     },
     "capture": {
-      "pressKeys": "Press keys…",
       "cancelLabel": "Cancel recording {{label}}",
       "changeLabel": "Change {{label}}: {{keys}}",
       "reset": "Reset to default",
@@ -206,7 +205,6 @@
     "restoreDefaults": "Restore default shortcuts",
     "restoring": "Restoring…",
     "status": {
-      "recordingHint": "Press a shortcut. Escape cancels; Tab moves to the next control.",
       "openAtLoginApproval": "Approve Atd in System Settings › Login Items to finish."
     },
     "errors": {

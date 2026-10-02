@@ -140,7 +140,6 @@
   "shortcut": {
     "error": "Include Command, Control, or Alt with a supported key.",
     "record": "Record command shortcut",
-    "recording": "Press keys…",
     "recordShortcut": "Record shortcut",
     "clear": "Clear shortcut"
   },
