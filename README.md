@@ -37,8 +37,8 @@ You can change all of them in Settings → Shortcuts. If macOS refuses the globa
 
 ## Requirements
 
-- Node.js **24.19.0** (see `.node-version`). The service requires `^24.15.0 || >=26.0.0`.
-- pnpm **12.3.4** (see `packageManager` in `package.json`).
+- Node.js **24.21.0** (see `.node-version`). The service requires `^24.15.0 || >=26.0.0`.
+- pnpm **12.8.1** (see `packageManager` in `package.json`).
 - For the native app and the full check: macOS 26 on Apple silicon, Xcode 26, [XcodeGen](https://github.com/yonaskolb/XcodeGen), and [SwiftLint](https://github.com/realm/SwiftLint) (`brew install xcodegen swiftlint`), plus [rustup](https://rustup.rs) for the Rust file index; `rust-toolchain.toml` pins the toolchain.
 - At runtime, `pnpm dev` runs the agent service with the Node.js on your `PATH`. A Release app ships its own Node.js and needs nothing installed.
 - Commands the agent runs use your own tools. A Release app's service asks your login shell (`$SHELL -il`) for its `PATH` once per launch, waiting at most 5 seconds, so tools from nvm, pyenv, cargo, Homebrew and your rc files resolve as they do in a terminal. The bundled Node.js comes last on the `PATH` the app starts the service with, as a fallback when you have none. Only `PATH` is taken from the shell; a service started from a terminal keeps that terminal's `PATH`.

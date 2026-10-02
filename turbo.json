@@ -1,5 +1,6 @@
 {
   "$schema": "https://turborepo.dev/schema.json",
+  "agentGuidance": false,
   "globalDependencies": [".node-version", ".oxlintrc.json", "pnpm-workspace.yaml"],
   "globalPassThroughEnv": [
     "AI_AGENT_DATA_DIR",
@@ -31,19 +32,38 @@
       ],
       "outputs": ["*.node", "index.js", "index.d.ts"]
     },
-    "dev": { "dependsOn": ["^build"], "cache": false, "persistent": true },
-    "dev:renderer": { "cache": false, "persistent": true },
-    "lint": { "dependsOn": ["^lint"] },
-    "typecheck": { "dependsOn": ["^typecheck"] },
-    "test": { "dependsOn": ["^typecheck"], "outputs": [] },
+    "dev": {
+      "dependsOn": ["^build"],
+      "cache": false,
+      "persistent": true
+    },
+    "dev:renderer": {
+      "cache": false,
+      "persistent": true
+    },
+    "lint": {
+      "dependsOn": ["transit"]
+    },
+    "typecheck": {
+      "dependsOn": ["transit"]
+    },
+    "test": {
+      "dependsOn": ["^build"],
+      "outputs": []
+    },
     "format:check": {},
-    "@ai/macos#build": { "cache": false },
+    "@ai/macos#build": {
+      "cache": false
+    },
     "codegen:check": {
       "inputs": [
         "$TURBO_DEFAULT$",
         "$TURBO_ROOT$/apps/desktop/src/native-bridge/native-bridge.schema.json"
       ],
       "outputs": []
+    },
+    "transit": {
+      "dependsOn": ["^transit"]
     }
   }
 }
