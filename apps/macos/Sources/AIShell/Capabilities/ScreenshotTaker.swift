@@ -5,7 +5,8 @@ import AppKit
 /// F1–F3). It freezes every display, lets the user pick and annotate an area on the overlays,
 /// and imports the result through ``CaptureLibrary`` like a picked file. Editing reopens an
 /// earlier screenshot over the frozen screen under the pointer, preselected and annotatable;
-/// the result is a new attachment.
+/// the result is a new attachment. Copying instead puts the same result on the clipboard and
+/// attaches nothing, so the page's call answers `cancelled`.
 ///
 /// Around the session it owns the app's state: the panel is withdrawn and later restored as it
 /// was, the app is activated for the overlays (cursor, keyboard, input methods) and hands
@@ -13,6 +14,7 @@ import AppKit
 final class ScreenshotTaker {
   /// How a session ended, for the two calls to answer in their own result types.
   private enum SessionEnd {
+    /// Also a copy: the page gets nothing to attach either way.
     case cancelled
     case notPermitted
     case confirmed(CaptureConfirmation, capturedAt: Date, snapshot: WindowSnapshot)
@@ -143,7 +145,30 @@ final class ScreenshotTaker {
       throw BridgeError("The screenshot could not be prepared.")
     case .confirmed(let capture):
       return .confirmed(capture, capturedAt: presented.capturedAt, snapshot: presented.snapshot)
+    case .copied(let capture):
+      if reopening == nil {
+        regions.remember(
+          capture.selection, displayID: capture.displayID, displayFrame: capture.displayFrame)
+      }
+      Self.copy(capture)
+      return .cancelled
     }
+  }
+
+  /// Puts the annotated screenshot on the general pasteboard at the display's full pixel size,
+  /// as PNG and TIFF (what most apps read), sized in points so it pastes at screen size.
+  private static func copy(_ capture: CaptureConfirmation) {
+    let image = NSBitmapImageRep(cgImage: capture.image)
+    image.size = NSSize(
+      width: CGFloat(capture.image.width) / capture.pixelScale,
+      height: CGFloat(capture.image.height) / capture.pixelScale)
+    let pasteboard = NSPasteboard.general
+    pasteboard.clearContents()
+    pasteboard.declareTypes([.png, .tiff], owner: nil)
+    if let png = image.representation(using: .png, properties: [:]) {
+      pasteboard.setData(png, forType: .png)
+    }
+    if let tiff = image.tiffRepresentation { pasteboard.setData(tiff, forType: .tiff) }
   }
 
   /// Takes the window snapshot (new captures only), freezes the displays (the cursor's first,

@@ -13,6 +13,7 @@ enum AnnotationIcons {
   static let undo = "undo-2"
   static let redo = "redo-2"
   static let cancel = "x"
+  static let copy = "copy"
   static let confirm = "check"
   static let textBackground = "square-text"
   static let grip = "grip-vertical"

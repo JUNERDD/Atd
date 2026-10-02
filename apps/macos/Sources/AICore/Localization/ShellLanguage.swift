@@ -149,4 +149,5 @@ public enum ShellStringKey: String, CaseIterable, Sendable {
   case captureUndo = "capture.undo"
   case captureRedo = "capture.redo"
   case captureConfirm = "capture.confirm"
+  case captureCopy = "capture.copy"
 }
