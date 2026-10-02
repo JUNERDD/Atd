@@ -8,6 +8,7 @@ import {
   type ShortcutBindingsWire,
   type PatchSettingsRequest,
   type PermissionTier,
+  type SelectionToolbarSettings,
   type SettingsResponse,
   type UserSettings,
 } from '@atd/agent-contracts';
@@ -39,7 +40,19 @@ async function readStored(file: string): Promise<Static<typeof SettingsFileSchem
     if (error instanceof Error && 'code' in error && error.code === 'ENOENT') return null;
     throw error;
   }
-  return parse(SettingsFileSchema, withAddedShortcuts(JSON.parse(raw)));
+  return parse(SettingsFileSchema, withAddedSelectionToolbar(withAddedShortcuts(JSON.parse(raw))));
+}
+
+/** The selection toolbar starts on, over every app. */
+const DEFAULT_SELECTION_TOOLBAR: SelectionToolbarSettings = { enabled: true, excludedApps: [] };
+
+/** A file written before the selection toolbar existed reads with its default. */
+function withAddedSelectionToolbar(file: unknown): unknown {
+  if (typeof file !== 'object' || file === null || !('settings' in file)) return file;
+  const { settings } = file;
+  if (typeof settings !== 'object' || settings === null || 'selectionToolbar' in settings)
+    return file;
+  return { ...file, settings: { ...settings, selectionToolbar: DEFAULT_SELECTION_TOOLBAR } };
 }
 
 /**
@@ -82,6 +95,7 @@ export class SettingsStore {
         permissionTier: defaultTier,
         shellAllowlist: [],
         shortcuts: null,
+        selectionToolbar: structuredClone(DEFAULT_SELECTION_TOOLBAR),
       };
       return new SettingsStore(file, { settings, revision: 0, initialized: false });
     }
