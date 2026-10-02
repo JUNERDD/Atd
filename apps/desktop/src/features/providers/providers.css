@@ -78,21 +78,18 @@
   font-weight: 500;
   line-height: 16px;
 }
+/* The model trigger hugs its full summary (model, context, effort); a summary too long for the
+   row's line moves the controls to their own line, where the model name truncates last. */
 .provider-model-controls {
   display: flex;
   align-items: center;
   gap: 8px;
-  flex: 1 1 200px;
-  min-width: min(200px, 100%);
-  max-width: 256px;
-}
-.provider-model-controls > :first-child {
-  flex: 1;
+  flex: 0 1 auto;
   min-width: 0;
+  margin-left: auto;
 }
 .provider-model-trigger {
   height: 32px;
-  width: 100%;
   min-width: 0;
   background: color-mix(in oklab, var(--input) 50%, transparent);
   padding: 4px 10px;
@@ -347,6 +344,8 @@ button.model-config-row-nav:disabled:hover {
 @container settings (max-width: 475px) {
   .provider-model-controls {
     flex-basis: 100%;
-    max-width: none;
+  }
+  .provider-model-controls > :first-child {
+    flex: 1;
   }
 }
