@@ -31,7 +31,7 @@ final class ShellCapabilities: CapabilityHandling {
     }
   }
 
-  /// Text files the user picks, imported by path. The value's shape:
+  /// Attachable files the user picks, imported by path. The value's shape:
   /// `{ files: [{ resourceId, name, size, mime }] }`.
   private func pickFiles() async throws -> JSONValue {
     guard let urls = await systemPanels.chooseAttachments(), !urls.isEmpty else {
@@ -129,7 +129,7 @@ final class SystemPanels {
     self.restorePanel = restorePanel
   }
 
-  /// Attachable text files; nil when cancelled or another system panel is open.
+  /// Attachable files (text and images); nil when cancelled or another system panel is open.
   func chooseAttachments() async -> [URL]? {
     let panel = NSOpenPanel()
     panel.message = ShellStrings.shared.text(.filePickTitle)

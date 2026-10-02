@@ -2,6 +2,7 @@ import { useState } from 'react';
 import {
   FileBraces,
   FileCode,
+  FileImage,
   FileText,
   FolderOpen,
   Paperclip,
@@ -26,6 +27,7 @@ const KIND_ICONS: Record<FileSearchResult['kind'], LucideIcon> = {
   text: FileText,
   code: FileCode,
   data: FileBraces,
+  image: FileImage,
 };
 /** Main names iCloud Drive results from their own root; every other location is home-relative. */
 const ICLOUD = 'iCloud Drive';

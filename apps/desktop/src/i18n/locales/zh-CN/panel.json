@@ -40,7 +40,7 @@
     "importFailed": {
       "unreadable": "无法读取 {{name}}。",
       "unsupported": "不支持附加 {{name}}。",
-      "tooLarge": "{{name}} 必须是小于 1 MB 的文本文件。"
+      "tooLarge": "{{name}} 太大，无法附加。"
     },
     "queued": "排队消息",
     "sendNow": "立即发送",
@@ -282,11 +282,11 @@
     },
     "files": {
       "browse": "浏览文件…",
-      "browseDescription": "从这台电脑选择文本文件",
+      "browseDescription": "从这台电脑选择文本文件或图片",
       "partial": "结果可能不完整。",
       "indexDisabled": "Spotlight 索引未开启，无法搜索文件。",
       "unsupported": "此系统不支持文件搜索。",
-      "tooLarge": "超过 1 MB",
+      "tooLarge": "文件过大，无法附加",
       "limit": "已附加 10 个文件",
       "failed": "文件搜索失败，请重试。",
       "attaching": "正在附加…",

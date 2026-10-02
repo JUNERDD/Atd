@@ -14,6 +14,7 @@ import {
 import { ConnectionStore } from './credentials/connections.js';
 import type { Logger } from './logging.js';
 import { ResourceStore } from './resources.js';
+import { loadRunAttachments } from './run-attachments.js';
 import { compactRefused } from './compaction/manual.js';
 import { ConflictError, DrainingError } from './errors.js';
 import { SessionReleases } from './session-release.js';
@@ -310,18 +311,12 @@ export class RunnerManager {
 
   private async run(taskId: string, run: TaskRun): Promise<void> {
     try {
-      const attachments = [];
-      for (const file of run.snapshot.input.files) {
-        try {
-          const { text } = await this.deps.resources.readText(file.id);
-          attachments.push({ name: file.name, path: file.id, text });
-        } catch (error) {
-          this.deps.log.warn('Attachment unreadable; continuing without it.', {
-            taskId,
-            error: errorMessage(error),
-          });
-        }
-      }
+      const attachments = await loadRunAttachments(
+        this.deps.resources,
+        run.snapshot.input.files,
+        this.deps.log,
+        taskId,
+      );
       await this.runnerFor(taskId).execute(run, attachments);
     } catch (error) {
       this.deps.log.warn('Run execution failed.', { taskId, error: errorMessage(error) });

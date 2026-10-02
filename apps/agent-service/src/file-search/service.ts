@@ -34,6 +34,11 @@ const KINDS: Record<AttachableExtension, FileSearchResult['kind']> = {
   yaml: 'data',
   yml: 'data',
   xml: 'data',
+  png: 'image',
+  jpg: 'image',
+  jpeg: 'image',
+  gif: 'image',
+  webp: 'image',
   html: 'code',
   css: 'code',
   ts: 'code',
@@ -178,7 +183,7 @@ export class FileSearchService {
 /** Client-safe metadata: a name and a location, never the path. */
 function resultFields({ candidate, match }: Ranked): Omit<FileSearchResult, 'resultId'> {
   const { hit, name, location, extension } = candidate;
-  const oversized = tooLarge(hit);
+  const oversized = tooLarge(hit, extension);
   return {
     name,
     location,
