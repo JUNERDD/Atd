@@ -5,7 +5,7 @@ import Dispatch
 
 /// A bound on the Accessibility work one hover may do. A hung or enormous app (a browser with a
 /// huge page) must not hold the resolver: past either limit the walk stops with what it has.
-struct AccessibilityBudget {
+nonisolated struct AccessibilityBudget {
   private let deadline: UInt64
   private var calls: Int
 
@@ -25,7 +25,7 @@ struct AccessibilityBudget {
 /// The Accessibility reads the resolver needs. Nothing here is isolated: every function runs on
 /// the resolver's executor, because `AXUIElement` is not `Sendable` and the calls block on the
 /// target app.
-enum AccessibilityProbe {
+nonisolated enum AccessibilityProbe {
   /// Per-reference reply timeout. Long enough for a cold first message (about 20 to 50 ms), short
   /// enough that a hung app costs one hover a fraction of a frame.
   static let messagingTimeout: Float = 0.08

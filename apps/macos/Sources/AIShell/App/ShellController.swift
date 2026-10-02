@@ -6,7 +6,6 @@ import OSLog
 /// Wires the shell together: the panel and settings windows, the summon flow, global hot keys,
 /// the selection stash, the service's control stream and status item, menus and the quit
 /// guard. Its methods are what ``ShellBridge`` calls for the pages.
-@MainActor
 public final class ShellController {
   private let services: ShellServices
   private let defaults: UserDefaults

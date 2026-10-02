@@ -64,7 +64,6 @@ enum CaptureCommand: Equatable {
 }
 
 /// Receives an overlay's input; points are in the overlay's view space.
-@MainActor
 protocol CaptureOverlayDelegate: AnyObject {
   func overlay(_ overlay: CaptureOverlayView, pointerAt point: CGPoint)
   func overlay(_ overlay: CaptureOverlayView, mouseDownAt point: CGPoint, clickCount: Int)

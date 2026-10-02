@@ -2,7 +2,6 @@ import AICore
 import AppKit
 
 /// What the application menu and the status item's menu can do.
-@MainActor
 struct AppMenuActions {
   var showPanel: () -> Void
   var hidePanel: () -> Void
@@ -16,7 +15,6 @@ struct AppMenuActions {
 }
 
 /// The app's menus.
-@MainActor
 enum AppMenus {
   /// Panel, settings and service items, then Quit. The status item and the application menu
   /// share them, since a hidden Dock icon hides the application menu.
@@ -122,7 +120,7 @@ enum AppMenus {
     _ action: @escaping () async throws -> Void, _ title: ShellStringKey,
     _ fallback: ShellStringKey
   ) {
-    Task { @MainActor in
+    Task {
       do {
         try await action()
       } catch {
@@ -139,7 +137,6 @@ enum AppMenus {
 }
 
 /// A menu item that runs a closure.
-@MainActor
 final class ActionMenuItem: NSMenuItem {
   private let handler: () -> Void
 
@@ -149,8 +146,15 @@ final class ActionMenuItem: NSMenuItem {
     target = self
   }
 
+  // NSMenuItem's initializers are nonisolated; under the target's main-actor default the
+  // overrides Swift would otherwise synthesize for them conflict, so they are spelled out.
   @available(*, unavailable)
-  required init(coder: NSCoder) { fatalError("init(coder:) is not supported") }
+  nonisolated override init(title: String, action: Selector?, keyEquivalent: String) {
+    fatalError("init(title:action:keyEquivalent:) is not supported")
+  }
+
+  @available(*, unavailable)
+  nonisolated required init(coder: NSCoder) { fatalError("init(coder:) is not supported") }
 
   @objc private func run() { handler() }
 }

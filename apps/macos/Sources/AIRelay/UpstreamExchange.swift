@@ -4,6 +4,9 @@ import Foundation
 /// `onResponse`, which may turn it down (a replayed 409), then each chunk to `onData`, then one
 /// `onComplete`. Redirects are not followed. Callbacks arrive on the main queue
 /// (``RelaySession/shared``) and stop once ``cancel()`` was called.
+///
+/// Explicitly main-actor: a type conforming to the `Sendable` URLSession delegate protocols is
+/// otherwise inferred nonisolated, not given the target's default isolation.
 @MainActor
 final class UpstreamExchange: NSObject, URLSessionDataDelegate {
   enum Disposition {

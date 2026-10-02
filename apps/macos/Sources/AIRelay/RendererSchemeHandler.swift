@@ -20,7 +20,6 @@ import WebKit
 /// Request bodies come from `httpBody` only. WebKit delivers `ArrayBuffer`, typed-array and
 /// string bodies there; `Blob` bodies arrive empty and streams fail (spike S1), so the page's
 /// host must not send those. A request that arrives with a body stream is refused (400).
-@MainActor
 public final class RendererSchemeHandler: NSObject, WKURLSchemeHandler {
   public static let scheme = RelayPath.scheme
 

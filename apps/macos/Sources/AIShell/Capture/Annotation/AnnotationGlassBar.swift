@@ -4,7 +4,6 @@ import AppKit
 /// Liquid Glass capsule (`NSGlassEffectView`), in groups split by hairlines. The capsule's radius
 /// is the buttons' radius plus the even ``padding``, so the outline and the circular buttons nest
 /// concentrically. A divider shows only between visible groups, and the capsule shrinks to fit.
-@MainActor
 final class AnnotationGlassBar: NSView {
   /// The same on every side, so the capsule stays concentric with the circular buttons.
   static let padding: CGFloat = 6

@@ -17,7 +17,6 @@ public enum WebViewRole: String, Sendable {
 ///
 /// `AI_AGENT_DATA_DIR` overrides the data directory in both; in Debug `AI_RENDERER_DEV_ORIGIN`
 /// overrides the dev server origin (`http://127.0.0.1:5173`), for isolated runs.
-@MainActor
 public final class ShellServices {
   public static let devOriginVariable = "AI_RENDERER_DEV_ORIGIN"
   public static let defaultDevOrigin = "http://127.0.0.1:5173"

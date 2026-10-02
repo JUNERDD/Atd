@@ -5,7 +5,7 @@ import ImageIO
 
 /// The image a `screenshot.edit` session opens over the frozen screen (decision F2): an
 /// archived capture's raw pixels with its annotations, or a downloaded image with none.
-struct ReopenBase: Sendable {
+nonisolated struct ReopenBase: Sendable {
   let image: CGImage
   /// Pixels per point the image was captured at; nil takes the display's own (a downloaded
   /// image carries no scale the shell trusts).
@@ -15,7 +15,7 @@ struct ReopenBase: Sendable {
 
   /// Decodes downloaded bytes, applying an EXIF orientation, or nil when they are no image.
   @concurrent
-  nonisolated static func decode(_ data: Data) async -> ReopenBase? {
+  static func decode(_ data: Data) async -> ReopenBase? {
     guard let source = CGImageSourceCreateWithData(data as CFData, nil),
       let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
       let width = properties[kCGImagePropertyPixelWidth] as? Int,
@@ -45,7 +45,7 @@ struct ReopenBase: Sendable {
   /// display's frozen image, so the crop, the loupe and mosaics all read the image. Nil when
   /// the image or the bitmap is unusable.
   @concurrent
-  nonisolated func compose(over display: FrozenDisplay) async -> (
+  func compose(over display: FrozenDisplay) async -> (
     display: FrozenDisplay, selection: CGRect
   )? {
     let screen = display.quartzFrame.size

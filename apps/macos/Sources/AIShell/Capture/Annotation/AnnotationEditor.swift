@@ -13,7 +13,6 @@ import AppKit
 /// store, the pointer state machine, the text editor, the renderer, the element picker and the
 /// bars together, and remembers the styles across sessions (``AnnotationStyleMemory``, E8).
 /// Written for this app on platform APIs only (D5); no third-party annotation code is used.
-@MainActor
 final class AnnotationEditor: AnnotationEditing {
   var onConfirm: (() -> Void)?
   var onCancel: (() -> Void)?

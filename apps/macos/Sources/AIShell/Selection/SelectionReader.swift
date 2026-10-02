@@ -14,7 +14,7 @@ import ApplicationServices
 ///
 /// Blocking; call it off the main thread. Apps it cannot read are the S8 coverage gaps; there
 /// is no fallback to a simulated Cmd+C.
-struct SelectionReader: Sendable {
+nonisolated struct SelectionReader: Sendable {
   static let messagingTimeout: Float = 0.25
 
   /// The frontmost app, looked up on the main thread by the caller.

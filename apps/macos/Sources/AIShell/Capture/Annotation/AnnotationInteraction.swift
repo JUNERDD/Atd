@@ -7,7 +7,6 @@ import Foundation
 /// the selection moves), already clamped to the selection by the canvas. What a press reaches
 /// is ``AnnotationDocument/pressTarget(at:tool:selectedID:)`` (decision D15); what a drag
 /// draws is AICore's (`AnnotationDrawing.swift`).
-@MainActor
 final class AnnotationInteraction {
   /// The gesture in progress, which decides the cursor until the button is released.
   enum Gesture {

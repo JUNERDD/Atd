@@ -6,7 +6,6 @@ import AppKit
 /// separate ``AnnotationStyleBar``, which appears next to this bar only when there is something
 /// to style. Every control has a localized tooltip naming its shortcut, and its glyph a
 /// VoiceOver description.
-@MainActor
 final class AnnotationToolbar: NSView {
   var onTool: ((AnnotationTool) -> Void)?
   var onUndo: (() -> Void)?

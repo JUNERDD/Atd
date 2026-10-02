@@ -10,7 +10,6 @@ import AppKit
 /// Around the session it owns the app's state: the panel is withdrawn and later restored as it
 /// was, the app is activated for the overlays (cursor, keyboard, input methods) and hands
 /// activation back to the app that was frontmost before.
-@MainActor
 final class ScreenshotTaker {
   /// How a session ended, for the two calls to answer in their own result types.
   private enum SessionEnd {

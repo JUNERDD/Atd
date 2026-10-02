@@ -9,7 +9,6 @@ import AppKit
 /// A choice among several (tools, colours, strokes) reads as a selected radio button to
 /// VoiceOver, an on/off control (the text background) as a checkbox; the bars set
 /// ``isSelected`` from the editor's state after every change.
-@MainActor
 final class AnnotationToolbarButton: NSButton {
   /// How the selected state shows: an accent fill under a white glyph (tools, stroke widths),
   /// or an accent ring around the glyph (colour swatches, which a fill would hide). `toggle` is

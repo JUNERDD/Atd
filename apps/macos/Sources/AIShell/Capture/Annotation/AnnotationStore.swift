@@ -4,7 +4,6 @@ import Foundation
 /// The annotation document of one capture session, its undo history and the canvas's
 /// selection. Every committed change is one undo step that restores the whole previous
 /// document, so undo and redo can never leave a half-applied edit.
-@MainActor
 final class AnnotationStore {
   /// Undo for document changes only. Text typed in an open text editor has its own history
   /// (``AnnotationTextEditor``); the finished edit lands here as one step.

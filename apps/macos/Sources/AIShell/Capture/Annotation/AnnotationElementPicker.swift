@@ -8,7 +8,6 @@ import Foundation
 /// wins. An answer for an earlier position still counts while its smallest area holds the
 /// pointer (``AnnotationPath/elementBox(in:at:within:)``), so a slow app lags rather than never
 /// offering a box.
-@MainActor
 final class AnnotationElementPicker {
   /// The areas containing a point (view points, smallest first); nil offers no boxes.
   var targets: ((CGPoint) async -> [CGRect])?

@@ -4,7 +4,6 @@ import Foundation
 /// A service child process this shell spawned (`startLocalService` in `launcher.ts`, packaged
 /// branch). Its stdout and stderr go straight to a log file, never a pipe, so it cannot block
 /// on a reader that went away.
-@MainActor
 final class ServiceProcess {
   let process: Process
   let log: URL
@@ -118,7 +117,6 @@ struct ServiceStartError: Error, LocalizedError {
 /// Stops whatever service serves `dataDirectory` (`stopLocalService`): ask it to shut down,
 /// wait for the process to go, and send SIGTERM only when asking failed or it did not exit.
 enum ServiceStopper {
-  @MainActor
   static func stop(dataDirectory: URL) async {
     guard case .success(let endpoint) = ServiceDiscovery.read(dataDirectory: dataDirectory) else {
       return

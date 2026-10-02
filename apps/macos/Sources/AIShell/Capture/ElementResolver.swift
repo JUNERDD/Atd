@@ -156,7 +156,7 @@ actor ElementResolver: ElementTargeting {
   }
 
   /// Display bounds in Quartz points, read without AppKit so it is safe off the main actor.
-  private static func activeDisplayBounds() -> [CGRect] {
+  private nonisolated static func activeDisplayBounds() -> [CGRect] {
     var ids = [CGDirectDisplayID](repeating: 0, count: 32)
     var count: UInt32 = 0
     guard CGGetActiveDisplayList(UInt32(ids.count), &ids, &count) == .success else { return [] }
