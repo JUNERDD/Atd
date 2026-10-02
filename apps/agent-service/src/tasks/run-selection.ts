@@ -1,4 +1,10 @@
-import type { ModelSelection, ServiceModel, ThinkingLevel } from '@ai/agent-contracts';
+import {
+  runModelSelection,
+  type ModelSelection,
+  type RunModelSources,
+  type ServiceModel,
+  type ThinkingLevel,
+} from '@ai/agent-contracts';
 import type { ConnectionStore } from '../credentials/connections.js';
 import { LedgerNotFound } from '../ledger.js';
 import { presentConnection } from '../providers/connection-view.js';
@@ -8,7 +14,22 @@ import { effectiveContextWindow } from '../providers/context-tiers.js';
 export const TEMP_CONNECTION_ID = 'temp';
 
 /**
- * Pins the model a run uses: the requested connection and model, else the
+ * The selection a run of these sources asks for (`runModelSelection`), checked against the saved
+ * connections. Preview and submit both choose through this before `resolveRunModel` pins it.
+ */
+export function selectRunModel(
+  connections: ConnectionStore,
+  sources: Omit<RunModelSources, 'hasConnection'>,
+): ModelSelection | undefined {
+  return runModelSelection({
+    ...sources,
+    hasConnection: (connectionId) =>
+      connections.data.connections.some((item) => item.connectionId === connectionId),
+  });
+}
+
+/**
+ * Pins the model a run uses: the selected connection and model (`selectRunModel`), else the
  * default connection's default model. Without a default connection the run
  * falls back to the operator's temporary credentials (`AI_AGENT_TEMP_*`).
  * Preview and submit share this, so a preview shows what a submit freezes.
@@ -19,6 +40,12 @@ export function resolveRunModel(
   warnings: string[] = [],
 ): ServiceModel {
   if (selection) {
+    // A model on temporary credentials resolves again when it is sent back, as a command's
+    // previewed model or a resent run's is (connection ids are UUIDs, so none is `temp`).
+    if (selection.connectionId === TEMP_CONNECTION_ID) {
+      warnings.push('The run would use temporary credentials.');
+      return { ...tempModel(), modelId: selection.modelId };
+    }
     const connection = connections.data.connections.find(
       (item) => item.connectionId === selection.connectionId,
     );

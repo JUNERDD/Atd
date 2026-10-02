@@ -43,7 +43,6 @@ export function mapRunPolicy(policy: RunPolicy | null | undefined): ServiceRunPo
   return {
     tools: snapshotToolsFor(policy.tools),
     memory: policy.memory,
-    useDefaultModel: policy.useDefaultModel,
     confirmExpansion: policy.confirmExpansion,
     ...(policy.model ? { model: policy.model } : {}),
     ...(policy.thinkingLevel ? { thinkingLevel: policy.thinkingLevel } : {}),

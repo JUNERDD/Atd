@@ -26,6 +26,11 @@ export const SubmitTaskRequestSchema = Type.Object(
     operationId: OperationId,
     taskId: Type.Optional(Type.Union([Identifier, Type.Null()])),
     input: TaskInputSchema,
+    /**
+     * The model picked for the run, or the fixed model of the command it starts from. Absent keeps
+     * the model of the task's last run while its connection is saved, else the default connection's
+     * default model (`runModelSelection`).
+     */
     model: Type.Optional(ModelSelectionSchema),
     /** Absent uses the connection's saved level, else off. */
     thinkingLevel: Type.Optional(ThinkingLevelSchema),

@@ -13,6 +13,7 @@ export * from './attachments.js';
 export * from './file-search.js';
 export * from './http.js';
 export * from './models.js';
+export * from './run-model.js';
 export * from './skills.js';
 export * from './roles.js';
 export * from './mcp.js';

@@ -1,5 +1,6 @@
 import {
   DEFAULT_RUN_TOOLS,
+  type ModelSelection,
   type RunSnapshot,
   type ServiceBlock,
   type SubmitTaskRequest,
@@ -8,16 +9,44 @@ import {
 import type { ConnectionStore } from '../credentials/connections.js';
 import { CONTEXT_BUDGET, runInputSize } from './run-budget.js';
 import {
+  loadRunContextWindow,
   resolveRunModel,
   resolveRunThinkingLevel,
+  selectRunModel,
   type RunContextWindow,
 } from './run-selection.js';
 
 /**
- * Freezes an accepted request into its run snapshot. Tools and memory come from the request,
- * else carry over from the task's last run (a command that turned memory off keeps it off for the
- * task's follow-ups), else the defaults. The context window freezes like the thinking level:
- * later tier changes never reach an accepted run. A snapshot over the context budget is refused.
+ * Loads the context window of the model `freezeRunSnapshot` selects for the request, before
+ * acceptance so the freeze stays synchronous. `last` is the task's last run, as the freeze reads it.
+ */
+export function loadSubmitContextWindow(
+  connections: ConnectionStore,
+  request: SubmitTaskRequest,
+  last: TaskRun | undefined,
+): Promise<RunContextWindow> {
+  return loadRunContextWindow(connections, submitModelSelection(connections, request, last));
+}
+
+/**
+ * The model selection a submit freezes: the requested model, else the model of the task's last run,
+ * so a follow-up stays on the model the panel's picker shows; undefined means the default. A
+ * command's fixed model arrives as the requested one, since submit does not know the command.
+ */
+function submitModelSelection(
+  connections: ConnectionStore,
+  request: SubmitTaskRequest,
+  last: TaskRun | undefined,
+): ModelSelection | undefined {
+  return selectRunModel(connections, { requested: request.model, last: last?.snapshot.model });
+}
+
+/**
+ * Freezes an accepted request into its run snapshot. The model, tools and memory come from the
+ * request, else carry over from the task's last run (a command that turned memory off keeps it off
+ * for the task's follow-ups), else the defaults. The context window freezes like the thinking
+ * level: later tier changes never reach an accepted run. A snapshot over the context budget is
+ * refused.
  */
 export function freezeRunSnapshot(
   request: SubmitTaskRequest,
@@ -25,7 +54,7 @@ export function freezeRunSnapshot(
   contextWindowOf: RunContextWindow,
   last: TaskRun | undefined,
 ): RunSnapshot {
-  const model = resolveRunModel(connections, request.model);
+  const model = resolveRunModel(connections, submitModelSelection(connections, request, last));
   const thinkingLevel = resolveRunThinkingLevel(connections, model, request.thinkingLevel);
   const contextWindow = contextWindowOf(model);
   const snapshot: RunSnapshot = {

@@ -29,7 +29,6 @@ export function extensionSeed(
     policy: {
       tools: TOOLS[kind] ?? ['read', 'write', 'edit', 'bash', 'command'],
       memory: true,
-      useDefaultModel: false,
       confirmExpansion: false,
     },
   };
