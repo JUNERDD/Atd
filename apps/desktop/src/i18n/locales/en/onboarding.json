@@ -47,13 +47,15 @@
   },
   "selection": {
     "title": "Ask about anything you select",
-    "description": "Select text and a small toolbar offers Ask Atd and your commands. Try it on the practice text here.",
+    "description": "Select text to bring up Ask Atd and your commands.",
+    "descriptionHold": "Hold {{key}} while selecting text to bring up the toolbar.",
+    "descriptionToggle": "Press {{key}} twice to turn on the toolbar, then select text.",
     "toggle": "Show the toolbar when I select text",
     "waiting": "Waiting for Accessibility access…",
     "success": "Access granted. Select some of the practice text to try it.",
     "accessibility": {
       "title": "Accessibility access",
-      "description": "macOS asks for Accessibility access so Atd can read only the text you select.",
+      "description": "Lets Atd read only the text you select.",
       "open": "Open System Settings",
       "granted": "Accessibility access granted",
       "error": "System Settings couldn't be opened. Open Privacy & Security › Accessibility yourself."
@@ -62,6 +64,8 @@
       "label": "Practice text",
       "sample": "Good tools stay out of the way until you need them. Select a few words of this paragraph, and Atd's toolbar appears right beside them. Ask Atd quotes your selection in the panel, ready for your question.",
       "caption": "Select some of this text.",
+      "captionHold": "Hold {{key}} and select some of this text.",
+      "captionToggle": "Press {{key}} twice, then select some of this text.",
       "needsAccess": "Grant Accessibility access to see the toolbar here.",
       "needsToolbar": "Turn on the toolbar to see it here."
     }

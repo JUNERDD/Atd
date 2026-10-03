@@ -14,6 +14,7 @@ import {
 } from '@atd/ui/components/item';
 import type { SettingsSnapshot } from '../../client/settings-contract';
 import { IconButton } from '../../components/icon-button';
+import { SelectionToolbarActivationRows } from './selection-toolbar-activation';
 import { SettingsSwitchRow } from './settings-switch-row';
 import { useSelectionToolbarSettings } from './use-selection-toolbar-settings';
 
@@ -30,8 +31,8 @@ function RowError({ text }: { text: string | undefined }) {
 
 /**
  * General › Selection toolbar: the switch for the toolbar the shell shows over text selected in
- * other apps, the Accessibility state while it is on and the app is not trusted (with the way to
- * System Settings), and the apps it never appears over. Rows wrap their actions below the text at
+ * other apps, which selections bring it up, the Accessibility state while it is on and the app is
+ * not trusted (with the way to System Settings), and the apps it never appears over. Rows wrap their actions below the text at
  * narrow widths, like the other settings rows.
  */
 export function SelectionToolbarSettings({ snapshot }: { snapshot: SettingsSnapshot | null }) {
@@ -57,6 +58,7 @@ export function SelectionToolbarSettings({ snapshot }: { snapshot: SettingsSnaps
             note={settings.errors.toggle}
             onCheckedChange={settings.setEnabled}
           />
+          <SelectionToolbarActivationRows settings={settings} />
           {value.enabled && settings.trusted === false && (
             <Item asChild size="sm" className="settings-card-row">
               <li>

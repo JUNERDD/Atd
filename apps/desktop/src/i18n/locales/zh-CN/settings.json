@@ -68,6 +68,8 @@
       "subagents": "子代理 智能体 角色 委派 专家",
       "mcp": "MCP 服务器 工具 协议 连接 认证",
       "selectionToolbar": "选择 选中 文字 划词 工具栏 弹出 提问 辅助功能 selection toolbar",
+      "selectionToolbarActivation": "按住 按键 连按 两次 开关 切换 修饰键 呼出 触发 方式 工具栏 选择 hold option command shift",
+      "selectionToolbarHud": "hud 状态 浮窗 指示 提示 开关 开启 关闭 监听 屏幕 底部 拖拽 隐藏",
       "selectionToolbarApps": "排除 忽略 屏蔽 App 应用 工具栏 选择 exclude apps"
     }
   },
@@ -162,6 +164,29 @@
     "title": "选择文字工具栏",
     "enabled": "选中文字时显示工具栏",
     "enabledDescription": "在其他 App 中选中文字后，可以直接问 Atd 或运行选区命令。",
+    "activation": {
+      "title": "呼出方式",
+      "description": "选择是任意选中都显示工具栏，还是配合按键选中才显示。",
+      "modeLabel": "工具栏的呼出方式",
+      "modes": {
+        "always": "选中即显示",
+        "hold": "按住按键",
+        "toggle": "连按两次"
+      },
+      "hints": {
+        "always": "选中文字时总会显示工具栏。",
+        "hold": "按住 {{keys}} 的同时选中文字，才会显示工具栏。",
+        "toggle": "连按两次 {{keys}}，开启或关闭选中文字时的工具栏。每次打开 Atd 时默认关闭。"
+      },
+      "keysLabel": "呼出按键",
+      "errors": {
+        "keys": "请使用 ⌥ Option、⌘ Command 或 ⇧ Shift，可单独或组合使用。其他按键按住时会输入字符，⌃ Control 会让点击变成右键。"
+      }
+    },
+    "hud": {
+      "title": "显示状态浮窗",
+      "description": "工具栏开启时，屏幕底部会显示一个小浮窗提示。可拖到任意位置，也可隐藏到下次开启。"
+    },
     "accessibility": {
       "title": "需要辅助功能权限",
       "description": "Atd 需要辅助功能权限才能识别选中的文字。授权后工具栏会立即生效。",

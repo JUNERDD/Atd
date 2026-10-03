@@ -58,16 +58,33 @@ function withAddedOnboarding(file: unknown): unknown {
   return { ...file, settings: { ...settings, onboardingCompleted: true } };
 }
 
-/** The selection toolbar starts on, over every app. */
-const DEFAULT_SELECTION_TOOLBAR: SelectionToolbarSettings = { enabled: true, excludedApps: [] };
+/** The selection toolbar starts on, over every app, for selections made while Option is held. */
+const DEFAULT_SELECTION_TOOLBAR: SelectionToolbarSettings = {
+  enabled: true,
+  excludedApps: [],
+  activation: 'hold',
+  activationKeys: ['option'],
+  showHud: true,
+};
 
-/** A file written before the selection toolbar existed reads with its default. */
+/**
+ * A file written before the selection toolbar existed reads with its default; one written before
+ * its activation existed keeps its switch and apps and takes the default activation. A single
+ * `activationKey`, which development builds briefly stored, becomes a one-key combination.
+ */
 function withAddedSelectionToolbar(file: unknown): unknown {
   if (typeof file !== 'object' || file === null || !('settings' in file)) return file;
   const { settings } = file;
-  if (typeof settings !== 'object' || settings === null || 'selectionToolbar' in settings)
-    return file;
-  return { ...file, settings: { ...settings, selectionToolbar: DEFAULT_SELECTION_TOOLBAR } };
+  if (typeof settings !== 'object' || settings === null) return file;
+  const stored = 'selectionToolbar' in settings ? settings.selectionToolbar : {};
+  if (typeof stored !== 'object' || stored === null) return file;
+  const { activationKey, ...rest } = stored as Record<string, unknown>;
+  const selectionToolbar = {
+    ...DEFAULT_SELECTION_TOOLBAR,
+    ...(activationKey === undefined ? {} : { activationKeys: [activationKey] }),
+    ...rest,
+  };
+  return { ...file, settings: { ...settings, selectionToolbar } };
 }
 
 /**
