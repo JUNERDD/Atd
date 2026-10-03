@@ -58,16 +58,14 @@ export const RISE_EASE = [0.33, 1, 0.68, 1] as const;
  * the shell is told the guide settled once the card is at rest.
  */
 export const INTRO = {
-  /** The scrim dims the desktop to this, light enough to show the glass's blur, over `scrimIn`. */
+  /**
+   * The scrim dims the desktop to this, light enough to show the glass's blur, over `scrimIn`;
+   * the glass dissolves in over the same time, so dimming and defocus read as one gesture.
+   */
   scrimIntro: 0.7,
   scrimIn: 2.6,
   /** The scrim's level under the card, reached after the page leaves. */
   scrimCard: 0.6,
-  /**
-   * The window glass's blur arrives under the dimming, about a third of the way down, where its
-   * quick fade (the shell's) no longer reads as a jump.
-   */
-  glassAt: 1.2,
   /** The music starts while the room dims... */
   musicAt: 0.5,
   /** ...the light emerges just after it, still in the dimming... */

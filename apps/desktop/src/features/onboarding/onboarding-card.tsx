@@ -4,7 +4,7 @@ import { ScrollArea } from '@atd/ui/components/scroll-area';
 import type { SettingsSnapshot } from '../../client/settings-contract';
 import { OnboardingCardArt } from './onboarding-card-art';
 import { OnboardingFooter } from './onboarding-footer';
-import { INTRO, STEP_OFFSET, STEP_SPRING } from './onboarding-motion';
+import { INTRO, STAGE_FADE_DURATION, STEP_OFFSET, STEP_SPRING } from './onboarding-motion';
 import { OnboardingProgress } from './onboarding-progress';
 import { CloseButton, MusicToggle } from './onboarding-stage-controls';
 import { useStepView } from './onboarding-steps';
@@ -98,8 +98,8 @@ export function OnboardingCard({
   const viewport = useRef<HTMLDivElement>(null);
   const surface = useRef<HTMLDivElement>(null);
   // From the card's first moment: the glass moves to it as soon as its entrance comes to rest,
-  // taking over from the opening page's.
-  useNativeSurface(surface, !closing, CARD_RADIUS);
+  // taking over from the opening page's, and fades out with the stage as the guide closes.
+  useNativeSurface(surface, !closing, CARD_RADIUS, STAGE_FADE_DURATION);
   const pending = isGoalPending(flow.step, goals);
   // Once the card is at rest every step's heading takes focus as it appears, so keyboard and
   // VoiceOver users start reading the step (the first one included, after the intro).
