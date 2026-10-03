@@ -56,8 +56,11 @@ struct SelectionToolbarTests {
   func settings() {
     let settings = SelectionToolbarSettings(
       ToolbarSetParams(
-        enabled: true, excludedBundleIds: ["a", "a", "b"],
-        commands: [.init(id: "c1", name: "Translate")]))
+        enabled: true, activation: .hold, activationKeys: [.option, .shift, .option],
+        showHud: false,
+        excludedBundleIds: ["a", "a", "b"], commands: [.init(id: "c1", name: "Translate")]))
+    #expect(settings.activation == SelectionActivation(mode: .hold, keys: [.option, .shift]))
+    #expect(!settings.showHud)
     #expect(settings.excludedBundleIds == ["a", "b"])
     #expect(settings.commands == [.init(id: "c1", name: "Translate")])
   }

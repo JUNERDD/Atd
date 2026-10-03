@@ -3,6 +3,8 @@ import {
   DEFAULT_SHORTCUTS,
   type AppLanguage,
   type ExcludedApp,
+  type SelectionToolbarActivation,
+  type SelectionToolbarKey,
   type SelectionToolbarSettings,
 } from '@atd/agent-contracts';
 import type { Connection, ProviderBridge } from './providers/schema';
@@ -14,12 +16,22 @@ export type ShortcutBindings = Record<ShortcutAction, string>;
 
 /** Languages the UI ships translations for; the list lives in the contracts all clients share. */
 export const LANGUAGE_CODES = APP_LANGUAGES;
-export type { AppLanguage, ExcludedApp, SelectionToolbarSettings };
+export type {
+  AppLanguage,
+  ExcludedApp,
+  SelectionToolbarActivation,
+  SelectionToolbarKey,
+  SelectionToolbarSettings,
+};
+export { SELECTION_TOOLBAR_ACTIVATIONS, SELECTION_TOOLBAR_KEYS } from '@atd/agent-contracts';
 
 /** The selection toolbar before the service's settings load, as the service defaults it. */
 export const DEFAULT_SELECTION_TOOLBAR: SelectionToolbarSettings = {
   enabled: true,
   excludedApps: [],
+  activation: 'hold',
+  activationKeys: ['option'],
+  showHud: true,
 };
 
 /** Apps the selection toolbar can be kept away from (`SelectionToolbarSettingsSchema`). */

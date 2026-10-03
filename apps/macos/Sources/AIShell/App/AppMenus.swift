@@ -17,6 +17,10 @@ struct AppMenuActions {
   var editCommand: (_ command: EditCommandEvent.Command) -> Void
   /// A Debug build waiting for `pnpm dev`: the status menu says so first.
   var developmentHint: () -> Bool
+  /// Whether the selection toolbar's `toggle` mode listens, or nil while that mode is not in
+  /// effect; the status menu shows it as a checkable item.
+  var selectionListening: () -> Bool?
+  var setSelectionListening: (Bool) -> Void
 }
 
 /// The app's menus.
@@ -64,6 +68,14 @@ enum AppMenus {
       menu.addItem(.separator())
     }
     menu.autoenablesItems = false
+    if let listening = actions.selectionListening() {
+      let item = ActionMenuItem(ShellStrings.shared.text(.menuSelectionListening)) {
+        actions.setSelectionListening(!listening)
+      }
+      item.state = listening ? .on : .off
+      menu.addItem(item)
+      menu.addItem(.separator())
+    }
     for item in appItems(actions) { menu.addItem(item) }
     return menu
   }
@@ -192,6 +204,7 @@ extension AppMenuActions {
     AppMenuActions(
       showPanel: {}, hidePanel: {}, openSettings: {}, openOnboarding: {}, replayOnboarding: nil,
       checkForUpdates: nil,
-      restartService: {}, showServiceLogs: {}, editCommand: { _ in }, developmentHint: { false })
+      restartService: {}, showServiceLogs: {}, editCommand: { _ in }, developmentHint: { false },
+      selectionListening: { nil }, setSelectionListening: { _ in })
   }
 }

@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { DEFAULT_SHORTCUTS } from '@atd/agent-contracts';
+import { DEFAULT_SELECTION_TOOLBAR } from '../../client/settings-contract';
 import { FinishArt } from './art-finish';
 import { HotkeyArt } from './art-hotkey';
 import { ProviderArt } from './art-provider';
@@ -48,8 +49,10 @@ export function useStepView(step: OnboardingStepId, props: StepRenderProps): Onb
         art: (
           <SelectionPractice
             enabled={snapshot?.selectionToolbar.enabled === true}
+            activation={snapshot?.selectionToolbar ?? DEFAULT_SELECTION_TOOLBAR}
             trusted={goals.selection}
             active={props.atRest}
+            platform={window.desktop?.platform ?? 'web'}
           />
         ),
         artIsContent: true,

@@ -29,12 +29,12 @@
   background: rgb(0 0 0);
 }
 
-/* The card: centered, at most 960 × 600, always clear of the display's edges. A size container,
+/* The card: centered, at most 1040 × 680, always clear of the display's edges. A size container,
    so its layout follows its own width (stacking below 760px) and the step body its height. */
 .onboarding-card {
   position: relative;
-  width: min(960px, calc(100vw - 64px));
-  height: min(600px, calc(100vh - 112px));
+  width: min(1040px, calc(100vw - 64px));
+  height: min(680px, calc(100vh - 112px));
   container: onboarding-card / size;
 }
 /* The radius is Figma's `radius/panel` (`CARD_RADIUS`, which the shell's glass under the card also

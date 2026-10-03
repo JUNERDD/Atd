@@ -8,6 +8,9 @@ import { MAX_PRACTICE_SELECTION_LENGTH } from '../../native-bridge/contract';
  */
 const SETTLE_MS = 150;
 
+/** `KeyboardEvent.key` of the modifiers, whose presses alone never hide the toolbar. */
+const MODIFIER_KEYS = new Set(['Alt', 'Meta', 'Shift', 'Control', 'CapsLock', 'Fn']);
+
 interface PracticeSelection {
   rect: SurfaceRect;
   text: string;
@@ -35,9 +38,9 @@ function readSelection(element: HTMLElement): PracticeSelection | null {
  * Reports text selected inside `element` to the shell (`onboarding.selection`) while `active`, so
  * the real selection toolbar shows beside it: when a drag ends, or once a selection made otherwise
  * (keyboard, double click) settles. It reports `null` when the selection collapses or leaves the
- * element, on any press, key, scroll or window resize, and when it stops (`active` turns false: a
- * step change, the guide closing, the toolbar's conditions lost, or unmount). A key hides the
- * toolbar for good until the selection changes. Window blur is left alone: clicking the toolbar,
+ * element, on any press, key (a modifier alone excepted), scroll or window resize, and when it
+ * stops (`active` turns false: a step change, the guide closing, the toolbar's conditions lost, or
+ * unmount). A key hides the toolbar for good until the selection changes. Window blur is left alone: clicking the toolbar,
  * a window of its own, must not hide it first. Without the shell's bridge it does nothing.
  */
 export function usePracticeSelection(element: RefObject<HTMLElement | null>, active: boolean) {
@@ -87,12 +90,14 @@ export function usePracticeSelection(element: RefObject<HTMLElement | null>, act
     const onSelectionChange = () => {
       if (!dragging) schedule(SETTLE_MS);
     };
-    const onKeyDown = () => {
+    const onKeyDown = (event: Event) => {
+      // A modifier alone (the activation key held or pressed twice) leaves it, as in other apps.
+      if (event instanceof KeyboardEvent && MODIFIER_KEYS.has(event.key)) return;
       dismissed = readSelection(area)?.key ?? null;
       hide();
     };
     const onKeyUp = () => schedule(SETTLE_MS);
-    const listeners: [EventTarget, string, () => void, AddEventListenerOptions?][] = [
+    const listeners: [EventTarget, string, (event: Event) => void, AddEventListenerOptions?][] = [
       [document, 'pointerdown', onPointerDown, { capture: true }],
       [document, 'pointerup', onPointerUp, { capture: true }],
       [document, 'pointercancel', onPointerUp, { capture: true }],

@@ -6,7 +6,8 @@ import type { CallParams, NativeBridge } from '../native-bridge/client';
 const MAX_TOOLBAR_COMMANDS = 64;
 
 /**
- * What the selection toolbar offers: whether it shows, the apps it skips, and the enabled commands
+ * What the selection toolbar offers: whether it shows, which selections bring it up, the apps it
+ * skips, and the enabled commands
  * that read the selection, in command-list order. A click on one runs it like its shortcut
  * (`shortcut.command`), so only the id and the name the button shows cross.
  */
@@ -16,6 +17,9 @@ export function toolbarParams(
 ): CallParams<'toolbar.set'> {
   return {
     enabled: settings.enabled,
+    activation: settings.activation,
+    activationKeys: settings.activationKeys,
+    showHud: settings.showHud,
     excludedBundleIds: settings.excludedApps.map((app) => app.bundleId),
     commands: commands
       .filter((command) => command.enabled && command.input.source === 'selection')
