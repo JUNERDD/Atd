@@ -15,7 +15,7 @@ settings:
     ARCHS: arm64
     SWIFT_VERSION: '6.0'
     SWIFT_STRICT_CONCURRENCY: complete
-    MARKETING_VERSION: 0.5.0
+    MARKETING_VERSION: 0.6.0
     # Sparkle compares CFBundleVersion with an update's `sparkle:version`, so the build number
     # follows the release version instead of staying constant.
     CURRENT_PROJECT_VERSION: $(MARKETING_VERSION)
