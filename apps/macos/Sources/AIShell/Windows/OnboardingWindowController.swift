@@ -6,11 +6,10 @@ import WebKit
 /// the cursor, menu bar and Dock included. The page draws the scrim, opening page and card; under
 /// them the shell lays the panel's and Settings' window material (``GlassBackground``), placed,
 /// rounded and shown as the page reports its surface (`onboarding.surface`: the opening page's
-/// whole box, then the card's, to which it shrinks on the hand-off), since a page cannot draw the
-/// desktop's glass itself. There is no title bar or window shadow. It stays above the menu bar
-/// while the intro plays and drops to a normal window on ``settle()``. The window owns its
-/// renderer web view (loaded at `#onboarding`); closing releases both, and opening again builds
-/// fresh ones.
+/// whole box, then the card's), since a page cannot draw the desktop's glass itself. There is no
+/// title bar or window shadow. It stays above the menu bar while the intro plays and drops to a
+/// normal window on ``settle()``. The window owns its renderer web view (loaded at `#onboarding`);
+/// closing releases both, and opening again builds fresh ones.
 /// When it opens is the panel page's decision (`onboarding.open`), or the user's through the
 /// Welcome Guide menu item.
 final class OnboardingWindowController: NSObject, NSWindowDelegate {
@@ -32,8 +31,6 @@ final class OnboardingWindowController: NSObject, NSWindowDelegate {
   private static let settleDeadline: Duration = .seconds(12)
   /// How long the glass takes to fade in on a surface's first rect, and out on `null`.
   private static let surfaceFade: TimeInterval = 0.25
-  /// How long shown glass takes to travel to the rect of a surface taking it over (`morph`).
-  private static let surfaceMorph: TimeInterval = 0.5
 
   init(makeHost: @escaping () -> WebViewHost) {
     self.makeHost = makeHost
@@ -123,11 +120,9 @@ final class OnboardingWindowController: NSObject, NSWindowDelegate {
   }
 
   /// Lays the glass under the surface the guide's page reports (`onboarding.surface`), in CSS
-  /// pixels from its web view's top-left. A rect that finds the glass hidden places it there and
-  /// fades it in, whatever its `morph`. On shown glass, a `morph` rect (a surface taking the glass
-  /// over from another) carries it there over ``surfaceMorph``, unless Reduce Motion is on; any
-  /// other rect moves it at once. `null` fades it out. Other pages' posts, non-finite values and
-  /// an empty rect (after clamping to the web view) are ignored.
+  /// pixels from its web view's top-left: the first rect fades it in, later ones move it at once,
+  /// and `null` fades it out. Other pages' posts, non-finite values and an empty rect (after clamping
+  /// to the web view) are ignored.
   func setSurface(_ post: OnboardingSurfacePost, from sender: WebViewHost) {
     guard sender === host, let surface, let stage = surface.superview else { return }
     guard let rect = post.rect else {
@@ -140,16 +135,8 @@ final class OnboardingWindowController: NSObject, NSWindowDelegate {
       let inView = Self.viewRect(
         CGRect(x: rect.x, y: rect.y, width: rect.width, height: rect.height), in: webView)
     else { return }
-    let frame = webView.convert(inView, to: stage)
-    let radius = post.radius * webView.pageZoom * webView.magnification
-    if surfaceShown, post.morph, !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
-      morph(surface, to: frame, radius: radius)
-    } else {
-      // Setting a property directly stops the animator animation running on it, so a morph still
-      // in flight cannot carry the glass back toward its older rect afterwards.
-      surface.frame = frame
-      surface.cornerRadius = radius
-    }
+    surface.frame = webView.convert(inView, to: stage)
+    surface.cornerRadius = post.radius * webView.pageZoom * webView.magnification
     if !surfaceShown { fade(surface, to: 1) }
     surfaceShown = true
   }
@@ -181,18 +168,6 @@ final class OnboardingWindowController: NSObject, NSWindowDelegate {
       : CGRect(
         x: local.minX, y: webView.bounds.height - local.maxY, width: local.width,
         height: local.height)
-  }
-
-  /// Carries the glass to `frame` with a decelerating curve, its corners along with it: the
-  /// glass view gives `cornerRadius` a default animation, as views do their frame, so the
-  /// animator rounds the corners from the opening page's square ones as the glass shrinks.
-  private func morph(_ view: NSGlassEffectView, to frame: CGRect, radius: CGFloat) {
-    NSAnimationContext.runAnimationGroup { context in
-      context.duration = Self.surfaceMorph
-      context.timingFunction = CAMediaTimingFunction(controlPoints: 0.2, 0, 0, 1)
-      view.animator().frame = frame
-      view.animator().cornerRadius = radius
-    }
   }
 
   private func fade(_ view: NSView, to alpha: CGFloat) {

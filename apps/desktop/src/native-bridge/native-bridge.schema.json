@@ -1208,7 +1208,7 @@
             },
             "params": {
               "type": "object",
-              "required": ["rect", "radius", "morph"],
+              "required": ["rect", "radius"],
               "properties": {
                 "rect": {
                   "anyOf": [
@@ -1243,9 +1243,6 @@
                 "radius": {
                   "type": "number",
                   "minimum": 0
-                },
-                "morph": {
-                  "type": "boolean"
                 }
               },
               "additionalProperties": false
@@ -3321,7 +3318,7 @@
     },
     "OnboardingSurfacePost": {
       "type": "object",
-      "required": ["rect", "radius", "morph"],
+      "required": ["rect", "radius"],
       "properties": {
         "rect": {
           "anyOf": [
@@ -3356,9 +3353,6 @@
         "radius": {
           "type": "number",
           "minimum": 0
-        },
-        "morph": {
-          "type": "boolean"
         }
       },
       "additionalProperties": false

@@ -15,8 +15,9 @@ function sameRect(a: SurfaceRect | null, b: SurfaceRect): boolean {
 
 /**
  * The surface that last placed the guide's glass. The shell has one glass for the whole guide, so
- * a surface takes it over by reporting its own rect, and only the current holder may take it away:
- * a page that stops after another surface took over must not clear that surface's glass.
+ * a surface takes it over by reporting its own rect (the shell moves shown glass at once), and only
+ * the current holder may take it away: a page that stops after another surface took over must not
+ * clear that surface's glass.
  */
 let holder: object | null = null;
 
@@ -24,9 +25,7 @@ let holder: object | null = null;
  * Reports a surface (the opening page's or the card's) to the shell (`onboarding.surface`) while
  * `active`, so the shell lays the panel's and Settings' window glass under it: on activation and
  * after every resize of the surface or the window. When it stops (the guide starts closing, or the
- * surface unmounts) it sends `null`, unless another surface has taken the glass since. Its first
- * rect asks the shell to morph the glass from where it is (`morph`) when it takes the glass over
- * from another surface still holding it; every later rect, and `null`, moves it at once. A changed
+ * surface unmounts) it sends `null`, unless another surface has taken the glass since. A changed
  * box is sampled once per frame until two samples agree, so a box still moving under an entrance
  * transform, which ResizeObserver does not see, is sent only at rest. Without the shell's bridge it
  * does nothing.
@@ -53,11 +52,9 @@ export function useNativeSurface(
       }
       frame = 0;
       if (sameRect(sent, next)) return;
-      // Only the first rect can be a hand-off: later ones follow this surface's own resizes.
-      const morph = sent === null && holder !== null && holder !== self;
       sent = next;
       holder = self;
-      bridge.surface(next, radius, morph);
+      bridge.surface(next, radius);
     };
     const schedule = () => {
       if (frame) return;
@@ -74,7 +71,7 @@ export function useNativeSurface(
       window.removeEventListener('resize', schedule);
       if (holder !== self) return;
       holder = null;
-      bridge.surface(null, radius, false);
+      bridge.surface(null, radius);
     };
   }, [surface, active, radius]);
 }
