@@ -168,11 +168,9 @@ export interface OnboardingBridge {
   /**
    * Where the guide's glass surface is (the opening page's or the card's), in CSS pixels from the
    * viewport's top-left, with its corner radius, so the shell lays the window glass under it;
-   * `null` hides that glass. `morph` asks the shell to move shown glass to `rect` over the
-   * hand-off animation rather than at once: true only on a surface's first rect after taking the
-   * glass over from another surface (`onboarding.surface`).
+   * `null` hides that glass.
    */
-  surface: (rect: SurfaceRect | null, radius: number, morph: boolean) => void;
+  surface: (rect: SurfaceRect | null, radius: number) => void;
   /**
    * Text selected in the selection step's practice area, with its bounding box in CSS pixels from
    * the viewport's top-left, so the shell shows the real selection toolbar beside it; `null` hides
