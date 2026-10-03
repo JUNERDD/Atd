@@ -49,7 +49,7 @@ function useBeginKeys(active: boolean, begin: () => void) {
 /**
  * The whole guide over the desktop: a full-viewport scrim (the window itself is transparent), the
  * opening page, then the card. The page's timeline starts when the stage mounts (the music's t=0
- * is `INTRO.lightAt` later), and the page stays until the person begins: then it leaves as the
+ * is `INTRO.musicAt` later), and the page stays until the person begins: then it leaves as the
  * card fades in, and once the card is at rest the shell is told to drop the window below the menu
  * bar (`settle`, exactly once). Closing fades the stage and the music, then asks the shell to
  * close.
@@ -62,9 +62,9 @@ export function OnboardingStage({
   goals: OnboardingGoals;
 }) {
   const reduced = useReducedMotion() ?? false;
-  // The music begins with the opening page's light, after the room has dimmed (at once under
-  // Reduce Motion), so its bloom lands with the light.
-  const [musicAt] = useState(() => performance.now() + (reduced ? 0 : INTRO.lightAt * 1000));
+  // The music begins as the room dims (at once under Reduce Motion), so its bloom lands with the
+  // opening page's light.
+  const [musicAt] = useState(() => performance.now() + (reduced ? 0 : INTRO.musicAt * 1000));
   const music = useOnboardingMusic(musicAt);
   const [phase, setPhase] = useState<Phase>('intro');
   const [closing, setClosing] = useState(false);

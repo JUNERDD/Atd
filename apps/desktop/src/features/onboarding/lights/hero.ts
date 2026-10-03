@@ -10,7 +10,7 @@ import type { LightDesign } from './light-design';
  *
  * Its entrance (`u_entrance`, from black): the dome opens from past the frame's corners to its
  * rest size while the ribbons stream in from both sides and slow to their drift, and the light
- * emerges, perceptually evenly, blooming softly as it lands.
+ * emerges, seen from the start and settling slowly, blooming softly as it lands.
  *
  * Cost: a lit pixel takes eight noises; pixels deep in the dome return after two.
  */
@@ -20,11 +20,11 @@ uniform vec2 u_center;
 uniform vec2 u_radius;
 
 vec3 light(vec2 f, vec2 p, float t) {
-  // The entrance's progress (past 1 once it is over, for the bloom to fade). The dome travels on
-  // smootherstep, like a slow dolly: no jolt as it starts, a long, soft landing.
+  // The entrance's progress (past 1 once it is over, for the bloom to fade). The dome opens on a
+  // decelerating cubic: under way at once, then a long, soft landing.
   float run = u_entrance > 0. ? t / u_entrance : 2.;
   float e = clamp(run, 0., 1.);
-  float settle = e * e * e * (e * (e * 6. - 15.) + 10.);
+  float settle = 1. - pow(1. - e, 3.);
 
   vec2 w = vec2(noise(p * .8 + vec2(t * .025, 0.)), noise(p * .8 + vec2(5.2, -t * .02))) - .5;
 
@@ -60,9 +60,9 @@ vec3 light(vec2 f, vec2 p, float t) {
   float edge = exp(-pow((d - 1.02) / .07, 2.)) * smoothstep(.35, .65, noise(vec2(along * .8 + t * .03, 7.)));
 
   // The exposure rises through the entrance and blooms softly as the light lands. The eye reads
-  // about the cube root of light, so for the light to feel as if it rises along an S-curve, its
-  // gain follows that curve cubed: nearly black for the first third, then an even emergence.
-  float rise = e * e * (3. - 2. * e);
+  // about the cube root of light, so for the light to feel as if it rises along an ease-out (seen
+  // from the start, settling slowly), its gain follows that curve cubed.
+  float rise = sin(e * TAU * .25);
   float bloom = .35 * exp(-pow((run - 1.) / .15, 2.));
   vec3 glow = col * ribbon * streaks * open * (.35 + 1.1 * near);
   glow += mix(col, u_rim.rgb, .75) * edge * ribbon * streaks * .9;

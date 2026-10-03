@@ -69,8 +69,8 @@ async function fetchTrack(context: AudioContext, signal: AbortSignal) {
 /**
  * The welcome guide's music (`assets/onboarding-theme.ts`), played through Web Audio so the bed
  * loops without a gap. `startedAt` (a `performance.now()` time) is the track's t=0, which may
- * still be ahead (the opening page starts the music when its light begins, after the room has
- * dimmed): playback is scheduled for it, and when loading finishes late it starts at the elapsed
+ * still be ahead (the opening page starts the music a moment into its dimming): playback is
+ * scheduled for it, and when loading finishes late it starts at the elapsed
  * offset, so the bloom at `revealAt` still lands where the opening page's light lands. The guide's
  * web view allows autoplay; a context that still starts suspended is asked to resume, and the
  * music starts once it runs.
