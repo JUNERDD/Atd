@@ -202,6 +202,31 @@
     "deleteAction": "Delete task",
     "emptyDescription": "Tasks you start from a command or a message appear here.",
     "noMatchesDescription": "Check the spelling or try a different search.",
+    "noModel": "No model",
+    "view": {
+      "label": "Sort and group",
+      "groupBy": "Group by",
+      "sortBy": "Sort by",
+      "groups": {
+        "date": "Date",
+        "status": "Status",
+        "model": "Model",
+        "none": "None"
+      },
+      "sorts": {
+        "updated": "Last updated",
+        "created": "Date created",
+        "title": "Title"
+      }
+    },
+    "statusSection": {
+      "needsInput": "Needs input",
+      "inProgress": "In progress",
+      "failed": "Failed or interrupted",
+      "stopped": "Stopped",
+      "completed": "Completed",
+      "draft": "Imported drafts"
+    },
     "section": {
       "today": "Today",
       "yesterday": "Yesterday",

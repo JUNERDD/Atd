@@ -202,6 +202,31 @@
     "deleteAction": "删除任务",
     "emptyDescription": "通过命令或消息开始的任务会显示在这里。",
     "noMatchesDescription": "请检查拼写，或换个关键词搜索。",
+    "noModel": "未使用模型",
+    "view": {
+      "label": "排序与分组",
+      "groupBy": "分组方式",
+      "sortBy": "排序方式",
+      "groups": {
+        "date": "日期",
+        "status": "状态",
+        "model": "模型",
+        "none": "不分组"
+      },
+      "sorts": {
+        "updated": "最近更新",
+        "created": "创建时间",
+        "title": "标题"
+      }
+    },
+    "statusSection": {
+      "needsInput": "需要输入",
+      "inProgress": "进行中",
+      "failed": "失败或中断",
+      "stopped": "已停止",
+      "completed": "已完成",
+      "draft": "导入的草稿"
+    },
     "section": {
       "today": "今天",
       "yesterday": "昨天",
