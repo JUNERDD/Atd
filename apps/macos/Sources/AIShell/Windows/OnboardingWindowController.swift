@@ -29,9 +29,6 @@ final class OnboardingWindowController: NSObject, NSWindowDelegate {
   /// failed to load, or threw) must not keep a window above the menu bar, so the shell settles
   /// it after this long regardless.
   private static let settleDeadline: Duration = .seconds(12)
-  /// How long the glass takes to fade in on a surface's first rect, and out on `null`.
-  private static let surfaceFade: TimeInterval = 0.25
-
   init(makeHost: @escaping () -> WebViewHost) {
     self.makeHost = makeHost
     super.init()
@@ -121,12 +118,13 @@ final class OnboardingWindowController: NSObject, NSWindowDelegate {
 
   /// Lays the glass under the surface the guide's page reports (`onboarding.surface`), in CSS
   /// pixels from its web view's top-left: the first rect fades it in, later ones move it at once,
-  /// and `null` fades it out. Other pages' posts, non-finite values and an empty rect (after clamping
-  /// to the web view) are ignored.
+  /// and `null` fades it out, each fade over the post's `fade` seconds (the page paces it with its
+  /// own timeline). Other pages' posts, non-finite values and an empty rect (after clamping to the
+  /// web view) are ignored.
   func setSurface(_ post: OnboardingSurfacePost, from sender: WebViewHost) {
     guard sender === host, let surface, let stage = surface.superview else { return }
     guard let rect = post.rect else {
-      if surfaceShown { fade(surface, to: 0) }
+      if surfaceShown { fade(surface, to: 0, over: post.fade) }
       surfaceShown = false
       return
     }
@@ -137,7 +135,7 @@ final class OnboardingWindowController: NSObject, NSWindowDelegate {
     else { return }
     surface.frame = webView.convert(inView, to: stage)
     surface.cornerRadius = post.radius * webView.pageZoom * webView.magnification
-    if !surfaceShown { fade(surface, to: 1) }
+    if !surfaceShown { fade(surface, to: 1, over: post.fade) }
     surfaceShown = true
   }
 
@@ -170,9 +168,10 @@ final class OnboardingWindowController: NSObject, NSWindowDelegate {
         height: local.height)
   }
 
-  private func fade(_ view: NSView, to alpha: CGFloat) {
+  private func fade(_ view: NSView, to alpha: CGFloat, over duration: TimeInterval) {
     NSAnimationContext.runAnimationGroup { context in
-      context.duration = Self.surfaceFade
+      context.duration = duration
+      context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
       view.animator().alphaValue = alpha
     }
   }

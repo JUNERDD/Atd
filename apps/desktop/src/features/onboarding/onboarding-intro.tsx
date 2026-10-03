@@ -57,11 +57,11 @@ function emerge(reduced: boolean, at: number) {
 
 /**
  * The guide's opening page, over the scrim (and over the card while it leaves), paced like a
- * cinema (`INTRO`): while the stage dims the room, the window glass the other windows have arrives
- * under the dimming (the shell lays it under the whole page, `useNativeSurface`, so the desktop
- * shows through blurred, until the arriving card takes it over as the page leaves), and the
- * horizon light emerges with the music, landing on its bloom as the room reaches its dark; as it
- * settles the badge appears, the title and description are written in by the light
+ * cinema (`INTRO`): as the stage dims the room, the window glass the other windows have dissolves
+ * in with the dimming (the shell lays it under the whole page, `useNativeSurface`, so the desktop
+ * goes out of focus as it darkens, until the arriving card takes it over as the page leaves), and
+ * the horizon light emerges with the music, landing on its bloom as the room reaches its dark; as
+ * it settles the badge appears, the title and description are written in by the light
  * (`HeroFlowText`), and the start button and its hint rise last. It stays until the person begins
  * (the button, or Return, Space or Esc, which the stage handles), with the music toggle in the
  * corner. Under Reduce Motion the light is a still frame and everything fades in at once.
@@ -77,8 +77,9 @@ export function OnboardingIntro({
 }) {
   const { t } = useTranslation('onboarding');
   const page = useRef<HTMLDivElement>(null);
-  // The page keeps the glass while it leaves, until the arriving card takes it over.
-  useNativeSurface(page, useAfter(reduced ? 0 : INTRO.glassAt), 0);
+  // The glass dissolves in with the dimming, over the same time, so the desktop goes out of focus
+  // as the room darkens; the page keeps it while it leaves, until the arriving card takes it over.
+  useNativeSurface(page, true, 0, reduced ? INTRO_REDUCED.scrimIn : INTRO.scrimIn);
   // Mounted when it begins, so its own clock starts its entrance from black there.
   const lit = useAfter(reduced ? INTRO_REDUCED.lightAt : INTRO.lightAt);
   return (

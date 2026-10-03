@@ -81,27 +81,32 @@ public struct WindowDragRegionsPost: Codable, Equatable, Sendable {
 public struct OnboardingSurfacePost: Codable, Equatable, Sendable {
   public let rect: Rect?
   public let radius: Double
+  public let fade: Double
 
-  public init(rect: Rect?, radius: Double) {
+  public init(rect: Rect?, radius: Double, fade: Double) {
     self.rect = rect
     self.radius = radius
+    self.fade = fade
   }
 
   public init(from decoder: any Decoder) throws {
     let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
     rect = try container.nullable(.rect) { try container.value($0, Rect.self) }
     radius = try container.number(.radius, minimum: 0)
+    fade = try container.number(.fade, minimum: 0)
   }
 
   public func encode(to encoder: any Encoder) throws {
     var container = encoder.container(keyedBy: CodingKeys.self)
     try container.encode(rect, forKey: .rect)
     try container.encode(radius, forKey: .radius)
+    try container.encode(fade, forKey: .fade)
   }
 
   private enum CodingKeys: String, CodingKey, CaseIterable {
     case rect
     case radius
+    case fade
   }
 
   public struct Rect: Codable, Equatable, Sendable {

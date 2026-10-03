@@ -25,15 +25,17 @@ let holder: object | null = null;
  * Reports a surface (the opening page's or the card's) to the shell (`onboarding.surface`) while
  * `active`, so the shell lays the panel's and Settings' window glass under it: on activation and
  * after every resize of the surface or the window. When it stops (the guide starts closing, or the
- * surface unmounts) it sends `null`, unless another surface has taken the glass since. A changed
- * box is sampled once per frame until two samples agree, so a box still moving under an entrance
- * transform, which ResizeObserver does not see, is sent only at rest. Without the shell's bridge it
- * does nothing.
+ * surface unmounts) it sends `null`, unless another surface has taken the glass since. Hidden glass
+ * fades in, and `null` fades it out, over `fade` seconds; glass already shown moves at once. A
+ * changed box is sampled once per frame until two samples agree, so a box still moving under an
+ * entrance transform, which ResizeObserver does not see, is sent only at rest. Without the shell's
+ * bridge it does nothing.
  */
 export function useNativeSurface(
   surface: RefObject<HTMLElement | null>,
   active: boolean,
   radius: number,
+  fade: number,
 ) {
   useEffect(() => {
     const bridge = window.desktop?.onboarding;
@@ -54,7 +56,7 @@ export function useNativeSurface(
       if (sameRect(sent, next)) return;
       sent = next;
       holder = self;
-      bridge.surface(next, radius);
+      bridge.surface(next, radius, fade);
     };
     const schedule = () => {
       if (frame) return;
@@ -71,7 +73,7 @@ export function useNativeSurface(
       window.removeEventListener('resize', schedule);
       if (holder !== self) return;
       holder = null;
-      bridge.surface(null, radius);
+      bridge.surface(null, radius, fade);
     };
-  }, [surface, active, radius]);
+  }, [surface, active, radius, fade]);
 }

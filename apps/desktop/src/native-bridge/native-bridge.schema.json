@@ -1208,7 +1208,7 @@
             },
             "params": {
               "type": "object",
-              "required": ["rect", "radius"],
+              "required": ["rect", "radius", "fade"],
               "properties": {
                 "rect": {
                   "anyOf": [
@@ -1241,6 +1241,10 @@
                   ]
                 },
                 "radius": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "fade": {
                   "type": "number",
                   "minimum": 0
                 }
@@ -3318,7 +3322,7 @@
     },
     "OnboardingSurfacePost": {
       "type": "object",
-      "required": ["rect", "radius"],
+      "required": ["rect", "radius", "fade"],
       "properties": {
         "rect": {
           "anyOf": [
@@ -3351,6 +3355,10 @@
           ]
         },
         "radius": {
+          "type": "number",
+          "minimum": 0
+        },
+        "fade": {
           "type": "number",
           "minimum": 0
         }
