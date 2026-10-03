@@ -59,13 +59,22 @@ export const NativePosts = {
     { additionalProperties: false },
   ),
   /**
-   * The welcome guide card's surface in CSS pixels from the web view's top-left, and its corner
-   * radius; the shell lays the window material (the panel's and Settings' glass) under it. Sent
-   * once the card is at rest and on every resize; `null` once the guide starts closing and on
-   * teardown. The shell takes it only from the guide's own web view.
+   * The welcome guide's glass surface in CSS pixels from the web view's top-left, and its corner
+   * radius; the shell lays the window material (the panel's and Settings' glass) under it. The
+   * opening page sends its whole box (radius 0); the card takes the glass over by sending its own
+   * once its entrance is at rest, then on every resize, and `null` once the guide starts closing
+   * and on teardown. `morph` is true only on a surface's first rect after taking the glass over
+   * from another surface still holding it: the shown glass then travels to this rect over the
+   * hand-off animation (at once under Reduce Motion) instead of moving at once. It is false on
+   * every other rect and on `null`, and a rect that finds the glass hidden fades it in in place
+   * either way. The shell takes it only from the guide's own web view.
    */
   'onboarding.surface': Type.Object(
-    { rect: Type.Union([GuideRectSchema, Type.Null()]), radius: Type.Number({ minimum: 0 }) },
+    {
+      rect: Type.Union([GuideRectSchema, Type.Null()]),
+      radius: Type.Number({ minimum: 0 }),
+      morph: Type.Boolean(),
+    },
     { additionalProperties: false },
   ),
   /**
