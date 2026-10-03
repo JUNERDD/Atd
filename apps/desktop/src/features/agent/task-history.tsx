@@ -42,6 +42,7 @@ import type { AgentTask } from '../../client/agent/task-schema';
 import { isActive } from '../../client/agent/task-schema';
 import { IconButton } from '../../components/icon-button';
 import { agentApi } from './use-agent';
+import { forgetComposerMemory } from './use-composer-memory';
 import { SettingsSearchField } from '../settings/settings-search-field';
 import { historySections, type HistoryPeriod } from './history-sections';
 import { RenameTaskDialog } from './rename-task-dialog';
@@ -299,10 +300,13 @@ export function TaskHistory({
             <AlertDialogAction
               variant="destructive"
               onClick={() => {
-                if (deleting)
+                if (deleting) {
+                  const { id } = deleting.task;
                   void agentApi()
-                    .deleteTask(deleting.task.id)
+                    .deleteTask(id)
+                    .then(() => forgetComposerMemory(id))
                     .catch((error) => setError(messageOf(error)));
+                }
               }}
             >
               {t('history.deleteAction')}

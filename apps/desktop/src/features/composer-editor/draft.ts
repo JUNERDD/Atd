@@ -186,6 +186,11 @@ export function sameContent(a: ComposerDraft, b: ComposerDraft): boolean {
   );
 }
 
+/** Whether the draft holds nothing a send could use: only whitespace, and no chips. */
+export function isEmptyDraft(draft: ComposerDraft): boolean {
+  return !draft.text.trim() && draft.chips.length === 0;
+}
+
 /**
  * Skill names of the draft's skill chips, each once, in draft order, up to the contract's cap.
  * Submit stages them as `policy.skills`, so a chip repeated in the text loads its skill once.
