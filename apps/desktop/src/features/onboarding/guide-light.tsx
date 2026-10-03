@@ -42,7 +42,7 @@ function useCappedClock(ref: RefObject<PaperShaderElement | null>, start: number
       if (now - last < FRAME_MS - 2) return;
       clock += Math.min(now - last, MAX_STEP_MS);
       last = now;
-      // Paper sets the mount up once it has processed the uniforms, a moment after the first render.
+      // Paper sets the mount up once it has processed the uniforms, just after the first render.
       ref.current?.paperShaderMount?.setFrame(clock);
     }
     frame = requestAnimationFrame(tick);

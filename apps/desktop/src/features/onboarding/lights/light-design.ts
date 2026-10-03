@@ -77,12 +77,25 @@ export function lightShader(design: LightDesign): string {
 }
 
 /**
- * The palette every light shares: cyan and indigo (cool), coral and peach (warm). It is the
- * artwork's own, like the colors of an image asset, not a theme token.
+ * The palette every light shares: cyan and indigo (cool), coral and peach (warm), and the rims'
+ * cyan-white. It is the artwork's own, like the colors of an image asset, not a theme token; the
+ * opening page's typewriter glow (`hero-flow-text.tsx`) takes its colors from it too.
  */
-export const LIGHT_COLORS = ['#1aa8c4', '#25307a', '#f0602f', '#ffb08f'].map(
-  getShaderColorFromString,
-);
+export const LIGHT_PALETTE = {
+  cyan: '#1aa8c4',
+  indigo: '#25307a',
+  coral: '#f0602f',
+  peach: '#ffb08f',
+  rim: '#bfeaf6',
+} as const;
 
-/** The rims' cyan-white. */
-export const LIGHT_RIM = getShaderColorFromString('#bfeaf6');
+/** The palette as the shaders' `u_colors`, in their order. */
+export const LIGHT_COLORS = [
+  LIGHT_PALETTE.cyan,
+  LIGHT_PALETTE.indigo,
+  LIGHT_PALETTE.coral,
+  LIGHT_PALETTE.peach,
+].map(getShaderColorFromString);
+
+/** The rims' cyan-white, as the shaders' `u_rim`. */
+export const LIGHT_RIM = getShaderColorFromString(LIGHT_PALETTE.rim);

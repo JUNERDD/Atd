@@ -5,7 +5,13 @@ import type { SettingsSnapshot } from '../../client/settings-contract';
 import { showErrorToast } from '../../components/toast-store';
 import { OnboardingCard } from './onboarding-card';
 import { OnboardingIntro } from './onboarding-intro';
-import { INTRO, INTRO_REDUCED, STAGE_FADE, STAGE_FADE_DURATION } from './onboarding-motion';
+import {
+  DIM_EASE,
+  INTRO,
+  INTRO_REDUCED,
+  STAGE_FADE,
+  STAGE_FADE_DURATION,
+} from './onboarding-motion';
 import type { OnboardingGoals } from './onboarding-types';
 import { OWNS_RETURN, closeOnboarding, settleOnboarding } from './use-onboarding-flow';
 import { useOnboardingMusic } from './use-onboarding-music';
@@ -20,7 +26,7 @@ type Phase = 'intro' | 'reveal' | 'settled';
 /** Seconds of the scrim's ramp to the card's level after the reveal. */
 const SCRIM_EASE = 0.8;
 
-/** Return and Space (outside controls that use them) and Esc begin the guide from the opening page. */
+/** Return and Space (outside controls that use them) and Esc begin the guide from the hero. */
 function useBeginKeys(active: boolean, begin: () => void) {
   const run = useEffectEvent(begin);
   useEffect(() => {
@@ -42,10 +48,11 @@ function useBeginKeys(active: boolean, begin: () => void) {
 
 /**
  * The whole guide over the desktop: a full-viewport scrim (the window itself is transparent), the
- * opening page, then the card. The page's timeline starts when the stage mounts, which is also the
- * music's t=0, and the page stays until the person begins: then it leaves as the card fades in,
- * and once the card is at rest the shell is told to drop the window below the menu bar (`settle`,
- * exactly once). Closing fades the stage and the music, then asks the shell to close.
+ * opening page, then the card. The page's timeline starts when the stage mounts (the music's t=0
+ * is `INTRO.lightAt` later), and the page stays until the person begins: then it leaves as the
+ * card fades in, and once the card is at rest the shell is told to drop the window below the menu
+ * bar (`settle`, exactly once). Closing fades the stage and the music, then asks the shell to
+ * close.
  */
 export function OnboardingStage({
   snapshot,
@@ -55,8 +62,10 @@ export function OnboardingStage({
   goals: OnboardingGoals;
 }) {
   const reduced = useReducedMotion() ?? false;
-  const [startedAt] = useState(() => performance.now());
-  const music = useOnboardingMusic(startedAt);
+  // The music begins with the opening page's light, after the room has dimmed (at once under
+  // Reduce Motion), so its bloom lands with the light.
+  const [musicAt] = useState(() => performance.now() + (reduced ? 0 : INTRO.lightAt * 1000));
+  const music = useOnboardingMusic(musicAt);
   const [phase, setPhase] = useState<Phase>('intro');
   const [closing, setClosing] = useState(false);
   const closingRef = useRef(false);
@@ -109,7 +118,11 @@ export function OnboardingStage({
         className="onboarding-scrim"
         initial={{ opacity: 0 }}
         animate={{ opacity: phase === 'intro' ? INTRO.scrimIntro : INTRO.scrimCard }}
-        transition={{ duration: phase === 'intro' ? INTRO.scrimIn : SCRIM_EASE, ease: 'easeInOut' }}
+        transition={
+          phase === 'intro'
+            ? { duration: reduced ? INTRO_REDUCED.scrimIn : INTRO.scrimIn, ease: DIM_EASE }
+            : { duration: SCRIM_EASE, ease: 'easeInOut' }
+        }
       />
       <AnimatePresence>
         {phase === 'intro' && (
