@@ -5,15 +5,35 @@ import {
   DEFAULT_SELECTION_TOOLBAR,
   MAX_EXCLUDED_APPS,
   type ExcludedApp,
+  type SelectionToolbarActivation,
+  type SelectionToolbarKey,
   type SelectionToolbarSettings,
   type SettingsSnapshot,
 } from '../../client/settings-contract';
 import { queryClient } from '../../lib/query-client';
 import { useSettingsSectionExit } from './settings-navigation';
+import { useActivationKeysCapture } from './use-activation-keys-capture';
 import { showSettingsSnapshot } from './use-settings';
 
-/** Where an error shows: under the switch, or under the excluded apps. */
-type ErrorOwner = 'toggle' | 'apps';
+/** Each activation key's accelerator part, in the order app shortcuts list modifiers. */
+const KEY_ACCELERATORS: [SelectionToolbarKey, string][] = [
+  ['command', 'Command'],
+  ['option', 'Alt'],
+  ['shift', 'Shift'],
+];
+
+/**
+ * An activation key combination as an accelerator (`Command+Alt`), so it reads and draws with the
+ * shortcut helpers (`shortcutKeys`, `useHeldKeys`) in the same order as the app's shortcuts.
+ */
+export function activationAccelerator(keys: readonly SelectionToolbarKey[]): string {
+  return KEY_ACCELERATORS.filter(([key]) => keys.includes(key))
+    .map(([, part]) => part)
+    .join('+');
+}
+
+/** Where an error shows: under the switch, the activation, the HUD switch, or the apps. */
+type ErrorOwner = 'toggle' | 'activation' | 'hud' | 'apps';
 
 /**
  * `apps` added to `current` in pick order: an app already listed (by bundle id) stays where it is,
@@ -29,9 +49,10 @@ export function withExcludedApps(
 }
 
 /**
- * The selection toolbar's settings on the General page. Every change saves the whole value through
- * the service, whose answer replaces the cached snapshot at once; one save runs at a time, and its
- * failure shows beside the control that caused it. The Accessibility grant is the shell's: the page
+ * The selection toolbar's settings on the General page and in the welcome guide. Every change
+ * saves the whole value through the service, whose answer replaces the cached snapshot at once;
+ * one save runs at a time, and its failure shows beside the control that caused it. The activation
+ * keys are recorded like a shortcut (`useActivationKeysCapture`) and save when released. The Accessibility grant is the shell's: the page
  * only reads it and opens the system's prompt and pane.
  */
 export function useSelectionToolbarSettings(snapshot: SettingsSnapshot | null) {
@@ -65,6 +86,20 @@ export function useSelectionToolbarSettings(snapshot: SettingsSnapshot | null) {
     } catch {
       setErrors({ [owner]: t('selectionToolbar.errors.save') });
     }
+  }
+
+  const capture = useActivationKeysCapture((result) => {
+    if ('invalid' in result)
+      setErrors({ activation: t('selectionToolbar.activation.errors.keys') });
+    else if (result.keys.join() !== value.activationKeys.join())
+      void save('activation', { ...value, activationKeys: result.keys });
+  });
+
+  function toggleRecording() {
+    if (capture.recording) return capture.cancel();
+    if (unavailable || pending) return;
+    setErrors({});
+    capture.start();
   }
 
   async function addApps() {
@@ -103,6 +138,13 @@ export function useSelectionToolbarSettings(snapshot: SettingsSnapshot | null) {
     /** False only once the shell reported it; null while unknown, which shows no warning. */
     trusted: snapshot?.accessibilityTrusted ?? null,
     setEnabled: (enabled: boolean) => void save('toggle', { ...value, enabled }),
+    setActivation: (activation: SelectionToolbarActivation) =>
+      void save('activation', { ...value, activation }),
+    setShowHud: (showHud: boolean) => void save('hud', { ...value, showHud }),
+    /** The activation keys record new keys (or stop recording). */
+    recordingKeys: capture.recording,
+    toggleRecording,
+    cancelRecording: capture.cancel,
     removeApp: (bundleId: string) =>
       void save('apps', {
         ...value,

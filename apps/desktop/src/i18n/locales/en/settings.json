@@ -68,6 +68,8 @@
       "subagents": "subagent subagents agent roles delegate specialist",
       "mcp": "mcp server servers tools model context protocol stdio http oauth",
       "selectionToolbar": "selection select text highlight toolbar popup popclip ask accessibility",
+      "selectionToolbarActivation": "hold key option command shift press twice toggle switch modifier activation trigger toolbar selection",
+      "selectionToolbarHud": "hud status overlay indicator toggle on off listening bottom screen drag hide",
       "selectionToolbarApps": "exclude excluded apps applications ignore block toolbar selection"
     }
   },
@@ -162,6 +164,29 @@
     "title": "Selection toolbar",
     "enabled": "Show toolbar when selecting text",
     "enabledDescription": "Ask Atd or run a selection command on text you select in other apps.",
+    "activation": {
+      "title": "Bring up the toolbar",
+      "description": "Choose whether any selection brings up the toolbar, or only one made with a key.",
+      "modeLabel": "How the toolbar comes up",
+      "modes": {
+        "always": "On any selection",
+        "hold": "Hold keys",
+        "toggle": "Press keys twice"
+      },
+      "hints": {
+        "always": "The toolbar appears whenever you select text.",
+        "hold": "Hold {{keys}} while you select text to bring up the toolbar.",
+        "toggle": "Press {{keys}} twice to turn the toolbar on or off for your selections. It starts off each time Atd opens."
+      },
+      "keysLabel": "Activation keys",
+      "errors": {
+        "keys": "Use ⌥ Option, ⌘ Command or ⇧ Shift, alone or together. Other keys would type while held, and ⌃ Control turns a click into a right-click."
+      }
+    },
+    "hud": {
+      "title": "Show status HUD",
+      "description": "While the toolbar is on, a small HUD near the bottom of the screen says so. Drag it anywhere, or hide it until the next time you turn the toolbar on."
+    },
     "accessibility": {
       "title": "Accessibility access needed",
       "description": "Atd needs Accessibility access to notice selected text. The toolbar starts working as soon as you allow it.",

@@ -54,7 +54,7 @@ export function nativeOnboarding(native: NativeBridge, messages: WindowMessages)
   return {
     close: async (summon) => void (await native.call('onboarding.close', { summon })),
     settle: async () => void (await native.call('onboarding.settle', {})),
-    surface: (rect, radius) => native.post('onboarding.surface', { rect, radius }),
+    surface: (rect, radius, fade) => native.post('onboarding.surface', { rect, radius, fade }),
     selection: (rect, text) => native.post('onboarding.selection', { rect, text }),
     onPanelVisibility: (listener) =>
       messages.listen((message) => {

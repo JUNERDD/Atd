@@ -3,18 +3,18 @@ import AppKit
 import WebKit
 
 /// The welcome guide's window: a transparent, borderless stage covering the whole display under
-/// the cursor, menu bar and Dock included. The page draws the scrim, intro and card; under the
-/// card the shell lays the panel's and Settings' window material (``GlassBackground``), placed,
-/// rounded and shown as the page reports the card's surface (`onboarding.surface`), since a page
-/// cannot draw the desktop's glass itself. There is no title bar or window shadow. It stays above
-/// the menu bar while the intro plays and drops to a normal window on ``settle()``. The window
-/// owns its renderer web view (loaded at `#onboarding`); closing releases both, and opening again
-/// builds fresh ones.
+/// the cursor, menu bar and Dock included. The page draws the scrim, opening page and card; under
+/// them the shell lays the panel's and Settings' window material (``GlassBackground``), placed,
+/// rounded and shown as the page reports its surface (`onboarding.surface`: the opening page's
+/// whole box, then the card's), since a page cannot draw the desktop's glass itself. There is no
+/// title bar or window shadow. It stays above the menu bar while the intro plays and drops to a
+/// normal window on ``settle()``. The window owns its renderer web view (loaded at `#onboarding`);
+/// closing releases both, and opening again builds fresh ones.
 /// When it opens is the panel page's decision (`onboarding.open`), or the user's through the
 /// Welcome Guide menu item.
 final class OnboardingWindowController: NSObject, NSWindowDelegate {
   private var window: NSWindow?
-  /// The card's glass, behind the page; hidden (alpha 0) until the page reports the card.
+  /// The guide's glass, behind the page; hidden (alpha 0) until the page reports a surface.
   private var surface: NSGlassEffectView?
   /// Whether the glass is shown or fading in, so only the first rect after a hide fades.
   private var surfaceShown = false
@@ -29,9 +29,6 @@ final class OnboardingWindowController: NSObject, NSWindowDelegate {
   /// failed to load, or threw) must not keep a window above the menu bar, so the shell settles
   /// it after this long regardless.
   private static let settleDeadline: Duration = .seconds(12)
-  /// How long the card's glass takes to fade in on the card's first rect, and out on `null`.
-  private static let surfaceFade: TimeInterval = 0.25
-
   init(makeHost: @escaping () -> WebViewHost) {
     self.makeHost = makeHost
     super.init()
@@ -108,7 +105,7 @@ final class OnboardingWindowController: NSObject, NSWindowDelegate {
     onClose?()
   }
 
-  /// The window's content: the card's glass, with the transparent page over it filling the stage
+  /// The window's content: the guide's glass, with the transparent page over it filling the stage
   /// edge to edge. The glass keeps the frame ``setSurface(_:from:)`` gives it.
   private static func stage(surface: NSView, page: NSView) -> NSView {
     let stage = NSView()
@@ -119,14 +116,15 @@ final class OnboardingWindowController: NSObject, NSWindowDelegate {
     return stage
   }
 
-  /// Lays the glass under the card the guide's page reports (`onboarding.surface`), in CSS pixels
-  /// from its web view's top-left: the first rect fades it in, later ones move it at once, and
-  /// `null` fades it out. Other pages' posts, non-finite values and an empty rect (after clamping
-  /// to the web view) are ignored.
+  /// Lays the glass under the surface the guide's page reports (`onboarding.surface`), in CSS
+  /// pixels from its web view's top-left: the first rect fades it in, later ones move it at once,
+  /// and `null` fades it out, each fade over the post's `fade` seconds (the page paces it with its
+  /// own timeline). Other pages' posts, non-finite values and an empty rect (after clamping to the
+  /// web view) are ignored.
   func setSurface(_ post: OnboardingSurfacePost, from sender: WebViewHost) {
     guard sender === host, let surface, let stage = surface.superview else { return }
     guard let rect = post.rect else {
-      if surfaceShown { fade(surface, to: 0) }
+      if surfaceShown { fade(surface, to: 0, over: post.fade) }
       surfaceShown = false
       return
     }
@@ -137,7 +135,7 @@ final class OnboardingWindowController: NSObject, NSWindowDelegate {
     else { return }
     surface.frame = webView.convert(inView, to: stage)
     surface.cornerRadius = post.radius * webView.pageZoom * webView.magnification
-    if !surfaceShown { fade(surface, to: 1) }
+    if !surfaceShown { fade(surface, to: 1, over: post.fade) }
     surfaceShown = true
   }
 
@@ -170,9 +168,10 @@ final class OnboardingWindowController: NSObject, NSWindowDelegate {
         height: local.height)
   }
 
-  private func fade(_ view: NSView, to alpha: CGFloat) {
+  private func fade(_ view: NSView, to alpha: CGFloat, over duration: TimeInterval) {
     NSAnimationContext.runAnimationGroup { context in
-      context.duration = Self.surfaceFade
+      context.duration = duration
+      context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
       view.animator().alphaValue = alpha
     }
   }

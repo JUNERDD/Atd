@@ -68,10 +68,12 @@ async function fetchTrack(context: AudioContext, signal: AbortSignal) {
 
 /**
  * The welcome guide's music (`assets/onboarding-theme.ts`), played through Web Audio so the bed
- * loops without a gap. `startedAt` (a `performance.now()` time, when the stage mounted) is the
- * track's t=0: when loading finishes late, playback starts at the elapsed offset, so the bloom at
- * `revealAt` still lands on the card's reveal. The guide's web view allows autoplay; a context
- * that still starts suspended is asked to resume, and the music starts once it runs.
+ * loops without a gap. `startedAt` (a `performance.now()` time) is the track's t=0, which may
+ * still be ahead (the opening page starts the music a moment into its dimming): playback is
+ * scheduled for it, and when loading finishes late it starts at the elapsed
+ * offset, so the bloom at `revealAt` still lands where the opening page's light lands. The guide's
+ * web view allows autoplay; a context that still starts suspended is asked to resume, and the
+ * music starts once it runs.
  *
  * Two gain stages keep the envelopes apart: `fade` carries the fade-in and the closing fade-out,
  * `mute` the toggle, so muting during a fade neither cuts nor restarts it.
@@ -110,8 +112,9 @@ export function useOnboardingMusic(startedAt: number): OnboardingMusic {
         source.loopEnd = ONBOARDING_THEME.loopEnd;
         source.connect(fade);
         const latency = Number.isFinite(context.outputLatency) ? context.outputLatency : 0;
-        const at = context.currentTime + LEAD;
         const elapsed = (performance.now() - startedAt) / 1000 + LEAD + latency;
+        // A track whose t=0 is still ahead waits for it; one already under way joins in time.
+        const at = context.currentTime + LEAD + Math.max(0, -elapsed);
         fade.gain.setValueAtTime(0, at);
         fade.gain.linearRampToValueAtTime(1, at + FADE_IN);
         source.start(at, trackPosition(elapsed));

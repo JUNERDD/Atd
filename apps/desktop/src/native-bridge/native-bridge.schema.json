@@ -935,9 +935,56 @@
             },
             "params": {
               "type": "object",
-              "required": ["enabled", "excludedBundleIds", "commands"],
+              "required": [
+                "enabled",
+                "activation",
+                "activationKeys",
+                "showHud",
+                "excludedBundleIds",
+                "commands"
+              ],
               "properties": {
                 "enabled": {
+                  "type": "boolean"
+                },
+                "activation": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "const": "always"
+                    },
+                    {
+                      "type": "string",
+                      "const": "hold"
+                    },
+                    {
+                      "type": "string",
+                      "const": "toggle"
+                    }
+                  ]
+                },
+                "activationKeys": {
+                  "type": "array",
+                  "items": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "const": "option"
+                      },
+                      {
+                        "type": "string",
+                        "const": "command"
+                      },
+                      {
+                        "type": "string",
+                        "const": "shift"
+                      }
+                    ]
+                  },
+                  "minItems": 1,
+                  "maxItems": 3
+                },
+                "showHud": {
                   "type": "boolean"
                 },
                 "excludedBundleIds": {
@@ -1161,7 +1208,7 @@
             },
             "params": {
               "type": "object",
-              "required": ["rect", "radius"],
+              "required": ["rect", "radius", "fade"],
               "properties": {
                 "rect": {
                   "anyOf": [
@@ -1194,6 +1241,10 @@
                   ]
                 },
                 "radius": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "fade": {
                   "type": "number",
                   "minimum": 0
                 }
@@ -3072,9 +3123,56 @@
     },
     "ToolbarSetParams": {
       "type": "object",
-      "required": ["enabled", "excludedBundleIds", "commands"],
+      "required": [
+        "enabled",
+        "activation",
+        "activationKeys",
+        "showHud",
+        "excludedBundleIds",
+        "commands"
+      ],
       "properties": {
         "enabled": {
+          "type": "boolean"
+        },
+        "activation": {
+          "anyOf": [
+            {
+              "type": "string",
+              "const": "always"
+            },
+            {
+              "type": "string",
+              "const": "hold"
+            },
+            {
+              "type": "string",
+              "const": "toggle"
+            }
+          ]
+        },
+        "activationKeys": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "option"
+              },
+              {
+                "type": "string",
+                "const": "command"
+              },
+              {
+                "type": "string",
+                "const": "shift"
+              }
+            ]
+          },
+          "minItems": 1,
+          "maxItems": 3
+        },
+        "showHud": {
           "type": "boolean"
         },
         "excludedBundleIds": {
@@ -3224,7 +3322,7 @@
     },
     "OnboardingSurfacePost": {
       "type": "object",
-      "required": ["rect", "radius"],
+      "required": ["rect", "radius", "fade"],
       "properties": {
         "rect": {
           "anyOf": [
@@ -3257,6 +3355,10 @@
           ]
         },
         "radius": {
+          "type": "number",
+          "minimum": 0
+        },
+        "fade": {
           "type": "number",
           "minimum": 0
         }

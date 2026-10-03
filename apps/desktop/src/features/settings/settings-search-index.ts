@@ -99,6 +99,22 @@ export const settingsSearchEntries: readonly SettingsSearchEntry[] = [
     keywords: 'search.keywords.selectionToolbar',
   },
   {
+    id: 'selection-toolbar-activation',
+    section: 'general',
+    anchor: 'settings-selection-toolbar-activation',
+    label: 'selectionToolbar.activation.title',
+    description: 'selectionToolbar.activation.description',
+    keywords: 'search.keywords.selectionToolbarActivation',
+  },
+  {
+    id: 'selection-toolbar-hud',
+    section: 'general',
+    anchor: 'settings-selection-toolbar-hud',
+    label: 'selectionToolbar.hud.title',
+    description: 'selectionToolbar.hud.description',
+    keywords: 'search.keywords.selectionToolbarHud',
+  },
+  {
     id: 'selection-toolbar-apps',
     section: 'general',
     anchor: 'settings-selection-toolbar-apps',

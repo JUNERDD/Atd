@@ -7,6 +7,9 @@ import { nativeToolbar, toolbarParams } from './native-toolbar';
 const settings: SelectionToolbarSettings = {
   enabled: true,
   excludedApps: [{ bundleId: 'com.apple.Terminal', name: 'Terminal' }],
+  activation: 'hold',
+  activationKeys: ['option'],
+  showHud: true,
 };
 
 /** A shell that answers every `toolbar.set` and records what it took. */
@@ -23,6 +26,9 @@ describe('selection toolbar push', () => {
     extract.enabled = false;
     expect(toolbarParams(settings, commands)).toEqual({
       enabled: true,
+      activation: 'hold',
+      activationKeys: ['option'],
+      showHud: true,
       excludedBundleIds: ['com.apple.Terminal'],
       // Summarize reads its input by hand, so it is not a selection command.
       commands: [

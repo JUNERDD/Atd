@@ -307,7 +307,9 @@ public final class ShellController {
       restartService: { try await services.restart() },
       showServiceLogs: { try services.revealLogs() },
       editCommand: { [weak self] command in self?.sendEditCommand(command) },
-      developmentHint: { [weak self] in self?.menuStatus.developmentHint ?? false })
+      developmentHint: { [weak self] in self?.menuStatus.developmentHint ?? false },
+      selectionListening: { [weak self] in self?.toolbar.isListening },
+      setSelectionListening: { [weak self] on in self?.toolbar.setListening(on) })
   }
 
   /// Undo and Redo go to the page of the key window, which runs them in its editor.

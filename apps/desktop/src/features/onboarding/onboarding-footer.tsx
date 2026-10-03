@@ -44,14 +44,17 @@ export function OnboardingFooter({
               {t('chrome.later')}
             </Button>
           )}
-          <Button
-            type="button"
-            disabled={pending}
-            aria-describedby={pending ? noteId : undefined}
-            onClick={onPrimary}
-          >
-            {primaryLabel}
-          </Button>
+          {/* Hugs the primary, so it shows the not-allowed cursor while the button is disabled. */}
+          <span className="onboarding-footer-primary">
+            <Button
+              type="button"
+              disabled={pending}
+              aria-describedby={pending ? noteId : undefined}
+              onClick={onPrimary}
+            >
+              {primaryLabel}
+            </Button>
+          </span>
         </div>
       </div>
     </footer>

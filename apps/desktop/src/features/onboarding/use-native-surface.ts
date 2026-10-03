@@ -14,22 +14,34 @@ function sameRect(a: SurfaceRect | null, b: SurfaceRect): boolean {
 }
 
 /**
- * Reports the card's surface to the shell (`onboarding.surface`) while `active`, so the shell lays
- * the panel's and Settings' window glass under it: on activation and after every resize of the
- * surface or the window, then `null` when it stops (the guide starts closing, or the card
- * unmounts). A changed box is sampled once per frame until two samples agree, so a box still
- * moving under an entrance transform, which ResizeObserver does not see, is sent only at rest.
- * Without the shell's bridge it does nothing.
+ * The surface that last placed the guide's glass. The shell has one glass for the whole guide, so
+ * a surface takes it over by reporting its own rect (the shell moves shown glass at once), and only
+ * the current holder may take it away: a page that stops after another surface took over must not
+ * clear that surface's glass.
+ */
+let holder: object | null = null;
+
+/**
+ * Reports a surface (the opening page's or the card's) to the shell (`onboarding.surface`) while
+ * `active`, so the shell lays the panel's and Settings' window glass under it: on activation and
+ * after every resize of the surface or the window. When it stops (the guide starts closing, or the
+ * surface unmounts) it sends `null`, unless another surface has taken the glass since. Hidden glass
+ * fades in, and `null` fades it out, over `fade` seconds; glass already shown moves at once. A
+ * changed box is sampled once per frame until two samples agree, so a box still moving under an
+ * entrance transform, which ResizeObserver does not see, is sent only at rest. Without the shell's
+ * bridge it does nothing.
  */
 export function useNativeSurface(
   surface: RefObject<HTMLElement | null>,
   active: boolean,
   radius: number,
+  fade: number,
 ) {
   useEffect(() => {
     const bridge = window.desktop?.onboarding;
     const element = surface.current;
     if (!active || !bridge || !element) return;
+    const self = {};
     let frame = 0;
     let previous: SurfaceRect | null = null;
     let sent: SurfaceRect | null = null;
@@ -43,7 +55,8 @@ export function useNativeSurface(
       frame = 0;
       if (sameRect(sent, next)) return;
       sent = next;
-      bridge.surface(next, radius);
+      holder = self;
+      bridge.surface(next, radius, fade);
     };
     const schedule = () => {
       if (frame) return;
@@ -58,7 +71,9 @@ export function useNativeSurface(
       cancelAnimationFrame(frame);
       observer.disconnect();
       window.removeEventListener('resize', schedule);
-      bridge.surface(null, radius);
+      if (holder !== self) return;
+      holder = null;
+      bridge.surface(null, radius, fade);
     };
-  }, [surface, active, radius]);
+  }, [surface, active, radius, fade]);
 }

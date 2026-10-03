@@ -59,13 +59,20 @@ export const NativePosts = {
     { additionalProperties: false },
   ),
   /**
-   * The welcome guide card's surface in CSS pixels from the web view's top-left, and its corner
-   * radius; the shell lays the window material (the panel's and Settings' glass) under it. Sent
-   * once the card is at rest and on every resize; `null` once the guide starts closing and on
-   * teardown. The shell takes it only from the guide's own web view.
+   * The welcome guide's glass surface in CSS pixels from the web view's top-left, and its corner
+   * radius; the shell lays the window material (the panel's and Settings' glass) under it. The
+   * opening page sends its whole box (radius 0); the card takes the glass over by sending its own
+   * once its entrance is at rest, then on every resize, and `null` once the guide starts closing
+   * and on teardown. `fade` is how many seconds the glass takes to fade in when the post shows
+   * hidden glass, or out when it is `null` (eased in and out); shown glass moves at once. The
+   * shell takes it only from the guide's own web view.
    */
   'onboarding.surface': Type.Object(
-    { rect: Type.Union([GuideRectSchema, Type.Null()]), radius: Type.Number({ minimum: 0 }) },
+    {
+      rect: Type.Union([GuideRectSchema, Type.Null()]),
+      radius: Type.Number({ minimum: 0 }),
+      fade: Type.Number({ minimum: 0 }),
+    },
     { additionalProperties: false },
   ),
   /**

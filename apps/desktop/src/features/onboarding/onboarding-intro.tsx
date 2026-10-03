@@ -1,161 +1,147 @@
-import { motion, type Transition, type Variants } from 'motion/react';
+import { ArrowRight } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { motion, type Variants } from 'motion/react';
 import { useTranslation } from 'react-i18next';
-import { INTRO, INTRO_REDUCED, LIFT_AWAY } from './onboarding-motion';
-import { AppMark } from './art-welcome';
-import { MARK_LAYOUT_ID } from './onboarding-mark';
+import { Badge } from '@atd/ui/components/badge';
+import { Button } from '@atd/ui/components/button';
+import { GuideLight } from './guide-light';
+import { HeroFlowText } from './hero-flow-text';
+import { HERO_LIGHT } from './lights/hero';
+import { EMERGE_EASE, INTRO, INTRO_REDUCED, LIFT_AWAY, RISE_EASE } from './onboarding-motion';
 import { MusicToggle } from './onboarding-stage-controls';
-import { FADE } from './step-motion';
 import type { OnboardingMusic } from './use-onboarding-music';
+import { useNativeSurface } from './use-native-surface';
 import './onboarding-intro.css';
 
-/** The product name, never translated: the intro's heading for assistive technology. */
+/** The product name, never translated. */
 const PRODUCT_NAME = 'Atd';
 
-/** The light's opacity once it has landed on the glow, under the glow's own light. */
-const LIGHT_REST = 0.6;
+/** Text and controls lifting away as the guide begins. */
+const liftAway: Variants = { gone: { opacity: 0, y: -16, transition: LIFT_AWAY } };
 
-/** The light's convergence: under way from the start, then a long settle onto the glow. */
-const CONVERGE_EASE = [0.3, 0, 0.2, 1] as const;
+/* As the guide begins the light passes the viewer, growing as it fades, while the card fades in
+   with the welcome step's own light. */
+const lightExit: Variants = {
+  gone: { opacity: 0, scale: 1.06, transition: { duration: 0.7, ease: 'easeInOut' } },
+};
 
-/** The card's own Reduce Motion cross-fade, which the intro's mark fades out with. */
-const CROSS_FADE: Transition = { duration: 0.4, ease: 'easeInOut' };
+/** Whether `seconds` have passed since the page mounted (at once for 0). */
+function useAfter(seconds: number) {
+  const [done, setDone] = useState(seconds <= 0);
+  useEffect(() => {
+    if (seconds <= 0) return;
+    const timer = window.setTimeout(() => setDone(true), seconds * 1000);
+    return () => window.clearTimeout(timer);
+  }, [seconds]);
+  return done;
+}
 
-/*
- * Exits are variants resolved with AnimatePresence's `custom` (whether the intro was skipped),
- * since an exiting element keeps the props of its last render: a skip fades everything at once.
+/**
+ * Something emerging at `at` on the page's curves: its opacity on `EMERGE_EASE`, so it appears
+ * evenly to the eye, while it rises into place on `RISE_EASE`. Under Reduce Motion, a plain fade.
  */
-const liftAway: Variants = {
-  gone: (skipped: boolean) =>
-    skipped ? { opacity: 0, transition: FADE } : { opacity: 0, y: -16, transition: LIFT_AWAY },
-};
-/*
- * On the timed reveal the Welcome art takes over the mark's layout id, and motion drives this
- * copy's position and opacity: it rides along into the display area and fades from over the copy
- * landing there. This fade only shows when nothing takes over (a skip, or Reduce Motion).
- */
-const markExit: Variants = {
-  gone: (skipped: boolean) => ({ opacity: 0, transition: skipped ? FADE : CROSS_FADE }),
-};
-/* The glow hands over to the landing copy's glow (which fades in with the card) as the travel
-   starts, so the two translucent glows never stack into a brighter one. */
-const glowExit: Variants = {
-  gone: (skipped: boolean) => ({
-    opacity: 0,
-    transition: skipped ? FADE : { delay: 0.1, duration: 0.45, ease: 'easeInOut' },
-  }),
-};
-
-/** Fading in at `delay`. */
-function fadeIn(delay: number) {
+function emerge(reduced: boolean, at: number) {
   return {
-    initial: { opacity: 0 },
-    animate: { opacity: 1 },
-    transition: { delay, duration: 0.8, ease: [0.22, 1, 0.36, 1] },
+    initial: reduced ? { opacity: 0 } : { opacity: 0, y: INTRO.rise },
+    animate: { opacity: 1, y: 0 },
+    transition: reduced
+      ? { delay: INTRO_REDUCED.heroAt, duration: 0.4 }
+      : {
+          opacity: { delay: at, duration: INTRO.emergeFor, ease: EMERGE_EASE },
+          y: { delay: at, duration: INTRO.emergeFor, ease: RISE_EASE },
+        },
+    variants: liftAway,
+    exit: 'gone',
   } as const;
 }
 
 /**
- * The flowing light: turning bands of the glow's cool blue-white (`onboarding-intro.css`) that
- * start far past the screen's edges and converge onto the glow, then rest under it. At the reveal
- * they finish merging into the glow and fade. Under Reduce Motion they only fade in and out, at
- * their landed size and still.
+ * The guide's opening page, over the scrim (and over the card while it leaves), paced like a
+ * cinema (`INTRO`): as the stage dims the room, the window glass the other windows have dissolves
+ * in with the dimming (the shell lays it under the whole page, `useNativeSurface`, so the desktop
+ * goes out of focus as it darkens, until the arriving card takes it over as the page leaves), and
+ * the horizon light emerges with the music, landing on its bloom as the room reaches its dark; as
+ * it settles the badge appears, the title and description are written in by the light
+ * (`HeroFlowText`), and the start button and its hint rise last. It stays until the person begins
+ * (the button, or Return, Space or Esc, which the stage handles), with the music toggle in the
+ * corner. Under Reduce Motion the light is a still frame and everything fades in at once.
  */
-function FlowingLight({ reduced }: { reduced: boolean }) {
-  const exit: Variants = {
-    gone: (skipped: boolean) =>
-      skipped || reduced
-        ? { opacity: 0, transition: skipped ? FADE : CROSS_FADE }
-        : { opacity: 0, scale: 0.6, transition: { duration: 0.5, ease: [0.4, 0, 0.2, 1] } },
-  };
-  return (
-    <motion.div
-      aria-hidden
-      className="onboarding-flow"
-      initial={reduced ? { opacity: 0 } : { opacity: 0, scale: INTRO.lightFrom }}
-      animate={reduced ? { opacity: LIGHT_REST } : { opacity: [0, 1, LIGHT_REST], scale: 1 }}
-      transition={
-        reduced
-          ? { delay: INTRO_REDUCED.markAt, duration: 0.6 }
-          : {
-              scale: { delay: INTRO.lightAt, duration: INTRO.lightConverge, ease: CONVERGE_EASE },
-              opacity: {
-                delay: INTRO.lightAt,
-                duration: INTRO.lightConverge,
-                times: [0, 0.3, 1],
-                ease: 'easeInOut',
-              },
-            }
-      }
-      variants={exit}
-      exit="gone"
-    >
-      <span className="onboarding-flow-layer" data-flow="rays" />
-      <span className="onboarding-flow-layer" data-flow="drift" />
-      <span className="onboarding-flow-ring" />
-    </motion.div>
-  );
-}
-
-/**
- * Page one's mark (the Welcome art's app icon on its glow), centered: the icon emerges in the
- * gathering light and the glow brightens as the light lands. It carries the mark's layout id, so
- * the Welcome art takes it over at the reveal.
- */
-function IntroMark({ reduced }: { reduced: boolean }) {
-  const markAt = reduced ? INTRO_REDUCED.markAt : INTRO.markAt;
-  return (
-    <AppMark
-      aria-hidden
-      layoutId={MARK_LAYOUT_ID}
-      initial={reduced ? { opacity: 0 } : { opacity: 0, scale: 0.9 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={
-        reduced
-          ? { delay: markAt, duration: 0.6 }
-          : {
-              opacity: { delay: markAt, duration: 1, ease: 'easeOut' },
-              scale: { type: 'spring', visualDuration: 1.4, bounce: 0, delay: markAt },
-            }
-      }
-      variants={markExit}
-      exit="gone"
-      glow={{
-        initial: { opacity: 0 },
-        animate: { opacity: 1 },
-        transition: reduced
-          ? { delay: markAt, duration: 0.6 }
-          : { delay: INTRO.glowAt, duration: INTRO.glowIn, ease: 'easeInOut' },
-        variants: glowExit,
-        exit: 'gone',
-      }}
-    />
-  );
-}
-
-/**
- * The full-screen intro over the scrim (and over the card while it leaves): the flowing light
- * converging onto page one's mark, a hint that Return begins, and the music toggle in the corner.
- * The stage owns its timing (when it leaves) and the skip keys; this tree only plays its entrance
- * and its exit.
- */
-export function OnboardingIntro({ reduced, music }: { reduced: boolean; music: OnboardingMusic }) {
+export function OnboardingIntro({
+  reduced,
+  music,
+  onBegin,
+}: {
+  reduced: boolean;
+  music: OnboardingMusic;
+  onBegin: () => void;
+}) {
   const { t } = useTranslation('onboarding');
+  const page = useRef<HTMLDivElement>(null);
+  // The glass dissolves in with the dimming, over the same time, so the desktop goes out of focus
+  // as the room darkens; the page keeps it while it leaves, until the arriving card takes it over.
+  useNativeSurface(page, true, 0, reduced ? INTRO_REDUCED.scrimIn : INTRO.scrimIn);
+  // Mounted when it begins, so its own clock starts its entrance from black there.
+  const lit = useAfter(reduced ? INTRO_REDUCED.lightAt : INTRO.lightAt);
   return (
-    <div className="onboarding-intro">
-      <h1 className="sr-only">{PRODUCT_NAME}</h1>
-      <FlowingLight reduced={reduced} />
-      <IntroMark reduced={reduced} />
-      <motion.p
-        className="onboarding-intro-hint"
-        {...fadeIn(reduced ? INTRO_REDUCED.hintAt : INTRO.hintAt)}
-        variants={liftAway}
+    <div ref={page} className="onboarding-intro dark">
+      <motion.div
+        className="onboarding-intro-light"
+        initial={reduced ? { opacity: 0 } : false}
+        animate={{ opacity: 1 }}
+        transition={{ delay: INTRO_REDUCED.lightAt, duration: 0.6 }}
+        variants={lightExit}
         exit="gone"
       >
-        {t('intro.skipHint')}
-      </motion.p>
+        {lit && <GuideLight design={HERO_LIGHT} entrance={INTRO.landAt - INTRO.lightAt} />}
+      </motion.div>
+      <div className="onboarding-intro-hero">
+        <motion.div {...emerge(reduced, INTRO.badgeAt)}>
+          <Badge variant="outline" className="onboarding-intro-badge">
+            {t('intro.badge', { name: PRODUCT_NAME })}
+          </Badge>
+        </motion.div>
+        <motion.h1
+          className="onboarding-intro-title"
+          {...(reduced ? emerge(true, 0) : { variants: liftAway, exit: 'gone' })}
+        >
+          {reduced ? (
+            t('intro.title')
+          ) : (
+            <HeroFlowText text={t('intro.title')} at={INTRO.titleAt} span={INTRO.titleFor} />
+          )}
+        </motion.h1>
+        <motion.p
+          className="onboarding-intro-description"
+          {...(reduced ? emerge(true, 0) : { variants: liftAway, exit: 'gone' })}
+        >
+          {reduced ? (
+            t('intro.description')
+          ) : (
+            <HeroFlowText
+              text={t('intro.description')}
+              at={INTRO.descriptionAt}
+              span={INTRO.descriptionFor}
+              glow={0.45}
+            />
+          )}
+        </motion.p>
+        <motion.div className="onboarding-intro-actions" {...emerge(reduced, INTRO.actionsAt)}>
+          <Button size="lg" onClick={onBegin}>
+            {t('intro.begin')}
+            <ArrowRight data-icon="inline-end" aria-hidden="true" />
+          </Button>
+          <p className="onboarding-intro-hint">{t('intro.hint')}</p>
+        </motion.div>
+      </div>
       <motion.div
         className="onboarding-intro-corner"
-        {...fadeIn(reduced ? 0 : INTRO.cornerAt)}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{
+          delay: reduced ? 0 : INTRO.cornerAt,
+          duration: reduced ? 0.4 : INTRO.emergeFor,
+          ease: EMERGE_EASE,
+        }}
         variants={liftAway}
         exit="gone"
       >
