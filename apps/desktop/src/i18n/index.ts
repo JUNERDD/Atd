@@ -4,6 +4,7 @@ import { LANGUAGE_CODES, type AppLanguage } from '../client/settings-contract';
 import enCommands from './locales/en/commands.json';
 import enCommon from './locales/en/common.json';
 import enMemory from './locales/en/memory.json';
+import enOnboarding from './locales/en/onboarding.json';
 import enPanel from './locales/en/panel.json';
 import enProviders from './locales/en/providers.json';
 import enSettings from './locales/en/settings.json';
@@ -21,6 +22,7 @@ export const resources = {
     memory: enMemory,
     panel: enPanel,
     tasks: enTasks,
+    onboarding: enOnboarding,
   },
 } as const;
 

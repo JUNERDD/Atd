@@ -1,0 +1,120 @@
+/*
+ * The welcome guide's intro (`onboarding-intro.tsx`): page one's mark (the app icon on its glow,
+ * `AppMark` in `art-welcome.tsx`, styled in `art-illustration.css`) centered over the scrim, inside
+ * a flowing light. The light is gradients only, in the glow's own cool blue-white (the accent blue
+ * of `--ata-syntax-variable` and its mix with white, no other hue), added onto the black scrim:
+ * two discs of soft bands turning in opposite directions, masked to a ring so the middle stays the
+ * glow's, and a faint ring of light. The page scales the whole light down from far past the
+ * screen's edges onto the glow; only `scale`, `rotate` and `opacity` animate, never a blur, and
+ * the turning stops under Reduce Motion. The intro paints above the card, so the mark stays on top
+ * while it travels into the card and the light fades over it; it never takes pointer input except
+ * for the music toggle.
+ */
+.onboarding-intro {
+  --guide-mark-width: min(52vmin, 380px);
+  --onboarding-flow-tint: var(--ata-syntax-variable);
+  --onboarding-flow-light: color-mix(in oklab, var(--ata-syntax-variable) 40%, white);
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  display: grid;
+  pointer-events: none;
+  place-items: center;
+}
+.onboarding-intro > .onboarding-flow,
+.onboarding-intro > .guide-mark {
+  grid-area: 1 / 1;
+}
+/* The intro's glow holds its rest pose, where the Welcome art's drifting glow starts. */
+.onboarding-intro .guide-glow {
+  animation: none;
+}
+
+.onboarding-flow {
+  position: relative;
+  width: calc(var(--guide-mark-width) * 1.5);
+  aspect-ratio: 1;
+}
+.onboarding-flow-layer,
+.onboarding-flow-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  mix-blend-mode: plus-lighter;
+}
+/* A disc of soft bands from its center, masked to a ring that fades out at both edges; the disc is
+   round, so turning it shows no corners. */
+.onboarding-flow-layer {
+  mask: radial-gradient(closest-side, transparent 22%, black 46%, black 62%, transparent);
+}
+.onboarding-flow-layer[data-flow='rays'] {
+  background: conic-gradient(
+    from 10deg,
+    transparent 0deg,
+    color-mix(in oklab, var(--onboarding-flow-light) 55%, transparent) 20deg,
+    transparent 50deg,
+    transparent 100deg,
+    color-mix(in oklab, var(--onboarding-flow-tint) 42%, transparent) 128deg,
+    transparent 162deg,
+    transparent 196deg,
+    color-mix(in oklab, var(--onboarding-flow-light) 40%, transparent) 226deg,
+    transparent 262deg,
+    transparent 296deg,
+    color-mix(in oklab, var(--onboarding-flow-tint) 34%, transparent) 322deg,
+    transparent 350deg
+  );
+}
+.onboarding-flow-layer[data-flow='drift'] {
+  background: conic-gradient(
+    from 70deg,
+    transparent 0deg,
+    color-mix(in oklab, var(--onboarding-flow-tint) 30%, transparent) 40deg,
+    transparent 110deg,
+    color-mix(in oklab, var(--onboarding-flow-light) 26%, transparent) 170deg,
+    transparent 230deg,
+    color-mix(in oklab, var(--onboarding-flow-tint) 24%, transparent) 290deg,
+    transparent 350deg
+  );
+  opacity: 0.8;
+}
+.onboarding-flow-ring {
+  background: radial-gradient(
+    closest-side,
+    transparent 48%,
+    color-mix(in oklab, var(--onboarding-flow-light) 16%, transparent) 62%,
+    transparent 80%
+  );
+}
+
+.onboarding-intro-hint {
+  position: absolute;
+  bottom: 56px;
+  left: 50%;
+  margin: 0;
+  color: color-mix(in srgb, var(--foreground) 46%, transparent);
+  font-size: 13px;
+  line-height: 18px;
+  text-align: center;
+  translate: -50% 0;
+  white-space: nowrap;
+}
+.onboarding-intro-corner {
+  position: absolute;
+  right: 24px;
+  bottom: 24px;
+  pointer-events: auto;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .onboarding-flow-layer[data-flow='rays'] {
+    animation: onboarding-flow-turn 16s linear infinite;
+  }
+  .onboarding-flow-layer[data-flow='drift'] {
+    animation: onboarding-flow-turn 26s linear infinite reverse;
+  }
+}
+@keyframes onboarding-flow-turn {
+  to {
+    rotate: 360deg;
+  }
+}

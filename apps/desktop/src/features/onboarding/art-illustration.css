@@ -1,0 +1,251 @@
+/*
+ * The guide's step illustrations (`art-*.tsx`, after Figma `App / Onboarding hero` 1816:98233),
+ * drawn with the app's own tokens on the art panel's neutral field. Every size is a multiple of
+ * `--u`, the panel's unit: the Figma values are for a 153px tall band, where `--u` is 1.53px. `--u`
+ * follows the panel (both are size containers): 0.4% of its width in the tall side panel, so the
+ * widest illustration keeps a fifth of the panel free around it, and 0.75% of its height in the
+ * short stacked strip, so the tallest keeps a quarter free; it resolves against the panel for
+ * `.guide-art` itself and against `.guide-art` below, which fills the panel. Only transform and
+ * opacity animate; every loop runs only without Reduce Motion, whose still frame is each element's
+ * resting style.
+ */
+.guide-art {
+  --u: min(0.4cqw, 0.75cqh);
+  position: relative;
+  display: grid;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  container: guide-art / size;
+  place-items: center;
+  color: var(--foreground);
+  font-size: max(9px, calc(var(--u) * 7));
+  line-height: 1.3;
+  pointer-events: none;
+  user-select: none;
+}
+.guide-art > * {
+  grid-area: 1 / 1;
+}
+
+/* Welcome and finish: the app icon over a soft glow of the accent blue. */
+.guide-glow {
+  width: min(100%, calc(var(--u) * 170));
+  aspect-ratio: 1.6;
+  background: radial-gradient(
+    closest-side,
+    color-mix(in oklab, var(--ata-syntax-variable) 32%, transparent),
+    transparent
+  );
+}
+.guide-icon-motion {
+  display: block;
+  line-height: 0;
+}
+/* The welcome's mark (`AppMark` in `art-welcome.tsx`): the glow's box with the icon centered on
+   it, sized by its width alone, so the intro's larger copy is an exact scale of this one and the
+   hand-off between them scales uniformly. In the panel it is the glow's `--u` size, capped where
+   the icon reaches its Figma size (176px); the intro sets its own width. */
+.guide-art[data-art='welcome'] {
+  --guide-mark-width: min(calc(var(--u) * 170), calc(176px * 170 / 92));
+}
+.guide-mark {
+  display: grid;
+  width: var(--guide-mark-width);
+  aspect-ratio: 1.6;
+  place-items: center;
+}
+.guide-mark > * {
+  grid-area: 1 / 1;
+}
+.guide-mark > .guide-glow {
+  width: 100%;
+}
+.guide-mark .guide-app-icon {
+  width: calc(var(--guide-mark-width) * 92 / 170);
+}
+/* The shipped icon carries its own tile margin (Figma: tile inset 7.81%); it keeps its Figma size
+   (176px) in the side panel and scales with the panel below that. */
+.guide-app-icon {
+  position: relative;
+  display: block;
+  width: min(calc(var(--u) * 92), 176px);
+  aspect-ratio: 1;
+  background: url('@atd/ui/assets/brands/atd/app-icon.png') center / contain no-repeat;
+}
+.guide-app-icon[data-dev] {
+  background-image: url('@atd/ui/assets/brands/atd/app-icon-dev.png');
+}
+/* A met state on a mark: a 32% circle at the corner, a check at 60%. */
+.guide-done-badge {
+  position: absolute;
+  top: 62%;
+  left: 62%;
+  display: grid;
+  width: 32%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--ata-status-progress);
+  color: var(--primary-foreground);
+  place-items: center;
+}
+.guide-done-badge > svg {
+  width: 60%;
+  height: 60%;
+  stroke-width: 3;
+}
+
+/* Hotkey: one keycap per key, a face on a 4px base (Figma `App / Onboarding keycap` 1815:98094, its
+   73px keycap at a 153px band; no upper bound, so the keys fill the side panel). */
+.guide-keycaps {
+  display: flex;
+  align-items: center;
+  gap: max(6px, calc(var(--u) * 6));
+}
+.guide-keycap {
+  --keycap: max(40px, calc(var(--u) * 40));
+  position: relative;
+  display: flex;
+  height: var(--keycap);
+  box-sizing: border-box;
+  padding-bottom: 4px;
+  border-radius: calc(var(--keycap) * 0.19);
+}
+.guide-keycap::before {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: color-mix(in oklab, var(--secondary) 55%, transparent);
+  content: '';
+}
+.guide-keycap-face {
+  position: relative;
+  display: flex;
+  min-width: calc(var(--keycap) - 4px);
+  box-sizing: border-box;
+  align-items: center;
+  justify-content: center;
+  padding-inline: 0.4em;
+  border: 1px solid var(--border);
+  border-radius: calc(var(--keycap) * 0.19 - 1px);
+  background: var(--secondary);
+  box-shadow: inset 0 1px 0 color-mix(in oklab, var(--foreground) 8%, transparent);
+  font-size: max(16px, calc(var(--u) * 16.6));
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+}
+.guide-keycap-face[data-wide] {
+  padding-inline: 0.7em;
+  font-size: max(13px, calc(var(--u) * 11.6));
+}
+.guide-keycap-face[data-pressed] {
+  background: color-mix(in oklab, var(--secondary) 78%, var(--foreground));
+}
+
+/* Provider: the Atd symbol on a primary tile, brand marks on white frames in fixed slots. Slots
+   are placed by their top-left corner in percent of the orbit, as in Figma. */
+.guide-orbit {
+  position: relative;
+  width: calc(var(--u) * 200);
+  height: calc(var(--u) * 100);
+}
+.guide-orbit-symbol {
+  position: absolute;
+  inset: 0;
+  width: calc(var(--u) * 48);
+  height: calc(var(--u) * 48);
+  margin: auto;
+  border-radius: 24%;
+  background: var(--primary);
+}
+.guide-orbit-symbol::before {
+  position: absolute;
+  inset: 14%;
+  background: var(--primary-foreground);
+  content: '';
+  mask: url('@atd/ui/assets/brands/atd/symbol.png') center / contain no-repeat;
+}
+.guide-orbit-slot {
+  position: absolute;
+  line-height: 0;
+}
+.guide-orbit-slot[data-orbit='0'] {
+  top: 10.04%;
+  left: 12.02%;
+}
+.guide-orbit-slot[data-orbit='1'] {
+  top: 44.04%;
+  left: 1.02%;
+}
+.guide-orbit-slot[data-orbit='2'] {
+  top: 72.04%;
+  left: 20.02%;
+}
+.guide-orbit-slot[data-orbit='3'] {
+  top: 10.04%;
+  left: 76.02%;
+}
+.guide-orbit-slot[data-orbit='4'] {
+  top: 44.04%;
+  left: 87.02%;
+}
+.guide-orbit-slot[data-orbit='5'] {
+  top: 72.04%;
+  left: 68.02%;
+}
+.guide-orbit-mark {
+  position: relative;
+  display: block;
+}
+.guide-orbit-mark .provider-brand-frame {
+  padding: calc(var(--u) * 5);
+  border-radius: 28%;
+}
+.guide-orbit-mark .provider-brand {
+  width: calc(var(--u) * 14);
+  height: calc(var(--u) * 14);
+  flex-basis: calc(var(--u) * 14);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Started half a cycle in, where the eased drift passes its rest pose, so a glow appears exactly
+     as the still intro's glow it takes over from (and as Reduce Motion's still frame). */
+  .guide-glow {
+    animation: guide-glow-drift 9s ease-in-out -4.5s infinite alternate;
+  }
+  .guide-orbit-mark {
+    animation: guide-float 3.2s ease-in-out infinite alternate;
+  }
+  .guide-orbit-slot[data-orbit='1'] .guide-orbit-mark {
+    animation-delay: -0.4s;
+  }
+  .guide-orbit-slot[data-orbit='2'] .guide-orbit-mark {
+    animation-delay: -0.8s;
+  }
+  .guide-orbit-slot[data-orbit='3'] .guide-orbit-mark {
+    animation-delay: -1.2s;
+  }
+  .guide-orbit-slot[data-orbit='4'] .guide-orbit-mark {
+    animation-delay: -1.6s;
+  }
+  .guide-orbit-slot[data-orbit='5'] .guide-orbit-mark {
+    animation-delay: -2s;
+  }
+}
+@keyframes guide-glow-drift {
+  from {
+    transform: translate(-5%, -4%) scale(0.96);
+  }
+  to {
+    transform: translate(5%, 4%) scale(1.04);
+  }
+}
+@keyframes guide-float {
+  from {
+    transform: translateY(calc(var(--u) * -2));
+  }
+  to {
+    transform: translateY(calc(var(--u) * 2));
+  }
+}
