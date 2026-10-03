@@ -19,8 +19,8 @@ export interface RefusedFolder {
 
 /**
  * Checks that `requested` (absolute) is a directory a task may read: it resolves through every
- * link to a readable directory that is neither the disk root, the user's home directory itself,
- * nor the service data dir or anything inside it. The realpath it answers is what a grant stores
+ * link to a readable directory that is neither the disk root, the user's home directory or a folder
+ * that holds it, nor the service data dir or anything inside it. The realpath it answers is what a grant stores
  * and what the read boundary compares against, so a link inside a granted folder that leads
  * elsewhere never counts as inside it.
  */
@@ -40,10 +40,18 @@ export async function checkFolder(
   if (path.parse(real).root === real)
     return refused('forbidden', 'The disk root cannot be made readable to tasks.');
   const folded = foldCase(real);
-  if (folded === foldCase(await realOrSelf(homedir())))
+  const home = foldCase(await realOrSelf(homedir()));
+  if (folded === home)
     return refused(
       'forbidden',
       `Your home folder "${name}" cannot be made readable to tasks; choose a folder inside it.`,
+    );
+  // A folder that holds the home directory reaches everything in it, which is what the check above
+  // keeps out.
+  if (inside(folded, home))
+    return refused(
+      'forbidden',
+      `"${name}" holds your home folder and cannot be made readable to tasks; choose a folder inside it.`,
     );
   if (inside(foldCase(await realOrSelf(dataDir)), folded))
     return refused(

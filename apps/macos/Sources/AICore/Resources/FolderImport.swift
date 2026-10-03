@@ -16,8 +16,8 @@ public struct FolderRef: Codable, Equatable, Sendable {
 }
 
 /// Why the service did not register a folder (`FolderRegisterFailureReasonSchema`): it could
-/// not be read, it is not a directory, or no task may read it (`/`, the home folder itself, the
-/// service's data directory or anything inside it).
+/// not be read, it is not a directory, or no task may read it (`/`, the home folder or a folder
+/// that holds it, the service's data directory or anything inside it).
 public enum FolderRegisterFailureReason: String, Codable, Equatable, Sendable {
   case unreadable
   case notDirectory

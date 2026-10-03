@@ -41,8 +41,8 @@ export type FolderRegisterRequest = Static<typeof FolderRegisterRequestSchema>;
 
 /**
  * Why a path was not registered, for the client's own wording: it could not be read, it is not a
- * directory, or it is a folder no task may read (`/`, the home directory itself, or the service's
- * data directory or anything inside it).
+ * directory, or it is a folder no task may read (`/`, the home directory or a folder that holds it,
+ * or the service's data directory or anything inside it).
  */
 export const FolderRegisterFailureReasonSchema = Type.Union([
   Type.Literal('unreadable'),
