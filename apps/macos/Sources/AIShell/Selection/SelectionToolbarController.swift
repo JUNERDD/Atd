@@ -14,16 +14,16 @@ import Carbon.HIToolbox
 /// updates its selection late); a double click waits ``debounce`` first, so one that becomes a
 /// triple asks once.
 ///
-/// The toolbar goes when the pointer moves ``SelectionToolbarRules/dismissDistance`` away, on
-/// any key (Escape included), scroll or click elsewhere, and when another app activates. A
-/// newer press or key makes any check still running stale. Only presses are watched all the
-/// time; keys, scrolls and other buttons are watched while a check is pending or the toolbar
-/// shows, so typing and scrolling elsewhere never wake the app. Without the setting or the
-/// trust, no monitor is installed.
+/// The toolbar goes on any key (Escape included), scroll or click elsewhere, and when another
+/// app activates; the pointer wandering off never closes it, so its More menu can reach as far
+/// from the capsule as it needs. A newer press or key makes any check still running stale. Only
+/// presses are watched all the time; keys, scrolls and other buttons are watched while a check
+/// is pending or the toolbar shows, so typing and scrolling elsewhere never wake the app.
+/// Without the setting or the trust, no monitor is installed.
 ///
 /// The welcome guide's practice area shows the same toolbar over text selected in the guide
 /// itself (``showPractice(selection:text:)``), which the global monitors never see: the guide's
-/// page drives it, hiding it as its selection goes, so no pointer-away monitor watches it, and
+/// page drives it, hiding it as its selection goes, so no dismissal monitor watches it, and
 /// its Ask Atd hands on the practice text, which no Accessibility read would find. The guide never
 /// spends tokens, so a practice toolbar's commands only hide it; Ask Atd quotes the text into the
 /// panel's draft and sends nothing.
@@ -45,7 +45,8 @@ final class SelectionToolbarController {
   /// Keys, scrolls and other buttons, watched only while a check is pending or the toolbar
   /// shows: each makes a check stale or hides the toolbar.
   private var interruptMonitor: Any?
-  /// Pointer moves, watched only while the toolbar shows.
+  /// Pointer moves over other apps, watched only while the toolbar shows: hover tracking pauses
+  /// while the pointer rests away from the toolbar and needs a move to resume.
   private var moveMonitor: Any?
   private var activationObserver: NSObjectProtocol?
   private var pressedAt: CGPoint?
@@ -208,18 +209,13 @@ final class SelectionToolbarController {
 
   // MARK: Dismissal
 
+  /// Wakes hover tracking on pointer moves over other apps; the pointer's distance from the
+  /// toolbar never dismisses it.
   private func watchPointer() {
     guard moveMonitor == nil else { return }
     moveMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.mouseMoved, .leftMouseDragged]) {
       [weak self] _ in
-      MainActor.assumeIsolated {
-        guard let self else { return }
-        self.panel.pointerMoved()
-        let pointer = NSEvent.mouseLocation
-        if SelectionToolbarRules.pointerLeft(self.panel.frame, x: pointer.x, y: pointer.y) {
-          self.dismiss()
-        }
-      }
+      MainActor.assumeIsolated { self?.panel.pointerMoved() }
     }
   }
 

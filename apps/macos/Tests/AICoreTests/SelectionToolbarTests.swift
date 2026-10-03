@@ -52,15 +52,6 @@ struct SelectionToolbarTests {
     #expect(!SelectionToolbarRules.shows(.none))
   }
 
-  @Test("The pointer may wander 120 pt from the toolbar before it goes")
-  func dismissal() {
-    let bar = ScreenRect(x: 100, y: 100, width: 200, height: 36)
-    #expect(!SelectionToolbarRules.pointerLeft(bar, x: 150, y: 120))
-    #expect(!SelectionToolbarRules.pointerLeft(bar, x: 420, y: 118))
-    #expect(SelectionToolbarRules.pointerLeft(bar, x: 421, y: 118))
-    #expect(SelectionToolbarRules.pointerLeft(bar, x: 390, y: 236 + 1))
-  }
-
   @Test("The toolbar settings mirror toolbar.set")
   func settings() {
     let settings = SelectionToolbarSettings(
