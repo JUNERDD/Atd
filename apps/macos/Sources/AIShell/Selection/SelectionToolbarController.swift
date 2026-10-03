@@ -127,7 +127,32 @@ final class SelectionToolbarController {
     }
     activationObserver = NSWorkspace.shared.notificationCenter.addObserver(
       forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main
-    ) { [weak self] _ in MainActor.assumeIsolated { self?.dismiss() } }
+    ) { [weak self] note in
+      // `Notification` is not Sendable, so only the pid crosses into the main-actor handler.
+      let app = note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication
+      let pid = app?.processIdentifier
+      MainActor.assumeIsolated { self?.appActivated(pid: pid) }
+    }
+  }
+
+  /// Another app came forward: the toolbar over the last one goes, and an Electron app the
+  /// toolbar would probe starts building its web accessibility tree now, so it has one by the
+  /// time something is selected in it.
+  private func appActivated(pid: pid_t?) {
+    dismiss()
+    guard let settings, let pid, let app = NSRunningApplication(processIdentifier: pid),
+      SelectionToolbarRules.shouldProbe(context(of: app, settings))
+    else { return }
+    SelectionPresence.prepare(pid: pid, bundleURL: app.bundleURL)
+  }
+
+  private func context(of app: NSRunningApplication, _ settings: SelectionToolbarSettings)
+    -> SelectionToolbarContext
+  {
+    SelectionToolbarContext(
+      enabled: settings.enabled, trusted: trust.isTrusted,
+      frontmostBundleId: app.bundleIdentifier, ownBundleId: Bundle.main.bundleIdentifier,
+      excludedBundleIds: settings.excludedBundleIds, secureInput: IsSecureEventInputEnabled())
   }
 
   private func uninstall() {
@@ -190,11 +215,7 @@ final class SelectionToolbarController {
     guard token == generation, let settings,
       let app = NSWorkspace.shared.frontmostApplication
     else { return false }
-    let context = SelectionToolbarContext(
-      enabled: settings.enabled, trusted: trust.isTrusted,
-      frontmostBundleId: app.bundleIdentifier, ownBundleId: Bundle.main.bundleIdentifier,
-      excludedBundleIds: settings.excludedBundleIds, secureInput: IsSecureEventInputEnabled())
-    guard SelectionToolbarRules.shouldProbe(context) else { return false }
+    guard SelectionToolbarRules.shouldProbe(context(of: app, settings)) else { return false }
     let probe = await SelectionPresence.check(pid: app.processIdentifier)
     guard token == generation, monitor != nil,
       NSWorkspace.shared.frontmostApplication?.processIdentifier == app.processIdentifier,

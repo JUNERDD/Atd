@@ -13,6 +13,9 @@ import Synchronization
 /// - A secure text field answers ``SelectionProbe/secureField`` before anything else is asked.
 /// - `AXSelectedTextRange` first; web content (WebKit, Chromium) reports its selection as a
 ///   text-marker range, whose length and bounds it answers without the text.
+/// - Electron and Chromium build their web tree only once an assistive tool asks the
+///   application something (``wakeWebContent(_:)``), so each probe does, and
+///   ``prepare(pid:bundleURL:)`` does it ahead of time when an Electron app comes forward.
 ///
 /// Blocking; call it off the main thread.
 nonisolated struct SelectionPresence: Sendable {
@@ -23,6 +26,7 @@ nonisolated struct SelectionPresence: Sendable {
   func probe() -> SelectionProbe {
     let app = AXUIElementCreateApplication(pid)
     AXUIElementSetMessagingTimeout(app, Self.messagingTimeout)
+    Self.wakeWebContent(app)
     guard let focused: AXUIElement = Self.copy(app, kAXFocusedUIElementAttribute) else {
       return .none
     }
@@ -45,6 +49,19 @@ nonisolated struct SelectionPresence: Sendable {
     else { return .none }
     let bounds: AXValue? = Self.copy(focused, "AXBoundsForTextMarkerRange", marker)
     return .selected(length: length, bounds: bounds.flatMap(Self.rect))
+  }
+
+  /// Asks the application for its `AXRole`. Chromium's and Electron's `accessibilityRole`
+  /// override treats that as Apple recommends for assistive tools such as Voice Control: an app
+  /// with no accessibility mode yet turns on its basic one (native elements and web content)
+  /// and builds the tree asynchronously. Setting `AXManualAccessibility` would turn on the
+  /// complete mode instead, which VS Code and Cursor take for a screen reader: they prompt,
+  /// switch the editor to screen-reader mode, and a "No" writes a user setting. Other apps just
+  /// answer. Electron keeps the basic mode for the life of the process, so repeating the read
+  /// costs one message.
+  private static func wakeWebContent(_ app: AXUIElement) {
+    var role: CFTypeRef?
+    _ = AXUIElementCopyAttributeValue(app, kAXRoleAttribute as CFString, &role)
   }
 
   private static func rect(_ value: AXValue) -> CGRect? {
@@ -78,6 +95,27 @@ extension SelectionPresence {
   /// A probe is running; a gesture meanwhile is not asked about (the app is still answering
   /// the last one, and the caller drops stale answers anyway).
   private nonisolated static let busy = Mutex(false)
+
+  /// Where ``prepare(pid:bundleURL:)`` runs, apart from the probes' queue so a slow app never
+  /// holds up a selection check.
+  private nonisolated static let prepareQueue = DispatchQueue(
+    label: "com.junerdd.ai.selection-prepare", qos: .utility)
+
+  /// Wakes an Electron app's web content off the main thread, ahead of the first selection: the
+  /// tree takes a moment to build, longer than a quick selection gives the first probe. Only
+  /// apps that ship Electron's framework are woken early; any other app waits for its first
+  /// probe, so merely bringing a browser forward never changes its accessibility state.
+  nonisolated static func prepare(pid: pid_t, bundleURL: URL?) {
+    guard let bundleURL else { return }
+    prepareQueue.async {
+      let framework = bundleURL.appendingPathComponent(
+        "Contents/Frameworks/Electron Framework.framework", isDirectory: true)
+      guard FileManager.default.fileExists(atPath: framework.path) else { return }
+      let app = AXUIElementCreateApplication(pid)
+      AXUIElementSetMessagingTimeout(app, messagingTimeout)
+      wakeWebContent(app)
+    }
+  }
 
   /// Checks off the main thread and gives up after `limit`, a net under the per-message
   /// timeouts; a late answer is dropped.
