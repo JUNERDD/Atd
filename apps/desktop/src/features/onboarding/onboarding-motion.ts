@@ -51,9 +51,9 @@ export const RISE_EASE = [0.33, 1, 0.68, 1] as const;
 
 /**
  * The opening page's timeline, in seconds from the moment the stage mounts, paced like a cinema:
- * the room dims, the dark holds a beat, then the music and the horizon light begin together. The
- * light's entrance lands on the music's bloom (`ONBOARDING_THEME.revealAt` into the track), and as
- * it settles the hero's copy is written in by a light-flow typewriter, then the start button
+ * as the room dims, the music begins and the horizon light emerges with it, landing on the
+ * music's bloom (`ONBOARDING_THEME.revealAt` into the track) as the room reaches its dark. As the
+ * light settles, the hero's copy is written in by a light-flow typewriter, then the start button
  * rises. The page then waits for the person to begin; the card fades in as the page leaves, and
  * the shell is told the guide settled once the card is at rest.
  */
@@ -64,32 +64,31 @@ export const INTRO = {
   /** The scrim's level under the card, reached after the page leaves. */
   scrimCard: 0.6,
   /**
-   * The window glass's blur arrives under the dark, about halfway down, where its quick fade (the
-   * shell's) is no longer seen as a jump.
+   * The window glass's blur arrives under the dimming, about a third of the way down, where its
+   * quick fade (the shell's) no longer reads as a jump.
    */
-  glassAt: 1.8,
-  /**
-   * After the dark holds a beat, the music and the light begin together (the light's first third
-   * is still nearly dark, so the beat lasts until about 3.9 s)...
-   */
-  lightAt: 2.8,
-  /** ...and the light lands on the music's bloom. */
-  landAt: 2.8 + ONBOARDING_THEME.revealAt,
+  glassAt: 1.2,
+  /** The music starts while the room dims... */
+  musicAt: 0.5,
+  /** ...the light emerges just after it, still in the dimming... */
+  lightAt: 0.9,
+  /** ...and lands on the music's bloom, just after the room has reached its dark. */
+  landAt: 0.5 + ONBOARDING_THEME.revealAt,
   /** The badge arrives as the light nears its landing. */
-  badgeAt: 5.2,
+  badgeAt: 3.6,
   /** The title is written from here, over `titleFor` whatever its length... */
-  titleAt: 5.5,
+  titleAt: 3.9,
   titleFor: 1.6,
   /** ...the description from here, over `descriptionFor`. */
-  descriptionAt: 6.4,
+  descriptionAt: 4.8,
   descriptionFor: 1.4,
   /** The start button and its hint rise in last. */
-  actionsAt: 7.5,
+  actionsAt: 5.9,
   /** How long a line or the button takes to emerge, and how far (px) it rises. */
   emergeFor: 1.4,
   rise: 14,
   /** The music toggle, just after the music begins. */
-  cornerAt: 3.2,
+  cornerAt: 0.9,
   /** From the start to the card at rest. */
   settleAfter: 0.8,
   /** Between the card's content groups; four groups stay within 150ms. */

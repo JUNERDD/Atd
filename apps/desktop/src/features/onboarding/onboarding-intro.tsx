@@ -58,13 +58,13 @@ function emerge(reduced: boolean, at: number) {
 /**
  * The guide's opening page, over the scrim (and over the card while it leaves), paced like a
  * cinema (`INTRO`): while the stage dims the room, the window glass the other windows have arrives
- * under the dark (the shell lays it under the whole page, `useNativeSurface`, so the desktop shows
- * through blurred, until the arriving card takes it over as the page leaves). After a beat of
- * dark, the horizon light emerges with the music and lands on its bloom; as it settles the badge
- * appears, the title and description are written in by the light (`HeroFlowText`), and the start
- * button and its hint rise last. It stays until the person begins (the button, or Return, Space or
- * Esc, which the stage handles), with the music toggle in the corner. Under Reduce Motion the
- * light is a still frame and everything fades in at once.
+ * under the dimming (the shell lays it under the whole page, `useNativeSurface`, so the desktop
+ * shows through blurred, until the arriving card takes it over as the page leaves), and the
+ * horizon light emerges with the music, landing on its bloom as the room reaches its dark; as it
+ * settles the badge appears, the title and description are written in by the light
+ * (`HeroFlowText`), and the start button and its hint rise last. It stays until the person begins
+ * (the button, or Return, Space or Esc, which the stage handles), with the music toggle in the
+ * corner. Under Reduce Motion the light is a still frame and everything fades in at once.
  */
 export function OnboardingIntro({
   reduced,
