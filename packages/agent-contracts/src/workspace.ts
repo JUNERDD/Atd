@@ -69,6 +69,8 @@ export const UserSettingsSchema = Type.Object(
     shellAllowlist: ShellAllowlistSchema,
     shortcuts: Type.Union([ShortcutBindingsSchema, Type.Null()]),
     selectionToolbar: SelectionToolbarSettingsSchema,
+    /** The first desktop launch on this data dir showed the welcome guide. */
+    onboardingCompleted: Type.Boolean(),
   },
   { additionalProperties: false },
 );
@@ -96,6 +98,7 @@ export const PatchSettingsRequestSchema = Type.Object(
     shellAllowlist: Type.Optional(ShellAllowlistSchema),
     shortcuts: Type.Optional(Type.Union([ShortcutBindingsSchema, Type.Null()])),
     selectionToolbar: Type.Optional(SelectionToolbarSettingsSchema),
+    onboardingCompleted: Type.Optional(Type.Boolean()),
     /** Seeding: apply only while the settings are uninitialized, else answer the current ones. */
     onlyIfUninitialized: Type.Optional(Type.Boolean()),
   },
