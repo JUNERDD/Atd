@@ -32,12 +32,13 @@
   display: block;
   line-height: 0;
 }
-/* The shipped icon carries its own tile margin (Figma: tile inset 7.81%); it keeps its Figma size
-   (176px) in the side panel and scales with the panel below that. */
+/* The shipped icon carries its own tile margin (Figma: tile inset 7.81%). One size for the welcome,
+   provider and finish art: 176px in the side panel, scaling with the panel below that; 70u keeps
+   its tile clear of the provider orbit's marks. */
 .guide-app-icon {
   position: relative;
   display: block;
-  width: min(calc(var(--u) * 92), 176px);
+  width: min(calc(var(--u) * 70), 176px);
   aspect-ratio: 1;
   background: url('@atd/ui/assets/brands/atd/app-icon.png') center / contain no-repeat;
 }
@@ -111,8 +112,8 @@
   background: color-mix(in oklab, var(--secondary) 78%, var(--foreground));
 }
 
-/* Provider: the Atd symbol on a primary tile, brand marks on white frames in fixed slots. Slots
-   are placed by their top-left corner in percent of the orbit, as in Figma. */
+/* Provider: the app icon at the centre, brand marks on white frames in fixed slots. Slots are
+   placed by their top-left corner in percent of the orbit, as in Figma. */
 .guide-orbit {
   position: relative;
   width: calc(var(--u) * 200);
@@ -121,18 +122,8 @@
 .guide-orbit-symbol {
   position: absolute;
   inset: 0;
-  width: calc(var(--u) * 48);
-  height: calc(var(--u) * 48);
-  margin: auto;
-  border-radius: 24%;
-  background: var(--primary);
-}
-.guide-orbit-symbol::before {
-  position: absolute;
-  inset: 14%;
-  background: var(--primary-foreground);
-  content: '';
-  mask: url('@atd/ui/assets/brands/atd/symbol.png') center / contain no-repeat;
+  display: grid;
+  place-items: center;
 }
 .guide-orbit-slot {
   position: absolute;
