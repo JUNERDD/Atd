@@ -155,4 +155,38 @@ export interface DesktopBridge {
    * returns the unsubscribe. The page takes the capture, quotes it and focuses the composer.
    */
   onSelectionAsk?: (listener: () => void) => () => void;
+  /** The welcome guide window's own controls; present only in that window. */
+  readonly onboarding?: OnboardingBridge;
+}
+
+/** What the welcome guide window can do beyond the settings every window shares. */
+export interface OnboardingBridge {
+  /** Closes the guide; `summon` then shows the panel. */
+  close: (summon: boolean) => Promise<void>;
+  /** The full-screen intro ended: the guide's window drops to the normal level. */
+  settle: () => Promise<void>;
+  /**
+   * Where the card's surface is, in CSS pixels from the viewport's top-left, with its corner
+   * radius, so the shell lays the window glass under it; `null` hides that glass.
+   */
+  surface: (rect: SurfaceRect | null, radius: number) => void;
+  /**
+   * Text selected in the selection step's practice area, with its bounding box in CSS pixels from
+   * the viewport's top-left, so the shell shows the real selection toolbar beside it; `null` hides
+   * that toolbar (`text` is then empty).
+   */
+  selection: (rect: SurfaceRect | null, text: string) => void;
+  /**
+   * Every time the shell shows or hides the panel (as the panel page reports it), so the guide
+   * can confirm a hotkey try-out; returns the unsubscribe.
+   */
+  onPanelVisibility: (listener: (visible: boolean) => void) => () => void;
+}
+
+/** A rectangle in CSS pixels from the viewport's top-left. */
+export interface SurfaceRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
 }

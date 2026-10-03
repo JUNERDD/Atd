@@ -1,0 +1,179 @@
+/*
+ * The welcome guide's stage and card (`onboarding-stage.tsx`, `onboarding-card*.tsx`). The window
+ * is borderless and transparent over the whole display; `html`, `body` and `#root` stay
+ * transparent and the page draws a black scrim over the desktop, then the card: the panel token's
+ * fill (opaque under reduced transparency) and the native window's shadow, over the same native
+ * glass the panel and Settings windows have, which the shell lays under the card's reported box
+ * (`use-native-surface.ts`). The glass draws the card's edge, so the page adds no hairline. Motion here animates only transform and opacity, and every loop stops
+ * on a still frame under Reduce Motion. The intro's own styles are in `onboarding-intro.css`.
+ */
+.onboarding-stage {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  overflow: hidden;
+  color: var(--foreground);
+  font-size: 14px;
+  line-height: 20px;
+  place-items: center;
+}
+.onboarding-stage:lang(zh) {
+  line-height: 22px;
+}
+.onboarding-stage[data-closing] {
+  pointer-events: none;
+}
+.onboarding-scrim {
+  position: absolute;
+  inset: 0;
+  background: rgb(0 0 0);
+}
+
+/* The card: centered, at most 960 × 600, always clear of the display's edges. A size container,
+   so its layout follows its own width (stacking below 760px) and the step body its height. */
+.onboarding-card {
+  position: relative;
+  width: min(960px, calc(100vw - 64px));
+  height: min(600px, calc(100vh - 112px));
+  container: onboarding-card / size;
+}
+/* The radius is Figma's `radius/panel` (`CARD_RADIUS`, which the shell's glass under the card also
+   takes); the shadow is Figma's "Atd/Native window glass" effect. */
+.onboarding-card-surface {
+  position: absolute;
+  inset: 0;
+  border-radius: 22px;
+  background: var(--ata-surface-panel);
+  box-shadow: 0 14px 40px rgb(0 0 0 / 40%);
+}
+.onboarding-card-layout {
+  position: relative;
+  display: grid;
+  height: 100%;
+  grid-template-columns: minmax(340px, 42%) minmax(0, 1fr);
+}
+.onboarding-card-main {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+}
+.onboarding-card-topbar {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 4px;
+  padding: 16px 12px 4px 28px;
+}
+
+/* The step's bounded scrolling body; a size container (the steps size their artwork and spacing
+   by its height), so short steps center vertically and long ones scroll. */
+.onboarding-card-body {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  flex-direction: column;
+  container: onboarding-body / size;
+}
+.onboarding-card-scroll {
+  flex: 1 1 auto;
+}
+.onboarding-card-steps {
+  position: relative;
+  display: flex;
+  min-height: 100cqh;
+  flex-direction: column;
+  padding: 12px 28px 16px;
+}
+.onboarding-card-slide {
+  width: 100%;
+  margin-block: auto;
+  overflow-wrap: anywhere;
+}
+
+/* Progress (`onboarding-progress.tsx`): leads the top bar and takes its free width, so the music
+   and close controls sit at the trailing end. A dot per step in a 24px ghost button, the current
+   one a short pill; upcoming steps are disabled buttons, which dim their dots. */
+.onboarding-progress {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  align-items: center;
+}
+.onboarding-progress-list {
+  display: flex;
+  align-items: center;
+}
+.onboarding-progress-item {
+  display: flex;
+}
+.onboarding-progress-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: var(--muted-foreground);
+}
+.onboarding-progress-dot[data-current] {
+  width: 16px;
+  background: var(--foreground);
+}
+
+/* Footer: Back at the start, Later and the primary at the end; it never scrolls away. Its inline
+   padding matches the step column's (28px; the stacked card narrows both to 20px). */
+.onboarding-footer {
+  display: flex;
+  flex-shrink: 0;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 28px 20px;
+}
+.onboarding-footer-note {
+  color: var(--ata-text-secondary);
+  font-size: 12px;
+  line-height: 16px;
+  text-align: end;
+  text-wrap: pretty;
+}
+.onboarding-footer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.onboarding-footer-end {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-inline-start: auto;
+}
+
+/* The art panel: 8px inside the card, so its 14px radius (`onboarding-card-art.css`) is concentric
+   with the card's 22px. */
+.onboarding-card-art-cell {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  padding: 8px;
+}
+/* Stacked: the art as a shorter strip on top (30% of the card), content below. */
+@container onboarding-card (max-width: 759px) {
+  .onboarding-card-layout {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: 30% minmax(0, 1fr);
+  }
+  .onboarding-card-art-cell {
+    grid-row: 1;
+    padding: 8px 8px 0;
+  }
+  .onboarding-card-main {
+    grid-row: 2;
+  }
+  .onboarding-card-topbar {
+    padding-left: 20px;
+  }
+  .onboarding-card-steps,
+  .onboarding-footer {
+    padding-inline: 20px;
+  }
+}
