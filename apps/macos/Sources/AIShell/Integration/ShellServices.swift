@@ -3,10 +3,11 @@ import AIRelay
 import AppKit
 import OSLog
 
-/// The two windows that host the renderer.
+/// The windows that host the renderer.
 public enum WebViewRole: String, Sendable {
   case panel
   case settings
+  case onboarding
 }
 
 /// Where the shell's renderer and service come from (decision Q10), chosen once per build:
@@ -26,7 +27,7 @@ public final class ShellServices {
   public let dataDirectory: URL
   private let supervisor: ServiceSupervisor?
   private let logDirectory: URL?
-  /// One handler serves both windows' web views and every rebuild of them.
+  /// One handler serves every window's web view and every rebuild of them.
   private(set) lazy var schemeHandler = RendererSchemeHandler(renderer: renderer, link: link)
 
   private init(

@@ -188,8 +188,9 @@ struct JsMessageTests {
   @Test("Decodes typed calls, nullable members and literal unions")
   func calls() {
     #expect(
-      Self.decode(#"{"type":"call","id":4,"method":"settings.open","params":{"commandId":null}}"#)
-        == .call(id: 4, .settingsOpen(.init(commandId: nil))))
+      Self.decode(
+        #"{"type":"call","id":4,"method":"settings.open","params":{"commandId":null,"section":"general"}}"#
+      ) == .call(id: 4, .settingsOpen(.init(commandId: nil, section: "general"))))
     #expect(
       Self.decode(
         #"{"type":"call","id":5,"method":"artifact","params":{"artifactId":"a","operation":"copyPath"}}"#

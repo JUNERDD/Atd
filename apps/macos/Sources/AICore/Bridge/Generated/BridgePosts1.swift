@@ -77,6 +77,120 @@ public struct WindowDragRegionsPost: Codable, Equatable, Sendable {
   }
 }
 
+/// Params of the `onboarding.surface` post.
+public struct OnboardingSurfacePost: Codable, Equatable, Sendable {
+  public let rect: Rect?
+  public let radius: Double
+
+  public init(rect: Rect?, radius: Double) {
+    self.rect = rect
+    self.radius = radius
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    rect = try container.nullable(.rect) { try container.value($0, Rect.self) }
+    radius = try container.number(.radius, minimum: 0)
+  }
+
+  public func encode(to encoder: any Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(rect, forKey: .rect)
+    try container.encode(radius, forKey: .radius)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case rect
+    case radius
+  }
+
+  public struct Rect: Codable, Equatable, Sendable {
+    public let x: Double
+    public let y: Double
+    public let width: Double
+    public let height: Double
+
+    public init(x: Double, y: Double, width: Double, height: Double) {
+      self.x = x
+      self.y = y
+      self.width = width
+      self.height = height
+    }
+
+    public init(from decoder: any Decoder) throws {
+      let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+      x = try container.number(.x, minimum: 0)
+      y = try container.number(.y, minimum: 0)
+      width = try container.number(.width, minimum: 0)
+      height = try container.number(.height, minimum: 0)
+    }
+
+    private enum CodingKeys: String, CodingKey, CaseIterable {
+      case x
+      case y
+      case width
+      case height
+    }
+  }
+}
+
+/// Params of the `onboarding.selection` post.
+public struct OnboardingSelectionPost: Codable, Equatable, Sendable {
+  public let rect: Rect?
+  public let text: String
+
+  public init(rect: Rect?, text: String) {
+    self.rect = rect
+    self.text = text
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    rect = try container.nullable(.rect) { try container.value($0, Rect.self) }
+    text = try container.string(.text, maxLength: 2_000)
+  }
+
+  public func encode(to encoder: any Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(rect, forKey: .rect)
+    try container.encode(text, forKey: .text)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case rect
+    case text
+  }
+
+  public struct Rect: Codable, Equatable, Sendable {
+    public let x: Double
+    public let y: Double
+    public let width: Double
+    public let height: Double
+
+    public init(x: Double, y: Double, width: Double, height: Double) {
+      self.x = x
+      self.y = y
+      self.width = width
+      self.height = height
+    }
+
+    public init(from decoder: any Decoder) throws {
+      let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+      x = try container.number(.x, minimum: 0)
+      y = try container.number(.y, minimum: 0)
+      width = try container.number(.width, minimum: 0)
+      height = try container.number(.height, minimum: 0)
+    }
+
+    private enum CodingKeys: String, CodingKey, CaseIterable {
+      case x
+      case y
+      case width
+      case height
+    }
+  }
+}
+
 /// Params of the `socket.open` post.
 public struct SocketOpenPost: Codable, Equatable, Sendable {
   public let socketId: String
@@ -127,29 +241,3 @@ public struct SocketSendPost: Codable, Equatable, Sendable {
 
 /// Params of the `update.install` post.
 public typealias UpdateInstallPost = NativeEmpty
-
-/// Params of the `socket.close` post.
-public struct SocketClosePost: Codable, Equatable, Sendable {
-  public let socketId: String
-  public let code: Int
-  public let reason: String
-
-  public init(socketId: String, code: Int, reason: String) {
-    self.socketId = socketId
-    self.code = code
-    self.reason = reason
-  }
-
-  public init(from decoder: any Decoder) throws {
-    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    socketId = try container.string(.socketId, minLength: 1, maxLength: 64)
-    code = try container.integer(.code, minimum: 1_000, maximum: 4_999)
-    reason = try container.string(.reason, maxLength: 123)
-  }
-
-  private enum CodingKeys: String, CodingKey, CaseIterable {
-    case socketId
-    case code
-    case reason
-  }
-}

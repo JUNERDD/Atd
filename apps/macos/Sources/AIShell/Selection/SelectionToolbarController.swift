@@ -20,10 +20,19 @@ import Carbon.HIToolbox
 /// time; keys, scrolls and other buttons are watched while a check is pending or the toolbar
 /// shows, so typing and scrolling elsewhere never wake the app. Without the setting or the
 /// trust, no monitor is installed.
+///
+/// The welcome guide's practice area shows the same toolbar over text selected in the guide
+/// itself (``showPractice(selection:text:)``), which the global monitors never see: the guide's
+/// page drives it, hiding it as its selection goes, so no pointer-away monitor watches it, and
+/// its Ask Atd hands on the practice text, which no Accessibility read would find. The guide never
+/// spends tokens, so a practice toolbar's commands only hide it; Ask Atd quotes the text into the
+/// panel's draft and sends nothing.
 final class SelectionToolbarController {
-  /// Ask Atd was clicked; the toolbar is already hidden.
-  var onAsk: (() -> Void)?
-  /// A command button or More item was clicked; the toolbar is already hidden.
+  /// Ask Atd was clicked, with the practice text when the toolbar was the guide's (nil for a
+  /// selection in another app); the toolbar is already hidden.
+  var onAsk: ((String?) -> Void)?
+  /// A command button or More item was clicked on a toolbar over another app's selection; the
+  /// toolbar is already hidden. A practice toolbar's commands never get here: they would run.
   var onCommand: ((String) -> Void)?
 
   static let debounce: Duration = .milliseconds(150)
@@ -44,16 +53,23 @@ final class SelectionToolbarController {
   /// dropped.
   private var generation = 0
   private var pending: Task<Void, Never>?
+  /// The guide's practice selection while the toolbar shows for it.
+  private var practiceText: String?
+  /// Pointer moves over this app's own windows, watched while the practice toolbar shows: the
+  /// global monitors see only other apps, and hover tracking needs a move to resume.
+  private var practiceMoveMonitor: Any?
 
   init(trust: AccessibilityTrust) {
     self.trust = trust
     panel.onAsk = { [weak self] in
+      let text = self?.practiceText
       self?.dismiss()
-      self?.onAsk?()
+      self?.onAsk?(text)
     }
     panel.onCommand = { [weak self] id in
+      let practice = self?.practiceText != nil
       self?.dismiss()
-      self?.onCommand?(id)
+      if !practice { self?.onCommand?(id) }
     }
   }
 
@@ -72,6 +88,33 @@ final class SelectionToolbarController {
     } else if !active, monitor != nil {
       uninstall()
     }
+  }
+
+  // MARK: Practice
+
+  /// Shows the toolbar beside the guide's practice selection (`selection` in Cocoa global
+  /// points) when the real one would show at all: the setting is on and the app is trusted.
+  /// Otherwise any practice toolbar hides.
+  func showPractice(selection: CGRect, text: String) {
+    guard settings?.enabled == true, trust.isTrusted else { return hidePractice() }
+    dismiss()
+    practiceText = text
+    let primaryHeight = NSScreen.screens.first?.frame.height ?? 0
+    // The panel takes Quartz bounds, as Accessibility reports them.
+    panel.show(
+      selection: CaptureCoordinates.flip(selection, primaryHeight: primaryHeight),
+      pointer: CGPoint(x: selection.midX, y: selection.midY))
+    practiceMoveMonitor = NSEvent.addLocalMonitorForEvents(
+      matching: [.mouseMoved, .leftMouseDragged]
+    ) { [weak self] event in
+      MainActor.assumeIsolated { self?.panel.pointerMoved() }
+      return event
+    }
+  }
+
+  /// Hides a practice toolbar; a toolbar over another app's selection stays.
+  func hidePractice() {
+    if practiceText != nil { dismiss() }
   }
 
   // MARK: Monitoring
@@ -187,6 +230,9 @@ final class SelectionToolbarController {
     pending = nil
     if let moveMonitor { NSEvent.removeMonitor(moveMonitor) }
     moveMonitor = nil
+    if let practiceMoveMonitor { NSEvent.removeMonitor(practiceMoveMonitor) }
+    practiceMoveMonitor = nil
+    practiceText = nil
     stopWatchingInterruptions()
     panel.hide()
   }

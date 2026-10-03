@@ -53,6 +53,8 @@ export function installBridge(extras?: {
     shellAllowlist: [],
     selectionToolbar: { enabled: true, excludedApps: [] },
     accessibilityTrusted: true,
+    screenRecordingTrusted: true,
+    onboardingCompleted: true,
   };
   const settingsListeners = new Set<(value: SettingsSnapshot) => void>();
   const listeners = new Set<(event: AgentEvent) => void>();
@@ -235,6 +237,7 @@ export function installBridge(extras?: {
     settings: {
       open,
       openCommand,
+      openSection: vi.fn(async (_section: string) => {}),
       startCommandSession: vi.fn(async (_commandId: string | null) => {}),
       startExtensionSession: vi.fn(
         async (_kind: 'skill' | 'subagent' | 'mcp' | 'memory', _target?: string | null) => {},
@@ -294,8 +297,10 @@ export function installBridge(extras?: {
         return settings;
       }),
       requestAccessibility: vi.fn(async () => {}),
+      requestScreenRecording: vi.fn(async () => {}),
       pickApps: vi.fn(async () => []),
       onOpenCommand: () => () => {},
+      onOpenSection: () => () => {},
     },
   };
   return { api, setPinned, hide, open, openCommand, askSelection };

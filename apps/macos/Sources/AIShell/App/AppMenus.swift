@@ -6,6 +6,9 @@ struct AppMenuActions {
   var showPanel: () -> Void
   var hidePanel: () -> Void
   var openSettings: () -> Void
+  var openOnboarding: () -> Void
+  /// Debug builds only: runs the first launch's welcome guide path again; nil in Release.
+  var replayOnboarding: (() -> Void)?
   /// Nil where the build does not update (Debug).
   var checkForUpdates: (() -> Void)?
   var restartService: () async throws -> Void
@@ -18,8 +21,8 @@ struct AppMenuActions {
 
 /// The app's menus.
 enum AppMenus {
-  /// Panel, settings and service items, then Quit. The status item and the application menu
-  /// share them, since a hidden Dock icon hides the application menu.
+  /// Panel, settings, welcome guide and service items, then Quit. The status item and the
+  /// application menu share them, since a hidden Dock icon hides the application menu.
   static func appItems(_ actions: AppMenuActions) -> [NSMenuItem] {
     let strings = ShellStrings.shared
     let quit = NSMenuItem(
@@ -29,7 +32,11 @@ enum AppMenus {
       ActionMenuItem(strings.text(.menuShowPanel), actions.showPanel),
       ActionMenuItem(strings.text(.menuHidePanel), actions.hidePanel),
       ActionMenuItem(strings.text(.menuSettings), key: ",", actions.openSettings),
+      ActionMenuItem(strings.text(.menuOnboarding), actions.openOnboarding),
     ]
+    if let replayOnboarding = actions.replayOnboarding {
+      items.append(ActionMenuItem(strings.text(.menuOnboardingReplay), replayOnboarding))
+    }
     if let checkForUpdates = actions.checkForUpdates {
       items.append(ActionMenuItem(strings.text(.menuCheckForUpdates), checkForUpdates))
     }
@@ -183,8 +190,8 @@ extension AppMenuActions {
   /// Actions of a controller that is gone; the menu still builds.
   static var inert: AppMenuActions {
     AppMenuActions(
-      showPanel: {}, hidePanel: {}, openSettings: {}, checkForUpdates: nil, restartService: {},
-      showServiceLogs: {},
-      editCommand: { _ in }, developmentHint: { false })
+      showPanel: {}, hidePanel: {}, openSettings: {}, openOnboarding: {}, replayOnboarding: nil,
+      checkForUpdates: nil,
+      restartService: {}, showServiceLogs: {}, editCommand: { _ in }, developmentHint: { false })
   }
 }

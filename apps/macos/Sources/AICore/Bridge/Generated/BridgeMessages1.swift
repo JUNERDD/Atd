@@ -42,6 +42,9 @@ public enum NativeCall: Equatable, Sendable {
   case appSetOpenAtLogin(AppSetOpenAtLoginParams)
   case settingsOpen(SettingsOpenParams)
   case settingsClose(SettingsCloseParams)
+  case onboardingOpen(OnboardingOpenParams)
+  case onboardingSettle(OnboardingSettleParams)
+  case onboardingClose(OnboardingCloseParams)
   case shortcutsSet(ShortcutsSetParams)
   case capture(CaptureParams)
   case clipboardRead(ClipboardReadParams)
@@ -59,6 +62,7 @@ public enum NativeCall: Equatable, Sendable {
   case approvalRequest(ApprovalRequestParams)
   case toolbarSet(ToolbarSetParams)
   case accessibilityRequest(AccessibilityRequestParams)
+  case screenRecordingRequest(ScreenRecordingRequestParams)
   case appsPick(AppsPickParams)
 
   /// The contract name.
@@ -72,6 +76,9 @@ public enum NativeCall: Equatable, Sendable {
     case .appSetOpenAtLogin: "app.setOpenAtLogin"
     case .settingsOpen: "settings.open"
     case .settingsClose: "settings.close"
+    case .onboardingOpen: "onboarding.open"
+    case .onboardingSettle: "onboarding.settle"
+    case .onboardingClose: "onboarding.close"
     case .shortcutsSet: "shortcuts.set"
     case .capture: "capture"
     case .clipboardRead: "clipboard.read"
@@ -89,6 +96,7 @@ public enum NativeCall: Equatable, Sendable {
     case .approvalRequest: "approval.request"
     case .toolbarSet: "toolbar.set"
     case .accessibilityRequest: "accessibility.request"
+    case .screenRecordingRequest: "screenRecording.request"
     case .appsPick: "apps.pick"
     }
   }
@@ -99,6 +107,8 @@ public enum NativePost: Equatable, Sendable {
   case bridgeReady(BridgeReadyPost)
   case languageSet(LanguageSetPost)
   case windowDragRegions(WindowDragRegionsPost)
+  case onboardingSurface(OnboardingSurfacePost)
+  case onboardingSelection(OnboardingSelectionPost)
   case socketOpen(SocketOpenPost)
   case socketSend(SocketSendPost)
   case updateInstall(UpdateInstallPost)
@@ -110,6 +120,8 @@ public enum NativePost: Equatable, Sendable {
     case .bridgeReady: "bridge.ready"
     case .languageSet: "language.set"
     case .windowDragRegions: "window.dragRegions"
+    case .onboardingSurface: "onboarding.surface"
+    case .onboardingSelection: "onboarding.selection"
     case .socketOpen: "socket.open"
     case .socketSend: "socket.send"
     case .updateInstall: "update.install"
@@ -145,6 +157,12 @@ public enum JsMessage: Decodable, Equatable, Sendable {
         call = try .settingsOpen(container.value(.params, SettingsOpenParams.self))
       case "settings.close":
         call = try .settingsClose(container.value(.params, SettingsCloseParams.self))
+      case "onboarding.open":
+        call = try .onboardingOpen(container.value(.params, OnboardingOpenParams.self))
+      case "onboarding.settle":
+        call = try .onboardingSettle(container.value(.params, OnboardingSettleParams.self))
+      case "onboarding.close":
+        call = try .onboardingClose(container.value(.params, OnboardingCloseParams.self))
       case "shortcuts.set":
         call = try .shortcutsSet(container.value(.params, ShortcutsSetParams.self))
       case "capture": call = try .capture(container.value(.params, CaptureParams.self))
@@ -170,6 +188,9 @@ public enum JsMessage: Decodable, Equatable, Sendable {
       case "toolbar.set": call = try .toolbarSet(container.value(.params, ToolbarSetParams.self))
       case "accessibility.request":
         call = try .accessibilityRequest(container.value(.params, AccessibilityRequestParams.self))
+      case "screenRecording.request":
+        call = try .screenRecordingRequest(
+          container.value(.params, ScreenRecordingRequestParams.self))
       case "apps.pick": call = try .appsPick(container.value(.params, AppsPickParams.self))
       default:
         throw DecodingError.dataCorruptedError(
@@ -185,6 +206,10 @@ public enum JsMessage: Decodable, Equatable, Sendable {
       case "language.set": post = try .languageSet(container.value(.params, LanguageSetPost.self))
       case "window.dragRegions":
         post = try .windowDragRegions(container.value(.params, WindowDragRegionsPost.self))
+      case "onboarding.surface":
+        post = try .onboardingSurface(container.value(.params, OnboardingSurfacePost.self))
+      case "onboarding.selection":
+        post = try .onboardingSelection(container.value(.params, OnboardingSelectionPost.self))
       case "socket.open": post = try .socketOpen(container.value(.params, SocketOpenPost.self))
       case "socket.send": post = try .socketSend(container.value(.params, SocketSendPost.self))
       case "update.install":
@@ -216,59 +241,5 @@ public enum JsMessage: Decodable, Equatable, Sendable {
     case type
     case method
     case params
-  }
-}
-
-/// A Swift → page push; it encodes as its payload.
-public enum NativeEvent: Encodable, Equatable, Sendable {
-  case windowActive(WindowActiveEvent)
-  case windowVisibility(WindowVisibilityEvent)
-  case accessibilityReduceTransparency(AccessibilityReduceTransparencyEvent)
-  case shortcutCommand(ShortcutCommandEvent)
-  case shortcutScreenshot(ShortcutScreenshotEvent)
-  case resourcesImported(ResourcesImportedEvent)
-  case filesDrag(FilesDragEvent)
-  case editCommand(EditCommandEvent)
-  case speechState(SpeechStateEvent)
-  case selectionAsk(SelectionAskEvent)
-  case accessibilityTrust(AccessibilityTrustEvent)
-  case updateState(UpdateStateEvent)
-  case socketFrames(SocketFramesEvent)
-
-  /// The contract name.
-  public var name: String {
-    switch self {
-    case .windowActive: "window.active"
-    case .windowVisibility: "window.visibility"
-    case .accessibilityReduceTransparency: "accessibility.reduceTransparency"
-    case .shortcutCommand: "shortcut.command"
-    case .shortcutScreenshot: "shortcut.screenshot"
-    case .resourcesImported: "resources.imported"
-    case .filesDrag: "files.drag"
-    case .editCommand: "edit.command"
-    case .speechState: "speech.state"
-    case .selectionAsk: "selection.ask"
-    case .accessibilityTrust: "accessibility.trust"
-    case .updateState: "update.state"
-    case .socketFrames: "socket.frames"
-    }
-  }
-
-  public func encode(to encoder: any Encoder) throws {
-    switch self {
-    case .windowActive(let payload): try payload.encode(to: encoder)
-    case .windowVisibility(let payload): try payload.encode(to: encoder)
-    case .accessibilityReduceTransparency(let payload): try payload.encode(to: encoder)
-    case .shortcutCommand(let payload): try payload.encode(to: encoder)
-    case .shortcutScreenshot(let payload): try payload.encode(to: encoder)
-    case .resourcesImported(let payload): try payload.encode(to: encoder)
-    case .filesDrag(let payload): try payload.encode(to: encoder)
-    case .editCommand(let payload): try payload.encode(to: encoder)
-    case .speechState(let payload): try payload.encode(to: encoder)
-    case .selectionAsk(let payload): try payload.encode(to: encoder)
-    case .accessibilityTrust(let payload): try payload.encode(to: encoder)
-    case .updateState(let payload): try payload.encode(to: encoder)
-    case .socketFrames(let payload): try payload.encode(to: encoder)
-    }
   }
 }

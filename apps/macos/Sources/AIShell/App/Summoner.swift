@@ -28,7 +28,9 @@ final class Summoner {
     self.isCapturing = isCapturing
   }
 
-  func summon(_ trigger: SummonTrigger) {
+  /// `practiceText` is the welcome guide's practice selection when its toolbar asked: it is the
+  /// selection a capture step stashes, in place of reading the frontmost app (Atd itself then).
+  func summon(_ trigger: SummonTrigger, practiceText: String? = nil) {
     guard !isSummoning, !isCapturing() else { return }
     let steps = SummonPolicy.steps(
       for: trigger,
@@ -42,7 +44,10 @@ final class Summoner {
       for step in steps {
         switch step {
         case .hidePanel: panel.hide()
-        case .captureSelection: stash = TextCapture.stash(await readSelection(), at: .now)
+        case .captureSelection:
+          var text = practiceText
+          if text == nil { text = await readSelection() }
+          stash = TextCapture.stash(text, at: .now)
         case .clearSelection: stash = nil
         case .showPanel:
           panel.dockAtCursor()
@@ -70,7 +75,7 @@ final class Summoner {
   /// The frontmost app's selection, asking for Accessibility once per launch when needed.
   private func readSelection() async -> String? {
     guard SelectionReader.isTrusted else {
-      trust.promptOncePerLaunch()
+      trust.promptForSummon()
       return nil
     }
     let pid = NSWorkspace.shared.frontmostApplication?.processIdentifier

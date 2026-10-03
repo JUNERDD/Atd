@@ -135,6 +135,12 @@ public typealias AccessibilityRequestParams = NativeEmpty
 /// Result of the `accessibility.request` call.
 public typealias AccessibilityRequestResult = NativeEmpty
 
+/// Params of the `screenRecording.request` call.
+public typealias ScreenRecordingRequestParams = NativeEmpty
+
+/// Result of the `screenRecording.request` call.
+public typealias ScreenRecordingRequestResult = NativeEmpty
+
 /// Params of the `apps.pick` call.
 public typealias AppsPickParams = NativeEmpty
 

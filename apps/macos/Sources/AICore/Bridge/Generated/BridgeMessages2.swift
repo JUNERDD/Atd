@@ -4,6 +4,66 @@
 
 import Foundation
 
+/// A Swift → page push; it encodes as its payload.
+public enum NativeEvent: Encodable, Equatable, Sendable {
+  case windowActive(WindowActiveEvent)
+  case windowVisibility(WindowVisibilityEvent)
+  case accessibilityReduceTransparency(AccessibilityReduceTransparencyEvent)
+  case shortcutCommand(ShortcutCommandEvent)
+  case shortcutScreenshot(ShortcutScreenshotEvent)
+  case onboardingReplay(OnboardingReplayEvent)
+  case resourcesImported(ResourcesImportedEvent)
+  case filesDrag(FilesDragEvent)
+  case editCommand(EditCommandEvent)
+  case speechState(SpeechStateEvent)
+  case selectionAsk(SelectionAskEvent)
+  case accessibilityTrust(AccessibilityTrustEvent)
+  case screenRecordingTrust(ScreenRecordingTrustEvent)
+  case updateState(UpdateStateEvent)
+  case socketFrames(SocketFramesEvent)
+
+  /// The contract name.
+  public var name: String {
+    switch self {
+    case .windowActive: "window.active"
+    case .windowVisibility: "window.visibility"
+    case .accessibilityReduceTransparency: "accessibility.reduceTransparency"
+    case .shortcutCommand: "shortcut.command"
+    case .shortcutScreenshot: "shortcut.screenshot"
+    case .onboardingReplay: "onboarding.replay"
+    case .resourcesImported: "resources.imported"
+    case .filesDrag: "files.drag"
+    case .editCommand: "edit.command"
+    case .speechState: "speech.state"
+    case .selectionAsk: "selection.ask"
+    case .accessibilityTrust: "accessibility.trust"
+    case .screenRecordingTrust: "screenRecording.trust"
+    case .updateState: "update.state"
+    case .socketFrames: "socket.frames"
+    }
+  }
+
+  public func encode(to encoder: any Encoder) throws {
+    switch self {
+    case .windowActive(let payload): try payload.encode(to: encoder)
+    case .windowVisibility(let payload): try payload.encode(to: encoder)
+    case .accessibilityReduceTransparency(let payload): try payload.encode(to: encoder)
+    case .shortcutCommand(let payload): try payload.encode(to: encoder)
+    case .shortcutScreenshot(let payload): try payload.encode(to: encoder)
+    case .onboardingReplay(let payload): try payload.encode(to: encoder)
+    case .resourcesImported(let payload): try payload.encode(to: encoder)
+    case .filesDrag(let payload): try payload.encode(to: encoder)
+    case .editCommand(let payload): try payload.encode(to: encoder)
+    case .speechState(let payload): try payload.encode(to: encoder)
+    case .selectionAsk(let payload): try payload.encode(to: encoder)
+    case .accessibilityTrust(let payload): try payload.encode(to: encoder)
+    case .screenRecordingTrust(let payload): try payload.encode(to: encoder)
+    case .updateState(let payload): try payload.encode(to: encoder)
+    case .socketFrames(let payload): try payload.encode(to: encoder)
+    }
+  }
+}
+
 /// Everything Swift delivers: a call's result or error, or an event.
 public enum SwiftMessage: Encodable, Equatable, Sendable {
   /// `value` must match the call's result schema; the page checks it.

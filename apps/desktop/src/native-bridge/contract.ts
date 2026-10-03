@@ -27,6 +27,20 @@ const DragRectSchema = Type.Object(
   { additionalProperties: false },
 );
 
+/** A rectangle the welcome guide reports, in CSS pixels from the web view's top-left. */
+const GuideRectSchema = Type.Object(
+  {
+    x: Type.Number({ minimum: 0 }),
+    y: Type.Number({ minimum: 0 }),
+    width: Type.Number({ minimum: 0 }),
+    height: Type.Number({ minimum: 0 }),
+  },
+  { additionalProperties: false },
+);
+
+/** Longest text `onboarding.selection` takes; the practice area's sample is far shorter. */
+export const MAX_PRACTICE_SELECTION_LENGTH = 2000;
+
 /** Posts: JS → Swift one-way messages; Swift sends no reply. */
 export const NativePosts = {
   /** The page installed its delivery function; Swift flushes what it queued until now. */
@@ -42,6 +56,32 @@ export const NativePosts = {
    */
   'window.dragRegions': Type.Object(
     { rects: Type.Array(DragRectSchema, { maxItems: 64 }) },
+    { additionalProperties: false },
+  ),
+  /**
+   * The welcome guide card's surface in CSS pixels from the web view's top-left, and its corner
+   * radius; the shell lays the window material (the panel's and Settings' glass) under it. Sent
+   * once the card is at rest and on every resize; `null` once the guide starts closing and on
+   * teardown. The shell takes it only from the guide's own web view.
+   */
+  'onboarding.surface': Type.Object(
+    { rect: Type.Union([GuideRectSchema, Type.Null()]), radius: Type.Number({ minimum: 0 }) },
+    { additionalProperties: false },
+  ),
+  /**
+   * The welcome guide's practice selection: the bounding box of text selected in its practice
+   * area, in CSS pixels from the web view's top-left, and that text. The shell shows the real
+   * selection toolbar beside it (while the toolbar is on and the app is trusted for
+   * Accessibility), and its Ask Atd and commands take this text as the selection. `null` hides
+   * that toolbar: sent when the selection collapses or leaves the practice text, on a key, a
+   * scroll or a step change, once the guide starts closing and on teardown. The shell takes it
+   * only from the guide's own web view.
+   */
+  'onboarding.selection': Type.Object(
+    {
+      rect: Type.Union([GuideRectSchema, Type.Null()]),
+      text: Text(MAX_PRACTICE_SELECTION_LENGTH),
+    },
     { additionalProperties: false },
   ),
   /** Opens a virtual socket: Swift connects one real socket to the service for it. */
@@ -115,6 +155,11 @@ export const NativeEvents = {
    */
   'shortcut.screenshot': Empty,
   /**
+   * Debug builds' Replay First-Launch Guide (panel only): the page marks the guide as not shown,
+   * which runs the first launch's path again.
+   */
+  'onboarding.replay': Empty,
+  /**
    * Swift imported files dropped or pasted into the panel through `/v1/resources/import`, and
    * registered folders through `/v1/folders/register`. `failures` covers both; each path of the
    * import lands in exactly one list.
@@ -163,6 +208,15 @@ export const NativeEvents = {
    * need it), sent to every page on each change and replayed when a page becomes ready.
    */
   'accessibility.trust': Type.Object({ trusted: Type.Boolean() }, { additionalProperties: false }),
+  /**
+   * Whether this running app may capture the screen (screenshots need Screen Recording), sent to
+   * every page on each change and replayed when a page becomes ready. macOS applies a new grant
+   * only to a relaunched app, so `trusted` can stay false after the user allows it.
+   */
+  'screenRecording.trust': Type.Object(
+    { trusted: Type.Boolean() },
+    { additionalProperties: false },
+  ),
   /**
    * The version of a downloaded update that installs when the app quits, null while none waits.
    * Sent to the panel on each change and replayed when its page becomes ready.

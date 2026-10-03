@@ -10,6 +10,13 @@ enum Screens {
     return workArea(nearestTo: cursor.x, cursor.y)
   }
 
+  /// The full `frame` (menu bar and Dock included) of the display under the cursor, or the
+  /// nearest one.
+  static func frameUnderCursor() -> ScreenRect {
+    let cursor = NSEvent.mouseLocation
+    return frame(nearestTo: cursor.x, cursor.y)
+  }
+
   /// The work area of the display holding most of `frame`, or the one nearest its center.
   static func workArea(containing frame: ScreenRect) -> ScreenRect {
     let rect = NSRect(frame)
@@ -20,15 +27,35 @@ enum Screens {
     return workArea(nearestTo: rect.midX, rect.midY)
   }
 
+  /// The full frame of the display holding most of `frame`, or the one nearest the cursor when
+  /// that display is gone.
+  static func frame(containing frame: ScreenRect) -> ScreenRect {
+    let rect = NSRect(frame)
+    let best = NSScreen.screens.max {
+      area($0.frame.intersection(rect)) < area($1.frame.intersection(rect))
+    }
+    if let best, area(best.frame.intersection(rect)) > 0 { return ScreenRect(best.frame) }
+    return frameUnderCursor()
+  }
+
   private static func workArea(nearestTo x: Double, _ y: Double) -> ScreenRect {
+    guard let screen = screen(nearestTo: x, y) else { return fallback }
+    return ScreenRect(screen.visibleFrame)
+  }
+
+  private static func frame(nearestTo x: Double, _ y: Double) -> ScreenRect {
+    guard let screen = screen(nearestTo: x, y) else { return fallback }
+    return ScreenRect(screen.frame)
+  }
+
+  private static func screen(nearestTo x: Double, _ y: Double) -> NSScreen? {
     let screens = NSScreen.screens
     let index = DisplaySelection.index(nearestTo: x, y, in: screens.map { ScreenRect($0.frame) })
-    guard let index else {
-      // No display attached (a transient state while displays rearrange).
-      return ScreenRect(x: 0, y: 0, width: 1440, height: 900)
-    }
-    return ScreenRect(screens[index].visibleFrame)
+    return index.map { screens[$0] }
   }
+
+  /// No display attached (a transient state while displays rearrange).
+  private static let fallback = ScreenRect(x: 0, y: 0, width: 1440, height: 900)
 
   private static func area(_ rect: NSRect) -> CGFloat {
     rect.isNull ? 0 : rect.width * rect.height
@@ -57,20 +84,26 @@ extension NSRect {
   }
 }
 
-/// The window background both windows share: Liquid Glass behind a transparent web view.
+/// The window background every page window shares: Liquid Glass behind a transparent web view.
 enum GlassBackground {
   static func make(content: NSView) -> NSView {
-    let glass = NSGlassEffectView()
+    let glass = material()
     glass.contentView = content
     return glass
   }
+
+  /// The same glass on its own, for a surface laid under part of a page rather than a whole
+  /// window (the welcome guide's card).
+  static func material() -> NSGlassEffectView {
+    NSGlassEffectView()
+  }
 }
 
-/// The transparent 52pt title bar both windows share. An empty unified `NSToolbar` sets the bar's
-/// height, centers the traffic lights in it and gives the window the toolbar window's corner
-/// radius; the page lays its header out on that bar and reports it as a drag region. The toolbar
-/// has no items and cannot be customized, so the bar keeps its height and clicks under it still
-/// reach the web view.
+/// The transparent 52pt title bar every page window shares. An empty unified `NSToolbar` sets
+/// the bar's height, centers the traffic lights in it and gives the window the toolbar window's
+/// corner radius; the page lays its header out on that bar and reports it as a drag region. The
+/// toolbar has no items and cannot be customized, so the bar keeps its height and clicks under it
+/// still reach the web view.
 enum UnifiedTitleBar {
   static func apply(to window: NSWindow, identifier: String) {
     let toolbar = NSToolbar(identifier: identifier)
