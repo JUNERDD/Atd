@@ -15,8 +15,8 @@ export function ArtStage({ name, children }: { name: string; children: ReactNode
 }
 
 /**
- * The Atd app icon (the shipped `app-icon.png`, or the development build's), over the soft glow the
- * welcome and finish art share. `children` sit on the icon, such as the finish step's badge.
+ * The Atd app icon (the shipped `app-icon.png`, or the development build's), for the welcome and
+ * finish art. `children` sit on the icon, such as the finish step's badge.
  */
 export function AppIcon({ children }: { children?: ReactNode }) {
   return (

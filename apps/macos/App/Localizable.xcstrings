@@ -1909,6 +1909,24 @@
         }
       }
     },
+    "menu.selectionListening" : {
+      "comment" : "Status menu item, checked while the selection toolbar responds to selections; pressing its key twice turns it on and off",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show Toolbar for Selections"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "选中文字时显示工具栏"
+          }
+        }
+      }
+    },
     "menu.settings" : {
       "comment" : "Menu item that opens the settings window",
       "extractionState" : "manual",
@@ -2085,6 +2103,78 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "要退出 Atd 吗？"
+          }
+        }
+      }
+    },
+    "selectionHud.hide" : {
+      "comment" : "Status HUD close button: hides it until the toolbar turns on again",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hide until next time"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "隐藏到下次开启"
+          }
+        }
+      }
+    },
+    "selectionHud.hint" : {
+      "comment" : "Status HUD hint; %@ is the key combination as symbols, such as ⌥⇧",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Press %@ twice to turn off"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "连按两次 %@ 关闭"
+          }
+        }
+      }
+    },
+    "selectionHud.off" : {
+      "comment" : "Brief notice when the selection toolbar's press-twice mode turns off while its status HUD was hidden",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Selection toolbar off"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "选区工具栏已关闭"
+          }
+        }
+      }
+    },
+    "selectionHud.on" : {
+      "comment" : "Status HUD while the selection toolbar's press-twice mode is on",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Selection toolbar on"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "选区工具栏已开启"
           }
         }
       }

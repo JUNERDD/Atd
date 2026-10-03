@@ -6,7 +6,8 @@ import themeUrl from './onboarding-theme.mp3?url&no-inline';
  * are the contract between that script and the page; change one only together with the other and
  * a rerender of the mp3.
  *
- * - `revealAt`: the bloom on the downbeat, where the intro's card reveal lands.
+ * - `revealAt`: the bloom on the downbeat, where the opening page's light lands (`INTRO.landAt`,
+ *   with the track started at `INTRO.musicAt`).
  * - `loopStart`..`loopEnd`: the 40 s bed, which the script renders so the sample after `loopEnd`
  *   is the one at `loopStart`, so the page loops exactly this range. The rest of the file after
  *   `loopEnd` is the tail that only a non-looping player would reach.

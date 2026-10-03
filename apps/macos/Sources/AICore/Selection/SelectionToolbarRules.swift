@@ -1,8 +1,9 @@
 import Foundation
 
-/// What the page pushed for the selection toolbar (`toolbar.set`): whether it is on, the apps
-/// it stays out of, and the commands it offers (the enabled commands that read the selection,
-/// in command-list order).
+/// What the page pushed for the selection toolbar (`toolbar.set`): whether it is on, which
+/// selections bring it up, whether the `toggle` mode shows its status HUD, the apps it stays out
+/// of, and the commands it offers (the enabled commands that read the selection, in command-list
+/// order).
 public struct SelectionToolbarSettings: Equatable, Sendable {
   public struct Command: Equatable, Sendable {
     public let id: String
@@ -15,18 +16,29 @@ public struct SelectionToolbarSettings: Equatable, Sendable {
   }
 
   public var enabled: Bool
+  public var activation: SelectionActivation
+  public var showHud: Bool
   public var excludedBundleIds: Set<String>
   public var commands: [Command]
 
-  public init(enabled: Bool, excludedBundleIds: Set<String>, commands: [Command]) {
+  public init(
+    enabled: Bool, activation: SelectionActivation, showHud: Bool,
+    excludedBundleIds: Set<String>, commands: [Command]
+  ) {
     self.enabled = enabled
+    self.activation = activation
+    self.showHud = showHud
     self.excludedBundleIds = excludedBundleIds
     self.commands = commands
   }
 
   public init(_ params: ToolbarSetParams) {
     self.init(
-      enabled: params.enabled, excludedBundleIds: Set(params.excludedBundleIds),
+      enabled: params.enabled,
+      activation: SelectionActivation(
+        mode: params.activation, keys: Set(params.activationKeys)),
+      showHud: params.showHud,
+      excludedBundleIds: Set(params.excludedBundleIds),
       commands: params.commands.map { Command(id: $0.id, name: $0.name) })
   }
 }

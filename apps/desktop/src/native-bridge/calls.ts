@@ -254,11 +254,24 @@ export const NativeCalls = {
    * Replaces what the selection toolbar offers over text selected in other apps; the page pushes
    * it whenever it changes. `commands`: the enabled commands that read the selection, in
    * command-list order; clicking one captures the selection and sends `shortcut.command`.
+   * `activation` and `activationKeys` gate which selections bring it up
+   * (`SelectionToolbarSettingsSchema`); the shell owns the `toggle` mode's listening state, and
+   * shows its status HUD while it listens when `showHud` is set.
    */
   'toolbar.set': {
     params: Type.Object(
       {
         enabled: Type.Boolean(),
+        activation: Type.Union([
+          Type.Literal('always'),
+          Type.Literal('hold'),
+          Type.Literal('toggle'),
+        ]),
+        activationKeys: Type.Array(
+          Type.Union([Type.Literal('option'), Type.Literal('command'), Type.Literal('shift')]),
+          { minItems: 1, maxItems: 3 },
+        ),
+        showHud: Type.Boolean(),
         excludedBundleIds: Type.Array(Type.String({ minLength: 1, maxLength: 255 }), {
           maxItems: 100,
         }),

@@ -5,16 +5,15 @@ import { AppIcon, ArtStage } from './art-panel';
 import { CELEBRATION_SPRING, FADE } from './step-motion';
 
 /**
- * The closing art: the app icon over the welcome's glow, and once every goal is met, the done
- * badge springing onto it (the guide's one bounce besides the welcome icon). Under Reduce Motion
- * the badge fades in.
+ * The closing art: the app icon, over the finish light the art panel draws, and once every goal is
+ * met, the done badge springing onto it (the guide's one bounce). Under Reduce Motion the badge
+ * fades in.
  */
 export function FinishArt({ goals }: { goals: OnboardingGoals }) {
   const reduced = useReducedMotion() ?? false;
   const complete = GOAL_STEPS.every((step) => goals[step]);
   return (
     <ArtStage name="finish">
-      <span className="guide-glow" />
       <span className="guide-icon-motion">
         <AppIcon>
           <AnimatePresence>

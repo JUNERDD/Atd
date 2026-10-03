@@ -82,11 +82,20 @@ public enum ApprovalRequestResult: Codable, Equatable, Sendable {
 /// Params of the `toolbar.set` call.
 public struct ToolbarSetParams: Codable, Equatable, Sendable {
   public let enabled: Bool
+  public let activation: Activation
+  public let activationKeys: [ActivationKey]
+  public let showHud: Bool
   public let excludedBundleIds: [String]
   public let commands: [Command]
 
-  public init(enabled: Bool, excludedBundleIds: [String], commands: [Command]) {
+  public init(
+    enabled: Bool, activation: Activation, activationKeys: [ActivationKey], showHud: Bool,
+    excludedBundleIds: [String], commands: [Command]
+  ) {
     self.enabled = enabled
+    self.activation = activation
+    self.activationKeys = activationKeys
+    self.showHud = showHud
     self.excludedBundleIds = excludedBundleIds
     self.commands = commands
   }
@@ -94,14 +103,33 @@ public struct ToolbarSetParams: Codable, Equatable, Sendable {
   public init(from decoder: any Decoder) throws {
     let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
     enabled = try container.boolean(.enabled)
+    activation = try container.value(.activation, Activation.self)
+    activationKeys = try container.array(
+      .activationKeys, of: ActivationKey.self, minItems: 1, maxItems: 3)
+    showHud = try container.boolean(.showHud)
     excludedBundleIds = try container.array(.excludedBundleIds, of: String.self, maxItems: 100)
     commands = try container.array(.commands, of: Command.self, maxItems: 64)
   }
 
   private enum CodingKeys: String, CodingKey, CaseIterable {
     case enabled
+    case activation
+    case activationKeys
+    case showHud
     case excludedBundleIds
     case commands
+  }
+
+  public enum Activation: String, Codable, Equatable, Sendable {
+    case always
+    case hold
+    case toggle
+  }
+
+  public enum ActivationKey: String, Codable, Equatable, Sendable {
+    case option
+    case command
+    case shift
   }
 
   public struct Command: Codable, Equatable, Sendable {
