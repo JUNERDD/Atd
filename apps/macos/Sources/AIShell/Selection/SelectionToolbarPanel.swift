@@ -47,8 +47,6 @@ final class SelectionToolbarPanel: NSObject {
   }
 
   var isVisible: Bool { window.isVisible }
-  /// The capsule's frame on screen, without the window's margin.
-  var frame: ScreenRect { ScreenRect(window.frame.insetBy(dx: Self.inset, dy: Self.inset)) }
 
   func setCommands(_ commands: [SelectionToolbarSettings.Command]) {
     self.commands = commands

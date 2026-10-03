@@ -91,9 +91,6 @@ public enum SelectionProbe: Equatable, Sendable {
 /// another app the user did not exclude, with Accessibility trusted, and never while a
 /// password field or secure input has the keyboard.
 public enum SelectionToolbarRules {
-  /// How far, in points, the pointer may move away from the toolbar before it goes.
-  public static let dismissDistance = 120.0
-
   /// Whether a gesture's mouse-up is worth an Accessibility check at all.
   public static func shouldProbe(_ context: SelectionToolbarContext) -> Bool {
     guard context.enabled, context.trusted, !context.secureInput else { return false }
@@ -105,13 +102,5 @@ public enum SelectionToolbarRules {
   public static func shows(_ probe: SelectionProbe) -> Bool {
     if case .selected(let length, _) = probe { return length > 0 }
     return false
-  }
-
-  /// Whether the pointer at (`x`, `y`) is farther than ``dismissDistance`` from `toolbar`,
-  /// both in the same global points.
-  public static func pointerLeft(_ toolbar: ScreenRect, x: Double, y: Double) -> Bool {
-    let dx = max(toolbar.x - x, 0, x - toolbar.maxX)
-    let dy = max(toolbar.y - y, 0, y - toolbar.maxY)
-    return hypot(dx, dy) > dismissDistance
   }
 }
