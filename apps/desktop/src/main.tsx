@@ -9,8 +9,13 @@ import { NativeBridge } from './native-bridge/client';
 import { installNativeHost } from './native-host';
 import { loadMarkdown } from './features/agent/transcript/markdown-loader';
 
-const isSettingsWindow =
-  window.location.hash === '#settings' || window.location.hash.startsWith('#settings?');
+/** Which window this page is: the shell loads the settings and welcome guide windows by hash. */
+const windowKind = (() => {
+  const { hash } = window.location;
+  if (hash === '#settings' || hash.startsWith('#settings?')) return 'settings';
+  if (hash === '#onboarding') return 'onboarding';
+  return 'panel';
+})();
 const root = document.getElementById('root')!;
 // The macOS shell hosts this page and installs `window.desktop` from its message handler before
 // the first render. A plain browser on the dev server has no shell, so it gets only a notice.
@@ -22,20 +27,24 @@ async function renderWindow(native: NativeBridge) {
   const windowRoot = loadWindowRoot();
   // The panel renders transcripts as soon as a task loads; start the markdown chunk alongside its
   // tree, so a transcript rarely has to show plain text first.
-  if (!isSettingsWindow) void loadMarkdown();
-  await installNativeHost(native, isSettingsWindow ? 'settings' : 'panel');
-  document.documentElement.dataset.window = isSettingsWindow ? 'settings' : 'panel';
-  // Both windows (panel and settings) run the application menu's Undo/Redo through this entry.
+  if (windowKind === 'panel') void loadMarkdown();
+  await installNativeHost(native, windowKind);
+  document.documentElement.dataset.window = windowKind;
+  // Every window runs the application menu's Undo/Redo through this entry.
   const disposeEditCommands = installEditCommands();
   import.meta.hot?.dispose(disposeEditCommands);
   // A non-English first language loads its translations (started when i18n loaded) before any
   // text renders.
   const [WindowRoot] = await Promise.all([windowRoot, initialLanguageReady]);
+  // The welcome guide's window is a transparent full-screen stage: a loading surface would paint
+  // over the whole display, so it waits on nothing visible.
+  const fallback =
+    windowKind === 'onboarding' ? null : (
+      <output className="settings-loading">{i18n.t('window.loading')}</output>
+    );
   ReactDOM.createRoot(root).render(
     <React.StrictMode>
-      <React.Suspense
-        fallback={<output className="settings-loading">{i18n.t('window.loading')}</output>}
-      >
+      <React.Suspense fallback={fallback}>
         <WindowRoot />
       </React.Suspense>
     </React.StrictMode>,
@@ -49,9 +58,13 @@ async function renderWindow(native: NativeBridge) {
 // gets one preload wrapper with only the panel's CSS dependencies, so the settings window rendered
 // without its own stylesheet.
 async function loadWindowRoot() {
-  if (isSettingsWindow) {
+  if (windowKind === 'settings') {
     const module = await import('./features/settings/settings-window');
     return module.SettingsWindow;
+  }
+  if (windowKind === 'onboarding') {
+    const module = await import('./features/onboarding/onboarding-window');
+    return module.OnboardingWindow;
   }
   const module = await import('./App');
   return module.App;

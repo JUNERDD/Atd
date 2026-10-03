@@ -10,6 +10,7 @@ import {
   ReplaceQueueRequestSchema,
 } from '@atd/agent-contracts';
 import { ConflictError } from '../errors.js';
+import type { FolderStore } from '../folders/store.js';
 import { announceInvalidation } from '../invalidate.js';
 import type { Ledger } from '../ledger.js';
 import type { RunnerManager } from '../runner-manager.js';
@@ -21,6 +22,7 @@ export interface TaskManageContext {
   ledger: Ledger;
   manager: RunnerManager;
   paths: ServicePaths;
+  folders: FolderStore;
 }
 
 /**
@@ -28,8 +30,8 @@ export interface TaskManageContext {
  * changes refuse while a run is live: D8 no-hot-swap; the tier is part of
  * the run binding, so the next run reopens the session with it). DELETE
  * refuses while any run is active and otherwise removes the task, its
- * idempotency entries and its orphaned pending requests; session files,
- * transcripts and audit logs stay on disk for forensics. POST compact starts
+ * idempotency entries, its orphaned pending requests and its folder grants;
+ * session files, transcripts and audit logs stay on disk for forensics. POST compact starts
  * a manual compaction of an idle task (RunnerManager.compact) and answers once
  * it is accepted; the task's compaction block and context updates follow it.
  * GET context splits the task's context usage by category, computed on request
@@ -87,6 +89,7 @@ export function registerTaskManageRoutes(app: FastifyInstance, ctx: TaskManageCo
         );
       });
       await ctx.manager.remove(taskId);
+      await ctx.folders.forget(taskId);
       return { deleted: true as const, taskId };
     },
   );

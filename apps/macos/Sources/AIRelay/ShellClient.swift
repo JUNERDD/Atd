@@ -35,6 +35,20 @@ public nonisolated struct ShellClient: Sendable {
     return try JSONDecoder().decode(ResourceImportResponse.self, from: response.data)
   }
 
+  /// `POST /v1/folders/register { paths }`: the service checks each directory and answers a
+  /// folder ref a task can be granted; each path succeeds or fails on its own.
+  public func registerFolders(paths: [String]) async throws -> FolderRegisterResponse {
+    guard (1...ImportBatch.maxFolders).contains(paths.count),
+      paths.allSatisfy({ $0.hasPrefix("/") })
+    else {
+      throw ShellClientError.invalidArgument("Register takes 1 to 10 absolute paths.")
+    }
+    let body = try JSONEncoder().encode(["paths": paths])
+    let response = try await send(
+      "POST", "/v1/folders/register", body: body, contentType: "application/json")
+    return try JSONDecoder().decode(FolderRegisterResponse.self, from: response.data)
+  }
+
   /// `GET /v1/resources/:id`: a stored resource's bytes, with the name its
   /// `Content-Disposition` carries and its type.
   public func resource(id: String) async throws -> ServiceResource {

@@ -182,7 +182,7 @@ export function ExtensionOverview({
 
   const sections = PLUGIN_SECTIONS.map((section) => {
     const rows = list.filter((plugin) => pluginSection(plugin) === section);
-    // Built-in always holds Core and Personal & shared holds Personal once the list loads.
+    // Built-in always holds System and Personal & shared holds Personal once the list loads.
     if (!rows.length) return null;
     return (
       <ExtensionGroup

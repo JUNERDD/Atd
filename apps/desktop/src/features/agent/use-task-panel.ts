@@ -9,14 +9,15 @@ import { DEFAULT_SHORTCUTS, type RunReference } from '@atd/agent-contracts';
 import { isComposingKey } from '@atd/ui/lib/ime';
 import {
   draftChips,
-  draftFiles,
   draftReferences,
   draftSkills,
   type ComposerDraft,
 } from '../composer-editor/draft';
+import { draftFiles, draftFolders } from '../composer-editor/draft-attachments';
 import { useMemoryCreate } from '../memory/use-memory-create';
 import { extensionSeed, type SeedKind } from './extension-seed';
 import { useSettingsSnapshot } from '../settings/use-settings';
+import { readChoices, readDrafts, useRememberComposers, usableChoice } from './use-composer-memory';
 import { acceleratorToHotkey } from '../../lib/shortcuts';
 import { agentApi, useAgent, useTaskDetail } from './use-agent';
 import { useChildView } from './use-child-view';
@@ -67,7 +68,9 @@ export function useTaskPanel() {
   const runAuto = useRef<(command: PreparedCommand) => void>(() => {});
   const [revealCount, setRevealCount] = useState(0);
   const [policies, setPolicies] = useState<Record<string, RunPolicy>>({});
-  const [drafts, setDrafts] = useState<Record<string, ComposerDraft>>({});
+  const [drafts, setDrafts] = useState(readDrafts);
+  const [choices, setChoices] = useState(readChoices);
+  useRememberComposers(drafts, choices);
   const [pending, setPending] = useState(false);
   const submission = useRef<{ key: string; id: string } | null>(null);
   const memoryCreate = useMemoryCreate();
@@ -163,21 +166,16 @@ export function useTaskPanel() {
     if (revealCount) void showPanel();
   }, [revealCount]);
 
+  /** Shows the new conversation as it was left: its draft and model are remembered, not reset. */
   function newTask() {
-    setDraftRevision((value) => value + 1);
-    setDrafts((previous) => ({ ...previous, new: EMPTY_DRAFT }));
-    setPolicies((previous) => {
-      const next = { ...previous };
-      delete next.new;
-      return next;
-    });
     setView('new');
     setTaskId(null);
     setPrepared(null);
   }
-  /** A create-with-AI session on the new draft (`extensionSeed`). */
+  /** A create-with-AI session on the new draft (`extensionSeed`), replacing what it held. */
   function startSeeded(kind: SeedKind, sentence: string) {
     newTask();
+    setDraftRevision((value) => value + 1);
     const seed = extensionSeed(kind, sentence);
     setDrafts((previous) => ({ ...previous, new: seed.draft }));
     setPolicies((previous) => ({ ...previous, new: seed.policy }));
@@ -228,17 +226,17 @@ export function useTaskPanel() {
       text: draft.text,
       files,
       chips: draftChips(draft),
+      folders: draftFolders(draft),
     };
     const skills = commandInput ? [] : draftSkills(draft);
     const references = commandInput ? [] : draftReferences(draft);
-    const saved = launched ? null : (policies[policyKey] ?? null);
-    const policy: RunPolicy | null =
-      skills.length || references.length
-        ? withChips(saved ?? defaultPolicy, skills, references)
-        : saved;
+    // Without a staged policy or a remembered model the service applies its own defaults.
+    const saved = launched || !(policies[policyKey] || choice) ? null : policy;
+    const runPolicy: RunPolicy | null =
+      skills.length || references.length ? withChips(saved ?? policy, skills, references) : saved;
     const targetTaskId = launched ? null : view === 'task' ? taskId : null;
     const key = JSON.stringify({
-      policy,
+      policy: runPolicy,
       input: { ...input, capturedAt: commandInput ? input.capturedAt : '' },
       taskId: targetTaskId,
       commandId: commandInput?.command.id,
@@ -248,7 +246,7 @@ export function useTaskPanel() {
     try {
       const detail = await agentApi().submit({
         invocationId: submission.current.id,
-        policy,
+        policy: runPolicy,
         taskId: targetTaskId,
         commandId: commandInput?.command.id ?? null,
         commandRevision: commandInput?.command.revision ?? null,
@@ -262,6 +260,9 @@ export function useTaskPanel() {
           delete next[policyKey];
           return next;
         });
+      // The conversation this message started keeps the model it was sent with.
+      if (choice && !launched && !targetTaskId)
+        setChoices((previous) => ({ ...previous, [detail.task.id]: choice }));
       setTaskId(detail.task.id);
       setView('task');
       setPrepared(null);
@@ -298,9 +299,16 @@ export function useTaskPanel() {
           : true,
     confirmExpansion: false,
   };
-  const policy = policies[policyKey] ?? defaultPolicy;
-  const changePolicy = (value: RunPolicy) =>
-    setPolicies((previous) => ({ ...previous, [policyKey]: value }));
+  // The model and effort belong to the conversation's memory; the policy only stages the rest.
+  const choice = usableChoice(choices[policyKey], snapshot?.connections);
+  const policy: RunPolicy = { ...(policies[policyKey] ?? defaultPolicy), ...choice };
+  function changePolicy({ model, thinkingLevel, ...staged }: RunPolicy) {
+    setPolicies((previous) => ({ ...previous, [policyKey]: staged }));
+    setChoices((previous) => ({
+      ...previous,
+      [policyKey]: { ...(model ? { model } : {}), ...(thinkingLevel ? { thinkingLevel } : {}) },
+    }));
+  }
   return {
     agent,
     snapshot,

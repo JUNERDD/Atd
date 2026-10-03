@@ -54,6 +54,28 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     window.makeKeyAndOrderFront(nil)
   }
 
+  /// Makes an open window key again unless it is hidden or miniaturized; false when there is
+  /// none to focus.
+  func focusIfShown() -> Bool {
+    guard let window, window.isVisible, !window.isMiniaturized else { return false }
+    window.makeKeyAndOrderFront(nil)
+    return true
+  }
+
+  /// The page a new window opens: `commandId`'s editor (`settings?commandId=…`), otherwise
+  /// `section` (`settings?section=…`), otherwise the default page.
+  static func fragment(commandId: String?, section: String?) -> String {
+    let item =
+      commandId.map { URLQueryItem(name: "commandId", value: $0) }
+      ?? section.map { URLQueryItem(name: "section", value: $0) }
+    guard let item else { return "settings" }
+    var query = URLComponents()
+    query.queryItems = [item]
+    // `URLSearchParams` reads `+` as a space.
+    let encoded = query.percentEncodedQuery?.replacingOccurrences(of: "+", with: "%2B")
+    return "settings?" + (encoded ?? "")
+  }
+
   func setTitle(_ title: String) { window?.title = title }
 
   func close() { window?.close() }

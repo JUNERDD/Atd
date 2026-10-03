@@ -42,10 +42,13 @@ import type { AgentTask } from '../../client/agent/task-schema';
 import { isActive } from '../../client/agent/task-schema';
 import { IconButton } from '../../components/icon-button';
 import { agentApi } from './use-agent';
+import { forgetComposerMemory } from './use-composer-memory';
 import { SettingsSearchField } from '../settings/settings-search-field';
-import { historySections, type HistoryPeriod } from './history-sections';
+import { HistoryViewMenu } from './history-view-menu';
+import { groupHistory, rowDate, sortHistory, stampOf } from './history-view';
 import { RenameTaskDialog } from './rename-task-dialog';
 import { useCopyTaskId } from './use-copy-task-id';
+import { useHistoryView } from './use-history-view';
 import { messageOf } from '../../lib/errors';
 
 /** Row actions, rendered once by the More dropdown and once by the right-click context menu. */
@@ -99,14 +102,6 @@ type HistoryEntry = {
 /** Run states that need the user's attention read in the destructive color, beside their text. */
 const ERROR_STATUSES = new Set(['failed', 'interrupted']);
 
-/** Time for today and yesterday, the weekday within a week, the date beyond that. */
-function rowDate(date: Date, period: HistoryPeriod | undefined, language: string) {
-  if (period === 'today' || period === 'yesterday')
-    return date.toLocaleTimeString(language, { hour: 'numeric', minute: '2-digit' });
-  if (period === 'previous7Days') return date.toLocaleDateString(language, { weekday: 'long' });
-  return date.toLocaleDateString(language, { month: 'short', day: 'numeric' });
-}
-
 export function TaskHistory({
   tasks,
   onChoose,
@@ -121,6 +116,7 @@ export function TaskHistory({
   const [renaming, setRenaming] = useState<{ task: AgentTask; open: boolean } | null>(null);
   const copyId = useCopyTaskId();
   const search = useCompositionQuery();
+  const [view, setView] = useHistoryView();
   const [error, setError] = useState('');
   const query = search.query.trim();
   // Sections are dated against when the history opened, so they hold still while it is browsed.
@@ -130,130 +126,143 @@ export function TaskHistory({
     if (status === 'completed') return '';
     return status ? t(`status.${status}`) : t('history.importedDraft');
   }
-  // The query filters and marks the visible title and status; the list stays chronological.
+  // The query filters and marks the visible title and status; the view orders and sections them.
   const visible = tasks.flatMap((task): HistoryEntry[] => {
     const statusLabel = statusLabelOf(task);
     const match = matchFields(query, { title: task.title, status: statusLabel || undefined });
     return match || !query ? [{ task, statusLabel, match }] : [];
   });
-  const sections = historySections(visible, ({ task }) => new Date(task.updatedAt), now);
-  function sectionTitle(section: (typeof sections)[number]) {
-    if (section.kind === 'period') return t(`history.section.${section.period}`);
-    const { month } = section;
-    return month.toLocaleDateString(
-      i18n.language,
-      month.getFullYear() === now.getFullYear()
-        ? { month: 'long' }
-        : { year: 'numeric', month: 'long' },
-    );
+  const sections = groupHistory(sortHistory(visible, view.sort, i18n.language), view, now);
+  /** The section's heading; the ungrouped list has none. */
+  function sectionTitle(section: (typeof sections)[number]): string | null {
+    switch (section.kind) {
+      case 'period':
+        return t(`history.section.${section.period}`);
+      case 'month':
+        return section.month.toLocaleDateString(
+          i18n.language,
+          section.month.getFullYear() === now.getFullYear()
+            ? { month: 'long' }
+            : { year: 'numeric', month: 'long' },
+        );
+      case 'status':
+        return t(`history.statusSection.${section.status}`);
+      case 'model':
+        return section.model ?? t('history.noModel');
+      case 'all':
+        return null;
+    }
   }
   return (
     <section className="panel-content task-history" aria-label={t('history.label')}>
-      <div className="pb-3">
+      <div className="flex items-center gap-2 pb-3">
         <SettingsSearchField
           search={search}
-          className="h-8!"
+          className="h-8! min-w-0 flex-1"
           aria-label={t('history.searchLabel')}
           placeholder={t('history.searchPlaceholder')}
         />
+        <HistoryViewMenu view={view} onChange={setView} />
       </div>
       <ScrollArea className="-mr-3 min-h-0 flex-1" gutter="stable" scrollShadow>
         <div className="history-sections">
-          {sections.map((section) => (
-            <section
-              key={section.id}
-              className="history-section"
-              aria-labelledby={`history-section-${section.id}`}
-            >
-              <h3 id={`history-section-${section.id}`} className="history-section-title">
-                {sectionTitle(section)}
-              </h3>
-              <ul className="task-list">
-                {section.items.map(({ task, statusLabel, match }) => {
-                  const status = task.runs.at(-1)?.status;
-                  const progressing =
-                    status === 'queued' || status === 'running' || status === 'stopping';
-                  const updated = new Date(task.updatedAt);
-                  const menuActions = {
-                    task,
-                    onRename: () => setRenaming({ task, open: true }),
-                    onCopyId: () => void copyId(task),
-                    onDelete: () => setDeleting({ task, open: true }),
-                  };
-                  return (
-                    <ContextMenu key={task.id}>
-                      <ContextMenuTrigger asChild>
-                        <li className="history-row">
-                          <Button
-                            variant="ghost"
-                            className="task-row min-w-0"
-                            onClick={() => onChoose(task.id)}
-                          >
-                            <span className="task-row-title" title={task.title}>
-                              <HighlightedText text={task.title} ranges={match?.ranges.title} />
-                            </span>
-                            <span className="task-row-meta">
-                              <time dateTime={task.updatedAt} title={updated.toLocaleString()}>
-                                {rowDate(
-                                  updated,
-                                  section.kind === 'period' ? section.period : undefined,
-                                  i18n.language,
+          {sections.map((section) => {
+            const title = sectionTitle(section);
+            return (
+              <section
+                key={section.id}
+                className="history-section"
+                aria-labelledby={title === null ? undefined : `history-section-${section.id}`}
+              >
+                {title !== null && (
+                  <h3 id={`history-section-${section.id}`} className="history-section-title">
+                    {title}
+                  </h3>
+                )}
+                <ul className="task-list">
+                  {section.items.map(({ task, statusLabel, match }) => {
+                    const status = task.runs.at(-1)?.status;
+                    const progressing =
+                      status === 'queued' || status === 'running' || status === 'stopping';
+                    const stamp = stampOf(task, view.sort);
+                    const updated = new Date(stamp);
+                    const menuActions = {
+                      task,
+                      onRename: () => setRenaming({ task, open: true }),
+                      onCopyId: () => void copyId(task),
+                      onDelete: () => setDeleting({ task, open: true }),
+                    };
+                    return (
+                      <ContextMenu key={task.id}>
+                        <ContextMenuTrigger asChild>
+                          <li className="history-row">
+                            <Button
+                              variant="ghost"
+                              className="task-row min-w-0"
+                              onClick={() => onChoose(task.id)}
+                            >
+                              <span className="task-row-title" title={task.title}>
+                                <HighlightedText text={task.title} ranges={match?.ranges.title} />
+                              </span>
+                              <span className="task-row-meta">
+                                <time dateTime={stamp} title={updated.toLocaleString()}>
+                                  {rowDate(updated, now, i18n.language, view.group === 'date')}
+                                </time>
+                                {statusLabel && (
+                                  <span
+                                    className="task-row-status"
+                                    data-tone={
+                                      status && ERROR_STATUSES.has(status) ? 'error' : undefined
+                                    }
+                                  >
+                                    {/* Shimmer animates plain text only, so a running status stays unmarked. */}
+                                    {progressing ? (
+                                      <Shimmer as="span">{statusLabel}</Shimmer>
+                                    ) : (
+                                      <HighlightedText
+                                        text={statusLabel}
+                                        ranges={match?.ranges.status}
+                                      />
+                                    )}
+                                  </span>
                                 )}
-                              </time>
-                              {statusLabel && (
-                                <span
-                                  className="task-row-status"
-                                  data-tone={
-                                    status && ERROR_STATUSES.has(status) ? 'error' : undefined
-                                  }
+                              </span>
+                            </Button>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <IconButton
+                                  label={t('history.more')}
+                                  aria-label={t('history.moreActionsFor', { title: task.title })}
+                                  className="history-row-more"
+                                  tooltipDismissOnClick
                                 >
-                                  {/* Shimmer animates plain text only, so a running status stays unmarked. */}
-                                  {progressing ? (
-                                    <Shimmer as="span">{statusLabel}</Shimmer>
-                                  ) : (
-                                    <HighlightedText
-                                      text={statusLabel}
-                                      ranges={match?.ranges.status}
-                                    />
-                                  )}
-                                </span>
-                              )}
-                            </span>
-                          </Button>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <IconButton
-                                label={t('history.more')}
-                                aria-label={t('history.moreActionsFor', { title: task.title })}
-                                className="history-row-more"
-                                tooltipDismissOnClick
-                              >
-                                <Ellipsis />
-                              </IconButton>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <TaskMenuItems
-                                {...menuActions}
-                                Item={DropdownMenuItem}
-                                Separator={DropdownMenuSeparator}
-                              />
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </li>
-                      </ContextMenuTrigger>
-                      <ContextMenuContent>
-                        <TaskMenuItems
-                          {...menuActions}
-                          Item={ContextMenuItem}
-                          Separator={ContextMenuSeparator}
-                        />
-                      </ContextMenuContent>
-                    </ContextMenu>
-                  );
-                })}
-              </ul>
-            </section>
-          ))}
+                                  <Ellipsis />
+                                </IconButton>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <TaskMenuItems
+                                  {...menuActions}
+                                  Item={DropdownMenuItem}
+                                  Separator={DropdownMenuSeparator}
+                                />
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </li>
+                        </ContextMenuTrigger>
+                        <ContextMenuContent>
+                          <TaskMenuItems
+                            {...menuActions}
+                            Item={ContextMenuItem}
+                            Separator={ContextMenuSeparator}
+                          />
+                        </ContextMenuContent>
+                      </ContextMenu>
+                    );
+                  })}
+                </ul>
+              </section>
+            );
+          })}
         </div>
         {!visible.length && (
           <Empty className="px-4 py-10">
@@ -299,10 +308,13 @@ export function TaskHistory({
             <AlertDialogAction
               variant="destructive"
               onClick={() => {
-                if (deleting)
+                if (deleting) {
+                  const { id } = deleting.task;
                   void agentApi()
-                    .deleteTask(deleting.task.id)
+                    .deleteTask(id)
+                    .then(() => forgetComposerMemory(id))
                     .catch((error) => setError(messageOf(error)));
+                }
               }}
             >
               {t('history.deleteAction')}

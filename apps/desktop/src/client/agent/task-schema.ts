@@ -1,5 +1,5 @@
 import { Type, type Static } from 'typebox';
-import { InputChipRangeSchema, MAX_INPUT_CHIPS } from '@atd/agent-contracts';
+import { InputChipRangeSchema, MAX_FOLDERS, MAX_INPUT_CHIPS } from '@atd/agent-contracts';
 import { ArgumentValuesSchema, CommandSchema, Identifier, ToolIdSchema } from './command-schema';
 import {
   FrozenModelSchema,
@@ -39,6 +39,11 @@ export const InputSchema = Type.Object(
     arguments: ArgumentValuesSchema,
     /** The service's chip records (`TaskInput.chips`), passed through unchanged. */
     chips: Type.Optional(Type.Array(InputChipRangeSchema, { maxItems: MAX_INPUT_CHIPS })),
+    /**
+     * Ids of the shell-registered folders the message grants its task (`TaskInput.folders`).
+     * Submit always sends the array; input stored before folders has none.
+     */
+    folders: Type.Optional(Type.Array(Identifier, { maxItems: MAX_FOLDERS })),
   },
   { additionalProperties: false },
 );

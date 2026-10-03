@@ -205,14 +205,23 @@
   gap: 12px;
 }
 /* The shortcut column is a width, not a flex-basis: the controls wrapper takes its width from
- * its content, and WebKit counts this column's content (a narrower key group or "No shortcut")
- * there instead of a basis, which pushed Run, the switch and More past the row's edge. */
+ * its content, and WebKit counts this column's content (a narrower key group or the recorder's
+ * prompt) there instead of a basis, which pushed Run, the switch and More past the row's edge.
+ * It fits the recorder's longest prompt, so recording or setting a shortcut never moves them. */
 .command-row-shortcut {
   display: flex;
   justify-content: flex-end;
   flex: none;
-  width: 104px;
+  width: 116px;
   min-width: 0;
+}
+.command-row-shortcut .shortcut-recorder {
+  justify-content: flex-end;
+}
+/* The recorder takes its own clicks above the row's open button (settings-open-row), like the
+ * row's actions; the rest of the column, and a plugin command's keys, still open the editor. */
+.command-row-shortcut .shortcut-recorder-keys {
+  pointer-events: auto;
 }
 .command-row-shortcut [data-slot='kbd-group'] {
   flex-wrap: wrap;
@@ -253,7 +262,7 @@
 }
 @container settings (min-width: 456px) and (max-width: 640px) {
   .command-row-shortcut {
-    width: 72px;
+    width: 108px;
   }
   .command-management-row {
     gap: 8px;

@@ -1,0 +1,92 @@
+/*
+ * The screenshot step's illustration (`art-screenshot.tsx`), after Figma `App / Onboarding hero`
+ * (1816:98233), `Step=Screenshot`: a page card (the faint foreground tint inside a hairline the
+ * selection art and the practice area use) with skeleton text lines, and the capture frame over
+ * it. Sizes are multiples of `--u`, the art panel's unit (`art-illustration.css`). Only transform
+ * animates, and only without Reduce Motion, whose still frame is the frame's resting style.
+ */
+.guide-capture {
+  position: relative;
+  width: calc(var(--u) * 170);
+  height: calc(var(--u) * 100);
+}
+.guide-capture-page {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  justify-content: space-evenly;
+  padding: calc(var(--u) * 10) calc(var(--u) * 12);
+  border: 1px solid var(--border);
+  border-radius: calc(var(--u) * 9);
+  background: color-mix(in oklab, var(--foreground) 6%, transparent);
+}
+.guide-capture-line {
+  height: calc(var(--u) * 4);
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--foreground) 16%, transparent);
+}
+.guide-capture-line:nth-child(1) {
+  width: 72%;
+}
+.guide-capture-line:nth-child(2) {
+  width: 54%;
+}
+.guide-capture-line:nth-child(3) {
+  width: 64%;
+}
+.guide-capture-line:nth-child(4) {
+  width: 38%;
+}
+/* The picked area: an accent outline over a light wash, so the lines below it stay legible. */
+.guide-capture-frame {
+  position: absolute;
+  top: 22%;
+  left: 24%;
+  width: 52%;
+  height: 52%;
+  box-sizing: border-box;
+  border: 1.5px solid var(--ata-syntax-variable);
+  background: color-mix(in oklab, var(--ata-syntax-variable) 16%, transparent);
+}
+.guide-capture-handle {
+  --handle: calc(var(--u) * 6);
+  position: absolute;
+  width: var(--handle);
+  height: var(--handle);
+  box-sizing: border-box;
+  border: 1.5px solid var(--ata-syntax-variable);
+  border-radius: 25%;
+  background: var(--background);
+}
+.guide-capture-handle[data-corner='nw'] {
+  top: calc(var(--handle) / -2 - 1px);
+  left: calc(var(--handle) / -2 - 1px);
+}
+.guide-capture-handle[data-corner='ne'] {
+  top: calc(var(--handle) / -2 - 1px);
+  right: calc(var(--handle) / -2 - 1px);
+}
+.guide-capture-handle[data-corner='sw'] {
+  bottom: calc(var(--handle) / -2 - 1px);
+  left: calc(var(--handle) / -2 - 1px);
+}
+.guide-capture-handle[data-corner='se'] {
+  right: calc(var(--handle) / -2 - 1px);
+  bottom: calc(var(--handle) / -2 - 1px);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .guide-capture-frame {
+    animation: guide-capture-breathe 3.2s ease-in-out infinite alternate;
+  }
+}
+@keyframes guide-capture-breathe {
+  from {
+    transform: scale(0.97);
+  }
+  to {
+    transform: scale(1.03);
+  }
+}

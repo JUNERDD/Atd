@@ -10,6 +10,7 @@ import { DEFAULT_PERMISSION_TIER } from '../client/agent/permission-schema';
 import type { ProviderBridge } from '../client/providers/schema';
 import { ProviderService } from '../client/providers/service';
 import {
+  DEFAULT_SELECTION_TOOLBAR,
   isAppLanguage,
   resolveLanguage,
   type SettingsBridge,
@@ -25,12 +26,16 @@ import type { NativeConnection } from './native-connection';
 import type { WindowMessages } from './window-messages';
 
 /**
- * The preferences the shell owns, and whether it holds the panel and screenshot shortcuts: null
- * until the panel's first registration answer reaches this window.
+ * The preferences the shell owns, whether it holds the panel and screenshot shortcuts (null until
+ * the panel's first registration answer reaches this window), and whether macOS trusts the app for
+ * Accessibility and lets it capture the screen (each null until the shell's `accessibility.trust`
+ * or `screenRecording.trust` arrives).
  */
 export type ShellState = CallResult<'app.state'> & {
   shortcutAvailable: boolean | null;
   screenshotShortcutAvailable: boolean | null;
+  accessibilityTrusted: boolean | null;
+  screenRecordingTrusted: boolean | null;
 };
 
 /**
@@ -49,6 +54,8 @@ export function nativeSettings(
   setShell: (patch: Partial<ShellState>) => SettingsSnapshot;
   /** Whether the service's settings loaded; until then the snapshot holds defaults. */
   loaded: () => boolean;
+  /** Records whether the welcome guide was shown in this data dir (the panel's trigger only). */
+  setOnboardingCompleted: (done: boolean) => Promise<SettingsSnapshot>;
   ready: Promise<void>;
 } {
   let shared: SettingsResponse | null = null;
@@ -58,6 +65,8 @@ export function nativeSettings(
     openAtLogin: null,
     shortcutAvailable: null,
     screenshotShortcutAvailable: null,
+    accessibilityTrusted: null,
+    screenRecordingTrusted: null,
   };
   const listeners = new Set<(settings: SettingsSnapshot) => void>();
   const loginListeners = new Set<Parameters<ProviderBridge['onLogin']>[0]>();
@@ -73,6 +82,8 @@ export function nativeSettings(
       ...shell,
       permissionTier: settings?.permissionTier ?? DEFAULT_PERMISSION_TIER,
       shellAllowlist: [...(settings?.shellAllowlist ?? [])],
+      selectionToolbar: structuredClone(settings?.selectionToolbar ?? DEFAULT_SELECTION_TOOLBAR),
+      onboardingCompleted: settings?.onboardingCompleted ?? true,
     };
   };
   const publish = () => {
@@ -116,11 +127,15 @@ export function nativeSettings(
   });
 
   const bridge: SettingsBridge = {
-    open: async () => void (await native.call('settings.open', { commandId: null })),
+    open: async () => void (await native.call('settings.open', { commandId: null, section: null })),
     openCommand: async (commandId) => {
       // An open settings window switches editors; a new one loads with the command selected.
       messages.post({ type: 'openCommand', commandId });
-      await native.call('settings.open', { commandId });
+      await native.call('settings.open', { commandId, section: null });
+    },
+    openSection: async (section) => {
+      messages.post({ type: 'openSection', section });
+      await native.call('settings.open', { commandId: null, section });
     },
     startCommandSession: async (commandId) => messages.post({ type: 'commandSession', commandId }),
     // Validated here so the caller sees a rejection, as the desktop IPC boundary does.
@@ -162,6 +177,10 @@ export function nativeSettings(
       const next = withShellAllowlistEntry(current, parseShellAllowlistEntry(entry));
       return next === current ? snapshot() : write({ shellAllowlist: next });
     },
+    saveSelectionToolbar: (value) => write({ selectionToolbar: value }),
+    requestAccessibility: async () => void (await native.call('accessibility.request', {})),
+    requestScreenRecording: async () => void (await native.call('screenRecording.request', {})),
+    pickApps: async () => (await native.call('apps.pick', {})).apps,
     onChange: (listener) => {
       listeners.add(listener);
       return () => listeners.delete(listener);
@@ -170,12 +189,17 @@ export function nativeSettings(
       messages.listen((message) => {
         if (message.type === 'openCommand') listener(message.commandId);
       }),
+    onOpenSection: (listener) =>
+      messages.listen((message) => {
+        if (message.type === 'openSection') listener(message.section);
+      }),
   };
   return {
     bridge,
     providers,
     shell: () => shell,
     loaded: () => shared !== null,
+    setOnboardingCompleted: (done) => write({ onboardingCompleted: done }),
     setShell: (patch) => {
       shell = { ...shell, ...patch };
       return publish();

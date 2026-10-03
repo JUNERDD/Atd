@@ -140,6 +140,30 @@ final class SystemPanels {
     return await run(panel) ? panel.urls : nil
   }
 
+  /// Folders only (`files.pickFolder`); nil when cancelled or another system panel is open.
+  func chooseFolders() async -> [URL]? {
+    let panel = NSOpenPanel()
+    panel.message = ShellStrings.shared.text(.folderPickTitle)
+    panel.canChooseFiles = false
+    panel.canChooseDirectories = true
+    panel.canCreateDirectories = false
+    panel.allowsMultipleSelection = true
+    return await run(panel) ? panel.urls : nil
+  }
+
+  /// Application bundles (`apps.pick`), starting in /Applications; nil when cancelled or
+  /// another system panel is open.
+  func chooseApps() async -> [URL]? {
+    let panel = NSOpenPanel()
+    panel.message = ShellStrings.shared.text(.appPickTitle)
+    panel.canChooseFiles = true
+    panel.canChooseDirectories = false
+    panel.allowsMultipleSelection = true
+    panel.allowedContentTypes = [.applicationBundle]
+    panel.directoryURL = URL(filePath: "/Applications", directoryHint: .isDirectory)
+    return await run(panel) ? panel.urls : nil
+  }
+
   /// Where to save under `suggestedName`; `contentType` restricts the panel to that type. Nil
   /// when cancelled or another system panel is open.
   func chooseSaveLocation(suggestedName: String, contentType: UTType? = nil) async -> URL? {

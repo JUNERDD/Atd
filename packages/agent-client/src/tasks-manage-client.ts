@@ -11,6 +11,7 @@ import {
   PreviewTaskResponseSchema,
   ReplaceQueueRequestSchema,
   ReplaceQueueResponseSchema,
+  TaskFoldersResponseSchema,
   TaskResponseSchema,
   type CompactTaskResponse,
   type ContextBreakdownResponse,
@@ -21,6 +22,7 @@ import {
   type PreviewTaskRequest,
   type PreviewTaskResponse,
   type ReplaceQueueResponse,
+  type TaskFoldersResponse,
   type TaskResponse,
 } from '@atd/agent-contracts';
 import { dispositionName, manageRequest, toClientError } from './manage-request.js';
@@ -162,4 +164,37 @@ export async function downloadResource(
     mime: response.headers.get('content-type') ?? 'application/octet-stream',
     name: dispositionName(response.headers.get('content-disposition')),
   };
+}
+
+/** The folders granted to a task, which its runs read without approval. */
+export function taskFolders(
+  options: AgentClientOptions,
+  taskId: string,
+  fetchImpl?: typeof fetch,
+): Promise<TaskFoldersResponse> {
+  return manageRequest(
+    options,
+    `/v1/tasks/${encodeURIComponent(taskId)}/folders`,
+    'GET',
+    undefined,
+    (json) => parse(TaskFoldersResponseSchema, json),
+    fetchImpl,
+  );
+}
+
+/** Revokes one folder grant for the task's later runs; answers the folders that remain. */
+export function revokeTaskFolder(
+  options: AgentClientOptions,
+  taskId: string,
+  folderId: string,
+  fetchImpl?: typeof fetch,
+): Promise<TaskFoldersResponse> {
+  return manageRequest(
+    options,
+    `/v1/tasks/${encodeURIComponent(taskId)}/folders/${encodeURIComponent(folderId)}`,
+    'DELETE',
+    undefined,
+    (json) => parse(TaskFoldersResponseSchema, json),
+    fetchImpl,
+  );
 }

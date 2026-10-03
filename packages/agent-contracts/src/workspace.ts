@@ -33,6 +33,29 @@ export const ShortcutBindingsSchema = Type.Object(
 );
 export type ShortcutBindingsWire = Static<typeof ShortcutBindingsSchema>;
 
+/** An app the selection toolbar never appears over, as the app picker named it. */
+export const ExcludedAppSchema = Type.Object(
+  {
+    bundleId: Type.String({ minLength: 1, maxLength: 255 }),
+    name: Type.String({ minLength: 1, maxLength: 255 }),
+  },
+  { additionalProperties: false },
+);
+export type ExcludedApp = Static<typeof ExcludedAppSchema>;
+
+/**
+ * The toolbar the shell shows over text selected in other apps. Defaults to
+ * `{ enabled: true, excludedApps: [] }`; a patch replaces the whole value.
+ */
+export const SelectionToolbarSettingsSchema = Type.Object(
+  {
+    enabled: Type.Boolean(),
+    excludedApps: Type.Array(ExcludedAppSchema, { maxItems: 100 }),
+  },
+  { additionalProperties: false },
+);
+export type SelectionToolbarSettings = Static<typeof SelectionToolbarSettingsSchema>;
+
 /**
  * Settings every client applies the same way. `language: null` means the client resolves one
  * from its locale; `shortcuts: null` means the defaults.
@@ -45,6 +68,9 @@ export const UserSettingsSchema = Type.Object(
     /** The user shell allowlist, in the user's order; the operator env list is never included. */
     shellAllowlist: ShellAllowlistSchema,
     shortcuts: Type.Union([ShortcutBindingsSchema, Type.Null()]),
+    selectionToolbar: SelectionToolbarSettingsSchema,
+    /** The first desktop launch on this data dir showed the welcome guide. */
+    onboardingCompleted: Type.Boolean(),
   },
   { additionalProperties: false },
 );
@@ -71,6 +97,8 @@ export const PatchSettingsRequestSchema = Type.Object(
     permissionTier: Type.Optional(PermissionTierSchema),
     shellAllowlist: Type.Optional(ShellAllowlistSchema),
     shortcuts: Type.Optional(Type.Union([ShortcutBindingsSchema, Type.Null()])),
+    selectionToolbar: Type.Optional(SelectionToolbarSettingsSchema),
+    onboardingCompleted: Type.Optional(Type.Boolean()),
     /** Seeding: apply only while the settings are uninitialized, else answer the current ones. */
     onlyIfUninitialized: Type.Optional(Type.Boolean()),
   },

@@ -5,6 +5,7 @@ import {
   Brain,
   Command,
   FileText,
+  Folder,
   Image,
   MessageSquare,
   Plug,
@@ -22,11 +23,14 @@ export interface ChipLabel {
   name: string;
   /** An image file in the composer: an image icon, and a tooltip that clicking edits it. */
   image?: boolean;
+  /** The full value the tooltip names instead of `name`, such as a folder's path. */
+  detail?: string | undefined;
 }
 
 /** Same marks as the extension settings (skills, subagents, MCP) and the transcript file rows. */
 const ICONS: Record<ChipKind, LucideIcon> = {
   file: FileText,
+  folder: Folder,
   task: MessageSquare,
   mcpServer: Plug,
   agent: Bot,
@@ -40,6 +44,7 @@ const ICONS: Record<ChipKind, LucideIcon> = {
 
 const LABEL_KEYS = {
   file: 'composer.chips.file',
+  folder: 'composer.chips.folder',
   task: 'composer.chips.task',
   mcpServer: 'composer.chips.mcpServer',
   agent: 'composer.chips.agent',
@@ -51,17 +56,23 @@ const LABEL_KEYS = {
 
 /**
  * A chip's icon and name. Screen readers get the kind with the name ("File: notes.txt"); the
- * tooltip repeats it because long names are truncated, or names the edit an image chip opens. The
- * spoken label is not selectable, so copying text that spans a chip copies only its visible name.
+ * tooltip repeats it because long names are truncated (with `detail`, the full value: a folder's
+ * path), or names the edit an image chip opens. The spoken label is not selectable, so copying
+ * text that spans a chip copies only its visible name.
  */
-export function ChipContent({ kind, name, image = false }: ChipLabel) {
+export function ChipContent({ kind, name, image = false, detail }: ChipLabel) {
   const { t } = useTranslation('panel');
   const Icon = image ? Image : ICONS[kind];
   const label = t(LABEL_KEYS[kind], { name });
+  const title = image
+    ? t('composer.editImage', { name })
+    : detail
+      ? t(LABEL_KEYS[kind], { name: detail })
+      : label;
   return (
     <>
       <span className="sr-only select-none">{label}</span>
-      <span aria-hidden="true" title={image ? t('composer.editImage', { name }) : label}>
+      <span aria-hidden="true" title={title}>
         <Icon className="composer-chip-icon" />
         <span className="composer-chip-name">{name}</span>
       </span>

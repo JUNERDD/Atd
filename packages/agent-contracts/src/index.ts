@@ -10,6 +10,7 @@ export * from './snapshot.js';
 export * from './context-breakdown.js';
 export * from './resources.js';
 export * from './attachments.js';
+export * from './folders.js';
 export * from './file-search.js';
 export * from './http.js';
 export * from './models.js';

@@ -4,10 +4,10 @@ import AppKit
 import OSLog
 import WebKit
 
-/// Owns one window's renderer web view: builds it (shared by the panel and the settings
-/// window), locks its navigation down (R6), rebuilds it after a WebContent crash, and runs its
-/// end of the bridge: the page's virtual sockets and the one delivery path for everything the
-/// shell sends it (``BridgeOutbox``, spike S6).
+/// Owns one window's renderer web view: builds it (shared by every window that hosts a page),
+/// locks its navigation down (R6), rebuilds it after a WebContent crash, and runs its end of the
+/// bridge: the page's virtual sockets and the one delivery path for everything the shell sends
+/// it (``BridgeOutbox``, spike S6).
 final class WebViewHost: NSObject {
   let role: WebViewRole
   /// The view windows embed; the web view fills it and is swapped inside it on a rebuild.
@@ -46,7 +46,7 @@ final class WebViewHost: NSObject {
     self.services = services
     self.bridge = bridge
     let handler = BridgeMessageHandler(bridge: bridge)
-    webView = Self.makeWebView(services: services, handler: handler)
+    webView = Self.makeWebView(role: role, services: services, handler: handler)
     super.init()
     handler.host = self
     install(webView)
@@ -150,14 +150,20 @@ final class WebViewHost: NSObject {
 
   // MARK: Building
 
-  private static func makeWebView(services: ShellServices, handler: BridgeMessageHandler)
-    -> ShellWebView
-  {
+  private static func makeWebView(
+    role: WebViewRole, services: ShellServices, handler: BridgeMessageHandler
+  ) -> ShellWebView {
     let configuration = WKWebViewConfiguration()
     configuration.setURLSchemeHandler(services.schemeHandler, forURLScheme: RendererOrigin.scheme)
     configuration.userContentController.add(
       handler, contentWorld: .page, name: NativeBridgeContract.messageHandler)
     configuration.preferences.isElementFullscreenEnabled = false
+    if role == .onboarding {
+      // The guide's music starts when the guide opens, which is not a user gesture. Web Audio
+      // contexts follow this setting (`.all` leaves them interrupted); macOS's default already
+      // allows autoplay, and the guide states it so it does not hang on that default.
+      configuration.mediaTypesRequiringUserActionForPlayback = []
+    }
     // In-page Liquid Glass for `surface-glass` overlays, and a transparent page over the
     // window's glass (spike S5, decision R5).
     WebKitPrivate.enableSystemAppearance(configuration.preferences)
@@ -205,7 +211,7 @@ final class WebViewHost: NSObject {
     let wasFirstResponder = old.window?.firstResponder === old
     close()
     let handler = BridgeMessageHandler(bridge: bridge)
-    let replacement = Self.makeWebView(services: services, handler: handler)
+    let replacement = Self.makeWebView(role: role, services: services, handler: handler)
     handler.host = self
     replacement.dragRegions = old.dragRegions
     webView = replacement

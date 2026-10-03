@@ -1,7 +1,7 @@
 import type { AgentRequest, ExtensionSessionKind } from '../client/agent/bridge';
 
 /**
- * Messages between the shell's panel and settings windows. The shell's web views share the
+ * Messages between the shell's panel, settings and welcome guide windows. The shell's web views share the
  * `ai-app://renderer` origin, so they travel on a `BroadcastChannel` without a round trip through
  * Swift.
  */
@@ -17,6 +17,10 @@ export type WindowMessage =
   | { type: 'extensionSession'; kind: ExtensionSessionKind; target: string | null }
   /** Panel → settings: show one command's editor in an already open settings window. */
   | { type: 'openCommand'; commandId: string }
+  /** Any window → settings: show one section (a settings section id) in an open settings window. */
+  | { type: 'openSection'; section: string }
+  /** Panel → others: the shell showed or hid the panel (the welcome guide's hotkey try-out). */
+  | { type: 'panelVisibility'; visible: boolean }
   /**
    * Panel → settings: what the shell answered for the latest global shortcut set, posted after
    * every push and in reply to `shortcutStateRequest`. Only the panel pushes the set, so it alone

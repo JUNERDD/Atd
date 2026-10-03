@@ -79,25 +79,57 @@ public struct ShortcutCommandEvent: Codable, Equatable, Sendable {
 /// Payload of the `shortcut.screenshot` event.
 public typealias ShortcutScreenshotEvent = NativeEmpty
 
+/// Payload of the `onboarding.replay` event.
+public typealias OnboardingReplayEvent = NativeEmpty
+
 /// Payload of the `resources.imported` event.
 public struct ResourcesImportedEvent: Codable, Equatable, Sendable {
   public let resources: [FileRef]
+  public let folders: [Folder]
   public let failures: [Failure]
 
-  public init(resources: [FileRef], failures: [Failure]) {
+  public init(resources: [FileRef], folders: [Folder], failures: [Failure]) {
     self.resources = resources
+    self.folders = folders
     self.failures = failures
   }
 
   public init(from decoder: any Decoder) throws {
     let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
     resources = try container.array(.resources, of: FileRef.self, maxItems: 10)
-    failures = try container.array(.failures, of: Failure.self, maxItems: 10)
+    folders = try container.array(.folders, of: Folder.self, maxItems: 10)
+    failures = try container.array(.failures, of: Failure.self, maxItems: 20)
   }
 
   private enum CodingKeys: String, CodingKey, CaseIterable {
     case resources
+    case folders
     case failures
+  }
+
+  public struct Folder: Codable, Equatable, Sendable {
+    public let id: String
+    public let name: String
+    public let path: String
+
+    public init(id: String, name: String, path: String) {
+      self.id = id
+      self.name = name
+      self.path = path
+    }
+
+    public init(from decoder: any Decoder) throws {
+      let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+      id = try container.string(.id, minLength: 1, maxLength: 128, pattern: "^[a-zA-Z0-9_-]+$")
+      name = try container.string(.name, minLength: 1, maxLength: 255)
+      path = try container.string(.path, minLength: 1, maxLength: 4_096)
+    }
+
+    private enum CodingKeys: String, CodingKey, CaseIterable {
+      case id
+      case name
+      case path
+    }
   }
 
   public struct Failure: Codable, Equatable, Sendable {
@@ -124,6 +156,8 @@ public struct ResourcesImportedEvent: Codable, Equatable, Sendable {
       case unreadable
       case unsupported
       case tooLarge
+      case notDirectory
+      case forbidden
     }
   }
 }
@@ -144,7 +178,7 @@ public struct FilesDragEvent: Codable, Equatable, Sendable {
     let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
     phase = try container.value(.phase, Phase.self)
     files = try container.integer(.files, minimum: 0)
-    attachable = try container.integer(.attachable, minimum: 0, maximum: 10)
+    attachable = try container.integer(.attachable, minimum: 0, maximum: 20)
   }
 
   private enum CodingKeys: String, CodingKey, CaseIterable {
@@ -201,43 +235,23 @@ public struct SpeechStateEvent: Codable, Equatable, Sendable {
   }
 }
 
-/// Payload of the `update.state` event.
-public struct UpdateStateEvent: Codable, Equatable, Sendable {
-  public let version: String?
+/// Payload of the `selection.ask` event.
+public typealias SelectionAskEvent = NativeEmpty
 
-  public init(version: String?) {
-    self.version = version
+/// Payload of the `accessibility.trust` event.
+public struct AccessibilityTrustEvent: Codable, Equatable, Sendable {
+  public let trusted: Bool
+
+  public init(trusted: Bool) {
+    self.trusted = trusted
   }
 
   public init(from decoder: any Decoder) throws {
     let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    version = try container.nullable(.version) { try container.string($0, maxLength: 64) }
-  }
-
-  public func encode(to encoder: any Encoder) throws {
-    var container = encoder.container(keyedBy: CodingKeys.self)
-    try container.encode(version, forKey: .version)
+    trusted = try container.boolean(.trusted)
   }
 
   private enum CodingKeys: String, CodingKey, CaseIterable {
-    case version
-  }
-}
-
-/// Payload of the `socket.frames` event.
-public struct SocketFramesEvent: Codable, Equatable, Sendable {
-  public let frames: [SocketFrame]
-
-  public init(frames: [SocketFrame]) {
-    self.frames = frames
-  }
-
-  public init(from decoder: any Decoder) throws {
-    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    frames = try container.array(.frames, of: SocketFrame.self, minItems: 1)
-  }
-
-  private enum CodingKeys: String, CodingKey, CaseIterable {
-    case frames
+    case trusted
   }
 }

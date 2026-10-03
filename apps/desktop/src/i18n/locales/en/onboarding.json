@@ -1,0 +1,117 @@
+{
+  "chrome": {
+    "back": "Back",
+    "later": "Later",
+    "continue": "Continue",
+    "goalPending": "Finish this step to continue, or choose Later.",
+    "stepAnnouncement": "Step {{current}} of {{total}}",
+    "stepDone": "{{step}} done",
+    "progressLabel": "Step {{current}} of {{total}}",
+    "stepNames": {
+      "welcome": "Welcome",
+      "hotkey": "Shortcut",
+      "selection": "Selection toolbar",
+      "screenshot": "Screenshots",
+      "provider": "AI provider",
+      "finish": "All set"
+    },
+    "close": "Close guide",
+    "skipGuide": "Skip guide",
+    "musicOn": "Turn music on",
+    "musicOff": "Turn music off"
+  },
+  "goal": {
+    "done": "Done",
+    "notDone": "Not done yet"
+  },
+  "welcome": {
+    "title": "Welcome to Atd",
+    "description": "Atd waits one keystroke away in every app. In a few minutes you'll have it set up and working.",
+    "primary": "Get Started",
+    "planLabel": "What you'll set up",
+    "plan": {
+      "hotkey": "Summon Atd with a shortcut",
+      "selection": "Ask about text you select",
+      "screenshot": "Capture your screen",
+      "provider": "Connect your AI provider"
+    },
+    "language": "Language"
+  },
+  "hotkey": {
+    "title": "Summon Atd from anywhere",
+    "description": "Press {{shortcut}} now to try it, and again to hide the panel.",
+    "waiting": "Waiting for you to press the shortcut…",
+    "success": "It works!",
+    "rowLabel": "Panel shortcut",
+    "rowDescription": "Prefer different keys? Click them to record a new combination."
+  },
+  "selection": {
+    "title": "Ask about anything you select",
+    "description": "Select text and a small toolbar offers Ask Atd and your commands. Try it on the practice text here.",
+    "toggle": "Show the toolbar when I select text",
+    "waiting": "Waiting for Accessibility access…",
+    "success": "Access granted. Select some of the practice text to try it.",
+    "accessibility": {
+      "title": "Accessibility access",
+      "description": "macOS asks for Accessibility access so Atd can read only the text you select.",
+      "open": "Open System Settings",
+      "granted": "Accessibility access granted",
+      "error": "System Settings couldn't be opened. Open Privacy & Security › Accessibility yourself."
+    },
+    "practice": {
+      "label": "Practice text",
+      "sample": "Good tools stay out of the way until you need them. Select a few words of this paragraph, and Atd's toolbar appears right beside them. Ask Atd quotes your selection in the panel, ready for your question.",
+      "caption": "Select some of this text.",
+      "needsAccess": "Grant Accessibility access to see the toolbar here.",
+      "needsToolbar": "Turn on the toolbar to see it here."
+    }
+  },
+  "screenshot": {
+    "title": "Capture your screen",
+    "description": "Press {{shortcut}} to capture an area of your screen.",
+    "waiting": "Waiting for Screen Recording access…",
+    "success": "Access granted.",
+    "screenRecording": {
+      "title": "Screen Recording access",
+      "description": "macOS may ask you to reopen Atd afterwards.",
+      "open": "Open System Settings",
+      "granted": "Screen Recording access granted",
+      "error": "Couldn't open System Settings."
+    }
+  },
+  "provider": {
+    "title": "Connect your AI",
+    "description": "Use the models you already have: add an API key or sign in to a provider. Settings opens on top of this guide.",
+    "connect": "Connect a Provider…",
+    "manage": "Manage Providers…",
+    "waiting": "No provider is connected yet.",
+    "connected": "Connected to {{name}}",
+    "model": "Default model: {{model}}",
+    "footnote": "You can add more providers anytime in Settings."
+  },
+  "finish": {
+    "title": "You're all set",
+    "titleIncomplete": "Almost there",
+    "description": "Atd is ready whenever you are.",
+    "descriptionIncomplete": "A few steps are still open. Finish them now, or anytime later in Settings.",
+    "primary": "Start Using Atd",
+    "goalsLabel": "Setup",
+    "doItNow": "Do it now",
+    "doItNowLabel": "Do it now: {{step}}",
+    "tips": {
+      "label": "Things to try",
+      "toggle": "Summon or hide Atd",
+      "screenshot": "Capture a screenshot",
+      "mention": "Mention files with @",
+      "commands": "Run commands with /",
+      "settings": "Open Settings"
+    },
+    "login": {
+      "title": "Open Atd at login",
+      "approval": "Approve Atd in System Settings › Login Items to finish."
+    }
+  },
+  "intro": {
+    "skipHint": "Press Return to begin"
+  }
+}

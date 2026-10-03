@@ -6,6 +6,10 @@ public enum SummonTrigger: Equatable, Sendable {
   case screenshot
   /// A command's global shortcut.
   case command(id: String)
+  /// The selection toolbar's Ask Atd.
+  case ask
+  /// A command button (or More menu item) of the selection toolbar.
+  case toolbarCommand(id: String)
 
   /// The ids the page gives the panel toggle and the screenshot in its registration set
   /// (`shortcuts.set`); the page reserves them, so no command uses them.
@@ -52,6 +56,8 @@ public enum SummonStep: Equatable, Sendable {
   /// Tell the page to take a screenshot: it captures with the panel out of the way, puts the
   /// image in its composer and reveals the panel itself.
   case deliverScreenshot
+  /// Tell the page (`selection.ask`) to put the stash in its composer as a quote and focus it.
+  case deliverAsk
 }
 
 /// The summon flow of the panel toggle, screenshot and command shortcuts, with the selection
@@ -60,6 +66,10 @@ public enum SummonStep: Equatable, Sendable {
 /// - summons are ignored while a file panel is open;
 /// - otherwise the selection is captured before the panel can take focus when some command
 ///   wants it, and the stash is cleared when none does.
+///
+/// The selection toolbar's actions always capture: the user just pointed at the selection.
+/// Ask Atd shows the panel and has the page quote the stash; a command goes to the page like
+/// its shortcut, whether or not any command fills its input from the selection.
 public enum SummonPolicy {
   public static func steps(for trigger: SummonTrigger, in context: SummonContext) -> [SummonStep] {
     if context.filePanelOpen { return [] }
@@ -71,6 +81,10 @@ public enum SummonPolicy {
       return [selection, .deliverScreenshot]
     case .command(let id):
       return [selection, .deliverCommand(id: id)]
+    case .ask:
+      return [.captureSelection, .showPanel, .deliverAsk]
+    case .toolbarCommand(let id):
+      return [.captureSelection, .deliverCommand(id: id)]
     }
   }
 }

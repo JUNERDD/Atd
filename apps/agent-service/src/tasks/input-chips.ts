@@ -26,6 +26,7 @@ export function checkChipRanges(input: TaskInput): void {
 function chipName(chip: InputChip): string {
   switch (chip.kind) {
     case 'file':
+    case 'folder':
     case 'agent':
     case 'skill':
     case 'command':
