@@ -20,63 +20,51 @@ export const SNAPPY_SPRING: Transition = { type: 'spring', visualDuration: 0.25,
 export const STEP_OFFSET = 28;
 
 /**
- * The intro's timeline, in seconds from the moment the stage mounts (the music's t=0, see
- * `use-onboarding-music.ts`). A flowing light enters from beyond the screen's edges and converges
- * onto page one's mark (the app icon on its glow), landing as its glow before the reveal, which
- * falls on the music's bloom (`ONBOARDING_THEME.revealAt`). There the mark travels into the
- * Welcome step's display area (`HANDOFF_SPRING`) while the card fades in around it; the shell is
- * told the guide settled once the card is at rest.
+ * The opening page's timeline, in seconds from the moment the stage mounts (the music's t=0, see
+ * `use-onboarding-music.ts`). The horizon light plays its entrance from `lightAt` and lands on the
+ * music's bloom (`ONBOARDING_THEME.revealAt`). The hero's copy starts arriving while the light is
+ * still settling, line by line and slowly, so its last line comes to rest just after the bloom.
+ * The page then waits for the person to begin; the card fades in as the page leaves, and the
+ * shell is told the guide settled once the card is at rest.
  */
 export const INTRO = {
-  /** The scrim darkens the desktop for the intro, then eases back for the card. */
-  scrimIntro: 0.82,
+  /**
+   * The scrim darkens the desktop for the opening page, light enough to show its glass's blur, then
+   * eases back for the card.
+   */
+  scrimIntro: 0.7,
   scrimCard: 0.6,
   scrimIn: 0.8,
-  /** The flowing light starts in from beyond the edges... */
+  /** The light starts its entrance... */
   lightAt: 0.2,
-  /** ...and takes this long to converge onto the glow (landing at 3.3s). */
-  lightConverge: 3.1,
-  /** How many times its landed size the light starts at: past every display's corners. */
-  lightFrom: 7,
-  /** The icon emerging inside the gathering light. */
-  markAt: 1.2,
-  /** The glow brightening as the light lands on it, over `glowIn`. */
-  glowAt: 1.5,
-  glowIn: 1.8,
+  /** ...and lands here, on the bloom. */
+  landAt: ONBOARDING_THEME.revealAt,
+  /** The hero's first line starts arriving, while the light settles... */
+  heroAt: 1.9,
+  /** ...each next line this much later... */
+  heroStagger: 0.22,
+  /** ...each taking this long to rise this far (px) and fade in. */
+  heroIn: 1.6,
+  heroRise: 18,
   /** The music toggle in the corner. */
   cornerAt: 0.6,
-  hintAt: 2.7,
-  revealAt: ONBOARDING_THEME.revealAt,
-  /** From the reveal to the card at rest (≈4.3s on the timeline). */
+  /** From the start to the card at rest. */
   settleAfter: 0.8,
   /** Between the card's content groups; four groups stay within 150ms. */
   contentStagger: 0.04,
 } as const;
 
 /**
- * The Reduce Motion intro: the mark and a still light fade in, then the card cross-fades in and
- * settles; nothing travels or scales.
+ * The Reduce Motion opening page: the light, a still frame, fades in and the hero follows; nothing
+ * moves or scales. The card then cross-fades in and settles.
  */
 export const INTRO_REDUCED = {
-  markAt: 0.2,
-  hintAt: 0.5,
-  revealAt: 1.2,
+  lightAt: 0.2,
+  heroAt: 0.5,
   settleAfter: 0.4,
 } as const;
 
-/**
- * The mark's travel from the intro into the Welcome step's display area (the shared-layout
- * hand-off). The short delay lets the card's fade get ahead, so the copy the mark lands as is
- * already opaque when the intro's copy fades from over it.
- */
-export const HANDOFF_SPRING: Transition = {
-  type: 'spring',
-  visualDuration: 0.8,
-  bounce: 0,
-  delay: 0.12,
-};
-
-/** Text that belongs to the intro lifting away at the reveal. */
+/** Text that belongs to the opening page lifting away as the guide begins. */
 export const LIFT_AWAY: Transition = { duration: 0.35, ease: [0.4, 0, 1, 1] };
 
 /** Seconds the whole stage takes to fade out when the guide closes. */

@@ -27,7 +27,7 @@ const CARD_RADIUS = 22;
 
 /**
  * How the card arrives: `skip` (a quick fade and settle with its content staggering in, at the
- * intro's reveal while the app mark travels into the art, or at once when the intro was skipped)
+ * intro's reveal as its light fades, or at once when the intro was skipped)
  * or `fade` (Reduce Motion: a cross-fade, no stagger).
  */
 export type CardEntrance = 'skip' | 'fade';
@@ -73,7 +73,8 @@ function revealVariants(entrance: CardEntrance): { group: Variants; item: Varian
  * Later moves on; Return runs the primary only once settled and enabled. The finish step's primary
  * closes the guide and summons the panel.
  *
- * At rest (`settled`, and not `closing`) the shell lays the window glass under the surface.
+ * Until it starts closing the shell lays the window glass under the surface, from the moment its
+ * entrance comes to rest.
  */
 export function OnboardingCard({
   snapshot,
@@ -96,7 +97,9 @@ export function OnboardingCard({
   const flow = useOnboardingFlow();
   const viewport = useRef<HTMLDivElement>(null);
   const surface = useRef<HTMLDivElement>(null);
-  useNativeSurface(surface, settled && !closing, CARD_RADIUS);
+  // From the card's first moment: the glass moves to it as soon as its entrance comes to rest,
+  // taking over from the opening page's.
+  useNativeSurface(surface, !closing, CARD_RADIUS);
   const pending = isGoalPending(flow.step, goals);
   // Once the card is at rest every step's heading takes focus as it appears, so keyboard and
   // VoiceOver users start reading the step (the first one included, after the intro).
