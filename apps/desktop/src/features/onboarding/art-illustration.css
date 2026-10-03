@@ -1,13 +1,13 @@
 /*
  * The guide's step illustrations (`art-*.tsx`, after Figma `App / Onboarding hero` 1816:98233),
- * drawn with the app's own tokens on the art panel's neutral field. Every size is a multiple of
- * `--u`, the panel's unit: the Figma values are for a 153px tall band, where `--u` is 1.53px. `--u`
- * follows the panel (both are size containers): 0.4% of its width in the tall side panel, so the
- * widest illustration keeps a fifth of the panel free around it, and 0.75% of its height in the
- * short stacked strip, so the tallest keeps a quarter free; it resolves against the panel for
- * `.guide-art` itself and against `.guide-art` below, which fills the panel. Only transform and
- * opacity animate; every loop runs only without Reduce Motion, whose still frame is each element's
- * resting style.
+ * drawn with the app's own dark tokens over the step's light on the art panel's black field
+ * (`onboarding-card-art.css`). Every size is a multiple of `--u`, the panel's unit: the Figma
+ * values are for a 153px tall band, where `--u` is 1.53px. `--u` follows the panel (both are size
+ * containers): 0.4% of its width in the tall side panel, so the widest illustration keeps a fifth
+ * of the panel free around it, and 0.75% of its height in the short stacked strip, so the tallest
+ * keeps a quarter free; it resolves against the panel for `.guide-art` itself and against
+ * `.guide-art` below, which fills the panel. Only transform and opacity animate; every loop runs
+ * only without Reduce Motion, whose still frame is each element's resting style.
  */
 .guide-art {
   --u: min(0.4cqw, 0.75cqh);
@@ -28,41 +28,9 @@
   grid-area: 1 / 1;
 }
 
-/* Welcome and finish: the app icon over a soft glow of the accent blue. */
-.guide-glow {
-  width: min(100%, calc(var(--u) * 170));
-  aspect-ratio: 1.6;
-  background: radial-gradient(
-    closest-side,
-    color-mix(in oklab, var(--ata-syntax-variable) 32%, transparent),
-    transparent
-  );
-}
 .guide-icon-motion {
   display: block;
   line-height: 0;
-}
-/* The welcome's mark (`AppMark` in `art-welcome.tsx`): the glow's box with the icon centered on
-   it, sized by its width alone, so the intro's larger copy is an exact scale of this one and the
-   hand-off between them scales uniformly. In the panel it is the glow's `--u` size, capped where
-   the icon reaches its Figma size (176px); the intro sets its own width. */
-.guide-art[data-art='welcome'] {
-  --guide-mark-width: min(calc(var(--u) * 170), calc(176px * 170 / 92));
-}
-.guide-mark {
-  display: grid;
-  width: var(--guide-mark-width);
-  aspect-ratio: 1.6;
-  place-items: center;
-}
-.guide-mark > * {
-  grid-area: 1 / 1;
-}
-.guide-mark > .guide-glow {
-  width: 100%;
-}
-.guide-mark .guide-app-icon {
-  width: calc(var(--guide-mark-width) * 92 / 170);
 }
 /* The shipped icon carries its own tile margin (Figma: tile inset 7.81%); it keeps its Figma size
    (176px) in the side panel and scales with the panel below that. */
@@ -209,11 +177,6 @@
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  /* Started half a cycle in, where the eased drift passes its rest pose, so a glow appears exactly
-     as the still intro's glow it takes over from (and as Reduce Motion's still frame). */
-  .guide-glow {
-    animation: guide-glow-drift 9s ease-in-out -4.5s infinite alternate;
-  }
   .guide-orbit-mark {
     animation: guide-float 3.2s ease-in-out infinite alternate;
   }
@@ -231,14 +194,6 @@
   }
   .guide-orbit-slot[data-orbit='5'] .guide-orbit-mark {
     animation-delay: -2s;
-  }
-}
-@keyframes guide-glow-drift {
-  from {
-    transform: translate(-5%, -4%) scale(0.96);
-  }
-  to {
-    transform: translate(5%, 4%) scale(1.04);
   }
 }
 @keyframes guide-float {

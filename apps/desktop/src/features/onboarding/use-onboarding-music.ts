@@ -70,8 +70,9 @@ async function fetchTrack(context: AudioContext, signal: AbortSignal) {
  * The welcome guide's music (`assets/onboarding-theme.ts`), played through Web Audio so the bed
  * loops without a gap. `startedAt` (a `performance.now()` time, when the stage mounted) is the
  * track's t=0: when loading finishes late, playback starts at the elapsed offset, so the bloom at
- * `revealAt` still lands on the card's reveal. The guide's web view allows autoplay; a context
- * that still starts suspended is asked to resume, and the music starts once it runs.
+ * `revealAt` still lands where the opening page's light lands and its copy comes to rest. The
+ * guide's web view allows autoplay; a context that still starts suspended is asked to resume, and
+ * the music starts once it runs.
  *
  * Two gain stages keep the envelopes apart: `fade` carries the fade-in and the closing fade-out,
  * `mute` the toggle, so muting during a fade neither cuts nor restarts it.

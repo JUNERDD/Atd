@@ -116,6 +116,10 @@
     }
   },
   "intro": {
-    "skipHint": "Press Return to begin"
+    "badge": "Meet {{name}}",
+    "title": "Your AI, one shortcut away in every app.",
+    "description": "Ask about what you select, capture your screen, and bring the AI provider you already use, without leaving what you're doing.",
+    "begin": "Get Started",
+    "hint": "or press Return"
   }
 }

@@ -1,0 +1,18 @@
+/*
+ * A guide light (`guide-light.tsx`): Paper's canvas filling the light's box, with film grain
+ * masked onto it. The mask is a tile of noise at the display's full resolution whose alpha varies
+ * slightly below 1, so it speckles only what the light draws, however coarsely the light renders,
+ * and leaves the light's transparent dark transparent: whatever the host shows through stays
+ * clean. The grain never animates.
+ */
+.guide-light {
+  position: relative;
+  overflow: hidden;
+  pointer-events: none;
+}
+.guide-light-canvas {
+  position: absolute;
+  inset: 0;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .55 0 0 0 .55'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E")
+    0 0 / 160px 160px;
+}

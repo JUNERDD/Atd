@@ -1,7 +1,7 @@
 /*
- * The card's art panel (`onboarding-card-art.tsx`), the display area beside the step: one neutral
- * field for every step, the settings sidebar card's faint tint and hairline, under the step's
- * illustration. Its 14px radius is the card's 22px less the art cell's 8px inset, so the corners
+ * The card's art panel (`onboarding-card-art.tsx`), the display area beside the step: a black
+ * field with the step's light on it, and the hairline of the settings sidebar card, under the
+ * step's illustration. Its 14px radius is the card's 22px less the art cell's 8px inset, so the corners
  * stay concentric. The cell and its place in the card's layout belong to `onboarding.css`; the
  * panel fills it, and is the size container the illustrations scale from.
  */
@@ -14,7 +14,7 @@
   flex: 1 1 auto;
   overflow: hidden;
   border-radius: 14px;
-  background: var(--ata-surface-settings-sidebar);
+  background: rgb(0 0 0);
   container: onboarding-art / size;
   isolation: isolate;
 }
@@ -29,8 +29,10 @@
   pointer-events: none;
 }
 /* Absolutely inset, so its height is definite: the illustration fills it at 100% × 100%, and the
-   outgoing and incoming illustrations overlap while they cross-fade. */
-.onboarding-art-slot {
+   outgoing and incoming illustrations overlap while they cross-fade. The light lies under the
+   illustration, which follows it and is positioned too. */
+.onboarding-art-slot,
+.onboarding-art-light {
   position: absolute;
   inset: 0;
 }
