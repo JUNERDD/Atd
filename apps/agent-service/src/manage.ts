@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { registerCommandRoutes } from './commands/routes.js';
 import type { ServiceConfig } from './config.js';
+import type { FolderStore } from './folders/store.js';
 import type { Ledger } from './ledger.js';
 import type { Logger } from './logging.js';
 import { registerMcpStageRoute } from './mcp/stage-routes.js';
@@ -19,6 +20,7 @@ export interface ManageContext {
   ledger: Ledger;
   manager: RunnerManager;
   settings: SettingsStore;
+  folders: FolderStore;
   log: Logger;
 }
 
@@ -39,6 +41,7 @@ export function registerManageRoutes(app: FastifyInstance, ctx: ManageContext): 
     ledger: ctx.ledger,
     manager: ctx.manager,
     paths: ctx.config.paths,
+    folders: ctx.folders,
   });
   registerPreviewRoute(app, { dataDir: ctx.config.paths.root, ledger: ctx.ledger });
   registerResourceRoutes(app, { ledger: ctx.ledger, paths: ctx.config.paths });

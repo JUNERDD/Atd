@@ -66,7 +66,9 @@
       "installPlugin": "插件 安装 添加 文件夹 仓库 npm 包",
       "skills": "技能 创建 指令 AI",
       "subagents": "子代理 智能体 角色 委派 专家",
-      "mcp": "MCP 服务器 工具 协议 连接 认证"
+      "mcp": "MCP 服务器 工具 协议 连接 认证",
+      "selectionToolbar": "选择 选中 文字 划词 工具栏 弹出 提问 辅助功能 selection toolbar",
+      "selectionToolbarApps": "排除 忽略 屏蔽 App 应用 工具栏 选择 exclude apps"
     }
   },
   "providers": {
@@ -155,6 +157,30 @@
   "general": {
     "title": "通用",
     "description": "快捷键、启动与窗口行为。点击快捷键后按下新的组合键，按 Esc 取消。"
+  },
+  "selectionToolbar": {
+    "title": "选择文字工具栏",
+    "enabled": "选中文字时显示工具栏",
+    "enabledDescription": "在其他 App 中选中文字后，可以直接问 Atd 或运行选区命令。",
+    "accessibility": {
+      "title": "需要辅助功能权限",
+      "description": "Atd 需要辅助功能权限才能识别选中的文字。授权后工具栏会立即生效。",
+      "open": "打开系统设置"
+    },
+    "excluded": {
+      "title": "排除的 App",
+      "description": "在这些 App 中选中文字时不显示工具栏。",
+      "empty": "工具栏会在所有 App 中显示。添加 App 可让它在该 App 中不再出现。",
+      "add": "添加 App…",
+      "remove": "移除",
+      "removeLabel": "从排除列表中移除 {{name}}"
+    },
+    "errors": {
+      "save": "无法保存选择文字工具栏设置，请重试。",
+      "pick": "无法打开 App 选择器，请重试。",
+      "limit": "最多排除 {{max}} 个 App。",
+      "accessibility": "无法打开系统设置，请手动前往“隐私与安全性 › 辅助功能”。"
+    }
   },
   "shortcuts": {
     "groups": {
@@ -570,7 +596,7 @@
       "disconnectedDescription": "Agent 服务重新运行后，插件会显示在这里。",
       "host": {
         "core": {
-          "name": "核心",
+          "name": "系统",
           "description": "随应用提供的技能和子代理。"
         },
         "personal": {

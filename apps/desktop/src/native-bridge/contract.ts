@@ -12,7 +12,9 @@
  * message bound to `DELIVER_ARGUMENT`. The delivery function is synchronous.
  */
 import { Type, type TSchema } from 'typebox';
-import { Empty, NativeCalls, NativeFileRefSchema, Text } from './calls.ts';
+import { NativeCalls } from './calls.ts';
+import { ImportFailureSchema, NativeFileRefSchema, NativeFolderRefSchema } from './file-calls.ts';
+import { Empty, Text } from './primitives.ts';
 
 /** `WKScriptMessageHandler` name the page posts to. */
 export const MESSAGE_HANDLER = 'aiNative';
@@ -20,23 +22,24 @@ export const MESSAGE_HANDLER = 'aiNative';
 export const DELIVER_SCRIPT = 'window.aiNative.deliver(message)';
 export const DELIVER_ARGUMENT = 'message';
 
-/** A path the import refused: the file's basename (the page never sees paths) and the reason. */
-const ImportFailureSchema = Type.Object(
-  {
-    name: Text(255),
-    reason: Type.Union([
-      Type.Literal('unreadable'),
-      Type.Literal('unsupported'),
-      Type.Literal('tooLarge'),
-    ]),
-  },
-  { additionalProperties: false },
-);
-
 const DragRectSchema = Type.Object(
   { x: Type.Number(), y: Type.Number(), width: Type.Number(), height: Type.Number() },
   { additionalProperties: false },
 );
+
+/** A rectangle the welcome guide reports, in CSS pixels from the web view's top-left. */
+const GuideRectSchema = Type.Object(
+  {
+    x: Type.Number({ minimum: 0 }),
+    y: Type.Number({ minimum: 0 }),
+    width: Type.Number({ minimum: 0 }),
+    height: Type.Number({ minimum: 0 }),
+  },
+  { additionalProperties: false },
+);
+
+/** Longest text `onboarding.selection` takes; the practice area's sample is far shorter. */
+export const MAX_PRACTICE_SELECTION_LENGTH = 2000;
 
 /** Posts: JS → Swift one-way messages; Swift sends no reply. */
 export const NativePosts = {
@@ -53,6 +56,32 @@ export const NativePosts = {
    */
   'window.dragRegions': Type.Object(
     { rects: Type.Array(DragRectSchema, { maxItems: 64 }) },
+    { additionalProperties: false },
+  ),
+  /**
+   * The welcome guide card's surface in CSS pixels from the web view's top-left, and its corner
+   * radius; the shell lays the window material (the panel's and Settings' glass) under it. Sent
+   * once the card is at rest and on every resize; `null` once the guide starts closing and on
+   * teardown. The shell takes it only from the guide's own web view.
+   */
+  'onboarding.surface': Type.Object(
+    { rect: Type.Union([GuideRectSchema, Type.Null()]), radius: Type.Number({ minimum: 0 }) },
+    { additionalProperties: false },
+  ),
+  /**
+   * The welcome guide's practice selection: the bounding box of text selected in its practice
+   * area, in CSS pixels from the web view's top-left, and that text. The shell shows the real
+   * selection toolbar beside it (while the toolbar is on and the app is trusted for
+   * Accessibility), and its Ask Atd and commands take this text as the selection. `null` hides
+   * that toolbar: sent when the selection collapses or leaves the practice text, on a key, a
+   * scroll or a step change, once the guide starts closing and on teardown. The shell takes it
+   * only from the guide's own web view.
+   */
+  'onboarding.selection': Type.Object(
+    {
+      rect: Type.Union([GuideRectSchema, Type.Null()]),
+      text: Text(MAX_PRACTICE_SELECTION_LENGTH),
+    },
     { additionalProperties: false },
   ),
   /** Opens a virtual socket: Swift connects one real socket to the service for it. */
@@ -125,25 +154,36 @@ export const NativeEvents = {
    * screenshot itself (`screenshot.capture`), so it can refuse a full draft before the overlay opens.
    */
   'shortcut.screenshot': Empty,
-  /** Swift imported files dropped or pasted into the panel through `/v1/resources/import`. */
+  /**
+   * Debug builds' Replay First-Launch Guide (panel only): the page marks the guide as not shown,
+   * which runs the first launch's path again.
+   */
+  'onboarding.replay': Empty,
+  /**
+   * Swift imported files dropped or pasted into the panel through `/v1/resources/import`, and
+   * registered folders through `/v1/folders/register`. `failures` covers both; each path of the
+   * import lands in exactly one list.
+   */
   'resources.imported': Type.Object(
     {
       resources: Type.Array(NativeFileRefSchema, { maxItems: 10 }),
-      failures: Type.Array(ImportFailureSchema, { maxItems: 10 }),
+      folders: Type.Array(NativeFolderRefSchema, { maxItems: 10 }),
+      failures: Type.Array(ImportFailureSchema, { maxItems: 20 }),
     },
     { additionalProperties: false },
   ),
   /**
    * The panel's file drop, a state the shell replays: `over` while files are dragged over the
    * panel, `importing` from a drop until its import answered, `none` otherwise. `files` counts the
-   * dragged files, `attachable` those of the drop's import (its first 10) that have an attachable
-   * format; both are 0 outside `over`.
+   * dragged items, folders included; `attachable` counts those of the drop's import (at most 10
+   * files and 10 folders) that it would take: files with an attachable format, and folders. Both
+   * are 0 outside `over`.
    */
   'files.drag': Type.Object(
     {
       phase: Type.Union([Type.Literal('over'), Type.Literal('importing'), Type.Literal('none')]),
       files: Type.Integer({ minimum: 0 }),
-      attachable: Type.Integer({ minimum: 0, maximum: 10 }),
+      attachable: Type.Integer({ minimum: 0, maximum: 20 }),
     },
     { additionalProperties: false },
   ),
@@ -158,6 +198,25 @@ export const NativeEvents = {
    * fails; a `speech.speak` that replaces another keeps it true.
    */
   'speech.state': Type.Object({ speaking: Type.Boolean() }, { additionalProperties: false }),
+  /**
+   * The selection toolbar's Ask Atd fired; Swift already captured the selection and showed the
+   * panel. The page takes it (`capture`), inserts it as a quote and focuses the composer.
+   */
+  'selection.ask': Empty,
+  /**
+   * Whether the app is trusted for Accessibility (selection capture and the selection toolbar
+   * need it), sent to every page on each change and replayed when a page becomes ready.
+   */
+  'accessibility.trust': Type.Object({ trusted: Type.Boolean() }, { additionalProperties: false }),
+  /**
+   * Whether this running app may capture the screen (screenshots need Screen Recording), sent to
+   * every page on each change and replayed when a page becomes ready. macOS applies a new grant
+   * only to a relaunched app, so `trusted` can stay false after the user allows it.
+   */
+  'screenRecording.trust': Type.Object(
+    { trusted: Type.Boolean() },
+    { additionalProperties: false },
+  ),
   /**
    * The version of a downloaded update that installs when the app quits, null while none waits.
    * Sent to the panel on each change and replayed when its page becomes ready.

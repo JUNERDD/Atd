@@ -13,7 +13,7 @@ import type { ExtensionAgentRow } from './extension-rows';
 import type { AgentMatch } from './use-extension-matches';
 
 /**
- * One plugin's subagents: the service's system agents (Core), the markdown specialists
+ * One plugin's subagents: the service's system agents (System), the markdown specialists
  * (`~/.atd/agents`, Personal) or an installed plugin's agents. Rows share the skill row anatomy
  * (icon ring, name, a description line naming system sources and custom permissions, the enable
  * switch and More with Permissions…, which plugin agents keep as well, and Delete for Personal

@@ -1,13 +1,16 @@
+import type { FolderRef } from '@atd/agent-contracts';
+import type { ImportFailure } from '../client/contract';
 import type { FileRef } from '../client/agent/task-schema';
 
-/** Why the service refused a dropped or pasted file (`ResourceImportFailureReason`). */
-export type ImportFailureReason = 'unreadable' | 'unsupported' | 'tooLarge';
-
-/** One drop or paste the host imported: the resources created, and each file it refused. */
+/**
+ * One batch the host imported: the resources created, the folders registered, and each path it
+ * refused. Drops, pastes, the Finder service and the folder picker all hand over this shape.
+ */
 export interface ImportedFiles {
   files: FileRef[];
-  /** `name` is the file's basename; the page never sees paths. */
-  failures: { name: string; reason: ImportFailureReason }[];
+  folders: FolderRef[];
+  /** `name` is the item's basename; refused paths never reach the page. */
+  failures: ImportFailure[];
 }
 
 type Listener = (batch: ImportedFiles) => void;
@@ -17,8 +20,9 @@ let listener: Listener | null = null;
 const waiting: ImportedFiles[] = [];
 
 /**
- * Hands files the host imported outside the page's own pickers (the macOS shell's drops and
- * pastes) to the composer, which owns the draft. One composer receives them.
+ * Hands files and folders the host imported outside the page's own pickers (the macOS shell's
+ * drops, pastes and Finder service) to the composer, which owns the draft. One composer receives
+ * them.
  */
 export function publishImportedFiles(batch: ImportedFiles): void {
   if (listener) listener(batch);

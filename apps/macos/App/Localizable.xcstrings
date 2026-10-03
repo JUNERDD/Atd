@@ -19,6 +19,24 @@
         }
       }
     },
+    "app.pick.title" : {
+      "comment" : "Title of the open panel that picks apps the selection toolbar stays out of",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose apps where the selection toolbar stays hidden"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "选择不显示选择文字工具栏的 App"
+          }
+        }
+      }
+    },
     "artifact.open.message" : {
       "comment" : "Message of the confirmation before opening a downloaded file that can run code",
       "extractionState" : "manual",
@@ -937,6 +955,24 @@
         }
       }
     },
+    "folder.pick.title" : {
+      "comment" : "Title of the open panel that picks folders to add to the task panel",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose folders to add"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "选择要添加的文件夹"
+          }
+        }
+      }
+    },
     "mcpApproval.allow" : {
       "comment" : "Button that approves an MCP server's launch",
       "extractionState" : "manual",
@@ -1801,6 +1837,42 @@
         }
       }
     },
+    "menu.onboarding" : {
+      "comment" : "Menu item that reopens the welcome guide window",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Welcome Guide…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "欢迎指南…"
+          }
+        }
+      }
+    },
+    "menu.onboardingReplay" : {
+      "comment" : "Debug-only menu item that replays the first-launch welcome guide",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Replay First-Launch Guide"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重播首次启动引导"
+          }
+        }
+      }
+    },
     "menu.quit" : {
       "comment" : "Quit menu item",
       "extractionState" : "manual",
@@ -2017,6 +2089,96 @@
         }
       }
     },
+    "selectionToolbar" : {
+      "comment" : "VoiceOver label of the toolbar shown over text selected in other apps",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Selection toolbar"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "选择文字工具栏"
+          }
+        }
+      }
+    },
+    "selectionToolbar.ask" : {
+      "comment" : "Selection toolbar button that opens the panel with the selected text quoted",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ask Atd"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "问 Atd"
+          }
+        }
+      }
+    },
+    "selectionToolbar.ask.tooltip" : {
+      "comment" : "Tooltip of the selection toolbar Ask Atd button",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ask Atd about the selected text"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "就所选文字询问 Atd"
+          }
+        }
+      }
+    },
+    "selectionToolbar.more" : {
+      "comment" : "VoiceOver label of the selection toolbar button listing the remaining commands",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "More"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "更多"
+          }
+        }
+      }
+    },
+    "selectionToolbar.more.tooltip" : {
+      "comment" : "Tooltip of the selection toolbar More button",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "More commands"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "更多命令"
+          }
+        }
+      }
+    },
     "status.attention" : {
       "comment" : "Status item tooltip part; %lld is a task count",
       "extractionState" : "manual",
@@ -2085,6 +2247,24 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "服务不可用"
+          }
+        }
+      }
+    },
+    "window.onboarding.title" : {
+      "comment" : "Welcome guide window title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Welcome to Atd"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "欢迎使用 Atd"
           }
         }
       }

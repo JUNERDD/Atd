@@ -1,31 +1,23 @@
 /**
  * Calls of the native bridge (`contract.ts`): the JS → Swift requests Swift answers, with the
- * schemas their params and results use. Like the rest of the contract, the export script loads this
- * file with Node's type stripping, so it imports nothing but TypeBox and uses only erasable
- * TypeScript syntax.
+ * schemas their params and results use; the file calls and their records live in `file-calls.ts`,
+ * the window and app presence calls in `window-calls.ts`.
+ * Like the rest of the contract, the export script loads this file with Node's type stripping, so
+ * it imports nothing but TypeBox and its sibling contract files (by their `.ts` names) and uses only
+ * erasable TypeScript syntax.
  */
-import { Type, type Static, type TSchema } from 'typebox';
+import { Type, type TSchema } from 'typebox';
+import { NativeFileCalls, NativeFileRefSchema } from './file-calls.ts';
+import { NativeWindowCalls } from './window-calls.ts';
+import { Empty, MAX_NATIVE_TEXT_LENGTH, Text } from './primitives.ts';
 
-/** A call or post without params, or a result without a value. */
-export const Empty = Type.Object({}, { additionalProperties: false });
-export const Text = (maxLength: number) => Type.String({ maxLength });
-/**
- * Mirrors `FileRefSchema` (`src/client/agent/task-schema.ts`); the WebView host returns it where a
- * `FileRef` is expected, so type checking catches a drift.
- */
-export const NativeFileRefSchema = Type.Object(
-  {
-    id: Type.String({ minLength: 1, maxLength: 128, pattern: '^[a-zA-Z0-9_-]+$' }),
-    name: Text(255),
-    size: Type.Integer({ minimum: 0 }),
-    type: Text(100),
-  },
-  { additionalProperties: false },
-);
-const Resources = Type.Object(
-  { resources: Type.Array(NativeFileRefSchema, { maxItems: 10 }) },
-  { additionalProperties: false },
-);
+export {
+  MAX_SAVE_PNG_BASE64_LENGTH,
+  NativeFileRefSchema,
+  NativeFolderRefSchema,
+  SaveContentSchema,
+} from './file-calls.ts';
+export type { SaveContent } from './file-calls.ts';
 
 /** Reserved registration ids: the panel toggle and the screenshot; others are command ids. */
 export const PANEL_SHORTCUT_ID = 'togglePanel';
@@ -107,30 +99,6 @@ const ScreenshotResultSchema = Type.Union([
 
 /** Input text limit shared with clipboard capture and the service's command input. */
 export const MAX_CAPTURE_LENGTH = 100000;
-/** Longest text `share.text` and `speech.speak` take, the same bound as `clipboard.write`. */
-const MAX_NATIVE_TEXT_LENGTH = 1000000;
-
-/** Longest base64 PNG `files.save` takes: 16 MiB of image, four characters per three bytes. */
-export const MAX_SAVE_PNG_BASE64_LENGTH = Math.ceil((16 * 1024 * 1024) / 3) * 4;
-
-/**
- * What `files.save` writes: text as UTF-8 (code, Markdown, SVG, a diagram's source), or a PNG as
- * base64. The file name carries the type for text; Swift checks a PNG's signature.
- */
-export const SaveContentSchema = Type.Union([
-  Type.Object(
-    { type: Type.Literal('text'), text: Text(MAX_NATIVE_TEXT_LENGTH) },
-    { additionalProperties: false },
-  ),
-  Type.Object(
-    {
-      type: Type.Literal('png'),
-      base64: Type.String({ minLength: 1, maxLength: MAX_SAVE_PNG_BASE64_LENGTH }),
-    },
-    { additionalProperties: false },
-  ),
-]);
-export type SaveContent = Static<typeof SaveContentSchema>;
 
 /**
  * A rectangle in CSS pixels from the web view's top-left corner (what `getBoundingClientRect()`
@@ -151,44 +119,7 @@ const AnchorRectSchema = Type.Object(
  * whose message the page shows as is.
  */
 export const NativeCalls = {
-  /** Shows and focuses the panel. */
-  'window.show': { params: Empty, result: Empty },
-  /** Hides the panel (alpha 0; it stays ordered in). */
-  'window.hide': { params: Empty, result: Empty },
-  'window.setPinned': {
-    params: Type.Object({ pinned: Type.Boolean() }, { additionalProperties: false }),
-    result: Type.Object({ pinned: Type.Boolean() }, { additionalProperties: false }),
-  },
-  /** Window and app preferences the shell owns; `openAtLogin` is null where unsupported. */
-  'app.state': {
-    params: Empty,
-    result: Type.Object(
-      {
-        pinned: Type.Boolean(),
-        showInDock: Type.Boolean(),
-        openAtLogin: Type.Union([Type.Boolean(), Type.Null()]),
-      },
-      { additionalProperties: false },
-    ),
-  },
-  'app.setShowInDock': {
-    params: Type.Object({ show: Type.Boolean() }, { additionalProperties: false }),
-    result: Type.Object({ show: Type.Boolean() }, { additionalProperties: false }),
-  },
-  /** Resolves to the applied state, false while macOS waits for approval in System Settings. */
-  'app.setOpenAtLogin': {
-    params: Type.Object({ open: Type.Boolean() }, { additionalProperties: false }),
-    result: Type.Object({ open: Type.Boolean() }, { additionalProperties: false }),
-  },
-  /** Shows the settings window; a first load opens `commandId`'s editor when it is set. */
-  'settings.open': {
-    params: Type.Object(
-      { commandId: Type.Union([Type.String({ maxLength: 128 }), Type.Null()]) },
-      { additionalProperties: false },
-    ),
-    result: Empty,
-  },
-  'settings.close': { params: Empty, result: Empty },
+  ...NativeWindowCalls,
   /**
    * Replaces the whole set of global shortcuts. Swift registers the difference and reports every
    * item. `selectionWanted`: an enabled command reads the selection, so each summon that shows the
@@ -302,35 +233,7 @@ export const NativeCalls = {
     ),
     result: Empty,
   },
-  /** Downloads the artifact through the service, then opens, reveals, or copies its path. */
-  artifact: {
-    params: Type.Object(
-      {
-        artifactId: Type.String({ minLength: 1, maxLength: 128 }),
-        operation: Type.Union([
-          Type.Literal('open'),
-          Type.Literal('reveal'),
-          Type.Literal('copyPath'),
-        ]),
-      },
-      { additionalProperties: false },
-    ),
-    result: NativeFileRefSchema,
-  },
-  /** Open panel for attachments, imported through `/v1/resources/import`; `[]` when cancelled. */
-  'files.pick': { params: Empty, result: Resources },
-  /**
-   * Save panel offering `content` under the suggested `name` (its basename, with `.png` for a PNG);
-   * `saved` is false when the user cancelled or another save panel is open. A content Swift
-   * refuses or a failed write rejects with a message in the shell's language.
-   */
-  'files.save': {
-    params: Type.Object(
-      { name: Type.String({ minLength: 1, maxLength: 255 }), content: SaveContentSchema },
-      { additionalProperties: false },
-    ),
-    result: Type.Object({ saved: Type.Boolean() }, { additionalProperties: false }),
-  },
+  ...NativeFileCalls,
   /**
    * Confirms a launch approval in a native dialog the page cannot forge. Only the server id
    * crosses: Swift reads what would run from the service (`GET /v1/admin/approvals/mcp/:serverId`),
@@ -346,5 +249,62 @@ export const NativeCalls = {
       { additionalProperties: false },
     ),
     result: ApprovalRequestResultSchema,
+  },
+  /**
+   * Replaces what the selection toolbar offers over text selected in other apps; the page pushes
+   * it whenever it changes. `commands`: the enabled commands that read the selection, in
+   * command-list order; clicking one captures the selection and sends `shortcut.command`.
+   */
+  'toolbar.set': {
+    params: Type.Object(
+      {
+        enabled: Type.Boolean(),
+        excludedBundleIds: Type.Array(Type.String({ minLength: 1, maxLength: 255 }), {
+          maxItems: 100,
+        }),
+        commands: Type.Array(
+          Type.Object(
+            {
+              id: Type.String({ minLength: 1, maxLength: 128 }),
+              name: Type.String({ minLength: 1, maxLength: 256 }),
+            },
+            { additionalProperties: false },
+          ),
+          { maxItems: 64 },
+        ),
+      },
+      { additionalProperties: false },
+    ),
+    result: Empty,
+  },
+  /**
+   * Shows the system's Accessibility trust prompt while the app is not trusted, and opens System
+   * Settings › Privacy & Security › Accessibility. `accessibility.trust` reports the outcome.
+   */
+  'accessibility.request': { params: Empty, result: Empty },
+  /**
+   * Shows the system's Screen Recording prompt while the app may not capture the screen, and opens
+   * System Settings › Privacy & Security › Screen & System Audio Recording.
+   * `screenRecording.trust` reports the outcome.
+   */
+  'screenRecording.request': { params: Empty, result: Empty },
+  /** Open panel on application bundles, multiple selection; `apps` is empty when cancelled. */
+  'apps.pick': {
+    params: Empty,
+    result: Type.Object(
+      {
+        apps: Type.Array(
+          Type.Object(
+            {
+              bundleId: Type.String({ minLength: 1, maxLength: 255 }),
+              name: Type.String({ minLength: 1, maxLength: 255 }),
+            },
+            { additionalProperties: false },
+          ),
+          { maxItems: 20 },
+        ),
+      },
+      { additionalProperties: false },
+    ),
   },
 } satisfies Record<string, { params: TSchema; result: TSchema }>;

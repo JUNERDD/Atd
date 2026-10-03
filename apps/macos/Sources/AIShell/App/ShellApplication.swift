@@ -21,7 +21,10 @@ public enum ShellApplication {
 final class ShellAppDelegate: NSObject, NSApplicationDelegate {
   private let makeServices: @MainActor () -> ShellServices
   private var controller: ShellController?
+  private var finderService: FinderService?
   private var launchedAtLogin = false
+  /// Files opened while launching, before the controller exists.
+  private var openedBeforeLaunch: [URL] = []
 
   init(makeServices: @escaping @MainActor () -> ShellServices) {
     self.makeServices = makeServices
@@ -36,8 +39,25 @@ final class ShellAppDelegate: NSObject, NSApplicationDelegate {
     let controller = ShellController(services: makeServices())
     self.controller = controller
     SingleInstance.observeLaterLaunches { [weak controller] in controller?.summon(.toggle) }
-    // Opened at login, the app waits in the menu bar instead of showing the panel.
-    controller.start(revealPanel: !launchedAtLogin)
+    let finderService = FinderService { [weak controller] urls in controller?.openItems(urls) }
+    self.finderService = finderService
+    NSApp.servicesProvider = finderService
+    // Opened at login, the app waits in the menu bar instead of showing the panel; opened with
+    // files, it shows them.
+    controller.start(revealPanel: !launchedAtLogin && openedBeforeLaunch.isEmpty)
+    controller.openItems(openedBeforeLaunch)
+    openedBeforeLaunch = []
+  }
+
+  /// Files or folders dropped on the Dock icon or opened with `open -a`, through the same import
+  /// as the Finder service. While launching they arrive before the controller exists.
+  func application(_ application: NSApplication, open urls: [URL]) {
+    let files = urls.filter(\.isFileURL)
+    guard let controller else {
+      openedBeforeLaunch += files
+      return
+    }
+    controller.openItems(files)
   }
 
   func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {

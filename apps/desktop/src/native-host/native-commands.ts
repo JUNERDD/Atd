@@ -65,6 +65,7 @@ export class NativeCommands implements CommandCatalog {
     if (source === 'selection') {
       const captured = await this.bridge.call('capture', { source });
       if (!captured.ok) throw new Error(SELECTION_ERRORS[captured.reason]);
+      if (!captured.text.trim()) throw new Error(SELECTION_ERRORS.noSelection);
       return { text: captured.text, capturedAt: captured.capturedAt };
     }
     const { text } = await this.bridge.call('clipboard.read', {});

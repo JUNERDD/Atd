@@ -26,10 +26,13 @@ public enum ShellStringKey: String, CaseIterable, Sendable {
   case appName = "app.name"
   case windowPanelTitle = "window.panel.title"
   case windowSettingsTitle = "window.settings.title"
+  case windowOnboardingTitle = "window.onboarding.title"
 
   case menuShowPanel = "menu.showPanel"
   case menuHidePanel = "menu.hidePanel"
   case menuSettings = "menu.settings"
+  case menuOnboarding = "menu.onboarding"
+  case menuOnboardingReplay = "menu.onboardingReplay"
   case menuCheckForUpdates = "menu.checkForUpdates"
   case menuRestartService = "menu.restartService"
   case menuShowServiceLogs = "menu.showServiceLogs"
@@ -79,6 +82,14 @@ public enum ShellStringKey: String, CaseIterable, Sendable {
   case fileSaveTitle = "file.save.title"
   case fileSaveFailed = "file.save.failed"
   case fileSaveInvalidImage = "file.save.invalidImage"
+  case folderPickTitle = "folder.pick.title"
+  case appPickTitle = "app.pick.title"
+
+  case selectionToolbar = "selectionToolbar"
+  case selectionToolbarAsk = "selectionToolbar.ask"
+  case selectionToolbarAskTooltip = "selectionToolbar.ask.tooltip"
+  case selectionToolbarMore = "selectionToolbar.more"
+  case selectionToolbarMoreTooltip = "selectionToolbar.more.tooltip"
 
   case artifactOpenTitle = "artifact.open.title"
   case artifactOpenMessage = "artifact.open.message"

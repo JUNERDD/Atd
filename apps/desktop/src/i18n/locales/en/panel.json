@@ -33,10 +33,12 @@
     "followUpPlaceholder": "Ask a follow-up…",
     "attachContext": "Attach context",
     "attachLimit": "Attach at most 10 files.",
+    "folderLimit": "Add at most {{max}} folders.",
     "editImage": "Edit {{name}}",
     "attachMenu": {
       "screenshot": "Screenshot",
       "upload": "Upload files",
+      "folder": "Add folder…",
       "mention": "Mention files, conversations or tools…"
     },
     "stopAndDecline": "Stop and decline",
@@ -45,10 +47,10 @@
     "attachAfterRun": "Attach files after this run finishes.",
     "drop": {
       "title": "Drop to add as context",
-      "attach_one": "{{count}} file will be attached to your message.",
-      "attach_other": "{{count}} files will be attached to your message.",
-      "attachSome": "{{count}} of {{total}} files will be attached.",
-      "rules": "Text, code and image files can be attached, up to {{max}} per message.",
+      "attach_one": "{{count}} item will be added to your message.",
+      "attach_other": "{{count}} items will be added to your message.",
+      "attachSome": "{{count}} of {{total}} items will be added.",
+      "rules": "Folders, and text, code and image files (up to {{max}}), can be added to a message.",
       "unsupported": "These files can't be attached",
       "full": "Attachment limit reached",
       "fullDescription": "A message takes up to {{max}} files. Remove one to add more.",
@@ -60,7 +62,9 @@
     "importFailed": {
       "unreadable": "{{name}} could not be read.",
       "unsupported": "{{name}} is not supported.",
-      "tooLarge": "{{name}} is too large to attach."
+      "tooLarge": "{{name}} is too large to attach.",
+      "notDirectory": "{{name}} is not a folder.",
+      "forbidden": "{{name}} can't be added as a readable folder. Choose a more specific folder."
     },
     "queued": "Queued messages",
     "sendNow": "Send now",
@@ -72,6 +76,7 @@
     "chipsAfterRun": "Send mentions and skills after this run finishes.",
     "chips": {
       "file": "File: {{name}}",
+      "folder": "Folder: {{name}}",
       "task": "Conversation: {{name}}",
       "mcpServer": "MCP server: {{name}}",
       "agent": "Subagent: {{name}}",
@@ -179,6 +184,12 @@
     "rename": "Rename session",
     "copyId": "Copy session ID",
     "compact": "Compact context",
+    "folders": {
+      "title": "Readable folders",
+      "revoke": "Revoke access to {{name}}",
+      "revokeHint": "Revoke access to {{path}}",
+      "revoked": "Access to {{name}} revoked."
+    },
     "renameTitle": "Rename session",
     "renameDescription": "Give this session a short recognizable name.",
     "renameLabel": "Session name",

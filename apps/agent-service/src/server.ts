@@ -19,7 +19,9 @@ import type { ServiceConfig } from './config.js';
 import { ConfirmGone, type ConfirmStore } from './confirms.js';
 import type { EventLog } from './event-log.js';
 import { registerFileRoutes } from './file-routes.js';
-import { registerInvalidation } from './invalidate.js';
+import { registerFolderRoutes } from './folders/routes.js';
+import type { FolderStore } from './folders/store.js';
+import { announceInvalidation, registerInvalidation } from './invalidate.js';
 import { Ledger, LedgerNotFound } from './ledger.js';
 import type { Logger } from './logging.js';
 import { registerManageRoutes } from './manage.js';
@@ -47,6 +49,7 @@ export interface ServerDeps {
   resources: ResourceStore;
   manager: RunnerManager;
   settings: SettingsStore;
+  folders: FolderStore;
   log: Logger;
   startedAt: string;
   onShutdown: () => void;
@@ -190,9 +193,14 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
     pendingCapabilities: deps.capabilities.pending().length,
   }));
 
-  app.post('/v1/tasks', RENDERER_ROUTE, async (request) =>
-    deps.manager.submit(parse(SubmitTaskRequestSchema, request.body)),
-  );
+  app.post('/v1/tasks', RENDERER_ROUTE, async (request) => {
+    const body = parse(SubmitTaskRequestSchema, request.body);
+    const accepted = await deps.manager.submit(body);
+    // The message granted folders: the task's readable folders changed with it.
+    if (body.input.folders?.length)
+      announceInvalidation(request, { type: 'invalidate', scope: 'task', taskId: accepted.taskId });
+    return accepted;
+  });
 
   app.get<{ Params: { taskId: string } }>('/v1/tasks/:taskId', RENDERER_ROUTE, async (request) => ({
     task: deps.ledger.task(request.params.taskId),
@@ -281,6 +289,7 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
     ledger: deps.ledger,
     manager: deps.manager,
     settings: deps.settings,
+    folders: deps.folders,
     log: deps.log,
   });
 
@@ -288,6 +297,7 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
   registerBuiltinRoutes(app, deps.config);
   registerAtdAgentRoutes(app, deps.config);
   registerFileRoutes(app, { resources: deps.resources, dataDir: deps.config.paths.root });
+  registerFolderRoutes(app, { ledger: deps.ledger, folders: deps.folders });
   registerPluginRoutes(app, {
     dataDir: deps.config.paths.root,
     agentDir: deps.config.paths.agentDir,

@@ -4,6 +4,43 @@
 
 import Foundation
 
+/// Result of the `shortcuts.set` call.
+public struct ShortcutsSetResult: Codable, Equatable, Sendable {
+  public let results: [ShortcutResult]
+
+  public init(results: [ShortcutResult]) {
+    self.results = results
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    results = try container.array(.results, of: ShortcutResult.self, maxItems: 256)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case results
+  }
+}
+
+/// Params of the `capture` call.
+public struct CaptureParams: Codable, Equatable, Sendable {
+  public init() {}
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    try container.literal(.source, "selection")
+  }
+
+  public func encode(to encoder: any Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode("selection", forKey: .source)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case source
+  }
+}
+
 /// Result of the `capture` call.
 public enum CaptureResult: Codable, Equatable, Sendable {
   case ok(Ok)
@@ -222,24 +259,5 @@ public enum ScreenshotCaptureResult: Codable, Equatable, Sendable {
       case cancelled
       case notPermitted
     }
-  }
-}
-
-/// Params of the `screenshot.edit` call.
-public struct ScreenshotEditParams: Codable, Equatable, Sendable {
-  public let resourceId: String
-
-  public init(resourceId: String) {
-    self.resourceId = resourceId
-  }
-
-  public init(from decoder: any Decoder) throws {
-    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    resourceId = try container.string(
-      .resourceId, minLength: 1, maxLength: 128, pattern: "^[a-zA-Z0-9_-]+$")
-  }
-
-  private enum CodingKeys: String, CodingKey, CaseIterable {
-    case resourceId
   }
 }

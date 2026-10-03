@@ -7,6 +7,8 @@ import {
   type TaskRun,
 } from '@atd/agent-contracts';
 import type { ConnectionStore } from '../credentials/connections.js';
+import type { RunnerContext, TaskRunner } from '../task-runner.js';
+import { taskView } from '../task-view.js';
 import { CONTEXT_BUDGET, runInputSize } from './run-budget.js';
 import {
   loadRunContextWindow,
@@ -76,8 +78,26 @@ export function freezeRunSnapshot(
   return snapshot;
 }
 
+/**
+ * The user message entries a request's `branchBefore` may name: those its task's transcript
+ * shows, live (through the task's runner) or read from the session file; null when it replaces
+ * nothing.
+ */
+export async function branchUserEntries(
+  ctx: RunnerContext,
+  runner: TaskRunner | undefined,
+  request: SubmitTaskRequest,
+): Promise<Set<string> | null> {
+  const { taskId, branchBefore } = request;
+  if (branchBefore === undefined) return null;
+  if (!taskId || !ctx.ledger.data.tasks.some((task) => task.id === taskId))
+    throw new TypeError('Invalid data: branchBefore needs an existing task.');
+  const view = await taskView(ctx, runner, taskId);
+  return userEntryIds(view.blocks);
+}
+
 /** The session entries of the user messages a task's transcript shows (`entryId`). */
-export function userEntryIds(blocks: readonly ServiceBlock[]): Set<string> {
+function userEntryIds(blocks: readonly ServiceBlock[]): Set<string> {
   const ids = new Set<string>();
   for (const block of blocks) if (block.kind === 'user' && block.entryId) ids.add(block.entryId);
   return ids;

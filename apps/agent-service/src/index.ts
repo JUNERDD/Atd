@@ -1,5 +1,6 @@
 import { errorMessage, type PermissionTier } from '@atd/agent-contracts';
 import { CapabilityRegistry } from './capabilities.js';
+import { seedStarterCommands } from './commands/starters.js';
 import {
   clearEndpoint,
   readBuildId,
@@ -9,6 +10,7 @@ import {
 } from './config.js';
 import { ConfirmStore } from './confirms.js';
 import { EventLog } from './event-log.js';
+import { FolderStore } from './folders/store.js';
 import { Ledger } from './ledger.js';
 import { createLogger, type Logger } from './logging.js';
 import { McpAuthority, migrateMcpSecrets } from './mcp/index.js';
@@ -79,9 +81,11 @@ export async function createService(
     tier: options.tier ?? 'manual',
   };
   const settings = await SettingsStore.load(config.paths.root, runnerContext.tier);
+  const folders = await FolderStore.load(config.paths.root);
   const manager = new RunnerManager({
     ctx: runnerContext,
     resources,
+    folders,
     log,
     newTaskTier: () => settings.newTaskTier(),
   });
@@ -89,6 +93,11 @@ export async function createService(
   // Before anything reads the MCP servers, so the first MCP use finds their values in the keyring.
   await migrateMcpSecrets(config.paths.root, config.serviceId, log).catch((error: unknown) =>
     log.warn('MCP values were not moved into the OS keyring; the next start retries.', {
+      error: errorMessage(error),
+    }),
+  );
+  await seedStarterCommands(config.paths.root).catch((error: unknown) =>
+    log.warn('The starter commands were not added; the next start retries.', {
       error: errorMessage(error),
     }),
   );
@@ -103,6 +112,7 @@ export async function createService(
     resources,
     manager,
     settings,
+    folders,
     log,
     startedAt,
     onShutdown:

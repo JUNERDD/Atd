@@ -1,7 +1,8 @@
 import type { EditorState, TransactionSpec } from '@codemirror/state';
 import type { EditorView } from '@codemirror/view';
 import { addChips, chipEntry, tokenOf } from './chip-state';
-import type { Chip, FileChip } from './draft';
+import type { Chip } from './draft';
+import type { AttachedChip } from './draft-attachments';
 import { currentTrigger, dismissTrigger } from './trigger-field';
 
 /**
@@ -16,10 +17,11 @@ export interface ComposerEditorCommands {
    */
   insertChips: (chips: Chip[]) => void;
   /**
-   * Inserts attached files (picked, captured, dropped or pasted) as chips at the caret, like
-   * `insertChips` but leaving an open trigger's text in place, and focuses the editor.
+   * Inserts attached files and folders (picked, captured, dropped, pasted or sent from Finder) as
+   * chips at the caret, like `insertChips` but leaving an open trigger's text in place, and
+   * focuses the editor.
    */
-  attachFiles: (chips: FileChip[]) => void;
+  attachChips: (chips: AttachedChip[]) => void;
   /** Replaces the active trigger text, e.g. `/model ` to drill. */
   replaceTrigger: (text: string) => void;
   /** Deletes the active trigger text including leading whitespace (a quick command ran). */
@@ -87,7 +89,7 @@ export function createEditorCommands(currentView: () => EditorView | null): Comp
   };
   return {
     insertChips: (chips) => insert(chips, true),
-    attachFiles: (chips) => insert(chips, false),
+    attachChips: (chips) => insert(chips, false),
     replaceTrigger: (text) => replace(text, true),
     clearTrigger: () => replace('', false),
     dismissTrigger() {

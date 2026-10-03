@@ -1,5 +1,6 @@
 import { vi } from 'vitest';
 import { DEFAULT_SHORTCUTS } from '@atd/agent-contracts';
+import type { FolderBridge } from '../src/client/contract';
 import type { SettingsSnapshot } from '../src/client/settings-contract';
 import type {
   AgentBridge,
@@ -7,7 +8,7 @@ import type {
   AgentSnapshot,
   TaskDetail,
 } from '../src/client/agent/bridge';
-import { initialCommands } from '../src/client/agent/command-templates';
+import { fixtureCommands } from './command-fixtures';
 import { emptyInput, type RunStatus } from '../src/client/agent/task-schema';
 import type { PermissionRequest } from '../src/client/agent/permission-schema';
 import type { QueueState } from '../src/client/agent/transcript-schema';
@@ -18,6 +19,8 @@ export function installBridge(extras?: {
   status?: RunStatus;
   requests?: PermissionRequest[];
   queue?: QueueState;
+  /** The panel's readable folders; tests without it run like the settings window. */
+  folders?: FolderBridge;
 }) {
   let settings: SettingsSnapshot = {
     connections: [
@@ -48,13 +51,17 @@ export function installBridge(extras?: {
     screenshotShortcutAvailable: true,
     permissionTier: 'manual',
     shellAllowlist: [],
+    selectionToolbar: { enabled: true, excludedApps: [] },
+    accessibilityTrusted: true,
+    screenRecordingTrusted: true,
+    onboardingCompleted: true,
   };
   const settingsListeners = new Set<(value: SettingsSnapshot) => void>();
   const listeners = new Set<(event: AgentEvent) => void>();
   const snapshot: AgentSnapshot = {
     revision: 1,
     connectionId: 'test',
-    commands: initialCommands(),
+    commands: fixtureCommands(),
     tasks: [],
     shortcutErrors: {},
     error: '',
@@ -136,7 +143,7 @@ export function installBridge(extras?: {
       return structuredClone(detail);
     }),
     prepare: vi.fn(async () => ({
-      command: initialCommands()[0]!,
+      command: fixtureCommands()[0]!,
       input: emptyInput(),
       notice: '',
     })),
@@ -202,7 +209,15 @@ export function installBridge(extras?: {
   const hide = vi.fn(async () => {});
   const open = vi.fn(async () => {});
   const openCommand = vi.fn(async (_commandId: string) => {});
+  const askListeners = new Set<() => void>();
+  /** The selection toolbar's Ask Atd, as the shell sends it to the panel. */
+  const askSelection = () => askListeners.forEach((listener) => listener());
   window.desktop = {
+    ...(extras?.folders ? { folders: extras.folders } : {}),
+    onSelectionAsk: (listener) => {
+      askListeners.add(listener);
+      return () => askListeners.delete(listener);
+    },
     platform: 'darwin',
     agent: api,
     getState: vi.fn(async () => ({
@@ -222,6 +237,7 @@ export function installBridge(extras?: {
     settings: {
       open,
       openCommand,
+      openSection: vi.fn(async (_section: string) => {}),
       startCommandSession: vi.fn(async (_commandId: string | null) => {}),
       startExtensionSession: vi.fn(
         async (_kind: 'skill' | 'subagent' | 'mcp' | 'memory', _target?: string | null) => {},
@@ -275,8 +291,17 @@ export function installBridge(extras?: {
           settingsListeners.delete(listener);
         };
       },
+      saveSelectionToolbar: vi.fn(async (selectionToolbar) => {
+        settings = { ...settings, selectionToolbar };
+        settingsListeners.forEach((listener) => listener(settings));
+        return settings;
+      }),
+      requestAccessibility: vi.fn(async () => {}),
+      requestScreenRecording: vi.fn(async () => {}),
+      pickApps: vi.fn(async () => []),
       onOpenCommand: () => () => {},
+      onOpenSection: () => () => {},
     },
   };
-  return { api, setPinned, hide, open, openCommand };
+  return { api, setPinned, hide, open, openCommand, askSelection };
 }

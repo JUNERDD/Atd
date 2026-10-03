@@ -4,6 +4,25 @@
 
 import Foundation
 
+/// Params of the `screenshot.edit` call.
+public struct ScreenshotEditParams: Codable, Equatable, Sendable {
+  public let resourceId: String
+
+  public init(resourceId: String) {
+    self.resourceId = resourceId
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    resourceId = try container.string(
+      .resourceId, minLength: 1, maxLength: 128, pattern: "^[a-zA-Z0-9_-]+$")
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case resourceId
+  }
+}
+
 /// Result of the `screenshot.edit` call.
 public enum ScreenshotEditResult: Codable, Equatable, Sendable {
   case ok(Ok)
@@ -229,21 +248,3 @@ public typealias ArtifactResult = FileRef
 
 /// Params of the `files.pick` call.
 public typealias FilesPickParams = NativeEmpty
-
-/// Result of the `files.pick` call.
-public struct FilesPickResult: Codable, Equatable, Sendable {
-  public let resources: [FileRef]
-
-  public init(resources: [FileRef]) {
-    self.resources = resources
-  }
-
-  public init(from decoder: any Decoder) throws {
-    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    resources = try container.array(.resources, of: FileRef.self, maxItems: 10)
-  }
-
-  private enum CodingKeys: String, CodingKey, CaseIterable {
-    case resources
-  }
-}

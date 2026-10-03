@@ -107,7 +107,8 @@ struct BridgeDecodingTests {
   @Test("Accepts null for a required nullable member")
   func acceptsNull() throws {
     let message = try Self.decode(
-      #"{"type":"call","id":1,"method":"settings.open","params":{"commandId":null}}"#)
+      #"{"type":"call","id":1,"method":"settings.open","params":{"commandId":null,"section":null}}"#
+    )
     guard case .call(_, .settingsOpen) = message else {
       Issue.record("expected settings.open, got \(message)")
       return

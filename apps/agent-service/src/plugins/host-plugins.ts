@@ -103,7 +103,7 @@ export async function loadHostPlugins(
     add(pluginId, 'skill', skill.name, !skillsOff.has(skill.name), skill.description);
   const core: HostPlugin = {
     id: CORE_PLUGIN,
-    name: 'Core',
+    name: 'System',
     description: 'Skills and subagents that ship with the app.',
     toggleable: false,
     items: [

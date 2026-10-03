@@ -22,6 +22,7 @@ import type { ServicePaths } from './storage.js';
 import type { CapabilityRegistry } from './capabilities.js';
 import type { ConfirmStore } from './confirms.js';
 import { AuditWriter } from './audit.js';
+import type { RunFolders } from './folders/material.js';
 import { createReviewer } from './harness/auto-review.js';
 import {
   applyRunToSession,
@@ -178,8 +179,8 @@ export class TaskRunner {
     return this.slot.live?.transcript.queueState() ?? { steering: [], followUp: [] };
   }
 
-  /** Executes one accepted run to a terminal ledger state. */
-  async execute(run: TaskRun, attachments: RunAttachment[]): Promise<void> {
+  /** Executes one accepted run to a terminal ledger state; a failed folder read fails it. */
+  async execute(run: TaskRun, attachments: RunAttachment[], folders: RunFolders): Promise<void> {
     this.currentRunId = run.id;
     this.aborted = false;
     this.audit = new AuditWriter(
@@ -199,6 +200,7 @@ export class TaskRunner {
       this.material = {
         instructions: run.snapshot.instructions,
         attachments,
+        folders: await folders(),
         references: frozen.references.material,
         skills: frozen.skills.loaded,
         catalog: frozen.catalog,

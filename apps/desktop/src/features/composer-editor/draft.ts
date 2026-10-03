@@ -10,16 +10,16 @@ import {
   type QuoteSource,
   type RunReference,
 } from '@atd/agent-contracts';
-import type { Screenshot } from '../../client/agent/screenshot-input';
-import type { FileRef } from '../../client/agent/task-schema';
+import type { FileChip, FolderChip } from './draft-attachments';
 
 /**
  * One inline chip, inserted from the quick panel, the attach menu, a drop or paste, or (a quote,
- * holding the Markdown of a passage selected in an answer) from the transcript; the draft's only
- * source of truth for it.
+ * holding the Markdown of a passage selected in an answer or another app) from the transcript or
+ * the selection toolbar; the draft's only source of truth for it.
  */
 export type Chip =
   | FileChip
+  | FolderChip
   | { kind: 'task'; taskId: string; title: string }
   | { kind: 'mcpServer'; serverId: string }
   | { kind: 'agent'; name: string }
@@ -27,23 +27,6 @@ export type Chip =
   | { kind: 'command'; commandId: string; name: string }
   | { kind: 'memory'; target: MemoryTarget; entryId: string; title: string }
   | { kind: 'quote'; text: string; source?: QuoteSource };
-
-/**
- * A file the draft sends. A screenshot is one chip for its image and `context`, the screen context
- * the shell imported beside the capture: both are sent, while only the image is shown.
- */
-export interface FileChip {
-  kind: 'file';
-  file: FileRef;
-  context?: FileRef;
-}
-
-/** A capture's chip: the image, with its screen context while `room` leaves space for it. */
-export function screenshotChip(shot: Screenshot, room: number): FileChip {
-  return shot.context && room > 1
-    ? { kind: 'file', file: shot.file, context: shot.context }
-    : { kind: 'file', file: shot.file };
-}
 
 /** A chip and its token range in the serialized `text`. */
 export interface ChipRange {
@@ -76,6 +59,8 @@ export function chipName(chip: Chip): string {
   switch (chip.kind) {
     case 'file':
       return chip.file.name;
+    case 'folder':
+      return chip.name;
     case 'task':
       return chip.title;
     case 'mcpServer':
@@ -96,6 +81,8 @@ function chipKey(chip: Chip): string {
   switch (chip.kind) {
     case 'file':
       return `file:${chip.file.id}`;
+    case 'folder':
+      return `folder:${chip.folderId}`;
     case 'task':
       return `task:${chip.taskId}`;
     case 'mcpServer':
@@ -199,19 +186,9 @@ export function sameContent(a: ComposerDraft, b: ComposerDraft): boolean {
   );
 }
 
-/** A file chip's files: the file, then a screenshot's context. */
-export function chipFiles(chip: FileChip): FileRef[] {
-  return chip.context ? [chip.file, chip.context] : [chip.file];
-}
-
-/** Files sent with the draft: each file chip's files in draft order, each file once. */
-export function draftFiles(draft: ComposerDraft): FileRef[] {
-  const files: FileRef[] = [];
-  for (const { chip } of draft.chips)
-    if (chip.kind === 'file')
-      for (const file of chipFiles(chip))
-        if (!files.some((item) => item.id === file.id)) files.push(file);
-  return files;
+/** Whether the draft holds nothing a send could use: only whitespace, and no chips. */
+export function isEmptyDraft(draft: ComposerDraft): boolean {
+  return !draft.text.trim() && draft.chips.length === 0;
 }
 
 /**
@@ -237,6 +214,7 @@ function referenceOf(chip: Chip): RunReference | null {
     case 'memory':
       return { kind: 'memory', target: chip.target, entryId: chip.entryId };
     case 'file':
+    case 'folder':
     case 'skill':
     case 'quote':
       return null;
@@ -262,6 +240,8 @@ function inputChipOf(chip: Chip): InputChip {
   switch (chip.kind) {
     case 'file':
       return { kind: 'file', fileId: chip.file.id, name: chip.file.name };
+    case 'folder':
+      return { kind: 'folder', folderId: chip.folderId, name: chip.name };
     case 'task':
       return { kind: 'task', taskId: chip.taskId, title: chip.title };
     case 'mcpServer':

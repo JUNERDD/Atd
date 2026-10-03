@@ -62,17 +62,20 @@ function editorOf(route: CommandRoute): EditorRoute | null {
   return route.page === 'parameter' ? route.editor : route;
 }
 
-const TOGGLE_KEY = ['commands', 'enabled'] as const;
-const toggleCommand = mutationOptions({
-  mutationKey: TOGGLE_KEY,
+/** A change made on a list row, without the editor: its switch or its shortcut. */
+type RowChange = Partial<Pick<CommandDefinition, 'enabled' | 'shortcut'>>;
+
+const ROW_SAVE_KEY = ['commands', 'row'] as const;
+const saveRowChange = mutationOptions({
+  mutationKey: ROW_SAVE_KEY,
   mutationFn: ({
     command,
-    enabled,
+    change,
   }: {
     id: string;
     command: CommandDefinition;
-    enabled: boolean;
-  }) => agentApi().saveCommand({ ...command, enabled }, command.revision),
+    change: RowChange;
+  }) => agentApi().saveCommand({ ...command, ...change }, command.revision),
 });
 
 export function CommandSettings({
@@ -97,13 +100,14 @@ export function CommandSettings({
   const [deleting, setDeleting] = useState<CommandDefinition | null>(null);
   const search = useCompositionQuery();
   const searchInput = useRef<HTMLInputElement>(null);
-  // Every command with a switch save in flight: each row waits for its own save, not for the
-  // others'. The switch flipping is the feedback; only a failure needs a message (its toast).
-  const { mutate: saveEnabled } = useMutation(toggleCommand, queryClient);
+  // Every command with a row save (its switch or shortcut) in flight: each row waits for its own
+  // save, not for the others'. The row changing is the feedback; only a failure (such as a
+  // shortcut another command holds) needs a message, its toast.
+  const { mutate: saveRow } = useMutation(saveRowChange, queryClient);
   const pending = new Set(
     useMutationState(
       {
-        filters: { mutationKey: TOGGLE_KEY, status: 'pending' },
+        filters: { mutationKey: ROW_SAVE_KEY, status: 'pending' },
         select: (mutation) => readString(mutation.state.variables, 'id'),
       },
       queryClient,
@@ -119,8 +123,8 @@ export function CommandSettings({
   useEffect(() => {
     void preloadCommandEditor();
   }, []);
-  const change = (command: CommandDefinition, enabled: boolean) =>
-    saveEnabled({ id: command.id, command, enabled });
+  const change = (command: CommandDefinition, rowChange: RowChange) =>
+    saveRow({ id: command.id, command, change: rowChange });
   function duplicate(command: CommandDefinition) {
     const id = crypto.randomUUID();
     const names = commands.map((item) => item.name);
@@ -213,7 +217,8 @@ export function CommandSettings({
           searchInput.current?.focus();
         }}
         onOpen={(command) => history.open({ page: 'command', id: command.id })}
-        onToggle={change}
+        onToggle={(command, enabled) => change(command, { enabled })}
+        onShortcut={(command, shortcut) => change(command, { shortcut })}
         onDuplicate={duplicate}
         onDelete={setDeleting}
       />

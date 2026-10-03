@@ -37,6 +37,8 @@ final class ShellBridge {
     case .bridgeReady: host.pageDidBecomeReady()
     case .languageSet(let post): ShellStrings.shared.apply(appLanguage: post.language.rawValue)
     case .windowDragRegions(let post): host.setDragRegions(post.rects)
+    case .onboardingSurface(let post): shell?.onboarding.setSurface(post, from: host)
+    case .onboardingSelection(let post): shell?.setPracticeSelection(post, from: host)
     case .socketOpen(let post): host.pipe?.open(post)
     case .socketSend(let post): host.pipe?.send(post)
     case .socketClose(let post): host.pipe?.close(post)
@@ -53,7 +55,7 @@ final class ShellBridge {
       switch call {
       case .approvalRequest:
         return try Self.encode(ApprovalRequestResult.notApproved(.init(reason: .busy)))
-      case .filesPick, .filesSave, .artifact, .shareText:
+      case .filesPick, .filesPickFolder, .filesSave, .artifact, .shareText, .appsPick:
         throw BridgeError("Finish the screenshot first.")
       default:
         break
@@ -84,10 +86,19 @@ final class ShellBridge {
         throw BridgeError(Self.message(error, "The login item could not change."))
       }
     case .settingsOpen(let params):
-      shell.openSettings(commandId: params.commandId)
+      shell.openSettings(commandId: params.commandId, section: params.section)
       return try Self.encode(NativeEmpty())
     case .settingsClose:
       shell.closeSettings()
+      return try Self.encode(NativeEmpty())
+    case .onboardingOpen:
+      shell.openOnboarding()
+      return try Self.encode(NativeEmpty())
+    case .onboardingSettle:
+      shell.settleOnboarding()
+      return try Self.encode(NativeEmpty())
+    case .onboardingClose(let params):
+      shell.closeOnboarding(summon: params.summon)
       return try Self.encode(NativeEmpty())
     case .shortcutsSet(let params):
       let results = shell.applyShortcuts(
@@ -129,11 +140,24 @@ final class ShellBridge {
         await shell.artifacts.perform(artifactId: params.artifactId, operation: params.operation))
     case .filesPick:
       return try Self.encode(FilesPickResult(resources: await shell.attachments.pick()))
+    case .filesPickFolder:
+      return try Self.encode(await shell.attachments.pickFolders())
     case .filesSave(let params):
       let saved = try await shell.attachments.save(params)
       return try Self.encode(FilesSaveResult(saved: saved))
     case .approvalRequest(let params):
       return try Self.encode(await shell.launchApprovals.request(serverId: params.serverId))
+    case .toolbarSet(let params):
+      shell.applyToolbar(SelectionToolbarSettings(params))
+      return try Self.encode(NativeEmpty())
+    case .accessibilityRequest:
+      shell.trust.openSystemSettings()
+      return try Self.encode(NativeEmpty())
+    case .screenRecordingRequest:
+      shell.screenRecording.openSystemSettings()
+      return try Self.encode(NativeEmpty())
+    case .appsPick:
+      return try Self.encode(await ExcludedAppPicker.pick(with: shell.systemPanels))
     }
   }
 

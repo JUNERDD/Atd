@@ -113,7 +113,7 @@ export class CommandStore {
    * properties are exempt from excess checks, so validated extension fields
    * round-trip through the additionalProperties:true store file.
    */
-  private static storable(full: ServiceCommandFull): ServiceCommand {
+  static storable(full: ServiceCommandFull): ServiceCommand {
     return { ...full, migratedAt: full.migratedAt ?? null };
   }
 

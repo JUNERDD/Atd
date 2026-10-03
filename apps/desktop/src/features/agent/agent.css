@@ -744,6 +744,21 @@
 .thinking-detail .markdown > * + :is(h1, h2, h3, h4, h5, h6) {
   margin-top: 12px;
 }
+/* A reasoning trace's plain-text paragraphs, spaced like the markdown blocks above. */
+.thinking-text > * + * {
+  margin-top: 8px;
+}
+/*
+ * A settled trace lays out only the paragraphs near the capped box's view; the rest stay in the
+ * DOM for copy, find and selection but skip layout and paint. `auto` keeps each paragraph's last
+ * rendered height. A streaming trace is excluded: it opens at its end, and WebKit before 27 has
+ * no scroll anchoring, so paragraphs above the view would resize and shift the text while
+ * reading upward.
+ */
+.thinking-text:not([data-streaming]) > p {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 80px;
+}
 .thinking-detail :is(strong, b, [data-streamdown='strong']) {
   font-weight: 600;
   color: var(--foreground);

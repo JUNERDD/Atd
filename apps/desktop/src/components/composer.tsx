@@ -3,20 +3,15 @@ import { useTranslation } from 'react-i18next';
 import { ArrowUp, Square } from 'lucide-react';
 import { ScrollArea } from '@atd/ui/components/scroll-area';
 import type { ShortcutBindings } from '../client/settings-contract';
-import { DEFAULT_SHORTCUTS, MAX_ATTACHMENTS, type TaskContextState } from '@atd/agent-contracts';
+import { DEFAULT_SHORTCUTS, type TaskContextState } from '@atd/agent-contracts';
 import type { AgentTask, RunStatus } from '../client/agent/task-schema';
 import { isActive } from '../client/agent/task-schema';
 import type { PermissionRequest } from '../client/agent/permission-schema';
 import { EMPTY_QUEUE, type Block, type QueueState } from '../client/agent/transcript-schema';
 import type { Connection, ModelReference } from '../client/providers/schema';
 import type { RunPolicy } from '../client/agent/run-policy';
-import {
-  chipFiles,
-  draftFiles,
-  normalizeDraft,
-  type ComposerDraft,
-  type FileChip,
-} from '../features/composer-editor/draft';
+import { normalizeDraft, type ComposerDraft } from '../features/composer-editor/draft';
+import { draftFiles } from '../features/composer-editor/draft-attachments';
 import type { ComboboxAria } from '../features/composer-editor/editor-state';
 import { useComposerEditor } from '../features/composer-editor/use-composer-editor';
 import { QUICK_COMMAND_IDS, type QuickActions } from '../features/quick-panel/quick-commands';
@@ -27,7 +22,7 @@ import { IconButton } from './icon-button';
 import { ComposerAttachMenu } from './composer-attach-menu';
 import { ComposerConfiguration } from './composer-configuration';
 import { ComposerPopover } from './composer-popover';
-import { useImportedFiles } from './use-imported-files';
+import { useComposerAttach } from './use-composer-attach';
 import { useOverlayFooter } from './use-overlay-footer';
 import { agentApi } from '../features/agent/use-agent';
 import { VisionNotice } from '../features/agent/vision-notice';
@@ -209,13 +204,6 @@ export function Composer({
     if (active) await stop();
     else await send();
   }
-  /** Room left for files, a screenshot's context included. */
-  const room = MAX_ATTACHMENTS - files.length;
-  /** Picked, captured, dropped and pasted files alike, as chips at the caret. */
-  function attach(chips: FileChip[]) {
-    if (chips.flatMap(chipFiles).length > room) showErrorToast(t('composer.attachLimit'));
-    else commands.attachFiles(chips);
-  }
   const placeholder = pendingInput
     ? t('composer.answerPlaceholder')
     : pendingRequest
@@ -238,7 +226,7 @@ export function Composer({
     placeholder,
     aria,
   });
-  useImportedFiles((imported) => attach(imported.map((file) => ({ kind: 'file', file }))));
+  const { room, attach } = useComposerAttach(draft, commands);
   return (
     <footer ref={footerRef} className="panel-footer overlay-footer" hidden={hidden}>
       <form

@@ -53,6 +53,7 @@ function isShellPath(pathPattern: string): boolean {
     SHELL_MCP_PATHS.has(pathPattern) ||
     pathPattern === '/v1/capabilities/result' ||
     pathPattern === '/v1/resources/import' ||
+    pathPattern === '/v1/folders/register' ||
     pathPattern === '/v1/stream'
   );
 }
@@ -77,6 +78,10 @@ test('the route manifest classifies every route the service serves', async () =>
     'POST /v1/admin/approvals/mcp',
     'DELETE /v1/mcp/servers/:serverId/approval',
     'POST /v1/mcp/approvals/notice/dismiss',
+    // Folder grants: only the shell turns a path into a folder; the page lists and revokes them.
+    'POST /v1/folders/register',
+    'GET /v1/tasks/:taskId/folders',
+    'DELETE /v1/tasks/:taskId/folders/:folderId',
     ...[...SHELL_MCP_PATHS].map((pathPattern) =>
       pathPattern === '/v1/mcp/snapshot' ? `GET ${pathPattern}` : `POST ${pathPattern}`,
     ),

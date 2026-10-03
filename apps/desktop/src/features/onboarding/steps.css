@@ -1,0 +1,55 @@
+/*
+ * The guide's step content (`onboarding-step.tsx` and `step-*.tsx`): the card's left column,
+ * leading-aligned. The title and description take the settings page heading's type; everything
+ * below composes the settings cards and rows (`settings.css`) and `@atd/ui` primitives, so only the
+ * column's rhythm lives here: 8px from a title to its description or a control to its note, 16px
+ * between sections. Text wraps at every width, in English and Chinese alike.
+ */
+.guide-step {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 16px;
+}
+.guide-step-text,
+.guide-group {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 8px;
+}
+.guide-step-title {
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 32px;
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+}
+/* The title takes focus only so a new step is read from its start; it is not a control. */
+.guide-step-title:focus {
+  outline: none;
+}
+.guide-step-description {
+  color: var(--ata-text-secondary);
+  text-wrap: pretty;
+  overflow-wrap: anywhere;
+}
+.guide-step-controls {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 16px;
+}
+/* Keys set inline in a sentence: the taller line keeps a wrapped line's keycaps apart. */
+.guide-instruction {
+  line-height: 26px;
+}
+.guide-instruction-keys {
+  margin-inline: 4px;
+  vertical-align: 1px;
+}
+
+/* A row's status icon once its goal is met (the goal status, the grant, the finish summary). */
+.guide-row-icon[data-done] {
+  color: var(--ata-status-progress);
+}

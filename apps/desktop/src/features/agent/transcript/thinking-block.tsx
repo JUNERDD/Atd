@@ -4,11 +4,9 @@ import { useTranslation } from 'react-i18next';
 import { Shimmer } from '@atd/ui/components/ai-elements/shimmer';
 import type { BlockOf } from '../../../client/agent/transcript-schema';
 import { ActivityRow } from './activity-row';
-import { DetailBox } from './detail-box';
 import { formatElapsed } from './elapsed';
-import { LazyMarkdown } from './lazy-markdown';
 import { latestHeading, thinkingExcerpt } from './thinking-excerpt';
-import { useFollowStream } from './thinking-follow';
+import { ThinkingTrace } from './thinking-trace';
 
 /**
  * Single-line reasoning row. Settled, it reads `Thought 5s` followed by a muted one-line excerpt
@@ -21,7 +19,6 @@ import { useFollowStream } from './thinking-follow';
 export function ThinkingBlock({ block }: { block: BlockOf<'thinking'> }) {
   const { t } = useTranslation('tasks');
   const [open, setOpen] = useState(false);
-  const followRef = useFollowStream(block.streaming);
   const elapsed = block.durationMs == null ? null : formatElapsed(block.durationMs);
   const summary = block.redacted
     ? t('thinking.redacted')
@@ -87,12 +84,7 @@ export function ThinkingBlock({ block }: { block: BlockOf<'thinking'> }) {
       </ActivityRow.Trigger>
       <ActivityRow.Content>
         <ActivityRow.Body className="thinking-full">
-          <DetailBox variant="plain" copyText={block.text}>
-            {/* Reasoning streams long and fast into the detail box: no per-character reveal. */}
-            <div ref={followRef}>
-              <LazyMarkdown text={block.text} streaming={block.streaming} animated={false} />
-            </div>
-          </DetailBox>
+          <ThinkingTrace block={block} />
         </ActivityRow.Body>
       </ActivityRow.Content>
     </ActivityRow.Root>

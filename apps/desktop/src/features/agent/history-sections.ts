@@ -1,7 +1,8 @@
 /** Relative day ranges the history list labels by name; older tasks fall into calendar months. */
 export type HistoryPeriod = 'today' | 'yesterday' | 'previous7Days' | 'previous30Days';
 
-export type HistorySection<T> = {
+/** A section of the date grouping. */
+export type DateSection<T> = {
   /** Stable key: the period name, or `year-month` for a calendar month. */
   id: string;
   items: T[];
@@ -42,8 +43,8 @@ export function historySections<T>(
   items: readonly T[],
   dateOf: (item: T) => Date,
   now: Date,
-): HistorySection<T>[] {
-  const sections = new Map<string, HistorySection<T>>();
+): DateSection<T>[] {
+  const sections = new Map<string, DateSection<T>>();
   for (const item of items) {
     const date = dateOf(item);
     const period = periodOf(daysAgo(date, now));

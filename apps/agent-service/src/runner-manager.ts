@@ -12,6 +12,8 @@ import {
   type TaskSummary,
 } from '@atd/agent-contracts';
 import { ConnectionStore } from './credentials/connections.js';
+import { runFolders } from './folders/material.js';
+import type { FolderStore } from './folders/store.js';
 import type { Logger } from './logging.js';
 import { ResourceStore } from './resources.js';
 import { loadRunAttachments } from './run-attachments.js';
@@ -19,18 +21,20 @@ import { compactRefused } from './compaction/manual.js';
 import { ConflictError, DrainingError } from './errors.js';
 import { SessionReleases } from './session-release.js';
 import { TaskRunner, type RunnerContext } from './task-runner.js';
-import { taskContextBreakdown, taskSnapshot, taskSummary, taskView } from './task-view.js';
+import { taskContextBreakdown, taskSnapshot, taskSummary } from './task-view.js';
 import { checkChipRanges, taskTitle } from './tasks/input-chips.js';
 import {
+  branchUserEntries,
   checkBranchBefore,
   freezeRunSnapshot,
   loadSubmitContextWindow,
-  userEntryIds,
 } from './tasks/run-snapshot.js';
 
 export interface ManagerDeps {
   ctx: RunnerContext;
   resources: ResourceStore;
+  /** Folder grants: a submit grants its message's folders, a run reads them at its start. */
+  folders: FolderStore;
   log: Logger;
   /** The shared settings' default tier, frozen onto each task at creation. */
   newTaskTier: () => PermissionTier;
@@ -95,7 +99,11 @@ export class RunnerManager {
     const ledger = this.deps.ctx.ledger;
     const last = ledger.data.tasks.find((item) => item.id === request.taskId)?.runs.at(-1);
     const contextWindowOf = await loadSubmitContextWindow(connections, request, last);
-    const onBranch = await this.userEntries(request);
+    const onBranch = await branchUserEntries(
+      this.deps.ctx,
+      this.runners.get(request.taskId ?? ''),
+      request,
+    );
     const duplicate = ledger.operation(request.operationId);
     if (duplicate) return { taskId: duplicate.taskId, runId: duplicate.runId, duplicate: true };
     const taskId = request.taskId ?? randomUUID();
@@ -111,6 +119,8 @@ export class RunnerManager {
       if (!ledger.data.resources.some((resource) => resource.id === file.id))
         throw new Error(`Attachment ${file.id} was not uploaded.`);
     }
+    const folderIds = request.input.folders ?? [];
+    this.deps.folders.resolve(folderIds);
     const snapshot = freezeRunSnapshot(
       request,
       connections,
@@ -120,6 +130,11 @@ export class RunnerManager {
     const runId = randomUUID();
     const now = new Date().toISOString();
     this.accepting.add(taskId);
+    // Granted before the run exists, so no dispatch can start it without its folders.
+    await this.deps.folders.grant(taskId, folderIds).catch((error: unknown) => {
+      this.accepting.delete(taskId);
+      throw error;
+    });
     await ledger
       .change((data) => {
         let task = data.tasks.find((item) => item.id === taskId);
@@ -317,23 +332,11 @@ export class RunnerManager {
         this.deps.log,
         taskId,
       );
-      await this.runnerFor(taskId).execute(run, attachments);
+      const folders = () => runFolders(this.deps.folders, taskId, this.deps.log);
+      await this.runnerFor(taskId).execute(run, attachments, folders);
     } catch (error) {
       this.deps.log.warn('Run execution failed.', { taskId, error: errorMessage(error) });
     }
-  }
-
-  /**
-   * The user message entries a request's `branchBefore` may name: those its task's transcript
-   * shows, live or read from the session file; null when it replaces nothing.
-   */
-  private async userEntries(request: SubmitTaskRequest): Promise<Set<string> | null> {
-    const { taskId, branchBefore } = request;
-    if (branchBefore === undefined) return null;
-    if (!taskId || !this.deps.ctx.ledger.data.tasks.some((task) => task.id === taskId))
-      throw new TypeError('Invalid data: branchBefore needs an existing task.');
-    const view = await taskView(this.deps.ctx, this.runners.get(taskId), taskId);
-    return userEntryIds(view.blocks);
   }
 }
 

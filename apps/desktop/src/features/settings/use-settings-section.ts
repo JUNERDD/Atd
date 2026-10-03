@@ -5,12 +5,21 @@ import { findSettingsSection, settingsSections, type SettingsSectionId } from '.
 /** Where the window remembers the section shown last, for the next time it opens. */
 const LAST_SECTION_KEY = 'settings.lastSection';
 
-/** A new settings window carries its editor target in the URL hash. */
-function readCommandIdFromHash(): string | null {
+/** A new settings window carries its editor or section target in the URL hash. */
+function readHashParam(name: 'commandId' | 'section'): string | null {
   const hash = window.location.hash;
   if (!hash.startsWith('#settings?')) return null;
-  const commandId = new URLSearchParams(hash.slice('#settings?'.length)).get('commandId');
+  return new URLSearchParams(hash.slice('#settings?'.length)).get(name);
+}
+
+function readCommandIdFromHash(): string | null {
+  const commandId = readHashParam('commandId');
   return isCommandId(commandId) ? commandId : null;
+}
+
+function readSectionFromHash(): SettingsSectionId | null {
+  const section = readHashParam('section');
+  return section ? (findSettingsSection(section)?.id ?? null) : null;
 }
 
 /** Storage can be unavailable or cleared; the window then opens at its first section. */
@@ -36,8 +45,9 @@ export type SettingsDrawerState = 'section' | 'search' | null;
 
 /**
  * The shown settings section and the ways into it. The window opens at a command link's editor,
- * else at the section shown last. `leave` asks before a switch discards unsaved edits (see
- * `useSettingsUnsavedChanges`); while `locked` (a shortcut is being recorded) nothing switches.
+ * else at a section link's section, else at the section shown last. `leave` asks before a switch
+ * discards unsaved edits (see `useSettingsUnsavedChanges`); while `locked` (a shortcut is being
+ * recorded) nothing switches.
  */
 export function useSettingsSection(
   locked: boolean,
@@ -45,7 +55,9 @@ export function useSettingsSection(
 ) {
   // Only the shown section: each section keeps its own page history (`useSettingsPageHistory`).
   const [section, setSection] = useState<SettingsSectionId>(() =>
-    readCommandIdFromHash() ? 'commands' : (readLastSection() ?? settingsSections[0].id),
+    readCommandIdFromHash()
+      ? 'commands'
+      : (readSectionFromHash() ?? readLastSection() ?? settingsSections[0].id),
   );
   const [visited, setVisited] = useState<readonly SettingsSectionId[]>([section]);
   const [commandTarget, setCommandTarget] = useState<{ id: string; nonce: number } | null>(() => {
@@ -105,6 +117,11 @@ export function useSettingsSection(
   useEffect(
     () => window.desktop?.settings.onOpenCommand?.((commandId) => showCommand(commandId)),
     [showCommand],
+  );
+  // The welcome guide asks an open window for one section (Providers).
+  useEffect(
+    () => window.desktop?.settings.onOpenSection?.((target) => navigate(target)),
+    [navigate],
   );
   return {
     section,
