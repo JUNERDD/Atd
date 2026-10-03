@@ -4,7 +4,8 @@ import ApplicationServices
 /// Whether the app is trusted for Accessibility, which selection capture and the selection
 /// toolbar need, and when the system asks for it (grill decision Q7):
 /// - the first launch with the toolbar on asks once, remembered in this bundle id's defaults,
-///   so Debug and Release builds each ask once ever and never again by themselves;
+///   so Debug and Release builds each ask once ever and never again by themselves; opening the
+///   welcome guide retires that prompt, since the guide asks in context;
 /// - after that only a summon that wants the selection asks (once per launch), or the
 ///   settings page's permission row (`accessibility.request`).
 ///
@@ -51,8 +52,25 @@ final class AccessibilityTrust {
     promptOncePerLaunch()
   }
 
-  /// The system prompt, at most once per launch, for a summon that wants the selection.
-  func promptOncePerLaunch() {
+  /// Retires the first-launch prompt without asking: the welcome guide asks in context, and
+  /// opens before the panel's first `toolbar.set` could prompt.
+  func skipFirstLaunchPrompt() {
+    defaults.set(true, forKey: Self.autoPromptedKey)
+  }
+
+  /// The system prompt for a summon that wants the selection, at most once per launch. None while
+  /// the welcome guide is open (``guideAsks``): it asks on its own step, and a summon from its
+  /// hotkey try-out must not ask first.
+  func promptForSummon() {
+    guard !guideAsks else { return }
+    promptOncePerLaunch()
+  }
+
+  /// Set while the welcome guide window is open.
+  var guideAsks = false
+
+  /// The system prompt, at most once per launch.
+  private func promptOncePerLaunch() {
     guard !isTrusted, !promptedThisLaunch else { return }
     promptedThisLaunch = true
     SelectionReader.requestTrust()

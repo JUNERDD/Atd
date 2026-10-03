@@ -23,26 +23,29 @@ final class ScreenshotTaker {
   private let library: CaptureLibrary
   private let panel: PanelWindowController
   private let targeting: any ElementTargeting
+  /// Where the Screen Recording prompt is asked, once per launch.
+  private let access: ScreenRecordingTrust
   private let makeEditor: @MainActor () -> any AnnotationEditing
   /// The running session; a quit or a display change ends it through ``cancel()``.
   private var session: CaptureSession?
   /// One capture or edit at a time: a second call is refused rather than queued, because each
   /// call starts an interactive session the user would otherwise face twice.
   private(set) var isCapturing = false
-  /// macOS shows its Screen Recording prompt once per app; asking again within a launch would
-  /// only reopen System Settings uninvited. The Accessibility hint follows the same rule.
-  private var screenAccessRequested = false
+  /// macOS shows the Accessibility hint's prompt once per app; asking again within a launch would
+  /// only reopen System Settings uninvited. (The Screen Recording prompt follows the same rule in
+  /// ``ScreenRecordingTrust``.)
   private var trustRequested = false
   /// The last confirmed capture per display, which `R` selects again in later sessions.
   private var regions = CaptureRegionMemory()
 
   init(
     library: CaptureLibrary, panel: PanelWindowController, targeting: any ElementTargeting,
-    makeEditor: @escaping @MainActor () -> any AnnotationEditing
+    access: ScreenRecordingTrust, makeEditor: @escaping @MainActor () -> any AnnotationEditing
   ) {
     self.library = library
     self.panel = panel
     self.targeting = targeting
+    self.access = access
     self.makeEditor = makeEditor
   }
 
@@ -210,10 +213,8 @@ final class ScreenshotTaker {
     return (capturedAt, snapshot)
   }
 
-  /// Asks for Screen Recording once per launch, for a call that answers `notPermitted`.
+  /// Asks for Screen Recording (once per launch), for a call that answers `notPermitted`.
   private func requestScreenAccess() {
-    guard !screenAccessRequested else { return }
-    screenAccessRequested = true
-    CGRequestScreenCaptureAccess()
+    access.prompt()
   }
 }

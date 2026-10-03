@@ -4,6 +4,27 @@
 
 import Foundation
 
+/// Result of the `files.pick` call.
+public struct FilesPickResult: Codable, Equatable, Sendable {
+  public let resources: [FileRef]
+
+  public init(resources: [FileRef]) {
+    self.resources = resources
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    resources = try container.array(.resources, of: FileRef.self, maxItems: 10)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case resources
+  }
+}
+
+/// Params of the `files.pickFolder` call.
+public typealias FilesPickFolderParams = NativeEmpty
+
 /// Result of the `files.pickFolder` call.
 public struct FilesPickFolderResult: Codable, Equatable, Sendable {
   public let folders: [Folder]

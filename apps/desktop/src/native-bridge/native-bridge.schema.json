@@ -19,6 +19,9 @@
       "app.setOpenAtLogin",
       "settings.open",
       "settings.close",
+      "onboarding.open",
+      "onboarding.settle",
+      "onboarding.close",
       "shortcuts.set",
       "capture",
       "clipboard.read",
@@ -36,12 +39,15 @@
       "approval.request",
       "toolbar.set",
       "accessibility.request",
+      "screenRecording.request",
       "apps.pick"
     ],
     "posts": [
       "bridge.ready",
       "language.set",
       "window.dragRegions",
+      "onboarding.surface",
+      "onboarding.selection",
       "socket.open",
       "socket.send",
       "update.install",
@@ -53,12 +59,14 @@
       "accessibility.reduceTransparency",
       "shortcut.command",
       "shortcut.screenshot",
+      "onboarding.replay",
       "resources.imported",
       "files.drag",
       "edit.command",
       "speech.state",
       "selection.ask",
       "accessibility.trust",
+      "screenRecording.trust",
       "update.state",
       "socket.frames"
     ]
@@ -251,13 +259,25 @@
             },
             "params": {
               "type": "object",
-              "required": ["commandId"],
+              "required": ["commandId", "section"],
               "properties": {
                 "commandId": {
                   "anyOf": [
                     {
                       "type": "string",
                       "maxLength": 128
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "section": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 32
                     },
                     {
                       "type": "null"
@@ -289,6 +309,83 @@
             "params": {
               "type": "object",
               "properties": {},
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
+              "const": "onboarding.open"
+            },
+            "params": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
+              "const": "onboarding.settle"
+            },
+            "params": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
+              "const": "onboarding.close"
+            },
+            "params": {
+              "type": "object",
+              "required": ["summon"],
+              "properties": {
+                "summon": {
+                  "type": "boolean"
+                }
+              },
               "additionalProperties": false
             }
           },
@@ -917,6 +1014,30 @@
             },
             "method": {
               "type": "string",
+              "const": "screenRecording.request"
+            },
+            "params": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
               "const": "apps.pick"
             },
             "params": {
@@ -1019,6 +1140,118 @@
                     "additionalProperties": false
                   },
                   "maxItems": 64
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "post"
+            },
+            "method": {
+              "type": "string",
+              "const": "onboarding.surface"
+            },
+            "params": {
+              "type": "object",
+              "required": ["rect", "radius"],
+              "properties": {
+                "rect": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "required": ["x", "y", "width", "height"],
+                      "properties": {
+                        "x": {
+                          "type": "number",
+                          "minimum": 0
+                        },
+                        "y": {
+                          "type": "number",
+                          "minimum": 0
+                        },
+                        "width": {
+                          "type": "number",
+                          "minimum": 0
+                        },
+                        "height": {
+                          "type": "number",
+                          "minimum": 0
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "radius": {
+                  "type": "number",
+                  "minimum": 0
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "post"
+            },
+            "method": {
+              "type": "string",
+              "const": "onboarding.selection"
+            },
+            "params": {
+              "type": "object",
+              "required": ["rect", "text"],
+              "properties": {
+                "rect": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "required": ["x", "y", "width", "height"],
+                      "properties": {
+                        "x": {
+                          "type": "number",
+                          "minimum": 0
+                        },
+                        "y": {
+                          "type": "number",
+                          "minimum": 0
+                        },
+                        "width": {
+                          "type": "number",
+                          "minimum": 0
+                        },
+                        "height": {
+                          "type": "number",
+                          "minimum": 0
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "text": {
+                  "type": "string",
+                  "maxLength": 2000
                 }
               },
               "additionalProperties": false
@@ -1314,6 +1547,26 @@
             },
             "event": {
               "type": "string",
+              "const": "onboarding.replay"
+            },
+            "payload": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "event", "payload"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "event"
+            },
+            "event": {
+              "type": "string",
               "const": "resources.imported"
             },
             "payload": {
@@ -1558,6 +1811,31 @@
             "event": {
               "type": "string",
               "const": "accessibility.trust"
+            },
+            "payload": {
+              "type": "object",
+              "required": ["trusted"],
+              "properties": {
+                "trusted": {
+                  "type": "boolean"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "event", "payload"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "event"
+            },
+            "event": {
+              "type": "string",
+              "const": "screenRecording.trust"
             },
             "payload": {
               "type": "object",
@@ -1944,13 +2222,25 @@
     },
     "SettingsOpenParams": {
       "type": "object",
-      "required": ["commandId"],
+      "required": ["commandId", "section"],
       "properties": {
         "commandId": {
           "anyOf": [
             {
               "type": "string",
               "maxLength": 128
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "section": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
             },
             {
               "type": "null"
@@ -1971,6 +2261,41 @@
       "additionalProperties": false
     },
     "SettingsCloseResult": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "OnboardingOpenParams": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "OnboardingOpenResult": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "OnboardingSettleParams": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "OnboardingSettleResult": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "OnboardingCloseParams": {
+      "type": "object",
+      "required": ["summon"],
+      "properties": {
+        "summon": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "OnboardingCloseResult": {
       "type": "object",
       "properties": {},
       "additionalProperties": false
@@ -2800,6 +3125,16 @@
       "properties": {},
       "additionalProperties": false
     },
+    "ScreenRecordingRequestParams": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "ScreenRecordingRequestResult": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
     "AppsPickParams": {
       "type": "object",
       "properties": {},
@@ -2883,6 +3218,88 @@
             "additionalProperties": false
           },
           "maxItems": 64
+        }
+      },
+      "additionalProperties": false
+    },
+    "OnboardingSurfacePost": {
+      "type": "object",
+      "required": ["rect", "radius"],
+      "properties": {
+        "rect": {
+          "anyOf": [
+            {
+              "type": "object",
+              "required": ["x", "y", "width", "height"],
+              "properties": {
+                "x": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "y": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "width": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "height": {
+                  "type": "number",
+                  "minimum": 0
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "radius": {
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "OnboardingSelectionPost": {
+      "type": "object",
+      "required": ["rect", "text"],
+      "properties": {
+        "rect": {
+          "anyOf": [
+            {
+              "type": "object",
+              "required": ["x", "y", "width", "height"],
+              "properties": {
+                "x": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "y": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "width": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "height": {
+                  "type": "number",
+                  "minimum": 0
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "text": {
+          "type": "string",
+          "maxLength": 2000
         }
       },
       "additionalProperties": false
@@ -2987,6 +3404,11 @@
       "additionalProperties": false
     },
     "ShortcutScreenshotEvent": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "OnboardingReplayEvent": {
       "type": "object",
       "properties": {},
       "additionalProperties": false
@@ -3160,6 +3582,16 @@
       "additionalProperties": false
     },
     "AccessibilityTrustEvent": {
+      "type": "object",
+      "required": ["trusted"],
+      "properties": {
+        "trusted": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ScreenRecordingTrustEvent": {
       "type": "object",
       "required": ["trusted"],
       "properties": {

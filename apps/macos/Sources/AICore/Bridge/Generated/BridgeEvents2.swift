@@ -4,6 +4,24 @@
 
 import Foundation
 
+/// Payload of the `screenRecording.trust` event.
+public struct ScreenRecordingTrustEvent: Codable, Equatable, Sendable {
+  public let trusted: Bool
+
+  public init(trusted: Bool) {
+    self.trusted = trusted
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    trusted = try container.boolean(.trusted)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case trusted
+  }
+}
+
 /// Payload of the `update.state` event.
 public struct UpdateStateEvent: Codable, Equatable, Sendable {
   public let version: String?

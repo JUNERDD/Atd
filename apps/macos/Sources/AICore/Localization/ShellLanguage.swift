@@ -26,10 +26,13 @@ public enum ShellStringKey: String, CaseIterable, Sendable {
   case appName = "app.name"
   case windowPanelTitle = "window.panel.title"
   case windowSettingsTitle = "window.settings.title"
+  case windowOnboardingTitle = "window.onboarding.title"
 
   case menuShowPanel = "menu.showPanel"
   case menuHidePanel = "menu.hidePanel"
   case menuSettings = "menu.settings"
+  case menuOnboarding = "menu.onboarding"
+  case menuOnboardingReplay = "menu.onboardingReplay"
   case menuCheckForUpdates = "menu.checkForUpdates"
   case menuRestartService = "menu.restartService"
   case menuShowServiceLogs = "menu.showServiceLogs"

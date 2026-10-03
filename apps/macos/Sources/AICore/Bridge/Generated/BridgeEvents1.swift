@@ -79,6 +79,9 @@ public struct ShortcutCommandEvent: Codable, Equatable, Sendable {
 /// Payload of the `shortcut.screenshot` event.
 public typealias ShortcutScreenshotEvent = NativeEmpty
 
+/// Payload of the `onboarding.replay` event.
+public typealias OnboardingReplayEvent = NativeEmpty
+
 /// Payload of the `resources.imported` event.
 public struct ResourcesImportedEvent: Codable, Equatable, Sendable {
   public let resources: [FileRef]

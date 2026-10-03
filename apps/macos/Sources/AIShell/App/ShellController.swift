@@ -3,17 +3,18 @@ import AIRelay
 import AppKit
 import OSLog
 
-/// Wires the shell together: the panel and settings windows, the summon flow and its selection
-/// stash (``Summoner``), global hot keys, the selection toolbar and the Accessibility trust it
-/// needs, files and folders opened from outside the panel, the service's control stream and
-/// status item, menus and the quit guard. Its methods are what ``ShellBridge`` calls for the
-/// pages.
+/// Wires the shell together: the panel, settings and welcome guide windows, the summon flow and
+/// its selection stash (``Summoner``), global hot keys, the selection toolbar and the
+/// Accessibility trust it needs, files and folders opened from outside the panel, the service's
+/// control stream and status item, menus and the quit guard. Its methods are what
+/// ``ShellBridge`` calls for the pages.
 public final class ShellController {
   private let services: ShellServices
   private let defaults: UserDefaults
   let panelHost: WebViewHost
   let panel: PanelWindowController
   private let settings: SettingsWindowController
+  let onboarding: OnboardingWindowController
   let systemPanels: SystemPanels
   /// Serves the five desktop capabilities; the control stream holds it weakly.
   private let capabilities: ShellCapabilities
@@ -22,7 +23,7 @@ public final class ShellController {
   let confirmations = ConfirmationPrompter()
   let artifacts: ArtifactActions
   let attachments: AttachmentImporter
-  private let screenshots: ScreenshotTaker
+  let screenshots: ScreenshotTaker
   let launchApprovals: LaunchApprovals
   /// `speech.speak` / `speech.stop`; its state reaches every page as `speech.state`.
   let speech = SpeechReader()
@@ -31,8 +32,10 @@ public final class ShellController {
   let quitGuard: QuitGuard
   /// Accessibility trust; every page learns it as `accessibility.trust`.
   let trust: AccessibilityTrust
-  private let summoner: Summoner
-  private let toolbar: SelectionToolbarController
+  /// Screen Recording trust; every page learns it as `screenRecording.trust`.
+  let screenRecording: ScreenRecordingTrust
+  let summoner: Summoner
+  let toolbar: SelectionToolbarController
   private var statusItem: StatusItemController?
   private var registrar: HotKeyRegistrar?
   private var menuStatus = MenuBarStatus(availability: .connecting, running: 0, attention: 0)
@@ -48,6 +51,8 @@ public final class ShellController {
     self.defaults = defaults
     let trust = AccessibilityTrust(defaults: defaults)
     self.trust = trust
+    let screenRecording = ScreenRecordingTrust()
+    self.screenRecording = screenRecording
     let bridge = ShellBridge()
     let panelHost = WebViewHost(role: .panel, fragment: nil, services: services, bridge: bridge)
     self.panelHost = panelHost
@@ -58,6 +63,14 @@ public final class ShellController {
       let host = WebViewHost(
         role: .settings, fragment: fragment, services: services, bridge: bridge)
       host.setState(.accessibilityTrust(.init(trusted: trust.isTrusted)))
+      host.setState(.screenRecordingTrust(.init(trusted: screenRecording.isTrusted)))
+      return host
+    }
+    onboarding = OnboardingWindowController {
+      let host = WebViewHost(
+        role: .onboarding, fragment: "onboarding", services: services, bridge: bridge)
+      host.setState(.accessibilityTrust(.init(trusted: trust.isTrusted)))
+      host.setState(.screenRecordingTrust(.init(trusted: screenRecording.isTrusted)))
       return host
     }
     let systemPanels = SystemPanels(
@@ -79,7 +92,7 @@ public final class ShellController {
       try await services.client().resource(id: id).bytes
     }
     let screenshots = ScreenshotTaker(
-      library: library, panel: panel, targeting: ElementResolver(),
+      library: library, panel: panel, targeting: ElementResolver(), access: screenRecording,
       makeEditor: { AnnotationEditor() })
     self.screenshots = screenshots
     launchApprovals = LaunchApprovals(
@@ -120,7 +133,11 @@ public final class ShellController {
       self?.broadcast(.accessibilityTrust(.init(trusted: trusted)))
       self?.toolbar.update()
     }
-    toolbar.onAsk = { [weak self] in self?.summon(.ask) }
+    panelHost.setState(.screenRecordingTrust(.init(trusted: screenRecording.isTrusted)))
+    screenRecording.onChange = { [weak self] trusted in
+      self?.broadcast(.screenRecordingTrust(.init(trusted: trusted)))
+    }
+    toolbar.onAsk = { [weak self] text in self?.summon(.ask, practiceText: text) }
     toolbar.onCommand = { [weak self] id in self?.summon(.toolbarCommand(id: id)) }
   }
 
@@ -141,6 +158,7 @@ public final class ShellController {
     control.start()
     updater.start()
     trust.start()
+    screenRecording.start()
     AppPresence.setShowInDock(defaults.bool(forKey: Self.showInDockKey))
     applyLanguage()
     NotificationCenter.default.addObserver(
@@ -153,9 +171,10 @@ public final class ShellController {
 
   // MARK: Summons
 
-  /// Runs the summon flow of `SummonPolicy`: capture before the panel can take focus.
-  func summon(_ trigger: SummonTrigger) {
-    summoner.summon(trigger)
+  /// Runs the summon flow of `SummonPolicy`: capture before the panel can take focus, or take
+  /// the guide's `practiceText` as the selection when its practice toolbar asked.
+  func summon(_ trigger: SummonTrigger, practiceText: String? = nil) {
+    summoner.summon(trigger, practiceText: practiceText)
   }
 
   /// Files and folders from the Finder service, a drop on the Dock icon or `open -a`: the panel
@@ -178,34 +197,22 @@ public final class ShellController {
     panel.hide()
   }
 
-  /// A hidden panel must not keep the keyboard: the settings window takes it back when open,
-  /// otherwise the app steps aside for the app the user came from.
+  /// A hidden panel must not keep the keyboard: the welcome guide or the settings window takes
+  /// it back when open, otherwise the app steps aside for the app the user came from.
   private func passFocusOnFromPanel() {
-    if settings.isOpen, let host = settings.host, let window = host.container.window,
-      window.isVisible, !window.isMiniaturized
-    {
-      window.makeKeyAndOrderFront(nil)
-    } else {
-      NSApp.deactivate()
-    }
+    if !onboarding.focusIfShown(), !settings.focusIfShown() { NSApp.deactivate() }
   }
 
   // MARK: Entry points for the bridge
 
-  /// A new settings window opens `commandId`'s editor (`#settings?commandId=…`); an open one
-  /// keeps its page, which the page's own window message steers.
-  func openSettings(commandId: String?) {
+  /// A new settings window opens `commandId`'s editor or `section`; an open one keeps its page,
+  /// which the page's own window message steers.
+  func openSettings(commandId: String?, section: String?) {
     // The settings window would activate and order in against the capture overlays.
     guard !screenshots.isCapturing else { return }
-    var fragment = "settings"
-    if let commandId {
-      var query = URLComponents()
-      query.queryItems = [URLQueryItem(name: "commandId", value: commandId)]
-      // `URLSearchParams` reads `+` as a space.
-      let encoded = query.percentEncodedQuery?.replacingOccurrences(of: "+", with: "%2B")
-      fragment += "?" + (encoded ?? "")
-    }
-    settings.open(fragment: fragment, title: ShellStrings.shared.text(.windowSettingsTitle))
+    settings.open(
+      fragment: SettingsWindowController.fragment(commandId: commandId, section: section),
+      title: ShellStrings.shared.text(.windowSettingsTitle))
   }
 
   func closeSettings() { settings.close() }
@@ -231,31 +238,7 @@ public final class ShellController {
     summoner.captureResult()
   }
 
-  /// `screenshot.capture`, which hides the panel while it runs. A summon still moving the panel
-  /// would fight over it, and an open file dialog or confirmation would sit beneath the
-  /// overlays, so the call is refused then.
-  func captureScreenshot() async throws(BridgeError) -> ScreenshotCaptureResult {
-    try checkScreenshotAllowed()
-    return try await screenshots.capture()
-  }
-
-  /// `screenshot.edit`, under the same conditions as a capture.
-  func editScreenshot(resourceId: String) async throws(BridgeError) -> ScreenshotEditResult {
-    try checkScreenshotAllowed()
-    return try await screenshots.edit(resourceId: resourceId)
-  }
-
-  private func checkScreenshotAllowed() throws(BridgeError) {
-    guard !summoner.isSummoning else {
-      throw BridgeError("The panel is still opening; try again.")
-    }
-    guard !systemPanels.isOpen, !confirmations.isShowing else {
-      throw BridgeError("Close the open dialog before taking a screenshot.")
-    }
-  }
-
-  /// A capture session covers every display; calls that would open a dialog wait for it.
-  var isCapturingScreenshot: Bool { screenshots.isCapturing }
+  var isPinned: Bool { defaults.bool(forKey: Self.pinnedKey) }
 
   func setPinned(_ pinned: Bool) {
     defaults.set(pinned, forKey: Self.pinnedKey)
@@ -270,7 +253,7 @@ public final class ShellController {
   /// `openAtLogin` is null where it is unavailable (Debug builds).
   func appState() -> AppStateResult {
     AppStateResult(
-      pinned: defaults.bool(forKey: Self.pinnedKey),
+      pinned: isPinned,
       showInDock: defaults.bool(forKey: Self.showInDockKey), openAtLogin: AppPresence.opensAtLogin)
   }
 
@@ -278,6 +261,7 @@ public final class ShellController {
   private func broadcast(_ event: NativeEvent) {
     panelHost.setState(event)
     settings.host?.setState(event)
+    onboarding.host?.setState(event)
   }
 
   // MARK: App surfaces
@@ -307,6 +291,7 @@ public final class ShellController {
     NSApp.mainMenu = AppMenus.mainMenu(menuActions)
     panel.setTitle(ShellStrings.shared.text(.windowPanelTitle))
     settings.setTitle(ShellStrings.shared.text(.windowSettingsTitle))
+    onboarding.setTitle(ShellStrings.shared.text(.windowOnboardingTitle))
   }
 
   var menuActions: AppMenuActions {
@@ -314,7 +299,9 @@ public final class ShellController {
     return AppMenuActions(
       showPanel: { [weak self] in self?.showPanel() },
       hidePanel: { [weak self] in self?.hidePanel() },
-      openSettings: { [weak self] in self?.openSettings(commandId: nil) },
+      openSettings: { [weak self] in self?.openSettings(commandId: nil, section: nil) },
+      openOnboarding: { [weak self] in self?.openOnboarding() },
+      replayOnboarding: Self.replaysOnboarding ? { [weak self] in self?.replayOnboarding() } : nil,
       checkForUpdates: updater.isAvailable
         ? { [weak self] in self?.updater.checkForUpdates() } : nil,
       restartService: { try await services.restart() },
@@ -325,7 +312,16 @@ public final class ShellController {
 
   /// Undo and Redo go to the page of the key window, which runs them in its editor.
   private func sendEditCommand(_ command: EditCommandEvent.Command) {
-    let host = panel.isKey ? panelHost : settings.isKey ? settings.host : nil
+    let host: WebViewHost? =
+      if panel.isKey {
+        panelHost
+      } else if settings.isKey {
+        settings.host
+      } else if onboarding.isKey {
+        onboarding.host
+      } else {
+        nil
+      }
     host?.send(.editCommand(.init(command: command)), scope: .document)
   }
 }

@@ -67,11 +67,25 @@ export interface SettingsSnapshot {
    * null until the shell reports it.
    */
   accessibilityTrusted: boolean | null;
+  /**
+   * Whether this running app may capture the screen, which screenshots need (Screen Recording);
+   * null until the shell reports it. macOS applies a new grant only to a relaunched app, so it can
+   * stay false after the user allows it.
+   */
+  screenRecordingTrusted: boolean | null;
+  /**
+   * Whether this data dir has shown the welcome guide; the panel opens the guide once while it is
+   * false and marks it done as it does. True until the service's settings load, so defaults never
+   * open the guide.
+   */
+  onboardingCompleted: boolean;
 }
 
 export interface SettingsBridge {
   open: () => Promise<void>;
   openCommand: (commandId: string) => Promise<void>;
+  /** Shows the settings window at `section` (a settings section id), open or not. */
+  openSection: (section: string) => Promise<void>;
   /** Opens the command's editor content in a new task-panel session; null creates a new command. */
   startCommandSession: (commandId: string | null) => Promise<void>;
   /**
@@ -105,8 +119,15 @@ export interface SettingsBridge {
    * System Settings; `accessibilityTrusted` follows the outcome.
    */
   requestAccessibility: () => Promise<void>;
+  /**
+   * Shows the system's Screen Recording prompt while the app may not capture the screen and opens
+   * its pane in System Settings; `screenRecordingTrusted` follows the outcome.
+   */
+  requestScreenRecording: () => Promise<void>;
   /** The open panel on application bundles; empty when cancelled. */
   pickApps: () => Promise<ExcludedApp[]>;
   onChange: (listener: (settings: SettingsSnapshot) => void) => () => void;
   onOpenCommand: (listener: (commandId: string) => void) => () => void;
+  /** A section another window asked an open settings window to show (`openSection`). */
+  onOpenSection: (listener: (section: string) => void) => () => void;
 }

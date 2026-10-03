@@ -163,23 +163,30 @@ public struct AppSetOpenAtLoginResult: Codable, Equatable, Sendable {
 /// Params of the `settings.open` call.
 public struct SettingsOpenParams: Codable, Equatable, Sendable {
   public let commandId: String?
+  public let section: String?
 
-  public init(commandId: String?) {
+  public init(commandId: String?, section: String?) {
     self.commandId = commandId
+    self.section = section
   }
 
   public init(from decoder: any Decoder) throws {
     let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
     commandId = try container.nullable(.commandId) { try container.string($0, maxLength: 128) }
+    section = try container.nullable(.section) {
+      try container.string($0, minLength: 1, maxLength: 32)
+    }
   }
 
   public func encode(to encoder: any Encoder) throws {
     var container = encoder.container(keyedBy: CodingKeys.self)
     try container.encode(commandId, forKey: .commandId)
+    try container.encode(section, forKey: .section)
   }
 
   private enum CodingKeys: String, CodingKey, CaseIterable {
     case commandId
+    case section
   }
 }
 
@@ -191,6 +198,39 @@ public typealias SettingsCloseParams = NativeEmpty
 
 /// Result of the `settings.close` call.
 public typealias SettingsCloseResult = NativeEmpty
+
+/// Params of the `onboarding.open` call.
+public typealias OnboardingOpenParams = NativeEmpty
+
+/// Result of the `onboarding.open` call.
+public typealias OnboardingOpenResult = NativeEmpty
+
+/// Params of the `onboarding.settle` call.
+public typealias OnboardingSettleParams = NativeEmpty
+
+/// Result of the `onboarding.settle` call.
+public typealias OnboardingSettleResult = NativeEmpty
+
+/// Params of the `onboarding.close` call.
+public struct OnboardingCloseParams: Codable, Equatable, Sendable {
+  public let summon: Bool
+
+  public init(summon: Bool) {
+    self.summon = summon
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    summon = try container.boolean(.summon)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case summon
+  }
+}
+
+/// Result of the `onboarding.close` call.
+public typealias OnboardingCloseResult = NativeEmpty
 
 /// Params of the `shortcuts.set` call.
 public struct ShortcutsSetParams: Codable, Equatable, Sendable {
@@ -212,42 +252,5 @@ public struct ShortcutsSetParams: Codable, Equatable, Sendable {
   private enum CodingKeys: String, CodingKey, CaseIterable {
     case registrations
     case selectionWanted
-  }
-}
-
-/// Result of the `shortcuts.set` call.
-public struct ShortcutsSetResult: Codable, Equatable, Sendable {
-  public let results: [ShortcutResult]
-
-  public init(results: [ShortcutResult]) {
-    self.results = results
-  }
-
-  public init(from decoder: any Decoder) throws {
-    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    results = try container.array(.results, of: ShortcutResult.self, maxItems: 256)
-  }
-
-  private enum CodingKeys: String, CodingKey, CaseIterable {
-    case results
-  }
-}
-
-/// Params of the `capture` call.
-public struct CaptureParams: Codable, Equatable, Sendable {
-  public init() {}
-
-  public init(from decoder: any Decoder) throws {
-    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    try container.literal(.source, "selection")
-  }
-
-  public func encode(to encoder: any Encoder) throws {
-    var container = encoder.container(keyedBy: CodingKeys.self)
-    try container.encode("selection", forKey: .source)
-  }
-
-  private enum CodingKeys: String, CodingKey, CaseIterable {
-    case source
   }
 }

@@ -1,12 +1,14 @@
 /**
  * Calls of the native bridge (`contract.ts`): the JS → Swift requests Swift answers, with the
- * schemas their params and results use; the file calls and their records live in `file-calls.ts`.
+ * schemas their params and results use; the file calls and their records live in `file-calls.ts`,
+ * the window and app presence calls in `window-calls.ts`.
  * Like the rest of the contract, the export script loads this file with Node's type stripping, so
  * it imports nothing but TypeBox and its sibling contract files (by their `.ts` names) and uses only
  * erasable TypeScript syntax.
  */
 import { Type, type TSchema } from 'typebox';
 import { NativeFileCalls, NativeFileRefSchema } from './file-calls.ts';
+import { NativeWindowCalls } from './window-calls.ts';
 import { Empty, MAX_NATIVE_TEXT_LENGTH, Text } from './primitives.ts';
 
 export {
@@ -117,44 +119,7 @@ const AnchorRectSchema = Type.Object(
  * whose message the page shows as is.
  */
 export const NativeCalls = {
-  /** Shows and focuses the panel. */
-  'window.show': { params: Empty, result: Empty },
-  /** Hides the panel (alpha 0; it stays ordered in). */
-  'window.hide': { params: Empty, result: Empty },
-  'window.setPinned': {
-    params: Type.Object({ pinned: Type.Boolean() }, { additionalProperties: false }),
-    result: Type.Object({ pinned: Type.Boolean() }, { additionalProperties: false }),
-  },
-  /** Window and app preferences the shell owns; `openAtLogin` is null where unsupported. */
-  'app.state': {
-    params: Empty,
-    result: Type.Object(
-      {
-        pinned: Type.Boolean(),
-        showInDock: Type.Boolean(),
-        openAtLogin: Type.Union([Type.Boolean(), Type.Null()]),
-      },
-      { additionalProperties: false },
-    ),
-  },
-  'app.setShowInDock': {
-    params: Type.Object({ show: Type.Boolean() }, { additionalProperties: false }),
-    result: Type.Object({ show: Type.Boolean() }, { additionalProperties: false }),
-  },
-  /** Resolves to the applied state, false while macOS waits for approval in System Settings. */
-  'app.setOpenAtLogin': {
-    params: Type.Object({ open: Type.Boolean() }, { additionalProperties: false }),
-    result: Type.Object({ open: Type.Boolean() }, { additionalProperties: false }),
-  },
-  /** Shows the settings window; a first load opens `commandId`'s editor when it is set. */
-  'settings.open': {
-    params: Type.Object(
-      { commandId: Type.Union([Type.String({ maxLength: 128 }), Type.Null()]) },
-      { additionalProperties: false },
-    ),
-    result: Empty,
-  },
-  'settings.close': { params: Empty, result: Empty },
+  ...NativeWindowCalls,
   /**
    * Replaces the whole set of global shortcuts. Swift registers the difference and reports every
    * item. `selectionWanted`: an enabled command reads the selection, so each summon that shows the
@@ -317,6 +282,12 @@ export const NativeCalls = {
    * Settings › Privacy & Security › Accessibility. `accessibility.trust` reports the outcome.
    */
   'accessibility.request': { params: Empty, result: Empty },
+  /**
+   * Shows the system's Screen Recording prompt while the app may not capture the screen, and opens
+   * System Settings › Privacy & Security › Screen & System Audio Recording.
+   * `screenRecording.trust` reports the outcome.
+   */
+  'screenRecording.request': { params: Empty, result: Empty },
   /** Open panel on application bundles, multiple selection; `apps` is empty when cancelled. */
   'apps.pick': {
     params: Empty,

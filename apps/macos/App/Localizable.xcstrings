@@ -1837,6 +1837,42 @@
         }
       }
     },
+    "menu.onboarding" : {
+      "comment" : "Menu item that reopens the welcome guide window",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Welcome Guide…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "欢迎指南…"
+          }
+        }
+      }
+    },
+    "menu.onboardingReplay" : {
+      "comment" : "Debug-only menu item that replays the first-launch welcome guide",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Replay First-Launch Guide"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重播首次启动引导"
+          }
+        }
+      }
+    },
     "menu.quit" : {
       "comment" : "Quit menu item",
       "extractionState" : "manual",
@@ -2211,6 +2247,24 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "服务不可用"
+          }
+        }
+      }
+    },
+    "window.onboarding.title" : {
+      "comment" : "Welcome guide window title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Welcome to Atd"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "欢迎使用 Atd"
           }
         }
       }
