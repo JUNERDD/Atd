@@ -40,7 +40,22 @@ async function readStored(file: string): Promise<Static<typeof SettingsFileSchem
     if (error instanceof Error && 'code' in error && error.code === 'ENOENT') return null;
     throw error;
   }
-  return parse(SettingsFileSchema, withAddedSelectionToolbar(withAddedShortcuts(JSON.parse(raw))));
+  return parse(
+    SettingsFileSchema,
+    withAddedOnboarding(withAddedSelectionToolbar(withAddedShortcuts(JSON.parse(raw)))),
+  );
+}
+
+/**
+ * A file written before the welcome guide existed belongs to someone already using the app, so it
+ * reads as having shown the guide; only a data dir without settings starts with it pending.
+ */
+function withAddedOnboarding(file: unknown): unknown {
+  if (typeof file !== 'object' || file === null || !('settings' in file)) return file;
+  const { settings } = file;
+  if (typeof settings !== 'object' || settings === null || 'onboardingCompleted' in settings)
+    return file;
+  return { ...file, settings: { ...settings, onboardingCompleted: true } };
 }
 
 /** The selection toolbar starts on, over every app. */
@@ -96,6 +111,7 @@ export class SettingsStore {
         shellAllowlist: [],
         shortcuts: null,
         selectionToolbar: structuredClone(DEFAULT_SELECTION_TOOLBAR),
+        onboardingCompleted: false,
       };
       return new SettingsStore(file, { settings, revision: 0, initialized: false });
     }
