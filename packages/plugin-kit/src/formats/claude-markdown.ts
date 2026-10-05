@@ -77,7 +77,9 @@ function readArguments(
 
 /**
  * Loads a Claude command from `path`, or from inline `content` declared in the manifest (then
- * `path` is the manifest). The body stays unsubstituted; placeholders become segments.
+ * `path` is the manifest). The body stays unsubstituted; placeholders become segments. An
+ * `allowed-tools` value that is not a list skips the command: an empty list inherits the host's
+ * tools, so dropping the value would widen it.
  */
 export async function loadClaudeCommand(
   ctx: AdapterContext,
@@ -91,10 +93,20 @@ export async function loadClaudeCommand(
   if (name === null) return;
   const { frontmatter, body } = readDocument(ctx, path, text);
   const overrides = options.overrides ?? {};
+  const tools = overrides.allowedTools ?? splitList(frontmatter['allowed-tools']);
+  if (tools === null) {
+    report(
+      ctx,
+      'warning',
+      'invalid-component',
+      `Command "${name}" is skipped: its allowed-tools are not a list of tool names.`,
+      { path, component: { kind: 'command', name } },
+    );
+    return;
+  }
   const args = readArguments(ctx, path, frontmatter.arguments);
   const argumentHint = overrides.argumentHint ?? stringField(frontmatter, 'argument-hint');
   const model = overrides.model ?? stringField(frontmatter, 'model');
-  const tools = overrides.allowedTools ?? splitList(frontmatter['allowed-tools']) ?? [];
   if (hasShellInjection(body)) reportShell(ctx, path, 'command', name);
   const description =
     overrides.description ?? stringField(frontmatter, 'description') ?? firstLine(body) ?? '';
@@ -123,7 +135,8 @@ export async function loadClaudeCommand(
  * Loads a Claude subagent. `prefix` holds the nested directories below the scanned agents dir
  * (`review` for `agents/review/security.md`); a frontmatter `name` replaces only the file part.
  * Fields the kit does not map (hooks, mcpServers, permissionMode, memory, isolation, …) are
- * dropped with one info diagnostic.
+ * dropped with one info diagnostic. A `tools` value that is not a list skips the agent: an empty
+ * list means the host default, so dropping the value would widen the agent.
  */
 export async function loadClaudeAgent(
   ctx: AdapterContext,
@@ -153,12 +166,16 @@ export async function loadClaudeAgent(
     });
     return;
   }
-  const tools = frontmatter.tools === undefined ? [] : splitList(frontmatter.tools);
+  const tools = splitList(frontmatter.tools);
   if (tools === null) {
-    report(ctx, 'warning', 'invalid-component', `Agent "${name}" tools are not a list; ignored.`, {
-      path,
-      component,
-    });
+    report(
+      ctx,
+      'warning',
+      'invalid-component',
+      `Agent "${name}" is skipped: its tools are not a list of tool names.`,
+      { path, component },
+    );
+    return;
   }
   const dropped = Object.keys(frontmatter).filter((key) => !AGENT_FIELDS.has(key));
   if (dropped.length > 0) {
@@ -177,7 +194,7 @@ export async function loadClaudeAgent(
       kind: 'agent',
       name,
       description: description.slice(0, 4000),
-      tools: (tools ?? []).filter((tool) => tool.length <= 256).slice(0, 256),
+      tools: tools.filter((tool) => tool.length <= 256).slice(0, 256),
       ...(model === undefined ? {} : { model: model.slice(0, 256) }),
       prompt: body,
       source: path,
