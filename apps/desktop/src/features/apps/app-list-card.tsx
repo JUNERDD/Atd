@@ -11,10 +11,10 @@ import type { AppActions } from './use-app-actions';
 
 /**
  * One app wherever apps are listed, as a `ListCard` like Settings' plugin cards (Figma
- * `App / App list card · Rhea`): the app's icon and name with Open at the top right, its own
- * description, and at the foot the list's meta line and a status badge. The panel adds Continue
- * editing and More after Open (`children`). The whole card opens the app's page in Settings
- * (`onShow`) and the app itself in the panel, like Open.
+ * `App / App list card · Rhea`): the app's icon and name with actions at the top right, its own
+ * description, and at the foot the list's meta line and a status badge. In Settings the whole
+ * card opens the app's page (`onShow`) and Open at the top right opens the app; in the panel the
+ * whole card opens the app and the actions are the panel's Continue editing and More (`children`).
  */
 export function AppListCard({
   app,
@@ -32,7 +32,7 @@ export function AppListCard({
   actions: AppActions;
   /** Settings: the whole card opens the app's page. */
   onShow?: () => void;
-  /** Actions after Open (the panel's Continue editing and More). */
+  /** Actions at the top right in place of Open (the panel's Continue editing and More). */
   children?: ReactNode;
 }) {
   const { t } = useTranslation('apps');
@@ -49,14 +49,16 @@ export function AppListCard({
       nameText={app.name}
       actions={
         <ItemActions className="gap-1">
-          <IconButton
-            label={t('panel.open')}
-            aria-label={t('panel.openLabel', { name: app.name })}
-            aria-disabled={busy || undefined}
-            onClick={openApp}
-          >
-            <SquareArrowOutUpRight />
-          </IconButton>
+          {onShow ? (
+            <IconButton
+              label={t('panel.open')}
+              aria-label={t('panel.openLabel', { name: app.name })}
+              aria-disabled={busy || undefined}
+              onClick={openApp}
+            >
+              <SquareArrowOutUpRight />
+            </IconButton>
+          ) : null}
           {children}
         </ItemActions>
       }

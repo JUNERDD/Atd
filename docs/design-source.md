@@ -764,8 +764,9 @@ Figma 侧未同步：本会话云端 Figma 工具不可用，本地 Figma MCP �
 
 ## 2026-10-05 面板应用卡片整张可点击
 
-用户要求任务面板「我的应用」的卡片本身可以点击打开。本节取代上文 2026-10-04「应用列表改为卡片」中「面板卡片不是点击目标，没有悬停态」的约定。
+用户要求任务面板「我的应用」的卡片本身可以点击打开，随后要求去掉面板卡片右上角的「打开」。本节取代上文 2026-10-04「应用列表改为卡片」中「面板卡片不是点击目标，没有悬停态」及面板卡片有「打开」的约定。
 
 - 代码：`AppListCard` 在面板中也传入 `ListCard` 的 `open`：整张卡片打开应用，与右上「打开」相同，标签为 `apps:panel.openLabel`；应用正在写入时点击不生效。设置 › 应用仍然打开应用详情子页。整行打开的样式原在 `settings.css`（只有设置窗口加载），现移到共享的 `apps/desktop/src/components/open-row.css`，类名由 `.settings-open-row` 改为 `.open-row`，由 `ListCard` 与设置中的各类可打开行各自引入；MCP 行内登录框的规则仍留在 `settings.css`。
-- Figma：[App / App list card · Rhea](https://www.figma.com/design/D9YK1tEeBTEBgstcepesW5/Atd?node-id=2047-123329) 新增 `Surface=Panel, State=Hover`（`2178:131273`），与 `Surface=Settings, State=Hover` 相同，在卡片填充上叠 `surface/ghost-hover`；组件说明已改为两种 Surface 都可整张点击。AP1 画面只用 Default，不需要更新。
+- 面板卡片右上只剩「继续编辑」与「更多」，「打开」由整张卡片承担。设置卡片保留「打开」，因为它整张打开的是详情页。面板网格的最小列宽 288 不变，名称旁的空间由约 110px 增至约 140px。
+- Figma：[App / App list card · Rhea](https://www.figma.com/design/D9YK1tEeBTEBgstcepesW5/Atd?node-id=2047-123329) 新增 `Surface=Panel, State=Hover`（`2178:131273`），与 `Surface=Settings, State=Hover` 相同，在卡片填充上叠 `surface/ghost-hover`；两个 `Surface=Panel` 变体删去 Open 实例；组件说明已改为两种 Surface 都可整张点击、只有 Settings 有 Open。AP1 画面（如 AP1.03、AP1.04）的卡片随主组件更新，已截图核对，「更多」菜单的末端对齐不变。
 - 验证：`pnpm --filter @atd/desktop typecheck`、oxlint、oxfmt 与 `src/App.test.tsx` 通过；没有测试覆盖这些卡片。用户正在运行的 Debug 应用没有被启动、停止或附加，所以面板中的点击与悬停没有在原生窗口里核对。
