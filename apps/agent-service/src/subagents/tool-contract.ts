@@ -1,6 +1,6 @@
 import type { ExtensionAPI, ToolDefinition } from '@earendil-works/pi-coding-agent';
 import { Type, type TSchema } from 'typebox';
-import { TaskAgentRequestsSchema } from './task-agent-definition.js';
+import { launchAgentName, TaskAgentRequestsSchema } from './task-agent-definition.js';
 
 /**
  * The service-owned model contract of pi-subagents' `subagent` tool. Upstream advertises its whole
@@ -153,17 +153,41 @@ function chainWithHandOff(chain: unknown): unknown {
   });
 }
 
+/** One child or chain step with its agent, and its parallel group's, as launched (`launchAgentName`). */
+function namedForLaunch(child: Record<string, unknown>): Record<string, unknown> {
+  const agent = child['agent'];
+  const parallel = child['parallel'];
+  return {
+    ...child,
+    ...(typeof agent === 'string' && { agent: launchAgentName(agent) }),
+    ...(Array.isArray(parallel) && { parallel: parallel.map(childForLaunch) }),
+  };
+}
+
+function childForLaunch(child: unknown): unknown {
+  return isRecord(child) ? namedForLaunch(child) : child;
+}
+
 /**
  * pi-subagents runs a launch that omits `async` by `asyncByDefault`, and it runs `tasks` and
  * `chain` as one workflow, so a launch that omits it is pinned to the foreground before
  * validation. A null counts as omitted: validation then drops optional nulls, which would
  * otherwise erase the pin. The guard still refuses any launch that does not arrive with
- * async:false. A chain also gets its previous-output hand-off here (`chainWithHandOff`).
+ * async:false. Every child the launch names gets its agent's launch name, so a task agent named
+ * as it was defined runs as itself (`launchAgentName`), and a chain gets its previous-output
+ * hand-off (`chainWithHandOff`). pi hands these arguments to validation, the guard's `tool_call`
+ * and execution; the transcript keeps the call as the model wrote it.
  */
 function prepareSubagentArguments(args: unknown): unknown {
   if (!isRecord(args) || args['action'] != null) return args;
-  const call = args['async'] == null ? { ...args, async: false } : args;
-  return call['chain'] === undefined ? call : { ...call, chain: chainWithHandOff(call['chain']) };
+  const call = namedForLaunch(args['async'] == null ? { ...args, async: false } : args);
+  const tasks = call['tasks'];
+  const chain = call['chain'];
+  return {
+    ...call,
+    ...(Array.isArray(tasks) && { tasks: tasks.map(childForLaunch) }),
+    ...(Array.isArray(chain) && { chain: chainWithHandOff(chain.map(childForLaunch)) }),
+  };
 }
 
 /** What one parent session puts on its `subagent` tool besides pi-subagents' execution. */

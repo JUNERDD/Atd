@@ -65,6 +65,9 @@ export type SubagentChildEntry = Static<typeof SubagentChildEntrySchema>;
  * (agent-service `subagents/task-agents.ts`). One narrows the run's child tools, keeps the task's
  * approvals and model, and lives in the parent session (`app-agent`), never in the agent catalog.
  * A name is defined once per task: the same definition again is a no-op, a different one is refused.
+ * A launch may also name one without the prefix, as it was defined (agent-service
+ * `subagents/task-agent-definition.ts` `launchAgentName`), so every other runtime agent must keep a
+ * namespace with a dot (`atd.`, `plugin.`): a bare name always means a task agent.
  */
 export const TASK_AGENT_PREFIX = 'task.';
 /** The name a define call gives, before the prefix. */
