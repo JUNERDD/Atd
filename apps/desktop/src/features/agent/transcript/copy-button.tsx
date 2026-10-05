@@ -6,9 +6,9 @@ import { useCopyFeedback } from './use-copy-feedback';
 
 /**
  * Sole owner of the copy-to-clipboard button used at the top-right of every desc box. Copies
- * `text` verbatim; the brief copied state pins the tooltip as feedback. Always renders inside a
- * `group` box (see `DetailBox`): the button stays hidden until the box is hovered or focused,
- * or a copy just landed.
+ * `text` verbatim; the brief copied state pins the tooltip as feedback and marks the button
+ * `data-feedback`. Always renders inside a `group` box (see `DetailBox`): the button stays hidden
+ * until the box is hovered or focused, or a copy just landed.
  */
 export function CopyButton({ text, className }: { text: string; className?: string }) {
   const { t } = useTranslation('tasks');
@@ -17,6 +17,7 @@ export function CopyButton({ text, className }: { text: string; className?: stri
   return (
     <IconButton
       label={copied ? t('transcript.code.copied') : t('transcript.code.copy')}
+      data-feedback={copied || pinned ? '' : undefined}
       tooltipPinned={pinned}
       onPointerLeave={unpin}
       onClick={() => void copy(text)}

@@ -313,7 +313,7 @@
 .markdown code {
   font-size: 12px;
 }
-/* The project's code block (`@pierre/diffs`): a framed card whose copy action sits on its corner. */
+/* The project's code block (`@pierre/diffs`): a framed card whose actions sit on its corner. */
 .code-block {
   position: relative;
   min-width: 0;
@@ -326,10 +326,56 @@
   display: block;
 }
 /*
+ * The code surface comes from `--ata-code-surface`: pierre paints its dark theme's background on
+ * the host, and a declaration on the host wins over that (see `tool-code.css`), so the code and
+ * the actions' scrim below share one color. Flush code takes its owner's surface instead.
+ */
+.code-block diffs-container:not(.code-block-flush) {
+  --diffs-dark-bg: var(--ata-code-surface);
+}
+/*
+ * The hover actions (download, copy) stand on a scrim of the code surface that fades in from the
+ * left, so a line running under them fades out instead of crossing the icons. The scrim shows
+ * while an action does: on hover or focus, or while one shows its feedback (`data-feedback`).
+ * Only the buttons take the pointer, so the code under the fade stays selectable.
+ */
+.code-block-actions {
+  position: absolute;
+  top: 4px;
+  right: 0;
+  display: flex;
+  gap: 4px;
+  padding: 0 4px 0 16px;
+  isolation: isolate;
+  pointer-events: none;
+}
+.code-block-actions > * {
+  pointer-events: auto;
+}
+.code-block-actions::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(to right, transparent, var(--ata-code-surface) 16px);
+  opacity: 0;
+  /* In step with the buttons' own `transition-opacity`. */
+  transition: opacity 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+@media (hover: hover) {
+  .code-block:hover > .code-block-actions::before {
+    opacity: 1;
+  }
+}
+.code-block:focus-within > .code-block-actions::before,
+.code-block-actions:has([data-feedback])::before {
+  opacity: 1;
+}
+/*
  * In a message a long block scrolls inside itself instead of stretching the turn, both ways: the
  * code never scrolls sideways itself (`CODE_CSS` in `code-block.tsx`), so the bar sits at the
- * bottom of this capped box, not under the last line. A fence still streaming keeps the renderer's
- * own sideways scrolling.
+ * bottom of this capped box, not under the last line. A fence keeps this box from its first
+ * streamed line on (`StreamingCodeBlock`), so its close changes neither its height nor its scroll.
  */
 .markdown-code-block .code-block-file {
   max-height: 320px;
