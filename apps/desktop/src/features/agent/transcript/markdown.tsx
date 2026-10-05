@@ -3,9 +3,7 @@ import {
   isValidElement,
   cloneElement,
   useContext,
-  useEffect,
   useMemo,
-  useState,
   type ComponentProps,
   type JSX,
 } from 'react';
@@ -39,9 +37,9 @@ import { codeLanguage } from './code-language';
 import { CopyButton } from './copy-button';
 import { DiagramDownloadMenu } from './download-button';
 import { ExternalLink } from './external-link';
-import { hasMermaidFence, loadMermaidPlugin } from './mermaid-lazy';
 import { codeSource } from './selection-toolbar/code-sources';
 import { StreamingCodeBlock } from './streaming-code-block';
+import { useMarkdownPlugins } from './use-markdown-plugins';
 
 type MarkdownProps<T extends keyof JSX.IntrinsicElements> = ComponentProps<T> & ExtraProps;
 
@@ -265,23 +263,7 @@ export function StreamdownMarkdown({
   animated?: boolean | undefined;
 }) {
   const { t } = useTranslation('tasks');
-  const [mermaid, setMermaid] = useState<DiagramPlugin | null>(null);
-
-  // The engine chunk loads only for turns that actually contain a mermaid fence; until it
-  // resolves the fence renders as a code block, and a failed load keeps that degrade path.
-  useEffect(() => {
-    if (!hasMermaidFence(text)) return;
-    let live = true;
-    void loadMermaidPlugin().then((plugin) => {
-      if (live) setMermaid(plugin);
-    });
-    return () => {
-      live = false;
-    };
-  }, [text]);
-
-  // Streamdown takes no `plugins` until the mermaid engine has loaded.
-  const pluginProps = useMemo(() => (mermaid ? { plugins: { mermaid } } : {}), [mermaid]);
+  const { mermaid, pluginProps } = useMarkdownPlugins(text);
   const translations = useMemo<NonNullable<StreamdownProps['translations']>>(
     () => ({
       viewFullscreen: t('transcript.diagram.fullscreen'),
