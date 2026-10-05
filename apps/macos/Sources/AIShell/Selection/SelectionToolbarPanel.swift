@@ -9,9 +9,10 @@ import AppKit
 /// at its edge; that margin is transparent, so clicks there go to the app below.
 ///
 /// Ask Atd comes first, then a button per command while the capsule stays within
-/// ``SelectionToolbarLayout/maxWidth``, then More, a menu of the remaining commands. Command
-/// names are user data and stay untranslated; the rest of the copy is read in the current shell
-/// language each time the toolbar shows.
+/// ``SelectionToolbarLayout/maxWidth``, then More, which opens the remaining commands in
+/// ``SelectionToolbarMenu`` and closes it again. The menu goes whenever the toolbar does, and
+/// when a drag of the toolbar starts. Command names are user data and stay untranslated; the
+/// rest of the copy is read in the current shell language each time the toolbar shows.
 final class SelectionToolbarPanel: NSObject {
   var onAsk: (() -> Void)?
   var onCommand: ((String) -> Void)?
@@ -19,21 +20,36 @@ final class SelectionToolbarPanel: NSObject {
   /// The transparent margin around the capsule.
   static let inset: CGFloat = 24
 
-  private let window: ToolbarWindow
+  private let window = SelectionToolbarPanel.makeWindow()
   private var commands: [SelectionToolbarSettings.Command] = []
   /// The commands behind More, in order.
   private var overflow: [SelectionToolbarSettings.Command] = []
-  private let hover = SelectionToolbarHover()
+  /// Follows the pointer over the capsule and, while it is open, the menu.
+  private let hover: SelectionToolbarHover
+  private let menu: SelectionToolbarMenu
   /// The window frame that put the capsule beside the selection; a double-click returns it.
   private var placed: NSRect?
   /// The window's origin when the current drag began.
   private var dragOrigin: NSPoint?
 
   override init() {
-    window = ToolbarWindow(
+    let hover = SelectionToolbarHover()
+    self.hover = hover
+    menu = SelectionToolbarMenu(hover: hover)
+    super.init()
+    menu.onChoose = { [weak self] id in
+      self?.hide()
+      self?.onCommand?(id)
+    }
+  }
+
+  /// The toolbar's window, and its menu's: a borderless panel that draws nothing of its own,
+  /// stays up while Atd is inactive, and shows on every Space and beside full-screen apps
+  /// without joining the window cycle.
+  static func makeWindow() -> ToolbarWindow {
+    let window = ToolbarWindow(
       contentRect: .zero, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered,
       defer: true)
-    super.init()
     window.isOpaque = false
     window.backgroundColor = .clear
     window.hasShadow = false
@@ -44,6 +60,7 @@ final class SelectionToolbarPanel: NSObject {
     window.collectionBehavior = [
       .canJoinAllSpaces, .fullScreenAuxiliary, .transient, .ignoresCycle,
     ]
+    return window
   }
 
   var isVisible: Bool { window.isVisible }
@@ -55,6 +72,8 @@ final class SelectionToolbarPanel: NSObject {
   /// Builds the row and shows it beside `selection` (Quartz points from Accessibility), or at
   /// the pointer when the app gave no bounds.
   func show(selection quartz: CGRect?, pointer: CGPoint) {
+    // A menu still open belongs to the More button this replaces.
+    menu.close()
     let (bar, buttons, grip) = makeContent()
     let size = bar.fittingSize
     let screens = NSScreen.screens
@@ -87,13 +106,15 @@ final class SelectionToolbarPanel: NSObject {
   }
 
   /// The pointer moved over another app (the controller's dismissal monitor), which wakes
-  /// hover tracking if it paused.
+  /// hover tracking, for the capsule and the menu alike, if it paused.
   func pointerMoved() {
     hover.pointerMoved()
   }
 
+  /// Takes the toolbar and its menu off the screen.
   func hide() {
     hover.stop()
+    menu.close()
     placed = nil
     dragOrigin = nil
     guard window.isVisible else { return }
@@ -147,10 +168,12 @@ final class SelectionToolbarPanel: NSObject {
 
   /// The grip or the capsule's surface moves the toolbar, like the capture toolbar: it stays
   /// where it is dropped, inside the work area of the display under it, until it hides; a
-  /// double-click puts it back beside the selection.
+  /// double-click puts it back beside the selection. A press there closes the menu, which would
+  /// otherwise be left behind.
   private func drag(_ drag: AnnotationGlassBar.Drag) {
     switch drag {
     case .began:
+      menu.close()
       dragOrigin = window.frame.origin
     case .moved(let travel):
       guard let dragOrigin else { return }
@@ -194,24 +217,14 @@ final class SelectionToolbarPanel: NSObject {
     onCommand?(id)
   }
 
+  /// Opens the menu under (or over) the capsule, aligned with More, or closes it if it is open.
   @objc private func moreClicked(_ sender: NSButton) {
-    let menu = NSMenu()
-    menu.autoenablesItems = false
-    for command in overflow {
-      let item = NSMenuItem(
-        title: command.name, action: #selector(menuCommand), keyEquivalent: "")
-      item.target = self
-      item.representedObject = command.id
-      menu.addItem(item)
-    }
-    menu.popUp(
-      positioning: nil, at: NSPoint(x: 0, y: sender.bounds.height + 4), in: sender)
-  }
-
-  @objc private func menuCommand(_ item: NSMenuItem) {
-    guard let id = item.representedObject as? String else { return }
-    hide()
-    onCommand?(id)
+    guard !menu.isOpen else { return menu.close() }
+    let button = window.convertToScreen(sender.convert(sender.bounds, to: nil))
+    let capsule = window.frame.insetBy(dx: Self.inset, dy: Self.inset)
+    menu.open(
+      overflow,
+      from: NSRect(x: button.minX, y: capsule.minY, width: button.width, height: capsule.height))
   }
 }
 
