@@ -40,7 +40,6 @@ export interface AgentPermissionsWire {
 
 /** One catalog row: the agent, its enablement, and the permissions later runs use. */
 export interface AtdAgentCatalogWire extends Omit<AtdAgentWire, 'tools'> {
-  system: boolean;
   /** The plugin that contributes the agent, computed by the service (`user` for Personal). */
   pluginId: string;
   /** Agents of installed plugins cannot be edited; their permissions can still be overridden. */
@@ -63,9 +62,9 @@ export interface AtdAgentDiagnosticWire {
 }
 
 /**
- * Lists the subagent catalog: the service's system agents (`system: true`, read-only), then the
- * markdown specialists from ~/.atd/agents, each with whether later runs may use it and with what
- * permissions, and the ~/.atd/agents files that did not load.
+ * Lists the subagent catalog: the markdown specialists from ~/.atd/agents, then installed plugins'
+ * subagents (read-only), each with whether later runs may use it and with what permissions, and
+ * the ~/.atd/agents files that did not load.
  */
 export function listAtdAgents(
   options: AgentClientOptions,
@@ -128,7 +127,7 @@ export function putAtdAgent(
   );
 }
 
-/** Deletes one markdown specialist from ~/.atd/agents; system and plugin agents are refused. */
+/** Deletes one markdown specialist from ~/.atd/agents; plugin agents are refused. */
 export function deleteAtdAgent(
   options: AgentClientOptions,
   name: string,

@@ -31,7 +31,7 @@ import { captureRunSkills, skillChars, type RunSkills } from './skills/run-skill
 import { takeTaskStaging } from './skills/staging.js';
 import { freezeSkillCatalog, type RunSkillCatalog } from './skills/skill-catalog.js';
 import { freezeRunSkills, loadSkillCatalog, releaseRun } from './skills/versions.js';
-import { SERVICE_RUNTIME_AGENTS, withPermissions, type RuntimeAgent } from './subagents/agents.js';
+import type { RuntimeAgent } from './subagents/agents.js';
 import { readServiceId } from './storage.js';
 import type { RunnerContext } from './task-runner.js';
 import { CONTEXT_BUDGET, runInputSize } from './tasks/run-budget.js';
@@ -52,8 +52,8 @@ export interface FrozenSelections {
   /** The memory the run's model is told about (memory/run-memory.ts); empty with memory off. */
   memory: RunMemory;
   /**
-   * The runtime agents the run's session registers: enabled system agents, then every catalog
-   * subagent the run registers, referenced or not (atd-agents/run-agents.ts).
+   * The runtime agents the run's session registers: every catalog subagent the run registers,
+   * referenced or not (atd-agents/run-agents.ts); none when the catalog has none enabled.
    */
   agents: RuntimeAgent[];
 }
@@ -98,10 +98,7 @@ export async function freezeRunSelections(
     memoryChars: runMemoryChars(memory),
     agents: catalogAgents,
   });
-  const systemAgents = SERVICE_RUNTIME_AGENTS.filter(
-    (agent) => !disabledAgents.has(agent.name),
-  ).map((agent) => withPermissions(agent, agentPermissions.get(agent.name)));
-  const agents = [...systemAgents, ...catalogAgents.registered.map(({ agent }) => agent)];
+  const agents = catalogAgents.registered.map(({ agent }) => agent);
   return { references, skills, catalog, memory, agents };
 }
 

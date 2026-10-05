@@ -127,7 +127,6 @@ export function pluginKindRows(
         ? { ...row, ...ref(item), enabled: item.itemEnabled }
         : {
             name: item.name,
-            system: false,
             description: item.description,
             permissions: inherit,
             customized: false,

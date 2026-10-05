@@ -10,19 +10,11 @@ import { SUBAGENT_TOOLS, SubagentToolSchema } from './subagent-permissions.js';
  * (agent-service `subagents/tool-contract.ts`) declares the ones a parent may use.
  */
 
-/** Managed runtime agents; service user profile owns them. */
-export const SUBAGENT_RUNTIME_AGENTS = [
-  'service.worker',
-  'service.reviewer',
-  'service.scout',
-] as const;
-export type SubagentRuntimeAgent = (typeof SUBAGENT_RUNTIME_AGENTS)[number];
-
 /**
  * A catalog subagent a run can reference by name: a user agent (`~/.atd/agents`, Settings) keeps
  * the identifier alphabet, an agent an installed plugin contributes is `<plugin>:<agent>`
- * (plugin-kit's qualified name). System agents (`service.worker`) are named outside both and are
- * never referenced.
+ * (plugin-kit's qualified name). Task agents (`task.<name>`) live in their task and are never
+ * referenced.
  */
 export const SubagentNameSchema = Type.Union([Identifier, QualifiedNameSchema]);
 

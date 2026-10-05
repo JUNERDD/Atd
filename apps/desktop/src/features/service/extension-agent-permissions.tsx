@@ -130,7 +130,7 @@ function AgentPermissionsForm({
     if (pending) return;
     void onSave(permissions).then((ok) => {
       if (!ok) return;
-      // No agent name: toasts keep one sentence, and names like service.reviewer hold a dot.
+      // No agent name: toasts keep one sentence, and a plugin agent's name may hold a dot.
       showToast({ kind: 'info', text: t('extensions.agentPermissions.saved') });
       onClose();
     });

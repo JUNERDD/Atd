@@ -37,5 +37,4 @@ Rules:
 
 - Only write under `~/.atd/agents`. Refuse any other path.
 - Do not call role APIs or write `roles.json`.
-- Do not create `service.worker`, `service.reviewer`, or `service.scout` files; those stay code-registered.
 - Prefer the write tool for the single markdown file.

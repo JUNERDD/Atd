@@ -62,7 +62,7 @@ export interface RunBinding {
   tools: string[];
   /** MCP proxies bound from this run's frozen selection and the current catalog. */
   mcp: SessionMcpPrep;
-  /** The runtime agents the session registers: enabled service agents and catalog subagents. */
+  /** The runtime agents the session registers: its enabled catalog subagents, possibly none. */
   agents: RuntimeAgent[];
 }
 

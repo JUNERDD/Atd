@@ -50,8 +50,6 @@ export interface ExtensionRoleRow {
 
 export interface ExtensionAgentRow extends ExtensionPluginRef {
   name: string;
-  /** Registered by the service for every session; read-only. */
-  system: boolean;
   description: string;
   /**
    * What later runs give it: its own tools (null inherits the task's) and approval (null keeps
@@ -220,7 +218,6 @@ export function asAgentRow(value: unknown): ExtensionAgentRow | null {
   const model = readString(value, 'model');
   return {
     name,
-    system: readFlag(value, 'system'),
     description: readString(value, 'description'),
     permissions,
     customized: readFlag(value, 'customized'),
