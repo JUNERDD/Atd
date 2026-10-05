@@ -189,15 +189,31 @@
 .conversation-messages > :first-child {
   margin-top: auto;
 }
-/* A subagent's drill-in header: pinned above its transcript, horizontally aligned with the
- * messages. The full task scrolls within a short box so short windows keep the transcript. */
+/* A layer's header (a subagent's drill-in, a side chat): one row pinned above the view, horizontally
+ * aligned with the messages. What the view is opens from its title (`.child-header-details`), so
+ * the row is all the height the header takes at any width. */
 .child-header {
   display: flex;
   flex-shrink: 0;
-  flex-direction: column;
-  gap: 6px;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
   padding: 8px 16px 10px;
   border-bottom: 1px solid var(--border);
+}
+/* The breadcrumb gives way from the parent: the view's own name (with its mark and chevron) keeps
+ * its width, and the parent's title truncates first, down to its ellipsis and a character or two.
+ * The 3.75rem left for it is the separator with its margins and gaps (38px) and that remainder;
+ * the panel header above names the parent in full, and the crumb's tooltip does too. */
+.child-header-crumbs > [aria-current='page'] {
+  flex: none;
+  max-width: calc(100% - 3.75rem);
+}
+/* What a layer's title discloses: a reading width, and a height capped under the space below the
+ * title, so a long text scrolls inside the popover rather than covering the whole panel. */
+.child-header-details {
+  width: 22rem;
+  max-height: min(30rem, var(--radix-popover-content-available-height));
 }
 .transcript-turn {
   display: flex;

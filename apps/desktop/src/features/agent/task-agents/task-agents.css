@@ -1,7 +1,7 @@
 /*
- * Task agents (task-agents/): a definition's facts and role text, in a define row's card and in a
- * drill-in header, and the save dialog's resolved subagent. Hierarchy comes from weight and the
- * foreground/muted pair, like the other tool cards' content.
+ * Task agents (task-agents/): a definition's facts and role text, in a define row's card and in the
+ * popover a drill-in title opens, and the save dialog's resolved subagent. Hierarchy comes from
+ * weight and the foreground/muted pair, like the other tool cards' content.
  */
 
 /* Tools and effort as one wrapping line of label/value pairs. */
@@ -27,10 +27,7 @@
   color: var(--foreground);
 }
 
-/* Role text a reader asked for: it scrolls within a short box, so short windows keep the view. */
-.task-agent-instructions {
-  max-height: min(10rem, 25vh);
-}
+/* Role text a reader asked for, in a define row's card. */
 .task-agent-instructions-text {
   margin: 0;
   font-size: 12px;
@@ -67,30 +64,36 @@
   color: var(--muted-foreground);
 }
 
-/* The drill-in header's role section, under the way back and the breadcrumb. */
-.task-agent-role {
+/*
+ * A task agent's details in its drill-in popover: the description and the role text read as body
+ * text (the popover's 14px foreground), the facts and the role text's label as quieter 12px
+ * metadata between them; 12px between blocks, 4px from a label to its text.
+ */
+.task-agent-details {
   display: flex;
   min-width: 0;
   flex-direction: column;
-  gap: 2px;
+  gap: 12px;
 }
-.task-agent-role-summary {
-  display: flex;
-  min-width: 0;
-  align-items: baseline;
-  gap: 8px;
-}
-.task-agent-role-summary > p {
-  display: -webkit-box;
-  min-width: 0;
+/* Only the running text breaks anywhere: the facts keep their labels whole (their values break). */
+.task-agent-details p {
   margin: 0;
-  overflow: hidden;
   overflow-wrap: anywhere;
+}
+.task-agent-details section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.task-agent-details h3 {
+  margin: 0;
   font-size: 12px;
+  font-weight: 500;
   line-height: 18px;
   color: var(--muted-foreground);
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+}
+.task-agent-details section > p {
+  white-space: pre-wrap;
 }
 
 /*

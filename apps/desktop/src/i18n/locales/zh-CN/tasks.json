@@ -371,7 +371,8 @@
       "tools": "工具",
       "noTools": "无",
       "showInstructions": "显示角色说明",
-      "hideInstructions": "隐藏角色说明"
+      "hideInstructions": "隐藏角色说明",
+      "instructions": "角色说明"
     },
     "save": {
       "action": "保存为我的子智能体…",

@@ -5,7 +5,7 @@ import { ScrollArea } from '@atd/ui/components/scroll-area';
 import type { PermissionRequest } from '../../../client/agent/permission-schema';
 import type { Artifact, TaskRun } from '../../../client/agent/task-schema';
 import { TaskAgentMenu } from '../task-agents/task-agent-menu';
-import { TaskAgentRole } from '../task-agents/task-agent-role';
+import { TaskAgentDetails, TemporaryBadge } from '../task-agents/task-agent-role';
 import { agentDisplayName } from '../task-agents/task-agents';
 import { adaptTranscript } from './adapter';
 import { LayerHeader } from './layer-header';
@@ -35,10 +35,10 @@ const NO_RUNS: TaskRun[] = [];
  * from the task-level requests because the child's tool calls raise them on the parent task;
  * the transcript only labels them, and the parent's composer (hidden while this view is open)
  * answers them. Its header names where it sits ("task › agent") with the way back; a task agent's
- * child adds the agent's role under it (from the parent transcript's define row) and the More
- * menu that saves the agent as one of the user's subagents. Text selected in an answer offers the
- * same actions as in the parent transcript; `onQuote` lands in that composer, so the caller closes
- * this view to show it.
+ * child marks the agent Temporary, and with the definition from the parent transcript's define
+ * row, its name opens the agent's role and the More menu saves the agent as one of the user's
+ * subagents. Text selected in an answer offers the same actions as in the parent transcript;
+ * `onQuote` lands in that composer, so the caller closes this view to show it.
  */
 export function ChildTranscriptView({
   taskId,
@@ -97,10 +97,10 @@ export function ChildTranscriptView({
         backLabel={t('subagent.back')}
         breadcrumbLabel={t('subagent.breadcrumb')}
         onBack={onBack}
+        mark={taskAgent && <TemporaryBadge />}
+        details={definition && <TaskAgentDetails definition={definition} />}
         actions={definition && <TaskAgentMenu definition={definition} />}
-      >
-        {taskAgent && <TaskAgentRole definition={definition} />}
-      </LayerHeader>
+      />
       <ScrollArea
         viewportRef={viewportRef}
         className="min-h-0 flex-1"

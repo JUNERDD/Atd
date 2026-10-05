@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next';
 import type { TaskAgentDefinition } from '@atd/agent-contracts';
 import { Badge } from '@atd/ui/components/badge';
 import { Button } from '@atd/ui/components/button';
-import { ScrollArea } from '@atd/ui/components/scroll-area';
 import { cn } from '@atd/ui/lib/utils';
 import './task-agents.css';
 
@@ -40,22 +39,14 @@ export function TaskAgentFacts({ definition }: { definition: TaskAgentDefinition
 }
 
 /**
- * A task agent's role text behind a link that shows it below (as memory suggestions show theirs).
- * In a fixed header it scrolls within a short box (`bounded`); in a card that already scrolls it
- * takes its full height, so the reader never scrolls twice. The region stays in the page while
- * hidden, so the link's `aria-controls` always names it.
+ * A task agent's role text behind a link that shows it below (as memory suggestions show theirs),
+ * at its full height in a card that already scrolls, so the reader never scrolls twice. The region
+ * stays in the page while hidden, so the link's `aria-controls` always names it.
  */
-export function TaskAgentInstructions({
-  text,
-  bounded = false,
-}: {
-  text: string;
-  bounded?: boolean;
-}) {
+export function TaskAgentInstructions({ text }: { text: string }) {
   const { t } = useTranslation('tasks');
   const regionId = useId();
   const [open, setOpen] = useState(false);
-  const content = <p className="task-agent-instructions-text">{text}</p>;
   return (
     <>
       <Button
@@ -70,36 +61,28 @@ export function TaskAgentInstructions({
         {open ? t('subagent.role.hideInstructions') : t('subagent.role.showInstructions')}
       </Button>
       <div id={regionId} hidden={!open}>
-        {open && bounded ? (
-          <ScrollArea scrollShadow className="task-agent-instructions">
-            {content}
-          </ScrollArea>
-        ) : (
-          open && content
-        )}
+        {open && <p className="task-agent-instructions-text">{text}</p>}
       </div>
     </>
   );
 }
 
 /**
- * A task agent's role under a drill-in view's breadcrumb: the Temporary mark beside its
- * description, then its tools and effort, and its role text on request. A child whose definition
- * the parent transcript no longer carries shows the mark alone.
+ * What a task agent is, in the popover its drill-in title opens (`LayerHeader` details): what it
+ * does first, then its tools and effort, then its role text in full, read as one body under the
+ * popover's heading.
  */
-export function TaskAgentRole({ definition }: { definition: TaskAgentDefinition | undefined }) {
+export function TaskAgentDetails({ definition }: { definition: TaskAgentDefinition }) {
+  const { t } = useTranslation('tasks');
+  const instructionsId = useId();
   return (
-    <div className="task-agent-role">
-      <div className="task-agent-role-summary">
-        <TemporaryBadge />
-        {definition && <p title={definition.description}>{definition.description}</p>}
-      </div>
-      {definition && (
-        <>
-          <TaskAgentFacts definition={definition} />
-          <TaskAgentInstructions text={definition.instructions} bounded />
-        </>
-      )}
+    <div className="task-agent-details">
+      <p>{definition.description}</p>
+      <TaskAgentFacts definition={definition} />
+      <section aria-labelledby={instructionsId}>
+        <h3 id={instructionsId}>{t('subagent.role.instructions')}</h3>
+        <p>{definition.instructions}</p>
+      </section>
     </div>
   );
 }
