@@ -6,8 +6,9 @@ import { atomicWrite } from '../config.js';
 /**
  * What Settings decided about catalog subagents for later runs, kept in the service data dir
  * beside the skill harness (skills/harness.ts): which are turned off, and which carry a
- * permission override (atd-agents/permissions.ts). Names are catalog names: `service.*` for the
- * system agents and the bare file name for `~/.atd/agents` specialists. Agent files are never
+ * permission override (atd-agents/permissions.ts). Names are catalog names: the bare file name
+ * for `~/.atd/agents` specialists and `<plugin>:<item>` for a plugin's subagents. An entry for a
+ * name the catalog no longer lists stays in the file and matches no agent. Agent files are never
  * written. Version 1 files (enablement only) read as version 2 without overrides.
  */
 interface AgentHarness {

@@ -2,8 +2,8 @@ import { THINKING_LEVELS } from './task-agent-definition.js';
 
 /**
  * The model and thinking a child must launch with. Children run on their parent run's model at
- * the thinking level the session registered for their agent: `off` for the service and catalog
- * agents, the recorded level for a task agent. pi-subagents also applies `subagents` settings
+ * the thinking level the session registered for their agent: `off` for the catalog agents, the
+ * recorded level for a task agent. pi-subagents also applies `subagents` settings
  * (`defaultModel`, `defaultThinking` and each agent's `agentOverrides` model, thinking and fast
  * mode) from a `.pi/settings.json` it finds in the parent's cwd or a folder above it, without a
  * trust check. That cwd is the task folder, which the parent and its children can write, so the

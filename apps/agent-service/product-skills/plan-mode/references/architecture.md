@@ -49,7 +49,7 @@ Allowed before approval:
 - Search code, symbols, docs, and diagnostics in the task folder.
 - Run side-effect-free shell commands through `bash`, such as `git status`, `git diff`, `git log`, or `date +%F`. Each goes through the shell allowlist or a user confirmation.
 - Look up documentation with `web_search` and `fetch_content`.
-- Delegate bounded read-only discovery to `service.scout` through the `subagent` tool when it is available.
+- Delegate bounded read-only discovery through the `subagent` tool when it is available, to a task agent you define with only read-only tools (see Research Strategy).
 - Ask structured questions with `ask_user`.
 - Use the grill-me skill (loaded alongside this one) for a requested interview or material user decisions that benefit from one.
 - Create or update the required Markdown plan file with `write` or `edit`.
@@ -83,7 +83,12 @@ Research should make the plan accurate, not exhaustive for its own sake.
 4. Search by behavior and naming variants before proposing a new abstraction.
 5. Stop when the next decision is clear enough to plan; ask the user when the code cannot answer it.
 
-Use `service.scout` children when the folder is large and the investigations are independent. Give each child:
+Use children when the folder is large and the investigations are independent. Define one read-only task agent for them with `subagent { action: "define" }`:
+
+- Tools: `read`, `grep`, `find` and `ls`. Add `web_search` and `fetch_content` only when the investigation needs documentation from the web. Never give it `write`, `edit`, `bash` or `command`: the children run before approval, under the same mode boundary as you.
+- Instructions: investigate only the objective in its task, change nothing, and return findings with their paths, symbols or source URLs.
+
+Launch it as `task.<name>` in a later message, one child per independent investigation in one `tasks` call. Give each child:
 
 - Objective.
 - Read-only scope.

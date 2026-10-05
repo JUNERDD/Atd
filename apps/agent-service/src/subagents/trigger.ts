@@ -146,9 +146,13 @@ export async function installManagedLaunchTrigger(): Promise<{ installed: boolea
     async create(launch: ChildLaunchLike): Promise<ChildSessionLike> {
       const taskId = taskIdFromCwd(launch.cwd);
       const parentSessionId = launch.runtime?.parentSessionId;
-      const agent = launch.runtime?.agent ?? 'service.worker';
       let tracked: { parentSessionId: string; key: string; record: ChildRecord } | null = null;
       if (parentSessionId) {
+        // The child's identity decides its approvals, its model check and its `app-child`
+        // record. pi-subagents names the agent on every launch it builds, so a parent-bound
+        // launch without one comes from a changed upstream contract; no identity is invented.
+        const agent = launch.runtime?.agent;
+        if (!agent) throw new Error('The subagent child names no agent; refusing to start.');
         // Admitted before `create`: pi starts the child's bridge inside it, at the child's
         // session_start, and the bridge finds its identity by this session file.
         if (launch.storage.kind !== 'file')

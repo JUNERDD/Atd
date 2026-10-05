@@ -99,10 +99,10 @@ async function preload(): Promise<Preloaded> {
 
 /**
  * What a parent takes from its session's run binding, both fixed per session: the runtime agents
- * the session registers when it starts (the service agents enabled at freeze and every enabled
- * catalog agent, Personal and plugin), and the MCP tools its runs bound, which children that keep
- * the task's tools inherit. The task agents the parent defines during the task register beside
- * them (task-agents.ts).
+ * the session registers when it starts (every catalog agent enabled at freeze, Personal and
+ * plugin; often none), and the MCP tools its runs bound, which children that keep the task's
+ * tools inherit. The task agents the parent defines during the task register beside them
+ * (task-agents.ts).
  */
 type ParentBinding = Pick<RunBinding, 'agents' | 'mcp'>;
 
@@ -239,6 +239,8 @@ function registerParentSession(
   );
   // Sync registrations use the frozen run snapshot plus the web tools every parent keeps;
   // enrich.ts narrows async and fails closed to fewer tools (never wider) when unavailable.
+  // The agent list is always present: pi-subagents admits every agent only when it is absent
+  // (`isAgentAllowedByCapabilityCeiling`), so a session without agents admits none.
   const parentTools = [...run.snapshot.tools];
   const childTools = [...parentTools, ...CHILD_WEB_TOOLS];
   const ceiling = preloaded.registerCeiling({

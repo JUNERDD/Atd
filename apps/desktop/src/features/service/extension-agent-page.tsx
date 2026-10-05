@@ -20,11 +20,11 @@ export type { AgentInput } from './extension-agent-draft';
 /**
  * Subagent sub-page. `name` null is the add page (a Personal agent); a name is that subagent's
  * details: an editable form for a Personal markdown agent (`~/.atd/agents`, saved by overwriting
- * its file) and read-only facts for a system agent or an installed plugin's, all with its
- * permissions for later runs, which a plugin's agent may override too. A plugin's agent offers
- * Duplicate to Personal to change the rest; a Personal agent offers Delete, which removes its file
- * after a confirmation. A name not in `rows` shows as loading while the catalog is still empty (it
- * always lists the system agents once loaded) and as missing otherwise.
+ * its file) and read-only facts for an installed plugin's, all with its permissions for later
+ * runs, which a plugin's agent may override too. A plugin's agent offers Duplicate to Personal to
+ * change the rest; a Personal agent offers Delete, which removes its file after a confirmation. A
+ * name not in `rows` shows as loading until the catalog arrives (`rows` null) and as missing once
+ * it has, since a loaded catalog may be empty.
  * The root leaves the page after a successful save, so it stays on a failure for repair.
  */
 export function AgentPage({
@@ -42,7 +42,8 @@ export function AgentPage({
   onDelete,
 }: {
   name: string | null;
-  rows: readonly ExtensionAgentRow[];
+  /** The subagent catalog; null until its first read arrives. */
+  rows: readonly ExtensionAgentRow[] | null;
   /** The contributing plugin, named as a read-only agent's source. */
   pluginName: string;
   backLabel: string;
@@ -100,7 +101,7 @@ export function AgentPage({
         <AgentForm
           formId={formId}
           initial={EMPTY_AGENT_DRAFT}
-          takenNames={rows.map((row) => row.name)}
+          takenNames={(rows ?? []).map((row) => row.name)}
           customized={false}
           disabled={locked}
           onSubmit={save}
@@ -109,13 +110,13 @@ export function AgentPage({
     );
   }
 
-  const row = rows.find((entry) => entry.name === name);
+  const row = rows?.find((entry) => entry.name === name);
   if (!row)
     return (
       <ExtensionPage label={name} title={name} backLabel={backLabel}>
         <ExtensionDetailStatus
-          text={rows.length ? t('extensions.detailMissing') : t('extensions.detailLoading')}
-          error={rows.length > 0}
+          text={rows ? t('extensions.detailMissing') : t('extensions.detailLoading')}
+          error={rows !== null}
         />
       </ExtensionPage>
     );
@@ -138,24 +139,22 @@ export function AgentPage({
     />
   );
 
-  if (row.system || row.readOnly)
+  if (row.readOnly)
     return (
       <ExtensionPage
         {...page}
         actions={
-          row.readOnly && !row.system ? (
-            <Button type="button" variant="glass" disabled={locked} onClick={onDuplicate}>
-              <Copy data-icon="inline-start" />
-              {t('extensions.plugins.item.duplicate')}
-            </Button>
-          ) : null
+          <Button type="button" variant="glass" disabled={locked} onClick={onDuplicate}>
+            <Copy data-icon="inline-start" />
+            {t('extensions.plugins.item.duplicate')}
+          </Button>
         }
       >
         <ExtensionDetailFields
           fields={[
             {
               label: t('extensions.detailSource'),
-              value: row.system ? t('extensions.sourceSystem') : pluginName,
+              value: pluginName,
             },
             {
               label: t('extensions.detailModel'),

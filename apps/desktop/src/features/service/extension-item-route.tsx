@@ -47,7 +47,8 @@ export function ExtensionItemRoute({
     route.level === 'item'
       ? t('extensions.plugins.page.backToPlugin', { name: pluginName })
       : t('extensions.plugins.page.back');
-  const agentRows = agents.agents?.agents ?? [];
+  // Null until the first read: a loaded subagent catalog may be empty.
+  const agentRows = agents.agents?.agents ?? null;
   const mcpRows = mcp.mcp?.servers ?? [];
 
   /** Leaves the form once its save succeeds; a failure keeps the draft for repair. */

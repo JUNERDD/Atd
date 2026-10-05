@@ -24,8 +24,8 @@ import { agentEntry, appendAgentEntries, recordedAgents } from './task-agent-rec
 
 /**
  * The agents one parent session may delegate to and the capability ceiling pi-subagents enforces
- * on its children. The session's own runtime agents (the enabled service agents and catalog
- * subagents) are fixed when it starts; its task agents are the ones the parent defines with
+ * on its children. The session's own runtime agents (its enabled catalog subagents, often none)
+ * are fixed when it starts; its task agents are the ones the parent defines with
  * `subagent { action: "define" }`, for the rest of its task. This module is the one owner of
  * both and of the ceiling: it registers task agents on the session's `pi`, records each accepted
  * definition in the parent session (`app-agent`, task-agent-records.ts), replays the recorded
@@ -97,8 +97,10 @@ function summary(definition: TaskAgentDefinition): string {
   return `${tools}; thinking ${definition.thinking}`;
 }
 
-/** Agent names for a refusal, bounded; `list` shows every one. */
+/** Agent names for a refusal, bounded (`list` shows every one), or how to get one without any. */
 function namesText(names: readonly string[]): string {
+  if (!names.length)
+    return 'none yet; define a task agent with { action: "define" }, then launch it in a later message';
   const shown = names.slice(0, REFUSAL_MAX_NAMES).join(', ');
   const more = names.length - REFUSAL_MAX_NAMES;
   return more > 0 ? `${shown} and ${more} more ({ action: "list" } shows them)` : shown;

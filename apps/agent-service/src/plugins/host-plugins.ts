@@ -10,7 +10,6 @@ import { readDisabledSkillNames } from '../skills/harness.js';
 import { skillProfilePaths } from '../skills/profile.js';
 import { discoverUserAgentSkills } from '../skills/user-agents.js';
 import type { Logger } from '../logging.js';
-import { SERVICE_RUNTIME_AGENTS } from '../subagents/agents.js';
 
 /** The plugins the service synthesizes from its own stores. Installed ids never contain `:`. */
 export const CORE_PLUGIN = 'builtin:core';
@@ -102,22 +101,11 @@ export async function loadHostPlugins(
   const core: HostPlugin = {
     id: CORE_PLUGIN,
     name: 'System',
-    description: 'Skills and subagents that ship with the app.',
+    description: 'Skills that ship with the app.',
     toggleable: false,
-    items: [
-      ...atd.skills
-        .filter((skill) => isBuiltinSkill(skill.name))
-        .map((skill) => skillItem(CORE_PLUGIN, skill)),
-      ...SERVICE_RUNTIME_AGENTS.map((agent) =>
-        add(
-          CORE_PLUGIN,
-          'agent',
-          agent.name,
-          !harness.disabled.has(agent.name),
-          agent.definition.description,
-        ),
-      ),
-    ],
+    items: atd.skills
+      .filter((skill) => isBuiltinSkill(skill.name))
+      .map((skill) => skillItem(CORE_PLUGIN, skill)),
   };
   const user: HostPlugin = {
     id: USER_PLUGIN,

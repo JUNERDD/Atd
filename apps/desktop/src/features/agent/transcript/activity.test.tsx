@@ -137,7 +137,7 @@ describe('activity folding', () => {
       id: 'tool:agent-1',
       callId: 'agent-1',
       name: 'subagent',
-      args: { agent: 'service.worker', task: 'Say hello' },
+      args: { agent: 'task.greeter', task: 'Say hello' },
     });
     const step: ViewBlock = {
       id: source.id,

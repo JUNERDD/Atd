@@ -624,7 +624,7 @@
       "host": {
         "core": {
           "name": "系统",
-          "description": "随应用提供的技能和子代理。"
+          "description": "随应用提供的技能。"
         },
         "personal": {
           "name": "个人",

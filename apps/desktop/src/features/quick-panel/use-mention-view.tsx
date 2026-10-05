@@ -143,14 +143,11 @@ export function useMentionView({
     })),
   };
 
-  // Only enabled `~/.atd/agents` specialists resolve as references. A disabled one would only be
-  // refused at send; a system agent (`service.*`) is already registered for every run, and its
-  // name is not a valid reference, so the send itself would be rejected.
+  // Only enabled catalog subagents resolve as references; a disabled one would only be refused
+  // at send.
   const catalog =
     agents.status === 'ready'
-      ? agents.rows.filter(
-          (row) => row.enabled && !row.system && accepts({ kind: 'agent', name: row.name }),
-        )
+      ? agents.rows.filter((row) => row.enabled && accepts({ kind: 'agent', name: row.name }))
       : [];
   const agentGroup: QuickGroup = {
     id: 'agents',

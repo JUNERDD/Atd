@@ -1,26 +1,16 @@
 import { createHash } from 'node:crypto';
-import {
-  WEB_FETCH_TOOL,
-  WEB_SEARCH_TOOL,
-  type SubagentApproval,
-  type SubagentPermissions,
-  type SubagentTool,
-} from '@atd/agent-contracts';
+import type { SubagentApproval, SubagentPermissions } from '@atd/agent-contracts';
 import type { AtdAgent } from '../atd-agents/catalog.js';
 import { CHILD_WEB_TOOLS } from './intersection.js';
 
 /**
- * T5 runtime agents. The service registers three foreground-only agents per
- * parent session; packaged agent names stay refused by the ceiling. The worker
- * omits tools so the service ceiling (parent ∩ role ∩ revocation) decides; the
- * reviewer and scout name read-only lists, which pi-subagents intersects with
- * that ceiling, so they never widen it. All pin context, async default, depth
- * and extension isolation. A Settings permission override (atd-agents/harness.ts)
- * replaces an agent's tools and approval from the next run (withPermissions).
- * Every run also registers every enabled catalog subagent, Personal
- * (`~/.atd/agents`, atdRuntimeAgent) and plugin (pluginRuntimeAgent), through
- * atd-agents/run-agents.ts, and a parent's task agents (task-agents.ts) register
- * during its task; all are pinned the same way (pinnedRuntimeDefinition).
+ * T5 runtime agents: the foreground-only agents a parent session may delegate to. Every run
+ * registers every enabled catalog subagent, Personal (`~/.atd/agents`, atdRuntimeAgent) and plugin
+ * (pluginRuntimeAgent), through atd-agents/run-agents.ts, and a parent's task agents
+ * (task-agents.ts) register during its task; a session without either registers none. All are
+ * pinned the same way (pinnedRuntimeDefinition), and a Settings permission override
+ * (atd-agents/harness.ts) replaces a catalog agent's tools and approval from the next run. The
+ * ceiling admits only the names a session registered, so packaged agents stay refused.
  */
 
 export interface RuntimeAgentDefinition {
@@ -90,78 +80,13 @@ export function pinnedRuntimeDefinition(fields: RuntimeAgentFields): RuntimeAgen
  * Namespace for `~/.atd/agents` specialists. pi-subagents refuses
  * runtime names that collide with its builtins (`reviewer`, `scout`, …),
  * and the ceiling must never admit a builtin, so atd agents never register
- * under their bare names; `atd.` also keeps them apart from `service.*`.
+ * under their bare names; `atd.` also keeps them apart from plugin and task agents.
  */
 const ATD_AGENT_PREFIX = 'atd.';
 /** Namespace for plugin subagents; see pluginRuntimeName. */
 const PLUGIN_AGENT_PREFIX = 'plugin.';
 /** pi-subagents' limit on runtime agent names. */
 const MAX_RUNTIME_NAME = 128;
-
-/**
- * Tools that inspect without mutating: the confined read and search tools the child bridge
- * registers (child-tools.ts). MCP proxies stay out because their servers may write.
- */
-const READ_ONLY_TOOLS: SubagentTool[] = ['read', 'grep', 'find', 'ls'];
-
-export const SERVICE_RUNTIME_AGENTS: RuntimeAgent[] = [
-  {
-    name: 'service.worker',
-    definition: pinnedRuntimeDefinition({
-      description: 'Bounded implementation child for one foreground task.',
-      systemPrompt:
-        'You are the service worker child. Implement only the assigned task with the available tools. Keep edits minimal and report what changed.',
-      thinking: 'off',
-    }),
-    approval: null,
-  },
-  {
-    name: 'service.reviewer',
-    definition: pinnedRuntimeDefinition({
-      description: 'Read-only review child returning findings with evidence.',
-      // The material may be inline: a reviewer told to expect files searched for them and
-      // reported nothing to review when the task carried the material itself.
-      systemPrompt:
-        'You are the service reviewer child. Review only the assigned material: the task text may carry it inline, name the files that hold it, or both. Return findings with evidence: file and line for files, a short quote for inline material. Do not mutate files.',
-      tools: READ_ONLY_TOOLS,
-      thinking: 'off',
-    }),
-    approval: null,
-  },
-  {
-    name: 'service.scout',
-    definition: pinnedRuntimeDefinition({
-      description:
-        'Read-only discovery child: maps code behavior or researches the web, returning sources.',
-      systemPrompt:
-        'You are the service scout child. Investigate only the requested question, in the task files or on the web, and return findings with their paths, symbols or source URLs and brief notes. Do not mutate files.',
-      tools: [...READ_ONLY_TOOLS, WEB_SEARCH_TOOL, WEB_FETCH_TOOL],
-      thinking: 'off',
-    }),
-    approval: null,
-  },
-];
-
-export function serviceAgentNames(): string[] {
-  return SERVICE_RUNTIME_AGENTS.map((agent) => agent.name);
-}
-
-/**
- * A system agent with its Settings override applied: the override's tools replace the
- * definition's (null inherits the ceiling) and its approval is kept beside the definition.
- */
-export function withPermissions(
-  agent: RuntimeAgent,
-  permissions: SubagentPermissions | undefined,
-): RuntimeAgent {
-  if (!permissions) return agent;
-  const { tools: _defaultTools, ...definition } = agent.definition;
-  return {
-    ...agent,
-    definition: permissions.tools ? { ...definition, tools: [...permissions.tools] } : definition,
-    approval: permissions.approval,
-  };
-}
 
 /** What a catalog specialist brings: its text, and its tool list (null lets the ceiling decide). */
 interface SpecialistSource {
@@ -174,7 +99,7 @@ interface SpecialistSource {
  * The runtime agent for a catalog specialist under `name`, with the service pins (fresh
  * context, foreground, depth 1, no extensions). Tools are the Settings override's, else the
  * source's; a list keeps the names within the run's child ceiling and the web tools
- * (subagents/intersection.ts), and no list lets the service ceiling decide, as for the worker.
+ * (subagents/intersection.ts), and no list lets the service ceiling decide.
  * A source `model` is never applied: the guard forbids per-call model overrides, and a
  * definition model would be one.
  */
@@ -219,7 +144,7 @@ export function atdRuntimeAgent(
 /**
  * The runtime name of a plugin subagent `<plugin>:<item>`: `plugin.<plugin>.<item>`. Item names
  * contain no `.`, so the last `.` separates the parts and no two plugin agents share a name;
- * `plugin.` keeps them apart from `atd.`, `service.` and pi-subagents' builtins. Past the runtime
+ * `plugin.` keeps them apart from `atd.`, `task.` and pi-subagents' builtins. Past the runtime
  * name limit it is `plugin.<hash>`, which has a single `.` and so cannot equal a long form.
  */
 export function pluginRuntimeName(plugin: string, item: string): string {

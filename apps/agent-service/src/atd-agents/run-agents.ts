@@ -15,7 +15,7 @@ import { listAtdAgents } from './catalog.js';
 
 /**
  * pi-subagents keeps at most 200 runtime agents per parent session; this leaves room for the
- * service agents and the agents a task defines for itself.
+ * agents a task defines for itself.
  */
 const MAX_CATALOG_AGENTS = 128;
 /** pi-subagents' bounds on a runtime agent's description and system prompt. */
