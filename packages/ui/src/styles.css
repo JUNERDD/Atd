@@ -11,7 +11,7 @@
 :root {
   color-scheme: dark;
   /* One renderer-owned surface across platforms; native blur remains visible through the tint. */
-  --ata-surface-panel: rgb(12 12 12 / 80%);
+  --ata-surface-panel: rgb(24 24 24 / 80%);
   --ata-backdrop-blur: 20px;
   /* Overlay glass (`surface-glass`). A surface may tune `--ata-glass-fill` (default: the popover
      fill), `--ata-glass-blur` (default: the shared backdrop blur) and `--ata-glass-shadow` for its
@@ -36,7 +36,7 @@
   --ata-scroll-thumb: var(--border);
   --ata-glass-scroll-thumb: color-mix(in srgb, var(--foreground) 28%, transparent);
   /* The settings drawer's fallback fill, where its subdued system glass is off. */
-  --ata-material-settings-content: rgb(12 12 12 / 10%);
+  --ata-material-settings-content: rgb(24 24 24 / 10%);
   --ata-surface-settings-content: var(--ata-material-settings-content);
   /* The settings sidebar card: a faint lift over the window surface, with a quiet hairline. */
   --ata-surface-settings-sidebar: rgb(255 255 255 / 3%);
@@ -149,11 +149,11 @@
    `prefers-reduced-transparency`; the media query covers engines that do. */
 @media (prefers-reduced-transparency: reduce) {
   :root {
-    --ata-surface-panel: rgb(12 12 12);
+    --ata-surface-panel: rgb(24 24 24);
   }
 }
 :root[data-reduced-transparency='true'] {
-  --ata-surface-panel: rgb(12 12 12);
+  --ata-surface-panel: rgb(24 24 24);
 }
 
 @theme inline {
