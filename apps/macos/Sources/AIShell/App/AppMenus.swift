@@ -7,8 +7,8 @@ struct AppMenuActions {
   var hidePanel: () -> Void
   var openSettings: () -> Void
   var openOnboarding: () -> Void
-  /// Debug builds only: runs the first launch's welcome guide path again; nil in Release.
-  var replayOnboarding: (() -> Void)?
+  /// Runs the first launch's welcome guide path again.
+  var replayOnboarding: () -> Void
   /// Nil where the build does not update (Debug).
   var checkForUpdates: (() -> Void)?
   var restartService: () async throws -> Void
@@ -37,10 +37,8 @@ enum AppMenus {
       ActionMenuItem(strings.text(.menuHidePanel), actions.hidePanel),
       ActionMenuItem(strings.text(.menuSettings), key: ",", actions.openSettings),
       ActionMenuItem(strings.text(.menuOnboarding), actions.openOnboarding),
+      ActionMenuItem(strings.text(.menuOnboardingReplay), actions.replayOnboarding),
     ]
-    if let replayOnboarding = actions.replayOnboarding {
-      items.append(ActionMenuItem(strings.text(.menuOnboardingReplay), replayOnboarding))
-    }
     if let checkForUpdates = actions.checkForUpdates {
       items.append(ActionMenuItem(strings.text(.menuCheckForUpdates), checkForUpdates))
     }
@@ -202,7 +200,7 @@ extension AppMenuActions {
   /// Actions of a controller that is gone; the menu still builds.
   static var inert: AppMenuActions {
     AppMenuActions(
-      showPanel: {}, hidePanel: {}, openSettings: {}, openOnboarding: {}, replayOnboarding: nil,
+      showPanel: {}, hidePanel: {}, openSettings: {}, openOnboarding: {}, replayOnboarding: {},
       checkForUpdates: nil,
       restartService: {}, showServiceLogs: {}, editCommand: { _ in }, developmentHint: { false },
       selectionListening: { nil }, setSelectionListening: { _ in })
