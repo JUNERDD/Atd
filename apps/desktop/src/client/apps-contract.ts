@@ -7,6 +7,17 @@ import type {
 } from '@atd/agent-contracts';
 
 /**
+ * One app's desktop pin as the shell shows it: the widget and family it draws. A null `widgetId`
+ * is the app's icon tile, in `family` (null: small, icon and name; `systemMedium`: with the
+ * description). An app has at most one pin.
+ */
+export interface DesktopPin {
+  appId: string;
+  widgetId: string | null;
+  family: WidgetFamily | null;
+}
+
+/**
  * The user apps the agent built (`/v1/apps` through the relay) and their windows (the shell's
  * `userApp.*` calls). Every write answers once the service did; `onChange` then reports the
  * `apps` invalidation every client receives, so lists reload from there.
@@ -38,6 +49,25 @@ export interface AppsBridge {
    * snapshot, as a `data:` URL. Rejects when the shell has no snapshot for that widget and family.
    */
   widgetPreview(appId: string, widgetId: string, family: WidgetFamily): Promise<string>;
+  /** The apps pinned to the desktop, oldest pin first, as the shell last reported them. */
+  pins(): readonly DesktopPin[];
+  /** Every change of `pins`; returns the unsubscribe. */
+  onPins(listener: (pins: readonly DesktopPin[]) => void): () => void;
+  /**
+   * Pins the app to the desktop in the first free place on this window's display, or shows
+   * `widget` on its pin. Without `widget` a new pin shows the app's first widget in its smallest
+   * family, or its tile when it declares none. Rejects with the shell's message when the app is
+   * gone or the desktop holds the most pins it takes.
+   */
+  pin(appId: string, widget?: { widgetId: string; family: WidgetFamily }): Promise<void>;
+  /** Removes the app's desktop pin; resolves when it has none. */
+  unpin(appId: string): Promise<void>;
+  /**
+   * Hands a press on the app's card that started moving to the shell, which drags the app's pin
+   * out of the window while the button is held; a drop on the desktop pins the app there. The
+   * outcome arrives as a `pins` change.
+   */
+  startPinDrag(appId: string): void;
   /** The relay URL of the app's current icon, keyed on its build `revision` so a new one is fetched. */
   iconUrl(appId: string, revision: number): string;
   /**

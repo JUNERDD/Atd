@@ -31,6 +31,16 @@
     "delete": "Delete",
     "rowMeta": "Updated {{date}} · v{{version}}"
   },
+  "pin": {
+    "addHint": "Pin to Desktop (or drag the card there)",
+    "remove": "Remove from Desktop",
+    "addLabel": "Pin {{name}} to the desktop",
+    "removeLabel": "Remove {{name}} from the desktop",
+    "added": "Pinned “{{name}}” to the desktop",
+    "removed": "Removed “{{name}}” from the desktop",
+    "dragHint": "Next time, drag an app's card onto the desktop to pin it.",
+    "loginHint": "Pins show while Atd runs; turn on Open at login to keep them after a restart."
+  },
   "origin": {
     "label": "Started by {{name}}",
     "unknown": "App"

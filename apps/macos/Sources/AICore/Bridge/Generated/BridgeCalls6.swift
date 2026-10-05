@@ -4,6 +4,81 @@
 
 import Foundation
 
+/// Result of the `approval.request` call.
+public enum ApprovalRequestResult: Codable, Equatable, Sendable {
+  case approved(Approved)
+  case notApproved(NotApproved)
+
+  public init(from decoder: any Decoder) throws {
+    let container = try decoder.container(keyedBy: Discriminator.self)
+    switch try container.decode(Bool.self, forKey: .approved) {
+    case true: self = try .approved(Approved(from: decoder))
+    case false: self = try .notApproved(NotApproved(from: decoder))
+    }
+  }
+
+  public func encode(to encoder: any Encoder) throws {
+    switch self {
+    case .approved(let value): try value.encode(to: encoder)
+    case .notApproved(let value): try value.encode(to: encoder)
+    }
+  }
+
+  private enum Discriminator: String, CodingKey {
+    case approved
+  }
+
+  public struct Approved: Codable, Equatable, Sendable {
+    public init() {}
+
+    public init(from decoder: any Decoder) throws {
+      let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+      try container.literal(.approved, true)
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+      var container = encoder.container(keyedBy: CodingKeys.self)
+      try container.encode(true, forKey: .approved)
+    }
+
+    private enum CodingKeys: String, CodingKey, CaseIterable {
+      case approved
+    }
+  }
+
+  public struct NotApproved: Codable, Equatable, Sendable {
+    public let reason: Reason
+
+    public init(reason: Reason) {
+      self.reason = reason
+    }
+
+    public init(from decoder: any Decoder) throws {
+      let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+      try container.literal(.approved, false)
+      reason = try container.value(.reason, Reason.self)
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+      var container = encoder.container(keyedBy: CodingKeys.self)
+      try container.encode(false, forKey: .approved)
+      try container.encode(reason, forKey: .reason)
+    }
+
+    private enum CodingKeys: String, CodingKey, CaseIterable {
+      case approved
+      case reason
+    }
+
+    public enum Reason: String, Codable, Equatable, Sendable {
+      case cancelled
+      case changed
+      case unavailable
+      case busy
+    }
+  }
+}
+
 /// Params of the `toolbar.set` call.
 public struct ToolbarSetParams: Codable, Equatable, Sendable {
   public let enabled: Bool

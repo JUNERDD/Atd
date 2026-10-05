@@ -23,8 +23,9 @@ struct AppWidgetView: View {
     case .content(let appId, let view, _, _):
       WidgetTreeView(view, context: Self.context(appId: appId))
     case .branded(let appName, let title, _):
-      WidgetTreeView(
-        GallerySample.branded(appName: appName, title: title, family: family), context: .inert)
+      let standIn = WidgetStandIn.branded(
+        appName: appName, title: title, family: AIWidgetModel.WidgetFamily(family) ?? .systemSmall)
+      WidgetTreeView(standIn, context: .inert)
     case .example:
       WidgetTreeView(GallerySample.example(family: family), context: .inert)
     case .chooseApp:

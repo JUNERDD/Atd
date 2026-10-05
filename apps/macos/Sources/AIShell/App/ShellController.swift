@@ -68,6 +68,7 @@ public final class ShellController {
         role: .settings, fragment: fragment, services: services, bridge: bridge)
       host.setState(.accessibilityTrust(.init(trusted: trust.isTrusted)))
       host.setState(.screenRecordingTrust(.init(trusted: screenRecording.isTrusted)))
+      bridge.shell?.replayPins(to: host)
       return host
     }
     onboarding = OnboardingWindowController {

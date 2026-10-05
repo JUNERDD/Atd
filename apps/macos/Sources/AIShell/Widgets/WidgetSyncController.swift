@@ -12,18 +12,24 @@ import WidgetKit
 ///   `GET /v1/widgets/snapshots`, writes it through ``WidgetFileWriter`` and
 ///   ``WidgetLauncherWriter`` (the shell is the only writer of that directory), then reloads the
 ///   App Widget's timelines, and the launcher's when its files changed.
-/// - **Report.** The service renders only widgets the system shows, so the shell posts
-///   `WidgetCenter`'s current configurations, as `{ kind, family }`, to
-///   `POST /v1/widgets/instances` on connecting,
-///   after each pull and every ten minutes, since WidgetKit announces no configuration change.
-///   An unchanged list is not sent again to the same service instance. Only App Widget
-///   instances count: the launcher needs no renders.
+/// - **Report.** The service renders only widgets the system shows, so the shell posts them to
+///   `POST /v1/widgets/instances`: the desktop pins' widgets first (``DesktopPins/instances``,
+///   kind `AtdDesktopPin` with their app and widget), then `WidgetCenter`'s current
+///   configurations as `{ kind, family }`, at most 128 in all. It reports on connecting, after
+///   each pull, on every pin change and every ten minutes, since WidgetKit announces no
+///   configuration change; when WidgetKit cannot answer, its last list stands in. An unchanged
+///   list is not sent again to the same service instance. Only App Widget instances count among
+///   WidgetKit's: the launcher needs no renders.
+/// - **Pins.** It owns the desktop pins, which draw from the same files and follow each pull.
 final class WidgetSyncController {
   private let services: ShellServices
   private let files: WidgetFiles?
+  let pins: DesktopPins
   private var pulling = false
   private var pullAgain = false
   private var reported: [WidgetInstance]?
+  /// WidgetKit's App Widget instances as last read.
+  private var widgetKitInstances: [WidgetInstance] = []
   /// Per launcher app, the icon revision whose icon the widget files hold
   /// (``WidgetLauncherWriter``). Empty after launch, so the first pull compares every icon once.
   private var launcherIcons: [String: Int] = [:]
@@ -34,6 +40,7 @@ final class WidgetSyncController {
   init(services: ShellServices, files: WidgetFiles?) {
     self.services = services
     self.files = files
+    pins = DesktopPins(services: services, files: files)
   }
 
   /// Whether macOS can offer this build's widgets from where it runs (`app.state`).
@@ -114,6 +121,7 @@ final class WidgetSyncController {
         sync.launcher, runtimes: runtimes, copied: launcherIcons, to: files)
       launcherIcons = launcher.icons
       if launcher.changed { WidgetCenter.shared.reloadTimelines(ofKind: WidgetKinds.launcher) }
+      pins.apply(sync)
     } catch {
       Self.log.error("Widget sync failed: \(String(describing: error), privacy: .public)")
     }
@@ -121,16 +129,19 @@ final class WidgetSyncController {
 
   /// Posts the live instances when they changed since the last post to this service.
   func report() async {
-    guard files != nil, let infos = try? await WidgetCenter.shared.currentConfigurations()
-    else { return }
-    let instances = infos.filter { $0.kind == WidgetKinds.app }.prefix(128).compactMap {
-      info -> WidgetInstance? in
-      // Which app widget an instance shows stays unknown here: reading it needs the
-      // configuration intent's type, which only the extension may declare (v10). The service
-      // renders every declared widget in each reported family.
-      guard let family = WidgetFamily(info.family) else { return nil }
-      return WidgetInstance(kind: info.kind, family: family, appId: nil, widgetId: nil)
+    guard files != nil else { return }
+    if let infos = try? await WidgetCenter.shared.currentConfigurations() {
+      widgetKitInstances = infos.filter { $0.kind == WidgetKinds.app }.prefix(128).compactMap {
+        info -> WidgetInstance? in
+        // Which app widget an instance shows stays unknown here: reading it needs the
+        // configuration intent's type, which only the extension may declare (v10). The service
+        // renders every declared widget in each reported family.
+        guard let family = WidgetFamily(info.family) else { return nil }
+        return WidgetInstance(kind: info.kind, family: family, appId: nil, widgetId: nil)
+      }
     }
+    // Pins first: they name the exact widget, and the service takes at most 128.
+    let instances = Array((pins.instances + widgetKitInstances).prefix(128))
     guard instances != reported else { return }
     do {
       try await services.client().postWidgetInstances(instances)

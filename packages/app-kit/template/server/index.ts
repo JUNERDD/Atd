@@ -19,8 +19,10 @@ const recentNotes = defineWidget({
   description: 'Your latest notes at a glance.',
   families: ['systemSmall', 'systemMedium'],
   refreshMinutes: 60,
-  render(ctx, { family }) {
-    const notes = listNotes(ctx, family === 'systemSmall' ? 2 : 4);
+  // A list shows as many whole rows as fit, so one list of up to eight notes serves every size,
+  // including a desktop pin the user resized.
+  render(ctx) {
+    const notes = listNotes(ctx, 8);
     return w.timeline(
       w.vstack(
         [

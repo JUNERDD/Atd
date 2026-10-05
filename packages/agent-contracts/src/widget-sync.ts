@@ -1,5 +1,5 @@
 import { Type, type Static } from 'typebox';
-import { AppAccentColorSchema, AppIdSchema } from './app-identity.js';
+import { APP_DESCRIPTION_MAX_LENGTH, AppAccentColorSchema, AppIdSchema } from './app-identity.js';
 import { APP_ICON_MAX_BYTES } from './apps.js';
 import {
   WidgetDeclSchema,
@@ -81,6 +81,11 @@ export const WidgetLauncherAppSchema = Type.Object(
     /** The app's manifest `accentColor`, which fills its tile when the icon cannot be drawn. */
     accentColor: Type.Optional(AppAccentColorSchema),
     iconRevision: Type.Integer({ minimum: 1 }),
+    /**
+     * The app's manifest description, which its medium icon card on the desktop shows under the
+     * name. Absent from launcher files written before it existed.
+     */
+    description: Type.Optional(Type.String({ maxLength: APP_DESCRIPTION_MAX_LENGTH })),
   },
   { additionalProperties: false },
 );
