@@ -4,8 +4,9 @@ import type { NodeBinary } from './toolchain.js';
 import { realpath } from './toolchain.js';
 
 /**
- * macOS Seatbelt (`sandbox-exec`) profiles for the three processes that touch agent-written code:
- * the app backend, the builder and `tsc`. Each runs under Node's permission model too where it is
+ * macOS Seatbelt (`sandbox-exec`) profiles for the processes that touch agent-written code or
+ * third-party packages: the app backend, the builder, `tsc` and the npm installer. Each runs under
+ * Node's permission model too where it is
  * a Node process, and both layers are needed (T1): the permission model does not confine
  * `node:sqlite` (open/ATTACH/VACUUM INTO/backup write anywhere), `process.kill`, the network, or
  * any native addon (`--allow-addons`, which rolldown, lightningcss and oxide need, lets native
@@ -58,6 +59,22 @@ function homeReadsOnly(dirs: string[]): string[] {
   ];
 }
 
+/**
+ * Outbound internet only: loopback (this service, dev servers, the host's own addresses), unix
+ * sockets other than DNS, and listening are denied. Port filters cannot be combined with the
+ * loopback exclusion (X2 E1b left 127.0.0.1:443 reachable), so no port is pinned.
+ */
+function internetOnly(): string[] {
+  return [
+    '(deny network*)',
+    '(allow network-outbound (remote ip "*:*"))',
+    '(deny network-outbound (remote ip "localhost:*"))',
+    // DNS goes through mDNSResponder's unix socket.
+    '(allow network-outbound (literal "/private/var/run/mDNSResponder"))',
+    '(allow system-socket)',
+  ];
+}
+
 export interface BackendProfileOptions {
   versionDir: string;
   runtimeDir: string;
@@ -74,12 +91,7 @@ export function backendProfile(options: BackendProfileOptions): string {
   return [
     '(version 1)',
     '(allow default)',
-    '(deny network*)',
-    '(allow network-outbound (remote ip "*:*"))',
-    '(deny network-outbound (remote ip "localhost:*"))',
-    // DNS goes through mDNSResponder's unix socket.
-    '(allow network-outbound (literal "/private/var/run/mDNSResponder"))',
-    '(allow system-socket)',
+    ...internetOnly(),
     ...writesOnly([options.dataDir]),
     ...processRules([options.node.path, options.node.realPath]),
     ...homeReadsOnly([
@@ -123,6 +135,44 @@ export interface TscProfileOptions {
   projectDir: string;
   readRoots: string[];
   tsc: string;
+}
+
+export interface InstallerProfileOptions {
+  /** npm's working directory: the resolve directory or the tree being installed. */
+  cwd: string;
+  /** npm's cache, shared by every install. */
+  npmCache: string;
+  /** `HOME` and `TMPDIR` of the run. */
+  tmp: string;
+  /** The empty user and global npmrc files. */
+  configDir: string;
+  /** The npm package npm runs from. */
+  npmDir: string;
+  node: NodeBinary;
+}
+
+/**
+ * npm resolving or installing an app's declared packages: outbound internet for the registry,
+ * as the backend has, writes only to its directory, its cache and its temporary directory, and
+ * exec of Node only (scripts never run, so npm needs no fork).
+ */
+export function installerProfile(options: InstallerProfileOptions): string {
+  const writable = [options.cwd, options.npmCache, options.tmp];
+  return [
+    '(version 1)',
+    '(allow default)',
+    ...internetOnly(),
+    ...writesOnly(writable),
+    ...processRules([options.node.path, options.node.realPath]),
+    ...homeReadsOnly([
+      ...writable,
+      options.configDir,
+      options.npmDir,
+      options.node.prefix,
+      path.dirname(options.node.realPath),
+    ]),
+    '',
+  ].join('\n');
 }
 
 /** `tsc --noEmit`: a native binary outside Node's permission model, so Seatbelt is its only fence. */

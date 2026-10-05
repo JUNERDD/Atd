@@ -5,7 +5,8 @@
  * an IPC channel. It never runs agent JavaScript: the Vite config is inline (no config file, no
  * env files, an inline PostCSS config so none is searched for) and the only plugins are React,
  * Tailwind and the module policy. It builds the page (`<out>/web`) and, when the app has one, the
- * backend as a single ESM file (`<out>/server/index.mjs`), then reports `{t:'buildResult'}`.
+ * backend as a single ESM file (`<out>/server/index.mjs`, every package inlined), then reports
+ * `{t:'buildResult'}`, naming the dependency tree packages each bundle used when it has a tree.
  */
 import tailwind from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
@@ -25,6 +26,8 @@ import { modulePolicy } from './resolver.mjs';
  * @property {{ specifier: string, file: string }[]} cssAliases
  * @property {{ client: string, server: string }} sdk
  * @property {string} toolchainPackageJson
+ * @property {{ root: string, packageJson: string, names: string[] } | null} deps
+ * @property {string[]} provided
  */
 
 /** @type {BuilderConfig} */
@@ -51,6 +54,8 @@ const common = {
 };
 const aliasFiles = new Set(config.cssAliases.map(({ file }) => file));
 const fence = [config.stagingDir, ...config.fence];
+/** Tree packages each bundle took modules from. */
+const used = { web: new Set(), server: new Set() };
 
 /** @param {'web' | 'server'} side @param {string} viteRoot */
 const policy = (side, viteRoot) =>
@@ -67,6 +72,9 @@ const policy = (side, viteRoot) =>
     aliasFiles,
     toolchainPackageJson: config.toolchainPackageJson,
     report,
+    deps: config.deps,
+    provided: config.provided,
+    used: used[side],
   });
 
 async function buildWeb() {
@@ -113,10 +121,14 @@ try {
   await buildWeb();
   const web = performance.now();
   if (config.hasServer) await buildServer();
+  const sorted = (/** @type {Set<string>} */ names) =>
+    [...names].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+  const depsUsed = { web: sorted(used.web), server: sorted(used.server) };
   finish({
     t: 'buildResult',
     ok: true,
     timings: { webMs: Math.round(web - started), serverMs: Math.round(performance.now() - web) },
+    ...(config.deps ? { depsUsed } : {}),
   });
 } catch (error) {
   const message = stripVTControlCharacters(

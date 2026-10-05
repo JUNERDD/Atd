@@ -22,6 +22,24 @@ export const WEB_PACKAGES = [
 ] as const;
 /** Bare packages app backend code may import (plus `@atd/app-kit/server` and `node:` builtins). */
 export const SERVER_PACKAGES = ['typebox'] as const;
+/**
+ * Packages Atd provides, one copy each per bundle: an app imports them without declaring them,
+ * and a package from its dependency tree that imports one gets Atd's copy (one React per page).
+ */
+export const PROVIDED_PACKAGES: readonly string[] = WEB_PACKAGES;
+/** Packages (and `@scope/*` scopes) that make up the app build itself; apps cannot declare them. */
+export const TOOLCHAIN_PACKAGES = [
+  'vite',
+  '@vitejs/*',
+  '@tailwindcss/*',
+  'typescript',
+  'npm',
+  '@types/node',
+  '@types/react',
+  '@types/react-dom',
+] as const;
+/** The React packages a dependency tree pins as root peers at the toolchain's versions. */
+const PEER_PINNED = ['react', 'react-dom', '@types/react', '@types/react-dom'] as const;
 
 /** An exact import specifier the builder pins to a toolchain file. */
 export interface ModuleAlias {
@@ -52,6 +70,13 @@ export interface Toolchain {
   tsc: string;
   /** Packages an app typecheck sees in its `node_modules`, by name. */
   typePackages: Record<string, string>;
+  /**
+   * npm, an exact app-kit dependency, which installs the packages an app declares: its package
+   * directory, its CLI script (run with the service's Node) and its version.
+   */
+  npm: { dir: string; cli: string; version: string };
+  /** The exact versions of `PEER_PINNED` installed here, which every dependency tree pins. */
+  peerPins: Record<string, string>;
 }
 
 const PNPM_STORE = `${path.sep}node_modules${path.sep}.pnpm${path.sep}`;
@@ -161,6 +186,12 @@ export function loadToolchain(): Toolchain {
     '@types/react',
     '@types/react-dom',
   ];
+  const version = (dir: string) => {
+    const value = readJson(path.join(dir, 'package.json')).version;
+    if (typeof value !== 'string') throw new Error(`${dir} has no version.`);
+    return value;
+  };
+  const npm = dependencyDir('npm');
   cached = {
     root,
     packageJson,
@@ -185,6 +216,8 @@ export function loadToolchain(): Toolchain {
       ...Object.fromEntries(typePackageNames.map((name) => [name, dependencyDir(name)])),
       '@atd/app-kit': root,
     },
+    npm: { dir: npm, cli: path.join(npm, 'bin', 'npm-cli.js'), version: version(npm) },
+    peerPins: Object.fromEntries(PEER_PINNED.map((name) => [name, version(dependencyDir(name))])),
   };
   return cached;
 }

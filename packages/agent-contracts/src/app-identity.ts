@@ -12,6 +12,11 @@ export const APP_ID_PATTERN = '^app-[a-z0-9]{10}$';
 export const AppIdSchema = Type.String({ pattern: APP_ID_PATTERN });
 export type AppId = Static<typeof AppIdSchema>;
 
+export const APP_NAME_MAX_LENGTH = 64;
+export const APP_DESCRIPTION_MAX_LENGTH = 500;
+/** An app's display name, from its manifest or a rename. */
+export const AppNameSchema = Type.String({ minLength: 1, maxLength: APP_NAME_MAX_LENGTH });
+
 /**
  * The per-app `WKWebsiteDataStore(forIdentifier:)` id: an uppercase canonical UUID the service
  * generates once per app and never changes, so the app's web storage survives new versions.

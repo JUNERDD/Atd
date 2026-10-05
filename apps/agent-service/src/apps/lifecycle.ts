@@ -22,7 +22,7 @@ export interface BuildOutcome {
   details: AppBuildDetails;
   /**
    * What the agent reads: the version, whether this build updated it in place, type errors,
-   * notes and whether the backend started.
+   * notes, the app's npm packages and whether the backend started.
    */
   report: Record<string, unknown>;
 }
@@ -47,7 +47,9 @@ export function buildFromTask(service: AppService, request: PublishRequest): Pro
 
 async function build(service: AppService, request: PublishRequest): Promise<BuildOutcome> {
   const published = await publishFromTask(service, request);
-  const { app, version, typecheck, updated } = published;
+  const { app, version, typecheck, updated, dependencies } = published;
+  // An install may have grown the dependency cache past its limits.
+  if (dependencies && dependencies.from !== 'tree') service.pruneDependencies();
   await service.backends.stop(app.id);
   let widgets = 0;
   let backend = 'none';
@@ -91,6 +93,7 @@ async function build(service: AppService, request: PublishRequest): Promise<Buil
           .slice(0, 30)
           .map((item) => `${item.file}:${item.line}:${item.column} ${item.code} ${item.message}`),
       },
+      ...(dependencies ? { dependencies } : {}),
       ...(published.notes.length ? { notes: published.notes } : {}),
     },
   };

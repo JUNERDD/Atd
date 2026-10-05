@@ -11,11 +11,14 @@ export const REVISION_PREFIX = '.rev-';
  * apps/
  *   index.json               revision and app summaries (AppStore)
  *   .work/                   build scratch, sandbox profiles and the self-check (service-owned)
+ *   .cache/deps/             the npm packages apps declare: npm's cache and sealed dependency
+ *                            trees shared by every app (app-kit `prepareDependencies`)
  *   <appId>/
  *     app.json               the app record
  *     versions/<n>           version n: a link to the build that last wrote it (versions.ts)
- *     versions/.rev-<k>/     web/, server/, source/, icon.svg, version.json of build revision k
- *                            (immutable)
+ *     versions/.rev-<k>/     web/, server/, source/, icon.svg, version.json of build revision k,
+ *                            and deps/ (package.json, package-lock.json) when it declares
+ *                            packages (immutable)
  *     data/                  the backend's only writable directory, shared by every version
  *     widgets/               the latest widget snapshots
  *     diagnostics.jsonl      the diagnostics ring
@@ -39,6 +42,11 @@ export class AppPaths {
 
   get profilesDir(): string {
     return path.join(this.workDir, 'profiles');
+  }
+
+  /** The dependency cache app builds install declared packages into; never an app's own. */
+  get depsCacheDir(): string {
+    return path.join(this.root, '.cache', 'deps');
   }
 
   app(appId: string): string {
