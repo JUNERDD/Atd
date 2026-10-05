@@ -394,6 +394,22 @@
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+/*
+ * Display math (KaTeX): a long equation scrolls sideways inside its own block instead of widening
+ * the turn. KaTeX's stylesheet loads after this one and spaces the block with 1em margins; in a
+ * message it keeps the turn's block rhythm instead (`.markdown > * + *`, and 8px in thinking). The
+ * padding keeps ink that KaTeX's metrics leave out, such as CJK in a `\text` label under a brace,
+ * inside the scroller's clip, and leaves an equation a little more air than a paragraph.
+ */
+.markdown .katex-display {
+  margin: 0;
+  padding-block: 4px;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+.markdown > * + .katex-display {
+  margin-top: 12px;
+}
 .message-actions {
   display: flex;
   gap: 4px;

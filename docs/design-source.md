@@ -802,3 +802,21 @@ Figma 侧未同步：本会话云端 Figma 工具不可用，本地 Figma MCP �
 - App / Task agent facts · Rhea 的换行布局中，Tools 设为 Fill 时 Effort 仍留在第一行（代码会换到下一行）；审阅帧用了较短的工具列表，facts 组件按要求原样复用，未改。
 - S3 等扩展页画面仍是插件分组之前的标签页布局（先前的差异），本次只替换了系统子代理示例；S4 说明中提到被移除的三个名称，属于记录。
 - 只画了深色。
+
+## 2026-10-05 对话中的数学公式
+
+用户指出会话中智能体用 `$…$` 写的公式（`\dfrac`、`\binom`、`\pmod` 等）在面板里显示为原始 TeX，要求按最佳实践补上公式渲染。原因是 Streamdown 2.7 没有接入数学插件；官方 `@streamdown/math` 默认也只读 `$$`，不读单个 `$`、`\(…\)` 与 `\[…\]`。
+
+- 代码：`features/agent/transcript/math-plugin.ts` 按 Streamdown 的 `MathPlugin` 契约组合 `@ziloen/remark-math` 与 `rehype-katex`。前者读四种定界符；单个 `$` 两侧不能紧挨 ASCII 字母或数字，所以价格（`$5 and $10`）与 shell 变量保持文本，`函数$f(x)$的` 仍是公式；独占一行的 `$$…$$` 或 `\[…\]` 是展示公式，句中的保持行内。KaTeX 在 Streamdown 的 sanitize 与 harden 之后运行，`trust` 关闭，`strict: 'ignore'`（公式中的中文不再逐字警告），无法解析的公式以 `--muted-foreground` 显示源码。`math-lazy.ts` 只在文本含定界符时加载 KaTeX、样式与字体，不进 Markdown 渲染块；`use-markdown-plugins.ts` 统一按需加载 mermaid 与数学插件，加载过后新挂载的消息首帧即渲染公式。
+- 样式：`agent.css` 的 `.markdown .katex-display` 去掉 KaTeX 的 1em 外边距，沿用 12px 块间距（思考区 8px）；上下各 4px 内边距，避免 `\underbrace` 下中文 `\text` 等超出 KaTeX 度量的笔画被横向滚动容器裁掉；过宽的公式在自身块内横向滚动。
+- 选区：选区跨入公式时整体取下整个公式（`selection-toolbar/math-sources.ts`），复制、引用、记住与命令得到 `$…$` / `$$…$$`（`selection-markdown.ts` 经 `mdast-util-math` 序列化），朗读文本中每个公式只读一次 TeX；系统复制（⌘C）由 KaTeX 官方 `katex/contrib/copy-tex` 写入 TeX。
+- 依赖：`@ziloen/remark-math` 0.1.2、`rehype-katex` 7.0.1、`katex` 0.16.47（与 mermaid 依赖的版本相同）、`mdast-util-math` 3.0.0，按 `catalogMode: prefer` 进入 workspace catalog。
+- Figma：新组件 [App / Markdown math](https://www.figma.com/design/D9YK1tEeBTEBgstcepesW5/Atd?node-id=2210-131495)（02 · Messages & notifications，与其他 Markdown 原件同列），`Kind = Inline / Display / Error`，宽 600。Inline 为一行正文（App / Markdown / Body，`text/primary`），公式框高等于基线以上部分，自动布局按基线对齐，下沉部分由行底内边距容纳，与浏览器行盒变高一致；Display 居中，上下内边距绑定 `gap/small`，裁剪表示横向滚动；Error 的源码段为 `muted-foreground`。组件说明写明代码位置与行为。
+
+验证范围：`pnpm --filter @atd/desktop typecheck`、oxlint、oxfmt 与桌面端 Vitest（38 项）通过，渲染器构建确认 KaTeX 只在数学块中。另在隔离端口的 Chromium 预览中用真实组件核对：该会话答案 96 个公式全部渲染、无错误、无残留 `$`；价格、中文紧贴、`\(…\)`、`\[…\]`、独占一行的 `$$`、`math` 围栏、列表 / 表格 / 引用中的公式、长公式横向滚动、错误源码、深色与流式输出；从公式中间开始的选区复制为完整 TeX，系统复制事件同样得到 TeX。用户正在运行的 Debug 应用占用 bundle id，没有被启动、停止或附加，所以原生窗口中的 WebKit 渲染未核对。
+
+已知差异：
+
+- Figma 不能加载 KaTeX 的网络字体，公式图形取自 MathJax 3 的 SVG 轮廓（KaTeX 字体同出一源的 TeX 字体），按 KaTeX 的 1.21em（16.94px）缩放；只画了深色。
+- 流式输出时，Streamdown 的 remend 1.4.0（当前最新）会给未闭合的 `[` 补占位链接，且不避开数学区：`$[0,1`、`\[` 展示块与 `$$` 块中的 `\left[` 在括号闭合前会短暂显示 `[blocked]` 或 `](streamdown:incomplete-link)`。这在接入公式前已经存在，闭合后恢复正常；普通链接流式输出时显示 `[blocked]` 也来自同一原因（项目的 harden 配置拦截了占位协议）。
+- Chromium 预览中，行内公式后的中文标点在窄宽度下可能换到下一行行首（行内公式两侧可断行）；未在 WebKit 中核对。
