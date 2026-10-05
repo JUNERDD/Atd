@@ -2,9 +2,17 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { builderProfile, SANDBOX_EXEC, writeProfile } from './seatbelt.js';
 import { runSandboxed } from './spawn.js';
+import type { DependencyTree } from './deps/store.js';
 import type { StagedApp } from './staging.js';
 import { manifestAccentColor, pageStyles, THEME_DIR } from './theme.js';
-import { loadToolchain, nodeBinary, realpath, SERVER_PACKAGES, WEB_PACKAGES } from './toolchain.js';
+import {
+  loadToolchain,
+  nodeBinary,
+  PROVIDED_PACKAGES,
+  realpath,
+  SERVER_PACKAGES,
+  WEB_PACKAGES,
+} from './toolchain.js';
 
 /** Step 4 of an app build: the sandboxed Vite build of a staged app. */
 
@@ -15,6 +23,8 @@ export type BuildErrorCode =
   | 'import_not_allowed'
   /** A relative or absolute import that leaves the app. */
   | 'outside_app'
+  /** Package CSS with a Tailwind directive (the dependency tree audit refuses it first). */
+  | 'dependency_css_directive'
   /** A module the load fence refused (outside the app and the toolchain). */
   | 'load_outside'
   /** An app CSS `@import` of something other than app files, `@atd/ui` or `tailwindcss`. */
@@ -44,10 +54,27 @@ export interface BuildAppOptions {
   /** The Node binary to run the builder with; defaults to the service's own. */
   nodePath?: string;
   timeoutMs?: number;
+  /**
+   * The app's dependency tree (`prepareDependencies`): app code may import the declared names,
+   * which resolve from it. Absent or null for an app that declares none, which builds as before.
+   */
+  deps?: Pick<DependencyTree, 'root' | 'names'> | null;
+}
+
+/** The tree packages each bundle took modules from, by name (built with `deps` only). */
+export interface DependenciesUsed {
+  web: string[];
+  server: string[];
 }
 
 export type BuildResult =
-  | { ok: true; durationMs: number; hasServer: boolean; log: string }
+  | {
+      ok: true;
+      durationMs: number;
+      hasServer: boolean;
+      log: string;
+      depsUsed?: DependenciesUsed;
+    }
   | { ok: false; durationMs: number; errors: BuildError[]; log: string };
 
 /**
@@ -69,19 +96,34 @@ const REPORTED_CODES: readonly string[] = [
   'outside_app',
   'load_outside',
   'css_import',
+  'dependency_css_directive',
   'build_failed',
 ] satisfies BuildErrorCode[];
 const isReportedCode = (code: unknown): code is BuildErrorCode =>
   typeof code === 'string' && REPORTED_CODES.includes(code);
 
+/** The `depsUsed` of a `buildResult` message, when it has one. */
+function readUsed(message: object): DependenciesUsed | undefined {
+  const used: unknown = Reflect.get(message, 'depsUsed');
+  if (used === null || typeof used !== 'object') return undefined;
+  const names = (side: string): string[] => {
+    const list: unknown = Reflect.get(used, side);
+    return Array.isArray(list) ? list.filter((name) => typeof name === 'string') : [];
+  };
+  return { web: names('web'), server: names('server') };
+}
+
 /** The builder's `buildResult` message, checked field by field (it comes from the sandbox). */
 function readReport(
   messages: unknown[],
-): { ok: true } | { ok: false; errors: BuildError[] } | null {
+):
+  | { ok: true; depsUsed: DependenciesUsed | undefined }
+  | { ok: false; errors: BuildError[] }
+  | null {
   for (const message of messages) {
     if (message === null || typeof message !== 'object') continue;
     if (Reflect.get(message, 't') !== 'buildResult') continue;
-    if (Reflect.get(message, 'ok') === true) return { ok: true };
+    if (Reflect.get(message, 'ok') === true) return { ok: true, depsUsed: readUsed(message) };
     const raw: unknown = Reflect.get(message, 'errors');
     const errors: BuildError[] = (Array.isArray(raw) ? raw : []).flatMap((entry: unknown) => {
       if (entry === null || typeof entry !== 'object') return [];
@@ -103,6 +145,8 @@ function readReport(
  * --allow-addons` with one `--allow-fs-read` per path (Node 24 grants nothing for a comma list).
  * The environment is built from scratch; the build is killed after `timeoutMs` (120 s). The
  * manifest's `accentColor` themes the page's `@atd/ui` tokens (`theme.ts`).
+ * A dependency tree joins the reads and the load fence, and the module policy resolves the
+ * declared names from it.
  */
 export async function buildApp(options: BuildAppOptions): Promise<BuildResult> {
   const started = performance.now();
@@ -124,11 +168,13 @@ export async function buildApp(options: BuildAppOptions): Promise<BuildResult> {
   }
   await writeRootMarkers(options.app);
   const styles = await pageStyles(outDir, toolchain.cssAliases, accentColor);
+  const deps = options.deps ?? null;
+  const readRoots = deps ? [...toolchain.readRoots, deps.root] : toolchain.readRoots;
 
   const profile = writeProfile(
     options.workDir,
     'builder.sb',
-    builderProfile({ stagingDir, outDir, readRoots: toolchain.readRoots, node }),
+    builderProfile({ stagingDir, outDir, readRoots, node }),
   );
   const config = {
     stagingDir,
@@ -136,12 +182,18 @@ export async function buildApp(options: BuildAppOptions): Promise<BuildResult> {
     hasServer: options.app.hasServer,
     webPackages: WEB_PACKAGES,
     serverPackages: SERVER_PACKAGES,
-    fence: [...toolchain.readRoots, ...styles.generated],
+    fence: [...readRoots, ...styles.generated],
     cssAliases: styles.cssAliases,
     sdk: toolchain.sdk,
     toolchainPackageJson: toolchain.packageJson,
+    deps: deps && {
+      root: deps.root,
+      packageJson: path.join(deps.root, 'package.json'),
+      names: deps.names,
+    },
+    provided: PROVIDED_PACKAGES,
   };
-  const reads = [stagingDir, outDir, ...toolchain.readRoots];
+  const reads = [stagingDir, outDir, ...readRoots];
   const run = await runSandboxed({
     command: SANDBOX_EXEC,
     args: [
@@ -195,5 +247,6 @@ export async function buildApp(options: BuildAppOptions): Promise<BuildResult> {
     if (!stat?.isFile())
       return fail([{ code: 'missing_output', message: `The build produced no ${file}.` }]);
   }
-  return { ok: true, durationMs: elapsed(), hasServer: options.app.hasServer, log };
+  const done = { ok: true as const, durationMs: elapsed(), hasServer: options.app.hasServer, log };
+  return report.depsUsed ? { ...done, depsUsed: report.depsUsed } : done;
 }

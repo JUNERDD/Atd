@@ -88,20 +88,27 @@ interface SourceFile {
   ino: number;
 }
 
-function lineOf(text: string, index: number): number {
-  return text.slice(0, index).split('\n').length;
-}
-
-/** Checks one CSS file; comments are blanked (keeping line numbers) before matching. */
-function cssErrors(relative: string, text: string): StagingError[] {
+/**
+ * The first Tailwind directive in a stylesheet that loads JavaScript into the builder or points
+ * its scanner elsewhere, with its line; comments are blanked (keeping line numbers) first. Shared
+ * by app CSS here and package CSS in the dependency tree audit.
+ */
+export function cssDirective(text: string): { directive: string; line: number } | null {
   const code = text.replace(/\/\*[\s\S]*?\*\//g, (comment) => comment.replace(/[^\n]/g, ' '));
   const match = CSS_DIRECTIVE.exec(code);
-  if (!match) return [];
+  if (!match) return null;
+  return { directive: match[1] ?? '', line: code.slice(0, match.index).split('\n').length };
+}
+
+/** Checks one CSS file. */
+function cssErrors(relative: string, text: string): StagingError[] {
+  const found = cssDirective(text);
+  if (!found) return [];
   return [
     {
       code: 'css_directive',
       path: relative,
-      message: `${relative}:${lineOf(code, match.index)}: "@${match[1]}" is not allowed in app CSS.`,
+      message: `${relative}:${found.line}: "@${found.directive}" is not allowed in app CSS.`,
     },
   ];
 }

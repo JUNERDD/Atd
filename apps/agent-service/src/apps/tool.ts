@@ -4,6 +4,7 @@ import type { ExtensionFactory } from '@earendil-works/pi-coding-agent';
 import { AppApiNameSchema, AppIdSchema, parse } from '@atd/agent-contracts';
 import type { HarnessDeps } from '../harness/deps.js';
 import type { Gate } from '../harness/gate.js';
+import { dependencyChange } from './dependencies.js';
 import { AppFailure } from './errors.js';
 import { buildFromTask } from './lifecycle.js';
 import { scaffoldApp } from './scaffold.js';
@@ -91,7 +92,7 @@ export const AppToolParametersSchema = Type.Object(
 );
 
 const DESCRIPTION =
-  "Create and maintain the user's Atd apps from the source in this task folder. Ops: scaffold { dir? } starts a new app from the working Notes starter (never overwrites); build { dir?, summary } type-checks, builds and publishes the source, creating the app on its first build, and starts its backend once: the first build of this run publishes a new version and later builds of the run update that version in place (the result says updated), so build as often as useful; a failed build publishes nothing and lists every error; diagnostics { appId } reads recent errors (build, type check, page, backend, widgets); call { appId, name, input? } runs one backend api function of this task's app, through the same consent-gated capabilities the app uses; list shows the user's apps. dir defaults to \"app\".";
+  "Create and maintain the user's Atd apps from the source in this task folder. Ops: scaffold { dir? } starts a new app from the working Notes starter (never overwrites); build { dir?, summary } type-checks, builds and publishes the source, creating the app on its first build, and starts its backend once: the first build of this run publishes a new version and later builds of the run update that version in place (the result says updated), so build as often as useful; build also installs the npm packages atd-app.json declares in dependencies; a failed build publishes nothing and lists every error; diagnostics { appId } reads recent errors (build, type check, page, backend, widgets); call { appId, name, input? } runs one backend api function of this task's app, through the same consent-gated capabilities the app uses; list shows the user's apps. dir defaults to \"app\".";
 
 interface ToolContext {
   dataDir: string;
@@ -151,8 +152,17 @@ export async function runAppCall(
       return { text: JSON.stringify(await scaffoldApp(target)), details: {} };
     }
     case 'build': {
-      const dir = path.relative(ctx.cwd, taskFolder(ctx.cwd, call.dir));
-      await gate('Build and publish the app', `${dir}: ${call.summary}`);
+      const folder = taskFolder(ctx.cwd, call.dir);
+      const dir = path.relative(ctx.cwd, folder);
+      // New third-party code shows in the prompt before it is installed.
+      const existing = service.store.bySourceTask(ctx.taskId);
+      const change = await dependencyChange(
+        service.paths,
+        existing,
+        path.join(folder, 'atd-app.json'),
+      );
+      const packages = change ? `; npm packages: ${change}` : '';
+      await gate('Build and publish the app', `${dir}: ${call.summary}${packages}`);
       const outcome = await buildFromTask(service, {
         taskId: ctx.taskId,
         runId: ctx.runId(),

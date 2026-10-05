@@ -39,6 +39,7 @@ export * from './workspace.js';
 export * from './shortcuts.js';
 export * from './plugins.js';
 export * from './app-identity.js';
+export * from './app-manifest.js';
 export * from './apps.js';
 export * from './app-capability-ops.js';
 export * from './apps-ipc.js';

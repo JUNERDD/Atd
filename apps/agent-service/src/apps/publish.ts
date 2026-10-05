@@ -5,7 +5,7 @@ import {
   buildApp,
   prepareStaging,
   typecheckApp,
-  type BuildError,
+  type DependencyTree,
   type StagedApp,
   type TypecheckResult,
 } from '@atd/app-kit/node';
@@ -19,6 +19,12 @@ import {
   type AppTypecheck,
   type AppVersion,
 } from '@atd/agent-contracts';
+import {
+  dependencyReport,
+  prepareAppDependencies,
+  recordDeps,
+  type DependencyReport,
+} from './dependencies.js';
 import type { AppDiagnostics, DiagnosticInput } from './diagnostics.js';
 import { buildFailed } from './errors.js';
 import type { AppPaths } from './paths.js';
@@ -48,6 +54,8 @@ export interface PublishResult {
   typecheck: TypecheckResult;
   /** Non-fatal notes for the agent (an icon left out, a typecheck that did not run). */
   notes: string[];
+  /** The app's npm packages; absent when its manifest declares none. */
+  dependencies?: DependencyReport;
 }
 
 export interface PublishDeps {
@@ -58,10 +66,11 @@ export interface PublishDeps {
 
 /**
  * The `app.build` pipeline (plan "构建与发布"): stage the task's source (app-kit refuses
- * anything that could steer the toolchain), validate `atd-app.json`, then typecheck and build in
- * parallel, each in its own sandbox, in a scratch directory under `apps/.work`. A refused or
- * failed build publishes nothing and throws `app_build_failed` with every error. A build that
- * succeeded publishes the built `web/` and `server/`, the source snapshot and the icon as the
+ * anything that could steer the toolchain), validate `atd-app.json`, prepare the tree of the npm
+ * packages it declares (dependencies.ts), then typecheck and build in parallel, each in its own
+ * sandbox, in a scratch directory under `apps/.work`. A refused or failed build publishes nothing
+ * and throws `app_build_failed` with every error. A build that succeeded publishes the built
+ * `web/` and `server/`, the source snapshot, the icon and the dependency files (`deps/`) as the
  * app's next build revision: the run's first build as the next version, its later builds in
  * place of that version (versions.ts). The first build of a task creates its app. Type errors
  * never block.
@@ -88,24 +97,43 @@ export async function publishFromTask(
     const manifest = await readManifest(staged.app).catch((error: unknown) =>
       refuse(deps, existing, [`atd-app.json: ${errorMessage(error)}`]),
     );
-    const out = path.join(work, 'out');
-    const [typecheck, built] = await Promise.all([
-      typecheckApp({ app: staged.app, workDir: path.join(work, 'typecheck') }),
-      buildApp({ app: staged.app, outDir: out, workDir: path.join(work, 'build') }),
-    ]);
-    if (!built.ok) return await refuse(deps, existing, built.errors.map(buildErrorText), built.log);
-    const notes: string[] = [];
-    if (typecheck.failure)
-      notes.push(`The type check did not run to completion: ${typecheck.failure}`);
-    const draft = await assemble(deps.paths, existing?.id, staged.app, out, notes);
-    return await record(deps, request, {
+    const prepared = await prepareAppDependencies(
+      deps.paths,
       existing,
       manifest,
-      typecheck,
-      notes,
-      draft,
-      hasServer: staged.app.hasServer,
-    });
+      path.join(work, 'deps'),
+    );
+    if (!prepared.ok) {
+      const details = prepared.errors.flatMap((error) => (error.detail ? [error.detail] : []));
+      return await refuse(deps, existing, prepared.errors.map(errorText), details.join('\n\n'));
+    }
+    try {
+      const { tree } = prepared;
+      const out = path.join(work, 'out');
+      const [typecheck, built] = await Promise.all([
+        typecheckApp({ app: staged.app, workDir: path.join(work, 'typecheck'), deps: tree }),
+        buildApp({ app: staged.app, outDir: out, workDir: path.join(work, 'build'), deps: tree }),
+      ]);
+      if (!built.ok) return await refuse(deps, existing, built.errors.map(errorText), built.log);
+      const notes: string[] = [];
+      if (typecheck.failure)
+        notes.push(`The type check did not run to completion: ${typecheck.failure}`);
+      const draft = await assemble(deps.paths, existing?.id, staged.app, { out, tree }, notes);
+      const dependencies =
+        tree &&
+        dependencyReport(tree, manifest.dependencies ?? {}, built.depsUsed, prepared.durationMs);
+      return await record(deps, request, {
+        existing,
+        manifest,
+        typecheck,
+        notes,
+        draft,
+        dependencies,
+        hasServer: staged.app.hasServer,
+      });
+    } finally {
+      prepared.release();
+    }
   } finally {
     await rm(work, { recursive: true, force: true });
   }
@@ -116,7 +144,8 @@ async function readManifest(app: StagedApp): Promise<AppManifest> {
   return parse(AppManifestSchema, JSON.parse(text));
 }
 
-function buildErrorText(error: BuildError): string {
+/** A build or dependency error as the agent reads it: `file: message (code)`. */
+function errorText(error: { code: string; message: string; file?: string }): string {
   return `${error.file ? `${error.file}: ` : ''}${error.message} (${error.code})`;
 }
 
@@ -142,14 +171,14 @@ async function refuse(
 
 /**
  * Lays out a version draft: built `web/` (and `server/`), the source snapshot without the
- * builder's marker files, and the icon. A first build has no app id yet, so its draft waits in
- * the scratch area and moves when the app is created.
+ * builder's marker files, the icon, and `deps/` for an app with packages. A first build has no app
+ * id yet, so its draft waits in the scratch area and moves when the app is created.
  */
 async function assemble(
   paths: AppPaths,
   appId: string | undefined,
   app: StagedApp,
-  out: string,
+  { out, tree }: { out: string; tree: DependencyTree | null },
   notes: string[],
 ): Promise<string> {
   const draft = appId
@@ -171,6 +200,7 @@ async function assemble(
   else if (size > APP_ICON_MAX_BYTES)
     notes.push('icon.svg is larger than 256 KiB and was left out.');
   else await cp(icon, path.join(draft, 'icon.svg'));
+  if (tree) await recordDeps(draft, tree);
   return draft;
 }
 
@@ -180,6 +210,7 @@ interface Built {
   typecheck: TypecheckResult;
   notes: string[];
   draft: string;
+  dependencies: DependencyReport | null;
   /** The build has a backend, the only thing that reports widget declarations. */
   hasServer: boolean;
 }
@@ -245,7 +276,9 @@ async function record(deps: PublishDeps, request: PublishRequest, built: Built) 
     });
     if (!version) throw new Error('The version was not recorded.');
     await deps.diagnostics.append(appId, typecheckDiagnostics(typecheck, version.n));
-    return { app, version, created: !built.existing, updated, typecheck, notes: built.notes };
+    const { notes, dependencies } = built;
+    const result = { app, version, created: !built.existing, updated, typecheck, notes };
+    return dependencies ? { ...result, dependencies } : result;
   } catch (error) {
     await rm(built.draft, { recursive: true, force: true });
     throw error;

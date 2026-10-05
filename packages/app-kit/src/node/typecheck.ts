@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import type { DependencyTree } from './deps/store.js';
 import { SANDBOX_EXEC, tscProfile, writeProfile } from './seatbelt.js';
 import { runSandboxed } from './spawn.js';
 import type { StagedApp } from './staging.js';
@@ -9,8 +10,8 @@ import { isInside, loadToolchain, realpath } from './toolchain.js';
  * Step 3 of an app build: `tsc --noEmit` over a copy of the staged app. The result never blocks
  * a build; it is shown to the agent as diagnostics. The service writes the project scaffold:
  * `tsconfig.json`, a `declare module '*.css'` shim, and a `node_modules` of symlinks to the
- * allow-listed packages only (tsconfig `paths` cannot express subpath exports such as
- * `@atd/ui/components/*`).
+ * allow-listed packages and the app's declared packages only (tsconfig `paths` cannot express
+ * subpath exports such as `@atd/ui/components/*`).
  */
 
 export const TYPECHECK_TIMEOUT_MS = 60_000;
@@ -31,6 +32,12 @@ export interface TypecheckOptions {
   /** Scratch directory; the project copy and the sandbox profile go here. */
   workDir: string;
   timeoutMs?: number;
+  /**
+   * The app's dependency tree: each declared name, `@types/*` included, is linked from it. The
+   * packages' own imports of React resolve to the tree's pinned `@types/react`, which TypeScript
+   * dedupes with the toolchain's (same name and version), so their props type-check fully.
+   */
+  deps?: Pick<DependencyTree, 'root' | 'names'> | null;
 }
 
 export interface TypecheckResult {
@@ -126,12 +133,19 @@ export async function typecheckApp(options: TypecheckOptions): Promise<Typecheck
     `${JSON.stringify({ ...TSCONFIG, files: await runtimeModules(toolchain.runtimeDir) }, null, 2)}\n`,
   );
   await fs.writeFile(path.join(projectDir, 'atd-env.d.ts'), "declare module '*.css';\n");
-  await linkPackages(projectDir, toolchain.typePackages);
+  const deps = options.deps ?? null;
+  const declared = deps
+    ? Object.fromEntries(
+        deps.names.map((name) => [name, path.join(deps.root, 'node_modules', name)]),
+      )
+    : {};
+  await linkPackages(projectDir, { ...toolchain.typePackages, ...declared });
 
+  const readRoots = deps ? [...toolchain.readRoots, deps.root] : toolchain.readRoots;
   const profile = writeProfile(
     options.workDir,
     'tsc.sb',
-    tscProfile({ projectDir, readRoots: toolchain.readRoots, tsc: toolchain.tsc }),
+    tscProfile({ projectDir, readRoots, tsc: toolchain.tsc }),
   );
   const run = await runSandboxed({
     command: SANDBOX_EXEC,

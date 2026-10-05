@@ -46,6 +46,7 @@
     "@vitejs/plugin-react": "6.1.1",
     "lucide-react": "catalog:",
     "motion": "catalog:",
+    "npm": "11.19.0",
     "react": "catalog:",
     "react-dom": "catalog:",
     "tailwindcss": "catalog:",

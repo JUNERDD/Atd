@@ -1,20 +1,24 @@
 import { Type, type Static } from 'typebox';
 import {
+  APP_DESCRIPTION_MAX_LENGTH,
   AppAccentColorSchema,
   AppErrorSchema,
   AppGrantsSchema,
   AppIdSchema,
+  AppNameSchema,
   CapabilitySchema,
   DataStoreIdSchema,
   GrantStateSchema,
 } from './app-identity.js';
+import { AppPurposeSchema, AppRuntimeWindowSchema } from './app-manifest.js';
 import { Identifier } from './identifiers.js';
 import { WidgetDeclSchema } from './widgets.js';
 
 /**
- * User apps the service owns (`<dataDir>/apps/<appId>/`): the manifest the agent writes, the app
- * records and versions the renderer lists, the runtime the shell loads, and the bodies of the
- * `/v1/apps` routes. The backend IPC lives in `apps-ipc.ts`, widgets in `widgets.ts`.
+ * User apps the service owns (`<dataDir>/apps/<appId>/`): the app records and versions the
+ * renderer lists, the runtime the shell loads, and the bodies of the `/v1/apps` routes. The
+ * manifest the agent writes lives in `app-manifest.ts`, the backend IPC in `apps-ipc.ts`, widgets
+ * in `widgets.ts`.
  *
  * A version is what one agent run published: the run's first successful `app.build` publishes
  * the next version, and its later builds replace that version's files in place, keeping its
@@ -24,70 +28,11 @@ import { WidgetDeclSchema } from './widgets.js';
  * revision, since the version number alone does not change on an in-place build.
  */
 
-export const APP_NAME_MAX_LENGTH = 64;
-export const APP_DESCRIPTION_MAX_LENGTH = 500;
 export const APP_SUMMARY_MAX_LENGTH = 500;
 /** Largest `icon.svg` a version keeps; a build leaves a larger one out with a warning. */
 export const APP_ICON_MAX_BYTES = 256 * 1024;
 /** Versions kept per app; older ones are pruned when a build or revert publishes a new one. */
 export const APP_MAX_VERSIONS = 20;
-
-export const AppNameSchema = Type.String({ minLength: 1, maxLength: APP_NAME_MAX_LENGTH });
-
-const WindowLength = Type.Integer({ minimum: 200, maximum: 4000 });
-
-/** The window size the manifest asks for, in points; the shell clamps it to the work area. */
-export const AppWindowSchema = Type.Object(
-  {
-    width: WindowLength,
-    height: WindowLength,
-    minWidth: Type.Optional(WindowLength),
-    minHeight: Type.Optional(WindowLength),
-  },
-  { additionalProperties: false },
-);
-export type AppWindow = Static<typeof AppWindowSchema>;
-
-/** The window size the service resolved, minimums filled from the manifest or its defaults. */
-export const AppRuntimeWindowSchema = Type.Object(
-  { width: WindowLength, height: WindowLength, minWidth: WindowLength, minHeight: WindowLength },
-  { additionalProperties: false },
-);
-export type AppRuntimeWindow = Static<typeof AppRuntimeWindowSchema>;
-
-/** Why the app uses a capability, shown in its consent; at most one line of plain text. */
-const PurposeSchema = Type.String({ minLength: 1, maxLength: 300 });
-
-/**
- * `atd-app.json` at the root of the app source, written by the agent and validated by the build.
- * `capabilities` lists the consent-gated services the backend may use; a capability request the
- * manifest does not list fails without asking. `purposes` optionally explains each one to the
- * user in its consent. `accentColor` is the app's identity color; without one the app keeps the
- * neutral theme.
- */
-export const AppManifestSchema = Type.Object(
-  {
-    name: AppNameSchema,
-    description: Type.String({ maxLength: APP_DESCRIPTION_MAX_LENGTH }),
-    accentColor: Type.Optional(AppAccentColorSchema),
-    window: AppWindowSchema,
-    capabilities: Type.Array(CapabilitySchema, { maxItems: 5, uniqueItems: true }),
-    purposes: Type.Optional(
-      Type.Object(
-        {
-          ai: Type.Optional(PurposeSchema),
-          agent: Type.Optional(PurposeSchema),
-          memory: Type.Optional(PurposeSchema),
-          mcp: Type.Optional(PurposeSchema),
-          web: Type.Optional(PurposeSchema),
-        },
-        { additionalProperties: false },
-      ),
-    ),
-  },
-  { additionalProperties: false },
-);
-export type AppManifest = Static<typeof AppManifestSchema>;
 
 /** The non-blocking type check a build ran; errors are in the app's `typecheck` diagnostics. */
 export const AppTypecheckSchema = Type.Object(
@@ -135,7 +80,7 @@ export const AppCapabilityConsentSchema = Type.Object(
     appName: AppNameSchema,
     capability: CapabilitySchema,
     /** The manifest's `purposes` entry for the capability. */
-    purpose: Type.Optional(PurposeSchema),
+    purpose: Type.Optional(AppPurposeSchema),
     createdAt: Type.String(),
   },
   { additionalProperties: false },

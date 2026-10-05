@@ -18,16 +18,20 @@
  * `.node-version` so development and the bundle run the same release. Archives
  * are checked against the release's SHASUMS256.txt and cached under
  * tmp/node-dist, so repeat packs work offline. Only the executable is shipped:
- * whether the app bundles npm/npx is undecided. The target is the build host's
- * architecture on macOS, the only platform the app ships for.
+ * the npm that installs the packages generated apps declare ships as an exact
+ * `@atd/app-kit` dependency (the version this Node release bundles), so development
+ * and the bundle run the same npm whatever Node the developer has; npx and
+ * corepack are not shipped. The target is the build host's architecture on macOS,
+ * the only platform the app ships for.
  *
  * The pack also carries the generated-app toolchain (`@atd/app-kit` with Vite, Rolldown,
  * Tailwind, the native TypeScript compiler and the packages apps may import), which the service
- * runs offline from inside the bundle. Dependency links that toolchain never follows are cut and
- * store entries nothing links to any more are deleted (`pruneStore`); the pruned pack must then
- * typecheck and build the app template and pass the backend sandbox self-check under the bundled
- * Node (`checkAppToolchain`), and every native binary it can run must carry a valid signature
- * (`checkNativeSignatures`), or the pack fails.
+ * runs offline from inside the bundle, and npm, which installs the packages an app declares in its
+ * own sandbox. Dependency links that toolchain never follows are cut and store entries nothing
+ * links to any more are deleted (`pruneStore`); the pruned pack must then typecheck and build the
+ * app template, pass the backend sandbox self-check and run npm in its installer sandbox under the
+ * bundled Node (`checkAppToolchain`), and every native binary it can run must carry a valid
+ * signature (`checkNativeSignatures`), or the pack fails.
  *
  * Every run writes a fresh build-info.json into the pack, identifying this
  * packaged service build.
@@ -86,13 +90,15 @@ const UNUSED_LINKS = new Map([
 /**
  * Files of kept packages that nothing loads: Vite resolves lucide-react through its `module`
  * (ESM) entry and `tsc` through its `typings`, so the CommonJS build and the prefixed/suffixed
- * declaration variants (whose names the main declaration file already exports) go.
+ * declaration variants (whose names the main declaration file already exports) go; npm's
+ * documentation and man pages are never read by `npm ci` or `npm install`.
  */
 const UNUSED_FILES = new Map([
   [
     'lucide-react',
     ['dist/cjs', 'dist/lucide-react.prefixed.d.ts', 'dist/lucide-react.suffixed.d.ts'],
   ],
+  ['npm', ['docs', 'man']],
 ]);
 
 async function hashFile(file) {
@@ -392,8 +398,9 @@ async function checkNativeSignatures(dirs) {
 /**
  * Proves the pruned pack can still do the app work the service asks of it: the bundled Node
  * imports the pack's own `@atd/app-kit`, whose toolchain must resolve entirely inside the pack,
- * typechecks and builds the app template in the same sandboxes the service uses, and passes the
- * backend sandbox self-check.
+ * typechecks and builds the app template in the same sandboxes the service uses, passes the
+ * backend sandbox self-check, and runs the pack's npm in the installer sandbox with its fixed
+ * configuration (`npmSelfCheck`, which needs no network).
  */
 function checkAppToolchain(nodePath, packRoot) {
   const entry = path.join(packRoot, 'node_modules', '@atd', 'app-kit', 'dist', 'node', 'index.js');
@@ -404,7 +411,7 @@ function checkAppToolchain(nodePath, packRoot) {
     const kit = await import(${JSON.stringify(pathToFileURL(entry).href)});
     const pack = ${JSON.stringify(packRoot)};
     const toolchain = kit.loadToolchain();
-    const paths = [toolchain.root, toolchain.tsc, ...toolchain.readRoots,
+    const paths = [toolchain.root, toolchain.tsc, toolchain.npm.cli, ...toolchain.readRoots,
       ...toolchain.cssAliases.map((alias) => alias.file), ...Object.values(toolchain.typePackages)];
     const outside = paths.filter((file) => file !== pack && !file.startsWith(pack + path.sep));
     if (outside.length > 0) throw new Error('Toolchain paths outside the pack: ' + outside);
@@ -420,7 +427,9 @@ function checkAppToolchain(nodePath, packRoot) {
       if (!build.ok) throw new Error('Build failed: ' + JSON.stringify(build).slice(0, 4000));
       const sandbox = await kit.selfCheckSandbox({ workDir: path.join(work, 'self-check') });
       if (!sandbox.ok) throw new Error('Sandbox self-check failed: ' + sandbox.reason);
-      console.log('App toolchain check: typecheck ' + typecheck.durationMs + ' ms, build ' + build.durationMs + ' ms, sandbox ok');
+      const npm = await kit.npmSelfCheck({ workDir: path.join(work, 'npm-check') });
+      if (!npm.ok) throw new Error('npm self-check failed: ' + npm.reason);
+      console.log('App toolchain check: typecheck ' + typecheck.durationMs + ' ms, build ' + build.durationMs + ' ms, sandbox ok, npm ' + npm.version + ' ok');
     } finally {
       fs.rmSync(work, { recursive: true, force: true });
     }

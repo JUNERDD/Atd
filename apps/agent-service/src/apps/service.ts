@@ -1,5 +1,6 @@
 import { readdir, realpath, rm } from 'node:fs/promises';
 import path from 'node:path';
+import { pruneDependencyCache } from '@atd/app-kit/node';
 import {
   APP_CAPABILITIES,
   type AppDetail,
@@ -69,6 +70,7 @@ export class AppService {
     await removeLeftovers(paths, store);
     const service = new AppService(deps, paths, store);
     await service.widgets.load();
+    service.pruneDependencies();
     return service;
   }
 
@@ -169,6 +171,22 @@ export class AppService {
       dataStoreId: app.dataStoreId,
       window: app.window,
     };
+  }
+
+  /**
+   * Keeps the npm dependency cache within its limits, in the background: at load and after a
+   * build installed packages. Trees in use stay; a failure is only logged, since every version
+   * can rebuild its tree from the lockfile it keeps.
+   */
+  pruneDependencies(): void {
+    pruneDependencyCache(this.paths.depsCacheDir).then(
+      (result) => {
+        if (result.removedTrees > 0 || result.removedNpmCache)
+          this.deps.log.info('Pruned the app dependency cache.', { ...result });
+      },
+      (error: unknown) =>
+        this.deps.log.warn('The app dependency cache was not pruned.', { error: String(error) }),
+    );
   }
 
   /**
