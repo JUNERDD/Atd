@@ -10,7 +10,7 @@ import {
   DataStoreIdSchema,
   GrantStateSchema,
 } from './app-identity.js';
-import { AppPurposeSchema, AppRuntimeWindowSchema } from './app-manifest.js';
+import { AppPurposeSchema, AppRuntimeWindowSchema, AppSurfaceSchema } from './app-manifest.js';
 import { Identifier } from './identifiers.js';
 import { WidgetDeclSchema } from './widgets.js';
 
@@ -184,7 +184,9 @@ export type PatchAppGrantsRequest = Static<typeof PatchAppGrantsRequestSchema>;
  * `GET /v1/apps/:appId/runtime` (shell): what the app window loads. `webRoot` is the absolute,
  * link-free path of the `web/` directory of the current build (`revision`); every build has a
  * directory of its own that stays unchanged, so an in-place build of the same `version` moves
- * `webRoot`, and a window reloads when it changed.
+ * `webRoot`, and a window reloads when it changed. `surface` is the window material that build's
+ * own manifest asks for (`opaque` when it names none), so a revert brings back its version's
+ * window too; the shell builds a new window when it changes.
  */
 export const AppRuntimeSchema = Type.Object(
   {
@@ -195,6 +197,7 @@ export const AppRuntimeSchema = Type.Object(
     webRoot: Type.String({ minLength: 1, maxLength: 4096 }),
     dataStoreId: DataStoreIdSchema,
     window: AppRuntimeWindowSchema,
+    surface: AppSurfaceSchema,
   },
   { additionalProperties: false },
 );

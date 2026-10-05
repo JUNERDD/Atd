@@ -9,6 +9,17 @@ public struct UserAppRuntime: Decodable, Equatable, Sendable {
     public let minHeight: Double
   }
 
+  /// The window material the version's manifest asks for (`window.surface` in `atd-app.json`).
+  public enum Surface: String, Decodable, Equatable, Sendable {
+    /// Atd's own window: the settings window's glass and 52 pt unified title bar around a
+    /// transparent page, whose build paints the task panel's fill and lays its first row out on
+    /// the title bar.
+    case glass
+    /// A conventional titled, opaque window whose page paints everything; what a runtime without
+    /// the key means, as for every version built before surfaces existed.
+    case opaque
+  }
+
   public let appId: String
   public let name: String
   public let version: Int
@@ -17,6 +28,22 @@ public struct UserAppRuntime: Decodable, Equatable, Sendable {
   /// The app's `WKWebsiteDataStore` identifier: a UUID the service generated once.
   public let dataStoreId: String
   public let window: Window
+  public let surface: Surface
+
+  private enum CodingKeys: String, CodingKey {
+    case appId, name, version, webRoot, dataStoreId, window, surface
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    appId = try container.decode(String.self, forKey: .appId)
+    name = try container.decode(String.self, forKey: .name)
+    version = try container.decode(Int.self, forKey: .version)
+    webRoot = try container.decode(String.self, forKey: .webRoot)
+    dataStoreId = try container.decode(String.self, forKey: .dataStoreId)
+    window = try container.decode(Window.self, forKey: .window)
+    surface = try container.decodeIfPresent(Surface.self, forKey: .surface) ?? .opaque
+  }
 
   public enum Invalid: Error, Equatable, Sendable {
     case wrongApp

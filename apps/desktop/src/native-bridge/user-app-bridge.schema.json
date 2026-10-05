@@ -9,7 +9,7 @@
     "appIdPattern": "^app-[a-z0-9]{10}$",
     "maxFileBytes": 8388608,
     "calls": ["clipboard.write", "link.open", "files.pick", "files.save"],
-    "posts": ["app.ready", "app.error"]
+    "posts": ["app.ready", "app.error", "window.dragRegions"]
   },
   "$ref": "#/$defs/UserAppMessage",
   "$defs": {
@@ -200,6 +200,51 @@
             }
           },
           "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "post"
+            },
+            "method": {
+              "type": "string",
+              "const": "window.dragRegions"
+            },
+            "params": {
+              "type": "object",
+              "required": ["rects"],
+              "properties": {
+                "rects": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["x", "y", "width", "height"],
+                    "properties": {
+                      "x": {
+                        "type": "number"
+                      },
+                      "y": {
+                        "type": "number"
+                      },
+                      "width": {
+                        "type": "number"
+                      },
+                      "height": {
+                        "type": "number"
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "maxItems": 64
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
         }
       ]
     },
@@ -360,6 +405,36 @@
         "stack": {
           "type": "string",
           "maxLength": 16000
+        }
+      },
+      "additionalProperties": false
+    },
+    "UserAppWindowDragRegionsPost": {
+      "type": "object",
+      "required": ["rects"],
+      "properties": {
+        "rects": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["x", "y", "width", "height"],
+            "properties": {
+              "x": {
+                "type": "number"
+              },
+              "y": {
+                "type": "number"
+              },
+              "width": {
+                "type": "number"
+              },
+              "height": {
+                "type": "number"
+              }
+            },
+            "additionalProperties": false
+          },
+          "maxItems": 64
         }
       },
       "additionalProperties": false

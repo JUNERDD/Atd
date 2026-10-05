@@ -88,6 +88,9 @@ final class UserAppBridge {
     case .post(.appError(let report)):
       record(report, from: host)
       return NSNull()
+    case .post(.windowDragRegions(let params)):
+      host.setDragRegions(params.rects)
+      return NSNull()
     case .call(.clipboardWrite(let params)):
       NSPasteboard.general.clearContents()
       NSPasteboard.general.setString(params.text, forType: .string)

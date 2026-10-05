@@ -37,12 +37,14 @@ public enum UserAppCall: Equatable, Sendable {
 public enum UserAppPost: Equatable, Sendable {
   case appReady(UserAppAppReadyPost)
   case appError(UserAppAppErrorPost)
+  case windowDragRegions(UserAppWindowDragRegionsPost)
 
   /// The contract name.
   public var name: String {
     switch self {
     case .appReady: "app.ready"
     case .appError: "app.error"
+    case .windowDragRegions: "window.dragRegions"
     }
   }
 }
@@ -76,6 +78,8 @@ public enum UserAppMessage: Decodable, Equatable, Sendable {
       switch method {
       case "app.ready": post = try .appReady(container.value(.params, UserAppAppReadyPost.self))
       case "app.error": post = try .appError(container.value(.params, UserAppAppErrorPost.self))
+      case "window.dragRegions":
+        post = try .windowDragRegions(container.value(.params, UserAppWindowDragRegionsPost.self))
       default:
         throw DecodingError.dataCorruptedError(
           forKey: .method, in: container, debugDescription: "Unknown method \(method).")

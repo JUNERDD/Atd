@@ -1,10 +1,18 @@
 import AICore
 import AppKit
 
-/// One user app's window: a standard titled, resizable, opaque window (no panel glass, no
-/// unified title bar; the page paints its own surface) titled with the app's name. Its frame is
-/// remembered per app and kept inside the current work area. Closing releases the window and its
-/// web view.
+/// One user app's window, titled with the app's name, in the material its version asks for
+/// (``UserAppRuntime/Surface``):
+/// - glass: the settings window's recipe. The glass background (``GlassBackground``) owns the
+///   clipping, edge, shadow and desktop blur; the transparent 52pt unified title bar
+///   (``UnifiedTitleBar``) lies over the page, which paints the fill and lays its first row out on
+///   the bar. The content view is the whole window, so the app's size includes that row. No full
+///   screen: glass over a full-screen Space has nothing behind it.
+/// - opaque: a standard titled, resizable, opaque window; the page paints its own surface below
+///   the native title bar.
+///
+/// Its frame is remembered per app and kept inside the current work area. Closing releases the
+/// window and its web view.
 final class UserAppWindowController: NSObject, NSWindowDelegate {
   let host: UserAppHost
   private let window: NSWindow
@@ -16,7 +24,9 @@ final class UserAppWindowController: NSObject, NSWindowDelegate {
     self.host = host
     self.storage = storage
     let runtime = host.runtime
-    let style: NSWindow.StyleMask = [.titled, .closable, .miniaturizable, .resizable]
+    let glass = host.surface == .glass
+    var style: NSWindow.StyleMask = [.titled, .closable, .miniaturizable, .resizable]
+    if glass { style.insert(.fullSizeContentView) }
     if let remembered = storage.frame(appId: host.appId) {
       let workArea = Screens.workArea(containing: remembered)
       window = NSWindow(contentRect: .zero, styleMask: style, backing: .buffered, defer: false)
@@ -24,8 +34,8 @@ final class UserAppWindowController: NSObject, NSWindowDelegate {
         NSRect(UserAppGeometry.frame(remembered: remembered, window: runtime.window, in: workArea)),
         display: false)
     } else {
-      // The app's size is its content size; the title bar comes on top, then the whole frame is
-      // fitted into the work area.
+      // The app's size is its content size: below an opaque window's title bar, which comes on
+      // top, or the whole glass window. Then the frame is fitted into the work area.
       let workArea = Screens.workAreaUnderCursor()
       let content = UserAppGeometry.frame(remembered: nil, window: runtime.window, in: workArea)
       window = NSWindow(
@@ -37,7 +47,16 @@ final class UserAppWindowController: NSObject, NSWindowDelegate {
     window.title = runtime.name
     window.isReleasedWhenClosed = false
     window.tabbingMode = .disallowed
-    window.contentView = host.container
+    if glass {
+      UnifiedTitleBar.apply(to: window, identifier: "userApp.titleBar")
+      window.isOpaque = false
+      window.backgroundColor = .clear
+      window.hasShadow = true
+      window.collectionBehavior = [.fullScreenNone]
+      window.contentView = GlassBackground.make(content: host.container)
+    } else {
+      window.contentView = host.container
+    }
     window.delegate = self
     applyMinimumSize()
     NotificationCenter.default.addObserver(
@@ -70,6 +89,10 @@ final class UserAppWindowController: NSObject, NSWindowDelegate {
     window.delegate = nil
     onClose?(host.appId)
   }
+
+  func windowDidBecomeKey(_ notification: Notification) { host.setWindowActive(true) }
+
+  func windowDidResignKey(_ notification: Notification) { host.setWindowActive(false) }
 
   func windowDidMove(_ notification: Notification) { remember() }
 
