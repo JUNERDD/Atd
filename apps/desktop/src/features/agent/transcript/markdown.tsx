@@ -4,6 +4,7 @@ import {
   cloneElement,
   useContext,
   useMemo,
+  useState,
   type ComponentProps,
   type JSX,
 } from 'react';
@@ -32,7 +33,6 @@ import {
   ZoomOutIcon,
 } from 'lucide-react';
 import { ScrollArea } from '@atd/ui/components/scroll-area';
-import { CodeBlock } from './code-block';
 import { codeLanguage } from './code-language';
 import { CopyButton } from './copy-button';
 import { DiagramDownloadMenu } from './download-button';
@@ -136,12 +136,11 @@ function MermaidDiagram({
 }
 
 /**
- * A fenced block is `@pierre/diffs` from its first line: `StreamingCodeBlock` while the fence is
- * still open, appending each streamed line, then `CodeBlock` once it closes. That `CodeBlock`
- * highlights on the main thread like the stream before it (`disableWorkerPool`), so a fence that
- * closes never flashes plain text while a worker highlights it. A closed mermaid fence draws as a
- * diagram once the plugin has loaded; before that, or when it fails to load, it stays a code block.
- * A raw HTML `pre` without code keeps a plain scrolling frame.
+ * A fenced block is one `StreamingCodeBlock` from its first line: it appends each streamed line
+ * while the fence is still open and draws the settled block in the same frame once it closes, so
+ * the close keeps the block's height and the reader's scroll position. A closed mermaid fence draws
+ * as a diagram once the plugin has loaded; before that, or when it fails to load, it stays a code
+ * block. A raw HTML `pre` without code keeps a plain scrolling frame.
  */
 function MarkdownPre({ children, className, node }: MarkdownProps<'pre'>) {
   const incomplete = useIsCodeFenceIncomplete();
@@ -163,25 +162,15 @@ function MarkdownPre({ children, className, node }: MarkdownProps<'pre'>) {
   }
   const contents = textOf(codeNode);
   const label = fenceLabel(codeNode);
-  if (incomplete) {
-    return (
-      <StreamingCodeBlock
-        className="markdown-code-block"
-        contents={contents}
-        language={codeLanguage(label)}
-      />
-    );
-  }
-  if (label === 'mermaid' && mermaid && isValidElement(children)) {
+  if (!incomplete && label === 'mermaid' && mermaid && isValidElement(children)) {
     return <MermaidDiagram source={contents} code={children} plugin={mermaid} />;
   }
   return (
-    <CodeBlock
+    <StreamingCodeBlock
       className="markdown-code-block"
       contents={contents}
       language={codeLanguage(label)}
-      downloadable
-      disableWorkerPool
+      open={incomplete}
     />
   );
 }
@@ -283,6 +272,14 @@ export function StreamdownMarkdown({
     [t],
   );
 
+  // Streamdown draws streaming and static markdown as different trees, so a reply that turned
+  // `static` when it finished would remount every block in it: a code block would jump back to
+  // its top and a diagram would draw again. Markdown that has streamed keeps the streaming tree;
+  // Streamdown's repair of unfinished syntax (`parseIncompleteMarkdown`) ends with the stream, as
+  // the static tree has none. Markdown that mounts settled takes the static tree.
+  const [streamed, setStreamed] = useState(streaming);
+  if (streaming && !streamed) setStreamed(true);
+
   // `isAnimating` follows the stream even without the reveal: Streamdown reports a still-open
   // fence only while it is set, and `MarkdownPre` streams that fence's lines instead of
   // re-rendering the whole block on every patch.
@@ -292,7 +289,8 @@ export function StreamdownMarkdown({
         className="markdown"
         animated={animated ? STREAM_ANIMATION : false}
         isAnimating={streaming}
-        mode={streaming ? 'streaming' : 'static'}
+        mode={streamed ? 'streaming' : 'static'}
+        parseIncompleteMarkdown={streaming}
         controls={CONTROLS}
         icons={ICONS}
         linkSafety={LINK_SAFETY}

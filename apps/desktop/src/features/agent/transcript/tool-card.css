@@ -106,12 +106,12 @@
 }
 /*
  * A code block inside a card reads as the card's content: the card owns the frame, so the block
- * drops its own hairline and corner, and its hover copy gives way to the header's.
+ * drops its own hairline and corner, and its hover actions give way to the header's copy.
  */
 .tool-card .code-block {
   border: 0;
   border-radius: 0;
 }
-.tool-card:has(.tool-card-header .tool-card-copy) .code-block > [data-slot='tooltip-trigger'] {
+.tool-card:has(.tool-card-header .tool-card-copy) .code-block-actions {
   display: none;
 }

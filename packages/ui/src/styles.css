@@ -76,6 +76,9 @@
   /* Figma surface/raised and radius/control: the activity result card's own surface. */
   --ata-surface-raised: #262626;
   --ata-radius-control: 8px;
+  /* Figma code/surface: a code block's own surface (the `pierre-dark` theme's background), which
+     the block's hover actions also stand on. */
+  --ata-code-surface: #0a0a0a;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
