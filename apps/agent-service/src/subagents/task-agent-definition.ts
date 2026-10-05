@@ -105,6 +105,16 @@ export function isTaskAgentName(agent: string): boolean {
 }
 
 /**
+ * The runtime name a launch means by `agent`. A task agent may also be named as it was defined
+ * (`math-setter` for `task.math-setter`), the name models launched right after defining it. Every
+ * other agent a session registers carries a namespace (`atd.`, `plugin.`) and the define alphabet
+ * has no dot, so such a name can only mean a task agent; any other name stays as written.
+ */
+export function launchAgentName(agent: string): string {
+  return NAME.test(agent) ? taskAgentName(agent) : agent;
+}
+
+/**
  * The definition a request asks for in a run: trimmed text (pi-subagents refuses surrounding
  * whitespace), its tools once each in `SUBAGENT_TOOLS` order, and the run's thinking level when
  * it names none. It is not checked against the run; see `definitionProblem`.
