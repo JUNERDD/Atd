@@ -218,7 +218,7 @@
 .command-row-shortcut .shortcut-recorder {
   justify-content: flex-end;
 }
-/* The recorder takes its own clicks above the row's open button (settings-open-row), like the
+/* The recorder takes its own clicks above the row's open button (open-row), like the
  * row's actions; the rest of the column, and a plugin command's keys, still open the editor. */
 .command-row-shortcut .shortcut-recorder-keys {
   pointer-events: auto;
