@@ -37,6 +37,7 @@ import { codeLanguage } from './code-language';
 import { CopyButton } from './copy-button';
 import { DiagramDownloadMenu } from './download-button';
 import { ExternalLink } from './external-link';
+import { rehypeIncompleteLinks } from './incomplete-links';
 import { codeSource } from './selection-toolbar/code-sources';
 import { StreamingCodeBlock } from './streaming-code-block';
 import { useMarkdownPlugins } from './use-markdown-plugins';
@@ -46,13 +47,10 @@ type MarkdownProps<T extends keyof JSX.IntrinsicElements> = ComponentProps<T> & 
 /** Streamdown prop-type inference instead of direct unified imports. */
 type RehypePlugins = Exclude<StreamdownProps['rehypePlugins'], undefined>;
 
-/** Harden policy ported from monocode `AgentMarkdown`: links stay permissive, images strip. */
-const MARKDOWN_REHYPE_PLUGINS: RehypePlugins = [];
 const RAW_REHYPE = defaultRehypePlugins['raw'];
-if (RAW_REHYPE) MARKDOWN_REHYPE_PLUGINS.push(RAW_REHYPE);
 const SANITIZE_REHYPE = defaultRehypePlugins['sanitize'];
-if (SANITIZE_REHYPE) MARKDOWN_REHYPE_PLUGINS.push(SANITIZE_REHYPE);
-MARKDOWN_REHYPE_PLUGINS.push([
+/** Harden policy ported from monocode `AgentMarkdown`: links stay permissive, images strip. */
+const HARDEN_REHYPE: RehypePlugins[number] = [
   harden,
   {
     allowedImagePrefixes: [] as string[],
@@ -60,7 +58,17 @@ MARKDOWN_REHYPE_PLUGINS.push([
     allowDataImages: true,
     imageBlockPolicy: 'remove' as const,
   },
-]);
+];
+const MARKDOWN_REHYPE_PLUGINS: RehypePlugins = [RAW_REHYPE, SANITIZE_REHYPE, HARDEN_REHYPE].filter(
+  (plugin) => plugin !== undefined,
+);
+/** While streaming, remend's placeholders for unfinished links resolve once raw HTML has parsed. */
+const STREAMING_REHYPE_PLUGINS: RehypePlugins = [
+  RAW_REHYPE,
+  rehypeIncompleteLinks,
+  SANITIZE_REHYPE,
+  HARDEN_REHYPE,
+].filter((plugin) => plugin !== undefined);
 
 /** Images stay alt-text: the sandboxed renderer never paints remote or pasted media. */
 function MarkdownImage({ alt }: MarkdownProps<'img'>) {
@@ -292,7 +300,7 @@ export function StreamdownMarkdown({
         tableMaxHeight={Infinity}
         {...pluginProps}
         mermaid={MERMAID_OPTIONS}
-        rehypePlugins={MARKDOWN_REHYPE_PLUGINS}
+        rehypePlugins={streaming ? STREAMING_REHYPE_PLUGINS : MARKDOWN_REHYPE_PLUGINS}
         translations={translations}
         components={COMPONENTS}
       >
