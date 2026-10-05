@@ -1,6 +1,6 @@
 # Create App 能力（参考 Glaze）
 
-Status: Ready to build - 产品决策已确认，T1 原型已完成，等待 T2 起的实现授权
+Status: Implemented - T2–T9、T11、T12 已实现（代码见提交 591437a，Figma 同步见 `docs/design-source.md` 2026-10-04 各节）；T10 验证结果未在本计划记录
 Created: 2026-10-03
 Approval: 已授权规划与 T1 原型（2026-10-04 完成）；T2–T10 尚未授权实现
 
@@ -629,4 +629,4 @@ flowchart LR
 
 ## Approval
 
-- Status: Ready to build - T1 完成；T2–T10 等待实现授权（可整体授权，也可只选部分任务）
+- Status: Implemented - T1 完成；T2–T9、T11、T12 已实现；T10 验证结果未记录
