@@ -51,8 +51,9 @@ export class PluginHost {
   ) {}
 
   /**
-   * The host for `dataDir`, created once. Creation migrates the legacy installed skills
-   * (plugins/migrate.ts) before anyone reads the catalog; the first caller's logger is kept.
+   * The host for `dataDir`, created once. Before anyone reads the catalog, creation brings the
+   * stored models of installed plugins up to the running adapters (installer `renormalize`) and
+   * migrates the legacy installed skills (plugins/migrate.ts); the first caller's logger is kept.
    */
   static for(dataDir: string, log?: Logger): Promise<PluginHost> {
     const existing = PluginHost.hosts.get(dataDir);
@@ -72,6 +73,11 @@ export class PluginHost {
       logger: { info: log.info, warn: log.warn },
     });
     const host = new PluginHost(dataDir, paths.agentDir, installer, secrets, log);
+    await installer.renormalize().catch((error: unknown) => {
+      log.warn('Re-normalizing installed plugins failed; it runs again on the next start.', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    });
     await migrateLegacySkills(host).catch((error: unknown) => {
       log.warn('Legacy skill migration failed; it runs again on the next start.', {
         error: error instanceof Error ? error.message : String(error),

@@ -3,6 +3,7 @@ import { mkdir, readFile, readdir, symlink } from 'node:fs/promises';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { fetchNpm } from '../../src/node/fetch-npm.js';
+import { sourceFallbackName } from '../../src/node/fetch.js';
 import { FetchLimitError } from '../../src/node/limits.js';
 import { parseNpmSpec } from '../../src/node/npm-spec.js';
 import { SKILL_MD, buildTarball, registryFetch, sri, tempDir } from './helpers.js';
@@ -78,7 +79,7 @@ describe('fetchNpm', () => {
     expect(requests[0]).toBe(`${REGISTRY}/@acme%2fskill`);
     expect(fetched.source).toEqual({ kind: 'npm', spec: '@acme/skill@beta' });
     expect(fetched.resolved).toEqual({ version: '1.2.0', integrity: sri(tarball) });
-    expect(fetched.fallbackName).toBe('@acme/skill');
+    expect(sourceFallbackName(fetched.source)).toBe('@acme/skill');
     expect(fetched.warnings).toEqual([]);
     expect((await readdir(paths.tree)).sort()).toEqual(['SKILL.md', 'scripts']);
     expect(await readFile(path.join(paths.tree, 'SKILL.md'), 'utf8')).toBe(SKILL_MD);

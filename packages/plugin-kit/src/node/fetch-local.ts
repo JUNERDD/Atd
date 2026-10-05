@@ -65,7 +65,6 @@ export async function fetchLocal(
   return {
     source: { kind: 'local', path: real },
     resolved: {},
-    fallbackName: path.basename(real),
     warnings: dropped.map(droppedLinkWarning),
   };
 }

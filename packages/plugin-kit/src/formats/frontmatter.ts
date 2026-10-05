@@ -83,9 +83,11 @@ export function firstLine(body: string): string | undefined {
 
 /**
  * Reads a tool or name list written as a YAML list or as a comma- or space-separated string.
- * Separators inside parentheses belong to the entry (`Bash(git add:*)`, `Bash(gh *)`).
+ * Separators inside parentheses belong to the entry (`Bash(git add:*)`, `Bash(gh *)`). A missing
+ * key or YAML's empty value (`tools:`) names nothing; null means the value is not a list.
  */
 export function splitList(value: unknown): string[] | null {
+  if (value === undefined || value === null) return [];
   if (Array.isArray(value)) {
     if (!value.every((entry) => typeof entry === 'string')) return null;
     return (value as string[]).map((entry) => entry.trim()).filter((entry) => entry !== '');
