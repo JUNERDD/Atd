@@ -1,6 +1,6 @@
 # Worked example: Mood
 
-A complete small app that builds and type-checks as written: a one-tap daily check-in kept in SQLite, five weeks at a glance, a streamed AI look back, a refresh when data changes, and one widget. Use it to calibrate scope, design and style, not as a template: its look follows from its own purpose, and an app with another purpose comes out differently. `index.html` and `main.tsx` are as in `starter.md`.
+A complete small app that builds and type-checks as written: a one-tap daily check-in kept in SQLite, five weeks at a glance, a streamed AI look back, a refresh when data changes, and one widget. Use it to calibrate scope, design and style, not as a template: its look follows from its own purpose, and an app with another purpose comes out differently. `index.html` and `main.tsx` are as in `starter.md`, and it keeps Atd's window surface (`starter.md`, "The window surface").
 
 ## How its look was decided
 
@@ -15,7 +15,8 @@ A complete small app that builds and type-checks as written: a one-tap daily che
 - One schema and one `dayKey` in `shared/` serve the backend validation and the page.
 - `onStart` is idempotent and additive; a check-in is an upsert by day that publishes an event and reloads the widget.
 - `lookBack` is a generator, so the page shows text as it arrives; a model failure or a missing grant throws a readable error that the page shows.
-- The accent reaches the page through tokens only: `bg-primary` with its opacity steps, and the `--checkin` surface that `styles.css` defines from `--primary`.
+- The accent reaches the page through tokens only: `bg-primary` with its opacity steps, and the `--checkin` surface that `styles.css` defines from `--primary`, mixed with `transparent` so the window's glass still shows through it.
+- The title row is the first row and stays put while the content below it scrolls, so nothing slides under the window controls.
 - The widget supports both families it declares; `link('/', …)` opens the app on tap.
 - `atd-app.json` lists `ai` with a purpose; storage and the widget need no capability.
 
@@ -35,7 +36,7 @@ app call   { appId, name: "recent" }
   "name": "Mood",
   "description": "Check in with how you feel once a day, see the last five weeks at a glance, and get an AI look back.",
   "accentColor": "#8b5cf6",
-  "window": { "width": 600, "height": 640, "minWidth": 380, "minHeight": 420 },
+  "window": { "width": 600, "height": 692, "minWidth": 380, "minHeight": 472, "surface": "glass" },
   "capabilities": ["ai"],
   "purposes": { "ai": "Writes a short look back at your recent check-ins." }
 }
@@ -52,12 +53,10 @@ app call   { appId, name: "recent" }
 ```css
 @import '@atd/ui/styles.css';
 
-/* The check-in's surface: a wash of the accent, one value per appearance. */
+/* The check-in's surface: a wash of the accent over the window's glass. Mood is dark like Atd,
+   so one value is enough. */
 :root {
-  --checkin: color-mix(in oklab, var(--primary) 8%, var(--background));
-}
-.dark {
-  --checkin: color-mix(in oklab, var(--primary) 14%, var(--background));
+  --checkin: color-mix(in oklab, var(--primary) 14%, transparent);
 }
 
 @theme inline {
@@ -265,100 +264,110 @@ export function App() {
 
   return (
     <MotionConfig reducedMotion="user">
-      <main className="flex h-dvh flex-col overflow-y-auto bg-background text-foreground">
-        <section className="bg-checkin flex flex-col gap-4 px-6 pt-7 pb-6">
-          <h1 className="text-2xl font-semibold tracking-tight">How are you today?</h1>
-          <div role="group" aria-label="Today's mood" className="grid grid-cols-5 gap-1.5">
-            {FACES.map((Face, index) => {
-              const chosen = today?.mood === index + 1;
-              return (
-                <Button
-                  key={index}
-                  variant="ghost"
-                  aria-pressed={chosen}
-                  disabled={save.isPending}
-                  className="relative h-auto flex-col gap-1.5 py-3"
-                  onClick={() => save.mutate(index + 1)}
+      <div className="flex h-dvh flex-col text-foreground">
+        <header className="atd-titlebar">
+          <span className="text-sm font-medium">Mood</span>
+        </header>
+        <main className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+          <section className="bg-checkin flex flex-col gap-4 px-6 pt-7 pb-6">
+            <h1 className="text-2xl font-semibold tracking-tight">How are you today?</h1>
+            <div role="group" aria-label="Today's mood" className="grid grid-cols-5 gap-1.5">
+              {FACES.map((Face, index) => {
+                const chosen = today?.mood === index + 1;
+                return (
+                  <Button
+                    key={index}
+                    variant="ghost"
+                    aria-pressed={chosen}
+                    disabled={save.isPending}
+                    className="relative h-auto flex-col gap-1.5 py-3"
+                    onClick={() => save.mutate(index + 1)}
+                  >
+                    {chosen ? (
+                      <motion.span
+                        layoutId="chosen"
+                        className="absolute inset-0 rounded-2xl bg-primary"
+                        transition={{ type: 'spring', bounce: 0.25, duration: 0.45 }}
+                      />
+                    ) : null}
+                    <Face className={cn('relative size-7', chosen && 'text-primary-foreground')} />
+                    <span
+                      className={cn(
+                        'relative text-xs',
+                        chosen ? 'text-primary-foreground' : 'text-muted-foreground',
+                      )}
+                    >
+                      {MOOD_LABELS[index]}
+                    </span>
+                  </Button>
+                );
+              })}
+            </div>
+            {save.error ? <p className="text-sm text-destructive">{save.error.message}</p> : null}
+          </section>
+
+          <section className="flex flex-col gap-3 px-6 py-5">
+            <div className="flex items-end justify-between gap-2">
+              <h2 className="text-sm font-medium text-muted-foreground">Last five weeks</h2>
+              <p className="flex items-baseline gap-1.5 text-sm text-muted-foreground">
+                <motion.span
+                  key={run}
+                  initial={{ y: 8, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  className="text-4xl font-semibold text-foreground tabular-nums"
                 >
-                  {chosen ? (
-                    <motion.span
-                      layoutId="chosen"
-                      className="absolute inset-0 rounded-2xl bg-primary"
-                      transition={{ type: 'spring', bounce: 0.25, duration: 0.45 }}
-                    />
-                  ) : null}
-                  <Face className={cn('relative size-7', chosen && 'text-primary-foreground')} />
-                  <span
+                  {run}
+                </motion.span>
+                day streak
+              </p>
+            </div>
+            {checkins.error ? (
+              <p className="text-sm text-destructive">{checkins.error.message}</p>
+            ) : null}
+            <ol aria-busy={checkins.isPending} className="grid max-w-sm grid-cols-7 gap-1.5">
+              {days.map((day) => {
+                const entry = byDay.get(day);
+                const date = new Date(`${day}T12:00`).toLocaleDateString(undefined, {
+                  month: 'short',
+                  day: 'numeric',
+                });
+                return (
+                  <li
+                    key={day}
                     className={cn(
-                      'relative text-xs',
-                      chosen ? 'text-primary-foreground' : 'text-muted-foreground',
+                      'aspect-square rounded-lg transition-colors duration-300',
+                      entry ? TINTS[entry.mood - 1] : 'border',
+                      day === todayKey && 'ring-2 ring-ring ring-offset-2 ring-offset-transparent',
                     )}
                   >
-                    {MOOD_LABELS[index]}
-                  </span>
-                </Button>
-              );
-            })}
-          </div>
-          {save.error ? <p className="text-sm text-destructive">{save.error.message}</p> : null}
-        </section>
+                    <span className="sr-only">
+                      {date}: {entry ? MOOD_LABELS[entry.mood - 1] : 'no check-in'}
+                    </span>
+                  </li>
+                );
+              })}
+            </ol>
+          </section>
 
-        <section className="flex flex-col gap-3 px-6 py-5">
-          <div className="flex items-end justify-between gap-2">
-            <h2 className="text-sm font-medium text-muted-foreground">Last five weeks</h2>
-            <p className="flex items-baseline gap-1.5 text-sm text-muted-foreground">
-              <motion.span
-                key={run}
-                initial={{ y: 8, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                className="text-4xl font-semibold text-foreground tabular-nums"
+          <section className="flex flex-col gap-2 px-6 pb-6">
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="text-sm font-medium text-muted-foreground">Look back</h2>
+              <Button
+                size="sm"
+                variant="secondary"
+                disabled={looking}
+                onClick={() => void reflect()}
               >
-                {run}
-              </motion.span>
-              day streak
+                <Sparkles /> Reflect
+              </Button>
+            </div>
+            {lookError ? <p className="text-sm text-destructive">{lookError}</p> : null}
+            <p aria-live="polite" className="text-sm leading-relaxed">
+              {lookBack}
             </p>
-          </div>
-          {checkins.error ? (
-            <p className="text-sm text-destructive">{checkins.error.message}</p>
-          ) : null}
-          <ol aria-busy={checkins.isPending} className="grid max-w-sm grid-cols-7 gap-1.5">
-            {days.map((day) => {
-              const entry = byDay.get(day);
-              const date = new Date(`${day}T12:00`).toLocaleDateString(undefined, {
-                month: 'short',
-                day: 'numeric',
-              });
-              return (
-                <li
-                  key={day}
-                  className={cn(
-                    'aspect-square rounded-lg transition-colors duration-300',
-                    entry ? TINTS[entry.mood - 1] : 'border',
-                    day === todayKey && 'ring-2 ring-ring ring-offset-2 ring-offset-background',
-                  )}
-                >
-                  <span className="sr-only">
-                    {date}: {entry ? MOOD_LABELS[entry.mood - 1] : 'no check-in'}
-                  </span>
-                </li>
-              );
-            })}
-          </ol>
-        </section>
-
-        <section className="flex flex-col gap-2 px-6 pb-6">
-          <div className="flex items-center justify-between gap-2">
-            <h2 className="text-sm font-medium text-muted-foreground">Look back</h2>
-            <Button size="sm" variant="secondary" disabled={looking} onClick={() => void reflect()}>
-              <Sparkles /> Reflect
-            </Button>
-          </div>
-          {lookError ? <p className="text-sm text-destructive">{lookError}</p> : null}
-          <p aria-live="polite" className="text-sm leading-relaxed">
-            {lookBack}
-          </p>
-        </section>
-      </main>
+          </section>
+        </main>
+      </div>
     </MotionConfig>
   );
 }
