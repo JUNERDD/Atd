@@ -48,7 +48,8 @@ final class UserAppWindows {
   var keyHost: UserAppHost? { windows.values.first(where: \.isKey)?.host }
 
   /// `userApp.open`: focuses the app's window or opens one, reloading it when the version
-  /// changed. A widget tap passes the route to show (already checked by ``WidgetLink``).
+  /// changed, or replacing it when the version asks for another window surface. A widget tap
+  /// passes the route to show (already checked by ``WidgetLink``).
   func open(appId: String, route: String? = nil) async throws(BridgeError) {
     guard UserAppOrigin.isValidAppId(appId) else {
       throw BridgeError(ShellStrings.shared.text(.userAppOpenFailed))
@@ -68,7 +69,7 @@ final class UserAppWindows {
       throw BridgeError(ShellStrings.shared.text(.userAppOpenFailed))
     }
     storage.rememberDataStore(dataStore, appId: appId)
-    if let window = windows[appId] {
+    if let window = windows[appId], window.host.surface == runtime.surface {
       window.update(runtime)
       if let route { window.host.load(route: route) }
       window.show()
@@ -82,9 +83,16 @@ final class UserAppWindows {
       throw BridgeError(ShellStrings.shared.text(.userAppOpenFailed))
     }
     // Another open of the same app may have finished while this one waited.
-    if let window = windows[appId] {
+    if let window = windows[appId], window.host.surface == runtime.surface {
       window.show()
       return
+    }
+    if let window = windows[appId] {
+      // A version on another window surface: a live window cannot swap its material and title
+      // bar, so it closes, remembering its frame, and the new one opens there. The app stays
+      // open for the renderer throughout.
+      window.onClose = nil
+      window.close()
     }
     let host = UserAppHost(
       runtime: runtime, dataStore: dataStore, rules: rules, schemeHandler: schemeHandler,

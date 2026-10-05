@@ -39,6 +39,12 @@ export const UserAppFileSchema = Type.Object(
   { additionalProperties: false },
 );
 
+/** A rectangle in CSS pixels from the web view's top-left corner. */
+const RectSchema = Type.Object(
+  { x: Type.Number(), y: Type.Number(), width: Type.Number(), height: Type.Number() },
+  { additionalProperties: false },
+);
+
 /** Posts: one-way messages the page sends; the reply is `null`. */
 export const UserAppPosts = {
   /** The page loaded; the shell shows the window once its first page is ready. */
@@ -58,6 +64,17 @@ export const UserAppPosts = {
       message: Text(4000),
       stack: Type.Optional(Text(16000)),
     },
+    { additionalProperties: false },
+  ),
+  /**
+   * The window drag regions: where a press moves the window instead of reaching the page, as the
+   * renderer's own `window.dragRegions` (WKWebView has no CSS drag regions). The shell's injected
+   * script sends them for a glass window: the title bar strip at the top of the page, interactive
+   * elements and overlays cut out, after every change that can move them, and `[]` when the page
+   * goes away.
+   */
+  'window.dragRegions': Type.Object(
+    { rects: Type.Array(RectSchema, { maxItems: 64 }) },
     { additionalProperties: false },
   ),
 } satisfies Record<string, TSchema>;

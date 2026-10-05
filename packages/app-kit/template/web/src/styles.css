@@ -1,4 +1,9 @@
 @import '@atd/ui/styles.css';
 
-/* The build applies atd-app.json's accentColor to the @atd/ui tokens above. The app's own tokens
-   go below: raw colors only inside :root (light) and .dark definitions, mapped with @theme inline. */
+/* The build adds to the @atd/ui styles above what atd-app.json asks for: the accentColor's tokens,
+   and with "surface": "glass" the window's fill on #root (the task panel's --ata-surface-panel) and
+   the .atd-titlebar row. The app's rules go below and win over all of it. Another background:
+   redefine --ata-surface-panel (an opaque value too under :root[data-reduced-transparency='true'])
+   or give #root a background, never html or body, which only show through the fill. The app's own
+   tokens: raw colors only inside :root (and .dark for an app that follows the system appearance),
+   mapped with @theme inline. */

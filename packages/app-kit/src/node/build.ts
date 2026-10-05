@@ -4,7 +4,8 @@ import { builderProfile, SANDBOX_EXEC, writeProfile } from './seatbelt.js';
 import { runSandboxed } from './spawn.js';
 import type { DependencyTree } from './deps/store.js';
 import type { StagedApp } from './staging.js';
-import { manifestAccentColor, pageStyles, THEME_DIR } from './theme.js';
+import type { AppSurface } from '@atd/agent-contracts';
+import { manifestAccentColor, manifestSurface, pageStyles, THEME_DIR } from './theme.js';
 import {
   loadToolchain,
   nodeBinary,
@@ -29,7 +30,10 @@ export type BuildErrorCode =
   | 'load_outside'
   /** An app CSS `@import` of something other than app files, `@atd/ui` or `tailwindcss`. */
   | 'css_import'
-  /** `atd-app.json` is not JSON, or its `accentColor` is not `#RRGGBB`. */
+  /**
+   * `atd-app.json` is not JSON, its `accentColor` is not `#RRGGBB`, or its `window.surface` is
+   * neither `glass` nor `opaque`.
+   */
   | 'invalid_manifest'
   /** Anything else Vite reported (syntax errors, missing files…). */
   | 'build_failed'
@@ -144,7 +148,7 @@ function readReport(
  * reads under `/Users` only the app, the toolchain and Node) around `node --permission
  * --allow-addons` with one `--allow-fs-read` per path (Node 24 grants nothing for a comma list).
  * The environment is built from scratch; the build is killed after `timeoutMs` (120 s). The
- * manifest's `accentColor` themes the page's `@atd/ui` tokens (`theme.ts`).
+ * manifest's `accentColor` and `window.surface` theme the page's `@atd/ui` styles (`theme.ts`).
  * A dependency tree joins the reads and the load fence, and the module policy resolves the
  * declared names from it.
  */
@@ -159,15 +163,17 @@ export async function buildApp(options: BuildAppOptions): Promise<BuildResult> {
   const outDir = realpath(options.outDir);
   const stagingDir = options.app.dir;
   let accentColor: string | null;
+  let surface: AppSurface;
   try {
     accentColor = await manifestAccentColor(stagingDir);
+    surface = await manifestSurface(stagingDir);
   } catch (error) {
     const message = `atd-app.json: ${error instanceof Error ? error.message : String(error)}`;
     const errors: BuildError[] = [{ code: 'invalid_manifest', message, file: 'atd-app.json' }];
     return { ok: false, durationMs: elapsed(), errors, log: '' };
   }
   await writeRootMarkers(options.app);
-  const styles = await pageStyles(outDir, toolchain.cssAliases, accentColor);
+  const styles = await pageStyles(outDir, toolchain.cssAliases, accentColor, surface);
   const deps = options.deps ?? null;
   const readRoots = deps ? [...toolchain.readRoots, deps.root] : toolchain.readRoots;
 

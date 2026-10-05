@@ -1,8 +1,10 @@
-import { readdir, realpath, rm } from 'node:fs/promises';
+import { readdir, readFile, realpath, rm } from 'node:fs/promises';
 import path from 'node:path';
 import { pruneDependencyCache } from '@atd/app-kit/node';
 import {
   APP_CAPABILITIES,
+  AppManifestSchema,
+  parse,
   type AppDetail,
   type AppRuntime,
   type InvalidateFrame,
@@ -156,12 +158,18 @@ export class AppService {
 
   /**
    * What the shell's app window loads: the current build's own `web/` directory, which moves when
-   * a build replaces the version, with the revision it belongs to.
+   * a build replaces the version, with the revision it belongs to, and the window surface that
+   * build's manifest asks for. The surface comes from the build's own source snapshot, as a revert
+   * reads it, so a reverted version brings back its window as well as its page.
    */
   async runtime(appId: string): Promise<AppRuntime> {
     const app = this.store.get(appId);
     const build = await currentBuild(this.paths, app);
     const webRoot = await realpath(path.join(build, 'web'));
+    const manifest = parse(
+      AppManifestSchema,
+      JSON.parse(await readFile(path.join(build, 'source', 'atd-app.json'), 'utf8')),
+    );
     return {
       appId,
       name: app.name,
@@ -170,6 +178,7 @@ export class AppService {
       webRoot,
       dataStoreId: app.dataStoreId,
       window: app.window,
+      surface: manifest.window.surface ?? 'opaque',
     };
   }
 

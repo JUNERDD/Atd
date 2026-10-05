@@ -14,13 +14,27 @@ import {
 
 const WindowLength = Type.Integer({ minimum: 200, maximum: 4000 });
 
-/** The window size the manifest asks for, in points; the shell clamps it to the work area. */
+/**
+ * The window material an app asks for. `glass` is Atd's own window: the settings window's glass
+ * and 52 pt unified title bar around a transparent page, which the build gives the task panel's
+ * fill and whose first row lies on the title bar. `opaque` is a conventional titled window whose
+ * page paints everything; a manifest without `surface` gets it, as every app built before
+ * surfaces existed.
+ */
+export const AppSurfaceSchema = Type.Union([Type.Literal('glass'), Type.Literal('opaque')]);
+export type AppSurface = Static<typeof AppSurfaceSchema>;
+
+/**
+ * The window the manifest asks for: its size in points, which the shell clamps to the work area
+ * and which for a glass window includes the title bar row, and its surface.
+ */
 export const AppWindowSchema = Type.Object(
   {
     width: WindowLength,
     height: WindowLength,
     minWidth: Type.Optional(WindowLength),
     minHeight: Type.Optional(WindowLength),
+    surface: Type.Optional(AppSurfaceSchema),
   },
   { additionalProperties: false },
 );

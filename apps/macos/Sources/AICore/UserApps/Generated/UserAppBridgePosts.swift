@@ -45,3 +45,50 @@ public struct UserAppAppErrorPost: Codable, Equatable, Sendable {
     case console
   }
 }
+
+/// Params of the `window.dragRegions` post.
+public struct UserAppWindowDragRegionsPost: Codable, Equatable, Sendable {
+  public let rects: [Rect]
+
+  public init(rects: [Rect]) {
+    self.rects = rects
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    rects = try container.array(.rects, of: Rect.self, maxItems: 64)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case rects
+  }
+
+  public struct Rect: Codable, Equatable, Sendable {
+    public let x: Double
+    public let y: Double
+    public let width: Double
+    public let height: Double
+
+    public init(x: Double, y: Double, width: Double, height: Double) {
+      self.x = x
+      self.y = y
+      self.width = width
+      self.height = height
+    }
+
+    public init(from decoder: any Decoder) throws {
+      let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+      x = try container.number(.x)
+      y = try container.number(.y)
+      width = try container.number(.width)
+      height = try container.number(.height)
+    }
+
+    private enum CodingKeys: String, CodingKey, CaseIterable {
+      case x
+      case y
+      case width
+      case height
+    }
+  }
+}

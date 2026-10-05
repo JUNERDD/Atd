@@ -45,47 +45,51 @@ export function App() {
   };
 
   return (
-    <main className="flex h-dvh flex-col gap-4 bg-background p-6 text-foreground">
-      <h1 className="text-lg font-semibold">Notes</h1>
-      <form className="flex gap-2" onSubmit={submit}>
-        <Input
-          aria-label="New note"
-          placeholder="Write a note…"
-          value={text}
-          onChange={(event) => setText(event.target.value)}
-        />
-        <Button type="submit" disabled={addNote.isPending || !text.trim()}>
-          <Plus /> Add
-        </Button>
-      </form>
-      {addNote.error ? <p className="text-sm text-destructive">{addNote.error.message}</p> : null}
-      {notes.data && notes.data.length > 0 ? (
-        <ItemGroup className="min-h-0 flex-1 overflow-y-auto">
-          {notes.data.map((note) => (
-            <Item key={note.id} variant="muted" size="sm">
-              <ItemContent>
-                <ItemTitle>{note.text}</ItemTitle>
-                <ItemDescription>{new Date(note.createdAt).toLocaleString()}</ItemDescription>
-              </ItemContent>
-            </Item>
-          ))}
-        </ItemGroup>
-      ) : (
-        <Empty>
-          <EmptyHeader>
-            <EmptyTitle>
-              {notes.isPending
-                ? 'Loading…'
-                : notes.isError
-                  ? 'Notes could not load'
-                  : 'No notes yet'}
-            </EmptyTitle>
-            <EmptyDescription>
-              {notes.error?.message ?? "Notes you add are saved by this app's backend."}
-            </EmptyDescription>
-          </EmptyHeader>
-        </Empty>
-      )}
+    <main className="flex h-dvh flex-col text-foreground">
+      <header className="atd-titlebar">
+        <h1 className="min-w-0 flex-1 truncate text-sm font-medium">Notes</h1>
+      </header>
+      <div className="flex min-h-0 flex-1 flex-col gap-4 px-6 pb-6">
+        <form className="flex gap-2" onSubmit={submit}>
+          <Input
+            aria-label="New note"
+            placeholder="Write a note…"
+            value={text}
+            onChange={(event) => setText(event.target.value)}
+          />
+          <Button type="submit" disabled={addNote.isPending || !text.trim()}>
+            <Plus /> Add
+          </Button>
+        </form>
+        {addNote.error ? <p className="text-sm text-destructive">{addNote.error.message}</p> : null}
+        {notes.data && notes.data.length > 0 ? (
+          <ItemGroup className="min-h-0 flex-1 overflow-y-auto">
+            {notes.data.map((note) => (
+              <Item key={note.id} variant="muted" size="sm">
+                <ItemContent>
+                  <ItemTitle>{note.text}</ItemTitle>
+                  <ItemDescription>{new Date(note.createdAt).toLocaleString()}</ItemDescription>
+                </ItemContent>
+              </Item>
+            ))}
+          </ItemGroup>
+        ) : (
+          <Empty>
+            <EmptyHeader>
+              <EmptyTitle>
+                {notes.isPending
+                  ? 'Loading…'
+                  : notes.isError
+                    ? 'Notes could not load'
+                    : 'No notes yet'}
+              </EmptyTitle>
+              <EmptyDescription>
+                {notes.error?.message ?? "Notes you add are saved by this app's backend."}
+              </EmptyDescription>
+            </EmptyHeader>
+          </Empty>
+        )}
+      </div>
     </main>
   );
 }
