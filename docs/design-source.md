@@ -770,3 +770,11 @@ Figma 侧未同步：本会话云端 Figma 工具不可用，本地 Figma MCP �
 - 面板卡片右上只剩「继续编辑」与「更多」，「打开」由整张卡片承担。设置卡片保留「打开」，因为它整张打开的是详情页。面板网格的最小列宽 288 不变，名称旁的空间由约 110px 增至约 140px。
 - Figma：[App / App list card · Rhea](https://www.figma.com/design/D9YK1tEeBTEBgstcepesW5/Atd?node-id=2047-123329) 新增 `Surface=Panel, State=Hover`（`2178:131273`），与 `Surface=Settings, State=Hover` 相同，在卡片填充上叠 `surface/ghost-hover`；两个 `Surface=Panel` 变体删去 Open 实例；组件说明已改为两种 Surface 都可整张点击、只有 Settings 有 Open。AP1 画面（如 AP1.03、AP1.04）的卡片随主组件更新，已截图核对，「更多」菜单的末端对齐不变。
 - 验证：`pnpm --filter @atd/desktop typecheck`、oxlint、oxfmt 与 `src/App.test.tsx` 通过；没有测试覆盖这些卡片。用户正在运行的 Debug 应用没有被启动、停止或附加，所以面板中的点击与悬停没有在原生窗口里核对。
+
+## 2026-10-05 面板底色调浅
+
+用户认为面板背景太黑，要求调浅一些。渲染器的内容底色只有一个来源，改它即可让任务面板、设置窗口、引导页与菜单浮层一起变化。
+
+- 代码：`packages/ui/src/styles.css` 的 `--ata-surface-panel` 由 `rgb(12 12 12 / 80%)` 改为 `rgb(24 24 24 / 80%)`，减少透明度时的不透明值同步改为 `rgb(24 24 24)`，与已有的 `--ata-glass-fill-opaque` 同色；`--popover` 引用它，随之变化。设置抽屉的备用填充 `--ata-material-settings-content` 与面板同色，改为 `rgb(24 24 24 / 10%)`。原生窗口的 `NSGlassEffectView` 不变，透明度仍为 80%，桌面模糊照常透出。
+- Figma：变量 `material/panel`（Glass、Inactive window 为 24 / 80%，Solid 为不透明 24）与 `material/settings-content`（24 / 10%，Solid 不透明）已改，说明同步；`surface/panel`、`material/glass` 与 `popover` 经别名随之变化，AP1.03 截图已核对。上文表格中「`popover`（#0c0c0c 80%）」为当时的值。
+- 验证：只改了 CSS 变量，格式检查通过。用户正在运行的 Debug 应用没有被启动或附加，所以没有在原生窗口里对照浅色、深色与彩色桌面核对合成效果。
