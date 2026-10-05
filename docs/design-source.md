@@ -820,3 +820,113 @@ Figma 侧未同步：本会话云端 Figma 工具不可用，本地 Figma MCP �
 - Figma 不能加载 KaTeX 的网络字体，公式图形取自 MathJax 3 的 SVG 轮廓（KaTeX 字体同出一源的 TeX 字体），按 KaTeX 的 1.21em（16.94px）缩放；只画了深色。
 - 流式输出时，Streamdown 的 remend 1.4.0（当前最新）会给未闭合的 `[` 补占位链接，且不避开数学区：`$[0,1`、`\[` 展示块与 `$$` 块中的 `\left[` 在括号闭合前会短暂显示 `[blocked]` 或 `](streamdown:incomplete-link)`。这在接入公式前已经存在，闭合后恢复正常；普通链接流式输出时显示 `[blocked]` 也来自同一原因（项目的 harden 配置拦截了占位协议）。
 - Chromium 预览中，行内公式后的中文标点在窄宽度下可能换到下一行行首（行内公式两侧可断行）；未在 WebKit 中核对。
+
+## 2026-10-05 创建应用优化：面板固定到桌面、单次运行一个版本、应用窗口玻璃底
+
+依据 root 决定 D1、D4、D5（v1 至 v1.4，用户已批准）同步 Figma，以代码为准。
+
+- 共享库未改动。Lucide（pin、pin-off、settings、plus、info、triangle-alert、circle-alert、x）都用共享库实例；原生菜单与指针用 Apple「macOS 26」社区库实例。没有分离或重绘任何实例。
+- 新增变量集合 `Widget · macOS appearance`，模式为 Dark（默认）和 Light，包含 10 个 `widget/*` 变量。
+- `shadcn · Project` 新增 `card`（--card，#171717）。
+- 新增效果样式 `Atd/Desktop pin window shadow`。
+
+### 面板应用卡片固定按钮
+
+代码见 `apps-view.tsx`、`use-app-pins.ts`、`use-pin-drag.ts`、`app-list-card.tsx`。
+
+- 布局：面板卡片右上依次为固定开关、继续编辑、更多。名称在三个操作旁约有 110px。
+- 固定开关：
+  - Ghost icon-sm，未固定时为 Lucide pin，已固定时换成 pin-off，没有选中底色。
+  - 提示（D5 v1.2）：未固定为 `pin.addHint`「Pin to Desktop (or drag the card there)」/「固定到桌面（也可拖动卡片）」，已固定为「Remove from Desktop」/「从桌面移除」。
+  - aria-label 为 `pin.addLabel` / `pin.removeLabel`；请求进行中为 aria-disabled。
+- 拖出：按下卡片移动超过 4px 即交给壳拖出，松手处的桌面就是固定位置。
+- Toast：新组件 [App / Toast · Rhea](https://www.figma.com/design/D9YK1tEeBTEBgstcepesW5/Atd?node-id=2231-132329)（`2231:132329`），对应 `components/toast.tsx`。
+  - 外观：圆角 18、1px 边框、bg-card，内边距 6 / 8 / 6 / 12，间距 8，12/18 文字，阴影 0 4 12 黑 20%，高 42。
+  - 位置：面板 ToastHost top 65，相邻间隔 8，最宽为窗口宽减 32，过长时文字换行。
+  - 文案：每次固定后显示 `pin.added`，之后至多跟一条一次性提示。
+    - 第一次用按钮固定后为 `pin.dragHint`「Next time, drag an app's card onto the desktop to pin it.」/「下次可以直接把应用卡片拖到桌面来固定。」。
+    - 之后的固定，或第一次通过拖动固定时，若「登录时打开」未开启，则为 `pin.loginHint`。
+    - 用按钮移除时显示 `pin.removed`。
+- Figma：
+  - [App / App list card · Rhea](https://www.figma.com/design/D9YK1tEeBTEBgstcepesW5/Atd?node-id=2047-123329) 的两个 `Surface=Panel` 变体加入暴露的「Pin to Desktop」实例（`2225:131963`、`2225:131967`），并改了组件说明。
+  - 同时修复了 `Surface=Panel, State=Hover`（`2178:131273`）的标题、描述、Meta 与状态徽标没有绑定属性的问题。
+  - [评审帧](https://www.figma.com/design/D9YK1tEeBTEBgstcepesW5/Atd?node-id=2227-131700)（`2227:131700`）含默认、悬停、键盘焦点、已固定、zh-CN 与长名称。
+  - AP1 新增一行 [固定到桌面](https://www.figma.com/design/D9YK1tEeBTEBgstcepesW5/Atd?node-id=2235-113353)，AP2、AP3 因此下移 760：
+    - [AP1.30 拖出卡片](https://www.figma.com/design/D9YK1tEeBTEBgstcepesW5/Atd?node-id=2236-113986)：桌面上的面板，拖动图是即将生成的固定组件，居中于指针。
+    - [AP1.31 首次按钮固定](https://www.figma.com/design/D9YK1tEeBTEBgstcepesW5/Atd?node-id=2235-113354)
+    - [AP1.32 登录提示](https://www.figma.com/design/D9YK1tEeBTEBgstcepesW5/Atd?node-id=2235-132337)
+    - [AP1.33 移除](https://www.figma.com/design/D9YK1tEeBTEBgstcepesW5/Atd?node-id=2235-132502)
+    - [AP1.34 zh-CN](https://www.figma.com/design/D9YK1tEeBTEBgstcepesW5/Atd?node-id=2235-132660)
+
+### 桌面固定组件
+
+代码见 `apps/macos/Sources/AIShell/DesktopPins/`（窗口、视图、菜单、`DesktopPinCorner.swift`），卡片在 `AIWidgetRender/WidgetCardView.swift`，图块在 `AIWidgetRender/WidgetLauncherView.swift`，几何在 `AICore/Windows/DesktopPinGeometry.swift`。
+
+- 卡片：
+  - 按尺寸为 170 × 170、364 × 170、364 × 382；内边距 16，连续圆角 22。
+  - 底色为 `.fill.tertiary` 叠在 windowBackgroundColor 上，即 `widget/card`。本机 macOS 26 实测：深色 #292929，浅色 #F3F3F3。
+  - 阴影由窗口服务器画在卡片外。
+- 图块（D5 v1.4）：
+  - 宽度不足 320 时图标在上、名称在下（小）；更宽时图标在前，右侧是名称和能放下的描述（中），描述由小组件同步数据的 `description` 下发。没有描述时，名称垂直居中，卡片只能加宽到 364 × 170。
+  - 菜单预设与四角调整同样适用于图块。
+  - 小组件回退为图块时，取最接近原尺寸的图块尺寸。
+- Figma：
+  - 新组件 [Widget / Desktop pin](https://www.figma.com/design/D9YK1tEeBTEBgstcepesW5/Atd?node-id=2224-131436)（`2224:131436`）：
+    - Kind=Widget：小、中、大各有 Content、First render (stand-in)、Unreadable 三种状态，是去掉容器底色的 Widget / App Widget 实例。Unreadable 显示 exclamationmark.triangle 与 `pin.unreadable`。
+    - Kind=App tile：Small 为 72pt 图标与 11pt 名称；Medium 为同一 72pt 图标在前、间距 14，名称 headline 13 粗体一行，描述 subheadline 11 次要色、能放下几行显示几行（364 × 170 时最多 8 行，实测），名称与描述间距 2，由属性 Show description 控制。两种尺寸都各有内容与回退图块两种状态。
+  - 浅、深色通过 `Widget · macOS appearance` 的模式切换。为此 Widget / App Widget、My Apps 与 My Apps tile 的颜色改为绑定这些变量；默认 Dark 下现有画面不变。
+  - 新组件 [Widget / Desktop pin menu](https://www.figma.com/design/D9YK1tEeBTEBgstcepesW5/Atd?node-id=2225-131960)（`2225:131960`），按 D5 v1.3 排列：打开“名称” / 尺寸（单选，声明两种及以上时显示）/ 小组件 ▸ / 从桌面移除，组间用分隔线隔开，不再有尺寸子菜单。
+  - [App / App widget row · Rhea](https://www.figma.com/design/D9YK1tEeBTEBgstcepesW5/Atd?node-id=1874-107617) 的预览底色改为 `widget/card`。
+- 调整尺寸（D5 v1.3、v1.5、v1.6，响应式、不缩放）：
+  - 指针在任意一角 20pt 内（去掉圆角外的部分）时，显示从该角出发的调整尺寸指针：最小尺寸时只朝外，最大尺寸时只朝内，其余双向。
+  - 拖动时对角固定，大小连续变化。范围是所声明尺寸的区间：小 170–320 × 170–270，中 320–480 × 170–270，大 320–480 × 270–440；图块（图标在上）170–320 × 170，图块（图标在前、有描述）320–420 × 170–240，无描述时 320–364 × 170（只能加宽）。落在区间外的大小取最近的可用大小；宽、高都在所声明尺寸（小 170 × 170、中 364 × 170、大 364 × 382）8pt 以内时吸附到该尺寸；保持在工作区内。松手后保存宽高与位置。
+  - 显示区间包含当前大小的最大已声明尺寸的布局，在实际空间里排布、不缩放：列表只显示能放下的整行（系统小组件同样不出现半行），图表占满多出的高度（Daily notes 大号：364 × 382 时 136pt，480 × 420 时 174pt），字号、图标与内边距不变。跨入尚无快照的尺寸时先显示占位，新快照到来后替换。
+  - 右键菜单中的小、中、大是预设：选中即设为该尺寸，只有大小正好相等时才打勾；切换小组件或应用图标时尽量保持当前大小。
+  - Atd 不在前台时，指针由 `BackgroundCursor` 显示。
+  - Figma 中的 AP4 第 6 步：[深色](https://www.figma.com/design/D9YK1tEeBTEBgstcepesW5/Atd?node-id=2238-132930)、[浅色](https://www.figma.com/design/D9YK1tEeBTEBgstcepesW5/Atd?node-id=2238-133038)、[右键菜单](https://www.figma.com/design/D9YK1tEeBTEBgstcepesW5/Atd?node-id=2239-114299)、[自由调整](https://www.figma.com/design/D9YK1tEeBTEBgstcepesW5/Atd?node-id=2239-114532)、[中间尺寸](https://www.figma.com/design/D9YK1tEeBTEBgstcepesW5/Atd?node-id=2248-114780)。
+  - Widget / App Widget 的 Large 示例图表改为占满剩余高度（与 SwiftUI 实测一致）；新增示例组件 [Example / Notes starter widget](https://www.figma.com/design/D9YK1tEeBTEBgstcepesW5/Atd?node-id=2245-133276)（`2245:133276`）与变量 `widget/starter-accent`。
+
+### 转录应用卡片「已更新」
+
+- 代码见 `app-card.tsx` 与 `AppBuildDetails.updated`（D1：每次运行只产生一个版本）。同一运行中之后的构建会原地更新版本 n，卡片徽标为 `card.versionUpdated`「Updated v{n}」/「已更新 v{n}」。
+- Figma：[App / App card](https://www.figma.com/design/D9YK1tEeBTEBgstcepesW5/Atd?node-id=1863-99626) 新增变体属性 `Version = New | Updated in place`。
+  - Ready 与 Typecheck warnings 各有一个「Updated v1」变体（`2227:132037`、`2227:132084`）。
+  - 组件集改为三列换行并右移，以免重叠。
+  - [评审帧](https://www.figma.com/design/D9YK1tEeBTEBgstcepesW5/Atd?node-id=2227-132129) 依次展示 v1、Updated v1 与 zh-CN「已更新 v1」。
+
+### 应用窗口玻璃底
+
+- 代码（D4）：新应用为 `window.surface: "glass"`。
+  - 窗口沿用设置窗口的做法：玻璃背景、52pt 统一标题栏、透明网页视图，并开启系统玻璃。
+  - `#root` 绘制 `--ata-surface-panel`，即 #181818 80%；开启「减少透明度」时不透明。
+  - 页面第一行为 `.atd-titlebar`：高 52，左 88、右 12，间距 8。
+  - 模板为 720 × 612，主色 #f59e0b，主色上的文字为 #171717。
+- Figma：[AP3](https://www.figma.com/design/D9YK1tEeBTEBgstcepesW5/Atd?node-id=1870-90314) 重做。
+  - 玻璃窗口（`2237:132814`）位于壁纸之上，使用 `surface/panel`、圆角 22 与 `Atd/Native window glass`，红绿灯在 (18, 16)。
+  - 标题行为 Notes 加 Ghost icon-sm 设置按钮，其下是 Notes 模板内容；笔记行为新组件 [Example / Notes starter item](https://www.figma.com/design/D9YK1tEeBTEBgstcepesW5/Atd?node-id=2237-132807)。
+  - 旁边的说明列附面板底色在黑、灰、白桌面上的色块（#131313 / #2d2d2d / #464646）。
+  - 另附较小的 `surface: "opaque"` 参考（`2238:114086`）：标准标题栏 32pt，页面自绘全部内容，没有标题行。
+
+验证范围：
+
+- Figma：用截图与节点回读核对了以下各项。
+  - Dark 下原有小组件不变，浅、深两种模式都正确。
+  - 菜单与子菜单对齐，各种 toast 与长名称截断正常。
+  - 现有 AP1 画面（AP1.04、AP1.13）中「更多」菜单仍然对齐。
+- 卡片颜色：用脚本经 ImageRenderer 实测（sRGB）。
+- 原生，在隔离实例中核对：
+  - 固定组件的窗口层级（桌面图标层加一）、尺寸、快照与图块图标，有用户截图。
+  - 右键菜单、点击打开、拖出与 Esc 回弹，由用户确认。
+- 原生尚未核对：
+  - 应用窗口玻璃底的外观（用户选择跳过截图）。
+  - v1.3 的顶层尺寸菜单、v1.5/v1.6 的四角自由调整与响应式布局，以及 v1.4 的中号图块。这些仅用 ImageRenderer 渲染与几何脚本核对过。
+
+已知差异：
+
+- 近似值：窗口阴影与玻璃窗口的 22 圆角。
+- 颜色来源：只有 `widget/card` 是实测值。其余 Dark 值沿用 App Widget 原有的 iOS 色板（标签为 100% 白，实测为 84.7%），Light 值据此对应；WidgetKit 容器的浅色值 #FFFFFF 为近似。
+- 指针：调整尺寸指针在 Figma 中为双向箭头；代码在最小、最大尺寸时只朝一个方向。
+- 菜单与拖动图：菜单只画了浅色外观，因为系统套件没有深色版本；拖动图是否半透明未核对。
+- Toast：过长的 toast 在 Figma 中用固定的 388 宽模拟换行，代码中则随文字收缩、最宽 388。
+- 中号图块的描述只来自小组件同步数据，它最多列 16 个应用；超出时中号图块只显示名称。
+- 先前已有的差异：原有 AP1 画面仍有搜索框和页脚，面板标题栏为 49px 并带 X 按钮。
