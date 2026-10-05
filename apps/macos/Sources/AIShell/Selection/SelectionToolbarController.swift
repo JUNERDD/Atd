@@ -20,11 +20,12 @@ import Carbon.HIToolbox
 /// screen (unless the page turned it off).
 ///
 /// The toolbar goes on any key (Escape included), scroll or click elsewhere, and when another
-/// app activates; the pointer wandering off never closes it, so its More menu can reach as far
-/// from the capsule as it needs. A newer press or key makes any check still running stale. Only
-/// presses are watched all the time; keys, scrolls and other buttons are watched while a check
-/// is pending or the toolbar shows, so typing and scrolling elsewhere never wake the app.
-/// Without the setting or the trust, no monitor is installed.
+/// app activates, and its More menu (``SelectionToolbarMenu``, which never takes the keyboard
+/// either) goes with it; the pointer wandering off never closes either, so the menu can reach
+/// as far from the capsule as it needs. A newer press or key makes any check still running
+/// stale. Only presses are watched all the time; keys, scrolls and other buttons are watched
+/// while a check is pending or the toolbar shows, so typing and scrolling elsewhere never wake
+/// the app. Without the setting or the trust, no monitor is installed.
 ///
 /// The welcome guide's practice area shows the same toolbar over text selected in the guide
 /// itself (``showPractice(selection:text:)``), which the global monitors never see: the guide's
@@ -37,8 +38,9 @@ final class SelectionToolbarController {
   /// Ask Atd was clicked, with the practice text when the toolbar was the guide's (nil for a
   /// selection in another app); the toolbar is already hidden.
   var onAsk: ((String?) -> Void)?
-  /// A command button or More item was clicked on a toolbar over another app's selection; the
-  /// toolbar is already hidden. A practice toolbar's commands never get here: they would run.
+  /// A command button or a row of the More menu was clicked on a toolbar over another app's
+  /// selection; the toolbar and the menu are already hidden. A practice toolbar's commands never
+  /// get here: they would run.
   var onCommand: ((String) -> Void)?
 
   static let debounce: Duration = .milliseconds(150)
@@ -52,7 +54,7 @@ final class SelectionToolbarController {
   /// shows: each makes a check stale or hides the toolbar.
   private var interruptMonitor: Any?
   /// Pointer moves over other apps, watched only while the toolbar shows: hover tracking pauses
-  /// while the pointer rests away from the toolbar and needs a move to resume.
+  /// while the pointer rests away from the toolbar and its menu, and needs a move to resume.
   private var moveMonitor: Any?
   private var activationObserver: NSObjectProtocol?
   private var pressedAt: CGPoint?
