@@ -7,7 +7,6 @@ import { ActivityGroup } from './activity-group';
 import { BlockView } from './block-view';
 import { McpApprovalBanners } from './mcp-approval-banner';
 import { promptRun } from './run-prompt';
-import { buildLiveText } from './token-rate';
 import { TurnActions } from './turn-actions';
 import { TurnHeader } from './turn-header';
 import type { RequestIndex } from './turns';
@@ -87,8 +86,6 @@ export const TurnView = memo(function TurnView({
   const settled = !(live && last);
   const openId = settled ? null : openActivityId(turn.items);
   const liveFooter = live && last;
-  // Streamed prose for the live rate estimate; only the live footer reads it.
-  const liveText = liveFooter ? buildLiveText(turn.view.map((view) => view.source)) : undefined;
   const sectionClass = `transcript-turn${liveFooter ? ' transcript-turn-live' : ''}`;
   const run = turn.user ? promptRun(runs, turn.user) : undefined;
   return (
@@ -101,9 +98,7 @@ export const TurnView = memo(function TurnView({
           modelName={modelName ?? turn.modelName}
           live={liveFooter}
           waiting={liveFooter ? turn.waiting : null}
-          trueTokens={turn.trueTokens}
-          trueDurationMs={turn.trueDurationMs}
-          liveText={liveText}
+          generation={turn.generation}
           usage={liveFooter ? null : turn.usage}
         />
       )}

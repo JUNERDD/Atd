@@ -34,11 +34,25 @@ export const MessageUsageSchema = Type.Object(
     cacheRead: Type.Integer({ minimum: 0 }),
     cacheWrite: Type.Integer({ minimum: 0 }),
     cost: Type.Number({ minimum: 0 }),
+    /**
+     * How long the provider spent generating `output`, as the service timed the stream (its
+     * generation.ts): the token rate divides by it. Absent when the stream could not be timed,
+     * including messages that failed or stopped and sessions from before it was measured.
+     */
+    durationMs: Type.Optional(Type.Integer({ minimum: 0 })),
   },
   { additionalProperties: false },
 );
 export type MessageUsage = Static<typeof MessageUsageSchema>;
-const usageField = { usage: Type.Optional(MessageUsageSchema) };
+/** What every block of one assistant message carries alike. */
+const messageFields = {
+  usage: Type.Optional(MessageUsageSchema),
+  /**
+   * While the message streams: when its first output (text, thinking or a tool call) arrived, in
+   * epoch ms, so a client can time the live token rate. Absent before that and once it settled.
+   */
+  firstTokenAt: Type.Optional(Type.Number()),
+};
 
 export const ServiceToolStatusSchema = Type.Union([
   Type.Literal('running'),
@@ -82,7 +96,7 @@ export const ServiceBlockSchema = Type.Union([
         Type.Null(),
       ]),
       error: Type.String(),
-      ...usageField,
+      ...messageFields,
     },
     { additionalProperties: false },
   ),
@@ -93,7 +107,7 @@ export const ServiceBlockSchema = Type.Union([
       text: Type.String(),
       streaming: Type.Boolean(),
       redacted: Type.Boolean(),
-      ...usageField,
+      ...messageFields,
     },
     { additionalProperties: false },
   ),
@@ -119,7 +133,7 @@ export const ServiceBlockSchema = Type.Union([
       ]),
       /** C1 additive: whitelisted per-tool result facts (tool-details.ts). */
       details: Type.Optional(ToolBlockDetailsSchema),
-      ...usageField,
+      ...messageFields,
     },
     { additionalProperties: false },
   ),
@@ -133,7 +147,7 @@ export const ServiceBlockSchema = Type.Union([
       status: ServiceToolStatusSchema,
       answer: Type.Union([Type.String(), Type.Null()]),
       skipped: Type.Boolean(),
-      ...usageField,
+      ...messageFields,
     },
     { additionalProperties: false },
   ),

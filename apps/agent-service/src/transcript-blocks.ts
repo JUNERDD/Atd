@@ -14,6 +14,7 @@ import {
   type SubagentAgentEntry,
   type SubagentChildEntry,
 } from '@atd/agent-contracts';
+import { readGenerationRecord } from './generation.js';
 import type { Logger } from './logging.js';
 import type { StepList } from './transcript-details/codemode.js';
 import { projectBlockDetails } from './transcript-details/index.js';
@@ -60,12 +61,19 @@ const QuestionRecordValidator = Compile(QuestionRecordSchema);
 const SubagentChildEntryValidator = Compile(SubagentChildEntrySchema);
 const StoredUsageValidator = Compile(StoredUsageSchema);
 
-/** A settled assistant message's usage as blocks report it; undefined without valid counts. */
-export function messageUsage(message: AssistantMessage): MessageUsage | undefined {
+/**
+ * A settled assistant message's usage as blocks report it, with the generation time the service
+ * measured for it (`durationMs`, generation.ts) when there is one; undefined without valid counts.
+ */
+export function messageUsage(
+  message: AssistantMessage,
+  durationMs: number | undefined,
+): MessageUsage | undefined {
   const usage: unknown = message.usage;
   if (!StoredUsageValidator.Check(usage)) return undefined;
   const { input, output, cacheRead, cacheWrite, cost } = usage;
-  return { input, output, cacheRead, cacheWrite, cost: cost.total };
+  const timed = durationMs === undefined ? {} : { durationMs };
+  return { input, output, cacheRead, cacheWrite, cost: cost.total, ...timed };
 }
 
 export const ASK_USER_TOOL = 'ask_user';
@@ -87,6 +95,8 @@ export interface BlockLookups {
   children: Map<string, SubagentChildEntry[]>;
   /** `app-agent` entries by the defining `subagent` call id, in entry order. */
   agents: Map<string, SubagentAgentEntry[]>;
+  /** Measured generation time (`app-generation` entries) by assistant message `timestamp`. */
+  generations: Map<number, number>;
 }
 
 /** The permission outcomes a session branch recorded. */
@@ -118,10 +128,13 @@ export function collectBlockLookups(
   const questions = new Map<string, string | null>();
   const children = new Map<string, SubagentChildEntry[]>();
   const agents = new Map<string, SubagentAgentEntry[]>();
+  const generations = new Map<number, number>();
   for (const item of branch) {
     if (item.type === 'custom') {
       if (item.customType === 'app-question' && QuestionRecordValidator.Check(item.data))
         questions.set(item.data.toolCallId, item.data.answer);
+      const generation = readGenerationRecord(item.customType, item.data);
+      if (generation) generations.set(generation.timestamp, generation.durationMs);
       if (item.customType === SUBAGENT_CHILD_ENTRY && SubagentChildEntryValidator.Check(item.data))
         children.set(item.data.toolCallId, [
           ...(children.get(item.data.toolCallId) ?? []),
@@ -136,7 +149,7 @@ export function collectBlockLookups(
     if (item.endedAt !== undefined) resultEnds.set(item.message.toolCallId, item.endedAt);
   }
   for (const entries of children.values()) entries.sort((a, b) => a.seq - b.seq);
-  return { results, resultEnds, permissions: merged, questions, children, agents };
+  return { results, resultEnds, permissions: merged, questions, children, agents, generations };
 }
 
 function resolveStatus(
@@ -200,6 +213,8 @@ export interface AssistantBlockInput {
    * streams, since a partial's counts are not final.
    */
   usage: MessageUsage | undefined;
+  /** While it streams, when its first output arrived (generation.ts); copied like `usage`. */
+  firstTokenAt: number | undefined;
   outputOf: (result: ToolResultMessage) => string;
   /** Receives diagnostics for tool details dropped by the projection; passed through from the caller. */
   log?: Pick<Logger, 'debug'> | undefined;
@@ -210,7 +225,10 @@ export function projectAssistantServiceBlocks(input: AssistantBlockInput): Servi
   const { message, runId, streaming, live, lookups, partials, messageEndedAt, outputOf } = input;
   const timestamp = message.timestamp;
   const endedAt = messageEndedAt ?? timestamp;
-  const usage = input.usage ? { usage: input.usage } : {};
+  const shared = {
+    ...(input.usage ? { usage: input.usage } : {}),
+    ...(input.firstTokenAt === undefined ? {} : { firstTokenAt: input.firstTokenAt }),
+  };
   const blocks: ServiceBlock[] = [];
   const stopReason = mapStopReason(message.stopReason, streaming);
   message.content.forEach((part, index) => {
@@ -230,7 +248,7 @@ export function projectAssistantServiceBlocks(input: AssistantBlockInput): Servi
           streaming: partStreaming,
           stopReason,
           error: message.errorMessage ?? '',
-          ...usage,
+          ...shared,
         });
         return;
       case 'thinking':
@@ -243,7 +261,7 @@ export function projectAssistantServiceBlocks(input: AssistantBlockInput): Servi
           text: part.thinking,
           streaming: partStreaming,
           redacted: Boolean(part.redacted),
-          ...usage,
+          ...shared,
         });
         return;
       case 'toolCall': {
@@ -264,7 +282,7 @@ export function projectAssistantServiceBlocks(input: AssistantBlockInput): Servi
             status: resolveStatus(result, false, live),
             answer,
             skipped: answered && answer === null,
-            ...usage,
+            ...shared,
           });
           return;
         }
@@ -286,7 +304,7 @@ export function projectAssistantServiceBlocks(input: AssistantBlockInput): Servi
           partial: result ? '' : (partials.get(part.id) ?? ''),
           permission: permission ? { scope: permission.scope, outcome: permission.outcome } : null,
           ...(details ? { details } : {}),
-          ...usage,
+          ...shared,
         });
         return;
       }

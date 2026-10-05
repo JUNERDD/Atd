@@ -173,9 +173,15 @@ function mapToolDetails(details: ToolBlockDetails | undefined): ToolDetails {
   return { ...none, data: details };
 }
 
-/** The message's usage as the desktop keeps it; the service measures no generation time. */
-function mapUsage(usage: MessageUsage | undefined): { usage?: AssistantUsage } {
-  return usage ? { usage: { ...usage } } : {};
+/** What the service copies onto every block of one assistant message, as the desktop keeps it. */
+function messageFields(block: { usage?: MessageUsage; firstTokenAt?: number }): {
+  usage?: AssistantUsage;
+  firstTokenAt?: number;
+} {
+  return {
+    ...(block.usage ? { usage: { ...block.usage } } : {}),
+    ...(block.firstTokenAt === undefined ? {} : { firstTokenAt: block.firstTokenAt }),
+  };
 }
 
 export function mapBlock(block: ServiceBlock): Block {
@@ -202,7 +208,7 @@ export function mapBlock(block: ServiceBlock): Block {
         streaming: block.streaming,
         stopReason: block.stopReason,
         error: block.error,
-        ...mapUsage(block.usage),
+        ...messageFields(block),
       };
     case 'thinking':
       return {
@@ -212,7 +218,7 @@ export function mapBlock(block: ServiceBlock): Block {
         streaming: block.streaming,
         redacted: block.redacted,
         durationMs: null,
-        ...mapUsage(block.usage),
+        ...messageFields(block),
       };
     case 'tool':
       return {
@@ -228,7 +234,7 @@ export function mapBlock(block: ServiceBlock): Block {
         permission: block.permission
           ? { scope: block.permission.scope, outcome: block.permission.outcome }
           : null,
-        ...mapUsage(block.usage),
+        ...messageFields(block),
       };
     case 'question':
       return {
@@ -240,7 +246,7 @@ export function mapBlock(block: ServiceBlock): Block {
         status: block.status,
         answer: block.answer,
         skipped: block.skipped,
-        ...mapUsage(block.usage),
+        ...messageFields(block),
       };
     case 'system':
       return { kind: 'system', ...base, level: block.level, text: block.text };
