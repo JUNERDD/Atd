@@ -67,7 +67,7 @@ export const AppToolParametersSchema = Type.Object(
       ],
       {
         description:
-          "scaffold: copy the starter app into dir when it is missing or empty. build: type-check, build and publish dir as the next version (the first build creates the app). diagnostics: recent build, type, frontend, backend and widget errors of an app. call: run one backend api function of this task's app. list: the user's apps.",
+          "scaffold: copy the starter app into dir when it is missing or empty. build: type-check, build and publish dir; the first build of this run publishes the next version (the first build ever creates the app) and later builds of the run update that version in place. diagnostics: recent build, type, frontend, backend and widget errors of an app. call: run one backend api function of this task's app. list: the user's apps.",
       },
     ),
     dir: Type.Optional(Dir),
@@ -75,7 +75,8 @@ export const AppToolParametersSchema = Type.Object(
       Type.String({
         minLength: 1,
         maxLength: 500,
-        description: 'build: one line saying what this version changes.',
+        description:
+          'build: one line saying what this version changes; each build of the run replaces it, so cover the whole request, not only the last fix.',
       }),
     ),
     appId: Type.Optional(
@@ -90,7 +91,7 @@ export const AppToolParametersSchema = Type.Object(
 );
 
 const DESCRIPTION =
-  "Create and maintain the user's Atd apps from the source in this task folder. Ops: scaffold { dir? } starts a new app from the working Notes starter (never overwrites); build { dir?, summary } type-checks, builds and publishes the source as a new version, creating the app on its first build, and starts its backend once; a failed build publishes nothing and lists every error; diagnostics { appId } reads recent errors (build, type check, page, backend, widgets); call { appId, name, input? } runs one backend api function of this task's app, through the same consent-gated capabilities the app uses; list shows the user's apps. dir defaults to \"app\".";
+  "Create and maintain the user's Atd apps from the source in this task folder. Ops: scaffold { dir? } starts a new app from the working Notes starter (never overwrites); build { dir?, summary } type-checks, builds and publishes the source, creating the app on its first build, and starts its backend once: the first build of this run publishes a new version and later builds of the run update that version in place (the result says updated), so build as often as useful; a failed build publishes nothing and lists every error; diagnostics { appId } reads recent errors (build, type check, page, backend, widgets); call { appId, name, input? } runs one backend api function of this task's app, through the same consent-gated capabilities the app uses; list shows the user's apps. dir defaults to \"app\".";
 
 interface ToolContext {
   dataDir: string;

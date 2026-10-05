@@ -15,10 +15,12 @@ export type AppCardState = 'building' | 'failed' | 'ready';
 
 /**
  * The app an `app.build` call published (Figma `App / App card`), shown under its tool row as of
- * that version: the icon, name, version and widget count, the build's change note, then Open and
- * Version history. Type errors that did not stop the build read as a warning footer; a build
- * still running shows its progress instead of actions, and a failed one its error, with actions
- * that open the last version that built.
+ * that build: the icon, name, version and widget count, the build's change note, then Open and
+ * Version history. A later build of the same run updates the version an earlier one published,
+ * so its badge says the version was updated rather than naming it as if it were new. Type errors
+ * that did not stop the build read as a warning footer; a build still running shows its progress
+ * instead of actions, and a failed one its error, with actions that open the last version that
+ * built.
  */
 export function AppCard({
   details,
@@ -47,13 +49,18 @@ export function AppCard({
     <ToolCard.Root aria-label={t('card.label', { name: details.name })}>
       <ToolCard.Body scroll="none" className="flex flex-col gap-2.5">
         <div className="flex min-w-0 items-start gap-2.5">
-          <AppIcon appId={details.appId} version={details.version} />
+          {/* Details recorded before build revisions carry only the version, their revision. */}
+          <AppIcon appId={details.appId} revision={details.revision ?? details.version} />
           <div className="flex min-w-0 flex-1 flex-col gap-0.5">
             <div className="flex min-w-0 items-center gap-1.5">
               <span className="min-w-0 flex-1 truncate text-sm font-medium" title={details.name}>
                 {details.name}
               </span>
-              <Badge variant="outline">{t('card.version', { version: details.version })}</Badge>
+              <Badge variant="outline">
+                {details.updated
+                  ? t('card.versionUpdated', { version: details.version })
+                  : t('card.version', { version: details.version })}
+              </Badge>
               {details.widgets > 0 && (
                 <Badge variant="secondary">
                   <LayoutDashboard data-icon="inline-start" />

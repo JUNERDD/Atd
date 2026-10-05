@@ -44,7 +44,7 @@ export function AppListCard({
   };
   return (
     <ListCard
-      media={<AppIcon appId={app.id} version={app.currentVersion} size="md" />}
+      media={<AppIcon appId={app.id} revision={app.revision} size="md" />}
       name={app.name}
       nameText={app.name}
       actions={

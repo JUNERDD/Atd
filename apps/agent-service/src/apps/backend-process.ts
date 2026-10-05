@@ -25,6 +25,12 @@ export interface ReadyInfo {
   widgets: WidgetDecl[];
 }
 
+/** The build a backend runs: its version, for diagnostics, and its revision, its identity. */
+export interface BackendBuild {
+  version: number;
+  revision: number;
+}
+
 /** What one backend child reports to its manager. */
 export interface BackendHooks {
   cap: (request: AppCapRequest) => void;
@@ -68,11 +74,16 @@ export class BackendProcess {
   private exited = false;
   private stderrTail = '';
 
+  readonly version: number;
+  readonly revision: number;
+
   constructor(
-    readonly version: number,
+    build: BackendBuild,
     spec: BackendSpawnSpec,
     private readonly hooks: BackendHooks,
   ) {
+    this.version = build.version;
+    this.revision = build.revision;
     let markExited: () => void = () => undefined;
     this.gone = new Promise((resolve) => {
       markExited = resolve;

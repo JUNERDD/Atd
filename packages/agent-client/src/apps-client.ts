@@ -155,10 +155,10 @@ export function clearAppData(
 
 /**
  * URL of the app's current icon (`image/svg+xml`) for an `<img>`; a relay host adds the
- * credential. The icon changes with versions, so pass `currentVersion` to key the browser cache
- * on it.
+ * credential. The icon can change with every build, an in-place build of the same version
+ * included, so pass the app's `revision` to key the browser cache on it.
  */
-export function appIconUrl(options: AgentClientOptions, appId: string, version?: number): string {
-  const query = version === undefined ? '' : `?v=${version}`;
+export function appIconUrl(options: AgentClientOptions, appId: string, revision?: number): string {
+  const query = revision === undefined ? '' : `?v=${revision}`;
   return `${options.baseUrl}${appPath(appId, '/icon')}${query}`;
 }

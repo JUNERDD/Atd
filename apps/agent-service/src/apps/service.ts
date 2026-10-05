@@ -21,7 +21,7 @@ import { AppDiagnostics } from './diagnostics.js';
 import { AppPaths } from './paths.js';
 import { toDetail, toSummary } from './records.js';
 import { AppStore } from './store.js';
-import { removeDrafts } from './versions.js';
+import { currentBuild, recoverVersions } from './versions.js';
 import { WidgetPublisher } from './widgets/publisher.js';
 
 export interface AppServiceDeps {
@@ -109,7 +109,7 @@ export class AppService {
       diagnostics: this.diagnostics,
       log: deps.log,
       capability: (appId, request, reply, signal) => broker.handle(appId, request, reply, signal),
-      widgetsReady: (appId, version, info) => void this.widgetsReady(appId, version, info),
+      widgetsReady: (appId, revision, info) => void this.widgetsReady(appId, revision, info),
       widgetReload: (appId, widgetId) => this.widgets.reload(appId, widgetId),
     });
   }
@@ -152,14 +152,19 @@ export class AppService {
     return this.detail(appId);
   }
 
-  /** What the shell's app window loads. */
+  /**
+   * What the shell's app window loads: the current build's own `web/` directory, which moves when
+   * a build replaces the version, with the revision it belongs to.
+   */
   async runtime(appId: string): Promise<AppRuntime> {
     const app = this.store.get(appId);
-    const webRoot = await realpath(path.join(this.paths.version(appId, app.currentVersion), 'web'));
+    const build = await currentBuild(this.paths, app);
+    const webRoot = await realpath(path.join(build, 'web'));
     return {
       appId,
       name: app.name,
       version: app.currentVersion,
+      revision: app.revision,
       webRoot,
       dataStoreId: app.dataStoreId,
       window: app.window,
@@ -178,34 +183,37 @@ export class AppService {
   }
 
   /**
-   * A backend of `version` reported ready: its widget declarations become the app's when that
-   * is still the current version; the widget catalog changes with them.
+   * The backend of build `revision` reported ready: its widget declarations become the app's when
+   * that is still the current build; the widget catalog changes with them.
    */
-  private async widgetsReady(appId: string, version: number, info: ReadyInfo): Promise<void> {
+  private async widgetsReady(appId: string, revision: number, info: ReadyInfo): Promise<void> {
     const app = this.store.find(appId);
-    if (!app || app.currentVersion !== version) return;
+    if (!app || app.revision !== revision) return;
     const same =
-      app.widgetsVersion === version &&
+      app.widgetsRevision === revision &&
       JSON.stringify(app.widgets) === JSON.stringify(info.widgets);
     if (!same) {
       await this.store
         .change(appId, (draft) => {
           if (!draft) throw new Error('The app is gone.');
-          return { ...draft, widgets: info.widgets, widgetsVersion: version };
+          return { ...draft, widgets: info.widgets, widgetsRevision: revision };
         })
         .catch((error: unknown) =>
           this.deps.log.warn('App widgets were not recorded.', { appId, error: String(error) }),
         );
       this.deps.notify({ type: 'invalidate', scope: 'widgets' });
     }
-    this.widgets.ready(appId, version, info);
+    this.widgets.ready(appId, revision, info);
   }
 }
 
-/** Build scratch and version drafts a crash or a killed service left behind. */
+/**
+ * Build scratch a crash or a killed service left behind, and each app's versions put back in
+ * line with its record (versions.ts `recoverVersions`).
+ */
 async function removeLeftovers(paths: AppPaths, store: AppStore): Promise<void> {
   for (const name of await readdir(paths.workDir).catch(() => []))
     if (name.startsWith('build-') || name.startsWith('draft-'))
       await rm(path.join(paths.workDir, name), { recursive: true, force: true });
-  for (const app of store.list()) await removeDrafts(paths, app.id);
+  for (const app of store.list()) await recoverVersions(paths, app);
 }

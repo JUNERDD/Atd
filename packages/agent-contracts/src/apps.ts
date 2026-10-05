@@ -13,8 +13,15 @@ import { WidgetDeclSchema } from './widgets.js';
 
 /**
  * User apps the service owns (`<dataDir>/apps/<appId>/`): the manifest the agent writes, the app
- * records and immutable versions the renderer lists, the runtime the shell loads, and the bodies
- * of the `/v1/apps` routes. The backend IPC lives in `apps-ipc.ts`, widgets in `widgets.ts`.
+ * records and versions the renderer lists, the runtime the shell loads, and the bodies of the
+ * `/v1/apps` routes. The backend IPC lives in `apps-ipc.ts`, widgets in `widgets.ts`.
+ *
+ * A version is what one agent run published: the run's first successful `app.build` publishes
+ * the next version, and its later builds replace that version's files in place, keeping its
+ * number. A build in another run, a build outside any run and a revert each publish a new
+ * version. Every publish, in place or not, takes the app's next build revision; whatever keys
+ * on an app's files (an open window, the backend, widget renders, icon caches) keys on the
+ * revision, since the version number alone does not change on an in-place build.
  */
 
 export const APP_NAME_MAX_LENGTH = 64;
@@ -89,14 +96,21 @@ export const AppTypecheckSchema = Type.Object(
 );
 export type AppTypecheck = Static<typeof AppTypecheckSchema>;
 
+/** An app's build revision; see the module comment. */
+const RevisionSchema = Type.Integer({ minimum: 1 });
+
 /**
- * One immutable published version (`versions/<n>/version.json`). `runId` names the run whose
- * `app.build` published it; a revert has none. `summary` is the build's change note.
+ * One published version (`versions/<n>/version.json`). `runId` names the run whose `app.build`
+ * published it; a revert has none. `createdAt` is when the version was first published;
+ * `revision`, `updatedAt`, `summary` and `typecheck` describe the build that last wrote it, the
+ * run's latest.
  */
 export const AppVersionSchema = Type.Object(
   {
     n: Type.Integer({ minimum: 1 }),
     createdAt: Type.String(),
+    updatedAt: Type.String(),
+    revision: RevisionSchema,
     runId: Type.Optional(Identifier),
     summary: Type.String({ maxLength: APP_SUMMARY_MAX_LENGTH }),
     typecheck: AppTypecheckSchema,
@@ -135,6 +149,8 @@ const appSummaryFields = {
   /** The current version's manifest `accentColor`; absent when it names none. */
   accentColor: Type.Optional(AppAccentColorSchema),
   currentVersion: Type.Integer({ minimum: 1 }),
+  /** The build revision of the current version's files; it changes with every publish. */
+  revision: RevisionSchema,
   createdAt: Type.String(),
   updatedAt: Type.String(),
   /** Pending consents, at most one per capability, oldest first. */
@@ -148,8 +164,8 @@ export type AppSummary = Static<typeof AppSummarySchema>;
 /**
  * `GET /v1/apps/:appId`: the summary plus what settings and the transcript card show.
  * `sourceTaskId` is the task that created the app; it may have been deleted since (`edit` then
- * starts a new task). `widgets` are the current version's declarations, empty until its backend
- * first reported them.
+ * starts a new task). `widgets` are the declarations of the current build (`revision`), empty
+ * until its backend first reported them.
  */
 export const AppDetailSchema = Type.Object(
   {
@@ -220,14 +236,17 @@ export const PatchAppGrantsRequestSchema = Type.Object(
 export type PatchAppGrantsRequest = Static<typeof PatchAppGrantsRequestSchema>;
 
 /**
- * `GET /v1/apps/:appId/runtime` (shell): what the app window loads. `webRoot` is the absolute
- * path of the current version's `web/` directory.
+ * `GET /v1/apps/:appId/runtime` (shell): what the app window loads. `webRoot` is the absolute,
+ * link-free path of the `web/` directory of the current build (`revision`); every build has a
+ * directory of its own that stays unchanged, so an in-place build of the same `version` moves
+ * `webRoot`, and a window reloads when it changed.
  */
 export const AppRuntimeSchema = Type.Object(
   {
     appId: AppIdSchema,
     name: AppNameSchema,
     version: Type.Integer({ minimum: 1 }),
+    revision: RevisionSchema,
     webRoot: Type.String({ minLength: 1, maxLength: 4096 }),
     dataStoreId: DataStoreIdSchema,
     window: AppRuntimeWindowSchema,

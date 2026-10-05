@@ -20,9 +20,10 @@ const PREVIEW_COUNT = 5;
 
 /**
  * One kept version (Figma `App / App version row`): its number, Current on the version that runs,
- * the build's change note, and when it was built with how its type check went. Revert publishes
- * it again as the newest version, after a confirmation that the data stays as it is; the current
- * version has nothing to revert to, and the other rows keep Revert at the trailing edge.
+ * the change note, and when it was last built with how that build's type check went (a later
+ * build of the same run updates its version in place). Revert publishes it again as the newest
+ * version, after a confirmation that the data stays as it is; the current version has nothing to
+ * revert to, and the other rows keep Revert at the trailing edge.
  */
 function AppVersionRow({
   version,
@@ -38,7 +39,7 @@ function AppVersionRow({
   onRevert: () => void;
 }) {
   const { t, i18n } = useTranslation('apps');
-  const built = new Date(version.createdAt).toLocaleString(i18n.language, {
+  const built = new Date(version.updatedAt).toLocaleString(i18n.language, {
     dateStyle: 'medium',
     timeStyle: 'short',
   });

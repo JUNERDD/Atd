@@ -7,16 +7,17 @@ import Foundation
 /// a listed app finds its icon and the list never names an icon that was just removed.
 ///
 /// An icon is SVG an agent wrote. The shell copies its bytes and never parses or draws them; the
-/// sandboxed extension does. A copy is made only when the app's icon revision (its current
-/// version) differs from the one copied before. The source is the version's `icon.svg` beside its
-/// `web/` root (the service's `versions/<n>/` layout); it must resolve inside that directory
-/// (``StaticFileResolver`` refuses links and `..`) and pass ``WidgetLauncherIcon/accepts(_:)``,
-/// otherwise the copy is removed and the launcher draws the app's fallback tile. Each file is
-/// replaced atomically and only when its content differs, so the caller reloads the launcher's
-/// timelines only for a real change. Nonisolated: the disk work runs off the main actor.
+/// sandboxed extension does. A copy is made only when the app's icon revision (its build revision,
+/// which an in-place build of the current version changes too) differs from the one copied
+/// before. The source is the build's `icon.svg` beside its `web/` root (the service's
+/// `versions/.rev-<k>/` layout); it must resolve inside that directory (``StaticFileResolver``
+/// refuses links and `..`) and pass ``WidgetLauncherIcon/accepts(_:)``, otherwise the copy is
+/// removed and the launcher draws the app's fallback tile. Each file is replaced atomically and
+/// only when its content differs, so the caller reloads the launcher's timelines only for a real
+/// change. Nonisolated: the disk work runs off the main actor.
 nonisolated enum WidgetLauncherWriter {
   struct Outcome: Sendable {
-    /// Per listed app, the version whose icon, or its absence, `icons/` now holds.
+    /// Per listed app, the icon revision whose icon, or its absence, `icons/` now holds.
     let icons: [String: Int]
     /// Whether `launcher.json` or an icon changed.
     let changed: Bool
@@ -24,7 +25,9 @@ nonisolated enum WidgetLauncherWriter {
 
   /// `copied` is the previous outcome's `icons`. `runtimes` holds the current runtime of each app
   /// whose icon revision differs from it (others are not looked at); an app missing there, or
-  /// whose icon cannot be read now, keeps its old copy and is tried again on the next write.
+  /// whose icon cannot be read now, keeps its old copy and is tried again on the next write. A
+  /// runtime read after the listing may already hold a newer build; its icon is recorded under
+  /// the listed revision, so the next listing of that build copies it once more at most.
   @concurrent
   static func write(
     _ apps: [WidgetLauncherApp], runtimes: [String: UserAppRuntime], copied: [String: Int],
@@ -44,7 +47,7 @@ nonisolated enum WidgetLauncherWriter {
         continue
       }
       if try replace(files.iconURL(appId: app.appId), with: icon) { changed = true }
-      icons[app.appId] = runtime.version
+      icons[app.appId] = app.iconRevision
     }
     let launcher = WidgetLauncherFile(apps: apps)
     if (try? files.readLauncher().get()) != launcher {
@@ -60,8 +63,8 @@ nonisolated enum WidgetLauncherWriter {
     return Outcome(icons: icons, changed: changed)
   }
 
-  /// The version's `icon.svg` as the launcher may use it, or nil when the version has none or it
-  /// fails the byte checks. Throws when the file is there but cannot be read.
+  /// The build's `icon.svg` as the launcher may use it, or nil when the build has none or it fails
+  /// the byte checks. Throws when the file is there but cannot be read.
   private static func icon(of runtime: UserAppRuntime) throws -> Data? {
     let version = runtime.webRootURL.deletingLastPathComponent()
     guard let path = try? RelayPath.normalize("/icon.svg"),

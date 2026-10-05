@@ -42,9 +42,12 @@ function takeSettingsTarget(): string | null {
 }
 
 /**
- * Reloads open app windows whose app published a new version. The shell reports each window's
- * loaded version (`userApp.state`); after an `apps` invalidation the panel compares it with the
- * app's current version and asks the shell to open the app again, which reloads it. Checks run
+ * Reloads open app windows whose app published since they loaded. The shell reports each
+ * window's loaded version (`userApp.state`) but not its build, and a later build of the same run
+ * replaces a version's files in place: a new `revision` under the same number. So the panel reads
+ * the list on connecting and after every `apps` invalidation, and asks the shell to open again,
+ * which reloads, each open app whose current version differs from its window's or whose revision
+ * changed since the previous read (the shell reloads only when the build's files moved). Reads run
  * one at a time, so a burst of invalidations reads the list once per finished check.
  */
 function followOpenApps(connection: NativeConnection, native: NativeBridge) {
@@ -53,21 +56,30 @@ function followOpenApps(connection: NativeConnection, native: NativeBridge) {
     if (open) loaded.set(appId, version);
     else loaded.delete(appId);
   });
+  /** Each app's revision at the previous read, kept current while no window is open too. */
+  let revisions = new Map<string, number>();
   let check: Promise<void> = Promise.resolve();
   async function reloadChanged() {
-    if (!loaded.size) return;
     const { apps } = await listApps(connection.options());
+    const previous = revisions;
+    revisions = new Map(apps.map((app) => [app.id, app.revision]));
     for (const app of apps) {
       const version = loaded.get(app.id);
-      if (version === undefined || version === null || version === app.currentVersion) continue;
-      await native.call('userApp.open', { appId: app.id });
+      if (version === undefined || version === null) continue;
+      const before = previous.get(app.id);
+      const rebuilt = before !== undefined && before !== app.revision;
+      if (version !== app.currentVersion || rebuilt)
+        await native.call('userApp.open', { appId: app.id });
     }
   }
-  connection.onInvalidate((frame) => {
-    if (frame.scope !== 'apps') return;
+  const schedule = () => {
     check = check.then(reloadChanged).catch((error: unknown) => {
       console.error('Open apps could not be reloaded:', error);
     });
+  };
+  connection.onConnected(schedule);
+  connection.onInvalidate((frame) => {
+    if (frame.scope === 'apps') schedule();
   });
 }
 
@@ -105,7 +117,7 @@ export function nativeApps(
       const { pngBase64 } = await native.call('userApp.widgetPreview', { appId, widgetId, family });
       return `data:image/png;base64,${pngBase64}`;
     },
-    iconUrl: (appId, version) => appIconUrl(options(), appId, version),
+    iconUrl: (appId, revision) => appIconUrl(options(), appId, revision),
     showTask: async (taskId) => {
       messages.post({ type: 'openTask', taskId });
       await native.call('window.show', {});

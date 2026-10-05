@@ -24,8 +24,8 @@ final class WidgetSyncController {
   private var pulling = false
   private var pullAgain = false
   private var reported: [WidgetInstance]?
-  /// Per launcher app, the version whose icon the widget files hold (``WidgetLauncherWriter``).
-  /// Empty after launch, so the first pull compares every icon once.
+  /// Per launcher app, the icon revision whose icon the widget files hold
+  /// (``WidgetLauncherWriter``). Empty after launch, so the first pull compares every icon once.
   private var launcherIcons: [String: Int] = [:]
   private var ticker: Task<Void, Never>?
   private static let reportInterval: Duration = .seconds(600)

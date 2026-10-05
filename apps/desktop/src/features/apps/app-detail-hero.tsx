@@ -89,7 +89,7 @@ export function AppDetailHero({
       <CardContent className="app-detail-hero-layout">
         <AppIcon
           appId={app.id}
-          version={shown.currentVersion}
+          revision={shown.revision}
           size="lg"
           className="app-detail-hero-icon"
         />

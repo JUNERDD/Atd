@@ -2,6 +2,7 @@
   "card": {
     "label": "App {{name}}",
     "version": "v{{version}}",
+    "versionUpdated": "Updated v{{version}}",
     "typecheckWarning_one": "{{count}} type error. This version still runs; ask Atd to fix it.",
     "typecheckWarning_other": "{{count}} type errors. This version still runs; ask Atd to fix them.",
     "widgets_one": "{{count}} widget",
@@ -118,7 +119,7 @@
     "builtIn": "Built in the task “{{task}}”",
     "versions": {
       "title": "Versions",
-      "footer": "Every build is a separate version. Reverting makes an older one current; newer versions stay listed.",
+      "footer": "Each change you ask for becomes one version, however many builds it takes. Reverting makes an older one current; newer versions stay listed.",
       "showAll": "Show all {{total}}",
       "showFewer": "Show fewer",
       "item": "Version {{version}}",

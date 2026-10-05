@@ -20,6 +20,7 @@ import type { ReadyInfo } from '../backend-process.js';
 import type { AppDiagnostics } from '../diagnostics.js';
 import type { AppPaths } from '../paths.js';
 import type { AppStore } from '../store.js';
+import { currentBuild } from '../versions.js';
 import { widgetSnapshot } from './validate.js';
 
 /** How often due refreshes are looked for. */
@@ -55,17 +56,18 @@ interface Target {
  * see `targets` for what an instance renders, DECISIONS v10), and for the widget gallery's
  * preview, the newest declared widget of each family (plan T1c). A placed (app, widget, family)
  * renders when it is first reported, when its declared `refreshMinutes` passed since the last
- * render, when the backend asks (`widgetReload`), and when a new version's backend reports ready.
- * A preview renders the same way except on a schedule: once per version, and again on
- * `widgetReload`. A valid render replaces the snapshot in `<appId>/widgets/`; an invalid one is
- * dropped and written to the app's diagnostics. The payload also carries the "My Apps" launcher's
- * list, which needs no render: every store change that alters it sends the invalidate as well.
+ * render, when the backend asks (`widgetReload`), and when a new build's backend reports ready (a
+ * new version, or an in-place build of the current one: a new revision). A preview renders the
+ * same way except on a schedule: once per build, and again on `widgetReload`. A valid render
+ * replaces the snapshot in `<appId>/widgets/`; an invalid one is dropped and written to the app's
+ * diagnostics. The payload also carries the "My Apps" launcher's list, which needs no render:
+ * every store change that alters it sends the invalidate as well.
  */
 export class WidgetPublisher {
   private instances: WidgetInstance[] = [];
   private readonly snapshots = new Map<string, WidgetSnapshot>();
-  /** The version each key was last rendered with, so a new version renders again. */
-  private readonly renderedVersion = new Map<string, number>();
+  /** The build revision each key was last rendered with, so a new build renders again. */
+  private readonly renderedRevision = new Map<string, number>();
   private readonly inflight = new Map<string, Promise<void>>();
   /** When each key last rendered, failed or not; schedules the next refresh. */
   private readonly attempted = new Map<string, number>();
@@ -142,10 +144,10 @@ export class WidgetPublisher {
     return { catalog, snapshots, launcher: this.launcher() };
   }
 
-  /** A backend reported ready: re-render this app's targets that another version rendered. */
-  ready(appId: string, version: number, _info: ReadyInfo): void {
+  /** A backend reported ready: re-render this app's targets that another build rendered. */
+  ready(appId: string, revision: number, _info: ReadyInfo): void {
     for (const target of this.targets(appId))
-      if (this.renderedVersion.get(this.key(target)) !== version) void this.render(target);
+      if (this.renderedRevision.get(this.key(target)) !== revision) void this.render(target);
   }
 
   /** `ctx.widgets.reload(id)`: re-render that target of the app (every target of the app if absent). */
@@ -163,7 +165,7 @@ export class WidgetPublisher {
 
   /**
    * The "My Apps" launcher: every app, most recently updated first, as many as it shows. The icon
-   * revision is the current version, the one whose `icon.svg` the shell copies.
+   * revision is the app's build revision, which names the build whose `icon.svg` the shell copies.
    */
   private launcher(): WidgetLauncherApp[] {
     return this.deps.store
@@ -173,7 +175,7 @@ export class WidgetPublisher {
         appId: app.id,
         name: app.name,
         ...(app.accentColor ? { accentColor: app.accentColor } : {}),
-        iconRevision: app.currentVersion,
+        iconRevision: app.revision,
       }));
   }
 
@@ -189,11 +191,16 @@ export class WidgetPublisher {
     this.deps.changed();
   }
 
-  /** Apps whose current version declares widgets, most recently updated first (the store's order). */
+  /**
+   * Apps that declare widgets, most recently updated first (the store's order), with the
+   * declarations their backend last reported. A new build keeps its predecessor's listed until its
+   * own backend reports, so placed widgets keep their snapshots through a rebuild instead of
+   * dropping out of the catalog in between.
+   */
   private catalog(): WidgetCatalogApp[] {
     return this.deps.store
       .list()
-      .filter((app) => app.widgetsVersion === app.currentVersion && app.widgets.length > 0)
+      .filter((app) => app.widgetsRevision !== null && app.widgets.length > 0)
       .slice(0, 256)
       .map((app) => ({
         appId: app.id,
@@ -261,13 +268,13 @@ export class WidgetPublisher {
   }
 
   /**
-   * A preview has no snapshot and was not tried with the app's current version, so a failing
-   * render waits for the next version or `widgetReload` instead of retrying every sweep.
+   * A preview has no snapshot and was not tried with the app's current build, so a failing
+   * render waits for the next build or `widgetReload` instead of retrying every sweep.
    */
   private unrendered(target: Target): boolean {
     const key = this.key(target);
-    const version = this.deps.store.find(target.appId)?.currentVersion;
-    return !this.snapshots.has(key) && this.renderedVersion.get(key) !== version;
+    const revision = this.deps.store.find(target.appId)?.revision;
+    return !this.snapshots.has(key) && this.renderedRevision.get(key) !== revision;
   }
 
   private key(target: Pick<Target, 'appId' | 'widgetId' | 'family'>): string {
@@ -286,21 +293,21 @@ export class WidgetPublisher {
   private async renderNow(target: Target, key: string): Promise<void> {
     const app = this.deps.store.find(target.appId);
     if (!app) return;
-    const version = app.currentVersion;
+    const { currentVersion: version, revision } = app;
     this.attempted.set(key, Date.now());
     try {
       const value = await this.deps.render(target.appId, target.widgetId, target.family);
-      const webRoot = path.join(this.deps.paths.version(target.appId, version), 'web');
-      const snapshot = await widgetSnapshot(value, webRoot);
+      const web = path.join(await currentBuild(this.deps.paths, app), 'web');
+      const snapshot = await widgetSnapshot(value, web);
       const dir = this.deps.paths.widgets(target.appId);
       await mkdir(dir, { recursive: true });
       await atomicWrite(path.join(dir, `${target.widgetId}.${target.family}.json`), snapshot);
       this.snapshots.set(key, snapshot);
-      this.renderedVersion.set(key, version);
+      this.renderedRevision.set(key, revision);
       this.deps.changed();
     } catch (error) {
-      // The previous snapshot stays; a failing render waits for the next refresh, reload or version.
-      this.renderedVersion.set(key, version);
+      // The previous snapshot stays; a failing render waits for the next refresh, reload or build.
+      this.renderedRevision.set(key, revision);
       await this.deps.diagnostics.append(target.appId, [
         {
           source: 'widget',
