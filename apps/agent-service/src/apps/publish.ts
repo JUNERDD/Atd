@@ -24,7 +24,7 @@ import { buildFailed } from './errors.js';
 import type { AppPaths } from './paths.js';
 import { runtimeWindow, type AppRecord } from './records.js';
 import { newAppId, newDataStoreId, type AppStore } from './store.js';
-import { installVersion, versionDraft } from './versions.js';
+import { installVersion, runVersion, versionDraft } from './versions.js';
 
 /** Typecheck errors written to diagnostics per build (the result lists up to 200). */
 const TYPECHECK_DIAGNOSTICS = 50;
@@ -43,6 +43,8 @@ export interface PublishResult {
   app: AppRecord;
   version: AppVersion;
   created: boolean;
+  /** The build replaced the files of the version an earlier build of its run published. */
+  updated: boolean;
   typecheck: TypecheckResult;
   /** Non-fatal notes for the agent (an icon left out, a typecheck that did not run). */
   notes: string[];
@@ -59,8 +61,10 @@ export interface PublishDeps {
  * anything that could steer the toolchain), validate `atd-app.json`, then typecheck and build in
  * parallel, each in its own sandbox, in a scratch directory under `apps/.work`. A refused or
  * failed build publishes nothing and throws `app_build_failed` with every error. A build that
- * succeeded becomes the next immutable version, with the built `web/` and `server/`, the source
- * snapshot and the icon; the first build of a task creates its app. Type errors never block.
+ * succeeded publishes the built `web/` and `server/`, the source snapshot and the icon as the
+ * app's next build revision: the run's first build as the next version, its later builds in
+ * place of that version (versions.ts). The first build of a task creates its app. Type errors
+ * never block.
  */
 export async function publishFromTask(
   deps: PublishDeps,
@@ -94,7 +98,14 @@ export async function publishFromTask(
     if (typecheck.failure)
       notes.push(`The type check did not run to completion: ${typecheck.failure}`);
     const draft = await assemble(deps.paths, existing?.id, staged.app, out, notes);
-    return await record(deps, request, { existing, manifest, typecheck, notes, draft });
+    return await record(deps, request, {
+      existing,
+      manifest,
+      typecheck,
+      notes,
+      draft,
+      hasServer: staged.app.hasServer,
+    });
   } finally {
     await rm(work, { recursive: true, force: true });
   }
@@ -169,14 +180,20 @@ interface Built {
   typecheck: TypecheckResult;
   notes: string[];
   draft: string;
+  /** The build has a backend, the only thing that reports widget declarations. */
+  hasServer: boolean;
 }
 
-/** Publishes the draft as the next version in the store change that names it. */
+/**
+ * Publishes the draft in the store change that records it: in place of the current version when
+ * this run published that one (`runVersion`), otherwise as the next version.
+ */
 async function record(deps: PublishDeps, request: PublishRequest, built: Built) {
   const { manifest, typecheck } = built;
   const appId = built.existing?.id ?? newAppId();
   const summary: AppTypecheck = { ok: typecheck.ok, errorCount: typecheck.errorCount };
   let version: AppVersion | undefined;
+  let updated = false;
   try {
     const app = await deps.store.change(appId, async (draft) => {
       const now = new Date().toISOString();
@@ -187,6 +204,9 @@ async function record(deps: PublishDeps, request: PublishRequest, built: Built) 
         await rm(source, { recursive: true });
         await rename(built.draft, source);
       }
+      const replace = draft
+        ? await runVersion(deps.paths, appId, draft.currentVersion, request.runId)
+        : null;
       version = await installVersion(
         deps.paths,
         appId,
@@ -196,8 +216,12 @@ async function record(deps: PublishDeps, request: PublishRequest, built: Built) 
           summary: request.summary.slice(0, APP_SUMMARY_MAX_LENGTH),
           typecheck: summary,
         },
-        draft?.currentVersion ?? 0,
+        {
+          current: { version: draft?.currentVersion ?? 0, revision: draft?.revision ?? 0 },
+          replace,
+        },
       );
+      updated = replace !== null;
       return {
         id: appId,
         name: manifest.name,
@@ -205,20 +229,23 @@ async function record(deps: PublishDeps, request: PublishRequest, built: Built) 
         ...(manifest.accentColor ? { accentColor: manifest.accentColor } : {}),
         sourceTaskId: draft?.sourceTaskId ?? request.taskId,
         currentVersion: version.n,
+        revision: version.revision,
         dataStoreId: draft?.dataStoreId ?? newDataStoreId(),
         window: runtimeWindow(manifest),
         capabilities: manifest.capabilities,
         ...(manifest.purposes ? { purposes: manifest.purposes } : {}),
         grants: draft?.grants ?? {},
-        widgets: draft?.widgets ?? [],
-        widgetsVersion: draft?.widgetsVersion ?? null,
+        // The last reported declarations stay until this build's backend reports its own, so the
+        // widget catalog keeps the app through a rebuild; a build without a backend never reports.
+        widgets: built.hasServer ? (draft?.widgets ?? []) : [],
+        widgetsRevision: built.hasServer ? (draft?.widgetsRevision ?? null) : null,
         createdAt: draft?.createdAt ?? now,
         updatedAt: now,
       };
     });
     if (!version) throw new Error('The version was not recorded.');
     await deps.diagnostics.append(appId, typecheckDiagnostics(typecheck, version.n));
-    return { app, version, created: !built.existing, typecheck, notes: built.notes };
+    return { app, version, created: !built.existing, updated, typecheck, notes: built.notes };
   } catch (error) {
     await rm(built.draft, { recursive: true, force: true });
     throw error;

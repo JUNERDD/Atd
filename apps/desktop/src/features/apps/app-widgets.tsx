@@ -16,13 +16,13 @@ const FAMILY_ORDER: readonly WidgetFamily[] = ['systemSmall', 'systemMedium', 's
 /**
  * The widget as the desktop draws it, which the shell renders from the latest synced snapshot.
  * It has none until the widget first rendered (or the snapshot failed validation), so a rejected
- * preview reads as pending, not as an error. Keyed on the app's version, whose build may change
- * the widget.
+ * preview reads as pending, not as an error. Keyed on the app's build revision, since any build,
+ * an in-place one of the current version included, may change the widget.
  */
-function useWidgetPreview(appId: string, widgetId: string, family: WidgetFamily, version: number) {
+function useWidgetPreview(appId: string, widgetId: string, family: WidgetFamily, revision: number) {
   const { data, isError } = useQuery(
     {
-      queryKey: [...appKeys.all, 'widgetPreview', appId, widgetId, family, version],
+      queryKey: [...appKeys.all, 'widgetPreview', appId, widgetId, family, revision],
       queryFn: () => appsBridge().widgetPreview(appId, widgetId, family),
       enabled: Boolean(window.desktop?.apps),
       meta: { errorToast: false },
@@ -40,16 +40,16 @@ function useWidgetPreview(appId: string, widgetId: string, family: WidgetFamily,
  */
 function AppWidgetRow({
   appId,
-  version,
+  revision,
   widget,
 }: {
   appId: string;
-  version: number;
+  revision: number;
   widget: WidgetDecl;
 }) {
   const { t } = useTranslation('apps');
   const families = FAMILY_ORDER.filter((family) => widget.families.includes(family));
-  const preview = useWidgetPreview(appId, widget.id, families[0] ?? 'systemSmall', version);
+  const preview = useWidgetPreview(appId, widget.id, families[0] ?? 'systemSmall', revision);
   const sizes = families.map((family) => t(`detail.widgets.family.${family}`)).join(' · ');
   const status = preview.pending
     ? t('detail.widgets.noPreview')
@@ -93,12 +93,13 @@ function AppWidgetRow({
 export function AppWidgetsSection({
   appId,
   appName,
-  version,
+  revision,
   widgets,
 }: {
   appId: string;
   appName: string;
-  version: number;
+  /** The app's build revision (`AppSummary.revision`), which keys the previews. */
+  revision: number;
   widgets: readonly WidgetDecl[];
 }) {
   const { t } = useTranslation('apps');
@@ -119,7 +120,7 @@ export function AppWidgetsSection({
       }
     >
       {widgets.map((widget) => (
-        <AppWidgetRow key={widget.id} appId={appId} version={version} widget={widget} />
+        <AppWidgetRow key={widget.id} appId={appId} revision={revision} widget={widget} />
       ))}
     </AppDetailSection>
   );

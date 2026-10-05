@@ -3,11 +3,13 @@ import path from 'node:path';
 import { backendSpawnSpec, selfCheckSandbox, type SandboxSelfCheck } from '@atd/app-kit/node';
 import { errorMessage, type AppCapRequest, type AppParentMessage } from '@atd/agent-contracts';
 import type { Logger } from '../logging.js';
-import { BackendProcess, type ReadyInfo } from './backend-process.js';
+import { BackendProcess, type BackendBuild, type ReadyInfo } from './backend-process.js';
 import type { AppDiagnostics, DiagnosticInput } from './diagnostics.js';
 import { backendUnavailable } from './errors.js';
 import type { AppPaths } from './paths.js';
+import type { AppRecord } from './records.js';
 import type { AppStore } from './store.js';
+import { currentBuild } from './versions.js';
 
 /** A backend with no call for this long stops (the window has no close signal to the service). */
 export const IDLE_STOP_MS = 5 * 60 * 1000;
@@ -33,8 +35,8 @@ export interface BackendManagerDeps {
     reply: (message: AppParentMessage) => boolean,
     signal: AbortSignal,
   ) => void;
-  /** A backend reported its widgets (`ready`) or asked for a widget reload. */
-  widgetsReady: (appId: string, version: number, info: ReadyInfo) => void;
+  /** The backend of build `revision` reported its widgets (`ready`) or asked for a reload. */
+  widgetsReady: (appId: string, revision: number, info: ReadyInfo) => void;
   widgetReload: (appId: string, widgetId: string | undefined) => void;
 }
 
@@ -48,10 +50,12 @@ interface Entry {
 }
 
 /**
- * The app backends (plan "后端运行时"): one sandboxed child per app, started lazily on the first
- * call, stopped when idle, when a new version is published (the next call starts that one), when
- * the app's data is cleared or the app deleted, and on service shutdown. Before the first start
- * of this service process, the sandbox self-check runs once; when it fails no backend starts.
+ * The app backends (plan "后端运行时"): one sandboxed child per app, running the app's current
+ * build (its revision, which an in-place build changes under the same version), started lazily
+ * on the first call, stopped when idle, when a build is published (the next call starts that
+ * one), when the app's data is cleared or the app deleted, and on service shutdown. Before the
+ * first start of this service process, the sandbox self-check runs once; when it fails no
+ * backend starts.
  * Unexpected exits are crashes: written to diagnostics, and after three within a minute starts
  * are refused until the minute has passed. Events the backends publish fan out to subscribers.
  */
@@ -63,19 +67,20 @@ export class AppBackends {
 
   constructor(private readonly deps: BackendManagerDeps) {}
 
-  /** The running (or starting) backend of the app's current version. */
+  /** The running (or starting) backend of the app's current build. */
   async ensure(appId: string): Promise<BackendProcess> {
     if (this.closed) throw backendUnavailable('The service is stopping.');
     const entry = this.entry(appId);
-    const version = this.deps.store.get(appId).currentVersion;
+    const app = this.deps.store.get(appId);
+    const { revision } = app;
     // A starting backend is not ready for messages yet: wait for it before using it.
     if (entry.starting) {
       const starting = await entry.starting;
-      if (starting.version === version && starting.alive) return starting;
+      if (starting.revision === revision && starting.alive) return starting;
     }
-    if (entry.process?.alive && entry.process.version === version) return entry.process;
+    if (entry.process?.alive && entry.process.revision === revision) return entry.process;
     if (entry.process?.alive) await this.stop(appId);
-    const start = this.start(appId, version, entry);
+    const start = this.start(app, entry);
     entry.starting = start;
     try {
       return await start;
@@ -171,7 +176,9 @@ export class AppBackends {
     return entry;
   }
 
-  private async start(appId: string, version: number, entry: Entry): Promise<BackendProcess> {
+  private async start(app: AppRecord, entry: Entry): Promise<BackendProcess> {
+    const { id: appId, currentVersion: version, revision } = app;
+    const build: BackendBuild = { version, revision };
     const now = Date.now();
     entry.crashes = entry.crashes.filter((at) => now - at < CRASH_WINDOW_MS);
     if (entry.crashes.length >= CRASH_LIMIT) {
@@ -180,8 +187,8 @@ export class AppBackends {
         `The app backend crashed ${CRASH_LIMIT} times in a minute; it can start again after ${retry}.`,
       );
     }
-    const versionDir = this.deps.paths.version(appId, version);
-    const server = await stat(path.join(versionDir, 'server', 'index.mjs')).catch(() => null);
+    const buildDir = await currentBuild(this.deps.paths, app);
+    const server = await stat(path.join(buildDir, 'server', 'index.mjs')).catch(() => null);
     if (!server?.isFile()) throw backendUnavailable('This version of the app has no backend.');
     const check = await this.selfCheck();
     if (!check.ok) {
@@ -194,17 +201,17 @@ export class AppBackends {
       throw backendUnavailable(`App backends cannot run safely on this system: ${check.reason}`);
     }
     const spec = backendSpawnSpec({
-      versionDir,
+      versionDir: buildDir,
       dataDir: this.deps.paths.data(appId),
       appId,
       profileDir: this.deps.paths.profilesDir,
     });
     entry.apiCalls = 0;
-    const child = new BackendProcess(version, spec, this.hooks(appId, version, entry));
+    const child = new BackendProcess(build, spec, this.hooks(appId, build, entry));
     entry.process = child;
     try {
       const info = await child.ready;
-      this.deps.widgetsReady(appId, version, info);
+      this.deps.widgetsReady(appId, revision, info);
       this.touch(appId);
       return child;
     } catch (error) {
@@ -214,7 +221,7 @@ export class AppBackends {
     }
   }
 
-  private hooks(appId: string, version: number, entry: Entry) {
+  private hooks(appId: string, { version, revision }: BackendBuild, entry: Entry) {
     const logs: DiagnosticInput[] = [];
     let flush: NodeJS.Timeout | null = null;
     return {
@@ -266,7 +273,7 @@ export class AppBackends {
         entry.caps.clear();
         if (entry.idle) clearTimeout(entry.idle);
         entry.idle = null;
-        if (entry.process?.version === version && !entry.process.alive) entry.process = null;
+        if (entry.process?.revision === revision && !entry.process.alive) entry.process = null;
         if (info.expected) return;
         entry.crashes.push(Date.now());
         const how = info.signal ? `signal ${info.signal}` : `exit code ${info.code}`;

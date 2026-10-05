@@ -2,6 +2,7 @@
   "card": {
     "label": "应用 {{name}}",
     "version": "v{{version}}",
+    "versionUpdated": "已更新 v{{version}}",
     "typecheckWarning_other": "{{count}} 个类型错误。此版本仍可运行，可以让 Atd 修复。",
     "widgets_other": "{{count}} 个小组件",
     "open": "打开",
@@ -116,7 +117,7 @@
     "builtIn": "在任务“{{task}}”中构建",
     "versions": {
       "title": "版本",
-      "footer": "每次构建都是一个独立版本。回退会让较早的版本成为当前版本，较新的版本仍会保留在列表中。",
+      "footer": "你提出的每项修改都会成为一个版本，无论其间构建了多少次。回退会让较早的版本成为当前版本，较新的版本仍会保留在列表中。",
       "showAll": "显示全部 {{total}} 个",
       "showFewer": "收起",
       "item": "版本 {{version}}",

@@ -38,8 +38,8 @@ export interface AppsBridge {
    * snapshot, as a `data:` URL. Rejects when the shell has no snapshot for that widget and family.
    */
   widgetPreview(appId: string, widgetId: string, family: WidgetFamily): Promise<string>;
-  /** The relay URL of the app's current icon, keyed on `version` so a new one is fetched. */
-  iconUrl(appId: string, version: number): string;
+  /** The relay URL of the app's current icon, keyed on its build `revision` so a new one is fetched. */
+  iconUrl(appId: string, revision: number): string;
   /**
    * Shows a task in the panel and reveals it, as Continue editing does from Settings; the panel
    * opens its own tasks directly.

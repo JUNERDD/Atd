@@ -68,10 +68,11 @@ export const WIDGET_LAUNCHER_MAX_APPS = 16;
 export const WIDGET_LAUNCHER_ICON_MAX_BYTES = APP_ICON_MAX_BYTES;
 
 /**
- * One app of the "My Apps" launcher. `iconRevision` is the app's current version: the shell copies
- * that version's `icon.svg` next to the other widget files only when it differs from the revision
- * it copied last. The icon is SVG an agent wrote, so the shell copies its bytes without parsing
- * them; only the sandboxed extension draws it.
+ * One app of the "My Apps" launcher. `iconRevision` is the app's build revision (`AppSummary`
+ * `revision`), which changes with every publish, an in-place build of the current version
+ * included: the shell copies the current build's `icon.svg` next to the other widget files only
+ * when it differs from the revision it copied last. The icon is SVG an agent wrote, so the shell
+ * copies its bytes without parsing them; only the sandboxed extension draws it.
  */
 export const WidgetLauncherAppSchema = Type.Object(
   {

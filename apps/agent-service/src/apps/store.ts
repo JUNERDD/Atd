@@ -4,7 +4,7 @@ import { APP_ID_PATTERN, parse } from '@atd/agent-contracts';
 import { atomicWrite } from '../config.js';
 import { appNotFound } from './errors.js';
 import type { AppPaths } from './paths.js';
-import { AppIndexSchema, AppRecordSchema, type AppRecord } from './records.js';
+import { AppIndexSchema, AppRecordSchema, readRecord, type AppRecord } from './records.js';
 
 const ID_ALPHABET = 'abcdefghijklmnopqrstuvwxyz0123456789';
 const APP_ID = new RegExp(APP_ID_PATTERN);
@@ -59,10 +59,7 @@ export class AppStore {
     for (const entry of await readdir(paths.root, { withFileTypes: true })) {
       if (!entry.isDirectory() || !isAppId(entry.name)) continue;
       try {
-        const record = parse(
-          AppRecordSchema,
-          JSON.parse(await readFile(paths.appFile(entry.name), 'utf8')),
-        );
+        const record = readRecord(JSON.parse(await readFile(paths.appFile(entry.name), 'utf8')));
         if (record.id === entry.name) records.set(record.id, record);
       } catch {
         warn('An app record could not be read; the app is hidden and its files kept.', entry.name);

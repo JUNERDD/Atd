@@ -11,8 +11,8 @@ const SIZES = {
 } as const;
 
 /**
- * An app's icon tile (Figma `App / App icon`): the current version's icon through the relay
- * (`GET /v1/apps/:appId/icon`, keyed on the version so a new version's icon loads) filling a
+ * An app's icon tile (Figma `App / App icon`): the current build's icon through the relay
+ * (`GET /v1/apps/:appId/icon`, keyed on the build revision so every new build's icon loads) filling a
  * rounded tile whose faint fill and inner hairline keep light and dark icons edged. The default
  * tile is 32px, as the transcript's app card shows it; `md` is the 36px tile of the cards that
  * list apps, the size of a plugin card's icon, and `lg` the 64px tile heading an app's page. When
@@ -20,16 +20,17 @@ const SIZES = {
  */
 export function AppIcon({
   appId,
-  version,
+  revision,
   size = 'default',
   className,
 }: {
   appId: string;
-  version: number;
+  /** The app's build revision (`AppSummary.revision`). */
+  revision: number;
   size?: keyof typeof SIZES;
   className?: string;
 }) {
-  const src = window.desktop?.apps?.iconUrl(appId, version) ?? null;
+  const src = window.desktop?.apps?.iconUrl(appId, revision) ?? null;
   const [failed, setFailed] = useState<string | null>(null);
   const missing = !src || failed === src;
   return (

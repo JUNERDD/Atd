@@ -13,20 +13,24 @@ import { stageTaskSkills } from '../skills/staging.js';
 import { publishFromTask, type PublishRequest } from './publish.js';
 import { runtimeWindow } from './records.js';
 import type { AppService } from './service.js';
-import { copyVersionDraft, installVersion, removeDrafts } from './versions.js';
+import { copyVersionDraft, currentBuild, installVersion } from './versions.js';
 
-/** Builds of one task run one at a time; two would race for the same next version. */
+/** Builds of one task run one at a time; two would race for the same version and revision. */
 const building = new Map<string, Promise<unknown>>();
 
 export interface BuildOutcome {
   details: AppBuildDetails;
-  /** What the agent reads: the version, type errors, notes and whether the backend started. */
+  /**
+   * What the agent reads: the version, whether this build updated it in place, type errors,
+   * notes and whether the backend started.
+   */
   report: Record<string, unknown>;
 }
 
 /**
- * `app.build`: publishes the task's source as the next version, then restarts the backend on it
- * and starts it once, which checks that it starts and reports its widgets for the card.
+ * `app.build`: publishes the task's source (the run's first build as the next version, a later
+ * one in place of it), then restarts the backend on that build and starts it once, which checks
+ * that it starts and reports its widgets for the card.
  */
 export function buildFromTask(service: AppService, request: PublishRequest): Promise<BuildOutcome> {
   const key = `${service.paths.dataDir}\n${request.taskId}`;
@@ -43,11 +47,11 @@ export function buildFromTask(service: AppService, request: PublishRequest): Pro
 
 async function build(service: AppService, request: PublishRequest): Promise<BuildOutcome> {
   const published = await publishFromTask(service, request);
-  const { app, version, typecheck } = published;
+  const { app, version, typecheck, updated } = published;
   await service.backends.stop(app.id);
   let widgets = 0;
   let backend = 'none';
-  const hasServer = await stat(path.join(service.paths.version(app.id, version.n), 'server'))
+  const hasServer = await stat(path.join(await currentBuild(service.paths, app), 'server'))
     .then((info) => info.isDirectory())
     .catch(() => false);
   if (hasServer) {
@@ -65,6 +69,8 @@ async function build(service: AppService, request: PublishRequest): Promise<Buil
       appId: app.id,
       name: app.name,
       version: version.n,
+      revision: version.revision,
+      updated,
       summary: version.summary,
       typecheck: version.typecheck,
       widgets,
@@ -74,6 +80,8 @@ async function build(service: AppService, request: PublishRequest): Promise<Buil
       name: app.name,
       version: version.n,
       created: published.created,
+      // In place: this run's earlier build published `version`; this one replaced its files.
+      updated,
       backend,
       widgets,
       typecheck: {
@@ -88,7 +96,10 @@ async function build(service: AppService, request: PublishRequest): Promise<Buil
   };
 }
 
-/** Publishes a copy of `n` as the next version, with that version's manifest. */
+/**
+ * Publishes a copy of `n` as the next version, with that version's manifest. Its draft is removed
+ * when the publish failed (a published one was renamed away).
+ */
 export async function revertApp(service: AppService, appId: string, n: number): Promise<AppDetail> {
   service.store.get(appId);
   const { draft, old } = await copyVersionDraft(service.paths, appId, n);
@@ -104,7 +115,10 @@ export async function revertApp(service: AppService, appId: string, n: number): 
         appId,
         draft,
         { summary: `Reverted to version ${n}.`, typecheck: old.typecheck },
-        record.currentVersion,
+        {
+          current: { version: record.currentVersion, revision: record.revision },
+          replace: null,
+        },
       );
       const { purposes: _purposes, accentColor: _accentColor, ...rest } = record;
       return {
@@ -116,11 +130,12 @@ export async function revertApp(service: AppService, appId: string, n: number): 
         capabilities: manifest.capabilities,
         ...(manifest.purposes ? { purposes: manifest.purposes } : {}),
         currentVersion: version.n,
+        revision: version.revision,
         updatedAt: new Date().toISOString(),
       };
     });
   } finally {
-    await removeDrafts(service.paths, appId);
+    await rm(draft, { recursive: true, force: true });
   }
   await service.backends.stop(appId);
   return service.detail(appId);
@@ -160,7 +175,7 @@ export async function editApp(service: AppService, appId: string): Promise<{ tas
   const taskId = randomUUID();
   const target = path.join(service.paths.taskOutput(taskId), 'app');
   await mkdir(path.dirname(target), { recursive: true });
-  await cp(path.join(service.paths.version(appId, app.currentVersion), 'source'), target, {
+  await cp(path.join(await currentBuild(service.paths, app), 'source'), target, {
     recursive: true,
   });
   const profile = skillProfilePaths(paths.root, paths.agentDir);

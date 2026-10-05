@@ -280,8 +280,12 @@ export const CodemodeDetailsSchema = Type.Object(
 export type CodemodeDetails = Static<typeof CodemodeDetailsSchema>;
 
 /**
- * An `app.build` that published a version: the app as of that version, so the card keeps showing
- * what this call built after later versions. `widgets` counts the widgets the version declares.
+ * An `app.build` that published: the app as of that build, so the card keeps showing what this
+ * call built after later builds. `widgets` counts the widgets the build declares. `revision` is
+ * the app's build revision it published, and `updated` says it replaced the files of `version`,
+ * which an earlier build of the same run published, instead of publishing a new version. Details
+ * recorded before build revisions carry neither: each of those builds published a new version,
+ * whose revision was its number.
  */
 export const AppBuildDetailsSchema = Type.Object(
   {
@@ -289,6 +293,8 @@ export const AppBuildDetailsSchema = Type.Object(
     appId: AppIdSchema,
     name: Type.String({ minLength: 1, maxLength: 64 }),
     version: Type.Integer({ minimum: 1 }),
+    revision: Type.Optional(Type.Integer({ minimum: 1 })),
+    updated: Type.Optional(Type.Boolean()),
     summary: Type.String({ maxLength: 500 }),
     typecheck: Type.Object(
       { ok: Type.Boolean(), errorCount: Type.Integer({ minimum: 0 }) },

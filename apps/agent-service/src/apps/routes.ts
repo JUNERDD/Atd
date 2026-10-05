@@ -13,7 +13,7 @@ import { appRoute, AppFailure } from './errors.js';
 import { clearAppData, deleteApp, editApp, revertApp } from './lifecycle.js';
 import { appIdOf, registerAppRuntimeRoutes, type AppRequest } from './runtime-routes.js';
 import { AppService, type AppServiceDeps } from './service.js';
-import { listVersions } from './versions.js';
+import { currentBuild, listVersions } from './versions.js';
 
 /**
  * The renderer's `/v1/apps` routes (DECISIONS "Service routes"), and the shell's runtime and
@@ -120,8 +120,7 @@ export function registerAppRoutes(
     appRoute(async (request: AppRequest, reply: FastifyReply) => {
       const apps = await service();
       const appId = appIdOf(request);
-      const { currentVersion } = apps.store.get(appId);
-      const file = path.join(apps.paths.version(appId, currentVersion), 'icon.svg');
+      const file = path.join(await currentBuild(apps.paths, apps.store.get(appId)), 'icon.svg');
       const svg = await readFile(file).catch(() => null);
       if (!svg) throw new AppFailure(404, 'not_found', 'This version of the app has no icon.');
       // Agent-written SVG: shown as an image only, never as a document that runs scripts.

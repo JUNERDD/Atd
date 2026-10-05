@@ -29,7 +29,7 @@ export function AppConsentControls({
   const actions = useAppActions();
   const { apps } = useApps();
   const allowRef = useRef<HTMLButtonElement>(null);
-  const version = apps?.find(({ id }) => id === consent.appId)?.currentVersion ?? 1;
+  const revision = apps?.find(({ id }) => id === consent.appId)?.revision ?? 1;
   const busy = actions.busy.has(consent.appId);
   const Icon = CAPABILITY_ICONS[consent.capability];
 
@@ -53,7 +53,7 @@ export function AppConsentControls({
   return (
     <div className="approval-controls">
       <div className="flex min-w-0 items-start gap-2.5">
-        <AppIcon appId={consent.appId} version={version} />
+        <AppIcon appId={consent.appId} revision={revision} />
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
           <p className="flex min-w-0 items-center gap-1.5 text-sm font-medium">
             <Icon aria-hidden className="size-4 shrink-0" />

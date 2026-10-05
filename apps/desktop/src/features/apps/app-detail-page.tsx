@@ -79,7 +79,7 @@ export function AppDetailPage({
             <AppWidgetsSection
               appId={app.id}
               appName={name}
-              version={current}
+              revision={detail.revision}
               widgets={detail.widgets}
             />
           )}

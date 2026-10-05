@@ -1,5 +1,8 @@
 import path from 'node:path';
 
+/** Name prefix of a build revision's directory under `versions/`. */
+export const REVISION_PREFIX = '.rev-';
+
 /**
  * Where the service keeps user apps (plan "数据模型"). Everything lives under `<dataDir>/apps`,
  * which agent file tools may not write (service-fs.ts `protectedWriteRoots`):
@@ -10,7 +13,9 @@ import path from 'node:path';
  *   .work/                   build scratch, sandbox profiles and the self-check (service-owned)
  *   <appId>/
  *     app.json               the app record
- *     versions/<n>/          web/, server/, source/, icon.svg, version.json (immutable)
+ *     versions/<n>           version n: a link to the build that last wrote it (versions.ts)
+ *     versions/.rev-<k>/     web/, server/, source/, icon.svg, version.json of build revision k
+ *                            (immutable)
  *     data/                  the backend's only writable directory, shared by every version
  *     widgets/               the latest widget snapshots
  *     diagnostics.jsonl      the diagnostics ring
@@ -48,8 +53,14 @@ export class AppPaths {
     return path.join(this.app(appId), 'versions');
   }
 
+  /** Version n's files, through its link (a plain directory before build revisions). */
   version(appId: string, n: number): string {
     return path.join(this.versionsDir(appId), String(n));
+  }
+
+  /** The files of build revision `revision`, which version links point to. */
+  revision(appId: string, revision: number): string {
+    return path.join(this.versionsDir(appId), `${REVISION_PREFIX}${revision}`);
   }
 
   data(appId: string): string {
