@@ -172,7 +172,7 @@ export const NativeEvents = {
    */
   'shortcut.screenshot': Empty,
   /**
-   * Debug builds' Replay First-Launch Guide (panel only): the page marks the guide as not shown,
+   * The app menu's Replay First-Launch Guide (panel only): the page marks the guide as not shown,
    * which runs the first launch's path again.
    */
   'onboarding.replay': Empty,

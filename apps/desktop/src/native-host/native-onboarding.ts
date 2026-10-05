@@ -9,8 +9,8 @@ import type { WindowMessages } from './window-messages';
  * shown it. It asks the shell to open the guide before marking it shown, and before its first
  * selection toolbar push (`onSettings` runs ahead of that sync), so the guide, not the launch, asks
  * for Accessibility. A guide closed early or a quit mid-way does not reopen it; the app menu's
- * Welcome Guide does, and in Debug builds the menu's Replay First-Launch Guide marks it as not
- * shown again (`onboarding.replay`), which runs this same path from the start.
+ * Welcome Guide does, and the menu's Replay First-Launch Guide marks it as not shown again
+ * (`onboarding.replay`), which runs this same path from the start.
  *
  * It also relays the shell's panel visibility to the other windows, which the guide's hotkey
  * try-out watches.

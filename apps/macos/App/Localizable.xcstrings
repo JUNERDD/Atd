@@ -1856,7 +1856,7 @@
       }
     },
     "menu.onboardingReplay" : {
-      "comment" : "Debug-only menu item that replays the first-launch welcome guide",
+      "comment" : "Menu item that replays the first-launch welcome guide",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
