@@ -13,8 +13,8 @@ import type { AppActions } from './use-app-actions';
  * One app wherever apps are listed, as a `ListCard` like Settings' plugin cards (Figma
  * `App / App list card · Rhea`): the app's icon and name with Open at the top right, its own
  * description, and at the foot the list's meta line and a status badge. The panel adds Continue
- * editing and More after Open (`children`); in Settings the whole card opens the app's page
- * (`onShow`).
+ * editing and More after Open (`children`). The whole card opens the app's page in Settings
+ * (`onShow`) and the app itself in the panel, like Open.
  */
 export function AppListCard({
   app,
@@ -39,6 +39,9 @@ export function AppListCard({
   const { t: tSettings } = useTranslation('settings');
   const busy = actions.busy.has(app.id);
   const description = app.description.trim();
+  const openApp = () => {
+    if (!busy) void actions.open(app.id);
+  };
   return (
     <ListCard
       media={<AppIcon appId={app.id} version={app.currentVersion} size="md" />}
@@ -50,9 +53,7 @@ export function AppListCard({
             label={t('panel.open')}
             aria-label={t('panel.openLabel', { name: app.name })}
             aria-disabled={busy || undefined}
-            onClick={() => {
-              if (!busy) void actions.open(app.id);
-            }}
+            onClick={openApp}
           >
             <SquareArrowOutUpRight />
           </IconButton>
@@ -63,7 +64,11 @@ export function AppListCard({
       descriptionText={description || undefined}
       meta={meta}
       badges={status ? <Badge variant="secondary">{status}</Badge> : undefined}
-      open={onShow && { label: t('settings.showLabel', { name: app.name }), onOpen: onShow }}
+      open={
+        onShow
+          ? { label: t('settings.showLabel', { name: app.name }), onOpen: onShow }
+          : { label: t('panel.openLabel', { name: app.name }), onOpen: openApp }
+      }
       busy={busy}
     />
   );

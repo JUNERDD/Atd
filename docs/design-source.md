@@ -761,3 +761,11 @@ Figma 侧未同步：本会话云端 Figma 工具不可用，本地 Figma MCP �
 同日评审修正（已写入组件说明）：分组栏最宽为固定行的四分之三，超出时横向滚动且不显示滚动条，被裁切的一端以 16px 渐隐并保持当前分组的按钮可见（如连接很多的 `/model` 或窄面板），标题在分组栏的实际宽度前截断；列表滚动后固定行接管指针，其下渐隐的行不能悬停或点击，在固定行或分组栏上滚动滚轮仍会滚动列表；320 宽窗口（288 面板）中 7 个 @ 分组按钮（208px）在上限（210px）以内，分组栏只在超出上限时才横向滚动（如连接很多的 `/model`）。
 
 同日按用户反馈修正：分组按钮保留 28×28 的点击区域，选中填充与悬停底色改为按钮内居中的 22px 圆（四边各内缩 3px），与第一行的高亮留出 3px 间隙；Figma 新增 [App / Quick panel section button](https://www.figma.com/design/PROJECT_FILE_KEY/Atd?node-id=2148-129079)（组合 App / Icon button 并暴露其 Icon 实例替换属性，State=Default / Hover / Selected），各视图、示例帧与 B1 05.06 的分组栏均已换用。
+
+## 2026-10-05 面板应用卡片整张可点击
+
+用户要求任务面板「我的应用」的卡片本身可以点击打开。本节取代上文 2026-10-04「应用列表改为卡片」中「面板卡片不是点击目标，没有悬停态」的约定。
+
+- 代码：`AppListCard` 在面板中也传入 `ListCard` 的 `open`：整张卡片打开应用，与右上「打开」相同，标签为 `apps:panel.openLabel`；应用正在写入时点击不生效。设置 › 应用仍然打开应用详情子页。整行打开的样式原在 `settings.css`（只有设置窗口加载），现移到共享的 `apps/desktop/src/components/open-row.css`，类名由 `.settings-open-row` 改为 `.open-row`，由 `ListCard` 与设置中的各类可打开行各自引入；MCP 行内登录框的规则仍留在 `settings.css`。
+- Figma：[App / App list card · Rhea](https://www.figma.com/design/PROJECT_FILE_KEY/Atd?node-id=2047-123329) 新增 `Surface=Panel, State=Hover`（`2178:131273`），与 `Surface=Settings, State=Hover` 相同，在卡片填充上叠 `surface/ghost-hover`；组件说明已改为两种 Surface 都可整张点击。AP1 画面只用 Default，不需要更新。
+- 验证：`pnpm --filter @atd/desktop typecheck`、oxlint、oxfmt 与 `src/App.test.tsx` 通过；没有测试覆盖这些卡片。用户正在运行的 Debug 应用没有被启动、停止或附加，所以面板中的点击与悬停没有在原生窗口里核对。

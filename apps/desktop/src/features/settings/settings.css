@@ -685,33 +685,8 @@
   align-items: center;
   gap: 8px 12px;
 }
-/* A row opens its details from anywhere: the open button fills the row under its content, which
- * ignores the pointer, while the actions and the inline sign-in field stay above it. */
-/*
- * A row that opens its details on click: a button fills the row under its content, which ignores
- * the pointer, while trailing actions and inline fields stay interactive above it.
- */
-.settings-open-row {
-  position: relative;
-}
-.settings-open-row-button {
-  position: absolute;
-  inset: 0;
-  padding: 0;
-  border: 0;
-  border-radius: inherit;
-  background: transparent;
-  cursor: pointer;
-  outline: none;
-  transition: background-color 100ms;
-}
-.settings-open-row > :not(.settings-open-row-button) {
-  position: relative;
-  pointer-events: none;
-}
-/* Actions may sit in a wrapper, as the command rows group them with the shortcut. */
-.settings-open-row [data-slot='item-actions'],
-.settings-open-row .settings-extension-mcp-auth {
+/* The inline sign-in field of an MCP row stays above its open button (components/open-row.css). */
+.open-row .settings-extension-mcp-auth {
   pointer-events: auto;
 }
 /* A row without More holds an empty slot in More's column. It takes space only while another list
@@ -722,25 +697,6 @@
 }
 .settings-page:has([data-slot='item-group'] [data-more-column]) .settings-row-more-slot {
   display: block;
-}
-/* An outlined row fills inside its 1px border, so the fill's corners follow the border's inner
- * curve instead of the outer one. */
-.settings-open-row[data-variant='outline'] > .settings-open-row-button {
-  border-radius: calc(var(--radius-2xl) - 1px);
-}
-.settings-open-row:hover > .settings-open-row-button,
-.settings-open-row:has([aria-expanded='true']) > .settings-open-row-button,
-.settings-open-row-button:focus-visible {
-  background: var(--muted);
-}
-.dark .settings-open-row:hover > .settings-open-row-button,
-.dark .settings-open-row:has([aria-expanded='true']) > .settings-open-row-button,
-.dark .settings-open-row-button:focus-visible {
-  background: var(--ata-surface-ghost-hover);
-}
-.settings-open-row-button:focus-visible {
-  outline: 1px solid var(--ring);
-  box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 30%, transparent);
 }
 /* Extension icons sit in a ring and center on the title plus description, on the
  * plugin list and on a plugin's page alike; memory cards ring theirs the same way. */

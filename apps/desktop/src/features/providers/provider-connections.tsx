@@ -21,6 +21,7 @@ import type { Connection } from '../../client/providers/schema';
 import { IconButton } from '../../components/icon-button';
 import { ModelConfigPopover } from './model-config-popover';
 import { ProviderBrand } from './provider-brand';
+import '../../components/open-row.css';
 
 /** One overview row: a connection and where the overview search matched its name. */
 interface ConnectionRow {
@@ -81,12 +82,12 @@ export function ProviderConnections({
             asChild
             variant="outline"
             key={connection.connectionId}
-            className="provider-connection-row settings-open-row"
+            className="provider-connection-row open-row"
           >
             <li>
               <button
                 type="button"
-                className="settings-open-row-button"
+                className="open-row-button"
                 aria-label={t('connections.manageLabel', { name: connection.name })}
                 disabled={!canManage}
                 onClick={() => onManage(connection)}

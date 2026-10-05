@@ -30,6 +30,7 @@ import { agentApi } from '../agent/use-agent';
 import { showErrorToast } from '../../components/toast-store';
 import { CommandIcon } from './command-icon';
 import { useCommandShortcutCapture } from './use-command-shortcut-capture';
+import '../../components/open-row.css';
 
 type Match = FieldsMatch<'name' | 'description'> | null;
 type Row = { command: CommandDefinition; match: Match };
@@ -152,13 +153,13 @@ function CommandRow({
   // A combination the row cannot use outranks the standing registration error.
   const error = recorder.error || shortcutError;
   return (
-    <Item asChild size="sm" variant="outline" className="command-management-row settings-open-row">
+    <Item asChild size="sm" variant="outline" className="command-management-row open-row">
       <li>
         {/* A click anywhere on the row opens the editor, like the memory and skill rows;
             the run, enable and More controls stay interactive above this button. */}
         <button
           type="button"
-          className="settings-open-row-button"
+          className="open-row-button"
           aria-label={
             plugin
               ? t('list.viewFor', { name: command.name })

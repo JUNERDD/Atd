@@ -1,0 +1,46 @@
+/*
+ * A row or card that opens something on click, in any window: a button fills it under its
+ * content, which ignores the pointer, while trailing actions stay interactive above it. Settings
+ * rows and `ListCard` use it.
+ */
+.open-row {
+  position: relative;
+}
+.open-row-button {
+  position: absolute;
+  inset: 0;
+  padding: 0;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  cursor: pointer;
+  outline: none;
+  transition: background-color 100ms;
+}
+.open-row > :not(.open-row-button) {
+  position: relative;
+  pointer-events: none;
+}
+/* Actions may sit in a wrapper, as the command rows group them with the shortcut. */
+.open-row [data-slot='item-actions'] {
+  pointer-events: auto;
+}
+/* An outlined row fills inside its 1px border, so the fill's corners follow the border's inner
+ * curve instead of the outer one. */
+.open-row[data-variant='outline'] > .open-row-button {
+  border-radius: calc(var(--radius-2xl) - 1px);
+}
+.open-row:hover > .open-row-button,
+.open-row:has([aria-expanded='true']) > .open-row-button,
+.open-row-button:focus-visible {
+  background: var(--muted);
+}
+.dark .open-row:hover > .open-row-button,
+.dark .open-row:has([aria-expanded='true']) > .open-row-button,
+.dark .open-row-button:focus-visible {
+  background: var(--ata-surface-ghost-hover);
+}
+.open-row-button:focus-visible {
+  outline: 1px solid var(--ring);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 30%, transparent);
+}

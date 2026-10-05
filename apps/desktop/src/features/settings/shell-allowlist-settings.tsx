@@ -22,6 +22,7 @@ import { queryClient } from '../../lib/query-client';
 import { useSettingsSectionExit } from './settings-navigation';
 import { ShellAllowlistEntryDialog } from './shell-allowlist-entry-dialog';
 import { showSettingsSnapshot } from './use-settings';
+import '../../components/open-row.css';
 
 type AddError = ShellAllowlistEntryError | 'save';
 
@@ -190,11 +191,11 @@ export function ShellAllowlistSettings({ snapshot }: { snapshot: SettingsSnapsho
             aria-label={t('permissions.shellAllowlist.listLabel')}
           >
             {entries.map((entry) => (
-              <Item asChild key={entry} size="xs" className="settings-open-row">
+              <Item asChild key={entry} size="xs" className="open-row">
                 <li>
                   <button
                     type="button"
-                    className="settings-open-row-button"
+                    className="open-row-button"
                     aria-label={t('permissions.shellAllowlist.viewLabel', { entry })}
                     onClick={() => setDetail({ entry, open: true })}
                   />

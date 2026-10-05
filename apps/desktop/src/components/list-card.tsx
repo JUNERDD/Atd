@@ -9,6 +9,7 @@ import {
 } from '@atd/ui/components/card';
 import { cn } from '@atd/ui/lib/utils';
 import './list-card.css';
+import './open-row.css';
 
 /**
  * The cards of an overview, as many columns of at least 240px as its width holds; a list whose
@@ -31,7 +32,7 @@ export function ListCardGrid({
  * centered on the media; then the description, clamped to two lines with room for two, so cards
  * keep one height; and at the foot the meta line, which truncates before the badges after it. With
  * `open` the whole card opens a page: its button fills the card beneath the content and paints
- * hover and focus (settings.css `.settings-open-row`).
+ * hover and focus (open-row.css).
  */
 export function ListCard({
   media,
@@ -72,14 +73,12 @@ export function ListCard({
     <li className="list-card-cell" aria-busy={busy || undefined}>
       <Card
         size="sm"
-        className={
-          open ? 'list-card settings-open-row dark:bg-input/40' : 'list-card dark:bg-input/40'
-        }
+        className={open ? 'list-card open-row dark:bg-input/40' : 'list-card dark:bg-input/40'}
       >
         {open && (
           <button
             type="button"
-            className="settings-open-row-button"
+            className="open-row-button"
             aria-label={open.label}
             onClick={open.onOpen}
           />
