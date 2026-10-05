@@ -93,6 +93,7 @@ function stepDetails(name: string, raw: unknown): CodemodeStepDetails | undefine
     case 'codemode':
     case 'mcpApproval':
     case 'subagent':
+    case 'subagentDefine':
     case 'todo':
     case undefined:
       return undefined;
