@@ -19,6 +19,14 @@ nonisolated enum RelaySession {
     configuration.timeoutIntervalForRequest = 300
     return URLSession(configuration: configuration, delegate: nil, delegateQueue: .main)
   }()
+
+  /// The same session for the streams a user app holds open (its backend's event stream and
+  /// NDJSON calls), which may stay quiet between messages far longer than an API call waits.
+  static let streaming: URLSession = {
+    let configuration = shared.configuration
+    configuration.timeoutIntervalForRequest = 24 * 60 * 60
+    return URLSession(configuration: configuration, delegate: nil, delegateQueue: .main)
+  }()
 }
 
 nonisolated enum RelayLog {

@@ -29,6 +29,27 @@ export function useOpenSettingsMemory() {
   return open;
 }
 
+/** One item page of Extensions: a plugin's skill, subagent or MCP server. */
+export interface SettingsExtensionItem {
+  pluginId: string;
+  kind: 'skill' | 'agent' | 'mcp';
+  name: string;
+}
+
+/**
+ * Opens Extensions at one item's page, with its plugin's page behind it. The settings window
+ * provides it to the sections that link to an item: Memory, where accepting a skill suggestion
+ * opens the skill it created.
+ */
+export const SettingsExtensionLinkContext = createContext<
+  ((item: SettingsExtensionItem) => void) | null
+>(null);
+export function useOpenSettingsExtension() {
+  const open = useContext(SettingsExtensionLinkContext);
+  if (!open) throw new Error('Opening an extension requires the settings window.');
+  return open;
+}
+
 /**
  * Whether the enclosing settings section is the one shown; pages outside the window count as
  * shown. Only `useSettingsSectionExit` reads it: a hidden section (an `Activity` in the background)

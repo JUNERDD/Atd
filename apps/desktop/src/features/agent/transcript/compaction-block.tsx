@@ -11,7 +11,7 @@ import { DetailBox } from './detail-box';
 import { LazyMarkdown } from './lazy-markdown';
 
 /** A one-line row without a body, on the same frame and icon geometry as expandable rows. */
-function StaticRow({
+export function StaticRow({
   status,
   label,
   icon,

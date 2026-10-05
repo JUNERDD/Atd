@@ -1,71 +1,47 @@
-import {
-  Bookmark,
-  Brain,
-  Ellipsis,
-  Lightbulb,
-  Pencil,
-  SearchX,
-  Trash2,
-  UserRound,
-} from 'lucide-react';
+import { Brain, SearchX } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@atd/ui/components/dropdown-menu';
+import type { MemoryUnit } from '@atd/agent-contracts';
 import { Button } from '@atd/ui/components/button';
 import { Empty, EmptyContent, EmptyHeader, EmptyMedia, EmptyTitle } from '@atd/ui/components/empty';
-import { HighlightedText } from '@atd/ui/components/highlighted-text';
-import {
-  Item,
-  ItemActions,
-  ItemContent,
-  ItemDescription,
-  ItemGroup,
-  ItemMedia,
-  ItemTitle,
-} from '@atd/ui/components/item';
 import { matchFields } from '@atd/ui/lib/fuzzy-match';
-import type { MemoryEntry } from '../../client/agent/bridge';
-import { IconButton } from '../../components/icon-button';
-
-const TARGET = {
-  memory: { icon: Bookmark, labelKey: 'memory.list.preference' },
-  user: { icon: UserRound, labelKey: 'memory.list.userProfile' },
-  failure: { icon: Lightbulb, labelKey: 'memory.list.corrections' },
-} as const;
+import { ListCardGrid } from '../../components/list-card';
+import { MemoryCard } from './memory-card';
 
 /**
- * Saved memories as outlined rows, like the Commands and Models lists: the kind's icon, the entry
- * on one line with its kind below, and More for secondary actions. A click anywhere on the row opens the
- * editor, which shows the entry in full. Saved order stays; the search matches and marks the text.
+ * Memories as cards (`MemoryCard`) in a grid of as many columns as the width holds, like the other
+ * overviews of Settings, in Settings order, shared by the Memory section and Personal's Memory
+ * tab. The search matches the name, description and content and marks what it matched; with no
+ * memories shown it says why (nothing saved, or no match, which offers to clear the search).
  */
 export function MemoryList({
-  entries,
+  units,
   query,
   busyIds,
   onClearSearch,
-  onEdit,
+  onOpen,
+  onToggle,
   onDelete,
 }: {
-  entries: MemoryEntry[];
+  units: readonly MemoryUnit[];
   query: string;
-  /** The entries being saved, whose rows keep focus but ignore input; other rows stay usable. */
+  /**
+   * The units being saved, turned on or off, or deleted, whose cards keep focus but ignore input;
+   * the other cards stay usable.
+   */
   busyIds: ReadonlySet<string>;
   onClearSearch: () => void;
-  onEdit: (entry: MemoryEntry) => void;
-  onDelete: (entry: MemoryEntry) => void;
+  onOpen: (unit: MemoryUnit) => void;
+  onToggle: (unit: MemoryUnit, enabled: boolean) => void;
+  onDelete: (unit: MemoryUnit) => void;
 }) {
   const { t } = useTranslation('memory');
-  const shown = entries.flatMap((entry) => {
-    const match = matchFields(query, { content: entry.content });
-    return match || !query.trim() ? [{ entry, match }] : [];
+  const shown = units.flatMap((unit) => {
+    const { description, name, body } = unit;
+    const match = matchFields(query, { description, name, body });
+    return match || !query.trim() ? [{ unit, match }] : [];
   });
   if (!shown.length) {
-    const searching = entries.length > 0;
+    const searching = units.length > 0;
     return (
       <div className="settings-extension-empty">
         <Empty>
@@ -89,68 +65,18 @@ export function MemoryList({
     );
   }
   return (
-    <ItemGroup>
-      {shown.map(({ entry, match }) => {
-        const { icon: Icon, labelKey } = TARGET[entry.target];
-        const preview = entry.content.slice(0, 70);
-        const busy = busyIds.has(entry.id);
-        return (
-          <Item asChild key={entry.id} size="sm" variant="outline" className="settings-open-row">
-            <li>
-              <button
-                type="button"
-                className="settings-open-row-button"
-                aria-label={t('memory.list.editLabel', { content: preview })}
-                aria-disabled={busy || undefined}
-                aria-busy={busy || undefined}
-                onClick={() => {
-                  if (!busy) onEdit(entry);
-                }}
-              />
-              <ItemMedia variant="icon">
-                <Icon />
-              </ItemMedia>
-              <ItemContent>
-                <ItemTitle title={entry.content}>
-                  <HighlightedText text={entry.content} ranges={match?.ranges.content} />
-                </ItemTitle>
-                <ItemDescription>{t(labelKey)}</ItemDescription>
-              </ItemContent>
-              <ItemActions>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <IconButton
-                      label={t('memory.list.more')}
-                      aria-label={t('memory.list.moreActionsFor', { content: preview })}
-                      aria-disabled={busy || undefined}
-                      aria-busy={busy || undefined}
-                      className="aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
-                      tooltipDismissOnClick
-                    >
-                      <Ellipsis />
-                    </IconButton>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem disabled={busy} onSelect={() => onEdit(entry)}>
-                      <Pencil />
-                      {t('memory.list.edit')}
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      variant="destructive"
-                      disabled={busy}
-                      onSelect={() => onDelete(entry)}
-                    >
-                      <Trash2 />
-                      {t('memory.list.delete')}
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </ItemActions>
-            </li>
-          </Item>
-        );
-      })}
-    </ItemGroup>
+    <ListCardGrid>
+      {shown.map(({ unit, match }) => (
+        <MemoryCard
+          key={unit.id}
+          unit={unit}
+          match={match}
+          busy={busyIds.has(unit.id)}
+          onOpen={onOpen}
+          onToggle={onToggle}
+          onDelete={onDelete}
+        />
+      ))}
+    </ListCardGrid>
   );
 }

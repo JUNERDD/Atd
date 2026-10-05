@@ -15,6 +15,7 @@ import { Type, type TSchema } from 'typebox';
 import { NativeCalls } from './calls.ts';
 import { ImportFailureSchema, NativeFileRefSchema, NativeFolderRefSchema } from './file-calls.ts';
 import { Empty, Text } from './primitives.ts';
+import { UserAppIdSchema } from './user-app-contract.ts';
 
 /** `WKScriptMessageHandler` name the page posts to. */
 export const MESSAGE_HANDLER = 'aiNative';
@@ -234,6 +235,19 @@ export const NativeEvents = {
   ),
   'socket.frames': Type.Object(
     { frames: Type.Array(SocketFrameSchema, { minItems: 1 }) },
+    { additionalProperties: false },
+  ),
+  /**
+   * A user app window opened, reloaded or closed: `version` is the version it loaded, null once
+   * closed. Sent to every page on each change and replayed for each open window when a page
+   * becomes ready, so the renderer knows which open apps to reload after an `apps` invalidate.
+   */
+  'userApp.state': Type.Object(
+    {
+      appId: UserAppIdSchema,
+      open: Type.Boolean(),
+      version: Type.Union([Type.Integer({ minimum: 1 }), Type.Null()]),
+    },
     { additionalProperties: false },
   ),
 } satisfies Record<string, TSchema>;

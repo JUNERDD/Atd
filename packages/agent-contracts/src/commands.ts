@@ -97,6 +97,49 @@ export const CommandInputSchema = Type.Object(
 );
 export type CommandInput = Static<typeof CommandInputSchema>;
 
+/**
+ * Where a command is offered beyond the command list, its shortcut and the launcher. Each place
+ * hands the command text that stands in for the selection it reads: the text selected in another
+ * app (`selectionToolbar`), the text selected in a conversation's answers (`turnSelection`), or a
+ * settled turn's answer (`turnActions`). Clients offer a command only where it is placed and only
+ * while it reads the selection (`offeredAt`).
+ */
+export const CommandPlacementSchema = Type.Object(
+  {
+    /** The selection toolbar over text selected in other apps. */
+    selectionToolbar: Type.Boolean(),
+    /** The toolbar over text selected in a conversation's answers. */
+    turnSelection: Type.Boolean(),
+    /** A settled turn's actions, which run the command on the turn's answer. */
+    turnActions: Type.Boolean(),
+  },
+  { additionalProperties: false },
+);
+export type CommandPlacement = Static<typeof CommandPlacementSchema>;
+export type CommandPlace = keyof CommandPlacement;
+
+/**
+ * The placement of a command that never chose one (stored before placements existed, or created
+ * without one): a command that takes the selection as its input shows on the selection toolbar
+ * over other apps, as every such command did before, and in no conversation until it is put there.
+ */
+export function defaultCommandPlacement(source: CommandInput['source']): CommandPlacement {
+  return { selectionToolbar: source === 'selection', turnSelection: false, turnActions: false };
+}
+
+/** Whether a command reads the selection: as its input, or through the `{{selection}}` variable. */
+export function readsSelection(input: CommandInput): boolean {
+  return input.source === 'selection' || input.selection;
+}
+
+/** Whether a client offers `command` at `place`: it is enabled, placed there and reads the selection. */
+export function offeredAt(
+  command: { enabled: boolean; input: CommandInput; placement: CommandPlacement },
+  place: CommandPlace,
+): boolean {
+  return command.enabled && command.placement[place] && readsSelection(command.input);
+}
+
 export const CommandModelSchema = Type.Union([
   Type.Object({ mode: Type.Literal('inherit') }, { additionalProperties: false }),
   Type.Object(
@@ -135,6 +178,7 @@ export const ServiceCommandFullSchema = Type.Object({
   shortcut: Type.String({ maxLength: 100 }),
   templateId: Type.Union([Identifier, Type.Null()]),
   input: CommandInputSchema,
+  placement: CommandPlacementSchema,
   parameters: Type.Array(CommandParameterSchema, { maxItems: 20 }),
   model: CommandModelSchema,
   tools: Type.Array(CommandToolSchema, { uniqueItems: true }),
@@ -159,6 +203,8 @@ export const CommandCreateSchema = Type.Object({
   shortcut: Type.Optional(Type.String({ maxLength: 100 })),
   templateId: Type.Optional(Type.Union([Identifier, Type.Null()])),
   input: Type.Optional(CommandInputSchema),
+  /** Omitted: `defaultCommandPlacement` of the input source. */
+  placement: Type.Optional(CommandPlacementSchema),
   parameters: Type.Optional(Type.Array(CommandParameterSchema, { maxItems: 20 })),
   model: Type.Optional(CommandModelSchema),
   tools: Type.Optional(Type.Array(CommandToolSchema, { uniqueItems: true })),

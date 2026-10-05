@@ -62,3 +62,36 @@ public struct SocketFramesEvent: Codable, Equatable, Sendable {
     case frames
   }
 }
+
+/// Payload of the `userApp.state` event.
+public struct UserAppStateEvent: Codable, Equatable, Sendable {
+  public let appId: String
+  public let open: Bool
+  public let version: Int?
+
+  public init(appId: String, open: Bool, version: Int?) {
+    self.appId = appId
+    self.open = open
+    self.version = version
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    appId = try container.string(.appId, pattern: "^app-[a-z0-9]{10}$")
+    open = try container.boolean(.open)
+    version = try container.nullable(.version) { try container.integer($0, minimum: 1) }
+  }
+
+  public func encode(to encoder: any Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(appId, forKey: .appId)
+    try container.encode(open, forKey: .open)
+    try container.encode(version, forKey: .version)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case appId
+    case open
+    case version
+  }
+}

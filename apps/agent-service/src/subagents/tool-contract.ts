@@ -1,5 +1,6 @@
 import type { ExtensionAPI, ToolDefinition } from '@earendil-works/pi-coding-agent';
 import { Type, type TSchema } from 'typebox';
+import { TaskAgentRequestsSchema } from './task-agent-definition.js';
 
 /**
  * The service-owned model contract of pi-subagents' `subagent` tool. Upstream advertises its whole
@@ -7,7 +8,8 @@ import { Type, type TSchema } from 'typebox';
  * models kept calling shapes that could only fail. The service swaps in a description and a closed
  * schema that list exactly the calls the guard admits; pi-subagents still executes them (its
  * data-only `tasks` and `chain`, which it admits with workflow scripts disabled, config.ts), and
- * the guard stays the authority on what a call may do.
+ * the guard stays the authority on what a call may do. The `define` action is the service's own:
+ * pi-subagents never sees it (task-agents.ts handles it).
  */
 
 export const SUBAGENT_TOOL = 'subagent';
@@ -18,13 +20,20 @@ const MAX_TIMER_DELAY_MS = 2_147_483_647;
 /** Longest task one child receives, in characters; the guard checks it on every child. */
 export const SUBAGENT_TASK_MAX_LENGTH = 8000;
 
-/** Management actions a parent may call; everything else launches children or is refused. */
-export const SUBAGENT_ACTIONS = ['list', 'status'] as const;
+/**
+ * Most children one launching call may run, counting every `tasks` child and every chain step's
+ * children; the guard refuses a larger call.
+ */
+export const SUBAGENT_CHILDREN_PER_CALL = 8;
+
+/** Actions a parent may call; everything else launches children or is refused. */
+export const SUBAGENT_ACTIONS = ['define', 'list', 'status'] as const;
 
 /** Keys each action may carry besides `action`. */
 export const SUBAGENT_ACTION_KEYS: Readonly<
   Record<(typeof SUBAGENT_ACTIONS)[number], readonly string[]>
 > = {
+  define: ['agents'],
   list: ['capabilities'],
   status: ['id'],
 };
@@ -88,9 +97,10 @@ export const SubagentToolParams = Type.Object(
     ),
     action: Type.Optional(
       Type.Enum([...SUBAGENT_ACTIONS], {
-        description: 'Inspect instead of launching: list or status.',
+        description: 'Instead of launching: define task agents, list agents, or report a run.',
       }),
     ),
+    agents: Type.Optional(TaskAgentRequestsSchema),
     capabilities: Type.Optional(
       Type.Boolean({ description: 'list only: include each agent’s tools and model.' }),
     ),
@@ -100,8 +110,8 @@ export const SubagentToolParams = Type.Object(
 );
 
 /**
- * True for a call that launches children rather than a list/status action. A null action counts as
- * omitted, as in `prepareSubagentArguments`, because transcripts keep the model's raw arguments.
+ * True for a call that launches children rather than an action. A null action counts as omitted,
+ * as in `prepareSubagentArguments`, because transcripts keep the model's raw arguments.
  */
 export function isSubagentLaunch(args: Record<string, unknown>): boolean {
   return args['action'] == null;
@@ -111,22 +121,6 @@ export function isSubagentLaunch(args: Record<string, unknown>): boolean {
 export const SUBAGENT_TOOL_KEYS: ReadonlySet<string> = new Set(
   Object.keys(SubagentToolParams.properties),
 );
-
-export const SUBAGENT_TOOL_DESCRIPTION = [
-  'Delegate bounded work to child subagents. Children start with fresh context: they do not see this conversation, cannot delegate further, and return their result to you.',
-  '',
-  'Pass exactly one of these shapes:',
-  '- One child: { agent, task }',
-  '- Several children at the same time: { tasks: [{ agent, task }, ...] }',
-  '- Children in order: { chain: [{ agent, task }, { agent, task }, ...] }. Every step after the first receives the previous step’s output: place it with {previous} in the task, otherwise it is appended. A step may also run children at the same time, { parallel: [{ agent, task }, ...] }; the next step then receives all of their outputs.',
-  '- Inspect: { action: "list", capabilities: true } lists the agents you may call with their tools; { action: "status", id } reports a run.',
-  '',
-  'Rules:',
-  '- Every launch runs in the foreground and returns when its children finish; async:true is refused.',
-  '- Launch at most one subagent call at a time: a second launch while one runs is rejected, so put independent work in one tasks call.',
-  '- If any child fails, the call fails, but the results of the children that finished still come back; a chain stops at the step that failed.',
-  '- agent must be one of the agents available in this session. Give each task everything the child needs.',
-].join('\n');
 
 /** The hand-off a later chain child receives when its task does not place `{previous}` itself. */
 const PREVIOUS_OUTPUT = '\n\nPrevious output:\n{previous}';
@@ -172,13 +166,24 @@ function prepareSubagentArguments(args: unknown): unknown {
   return call['chain'] === undefined ? call : { ...call, chain: chainWithHandOff(call['chain']) };
 }
 
+/** What one parent session puts on its `subagent` tool besides pi-subagents' execution. */
+export interface ServiceSubagentContract {
+  /** The model-facing description, with the session's agents (tool-description.ts). */
+  description: string;
+  /** Handles a define call (task-agents.ts): the result text, or a thrown refusal. */
+  define: (toolCallId: string, agents: unknown) => Promise<string>;
+}
+
 /**
  * Hands pi-subagents a view of `pi` whose `registerTool` installs the service contract on the
  * `subagent` tool and passes every other registration through untouched. `assertInstalled` fails
  * closed when an upstream change registered the tool some other way, since the model would then
  * see the upstream contract again.
  */
-export function withServiceSubagentTool(pi: ExtensionAPI): {
+export function withServiceSubagentTool(
+  pi: ExtensionAPI,
+  contract: ServiceSubagentContract,
+): {
   api: ExtensionAPI;
   assertInstalled: () => void;
 } {
@@ -186,14 +191,22 @@ export function withServiceSubagentTool(pi: ExtensionAPI): {
   const registerTool = (tool: ToolDefinition): void => {
     if (tool.name !== SUBAGENT_TOOL) return pi.registerTool(tool);
     installed = true;
-    // The upstream definition was built for its own schema; it keeps its execute and renderers.
+    // The upstream definition was built for its own schema; it keeps its renderers and executes
+    // every call except a define.
     pi.registerTool<TSchema>({
       ...tool,
-      description: SUBAGENT_TOOL_DESCRIPTION,
+      description: contract.description,
       parameters: SubagentToolParams,
       prepareArguments: prepareSubagentArguments,
       // Child cards key on the calling tool call, which a codemode script's nested call lacks.
       exposure: 'model-only',
+      // pi-subagents rejects actions it does not know, so the service answers a define itself.
+      execute: async (toolCallId, params, signal, onUpdate, ctx) => {
+        if (!isRecord(params) || params['action'] !== 'define')
+          return tool.execute(toolCallId, params, signal, onUpdate, ctx);
+        const text = await contract.define(toolCallId, params['agents']);
+        return { content: [{ type: 'text', text }], details: undefined };
+      },
     });
   };
   const api = new Proxy(pi, {

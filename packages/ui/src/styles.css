@@ -367,14 +367,25 @@
    * Soft content fade at the scrolled edges, after HeroUI's ScrollShadow fade variant: the
    * content itself dissolves over `--scroll-shadow-size` instead of sitting under a dark band,
    * so it stays clean on any (including translucent) background. The custom scrollbar is a
-   * sibling overlay and never masked.
+   * sibling overlay and never masked. `--scroll-shadow-inset` keeps the content fully clear for
+   * that distance below the top edge before the fade starts, under an overlay pinned there (the
+   * quick panel's section headings); at its default of 0 the gradients are the plain fade.
    */
   .scroll-shadowed {
     --scroll-shadow-size: 2.5rem;
+    --scroll-shadow-inset: 0px;
   }
   .scroll-shadowed[data-top-scroll='true'] {
-    -webkit-mask-image: linear-gradient(to bottom, transparent, #000 var(--scroll-shadow-size));
-    mask-image: linear-gradient(to bottom, transparent, #000 var(--scroll-shadow-size));
+    -webkit-mask-image: linear-gradient(
+      to bottom,
+      transparent var(--scroll-shadow-inset),
+      #000 calc(var(--scroll-shadow-inset) + var(--scroll-shadow-size))
+    );
+    mask-image: linear-gradient(
+      to bottom,
+      transparent var(--scroll-shadow-inset),
+      #000 calc(var(--scroll-shadow-inset) + var(--scroll-shadow-size))
+    );
   }
   .scroll-shadowed[data-bottom-scroll='true'] {
     -webkit-mask-image: linear-gradient(to top, transparent, #000 var(--scroll-shadow-size));
@@ -383,15 +394,15 @@
   .scroll-shadowed[data-top-scroll='true'][data-bottom-scroll='true'] {
     -webkit-mask-image: linear-gradient(
       to bottom,
-      transparent,
-      #000 var(--scroll-shadow-size),
+      transparent var(--scroll-shadow-inset),
+      #000 calc(var(--scroll-shadow-inset) + var(--scroll-shadow-size)),
       #000 calc(100% - var(--scroll-shadow-size)),
       transparent
     );
     mask-image: linear-gradient(
       to bottom,
-      transparent,
-      #000 var(--scroll-shadow-size),
+      transparent var(--scroll-shadow-inset),
+      #000 calc(var(--scroll-shadow-inset) + var(--scroll-shadow-size)),
       #000 calc(100% - var(--scroll-shadow-size)),
       transparent
     );

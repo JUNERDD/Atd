@@ -42,6 +42,11 @@ export interface McpProxyHost {
   log: Logger;
   /** The task tier's say on a guarded call (`OperationContext.preapprove`); absent always asks. */
   preapprove?: (call: McpGuardedCall, signal?: AbortSignal) => Promise<McpPreapproval>;
+  /**
+   * Shows `runId`'s run as waiting while a guarded call's confirm waits, and as running once it
+   * settles (`OperationContext.setStatus`).
+   */
+  setStatus: (status: 'awaiting_confirmation' | 'running') => void;
 }
 
 /** One proxy call the server's approval policy guards. */
@@ -103,6 +108,11 @@ export function bindingExposure(
 /** What a run binds: its proxies, and the servers its resource tools reach (maybe none). */
 export interface McpRunTools {
   factory: ExtensionFactory;
+  /**
+   * The same proxies and resource tools for another execution of the run, a subagent child:
+   * `host` names whom each call belongs to and its tier's say, as the bind's own host does.
+   */
+  factoryFor: (host: McpProxyHost) => ExtensionFactory;
   bindings: McpToolBinding[];
   resourceServers: McpResourceServer[];
 }
@@ -182,12 +192,14 @@ export async function prepareMcpTools(
       });
     }
   }
-  const factory: ExtensionFactory = (pi) => {
-    for (const binding of bindings) pi.registerTool(mcpProxyTool(host, options, binding));
-    if (resourceServers.length)
-      for (const tool of mcpResourceTools(host, options.facade, resourceServers))
-        pi.registerTool(tool);
-  };
+  const factoryFor =
+    (target: McpProxyHost): ExtensionFactory =>
+    (pi) => {
+      for (const binding of bindings) pi.registerTool(mcpProxyTool(target, options, binding));
+      if (resourceServers.length)
+        for (const tool of mcpResourceTools(target, options.facade, resourceServers))
+          pi.registerTool(tool);
+    };
   if (options.selected)
     host.audit({
       taskId: host.taskId,
@@ -197,5 +209,5 @@ export async function prepareMcpTools(
       selected: options.selected.length,
       bound: bindings.length,
     });
-  return { factory, bindings, resourceServers };
+  return { factory: factoryFor(host), factoryFor, bindings, resourceServers };
 }

@@ -1,4 +1,5 @@
 import AICore
+import AIWidgetModel
 import Foundation
 
 /// Authenticated calls the shell makes for itself with the main token, including the
@@ -106,6 +107,39 @@ public nonisolated struct ShellClient: Sendable {
     }
     _ = try JSONDecoder().decode(McpLaunchApproveResponse.self, from: response.data)
     return .approved
+  }
+
+  /// `GET /v1/apps/:appId/runtime`: the current version an app's window shows. A deleted app
+  /// answers 404 (``ShellClientError/http(status:code:message:)``).
+  public func appRuntime(appId: String) async throws -> UserAppRuntime {
+    guard UserAppOrigin.isValidAppId(appId) else {
+      throw ShellClientError.invalidArgument("Not an app id.")
+    }
+    let response = try await send("GET", "/v1/apps/\(appId)/runtime")
+    return try UserAppRuntime.decode(response.data, appId: appId)
+  }
+
+  /// `POST /v1/apps/:appId/diagnostics { entries }`: errors an app's page reported.
+  public func postAppDiagnostics(appId: String, entries: [UserAppDiagnostic]) async throws {
+    guard UserAppOrigin.isValidAppId(appId), !entries.isEmpty else {
+      throw ShellClientError.invalidArgument("Diagnostics need an app id and entries.")
+    }
+    _ = try await send(
+      "POST", "/v1/apps/\(appId)/diagnostics",
+      body: try JSONEncoder().encode(["entries": entries]), contentType: "application/json")
+  }
+
+  /// `GET /v1/widgets/snapshots`: the widget catalog and every snapshot, checked against the
+  /// contract while decoding.
+  public func widgetSync() async throws -> WidgetSync {
+    try JSONDecoder().decode(
+      WidgetSync.self, from: try await send("GET", "/v1/widgets/snapshots").data)
+  }
+
+  /// `POST /v1/widgets/instances`: the widgets the system shows, which the service renders.
+  public func postWidgetInstances(_ instances: [WidgetInstance]) async throws {
+    let body = try JSONEncoder().encode(WidgetInstancesRequest(instances: instances))
+    _ = try await send("POST", "/v1/widgets/instances", body: body, contentType: "application/json")
   }
 
   /// `POST /v1/admin/shutdown`: the service answers, then drains and exits. Bounded, since quit

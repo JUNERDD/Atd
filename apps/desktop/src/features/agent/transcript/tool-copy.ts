@@ -1,4 +1,5 @@
 import {
+  AppWindow,
   BookOpen,
   Bot,
   Brain,
@@ -25,10 +26,9 @@ import {
   TODO_TOOL,
   WEB_FETCH_TOOL,
   WEB_SEARCH_TOOL,
-  type GrantScope,
+  type AppBuildDetails,
   type ToolBlockDetails,
 } from '@atd/agent-contracts';
-import type { PermissionOutcome } from '../../../client/agent/permission-schema';
 import type { BlockOf, ToolStatus } from '../../../client/agent/transcript-schema';
 import { codemodeTarget } from './codemode-call';
 import { subagentStepKey, subagentTarget, type SubagentStepKey } from './subagent-call';
@@ -44,6 +44,7 @@ export type StepKey =
   | 'activity.step.commandCreate'
   | 'activity.step.commandUpdate'
   | 'activity.step.searchMemory'
+  | 'activity.step.readMemory'
   | 'activity.step.saveMemory'
   | 'activity.step.updateMemory'
   | 'activity.step.removeMemory'
@@ -58,6 +59,8 @@ export type StepKey =
   | 'activity.step.listMcpResources'
   | 'activity.step.listMcpResourceTemplates'
   | 'activity.step.readMcpResource'
+  | 'activity.step.app'
+  | 'activity.step.appBuild'
   | SubagentStepKey;
 
 /** The service's MCP resource tools (agent-service `mcp/resource-tools.ts`). */
@@ -65,31 +68,10 @@ const LIST_MCP_RESOURCES = 'list_mcp_resources';
 const LIST_MCP_RESOURCE_TEMPLATES = 'list_mcp_resource_templates';
 const READ_MCP_RESOURCE = 'read_mcp_resource';
 
-export type MemoryTargetKey =
+export type MemoryTypeKey =
   | 'activity.target.user'
-  | 'activity.target.project'
   | 'activity.target.memory'
   | 'activity.target.failure';
-
-export type OutcomeKey =
-  | 'permission.outcome.once'
-  | 'permission.outcome.session'
-  | 'permission.outcome.grant'
-  | 'permission.outcome.tier'
-  | 'permission.outcome.reviewed'
-  | 'permission.outcome.declined';
-
-export type ScopeKey =
-  | 'permission.scope.read.inside'
-  | 'permission.scope.read.outside'
-  | 'permission.scope.write.inside'
-  | 'permission.scope.write.outside'
-  | 'permission.scope.edit.inside'
-  | 'permission.scope.edit.outside'
-  | 'permission.scope.bash'
-  | 'permission.scope.command'
-  | 'permission.scope.mcp'
-  | 'permission.scope.web';
 
 const STEP_KEYS: Record<string, StepKey> = {
   read: 'activity.step.read',
@@ -98,6 +80,7 @@ const STEP_KEYS: Record<string, StepKey> = {
   bash: 'activity.step.bash',
   command: 'activity.step.command',
   memory_search: 'activity.step.searchMemory',
+  memory_read: 'activity.step.readMemory',
   memory_add: 'activity.step.saveMemory',
   memory_replace: 'activity.step.updateMemory',
   memory_remove: 'activity.step.removeMemory',
@@ -114,13 +97,6 @@ const STEP_KEYS: Record<string, StepKey> = {
   [READ_MCP_RESOURCE]: 'activity.step.readMcpResource',
 };
 
-const MEMORY_TARGETS: Record<string, MemoryTargetKey> = {
-  user: 'activity.target.user',
-  project: 'activity.target.project',
-  memory: 'activity.target.memory',
-  failure: 'activity.target.failure',
-};
-
 const ICONS: Record<string, LucideIcon> = {
   read: FileText,
   write: FilePlus,
@@ -128,6 +104,7 @@ const ICONS: Record<string, LucideIcon> = {
   bash: Terminal,
   command: SquareTerminal,
   memory_search: Brain,
+  memory_read: Brain,
   memory_add: Brain,
   memory_replace: Brain,
   memory_remove: Brain,
@@ -144,6 +121,7 @@ const ICONS: Record<string, LucideIcon> = {
   [LIST_MCP_RESOURCES]: Library,
   [LIST_MCP_RESOURCE_TEMPLATES]: Library,
   [READ_MCP_RESOURCE]: FileBox,
+  app: AppWindow,
 };
 
 function stepKey(name: string): StepKey | null {
@@ -154,6 +132,9 @@ function stepKey(name: string): StepKey | null {
 export function toolStepKey(name: string, args: Record<string, unknown>): StepKey | null {
   if (name === 'command') return commandStepKey(args);
   if (name === 'subagent') return subagentStepKey(args);
+  // Of the `app` tool's operations only `build` takes a `summary` (the version's change note).
+  if (name === 'app')
+    return typeof args.summary === 'string' ? 'activity.step.appBuild' : 'activity.step.app';
   return stepKey(name);
 }
 
@@ -192,8 +173,23 @@ export function toolIcon(name: string): LucideIcon {
   return ICONS[name] ?? Wrench;
 }
 
-export function memoryTargetKey(target: string): MemoryTargetKey | null {
-  return MEMORY_TARGETS[target] ?? null;
+/**
+ * The type a `memory_add` call without a name saves, which its row shows in place of a target:
+ * the service derives the name only when it saves. Every other memory call names its unit or its
+ * query, shown as given even when that reads like a type.
+ */
+export function memoryTypeKey(name: string, args: Record<string, unknown>): MemoryTypeKey | null {
+  if (name !== 'memory_add' || stringArg(args.name)) return null;
+  switch (args.type) {
+    case 'user':
+      return 'activity.target.user';
+    case 'memory':
+      return 'activity.target.memory';
+    case 'failure':
+      return 'activity.target.failure';
+    default:
+      return null;
+  }
 }
 
 export function toolTarget(name: string, args: Record<string, unknown>): string | null {
@@ -208,7 +204,9 @@ export function toolTarget(name: string, args: Record<string, unknown>): string 
   }
   if (name === 'command') return commandTarget(args);
   if (name === 'subagent') return subagentTarget(args);
-  if (name.startsWith('memory_') && typeof args.target === 'string') return args.target;
+  // A memory tool names its unit and a search shows its query; a create without a name reads by
+  // its type instead (`memoryTypeKey`).
+  if (name.startsWith('memory_')) return stringArg(args.name) ?? stringArg(args.query);
   if (name === 'grep' || name === 'find') return stringArg(args.pattern);
   if (name === 'ls') {
     const path = stringArg(args.path);
@@ -239,20 +237,44 @@ export function bashCommand(args: Record<string, unknown>): string {
 }
 
 /** Structured details a transcript row renders as its body. */
-export type RowDetails = Exclude<ToolBlockDetails, { type: 'subagent' | 'todo' | 'mcpApproval' }>;
+export type RowDetails = Exclude<
+  ToolBlockDetails,
+  { type: 'subagent' | 'todo' | 'mcpApproval' | 'app' }
+>;
 
 /**
  * The structured body a row renders, if any. A launching `subagent` call's child summaries feed
  * the progress pill's subagent list and the drill-in view, a `todo` call's list feeds the
  * progress pill's Todos view, and a `configure_mcp` approval renders as a banner under its
- * activity group (mcp-approval-banner.tsx); none renders in the row. A `codemode` call's steps
- * render in its row while it runs too.
+ * activity group (mcp-approval-banner.tsx), and a published app's card shows under its row at all
+ * times (`appDetails`); none renders in the row. A `codemode` call's steps render in its row while
+ * it runs too. A `subagent` define call's definitions render in its row and also name what its
+ * children ran as (task-agents/task-agents.ts); a define that recorded none (each name already
+ * held that definition) reads like any call, by its arguments and result.
  */
 export function structuredDetails(block: BlockOf<'tool'>): RowDetails | null {
   const data = block.details.data;
-  return !data || data.type === 'subagent' || data.type === 'todo' || data.type === 'mcpApproval'
-    ? null
-    : data;
+  if (!data) return null;
+  switch (data.type) {
+    case 'subagent':
+    case 'todo':
+    case 'mcpApproval':
+    case 'app':
+      return null;
+    case 'subagentDefine':
+      return data.agents.length ? data : null;
+    case 'codemode':
+    case 'diff':
+    case 'webFetch':
+    case 'webSearch':
+      return data;
+  }
+}
+
+/** The app an `app.build` call published, which its card under the row shows. */
+export function appDetails(block: BlockOf<'tool'>): AppBuildDetails | null {
+  const data = block.details.data;
+  return data?.type === 'app' ? data : null;
 }
 
 /**
@@ -271,50 +293,6 @@ export function hasToolDetail(block: BlockOf<'tool'>): boolean {
       return Boolean(bashCommand(block.args) || text);
     default:
       return Boolean(text || structuredDetails(block) || block.status === 'interrupted');
-  }
-}
-
-export function outcomeKey(outcome: PermissionOutcome): OutcomeKey {
-  switch (outcome) {
-    case 'once':
-      return 'permission.outcome.once';
-    case 'session':
-      return 'permission.outcome.session';
-    case 'grant':
-      return 'permission.outcome.grant';
-    case 'tier':
-      return 'permission.outcome.tier';
-    case 'reviewed':
-      return 'permission.outcome.reviewed';
-    case 'declined':
-      return 'permission.outcome.declined';
-    default: {
-      const _exhaustive: never = outcome;
-      void _exhaustive;
-      return 'permission.outcome.declined';
-    }
-  }
-}
-
-export function scopeKey(scope: GrantScope): ScopeKey {
-  switch (scope.tool) {
-    case 'read':
-    case 'write':
-    case 'edit':
-      return `permission.scope.${scope.tool}.${scope.location}`;
-    case 'bash':
-      return 'permission.scope.bash';
-    case 'command':
-      return 'permission.scope.command';
-    case 'mcp':
-      return 'permission.scope.mcp';
-    case 'web':
-      return 'permission.scope.web';
-    default: {
-      const _exhaustive: never = scope;
-      void _exhaustive;
-      return 'permission.scope.command';
-    }
   }
 }
 

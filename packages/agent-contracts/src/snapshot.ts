@@ -175,6 +175,22 @@ export const ServiceBlockSchema = Type.Union([
     },
     { additionalProperties: false },
   ),
+  /**
+   * A failed model request Pi is retrying. Live only: it shows from the failure until the retry
+   * gets a response or the retries end, and never survives a reload.
+   */
+  Type.Object(
+    {
+      kind: Type.Literal('retry'),
+      ...blockBase,
+      /** This retry's number, from 1, and how many the run may make. */
+      attempt: Type.Integer({ minimum: 1 }),
+      maxAttempts: Type.Integer({ minimum: 1 }),
+      /** The provider error that failed the previous attempt. */
+      error: Type.String(),
+    },
+    { additionalProperties: false },
+  ),
 ]);
 export type ServiceBlock = Static<typeof ServiceBlockSchema>;
 

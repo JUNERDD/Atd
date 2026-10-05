@@ -48,10 +48,17 @@ span.composer-progress-part {
   border-radius: 999px;
 }
 
-/* In a narrow panel only the HITL part's long label gives way; step and subagents keep their
-   short text whole (a proportional shrink would clip them by a pixel or two). */
+/* In a narrow panel only the HITL part's long label and the side chats part give way; step and
+   subagents keep their short text whole (a proportional shrink would clip them by a pixel or two).
+   The side chats label ellipsizes from its end, so its count, which leads it, stays; the floor
+   keeps the icon, a two-digit count and the ellipsis. */
 .composer-progress-hitl {
   flex-shrink: 1;
+}
+
+.composer-progress-side-chats {
+  flex-shrink: 1;
+  min-width: 4rem;
 }
 
 .composer-progress-part > svg {
@@ -145,29 +152,56 @@ span.composer-progress-part {
   text-decoration: line-through;
 }
 
-/* Subagents view: hugs its rows up to the Todos view width and scrolls within the height Radix
-   reports above the pill. One 4px inset on the sides and bottom keeps the 18px row highlights
-   concentric with the popover's 22px corners; the header's 12px inline inset lines the title up
-   with the row icons. */
-.composer-subagents {
+/* Status lists (the Subagents and Side chats views): hug their rows up to the Todos view width and
+   scroll within the height Radix reports above the pill. One 4px inset on the sides and bottom
+   keeps the 18px row highlights concentric with the popover's 22px corners; the header's 11px
+   inline inset lines the title up with the row glyphs, which sit behind a row's 1px border and the
+   xs Item's 10px padding. The scrollbar floats over that padding (`gutter="none"`). */
+.composer-status-list {
   display: flex;
   flex-direction: column;
   width: max-content;
-  min-width: 12rem;
+  min-width: 13rem;
   max-width: min(20rem, calc(100vw - 16px));
   max-height: min(22rem, var(--radix-popover-content-available-height));
-  gap: 6px;
+  gap: 4px;
   padding: 10px 4px 4px;
 }
 
-.composer-subagents-header {
-  padding-inline: 12px;
+.composer-status-list-header {
+  padding-inline: 11px;
 }
 
-.composer-subagents-list {
+.composer-status-list-items {
   display: flex;
   flex-direction: column;
+  gap: 2px;
   margin: 0;
   padding: 0;
   list-style: none;
+}
+
+/* A row that opens something is an xs Item as a button: a pointer, and the glass wash on hover
+   (`--muted` is the wash inside glass) unless it is the current row, whose stronger wash stays. */
+.composer-status-row:enabled {
+  cursor: pointer;
+}
+
+.composer-status-row:enabled:hover:not([aria-current='true']) {
+  background-color: var(--muted);
+}
+
+/* A task text that reads alike until late may take a second line before it is cut. */
+.composer-status-row-title[data-lines='2'] {
+  display: -webkit-box;
+  overflow: hidden;
+  white-space: normal;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+/* The row whose item is already on screen keeps the stronger glass wash, the one an expanded or
+   pressed glass control takes, so it reads apart from the hover wash. */
+.composer-status-row[aria-current='true'] {
+  background-color: var(--ata-glass-control-wash-strong);
 }

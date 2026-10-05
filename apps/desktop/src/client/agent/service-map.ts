@@ -82,6 +82,8 @@ export function mapTask(task: ServiceTask): AgentTask {
     runs: task.runs.map(mapRun),
     legacy: null,
     ...(task.permissionTier ? { permissionTier: task.permissionTier } : {}),
+    ...(task.origin ? { origin: { ...task.origin } } : {}),
+    ...(task.sideChatOf ? { sideChatOf: task.sideChatOf } : {}),
   };
 }
 
@@ -251,6 +253,14 @@ export function mapBlock(block: ServiceBlock): Block {
         summary: block.summary,
         tokensBefore: block.tokensBefore,
         tokensAfter: block.tokensAfter,
+        error: block.error,
+      };
+    case 'retry':
+      return {
+        kind: 'retry',
+        ...base,
+        attempt: block.attempt,
+        maxAttempts: block.maxAttempts,
         error: block.error,
       };
     default: {

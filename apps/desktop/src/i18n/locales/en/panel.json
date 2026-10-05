@@ -7,7 +7,8 @@
     "settings": "Settings",
     "update": "Update",
     "updateTooltip": "Restart to install version {{version}}",
-    "loadingConversation": "Loading conversation…"
+    "loadingConversation": "Loading conversation…",
+    "apps": "My apps"
   },
   "welcome": {
     "title": "What can I help with?",
@@ -18,7 +19,8 @@
     "tasks": "Tasks",
     "commandInput": "Command input",
     "task": "Task",
-    "newTask": "New task"
+    "newTask": "New task",
+    "apps": "My apps"
   },
   "composer": {
     "send": "Send task",
@@ -91,6 +93,14 @@
       "subagentOne": "1 subagent",
       "subagentMany": "{{count}} subagents",
       "subagentRunning": "{{count}} running",
+      "sideChats": {
+        "list": "Side chats",
+        "waiting": "{{count}} waiting",
+        "running": "{{count}} running",
+        "one": "1 side chat",
+        "many": "{{count}} side chats",
+        "open": "Open {{name}}"
+      },
       "showTodos": "Show todos",
       "compacting": "Compacting context…"
     },
@@ -107,6 +117,7 @@
           "messages": "Messages",
           "systemPrompt": "System prompt",
           "skills": "Skills",
+          "memory": "Memory",
           "systemTools": "Tools",
           "mcpTools": "MCP"
         },
@@ -234,6 +245,7 @@
   },
   "quickPanel": {
     "listLabel": "Suggestions",
+    "sectionsLabel": "Groups",
     "groups": {
       "commands": "Quick commands",
       "skills": "Skills",
@@ -298,6 +310,7 @@
     },
     "hints": {
       "choose": "to choose",
+      "nextGroup": "for next group",
       "insert": "to insert",
       "use": "to use",
       "close": "to close"

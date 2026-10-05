@@ -21,6 +21,7 @@ public enum NativeEvent: Encodable, Equatable, Sendable {
   case screenRecordingTrust(ScreenRecordingTrustEvent)
   case updateState(UpdateStateEvent)
   case socketFrames(SocketFramesEvent)
+  case userAppState(UserAppStateEvent)
 
   /// The contract name.
   public var name: String {
@@ -40,6 +41,7 @@ public enum NativeEvent: Encodable, Equatable, Sendable {
     case .screenRecordingTrust: "screenRecording.trust"
     case .updateState: "update.state"
     case .socketFrames: "socket.frames"
+    case .userAppState: "userApp.state"
     }
   }
 
@@ -60,6 +62,7 @@ public enum NativeEvent: Encodable, Equatable, Sendable {
     case .screenRecordingTrust(let payload): try payload.encode(to: encoder)
     case .updateState(let payload): try payload.encode(to: encoder)
     case .socketFrames(let payload): try payload.encode(to: encoder)
+    case .userAppState(let payload): try payload.encode(to: encoder)
     }
   }
 }

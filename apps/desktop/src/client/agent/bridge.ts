@@ -1,50 +1,48 @@
-import { RunPolicySchema, type RunPolicy } from './run-policy';
+import type { RunPolicy } from './run-policy';
 import { Type, type Static } from 'typebox';
-import {
-  SessionEntryId,
-  type CompactRefusal,
-  type ContextBreakdown,
-  type TaskContextState,
+import type {
+  CompactRefusal,
+  ContextBreakdown,
+  MemoryCreateRequest,
+  MemoryProblem,
+  MemoryProposal,
+  MemorySaveRequest,
+  MemorySettingsRequest,
+  MemoryUnit,
+  TaskContextState,
 } from '@atd/agent-contracts';
-import { CommandSchema, Identifier, type CommandDefinition } from './command-schema';
-import {
-  InputSchema,
-  type AgentTask,
-  type Artifact,
-  type FileRef,
-  type RunSnapshot,
-  type TaskInput,
-} from './task-schema';
-import {
-  PermissionAnswerSchema,
-  PermissionTierSchema,
-  type PermissionAnswer,
-  type PermissionRequest,
-  type PermissionTier,
-} from './permission-schema';
-import {
-  ChildKeySchema,
-  type Block,
-  type ChildTranscriptPatch,
-  type QueueState,
-  type TranscriptPatch,
-} from './transcript-schema';
+import type { CommandDefinition } from './command-schema';
+import type { AgentTask, Artifact, FileRef, RunSnapshot, TaskInput } from './task-schema';
+import type { PermissionAnswer, PermissionRequest, PermissionTier } from './permission-schema';
+import type { AgentRequestSchema } from './request-schema';
+import type { Block, ChildTranscriptPatch, QueueState, TranscriptPatch } from './transcript-schema';
 import { parse } from './validation';
-import { SaveContentSchema, type SaveContent } from '../../native-bridge/calls';
+import type { SaveContent } from '../../native-bridge/calls';
 
-export const MemoryEntrySchema = Type.Object(
-  {
-    id: Identifier,
-    target: Type.Union([Type.Literal('memory'), Type.Literal('user'), Type.Literal('failure')]),
-    content: Type.String({ minLength: 1, maxLength: 20000 }),
-  },
-  { additionalProperties: false },
-);
-export type MemoryEntry = Static<typeof MemoryEntrySchema>;
+/**
+ * Memory as Settings, Personal's Memory tab and the `@` panel show it: every unit in Settings order
+ * (a turned-off one stays listed, editable and deletable, but runs cannot read, search, learn from
+ * or reference it), the learner's pending proposals, unit files the service could not read, and
+ * the learning settings. `error` says why the last read failed, or that the service is not
+ * connected; it is empty after a read that answered.
+ */
 export interface MemorySnapshot {
-  entries: MemoryEntry[];
+  units: MemoryUnit[];
+  proposals: MemoryProposal[];
+  problems: MemoryProblem[];
   paused: boolean;
+  askFirst: boolean;
   error: string;
+}
+/** What a unit write answers: the unit as saved, and the snapshot that lists it. */
+export interface MemoryUnitWrite {
+  unit: MemoryUnit;
+  snapshot: MemorySnapshot;
+}
+/** What accepting a proposal answers: the Personal skill a skill proposal created, if any. */
+export interface MemoryProposalAccepted {
+  skill: string | null;
+  snapshot: MemorySnapshot;
 }
 /**
  * Everything about a task except its transcript. Published whole whenever run status, pending
@@ -103,132 +101,7 @@ export type AgentEvent =
   | { type: 'memory'; snapshot: MemorySnapshot }
   | { type: 'notice'; notice: AgentNotice };
 
-export const AgentRequestSchema = Type.Union([
-  Type.Object({ action: Type.Literal('get') }),
-  Type.Object({ action: Type.Literal('detail'), taskId: Identifier }),
-  Type.Object({
-    action: Type.Literal('saveCommand'),
-    command: CommandSchema,
-    expectedRevision: Type.Integer({ minimum: 0 }),
-  }),
-  Type.Object({
-    action: Type.Literal('deleteCommand'),
-    commandId: Identifier,
-    revision: Type.Integer({ minimum: 1 }),
-  }),
-  Type.Object({ action: Type.Literal('prepare'), commandId: Identifier }),
-  Type.Object({
-    action: Type.Literal('launch'),
-    commandId: Identifier,
-    prepared: Type.Union([
-      Type.Object({ input: InputSchema, revision: Type.Integer({ minimum: 1 }) }),
-      Type.Null(),
-    ]),
-  }),
-  Type.Object({
-    action: Type.Literal('capture'),
-    source: Type.Union([Type.Literal('selection'), Type.Literal('clipboard')]),
-  }),
-  Type.Object({
-    action: Type.Literal('preview'),
-    policy: Type.Union([RunPolicySchema, Type.Null()]),
-    input: InputSchema,
-    command: Type.Union([CommandSchema, Type.Null()]),
-  }),
-  Type.Object({
-    action: Type.Literal('submit'),
-    policy: Type.Union([RunPolicySchema, Type.Null()]),
-    invocationId: Identifier,
-    taskId: Type.Union([Identifier, Type.Null()]),
-    commandId: Type.Union([Identifier, Type.Null()]),
-    commandRevision: Type.Union([Type.Integer({ minimum: 1 }), Type.Null()]),
-    savedRun: Type.Union([Type.Object({ taskId: Identifier, runId: Identifier }), Type.Null()]),
-    input: InputSchema,
-    /** The task's user message entry this run's prompt replaces (edit and resend, regenerate). */
-    branchBefore: Type.Optional(SessionEntryId),
-  }),
-  Type.Object({ action: Type.Literal('stop'), taskId: Identifier, runId: Identifier }),
-  Type.Object({
-    action: Type.Literal('answer'),
-    taskId: Identifier,
-    runId: Identifier,
-    requestId: Identifier,
-    answer: PermissionAnswerSchema,
-  }),
-  Type.Object({
-    action: Type.Literal('queueMessage'),
-    taskId: Identifier,
-    text: Type.String({ minLength: 1, maxLength: 100000 }),
-    /** `followUp` waits for the turn to end; `steer` is injected after the current tool calls. */
-    mode: Type.Union([Type.Literal('followUp'), Type.Literal('steer')]),
-  }),
-  Type.Object({
-    action: Type.Literal('replaceQueue'),
-    taskId: Identifier,
-    followUp: Type.Array(Type.String({ minLength: 1, maxLength: 100000 }), { maxItems: 50 }),
-  }),
-  Type.Object({
-    action: Type.Literal('setPermissionTier'),
-    taskId: Identifier,
-    tier: PermissionTierSchema,
-  }),
-  Type.Object({
-    action: Type.Literal('renameTask'),
-    taskId: Identifier,
-    title: Type.String({ minLength: 1, maxLength: 120 }),
-  }),
-  Type.Object({ action: Type.Literal('deleteTask'), taskId: Identifier }),
-  Type.Object({
-    action: Type.Literal('compactTask'),
-    taskId: Identifier,
-    /** Focus for the summary (`/compact <focus>`); the service caps it at 2000 characters. */
-    instructions: Type.Optional(Type.String({ minLength: 1, maxLength: 2000 })),
-  }),
-  Type.Object({ action: Type.Literal('contextBreakdown'), taskId: Identifier }),
-  Type.Object({
-    action: Type.Literal('forkTask'),
-    taskId: Identifier,
-    /** The user message entry of the turn the fork ends with. */
-    entryId: SessionEntryId,
-    title: Type.Optional(Type.String({ minLength: 1, maxLength: 120 })),
-  }),
-  Type.Object({ action: Type.Literal('chooseFiles') }),
-  Type.Object({
-    action: Type.Literal('saveFile'),
-    name: Type.String({ minLength: 1, maxLength: 255 }),
-    content: SaveContentSchema,
-  }),
-  Type.Object({ action: Type.Literal('memory') }),
-  Type.Object({ action: Type.Literal('pauseMemory'), paused: Type.Boolean() }),
-  Type.Object({
-    action: Type.Literal('updateMemory'),
-    entry: MemoryEntrySchema,
-    content: Type.String({ maxLength: 20000 }),
-  }),
-  Type.Object({
-    action: Type.Literal('artifact'),
-    artifactId: Identifier,
-    operation: Type.Union([
-      Type.Literal('open'),
-      Type.Literal('reveal'),
-      Type.Literal('copy'),
-      Type.Literal('locate'),
-      Type.Literal('attach'),
-    ]),
-  }),
-  Type.Object({ action: Type.Literal('copy'), text: Type.String({ maxLength: 1000000 }) }),
-  Type.Object({ action: Type.Literal('openLink'), url: Type.String({ maxLength: 8192 }) }),
-  Type.Object({
-    action: Type.Literal('childTranscript'),
-    taskId: Identifier,
-    childKey: ChildKeySchema,
-  }),
-  Type.Object({
-    action: Type.Literal('releaseChildTranscript'),
-    taskId: Identifier,
-    childKey: ChildKeySchema,
-  }),
-]);
+/** A request to the agent request handler; `AgentRequestSchema` (`request-schema.ts`) defines it. */
 export type AgentRequest = Static<typeof AgentRequestSchema>;
 export type SubmitRequest = Extract<AgentRequest, { action: 'submit' }>;
 export interface PreparedCommand {
@@ -273,7 +146,7 @@ export interface ExtensionSession {
 
 /**
  * Validates an extension session request at a process or tab boundary. Memory has no edit target
- * (its skill saves or updates entries from the conversation), so a memory target is rejected
+ * (its skill saves or updates memories from the conversation), so a memory target is rejected
  * rather than silently dropped.
  */
 export function parseExtensionSession(kind: unknown, target: unknown): ExtensionSession {
@@ -292,6 +165,14 @@ export interface AgentBridge {
   saveCommand: (command: CommandDefinition, expectedRevision: number) => Promise<CommandDefinition>;
   deleteCommand: (commandId: string, revision: number) => Promise<void>;
   launch: (commandId: string, prepared?: { input: TaskInput; revision: number }) => Promise<void>;
+  /**
+   * Prepares a command on text the page holds (a passage selected in a conversation's answers, or
+   * a turn's answer), which stands in for the selection the command reads; the clipboard and a
+   * screenshot are captured as a command shortcut press captures them, failures becoming the
+   * notice. The caller runs it at once when it can be used as-is (`runsAsIs`), else shows its
+   * input step. Rejects when `text` is over the capture limit.
+   */
+  prepareWithText: (commandId: string, text: string) => Promise<PreparedCommand>;
   prepare: (commandId: string) => Promise<PreparedCommand>;
   capture: (source: 'selection' | 'clipboard') => Promise<{ text: string; capturedAt: string }>;
   preview: (
@@ -328,9 +209,30 @@ export interface AgentBridge {
   chooseFiles: () => Promise<FileRef[]>;
   /** Offers `content` under the suggested `name` in a save panel; false when cancelled. */
   saveFile: (name: string, content: SaveContent) => Promise<boolean>;
+  /** Reads memory; a failed read, or no connection, is reported in the snapshot's `error`. */
   memory: () => Promise<MemorySnapshot>;
-  pauseMemory: (paused: boolean) => Promise<MemorySnapshot>;
-  updateMemory: (entry: MemoryEntry, content: string) => Promise<MemorySnapshot>;
+  /**
+   * Pauses or resumes learning, or turns Ask before saving on or off. Each memory write below
+   * resolves after the snapshot it produced has been published as a `memory` event.
+   */
+  saveMemorySettings: (settings: MemorySettingsRequest) => Promise<MemorySnapshot>;
+  /** Creates a unit written in Settings; a missing name is derived from the description. */
+  createMemoryUnit: (input: MemoryCreateRequest) => Promise<MemoryUnitWrite>;
+  /**
+   * Saves the given fields of one unit. Rejects with the service's message when `revision` is
+   * stale (the unit changed since it was read) or a field is refused, such as a taken name.
+   */
+  saveMemoryUnit: (input: MemorySaveRequest) => Promise<MemoryUnitWrite>;
+  /** Moves one unit to the memory trash. */
+  deleteMemoryUnit: (id: string) => Promise<MemorySnapshot>;
+  /** Turns one unit on or off for runs. */
+  toggleMemoryUnit: (id: string, enabled: boolean) => Promise<MemorySnapshot>;
+  /** Clears a learned unit's New badge once it has been opened. */
+  markMemoryUnitReviewed: (id: string) => Promise<MemorySnapshot>;
+  /** Applies one proposal; a skill proposal creates that Personal skill and names it. */
+  acceptMemoryProposal: (id: string) => Promise<MemoryProposalAccepted>;
+  /** Drops one proposal without applying it. */
+  dismissMemoryProposal: (id: string) => Promise<MemorySnapshot>;
   artifact: (
     artifactId: string,
     operation: 'open' | 'reveal' | 'copy' | 'locate' | 'attach',

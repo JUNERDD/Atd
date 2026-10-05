@@ -3,7 +3,7 @@ import { Languages, type LucideIcon } from 'lucide-react';
 import type { SettingsSectionId } from './settings-sections';
 
 /** The namespaces whose existing copy the index reuses; `settings` is the default one. */
-export const SEARCH_NAMESPACES = ['settings', 'commands', 'memory'] as const;
+export const SEARCH_NAMESPACES = ['settings', 'commands', 'memory', 'apps'] as const;
 export type SearchKey = ParseKeys<typeof SEARCH_NAMESPACES>;
 
 /**
@@ -31,6 +31,7 @@ export const SECTION_DESCRIPTIONS = {
   permissions: 'permissions.description',
   commands: 'commands:list.description',
   memory: 'memory:memory.description',
+  apps: 'apps:settings.description',
   extensions: 'extensions.plugins.description',
 } as const satisfies Record<SettingsSectionId, SearchKey>;
 
@@ -40,6 +41,7 @@ export const SECTION_KEYWORDS = {
   permissions: 'search.keywords.sectionPermissions',
   commands: 'search.keywords.sectionCommands',
   memory: 'search.keywords.sectionMemory',
+  apps: 'search.keywords.sectionApps',
   extensions: 'search.keywords.sectionExtensions',
 } as const satisfies Record<SettingsSectionId, SearchKey>;
 

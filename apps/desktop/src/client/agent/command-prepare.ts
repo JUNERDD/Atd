@@ -1,10 +1,18 @@
 import type { CommandCatalog } from './agent-requests';
 import type { PreparedCommand } from './bridge';
 import type { CommandDefinition } from './command-schema';
-import { defaultArguments, templateReferences } from './command-validation';
+import { defaultArguments, readyToRun, templateReferences } from './command-validation';
 import { withScreenshot } from './screenshot-input';
 import { emptyInput, type TaskInput } from './task-schema';
 import { errorMessage } from './validation';
+
+/**
+ * Whether a prepared command runs at once instead of opening its input step, by the command
+ * shortcut's rule: no capture it consumes failed, and its input already resolves the instructions.
+ */
+export function runsAsIs(prepared: PreparedCommand): boolean {
+  return !prepared.notice && readyToRun(prepared.command, prepared.input);
+}
 
 /**
  * Builds the draft input for a command from its sources. A failed capture only surfaces as a

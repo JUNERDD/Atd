@@ -12,6 +12,14 @@
     "interrupted": "已中断",
     "unknown": "未知"
   },
+  "statusList": {
+    "approval": "待批准",
+    "answer": "待回答",
+    "running": "运行中",
+    "failed": "失败",
+    "interrupted": "已中断",
+    "completed": "已完成"
+  },
   "conversation": {
     "legacyTitle": "导入的草稿 · 未执行",
     "legacyAttachments": "{{files}} — 运行前请重新附加这些文件。",
@@ -57,6 +65,7 @@
       "commandCreate": "新建命令",
       "commandUpdate": "更新命令",
       "searchMemory": "搜索记忆",
+      "readMemory": "读取记忆",
       "saveMemory": "保存记忆",
       "updateMemory": "更新记忆",
       "removeMemory": "删除记忆",
@@ -64,6 +73,7 @@
       "subagentList": "查看可用子智能体",
       "subagentGuide": "查阅子智能体指南",
       "subagentStatus": "查看子智能体运行",
+      "subagentDefine": "定义子智能体",
       "subagentManage": "管理子智能体",
       "subagentWorkflow": "运行工作流",
       "grep": "搜索文件内容",
@@ -76,11 +86,12 @@
       "codemode": "运行脚本",
       "listMcpResources": "列出 MCP 资源",
       "listMcpResourceTemplates": "列出 MCP 资源模板",
-      "readMcpResource": "读取 MCP 资源"
+      "readMcpResource": "读取 MCP 资源",
+      "app": "使用应用工具",
+      "appBuild": "构建应用"
     },
     "target": {
       "user": "用户",
-      "project": "项目",
       "memory": "记忆",
       "failure": "失败"
     }
@@ -102,7 +113,8 @@
       "bash": "运行终端命令",
       "command": "保存或更新命令",
       "mcp": "使用 MCP 工具",
-      "web": "访问网络"
+      "web": "访问网络",
+      "app": "构建或运行此任务的应用"
     },
     "outcome": {
       "once": "已允许一次",
@@ -164,6 +176,9 @@
       "nothing_to_compact": "暂无可整理的内容：对话还较短，或刚整理过。",
       "compaction_unavailable": "暂时无法整理上下文，请稍后再试。"
     }
+  },
+  "retry": {
+    "running": "请求失败 · 正在重试（{{attempt}}/{{max}}）…"
   },
   "files": {
     "open": "打开",
@@ -345,7 +360,44 @@
     "breadcrumb": "子智能体位置",
     "fallbackName": "子智能体",
     "loading": "正在加载对话…",
-    "empty": "暂无消息。"
+    "empty": "暂无消息。",
+    "temporary": "临时",
+    "temporaryHint": "由此任务定义，仅供本任务使用。",
+    "openTemporaryChild": "打开临时子智能体 {{name}}",
+    "more": "更多操作",
+    "definedCount_one": "{{count}} 个子智能体",
+    "definedCount_other": "{{count}} 个子智能体",
+    "role": {
+      "tools": "工具",
+      "noTools": "无",
+      "showInstructions": "显示角色说明",
+      "hideInstructions": "隐藏角色说明"
+    },
+    "save": {
+      "action": "保存为我的子智能体…",
+      "title": "保存为我的子智能体",
+      "description": "之后的任务可以像使用你在设置中添加的子智能体一样使用它。它会保存在 ~/.atd/agents 中。",
+      "name": "名称",
+      "descriptionLabel": "描述",
+      "tools": "工具",
+      "toolsKept": "{{tools}} 将作为自定义权限保留，因为代理文件只能列出 read、write、edit、bash 和 command。",
+      "systemPrompt": "系统提示",
+      "effort": "推理强度（{{level}}）不会保存：保存后的子智能体没有推理强度设置。",
+      "cannotTitle": "无法保留相同的工具",
+      "noTools": "此子智能体不使用任何工具，但保存后的子智能体做不到：未列出工具的子智能体会获得任务允许的全部工具。",
+      "noFileTool": "保存后的子智能体至少需要 read、write、edit、bash 或 command 中的一个工具才能保持工具限制，而此子智能体只使用 {{tools}}。",
+      "cancel": "取消",
+      "save": "保存",
+      "saved": "已将“{{name}}”保存到你的子智能体。",
+      "notSaved": "未能保留其工具，因此没有保存“{{name}}”。",
+      "narrowed": "已保存“{{name}}”，但工具更少；请在设置中调整其权限。"
+    }
+  },
+  "sideChat": {
+    "back": "返回对话",
+    "breadcrumb": "侧边对话位置",
+    "starting": "正在启动…",
+    "loading": "正在加载侧边对话…"
   },
   "mcpApproval": {
     "requiredTitle": "{{name}} 需要你允许才能运行",

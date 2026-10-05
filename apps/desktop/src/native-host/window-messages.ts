@@ -19,6 +19,12 @@ export type WindowMessage =
   | { type: 'openCommand'; commandId: string }
   /** Any window → settings: show one section (a settings section id) in an open settings window. */
   | { type: 'openSection'; section: string }
+  /** Settings → panel: start Create app on the new draft. */
+  | { type: 'createApp' }
+  /** Settings → panel: show one task, as Continue editing an app does. */
+  | { type: 'openTask'; taskId: string }
+  /** Any window → settings: show one user app's page in an open settings window's Apps section. */
+  | { type: 'openApp'; appId: string }
   /** Panel → others: the shell showed or hid the panel (the welcome guide's hotkey try-out). */
   | { type: 'panelVisibility'; visible: boolean }
   /**

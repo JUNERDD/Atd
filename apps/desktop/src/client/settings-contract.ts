@@ -59,6 +59,12 @@ export interface SettingsSnapshot {
    * builds, Linux, the web client).
    */
   openAtLogin: boolean | null;
+  /**
+   * Whether macOS can configure this app's widgets: false while it runs outside `/Applications`
+   * and `~/Applications` (the shell's `app.state`). True until the shell answers; optional for
+   * test hosts, which read as available.
+   */
+  widgetsAvailable?: boolean;
   /** Whether the shell registered the panel shortcut; null until the panel reports it. */
   shortcutAvailable: boolean | null;
   /** Whether the shell registered the screenshot shortcut; null until the panel reports it. */

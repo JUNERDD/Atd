@@ -1,0 +1,62 @@
+{
+  "name": "@atd/app-kit",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The generated-app toolchain: template, browser and backend SDKs, the backend runtime, and the sandboxed build, typecheck and backend launch the service drives.",
+  "files": [
+    "builder",
+    "dist",
+    "runtime",
+    "src",
+    "template",
+    "types",
+    "vendor"
+  ],
+  "type": "module",
+  "exports": {
+    "./client": {
+      "types": "./src/sdk/client/index.ts",
+      "default": "./src/sdk/client/index.ts"
+    },
+    "./server": {
+      "types": "./src/sdk/server/index.ts",
+      "default": "./src/sdk/server/index.ts"
+    },
+    "./node": {
+      "types": "./src/node/index.ts",
+      "source": "./src/node/index.ts",
+      "import": "./dist/node/index.js",
+      "default": "./dist/node/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.build.json --noEmit",
+    "lint": "oxlint src runtime builder template types"
+  },
+  "dependencies": {
+    "@atd/agent-contracts": "workspace:*",
+    "@atd/ui": "workspace:*",
+    "@tailwindcss/vite": "4.3.3",
+    "@tanstack/react-query": "5.104.0",
+    "@types/node": "24.19.0",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@vitejs/plugin-react": "6.1.1",
+    "lucide-react": "catalog:",
+    "motion": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "tailwindcss": "catalog:",
+    "typebox": "catalog:",
+    "typescript": "7.0.2",
+    "vite": "8.3.1"
+  },
+  "devDependencies": {
+    "@atd/typescript-config": "workspace:*"
+  },
+  "engines": {
+    "node": "^24.15.0 || >=26.0.0"
+  }
+}

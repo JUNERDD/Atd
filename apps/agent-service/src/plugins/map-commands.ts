@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import {
+  defaultCommandPlacement,
   parse,
   ServiceCommandFullSchema,
   type CommandParameter,
@@ -143,7 +144,8 @@ function renderSegments(
 /**
  * A plugin command as a read-only service command (B2): deterministic id, qualified name,
  * inherited model and memory, and `enabled` as resolved. The source `model` hint is not carried:
- * a fixed command model names a saved connection, which a plugin cannot know.
+ * a fixed command model names a saved connection, which a plugin cannot know. Its placement is
+ * the default of its input source: a plugin command reads no selection, so it is placed nowhere.
  */
 export function mapCommand(
   plugin: InstalledPlugin,
@@ -167,6 +169,7 @@ export function mapCommand(
       name,
       description: (component.description || component.argumentHint || '').slice(0, 500),
       ...rendered,
+      placement: defaultCommandPlacement(rendered.input.source),
       enabled,
       shortcut: '',
       templateId: null,

@@ -1,8 +1,13 @@
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useCompositionQuery } from '@atd/ui/lib/ime';
 import { useMemoryCreate } from '../memory/use-memory-create';
 import { showToast } from '../../components/toast-store';
-import { useSettingsNavigation, useSettingsSectionExit } from '../settings/settings-navigation';
+import {
+  useSettingsNavigation,
+  useSettingsSectionExit,
+  type SettingsExtensionItem,
+} from '../settings/settings-navigation';
 import type { PersonalCreateKind } from './extension-add-menu';
 import { ExtensionItemRoute } from './extension-item-route';
 import { ExtensionOverview } from './extension-overview';
@@ -19,9 +24,14 @@ import { usePluginLabels } from './use-plugin-labels';
  * one item's page, the install page and the Personal add forms replace each other as pages of the
  * section's history (`useExtensionRoute`); commands and memory open their own sections. The search
  * text survives visiting a page and returning, and resets with the history when the section is
- * left.
+ * left. `activeItem` is a link from another section to one item's page; each link carries a new
+ * nonce and opens that page with its plugin's page behind it.
  */
-export function ServiceSettings() {
+export function ServiceSettings({
+  activeItem,
+}: {
+  activeItem?: (SettingsExtensionItem & { nonce: number }) | null;
+}) {
   const { t } = useTranslation('settings');
   const labels = usePluginLabels();
   const navigateSection = useSettingsNavigation();
@@ -29,6 +39,12 @@ export function ServiceSettings() {
   useSettingsSectionExit(() => search.change(''));
   const extensions = useExtensions();
   const { route, open, back, leave, replace, openItem } = useExtensionRoute(extensions);
+  const [linked, setLinked] = useState(0);
+  if (activeItem && activeItem.nonce !== linked) {
+    setLinked(activeItem.nonce);
+    const { pluginId, kind, name } = activeItem;
+    openItem({ pluginId, kind, name });
+  }
   // A page's Cancel steps back through `back`, which first asks about an editor's unsaved changes.
   // A save, delete or uninstall leaves through `close` once it finishes: never asked, and only if
   // that page is still shown.

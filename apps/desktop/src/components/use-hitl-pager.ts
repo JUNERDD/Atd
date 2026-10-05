@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { PermissionRequest } from '../client/agent/permission-schema';
+import type { HitlRequest } from './hitl-request';
 
 interface Selection {
   /** The request on screen; null while nothing waits. */
@@ -11,7 +11,7 @@ interface Selection {
 }
 
 export interface HitlPager {
-  request: PermissionRequest | null;
+  request: HitlRequest | null;
   /** Zero-based position of `request`. */
   position: number;
   count: number;
@@ -28,7 +28,7 @@ export interface HitlPager {
  * follows a resolved one never takes it, so a repeated Enter cannot answer a request the user
  * has not seen.
  */
-export function useHitlPager(requests: readonly PermissionRequest[]): HitlPager {
+export function useHitlPager(requests: readonly HitlRequest[]): HitlPager {
   const [selection, setSelection] = useState<Selection>({ id: null, index: 0, focusId: null });
   const found = selection.id === null ? -1 : requests.findIndex(({ id }) => id === selection.id);
   const position = found >= 0 ? found : Math.max(0, Math.min(selection.index, requests.length - 1));

@@ -50,7 +50,7 @@ export async function setPluginEnabled(
  * Turns one item on or off in the store that owns its switch: installer state for installed
  * plugins; for host plugins the skill or agent harness, the command's `enabled`, the MCP record's
  * `disabled` (through the MCP authority, which disconnects it), or, for Personal's memory, the
- * persisted memory pause (D5), never a copy of it.
+ * learning pause of Memory settings (D5), never a copy of it.
  */
 export async function setItemEnabled(
   actions: PluginActions,
@@ -67,7 +67,7 @@ export async function setItemEnabled(
   }
   switch (kind) {
     case 'memory':
-      await (await actions.memory()).setPaused(!enabled);
+      await (await actions.memory()).setSettings({ paused: !enabled });
       return;
     case 'skill':
       await setSkillHarnessEnabled(skillProfilePaths(host.dataDir, host.agentDir), name, enabled);

@@ -28,11 +28,70 @@
   padding: 0;
 }
 
-/* Long connection names in the model drill truncate like the model picker's headings. */
-.quick-panel-content [cmdk-group-heading] {
+/* Rows dissolve under the pinned row (28px, a group heading's height; quick-panel-sections.tsx)
+   without a fill or a divider: fully clear for its first 20px, then fading in over its last 8px,
+   the fade every scrolled edge of the list takes. The scroll padding keeps an option the keyboard
+   reveals clear of the pinned row above and of the fade below. */
+.quick-panel-content [data-slot='scroll-area-viewport'] {
+  --scroll-shadow-inset: calc(var(--spacing) * 5);
+  --scroll-shadow-size: calc(var(--spacing) * 2);
+  scroll-padding-top: calc(var(--spacing) * 7);
+  scroll-padding-bottom: calc(var(--spacing) * 2);
+}
+
+/* Long connection names in the model drill truncate like the model picker's headings. Headings,
+   inline and pinned alike, also end before the section bar (`--quick-panel-bar-width`, set while
+   it shows), so a pinned label truncates exactly where the inline heading it replaces did. */
+.quick-panel-content [cmdk-group-heading],
+.quick-panel-content .quick-panel-pinned-label {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  padding-inline-end: calc(var(--spacing) * 2 + var(--quick-panel-bar-width, 0px));
+}
+
+/* The section bar's hover wash: a ghost button's hover fill (`--muted`; in dark mode the ghost hover
+   token), drawn as a 22px circle inside the 28px button like the highlight, not across the whole
+   button, so it stays clear of the first row's highlight below. The highlighted button has none. */
+.quick-panel-section-bar button:not([aria-current]):hover .quick-panel-section-fill {
+  background: var(--muted);
+}
+.dark .quick-panel-section-bar button:not([aria-current]):hover .quick-panel-section-fill {
+  background: var(--ata-surface-ghost-hover);
+}
+
+/* A section bar past three quarters of the row (many model connections) scrolls
+   sideways without a scrollbar; a clipped end fades out (`data-clip-*`, quick-panel-sections.tsx)
+   the way the list's scrolled edges do. */
+.quick-panel-section-bar {
+  scrollbar-width: none;
+}
+.quick-panel-section-bar::-webkit-scrollbar {
+  display: none;
+}
+.quick-panel-section-bar[data-clip-start] {
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 calc(var(--spacing) * 4));
+  mask-image: linear-gradient(to right, transparent, #000 calc(var(--spacing) * 4));
+}
+.quick-panel-section-bar[data-clip-end] {
+  -webkit-mask-image: linear-gradient(to left, transparent, #000 calc(var(--spacing) * 4));
+  mask-image: linear-gradient(to left, transparent, #000 calc(var(--spacing) * 4));
+}
+.quick-panel-section-bar[data-clip-start][data-clip-end] {
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 calc(var(--spacing) * 4),
+    #000 calc(100% - var(--spacing) * 4),
+    transparent
+  );
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 calc(var(--spacing) * 4),
+    #000 calc(100% - var(--spacing) * 4),
+    transparent
+  );
 }
 
 /* Provider marks fill the 16px icon slot of a row (10px mark + 3px frame), like the compact

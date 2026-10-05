@@ -51,10 +51,17 @@ export const SUBAGENT_CHILD_SYSTEM_PROMPT =
   'You are a bounded child subagent of the desktop assistant. Complete only the assigned task with the available tools. File paths do not grant access. You cannot delegate further, change roles, or schedule work. Return an explicit result; the parent decides what to use.';
 
 /**
- * Managed config pinned for every parent; unknown keys are never added. Child concurrency keeps
- * pi-subagents' own bounds: its default global child limit and per-run fan-out budget.
- * `toolActivation: 'eager'` keeps `subagent` in the parent's tool list from the first turn, so
- * the `subagents_enable` loader and its mid-conversation tool changes never register.
+ * Most children of one parent that run at the same time. A parent runs one launching call at a
+ * time (guard.ts), and pi-subagents bounds the children of a call by `globalConcurrencyLimit`
+ * (its default is 20); the guard bounds how many one call may launch at all.
+ */
+export const SUBAGENT_CONCURRENCY = 3;
+
+/**
+ * Managed config pinned for every parent; unknown keys are never added. Children of one call run
+ * at most `SUBAGENT_CONCURRENCY` at a time; pi-subagents' per-run fan-out budget keeps its
+ * default. `toolActivation: 'eager'` keeps `subagent` in the parent's tool list from the first
+ * turn, so the `subagents_enable` loader and its mid-conversation tool changes never register.
  */
 export function managedSubagentConfig(): Record<string, unknown> {
   return {
@@ -62,6 +69,7 @@ export function managedSubagentConfig(): Record<string, unknown> {
     asyncByDefault: false,
     forceTopLevelAsync: false,
     maxSubagentDepth: 1,
+    globalConcurrencyLimit: SUBAGENT_CONCURRENCY,
     defaultSubagentContext: 'fresh',
     scheduledRuns: { enabled: false },
     intercomBridge: { mode: 'off' },
@@ -80,15 +88,22 @@ export function subagentConfigPath(agentDir: string): string {
  * discovery switches from the `subagents` key here, not from the extension
  * config. Its packaged builtins (`scout`, `worker`, the external CLI runners…)
  * are refused by the ceiling anyway, so they stay out of discovery: `list`
- * then advertises only the agents a parent may actually call. The parent
+ * then advertises only the agents a parent may actually call. A parent's cwd is
+ * its task folder, which the parent and its children write, and pi-subagents
+ * treats a folder holding `.agents` or `.pi` as a project whose agent files it
+ * loads; `tasksDir` is excluded so no such file joins discovery, where one
+ * named like a session's agent would break every list and launch. The parent
  * session keeps in-memory settings, so only pi-subagents and children read it.
  */
-export function managedAgentSettings(): Record<string, unknown> {
-  return { subagents: { disableBuiltins: true } };
+export function managedAgentSettings(tasksDir: string): Record<string, unknown> {
+  return { subagents: { disableBuiltins: true, agentExcludeDirs: [tasksDir] } };
 }
 
 /** Writes the managed config and settings; fails closed when a write does not land. */
-export async function ensureManagedSubagentConfig(agentDir: string): Promise<{
+export async function ensureManagedSubagentConfig(
+  agentDir: string,
+  tasksDir: string,
+): Promise<{
   path: string;
   config: Record<string, unknown>;
 }> {
@@ -98,7 +113,7 @@ export async function ensureManagedSubagentConfig(agentDir: string): Promise<{
   await writeFile(file, `${JSON.stringify(config, null, 2)}\n`, 'utf8');
   await writeFile(
     path.join(agentDir, 'settings.json'),
-    `${JSON.stringify(managedAgentSettings(), null, 2)}\n`,
+    `${JSON.stringify(managedAgentSettings(tasksDir), null, 2)}\n`,
     'utf8',
   );
   return { path: file, config };

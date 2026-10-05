@@ -2,6 +2,7 @@ import {
   SubagentPermissionsSchema,
   parse,
   type McpLaunchApprovalState,
+  type PluginSummary,
   type SubagentPermissions,
 } from '@atd/agent-contracts';
 import { readCount, readEnabled, readFlag, readString } from './wire-read';
@@ -229,6 +230,17 @@ export function asAgentRow(value: unknown): ExtensionAgentRow | null {
     enabled: readEnabled(value),
     ...asPluginRef(value),
   };
+}
+
+/**
+ * A ~/.atd/agents file the catalog skipped, in the shape Personal's page lists beside a plugin's
+ * own diagnostics: the service's message with the file's path. One without a message is dropped.
+ */
+export function asAgentDiagnostic(value: unknown): PluginSummary['diagnostics'][number] | null {
+  const message = readString(value, 'message');
+  if (!message) return null;
+  const path = readString(value, 'path');
+  return { level: 'warning', code: 'invalid-component', message, ...(path ? { path } : {}) };
 }
 
 export function asMcpRow(value: unknown): ExtensionMcpRow | null {

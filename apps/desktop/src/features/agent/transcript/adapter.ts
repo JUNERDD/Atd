@@ -101,6 +101,7 @@ function toolKindForName(name: string): ViewToolKind {
     case 'read':
     case 'ls':
     case LOAD_SKILL_TOOL:
+    case 'memory_read':
       return 'read';
     case 'write':
     case 'edit':
@@ -225,6 +226,16 @@ function adaptBlock(block: Block, requests: RequestIndex): ViewBlock {
         ...base,
         role: 'system',
         text: block.summary,
+        streaming: false,
+        status: null,
+        tool: null,
+      };
+    // So is a retry; `RetryBlock` renders its source.
+    case 'retry':
+      return {
+        ...base,
+        role: 'system',
+        text: block.error,
         streaming: false,
         status: null,
         tool: null,

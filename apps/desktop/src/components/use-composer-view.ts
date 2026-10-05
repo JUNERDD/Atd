@@ -6,8 +6,9 @@ import type { PillView } from '../features/agent/progress/progress-pill';
  *
  * HITL content (requests and queued messages) opens it by itself: any change to that content
  * reopens it after a dismiss, so an arrival is never missed, while an unchanged queue stays
- * dismissed. A view the user picked from the pill (Todos, Subagents) gives way only to a newly
- * arrived request, which blocks the run; queue edits and resolved requests leave it in place.
+ * dismissed. A view the user picked from the pill (Todos, Subagents, Side chats) gives way only to
+ * a newly arrived request, which blocks the run; queue edits and resolved requests leave it in
+ * place.
  * `recall` changing (the `/queue` command) reopens HITL content.
  */
 export function useComposerView({
@@ -27,7 +28,8 @@ export function useComposerView({
   const [seen, setSeen] = useState({ signature, requestIds });
   if (seen.signature !== signature) {
     setSeen({ signature, requestIds });
-    const picked = view === 'todos' || view === 'subagents';
+    // Every view but HITL's is one the user picked from the pill.
+    const picked = view !== null && view !== 'hitl';
     const arrived = requestIds.some((id) => !seen.requestIds.includes(id));
     if (!picked || arrived) setView(hasHitl ? 'hitl' : null);
   }

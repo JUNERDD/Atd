@@ -1,0 +1,4 @@
+@import '@atd/ui/styles.css';
+
+/* The build applies atd-app.json's accentColor to the @atd/ui tokens above. The app's own tokens
+   go below: raw colors only inside :root (light) and .dark definitions, mapped with @theme inline. */

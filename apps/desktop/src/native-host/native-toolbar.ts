@@ -1,4 +1,4 @@
-import type { SelectionToolbarSettings } from '@atd/agent-contracts';
+import { offeredAt, type SelectionToolbarSettings } from '@atd/agent-contracts';
 import type { CommandDefinition } from '../client/agent/command-schema';
 import type { CallParams, NativeBridge } from '../native-bridge/client';
 
@@ -7,9 +7,9 @@ const MAX_TOOLBAR_COMMANDS = 64;
 
 /**
  * What the selection toolbar offers: whether it shows, which selections bring it up, the apps it
- * skips, and the enabled commands
- * that read the selection, in command-list order. A click on one runs it like its shortcut
- * (`shortcut.command`), so only the id and the name the button shows cross.
+ * skips, and the commands offered there (`offeredAt` its `selectionToolbar` place: enabled, placed
+ * on the toolbar, and reading the selection), in command-list order. A click on one runs it like
+ * its shortcut (`shortcut.command`), so only the id and the name the button shows cross.
  */
 export function toolbarParams(
   settings: SelectionToolbarSettings,
@@ -22,7 +22,7 @@ export function toolbarParams(
     showHud: settings.showHud,
     excludedBundleIds: settings.excludedApps.map((app) => app.bundleId),
     commands: commands
-      .filter((command) => command.enabled && command.input.source === 'selection')
+      .filter((command) => offeredAt(command, 'selectionToolbar'))
       .slice(0, MAX_TOOLBAR_COMMANDS)
       .map(({ id, name }) => ({ id, name })),
   };

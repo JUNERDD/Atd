@@ -60,11 +60,13 @@ public struct AppStateResult: Codable, Equatable, Sendable {
   public let pinned: Bool
   public let showInDock: Bool
   public let openAtLogin: Bool?
+  public let widgetsAvailable: Bool
 
-  public init(pinned: Bool, showInDock: Bool, openAtLogin: Bool?) {
+  public init(pinned: Bool, showInDock: Bool, openAtLogin: Bool?, widgetsAvailable: Bool) {
     self.pinned = pinned
     self.showInDock = showInDock
     self.openAtLogin = openAtLogin
+    self.widgetsAvailable = widgetsAvailable
   }
 
   public init(from decoder: any Decoder) throws {
@@ -72,6 +74,7 @@ public struct AppStateResult: Codable, Equatable, Sendable {
     pinned = try container.boolean(.pinned)
     showInDock = try container.boolean(.showInDock)
     openAtLogin = try container.nullable(.openAtLogin) { try container.boolean($0) }
+    widgetsAvailable = try container.boolean(.widgetsAvailable)
   }
 
   public func encode(to encoder: any Encoder) throws {
@@ -79,12 +82,14 @@ public struct AppStateResult: Codable, Equatable, Sendable {
     try container.encode(pinned, forKey: .pinned)
     try container.encode(showInDock, forKey: .showInDock)
     try container.encode(openAtLogin, forKey: .openAtLogin)
+    try container.encode(widgetsAvailable, forKey: .widgetsAvailable)
   }
 
   private enum CodingKeys: String, CodingKey, CaseIterable {
     case pinned
     case showInDock
     case openAtLogin
+    case widgetsAvailable
   }
 }
 
@@ -232,25 +237,23 @@ public struct OnboardingCloseParams: Codable, Equatable, Sendable {
 /// Result of the `onboarding.close` call.
 public typealias OnboardingCloseResult = NativeEmpty
 
-/// Params of the `shortcuts.set` call.
-public struct ShortcutsSetParams: Codable, Equatable, Sendable {
-  public let registrations: [ShortcutRegistration]
-  public let selectionWanted: Bool
+/// Params of the `userApp.open` call.
+public struct UserAppOpenParams: Codable, Equatable, Sendable {
+  public let appId: String
 
-  public init(registrations: [ShortcutRegistration], selectionWanted: Bool) {
-    self.registrations = registrations
-    self.selectionWanted = selectionWanted
+  public init(appId: String) {
+    self.appId = appId
   }
 
   public init(from decoder: any Decoder) throws {
     let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    registrations = try container.array(
-      .registrations, of: ShortcutRegistration.self, maxItems: 256)
-    selectionWanted = try container.boolean(.selectionWanted)
+    appId = try container.string(.appId, pattern: "^app-[a-z0-9]{10}$")
   }
 
   private enum CodingKeys: String, CodingKey, CaseIterable {
-    case registrations
-    case selectionWanted
+    case appId
   }
 }
+
+/// Result of the `userApp.open` call.
+public typealias UserAppOpenResult = NativeEmpty

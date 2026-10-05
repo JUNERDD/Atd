@@ -158,6 +158,18 @@ final class ShellBridge {
       return try Self.encode(NativeEmpty())
     case .appsPick:
       return try Self.encode(await ExcludedAppPicker.pick(with: shell.systemPanels))
+    case .userAppWidgetPreview(let params):
+      return try Self.encode(
+        UserAppWidgetPreviewResult(pngBase64: try shell.widgets.preview(params)))
+    case .userAppOpen(let params):
+      try await shell.openUserApp(params.appId)
+      return try Self.encode(NativeEmpty())
+    case .userAppClose(let params):
+      shell.userApps.close(appId: params.appId)
+      return try Self.encode(NativeEmpty())
+    case .userAppClearData(let params):
+      try await shell.userApps.clearData(appId: params.appId, forget: params.forget)
+      return try Self.encode(NativeEmpty())
     }
   }
 

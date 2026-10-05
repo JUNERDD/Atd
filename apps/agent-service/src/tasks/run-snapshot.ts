@@ -1,5 +1,6 @@
 import {
   DEFAULT_RUN_TOOLS,
+  type AgentTask,
   type ModelSelection,
   type RunSnapshot,
   type ServiceBlock,
@@ -51,14 +52,17 @@ function submitModelSelection(
  * request, else carry over from the task's last run (a command that turned memory off keeps it off
  * for the task's follow-ups), else the defaults. The context window freezes like the thinking
  * level: later tier changes never reach an accepted run. A snapshot over the context budget is
- * refused.
+ * refused. `task` is the task the run joins, null for a new one, and `onBranch` its user messages
+ * as `branchUserEntries` read them.
  */
 export function freezeRunSnapshot(
   request: SubmitTaskRequest,
   connections: ConnectionStore,
   contextWindowOf: RunContextWindow,
-  last: TaskRun | undefined,
+  task: AgentTask | null,
+  onBranch: BranchUserEntries | null,
 ): RunSnapshot {
+  const last = task?.runs.at(-1);
   const model = resolveRunModel(connections, submitModelSelection(connections, request, last));
   const thinkingLevel = resolveRunThinkingLevel(connections, model, request.thinkingLevel);
   const contextWindow = contextWindowOf(model);
@@ -72,11 +76,35 @@ export function freezeRunSnapshot(
     ...(thinkingLevel ? { thinkingLevel } : {}),
     ...(contextWindow ? { contextWindow } : {}),
     ...(request.branchBefore ? { branchBefore: request.branchBefore } : {}),
+    ...(isFromCommand(request, task, onBranch) ? { fromCommand: true } : {}),
   };
   if (runInputSize(snapshot) > CONTEXT_BUDGET)
     throw new Error('The combined input and parameters exceed the context budget.');
   return snapshot;
 }
+
+/**
+ * Whether the run's prompt is command material (`RunSnapshot.fromCommand`): the client launched a
+ * saved command, or the prompt replaces a command run's prompt (edit and resend, regenerate), which
+ * the client submits as plain text built from that run's input. A replaced queued follow-up was the
+ * user's own words, whichever run it joined.
+ */
+function isFromCommand(
+  request: SubmitTaskRequest,
+  task: AgentTask | null,
+  onBranch: BranchUserEntries | null,
+): boolean {
+  if (request.fromCommand) return true;
+  const prompted = request.branchBefore && onBranch?.get(request.branchBefore);
+  if (!prompted) return false;
+  return task?.runs.find((run) => run.id === prompted)?.snapshot.fromCommand === true;
+}
+
+/**
+ * A task's user message entries on its current branch, as its transcript shows them, each mapped
+ * to the run whose prompt it is, or to undefined for a queued steer or follow-up.
+ */
+export type BranchUserEntries = ReadonlyMap<string, string | undefined>;
 
 /**
  * The user message entries a request's `branchBefore` may name: those its task's transcript
@@ -87,20 +115,22 @@ export async function branchUserEntries(
   ctx: RunnerContext,
   runner: TaskRunner | undefined,
   request: SubmitTaskRequest,
-): Promise<Set<string> | null> {
+): Promise<BranchUserEntries | null> {
   const { taskId, branchBefore } = request;
   if (branchBefore === undefined) return null;
   if (!taskId || !ctx.ledger.data.tasks.some((task) => task.id === taskId))
     throw new TypeError('Invalid data: branchBefore needs an existing task.');
   const view = await taskView(ctx, runner, taskId);
-  return userEntryIds(view.blocks);
+  return userEntries(view.blocks);
 }
 
-/** The session entries of the user messages a task's transcript shows (`entryId`). */
-function userEntryIds(blocks: readonly ServiceBlock[]): Set<string> {
-  const ids = new Set<string>();
-  for (const block of blocks) if (block.kind === 'user' && block.entryId) ids.add(block.entryId);
-  return ids;
+/** The user messages a task's transcript shows, by session entry (`entryId`). */
+function userEntries(blocks: readonly ServiceBlock[]): Map<string, string | undefined> {
+  const entries = new Map<string, string | undefined>();
+  for (const block of blocks)
+    if (block.kind === 'user' && block.entryId)
+      entries.set(block.entryId, block.prompt ? block.runId : undefined);
+  return entries;
 }
 
 /**
@@ -109,7 +139,7 @@ function userEntryIds(blocks: readonly ServiceBlock[]): Set<string> {
  */
 export function checkBranchBefore(
   branchBefore: string | undefined,
-  onBranch: ReadonlySet<string> | null,
+  onBranch: BranchUserEntries | null,
 ): void {
   if (branchBefore !== undefined && !onBranch?.has(branchBefore))
     throw new TypeError(

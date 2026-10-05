@@ -1,54 +1,27 @@
-import type { AtdAgent } from '../atd-agents/catalog.js';
-import { atdRuntimeAgent, pluginRuntimeAgent, type RuntimeAgent } from '../subagents/agents.js';
+import { catalogRunAgent, type RunCatalogAgents } from '../atd-agents/run-agents.js';
 import { clip, oneLine } from './conversation.js';
-import type { ReferenceContext } from './material.js';
 
 /** Characters of an agent description repeated in its delegation hint. */
 const DESCRIPTION_CHARS = 400;
 
-/** A referenced agent the run registers, with its delegation hint and audit record. */
+/** What an `@agent` reference adds to the run: its delegation hint and its audit record. */
 export interface AgentHint {
-  agent: RuntimeAgent;
   text: string;
   audit: Record<string, unknown>;
 }
 
 /**
- * Resolves an `@agent` reference: first against the plugin subagents the run froze as effective
- * (by name, never by parsing it), then against `~/.atd/agents` unless Settings turned the agent
- * off. Answers the hint, or why the agent is unavailable.
+ * Resolves an `@agent` reference against the catalog subagents the run registers whether or not
+ * they are referenced (atd-agents/run-agents.ts): plugin subagents the run froze as effective, by
+ * name and never by parsing it, and `~/.atd/agents` specialists Settings has not turned off. The
+ * hint asks the parent to prefer the agent the user named. Answers why the agent is unavailable
+ * otherwise: for a file that did not load, the catalog's diagnostic, which Settings shows as well.
  */
-export async function resolveAgentReference(
-  name: string,
-  context: Pick<
-    ReferenceContext,
-    'toolCeiling' | 'agentPermissions' | 'disabledAgents' | 'pluginAgents'
-  >,
-  catalog: Promise<AtdAgent[] | string>,
-): Promise<AgentHint | string> {
-  const permissions = context.agentPermissions.get(name);
-  const agent = context.pluginAgents.get(name);
-  if (agent) {
-    const runtime = pluginRuntimeAgent(agent, context.toolCeiling, permissions);
-    return agentHint(agent, runtime, `plugin ${agent.pluginId}`, {});
-  }
-  if (context.disabledAgents.has(name)) return 'it is turned off in Settings';
-  const entries = await catalog;
-  if (typeof entries === 'string') return entries;
-  const entry = entries.find((agent) => agent.name === name);
-  if (!entry) return 'it is not in ~/.atd/agents or an enabled plugin';
-  const runtime = atdRuntimeAgent(entry, context.toolCeiling, permissions);
-  return agentHint(entry, runtime, '~/.atd/agents', { ignoredModel: entry.model });
-}
-
-function agentHint(
-  entry: { name: string; description: string },
-  runtime: { agent: RuntimeAgent } | { reason: string },
-  source: string,
-  audit: Record<string, unknown>,
-): AgentHint | string {
-  if ('reason' in runtime) return runtime.reason;
-  const { agent } = runtime;
+export function resolveAgentReference(name: string, agents: RunCatalogAgents): AgentHint | string {
+  const entry = catalogRunAgent(agents, name);
+  // A note is one line that supplies its own final period (references/material.ts).
+  if (typeof entry === 'string') return oneLine(entry).replace(/\.$/, '');
+  const { agent } = entry;
   // No list means the child gets whatever this run allows children (subagents/agents.ts).
   const tools = agent.definition.tools ?? null;
   const toolLine = !tools
@@ -58,10 +31,9 @@ function agentHint(
       : 'It has no tools in this run.';
   const call = JSON.stringify({ agent: agent.name, task: '<what to do>', async: false });
   return {
-    agent,
     text: [
-      `Agent "${agent.name}" (${entry.name} from ${source}): ${clip(oneLine(entry.description), DESCRIPTION_CHARS)}`,
-      `Delegate work that suits it with the subagent tool: ${call}. ${toolLine}`,
+      `Agent "${agent.name}" (${entry.name} from ${entry.source}): ${clip(oneLine(entry.description), DESCRIPTION_CHARS)}`,
+      `Prefer it for work that suits it, through the subagent tool: ${call}. ${toolLine}`,
     ].join('\n'),
     audit: {
       reference: 'agent',
@@ -70,7 +42,7 @@ function agentHint(
       registeredAs: agent.name,
       tools: tools ?? 'run',
       approval: agent.approval,
-      ...audit,
+      ...entry.audit,
     },
   };
 }

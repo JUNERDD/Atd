@@ -5,10 +5,13 @@ import {
   isParentStopping,
   liveChildren,
   parentByTask,
+  type ParentRecord,
 } from './registry.js';
+import { DEFINE_AGENTS_SHAPE } from './task-agent-definition.js';
 import {
   isSubagentLaunch,
   SUBAGENT_ACTION_KEYS,
+  SUBAGENT_CHILDREN_PER_CALL,
   SUBAGENT_TASK_MAX_LENGTH,
   SUBAGENT_TOOL,
   SUBAGENT_TOOL_KEYS,
@@ -20,7 +23,9 @@ import {
  * before the delegator runs, naming the shape to use instead so a model can correct its next call.
  * An admitted launching call becomes the parent's active delegation (registry.ts), which owns every
  * child launched until its result lands; one launching call runs at a time, as the tool contract
- * tells the model. Child concurrency within that call is pi-subagents' to bound. Never throws.
+ * tells the model, and launches at most `SUBAGENT_CHILDREN_PER_CALL` children, which pi-subagents
+ * runs a few at a time (config.ts). Which agents a launch may name is the parent's task-agents.ts
+ * answer; a define call's agents are checked when it runs. Never throws.
  */
 
 export interface GuardInput {
@@ -30,6 +35,8 @@ export interface GuardInput {
 }
 
 type GuardResult = { block?: boolean; reason?: string } | undefined;
+
+type Agents = ParentRecord['agents'];
 
 const LAUNCH_SHAPES =
   'Use { agent, task } for one child, { tasks: [{ agent, task }] } for children at the same time, or { chain: [{ agent, task }, { parallel: [{ agent, task }] }] } for children in order.';
@@ -55,8 +62,12 @@ function checkSubagentCall(deps: SessionFactoryDeps, input: Record<string, unkno
   // The tool contract pins omitted async to false, so anything else here would detach the launch.
   if (input['async'] !== false)
     return refuse('Subagent calls run in the foreground; omit async or pass async:false.');
-  if (input['capabilities'] !== undefined || input['id'] !== undefined)
-    return refuse('capabilities and id belong to the list and status actions.');
+  if (
+    input['capabilities'] !== undefined ||
+    input['id'] !== undefined ||
+    input['agents'] !== undefined
+  )
+    return refuse('capabilities, id and agents belong to the list, status and define actions.');
   const parent = parentByTask(deps.taskId);
   if (!parent) return refuse('Unknown parent session.');
   // Pi prepares every call of one message before running them, so a second launch admitted here
@@ -76,7 +87,9 @@ function guardAction(input: Record<string, unknown>): GuardResult {
       ? SUBAGENT_ACTION_KEYS[action as keyof typeof SUBAGENT_ACTION_KEYS]
       : null;
   if (!allowed)
-    return refuse(`Subagent action ${String(action)} is not available; use list or status.`);
+    return refuse(
+      `Subagent action ${String(action)} is not available; use define, list or status.`,
+    );
   // A habitual async:false is harmless on an action; any other extra key is a malformed call.
   const extra = Object.keys(input).find(
     (key) =>
@@ -86,15 +99,17 @@ function guardAction(input: Record<string, unknown>): GuardResult {
     return refuse(
       `Subagent action ${String(action)} takes ${allowed.length ? allowed.join(', ') : 'no other params'}, not ${extra}.`,
     );
+  if (action === 'define' && input['agents'] === undefined)
+    return refuse(`Subagent action define takes agents: ${DEFINE_AGENTS_SHAPE}.`);
   return undefined;
 }
 
 /**
  * A `tasks` or `chain` call: each child names an agent and a task inside the list, so the call
  * itself carries neither, and every child passes the same check as a single delegation, those of
- * a chain's parallel steps included.
+ * a chain's parallel steps included. All of them count toward the call's child limit.
  */
-function guardBatch(agents: string[], input: Record<string, unknown>): GuardResult {
+function guardBatch(agents: Agents, input: Record<string, unknown>): GuardResult {
   if (input['tasks'] !== undefined && input['chain'] !== undefined)
     return refuse(`Pass either tasks or chain, not both. ${LAUNCH_SHAPES}`);
   if (input['agent'] !== undefined || input['task'] !== undefined)
@@ -103,6 +118,11 @@ function guardBatch(agents: string[], input: Record<string, unknown>): GuardResu
   const list = input[field];
   if (!Array.isArray(list) || !list.length)
     return refuse(`${field} must list at least one child. ${LAUNCH_SHAPES}`);
+  const children = list.reduce<number>((count, item) => count + childCount(item), 0);
+  if (children > SUBAGENT_CHILDREN_PER_CALL)
+    return refuse(
+      `A subagent call runs at most ${SUBAGENT_CHILDREN_PER_CALL} children; this one has ${children}. Split the work across calls.`,
+    );
   for (const [index, item] of list.entries()) {
     const problem = field === 'tasks' ? childProblem(agents, item) : stepProblem(agents, item);
     if (problem) return refuse(`${field}[${index}]: ${problem}`);
@@ -110,8 +130,14 @@ function guardBatch(agents: string[], input: Record<string, unknown>): GuardResu
   return undefined;
 }
 
+/** The children one `tasks` item or chain step launches: a parallel step launches each of its own. */
+function childCount(item: unknown): number {
+  const parallel = isRecord(item) ? item['parallel'] : undefined;
+  return Array.isArray(parallel) ? parallel.length : 1;
+}
+
 /** One chain step: a single child, or a `parallel` group of children and nothing else. */
-function stepProblem(agents: string[], step: unknown): string | null {
+function stepProblem(agents: Agents, step: unknown): string | null {
   if (!isRecord(step)) return 'A chain step must be { agent, task } or { parallel: [...] }.';
   const parallel = step['parallel'];
   if (parallel === undefined) return childProblem(agents, step);
@@ -125,7 +151,7 @@ function stepProblem(agents: string[], step: unknown): string | null {
   return null;
 }
 
-function childProblem(agents: string[], child: unknown): string | null {
+function childProblem(agents: Agents, child: unknown): string | null {
   if (!isRecord(child)) return 'Each child must be { agent, task }.';
   return delegationProblem(agents, child['agent'], child['task']);
 }
@@ -135,13 +161,12 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 /**
- * Why one delegation is refused: the agent must be registered for this session (service agents plus
- * the atd agents the message referenced) and the task sized. `tasks` and `chain` apply it to every
- * child.
+ * Why one delegation is refused: the parent must be able to launch the agent in its current run
+ * (task-agents.ts) and the task must be sized. `tasks` and `chain` apply it to every child.
  */
-function delegationProblem(agents: string[], agent: unknown, task: unknown): string | null {
-  if (typeof agent !== 'string' || !agents.includes(agent))
-    return `Subagent agent must be one of: ${agents.join(', ')}.`;
+function delegationProblem(agents: Agents, agent: unknown, task: unknown): string | null {
+  const refused = agents.refusal(agent);
+  if (refused) return refused;
   if (typeof task !== 'string' || !task.trim() || task.length > SUBAGENT_TASK_MAX_LENGTH)
     return `Subagent task must hold 1-${SUBAGENT_TASK_MAX_LENGTH} characters.`;
   return null;

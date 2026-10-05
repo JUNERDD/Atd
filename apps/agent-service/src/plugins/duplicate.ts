@@ -8,7 +8,7 @@ import type {
 } from '@atd/agent-contracts';
 import { toItemName, transportSecrets } from '@atd/plugin-kit';
 import { listAtdAgents, putAtdAgent } from '../atd-agents/catalog.js';
-import { atdSkillsDir } from '../service-fs.js';
+import { atdAgentsDir, atdSkillsDir } from '../service-fs.js';
 import { discoverAtdSkills } from '../skills/atd-skills.js';
 import { discoverUserAgentSkills } from '../skills/user-agents.js';
 import type { SkillRevisionRecord } from '../skills/versions.js';
@@ -100,7 +100,12 @@ async function duplicateAgent(
       `Invalid request: its prompt is longer than the ${MAX_AGENT_PROMPT} characters a Personal subagent may have.`,
     );
   const existing = new Set((await listAtdAgents()).agents.map((entry) => entry.name));
-  const name = await freeName(base, async (candidate) => existing.has(candidate));
+  // A file that does not load still holds its name: writing `<name>.md` would replace it.
+  const name = await freeName(
+    base,
+    async (candidate) =>
+      existing.has(candidate) || (await exists(path.join(atdAgentsDir(), `${candidate}.md`))),
+  );
   await putAtdAgent({
     name,
     description: agent.description.slice(0, MAX_AGENT_DESCRIPTION) || name,

@@ -2,8 +2,11 @@ import type { ExtensionSessionKind } from '../../client/agent/bridge';
 import type { RunPolicy } from '../../client/agent/run-policy';
 import { serialize, type ComposerDraft } from '../composer-editor/draft';
 
-/** What a create-with-AI session works on; the command editor hands off `command`. */
-export type SeedKind = ExtensionSessionKind | 'command';
+/**
+ * What a create-with-AI session works on; the command editor hands off `command`, and Create app
+ * (the panel's, or Settings › Apps') starts `app`.
+ */
+export type SeedKind = ExtensionSessionKind | 'command' | 'app';
 
 /** Tools each kind's `create-*` skill writes with; the others write files. */
 const TOOLS: Partial<Record<SeedKind, RunPolicy['tools']>> = {

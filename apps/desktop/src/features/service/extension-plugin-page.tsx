@@ -16,7 +16,7 @@ import { PluginConfigForm } from './plugin-config-form';
 import { PluginDiagnostics } from './plugin-diagnostics';
 import { PluginItemTabs } from './plugin-item-tabs';
 import { PluginBadges, PluginUninstallDialog } from './plugin-card';
-import { pluginKindRows, pluginSourceBadge, pluginSourceText } from './plugin-rows';
+import { pluginKindRows, pluginSourceBadge, pluginSourceText, USER_PLUGIN_ID } from './plugin-rows';
 import type { Extensions } from './use-extensions';
 import { useExtensionMatches } from './use-extension-matches';
 import type { ExtensionItemKind } from './use-extension-route';
@@ -65,8 +65,9 @@ function useMetadata(plugin: PluginSummary | null, detail: PluginDetail | null):
 /**
  * One plugin's page: its switch and version in the heading, where it came from, then what it
  * contributes in one tab per kind (Commands, Skills, Subagents, MCP servers, and Personal's Memory), what could not be
- * imported, and its configuration. A newly installed plugin is off, so its page offers to turn it
- * on. Items of a plugin that is off keep their own switches, locked until the plugin is on.
+ * imported (for Personal, also the ~/.atd/agents files that did not load), and its configuration.
+ * A newly installed plugin is off, so its page offers to turn it on. Items of a plugin that is off
+ * keep their own switches, locked until the plugin is on.
  */
 export function ExtensionPluginPage({
   pluginId,
@@ -237,7 +238,11 @@ export function ExtensionPluginPage({
       ) : null}
       <PluginDiagnostics
         label={t('extensions.plugins.page.diagnostics')}
-        diagnostics={plugin.diagnostics}
+        diagnostics={
+          plugin.id === USER_PLUGIN_ID
+            ? [...plugin.diagnostics, ...extensions.agents.diagnostics]
+            : plugin.diagnostics
+        }
       />
       {detail.userConfig.length ? (
         <PluginConfigForm

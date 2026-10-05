@@ -1,4 +1,4 @@
-import { WEB_FETCH_TOOL, WEB_SEARCH_TOOL } from '@atd/agent-contracts';
+import { MEMORY_READ_TOOLS, WEB_FETCH_TOOL, WEB_SEARCH_TOOL } from '@atd/agent-contracts';
 import { confined, confinedWrite } from '../service-fs.js';
 import { FORBIDDEN_CHILD_TOOLS } from './config.js';
 
@@ -12,9 +12,12 @@ export interface IntersectionInput {
   parentTools: string[];
   roleAllowsTools: string[];
   revokedTools: string[];
-  /** Run-frozen MCP proxy names (`mcp__<server>__<tool>`). */
-  mcpProxies: string[];
-  /** Whether the run snapshot enables memory search. */
+  /**
+   * The run's frozen MCP tools (pi-session-mcp.ts `SessionMcpPrep.tools`): its proxies
+   * (`mcp__<server>__<tool>`), and the resource tools and `tool_search` when it bound them.
+   */
+  mcpTools: readonly string[];
+  /** Whether the run snapshot enables memory, and with it the memory read tools. */
   runMemory: boolean;
 }
 
@@ -50,24 +53,24 @@ const FORBIDDEN = new Set<string>(FORBIDDEN_CHILD_TOOLS);
 
 /**
  * Intersects parent tools with role allows minus revocation, then narrows to
- * child-eligible service tools plus frozen MCP proxies, memory search and web.
+ * child-eligible service tools plus the run's MCP tools, the memory read tools and web.
  */
 export function intersectChildTools(input: IntersectionInput): IntersectionResult {
   const allow = new Set(input.roleAllowsTools);
   const revoked = new Set(input.revokedTools);
-  const proxies = new Set(input.mcpProxies);
+  const mcp = new Set(input.mcpTools);
   const allowed: string[] = [];
   const removed: string[] = [];
-  const candidates = [...input.parentTools, ...input.mcpProxies, ...CHILD_WEB_TOOLS];
-  if (input.runMemory) candidates.push('memory_search');
+  const candidates = [...input.parentTools, ...input.mcpTools, ...CHILD_WEB_TOOLS];
+  if (input.runMemory) candidates.push(...MEMORY_READ_TOOLS);
   for (const tool of new Set(candidates)) {
     if (FORBIDDEN.has(tool)) {
       removed.push(tool);
       continue;
     }
-    // Proxies, memory search and web come from the run itself, not from a role grant.
+    // MCP tools, the memory read tools and web come from the run itself, not from a role grant.
     const inherited =
-      proxies.has(tool) || tool === 'memory_search' || CHILD_WEB_TOOLS.includes(tool);
+      mcp.has(tool) || MEMORY_READ_TOOLS.includes(tool) || CHILD_WEB_TOOLS.includes(tool);
     if (!inherited && !CHILD_ELIGIBLE_SERVICE_TOOLS.has(tool)) {
       removed.push(tool);
       continue;
@@ -100,19 +103,6 @@ export async function checkChildPath(input: {
   return input.write
     ? confinedWrite(input.cwd, input.dataDir, input.rawPath)
     : confined(input.cwd, input.dataDir, input.rawPath);
-}
-
-/** Child MCP check: frozen server/tool/URI only, revoked servers refused. */
-export function checkChildMcpOperation(input: {
-  serverId: string;
-  toolOrUri: string;
-  frozenServers: { serverId: string; revision: number; disabled: boolean }[];
-}): { ok: true } | { ok: false; reason: string } {
-  const record = input.frozenServers.find((entry) => entry.serverId === input.serverId);
-  if (!record) return { ok: false, reason: `MCP server ${input.serverId} is not in the run.` };
-  if (record.disabled) return { ok: false, reason: `MCP server ${input.serverId} is revoked.` };
-  if (!input.toolOrUri) return { ok: false, reason: 'MCP operation is empty.' };
-  return { ok: true };
 }
 
 /** Child resource check: ledger-owned ids only, never bare filesystem paths. */

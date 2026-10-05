@@ -12,18 +12,11 @@ import {
   AlertDialogTitle,
 } from '@atd/ui/components/alert-dialog';
 import { Badge } from '@atd/ui/components/badge';
-import {
-  Card,
-  CardAction,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@atd/ui/components/card';
 import { DropdownMenuItem, DropdownMenuSeparator } from '@atd/ui/components/dropdown-menu';
 import { HighlightedText } from '@atd/ui/components/highlighted-text';
 import { ItemMedia } from '@atd/ui/components/item';
 import type { FieldsMatch } from '@atd/ui/lib/fuzzy-match';
+import { ListCard } from '../../components/list-card';
 import { ExtensionRowActions } from './extension-row';
 import { USER_PLUGIN_ID, pluginSourceBadge } from './plugin-rows';
 import { usePluginLabels } from './use-plugin-labels';
@@ -63,12 +56,11 @@ export function PluginBadges({ plugin }: { plugin: PluginSummary }) {
 }
 
 /**
- * One plugin in the Extensions list, as a card: its icon and name (with the source and version of
- * an installed plugin) over the description, and what it contributes at the foot beside what
- * keeps it from working. The switch (unless the plugin cannot be turned off) and More, when the
- * plugin has Update, Configure or Uninstall, sit at the top right. A click anywhere else on the
- * card (and More › View details) opens the plugin's page; the open button fills the card beneath
- * its content, as on the shared rows (`.settings-open-row`).
+ * One plugin in the Extensions list, as a `ListCard`: its icon and name (with the source and
+ * version of an installed plugin) over the description, and what it contributes at the foot beside
+ * what keeps it from working. The switch (unless the plugin cannot be turned off) and More, when
+ * the plugin has Update, Configure or Uninstall, sit at the top right. A click anywhere else on
+ * the card (and More › View details) opens the plugin's page.
  */
 export function PluginCard({
   plugin,
@@ -112,69 +104,48 @@ export function PluginCard({
   const locked = !connected || busy;
   const menu = plugin.updatable || plugin.needsConfig || plugin.removable;
   return (
-    <li className="plugin-card-cell">
-      <Card size="sm" className="plugin-card settings-open-row dark:bg-input/40">
-        <button
-          type="button"
-          className="settings-open-row-button"
-          aria-label={t('extensions.viewDetailsFor', { name })}
-          onClick={onOpen}
+    <ListCard
+      media={
+        <ItemMedia variant="icon">
+          <PluginIcon plugin={plugin} />
+        </ItemMedia>
+      }
+      name={<HighlightedText text={name} ranges={match?.ranges.name} />}
+      nameText={name}
+      detail={source || undefined}
+      actions={
+        <ExtensionRowActions
+          name={name}
+          enabled={plugin.enabled}
+          disabled={!connected}
+          pending={busy}
+          showSwitch={plugin.toggleable}
+          reserveMore={false}
+          onEnabledChange={onEnabled}
+          onDetails={onOpen}
+          menu={
+            menu ? (
+              <PluginMenu
+                plugin={plugin}
+                locked={locked}
+                {...{ onUpdate, onConfigure, onUninstall }}
+              />
+            ) : null
+          }
         />
-        <CardHeader>
-          <div className="flex min-w-0 items-center gap-3">
-            <ItemMedia variant="icon">
-              <PluginIcon plugin={plugin} />
-            </ItemMedia>
-            <div className="min-w-0">
-              <CardTitle className="truncate text-sm" title={name}>
-                <HighlightedText text={name} ranges={match?.ranges.name} />
-              </CardTitle>
-              {source ? (
-                <p className="truncate text-xs text-muted-foreground" title={source}>
-                  {source}
-                </p>
-              ) : null}
-            </div>
-          </div>
-          <CardAction>
-            <ExtensionRowActions
-              name={name}
-              enabled={plugin.enabled}
-              disabled={!connected}
-              pending={busy}
-              showSwitch={plugin.toggleable}
-              reserveMore={false}
-              onEnabledChange={onEnabled}
-              onDetails={onOpen}
-              menu={
-                menu ? (
-                  <PluginMenu
-                    plugin={plugin}
-                    locked={locked}
-                    {...{ onUpdate, onConfigure, onUninstall }}
-                  />
-                ) : null
-              }
-            />
-          </CardAction>
-        </CardHeader>
-        <CardContent>
-          <p className="plugin-card-description text-muted-foreground" title={description}>
-            {description ? (
-              <HighlightedText text={description} ranges={match?.ranges.description} />
-            ) : (
-              t('extensions.detailNoDescription')
-            )}
-          </p>
-        </CardContent>
-        <CardFooter className="plugin-card-footer">
-          <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground" title={contents}>
-            {contents}
-          </span>
-          <PluginStateBadges plugin={plugin} />
-        </CardFooter>
-      </Card>
-    </li>
+      }
+      description={
+        description ? (
+          <HighlightedText text={description} ranges={match?.ranges.description} />
+        ) : (
+          t('extensions.detailNoDescription')
+        )
+      }
+      descriptionText={description}
+      meta={contents}
+      badges={<PluginStateBadges plugin={plugin} />}
+      open={{ label: t('extensions.viewDetailsFor', { name }), onOpen }}
+    />
   );
 }
 

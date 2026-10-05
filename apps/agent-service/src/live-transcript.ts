@@ -5,6 +5,7 @@ import { NestedStepLog } from './codemode/steps.js';
 import type { RunningCompaction } from './compaction/records.js';
 import { SUBAGENT_TOOL } from './subagents/tool-contract.js';
 import { TrailingFlush } from './trailing-flush.js';
+import { nextRetrying, type RetryingRequest } from './transcript-retry.js';
 import { subagentRows, type SubagentRow } from './transcript-details/subagent.js';
 import {
   diffServiceBlocks,
@@ -60,6 +61,7 @@ export class LiveTranscript {
    */
   private readonly codemodeSteps = new NestedStepLog();
   private partial: AssistantMessage | undefined;
+  private retrying: RetryingRequest | null = null;
   private queue: QueueState = { steering: [], followUp: [] };
   /** Open `batchQueue` edits; their intermediate queue states stay unpublished. */
   private queueBatches = 0;
@@ -83,6 +85,7 @@ export class LiveTranscript {
         if (this.queueBatches === 0) this.sink.queue(this.runId(), this.queueState());
         return;
       }
+      this.retrying = nextRetrying(this.retrying, event);
       if (event.type === 'message_update' && event.message.role === 'assistant')
         this.partial = event.message;
       if (event.type === 'message_end') {
@@ -158,6 +161,7 @@ export class LiveTranscript {
       firstRunId: this.firstRunId,
       live: true,
       compacting: this.compacting(),
+      retrying: this.retrying,
     });
     const patch = diffServiceBlocks(this.blocks, next);
     this.blocks = next;

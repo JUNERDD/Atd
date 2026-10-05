@@ -1,4 +1,4 @@
-import { BookOpen, Gauge } from 'lucide-react';
+import { BookOpen, Gauge, SquareSlash } from 'lucide-react';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { rankByQuery } from '@atd/ui/lib/fuzzy-match';
@@ -38,6 +38,7 @@ function skillGroup(
   return {
     id: 'skills',
     heading: t('quickPanel.groups.skills'),
+    icon: <BookOpen />,
     options: rankByQuery(enabled, query, (row) => ({
       title: row.name,
       description: row.description,
@@ -139,6 +140,7 @@ export function useSlashView({
         heading: connection.name,
         // Every model matches the connection name alike, so the heading shows that match once.
         headingRanges: ranked[0]?.match?.ranges.connection,
+        icon: <ProviderBrand provider={connection.provider} />,
         notice: connection.catalogError || undefined,
         options: ranked.map(({ item: entry, match }): QuickOption => ({
           value: `model:${JSON.stringify([connection.connectionId, entry.id])}`,
@@ -194,7 +196,7 @@ export function useSlashView({
         editor.clearTrigger();
       },
     }));
-    const group = { id: 'effort', heading: tp('thinkingLevels.label'), options };
+    const group = { id: 'effort', heading: tp('thinkingLevels.label'), icon: <Gauge />, options };
     return { groups: [group], empty: reason ?? t('quickPanel.states.noMatches') };
   }
 
@@ -250,6 +252,7 @@ export function useSlashView({
   const commandGroup = {
     id: 'commands',
     heading: t('quickPanel.groups.commands'),
+    icon: <SquareSlash />,
     options: commands,
   };
   // A run in progress lists quick commands only: chips wait until the run finishes.

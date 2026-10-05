@@ -7,7 +7,8 @@
     "settings": "设置",
     "update": "更新",
     "updateTooltip": "重启以安装 {{version}} 版本",
-    "loadingConversation": "正在加载对话…"
+    "loadingConversation": "正在加载对话…",
+    "apps": "我的应用"
   },
   "welcome": {
     "title": "有什么可以帮你？",
@@ -18,7 +19,8 @@
     "tasks": "任务",
     "commandInput": "命令输入",
     "task": "任务",
-    "newTask": "新建任务"
+    "newTask": "新建任务",
+    "apps": "我的应用"
   },
   "composer": {
     "send": "发送任务",
@@ -91,6 +93,14 @@
       "subagentOne": "1 个子智能体",
       "subagentMany": "{{count}} 个子智能体",
       "subagentRunning": "{{count}} 个运行中",
+      "sideChats": {
+        "list": "侧边对话",
+        "waiting": "{{count}} 个等待中",
+        "running": "{{count}} 个运行中",
+        "one": "1 个侧边对话",
+        "many": "{{count}} 个侧边对话",
+        "open": "打开 {{name}}"
+      },
       "showTodos": "查看待办",
       "compacting": "正在整理上下文…"
     },
@@ -107,6 +117,7 @@
           "messages": "消息",
           "systemPrompt": "系统提示词",
           "skills": "技能",
+          "memory": "记忆",
           "systemTools": "工具",
           "mcpTools": "MCP"
         },
@@ -234,6 +245,7 @@
   },
   "quickPanel": {
     "listLabel": "建议",
+    "sectionsLabel": "分组",
     "groups": {
       "commands": "快捷指令",
       "skills": "技能",
@@ -298,6 +310,7 @@
     },
     "hints": {
       "choose": "选择",
+      "nextGroup": "下一组",
       "insert": "插入",
       "use": "使用",
       "close": "关闭"

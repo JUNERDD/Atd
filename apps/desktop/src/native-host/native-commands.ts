@@ -18,6 +18,8 @@ const SELECTION_ERRORS: Record<SelectionFailure, string> = {
   noSelection: 'No selected text — select text in another app, then use the command shortcut.',
   tooLong: 'Selected text exceeds the input limit — select a smaller passage.',
 };
+/** Text the page hands over in place of the selection is held to the same limit as a capture. */
+const PAGE_TEXT_TOO_LONG = 'This text exceeds the input limit — select a smaller passage.';
 /** macOS applies a new Screen Recording grant only to a relaunched app. */
 const SCREENSHOT_NOT_PERMITTED =
   'Enable Screen Recording for AI: System Settings → Privacy & Security → Screen & System Audio Recording, then quit and reopen AI.';
@@ -59,6 +61,23 @@ export class NativeCommands implements CommandCatalog {
   /** `expectCapture`: the command shortcut launched it, so a failed capture becomes a notice. */
   prepare(id: string, expectCapture = false): Promise<PreparedCommand> {
     return prepareCommand(this.find(id), this, expectCapture);
+  }
+
+  /**
+   * Prepared like a shortcut launch (a failed capture becomes a notice), but the selection the
+   * command reads is `text`, captured now, so the shell's stashed selection stays untouched.
+   */
+  async prepareWithText(id: string, text: string): Promise<PreparedCommand> {
+    if (text.length > MAX_CAPTURE_LENGTH) throw new Error(PAGE_TEXT_TOO_LONG);
+    const selection = { text, capturedAt: new Date().toISOString() };
+    return prepareCommand(
+      this.find(id),
+      {
+        capture: async (source) => (source === 'selection' ? selection : this.capture(source)),
+        screenshot: () => this.screenshot(),
+      },
+      true,
+    );
   }
 
   async capture(source: 'selection' | 'clipboard') {

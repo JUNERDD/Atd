@@ -12,7 +12,8 @@
 ///
 /// What survives the page going away (a navigation or a WebContent crash):
 /// - **States** (`window.active`, `window.visibility`): only the latest value per event, sent
-///   once per change and again to every page that becomes ready.
+///   once per change and again to every page that becomes ready. `userApp.state` is one state
+///   per app (``NativeEvent/stateKey``), so every app window's state is replayed.
 /// - **App messages** (a command shortcut, imported attachments, an edit command): kept in order
 ///   until a ready page received them.
 /// - **Document messages** (call results and errors, socket frames): dropped, since they belong
@@ -65,7 +66,7 @@ public struct BridgeOutbox: Sendable {
 
   /// Records a state event; unchanged values are not sent again.
   public mutating func setState(_ event: NativeEvent) -> Action {
-    let name = event.name
+    let name = event.stateKey
     if states[name] == nil { stateOrder.append(name) }
     guard states[name] != event else { return .none }
     states[name] = event
@@ -162,5 +163,14 @@ extension SocketFrame {
     case .message(let message): 48 + message.socketId.utf8.count + message.data.utf8.count
     case .close(let close): 48 + close.socketId.utf8.count + close.reason.utf8.count
     }
+  }
+}
+
+extension NativeEvent {
+  /// What a state event replaces: the previous value of the same event, or for `userApp.state`
+  /// the previous value for the same app.
+  public var stateKey: String {
+    if case .userAppState(let state) = self { return "\(name):\(state.appId)" }
+    return name
   }
 }

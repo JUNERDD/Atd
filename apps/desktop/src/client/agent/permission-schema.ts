@@ -39,6 +39,8 @@ export const GrantScopeSchema = Type.Union([
   Type.Object({ tool: Type.Literal('mcp') }, { additionalProperties: false }),
   // C1 additive: web search and fetch network calls.
   Type.Object({ tool: Type.Literal('web') }, { additionalProperties: false }),
+  // Create App: the `app` harness tool (build, diagnostics, call, list).
+  Type.Object({ tool: Type.Literal('app') }, { additionalProperties: false }),
 ]);
 export type GrantScope = Static<typeof GrantScopeSchema>;
 

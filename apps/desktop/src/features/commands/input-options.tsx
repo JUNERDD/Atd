@@ -49,6 +49,9 @@ export function InputOptions({
     )
       return;
     // A source turns on what it fills (the screenshot is an attached image) and keeps it on.
+    // Switching to Selected text also puts the command on the selection toolbar over other apps,
+    // where a command that takes the selection as its input has always shown.
+    const toToolbar = value === 'selection' && command.input.source !== 'selection';
     onChange({
       ...command,
       input: {
@@ -59,6 +62,7 @@ export function InputOptions({
         selection: command.input.selection || value === 'selection',
         clipboard: command.input.clipboard || value === 'clipboard',
       },
+      placement: toToolbar ? { ...command.placement, selectionToolbar: true } : command.placement,
     });
   }
   return (

@@ -3,6 +3,7 @@ import { FileDiff } from '@pierre/diffs/react';
 import { useMemo, type ReactNode } from 'react';
 import { cn } from '@atd/ui/lib/utils';
 import { CodeBlock, FLUSH_CODE_CLASS, FLUSH_CODE_CSS } from './code-block';
+import { codeCacheKey } from './code-cache-key';
 import { excerptPatch, parsePatch } from './pi-diff';
 import { ToolCard } from './tool-card';
 import './tool-code.css';
@@ -27,18 +28,38 @@ export function SourceView({
   path,
   text,
   startLine = 1,
+  cacheable = false,
 }: {
   path: string;
   text: string;
   startLine?: number;
+  /**
+   * The text is final (its call has settled), so the highlight pool caches its highlighting under
+   * a key derived from the content (`codeCacheKey`).
+   */
+  cacheable?: boolean;
 }) {
+  const cacheKey = useMemo(
+    () =>
+      cacheable
+        ? codeCacheKey(startLine <= 1 ? 'file' : 'excerpt', path, text, startLine)
+        : undefined,
+    [cacheable, path, text, startLine],
+  );
   const excerpt = useMemo(() => {
     if (startLine <= 1) return null;
     const patch = excerptPatch(path, text, startLine);
-    return patch ? parsePatch(patch) : null;
-  }, [path, text, startLine]);
+    return patch ? parsePatch(patch, cacheKey) : null;
+  }, [path, text, startLine, cacheKey]);
   if (startLine <= 1) {
-    return <CodeBlock contents={text} language={getFiletypeFromFileName(path)} flush />;
+    return (
+      <CodeBlock
+        contents={text}
+        language={getFiletypeFromFileName(path)}
+        flush
+        cacheKey={cacheKey}
+      />
+    );
   }
   if (excerpt) return <DiffView fileDiff={excerpt} indicators={false} />;
   return <PlainText text={text} />;
@@ -88,7 +109,8 @@ export function PlainText({ text, muted = false }: { text: string; muted?: boole
  * The card every file tool reads in: a type glyph and the file's name (full path on hover) with
  * trailing facts and the copy action, the content, and an optional closing note. `code` content
  * fills the body edge to edge; plain text keeps the card's inset. A tall body scrolls inside the
- * card; code keeps its line widths and scrolls sideways within itself.
+ * card. Code keeps its line widths and the body scrolls it both ways, so the sideways bar sits at
+ * the bottom of the visible box rather than under the file's last line.
  */
 export function FileCard({
   icon,
@@ -116,7 +138,12 @@ export function FileCard({
         meta={meta}
         copyText={copyText}
       />
-      <ToolCard.Body size="lg" flush={code} className={code ? undefined : 'font-mono'}>
+      <ToolCard.Body
+        size="lg"
+        scroll={code ? 'both' : 'y'}
+        flush={code}
+        className={code ? undefined : 'font-mono'}
+      >
         {children}
       </ToolCard.Body>
       {footer}

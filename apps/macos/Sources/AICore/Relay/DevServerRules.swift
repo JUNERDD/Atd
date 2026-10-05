@@ -34,7 +34,7 @@ public enum DevProxyRule {
     /// A `/@…` prefix Vite does not use for module serving, or `/@fs/` without a path.
     case specialPrefix
     /// A query parameter outside ``allowedQueryKeys`` (``openInEditorQueryKeys`` for the inspector
-    /// endpoint) or with an unexpected value.
+    /// endpoint), with an unexpected value, or in a combination Vite does not write.
     case query
   }
 
@@ -49,7 +49,15 @@ public enum DevProxyRule {
   /// string, never the file's content; `url` passes only beside `import`. Vite strips only `url`
   /// from the URL it hands out, so the page then fetches the file itself as `?no-inline`: that
   /// flag alone only stops inlining and serves the file as the bare path would.
-  public static let allowedQueryKeys: Set<String> = ["t", "v", "import", "url", "no-inline"]
+  ///
+  /// `worker_file` and `type`: the script of a module worker (the renderer's code highlight
+  /// pool), which Vite serves as `?worker_file&type=module`. The pair only selects Vite's worker
+  /// transform of a module the bare path already serves, and `server.fs.allow` still bounds the
+  /// file it reads. It passes only as Vite writes it: `worker_file` then `type`, once each, and
+  /// `type` only as `module`.
+  public static let allowedQueryKeys: Set<String> = [
+    "t", "v", "import", "url", "no-inline", "worker_file", "type",
+  ]
 
   /// The component inspector's endpoint (`apps/desktop/plugins/component-inspector.ts`). Its
   /// middleware answers `ok` and launches the editor CLI without a shell, never serving file
@@ -67,11 +75,16 @@ public enum DevProxyRule {
     }
     guard let rawQuery, !rawQuery.isEmpty else { return .success(nil) }
     var flags: Set<Substring> = []
+    var workerKeys: [Substring] = []
     for item in rawQuery.split(separator: "&", omittingEmptySubsequences: false) {
       guard isAllowed(parameter: item) else { return .failure(.query) }
+      let key = item.prefix { $0 != "=" }
+      if key == "worker_file" || key == "type" { workerKeys.append(key) }
       if !item.contains("=") { flags.insert(item) }
     }
-    guard !flags.contains("url") || flags.contains("import") else { return .failure(.query) }
+    guard !flags.contains("url") || flags.contains("import"),
+      workerKeys.isEmpty || workerKeys == ["worker_file", "type"]
+    else { return .failure(.query) }
     return .success(rawQuery)
   }
 
@@ -98,8 +111,10 @@ public enum DevProxyRule {
     let key = String(parts[0])
     let value = parts.count == 2 ? parts[1] : nil
     switch key {
-    case "import", "url", "no-inline":
+    case "import", "url", "no-inline", "worker_file":
       return value == nil
+    case "type":
+      return value == "module"
     case "t":
       guard let value, (1...20).contains(value.count) else { return false }
       return value.utf8.allSatisfy { (0x30...0x39).contains($0) }

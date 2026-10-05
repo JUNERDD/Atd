@@ -16,6 +16,7 @@
     "providers": "Models",
     "commands": "Commands",
     "memory": "Memory",
+    "apps": "Apps",
     "general": "General"
   },
   "drawer": {
@@ -44,6 +45,7 @@
       "sectionProviders": "model models provider providers api key connection account login sign in service openai anthropic ollama",
       "sectionCommands": "command prompt snippet template macro instruction saved",
       "sectionMemory": "preferences remember learn context profile",
+      "sectionApps": "apps app applications tools built widgets versions permissions",
       "sectionGeneral": "general keyboard shortcut hotkey keybinding key binding record window preferences dock login startup",
       "tierManual": "manual ask confirm every action prompt each time",
       "tierAuto": "auto automatic approve approval review model safe",

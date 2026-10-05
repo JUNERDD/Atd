@@ -1,4 +1,5 @@
 import type { SubagentPermissions } from '@atd/agent-contracts';
+import { toClientError } from './manage-request.js';
 import { authHeaders, type AgentClientOptions } from './types.js';
 
 export interface AtdAgentWire {
@@ -25,8 +26,8 @@ async function request<T>(
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   });
   const json: unknown = await response.json().catch(() => null);
-  if (!response.ok)
-    throw new Error(`Agent request ${method} ${path} failed with status ${response.status}.`);
+  // The service's error envelope says why, e.g. a save that would replace another agent.
+  if (!response.ok) throw toClientError(response.status, json);
   return json as T;
 }
 
@@ -51,15 +52,25 @@ export interface AtdAgentCatalogWire extends Omit<AtdAgentWire, 'tools'> {
   defaults: SubagentPermissions;
 }
 
+/** A ~/.atd/agents file the catalog skipped, and why; the agent it names is unavailable. */
+export interface AtdAgentDiagnosticWire {
+  type: 'warning';
+  code: 'invalid_agent';
+  message: string;
+  /** The name the file would load under: its frontmatter name, else its file name. */
+  agent: string;
+  path: string;
+}
+
 /**
  * Lists the subagent catalog: the service's system agents (`system: true`, read-only), then the
  * markdown specialists from ~/.atd/agents, each with whether later runs may use it and with what
- * permissions.
+ * permissions, and the ~/.atd/agents files that did not load.
  */
 export function listAtdAgents(
   options: AgentClientOptions,
   fetchImpl?: typeof fetch,
-): Promise<{ agents: AtdAgentCatalogWire[] }> {
+): Promise<{ agents: AtdAgentCatalogWire[]; diagnostics: AtdAgentDiagnosticWire[] }> {
   return request(options, '/v1/agents', 'GET', undefined, fetchImpl);
 }
 

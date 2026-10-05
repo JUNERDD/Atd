@@ -1,0 +1,690 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "launcher.description" : {
+      "comment" : "Description of the launcher widget in the widget gallery",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open the apps you made with Atd."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "打开你用 Atd 创建的应用。"
+          }
+        }
+      }
+    },
+    "launcher.displayName" : {
+      "comment" : "Name of the launcher widget in the widget gallery, under Atd: it shows the user's apps as icons that open them",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "My Apps"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "我的应用"
+          }
+        }
+      }
+    },
+    "launcher.empty.message" : {
+      "comment" : "Launcher widget: shown under the title while the user has no apps; clicking the widget opens Atd",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Create one in Atd."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在 Atd 中创建一个应用。"
+          }
+        }
+      }
+    },
+    "launcher.empty.title" : {
+      "comment" : "Launcher widget: title shown while the user has no apps",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No apps yet"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "还没有应用"
+          }
+        }
+      }
+    },
+    "launcher.sample.budget" : {
+      "comment" : "Launcher widget gallery example: name of a sample expense tracking app",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Budget"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "记账"
+          }
+        }
+      }
+    },
+    "launcher.sample.calculator" : {
+      "comment" : "Launcher widget gallery example: name of a sample calculator app",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Calculator"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "计算器"
+          }
+        }
+      }
+    },
+    "launcher.sample.dice" : {
+      "comment" : "Launcher widget gallery example: name of a sample dice-rolling app",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dice"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "骰子"
+          }
+        }
+      }
+    },
+    "launcher.sample.flashcards" : {
+      "comment" : "Launcher widget gallery example: name of a sample flashcard app for memorizing words",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Flashcards"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "背单词"
+          }
+        }
+      }
+    },
+    "launcher.sample.focus" : {
+      "comment" : "Launcher widget gallery example: name of a sample focus timer (Pomodoro) app",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Focus"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "专注"
+          }
+        }
+      }
+    },
+    "launcher.sample.habits" : {
+      "comment" : "Launcher widget gallery example: name of a sample habit tracker app",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Habits"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "习惯"
+          }
+        }
+      }
+    },
+    "launcher.sample.journal" : {
+      "comment" : "Launcher widget gallery example: name of a sample diary app",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Journal"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "日记"
+          }
+        }
+      }
+    },
+    "launcher.sample.music" : {
+      "comment" : "Launcher widget gallery example: name of a sample music practice app",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Music"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "音乐"
+          }
+        }
+      }
+    },
+    "launcher.sample.notes" : {
+      "comment" : "Launcher widget gallery example: name of a sample app for taking notes",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Notes"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "笔记"
+          }
+        }
+      }
+    },
+    "launcher.sample.reading" : {
+      "comment" : "Launcher widget gallery example: name of a sample reading list app",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reading"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "阅读"
+          }
+        }
+      }
+    },
+    "launcher.sample.recipes" : {
+      "comment" : "Launcher widget gallery example: name of a sample recipe app",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recipes"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "菜谱"
+          }
+        }
+      }
+    },
+    "launcher.sample.shopping" : {
+      "comment" : "Launcher widget gallery example: name of a sample shopping list app",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Shopping"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "购物清单"
+          }
+        }
+      }
+    },
+    "launcher.sample.timer" : {
+      "comment" : "Launcher widget gallery example: name of a sample countdown timer app",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Timer"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "计时器"
+          }
+        }
+      }
+    },
+    "launcher.sample.water" : {
+      "comment" : "Launcher widget gallery example: name of a sample app that tracks how much water the user drinks",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Water"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "喝水"
+          }
+        }
+      }
+    },
+    "launcher.sample.weather" : {
+      "comment" : "Launcher widget gallery example: name of a sample weather app",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Weather"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "天气"
+          }
+        }
+      }
+    },
+    "launcher.sample.workout" : {
+      "comment" : "Launcher widget gallery example: name of a sample workout log app",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Workout"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "运动"
+          }
+        }
+      }
+    },
+    "widget.description" : {
+      "comment" : "Description of the widget in the widget gallery",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Shows a widget from an app you made with Atd."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "显示你用 Atd 创建的应用中的小组件。"
+          }
+        }
+      }
+    },
+    "widget.displayName" : {
+      "comment" : "Name of the widget in the widget gallery, under Atd: it shows a widget of one of the user's apps",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "App Widget"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "应用小组件"
+          }
+        }
+      }
+    },
+    "widget.entity.type" : {
+      "comment" : "Type name of the app widgets the configuration lists",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "App Widget"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "应用小组件"
+          }
+        }
+      }
+    },
+    "widget.intent.description" : {
+      "comment" : "Description of the widget's configuration",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pick which app widget this widget shows."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "选择此小组件要显示的应用小组件。"
+          }
+        }
+      }
+    },
+    "widget.intent.parameter" : {
+      "comment" : "Label of the configuration's app widget field",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "App Widget"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "应用小组件"
+          }
+        }
+      }
+    },
+    "widget.intent.title" : {
+      "comment" : "Title of the widget's configuration",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose App Widget"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "选择应用小组件"
+          }
+        }
+      }
+    },
+    "widget.sample.count" : {
+      "comment" : "Gallery example: the example's headline count",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "3 today"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "今日 3 条"
+          }
+        }
+      }
+    },
+    "widget.sample.row1" : {
+      "comment" : "Gallery example: first note",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Buy milk"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "买牛奶"
+          }
+        }
+      }
+    },
+    "widget.sample.row2" : {
+      "comment" : "Gallery example: second note",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Write the weekly report"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "写周报"
+          }
+        }
+      }
+    },
+    "widget.sample.row3" : {
+      "comment" : "Gallery example: a finished note",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Call the dentist"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "给牙医打电话"
+          }
+        }
+      }
+    },
+    "widget.sample.title" : {
+      "comment" : "Gallery example: the example app's name",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Notes"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "笔记"
+          }
+        }
+      }
+    },
+    "widget.state.choose.message" : {
+      "comment" : "Shown when no app widget is chosen",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Edit this widget to pick one of your apps."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "编辑此小组件，选择你的一个应用。"
+          }
+        }
+      }
+    },
+    "widget.state.choose.title" : {
+      "comment" : "Title shown when no app widget is chosen",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose an App"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "选择应用"
+          }
+        }
+      }
+    },
+    "widget.state.gone.message" : {
+      "comment" : "Shown when the chosen app or widget was deleted",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This app widget is no longer available. Edit the widget to choose another."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "这个应用小组件已不可用。编辑小组件以选择其他应用。"
+          }
+        }
+      }
+    },
+    "widget.state.noApps.message" : {
+      "comment" : "Shown when no app declares a widget yet",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apps you make in Atd that have widgets appear here."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "你在 Atd 中创建的带小组件的应用会出现在这里。"
+          }
+        }
+      }
+    },
+    "widget.state.size.message" : {
+      "comment" : "Shown when the chosen app widget does not come in this size",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This app widget doesn't come in this size."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "这个应用小组件没有此尺寸。"
+          }
+        }
+      }
+    },
+    "widget.state.unreadable.message" : {
+      "comment" : "Shown when the widget's content is damaged",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This widget's content could not be read."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法读取此小组件的内容。"
+          }
+        }
+      }
+    },
+    "widget.state.waiting.message" : {
+      "comment" : "Shown before the first content arrives",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open Atd to update this widget."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "打开 Atd 以更新此小组件。"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

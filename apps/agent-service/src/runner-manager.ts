@@ -115,18 +115,21 @@ export class RunnerManager {
     if (previous?.runs.some((run) => isActiveStatus(run.status)) || this.accepting.has(taskId))
       throw new ConflictError('Finish the active run before starting a new one.');
     checkBranchBefore(request.branchBefore, onBranch);
+    const { sideChatOf } = request;
+    if (sideChatOf !== undefined) {
+      // The link is set when its task is created and never changes. A new task is not in the
+      // ledger yet, so naming an existing task also rules out the new task itself.
+      if (previous) throw new TypeError('Invalid data: sideChatOf only applies to a new task.');
+      if (!ledger.data.tasks.some((item) => item.id === sideChatOf))
+        throw new TypeError('Invalid data: sideChatOf needs an existing task.');
+    }
     for (const file of request.input.files) {
       if (!ledger.data.resources.some((resource) => resource.id === file.id))
         throw new Error(`Attachment ${file.id} was not uploaded.`);
     }
     const folderIds = request.input.folders ?? [];
     this.deps.folders.resolve(folderIds);
-    const snapshot = freezeRunSnapshot(
-      request,
-      connections,
-      contextWindowOf,
-      previous?.runs.at(-1),
-    );
+    const snapshot = freezeRunSnapshot(request, connections, contextWindowOf, previous, onBranch);
     const runId = randomUUID();
     const now = new Date().toISOString();
     this.accepting.add(taskId);
@@ -150,6 +153,8 @@ export class RunnerManager {
             parentExecutionId: null,
             // A task keeps the tier it was created with; later default changes leave it alone.
             permissionTier: this.deps.newTaskTier(),
+            // Part of the creating write, so a task's first summary already carries the link.
+            ...(sideChatOf ? { sideChatOf } : {}),
           };
           data.tasks.unshift(task);
         }
@@ -225,12 +230,12 @@ export class RunnerManager {
     await this.runnerFor(taskId).queue(text, mode);
   }
 
-  /** Disposes a deleted task's runner and forgets it, so deleted tasks hold no runner. */
+  /** Discards a deleted task's runner and forgets it, so deleted tasks hold no runner. */
   async remove(taskId: string): Promise<void> {
     const runner = this.runners.get(taskId);
     this.releases.cancel(taskId);
     this.runners.delete(taskId);
-    await runner?.dispose();
+    await runner?.discard();
   }
 
   snapshot(taskId: string): Promise<TaskSnapshot> {
@@ -308,11 +313,13 @@ export class RunnerManager {
       }
     await Promise.allSettled(stopping);
     await Promise.allSettled(this.executions.values());
-    for (const runner of this.runners.values()) {
-      await runner.dispose().catch((error: unknown) => {
-        this.deps.log.warn('Runner dispose failed.', { error: errorMessage(error) });
-      });
-    }
+    // Together: capped memory reviews (memory/learner) must not add up past the native stop budget.
+    const disposing = [...this.runners].map(([taskId, runner]) =>
+      runner.dispose().catch((error: unknown) => {
+        this.deps.log.warn('Runner dispose failed.', { taskId, error: errorMessage(error) });
+      }),
+    );
+    await Promise.all(disposing);
   }
 
   private start(taskId: string, run: TaskRun): void {

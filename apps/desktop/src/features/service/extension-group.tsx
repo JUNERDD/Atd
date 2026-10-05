@@ -9,6 +9,7 @@ import {
   EmptyTitle,
 } from '@atd/ui/components/empty';
 import { ItemGroup } from '@atd/ui/components/item';
+import { ListCardGrid } from '../../components/list-card';
 
 /**
  * Shared plugin, skill, subagent and MCP group shell with loading, empty, and row or card slots.
@@ -52,11 +53,7 @@ export function ExtensionGroup({
       ) : hasRows ? (
         <>
           {status}
-          {cards ? (
-            <ul className="plugin-card-grid">{children}</ul>
-          ) : (
-            <ItemGroup>{children}</ItemGroup>
-          )}
+          {cards ? <ListCardGrid>{children}</ListCardGrid> : <ItemGroup>{children}</ItemGroup>}
         </>
       ) : (
         <div className="settings-extension-empty">

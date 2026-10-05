@@ -14,6 +14,12 @@ import {
   type WriteOperations,
 } from '@earendil-works/pi-coding-agent';
 import type { GrantScope, PermissionTier } from '@atd/agent-contracts';
+import {
+  catalogConfirmedWrite,
+  catalogDeferredFolders,
+  catalogTarget,
+  type WriteCall,
+} from './atd-agents/catalog-writes.js';
 import type { CapabilityRegistry } from './capabilities.js';
 import { commandToolDefinition } from './commands/tool.js';
 import { registerMcpCatalogTools, type ListMcp, type UpsertMcp } from './configure-mcp-tool.js';
@@ -124,35 +130,45 @@ export function editOperations(
   };
 }
 
+/** Makes the folders pi's write creates first, at an already resolved path. */
+export type MakeFolders = (real: string) => Promise<void>;
+
+const plainFolders: MakeFolders = async (real) => {
+  await mkdir(real, { recursive: true });
+};
+
 /** pi's write operations, including the parent directories it creates first. */
 export function writeOperations(
   writable: ResolvePath,
   write: WriteResolved = plainWrite,
+  makeFolders: MakeFolders = plainFolders,
 ): WriteOperations {
   return {
     writeFile: async (target, content) => write(await writable(target), content),
-    mkdir: async (target) => {
-      await mkdir(await writable(target), { recursive: true });
-    },
+    mkdir: async (target) => makeFolders(await writable(target)),
   };
 }
 
 /**
  * Minimal service file/shell/command proxies. Pi owns the tool protocols;
- * the service owns confinement here, the shell policy in shell-tool.ts, and
- * tier/grant checks, confirms and audit in the shared gate (harness/gate.ts).
+ * the service owns confinement here, the shell policy in shell-tool.ts,
+ * tier/grant checks, confirms and audit in the shared gate (harness/gate.ts),
+ * and the confirm of every agent catalog write (atd-agents/catalog-writes.ts).
  * Desktop-only abilities arrive as capability requests, never as direct
  * filesystem or clipboard access.
  */
 export function serviceTools(host: ServiceToolHost): ExtensionFactory {
-  const calls = new AsyncLocalStorage<string>();
+  // The tool call each operation runs in; a bash call never leaves its approval to a write.
+  const calls = new AsyncLocalStorage<WriteCall>();
+  const current = (): WriteCall => {
+    const call = calls.getStore();
+    if (!call) throw new Error('A file operation requires a tool invocation.');
+    return call;
+  };
   const invocation: ToolInvocation = {
-    run: (toolCallId, operation) => calls.run(`${host.taskId}:${toolCallId}`, operation),
-    guard: () => {
-      const value = calls.getStore();
-      if (!value) throw new Error('A file operation requires a tool invocation.');
-      return value;
-    },
+    run: (toolCallId, operation) =>
+      calls.run({ toolCallId, signal: undefined, catalogWrite: false }, operation),
+    guard: () => `${host.taskId}:${current().toolCallId}`,
   };
   const guard = invocation.guard;
 
@@ -206,6 +222,8 @@ export function serviceTools(host: ServiceToolHost): ExtensionFactory {
         signal?.throwIfAborted();
         const scope = scopeOf(name, args, host);
         const own = name === 'read' ? await ownMaterial(args) : null;
+        // A write that changes the subagent catalog is asked once, with its content, when written.
+        let catalogWrite = false;
         if (own) {
           const base = { taskId: host.taskId, runId: host.runId(), toolCallId: id };
           host.audit({ ...base, tool: `read:${own}`, decision: own });
@@ -214,21 +232,26 @@ export function serviceTools(host: ServiceToolHost): ExtensionFactory {
           // is spent on a call that cannot run.
           const target = resolveToolPath(host.cwd, pathOf(args));
           if (name === 'read') await confined(host.cwd, host.dataDir, target, await readRoots());
-          else await confinedWrite(host.cwd, host.dataDir, target);
-          await authorize({
-            toolCallId: id,
-            scope,
-            title: titleOf(name, args),
-            detail: detailOf(name, args),
-            signal: signal ?? undefined,
-          });
+          else {
+            const { real } = await confinedWrite(host.cwd, host.dataDir, target);
+            catalogWrite = (await catalogTarget(host.dataDir, real)) !== null;
+          }
+          if (!catalogWrite)
+            await authorize({
+              toolCallId: id,
+              scope,
+              title: titleOf(name, args),
+              detail: detailOf(name, args),
+              signal: signal ?? undefined,
+            });
         }
         // Pi's tool context goes through untouched. It defines `tools` and `executeTool` as
         // non-enumerable properties, which a spread drops, and its `cwd` already is `host.cwd`:
         // pi-session.ts builds the session and these tools from the same task output directory.
         // A wrapper that needs another cwd must derive from the context, as in
         // `Object.create(ctx, { cwd: { value } })`, never spread it.
-        return invocation.run(id, () => tool.execute(id, args, signal, onUpdate, ctx));
+        const call: WriteCall = { toolCallId: id, signal: signal ?? undefined, catalogWrite };
+        return calls.run(call, () => tool.execute(id, args, signal, onUpdate, ctx));
       },
     };
   }
@@ -245,6 +268,15 @@ export function serviceTools(host: ServiceToolHost): ExtensionFactory {
     return (await confinedWrite(host.cwd, host.dataDir, target)).real;
   };
   const noRoots = async () => [];
+  // Writes that change the subagent catalog ask the user every time (atd-agents/catalog-writes.ts).
+  const catalog = { cwd: host.cwd, dataDir: host.dataDir, gate: authorize, call: current };
+  const confirmed = (tool: 'write' | 'edit') => catalogConfirmedWrite({ ...catalog, tool });
+  const edits = editOperations(readable(noRoots), writable, confirmed('edit'));
+  const writes = writeOperations(
+    writable,
+    confirmed('write'),
+    catalogDeferredFolders(host.dataDir),
+  );
 
   return (pi) => {
     pi.registerTool(
@@ -253,19 +285,9 @@ export function serviceTools(host: ServiceToolHost): ExtensionFactory {
         'read',
       ),
     );
+    pi.registerTool(controlled(createEditToolDefinition(host.cwd, { operations: edits }), 'edit'));
     pi.registerTool(
-      controlled(
-        createEditToolDefinition(host.cwd, {
-          operations: editOperations(readable(noRoots), writable),
-        }),
-        'edit',
-      ),
-    );
-    pi.registerTool(
-      controlled(
-        createWriteToolDefinition(host.cwd, { operations: writeOperations(writable) }),
-        'write',
-      ),
+      controlled(createWriteToolDefinition(host.cwd, { operations: writes }), 'write'),
     );
     pi.registerTool(bashToolDefinition(host, authorize, invocation));
     pi.registerTool(commandToolDefinition(host.dataDir, authorize));

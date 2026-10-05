@@ -7,9 +7,11 @@ import { CommandStore } from './store.js';
 /**
  * The commands every data dir gets once (`seedStarterCommands`). They become the user's own
  * commands: editable, deletable, and never restored after the seed. None takes a global
- * shortcut: one could collide with the user's other apps or their own app shortcuts, and every
- * command that reads the selection already shows on the selection toolbar. Names and
- * instructions are English, like the other content the service ships.
+ * shortcut: one could collide with the user's other apps or their own app shortcuts. None chooses
+ * a placement either: the ones that work on selected text take the selection as their input, so
+ * their default placement (`defaultCommandPlacement`) shows them on the selection toolbar, and in
+ * no conversation until the user places them there. Names and instructions are English, like the
+ * other content the service ships.
  */
 
 const SELECTION: CommandInput = {

@@ -22,9 +22,14 @@ export const LIST_MCP_TOOL = 'list_mcp_servers';
  */
 export const LOAD_SKILL_TOOL = 'load_skill';
 
-/** pi-hermes-memory tools, registered only when the run snapshot enables memory. */
-export const MEMORY_TOOLS: readonly string[] = [
-  'memory_search',
+/**
+ * The memory engine's read tools (docs/plans/2026-10-04-skill-shaped-memory.md): child runs get
+ * these and nothing else, and learning pause never blocks them.
+ */
+export const MEMORY_READ_TOOLS: readonly string[] = ['memory_search', 'memory_read'];
+
+/** The memory engine's write tools: root runs only, each call gated by the learning policy. */
+export const MEMORY_WRITE_TOOLS: readonly string[] = [
   'memory_add',
   'memory_replace',
   'memory_remove',

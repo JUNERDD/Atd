@@ -20,8 +20,9 @@ function composingKey(event: KeyboardEvent, view: EditorView): boolean {
 }
 
 /**
- * An open quick panel takes unmodified ↑/↓/Enter/Tab; false leaves the key to the editor (the
- * panel is closed or has nothing to select). Keys of an IME composition never reach the panel.
+ * An open quick panel takes unmodified ↑/↓/Enter/Tab, and ⌘↑/⌘↓ (⌘ alone), which jump between its
+ * groups as in Spotlight; false leaves the key to the editor (the panel is closed, or has nothing
+ * to select for Enter and Tab). Keys of an IME composition never reach the panel.
  */
 export function routePanelKey(
   event: KeyboardEvent,
@@ -29,17 +30,19 @@ export function routePanelKey(
   panel: QuickPanelHandle | null,
 ): boolean {
   if (!panel || composingKey(event, view)) return false;
-  if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return false;
-  if (event.key === 'ArrowUp' || event.key === 'ArrowDown')
-    return panel.move(event.key === 'ArrowUp' ? -1 : 1);
+  if (event.altKey || event.ctrlKey || event.shiftKey) return false;
+  const vertical = event.key === 'ArrowUp' || event.key === 'ArrowDown';
+  const delta = event.key === 'ArrowUp' ? -1 : 1;
+  if (event.metaKey) return vertical && panel.jump(delta);
+  if (vertical) return panel.move(delta);
   return (event.key === 'Enter' || event.key === 'Tab') && panel.select();
 }
 
 /**
  * Keys reach the composer in one order: an IME composition keeps every key; an open quick panel
- * takes ↑/↓/Enter/Tab; then the user's send and newline shortcuts, matched on physical keys like
- * the rest of the panel's shortcuts. Esc is never bound here: the quick panel's popover or the
- * panel-level handler owns it.
+ * takes ↑/↓/Enter/Tab and ⌘↑/⌘↓; then the user's send and newline shortcuts, matched on physical
+ * keys like the rest of the panel's shortcuts. Esc is never bound here: the quick panel's popover
+ * or the panel-level handler owns it.
  */
 function routeKey(event: KeyboardEvent, view: EditorView, routing: KeyRouting): boolean {
   if (composingKey(event, view)) return false;

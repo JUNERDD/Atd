@@ -86,10 +86,11 @@ struct ContentSecurityPolicyTests {
   }
 
   @Test(
-    "Forwards the HMR, dependency-version, import and URL-asset queries unchanged",
+    "Forwards the HMR, dependency-version, import, URL-asset and module-worker queries unchanged",
     arguments: [
       "t=1790680156788", "import", "v=8a1b2C3d", "import&t=12", "t=1&v=abc&import", "",
       "import&url&no-inline", "import&url&no-inline&t=12", "no-inline", "t=1790680156788&no-inline",
+      "worker_file&type=module",
     ])
   func devQueries(query: String) throws {
     let path = try RelayPath.normalize("/src/counter.js")
@@ -102,6 +103,11 @@ struct ContentSecurityPolicyTests {
       "raw", "raw??", "import&raw", "inline", "url", "import&inline", "html-proxy&index=0.js",
       "t=", "t=12a", "t", "v=", "v=../x", "v=a.b", "import=1", "worker", "direct", "t=1&&v=2",
       "t=1&", "T=1", "x-t=1", "url&no-inline", "no-inline=1", "import&url=1", "import&raw&url",
+      // A module worker's script passes only as `worker_file&type=module`, which Vite writes.
+      "worker_file", "type=module", "worker_file=1&type=module", "worker_file&type=classic",
+      "worker_file&type", "worker_file&type=", "type=module&worker_file",
+      "worker_file&worker_file&type=module", "worker_file&type=module&type=module",
+      "worker_file&type=module&raw", "worker_file&type=module&url", "worker&url",
     ])
   func devQueriesRefused(query: String) throws {
     let path = try RelayPath.normalize("/src/counter.js")

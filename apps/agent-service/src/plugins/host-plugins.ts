@@ -3,8 +3,7 @@ import { listAtdAgents } from '../atd-agents/catalog.js';
 import { readAgentHarness } from '../atd-agents/harness.js';
 import { isBuiltinSkill } from '../builtins/manifest.js';
 import { CommandStore } from '../commands/store.js';
-import { logMemoryEvents, MemoryAuthority } from '../memory/authority.js';
-import { readMemoryPause } from '../memory/pause.js';
+import { logMemoryEvents, MemoryAuthority } from '../memory/index.js';
 import { readStoredServers } from '../mcp/server-store.js';
 import { discoverAtdSkills } from '../skills/atd-skills.js';
 import { readDisabledSkillNames } from '../skills/harness.js';
@@ -20,11 +19,11 @@ export const SHARED_PLUGIN = 'shared:agents-skills';
 export const HOST_PLUGIN_IDS: readonly string[] = [CORE_PLUGIN, USER_PLUGIN, SHARED_PLUGIN];
 
 /**
- * Personal's memory item: the single Hermes authority (D5). Memory is part of the user's own
- * extensions rather than an extension of its own, listed once it holds entries; the item's switch
- * is the persisted memory pause.
+ * Personal's memory item: the agent dir's one memory authority (D5). Memory is part of the user's
+ * own extensions rather than an extension of its own, listed once it holds memories; the item's
+ * switch is the learning pause of Memory settings.
  */
-export const MEMORY_ITEM = 'hermes';
+export const MEMORY_ITEM = 'memory';
 
 /** Key of one item in `HostCatalog.descriptions`. */
 export function hostItemKey(pluginId: string, kind: PluginItemKind, name: string): string {
@@ -63,30 +62,29 @@ export async function loadHostPlugins(
   log: Logger,
 ): Promise<HostCatalog> {
   const profile = skillProfilePaths(dataDir, agentDir);
-  const [atd, shared, skillsOff, agents, harness, commands, servers, memoryPaused, memories] =
-    await Promise.all([
-      discoverAtdSkills(),
-      discoverUserAgentSkills(),
-      readDisabledSkillNames(profile),
-      listed(listAtdAgents(), { agents: [], diagnostics: [] }, 'agents', log),
-      readAgentHarness(dataDir),
-      listed(
-        CommandStore.load(dataDir).then((store) => store.list()),
-        [],
-        'commands',
-        log,
-      ),
-      listed(readStoredServers(dataDir), [], 'mcp', log),
-      listed(readMemoryPause(agentDir), false, 'memory pause', log),
-      listed(
-        MemoryAuthority.authorityFor(agentDir, logMemoryEvents(log)).then(
-          async (memory) => (await memory.list()).length,
-        ),
-        0,
-        'memory',
-        log,
-      ),
-    ]);
+  const [atd, shared, skillsOff, agents, harness, commands, servers, memory] = await Promise.all([
+    discoverAtdSkills(),
+    discoverUserAgentSkills(),
+    readDisabledSkillNames(profile),
+    listed(listAtdAgents(), { agents: [], diagnostics: [] }, 'agents', log),
+    readAgentHarness(dataDir),
+    listed(
+      CommandStore.load(dataDir).then((store) => store.list()),
+      [],
+      'commands',
+      log,
+    ),
+    listed(readStoredServers(dataDir), [], 'mcp', log),
+    listed(
+      MemoryAuthority.authorityFor(agentDir, logMemoryEvents(log)).then(async (authority) => {
+        const { units, paused } = await authority.state();
+        return { count: units.length, paused };
+      }),
+      { count: 0, paused: false },
+      'memory',
+      log,
+    ),
+  ]);
   const descriptions = new Map<string, string>();
   const titles = new Map<string, string>();
   const add = (
@@ -146,9 +144,10 @@ export async function loadHostPlugins(
           server.stdio?.command ?? server.http?.url ?? '',
         ),
       ),
-      // Listed once there is something remembered; on while learning runs (memory/pause.ts).
-      ...(memories > 0
-        ? [add(USER_PLUGIN, 'memory', MEMORY_ITEM, !memoryPaused, 'What the agent remembers.')]
+      // Listed once there is something remembered, turned-off memories included; on while
+      // learning runs (the pause in Memory settings).
+      ...(memory.count > 0
+        ? [add(USER_PLUGIN, 'memory', MEMORY_ITEM, !memory.paused, 'What the agent remembers.')]
         : []),
     ],
   };

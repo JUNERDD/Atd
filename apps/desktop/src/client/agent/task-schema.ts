@@ -1,5 +1,10 @@
 import { Type, type Static } from 'typebox';
-import { InputChipRangeSchema, MAX_FOLDERS, MAX_INPUT_CHIPS } from '@atd/agent-contracts';
+import {
+  InputChipRangeSchema,
+  MAX_FOLDERS,
+  MAX_INPUT_CHIPS,
+  TaskOriginSchema,
+} from '@atd/agent-contracts';
 import { ArgumentValuesSchema, CommandSchema, Identifier, ToolIdSchema } from './command-schema';
 import {
   FrozenModelSchema,
@@ -122,6 +127,13 @@ export const TaskSchema = Type.Object(
     ]),
     /** Frozen from the Settings default when the task is created; tasks saved before tiers existed prompt for everything. */
     permissionTier: Type.Optional(PermissionTierSchema),
+    /** Set when a user app's backend started the task; absent for the user's own tasks. */
+    origin: Type.Optional(TaskOriginSchema),
+    /**
+     * The conversation this task is a side chat of (a command launched from inside it ran here);
+     * absent for every other task. The conversation may have been deleted since.
+     */
+    sideChatOf: Type.Optional(Identifier),
   },
   { additionalProperties: false },
 );

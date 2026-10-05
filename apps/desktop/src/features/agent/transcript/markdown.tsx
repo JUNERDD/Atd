@@ -131,9 +131,11 @@ function MermaidDiagram({
 
 /**
  * A fenced block is `@pierre/diffs` from its first line: `StreamingCodeBlock` while the fence is
- * still open, appending each streamed line, then `CodeBlock` once it closes. A closed mermaid fence
- * draws as a diagram once the plugin has loaded; before that, or when it fails to load, it stays a
- * code block. A raw HTML `pre` without code keeps a plain scrolling frame.
+ * still open, appending each streamed line, then `CodeBlock` once it closes. That `CodeBlock`
+ * highlights on the main thread like the stream before it (`disableWorkerPool`), so a fence that
+ * closes never flashes plain text while a worker highlights it. A closed mermaid fence draws as a
+ * diagram once the plugin has loaded; before that, or when it fails to load, it stays a code block.
+ * A raw HTML `pre` without code keeps a plain scrolling frame.
  */
 function MarkdownPre({ children, className, node }: MarkdownProps<'pre'>) {
   const incomplete = useIsCodeFenceIncomplete();
@@ -173,6 +175,7 @@ function MarkdownPre({ children, className, node }: MarkdownProps<'pre'>) {
       contents={contents}
       language={codeLanguage(label)}
       downloadable
+      disableWorkerPool
     />
   );
 }

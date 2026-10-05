@@ -66,6 +66,8 @@ export function isLiveBlock(block: Block, request: PermissionRequest | undefined
       return false;
     case 'compaction':
       return block.status === 'running';
+    case 'retry':
+      return true;
     default: {
       const _exhaustive: never = block;
       void _exhaustive;
