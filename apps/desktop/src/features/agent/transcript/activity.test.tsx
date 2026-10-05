@@ -1,5 +1,4 @@
 import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { useTranslation } from 'react-i18next';
 import { describe, expect, it, vi } from 'vitest';
 import { TooltipProvider } from '@atd/ui/components/tooltip';
@@ -32,8 +31,7 @@ function AgentSettledTitle({ step }: { step: ViewBlock }) {
 }
 
 describe('activity folding', () => {
-  it('collapses a live group behind its running tally and expands on click', async () => {
-    const user = userEvent.setup();
+  it('shows a live group that fits its peek window under a static tally', () => {
     mount(
       makeDetail({
         status: 'running',
@@ -53,10 +51,9 @@ describe('activity folding', () => {
     );
     const group = document.querySelector('[data-activity="live"]');
     expect(group).not.toBeNull();
-    const header = screen.getByRole('button', { name: 'Show 2 steps, Thought once · Ran a tool' });
-    expect(header).toHaveAttribute('aria-expanded', 'false');
-    await user.click(header);
-    expect(header).toHaveAttribute('aria-expanded', 'true');
+    // Both steps already show in the peek window, so folding would change nothing.
+    expect(screen.queryByRole('button', { name: /^Show 2 steps/ })).toBeNull();
+    expect(screen.getByText('Thought once · Ran a tool')).toBeVisible();
     expect(screen.getByText('Read file notes.txt')).toBeVisible();
   });
 

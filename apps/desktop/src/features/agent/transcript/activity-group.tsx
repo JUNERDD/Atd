@@ -9,7 +9,7 @@ import type { AdaptedItem } from './adapter';
 import { type ActivityPhase, type ActivityPhaseKind } from './phases';
 import { phaseTitle, phaseToggleLabel } from './phase-title';
 import { PhaseHeader, PhaseRail } from './phase-rail';
-import { usePhaseMotion, visiblePhaseSteps } from './phase-reveal';
+import { phaseFoldable, usePhaseMotion, visiblePhaseSteps } from './phase-reveal';
 import type { RequestIndex } from './turns';
 
 /** What the group was for, at a glance: look, change, run, plan, think. */
@@ -39,7 +39,9 @@ function PhaseGlyph({ kind }: { kind: ActivityPhaseKind }) {
  * to the latest step. Groups start collapsed unless a step is waiting on the user, which opens
  * its group by default. The toggle always wins after that: a collapsed or expanded group stays
  * put across new steps, phase switches, and settling. A collapsed live group keeps its newest two
- * steps in view under the header; once it settles only the header stays.
+ * steps in view under the header; once it settles only the header stays. While those two are all
+ * the steps there are, folding would change nothing, so the header is a static row until a third
+ * step arrives or the group settles.
  */
 function ActivityPhaseView({
   phase,
@@ -82,6 +84,16 @@ function ActivityPhaseView({
   );
 
   const toggle = phaseToggleLabel(open, phase.steps.length, t);
+  const heading = (chevron: boolean) => (
+    <>
+      <ActivityRow.Icon chevron={chevron}>
+        <PhaseGlyph kind={phase.kind} />
+      </ActivityRow.Icon>
+      <ActivityRow.Title className="phase-title" title={title}>
+        {label}
+      </ActivityRow.Title>
+    </>
+  );
   return (
     <ActivityRow.Root
       open={open}
@@ -93,14 +105,14 @@ function ActivityPhaseView({
       className="phase-group"
     >
       <PhaseHeader show={grouped} animated={header}>
-        <ActivityRow.Trigger aria-label={`${toggle}, ${title}`} className="phase-trigger">
-          <ActivityRow.Icon>
-            <PhaseGlyph kind={phase.kind} />
-          </ActivityRow.Icon>
-          <ActivityRow.Title className="phase-title" title={title}>
-            {label}
-          </ActivityRow.Title>
-        </ActivityRow.Trigger>
+        {phaseFoldable(phase.steps.length, active) ? (
+          <ActivityRow.Trigger aria-label={`${toggle}, ${title}`} className="phase-trigger">
+            {heading(true)}
+          </ActivityRow.Trigger>
+        ) : (
+          // Nothing to fold: the trigger's row frame without the button, as rows with no detail.
+          <div className="activity-row-static">{heading(false)}</div>
+        )}
       </PhaseHeader>
       <PhaseRail
         steps={visiblePhaseSteps(phase.steps, { grouped, open, active })}
