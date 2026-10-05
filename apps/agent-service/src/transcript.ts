@@ -160,6 +160,8 @@ export interface ProjectServiceBlocksInput {
   branch: readonly ServiceBranchItem[];
   /** The assistant message streaming now, if any; live views pass their slot through. */
   partial?: AssistantMessage | undefined;
+  /** When `partial` showed its first output, from the live view's `GenerationClock`. */
+  firstTokenAt?: number | undefined;
   partials?: ReadonlyMap<string, string>;
   /** Latest streamed result rows of running `subagent` calls, by call id. */
   subagentProgress?: ReadonlyMap<string, readonly SubagentRow[]>;
@@ -281,7 +283,10 @@ export function projectServiceBlocks(input: ProjectServiceBlocksInput): ServiceB
             subagentProgress,
             codemodeProgress,
             messageEndedAt: item.endedAt ?? null,
-            usage: streaming ? undefined : messageUsage(item.message),
+            usage: streaming
+              ? undefined
+              : messageUsage(item.message, lookups.generations.get(item.message.timestamp)),
+            firstTokenAt: streaming ? input.firstTokenAt : undefined,
             outputOf,
             log: input.log,
           }),
