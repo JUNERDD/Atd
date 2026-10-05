@@ -8,13 +8,15 @@ import { IconButton } from '../../components/icon-button';
 import { ListCard } from '../../components/list-card';
 import { AppIcon } from './app-icon';
 import type { AppActions } from './use-app-actions';
+import { usePinDrag } from './use-pin-drag';
 
 /**
  * One app wherever apps are listed, as a `ListCard` like Settings' plugin cards (Figma
  * `App / App list card · Rhea`): the app's icon and name with actions at the top right, its own
  * description, and at the foot the list's meta line and a status badge. In Settings the whole
  * card opens the app's page (`onShow`) and Open at the top right opens the app; in the panel the
- * whole card opens the app and the actions are the panel's Continue editing and More (`children`).
+ * whole card opens the app, dragging it out of the window pins the app to the desktop
+ * (`onDragOut`), and the actions are the panel's (`children`).
  */
 export function AppListCard({
   app,
@@ -22,6 +24,7 @@ export function AppListCard({
   status,
   actions,
   onShow,
+  onDragOut,
   children,
 }: {
   app: AppSummary;
@@ -32,7 +35,9 @@ export function AppListCard({
   actions: AppActions;
   /** Settings: the whole card opens the app's page. */
   onShow?: () => void;
-  /** Actions at the top right in place of Open (the panel's Continue editing and More). */
+  /** The panel: a press on the card that moves hands the drag to the shell, which pins the app. */
+  onDragOut?: (() => void) | undefined;
+  /** Actions at the top right in place of Open (the panel's pin toggle, Continue editing, More). */
   children?: ReactNode;
 }) {
   const { t } = useTranslation('apps');
@@ -42,6 +47,7 @@ export function AppListCard({
   const openApp = () => {
     if (!busy) void actions.open(app.id);
   };
+  const gesture = usePinDrag(busy ? undefined : onDragOut);
   return (
     <ListCard
       media={<AppIcon appId={app.id} revision={app.revision} size="md" />}
@@ -69,7 +75,7 @@ export function AppListCard({
       open={
         onShow
           ? { label: t('settings.showLabel', { name: app.name }), onOpen: onShow }
-          : { label: t('panel.openLabel', { name: app.name }), onOpen: openApp }
+          : { label: t('panel.openLabel', { name: app.name }), onOpen: openApp, gesture }
       }
       busy={busy}
     />

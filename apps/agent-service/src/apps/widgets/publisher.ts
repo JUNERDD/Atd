@@ -176,6 +176,7 @@ export class WidgetPublisher {
         name: app.name,
         ...(app.accentColor ? { accentColor: app.accentColor } : {}),
         iconRevision: app.revision,
+        ...(app.description ? { description: app.description } : {}),
       }));
   }
 
@@ -194,8 +195,8 @@ export class WidgetPublisher {
   /**
    * Apps that declare widgets, most recently updated first (the store's order), with the
    * declarations their backend last reported. A new build keeps its predecessor's listed until its
-   * own backend reports, so placed widgets keep their snapshots through a rebuild instead of
-   * dropping out of the catalog in between.
+   * own backend reports, so placed widgets and desktop pins keep their snapshots through a rebuild
+   * instead of dropping out of the catalog in between.
    */
   private catalog(): WidgetCatalogApp[] {
     return this.deps.store

@@ -66,7 +66,11 @@ public struct WidgetTreeView: View {
         alignment: stack.alignment?.alignment ?? .leading,
         spacing: stack.spacing.map { CGFloat($0) }
       ) {
-        children(stack.children)
+        // A list is offered its room before the stack's spacers, so it shows every row the
+        // height holds and the spacers take what is left over.
+        ForEach(Array(stack.children.enumerated()), id: \.offset) { _, node in
+          child(node).layoutPriority(node.isList ? 1 : 0)
+        }
       }
       .stackChrome(padding: stack.padding, background: stack.background, accent: accent)
     case .hstack(let stack):
@@ -205,11 +209,25 @@ private struct WidgetDateView: View {
   }
 }
 
+/// A list's rows, as many whole rows as the height it is given holds: a row that does not fit
+/// entirely is left out rather than cut through, so an app can list more rows than its smallest
+/// size shows and a taller widget or pin shows more of them. With room for every row it is the
+/// same stack it always was.
 private struct WidgetListView: View {
   let rows: [WidgetListRow]
   @Environment(\.widgetAccentColor) private var accent
 
   var body: some View {
+    ViewThatFits(in: .vertical) {
+      ForEach(Array(stride(from: rows.count, to: 0, by: -1)), id: \.self) { count in
+        stack(rows.prefix(count))
+      }
+      // Not even one row fits.
+      Color.clear.frame(height: 0)
+    }
+  }
+
+  private func stack(_ rows: ArraySlice<WidgetListRow>) -> some View {
     VStack(alignment: .leading, spacing: 6) {
       ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
         HStack(spacing: 8) {
@@ -248,5 +266,16 @@ private struct WidgetChartView: View {
     }
     .foregroundStyle(chart.color?.color(accent: accent) ?? accent)
     .chartYAxis(.hidden)
+  }
+}
+
+extension WidgetNode {
+  /// A list, or a link around one: what a vertical stack offers its room to first.
+  fileprivate var isList: Bool {
+    switch self {
+    case .list: true
+    case .link(let link): link.child.isList
+    default: false
+    }
   }
 }

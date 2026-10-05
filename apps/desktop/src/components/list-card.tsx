@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { ComponentProps, ReactNode } from 'react';
 import {
   Card,
   CardAction,
@@ -25,6 +25,12 @@ export function ListCardGrid({
   return <ul className={cn('list-card-grid', className)}>{children}</ul>;
 }
 
+/** Pointer handlers a list adds to the button that opens a whole card, such as a drag out. */
+export type ListCardOpenGesture = Pick<
+  ComponentProps<'button'>,
+  'onPointerDown' | 'onPointerMove' | 'onPointerUp' | 'onPointerCancel' | 'onClickCapture'
+>;
+
 /**
  * One item of an overview as a card (`ListCardGrid`): Settings › Extensions lists plugins with it
  * and both app lists list apps (Figma `App / Plugin card · Rhea`, `App / App list card · Rhea`).
@@ -32,7 +38,7 @@ export function ListCardGrid({
  * centered on the media; then the description, clamped to two lines with room for two, so cards
  * keep one height; and at the foot the meta line, which truncates before the badges after it. With
  * `open` the whole card opens a page: its button fills the card beneath the content and paints
- * hover and focus (open-row.css).
+ * hover and focus (open-row.css), and takes the list's `gesture` handlers.
  */
 export function ListCard({
   media,
@@ -65,7 +71,9 @@ export function ListCard({
   /** States after the meta line. */
   badges?: ReactNode;
   /** The page the whole card opens: its button's accessible name and handler. */
-  open?: { label: string; onOpen: () => void } | undefined;
+  open?:
+    | { label: string; onOpen: () => void; gesture?: ListCardOpenGesture | undefined }
+    | undefined;
   /** A write for this item is running. */
   busy?: boolean | undefined;
 }) {
@@ -77,6 +85,7 @@ export function ListCard({
       >
         {open && (
           <button
+            {...open.gesture}
             type="button"
             className="open-row-button"
             aria-label={open.label}

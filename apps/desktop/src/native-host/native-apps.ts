@@ -12,7 +12,7 @@ import {
 } from '@atd/agent-client';
 import { Value } from 'typebox/value';
 import { Identifier } from '../client/agent/command-schema';
-import type { AppsBridge } from '../client/apps-contract';
+import type { AppsBridge, DesktopPin } from '../client/apps-contract';
 import type { NativeBridge } from '../native-bridge/client';
 import type { NativeConnection } from './native-connection';
 import type { WindowMessages } from './window-messages';
@@ -84,6 +84,27 @@ function followOpenApps(connection: NativeConnection, native: NativeBridge) {
 }
 
 /**
+ * The desktop pins as the shell last reported them (`userApp.pins`, a state it replays to every
+ * page that becomes ready). Subscribed when the bridge is made, before the host's first await, so
+ * the replay is not missed.
+ */
+function followPins(native: NativeBridge) {
+  let pins: readonly DesktopPin[] = [];
+  const listeners = new Set<(pins: readonly DesktopPin[]) => void>();
+  native.on('userApp.pins', (state) => {
+    pins = state.pins;
+    for (const listener of listeners) listener(pins);
+  });
+  return {
+    current: () => pins,
+    subscribe: (listener: (pins: readonly DesktopPin[]) => void) => {
+      listeners.add(listener);
+      return () => void listeners.delete(listener);
+    },
+  };
+}
+
+/**
  * The apps bridge over the relay and the shell. Only the panel reloads open app windows, so one
  * window does it however many are open.
  */
@@ -94,6 +115,7 @@ export function nativeApps(
   surface: 'panel' | 'settings' | 'onboarding',
 ): AppsBridge {
   if (surface === 'panel') followOpenApps(connection, native);
+  const pins = followPins(native);
   const options = () => connection.options();
   return {
     list: () => listApps(options()),
@@ -117,6 +139,12 @@ export function nativeApps(
       const { pngBase64 } = await native.call('userApp.widgetPreview', { appId, widgetId, family });
       return `data:image/png;base64,${pngBase64}`;
     },
+    pins: pins.current,
+    onPins: pins.subscribe,
+    pin: async (appId, widget) =>
+      void (await native.call('userApp.pin', { appId, widget: widget ?? null })),
+    unpin: async (appId) => void (await native.call('userApp.unpin', { appId })),
+    startPinDrag: (appId) => native.post('userApp.pinDrag', { appId }),
     iconUrl: (appId, revision) => appIconUrl(options(), appId, revision),
     showTask: async (taskId) => {
       messages.post({ type: 'openTask', taskId });

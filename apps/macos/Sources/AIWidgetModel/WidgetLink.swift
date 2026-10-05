@@ -76,12 +76,15 @@ public enum WidgetLink {
 }
 
 /// WidgetKit names the widget kinds the extension declares; the shell reloads them by these
-/// names and reports the instances of `app`, the only kind the service renders for.
+/// names and reports the instances of `app`, the only WidgetKit kind the service renders for.
 public enum WidgetKinds {
   /// "App Widget": each instance shows one widget a user app declares.
   public static let app = "AtdAppWidget"
   /// "My Apps": a launcher of the user's apps, which needs no renders, only the shell's files.
   public static let launcher = "AtdLauncherWidget"
+  /// Not a WidgetKit kind: the shell's own desktop pins, reported beside the App Widget instances
+  /// with the app and widget they show, so the service renders exactly those.
+  public static let desktopPin = "AtdDesktopPin"
 }
 
 /// What a widget instance shows: the id of the configuration's entity, `<appId>/<widgetId>`.

@@ -1,5 +1,15 @@
 import { useState } from 'react';
-import { AppWindow, Ellipsis, History, Pencil, Sparkles, SquarePen, Trash2 } from 'lucide-react';
+import {
+  AppWindow,
+  Ellipsis,
+  History,
+  Pencil,
+  Pin,
+  PinOff,
+  Sparkles,
+  SquarePen,
+  Trash2,
+} from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { AppSummary } from '@atd/agent-contracts';
 import { Button } from '@atd/ui/components/button';
@@ -26,13 +36,16 @@ import { AppConfirmDialog, RenameAppDialog } from './app-dialogs';
 import { AppListCard } from './app-list-card';
 import { useAppActions } from './use-app-actions';
 import { useAppConfirmations } from './use-app-confirmations';
+import { useAppPins } from './use-app-pins';
 import { useApps } from './use-apps';
 
 /**
  * The panel's My apps view: every app the agent built, most recently updated first, as cards like
- * Settings' (`ListCardGrid`), each with Open, Continue editing (the conversation that builds the
- * app) and More (Figma `App / App actions menu`: Rename, Versions in Settings, Delete). An empty
- * list offers Create app, which starts the same seeded conversation as the new-task entry.
+ * Settings' (`ListCardGrid`). A click on a card opens the app, and dragging the card out of the
+ * panel pins it to the desktop; its actions are the pin toggle (Pin to Desktop or Remove from
+ * Desktop), Continue editing (the conversation that builds the app) and More (Figma
+ * `App / App actions menu`: Rename, Versions in Settings, Delete). An empty list offers Create
+ * app, which starts the same seeded conversation as the new-task entry.
  */
 export function AppsView({
   onCreate,
@@ -45,6 +58,7 @@ export function AppsView({
   const { apps, error, retry } = useApps();
   const actions = useAppActions();
   const confirmations = useAppConfirmations(actions);
+  const pins = useAppPins();
   const [renaming, setRenaming] = useState<AppSummary | null>(null);
   // Cards are dated against when the view opened, so they hold still while it is browsed.
   const [now] = useState(() => new Date());
@@ -56,6 +70,7 @@ export function AppsView({
             <ListCardGrid className="apps-view-grid">
               {apps.map((app) => {
                 const busy = actions.busy.has(app.id);
+                const pinned = pins.pinned.has(app.id);
                 const date = rowDate(new Date(app.updatedAt), now, i18n.language, false);
                 return (
                   <AppListCard
@@ -63,7 +78,20 @@ export function AppsView({
                     app={app}
                     actions={actions}
                     meta={t('panel.rowMeta', { date, version: app.currentVersion })}
+                    onDragOut={() => pins.dragOut(app)}
                   >
+                    <IconButton
+                      label={pinned ? t('pin.remove') : t('pin.addHint')}
+                      aria-label={
+                        pinned
+                          ? t('pin.removeLabel', { name: app.name })
+                          : t('pin.addLabel', { name: app.name })
+                      }
+                      aria-disabled={pins.pending.has(app.id) || undefined}
+                      onClick={() => void pins.toggle(app)}
+                    >
+                      {pinned ? <PinOff /> : <Pin />}
+                    </IconButton>
                     <IconButton
                       label={t('panel.edit')}
                       aria-label={t('panel.editLabel', { name: app.name })}

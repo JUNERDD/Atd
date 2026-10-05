@@ -95,3 +95,61 @@ public struct UserAppStateEvent: Codable, Equatable, Sendable {
     case version
   }
 }
+
+/// Payload of the `userApp.pins` event.
+public struct UserAppPinsEvent: Codable, Equatable, Sendable {
+  public let pins: [Pin]
+
+  public init(pins: [Pin]) {
+    self.pins = pins
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    pins = try container.array(.pins, of: Pin.self, maxItems: 24)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case pins
+  }
+
+  public struct Pin: Codable, Equatable, Sendable {
+    public let appId: String
+    public let widgetId: String?
+    public let family: Family?
+
+    public init(appId: String, widgetId: String?, family: Family?) {
+      self.appId = appId
+      self.widgetId = widgetId
+      self.family = family
+    }
+
+    public init(from decoder: any Decoder) throws {
+      let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+      appId = try container.string(.appId, pattern: "^app-[a-z0-9]{10}$")
+      widgetId = try container.nullable(.widgetId) {
+        try container.string($0, pattern: "^[a-z][a-z0-9-]{0,31}$")
+      }
+      family = try container.nullable(.family) { try container.value($0, Family.self) }
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+      var container = encoder.container(keyedBy: CodingKeys.self)
+      try container.encode(appId, forKey: .appId)
+      try container.encode(widgetId, forKey: .widgetId)
+      try container.encode(family, forKey: .family)
+    }
+
+    private enum CodingKeys: String, CodingKey, CaseIterable {
+      case appId
+      case widgetId
+      case family
+    }
+
+    public enum Family: String, Codable, Equatable, Sendable {
+      case systemSmall
+      case systemMedium
+      case systemLarge
+    }
+  }
+}

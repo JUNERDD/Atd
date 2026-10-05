@@ -85,12 +85,16 @@ public struct WidgetLauncherApp: Codable, Equatable, Sendable {
   public let name: String
   public let accentColor: String?
   public let iconRevision: Int
+  public let description: String?
 
-  public init(appId: String, name: String, accentColor: String?, iconRevision: Int) {
+  public init(
+    appId: String, name: String, accentColor: String?, iconRevision: Int, description: String?
+  ) {
     self.appId = appId
     self.name = name
     self.accentColor = accentColor
     self.iconRevision = iconRevision
+    self.description = description
   }
 
   public init(from decoder: any Decoder) throws {
@@ -101,6 +105,7 @@ public struct WidgetLauncherApp: Codable, Equatable, Sendable {
       try container.string($0, pattern: "^#[0-9A-Fa-f]{6}$")
     }
     iconRevision = try container.integer(.iconRevision, minimum: 1)
+    description = try container.optional(.description) { try container.string($0, maxLength: 500) }
   }
 
   public func encode(to encoder: any Encoder) throws {
@@ -109,6 +114,7 @@ public struct WidgetLauncherApp: Codable, Equatable, Sendable {
     try container.encode(name, forKey: .name)
     try container.encodeIfPresent(accentColor, forKey: .accentColor)
     try container.encode(iconRevision, forKey: .iconRevision)
+    try container.encodeIfPresent(description, forKey: .description)
   }
 
   private enum CodingKeys: String, CodingKey, CaseIterable {
@@ -116,6 +122,7 @@ public struct WidgetLauncherApp: Codable, Equatable, Sendable {
     case name
     case accentColor
     case iconRevision
+    case description
   }
 }
 

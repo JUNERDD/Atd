@@ -26,6 +26,8 @@
       "userApp.close",
       "userApp.widgetPreview",
       "userApp.clearData",
+      "userApp.pin",
+      "userApp.unpin",
       "shortcuts.set",
       "capture",
       "clipboard.read",
@@ -55,7 +57,8 @@
       "socket.open",
       "socket.send",
       "update.install",
-      "socket.close"
+      "socket.close",
+      "userApp.pinDrag"
     ],
     "events": [
       "window.active",
@@ -73,7 +76,8 @@
       "screenRecording.trust",
       "update.state",
       "socket.frames",
-      "userApp.state"
+      "userApp.state",
+      "userApp.pins"
     ]
   },
   "anyOf": [
@@ -533,6 +537,100 @@
                 },
                 "forget": {
                   "type": "boolean"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
+              "const": "userApp.pin"
+            },
+            "params": {
+              "type": "object",
+              "required": ["appId", "widget"],
+              "properties": {
+                "appId": {
+                  "type": "string",
+                  "pattern": "^app-[a-z0-9]{10}$"
+                },
+                "widget": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "required": ["widgetId", "family"],
+                      "properties": {
+                        "widgetId": {
+                          "type": "string",
+                          "pattern": "^[a-z][a-z0-9-]{0,31}$"
+                        },
+                        "family": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "const": "systemSmall"
+                            },
+                            {
+                              "type": "string",
+                              "const": "systemMedium"
+                            },
+                            {
+                              "type": "string",
+                              "const": "systemLarge"
+                            }
+                          ]
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
+              "const": "userApp.unpin"
+            },
+            "params": {
+              "type": "object",
+              "required": ["appId"],
+              "properties": {
+                "appId": {
+                  "type": "string",
+                  "pattern": "^app-[a-z0-9]{10}$"
                 }
               },
               "additionalProperties": false
@@ -1575,6 +1673,32 @@
             }
           },
           "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "post"
+            },
+            "method": {
+              "type": "string",
+              "const": "userApp.pinDrag"
+            },
+            "params": {
+              "type": "object",
+              "required": ["appId"],
+              "properties": {
+                "appId": {
+                  "type": "string",
+                  "pattern": "^app-[a-z0-9]{10}$"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
         }
       ]
     },
@@ -2205,6 +2329,77 @@
             }
           },
           "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "event", "payload"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "event"
+            },
+            "event": {
+              "type": "string",
+              "const": "userApp.pins"
+            },
+            "payload": {
+              "type": "object",
+              "required": ["pins"],
+              "properties": {
+                "pins": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["appId", "widgetId", "family"],
+                    "properties": {
+                      "appId": {
+                        "type": "string",
+                        "pattern": "^app-[a-z0-9]{10}$"
+                      },
+                      "widgetId": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "pattern": "^[a-z][a-z0-9-]{0,31}$"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "family": {
+                        "anyOf": [
+                          {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "const": "systemSmall"
+                              },
+                              {
+                                "type": "string",
+                                "const": "systemMedium"
+                              },
+                              {
+                                "type": "string",
+                                "const": "systemLarge"
+                              }
+                            ]
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "maxItems": 24
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
         }
       ]
     },
@@ -2632,6 +2827,72 @@
       "additionalProperties": false
     },
     "UserAppClearDataResult": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "UserAppPinParams": {
+      "type": "object",
+      "required": ["appId", "widget"],
+      "properties": {
+        "appId": {
+          "type": "string",
+          "pattern": "^app-[a-z0-9]{10}$"
+        },
+        "widget": {
+          "anyOf": [
+            {
+              "type": "object",
+              "required": ["widgetId", "family"],
+              "properties": {
+                "widgetId": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9-]{0,31}$"
+                },
+                "family": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "const": "systemSmall"
+                    },
+                    {
+                      "type": "string",
+                      "const": "systemMedium"
+                    },
+                    {
+                      "type": "string",
+                      "const": "systemLarge"
+                    }
+                  ]
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "UserAppPinResult": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "UserAppUnpinParams": {
+      "type": "object",
+      "required": ["appId"],
+      "properties": {
+        "appId": {
+          "type": "string",
+          "pattern": "^app-[a-z0-9]{10}$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "UserAppUnpinResult": {
       "type": "object",
       "properties": {},
       "additionalProperties": false
@@ -3748,6 +4009,17 @@
       },
       "additionalProperties": false
     },
+    "UserAppPinDragPost": {
+      "type": "object",
+      "required": ["appId"],
+      "properties": {
+        "appId": {
+          "type": "string",
+          "pattern": "^app-[a-z0-9]{10}$"
+        }
+      },
+      "additionalProperties": false
+    },
     "WindowActiveEvent": {
       "type": "object",
       "required": ["active"],
@@ -4095,6 +4367,62 @@
               "type": "null"
             }
           ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "UserAppPinsEvent": {
+      "type": "object",
+      "required": ["pins"],
+      "properties": {
+        "pins": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["appId", "widgetId", "family"],
+            "properties": {
+              "appId": {
+                "type": "string",
+                "pattern": "^app-[a-z0-9]{10}$"
+              },
+              "widgetId": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9-]{0,31}$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "family": {
+                "anyOf": [
+                  {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "const": "systemSmall"
+                      },
+                      {
+                        "type": "string",
+                        "const": "systemMedium"
+                      },
+                      {
+                        "type": "string",
+                        "const": "systemLarge"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "additionalProperties": false
+          },
+          "maxItems": 24
         }
       },
       "additionalProperties": false

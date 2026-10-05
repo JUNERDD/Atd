@@ -2017,6 +2017,204 @@
         }
       }
     },
+    "pin.accessibility.label" : {
+      "comment" : "VoiceOver label of a desktop pin that shows a widget; %1$@ is the app name, %2$@ the widget title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@, %2$@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@，%2$@"
+          }
+        }
+      }
+    },
+    "pin.failed" : {
+      "comment" : "Error the panel shows when an app could not be pinned to the desktop",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The app could not be pinned to the desktop."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法将这个应用固定到桌面。"
+          }
+        }
+      }
+    },
+    "pin.limit" : {
+      "comment" : "Error the panel shows when pinning one more app would exceed the limit; %lld is the limit",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You can pin up to %lld apps to the desktop."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "最多可将 %lld 个应用固定到桌面。"
+          }
+        }
+      }
+    },
+    "pin.menu.appIcon" : {
+      "comment" : "Choice in a desktop pin's Widget submenu that shows the app's icon and name instead of a widget",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "App Icon"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "应用图标"
+          }
+        }
+      }
+    },
+    "pin.menu.open" : {
+      "comment" : "Context menu item of a desktop pin that opens its app; %@ is the app name",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open “%@”"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "打开“%@”"
+          }
+        }
+      }
+    },
+    "pin.menu.remove" : {
+      "comment" : "Context menu item and accessibility action that removes a desktop pin",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove from Desktop"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "从桌面移除"
+          }
+        }
+      }
+    },
+    "pin.menu.widget" : {
+      "comment" : "Context menu submenu of a desktop pin that chooses which of the app's widgets it shows",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Widget"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "小组件"
+          }
+        }
+      }
+    },
+    "pin.size.large" : {
+      "comment" : "Radio item in a desktop pin's context menu that shows the pin's widget at its large size",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Large"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "大"
+          }
+        }
+      }
+    },
+    "pin.size.medium" : {
+      "comment" : "Radio item in a desktop pin's context menu that shows the pin, a widget or the app's icon tile, at its medium size",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Medium"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "中"
+          }
+        }
+      }
+    },
+    "pin.size.small" : {
+      "comment" : "Radio item in a desktop pin's context menu that shows the pin, a widget or the app's icon tile, at its small size",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Small"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "小"
+          }
+        }
+      }
+    },
+    "pin.unreadable" : {
+      "comment" : "Message a desktop pin shows when its widget content cannot be read",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This widget can’t be shown."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法显示这个小组件。"
+          }
+        }
+      }
+    },
     "quit.confirm" : {
       "comment" : "Quit confirmation button",
       "extractionState" : "manual",

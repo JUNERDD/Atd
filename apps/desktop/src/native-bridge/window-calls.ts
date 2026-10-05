@@ -1,13 +1,40 @@
 /**
  * The native bridge's window and app presence calls (`NativeWindowCalls`, part of `NativeCalls` in
- * `calls.ts`): showing and pinning the panel, the shell's app preferences, and opening the settings,
- * welcome guide and user app windows. Loaded by the export script with Node's type stripping, so it imports
- * nothing but TypeBox and its sibling contract files (by their `.ts` names) and uses only erasable
- * TypeScript syntax.
+ * `calls.ts`): showing and pinning the panel, the shell's app preferences, opening the settings,
+ * welcome guide and user app windows, and pinning user apps to the desktop. Loaded by the export
+ * script with Node's type stripping, so it imports nothing but TypeBox and its sibling contract
+ * files (by their `.ts` names) and uses only erasable TypeScript syntax.
  */
 import { Type, type TSchema } from 'typebox';
 import { Empty } from './primitives.ts';
 import { UserAppIdSchema } from './user-app-contract.ts';
+
+/** The widget families a desktop pin draws (agent-contracts `WidgetFamilySchema`). */
+const PinFamily = Type.Union([
+  Type.Literal('systemSmall'),
+  Type.Literal('systemMedium'),
+  Type.Literal('systemLarge'),
+]);
+/** Mirrors agent-contracts `WidgetIdSchema` (this file cannot import the contracts package). */
+const PinWidgetId = Type.String({ pattern: '^[a-z][a-z0-9-]{0,31}$' });
+
+/** The most apps the desktop holds pins of; the shell refuses a pin beyond it. */
+export const MAX_DESKTOP_PINS = 24;
+
+/**
+ * One app's desktop pin as the shell shows it: the declared widget and the family it draws. A
+ * null `widgetId` is the app's icon tile, small (icon and name) when `family` is null or
+ * `systemSmall`, medium (icon, name and description) when it is `systemMedium`. An app has at
+ * most one pin.
+ */
+export const DesktopPinSchema = Type.Object(
+  {
+    appId: UserAppIdSchema,
+    widgetId: Type.Union([PinWidgetId, Type.Null()]),
+    family: Type.Union([PinFamily, Type.Null()]),
+  },
+  { additionalProperties: false },
+);
 
 export const NativeWindowCalls = {
   /** Shows and focuses the panel. */
@@ -93,12 +120,6 @@ export const NativeWindowCalls = {
     result: Empty,
   },
   /**
-   * Erases the app's web storage (its `WKWebsiteDataStore`): closes its window, releases the web
-   * view, then removes the store, retrying while WebKit reports it in use. With `forget`, the app
-   * is being deleted, so the shell also drops its content rule list and remembered window frame.
-   * Pairs with the service's data reset (`POST /v1/apps/:appId/clear-data`) or app deletion.
-   */
-  /**
    * Renders the app widget's latest synced snapshot for one family with the same SwiftUI renderer
    * the widget extension uses, so the renderer can preview widgets without the system gallery.
    * Rejects when the shell has no snapshot for that widget and family.
@@ -118,11 +139,47 @@ export const NativeWindowCalls = {
     ),
     result: Type.Object({ pngBase64: Type.String() }, { additionalProperties: false }),
   },
+  /**
+   * Erases the app's web storage (its `WKWebsiteDataStore`): closes its window, releases the web
+   * view, then removes the store, retrying while WebKit reports it in use. With `forget`, the app
+   * is being deleted, so the shell also drops its content rule list and remembered window frame,
+   * and removes its desktop pin. Pairs with the service's data reset
+   * (`POST /v1/apps/:appId/clear-data`) or app deletion.
+   */
   'userApp.clearData': {
     params: Type.Object(
       { appId: UserAppIdSchema, forget: Type.Boolean() },
       { additionalProperties: false },
     ),
+    result: Empty,
+  },
+  /**
+   * Pins the app to the desktop, in the first free place on the display of the window that asked,
+   * or changes what its pin shows. `widget` names one of the app's declared widgets and one of its
+   * families; null keeps what a pinned app shows, and gives a new pin the app's first widget in its
+   * smallest family, or the app's tile when it declares none. Rejects when the app does not exist,
+   * the widget or family is not declared, or `MAX_DESKTOP_PINS` apps are pinned already. The new
+   * list arrives as `userApp.pins`.
+   */
+  'userApp.pin': {
+    params: Type.Object(
+      {
+        appId: UserAppIdSchema,
+        widget: Type.Union([
+          Type.Object(
+            { widgetId: PinWidgetId, family: PinFamily },
+            { additionalProperties: false },
+          ),
+          Type.Null(),
+        ]),
+      },
+      { additionalProperties: false },
+    ),
+    result: Empty,
+  },
+  /** Removes the app's desktop pin; a no-op when it has none. */
+  'userApp.unpin': {
+    params: Type.Object({ appId: UserAppIdSchema }, { additionalProperties: false }),
     result: Empty,
   },
 } satisfies Record<string, { params: TSchema; result: TSchema }>;

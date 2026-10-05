@@ -16,6 +16,7 @@ import { NativeCalls } from './calls.ts';
 import { ImportFailureSchema, NativeFileRefSchema, NativeFolderRefSchema } from './file-calls.ts';
 import { Empty, Text } from './primitives.ts';
 import { UserAppIdSchema } from './user-app-contract.ts';
+import { DesktopPinSchema, MAX_DESKTOP_PINS } from './window-calls.ts';
 
 /** `WKScriptMessageHandler` name the page posts to. */
 export const MESSAGE_HANDLER = 'aiNative';
@@ -114,6 +115,14 @@ export const NativePosts = {
     },
     { additionalProperties: false },
   ),
+  /**
+   * Drags the app's pin out of the panel: posted once a press on the app's card moved past the
+   * drag threshold, with the button still down. The shell starts a native drag from that press
+   * with the pin as its image; a drop on the desktop pins the app there or moves its pin, and
+   * Escape or a drop anywhere else ends it without a change. The shell takes it only from the panel
+   * and the settings window, while the left button is down after a press under two seconds old.
+   */
+  'userApp.pinDrag': Type.Object({ appId: UserAppIdSchema }, { additionalProperties: false }),
 } satisfies Record<string, TSchema>;
 
 /** One socket frame; Swift batches them per run-loop turn, in order. */
@@ -248,6 +257,15 @@ export const NativeEvents = {
       open: Type.Boolean(),
       version: Type.Union([Type.Integer({ minimum: 1 }), Type.Null()]),
     },
+    { additionalProperties: false },
+  ),
+  /**
+   * The apps pinned to the desktop and what each pin shows, oldest pin first: the whole list, sent
+   * to every page on each change and replayed when a page becomes ready, including a settings
+   * window opened later.
+   */
+  'userApp.pins': Type.Object(
+    { pins: Type.Array(DesktopPinSchema, { maxItems: MAX_DESKTOP_PINS }) },
     { additionalProperties: false },
   ),
 } satisfies Record<string, TSchema>;

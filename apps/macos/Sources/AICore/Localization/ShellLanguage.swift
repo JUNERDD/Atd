@@ -97,6 +97,21 @@ public enum ShellStringKey: String, CaseIterable, Sendable {
   case userAppFilesPickTitle = "userApp.files.pick.title"
   case userAppFilesTooLarge = "userApp.files.tooLarge"
 
+  /// `%@` the app's name.
+  case pinMenuOpen = "pin.menu.open"
+  case pinMenuWidget = "pin.menu.widget"
+  case pinMenuAppIcon = "pin.menu.appIcon"
+  case pinSizeSmall = "pin.size.small"
+  case pinSizeMedium = "pin.size.medium"
+  case pinSizeLarge = "pin.size.large"
+  case pinMenuRemove = "pin.menu.remove"
+  case pinUnreadable = "pin.unreadable"
+  case pinFailed = "pin.failed"
+  /// `%lld` the most apps the desktop holds pins of.
+  case pinLimit = "pin.limit"
+  /// `%1$@` the app's name, `%2$@` the widget's title.
+  case pinAccessibilityLabel = "pin.accessibility.label"
+
   case selectionToolbar = "selectionToolbar"
   case selectionToolbarAsk = "selectionToolbar.ask"
   case selectionToolbarAskTooltip = "selectionToolbar.ask.tooltip"

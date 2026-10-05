@@ -7,7 +7,8 @@ import Foundation
 /// a listed app finds its icon and the list never names an icon that was just removed.
 ///
 /// An icon is SVG an agent wrote. The shell copies its bytes and never parses or draws them; the
-/// sandboxed extension does. A copy is made only when the app's icon revision (its build revision,
+/// sandboxed extension does, and a desktop pin's tile has it drawn out of process
+/// (``PinIconRasterizer``). A copy is made only when the app's icon revision (its build revision,
 /// which an in-place build of the current version changes too) differs from the one copied
 /// before. The source is the build's `icon.svg` beside its `web/` root (the service's
 /// `versions/.rev-<k>/` layout); it must resolve inside that directory (``StaticFileResolver``
@@ -65,7 +66,7 @@ nonisolated enum WidgetLauncherWriter {
 
   /// The build's `icon.svg` as the launcher may use it, or nil when the build has none or it fails
   /// the byte checks. Throws when the file is there but cannot be read.
-  private static func icon(of runtime: UserAppRuntime) throws -> Data? {
+  static func icon(of runtime: UserAppRuntime) throws -> Data? {
     let version = runtime.webRootURL.deletingLastPathComponent()
     guard let path = try? RelayPath.normalize("/icon.svg"),
       let file = StaticFileResolver(root: version).resolve(path)

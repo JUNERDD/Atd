@@ -29,6 +29,16 @@
     "delete": "删除",
     "rowMeta": "更新于 {{date}} · v{{version}}"
   },
+  "pin": {
+    "addHint": "固定到桌面（也可拖动卡片）",
+    "remove": "从桌面移除",
+    "addLabel": "将“{{name}}”固定到桌面",
+    "removeLabel": "将“{{name}}”从桌面移除",
+    "added": "已将“{{name}}”固定到桌面",
+    "removed": "已将“{{name}}”从桌面移除",
+    "dragHint": "下次可以直接把应用卡片拖到桌面来固定。",
+    "loginHint": "固定的组件仅在 Atd 运行时显示；开启“登录时打开”后，重启也会保留。"
+  },
   "origin": {
     "label": "由 {{name}} 发起",
     "unknown": "应用"

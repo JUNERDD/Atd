@@ -3,7 +3,9 @@ import ScreenCaptureKit
 
 /// Freezes displays with ScreenCaptureKit (decision D6): one screenshot per display with the
 /// app's own windows filtered out, so neither the panel, the settings window nor the overlays
-/// are ever in the image. Displays are taken one at a time, the one under the cursor first:
+/// are ever in the image. Desktop pins are the exception: they belong to the desktop like the
+/// system's widgets, which the image shows. Displays are taken one at a time, the one under the
+/// cursor first:
 /// `replayd` serialises concurrent requests and charges each queued one, so a sequential run
 /// gets the cursor's display interactive soonest.
 struct DisplayFreezer {
@@ -14,6 +16,8 @@ struct DisplayFreezer {
   }
 
   private let excluded: [SCRunningApplication]
+  /// The visible desktop pins, kept although their app is excluded.
+  private let pins: [SCWindow]
   /// Displays in capture order: the one under the cursor first.
   let targets: [Target]
 
@@ -31,8 +35,11 @@ struct DisplayFreezer {
         Target(display: display, screen: $0)
       }
     }
+    let pinNumbers = Set(
+      NSApp.windows.filter { $0 is DesktopPinWindow && $0.isVisible }.map(\.windowNumber))
     return DisplayFreezer(
       excluded: content.applications.filter { $0.processID == ownPID },
+      pins: content.windows.filter { pinNumbers.contains(Int($0.windowID)) },
       targets: targets.filter { $0.display.displayID == cursorID }
         + targets.filter { $0.display.displayID != cursorID })
   }
@@ -41,7 +48,7 @@ struct DisplayFreezer {
   /// colour space (SDR), which is also what the crop exports.
   func freeze(_ target: Target) async throws -> FrozenDisplay? {
     let filter = SCContentFilter(
-      display: target.display, excludingApplications: excluded, exceptingWindows: [])
+      display: target.display, excludingApplications: excluded, exceptingWindows: pins)
     let scale = CGFloat(filter.pointPixelScale)
     let configuration = SCScreenshotConfiguration()
     configuration.width = Int((filter.contentRect.width * scale).rounded())
