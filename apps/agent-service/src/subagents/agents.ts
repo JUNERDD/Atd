@@ -17,8 +17,10 @@ import { CHILD_WEB_TOOLS } from './intersection.js';
  * that ceiling, so they never widen it. All pin context, async default, depth
  * and extension isolation. A Settings permission override (atd-agents/harness.ts)
  * replaces an agent's tools and approval from the next run (withPermissions).
- * A run that references `~/.atd/agents` specialists registers those too
- * (atdRuntimeAgent), pinned the same way.
+ * Every run also registers every enabled catalog subagent, Personal
+ * (`~/.atd/agents`, atdRuntimeAgent) and plugin (pluginRuntimeAgent), through
+ * atd-agents/run-agents.ts, and a parent's task agents (task-agents.ts) register
+ * during its task; all are pinned the same way (pinnedRuntimeDefinition).
  */
 
 export interface RuntimeAgentDefinition {
@@ -33,6 +35,8 @@ export interface RuntimeAgentDefinition {
   defaultContext: 'fresh';
   defaultAsync: boolean;
   maxSubagentDepth: number;
+  /** pi-subagents' acceptance inference input; see `pinnedRuntimeDefinition`. */
+  acceptanceRole: 'read-only';
   thinking: string;
 }
 
@@ -46,14 +50,50 @@ export interface RuntimeAgent {
   approval: SubagentApproval | null;
 }
 
+/** What one runtime agent brings; `pinnedRuntimeDefinition` adds the service pins. */
+interface RuntimeAgentFields {
+  description: string;
+  systemPrompt: string;
+  /** Child tool allowlist; absent lets the service ceiling decide. */
+  tools?: string[];
+  thinking: string;
+}
+
 /**
- * Namespace for referenced `~/.atd/agents` specialists. pi-subagents refuses
+ * A runtime agent definition carrying the service pins every agent has: fresh context, foreground,
+ * depth 1, no extensions, and no project, global or skill context. pi-subagents receives exactly
+ * these fields, so nothing a source file or a parent agent supplies can add another (a model, a
+ * runner, extensions, permissions…). Without an acceptance role, pi-subagents appends an
+ * "Acceptance Contract" to every child's task that asks for a code-change acceptance report; it
+ * enforces nothing and contradicts roles that are not code work. Its documented `read-only` role
+ * makes that inference `none` for every launch shape and changes no tool access, so children
+ * answer in the format their role and task ask for.
+ */
+export function pinnedRuntimeDefinition(fields: RuntimeAgentFields): RuntimeAgentDefinition {
+  return {
+    description: fields.description,
+    systemPrompt: fields.systemPrompt,
+    ...(fields.tools ? { tools: fields.tools } : {}),
+    extensions: [],
+    inheritProjectContext: false,
+    inheritGlobalContext: false,
+    inheritSkills: false,
+    defaultContext: 'fresh',
+    defaultAsync: false,
+    maxSubagentDepth: 1,
+    acceptanceRole: 'read-only',
+    thinking: fields.thinking,
+  };
+}
+
+/**
+ * Namespace for `~/.atd/agents` specialists. pi-subagents refuses
  * runtime names that collide with its builtins (`reviewer`, `scout`, …),
  * and the ceiling must never admit a builtin, so atd agents never register
  * under their bare names; `atd.` also keeps them apart from `service.*`.
  */
 const ATD_AGENT_PREFIX = 'atd.';
-/** Namespace for referenced plugin subagents; see pluginRuntimeName. */
+/** Namespace for plugin subagents; see pluginRuntimeName. */
 const PLUGIN_AGENT_PREFIX = 'plugin.';
 /** pi-subagents' limit on runtime agent names. */
 const MAX_RUNTIME_NAME = 128;
@@ -67,56 +107,37 @@ const READ_ONLY_TOOLS: SubagentTool[] = ['read', 'grep', 'find', 'ls'];
 export const SERVICE_RUNTIME_AGENTS: RuntimeAgent[] = [
   {
     name: 'service.worker',
-    definition: {
+    definition: pinnedRuntimeDefinition({
       description: 'Bounded implementation child for one foreground task.',
       systemPrompt:
         'You are the service worker child. Implement only the assigned task with the available tools. Keep edits minimal and report what changed.',
-      extensions: [],
-      inheritProjectContext: false,
-      inheritGlobalContext: false,
-      inheritSkills: false,
-      defaultContext: 'fresh',
-      defaultAsync: false,
-      maxSubagentDepth: 1,
       thinking: 'off',
-    },
+    }),
     approval: null,
   },
   {
     name: 'service.reviewer',
-    definition: {
+    definition: pinnedRuntimeDefinition({
       description: 'Read-only review child returning findings with evidence.',
+      // The material may be inline: a reviewer told to expect files searched for them and
+      // reported nothing to review when the task carried the material itself.
       systemPrompt:
-        'You are the service reviewer child. Inspect only the assigned material and return findings with file and line evidence. Do not mutate files.',
+        'You are the service reviewer child. Review only the assigned material: the task text may carry it inline, name the files that hold it, or both. Return findings with evidence: file and line for files, a short quote for inline material. Do not mutate files.',
       tools: READ_ONLY_TOOLS,
-      extensions: [],
-      inheritProjectContext: false,
-      inheritGlobalContext: false,
-      inheritSkills: false,
-      defaultContext: 'fresh',
-      defaultAsync: false,
-      maxSubagentDepth: 1,
       thinking: 'off',
-    },
+    }),
     approval: null,
   },
   {
     name: 'service.scout',
-    definition: {
+    definition: pinnedRuntimeDefinition({
       description:
         'Read-only discovery child: maps code behavior or researches the web, returning sources.',
       systemPrompt:
         'You are the service scout child. Investigate only the requested question, in the task files or on the web, and return findings with their paths, symbols or source URLs and brief notes. Do not mutate files.',
       tools: [...READ_ONLY_TOOLS, WEB_SEARCH_TOOL, WEB_FETCH_TOOL],
-      extensions: [],
-      inheritProjectContext: false,
-      inheritGlobalContext: false,
-      inheritSkills: false,
-      defaultContext: 'fresh',
-      defaultAsync: false,
-      maxSubagentDepth: 1,
       thinking: 'off',
-    },
+    }),
     approval: null,
   },
 ];
@@ -142,7 +163,7 @@ export function withPermissions(
   };
 }
 
-/** What a referenced specialist brings: its text, and its tool list (null lets the ceiling decide). */
+/** What a catalog specialist brings: its text, and its tool list (null lets the ceiling decide). */
 interface SpecialistSource {
   description: string;
   systemPrompt: string;
@@ -150,7 +171,7 @@ interface SpecialistSource {
 }
 
 /**
- * The runtime agent for a referenced specialist under `name`, with the service pins (fresh
+ * The runtime agent for a catalog specialist under `name`, with the service pins (fresh
  * context, foreground, depth 1, no extensions). Tools are the Settings override's, else the
  * source's; a list keeps the names within the run's child ceiling and the web tools
  * (subagents/intersection.ts), and no list lets the service ceiling decide, as for the worker.
@@ -172,24 +193,17 @@ function specialistRuntimeAgent(
     agent: {
       name,
       approval: permissions?.approval ?? null,
-      definition: {
+      definition: pinnedRuntimeDefinition({
         description: source.description,
         systemPrompt: source.systemPrompt,
         ...(tools ? { tools } : {}),
-        extensions: [],
-        inheritProjectContext: false,
-        inheritGlobalContext: false,
-        inheritSkills: false,
-        defaultContext: 'fresh',
-        defaultAsync: false,
-        maxSubagentDepth: 1,
         thinking: 'off',
-      },
+      }),
     },
   };
 }
 
-/** The runtime agent a run registers for a referenced `~/.atd/agents` entry, as `atd.<name>`. */
+/** The runtime agent a run registers for an enabled `~/.atd/agents` entry, as `atd.<name>`. */
 export function atdRuntimeAgent(
   agent: AtdAgent,
   ceiling: readonly string[],
@@ -215,7 +229,7 @@ export function pluginRuntimeName(plugin: string, item: string): string {
   return `${PLUGIN_AGENT_PREFIX}${hash}`;
 }
 
-/** The runtime agent a run registers for a referenced plugin subagent (plugins/map.ts). */
+/** The runtime agent a run registers for an enabled plugin subagent (plugins/map.ts). */
 export function pluginRuntimeAgent(
   agent: { pluginId: string; localName: string } & SpecialistSource,
   ceiling: readonly string[],

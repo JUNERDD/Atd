@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { isCommandId } from '../commands/open-command-settings';
+import type { SettingsExtensionItem } from './settings-navigation';
 import { findSettingsSection, settingsSections, type SettingsSectionId } from './settings-sections';
 
 /** Where the window remembers the section shown last, for the next time it opens. */
@@ -65,6 +66,9 @@ export function useSettingsSection(
     return id ? { id, nonce: 0 } : null;
   });
   const [memoryTarget, setMemoryTarget] = useState<{ id: string; nonce: number } | null>(null);
+  const [extensionTarget, setExtensionTarget] = useState<
+    (SettingsExtensionItem & { nonce: number }) | null
+  >(null);
   const [drawer, setDrawer] = useState<SettingsDrawerState>(null);
   // Every way into a section (the list, search, a link) mounts it on its first visit.
   if (!visited.includes(section)) setVisited([...visited, section]);
@@ -113,6 +117,18 @@ export function useSettingsSection(
     },
     [locked, leave],
   );
+  /** Shows one Extensions item's page, as `showCommand` does for a command. */
+  const showExtension = useCallback(
+    (item: SettingsExtensionItem) => {
+      if (locked) return;
+      leave(-1, () => {
+        setSection('extensions');
+        setDrawer(null);
+        setExtensionTarget((current) => ({ ...item, nonce: (current?.nonce ?? 0) + 1 }));
+      });
+    },
+    [locked, leave],
+  );
   // The task panel can request the editor for one command while this window is already open.
   useEffect(
     () => window.desktop?.settings.onOpenCommand?.((commandId) => showCommand(commandId)),
@@ -128,10 +144,12 @@ export function useSettingsSection(
     visited,
     commandTarget,
     memoryTarget,
+    extensionTarget,
     drawer,
     setDrawer,
     navigate,
     showCommand,
     showMemory,
+    showExtension,
   };
 }

@@ -39,10 +39,6 @@ minimumReleaseAgeExclude:
   - pi-subagents@0.74.0
   - pi-web-access@0.35.0
 
-overrides:
-  pi-hermes-memory>better-sqlite3: '-'
-
 patchedDependencies:
   '@earendil-works/pi-coding-agent@1.0.0': patches/@earendil-works__pi-coding-agent@1.0.0.patch
-  pi-hermes-memory@0.9.9: patches/pi-hermes-memory@0.9.9.patch
   pi-subagents@0.74.0: patches/pi-subagents@0.74.0.patch

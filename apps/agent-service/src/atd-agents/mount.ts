@@ -64,9 +64,10 @@ const SYSTEM_AGENTS = SERVICE_RUNTIME_AGENTS.map(({ name, definition }) => ({
  * subagents, each with the plugin that contributes it, its enablement and the permissions later
  * runs use (its defaults, or the Settings override that replaces them). A plugin subagent is
  * enabled when effective (its item and its plugin, D4); the others follow the agent harness.
+ * `diagnostics` are the `~/.atd/agents` files that did not load, with why (atd-agents/catalog.ts).
  */
 async function listCatalog(root: string) {
-  const [{ agents }, harness, plugins] = await Promise.all([
+  const [{ agents, diagnostics }, harness, plugins] = await Promise.all([
     listAtdAgents(),
     readAgentHarness(root),
     currentPluginComponents(root, ['agent']),
@@ -93,15 +94,18 @@ async function listCatalog(root: string) {
     defaults: defaultPermissions(value.tools ?? undefined),
     enabled: item.enabled,
   }));
-  return [...hosted, ...installed].map(({ defaults, ...agent }) => ({
-    ...agent,
-    ...effectivePermissions(defaults, harness.permissions.get(agent.name)),
-    defaults,
-  }));
+  return {
+    agents: [...hosted, ...installed].map(({ defaults, ...agent }) => ({
+      ...agent,
+      ...effectivePermissions(defaults, harness.permissions.get(agent.name)),
+      defaults,
+    })),
+    diagnostics,
+  };
 }
 
 async function catalogAgent(root: string, name: string) {
-  const agent = (await listCatalog(root)).find((entry) => entry.name === name);
+  const agent = (await listCatalog(root)).agents.find((entry) => entry.name === name);
   if (!agent) throw new Error(`Agent "${name}" is not in the subagent catalog.`);
   return agent;
 }
@@ -113,9 +117,7 @@ async function catalogAgent(root: string, name: string) {
  * permission override that later runs apply (run-freeze.ts).
  */
 export function registerAtdAgentRoutes(app: FastifyInstance, config: ServiceConfig): void {
-  app.get('/v1/agents', RENDERER_ROUTE, async () => ({
-    agents: await listCatalog(config.paths.root),
-  }));
+  app.get('/v1/agents', RENDERER_ROUTE, async () => listCatalog(config.paths.root));
   // Writes a `~/.atd/agents` file; plugin subagents are read-only, so names stay bare here.
   app.put<{ Params: { name: string } }>('/v1/agents/:name', RENDERER_ROUTE, async (request) => {
     const name = request.params.name;

@@ -2,6 +2,7 @@ import { FilePen } from 'lucide-react';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { BlockOf } from '../../../client/agent/transcript-schema';
+import { codeCacheKey } from './code-cache-key';
 import { DiffView, FileCard } from './file-card';
 import { parsePatch, piDiffToPatch } from './pi-diff';
 import { ToolCard } from './tool-card';
@@ -86,10 +87,12 @@ export function EditBody({
 }) {
   const { t } = useTranslation('tasks');
   const path = typeof block.args.path === 'string' ? block.args.path : '';
+  const settled = block.status !== 'running';
   const fileDiff = useMemo(() => {
     const patch = piDiffToPatch(path, diff);
-    return patch ? parsePatch(patch) : null;
-  }, [path, diff]);
+    if (!patch) return null;
+    return parsePatch(patch, settled ? codeCacheKey('edit', path, diff) : undefined);
+  }, [path, diff, settled]);
   const { added, removed } = diffStats(diff);
   const notes = [
     truncated && t('activity.truncatedNote'),

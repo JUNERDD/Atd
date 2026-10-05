@@ -18,7 +18,7 @@ public final class ShellController {
   let systemPanels: SystemPanels
   /// Serves the five desktop capabilities; the control stream holds it weakly.
   private let capabilities: ShellCapabilities
-  private let control: ControlStreamClient
+  let control: ControlStreamClient
   /// Security confirmations, one at a time across every surface that asks.
   let confirmations = ConfirmationPrompter()
   let artifacts: ArtifactActions
@@ -36,6 +36,10 @@ public final class ShellController {
   let screenRecording: ScreenRecordingTrust
   let summoner: Summoner
   let toolbar: SelectionToolbarController
+  /// Generated apps' windows (`userApp.*`).
+  let userApps: UserAppWindows
+  /// The WidgetKit extension's files and the service's list of live widgets.
+  let widgets: WidgetSyncController
   private var statusItem: StatusItemController?
   private var registrar: HotKeyRegistrar?
   private var menuStatus = MenuBarStatus(availability: .connecting, running: 0, attention: 0)
@@ -101,6 +105,11 @@ public final class ShellController {
       panel: panel, panelHost: panelHost, systemPanels: systemPanels, trust: trust,
       isCapturing: { screenshots.isCapturing })
     toolbar = SelectionToolbarController(trust: trust)
+    // After the panel's web view: WebKit's static data store API needs one to exist.
+    userApps = UserAppWindows(
+      services: services, storage: UserAppStorage(defaults: defaults), confirmations: confirmations)
+    widgets = WidgetSyncController(
+      services: services, files: .forMainBundle())
     // A quit ends a capture session first: `activeRuns` runs before the quit alert could open
     // beneath the overlays, `hideWindows` on an unattended quit that skips it.
     quitGuard = QuitGuard(
@@ -139,6 +148,7 @@ public final class ShellController {
     }
     toolbar.onAsk = { [weak self] text in self?.summon(.ask, practiceText: text) }
     toolbar.onCommand = { [weak self] id in self?.summon(.toolbarCommand(id: id)) }
+    wireUserApps()
   }
 
   /// Starts the service connection and the app-level surfaces, then loads the panel page,
@@ -150,11 +160,15 @@ public final class ShellController {
       menu: { [weak self] in AppMenus.statusMenu(self?.menuActions ?? .inert) })
     control.onConnectionState = { [weak self] state in
       self?.refreshStatus()
-      if state == .connected { self?.attachments.serviceDidConnect() }
+      if state == .connected {
+        self?.attachments.serviceDidConnect()
+        self?.widgets.serviceDidConnect()
+      }
     }
     control.onStatus = { [weak self] _ in self?.refreshStatus() }
     refreshStatus()
     services.start()
+    startWidgets()
     control.start()
     updater.start()
     trust.start()
@@ -250,15 +264,16 @@ public final class ShellController {
     AppPresence.setShowInDock(show)
   }
 
-  /// `openAtLogin` is null where it is unavailable (Debug builds).
+  /// `openAtLogin` is null where it is unavailable (Debug builds); `widgetsAvailable` is false
+  /// outside the folders macOS indexes for widgets (``WidgetPlacement``).
   func appState() -> AppStateResult {
     AppStateResult(
-      pinned: isPinned,
-      showInDock: defaults.bool(forKey: Self.showInDockKey), openAtLogin: AppPresence.opensAtLogin)
+      pinned: isPinned, showInDock: defaults.bool(forKey: Self.showInDockKey),
+      openAtLogin: AppPresence.opensAtLogin, widgetsAvailable: widgets.isAvailable)
   }
 
   /// A state event for every page, so a window opened later still learns the latest value.
-  private func broadcast(_ event: NativeEvent) {
+  func broadcast(_ event: NativeEvent) {
     panelHost.setState(event)
     settings.host?.setState(event)
     onboarding.host?.setState(event)
@@ -324,6 +339,7 @@ public final class ShellController {
       } else {
         nil
       }
-    host?.send(.editCommand(.init(command: command)), scope: .document)
+    guard let host else { return sendUserAppEditCommand(command) }
+    host.send(.editCommand(.init(command: command)), scope: .document)
   }
 }

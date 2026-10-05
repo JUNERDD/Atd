@@ -2,7 +2,7 @@ import { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { motion } from 'motion/react';
-import type { PermissionRequest } from '../client/agent/permission-schema';
+import type { HitlRequest } from './hitl-request';
 import type { QueueState } from '../client/agent/transcript-schema';
 import { HitlRegion } from './hitl-region';
 import { IconButton } from './icon-button';
@@ -73,7 +73,7 @@ export function HitlPanel({
   onClose,
 }: {
   summary: HitlSummary;
-  requests: PermissionRequest[];
+  requests: HitlRequest[];
   queue: QueueState;
   taskId: string | null;
   queueDisabled: boolean;

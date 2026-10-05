@@ -16,6 +16,7 @@ import { publishImportedFiles } from '../lib/imported-files';
 import type { NativeBridge } from '../native-bridge/client';
 import { setReducedTransparency, setWindowActive, setWindowVisible } from '../window-state';
 import { publishDragRegions } from './drag-regions';
+import { nativeApps } from './native-apps';
 import { NativeCommands } from './native-commands';
 import { NativeConnection } from './native-connection';
 import { nativeFiles } from './native-files';
@@ -64,6 +65,8 @@ export async function installNativeHost(
     transport: nativeSocketTransport(native),
   });
   const messages = windowMessages();
+  // Subscribes to `userApp.state` before the first await, like `update.state`.
+  const apps = nativeApps(connection, native, messages, surface);
   const channels: { [C in AgentChannel]: Set<(value: AgentChannelValues[C]) => void> } = {
     changed: new Set(),
     launch: new Set(),
@@ -205,6 +208,7 @@ export async function installNativeHost(
       ? { files: nativeFiles(connection), folders: nativeFolders(connection, native) }
       : {}),
     ...(update ? { update } : {}),
+    apps,
     agent: createAgentBridge(async (request) => {
       // Only the panel receives `launch` events, so the other windows hand their launches over.
       if (surface !== 'panel' && request.action === 'launch') {

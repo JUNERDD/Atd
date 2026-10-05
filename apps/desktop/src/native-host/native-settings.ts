@@ -63,6 +63,8 @@ export function nativeSettings(
     pinned: false,
     showInDock: false,
     openAtLogin: null,
+    // Assumed until the shell answers, so no placement warning flashes at startup.
+    widgetsAvailable: true,
     shortcutAvailable: null,
     screenshotShortcutAvailable: null,
     accessibilityTrusted: null,

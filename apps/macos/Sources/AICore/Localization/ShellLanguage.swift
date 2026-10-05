@@ -86,6 +86,17 @@ public enum ShellStringKey: String, CaseIterable, Sendable {
   case folderPickTitle = "folder.pick.title"
   case appPickTitle = "app.pick.title"
 
+  case userAppOpenFailed = "userApp.open.failed"
+  case userAppOpenMissing = "userApp.open.missing"
+  case userAppClearFailed = "userApp.clear.failed"
+  case userAppLinkTitle = "userApp.link.title"
+  /// `%1$@` the app's name, `%2$@` the link.
+  case userAppLinkMessage = "userApp.link.message"
+  case userAppLinkOpen = "userApp.link.open"
+  /// `%@` the app's name.
+  case userAppFilesPickTitle = "userApp.files.pick.title"
+  case userAppFilesTooLarge = "userApp.files.tooLarge"
+
   case selectionToolbar = "selectionToolbar"
   case selectionToolbarAsk = "selectionToolbar.ask"
   case selectionToolbarAskTooltip = "selectionToolbar.ask.tooltip"

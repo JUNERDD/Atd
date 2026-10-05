@@ -55,7 +55,13 @@ export function buildLiveText(blocks: Block[]): string {
 type TurnGeneration = { output: number; durationMs?: number };
 
 function usageOf(block: Block): TurnGeneration | null {
-  if (block.kind === 'user' || block.kind === 'system' || block.kind === 'compaction') return null;
+  if (
+    block.kind === 'user' ||
+    block.kind === 'system' ||
+    block.kind === 'compaction' ||
+    block.kind === 'retry'
+  )
+    return null;
   const output = block.usage?.output;
   if (typeof output !== 'number' || !Number.isInteger(output) || output < 0) return null;
   const durationMs = block.usage?.durationMs;

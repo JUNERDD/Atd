@@ -34,6 +34,14 @@ export const ErrorCodeSchema = Type.Union([
   Type.Literal('draining'),
   /** 502: a model provider the service called on the user's behalf failed. */
   Type.Literal('upstream_failed'),
+  /** 404: no user app has the id. */
+  Type.Literal('app_not_found'),
+  /** 422: an app build was refused or failed; no version was published. */
+  Type.Literal('app_build_failed'),
+  /** 503: the app's backend could not start, crashed or is restarting after a crash. */
+  Type.Literal('app_backend_unavailable'),
+  /** 403: the user denied the capability, or the app's manifest does not list it. */
+  Type.Literal('app_capability_denied'),
   /**
    * 409 before any handler ran: the request's `x-relay-epoch` names another service epoch than
    * the running one. The response also carries `x-relay-epoch-current` (see relay.ts).

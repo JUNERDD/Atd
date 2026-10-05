@@ -2,6 +2,7 @@ import type { Block } from '../../../client/agent/transcript-schema';
 import { AssistantBlock } from './assistant-block';
 import { CompactionBlock } from './compaction-block';
 import { QuestionBlock } from './question-block';
+import { RetryBlock } from './retry-block';
 import { SystemBlock, ThinkingBlock } from './thinking-block';
 import { ToolBlock } from './tool-block';
 import { requestFor, type RequestIndex } from './turns';
@@ -27,6 +28,8 @@ export function BlockView({ block, requests }: { block: Block; requests: Request
       return <SystemBlock block={block} />;
     case 'compaction':
       return <CompactionBlock block={block} />;
+    case 'retry':
+      return <RetryBlock block={block} />;
     default: {
       const _exhaustive: never = block;
       void _exhaustive;

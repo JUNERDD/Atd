@@ -1,0 +1,169 @@
+{
+  "card": {
+    "label": "应用 {{name}}",
+    "version": "v{{version}}",
+    "typecheckWarning_other": "{{count}} 个类型错误。此版本仍可运行，可以让 Atd 修复。",
+    "widgets_other": "{{count}} 个小组件",
+    "open": "打开",
+    "history": "版本历史",
+    "building": "正在类型检查并构建版本 {{version}}…",
+    "failed": "构建失败，当前版本仍可运行。"
+  },
+  "panel": {
+    "label": "我的应用",
+    "create": "创建应用",
+    "empty": "还没有应用",
+    "emptyDescription": "让 Atd 帮你构建一个，比如习惯打卡或记账表。",
+    "loading": "正在加载应用…",
+    "loadError": "无法加载应用",
+    "retry": "重试",
+    "open": "打开",
+    "openLabel": "打开 {{name}}",
+    "edit": "继续编辑",
+    "editLabel": "继续编辑 {{name}}",
+    "more": "更多",
+    "moreLabel": "{{name}} 的更多操作",
+    "rename": "重命名",
+    "versions": "版本",
+    "delete": "删除",
+    "rowMeta": "更新于 {{date}} · v{{version}}"
+  },
+  "origin": {
+    "label": "由 {{name}} 发起",
+    "unknown": "应用"
+  },
+  "consent": {
+    "title": "{{app}} 想要{{capability}}",
+    "allow": "允许",
+    "deny": "拒绝",
+    "purpose": "应用为何需要",
+    "remembered": "Atd 会为此应用记住你的选择，可在“设置 › 应用”中更改。"
+  },
+  "capability": {
+    "ai": {
+      "label": "AI 模型",
+      "action": "使用 AI 模型",
+      "description": "使用你的模型服务商。",
+      "consent": "向你在 Atd 中设置的模型服务商发送提示，用量计入该服务商账户。"
+    },
+    "agent": {
+      "label": "Agent",
+      "action": "运行 Agent",
+      "description": "有副作用的步骤仍会请你批准。",
+      "consent": "使用工具、技能和子智能体运行任务，有副作用的步骤仍会请你批准。"
+    },
+    "memory": {
+      "label": "记忆",
+      "action": "使用你的记忆",
+      "description": "搜索、读取和保存记忆条目。",
+      "consent": "搜索、读取和保存你的长期记忆条目。"
+    },
+    "mcp": {
+      "label": "MCP 服务器",
+      "action": "使用 MCP 服务器",
+      "description": "调用你的 MCP 服务器上的工具。",
+      "consent": "列出并调用你在 Atd 中连接的 MCP 服务器上的工具。"
+    },
+    "web": {
+      "label": "网络搜索与获取",
+      "action": "搜索和读取网页",
+      "description": "搜索网络并获取网页。",
+      "consent": "通过 Atd 进行网络搜索并获取网页。"
+    }
+  },
+  "rename": {
+    "title": "重命名应用",
+    "description": "新名称会显示在你的应用列表和应用窗口上。",
+    "label": "名称",
+    "cancel": "取消",
+    "save": "保存",
+    "done": "已重命名应用"
+  },
+  "confirm": {
+    "cancel": "取消",
+    "deleteTitle": "删除 {{name}}？",
+    "deleteDescription": "应用、所有版本及其全部数据都会被删除，应用窗口也会关闭。此操作无法撤销。",
+    "deleteAction": "删除",
+    "clearTitle": "清除 {{name}} 的数据？",
+    "clearDescription": "应用保存的所有内容都会被移除，应用窗口会关闭。应用及其版本会保留。",
+    "clearAction": "清除数据",
+    "revertTitle": "回退到版本 {{version}}？",
+    "revertDescription": "版本 {{version}} 会作为最新版本重新发布。应用数据不会回滚，较新版本保存的数据可能与它不兼容。",
+    "revertAction": "回退"
+  },
+  "feedback": {
+    "deleted": "已删除应用",
+    "cleared": "已清除应用数据",
+    "reverted": "版本 {{version}} 已重新成为当前版本（版本 {{current}}）"
+  },
+  "settings": {
+    "title": "应用",
+    "description": "你用 Atd 构建的应用。可以打开应用、回到早前的版本，或更改它能使用的能力。",
+    "searchLabel": "搜索应用",
+    "searchPlaceholder": "搜索应用",
+    "noMatches": "没有与“{{query}}”匹配的应用",
+    "clearSearch": "清除搜索",
+    "showLabel": "查看 {{name}}",
+    "rowMeta": "v{{version}} · 更新于 {{date}}",
+    "waiting": "等待授权",
+    "emptyDescription": "在任务面板中描述一个应用，Atd 会为你构建。第一个版本就绪后会显示在这里。"
+  },
+  "detail": {
+    "label": "应用详情",
+    "back": "返回应用",
+    "loading": "正在加载…",
+    "meta": "版本 {{version}} · 创建于 {{date}}",
+    "builtIn": "在任务“{{task}}”中构建",
+    "versions": {
+      "title": "版本",
+      "footer": "每次构建都是一个独立版本。回退会让较早的版本成为当前版本，较新的版本仍会保留在列表中。",
+      "showAll": "显示全部 {{total}} 个",
+      "showFewer": "收起",
+      "item": "版本 {{version}}",
+      "current": "当前",
+      "meta": "构建于 {{date}} · {{check}}",
+      "typecheckPassed": "类型检查通过",
+      "typeErrors_other": "{{count}} 个类型错误",
+      "revert": "回退",
+      "revertLabel": "回退到版本 {{version}}",
+      "reverting": "正在回退…"
+    },
+    "widgets": {
+      "title": "小组件",
+      "footer": "在 macOS 小组件库中添加 Atd 的“应用小组件”，然后选择“{{name}}”。",
+      "unavailable": "将 Atd 移到“应用程序”文件夹后才能使用它的小组件。",
+      "noPreview": "暂无预览",
+      "previewAlt": "{{name}} 的预览",
+      "refreshes": "每 {{count}} 分钟刷新",
+      "family": {
+        "systemSmall": "小",
+        "systemMedium": "中",
+        "systemLarge": "大"
+      }
+    },
+    "permissions": {
+      "title": "权限",
+      "footer": "应用首次使用每项能力时，Atd 会询问你。存储和日志无需授权。",
+      "none": "此应用不使用 AI 模型、Agent 任务、记忆、MCP 工具或网络访问。",
+      "status": "{{status}} · {{description}}",
+      "granted": "已允许",
+      "denied": "已拒绝",
+      "notAsked": "尚未询问",
+      "allowLabel": "允许 {{name}} 使用{{capability}}",
+      "askAgain": "重新询问",
+      "askAgainLabel": "使用{{capability}}前重新询问"
+    },
+    "data": {
+      "title": "数据",
+      "footer": "应用自己的数据库、文件和浏览器存储都保存在它的数据文件夹中。",
+      "clear": "清除数据",
+      "clearDescription": "删除应用的数据库、文件和浏览器存储。版本和权限会保留。",
+      "clearAction": "清除数据…",
+      "clearing": "正在清除…",
+      "delete": "删除应用",
+      "deleteDescription": "移除应用、所有版本、数据及其小组件。此操作无法撤销。",
+      "deleteAction": "删除应用…",
+      "deleting": "正在删除…"
+    }
+  }
+}

@@ -2341,6 +2341,150 @@
         }
       }
     },
+    "userApp.clear.failed" : {
+      "comment" : "Error the panel shows when an app's stored web data could not be removed",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The app's data could not be cleared. It will be removed the next time Atd starts."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法清除这个应用的数据。Atd 下次启动时会再次删除。"
+          }
+        }
+      }
+    },
+    "userApp.files.pick.title" : {
+      "comment" : "Open panel message when an app asks for files; %@ is the app's name",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose files for “%@”"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "为“%@”选择文件"
+          }
+        }
+      }
+    },
+    "userApp.files.tooLarge" : {
+      "comment" : "Error an app shows when a chosen file is larger than 8 MB or cannot be read",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A chosen file is larger than 8 MB or cannot be read."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "所选文件超过 8 MB 或无法读取。"
+          }
+        }
+      }
+    },
+    "userApp.link.message" : {
+      "comment" : "Message of the link confirmation; %1$@ is the app's name, %2$@ the link",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%1$@” wants to open %2$@ in your browser."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%1$@”想在浏览器中打开 %2$@。"
+          }
+        }
+      }
+    },
+    "userApp.link.open" : {
+      "comment" : "Default button of the link confirmation: opens the link in the browser",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open Link"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "打开链接"
+          }
+        }
+      }
+    },
+    "userApp.link.title" : {
+      "comment" : "Title of the confirmation before an app opens a web link in the browser",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open this link?"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "打开这个链接吗？"
+          }
+        }
+      }
+    },
+    "userApp.open.failed" : {
+      "comment" : "Error the panel shows when an app window could not open",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The app could not be opened."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法打开这个应用。"
+          }
+        }
+      }
+    },
+    "userApp.open.missing" : {
+      "comment" : "Error the panel shows when the app to open was deleted",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This app no longer exists."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "这个应用已不存在。"
+          }
+        }
+      }
+    },
     "window.onboarding.title" : {
       "comment" : "Welcome guide window title",
       "extractionState" : "manual",

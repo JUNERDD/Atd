@@ -3,8 +3,11 @@ import { ATOMIC_BLOCKS } from './code-sources';
 
 /** A settled assistant message; a streaming one replaces its nodes under the selection. */
 const MESSAGE = '.assistant-block:not([data-streaming])';
-/** The toolbar (`SelectionToolbar`), whose own presses must not re-read or drop the selection. */
-const TOOLBAR = '[data-selection-toolbar]';
+/**
+ * The toolbar (`SelectionToolbar`) and its portaled command menu, whose own presses must not
+ * re-read or drop the selection.
+ */
+export const TOOLBAR = '[data-selection-toolbar]';
 
 /** Floating UI's virtual reference: a rect to place against and the element whose scrollers move it. */
 export interface SelectionAnchor {

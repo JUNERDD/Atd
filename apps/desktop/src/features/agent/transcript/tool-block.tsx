@@ -5,14 +5,16 @@ import { Shimmer } from '@atd/ui/components/ai-elements/shimmer';
 import { cn } from '@atd/ui/lib/utils';
 import type { ConfirmationRequest } from '../../../client/agent/permission-schema';
 import type { BlockOf } from '../../../client/agent/transcript-schema';
+import { AppCard } from '../../apps/app-card';
 import { ActivityRow } from './activity-row';
 import { NestedConfirmation } from './codemode-call';
 import { mcpProxy } from './mcp-proxy';
+import { outcomeKey } from './permission-copy';
 import { PermissionNote, ToolBody } from './tool-body';
 import {
+  appDetails,
   hasToolDetail,
-  memoryTargetKey,
-  outcomeKey,
+  memoryTypeKey,
   statusLabelKey,
   toolIcon,
   toolStepKey,
@@ -51,7 +53,13 @@ export function ToolBlock({
   const Icon = proxy ? Plug : toolIcon(block.name);
   const label = toolStepKey(block.name, block.args);
   const title = label ? t(label) : (proxy?.tool ?? block.name);
-  const target = toolTarget(block.name, block.args) ?? proxy?.server ?? null;
+  // A published app reads by its name and version (`Daily notes · v3`); its card follows the row.
+  const app = appDetails(block);
+  const target =
+    (app ? `${app.name} · v${app.version}` : null) ??
+    toolTarget(block.name, block.args) ??
+    proxy?.server ??
+    null;
   // What the call looked at or changed — a file, a search pattern, a folder — sits in a chip.
   const chip = CHIP_TOOLS.has(block.name) && target !== null;
   // A refused launch still names its agents, so the row keeps the failure beside them: the group
@@ -60,7 +68,8 @@ export function ToolBlock({
     target && block.name === 'subagent' && block.status === 'failed'
       ? `${target} · ${t(statusLabelKey(block.status))}`
       : target;
-  const memoryKey = rawTarget ? memoryTargetKey(rawTarget) : null;
+  // A memory saved without a name has no target yet; its row names the type it saves.
+  const typeKey = memoryTypeKey(block.name, block.args);
   const outcome = confirmation ? undefined : block.permission?.outcome;
   // A codemode row's request may be one of its nested calls' (turns.ts): the step that asks shows
   // it, and this row keeps the waiting summary.
@@ -71,8 +80,7 @@ export function ToolBlock({
   // popover. Settled calls carry a decline on the row and every outcome in the detail.
   const waiting = confirmation ? t('permission.waitingApproval') : null;
   const meta =
-    waiting ??
-    (memoryKey ? t(memoryKey) : (rawTarget ?? declined ?? t(statusLabelKey(block.status))));
+    waiting ?? (typeKey ? t(typeKey) : (rawTarget ?? declined ?? t(statusLabelKey(block.status))));
   const mark =
     declined && meta !== declined ? (
       <ActivityRow.Meta className="permission-chip" title={declined}>
@@ -121,6 +129,16 @@ export function ToolBlock({
         {mark}
       </>
     );
+  // The app card stays visible under its row, outside the expanding detail.
+  const card = app ? (
+    <div className="app-card-slot">
+      <AppCard
+        details={app}
+        state={running ? 'building' : block.status === 'failed' ? 'failed' : 'ready'}
+        error={block.output}
+      />
+    </div>
+  ) : null;
   // No detail to expand into: the same row frame without a trigger, so hover offers no
   // expanding chevron. The icon box keeps its geometry via `chevron={false}`.
   if (!hasToolDetail(block) && !outcome) {
@@ -134,6 +152,7 @@ export function ToolBlock({
             {heading}
           </div>
         </ActivityRow.Root>
+        {card}
       </div>
     );
   }
@@ -155,6 +174,7 @@ export function ToolBlock({
           </ActivityRow.Body>
         </ActivityRow.Content>
       </ActivityRow.Root>
+      {card}
     </div>
   );
 }

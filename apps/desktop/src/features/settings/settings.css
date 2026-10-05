@@ -365,28 +365,38 @@
 .settings-page-scroll > [data-slot='scroll-area-viewport'] {
   padding-right: calc(var(--settings-page-reach) - var(--settings-scroll-ring, 3px));
 }
-/* Grows with a page taller than the viewport, so its bottom padding stays below the content;
- * content that overflowed a viewport-high box would scroll without that padding. */
+/* Fills the viewport and grows with a taller page, so its bottom padding stays below the content;
+ * content that overflowed a viewport-high box would scroll without that padding. It shrinks only
+ * when the box around it is held at the viewport height (below). */
 .settings-content-scroll {
   display: flex;
-  flex: 1 0 auto;
+  flex: 1 1 auto;
   min-width: 0;
+  min-height: 0;
   flex-direction: column;
   padding: 8px 40px 32px;
 }
-/* Pages that fill the viewport and scroll inside themselves keep the box at its height. */
-.settings-content-scroll:has(
-  > .settings-page:not([hidden])
-    :is(
-      .settings-editor,
-      .command-editor,
-      .settings-loading,
-      .settings-extension-settings,
-      .memory-settings
-    )
-) {
-  flex-shrink: 1;
-  min-height: 0;
+/*
+ * The box Radix wraps the pages in is at least the viewport's height and otherwise follows the
+ * page, because the bar and the scroll fade measure the page only when that box resizes: a box
+ * always held at the viewport height kept the previous page's bar, as when an editor replaced the
+ * longer command list. Pages that fill the viewport and scroll inside themselves hold it there.
+ */
+.settings-content-scroll-area
+  > [data-slot='scroll-area-viewport']
+  > div:has(
+    > .settings-content-scroll
+      > .settings-page:not([hidden])
+      :is(
+        .settings-editor,
+        .command-editor,
+        .settings-loading,
+        .settings-extension-settings,
+        .memory-settings,
+        .app-settings
+      )
+  ) {
+  height: 100%;
 }
 .settings-window:not([data-layout='sidebar']) .settings-content-scroll {
   padding: 8px 16px 16px;
@@ -422,15 +432,15 @@
 .settings-page[hidden]:has(.settings-editor, .command-editor, .settings-loading) {
   display: none;
 }
-/* Extensions and memory keep their heading fixed above a scrolling list, so the page never
+/* Extensions, memory and apps keep their heading fixed above a scrolling list, so the page never
  * outgrows the viewport. */
-.settings-page:has(.settings-extension-settings, .memory-settings) {
+.settings-page:has(.settings-extension-settings, .memory-settings, .app-settings) {
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
 }
-.settings-page[hidden]:has(.settings-extension-settings, .memory-settings) {
+.settings-page[hidden]:has(.settings-extension-settings, .memory-settings, .app-settings) {
   display: none;
 }
 .settings-editor,
@@ -633,48 +643,6 @@
   gap: 24px;
   padding: 4px;
 }
-/* Plugin cards fill as many columns of at least 240px as the list's width holds, one column at
- * the narrowest widths; cards in a row share its height. */
-.plugin-card-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr));
-  gap: 12px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.plugin-card-cell {
-  display: flex;
-  min-width: 0;
-}
-/* The card keeps the focus ring of its open button visible, which the default clip would cut. */
-.plugin-card {
-  flex: 1;
-  min-width: 0;
-  overflow: visible;
-}
-.plugin-card > [data-slot='card-header'] {
-  align-items: center;
-}
-/* The switch and More center on the icon, with or without the source line under the name. The
- * name block holds that line, so the header has one row: spanning CardAction's default two would
- * add an empty row and the header's 6px gap, and drop the controls 3px below the icon. */
-.plugin-card [data-slot='card-action'] {
-  grid-row: 1;
-  align-self: center;
-}
-.plugin-card-description {
-  display: -webkit-box;
-  min-height: 40px;
-  overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-height: 20px;
-}
-.plugin-card-footer {
-  gap: 8px;
-  margin-top: auto;
-}
 /* One plugin's search results stack its row and kind groups; the groups hug their rows. */
 .settings-extension-results {
   display: flex;
@@ -775,11 +743,12 @@
   box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 30%, transparent);
 }
 /* Extension icons sit in a ring and center on the title plus description, on the
- * plugin list and on a plugin's page alike. */
+ * plugin list and on a plugin's page alike; memory cards ring theirs the same way. */
 :is(.settings-extension-settings, .extension-page) [data-slot='item-media'],
 :is(.settings-extension-settings, .extension-page)
   .group\/item:has([data-slot='item-description'])
-  [data-slot='item-media'] {
+  [data-slot='item-media'],
+.memory-settings .list-card [data-slot='item-media'] {
   align-self: center;
   transform: none;
   box-sizing: border-box;
@@ -915,6 +884,10 @@
   > [data-slot='scroll-area-scrollbar'][data-orientation='vertical'] {
   height: auto;
   margin: 4px 4px 4px 0;
+}
+/* A code file's preview also scrolls sideways; Radix pins that bar's sides and bottom inline. */
+.skill-browser-body > [data-slot='scroll-area-scrollbar'][data-orientation='horizontal'] {
+  margin: 0 4px 4px;
 }
 .skill-browser-content {
   padding: 12px;

@@ -105,18 +105,28 @@ export async function confined(
 
 /**
  * Directories under the data dir no agent file tool may write, whatever the task's cwd: the
- * service's security state (MCP launch approvals, mcp/launch-store.ts) and the plugin store
- * (`<dataDir>/plugins`, installed plugin code and its state). Only the service's own routes change
- * them.
+ * service's security state (MCP launch approvals, mcp/launch-store.ts), the plugin store
+ * (`<dataDir>/plugins`, installed plugin code and its state), the user apps
+ * (`<dataDir>/apps`: published versions and app data, apps/paths.ts) and Pi's agent dir
+ * (`<dataDir>/agent`, storage.ts). The agent dir is protected whole because it holds the memory
+ * store (`agent/memory`: the memory files with their search index, the learning settings and the
+ * pending suggestions, memory/unit-store.ts). A direct edit would skip the memory content scan,
+ * resume learning, or plant, hide and resurrect memories. The rest of the agent dir is service
+ * state as well: the task sessions, the managed subagent settings and the npm/Git skill packages.
+ * Only the service's own routes and tools change them, from its own process.
  */
 export function protectedWriteRoots(dataDir: string): string[] {
-  return [path.join(dataDir, 'security'), path.join(dataDir, 'plugins')];
+  return [
+    path.join(dataDir, 'security'),
+    path.join(dataDir, 'plugins'),
+    path.join(dataDir, 'apps'),
+    path.join(dataDir, 'agent'),
+  ];
 }
 
 /**
- * `confined` for a write or edit: additionally refuses a path under `protectedWriteRoots`. Both
- * sides compare through their nearest existing real ancestor, so a symlinked data dir or a file
- * not written yet cannot slip past, and case-insensitively where the file system usually is.
+ * `confined` for a write or edit: additionally refuses a path under `protectedWriteRoots`,
+ * compared as `realInside` compares.
  */
 export async function confinedWrite(
   cwd: string,
@@ -124,12 +134,23 @@ export async function confinedWrite(
   rawPath: string,
 ): Promise<ConfinedPath> {
   const target = await confined(cwd, dataDir, rawPath);
-  const real = foldCase(await realAncestorPath(target.real));
   for (const root of protectedWriteRoots(dataDir)) {
-    if (inside(foldCase(await realAncestorPath(path.resolve(root))), real))
-      throw new Error('Writing the service security state or the plugin store is blocked.');
+    if (await realInside(root, target.real))
+      throw new Error(
+        'Writing the service security state, the plugin store, the published apps or the memory and session store is blocked.',
+      );
   }
   return target;
+}
+
+/**
+ * Whether `absolute` is `root` or lies in it. Both sides compare through their nearest existing
+ * real ancestor, so a symlinked root or a file not written yet cannot slip past, and
+ * case-insensitively where the file system usually is.
+ */
+export async function realInside(root: string, absolute: string): Promise<boolean> {
+  const real = foldCase(await realAncestorPath(absolute));
+  return inside(foldCase(await realAncestorPath(path.resolve(root))), real);
 }
 
 /** The real path of the nearest existing ancestor, with the missing rest appended. */

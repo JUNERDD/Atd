@@ -41,6 +41,7 @@ import {
 import type { AgentTask } from '../../client/agent/task-schema';
 import { isActive } from '../../client/agent/task-schema';
 import { IconButton } from '../../components/icon-button';
+import { AppOriginBadge } from '../apps/app-origin-badge';
 import { agentApi } from './use-agent';
 import { forgetComposerMemory } from './use-composer-memory';
 import { SettingsSearchField } from '../settings/settings-search-field';
@@ -201,8 +202,11 @@ export function TaskHistory({
                               className="task-row min-w-0"
                               onClick={() => onChoose(task.id)}
                             >
-                              <span className="task-row-title" title={task.title}>
-                                <HighlightedText text={task.title} ranges={match?.ranges.title} />
+                              <span className="task-row-head">
+                                <span className="task-row-title" title={task.title}>
+                                  <HighlightedText text={task.title} ranges={match?.ranges.title} />
+                                </span>
+                                {task.origin && <AppOriginBadge origin={task.origin} />}
                               </span>
                               <span className="task-row-meta">
                                 <time dateTime={stamp} title={updated.toLocaleString()}>

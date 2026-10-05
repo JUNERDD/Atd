@@ -23,6 +23,11 @@ export interface OperationContext {
    * confirm. Runner proxies pass it; HTTP callers never do.
    */
   preapprove?: (signal?: AbortSignal) => Promise<McpPreapproval>;
+  /**
+   * Shows the operation's run as `awaiting_confirmation` while its per-operation confirm waits
+   * and as `running` once it settles (approval.ts). Runner proxies pass it; HTTP callers never do.
+   */
+  setStatus?: (status: 'awaiting_confirmation' | 'running') => void;
 }
 
 /** An allowed call runs without asking; a refused one may carry the review its confirm shows. */

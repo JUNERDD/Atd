@@ -1,5 +1,6 @@
 import type { FileSearchQuery, FileSearchReply, FolderRef } from '@atd/agent-contracts';
 import type { AgentBridge } from './agent/bridge';
+import type { AppsBridge } from './apps-contract';
 import type { Screenshot } from './agent/screenshot-input';
 import type { FileRef } from './agent/task-schema';
 import type { SettingsBridge } from './settings-contract';
@@ -107,6 +108,8 @@ export interface DesktopBridge {
   readonly files?: FileSearchBridge;
   /** Panel-only readable folders; absent in the settings window and in tests that need none. */
   readonly folders?: FolderBridge;
+  /** The user apps the agent built and their windows; absent in tests that need none. */
+  readonly apps?: AppsBridge;
   show: () => Promise<void>;
   hide: () => Promise<void>;
   getState: () => Promise<DesktopState>;

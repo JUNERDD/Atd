@@ -21,6 +21,14 @@
  * whether the app bundles npm/npx is undecided. The target is the build host's
  * architecture on macOS, the only platform the app ships for.
  *
+ * The pack also carries the generated-app toolchain (`@atd/app-kit` with Vite, Rolldown,
+ * Tailwind, the native TypeScript compiler and the packages apps may import), which the service
+ * runs offline from inside the bundle. Dependency links that toolchain never follows are cut and
+ * store entries nothing links to any more are deleted (`pruneStore`); the pruned pack must then
+ * typecheck and build the app template and pass the backend sandbox self-check under the bundled
+ * Node (`checkAppToolchain`), and every native binary it can run must carry a valid signature
+ * (`checkNativeSignatures`), or the pack fails.
+ *
  * Every run writes a fresh build-info.json into the pack, identifying this
  * packaged service build.
  */
@@ -29,6 +37,7 @@ import {
   chmod,
   copyFile,
   mkdir,
+  open,
   readFile,
   readdir,
   realpath,
@@ -40,7 +49,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { createReadStream } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const repoRoot = path.resolve(fileURLToPath(import.meta.url), '../../../..');
 const packDir = path.join(repoRoot, 'tmp', 't7-agent-service-pack');
@@ -55,6 +64,36 @@ const serviceManifest = path.join(repoRoot, 'apps', 'agent-service', 'package.js
 const nodeCache = path.join(repoRoot, 'tmp', 'node-dist');
 const nodeStage = path.join(repoRoot, 'tmp', 't7-node');
 const nodeRelease = 'https://nodejs.org/dist';
+
+/**
+ * Dependency links, by the package that declares them, that neither the service nor an app build
+ * ever follows. Each rule must still match a staged package, so a dependency change that makes one
+ * stale fails the pack instead of silently shipping more.
+ */
+const UNUSED_LINKS = new Map([
+  // Optional peers: the builder passes Vite an inline config (no config file for jiti or yaml to
+  // load), never asks for esbuild transforms, and never watches (fsevents).
+  ['vite', ['esbuild', 'fsevents', 'jiti', 'yaml']],
+  // Optional peers for the Babel pipeline and the React Compiler, which app builds do not enable.
+  [
+    '@vitejs/plugin-react',
+    ['@rolldown/plugin-babel', 'babel-plugin-react-compiler', 'oxc-transform-react'],
+  ],
+  // @atd/ui uses the shadcn CLI package only for `shadcn/tailwind.css`, which app-kit vendors.
+  ['@atd/ui', ['shadcn']],
+]);
+
+/**
+ * Files of kept packages that nothing loads: Vite resolves lucide-react through its `module`
+ * (ESM) entry and `tsc` through its `typings`, so the CommonJS build and the prefixed/suffixed
+ * declaration variants (whose names the main declaration file already exports) go.
+ */
+const UNUSED_FILES = new Map([
+  [
+    'lucide-react',
+    ['dist/cjs', 'dist/lucide-react.prefixed.d.ts', 'dist/lucide-react.suffixed.d.ts'],
+  ],
+]);
 
 async function hashFile(file) {
   const hash = createHash('sha256');
@@ -195,6 +234,204 @@ async function stageNode() {
   if (probe.status !== 0 || probe.stdout.trim() !== `v${version}`)
     fail(`Staged Node at ${target} did not report v${version}.`);
   process.stdout.write(`Staged Node ${probe.stdout.trim()} at ${target}\n`);
+  return target;
+}
+
+/** True when `file` is `root` or lies inside it. */
+function isInside(file, root) {
+  return file === root || file.startsWith(`${root}${path.sep}`);
+}
+
+/** The packages in a `node_modules` directory (scopes expanded), skipping `.bin` and the like. */
+async function packageEntries(modulesDir) {
+  let entries;
+  try {
+    entries = await readdir(modulesDir, { withFileTypes: true });
+  } catch (error) {
+    if (error.code === 'ENOENT') return [];
+    throw error;
+  }
+  const packages = [];
+  for (const entry of entries) {
+    if (entry.name.startsWith('.')) continue;
+    const full = path.join(modulesDir, entry.name);
+    const scoped = entry.name.startsWith('@') && entry.isDirectory();
+    const children = scoped ? await readdir(full, { withFileTypes: true }) : [entry];
+    for (const child of children) {
+      packages.push({
+        name: scoped ? `${entry.name}/${child.name}` : child.name,
+        path: scoped ? path.join(full, child.name) : full,
+        link: child.isSymbolicLink(),
+      });
+    }
+  }
+  return packages;
+}
+
+/** The virtual-store entry (`.pnpm/<id>`) holding a package directory, or null outside it. */
+function storeEntry(store, dir) {
+  if (!isInside(dir, store)) return null;
+  const parts = path.relative(store, dir).split(path.sep);
+  const at = parts.indexOf('node_modules');
+  return at > 0 ? path.join(store, ...parts.slice(0, at)) : null;
+}
+
+/**
+ * Cuts the `UNUSED_LINKS`, then keeps only the virtual-store entries Node can still reach from
+ * the pack's own dependencies through declared links, deletes the rest (including the unlinked
+ * `.pnpm/@` copies pnpm 12's legacy deploy leaves) and the hoisted fallback links to them, and
+ * trims `UNUSED_FILES` from what stays.
+ */
+async function pruneStore(modules) {
+  const store = path.join(modules, '.pnpm');
+  const live = new Set();
+  const pending = [];
+  const matchedRules = new Set();
+  let cut = 0;
+  const follow = async (modulesDir, unused) => {
+    for (const dep of await packageEntries(modulesDir)) {
+      if (!dep.link) {
+        await follow(path.join(dep.path, 'node_modules'), []);
+      } else if (unused.includes(dep.name)) {
+        await rm(dep.path);
+        cut += 1;
+      } else {
+        const entry = storeEntry(store, await realpath(dep.path));
+        if (entry !== null && !live.has(entry)) {
+          live.add(entry);
+          pending.push(entry);
+        }
+      }
+    }
+  };
+  await follow(modules, []);
+  for (let entry = pending.pop(); entry !== undefined; entry = pending.pop()) {
+    const entryModules = path.join(entry, 'node_modules');
+    const own = (await packageEntries(entryModules)).filter((dep) => !dep.link);
+    const unused = own.flatMap((pkg) => {
+      if (UNUSED_LINKS.has(pkg.name)) matchedRules.add(pkg.name);
+      return UNUSED_LINKS.get(pkg.name) ?? [];
+    });
+    await follow(entryModules, unused);
+    for (const pkg of own) {
+      for (const file of UNUSED_FILES.get(pkg.name) ?? []) {
+        await rm(path.join(pkg.path, file), { recursive: true });
+      }
+    }
+  }
+  const stale = [...UNUSED_LINKS.keys()].filter((name) => !matchedRules.has(name));
+  if (stale.length > 0)
+    fail(`UNUSED_LINKS names packages the pack no longer has: ${stale.join(', ')}.`);
+
+  let removed = 0;
+  const removeDead = async (dir) => {
+    for (const child of await readdir(dir, { withFileTypes: true })) {
+      const full = path.join(dir, child.name);
+      if (!child.isDirectory() || full === path.join(store, 'node_modules') || live.has(full))
+        continue;
+      if ([...live].some((entry) => isInside(entry, full))) {
+        await removeDead(full);
+      } else {
+        await rm(full, { recursive: true });
+        removed += 1;
+      }
+    }
+  };
+  await removeDead(store);
+  const hoisted = path.join(store, 'node_modules');
+  for (const dep of await packageEntries(hoisted)) {
+    if (
+      dep.link &&
+      !(await access(dep.path).then(
+        () => true,
+        () => false,
+      ))
+    )
+      await rm(dep.path);
+  }
+  for (const scope of await readdir(hoisted).catch(() => [])) {
+    if (scope.startsWith('@') && (await readdir(path.join(hoisted, scope))).length === 0)
+      await rm(path.join(hoisted, scope), { recursive: true });
+  }
+  process.stdout.write(
+    `Pruned the virtual store: cut ${cut} unused links, kept ${live.size} entries, removed ${removed}\n`,
+  );
+}
+
+/**
+ * Fails the pack if a Mach-O file that can run on this host lacks a valid signature. The app's
+ * ad hoc signature seals everything under Resources by hash but does not sign nested code, and
+ * Apple silicon refuses to load an unsigned binary: the Node executable, the native TypeScript
+ * compiler and the addons (Rolldown, Lightning CSS, Tailwind's oxide, the file index) must each
+ * arrive signed (linker-signed counts). Slices for other architectures are never loaded.
+ */
+async function checkNativeSignatures(dirs) {
+  const hostArch = process.arch === 'x64' ? 'x86_64' : process.arch;
+  const machO = new Set(['cffaedfe', 'cafebabe']);
+  const unsigned = [];
+  let checked = 0;
+  for (const dir of dirs) {
+    for (const entry of await readdir(dir, { recursive: true, withFileTypes: true })) {
+      if (!entry.isFile()) continue;
+      const file = path.join(entry.parentPath, entry.name);
+      const handle = await open(file);
+      const { bytesRead, buffer } = await handle.read(Buffer.alloc(4), 0, 4, 0);
+      await handle.close();
+      if (bytesRead < 4 || !machO.has(buffer.toString('hex'))) continue;
+      const archs = spawnSync('lipo', ['-archs', file], { encoding: 'utf8' });
+      if (archs.status !== 0 || !archs.stdout.trim().split(/\s+/).includes(hostArch)) continue;
+      checked += 1;
+      const verify = spawnSync('codesign', ['--verify', '--strict', '--arch', hostArch, file]);
+      if (verify.status !== 0) unsigned.push(file);
+    }
+  }
+  if (unsigned.length > 0) fail(`Native code without a valid signature:\n${unsigned.join('\n')}`);
+  process.stdout.write(`Verified the signatures of ${checked} native ${hostArch} binaries\n`);
+}
+
+/**
+ * Proves the pruned pack can still do the app work the service asks of it: the bundled Node
+ * imports the pack's own `@atd/app-kit`, whose toolchain must resolve entirely inside the pack,
+ * typechecks and builds the app template in the same sandboxes the service uses, and passes the
+ * backend sandbox self-check.
+ */
+function checkAppToolchain(nodePath, packRoot) {
+  const entry = path.join(packRoot, 'node_modules', '@atd', 'app-kit', 'dist', 'node', 'index.js');
+  const script = `
+    import fs from 'node:fs';
+    import os from 'node:os';
+    import path from 'node:path';
+    const kit = await import(${JSON.stringify(pathToFileURL(entry).href)});
+    const pack = ${JSON.stringify(packRoot)};
+    const toolchain = kit.loadToolchain();
+    const paths = [toolchain.root, toolchain.tsc, ...toolchain.readRoots,
+      ...toolchain.cssAliases.map((alias) => alias.file), ...Object.values(toolchain.typePackages)];
+    const outside = paths.filter((file) => file !== pack && !file.startsWith(pack + path.sep));
+    if (outside.length > 0) throw new Error('Toolchain paths outside the pack: ' + outside);
+    const work = fs.mkdtempSync(path.join(os.tmpdir(), 'atd-pack-check-'));
+    try {
+      const staged = await kit.prepareStaging(path.join(toolchain.root, 'template'), path.join(work, 'staging'));
+      if (!staged.ok) throw new Error('Staging failed: ' + JSON.stringify(staged.errors));
+      const [typecheck, build] = await Promise.all([
+        kit.typecheckApp({ app: staged.app, workDir: path.join(work, 'typecheck') }),
+        kit.buildApp({ app: staged.app, outDir: path.join(work, 'out'), workDir: path.join(work, 'build') }),
+      ]);
+      if (!typecheck.ok) throw new Error('Typecheck failed: ' + JSON.stringify(typecheck).slice(0, 4000));
+      if (!build.ok) throw new Error('Build failed: ' + JSON.stringify(build).slice(0, 4000));
+      const sandbox = await kit.selfCheckSandbox({ workDir: path.join(work, 'self-check') });
+      if (!sandbox.ok) throw new Error('Sandbox self-check failed: ' + sandbox.reason);
+      console.log('App toolchain check: typecheck ' + typecheck.durationMs + ' ms, build ' + build.durationMs + ' ms, sandbox ok');
+    } finally {
+      fs.rmSync(work, { recursive: true, force: true });
+    }
+  `;
+  const run = spawnSync(nodePath, ['--input-type=module', '--eval', script], {
+    cwd: packRoot,
+    env: { PATH: '/usr/bin:/bin:/usr/sbin:/sbin', LANG: 'en_US.UTF-8' },
+    stdio: 'inherit',
+    timeout: 300_000,
+  });
+  if (run.status !== 0) fail('The pruned pack failed the app toolchain check.');
 }
 
 for (const file of [cli, contracts, client]) {
@@ -206,7 +443,7 @@ for (const file of [cli, contracts, client]) {
   }
 }
 
-await stageNode();
+const stagedNode = await stageNode();
 await mkdir(path.dirname(packDir), { recursive: true });
 await copyFile(lockFile, lockBak);
 const lockBefore = await hashFile(lockFile);
@@ -266,6 +503,7 @@ if (process.arch === 'arm64') {
   }
   process.stdout.write(`File index addon: ${await realpath(addon)}\n`);
 }
+await pruneStore(stagedModules);
 // The packaged service runs without --enable-source-maps, so the dependencies' source maps are
 // never read; dropping them removes about a sixth of the files the app embeds, signs and
 // compresses. Unlinking leaves the pnpm store copies alone. Type declarations, TypeScript sources
@@ -277,6 +515,8 @@ for (const entry of await readdir(stagedModules, { recursive: true, withFileType
   sourceMaps += 1;
 }
 process.stdout.write(`Removed ${sourceMaps} dependency source maps\n`);
+await checkNativeSignatures([packDir, nodeStage]);
+checkAppToolchain(stagedNode, await realpath(packDir));
 const buildInfo = { version: 1, buildId: randomUUID() };
 await writeFile(path.join(packDir, 'build-info.json'), `${JSON.stringify(buildInfo, null, 2)}\n`);
 process.stdout.write(

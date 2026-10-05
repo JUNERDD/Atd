@@ -89,6 +89,7 @@ function stepDetails(name: string, raw: unknown): CodemodeStepDetails | undefine
     case 'webSearch':
     case 'webFetch':
       return details;
+    case 'app':
     case 'codemode':
     case 'mcpApproval':
     case 'subagent':

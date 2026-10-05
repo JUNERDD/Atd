@@ -83,10 +83,31 @@ function dragRects(root: Element): Rect[] {
 }
 
 /**
+ * The boxes that place `areas`: each area with everything inside it (its holes, and text whose
+ * size shifts them, such as the header's title), and the children of every ancestor below the
+ * body (the boxes laid out around an area, such as the settings sidebar card above the content
+ * header in the narrow layout). Areas sit in the window chrome, outside scroll containers, so
+ * scrolling never moves them.
+ */
+function placingBoxes(areas: readonly Element[]): Set<Element> {
+  const boxes = new Set<Element>();
+  for (const area of areas) {
+    for (const element of [area, ...area.querySelectorAll('*')]) boxes.add(element);
+    let node = area;
+    while (node.parentElement && node.parentElement !== document.body) {
+      const parent = node.parentElement;
+      for (const sibling of parent.children) boxes.add(sibling);
+      node = parent;
+    }
+  }
+  return boxes;
+}
+
+/**
  * Publishes the window drag regions to the shell, which starts a native window drag for a press
- * inside one (WKWebView has no CSS drag regions). It recomputes once per frame after a layout
- * or DOM change, sends only changed sets, pauses while the panel is hidden, and clears the regions
- * when the page goes away.
+ * inside one (WKWebView has no CSS drag regions). It recomputes once per frame after a change that
+ * can move, reveal or hide a region, sends only changed sets, pauses while the panel is hidden,
+ * and clears the regions when the page goes away.
  */
 export function publishDragRegions(bridge: NativeBridge, root: HTMLElement): () => void {
   let frame = 0;
@@ -104,23 +125,35 @@ export function publishDragRegions(bridge: NativeBridge, root: HTMLElement): () 
   const schedule = () => {
     if (!frame && visible) frame = requestAnimationFrame(update);
   };
+  // Size changes of the placing boxes, including those without a DOM change, such as a hole whose
+  // text changed; only a changed set of boxes re-observes.
   const resizeObserver = new ResizeObserver(schedule);
-  let observed: Element[] = [];
-  // The areas and the holes in them: a hole can resize while the DOM keeps its shape, such as
-  // the header's title button when its text changes. Streamed transcript DOM mutates constantly;
-  // only a changed set of elements re-observes.
+  let areas: Element[] = [];
+  let placing = new Set<Element>();
   const observeAreas = () => {
-    const targets = [...document.querySelectorAll(DRAG_AREAS)].flatMap((area) => [
-      area,
-      ...area.querySelectorAll(NO_DRAG),
-    ]);
-    const same = targets.every((item, index) => item === observed[index]);
-    if (targets.length === observed.length && same) return;
+    areas = [...document.querySelectorAll(DRAG_AREAS)];
+    const next = placingBoxes(areas);
+    if (next.size === placing.size && [...next].every((box) => placing.has(box))) return;
     resizeObserver.disconnect();
-    observed = targets;
-    for (const element of targets) resizeObserver.observe(element);
+    placing = next;
+    for (const box of next) resizeObserver.observe(box);
   };
-  const mutationObserver = new MutationObserver(() => {
+  // Streamed transcript DOM, scroll thumbs and other content mutate every frame far from any area,
+  // so only a mutation that can change a region wakes the publisher: outside the root (the body
+  // and its overlay portals), on a placing box, on an element that is or contains an area, or
+  // adding or removing an area.
+  const affectsRegions = ({ target, addedNodes, removedNodes }: MutationRecord) =>
+    !root.contains(target) ||
+    (target instanceof Element && (placing.has(target) || target.matches(DRAG_AREAS))) ||
+    areas.some((area) => target.contains(area)) ||
+    [...addedNodes].some(
+      (node) =>
+        node instanceof Element &&
+        (node.matches(DRAG_AREAS) || node.querySelector(DRAG_AREAS) !== null),
+    ) ||
+    [...removedNodes].some((node) => areas.some((area) => node.contains(area)));
+  const mutationObserver = new MutationObserver((records) => {
+    if (!records.some(affectsRegions)) return;
     observeAreas();
     schedule();
   });

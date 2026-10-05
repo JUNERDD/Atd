@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Button } from '@atd/ui/components/button';
 import { Kbd, KbdGroup } from '@atd/ui/components/kbd';
 import { useTranslation } from 'react-i18next';
@@ -8,12 +8,19 @@ import { CommandIcon } from '../commands/command-icon';
 
 const COLLAPSED_COUNT = 3;
 
+/**
+ * The new task's quick commands: the first few enabled ones, then a wrapping row of outline
+ * buttons that browse further, All commands first. `children` adds buttons to that row, such as
+ * Create app and My apps.
+ */
 export function CommandLauncher({
   commands,
   onChoose,
+  children,
 }: {
   commands: CommandDefinition[];
   onChoose: (id: string) => void;
+  children?: ReactNode;
 }) {
   const { t } = useTranslation('panel');
   const [expanded, setExpanded] = useState(false);
@@ -42,15 +49,19 @@ export function CommandLauncher({
           )}
         </Button>
       ))}
-      {available.length > COLLAPSED_COUNT && (
-        <Button
-          variant="outline"
-          className="col-span-full justify-self-start"
-          aria-expanded={expanded}
-          onClick={() => setExpanded((value) => !value)}
-        >
-          {expanded ? t('commands.less') : t('commands.all')}
-        </Button>
+      {(available.length > COLLAPSED_COUNT || children) && (
+        <div className="col-span-full flex flex-wrap gap-2">
+          {available.length > COLLAPSED_COUNT && (
+            <Button
+              variant="outline"
+              aria-expanded={expanded}
+              onClick={() => setExpanded((value) => !value)}
+            >
+              {expanded ? t('commands.less') : t('commands.all')}
+            </Button>
+          )}
+          {children}
+        </div>
       )}
     </div>
   );

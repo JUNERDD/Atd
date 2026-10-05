@@ -20,6 +20,7 @@ import { InstructionEditor } from './instruction-editor';
 import { FieldError } from './field-error';
 import { ParameterEditor } from './parameter-editor';
 import { ParameterList } from './parameter-list';
+import { PlacementSettings } from './placement-settings';
 import { RunSettings } from './run-settings';
 import { useCommandAiSession } from './use-command-ai-session';
 import { errorId, useCommandProblems } from './use-command-problems';
@@ -243,6 +244,7 @@ export function CommandEditor({
             error={problems.text('input')}
             onBlur={() => problems.recheck('input')}
           />
+          <PlacementSettings command={draft} onChange={setDraft} />
           <ParameterList
             parameters={draft.parameters}
             onChange={(parameters) => {

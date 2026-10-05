@@ -103,6 +103,9 @@ export async function submitTask<S>(
     ...(tools ? { tools } : {}),
     ...(memory === undefined ? {} : { memory }),
     ...(request.branchBefore ? { branchBefore: request.branchBefore } : {}),
+    ...(request.sideChatOf ? { sideChatOf: request.sideChatOf } : {}),
+    // A command's text is its rendered template (above), which memory must never learn from.
+    ...(command ? { fromCommand: true } : {}),
   });
   // A command run is titled after the command. The title lives in the service like any rename,
   // so every client shows it.

@@ -84,6 +84,7 @@ export class NativeBridge {
     'screenRecording.trust': new Set(),
     'update.state': new Set(),
     'socket.frames': new Set(),
+    'userApp.state': new Set(),
   };
 
   private constructor(private readonly handler: ScriptMessageHandler) {}

@@ -3,14 +3,18 @@ import { useReducedMotion } from 'motion/react';
 import { useTranslation } from 'react-i18next';
 import { Popover, PopoverAnchor, PopoverContent } from '@atd/ui/components/popover';
 import { isComposingKey } from '@atd/ui/lib/ime';
+import type { AppCapabilityConsent } from '@atd/agent-contracts';
 import type { PermissionRequest } from '../client/agent/permission-schema';
 import type { Block, QueueState } from '../client/agent/transcript-schema';
 import { ProgressPill, type PillView } from '../features/agent/progress/progress-pill';
+import { SideChatPanel } from '../features/agent/progress/side-chat-panel';
 import { SubagentPanel } from '../features/agent/progress/subagent-panel';
 import { TodosPanel } from '../features/agent/progress/todo-list';
 import { useTaskProgress } from '../features/agent/progress/use-task-progress';
+import { useSideChats } from '../features/agent/side-chat/side-chats';
 import { useSubagents } from '../features/agent/transcript/subagent-context';
 import { HitlPanel } from './hitl-panel';
+import { consentRequest } from './hitl-request';
 import { MorphViewport } from './morph-viewport';
 import { useComposerView } from './use-composer-view';
 import { useHitlSummary } from './use-hitl-summary';
@@ -18,14 +22,16 @@ import { createViewAnchor } from './view-anchor';
 import './composer-popover.css';
 
 const NO_BLOCKS: readonly Block[] = [];
+const NO_CONSENTS: readonly AppCapabilityConsent[] = [];
 
 /**
  * The status pill above the composer surface and the one Radix popover its parts open: HITL
- * content (requests and the queue), Todos, or Subagents. Like a navigation menu's viewport, the
- * popover stays open while the user moves between parts and morphs to the next view instead of
- * stacking a second popover, sliding to center on the part that opened it; clicking the expanded
- * part closes it. Opening and closing are the popover primitive's own animation at the view's
- * final size; the morph runs only while it stays open. `useComposerView` decides what shows.
+ * content (requests and the queue), Todos, Subagents, or Side chats. Like a navigation menu's
+ * viewport, the popover stays open while the user moves between parts and morphs to the next view
+ * instead of stacking a second popover, sliding to center on the part that opened it; clicking the
+ * expanded part closes it. Opening and closing are the popover primitive's own animation at the
+ * view's final size; the morph runs only while it stays open. `useComposerView` decides what
+ * shows.
  *
  * Focus and Esc are split by intent. Radix auto-focus is off, so an arriving request never steals
  * the composer; only the HITL controls autofocus, and only when the user is not typing. Opening
@@ -37,7 +43,8 @@ const NO_BLOCKS: readonly Block[] = [];
  * the view the popover belonged to.
  */
 export function ComposerPopover({
-  requests,
+  requests: taskRequests,
+  consents = NO_CONSENTS,
   queue,
   taskId,
   queueDisabled = false,
@@ -51,6 +58,8 @@ export function ComposerPopover({
   children,
 }: {
   requests: PermissionRequest[];
+  /** Capability consents apps wait on; they join the task's requests in the HITL view. */
+  consents?: readonly AppCapabilityConsent[] | undefined;
   queue: QueueState;
   taskId: string | null;
   queueDisabled?: boolean;
@@ -71,11 +80,17 @@ export function ComposerPopover({
   children: ReactElement;
 }) {
   const { t } = useTranslation('tasks');
+  const { t: tp } = useTranslation('panel');
   const anchor = useRef<HTMLDivElement>(null);
   const content = useRef<HTMLDivElement>(null);
+  const requests = useMemo(
+    () => [...taskRequests, ...consents.map(consentRequest)],
+    [taskRequests, consents],
+  );
   const hitl = useHitlSummary(requests, queue, taskId);
   const progress = useTaskProgress(blocks);
   const { open: openChild } = useSubagents();
+  const sideChats = useSideChats();
   const [view, setView] = useComposerView({
     signature: hitl.signature,
     requestIds: requests.map((request) => request.id),
@@ -86,6 +101,7 @@ export function ComposerPopover({
     hitl: hitl.status !== null,
     todos: progress.todos.length > 0,
     subagents: progress.children.length > 0,
+    sideChats: sideChats !== null && sideChats.items.length > 0,
   };
   const shown = view !== null && available[view] ? view : null;
   const open = shown !== null && !suppressed && !hidden;
@@ -150,10 +166,17 @@ export function ComposerPopover({
       }
     : null;
 
+  function onOpenSideChat(sideChatId: string) {
+    // Nothing is left to return focus to: the composer the side chat rebinds takes it.
+    setView(null);
+    sideChats?.open(sideChatId, null);
+  }
+
   const labels: Record<PillView, string> = {
     hitl: hitl.title,
     todos: t('todo.title'),
     subagents: t('subagent.listLabel'),
+    sideChats: tp('composer.progress.sideChats.list'),
   };
   return (
     <Popover
@@ -226,6 +249,14 @@ export function ComposerPopover({
               items={progress.children}
               truncated={progress.childrenTruncated}
               onOpen={onOpenChild}
+            />
+          )}
+          {rendered === 'sideChats' && sideChats && (
+            <SideChatPanel
+              key="sideChats"
+              items={sideChats.items}
+              current={sideChats.current}
+              onOpen={onOpenSideChat}
             />
           )}
         </MorphViewport>

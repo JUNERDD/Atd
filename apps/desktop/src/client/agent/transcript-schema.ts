@@ -226,6 +226,18 @@ export const BlockSchema = Type.Union([
     },
     { additionalProperties: false },
   ),
+  /** A failed model request the service is retrying, mirrored from the service block; live only. */
+  Type.Object(
+    {
+      kind: Type.Literal('retry'),
+      ...blockBase,
+      attempt: Type.Integer({ minimum: 1 }),
+      maxAttempts: Type.Integer({ minimum: 1 }),
+      /** The provider error that failed the previous attempt. */
+      error: Type.String(),
+    },
+    { additionalProperties: false },
+  ),
 ]);
 export type Block = Static<typeof BlockSchema>;
 export type BlockOf<K extends Block['kind']> = Extract<Block, { kind: K }>;

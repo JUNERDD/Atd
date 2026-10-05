@@ -45,6 +45,10 @@ public enum NativeCall: Equatable, Sendable {
   case onboardingOpen(OnboardingOpenParams)
   case onboardingSettle(OnboardingSettleParams)
   case onboardingClose(OnboardingCloseParams)
+  case userAppOpen(UserAppOpenParams)
+  case userAppClose(UserAppCloseParams)
+  case userAppWidgetPreview(UserAppWidgetPreviewParams)
+  case userAppClearData(UserAppClearDataParams)
   case shortcutsSet(ShortcutsSetParams)
   case capture(CaptureParams)
   case clipboardRead(ClipboardReadParams)
@@ -79,6 +83,10 @@ public enum NativeCall: Equatable, Sendable {
     case .onboardingOpen: "onboarding.open"
     case .onboardingSettle: "onboarding.settle"
     case .onboardingClose: "onboarding.close"
+    case .userAppOpen: "userApp.open"
+    case .userAppClose: "userApp.close"
+    case .userAppWidgetPreview: "userApp.widgetPreview"
+    case .userAppClearData: "userApp.clearData"
     case .shortcutsSet: "shortcuts.set"
     case .capture: "capture"
     case .clipboardRead: "clipboard.read"
@@ -163,6 +171,13 @@ public enum JsMessage: Decodable, Equatable, Sendable {
         call = try .onboardingSettle(container.value(.params, OnboardingSettleParams.self))
       case "onboarding.close":
         call = try .onboardingClose(container.value(.params, OnboardingCloseParams.self))
+      case "userApp.open": call = try .userAppOpen(container.value(.params, UserAppOpenParams.self))
+      case "userApp.close":
+        call = try .userAppClose(container.value(.params, UserAppCloseParams.self))
+      case "userApp.widgetPreview":
+        call = try .userAppWidgetPreview(container.value(.params, UserAppWidgetPreviewParams.self))
+      case "userApp.clearData":
+        call = try .userAppClearData(container.value(.params, UserAppClearDataParams.self))
       case "shortcuts.set":
         call = try .shortcutsSet(container.value(.params, ShortcutsSetParams.self))
       case "capture": call = try .capture(container.value(.params, CaptureParams.self))

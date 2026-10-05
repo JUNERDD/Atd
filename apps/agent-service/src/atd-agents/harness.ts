@@ -15,7 +15,11 @@ interface AgentHarness {
   permissions: Map<string, SubagentPermissions>;
 }
 
-function harnessFile(root: string): string {
+/**
+ * The harness file in the service data dir. The agent's file tools write it only after the user
+ * confirms each write (catalog-writes.ts).
+ */
+export function agentHarnessFile(root: string): string {
   return path.join(root, 'agent-harness.json');
 }
 
@@ -25,7 +29,7 @@ function emptyHarness(): AgentHarness {
 
 /** Reads the harness; unknown shapes read as empty and an invalid override is dropped. */
 export async function readAgentHarness(root: string): Promise<AgentHarness> {
-  const file = harnessFile(root);
+  const file = agentHarnessFile(root);
   let parsed: unknown;
   try {
     parsed = JSON.parse(await readFile(file, 'utf8'));
@@ -53,7 +57,7 @@ export async function readAgentHarness(root: string): Promise<AgentHarness> {
 
 async function writeHarness(root: string, harness: AgentHarness): Promise<void> {
   const byName = (a: string, b: string) => a.localeCompare(b);
-  await atomicWrite(harnessFile(root), {
+  await atomicWrite(agentHarnessFile(root), {
     version: 2,
     disabled: [...harness.disabled].sort(byName),
     permissions: Object.fromEntries([...harness.permissions].sort(([a], [b]) => byName(a, b))),

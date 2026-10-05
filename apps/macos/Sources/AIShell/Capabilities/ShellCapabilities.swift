@@ -140,6 +140,18 @@ final class SystemPanels {
     return await run(panel) ? panel.urls : nil
   }
 
+  /// Files of `types` (any file when empty) for a user app (`atdApp` `files.pick`); nil when
+  /// cancelled or another system panel is open.
+  func chooseFiles(types: [UTType], multiple: Bool, message: String) async -> [URL]? {
+    let panel = NSOpenPanel()
+    panel.message = message
+    panel.canChooseFiles = true
+    panel.canChooseDirectories = false
+    panel.allowsMultipleSelection = multiple
+    if !types.isEmpty { panel.allowedContentTypes = types }
+    return await run(panel) ? panel.urls : nil
+  }
+
   /// Folders only (`files.pickFolder`); nil when cancelled or another system panel is open.
   func chooseFolders() async -> [URL]? {
     let panel = NSOpenPanel()

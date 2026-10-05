@@ -284,6 +284,7 @@ export class McpFacade {
         origin: 'facade',
         args: input,
         ...(preapproval?.review ? { review: preapproval.review } : {}),
+        ...(op.setStatus ? { setStatus: op.setStatus } : {}),
       },
       signal,
     );

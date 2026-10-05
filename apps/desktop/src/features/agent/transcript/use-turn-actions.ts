@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import type { CommandDefinition } from '../../../client/agent/command-schema';
 import type { TaskRun } from '../../../client/agent/task-schema';
 import { showErrorToast, showToast } from '../../../components/toast-store';
 import { agentApi } from '../use-agent';
@@ -7,14 +8,16 @@ import type { AdaptedTurn } from './adapter';
 import { useTaskTurns } from './turn-context';
 import { markdownFileName, turnMarkdown } from './turn-markdown';
 import { canResend, editableText, promptText, replacementRequest } from './turn-resend';
+import { useOfferedCommands } from './use-offered-commands';
 
 /** Service limit on a task title; a long source title shortens the fork's. */
 const MAX_TITLE = 120;
 
 /**
- * The settled turn's actions beyond Copy. Each is null when it does not apply, so the bar and its
- * menu list only what the turn can do: regenerating needs the task's idle last turn and its run,
- * forking needs the turn's session entry, and the exports and memory need an answer.
+ * The settled turn's actions beyond Copy. Each is null (the commands empty) when it does not
+ * apply, so the bar and its menu list only what the turn can do: regenerating needs the task's idle
+ * last turn and its run, forking needs the turn's session entry, and the exports, memory and the
+ * commands placed on turn actions need an answer (the commands also the panel's opener).
  */
 export function useTurnActions(
   turn: AdaptedTurn,
@@ -97,5 +100,22 @@ export function useTurnActions(
   const remember = task?.remember;
   const rememberAnswer = answer && remember ? () => remember(answer) : null;
 
-  return { pending, regenerate, fork, copyMarkdown, saveMarkdown, remember: rememberAnswer };
+  // Each runs on the answer, which stands in for the selection the command reads; closing what
+  // it opens returns focus to `origin`, the control that chose it.
+  const offered = useOfferedCommands('turnActions');
+  const openCommand = task?.runCommand;
+  const commands = answer && openCommand ? offered : [];
+  const runCommand = (command: CommandDefinition, origin: HTMLElement | null) =>
+    openCommand?.(command, answer, origin);
+
+  return {
+    pending,
+    regenerate,
+    fork,
+    copyMarkdown,
+    saveMarkdown,
+    remember: rememberAnswer,
+    commands,
+    runCommand,
+  };
 }

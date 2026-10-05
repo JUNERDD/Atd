@@ -291,6 +291,8 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
     settings: deps.settings,
     folders: deps.folders,
     log: deps.log,
+    events: deps.events,
+    mcp: () => McpAuthority.authorityFor(mcpAuthorityDeps(deps)),
   });
 
   registerSkillRoutes(app, deps.config);

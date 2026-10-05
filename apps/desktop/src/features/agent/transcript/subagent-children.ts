@@ -1,6 +1,7 @@
 import type { SubagentChildSummary, SubagentDetails } from '@atd/agent-contracts';
 import type { PermissionRequest } from '../../../client/agent/permission-schema';
 import type { Block, BlockOf } from '../../../client/agent/transcript-schema';
+import { agentDisplayName } from '../task-agents/task-agents';
 
 /**
  * The parent transcript is the only source of subagent children: every launching `subagent`
@@ -73,11 +74,15 @@ export function pendingExecutions(requests: readonly PermissionRequest[]): Pendi
   return pending;
 }
 
-/** "agent · first line of the task", clamped, naming a child in the subagent list. */
+/**
+ * "agent · first line of the task", clamped, naming a child in the subagent list; a task agent
+ * goes by its name without the `task.` prefix.
+ */
 export function subtaskLabel(child: SubagentChildSummary): string {
+  const agent = agentDisplayName(child.agent);
   const line = child.task.split('\n', 1)[0]?.trim() ?? '';
-  if (!line) return child.agent;
+  if (!line) return agent;
   const summary =
     line.length > TASK_SUMMARY_CHARS ? `${line.slice(0, TASK_SUMMARY_CHARS - 1).trimEnd()}…` : line;
-  return `${child.agent} · ${summary}`;
+  return `${agent} · ${summary}`;
 }

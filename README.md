@@ -24,7 +24,7 @@ _The screenshot shows the React UI without the native window material, which cha
 - **Providers**: named connections, each with its own credentials and default model. The catalog comes from the pi registry, with entry points for local and custom connections.
 - **Commands**: reusable instructions with Mustache variables, typed parameters, shortcuts, and tool settings. AI-suggested instructions are previewed first; applying one changes only the unsaved draft and can be undone.
 - **Extensions**: skills, subagents (including Markdown agents from `~/.atd/agents`), and MCP servers, each of which can be turned on or off for the next run.
-- **Memory**: long-term memory powered by [pi-hermes-memory](https://github.com/chandra447/pi-hermes-memory), with search, editing, deletion, and a pause for learning.
+- **Memory**: long-term memory kept as named memories with a description, type and body, like skills: a few apply to every task, the rest are listed in a memory index and read on demand. The agent learns from conversations, suggests changes and new skills for review, and each memory can be turned off; learning can be paused.
 - **Settings**: Permissions, Extensions, Providers, Commands, Memory, and Shortcuts. The settings navigation is a sidebar at 760px and wider, compact top navigation from 480px, and a drawer below that.
 - **Languages**: English and Simplified Chinese. The first run follows the OS locale.
 

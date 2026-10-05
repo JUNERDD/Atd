@@ -141,6 +141,22 @@
     "selectionVariable": "选中文本变量",
     "clipboardVariable": "剪贴板变量"
   },
+  "placement": {
+    "title": "显示位置",
+    "selectionToolbar": {
+      "title": "其他 App 中的选择文字工具栏",
+      "description": "对你在其他 App 中选中的文字运行。"
+    },
+    "turnSelection": {
+      "title": "对话中的选择文字工具栏",
+      "description": "对你在回答中选中的文字运行。"
+    },
+    "turnActions": {
+      "title": "每轮对话的操作",
+      "description": "从一轮对话的“更多操作”菜单，对该轮的回答运行。"
+    },
+    "unavailable": "命令需要读取选中的文本，才能显示在这些位置：请将“输入来源”设为“选中的文本”，或在“输入选项”中开启选中文本变量。"
+  },
   "shortcut": {
     "error": "请将 Command、Control 或 Alt 与支持的按键组合使用。",
     "record": "录制命令快捷键",

@@ -31,8 +31,17 @@ const isObject = (schema) => schema.type === 'object';
 const isEmptyObject = (schema) =>
   isObject(schema) && Object.keys(schema.properties ?? {}).length === 0;
 const isNull = (schema) => schema.type === 'null';
-const isStringLiterals = (schema) =>
-  schema.anyOf?.every((item) => item.type === 'string' && 'const' in item);
+/** The string literals of a union, nested unions flattened (`Type.Union([Colors, 'other'])`). */
+const stringLiterals = (schema) => {
+  if (!schema.anyOf) return null;
+  const items = schema.anyOf.flatMap((item) =>
+    item.anyOf ? (stringLiterals(item) ?? [null]) : [item],
+  );
+  return items.every((item) => item?.type === 'string' && 'const' in item) ? items : null;
+};
+const isStringLiterals = (schema) => stringLiterals(schema) !== null;
+/** A `$ref`, or a `Type.Cyclic` (`{ $defs, $ref }`) used inline: the definition it names. */
+const referenceOf = (schema) => (typeof schema.$ref === 'string' ? schema.$ref : null);
 const isObjectUnion = (schema) => schema.anyOf?.every(isObject);
 const nullableOf = (schema) =>
   schema.anyOf?.length === 2 && schema.anyOf.some(isNull)
@@ -44,7 +53,13 @@ const only = (schema, allowed, where) => {
     if (!allowed.includes(key)) throw new Error(`${where}: unsupported keyword ${key}.`);
 };
 
-export function createEmitter({ defs, shared }) {
+/**
+ * `recursive` names the definitions that contain themselves (a `Type.Cyclic` tree); their enums
+ * are `indirect`. `$ref`s must name a definition of `defs`. With `splitUnions`, a top-level
+ * union's variant structs follow it as separate `extension` blocks, so a large union can span
+ * files.
+ */
+export function createEmitter({ defs, shared, recursive = [], splitUnions = false }) {
   /** The shared definition equal to `schema`, if any (TypeBox inlines every reuse). */
   const sharedName = (schema, except) =>
     shared.find((name) => name !== except && isDeepStrictEqual(defs[name], schema));
@@ -61,6 +76,11 @@ export function createEmitter({ defs, shared }) {
    * needs; `read(key)` is the expression that decodes it from `container`.
    */
   function value(schema, name, where, nested) {
+    const reference = referenceOf(schema);
+    if (reference) {
+      if (!defs[reference]) throw new Error(`${where}: $ref ${reference} is not a definition.`);
+      return { type: reference, read: (key) => `container.value(${key}, ${reference}.self)` };
+    }
     const shared = sharedName(schema);
     if (shared) return { type: shared, read: (key) => `container.value(${key}, ${shared}.self)` };
     if (isStringLiterals(schema)) {
@@ -75,6 +95,15 @@ export function createEmitter({ defs, shared }) {
     }
     switch (schema.type) {
       case 'string':
+        if ('format' in schema) {
+          only(schema, ['type', 'format', 'maxLength'], where);
+          if (schema.format !== 'date-time') throw new Error(`${where}: format ${schema.format}.`);
+          return {
+            type: 'String',
+            read: (key) =>
+              `container.dateTime(${key}${args(schema, [['maxLength', 'maxLength', int]])})`,
+          };
+        }
         only(schema, ['type', 'minLength', 'maxLength', 'pattern'], where);
         return {
           type: 'String',
@@ -103,7 +132,7 @@ export function createEmitter({ defs, shared }) {
         only(schema, ['type'], where);
         return { type: 'Bool', read: (key) => `container.boolean(${key})` };
       case 'array': {
-        only(schema, ['type', 'items', 'minItems', 'maxItems'], where);
+        only(schema, ['type', 'items', 'minItems', 'maxItems', 'uniqueItems'], where);
         const element = value(schema.items, singular(name), `${where}[]`, nested);
         return {
           type: `[${element.type}]`,
@@ -111,10 +140,24 @@ export function createEmitter({ defs, shared }) {
             `container.array(${key}, of: ${element.type}.self${args(schema, [
               ['minItems', 'minItems', int],
               ['maxItems', 'maxItems', int],
+              ['uniqueItems', 'uniqueItems', String],
             ])})`,
         };
       }
       case 'object': {
+        if (schema.patternProperties) {
+          // `Type.Record(Type.String({ pattern }), Value)`: a dictionary with checked keys.
+          only(schema, ['type', 'patternProperties', 'additionalProperties'], where);
+          const [[pattern, valueSchema]] = Object.entries(schema.patternProperties);
+          if (Object.keys(schema.patternProperties).length !== 1 || schema.additionalProperties)
+            throw new Error(`${where}: a record needs exactly one closed key pattern.`);
+          const element = value(valueSchema, singular(name), `${where}{}`, nested);
+          return {
+            type: `[String: ${element.type}]`,
+            read: (key) =>
+              `container.dictionary(${key}, of: ${element.type}.self, keyPattern: ${JSON.stringify(pattern)})`,
+          };
+        }
         const type = upper(name);
         nested.push(struct(type, schema, where));
         return { type, read: (key) => `container.value(${key}, ${type}.self)` };
@@ -134,8 +177,10 @@ export function createEmitter({ defs, shared }) {
     const encode = [];
     let custom = false;
     for (const [key, property] of Object.entries(schema.properties)) {
-      if (!required.has(key)) throw new Error(`${where}.${key}: optional members are unsupported.`);
+      const optional = !required.has(key);
       const name = identifier(key);
+      if (optional && ('const' in property || nullableOf(property)))
+        throw new Error(`${where}.${key}: optional literals and nullables are unsupported.`);
       if ('const' in property) {
         custom = true;
         decode.push(`try container.literal(.${key}, ${literal(property.const)})`);
@@ -144,15 +189,19 @@ export function createEmitter({ defs, shared }) {
       }
       const inner = nullableOf(property);
       const typed = value(inner ?? property, key, `${where}.${key}`, nested);
-      const type = inner ? `${typed.type}?` : typed.type;
+      const type = inner || optional ? `${typed.type}?` : typed.type;
       stored.push({ name, key, type });
+      const wrapper = inner ? 'nullable' : optional ? 'optional' : null;
       decode.push(
-        inner
-          ? `${name} = try container.nullable(.${key}) { try ${typed.read('$0')} }`
+        wrapper
+          ? `${name} = try container.${wrapper}(.${key}) { try ${typed.read('$0')} }`
           : `${name} = try ${typed.read(`.${key}`)}`,
       );
-      encode.push(`try container.encode(${name}, forKey: .${key})`);
-      custom ||= Boolean(inner);
+      // An absent optional member is left out, never written as null.
+      encode.push(
+        `try container.${optional ? 'encodeIfPresent' : 'encode'}(${name}, forKey: .${key})`,
+      );
+      custom ||= Boolean(wrapper);
     }
     const lines = [
       ...(doc ? [`/// ${doc}`] : []),
@@ -191,7 +240,7 @@ export function createEmitter({ defs, shared }) {
   }
 
   function stringEnum(name, schema, where) {
-    const cases = schema.anyOf.map((item) => {
+    const cases = stringLiterals(schema).map((item) => {
       only(item, ['type', 'const'], where);
       const label = camel(item.const);
       return label === item.const ? `  case ${label}` : `  case ${label} = ${literal(item.const)}`;
@@ -202,7 +251,7 @@ export function createEmitter({ defs, shared }) {
   }
 
   /** A union of closed objects told apart by one literal member present in each. */
-  function union(name, schema, where, doc) {
+  function union(name, schema, where, doc, split = false) {
     const variants = schema.anyOf;
     const key = Object.keys(variants[0].properties).find((candidate) =>
       variants.every((variant) => 'const' in (variant.properties[candidate] ?? {})),
@@ -220,7 +269,7 @@ export function createEmitter({ defs, shared }) {
     );
     const lines = [
       ...(doc ? [`/// ${doc}`] : []),
-      `public enum ${name}: Codable, Equatable, Sendable {`,
+      `public ${recursive.includes(name) ? 'indirect ' : ''}enum ${name}: Codable, Equatable, Sendable {`,
       ...cases.map((label) => `  case ${label}(${upper(label)})`),
       '',
       '  public init(from decoder: any Decoder) throws {',
@@ -246,13 +295,25 @@ export function createEmitter({ defs, shared }) {
       `  private enum Discriminator: String, CodingKey {`,
       `    case ${key}`,
       '  }',
-      ...variants.flatMap((variant, index) => [
-        '',
-        indent(struct(upper(cases[index]), variant, `${where}.${cases[index]}`)),
-      ]),
+      ...(split
+        ? []
+        : variants.flatMap((variant, index) => [
+            '',
+            indent(struct(upper(cases[index]), variant, `${where}.${cases[index]}`)),
+          ])),
       '}',
     ];
-    return lines.join('\n');
+    if (!split) return lines.join('\n');
+    return [
+      lines.join('\n'),
+      ...variants.map((variant, index) =>
+        [
+          `extension ${name} {`,
+          indent(struct(upper(cases[index]), variant, `${where}.${cases[index]}`)),
+          '}',
+        ].join('\n'),
+      ),
+    ];
   }
 
   return {
@@ -266,7 +327,8 @@ export function createEmitter({ defs, shared }) {
       }
       const alias = sharedName(schema, name);
       if (alias) return `${summary}public typealias ${name} = ${alias}`;
-      if (isObjectUnion(schema)) return union(name, schema, name, doc);
+      if (isObjectUnion(schema)) return union(name, schema, name, doc, splitUnions);
+      if (isStringLiterals(schema)) return `${summary}${stringEnum(name, schema, name)}`;
       if (isObject(schema)) return struct(name, schema, name, doc);
       throw new Error(`${name}: unsupported definition.`);
     },

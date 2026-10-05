@@ -19,6 +19,7 @@ import {
   type PermissionLookup,
 } from './transcript-blocks.js';
 import type { StepList } from './transcript-details/codemode.js';
+import { retryBlock, type RetryingRequest } from './transcript-retry.js';
 import type { SubagentRow } from './transcript-details/subagent.js';
 
 type AgentMessage = AgentSession['messages'][number];
@@ -30,7 +31,7 @@ export type ServiceBranchItem =
       /** The message's session entry; absent only for the live partial, which is not persisted. */
       entryId?: string;
       endedAt?: number;
-      /** A failed attempt an overflow compaction replaced with its retry (`supersededEntries`). */
+      /** A failed attempt Pi replaced with its retry (`supersededEntries`). */
       superseded?: true;
     }
   | { type: 'custom'; customType: string; data?: unknown }
@@ -43,7 +44,7 @@ export type ServiceBranchItem =
  * patches rather than conversation content, so both are skipped by design.
  * `context_edit` entries only change what later provider requests see; the
  * transcript keeps showing the raw history they edit, so they are skipped too,
- * except that they mark attempts an overflow compaction superseded.
+ * except that they mark failed attempts a retry superseded.
  */
 export function fromServiceBranch(entries: readonly SessionEntry[]): ServiceBranchItem[] {
   const items: ServiceBranchItem[] = [];
@@ -99,19 +100,22 @@ export function fromServiceBranch(entries: readonly SessionEntry[]): ServiceBran
 }
 
 /**
- * Messages Pi dropped to retry after an overflow. Before compacting and retrying a turn that
- * overflowed the context, Pi omits the failed attempt from later context with a `context_edit`
- * whose replacement is null (`AgentSession._omitRecoveryAttempt`); the service's own edits always
- * replace content. Once a compaction follows the omission, the retry supersedes the attempt, so
- * its error is not the run's outcome and must not show. Without that compaction (the recovery
- * failed) the attempt keeps showing.
+ * Messages Pi dropped to retry. Before retrying a turn that failed with a transient provider error,
+ * or compacting and retrying one that overflowed the context, Pi omits the failed attempt from
+ * later context with a `context_edit` whose replacement is null
+ * (`AgentSession._omitRecoveryAttempt`); the service's own edits always replace content. Once the
+ * retry's assistant message or the overflow's compaction follows, the retry supersedes the
+ * attempt, so its error is not the run's outcome and must not show. Until then, and when a user
+ * message comes first (the recovery failed and the run ended), the attempt keeps showing.
  */
 function supersededEntries(entries: readonly SessionEntry[]): Set<string> {
   const omitted = new Set<string>();
   const superseded = new Set<string>();
   for (const entry of entries) {
     if (entry.type === 'context_edit' && entry.replacement === null) omitted.add(entry.targetId);
-    if (entry.type !== 'compaction') continue;
+    const role = entry.type === 'message' ? entry.message.role : undefined;
+    if (role === 'user') omitted.clear();
+    if (entry.type !== 'compaction' && role !== 'assistant') continue;
     for (const id of omitted) superseded.add(id);
     omitted.clear();
   }
@@ -171,6 +175,8 @@ export interface ProjectServiceBlocksInput {
   live: boolean;
   /** The compaction the live session runs now; shown last until it ends. */
   compacting?: RunningCompaction | null;
+  /** The failed request the live session is retrying now; shown last until it gets a response. */
+  retrying?: RetryingRequest | null;
   /** Receives projection diagnostics (tool details dropped by the contract check). */
   log?: Pick<Logger, 'debug'>;
 }
@@ -289,6 +295,7 @@ export function projectServiceBlocks(input: ProjectServiceBlocksInput): ServiceB
     }
   }
   if (input.compacting) blocks.push(runningBlock(runId, input.compacting));
+  if (input.retrying) blocks.push(retryBlock(runId, input.retrying));
   return blocks;
 }
 

@@ -221,7 +221,8 @@ export interface ServiceBridge extends ServicePluginBridge, ServiceMcpApprovalBr
       skills: string[];
     };
   }) => Promise<{ role: unknown }>;
-  agents: () => Promise<{ agents: unknown[] }>;
+  /** The subagent catalog, and the ~/.atd/agents files that did not load with why. */
+  agents: () => Promise<{ agents: unknown[]; diagnostics: unknown[] }>;
   /** Turns a catalog subagent on or off for later runs. */
   setAgentEnabled: (name: string, enabled: boolean) => Promise<{ name: string; enabled: boolean }>;
   /** Saves a catalog subagent's permissions for later runs; null restores its defaults. */

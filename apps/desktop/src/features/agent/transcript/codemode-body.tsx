@@ -23,11 +23,11 @@ export function CodemodeBody({ block, data }: { block: BlockOf<'tool'>; data: Co
   return (
     <>
       {code && (
-        // The code block leaves its height to its owner: a long script scrolls inside the card.
-        // `JavaScript` stays untranslated, like the `Shell` label.
+        // The code block leaves its scrolling to its owner: a long script scrolls inside the card,
+        // both ways. `JavaScript` stays untranslated, like the `Shell` label.
         <ToolCard.Root className="tool-code">
           <ToolCard.Header icon={<SquareCode />} label="JavaScript" copyText={code} />
-          <ToolCard.Body size="lg" flush>
+          <ToolCard.Body size="lg" scroll="both" flush>
             <CodeBlock contents={code} language="javascript" flush />
           </ToolCard.Body>
         </ToolCard.Root>

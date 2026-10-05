@@ -9,7 +9,7 @@ import { messageOf } from '../../../lib/errors';
 import { shortcutKeys } from '../../../lib/shortcuts';
 import { isTextEntryFocused } from '../../../lib/text-entry';
 import { DetailBox } from './detail-box';
-import { scopeKey } from './tool-copy';
+import { scopeKey } from './permission-copy';
 
 /** Display cap for the approval detail; the full value stays one copy click away. */
 const DETAIL_PREVIEW_CHARS = 2000;

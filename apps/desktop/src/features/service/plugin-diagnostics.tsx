@@ -9,8 +9,9 @@ const LEVEL_ICON = { error: CircleAlert, warning: TriangleAlert, info: Info } as
 
 /**
  * What the service could not import from a bundle, or noticed about it: unsupported components
- * (hooks, `bin/`, LSP, extensions…), skipped or renamed items, and prompt blocks kept as text.
- * The messages come from the service as it wrote them; the path or component shows where.
+ * (hooks, `bin/`, LSP, extensions…), skipped or renamed items, and prompt blocks kept as text; on
+ * Personal's page, the ~/.atd/agents files that did not load. The messages come from the service
+ * as it wrote them; the path or component shows where.
  */
 export function PluginDiagnostics({
   label,

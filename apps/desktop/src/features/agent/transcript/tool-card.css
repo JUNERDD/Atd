@@ -101,6 +101,9 @@
 .tool-card-footer[data-tone='destructive'] {
   color: var(--destructive);
 }
+.tool-card-footer[data-tone='warning'] {
+  color: var(--ata-status-warning);
+}
 /*
  * A code block inside a card reads as the card's content: the card owns the frame, so the block
  * drops its own hairline and corner, and its hover copy gives way to the header's.

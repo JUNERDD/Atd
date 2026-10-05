@@ -1,10 +1,12 @@
 import { createHash } from 'node:crypto';
-import { readFile, rm, stat } from 'node:fs/promises';
+import { mkdir, readFile, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { loadSkillsFromDir, type Skill } from '@earendil-works/pi-coding-agent';
 import { isBuiltinSkill, type BuiltinStatus } from '../builtins/manifest.js';
 import { reconcileBuiltinSkills } from '../builtins/skills.js';
+import { writeTextAtomic } from '../config.js';
 import { ConflictError } from '../errors.js';
+import { scanContent } from '../memory/scanner.js';
 import { atdSkillsDir } from '../service-fs.js';
 import { isItemName } from '@atd/plugin-kit';
 import { mapPiDiagnostics, type SkillDiagnostic } from './diagnostics.js';
@@ -18,6 +20,8 @@ import type { SkillRevisionRecord } from './versions.js';
  */
 const MAX_SKILLS = 500;
 const MAX_DIAGNOSTICS = 64;
+/** The longest description Pi's skill loader accepts (the Agent Skills spec). */
+const MAX_SKILL_DESCRIPTION = 1024;
 
 /**
  * Reconciles the product skills (builtins/skills.ts), then loads the catalog. `builtins` holds
@@ -64,6 +68,58 @@ export async function deleteAtdSkill(skill: SkillRevisionRecord): Promise<void> 
       `Skill "${skill.name}" is outside ~/.atd/skills and cannot be deleted.`,
     );
   await rm(target, { recursive: folder, force: true });
+}
+
+/**
+ * Creates one Personal skill, `<atdHome>/skills/<name>/SKILL.md`: frontmatter with the name and
+ * the one-line description, then `body`. A product skill's name belongs to System and an existing
+ * skill keeps its own, so both are refused (409), as are a malformed name or description and text
+ * the memory content scan blocks (400). The folder is created exclusively before the file is
+ * written atomically, so two creates of one name cannot mix; a failed write removes the folder.
+ */
+export async function createAtdSkill(input: {
+  name: string;
+  description: string;
+  body: string;
+}): Promise<{ name: string }> {
+  const name = input.name.trim();
+  if (!isItemName(name))
+    throw new TypeError(
+      `Skill name "${name}" must be 1–128 letters, digits, "-" or "_", starting with a letter or digit.`,
+    );
+  if (isBuiltinSkill(name))
+    throw new ConflictError(`"${name}" is the name of a built-in skill. Choose another name.`);
+  const description = input.description.replace(/\s+/g, ' ').trim();
+  const body = input.body.replace(/\r\n?/g, '\n').trim();
+  if (!description || description.length > MAX_SKILL_DESCRIPTION)
+    throw new TypeError(`A skill description must be 1–${MAX_SKILL_DESCRIPTION} characters.`);
+  if (!body) throw new TypeError('A skill needs instructions.');
+  const blocked = scanContent(`${description}\n${body}`);
+  if (blocked) throw new TypeError(blocked);
+  const root = atdSkillsDir();
+  const exists = () => new ConflictError(`A skill named "${name}" already exists.`);
+  if (loadSkillsFromDir({ dir: root, source: 'atd' }).skills.some((skill) => skill.name === name))
+    throw exists();
+  const dir = path.join(root, name);
+  await mkdir(root, { recursive: true });
+  try {
+    await mkdir(dir);
+  } catch (error) {
+    if (error instanceof Error && 'code' in error && error.code === 'EEXIST') throw exists();
+    throw error;
+  }
+  const front = [`name: ${JSON.stringify(name)}`, `description: ${JSON.stringify(description)}`];
+  try {
+    await writeTextAtomic(
+      path.join(dir, 'SKILL.md'),
+      ['---', ...front, '---', '', body, ''].join('\n'),
+      0o644,
+    );
+  } catch (error) {
+    await rm(dir, { recursive: true, force: true });
+    throw error;
+  }
+  return { name };
 }
 
 /** ATD skills whose names are already taken stay out of the resolvable set. */

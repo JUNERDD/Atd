@@ -1,15 +1,37 @@
 import { getCurrentSystemMessage, type SystemMessage, type Tool } from '@earendil-works/pi-ai';
 import { estimateTokens, type SessionProjection } from '@earendil-works/pi-coding-agent';
-import type {
-  ContextBreakdown,
-  ContextBreakdownCategory,
-  ContextBreakdownItem,
+import {
+  MEMORY_READ_TOOLS,
+  MEMORY_WRITE_TOOLS,
+  type ContextBreakdown,
+  type ContextBreakdownCategory,
+  type ContextBreakdownItem,
 } from '@atd/agent-contracts';
+import { Type } from 'typebox';
+import { Value } from 'typebox/value';
 import { mcpProxyNamespace } from '../mcp/proxy-names.js';
+import {
+  MEMORY_CORE_SECTION,
+  MEMORY_INDEX_SECTION,
+  MEMORY_POLICY_SECTION,
+} from '../memory/session-memory.js';
 import { SKILL_CATALOG_SECTION } from '../skills/session-catalog.js';
 import { catalogSkillCount } from '../skills/skill-catalog.js';
 import { readCarriedSkills } from '../skills/skill-message.js';
 import { compactionPolicy } from './policy.js';
+
+/** System prompt sections counted under memory rather than the system prompt. */
+const MEMORY_SECTIONS: readonly string[] = [
+  MEMORY_POLICY_SECTION,
+  MEMORY_CORE_SECTION,
+  MEMORY_INDEX_SECTION,
+];
+const MEMORY_TOOL_NAMES: ReadonlySet<string> = new Set([
+  ...MEMORY_READ_TOOLS,
+  ...MEMORY_WRITE_TOOLS,
+]);
+/** `details` of a `memory_read` result (memory/tools.ts): the memory it read. */
+const MemoryReadDetailsSchema = Type.Object({ id: Type.String(), name: Type.String() });
 
 /** What a task's context breakdown is computed from. */
 export interface ContextBreakdownInput {
@@ -23,8 +45,8 @@ export interface ContextBreakdownInput {
 /**
  * Splits a task's context into the `ContextBreakdown` categories. The overhead categories are
  * estimated from the current system message (prompt sections and tool declarations) and the
- * entries that carry skills; `messages` is the usage they leave. Without known usage, the usage
- * itself is the overhead plus an estimate of the rest of the conversation.
+ * entries that carry skills or memory; `messages` is the usage they leave. Without known usage,
+ * the usage itself is the overhead plus an estimate of the rest of the conversation.
  */
 export function contextBreakdown(input: ContextBreakdownInput): ContextBreakdown {
   const { projection, contextWindow } = input;
@@ -32,18 +54,24 @@ export function contextBreakdown(input: ContextBreakdownInput): ContextBreakdown
   const tools = system?.toolsAdded ?? [];
   const mcpTools = tools.filter((tool) => mcpProxyNamespace(tool.name) !== null);
   const ownTools = tools.filter((tool) => mcpProxyNamespace(tool.name) === null);
-  const skills = skillsCategory(projection, system?.sections?.[SKILL_CATALOG_SECTION] ?? '');
+  const sections = system?.sections ?? {};
+  const skills = skillsCategory(projection, sections[SKILL_CATALOG_SECTION] ?? '');
+  const memory = memoryCategory(projection, sections);
   const overhead: ContextBreakdownCategory[] = [
     { id: 'systemPrompt', tokens: promptTokens(system), count: null, items: [] },
     skills.category,
+    memory.category,
     toolsCategory(ownTools),
     mcpCategory(mcpTools),
   ];
-  // Skill messages are part of the conversation the estimate reads, but counted under skills.
+  // Skill messages and memory tool results are part of the conversation the estimate reads, but
+  // counted under skills and memory.
   const conversation =
     projection.messages
       .filter((message) => message.role !== 'system')
-      .reduce((total, message) => total + estimateTokens(message), 0) - skills.carried;
+      .reduce((total, message) => total + estimateTokens(message), 0) -
+    skills.carried -
+    memory.carried;
   const usedTokens = input.tokens ?? totalTokens(overhead) + Math.max(0, conversation);
   const fitted = fitToUsage(overhead, usedTokens);
   return {
@@ -72,7 +100,7 @@ function totalTokens(categories: readonly { tokens: number }[]): number {
   return categories.reduce((total, category) => total + category.tokens, 0);
 }
 
-/** The system prompt's base text and every section but the skill catalog. */
+/** The system prompt's base text and every section but the skill catalog and the memory ones. */
 function promptTokens(system: SystemMessage | undefined): number {
   if (!system) return 0;
   const content =
@@ -81,7 +109,9 @@ function promptTokens(system: SystemMessage | undefined): number {
       : system.content.reduce((total, part) => total + part.text.length, 0);
   const sections = Object.entries(system.sections ?? {}).reduce(
     (total, [name, text]) =>
-      name === SKILL_CATALOG_SECTION || !text ? total : total + text.length,
+      name === SKILL_CATALOG_SECTION || MEMORY_SECTIONS.includes(name) || !text
+        ? total
+        : total + text.length,
     0,
   );
   return tokensOf(content + sections);
@@ -122,6 +152,55 @@ function skillsCategory(
     },
     carried,
   };
+}
+
+/**
+ * The memory sections plus every memory tool result in context. `carried` is those results'
+ * estimate, which the conversation estimate leaves out; an item is one memory's `memory_read`
+ * results, and the count is the memories the sections show, else the memories read.
+ */
+function memoryCategory(
+  projection: ContextBreakdownInput['projection'],
+  sections: Readonly<Record<string, string | null>>,
+): { category: ContextBreakdownCategory; carried: number } {
+  const reads = new Map<string, number>();
+  let carried = 0;
+  for (const entry of projection.entries) {
+    const source = entry.sourceEntry;
+    if (source.type !== 'message' || source.message.role !== 'toolResult') continue;
+    if (!MEMORY_TOOL_NAMES.has(source.message.toolName) || !entry.messages.length) continue;
+    const tokens = entry.messages.reduce((total, message) => total + estimateTokens(message), 0);
+    carried += tokens;
+    const { details, isError, toolName } = source.message;
+    if (toolName === 'memory_read' && !isError && Value.Check(MemoryReadDetailsSchema, details))
+      reads.set(details.name, (reads.get(details.name) ?? 0) + tokens);
+  }
+  const items = largestFirst(
+    [...reads].map(([name, tokens]): ContextBreakdownItem => ({ name, tokens, count: null })),
+  );
+  const chars = MEMORY_SECTIONS.reduce((total, name) => total + (sections[name] ?? '').length, 0);
+  return {
+    category: {
+      id: 'memory',
+      tokens: tokensOf(chars) + carried,
+      count: shownMemoryCount(sections) ?? items.length,
+      items,
+    },
+    carried,
+  };
+}
+
+/**
+ * The memories the core and index sections show, as memory/run-memory.ts renders them: one
+ * `<memory name=…>` line per core memory, and the index's totals line, exact even when entries
+ * were left out. Null without either section.
+ */
+function shownMemoryCount(sections: Readonly<Record<string, string | null>>): number | null {
+  const core = sections[MEMORY_CORE_SECTION] ?? '';
+  const index = sections[MEMORY_INDEX_SECTION] ?? '';
+  if (!core && !index) return null;
+  const totals = /^(\d+) memor(?:y|ies) in the index\.$/m.exec(index);
+  return (core.match(/^<memory name="/gm)?.length ?? 0) + Number(totals?.[1] ?? 0);
 }
 
 /** The service's own tools, one item per tool. */

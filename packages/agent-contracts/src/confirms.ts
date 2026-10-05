@@ -5,8 +5,8 @@ import { ShellAllowlistEntrySchema } from './shell.js';
 /**
  * Per-task approval tier. `manual` prompts for every guarded action; `auto` has a model review
  * each guarded action against the user's request and prompts only when the review flags it
- * (file work inside the task folder and web search or fetch need no review); `always` never
- * prompts.
+ * (file work inside the task folder, web search or fetch, and the `app` tool need no review);
+ * `always` never prompts.
  */
 export const PermissionTierSchema = Type.Union([
   Type.Literal('manual'),
@@ -35,6 +35,8 @@ export const GrantScopeSchema = Type.Union([
   Type.Object({ tool: Type.Literal('mcp') }, { additionalProperties: false }),
   // C1 additive: every network call of web_search / fetch_content. Session grants apply.
   Type.Object({ tool: Type.Literal('web') }, { additionalProperties: false }),
+  // Create App: the `app` harness tool (build, diagnostics, call, list). Session grants apply.
+  Type.Object({ tool: Type.Literal('app') }, { additionalProperties: false }),
 ]);
 export type GrantScope = Static<typeof GrantScopeSchema>;
 
@@ -146,9 +148,14 @@ export function tierAllows(tier: PermissionTier, scope: GrantScope): boolean {
   if (tier === 'always') return true;
   if ('location' in scope && scope.tool === 'read' && scope.location === 'inside') return true;
   if (tier === 'manual') return false;
-  // `auto` needs no review for the task's own folder or for web search and fetch, which only
-  // read (a search query, a GET per URL).
-  return scope.tool === 'web' || ('location' in scope && scope.location === 'inside');
+  // `auto` needs no review for the task's own folder, for web search and fetch, which only
+  // read (a search query, a GET per URL), or for the `app` tool, which publishes only the task's
+  // own app and calls its backend through the same consent-gated capability proxy.
+  return (
+    scope.tool === 'web' ||
+    scope.tool === 'app' ||
+    ('location' in scope && scope.location === 'inside')
+  );
 }
 
 /** Desktop-only capabilities a registered client may serve; T6 owns the UI. */

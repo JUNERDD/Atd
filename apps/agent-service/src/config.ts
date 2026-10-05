@@ -100,13 +100,17 @@ function isAlive(pid: number): boolean {
   }
 }
 
-export async function atomicWrite(file: string, value: unknown, mode = 0o600): Promise<void> {
+/**
+ * Writes `text` to `file` so a reader sees the old file or the whole new one, never a torn one:
+ * a temporary sibling is written and synced, then renamed over the target.
+ */
+export async function writeTextAtomic(file: string, text: string, mode = 0o600): Promise<void> {
   await mkdir(path.dirname(file), { recursive: true });
   const temporary = `${file}.${randomUUID()}.tmp`;
   try {
     const handle = await open(temporary, 'wx', mode);
     try {
-      await handle.writeFile(JSON.stringify(value));
+      await handle.writeFile(text, 'utf8');
       await handle.sync();
     } finally {
       await handle.close();
@@ -115,6 +119,11 @@ export async function atomicWrite(file: string, value: unknown, mode = 0o600): P
   } finally {
     await rm(temporary, { force: true });
   }
+}
+
+/** `writeTextAtomic` for a JSON value. */
+export async function atomicWrite(file: string, value: unknown, mode = 0o600): Promise<void> {
+  await writeTextAtomic(file, JSON.stringify(value), mode);
 }
 
 async function loadServiceFile(paths: ServicePaths): Promise<ServiceFile> {

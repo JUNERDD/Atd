@@ -22,6 +22,8 @@ export interface McpApprovalContext {
   args: Record<string, unknown>;
   /** What the `auto` tier's review said before this confirm, shown on it. */
   review?: ConfirmReview;
+  /** The operation's run status while the confirm waits (`OperationContext.setStatus`). */
+  setStatus?: (status: 'awaiting_confirmation' | 'running') => void;
 }
 
 export class McpApprovalBroker {
@@ -44,7 +46,9 @@ export class McpApprovalBroker {
 
   /**
    * Decides one operation via the task confirm channel. Abort propagates
-   * (run cancel); expiry and decline both deny without caching.
+   * (run cancel); expiry and decline both deny without caching. While the
+   * confirm waits, the run shows `awaiting_confirmation`, as for the service
+   * gate's confirms (harness/gate.ts), and `running` once it settles.
    */
   async decide(ctx: McpApprovalContext, signal?: AbortSignal): Promise<'allow_once' | 'deny'> {
     const capability = mcpCapabilityId(ctx.connectionId, ctx.toolName);
@@ -57,6 +61,7 @@ export class McpApprovalBroker {
       server: ctx.serverId,
       origin: ctx.origin,
     };
+    ctx.setStatus?.('awaiting_confirmation');
     try {
       const answer = await this.confirms.request(
         {
@@ -94,6 +99,8 @@ export class McpApprovalBroker {
       });
       this.audit({ ...base, decision: 'deny', reason: 'lapsed' });
       return 'deny';
+    } finally {
+      ctx.setStatus?.('running');
     }
   }
 }

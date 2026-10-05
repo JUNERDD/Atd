@@ -36,7 +36,7 @@ public struct SavedFile: Equatable, Sendable {
 
   /// The basename without leading dots, which would hide the file, or `fallback` when nothing
   /// is left.
-  static func name(_ requested: String, fallback: String) -> String {
+  public static func name(_ requested: String, fallback: String) -> String {
     let base = AttachmentRules.basename(requested).trimmingCharacters(in: .whitespacesAndNewlines)
     let visible = String(base.drop { $0 == "." })
     return visible.isEmpty ? fallback : visible

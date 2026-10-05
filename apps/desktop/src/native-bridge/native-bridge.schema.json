@@ -22,6 +22,10 @@
       "onboarding.open",
       "onboarding.settle",
       "onboarding.close",
+      "userApp.open",
+      "userApp.close",
+      "userApp.widgetPreview",
+      "userApp.clearData",
       "shortcuts.set",
       "capture",
       "clipboard.read",
@@ -68,7 +72,8 @@
       "accessibility.trust",
       "screenRecording.trust",
       "update.state",
-      "socket.frames"
+      "socket.frames",
+      "userApp.state"
     ]
   },
   "anyOf": [
@@ -383,6 +388,150 @@
               "required": ["summon"],
               "properties": {
                 "summon": {
+                  "type": "boolean"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
+              "const": "userApp.open"
+            },
+            "params": {
+              "type": "object",
+              "required": ["appId"],
+              "properties": {
+                "appId": {
+                  "type": "string",
+                  "pattern": "^app-[a-z0-9]{10}$"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
+              "const": "userApp.close"
+            },
+            "params": {
+              "type": "object",
+              "required": ["appId"],
+              "properties": {
+                "appId": {
+                  "type": "string",
+                  "pattern": "^app-[a-z0-9]{10}$"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
+              "const": "userApp.widgetPreview"
+            },
+            "params": {
+              "type": "object",
+              "required": ["appId", "widgetId", "family"],
+              "properties": {
+                "appId": {
+                  "type": "string",
+                  "pattern": "^app-[a-z0-9]{10}$"
+                },
+                "widgetId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 64
+                },
+                "family": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "const": "systemSmall"
+                    },
+                    {
+                      "type": "string",
+                      "const": "systemMedium"
+                    },
+                    {
+                      "type": "string",
+                      "const": "systemLarge"
+                    }
+                  ]
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
+              "const": "userApp.clearData"
+            },
+            "params": {
+              "type": "object",
+              "required": ["appId", "forget"],
+              "properties": {
+                "appId": {
+                  "type": "string",
+                  "pattern": "^app-[a-z0-9]{10}$"
+                },
+                "forget": {
                   "type": "boolean"
                 }
               },
@@ -2016,6 +2165,46 @@
             }
           },
           "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "event", "payload"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "event"
+            },
+            "event": {
+              "type": "string",
+              "const": "userApp.state"
+            },
+            "payload": {
+              "type": "object",
+              "required": ["appId", "open", "version"],
+              "properties": {
+                "appId": {
+                  "type": "string",
+                  "pattern": "^app-[a-z0-9]{10}$"
+                },
+                "open": {
+                  "type": "boolean"
+                },
+                "version": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
         }
       ]
     },
@@ -2210,7 +2399,7 @@
     },
     "AppStateResult": {
       "type": "object",
-      "required": ["pinned", "showInDock", "openAtLogin"],
+      "required": ["pinned", "showInDock", "openAtLogin", "widgetsAvailable"],
       "properties": {
         "pinned": {
           "type": "boolean"
@@ -2227,6 +2416,9 @@
               "type": "null"
             }
           ]
+        },
+        "widgetsAvailable": {
+          "type": "boolean"
         }
       },
       "additionalProperties": false
@@ -2347,6 +2539,99 @@
       "additionalProperties": false
     },
     "OnboardingCloseResult": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "UserAppOpenParams": {
+      "type": "object",
+      "required": ["appId"],
+      "properties": {
+        "appId": {
+          "type": "string",
+          "pattern": "^app-[a-z0-9]{10}$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "UserAppOpenResult": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "UserAppCloseParams": {
+      "type": "object",
+      "required": ["appId"],
+      "properties": {
+        "appId": {
+          "type": "string",
+          "pattern": "^app-[a-z0-9]{10}$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "UserAppCloseResult": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "UserAppWidgetPreviewParams": {
+      "type": "object",
+      "required": ["appId", "widgetId", "family"],
+      "properties": {
+        "appId": {
+          "type": "string",
+          "pattern": "^app-[a-z0-9]{10}$"
+        },
+        "widgetId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "family": {
+          "anyOf": [
+            {
+              "type": "string",
+              "const": "systemSmall"
+            },
+            {
+              "type": "string",
+              "const": "systemMedium"
+            },
+            {
+              "type": "string",
+              "const": "systemLarge"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "UserAppWidgetPreviewResult": {
+      "type": "object",
+      "required": ["pngBase64"],
+      "properties": {
+        "pngBase64": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "UserAppClearDataParams": {
+      "type": "object",
+      "required": ["appId", "forget"],
+      "properties": {
+        "appId": {
+          "type": "string",
+          "pattern": "^app-[a-z0-9]{10}$"
+        },
+        "forget": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "UserAppClearDataResult": {
       "type": "object",
       "properties": {},
       "additionalProperties": false
@@ -3785,6 +4070,31 @@
             ]
           },
           "minItems": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "UserAppStateEvent": {
+      "type": "object",
+      "required": ["appId", "open", "version"],
+      "properties": {
+        "appId": {
+          "type": "string",
+          "pattern": "^app-[a-z0-9]{10}$"
+        },
+        "open": {
+          "type": "boolean"
+        },
+        "version": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
       "additionalProperties": false

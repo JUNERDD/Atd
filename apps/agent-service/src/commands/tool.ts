@@ -38,7 +38,11 @@ const InputField = {
     'Where a run takes its input. source: manual (typed text), selection (text selected in another app), clipboard, screenshot (an image the user captures when the command runs; it needs files: true, and the image reaches the model as image input) or none. required: the user must supply text before running. files, selection and clipboard enable file attachments and the {{files}}, {{selection}} and {{clipboard}} variables.',
 };
 
-/** What the Agent may author; identity, enabled state and model stay with the stored command. */
+/**
+ * What the Agent may author; identity, enabled state, model and placement stay with the stored
+ * command: a create takes the default placement of its input source, an update keeps the
+ * current one.
+ */
 const CommandFieldsSchema = Type.Object(
   {
     name: Fields.name,

@@ -12,6 +12,14 @@
     "interrupted": "interrupted",
     "unknown": "unknown"
   },
+  "statusList": {
+    "approval": "Needs approval",
+    "answer": "Needs an answer",
+    "running": "Running",
+    "failed": "Failed",
+    "interrupted": "Interrupted",
+    "completed": "Completed"
+  },
   "conversation": {
     "legacyTitle": "Imported draft · Not executed",
     "legacyAttachments": "{{files}} — attach these files again before running.",
@@ -57,6 +65,7 @@
       "commandCreate": "Create command",
       "commandUpdate": "Update command",
       "searchMemory": "Search memory",
+      "readMemory": "Read memory",
       "saveMemory": "Save memory",
       "updateMemory": "Update memory",
       "removeMemory": "Remove memory",
@@ -64,6 +73,7 @@
       "subagentList": "List subagents",
       "subagentGuide": "Read subagent guide",
       "subagentStatus": "Check subagent run",
+      "subagentDefine": "Define subagent",
       "subagentManage": "Manage subagents",
       "subagentWorkflow": "Run workflow",
       "grep": "Search file contents",
@@ -76,11 +86,12 @@
       "codemode": "Run script",
       "listMcpResources": "List MCP resources",
       "listMcpResourceTemplates": "List MCP resource templates",
-      "readMcpResource": "Read MCP resource"
+      "readMcpResource": "Read MCP resource",
+      "app": "Use app tool",
+      "appBuild": "Build app"
     },
     "target": {
       "user": "User",
-      "project": "Project",
       "memory": "Memory",
       "failure": "Failure"
     }
@@ -102,7 +113,8 @@
       "bash": "Run a terminal command",
       "command": "Save or update a command",
       "mcp": "Use an MCP tool",
-      "web": "Access the web"
+      "web": "Access the web",
+      "app": "Build or run this task's app"
     },
     "outcome": {
       "once": "Allowed once",
@@ -164,6 +176,9 @@
       "nothing_to_compact": "Nothing to compact yet: the conversation is short or was just compacted.",
       "compaction_unavailable": "The context can't be compacted right now. Try again later."
     }
+  },
+  "retry": {
+    "running": "Request failed · Retrying ({{attempt}}/{{max}})…"
   },
   "files": {
     "open": "Open",
@@ -345,7 +360,44 @@
     "breadcrumb": "Subagent location",
     "fallbackName": "Subagent",
     "loading": "Loading conversation…",
-    "empty": "No messages yet."
+    "empty": "No messages yet.",
+    "temporary": "Temporary",
+    "temporaryHint": "Defined by this task for its own use.",
+    "openTemporaryChild": "Open {{name}}, a temporary subagent",
+    "more": "More actions",
+    "definedCount_one": "{{count}} subagent",
+    "definedCount_other": "{{count}} subagents",
+    "role": {
+      "tools": "Tools",
+      "noTools": "None",
+      "showInstructions": "Show instructions",
+      "hideInstructions": "Hide instructions"
+    },
+    "save": {
+      "action": "Save as my subagent…",
+      "title": "Save as my subagent",
+      "description": "Later tasks can use it like the subagents you add in Settings. It is saved to ~/.atd/agents.",
+      "name": "Name",
+      "descriptionLabel": "Description",
+      "tools": "Tools",
+      "toolsKept": "{{tools}} stay as custom permissions, since an agent file lists only read, write, edit, bash, and command.",
+      "systemPrompt": "System prompt",
+      "effort": "Effort ({{level}}) isn't saved: saved subagents have no effort setting.",
+      "cannotTitle": "Can't save with the same tools",
+      "noTools": "This subagent works without tools. A saved subagent can't: one with no tools listed gets every tool the task allows.",
+      "noFileTool": "A saved subagent needs at least one of read, write, edit, bash, or command to keep its tools limited, and this one uses only {{tools}}.",
+      "cancel": "Cancel",
+      "save": "Save",
+      "saved": "Saved “{{name}}” to your subagents.",
+      "notSaved": "“{{name}}” wasn't saved because its tools couldn't be kept.",
+      "narrowed": "Saved “{{name}}” with fewer tools; set its permissions in Settings."
+    }
+  },
+  "sideChat": {
+    "back": "Back to the conversation",
+    "breadcrumb": "Side chat location",
+    "starting": "Starting…",
+    "loading": "Loading side chat…"
   },
   "mcpApproval": {
     "requiredTitle": "{{name}} needs your approval to run",

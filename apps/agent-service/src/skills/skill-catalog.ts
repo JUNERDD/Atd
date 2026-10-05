@@ -1,11 +1,10 @@
 import { LOAD_SKILL_TOOL } from '@atd/agent-contracts';
+import { catalogDescription, escapeXml, plural, renderCatalog } from '../prompt-catalog.js';
 import { roleAllowedSkills, type RoleSnapshotRecord } from './roles.js';
 import type { SkillCatalog, SkillRevisionRecord } from './versions.js';
 
 /** Most characters the catalog section puts into context; it counts against the run's budget. */
 const MAX_CATALOG_CHARS = 8000;
-/** A longer description is cut here, before any entry loses its description. */
-const MAX_DESCRIPTION_CHARS = 250;
 
 /** One catalog skill as a run froze it: what the catalog lists and what `load_skill` reads. */
 export interface CatalogSkill {
@@ -72,55 +71,36 @@ const USER_ONLY_RULE =
   'User-only skills can only be started by the user, by typing / in the composer.';
 
 /**
- * The catalog section text, at most MAX_CATALOG_CHARS. Over budget, trailing entries lose their
- * descriptions first, then are left out with a count line, then trailing user-only names are
- * left out with a count; the totals line always gives exact counts. Empty when there is nothing
- * to list.
+ * The catalog section text, at most MAX_CATALOG_CHARS (renderCatalog). Over budget, trailing
+ * entries lose their descriptions first, then are left out with a count line, then trailing
+ * user-only names are left out with a count; the totals line always gives exact counts. Empty
+ * when there is nothing to list.
  */
 function catalogText(invocable: CatalogSkill[], userOnly: CatalogSkill[]): string {
   if (!invocable.length && !userOnly.length) return '';
-  const described = invocable.map(
-    (skill) =>
-      `<skill><name>${escapeXml(skill.name)}</name><description>${escapeXml(
-        truncate(skill.description.replace(/\s+/g, ' ').trim()),
-      )}</description></skill>`,
-  );
-  const bare = invocable.map((skill) => `<skill><name>${escapeXml(skill.name)}</name></skill>`);
   const names = userOnly.map((skill) => skill.name);
   const preamble = [
     INTRO,
     ...(invocable.length ? [LOADABLE_RULE] : []),
     ...(names.length ? [USER_ONLY_RULE] : []),
   ].join(' ');
-  // Entries [0, withDescription) keep descriptions, [withDescription, shown) are names only.
-  let withDescription = described.length;
-  let shown = described.length;
-  let namesShown = names.length;
-  const render = (): string => {
-    const entries = [...described.slice(0, withDescription), ...bare.slice(withDescription, shown)];
-    const omitted = invocable.length - shown;
-    return [
-      preamble,
-      ...(invocable.length ? ['<available_skills>', ...entries, '</available_skills>'] : []),
-      ...(omitted ? [`${omitted} more ${plural(omitted, 'skill')} omitted.`] : []),
-      totalsLine(invocable.length, names, namesShown),
-    ].join('\n');
-  };
-  // Dropping a description changes only its entry, so that loop tracks the length by deltas.
-  let length = render().length;
-  while (length > MAX_CATALOG_CHARS && withDescription > 0) {
-    withDescription -= 1;
-    length -= (described[withDescription]?.length ?? 0) - (bare[withDescription]?.length ?? 0);
-  }
-  while (length > MAX_CATALOG_CHARS && shown > 0) {
-    shown -= 1;
-    length = render().length;
-  }
-  while (length > MAX_CATALOG_CHARS && namesShown > 0) {
-    namesShown -= 1;
-    length = render().length;
-  }
-  return render();
+  return renderCatalog({
+    preamble,
+    open: '<available_skills>',
+    close: '</available_skills>',
+    entries: invocable.map((skill) => {
+      const name = `<name>${escapeXml(skill.name)}</name>`;
+      const description = escapeXml(catalogDescription(skill.description));
+      return {
+        full: `<skill>${name}<description>${description}</description></skill>`,
+        bare: `<skill>${name}</skill>`,
+      };
+    }),
+    omitted: (count) => `${count} more ${plural(count, 'skill')} omitted.`,
+    totals: (shown) => totalsLine(invocable.length, names, shown),
+    tail: names.length,
+    maxChars: MAX_CATALOG_CHARS,
+  }).text;
 }
 
 /** "N skills can be loaded; K more are user-only: a, b." with exact counts. */
@@ -142,18 +122,4 @@ export function catalogSkillCount(text: string): number | null {
     text.split('\n').at(-1) ?? '',
   );
   return totals ? Number(totals[1]) + Number(totals[2] ?? 0) : null;
-}
-
-function truncate(text: string): string {
-  return text.length > MAX_DESCRIPTION_CHARS
-    ? `${text.slice(0, MAX_DESCRIPTION_CHARS - 1).trimEnd()}…`
-    : text;
-}
-
-function plural(count: number, word: string): string {
-  return count === 1 ? word : `${word}s`;
-}
-
-function escapeXml(value: string): string {
-  return value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
 }

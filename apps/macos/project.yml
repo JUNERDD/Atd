@@ -29,6 +29,16 @@ settings:
     CODE_SIGN_STYLE: Manual
     ENABLE_USER_SCRIPT_SANDBOXING: true
     DEAD_CODE_STRIPPING: true
+  # The shell's bundle id and widget URL scheme, which the App target and the widget extension
+  # share: the extension's bundle id, the directory it may read and the links it opens derive
+  # from them. Debug and Release differ, so both builds can be installed side by side.
+  configs:
+    Debug:
+      AI_HOST_BUNDLE_ID: com.junerdd.ai.dev
+      AI_URL_SCHEME: atd-dev
+    Release:
+      AI_HOST_BUNDLE_ID: com.junerdd.ai
+      AI_URL_SCHEME: atd
 packages:
   AIMac:
     path: .
@@ -43,6 +53,21 @@ targets:
     dependencies:
       - package: AIMac
         product: AIShell
+      - package: AIMac
+        product: AIWidgetModel
+      # Signed with the app's identity (ad hoc by default) and embedded in Contents/PlugIns, plus
+      # ATD_WIDGETS_EMBED_SUBPATH: nothing in Release, `DevStaging` in Debug, where macOS does not
+      # look for extensions. xcodebuild registers every app it builds with LaunchServices; a
+      # DerivedData build whose extension macOS could find makes chronod launch the extension
+      # from under ~/Documents, where a sandboxed extension cannot run, and keep launching it
+      # from there after dev-install.mjs unregisters that build. dev-install.mjs moves it into
+      # Contents/PlugIns of the installed copy only.
+      - target: AtdWidgets
+        embed: true
+        codeSign: true
+        copy:
+          destination: plugins
+          subpath: $(ATD_WIDGETS_EMBED_SUBPATH)
     # Release only: embeds the renderer (`apps/desktop/dist-native`) and the service pack with its
     # bundled Node (`scripts/prepare-service-pack.mjs`) where ServiceLaunchPlan and
     # RendererSource expect them. `pnpm --filter @atd/macos build:release` prepares both first;
@@ -70,6 +95,7 @@ targets:
     settings:
       base:
         PRODUCT_NAME: Atd
+        PRODUCT_BUNDLE_IDENTIFIER: $(AI_HOST_BUNDLE_ID)
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         GENERATE_INFOPLIST_FILE: false
         # The embed phase copies whole directory trees from outside the project, which the
@@ -79,12 +105,12 @@ targets:
         # AI_SERVICE_MENU_TITLE: the Finder service's title (NSServices below), distinct in Debug
         # so both builds can be installed side by side.
         Debug:
-          PRODUCT_BUNDLE_IDENTIFIER: com.junerdd.ai.dev
           ASSETCATALOG_COMPILER_APPICON_NAME: AppIconDev
           AI_SERVICE_MENU_TITLE: Add to Atd Dev
+          ATD_WIDGETS_EMBED_SUBPATH: DevStaging
         Release:
-          PRODUCT_BUNDLE_IDENTIFIER: com.junerdd.ai
           AI_SERVICE_MENU_TITLE: Add to Atd
+          ATD_WIDGETS_EMBED_SUBPATH: ''
     info:
       path: App/Info.plist
       properties:
@@ -95,6 +121,14 @@ targets:
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         LSApplicationCategoryType: public.app-category.productivity
+        # Widget taps: `<scheme>://apps/<appId>?route=<route>` only (WidgetLink), checked by the
+        # shell before it opens anything.
+        CFBundleURLTypes:
+          - CFBundleURLName: $(AI_HOST_BUNDLE_ID).widget-link
+            CFBundleURLSchemes: [$(AI_URL_SCHEME)]
+        # Read by the shared widget code (WidgetFiles, WidgetLink) in the app and the extension.
+        AtdHostBundleIdentifier: $(AI_HOST_BUNDLE_ID)
+        AtdURLScheme: $(AI_URL_SCHEME)
         LSMinimumSystemVersion: $(MACOSX_DEPLOYMENT_TARGET)
         NSPrincipalClass: NSApplication
         # Sparkle (AppUpdater, Release builds only): the latest GitHub release's appcast, which
@@ -130,6 +164,59 @@ targets:
             CFBundleTypeRole: Viewer
             LSHandlerRank: None
             LSItemContentTypes: [public.item, public.folder]
+  # The desktop widgets (plan Q4, T1b, T1c): two fixed kinds, App Widget (an instance shows one
+  # user app's widget) and My Apps (a launcher of the user's apps), both rendered from the files
+  # the shell writes (WidgetSync, WidgetFiles). App Widget's App Intents
+  # (the configuration) must exist in this bundle only: a copy in the App target makes the
+  # system resolve the intent to the host module, which the extension cannot instantiate.
+  AtdWidgets:
+    type: app-extension
+    platform: macOS
+    sources:
+      - path: Widgets
+        excludes:
+          - Extension/Info.plist
+          - Extension/AtdWidgets.entitlements
+    dependencies:
+      - package: AIMac
+        product: AIWidgetRender
+      - sdk: AppIntents.framework
+    settings:
+      base:
+        PRODUCT_NAME: AtdWidgets
+        PRODUCT_BUNDLE_IDENTIFIER: $(AI_HOST_BUNDLE_ID).widgets
+        # One binary in Debug too. With the debug dylib split, the stub executable links only the
+        # dylib, and the App Intents metadata processor reads the stub's linker dependency info,
+        # finds no AppIntents.framework, and skips extraction ("No AppIntents.framework dependency
+        # found"), so the extension ships without its widget configuration and every widget stays
+        # a placeholder (v11 acceptance). The split only speeds up SwiftUI previews.
+        ENABLE_DEBUG_DYLIB: NO
+        GENERATE_INFOPLIST_FILE: false
+        SKIP_INSTALL: YES
+        # Ad hoc builds would otherwise gain get-task-allow; the extension's entitlements are
+        # exactly the two below.
+        CODE_SIGN_INJECT_BASE_ENTITLEMENTS: NO
+    # WidgetKit requires the sandbox. The one exception is read-only access to the directory the
+    # shell writes (T1b: works ad hoc and team signed, without a prompt and without a
+    # provisioning profile; App Groups do not, ad hoc). Paths are relative to the user's home.
+    entitlements:
+      path: Widgets/Extension/AtdWidgets.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
+        com.apple.security.temporary-exception.files.home-relative-path.read-only:
+          - /Library/Application Support/$(AI_HOST_BUNDLE_ID)/widgets/
+    info:
+      path: Widgets/Extension/Info.plist
+      properties:
+        CFBundleDisplayName: Atd
+        CFBundleDevelopmentRegion: en
+        CFBundleLocalizations: [en, zh-Hans]
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        AtdHostBundleIdentifier: $(AI_HOST_BUNDLE_ID)
+        AtdURLScheme: $(AI_URL_SCHEME)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
 schemes:
   AI:
     build:

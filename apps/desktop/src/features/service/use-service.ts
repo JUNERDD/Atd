@@ -5,6 +5,7 @@ import { bridgeKeys, guardedRead, wireServiceBridge } from '../../lib/bridge-cac
 import { messageOf } from '../../lib/errors';
 import { queryClient } from '../../lib/query-client';
 import {
+  asAgentDiagnostic,
   asAgentRow,
   asMcpRow,
   asRoleRow,
@@ -91,10 +92,21 @@ export function serviceListQuery<T>(
   });
 }
 
+/** The subagent catalog as Extensions shows it: its rows, and the ~/.atd/agents files it skipped. */
+interface ServiceAgentCatalog {
+  rows: ExtensionAgentRow[];
+  diagnostics: PluginSummary['diagnostics'];
+}
+
 export const readSkills = (bridge: ServiceBridge) =>
   bridge.skills().then((result) => result.skills.flatMap((row) => asSkillRow(row) ?? []));
+const readAgentCatalog = (bridge: ServiceBridge) =>
+  bridge.agents().then((result): ServiceAgentCatalog => ({
+    rows: result.agents.flatMap((row) => asAgentRow(row) ?? []),
+    diagnostics: result.diagnostics.flatMap((value) => asAgentDiagnostic(value) ?? []),
+  }));
 export const readAgents = (bridge: ServiceBridge) =>
-  bridge.agents().then((result) => result.agents.flatMap((row) => asAgentRow(row) ?? []));
+  readAgentCatalog(bridge).then((catalog) => catalog.rows);
 const readRoles = (bridge: ServiceBridge) =>
   bridge.roles().then((result) => result.roles.flatMap((row) => asRoleRow(row) ?? []));
 const readMcp = (bridge: ServiceBridge) => bridge.mcpStatus().then(asMcpState);
@@ -133,20 +145,25 @@ export function useServiceRoles() {
   return { roles: data ? { roles: data satisfies ExtensionRoleRow[] } : null, loading: isFetching };
 }
 
-/** Markdown subagent catalog via the service bridge (`~/.atd/agents`). */
+/**
+ * Markdown subagent catalog via the service bridge (`~/.atd/agents`), with the files that did not
+ * load (`diagnostics`, empty until the first read), which Personal's page lists.
+ */
 export function useServiceAgents() {
   const connected = useServiceStatus().status?.state === 'connected';
   const { data, isFetching } = useQuery(
-    serviceListQuery(serviceListKeys.agents, readAgents, connected),
+    serviceListQuery(serviceListKeys.agents, readAgentCatalog, connected),
     queryClient,
   );
   return {
-    agents: data ? { agents: data } : null,
+    agents: data ? { agents: data.rows } : null,
+    diagnostics: data?.diagnostics ?? [],
     loading: isFetching,
     setEnabled: (name: string, enabled: boolean) =>
-      patchList<ExtensionAgentRow[]>(serviceListKeys.agents, (rows) =>
-        rows.map((row) => (row.name === name ? { ...row, enabled } : row)),
-      ),
+      patchList<ServiceAgentCatalog>(serviceListKeys.agents, (catalog) => ({
+        ...catalog,
+        rows: catalog.rows.map((row) => (row.name === name ? { ...row, enabled } : row)),
+      })),
   };
 }
 

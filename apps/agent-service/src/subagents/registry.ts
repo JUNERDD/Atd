@@ -5,9 +5,10 @@ import {
   type ChildTranscriptPatchData,
   type SubagentChildEntry,
 } from '@atd/agent-contracts';
-import type { ModelRuntime } from '@earendil-works/pi-coding-agent';
+import type { ExtensionFactory, ModelRuntime } from '@earendil-works/pi-coding-agent';
 import type { PermissionLookups } from '../transcript-blocks.js';
 import type { ChildApprovals, ChildApprovalsRequest } from './approvals.js';
+import type { ParentAgents } from './task-agents.js';
 
 /**
  * T5 in-process parent/child registry. Foreground children share the parent
@@ -23,11 +24,11 @@ export interface ParentRecord {
   tools: string[];
   roleId: string;
   /**
-   * Runtime agents this parent session registered and may delegate to: the
-   * service agents plus the atd agents its runs referenced. Fixed for the
-   * session's life; the run binding key rebuilds the session when it changes.
+   * The agents a launch of this parent may name in its current run, and the model each child must
+   * carry: the agents its session registered (fixed for the session's life; the run binding key
+   * rebuilds the session when they change) and its task agents, which task-agents.ts owns.
    */
-  agents: string[];
+  agents: ParentAgents;
   stopping: boolean;
   /**
    * The launching `subagent` call the guard admitted and whose result has not landed. Children
@@ -56,8 +57,10 @@ export interface ChildRecord {
   agent: string;
   executionId: string;
   startedAt: string;
-  /** The child's session JSONL; set once the child session exists. */
-  sessionFile: string | null;
+  /** The session JSONL the child's launch opens; its bridge finds this record by it. */
+  sessionFile: string;
+  /** Set by the child's bridge once its tools act under this record; the trigger runs no other. */
+  bridged: boolean;
 }
 
 /** Builds one child's model runtime on the parent's credentials, endpoint and model catalog. */
@@ -68,14 +71,16 @@ export interface SubagentHost {
   dataDir: string;
   cwd: string;
   allowedTools: string[];
-  mcpProxies: string[];
   runMemory: boolean;
   /** Parent run audit sink; child entries land in the same run file. */
   audit: (entry: Record<string, unknown>) => void;
-  /** Child memory factory from the service singleton (search, no learn). */
-  memoryFactory?: (pi: unknown) => void;
-  /** Builds per-child MCP proxies bound to one child execution id. */
-  mcpBuilder?: (executionId: string) => (pi: unknown) => void;
+  /** Builds a child's memory read tools under its execution, over the service authority. */
+  memoryFactory?: (child: { runId: string; executionId: string }) => (pi: unknown) => void;
+  /**
+   * The run's MCP tools for one child, each call decided and audited as that child
+   * (pi-session-mcp.ts `childFactory`); like every child tool they stay within the ceiling.
+   */
+  mcpBuilder: (child: ChildApprovalsRequest) => ExtensionFactory;
   /** Ledger resource ids frozen for this run (resource-ref checks). */
   resourceIds: string[];
   /** Builds each child's model runtime like the parent's (run-model.ts `childRuntime`). */
@@ -97,7 +102,6 @@ interface RegistryStore {
   childrenByParent: Map<string, Map<string, ChildRecord>>;
   activeWrites: Map<string, Map<string, string>>;
   hosts: Map<string, SubagentHost>;
-  childSessions: Map<string, ChildRecord>;
   childSequence: number;
 }
 
@@ -113,7 +117,6 @@ function store(): RegistryStore {
     childrenByParent: new Map(),
     activeWrites: new Map(),
     hosts: new Map(),
-    childSessions: new Map(),
     childSequence: 0,
   };
   global[STORE_KEY] = created;
@@ -215,10 +218,13 @@ export function endDelegation(taskId: string, toolCallId: string): void {
 /**
  * Tracks a child launch; refuses unknown or stopping parents and launches no admitted call owns
  * (fail closed: a child without its call could not be linked to a transcript row). Never by count.
+ * The record is keyed by the session file the launch opens: pi starts the child's bridge inside
+ * the launch's `create`, and the bridge finds its identity by that file (`childBySessionFile`).
  */
 export function tryTrackChildStart(input: {
   parentSessionId: string;
   agent: string;
+  sessionFile: string;
 }): { ok: true; record: ChildRecord } | { ok: false; reason: string } {
   const state = store();
   const parent = state.parentsBySession.get(input.parentSessionId);
@@ -227,6 +233,9 @@ export function tryTrackChildStart(input: {
   const toolCallId = parent.activeToolCallId;
   if (!toolCallId) return { ok: false, reason: 'No admitted subagent call owns this launch.' };
   const live = state.childrenByParent.get(input.parentSessionId) ?? new Map<string, ChildRecord>();
+  const sessionFile = path.resolve(input.sessionFile);
+  if ([...live.values()].some((child) => child.sessionFile === sessionFile))
+    return { ok: false, reason: 'A live child already opens this session file.' };
   const index = state.childSequence;
   state.childSequence += 1;
   const seq = parent.launchSeq;
@@ -242,7 +251,8 @@ export function tryTrackChildStart(input: {
     agent: input.agent,
     executionId: childExecutionId(parent.runId, index),
     startedAt: new Date().toISOString(),
-    sessionFile: null,
+    sessionFile,
+    bridged: false,
   };
   live.set(record.key, record);
   state.childrenByParent.set(input.parentSessionId, live);
@@ -250,19 +260,18 @@ export function tryTrackChildStart(input: {
 }
 
 /**
- * Records a created child: its session file and the parent's `app-child` entry, the only link from
- * the parent call to the child session. Throws when the parent session is gone.
+ * Records a created child in the parent session's `app-child` entry, the only link from the parent
+ * call to the child session. Throws when the parent session is gone.
  */
-export function recordChildSession(record: ChildRecord, sessionFile: string): void {
+export function recordChildSession(record: ChildRecord): void {
   const parent = store().parentsBySession.get(record.parentSessionId);
   if (!parent) throw new Error('The parent session ended before the child started.');
-  record.sessionFile = sessionFile;
   parent.appendChildEntry({
     toolCallId: record.toolCallId,
     seq: record.seq,
     executionId: record.executionId,
     agent: record.agent,
-    sessionFile,
+    sessionFile: record.sessionFile,
     startedAt: record.startedAt,
   });
 }
@@ -275,6 +284,15 @@ export function trackChildEnd(parentSessionId: string, key: string): void {
 /** Lists live children for one parent (UI aggregation + cancel). */
 export function liveChildren(parentSessionId: string): ChildRecord[] {
   return [...(store().childrenByParent.get(parentSessionId)?.values() ?? [])];
+}
+
+/** The live child of a parent whose launch opens `sessionFile`: its bridge's own record. */
+export function childBySessionFile(
+  parentSessionId: string,
+  sessionFile: string,
+): ChildRecord | null {
+  const file = path.resolve(sessionFile);
+  return liveChildren(parentSessionId).find((child) => child.sessionFile === file) ?? null;
 }
 
 /** Marks a parent stopping so the guard admits no new launches. */
@@ -323,22 +341,4 @@ export function forgetTaskTree(taskId: string): void {
   }
   state.activeWrites.delete(taskId);
   state.hosts.delete(taskId);
-  for (const [sessionId, child] of state.childSessions) {
-    if (child.taskId === taskId) state.childSessions.delete(sessionId);
-  }
-}
-
-/** Maps a live child session id to its tracked record (bridge lookup). */
-export function trackChildSession(sessionId: string, record: ChildRecord): void {
-  store().childSessions.set(sessionId, record);
-}
-
-/** Resolves a child session id to its parent run and execution id. */
-export function childBySession(sessionId: string): ChildRecord | null {
-  return store().childSessions.get(sessionId) ?? null;
-}
-
-/** Drops a child session mapping when the child disposes. */
-export function untrackChildSession(sessionId: string): void {
-  store().childSessions.delete(sessionId);
 }

@@ -3,13 +3,14 @@ import {
   CONFIGURE_MCP_TOOL,
   LIST_MCP_TOOL,
   LOAD_SKILL_TOOL,
-  MEMORY_TOOLS,
+  MEMORY_READ_TOOLS,
+  MEMORY_WRITE_TOOLS,
   TODO_TOOL,
   WEB_FETCH_TOOL,
   WEB_SEARCH_TOOL,
   type TaskRun,
 } from '@atd/agent-contracts';
-import { MCP_RESOURCE_TOOLS } from './mcp/index.js';
+import { APP_TOOL } from './apps/tool-name.js';
 import type { SessionFactoryDeps } from './pi-session.js';
 import { prepareSessionMcp, type SessionMcpPrep } from './pi-session-mcp.js';
 import { skillProfilePaths } from './skills/profile.js';
@@ -32,6 +33,7 @@ const SERVICE_TOOLS = [
   TODO_TOOL,
   WEB_SEARCH_TOOL,
   WEB_FETCH_TOOL,
+  APP_TOOL,
 ];
 
 /**
@@ -40,13 +42,6 @@ const SERVICE_TOOLS = [
  * session_start (subagents/delegator.ts, enrich.ts).
  */
 const SUBAGENT_TOOL = 'subagent';
-
-/**
- * Pi's tool search (`createToolSearchExtension`, pi-session.ts). It is allowlisted, which declares
- * it, only when a bound MCP server is deferred. Deferred proxies are allowlisted too, so the
- * search may load them; pi-session.ts keeps them undeclared until it does (`declaredTools`).
- */
-export const TOOL_SEARCH_TOOL = 'tool_search';
 
 /**
  * What one run needs from the parent Pi session it executes in. Pi fixes all
@@ -67,7 +62,7 @@ export interface RunBinding {
   tools: string[];
   /** MCP proxies bound from this run's frozen selection and the current catalog. */
   mcp: SessionMcpPrep;
-  /** The runtime agents the session registers: enabled service agents and referenced specialists. */
+  /** The runtime agents the session registers: enabled service agents and catalog subagents. */
   agents: RuntimeAgent[];
 }
 
@@ -85,18 +80,15 @@ export async function prepareRunBinding(
   const role = await loadRunRole(profile, run.id);
   const mcp = await prepareSessionMcp(deps);
   const loadable = deps.currentMaterial().catalog.invocable.length > 0;
-  const deferred = mcp.bindings.some((binding) => binding.exposure === 'deferred');
   // Memory tools follow the frozen memory flag and `load_skill` the catalog; `tools` is in the key.
   const tools = [
     ...new Set([
       ...run.snapshot.tools,
       ...SERVICE_TOOLS,
-      ...(run.snapshot.memory ? MEMORY_TOOLS : []),
+      ...(run.snapshot.memory ? [...MEMORY_READ_TOOLS, ...MEMORY_WRITE_TOOLS] : []),
       ...(loadable ? [LOAD_SKILL_TOOL] : []),
       SUBAGENT_TOOL,
-      ...mcp.bindings.map((binding) => binding.proxyName),
-      ...(deferred ? [TOOL_SEARCH_TOOL] : []),
-      ...(mcp.resourceServers.length ? MCP_RESOURCE_TOOLS : []),
+      ...mcp.tools,
     ]),
   ];
   // The session's tool host freezes the task's tier (pi-session.ts), so a changed tier reopens it.
@@ -116,7 +108,8 @@ export async function prepareRunBinding(
     mcpResources: mcp.resourceServers,
     role: role && [role.role.roleId, role.role.revision, role.capabilities.revokedTools],
     memory: run.snapshot.memory,
-    agents: agents.map((agent) => [agent.name, agent.definition]),
+    // A child's approval binds once per session (subagents/approvals.ts), beside the definition.
+    agents: agents.map((agent) => [agent.name, agent.definition, agent.approval]),
   });
   return { key, tools, mcp, agents };
 }

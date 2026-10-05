@@ -108,10 +108,13 @@ export function excerptPatch(path: string, text: string, startLine: number): str
   return patchText(path, [hunk]);
 }
 
-/** A patch from this module parsed for `FileDiff`; `null` when the parser rejects it. */
-export function parsePatch(patch: string): FileDiffMetadata | null {
+/**
+ * A patch from this module parsed for `FileDiff`; `null` when the parser rejects it. `cacheKey`
+ * names the diff in the highlight pool's cache (`codeCacheKey`).
+ */
+export function parsePatch(patch: string, cacheKey?: string): FileDiffMetadata | null {
   try {
-    return processFile(patch, { throwOnError: true }) ?? null;
+    return processFile(patch, { throwOnError: true, ...(cacheKey ? { cacheKey } : {}) }) ?? null;
   } catch {
     return null;
   }

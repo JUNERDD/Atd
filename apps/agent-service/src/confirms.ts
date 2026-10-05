@@ -25,6 +25,8 @@ const CONFIRM_TTL_MS = 30 * 60 * 1000;
  */
 export class ConfirmStore {
   private readonly waiters = new Map<string, ConfirmWaiter>();
+  /** Requests only their own answer settles: a session grant on their scope passes them by. */
+  private readonly ownAnswerOnly = new Set<string>();
   /** Per task: whether the message the user cut in with is still undelivered. */
   private readonly interjections = new Map<string, () => boolean>();
 
@@ -47,12 +49,20 @@ export class ConfirmStore {
   /**
    * Raises a confirmation/input request and waits for the reply. Disconnects do
    * not cancel the wait; abort (run cancel) and expiry reject it instead.
+   * `ownAnswerOnly` is for a request no session grant may answer (harness/gate.ts):
+   * `grantPending` leaves it waiting for its own reply.
    */
-  async request(draft: PermissionRequestDraft, signal?: AbortSignal): Promise<PermissionAnswer> {
+  async request(
+    draft: PermissionRequestDraft,
+    signal?: AbortSignal,
+    options: { ownAnswerOnly?: boolean } = {},
+  ): Promise<PermissionAnswer> {
     if (this.interjecting(draft.taskId)) return supersededAnswer(draft);
     const stamp = { id: randomUUID(), revision: 1, createdAt: new Date().toISOString() };
     const created: PermissionRequest =
       draft.kind === 'confirmation' ? { ...draft, ...stamp } : { ...draft, ...stamp };
+    // Marked before it is listed, so no sweep ever sees it unmarked.
+    if (options.ownAnswerOnly) this.ownAnswerOnly.add(created.id);
     await this.ledger.change((data) => {
       data.pendingConfirms.push(created);
     });
@@ -76,6 +86,7 @@ export class ConfirmStore {
         'abort',
         () => {
           this.waiters.delete(created.id);
+          this.ownAnswerOnly.delete(created.id);
           if (waiter.timer) clearTimeout(waiter.timer);
           reject(new Error('Task stopped.'));
           // A subagent can abort while its parent run keeps going, so no cancelRun follows:
@@ -116,11 +127,15 @@ export class ConfirmStore {
   /**
    * A session grant on `key` also answers the task's other confirmations already waiting on that
    * scope (parallel subagents often ask at once): each settles as `session`, as the grant would
-   * have let it through had it been raised afterwards.
+   * have let it through had it been raised afterwards. One raised `ownAnswerOnly` keeps waiting.
    */
   async grantPending(taskId: string, key: string): Promise<void> {
     for (const request of this.forTask(taskId))
-      if (request.kind === 'confirmation' && grantKey(request.scope) === key)
+      if (
+        request.kind === 'confirmation' &&
+        grantKey(request.scope) === key &&
+        !this.ownAnswerOnly.has(request.id)
+      )
         await this.settle(request, { decision: 'session' });
   }
 
@@ -136,6 +151,7 @@ export class ConfirmStore {
     });
     const waiter = this.waiters.get(live.id);
     this.waiters.delete(live.id);
+    this.ownAnswerOnly.delete(live.id);
     if (waiter?.timer) clearTimeout(waiter.timer);
     this.events.publish({
       taskId: live.taskId,
@@ -183,6 +199,7 @@ export class ConfirmStore {
     for (const request of doomed) {
       const waiter = this.waiters.get(request.id);
       this.waiters.delete(request.id);
+      this.ownAnswerOnly.delete(request.id);
       if (waiter?.timer) clearTimeout(waiter.timer);
       this.events.publish({
         taskId: request.taskId,
@@ -223,6 +240,7 @@ export class ConfirmStore {
   private async expire(requestId: string): Promise<void> {
     const waiter = this.waiters.get(requestId);
     this.waiters.delete(requestId);
+    this.ownAnswerOnly.delete(requestId);
     const live = this.ledger.data.pendingConfirms.find((item) => item.id === requestId);
     if (!live) return;
     try {

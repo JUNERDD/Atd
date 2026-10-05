@@ -16,6 +16,7 @@
     "providers": "模型",
     "commands": "命令",
     "memory": "记忆",
+    "apps": "应用",
     "general": "通用"
   },
   "drawer": {
@@ -44,6 +45,7 @@
       "sectionProviders": "模型 提供商 服务商 接口 密钥 连接 账号 登录 服务",
       "sectionCommands": "命令 指令 提示词 模板 快捷指令",
       "sectionMemory": "记忆 偏好 学习 上下文 画像",
+      "sectionApps": "应用 小程序 工具 构建 小组件 版本 权限",
       "sectionGeneral": "通用 常规 键盘 快捷键 热键 按键 录制 窗口偏好 程序坞 登录 启动",
       "tierManual": "手动 询问 每次确认 逐个确认 每个操作",
       "tierAuto": "自动 自动批准 自动审批 模型审核 安全操作",

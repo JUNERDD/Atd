@@ -67,14 +67,22 @@ export function renderMcpServersSection(bindings: readonly McpToolBinding[]): st
 /**
  * Sets the section on every prompt, as skills/session-catalog.ts does with the skill catalog: pi
  * rebuilds the section options from an empty set each time. The text is rendered once from the
- * session's frozen bindings, so it stays the same for the session's life.
+ * session's frozen bindings, so it stays the same for the session's life. A prompt an earlier
+ * handler replaced renders no sections, and pi-subagents' runtime replaces a subagent child's
+ * before the child's own handlers run, so there the section is appended as pi renders one.
  */
 export function mcpServersSection(bindings: readonly McpToolBinding[]): ExtensionFactory {
   const text = renderMcpServersSection(bindings);
   return (pi) => {
     if (!text) return;
     pi.on('before_agent_start', (event) => {
+      const forced = event.systemPromptOptions.forceSystemPrompt;
+      if (forced !== undefined) {
+        const section = `<${MCP_SERVERS_SECTION}>\n${text}\n</${MCP_SERVERS_SECTION}>`;
+        return { systemPrompt: `${forced}\n\n${section}` };
+      }
       event.systemPromptOptions.sections[MCP_SERVERS_SECTION] = text;
+      return undefined;
     });
   };
 }

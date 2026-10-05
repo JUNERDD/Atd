@@ -42,9 +42,18 @@ export interface GateRequest {
    * `session` answer counts as `once` without being cached. Defaults to `true`.
    */
   sessionGrant?: boolean;
+  /**
+   * `true` asks the user whatever would let the call through otherwise: no session grant, tier or
+   * `auto` review applies, and the answer never becomes a grant (as with `sessionGrant: false`).
+   * For writes that later runs load as instructions (atd-agents/catalog-writes.ts).
+   */
+  askAlways?: boolean;
   /** Error thrown (and returned to the model) when the user declines. */
   declinedMessage?: string;
 }
+
+/** The longest detail a confirm carries (`PermissionRequest.detail`); a longer one is cut. */
+export const CONFIRM_DETAIL_CHARS = 200000;
 
 /** How an allowed call was allowed; a decline throws instead. */
 export type GateOutcome = Exclude<PermissionOutcome, 'declined'>;
@@ -57,10 +66,11 @@ const DECLINED = 'The user declined this action.';
 /**
  * The service's approval gate, shared by every guarded tool (file tools, grep/find/ls, bash,
  * command saves, web). Order: session grant, then tier, then under `auto` a review of the call,
- * then one confirm; a flagged or failed review falls through to the confirm. A session answer
- * grants the scope (tool, plus location for file tools) for the rest of the task, including
- * confirms already waiting on it. Every decision is audited; confirm and review outcomes are
- * also appended as `app-permission` session entries so the transcript shows them after reopen.
+ * then one confirm; a flagged or failed review falls through to the confirm, and an `askAlways`
+ * request goes straight to it. A session answer grants the scope (tool, plus location for file
+ * tools) for the rest of the task, including confirms already waiting on it. Every decision is
+ * audited; confirm and review outcomes are also appended as `app-permission` session entries so
+ * the transcript shows them after reopen.
  */
 export function createGate(host: GateHost): Gate {
   function record(toolCallId: string, scope: GrantScope, outcome: PermissionOutcome): void {
@@ -76,24 +86,26 @@ export function createGate(host: GateHost): Gate {
   return async (request) => {
     const { toolCallId, scope } = request;
     const key = grantKey(scope);
-    const sessionGrant = request.sessionGrant ?? true;
+    const askAlways = request.askAlways ?? false;
+    const sessionGrant = !askAlways && (request.sessionGrant ?? true);
     const base = {
       taskId: host.taskId,
       runId: host.runId(),
       executionId: host.executionId(),
       tool: key,
       toolCallId,
+      ...(askAlways && { askAlways }),
     };
     if (sessionGrant && host.grants.has(key)) {
       host.audit({ ...base, decision: 'grant' });
       return 'grant';
     }
-    if (tierAllows(host.tier, scope)) {
+    if (!askAlways && tierAllows(host.tier, scope)) {
       host.audit({ ...base, decision: 'tier' });
       return 'tier';
     }
     let review: ConfirmReview | undefined;
-    if (host.tier === 'auto') {
+    if (!askAlways && host.tier === 'auto') {
       const verdict = await host.review({ scope, detail: request.detail }, request.signal);
       host.audit({ ...base, decision: `review-${verdict.decision}`, reason: verdict.reason });
       if (verdict.decision === 'allow') {
@@ -113,11 +125,13 @@ export function createGate(host: GateHost): Gate {
           kind: 'confirmation',
           scope,
           title: request.title,
-          detail: request.detail.slice(0, 200000),
+          detail: request.detail.slice(0, CONFIRM_DETAIL_CHARS),
           ...(request.allowlistEntry ? { allowlistEntry: request.allowlistEntry } : {}),
           ...(review ? { review } : {}),
         },
         request.signal,
+        // A request no session grant answers is not settled by another call's grant either.
+        { ownAnswerOnly: !sessionGrant },
       );
       if (!('decision' in answer) || answer.decision === 'declined') {
         host.audit({ ...base, decision: 'declined' });

@@ -63,6 +63,7 @@ const ACTION_KIND: Record<GrantScope['tool'], string> = {
   command: 'Save or update a reusable command',
   mcp: 'Call an MCP tool',
   web: 'Search the web or fetch web content',
+  app: "Build, inspect or call the task's own user app",
 };
 
 /**

@@ -156,6 +156,13 @@ export const InvalidateScopeSchema = Type.Union([
   Type.Literal('task'),
   /** A task was deleted; `taskId` names it. */
   Type.Literal('task.deleted'),
+  /** Any user app, version, grant or pending consent changed (`/v1/apps`). */
+  Type.Literal('apps'),
+  /**
+   * The widget catalog, a widget snapshot or the launcher's app list changed
+   * (`/v1/widgets/snapshots`).
+   */
+  Type.Literal('widgets'),
 ]);
 export type InvalidateScope = Static<typeof InvalidateScopeSchema>;
 

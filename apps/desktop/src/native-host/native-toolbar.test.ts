@@ -19,21 +19,37 @@ function fakeShell() {
 }
 
 describe('selection toolbar push', () => {
-  it('offers the enabled selection commands in list order, with the excluded bundle ids', () => {
+  it('offers the enabled commands placed on it that read the selection, in list order', () => {
     const commands = fixtureCommands().map((command) => ({ ...command, enabled: true }));
-    const extract = commands.find((command) => command.id === 'extract');
-    if (!extract) throw new Error('The extract template is missing.');
-    extract.enabled = false;
+    const fixture = (id: string) => {
+      const command = commands.find((item) => item.id === id);
+      if (!command) throw new Error(`The ${id} template is missing.`);
+      return command;
+    };
+    fixture('extract').enabled = false;
+    // Polish takes the selection, but only conversations offer it.
+    fixture('polish').placement = {
+      selectionToolbar: false,
+      turnSelection: true,
+      turnActions: true,
+    };
+    // Summarize reads its input by hand: placed on the toolbar, it shows there only once it reads
+    // the selection through the variable.
+    const summarize = fixture('summarize');
+    summarize.placement = { ...summarize.placement, selectionToolbar: true };
+    expect(toolbarParams(settings, commands).commands).toEqual([
+      { id: 'translate', name: 'Translate selection' },
+    ]);
+    summarize.input = { ...summarize.input, selection: true };
     expect(toolbarParams(settings, commands)).toEqual({
       enabled: true,
       activation: 'hold',
       activationKeys: ['option'],
       showHud: true,
       excludedBundleIds: ['com.apple.Terminal'],
-      // Summarize reads its input by hand, so it is not a selection command.
       commands: [
         { id: 'translate', name: 'Translate selection' },
-        { id: 'polish', name: 'Polish writing' },
+        { id: 'summarize', name: 'Summarize files' },
       ],
     });
   });

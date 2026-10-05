@@ -40,7 +40,8 @@ public struct CapabilityRequest: Codable, Equatable, Sendable {
 }
 
 /// The only service frames the shell's control stream acts on. Task events, `summaries`,
-/// `resumed`, `invalidate` and anything newer are dropped: the shell holds no task state.
+/// `resumed`, `invalidate` of any scope but `widgets`, and anything newer are dropped: the shell
+/// holds no task state.
 public enum ControlFrame: Equatable, Sendable {
   /// Menu bar counts: root tasks running (queued, running, stopping) and needing attention.
   case status(running: Int, attention: Int)
@@ -52,13 +53,17 @@ public enum ControlFrame: Equatable, Sendable {
   case pong
   /// A frame the service could not handle (for example a refused registration).
   case error(String)
+  /// `invalidate` with scope `widgets` (`InvalidateFrameSchema`): the widget catalog, a snapshot
+  /// or the launcher's app list changed, so the shell pulls `GET /v1/widgets/snapshots` again.
+  case widgetsInvalidated
 }
 
 public enum ControlFrameDecoding: Equatable, Sendable {
   case frame(ControlFrame)
-  /// Not one of the six types; carries the type when there is one, for logging.
+  /// Not one of the decoded types (or an `invalidate` of another scope); carries the type when
+  /// there is one, for logging.
   case ignored(type: String?)
-  /// One of the six types in a shape the contract does not allow.
+  /// One of the decoded types in a shape the contract does not allow.
   case malformed(type: String)
 }
 
@@ -90,6 +95,12 @@ public enum ControlFrameDecoder {
       frame = .pong
     case "error":
       frame = (try? decoder.decode(Failure.self, from: data)).map { .error($0.error) }
+    case "invalidate":
+      // Other scopes concern the renderer's data, which the shell does not hold.
+      guard (try? decoder.decode(Invalidate.self, from: data))?.scope == "widgets" else {
+        return .ignored(type: envelope.type)
+      }
+      frame = .widgetsInvalidated
     default:
       return .ignored(type: envelope.type)
     }
@@ -109,4 +120,5 @@ public enum ControlFrameDecoder {
     let error: String?
   }
   private struct Failure: Decodable { let error: String }
+  private struct Invalidate: Decodable { let scope: String }
 }

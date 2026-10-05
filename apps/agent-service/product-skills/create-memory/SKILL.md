@@ -1,36 +1,51 @@
 ---
 name: create-memory
-description: Save, correct or forget a long-term memory the agent keeps across tasks, through the memory tools. Applies when the user wants something kept beyond the current task, such as who they are, a lasting preference, a fact about their tools and environment, or a mistake the agent should not repeat, and when they want a saved memory changed or removed. Does not apply to information needed only in the current task, to secrets, or to memory or note files that belong to the user's own projects.
+description: Save, correct or forget a long-term memory the agent keeps across tasks, through the memory tools. Applies when the user wants something kept beyond the current task, such as who they are, a lasting preference, a fact about their tools and environment, or a mistake the agent should not repeat, and when they want a saved memory changed or removed. Does not apply to information needed only in the current task, to multi-step procedures, which belong in skills, to secrets, or to memory or note files that belong to the user's own projects.
 ---
 
-You help the user save something the agent should remember across tasks, or correct a memory
-that is already saved.
+You help the user save something the agent should remember across tasks, or correct or forget a
+memory that is already saved.
 
-Work out, asking only for what is missing:
+A memory has these parts. Work them out from the conversation, asking only for what is missing:
 
-1. **content** — one stable fact in a single self-contained sentence or short paragraph, written
-   so it still makes sense in a future task with no context. Keep the user's meaning; do not add
-   details they did not give.
-2. **target** — where it belongs:
+1. **body** — the memory itself: one stable fact, preference or correction, written so it still
+   makes sense in a future task with no context. Keep the user's meaning; do not add details they
+   did not give.
+2. **description** — one line, at most 300 characters, saying what the memory holds and when it
+   applies. The agent sees descriptions in its memory index and reads a body only when the
+   description matches the task, so make it specific.
+3. **type** — what kind of memory it is:
    - `user` — who the user is: role, language, background, how they like answers.
    - `memory` — a lasting preference, convention, or fact about their tools and environment.
-   - `failure` — a correction: something the agent got wrong and what to do instead.
+   - `failure` — a correction: something the agent got wrong and what to do instead. It may also
+     take a **category**: `failure`, `correction`, `insight`, `preference`, `convention` or
+     `tool-quirk`.
+4. **name** — optional: lowercase words joined by hyphens, such as `prefers-pnpm`. Without one, a
+   name is derived from the description.
+5. **activation** — optional. Leave it out unless the user wants the memory applied to every task;
+   then ask for `core`. Only the user decides what every task includes: the memory is saved to the
+   index, and a suggestion to include it in every task waits for them in Settings → Memory, so tell
+   them it is there. Taking a memory out of every task is likewise theirs to do in Settings. `search`
+   keeps a memory out of the index, so only a search finds it.
 
-Before writing, call `memory_search` with the key terms to find an entry that already covers the
-same subject.
+Before writing, call `memory_search` with the key terms to find a memory that already covers the
+same subject, and read a candidate with `memory_read` when its description is not enough to tell.
 
-- If one does, update it with `memory_replace`, passing a short unique `old_text` taken from that
-  entry and the full new `content`. Do not add a second entry about the same thing.
-- If the user asks to forget something, find it the same way and call `memory_remove`.
-- Otherwise call `memory_add` with the target and content.
+- If one does, change it with `memory_replace`, naming it and passing only the fields that change
+  (`description`, `body` or `activation`). Do not add a second memory about the same thing.
+- If the user asks to forget something, find it the same way and call `memory_remove` with its
+  name.
+- Otherwise call `memory_add` with the parts above.
 
-Before calling a write tool, show the user the exact text and target you will save and wait for
-their confirmation, unless they already gave the exact wording. After a write, report what was
-saved or changed in one line.
+Before calling a write tool, show the user the description and body you will save, with the type,
+and wait for their confirmation, unless they already gave the exact wording. After a write, report
+in one line what was saved, changed or forgotten, with the memory's name.
 
 Only save what the user wants kept long term. Decline one-off task instructions, file contents,
-and secrets such as passwords, tokens, or keys; suggest where they belong instead.
+and secrets such as passwords, tokens, or keys; suggest where they belong instead. A multi-step
+procedure, such as how a project is released, belongs in a skill rather than in memory: offer to
+create one with the create-skill skill.
 
-Use only the memory tools; never edit memory files on disk. If the write tools are unavailable
-because automatic learning is paused, say so and ask the user to resume learning in Settings →
-Memory, or to edit an existing memory there directly.
+Use only the memory tools; never edit memory files on disk. If a write is refused because
+automatic learning is paused, say so and ask the user to resume learning in Settings → Memory, or
+to edit their memories there directly.

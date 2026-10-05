@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next';
 import { Button } from '@atd/ui/components/button';
 import { TooltipProvider } from '@atd/ui/components/tooltip';
 import { ScrollArea } from '@atd/ui/components/scroll-area';
+import { AppSettings } from '../apps/app-settings';
 import { CommandSettings } from '../commands/command-settings';
 import { MemorySettings } from '../memory/memory-settings';
 import { ToastHost } from '../../components/toast';
@@ -25,6 +26,7 @@ import { ServiceSettings } from '../service/service-settings';
 import { useSettingsSnapshot } from './use-settings';
 import {
   SettingsCommandLinkContext,
+  SettingsExtensionLinkContext,
   SettingsMemoryLinkContext,
   SettingsNavigationContext,
   SettingsPageHistoryContext,
@@ -75,11 +77,13 @@ export function SettingsWindow() {
     visited,
     commandTarget,
     memoryTarget,
+    extensionTarget,
     drawer,
     setDrawer,
     navigate,
     showCommand,
     showMemory,
+    showExtension,
   } = useSettingsSection(recording, unsaved.guard.confirmLeave);
   const layout = useSyncExternalStore(subscribeLayout, getLayout);
   const [previousLayout, setPreviousLayout] = useState(layout);
@@ -194,7 +198,7 @@ export function SettingsWindow() {
                       />
                       <ScrollArea
                         className="settings-content-scroll-area"
-                        viewportClassName="[&>div]:flex! [&>div]:flex-col [&>div]:h-full"
+                        viewportClassName="[&>div]:flex! [&>div]:flex-col [&>div]:min-h-full"
                         viewportRef={viewport}
                         gutter="none"
                         scrollShadow
@@ -228,7 +232,7 @@ export function SettingsWindow() {
                                   <ShellAllowlistSettings snapshot={snapshot} />
                                 </>,
                               )}
-                              {page('extensions', <ServiceSettings />)}
+                              {page('extensions', <ServiceSettings activeItem={extensionTarget} />)}
                               {page('providers', <ProviderSettingsForm snapshot={snapshot} />)}
                               {page(
                                 'commands',
@@ -237,7 +241,14 @@ export function SettingsWindow() {
                                   activeCommand={commandTarget}
                                 />,
                               )}
-                              {page('memory', <MemorySettings activeEntry={memoryTarget} />)}
+                              {page(
+                                'memory',
+                                // Accepting a skill suggestion opens the skill in Extensions.
+                                <SettingsExtensionLinkContext value={showExtension}>
+                                  <MemorySettings activeEntry={memoryTarget} />
+                                </SettingsExtensionLinkContext>,
+                              )}
+                              {page('apps', <AppSettings />)}
                               {page(
                                 'general',
                                 <GeneralSettings

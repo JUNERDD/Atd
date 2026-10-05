@@ -46,10 +46,24 @@ const SHELL_MCP_PATHS = new Set(
   ].map((name) => `/v1/mcp/${name}`),
 );
 
+/**
+ * User-app routes the shell serves to app windows and the widget extension (DECISIONS "Service
+ * routes"): an app page must never reach another app's backend or the renderer's routes.
+ */
+const SHELL_APP_PATHS = new Set([
+  '/v1/apps/:appId/runtime',
+  '/v1/apps/:appId/api/:name',
+  '/v1/apps/:appId/events',
+  '/v1/apps/:appId/diagnostics',
+  '/v1/widgets/instances',
+  '/v1/widgets/snapshots',
+]);
+
 /** The routes only direct main-token clients may call (the relay refuses them). */
 function isShellPath(pathPattern: string): boolean {
   return (
     pathPattern.startsWith('/v1/admin/') ||
+    SHELL_APP_PATHS.has(pathPattern) ||
     SHELL_MCP_PATHS.has(pathPattern) ||
     pathPattern === '/v1/capabilities/result' ||
     pathPattern === '/v1/resources/import' ||

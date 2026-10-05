@@ -1,43 +1,14 @@
-import {
-  ChevronRight,
-  CircleCheck,
-  CircleSlash,
-  CircleX,
-  LoaderCircle,
-  MessageCircleQuestion,
-  ShieldAlert,
-} from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import type { SubagentChildSummary } from '@atd/agent-contracts';
-import { Button } from '@atd/ui/components/button';
-import { PopoverHeader, PopoverTitle } from '@atd/ui/components/popover';
-import { ScrollArea } from '@atd/ui/components/scroll-area';
-import { cn } from '@atd/ui/lib/utils';
+import { isTaskAgent, type SubagentChildSummary } from '@atd/agent-contracts';
+import { TemporaryBadge } from '../task-agents/task-agent-role';
+import { agentDisplayName } from '../task-agents/task-agents';
 import { subtaskLabel, type PendingByExecution } from '../transcript/subagent-children';
 import { useSubagents } from '../transcript/subagent-context';
 import { usePrefetchChildTranscripts } from '../transcript/use-child-transcript';
+import { STATUS_ORDER, type StatusGlyph } from './status-glyphs';
+import { StatusList, StatusRow } from './status-row';
 
-/**
- * A child's state as its row's leading glyph, in the Todos list's glyph style: the pill's HITL
- * icons while a request of it waits, a spinner while it runs, then its outcome. The order is the
- * list's: what needs the reader first, then working, then settled children.
- */
-const GLYPHS = {
-  approval: { Icon: ShieldAlert, className: '', label: 'permission.waitingApproval' },
-  answer: { Icon: MessageCircleQuestion, className: '', label: 'permission.waitingAnswer' },
-  running: { Icon: LoaderCircle, className: 'animate-spin', label: 'activity.running' },
-  failed: { Icon: CircleX, className: 'text-destructive', label: 'activity.failed' },
-  interrupted: {
-    Icon: CircleSlash,
-    className: 'text-muted-foreground',
-    label: 'activity.interrupted',
-  },
-  completed: { Icon: CircleCheck, className: 'text-muted-foreground', label: 'activity.completed' },
-} as const;
-type Glyph = keyof typeof GLYPHS;
-const ORDER = Object.keys(GLYPHS) as Glyph[];
-
-function glyphOf(child: SubagentChildSummary, pending: PendingByExecution): Glyph {
+function glyphOf(child: SubagentChildSummary, pending: PendingByExecution): StatusGlyph {
   const waiting = pending.get(child.executionId);
   if (waiting) return waiting === 'input' ? 'answer' : 'approval';
   return child.status;
@@ -45,46 +16,17 @@ function glyphOf(child: SubagentChildSummary, pending: PendingByExecution): Glyp
 
 /** The list's name for a child: the first line of its task, else the agent. */
 function childTitle(child: SubagentChildSummary): string {
-  return child.task.split('\n', 1)[0]?.trim() || child.agent;
-}
-
-function ChildRow({
-  child,
-  glyph,
-  onOpen,
-}: {
-  child: SubagentChildSummary;
-  glyph: Glyph;
-  onOpen: ((childKey: string) => void) | null;
-}) {
-  const { t } = useTranslation('tasks');
-  const { Icon, className, label } = GLYPHS[glyph];
-  return (
-    <li>
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        className="w-full justify-start"
-        title={subtaskLabel(child)}
-        aria-label={`${t(label)} · ${t('subagent.openChild', { name: subtaskLabel(child) })}`}
-        disabled={!onOpen}
-        onClick={() => onOpen?.(child.key)}
-      >
-        <Icon strokeWidth={1.75} className={cn('size-3.5 shrink-0', className)} aria-hidden />
-        <span className="min-w-0 flex-1 truncate text-left">{childTitle(child)}</span>
-        <ChevronRight className="text-muted-foreground" aria-hidden />
-      </Button>
-    </li>
-  );
+  return child.task.split('\n', 1)[0]?.trim() || agentDisplayName(child.agent);
 }
 
 /**
  * The composer popover's Subagents view: the latest reply's children in one flat list, sorted by
- * state with each state shown by the row's leading glyph. Each row opens that child's full
- * conversation (`onOpen`, null outside the task panel); the list keeps no detail beyond the name,
- * which the drill-in view shows. While the list shows, it prefetches the conversations it can
- * open, so the drill-in rarely waits.
+ * state with each state shown by the row's leading glyph and, under its task, in words with the
+ * agent. Each row opens that child's full conversation (`onOpen`, null outside the task panel); the
+ * list keeps no detail beyond that, which the drill-in view shows. Parallel children's tasks often
+ * read alike until late, so a task takes up to two lines. A child of a task agent goes by the
+ * agent's name without its `task.` prefix and carries the Temporary badge. While the list shows,
+ * it prefetches the conversations it can open, so the drill-in rarely waits.
  */
 export function SubagentPanel({
   taskId,
@@ -105,24 +47,39 @@ export function SubagentPanel({
   );
   const rows = items.map((child) => ({ child, glyph: glyphOf(child, pending) }));
   // A stable sort keeps launch order within each state.
-  rows.sort((a, b) => ORDER.indexOf(a.glyph) - ORDER.indexOf(b.glyph));
+  rows.sort((a, b) => STATUS_ORDER.indexOf(a.glyph) - STATUS_ORDER.indexOf(b.glyph));
   return (
-    <div className="composer-subagents">
-      <PopoverHeader className="composer-subagents-header">
-        <PopoverTitle className="text-xs text-muted-foreground">
-          {t('subagent.listLabel')}
-        </PopoverTitle>
-      </PopoverHeader>
-      <ScrollArea className="composer-todos-scroll" gutter="stable" scrollShadow>
-        <ul className="composer-subagents-list" data-panel-focus>
-          {rows.map(({ child, glyph }) => (
-            <ChildRow key={child.key} child={child} glyph={glyph} onOpen={onOpen} />
-          ))}
-        </ul>
-        {truncated && (
+    <StatusList
+      title={t('subagent.listLabel')}
+      footer={
+        truncated ? (
           <p className="m-0 mt-2 px-3 text-xs text-muted-foreground">{t('subagent.truncated')}</p>
-        )}
-      </ScrollArea>
-    </div>
+        ) : null
+      }
+    >
+      {rows.map(({ child, glyph }) => {
+        const agent = agentDisplayName(child.agent);
+        const temporary = isTaskAgent(child.agent);
+        const name = subtaskLabel(child);
+        return (
+          <StatusRow
+            key={child.key}
+            glyph={glyph}
+            text={childTitle(child)}
+            // A child without a task already goes by its agent, which then needs no repeat.
+            context={childTitle(child) === agent ? '' : agent}
+            lines={2}
+            title={name}
+            actionLabel={
+              temporary
+                ? t('subagent.openTemporaryChild', { name })
+                : t('subagent.openChild', { name })
+            }
+            badge={temporary ? <TemporaryBadge /> : undefined}
+            onOpen={onOpen ? () => onOpen(child.key) : null}
+          />
+        );
+      })}
+    </StatusList>
   );
 }

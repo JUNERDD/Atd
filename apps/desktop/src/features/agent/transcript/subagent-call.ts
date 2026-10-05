@@ -3,9 +3,9 @@ import type { ToolStatus } from '../../../client/agent/transcript-schema';
 /**
  * Reading of a pi-subagents `subagent` call from its arguments. The one tool both launches
  * children (`agent` + `task`, `tasks`, `chain`, whose steps may run a `parallel` group, and, in
- * older transcripts, a named `workflow` or a raw workflow script) and manages them
- * (`action: list | guide | status | …`), so its row label, target, and the group's launch count
- * all come from the call shape rather than the tool name.
+ * older transcripts, a named `workflow` or a raw workflow script), defines task agents
+ * (`action: define`) and manages them (`action: list | guide | status | …`), so its row label,
+ * target, and the group's launch count all come from the call shape rather than the tool name.
  */
 
 export type SubagentStepKey =
@@ -13,6 +13,7 @@ export type SubagentStepKey =
   | 'activity.step.subagentList'
   | 'activity.step.subagentGuide'
   | 'activity.step.subagentStatus'
+  | 'activity.step.subagentDefine'
   | 'activity.step.subagentManage'
   | 'activity.step.subagentWorkflow';
 
@@ -74,20 +75,37 @@ export function subagentStepKey(args: Args): SubagentStepKey {
   if (action === 'list') return 'activity.step.subagentList';
   if (action === 'guide') return 'activity.step.subagentGuide';
   if (action === 'status') return 'activity.step.subagentStatus';
+  if (action === 'define') return 'activity.step.subagentDefine';
   if (action) return 'activity.step.subagentManage';
   if (isWorkflow(args)) return 'activity.step.subagentWorkflow';
   return 'activity.step.subagentRun';
 }
 
 /**
- * What the row points at: the agents a launch addresses (deduplicated, in call order), the guide
- * topic, the inspected run, the workflow name, or the raw management action.
+ * The names a define call gives (`agents[].name`, before the service adds `task.`), deduplicated
+ * in call order; null when it names none.
+ */
+function definedNames(args: Args): string | null {
+  const agents = args['agents'];
+  const names = Array.isArray(agents)
+    ? agents.flatMap((item: unknown) =>
+        typeof item === 'object' && item !== null ? (text(item as Args, 'name') ?? []) : [],
+      )
+    : [];
+  return names.length ? [...new Set(names)].join(', ') : null;
+}
+
+/**
+ * What the row points at: the agents a launch addresses (deduplicated, in call order), the names
+ * a define call gives, the guide topic, the inspected run, the workflow name, or the raw
+ * management action.
  */
 export function subagentTarget(args: Args): string | null {
   const action = text(args, 'action');
   if (action === 'guide') return text(args, 'topic');
   if (action === 'status') return text(args, 'id') ?? text(args, 'runId');
   if (action === 'list') return null;
+  if (action === 'define') return definedNames(args);
   if (action) return action;
   const workflow = text(args, 'workflow');
   if (workflow) return workflow;
