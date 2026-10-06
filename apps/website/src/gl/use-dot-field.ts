@@ -15,10 +15,7 @@ export interface DotFieldRefs {
   art?: RefObject<HTMLElement | null>;
 }
 
-/**
- * Engine options. `words` and `reducedMotion` are applied after mount and `onWord` is always the
- * latest callback; the rest are read once.
- */
+/** Engine options. `words` and `reducedMotion` are applied after mount; the rest are read once. */
 export type UseDotFieldOptions = Omit<
   DotFieldOptions,
   'pointerTarget' | 'onLive' | 'words' | 'reducedMotion'
@@ -52,7 +49,6 @@ export function useDotField(refs: DotFieldRefs, options: UseDotFieldOptions): vo
     if (!canvasElement || !rootElement) return undefined;
     const field = createDotField(canvasElement, {
       ...latest.current.options,
-      onWord: (index) => latest.current.options.onWord?.(index),
       pointerTarget: rootElement,
       onLive: (live) => {
         if (live) rootElement.setAttribute('data-gl', 'live');

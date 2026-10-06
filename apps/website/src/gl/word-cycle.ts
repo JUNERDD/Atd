@@ -18,8 +18,8 @@ export interface WordCycle {
   readonly next: number;
   /** Seconds into the change in progress, or -1. */
   morph(time: number): number;
-  /** Advances to `time` (seconds). Returns the index of a word that starts changing in, or -1. */
-  tick(time: number, running: boolean): number;
+  /** Advances to `time` (seconds), starting the next change once the current word's hold is over. */
+  tick(time: number, running: boolean): void;
   /** Ends any change at once, on its incoming word. */
   finish(): void;
   /** Starts over on the first of `count` words. */
@@ -59,13 +59,12 @@ export function createWordCycle(count: number): WordCycle {
       if (!running || words < 2 || next >= 0) {
         // A paused cycle restarts its hold when it resumes, so nothing changes the moment it does.
         if (!running) holdUntil = Number.NaN;
-        return -1;
+        return;
       }
       if (Number.isNaN(holdUntil)) holdUntil = time + hold(current);
-      if (time < holdUntil) return -1;
+      if (time < holdUntil) return;
       next = (current + 1) % words;
       changeAt = time;
-      return next;
     },
     finish() {
       land();

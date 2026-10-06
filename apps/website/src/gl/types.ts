@@ -45,8 +45,6 @@ export interface DotFieldOptions {
    * (context loss or destroy), so the host can swap its fallback in and out.
    */
   onLive?: (live: boolean) => void;
-  /** Called with a word's index as the board starts changing to it. */
-  onWord?: (index: number) => void;
 }
 
 export interface DotField {

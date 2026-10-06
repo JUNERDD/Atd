@@ -1,12 +1,12 @@
 /* The hero is a black LED panel. The canvas draws the dot field with the wordmark lit across its
-   middle, centered between the floating nav and the instrument strip. Without WebGL, a CSS dot screen
-   and the Doto wordmark stand in for the field. */
+   middle, centered on the panel. Without WebGL, a CSS dot screen and the Doto wordmark stand in for
+   the field. */
 .hero {
   --hero-clear: calc(var(--nav-top) + var(--nav-h) + 24px);
   position: relative;
   isolation: isolate;
   display: grid;
-  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-rows: minmax(0, 1fr);
   min-block-size: max(560px, 100svh);
   overflow: clip;
   color: var(--fg-1);
@@ -48,7 +48,9 @@
   z-index: 1;
   display: grid;
   grid-template-rows: minmax(0, 1fr);
-  padding-block: var(--hero-clear) clamp(16px, 3svh, 40px);
+  /* The same clearance top and bottom keeps the wordmark on the panel's center line, clear of the
+     floating nav above and the motion toggle below. */
+  padding-block: var(--hero-clear);
   padding-inline: var(--gutter);
 }
 
@@ -123,95 +125,65 @@
   }
 }
 
-/* Instrument strip: a hairline and mono readouts along the bottom edge. */
-.hero__instrument {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  gap: 24px;
-  align-items: center;
-  justify-content: space-between;
-  padding-block: 16px max(20px, env(safe-area-inset-bottom));
-}
-
-/* The strip's top edge, drawn in with the strip. */
-.hero__rule {
+/* The scroll cue: a mouse at the panel's bottom center, on the motion toggle's center line, whose
+   wheel rolls down while the display plays. A mouse means a pointer, so only pointer devices show
+   it. */
+.hero__scroll {
+  display: none;
   position: absolute;
-  inset-block-start: 0;
-  inset-inline: 0;
-  block-size: 1px;
-  background-color: var(--line-1);
+  z-index: 1;
+  inset-block-end: calc(max(20px, env(safe-area-inset-bottom)) + 4px);
+  inset-inline-start: 50%;
+  translate: -50% 0;
+  /* A hint, not a control: a hairline drawn fainter than the labels. */
+  color: color-mix(in srgb, var(--fg-3) 55%, transparent);
+  pointer-events: none;
 }
 
-.hero__readout {
-  display: grid;
-  flex: 1;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px 24px;
-  margin: 0;
+.hero__scroll svg {
+  display: block;
 }
 
-.hero__reading {
-  --rv-y: 12px;
-  display: grid;
-  gap: 2px;
-  min-inline-size: 0;
+@media (hover: hover) and (pointer: fine) {
+  .hero__scroll {
+    display: block;
+  }
 }
 
-.hero__reading-value {
-  overflow: hidden;
-  margin: 0;
-  font-family: var(--font-mono);
-  font-size: 0.8125rem;
-  font-variant-numeric: tabular-nums;
-  line-height: 1.4;
-  color: var(--fg-2);
-  text-overflow: ellipsis;
-  white-space: nowrap;
+/* The wheel (the icon's path; the body is its rect) fades in at the top, rolls down as it fades
+   out, and rests a beat before the next turn. */
+@media (prefers-reduced-motion: no-preference) {
+  .hero__scroll[data-playing] path {
+    animation: hero-wheel 2.2s var(--curve-standard) 2.4s infinite;
+  }
 }
 
-/* The name's legend lights whatever the display shows: the name, or the word it spells out. */
-.hero__legend {
-  grid-column: 1 / -1;
+@keyframes hero-wheel {
+  0% {
+    opacity: 0;
+    translate: 0 -2px;
+  }
+
+  25% {
+    opacity: 1;
+    translate: 0 0;
+  }
+
+  70%,
+  100% {
+    opacity: 0;
+    translate: 0 5px;
+  }
 }
 
-.hero__legend-name,
-.hero__legend-part {
-  transition: color var(--dur-slow) var(--curve-out);
-}
-
-.hero__legend-name[data-on],
-.hero__legend-part[data-on] {
-  color: var(--fg-1);
-}
-
-/* Key legends in the readout: hairline keycaps in the text face, since SF Mono has no ⇧. */
-.hero__key {
-  display: inline-grid;
-  place-items: center;
-  min-inline-size: 20px;
-  block-size: 20px;
-  margin-inline-end: 4px;
-  padding-inline: 5px;
-  border: 1px solid var(--line-2);
-  border-radius: 5px;
-  font-family: var(--font-text);
-  font-size: 0.75rem;
-  line-height: 1;
-  vertical-align: middle;
-}
-
-/* The strip's end: the display's motion toggle and, on wider bands, the scroll cue. */
-.hero__end {
-  display: flex;
-  flex: none;
-  gap: 20px;
-  align-items: center;
-}
-
-/* A hairline ring around the kit's 44 pt borderless icon button, in the strip's instrument style.
-   It needs script, so it keeps its place but stays hidden until the page runs. */
+/* The display's motion toggle, alone in the panel's bottom corner like a hero video's: the kit's 44 pt
+   borderless icon button in a hairline ring. It needs script, so it keeps its place but stays hidden
+   until the page runs. */
 .hero__motion {
+  position: absolute;
+  z-index: 1;
+  inset-block-end: max(20px, env(safe-area-inset-bottom));
+  inset-inline-end: var(--gutter);
   border: 1px solid var(--line-2);
   color: var(--fg-2);
 }
@@ -228,63 +200,5 @@
 @media (hover: hover) and (pointer: fine) {
   .hero__motion:hover {
     color: var(--fg-1);
-  }
-}
-
-.hero__cue {
-  display: none;
-  gap: 12px;
-  align-items: center;
-}
-
-.hero__cue-track {
-  position: relative;
-  inline-size: 1px;
-  block-size: 28px;
-  background-color: var(--line-2);
-}
-
-.hero__cue-dot {
-  position: absolute;
-  inset-block-start: 0;
-  inset-inline-start: -1.5px;
-  inline-size: 4px;
-  block-size: 4px;
-  border-radius: 50%;
-  background-color: var(--fg-1);
-  translate: 0 12px;
-}
-
-@media (width >= 700px) {
-  .hero__readout {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 12px 40px;
-  }
-
-  .hero__cue {
-    display: inline-flex;
-  }
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .hero__cue-dot {
-    animation: hero-cue 2.4s var(--curve-standard) infinite;
-  }
-}
-
-@keyframes hero-cue {
-  from {
-    opacity: 0;
-    translate: 0 -4px;
-  }
-
-  30% {
-    opacity: 1;
-  }
-
-  to {
-    opacity: 0;
-    translate: 0 28px;
   }
 }
