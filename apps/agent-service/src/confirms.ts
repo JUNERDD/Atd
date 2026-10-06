@@ -20,8 +20,9 @@ export interface ConfirmWaiter {
 const CONFIRM_TTL_MS = 30 * 60 * 1000;
 
 /**
- * Pending human-in-the-loop requests. Persisted in the ledger so a restart can
- * re-offer live requests; replies must match id + revision + kind.
+ * Pending human-in-the-loop requests, listed from the ledger; replies must match
+ * id + revision + kind. Only this process holds their waiters, so a restart
+ * drops them (`recover`).
  */
 export class ConfirmStore {
   private readonly waiters = new Map<string, ConfirmWaiter>();
@@ -212,29 +213,26 @@ export class ConfirmStore {
     }
   }
 
-  /** Revalidates persisted requests after a restart; expired ones resolve `gone`. */
-  async recover(): Promise<{ kept: number; dropped: number }> {
-    const now = Date.now();
-    const kept: PermissionRequest[] = [];
-    const dropped: PermissionRequest[] = [];
-    for (const request of this.ledger.data.pendingConfirms) {
-      const created = Date.parse(request.createdAt);
-      if (Number.isNaN(created) || now - created > CONFIRM_TTL_MS) dropped.push(request);
-      else kept.push(request);
-    }
-    if (dropped.length)
-      await this.ledger.change((data) => {
-        data.pendingConfirms = kept;
-      });
+  /**
+   * Drops every request the previous process raised and returns how many. Its waiter, and the tool
+   * call awaiting the answer, ended with that process, so a reply could settle nothing; the run
+   * that waited is interrupted (recovery.ts) and late replies go `gone`.
+   */
+  async recover(): Promise<number> {
+    const dropped = this.ledger.data.pendingConfirms;
+    if (!dropped.length) return 0;
+    await this.ledger.change((data) => {
+      data.pendingConfirms = [];
+    });
     for (const request of dropped)
       this.events.publish({
         taskId: request.taskId,
         runId: request.runId,
         executionId: request.executionId,
         type: 'confirm.resolved',
-        data: { requestId: request.id, outcome: 'expired' },
+        data: { requestId: request.id, outcome: 'cancelled' },
       });
-    return { kept: kept.length, dropped: dropped.length };
+    return dropped.length;
   }
 
   private async expire(requestId: string): Promise<void> {
