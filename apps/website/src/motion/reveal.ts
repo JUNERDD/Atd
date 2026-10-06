@@ -77,11 +77,21 @@ export function initReveal(): () => void {
     if (target.matches(GROUP)) revealGroup(target, delay);
   };
 
-  // Content reveals once its top is a little way into the viewport, so the effect is seen.
+  // Content reveals once its top is a little way into the viewport, so the effect is seen. Content
+  // already on screen at its first report (the first screen, or wherever a reload restores the page)
+  // reveals with the page, even in the band along the bottom edge that a scroll has to clear.
+  const reported = new WeakSet<Element>();
+  const arrived = (entry: IntersectionObserverEntry) => {
+    const first = !reported.has(entry.target);
+    reported.add(entry.target);
+    if (entry.isIntersecting) return true;
+    const box = entry.boundingClientRect;
+    return first && box.top < innerHeight && box.bottom > 0;
+  };
   const observer = new IntersectionObserver(
     (entries) => {
       const arriving = entries
-        .filter((entry) => entry.isIntersecting && entry.target instanceof HTMLElement)
+        .filter((entry) => arrived(entry) && entry.target instanceof HTMLElement)
         .sort(
           (a, b) =>
             a.boundingClientRect.top - b.boundingClientRect.top ||
