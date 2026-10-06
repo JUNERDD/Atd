@@ -1855,24 +1855,6 @@
         }
       }
     },
-    "menu.onboardingReplay" : {
-      "comment" : "Menu item that replays the first-launch welcome guide",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Replay First-Launch Guide"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "重播首次启动引导"
-          }
-        }
-      }
-    },
     "menu.quit" : {
       "comment" : "Quit menu item",
       "extractionState" : "manual",

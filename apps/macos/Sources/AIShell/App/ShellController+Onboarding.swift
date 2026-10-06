@@ -24,14 +24,6 @@ extension ShellController {
     if panel.isVisible, !isPinned { hidePanel() }
   }
 
-  /// The menu's Replay First-Launch Guide, for any build once a data dir has shown the guide: an
-  /// open guide closes, so the replay starts at its first step, and the panel page marks the guide
-  /// as not shown in the service settings, which runs its first-launch path again.
-  func replayOnboarding() {
-    onboarding.close()
-    panelHost.send(.onboardingReplay(.init()))
-  }
-
   /// The guide's intro has settled: its full-screen stage no longer needs to cover the menu bar.
   func settleOnboarding() {
     onboarding.settle()

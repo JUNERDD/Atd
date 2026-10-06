@@ -317,7 +317,6 @@ public final class ShellController {
       hidePanel: { [weak self] in self?.hidePanel() },
       openSettings: { [weak self] in self?.openSettings(commandId: nil, section: nil) },
       openOnboarding: { [weak self] in self?.openOnboarding() },
-      replayOnboarding: { [weak self] in self?.replayOnboarding() },
       checkForUpdates: updater.isAvailable
         ? { [weak self] in self?.updater.checkForUpdates() } : nil,
       restartService: { try await services.restart() },

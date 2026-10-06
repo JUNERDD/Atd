@@ -66,7 +66,6 @@
       "accessibility.reduceTransparency",
       "shortcut.command",
       "shortcut.screenshot",
-      "onboarding.replay",
       "resources.imported",
       "files.drag",
       "edit.command",
@@ -1852,26 +1851,6 @@
             "event": {
               "type": "string",
               "const": "shortcut.screenshot"
-            },
-            "payload": {
-              "type": "object",
-              "properties": {},
-              "additionalProperties": false
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": ["type", "event", "payload"],
-          "properties": {
-            "type": {
-              "type": "string",
-              "const": "event"
-            },
-            "event": {
-              "type": "string",
-              "const": "onboarding.replay"
             },
             "payload": {
               "type": "object",
@@ -4063,11 +4042,6 @@
       "additionalProperties": false
     },
     "ShortcutScreenshotEvent": {
-      "type": "object",
-      "properties": {},
-      "additionalProperties": false
-    },
-    "OnboardingReplayEvent": {
       "type": "object",
       "properties": {},
       "additionalProperties": false

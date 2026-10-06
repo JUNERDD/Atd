@@ -172,11 +172,6 @@ export const NativeEvents = {
    */
   'shortcut.screenshot': Empty,
   /**
-   * The app menu's Replay First-Launch Guide (panel only): the page marks the guide as not shown,
-   * which runs the first launch's path again.
-   */
-  'onboarding.replay': Empty,
-  /**
    * Swift imported files dropped or pasted into the panel through `/v1/resources/import`, and
    * registered folders through `/v1/folders/register`. `failures` covers both; each path of the
    * import lands in exactly one list.
