@@ -80,13 +80,16 @@
   place-items: center;
   place-self: center;
   inline-size: 92%;
-  block-size: min(100%, 44vw, 52svh);
+  block-size: min(100%, 80vw, 56svh);
   pointer-events: none;
 }
 
+/* Wide bands set every word on one line; compact ones break the long words onto two, so the box
+   is taller there. */
 @media (width >= 700px) {
   .hero__mark {
     inline-size: min(100%, 76vw, 1200px);
+    block-size: min(100%, 44vw, 52svh);
   }
 }
 
@@ -167,6 +170,21 @@
   white-space: nowrap;
 }
 
+/* The name's legend lights whatever the display shows: the name, or the word it spells out. */
+.hero__legend {
+  grid-column: 1 / -1;
+}
+
+.hero__legend-name,
+.hero__legend-part {
+  transition: color var(--dur-slow) var(--curve-out);
+}
+
+.hero__legend-name[data-on],
+.hero__legend-part[data-on] {
+  color: var(--fg-1);
+}
+
 /* Key legends in the readout: hairline keycaps in the text face, since SF Mono has no ⇧. */
 .hero__key {
   display: inline-grid;
@@ -181,6 +199,36 @@
   font-size: 0.75rem;
   line-height: 1;
   vertical-align: middle;
+}
+
+/* The strip's end: the display's motion toggle and, on wider bands, the scroll cue. */
+.hero__end {
+  display: flex;
+  flex: none;
+  gap: 20px;
+  align-items: center;
+}
+
+/* A hairline ring around the kit's 44 pt borderless icon button, in the strip's instrument style.
+   It needs script, so it keeps its place but stays hidden until the page runs. */
+.hero__motion {
+  border: 1px solid var(--line-2);
+  color: var(--fg-2);
+}
+
+.hero__motion svg {
+  inline-size: 14px;
+  block-size: 14px;
+}
+
+.hero__motion:not([data-ready]) {
+  visibility: hidden;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .hero__motion:hover {
+    color: var(--fg-1);
+  }
 }
 
 .hero__cue {

@@ -1,6 +1,7 @@
-import { useCallback, useRef, useState, useSyncExternalStore } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { cases } from '../../content/cases';
 import { useCopy } from '../../i18n/lang';
+import { useHydrated } from '../../lib/use-hydrated';
 import { useInView } from '../../lib/use-in-view';
 import { useReducedMotion } from '../../lib/use-reduced-motion';
 import { CaseCard } from './case-card';
@@ -13,21 +14,11 @@ import './cases.css';
 /** `auto` plays unless the visitor prefers reduced motion; the toggle turns it `on` or `off`. */
 type Playback = 'auto' | 'on' | 'off';
 
-const subscribeNever = () => () => {};
-
-/** `false` in the prerendered markup and while hydrating it, `true` once the page runs. */
-function useHydrated(): boolean {
-  return useSyncExternalStore(
-    subscribeNever,
-    () => true,
-    () => false,
-  );
-}
-
 /**
  * A horizontal, natively scrolling and snapping gallery of the cases, with one glass capsule of
  * controls under it. Nothing advances by itself: only the current card's recording plays, and only
- * while playback is on, the gallery is in view and the page is visible.
+ * while playback is on, the gallery is in view and the page is visible. As the gallery arrives the
+ * cards slide in one after another, each frame powering on like a monitor, and the capsule follows.
  *
  * The scroller is a named region. Browsers that make a scroller without focusable content
  * keyboard-focusable (Chrome, Firefox) move it a card per arrow key through its snap points; the
@@ -48,8 +39,8 @@ export function CasesGallery() {
 
   return (
     <div className="cases" data-enhanced={hydrated ? '' : undefined}>
-      <section ref={viewportRef} className="cases__viewport reveal" aria-label={t.gallery}>
-        <ul className="cases__track">
+      <section ref={viewportRef} className="cases__viewport" aria-label={t.gallery}>
+        <ul className="cases__track" data-reveal-group="" data-reveal-stagger="110">
           {cases.map((item, index) => (
             <CaseCard
               key={item.id}

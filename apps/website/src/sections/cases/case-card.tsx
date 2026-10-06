@@ -30,7 +30,8 @@ function isoDuration(duration: string): string {
 
 /**
  * One case: a 16:10 media frame (its recording, or a test card until there is one) over a caption
- * with the index, title, summary, tags and, when known, the running time.
+ * with the index, title, summary, tags and, when known, the running time. The card slides in, its
+ * frame powers on, then the caption rises line by line; becoming the current card retunes the frame.
  */
 export function CaseCard({
   item,
@@ -57,8 +58,19 @@ export function CaseCard({
   const title = item.title[lang];
 
   return (
-    <li className="case" data-case="" data-active={active ? '' : undefined}>
-      <div className="case__media" data-frame={item.frame}>
+    <li
+      className="case"
+      data-case=""
+      data-active={active ? '' : undefined}
+      data-reveal="right"
+      data-reveal-group=""
+    >
+      <div
+        className="case__media"
+        data-frame={item.frame}
+        data-reveal="power"
+        data-reveal-delay="160"
+      >
         {video ? (
           <CaseVideo
             video={video}
@@ -79,7 +91,7 @@ export function CaseCard({
         )}
       </div>
       <div className="case__caption">
-        <p className="case__meta mono-label">
+        <p className="case__meta mono-label" data-reveal="rise" data-reveal-delay="380">
           <span className="case__index">{`C·${number}`}</span>
           {item.comingIn ? <span className="case__badge">{t.comingIn(item.comingIn)}</span> : null}
           {video ? (
@@ -88,9 +100,13 @@ export function CaseCard({
             </time>
           ) : null}
         </p>
-        <h3 className="case__title">{title}</h3>
-        <p className="case__summary">{item.summary[lang]}</p>
-        <ul className="case__tags" aria-label={t.tags}>
+        <h3 className="case__title" data-reveal="rise" data-reveal-delay="440">
+          {title}
+        </h3>
+        <p className="case__summary" data-reveal="rise" data-reveal-delay="500">
+          {item.summary[lang]}
+        </p>
+        <ul className="case__tags" aria-label={t.tags} data-reveal="rise" data-reveal-delay="560">
           {item.tags.map((tag) => (
             <li key={tag.en} className="case__tag mono-label">
               {tag[lang]}

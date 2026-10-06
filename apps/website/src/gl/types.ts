@@ -10,9 +10,16 @@ export interface Box {
 }
 
 export interface DotFieldOptions {
-  /** Text drawn as lit dots. Default "Atd". */
-  text?: string;
-  /** Allowed dot pitch in CSS px; the engine picks one inside it from the art height. Default [10, 14]. */
+  /**
+   * Words drawn as lit dots, shown in turn: the first powers on, then in full motion the board
+   * changes word by word like a flip-dot sign and loops. `|` marks where a word may break onto two
+   * lines when that sets it larger. Default ["Atd"].
+   */
+  words?: readonly string[];
+  /**
+   * Allowed dot pitch in CSS px; the engine picks one inside it from the smallest word's size.
+   * Default [10, 14].
+   */
   pitch?: readonly [min: number, max: number];
   /** CSS font-family list used to rasterize the art. Default: the system UI stack. */
   fontFamily?: string;
@@ -38,11 +45,13 @@ export interface DotFieldOptions {
    * (context loss or destroy), so the host can swap its fallback in and out.
    */
   onLive?: (live: boolean) => void;
+  /** Called with a word's index as the board starts changing to it. */
+  onWord?: (index: number) => void;
 }
 
 export interface DotField {
-  /** Replaces the art text; it is re-rasterized on the next frame. */
-  setArt(text: string): void;
+  /** Replaces the words; they are re-rasterized on the next frame and the cycle starts over. */
+  setWords(words: readonly string[]): void;
   /** Box the art fills (contain-fit, centered); null restores the default placement. */
   setArtBox(box: Box | null): void;
   /**

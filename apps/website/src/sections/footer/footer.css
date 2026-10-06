@@ -56,6 +56,7 @@
 }
 
 .footer__base {
+  position: relative;
   display: flex;
   flex-wrap: wrap;
   gap: 8px 24px;
@@ -63,7 +64,15 @@
   justify-content: space-between;
   margin-block-start: 56px;
   padding-block-start: 20px;
-  border-block-start: 1px solid var(--line-1);
+}
+
+/* The base's top hairline, drawn in as the footer arrives. */
+.footer__rule {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline: 0;
+  block-size: 1px;
+  background-color: var(--line-1);
 }
 
 .footer__note {
