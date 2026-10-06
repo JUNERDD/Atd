@@ -169,7 +169,8 @@
   }
 }
 
-/* A CRT coming on: a bright line widens across the middle, then opens to the full picture. */
+/* A CRT coming on: a line widens across the middle, then opens to the full picture. Opacity ends
+   at the element's own value, so a dimmed surface powers on dimmed. */
 @keyframes rv-power {
   0% {
     opacity: 0;
@@ -177,12 +178,10 @@
   }
 
   35% {
-    opacity: 1;
     scale: 1 0.006;
   }
 
   100% {
-    opacity: 1;
     scale: 1 1;
   }
 }

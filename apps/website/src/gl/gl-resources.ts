@@ -10,6 +10,8 @@ export interface Uniforms {
   u_scroll: WebGLUniformLocation | null;
   u_grid: WebGLUniformLocation | null;
   u_art: WebGLUniformLocation | null;
+  u_artNext: WebGLUniformLocation | null;
+  u_morph: WebGLUniformLocation | null;
   u_cells: WebGLUniformLocation | null;
   u_artBox: WebGLUniformLocation | null;
   u_lens: WebGLUniformLocation | null;
@@ -31,6 +33,8 @@ function locateUniforms(gl: WebGL2RenderingContext, program: WebGLProgram): Unif
     u_scroll: at('u_scroll'),
     u_grid: at('u_grid'),
     u_art: at('u_art'),
+    u_artNext: at('u_artNext'),
+    u_morph: at('u_morph'),
     u_cells: at('u_cells'),
     u_artBox: at('u_artBox'),
     u_lens: at('u_lens'),
@@ -42,11 +46,15 @@ function locateUniforms(gl: WebGL2RenderingContext, program: WebGLProgram): Unif
   };
 }
 
-/** GL objects owned by one field. They die with the context and are rebuilt after a restore. */
+/**
+ * GL objects owned by one field. They die with the context and are rebuilt after a restore. `art`
+ * is a blank placeholder; `words` holds one coverage texture per word once the art is rasterized.
+ */
 export interface GlResources {
   program: WebGLProgram;
   vao: WebGLVertexArrayObject;
   art: WebGLTexture;
+  words: WebGLTexture[];
   uniforms: Uniforms;
 }
 
@@ -96,14 +104,37 @@ export function createResources(gl: WebGL2RenderingContext): GlResources | null 
   const uniforms = locateUniforms(gl, program);
   gl.useProgram(program);
   gl.uniform1i(uniforms.u_art, 0);
+  gl.uniform1i(uniforms.u_artNext, 1);
   uploadArt(gl, art, new Uint8Array(1), 1, 1);
-  return { program, vao, art, uniforms };
+  return { program, vao, art, words: [], uniforms };
 }
 
 export function deleteResources(gl: WebGL2RenderingContext, resources: GlResources): void {
   gl.deleteProgram(resources.program);
   gl.deleteVertexArray(resources.vao);
+  for (const texture of resources.words) {
+    if (texture !== resources.art) gl.deleteTexture(texture);
+  }
   gl.deleteTexture(resources.art);
+}
+
+/** Replaces the word textures with one per coverage map; a failed allocation reuses the blank. */
+export function uploadWords(
+  gl: WebGL2RenderingContext,
+  resources: GlResources,
+  coverages: readonly Uint8Array[],
+  cols: number,
+  rows: number,
+): void {
+  for (const texture of resources.words) {
+    if (texture !== resources.art) gl.deleteTexture(texture);
+  }
+  resources.words = coverages.map((coverage) => {
+    const texture = gl.createTexture();
+    if (!texture) return resources.art;
+    uploadArt(gl, texture, coverage, cols, rows);
+    return texture;
+  });
 }
 
 /**

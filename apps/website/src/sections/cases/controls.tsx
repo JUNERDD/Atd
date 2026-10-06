@@ -44,7 +44,7 @@ export function CasesControls({ items, active, playing, onGo, onToggle }: CasesC
   };
 
   return (
-    <div className="cases__controls glass">
+    <div className="cases__controls glass" data-reveal="rise" data-reveal-delay="420">
       <button
         type="button"
         className="btn-plain btn-icon"

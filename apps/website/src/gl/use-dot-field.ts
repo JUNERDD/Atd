@@ -15,12 +15,15 @@ export interface DotFieldRefs {
   art?: RefObject<HTMLElement | null>;
 }
 
-/** Engine options. Only `text` and `reducedMotion` are applied after mount; the rest are read once. */
+/**
+ * Engine options. `words` and `reducedMotion` are applied after mount and `onWord` is always the
+ * latest callback; the rest are read once.
+ */
 export type UseDotFieldOptions = Omit<
   DotFieldOptions,
-  'pointerTarget' | 'onLive' | 'text' | 'reducedMotion'
+  'pointerTarget' | 'onLive' | 'words' | 'reducedMotion'
 > & {
-  text: string;
+  words: readonly string[];
   reducedMotion: boolean;
 };
 
@@ -49,6 +52,7 @@ export function useDotField(refs: DotFieldRefs, options: UseDotFieldOptions): vo
     if (!canvasElement || !rootElement) return undefined;
     const field = createDotField(canvasElement, {
       ...latest.current.options,
+      onWord: (index) => latest.current.options.onWord?.(index),
       pointerTarget: rootElement,
       onLive: (live) => {
         if (live) rootElement.setAttribute('data-gl', 'live');
@@ -96,10 +100,11 @@ export function useDotField(refs: DotFieldRefs, options: UseDotFieldOptions): vo
     };
   }, [canvas, root]);
 
-  const { text, reducedMotion } = options;
+  const { words, reducedMotion } = options;
+  const wordKey = words.join('\n');
   useEffect(() => {
-    fieldRef.current?.setArt(text);
-  }, [text]);
+    fieldRef.current?.setWords(wordKey.split('\n'));
+  }, [wordKey]);
   useEffect(() => {
     fieldRef.current?.setReducedMotion(reducedMotion);
   }, [reducedMotion]);
