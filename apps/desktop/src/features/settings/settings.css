@@ -280,10 +280,11 @@
 .settings-window[data-layout='drawer'] .settings-content-header-bar {
   padding-left: var(--settings-traffic-lights-inset);
 }
+/* 8px from the controls on either side, twice the gap between the controls of a group. */
 .settings-breadcrumb {
   flex: 1;
   min-width: 0;
-  margin-left: 4px;
+  margin-inline: 4px;
 }
 .settings-breadcrumb ol {
   display: flex;
@@ -301,7 +302,6 @@
   gap: 4px;
   min-width: 0;
   overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
 }
 .settings-breadcrumb li[aria-current='page'] {
@@ -318,6 +318,8 @@
   height: 16px;
   color: var(--ata-text-secondary);
 }
+/* Each crumb's name truncates in its own box. It needs an element of its own: the item is a flex
+ * container, so `text-overflow` on the item never reaches bare text in it. */
 .settings-breadcrumb li > span {
   min-width: 0;
   overflow: hidden;
@@ -326,8 +328,17 @@
 .settings-language {
   flex-shrink: 0;
 }
-/* Below 480px the language control keeps only its icon; its accessible name stays "Language". */
-.settings-window[data-layout='drawer'] .settings-language [data-slot='select-value'] {
+/* Below 480px the language control keeps only its icon (the value and the chevron `SelectTrigger`
+ * appends are hidden), in a square of the trigger's 32px height, which leaves the breadcrumb its
+ * width; its accessible name stays "Language". */
+.settings-window[data-layout='drawer'] .settings-language [data-slot='select-trigger'] {
+  justify-content: center;
+  width: 32px;
+  padding-inline: 0;
+}
+.settings-window[data-layout='drawer']
+  .settings-language
+  :is([data-slot='select-value'], [data-slot='select-trigger'] > svg:last-child) {
   display: none;
 }
 .settings-content-scroll-area {

@@ -930,3 +930,27 @@ Figma 侧未同步：本会话云端 Figma 工具不可用，本地 Figma MCP �
 - Toast：过长的 toast 在 Figma 中用固定的 388 宽模拟换行，代码中则随文字收缩、最宽 388。
 - 中号图块的描述只来自小组件同步数据，它最多列 16 个应用；超出时中号图块只显示名称。
 - 先前已有的差异：原有 AP1 画面仍有搜索框和页脚，面板标题栏为 49px 并带 X 按钮。
+
+## 2026-10-06 设置内容头部窄宽度下的标题截断
+
+用户在浏览器渲染的设置窗口中发现：320 宽（抽屉布局）时，头部右端的语言选择器像是盖在面包屑上，「Permissions」「Automations」被切在药丸下面。
+
+原因：几何上并不重叠，标题框止于 240px，语言控件从 244px 开始。分区名是 `li` 里的裸文字，而 `li` 是 flex 容器，`text-overflow: ellipsis` 管不到其中的匿名 flex 项，文字在 4px 间隙前被硬裁成半个字形，看上去像压在药丸下面；同时 320 宽时标题只剩 48px。
+
+| 归属                          | 改动                                                                                                                                                                                                       |
+| ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `settings-content-header.tsx` | 分区名与子页标题一样包一层 `span`，由 `.settings-breadcrumb li > span` 在自身宽度内省略                                                                                                                    |
+| `settings.css`                | 面包屑左右各 4px 外边距，与两侧控件相距 8px（同组控件间距的两倍）；抽屉布局（< 480px）的语言控件只保留图标，隐藏值与 `SelectTrigger` 追加的 chevron，成为 32px 正方形（保持触发器 32px 高），标题多出 32px |
+
+Figma：[App / Settings content header · Rhea](https://www.figma.com/design/PROJECT_FILE_KEY/Atd?node-id=1688-80719)（`1688:80719`）四个变体的 Breadcrumb 补上右侧 4px 内边距；两个 `Layout=Drawer` 变体里的共享 Select 实例隐藏 Right Decoration，左右内边距改绑与上下相同的 `spacing/out-of-scale/1,5`（6px），成为 32 × 32；顺带修复其右下角残留的 10px 圆角（解绑后重新绑定 `radius/control`，四角均为 18）。组件说明已同步。303 个实例（Default 121 + 131，Drawer 21 + 30）回读均已继承，没有覆盖阻断；320 宽的消费者（Permissions 抽屉关闭 `1420:50665`、AU1 320 `2365:122533`）中面包屑 x 188、宽 84，标题 76，语言控件 x 276、32 × 32，与代码测量一致。
+
+验证范围：
+
+- 代码：独立的 Vite harness（`apps/desktop/.artifacts/settings-header/`，端口 5293，桩出 `window.desktop`，不连接用户的 `pnpm dev` 与 Debug App），在 Chromium 与离屏的系统 WKWebView 中测量 320 / 400 / 479 宽的 en 与 zh-CN（Permissions、Automations），另测 320 子页（New automation／新建自动化）、480 与 760。均无重叠，头部 52px；英文 320 宽时标题 76px 并带省略号（「Permissi…」「Automati…」），400 与 479 完整显示；中文全部完整。焦点环、展开的语言列表、Escape 回焦，以及在抽屉里搜索「language」后高亮语言控件均正常。
+- 定向 oxfmt 与 Oxlint、`pnpm --filter @atd/desktop typecheck`、渲染设置窗口的 4 个测试文件（30 个测试）通过。
+- 未核对原生窗口合成：用户的 Debug App 正在运行，`pnpm dev` 会覆盖 `~/Applications/Atd Dev.app`，因此没有启动。本次只改页面布局，不涉及窗口材质。
+
+已知差异：
+
+- 英文长分区名在 320 宽时仍会截断（「Automations」需要 86px，可用 76px），完整名称见 `title` 提示与抽屉中的当前分区。
+- 抽屉布局的子页面中，代码让分区名先收缩到 0；Figma 的 `Depth=Sub-page, Layout=Drawer` 仍以固定 14px 的「…」表示上级，所以 320 宽时子页标题在 Figma 中约 38px，代码中为 52px。
