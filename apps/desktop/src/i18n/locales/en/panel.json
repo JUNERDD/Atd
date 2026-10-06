@@ -7,8 +7,7 @@
     "settings": "Settings",
     "update": "Update",
     "updateTooltip": "Restart to install version {{version}}",
-    "loadingConversation": "Loading conversation…",
-    "apps": "My apps"
+    "loadingConversation": "Loading conversation…"
   },
   "welcome": {
     "title": "What can I help with?",
