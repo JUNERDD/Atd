@@ -54,8 +54,8 @@ export function nativeSettings(
   setShell: (patch: Partial<ShellState>) => SettingsSnapshot;
   /** Whether the service's settings loaded; until then the snapshot holds defaults. */
   loaded: () => boolean;
-  /** Records whether the welcome guide was shown in this data dir (the panel's trigger only). */
-  setOnboardingCompleted: (done: boolean) => Promise<SettingsSnapshot>;
+  /** Records that the welcome guide was shown in this data dir (the panel's trigger only). */
+  markOnboardingShown: () => Promise<SettingsSnapshot>;
   ready: Promise<void>;
 } {
   let shared: SettingsResponse | null = null;
@@ -201,7 +201,7 @@ export function nativeSettings(
     providers,
     shell: () => shell,
     loaded: () => shared !== null,
-    setOnboardingCompleted: (done) => write({ onboardingCompleted: done }),
+    markOnboardingShown: () => write({ onboardingCompleted: true }),
     setShell: (patch) => {
       shell = { ...shell, ...patch };
       return publish();

@@ -11,7 +11,6 @@ public enum NativeEvent: Encodable, Equatable, Sendable {
   case accessibilityReduceTransparency(AccessibilityReduceTransparencyEvent)
   case shortcutCommand(ShortcutCommandEvent)
   case shortcutScreenshot(ShortcutScreenshotEvent)
-  case onboardingReplay(OnboardingReplayEvent)
   case resourcesImported(ResourcesImportedEvent)
   case filesDrag(FilesDragEvent)
   case editCommand(EditCommandEvent)
@@ -32,7 +31,6 @@ public enum NativeEvent: Encodable, Equatable, Sendable {
     case .accessibilityReduceTransparency: "accessibility.reduceTransparency"
     case .shortcutCommand: "shortcut.command"
     case .shortcutScreenshot: "shortcut.screenshot"
-    case .onboardingReplay: "onboarding.replay"
     case .resourcesImported: "resources.imported"
     case .filesDrag: "files.drag"
     case .editCommand: "edit.command"
@@ -54,7 +52,6 @@ public enum NativeEvent: Encodable, Equatable, Sendable {
     case .accessibilityReduceTransparency(let payload): try payload.encode(to: encoder)
     case .shortcutCommand(let payload): try payload.encode(to: encoder)
     case .shortcutScreenshot(let payload): try payload.encode(to: encoder)
-    case .onboardingReplay(let payload): try payload.encode(to: encoder)
     case .resourcesImported(let payload): try payload.encode(to: encoder)
     case .filesDrag(let payload): try payload.encode(to: encoder)
     case .editCommand(let payload): try payload.encode(to: encoder)

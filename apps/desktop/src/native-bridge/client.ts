@@ -74,7 +74,6 @@ export class NativeBridge {
     'accessibility.reduceTransparency': new Set(),
     'shortcut.command': new Set(),
     'shortcut.screenshot': new Set(),
-    'onboarding.replay': new Set(),
     'resources.imported': new Set(),
     'files.drag': new Set(),
     'edit.command': new Set(),

@@ -88,7 +88,7 @@ export async function installNativeHost(
   const settings = nativeSettings(connection, messages, native);
   const onboarding =
     surface === 'panel'
-      ? nativeOnboardingTrigger(native, messages, settings.setOnboardingCompleted)
+      ? nativeOnboardingTrigger(native, messages, settings.markOnboardingShown)
       : undefined;
   // Replayed when the page becomes ready, so subscribed before the first await too.
   native.on('accessibility.trust', ({ trusted }) =>
