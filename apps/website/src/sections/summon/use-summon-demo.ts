@@ -1,8 +1,14 @@
 import { useCallback, useEffect, useReducer, useRef, useState, type RefObject } from 'react';
 import { useInView } from '../../lib/use-in-view';
 import { useReducedMotion } from '../../lib/use-reduced-motion';
+import { useRevealed } from '../../motion/use-revealed';
 
 export type SummonKey = 'meta' | 'shift' | 'space';
+
+/** From the controls' reveal until the last keycap has risen into place (three rises, 80 ms apart). */
+const KEYS_LANDED_MS = 700;
+/** From the drawing's reveal until it has plotted: the screen, the menu bar, the window, the slot. */
+const DRAWING_PLOTTED_MS = 850;
 
 type Held = Readonly<Record<SummonKey, boolean>>;
 
@@ -49,6 +55,18 @@ function isChord(event: KeyboardEvent): boolean {
 
 export type DemoPhase = 'idle' | 'shown' | 'hidden';
 
+/** Whether the element's entrance has been playing for `ms`: it was revealed at least that long ago. */
+function useRevealedFor(ref: RefObject<Element | null>, ms: number): boolean {
+  const revealed = useRevealed(ref);
+  const [elapsed, setElapsed] = useState(false);
+  useEffect(() => {
+    if (!revealed) return;
+    const timer = window.setTimeout(() => setElapsed(true), ms);
+    return () => window.clearTimeout(timer);
+  }, [revealed, ms]);
+  return elapsed;
+}
+
 /**
  * The summon demo. The panel opens once by itself when the display first comes into view (pressing
  * the chord on the keycaps), then the visitor toggles it with the button or the real ⌘ ⇧ Space. While
@@ -56,6 +74,7 @@ export type DemoPhase = 'idle' | 'shown' | 'hidden';
  */
 export function useSummonDemo(
   stageRef: RefObject<Element | null>,
+  controlsRef: RefObject<Element | null>,
   displayRef: RefObject<Element | null>,
 ) {
   const reduced = useReducedMotion();
@@ -66,6 +85,8 @@ export function useSummonDemo(
   const chordTimers = useRef<number[]>([]);
   const near = useInView(stageRef, { rootMargin: '240px 0px' });
   const seen = useInView(displayRef, { threshold: 0.6, once: true });
+  const keysLanded = useRevealedFor(controlsRef, KEYS_LANDED_MS);
+  const plotted = useRevealedFor(displayRef, DRAWING_PLOTTED_MS);
 
   const playChord = useCallback((stepped: boolean) => {
     for (const timer of chordTimers.current) window.clearTimeout(timer);
@@ -92,18 +113,20 @@ export function useSummonDemo(
     };
   }, []);
 
-  // The entrance: the chord goes down key by key and the panel springs up as the last key lands.
-  // A visitor who toggled first, or who asked for reduced motion, skips the choreography.
+  // The entrance, the last act of the section's choreography: once the keycaps have risen into place
+  // and the drawing has plotted, the chord goes down key by key and the panel springs up as the last
+  // key lands. A visitor who toggled first, or who asked for reduced motion, skips the choreography.
   useEffect(() => {
     if (!seen || state.by !== 'none') return;
     if (reduced) {
       dispatch({ type: 'entrance' });
       return;
     }
+    if (!keysLanded || !plotted) return;
     playChord(true);
     const timer = window.setTimeout(() => dispatch({ type: 'entrance' }), 200);
     return () => window.clearTimeout(timer);
-  }, [seen, state.by, reduced, playChord]);
+  }, [seen, keysLanded, plotted, state.by, reduced, playChord]);
 
   useEffect(() => {
     if (!near) return;

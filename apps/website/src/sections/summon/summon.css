@@ -30,6 +30,11 @@
   gap: 12px;
 }
 
+/* The keycaps rise from a little deeper than text does, as if pushed up out of a keyboard. */
+.summon__caps .keycap {
+  --rv-y: 40px;
+}
+
 .summon__actions {
   display: flex;
   flex-wrap: wrap;
@@ -63,6 +68,8 @@
 }
 
 .summon__readout {
+  /* Rows rise only a short way, so their hairlines stack up rather than fly in. */
+  --rv-y: 16px;
   display: grid;
   gap: 6px;
   align-content: start;

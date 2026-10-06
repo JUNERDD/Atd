@@ -1,8 +1,9 @@
 import type { ReactNode } from 'react';
 import { useCopy } from '../../i18n/lang';
 import { Section } from '../../ui/section';
+import { ComposerLine } from './composer-line';
 import { featuresCopy } from './copy';
-import { ComposerLine, TaskHistory, ToolLog } from './demos';
+import { TaskHistory, ToolLog } from './demos';
 import { FEATURE_IDS, glyphs, type FeatureId } from './glyphs';
 import { FeatureTile } from './tile';
 import { TierPicker } from './tiers';
