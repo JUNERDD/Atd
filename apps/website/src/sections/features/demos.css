@@ -1,0 +1,113 @@
+/* Task history: hairline rows with a status dot, the title and its state. */
+.feat__tasks {
+  margin: 28px 0 0;
+  padding: 0;
+  list-style: none;
+  border-block-start: 1px solid var(--line-1);
+}
+
+.feat__task {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  min-block-size: 44px;
+  border-block-end: 1px solid var(--line-1);
+  font-size: var(--fs-small);
+}
+
+.feat__task-dot {
+  inline-size: 6px;
+  block-size: 6px;
+  border-radius: 50%;
+  background-color: var(--fg-3);
+}
+
+/* The streaming task: a lit dot with a faint ring. */
+.feat__task[data-live] .feat__task-dot {
+  background-color: var(--dot-1);
+  box-shadow: 0 0 0 3px var(--line-2);
+}
+
+.feat__task-title {
+  overflow: hidden;
+  color: var(--fg-1);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* A composer field with inline chips, as @ and / insert them. */
+.feat__composer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  margin-block-start: 28px;
+  padding: 12px 16px;
+  border: 1px solid var(--line-2);
+  border-radius: 20px;
+  background-color: var(--ink-1);
+  font-size: var(--fs-small);
+  line-height: 1.6;
+  color: var(--fg-1);
+}
+
+.feat__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 8px;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-chip);
+  background-color: var(--ink-3);
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+}
+
+.feat__chip-key {
+  color: var(--fg-3);
+}
+
+/* The last chip and the caret wrap as one, so the caret never starts a line on its own. */
+.feat__chip-end {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.feat__caret {
+  inline-size: 2px;
+  block-size: 1.15em;
+  border-radius: 1px;
+  background-color: var(--fg-1);
+}
+
+/* Tool steps: a mono log of what ran, on what, and the result. */
+.feat__log {
+  margin: 28px 0 0;
+  padding: 0;
+  list-style: none;
+  border-block-start: 1px solid var(--line-1);
+}
+
+.feat__log-step {
+  display: grid;
+  grid-template-columns: 3.5rem minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 10px;
+  padding-block: 10px;
+  border-block-end: 1px solid var(--line-1);
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+}
+
+.feat__log-target {
+  overflow: hidden;
+  color: var(--fg-1);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.feat__log-result {
+  color: var(--fg-3);
+}

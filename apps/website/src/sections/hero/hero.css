@@ -1,0 +1,292 @@
+/* The hero is a black LED panel. The canvas draws the dot field and the lit wordmark; the copy floats
+   on a patch the shader defocuses, so no backdrop filter is needed. Without WebGL, a CSS dot screen
+   and the Doto wordmark stand in for the field. */
+.hero {
+  /* How far the wordmark's box runs under the copy. On compact widths the copy sits below the
+     wordmark instead, with a small gap (a negative overlap). */
+  --hero-overlap: -32px;
+  --hero-clear: calc(var(--nav-top) + var(--nav-h) + 24px);
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  min-block-size: max(640px, 100svh);
+  overflow: clip;
+  color: var(--fg-1);
+  background-color: var(--ink-0);
+  background-image: radial-gradient(circle, var(--dot-0) 1.25px, transparent 1.75px);
+  background-position: center;
+  background-size: 12px 12px;
+}
+
+@media (width >= 700px) {
+  .hero {
+    --hero-overlap: clamp(48px, 14svh, 144px);
+  }
+}
+
+.hero__canvas {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  opacity: 0;
+  transition: opacity var(--dur-fast) linear;
+}
+
+.hero[data-gl='live'] .hero__canvas {
+  opacity: 1;
+}
+
+.hero__stage {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-rows: minmax(min(48vw, 30svh), 1fr) auto;
+  padding-block: var(--hero-clear) clamp(24px, 4svh, 48px);
+  padding-inline: var(--gutter);
+}
+
+/* Registration marks at the stage's top corners, just under the floating nav. */
+.hero__reg {
+  position: absolute;
+  inset-block-start: calc(var(--hero-clear) - 10px);
+  inline-size: 11px;
+  block-size: 11px;
+  background:
+    linear-gradient(var(--line-2), var(--line-2)) center / 1px 100% no-repeat,
+    linear-gradient(var(--line-2), var(--line-2)) center / 100% 1px no-repeat;
+}
+
+.hero__reg[data-corner='start'] {
+  inset-inline-start: calc(var(--gutter) - 5px);
+}
+
+.hero__reg[data-corner='end'] {
+  inset-inline-end: calc(var(--gutter) - 5px);
+}
+
+/* The wordmark's box. The shader fits its art into this box (measured on resize), and the fallback
+   lettering fills the same box, so the two line up when the field takes over. */
+.hero__mark {
+  container-type: size;
+  display: grid;
+  place-items: center;
+  grid-row: 1;
+  margin-block-end: calc(-1 * var(--hero-overlap));
+  pointer-events: none;
+}
+
+.hero__mark-word {
+  font-family: var(--font-dot);
+  font-size: min(54cqw, 128cqh);
+  font-weight: 500;
+  line-height: 0.8;
+  letter-spacing: -0.02em;
+  color: var(--dot-1);
+  transition: opacity var(--dur-base) var(--curve-standard);
+}
+
+.hero[data-gl='live'] .hero__mark-word {
+  opacity: 0;
+}
+
+/* Where the copy overlaps the wordmark, the fallback has no shader defocus, so it fades out there
+   instead (a static mask; layout and the measured box are unchanged). */
+@media (width >= 700px) {
+  .hero__mark {
+    mask-image: linear-gradient(
+      black calc(100% - var(--hero-overlap) - 72px),
+      transparent calc(100% - var(--hero-overlap) + 8px)
+    );
+  }
+}
+
+/* The --dot-focus-* properties shape the patch the shader defocuses behind the copy (read by
+   useDotField on resize). On compact widths the copy sits below the wordmark, so the patch stays
+   tight; on wider bands the copy overlaps the wordmark and the patch fades out over a wider band. */
+.hero__copy {
+  --dot-focus-padding: 8px;
+  --dot-focus-radius: 28px;
+  --dot-focus-feather: 24px;
+  position: relative;
+  z-index: 1;
+  grid-row: 2;
+  justify-self: center;
+  inline-size: min(100%, 48rem);
+  text-align: center;
+}
+
+@media (width >= 700px) {
+  .hero__copy {
+    --dot-focus-padding: 16px;
+    --dot-focus-radius: 40px;
+    --dot-focus-feather: 72px;
+  }
+}
+
+.hero__kicker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  justify-content: center;
+  margin-block-end: 16px;
+}
+
+.hero__index {
+  color: var(--fg-1);
+}
+
+/* The lit wordmark is the display element, so the headline reads at section-title scale. */
+.hero__title {
+  font-family: var(--font-display);
+  font-size: var(--fs-h2);
+  font-weight: 600;
+  line-height: var(--lh-display);
+  letter-spacing: var(--tr-display);
+  text-wrap: balance;
+}
+
+/* Chinese breaks between phrases rather than inside them, and still wraps inside a phrase that is
+   wider than the line. */
+:lang(zh) .hero__phrase {
+  display: inline-block;
+}
+
+.hero__lede {
+  max-inline-size: 36rem;
+  margin-block-start: 16px;
+  margin-inline: auto;
+  font-size: var(--fs-lede);
+  line-height: 1.4;
+  color: var(--fg-2);
+  text-wrap: pretty;
+}
+
+.hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: center;
+  margin-block-start: 28px;
+}
+
+.hero__note {
+  margin-block-start: 16px;
+  font-size: var(--fs-small);
+  color: var(--fg-2);
+}
+
+/* Instrument strip: a hairline and mono readouts along the bottom edge. */
+.hero__instrument {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  gap: 24px;
+  align-items: center;
+  justify-content: space-between;
+  padding-block: 16px max(20px, env(safe-area-inset-bottom));
+  border-block-start: 1px solid var(--line-1);
+}
+
+.hero__readout {
+  --dot-focus-padding: 12px;
+  --dot-focus-radius: 16px;
+  --dot-focus-feather: 48px;
+  display: grid;
+  flex: 1;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 24px;
+}
+
+.hero__reading {
+  display: grid;
+  gap: 2px;
+  min-inline-size: 0;
+}
+
+.hero__reading-value {
+  overflow: hidden;
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: var(--fg-2);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Key legends in the readout: hairline keycaps in the text face, since SF Mono has no ⇧. */
+.hero__key {
+  display: inline-grid;
+  place-items: center;
+  min-inline-size: 20px;
+  block-size: 20px;
+  margin-inline-end: 4px;
+  padding-inline: 5px;
+  border: 1px solid var(--line-2);
+  border-radius: 5px;
+  font-family: var(--font-text);
+  font-size: 0.75rem;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+.hero__cue {
+  display: none;
+  gap: 12px;
+  align-items: center;
+}
+
+.hero__cue-track {
+  position: relative;
+  inline-size: 1px;
+  block-size: 28px;
+  background-color: var(--line-2);
+}
+
+.hero__cue-dot {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: -1.5px;
+  inline-size: 4px;
+  block-size: 4px;
+  border-radius: 50%;
+  background-color: var(--fg-1);
+  translate: 0 12px;
+}
+
+@media (width >= 700px) {
+  .hero__readout {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px 40px;
+  }
+
+  .hero__cue {
+    display: inline-flex;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .hero__cue-dot {
+    animation: hero-cue 2.4s var(--curve-standard) infinite;
+  }
+}
+
+@keyframes hero-cue {
+  from {
+    opacity: 0;
+    translate: 0 -4px;
+  }
+
+  30% {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+    translate: 0 28px;
+  }
+}

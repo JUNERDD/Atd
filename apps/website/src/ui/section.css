@@ -1,0 +1,81 @@
+.section {
+  position: relative;
+  padding-block: var(--section-pad);
+}
+
+.section[data-tone='void'] {
+  background-color: var(--ink-0);
+}
+
+/* The light section re-points the text and line tokens, so components inside adapt without their
+   own light variants. */
+.section[data-tone='paper'] {
+  --fg-1: var(--paper-fg-1);
+  --fg-2: var(--paper-fg-2);
+  --fg-3: var(--paper-fg-2);
+  --line-1: var(--paper-line);
+  --line-2: rgb(0 0 0 / 0.16);
+  --ink-2: #fff;
+  --ink-3: #ebebed;
+  --dot-0: rgb(0 0 0 / 0.08);
+  --dot-1: #1d1d1f;
+  color: var(--fg-1);
+  background-color: var(--paper-1);
+}
+
+.section__frame {
+  position: relative;
+}
+
+/* Registration marks: a small cross at the frame's top corners, on the grid. */
+.section__mark {
+  position: absolute;
+  inset-block-start: calc(-1 * var(--section-pad) / 2);
+  inline-size: 11px;
+  block-size: 11px;
+  background:
+    linear-gradient(var(--line-2), var(--line-2)) center / 1px 100% no-repeat,
+    linear-gradient(var(--line-2), var(--line-2)) center / 100% 1px no-repeat;
+}
+
+.section__mark[data-corner='start'] {
+  inset-inline-start: -5px;
+}
+
+.section__mark[data-corner='end'] {
+  inset-inline-end: -5px;
+}
+
+.section__header {
+  max-inline-size: 46rem;
+  margin-block-end: clamp(48px, 7vw, 88px);
+}
+
+.section__meta {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  margin-block-end: 20px;
+}
+
+.section__index {
+  color: var(--fg-1);
+}
+
+.section__title {
+  font-family: var(--font-display);
+  font-size: var(--fs-h2);
+  font-weight: 600;
+  line-height: var(--lh-display);
+  letter-spacing: var(--tr-display);
+  text-wrap: balance;
+}
+
+.section__lede {
+  margin-block-start: 20px;
+  max-inline-size: 38rem;
+  font-size: var(--fs-lede);
+  line-height: 1.4;
+  color: var(--fg-2);
+  text-wrap: pretty;
+}
