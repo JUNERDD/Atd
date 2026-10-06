@@ -2,10 +2,10 @@
 const HOLD = 2.4;
 const FIRST_HOLD = 3.4;
 /**
- * Seconds one change takes on the board: the shader's flip wave crossing it (FLIP_WAVE + the y
- * skew + jitter) plus one disc's flip (FLIP_TIME). Keep in step with shaders.ts.
+ * Seconds one change takes on the board: the shader's sweep across it (SWEEP) plus one cell's melt
+ * (MELT) in shaders.ts. Keep them in step.
  */
-export const CHANGE_SECONDS = 1.3;
+export const CHANGE_SECONDS = 1.6;
 
 /**
  * Which word the field shows, and the change in progress. A change starts only while the cycle may

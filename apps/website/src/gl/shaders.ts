@@ -9,7 +9,7 @@ void main() {
 /**
  * One pass draws the whole field. Positions are CSS px from the canvas's top-left corner, so the
  * art box, the lens and ripples use the same units as the DOM. Three spaces exist: `p` is the
- * screen; `d` is the panel as the scroll-away dive scales it about the art's center; `q` is that
+ * screen; `d` is the panel as the scroll-away dive scales it about the art box's center; `q` is that
  * panel seen through the pointer loupe. Everything that belongs to the panel (dots, art, ripples,
  * the resolve scan) is evaluated per cell in `q`; optical effects (the CRT aperture and beam, the
  * lens glow, the tilt blur, the vignette) stay in `p`.
@@ -17,6 +17,7 @@ void main() {
 export const FRAGMENT_SHADER = `#version 300 es
 precision highp float;
 precision highp int;
+precision highp sampler2D;
 
 uniform vec2 u_res;          // drawing buffer, device px
 uniform float u_scale;       // device px per CSS px (DPR x render scale)
@@ -26,10 +27,13 @@ uniform float u_boot;        // seconds since power-on; large once settled
 uniform float u_scroll;      // 0..1 scroll-away progress
 uniform vec3 u_grid;         // origin x, origin y, pitch (CSS px)
 uniform sampler2D u_art;     // the shown word's coverage, one texel per cell, mipmapped
-uniform sampler2D u_artNext; // the word changing in, during a change
+uniform sampler2D u_artNext; // the word changing in, during a change (for the halo)
+uniform sampler2D u_shape;   // the shown word's signed distance field, in cells
+uniform sampler2D u_shapeNext; // the incoming word's
 uniform float u_morph;       // seconds into a word change; negative when none
 uniform ivec2 u_cells;       // art texture size in cells
-uniform vec4 u_artBox;       // where the art's ink sits: x, y, width, height
+uniform vec4 u_artBox;       // where the shown word's ink sits: x, y, width, height
+uniform vec2 u_pivot;        // the art box's center: the scroll-away dive's pivot
 uniform vec4 u_lens;         // x, y, radius, strength
 uniform float u_zoom;        // loupe magnification at its center
 uniform vec4 u_ripples[4];   // x, y, start time, amplitude
@@ -51,10 +55,10 @@ const float CRT_OPEN = 0.62;
 const float SCAN_START = 0.5;
 const float SCAN_TIME = 0.95;
 
-// Word change, in seconds: the flip wave crosses the board, and each disc takes FLIP_TIME to turn.
-// CHANGE_SECONDS in word-cycle.ts covers the whole change.
-const float FLIP_WAVE = 0.9;
-const float FLIP_TIME = 0.2;
+// Word change, in seconds (CHANGE_SECONDS in word-cycle.ts): the change sweeps the board left to
+// right over SWEEP, and each cell melts from one word's shape into the next over MELT.
+const float SWEEP = 0.55;
+const float MELT = 1.0;
 
 uvec2 pcg2d(uvec2 v) {
   v = v * 1664525u + 1013904223u;
@@ -76,14 +80,14 @@ void main() {
   vec2 p = vec2(gl_FragCoord.x, u_res.y - gl_FragCoord.y) / u_scale;
   vec2 artCenter = u_artBox.xy + 0.5 * u_artBox.zw;
 
-  // Scroll-away dive: the panel grows about the art's center as the section leaves.
+  // Scroll-away dive: the panel grows about the art box's center as the section leaves.
   float away = u_scroll * u_motion;
   float dive = 1.0 + 1.1 * away * away;
-  vec2 d = artCenter + (p - artCenter) / dive;
+  vec2 d = u_pivot + (p - u_pivot) / dive;
 
   // Loupe: shrink panel coordinates toward the pointer, which magnifies the grid there. The radial
   // map r * f(r) stays monotonic because f only grows with r, so the grid never folds.
-  vec2 lensAt = artCenter + (u_lens.xy - artCenter) / dive;
+  vec2 lensAt = u_pivot + (u_lens.xy - u_pivot) / dive;
   float lensIn = 1.0 - smoothstep(0.0, u_lens.z, length(p - u_lens.xy));
   vec2 q = lensAt + (d - lensAt) * mix(1.0, 1.0 / u_zoom, lensIn * u_lens.w * u_motion);
 
@@ -101,28 +105,32 @@ void main() {
   vec2 r1 = unit2(h);
   vec2 r2 = unit2(pcg2d(h ^ uvec2(0x68bc21ebu, 0x02e5be93u)));
 
-  bool onGrid = all(lessThan(uvec2(cell), uvec2(u_cells)));
-  float cover = onGrid ? texelFetch(u_art, cell, 0).r : 0.0;
+  float cover = 0.0;
+  if (all(lessThan(uvec2(cell), uvec2(u_cells)))) cover = texelFetch(u_art, cell, 0).r;
   float glow = textureLod(u_art, g / vec2(u_cells), 1.5).r;
   float inArt = smoothstep(0.32, 0.68, cover);
 
-  // Word change, like a flip-dot sign: a wave crosses the board left to right. As it passes, each
-  // disc whose state changes turns over about its vertical axis (narrowing to an edge and back) and
-  // lands on its new side, a lit landing with a flash; the wave's light brushes every other disc.
-  float changing = step(0.0, u_morph);
-  float coverNext = onGrid ? texelFetch(u_artNext, cell, 0).r : 0.0;
-  float inNext = smoothstep(0.32, 0.68, coverNext);
-  float flipAt = center.x / size.x * FLIP_WAVE + center.y / size.y * 0.12 + r2.x * 0.06;
-  float turn = clamp((u_morph - flipAt) / FLIP_TIME, 0.0, 1.0);
-  float flips = changing * abs(inNext - inArt);
-  inArt = mix(inArt, inNext, changing * step(0.5, turn));
-  float disc = mix(1.0, max(abs(cos(3.14159265 * turn)), 0.08), flips);
-  float landed = max(u_morph - flipAt - FLIP_TIME * 0.5, 0.0);
-  float landFlash = flips * inNext * step(0.5, turn) * exp(-landed * 9.0) * 0.8;
-  float passing = (u_morph - flipAt) * 7.0;
-  float brush = changing * exp(-passing * passing);
+  // Word change: the board melts one word into the next. Each cell blends the two words' signed
+  // distance fields with its own eased progress, so the letters' edges flow continuously from one
+  // shape to the other, a dot growing or shrinking as an edge passes it. The change sweeps left to
+  // right; while it moves, the edge ripples like a liquid and glows. At either end the blend is
+  // exactly one word's field, which gives back its coverage, so the hand-over is invisible.
+  float seam = 0.0;
+  float melt = 0.0;
+  if (u_morph >= 0.0 && all(lessThan(uvec2(cell), uvec2(u_cells)))) {
+    float from = texelFetch(u_shape, cell, 0).r;
+    float to = texelFetch(u_shapeNext, cell, 0).r;
+    float local = clamp((u_morph - SWEEP * (0.85 * center.x / size.x + 0.15 * center.y / size.y)) /
+      MELT, 0.0, 1.0);
+    melt = local * local * local * (local * (local * 6.0 - 15.0) + 10.0);
+    float flowing = sin(3.14159265 * melt);
+    float ripple = sin(center.x * 0.041 + u_time * 2.4) + sin(center.y * 0.057 - u_time * 1.9);
+    float sdf = mix(from, to, melt) + 0.42 * ripple * flowing;
+    inArt = smoothstep(0.32, 0.68, clamp(0.5 - sdf, 0.0, 1.0));
+    seam = exp(-sdf * sdf * 1.4) * flowing;
+  }
   float glowNext = textureLod(u_artNext, g / vec2(u_cells), 1.5).r;
-  glow = mix(glow, glowNext, changing * smoothstep(flipAt, flipAt + FLIP_TIME, u_morph));
+  glow = mix(glow, glowNext, melt);
 
   // CRT: a bright line spreads from the middle, then the picture opens up and down from it.
   float spread = smoothstep(0.0, CRT_SPREAD, u_boot);
@@ -164,8 +172,7 @@ void main() {
   float scanOffset = (yN - band) * 8.0;
   float scan = u_motion * exp(-scanOffset * scanOffset);
   float fieldDim = 1.0 - 0.6 * u_scroll;
-  float field = u_levels.x * (0.75 + 0.5 * r1.x) * twinkle * (1.0 + 1.1 * scan + 2.2 * brush) *
-    fieldDim;
+  float field = u_levels.x * (0.75 + 0.5 * r1.x) * twinkle * (1.0 + 1.1 * scan) * fieldDim;
 
   // Ripples: decelerating rings; under reduced motion a stationary glow that fades.
   float ripple = 0.0;
@@ -176,21 +183,19 @@ void main() {
     float life = 1.0 - rippleAge / RIPPLE_LIFE;
     float radius = u_motion * rippleAge * (640.0 - 240.0 * rippleAge);
     float width = mix(56.0, 20.0 + 30.0 * rippleAge, u_motion);
-    float off = length(center - (artCenter + (rp.xy - artCenter) / dive)) - radius;
+    float off = length(center - (u_pivot + (rp.xy - u_pivot) / dive)) - radius;
     ripple += rp.w * life * life * exp(-off * off / (width * width));
   }
 
   float lens = u_lens.w * lensIn;
-  float level = mix(field + staticLevel + bar * 0.55, u_levels.y * (1.0 + flash + landFlash), lit);
+  float level = mix(field + staticLevel + bar * 0.55, u_levels.y * (1.0 + flash), lit) + seam * 0.5;
   level += (lens * 0.5 + ripple * 0.85) * (1.0 - 0.5 * lit);
   float radius = pitch * (mix(FIELD_RADIUS, ART_RADIUS, max(lit, staticLevel * 0.9)) +
-    0.05 * lens + 0.08 * min(ripple, 1.0));
+    0.05 * lens + 0.08 * min(ripple, 1.0) + 0.06 * seam);
 
   // Defocus: dots soften, swell and dim (keeping their energy), then settle into a smooth haze
-  // built from the mipmapped art. A turning disc is an ellipse, narrowed by its turn.
-  vec2 rel = q - center;
-  rel.x /= disc;
-  float dist = length(rel);
+  // built from the mipmapped art.
+  float dist = length(q - center);
   float aa = 0.5 * (fwidth(q.x) + fwidth(q.y));
   float soft = max(0.7 * aa, 1e-3) + blur * pitch * 0.4;
   float rad = radius * (1.0 + 0.3 * blur);
