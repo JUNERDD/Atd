@@ -64,6 +64,18 @@ export class PluginHost {
     return pending;
   }
 
+  /**
+   * Settles the profile's host for a stopping service. Creation writes under the dataDir (the
+   * renormalized registry, the legacy migration and its marker), and the plugin routes start it
+   * with the service without awaiting it, so a creation still running finishes first and none of
+   * its writes outlive the service. A failed creation has nothing left to settle. The next `for`
+   * creates the host anew.
+   */
+  static async closeFor(dataDir: string): Promise<void> {
+    await PluginHost.hosts.get(dataDir)?.catch(() => undefined);
+    PluginHost.hosts.delete(dataDir);
+  }
+
   private static async create(dataDir: string, log: Logger): Promise<PluginHost> {
     const paths = servicePaths(dataDir);
     const secrets = keyringSecretStore(await readServiceId(paths), log);
