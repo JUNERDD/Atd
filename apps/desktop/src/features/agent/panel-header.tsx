@@ -1,4 +1,4 @@
-import { AppWindow, History, Settings } from 'lucide-react';
+import { History, Settings } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { TaskDetail } from '../../client/agent/bridge';
 import { IconButton } from '../../components/icon-button';
@@ -10,7 +10,7 @@ import type { PanelView } from './use-task-panel';
 /**
  * The task panel's header on the unified title bar: the brand mark (a new chat), the view's title
  * (a conversation's renames in place), and the controls — updates, the conversation's session
- * menu, Apps, Tasks and Settings. Apps and Tasks toggle their view against the new chat.
+ * menu, Tasks and Settings. Tasks toggles its view against the new chat.
  */
 export function PanelHeader({
   view,
@@ -27,7 +27,7 @@ export function PanelHeader({
   /** The conversation on screen, once loaded; null in the other views. */
   detail: TaskDetail | null;
   onNewTask: () => void;
-  onToggleView: (view: 'apps' | 'history') => void;
+  onToggleView: (view: 'history') => void;
   onOpenSettings: () => void;
 }) {
   const { t } = useTranslation('panel');
@@ -46,15 +46,6 @@ export function PanelHeader({
       <nav className="header-controls" aria-label={t('header.controlsLabel')}>
         <UpdateButton />
         {detail && <SessionMenu detail={detail} />}
-        <IconButton
-          label={t('header.apps')}
-          variant="glass-ghost"
-          className="header-button"
-          aria-pressed={view === 'apps'}
-          onClick={() => onToggleView('apps')}
-        >
-          <AppWindow />
-        </IconButton>
         <IconButton
           label={t('header.tasks')}
           variant="glass-ghost"

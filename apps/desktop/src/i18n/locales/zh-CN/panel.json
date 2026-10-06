@@ -7,8 +7,7 @@
     "settings": "设置",
     "update": "更新",
     "updateTooltip": "重启以安装 {{version}} 版本",
-    "loadingConversation": "正在加载对话…",
-    "apps": "我的应用"
+    "loadingConversation": "正在加载对话…"
   },
   "welcome": {
     "title": "有什么可以帮你？",
