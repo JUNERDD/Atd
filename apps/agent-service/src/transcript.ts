@@ -140,6 +140,18 @@ export function toolPartialText(partialResult: unknown): string {
   return contentText(partialResult.content);
 }
 
+/**
+ * The calls whose results a branch holds, as the projection joins them to their blocks
+ * (`collectBlockLookups`). A live transcript keeps a call's streamed state until then.
+ */
+export function recordedCallIds(branch: readonly ServiceBranchItem[]): string[] {
+  const ids: string[] = [];
+  for (const item of branch)
+    if (item.type === 'message' && item.message.role === 'toolResult')
+      ids.push(item.message.toolCallId);
+  return ids;
+}
+
 function outputOf(result: ToolResultMessage): string {
   return contentText(result.content);
 }

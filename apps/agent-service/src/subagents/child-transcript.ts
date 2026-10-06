@@ -7,6 +7,7 @@ import { TrailingFlush } from '../trailing-flush.js';
 import {
   diffServiceBlocks,
   projectServiceBlocks,
+  recordedCallIds,
   toolPartialText,
   type ServiceBranchItem,
 } from '../transcript.js';
@@ -43,6 +44,11 @@ class LiveChildTranscript {
   private revision = 0;
   private readonly streamed = new TrailingFlush(() => this.reproject(true), STREAM_COALESCE_MS);
   private partial: AssistantMessage | undefined;
+  /**
+   * Latest streamed text of each call, until the child's messages hold its result: as in the
+   * parent's transcript (live-transcript.ts `release`), a call of a parallel batch ends before
+   * Pi creates the batch's results.
+   */
   private readonly partials = new Map<string, string>();
   /** When each message ended, by message identity (Pi pushes the `message_end` object). */
   private readonly endedAt = new WeakMap<object, number>();
@@ -75,7 +81,6 @@ class LiveChildTranscript {
       }
       if (event.type === 'tool_execution_update')
         this.partials.set(event.toolCallId, toolPartialText(event.partialResult));
-      if (event.type === 'tool_execution_end') this.partials.delete(event.toolCallId);
       if (event.type === 'message_update' || event.type === 'tool_execution_update')
         this.streamed.schedule();
       else this.reproject(true);
@@ -112,6 +117,7 @@ class LiveChildTranscript {
       const endedAt = this.endedAt.get(message);
       return { type: 'message', message, ...(endedAt === undefined ? {} : { endedAt }) };
     });
+    for (const id of recordedCallIds(messages)) this.partials.delete(id);
     const next = projectServiceBlocks({
       branch: [...messages, ...this.timings],
       partial: this.partial,
