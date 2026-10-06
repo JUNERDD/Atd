@@ -69,8 +69,8 @@ The hero display shows the words in `heroCopy.words` (`src/sections/hero/copy.ts
 the name, each melting into the next (the field blends the two words' signed distance fields, so the
 letters' edges flow from one shape to the other); `|` marks where a word may break onto two lines on
 narrow screens. The display is drawn, so the words stay the same in both languages; the page's heading
-(`heroCopy.title`) says what they mean in each. A button in the panel's corner pauses the display, which
-starts paused for visitors who prefer reduced motion.
+(`heroCopy.title`) says what they mean in each. For visitors who prefer reduced motion the display holds
+the name.
 
 ## Motion
 

@@ -49,7 +49,7 @@
   display: grid;
   grid-template-rows: minmax(0, 1fr);
   /* The same clearance top and bottom keeps the wordmark on the panel's center line, clear of the
-     floating nav above and the motion toggle below. */
+     floating nav above and the scroll cue below. */
   padding-block: var(--hero-clear);
   padding-inline: var(--gutter);
 }
@@ -125,23 +125,19 @@
   }
 }
 
-/* The scroll cue: a mouse at the panel's bottom center, on the motion toggle's center line, whose
-   wheel rolls down while the display plays. A mouse means a pointer, so only pointer devices show
-   it. */
+/* The scroll cue: a dot-matrix mouse (index.tsx) at the panel's bottom center, its outline drawn in
+   faint dots and only its lit dots shown. A mouse means a pointer, so only pointer devices show it. */
 .hero__scroll {
+  --dot-0: transparent;
+  --dot-1: color-mix(in srgb, var(--fg-3) 60%, transparent);
   display: none;
   position: absolute;
   z-index: 1;
-  inset-block-end: calc(max(20px, env(safe-area-inset-bottom)) + 4px);
+  inset-block-end: max(24px, env(safe-area-inset-bottom));
   inset-inline-start: 50%;
+  inline-size: 26px;
   translate: -50% 0;
-  /* A hint, not a control: a hairline drawn fainter than the labels. */
-  color: color-mix(in srgb, var(--fg-3) 55%, transparent);
   pointer-events: none;
-}
-
-.hero__scroll svg {
-  display: block;
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -150,55 +146,63 @@
   }
 }
 
-/* The wheel (the icon's path; the body is its rect) fades in at the top, rolls down as it fades
-   out, and rests a beat before the next turn. */
+/* The wheel: the track down the mouse's middle (column 3, rows 2–5), brighter than the body. At rest
+   it is the track's top two dots. */
+.hero__scroll
+  .dot-glyph__dot[data-x='3']:is([data-y='2'], [data-y='3'], [data-y='4'], [data-y='5']) {
+  fill: var(--fg-2);
+}
+
+.hero__scroll .dot-glyph__dot[data-x='3']:is([data-y='4'], [data-y='5']) {
+  opacity: 0;
+}
+
+/* The wheel turns: a lit dot steps down the track a row every 0.25 s, leaving a fading trail, and the
+   track rests empty a beat before the next turn. Each row runs the same cycle one step later; the
+   negative delays keep the rows in phase from the first frame. */
 @media (prefers-reduced-motion: no-preference) {
-  .hero__scroll[data-playing] path {
-    animation: hero-wheel 2.2s var(--curve-standard) 2.4s infinite;
+  .hero__scroll
+    .dot-glyph__dot[data-x='3']:is([data-y='2'], [data-y='3'], [data-y='4'], [data-y='5']) {
+    opacity: 0;
+    animation: hero-wheel 2.2s linear infinite;
+  }
+
+  .hero__scroll .dot-glyph__dot[data-x='3'][data-y='3'] {
+    animation-delay: -1.95s;
+  }
+
+  .hero__scroll .dot-glyph__dot[data-x='3'][data-y='4'] {
+    animation-delay: -1.7s;
+  }
+
+  .hero__scroll .dot-glyph__dot[data-x='3'][data-y='5'] {
+    animation-delay: -1.45s;
   }
 }
 
+@media (forced-colors: active) {
+  .hero__scroll .dot-glyph__dot[data-lit] {
+    fill: CanvasText;
+  }
+}
+
+/* One step lit, then a trail that fades over the next step. */
 @keyframes hero-wheel {
-  0% {
-    opacity: 0;
-    translate: 0 -2px;
-  }
-
-  25% {
+  0%,
+  11% {
     opacity: 1;
-    translate: 0 0;
   }
 
-  70%,
+  11.5% {
+    opacity: 0.45;
+  }
+
+  22% {
+    opacity: 0.1;
+  }
+
+  22.5%,
   100% {
     opacity: 0;
-    translate: 0 5px;
-  }
-}
-
-/* The display's motion toggle, alone in the panel's bottom corner like a hero video's: the kit's 44 pt
-   borderless icon button in a hairline ring. It needs script, so it keeps its place but stays hidden
-   until the page runs. */
-.hero__motion {
-  position: absolute;
-  z-index: 1;
-  inset-block-end: max(20px, env(safe-area-inset-bottom));
-  inset-inline-end: var(--gutter);
-  border: 1px solid var(--line-2);
-  color: var(--fg-2);
-}
-
-.hero__motion svg {
-  inline-size: 14px;
-  block-size: 14px;
-}
-
-.hero__motion:not([data-ready]) {
-  visibility: hidden;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .hero__motion:hover {
-    color: var(--fg-1);
   }
 }
