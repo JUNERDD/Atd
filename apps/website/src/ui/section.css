@@ -19,6 +19,8 @@
   --ink-3: #ebebed;
   --dot-0: rgb(0 0 0 / 0.08);
   --dot-1: #1d1d1f;
+  --spot-fill: rgb(0 0 0 / 0.035);
+  --spot-edge: rgb(0 0 0 / 0.2);
   color: var(--fg-1);
   background-color: var(--paper-1);
 }
@@ -44,6 +46,15 @@
 
 .section__mark[data-corner='end'] {
   inset-inline-end: -5px;
+}
+
+/* The frame's top edge: a hairline between the marks, stopping short of their crosses. */
+.section__rule {
+  position: absolute;
+  inset-block-start: calc(-1 * var(--section-pad) / 2 + 5px);
+  inset-inline: 16px;
+  block-size: 1px;
+  background-color: var(--line-1);
 }
 
 .section__header {

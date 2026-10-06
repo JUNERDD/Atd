@@ -86,6 +86,12 @@
   --nav-h: 52px;
   --nav-top: 12px;
 
+  /* Pointer light (motion.css): the spotlight on surfaces and the halo on the page grid. */
+  --spot-fill: rgb(255 255 255 / 0.05);
+  --spot-edge: rgb(255 255 255 / 0.3);
+  --halo-size: 360px;
+  --halo-dot: rgb(255 255 255 / 0.42);
+
   /* Shape. */
   --r-tile: 28px;
   --r-frame: 20px;

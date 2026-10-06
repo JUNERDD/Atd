@@ -24,7 +24,7 @@ export function SiteNav() {
         {t.skip}
       </a>
       <div className="scroll-edge-top nav__edge" data-tone={tone} aria-hidden="true" />
-      <header className="nav">
+      <header className="nav" data-reveal="drop" data-reveal-delay="420">
         <nav
           ref={bar}
           className="nav__bar glass"
