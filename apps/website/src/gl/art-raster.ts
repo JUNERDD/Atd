@@ -22,6 +22,8 @@ export interface ArtRaster {
   layout: GridLayout;
   /** Ink coverage per cell, 0..255, row-major from the top-left cell. */
   coverage: Uint8Array;
+  /** Where the art's ink landed, in CSS px; the requested box when nothing was drawn. */
+  ink: Box;
 }
 
 export interface ArtRasterizer {
@@ -80,7 +82,7 @@ export function createArtRasterizer(): ArtRasterizer | null {
       };
       if (buffer.length === cols * rows) buffer.fill(0);
       else buffer = new Uint8Array(cols * rows);
-      if (fit <= 0) return { layout, coverage: buffer };
+      if (fit <= 0) return { layout, coverage: buffer, ink: spec.box };
 
       const canvas = ctx.canvas;
       const scratchWidth = cols * SUPERSAMPLE;
@@ -99,13 +101,20 @@ export function createArtRasterizer(): ArtRasterizer | null {
       const centerX = (spec.box.x + spec.box.width / 2 - layout.originX) * k;
       const centerY = (spec.box.y + spec.box.height / 2 - layout.originY) * k;
       // Snap the ink's left edge and the baseline to cell edges so stems and feet land on whole dots.
-      const inkLeft = centerX - (ink.actualBoundingBoxLeft + ink.actualBoundingBoxRight) / 2;
-      const baseline = centerY + (ink.actualBoundingBoxAscent - ink.actualBoundingBoxDescent) / 2;
-      ctx.fillText(
-        spec.text,
-        Math.round(inkLeft / SUPERSAMPLE) * SUPERSAMPLE + ink.actualBoundingBoxLeft,
-        Math.round(baseline / SUPERSAMPLE) * SUPERSAMPLE,
-      );
+      const drawnWidth = ink.actualBoundingBoxLeft + ink.actualBoundingBoxRight;
+      const inkLeft = Math.round((centerX - drawnWidth / 2) / SUPERSAMPLE) * SUPERSAMPLE;
+      const baseline =
+        Math.round(
+          (centerY + (ink.actualBoundingBoxAscent - ink.actualBoundingBoxDescent) / 2) /
+            SUPERSAMPLE,
+        ) * SUPERSAMPLE;
+      ctx.fillText(spec.text, inkLeft + ink.actualBoundingBoxLeft, baseline);
+      const inkBox: Box = {
+        x: layout.originX + inkLeft / k,
+        y: layout.originY + (baseline - ink.actualBoundingBoxAscent) / k,
+        width: drawnWidth / k,
+        height: (ink.actualBoundingBoxAscent + ink.actualBoundingBoxDescent) / k,
+      };
 
       const pixels = ctx.getImageData(0, 0, scratchWidth, scratchHeight).data;
       const area = SUPERSAMPLE * SUPERSAMPLE;
@@ -119,7 +128,7 @@ export function createArtRasterizer(): ArtRasterizer | null {
           buffer[row * cols + col] = Math.round(sum / area);
         }
       }
-      return { layout, coverage: buffer };
+      return { layout, coverage: buffer, ink: inkBox };
     },
   };
 }

@@ -7,11 +7,12 @@ void main() {
 `;
 
 /**
- * One pass draws the whole field. Positions are CSS px from the canvas's top-left corner, so focus
- * rects, the lens and ripples use the same units as the DOM. Two spaces exist: `p` is the screen,
- * `q` is the panel seen through the pointer loupe; everything that belongs to the panel (dots, art,
- * boot, ripples, scanline) is evaluated per cell in `q`, while optical effects (lens glow, mask blur)
- * stay in `p`.
+ * One pass draws the whole field. Positions are CSS px from the canvas's top-left corner, so the
+ * art box, the lens and ripples use the same units as the DOM. Three spaces exist: `p` is the
+ * screen; `d` is the panel as the scroll-away dive scales it about the art's center; `q` is that
+ * panel seen through the pointer loupe. Everything that belongs to the panel (dots, art, ripples,
+ * the resolve scan) is evaluated per cell in `q`; optical effects (the CRT aperture and beam, the
+ * lens glow, the tilt blur, the vignette) stay in `p`.
  */
 export const FRAGMENT_SHADER = `#version 300 es
 precision highp float;
@@ -26,13 +27,11 @@ uniform float u_scroll;      // 0..1 scroll-away progress
 uniform vec3 u_grid;         // origin x, origin y, pitch (CSS px)
 uniform sampler2D u_art;     // art coverage, one texel per cell, mipmapped
 uniform ivec2 u_cells;       // art texture size in cells
+uniform vec4 u_artBox;       // where the art's ink sits: x, y, width, height
 uniform vec4 u_lens;         // x, y, radius, strength
 uniform float u_zoom;        // loupe magnification at its center
 uniform vec4 u_ripples[4];   // x, y, start time, amplitude
-uniform vec4 u_rects[2];     // center x, center y, half width, half height
-uniform vec2 u_rectShape[2]; // corner radius, feather
-uniform int u_rectCount;
-uniform vec3 u_levels;       // field level, art level, focus dimming
+uniform vec2 u_levels;       // field level, art level
 uniform vec3 u_ink;
 uniform vec3 u_dot;
 
@@ -42,6 +41,13 @@ const float TAU = 6.2831853;
 const float RIPPLE_LIFE = 1.2;
 const float FIELD_RADIUS = 0.19;  // dot radius / pitch
 const float ART_RADIUS = 0.34;
+
+// Power-on, in seconds: the CRT line spreads across, the picture opens from it, then a scan
+// resolves the art left to right out of static.
+const float CRT_SPREAD = 0.22;
+const float CRT_OPEN = 0.62;
+const float SCAN_START = 0.5;
+const float SCAN_TIME = 0.95;
 
 uvec2 pcg2d(uvec2 v) {
   v = v * 1664525u + 1013904223u;
@@ -58,30 +64,25 @@ vec2 unit2(uvec2 h) {
   return vec2(h >> 8u) * (1.0 / 16777216.0);
 }
 
-float roundRect(vec2 p, vec2 halfSize, float radius) {
-  vec2 q = abs(p) - halfSize + radius;
-  return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - radius;
-}
-
 void main() {
   vec2 size = u_res / u_scale;
   vec2 p = vec2(gl_FragCoord.x, u_res.y - gl_FragCoord.y) / u_scale;
+  vec2 artCenter = u_artBox.xy + 0.5 * u_artBox.zw;
+
+  // Scroll-away dive: the panel grows about the art's center as the section leaves.
+  float away = u_scroll * u_motion;
+  float dive = 1.0 + 1.1 * away * away;
+  vec2 d = artCenter + (p - artCenter) / dive;
 
   // Loupe: shrink panel coordinates toward the pointer, which magnifies the grid there. The radial
   // map r * f(r) stays monotonic because f only grows with r, so the grid never folds.
-  vec2 toLens = p - u_lens.xy;
-  float lensIn = 1.0 - smoothstep(0.0, u_lens.z, length(toLens));
-  vec2 q = u_lens.xy + toLens * mix(1.0, 1.0 / u_zoom, lensIn * u_lens.w * u_motion);
+  vec2 lensAt = artCenter + (u_lens.xy - artCenter) / dive;
+  float lensIn = 1.0 - smoothstep(0.0, u_lens.z, length(p - u_lens.xy));
+  vec2 q = lensAt + (d - lensAt) * mix(1.0, 1.0 / u_zoom, lensIn * u_lens.w * u_motion);
 
-  // Mask blur: tilt-shift toward the top and bottom edges, plus the registered focus rects.
-  float tilt = smoothstep(0.76, 1.0, abs(p.y / size.y * 2.0 - 1.0)) * 0.75;
-  float focus = 0.0;
-  for (int i = 0; i < 2; i++) {
-    if (i >= u_rectCount) break;
-    float sd = roundRect(p - u_rects[i].xy, u_rects[i].zw, u_rectShape[i].x);
-    focus = max(focus, 1.0 - smoothstep(0.0, u_rectShape[i].y, sd));
-  }
-  float blur = clamp(max(tilt, focus) + u_scroll * 0.75 * u_motion, 0.0, 1.0);
+  // Mask blur: tilt-shift toward the top and bottom edges, deepening as the section leaves.
+  float tilt = smoothstep(0.7, 1.0, abs(p.y / size.y * 2.0 - 1.0)) * 0.8;
+  float blur = clamp(tilt + away * 0.75, 0.0, 1.0);
 
   // Panel cell under this fragment.
   float pitch = u_grid.z;
@@ -97,52 +98,71 @@ void main() {
   float cover = 0.0;
   if (all(lessThan(uvec2(cell), uvec2(u_cells)))) cover = texelFetch(u_art, cell, 0).r;
   float glow = textureLod(u_art, g / vec2(u_cells), 1.5).r;
+  float inArt = smoothstep(0.32, 0.68, cover);
 
-  // Power-on: a sweep lights the field top to bottom, then art dots light in hashed order with a
-  // brief brightness overshoot (no size change).
-  float yN = center.y / size.y;
-  float front = u_boot * 1.9 - yN;
-  float fieldOn = smoothstep(0.0, 0.12, front);
-  float beam = exp(-front * front * 180.0) * (1.0 - smoothstep(0.55, 0.75, u_boot));
-  float artAge = u_boot - (0.36 + 0.56 * r2.x);
-  float artOn = smoothstep(0.0, 0.045, artAge);
-  float flash = artOn * exp(-max(artAge, 0.0) * 7.5) * 0.85;
-  float artOnAvg = smoothstep(0.36, 0.92, u_boot);
+  // CRT: a bright line spreads from the middle, then the picture opens up and down from it.
+  float spread = smoothstep(0.0, CRT_SPREAD, u_boot);
+  float open = smoothstep(CRT_SPREAD * 0.5, CRT_OPEN, u_boot);
+  float fromMidX = abs(p.x / size.x * 2.0 - 1.0);
+  float fromMidY = abs(p.y / size.y * 2.0 - 1.0);
+  float across = clamp((spread * 1.1 - fromMidX) / 0.05, 0.0, 1.0);
+  float aperture = across * clamp((open * 1.1 - fromMidY) / 0.04, 0.0, 1.0);
+  float lineOff = (p.y - size.y * 0.5) / (1.2 + 3.0 * open);
+  float crtLine = across * (1.0 - open) * exp(-lineOff * lineOff);
+
+  // Resolve scan: a bar crosses the art; the letters lock in behind it with a brief flash, out of
+  // static ahead of it. The front is ragged per cell so it reads as signal, not a wipe.
+  float artX = clamp((center.x - u_artBox.x) / max(u_artBox.z, 1.0), 0.0, 1.0);
+  float lockAt = SCAN_START + SCAN_TIME * (artX * 0.88 + 0.12 * r2.x);
+  float age = u_boot - lockAt;
+  float artOn = smoothstep(0.0, 0.05, age);
+  float flash = artOn * exp(-max(age, 0.0) * 6.5) * 0.9;
+  float scanning = step(SCAN_START - 0.12, u_boot) * (1.0 - artOn);
+  float noise = unit2(pcg2d(h ^ uvec2(uint(u_time * 18.0) * 747796405u))).x;
+  float staticLevel = scanning * step(mix(0.965, 0.72, inArt), noise) * mix(0.25, 0.55, inArt);
+  float scanT = clamp((u_boot - SCAN_START) / SCAN_TIME, 0.0, 1.0);
+  float barX = u_artBox.x + u_artBox.z * scanT;
+  float barOff = (center.x - barX) / (pitch * 1.4);
+  float barSpan = 1.0 - smoothstep(0.0, pitch * 3.0, abs(center.y - artCenter.y) - u_artBox.w * 0.5);
+  float bar = exp(-barOff * barOff) * barSpan * step(0.001, scanT) * (1.0 - step(1.0, scanT));
+  float artOnAvg = smoothstep(SCAN_START, SCAN_START + SCAN_TIME + 0.2, u_boot);
 
   // Scroll-away: art dots dissolve in hashed order (a uniform fade under reduced motion).
   float order = r2.y * 0.62;
   float keepAvg = 1.0 - smoothstep(0.0, 0.72, u_scroll);
   float keep = mix(keepAvg, 1.0 - smoothstep(order, order + 0.08, u_scroll), u_motion);
-  float lit = smoothstep(0.32, 0.68, cover) * artOn * keep;
+  float lit = inArt * artOn * keep;
 
   // Field dots: hashed base level, a subtle twinkle and the slow scanline band.
+  float yN = center.y / size.y;
   float twinkle = 1.0 + u_motion * 0.3 * sin(u_time * (0.4 + 1.3 * r1.y) + TAU * r1.x);
   float band = fract(u_time / 7.0) * 1.5 - 0.25;
   float scanOffset = (yN - band) * 8.0;
   float scan = u_motion * exp(-scanOffset * scanOffset);
   float fieldDim = 1.0 - 0.6 * u_scroll;
-  float field = u_levels.x * (0.75 + 0.5 * r1.x) * twinkle * (1.0 + 1.1 * scan) * fieldOn * fieldDim;
+  float field = u_levels.x * (0.75 + 0.5 * r1.x) * twinkle * (1.0 + 1.1 * scan) * fieldDim;
 
   // Ripples: decelerating rings; under reduced motion a stationary glow that fades.
   float ripple = 0.0;
   for (int i = 0; i < 4; i++) {
     vec4 rp = u_ripples[i];
-    float age = max(u_time - rp.z, 0.0);
-    if (age > RIPPLE_LIFE) continue;
-    float life = 1.0 - age / RIPPLE_LIFE;
-    float radius = u_motion * age * (640.0 - 240.0 * age);
-    float width = mix(56.0, 20.0 + 30.0 * age, u_motion);
-    float off = length(center - rp.xy) - radius;
+    float rippleAge = max(u_time - rp.z, 0.0);
+    if (rippleAge > RIPPLE_LIFE) continue;
+    float life = 1.0 - rippleAge / RIPPLE_LIFE;
+    float radius = u_motion * rippleAge * (640.0 - 240.0 * rippleAge);
+    float width = mix(56.0, 20.0 + 30.0 * rippleAge, u_motion);
+    float off = length(center - (artCenter + (rp.xy - artCenter) / dive)) - radius;
     ripple += rp.w * life * life * exp(-off * off / (width * width));
   }
 
-  float lens = u_lens.w * lensIn * (1.0 - 0.8 * focus);
-  float level = mix(field + beam * 0.45, u_levels.y * (1.0 + flash), lit);
+  float lens = u_lens.w * lensIn;
+  float level = mix(field + staticLevel + bar * 0.55, u_levels.y * (1.0 + flash), lit);
   level += (lens * 0.5 + ripple * 0.85) * (1.0 - 0.5 * lit);
-  float radius = pitch * (mix(FIELD_RADIUS, ART_RADIUS, lit) + 0.05 * lens + 0.08 * min(ripple, 1.0));
+  float radius = pitch * (mix(FIELD_RADIUS, ART_RADIUS, max(lit, staticLevel * 0.9)) +
+    0.05 * lens + 0.08 * min(ripple, 1.0));
 
   // Defocus: dots soften, swell and dim (keeping their energy), then settle into a smooth haze
-  // built from the mipmapped art, so text over a focus rect sits on a calm surface.
+  // built from the mipmapped art.
   float aa = 0.5 * (fwidth(q.x) + fwidth(q.y));
   float soft = max(0.7 * aa, 1e-3) + blur * pitch * 0.4;
   float rad = radius * (1.0 + 0.3 * blur);
@@ -150,12 +170,11 @@ void main() {
   float energy = min(1.0, radius * radius / (rad * rad + 0.5 * soft * soft));
   float v = shape * level * energy;
 
-  float fieldAvg = u_levels.x * fieldDim * smoothstep(0.0, 0.12, u_boot * 1.9 - p.y / size.y);
   float artAvg = smoothstep(0.15, 0.85, glow) * artOnAvg * keepAvg;
-  float haze = mix(fieldAvg * 0.113, u_levels.y * 0.363, artAvg);
+  float haze = mix(u_levels.x * fieldDim * 0.113, u_levels.y * 0.363, artAvg);
   v = mix(v, haze * 1.35, smoothstep(0.45, 1.0, blur));
-  v += glow * artOnAvg * keepAvg * 0.045 * (1.0 - focus);
-  v *= 1.0 - u_levels.z * focus;
+  v += glow * artOnAvg * keepAvg * 0.045;
+  v = v * aperture + crtLine * 1.4;
 
   vec2 c = p / size * 2.0 - 1.0;
   v *= 1.0 - 0.2 * smoothstep(0.6, 1.6, dot(c, c));

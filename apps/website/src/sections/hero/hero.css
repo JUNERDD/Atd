@@ -1,28 +1,28 @@
-/* The hero is a black LED panel. The canvas draws the dot field and the lit wordmark; the copy floats
-   on a patch the shader defocuses, so no backdrop filter is needed. Without WebGL, a CSS dot screen
+/* The hero is a black LED panel. The canvas draws the dot field with the wordmark lit across its
+   middle, centered between the floating nav and the instrument strip. Without WebGL, a CSS dot screen
    and the Doto wordmark stand in for the field. */
 .hero {
-  /* How far the wordmark's box runs under the copy. On compact widths the copy sits below the
-     wordmark instead, with a small gap (a negative overlap). */
-  --hero-overlap: -32px;
   --hero-clear: calc(var(--nav-top) + var(--nav-h) + 24px);
   position: relative;
   isolation: isolate;
   display: grid;
   grid-template-rows: minmax(0, 1fr) auto;
-  min-block-size: max(640px, 100svh);
+  min-block-size: max(560px, 100svh);
   overflow: clip;
   color: var(--fg-1);
   background-color: var(--ink-0);
+}
+
+/* The fallback dot screen, under the canvas. */
+.hero::before {
+  content: '';
+  position: absolute;
+  z-index: 0;
+  inset: 0;
   background-image: radial-gradient(circle, var(--dot-0) 1.25px, transparent 1.75px);
   background-position: center;
   background-size: 12px 12px;
-}
-
-@media (width >= 700px) {
-  .hero {
-    --hero-overlap: clamp(48px, 14svh, 144px);
-  }
+  transition: opacity var(--dur-fast) linear;
 }
 
 .hero__canvas {
@@ -39,12 +39,16 @@
   opacity: 1;
 }
 
+.hero[data-gl='live']::before {
+  opacity: 0;
+}
+
 .hero__stage {
   position: relative;
   z-index: 1;
   display: grid;
-  grid-template-rows: minmax(min(48vw, 30svh), 1fr) auto;
-  padding-block: var(--hero-clear) clamp(24px, 4svh, 48px);
+  grid-template-rows: minmax(0, 1fr);
+  padding-block: var(--hero-clear) clamp(16px, 3svh, 40px);
   padding-inline: var(--gutter);
 }
 
@@ -67,20 +71,28 @@
   inset-inline-end: calc(var(--gutter) - 5px);
 }
 
-/* The wordmark's box. The shader fits its art into this box (measured on resize), and the fallback
-   lettering fills the same box, so the two line up when the field takes over. */
+/* The wordmark's box, centered in the stage. The shader fits its art into this box (measured on
+   resize), and the fallback lettering fills the same box, so the two line up when the field takes
+   over. */
 .hero__mark {
   container-type: size;
   display: grid;
   place-items: center;
-  grid-row: 1;
-  margin-block-end: calc(-1 * var(--hero-overlap));
+  place-self: center;
+  inline-size: 92%;
+  block-size: min(100%, 44vw, 52svh);
   pointer-events: none;
+}
+
+@media (width >= 700px) {
+  .hero__mark {
+    inline-size: min(100%, 76vw, 1200px);
+  }
 }
 
 .hero__mark-word {
   font-family: var(--font-dot);
-  font-size: min(54cqw, 128cqh);
+  font-size: min(52cqw, 120cqh);
   font-weight: 500;
   line-height: 0.8;
   letter-spacing: -0.02em;
@@ -92,91 +104,20 @@
   opacity: 0;
 }
 
-/* Where the copy overlaps the wordmark, the fallback has no shader defocus, so it fades out there
-   instead (a static mask; layout and the measured box are unchanged). */
-@media (width >= 700px) {
-  .hero__mark {
-    mask-image: linear-gradient(
-      black calc(100% - var(--hero-overlap) - 72px),
-      transparent calc(100% - var(--hero-overlap) + 8px)
-    );
+/* With motion, the fallback waits for the field: the field normally takes over within moments, and
+   the lettering would only flash before the field's own power-on. If the field never starts, the
+   fallback fades in; without WebGL (`data-gl="off"`) it shows at once. */
+@media (prefers-reduced-motion: no-preference) {
+  :root[data-motion] .hero:not([data-gl])::before,
+  :root[data-motion] .hero:not([data-gl]) .hero__mark-word {
+    animation: hero-fallback 0.6s var(--curve-out) 1.8s backwards;
   }
 }
 
-/* The --dot-focus-* properties shape the patch the shader defocuses behind the copy (read by
-   useDotField on resize). On compact widths the copy sits below the wordmark, so the patch stays
-   tight; on wider bands the copy overlaps the wordmark and the patch fades out over a wider band. */
-.hero__copy {
-  --dot-focus-padding: 8px;
-  --dot-focus-radius: 28px;
-  --dot-focus-feather: 24px;
-  position: relative;
-  z-index: 1;
-  grid-row: 2;
-  justify-self: center;
-  inline-size: min(100%, 48rem);
-  text-align: center;
-}
-
-@media (width >= 700px) {
-  .hero__copy {
-    --dot-focus-padding: 16px;
-    --dot-focus-radius: 40px;
-    --dot-focus-feather: 72px;
+@keyframes hero-fallback {
+  from {
+    opacity: 0;
   }
-}
-
-.hero__kicker {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 12px;
-  justify-content: center;
-  margin-block-end: 16px;
-}
-
-.hero__index {
-  color: var(--fg-1);
-}
-
-/* The lit wordmark is the display element, so the headline reads at section-title scale. */
-.hero__title {
-  font-family: var(--font-display);
-  font-size: var(--fs-h2);
-  font-weight: 600;
-  line-height: var(--lh-display);
-  letter-spacing: var(--tr-display);
-  text-wrap: balance;
-}
-
-/* Chinese breaks between phrases rather than inside them, and still wraps inside a phrase that is
-   wider than the line. */
-:lang(zh) .hero__phrase {
-  display: inline-block;
-}
-
-.hero__lede {
-  max-inline-size: 36rem;
-  margin-block-start: 16px;
-  margin-inline: auto;
-  font-size: var(--fs-lede);
-  line-height: 1.4;
-  color: var(--fg-2);
-  text-wrap: pretty;
-}
-
-.hero__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  align-items: center;
-  justify-content: center;
-  margin-block-start: 28px;
-}
-
-.hero__note {
-  margin-block-start: 16px;
-  font-size: var(--fs-small);
-  color: var(--fg-2);
 }
 
 /* Instrument strip: a hairline and mono readouts along the bottom edge. */
@@ -188,20 +129,27 @@
   align-items: center;
   justify-content: space-between;
   padding-block: 16px max(20px, env(safe-area-inset-bottom));
-  border-block-start: 1px solid var(--line-1);
+}
+
+/* The strip's top edge, drawn in with the strip. */
+.hero__rule {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline: 0;
+  block-size: 1px;
+  background-color: var(--line-1);
 }
 
 .hero__readout {
-  --dot-focus-padding: 12px;
-  --dot-focus-radius: 16px;
-  --dot-focus-feather: 48px;
   display: grid;
   flex: 1;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px 24px;
+  margin: 0;
 }
 
 .hero__reading {
+  --rv-y: 12px;
   display: grid;
   gap: 2px;
   min-inline-size: 0;
@@ -209,8 +157,10 @@
 
 .hero__reading-value {
   overflow: hidden;
+  margin: 0;
   font-family: var(--font-mono);
   font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
   line-height: 1.4;
   color: var(--fg-2);
   text-overflow: ellipsis;
