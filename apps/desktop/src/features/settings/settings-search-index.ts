@@ -93,6 +93,22 @@ export const settingsSearchEntries: readonly SettingsSearchEntry[] = [
     keywords: 'search.keywords.alwaysOnTop',
   },
   {
+    id: 'window-mini-panel',
+    section: 'general',
+    anchor: 'settings-mini-panel',
+    label: 'shortcuts.miniPanel',
+    description: 'shortcuts.preferenceNotes.miniPanel',
+    keywords: 'search.keywords.miniPanel',
+  },
+  {
+    id: 'window-mini-panel-open',
+    section: 'general',
+    anchor: 'settings-mini-panel-open',
+    label: 'shortcuts.miniPanelOpenOn.title',
+    description: 'shortcuts.miniPanelOpenOn.description',
+    keywords: 'search.keywords.miniPanelOpenOn',
+  },
+  {
     id: 'selection-toolbar',
     section: 'general',
     anchor: 'settings-selection-toolbar',

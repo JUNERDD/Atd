@@ -165,95 +165,84 @@ public struct AppSetOpenAtLoginResult: Codable, Equatable, Sendable {
   }
 }
 
-/// Params of the `settings.open` call.
-public struct SettingsOpenParams: Codable, Equatable, Sendable {
-  public let commandId: String?
-  public let section: String?
+/// Params of the `miniPanel.setShown` call.
+public struct MiniPanelSetShownParams: Codable, Equatable, Sendable {
+  public let shown: Bool
 
-  public init(commandId: String?, section: String?) {
-    self.commandId = commandId
-    self.section = section
+  public init(shown: Bool) {
+    self.shown = shown
   }
 
   public init(from decoder: any Decoder) throws {
     let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    commandId = try container.nullable(.commandId) { try container.string($0, maxLength: 128) }
-    section = try container.nullable(.section) {
-      try container.string($0, minLength: 1, maxLength: 32)
-    }
-  }
-
-  public func encode(to encoder: any Encoder) throws {
-    var container = encoder.container(keyedBy: CodingKeys.self)
-    try container.encode(commandId, forKey: .commandId)
-    try container.encode(section, forKey: .section)
+    shown = try container.boolean(.shown)
   }
 
   private enum CodingKeys: String, CodingKey, CaseIterable {
-    case commandId
-    case section
+    case shown
   }
 }
 
-/// Result of the `settings.open` call.
-public typealias SettingsOpenResult = NativeEmpty
+/// Result of the `miniPanel.setShown` call.
+public struct MiniPanelSetShownResult: Codable, Equatable, Sendable {
+  public let shown: Bool
 
-/// Params of the `settings.close` call.
-public typealias SettingsCloseParams = NativeEmpty
-
-/// Result of the `settings.close` call.
-public typealias SettingsCloseResult = NativeEmpty
-
-/// Params of the `onboarding.open` call.
-public typealias OnboardingOpenParams = NativeEmpty
-
-/// Result of the `onboarding.open` call.
-public typealias OnboardingOpenResult = NativeEmpty
-
-/// Params of the `onboarding.settle` call.
-public typealias OnboardingSettleParams = NativeEmpty
-
-/// Result of the `onboarding.settle` call.
-public typealias OnboardingSettleResult = NativeEmpty
-
-/// Params of the `onboarding.close` call.
-public struct OnboardingCloseParams: Codable, Equatable, Sendable {
-  public let summon: Bool
-
-  public init(summon: Bool) {
-    self.summon = summon
+  public init(shown: Bool) {
+    self.shown = shown
   }
 
   public init(from decoder: any Decoder) throws {
     let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    summon = try container.boolean(.summon)
+    shown = try container.boolean(.shown)
   }
 
   private enum CodingKeys: String, CodingKey, CaseIterable {
-    case summon
+    case shown
   }
 }
 
-/// Result of the `onboarding.close` call.
-public typealias OnboardingCloseResult = NativeEmpty
+/// Params of the `miniPanel.setOpenOn` call.
+public struct MiniPanelSetOpenOnParams: Codable, Equatable, Sendable {
+  public let openOn: OpenOn
 
-/// Params of the `userApp.open` call.
-public struct UserAppOpenParams: Codable, Equatable, Sendable {
-  public let appId: String
-
-  public init(appId: String) {
-    self.appId = appId
+  public init(openOn: OpenOn) {
+    self.openOn = openOn
   }
 
   public init(from decoder: any Decoder) throws {
     let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    appId = try container.string(.appId, pattern: "^app-[a-z0-9]{10}$")
+    openOn = try container.value(.openOn, OpenOn.self)
   }
 
   private enum CodingKeys: String, CodingKey, CaseIterable {
-    case appId
+    case openOn
+  }
+
+  public enum OpenOn: String, Codable, Equatable, Sendable {
+    case hover
+    case click
   }
 }
 
-/// Result of the `userApp.open` call.
-public typealias UserAppOpenResult = NativeEmpty
+/// Result of the `miniPanel.setOpenOn` call.
+public struct MiniPanelSetOpenOnResult: Codable, Equatable, Sendable {
+  public let openOn: OpenOn
+
+  public init(openOn: OpenOn) {
+    self.openOn = openOn
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    openOn = try container.value(.openOn, OpenOn.self)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case openOn
+  }
+
+  public enum OpenOn: String, Codable, Equatable, Sendable {
+    case hover
+    case click
+  }
+}

@@ -40,6 +40,9 @@ public enum NativeCall: Equatable, Sendable {
   case appState(AppStateParams)
   case appSetShowInDock(AppSetShowInDockParams)
   case appSetOpenAtLogin(AppSetOpenAtLoginParams)
+  case miniPanelSetShown(MiniPanelSetShownParams)
+  case miniPanelSetOpenOn(MiniPanelSetOpenOnParams)
+  case miniPanelSetCommands(MiniPanelSetCommandsParams)
   case settingsOpen(SettingsOpenParams)
   case settingsClose(SettingsCloseParams)
   case onboardingOpen(OnboardingOpenParams)
@@ -80,6 +83,9 @@ public enum NativeCall: Equatable, Sendable {
     case .appState: "app.state"
     case .appSetShowInDock: "app.setShowInDock"
     case .appSetOpenAtLogin: "app.setOpenAtLogin"
+    case .miniPanelSetShown: "miniPanel.setShown"
+    case .miniPanelSetOpenOn: "miniPanel.setOpenOn"
+    case .miniPanelSetCommands: "miniPanel.setCommands"
     case .settingsOpen: "settings.open"
     case .settingsClose: "settings.close"
     case .onboardingOpen: "onboarding.open"
@@ -167,6 +173,12 @@ public enum JsMessage: Decodable, Equatable, Sendable {
         call = try .appSetShowInDock(container.value(.params, AppSetShowInDockParams.self))
       case "app.setOpenAtLogin":
         call = try .appSetOpenAtLogin(container.value(.params, AppSetOpenAtLoginParams.self))
+      case "miniPanel.setShown":
+        call = try .miniPanelSetShown(container.value(.params, MiniPanelSetShownParams.self))
+      case "miniPanel.setOpenOn":
+        call = try .miniPanelSetOpenOn(container.value(.params, MiniPanelSetOpenOnParams.self))
+      case "miniPanel.setCommands":
+        call = try .miniPanelSetCommands(container.value(.params, MiniPanelSetCommandsParams.self))
       case "settings.open":
         call = try .settingsOpen(container.value(.params, SettingsOpenParams.self))
       case "settings.close":

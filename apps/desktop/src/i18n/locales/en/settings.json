@@ -55,6 +55,8 @@
       "openAtLogin": "startup launch boot login item autostart start automatically",
       "showInDock": "dock menu bar icon taskbar hide",
       "alwaysOnTop": "pin float window topmost keep on top sticky",
+      "miniPanel": "floating float overlay widget launcher edge side sidebar quick entry drag drop attach",
+      "miniPanelOpenOn": "hover click open expand trigger pointer mouse edge accidental",
       "restoreDefaults": "reset revert default shortcuts",
       "language": "language locale translate translation interface english chinese",
       "defaultModel": "default provider model choose selected",
@@ -250,10 +252,25 @@
     "openAtLogin": "Open at login",
     "showInDock": "Show in Dock",
     "alwaysOnTop": "Always on top",
+    "miniPanel": "Show mini panel",
+    "miniPanelOpenOn": {
+      "title": "Open mini panel",
+      "description": "Choose whether the mini panel opens when the pointer reaches it or only when you click it.",
+      "label": "How the mini panel opens",
+      "modes": {
+        "hover": "On hover",
+        "click": "On click"
+      },
+      "hints": {
+        "hover": "Opens as soon as the pointer reaches it on the screen edge.",
+        "click": "Opens only when you click it. Pointing at it just makes it swell."
+      }
+    },
     "preferenceNotes": {
       "openAtLogin": "Start the app when you log in to your Mac.",
       "showInDock": "The menu bar icon stays either way.",
-      "alwaysOnTop": "Keep the panel above other windows."
+      "alwaysOnTop": "Keep the panel above other windows.",
+      "miniPanel": "Keep a small panel on the screen edge for quick actions. Drop files, images or text on it to add them to your message."
     },
     "restoreDefaults": "Restore default shortcuts",
     "restoring": "Restoring…",

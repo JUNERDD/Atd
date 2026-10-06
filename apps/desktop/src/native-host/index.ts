@@ -21,6 +21,7 @@ import { NativeCommands } from './native-commands';
 import { NativeConnection } from './native-connection';
 import { nativeFiles } from './native-files';
 import { nativeFolders } from './native-folders';
+import { nativeMiniPanel } from './native-mini-panel';
 import { nativeOnboarding, nativeOnboardingTrigger } from './native-onboarding';
 import { nativePlatform } from './native-platform';
 import { nativeSettings } from './native-settings';
@@ -97,11 +98,15 @@ export async function installNativeHost(
   native.on('screenRecording.trust', ({ trusted }) =>
     settings.setShell({ screenRecordingTrusted: trusted }),
   );
+  native.on('miniPanel.state', ({ shown, openOn }) =>
+    settings.setShell({ miniPanelShown: shown, miniPanelOpenOn: openOn }),
+  );
   let latest = await settings.bridge.get();
   const commands = new NativeCommands(connection, native, () => {
     requests.broadcast();
     shortcuts?.sync(true);
     toolbar?.sync();
+    miniPanel?.sync();
   });
   const requests = new AgentRequests<'page'>(
     connection,
@@ -136,6 +141,11 @@ export async function installNativeHost(
           commands: () => commands.list(),
         })
       : null;
+  // The mini panel's list depends on the commands alone, so only a change of the command list
+  // pushes it (not the settings the toolbar also follows), and nothing goes out before the
+  // service's commands first arrive.
+  const miniPanel =
+    surface === 'panel' ? nativeMiniPanel(native, { commands: () => commands.list() }) : null;
   // The panel speaks for the service's settings only once they loaded: until then the snapshot
   // holds defaults, which could register a shortcut the user replaced.
   let pushedLanguage: string | null = null;
@@ -261,6 +271,16 @@ export async function installNativeHost(
       settings.setShell({ openAtLogin: applied.open });
       return applied.open;
     },
+    setMiniPanelShown: async (shown) => {
+      const applied = await native.call('miniPanel.setShown', { shown });
+      settings.setShell({ miniPanelShown: applied.shown });
+      return applied.shown;
+    },
+    setMiniPanelOpenOn: async (openOn) => {
+      const applied = await native.call('miniPanel.setOpenOn', { openOn });
+      settings.setShell({ miniPanelOpenOn: applied.openOn });
+      return applied.openOn;
+    },
     // Attachments go through the agent bridge (`chooseFiles` → `files.pick`).
     chooseFiles: async () => [],
     screenshot: () => commands.screenshot(),
@@ -274,7 +294,10 @@ export async function installNativeHost(
     speech: nativeSpeech(native),
     onEditCommand: (listener) => native.on('edit.command', ({ command }) => listener(command)),
     ...(surface === 'panel'
-      ? { onScreenshotShortcut: (listener) => native.on('shortcut.screenshot', () => listener()) }
+      ? {
+          onScreenshotShortcut: (listener) => native.on('shortcut.screenshot', () => listener()),
+          onNewTask: (listener) => native.on('task.new', () => listener()),
+        }
       : {}),
     ...(onSelectionAsk ? { onSelectionAsk } : {}),
     ...(surface === 'onboarding' ? { onboarding: nativeOnboarding(native, messages) } : {}),

@@ -16,7 +16,7 @@ import { NativeCalls } from './calls.ts';
 import { ImportFailureSchema, NativeFileRefSchema, NativeFolderRefSchema } from './file-calls.ts';
 import { Empty, Text } from './primitives.ts';
 import { UserAppIdSchema } from './user-app-contract.ts';
-import { DesktopPinSchema, MAX_DESKTOP_PINS } from './window-calls.ts';
+import { DesktopPinSchema, MAX_DESKTOP_PINS, MiniPanelOpenOnSchema } from './window-calls.ts';
 
 /** `WKScriptMessageHandler` name the page posts to. */
 export const MESSAGE_HANDLER = 'aiNative';
@@ -215,6 +215,20 @@ export const NativeEvents = {
    * panel. The page takes it (`capture`), inserts it as a quote and focuses the composer.
    */
   'selection.ask': Empty,
+  /**
+   * The mini panel's New task: Swift already showed the panel. The page leaves the open task for a
+   * new task's composer, as the panel's own New task button does.
+   */
+  'task.new': Empty,
+  /**
+   * Whether the mini panel shows on the screen edge (`miniPanel.setShown`, the menu bar's toggle
+   * and the mini panel's own Hide) and how it opens (`miniPanel.setOpenOn` and its context menu),
+   * sent to every page on each change and replayed when a page becomes ready.
+   */
+  'miniPanel.state': Type.Object(
+    { shown: Type.Boolean(), openOn: MiniPanelOpenOnSchema },
+    { additionalProperties: false },
+  ),
   /**
    * Whether the app is trusted for Accessibility (selection capture and the selection toolbar
    * need it), sent to every page on each change and replayed when a page becomes ready.

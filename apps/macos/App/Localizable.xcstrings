@@ -1927,6 +1927,24 @@
         }
       }
     },
+    "menu.showMiniPanel" : {
+      "comment" : "App and status menu item, checked while the mini panel shows on the screen edge",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show Mini Panel"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "显示迷你面板"
+          }
+        }
+      }
+    },
     "menu.showPanel" : {
       "comment" : "Menu item that reveals the task panel",
       "extractionState" : "manual",
@@ -1995,6 +2013,222 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "重新载入页面"
+          }
+        }
+      }
+    },
+    "miniPanel.ask" : {
+      "comment" : "Mini panel button that asks Atd about the text selected in the front app: tooltip, accessibility label and VoiceOver action",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ask about the selected text"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "就所选文字询问 Atd"
+          }
+        }
+      }
+    },
+    "miniPanel.commands" : {
+      "comment" : "Mini panel button that opens the list of commands, and that list's accessibility label",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Commands"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "命令"
+          }
+        }
+      }
+    },
+    "miniPanel.drop" : {
+      "comment" : "Mini panel drop card while a dragged file, image or text is over it; the drop goes into the task panel's message",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Drop to add as context"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "松开以添加为上下文"
+          }
+        }
+      }
+    },
+    "miniPanel.hide" : {
+      "comment" : "Mini panel context menu item that hides it until it is turned on again",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hide Mini Panel"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "隐藏迷你面板"
+          }
+        }
+      }
+    },
+    "miniPanel.hidePanel" : {
+      "comment" : "Mini panel Atd mark that hides the task panel while it has the keyboard: tooltip and accessibility label",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hide Atd"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "隐藏 Atd"
+          }
+        }
+      }
+    },
+    "miniPanel.label" : {
+      "comment" : "Accessibility label of the mini panel on the screen edge, its resting pill and its open capsule",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atd Mini Panel"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atd 迷你面板"
+          }
+        }
+      }
+    },
+    "miniPanel.moveLeft" : {
+      "comment" : "Mini panel context menu item that moves it to the left edge of the screen",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Move to Left Edge"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "移到左侧边缘"
+          }
+        }
+      }
+    },
+    "miniPanel.moveRight" : {
+      "comment" : "Mini panel context menu item that moves it to the right edge of the screen",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Move to Right Edge"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "移到右侧边缘"
+          }
+        }
+      }
+    },
+    "miniPanel.newTask" : {
+      "comment" : "Mini panel button that starts a new task in the task panel: tooltip, accessibility label and VoiceOver action",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New task"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "新建任务"
+          }
+        }
+      }
+    },
+    "miniPanel.open" : {
+      "comment" : "Mini panel Atd mark that shows the task panel: tooltip, accessibility label and the pill's VoiceOver action",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open Atd"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "打开 Atd"
+          }
+        }
+      }
+    },
+    "miniPanel.openOnClick" : {
+      "comment" : "Mini panel context menu item, checked while the panel opens only on a click rather than as the pointer reaches it",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open on Click"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "点击时打开"
+          }
+        }
+      }
+    },
+    "miniPanel.screenshot" : {
+      "comment" : "Mini panel button that takes a screenshot for the task panel: tooltip, accessibility label and VoiceOver action",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Take a screenshot"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "截图"
           }
         }
       }

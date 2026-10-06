@@ -4,6 +4,51 @@
 
 import Foundation
 
+/// Payload of the `miniPanel.state` event.
+public struct MiniPanelStateEvent: Codable, Equatable, Sendable {
+  public let shown: Bool
+  public let openOn: OpenOn
+
+  public init(shown: Bool, openOn: OpenOn) {
+    self.shown = shown
+    self.openOn = openOn
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    shown = try container.boolean(.shown)
+    openOn = try container.value(.openOn, OpenOn.self)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case shown
+    case openOn
+  }
+
+  public enum OpenOn: String, Codable, Equatable, Sendable {
+    case hover
+    case click
+  }
+}
+
+/// Payload of the `accessibility.trust` event.
+public struct AccessibilityTrustEvent: Codable, Equatable, Sendable {
+  public let trusted: Bool
+
+  public init(trusted: Bool) {
+    self.trusted = trusted
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    trusted = try container.boolean(.trusted)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case trusted
+  }
+}
+
 /// Payload of the `screenRecording.trust` event.
 public struct ScreenRecordingTrustEvent: Codable, Equatable, Sendable {
   public let trusted: Bool

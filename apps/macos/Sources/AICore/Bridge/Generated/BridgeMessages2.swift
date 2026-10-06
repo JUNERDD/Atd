@@ -16,6 +16,8 @@ public enum NativeEvent: Encodable, Equatable, Sendable {
   case editCommand(EditCommandEvent)
   case speechState(SpeechStateEvent)
   case selectionAsk(SelectionAskEvent)
+  case taskNew(TaskNewEvent)
+  case miniPanelState(MiniPanelStateEvent)
   case accessibilityTrust(AccessibilityTrustEvent)
   case screenRecordingTrust(ScreenRecordingTrustEvent)
   case updateState(UpdateStateEvent)
@@ -36,6 +38,8 @@ public enum NativeEvent: Encodable, Equatable, Sendable {
     case .editCommand: "edit.command"
     case .speechState: "speech.state"
     case .selectionAsk: "selection.ask"
+    case .taskNew: "task.new"
+    case .miniPanelState: "miniPanel.state"
     case .accessibilityTrust: "accessibility.trust"
     case .screenRecordingTrust: "screenRecording.trust"
     case .updateState: "update.state"
@@ -57,6 +61,8 @@ public enum NativeEvent: Encodable, Equatable, Sendable {
     case .editCommand(let payload): try payload.encode(to: encoder)
     case .speechState(let payload): try payload.encode(to: encoder)
     case .selectionAsk(let payload): try payload.encode(to: encoder)
+    case .taskNew(let payload): try payload.encode(to: encoder)
+    case .miniPanelState(let payload): try payload.encode(to: encoder)
     case .accessibilityTrust(let payload): try payload.encode(to: encoder)
     case .screenRecordingTrust(let payload): try payload.encode(to: encoder)
     case .updateState(let payload): try payload.encode(to: encoder)
