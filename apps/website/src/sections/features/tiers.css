@@ -1,0 +1,161 @@
+/* The tier picker: native radios drawn as a segmented track. A thumb slides under the chosen tier on
+   the snappy spring; the radio itself stays invisible but keeps focus, clicks and arrow keys. */
+.feat__tiers {
+  display: grid;
+  gap: 16px;
+  margin-block-start: 28px;
+}
+
+.feat__tier-set {
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.feat__tier-legend {
+  margin-block-end: 10px;
+  padding: 0;
+}
+
+.feat__tier-track {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  max-inline-size: 30rem;
+  padding: 3px;
+  border: 1px solid var(--line-1);
+  border-radius: 999px;
+  background-color: var(--ink-1);
+}
+
+.feat__tier-thumb {
+  position: absolute;
+  inset-block: 3px;
+  inset-inline-start: 3px;
+  inline-size: calc((100% - 6px) / 3);
+  border-radius: 999px;
+  background-color: var(--fg-1);
+  transition: translate var(--dur-spring-snappy) var(--spring-snappy);
+}
+
+.feat__tier-track[data-tier='auto'] .feat__tier-thumb {
+  translate: 100% 0;
+}
+
+.feat__tier-track[data-tier='always'] .feat__tier-thumb {
+  translate: 200% 0;
+}
+
+.feat__tier {
+  position: relative;
+  display: grid;
+  cursor: pointer;
+}
+
+.feat__tier-input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.feat__tier-label {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-block-size: 44px;
+  padding-inline: 8px;
+  border-radius: 999px;
+  font-size: var(--fs-small);
+  font-weight: 600;
+  line-height: 1.2;
+  text-align: center;
+  color: var(--fg-2);
+  pointer-events: none;
+  transition: color var(--dur-fast) linear;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .feat__tier:hover .feat__tier-label {
+    color: var(--fg-1);
+  }
+}
+
+.feat__tier-input:checked + .feat__tier-label {
+  color: var(--ink-0);
+}
+
+.feat__tier-input:focus-visible + .feat__tier-label {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* The descriptions share one cell, so the tallest sets the height and switching never moves the
+   tile. The new one fades in; the old one leaves at once, so they never overlap. */
+.feat__tier-notes {
+  display: grid;
+}
+
+.feat__tier-note {
+  grid-area: 1 / 1;
+  max-inline-size: 36rem;
+  color: var(--fg-1);
+  text-wrap: pretty;
+  visibility: hidden;
+  opacity: 0;
+}
+
+.feat__tier-note[data-active] {
+  visibility: visible;
+  opacity: 1;
+  transition: opacity var(--dur-base) var(--curve-out);
+}
+
+.feat__allowlist {
+  display: grid;
+  gap: 4px;
+  padding-block-start: 16px;
+  border-block-start: 1px solid var(--line-1);
+  font-size: var(--fs-small);
+  color: var(--fg-2);
+}
+
+/* Entrance: as the track rises in, the thumb slides in from the far end and settles on the chosen
+   tier. It moves through `transform`, apart from the `translate` that marks the selection, so a
+   choice made mid-slide still lands where the visitor put it. */
+@media (prefers-reduced-motion: no-preference) {
+  :root[data-motion] .feat__tier-track[data-revealed] .feat__tier-thumb {
+    animation: feat-thumb-in 1.1s var(--spring-smooth) calc(var(--rv-delay, 0s) + 160ms) backwards;
+  }
+}
+
+@keyframes feat-thumb-in {
+  from {
+    opacity: 0;
+    transform: translateX(200%);
+  }
+
+  20% {
+    opacity: 1;
+  }
+}
+
+/* Reduced motion: the thumb moves at once instead of sliding; the selection still changes. */
+@media (prefers-reduced-motion: reduce) {
+  .feat__tier-thumb {
+    transition: none;
+  }
+}
+
+@media (forced-colors: active) {
+  .feat__tier-thumb {
+    background-color: Highlight;
+  }
+
+  .feat__tier-input:checked + .feat__tier-label {
+    color: HighlightText;
+    forced-color-adjust: none;
+  }
+}

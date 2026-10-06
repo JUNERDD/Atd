@@ -1,0 +1,2 @@
+# The server bundle the prerender step renders from; never deployed.
+/dist-ssr/

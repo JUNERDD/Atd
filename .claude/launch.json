@@ -12,6 +12,18 @@
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["run", "dev:renderer"],
       "port": 5173
+    },
+    {
+      "name": "website",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@atd/website", "dev"],
+      "port": 5180
+    },
+    {
+      "name": "website-preview",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@atd/website", "preview"],
+      "port": 4180
     }
   ]
 }

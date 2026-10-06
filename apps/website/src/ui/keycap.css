@@ -1,0 +1,63 @@
+/* A keycap is a lip (the kbd) with a face on top. Holding it sinks the face into the lip: only the
+   face's transform animates, pressed in fast and released on the kit's snappy spring. */
+.keycap {
+  --key-size: 56px;
+  --key-lip: 6px;
+  display: inline-grid;
+  inline-size: var(--key-size);
+  block-size: var(--key-size);
+  padding-block-end: var(--key-lip);
+  border-radius: 14px;
+  background: linear-gradient(#2a2a2e, #141416);
+  box-shadow:
+    0 0 0 1px rgb(255 255 255 / 0.06),
+    0 10px 24px -8px rgb(0 0 0 / 0.8);
+  font-family: var(--font-text);
+  font-size: 1.25rem;
+  font-weight: 500;
+  color: var(--fg-1);
+  vertical-align: middle;
+}
+
+.keycap[data-wide] {
+  inline-size: calc(var(--key-size) * 3);
+}
+
+.keycap__face {
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: linear-gradient(#3a3a3f, #232326);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.14),
+    inset 0 -2px 6px rgb(0 0 0 / 0.35);
+  transition: transform var(--dur-spring-snappy) var(--spring-snappy);
+}
+
+.keycap[data-pressed] .keycap__face {
+  transform: translateY(calc(var(--key-lip) - 1px));
+  transition: transform var(--dur-press) var(--curve-out);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .keycap__face,
+  .keycap[data-pressed] .keycap__face {
+    transition: background-color var(--dur-fast) linear;
+  }
+
+  .keycap[data-pressed] .keycap__face {
+    transform: none;
+    background: #4a4a50;
+  }
+}
+
+@media (forced-colors: active) {
+  .keycap {
+    border: 1px solid CanvasText;
+  }
+
+  .keycap[data-pressed] .keycap__face {
+    background: Highlight;
+    color: HighlightText;
+  }
+}

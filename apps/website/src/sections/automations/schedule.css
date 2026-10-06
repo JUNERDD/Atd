@@ -1,0 +1,142 @@
+/* The schedule panel: an opaque instrument tile with the example picker, the week grid (week.css),
+   the rule readout and the list of trigger kinds. */
+.auto__panel {
+  display: grid;
+  gap: 28px;
+  min-inline-size: 0;
+  padding: 24px;
+  border: 1px solid var(--line-1);
+  border-radius: var(--r-tile);
+  background-color: var(--ink-2);
+}
+
+.auto__presets {
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.auto__legend {
+  margin-block-end: 12px;
+  padding: 0;
+}
+
+.auto__options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Each example is a native radio under a pill; the pill shows its checked and focused states. */
+.auto__option {
+  --rv-y: 18px;
+  position: relative;
+  display: inline-flex;
+  cursor: pointer;
+}
+
+.auto__radio {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.auto__pill {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: 44px;
+  padding-inline: 18px;
+  border: 1px solid var(--line-2);
+  border-radius: 999px;
+  font-size: var(--fs-small);
+  font-weight: 600;
+  color: var(--fg-2);
+  pointer-events: none;
+  transition:
+    color var(--dur-fast) linear,
+    background-color var(--dur-fast) linear;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .auto__option:hover .auto__pill {
+    color: var(--fg-1);
+  }
+}
+
+.auto__radio:checked + .auto__pill {
+  border-color: var(--fg-1);
+  background-color: var(--fg-1);
+  color: var(--ink-0);
+}
+
+.auto__radio:focus-visible + .auto__pill {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* The rule readout under a drawn hairline: kind, the rule in mono, and what it means. */
+.auto__rule {
+  position: relative;
+  display: grid;
+  gap: 6px;
+  padding-block-start: 20px;
+}
+
+.auto__rule-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 14px;
+}
+
+.auto__rule-text {
+  font-family: var(--font-mono);
+  font-size: clamp(1.25rem, 1rem + 1vw, 1.75rem);
+  line-height: 1.2;
+  color: var(--fg-1);
+}
+
+.auto__rule-description {
+  --rv-y: 14px;
+  color: var(--fg-2);
+}
+
+.auto__triggers {
+  display: grid;
+  gap: 10px;
+}
+
+.auto__trigger-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.auto__trigger {
+  --rv-y: 12px;
+  padding: 4px 10px;
+  border: 1px solid var(--line-1);
+  border-radius: var(--r-chip);
+  font-size: 0.8125rem;
+  color: var(--fg-2);
+}
+
+@media (width >= 700px) {
+  .auto__panel {
+    padding: 32px;
+  }
+}
+
+@media (forced-colors: active) {
+  .auto__radio:checked + .auto__pill {
+    forced-color-adjust: none;
+    background-color: Highlight;
+    color: HighlightText;
+  }
+}

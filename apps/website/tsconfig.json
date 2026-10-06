@@ -1,0 +1,10 @@
+{
+  "extends": "@atd/typescript-config/react.json",
+  "compilerOptions": {
+    "types": ["vite/client", "node"],
+    // The prerender script runs under Node's type stripping and names the server entry's type by
+    // its `.ts` file name.
+    "allowImportingTsExtensions": true
+  },
+  "include": ["src", "scripts", "*.ts"]
+}

@@ -1,0 +1,232 @@
+/* The art area: the LED board that spells the name. */
+.download__art {
+  position: relative;
+  margin-block-end: clamp(40px, 6vw, 72px);
+  padding-block: 8px;
+}
+
+/* At this size the page's unlit dot would crowd the letters, so the board dims it. */
+.download__word {
+  --dot-0: rgb(255 255 255 / 0.07);
+  position: relative;
+}
+
+/* BOARD's 33 columns (led-word.tsx) of square cells; each dot fills 68% of its cell, as a
+   pictogram's do. */
+.download__board {
+  display: grid;
+  grid-template-columns: repeat(33, minmax(0, 1fr));
+  print-color-adjust: exact;
+}
+
+.download__dot {
+  inline-size: 68%;
+  aspect-ratio: 1;
+  margin: 16%;
+  border-radius: 50%;
+  background-color: var(--dot-0);
+  transition:
+    transform var(--dur-spring-snappy) var(--spring-snappy),
+    background-color var(--dur-base) var(--curve-out);
+}
+
+/* Lit dots paint above the unlit ones (a grid item takes z-index unpositioned), so the layers their
+   animations run on never interleave with unlit dots. A lit dot draws its disc as its ::before: the
+   dot carries the power-on and the disc the idle wave, since two animations of one property on one
+   element would keep both off the compositor. */
+.download__dot[data-lit] {
+  z-index: 1;
+  scale: 1.08;
+  background-color: transparent;
+}
+
+.download__dot[data-lit]::before {
+  content: '';
+  display: block;
+  aspect-ratio: 1;
+  border-radius: inherit;
+  background-color: var(--dot-1);
+}
+
+/* The loupe under a fine pointer (use-led-board.ts): nearby dots swell, unlit ones glow faintly. */
+.download__dot[data-near='1'] {
+  transform: scale(1.3);
+}
+
+.download__dot[data-near='2'] {
+  transform: scale(1.6);
+}
+
+.download__dot:not([data-lit])[data-near] {
+  background-color: rgb(255 255 255 / 0.22);
+}
+
+/* Power-on: once the board is revealed, its letters light column by column, each dot flashing up
+   from the unlit level (`--col` comes from use-led-board.ts). On screen, a slow wave of light then
+   runs through the letters every few seconds. Both animate only scale and opacity, so they run on
+   the compositor. Reduced motion shows the letters lit and still. */
+@media (prefers-reduced-motion: no-preference) {
+  :root[data-motion] .download__word[data-revealed] .download__dot[data-lit] {
+    animation: download-power 0.7s var(--curve-out)
+      calc(var(--rv-delay, 0ms) + 240ms + var(--col, 0) * 34ms) backwards;
+  }
+
+  :root[data-motion] .download__word[data-revealed][data-live] .download__dot[data-lit]::before {
+    animation: download-wave 6s var(--curve-standard) calc(2.4s + var(--col, 0) * 40ms) infinite;
+  }
+}
+
+@media (forced-colors: active) {
+  .download__board {
+    forced-color-adjust: none;
+  }
+
+  .download__dot {
+    background-color: Canvas;
+  }
+
+  .download__dot[data-lit]::before {
+    background-color: CanvasText;
+  }
+}
+
+@keyframes download-power {
+  0% {
+    opacity: 0.07;
+    scale: 0.6;
+  }
+
+  45% {
+    opacity: 1;
+    scale: 1.32;
+  }
+
+  100% {
+    opacity: 1;
+    scale: 1.08;
+  }
+}
+
+/* Mostly at rest; for a moment in each cycle a disc swells as the wave passes, a narrow ripple
+   running through the letters (on top of the dot's own 1.08, to 1.36). */
+@keyframes download-wave {
+  0%,
+  9%,
+  100% {
+    scale: 1;
+  }
+
+  4% {
+    scale: 1.26;
+  }
+}
+
+/* The action bar: the two links, then the requirement readouts, between hairlines. */
+.download__bar {
+  position: relative;
+  display: grid;
+  gap: 32px;
+  padding-block: 32px;
+}
+
+/* The bar's top and bottom hairlines, drawn in as the bar arrives. */
+.download__rule {
+  position: absolute;
+  inset-inline: 0;
+  block-size: 1px;
+  background-color: var(--line-1);
+}
+
+.download__rule[data-edge='top'] {
+  inset-block-start: 0;
+}
+
+.download__rule[data-edge='bottom'] {
+  inset-block-end: 0;
+}
+
+.download__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 16px;
+}
+
+.download__cta {
+  padding-inline: 28px;
+}
+
+.download__chevron {
+  margin-inline-start: 2px;
+  font-size: 1.25em;
+  line-height: 1;
+}
+
+.download__specs {
+  display: grid;
+  margin: 0;
+}
+
+.download__spec {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 16px;
+  padding-block: 12px;
+  border-block-start: 1px solid var(--line-1);
+}
+
+.download__spec dd {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.9375rem;
+  color: var(--fg-1);
+}
+
+.download__notes {
+  display: grid;
+  gap: 24px;
+  margin-block-start: 32px;
+}
+
+.download__note {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  max-inline-size: 42rem;
+  font-size: var(--fs-small);
+  color: var(--fg-2);
+  text-wrap: pretty;
+}
+
+@media (width >= 700px) {
+  .download__specs {
+    grid-template-columns: repeat(3, auto);
+    justify-content: start;
+    gap: 40px;
+  }
+
+  .download__spec {
+    grid-template-columns: none;
+    gap: 6px;
+    padding-block: 0;
+    border-block-start: 0;
+  }
+
+  .download__notes {
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+    gap: 48px;
+  }
+}
+
+@media (width >= 1100px) {
+  .download__bar {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 48px;
+  }
+
+  .download__specs {
+    justify-content: end;
+  }
+}
