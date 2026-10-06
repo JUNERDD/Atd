@@ -9,16 +9,15 @@ import { createResources, deleteResources, uploadArt, type GlResources } from '.
 import { bindPointer, createPointerState } from './pointer';
 import { createQualityGovernor } from './quality';
 import { createSpring, snapSpring, stepSpring } from './spring';
-import type { Box, DotField, DotFieldOptions, FocusRect, Rgb } from './types';
+import type { Box, DotField, DotFieldOptions, Rgb } from './types';
 
 const MAX_DPR = 2;
-/** Power-on length, including the art flashes settling. */
-const BOOT_SECONDS = 1.6;
+/** Power-on length (see the shader's CRT and scan timeline), including the last flashes settling. */
+const BOOT_SECONDS = 1.9;
 /** Boot clock value that means "settled" to the shader. */
 const BOOT_SETTLED = 1e4;
 const RIPPLE_SECONDS = 1.2;
 const MAX_RIPPLES = 4;
-const MAX_RECTS = 2;
 const LENS_ZOOM = 1.75;
 /** Lens springs in rad/s: the position tracks tightly (settles in ~0.11 s), the strength eases. */
 const LENS_FOLLOW = 42;
@@ -77,10 +76,10 @@ function runField(
   const ink = options.ink ?? BLACK;
   const dot = options.dot ?? WHITE;
   const fieldLevel = options.fieldLevel ?? 0.13;
-  const focusDim = options.focusDim ?? 0.65;
   let text = options.text ?? 'Atd';
   let artBox: Box | null = null;
   let layout: GridLayout = { pitch: 12, originX: 0, originY: 0, cols: 1, rows: 1 };
+  let artInk: Box = { x: 0, y: 0, width: 1, height: 1 };
 
   let width = 0;
   let height = 0;
@@ -91,9 +90,6 @@ function runField(
   let bootStart = -1;
   let bootDone = reduced || options.boot === false;
   let scroll = 0;
-  const rects = new Float32Array(MAX_RECTS * 4);
-  const rectShape = new Float32Array(MAX_RECTS * 2);
-  let rectCount = 0;
   // x, y, start time (s), amplitude per ripple; a start far in the past marks a free slot.
   const ripples = new Float32Array(MAX_RIPPLES * 4);
   for (let i = 0; i < MAX_RIPPLES; i++) ripples[i * 4 + 2] = -BOOT_SETTLED;
@@ -149,6 +145,7 @@ function runField(
       box: artBox ?? defaultArtBox(width, height),
     });
     layout = raster.layout;
+    artInk = raster.ink;
     uploadArt(gl, target.art, raster.coverage, layout.cols, layout.rows);
     quality.reset();
   }
@@ -203,13 +200,11 @@ function runField(
     gl.uniform1f(u.u_scroll, scroll);
     gl.uniform3f(u.u_grid, layout.originX, layout.originY, layout.pitch);
     gl.uniform2i(u.u_cells, layout.cols, layout.rows);
+    gl.uniform4f(u.u_artBox, artInk.x, artInk.y, artInk.width, artInk.height);
     gl.uniform4f(u.u_lens, lensX.value, lensY.value, lensRadius, lensStrength.value);
     gl.uniform1f(u.u_zoom, LENS_ZOOM);
     gl.uniform4fv(u.u_ripples, ripples);
-    gl.uniform4fv(u.u_rects, rects);
-    gl.uniform2fv(u.u_rectShape, rectShape);
-    gl.uniform1i(u.u_rectCount, rectCount);
-    gl.uniform3f(u.u_levels, fieldLevel, 1, focusDim);
+    gl.uniform2f(u.u_levels, fieldLevel, 1);
     gl.uniform3f(u.u_ink, ink[0], ink[1], ink[2]);
     gl.uniform3f(u.u_dot, dot[0], dot[1], dot[2]);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
@@ -272,20 +267,6 @@ function runField(
       if (sameBox(box, artBox)) return;
       artBox = box ? { x: box.x, y: box.y, width: box.width, height: box.height } : null;
       artDirty = true;
-      schedule();
-    },
-    setFocusRects(list: readonly FocusRect[]) {
-      rectCount = 0;
-      for (const rect of list.slice(0, MAX_RECTS)) {
-        const halfWidth = rect.width / 2;
-        const halfHeight = rect.height / 2;
-        rects.set([rect.x + halfWidth, rect.y + halfHeight, halfWidth, halfHeight], rectCount * 4);
-        rectShape.set(
-          [Math.min(rect.radius, halfWidth, halfHeight), Math.max(1, rect.feather)],
-          rectCount * 2,
-        );
-        rectCount += 1;
-      }
       schedule();
     },
     setScroll(progress) {

@@ -6,28 +6,44 @@ import { useReducedMotion } from '../../lib/use-reduced-motion';
 import { heroCopy, type HeroReading } from './copy';
 import './hero.css';
 
+/** The field's pitch range: finer on compact widths, where the wordmark is small. */
+const PITCH = [8, 14] as const;
+
 /** A readout value. Keys render as small keycaps; a symbol legend gets its spoken name. */
-function ReadingValue({ reading }: { reading: HeroReading }) {
-  if (!('keys' in reading)) return reading.value;
-  return reading.keys.map((key) => (
-    <kbd key={key.legend} className="hero__key">
-      {key.name === key.legend ? (
-        key.legend
-      ) : (
-        <>
-          <span aria-hidden="true">{key.legend}</span>
-          <span className="sr-only">{key.name}</span>
-        </>
-      )}
-    </kbd>
-  ));
+function ReadingValue({ reading, delay }: { reading: HeroReading; delay: number }) {
+  if (!('keys' in reading)) {
+    return (
+      <dd className="hero__reading-value" data-reveal={reading.effect} data-reveal-delay={delay}>
+        {reading.value}
+      </dd>
+    );
+  }
+  return (
+    <dd className="hero__reading-value">
+      {reading.keys.map((key) => (
+        <kbd key={key.legend} className="hero__key">
+          {key.name === key.legend ? (
+            key.legend
+          ) : (
+            <>
+              <span aria-hidden="true">{key.legend}</span>
+              <span className="sr-only">{key.name}</span>
+            </>
+          )}
+        </kbd>
+      ))}
+    </dd>
+  );
 }
 
 /**
- * The opening section: a black LED panel (the WebGL dot field) with the wordmark lit across it, the
- * headline floating on a defocused patch over the wordmark's lower part, and an instrument strip
- * along the bottom edge. Without WebGL the Doto wordmark and a CSS dot screen stand in for the field;
- * once the field draws, the section carries `data-gl="live"` and the fallback fades out.
+ * The opening section: a black LED panel (the WebGL dot field) with the wordmark lit across its
+ * middle, and an instrument strip along the bottom edge. The heading is for assistive tech and
+ * search; the lit wordmark is the visible title.
+ *
+ * The field powers on like a CRT and resolves the wordmark out of static (see gl/shaders.ts). The
+ * registration marks and the strip come in on the same clock, after the picture opens. Without
+ * WebGL the Doto wordmark and a CSS dot screen stand in for the field (`data-gl="off"`).
  */
 export function HeroSection() {
   const t = useCopy(heroCopy);
@@ -35,60 +51,53 @@ export function HeroSection() {
   const sectionRef = useRef<HTMLElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const markRef = useRef<HTMLDivElement>(null);
-  const copyRef = useRef<HTMLDivElement>(null);
-  const readoutRef = useRef<HTMLDListElement>(null);
 
   useDotField(
-    { canvas: canvasRef, root: sectionRef, art: markRef, focus: [copyRef, readoutRef] },
-    { text: site.name, reducedMotion, focusDim: 0.75 },
+    { canvas: canvasRef, root: sectionRef, art: markRef },
+    { text: site.name, reducedMotion, pitch: PITCH },
   );
 
   return (
     <section ref={sectionRef} id="top" className="hero" aria-labelledby="hero-title">
+      <h1 id="hero-title" className="sr-only">
+        {t.title}
+      </h1>
       <canvas ref={canvasRef} className="hero__canvas" aria-hidden="true" />
       <div className="hero__stage">
-        <span className="hero__reg" data-corner="start" aria-hidden="true" />
-        <span className="hero__reg" data-corner="end" aria-hidden="true" />
+        <span
+          className="hero__reg"
+          data-corner="start"
+          aria-hidden="true"
+          data-reveal="plot"
+          data-reveal-delay="700"
+        />
+        <span
+          className="hero__reg"
+          data-corner="end"
+          aria-hidden="true"
+          data-reveal="plot"
+          data-reveal-delay="780"
+        />
         <div ref={markRef} className="hero__mark" aria-hidden="true">
           <span className="hero__mark-word">{site.name}</span>
         </div>
-        <div ref={copyRef} className="hero__copy">
-          <p className="hero__kicker mono-label">
-            <span className="hero__index">{t.index}</span>
-            <span>{t.kicker}</span>
-          </p>
-          <h1 id="hero-title" className="hero__title">
-            {t.title.map((phrase) => (
-              <span key={phrase} className="hero__phrase">
-                {phrase}
-              </span>
-            ))}
-          </h1>
-          <p className="hero__lede">{t.lede}</p>
-          <div className="hero__actions">
-            <a className="btn-filled btn-large" href={site.latestReleaseUrl}>
-              {t.download}
-            </a>
-            <a className="btn-plain btn-large" href={site.repoUrl}>
-              {t.github}
-              <span aria-hidden="true">›</span>
-            </a>
-          </div>
-          <p className="hero__note">{t.requirements}</p>
-        </div>
       </div>
-      <div className="hero__instrument container">
-        <dl ref={readoutRef} className="hero__readout">
-          {t.readings.map((reading) => (
-            <div key={reading.label} className="hero__reading">
+      <div className="hero__instrument container" data-reveal-group="" data-reveal-delay="1000">
+        <span className="hero__rule" aria-hidden="true" data-reveal="draw" data-reveal-delay="0" />
+        <dl className="hero__readout">
+          {t.readings.map((reading, index) => (
+            <div
+              key={reading.label}
+              className="hero__reading"
+              data-reveal="rise"
+              data-reveal-delay={160 + index * 90}
+            >
               <dt className="mono-label">{reading.label}</dt>
-              <dd className="hero__reading-value">
-                <ReadingValue reading={reading} />
-              </dd>
+              <ReadingValue reading={reading} delay={260 + index * 90} />
             </div>
           ))}
         </dl>
-        <span className="hero__cue" aria-hidden="true">
+        <span className="hero__cue" aria-hidden="true" data-reveal="fade" data-reveal-delay="700">
           <span className="hero__cue-track">
             <span className="hero__cue-dot" />
           </span>

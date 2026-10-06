@@ -9,17 +9,6 @@ export interface Box {
   height: number;
 }
 
-/**
- * Region where the field renders defocused and dimmer, so DOM text placed over it stays legible
- * without a CSS backdrop filter. The box itself is fully defocused; the falloff runs outward.
- */
-export interface FocusRect extends Box {
-  /** Corner radius in CSS px. */
-  radius: number;
-  /** Width of the soft falloff outside the box, in CSS px. */
-  feather: number;
-}
-
 export interface DotFieldOptions {
   /** Text drawn as lit dots. Default "Atd". */
   text?: string;
@@ -35,13 +24,14 @@ export interface DotFieldOptions {
   dot?: Rgb;
   /** Brightness of unlit field dots, 0..1. Default 0.13. */
   fieldLevel?: number;
-  /** How much focus rects dim the field, 0..1. Default 0.65. */
-  focusDim?: number;
   /** Element that receives pointer input for the lens and ripples. Default: the canvas. */
   pointerTarget?: HTMLElement;
   /** Start in reduced-motion mode. Default false. */
   reducedMotion?: boolean;
-  /** Play the power-on sequence on the first frame (never under reduced motion). Default true. */
+  /**
+   * Play the power-on sequence on the first frame (never under reduced motion): the picture opens
+   * from a line like a CRT, then a scan resolves the art out of static. Default true.
+   */
   boot?: boolean;
   /**
    * Called with true once a frame is on screen, and with false when the field stops drawing
@@ -55,9 +45,10 @@ export interface DotField {
   setArt(text: string): void;
   /** Box the art fills (contain-fit, centered); null restores the default placement. */
   setArtBox(box: Box | null): void;
-  /** Up to two focus rects; extra entries are ignored. */
-  setFocusRects(rects: readonly FocusRect[]): void;
-  /** Scroll-away progress of the host section: 0 in place, 1 scrolled out. */
+  /**
+   * Scroll-away progress of the host section: 0 in place, 1 scrolled out. The panel dives toward
+   * the viewer around the art while the art dissolves.
+   */
   setScroll(progress: number): void;
   setReducedMotion(reduced: boolean): void;
   /**

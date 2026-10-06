@@ -11,12 +11,10 @@ export interface Uniforms {
   u_grid: WebGLUniformLocation | null;
   u_art: WebGLUniformLocation | null;
   u_cells: WebGLUniformLocation | null;
+  u_artBox: WebGLUniformLocation | null;
   u_lens: WebGLUniformLocation | null;
   u_zoom: WebGLUniformLocation | null;
   u_ripples: WebGLUniformLocation | null;
-  u_rects: WebGLUniformLocation | null;
-  u_rectShape: WebGLUniformLocation | null;
-  u_rectCount: WebGLUniformLocation | null;
   u_levels: WebGLUniformLocation | null;
   u_ink: WebGLUniformLocation | null;
   u_dot: WebGLUniformLocation | null;
@@ -34,12 +32,10 @@ function locateUniforms(gl: WebGL2RenderingContext, program: WebGLProgram): Unif
     u_grid: at('u_grid'),
     u_art: at('u_art'),
     u_cells: at('u_cells'),
+    u_artBox: at('u_artBox'),
     u_lens: at('u_lens'),
     u_zoom: at('u_zoom'),
     u_ripples: at('u_ripples'),
-    u_rects: at('u_rects'),
-    u_rectShape: at('u_rectShape'),
-    u_rectCount: at('u_rectCount'),
     u_levels: at('u_levels'),
     u_ink: at('u_ink'),
     u_dot: at('u_dot'),
