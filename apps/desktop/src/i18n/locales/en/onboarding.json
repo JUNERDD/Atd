@@ -13,6 +13,7 @@
       "selection": "Selection toolbar",
       "screenshot": "Screenshots",
       "provider": "AI provider",
+      "apps": "Apps",
       "finish": "All set"
     },
     "close": "Close guide",
@@ -92,6 +93,19 @@
     "connected": "Connected to {{name}}",
     "model": "Default model: {{model}}",
     "footnote": "You can add more providers anytime in Settings."
+  },
+  "apps": {
+    "title": "Build your own apps",
+    "description": "Describe a tool you need, like a habit tracker or a budget sheet, and Atd builds it into an app of its own.",
+    "listLabel": "How it works",
+    "list": {
+      "create": "Start with Create app in the panel",
+      "window": "Each app opens in its own window and stays in My apps",
+      "desktop": "Pin an app to your desktop, or add its widget",
+      "versions": "Every change you ask for becomes a version you can go back to",
+      "consent": "Apps ask before they first use AI, your memory or the web"
+    },
+    "footnote": "Building an app uses your connected AI provider."
   },
   "finish": {
     "title": "You're all set",
