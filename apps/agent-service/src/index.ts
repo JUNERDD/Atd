@@ -1,5 +1,7 @@
 import { errorMessage, type PermissionTier } from '@atd/agent-contracts';
+import { AutomationService } from './automations/service.js';
 import { CapabilityRegistry } from './capabilities.js';
+import { launchCommand } from './commands/launch.js';
 import { seedStarterCommands } from './commands/starters.js';
 import {
   clearEndpoint,
@@ -39,6 +41,7 @@ export interface ServiceHandle {
   capabilities: CapabilityRegistry;
   resources: ResourceStore;
   manager: RunnerManager;
+  automations: AutomationService;
   log: Logger;
   startedAt: string;
   report: RecoveryReport;
@@ -102,6 +105,18 @@ export async function createService(
       error: errorMessage(error),
     }),
   );
+  // After recovery and before any run dispatches: its reconciliation may cancel queued runs.
+  const automations = await AutomationService.create({
+    paths: config.paths,
+    ledger,
+    events,
+    manager,
+    launchCommand: (request, internal) =>
+      launchCommand({ paths: config.paths, ledger, manager }, request, internal),
+    folders,
+    resources,
+    log,
+  });
 
   let stopping: (() => Promise<void>) | null = null;
   const serverDeps: ServerDeps = {
@@ -114,6 +129,7 @@ export async function createService(
     manager,
     settings,
     folders,
+    automations,
     log,
     startedAt,
     onShutdown:
@@ -134,6 +150,8 @@ export async function createService(
   // Clearing the endpoint tells the native supervisor the stop has finished
   // (`ServiceStopper`): it gives the process a short grace to exit, then kills it.
   const stopService = async () => {
+    // No automation fires once draining begins; the runs it started stop with the manager.
+    await automations.stop();
     await manager.shutdown();
     await app.close();
     await McpAuthority.closeFor(config.paths.root);
@@ -153,6 +171,7 @@ export async function createService(
     capabilities,
     resources,
     manager,
+    automations,
     log,
     startedAt,
     report,
@@ -175,6 +194,8 @@ export async function createService(
         ...(buildId === undefined ? {} : { buildId }),
       });
       manager.dispatch();
+      // After the recovered queue: their runs go first, then missed occurrences after a grace.
+      automations.start();
       // The MCP authority is not loaded here: the desktop calls no MCP route on connect, and the
       // load reads the server records, launch approvals and saved sign-ins. The first MCP request
       // or run loads it, cached per dataDir (mcp/authority.ts).

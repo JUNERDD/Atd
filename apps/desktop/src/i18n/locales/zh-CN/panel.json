@@ -187,6 +187,7 @@
   },
   "session": {
     "editSeed": "更新命令“{{name}}”（id：{{id}}）：",
+    "editAutomationSeed": "更新自动化“{{name}}”（id：{{id}}）：",
     "editSkillSeed": "修改现有技能“{{name}}”：",
     "editSubagentSeed": "修改现有子代理“{{name}}”：",
     "editMcpSeed": "修改现有 MCP“{{name}}”：",

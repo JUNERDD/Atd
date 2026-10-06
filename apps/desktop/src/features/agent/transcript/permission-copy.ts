@@ -25,7 +25,8 @@ export type ScopeKey =
   | 'permission.scope.command'
   | 'permission.scope.mcp'
   | 'permission.scope.web'
-  | 'permission.scope.app';
+  | 'permission.scope.app'
+  | 'permission.scope.automation';
 
 export function outcomeKey(outcome: PermissionOutcome): OutcomeKey {
   switch (outcome) {
@@ -65,6 +66,8 @@ export function scopeKey(scope: GrantScope): ScopeKey {
       return 'permission.scope.web';
     case 'app':
       return 'permission.scope.app';
+    case 'automation':
+      return 'permission.scope.automation';
     default: {
       const _exhaustive: never = scope;
       void _exhaustive;

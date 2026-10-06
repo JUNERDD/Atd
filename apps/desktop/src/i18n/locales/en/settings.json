@@ -15,6 +15,7 @@
     "extensions": "Extensions",
     "providers": "Models",
     "commands": "Commands",
+    "automations": "Automations",
     "memory": "Memory",
     "apps": "Apps",
     "general": "General"
@@ -37,13 +38,15 @@
     "resultCount_other": "{{count}} results",
     "general": "General",
     "entries": {
-      "newCommand": "New command"
+      "newCommand": "New command",
+      "newAutomation": "New automation"
     },
     "keywords": {
       "sectionPermissions": "approval security safety allow ask confirm access",
       "sectionExtensions": "plugin plugins skill skills subagent agents mcp server tools marketplace add-on",
       "sectionProviders": "model models provider providers api key connection account login sign in service openai anthropic ollama",
       "sectionCommands": "command prompt snippet template macro instruction saved",
+      "sectionAutomations": "automation automations schedule scheduled recurring repeat cron timer daily weekly monthly trigger watch folder background run automatically workflow routine",
       "sectionMemory": "preferences remember learn context profile",
       "sectionApps": "apps app applications tools built widgets versions permissions",
       "sectionGeneral": "general keyboard shortcut hotkey keybinding key binding record window preferences dock login startup",
@@ -63,6 +66,8 @@
       "addProvider": "connect account api key login sign in cloud local new",
       "connectedProviders": "providers connections accounts disconnect",
       "newCommand": "create add command prompt template",
+      "newAutomation": "create add automation schedule recurring task routine automate",
+      "automationsPause": "pause stop disable all automations schedule hold resume",
       "memoryLearning": "learn automatically remember pause preferences corrections",
       "memoryCreate": "add new save remember memory",
       "memoryProfile": "profile about me user preferences",

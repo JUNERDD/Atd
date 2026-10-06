@@ -1,7 +1,12 @@
 import { downloadResource } from '@atd/agent-client';
 import type { McpApprovalRequestResult } from '@atd/agent-contracts';
 import { AgentRequests } from '../client/agent/agent-requests';
-import { parseExtensionSession, type ExtensionSession } from '../client/agent/bridge';
+import {
+  AutomationSessionTargetSchema,
+  parseExtensionSession,
+  type AutomationSessionTarget,
+  type ExtensionSession,
+} from '../client/agent/bridge';
 import {
   createAgentBridge,
   type AgentChannel,
@@ -11,12 +16,14 @@ import type { DesktopBridge } from '../client/contract';
 import { createServiceBridge } from '../client/service/bridge-client';
 import { handleExtensionRequest } from '../client/service/extension-requests';
 import type { ServiceEvent } from '../client/service/ipc';
+import { parse } from '../client/agent/validation';
 import { publishFileDrag } from '../lib/file-drag';
 import { publishImportedFiles } from '../lib/imported-files';
 import type { NativeBridge } from '../native-bridge/client';
 import { setReducedTransparency, setWindowActive, setWindowVisible } from '../window-state';
 import { publishDragRegions } from './drag-regions';
 import { nativeApps } from './native-apps';
+import { nativeAutomations, nativeTaskOpen } from './native-automations';
 import { NativeCommands } from './native-commands';
 import { NativeConnection } from './native-connection';
 import { nativeFiles } from './native-files';
@@ -60,6 +67,9 @@ export async function installNativeHost(
   // can send an Ask that showed the panel before this host is installed.
   const update = surface === 'panel' ? nativeUpdate(native) : undefined;
   const onSelectionAsk = surface === 'panel' ? nativeSelectionAsk(native) : undefined;
+  // The shell sends an opened notification's `task.open` once the panel's page is ready, which
+  // can be before the panel subscribes; the host holds it until then.
+  const onTaskOpen = surface === 'panel' ? nativeTaskOpen(native) : undefined;
   const connection = new NativeConnection({
     baseUrl: pageOrigin(),
     relay: true,
@@ -72,6 +82,7 @@ export async function installNativeHost(
     changed: new Set(),
     launch: new Set(),
     session: new Set(),
+    automationSession: new Set(),
     extensionSession: new Set(),
   };
   const emit = <C extends AgentChannel>(channel: C, value: AgentChannelValues[C]) => {
@@ -171,6 +182,16 @@ export async function installNativeHost(
       const name = commands.list().find((item) => item.id === message.commandId)?.name ?? '';
       emit('session', { commandId: message.commandId, name });
       void native.call('window.show', {});
+    } else if (message.type === 'automationSession') {
+      // Like an extension session below, a message the panel cannot seed is dropped.
+      let automation: AutomationSessionTarget;
+      try {
+        automation = parse(AutomationSessionTargetSchema, message.automation);
+      } catch {
+        return;
+      }
+      emit('automationSession', automation);
+      void native.call('window.show', {});
     } else if (message.type === 'extensionSession') {
       // A window running an older build can post this too: drop a message the panel cannot seed
       // instead of throwing from the channel listener.
@@ -219,6 +240,7 @@ export async function installNativeHost(
       : {}),
     ...(update ? { update } : {}),
     apps,
+    automations: nativeAutomations(connection, native, messages),
     agent: createAgentBridge(async (request) => {
       // Only the panel receives `launch` events, so the other windows hand their launches over.
       if (surface !== 'panel' && request.action === 'launch') {
@@ -300,6 +322,7 @@ export async function installNativeHost(
         }
       : {}),
     ...(onSelectionAsk ? { onSelectionAsk } : {}),
+    ...(onTaskOpen ? { onTaskOpen } : {}),
     ...(surface === 'onboarding' ? { onboarding: nativeOnboarding(native, messages) } : {}),
   };
   window.desktop = bridge;

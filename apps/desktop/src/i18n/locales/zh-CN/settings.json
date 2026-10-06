@@ -15,6 +15,7 @@
     "extensions": "扩展",
     "providers": "模型",
     "commands": "命令",
+    "automations": "自动化",
     "memory": "记忆",
     "apps": "应用",
     "general": "通用"
@@ -37,13 +38,15 @@
     "resultCount_other": "{{count}} 个结果",
     "general": "通用",
     "entries": {
-      "newCommand": "新建命令"
+      "newCommand": "新建命令",
+      "newAutomation": "新建自动化"
     },
     "keywords": {
       "sectionPermissions": "审批 批准 授权 安全 确认 访问 允许",
       "sectionExtensions": "扩展 拓展 插件 技能 子代理 智能体 服务器 工具 MCP",
       "sectionProviders": "模型 提供商 服务商 接口 密钥 连接 账号 登录 服务",
       "sectionCommands": "命令 指令 提示词 模板 快捷指令",
+      "sectionAutomations": "自动化 计划 定时 定期 重复 周期 cron 每天 每周 每月 触发 监视 文件夹 后台 自动运行 工作流 例行",
       "sectionMemory": "记忆 偏好 学习 上下文 画像",
       "sectionApps": "应用 小程序 工具 构建 小组件 版本 权限",
       "sectionGeneral": "通用 常规 键盘 快捷键 热键 按键 录制 窗口偏好 程序坞 登录 启动",
@@ -63,6 +66,8 @@
       "addProvider": "添加 连接 账号 接口密钥 登录 云端 本地 新增",
       "connectedProviders": "提供商 连接 账号 断开",
       "newCommand": "创建 添加 新增 命令 提示词 模板",
+      "newAutomation": "创建 添加 自动化 计划 定时任务 例行 自动执行",
+      "automationsPause": "暂停 停止 停用 全部自动化 计划 恢复",
       "memoryLearning": "自动学习 记住 暂停 偏好 纠正",
       "memoryCreate": "添加 新增 保存 记住 记忆",
       "memoryProfile": "画像 关于我 用户 偏好",

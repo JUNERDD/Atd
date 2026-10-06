@@ -7,6 +7,7 @@ import { MAX_FOLDERS } from './folders.js';
 import { McpServerIdSchema } from './mcp.js';
 import { MemoryTargetSchema } from './memory.js';
 import { MAX_QUOTE_CHARS, QuoteSourceSchema } from './quotes.js';
+import { RunTriggerSchema } from './run-trigger.js';
 import { ThinkingLevelSchema } from './models.js';
 import { SkillName } from './skills.js';
 import { SubagentNameSchema } from './subagents.js';
@@ -250,19 +251,25 @@ export const RunSnapshotSchema = Type.Object(
      * searches memory and keeps the memory tools.
      */
     fromCommand: Type.Optional(Type.Literal(true)),
+    /** Set when an automation started the run, which makes it unattended (`RunTriggerSchema`). */
+    trigger: Type.Optional(RunTriggerSchema),
   },
   { additionalProperties: false },
 );
 export type RunSnapshot = Static<typeof RunSnapshotSchema>;
 
 /**
- * A task the user did not start: a user app's backend started it through `ctx.agent.run`. History
- * shows the app on it; its confirms still go through the task panel.
+ * A task the user did not start: a user app's backend started it through `ctx.agent.run`, or an
+ * automation fired. History shows the app or automation on it; an app task's confirms still go
+ * through the task panel, while an automation's runs are unattended (`RunSnapshot.trigger`).
  */
-export const TaskOriginSchema = Type.Object(
-  { kind: Type.Literal('app'), appId: AppIdSchema },
-  { additionalProperties: false },
-);
+export const TaskOriginSchema = Type.Union([
+  Type.Object({ kind: Type.Literal('app'), appId: AppIdSchema }, { additionalProperties: false }),
+  Type.Object(
+    { kind: Type.Literal('automation'), automationId: Identifier },
+    { additionalProperties: false },
+  ),
+]);
 export type TaskOrigin = Static<typeof TaskOriginSchema>;
 
 export const TaskRunSchema = Type.Object(

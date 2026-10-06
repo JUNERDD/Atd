@@ -198,3 +198,22 @@ public struct UserAppPinsEvent: Codable, Equatable, Sendable {
     }
   }
 }
+
+/// Payload of the `task.open` event.
+public struct TaskOpenEvent: Codable, Equatable, Sendable {
+  public let taskId: String
+
+  public init(taskId: String) {
+    self.taskId = taskId
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    taskId = try container.string(
+      .taskId, minLength: 1, maxLength: 128, pattern: "^[a-zA-Z0-9_-]+$")
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case taskId
+  }
+}

@@ -1,6 +1,8 @@
 import { errorMessage, mcpCapabilityId, type ConfirmReview } from '@atd/agent-contracts';
 import type { ConfirmStore } from '../confirms.js';
 import type { Logger } from '../logging.js';
+import { unattendedMcpCall } from '../unattended.js';
+import { McpError } from './errors.js';
 import { matchToolPattern } from './servers.js';
 
 /**
@@ -22,6 +24,11 @@ export interface McpApprovalContext {
   args: Record<string, unknown>;
   /** What the `auto` tier's review said before this confirm, shown on it. */
   review?: ConfirmReview;
+  /**
+   * The operation's run is unattended (unattended.ts): nobody answers a confirm. The run's own
+   * audit records the refusal (pi-session-mcp.ts `mcpPreapproval`).
+   */
+  unattended?: boolean;
   /** The operation's run status while the confirm waits (`OperationContext.setStatus`). */
   setStatus?: (status: 'awaiting_confirmation' | 'running') => void;
 }
@@ -48,7 +55,9 @@ export class McpApprovalBroker {
    * Decides one operation via the task confirm channel. Abort propagates
    * (run cancel); expiry and decline both deny without caching. While the
    * confirm waits, the run shows `awaiting_confirmation`, as for the service
-   * gate's confirms (harness/gate.ts), and `running` once it settles.
+   * gate's confirms (harness/gate.ts), and `running` once it settles. An
+   * unattended operation raises no confirm: it is denied at once with a
+   * `forbidden` error that says nobody was present to approve it.
    */
   async decide(ctx: McpApprovalContext, signal?: AbortSignal): Promise<'allow_once' | 'deny'> {
     const capability = mcpCapabilityId(ctx.connectionId, ctx.toolName);
@@ -61,6 +70,10 @@ export class McpApprovalBroker {
       server: ctx.serverId,
       origin: ctx.origin,
     };
+    if (ctx.unattended) {
+      this.audit({ ...base, decision: 'deny', reason: 'unattended' });
+      throw new McpError('forbidden', ctx.serverId, unattendedMcpCall(ctx.serverId, ctx.toolName));
+    }
     ctx.setStatus?.('awaiting_confirmation');
     try {
       const answer = await this.confirms.request(

@@ -45,3 +45,7 @@ export * from './app-capability-ops.js';
 export * from './apps-ipc.js';
 export * from './widgets.js';
 export * from './widget-sync.js';
+export * from './run-trigger.js';
+export * from './automation-triggers.js';
+export * from './automations.js';
+export * from './automation-notices.js';

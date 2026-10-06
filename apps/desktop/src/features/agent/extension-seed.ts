@@ -3,10 +3,10 @@ import type { RunPolicy } from '../../client/agent/run-policy';
 import { serialize, type ComposerDraft } from '../composer-editor/draft';
 
 /**
- * What a create-with-AI session works on; the command editor hands off `command`, and Create app
- * (the panel's, or Settings › Apps') starts `app`.
+ * What a create-with-AI session works on; the command and automation editors hand off `command`
+ * and `automation`, and Create app (the panel's, or Settings › Apps') starts `app`.
  */
-export type SeedKind = ExtensionSessionKind | 'command' | 'app';
+export type SeedKind = ExtensionSessionKind | 'command' | 'automation' | 'app';
 
 /** Tools each kind's `create-*` skill writes with; the others write files. */
 const TOOLS: Partial<Record<SeedKind, RunPolicy['tools']>> = {
@@ -15,13 +15,16 @@ const TOOLS: Partial<Record<SeedKind, RunPolicy['tools']>> = {
   memory: ['read'],
   // Commands are saved through the `command` tool; `read` lets the user point at a prompt file.
   command: ['read', 'command'],
+  // Automations are saved through the `automation` tool every run has; `command` finds the saved
+  // command an automation runs, and `read` lets the user point at a file.
+  automation: ['read', 'command'],
 };
 
 /**
- * The new draft and policy a create-with-AI session (Extensions, Memory, Commands) starts from:
- * the kind's `create-*` skill chip and a space, then `sentence` (an edit target, a turn to
- * remember, or nothing for the user to complete). Submit stages the chip's skill, so removing the
- * chip also drops the skill.
+ * The new draft and policy a create-with-AI session (Extensions, Memory, Commands, Automations)
+ * starts from: the kind's `create-*` skill chip and a space, then `sentence` (an edit target, a
+ * turn to remember, or nothing for the user to complete). Submit stages the chip's skill, so
+ * removing the chip also drops the skill.
  */
 export function extensionSeed(
   kind: SeedKind,

@@ -7,11 +7,12 @@ import { escapeTags } from './prompts.js';
  * What a memory review reads (decision R5). The conversation is the branch's `message` entries
  * with role user or assistant, text parts only, so hidden run material (attachments, command
  * templates, references, skills: `custom_message` entries), tool calls and results (recalled
- * memory included), reasoning and compaction summaries never reach it. Two kinds of run are left
+ * memory included), reasoning and compaction summaries never reach it. Three kinds of run are left
  * out too, each up to the next run's invocation marker (invocation-marker.ts): a command run
- * (`source: 'command'`), whose messages are a saved command's material rather than the user's own
- * words, and a run with memory off (`memory: false`), which the user kept out of memory even when
- * a later run of the task turns memory back on.
+ * (`source: 'command'`) and an automation's run (`source: 'automation'`), whose messages are saved
+ * material and trigger data rather than the user's own words, and a run with memory off
+ * (`memory: false`), which the user kept out of memory even when a later run of the task turns
+ * memory back on.
  */
 
 /** Each message is clipped to its start and end within this many characters. */
@@ -183,13 +184,13 @@ function withoutRecalled(
 }
 
 /**
- * Whether learning may read the run an invocation marker's `data` opens: not a command run and
- * not a run with memory off. A marker without the memory flag counts as memory on, and one whose
- * data is not an object as a user's run.
+ * Whether learning may read the run an invocation marker's `data` opens: not a command or an
+ * automation's run and not a run with memory off. A marker without the memory flag counts as
+ * memory on, and one whose data is not an object as a user's run.
  */
 function opensLearnableRun(data: unknown): boolean {
   if (typeof data !== 'object' || data === null) return true;
-  const command = 'source' in data && data.source === 'command';
+  const material = 'source' in data && (data.source === 'command' || data.source === 'automation');
   const memoryOff = 'memory' in data && data.memory === false;
-  return !command && !memoryOff;
+  return !material && !memoryOff;
 }

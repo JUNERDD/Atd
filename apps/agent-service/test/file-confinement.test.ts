@@ -7,9 +7,9 @@ import { confined, confinedWrite } from '../dist/service-fs.js';
 import { checkChildPath } from '../dist/subagents/intersection.js';
 
 /**
- * The agent's file tools (and a subagent's) never write the service's security state or the plugin
- * store, whatever the task's working directory: approvals and installed plugin code change only
- * through the service's own routes.
+ * The agent's file tools (and a subagent's) never write the service's security state, the plugin
+ * store or the automations, whatever the task's working directory: approvals, installed plugin
+ * code and saved automations change only through the service's own routes and confirmed tools.
  */
 
 const temporary: string[] = [];
@@ -17,13 +17,14 @@ after(async () => {
   for (const dir of temporary) await rm(dir, { recursive: true, force: true });
 });
 
-test('file tools never write the approval store or the plugin store', async () => {
+test('file tools never write the approval store, the plugin store or the automations', async () => {
   // tmpdir is a symlink on macOS (/var → /private/var), so both spellings are exercised.
   const dataDir = await mkdtemp(path.join(tmpdir(), 'launch-confine-'));
   temporary.push(dataDir);
   const realData = await realpath(dataDir);
   await mkdir(path.join(dataDir, 'security'), { recursive: true });
   await mkdir(path.join(dataDir, 'plugins'), { recursive: true });
+  await mkdir(path.join(dataDir, 'automations', 'folders'), { recursive: true });
   const link = path.join(await mkdtemp(path.join(tmpdir(), 'launch-link-')), 'data');
   temporary.push(path.dirname(link));
   await symlink(realData, link);
@@ -32,6 +33,8 @@ test('file tools never write the approval store or the plugin store', async () =
     path.join(realData, 'security', 'new', 'file.json'),
     path.join(link, 'plugins', 'state.json'),
     path.join(dataDir, 'plugins', 'revisions', 'kit', 'server.js'),
+    path.join(dataDir, 'automations', 'automations.json'),
+    path.join(link, 'automations', 'folders', 'snapshot.json'),
     ...(process.platform === 'darwin' ? [path.join(dataDir, 'SECURITY', 'x.json')] : []),
   ];
   // The worst case: a task whose working directory is the data dir itself.

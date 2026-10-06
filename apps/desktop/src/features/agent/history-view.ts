@@ -2,7 +2,7 @@ import { Type, type Static } from 'typebox';
 import type { AgentTask, RunStatus } from '../../client/agent/task-schema';
 import { daysAgo, historySections, type HistoryPeriod } from './history-sections';
 
-export const HISTORY_GROUPS = ['date', 'status', 'model', 'none'] as const;
+export const HISTORY_GROUPS = ['date', 'status', 'model', 'origin', 'none'] as const;
 export const HISTORY_SORTS = ['updated', 'created', 'title'] as const;
 
 /** How the history list is sectioned. `date` follows the date the list is sorted by. */
@@ -55,6 +55,17 @@ export function statusGroupOf(task: AgentTask): StatusGroup {
   return status ? STATUS_GROUP_OF[status] : 'draft';
 }
 
+/**
+ * Who started a task, as the origin sections name it, in the order they are shown: an automation
+ * fired it, a user app's backend ran it, or the person did.
+ */
+export const ORIGIN_GROUPS = ['automation', 'app', 'personal'] as const;
+export type OriginGroup = (typeof ORIGIN_GROUPS)[number];
+
+export function originGroupOf(task: AgentTask): OriginGroup {
+  return task.origin?.kind ?? 'personal';
+}
+
 /** The model the task's last run used, as the name the list shows; null for a task never run. */
 export function modelNameOf(task: AgentTask): string | null {
   const model = task.runs.at(-1)?.snapshot.model;
@@ -73,6 +84,7 @@ export type HistorySection<T> = {
   | { kind: 'status'; status: StatusGroup }
   /** `model` is null for tasks that never ran. */
   | { kind: 'model'; model: string | null }
+  | { kind: 'origin'; origin: OriginGroup }
   /** The whole list, without a heading. */
   | { kind: 'all' }
 );
@@ -120,8 +132,8 @@ function newestFirst<T>(a: HistorySection<T>, b: HistorySection<T>): number {
 /**
  * Sections for the already sorted `items`. Each keeps the incoming order of its rows; the sections
  * themselves follow the group: dates newest first, statuses in `STATUS_GROUPS` order, models by
- * their latest activity with tasks that never ran last. Empty sections are omitted, and `none`
- * is one section without a heading.
+ * their latest activity with tasks that never ran last, origins in `ORIGIN_GROUPS` order. Empty
+ * sections are omitted, and `none` is one section without a heading.
  */
 export function groupHistory<T extends { task: AgentTask }>(
   items: readonly T[],
@@ -138,6 +150,13 @@ export function groupHistory<T extends { task: AgentTask }>(
       return STATUS_GROUPS.flatMap((status): HistorySection<T>[] => {
         const inGroup = items.filter(({ task }) => statusGroupOf(task) === status);
         return inGroup.length ? [{ id: status, kind: 'status', status, items: inGroup }] : [];
+      });
+    case 'origin':
+      return ORIGIN_GROUPS.flatMap((origin): HistorySection<T>[] => {
+        const inGroup = items.filter(({ task }) => originGroupOf(task) === origin);
+        return inGroup.length
+          ? [{ id: `origin:${origin}`, kind: 'origin', origin, items: inGroup }]
+          : [];
       });
     case 'model': {
       const sections = new Map<string, { model: string | null; latest: number; items: T[] }>();

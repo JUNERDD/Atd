@@ -5,8 +5,9 @@ import {
   type PatchSettingsRequest,
   type SettingsResponse,
 } from '@atd/agent-contracts';
-import { parseExtensionSession } from '../client/agent/bridge';
+import { AutomationSessionTargetSchema, parseExtensionSession } from '../client/agent/bridge';
 import { DEFAULT_PERMISSION_TIER } from '../client/agent/permission-schema';
+import { parse } from '../client/agent/validation';
 import type { ProviderBridge } from '../client/providers/schema';
 import { ProviderService } from '../client/providers/service';
 import {
@@ -146,6 +147,11 @@ export function nativeSettings(
     },
     startCommandSession: async (commandId) => messages.post({ type: 'commandSession', commandId }),
     // Validated here so the caller sees a rejection, as the desktop IPC boundary does.
+    startAutomationSession: async (automation) =>
+      messages.post({
+        type: 'automationSession',
+        automation: parse(AutomationSessionTargetSchema, automation),
+      }),
     startExtensionSession: async (kind, target) =>
       messages.post({ type: 'extensionSession', ...parseExtensionSession(kind, target ?? null) }),
     close: async () => void (await native.call('settings.close', {})),

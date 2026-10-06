@@ -64,7 +64,9 @@ export async function memoryExtension(deps: MemoryExtensionDeps): Promise<Extens
   });
   const factories = [
     sessionMemory(() => runner.currentMaterial().memory),
-    memoryTools({ store, scope, readOnly: false }),
+    // An unattended run reads memory but never changes it; its binding (run-binding.ts) differs
+    // from an attended run's, so a session serves runs of one kind only.
+    memoryTools({ store, scope, readOnly: run.snapshot.trigger !== undefined }),
     memoryLearner({ store, scope, source: deps.source, log }),
   ];
   return async (pi) => {

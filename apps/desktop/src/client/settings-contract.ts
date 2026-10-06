@@ -8,7 +8,7 @@ import {
   type SelectionToolbarSettings,
 } from '@atd/agent-contracts';
 import type { Connection, ProviderBridge } from './providers/schema';
-import type { ExtensionSessionKind } from './agent/bridge';
+import type { AutomationSessionTarget, ExtensionSessionKind } from './agent/bridge';
 import type { PermissionTier } from './agent/permission-schema';
 
 export type ShortcutAction = keyof typeof DEFAULT_SHORTCUTS;
@@ -124,6 +124,11 @@ export interface SettingsBridge {
   openSection: (section: string) => Promise<void>;
   /** Opens the command's editor content in a new task-panel session; null creates a new command. */
   startCommandSession: (commandId: string | null) => Promise<void>;
+  /**
+   * Opens a new task-panel session seeded with the `create-automation` skill: an edit session for
+   * the saved automation `automation` names, or a create session when it is null.
+   */
+  startAutomationSession: (automation: AutomationSessionTarget) => Promise<void>;
   /**
    * Opens a new task-panel session seeded for creating a skill, subagent, MCP server, or memory.
    * `target` names an existing skill, subagent, or MCP serverId to edit instead; omitted or null

@@ -8,6 +8,7 @@ import {
   type PermissionTier,
 } from '@atd/agent-contracts';
 import type { ConfirmStore } from '../confirms.js';
+import { auditUnattended, UNATTENDED_DECLINED } from '../unattended.js';
 import { confirmReview, type Reviewer } from './auto-review.js';
 
 /** What the approval gate needs from the task runner; `ServiceToolHost` satisfies it. */
@@ -22,6 +23,11 @@ export interface GateHost {
   confirms: ConfirmStore;
   /** The `auto` tier's review (auto-review.ts); consulted only under that tier. */
   review: Reviewer;
+  /**
+   * Whether the current run is unattended (unattended.ts): nobody answers its confirms, so a call
+   * that would wait for one is declined at once instead.
+   */
+  unattended: () => boolean;
   audit: (entry: Record<string, unknown>) => void;
   setStatus: (status: 'awaiting_input' | 'awaiting_confirmation' | 'running') => void;
 }
@@ -67,7 +73,8 @@ const DECLINED = 'The user declined this action.';
  * The service's approval gate, shared by every guarded tool (file tools, grep/find/ls, bash,
  * command saves, web). Order: session grant, then tier, then under `auto` a review of the call,
  * then one confirm; a flagged or failed review falls through to the confirm, and an `askAlways`
- * request goes straight to it. A session answer grants the scope (tool, plus location for file
+ * request goes straight to it. An unattended run raises no confirm: the call is declined at once
+ * and audited as `unattended`. A session answer grants the scope (tool, plus location for file
  * tools) for the rest of the task, including confirms already waiting on it. Every decision is
  * audited; confirm and review outcomes are also appended as `app-permission` session entries so
  * the transcript shows them after reopen.
@@ -105,14 +112,23 @@ export function createGate(host: GateHost): Gate {
       return 'tier';
     }
     let review: ConfirmReview | undefined;
+    const unattended = host.unattended();
     if (!askAlways && host.tier === 'auto') {
-      const verdict = await host.review({ scope, detail: request.detail }, request.signal);
+      const verdict = await host.review(
+        { scope, detail: request.detail, unattended },
+        request.signal,
+      );
       host.audit({ ...base, decision: `review-${verdict.decision}`, reason: verdict.reason });
       if (verdict.decision === 'allow') {
         record(toolCallId, scope, 'reviewed');
         return 'reviewed';
       }
       review = confirmReview(verdict);
+    }
+    if (unattended) {
+      auditUnattended(host.audit, { ...base, kind: 'confirm', title: request.title });
+      record(toolCallId, scope, 'declined');
+      throw new Error(UNATTENDED_DECLINED);
     }
     host.setStatus('awaiting_confirmation');
     try {

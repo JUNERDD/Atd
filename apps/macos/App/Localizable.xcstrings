@@ -109,6 +109,168 @@
         }
       }
     },
+    "automation.notice.attention.body" : {
+      "comment" : "Body of a needs-attention automation notification when the number of declined actions and questions is unknown",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Some actions or questions were declined because no one was there."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "由于无人在场，部分操作或提问已被拒绝。"
+          }
+        }
+      }
+    },
+    "automation.notice.attention.declined.one" : {
+      "comment" : "Body of a needs-attention automation notification for one declined action or question",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 action or question was declined because no one was there."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "由于无人在场，已拒绝 1 项操作或提问。"
+          }
+        }
+      }
+    },
+    "automation.notice.attention.declined.other" : {
+      "comment" : "Body of a needs-attention automation notification; %lld is the number of declined actions and questions",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld actions or questions were declined because no one was there."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "由于无人在场，已拒绝 %lld 项操作或提问。"
+          }
+        }
+      }
+    },
+    "automation.notice.attention.title" : {
+      "comment" : "Title of the notification of an automation run that declined actions or questions because nobody was there; %@ is the automation's name",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” needs your attention"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@”需要你处理"
+          }
+        }
+      }
+    },
+    "automation.notice.delivered.body" : {
+      "comment" : "Body of an automation's notification when the run's result came without a summary",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Finished — open to see the result."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已完成，打开即可查看结果。"
+          }
+        }
+      }
+    },
+    "automation.notice.failed.body" : {
+      "comment" : "Body of a failed automation notification when the run reported no error",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Something went wrong before it could finish."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "运行在完成前出了问题。"
+          }
+        }
+      }
+    },
+    "automation.notice.failed.title" : {
+      "comment" : "Title of the notification of an automation run that failed or ran out of time; %@ is the automation's name",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” didn’t finish"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@”未能完成"
+          }
+        }
+      }
+    },
+    "automation.notice.paused.body" : {
+      "comment" : "Body of the notification sent when Atd turned an automation off after repeated failures; names the Automations settings section",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "It failed several times in a row. You can turn it back on in Settings › Automations."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "它连续多次运行失败。你可以在“设置 › 自动化”中重新开启。"
+          }
+        }
+      }
+    },
+    "automation.notice.paused.title" : {
+      "comment" : "Title of the notification sent when Atd turned an automation off after repeated failures; %@ is the automation's name",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” was turned off"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@”已关闭"
+          }
+        }
+      }
+    },
     "capture.color.black" : {
       "comment" : "Annotation colour swatch",
       "extractionState" : "manual",

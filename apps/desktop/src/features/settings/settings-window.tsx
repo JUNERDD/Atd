@@ -12,6 +12,7 @@ import { Button } from '@atd/ui/components/button';
 import { TooltipProvider } from '@atd/ui/components/tooltip';
 import { ScrollArea } from '@atd/ui/components/scroll-area';
 import { AppSettings } from '../apps/app-settings';
+import { AutomationSettings } from '../automations/automation-settings';
 import { CommandSettings } from '../commands/command-settings';
 import { MemorySettings } from '../memory/memory-settings';
 import { ToastHost } from '../../components/toast';
@@ -25,6 +26,7 @@ import { GeneralSettings } from './general-settings';
 import { ServiceSettings } from '../service/service-settings';
 import { useSettingsSnapshot } from './use-settings';
 import {
+  SettingsAutomationLinkContext,
   SettingsCommandLinkContext,
   SettingsExtensionLinkContext,
   SettingsMemoryLinkContext,
@@ -77,12 +79,14 @@ export function SettingsWindow() {
     visited,
     commandTarget,
     memoryTarget,
+    automationTarget,
     extensionTarget,
     drawer,
     setDrawer,
     navigate,
     showCommand,
     showMemory,
+    showAutomation,
     showExtension,
   } = useSettingsSection(recording, unsaved.guard.confirmLeave);
   const layout = useSyncExternalStore(subscribeLayout, getLayout);
@@ -236,9 +240,19 @@ export function SettingsWindow() {
                               {page('providers', <ProviderSettingsForm snapshot={snapshot} />)}
                               {page(
                                 'commands',
-                                <CommandSettings
+                                // A command's "Automate…" opens a new automation that runs it.
+                                <SettingsAutomationLinkContext value={showAutomation}>
+                                  <CommandSettings
+                                    settings={snapshot}
+                                    activeCommand={commandTarget}
+                                  />
+                                </SettingsAutomationLinkContext>,
+                              )}
+                              {page(
+                                'automations',
+                                <AutomationSettings
                                   settings={snapshot}
-                                  activeCommand={commandTarget}
+                                  activeTarget={automationTarget}
                                 />,
                               )}
                               {page(

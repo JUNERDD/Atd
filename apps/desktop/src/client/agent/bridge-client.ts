@@ -2,6 +2,7 @@ import type {
   AgentBridge,
   AgentEvent,
   AgentRequest,
+  AutomationSessionTarget,
   CommandLaunch,
   CommandSession,
   ExtensionSession,
@@ -12,6 +13,7 @@ export interface AgentChannelValues {
   changed: AgentEvent;
   launch: CommandLaunch;
   session: CommandSession;
+  automationSession: AutomationSessionTarget;
   extensionSession: ExtensionSession;
 }
 export type AgentChannel = keyof AgentChannelValues;
@@ -83,6 +85,7 @@ export function createAgentBridge(
     onChange: (listener) => listen('changed', listener),
     onLaunch: (listener) => listen('launch', listener),
     onCommandSession: (listener) => listen('session', listener),
+    onAutomationSession: (listener) => listen('automationSession', listener),
     onExtensionSession: (listener) => listen('extensionSession', listener),
   };
 }

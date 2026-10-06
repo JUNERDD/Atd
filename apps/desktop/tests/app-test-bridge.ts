@@ -220,6 +220,7 @@ export function installBridge(extras?: {
     releaseChildTranscript: vi.fn(async () => {}),
     onLaunch: () => () => {},
     onCommandSession: () => () => {},
+    onAutomationSession: () => () => {},
     onExtensionSession: () => () => {},
     onChange: (listener) => {
       listeners.add(listener);
@@ -271,6 +272,7 @@ export function installBridge(extras?: {
       openCommand,
       openSection: vi.fn(async (_section: string) => {}),
       startCommandSession: vi.fn(async (_commandId: string | null) => {}),
+      startAutomationSession: vi.fn(async (_automation: { id: string; name: string } | null) => {}),
       startExtensionSession: vi.fn(
         async (_kind: 'skill' | 'subagent' | 'mcp' | 'memory', _target?: string | null) => {},
       ),

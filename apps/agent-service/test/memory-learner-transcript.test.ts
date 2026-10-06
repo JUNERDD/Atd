@@ -180,6 +180,35 @@ test('the marker a run writes carries its memory flag to learning', () => {
   );
 });
 
+test("an automation's run is marked as one and left out like a command run", () => {
+  const [fixture] = task('completed').runs;
+  assert.ok(fixture);
+  const trigger = {
+    kind: 'automation' as const,
+    automationId: 'morning-digest',
+    automationRunId: 'fire-1',
+    source: 'schedule' as const,
+    firedAt: '2026-10-04T08:00:00.000Z',
+  };
+  const manager = SessionManager.inMemory();
+  // A command an automation runs is still the automation's run.
+  const snapshot = { ...fixture.snapshot, memory: true, fromCommand: true as const, trigger };
+  markInvocation(manager, { ...fixture, snapshot });
+  manager.appendMessage({ role: 'user', content: 'automation prompt', timestamp: 0 });
+  markInvocation(manager, { ...fixture, snapshot: { ...fixture.snapshot, memory: true } });
+  manager.appendMessage({ role: 'user', content: 'follow-up', timestamp: 0 });
+  const sources = manager
+    .getBranch()
+    .flatMap((entry) =>
+      entry.type === 'custom' ? [(entry.data as { source?: unknown }).source] : [],
+    );
+  assert.deepEqual(sources, ['automation', 'user']);
+  assert.deepEqual(
+    learningMessages(manager.getBranch()).map((message) => message.text),
+    ['follow-up'],
+  );
+});
+
 test('a long message keeps its start and end within the message limit', () => {
   const long = `START${'a'.repeat(5000)}END`;
   const clipped = clip(long, MESSAGE_CHARS);

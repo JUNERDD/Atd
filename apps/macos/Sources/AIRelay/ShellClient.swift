@@ -142,6 +142,25 @@ public nonisolated struct ShellClient: Sendable {
     _ = try await send("POST", "/v1/widgets/instances", body: body, contentType: "application/json")
   }
 
+  /// `GET /v1/automation-notices`: the automation notices nobody acknowledged yet, oldest first,
+  /// checked against the contract while decoding.
+  public func automationNotices() async throws -> [AutomationNotice] {
+    try JSONDecoder().decode(
+      AutomationNoticesResponse.self, from: try await send("GET", "/v1/automation-notices").data
+    ).notices
+  }
+
+  /// `POST /v1/automation-notices/ack { ids }`: notices the shell is done with, shown or not. The
+  /// service ignores ids it no longer has.
+  public func acknowledgeAutomationNotices(ids: [String]) async throws {
+    guard (1...AutomationNotice.maxPending).contains(ids.count) else {
+      throw ShellClientError.invalidArgument("Acknowledge takes 1 to 50 notice ids.")
+    }
+    let body = try JSONEncoder().encode(["ids": ids])
+    _ = try await send(
+      "POST", "/v1/automation-notices/ack", body: body, contentType: "application/json")
+  }
+
   /// `POST /v1/admin/shutdown`: the service answers, then drains and exits. Bounded, since quit
   /// waits on it and falls back to SIGTERM.
   public func shutdown() async throws {
@@ -235,6 +254,15 @@ extension McpApprovalGate.Service {
     self.init(
       details: { try await client.mcpLaunchApprovalDetails(serverId: $0) },
       approve: { try await client.approveMcpLaunch($0) })
+  }
+}
+
+extension AutomationNoticeFeed.Service {
+  /// The feed's routes through the shell's own client.
+  public init(client: ShellClient) {
+    self.init(
+      pending: { try await client.automationNotices() },
+      acknowledge: { try await client.acknowledgeAutomationNotices(ids: $0) })
   }
 }
 

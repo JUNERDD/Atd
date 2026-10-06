@@ -8,6 +8,7 @@ import { dependencyChange } from './dependencies.js';
 import { AppFailure } from './errors.js';
 import { buildFromTask } from './lifecycle.js';
 import { scaffoldApp } from './scaffold.js';
+import { auditUnattended, isUnattendedRun, UNATTENDED_DECLINED } from '../unattended.js';
 import { AppService } from './service.js';
 import { APP_TOOL } from './tool-name.js';
 
@@ -100,6 +101,9 @@ interface ToolContext {
   taskId: string;
   runId: () => string;
   gate: Gate;
+  /** Whether the current run is unattended (unattended.ts): nobody answers a consent then. */
+  unattended: () => boolean;
+  audit: (entry: Record<string, unknown>) => void;
 }
 
 /** The folder `dir` names, which must stay inside the task folder. */
@@ -175,6 +179,20 @@ export async function runAppCall(
       const app = service.store.get(call.appId);
       if (app.sourceTaskId !== ctx.taskId)
         throw new AppFailure(403, 'forbidden', 'call runs only the app this task builds.');
+      // A capability nobody answered yet waits for the person's consent (consents.ts); with
+      // nobody present that wait would only time out, so the call is refused at once.
+      const unanswered = app.capabilities.filter((cap) => app.grants[cap] === undefined);
+      if (unanswered.length && ctx.unattended()) {
+        const title = `${app.name} needs consent for ${unanswered.join(', ')}`;
+        auditUnattended(ctx.audit, {
+          taskId: ctx.taskId,
+          runId: ctx.runId(),
+          tool: APP_TOOL,
+          kind: 'confirm',
+          title,
+        });
+        throw new AppFailure(403, 'forbidden', `${UNATTENDED_DECLINED} (${title})`);
+      }
       const input = call.input ?? null;
       await gate(`Call ${call.name} of ${app.name}`, JSON.stringify(input).slice(0, 4000));
       const value = await service.backends.call(
@@ -190,12 +208,15 @@ export async function runAppCall(
 
 /** The parent session's `app` tool; its side effects pass the `{ tool: 'app' }` gate. */
 export function appExtension(deps: HarnessDeps): ExtensionFactory {
+  const { runner } = deps;
   const ctx: ToolContext = {
-    dataDir: deps.runner.ctx.paths.root,
+    dataDir: runner.ctx.paths.root,
     cwd: deps.cwd,
-    taskId: deps.runner.taskId,
-    runId: deps.runner.currentRunId,
+    taskId: runner.taskId,
+    runId: runner.currentRunId,
     gate: deps.gate,
+    unattended: () => isUnattendedRun(runner.ctx.ledger, runner.taskId, runner.currentRunId()),
+    audit: runner.audit,
   };
   return (pi) => {
     pi.registerTool({

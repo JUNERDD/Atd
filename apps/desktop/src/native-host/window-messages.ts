@@ -1,4 +1,8 @@
-import type { AgentRequest, ExtensionSessionKind } from '../client/agent/bridge';
+import type {
+  AgentRequest,
+  AutomationSessionTarget,
+  ExtensionSessionKind,
+} from '../client/agent/bridge';
 
 /**
  * Messages between the shell's panel, settings and welcome guide windows. The shell's web views share the
@@ -8,6 +12,8 @@ import type { AgentRequest, ExtensionSessionKind } from '../client/agent/bridge'
 export type WindowMessage =
   /** Settings → panel: open the command editor session (`null` creates a command). */
   | { type: 'commandSession'; commandId: string | null }
+  /** Settings → panel: open the automation editor session (`null` creates an automation). */
+  | { type: 'automationSession'; automation: AutomationSessionTarget }
   /**
    * Settings → panel: run a command from the settings list. The panel shows a launched command,
    * so it also prepares it: a screenshot command then captures with the panel out of the way.

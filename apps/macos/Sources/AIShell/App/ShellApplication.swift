@@ -28,6 +28,8 @@ final class ShellAppDelegate: NSObject, NSApplicationDelegate {
   /// Widget taps that launched the app: on a cold start the URL arrives before
   /// `applicationDidFinishLaunching` (T1b).
   private var linksBeforeLaunch: [URL] = []
+  /// Clicks on automation notifications, held until the controller can open their tasks.
+  private let notifications = NotificationResponder()
 
   init(makeServices: @escaping @MainActor () -> ShellServices) {
     self.makeServices = makeServices
@@ -36,6 +38,8 @@ final class ShellAppDelegate: NSObject, NSApplicationDelegate {
   func applicationWillFinishLaunching(_ notification: Notification) {
     // The open-application Apple event is current only while launching.
     launchedAtLogin = AppPresence.launchedAtLogin()
+    // Before launch finishes, so a notification click that launched the app reaches it.
+    notifications.install()
   }
 
   func applicationDidFinishLaunching(_ notification: Notification) {
@@ -46,13 +50,15 @@ final class ShellAppDelegate: NSObject, NSApplicationDelegate {
     self.finderService = finderService
     NSApp.servicesProvider = finderService
     // Opened at login, the app waits in the menu bar instead of showing the panel; opened with
-    // files, it shows them; opened by a widget, it shows what the widget asks for.
+    // files, it shows them; opened by a widget or a notification, it shows what that asks for.
     controller.start(
-      revealPanel: !launchedAtLogin && openedBeforeLaunch.isEmpty && linksBeforeLaunch.isEmpty)
+      revealPanel: !launchedAtLogin && openedBeforeLaunch.isEmpty && linksBeforeLaunch.isEmpty
+        && !notifications.hasHeldClicks)
     controller.openItems(openedBeforeLaunch)
     openedBeforeLaunch = []
     for link in linksBeforeLaunch { controller.openWidgetLink(link) }
     linksBeforeLaunch = []
+    notifications.deliver { [weak controller] taskId in controller?.openNotifiedTask(taskId) }
   }
 
   /// Files or folders dropped on the Dock icon or opened with `open -a`, through the same import

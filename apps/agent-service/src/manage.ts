@@ -41,7 +41,10 @@ export function registerManageRoutes(app: FastifyInstance, ctx: ManageContext): 
     serviceId: ctx.config.serviceId,
     dataDir: ctx.config.paths.root,
   });
-  registerCommandRoutes(app, { dataDir: ctx.config.paths.root });
+  registerCommandRoutes(app, {
+    dataDir: ctx.config.paths.root,
+    launch: { paths: ctx.config.paths, ledger: ctx.ledger, manager: ctx.manager },
+  });
   registerMemoryRoutes(app, { agentDir: ctx.config.paths.agentDir, log: ctx.log });
   registerTaskManageRoutes(app, {
     ledger: ctx.ledger,

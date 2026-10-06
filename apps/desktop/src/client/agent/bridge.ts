@@ -1,15 +1,17 @@
 import type { RunPolicy } from './run-policy';
 import { Type, type Static } from 'typebox';
-import type {
-  CompactRefusal,
-  ContextBreakdown,
-  MemoryCreateRequest,
-  MemoryProblem,
-  MemoryProposal,
-  MemorySaveRequest,
-  MemorySettingsRequest,
-  MemoryUnit,
-  TaskContextState,
+import {
+  AutomationDraftSchema,
+  Identifier,
+  type CompactRefusal,
+  type ContextBreakdown,
+  type MemoryCreateRequest,
+  type MemoryProblem,
+  type MemoryProposal,
+  type MemorySaveRequest,
+  type MemorySettingsRequest,
+  type MemoryUnit,
+  type TaskContextState,
 } from '@atd/agent-contracts';
 import type { CommandDefinition } from './command-schema';
 import type { AgentTask, Artifact, FileRef, RunSnapshot, TaskInput } from './task-schema';
@@ -119,6 +121,20 @@ export interface CommandSession {
   commandId: string | null;
   name: string;
 }
+
+/**
+ * Hands the automation editor off to a new panel session: the saved automation an edit session
+ * updates, which the seeded prompt names by name and id, or null to create one. It is validated
+ * where it crosses between windows.
+ */
+export const AutomationSessionTargetSchema = Type.Union([
+  Type.Object(
+    { id: Identifier, name: AutomationDraftSchema.properties.name },
+    { additionalProperties: false },
+  ),
+  Type.Null(),
+]);
+export type AutomationSessionTarget = Static<typeof AutomationSessionTargetSchema>;
 
 /**
  * Hands create- or edit-with-AI off to a new panel session seeded with an app skill: Extensions
@@ -248,5 +264,6 @@ export interface AgentBridge {
   onChange: (listener: (event: AgentEvent) => void) => () => void;
   onLaunch: (listener: (launch: CommandLaunch) => void) => () => void;
   onCommandSession: (listener: (session: CommandSession) => void) => () => void;
+  onAutomationSession: (listener: (automation: AutomationSessionTarget) => void) => () => void;
   onExtensionSession: (listener: (session: ExtensionSession) => void) => () => void;
 }

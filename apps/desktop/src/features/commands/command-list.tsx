@@ -1,5 +1,14 @@
 import { useTranslation } from 'react-i18next';
-import { Copy, KeyboardOff, MoreHorizontal, Pencil, Play, SearchX, Trash2 } from 'lucide-react';
+import {
+  Copy,
+  KeyboardOff,
+  MoreHorizontal,
+  Pencil,
+  Play,
+  SearchX,
+  Trash2,
+  Zap,
+} from 'lucide-react';
 import { Button } from '@atd/ui/components/button';
 import { Empty, EmptyContent, EmptyHeader, EmptyMedia, EmptyTitle } from '@atd/ui/components/empty';
 import { HighlightedText } from '@atd/ui/components/highlighted-text';
@@ -28,6 +37,8 @@ import { ShortcutRecorder } from '../../components/shortcut-recorder';
 import { shortcutKeys } from '../../lib/shortcuts';
 import { agentApi } from '../agent/use-agent';
 import { showErrorToast } from '../../components/toast-store';
+import { needsPresence } from '../automations/automation-draft';
+import { useOpenSettingsAutomation } from '../settings/settings-navigation';
 import { CommandIcon } from './command-icon';
 import { useCommandShortcutCapture } from './use-command-shortcut-capture';
 import '../../components/open-row.css';
@@ -146,6 +157,11 @@ function CommandRow({
   shortcutError: string | undefined;
 } & CommandRowActions) {
   const { t } = useTranslation('commands');
+  const { t: tAutomations } = useTranslation('automations');
+  const automate = useOpenSettingsAutomation();
+  // A command that reads the selection, the clipboard or a screenshot needs someone there, so it
+  // is never offered as an automation.
+  const automatable = !needsPresence(command);
   const plugin = Boolean(command.pluginId);
   const recorder = useCommandShortcutCapture((shortcut) => onShortcut(command, shortcut));
   const { capture, platform } = recorder;
@@ -252,10 +268,18 @@ function CommandRow({
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 {plugin ? (
-                  <DropdownMenuItem onSelect={() => onDuplicate(command)}>
-                    <Copy />
-                    {t('list.duplicateToPersonal')}
-                  </DropdownMenuItem>
+                  <>
+                    <DropdownMenuItem onSelect={() => onDuplicate(command)}>
+                      <Copy />
+                      {t('list.duplicateToPersonal')}
+                    </DropdownMenuItem>
+                    {automatable && (
+                      <DropdownMenuItem onSelect={() => automate({ commandId: command.id })}>
+                        <Zap />
+                        {tAutomations('command.automate')}
+                      </DropdownMenuItem>
+                    )}
+                  </>
                 ) : (
                   <>
                     <DropdownMenuItem onSelect={() => onOpen(command)}>
@@ -266,6 +290,13 @@ function CommandRow({
                       <Copy />
                       {t('list.duplicate')}
                     </DropdownMenuItem>
+                    {/* A new automation that runs this command, opened in Automations. */}
+                    {automatable && (
+                      <DropdownMenuItem onSelect={() => automate({ commandId: command.id })}>
+                        <Zap />
+                        {tAutomations('command.automate')}
+                      </DropdownMenuItem>
+                    )}
                     {command.shortcut ? (
                       <DropdownMenuItem disabled={busy} onSelect={() => onShortcut(command, '')}>
                         <KeyboardOff />

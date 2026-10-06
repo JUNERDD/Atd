@@ -1,6 +1,7 @@
 import type { FileSearchQuery, FileSearchReply, FolderRef } from '@atd/agent-contracts';
 import type { AgentBridge } from './agent/bridge';
 import type { AppsBridge } from './apps-contract';
+import type { AutomationsBridge } from './automations-contract';
 import type { Screenshot } from './agent/screenshot-input';
 import type { FileRef } from './agent/task-schema';
 import type { MiniPanelOpenOn, SettingsBridge } from './settings-contract';
@@ -110,6 +111,8 @@ export interface DesktopBridge {
   readonly folders?: FolderBridge;
   /** The user apps the agent built and their windows; absent in tests that need none. */
   readonly apps?: AppsBridge;
+  /** Saved prompts and commands that start their own tasks; absent in tests that need none. */
+  readonly automations?: AutomationsBridge;
   show: () => Promise<void>;
   hide: () => Promise<void>;
   getState: () => Promise<DesktopState>;
@@ -174,6 +177,12 @@ export interface DesktopBridge {
    * returns the unsubscribe. The page takes the capture, quotes it and focuses the composer.
    */
   onSelectionAsk?: (listener: () => void) => () => void;
+  /**
+   * Tasks the shell asks the panel to show, after the person opened an automation's notification
+   * (panel only; absent in the other windows and in tests); returns the unsubscribe. A request
+   * that arrived before anything subscribed reaches the first subscriber.
+   */
+  onTaskOpen?: (listener: (taskId: string) => void) => () => void;
   /** The welcome guide window's own controls; present only in that window. */
   readonly onboarding?: OnboardingBridge;
 }

@@ -98,6 +98,7 @@ async function openSession(script: string, taskId: string = randomUUID()) {
     tier: 'manual' as const,
     grants: new Set<string>(),
     review: async () => ({ decision: 'allow' as const, reason: '' }),
+    unattended: () => false,
     sessions: manager,
     confirms: harness.service.confirms,
     capabilities: harness.service.capabilities,

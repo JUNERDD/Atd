@@ -1,4 +1,4 @@
-import { AppWindow, Blocks, Brain, Command, Plug, Settings, Shield } from 'lucide-react';
+import { AppWindow, Blocks, Brain, Command, Plug, Settings, Shield, Zap } from 'lucide-react';
 
 /** The settings destinations, in navigation order. */
 export const settingsSections = [
@@ -6,6 +6,7 @@ export const settingsSections = [
   { id: 'providers', labelKey: 'nav.providers', icon: Plug },
   { id: 'permissions', labelKey: 'nav.permissions', icon: Shield },
   { id: 'commands', labelKey: 'nav.commands', icon: Command },
+  { id: 'automations', labelKey: 'nav.automations', icon: Zap },
   { id: 'memory', labelKey: 'nav.memory', icon: Brain },
   { id: 'apps', labelKey: 'nav.apps', icon: AppWindow },
   { id: 'extensions', labelKey: 'nav.extensions', icon: Blocks },

@@ -24,8 +24,9 @@ _The screenshot shows the React UI without the native window material, which cha
 - **Providers**: named connections, each with its own credentials and default model. The catalog comes from the pi registry, with entry points for local and custom connections.
 - **Commands**: reusable instructions with Mustache variables, typed parameters, shortcuts, and tool settings. AI-suggested instructions are previewed first; applying one changes only the unsaved draft and can be undone.
 - **Extensions**: skills, subagents (including Markdown agents from `~/.atd/agents`), and MCP servers, each of which can be turned on or off for the next run.
+- **Automations**: agent work that starts by itself: on a schedule (once, every N minutes or hours, daily, weekly, monthly, or a cron expression in a chosen time zone), when files are added to or change in a folder you granted, or after another automation finishes. The action is a prompt or a saved command with bound parameters. Each run is a new task that nobody watches: actions that would need your approval are declined instead of waiting, `ask_user` gets no answer, and memory never learns from it. Results arrive as macOS notifications and in each automation's run history; runs that find nothing new stay quiet, and failures always notify. Automations fire only while Atd runs: a missed schedule catches up once when it is back, and an automation that fails three times in a row turns itself off. The agent can create automations from a conversation, and every change waits for your confirmation.
 - **Memory**: long-term memory kept as named memories with a description, type and body, like skills: a few apply to every task, the rest are listed in a memory index and read on demand. The agent learns from conversations, suggests changes and new skills for review, and each memory can be turned off; learning can be paused.
-- **Settings**: Permissions, Extensions, Providers, Commands, Memory, and Shortcuts. The settings navigation is a sidebar at 760px and wider, compact top navigation from 480px, and a drawer below that.
+- **Settings**: General, Models, Permissions, Commands, Automations, Memory, Apps, and Extensions. The settings navigation is a sidebar at 760px and wider, compact top navigation from 480px, and a drawer below that.
 - **Languages**: English and Simplified Chinese. The first run follows the OS locale.
 
 Default shortcuts:
@@ -37,7 +38,7 @@ Default shortcuts:
 | Open settings      | ⌘ ,                   |
 | Send / new line    | Enter / Shift + Enter |
 
-You can change all of them in Settings → Shortcuts. If macOS refuses the global shortcut, the panel is still available from the menu bar icon.
+You can change all of them in Settings → General. If macOS refuses the global shortcut, the panel is still available from the menu bar icon.
 
 ## Requirements
 
@@ -190,7 +191,7 @@ Releases are paused. There is no release workflow; the native app's releases, st
 - **Local service**: the agent service listens only on loopback and requires a bearer token stored in its data directory. It hosts no web page and has no browser sign-in.
 - **Credentials**: provider and MCP secrets are stored in the OS keychain (macOS Keychain, Windows Credential Manager, or Secret Service on Linux). They never reach the renderer or task snapshots. If no persistent keyring is available, the service says so and runs only with temporary credentials from `AI_AGENT_TEMP_*` environment variables, which it never stores.
 - **Service lifecycle**: the Release app starts its bundled service as its child and stops it on quit. When tasks are running, quitting first asks whether to stop them; queued tasks stay queued and start the next time the app opens. OS shutdown, logout, and termination signals quit without asking. If the service exits unexpectedly, the app restarts it with an increasing delay. After 3 unexpected exits within 5 minutes it stops trying, and **Restart Agent Service** in the menu starts it again. The Debug app never starts or stops a service.
-- **Open at login**: an opt-in switch in Settings › Shortcuts (Release builds). The state lives in the macOS login items, not in the app's settings; an app started at login stays in the menu bar without showing the panel.
+- **Open at login**: an opt-in switch in Settings › General (Release builds). The state lives in the macOS login items, not in the app's settings; an app started at login stays in the menu bar without showing the panel.
 - **Logs**: the Release app writes the service's output to `~/Library/Logs/AI/service.log`, with the previous four launches kept as `service.1.log` to `service.4.log` (**Show Service Logs** in the menu reveals it). The shell logs to the unified log under the subsystem `com.junerdd.ai`.
 - **Data location**: tasks, settings, and memory live in the service data directory:
   - macOS: `~/Library/Application Support/AgentService`
