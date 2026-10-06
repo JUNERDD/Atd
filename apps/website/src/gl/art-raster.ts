@@ -1,3 +1,4 @@
+import { signedDistance } from './sdf';
 import type { Box } from './types';
 
 /** Dot grid geometry in CSS px. The grid is centered on the canvas and overhangs it by up to one cell. */
@@ -22,6 +23,8 @@ export interface ArtSpec {
 export interface WordRaster {
   /** Ink coverage per cell, 0..255, row-major from the top-left cell. */
   coverage: Uint8Array;
+  /** The word's signed distance field in cells, per cell (see sdf.ts): what a change melts. */
+  shape: Float32Array;
   /** Where the word's ink landed, in CSS px; the box itself when nothing was drawn. */
   ink: Box;
 }
@@ -141,7 +144,9 @@ export function createArtRasterizer(): ArtRasterizer | null {
 
       const drawWord = (block: Block): WordRaster => {
         const coverage = new Uint8Array(cols * rows);
-        if (block.size <= 0) return { coverage, ink: spec.box };
+        if (block.size <= 0) {
+          return { coverage, shape: signedDistance(coverage, cols, rows), ink: spec.box };
+        }
         ctx.clearRect(0, 0, scratchWidth, scratchHeight);
         // Resizing resets the context, so the font is set per word, after any resize.
         const size = block.size * k;
@@ -188,7 +193,7 @@ export function createArtRasterizer(): ArtRasterizer | null {
             coverage[row * cols + col] = Math.round(sum / area);
           }
         }
-        return { coverage, ink };
+        return { coverage, shape: signedDistance(coverage, cols, rows), ink };
       };
 
       return { layout, words: blocks.map(drawWord) };

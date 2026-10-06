@@ -42,8 +42,8 @@ function sameBox(a: Box | null, b: Box | null): boolean {
  * in which case the host keeps its DOM fallback. The field draws only while the canvas intersects
  * the viewport and the document is visible: continuously in full motion, on demand under reduced
  * motion. Listeners write to local state that the frame loop reads; one draw call per frame. Each
- * word has its own coverage texture on the shared grid; a change binds the outgoing word to unit 0
- * and the incoming one to unit 1.
+ * word has a coverage texture and a signed distance field on the shared grid; a change binds the
+ * outgoing word's to units 0 and 2 and the incoming word's to units 1 and 3.
  */
 export function createDotField(
   canvas: HTMLCanvasElement,
@@ -83,7 +83,7 @@ function runField(
   const cycle = createWordCycle(words.length);
   let artBox: Box | null = null;
   let layout: GridLayout = { pitch: 12, originX: 0, originY: 0, cols: 1, rows: 1 };
-  /** Where each word's ink sits, for the power-on scan and the scroll-away dive. */
+  /** Where each word's ink sits, for the power-on scan. */
   let inks: Box[] = [];
 
   let width = 0;
@@ -151,8 +151,9 @@ function runField(
     });
     layout = raster.layout;
     inks = raster.words.map((word) => word.ink);
-    const coverages = raster.words.map((word) => word.coverage);
-    uploadWords(gl, target, coverages, layout.cols, layout.rows);
+    uploadWords(gl, target, raster.words, layout.cols, layout.rows);
+    // A change in flight belongs to the old grid; it lands at once.
+    cycle.finish();
     quality.reset();
   }
 
@@ -176,11 +177,15 @@ function runField(
     if (bootStart < 0) bootStart = now;
     const boot = bootDone ? BOOT_SETTLED : (now - bootStart) / 1000;
     if (boot >= BOOT_SECONDS) bootDone = true;
-    // The board changes words only in full motion, once it has powered on.
-    const incoming = cycle.tick(time, !reduced && bootDone);
+    // The board changes words only in full motion, once it has powered on and while it is in place.
+    const incoming = cycle.tick(time, !reduced && bootDone && scroll < 0.05);
     if (incoming >= 0) options.onWord?.(incoming);
     const shown = target.words[cycle.current] ?? target.art;
-    const inkBox = inks[cycle.current] ?? artBox ?? defaultArtBox(width, height);
+    const shape = target.shapes[cycle.current] ?? target.art;
+    const box = artBox ?? defaultArtBox(width, height);
+    const inkBox = inks[cycle.current] ?? box;
+    const pivot = [box.x + box.width / 2, box.y + box.height / 2] as const;
+    const morph = cycle.morph(time);
 
     // The pointer is stored in viewport coordinates; adding the live scroll keeps the lens under it
     // while the page scrolls without pointer events.
@@ -201,6 +206,10 @@ function runField(
     const u = target.uniforms;
     gl.useProgram(target.program);
     gl.bindVertexArray(target.vao);
+    gl.activeTexture(gl.TEXTURE3);
+    gl.bindTexture(gl.TEXTURE_2D, target.shapes[cycle.next] ?? shape);
+    gl.activeTexture(gl.TEXTURE2);
+    gl.bindTexture(gl.TEXTURE_2D, shape);
     gl.activeTexture(gl.TEXTURE1);
     gl.bindTexture(gl.TEXTURE_2D, target.words[cycle.next] ?? shown);
     gl.activeTexture(gl.TEXTURE0);
@@ -214,7 +223,8 @@ function runField(
     gl.uniform3f(u.u_grid, layout.originX, layout.originY, layout.pitch);
     gl.uniform2i(u.u_cells, layout.cols, layout.rows);
     gl.uniform4f(u.u_artBox, inkBox.x, inkBox.y, inkBox.width, inkBox.height);
-    gl.uniform1f(u.u_morph, cycle.morph(time));
+    gl.uniform2f(u.u_pivot, ...pivot);
+    gl.uniform1f(u.u_morph, morph);
     gl.uniform4f(u.u_lens, lensX.value, lensY.value, lensRadius, lensStrength.value);
     gl.uniform1f(u.u_zoom, LENS_ZOOM);
     gl.uniform4fv(u.u_ripples, ripples);
