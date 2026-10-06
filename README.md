@@ -124,6 +124,7 @@ apps/
   agent-service/         Local agent service (Fastify HTTP + WebSocket, pi SDK)
     src/                 Tasks, providers, credentials, MCP, skills, subagents, memory
     product-skills/      Built-in skills shipped with the service
+  website/               Marketing website: Vite + React, prerendered per language, deployed on Vercel
 crates/                  Rust file index and its Node binding (Cargo workspace)
 packages/
   agent-contracts/       Shared TypeBox schemas for the service protocol

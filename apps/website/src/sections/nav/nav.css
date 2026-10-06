@@ -1,0 +1,146 @@
+/* The scroll edge spans the viewport under the bar; it is the kit's masked blur, matched to the
+   section beneath. */
+.nav__edge {
+  --scroll-edge-bg: var(--ink-0);
+}
+
+.nav__edge[data-tone='paper'] {
+  --scroll-edge-bg: var(--paper-1);
+}
+
+/* A floating Liquid Glass capsule. Inner controls keep concentric corners: the 44 px pill sits 4 px
+   inside the 52 px bar. */
+.nav {
+  position: fixed;
+  z-index: 50;
+  inset-block-start: max(var(--nav-top), env(safe-area-inset-top));
+  inset-inline: 0;
+  display: flex;
+  justify-content: center;
+  padding-inline: var(--gutter);
+  pointer-events: none;
+}
+
+.nav__bar {
+  --glass-radius: 999px;
+  --glass-density: 72%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  inline-size: min(100%, 980px);
+  block-size: var(--nav-h);
+  padding: 4px;
+  padding-inline-start: 16px;
+  border-radius: 999px;
+  pointer-events: auto;
+}
+
+/* Over the paper section the bar is light glass: dark text, and the pill flips to black. The kit's
+   glass tokens are restated with its light values because browsers resolve `light-dark()` inside
+   custom properties where they are declared (the dark root), not in this light subtree. */
+.nav__bar[data-theme='light'] {
+  --fg-1: var(--paper-fg-1);
+  --fg-2: var(--paper-fg-2);
+  --label: var(--paper-fg-1);
+  --accent-fill: var(--paper-fg-1);
+  --accent-on: #fff;
+  --focus-ring: var(--paper-fg-1);
+  --glass-fill-color: #fff;
+  --glass-saturate: 180%;
+  --glass-specular: rgb(255 255 255 / 0.95);
+  --glass-specular2: rgb(255 255 255 / 0.55);
+  --glass-rim: rgb(255 255 255 / 0.55);
+  --glass-inner-glow: rgb(255 255 255 / 0.45);
+  --glass-edge: rgb(0 0 0 / 0.1);
+  --glass-sheen: rgb(255 255 255 / 0.55);
+}
+
+.nav__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-block-size: 44px;
+  padding-inline-end: 8px;
+  color: var(--fg-1);
+}
+
+/* The Atd mark as an alpha mask, so it takes the text color (as the panel uses it). */
+.nav__mark {
+  inline-size: 26px;
+  block-size: 26px;
+  background-color: currentColor;
+  -webkit-mask: url('/brand/atd-symbol.png') center / contain no-repeat;
+  mask: url('/brand/atd-symbol.png') center / contain no-repeat;
+}
+
+.nav__word {
+  font-family: var(--font-dot);
+  font-size: 1.375rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.02em;
+}
+
+.nav__links {
+  display: none;
+  flex: 1;
+  justify-content: center;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.nav__link {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: 44px;
+  padding-inline: 12px;
+  border-radius: 999px;
+  font-size: var(--fs-small);
+  color: var(--fg-2);
+  transition: color var(--dur-fast) linear;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .nav__link:hover,
+  .nav__lang:hover {
+    color: var(--fg-1);
+  }
+}
+
+.nav__end {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-inline-start: auto;
+}
+
+.nav__lang {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-inline-size: 44px;
+  min-block-size: 44px;
+  padding-inline: 10px;
+  border-radius: 999px;
+  font-size: var(--fs-small);
+  color: var(--fg-2);
+  transition: color var(--dur-fast) linear;
+}
+
+.nav__cta {
+  padding-inline: 18px;
+  font-size: var(--fs-small);
+  font-weight: 600;
+}
+
+@media (width >= 840px) {
+  .nav__links {
+    display: flex;
+  }
+
+  .nav__end {
+    margin-inline-start: 0;
+  }
+}

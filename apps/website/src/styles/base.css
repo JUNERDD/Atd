@@ -1,0 +1,126 @@
+/* Page defaults and the shared utilities every section may use. */
+html {
+  background-color: var(--ink-0);
+  -webkit-text-size-adjust: 100%;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+/* The page sits on a faint 24 px dot grid; sections without their own fill show it. */
+body {
+  margin: 0;
+  min-height: 100dvh;
+  overflow-x: clip;
+  font-family: var(--font-text);
+  font-size: var(--fs-body);
+  line-height: var(--lh-text);
+  color: var(--fg-1);
+  background-color: var(--ink-1);
+  background-image: radial-gradient(circle, var(--dot-0) 1px, transparent 1.5px);
+  background-size: var(--grid) var(--grid);
+  background-position: calc(var(--grid) / 2) calc(var(--grid) / 2);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: var(--fg-1);
+  color: var(--ink-0);
+}
+
+/* Element resets sit in the lowest layer, so the kit's component classes (a `.btn-filled` link, for
+   example) still win over them; unlayered, `a { color: inherit }` would beat every kit rule. */
+@layer site-reset {
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  p,
+  figure,
+  blockquote,
+  dl,
+  dd {
+    margin: 0;
+  }
+}
+
+/* Section ids land below the floating nav. */
+[id] {
+  scroll-margin-top: calc(var(--nav-h) + var(--nav-top) + 16px);
+}
+
+.container {
+  width: min(100% - 2 * var(--gutter), var(--maxw));
+  margin-inline: auto;
+}
+
+/* Instrument micro-label: mono, uppercase, tracked. */
+.mono-label {
+  font-family: var(--font-mono);
+  font-size: var(--fs-label);
+  font-weight: 500;
+  line-height: 1.4;
+  letter-spacing: var(--tr-label);
+  text-transform: uppercase;
+  color: var(--fg-3);
+}
+
+/* Chinese has no case; uppercasing would only shout the Latin words inside a label ("MAC"). */
+:lang(zh) .mono-label {
+  text-transform: none;
+}
+
+/* Halftone lettering: the glyphs are filled with a dot screen, so any script (Chinese included)
+   reads as dot-matrix type. Best on heavy weights at display sizes; the screen never gets finer
+   than 3 px, below which browsers drop the dots and the text would vanish. */
+.dot-text {
+  --dot-pitch: max(3px, 0.075em);
+  background-image: radial-gradient(circle, var(--dot-1) 0 34%, transparent 40%);
+  background-size: var(--dot-pitch) var(--dot-pitch);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: var(--fg-1);
+}
+
+@media (forced-colors: active) {
+  .dot-text {
+    background: none;
+    -webkit-text-fill-color: currentColor;
+  }
+}
+
+.hairline {
+  height: 1px;
+  border: 0;
+  margin: 0;
+  background: var(--line-1);
+}
+
+.skip-link {
+  position: fixed;
+  z-index: 100;
+  inset-block-start: var(--nav-top);
+  inset-inline-start: var(--gutter);
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: var(--fg-1);
+  color: var(--ink-0);
+  font-size: var(--fs-small);
+  font-weight: 600;
+  translate: 0 -200%;
+}
+
+.skip-link:focus-visible {
+  translate: 0 0;
+}

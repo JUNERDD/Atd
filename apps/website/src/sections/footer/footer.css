@@ -1,0 +1,91 @@
+.footer {
+  padding-block: 72px max(40px, env(safe-area-inset-bottom));
+  border-block-start: 1px solid var(--line-1);
+  background-color: var(--ink-0);
+  font-size: var(--fs-small);
+  color: var(--fg-2);
+}
+
+.footer__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 40px 24px;
+}
+
+.footer__brand {
+  grid-column: 1 / -1;
+}
+
+.footer__word {
+  font-family: var(--font-dot);
+  font-size: 3rem;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--fg-1);
+}
+
+.footer__tagline {
+  margin-block-start: 12px;
+  max-inline-size: 22rem;
+}
+
+.footer__column ul {
+  display: grid;
+  gap: 2px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.footer__link {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: 32px;
+  color: var(--fg-2);
+  transition: color var(--dur-fast) linear;
+}
+
+.footer__link[aria-current='page'] {
+  color: var(--fg-1);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .footer__link:hover {
+    color: var(--fg-1);
+  }
+}
+
+.footer__base {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-block-start: 56px;
+  padding-block-start: 20px;
+}
+
+/* The base's top hairline, drawn in as the footer arrives. */
+.footer__rule {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline: 0;
+  block-size: 1px;
+  background-color: var(--line-1);
+}
+
+.footer__note {
+  color: var(--fg-3);
+  font-size: 0.75rem;
+}
+
+@media (width >= 700px) {
+  .footer__grid {
+    grid-template-columns: 2fr repeat(3, minmax(0, 1fr));
+  }
+
+  .footer__brand {
+    grid-column: auto;
+  }
+}
