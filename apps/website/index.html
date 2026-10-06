@@ -9,6 +9,12 @@
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <!--app-head-->
     <script>
+      // Entrance motion: content is held back for its reveal only when scripts run and the visitor
+      // allows motion; set before first paint so nothing shows and then hides (styles/motion.css).
+      if (!matchMedia('(prefers-reduced-motion: reduce)').matches)
+        document.documentElement.setAttribute('data-motion', '');
+    </script>
+    <script>
       // Sends visitors whose browser prefers Chinese to the Chinese page until they pick a language
       // themselves: the language links record that choice under `atd-lang`.
       try {

@@ -20,9 +20,12 @@ export function useNavTone(bar: RefObject<HTMLElement | null>): NavTone {
 
     const observe = () => {
       frame = 0;
-      const box = bar.current?.getBoundingClientRect();
-      if (!box) return;
-      const center = Math.round(box.top + box.height / 2);
+      const element = bar.current;
+      const header = element?.parentElement;
+      if (!element || !header) return;
+      // The bar's resting position from layout, not its box: the entrance moves it off screen first.
+      const top = Number.parseFloat(getComputedStyle(header).top) + element.offsetTop;
+      const center = Math.max(0, Math.round(top + element.offsetHeight / 2));
       observer?.disconnect();
       under.clear();
       observer = new IntersectionObserver(

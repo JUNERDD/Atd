@@ -1,0 +1,291 @@
+/* Entrance motion. The prerendered page is complete without scripts. The template's inline script
+   marks the root `data-motion` before first paint when the visitor allows motion; under it, every
+   `[data-reveal]` element waits, hidden, until the reveal controller (src/motion/reveal.ts) marks it
+   `data-revealed` as it scrolls into view. Each effect is a CSS animation from a hidden keyframe to
+   the element's own style: the backwards fill keeps a staggered item hidden through its delay
+   (`--rv-delay`, set by the controller), and nothing is held once it ends. Only opacity and the
+   individual transform properties animate, so every entrance runs on the compositor.
+
+   Effects: rise, fade, lift, left, right, plot, draw, draw-y, power, drop, words (a SplitText
+   heading), and decode, count and type (text effects the controller plays in script). */
+
+:root {
+  /* Delay between the words of a split heading; Chinese splits per character, so it steps faster. */
+  --rv-step: 42ms;
+}
+
+:root:lang(zh) {
+  --rv-step: 30ms;
+}
+
+/* A split heading's pieces are atomic so they can move; layout is the same with or without motion. */
+.split__piece {
+  display: inline-block;
+}
+
+[data-reveal='draw'] {
+  transform-origin: 0 50%;
+}
+
+[data-reveal='draw-y'] {
+  transform-origin: 50% 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  :root[data-motion] [data-reveal]:not([data-revealed], [data-reveal='drop']) {
+    opacity: 0;
+  }
+
+  /* The drop effect only moves: it is meant for glass bars, which lose their backdrop while an
+     ancestor fades. */
+  :root[data-motion] [data-reveal='drop']:not([data-revealed]) {
+    translate: 0 calc(-100% - 32px);
+  }
+
+  /* If the page script never runs, nothing stays hidden for long. */
+  :root[data-motion]:not([data-motion-ready]) [data-reveal] {
+    animation: rv-failsafe 1ms 3s forwards;
+  }
+
+  :root[data-motion] [data-reveal='rise'][data-revealed] {
+    animation: rv-rise var(--rv-dur, 0.9s) var(--spring-smooth) var(--rv-delay, 0s) backwards;
+  }
+
+  :root[data-motion] [data-reveal='fade'][data-revealed] {
+    animation: rv-fade var(--rv-dur, 0.8s) var(--curve-out) var(--rv-delay, 0s) backwards;
+  }
+
+  :root[data-motion] [data-reveal='lift'][data-revealed] {
+    animation: rv-lift var(--rv-dur, 1s) var(--spring-smooth) var(--rv-delay, 0s) backwards;
+  }
+
+  :root[data-motion] [data-reveal='left'][data-revealed] {
+    animation: rv-left var(--rv-dur, 0.9s) var(--spring-smooth) var(--rv-delay, 0s) backwards;
+  }
+
+  :root[data-motion] [data-reveal='right'][data-revealed] {
+    animation: rv-right var(--rv-dur, 0.9s) var(--spring-smooth) var(--rv-delay, 0s) backwards;
+  }
+
+  :root[data-motion] [data-reveal='plot'][data-revealed] {
+    animation: rv-plot var(--rv-dur, 0.7s) var(--spring-snappy) var(--rv-delay, 0s) backwards;
+  }
+
+  :root[data-motion] [data-reveal='draw'][data-revealed] {
+    animation: rv-draw var(--rv-dur, 1.1s) var(--curve-sheet) var(--rv-delay, 0s) backwards;
+  }
+
+  :root[data-motion] [data-reveal='draw-y'][data-revealed] {
+    animation: rv-draw-y var(--rv-dur, 1.1s) var(--curve-sheet) var(--rv-delay, 0s) backwards;
+  }
+
+  :root[data-motion] [data-reveal='power'][data-revealed] {
+    animation: rv-power var(--rv-dur, 0.9s) var(--curve-out) var(--rv-delay, 0s) backwards;
+  }
+
+  :root[data-motion] [data-reveal='drop'][data-revealed] {
+    animation: rv-drop var(--rv-dur, 1s) var(--spring-smooth) var(--rv-delay, 0s) backwards;
+  }
+
+  :root[data-motion] [data-reveal='words'][data-revealed] .split__piece {
+    animation: rv-word var(--rv-dur, 0.9s) var(--spring-smooth)
+      calc(var(--rv-delay, 0s) + var(--rv-i, 0) * var(--rv-step)) backwards;
+  }
+
+  /* Text effects: visible at once; the controller scrambles, counts or types the text in. */
+  :root[data-motion]
+    :is([data-reveal='decode'], [data-reveal='count'], [data-reveal='type'])[data-revealed] {
+    animation: rv-fade 0.2s linear var(--rv-delay, 0s) backwards;
+  }
+}
+
+@media print {
+  :root[data-motion] [data-reveal] {
+    opacity: 1;
+    translate: none;
+    animation: none;
+  }
+}
+
+@keyframes rv-failsafe {
+  to {
+    opacity: 1;
+    translate: none;
+  }
+}
+
+@keyframes rv-rise {
+  from {
+    opacity: 0;
+    translate: 0 var(--rv-y, 28px);
+  }
+}
+
+@keyframes rv-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes rv-lift {
+  from {
+    opacity: 0;
+    translate: 0 20px;
+    scale: 0.94;
+  }
+}
+
+@keyframes rv-left {
+  from {
+    opacity: 0;
+    translate: calc(-1 * var(--rv-x, 40px)) 0;
+  }
+}
+
+@keyframes rv-right {
+  from {
+    opacity: 0;
+    translate: var(--rv-x, 40px) 0;
+  }
+}
+
+@keyframes rv-plot {
+  from {
+    opacity: 0;
+    scale: 0.2;
+    rotate: -90deg;
+  }
+}
+
+@keyframes rv-draw {
+  from {
+    scale: 0 1;
+  }
+}
+
+@keyframes rv-draw-y {
+  from {
+    scale: 1 0;
+  }
+}
+
+/* A CRT coming on: a bright line widens across the middle, then opens to the full picture. */
+@keyframes rv-power {
+  0% {
+    opacity: 0;
+    scale: 0.4 0.006;
+  }
+
+  35% {
+    opacity: 1;
+    scale: 1 0.006;
+  }
+
+  100% {
+    opacity: 1;
+    scale: 1 1;
+  }
+}
+
+@keyframes rv-drop {
+  from {
+    translate: 0 calc(-100% - 32px);
+  }
+}
+
+@keyframes rv-word {
+  from {
+    opacity: 0;
+    translate: 0 0.45em;
+  }
+}
+
+/* Spotlight: a surface marked `data-spotlight` catches a soft light, and its edge a brighter one,
+   where a fine pointer hovers (lib/press-feedback.ts writes `--spot-x` and `--spot-y`). The light
+   sits between the surface's fill and its content: the surface isolates, and the light is a
+   negative-z pseudo-element. The surface becomes the containing block for both. */
+@media (hover: hover) and (pointer: fine) {
+  [data-spotlight] {
+    position: relative;
+    isolation: isolate;
+  }
+
+  [data-spotlight]::before,
+  [data-spotlight]::after {
+    content: '';
+    position: absolute;
+    z-index: -1;
+    inset: 0;
+    border-radius: inherit;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--dur-slow) var(--curve-out);
+  }
+
+  [data-spotlight]::after {
+    background: radial-gradient(
+      var(--spot-size, 560px) circle at var(--spot-x, 50%) var(--spot-y, 50%),
+      var(--spot-fill),
+      transparent 50%
+    );
+  }
+
+  /* The edge light is a 1 px ring laid over the surface's border: the content box is cut out of
+     the padded box. */
+  [data-spotlight]::before {
+    z-index: 1;
+    inset: -1px;
+    padding: 1px;
+    background: radial-gradient(
+      calc(var(--spot-size, 560px) * 0.6) circle at var(--spot-x, 50%) var(--spot-y, 50%),
+      var(--spot-edge),
+      transparent 50%
+    );
+    mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    mask-composite: exclude;
+  }
+
+  [data-spotlight]:hover::before,
+  [data-spotlight]:hover::after {
+    opacity: 1;
+  }
+}
+
+/* The grid halo (src/motion/grid-halo.ts): around a fine pointer, the page's dot grid lights up. The
+   halo is a fixed disc of brighter dots registered to the page grid; it sits above the page fill
+   and under every section, so a section with its own fill (or a tile) simply covers it. */
+main,
+.footer {
+  position: relative;
+  z-index: 1;
+}
+
+.grid-halo {
+  position: fixed;
+  z-index: 0;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  inline-size: var(--halo-size);
+  block-size: var(--halo-size);
+  opacity: 0;
+  pointer-events: none;
+  mask-image: radial-gradient(closest-side, #000, rgb(0 0 0 / 0.45) 55%, transparent);
+  transition: opacity var(--dur-slow) var(--curve-out);
+}
+
+.grid-halo[data-on] {
+  opacity: 1;
+}
+
+.grid-halo__dots {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  inline-size: calc(var(--halo-size) + var(--grid));
+  block-size: calc(var(--halo-size) + var(--grid));
+  background-image: radial-gradient(circle, var(--halo-dot) 1.25px, transparent 1.75px);
+  background-position: calc(var(--grid) / 2) calc(var(--grid) / 2);
+  background-size: var(--grid) var(--grid);
+}

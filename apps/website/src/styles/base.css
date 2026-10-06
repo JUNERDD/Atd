@@ -107,25 +107,6 @@ body {
   background: var(--line-1);
 }
 
-/* Scroll-linked entrance: content fades up once as it enters. Without scroll-driven animations, or
-   with reduced motion, it is simply shown; nothing ever waits on JavaScript. */
-@media (prefers-reduced-motion: no-preference) {
-  @supports (animation-timeline: view()) {
-    .reveal {
-      animation: site-reveal linear both;
-      animation-timeline: view();
-      animation-range: entry 0% entry 60%;
-    }
-  }
-}
-
-@keyframes site-reveal {
-  from {
-    opacity: 0;
-    translate: 0 24px;
-  }
-}
-
 .skip-link {
   position: fixed;
   z-index: 100;
