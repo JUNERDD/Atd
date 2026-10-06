@@ -1,0 +1,126 @@
+/* Site tokens. The page is fixed dark and strictly monochrome (black, white and grays), laid out on an
+   8 px unit and drawn over a 24 px dot grid. They override the Apple kit's tokens where the site
+   differs: these rules are unlayered and the kit's derivations have zero specificity. */
+:root {
+  color-scheme: dark;
+
+  /* Ink: page and surface fills, darkest first. */
+  --ink-0: #000;
+  --ink-1: #0a0a0b;
+  --ink-2: #121214;
+  --ink-3: #1b1b1e;
+  --line-1: rgb(255 255 255 / 0.08);
+  --line-2: rgb(255 255 255 / 0.14);
+
+  /* Text on ink. --fg-3 still passes 4.5:1 on --ink-2, so it can carry small labels. */
+  --fg-1: #f5f5f7;
+  --fg-2: #a1a1a6;
+  --fg-3: #86868b;
+
+  /* Dot-matrix: a lit and an unlit dot. */
+  --dot-1: #fff;
+  --dot-0: rgb(255 255 255 / 0.1);
+
+  /* The one light "paper" section. */
+  --paper-1: #f5f5f7;
+  --paper-fg-1: #1d1d1f;
+  --paper-fg-2: #6e6e73;
+  --paper-line: rgb(0 0 0 / 0.1);
+
+  /* Monochrome accent for the kit: a white pill with black text, white links and focus rings. */
+  --accent: #f5f5f7;
+  --accent-fill: #f5f5f7;
+  --accent-on: #000;
+  --accent-text: #f5f5f7;
+  --focus-ring: #f5f5f7;
+  --link: #f5f5f7;
+  --label: var(--fg-1);
+  --secondary-label: var(--fg-2);
+  --system-background: var(--ink-1);
+  --system-grouped-background: var(--ink-1);
+
+  /* The kit's fills and glass surfaces use Apple's grays, which lean slightly blue; these neutral
+     equivalents keep the same alphas so every state and the glass stay strictly gray. */
+  --fill: light-dark(rgb(124 124 124 / 0.2), rgb(124 124 124 / 0.36));
+  --fill-secondary: light-dark(rgb(124 124 124 / 0.16), rgb(124 124 124 / 0.32));
+  --fill-tertiary: light-dark(rgb(122 122 122 / 0.12), rgb(122 122 122 / 0.24));
+  --fill-quaternary: light-dark(rgb(120 120 120 / 0.08), rgb(122 122 122 / 0.18));
+  --separator: light-dark(rgb(64 64 64 / 0.12), rgb(86 86 86 / 0.5));
+  --secondary-system-background: light-dark(#f2f2f2, #1c1c1c);
+  --tertiary-system-background: light-dark(#fff, #2c2c2c);
+  --glass-fill-color: light-dark(#fff, #1c1c1c);
+  --glass-solid: light-dark(#f6f6f6, #2c2c2c);
+
+  /* Type: the system faces (SF Pro and SF Mono on Apple devices, PingFang for Chinese) and Doto, a
+     dot-matrix display face for Latin lettering. */
+  --font-text:
+    -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', 'PingFang SC',
+    'Hiragino Sans GB', 'Noto Sans CJK SC', 'Microsoft YaHei', system-ui, sans-serif;
+  --font-display:
+    -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', 'PingFang SC',
+    'Hiragino Sans GB', 'Noto Sans CJK SC', 'Microsoft YaHei', system-ui, sans-serif;
+  --font-mono:
+    ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+  --font-dot: 'Doto Variable', var(--font-mono);
+
+  --fs-hero: clamp(2.75rem, 1.6rem + 5.4vw, 6.5rem);
+  --fs-h2: clamp(2.125rem, 1.4rem + 3.2vw, 4rem);
+  --fs-h3: clamp(1.375rem, 1.1rem + 0.8vw, 1.75rem);
+  --fs-lede: clamp(1.1875rem, 1rem + 0.6vw, 1.5rem);
+  --fs-body: 1.0625rem;
+  --fs-small: 0.875rem;
+  --fs-label: 0.6875rem;
+  --lh-display: 1.05;
+  --lh-title: 1.15;
+  --lh-text: 1.47;
+  --tr-display: -0.015em;
+  --tr-title: -0.01em;
+  --tr-label: 0.08em;
+
+  /* Space and grid. */
+  --u: 8px;
+  --grid: 24px;
+  --gutter: 16px;
+  --maxw: 1200px;
+  --section-pad: clamp(96px, 13vw, 176px);
+  --nav-h: 52px;
+  --nav-top: 12px;
+
+  /* Shape. */
+  --r-tile: 28px;
+  --r-frame: 20px;
+  --r-chip: 10px;
+}
+
+@media (width >= 700px) {
+  :root {
+    --gutter: 24px;
+  }
+}
+
+@media (width >= 1100px) {
+  :root {
+    --gutter: 32px;
+  }
+}
+
+/* Increase Contrast keeps the kit's stronger fill alphas, in neutral gray. */
+@media (prefers-contrast: more) {
+  :root {
+    --fill: light-dark(rgb(124 124 124 / 0.28), rgb(124 124 124 / 0.44));
+    --fill-secondary: light-dark(rgb(124 124 124 / 0.24), rgb(124 124 124 / 0.4));
+    --fill-tertiary: light-dark(rgb(122 122 122 / 0.2), rgb(122 122 122 / 0.32));
+    --fill-quaternary: light-dark(rgb(120 120 120 / 0.16), rgb(122 122 122 / 0.26));
+    --secondary-system-background: light-dark(#ebebeb, #242424);
+    --tertiary-system-background: light-dark(#fff, #363636);
+  }
+}
+
+/* Chinese sets solid: no Latin display tracking, looser label spacing. */
+:root:lang(zh) {
+  --tr-display: 0;
+  --tr-title: 0;
+  --tr-label: 0.04em;
+  --lh-display: 1.12;
+  --lh-text: 1.6;
+}

@@ -1,0 +1,116 @@
+/* Compact and regular stack the keys and button, the drawing, then the readouts. Wide puts the keys,
+   button and readouts in a column beside the drawing. */
+.summon__stage {
+  display: grid;
+  grid-template-areas:
+    'controls'
+    'display'
+    'readouts';
+  gap: 40px;
+}
+
+.summon__controls {
+  grid-area: controls;
+  display: grid;
+  gap: 24px;
+  align-content: start;
+}
+
+.summon__stage > .summon__display {
+  grid-area: display;
+}
+
+.summon__keys {
+  margin: 0;
+}
+
+.summon__caps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.summon__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 20px;
+}
+
+.summon__try {
+  min-inline-size: 120px;
+}
+
+.summon__hint {
+  font-size: var(--fs-small);
+  color: var(--fg-3);
+}
+
+/* Only a keyboard can press the chord. */
+@media (hover: none) {
+  .summon__hint {
+    display: none;
+  }
+}
+
+/* Spec readouts: a mono label over a mono value, divided by hairlines. */
+.summon__readouts {
+  grid-area: readouts;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 24px;
+  margin: 0;
+}
+
+.summon__readout {
+  display: grid;
+  gap: 6px;
+  align-content: start;
+  padding-block: 14px;
+  border-block-start: 1px solid var(--line-1);
+}
+
+.summon__readout dd {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.9375rem;
+  line-height: 1.35;
+  color: var(--fg-1);
+}
+
+@media (width >= 700px) {
+  .summon__keys .keycap {
+    --key-size: 64px;
+  }
+
+  .summon__readouts {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
+@media (width >= 1100px) {
+  .summon__stage {
+    grid-template-columns: minmax(0, 4fr) minmax(0, 8fr);
+    grid-template-rows: auto 1fr;
+    grid-template-areas:
+      'controls display'
+      'readouts display';
+    gap: 40px 56px;
+  }
+
+  .summon__readouts {
+    grid-template-columns: minmax(0, 1fr);
+    align-self: end;
+  }
+
+  .summon__readout {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: baseline;
+    gap: 16px;
+    padding-block: 12px;
+  }
+
+  .summon__readout dd {
+    text-align: end;
+  }
+}

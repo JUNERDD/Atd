@@ -1,0 +1,209 @@
+/* The gallery is full bleed: the scroller reaches both viewport edges, and the track's padding
+   puts the first card on the container's start edge, where the cards also snap. Margin and padding
+   share the same 50vw term, so a classic scrollbar's width cancels out. Lengths in cqi resolve
+   against .cases, the section container's width. */
+.cases {
+  --bleed: calc(50vw - 50cqi);
+  --card-w: calc(100cqi - 24px);
+  --card-gap: 12px;
+  container-type: inline-size;
+}
+
+/* Regular and wide: 86 % and 84 % of the container, but never so tall that a card and its caption
+   cannot share the viewport. */
+@media (width >= 700px) {
+  .cases {
+    --card-w: min(86cqi, max(480px, (100svh - 300px) * 1.6));
+    --card-gap: 20px;
+  }
+}
+
+@media (width >= 1100px) {
+  .cases {
+    --card-w: min(84cqi, max(560px, (100svh - 300px) * 1.6));
+    --card-gap: 24px;
+  }
+}
+
+.cases__viewport {
+  position: relative;
+  margin-inline: calc(-1 * var(--bleed));
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline: var(--bleed);
+  scrollbar-width: none;
+}
+
+.cases__viewport::-webkit-scrollbar {
+  display: none;
+}
+
+/* The scroller spans the viewport, so its own ring would sit on the screen edges: the current
+   card's frame carries the focus ring instead. */
+.cases__viewport:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+.cases__viewport:focus-visible .case[data-active] .case__media {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+/* Sized to its cards, so the end padding is part of the scroll range in every engine; the block
+   padding leaves room for the focus ring. */
+.cases__track {
+  display: flex;
+  gap: var(--card-gap);
+  inline-size: max-content;
+  margin: 0;
+  padding: 8px var(--bleed);
+  list-style: none;
+}
+
+.case {
+  flex: none;
+  inline-size: var(--card-w);
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+
+/* The media frame: 16:10 on black, edged with a hairline drawn above its content. It is the
+   size container the test card scales its type against. */
+.case__media {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  border-radius: var(--r-frame);
+  background-color: var(--ink-0);
+  container-type: inline-size;
+  transition: opacity var(--dur-base) var(--curve-out);
+}
+
+.case__media::after {
+  content: '';
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 1px var(--line-2);
+  pointer-events: none;
+}
+
+/* A panel capture stands on a dot-grid stage. */
+.case__media[data-frame='panel'] {
+  background-image: radial-gradient(circle, var(--dot-0) 1px, transparent 1.5px);
+  background-position: center;
+  background-size: var(--grid) var(--grid);
+}
+
+/* Once the gallery is live, cards other than the current one step back. */
+.cases[data-enhanced] .case:not([data-active]) .case__media {
+  opacity: 0.5;
+}
+
+.case__poster,
+.case__video {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+  border-radius: inherit;
+}
+
+/* The video stays transparent over its poster until it has a frame to show. */
+.case__video {
+  opacity: 0;
+  transition: opacity var(--dur-base) var(--curve-out);
+}
+
+.case__video[data-shown] {
+  opacity: 1;
+}
+
+/* Upright in the middle of the stage, with the panel's own corner radius (26 pt on 420 × 580). */
+.case__poster[data-frame='panel'],
+.case__video[data-frame='panel'] {
+  inset-block: 6% auto;
+  inset-inline: 50% auto;
+  inline-size: auto;
+  block-size: 88%;
+  aspect-ratio: 420 / 580;
+  object-fit: contain;
+  translate: -50% 0;
+  border-radius: 6.2% / 4.5%;
+}
+
+.case__caption {
+  display: grid;
+  gap: 8px;
+  padding-block-start: 20px;
+}
+
+.case__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  min-block-size: 22px;
+}
+
+.case__index {
+  color: var(--fg-1);
+}
+
+.case__badge {
+  padding: 3px 8px;
+  border-radius: 999px;
+  background-color: var(--fg-1);
+  color: var(--ink-0);
+}
+
+.case__duration {
+  margin-inline-start: auto;
+  color: var(--fg-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.case__title {
+  font-family: var(--font-display);
+  font-size: var(--fs-h3);
+  font-weight: 600;
+  line-height: var(--lh-title);
+  letter-spacing: var(--tr-title);
+  text-wrap: balance;
+}
+
+.case__summary {
+  max-inline-size: 40rem;
+  color: var(--fg-2);
+  text-wrap: pretty;
+}
+
+.case__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.case__tag {
+  padding: 3px 8px;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-chip);
+}
+
+@media (forced-colors: active) {
+  .case__media::after {
+    box-shadow: inset 0 0 0 1px CanvasText;
+  }
+
+  .case__badge {
+    border: 1px solid CanvasText;
+  }
+}

@@ -1,0 +1,315 @@
+/* The schematic on a grid. Compact and regular run the chain down one column with the Keychain beside
+   the service; wide runs it left to right with the Keychain below. The dashed boundary spans the
+   cells that are on this Mac; the model providers sit outside it. */
+.privacy__diagram {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 32px minmax(0, 1fr);
+  grid-template-areas:
+    'panel . .'
+    'l1 . .'
+    'relay . .'
+    'l2 . .'
+    'service l3 keychain'
+    'l4 . .'
+    'providers . .';
+  padding: 30px 14px 0;
+}
+
+.privacy__boundary {
+  position: relative;
+  grid-area: 1 / 1 / 6 / -1;
+  margin: -30px -14px -18px;
+  border: 1px dashed var(--fg-3);
+  border-radius: 24px;
+}
+
+.privacy__boundary-label {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 18px;
+  padding-inline: 8px;
+  background-color: var(--paper-1);
+  font-family: var(--font-mono);
+  font-size: var(--fs-label);
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: var(--tr-label);
+  text-transform: uppercase;
+  color: var(--fg-2);
+  translate: 0 -50%;
+}
+
+/* Uppercase would turn "这台 Mac" into "这台 MAC". */
+.privacy__boundary-label:lang(zh) {
+  text-transform: none;
+}
+
+.privacy__node[data-node='panel'] {
+  grid-area: panel;
+}
+
+.privacy__node[data-node='relay'] {
+  grid-area: relay;
+}
+
+.privacy__node[data-node='service'] {
+  grid-area: service;
+}
+
+.privacy__node[data-node='keychain'] {
+  grid-area: keychain;
+}
+
+.privacy__node[data-node='providers'] {
+  grid-area: providers;
+}
+
+.privacy__link[data-link='panel-relay'] {
+  grid-area: l1;
+}
+
+.privacy__link[data-link='relay-service'] {
+  grid-area: l2;
+}
+
+.privacy__link[data-link='service-keychain'] {
+  grid-area: l3;
+}
+
+.privacy__link[data-link='service-providers'] {
+  grid-area: l4;
+}
+
+/* Compact nodes are narrow, so the pictogram sits above the text; from regular up it sits beside. */
+.privacy__node {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  min-inline-size: 0;
+  padding: 14px;
+  border: 1px solid var(--line-1);
+  border-radius: 16px;
+  background-color: var(--ink-2);
+}
+
+@media (width >= 700px) {
+  .privacy__node {
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+  }
+}
+
+.privacy__glyph {
+  flex: none;
+  inline-size: 26px;
+}
+
+.privacy__node-text {
+  display: grid;
+  gap: 2px;
+  min-inline-size: 0;
+}
+
+.privacy__node-name {
+  font-size: var(--fs-small);
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--fg-1);
+}
+
+.privacy__node-detail {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  line-height: 1.3;
+  color: var(--fg-2);
+}
+
+/* The one node off this Mac is drawn inverted. */
+.privacy__node[data-node='providers'] {
+  --dot-1: var(--paper-1);
+  --dot-0: rgb(255 255 255 / 0.18);
+  border-color: var(--paper-fg-1);
+  background-color: var(--paper-fg-1);
+}
+
+.privacy__node[data-node='providers'] .privacy__node-name {
+  color: var(--paper-1);
+}
+
+.privacy__node[data-node='providers'] .privacy__node-detail {
+  color: rgb(255 255 255 / 0.72);
+}
+
+/* Links: a hairline, and two packets that ride it, filled going out and hollow coming back. Each
+   packet box covers the link and moves by its own size, so only transform and opacity animate. */
+.privacy__link {
+  position: relative;
+  overflow: hidden;
+  min-block-size: 40px;
+  --flow-phase: 0s;
+}
+
+/* Links run vertically by default: the line and the packets down the middle. */
+.privacy__link::before {
+  content: '';
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 50%;
+  inline-size: 1px;
+  background-color: var(--fg-3);
+}
+
+.privacy__packet {
+  position: absolute;
+  inset: 0;
+  animation: privacy-flow-y 2.4s linear infinite both;
+  animation-delay: calc(0s - var(--flow-phase));
+}
+
+.privacy__packet[data-dir='back'] {
+  animation-direction: reverse;
+  animation-delay: calc(-1.2s - var(--flow-phase));
+}
+
+.privacy__packet::before {
+  content: '';
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 50%;
+  inline-size: 7px;
+  block-size: 7px;
+  margin: -3.5px;
+  border-radius: 50%;
+  background-color: var(--dot-1);
+}
+
+.privacy__packet[data-dir='back']::before {
+  border: 1.5px solid var(--dot-1);
+  background-color: var(--paper-1);
+}
+
+.privacy__link[data-link='relay-service'] {
+  --flow-phase: 0.6s;
+}
+
+.privacy__link[data-link='service-keychain'] {
+  --flow-phase: 1.5s;
+}
+
+.privacy__link[data-link='service-providers'] {
+  --flow-phase: 1.1s;
+}
+
+/* Below wide, the Keychain link is the horizontal one. */
+.privacy__link[data-flow='side']::before {
+  inset-block: 50% auto;
+  inset-inline: 0;
+  block-size: 1px;
+  inline-size: auto;
+}
+
+.privacy__link[data-flow='side'] .privacy__packet {
+  animation-name: privacy-flow-x;
+}
+
+.privacy__link[data-flow='side'] .privacy__packet::before {
+  inset-block-start: 50%;
+  inset-inline-start: 0;
+}
+
+@media (width >= 1100px) {
+  .privacy__diagram {
+    grid-template-columns:
+      minmax(0, 1fr) 56px minmax(0, 1fr) 56px minmax(0, 1fr)
+      104px minmax(0, 1fr);
+    grid-template-areas:
+      'panel l1 relay l2 service l4 providers'
+      '. . . . l3 . .'
+      '. . . . keychain . .';
+    padding: 30px 0 0;
+  }
+
+  .privacy__boundary {
+    grid-area: 1 / 1 / 4 / 6;
+    margin: -30px -18px -18px;
+  }
+
+  .privacy__link[data-flow='chain']::before {
+    inset-block: 50% auto;
+    inset-inline: 0;
+    block-size: 1px;
+    inline-size: auto;
+  }
+
+  .privacy__link[data-flow='chain'] .privacy__packet {
+    animation-name: privacy-flow-x;
+  }
+
+  .privacy__link[data-flow='chain'] .privacy__packet::before {
+    inset-block-start: 50%;
+    inset-inline-start: 0;
+  }
+
+  .privacy__link[data-flow='side']::before {
+    inset-block: 0;
+    inset-inline: 50% auto;
+    inline-size: 1px;
+    block-size: auto;
+  }
+
+  .privacy__link[data-flow='side'] .privacy__packet {
+    animation-name: privacy-flow-y;
+  }
+
+  .privacy__link[data-flow='side'] .privacy__packet::before {
+    inset-block-start: 0;
+    inset-inline-start: 50%;
+  }
+}
+
+.privacy__diagram:not([data-live]) .privacy__packet {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .privacy__packet {
+    display: none;
+  }
+}
+
+@keyframes privacy-flow-y {
+  0% {
+    opacity: 0;
+    translate: 0 0;
+  }
+
+  15%,
+  85% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    translate: 0 100%;
+  }
+}
+
+@keyframes privacy-flow-x {
+  0% {
+    opacity: 0;
+    translate: 0 0;
+  }
+
+  15%,
+  85% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    translate: 100% 0;
+  }
+}
