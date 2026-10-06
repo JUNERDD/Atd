@@ -4,8 +4,10 @@ The marketing site for Atd: a static site built with Vite and React 19, prerende
 WebGL2 dot-matrix hero. English is served at `/` and Simplified Chinese at `/zh`.
 
 The look is fixed dark and strictly monochrome: Apple marketing-page structure (display type, one message per
-section, one floating glass nav, pill buttons, scroll reveals) on a functional dot-matrix grid (an 8 px unit
-and a visible 24 px dot grid, dot-matrix lettering, instrument labels).
+section, one floating glass nav, pill buttons) on a functional dot-matrix grid (an 8 px unit and a visible
+24 px dot grid, dot-matrix lettering, instrument labels). The hero is an LED panel whose display spells out the
+name, Atd: anything, anytime, anywhere, to do. Sections arrive with entrance choreography as they scroll into
+view, and the demos in them come alive.
 
 ## Commands
 
@@ -42,10 +44,11 @@ src/
   entry-server.tsx     Prerender entry: markup, head and html attributes per language
   head.ts              Title, description, canonical, hreflang and Open Graph tags
   i18n/                Languages, routes and the `useCopy` hook; each section keeps its own copy.ts
-  styles/              apple-kit.css (generated), tokens.css, base.css
-  ui/                  Shared section frame and keycap
-  lib/                 In-view and reduced-motion hooks, press and glass feedback
-  gl/                  The WebGL2 dot-matrix field
+  styles/              apple-kit.css (generated), tokens.css, base.css, motion.css (entrance effects)
+  ui/                  Shared section frame, split-text headings, dot-matrix glyphs, keycap
+  lib/                 In-view, reduced-motion and hydration hooks, press, glass and spotlight feedback
+  motion/              The reveal controller, text effects (decode, count, type) and the grid halo
+  gl/                  The WebGL2 dot-matrix field: power-on, word changes, loupe, ripples, scroll dive
   sections/<name>/     One folder per section: index.tsx, CSS, copy.ts
   content/             Site facts (links, version) and the case recordings list
 public/
@@ -59,6 +62,22 @@ The "In practice" section shows screen recordings of real tasks. Until a case ha
 dot-matrix test card. To add one, follow [`public/cases/README.md`](public/cases/README.md): export the
 clip and its poster, put them in `public/cases/` (or on Vercel Blob for large files), and set the case's
 `video` in `src/content/cases.ts`.
+
+## Hero words
+
+The hero display shows the words in `heroCopy.words` (`src/sections/hero/copy.ts`) in turn, starting with
+the name; `|` marks where a word may break onto two lines on narrow screens. The strip's legend
+(`heroCopy.legend`) lights the part the display is showing. The display is drawn, so the words stay the same
+in both languages; the legend is translated.
+
+## Motion
+
+Entrances use one attribute protocol, documented in `src/styles/motion.css` and `src/motion/reveal.ts`:
+`data-reveal="<effect>"` marks an element that arrives with an effect (rise, fade, lift, left, right, plot,
+draw, power, words, decode, count, type), and `data-reveal-group` makes a container's elements arrive
+together, staggered. The page script marks them `data-revealed` as they scroll into view; `useRevealed`
+starts a demo's own sequence from the same moment. Without script, in print and under reduced motion,
+everything is simply shown.
 
 ## Design rules
 
