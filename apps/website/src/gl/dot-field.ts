@@ -178,8 +178,7 @@ function runField(
     const boot = bootDone ? BOOT_SETTLED : (now - bootStart) / 1000;
     if (boot >= BOOT_SECONDS) bootDone = true;
     // The board changes words only in full motion, once it has powered on and while it is in place.
-    const incoming = cycle.tick(time, !reduced && bootDone && scroll < 0.05);
-    if (incoming >= 0) options.onWord?.(incoming);
+    cycle.tick(time, !reduced && bootDone && scroll < 0.05);
     const shown = target.words[cycle.current] ?? target.art;
     const shape = target.shapes[cycle.current] ?? target.art;
     const box = artBox ?? defaultArtBox(width, height);
