@@ -7,6 +7,7 @@ import { FileDropOverlay } from './components/file-drop-overlay';
 import { useOverlayReserve } from './components/use-overlay-footer';
 import { ToastHost } from './components/toast';
 import { useAppLanguage } from './i18n/use-app-language';
+import { useNewTaskRequest } from './features/agent/use-new-task-request';
 import { focusPanelInput, showPanel } from './features/agent/use-panel-window';
 import { useScreenshotShortcut } from './features/agent/use-screenshot-shortcut';
 import { useSelectionAsk } from './features/agent/use-selection-ask';
@@ -132,6 +133,7 @@ export function App() {
     requestAnimationFrame(focusPanelInput);
   }, []);
   useSelectionAsk({ quote: (markdown) => quoteToDraft(markdown, undefined), showComposer });
+  useNewTaskRequest(newTask);
   return (
     <TooltipProvider delayDuration={350}>
       <CodeHighlightPool>

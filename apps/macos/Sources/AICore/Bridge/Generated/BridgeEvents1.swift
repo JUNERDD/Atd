@@ -235,20 +235,5 @@ public struct SpeechStateEvent: Codable, Equatable, Sendable {
 /// Payload of the `selection.ask` event.
 public typealias SelectionAskEvent = NativeEmpty
 
-/// Payload of the `accessibility.trust` event.
-public struct AccessibilityTrustEvent: Codable, Equatable, Sendable {
-  public let trusted: Bool
-
-  public init(trusted: Bool) {
-    self.trusted = trusted
-  }
-
-  public init(from decoder: any Decoder) throws {
-    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    trusted = try container.boolean(.trusted)
-  }
-
-  private enum CodingKeys: String, CodingKey, CaseIterable {
-    case trusted
-  }
-}
+/// Payload of the `task.new` event.
+public typealias TaskNewEvent = NativeEmpty

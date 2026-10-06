@@ -3,7 +3,7 @@ import type { AgentBridge } from './agent/bridge';
 import type { AppsBridge } from './apps-contract';
 import type { Screenshot } from './agent/screenshot-input';
 import type { FileRef } from './agent/task-schema';
-import type { SettingsBridge } from './settings-contract';
+import type { MiniPanelOpenOn, SettingsBridge } from './settings-contract';
 import type { ServiceBridge } from './service/ipc';
 
 /** Application menu edits the renderer runs itself (`lib/edit-commands.ts`). */
@@ -121,6 +121,16 @@ export interface DesktopBridge {
    * macOS waits for approval in System Settings.
    */
   setOpenAtLogin: (open: boolean) => Promise<boolean>;
+  /**
+   * Shows or hides the mini panel on the screen edge and resolves to the applied state, which
+   * `SettingsSnapshot.miniPanelShown` follows. Optional for test compat.
+   */
+  setMiniPanelShown?: (shown: boolean) => Promise<boolean>;
+  /**
+   * Sets how the mini panel opens and resolves to the applied value, which
+   * `SettingsSnapshot.miniPanelOpenOn` follows. Optional for test compat.
+   */
+  setMiniPanelOpenOn?: (openOn: MiniPanelOpenOn) => Promise<MiniPanelOpenOn>;
   chooseFiles: () => Promise<ContextFile[]>;
   /**
    * Captures the screen for a screenshot command's input with the commands' own capture (the one
@@ -152,6 +162,12 @@ export interface DesktopBridge {
    * settings window and in tests); returns the unsubscribe. The page takes the screenshot itself.
    */
   onScreenshotShortcut?: (listener: () => void) => () => void;
+  /**
+   * The mini panel's New task, which the shell hands to the panel page only, after it showed the
+   * panel (absent in the settings window and in tests); returns the unsubscribe. The page starts a
+   * new task as its own New task button does.
+   */
+  onNewTask?: (listener: () => void) => () => void;
   /**
    * The selection toolbar's Ask Atd, which the shell hands to the panel page only after it
    * captured the selection and showed the panel (absent in the settings window and in tests);

@@ -85,6 +85,8 @@ export class NativeBridge {
     'socket.frames': new Set(),
     'userApp.state': new Set(),
     'userApp.pins': new Set(),
+    'task.new': new Set(),
+    'miniPanel.state': new Set(),
   };
 
   private constructor(private readonly handler: ScriptMessageHandler) {}

@@ -1,7 +1,8 @@
 /**
  * The native bridge's window and app presence calls (`NativeWindowCalls`, part of `NativeCalls` in
- * `calls.ts`): showing and pinning the panel, the shell's app preferences, opening the settings,
- * welcome guide and user app windows, and pinning user apps to the desktop. Loaded by the export
+ * `calls.ts`): showing and pinning the panel, the shell's app preferences, the mini panel on the
+ * screen edge, opening the settings, welcome guide and user app windows, and pinning user apps to
+ * the desktop. Loaded by the export
  * script with Node's type stripping, so it imports nothing but TypeBox and its sibling contract
  * files (by their `.ts` names) and uses only erasable TypeScript syntax.
  */
@@ -17,6 +18,12 @@ const PinFamily = Type.Union([
 ]);
 /** Mirrors agent-contracts `WidgetIdSchema` (this file cannot import the contracts package). */
 const PinWidgetId = Type.String({ pattern: '^[a-z][a-z0-9-]{0,31}$' });
+
+/**
+ * How the mini panel opens from its pill: `hover` as the pointer reaches it, or `click` only on a
+ * click (the default), the pointer only swelling the pill.
+ */
+export const MiniPanelOpenOnSchema = Type.Union([Type.Literal('hover'), Type.Literal('click')]);
 
 /** The most apps the desktop holds pins of; the shell refuses a pin beyond it. */
 export const MAX_DESKTOP_PINS = 24;
@@ -71,6 +78,47 @@ export const NativeWindowCalls = {
   'app.setOpenAtLogin': {
     params: Type.Object({ open: Type.Boolean() }, { additionalProperties: false }),
     result: Type.Object({ open: Type.Boolean() }, { additionalProperties: false }),
+  },
+  /**
+   * Shows or hides the mini panel on the screen edge and resolves to the applied state; the shell
+   * keeps it. `miniPanel.state` reports every change to every page, the menu bar's and the mini
+   * panel's own toggles included.
+   */
+  'miniPanel.setShown': {
+    params: Type.Object({ shown: Type.Boolean() }, { additionalProperties: false }),
+    result: Type.Object({ shown: Type.Boolean() }, { additionalProperties: false }),
+  },
+  /**
+   * Sets how the mini panel opens from its pill (`MiniPanelOpenOnSchema`) and resolves to the
+   * applied value; the shell keeps it, and `miniPanel.state` reports every change to every page,
+   * the mini panel's own context menu included.
+   */
+  'miniPanel.setOpenOn': {
+    params: Type.Object({ openOn: MiniPanelOpenOnSchema }, { additionalProperties: false }),
+    result: Type.Object({ openOn: MiniPanelOpenOnSchema }, { additionalProperties: false }),
+  },
+  /**
+   * The commands the mini panel lists: the enabled commands, in command-list order. The panel
+   * pushes them whenever they change; a click on one runs it like its shortcut (`shortcut.command`),
+   * so only the id and the name its row shows cross.
+   */
+  'miniPanel.setCommands': {
+    params: Type.Object(
+      {
+        commands: Type.Array(
+          Type.Object(
+            {
+              id: Type.String({ minLength: 1, maxLength: 128 }),
+              name: Type.String({ minLength: 1, maxLength: 256 }),
+            },
+            { additionalProperties: false },
+          ),
+          { maxItems: 64 },
+        ),
+      },
+      { additionalProperties: false },
+    ),
+    result: Empty,
   },
   /**
    * Shows the settings window. A first load opens `commandId`'s editor when it is set, else

@@ -17,6 +17,9 @@
       "app.state",
       "app.setShowInDock",
       "app.setOpenAtLogin",
+      "miniPanel.setShown",
+      "miniPanel.setOpenOn",
+      "miniPanel.setCommands",
       "settings.open",
       "settings.close",
       "onboarding.open",
@@ -71,6 +74,8 @@
       "edit.command",
       "speech.state",
       "selection.ask",
+      "task.new",
+      "miniPanel.state",
       "accessibility.trust",
       "screenRecording.trust",
       "update.state",
@@ -242,6 +247,120 @@
               "properties": {
                 "open": {
                   "type": "boolean"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
+              "const": "miniPanel.setShown"
+            },
+            "params": {
+              "type": "object",
+              "required": ["shown"],
+              "properties": {
+                "shown": {
+                  "type": "boolean"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
+              "const": "miniPanel.setOpenOn"
+            },
+            "params": {
+              "type": "object",
+              "required": ["openOn"],
+              "properties": {
+                "openOn": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "const": "hover"
+                    },
+                    {
+                      "type": "string",
+                      "const": "click"
+                    }
+                  ]
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
+              "const": "miniPanel.setCommands"
+            },
+            "params": {
+              "type": "object",
+              "required": ["commands"],
+              "properties": {
+                "commands": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["id", "name"],
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 128
+                      },
+                      "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 256
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "maxItems": 64
                 }
               },
               "additionalProperties": false
@@ -2113,6 +2232,63 @@
             },
             "event": {
               "type": "string",
+              "const": "task.new"
+            },
+            "payload": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "event", "payload"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "event"
+            },
+            "event": {
+              "type": "string",
+              "const": "miniPanel.state"
+            },
+            "payload": {
+              "type": "object",
+              "required": ["shown", "openOn"],
+              "properties": {
+                "shown": {
+                  "type": "boolean"
+                },
+                "openOn": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "const": "hover"
+                    },
+                    {
+                      "type": "string",
+                      "const": "click"
+                    }
+                  ]
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "event", "payload"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "event"
+            },
+            "event": {
+              "type": "string",
               "const": "accessibility.trust"
             },
             "payload": {
@@ -2635,6 +2811,97 @@
           "type": "boolean"
         }
       },
+      "additionalProperties": false
+    },
+    "MiniPanelSetShownParams": {
+      "type": "object",
+      "required": ["shown"],
+      "properties": {
+        "shown": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "MiniPanelSetShownResult": {
+      "type": "object",
+      "required": ["shown"],
+      "properties": {
+        "shown": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "MiniPanelSetOpenOnParams": {
+      "type": "object",
+      "required": ["openOn"],
+      "properties": {
+        "openOn": {
+          "anyOf": [
+            {
+              "type": "string",
+              "const": "hover"
+            },
+            {
+              "type": "string",
+              "const": "click"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "MiniPanelSetOpenOnResult": {
+      "type": "object",
+      "required": ["openOn"],
+      "properties": {
+        "openOn": {
+          "anyOf": [
+            {
+              "type": "string",
+              "const": "hover"
+            },
+            {
+              "type": "string",
+              "const": "click"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "MiniPanelSetCommandsParams": {
+      "type": "object",
+      "required": ["commands"],
+      "properties": {
+        "commands": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "name"],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              }
+            },
+            "additionalProperties": false
+          },
+          "maxItems": 64
+        }
+      },
+      "additionalProperties": false
+    },
+    "MiniPanelSetCommandsResult": {
+      "type": "object",
+      "properties": {},
       "additionalProperties": false
     },
     "SettingsOpenParams": {
@@ -4212,6 +4479,33 @@
     "SelectionAskEvent": {
       "type": "object",
       "properties": {},
+      "additionalProperties": false
+    },
+    "TaskNewEvent": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "MiniPanelStateEvent": {
+      "type": "object",
+      "required": ["shown", "openOn"],
+      "properties": {
+        "shown": {
+          "type": "boolean"
+        },
+        "openOn": {
+          "anyOf": [
+            {
+              "type": "string",
+              "const": "hover"
+            },
+            {
+              "type": "string",
+              "const": "click"
+            }
+          ]
+        }
+      },
       "additionalProperties": false
     },
     "AccessibilityTrustEvent": {

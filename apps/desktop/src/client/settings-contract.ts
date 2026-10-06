@@ -25,6 +25,13 @@ export type {
 };
 export { SELECTION_TOOLBAR_ACTIVATIONS, SELECTION_TOOLBAR_KEYS } from '@atd/agent-contracts';
 
+/**
+ * How the mini panel opens from its pill on the screen edge: as the pointer reaches it, or only on
+ * a click (the default), the pointer only swelling the pill. The shell keeps it.
+ */
+export const MINI_PANEL_OPEN_ON = ['hover', 'click'] as const;
+export type MiniPanelOpenOn = (typeof MINI_PANEL_OPEN_ON)[number];
+
 /** The selection toolbar before the service's settings load, as the service defaults it. */
 export const DEFAULT_SELECTION_TOOLBAR: SelectionToolbarSettings = {
   enabled: true,
@@ -65,6 +72,17 @@ export interface SettingsSnapshot {
    * test hosts, which read as available.
    */
   widgetsAvailable?: boolean;
+  /**
+   * Whether the shell shows the mini panel on the screen edge. It follows every change, the menu
+   * bar's toggle and the mini panel's own Hide included; null until the shell reports it. Optional
+   * for test hosts, which read as not reported.
+   */
+  miniPanelShown?: boolean | null;
+  /**
+   * How the mini panel opens (`MINI_PANEL_OPEN_ON`), following every change, its context menu's
+   * included; null until the shell reports it. Optional for test hosts, which read as not reported.
+   */
+  miniPanelOpenOn?: MiniPanelOpenOn | null;
   /** Whether the shell registered the panel shortcut; null until the panel reports it. */
   shortcutAvailable: boolean | null;
   /** Whether the shell registered the screenshot shortcut; null until the panel reports it. */

@@ -86,6 +86,13 @@ final class ShellBridge {
       } catch {
         throw BridgeError(Self.message(error, "The login item could not change."))
       }
+    case .miniPanelSetShown(let params):
+      return try Self.encode(shell.setMiniPanelShown(params.shown))
+    case .miniPanelSetOpenOn(let params):
+      return try Self.encode(shell.setMiniPanelOpenOn(params.openOn))
+    case .miniPanelSetCommands(let params):
+      shell.miniPanel.setCommands(params.commands)
+      return try Self.encode(NativeEmpty())
     case .settingsOpen(let params):
       shell.openSettings(commandId: params.commandId, section: params.section)
       return try Self.encode(NativeEmpty())

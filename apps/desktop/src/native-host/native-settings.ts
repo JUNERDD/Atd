@@ -27,15 +27,18 @@ import type { WindowMessages } from './window-messages';
 
 /**
  * The preferences the shell owns, whether it holds the panel and screenshot shortcuts (null until
- * the panel's first registration answer reaches this window), and whether macOS trusts the app for
+ * the panel's first registration answer reaches this window), whether macOS trusts the app for
  * Accessibility and lets it capture the screen (each null until the shell's `accessibility.trust`
- * or `screenRecording.trust` arrives).
+ * or `screenRecording.trust` arrives), and whether the mini panel shows and how it opens (null
+ * until the shell's first `miniPanel.state`).
  */
 export type ShellState = CallResult<'app.state'> & {
   shortcutAvailable: boolean | null;
   screenshotShortcutAvailable: boolean | null;
   accessibilityTrusted: boolean | null;
   screenRecordingTrusted: boolean | null;
+  miniPanelShown: boolean | null;
+  miniPanelOpenOn: CallResult<'miniPanel.setOpenOn'>['openOn'] | null;
 };
 
 /**
@@ -69,6 +72,8 @@ export function nativeSettings(
     screenshotShortcutAvailable: null,
     accessibilityTrusted: null,
     screenRecordingTrusted: null,
+    miniPanelShown: null,
+    miniPanelOpenOn: null,
   };
   const listeners = new Set<(settings: SettingsSnapshot) => void>();
   const loginListeners = new Set<Parameters<ProviderBridge['onLogin']>[0]>();

@@ -30,6 +30,7 @@ public enum ShellStringKey: String, CaseIterable, Sendable {
 
   case menuShowPanel = "menu.showPanel"
   case menuHidePanel = "menu.hidePanel"
+  case menuShowMiniPanel = "menu.showMiniPanel"
   case menuSettings = "menu.settings"
   case menuOnboarding = "menu.onboarding"
   case menuSelectionListening = "menu.selectionListening"
@@ -120,6 +121,19 @@ public enum ShellStringKey: String, CaseIterable, Sendable {
   case selectionHudOff = "selectionHud.off"
   case selectionHudHint = "selectionHud.hint"
   case selectionHudHide = "selectionHud.hide"
+
+  case miniPanelLabel = "miniPanel.label"
+  case miniPanelOpen = "miniPanel.open"
+  case miniPanelHidePanel = "miniPanel.hidePanel"
+  case miniPanelNewTask = "miniPanel.newTask"
+  case miniPanelAsk = "miniPanel.ask"
+  case miniPanelScreenshot = "miniPanel.screenshot"
+  case miniPanelCommands = "miniPanel.commands"
+  case miniPanelDrop = "miniPanel.drop"
+  case miniPanelMoveLeft = "miniPanel.moveLeft"
+  case miniPanelMoveRight = "miniPanel.moveRight"
+  case miniPanelOpenOnClick = "miniPanel.openOnClick"
+  case miniPanelHide = "miniPanel.hide"
 
   case artifactOpenTitle = "artifact.open.title"
   case artifactOpenMessage = "artifact.open.message"

@@ -55,6 +55,8 @@
       "openAtLogin": "开机 启动 自启 自动启动 登录项 登录时",
       "showInDock": "程序坞 菜单栏 图标 隐藏",
       "alwaysOnTop": "置顶 固定 悬浮 窗口置顶 总在最前",
+      "miniPanel": "迷你 面板 悬浮 浮窗 贴边 侧边 边缘 快捷 入口 拖放 拖拽 小窗 启动器",
+      "miniPanelOpenOn": "悬停 点击 展开 打开 触发 方式 指针 鼠标 边缘 误触",
       "restoreDefaults": "重置 恢复 还原 默认 快捷键",
       "language": "语言 界面语言 中文 英文 简体 翻译 本地化",
       "defaultModel": "默认 提供商 模型 选择 当前",
@@ -250,10 +252,25 @@
     "openAtLogin": "登录时打开",
     "showInDock": "在程序坞中显示",
     "alwaysOnTop": "始终置顶",
+    "miniPanel": "显示迷你面板",
+    "miniPanelOpenOn": {
+      "title": "展开迷你面板",
+      "description": "选择迷你面板在指针移到它上面时展开，还是点击后才展开。",
+      "label": "迷你面板的展开方式",
+      "modes": {
+        "hover": "悬停时",
+        "click": "点击时"
+      },
+      "hints": {
+        "hover": "指针移到屏幕边缘的迷你面板上就会展开。",
+        "click": "点击迷你面板才会展开，指针经过时它只会稍稍鼓起。"
+      }
+    },
     "preferenceNotes": {
       "openAtLogin": "登录 Mac 时自动启动应用。",
       "showInDock": "无论是否显示，菜单栏图标都会保留。",
-      "alwaysOnTop": "让面板始终位于其他窗口之上。"
+      "alwaysOnTop": "让面板始终位于其他窗口之上。",
+      "miniPanel": "在屏幕边缘保留一个小面板，用于快捷操作；把文件、图片或文字拖到上面即可添加到消息中。"
     },
     "restoreDefaults": "恢复默认快捷键",
     "restoring": "正在恢复…",

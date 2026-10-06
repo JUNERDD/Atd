@@ -116,7 +116,11 @@ struct CapabilityFailure: LocalizedError {
 /// Open and save panels. While one is open the panel floats no higher than normal windows
 /// (so the system panel is never hidden behind it) and summons are ignored.
 final class SystemPanels {
-  private(set) var isOpen = false
+  private(set) var isOpen = false {
+    didSet { if isOpen != oldValue { onChange?(isOpen) } }
+  }
+  /// Told when a panel opens and when it closes; the mini panel leaves the screen meanwhile.
+  var onChange: ((_ open: Bool) -> Void)?
   private let lowerPanel: () -> NSWindow.Level
   private let restorePanel: (NSWindow.Level) -> Void
 

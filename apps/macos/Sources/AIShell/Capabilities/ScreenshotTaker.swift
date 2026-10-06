@@ -30,7 +30,12 @@ final class ScreenshotTaker {
   private var session: CaptureSession?
   /// One capture or edit at a time: a second call is refused rather than queued, because each
   /// call starts an interactive session the user would otherwise face twice.
-  private(set) var isCapturing = false
+  private(set) var isCapturing = false {
+    didSet { if isCapturing != oldValue { onCapturingChange?(isCapturing) } }
+  }
+  /// Told when a capture or edit starts and ends; the mini panel leaves the screen meanwhile, so
+  /// it is in no frozen image and never over the overlays.
+  var onCapturingChange: ((_ capturing: Bool) -> Void)?
   /// macOS shows the Accessibility hint's prompt once per app; asking again within a launch would
   /// only reopen System Settings uninvited. (The Screen Recording prompt follows the same rule in
   /// ``ScreenRecordingTrust``.)
