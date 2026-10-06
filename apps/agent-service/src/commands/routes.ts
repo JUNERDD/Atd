@@ -2,17 +2,22 @@ import type { FastifyInstance } from 'fastify';
 import { Type } from 'typebox';
 import {
   CommandCreateSchema,
+  CommandRunRequestSchema,
   CommandUpdateRequestSchema,
   Identifier,
   parse,
 } from '@atd/agent-contracts';
+import { ConflictError } from '../errors.js';
 import { LedgerNotFound } from '../ledger.js';
 import { findPluginCommand, listPluginCommands, updatePluginCommand } from '../plugins/commands.js';
+import { CommandLaunchError, launchCommand, type LaunchCommandDeps } from './launch.js';
 import { CommandStore } from './store.js';
 import { RENDERER_ROUTE } from '../relay-routes.js';
 
 export interface CommandRouteContext {
   dataDir: string;
+  /** What `POST /v1/commands/:id/run` launches a command with (launch.ts). */
+  launch: LaunchCommandDeps;
 }
 
 const RevisionQuery = Type.Object(
@@ -26,7 +31,8 @@ const RevisionQuery = Type.Object(
  * Live command routes (T6b). The store loads per request; each mutation
  * serializes through its own chain and lands via atomic write. Revisions guard every mutation (409 on drift).
  * Installed plugins' commands (plugins/commands.ts) are listed after the user's, carry their
- * `pluginId`, accept only an `enabled` change and cannot be deleted.
+ * `pluginId`, accept only an `enabled` change and cannot be deleted. `POST /v1/commands/:id/run`
+ * launches one (launch.ts), answering like a task submit.
  */
 export function registerCommandRoutes(app: FastifyInstance, ctx: CommandRouteContext): void {
   const store = () => CommandStore.load(ctx.dataDir);
@@ -61,6 +67,16 @@ export function registerCommandRoutes(app: FastifyInstance, ctx: CommandRouteCon
     return { command };
   });
 
+  app.post<{ Params: { id: string } }>('/v1/commands/:id/run', RENDERER_ROUTE, async (request) => {
+    const commandId = parse(Identifier, request.params.id);
+    const body = parse(CommandRunRequestSchema, request.body);
+    try {
+      return await launchCommand(ctx.launch, { ...body, commandId });
+    } catch (error) {
+      throw error instanceof CommandLaunchError ? launchFailure(error, commandId) : error;
+    }
+  });
+
   app.delete<{ Params: { id: string } }>('/v1/commands/:id', RENDERER_ROUTE, async (request) => {
     const id = parse(Identifier, request.params.id);
     if (await pluginCommand(ctx.dataDir, id))
@@ -76,6 +92,18 @@ export function registerCommandRoutes(app: FastifyInstance, ctx: CommandRouteCon
     await (await store()).remove(id, query.revision);
     return { deleted: true as const, id };
   });
+}
+
+/** A refused launch as the server's error handler answers it: 404, 409 or 400. */
+function launchFailure(error: CommandLaunchError, id: string): Error {
+  switch (error.code) {
+    case 'notFound':
+      return new LedgerNotFound('Command', id);
+    case 'disabled':
+      return new ConflictError(error.message);
+    case 'invalidInput':
+      return new TypeError(error.message);
+  }
 }
 
 /** The plugin command `id`, unless the user's store holds that id (user commands win). */

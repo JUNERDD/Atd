@@ -41,6 +41,8 @@ export const GrantScopeSchema = Type.Union([
   Type.Object({ tool: Type.Literal('web') }, { additionalProperties: false }),
   // Create App: the `app` harness tool (build, diagnostics, call, list).
   Type.Object({ tool: Type.Literal('app') }, { additionalProperties: false }),
+  // Automations: the `automation` harness tool's saves, deletes and Run now (always asked).
+  Type.Object({ tool: Type.Literal('automation') }, { additionalProperties: false }),
 ]);
 export type GrantScope = Static<typeof GrantScopeSchema>;
 

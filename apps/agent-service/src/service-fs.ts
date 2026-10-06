@@ -107,9 +107,11 @@ export async function confined(
  * Directories under the data dir no agent file tool may write, whatever the task's cwd: the
  * service's security state (MCP launch approvals, mcp/launch-store.ts), the plugin store
  * (`<dataDir>/plugins`, installed plugin code and its state), the user apps
- * (`<dataDir>/apps`: published versions and app data, apps/paths.ts) and Pi's agent dir
- * (`<dataDir>/agent`, storage.ts). The agent dir is protected whole because it holds the memory
- * store (`agent/memory`: the memory files with their search index, the learning settings and the
+ * (`<dataDir>/apps`: published versions and app data, apps/paths.ts), the automations
+ * (`<dataDir>/automations`: saved automations act later with nobody present, so only confirmed
+ * saves may change them, automations/files.ts) and Pi's agent dir (`<dataDir>/agent`,
+ * storage.ts). The agent dir is protected whole because it holds the memory store
+ * (`agent/memory`: the memory files with their search index, the learning settings and the
  * pending suggestions, memory/unit-store.ts). A direct edit would skip the memory content scan,
  * resume learning, or plant, hide and resurrect memories. The rest of the agent dir is service
  * state as well: the task sessions, the managed subagent settings and the npm/Git skill packages.
@@ -120,6 +122,7 @@ export function protectedWriteRoots(dataDir: string): string[] {
     path.join(dataDir, 'security'),
     path.join(dataDir, 'plugins'),
     path.join(dataDir, 'apps'),
+    path.join(dataDir, 'automations'),
     path.join(dataDir, 'agent'),
   ];
 }
@@ -137,7 +140,7 @@ export async function confinedWrite(
   for (const root of protectedWriteRoots(dataDir)) {
     if (await realInside(root, target.real))
       throw new Error(
-        'Writing the service security state, the plugin store, the published apps or the memory and session store is blocked.',
+        'Writing the service security state, the plugin store, the published apps, the automations or the memory and session store is blocked.',
       );
   }
   return target;

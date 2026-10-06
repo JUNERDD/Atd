@@ -250,7 +250,8 @@ export class McpFacade {
 
   /**
    * The server policy's say on one call: tools it does not guard run; a guarded one runs when
-   * the task tier preapproves it, else the user confirms it (a decline throws `forbidden`).
+   * the task tier preapproves it, else the user confirms it (a decline throws `forbidden`), or in
+   * an unattended run the approval refuses it at once.
    */
   private async approve(
     op: OperationContext,
@@ -284,6 +285,7 @@ export class McpFacade {
         origin: 'facade',
         args: input,
         ...(preapproval?.review ? { review: preapproval.review } : {}),
+        ...(preapproval?.unattended ? { unattended: true } : {}),
         ...(op.setStatus ? { setStatus: op.setStatus } : {}),
       },
       signal,

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { isCommandId } from '../commands/open-command-settings';
-import type { SettingsExtensionItem } from './settings-navigation';
+import type { SettingsAutomationTarget, SettingsExtensionItem } from './settings-navigation';
 import { findSettingsSection, settingsSections, type SettingsSectionId } from './settings-sections';
 
 /** Where the window remembers the section shown last, for the next time it opens. */
@@ -66,6 +66,9 @@ export function useSettingsSection(
     return id ? { id, nonce: 0 } : null;
   });
   const [memoryTarget, setMemoryTarget] = useState<{ id: string; nonce: number } | null>(null);
+  const [automationTarget, setAutomationTarget] = useState<
+    (SettingsAutomationTarget & { nonce: number }) | null
+  >(null);
   const [extensionTarget, setExtensionTarget] = useState<
     (SettingsExtensionItem & { nonce: number }) | null
   >(null);
@@ -117,6 +120,18 @@ export function useSettingsSection(
     },
     [locked, leave],
   );
+  /** Shows a new automation's editor that runs one command ("Automate…" on a command's row). */
+  const showAutomation = useCallback(
+    (target: SettingsAutomationTarget) => {
+      if (locked) return;
+      leave(-1, () => {
+        setSection('automations');
+        setDrawer(null);
+        setAutomationTarget((current) => ({ ...target, nonce: (current?.nonce ?? 0) + 1 }));
+      });
+    },
+    [locked, leave],
+  );
   /** Shows one Extensions item's page, as `showCommand` does for a command. */
   const showExtension = useCallback(
     (item: SettingsExtensionItem) => {
@@ -144,12 +159,14 @@ export function useSettingsSection(
     visited,
     commandTarget,
     memoryTarget,
+    automationTarget,
     extensionTarget,
     drawer,
     setDrawer,
     navigate,
     showCommand,
     showMemory,
+    showAutomation,
     showExtension,
   };
 }

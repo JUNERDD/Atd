@@ -12,6 +12,7 @@ import {
 } from '@atd/agent-contracts';
 import { serverView } from './mcp/server-edits.js';
 import { servicePaths } from './storage.js';
+import { auditUnattended, UNATTENDED_MCP_CONFIG } from './unattended.js';
 
 /** A saved server and whether it may launch as saved (mcp/launch-approvals.ts). */
 export interface ConfiguredMcp {
@@ -153,6 +154,28 @@ export async function configureMcp(
   return { content, details: { serverId, approval } };
 }
 
+/**
+ * Refuses one `configure_mcp` call of an unattended run (unattended.ts): nobody is present to
+ * review a server change, and a saved server can run later without anyone approving it.
+ */
+async function refuseUnattended(host: ConfigureMcpHost, args: unknown): Promise<never> {
+  const serverId =
+    typeof args === 'object' &&
+    args !== null &&
+    'serverId' in args &&
+    typeof args.serverId === 'string'
+      ? args.serverId
+      : '';
+  auditUnattended(host.audit, {
+    taskId: host.taskId,
+    runId: host.runId(),
+    tool: CONFIGURE_MCP_TOOL,
+    kind: 'mcpConfig',
+    title: `Configure MCP server ${serverId}`.trim(),
+  });
+  throw new Error(UNATTENDED_MCP_CONFIG);
+}
+
 /** Runs one `list_mcp_servers` call: the user's servers as the model sees them. */
 export async function listMcpServers(host: ConfigureMcpHost) {
   const text = host.listMcp
@@ -170,11 +193,11 @@ export async function listMcpServers(host: ConfigureMcpHost) {
  * `configure_mcp` upserts one, so the model never needs the catalog files. The client declares no
  * MCP roots (the capability is deprecated as of MCP 2026-07-28, SEP-2577, and a connection is
  * shared by every task), so the description names the tasks folder for a server's own
- * file-access option instead.
+ * file-access option instead. `configure_mcp` is unavailable in an unattended run.
  */
 export function registerMcpCatalogTools(
   pi: ExtensionAPI,
-  host: ConfigureMcpHost & { dataDir: string },
+  host: ConfigureMcpHost & { dataDir: string; unattended: () => boolean },
 ): void {
   const { tasksDir } = servicePaths(host.dataDir);
   pi.registerTool({
@@ -213,6 +236,7 @@ export function registerMcpCatalogTools(
     executionMode: 'sequential',
     // The launch approval banner reads the call's persisted result, which a nested call never has.
     exposure: 'model-only',
-    execute: (_id, args) => configureMcp(host, args),
+    execute: (_id, args) =>
+      host.unattended() ? refuseUnattended(host, args) : configureMcp(host, args),
   });
 }

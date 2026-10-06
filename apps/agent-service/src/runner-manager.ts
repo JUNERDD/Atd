@@ -22,13 +22,18 @@ import { ConflictError, DrainingError } from './errors.js';
 import { SessionReleases } from './session-release.js';
 import { TaskRunner, type RunnerContext } from './task-runner.js';
 import { taskContextBreakdown, taskSnapshot, taskSummary } from './task-view.js';
-import { checkChipRanges, taskTitle } from './tasks/input-chips.js';
+import { checkChipRanges } from './tasks/input-chips.js';
 import {
   branchUserEntries,
   checkBranchBefore,
   freezeRunSnapshot,
   loadSubmitContextWindow,
 } from './tasks/run-snapshot.js';
+import {
+  checkSideChatOf,
+  newTaskRecord,
+  type InternalSubmitOptions,
+} from './tasks/submit-options.js';
 
 export interface ManagerDeps {
   ctx: RunnerContext;
@@ -90,8 +95,14 @@ export class RunnerManager {
     return runner;
   }
 
-  /** Idempotent acceptance; repeats return the original run, never a new one. */
-  async submit(request: SubmitTaskRequest): Promise<SubmitTaskResponse> {
+  /**
+   * Idempotent acceptance; repeats return the original run, never a new one. `internal` carries
+   * what only service code may set (an automation's origin, tier, title and trigger).
+   */
+  async submit(
+    request: SubmitTaskRequest,
+    internal: InternalSubmitOptions = {},
+  ): Promise<SubmitTaskResponse> {
     if (this.draining) throw new DrainingError();
     checkChipRanges(request.input);
     // Read before the checks below so acceptance stays free of awaits until the ledger write.
@@ -110,26 +121,27 @@ export class RunnerManager {
     const previous = ledger.data.tasks.find((item) => item.id === taskId) ?? null;
     if (previous && request.taskId === undefined) {
       // A fresh uuid collided; retry once rather than merging into a stranger.
-      return this.submit({ ...request, taskId: randomUUID() });
+      return this.submit({ ...request, taskId: randomUUID() }, internal);
     }
     if (previous?.runs.some((run) => isActiveStatus(run.status)) || this.accepting.has(taskId))
       throw new ConflictError('Finish the active run before starting a new one.');
     checkBranchBefore(request.branchBefore, onBranch);
     const { sideChatOf } = request;
-    if (sideChatOf !== undefined) {
-      // The link is set when its task is created and never changes. A new task is not in the
-      // ledger yet, so naming an existing task also rules out the new task itself.
-      if (previous) throw new TypeError('Invalid data: sideChatOf only applies to a new task.');
-      if (!ledger.data.tasks.some((item) => item.id === sideChatOf))
-        throw new TypeError('Invalid data: sideChatOf needs an existing task.');
-    }
+    checkSideChatOf(sideChatOf, previous, ledger.data.tasks);
     for (const file of request.input.files) {
       if (!ledger.data.resources.some((resource) => resource.id === file.id))
         throw new Error(`Attachment ${file.id} was not uploaded.`);
     }
     const folderIds = request.input.folders ?? [];
     this.deps.folders.resolve(folderIds);
-    const snapshot = freezeRunSnapshot(request, connections, contextWindowOf, previous, onBranch);
+    const snapshot = freezeRunSnapshot(
+      request,
+      connections,
+      contextWindowOf,
+      previous,
+      onBranch,
+      internal.trigger,
+    );
     const runId = randomUUID();
     const now = new Date().toISOString();
     this.accepting.add(taskId);
@@ -142,20 +154,8 @@ export class RunnerManager {
       .change((data) => {
         let task = data.tasks.find((item) => item.id === taskId);
         if (!task) {
-          task = {
-            id: taskId,
-            title: taskTitle(snapshot),
-            createdAt: now,
-            updatedAt: now,
-            sessionFile: null,
-            runs: [],
-            rootTaskId: null,
-            parentExecutionId: null,
-            // A task keeps the tier it was created with; later default changes leave it alone.
-            permissionTier: this.deps.newTaskTier(),
-            // Part of the creating write, so a task's first summary already carries the link.
-            ...(sideChatOf ? { sideChatOf } : {}),
-          };
+          const tier = this.deps.newTaskTier();
+          task = newTaskRecord({ id: taskId, now, snapshot, tier, sideChatOf, internal });
           data.tasks.unshift(task);
         }
         task.runs.push({

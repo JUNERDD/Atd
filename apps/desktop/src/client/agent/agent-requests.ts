@@ -148,9 +148,10 @@ export class AgentRequests<S> {
       case 'task.deleted':
         await this.tasks.onInvalidate(frame);
         return;
-      // The native host reloads these itself (extensions, settings, providers and apps); no page
-      // shows widgets.
+      // The native host reloads these itself (extensions, settings, providers, apps and
+      // automations); no page shows widgets.
       case 'apps':
+      case 'automations':
       case 'widgets':
       case 'extensions':
       case 'providers':

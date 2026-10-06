@@ -40,6 +40,7 @@ import {
   withinRoots,
 } from './service-fs.js';
 import { bashToolDefinition } from './shell-tool.js';
+import { auditWrote } from './unattended.js';
 
 /** Host services the service tool proxies need; owned by the task runner. */
 export interface ServiceToolHost {
@@ -51,6 +52,11 @@ export interface ServiceToolHost {
   tier: PermissionTier;
   grants: Set<string>;
   review: Reviewer;
+  /**
+   * Whether the current run is unattended (unattended.ts): the gate declines what it would ask,
+   * and the desktop and `configure_mcp` tools refuse.
+   */
+  unattended: () => boolean;
   sessions: SessionManager;
   confirms: ConfirmStore;
   capabilities: CapabilityRegistry;
@@ -224,6 +230,7 @@ export function serviceTools(host: ServiceToolHost): ExtensionFactory {
         const own = name === 'read' ? await ownMaterial(args) : null;
         // A write that changes the subagent catalog is asked once, with its content, when written.
         let catalogWrite = false;
+        let written: string | null = null;
         if (own) {
           const base = { taskId: host.taskId, runId: host.runId(), toolCallId: id };
           host.audit({ ...base, tool: `read:${own}`, decision: own });
@@ -233,8 +240,8 @@ export function serviceTools(host: ServiceToolHost): ExtensionFactory {
           const target = resolveToolPath(host.cwd, pathOf(args));
           if (name === 'read') await confined(host.cwd, host.dataDir, target, await readRoots());
           else {
-            const { real } = await confinedWrite(host.cwd, host.dataDir, target);
-            catalogWrite = (await catalogTarget(host.dataDir, real)) !== null;
+            written = (await confinedWrite(host.cwd, host.dataDir, target)).real;
+            catalogWrite = (await catalogTarget(host.dataDir, written)) !== null;
           }
           if (!catalogWrite)
             await authorize({
@@ -251,7 +258,13 @@ export function serviceTools(host: ServiceToolHost): ExtensionFactory {
         // A wrapper that needs another cwd must derive from the context, as in
         // `Object.create(ctx, { cwd: { value } })`, never spread it.
         const call: WriteCall = { toolCallId: id, signal: signal ?? undefined, catalogWrite };
-        return calls.run(call, () => tool.execute(id, args, signal, onUpdate, ctx));
+        const done = await calls.run(call, () => tool.execute(id, args, signal, onUpdate, ctx));
+        // What an unattended run wrote is audited, so its folder automation skips its own output.
+        if (written !== null && name !== 'read' && host.unattended()) {
+          const base = { taskId: host.taskId, runId: host.runId(), toolCallId: id };
+          await auditWrote(host.audit, { ...base, tool: name, path: written });
+        }
+        return done;
       },
     };
   }

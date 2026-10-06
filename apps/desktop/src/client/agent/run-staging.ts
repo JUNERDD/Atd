@@ -2,13 +2,15 @@ import { mcpStage, stageReferences, stageSkills, type AgentClientOptions } from 
 import type { RunPolicy } from './run-policy';
 import { parseMcpTools } from './service-manage';
 
-/** The per-run choices a submit stages; a composer policy or a command run's merged tokens. */
+/** The per-run choices a composer submit stages. */
 export type RunStaging = Pick<RunPolicy, 'skills' | 'roleId' | 'mcpTools' | 'references'>;
 
 /**
  * Stages the per-run choices that the frozen submit request cannot carry: skills and role, then
- * MCP tools, then references. This is the one place a submit stages them; the service consumes
- * each staging once, when it freezes the task's next run.
+ * MCP tools, then references. This is the one place a composer submit stages them; a saved
+ * command's run stages its template's skills and references in the service instead
+ * (`POST /v1/commands/:id/run`). The service consumes each staging once, when it freezes the
+ * task's next run.
  *
  * Each kind is staged only when present, so a submit without references never calls the
  * reference route. A new task gets its id here the first time something is staged, and the

@@ -25,6 +25,7 @@ catalog:
   katex: 0.16.47
   mdast-util-math: 3.0.0
   rehype-katex: 7.0.1
+  croner: 10.0.1
 
 allowBuilds:
   '@google/genai': false

@@ -187,6 +187,7 @@
   },
   "session": {
     "editSeed": "Update the command \"{{name}}\" (id: {{id}}): ",
+    "editAutomationSeed": "Update the automation \"{{name}}\" (id: {{id}}): ",
     "editSkillSeed": "Update the existing skill \"{{name}}\": ",
     "editSubagentSeed": "Update the existing subagent \"{{name}}\": ",
     "editMcpSeed": "Update the existing MCP server \"{{name}}\": ",

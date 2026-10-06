@@ -3,6 +3,7 @@ import {
   type AgentTask,
   type ModelSelection,
   type RunSnapshot,
+  type RunTrigger,
   type ServiceBlock,
   type SubmitTaskRequest,
   type TaskRun,
@@ -53,7 +54,8 @@ function submitModelSelection(
  * for the task's follow-ups), else the defaults. The context window freezes like the thinking
  * level: later tier changes never reach an accepted run. A snapshot over the context budget is
  * refused. `task` is the task the run joins, null for a new one, and `onBranch` its user messages
- * as `branchUserEntries` read them.
+ * as `branchUserEntries` read them. `trigger` names the automation that started the run; only
+ * service code passes it (`InternalSubmitOptions`).
  */
 export function freezeRunSnapshot(
   request: SubmitTaskRequest,
@@ -61,6 +63,7 @@ export function freezeRunSnapshot(
   contextWindowOf: RunContextWindow,
   task: AgentTask | null,
   onBranch: BranchUserEntries | null,
+  trigger?: RunTrigger,
 ): RunSnapshot {
   const last = task?.runs.at(-1);
   const model = resolveRunModel(connections, submitModelSelection(connections, request, last));
@@ -77,6 +80,7 @@ export function freezeRunSnapshot(
     ...(contextWindow ? { contextWindow } : {}),
     ...(request.branchBefore ? { branchBefore: request.branchBefore } : {}),
     ...(isFromCommand(request, task, onBranch) ? { fromCommand: true } : {}),
+    ...(trigger ? { trigger } : {}),
   };
   if (runInputSize(snapshot) > CONTEXT_BUDGET)
     throw new Error('The combined input and parameters exceed the context budget.');

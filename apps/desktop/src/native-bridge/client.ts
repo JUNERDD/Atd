@@ -87,6 +87,7 @@ export class NativeBridge {
     'userApp.pins': new Set(),
     'task.new': new Set(),
     'miniPanel.state': new Set(),
+    'task.open': new Set(),
   };
 
   private constructor(private readonly handler: ScriptMessageHandler) {}

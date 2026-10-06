@@ -1,0 +1,212 @@
+/*
+ * The Automations section (automation-settings.tsx): the overview flows with the window's
+ * scroller like the Commands list; its editor reuses the command editor's layout
+ * (`command-editor`, `editor-fields`, `field-columns`) and its overlay footer.
+ */
+.automation-settings:has(.settings-loading) {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+/* The global pause and an unreadable store sit between the heading and the list. */
+.automation-pause-card,
+.automation-store-problem {
+  margin-bottom: 16px;
+}
+/* A runtime detail (an error message, a store problem) keeps its own wording, set apart. */
+.automation-problem-detail {
+  color: var(--muted-foreground);
+  font-size: 12px;
+  line-height: 18px;
+  overflow-wrap: anywhere;
+}
+
+/* List rows: the command row anatomy (commands.css), with a status line under the trigger. */
+.automation-row {
+  flex-wrap: nowrap;
+}
+.automation-row-identity {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+/* The name truncates first; an unread count beside it keeps its width. */
+.automation-row-title {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+}
+.automation-status-line {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  gap: 4px;
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  line-height: 16px;
+  overflow-wrap: anywhere;
+}
+.automation-status-line > svg {
+  flex-shrink: 0;
+  width: 12px;
+  height: 12px;
+  margin-top: 2px;
+}
+:is(.automation-status-line, .automation-run-row)[data-tone='progress'] > svg,
+.automation-run-row[data-tone='progress'] .automation-run-icon {
+  color: var(--ata-status-progress);
+}
+.automation-status-line[data-tone='warning'],
+.automation-run-row[data-tone='warning'] .automation-run-icon {
+  color: var(--ata-status-warning);
+}
+.automation-status-line[data-tone='error'],
+.automation-run-row[data-tone='error'] .automation-run-icon {
+  color: var(--destructive);
+}
+@container settings (max-width: 455px) {
+  .automation-row {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .automation-row-identity {
+    flex-basis: 100%;
+  }
+  .automation-row [data-slot='item-actions'] {
+    margin-left: auto;
+  }
+}
+@container settings (min-width: 456px) and (max-width: 640px) {
+  .automation-row {
+    gap: 8px;
+  }
+}
+
+/* The editor: its sections stand further apart than the fields inside them. */
+.automation-editor-fields {
+  gap: 24px;
+}
+/* The footer's leading group, Create or Edit with AI and Run now; `.editor-footer > div` pushes
+   the trailing Cancel and Save to the end, onto a line of their own when both do not fit. */
+.automation-editor .editor-footer > .automation-editor-tools {
+  margin-left: 0;
+}
+.automation-tab-panel,
+.automation-field-stack {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 16px;
+}
+.automation-tab-panel {
+  padding-top: 8px;
+}
+/* One column of a two-column row, so a single control keeps a field's width. */
+.field-columns.automation-single-column {
+  grid-template-columns: repeat(auto-fill, minmax(min(220px, 100%), 1fr));
+}
+/* "Every N minutes": the number and its unit share the control track. */
+.automation-inline-fields {
+  display: flex;
+  min-width: 0;
+  gap: 8px;
+}
+.automation-inline-fields > input {
+  flex: 1 1 96px;
+  max-width: 160px;
+}
+.automation-unit[data-slot='select-trigger'] {
+  flex: 0 1 auto;
+  min-width: 120px;
+}
+/* A menu that edits a value, filled like the Select and Input beside it (the model trigger's). */
+.automation-field-trigger[data-slot='button'] {
+  width: 100%;
+  justify-content: space-between;
+  padding: 4px 10px 4px 12px;
+  background: color-mix(in oklab, var(--input) 50%, transparent);
+  font-weight: 400;
+}
+.automation-field-trigger[data-slot='button']:hover,
+.automation-field-trigger[data-slot='button'][aria-expanded='true'] {
+  background: var(--input);
+}
+/* The watched folder: its name, then Choose or Change. */
+.automation-folder-choice {
+  display: flex;
+  min-width: 0;
+  min-height: 32px;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  line-height: 20px;
+}
+.automation-folder-choice[data-state='none'] > span {
+  color: var(--muted-foreground);
+}
+/* A folder no longer registered reads as a problem until it is chosen again. */
+.automation-folder-choice[data-state='unavailable'],
+.automation-folder-row[data-unavailable] :is([data-slot='item-media'], [data-slot='item-title']) {
+  color: var(--destructive);
+}
+.automation-prompt {
+  min-height: 120px;
+}
+.automation-parameters {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+/* The service's next run times of the edited schedule. */
+.automation-next-runs {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  line-height: 20px;
+}
+.automation-next-runs[aria-busy='true'] {
+  opacity: 0.6;
+}
+.automation-next-runs-title {
+  margin: 0;
+  color: var(--ata-text-secondary);
+}
+.automation-next-runs ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Run history: the status notice, the runs card and its footnote. */
+.automation-runs-body {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 8px;
+  padding: 3px;
+}
+.automation-run-icon {
+  color: var(--muted-foreground);
+}
+.automation-run-reason,
+.automation-run-meta {
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  line-height: 16px;
+  overflow-wrap: anywhere;
+}
+.automation-run-reason {
+  color: var(--foreground);
+}
+:is(.automation-status-line, .automation-run-reason, .automation-run-meta):lang(zh) {
+  line-height: 18px;
+}

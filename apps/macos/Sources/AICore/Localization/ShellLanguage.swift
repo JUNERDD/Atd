@@ -206,4 +206,20 @@ public enum ShellStringKey: String, CaseIterable, Sendable {
   case captureRedo = "capture.redo"
   case captureConfirm = "capture.confirm"
   case captureCopy = "capture.copy"
+
+  /// Automation notifications (``AutomationNotification``): the automation's name and the run's
+  /// summary go in as written.
+  case automationNoticeDeliveredBody = "automation.notice.delivered.body"
+  /// `%@` the automation's name.
+  case automationNoticeAttentionTitle = "automation.notice.attention.title"
+  case automationNoticeAttentionBody = "automation.notice.attention.body"
+  case automationNoticeDeclinedOne = "automation.notice.attention.declined.one"
+  /// `%lld` the actions and questions declined.
+  case automationNoticeDeclinedOther = "automation.notice.attention.declined.other"
+  /// `%@` the automation's name.
+  case automationNoticeFailedTitle = "automation.notice.failed.title"
+  case automationNoticeFailedBody = "automation.notice.failed.body"
+  /// `%@` the automation's name.
+  case automationNoticePausedTitle = "automation.notice.paused.title"
+  case automationNoticePausedBody = "automation.notice.paused.body"
 }

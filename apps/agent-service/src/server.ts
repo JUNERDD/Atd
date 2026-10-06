@@ -32,6 +32,7 @@ import { ResourceStore } from './resources.js';
 import { UpstreamError } from './errors.js';
 import { ConflictError, DrainingError, type RunnerManager } from './runner-manager.js';
 import { registerAtdAgentRoutes } from './atd-agents/mount.js';
+import { registerAutomationRoutes, type AutomationService } from './automations/routes.js';
 import { registerBuiltinRoutes } from './builtins/mount.js';
 import { registerPluginRoutes } from './plugins/routes.js';
 import { registerRelayRoutes, RENDERER_ROUTE, SHELL_ROUTE } from './relay-routes.js';
@@ -50,6 +51,7 @@ export interface ServerDeps {
   manager: RunnerManager;
   settings: SettingsStore;
   folders: FolderStore;
+  automations: AutomationService;
   log: Logger;
   startedAt: string;
   onShutdown: () => void;
@@ -300,6 +302,7 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
   registerAtdAgentRoutes(app, deps.config);
   registerFileRoutes(app, { resources: deps.resources, dataDir: deps.config.paths.root });
   registerFolderRoutes(app, { ledger: deps.ledger, folders: deps.folders });
+  registerAutomationRoutes(app, deps.automations);
   registerPluginRoutes(app, {
     dataDir: deps.config.paths.root,
     agentDir: deps.config.paths.agentDir,

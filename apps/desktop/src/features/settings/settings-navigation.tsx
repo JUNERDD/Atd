@@ -21,6 +21,21 @@ export function useOpenSettingsCommand() {
   return open;
 }
 
+/** What "Automate…" on a command asks of the Automations section: a new automation running it. */
+export interface SettingsAutomationTarget {
+  commandId: string;
+}
+
+/** Opens the Automations section at a new automation's editor, prefilled with one command. */
+export const SettingsAutomationLinkContext = createContext<
+  ((target: SettingsAutomationTarget) => void) | null
+>(null);
+export function useOpenSettingsAutomation() {
+  const open = useContext(SettingsAutomationLinkContext);
+  if (!open) throw new Error('Automating a command requires the settings window.');
+  return open;
+}
+
 /** Opens the Memory section at one entry's editor, as Personal's Memory tab links there. */
 export const SettingsMemoryLinkContext = createContext<((entryId: string) => void) | null>(null);
 export function useOpenSettingsMemory() {

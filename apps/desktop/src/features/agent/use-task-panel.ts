@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { RunPolicy } from '../../client/agent/run-policy';
 import type { PreparedCommand, TaskDetail } from '../../client/agent/bridge';
@@ -24,6 +24,7 @@ import { useSideChat } from './side-chat/use-side-chat';
 import { showErrorToast } from '../../components/toast-store';
 import { useAgentNotices } from './use-notices';
 import { focusPanelInput, usePanelWindow } from './use-panel-window';
+import { useMarkAutomationRunRead, useTaskOpenRequests } from './use-task-open-requests';
 
 export type PanelView = 'new' | 'history' | 'apps' | 'task' | 'input';
 const EMPTY_DRAFT: ComposerDraft = { text: '', chips: [] };
@@ -113,16 +114,21 @@ export function useTaskPanel() {
       setView('input');
     },
   });
-  // Continue editing an app from Settings shows the task that builds it, uncovered.
   const { dismiss: dismissSide } = side;
-  useEffect(
-    () =>
-      window.desktop?.apps?.onShowTask((id) => {
-        dismissSide();
-        setTaskId(id);
-        setView('task');
-      }),
+  /** Shows a task, as choosing it from the history does, with no side chat over it. */
+  const openTask = useCallback(
+    (id: string) => {
+      dismissSide();
+      setTaskId(id);
+      setView('task');
+    },
     [dismissSide],
+  );
+  // Settings and an automation's notification show a task the same way, and an automation's
+  // result counts as read once its task shows.
+  useTaskOpenRequests(openTask);
+  useMarkAutomationRunRead(
+    view === 'task' ? agent.snapshot?.tasks.find((task) => task.id === taskId) : undefined,
   );
 
   /** Shows the new conversation as it was left: its draft and model are remembered, not reset. */
@@ -130,12 +136,6 @@ export function useTaskPanel() {
     setView('new');
     setTaskId(null);
     setPrepared(null);
-  }
-  /** Shows a task, as choosing it from the history does, with no side chat over it. */
-  function openTask(id: string) {
-    side.dismiss();
-    setTaskId(id);
-    setView('task');
   }
   function changeDraft(value: ComposerDraft) {
     setDrafts((previous) => ({ ...previous, [draftKey]: value }));

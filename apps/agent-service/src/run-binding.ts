@@ -1,4 +1,5 @@
 import {
+  AUTOMATION_TOOL,
   CODEMODE_TOOL,
   CONFIGURE_MCP_TOOL,
   LIST_MCP_TOOL,
@@ -20,9 +21,10 @@ import type { RuntimeAgent } from './subagents/agents.js';
 
 /**
  * Service tools every parent run keeps beside its snapshot tools. Roles do not grant them;
- * subagent children inherit only the web tools (subagents/intersection.ts). The harness
- * registers the feature tools (harness/index.ts). `codemode` (codemode/extension.ts) scripts
- * reach only tools this allowlist registers, and only those pi's exposure makes callable.
+ * subagent children inherit only the web tools (subagents/intersection.ts), so `app` and
+ * `automation` stay parent-only. The harness registers the feature tools (harness/index.ts).
+ * `codemode` (codemode/extension.ts) scripts reach only tools this allowlist registers, and only
+ * those pi's exposure makes callable.
  */
 const SERVICE_TOOLS = [
   'ask_user',
@@ -34,6 +36,7 @@ const SERVICE_TOOLS = [
   WEB_SEARCH_TOOL,
   WEB_FETCH_TOOL,
   APP_TOOL,
+  AUTOMATION_TOOL,
 ];
 
 /**
@@ -81,11 +84,16 @@ export async function prepareRunBinding(
   const mcp = await prepareSessionMcp(deps);
   const loadable = deps.currentMaterial().catalog.invocable.length > 0;
   // Memory tools follow the frozen memory flag and `load_skill` the catalog; `tools` is in the key.
+  // An unattended run (an automation's, unattended.ts) may search and read memory but never
+  // change it, so a person's follow-up in the same task gets a session with the write tools.
+  const memoryTools = run.snapshot.trigger
+    ? MEMORY_READ_TOOLS
+    : [...MEMORY_READ_TOOLS, ...MEMORY_WRITE_TOOLS];
   const tools = [
     ...new Set([
       ...run.snapshot.tools,
       ...SERVICE_TOOLS,
-      ...(run.snapshot.memory ? [...MEMORY_READ_TOOLS, ...MEMORY_WRITE_TOOLS] : []),
+      ...(run.snapshot.memory ? memoryTools : []),
       ...(loadable ? [LOAD_SKILL_TOOL] : []),
       SUBAGENT_TOOL,
       ...mcp.tools,

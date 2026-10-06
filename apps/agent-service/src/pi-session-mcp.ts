@@ -1,5 +1,5 @@
 import { createToolSearchExtension, type ExtensionFactory } from '@earendil-works/pi-coding-agent';
-import type { PermissionTier, RunStatus } from '@atd/agent-contracts';
+import type { ConfirmReview, PermissionTier, RunStatus } from '@atd/agent-contracts';
 import type { ListMcp, UpsertMcp } from './configure-mcp-tool.js';
 import { confirmReview, type Reviewer } from './harness/auto-review.js';
 import {
@@ -16,6 +16,7 @@ import { ResourceStore } from './resources.js';
 import { readServiceId } from './storage.js';
 import type { RunnerContext } from './task-runner.js';
 import { effectiveTaskTier } from './tasks/tier.js';
+import { auditUnattended, isUnattendedRun } from './unattended.js';
 
 /**
  * Pi's tool search (`createToolSearchExtension`). An allowlist names it, which declares it, only
@@ -126,7 +127,7 @@ export async function prepareSessionMcp(deps: SessionMcpDeps): Promise<SessionMc
 }
 
 /** Whose MCP calls a proxy host makes: the session's own runs, or one subagent child. */
-interface McpExecution {
+export interface McpExecution {
   runId: () => string;
   executionId: () => string;
   tier: PermissionTier;
@@ -149,14 +150,22 @@ function proxyHost(deps: SessionMcpDeps, execution: McpExecution): McpProxyHost 
   };
 }
 
+/** What an MCP preapproval uses of the session's MCP deps. */
+export type McpPreapprovalDeps = Pick<SessionMcpDeps, 'taskId' | 'review' | 'audit'> & {
+  ctx: Pick<RunnerContext, 'ledger'>;
+};
+
 /**
  * The tier's say on an MCP call its server policy guards, frozen with the session as the gate's
  * tier is: `always` runs it, `auto` runs it when the review allows, and anything else leaves it to
  * the per-operation confirm. A child's tier is the stricter of the task's and its agent's
- * (subagents/approvals.ts).
+ * (subagents/approvals.ts). An unattended run (unattended.ts) raises no confirm: its refusal says
+ * so, and the approval refuses the call at once (mcp/approval.ts). The refusal's `unattended`
+ * line lands here, in the run's audit; the authority's own audit is shared by every task. A
+ * child's run is its parent run.
  */
-function mcpPreapproval(
-  deps: SessionMcpDeps,
+export function mcpPreapproval(
+  deps: McpPreapprovalDeps,
   execution: McpExecution,
 ): (call: McpGuardedCall, signal?: AbortSignal) => Promise<McpPreapproval> {
   return async (call, signal) => {
@@ -171,12 +180,18 @@ function mcpPreapproval(
       deps.audit({ ...base, decision: 'tier' });
       return { allowed: true };
     }
-    if (execution.tier !== 'auto') return { allowed: false };
-    const detail = JSON.stringify({ server: call.serverId, tool: call.tool, args: call.args });
-    const verdict = await deps.review({ scope: { tool: 'mcp' }, detail }, signal);
-    deps.audit({ ...base, decision: `review-${verdict.decision}`, reason: verdict.reason });
-    return verdict.decision === 'allow'
-      ? { allowed: true }
-      : { allowed: false, review: confirmReview(verdict) };
+    const unattended = isUnattendedRun(deps.ctx.ledger, deps.taskId, base.runId);
+    let review: ConfirmReview | undefined;
+    if (execution.tier === 'auto') {
+      const detail = JSON.stringify({ server: call.serverId, tool: call.tool, args: call.args });
+      const verdict = await deps.review({ scope: { tool: 'mcp' }, detail, unattended }, signal);
+      deps.audit({ ...base, decision: `review-${verdict.decision}`, reason: verdict.reason });
+      if (verdict.decision === 'allow') return { allowed: true };
+      review = confirmReview(verdict);
+    }
+    if (!unattended) return review ? { allowed: false, review } : { allowed: false };
+    const title = `MCP ${call.serverId} / ${call.tool}`;
+    auditUnattended(deps.audit, { ...base, kind: 'confirm', title });
+    return { allowed: false, unattended: true };
   };
 }

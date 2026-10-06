@@ -167,6 +167,21 @@ test('only the tools an approval pattern names ask; a task tier can allow one', 
   assert.equal(fake.requests('tools/call').length, 2);
 });
 
+test("an unattended run's guarded call is refused at once: nothing is asked or sent", async (t) => {
+  const { facade, fake, audit } = setup(t, httpRecord('srv', { approveTools: true }));
+  const op = operation({ preapprove: async () => ({ allowed: false, unattended: true }) });
+  await assert.rejects(facade.callTool(op, 'srv', 'echo', { text: 'unseen' }), {
+    code: 'forbidden',
+    message: /Nobody is present to approve MCP tool echo on srv/,
+  });
+  assert.equal(harness.service.confirms.pending().length, 0);
+  assert.equal(fake.requests('tools/call').length, 0);
+  assert.deepEqual(
+    audit.filter((entry) => entry.decision === 'deny').map(({ reason }) => reason),
+    ['unattended'],
+  );
+});
+
 test('progress reaches the caller; a cancelled call is cancelled at the server', async (t) => {
   const { fake, facade } = setup(t);
   const updates: McpUpdate[] = [];

@@ -30,8 +30,14 @@ export interface OperationContext {
   setStatus?: (status: 'awaiting_confirmation' | 'running') => void;
 }
 
-/** An allowed call runs without asking; a refused one may carry the review its confirm shows. */
-export type McpPreapproval = { allowed: true } | { allowed: false; review?: ConfirmReview };
+/**
+ * An allowed call runs without asking; a refused one may carry the review its confirm shows, or
+ * say that its run is unattended (unattended.ts), where nobody answers a confirm and the approval
+ * refuses the call at once (approval.ts).
+ */
+export type McpPreapproval =
+  | { allowed: true }
+  | { allowed: false; review?: ConfirmReview; unattended?: true };
 
 export interface McpStateSink {
   set(serverId: string, state: McpConnectionState, lastError?: string): void;

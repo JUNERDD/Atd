@@ -12,10 +12,12 @@ export const INVOCATION_ENTRY = 'app-invocation';
 export interface InvocationData {
   runId: string;
   /**
-   * `command` for a command run (`RunSnapshot.fromCommand`): its messages are a saved command's
-   * material, not the user's own words.
+   * `automation` for a run an automation started (`RunSnapshot.trigger`): its messages are the
+   * automation's prompt and the data that fired it, sent while nobody was present. `command` for a
+   * command run (`RunSnapshot.fromCommand`): its messages are a saved command's material. Neither
+   * is the user's own words.
    */
-  source: 'command' | 'user';
+  source: 'automation' | 'command' | 'user';
   /** The run snapshot's memory flag; a run with memory off is never learned from. */
   memory: boolean;
 }
@@ -25,10 +27,11 @@ export interface InvocationData {
  * whether the session was reused or rebuilt for it.
  */
 export function markInvocation(manager: SessionManager, run: TaskRun): void {
+  const { trigger, fromCommand, memory } = run.snapshot;
   const data: InvocationData = {
     runId: run.id,
-    source: run.snapshot.fromCommand ? 'command' : 'user',
-    memory: run.snapshot.memory,
+    source: trigger ? 'automation' : fromCommand ? 'command' : 'user',
+    memory,
   };
   manager.appendCustomEntry(INVOCATION_ENTRY, data);
 }

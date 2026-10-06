@@ -8,7 +8,7 @@ import { useApps } from './use-apps';
  * `App / Task history row`, Origin=App): the app's name while the app exists, a generic label
  * after it was deleted. The title truncates first; the badge keeps at most half the line.
  */
-export function AppOriginBadge({ origin }: { origin: TaskOrigin }) {
+export function AppOriginBadge({ origin }: { origin: Extract<TaskOrigin, { kind: 'app' }> }) {
   const { t } = useTranslation('apps');
   const { apps } = useApps();
   const name = apps?.find((app) => app.id === origin.appId)?.name ?? t('origin.unknown');

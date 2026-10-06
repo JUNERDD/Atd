@@ -17,3 +17,4 @@ export * from './references-client.js';
 export * from './plugins-client.js';
 export * from './files-client.js';
 export * from './apps-client.js';
+export * from './automations-client.js';

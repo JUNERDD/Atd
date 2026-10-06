@@ -5,6 +5,8 @@ import type { FolderStore } from './store.js';
 
 /** A folder the run may read, as its material and its read boundary see it. */
 export interface RunFolder {
+  /** The registered folder's id, which an automation's folder trigger and readable folders name. */
+  id: string;
   name: string;
   /** The folder's realpath: a read root of the run (tool-proxies.ts, harness/search-tools.ts). */
   path: string;
@@ -28,7 +30,7 @@ export async function runFolders(
   const grants = await store.startRun(taskId);
   return Promise.all(
     grants.map(async ({ folder, introduce }): Promise<RunFolder> => {
-      const base = { name: folder.name, path: folder.path };
+      const base = { id: folder.id, name: folder.name, path: folder.path };
       if (!introduce) return base;
       try {
         return { ...base, overview: await folderOverview(folder.path) };

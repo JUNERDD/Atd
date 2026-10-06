@@ -24,6 +24,7 @@ public enum NativeEvent: Encodable, Equatable, Sendable {
   case socketFrames(SocketFramesEvent)
   case userAppState(UserAppStateEvent)
   case userAppPins(UserAppPinsEvent)
+  case taskOpen(TaskOpenEvent)
 
   /// The contract name.
   public var name: String {
@@ -46,6 +47,7 @@ public enum NativeEvent: Encodable, Equatable, Sendable {
     case .socketFrames: "socket.frames"
     case .userAppState: "userApp.state"
     case .userAppPins: "userApp.pins"
+    case .taskOpen: "task.open"
     }
   }
 
@@ -69,6 +71,7 @@ public enum NativeEvent: Encodable, Equatable, Sendable {
     case .socketFrames(let payload): try payload.encode(to: encoder)
     case .userAppState(let payload): try payload.encode(to: encoder)
     case .userAppPins(let payload): try payload.encode(to: encoder)
+    case .taskOpen(let payload): try payload.encode(to: encoder)
     }
   }
 }

@@ -34,6 +34,7 @@ import { sessionSkills } from './skills/session-skills.js';
 import { EMPTY_SKILL_CATALOG, type RunSkillCatalog } from './skills/skill-catalog.js';
 import type { RunnerContext } from './task-runner.js';
 import { effectiveTaskTier } from './tasks/tier.js';
+import { isUnattendedRun } from './unattended.js';
 import { createGate, prepareHarness } from './harness/index.js';
 import type { Reviewer } from './harness/auto-review.js';
 import { serviceTools, type ServiceToolHost } from './tool-proxies.js';
@@ -173,6 +174,7 @@ export async function createLiveState(
     tier: effectiveTaskTier(ctx.ledger, taskId, ctx.tier),
     grants: deps.grants,
     review: deps.review,
+    unattended: () => isUnattendedRun(ctx.ledger, taskId, deps.currentRunId()),
     sessions: manager,
     confirms: ctx.confirms,
     capabilities: ctx.capabilities,

@@ -16,8 +16,8 @@ const EDIT_SEEDS = {
 /**
  * The panel's create-with-AI sessions: each seeds a `create-*` skill chip on the new draft
  * (`extensionSeed`), and edit-with-AI adds a sentence naming the existing item. Settings hands
- * command and extension sessions over the agent bridge and Create app over the apps bridge;
- * Remember and the panel's own Create app start here.
+ * command, automation and extension sessions over the agent bridge and Create app over the apps
+ * bridge; Remember and the panel's own Create app start here.
  * `apply` puts a seed on the new draft and shows it.
  */
 export function useSeededSessions(apply: (seed: ReturnType<typeof extensionSeed>) => void) {
@@ -35,6 +35,20 @@ export function useSeededSessions(apply: (seed: ReturnType<typeof extensionSeed>
     return bridge.onCommandSession(({ commandId, name }) =>
       latest.current(
         extensionSeed('command', commandId ? t('session.editSeed', { name, id: commandId }) : ''),
+      ),
+    );
+  }, [t]);
+  useEffect(() => {
+    const bridge = window.desktop?.agent;
+    if (!bridge) return;
+    return bridge.onAutomationSession((automation) =>
+      latest.current(
+        extensionSeed(
+          'automation',
+          automation
+            ? t('session.editAutomationSeed', { name: automation.name, id: automation.id })
+            : '',
+        ),
       ),
     );
   }, [t]);

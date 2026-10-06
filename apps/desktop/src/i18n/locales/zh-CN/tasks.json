@@ -88,7 +88,18 @@
       "listMcpResourceTemplates": "列出 MCP 资源模板",
       "readMcpResource": "读取 MCP 资源",
       "app": "使用应用工具",
-      "appBuild": "构建应用"
+      "appBuild": "构建应用",
+      "automation": "管理自动化",
+      "automationList": "列出自动化",
+      "automationGet": "读取自动化",
+      "automationContext": "查看时间与文件夹",
+      "automationPreview": "检查何时运行",
+      "automationCreate": "新建自动化",
+      "automationUpdate": "更新自动化",
+      "automationDelete": "删除自动化",
+      "automationEnable": "开启自动化",
+      "automationDisable": "关闭自动化",
+      "automationRun": "运行自动化"
     },
     "target": {
       "user": "用户",
@@ -114,7 +125,8 @@
       "command": "保存或更新命令",
       "mcp": "使用 MCP 工具",
       "web": "访问网络",
-      "app": "构建或运行此任务的应用"
+      "app": "构建或运行此任务的应用",
+      "automation": "保存、删除或运行自动化"
     },
     "outcome": {
       "once": "已允许一次",
@@ -215,6 +227,7 @@
     "deleteDescription": "这会移除其对话、输入副本和应用任务文件夹中的文件。保存在其他位置的文件和你的记忆会保留。",
     "cancel": "取消",
     "deleteAction": "删除任务",
+    "taskGone": "该任务已被删除。",
     "emptyDescription": "通过命令或消息开始的任务会显示在这里。",
     "noMatchesDescription": "请检查拼写，或换个关键词搜索。",
     "noModel": "未使用模型",
@@ -226,6 +239,7 @@
         "date": "日期",
         "status": "状态",
         "model": "模型",
+        "origin": "发起方",
         "none": "不分组"
       },
       "sorts": {
@@ -241,6 +255,15 @@
       "stopped": "已停止",
       "completed": "已完成",
       "draft": "导入的草稿"
+    },
+    "originSection": {
+      "automation": "自动化",
+      "app": "应用",
+      "personal": "由你发起"
+    },
+    "origin": {
+      "automation": "由 {{name}} 发起",
+      "automationUnknown": "自动化"
     },
     "section": {
       "today": "今天",

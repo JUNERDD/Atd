@@ -163,6 +163,11 @@ export const InvalidateScopeSchema = Type.Union([
    * (`/v1/widgets/snapshots`).
    */
   Type.Literal('widgets'),
+  /**
+   * An automation, its status or run history, the global pause, or the pending notices changed
+   * (`/v1/automations`, `/v1/automation-notices`).
+   */
+  Type.Literal('automations'),
 ]);
 export type InvalidateScope = Static<typeof InvalidateScopeSchema>;
 

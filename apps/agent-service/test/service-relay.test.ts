@@ -59,12 +59,19 @@ const SHELL_APP_PATHS = new Set([
   '/v1/widgets/snapshots',
 ]);
 
+/**
+ * Automation notices (decision D5): the shell pulls and acknowledges them once for all windows,
+ * so a page cannot swallow a notification before it is posted.
+ */
+const SHELL_AUTOMATION_PATHS = new Set(['/v1/automation-notices', '/v1/automation-notices/ack']);
+
 /** The routes only direct main-token clients may call (the relay refuses them). */
 function isShellPath(pathPattern: string): boolean {
   return (
     pathPattern.startsWith('/v1/admin/') ||
     SHELL_APP_PATHS.has(pathPattern) ||
     SHELL_MCP_PATHS.has(pathPattern) ||
+    SHELL_AUTOMATION_PATHS.has(pathPattern) ||
     pathPattern === '/v1/capabilities/result' ||
     pathPattern === '/v1/resources/import' ||
     pathPattern === '/v1/folders/register' ||
@@ -96,6 +103,20 @@ test('the route manifest classifies every route the service serves', async () =>
     'POST /v1/folders/register',
     'GET /v1/tasks/:taskId/folders',
     'DELETE /v1/tasks/:taskId/folders/:folderId',
+    // Automations: the page manages them; only the shell pulls and acknowledges their notices.
+    'GET /v1/automations',
+    'POST /v1/automations',
+    'POST /v1/automations/preview',
+    'GET /v1/automations/:id',
+    'PUT /v1/automations/:id',
+    'PATCH /v1/automations/:id',
+    'DELETE /v1/automations/:id',
+    'POST /v1/automations/:id/run',
+    'GET /v1/automations/:id/runs',
+    'POST /v1/automation-runs/read',
+    'PATCH /v1/automation-settings',
+    'GET /v1/automation-notices',
+    'POST /v1/automation-notices/ack',
     ...[...SHELL_MCP_PATHS].map((pathPattern) =>
       pathPattern === '/v1/mcp/snapshot' ? `GET ${pathPattern}` : `POST ${pathPattern}`,
     ),

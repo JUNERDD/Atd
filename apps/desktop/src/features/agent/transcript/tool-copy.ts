@@ -18,9 +18,11 @@ import {
   Terminal,
   TextSearch,
   Wrench,
+  Zap,
   type LucideIcon,
 } from 'lucide-react';
 import {
+  AUTOMATION_TOOL,
   CODEMODE_TOOL,
   LOAD_SKILL_TOOL,
   TODO_TOOL,
@@ -30,6 +32,7 @@ import {
   type ToolBlockDetails,
 } from '@atd/agent-contracts';
 import type { BlockOf, ToolStatus } from '../../../client/agent/transcript-schema';
+import { automationStepKey, automationTarget, type AutomationStepKey } from './automation-call';
 import { codemodeTarget } from './codemode-call';
 import { subagentStepKey, subagentTarget, type SubagentStepKey } from './subagent-call';
 
@@ -61,6 +64,7 @@ export type StepKey =
   | 'activity.step.readMcpResource'
   | 'activity.step.app'
   | 'activity.step.appBuild'
+  | AutomationStepKey
   | SubagentStepKey;
 
 /** The service's MCP resource tools (agent-service `mcp/resource-tools.ts`). */
@@ -122,6 +126,8 @@ const ICONS: Record<string, LucideIcon> = {
   [LIST_MCP_RESOURCE_TEMPLATES]: Library,
   [READ_MCP_RESOURCE]: FileBox,
   app: AppWindow,
+  // Same mark as Settings › Automations and an automation's task origin badge.
+  [AUTOMATION_TOOL]: Zap,
 };
 
 function stepKey(name: string): StepKey | null {
@@ -131,6 +137,7 @@ function stepKey(name: string): StepKey | null {
 /** Row label for a call: tools whose one name covers several operations read by their args. */
 export function toolStepKey(name: string, args: Record<string, unknown>): StepKey | null {
   if (name === 'command') return commandStepKey(args);
+  if (name === AUTOMATION_TOOL) return automationStepKey(args);
   if (name === 'subagent') return subagentStepKey(args);
   // Of the `app` tool's operations only `build` takes a `summary` (the version's change note).
   if (name === 'app')
@@ -203,6 +210,7 @@ export function toolTarget(name: string, args: Record<string, unknown>): string 
     return command.split('\n')[0]?.trim() || null;
   }
   if (name === 'command') return commandTarget(args);
+  if (name === AUTOMATION_TOOL) return automationTarget(args);
   if (name === 'subagent') return subagentTarget(args);
   // A memory tool names its unit and a search shows its query; a create without a name reads by
   // its type instead (`memoryTypeKey`).

@@ -1,6 +1,7 @@
 import path from 'node:path';
 import {
   errorMessage,
+  isTerminalStatus,
   rootExecutionId,
   type ChildTranscriptResponse,
   type PermissionTier,
@@ -312,6 +313,9 @@ export class TaskRunner {
   }
 
   private async setStatus(runId: string, status: RunStatus, error: string): Promise<void> {
+    // The run's audit is complete before anyone hears it ended (audit.ts): the automation engine
+    // reads its unattended declines and writes then (unattended.ts).
+    if (isTerminalStatus(status)) await this.audit?.flush();
     await this.ctx.ledger.change((data) => {
       const task = data.tasks.find((item) => item.id === this.taskId);
       const run = task?.runs.find((item) => item.id === runId);

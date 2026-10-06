@@ -81,7 +81,8 @@
       "update.state",
       "socket.frames",
       "userApp.state",
-      "userApp.pins"
+      "userApp.pins",
+      "task.open"
     ]
   },
   "anyOf": [
@@ -2555,6 +2556,34 @@
             }
           },
           "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "event", "payload"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "event"
+            },
+            "event": {
+              "type": "string",
+              "const": "task.open"
+            },
+            "payload": {
+              "type": "object",
+              "required": ["taskId"],
+              "properties": {
+                "taskId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128,
+                  "pattern": "^[a-zA-Z0-9_-]+$"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
         }
       ]
     },
@@ -4691,6 +4720,19 @@
             "additionalProperties": false
           },
           "maxItems": 24
+        }
+      },
+      "additionalProperties": false
+    },
+    "TaskOpenEvent": {
+      "type": "object",
+      "required": ["taskId"],
+      "properties": {
+        "taskId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_-]+$"
         }
       },
       "additionalProperties": false
