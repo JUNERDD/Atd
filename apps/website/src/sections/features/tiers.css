@@ -122,6 +122,26 @@
   color: var(--fg-2);
 }
 
+/* Entrance: as the track rises in, the thumb slides in from the far end and settles on the chosen
+   tier. It moves through `transform`, apart from the `translate` that marks the selection, so a
+   choice made mid-slide still lands where the visitor put it. */
+@media (prefers-reduced-motion: no-preference) {
+  :root[data-motion] .feat__tier-track[data-revealed] .feat__tier-thumb {
+    animation: feat-thumb-in 1.1s var(--spring-smooth) calc(var(--rv-delay, 0s) + 160ms) backwards;
+  }
+}
+
+@keyframes feat-thumb-in {
+  from {
+    opacity: 0;
+    transform: translateX(200%);
+  }
+
+  20% {
+    opacity: 1;
+  }
+}
+
 /* Reduced motion: the thumb moves at once instead of sliding; the selection still changes. */
 @media (prefers-reduced-motion: reduce) {
   .feat__tier-thumb {

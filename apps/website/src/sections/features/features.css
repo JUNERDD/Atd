@@ -79,55 +79,130 @@
   }
 }
 
-/* Hovering a tile, or focusing a control in it, lights its pictogram column by column: the dots dip
-   and come back up in a 128 ms sweep. Reduced motion keeps the pictogram still. */
+/* A tile's title and body follow its pictogram up a short way (the tile itself lifts in). */
+.feat__title,
+.feat__body {
+  --rv-y: 14px;
+}
+
+/* Each lit dot's place in its pictogram, for the sweeps below: its column and its row. */
+.feat__glyph .dot-glyph__dot[data-x='1'] {
+  --gx: 1;
+}
+
+.feat__glyph .dot-glyph__dot[data-x='2'] {
+  --gx: 2;
+}
+
+.feat__glyph .dot-glyph__dot[data-x='3'] {
+  --gx: 3;
+}
+
+.feat__glyph .dot-glyph__dot[data-x='4'] {
+  --gx: 4;
+}
+
+.feat__glyph .dot-glyph__dot[data-x='5'] {
+  --gx: 5;
+}
+
+.feat__glyph .dot-glyph__dot[data-x='6'] {
+  --gx: 6;
+}
+
+.feat__glyph .dot-glyph__dot[data-x='7'] {
+  --gx: 7;
+}
+
+.feat__glyph .dot-glyph__dot[data-x='8'] {
+  --gx: 8;
+}
+
+.feat__glyph .dot-glyph__dot[data-y='1'] {
+  --gy: 1;
+}
+
+.feat__glyph .dot-glyph__dot[data-y='2'] {
+  --gy: 2;
+}
+
+.feat__glyph .dot-glyph__dot[data-y='3'] {
+  --gy: 3;
+}
+
+.feat__glyph .dot-glyph__dot[data-y='4'] {
+  --gy: 4;
+}
+
+.feat__glyph .dot-glyph__dot[data-y='5'] {
+  --gy: 5;
+}
+
+.feat__glyph .dot-glyph__dot[data-y='6'] {
+  --gy: 6;
+}
+
+.feat__glyph .dot-glyph__dot[data-y='7'] {
+  --gy: 7;
+}
+
+.feat__glyph .dot-glyph__dot[data-y='8'] {
+  --gy: 8;
+}
+
+/* The pictogram lights up as its tile lifts in: the lit dots come on in a diagonal wave from the top
+   left, each flaring a little as it lights. Hovering a tile, or focusing a control in it, replays a
+   quicker sweep column by column. Both live in one animation list, the sweep first: a list that
+   keeps a name keeps that animation running, so adding and removing the sweep never restarts the
+   entrance, and while the entrance plays it stays on top of a sweep (a pointer resting where a tile
+   scrolls in). Reduced motion keeps the pictogram still. */
 @media (prefers-reduced-motion: no-preference) {
-  .feat__tile:focus-within .dot-glyph__dot[data-lit] {
-    animation-name: feat-glyph-sweep;
-    animation-duration: 520ms;
-    animation-timing-function: var(--curve-out);
-    animation-fill-mode: both;
+  .feat__glyph .dot-glyph__dot[data-lit] {
+    --feat-light: feat-glyph-light 560ms var(--curve-out)
+      calc(var(--rv-delay, 0s) + 120ms + (var(--gx, 0) + var(--gy, 0)) * 28ms) backwards;
+    --feat-sweep: feat-glyph-sweep 520ms var(--curve-out) calc(var(--gx, 0) * 16ms) both;
+  }
+
+  .feat__tile:focus-within .feat__glyph .dot-glyph__dot[data-lit] {
+    animation: var(--feat-sweep);
+  }
+
+  :root[data-motion] .feat__tile[data-revealed] .feat__glyph .dot-glyph__dot[data-lit] {
+    animation: var(--feat-light);
+  }
+
+  :root[data-motion]
+    .feat__tile[data-revealed]:focus-within
+    .feat__glyph
+    .dot-glyph__dot[data-lit] {
+    animation: var(--feat-sweep), var(--feat-light);
   }
 
   @media (hover: hover) and (pointer: fine) {
-    .feat__tile:hover .dot-glyph__dot[data-lit] {
-      animation-name: feat-glyph-sweep;
-      animation-duration: 520ms;
-      animation-timing-function: var(--curve-out);
-      animation-fill-mode: both;
+    .feat__tile:hover .feat__glyph .dot-glyph__dot[data-lit] {
+      animation: var(--feat-sweep);
+    }
+
+    :root[data-motion] .feat__tile[data-revealed]:hover .feat__glyph .dot-glyph__dot[data-lit] {
+      animation: var(--feat-sweep), var(--feat-light);
     }
   }
+}
 
-  .feat__glyph .dot-glyph__dot[data-x='1'] {
-    animation-delay: 16ms;
+/* A lit dot at a tenth of its opacity looks unlit, so the wave starts from the blank matrix. */
+@keyframes feat-glyph-light {
+  0% {
+    opacity: 0.1;
   }
 
-  .feat__glyph .dot-glyph__dot[data-x='2'] {
-    animation-delay: 32ms;
+  45% {
+    opacity: 1;
+    scale: 1.2;
   }
 
-  .feat__glyph .dot-glyph__dot[data-x='3'] {
-    animation-delay: 48ms;
-  }
-
-  .feat__glyph .dot-glyph__dot[data-x='4'] {
-    animation-delay: 64ms;
-  }
-
-  .feat__glyph .dot-glyph__dot[data-x='5'] {
-    animation-delay: 80ms;
-  }
-
-  .feat__glyph .dot-glyph__dot[data-x='6'] {
-    animation-delay: 96ms;
-  }
-
-  .feat__glyph .dot-glyph__dot[data-x='7'] {
-    animation-delay: 112ms;
-  }
-
-  .feat__glyph .dot-glyph__dot[data-x='8'] {
-    animation-delay: 128ms;
+  100% {
+    opacity: 1;
+    scale: 1;
   }
 }
 
