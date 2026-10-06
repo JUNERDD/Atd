@@ -1,0 +1,147 @@
+/* How the schematic assembles and flows; diagram.tsx sets the order along the request path. The
+   boundary draws and its label decodes. Each node powers on (`power`); as its tile opens, its
+   pictogram lights dot by dot and its detail decodes. Each link fades in while its line draws from
+   its source end. Only after its line is drawn does a link carry packets, and only while the
+   diagram is on screen. */
+
+/* A pictogram's lit dots know their cell (DotGlyph's `data-x` / `data-y`), and light in raster
+   order, row by row. */
+.privacy__glyph .dot-glyph__dot {
+  --gx: 0;
+  --gy: 0;
+}
+
+.privacy__glyph [data-x='1'] {
+  --gx: 1;
+}
+
+.privacy__glyph [data-x='2'] {
+  --gx: 2;
+}
+
+.privacy__glyph [data-x='3'] {
+  --gx: 3;
+}
+
+.privacy__glyph [data-x='4'] {
+  --gx: 4;
+}
+
+.privacy__glyph [data-x='5'] {
+  --gx: 5;
+}
+
+.privacy__glyph [data-x='6'] {
+  --gx: 6;
+}
+
+.privacy__glyph [data-y='1'] {
+  --gy: 1;
+}
+
+.privacy__glyph [data-y='2'] {
+  --gy: 2;
+}
+
+.privacy__glyph [data-y='3'] {
+  --gy: 3;
+}
+
+.privacy__glyph [data-y='4'] {
+  --gy: 4;
+}
+
+.privacy__glyph [data-y='5'] {
+  --gy: 5;
+}
+
+.privacy__glyph [data-y='6'] {
+  --gy: 6;
+}
+
+/* A link's own fade is brief: the line drawing in is its entrance. */
+.privacy__link {
+  --rv-dur: 0.3s;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* The tile opens about 0.32 s into its power-on (motion.css `rv-power`); the raster then takes
+     a quarter second. */
+  :root[data-motion] .privacy__node[data-revealed] .dot-glyph__dot[data-lit] {
+    animation: privacy-dot-on 0.4s var(--curve-out)
+      calc(var(--rv-delay, 0s) + 320ms + (var(--gy) * 7 + var(--gx)) * 5ms) backwards;
+  }
+
+  :root[data-motion] .privacy__link[data-revealed]::before {
+    animation: privacy-draw 0.6s var(--curve-sheet) var(--rv-delay, 0s) backwards;
+  }
+
+  /* Out first, the reply half a lap behind; each link keeps its own phase so they never march in
+     step. */
+  .privacy__link[data-revealed] .privacy__packet {
+    animation: var(--flow-name) 2.4s linear calc(var(--rv-delay, 0s) + 0.9s + var(--flow-phase))
+      infinite both;
+  }
+
+  .privacy__link[data-revealed] .privacy__packet[data-dir='back'] {
+    animation-direction: reverse;
+    animation-delay: calc(var(--rv-delay, 0s) + 2.1s + var(--flow-phase));
+  }
+
+  .privacy__diagram:not([data-live]) .privacy__packet {
+    animation-play-state: paused;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .privacy__packet {
+    display: none;
+  }
+}
+
+@keyframes privacy-dot-on {
+  from {
+    opacity: 0;
+    scale: 0;
+  }
+}
+
+@keyframes privacy-draw {
+  from {
+    scale: var(--draw-from);
+  }
+}
+
+@keyframes privacy-flow-y {
+  0% {
+    opacity: 0;
+    translate: 0 0;
+  }
+
+  15%,
+  85% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    translate: 0 100%;
+  }
+}
+
+@keyframes privacy-flow-x {
+  0% {
+    opacity: 0;
+    translate: 0 0;
+  }
+
+  15%,
+  85% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    translate: 100% 0;
+  }
+}

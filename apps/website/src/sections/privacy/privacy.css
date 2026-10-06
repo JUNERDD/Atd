@@ -6,7 +6,7 @@
   margin-block-end: 36px;
 }
 
-/* The guarantees: one column, then two, then four, each under a hairline. */
+/* The guarantees: one column, then two, then four, each under a hairline the reveal draws. */
 .privacy__points {
   display: grid;
   gap: 0 32px;
@@ -16,14 +16,23 @@
 }
 
 .privacy__point {
+  position: relative;
   display: grid;
   align-content: start;
   gap: 6px;
   padding-block: 20px 8px;
-  border-block-start: 1px solid var(--line-2);
+}
+
+.privacy__hairline {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline: 0;
+  block-size: 1px;
+  background-color: var(--line-2);
 }
 
 .privacy__point-title {
+  --rv-y: 16px;
   margin-block-start: 6px;
   font-size: 1.125rem;
   font-weight: 600;
@@ -32,6 +41,7 @@
 }
 
 .privacy__point-body {
+  --rv-y: 16px;
   color: var(--fg-2);
   overflow-wrap: anywhere;
   text-wrap: pretty;

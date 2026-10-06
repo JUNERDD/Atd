@@ -1,8 +1,7 @@
-import { Fragment, useId, useState } from 'react';
-import { DAYS, HOURS, PRESET_IDS, RULES, runsAt, type PresetId, type RuleKind } from './presets';
+import { useId, useState } from 'react';
+import { PRESET_IDS, RULES, type PresetId, type RuleKind } from './presets';
+import { Week } from './week';
 import './schedule.css';
-
-const HOUR_LABELS = ['00', '06', '12', '18'];
 
 interface ScheduleProps {
   legend: string;
@@ -14,8 +13,9 @@ interface ScheduleProps {
 }
 
 /**
- * The week as a dot matrix, Monday to Sunday by hour. Picking an example lights the hours it runs in,
- * sweeping left to right (each 3-hour band is a `data-step`, 20 ms apart), and states its rule.
+ * The schedule panel: picking an example lights the hours it runs in on the week grid and states its
+ * rule. The panel lifts in; its examples, the grid, the rule readout and the trigger list are their
+ * own reveal groups, so each plays as it arrives rather than below the fold.
  */
 export function Schedule({
   legend,
@@ -28,14 +28,22 @@ export function Schedule({
   const [preset, setPreset] = useState<PresetId>('hourly');
   const id = useId();
   const rule = RULES[preset];
+  const kind = ruleKinds[rule.kind];
 
   return (
-    <div className="auto__panel reveal">
-      <fieldset className="auto__presets">
-        <legend className="auto__legend mono-label">{legend}</legend>
+    <div className="auto__panel" data-reveal="lift" data-spotlight="">
+      <fieldset className="auto__presets" data-reveal-group="">
+        <legend className="auto__legend mono-label" data-reveal="fade" data-reveal-delay="200">
+          {legend}
+        </legend>
         <div className="auto__options">
-          {PRESET_IDS.map((value) => (
-            <label className="auto__option" key={value}>
+          {PRESET_IDS.map((value, index) => (
+            <label
+              className="auto__option"
+              key={value}
+              data-reveal="rise"
+              data-reveal-delay={260 + index * 70}
+            >
               <input
                 className="auto__radio"
                 type="radio"
@@ -50,41 +58,49 @@ export function Schedule({
         </div>
       </fieldset>
 
-      <div className="auto__week" aria-hidden="true">
-        <span />
-        {HOUR_LABELS.map((label) => (
-          <span className="auto__hour" key={label}>
-            {label}
-          </span>
-        ))}
-        {days.slice(0, DAYS).map((day, dayIndex) => (
-          <Fragment key={day}>
-            <span className="auto__day">{day}</span>
-            {Array.from({ length: HOURS }, (_, hour) => (
-              <span
-                className="auto__cell"
-                key={hour}
-                data-step={Math.floor(hour / 3)}
-                data-on={runsAt(preset, dayIndex, hour) ? '' : undefined}
-              />
-            ))}
-          </Fragment>
-        ))}
-      </div>
+      <Week preset={preset} days={days} />
 
-      <div className="auto__rule" aria-live="polite">
+      {/* The rule types in, and a new example's rule replaces it (which stops the effect). The
+          typed text is hidden from assistive tech, so the live region announces the rule once, from
+          its hidden twin, rather than every frame of the effect. */}
+      <div className="auto__rule" aria-live="polite" data-reveal-group="">
+        <span className="auto__hairline" aria-hidden="true" data-reveal="draw" />
         <p className="auto__rule-line">
-          <span className="auto__rule-kind mono-label">{ruleKinds[rule.kind]}</span>
-          <code className="auto__rule-text">{rule.text}</code>
+          <span
+            className="auto__rule-kind mono-label"
+            aria-hidden="true"
+            data-reveal="decode"
+            data-reveal-delay="120"
+          >
+            {kind}
+          </span>
+          <code
+            className="auto__rule-text"
+            aria-hidden="true"
+            data-reveal="type"
+            data-reveal-delay="200"
+          >
+            {rule.text}
+          </code>
+          <span className="sr-only">{`${kind} ${rule.text}`}</span>
         </p>
-        <p className="auto__rule-description">{presets[preset].description}</p>
+        <p className="auto__rule-description" data-reveal="rise" data-reveal-delay="460">
+          {presets[preset].description}
+        </p>
       </div>
 
-      <div className="auto__triggers">
-        <p className="mono-label">{triggersLabel}</p>
+      <div className="auto__triggers" data-reveal-group="">
+        <p className="mono-label" data-reveal="decode">
+          {triggersLabel}
+        </p>
         <ul className="auto__trigger-list">
-          {triggers.map((trigger) => (
-            <li className="auto__trigger" key={trigger}>
+          {triggers.map((trigger, index) => (
+            <li
+              className="auto__trigger"
+              key={trigger}
+              data-reveal="rise"
+              data-reveal-delay={100 + index * 45}
+            >
               {trigger}
             </li>
           ))}
