@@ -66,7 +66,9 @@ clip and its poster, put them in `public/cases/` (or on Vercel Blob for large fi
 ## Hero words
 
 The hero display shows the words in `heroCopy.words` (`src/sections/hero/copy.ts`) in turn, starting with
-the name; `|` marks where a word may break onto two lines on narrow screens. The strip's legend
+the name, each melting into the next (the field blends the two words' signed distance fields, so the
+letters' edges flow from one shape to the other); `|` marks where a word may break onto two lines on
+narrow screens. The strip's legend
 (`heroCopy.legend`) lights the part the display is showing. The display is drawn, so the words stay the same
 in both languages; the legend is translated.
 

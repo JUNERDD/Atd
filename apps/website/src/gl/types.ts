@@ -12,7 +12,7 @@ export interface Box {
 export interface DotFieldOptions {
   /**
    * Words drawn as lit dots, shown in turn: the first powers on, then in full motion the board
-   * changes word by word like a flip-dot sign and loops. `|` marks where a word may break onto two
+   * melts from each word into the next and loops. `|` marks where a word may break onto two
    * lines when that sets it larger. Default ["Atd"].
    */
   words?: readonly string[];
