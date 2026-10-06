@@ -9,33 +9,34 @@ const OUTER = 3.2;
 
 /**
  * Wires the LED board's script-side motion and returns whether it is on screen (its idle wave runs
- * only then). Each dot gets its column as `--col`, which the CSS power-on and wave stagger by. Under
- * a fine pointer the board is a loupe: dots within a few cells of the pointer swell
- * (`data-near="1" | "2"`), updated at most once a frame.
+ * only then). The board's dots are laid out `columns` to a row; each gets its column as `--col`,
+ * which the CSS power-on and wave stagger by. Under a fine pointer the board is a loupe: dots within
+ * a few cells of the pointer swell (`data-near="1" | "2"`), updated at most once a frame.
  */
-export function useLedBoard(boardRef: RefObject<HTMLElement | null>): boolean {
+export function useLedBoard(boardRef: RefObject<HTMLElement | null>, columns: number): boolean {
   const near = useInView(boardRef, { rootMargin: '80px 0px' });
 
   useEffect(() => {
     const board = boardRef.current;
-    if (!board) return;
-    const dots = Array.from(board.querySelectorAll<SVGCircleElement>('circle'));
-    const cells = dots.map((dot) => ({
-      dot,
-      x: Number(dot.getAttribute('cx')),
-      y: Number(dot.getAttribute('cy')),
-    }));
+    const grid = board?.querySelector('.download__board');
+    if (!board || !grid || columns < 1) return;
+    // Cell centres, in cells from the board's top left.
+    const cells = Array.from(
+      grid.querySelectorAll<HTMLElement>('.download__dot'),
+      (dot, index) => ({
+        dot,
+        x: (index % columns) + 0.5,
+        y: Math.floor(index / columns) + 0.5,
+      }),
+    );
     for (const { dot, x } of cells) dot.style.setProperty('--col', String(Math.floor(x)));
     if (!matchMedia(FINE_POINTER).matches || matchMedia(REDUCED).matches) return;
 
-    const svg = board.querySelector('svg');
-    const columns = Math.max(1, ...cells.map((cell) => cell.x + 0.5));
     let frame = 0;
     let pointer: { x: number; y: number } | null = null;
     const apply = () => {
       frame = 0;
-      const box = svg?.getBoundingClientRect();
-      if (!box) return;
+      const box = grid.getBoundingClientRect();
       const cell = box.width / columns;
       for (const { dot, x, y } of cells) {
         const distance = pointer
@@ -72,7 +73,7 @@ export function useLedBoard(boardRef: RefObject<HTMLElement | null>): boolean {
       abort.abort();
       cancelAnimationFrame(frame);
     };
-  }, [boardRef]);
+  }, [boardRef, columns]);
 
   return near;
 }
