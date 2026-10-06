@@ -14,13 +14,15 @@
 
 /* Fixed header, laid out like the model configuration popover's sub-view header: the close
    control first, then the title. Closing leaves the pill's HITL part to reopen the view, never
-   resolves a request. */
+   resolves a request. The 10px leading inset keeps the 24px control concentric with the popover's
+   22px corner and puts its glyph on the region's 16px content edge; the title (or pager) ends on
+   that same edge. */
 .hitl-queue-header {
   display: flex;
   flex-shrink: 0;
   align-items: center;
   gap: 4px;
-  padding: 4px;
+  padding: 10px 16px 4px 10px;
 }
 
 .hitl-queue-title {
@@ -73,12 +75,14 @@
   min-height: 96px;
 }
 
+/* Form inset matches the popover primitive's 16px so the bottom-right actions clear its 22px
+   corner; the header above already spaces the top. */
 .hitl-region {
   display: flex;
   flex-direction: column;
   gap: 12px;
   min-width: 0;
-  padding: 12px;
+  padding: 8px 16px 16px;
 }
 
 /* Compact rows need little frame: the row highlight sits 6px from the popover edge. */
