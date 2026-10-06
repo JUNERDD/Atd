@@ -90,7 +90,8 @@ async function checkedPreview(preview: Promise<InstallPreview>): Promise<PluginI
  */
 export function registerPluginRoutes(app: FastifyInstance, ctx: PluginRouteContext): void {
   const host = () => PluginHost.for(ctx.dataDir, ctx.log);
-  // Start the host (and the one-time legacy migration) with the service, not on first use.
+  // Start the host (and the one-time legacy migration) with the service, not on first use; the
+  // service's stop awaits it (`PluginHost.closeFor`).
   void host().catch((error: unknown) =>
     ctx.log.warn('Plugins could not be prepared.', { error: String(error) }),
   );

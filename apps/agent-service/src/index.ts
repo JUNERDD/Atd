@@ -14,6 +14,7 @@ import { FolderStore } from './folders/store.js';
 import { Ledger } from './ledger.js';
 import { createLogger, type Logger } from './logging.js';
 import { McpAuthority, migrateMcpSecrets } from './mcp/index.js';
+import { PluginHost } from './plugins/host.js';
 import { recoverService, type RecoveryReport } from './recovery.js';
 import { ResourceStore } from './resources.js';
 import { RunnerManager } from './runner-manager.js';
@@ -48,8 +49,8 @@ export interface ServiceHandle {
 /**
  * Importable service entry. Wires ledger, events, confirms, capabilities,
  * resources, runners and transport; `start` listens and publishes the
- * endpoint, `stop` drains runs, closes HTTP and MCP, and releases the dataDir
- * lock. Every stop trigger shares one run of those steps.
+ * endpoint, `stop` drains runs, closes HTTP and MCP, settles the plugin host,
+ * and releases the dataDir lock. Every stop trigger shares one run of those steps.
  */
 export async function createService(
   config: ServiceConfig,
@@ -127,13 +128,16 @@ export async function createService(
   const app = await buildServer(serverDeps);
   // Runs drain and HTTP closes first, so MCP has lost its callers when the
   // close ends every MCP connection (base and per-task aliases) and its
-  // stdio children; only then does the lock free the profile for a new service.
+  // stdio children. The plugin host settles after everything that reaches it,
+  // so its creation (started with the service, unawaited) stops writing under
+  // the dataDir; only then does the lock free the profile for a new service.
   // Clearing the endpoint tells the native supervisor the stop has finished
   // (`ServiceStopper`): it gives the process a short grace to exit, then kills it.
   const stopService = async () => {
     await manager.shutdown();
     await app.close();
     await McpAuthority.closeFor(config.paths.root);
+    await PluginHost.closeFor(config.paths.root);
     await clearEndpoint(config.paths);
     await releaseLock(config.paths);
   };
