@@ -80,8 +80,10 @@
   grid-area: l4;
 }
 
-/* Compact nodes are narrow, so the pictogram sits above the text; from regular up it sits beside. */
+/* Compact nodes are narrow, so the pictogram sits above the text; from regular up it sits beside.
+   Each is an opaque tile that catches the pointer's spotlight, sized to the tile. */
 .privacy__node {
+  --spot-size: 320px;
   position: relative;
   display: flex;
   flex-direction: column;
@@ -127,10 +129,12 @@
   color: var(--fg-2);
 }
 
-/* The one node off this Mac is drawn inverted. */
+/* The one node off this Mac is drawn inverted, and so is its spotlight. */
 .privacy__node[data-node='providers'] {
   --dot-1: var(--paper-1);
   --dot-0: rgb(255 255 255 / 0.18);
+  --spot-fill: rgb(255 255 255 / 0.08);
+  --spot-edge: rgb(255 255 255 / 0.45);
   border-color: var(--paper-fg-1);
   background-color: var(--paper-fg-1);
 }
@@ -144,15 +148,19 @@
 }
 
 /* Links: a hairline, and two packets that ride it, filled going out and hollow coming back. Each
-   packet box covers the link and moves by its own size, so only transform and opacity animate. */
+   packet box covers the link and moves by its own size, so only transform and opacity animate
+   (diagram-motion.css). A link runs down by default, or across; its orientation also names the
+   keyframes its packets ride (`--flow-name`) and the scale its line draws in from, at its source
+   end (`--draw-from`). Packets stay unseen until they ride. */
 .privacy__link {
+  --flow-phase: 0s;
+  --flow-name: privacy-flow-y;
+  --draw-from: 1 0;
   position: relative;
   overflow: hidden;
   min-block-size: 40px;
-  --flow-phase: 0s;
 }
 
-/* Links run vertically by default: the line and the packets down the middle. */
 .privacy__link::before {
   content: '';
   position: absolute;
@@ -160,18 +168,13 @@
   inset-inline-start: 50%;
   inline-size: 1px;
   background-color: var(--fg-3);
+  transform-origin: 50% 0;
 }
 
 .privacy__packet {
   position: absolute;
   inset: 0;
-  animation: privacy-flow-y 2.4s linear infinite both;
-  animation-delay: calc(0s - var(--flow-phase));
-}
-
-.privacy__packet[data-dir='back'] {
-  animation-direction: reverse;
-  animation-delay: calc(-1.2s - var(--flow-phase));
+  opacity: 0;
 }
 
 .privacy__packet::before {
@@ -203,16 +206,18 @@
   --flow-phase: 1.1s;
 }
 
-/* Below wide, the Keychain link is the horizontal one. */
+/* Below wide, the Keychain link is the one that runs across. */
+.privacy__link[data-flow='side'] {
+  --flow-name: privacy-flow-x;
+  --draw-from: 0 1;
+}
+
 .privacy__link[data-flow='side']::before {
   inset-block: 50% auto;
   inset-inline: 0;
   block-size: 1px;
   inline-size: auto;
-}
-
-.privacy__link[data-flow='side'] .privacy__packet {
-  animation-name: privacy-flow-x;
+  transform-origin: 0 50%;
 }
 
 .privacy__link[data-flow='side'] .privacy__packet::before {
@@ -237,15 +242,17 @@
     margin: -30px -18px -18px;
   }
 
+  .privacy__link[data-flow='chain'] {
+    --flow-name: privacy-flow-x;
+    --draw-from: 0 1;
+  }
+
   .privacy__link[data-flow='chain']::before {
     inset-block: 50% auto;
     inset-inline: 0;
     block-size: 1px;
     inline-size: auto;
-  }
-
-  .privacy__link[data-flow='chain'] .privacy__packet {
-    animation-name: privacy-flow-x;
+    transform-origin: 0 50%;
   }
 
   .privacy__link[data-flow='chain'] .privacy__packet::before {
@@ -253,63 +260,21 @@
     inset-inline-start: 0;
   }
 
+  .privacy__link[data-flow='side'] {
+    --flow-name: privacy-flow-y;
+    --draw-from: 1 0;
+  }
+
   .privacy__link[data-flow='side']::before {
     inset-block: 0;
     inset-inline: 50% auto;
     inline-size: 1px;
     block-size: auto;
-  }
-
-  .privacy__link[data-flow='side'] .privacy__packet {
-    animation-name: privacy-flow-y;
+    transform-origin: 50% 0;
   }
 
   .privacy__link[data-flow='side'] .privacy__packet::before {
     inset-block-start: 0;
     inset-inline-start: 50%;
-  }
-}
-
-.privacy__diagram:not([data-live]) .privacy__packet {
-  animation-play-state: paused;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .privacy__packet {
-    display: none;
-  }
-}
-
-@keyframes privacy-flow-y {
-  0% {
-    opacity: 0;
-    translate: 0 0;
-  }
-
-  15%,
-  85% {
-    opacity: 1;
-  }
-
-  100% {
-    opacity: 0;
-    translate: 0 100%;
-  }
-}
-
-@keyframes privacy-flow-x {
-  0% {
-    opacity: 0;
-    translate: 0 0;
-  }
-
-  15%,
-  85% {
-    opacity: 1;
-  }
-
-  100% {
-    opacity: 0;
-    translate: 100% 0;
   }
 }

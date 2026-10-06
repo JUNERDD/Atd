@@ -1,8 +1,34 @@
+import { useRef } from 'react';
 import { useCopy } from '../../i18n/lang';
+import { useInView } from '../../lib/use-in-view';
 import { Section } from '../../ui/section';
+import { SplitText } from '../../ui/split-text';
 import { automationsCopy } from './copy';
+import { Promises } from './promises';
 import { Schedule } from './schedule';
 import './automations.css';
+
+/**
+ * The release badge: it decodes in just before the heading's words rise, and its lit dot breathes
+ * while it is on screen. Hidden from assistive tech, which reads the badge with the heading text.
+ */
+function ReleaseBadge({ text }: { text: string }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const onScreen = useInView(ref);
+
+  return (
+    <span
+      ref={ref}
+      className="auto__badge"
+      aria-hidden="true"
+      data-reveal="decode"
+      data-reveal-delay="90"
+      data-live={onScreen ? '' : undefined}
+    >
+      {text}
+    </span>
+  );
+}
 
 /**
  * Automations, which ship in 0.7: the heading carries the release badge, the schedule panel shows
@@ -13,9 +39,9 @@ export function AutomationsSection() {
 
   const title = (
     <>
-      <span className="auto__badge">{t.badge}</span>
-      <span className="sr-only">{t.badgeJoin}</span>
-      {t.title}
+      <ReleaseBadge text={t.badge} />
+      <span className="sr-only">{`${t.badge}${t.badgeJoin}`}</span>
+      <SplitText text={t.title} delay={160} />
     </>
   );
 
@@ -30,18 +56,7 @@ export function AutomationsSection() {
           triggersLabel={t.triggersLabel}
           triggers={t.triggers}
         />
-        <div className="auto__promises">
-          <h3 className="auto__subtitle">{t.promisesTitle}</h3>
-          <ol className="auto__list">
-            {t.promises.map((promise, index) => (
-              <li className="auto__item reveal" key={promise.title}>
-                <span className="auto__code mono-label">{`C·${String(index + 1).padStart(2, '0')}`}</span>
-                <p className="auto__item-title">{promise.title}</p>
-                <p className="auto__item-body">{promise.body}</p>
-              </li>
-            ))}
-          </ol>
-        </div>
+        <Promises title={t.promisesTitle} promises={t.promises} />
       </div>
     </Section>
   );

@@ -1,5 +1,5 @@
-/* The schedule panel: an opaque instrument tile with the example picker, the week grid, the rule
-   readout and the list of trigger kinds. */
+/* The schedule panel: an opaque instrument tile with the example picker, the week grid (week.css),
+   the rule readout and the list of trigger kinds. */
 .auto__panel {
   display: grid;
   gap: 28px;
@@ -30,6 +30,7 @@
 
 /* Each example is a native radio under a pill; the pill shows its checked and focused states. */
 .auto__option {
+  --rv-y: 18px;
   position: relative;
   display: inline-flex;
   cursor: pointer;
@@ -76,103 +77,12 @@
   outline-offset: 2px;
 }
 
-/* Week grid: a day label, then 24 square cells per row; hour labels head every sixth column. */
-.auto__week {
-  display: grid;
-  grid-template-columns: auto repeat(24, minmax(0, 1fr));
-  align-items: center;
-  column-gap: 0;
-  row-gap: 2px;
-  max-inline-size: 640px;
-}
-
-.auto__hour {
-  grid-column: span 6;
-  padding-block-end: 6px;
-  border-inline-start: 1px solid var(--line-2);
-  padding-inline-start: 4px;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  line-height: 1;
-  color: var(--fg-3);
-}
-
-.auto__day {
-  padding-inline-end: 10px;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  line-height: 1;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--fg-3);
-}
-
-.auto__cell {
-  display: grid;
-  place-items: center;
-  aspect-ratio: 1;
-  opacity: 0.16;
-  scale: 0.7;
-  transition:
-    opacity var(--dur-fast) linear,
-    scale var(--dur-fast) var(--curve-out);
-}
-
-.auto__cell::before {
-  content: '';
-  inline-size: min(58%, 10px);
-  aspect-ratio: 1;
-  border-radius: 50%;
-  background-color: var(--dot-1);
-}
-
-/* Lit hours fade and spring up band by band: eight 3-hour bands, 20 ms apart (140 ms in all). */
-.auto__cell[data-on] {
-  opacity: 1;
-  scale: 1;
-  transition:
-    opacity var(--dur-base) var(--curve-out) var(--auto-delay, 0ms),
-    scale var(--dur-spring-bouncy) var(--spring-bouncy) var(--auto-delay, 0ms);
-}
-
-.auto__cell[data-on]::before {
-  box-shadow: 0 0 10px rgb(255 255 255 / 0.4);
-}
-
-.auto__cell[data-step='1'] {
-  --auto-delay: 20ms;
-}
-
-.auto__cell[data-step='2'] {
-  --auto-delay: 40ms;
-}
-
-.auto__cell[data-step='3'] {
-  --auto-delay: 60ms;
-}
-
-.auto__cell[data-step='4'] {
-  --auto-delay: 80ms;
-}
-
-.auto__cell[data-step='5'] {
-  --auto-delay: 100ms;
-}
-
-.auto__cell[data-step='6'] {
-  --auto-delay: 120ms;
-}
-
-.auto__cell[data-step='7'] {
-  --auto-delay: 140ms;
-}
-
-/* The rule readout: kind, the rule in mono, and what it means. */
+/* The rule readout under a drawn hairline: kind, the rule in mono, and what it means. */
 .auto__rule {
+  position: relative;
   display: grid;
   gap: 6px;
   padding-block-start: 20px;
-  border-block-start: 1px solid var(--line-1);
 }
 
 .auto__rule-line {
@@ -190,6 +100,7 @@
 }
 
 .auto__rule-description {
+  --rv-y: 14px;
   color: var(--fg-2);
 }
 
@@ -208,6 +119,7 @@
 }
 
 .auto__trigger {
+  --rv-y: 12px;
   padding: 4px 10px;
   border: 1px solid var(--line-1);
   border-radius: var(--r-chip);
@@ -221,19 +133,7 @@
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .auto__cell,
-  .auto__cell[data-on] {
-    scale: none;
-    transition: opacity var(--dur-fast) linear;
-  }
-}
-
 @media (forced-colors: active) {
-  .auto__cell::before {
-    background-color: CanvasText;
-  }
-
   .auto__radio:checked + .auto__pill {
     forced-color-adjust: none;
     background-color: Highlight;

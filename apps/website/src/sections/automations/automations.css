@@ -50,12 +50,26 @@
 }
 
 .auto__item {
+  position: relative;
   display: grid;
   grid-template-columns: 52px minmax(0, 1fr);
   align-content: start;
   gap: 2px 12px;
   padding-block: 16px;
-  border-block-end: 1px solid var(--line-1);
+}
+
+/* A hairline the reveal draws from its start (`draw`): along a block's top edge, or with
+   `data-edge="end"` its bottom edge. */
+.auto__hairline {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline: 0;
+  block-size: 1px;
+  background-color: var(--line-1);
+}
+
+.auto__hairline[data-edge='end'] {
+  inset-block: auto 0;
 }
 
 .auto__code {
@@ -64,11 +78,13 @@
 }
 
 .auto__item-title {
+  --rv-y: 16px;
   font-weight: 600;
   color: var(--fg-1);
 }
 
 .auto__item-body {
+  --rv-y: 16px;
   font-size: var(--fs-small);
   color: var(--fg-2);
   text-wrap: pretty;
@@ -90,5 +106,33 @@
 
   .auto__list {
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* The badge's dot comes on once its label has decoded, then breathes while the badge is on screen. */
+@media (prefers-reduced-motion: no-preference) {
+  :root[data-motion] .auto__badge[data-revealed]::before {
+    animation:
+      auto-badge-on 0.6s var(--spring-smooth) calc(var(--rv-delay, 0s) + 280ms) backwards,
+      auto-breathe 3.2s ease-in-out calc(var(--rv-delay, 0s) + 1.4s) infinite;
+  }
+
+  /* As specific as the rule above, whose shorthand would otherwise reset the play state. */
+  :root[data-motion] .auto__badge[data-revealed]:not([data-live])::before {
+    animation-play-state: paused;
+  }
+}
+
+@keyframes auto-badge-on {
+  from {
+    opacity: 0;
+    scale: 0;
+  }
+}
+
+@keyframes auto-breathe {
+  50% {
+    opacity: 0.35;
+    scale: 0.7;
   }
 }
