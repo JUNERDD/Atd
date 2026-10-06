@@ -16,7 +16,7 @@ type Motion = 'auto' | 'on' | 'off';
 
 /**
  * The opening section: a black LED panel (the WebGL dot field) whose display spells the name, then
- * what it stands for — anything, anytime, anywhere — changing word by word like a flip-dot sign. An
+ * what it stands for — anything, anytime, anywhere — each word melting into the next. An
  * instrument strip runs along the bottom edge, its first readout the legend of the name. The
  * heading is for assistive tech and search; the display is the visible title.
  *
