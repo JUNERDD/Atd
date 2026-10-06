@@ -10,8 +10,8 @@ interface DotGlyphProps {
 
 /**
  * A dot-matrix pictogram: one SVG circle per cell, lit or unlit, sized by its container. Each lit dot
- * carries its column as `data-x`, so a consumer's CSS can light the dots in sequence (a hover sweep, a
- * power-on) without inline styles.
+ * carries its column and row as `data-x` and `data-y`, so a consumer's CSS can light the dots in
+ * sequence (a hover sweep, a power-on wave) without inline styles.
  */
 export function DotGlyph({ rows }: DotGlyphProps) {
   const width = rows[0]?.length ?? 0;
@@ -34,6 +34,7 @@ export function DotGlyph({ rows }: DotGlyphProps) {
               r={0.34}
               data-lit={lit ? '' : undefined}
               data-x={lit ? x : undefined}
+              data-y={lit ? y : undefined}
             />
           );
         }),
