@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { DEFAULT_SHORTCUTS } from '@atd/agent-contracts';
 import { DEFAULT_SELECTION_TOOLBAR } from '../../client/settings-contract';
+import { AppsArt } from './art-apps';
 import { FinishArt } from './art-finish';
 import { HotkeyArt } from './art-hotkey';
 import { ProviderArt } from './art-provider';
@@ -8,6 +9,7 @@ import { ScreenshotArt } from './art-screenshot';
 import { SelectionPractice } from './art-selection';
 import { WelcomeArt } from './art-welcome';
 import type { OnboardingStepId, OnboardingStepView, StepRenderProps } from './onboarding-types';
+import { AppsStep } from './step-apps';
 import { FinishStep } from './step-finish';
 import { HotkeyStep } from './step-hotkey';
 import { ProviderStep } from './step-provider';
@@ -18,8 +20,8 @@ import { readyConnection } from './use-onboarding-goals';
 
 /**
  * One step as the card lays it out: its left-column content, its right-column art and the
- * primary button's label. Goal steps label the primary Continue; the card disables it (with its
- * reason) while the goal is unmet.
+ * primary button's label. Goal steps and the apps introduction label the primary Continue; the
+ * card disables it (with its reason) while a goal step's goal is unmet.
  */
 export function useStepView(step: OnboardingStepId, props: StepRenderProps): OnboardingStepView {
   const { t } = useTranslation('onboarding');
@@ -68,6 +70,12 @@ export function useStepView(step: OnboardingStepId, props: StepRenderProps): Onb
       return {
         content: <ProviderStep {...props} />,
         art: <ProviderArt connected={readyConnection(snapshot)?.connection.provider ?? null} />,
+        primaryLabel: proceed,
+      };
+    case 'apps':
+      return {
+        content: <AppsStep {...props} />,
+        art: <AppsArt />,
         primaryLabel: proceed,
       };
     case 'finish':

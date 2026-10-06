@@ -107,7 +107,7 @@ function OpenAtLoginRow({ value }: { value: boolean }) {
 }
 
 /**
- * Step 6: the summary. Each goal with its real state (unfinished ones lead back to their step), a
+ * Step 7: the summary. Each goal with its real state (unfinished ones lead back to their step), a
  * few first things to try with the user's own keys, and the login item where the shell supports
  * one, each as a card of settings rows. The primary action (in the footer) closes the guide and
  * summons the panel.

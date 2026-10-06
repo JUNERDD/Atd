@@ -19,6 +19,7 @@ export const STEP_NAME_KEYS = {
   selection: 'chrome.stepNames.selection',
   screenshot: 'chrome.stepNames.screenshot',
   provider: 'chrome.stepNames.provider',
+  apps: 'chrome.stepNames.apps',
   finish: 'chrome.stepNames.finish',
 } as const satisfies Record<OnboardingStepId, `chrome.stepNames.${OnboardingStepId}`>;
 
