@@ -217,7 +217,7 @@ export function mapBlock(block: ServiceBlock): Block {
         text: block.text,
         streaming: block.streaming,
         redacted: block.redacted,
-        durationMs: null,
+        durationMs: block.durationMs ?? null,
         ...messageFields(block),
       };
     case 'tool':

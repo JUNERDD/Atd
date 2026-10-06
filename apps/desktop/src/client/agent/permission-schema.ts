@@ -88,21 +88,6 @@ export const QuestionRecordSchema = Type.Object(
 );
 export type QuestionRecord = Static<typeof QuestionRecordSchema>;
 
-/**
- * Measured thinking time, appended as the `app-thinking-duration` custom entry so the
- * transcript keeps it after reopen. Keyed by stable thinking block id `t:<timestamp>:<index>`.
- */
-export const ThinkingDurationRecordSchema = Type.Object(
-  {
-    blockId: Type.String({ maxLength: 256 }),
-    runId: Identifier,
-    durationMs: Type.Integer({ minimum: 0 }),
-    at: Type.Number(),
-  },
-  { additionalProperties: false },
-);
-export type ThinkingDurationRecord = Static<typeof ThinkingDurationRecordSchema>;
-
 const requestBase = {
   id: Identifier,
   taskId: Identifier,

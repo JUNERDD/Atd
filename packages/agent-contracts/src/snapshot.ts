@@ -107,6 +107,12 @@ export const ServiceBlockSchema = Type.Union([
       text: Type.String(),
       streaming: Type.Boolean(),
       redacted: Type.Boolean(),
+      /**
+       * How long this thought streamed, as the service timed it (its generation.ts): from its
+       * start until it ended or a later part of the message began. Absent until the thought ends,
+       * for thoughts that did not stream, and in sessions from before it was measured.
+       */
+      durationMs: Type.Optional(Type.Integer({ minimum: 0 })),
       ...messageFields,
     },
     { additionalProperties: false },

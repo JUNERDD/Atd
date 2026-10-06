@@ -4,21 +4,21 @@
  * child's own task/run/execution identity from the shared registry, fails
  * closed without it, and registers confined tool proxies plus the memory read
  * tools (no writes) and frozen MCP proxies. No re-delegation, role,
- * scheduling or mission tools. It also records each assistant message's
- * generation time in the child's session (generation.ts), as the parent's
- * live transcript does in the parent's.
+ * scheduling or mission tools. It also records the generation time of each
+ * assistant message and the reasoning time of its thoughts in the child's
+ * session (generation.ts), as the parent's live transcript does in the
+ * parent's.
  */
 
 import type { ExtensionAPI } from '@earendil-works/pi-coding-agent';
-import { APP_GENERATION, GenerationClock, type GenerationEvent } from '../generation.js';
+import { GenerationClock, type GenerationEvent } from '../generation.js';
 import { childBySessionFile, hostForTask, parentForChildCwd } from './registry.js';
 import { registerChildTools } from './child-tools.js';
 
 export default function serviceChildBridge(pi: ExtensionAPI): void {
   const generation = new GenerationClock();
   const timeMessage = (event: GenerationEvent): void => {
-    const record = generation.observe(event);
-    if (record) pi.appendEntry(APP_GENERATION, record);
+    for (const { customType, data } of generation.observe(event)) pi.appendEntry(customType, data);
   };
   pi.on('message_start', timeMessage);
   pi.on('message_update', timeMessage);

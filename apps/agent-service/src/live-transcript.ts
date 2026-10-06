@@ -3,7 +3,7 @@ import type { AgentSession, SessionManager } from '@earendil-works/pi-coding-age
 import { CODEMODE_TOOL, type QueueState, type ServiceBlock } from '@atd/agent-contracts';
 import { NestedStepLog } from './codemode/steps.js';
 import type { RunningCompaction } from './compaction/records.js';
-import { APP_GENERATION, GenerationClock } from './generation.js';
+import { GenerationClock } from './generation.js';
 import { SUBAGENT_TOOL } from './subagents/tool-contract.js';
 import { TrailingFlush } from './trailing-flush.js';
 import { nextRetrying, type RetryingRequest } from './transcript-retry.js';
@@ -40,7 +40,8 @@ export interface LiveTranscriptSink {
  * the 0.99 branch on every change, and publishes patches; the cold path in
  * the runner reuses the same projection so the two cannot diverge. It also
  * publishes Pi's mid-run queue whenever it changes, and times each assistant
- * message (generation.ts), recording the time in the session as it ends.
+ * message and its thoughts (generation.ts), recording each time in the session
+ * as the message or thought ends.
  *
  * Streamed deltas reproject at most once per `STREAM_COALESCE_MS`; any other event, a snapshot
  * and disposal publish the owed delta first, so patches keep their order relative to message
@@ -94,10 +95,10 @@ export class LiveTranscript {
         event.type === 'message_update' ||
         event.type === 'message_end'
       ) {
-        // Pi persists the message itself after this listener, so its record precedes it; the
-        // projection joins the two by message timestamp.
-        const record = this.generation.observe(event);
-        if (record) this.manager.appendCustomEntry(APP_GENERATION, record);
+        // Pi persists the message itself after this listener, so its records precede it; the
+        // projection joins them by message timestamp and thinking block id.
+        for (const { customType, data } of this.generation.observe(event))
+          this.manager.appendCustomEntry(customType, data);
       }
       if (event.type === 'message_update' && event.message.role === 'assistant')
         this.partial = event.message;

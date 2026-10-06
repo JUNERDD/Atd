@@ -156,7 +156,10 @@ export const BlockSchema = Type.Union([
       streaming: Type.Boolean(),
       /** Redacted reasoning has no readable text; the renderer shows a placeholder. */
       redacted: Type.Boolean(),
-      /** Wall-clock reasoning time in ms, measured live; null on cold projection or when untimed. */
+      /**
+       * Reasoning time in ms, as the service timed the thought's stream; null until the thought
+       * ends and when it was not timed.
+       */
       durationMs: Type.Union([Type.Integer({ minimum: 0 }), Type.Null()]),
       ...messageFields,
     },

@@ -14,7 +14,7 @@ import {
   type SubagentAgentEntry,
   type SubagentChildEntry,
 } from '@atd/agent-contracts';
-import { readGenerationRecord } from './generation.js';
+import { readGenerationRecord, readThinkingRecord, thinkingBlockId } from './generation.js';
 import type { Logger } from './logging.js';
 import type { StepList } from './transcript-details/codemode.js';
 import { projectBlockDetails } from './transcript-details/index.js';
@@ -97,6 +97,8 @@ export interface BlockLookups {
   agents: Map<string, SubagentAgentEntry[]>;
   /** Measured generation time (`app-generation` entries) by assistant message `timestamp`. */
   generations: Map<number, number>;
+  /** Measured reasoning time (`app-thinking` entries) by thinking block id. */
+  thoughts: Map<string, number>;
 }
 
 /** The permission outcomes a session branch recorded. */
@@ -129,12 +131,15 @@ export function collectBlockLookups(
   const children = new Map<string, SubagentChildEntry[]>();
   const agents = new Map<string, SubagentAgentEntry[]>();
   const generations = new Map<number, number>();
+  const thoughts = new Map<string, number>();
   for (const item of branch) {
     if (item.type === 'custom') {
       if (item.customType === 'app-question' && QuestionRecordValidator.Check(item.data))
         questions.set(item.data.toolCallId, item.data.answer);
       const generation = readGenerationRecord(item.customType, item.data);
       if (generation) generations.set(generation.timestamp, generation.durationMs);
+      const thought = readThinkingRecord(item.customType, item.data);
+      if (thought) thoughts.set(thought.blockId, thought.durationMs);
       if (item.customType === SUBAGENT_CHILD_ENTRY && SubagentChildEntryValidator.Check(item.data))
         children.set(item.data.toolCallId, [
           ...(children.get(item.data.toolCallId) ?? []),
@@ -149,7 +154,16 @@ export function collectBlockLookups(
     if (item.endedAt !== undefined) resultEnds.set(item.message.toolCallId, item.endedAt);
   }
   for (const entries of children.values()) entries.sort((a, b) => a.seq - b.seq);
-  return { results, resultEnds, permissions: merged, questions, children, agents, generations };
+  return {
+    results,
+    resultEnds,
+    permissions: merged,
+    questions,
+    children,
+    agents,
+    generations,
+    thoughts,
+  };
 }
 
 function resolveStatus(
@@ -251,19 +265,23 @@ export function projectAssistantServiceBlocks(input: AssistantBlockInput): Servi
           ...shared,
         });
         return;
-      case 'thinking':
+      case 'thinking': {
+        const id = thinkingBlockId(timestamp, index);
+        const durationMs = lookups.thoughts.get(id);
         blocks.push({
           kind: 'thinking',
-          id: `t:${timestamp}:${index}`,
+          id,
           runId,
           timestamp,
           endedAt,
           text: part.thinking,
           streaming: partStreaming,
           redacted: Boolean(part.redacted),
+          ...(durationMs === undefined ? {} : { durationMs }),
           ...shared,
         });
         return;
+      }
       case 'toolCall': {
         const args = argumentRecord(part.arguments);
         const result = lookups.results.get(part.id);
