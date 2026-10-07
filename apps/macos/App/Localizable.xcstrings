@@ -2395,6 +2395,96 @@
         }
       }
     },
+    "permissionGuide.accessibility" : {
+      "comment" : "The Accessibility permission's name in System Settings",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Accessibility"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "辅助功能"
+          }
+        }
+      }
+    },
+    "permissionGuide.close" : {
+      "comment" : "Permission guide panel's close button",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Close"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "关闭"
+          }
+        }
+      }
+    },
+    "permissionGuide.drag" : {
+      "comment" : "Hint on the app card the user drags into System Settings",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Drag"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "拖拽"
+          }
+        }
+      }
+    },
+    "permissionGuide.screenRecording" : {
+      "comment" : "The Screen Recording permission's name in System Settings",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Screen & System Audio Recording"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "录屏与系统录音"
+          }
+        }
+      }
+    },
+    "permissionGuide.title" : {
+      "comment" : "Permission guide panel docked under System Settings: %1$@ is the app's name, %2$@ the permission's name",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Drag %1$@ to the list above to allow %2$@."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "将 %1$@ 拖到上方列表中，以允许 %2$@。"
+          }
+        }
+      }
+    },
     "pin.accessibility.label" : {
       "comment" : "VoiceOver label of a desktop pin that shows a widget; %1$@ is the app name, %2$@ the widget title",
       "extractionState" : "manual",
