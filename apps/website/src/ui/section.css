@@ -47,6 +47,8 @@
 }
 
 .section__title {
+  --rv-dur: var(--dur-spring-smooth);
+  --rv-y: 12px;
   inline-size: 100%;
   max-inline-size: 13em;
   font-family: var(--font-display);
