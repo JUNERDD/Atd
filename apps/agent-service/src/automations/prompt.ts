@@ -41,9 +41,12 @@ export interface FireFacts {
   upstream?: Upstream;
 }
 
-/** The zone an automation's times read in: its schedule's, else the service's own. */
+/** The zone an automation's times read in: its schedule's or idle trigger's, else the service's. */
 export function automationZone(automation: Automation): string {
-  return automation.trigger.kind === 'schedule' ? automation.trigger.timezone : processTimeZone();
+  const { trigger } = automation;
+  return trigger.kind === 'schedule' || trigger.kind === 'idle'
+    ? trigger.timezone
+    : processTimeZone();
 }
 
 /** `"<name> · YYYY-MM-DD HH:mm"`, the title of the task a run creates (decision D2). */
@@ -73,6 +76,8 @@ function reason(facts: FireFacts, zone: string): string {
         : '';
       return `Its schedule came due: scheduled for ${wallClock(scheduled, zone)} (${zone}), started ${wallClock(facts.firedAt, zone)}${lateness}.`;
     }
+    case 'idle':
+      return "The Mac has been idle and no task of the person's was running; this is today's idle run.";
     case 'folder':
       return `Files were added or changed in the watched folder "${oneLine(facts.folderName ?? '', 255)}".`;
     case 'automation':

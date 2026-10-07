@@ -13,8 +13,13 @@ import {
   type MemoryUnitResponse,
 } from '@atd/agent-contracts';
 import { Value } from 'typebox/value';
-import type { Logger } from '../logging.js';
+import {
+  announceMemoryChange,
+  watchMemory,
+  type MemoryAuthorityEvents,
+} from './authority-events.js';
 import type {
+  ConsolidationCommit,
   LearnerCommit,
   LearnerOp,
   MemoryHit,
@@ -23,29 +28,11 @@ import type {
   MemoryUnitInput,
   MemoryUnitPatch,
 } from './engine-types.js';
-import { planLearned } from './learn-commit.js';
+import { PERSON_SOURCES, type CommitContext } from './learn-commit.js';
 import { MemoryStore } from './memory-store.js';
 import { USER_RULES } from './unit-writes.js';
 
-export interface MemoryAuthorityEvents {
-  notify: (message: string, kind: 'info' | 'warning' | 'error') => void;
-  changed: () => void;
-}
-
-/**
- * Service-level authority events: store notices and run-made changes land in the service log. The
- * authority is a per-agentDir singleton, so the first caller's events serve every caller.
- */
-export function logMemoryEvents(log: Logger): MemoryAuthorityEvents {
-  return {
-    notify: (message, kind) => {
-      if (kind === 'error') log.error('Memory notice.', { message });
-      else if (kind === 'warning') log.warn('Memory notice.', { message });
-      else log.info('Memory notice.', { message });
-    },
-    changed: () => log.debug('Memory store changed.'),
-  };
-}
+export { logMemoryEvents, type MemoryAuthorityEvents } from './authority-events.js';
 
 /**
  * The single memory authority of one agent dir (docs/plans/2026-10-04-skill-shaped-memory.md):
@@ -53,8 +40,8 @@ export function logMemoryEvents(log: Logger): MemoryAuthorityEvents {
  * (the HTTP routes), the run tools, the learners and apps are its clients, and every read and
  * write runs through one queue, so none of them sees another half done. Every write that runs or
  * learners can see bumps the policy version, which learners compare at commit (the review flag is
- * Settings bookkeeping and does not); writes made off the routes (tools, learners) also reach
- * `onChanged` listeners, while the server announces route writes itself.
+ * Settings bookkeeping and does not); writes made off the routes (tools, learners, consolidations)
+ * also reach `onChanged` listeners, while the server announces route writes itself.
  */
 export class MemoryAuthority implements MemoryRuntimeStore {
   private policyVersion = 0;
@@ -68,21 +55,10 @@ export class MemoryAuthority implements MemoryRuntimeStore {
   ) {}
 
   private static readonly instances = new Map<string, Promise<MemoryAuthority>>();
-  private static readonly watchers = new Map<string, Set<() => void>>();
 
-  /**
-   * Calls `listener` whenever a run changes the memory of `agentDir`: a tool write or a learner
-   * commit. Those skip the HTTP routes, whose writes the server already announces, so this is how
-   * clients hear about them. Answers the unsubscribe.
-   */
+  /** Calls `listener` on every change made off the routes (authority-events.ts `watchMemory`). */
   static onChanged(agentDir: string, listener: () => void): () => void {
-    const listeners = MemoryAuthority.watchers.get(agentDir) ?? new Set();
-    listeners.add(listener);
-    MemoryAuthority.watchers.set(agentDir, listeners);
-    return () => {
-      listeners.delete(listener);
-      if (!listeners.size) MemoryAuthority.watchers.delete(agentDir);
-    };
+    return watchMemory(agentDir, listener);
   }
 
   /**
@@ -284,22 +260,47 @@ export class MemoryAuthority implements MemoryRuntimeStore {
         (Value.Check(MemoryOriginSchema, origin) ? null : 'The learner origin is not valid.');
       if (refusal)
         return { applied: 0, proposed: 0, skipped: ops.map((op) => `${op.op}: ${refusal}`) };
-      const { units } = await this.memory.read(true);
-      const plan = planLearned(ops, {
-        units,
-        pending: this.memory.proposals,
-        shown,
-        origin,
-        askFirst: this.memory.settings.askFirst,
-        now: new Date().toISOString(),
-      });
-      try {
-        return { ...(await this.memory.commit(plan)), skipped: plan.skipped };
-      } finally {
-        // Announced even when a write failed midway: the writes before it stay.
-        if (plan.writes.length || plan.proposals.length) this.wrote(true);
-      }
+      return this.commitPlan(ops, { origin, shown, suggestUpdatesOf: new Set() });
     });
+  }
+
+  /**
+   * Applies or queues a memory consolidation's updates and removals (consolidation/) while
+   * learning is not paused and the policy version still equals `version`, captured before the
+   * consolidation read memory; otherwise nothing is written. Like a learner commit without a run:
+   * each updated unit keeps its origin, the suggestions carry none, and an update to a unit the
+   * person or an app wrote waits as a suggestion. Answers the enabled units the commit leaves.
+   */
+  commitConsolidation(
+    ops: readonly LearnerOp[],
+    version: number,
+    shown: ReadonlySet<string>,
+  ): Promise<ConsolidationCommit> {
+    return this.serially(async () => {
+      if (this.memory.settings.paused) return { refused: 'paused' };
+      if (version !== this.policyVersion) return { refused: 'changed' };
+      const commit = await this.commitPlan(ops, {
+        origin: null,
+        shown,
+        suggestUpdatesOf: PERSON_SOURCES,
+      });
+      const { units } = await this.memory.read(true);
+      return { refused: null, ...commit, units: units.filter((unit) => unit.enabled) };
+    });
+  }
+
+  /** Plans `ops` against the current units (learn-commit.ts) and writes the plan. */
+  private async commitPlan(
+    ops: readonly LearnerOp[],
+    context: CommitContext,
+  ): Promise<LearnerCommit> {
+    const plan = await this.memory.plan(ops, context);
+    try {
+      return { ...(await this.memory.commit(plan)), skipped: plan.skipped };
+    } finally {
+      // Announced even when a write failed midway: the writes before it stay.
+      if (plan.writes.length || plan.proposals.length) this.wrote(true);
+    }
   }
 
   /** Stops the authority; the next `authorityFor` loads a new one. */
@@ -329,7 +330,7 @@ export class MemoryAuthority implements MemoryRuntimeStore {
     this.policyVersion += 1;
     if (offRoute) {
       this.events.changed();
-      for (const listener of MemoryAuthority.watchers.get(this.agentDir) ?? []) listener();
+      announceMemoryChange(this.agentDir);
     }
     return this.policyVersion;
   }

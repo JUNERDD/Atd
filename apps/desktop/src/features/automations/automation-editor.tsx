@@ -25,6 +25,7 @@ import { ActionFields } from './action-fields';
 import { comparable, draftOf, savedDraft, type DraftPatch } from './automation-draft';
 import { failureWords, folderNameOf, runBlockWords } from './automation-words';
 import { DeliveryFields } from './delivery-fields';
+import { PermissionFields } from './permission-fields';
 import { PolicyFields } from './policy-fields';
 import { RunNowButton } from './run-now-button';
 import { AutomationStatusNotice } from './status-notice';
@@ -35,11 +36,11 @@ import { automationsBridge, startRun, useTriggerPreview } from './use-automation
 
 /**
  * The editor of one automation (`saved`), or of a new one until it is saved: its name, when it
- * runs, what it does, how its unattended runs behave and how results reach the person. Save
- * checks the fields first, and a trigger the service's preview refuses; a revision conflict stays
- * inline with Reload. Run now runs the saved automation; with unsaved edits, or before the first
- * save, it saves and then runs, which is how a new automation is tried out. Create or Edit with AI
- * hands the work to a new panel session, as the command editor's does.
+ * runs, what it does, what its unattended runs may do, how they run and how results reach the
+ * person. Save checks the fields first, and a trigger the service's preview refuses; a revision
+ * conflict stays inline with Reload. Run now runs the saved automation; with unsaved edits, or
+ * before the first save, it saves and then runs, which is how a new automation is tried out.
+ * Create or Edit with AI hands the work to a new panel session, as the command editor's does.
  */
 export function AutomationEditor({
   initial,
@@ -185,7 +186,7 @@ export function AutomationEditor({
         gutter="none"
         scrollShadow
       >
-        <div key={generation} className="editor-fields automation-editor-fields min-w-0 p-0.75">
+        <div key={generation} className="editor-fields settings-groups min-w-0 p-0.75">
           {saved && <AutomationStatusNotice status={saved.status} />}
           <div className="settings-field">
             <Label htmlFor="automation-name">{t('editor.name')}</Label>
@@ -219,16 +220,15 @@ export function AutomationEditor({
             commands={commands}
             problems={problems}
           />
-          <PolicyFields
+          <PermissionFields
             draft={draft}
             onChange={change}
             patch={patch}
-            settings={settings}
-            commands={commands}
             folderName={folderName}
             onFoldersPicked={learnFolders}
             problems={problems}
           />
+          <PolicyFields draft={draft} onChange={change} settings={settings} commands={commands} />
           <DeliveryFields delivery={draft.delivery} onChange={(delivery) => set({ delivery })} />
           {failure && (
             <div ref={failureRef} className="space-y-2">

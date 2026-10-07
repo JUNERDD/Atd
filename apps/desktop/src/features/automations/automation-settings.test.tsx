@@ -206,4 +206,55 @@ describe('automations list', () => {
     expect(automations.markRead).toHaveBeenCalledWith({ runIds: ['run-1'] });
     expect(automations.showTask).toHaveBeenCalledWith('task-1');
   });
+
+  it('words an idle consolidation and its task-less runs', async () => {
+    const automations = fakeAutomations([
+      automationItem({
+        id: 'consolidate',
+        name: 'Consolidate memory',
+        trigger: { kind: 'idle', idleMinutes: 15, timezone: systemZone },
+        action: { kind: 'consolidateMemory' },
+      }),
+    ]);
+    automations.runs.mockResolvedValue([
+      automationRun({
+        id: 'run-merged',
+        automationId: 'consolidate',
+        source: 'idle',
+        outcome: 'delivered',
+        summary: 'Merged 2 duplicates and suggested 1 removal.',
+        finishedAt: '2026-10-06T01:01:00.000Z',
+      }),
+      automationRun({
+        id: 'run-paused',
+        automationId: 'consolidate',
+        source: 'idle',
+        outcome: 'skipped',
+        reason: 'memoryPaused',
+        firedAt: '2026-10-05T01:00:00.000Z',
+        readAt: '2026-10-05T01:00:00.000Z',
+      }),
+    ]);
+    renderAutomations(automations);
+    const user = userEvent.setup();
+    const consolidate = await row('Consolidate memory');
+    expect(
+      consolidate.getByText('Once a day, when the Mac has been idle for 15 minutes'),
+    ).toBeVisible();
+    await user.click(consolidate.getByRole('button', { name: 'Run Consolidate memory now' }));
+    expect(automations.run).toHaveBeenCalledWith('consolidate');
+    expect(
+      await screen.findByText('Run started; its result shows in the run history.'),
+    ).toBeVisible();
+    await user.click(
+      consolidate.getByRole('button', { name: 'More actions for Consolidate memory' }),
+    );
+    await user.click(await screen.findByRole('menuitem', { name: 'Run history' }));
+    // Consolidation starts no task: no Open task, and no Task deleted either.
+    expect(await screen.findByText('Merged 2 duplicates and suggested 1 removal.')).toBeVisible();
+    expect(screen.getByText('Automatic learning is off, so memory wasn’t changed.')).toBeVisible();
+    expect(screen.getAllByText(/^Mac idle · /)).toHaveLength(2);
+    expect(screen.queryByRole('button', { name: /^Open the task/ })).not.toBeInTheDocument();
+    expect(screen.queryByText('Task deleted')).not.toBeInTheDocument();
+  });
 });

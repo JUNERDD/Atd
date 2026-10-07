@@ -10,9 +10,13 @@ import {
   SelectValue,
 } from '@atd/ui/components/select';
 import { FieldError } from '../commands/field-error';
+import { systemTimeZone, timeZones } from './automation-time';
 import { errorId } from './use-automation-problems';
 
-/** The schedule inputs a repeat choice combines: an interval, a time of day, a day of the month. */
+/**
+ * The inputs time-based triggers combine: an interval, a time of day, a day of the month, and the
+ * time zone a schedule's times and an idle trigger's days are read in.
+ */
 
 const UNITS = [
   { id: 'minutes', minutes: 1 },
@@ -155,5 +159,49 @@ export function MonthDaySelect({
         <SelectItem value="last">{t('schedule.lastDay')}</SelectItem>
       </SelectContent>
     </Select>
+  );
+}
+
+/**
+ * The trigger's time zone, with the Mac's own marked. A schedule's and an idle trigger's zone
+ * share the field and its problem (`timezone`).
+ */
+export function TimeZoneSelect({
+  timezone,
+  onChange,
+  error,
+}: {
+  timezone: string;
+  onChange: (timezone: string) => void;
+  error: string;
+}) {
+  const { t } = useTranslation('automations');
+  const system = systemTimeZone();
+  return (
+    <div className="settings-field">
+      <Label htmlFor="automation-timezone">{t('schedule.timeZone')}</Label>
+      <div className="flex flex-col gap-2">
+        <Select value={timezone} onValueChange={onChange}>
+          <SelectTrigger
+            id="automation-timezone"
+            className="w-full"
+            aria-invalid={Boolean(error) || undefined}
+            aria-describedby={error ? errorId('timezone') : undefined}
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {timeZones(timezone).map((zone) => (
+              <SelectItem key={zone} value={zone}>
+                {zone === system
+                  ? t('schedule.systemZone', { zone: zone.replaceAll('_', ' ') })
+                  : zone.replaceAll('_', ' ')}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {error && <FieldError id={errorId('timezone')}>{error}</FieldError>}
+      </div>
+    </div>
   );
 }

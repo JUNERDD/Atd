@@ -2,12 +2,13 @@ import { Type, type Static } from 'typebox';
 import { Identifier } from './identifiers.js';
 
 /**
- * What made an automation fire: its schedule, a change in its watched folder, another
- * automation's result, or a person pressing Run now.
+ * What made an automation fire: its schedule, a change in its watched folder, the Mac becoming
+ * idle, another automation's result, or a person pressing Run now.
  */
 export const AutomationFireSourceSchema = Type.Union([
   Type.Literal('schedule'),
   Type.Literal('folder'),
+  Type.Literal('idle'),
   Type.Literal('automation'),
   Type.Literal('manual'),
 ]);

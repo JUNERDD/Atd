@@ -6,21 +6,24 @@ import {
 } from '@atd/agent-contracts';
 import { ConflictError } from '../errors.js';
 import { LedgerNotFound } from '../ledger.js';
+import { attendedActiveRuns } from '../unattended.js';
 import { Dispatcher, MAX_CHAIN_DEPTH, type FireExtras } from './dispatcher.js';
 import { JUMP_MS, needsCursor, rewindCursor, scheduleDue, startCursor, TICK_MS } from './due.js';
 import type { EngineDeps } from './engine-deps.js';
 import { FOLDER_SCANNER, FolderWatch, registeredFolder } from './folder-watch.js';
+import { idleDue } from './idle.js';
 import { liveNotices } from './outcome.js';
 import { reconcileRuns } from './reconcile.js';
 import { stateOf, type FireRequest } from './records.js';
 
 /**
  * The automation engine (decisions D6–D8). One coarse wall-clock tick serves schedules against
- * their persisted next-due occurrences and starts a scan of each watched folder, which runs on
- * its own so a slow volume never holds the tick; chained automations fire when the run they
- * follow settles (dispatcher.ts). Nothing waits on a long timer: after sleep or a clock jump the
- * next tick finds what is due, and missed occurrences wait a short wake grace. One automation
- * that cannot be evaluated stops only itself. What the engine keeps in memory is rebuilt from the
+ * their persisted next-due occurrences, fires idle triggers once the Mac is idle (idle.ts), and
+ * starts a scan of each watched folder, which runs on its own so a slow volume never holds the
+ * tick; chained automations fire when the run they follow settles (dispatcher.ts). Nothing waits
+ * on a long timer: after sleep or a clock jump the next tick finds what is due, and missed
+ * occurrences and idle triggers wait a short wake grace. One automation that cannot be evaluated
+ * stops only itself. What the engine keeps in memory is rebuilt from the
  * store at the next start.
  */
 
@@ -122,6 +125,11 @@ export class AutomationEngine {
     return runs.some((run) => run.outcome === 'running');
   }
 
+  /** Stops the automation's memory consolidation, if one is going (it is being deleted). */
+  stopConsolidation(automationId: string): void {
+    this.dispatcher.consolidations.stop(automationId);
+  }
+
   /** Run now: fires at once, whatever the pause and the rate limit; 409 while a run is active. */
   async runNow(automationId: string): Promise<AutomationRun> {
     if (this.deps.store.problem)
@@ -153,6 +161,7 @@ export class AutomationEngine {
     if (this.noteClock(now)) await this.rewind(now);
     await this.housekeep(now);
     await this.dispatcher.supervisor.enforceDeadlines(now);
+    this.dispatcher.consolidations.enforceDeadlines(now);
     const { definitions } = this.deps.store.data;
     for (const automation of definitions.automations) {
       if (!automation.enabled || this.stopped) continue;
@@ -160,7 +169,11 @@ export class AutomationEngine {
         if (!definitions.paused) this.startFolder(automation, now);
         continue;
       }
-      await this.serveSchedule(automation, now, definitions.paused).then(
+      const serving =
+        automation.trigger.kind === 'idle'
+          ? this.serveIdle(automation, now, definitions.paused)
+          : this.serveSchedule(automation, now, definitions.paused);
+      await serving.then(
         () => void this.failing.delete(automation.id),
         (error: unknown) => this.report(automation.id, error),
       );
@@ -254,6 +267,17 @@ export class AutomationEngine {
     const request: FireRequest = { source: 'schedule', scheduledFor: due.occurrence };
     if (due.action === 'skip') await this.dispatcher.skip(automation.id, due.reason, request, now);
     else await this.dispatcher.fire(automation, { ...request, late: due.late }, now, { depth: 0 });
+  }
+
+  private async serveIdle(automation: Automation, now: number, paused: boolean): Promise<void> {
+    const state = this.deps.store.data.state.automations[automation.id];
+    const due = idleDue(automation, state, now, {
+      paused,
+      graceUntil: this.graceUntil,
+      idleSeconds: this.deps.activity.idleSeconds(now),
+      attendedRuns: attendedActiveRuns(this.deps.ledger),
+    });
+    if (due) await this.dispatcher.fire(automation, { source: 'idle' }, now, { depth: 0 });
   }
 
   private async serveFolder(automation: Automation, now: number): Promise<void> {

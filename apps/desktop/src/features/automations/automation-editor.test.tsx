@@ -226,4 +226,31 @@ describe('automation editor', () => {
       ),
     );
   });
+
+  it('saves a memory consolidation that runs once a day when the Mac is idle', async () => {
+    const automations = fakeAutomations([]);
+    renderSettings(automations);
+    const user = await openNewAutomation();
+    await user.type(screen.getByRole('textbox', { name: 'Name' }), 'Tidy memory');
+    await user.click(screen.getByRole('tab', { name: 'Mac is idle' }));
+    expect(screen.getByRole('combobox', { name: 'Idle for' })).toHaveTextContent('15 minutes');
+    expect(screen.getByText(/^Runs at most once a day/)).toBeVisible();
+    // An idle trigger only fires while Atd is open: there are no missed runs to choose about.
+    expect(screen.queryByRole('combobox', { name: 'Missed runs' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('tab', { name: 'Consolidate memory' }));
+    expect(screen.getByText(/^Merges duplicate memories/)).toBeVisible();
+    expect(screen.getByText(/^Consolidation only works on your memory/)).toBeVisible();
+    expect(screen.queryByRole('combobox', { name: 'Approval' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('switch', { name: /Use memory/ })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Create automation' }));
+    await waitFor(() =>
+      expect(automations.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'Tidy memory',
+          trigger: { kind: 'idle', idleMinutes: 15, timezone: systemZone },
+          action: { kind: 'consolidateMemory' },
+        }),
+      ),
+    );
+  });
 });

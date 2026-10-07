@@ -2,6 +2,7 @@ import {
   errorMessage,
   type MemoryOrigin,
   type MemoryProposal,
+  type MemorySource,
   type MemoryUnit,
 } from '@atd/agent-contracts';
 import type { LearnerOp } from './engine-types.js';
@@ -27,7 +28,8 @@ import {
  * one written without the current body would lose what it held, and only its description change
  * goes through. An op that cannot apply is skipped with its reason; the others still go through.
  * A suggestion about a unit carries the revision that unit has once the commit is written, so
- * accepting it after a later change answers 409 instead of overwriting the newer version.
+ * accepting it after a later change answers 409 instead of overwriting the newer version. A
+ * memory consolidation (consolidation/) commits its updates and removals through the same plan.
  */
 export interface LearnContext {
   /** Every unit, enabled or not (names stay unique across all of them). */
@@ -36,10 +38,22 @@ export interface LearnContext {
   pending: readonly MemoryProposal[];
   /** The units whose whole body the review saw, by name. */
   shown: ReadonlySet<string>;
-  origin: MemoryOrigin;
+  /** The task a learner reviewed; null for a consolidation, which keeps each unit's origin. */
+  origin: MemoryOrigin | null;
+  /**
+   * Sources whose units an update only suggests, so the person's own edits win: `user` and `app`
+   * for a consolidation, none for a learner.
+   */
+  suggestUpdatesOf: ReadonlySet<MemorySource>;
   askFirst: boolean;
   now: string;
 }
+
+/** What the committing writer decides; the store supplies the rest of a `LearnContext`. */
+export type CommitContext = Pick<LearnContext, 'origin' | 'shown' | 'suggestUpdatesOf'>;
+
+/** Who wrote the units whose updates a consolidation only suggests: the person's edits win. */
+export const PERSON_SOURCES: ReadonlySet<MemorySource> = new Set(['user', 'app']);
 
 /** A unit the commit writes: a new one, or a new version of an existing one. */
 export interface PlannedWrite {
@@ -173,7 +187,7 @@ class LearnPlanner {
     const { draft, changed } = draftPatch(unit, patch, this.rules, this.units, this.context.now);
     if (!changed)
       throw new TypeError(unseen ? 'its body was not shown to the review' : 'it changes nothing');
-    if (this.context.askFirst)
+    if (this.context.askFirst || this.context.suggestUpdatesOf.has(unit.source))
       return this.queue({
         kind: 'update',
         unitId: unit.id,

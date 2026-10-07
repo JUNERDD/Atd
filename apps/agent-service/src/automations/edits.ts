@@ -159,6 +159,7 @@ export async function deleteAutomation(
   cancel: (taskId: string, runId: string) => Promise<unknown>,
 ): Promise<void> {
   find(ctx.store.data, id);
+  ctx.engine.stopConsolidation(id);
   const runs = ctx.store.data.state.automations[id]?.runs ?? [];
   for (const run of runs)
     if (run.outcome === 'running' && run.taskId && run.runId)

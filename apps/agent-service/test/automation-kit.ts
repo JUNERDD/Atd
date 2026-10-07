@@ -1,15 +1,17 @@
 import { randomUUID } from 'node:crypto';
-import { mkdtemp, realpath, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import type {
   AgentTask,
+  AppLanguage,
   AutomationDraft,
   RunStatus,
   ServiceBlock,
   SubmitTaskRequest,
   SubmitTaskResponse,
 } from '@atd/agent-contracts';
+import { defaultsMarker } from '../dist/automations/defaults.js';
 import { createAutomation } from '../dist/automations/edits.js';
 import type { AutomationRuns } from '../dist/automations/engine-deps.js';
 import type { FolderScanner } from '../dist/automations/folder-watch.js';
@@ -18,15 +20,23 @@ import { AutomationService } from '../dist/automations/service.js';
 import { EventLog } from '../dist/event-log.js';
 import { FolderStore } from '../dist/folders/store.js';
 import { Ledger } from '../dist/ledger.js';
+import type {
+  ConsolidateMemory,
+  ConsolidationRequest,
+  ConsolidationResult,
+} from '../dist/memory/consolidation/index.js';
 import { ResourceStore } from '../dist/resources.js';
 import { servicePaths } from '../dist/storage.js';
+import { SystemActivity } from '../dist/system-activity.js';
 import type { InternalSubmitOptions } from '../dist/tasks/submit-options.js';
 
 /**
  * The automation engine over a real store, ledger and event log in a temporary data directory,
  * with fake task runs: a submit is accepted into the ledger as the run pipeline would accept it
  * (queued, with its origin, tier, title and trigger) but never executes. A test ends a run with
- * `finish`, and drives time with `clock.now` and `service.engine.tick`.
+ * `finish`, and drives time with `clock.now` and `service.engine.tick`. Memory consolidations
+ * wait in `consolidations` until the test answers them; `activity` takes the shell's idle reports.
+ * The default automations are seeded as on a fresh data dir unless `defaults: false`.
  */
 
 export const quiet = { debug() {}, info() {}, warn() {}, error() {} };
@@ -56,14 +66,32 @@ export function draft(fields: Partial<AutomationDraft> = {}): AutomationDraft {
   };
 }
 
+/** A memory consolidation the engine started; the test answers or fails it. */
+export interface Consolidation {
+  request: ConsolidationRequest;
+  answer: (result: ConsolidationResult) => void;
+  fail: (error: Error) => void;
+}
+
 /** A command launch the engine made, as `launchCommand` received it. */
 export interface Launched {
   request: LaunchCommandRequest;
   internal: InternalSubmitOptions;
 }
 
-export async function automationKit(start: string, options: { scanner?: FolderScanner } = {}) {
+export interface KitOptions {
+  scanner?: FolderScanner;
+  /** False: the data dir counts as seeded already, so no default automation is added. */
+  defaults?: boolean;
+  language?: AppLanguage | null;
+}
+
+export async function automationKit(start: string, options: KitOptions = {}) {
   const root = await realpath(await mkdtemp(path.join(tmpdir(), 'automation-kit-')));
+  if (options.defaults === false) {
+    await mkdir(path.dirname(defaultsMarker(root)), { recursive: true });
+    await writeFile(defaultsMarker(root), JSON.stringify({ version: 1, added: [] }));
+  }
   const paths = servicePaths(root);
   const ledger = await Ledger.load(paths);
   const events = new EventLog('automation-kit', 1);
@@ -72,6 +100,10 @@ export async function automationKit(start: string, options: { scanner?: FolderSc
   const clock = { now: Date.parse(start) };
   const submitted: Submitted[] = [];
   const launched: Launched[] = [];
+  const consolidations: Consolidation[] = [];
+  const consolidateMemory: ConsolidateMemory = (request) =>
+    new Promise((answer, fail) => consolidations.push({ request, answer, fail }));
+  const activity = new SystemActivity(() => clock.now);
   const answers = new Map<string, string>();
   // The kit's default model: a run needs some connection or env credentials to pass preflight.
   process.env.AI_AGENT_TEMP_API_KEY = 'automation-kit';
@@ -190,6 +222,9 @@ export async function automationKit(start: string, options: { scanner?: FolderSc
     },
     folders,
     resources,
+    consolidateMemory,
+    activity,
+    language: () => options.language ?? null,
     log: quiet,
     now: () => clock.now,
     ...(options.scanner ? { scanner: options.scanner } : {}),
@@ -220,8 +255,12 @@ export async function automationKit(start: string, options: { scanner?: FolderSc
       await settle();
     },
     clock,
+    /** The fake run pipeline; a submit without `internal.trigger` is a run the person started. */
+    manager,
     submitted,
     launched,
+    consolidations,
+    activity,
     begin,
     finish,
     settle,

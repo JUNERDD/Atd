@@ -37,6 +37,8 @@ export const PROMPT_TOOLS: readonly CommandTool[] = ['read', 'write', 'edit', 'b
 const DEFAULT_TOOLS: readonly CommandTool[] = ['read', 'write', 'edit'];
 
 const DEFAULT_TIME = '09:00';
+/** How long the Mac must have had no input before a new idle trigger fires. */
+export const DEFAULT_IDLE_MINUTES = 15;
 
 /** A command run uses the command's own tools, so its policy names none. */
 const COMMAND_POLICY: AutomationPolicy = {
@@ -85,7 +87,10 @@ export function defaultSchedule(
   }
 }
 
-/** The trigger a kind switch starts with. A schedule's zone is the Mac's when it is made. */
+/**
+ * The trigger a kind switch starts with. A schedule's zone, and the zone whose calendar day an
+ * idle trigger's once-a-day run counts in, is the Mac's when it is made.
+ */
 export function defaultTrigger(kind: TriggerKind): AutomationTrigger {
   switch (kind) {
     case 'schedule': {
@@ -94,6 +99,8 @@ export function defaultTrigger(kind: TriggerKind): AutomationTrigger {
     }
     case 'folder':
       return { kind, folderId: '', events: ['added'], patterns: [], recursive: false };
+    case 'idle':
+      return { kind, idleMinutes: DEFAULT_IDLE_MINUTES, timezone: systemTimeZone() };
     case 'automation':
       return { kind, automationId: '', outcomes: ['delivered'] };
   }
@@ -105,6 +112,8 @@ export function defaultAction(kind: ActionKind): AutomationAction {
       return { kind, prompt: '' };
     case 'command':
       return { kind, commandId: '', arguments: {}, input: '' };
+    case 'consolidateMemory':
+      return { kind };
   }
 }
 
@@ -268,13 +277,21 @@ export function comparable(draft: AutomationDraft): string {
       folderIds: sorted(policy.folderIds),
       ...(policy.tools ? { tools: sorted(policy.tools) } : {}),
     },
-    trigger:
-      trigger.kind === 'folder'
-        ? { ...trigger, events: sorted(trigger.events) }
-        : trigger.kind === 'automation'
-          ? { ...trigger, outcomes: sorted(trigger.outcomes) }
-          : trigger.schedule.kind === 'weekly'
-            ? { ...trigger, schedule: { ...trigger.schedule, days: sorted(trigger.schedule.days) } }
-            : trigger,
+    trigger: comparableTrigger(trigger),
   });
+}
+
+function comparableTrigger(trigger: AutomationTrigger): AutomationTrigger {
+  switch (trigger.kind) {
+    case 'folder':
+      return { ...trigger, events: sorted(trigger.events) };
+    case 'automation':
+      return { ...trigger, outcomes: sorted(trigger.outcomes) };
+    case 'schedule':
+      return trigger.schedule.kind === 'weekly'
+        ? { ...trigger, schedule: { ...trigger.schedule, days: sorted(trigger.schedule.days) } }
+        : trigger;
+    case 'idle':
+      return trigger;
+  }
 }

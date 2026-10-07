@@ -34,10 +34,12 @@ extension ShellController {
 
   /// A click on an automation's notification: the panel shows, then its page opens the run's task
   /// (`task.open`). The event waits for the page, so a click that launched the app opens the task
-  /// once the panel's page is ready.
+  /// once the panel's page is ready. A run that started no task (memory consolidation) has none to
+  /// open, so the click opens Settings at the Automations section, where its run is listed; an
+  /// already open settings window just comes forward.
   func openNotifiedTask(_ taskId: String?) {
+    guard let taskId else { return openSettings(commandId: nil, section: "automations") }
     showPanel()
-    guard let taskId else { return }
     panelHost.send(.taskOpen(.init(taskId: taskId)))
   }
 }

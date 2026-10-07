@@ -6,6 +6,7 @@ import {
   type AutomationItem,
   type AutomationListResponse,
   type AutomationNotice,
+  type AppLanguage,
   type AutomationRun,
   type PreviewAutomationTriggerRequest,
   type PreviewAutomationTriggerResponse,
@@ -14,10 +15,13 @@ import type { EventLog } from '../event-log.js';
 import type { FolderStore } from '../folders/store.js';
 import { LedgerNotFound, type Ledger } from '../ledger.js';
 import type { Logger } from '../logging.js';
+import type { ConsolidateMemory } from '../memory/consolidation/index.js';
 import type { ResourceStore } from '../resources.js';
 import type { ServicePaths } from '../storage.js';
+import type { SystemActivity } from '../system-activity.js';
 import { TrailingFlush } from '../trailing-flush.js';
 import { firingProblem, lookups, triggerProblem, type CheckContext } from './checks.js';
+import { seedDefaultAutomations } from './defaults.js';
 import type { EditContext } from './edits.js';
 import type { AutomationRuns } from './engine-deps.js';
 import { AutomationEngine } from './engine.js';
@@ -39,6 +43,12 @@ export interface AutomationServiceDeps {
   launchCommand: CommandLauncher;
   folders: Pick<FolderStore, 'resolve'>;
   resources: Pick<ResourceStore, 'save'>;
+  /** The memory engine's consolidation job (`consolidateMemory` actions). */
+  consolidateMemory: ConsolidateMemory;
+  /** The shell's reports of system idle time; the activity route writes them. */
+  activity: SystemActivity;
+  /** The stored language setting, which names the default automations. */
+  language: () => AppLanguage | null;
   log: Logger;
   /** The wall clock; tests drive it. */
   now?: () => number;
@@ -63,8 +73,9 @@ export class AutomationService {
   }
 
   /**
-   * Loads the store and settles what a previous process left running. Call after the service's
-   * recovery and before queued runs dispatch, then `start` once the server listens.
+   * Loads the store, adds the default automations once per data dir (defaults.ts) and settles
+   * what a previous process left running. Call after the service's recovery and before queued
+   * runs dispatch, then `start` once the server listens.
    */
   static async create(deps: AutomationServiceDeps): Promise<AutomationService> {
     const store = await AutomationStore.load(deps.paths.root);
@@ -72,6 +83,14 @@ export class AutomationService {
       deps.log.warn('Automations could not be read; none fire until the next change.', {
         problem: store.problem,
       });
+    const now = (deps.now ?? Date.now)();
+    await seedDefaultAutomations(deps.paths.root, store, { language: deps.language(), now }).catch(
+      (error: unknown) => {
+        deps.log.warn('The default automations were not added; the next start retries.', {
+          error: errorMessage(error),
+        });
+      },
+    );
     const service = new AutomationService(deps, store);
     // Never fatal at boot: records left `running` settle at the next start instead.
     await service.engine.reconcile().catch((error: unknown) => {
@@ -105,6 +124,8 @@ export class AutomationService {
       launchCommand: deps.launchCommand,
       folders: deps.folders,
       resources: deps.resources,
+      consolidateMemory: deps.consolidateMemory,
+      activity: deps.activity,
       log: deps.log,
       now: this.now,
       changed: () => this.announcer.schedule(),
@@ -140,6 +161,11 @@ export class AutomationService {
       check: () => this.checkContext(),
       now: this.now,
     };
+  }
+
+  /** The shell's latest report of system idle time. */
+  get activity(): SystemActivity {
+    return this.deps.activity;
   }
 
   /** Cancels a task run of an automation (used when one is deleted). */
@@ -187,6 +213,7 @@ export class AutomationService {
     const check = this.checkContext();
     const problem = triggerProblem(request.trigger, check, request.automationId, true);
     if (problem) return { nextRuns: [], problem };
+    // Only schedules have run times; an idle trigger fires whenever the Mac is next idle.
     if (request.trigger.kind !== 'schedule') return { nextRuns: [] };
     return { nextRuns: upcoming(request.trigger, check.now, request.count ?? 3) };
   }

@@ -7,6 +7,7 @@ import {
   type FolderRef,
 } from '@atd/agent-contracts';
 import { DrainingError } from '../errors.js';
+import { ConsolidationRuns } from './consolidate-run.js';
 import type { EngineDeps } from './engine-deps.js';
 import { absoluteFiles, type FolderWatch } from './folder-watch.js';
 import { launchRun, LaunchFailure, type LaunchDeps } from './launch-run.js';
@@ -17,8 +18,9 @@ import { RunSupervisor, type WatchedRun } from './supervisor.js';
 
 /**
  * From a fire to a settled record: the durable receipt, a FIFO queue in front of two slots shared
- * by every automation (decision D6), the launch through the run pipeline, supervision, the result,
- * and the automations chained to that result (at most `MAX_CHAIN_DEPTH` hops from the first run).
+ * by every automation (decision D6), the launch through the run pipeline and its supervision (or a
+ * memory consolidation, which starts no task), the result, and the automations chained to that
+ * result (at most `MAX_CHAIN_DEPTH` hops from the first run).
  */
 
 /** Automation runs at once, across all automations. */
@@ -45,6 +47,7 @@ interface Queued {
 
 export class Dispatcher {
   readonly supervisor: RunSupervisor;
+  readonly consolidations: ConsolidationRuns;
   private readonly queue: Queued[] = [];
   /** Dispatches and settlements in flight. */
   private readonly work = new Set<Promise<void>>();
@@ -65,6 +68,14 @@ export class Dispatcher {
       ended: (run, end) => this.ended(run, end),
       released: () => this.pump(),
     });
+    this.consolidations = new ConsolidationRuns({
+      consolidate: deps.consolidateMemory,
+      log: deps.log,
+      now: deps.now,
+      settle: (automationId, recordId, result, depth, answer) =>
+        this.settle(automationId, recordId, result, depth, answer),
+      released: () => this.pump(),
+    });
   }
 
   /** Stops dispatching; fires still queued end `interrupted` at the next start (never retried). */
@@ -72,6 +83,7 @@ export class Dispatcher {
     this.stopped = true;
     this.queue.length = 0;
     this.supervisor.close();
+    this.consolidations.close();
   }
 
   /**
@@ -150,9 +162,10 @@ export class Dispatcher {
 
   /** Resolves once no dispatch, settlement or run end is in flight. */
   async idle(): Promise<void> {
-    while (this.work.size || this.supervisor.settling) {
+    while (this.work.size || this.supervisor.settling || this.consolidations.settling) {
       await Promise.all(this.work);
       await this.supervisor.idle();
+      await this.consolidations.idle();
     }
   }
 
@@ -165,7 +178,7 @@ export class Dispatcher {
     while (
       !this.stopped &&
       this.queue.length &&
-      this.supervisor.size + this.dispatching < MAX_RUNS_AT_ONCE
+      this.supervisor.size + this.consolidations.size + this.dispatching < MAX_RUNS_AT_ONCE
     ) {
       const next = this.queue.shift();
       if (next) this.track(this.dispatch(next));
@@ -184,6 +197,10 @@ export class Dispatcher {
       if (paused && entry.record.source !== 'manual') {
         const skipped: Settlement = { outcome: 'skipped', reason: 'paused' };
         await this.settle(entry.automationId, entry.record.id, skipped, entry.depth, '');
+        return;
+      }
+      if (automation.action.kind === 'consolidateMemory') {
+        this.consolidations.start(automation, entry.record.id, entry.depth);
         return;
       }
       let accepted: { taskId: string; runId: string };

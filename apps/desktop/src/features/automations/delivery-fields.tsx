@@ -11,6 +11,7 @@ import {
   SelectValue,
 } from '@atd/ui/components/select';
 import { SettingsSwitchRow } from '../settings/settings-switch-row';
+import { SettingsGroup } from '../settings/settings-group';
 
 const NOTIFY: readonly AutomationNotify[] = ['whenNew', 'always', 'never'];
 
@@ -27,10 +28,11 @@ export function DeliveryFields({
 }) {
   const { t } = useTranslation('automations');
   return (
-    <section className="settings-field" aria-labelledby="automation-delivery-title">
-      <h3 id="automation-delivery-title" className="settings-section-title">
-        {t('delivery.title')}
-      </h3>
+    <SettingsGroup
+      id="automation-delivery"
+      title={t('delivery.title')}
+      description={t('delivery.description')}
+    >
       <div className="run-settings">
         <div className="field-columns automation-single-column">
           <div className="settings-field">
@@ -76,6 +78,6 @@ export function DeliveryFields({
           </ItemGroup>
         </Card>
       </div>
-    </section>
+    </SettingsGroup>
   );
 }

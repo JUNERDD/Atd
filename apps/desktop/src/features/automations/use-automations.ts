@@ -169,8 +169,9 @@ export function useTriggerPreview(trigger: AutomationTrigger, automationId: stri
 export type TriggerPreview = ReturnType<typeof useTriggerPreview>;
 
 /**
- * Run now, reported by toast: started (its task shows in the panel), already running, or why it
- * could not start. The list follows the run through the `automations` invalidation.
+ * Run now, reported by toast: started (its task shows in the panel; a memory consolidation starts
+ * no task, so its result shows in the run history), already running, or why it could not start.
+ * The list follows the run through the `automations` invalidation.
  */
 export function startRun(item: AutomationItem, t: TFunction<'automations'>) {
   const { id, name } = item.automation;
@@ -183,7 +184,14 @@ export function startRun(item: AutomationItem, t: TFunction<'automations'>) {
   void automationsBridge()
     .run(id)
     .then(
-      () => showToast({ kind: 'info', text: t('list.started') }),
+      () =>
+        showToast({
+          kind: 'info',
+          text:
+            item.automation.action.kind === 'consolidateMemory'
+              ? t('list.startedMemory')
+              : t('list.started'),
+        }),
       (error: unknown) =>
         showErrorToast(
           error instanceof AutomationConflictError

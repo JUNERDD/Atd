@@ -191,8 +191,11 @@ export function recordFire(
   return { record, fired: true };
 }
 
-/** What a finished run settles with. */
-export type Settlement = Classified & { declined?: number };
+/**
+ * What a finished run settles with. `read`: the record has nothing to open (a memory
+ * consolidation starts no task), so it is recorded as read whatever its result.
+ */
+export type Settlement = Classified & { declined?: number; read?: true };
 
 /** Turns the automation off with a reason, as a definitions change. */
 function pause(automation: Automation, now: number): void {
@@ -227,8 +230,10 @@ export function settleRun(
     ...(result.summary ? { summary: result.summary } : {}),
     ...(result.declined ? { declined: result.declined } : {}),
     finishedAt: iso(now),
-    // A run that found nothing new is silent, a skip has nothing to open: both are read.
-    ...(outcome === 'nothingNew' || outcome === 'skipped' ? { readAt: iso(now) } : {}),
+    // A run that found nothing new is silent, a skip or a consolidation has nothing to open: read.
+    ...(result.read || outcome === 'nothingNew' || outcome === 'skipped'
+      ? { readAt: iso(now) }
+      : {}),
   };
   replaceRun(state, settled);
   const notices = [];

@@ -74,6 +74,8 @@ export function describeTrigger(trigger: AutomationTrigger, ctx: CheckContext): 
       const deep = trigger.recursive ? ', subfolders included' : '';
       return `When files are ${events} in the folder "${folderName(ctx, trigger.folderId)}"${patterns}${deep}`;
     }
+    case 'idle':
+      return `Once a day when the Mac has been idle ${plural(trigger.idleMinutes, 'minute')} and no task of the person's is running (days counted in ${trigger.timezone})`;
     case 'automation': {
       const upstream = ctx.automations.find((item) => item.id === trigger.automationId);
       return `After the automation "${upstream?.name ?? trigger.automationId}" ends as ${trigger.outcomes.join(' or ')}`;
@@ -93,7 +95,11 @@ function nextRuns(trigger: AutomationTrigger, ctx: CheckContext): string | null 
   }
 }
 
+const CONSOLIDATION =
+  'Consolidate memory: merges duplicate memories and rewrites outdated ones, keeping their history; removals are only suggested, for the person to confirm. Nothing is written while memory learning is paused.';
+
 function action(draft: AutomationDraft, commandName: string | null): string {
+  if (draft.action.kind === 'consolidateMemory') return CONSOLIDATION;
   if (draft.action.kind === 'prompt') return `Prompt:\n${draft.action.prompt}`;
   const { input, arguments: values } = draft.action;
   const parts = [`Command: "${commandName ?? draft.action.commandId}"`];
@@ -121,12 +127,31 @@ function modelText(draft: AutomationDraft): string {
     : 'the default model when it runs';
 }
 
+/**
+ * The confirm detail of a memory consolidation: it starts no task, so the tier, tools, folders
+ * and memory switch of its policy do not apply, and it has no previous answer to read.
+ */
+function consolidationDetail(draft: AutomationDraft | Automation, ctx: CheckContext): string {
+  const lines = [
+    `Name: ${draft.name}`,
+    `When: ${describeTrigger(draft.trigger, ctx)}`,
+    nextRuns(draft.trigger, ctx),
+    action(draft, null),
+    `Model: ${modelText(draft)}`,
+    `Stops after ${plural(draft.policy.maxDurationMinutes, 'minute')}.`,
+    notify(draft),
+    `Enabled: ${draft.enabled ? 'yes' : 'no'}`,
+  ];
+  return lines.filter((line): line is string => line !== null).join('\n');
+}
+
 /** The confirm detail of a saved or changed automation. */
 export function automationDetail(
   draft: AutomationDraft | Automation,
   ctx: CheckContext,
   commandName: string | null,
 ): string {
+  if (draft.action.kind === 'consolidateMemory') return consolidationDetail(draft, ctx);
   const { policy } = draft;
   const tools =
     draft.action.kind === 'command'
@@ -145,7 +170,9 @@ export function automationDetail(
     `Memory: ${policy.memory ? 'searched and read, never changed' : 'not used'}; automation runs never teach memory.`,
     folders.length ? `Readable folders: ${folders.join(', ')}` : null,
     `Stops after ${plural(policy.maxDurationMinutes, 'minute')}.`,
-    `Missed runs: ${policy.missedRuns === 'runOnce' ? 'the latest runs once, late' : 'skipped'}.`,
+    draft.trigger.kind === 'idle'
+      ? null
+      : `Missed runs: ${policy.missedRuns === 'runOnce' ? 'the latest runs once, late' : 'skipped'}.`,
     notify(draft),
     draft.delivery.includePreviousResult ? 'Each run sees the previous answer.' : null,
     `Enabled: ${draft.enabled ? 'yes' : 'no'}`,

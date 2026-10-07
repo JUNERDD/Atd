@@ -9,6 +9,7 @@ import {
   parse,
   PreviewAutomationTriggerRequestSchema,
   SetAutomationEnabledRequestSchema,
+  SystemActivityReportSchema,
   UpdateAutomationRequestSchema,
   type AutomationListResponse,
   type AutomationNoticesResponse,
@@ -50,7 +51,8 @@ function limitOf(query: unknown): number {
 
 /**
  * The automation routes (decision record §3). Every write goes through edits.ts, the same path the
- * `automation` tool takes; the notice routes are the shell's, which posts the notifications. The
+ * `automation` tool takes; the notice routes are the shell's, which posts the notifications, and so
+ * is the system activity report, which only idle triggers read. The
  * service announces every change itself (routes, tool and engine alike), so these routes have no
  * prefix in invalidate.ts and the frame is sent once, coalesced.
  */
@@ -138,6 +140,11 @@ export function registerAutomationRoutes(app: FastifyInstance, service: Automati
   app.post('/v1/automation-notices/ack', SHELL_ROUTE, async (request, reply) => {
     const { ids } = parse(AckAutomationNoticesRequestSchema, request.body);
     await ackNotices(service.edits(), ids);
+    return reply.code(204).send();
+  });
+
+  app.post('/v1/system-activity', SHELL_ROUTE, async (request, reply) => {
+    service.activity.report(parse(SystemActivityReportSchema, request.body).idleSeconds);
     return reply.code(204).send();
   });
 }
