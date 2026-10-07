@@ -44,6 +44,14 @@ export const DIM_EASE = [0.31, 0, 0.53, 1] as const;
 export const EMERGE_EASE = [0.88, 0, 0.51, 0.6] as const;
 
 /**
+ * Something fading out on black, the mirror of `EMERGE_EASE`: for it to fade along `S` its opacity
+ * follows (1 - S)^3, so the share of the change done is 1 - (1 - S)^3 (fitted within 0.035). It
+ * drops quickly: halfway through only an eighth is left, which is seen as half, where a plain
+ * ease-out lingers and then vanishes.
+ */
+export const FADE_EASE = [0.49, 0.44, 0.14, 1] as const;
+
+/**
  * A rise into place: the decelerating cubic (1 - (1 - t)^3). Its early speed is hidden, since it
  * runs under `EMERGE_EASE`'s nearly invisible start, and it lands without a jolt.
  */
