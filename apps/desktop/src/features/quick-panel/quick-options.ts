@@ -25,17 +25,25 @@ export interface QuickOption {
   select: () => void;
 }
 
-/** A section of the list; it shows only while it has options. */
-export interface QuickGroup {
+/**
+ * A section of the list; it shows only while it has options. A section with a heading also has a
+ * glyph in the panel's section bar; the trailing "Browse files…" row ends the list without either.
+ */
+export type QuickGroup = {
   id: string;
-  /** Omitted for the trailing "Browse files…" row, which ends the list without a heading. */
-  heading?: string | undefined;
-  /** Query matches in the heading, when the options also match on it (a model's connection). */
-  headingRanges?: readonly MatchRange[] | undefined;
   options: QuickOption[];
   /** A remark above the options, such as incomplete file results. */
   notice?: string | undefined;
-}
+} & (
+  | {
+      heading: string;
+      /** Query matches in the heading, when the options also match on it (a model's connection). */
+      headingRanges?: readonly MatchRange[] | undefined;
+      /** The section's glyph in the section bar: the symbol its rows share, sized like a row icon. */
+      icon: ReactNode;
+    }
+  | { heading?: undefined; headingRanges?: undefined; icon?: undefined }
+);
 
 /** Groups for one panel view, plus the line shown when no group with a heading has options. */
 export interface QuickView {

@@ -1,11 +1,13 @@
 import Darwin
 import Foundation
 
-/// Lets the app set the cursor while another app is active. The selection toolbar never
-/// activates Atd (the app with the selection keeps it), and the window server ignores cursor
-/// changes from an inactive app, so the toolbar's pointing hand needs the connection property
-/// `SetsCursorInBackground`. It is private CoreGraphics API with no public replacement; this is
-/// the one place that touches it. Missing symbols leave the cursor as the system draws it.
+/// Lets the app set the cursor while another app is active. The window server ignores cursor
+/// changes from an inactive app, and two surfaces show theirs while Atd is not active: the
+/// selection toolbar, which never activates Atd (the app with the selection keeps it), for its
+/// pointing hand; and desktop pins, which sit on the desktop while other apps are active, for
+/// the frame-resize cursor of their resize corner (``DesktopPinCorner``). Both need the connection
+/// property `SetsCursorInBackground`. It is private CoreGraphics API with no public replacement;
+/// this is the one place that touches it. Missing symbols leave the cursor as the system draws it.
 @MainActor
 enum BackgroundCursor {
   private typealias DefaultConnection = @convention(c) () -> Int32

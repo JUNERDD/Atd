@@ -13,6 +13,7 @@
       "selection": "Selection toolbar",
       "screenshot": "Screenshots",
       "provider": "AI provider",
+      "features": "More features",
       "finish": "All set"
     },
     "close": "Close guide",
@@ -92,6 +93,24 @@
     "connected": "Connected to {{name}}",
     "model": "Default model: {{model}}",
     "footnote": "You can add more providers anytime in Settings."
+  },
+  "features": {
+    "title": "There's more to Atd",
+    "description": "Three more ways it can help.",
+    "items": {
+      "apps": {
+        "title": "Apps",
+        "description": "Describe a tool, and Atd builds it as an app."
+      },
+      "automations": {
+        "title": "Automations",
+        "description": "Run tasks on a schedule or when files change."
+      },
+      "miniPanel": {
+        "title": "Mini panel",
+        "description": "Quick actions and file drops at your screen's edge."
+      }
+    }
   },
   "finish": {
     "title": "You're all set",

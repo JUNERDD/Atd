@@ -1,0 +1,258 @@
+/* Every slide is the same complete 16:10 desktop scene. Embla owns movement and snapping. */
+.cases__showcase {
+  display: grid;
+  gap: 24px;
+  min-inline-size: 0;
+}
+
+.cases__views {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+}
+
+.cases__view {
+  display: block;
+  min-block-size: 44px;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: var(--r-part);
+  background: transparent;
+  color: var(--fg-2);
+  font: inherit;
+  font-size: var(--fs-small);
+  font-weight: 500;
+  line-height: 1.4;
+  text-align: center;
+  cursor: pointer;
+  transition:
+    color var(--dur-fast) linear,
+    background var(--dur-fast) linear;
+}
+
+.cases__view[aria-pressed='true'] {
+  color: var(--accent-on);
+  background: var(--accent-fill);
+}
+
+.cases__viewport {
+  overflow: hidden;
+  border-radius: var(--r-display);
+  cursor: grab;
+}
+
+.cases__viewport:active {
+  cursor: grabbing;
+}
+
+.cases__slides {
+  display: flex;
+  touch-action: pan-y pinch-zoom;
+}
+
+.cases__slide {
+  flex: 0 0 100%;
+  min-inline-size: 0;
+  aspect-ratio: 16 / 10;
+  display: grid;
+  place-items: center;
+}
+
+.cases__image {
+  display: block;
+  inline-size: 100%;
+  block-size: 100%;
+  min-inline-size: 0;
+  object-fit: contain;
+  user-select: none;
+}
+
+.cases__caption {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 32px;
+}
+
+.cases__description {
+  max-inline-size: 44rem;
+  min-inline-size: 0;
+  min-block-size: 92px;
+}
+
+.cases__description h3 {
+  font-size: var(--fs-h3);
+  line-height: 1.35;
+  margin-block-end: 10px;
+}
+
+.cases__description p {
+  color: var(--fg-2);
+  font-size: var(--fs-small);
+  line-height: 1.7;
+}
+
+.cases__controls {
+  display: flex;
+  align-items: center;
+  flex: none;
+  gap: 8px;
+}
+
+.cases__timing {
+  display: grid;
+  gap: 8px;
+  min-inline-size: 84px;
+  margin-inline-end: 12px;
+}
+
+.cases__position {
+  font-size: var(--fs-small);
+  white-space: nowrap;
+}
+
+.cases__timer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--fg-3);
+  font-size: var(--fs-legend);
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.cases__timer-track {
+  display: block;
+  flex: 1;
+  block-size: 3px;
+  overflow: hidden;
+  border-radius: var(--r-part);
+  background: var(--line-2);
+}
+
+.cases__timer-fill {
+  display: block;
+  block-size: 100%;
+  background: var(--fg-1);
+  transform: scaleX(0);
+  transform-origin: left;
+}
+
+.cases__controls button {
+  display: grid;
+  place-items: center;
+  inline-size: 44px;
+  block-size: 44px;
+  padding: 0;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-part);
+  background: var(--ink-2);
+  color: var(--fg-1);
+  cursor: pointer;
+  transition: background var(--dur-fast) linear;
+}
+
+.cases__controls svg,
+.cases__original svg {
+  inline-size: 16px;
+  block-size: 16px;
+}
+
+.cases__footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  border-block-start: 1px solid var(--line-1);
+  padding-block-start: 8px;
+  color: var(--fg-3);
+  font-size: var(--fs-legend);
+}
+
+.cases__original {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-block-size: 44px;
+  color: var(--fg-2);
+  text-underline-offset: 4px;
+}
+
+.cases__original svg {
+  transition: transform var(--dur-fast) var(--curve-out);
+}
+
+.cases__unavailable {
+  padding: 32px;
+  color: var(--fg-2);
+  text-align: center;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .cases__view:hover:not([aria-pressed='true']),
+  .cases__controls button:hover {
+    color: var(--fg-1);
+    background: var(--ink-3);
+  }
+  .cases__original:hover {
+    color: var(--fg-1);
+    text-decoration: underline;
+  }
+  .cases__original:hover svg {
+    transform: translate(2px, -2px);
+  }
+}
+
+.cases__view:active:not([aria-pressed='true']),
+.cases__controls button:active {
+  background: var(--ink-3);
+}
+
+.cases__view:focus-visible,
+.cases__controls button:focus-visible,
+.cases__original:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: -3px;
+}
+
+.cases__view[aria-pressed='true']:focus-visible {
+  outline-color: var(--accent-on);
+}
+
+@media (width < 700px) {
+  .cases__caption {
+    flex-direction: column;
+    gap: 16px;
+  }
+  .cases__description {
+    min-block-size: 116px;
+  }
+  .cases__controls {
+    align-self: end;
+  }
+  .cases__showcase {
+    gap: 16px;
+  }
+}
+
+@media (width < 480px) {
+  .cases__views {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 4px;
+  }
+  .cases__view {
+    inline-size: 100%;
+    block-size: 100%;
+    padding-inline: 8px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cases__view,
+  .cases__controls button,
+  .cases__original svg {
+    transition: none;
+  }
+}

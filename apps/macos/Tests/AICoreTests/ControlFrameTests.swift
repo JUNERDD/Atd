@@ -32,6 +32,17 @@ struct ControlFrameTests {
         == .frame(.error("Unknown stream message.")))
   }
 
+  @Test(
+    "Decodes the invalidations the shell pulls for, with or without a task",
+    arguments: [
+      (#"{"type":"invalidate","scope":"widgets"}"#, ControlFrame.widgetsInvalidated),
+      (#"{"type":"invalidate","scope":"automations"}"#, .automationsInvalidated),
+      (#"{"type":"invalidate","scope":"automations","taskId":"t1"}"#, .automationsInvalidated),
+    ])
+  func decodesInvalidations(text: String, frame: ControlFrame) {
+    #expect(decode(text) == .frame(frame))
+  }
+
   @Test("Decodes a capability request with its untyped input")
   func decodesRequest() throws {
     guard case .frame(.capabilityRequest(let request)) = decode(Self.requestJSON) else {
@@ -69,6 +80,10 @@ struct ControlFrameTests {
       (#"{"type":"event","event":{"taskId":"t"}}"#, "event"),
       (#"{"type":"resumed","seq":3}"#, "resumed"),
       (#"{"type":"invalidate","domains":["settings"]}"#, "invalidate"),
+      (#"{"type":"invalidate","scope":"settings"}"#, "invalidate"),
+      (#"{"type":"invalidate","scope":"apps"}"#, "invalidate"),
+      (#"{"type":"invalidate","scope":"task","taskId":"t1"}"#, "invalidate"),
+      (#"{"type":"invalidate","scope":"automation"}"#, "invalidate"),
       (#"{"type":"snapshot","snapshot":{}}"#, "snapshot"),
       (#"{"type":"capability.requested"}"#, "capability.requested"),
     ])

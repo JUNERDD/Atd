@@ -4,7 +4,6 @@ import type { ConfirmStore } from './confirms.js';
 import type { Ledger } from './ledger.js';
 import type { LiveState } from './live-state.js';
 import type { Logger } from './logging.js';
-import type { RunnerMemoryScope } from './memory/index.js';
 
 /**
  * Releasing a task's live Pi session, so the service holds sessions only for tasks in use rather
@@ -17,29 +16,22 @@ import type { RunnerMemoryScope } from './memory/index.js';
 /** How long a task's live session outlives the last execution or compaction that used it. */
 export const IDLE_RELEASE_MS = 10 * 60 * 1000;
 
-/** Runs session work inside a memory scope (task-runner.ts `memoryTurn`). */
-type MemoryTurn = <T>(scope: RunnerMemoryScope | null, action: () => Promise<T>) => Promise<T>;
-
 /**
- * A runner's live session and the memory scope of the run it last served. Closing detaches the
- * session at once and then shuts it down: Hermes' shutdown flush, which may make one model call,
- * learns under that scope. Until the shutdown ends, `settled` holds back whatever would reopen the
- * session file, so two sessions never write it at once. A `quit` close is final: a session opened
- * after it (a compaction of a task deleted meanwhile) is shut down instead of held.
+ * A runner's live session. Closing detaches the session at once and then shuts it down: the
+ * memory learner (memory/learner) first waits up to `SHUTDOWN_CAP_MS` for its reviews, one more
+ * shutdown review included, or aborts them at once when the session may no longer learn, as after
+ * its task was deleted (`TaskRunner.discard`). Until the shutdown ends, `settled` holds back
+ * whatever would reopen the session file, so two sessions never write it at once. A `quit` close
+ * is final: a session opened after it (a compaction of a task deleted meanwhile) is shut down
+ * instead of held.
  */
 export class LiveSlot {
-  private held: { live: LiveState; memory: RunnerMemoryScope | null } | null = null;
+  private held: LiveState | null = null;
   private closing: Promise<void> | null = null;
   private quit = false;
 
-  constructor(private readonly turn: MemoryTurn) {}
-
   get live(): LiveState | null {
-    return this.held?.live ?? null;
-  }
-
-  get memory(): RunnerMemoryScope | null {
-    return this.held?.memory ?? null;
+    return this.held;
   }
 
   get releasing(): boolean {
@@ -51,20 +43,15 @@ export class LiveSlot {
     await this.closing?.catch(() => undefined);
   }
 
-  /** Holds a session opened after `settled`; its shutdown flush learns under `memory`. */
-  hold(live: LiveState, memory: RunnerMemoryScope | null): LiveState {
+  /** Holds a session opened after `settled`. */
+  hold(live: LiveState): LiveState {
     if (this.quit) {
-      void this.shutdown(live, memory, 'quit').catch(() => undefined);
+      void this.shutdown(live, 'quit').catch(() => undefined);
       throw new Error('The task was closed.');
     }
     if (this.closing) throw new Error('The task session is still shutting down.');
-    this.held = { live, memory };
+    this.held = live;
     return live;
-  }
-
-  /** Points the shutdown flush at the run a reused session serves now. */
-  rescope(memory: RunnerMemoryScope): void {
-    if (this.held) this.held.memory = memory;
   }
 
   /** Detaches and shuts down the held session; callers during a shutdown share it. */
@@ -73,7 +60,7 @@ export class LiveSlot {
     const held = this.held;
     this.held = null;
     if (held) {
-      const closing = this.shutdown(held.live, held.memory, reason).finally(() => {
+      const closing = this.shutdown(held, reason).finally(() => {
         if (this.closing === closing) this.closing = null;
       });
       this.closing = closing;
@@ -81,18 +68,12 @@ export class LiveSlot {
     return this.closing ?? Promise.resolve();
   }
 
-  private async shutdown(
-    live: LiveState,
-    memory: RunnerMemoryScope | null,
-    reason: 'new' | 'quit',
-  ): Promise<void> {
+  private async shutdown(live: LiveState, reason: 'new' | 'quit'): Promise<void> {
     live.transcript.dispose();
     try {
-      await this.turn(memory, () =>
-        live.session.extensionRunner.emit({ type: 'session_shutdown', reason }),
-      );
+      await live.session.extensionRunner.emit({ type: 'session_shutdown', reason });
     } finally {
-      // A failed flush must not leave the detached session undisposed.
+      // A failed shutdown handler must not leave the detached session undisposed.
       live.session.dispose();
     }
   }

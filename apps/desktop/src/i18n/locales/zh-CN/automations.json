@@ -1,0 +1,383 @@
+{
+  "list": {
+    "title": "自动化",
+    "description": "由 Atd 自动运行的提示词和命令：按计划运行、在文件夹中的文件变化时运行，或在另一个自动化之后运行。",
+    "searchLabel": "搜索自动化",
+    "searchPlaceholder": "搜索自动化…",
+    "new": "新建自动化",
+    "loading": "正在加载自动化…",
+    "emptyTitle": "还没有自动化",
+    "emptyDescription": "让提示词或命令按计划运行、在文件夹收到文件时运行，或在另一个自动化完成后运行。",
+    "noMatches": "没有与“{{query}}”匹配的自动化",
+    "clearSearch": "清除搜索",
+    "pause": "暂停所有自动化",
+    "pauseDescription": "开启后，所有自动化都不会自行启动。“立即运行”仍然可用。",
+    "storeProblemTitle": "无法读取你的自动化",
+    "storeProblem": "在能够读取之前，所有自动化都不会运行。保存任一自动化会开始一份新列表，并把无法读取的文件保留在旁边。",
+    "run": "立即运行",
+    "runFor": "立即运行 {{name}}",
+    "runRunning": "正在运行",
+    "runProblem": "解决问题后才能运行",
+    "runUnavailable": "目前无法读取自动化",
+    "enableFor": "开启 {{name}}",
+    "editFor": "编辑 {{name}}",
+    "more": "更多",
+    "moreActionsFor": "{{name}} 的更多操作",
+    "edit": "编辑",
+    "runHistory": "运行记录",
+    "duplicate": "创建副本",
+    "delete": "删除",
+    "copyName": "{{name}} 副本",
+    "deleteTitle": "删除 {{name}}？",
+    "deleteDescription": "它将停止运行，运行记录也会被移除。它已启动的任务会保留在任务历史中。",
+    "cancel": "取消",
+    "saved": "自动化已保存。",
+    "started": "已开始运行，任务会显示在任务面板中。",
+    "startedMemory": "已开始运行，结果会显示在运行记录中。",
+    "alreadyRunning": "{{name}} 正在运行。"
+  },
+  "command": {
+    "automate": "设为自动化…"
+  },
+  "status": {
+    "running": "正在运行",
+    "off": "已关闭",
+    "paused": "已随全部自动化暂停",
+    "next": "下次运行：{{when}}",
+    "last": "上次运行（{{when}}）：{{outcome}}",
+    "noRuns": "尚未运行",
+    "unread_other": "{{count}} 条未读",
+    "unreadLabel_other": "{{count}} 条结果尚未查看",
+    "pausedFailures": "多次失败后已关闭",
+    "pausedFinished": "已完成：一次性运行已结束",
+    "pausedFailuresNotice": "此自动化连续多次运行失败，Atd 已将它关闭。请查看运行记录，然后重新开启以再次尝试。",
+    "pausedFinishedNotice": "它的一次性运行已完成，因此已关闭。选择新的时间并开启，即可再次运行。"
+  },
+  "problem": {
+    "invalidExpression": "自定义计划不是有效的 cron 表达式。",
+    "tooFrequent": "两次运行至少需要间隔 15 分钟。",
+    "invalidTimeZone": "无法识别该时区。",
+    "inPast": "这个时间已经过去了。",
+    "unknownFolder": "所监视的文件夹已不可用，请重新选择。",
+    "unknownAutomation": "它所跟随的自动化已不存在。",
+    "chainLoop": "自动化之间不能循环跟随。",
+    "commandUnavailable": "它的命令已被删除、已关闭，或需要自动化无法提供的输入。",
+    "folderUnavailable": "它使用的某个文件夹已不可用。",
+    "modelUnavailable": "它的模型不可用。请选择其他模型，或连接该模型的提供商。"
+  },
+  "summary": {
+    "once": "仅一次：{{when}}",
+    "everyMinutes": "每 {{n}} 分钟",
+    "hourly": "每小时",
+    "everyHours": "每 {{n}} 小时",
+    "everyDay": "每 24 小时",
+    "everyDays": "每 {{n}} 天",
+    "daily": "每天 {{time}}",
+    "weekdays": "工作日 {{time}}",
+    "weekends": "周末 {{time}}",
+    "weekly": "{{days}} {{time}}",
+    "monthly": "每月 {{day}} 日 {{time}}",
+    "monthlyLast": "每月最后一天 {{time}}",
+    "cron": "自定义计划：{{expression}}",
+    "inZone": "{{schedule}}（{{zone}}）",
+    "folderAdded": "{{folder}} 中新增文件时",
+    "folderChanged": "{{folder}} 中的文件变化时",
+    "folderAny": "{{folder}} 中新增或变化文件时",
+    "folderGoneAdded": "已不可用的文件夹中新增文件时",
+    "folderGoneChanged": "已不可用的文件夹中的文件变化时",
+    "folderGoneAny": "已不可用的文件夹中新增或变化文件时",
+    "matching": "{{trigger}}，文件名为 {{patterns}}",
+    "deletedAutomation": "已删除的自动化",
+    "chain": "“{{name}}”{{outcomes}}后",
+    "chainAny": "“{{name}}”每次运行后",
+    "idle": "每天一次，在 Mac 空闲 {{duration}}后"
+  },
+  "trigger": {
+    "title": "何时运行",
+    "description": "Atd 打开期间，运行会自动开始。",
+    "kindLabel": "启动方式",
+    "kinds": {
+      "schedule": "计划",
+      "folder": "文件夹",
+      "idle": "Mac 空闲时",
+      "automation": "另一个自动化"
+    },
+    "nextRuns": "接下来的运行",
+    "nextRunsIn": "接下来的运行（{{zone}}）",
+    "noNextRuns": "暂无待运行的时间。",
+    "previewError": "无法检查下次运行时间：{{message}}"
+  },
+  "schedule": {
+    "repeat": "重复",
+    "kinds": {
+      "once": "仅一次",
+      "interval": "按间隔",
+      "daily": "每天",
+      "weekly": "每周",
+      "monthly": "每月",
+      "cron": "自定义（cron）"
+    },
+    "at": "日期和时间",
+    "every": "间隔",
+    "unit": "单位",
+    "units": {
+      "minutes": "分钟",
+      "hours": "小时",
+      "days": "天"
+    },
+    "intervalNote": "从上次运行或开启时开始计时，可设为 15 分钟到 1 周。",
+    "time": "时间",
+    "days": "星期",
+    "daysPlaceholder": "选择星期",
+    "weekdays": "工作日",
+    "weekends": "周末",
+    "everyDay": "每天",
+    "day": "每月的日期",
+    "dayOf": "{{day}} 日",
+    "lastDay": "最后一天",
+    "dayNote": "有些月份没有 29 到 31 日，因此不提供这几天。如需在每月月底运行，请选择“最后一天”。",
+    "expression": "Cron 表达式",
+    "expressionNote": "共五个字段：分钟、小时、日期、月份和星期。两次运行至少间隔 15 分钟。",
+    "timeZone": "时区",
+    "systemZone": "{{zone}}（这台 Mac）"
+  },
+  "idle": {
+    "after": "空闲时长",
+    "note": "每天最多运行一次：在这台 Mac 首次连续这么久没有键盘、鼠标或触控板操作，且你的任务都没有在运行时开始。Atd 需要保持打开；当天没有出现这样的空闲时段就不会运行。时区决定每天从何时算起。"
+  },
+  "folder": {
+    "folder": "文件夹",
+    "none": "尚未选择文件夹",
+    "unavailable": "已不可用",
+    "choose": "选择文件夹…",
+    "change": "更改…",
+    "chooseAgain": "重新选择…",
+    "events": "在文件以下情况时运行",
+    "added": "新增",
+    "addedDescription": "文件夹中出现新文件。",
+    "changed": "变化",
+    "changedDescription": "文件内容发生变化。",
+    "patterns": "仅限以下文件名",
+    "patternsPlaceholder": "*.pdf, invoice-*.{png,jpg}",
+    "patternsNote": "用逗号分隔多个模式，留空则匹配所有文件。隐藏文件和未下载完的文件始终不计入。",
+    "recursive": "包含子文件夹",
+    "recursiveDescription": "最多向下查找 4 层。",
+    "failure": {
+      "unreadable": "无法读取 {{name}}。",
+      "unsupported": "不支持 {{name}}。",
+      "tooLarge": "{{name}} 太大。",
+      "notDirectory": "{{name}} 不是文件夹。",
+      "forbidden": "无法使用 {{name}}：自动化不能读取整个个人文件夹或 Atd 自己的数据。"
+    }
+  },
+  "chain": {
+    "after": "跟随",
+    "choose": "选择自动化",
+    "noOthers": "请先创建另一个自动化",
+    "outcomes": "当它的运行",
+    "outcome": {
+      "delivered": {
+        "title": "有结果",
+        "description": "运行结束并有内容要汇报。",
+        "phrase": "有结果"
+      },
+      "nothingNew": {
+        "title": "没有新内容",
+        "description": "运行结束但没有要汇报的内容。",
+        "phrase": "没有新内容"
+      },
+      "needsAttention": {
+        "title": "需要你处理",
+        "description": "因为无人在场，它拒绝了一些操作或留下了未回答的问题。",
+        "phrase": "需要你处理"
+      },
+      "failed": {
+        "title": "失败",
+        "description": "运行失败或超时。",
+        "phrase": "失败"
+      }
+    }
+  },
+  "action": {
+    "title": "做什么",
+    "description": "每次运行都会在任务面板中新建一个任务。",
+    "descriptionMemory": "运行会直接整理你的记忆，不会新建任务。",
+    "kindLabel": "操作",
+    "kinds": {
+      "prompt": "提示词",
+      "command": "命令",
+      "consolidateMemory": "整理记忆"
+    },
+    "prompt": "提示词",
+    "promptPlaceholder": "例如：总结今天下载文件夹里收到的内容，并列出需要回复的事项。",
+    "promptNote": "每次运行都从头开始：写清要做什么、怎样算好的结果，以及什么情况下无需汇报。",
+    "command": "命令",
+    "commandPlaceholder": "选择命令",
+    "noCommands": "还没有命令",
+    "needsPresence": "{{name}}（需要你在场）",
+    "deletedCommand": "已删除的命令",
+    "input": "输入",
+    "inputPlaceholder": "命令要处理的文本",
+    "inputNote": "命令的输入文本。由文件夹触发的运行还会把变化的文件交给它。",
+    "parameters": "参数",
+    "consolidateNote": "合并重复的记忆、改写过时的记忆，并保留修改历史。它认为该删除的记忆会变成建议，由你在「记忆 › 建议」中确认。自动学习关闭期间，它不会做任何更改。"
+  },
+  "permissions": {
+    "title": "权限",
+    "description": "运行时你不在场，请决定每次运行可以自行执行和读取哪些内容。",
+    "notApplicable": "整理只处理你的记忆：不使用工具、不读取文件夹，也无需批准，因此这些设置不适用。"
+  },
+  "policy": {
+    "title": "如何运行",
+    "description": "使用的模型、单次运行的时长上限，以及 Atd 关闭期间错过的运行如何处理。",
+    "descriptionChain": "使用的模型和单次运行的时长上限。",
+    "tier": "批准方式",
+    "tiers": {
+      "manual": "无人在场批准，因此所有文件更改和终端命令都会被拒绝。运行仍可读取内容并汇报。",
+      "auto": "由模型对照此自动化检查每个操作：安全的直接执行，原本需要询问你的操作会被拒绝。",
+      "always": "所有操作都不经询问直接执行，包括终端命令和任务文件夹外的文件。仅用于你信任的自动化。"
+    },
+    "model": "模型",
+    "useDefault": "应用默认值",
+    "useCommandModel": "命令的模型",
+    "useFixed": "固定模型",
+    "tools": "允许的工具",
+    "commandTools": "运行时使用命令自己的工具。",
+    "memory": "使用记忆",
+    "memoryDescription": "运行时可以使用 Atd 记住的关于你的信息。自动化的运行不会写入记忆。",
+    "folders": "可读取的文件夹",
+    "addFolder": "添加文件夹…",
+    "removeFolder": "移除",
+    "removeFolderFor": "移除 {{name}}",
+    "unavailableFolder": "文件夹已不可用",
+    "foldersNote": "每次运行都可以读取这些文件夹。所监视的文件夹始终包含在内。",
+    "noFolders": "没有额外的文件夹。所监视的文件夹始终可读取。",
+    "maxDuration": "最长运行时间",
+    "maxDurationNote": "超过此时长仍未结束的运行会被停止，并记为失败。",
+    "minutes_other": "{{count}} 分钟",
+    "hours_other": "{{count}} 小时",
+    "missedRuns": "错过的运行",
+    "missed": {
+      "runOnce": "Atd 恢复后补运行一次",
+      "skip": "跳过"
+    },
+    "missedNote": {
+      "schedule": "Atd 关闭或 Mac 睡眠期间错过的运行。补运行会标记为“延迟”。",
+      "folder": "Atd 关闭期间发生的变化。选择跳过则从现在开始监视。"
+    }
+  },
+  "delivery": {
+    "title": "结果",
+    "description": "运行结束后如何通知你，以及下次运行能看到什么。",
+    "notify": "通知我",
+    "options": {
+      "whenNew": "有新内容时",
+      "always": "每次运行后",
+      "never": "仅在出现问题时"
+    },
+    "notes": {
+      "whenNew": "没有新内容的运行不会打扰你。失败或需要你处理的运行始终会通知。",
+      "always": "每次运行结束都会通知，并附上结果的开头。",
+      "never": "只有失败或需要你处理的运行才会通知。"
+    },
+    "previous": "提供上次的结果",
+    "previousDescription": "每次运行都能看到上次的结果，从而只汇报变化的部分。"
+  },
+  "editor": {
+    "label": "自动化编辑器",
+    "newTitle": "新建自动化",
+    "editTitle": "编辑自动化",
+    "back": "返回自动化列表",
+    "name": "名称",
+    "namePlaceholder": "例如：早间收件箱简报",
+    "cancel": "取消",
+    "save": "保存更改",
+    "create": "创建自动化",
+    "saving": "正在保存…",
+    "runNow": "立即运行",
+    "saveAndRun": "保存并运行",
+    "reload": "重新加载最新版本",
+    "conflict": "自你打开后，此自动化已被更改。请重新加载，在最新版本上继续编辑。"
+  },
+  "session": {
+    "trigger": "用 AI 创建",
+    "triggerEdit": "用 AI 编辑",
+    "opened": "已在任务面板中打开新的 AI 会话。",
+    "enableSkill": "请先在「扩展 → 技能」中启用 {{name}}，再使用 AI 创建。"
+  },
+  "validation": {
+    "nameRequired": "请输入名称。",
+    "atRequired": "请选择日期和时间。",
+    "intervalRange": "请选择 15 分钟到 1 周之间的整数间隔。",
+    "timeRequired": "请选择时间。",
+    "daysRequired": "请至少选择星期中的一天。",
+    "expressionRequired": "请输入包含五个字段的 cron 表达式。",
+    "timeZoneRequired": "请选择时区。",
+    "folderRequired": "请选择要监视的文件夹。",
+    "eventsRequired": "请至少选择一种变化。",
+    "patternsInvalid": "最多 10 个模式，每个不超过 100 个字符。",
+    "automationRequired": "请选择要跟随的自动化。",
+    "outcomesRequired": "请至少选择一种结果。",
+    "promptRequired": "请输入提示词。",
+    "commandRequired": "请选择命令。",
+    "commandMissing": "它运行的命令已不存在，请另选一个。",
+    "commandNeedsPresence": "该命令会读取所选文本、剪贴板或截图，需要你在场才能运行。",
+    "commandOff": "该命令已关闭。请先在“命令”中开启，才能用于自动化。",
+    "commandNeedsFiles": "该命令处理的是文件，只有文件夹触发才会提供文件。请在“何时运行”中选择“文件夹”，或换一个命令。",
+    "inputRequired": "该命令需要输入文本。",
+    "argumentsInvalid": "请检查这些参数：{{labels}}。",
+    "foldersUnavailable": "有文件夹已不可用。请重新选择或将其移除。"
+  },
+  "runs": {
+    "label": "运行记录",
+    "back": "返回自动化列表",
+    "edit": "编辑",
+    "markAllRead": "全部标为已读",
+    "loading": "正在加载运行记录…",
+    "emptyTitle": "尚未运行",
+    "emptyDescription": "使用“立即运行”试一试，运行记录会显示在这里。",
+    "historyNote": "最多保留最近 {{count}} 次运行。",
+    "openTask": "打开任务",
+    "openTaskFor": "打开 {{when}} 那次运行的任务",
+    "taskDeleted": "任务已删除",
+    "new": "未读",
+    "late": "延迟",
+    "scheduled": "计划于 {{time}}",
+    "started": "开始于 {{time}}",
+    "took": "用时 {{duration}}",
+    "declined_other": "已拒绝 {{count}} 项操作",
+    "files_other": "{{count}} 个文件：{{names}}"
+  },
+  "outcome": {
+    "running": "正在运行",
+    "delivered": "有结果",
+    "nothingNew": "没有新内容",
+    "needsAttention": "需要你处理",
+    "failed": "失败",
+    "timedOut": "超时",
+    "stopped": "已停止",
+    "interrupted": "已中断",
+    "skipped": "已跳过"
+  },
+  "reason": {
+    "overlap": "上一次运行仍在进行。",
+    "missed": "到期时 Atd 已关闭或 Mac 正在睡眠，且设置为跳过错过的运行。",
+    "rateLimited": "过去一小时内它已运行了 12 次。",
+    "paused": "所有自动化都已暂停。",
+    "unsupportedFiles": "这些文件都无法交给该命令。",
+    "memoryPaused": "自动学习已关闭，因此没有更改记忆。",
+    "modelUnavailable": "没有可用的模型。",
+    "commandUnavailable": "它的命令已不存在、已关闭，或需要自动化无法提供的输入。",
+    "folderUnavailable": "它使用的某个文件夹不可用。",
+    "submitFailed": "Atd 无法启动这次运行。",
+    "agentReported": "智能体报告它无法完成。",
+    "runFailed": "运行失败。"
+  },
+  "source": {
+    "schedule": "按计划",
+    "folder": "文件夹变化",
+    "idle": "Mac 空闲",
+    "automation": "跟随另一个自动化",
+    "manual": "立即运行"
+  }
+}

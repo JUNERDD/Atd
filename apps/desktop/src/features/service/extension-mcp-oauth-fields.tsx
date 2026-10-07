@@ -106,7 +106,6 @@ export function McpOAuthClientFields({
   const { problem, invalid } = useMcpProblems(problems);
   return (
     <>
-      <p className="text-xs text-muted-foreground">{t('extensions.mcpPage.oauthSectionNote')}</p>
       <div className="field-columns aligned-fields">
         <McpField
           id={FIELD_ID.clientId}

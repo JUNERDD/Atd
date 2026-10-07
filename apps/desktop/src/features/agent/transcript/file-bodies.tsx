@@ -128,7 +128,12 @@ export function ReadBody({ block }: { block: BlockOf<'tool'> }) {
         )
       }
     >
-      <SourceView path={path} text={body} startLine={startLine} />
+      <SourceView
+        path={path}
+        text={body}
+        startLine={startLine}
+        cacheable={block.status !== 'running'}
+      />
     </FileCard>
   );
 }
@@ -155,7 +160,7 @@ export function WriteBody({ block }: { block: BlockOf<'tool'> }) {
       code
       footer={<StatusFooter block={block} text={text} />}
     >
-      <SourceView path={path} text={content} />
+      <SourceView path={path} text={content} cacheable={block.status !== 'running'} />
     </FileCard>
   );
 }

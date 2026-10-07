@@ -2,12 +2,16 @@ import {
   CommandCreateSchema,
   CommandDeleteResponseSchema,
   CommandGetResponseSchema,
+  CommandRunRequestSchema,
+  CommandRunResponseSchema,
   CommandUpdateRequestSchema,
   CommandsListResponseSchema,
   parse,
   type CommandCreate,
   type CommandDeleteResponse,
   type CommandGetResponse,
+  type CommandRunRequest,
+  type CommandRunResponse,
   type CommandsListResponse,
   type CommandUpdateRequest,
 } from '@atd/agent-contracts';
@@ -91,6 +95,26 @@ export function deleteCommand(
     'DELETE',
     undefined,
     (json) => parse(CommandDeleteResponseSchema, json),
+    fetchImpl,
+  );
+}
+
+/**
+ * Launches a saved command as one run: the service renders and stages it, then accepts the run
+ * like a submit. Repeats with the same `operationId` answer the original run.
+ */
+export function runCommand(
+  options: AgentClientOptions,
+  id: string,
+  body: CommandRunRequest,
+  fetchImpl?: typeof fetch,
+): Promise<CommandRunResponse> {
+  return manageRequest(
+    options,
+    `/v1/commands/${encodeURIComponent(id)}/run`,
+    'POST',
+    parse(CommandRunRequestSchema, body),
+    (json) => parse(CommandRunResponseSchema, json),
     fetchImpl,
   );
 }

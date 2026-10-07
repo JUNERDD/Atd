@@ -1,10 +1,18 @@
 import { Fragment, type ReactNode } from 'react';
-import { Bot, ListOrdered, LoaderCircle, MessageCircleQuestion, ShieldAlert } from 'lucide-react';
+import {
+  Bot,
+  ListOrdered,
+  LoaderCircle,
+  MessageCircleQuestion,
+  MessagesSquare,
+  ShieldAlert,
+} from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotion, type Transition } from 'motion/react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@atd/ui/components/button';
 import { Separator } from '@atd/ui/components/separator';
 import { cn } from '@atd/ui/lib/utils';
+import { useSideChats, type SideChatItem } from '../side-chat/side-chats';
 import type { TaskProgress } from './selectors';
 import './progress.css';
 
@@ -38,7 +46,7 @@ const EXIT: Transition = { duration: 0.15, ease: [0.4, 0, 1, 1] };
 const INSTANT: Transition = { duration: 0 };
 
 /** The views of the one popover above the composer, each opened by its pill part. */
-export type PillView = 'hitl' | 'todos' | 'subagents';
+export type PillView = 'hitl' | 'todos' | 'subagents' | 'sideChats';
 
 /**
  * Pending human-in-the-loop content (approvals, answers, queued messages): the pill's first part
@@ -95,7 +103,50 @@ function PartButton({
 }
 
 /**
- * Compact status capsule, centered above the composer input, with up to three parts, each hidden
+ * The side chats part: what the conversation's side chats need from the reader, in the wording of
+ * the subagents part. Anything waiting on the reader leads (their requests are not the
+ * conversation's, so the HITL part never shows them), then how many are running, then how many
+ * there are. Finished side chats keep the part, which is the way back into them.
+ */
+function SideChatsPart({
+  items,
+  open,
+  onToggle,
+}: {
+  items: readonly SideChatItem[];
+  open: boolean;
+  onToggle: (view: PillView) => void;
+}) {
+  const { t } = useTranslation('panel');
+  const waiting = items.filter((item) => item.state === 'approval' || item.state === 'answer');
+  const running = items.filter((item) => item.state === 'running');
+  const text =
+    waiting.length > 0
+      ? t('composer.progress.sideChats.waiting', { count: waiting.length })
+      : running.length > 0
+        ? t('composer.progress.sideChats.running', { count: running.length })
+        : items.length === 1
+          ? t('composer.progress.sideChats.one')
+          : t('composer.progress.sideChats.many', { count: items.length });
+  return (
+    <PartButton
+      view="sideChats"
+      open={open}
+      className="composer-progress-side-chats"
+      label={`${text} · ${t('composer.progress.sideChats.list')}`}
+      onToggle={onToggle}
+    >
+      <MessagesSquare aria-hidden />
+      {/* A narrow panel truncates this label; hover shows it whole. */}
+      <span className="truncate" title={text}>
+        {text}
+      </span>
+    </PartButton>
+  );
+}
+
+/**
+ * Compact status capsule, centered above the composer input, with up to five parts, each hidden
  * when it has nothing to say (the pill hides when all are). Parts with something to list open
  * their view in the one popover the composer owns, so switching parts morphs that popover
  * instead of stacking a second one:
@@ -105,6 +156,8 @@ function PartButton({
  *   Summarized children stay after the reply ends and on reopen, since the pill is the way into
  *   their conversations; a bare count from a transcript without summaries has no list to open and
  *   shows only while the reply is `live` (its run is in progress);
+ * - the conversation's side chats (`useSideChats`), finished ones included, which opens their
+ *   list, also while one is open so its siblings stay one choice away;
  * - "Compacting context…" while the task's context is being compacted, with nothing to open: the
  *   transcript's compaction row carries the outcome.
  *
@@ -131,6 +184,7 @@ export function ProgressPill({
 }) {
   const { t } = useTranslation('panel');
   const { t: tt } = useTranslation('tasks');
+  const sideChats = useSideChats();
   const { todos, step, completed, children } = progress;
   const subagents = children.length > 0 ? children.length : live ? progress.subagents : 0;
   const running = children.filter((child) => child.status === 'running').length;
@@ -210,6 +264,13 @@ export function ProgressPill({
         ),
     });
   }
+  if (sideChats && sideChats.items.length > 0)
+    parts.push({
+      key: 'sideChats',
+      node: (
+        <SideChatsPart items={sideChats.items} open={view === 'sideChats'} onToggle={onToggle} />
+      ),
+    });
   if (compacting)
     parts.push({
       key: 'compacting',

@@ -51,8 +51,9 @@ export class PluginHost {
   ) {}
 
   /**
-   * The host for `dataDir`, created once. Creation migrates the legacy installed skills
-   * (plugins/migrate.ts) before anyone reads the catalog; the first caller's logger is kept.
+   * The host for `dataDir`, created once. Before anyone reads the catalog, creation brings the
+   * stored models of installed plugins up to the running adapters (installer `renormalize`) and
+   * migrates the legacy installed skills (plugins/migrate.ts); the first caller's logger is kept.
    */
   static for(dataDir: string, log?: Logger): Promise<PluginHost> {
     const existing = PluginHost.hosts.get(dataDir);
@@ -61,6 +62,18 @@ export class PluginHost {
     void pending.catch(() => PluginHost.hosts.delete(dataDir));
     PluginHost.hosts.set(dataDir, pending);
     return pending;
+  }
+
+  /**
+   * Settles the profile's host for a stopping service. Creation writes under the dataDir (the
+   * renormalized registry, the legacy migration and its marker), and the plugin routes start it
+   * with the service without awaiting it, so a creation still running finishes first and none of
+   * its writes outlive the service. A failed creation has nothing left to settle. The next `for`
+   * creates the host anew.
+   */
+  static async closeFor(dataDir: string): Promise<void> {
+    await PluginHost.hosts.get(dataDir)?.catch(() => undefined);
+    PluginHost.hosts.delete(dataDir);
   }
 
   private static async create(dataDir: string, log: Logger): Promise<PluginHost> {
@@ -72,6 +85,11 @@ export class PluginHost {
       logger: { info: log.info, warn: log.warn },
     });
     const host = new PluginHost(dataDir, paths.agentDir, installer, secrets, log);
+    await installer.renormalize().catch((error: unknown) => {
+      log.warn('Re-normalizing installed plugins failed; it runs again on the next start.', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    });
     await migrateLegacySkills(host).catch((error: unknown) => {
       log.warn('Legacy skill migration failed; it runs again on the next start.', {
         error: error instanceof Error ? error.message : String(error),

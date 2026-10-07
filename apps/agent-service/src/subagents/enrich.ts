@@ -1,35 +1,35 @@
 import type { SessionFactoryDeps } from '../pi-session.js';
-import type { RunnerContext } from '../task-runner.js';
-import { MemoryAuthority } from '../memory/authority.js';
-import { childMemoryProxy } from '../memory/proxy.js';
-import { McpAuthority } from '../mcp/index.js';
-import { readServiceId } from '../storage.js';
-import { ResourceStore } from '../resources.js';
+import { logMemoryEvents, MemoryAuthority } from '../memory/index.js';
+import { memoryTools } from '../memory/tools.js';
 import { skillProfilePaths } from '../skills/profile.js';
 import { loadRunRole } from '../skills/roles.js';
 import { intersectChildTools } from './intersection.js';
-import { hostForTask, rebindParentRun, storeHost } from './registry.js';
+import { hostForTask, storeHost } from './registry.js';
 
 /**
  * T5 async parent enrichment. The sync ceiling (snapshot tools) stands first;
  * this pass narrows it to parent ∩ role ∩ revocation plus frozen MCP proxies
- * and memory search. Failures keep the narrower sync ceiling, never widen.
+ * and the memory read tools. Failures keep the narrower sync ceiling, never widen.
  */
 
-export type CeilingHandle = {
-  update(ceiling: { allowedTools: string[]; allowedAgents: string[] }): void;
-};
+/** The child tool ceiling this narrows; task-agents.ts owns it with the session's agents. */
+export interface ChildToolCeiling {
+  narrowTools(allowedTools: readonly string[]): void;
+}
 
 /**
- * Narrows the ceiling and host after the sync registrations land.
- * `allowedAgents` are the runtime agents the session registered.
+ * Narrows the child tools of the ceiling and host once the sync registrations landed. `mcpTools`
+ * are the MCP tools the run binding froze (pi-session-mcp.ts `SessionMcpPrep.tools`), the same
+ * ones the parent has. The session start awaits it, so task agents replay and validate against
+ * the narrowed tools. It leaves the parent record alone: the run binding is lifecycle.ts's, and a
+ * reset here would drop the delegation the guard admitted. Never throws.
  */
-export async function enrichParentAsync(
+export async function narrowChildCeiling(
   deps: SessionFactoryDeps,
   taskId: string,
   runId: string,
-  ceiling: CeilingHandle,
-  allowedAgents: string[],
+  ceiling: ChildToolCeiling,
+  mcpTools: readonly string[],
 ): Promise<void> {
   try {
     const profile = skillProfilePaths(deps.ctx.paths.root, deps.ctx.paths.agentDir);
@@ -37,75 +37,47 @@ export async function enrichParentAsync(
     const run = deps.ctx.ledger.run(taskId, runId);
     const roleAllows = frozen?.role.allows.tools ?? [...run.snapshot.tools];
     const revoked = frozen?.capabilities.revokedTools ?? [];
-    const proxies = await listMcpProxies(deps.ctx, taskId, runId, deps.audit);
     const { allowedTools } = intersectChildTools({
       parentTools: run.snapshot.tools,
       roleAllowsTools: roleAllows,
       revokedTools: revoked,
-      mcpProxies: proxies,
+      mcpTools,
       runMemory: run.snapshot.memory,
     });
-    ceiling.update({ allowedTools, allowedAgents });
-    const host = hostForTask(taskId);
-    if (host) storeHost(taskId, { ...host, allowedTools, mcpProxies: proxies });
-    rebindParentRun(taskId, runId, run.snapshot.tools);
-    await enrichMemoryAsync(deps, taskId, runId);
+    ceiling.narrowTools(allowedTools);
   } catch {
     // Enrichment never widens: the sync ceiling (snapshot tools) stands.
   }
 }
 
-async function listMcpProxies(
-  ctx: RunnerContext,
-  taskId: string,
-  runId: string,
-  audit: (entry: Record<string, unknown>) => void,
-): Promise<string[]> {
-  try {
-    const serviceId = await readServiceId(ctx.paths);
-    const authority = await McpAuthority.authorityFor({
-      serviceId,
-      dataDir: ctx.paths.root,
-      cwd: ctx.paths.root,
-      events: ctx.events,
-      confirms: ctx.confirms,
-      resources: new ResourceStore(ctx.ledger, ctx.paths),
-      log: ctx.log,
-    });
-    const { bindings } = await authority.prepareRunnerTools({
-      taskId,
-      runId: () => runId,
-      executionId: () => `root:${runId}`,
-      audit,
-      log: ctx.log,
-    });
-    return bindings.map((binding) => binding.proxyName);
-  } catch {
-    // Enrichment never widens: without a list the child ceiling holds no MCP proxies.
-    return [];
-  }
-}
-
-async function enrichMemoryAsync(
+/**
+ * Gives the child host the memory read tools when the run has memory. Never throws: the session
+ * start does not wait for it.
+ */
+export async function enrichMemoryAsync(
   deps: SessionFactoryDeps,
   taskId: string,
   runId: string,
 ): Promise<void> {
-  const run = deps.ctx.ledger.run(taskId, runId);
-  if (!run.snapshot.memory) return;
   try {
-    const authority = await MemoryAuthority.authorityFor(deps.ctx.paths.agentDir, {
-      notify: () => undefined,
-      changed: () => undefined,
-    });
-    const factory = childMemoryProxy(authority, {
-      runMemory: true,
-      executionId: `child:${runId}:0`,
-      taskId,
-      runId,
-    });
+    if (!deps.ctx.ledger.run(taskId, runId).snapshot.memory) return;
+    const { agentDir } = deps.ctx.paths;
+    const store = await MemoryAuthority.authorityFor(agentDir, logMemoryEvents(deps.ctx.log));
+    // Children read memory and never write it: the read tools only, each under its child's
+    // execution id, which the authority never lets learn.
+    const factory = (child: { runId: string; executionId: string }) =>
+      memoryTools({
+        store,
+        scope: () => ({
+          runMemory: true,
+          executionId: child.executionId,
+          taskId,
+          runId: child.runId,
+        }),
+        readOnly: true,
+      }) as (pi: unknown) => void;
     const host = hostForTask(taskId);
-    if (host) storeHost(taskId, { ...host, memoryFactory: factory as (pi: unknown) => void });
+    if (host) storeHost(taskId, { ...host, memoryFactory: factory });
   } catch {
     // Memory stays unavailable rather than creating a second store.
   }

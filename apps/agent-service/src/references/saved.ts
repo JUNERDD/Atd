@@ -2,11 +2,13 @@ import {
   errorMessage,
   type CommandParameter,
   type MemoryTarget,
+  type MemoryUnit,
   type ServiceCommandFull,
 } from '@atd/agent-contracts';
 import { CommandStore } from '../commands/store.js';
 import { LedgerNotFound } from '../ledger.js';
-import { logMemoryEvents, MemoryAuthority, type HermesEntry } from '../memory/authority.js';
+import { framed } from '../memory/framing.js';
+import { logMemoryEvents, MemoryAuthority } from '../memory/index.js';
 import { findPluginCommand } from '../plugins/commands.js';
 import { oneLine } from './conversation.js';
 import type { ReferenceContext } from './material.js';
@@ -39,14 +41,14 @@ export interface SavedItems {
 export function savedItems(
   context: Pick<ReferenceContext, 'dataDir' | 'agentDir' | 'log' | 'run' | 'toolCeiling'>,
 ): SavedItems {
-  let entries: Promise<HermesEntry[] | string> | null = null;
+  let units: Promise<MemoryUnit[] | string> | null = null;
   return {
     command: (commandId) => resolveCommand(context, commandId),
     memory(target, entryId) {
-      entries ??= MemoryAuthority.authorityFor(context.agentDir, logMemoryEvents(context.log))
-        .then((authority) => authority.list())
+      units ??= MemoryAuthority.authorityFor(context.agentDir, logMemoryEvents(context.log))
+        .then((authority) => authority.units())
         .catch((error: unknown) => `the memory store could not be read (${errorMessage(error)})`);
-      return resolveMemory(context, entries, target, entryId);
+      return resolveMemory(context, units, target, entryId);
     },
   };
 }
@@ -113,28 +115,30 @@ async function resolveCommand(
 }
 
 /**
- * A referenced memory entry by its content-derived id: an entry edited since it was picked has a
- * new id and resolves as changed. A run with memory off reads none, referenced or not.
+ * A referenced memory by its stable id, as it reads now: an edit made since it was picked is what
+ * the run reads, while one turned off since is never read. A run with memory off reads none,
+ * referenced or not.
  */
 async function resolveMemory(
   context: Pick<ReferenceContext, 'run'>,
-  entries: Promise<HermesEntry[] | string>,
+  units: Promise<MemoryUnit[] | string>,
   target: MemoryTarget,
   entryId: string,
 ): Promise<SavedHint | SavedNote> {
   const label = `Memory entry (${TARGET_LABELS[target]})`;
   if (!context.run.snapshot.memory) return { label, reason: 'memory is off for this message' };
-  const list = await entries;
+  const list = await units;
   if (typeof list === 'string') return { label, reason: list };
-  const entry = list.find((item) => item.id === entryId && item.target === target);
-  if (!entry) return { label, reason: 'it was changed or removed since it was picked' };
+  const unit = list.find((item) => item.id === entryId);
+  if (!unit) return { label, reason: 'it was changed or removed since it was picked' };
+  if (!unit.enabled) return { label, reason: 'it is turned off in Memory settings' };
   return {
-    text: `Memory entry, ${TARGET_LABELS[target]}:\n<memory-entry>\n${entry.content}\n</memory-entry>`,
+    text: `Memory entry, ${TARGET_LABELS[unit.type]}:\n<memory-entry>\n${framed(unit.body)}\n</memory-entry>`,
     audit: {
       reference: 'memory',
       target: `${target}:${entryId}`,
       decision: 'included',
-      chars: entry.content.length,
+      chars: unit.body.length,
     },
   };
 }

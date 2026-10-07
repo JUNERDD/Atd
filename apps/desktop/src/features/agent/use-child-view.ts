@@ -39,6 +39,11 @@ export function useChildView(scope: string | null, requests: readonly { id: stri
     returning.current = true;
     setChildKey(null);
   }, []);
+  /** Closes it without a focus return, for a view that takes its place and focus (a side chat). */
+  const dismiss = useCallback(() => {
+    returning.current = false;
+    setChildKey(null);
+  }, []);
 
   // Runs once the parent transcript is uncovered; its scroll offset never changed, so the focus
   // return must not scroll it.
@@ -50,5 +55,5 @@ export function useChildView(scope: string | null, requests: readonly { id: stri
     if (element?.isConnected) element.focus({ preventScroll: true });
   }, [childKey]);
 
-  return { childKey, open, close };
+  return { childKey, open, close, dismiss };
 }

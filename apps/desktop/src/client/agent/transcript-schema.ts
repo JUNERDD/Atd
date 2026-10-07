@@ -69,11 +69,11 @@ export type ToolDetails = Static<typeof ToolDetailsSchema>;
 /**
  * Provider-reported usage of one assistant message. The service sends `input`, `output`, both
  * cache counts and `cost` (USD at the model's catalog price, 0 when the catalog has none); the
- * turn header sums them for its usage detail. `durationMs` is the generation time from
- * `message_start` to `message_end` that the settled token rate divides by; the service does not
- * measure it, so its turns hide the rate instead of dividing by wall time. Absent while streaming
- * and when unknown. Every block derived from the same message carries the same copy so tool-only
- * messages keep their usage; the renderer dedupes by message when summing a turn.
+ * turn header sums them for its usage detail. `durationMs` is the generation time the service
+ * timed from the stream, which the token rate divides `output` by; messages without it stay out
+ * of the rate. Absent while streaming and when unknown. Every block derived from the same message
+ * carries the same copy so tool-only messages keep their usage; the renderer dedupes by message
+ * when summing a turn.
  */
 export const AssistantUsageSchema = Type.Object(
   {
@@ -87,6 +87,16 @@ export const AssistantUsageSchema = Type.Object(
   { additionalProperties: false },
 );
 export type AssistantUsage = Static<typeof AssistantUsageSchema>;
+
+/** What every block of one assistant message carries alike. */
+const messageFields = {
+  usage: Type.Optional(AssistantUsageSchema),
+  /**
+   * While the message streams: when its first output arrived (epoch ms), from which the live
+   * token rate times its estimate. Absent before that and once the message settled.
+   */
+  firstTokenAt: Type.Optional(Type.Number()),
+};
 
 /** Permission state of a guarded tool call, from the `app-permission` record once resolved. */
 export const ToolPermissionSchema = Type.Object(
@@ -134,7 +144,7 @@ export const BlockSchema = Type.Union([
       ]),
       /** Provider error text when `stopReason` is `error`; empty otherwise. */
       error: Type.String(),
-      usage: Type.Optional(AssistantUsageSchema),
+      ...messageFields,
     },
     { additionalProperties: false },
   ),
@@ -146,9 +156,12 @@ export const BlockSchema = Type.Union([
       streaming: Type.Boolean(),
       /** Redacted reasoning has no readable text; the renderer shows a placeholder. */
       redacted: Type.Boolean(),
-      /** Wall-clock reasoning time in ms, measured live; null on cold projection or when untimed. */
+      /**
+       * Reasoning time in ms, as the service timed the thought's stream; null until the thought
+       * ends and when it was not timed.
+       */
       durationMs: Type.Union([Type.Integer({ minimum: 0 }), Type.Null()]),
-      usage: Type.Optional(AssistantUsageSchema),
+      ...messageFields,
     },
     { additionalProperties: false },
   ),
@@ -169,7 +182,7 @@ export const BlockSchema = Type.Union([
       details: ToolDetailsSchema,
       /** `null` for tools that never pass through the permission gate (memory tools). */
       permission: Type.Union([ToolPermissionSchema, Type.Null()]),
-      usage: Type.Optional(AssistantUsageSchema),
+      ...messageFields,
     },
     { additionalProperties: false },
   ),
@@ -184,7 +197,7 @@ export const BlockSchema = Type.Union([
       /** The user's answer from the `app-question` record; `null` while pending or when skipped. */
       answer: Type.Union([Type.String(), Type.Null()]),
       skipped: Type.Boolean(),
-      usage: Type.Optional(AssistantUsageSchema),
+      ...messageFields,
     },
     { additionalProperties: false },
   ),
@@ -222,6 +235,18 @@ export const BlockSchema = Type.Union([
       tokensBefore: Type.Union([Type.Integer({ minimum: 0 }), Type.Null()]),
       tokensAfter: Type.Union([Type.Integer({ minimum: 0 }), Type.Null()]),
       /** Why a `failed` compaction failed; empty otherwise. */
+      error: Type.String(),
+    },
+    { additionalProperties: false },
+  ),
+  /** A failed model request the service is retrying, mirrored from the service block; live only. */
+  Type.Object(
+    {
+      kind: Type.Literal('retry'),
+      ...blockBase,
+      attempt: Type.Integer({ minimum: 1 }),
+      maxAttempts: Type.Integer({ minimum: 1 }),
+      /** The provider error that failed the previous attempt. */
       error: Type.String(),
     },
     { additionalProperties: false },

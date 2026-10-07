@@ -46,6 +46,18 @@ export const SubmitTaskRequestSchema = Type.Object(
      * Requires `taskId`; the entry must be a user message on the task's current branch.
      */
     branchBefore: Type.Optional(SessionEntryId),
+    /**
+     * Set when the client launches a saved command: `input.text` is the command's rendered
+     * template, which submit takes as given since it never loads the command. Frozen as
+     * `RunSnapshot.fromCommand`.
+     */
+    fromCommand: Type.Optional(Type.Literal(true)),
+    /**
+     * Starts the new task as a side chat of this conversation: a command launched from inside the
+     * conversation runs in its own task, shown over it, and the conversation lists it. Only for a
+     * new task (no `taskId`), and the conversation must exist. Frozen as `AgentTask.sideChatOf`.
+     */
+    sideChatOf: Type.Optional(Identifier),
   },
   { additionalProperties: false },
 );

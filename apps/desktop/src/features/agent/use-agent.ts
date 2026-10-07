@@ -49,7 +49,13 @@ function mergeState(detail: TaskDetail, state: TaskState): TaskDetail {
   return { ...detail, ...state, revision: detail.revision, blocks: detail.blocks };
 }
 
-export function useTaskDetail(taskId: string | null): { detail: TaskDetail | null } {
+/**
+ * The detail of task `taskId`, which the page then holds: its transcript follows the stream. The
+ * page holds one task at a time (`TaskClient.detail`), so a view that showed another task over
+ * this one (a side chat) takes the hold back by changing `epoch`, which loads the task again; the
+ * last detail stays meanwhile, so what shows it keeps its scroll offset and expanded rows.
+ */
+export function useTaskDetail(taskId: string | null, epoch = 0): { detail: TaskDetail | null } {
   const [detail, setDetail] = useState<TaskDetail | null>(null);
   useEffect(() => {
     if (!taskId || !window.desktop?.agent) return;
@@ -123,6 +129,6 @@ export function useTaskDetail(taskId: string | null): { detail: TaskDetail | nul
       cancelAnimationFrame(frame);
       unsubscribe();
     };
-  }, [taskId]);
+  }, [taskId, epoch]);
   return { detail: detail?.task.id === taskId ? detail : null };
 }

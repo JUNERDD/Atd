@@ -11,6 +11,8 @@ import { useTranslation } from 'react-i18next';
 import { Button } from '@atd/ui/components/button';
 import { TooltipProvider } from '@atd/ui/components/tooltip';
 import { ScrollArea } from '@atd/ui/components/scroll-area';
+import { AppSettings } from '../apps/app-settings';
+import { AutomationSettings } from '../automations/automation-settings';
 import { CommandSettings } from '../commands/command-settings';
 import { MemorySettings } from '../memory/memory-settings';
 import { ToastHost } from '../../components/toast';
@@ -24,7 +26,9 @@ import { GeneralSettings } from './general-settings';
 import { ServiceSettings } from '../service/service-settings';
 import { useSettingsSnapshot } from './use-settings';
 import {
+  SettingsAutomationLinkContext,
   SettingsCommandLinkContext,
+  SettingsExtensionLinkContext,
   SettingsMemoryLinkContext,
   SettingsNavigationContext,
   SettingsPageHistoryContext,
@@ -75,11 +79,15 @@ export function SettingsWindow() {
     visited,
     commandTarget,
     memoryTarget,
+    automationTarget,
+    extensionTarget,
     drawer,
     setDrawer,
     navigate,
     showCommand,
     showMemory,
+    showAutomation,
+    showExtension,
   } = useSettingsSection(recording, unsaved.guard.confirmLeave);
   const layout = useSyncExternalStore(subscribeLayout, getLayout);
   const [previousLayout, setPreviousLayout] = useState(layout);
@@ -194,7 +202,7 @@ export function SettingsWindow() {
                       />
                       <ScrollArea
                         className="settings-content-scroll-area"
-                        viewportClassName="[&>div]:flex! [&>div]:flex-col [&>div]:h-full"
+                        viewportClassName="[&>div]:flex! [&>div]:flex-col [&>div]:min-h-full"
                         viewportRef={viewport}
                         gutter="none"
                         scrollShadow
@@ -228,16 +236,33 @@ export function SettingsWindow() {
                                   <ShellAllowlistSettings snapshot={snapshot} />
                                 </>,
                               )}
-                              {page('extensions', <ServiceSettings />)}
+                              {page('extensions', <ServiceSettings activeItem={extensionTarget} />)}
                               {page('providers', <ProviderSettingsForm snapshot={snapshot} />)}
                               {page(
                                 'commands',
-                                <CommandSettings
+                                // A command's "Automate…" opens a new automation that runs it.
+                                <SettingsAutomationLinkContext value={showAutomation}>
+                                  <CommandSettings
+                                    settings={snapshot}
+                                    activeCommand={commandTarget}
+                                  />
+                                </SettingsAutomationLinkContext>,
+                              )}
+                              {page(
+                                'automations',
+                                <AutomationSettings
                                   settings={snapshot}
-                                  activeCommand={commandTarget}
+                                  activeTarget={automationTarget}
                                 />,
                               )}
-                              {page('memory', <MemorySettings activeEntry={memoryTarget} />)}
+                              {page(
+                                'memory',
+                                // Accepting a skill suggestion opens the skill in Extensions.
+                                <SettingsExtensionLinkContext value={showExtension}>
+                                  <MemorySettings activeEntry={memoryTarget} />
+                                </SettingsExtensionLinkContext>,
+                              )}
+                              {page('apps', <AppSettings />)}
                               {page(
                                 'general',
                                 <GeneralSettings

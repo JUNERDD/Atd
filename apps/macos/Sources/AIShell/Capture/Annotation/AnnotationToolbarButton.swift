@@ -6,8 +6,9 @@ import AppKit
 /// concentrically), a wash on hover and a deeper one while pressed, the selected state, a
 /// dimmed disabled glyph, and the keyboard focus ring drawn inside the toolbar's padding.
 ///
-/// The selection toolbar uses the same control with a label (``init(label:image:action:)``): a
-/// capsule ``side`` points tall around a leading glyph and its text, with the same washes.
+/// The selection toolbar uses the same control with a label (``init(label:image:width:action:)``):
+/// a capsule ``side`` points tall around a leading glyph and its text, with the same washes; its
+/// More menu stretches such buttons to one width as its rows.
 ///
 /// A choice among several (tools, colours, strokes) reads as a selected radio button to
 /// VoiceOver, an on/off control (the text background) as a checkbox; the bars set
@@ -65,11 +66,13 @@ final class AnnotationToolbarButton: NSButton {
   }
 
   /// A labelled action: `image` (a template glyph drawn at ``Label/iconSide``) then `text`, cut
-  /// with an ellipsis past ``Label/maxTextWidth``, ``Label/padding`` in from each end.
-  init(label text: String, image: NSImage?, action: Selector) {
+  /// with an ellipsis past ``Label/maxTextWidth``, ``Label/padding`` in from each end. `width`
+  /// stretches it past its natural width (``Label/width(text:hasImage:)``) with the label still
+  /// leading, as a menu row as wide as its longest sibling; nil keeps the natural width.
+  init(label text: String, image: NSImage?, width: CGFloat? = nil, action: Selector) {
     selection = nil
     label = (text, image)
-    let width = Label.width(text: text, hasImage: image != nil)
+    let width = width ?? Label.width(text: text, hasImage: image != nil)
     super.init(frame: CGRect(x: 0, y: 0, width: width, height: Self.side))
     configure(width: width, action: action)
     setAccessibilityLabel(text)

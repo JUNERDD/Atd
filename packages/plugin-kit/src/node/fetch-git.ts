@@ -46,7 +46,8 @@ export function normalizeSubdir(subdir: string | undefined): string {
   return normalized;
 }
 
-function repositoryName(url: string): string {
+/** The last path segment of a git URL without `.git`; `plugin` when it has none. */
+export function repositoryName(url: string): string {
   const last = new URL(url).pathname.replace(/\/+$/, '').split('/').pop() ?? '';
   return last.replace(/\.git$/i, '') || 'plugin';
 }
@@ -98,7 +99,6 @@ export async function fetchGit(
         ...(subdir === '' ? {} : { subdir }),
       },
       resolved: { commit },
-      fallbackName: subdir === '' ? repositoryName(spec.url) : path.posix.basename(subdir),
       warnings: dropped.map(droppedLinkWarning),
     };
   } finally {

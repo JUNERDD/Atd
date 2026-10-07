@@ -1,4 +1,6 @@
 import type { ExtensionFactory } from '@earendil-works/pi-coding-agent';
+import { appExtension } from '../apps/tool.js';
+import { automationExtension } from '../automations/tool.js';
 import { askUserExtension } from './ask-user.js';
 import type { HarnessDeps } from './deps.js';
 import { memoryExtension } from './memory-extension.js';
@@ -29,6 +31,8 @@ export async function prepareHarness(deps: HarnessDeps): Promise<ExtensionFactor
     searchToolsExtension(deps),
     todoExtension(deps),
     webExtension(deps),
+    appExtension(deps),
+    automationExtension(deps),
     retiredMessagesExtension(),
     ...(memory ? [memory] : []),
   ];

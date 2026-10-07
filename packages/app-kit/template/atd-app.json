@@ -1,0 +1,7 @@
+{
+  "name": "Notes",
+  "description": "A minimal notes app: a React page on @atd/ui, a SQLite-backed backend and a desktop widget.",
+  "accentColor": "#f59e0b",
+  "window": { "width": 720, "height": 612, "minWidth": 420, "minHeight": 412, "surface": "glass" },
+  "capabilities": []
+}

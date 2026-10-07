@@ -7,6 +7,7 @@ import {
   DefaultResourceLoader,
   SessionManager,
   SettingsManager,
+  type AgentSession,
 } from '@earendil-works/pi-coding-agent';
 import type { RunStatus, TaskRun } from '@atd/agent-contracts';
 import { codemodeExtension } from './codemode/extension.js';
@@ -15,8 +16,11 @@ import { compactionSettings } from './compaction/policy.js';
 import { pruneToolOutputs } from './compaction/prune.js';
 import type { RunFolder } from './folders/material.js';
 import { leadingSystemMessage, runMaterialContext } from './prompt-context.js';
+import { markInvocation } from './invocation-marker.js';
 import { bindLiveState, type LiveState } from './live-state.js';
 import { mcpServersSection } from './mcp/servers-section.js';
+import { EMPTY_RUN_MEMORY, type RunMemory } from './memory/run-memory.js';
+import { REQUEST_POLICY } from './request-policy.js';
 import { ResourceStore } from './resources.js';
 import type { RunBinding } from './run-binding.js';
 import { rewindManager, rewindSession } from './session-rewind.js';
@@ -30,6 +34,7 @@ import { sessionSkills } from './skills/session-skills.js';
 import { EMPTY_SKILL_CATALOG, type RunSkillCatalog } from './skills/skill-catalog.js';
 import type { RunnerContext } from './task-runner.js';
 import { effectiveTaskTier } from './tasks/tier.js';
+import { isUnattendedRun } from './unattended.js';
 import { createGate, prepareHarness } from './harness/index.js';
 import type { Reviewer } from './harness/auto-review.js';
 import { serviceTools, type ServiceToolHost } from './tool-proxies.js';
@@ -55,6 +60,12 @@ export interface SessionFactoryDeps {
   setStatus: (runId: string, status: RunStatus) => void;
   /** Whether Stop was requested for the current run. */
   stopRequested: () => boolean;
+  /**
+   * Whether the task was deleted (`TaskRunner.discard`), set before its session closes. From then
+   * on the session's memory reads off, so its memory learning stops at once
+   * (harness/memory-extension.ts).
+   */
+  deleted: () => boolean;
 }
 
 /** A text file; its content goes into the run material. */
@@ -95,6 +106,8 @@ export interface RunMaterial {
   skills: LoadedSkill[];
   /** The skills the model is told about and may load (skills/session-catalog.ts, load-skill-tool.ts). */
   catalog: RunSkillCatalog;
+  /** The memory sections frozen with the run (memory/run-memory.ts, memory/session-memory.ts). */
+  memory: RunMemory;
 }
 
 /** The material before a runner's first run; a run replaces it before its session is bound. */
@@ -105,13 +118,15 @@ export const NO_RUN_MATERIAL: RunMaterial = {
   references: '',
   skills: [],
   catalog: EMPTY_SKILL_CATALOG,
+  memory: EMPTY_RUN_MEMORY,
 };
 
 /**
  * Pi session assembly for one parent task, extracted from the desktop
  * worker-session shape: the run's connection model runtime, in-memory
- * settings with cache warming off and the service compaction policy for the
- * run's model, service-owned SessionManager and resource loader. `binding`
+ * settings with cache warming off, the service request policy and the
+ * service compaction policy for the run's model, service-owned SessionManager
+ * and resource loader. `binding`
  * supplies what Pi fixes at construction (run-binding.ts).
  */
 export async function createLiveState(
@@ -133,7 +148,7 @@ export async function createLiveState(
   const runModel = await openRunModel(ctx.paths, run);
   const settings = SettingsManager.inMemory(
     {
-      retry: { enabled: false },
+      ...REQUEST_POLICY,
       defaultThinkingLevel: 'off',
       cacheWarming: 'off',
       ...compactionSettings(runModel.model),
@@ -148,11 +163,7 @@ export async function createLiveState(
   // Before the session is built on it, so its context and extension state start on the new branch.
   if (run.snapshot.branchBefore) rewindManager(manager, run.snapshot.branchBefore);
   const compaction = new CompactionObserver(manager);
-  const subagentsFactory = await prepareSubagentsParent(
-    deps,
-    binding.agents,
-    runModel.childRuntime,
-  );
+  const subagentsFactory = await prepareSubagentsParent(deps, binding, runModel.childRuntime);
   const resources = new ResourceStore(ctx.ledger, ctx.paths);
   const host: ServiceToolHost = {
     taskId,
@@ -163,6 +174,7 @@ export async function createLiveState(
     tier: effectiveTaskTier(ctx.ledger, taskId, ctx.tier),
     grants: deps.grants,
     review: deps.review,
+    unattended: () => isUnattendedRun(ctx.ledger, taskId, deps.currentRunId()),
     sessions: manager,
     confirms: ctx.confirms,
     capabilities: ctx.capabilities,
@@ -182,6 +194,8 @@ export async function createLiveState(
     upsertMcp: binding.mcp.upsertMcp,
     listMcp: binding.mcp.listMcp,
   };
+  // The memory learner reviews this session's model and branch, also while it shuts down.
+  let session: AgentSession | null = null;
   // Harness features (ask_user, grep/find/ls, todo, web, plan, memory) plug in here; see harness/.
   const harness = await prepareHarness({
     runner: deps,
@@ -191,6 +205,12 @@ export async function createLiveState(
     sessions: manager,
     gate: createGate(host),
     reproject: () => state?.transcript.reproject(false),
+    source: () =>
+      session && {
+        models: runModel.models,
+        model: session.model ?? runModel.model,
+        branch: () => manager.getBranch(),
+      },
   });
   const loader = new DefaultResourceLoader(
     buildSkillLoaderOptions({
@@ -213,11 +233,11 @@ export async function createLiveState(
           log: ctx.log,
         }),
         subagentsFactory,
-        // Before the memory extension in the harness: its forced prompt renders these sections.
+        // Before the harness, so the memory sections render after the skill catalog.
         sessionSkillCatalog(() => deps.currentMaterial().catalog),
         sessionSkills({ runId: deps.currentRunId, skills: () => deps.currentMaterial().skills }),
         loadSkillTool({ catalog: () => deps.currentMaterial().catalog }),
-        // Before the harness: it marks a compaction prepared ahead of the memory flush.
+        // Before the harness: it marks a compaction prepared ahead of the memory learner's hook.
         compaction.extension(),
         pruneToolOutputs(),
         runMaterialContext(deps.currentMaterial),
@@ -240,6 +260,7 @@ export async function createLiveState(
     tools: binding.tools,
     thinkingLevel: run.snapshot.thinkingLevel ?? 'off',
   });
+  session = created.session;
   created.session.setActiveToolsByName(declaredTools(manager, binding));
   await created.session.bindExtensions({
     mode: 'json',
@@ -319,13 +340,4 @@ function declaredTools(manager: SessionManager, binding: RunBinding): string[] {
     .map((tool) => tool.name)
     .filter((name) => deferred.has(name));
   return [...binding.tools.filter((name) => !deferred.has(name)), ...loaded];
-}
-
-/**
- * Marks where a run starts in the session branch. Transcript projection
- * attributes the entries after it to that run, so every run a session
- * executes needs one, whether the session was reused or rebuilt for it.
- */
-function markInvocation(manager: SessionManager, run: TaskRun): void {
-  manager.appendCustomEntry('app-invocation', { runId: run.id, source: 'user' });
 }

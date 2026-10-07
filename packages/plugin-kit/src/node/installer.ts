@@ -27,6 +27,7 @@ import {
 } from './lifecycle.js';
 import { DEFAULT_LIMITS } from './limits.js';
 import { createMutex } from './mutex.js';
+import { renormalizeInstalled } from './renormalize.js';
 import { createStore, storePaths } from './store.js';
 
 export { PluginConflictError } from './lifecycle.js';
@@ -82,6 +83,17 @@ export interface PluginInstaller {
   previewUpdate(pluginId: string): Promise<InstallPreview>;
   /** Removes the record, state, secrets and data dir; revision dirs go when unreferenced. */
   uninstall(pluginId: string): Promise<void>;
+  /**
+   * Normalizes every installed revision again with the current adapters and stores each model
+   * that changed, so a plugin installed under earlier adapter rules follows today's (a component
+   * an adapter now skips stops loading). Hosts call it once at startup, before reading the
+   * catalog. Only the stored model changes: ids, sources, revisions, timestamps, state, config
+   * and secrets stay, and an item switch whose component no longer loads is kept for a later
+   * revision that brings it back. A revision that no longer loads as its plugin keeps no
+   * components and reports an `invalid-manifest` error until it is updated or reinstalled, or
+   * until a later call loads it again.
+   */
+  renormalize(): Promise<void>;
 
   list(): Promise<InstalledPlugin[]>;
   get(pluginId: string): Promise<InstalledPlugin | null>;
@@ -157,6 +169,7 @@ export function createPluginInstaller(options: PluginInstallerOptions): PluginIn
       return previewSource(context, record.source);
     },
     uninstall: (pluginId) => uninstallPlugin(context, pluginId),
+    renormalize: () => renormalizeInstalled(context),
 
     list: async () => (await store.readRegistry()).plugins,
     get: async (pluginId) =>

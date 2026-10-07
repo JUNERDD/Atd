@@ -10,11 +10,12 @@ import {
 import { Card } from '@atd/ui/components/card';
 import { ItemGroup } from '@atd/ui/components/item';
 import { ModelConfigPopover } from '../providers/model-config-popover';
+import { SettingsGroup } from '../settings/settings-group';
 import { SettingsSwitchRow } from '../settings/settings-switch-row';
 import { TOOL_DESCRIPTIONS, type CommandDefinition } from '../../client/agent/command-schema';
 import type { SettingsSnapshot } from '../../client/settings-contract';
 
-/** The command's run policy as an editor form section: model, memory and allowed tools. */
+/** The command's run policy as an editor group: model, memory and allowed tools. */
 export function RunSettings({
   command,
   onChange,
@@ -31,14 +32,7 @@ export function RunSettings({
   );
   const fixedModel = command.model.mode === 'fixed' ? command.model : null;
   return (
-    <section
-      className="settings-field"
-      aria-labelledby="command-run-title"
-      data-figma-node="1062:33204"
-    >
-      <h3 id="command-run-title" className="settings-section-title">
-        {t('run.title')}
-      </h3>
+    <SettingsGroup id="command-run" title={t('run.title')} description={t('run.description')}>
       <div className="run-settings">
         <div className="field-columns aligned-fields">
           <div className="settings-field">
@@ -134,6 +128,6 @@ export function RunSettings({
           </Card>
         </div>
       </div>
-    </section>
+    </SettingsGroup>
   );
 }

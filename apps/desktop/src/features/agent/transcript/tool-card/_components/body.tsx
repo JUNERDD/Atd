@@ -5,10 +5,13 @@ import { CopyButton } from '../../copy-button';
 
 /**
  * The scrolling content region. `scroll` picks the axis: `y` for wrapped text and lists, `both`
- * for code whose lines keep their width, `none` for content that scrolls itself (a `CodeBlock`
- * with its own height). `size` caps the height: `sm` 160px, `md` 240px (default), `lg` 320px.
- * `flush` drops the content inset for rendered code, whose own line backgrounds then meet the
- * card's hairline. Without a header, `copyText` puts the copy action on the body's corner instead.
+ * for code whose lines keep their width (a `CodeBlock` or `DiffView`, which never scroll
+ * themselves), `none` for content that scrolls itself. `size` caps the height: `sm` 160px, `md`
+ * 240px (default), `lg` 320px. Wrapped text keeps its bar lanes reserved so it never reflows as it
+ * grows past the cap; code never wraps, so its lanes open only on the axes that overflow and short
+ * code keeps no empty strip. `flush` drops the content inset for rendered code, whose own line
+ * backgrounds then meet the card's hairline. Without a header, `copyText` puts the copy action on
+ * the body's corner instead.
  */
 export function Body({
   scroll = 'y',
@@ -37,8 +40,8 @@ export function Body({
           orientation={scroll === 'both' ? 'both' : 'vertical'}
           className="tool-card-scroll"
           viewportClassName="max-h-[inherit]"
-          gutter="stable"
-          scrollShadow={scroll === 'y'}
+          gutter={scroll === 'both' ? 'auto' : 'stable'}
+          scrollShadow
         >
           {content}
         </ScrollArea>

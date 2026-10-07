@@ -1,9 +1,10 @@
 import AICore
 import AppKit
 
-/// Runs the summon flow of `SummonPolicy` for the hot keys, the status item and the selection
-/// toolbar, and owns the selection stash it fills: the selection is read before the panel can
-/// take focus, and `capture('selection')` answers from the stash, never from a live read.
+/// Runs the summon flow of `SummonPolicy` for the hot keys, the status item, the selection
+/// toolbar and the mini panel, and owns the selection stash it fills: the selection is read
+/// before the panel can take focus, and `capture('selection')` answers from the stash, never
+/// from a live read.
 final class Summoner {
   private let panel: PanelWindowController
   private let panelHost: WebViewHost
@@ -28,9 +29,10 @@ final class Summoner {
     self.isCapturing = isCapturing
   }
 
-  /// `practiceText` is the welcome guide's practice selection when its toolbar asked: it is the
-  /// selection a capture step stashes, in place of reading the frontmost app (Atd itself then).
-  func summon(_ trigger: SummonTrigger, practiceText: String? = nil) {
+  /// `selectedText` is the selection when it is already known: the welcome guide's practice
+  /// selection when its toolbar asked (the frontmost app is Atd itself then), or text dropped on
+  /// the mini panel. A capture step stashes it in place of reading the frontmost app.
+  func summon(_ trigger: SummonTrigger, selectedText: String? = nil) {
     guard !isSummoning, !isCapturing() else { return }
     let steps = SummonPolicy.steps(
       for: trigger,
@@ -45,7 +47,7 @@ final class Summoner {
         switch step {
         case .hidePanel: panel.hide()
         case .captureSelection:
-          var text = practiceText
+          var text = selectedText
           if text == nil { text = await readSelection() }
           stash = TextCapture.stash(text, at: .now)
         case .clearSelection: stash = nil

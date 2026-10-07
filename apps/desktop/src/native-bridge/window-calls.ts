@@ -1,12 +1,47 @@
 /**
  * The native bridge's window and app presence calls (`NativeWindowCalls`, part of `NativeCalls` in
- * `calls.ts`): showing and pinning the panel, the shell's app preferences, and opening the settings
- * and welcome guide windows. Loaded by the export script with Node's type stripping, so it imports
- * nothing but TypeBox and its sibling contract files (by their `.ts` names) and uses only erasable
- * TypeScript syntax.
+ * `calls.ts`): showing and pinning the panel, the shell's app preferences, the mini panel on the
+ * screen edge, opening the settings, welcome guide and user app windows, and pinning user apps to
+ * the desktop. Loaded by the export
+ * script with Node's type stripping, so it imports nothing but TypeBox and its sibling contract
+ * files (by their `.ts` names) and uses only erasable TypeScript syntax.
  */
 import { Type, type TSchema } from 'typebox';
 import { Empty } from './primitives.ts';
+import { UserAppIdSchema } from './user-app-contract.ts';
+
+/** The widget families a desktop pin draws (agent-contracts `WidgetFamilySchema`). */
+const PinFamily = Type.Union([
+  Type.Literal('systemSmall'),
+  Type.Literal('systemMedium'),
+  Type.Literal('systemLarge'),
+]);
+/** Mirrors agent-contracts `WidgetIdSchema` (this file cannot import the contracts package). */
+const PinWidgetId = Type.String({ pattern: '^[a-z][a-z0-9-]{0,31}$' });
+
+/**
+ * How the mini panel opens from its pill: `hover` as the pointer reaches it, or `click` only on a
+ * click (the default), the pointer only swelling the pill.
+ */
+export const MiniPanelOpenOnSchema = Type.Union([Type.Literal('hover'), Type.Literal('click')]);
+
+/** The most apps the desktop holds pins of; the shell refuses a pin beyond it. */
+export const MAX_DESKTOP_PINS = 24;
+
+/**
+ * One app's desktop pin as the shell shows it: the declared widget and the family it draws. A
+ * null `widgetId` is the app's icon tile, small (icon and name) when `family` is null or
+ * `systemSmall`, medium (icon, name and description) when it is `systemMedium`. An app has at
+ * most one pin.
+ */
+export const DesktopPinSchema = Type.Object(
+  {
+    appId: UserAppIdSchema,
+    widgetId: Type.Union([PinWidgetId, Type.Null()]),
+    family: Type.Union([PinFamily, Type.Null()]),
+  },
+  { additionalProperties: false },
+);
 
 export const NativeWindowCalls = {
   /** Shows and focuses the panel. */
@@ -17,7 +52,12 @@ export const NativeWindowCalls = {
     params: Type.Object({ pinned: Type.Boolean() }, { additionalProperties: false }),
     result: Type.Object({ pinned: Type.Boolean() }, { additionalProperties: false }),
   },
-  /** Window and app preferences the shell owns; `openAtLogin` is null where unsupported. */
+  /**
+   * Window and app preferences the shell owns; `openAtLogin` is null where unsupported.
+   * `widgetsAvailable` is false when the app runs outside `/Applications` and `~/Applications`,
+   * where macOS does not index the widget extension's App Intents metadata, so its widgets cannot
+   * be configured (T1b).
+   */
   'app.state': {
     params: Empty,
     result: Type.Object(
@@ -25,6 +65,7 @@ export const NativeWindowCalls = {
         pinned: Type.Boolean(),
         showInDock: Type.Boolean(),
         openAtLogin: Type.Union([Type.Boolean(), Type.Null()]),
+        widgetsAvailable: Type.Boolean(),
       },
       { additionalProperties: false },
     ),
@@ -37,6 +78,47 @@ export const NativeWindowCalls = {
   'app.setOpenAtLogin': {
     params: Type.Object({ open: Type.Boolean() }, { additionalProperties: false }),
     result: Type.Object({ open: Type.Boolean() }, { additionalProperties: false }),
+  },
+  /**
+   * Shows or hides the mini panel on the screen edge and resolves to the applied state; the shell
+   * keeps it. `miniPanel.state` reports every change to every page, the menu bar's and the mini
+   * panel's own toggles included.
+   */
+  'miniPanel.setShown': {
+    params: Type.Object({ shown: Type.Boolean() }, { additionalProperties: false }),
+    result: Type.Object({ shown: Type.Boolean() }, { additionalProperties: false }),
+  },
+  /**
+   * Sets how the mini panel opens from its pill (`MiniPanelOpenOnSchema`) and resolves to the
+   * applied value; the shell keeps it, and `miniPanel.state` reports every change to every page,
+   * the mini panel's own context menu included.
+   */
+  'miniPanel.setOpenOn': {
+    params: Type.Object({ openOn: MiniPanelOpenOnSchema }, { additionalProperties: false }),
+    result: Type.Object({ openOn: MiniPanelOpenOnSchema }, { additionalProperties: false }),
+  },
+  /**
+   * The commands the mini panel lists: the enabled commands, in command-list order. The panel
+   * pushes them whenever they change; a click on one runs it like its shortcut (`shortcut.command`),
+   * so only the id and the name its row shows cross.
+   */
+  'miniPanel.setCommands': {
+    params: Type.Object(
+      {
+        commands: Type.Array(
+          Type.Object(
+            {
+              id: Type.String({ minLength: 1, maxLength: 128 }),
+              name: Type.String({ minLength: 1, maxLength: 256 }),
+            },
+            { additionalProperties: false },
+          ),
+          { maxItems: 64 },
+        ),
+      },
+      { additionalProperties: false },
+    ),
+    result: Empty,
   },
   /**
    * Shows the settings window. A first load opens `commandId`'s editor when it is set, else
@@ -69,6 +151,83 @@ export const NativeWindowCalls = {
   /** Closes the welcome guide; `summon` then shows the panel, as its last step's primary action. */
   'onboarding.close': {
     params: Type.Object({ summon: Type.Boolean() }, { additionalProperties: false }),
+    result: Empty,
+  },
+  /**
+   * Opens the user app's window, or brings an open one forward; an open window whose loaded
+   * version is no longer the app's current one reloads (the shell rereads the app's runtime from
+   * the service). Rejects when the service has no such app.
+   */
+  'userApp.open': {
+    params: Type.Object({ appId: UserAppIdSchema }, { additionalProperties: false }),
+    result: Empty,
+  },
+  /** Closes the user app's window; a no-op when it is not open. */
+  'userApp.close': {
+    params: Type.Object({ appId: UserAppIdSchema }, { additionalProperties: false }),
+    result: Empty,
+  },
+  /**
+   * Renders the app widget's latest synced snapshot for one family with the same SwiftUI renderer
+   * the widget extension uses, so the renderer can preview widgets without the system gallery.
+   * Rejects when the shell has no snapshot for that widget and family.
+   */
+  'userApp.widgetPreview': {
+    params: Type.Object(
+      {
+        appId: UserAppIdSchema,
+        widgetId: Type.String({ minLength: 1, maxLength: 64 }),
+        family: Type.Union([
+          Type.Literal('systemSmall'),
+          Type.Literal('systemMedium'),
+          Type.Literal('systemLarge'),
+        ]),
+      },
+      { additionalProperties: false },
+    ),
+    result: Type.Object({ pngBase64: Type.String() }, { additionalProperties: false }),
+  },
+  /**
+   * Erases the app's web storage (its `WKWebsiteDataStore`): closes its window, releases the web
+   * view, then removes the store, retrying while WebKit reports it in use. With `forget`, the app
+   * is being deleted, so the shell also drops its content rule list and remembered window frame,
+   * and removes its desktop pin. Pairs with the service's data reset
+   * (`POST /v1/apps/:appId/clear-data`) or app deletion.
+   */
+  'userApp.clearData': {
+    params: Type.Object(
+      { appId: UserAppIdSchema, forget: Type.Boolean() },
+      { additionalProperties: false },
+    ),
+    result: Empty,
+  },
+  /**
+   * Pins the app to the desktop, in the first free place on the display of the window that asked,
+   * or changes what its pin shows. `widget` names one of the app's declared widgets and one of its
+   * families; null keeps what a pinned app shows, and gives a new pin the app's first widget in its
+   * smallest family, or the app's tile when it declares none. Rejects when the app does not exist,
+   * the widget or family is not declared, or `MAX_DESKTOP_PINS` apps are pinned already. The new
+   * list arrives as `userApp.pins`.
+   */
+  'userApp.pin': {
+    params: Type.Object(
+      {
+        appId: UserAppIdSchema,
+        widget: Type.Union([
+          Type.Object(
+            { widgetId: PinWidgetId, family: PinFamily },
+            { additionalProperties: false },
+          ),
+          Type.Null(),
+        ]),
+      },
+      { additionalProperties: false },
+    ),
+    result: Empty,
+  },
+  /** Removes the app's desktop pin; a no-op when it has none. */
+  'userApp.unpin': {
+    params: Type.Object({ appId: UserAppIdSchema }, { additionalProperties: false }),
     result: Empty,
   },
 } satisfies Record<string, { params: TSchema; result: TSchema }>;

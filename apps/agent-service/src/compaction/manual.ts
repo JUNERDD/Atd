@@ -36,8 +36,6 @@ export function compactRefused(code: CompactRefusal, message: string): ConflictE
 export async function startManualCompaction(input: {
   live: () => Promise<LiveState>;
   instructions: string | undefined;
-  /** Runs the compaction inside the session's memory scope (the memory flush writes). */
-  wrap: <T>(action: () => Promise<T>) => Promise<T>;
   onEnd: () => void;
 }): Promise<{ done: Promise<void> }> {
   const accepted = Promise.withResolvers<void>();
@@ -45,7 +43,7 @@ export async function startManualCompaction(input: {
     try {
       const live = await input.live();
       void live.compaction.nextPrepared().then(accepted.resolve);
-      await input.wrap(() => live.session.compact(input.instructions));
+      await live.session.compact(input.instructions);
     } catch (error) {
       // Settling again is a no-op once the compaction was accepted.
       accepted.reject(refusal(error));
@@ -78,8 +76,8 @@ function refusal(error: unknown): ConflictError {
 
 /**
  * A session opened only to compact an idle task without a live session, on its latest run's
- * model and frozen window. It loads no tools and no harness: pi-hermes-memory's pre-compaction
- * flush has nothing new to learn, since the shutdown flush that released the last live session
+ * model and frozen window. It loads no tools and no harness, so no memory learner: its review
+ * before a compaction has nothing new to read, since the shutdown review of the last live session
  * already read the same conversation. Skill re-attach stays, so skills a compaction drops return
  * the way they do in a run's session. Its binding key is empty, so the next run replaces it.
  */

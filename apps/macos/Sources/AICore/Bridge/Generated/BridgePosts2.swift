@@ -29,3 +29,21 @@ public struct SocketClosePost: Codable, Equatable, Sendable {
     case reason
   }
 }
+
+/// Params of the `userApp.pinDrag` post.
+public struct UserAppPinDragPost: Codable, Equatable, Sendable {
+  public let appId: String
+
+  public init(appId: String) {
+    self.appId = appId
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    appId = try container.string(.appId, pattern: "^app-[a-z0-9]{10}$")
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case appId
+  }
+}

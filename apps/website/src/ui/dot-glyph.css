@@ -1,0 +1,120 @@
+/* A dot-matrix pictogram fills its container's width; the dots take the section's dot tokens. */
+.dot-glyph {
+  display: block;
+  inline-size: 100%;
+  block-size: auto;
+  overflow: visible;
+}
+
+.dot-glyph__dot {
+  fill: var(--dot-0);
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.dot-glyph__dot[data-lit] {
+  fill: var(--dot-1);
+}
+
+/* Each lit dot's place as custom properties, for waves and sweeps that stagger by it: its column
+   (`--gx`) and row (`--gy`), up to the ninth. */
+
+.dot-glyph__dot[data-x='1'] {
+  --gx: 1;
+}
+
+.dot-glyph__dot[data-x='2'] {
+  --gx: 2;
+}
+
+.dot-glyph__dot[data-x='3'] {
+  --gx: 3;
+}
+
+.dot-glyph__dot[data-x='4'] {
+  --gx: 4;
+}
+
+.dot-glyph__dot[data-x='5'] {
+  --gx: 5;
+}
+
+.dot-glyph__dot[data-x='6'] {
+  --gx: 6;
+}
+
+.dot-glyph__dot[data-x='7'] {
+  --gx: 7;
+}
+
+.dot-glyph__dot[data-x='8'] {
+  --gx: 8;
+}
+
+.dot-glyph__dot[data-y='1'] {
+  --gy: 1;
+}
+
+.dot-glyph__dot[data-y='2'] {
+  --gy: 2;
+}
+
+.dot-glyph__dot[data-y='3'] {
+  --gy: 3;
+}
+
+.dot-glyph__dot[data-y='4'] {
+  --gy: 4;
+}
+
+.dot-glyph__dot[data-y='5'] {
+  --gy: 5;
+}
+
+.dot-glyph__dot[data-y='6'] {
+  --gy: 6;
+}
+
+.dot-glyph__dot[data-y='7'] {
+  --gy: 7;
+}
+
+.dot-glyph__dot[data-y='8'] {
+  --gy: 8;
+}
+
+/* The wave entrance: once the glyph is revealed, its lit dots come on along the diagonals, 28 ms
+   apart, each flaring a little as it lights. A lit dot at a tenth of its opacity looks unlit, so the
+   wave starts from the blank matrix. */
+@media (prefers-reduced-motion: no-preference) {
+  :root[data-motion] .dot-glyph[data-revealed] .dot-glyph__dot[data-lit] {
+    animation: dot-glyph-light 560ms var(--curve-out)
+      calc(var(--rv-delay, 0s) + (var(--gx, 0) + var(--gy, 0)) * 28ms) backwards;
+  }
+}
+
+@media (forced-colors: active) {
+  .dot-glyph__dot {
+    fill: Canvas;
+  }
+
+  .dot-glyph__dot[data-lit] {
+    fill: CanvasText;
+  }
+}
+
+@keyframes dot-glyph-light {
+  0% {
+    opacity: 0.1;
+  }
+
+  45% {
+    opacity: 1;
+    scale: 1.2;
+  }
+
+  100% {
+    opacity: 1;
+    scale: 1;
+  }
+}

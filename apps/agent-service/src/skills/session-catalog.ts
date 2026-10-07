@@ -14,8 +14,8 @@ export const SKILL_CATALOG_SECTION = 'skill_catalog';
  *
  * Pi rebuilds the section options for every prompt from an empty set, so every prompt sets the
  * section again; Pi persists a system prompt patch only when the text differs from the section
- * already in context, and a compaction keeps that system prompt. The handler must stay registered
- * before the memory extension, whose forced prompt is rendered from the sections set before it.
+ * already in context, and a compaction keeps that system prompt. The handler stays registered
+ * before the memory sections (memory/session-memory.ts), so they render after the catalog.
  */
 export function sessionSkillCatalog(catalog: () => RunSkillCatalog): ExtensionFactory {
   return (pi) => {

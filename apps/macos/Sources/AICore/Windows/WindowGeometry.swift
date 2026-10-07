@@ -36,7 +36,7 @@ public struct WindowSize: Equatable, Sendable {
 
 /// Panel placement in AppKit's y-up space: "bottom" is the work area's `y`, not its maximum.
 public enum PanelGeometry {
-  public static let defaultSize = WindowSize(width: 420, height: 580)
+  public static let defaultSize = WindowSize(width: 560, height: 720)
   public static let minimumSize = WindowSize(width: 320, height: 400)
   public static let margin = 16.0
 

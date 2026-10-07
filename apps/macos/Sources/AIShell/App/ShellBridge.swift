@@ -43,6 +43,7 @@ final class ShellBridge {
     case .socketSend(let post): host.pipe?.send(post)
     case .socketClose(let post): host.pipe?.close(post)
     case .updateInstall: shell?.updater.installNow()
+    case .userAppPinDrag(let post): shell?.startPinDrag(post.appId, from: host)
     }
   }
 
@@ -85,6 +86,13 @@ final class ShellBridge {
       } catch {
         throw BridgeError(Self.message(error, "The login item could not change."))
       }
+    case .miniPanelSetShown(let params):
+      return try Self.encode(shell.setMiniPanelShown(params.shown))
+    case .miniPanelSetOpenOn(let params):
+      return try Self.encode(shell.setMiniPanelOpenOn(params.openOn))
+    case .miniPanelSetCommands(let params):
+      shell.miniPanel.setCommands(params.commands)
+      return try Self.encode(NativeEmpty())
     case .settingsOpen(let params):
       shell.openSettings(commandId: params.commandId, section: params.section)
       return try Self.encode(NativeEmpty())
@@ -158,6 +166,26 @@ final class ShellBridge {
       return try Self.encode(NativeEmpty())
     case .appsPick:
       return try Self.encode(await ExcludedAppPicker.pick(with: shell.systemPanels))
+    case .userAppWidgetPreview(let params):
+      return try Self.encode(
+        UserAppWidgetPreviewResult(pngBase64: try shell.widgets.preview(params)))
+    case .userAppOpen(let params):
+      try await shell.openUserApp(params.appId)
+      return try Self.encode(NativeEmpty())
+    case .userAppClose(let params):
+      shell.userApps.close(appId: params.appId)
+      return try Self.encode(NativeEmpty())
+    case .userAppClearData(let params):
+      // A deleted app's pin goes first, whatever becomes of its web storage.
+      if params.forget { shell.pins.forget(appId: params.appId) }
+      try await shell.userApps.clearData(appId: params.appId, forget: params.forget)
+      return try Self.encode(NativeEmpty())
+    case .userAppPin(let params):
+      try await shell.pinUserApp(params, from: host)
+      return try Self.encode(NativeEmpty())
+    case .userAppUnpin(let params):
+      shell.pins.unpin(appId: params.appId)
+      return try Self.encode(NativeEmpty())
     }
   }
 

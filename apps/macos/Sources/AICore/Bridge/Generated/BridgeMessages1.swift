@@ -40,11 +40,20 @@ public enum NativeCall: Equatable, Sendable {
   case appState(AppStateParams)
   case appSetShowInDock(AppSetShowInDockParams)
   case appSetOpenAtLogin(AppSetOpenAtLoginParams)
+  case miniPanelSetShown(MiniPanelSetShownParams)
+  case miniPanelSetOpenOn(MiniPanelSetOpenOnParams)
+  case miniPanelSetCommands(MiniPanelSetCommandsParams)
   case settingsOpen(SettingsOpenParams)
   case settingsClose(SettingsCloseParams)
   case onboardingOpen(OnboardingOpenParams)
   case onboardingSettle(OnboardingSettleParams)
   case onboardingClose(OnboardingCloseParams)
+  case userAppOpen(UserAppOpenParams)
+  case userAppClose(UserAppCloseParams)
+  case userAppWidgetPreview(UserAppWidgetPreviewParams)
+  case userAppClearData(UserAppClearDataParams)
+  case userAppPin(UserAppPinParams)
+  case userAppUnpin(UserAppUnpinParams)
   case shortcutsSet(ShortcutsSetParams)
   case capture(CaptureParams)
   case clipboardRead(ClipboardReadParams)
@@ -74,11 +83,20 @@ public enum NativeCall: Equatable, Sendable {
     case .appState: "app.state"
     case .appSetShowInDock: "app.setShowInDock"
     case .appSetOpenAtLogin: "app.setOpenAtLogin"
+    case .miniPanelSetShown: "miniPanel.setShown"
+    case .miniPanelSetOpenOn: "miniPanel.setOpenOn"
+    case .miniPanelSetCommands: "miniPanel.setCommands"
     case .settingsOpen: "settings.open"
     case .settingsClose: "settings.close"
     case .onboardingOpen: "onboarding.open"
     case .onboardingSettle: "onboarding.settle"
     case .onboardingClose: "onboarding.close"
+    case .userAppOpen: "userApp.open"
+    case .userAppClose: "userApp.close"
+    case .userAppWidgetPreview: "userApp.widgetPreview"
+    case .userAppClearData: "userApp.clearData"
+    case .userAppPin: "userApp.pin"
+    case .userAppUnpin: "userApp.unpin"
     case .shortcutsSet: "shortcuts.set"
     case .capture: "capture"
     case .clipboardRead: "clipboard.read"
@@ -113,6 +131,7 @@ public enum NativePost: Equatable, Sendable {
   case socketSend(SocketSendPost)
   case updateInstall(UpdateInstallPost)
   case socketClose(SocketClosePost)
+  case userAppPinDrag(UserAppPinDragPost)
 
   /// The contract name.
   public var name: String {
@@ -126,6 +145,7 @@ public enum NativePost: Equatable, Sendable {
     case .socketSend: "socket.send"
     case .updateInstall: "update.install"
     case .socketClose: "socket.close"
+    case .userAppPinDrag: "userApp.pinDrag"
     }
   }
 }
@@ -153,6 +173,12 @@ public enum JsMessage: Decodable, Equatable, Sendable {
         call = try .appSetShowInDock(container.value(.params, AppSetShowInDockParams.self))
       case "app.setOpenAtLogin":
         call = try .appSetOpenAtLogin(container.value(.params, AppSetOpenAtLoginParams.self))
+      case "miniPanel.setShown":
+        call = try .miniPanelSetShown(container.value(.params, MiniPanelSetShownParams.self))
+      case "miniPanel.setOpenOn":
+        call = try .miniPanelSetOpenOn(container.value(.params, MiniPanelSetOpenOnParams.self))
+      case "miniPanel.setCommands":
+        call = try .miniPanelSetCommands(container.value(.params, MiniPanelSetCommandsParams.self))
       case "settings.open":
         call = try .settingsOpen(container.value(.params, SettingsOpenParams.self))
       case "settings.close":
@@ -163,6 +189,16 @@ public enum JsMessage: Decodable, Equatable, Sendable {
         call = try .onboardingSettle(container.value(.params, OnboardingSettleParams.self))
       case "onboarding.close":
         call = try .onboardingClose(container.value(.params, OnboardingCloseParams.self))
+      case "userApp.open": call = try .userAppOpen(container.value(.params, UserAppOpenParams.self))
+      case "userApp.close":
+        call = try .userAppClose(container.value(.params, UserAppCloseParams.self))
+      case "userApp.widgetPreview":
+        call = try .userAppWidgetPreview(container.value(.params, UserAppWidgetPreviewParams.self))
+      case "userApp.clearData":
+        call = try .userAppClearData(container.value(.params, UserAppClearDataParams.self))
+      case "userApp.pin": call = try .userAppPin(container.value(.params, UserAppPinParams.self))
+      case "userApp.unpin":
+        call = try .userAppUnpin(container.value(.params, UserAppUnpinParams.self))
       case "shortcuts.set":
         call = try .shortcutsSet(container.value(.params, ShortcutsSetParams.self))
       case "capture": call = try .capture(container.value(.params, CaptureParams.self))
@@ -215,6 +251,8 @@ public enum JsMessage: Decodable, Equatable, Sendable {
       case "update.install":
         post = try .updateInstall(container.value(.params, UpdateInstallPost.self))
       case "socket.close": post = try .socketClose(container.value(.params, SocketClosePost.self))
+      case "userApp.pinDrag":
+        post = try .userAppPinDrag(container.value(.params, UserAppPinDragPost.self))
       default:
         throw DecodingError.dataCorruptedError(
           forKey: .method, in: container, debugDescription: "Unknown method \(method).")

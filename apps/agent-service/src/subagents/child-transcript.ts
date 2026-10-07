@@ -1,11 +1,13 @@
 import type { AssistantMessage } from '@earendil-works/pi-ai';
 import type { AgentSession } from '@earendil-works/pi-coding-agent';
 import type { ServiceBlock } from '@atd/agent-contracts';
+import { GenerationClock } from '../generation.js';
 import { STREAM_COALESCE_MS } from '../live-transcript.js';
 import { TrailingFlush } from '../trailing-flush.js';
 import {
   diffServiceBlocks,
   projectServiceBlocks,
+  recordedCallIds,
   toolPartialText,
   type ServiceBranchItem,
 } from '../transcript.js';
@@ -34,15 +36,25 @@ export type ChildTranscriptHost = Pick<
  * `child.transcript.patch`, and the revision advances only with a published patch so a client can
  * detect a gap. Approvals of the child's tools are recorded in the parent session and joined in,
  * read once per reprojection. Streamed deltas coalesce as the parent's do (`STREAM_COALESCE_MS`).
+ * Generation and thinking times are measured here as the parent's are and joined in as the entries
+ * the child's bridge records in its session (child-bridge.ts).
  */
 class LiveChildTranscript {
   private blocks: ServiceBlock[] = [];
   private revision = 0;
   private readonly streamed = new TrailingFlush(() => this.reproject(true), STREAM_COALESCE_MS);
   private partial: AssistantMessage | undefined;
+  /**
+   * Latest streamed text of each call, until the child's messages hold its result: as in the
+   * parent's transcript (live-transcript.ts `release`), a call of a parallel batch ends before
+   * Pi creates the batch's results.
+   */
   private readonly partials = new Map<string, string>();
   /** When each message ended, by message identity (Pi pushes the `message_end` object). */
   private readonly endedAt = new WeakMap<object, number>();
+  private readonly generation = new GenerationClock();
+  /** The clock's entries, as the bridge records them in the child's session. */
+  private readonly timings: ServiceBranchItem[] = [];
   private unsubscribe: (() => void) | null = null;
 
   constructor(
@@ -53,6 +65,14 @@ class LiveChildTranscript {
 
   attach(): void {
     this.unsubscribe = this.source.subscribe((event) => {
+      if (
+        event.type === 'message_start' ||
+        event.type === 'message_update' ||
+        event.type === 'message_end'
+      ) {
+        for (const entry of this.generation.observe(event))
+          this.timings.push({ type: 'custom', ...entry });
+      }
       if (event.type === 'message_update' && event.message.role === 'assistant')
         this.partial = event.message;
       if (event.type === 'message_end') {
@@ -61,7 +81,6 @@ class LiveChildTranscript {
       }
       if (event.type === 'tool_execution_update')
         this.partials.set(event.toolCallId, toolPartialText(event.partialResult));
-      if (event.type === 'tool_execution_end') this.partials.delete(event.toolCallId);
       if (event.type === 'message_update' || event.type === 'tool_execution_update')
         this.streamed.schedule();
       else this.reproject(true);
@@ -94,13 +113,15 @@ class LiveChildTranscript {
 
   private reproject(live: boolean): void {
     this.streamed.cancel();
-    const branch = this.source.messages.map((message): ServiceBranchItem => {
+    const messages = this.source.messages.map((message): ServiceBranchItem => {
       const endedAt = this.endedAt.get(message);
       return { type: 'message', message, ...(endedAt === undefined ? {} : { endedAt }) };
     });
+    for (const id of recordedCallIds(messages)) this.partials.delete(id);
     const next = projectServiceBlocks({
-      branch,
+      branch: [...messages, ...this.timings],
       partial: this.partial,
+      firstTokenAt: this.partial && this.generation.firstOutputAt(this.partial.timestamp),
       partials: this.partials,
       firstRunId: this.record.parentRunId,
       live,

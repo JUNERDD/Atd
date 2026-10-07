@@ -1,6 +1,8 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import { LANGUAGE_CODES, type AppLanguage } from '../client/settings-contract';
+import enApps from './locales/en/apps.json';
+import enAutomations from './locales/en/automations.json';
 import enCommands from './locales/en/commands.json';
 import enCommon from './locales/en/common.json';
 import enMemory from './locales/en/memory.json';
@@ -23,6 +25,8 @@ export const resources = {
     panel: enPanel,
     tasks: enTasks,
     onboarding: enOnboarding,
+    apps: enApps,
+    automations: enAutomations,
   },
 } as const;
 

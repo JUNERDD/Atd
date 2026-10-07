@@ -56,7 +56,7 @@ export function SettingsContentHeader({
         <nav className="settings-breadcrumb" aria-label={t('header.location')}>
           <ol>
             <li aria-current={subpage ? undefined : 'page'} title={sectionLabel}>
-              {sectionLabel}
+              <span>{sectionLabel}</span>
             </li>
             {subpage && (
               <li aria-current="page" title={subpage.title}>

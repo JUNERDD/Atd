@@ -11,16 +11,20 @@ public enum NativeEvent: Encodable, Equatable, Sendable {
   case accessibilityReduceTransparency(AccessibilityReduceTransparencyEvent)
   case shortcutCommand(ShortcutCommandEvent)
   case shortcutScreenshot(ShortcutScreenshotEvent)
-  case onboardingReplay(OnboardingReplayEvent)
   case resourcesImported(ResourcesImportedEvent)
   case filesDrag(FilesDragEvent)
   case editCommand(EditCommandEvent)
   case speechState(SpeechStateEvent)
   case selectionAsk(SelectionAskEvent)
+  case taskNew(TaskNewEvent)
+  case miniPanelState(MiniPanelStateEvent)
   case accessibilityTrust(AccessibilityTrustEvent)
   case screenRecordingTrust(ScreenRecordingTrustEvent)
   case updateState(UpdateStateEvent)
   case socketFrames(SocketFramesEvent)
+  case userAppState(UserAppStateEvent)
+  case userAppPins(UserAppPinsEvent)
+  case taskOpen(TaskOpenEvent)
 
   /// The contract name.
   public var name: String {
@@ -30,16 +34,20 @@ public enum NativeEvent: Encodable, Equatable, Sendable {
     case .accessibilityReduceTransparency: "accessibility.reduceTransparency"
     case .shortcutCommand: "shortcut.command"
     case .shortcutScreenshot: "shortcut.screenshot"
-    case .onboardingReplay: "onboarding.replay"
     case .resourcesImported: "resources.imported"
     case .filesDrag: "files.drag"
     case .editCommand: "edit.command"
     case .speechState: "speech.state"
     case .selectionAsk: "selection.ask"
+    case .taskNew: "task.new"
+    case .miniPanelState: "miniPanel.state"
     case .accessibilityTrust: "accessibility.trust"
     case .screenRecordingTrust: "screenRecording.trust"
     case .updateState: "update.state"
     case .socketFrames: "socket.frames"
+    case .userAppState: "userApp.state"
+    case .userAppPins: "userApp.pins"
+    case .taskOpen: "task.open"
     }
   }
 
@@ -50,16 +58,20 @@ public enum NativeEvent: Encodable, Equatable, Sendable {
     case .accessibilityReduceTransparency(let payload): try payload.encode(to: encoder)
     case .shortcutCommand(let payload): try payload.encode(to: encoder)
     case .shortcutScreenshot(let payload): try payload.encode(to: encoder)
-    case .onboardingReplay(let payload): try payload.encode(to: encoder)
     case .resourcesImported(let payload): try payload.encode(to: encoder)
     case .filesDrag(let payload): try payload.encode(to: encoder)
     case .editCommand(let payload): try payload.encode(to: encoder)
     case .speechState(let payload): try payload.encode(to: encoder)
     case .selectionAsk(let payload): try payload.encode(to: encoder)
+    case .taskNew(let payload): try payload.encode(to: encoder)
+    case .miniPanelState(let payload): try payload.encode(to: encoder)
     case .accessibilityTrust(let payload): try payload.encode(to: encoder)
     case .screenRecordingTrust(let payload): try payload.encode(to: encoder)
     case .updateState(let payload): try payload.encode(to: encoder)
     case .socketFrames(let payload): try payload.encode(to: encoder)
+    case .userAppState(let payload): try payload.encode(to: encoder)
+    case .userAppPins(let payload): try payload.encode(to: encoder)
+    case .taskOpen(let payload): try payload.encode(to: encoder)
     }
   }
 }

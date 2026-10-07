@@ -179,26 +179,26 @@ export class CapabilityRegistry {
     }
   }
 
-  /** Revalidates persisted requests after a restart; expired ones resolve now. */
-  async recover(): Promise<{ kept: number; dropped: number }> {
-    const now = Date.now();
-    const kept = this.pending().filter((request) => Date.parse(request.expiresAt) > now);
-    const dropped = this.pending().filter((request) => Date.parse(request.expiresAt) <= now);
-    if (dropped.length)
-      await this.ledger.change((data) => {
-        data.pendingCapabilities = kept;
-      });
+  /**
+   * Drops every request the previous process raised and returns how many. Its waiter ended with
+   * that process and nothing re-sends it to the desktop, so a result could settle nothing; late
+   * results go `gone`. Its run was live, so recovery interrupts it (recovery.ts).
+   */
+  async recover(): Promise<number> {
+    if (!this.ledger.data.pendingCapabilities.length) return 0;
+    const dropped = this.pending();
+    await this.ledger.change((data) => {
+      data.pendingCapabilities = [];
+    });
     for (const request of dropped)
       this.events.publish({
         taskId: request.taskId,
         runId: request.runId,
         executionId: request.executionId,
         type: 'capability.resolved',
-        data: { requestId: request.id, ok: false, error: 'The request expired.' },
+        data: { requestId: request.id, ok: false, error: 'The service restarted.' },
       });
-    // Live waiters never survive a restart; kept requests wait for a client that
-    // re-registers, then resolve through `result`. Nothing is auto-replayed.
-    return { kept: kept.length, dropped: dropped.length };
+    return dropped.length;
   }
 
   private async expire(requestId: string): Promise<void> {

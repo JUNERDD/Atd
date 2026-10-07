@@ -6,6 +6,7 @@ included:
   - App
   - Sources
   - Tests
+  - Widgets
 file_length:
   warning: 350
   error: 350

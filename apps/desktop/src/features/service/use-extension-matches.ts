@@ -92,7 +92,6 @@ export function useExtensionMatches(
     agents: filterRows(catalogs.agents, query, (row) => {
       const description = line([
         row.description,
-        row.system ? t('extensions.sourceSystem') : '',
         row.customized ? t('extensions.customPermissions') : '',
       ]);
       return { description, fields: { name: row.name, description } };

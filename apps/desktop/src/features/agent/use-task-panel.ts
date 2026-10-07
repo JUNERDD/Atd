@@ -1,12 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
-import { useHotkeys, type Options } from 'react-hotkeys-hook';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { RunPolicy } from '../../client/agent/run-policy';
 import type { PreparedCommand, TaskDetail } from '../../client/agent/bridge';
+import type { PermissionRequest } from '../../client/agent/permission-schema';
 import { emptyInput, isActive } from '../../client/agent/task-schema';
 import { EMPTY_QUEUE } from '../../client/agent/transcript-schema';
-import { DEFAULT_SHORTCUTS, type RunReference } from '@atd/agent-contracts';
-import { isComposingKey } from '@atd/ui/lib/ime';
+import { DEFAULT_SHORTCUTS, runModelSelection, type RunReference } from '@atd/agent-contracts';
 import {
   draftChips,
   draftReferences,
@@ -14,28 +13,22 @@ import {
   type ComposerDraft,
 } from '../composer-editor/draft';
 import { draftFiles, draftFolders } from '../composer-editor/draft-attachments';
-import { useMemoryCreate } from '../memory/use-memory-create';
-import { extensionSeed, type SeedKind } from './extension-seed';
+import { useSeededSessions } from './use-seeded-sessions';
 import { useSettingsSnapshot } from '../settings/use-settings';
 import { readChoices, readDrafts, useRememberComposers, usableChoice } from './use-composer-memory';
-import { acceleratorToHotkey } from '../../lib/shortcuts';
 import { agentApi, useAgent, useTaskDetail } from './use-agent';
 import { useChildView } from './use-child-view';
+import { useCommandLaunch } from './use-command-launch';
+import { usePanelHotkeys } from './use-panel-hotkeys';
+import { useSideChat } from './side-chat/use-side-chat';
 import { showErrorToast } from '../../components/toast-store';
 import { useAgentNotices } from './use-notices';
-import { focusPanelInput, showPanel, usePanelWindow } from './use-panel-window';
+import { focusPanelInput, usePanelWindow } from './use-panel-window';
+import { useMarkAutomationRunRead, useTaskOpenRequests } from './use-task-open-requests';
 
-/** Longest answer a Remember seed quotes in full. */
-const REMEMBER_LIMIT = 90_000;
-
-type View = 'new' | 'history' | 'task' | 'input';
-/** The edit-with-AI sentence per extension kind; memory sessions never carry a target. */
-const EDIT_SEEDS = {
-  skill: 'session.editSkillSeed',
-  subagent: 'session.editSubagentSeed',
-  mcp: 'session.editMcpSeed',
-} as const;
+export type PanelView = 'new' | 'history' | 'apps' | 'task' | 'input';
 const EMPTY_DRAFT: ComposerDraft = { text: '', chips: [] };
+const NO_REQUESTS: PermissionRequest[] = [];
 
 /**
  * Stages what the draft's chips select: the skills are the draft's skill chips, and the references
@@ -61,139 +54,88 @@ export function useTaskPanel() {
   }, [settingsFailed, tSettings]);
   const { openSettings, hide } = usePanelWindow();
   const [draftRevision, setDraftRevision] = useState(0);
-  const [view, setView] = useState<View>('new');
+  const [view, setView] = useState<PanelView>('new');
   const [taskId, setTaskId] = useState<string | null>(null);
   const [prepared, setPrepared] = useState<PreparedCommand | null>(null);
-  const [autoRun, setAutoRun] = useState<PreparedCommand | null>(null);
-  const runAuto = useRef<(command: PreparedCommand) => void>(() => {});
-  const [revealCount, setRevealCount] = useState(0);
   const [policies, setPolicies] = useState<Record<string, RunPolicy>>({});
   const [drafts, setDrafts] = useState(readDrafts);
   const [choices, setChoices] = useState(readChoices);
   useRememberComposers(drafts, choices);
   const [pending, setPending] = useState(false);
   const submission = useRef<{ key: string; id: string } | null>(null);
-  const memoryCreate = useMemoryCreate();
-  const current = useTaskDetail(taskId);
-  const child = useChildView(view === 'task' ? taskId : null, current.detail?.requests ?? []);
-  const draftKey = view === 'task' && taskId ? taskId : 'new';
+  const seeded = useSeededSessions((seed) => {
+    newTask();
+    setDraftRevision((value) => value + 1);
+    setDrafts((previous) => ({ ...previous, new: seed.draft }));
+    setPolicies((previous) => ({ ...previous, new: seed.policy }));
+    focusPanelInput();
+  });
+  // The page holds one task's transcript at a time. A side chat moves the hold to its own task,
+  // and every close takes it back for the conversation by reloading it (`useTaskDetail`'s epoch).
+  const [holdEpoch, setHoldEpoch] = useState(0);
+  const current = useTaskDetail(taskId, holdEpoch);
+  const scope = view === 'task' ? taskId : null;
+  const child = useChildView(scope, current.detail?.requests ?? NO_REQUESTS);
+  const side = useSideChat({
+    scope,
+    status: agent.snapshot?.tasks.find((task) => task.id === scope)?.runs.at(-1)?.status,
+    dismissChild: child.dismiss,
+    start: (conversationId, launched) => submit(launched, conversationId),
+    rehold: () => setHoldEpoch((epoch) => epoch + 1),
+  });
+  // The composer serves one conversation: the side chat's task while it shows one, else the page's.
+  const boundTaskId = side.taskId ?? scope;
+  const bound = side.taskId ? side.detail : scope ? current.detail : null;
+  const boundRun = bound?.task.runs.at(-1);
+  // The command input step on screen: the side chat's, else the page's input view.
+  const sideStep = side.view && side.view.phase !== 'task' ? side.view.prepared : null;
+  const inputStep = sideStep ?? (view === 'input' ? prepared : null);
+  const draftKey = boundTaskId ?? 'new';
   const draft = drafts[draftKey] ?? EMPTY_DRAFT;
-  const policyKey = view === 'input' && prepared ? `command-${prepared.command.id}` : draftKey;
+  const policyKey = inputStep ? `command-${inputStep.command.id}` : draftKey;
   const shortcuts = snapshot?.shortcuts ?? DEFAULT_SHORTCUTS;
-  const platform = window.desktop?.platform ?? 'web';
-  const options: Options = {
-    delimiter: '|',
-    useKey: false,
-    enableOnFormTags: true,
-    enableOnContentEditable: true,
-    preventDefault: true,
-    enabled: (event) => !event.repeat,
-    ignoreEventWhen: (event) => event.defaultPrevented || isComposingKey(event),
-  };
-  useHotkeys(
-    acceleratorToHotkey(shortcuts.openSettings, platform),
-    () => void openSettings(),
-    options,
-    [],
-  );
-  useHotkeys(acceleratorToHotkey(shortcuts.newConversation, platform), newTask, options, []);
-  // Escape steps back one level: out of a subagent's conversation, then to a new chat, then hide.
-  useHotkeys(
-    'escape',
-    () => {
-      if (child.childKey) child.close();
+  usePanelHotkeys(shortcuts, {
+    openSettings: () => void openSettings(),
+    newConversation: newTask,
+    // One level per press: the side chat's subagent view, the side chat, the conversation's
+    // subagent view, a new chat, then the panel hides.
+    escape: () => {
+      if (side.child.childKey) side.child.close();
+      else if (side.view) side.close();
+      else if (child.childKey) child.close();
       else if (view !== 'new') setView('new');
       else void hide();
     },
-    { ...options, ignoreModifiers: true, preventDefault: false },
-    [view, child.childKey],
-  );
-  useEffect(() => {
-    const bridge = window.desktop?.agent;
-    if (!bridge) return;
-    return bridge.onLaunch(({ prepared: value, autoRun: run }) => {
-      if (run) {
-        // A shortcut run never shows the command input: the panel is revealed when its task is on
-        // screen, or on the input page with the failure when the run cannot start.
-        setAutoRun(value);
-        return;
-      }
+  });
+  useCommandLaunch({
+    submit: (launched) => submit(launched),
+    showInput: (value) => {
       setPrepared(value);
       setView('input');
-      setRevealCount((count) => count + 1);
-    });
-  }, []);
-  // Create-with-AI (Extensions, Memory, the command editor) seeds a `create-*` skill chip on the
-  // new draft; edit-with-AI adds a sentence naming the existing item.
-  useEffect(() => {
-    const bridge = window.desktop?.agent;
-    if (!bridge) return;
-    return bridge.onCommandSession(({ commandId, name }) =>
-      startSeeded('command', commandId ? t('session.editSeed', { name, id: commandId }) : ''),
-    );
-  }, [t]);
-  useEffect(() => {
-    const bridge = window.desktop?.agent;
-    if (!bridge) return;
-    return bridge.onExtensionSession(({ kind, target }) =>
-      startSeeded(
-        kind,
-        target === null || kind === 'memory' ? '' : t(EDIT_SEEDS[kind], { name: target }),
-      ),
-    );
-  }, [t]);
-  // A failed start restores the command input for repair. The reveal counter is raised together
-  // with the launched view, so the commit that reveals the panel already renders that view; every
-  // launch is a fresh object, so the trigger fires exactly once per shortcut press.
-  useEffect(() => {
-    runAuto.current = (command) => {
-      void submit(command)
-        .then((detail) => {
-          if (detail) setRevealCount((count) => count + 1);
-        })
-        .catch((error) => {
-          setPrepared(command);
-          setView('input');
-          showErrorToast(error);
-          setRevealCount((count) => count + 1);
-        });
-    };
+    },
   });
-  useEffect(() => {
-    if (autoRun) runAuto.current(autoRun);
-  }, [autoRun]);
-  useEffect(() => {
-    if (revealCount) void showPanel();
-  }, [revealCount]);
+  const { dismiss: dismissSide } = side;
+  /** Shows a task, as choosing it from the history does, with no side chat over it. */
+  const openTask = useCallback(
+    (id: string) => {
+      dismissSide();
+      setTaskId(id);
+      setView('task');
+    },
+    [dismissSide],
+  );
+  // Settings and an automation's notification show a task the same way, and an automation's
+  // result counts as read once its task shows.
+  useTaskOpenRequests(openTask);
+  useMarkAutomationRunRead(
+    view === 'task' ? agent.snapshot?.tasks.find((task) => task.id === taskId) : undefined,
+  );
 
   /** Shows the new conversation as it was left: its draft and model are remembered, not reset. */
   function newTask() {
     setView('new');
     setTaskId(null);
     setPrepared(null);
-  }
-  /** A create-with-AI session on the new draft (`extensionSeed`), replacing what it held. */
-  function startSeeded(kind: SeedKind, sentence: string) {
-    newTask();
-    setDraftRevision((value) => value + 1);
-    const seed = extensionSeed(kind, sentence);
-    setDrafts((previous) => ({ ...previous, new: seed.draft }));
-    setPolicies((previous) => ({ ...previous, new: seed.policy }));
-    focusPanelInput();
-  }
-  /** Shows a task, as choosing it from the history does. */
-  function openTask(id: string) {
-    setTaskId(id);
-    setView('task');
-  }
-  /** A memory session seeded with `text` (a turn's answer), once memory can save it. */
-  function remember(text: string) {
-    // The seed becomes the draft, whose text the service caps at 100,000 characters; a longer
-    // answer is cut with an ellipsis, leaving room for the chip and the sentence around it.
-    const quoted = text.length > REMEMBER_LIMIT ? `${text.slice(0, REMEMBER_LIMIT)}…` : text;
-    memoryCreate.start(null, () =>
-      startSeeded('memory', t('session.rememberSeed', { text: quoted })),
-    );
   }
   function changeDraft(value: ComposerDraft) {
     setDrafts((previous) => ({ ...previous, [draftKey]: value }));
@@ -207,14 +149,19 @@ export function useTaskPanel() {
     }
   }
   /**
-   * Shortcut launches submit the command they carried: the run uses the command's own policy and
-   * leaves drafts, view state and remembered model and effort choices untouched.
+   * Sends the bound conversation's draft, or a command: the one a launch carried (`launched`), whose
+   * run uses the command's own policy and leaves drafts, staged policies and remembered model and
+   * effort choices untouched, else the input step's. A new task becomes the page's, except one
+   * started as conversation `sideChatOf`'s side chat, which the side chat shows; a side chat's
+   * follow-up leaves the page as it is too.
    */
-  async function submit(launched?: PreparedCommand): Promise<TaskDetail | null> {
+  async function submit(
+    launched?: PreparedCommand,
+    sideChatOf: string | null = null,
+  ): Promise<TaskDetail | null> {
     if (pending) return null;
-    const run = current.detail?.task.runs.at(-1);
-    if (!launched && view === 'task' && isActive(run?.status)) return null;
-    const commandInput = launched ?? (view === 'input' ? prepared : null);
+    const commandInput = launched ?? inputStep;
+    if (!commandInput && isActive(boundRun?.status)) return null;
     // Chips are the draft's only record of its references: files, skills and references derive
     // from them, and `input.chips` keeps where each chip sits so the transcript can show it again.
     const files = draftFiles(draft);
@@ -234,11 +181,13 @@ export function useTaskPanel() {
     const saved = launched || !(policies[policyKey] || choice) ? null : policy;
     const runPolicy: RunPolicy | null =
       skills.length || references.length ? withChips(saved ?? policy, skills, references) : saved;
-    const targetTaskId = launched ? null : view === 'task' ? taskId : null;
+    const targetTaskId = commandInput ? null : boundTaskId;
+    const sideFollowUp = targetTaskId !== null && targetTaskId === side.taskId;
     const key = JSON.stringify({
       policy: runPolicy,
       input: { ...input, capturedAt: commandInput ? input.capturedAt : '' },
       taskId: targetTaskId,
+      sideChatOf,
       commandId: commandInput?.command.id,
       revision: commandInput?.command.revision,
     });
@@ -252,6 +201,7 @@ export function useTaskPanel() {
         commandRevision: commandInput?.command.revision ?? null,
         savedRun: null,
         input,
+        ...(sideChatOf ? { sideChatOf } : {}),
       });
       submission.current = null;
       if (!launched)
@@ -263,10 +213,13 @@ export function useTaskPanel() {
       // The conversation this message started keeps the model it was sent with.
       if (choice && !launched && !targetTaskId)
         setChoices((previous) => ({ ...previous, [detail.task.id]: choice }));
-      setTaskId(detail.task.id);
-      setView('task');
-      setPrepared(null);
-      if (!launched)
+      if (!sideChatOf && !sideFollowUp) {
+        setTaskId(detail.task.id);
+        setView('task');
+        setPrepared(null);
+      }
+      // Only a sent draft clears; a command's run leaves the draft as it was.
+      if (!commandInput)
         setDrafts((previous) =>
           previous[draftKey] === draft ? { ...previous, [draftKey]: EMPTY_DRAFT } : previous,
         );
@@ -278,25 +231,24 @@ export function useTaskPanel() {
   const title =
     view === 'history'
       ? t('titles.tasks')
-      : view === 'input'
-        ? (prepared?.command.name ?? t('titles.commandInput'))
-        : view === 'task'
-          ? (current.detail?.task.title ?? t('titles.task'))
-          : t('titles.newTask');
-  const run = current.detail?.task.runs.at(-1);
+      : view === 'apps'
+        ? t('titles.apps')
+        : view === 'input'
+          ? (prepared?.command.name ?? t('titles.commandInput'))
+          : view === 'task'
+            ? (current.detail?.task.title ?? t('titles.task'))
+            : t('titles.newTask');
   const defaultPolicy: RunPolicy = {
-    tools:
-      view === 'input' && prepared
-        ? prepared.command.tools
-        : view === 'task' && run
-          ? run.snapshot.tools
-          : ['read', 'write', 'edit', 'bash', 'command'],
-    memory:
-      view === 'input' && prepared
-        ? prepared.command.memory !== 'off'
-        : view === 'task' && run
-          ? run.snapshot.memory
-          : true,
+    tools: inputStep
+      ? inputStep.command.tools
+      : boundRun
+        ? boundRun.snapshot.tools
+        : ['read', 'write', 'edit', 'bash', 'command'],
+    memory: inputStep
+      ? inputStep.command.memory !== 'off'
+      : boundRun
+        ? boundRun.snapshot.memory
+        : true,
     confirmExpansion: false,
   };
   // The model and effort belong to the conversation's memory; the policy only stages the rest.
@@ -309,6 +261,23 @@ export function useTaskPanel() {
       [policyKey]: { ...(model ? { model } : {}), ...(thinkingLevel ? { thinkingLevel } : {}) },
     }));
   }
+  const defaultConnection = snapshot?.connections.find(
+    (connection) => connection.connectionId === snapshot.defaultConnectionId,
+  );
+  // The run's model as the service selects it (`runModelSelection`), else the default: the
+  // composer's picker shows it, and the composer and the command input check it for image input
+  // before images are sent.
+  const model =
+    runModelSelection({
+      requested: policy.model ?? null,
+      command: inputStep?.command.model ?? null,
+      last: inputStep ? null : (boundRun?.snapshot.model ?? null),
+      hasConnection: (connectionId) =>
+        snapshot?.connections.some((item) => item.connectionId === connectionId) ?? false,
+    }) ??
+    (defaultConnection?.defaultModel
+      ? { connectionId: defaultConnection.connectionId, modelId: defaultConnection.defaultModel }
+      : null);
   return {
     agent,
     snapshot,
@@ -320,22 +289,38 @@ export function useTaskPanel() {
     pending,
     current,
     child,
+    side,
     draftKey,
     draftRevision,
     draft,
     shortcuts,
     newTask,
     openTask,
-    remember,
+    remember: seeded.remember,
+    createApp: seeded.createApp,
     openSettings,
     changeDraft,
     chooseCommand,
     submit,
     title,
-    run,
     policy,
     changePolicy,
-    requests: current.detail?.requests ?? [],
-    queue: current.detail?.queue ?? EMPTY_QUEUE,
+    model,
+    /** The composer's task-bound props, from the conversation it serves. */
+    bound: {
+      taskId: boundTaskId,
+      runId: boundRun?.id,
+      status: boundRun?.status,
+      task: bound?.task ?? null,
+      blocks: bound?.blocks,
+      context: bound?.context ?? null,
+      requests: bound?.requests ?? NO_REQUESTS,
+      queue: bound?.queue ?? EMPTY_QUEUE,
+      onStop: boundTaskId && boundRun ? () => agentApi().stop(boundTaskId, boundRun.id) : undefined,
+      // Under a subagent's view, and while a side chat's command has not started, nothing to serve.
+      hidden: child.childKey !== null || sideStep !== null || side.child.childKey !== null,
+    },
+    /** The conversation's pending requests, for its subagent views. */
+    requests: current.detail?.requests ?? NO_REQUESTS,
   };
 }

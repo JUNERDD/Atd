@@ -3,7 +3,11 @@ import { useTranslation } from 'react-i18next';
 import { ArrowUp, Square } from 'lucide-react';
 import { ScrollArea } from '@atd/ui/components/scroll-area';
 import type { ShortcutBindings } from '../client/settings-contract';
-import { DEFAULT_SHORTCUTS, type TaskContextState } from '@atd/agent-contracts';
+import {
+  DEFAULT_SHORTCUTS,
+  type AppCapabilityConsent,
+  type TaskContextState,
+} from '@atd/agent-contracts';
 import type { AgentTask, RunStatus } from '../client/agent/task-schema';
 import { isActive } from '../client/agent/task-schema';
 import type { PermissionRequest } from '../client/agent/permission-schema';
@@ -50,6 +54,8 @@ export interface ComposerProps {
   runId?: string | undefined;
   task?: AgentTask | null;
   requests?: PermissionRequest[];
+  /** Capability consents apps wait on, answered in the HITL view of any conversation. */
+  consents?: readonly AppCapabilityConsent[];
   queue?: QueueState;
   /** The open task's transcript; the progress pill above the input derives from it. */
   blocks?: readonly Block[] | undefined;
@@ -111,6 +117,7 @@ export function Composer({
   taskId = null,
   task = null,
   requests = [],
+  consents,
   queue = EMPTY_QUEUE,
   blocks = NO_BLOCKS,
   context = null,
@@ -239,6 +246,7 @@ export function Composer({
       >
         <ComposerPopover
           requests={requests}
+          consents={consents}
           queue={queue}
           taskId={taskId}
           queueDisabled={locked || sending}

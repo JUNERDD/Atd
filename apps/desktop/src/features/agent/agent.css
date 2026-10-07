@@ -142,7 +142,8 @@
   min-height: 0;
   flex-direction: column;
 }
-/* Holds the task conversation and, while one is open, a subagent's drill-in view on top of it. */
+/* Holds the task conversation and the layers that open over it: a subagent's drill-in view, or a
+   side chat, which can have a drill-in view of its own on top. */
 .task-stage {
   position: relative;
   display: flex;
@@ -150,17 +151,30 @@
   min-height: 0;
   flex-direction: column;
 }
-/* Covered, the parent keeps its layout and scroll offset; it is only unseen and inert. `opacity`
+/* Covered, a layer keeps its layout and scroll offset; it is only unseen and inert. `opacity`
    hides the subtree as one group from the first frame: `visibility` is inherited element by
    element, so a descendant that transitions it (every Button, through `transition-all`) would
    stay visible over the drill-in until its transition ends. */
-.conversation[data-covered] {
+.conversation[data-covered],
+.side-chat[data-covered] {
   visibility: hidden;
   opacity: 0;
 }
-.child-conversation {
+/* The layers fill the stage with no fill of their own: the panel's surface shows through, and
+   what they cover hides. */
+.child-conversation,
+.side-chat {
   position: absolute;
   inset: 0;
+}
+.side-chat {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+}
+/* A side chat's starting or loading line sits where its conversation will, clear of the composer. */
+.conversation-messages.side-chat-pending {
+  padding-bottom: calc(var(--overlay-footer-height, 0px) + 16px);
 }
 .conversation-messages {
   display: flex;
@@ -175,15 +189,31 @@
 .conversation-messages > :first-child {
   margin-top: auto;
 }
-/* A subagent's drill-in header: pinned above its transcript, horizontally aligned with the
- * messages. The full task scrolls within a short box so short windows keep the transcript. */
+/* A layer's header (a subagent's drill-in, a side chat): one row pinned above the view, horizontally
+ * aligned with the messages. What the view is opens from its title (`.child-header-details`), so
+ * the row is all the height the header takes at any width. */
 .child-header {
   display: flex;
   flex-shrink: 0;
-  flex-direction: column;
-  gap: 6px;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
   padding: 8px 16px 10px;
   border-bottom: 1px solid var(--border);
+}
+/* The breadcrumb gives way from the parent: the view's own name (with its mark and chevron) keeps
+ * its width, and the parent's title truncates first, down to its ellipsis and a character or two.
+ * The 3.75rem left for it is the separator with its margins and gaps (38px) and that remainder;
+ * the panel header above names the parent in full, and the crumb's tooltip does too. */
+.child-header-crumbs > [aria-current='page'] {
+  flex: none;
+  max-width: calc(100% - 3.75rem);
+}
+/* What a layer's title discloses: a reading width, and a height capped under the space below the
+ * title, so a long text scrolls inside the popover rather than covering the whole panel. */
+.child-header-details {
+  width: 22rem;
+  max-height: min(30rem, var(--radix-popover-content-available-height));
 }
 .transcript-turn {
   display: flex;
@@ -283,7 +313,7 @@
 .markdown code {
   font-size: 12px;
 }
-/* The project's code block (`@pierre/diffs`): a framed card whose copy action sits on its corner. */
+/* The project's code block (`@pierre/diffs`): a framed card whose actions sit on its corner. */
 .code-block {
   position: relative;
   min-width: 0;
@@ -295,10 +325,61 @@
 .code-block-file {
   display: block;
 }
-/* In a message a long block scrolls inside itself instead of stretching the turn. */
+/*
+ * The code surface comes from `--ata-code-surface`: pierre paints its dark theme's background on
+ * the host, and a declaration on the host wins over that (see `tool-code.css`), so the code and
+ * the actions' scrim below share one color. Flush code takes its owner's surface instead.
+ */
+.code-block diffs-container:not(.code-block-flush) {
+  --diffs-dark-bg: var(--ata-code-surface);
+}
+/*
+ * The hover actions (download, copy) stand on a scrim of the code surface that fades in from the
+ * left, so a line running under them fades out instead of crossing the icons. The scrim shows
+ * while an action does: on hover or focus, or while one shows its feedback (`data-feedback`).
+ * Only the buttons take the pointer, so the code under the fade stays selectable.
+ */
+.code-block-actions {
+  position: absolute;
+  top: 4px;
+  right: 0;
+  display: flex;
+  gap: 4px;
+  padding: 0 4px 0 16px;
+  isolation: isolate;
+  pointer-events: none;
+}
+.code-block-actions > * {
+  pointer-events: auto;
+}
+.code-block-actions::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(to right, transparent, var(--ata-code-surface) 16px);
+  opacity: 0;
+  /* In step with the buttons' own `transition-opacity`. */
+  transition: opacity 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+@media (hover: hover) {
+  .code-block:hover > .code-block-actions::before {
+    opacity: 1;
+  }
+}
+.code-block:focus-within > .code-block-actions::before,
+.code-block-actions:has([data-feedback])::before {
+  opacity: 1;
+}
+/*
+ * In a message a long block scrolls inside itself instead of stretching the turn, both ways: the
+ * code never scrolls sideways itself (`CODE_CSS` in `code-block.tsx`), so the bar sits at the
+ * bottom of this capped box, not under the last line. A fence keeps this box from its first
+ * streamed line on (`StreamingCodeBlock`), so its close changes neither its height nor its scroll.
+ */
 .markdown-code-block .code-block-file {
   max-height: 320px;
-  overflow-y: auto;
+  overflow: auto;
 }
 /* A fenced block's code carries the inline-code chip classes; the block already frames it. */
 .markdown pre > code {
@@ -358,6 +439,22 @@
   font-size: 12px;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+}
+/*
+ * Display math (KaTeX): a long equation scrolls sideways inside its own block instead of widening
+ * the turn. KaTeX's stylesheet loads after this one and spaces the block with 1em margins; in a
+ * message it keeps the turn's block rhythm instead (`.markdown > * + *`, and 8px in thinking). The
+ * padding keeps ink that KaTeX's metrics leave out, such as CJK in a `\text` label under a brace,
+ * inside the scroller's clip, and leaves an equation a little more air than a paragraph.
+ */
+.markdown .katex-display {
+  margin: 0;
+  padding-block: 4px;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+.markdown > * + .katex-display {
+  margin-top: 12px;
 }
 .message-actions {
   display: flex;
@@ -463,10 +560,22 @@
 }
 /*
  * Sub-row unfold: Radix keeps the content mounted through the close animation (Presence), so
- * the height keyframes run both ways. Same ease as the phase body at a shorter distance.
+ * the keyframes run both ways. Same ease as the phase body at a shorter distance. The content is
+ * a one-row grid and the keyframes move that row between `0fr` and `1fr`, so the height follows
+ * the content's live size on every frame. Radix's `--radix-collapsible-content-height` is one
+ * measurement taken as the content mounts, before parts that settle their size later have laid
+ * out (paragraphs `content-visibility` skips, lazy markdown), and animating to it overshot and
+ * then snapped back. The row's one child must have no padding, border or minimum height, or the
+ * row cannot close below it (`ActivityRow.Content` wraps its children for this). The one column
+ * fills the row's width and is never widened by content: wide code scrolls inside its own card.
  */
 [data-slot='collapsible-content'] {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
   overflow: hidden;
+}
+[data-slot='collapsible-content'] > * {
+  min-height: 0;
 }
 [data-slot='collapsible-content'][data-state='open'] {
   animation: row-expand 240ms cubic-bezier(0.22, 1, 0.36, 1);
@@ -476,21 +585,21 @@
 }
 @keyframes row-expand {
   from {
-    height: 0;
+    grid-template-rows: 0fr;
     opacity: 0;
   }
   to {
-    height: var(--radix-collapsible-content-height);
+    grid-template-rows: 1fr;
     opacity: 1;
   }
 }
 @keyframes row-collapse {
   from {
-    height: var(--radix-collapsible-content-height);
+    grid-template-rows: 1fr;
     opacity: 1;
   }
   to {
-    height: 0;
+    grid-template-rows: 0fr;
     opacity: 0;
   }
 }
@@ -681,12 +790,14 @@
 }
 /* A compaction row sits between turns' prose like a thinking row; a failed one keeps its reason
    under the title, indented to the title's edge (row padding + icon + gap). */
-.compaction-row {
+.compaction-row,
+.retry-row {
   display: flex;
   min-width: 0;
   flex-direction: column;
 }
-.compaction-error {
+.compaction-error,
+.retry-error {
   margin: 0;
   padding: 0 0 4px 22px;
   color: var(--muted-foreground);
@@ -751,11 +862,13 @@
 /*
  * A settled trace lays out only the paragraphs near the capped box's view; the rest stay in the
  * DOM for copy, find and selection but skip layout and paint. `auto` keeps each paragraph's last
- * rendered height. A streaming trace is excluded: it opens at its end, and WebKit before 27 has
- * no scroll anchoring, so paragraphs above the view would resize and shift the text while
- * reading upward.
+ * rendered height. The first ten paragraphs always lay out: at one 20px line each with 8px between
+ * them they already fill the 240px box, so the box opens at its real height, never one built from
+ * the 80px stand-ins of skipped paragraphs. A streaming trace is excluded: it opens at its end,
+ * and WebKit before 27 has no scroll anchoring, so paragraphs above the view would resize and
+ * shift the text while reading upward.
  */
-.thinking-text:not([data-streaming]) > p {
+.thinking-text:not([data-streaming]) > p:nth-child(n + 11) {
   content-visibility: auto;
   contain-intrinsic-size: auto 80px;
 }

@@ -9,8 +9,7 @@ import type { WindowMessages } from './window-messages';
  * shown it. It asks the shell to open the guide before marking it shown, and before its first
  * selection toolbar push (`onSettings` runs ahead of that sync), so the guide, not the launch, asks
  * for Accessibility. A guide closed early or a quit mid-way does not reopen it; the app menu's
- * Welcome Guide does, and in Debug builds the menu's Replay First-Launch Guide marks it as not
- * shown again (`onboarding.replay`), which runs this same path from the start.
+ * Welcome Guide does, without touching the setting.
  *
  * It also relays the shell's panel visibility to the other windows, which the guide's hotkey
  * try-out watches.
@@ -18,31 +17,22 @@ import type { WindowMessages } from './window-messages';
 export function nativeOnboardingTrigger(
   native: NativeBridge,
   messages: WindowMessages,
-  setCompleted: (done: boolean) => Promise<SettingsSnapshot>,
+  markShown: () => Promise<SettingsSnapshot>,
 ): { onSettings: (next: SettingsSnapshot) => void } {
   native.on('window.visibility', ({ visible }) =>
     messages.post({ type: 'panelVisibility', visible }),
   );
-  native.on('onboarding.replay', () => {
-    void setCompleted(false).catch((error: unknown) => {
-      console.error('The welcome guide could not be replayed:', error);
-    });
-  });
-  // Set from the request until the service reports the guide shown, so one pending state opens one
-  // guide; a replay's reset then finds it clear.
+  // Settings can arrive again before the service reports the guide shown, so one launch opens
+  // one guide.
   let requested = false;
   return {
     onSettings: (next) => {
-      if (next.onboardingCompleted) {
-        requested = false;
-        return;
-      }
-      if (requested) return;
+      if (next.onboardingCompleted || requested) return;
       requested = true;
       void native.call('onboarding.open', {}).catch((error: unknown) => {
         console.error('The welcome guide could not open:', error);
       });
-      void setCompleted(true).catch((error: unknown) => {
+      void markShown().catch((error: unknown) => {
         console.error('The welcome guide could not be marked as shown:', error);
       });
     },

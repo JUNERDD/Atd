@@ -2,9 +2,10 @@ import { Type, type Static } from 'typebox';
 import { Identifier } from './identifiers.js';
 
 /**
- * T6b (service v1.2 candidate): live memory management DTOs over the D7
- * authority singleton. Reads and updates go through Hermes; pause flips the
- * learning gate and bumps the policy version runners gate on.
+ * Memory shapes shared beyond Settings: a unit's type (`MemoryTargetSchema`, also the `@` chip's
+ * target) and the plain entry apps read through their memory capability (`MemoryEntrySchema`, an
+ * enabled unit's id, type and body). Settings and the memory routes use the unit DTOs in
+ * memory-units.ts.
  */
 
 export const MemoryTargetSchema = Type.Union([
@@ -23,55 +24,3 @@ export const MemoryEntrySchema = Type.Object(
   { additionalProperties: false },
 );
 export type MemoryEntry = Static<typeof MemoryEntrySchema>;
-
-export const MemoryListResponseSchema = Type.Object(
-  {
-    entries: Type.Array(MemoryEntrySchema),
-    paused: Type.Boolean(),
-    version: Type.Integer({ minimum: 0 }),
-  },
-  { additionalProperties: false },
-);
-export type MemoryListResponse = Static<typeof MemoryListResponseSchema>;
-
-export const MemoryPauseRequestSchema = Type.Object(
-  {
-    paused: Type.Boolean(),
-  },
-  { additionalProperties: false },
-);
-export type MemoryPauseRequest = Static<typeof MemoryPauseRequestSchema>;
-
-export const MemoryPauseResponseSchema = Type.Object(
-  {
-    paused: Type.Boolean(),
-    version: Type.Integer({ minimum: 0 }),
-  },
-  { additionalProperties: false },
-);
-export type MemoryPauseResponse = Static<typeof MemoryPauseResponseSchema>;
-
-/** Content may be empty (clears the entry); identity must match a live entry. */
-export const MemoryUpdateRequestSchema = Type.Object(
-  {
-    entry: Type.Object(
-      {
-        id: Identifier,
-        target: MemoryTargetSchema,
-      },
-      { additionalProperties: false },
-    ),
-    content: Type.String({ maxLength: 20000 }),
-  },
-  { additionalProperties: false },
-);
-export type MemoryUpdateRequest = Static<typeof MemoryUpdateRequestSchema>;
-
-export const MemoryUpdateResponseSchema = Type.Object(
-  {
-    ok: Type.Literal(true),
-    version: Type.Integer({ minimum: 0 }),
-  },
-  { additionalProperties: false },
-);
-export type MemoryUpdateResponse = Static<typeof MemoryUpdateResponseSchema>;

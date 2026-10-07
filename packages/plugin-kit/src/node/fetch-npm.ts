@@ -168,7 +168,6 @@ export async function fetchNpm(
   return {
     source: { kind: 'npm', spec: spec.trim() },
     resolved: { version, integrity: check.integrity },
-    fallbackName: name,
     warnings: [
       ...(check.warning === undefined ? [] : [check.warning]),
       ...dropped.map(droppedLinkWarning),

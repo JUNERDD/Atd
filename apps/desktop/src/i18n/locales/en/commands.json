@@ -141,6 +141,22 @@
     "selectionVariable": "Selected text variable",
     "clipboardVariable": "Clipboard variable"
   },
+  "placement": {
+    "title": "Show in",
+    "selectionToolbar": {
+      "title": "Selection toolbar in other apps",
+      "description": "Runs on text you select in another app."
+    },
+    "turnSelection": {
+      "title": "Selection toolbar in conversations",
+      "description": "Runs on text you select in an answer."
+    },
+    "turnActions": {
+      "title": "Turn actions",
+      "description": "Runs on a turn’s answer, from its More actions menu."
+    },
+    "unavailable": "To show this command in these places, have it read the selected text: set Input source to Selected text, or turn on the selected text variable in Input options."
+  },
   "shortcut": {
     "error": "Include Command, Control, or Alt with a supported key.",
     "record": "Record command shortcut",
@@ -163,8 +179,13 @@
     "opened": "Opened a new AI session in the task panel.",
     "enableSkill": "Enable {{name}} in Extensions → Skills before creating with AI."
   },
+  "start": {
+    "title": "Input and launch",
+    "description": "What it reads when it starts, the shortcut that runs it, and where else it’s offered."
+  },
   "run": {
     "title": "Run settings",
+    "description": "The model, memory and tools each run may use.",
     "model": "Model",
     "useAppDefault": "Use app default",
     "useFixedModel": "Use a fixed model",

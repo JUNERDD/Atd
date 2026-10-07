@@ -1,9 +1,10 @@
 import Foundation
 
-/// Why a renderer URL was refused before any routing. Every case answers the page with an error
-/// and never reaches the bundle or the service.
+/// Why a scheme-handler URL was refused before any routing. Every case answers the page with an
+/// error and never reaches a file or the service.
 public enum RelayRequestError: Error, Equatable, Sendable {
-  /// Not `ai-app://renderer`, or it carries a user, password or port.
+  /// Not the handler's own origin (`ai-app://renderer`, or `ai-userapp://<appId>` for a user
+  /// app's handler), or it carries a user, password or port.
   case wrongOrigin
   /// The path does not start with `/`.
   case notAbsolute
@@ -49,22 +50,37 @@ public enum RelayTarget: Equatable, Sendable {
   case asset(NormalizedPath)
 }
 
-/// The one normalization step shared by static-file serving and `/v1` forwarding.
+/// The one normalization step shared by static-file serving and service forwarding, for the
+/// renderer's handler and the user apps' handler alike.
 public enum RelayPath {
   public static let scheme = "ai-app"
   public static let host = "renderer"
   public static let maxLength = 4096
 
-  /// Validates the origin of a scheme-handler URL and routes its path.
+  /// Validates the origin of an `ai-app://renderer` URL and routes its path.
   public static func classify(_ url: URL) throws(RelayRequestError) -> RelayTarget {
-    guard url.scheme == scheme, url.host(percentEncoded: true) == host, url.user == nil,
-      url.password == nil, url.port == nil
-    else { throw .wrongOrigin }
-    let path = try normalize(url.path(percentEncoded: true))
+    let path = try normalizedPath(of: url, scheme: scheme, host: host)
     guard path.segments.first == "v1" else { return .asset(path) }
+    return .api(path, query: try query(of: url))
+  }
+
+  /// The normalized path of a URL that must belong to exactly `scheme://host`: no user, password
+  /// or port, and the host compared percent-encoded and case-sensitively, so no spelling of
+  /// another origin passes. Each handler routes the result itself.
+  public static func normalizedPath(
+    of url: URL, scheme expectedScheme: String, host expectedHost: String
+  ) throws(RelayRequestError) -> NormalizedPath {
+    guard url.scheme == expectedScheme, url.host(percentEncoded: true) == expectedHost,
+      url.user == nil, url.password == nil, url.port == nil
+    else { throw .wrongOrigin }
+    return try normalize(url.path(percentEncoded: true))
+  }
+
+  /// The raw query of a URL that is forwarded to the service, or nil when it has none.
+  public static func query(of url: URL) throws(RelayRequestError) -> String? {
     let query = url.query(percentEncoded: true)
     if let query, !query.utf8.allSatisfy(isQueryByte) { throw .forbiddenQuery }
-    return .api(path, query: query)
+    return query
   }
 
   /// Normalizes a raw, percent-encoded absolute path. Each segment is decoded exactly once;

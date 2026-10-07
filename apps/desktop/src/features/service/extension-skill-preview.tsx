@@ -32,8 +32,10 @@ export function SkillFilePreview({ path, content }: { path: string; content: str
       </ScrollArea>
     );
   }
+  // The code block never scrolls itself: this area scrolls it both ways, so a long line's bar
+  // stays at the bottom of the visible pane instead of under the file's last line.
   return (
-    <ScrollArea className="skill-browser-body" scrollShadow>
+    <ScrollArea orientation="both" className="skill-browser-body" scrollShadow>
       <div className="skill-browser-content">
         <CodeBlock contents={content} language={getFiletypeFromFileName(path)} />
       </div>

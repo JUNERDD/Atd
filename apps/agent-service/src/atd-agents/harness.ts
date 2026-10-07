@@ -6,8 +6,9 @@ import { atomicWrite } from '../config.js';
 /**
  * What Settings decided about catalog subagents for later runs, kept in the service data dir
  * beside the skill harness (skills/harness.ts): which are turned off, and which carry a
- * permission override (atd-agents/permissions.ts). Names are catalog names: `service.*` for the
- * system agents and the bare file name for `~/.atd/agents` specialists. Agent files are never
+ * permission override (atd-agents/permissions.ts). Names are catalog names: the bare file name
+ * for `~/.atd/agents` specialists and `<plugin>:<item>` for a plugin's subagents. An entry for a
+ * name the catalog no longer lists stays in the file and matches no agent. Agent files are never
  * written. Version 1 files (enablement only) read as version 2 without overrides.
  */
 interface AgentHarness {
@@ -15,7 +16,11 @@ interface AgentHarness {
   permissions: Map<string, SubagentPermissions>;
 }
 
-function harnessFile(root: string): string {
+/**
+ * The harness file in the service data dir. The agent's file tools write it only after the user
+ * confirms each write (catalog-writes.ts).
+ */
+export function agentHarnessFile(root: string): string {
   return path.join(root, 'agent-harness.json');
 }
 
@@ -25,7 +30,7 @@ function emptyHarness(): AgentHarness {
 
 /** Reads the harness; unknown shapes read as empty and an invalid override is dropped. */
 export async function readAgentHarness(root: string): Promise<AgentHarness> {
-  const file = harnessFile(root);
+  const file = agentHarnessFile(root);
   let parsed: unknown;
   try {
     parsed = JSON.parse(await readFile(file, 'utf8'));
@@ -53,7 +58,7 @@ export async function readAgentHarness(root: string): Promise<AgentHarness> {
 
 async function writeHarness(root: string, harness: AgentHarness): Promise<void> {
   const byName = (a: string, b: string) => a.localeCompare(b);
-  await atomicWrite(harnessFile(root), {
+  await atomicWrite(agentHarnessFile(root), {
     version: 2,
     disabled: [...harness.disabled].sort(byName),
     permissions: Object.fromEntries([...harness.permissions].sort(([a], [b]) => byName(a, b))),

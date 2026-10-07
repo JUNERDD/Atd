@@ -1,7 +1,12 @@
 import { downloadResource } from '@atd/agent-client';
 import type { McpApprovalRequestResult } from '@atd/agent-contracts';
 import { AgentRequests } from '../client/agent/agent-requests';
-import { parseExtensionSession, type ExtensionSession } from '../client/agent/bridge';
+import {
+  AutomationSessionTargetSchema,
+  parseExtensionSession,
+  type AutomationSessionTarget,
+  type ExtensionSession,
+} from '../client/agent/bridge';
 import {
   createAgentBridge,
   type AgentChannel,
@@ -11,15 +16,19 @@ import type { DesktopBridge } from '../client/contract';
 import { createServiceBridge } from '../client/service/bridge-client';
 import { handleExtensionRequest } from '../client/service/extension-requests';
 import type { ServiceEvent } from '../client/service/ipc';
+import { parse } from '../client/agent/validation';
 import { publishFileDrag } from '../lib/file-drag';
 import { publishImportedFiles } from '../lib/imported-files';
 import type { NativeBridge } from '../native-bridge/client';
 import { setReducedTransparency, setWindowActive, setWindowVisible } from '../window-state';
 import { publishDragRegions } from './drag-regions';
+import { nativeApps } from './native-apps';
+import { nativeAutomations, nativeTaskOpen } from './native-automations';
 import { NativeCommands } from './native-commands';
 import { NativeConnection } from './native-connection';
 import { nativeFiles } from './native-files';
 import { nativeFolders } from './native-folders';
+import { nativeMiniPanel } from './native-mini-panel';
 import { nativeOnboarding, nativeOnboardingTrigger } from './native-onboarding';
 import { nativePlatform } from './native-platform';
 import { nativeSettings } from './native-settings';
@@ -58,16 +67,22 @@ export async function installNativeHost(
   // can send an Ask that showed the panel before this host is installed.
   const update = surface === 'panel' ? nativeUpdate(native) : undefined;
   const onSelectionAsk = surface === 'panel' ? nativeSelectionAsk(native) : undefined;
+  // The shell sends an opened notification's `task.open` once the panel's page is ready, which
+  // can be before the panel subscribes; the host holds it until then.
+  const onTaskOpen = surface === 'panel' ? nativeTaskOpen(native) : undefined;
   const connection = new NativeConnection({
     baseUrl: pageOrigin(),
     relay: true,
     transport: nativeSocketTransport(native),
   });
   const messages = windowMessages();
+  // Subscribes to `userApp.state` before the first await, like `update.state`.
+  const apps = nativeApps(connection, native, messages, surface);
   const channels: { [C in AgentChannel]: Set<(value: AgentChannelValues[C]) => void> } = {
     changed: new Set(),
     launch: new Set(),
     session: new Set(),
+    automationSession: new Set(),
     extensionSession: new Set(),
   };
   const emit = <C extends AgentChannel>(channel: C, value: AgentChannelValues[C]) => {
@@ -85,7 +100,7 @@ export async function installNativeHost(
   const settings = nativeSettings(connection, messages, native);
   const onboarding =
     surface === 'panel'
-      ? nativeOnboardingTrigger(native, messages, settings.setOnboardingCompleted)
+      ? nativeOnboardingTrigger(native, messages, settings.markOnboardingShown)
       : undefined;
   // Replayed when the page becomes ready, so subscribed before the first await too.
   native.on('accessibility.trust', ({ trusted }) =>
@@ -94,11 +109,15 @@ export async function installNativeHost(
   native.on('screenRecording.trust', ({ trusted }) =>
     settings.setShell({ screenRecordingTrusted: trusted }),
   );
+  native.on('miniPanel.state', ({ shown, openOn }) =>
+    settings.setShell({ miniPanelShown: shown, miniPanelOpenOn: openOn }),
+  );
   let latest = await settings.bridge.get();
   const commands = new NativeCommands(connection, native, () => {
     requests.broadcast();
     shortcuts?.sync(true);
     toolbar?.sync();
+    miniPanel?.sync();
   });
   const requests = new AgentRequests<'page'>(
     connection,
@@ -133,6 +152,11 @@ export async function installNativeHost(
           commands: () => commands.list(),
         })
       : null;
+  // The mini panel's list depends on the commands alone, so only a change of the command list
+  // pushes it (not the settings the toolbar also follows), and nothing goes out before the
+  // service's commands first arrive.
+  const miniPanel =
+    surface === 'panel' ? nativeMiniPanel(native, { commands: () => commands.list() }) : null;
   // The panel speaks for the service's settings only once they loaded: until then the snapshot
   // holds defaults, which could register a shortcut the user replaced.
   let pushedLanguage: string | null = null;
@@ -157,6 +181,16 @@ export async function installNativeHost(
     } else if (message.type === 'commandSession') {
       const name = commands.list().find((item) => item.id === message.commandId)?.name ?? '';
       emit('session', { commandId: message.commandId, name });
+      void native.call('window.show', {});
+    } else if (message.type === 'automationSession') {
+      // Like an extension session below, a message the panel cannot seed is dropped.
+      let automation: AutomationSessionTarget;
+      try {
+        automation = parse(AutomationSessionTargetSchema, message.automation);
+      } catch {
+        return;
+      }
+      emit('automationSession', automation);
       void native.call('window.show', {});
     } else if (message.type === 'extensionSession') {
       // A window running an older build can post this too: drop a message the panel cannot seed
@@ -205,6 +239,8 @@ export async function installNativeHost(
       ? { files: nativeFiles(connection), folders: nativeFolders(connection, native) }
       : {}),
     ...(update ? { update } : {}),
+    apps,
+    automations: nativeAutomations(connection, native, messages),
     agent: createAgentBridge(async (request) => {
       // Only the panel receives `launch` events, so the other windows hand their launches over.
       if (surface !== 'panel' && request.action === 'launch') {
@@ -257,6 +293,16 @@ export async function installNativeHost(
       settings.setShell({ openAtLogin: applied.open });
       return applied.open;
     },
+    setMiniPanelShown: async (shown) => {
+      const applied = await native.call('miniPanel.setShown', { shown });
+      settings.setShell({ miniPanelShown: applied.shown });
+      return applied.shown;
+    },
+    setMiniPanelOpenOn: async (openOn) => {
+      const applied = await native.call('miniPanel.setOpenOn', { openOn });
+      settings.setShell({ miniPanelOpenOn: applied.openOn });
+      return applied.openOn;
+    },
     // Attachments go through the agent bridge (`chooseFiles` → `files.pick`).
     chooseFiles: async () => [],
     screenshot: () => commands.screenshot(),
@@ -270,9 +316,13 @@ export async function installNativeHost(
     speech: nativeSpeech(native),
     onEditCommand: (listener) => native.on('edit.command', ({ command }) => listener(command)),
     ...(surface === 'panel'
-      ? { onScreenshotShortcut: (listener) => native.on('shortcut.screenshot', () => listener()) }
+      ? {
+          onScreenshotShortcut: (listener) => native.on('shortcut.screenshot', () => listener()),
+          onNewTask: (listener) => native.on('task.new', () => listener()),
+        }
       : {}),
     ...(onSelectionAsk ? { onSelectionAsk } : {}),
+    ...(onTaskOpen ? { onTaskOpen } : {}),
     ...(surface === 'onboarding' ? { onboarding: nativeOnboarding(native, messages) } : {}),
   };
   window.desktop = bridge;

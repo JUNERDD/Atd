@@ -1,17 +1,9 @@
-import {
-  errorMessage,
-  type McpServerConfig,
-  type RunReference,
-  type SubagentPermissions,
-  type TaskRun,
-} from '@atd/agent-contracts';
-import { listAtdAgents, type AtdAgent } from '../atd-agents/catalog.js';
+import type { McpServerConfig, RunReference, TaskRun } from '@atd/agent-contracts';
+import type { RunCatalogAgents } from '../atd-agents/run-agents.js';
 import type { Ledger } from '../ledger.js';
 import type { Logger } from '../logging.js';
 import { mcpProxyPrefix } from '../mcp/index.js';
 import type { McpToolSelection } from '../mcp/staging.js';
-import type { PluginAgent } from '../plugins/map.js';
-import type { RuntimeAgent } from '../subagents/agents.js';
 import { CONTEXT_BUDGET, runInputSize } from '../tasks/run-budget.js';
 import { resolveAgentReference } from './agents.js';
 import {
@@ -47,22 +39,21 @@ export interface ReferenceContext {
   toolCeiling: string[];
   /** Characters the run's skills take from the context budget first (skills/run-skills.ts). */
   skillChars: number;
+  /** Characters the run's memory sections take next (memory/run-memory.ts). */
+  memoryChars: number;
   /** Configured servers and the run's frozen tool selection; null while MCP is unavailable. */
   mcp: { servers: McpServerConfig[]; selected: McpToolSelection[] | null } | null;
-  /** Catalog agents turned off in Settings (atd-agents/harness.ts); a reference to one resolves to a note. */
-  disabledAgents: ReadonlySet<string>;
-  /** Settings permission overrides by catalog name (atd-agents/harness.ts). */
-  agentPermissions: ReadonlyMap<string, SubagentPermissions>;
-  /** Plugin subagents effective in the run's frozen plugin snapshot, by qualified name. */
-  pluginAgents: ReadonlyMap<string, PluginAgent>;
+  /**
+   * The catalog subagents the run registers (atd-agents/run-agents.ts); a reference to one adds a
+   * hint, and one the run does not register resolves to a note.
+   */
+  agents: RunCatalogAgents;
 }
 
-/** A run's quotes and references resolved at freeze into material and capabilities. */
+/** A run's quotes and references resolved at freeze into material. */
 export interface RunReferences {
   /** Text appended to the run material: quotes, then references; empty when it has neither. */
   material: string;
-  /** `~/.atd/agents` and plugin specialists the run's session registers and allows. */
-  agents: RuntimeAgent[];
   /** One record per staged reference plus a summary, for the run audit. */
   audit: Record<string, unknown>[];
 }
@@ -77,7 +68,6 @@ interface Hint {
   reference: RunReference;
   text: string;
   audit: Record<string, unknown>;
-  agent?: RuntimeAgent;
 }
 
 interface Source {
@@ -109,17 +99,17 @@ export async function resolveRunReferences(
  * Resolves a run's staged references. A reference that no longer resolves
  * never fails the run: it is listed as unavailable with its reason, so the
  * model can tell the user. Everything the references add counts against the
- * context budget left by the run's own input and its skills (tasks/run-budget.ts).
+ * context budget left by the run's own input, its skills and its memory
+ * (tasks/run-budget.ts).
  */
 async function resolveStaged(
   context: ReferenceContext,
   references: RunReference[],
 ): Promise<RunReferences> {
-  if (!references.length) return { material: '', agents: [], audit: [] };
+  if (!references.length) return { material: '', audit: [] };
   const notes: Note[] = [];
   const hints: Hint[] = [];
   const sources: Source[] = [];
-  let catalog: Promise<AtdAgent[] | string> | null = null;
   const saved: SavedItems = savedItems(context);
   for (const reference of references) {
     switch (reference.kind) {
@@ -142,11 +132,7 @@ async function resolveStaged(
         break;
       }
       case 'agent': {
-        catalog ??= listAtdAgents().then(
-          ({ agents }) => agents,
-          (error: unknown) => `the agent catalog could not be read (${errorMessage(error)})`,
-        );
-        const resolved = await resolveAgentReference(reference.name, context, catalog);
+        const resolved = resolveAgentReference(reference.name, context.agents);
         const label = `Agent "${reference.name}"`;
         if (typeof resolved === 'string') notes.push({ reference, label, reason: resolved });
         else hints.push({ reference, ...resolved });
@@ -172,7 +158,8 @@ function compose(
   context: ReferenceContext,
   parts: { notes: Note[]; hints: Hint[]; sources: Source[] },
 ): RunReferences {
-  const room = CONTEXT_BUDGET - runInputSize(context.run.snapshot) - context.skillChars;
+  const room =
+    CONTEXT_BUDGET - runInputSize(context.run.snapshot) - context.skillChars - context.memoryChars;
   const excerpts = new Map<Source, { text: string; audit: Record<string, unknown> }>();
   const noRoom = (source: Source): Note => ({
     reference: source.reference,
@@ -214,7 +201,6 @@ function compose(
   const material = view();
   return {
     material,
-    agents: parts.hints.flatMap((hint) => (hint.agent ? [hint.agent] : [])),
     audit: [
       ...[...excerpts.values()].map((excerpt) => excerpt.audit),
       ...parts.hints.map((hint) => hint.audit),
@@ -241,7 +227,6 @@ function skipAll(
   const all = [...parts.notes, ...parts.hints, ...parts.sources].map((part) => part.reference);
   return {
     material: '',
-    agents: [],
     audit: [
       ...all.map((reference) => ({
         ...target(reference),

@@ -1,6 +1,6 @@
 {
   "name": "@atd/macos",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "private": true,
   "description": "Native macOS shell (Swift/AppKit). Requires Xcode 26, XcodeGen and SwiftLint.",
   "scripts": {
@@ -8,8 +8,8 @@
     "dev": "node scripts/dev-open.mjs",
     "test": "swift test",
     "lint": "swiftlint lint --strict --quiet",
-    "format": "swift format --in-place --recursive --parallel Package.swift App Sources Tests",
-    "format:check": "swift format lint --strict --recursive --parallel Package.swift App Sources Tests",
+    "format": "swift format --in-place --recursive --parallel Package.swift App Sources Tests Widgets",
+    "format:check": "swift format lint --strict --recursive --parallel Package.swift App Sources Tests Widgets",
     "build:release": "pnpm run bundle && xcodegen generate --quiet && xcodebuild -project AI.xcodeproj -scheme AI -configuration Release -destination 'platform=macOS,arch=arm64' -derivedDataPath DerivedData -quiet ARCHS=arm64 build",
     "bundle": "pnpm -w exec turbo run build --filter=@atd/agent-service... --filter=@atd/agent-client && pnpm --filter @atd/desktop build && node scripts/prepare-service-pack.mjs",
     "codegen": "node scripts/generate-bridge-types.mjs",

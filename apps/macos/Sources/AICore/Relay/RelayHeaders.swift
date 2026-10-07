@@ -51,6 +51,22 @@ public enum RelayHeaders {
     return headers
   }
 
+  /// Page headers a user app's requests carry upstream: the body's type and, through `Accept`,
+  /// whether the service answers an API call as one JSON value or as an NDJSON stream. No
+  /// `Range`: user apps reach only API routes through the shell, never stored files.
+  public static let userAppRequest = ["Content-Type", "Accept"]
+
+  /// The upstream headers of a user app's `/api` request, sent to a `shell`-exposure route: the
+  /// allow-listed page headers plus the main-token `Authorization`. No manifest epoch: those
+  /// routes are the shell's own calls, which never pass the relay's manifest.
+  public static func forwardUserAppRequest(_ page: [String: String], token: String)
+    -> [String: String]
+  {
+    var headers = copy(page, allowed: userAppRequest)
+    headers["Authorization"] = "Bearer \(token)"
+    return headers
+  }
+
   /// The headers answered to the page. URLSession decodes `Content-Encoding` transparently,
   /// so a declared length would describe the encoded bytes; it is kept only for identity
   /// bodies.

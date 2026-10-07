@@ -1,0 +1,243 @@
+/* The Apps settings section keeps its heading fixed above a scrolling list, like Memory: the
+   section fills the page (settings.css lets it), and the list scrolls under the heading with room
+   for the cards' rings, shadows and focus rings. */
+.app-settings {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+}
+.app-settings-scroll {
+  --settings-scroll-ring: 4px;
+}
+/* Cards, or an empty state that fills the rest. */
+.app-settings-list {
+  display: flex;
+  flex: 1 0 auto;
+  min-width: 0;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px 4px 16px;
+}
+/* The icon tile's inner hairline sits over the icon, so light and dark icons keep an edge. */
+.app-icon-tile {
+  position: relative;
+}
+.app-icon-tile::after {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--foreground) 10%, transparent);
+  content: '';
+  pointer-events: none;
+}
+/* A published app's card sits under its tool row at the inset of an expanded tool body. */
+.app-card-slot {
+  padding: 4px 0 8px 8px;
+}
+/* The purpose an app declared for a capability, on the tool card's detail surface. */
+.app-consent-purpose {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border: 1px solid var(--ata-border-detail);
+  border-radius: var(--radius-xl);
+  background: var(--ata-surface-detail);
+  font-size: 12px;
+  line-height: 18px;
+}
+/*
+ * The panel's My apps view (apps-view.tsx): its scroll area reaches 4px past the section's padding
+ * on the left, top and bottom, and 12px on the right, where the bar floats; the body pads the same
+ * back. Cards keep the section's edges, their rings and shadows clear the viewport's clip, and the
+ * bar rests 4px inside the frame beside them, as in task history.
+ */
+.apps-view-scroll {
+  margin: -4px -12px -4px -4px;
+}
+.apps-view-body {
+  padding: 4px 12px 4px 4px;
+}
+/* Its cards carry three actions, so a column starts at 288px, where a name still shows about
+   110px beside the icon and the actions: one column in a narrower panel, two from 620px. */
+.apps-view-grid {
+  --list-card-min: 288px;
+}
+/* Widgets are unavailable outside the Applications folder: the notice's icon reads as a warning. */
+.app-widgets-notice > svg {
+  color: var(--ata-status-warning);
+}
+
+/*
+ * An app's page (app-detail-page.tsx) fills the section and scrolls as one: the identity card,
+ * then the groups 24px apart. The cards draw their ring and shadow outside their box, so the body
+ * insets them by 4px, which the page scroller gives back (`--settings-scroll-ring`).
+ */
+.app-detail {
+  --settings-scroll-ring: 4px;
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+}
+.app-detail-body {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 24px;
+  padding: 4px 4px 16px;
+}
+/* A group: its title row, an optional notice, the card of rows and the footnote, 8px apart. */
+.app-detail-section {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 8px;
+}
+/* The title row keeps one height whether a trailing control (Show all) is there or not. */
+.app-detail-section-header {
+  display: flex;
+  min-width: 0;
+  min-height: 24px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+/* What a group does, under its card, as System Settings explains a group below it. */
+.app-detail-footnote {
+  max-width: 72ch;
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  line-height: 16px;
+  text-wrap: pretty;
+}
+/* A secondary line of a row or of the identity card: dates, sizes, the type check. */
+.app-detail-meta {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  gap: 4px;
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  line-height: 16px;
+  overflow-wrap: anywhere;
+}
+.app-detail-meta > svg {
+  flex-shrink: 0;
+  width: 12px;
+  height: 12px;
+  margin-top: 2px;
+}
+/* Type errors mark their version with the warning tone; the text says what it is. */
+.app-detail-warning-icon {
+  color: var(--ata-status-warning);
+}
+/* Chinese sets taller ideographs at the same size; the extra leading keeps lines apart. */
+:is(.app-detail-footnote, .app-detail-meta):lang(zh) {
+  line-height: 18px;
+}
+
+/*
+ * The identity card. From 480px of page width the name, the details (description, version,
+ * dates) and the actions share one column beside the 64px icon. Below it that column would
+ * squeeze them, so the name stays beside the icon, centered on it, and the details and the
+ * actions take the card's full width.
+ */
+.app-detail-hero-layout {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas:
+    'icon name'
+    'body body'
+    'actions actions';
+  align-items: center;
+  gap: 12px 16px;
+}
+@container settings (width >= 480px) {
+  .app-detail-hero-layout {
+    grid-template-areas:
+      'icon name'
+      'icon body'
+      'icon actions';
+    align-items: start;
+    row-gap: 4px;
+  }
+  .app-detail-hero-actions {
+    margin-top: 8px;
+  }
+}
+.app-detail-hero-icon {
+  grid-area: icon;
+}
+.app-detail-hero-body {
+  display: flex;
+  grid-area: body;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+/* A long name wraps to a second line before it truncates; its full text is the tooltip. */
+.app-detail-hero-name {
+  display: -webkit-box;
+  grid-area: name;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 28px;
+  overflow-wrap: anywhere;
+}
+/* The description reads as content: three lines until Show more unclamps it in place. */
+.app-detail-hero-description {
+  display: -webkit-box;
+  margin: 0 0 4px;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  color: var(--muted-foreground);
+  font-size: 14px;
+  line-height: 20px;
+  overflow-wrap: anywhere;
+  text-wrap: pretty;
+}
+.app-detail-hero-description:lang(zh) {
+  line-height: 22px;
+}
+.app-detail-hero-description[data-expanded] {
+  display: block;
+  -webkit-line-clamp: unset;
+}
+/* Sits level with the description's text instead of indenting by the button's padding. */
+.app-detail-hero-more {
+  align-self: flex-start;
+  margin-top: -4px;
+  padding-inline: 0;
+}
+.app-detail-hero-actions {
+  display: flex;
+  grid-area: actions;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+/*
+ * The app's accent color, when its manifest names one (`--app-accent`, which the card sets from
+ * the app's data): a halo around the icon, centered on it through the card's own padding. It is
+ * strongest under the icon and at most 12% where text begins (48px out), so muted text keeps
+ * 4.5:1 on the card even for a near-white accent; no text or control takes the color.
+ */
+.app-detail-hero[data-accent] {
+  --app-accent-center: calc(var(--card-spacing) + 32px);
+  background-image: radial-gradient(
+    circle at var(--app-accent-center) var(--app-accent-center),
+    color-mix(in oklab, var(--app-accent) 24%, transparent) 32px,
+    color-mix(in oklab, var(--app-accent) 12%, transparent) 48px,
+    transparent 160px
+  );
+}

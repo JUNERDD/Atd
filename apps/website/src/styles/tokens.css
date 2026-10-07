@@ -1,0 +1,133 @@
+/* Site tokens. The page is one instrument, fixed dark and strictly monochrome. The hero is its main
+   LED display; below it, every section is a plate of the faceplate, perforated with a 24 px dot
+   grid, and each demo sits in a smaller LED display set into the plate. Two materials, then: the
+   faceplate (`--plate`) and the display glass (`--ink-0`, as black as the hero). These rules are
+   unlayered and override the Apple kit's tokens where the site differs. */
+:root {
+  color-scheme: dark;
+
+  /* Ink: the display glass is pure black, like the hero; the faceplate is a shade lighter so the
+     displays read as set into it. */
+  --ink-0: #000;
+  --plate: #0b0b0c;
+  --ink-2: #131315;
+  --ink-3: #1d1d20;
+  --line-1: rgb(255 255 255 / 0.09);
+  --line-2: rgb(255 255 255 / 0.14);
+
+  /* Text on the plate. --fg-3 still passes 4.5:1 on --plate, so it can carry small legends. */
+  --fg-1: #f5f5f7;
+  --fg-2: #a1a1a6;
+  --fg-3: #86868b;
+
+  /* Dots: lit, and unlit. The plate's perforations and a display's unlit LEDs use the same unlit
+     dot; the displays pack theirs tighter (--led). */
+  --dot-1: #fff;
+  --dot-0: rgb(255 255 255 / 0.1);
+  --dot-mid: rgb(255 255 255 / 0.42);
+
+  /* Monochrome accent for the kit: a white key with black text, white links and focus rings. */
+  --accent: #f5f5f7;
+  --accent-fill: #f5f5f7;
+  --accent-on: #000;
+  --accent-text: #f5f5f7;
+  --focus-ring: #f5f5f7;
+  --link: #f5f5f7;
+  --label: var(--fg-1);
+  --secondary-label: var(--fg-2);
+  --system-background: var(--plate);
+  --system-grouped-background: var(--plate);
+
+  /* The kit's fills and glass surfaces use Apple's grays, which lean slightly blue; these neutral
+     equivalents keep the same alphas so every state and the glass stay strictly gray. */
+  --fill: light-dark(rgb(124 124 124 / 0.2), rgb(124 124 124 / 0.36));
+  --fill-secondary: light-dark(rgb(124 124 124 / 0.16), rgb(124 124 124 / 0.32));
+  --fill-tertiary: light-dark(rgb(122 122 122 / 0.12), rgb(122 122 122 / 0.24));
+  --fill-quaternary: light-dark(rgb(120 120 120 / 0.08), rgb(122 122 122 / 0.18));
+  --separator: light-dark(rgb(64 64 64 / 0.12), rgb(86 86 86 / 0.5));
+  --secondary-system-background: light-dark(#f2f2f2, #1c1c1c);
+  --tertiary-system-background: light-dark(#fff, #2c2c2c);
+  --glass-fill-color: light-dark(#fff, #1c1c1c);
+  --glass-solid: light-dark(#f6f6f6, #2c2c2c);
+
+  /* Keys, not capsules: the kit's buttons take a hardware key's corner. */
+  --corner-capsule: 10px;
+
+  /* Type: the system faces (SF Pro and SF Mono on Apple devices, PingFang for Chinese) and Doto, a
+     dot-matrix face for the readouts the displays show. Headings are lit in dots (`.dot-text`). */
+  --font-text:
+    -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', 'PingFang SC',
+    'Hiragino Sans GB', 'Noto Sans CJK SC', 'Microsoft YaHei', system-ui, sans-serif;
+  --font-display:
+    -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', 'PingFang SC',
+    'Hiragino Sans GB', 'Noto Sans CJK SC', 'Microsoft YaHei', system-ui, sans-serif;
+  --font-mono:
+    ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+  --font-dot: 'Doto Variable', var(--font-mono);
+
+  --fs-h2: clamp(2.5rem, 1.5rem + 4.2vw, 5rem);
+  --fs-h3: clamp(1.25rem, 1.1rem + 0.5vw, 1.5rem);
+  --fs-lede: clamp(1.125rem, 1rem + 0.4vw, 1.3125rem);
+  --fs-body: 1.0625rem;
+  --fs-small: 0.875rem;
+  --fs-legend: 0.8125rem;
+  --lh-display: 1;
+  --lh-title: 1.15;
+  --lh-text: 1.47;
+  --tr-display: -0.02em;
+  --tr-title: -0.01em;
+
+  /* The grid. Everything below the hero is registered to the plate's 24 px dot pitch: the
+     container is a whole number of double cells, so its edges and the seams between plates fall
+     midway between dot columns (base.css). Displays light their own, finer LEDs. */
+  --u: 8px;
+  --grid: 24px;
+  --led: 8px;
+  --gutter: 16px;
+  --maxw: 1200px;
+  --section-pad: round(clamp(96px, 12vw, 168px), 24px);
+  --nav-h: 52px;
+  --nav-top: 12px;
+
+  /* The halo of brighter dots the pointer carries over the plates (motion/grid-halo.ts). */
+  --halo-size: 360px;
+  --halo-dot: rgb(255 255 255 / 0.42);
+
+  /* Shape: a display window's bezel, and the small parts set into the plate. */
+  --r-display: 16px;
+  --r-part: 10px;
+}
+
+@media (width >= 700px) {
+  :root {
+    --gutter: 24px;
+  }
+}
+
+@media (width >= 1100px) {
+  :root {
+    --gutter: 32px;
+  }
+}
+
+/* Increase Contrast keeps the kit's stronger fill alphas, in neutral gray, and firms up the lines. */
+@media (prefers-contrast: more) {
+  :root {
+    --fill: light-dark(rgb(124 124 124 / 0.28), rgb(124 124 124 / 0.44));
+    --fill-secondary: light-dark(rgb(124 124 124 / 0.24), rgb(124 124 124 / 0.4));
+    --fill-tertiary: light-dark(rgb(122 122 122 / 0.2), rgb(122 122 122 / 0.32));
+    --fill-quaternary: light-dark(rgb(120 120 120 / 0.16), rgb(122 122 122 / 0.26));
+    --secondary-system-background: light-dark(#ebebeb, #242424);
+    --tertiary-system-background: light-dark(#fff, #363636);
+    --line-1: rgb(255 255 255 / 0.2);
+    --line-2: rgb(255 255 255 / 0.32);
+  }
+}
+
+/* Chinese sets solid: no Latin display tracking, a little more leading. */
+:root:lang(zh) {
+  --tr-display: 0;
+  --tr-title: 0;
+  --lh-display: 1.12;
+  --lh-text: 1.6;
+}

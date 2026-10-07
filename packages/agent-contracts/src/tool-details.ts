@@ -1,6 +1,8 @@
 import { Type, type Static } from 'typebox';
+import { AppIdSchema } from './app-identity.js';
 import { GrantScopeSchema, PermissionOutcomeSchema } from './confirms.js';
 import { McpServerIdSchema } from './mcp.js';
+import { TASK_AGENTS_PER_DEFINE, TaskAgentDefinitionSchema } from './subagents.js';
 
 /**
  * Structured, renderable facts of one tool result (`ServiceBlock` tool `details`). The service
@@ -182,6 +184,19 @@ export const SubagentDetailsSchema = Type.Object(
 export type SubagentDetails = Static<typeof SubagentDetailsSchema>;
 
 /**
+ * A `subagent { action: "define" }` call: the task agents it recorded, from the parent session's
+ * `app-agent` entries of that call (subagents.ts).
+ */
+export const SubagentDefineDetailsSchema = Type.Object(
+  {
+    type: Type.Literal('subagentDefine'),
+    agents: Type.Array(TaskAgentDefinitionSchema, { maxItems: TASK_AGENTS_PER_DEFINE }),
+  },
+  { additionalProperties: false },
+);
+export type SubagentDefineDetails = Static<typeof SubagentDefineDetailsSchema>;
+
+/**
  * A `configure_mcp` call that saved a server which cannot launch until the user approves it. The
  * approval it names is the one at the call; the desktop reads the server's current approval to
  * render the banner that asks for it, so a later approval or removal shows without a new call.
@@ -264,13 +279,42 @@ export const CodemodeDetailsSchema = Type.Object(
 );
 export type CodemodeDetails = Static<typeof CodemodeDetailsSchema>;
 
+/**
+ * An `app.build` that published: the app as of that build, so the card keeps showing what this
+ * call built after later builds. `widgets` counts the widgets the build declares. `revision` is
+ * the app's build revision it published, and `updated` says it replaced the files of `version`,
+ * which an earlier build of the same run published, instead of publishing a new version. Details
+ * recorded before build revisions carry neither: each of those builds published a new version,
+ * whose revision was its number.
+ */
+export const AppBuildDetailsSchema = Type.Object(
+  {
+    type: Type.Literal('app'),
+    appId: AppIdSchema,
+    name: Type.String({ minLength: 1, maxLength: 64 }),
+    version: Type.Integer({ minimum: 1 }),
+    revision: Type.Optional(Type.Integer({ minimum: 1 })),
+    updated: Type.Optional(Type.Boolean()),
+    summary: Type.String({ maxLength: 500 }),
+    typecheck: Type.Object(
+      { ok: Type.Boolean(), errorCount: Type.Integer({ minimum: 0 }) },
+      { additionalProperties: false },
+    ),
+    widgets: Type.Integer({ minimum: 0 }),
+  },
+  { additionalProperties: false },
+);
+export type AppBuildDetails = Static<typeof AppBuildDetailsSchema>;
+
 export const ToolBlockDetailsSchema = Type.Union([
   TodoDetailsSchema,
   EditDiffDetailsSchema,
   WebSearchDetailsSchema,
   WebFetchDetailsSchema,
   SubagentDetailsSchema,
+  SubagentDefineDetailsSchema,
   McpApprovalDetailsSchema,
   CodemodeDetailsSchema,
+  AppBuildDetailsSchema,
 ]);
 export type ToolBlockDetails = Static<typeof ToolBlockDetailsSchema>;

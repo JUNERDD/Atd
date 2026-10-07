@@ -1,0 +1,64 @@
+/* The last plate: the name, then the links and languages, on a row once there is room. */
+.footer {
+  padding-block: 72px max(48px, env(safe-area-inset-bottom));
+  font-size: var(--fs-small);
+  color: var(--fg-2);
+}
+
+.footer__seam {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline: 0;
+  block-size: 1px;
+  background-color: var(--line-1);
+}
+
+.footer__inner {
+  display: grid;
+  gap: 16px 32px;
+  align-items: center;
+}
+
+.footer__word {
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.footer__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 20px;
+}
+
+.footer__link {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: 44px;
+  color: var(--fg-2);
+  transition: color var(--dur-fast) linear;
+}
+
+.footer__link[aria-current='page'] {
+  color: var(--fg-1);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .footer__link:hover {
+    color: var(--fg-1);
+  }
+}
+
+.footer__note {
+  grid-column: 1 / -1;
+}
+
+@media (width >= 840px) {
+  .footer__inner {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+
+  .footer__nav:first-of-type {
+    justify-self: center;
+  }
+}

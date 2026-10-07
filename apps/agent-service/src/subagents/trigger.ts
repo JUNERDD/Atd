@@ -1,20 +1,21 @@
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import type { CompactionSettings } from '@earendil-works/pi-coding-agent';
+import type { CompactionSettings, RetrySettings } from '@earendil-works/pi-coding-agent';
 import { compactionSettings, type PolicyModel } from '../compaction/policy.js';
+import { REQUEST_POLICY } from '../request-policy.js';
 import { startChildTranscript, type ChildTranscriptSource } from './child-transcript.js';
 import { SUBAGENT_CHILD_SYSTEM_PROMPT } from './config.js';
+import { launchModelProblem, type LaunchModelFields } from './launch-model.js';
 import {
   hostForTask,
   parentByTask,
+  parentBySession,
   type ChildModelRuntime,
   recordChildSession,
   taskIdFromCwd,
   trackChildEnd,
-  trackChildSession,
   tryTrackChildStart,
-  untrackChildSession,
   type ChildRecord,
 } from './registry.js';
 
@@ -28,30 +29,52 @@ import {
  * resolves the parent's model to the same catalog definition. The child's
  * settings get the service compaction policy for its model, which carries the
  * parent's frozen window through that runtime, so a model compacts alike in
- * the parent and its children (compaction/policy.ts). The wrapper also tracks
- * per-parent children for UI aggregation and per-task abort without touching
- * siblings, links each created child to its parent call (`app-child`) and
- * follows its transcript until it disposes.
+ * the parent and its children (compaction/policy.ts). The wrapper also admits
+ * each child under the session file its launch opens before `create` starts
+ * the child's bridge, which finds the child's identity by that file, and runs
+ * the child only once its bridge bound that identity. Before `create`, it also
+ * refuses an admitted child whose model or thinking is not the one its parent
+ * registered (launch-model.ts). It tracks per-parent children for UI
+ * aggregation and per-task abort without touching siblings, links each created
+ * child to its parent call (`app-child`) and follows its transcript until it
+ * disposes.
  */
 
 /** The `ChildSessionLaunch` fields the trigger reads or pins. */
-interface ChildLaunchLike {
+interface ChildLaunchLike extends LaunchModelFields {
   cwd: string;
   projectTrusted?: boolean;
   noContextFiles: boolean;
   systemPrompt?: string;
   appendSystemPrompt?: string;
   hostModelRuntime?: ChildModelRuntime;
-  runtime?: { parentSessionId?: string; agent?: string };
+  runtime?: { parentSessionId?: string; agent?: string; fast?: boolean };
+  /** pi-subagents' `ChildSessionStorage`; a tracked child must open a known session file. */
+  storage: { kind: 'file'; sessionFile: string } | { kind: 'dir' | 'default' | 'memory' };
+}
+
+/**
+ * Fails an admitted child before it exists when its launch carries another model, thinking level
+ * or fast mode than its parent registered for its agent under its run.
+ */
+function assertRegisteredModel(launch: ChildLaunchLike, record: ChildRecord): void {
+  const agents = parentBySession(record.parentSessionId)?.agents;
+  const expected = agents?.launchModel(record.parentRunId, record.agent) ?? null;
+  const problem = launchModelProblem(launch, expected);
+  if (problem) throw new Error(problem);
 }
 
 interface ChildSessionLike extends ChildTranscriptSource {
   abort(): Promise<void>;
   dispose(): Promise<void>;
-  sessionFile?: string | undefined;
-  sessionId: string;
   model?: PolicyModel | undefined;
-  settingsManager: { applyOverrides(overrides: { compaction: CompactionSettings }): void };
+  settingsManager: {
+    applyOverrides(overrides: {
+      compaction: CompactionSettings;
+      retry: RetrySettings;
+      httpIdleTimeoutMs: number;
+    }): void;
+  };
 }
 
 interface ChildFactoryLike {
@@ -123,25 +146,37 @@ export async function installManagedLaunchTrigger(): Promise<{ installed: boolea
     async create(launch: ChildLaunchLike): Promise<ChildSessionLike> {
       const taskId = taskIdFromCwd(launch.cwd);
       const parentSessionId = launch.runtime?.parentSessionId;
-      const agent = launch.runtime?.agent ?? 'service.worker';
       let tracked: { parentSessionId: string; key: string; record: ChildRecord } | null = null;
       if (parentSessionId) {
-        const admission = tryTrackChildStart({ parentSessionId, agent });
+        // The child's identity decides its approvals, its model check and its `app-child`
+        // record. pi-subagents names the agent on every launch it builds, so a parent-bound
+        // launch without one comes from a changed upstream contract; no identity is invented.
+        const agent = launch.runtime?.agent;
+        if (!agent) throw new Error('The subagent child names no agent; refusing to start.');
+        // Admitted before `create`: pi starts the child's bridge inside it, at the child's
+        // session_start, and the bridge finds its identity by this session file.
+        if (launch.storage.kind !== 'file')
+          throw new Error('The subagent child has no session file; refusing to start.');
+        const { sessionFile } = launch.storage;
+        const admission = tryTrackChildStart({ parentSessionId, agent, sessionFile });
         if (!admission.ok) throw new Error(admission.reason);
         tracked = { parentSessionId, key: admission.record.key, record: admission.record };
       }
       try {
+        if (tracked) assertRegisteredModel(launch, tracked.record);
         const modelRuntime = taskId ? hostForTask(taskId)?.childRuntime : undefined;
         const child = await inner.create(pinManagedLaunch(launch, modelRuntime));
         // Before the child's first prompt: children read settings from the agent dir otherwise.
-        child.settingsManager.applyOverrides(compactionSettings(child.model));
+        child.settingsManager.applyOverrides({
+          ...REQUEST_POLICY,
+          ...compactionSettings(child.model),
+        });
         if (!tracked) return child;
         const { record } = tracked;
         let closeTranscript: () => void;
         try {
           closeTranscript = adoptChild(record, child);
         } catch (error) {
-          untrackChildSession(child.sessionId);
           await child.dispose().catch(() => undefined);
           throw error;
         }
@@ -154,7 +189,6 @@ export async function installManagedLaunchTrigger(): Promise<{ installed: boolea
             await dispose();
           } finally {
             live.delete(child);
-            untrackChildSession(child.sessionId);
             trackChildEnd(record.parentSessionId, record.key);
             closeTranscript();
           }
@@ -179,16 +213,15 @@ export async function installManagedLaunchTrigger(): Promise<{ installed: boolea
 
 /**
  * Links a created child to its parent call and starts following its transcript; returns the
- * transcript's close. Fails closed without a session file: the `app-child` entry, the child
- * transcript endpoint and the parent's cards all resolve the child through it.
+ * transcript's close. Fails closed unless the child's bridge bound its identity: pi only reports a
+ * bridge that throws at session_start, and the child would run on pi's own tools, unconfined.
  */
 function adoptChild(record: ChildRecord, child: ChildSessionLike): () => void {
-  const sessionFile = child.sessionFile;
-  if (!sessionFile) throw new Error('The subagent child has no session file; refusing to start.');
+  if (!record.bridged)
+    throw new Error('The subagent child bridge did not start; refusing to run the child.');
   const host = hostForTask(record.taskId);
   if (!host) throw new Error('The subagent parent task is gone; refusing to start.');
-  recordChildSession(record, sessionFile);
-  trackChildSession(child.sessionId, record);
+  recordChildSession(record);
   return startChildTranscript(record, host, child);
 }
 

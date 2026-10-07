@@ -126,7 +126,10 @@ export const AgentComponentSchema = Type.Object(
     kind: Type.Literal('agent'),
     name: ItemNameSchema,
     description: Type.String({ maxLength: 4000 }),
-    /** Tool names as written by the source; empty means "host default". */
+    /**
+     * Tool names as written by the source; empty means "host default". A source value that is not
+     * a list skips the agent instead, so an empty list never stands for an unreadable one.
+     */
     tools: Type.Array(Type.String({ maxLength: 256 }), { maxItems: 256 }),
     /** Source model hint (`inherit`, an alias or an id); hosts map or ignore it. */
     model: Type.Optional(Type.String({ maxLength: 256 })),
@@ -176,6 +179,7 @@ export const CommandComponentSchema = Type.Object(
       { maxItems: 32 },
     ),
     segments: Type.Array(CommandSegmentSchema),
+    /** Tool names as written by the source; empty means "host default", as for agent `tools`. */
     allowedTools: Type.Array(Type.String({ maxLength: 256 }), { maxItems: 256 }),
     model: Type.Optional(Type.String({ maxLength: 256 })),
     source: RelPath,

@@ -3,7 +3,6 @@ import {
   isValidElement,
   cloneElement,
   useContext,
-  useEffect,
   useMemo,
   useState,
   type ComponentProps,
@@ -34,27 +33,24 @@ import {
   ZoomOutIcon,
 } from 'lucide-react';
 import { ScrollArea } from '@atd/ui/components/scroll-area';
-import { CodeBlock } from './code-block';
 import { codeLanguage } from './code-language';
 import { CopyButton } from './copy-button';
 import { DiagramDownloadMenu } from './download-button';
 import { ExternalLink } from './external-link';
-import { hasMermaidFence, loadMermaidPlugin } from './mermaid-lazy';
+import { rehypeIncompleteLinks } from './incomplete-links';
 import { codeSource } from './selection-toolbar/code-sources';
 import { StreamingCodeBlock } from './streaming-code-block';
+import { useMarkdownPlugins } from './use-markdown-plugins';
 
 type MarkdownProps<T extends keyof JSX.IntrinsicElements> = ComponentProps<T> & ExtraProps;
 
 /** Streamdown prop-type inference instead of direct unified imports. */
 type RehypePlugins = Exclude<StreamdownProps['rehypePlugins'], undefined>;
 
-/** Harden policy ported from monocode `AgentMarkdown`: links stay permissive, images strip. */
-const MARKDOWN_REHYPE_PLUGINS: RehypePlugins = [];
 const RAW_REHYPE = defaultRehypePlugins['raw'];
-if (RAW_REHYPE) MARKDOWN_REHYPE_PLUGINS.push(RAW_REHYPE);
 const SANITIZE_REHYPE = defaultRehypePlugins['sanitize'];
-if (SANITIZE_REHYPE) MARKDOWN_REHYPE_PLUGINS.push(SANITIZE_REHYPE);
-MARKDOWN_REHYPE_PLUGINS.push([
+/** Harden policy ported from monocode `AgentMarkdown`: links stay permissive, images strip. */
+const HARDEN_REHYPE: RehypePlugins[number] = [
   harden,
   {
     allowedImagePrefixes: [] as string[],
@@ -62,7 +58,17 @@ MARKDOWN_REHYPE_PLUGINS.push([
     allowDataImages: true,
     imageBlockPolicy: 'remove' as const,
   },
-]);
+];
+const MARKDOWN_REHYPE_PLUGINS: RehypePlugins = [RAW_REHYPE, SANITIZE_REHYPE, HARDEN_REHYPE].filter(
+  (plugin) => plugin !== undefined,
+);
+/** While streaming, remend's placeholders for unfinished links resolve once raw HTML has parsed. */
+const STREAMING_REHYPE_PLUGINS: RehypePlugins = [
+  RAW_REHYPE,
+  rehypeIncompleteLinks,
+  SANITIZE_REHYPE,
+  HARDEN_REHYPE,
+].filter((plugin) => plugin !== undefined);
 
 /** Images stay alt-text: the sandboxed renderer never paints remote or pasted media. */
 function MarkdownImage({ alt }: MarkdownProps<'img'>) {
@@ -130,10 +136,11 @@ function MermaidDiagram({
 }
 
 /**
- * A fenced block is `@pierre/diffs` from its first line: `StreamingCodeBlock` while the fence is
- * still open, appending each streamed line, then `CodeBlock` once it closes. A closed mermaid fence
- * draws as a diagram once the plugin has loaded; before that, or when it fails to load, it stays a
- * code block. A raw HTML `pre` without code keeps a plain scrolling frame.
+ * A fenced block is one `StreamingCodeBlock` from its first line: it appends each streamed line
+ * while the fence is still open and draws the settled block in the same frame once it closes, so
+ * the close keeps the block's height and the reader's scroll position. A closed mermaid fence draws
+ * as a diagram once the plugin has loaded; before that, or when it fails to load, it stays a code
+ * block. A raw HTML `pre` without code keeps a plain scrolling frame.
  */
 function MarkdownPre({ children, className, node }: MarkdownProps<'pre'>) {
   const incomplete = useIsCodeFenceIncomplete();
@@ -155,24 +162,15 @@ function MarkdownPre({ children, className, node }: MarkdownProps<'pre'>) {
   }
   const contents = textOf(codeNode);
   const label = fenceLabel(codeNode);
-  if (incomplete) {
-    return (
-      <StreamingCodeBlock
-        className="markdown-code-block"
-        contents={contents}
-        language={codeLanguage(label)}
-      />
-    );
-  }
-  if (label === 'mermaid' && mermaid && isValidElement(children)) {
+  if (!incomplete && label === 'mermaid' && mermaid && isValidElement(children)) {
     return <MermaidDiagram source={contents} code={children} plugin={mermaid} />;
   }
   return (
-    <CodeBlock
+    <StreamingCodeBlock
       className="markdown-code-block"
       contents={contents}
       language={codeLanguage(label)}
-      downloadable
+      open={incomplete}
     />
   );
 }
@@ -262,23 +260,7 @@ export function StreamdownMarkdown({
   animated?: boolean | undefined;
 }) {
   const { t } = useTranslation('tasks');
-  const [mermaid, setMermaid] = useState<DiagramPlugin | null>(null);
-
-  // The engine chunk loads only for turns that actually contain a mermaid fence; until it
-  // resolves the fence renders as a code block, and a failed load keeps that degrade path.
-  useEffect(() => {
-    if (!hasMermaidFence(text)) return;
-    let live = true;
-    void loadMermaidPlugin().then((plugin) => {
-      if (live) setMermaid(plugin);
-    });
-    return () => {
-      live = false;
-    };
-  }, [text]);
-
-  // Streamdown takes no `plugins` until the mermaid engine has loaded.
-  const pluginProps = useMemo(() => (mermaid ? { plugins: { mermaid } } : {}), [mermaid]);
+  const { mermaid, pluginProps } = useMarkdownPlugins(text);
   const translations = useMemo<NonNullable<StreamdownProps['translations']>>(
     () => ({
       viewFullscreen: t('transcript.diagram.fullscreen'),
@@ -290,6 +272,14 @@ export function StreamdownMarkdown({
     [t],
   );
 
+  // Streamdown draws streaming and static markdown as different trees, so a reply that turned
+  // `static` when it finished would remount every block in it: a code block would jump back to
+  // its top and a diagram would draw again. Markdown that has streamed keeps the streaming tree;
+  // Streamdown's repair of unfinished syntax (`parseIncompleteMarkdown`) ends with the stream, as
+  // the static tree has none. Markdown that mounts settled takes the static tree.
+  const [streamed, setStreamed] = useState(streaming);
+  if (streaming && !streamed) setStreamed(true);
+
   // `isAnimating` follows the stream even without the reveal: Streamdown reports a still-open
   // fence only while it is set, and `MarkdownPre` streams that fence's lines instead of
   // re-rendering the whole block on every patch.
@@ -299,7 +289,8 @@ export function StreamdownMarkdown({
         className="markdown"
         animated={animated ? STREAM_ANIMATION : false}
         isAnimating={streaming}
-        mode={streaming ? 'streaming' : 'static'}
+        mode={streamed ? 'streaming' : 'static'}
+        parseIncompleteMarkdown={streaming}
         controls={CONTROLS}
         icons={ICONS}
         linkSafety={LINK_SAFETY}
@@ -307,7 +298,7 @@ export function StreamdownMarkdown({
         tableMaxHeight={Infinity}
         {...pluginProps}
         mermaid={MERMAID_OPTIONS}
-        rehypePlugins={MARKDOWN_REHYPE_PLUGINS}
+        rehypePlugins={streaming ? STREAMING_REHYPE_PLUGINS : MARKDOWN_REHYPE_PLUGINS}
         translations={translations}
         components={COMPONENTS}
       >

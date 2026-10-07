@@ -8,13 +8,21 @@ import QuartzCore
 /// every display frame, washes the button under it and shows the pointing hand there, or the
 /// open hand over the drag handle (``BackgroundCursor`` lets an inactive app set the cursor).
 ///
-/// The frame callbacks pause once the pointer has rested away from the toolbar for
+/// It is the one owner of the wash and the cursor across the toolbar's windows: the capsule's
+/// buttons (``start(_:grip:in:)``) and, while it is open, the More menu's rows (``add(_:)``,
+/// ``remove(_:)``), so no second tracker ever sets the cursor against it.
+///
+/// The frame callbacks pause once the pointer has rested away from those windows for
 /// ``idleFrames``; the next move over another app (seen by the controller's monitor) resumes
-/// them before the pointer can reach the toolbar, so hover never waits on a frame.
+/// them before the pointer can reach the toolbar or its menu, so hover never waits on a frame.
 @MainActor
 final class SelectionToolbarHover: NSObject {
+  /// Every button followed, in whichever window shows it.
   private var buttons: [AnnotationToolbarButton] = []
   private var grip: NSView?
+  /// The view the frame callbacks were made for (the toolbar's content): its window going away
+  /// ends following.
+  private var anchor: NSView?
   /// The view under the pointer: a button or the grip.
   private var hovered: NSView?
   private var link: CADisplayLink?
@@ -23,19 +31,39 @@ final class SelectionToolbarHover: NSObject {
   private var stillFrames = 0
 
   static let idleFrames = 30
-  /// How close to the toolbar the pointer keeps the frame callbacks running even at rest.
+  /// How close to the toolbar or its menu the pointer keeps the frame callbacks running even at
+  /// rest.
   static let nearMargin: CGFloat = 24
 
   /// Follows the pointer over `buttons` and `grip`, shown in `view`'s window, until ``stop()``.
   func start(_ buttons: [AnnotationToolbarButton], grip: NSView, in view: NSView) {
     stop()
     BackgroundCursor.enable()
-    self.buttons = buttons
     self.grip = grip
-    for button in buttons { button.followsPointer = false }
+    anchor = view
     let link = view.displayLink(target: self, selector: #selector(frame(_:)))
     link.add(to: .main, forMode: .common)
     self.link = link
+    add(buttons)
+  }
+
+  /// Follows `buttons` too, shown in another window that goes with the toolbar (the More
+  /// menu's rows), until ``remove(_:)`` or ``stop()``.
+  func add(_ buttons: [AnnotationToolbarButton]) {
+    for button in buttons { button.followsPointer = false }
+    self.buttons += buttons
+    resume()
+  }
+
+  /// Stops following `buttons` (the menu closed): one under the pointer loses its wash, and the
+  /// cursor turns to whatever is under the pointer now.
+  func remove(_ buttons: [AnnotationToolbarButton]) {
+    self.buttons.removeAll { button in buttons.contains { $0 === button } }
+    if let button = hovered as? AnnotationToolbarButton, !self.buttons.contains(button) {
+      button.isHovered = false
+      hovered = nil
+      NSCursor.arrow.set()
+    }
     update()
   }
 
@@ -49,36 +77,53 @@ final class SelectionToolbarHover: NSObject {
     hovered = nil
     buttons = []
     grip = nil
+    anchor = nil
     lastPointer = nil
     stillFrames = 0
   }
 
-  /// The pointer moved outside the toolbar: resume the frame callbacks if they paused.
+  /// The pointer moved outside the toolbar and its menu: resume the frame callbacks if they
+  /// paused.
   func pointerMoved() {
     guard let link, link.isPaused else { return }
+    resume()
+  }
+
+  private func resume() {
     stillFrames = 0
-    link.isPaused = false
+    link?.isPaused = false
     update()
   }
 
   @objc private func frame(_ link: CADisplayLink) {
     // Hidden by any path that skipped ``stop()`` (the app quitting orders every window out):
     // never keep firing for a window that is gone.
-    guard let window = buttons.first?.window, window.isVisible else { return stop() }
+    guard let window = anchor?.window, window.isVisible else { return stop() }
     update()
     let pointer = NSEvent.mouseLocation
     stillFrames = pointer == lastPointer ? stillFrames + 1 : 0
     lastPointer = pointer
-    let near = window.frame.insetBy(dx: -Self.nearMargin, dy: -Self.nearMargin).contains(pointer)
-    if stillFrames >= Self.idleFrames, !near { link.isPaused = true }
+    if stillFrames >= Self.idleFrames, !isNear(pointer) { link.isPaused = true }
+  }
+
+  /// Whether `pointer` is within ``nearMargin`` of a window that shows something followed.
+  private func isNear(_ pointer: CGPoint) -> Bool {
+    let windows = (buttons.map(\.window) + [anchor?.window, grip?.window]).compactMap { $0 }
+    return windows.contains {
+      $0.frame.insetBy(dx: -Self.nearMargin, dy: -Self.nearMargin).contains(pointer)
+    }
   }
 
   private func update() {
+    guard link != nil else { return }
     let pointer = NSEvent.mouseLocation
     let candidates: [NSView] = buttons.filter(\.isEnabled) + (grip.map { [$0] } ?? [])
     let target = candidates.first { view in
-      guard let window = view.window else { return false }
-      return window.convertToScreen(view.convert(view.bounds, to: nil)).contains(pointer)
+      // Only the part not clipped away: a menu row scrolled out of its list is not under the
+      // pointer. Views no longer clip to their bounds, so neither does their visible rect.
+      let visible = view.visibleRect.intersection(view.bounds)
+      guard let window = view.window, window.isVisible, !visible.isEmpty else { return false }
+      return window.convertToScreen(view.convert(visible, to: nil)).contains(pointer)
     }
     guard target !== hovered else { return }
     (hovered as? AnnotationToolbarButton)?.isHovered = false

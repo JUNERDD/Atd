@@ -19,6 +19,7 @@ import { SelectionToolbar } from './selection-toolbar/selection-toolbar';
 import { StatusBar } from './status-bar';
 import { TaskTurnsContext, type TaskTurns } from './turn-context';
 import { TurnView } from './turn-view';
+import type { CommandOpener } from './use-offered-commands';
 import { useTranscriptScroll } from './use-transcript-scroll';
 
 const VISIBLE_TURNS = 20;
@@ -86,7 +87,8 @@ function TurnList({
  * A failed compaction row retries through this task; after repeated compactions the end of the
  * conversation suggests `onNewTask`. Turn actions that leave the transcript (opening a fork,
  * starting a memory session) go through the panel's `onOpenTask` and `onRemember`; text selected in
- * an answer can be quoted into the reply through `onQuote`.
+ * an answer can be quoted into the reply through `onQuote`. The commands offered on an answer, or
+ * on text selected in one, open through `onCommand`.
  */
 export function Transcript({
   detail,
@@ -96,6 +98,7 @@ export function Transcript({
   onOpenTask,
   onRemember,
   onQuote,
+  onCommand,
 }: {
   detail: TaskDetail;
   covered?: boolean;
@@ -108,6 +111,8 @@ export function Transcript({
   onRemember?: (text: string) => void;
   /** Adds selected answer text to the reply draft as a quote chip; without it there is no Quote. */
   onQuote?: (markdown: string, source: QuoteSource | undefined) => void;
+  /** Opens an offered command on an answer or a selection; without it no command is offered. */
+  onCommand?: CommandOpener;
 }): ReactElement {
   const { t } = useTranslation('tasks');
   const { t: tPanel } = useTranslation('panel');
@@ -153,6 +158,7 @@ export function Transcript({
     busy: live,
     openTask: onOpenTask,
     remember: onRemember,
+    runCommand: onCommand,
   };
 
   return (
@@ -228,7 +234,12 @@ export function Transcript({
         </div>
       </ScrollArea>
       <ScrollJump show={showJump} onJump={pin} />
-      <SelectionToolbar root={messages} onQuote={onQuote} onRemember={onRemember} />
+      <SelectionToolbar
+        root={messages}
+        onQuote={onQuote}
+        onRemember={onRemember}
+        onCommand={onCommand}
+      />
     </div>
   );
 }

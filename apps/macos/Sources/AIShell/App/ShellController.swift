@@ -5,11 +5,11 @@ import OSLog
 
 /// Wires the shell together: the panel, settings and welcome guide windows, the summon flow and
 /// its selection stash (``Summoner``), global hot keys, the selection toolbar and the
-/// Accessibility trust it needs, files and folders opened from outside the panel, the service's
-/// control stream and status item, menus and the quit guard. Its methods are what
+/// Accessibility trust it needs, the mini panel, files and folders opened from outside the panel,
+/// the service's control stream and status item, menus and the quit guard. Its methods are what
 /// ``ShellBridge`` calls for the pages.
 public final class ShellController {
-  private let services: ShellServices
+  let services: ShellServices
   private let defaults: UserDefaults
   let panelHost: WebViewHost
   let panel: PanelWindowController
@@ -18,7 +18,7 @@ public final class ShellController {
   let systemPanels: SystemPanels
   /// Serves the five desktop capabilities; the control stream holds it weakly.
   private let capabilities: ShellCapabilities
-  private let control: ControlStreamClient
+  let control: ControlStreamClient
   /// Security confirmations, one at a time across every surface that asks.
   let confirmations = ConfirmationPrompter()
   let artifacts: ArtifactActions
@@ -36,9 +36,17 @@ public final class ShellController {
   let screenRecording: ScreenRecordingTrust
   let summoner: Summoner
   let toolbar: SelectionToolbarController
+  /// The edge-docked quick entry, which every page follows as `miniPanel.state`.
+  let miniPanel: MiniPanelController
+  /// Generated apps' windows (`userApp.*`).
+  let userApps: UserAppWindows
+  /// The WidgetKit extension's files and the service's list of live widgets.
+  let widgets: WidgetSyncController
+  let automationNotices: AutomationNoticeFeed?
+  let systemActivity: SystemActivityReporter
   private var statusItem: StatusItemController?
   private var registrar: HotKeyRegistrar?
-  private var menuStatus = MenuBarStatus(availability: .connecting, running: 0, attention: 0)
+  private(set) var menuStatus = MenuBarStatus(availability: .connecting, running: 0, attention: 0)
   /// The first `toolbar.set` of this launch has arrived.
   private var toolbarConfigured = false
 
@@ -64,6 +72,8 @@ public final class ShellController {
         role: .settings, fragment: fragment, services: services, bridge: bridge)
       host.setState(.accessibilityTrust(.init(trusted: trust.isTrusted)))
       host.setState(.screenRecordingTrust(.init(trusted: screenRecording.isTrusted)))
+      bridge.shell?.replayPins(to: host)
+      bridge.shell?.replayMiniPanel(to: host)
       return host
     }
     onboarding = OnboardingWindowController {
@@ -71,6 +81,7 @@ public final class ShellController {
         role: .onboarding, fragment: "onboarding", services: services, bridge: bridge)
       host.setState(.accessibilityTrust(.init(trusted: trust.isTrusted)))
       host.setState(.screenRecordingTrust(.init(trusted: screenRecording.isTrusted)))
+      bridge.shell?.replayMiniPanel(to: host)
       return host
     }
     let systemPanels = SystemPanels(
@@ -101,6 +112,14 @@ public final class ShellController {
       panel: panel, panelHost: panelHost, systemPanels: systemPanels, trust: trust,
       isCapturing: { screenshots.isCapturing })
     toolbar = SelectionToolbarController(trust: trust)
+    miniPanel = MiniPanelController(defaults: defaults)
+    // After the panel's web view: WebKit's static data store API needs one to exist.
+    userApps = UserAppWindows(
+      services: services, storage: UserAppStorage(defaults: defaults), confirmations: confirmations)
+    widgets = WidgetSyncController(
+      services: services, files: .forMainBundle())
+    automationNotices = Self.makeAutomationNotices(services: services)
+    systemActivity = Self.makeSystemActivity(services: services)
     // A quit ends a capture session first: `activeRuns` runs before the quit alert could open
     // beneath the overlays, `hideWindows` on an unattended quit that skips it.
     quitGuard = QuitGuard(
@@ -137,8 +156,10 @@ public final class ShellController {
     screenRecording.onChange = { [weak self] trusted in
       self?.broadcast(.screenRecordingTrust(.init(trusted: trusted)))
     }
-    toolbar.onAsk = { [weak self] text in self?.summon(.ask, practiceText: text) }
+    toolbar.onAsk = { [weak self] text in self?.summon(.ask, selectedText: text) }
     toolbar.onCommand = { [weak self] id in self?.summon(.toolbarCommand(id: id)) }
+    wireUserApps()
+    wireMiniPanel()
   }
 
   /// Starts the service connection and the app-level surfaces, then loads the panel page,
@@ -150,13 +171,22 @@ public final class ShellController {
       menu: { [weak self] in AppMenus.statusMenu(self?.menuActions ?? .inert) })
     control.onConnectionState = { [weak self] state in
       self?.refreshStatus()
-      if state == .connected { self?.attachments.serviceDidConnect() }
+      self?.systemActivityConnectionChanged(state)
+      if state == .connected {
+        self?.attachments.serviceDidConnect()
+        self?.widgets.serviceDidConnect()
+        self?.automationNotices?.pull()
+      }
     }
     control.onStatus = { [weak self] _ in self?.refreshStatus() }
     refreshStatus()
     services.start()
+    startWidgets()
+    startAutomationNotices()
+    startSystemActivity()
     control.start()
     updater.start()
+    miniPanel.start()
     trust.start()
     screenRecording.start()
     AppPresence.setShowInDock(defaults.bool(forKey: Self.showInDockKey))
@@ -172,9 +202,10 @@ public final class ShellController {
   // MARK: Summons
 
   /// Runs the summon flow of `SummonPolicy`: capture before the panel can take focus, or take
-  /// the guide's `practiceText` as the selection when its practice toolbar asked.
-  func summon(_ trigger: SummonTrigger, practiceText: String? = nil) {
-    summoner.summon(trigger, practiceText: practiceText)
+  /// `selectedText` as the selection when it is already known
+  /// (``Summoner/summon(_:selectedText:)``).
+  func summon(_ trigger: SummonTrigger, selectedText: String? = nil) {
+    summoner.summon(trigger, selectedText: selectedText)
   }
 
   /// Files and folders from the Finder service, a drop on the Dock icon or `open -a`: the panel
@@ -250,15 +281,16 @@ public final class ShellController {
     AppPresence.setShowInDock(show)
   }
 
-  /// `openAtLogin` is null where it is unavailable (Debug builds).
+  /// `openAtLogin` is null where it is unavailable (Debug builds); `widgetsAvailable` is false
+  /// outside the folders macOS indexes for widgets (``WidgetPlacement``).
   func appState() -> AppStateResult {
     AppStateResult(
-      pinned: isPinned,
-      showInDock: defaults.bool(forKey: Self.showInDockKey), openAtLogin: AppPresence.opensAtLogin)
+      pinned: isPinned, showInDock: defaults.bool(forKey: Self.showInDockKey),
+      openAtLogin: AppPresence.opensAtLogin, widgetsAvailable: widgets.isAvailable)
   }
 
   /// A state event for every page, so a window opened later still learns the latest value.
-  private func broadcast(_ event: NativeEvent) {
+  func broadcast(_ event: NativeEvent) {
     panelHost.setState(event)
     settings.host?.setState(event)
     onboarding.host?.setState(event)
@@ -294,26 +326,8 @@ public final class ShellController {
     onboarding.setTitle(ShellStrings.shared.text(.windowOnboardingTitle))
   }
 
-  var menuActions: AppMenuActions {
-    let services = services
-    return AppMenuActions(
-      showPanel: { [weak self] in self?.showPanel() },
-      hidePanel: { [weak self] in self?.hidePanel() },
-      openSettings: { [weak self] in self?.openSettings(commandId: nil, section: nil) },
-      openOnboarding: { [weak self] in self?.openOnboarding() },
-      replayOnboarding: Self.replaysOnboarding ? { [weak self] in self?.replayOnboarding() } : nil,
-      checkForUpdates: updater.isAvailable
-        ? { [weak self] in self?.updater.checkForUpdates() } : nil,
-      restartService: { try await services.restart() },
-      showServiceLogs: { try services.revealLogs() },
-      editCommand: { [weak self] command in self?.sendEditCommand(command) },
-      developmentHint: { [weak self] in self?.menuStatus.developmentHint ?? false },
-      selectionListening: { [weak self] in self?.toolbar.isListening },
-      setSelectionListening: { [weak self] on in self?.toolbar.setListening(on) })
-  }
-
   /// Undo and Redo go to the page of the key window, which runs them in its editor.
-  private func sendEditCommand(_ command: EditCommandEvent.Command) {
+  func sendEditCommand(_ command: EditCommandEvent.Command) {
     let host: WebViewHost? =
       if panel.isKey {
         panelHost
@@ -324,6 +338,7 @@ public final class ShellController {
       } else {
         nil
       }
-    host?.send(.editCommand(.init(command: command)), scope: .document)
+    guard let host else { return sendUserAppEditCommand(command) }
+    host.send(.editCommand(.init(command: command)), scope: .document)
   }
 }

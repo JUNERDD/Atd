@@ -13,6 +13,7 @@
       "selection": "划词工具栏",
       "screenshot": "截图",
       "provider": "AI 提供商",
+      "features": "更多功能",
       "finish": "准备就绪"
     },
     "close": "关闭指南",
@@ -92,6 +93,24 @@
     "connected": "已连接到 {{name}}",
     "model": "默认模型：{{model}}",
     "footnote": "之后可以随时在设置中添加更多提供商。"
+  },
+  "features": {
+    "title": "Atd 不止于此",
+    "description": "还有三种用法，随时都能派上用场。",
+    "items": {
+      "apps": {
+        "title": "应用",
+        "description": "描述你要的工具，Atd 就把它做成应用。"
+      },
+      "automations": {
+        "title": "自动化",
+        "description": "让任务按时或在文件变动时自动运行。"
+      },
+      "miniPanel": {
+        "title": "迷你面板",
+        "description": "屏幕边缘的快捷入口，也能直接拖入文件。"
+      }
+    }
   },
   "finish": {
     "title": "一切就绪",

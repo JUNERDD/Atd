@@ -1,0 +1,165 @@
+/*
+ * Task agents (task-agents/): a definition's facts and role text, in a define row's card and in the
+ * popover a drill-in title opens, and the save dialog's resolved subagent. Hierarchy comes from
+ * weight and the foreground/muted pair, like the other tool cards' content.
+ */
+
+/* Tools and effort as one wrapping line of label/value pairs. */
+.task-agent-facts {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 0 12px;
+  margin: 0;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--muted-foreground);
+}
+.task-agent-facts > div {
+  display: flex;
+  min-width: 0;
+  gap: 4px;
+}
+.task-agent-facts dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--foreground);
+}
+
+/* Role text a reader asked for, in a define row's card. */
+.task-agent-instructions-text {
+  margin: 0;
+  font-size: 12px;
+  line-height: 18px;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  color: var(--muted-foreground);
+}
+
+/* A define row's definitions, one block per task agent. */
+.task-agent-definitions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.task-agent-definition {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+.task-agent-name {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-weight: 500;
+  color: var(--foreground);
+}
+.task-agent-description {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--muted-foreground);
+}
+
+/*
+ * A task agent's details in its drill-in popover: the description and the role text read as body
+ * text (the popover's 14px foreground), the facts and the role text's label as quieter 12px
+ * metadata between them; 12px between blocks, 4px from a label to its text.
+ */
+.task-agent-details {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 12px;
+}
+/* Only the running text breaks anywhere: the facts keep their labels whole (their values break). */
+.task-agent-details p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.task-agent-details section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.task-agent-details h3 {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+  color: var(--muted-foreground);
+}
+.task-agent-details section > p {
+  white-space: pre-wrap;
+}
+
+/*
+ * The save dialog's resolved subagent: read-only fields in the form's rhythm (a label over its
+ * value, 16px between fields), and the system prompt in full under one hairline, which the dialog
+ * body scrolls.
+ */
+.task-agent-save-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin: 0;
+}
+.task-agent-save-fields > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 8px;
+}
+.task-agent-save-fields dt {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1;
+}
+.task-agent-save-fields dd {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-size: 14px;
+  line-height: 20px;
+}
+.task-agent-save-note {
+  margin: 0;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--muted-foreground);
+}
+.task-agent-save-prompt {
+  margin: 0;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  font-size: 12px;
+  line-height: 18px;
+}
+/* Why a task agent cannot be saved: an icon and words, not color alone, with no fill on glass. */
+.task-agent-save-refusal {
+  display: flex;
+  min-width: 0;
+  gap: 8px;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--muted-foreground);
+}
+.task-agent-save-refusal > svg {
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+  flex-shrink: 0;
+  color: var(--destructive);
+}
+.task-agent-save-refusal p {
+  margin: 0;
+}

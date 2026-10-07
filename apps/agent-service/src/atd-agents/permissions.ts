@@ -1,10 +1,10 @@
 import { SUBAGENT_TOOLS, type SubagentPermissions, type SubagentTool } from '@atd/agent-contracts';
 
 /**
- * Subagent permissions as Settings shows and stores them. An agent's defaults come from its
- * definition (system agents) or its file (`~/.atd/agents`); an override replaces them whole from
- * the next run (subagents/agents.ts `withPermissions`, `atdRuntimeAgent`). An override equal to
- * the defaults is not kept, so "customized" always means it changes something.
+ * Subagent permissions as Settings shows and stores them. An agent's defaults come from its file
+ * (`~/.atd/agents`) or its plugin's definition; an override replaces them whole from the next run
+ * (subagents/agents.ts `atdRuntimeAgent`, `pluginRuntimeAgent`). An override equal to the
+ * defaults is not kept, so "customized" always means it changes something.
  */
 
 function isSubagentTool(tool: string): tool is SubagentTool {

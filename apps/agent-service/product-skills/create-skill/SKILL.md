@@ -21,7 +21,7 @@ To update an existing skill (the user's message names it):
 
 Rules:
 
-- Refuse the reserved names of the built-in skills: `create-skill`, `create-subagent`, `create-mcp`, `create-memory`, `create-command`, `plan-mode`, and `grill-me`.
+- Refuse the reserved names of the built-in skills: `create-skill`, `create-subagent`, `create-mcp`, `create-memory`, `create-command`, `create-app`, `plan-mode`, and `grill-me`.
 - Refuse any path outside `~/.atd/skills`.
 - Do not write under the service data directory or `~/.pi`.
 - Do not overwrite an existing skill unless the user explicitly asks to replace it after you confirm the path.

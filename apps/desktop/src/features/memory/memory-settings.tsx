@@ -1,32 +1,39 @@
 import { useRef, useState } from 'react';
 import { CircleAlert } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import type {
+  MemoryCreateRequest,
+  MemoryProposal,
+  MemorySaveRequest,
+  MemoryUnit,
+} from '@atd/agent-contracts';
 import { Button } from '@atd/ui/components/button';
 import { useCompositionQuery } from '@atd/ui/lib/ime';
-import { ScrollArea } from '@atd/ui/components/scroll-area';
-import type { MemoryEntry } from '../../client/agent/bridge';
-import { FieldHint } from '../../components/field-hint';
-import { SettingsHeading } from '../settings/settings-heading';
-import { SettingsSearchField } from '../settings/settings-search-field';
 import { showToast } from '../../components/toast-store';
-import { MemoryCreateButton } from './memory-create-button';
+import { USER_PLUGIN_ID } from '../service/plugin-rows';
+import { useOpenSettingsExtension, useSettingsSectionExit } from '../settings/settings-navigation';
+import { useSettingsPageHistory } from '../settings/use-settings-page-history';
 import { MemoryDeleteDialog } from './memory-delete-dialog';
-import { MemoryEditor } from './memory-editor';
-import { MemoryLearningFooter } from './memory-learning-footer';
-import { MemoryList } from './memory-list';
+import { MemoryOverview } from './memory-overview';
+import { MemoryPage } from './memory-page';
 import { useMemoryWrites } from './memory-writes';
 import { reloadMemory, useMemorySnapshot } from './use-memory-snapshot';
-import { useSettingsSectionExit } from '../settings/settings-navigation';
-import { useSettingsPageHistory } from '../settings/use-settings-page-history';
 
-/** A page of the Memory section: the list, or one entry's editor. */
-type MemoryRoute = { page: 'list' } | { page: 'edit'; entry: MemoryEntry };
+/**
+ * A page of the Memory section: the overview, one unit's page (`nonce` marks each deep link, so
+ * every link opens afresh), or the New memory page (`key` renews it on each opening).
+ */
+type MemoryRoute =
+  | { page: 'list' }
+  | { page: 'unit'; id: string; nonce?: number }
+  | { page: 'new'; key: number };
 const LIST: MemoryRoute = { page: 'list' };
 
 /**
- * The Memory section. `activeEntry` is a link to one entry's editor (Personal's Memory tab links
- * here); each link carries a new nonce and opens as a page of the section's history once the entry
- * is in the snapshot.
+ * The Memory section. `activeEntry` is a link to one unit's page (Personal's Memory tab links
+ * here); each link carries a new nonce and opens as a page of the section's history. A page whose
+ * unit is gone falls back to the overview, unless the unit was deleted elsewhere while the page
+ * held unsaved edits: then the page stays to save them as a new memory.
  */
 export function MemorySettings({
   activeEntry,
@@ -37,44 +44,79 @@ export function MemorySettings({
   const { snapshot } = useMemorySnapshot();
   const writes = useMemoryWrites();
   const search = useCompositionQuery();
+  const openExtension = useOpenSettingsExtension();
+  const units = snapshot?.units ?? [];
   const history = useSettingsPageHistory<MemoryRoute>(
     LIST,
-    (route) =>
-      route.page === 'list' ||
-      !snapshot ||
-      snapshot.entries.some(({ id }) => id === route.entry.id),
+    (route) => route.page !== 'unit' || !snapshot || units.some(({ id }) => id === route.id),
   );
   const { route } = history;
   const [linked, setLinked] = useState(0);
-  const linkedEntry = activeEntry && snapshot?.entries.find(({ id }) => id === activeEntry.id);
-  if (activeEntry && linkedEntry && activeEntry.nonce !== linked) {
+  if (activeEntry && activeEntry.nonce !== linked) {
     setLinked(activeEntry.nonce);
-    history.open({ page: 'edit', entry: linkedEntry });
+    history.open({ page: 'unit', id: activeEntry.id, nonce: activeEntry.nonce });
   }
-  // The entry as the latest snapshot has it; one removed meanwhile stays as the editor opened it.
-  const editing =
-    route.page === 'edit'
-      ? (snapshot?.entries.find(({ id }) => id === route.entry.id) ?? route.entry)
-      : null;
-  const [deleting, setDeleting] = useState<MemoryEntry | null>(null);
+  const [deleting, setDeleting] = useState<MemoryUnit | null>(null);
+  /**
+   * The open page's unit as last read, with the page it was read for: a failed read or a delete
+   * elsewhere keeps that page (and its edits) open, but a later opening starts from a fresh read.
+   */
+  const [held, setHeld] = useState<{ route: MemoryRoute; unit: MemoryUnit } | null>(null);
+  /** The unit the open page is deleting: its going is that delete, not one made elsewhere. */
+  const [removing, setRemoving] = useState<string | null>(null);
   const searchInput = useRef<HTMLInputElement>(null);
   useSettingsSectionExit(() => search.change(''));
+
   /**
-   * Saves `entry` with new content; empty content deletes it. Either way the editor closes, and
-   * only then is a toast needed: from the list, the row changing in place is the feedback. A
-   * failure keeps the page, with its toast.
+   * Leaves the page `from` once its write succeeds and says so; `to` first swaps it for the page
+   * Forward should reopen (a created unit's). A failure keeps the page, with its toast.
    */
-  function update(entry: MemoryEntry, next: string) {
-    const from = route;
-    const feedback = next ? t('memory.feedback.updated') : t('memory.feedback.deleted');
-    void writes.update(entry, next).then(
-      () => {
-        history.leave(from);
-        if (from.page === 'edit') showToast({ kind: 'info', text: feedback });
+  function finish<T>(
+    write: Promise<T>,
+    from: MemoryRoute,
+    text: string,
+    to?: (result: T) => MemoryRoute,
+  ) {
+    void write.then(
+      (result) => {
+        const next = to?.(result);
+        if (next) history.replace(next, from);
+        history.leave(next ?? from);
+        showToast({ kind: 'info', text });
       },
       () => {},
     );
   }
+  const create = (from: MemoryRoute, input: MemoryCreateRequest) =>
+    finish(writes.create(input), from, t('memory.feedback.created'), ({ unit }) => unitRoute(unit));
+  const save = (from: MemoryRoute, input: MemorySaveRequest) =>
+    finish(writes.save(input), from, t('memory.feedback.updated'));
+  /**
+   * From the overview the row leaving is the feedback; a page closes and says so. A page's own
+   * delete stays `removing` unless it fails.
+   */
+  function remove(unit: MemoryUnit) {
+    if (route.page !== 'unit') {
+      void writes.remove(unit).catch(() => {});
+      return;
+    }
+    setRemoving(unit.id);
+    const write = writes.remove(unit);
+    void write.catch(() => setRemoving(null));
+    finish(write, route, t('memory.feedback.deleted'));
+  }
+  /** A skill suggestion's skill opens on its Extensions page once the catalogs list it. */
+  function accept(proposal: MemoryProposal) {
+    void writes.accept(proposal).then(
+      (skill) => {
+        if (!skill) return;
+        showToast({ kind: 'info', text: t('memory.suggestions.skillCreated', { name: skill }) });
+        openExtension({ pluginId: USER_PLUGIN_ID, kind: 'skill', name: skill });
+      },
+      () => {},
+    );
+  }
+
   const feedback = snapshot?.error ? (
     <>
       <p role="alert" className="settings-inline-error">
@@ -86,85 +128,63 @@ export function MemorySettings({
       </Button>
     </>
   ) : null;
-  return (
-    <section className="memory-settings">
-      {editing ? (
-        <MemoryEditor
-          key={editing.id}
-          entry={editing}
-          busy={writes.savingIds.has(editing.id)}
+  const found = route.page === 'unit' ? units.find(({ id }) => id === route.id) : undefined;
+  if (found && (held?.unit !== found || held?.route !== route)) setHeld({ route, unit: found });
+  const unit = found ?? (held?.route === route ? held.unit : undefined);
+  // A read answered without the page's unit. A link to an unknown unit falls back to the overview
+  // at once. An open page decides for itself (`deleted`), since only it knows its edits; after its
+  // own delete it is not told, and that delete leaves it once it lands.
+  const gone = route.page === 'unit' && !found && Boolean(snapshot && !snapshot.error);
+  if (gone && !unit) history.discard();
+  const dialog = (
+    <MemoryDeleteDialog unit={deleting} onCancel={() => setDeleting(null)} onConfirm={remove} />
+  );
+  if (route.page === 'unit' && !unit)
+    return (
+      <section className="memory-settings">
+        {feedback ?? <output className="settings-loading">{t('memory.list.loading')}</output>}
+      </section>
+    );
+  if (route.page !== 'list')
+    return (
+      <section className="memory-settings">
+        <MemoryPage
+          key={route.page === 'unit' ? `${route.id}-${route.nonce ?? ''}` : `new-${route.key}`}
+          unit={unit ?? null}
+          deleted={gone && unit?.id !== removing}
+          takenNames={units.filter(({ id }) => id !== unit?.id).map(({ name }) => name)}
+          busy={writes.creating || (unit !== undefined && writes.busyIds.has(unit.id))}
           feedback={feedback}
-          onSave={(content) => update(editing, content)}
-          onDelete={() => setDeleting(editing)}
+          onCreate={(input) => create(route, input)}
+          onSave={(input) => save(route, input)}
+          onReviewed={writes.markReviewed}
+          onDelete={() => setDeleting(unit ?? null)}
+          onDiscard={history.discard}
           onCancel={history.back}
         />
-      ) : (
-        <>
-          <SettingsHeading
-            title={t('memory.title')}
-            titleHint={
-              <FieldHint
-                text={t('memory.feedback.storageNote')}
-                side="bottom"
-                icon={<CircleAlert className="size-4" />}
-              />
-            }
-            description={t('memory.description')}
-          >
-            <SettingsSearchField
-              search={search}
-              ref={searchInput}
-              aria-label={t('memory.searchLabel')}
-              placeholder={t('memory.searchPlaceholder')}
-              disabled={!snapshot?.entries.length}
-            />
-            <MemoryCreateButton
-              paused={Boolean(snapshot?.paused)}
-              unavailable={!snapshot || Boolean(snapshot.error)}
-            />
-          </SettingsHeading>
-          {/* The panel owns the scrollbar; the heading and search stay put above it. */}
-          <ScrollArea
-            className="memory-scroll settings-page-scroll"
-            viewportClassName="overlay-footer-fade [&>div]:flex! [&>div]:flex-col [&>div]:min-h-full"
-            gutter="none"
-            scrollShadow
-          >
-            <div className="memory-list">
-              {snapshot ? (
-                snapshot.error && !snapshot.entries.length ? null : (
-                  <MemoryList
-                    entries={snapshot.entries}
-                    query={search.query}
-                    busyIds={writes.savingIds}
-                    onClearSearch={() => {
-                      search.change('');
-                      searchInput.current?.focus();
-                    }}
-                    onEdit={(entry) => history.open({ page: 'edit', entry })}
-                    onDelete={setDeleting}
-                  />
-                )
-              ) : (
-                <p className="text-sm text-muted-foreground">{t('memory.list.loading')}</p>
-              )}
-              {feedback}
-            </div>
-          </ScrollArea>
-          <MemoryLearningFooter
-            checked={snapshot ? !snapshot.paused : false}
-            pending={writes.pausing}
-            disabled={!snapshot || Boolean(snapshot.error)}
-            // The switch flipping is the feedback; only a failure needs a message.
-            onCheckedChange={(checked) => writes.pause(!checked)}
-          />
-        </>
-      )}
-      <MemoryDeleteDialog
-        entry={deleting}
-        onCancel={() => setDeleting(null)}
-        onConfirm={(entry) => update(entry, '')}
+        {dialog}
+      </section>
+    );
+  return (
+    <section className="memory-settings">
+      <MemoryOverview
+        snapshot={snapshot}
+        search={search}
+        searchRef={searchInput}
+        writes={writes}
+        feedback={feedback}
+        onClearSearch={() => {
+          search.change('');
+          searchInput.current?.focus();
+        }}
+        onNew={() => history.open({ page: 'new', key: Date.now() })}
+        onOpen={(opened) => history.open(unitRoute(opened))}
+        onDelete={setDeleting}
+        onAccept={accept}
       />
+      {dialog}
     </section>
   );
 }
+
+const unitRoute = (unit: MemoryUnit): MemoryRoute => ({ page: 'unit', id: unit.id });

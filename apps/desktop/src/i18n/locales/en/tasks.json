@@ -12,6 +12,14 @@
     "interrupted": "interrupted",
     "unknown": "unknown"
   },
+  "statusList": {
+    "approval": "Needs approval",
+    "answer": "Needs an answer",
+    "running": "Running",
+    "failed": "Failed",
+    "interrupted": "Interrupted",
+    "completed": "Completed"
+  },
   "conversation": {
     "legacyTitle": "Imported draft · Not executed",
     "legacyAttachments": "{{files}} — attach these files again before running.",
@@ -57,6 +65,7 @@
       "commandCreate": "Create command",
       "commandUpdate": "Update command",
       "searchMemory": "Search memory",
+      "readMemory": "Read memory",
       "saveMemory": "Save memory",
       "updateMemory": "Update memory",
       "removeMemory": "Remove memory",
@@ -64,6 +73,7 @@
       "subagentList": "List subagents",
       "subagentGuide": "Read subagent guide",
       "subagentStatus": "Check subagent run",
+      "subagentDefine": "Define subagent",
       "subagentManage": "Manage subagents",
       "subagentWorkflow": "Run workflow",
       "grep": "Search file contents",
@@ -76,11 +86,23 @@
       "codemode": "Run script",
       "listMcpResources": "List MCP resources",
       "listMcpResourceTemplates": "List MCP resource templates",
-      "readMcpResource": "Read MCP resource"
+      "readMcpResource": "Read MCP resource",
+      "app": "Use app tool",
+      "appBuild": "Build app",
+      "automation": "Manage automation",
+      "automationList": "List automations",
+      "automationGet": "Read automation",
+      "automationContext": "Check time and folders",
+      "automationPreview": "Check when it runs",
+      "automationCreate": "Create automation",
+      "automationUpdate": "Update automation",
+      "automationDelete": "Delete automation",
+      "automationEnable": "Turn on automation",
+      "automationDisable": "Turn off automation",
+      "automationRun": "Run automation"
     },
     "target": {
       "user": "User",
-      "project": "Project",
       "memory": "Memory",
       "failure": "Failure"
     }
@@ -102,7 +124,9 @@
       "bash": "Run a terminal command",
       "command": "Save or update a command",
       "mcp": "Use an MCP tool",
-      "web": "Access the web"
+      "web": "Access the web",
+      "app": "Build or run this task's app",
+      "automation": "Save, delete or run an automation"
     },
     "outcome": {
       "once": "Allowed once",
@@ -165,6 +189,9 @@
       "compaction_unavailable": "The context can't be compacted right now. Try again later."
     }
   },
+  "retry": {
+    "running": "Request failed · Retrying ({{attempt}}/{{max}})…"
+  },
   "files": {
     "open": "Open",
     "openLabel": "Open file",
@@ -200,6 +227,7 @@
     "deleteDescription": "This removes its conversation, input copies and files in the app’s task folder. Files saved elsewhere and your memories remain.",
     "cancel": "Cancel",
     "deleteAction": "Delete task",
+    "taskGone": "That task was deleted.",
     "emptyDescription": "Tasks you start from a command or a message appear here.",
     "noMatchesDescription": "Check the spelling or try a different search.",
     "noModel": "No model",
@@ -211,6 +239,7 @@
         "date": "Date",
         "status": "Status",
         "model": "Model",
+        "origin": "Started by",
         "none": "None"
       },
       "sorts": {
@@ -226,6 +255,15 @@
       "stopped": "Stopped",
       "completed": "Completed",
       "draft": "Imported drafts"
+    },
+    "originSection": {
+      "automation": "Automations",
+      "app": "Apps",
+      "personal": "Started by you"
+    },
+    "origin": {
+      "automation": "Started by {{name}}",
+      "automationUnknown": "Automation"
     },
     "section": {
       "today": "Today",
@@ -345,7 +383,45 @@
     "breadcrumb": "Subagent location",
     "fallbackName": "Subagent",
     "loading": "Loading conversation…",
-    "empty": "No messages yet."
+    "empty": "No messages yet.",
+    "temporary": "Temporary",
+    "temporaryHint": "Defined by this task for its own use.",
+    "openTemporaryChild": "Open {{name}}, a temporary subagent",
+    "more": "More actions",
+    "definedCount_one": "{{count}} subagent",
+    "definedCount_other": "{{count}} subagents",
+    "role": {
+      "tools": "Tools",
+      "noTools": "None",
+      "showInstructions": "Show instructions",
+      "hideInstructions": "Hide instructions",
+      "instructions": "Instructions"
+    },
+    "save": {
+      "action": "Save as my subagent…",
+      "title": "Save as my subagent",
+      "description": "Later tasks can use it like the subagents you add in Settings. It is saved to ~/.atd/agents.",
+      "name": "Name",
+      "descriptionLabel": "Description",
+      "tools": "Tools",
+      "toolsKept": "{{tools}} stay as custom permissions, since an agent file lists only read, write, edit, bash, and command.",
+      "systemPrompt": "System prompt",
+      "effort": "Effort ({{level}}) isn't saved: saved subagents have no effort setting.",
+      "cannotTitle": "Can't save with the same tools",
+      "noTools": "This subagent works without tools. A saved subagent can't: one with no tools listed gets every tool the task allows.",
+      "noFileTool": "A saved subagent needs at least one of read, write, edit, bash, or command to keep its tools limited, and this one uses only {{tools}}.",
+      "cancel": "Cancel",
+      "save": "Save",
+      "saved": "Saved “{{name}}” to your subagents.",
+      "notSaved": "“{{name}}” wasn't saved because its tools couldn't be kept.",
+      "narrowed": "Saved “{{name}}” with fewer tools; set its permissions in Settings."
+    }
+  },
+  "sideChat": {
+    "back": "Back to the conversation",
+    "breadcrumb": "Side chat location",
+    "starting": "Starting…",
+    "loading": "Loading side chat…"
   },
   "mcpApproval": {
     "requiredTitle": "{{name}} needs your approval to run",

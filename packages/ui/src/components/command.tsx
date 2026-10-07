@@ -90,14 +90,20 @@ function CommandInput({
 function CommandList({
   className,
   gutter = 'none',
+  scrollShadow = false,
   children,
   ...props
-}: React.ComponentProps<typeof CommandPrimitive.List> & { gutter?: ScrollGutter }) {
+}: React.ComponentProps<typeof CommandPrimitive.List> & {
+  gutter?: ScrollGutter;
+  /** The scroll area's soft content fade at the scrolled edges (`.scroll-shadowed`). */
+  scrollShadow?: boolean;
+}) {
   return (
     <ScrollArea
       className={cn('min-h-0 max-h-72', className)}
       viewportClassName="max-h-[inherit]"
       gutter={gutter}
+      scrollShadow={scrollShadow}
     >
       <CommandPrimitive.List
         data-slot="command-list"

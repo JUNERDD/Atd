@@ -65,8 +65,9 @@ function useSaveFeedback(failure?: string) {
 }
 
 /**
- * Saves a settled code block as a file named after its language (`code.py`), left of the block's
- * copy button. Text is saved as given.
+ * Saves a settled code block as a file named after its language (`code.py`), left of the copy
+ * button in the block's actions row (`.code-block-actions`). Text is saved as given; the saved
+ * state marks the button `data-feedback`, as `CopyButton` does.
  */
 export function CodeDownloadButton({
   contents,
@@ -84,12 +85,13 @@ export function CodeDownloadButton({
   return (
     <IconButton
       label={saved ? t('transcript.code.saved') : t('transcript.code.download')}
+      data-feedback={saved || pinned ? '' : undefined}
       tooltipPinned={pinned}
       onPointerLeave={unpin}
       onClick={() => void save(() => ({ name, content: { type: 'text', text: contents } }))}
       // Like `CopyButton`: hidden until its `group` box is hovered or focused, or feedback shows.
       className={cn(
-        'absolute top-1 right-9 transition-opacity',
+        'transition-opacity',
         saved || pinned
           ? 'opacity-100'
           : 'opacity-0 group-focus-within:opacity-100 group-hover:opacity-100',

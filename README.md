@@ -1,217 +1,246 @@
 # Atd
 
-<img src="packages/ui/src/assets/brands/atd/app-icon.png" width="96" alt="Atd logo" />
+<img src="packages/ui/src/assets/brands/atd/app-icon.png" width="96" alt="Atd app icon" />
 
-Development builds carry a `DEV` label in the app, panel, and menu bar icons.
+**A quiet agent for your Mac.**
 
-A quiet desktop agent panel. It sits in the bottom-right corner of the screen, opens with a global shortcut, and runs coding and general-purpose agent tasks on your machine.
+Select text, capture your screen, or press **⌘ ⇧ Space** to start a conversation. Atd brings your models, tools, and local context into a small desktop panel—for everyday work, coding tasks, and apps of your own.
 
-The app has two parts. A native macOS app provides the floating panel and a settings window. A local agent service built on the [pi](https://github.com/earendil-works/pi) SDK runs the tasks, stores data, and handles credentials.
+**macOS 26+ · Apple silicon · English / 简体中文**
 
-The app in `apps/macos` is a Swift/AppKit shell with Liquid Glass windows. It hosts the React UI from `apps/desktop` in a WKWebView and relays the page's service requests, so the page never holds the service token. It needs macOS 26 on Apple silicon and starts at version 0.3.0. It replaces the Electron client of the 0.2.x releases, which has been removed from this repository.
+[Download for Mac](https://github.com/JUNERDD/ai/releases/latest) · [UI gallery](#ui-gallery) · [Development](#development) · [Report an issue](https://github.com/JUNERDD/ai/issues)
 
-![Atd task panel](docs/task-panel.png)
+[![Atd main panel on the desktop, with a new task, composer, model selector, and permission controls](apps/website/public/cases/ui/main-panel.png)](apps/website/public/cases/ui/main-panel.png)
 
-_The screenshot shows the React UI without the native window material, which changes with the desktop behind it._
+_Main panel, exported from the [project's Figma UI designs](https://www.figma.com/design/D9YK1tEeBTEBgstcepesW5/Atd?node-id=2462-142863)._
 
-## Features
+## Get started
 
-- **Task panel**: a 420 × 580 panel placed 16px from the right and bottom edges of the display work area. It works on secondary displays, negative coordinates, and small work areas. It can stay on top, and hiding it keeps the current draft.
-- **Conversations**: streamed replies, task history, follow-up messages, stop and resume, and recovery after an interrupted run. A task keeps the model it started with, even if you change the default later.
-- **Composer**: `@` mentions for files and `/` for commands and skills, shown as inline chips. It also accepts attachments, selected text, and clipboard context. Enter sends, Shift + Enter adds a new line, and confirming an IME candidate does not send the message.
-- **Tool activity**: file diffs, terminal output, web tools, a todo list, and subagent transcripts appear inline in the conversation.
-- **Permissions**: three approval tiers (Manual, Auto, Always allow) plus a shell allowlist. You set a default for new tasks, and each task can change its own tier from the composer.
-- **Providers**: named connections, each with its own credentials and default model. The catalog comes from the pi registry, with entry points for local and custom connections.
-- **Commands**: reusable instructions with Mustache variables, typed parameters, shortcuts, and tool settings. AI-suggested instructions are previewed first; applying one changes only the unsaved draft and can be undone.
-- **Extensions**: skills, subagents (including Markdown agents from `~/.atd/agents`), and MCP servers, each of which can be turned on or off for the next run.
-- **Memory**: long-term memory powered by [pi-hermes-memory](https://github.com/chandra447/pi-hermes-memory), with search, editing, deletion, and a pause for learning.
-- **Settings**: Permissions, Extensions, Providers, Commands, Memory, and Shortcuts. The settings navigation is a sidebar at 760px and wider, compact top navigation from 480px, and a drawer below that.
-- **Languages**: English and Simplified Chinese. The first run follows the OS locale.
+1. Download the Apple silicon `.dmg` from [GitHub Releases](https://github.com/JUNERDD/ai/releases/latest) and move **Atd** to **Applications**.
+2. Open **Settings → Models**, add a provider connection, and choose your default provider and model. Connect with a supported account sign-in, API key, or local endpoint.
+3. Press **⌘ ⇧ Space** to open the panel. Ask a question, attach a file, or start from selected text or a screenshot.
 
-Default shortcuts:
+The app is currently ad hoc signed and not notarized. If macOS blocks the first launch, open **System Settings → Privacy & Security → Open Anyway**. The selection toolbar asks for Accessibility access; screen capture asks for Screen Recording access.
 
-| Action             | Shortcut              |
-| ------------------ | --------------------- |
-| Show or hide panel | ⌘ ⇧ Space             |
-| New conversation   | ⌘ N                   |
-| Open settings      | ⌘ ,                   |
-| Send / new line    | Enter / Shift + Enter |
+The release app bundles its agent service and Node.js runtime. You do not need the development toolchain to use Atd. Tools invoked by a task still need to be available on your Mac.
 
-You can change all of them in Settings → Shortcuts. If macOS refuses the global shortcut, the panel is still available from the menu bar icon.
+### Shortcuts
 
-## Requirements
+| Action                 | Default shortcut |
+| ---------------------- | ---------------- |
+| Show or hide the panel | ⌘ ⇧ Space        |
+| Take a screenshot      | ⌘ ⇧ 2            |
+| New conversation       | ⌘ N              |
+| Open settings          | ⌘ ,              |
+| Send a message         | Enter            |
+| Insert a new line      | Shift + Enter    |
 
-- Node.js **24.21.0** (see `.node-version`). The service requires `^24.15.0 || >=26.0.0`.
-- pnpm **12.8.1** (see `packageManager` in `package.json`).
-- For the native app and the full check: macOS 26 on Apple silicon, Xcode 26, [XcodeGen](https://github.com/yonaskolb/XcodeGen), and [SwiftLint](https://github.com/realm/SwiftLint) (`brew install xcodegen swiftlint`), plus [rustup](https://rustup.rs) for the Rust file index; `rust-toolchain.toml` pins the toolchain.
-- At runtime, `pnpm dev` runs the agent service with the Node.js on your `PATH`. A Release app ships its own Node.js and needs nothing installed.
-- Commands the agent runs use your own tools. A Release app's service asks your login shell (`$SHELL -il`) for its `PATH` once per launch, waiting at most 5 seconds, so tools from nvm, pyenv, cargo, Homebrew and your rc files resolve as they do in a terminal. The bundled Node.js comes last on the `PATH` the app starts the service with, as a fallback when you have none. Only `PATH` is taken from the shell; a service started from a terminal keeps that terminal's `PATH`.
+Change these in **Settings → General**. The menu bar icon remains another way to open the panel. The interface follows your OS language on first launch; choose English or Simplified Chinese in settings.
 
-## Getting Started
+## What you can do
+
+- **Bring the right context.** Use selected text, annotated screenshots, attachments, `@` file mentions, or drag files onto the Mini Panel.
+- **Follow the work.** Streamed conversations show tool activity, file diffs, terminal output, web results, todo lists, and subagent activity. Continue a task with a follow-up, or stop an active run.
+- **Use your models.** Connect cloud, local, and custom providers. Each connection has its own credentials and default model; existing tasks retain their model selection.
+- **Make work reusable.** Save commands with parameters and shortcuts. Add skills, subagents, and MCP servers individually or through [supported plugin bundles](packages/plugin-kit/README.md).
+- **Build personal apps.** Describe a small tool, create it in a conversation, and open it from **My apps**. Apps can have an independent window, their own backend, and desktop widgets; return to the task to refine them.
+- **Run work automatically.** Schedule prompts or saved commands, react to folder changes, run when your Mac is idle, or chain work after another automation. Inspect status and run history, and pause automations from settings.
+- **Keep control.** Set permissions per task, manage the shell allowlist, review stored memories, and pause memory learning.
+
+Automations run while Atd is running. Unattended tasks decline actions that require approval instead of waiting for a response. Missed schedules can run once on return or be skipped. New installations include an editable **Consolidate memory** automation that runs at most once a day after two hours of Mac inactivity.
+
+## UI gallery
+
+The screenshots below are exact **1440 × 900** exports from the project's UI design frames, built with connected Figma components and a shared desktop background. Together with the main panel above, they show eight interfaces. Click an image to open the original.
+
+### Selection and quick actions
+
+| Selection toolbar                                                                                                                                                                                           | Mini Panel                                                                                                                                                                |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [![Selection toolbar with Ask Atd, Translate, Summarize, and Explain actions beside selected text](apps/website/public/cases/ui/selection-toolbar.png)](apps/website/public/cases/ui/selection-toolbar.png) | [![Expanded Mini Panel at the edge of the desktop with its saved-command menu](apps/website/public/cases/ui/mini-panel.png)](apps/website/public/cases/ui/mini-panel.png) |
+| Ask, translate, summarize, or explain from a text selection.                                                                                                                                                | Open a task, capture the screen, or run a saved command.                                                                                                                  |
+
+### Capture and conversation
+
+| Screenshot tool                                                                                                                                                                | Conversation                                                                                                                                                            |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [![Screenshot selection with arrows, step numbers, mosaic, and annotation controls](apps/website/public/cases/ui/screenshot.png)](apps/website/public/cases/ui/screenshot.png) | [![Conversation with a follow-up message, tool activity, response actions, and composer](apps/website/public/cases/ui/chat.png)](apps/website/public/cases/ui/chat.png) |
+| Capture an area and mark the details that matter.                                                                                                                              | Read the result and keep working in the same task.                                                                                                                      |
+
+### Your setup and your apps
+
+| Models and settings                                                                                                                                                                    | My apps                                                                                                                                      |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| [![Models settings with a navigation sidebar and ChatGPT, Anthropic, and LM Studio connections](apps/website/public/cases/ui/settings.png)](apps/website/public/cases/ui/settings.png) | [![My apps alongside an independent Notes application window](apps/website/public/cases/ui/apps.png)](apps/website/public/cases/ui/apps.png) |
+| Configure providers, models, permissions, and preferences.                                                                                                                             | Turn an idea into an app you can open again.                                                                                                 |
+
+### Automations
+
+Scheduled tasks, folder workflows, and idle-time memory consolidation, with run status and a shared pause control.
+
+[![Automations settings showing memory consolidation, a folder-triggered invoice workflow, scheduled tasks, and pause controls](apps/website/public/cases/ui/automations.png)](apps/website/public/cases/ui/automations.png)
+
+The README and [website](apps/website/README.md) reference the same checked-in images. [Asset provenance and export instructions](apps/website/public/cases/README.md) link every image to its source Figma frame.
+
+## Development
+
+### Requirements
+
+| Tool                   | Version / source                                                                            |
+| ---------------------- | ------------------------------------------------------------------------------------------- |
+| macOS                  | 26 or later, on Apple silicon                                                               |
+| Xcode                  | 26; CI uses 26.3                                                                            |
+| Node.js                | **24.21.0**, pinned in [`.node-version`](.node-version)                                     |
+| pnpm                   | **12.8.1**, pinned in [`package.json`](package.json)                                        |
+| XcodeGen and SwiftLint | Install with `brew install xcodegen swiftlint`                                              |
+| Rust                   | Install rustup; [`rust-toolchain.toml`](rust-toolchain.toml) pins Rust, rustfmt, and Clippy |
+
+### Run the app
 
 ```sh
+git clone https://github.com/JUNERDD/ai.git
+cd ai
 corepack enable
-```
-
-```sh
 pnpm install
-```
-
-```sh
 pnpm dev
 ```
 
-`pnpm dev` is the one command for development. It builds the workspace packages the service imports, then starts the agent service from source and the Vite renderer dev server. On macOS it also builds the native Debug app and opens it once the service and the renderer answer; the page hot-reloads from Vite. The service restarts within a few seconds when a file under `apps/agent-service/src` changes, which interrupts runs in progress; changes to other workspace packages or to the Swift shell need a restart of `pnpm dev`. Press **Ctrl + C** to stop everything, including the app it opened. A Swift build failure is reported without stopping the service and the renderer.
+`pnpm dev` builds the service's workspace dependencies, starts the local agent service and Vite renderer, builds the native Debug app, and opens it when both servers are ready. It installs a development copy at `~/Applications/Atd Dev.app` so macOS can register its widgets. This copy remains after development stops and carries a `DEV` icon.
 
-`pnpm dev:headless` starts only the service and the renderer, without the app.
+The renderer hot-reloads. Changes under `apps/agent-service/src` restart the service and interrupt active runs; changes to other workspace packages or the Swift shell require restarting development. **Ctrl + C** stops the development processes and the app that this command opened.
 
-The development service keeps its data in its own directory, separate from the installed app (see [Development data](#development-data)). The page runs only inside the app: a browser pointed at the dev server shows just a notice. `pnpm dev`, `pnpm dev:headless`, and `pnpm dev:renderer` (the renderer dev server alone) use the same port, 5173, so run only one of them at a time, or move a second one with `AI_RENDERER_PORT` and point its Debug app at it with `AI_RENDERER_DEV_ORIGIN`.
+The renderer is hosted by the native app. A browser opened at its Vite origin shows a host-required notice. Configure a development model connection in **Settings → Models** before running a task.
 
-To run a real model, open Settings → Providers, add a working connection, choose a default model, and make that connection the default provider.
+### Development commands
 
-### Development data
+Run these from the repository root:
 
-`pnpm dev` runs the service in `~/Library/Application Support/AgentService Dev`. `AI_AGENT_DATA_DIR` still takes precedence, for example `AI_AGENT_DATA_DIR=$(mktemp -d) pnpm dev` for a throwaway service; the Debug app it opens gets the same directory. The default directory, `~/Library/Application Support/AgentService`, belongs to the installed app; no development command uses it.
+| Command                            | Purpose                                                         |
+| ---------------------------------- | --------------------------------------------------------------- |
+| `pnpm dev`                         | Start the service, renderer, and native Debug app               |
+| `pnpm dev:headless`                | Start the service and renderer                                  |
+| `pnpm dev:renderer`                | Start only the renderer dev server                              |
+| `pnpm --filter @atd/macos build`   | Build the native Debug app                                      |
+| `pnpm --filter @atd/desktop build` | Build the renderer into `apps/desktop/dist-native`              |
+| `pnpm dev:website`                 | Start the independent marketing site at `http://127.0.0.1:5180` |
+| `pnpm preview:website`             | Build and preview the static marketing site                     |
 
-The development directory starts empty. To start from your real tasks and settings instead, quit the installed app (its service stops with it), copy the default directory, and remove the copy's service identity, token, and runtime files:
+The native renderer uses port **5173**. Run one renderer dev command at a time. To use a different free port, set `AI_RENDERER_PORT` and give the Debug app the matching origin in `AI_RENDERER_DEV_ORIGIN`.
+
+The website serves English at `/` and Chinese at `/zh`. Its [README](apps/website/README.md) covers site structure, UI assets, and deployment.
+
+### Development data and debugging
+
+| Build               | Data directory on macOS                          |
+| ------------------- | ------------------------------------------------ |
+| Installed / Release | `~/Library/Application Support/AgentService`     |
+| Development         | `~/Library/Application Support/AgentService Dev` |
+| Isolated run        | The directory set by `AI_AGENT_DATA_DIR`         |
+
+To work with an empty temporary data directory:
 
 ```sh
-dev="$HOME/Library/Application Support/AgentService Dev"
-cp -R "$HOME/Library/Application Support/AgentService" "$dev"
-rm -f "$dev/service.json" "$dev/auth/token" "$dev/endpoint.json" "$dev/service.lock"
+AI_AGENT_DATA_DIR="$(mktemp -d)" pnpm dev
 ```
 
-Run the copy only while `$dev` does not exist yet; otherwise `cp` nests the copy inside it. The next `pnpm dev` creates a new service ID. Secrets are stored in the macOS Keychain under that ID (`ai-agent-service:<serviceId>`) and are not part of the copy, so enter them again in development: provider API keys and browser sign-ins, MCP server secrets, and sensitive plugin settings. Without the removal, the development service would share the installed app's Keychain entries, and deleting a key in development would delete it for the installed app too.
+The Debug app receives that directory and connects to the matching development service. It never starts a service of its own. Development credentials are separate from the installed app; provider and MCP secrets must be configured for that service.
 
-### Native app
+The Debug web view is inspectable through **Safari → Develop → your Mac → Atd**, after enabling **Show features for web developers** in Safari's advanced settings.
 
-```sh
-pnpm --filter @atd/macos build
-```
-
-`pnpm dev` runs this build and opens the app for you; run it by hand only to rebuild while `pnpm dev` keeps running. The command generates the Xcode project from `apps/macos/project.yml` and builds the Debug app into `apps/macos/DerivedData/Build/Products/Debug/Atd.app`. The Debug app has the bundle ID `com.junerdd.ai.dev`, so it keeps its own Accessibility permission and never collides with the installed app. It never starts the service: each time it connects, it reads `endpoint.json` and the token from the development data directory and connects to the service `pnpm dev` runs. Without one, it asks you to run `pnpm dev`. If the Debug app is already running, `pnpm dev` leaves it open instead of starting a second one. To pair it with a throwaway service, give both the same directory: `open --env AI_AGENT_DATA_DIR=<dir> apps/macos/DerivedData/Build/Products/Debug/Atd.app`.
-
-The Debug web view is inspectable: in Safari, turn on Settings → Advanced → **Show features for web developers**, then open Develop → your Mac → Atd.
-
-Release builds (`com.junerdd.ai`) start their own bundled service (see [Release build](#release-build)). They share the bundle ID with the installed app, which stays the Electron 0.2.1 release until the switch to the native app, so test one only with the installed app quit and a separate data directory: `open --env AI_AGENT_DATA_DIR=<dir> Atd.app`. Feature-parity acceptance and that switch are still open (P7 of the [native frontend plan](docs/plans/2026-09-29-macos-native-frontend.md)).
+Debug uses bundle ID `com.junerdd.ai.dev`; Release uses `com.junerdd.ai`. Test a local Release build with the installed app quit and a temporary data directory, because both Release copies share the same bundle ID.
 
 ### Agent service CLI
 
-The service runs on its own as well. After `pnpm build`, run it from `apps/agent-service`:
+After building `@atd/agent-service` and its dependencies, run the CLI from `apps/agent-service`:
 
 ```sh
 node dist/cli.js --help
 ```
 
-| Command                  | Purpose                                                                                                               |
-| ------------------------ | --------------------------------------------------------------------------------------------------------------------- |
-| `serve`                  | Start the service in the foreground (loopback only; `--port 0` picks one).                                            |
-| `status`                 | Print the status of the running service.                                                                              |
-| `stop`                   | Ask the running service to shut down.                                                                                 |
-| `approve mcp <serverId>` | Show what an MCP server would launch and approve it after a `y` on the terminal; without a terminal it needs `--yes`. |
+| Command                  | Purpose                                                       |
+| ------------------------ | ------------------------------------------------------------- |
+| `serve`                  | Start the service on loopback; `--port 0` chooses a free port |
+| `status`                 | Read the running service's status                             |
+| `stop`                   | Stop the matching service                                     |
+| `approve mcp <serverId>` | Inspect an MCP launch and approve it interactively            |
 
-The service serves only the authenticated `/v1` API; it hosts no web page.
+The service exposes an authenticated `/v1` API and hosts no web page. Use `--dataDir` or `AI_AGENT_DATA_DIR` to select an isolated service; the environment variable takes precedence.
 
-## Workspace
+## How it is built
+
+Atd has three main parts: a **Swift/AppKit shell** for windows and native capabilities, a **React renderer** hosted in WKWebView, and a **local agent service** built on the [pi SDK](https://github.com/earendil-works/pi). The shell relays renderer requests to the service, keeping the bearer token out of the page.
 
 ```text
 apps/
-  macos/                 Native macOS shell: Swift package, XcodeGen app target, Swift tests
-  desktop/               React renderer that the native app hosts
-    src/                 React UI, features, i18n, client core, native bridge contract
-    tests/               Vitest setup
-  agent-service/         Local agent service (Fastify HTTP + WebSocket, pi SDK)
-    src/                 Tasks, providers, credentials, MCP, skills, subagents, memory
-    product-skills/      Built-in skills shipped with the service
-crates/                  Rust file index and its Node binding (Cargo workspace)
+  macos/              Swift shell, Liquid Glass windows, OS integration, widgets
+  desktop/            React UI, client state, localization, native bridge
+  agent-service/      Tasks, providers, tools, automations, memory, apps, plugins
+  website/            Vite + React marketing site, prerendered in English and Chinese
 packages/
-  agent-contracts/       Shared TypeBox schemas for the service protocol
-  agent-client/          HTTP and WebSocket client for the agent service
-  ui/                    Shared shadcn components, theme tokens, brand assets
-  typescript-config/     Shared TypeScript configuration
-patches/                 pnpm patches for pinned pi extensions
-scripts/                 Dev-script guard and repository checks
-docs/                    Design sources, plans, and screenshots
+  agent-contracts/    Shared TypeBox schemas for the service protocol
+  agent-client/       HTTP and WebSocket client
+  app-kit/            Personal-app SDK, build tools, runtime, and starter template
+  plugin-kit/         Plugin installation, normalization, and catalog resolution
+  file-index/         Node package for the Rust file index
+  ui/                 Shared shadcn components, theme tokens, and brand assets
+  typescript-config/  Shared TypeScript configuration
+crates/               Rust file index and Node binding
+scripts/              Development tooling and repository checks
+docs/                 Design sources and implementation plans
 ```
 
-## Tech Stack
+The UI uses **React 19, Tailwind CSS 4, shadcn Radix/Rhea, and Lucide**. The service uses **Fastify, TypeBox, pi coding-agent / pi-ai / pi-mcp 1.0.0**, and a service-owned memory engine. Tooling includes **Vite 8, TypeScript 7, pnpm, Turborepo, Oxlint, Oxfmt, Vitest, Swift Testing, and Cargo**. Exact dependencies are recorded in each package manifest and `pnpm-lock.yaml`.
 
-| Area            | Choice                                                                                                               |
-| --------------- | -------------------------------------------------------------------------------------------------------------------- |
-| Native shell    | Swift 6, AppKit, WKWebView, XcodeGen, Swift Testing, `swift format`, SwiftLint                                       |
-| Renderer build  | Vite 8 (Rolldown, Oxc)                                                                                               |
-| UI              | React 19, Tailwind CSS 4, shadcn (Radix / Rhea preset `b27GcrRo`), Lucide, Inter                                     |
-| Editor & render | CodeMirror 6, Streamdown, `@pierre/diffs`, `@pierre/trees`                                                           |
-| Agent runtime   | `@earendil-works/pi-coding-agent` and `pi-ai` 0.87.1, pi extensions for memory, MCP, subagents, web tools, and todos |
-| Service         | Fastify 5, `@fastify/websocket`, TypeBox, `@napi-rs/keyring`                                                         |
-| File index      | Rust (pinned by `rust-toolchain.toml`), napi-rs                                                                      |
-| Tooling         | pnpm workspaces, Turborepo, TypeScript 7, Oxlint, Oxfmt, Vitest                                                      |
+## Checks and releases
 
-All direct dependencies use exact versions, and installs use `pnpm-lock.yaml`. See each `package.json` for exact versions.
-
-## Checks and Packaging
+### Validation
 
 ```sh
 pnpm check
 ```
 
-Runs the format check, Oxlint, TypeScript, the tests, and the production build for every package except the native app. On macOS it then runs `pnpm check:macos`; on other systems it skips that step. You can also run each step on its own:
+This runs formatting, lint, type checks, tests, and builds for the non-native packages. On macOS it also runs the Swift and Rust checks.
 
-| Command             | Runs                                                                                                  |
-| ------------------- | ----------------------------------------------------------------------------------------------------- |
-| `pnpm format:check` | Oxfmt over the repository                                                                             |
-| `pnpm lint`         | Oxlint in every package, and SwiftLint in `apps/macos`                                                |
-| `pnpm typecheck`    | TypeScript                                                                                            |
-| `pnpm test`         | Vitest, the service tests, and Swift Testing                                                          |
-| `pnpm build`        | Every package, including the Debug native app                                                         |
-| `pnpm check:swift`  | `swift format` lint, SwiftLint, Swift Testing, and the Debug build of `apps/macos`                    |
-| `pnpm check:rust`   | The 350-line limit for `.rs` files, `cargo fmt --check`, `cargo clippy -D warnings`, and `cargo test` |
-| `pnpm check:macos`  | `check:swift`, then `check:rust`                                                                      |
+| Command             | Scope                                            |
+| ------------------- | ------------------------------------------------ |
+| `pnpm format:check` | Repository formatting outside Swift and Rust     |
+| `pnpm lint`         | Workspace Oxlint checks and native SwiftLint     |
+| `pnpm typecheck`    | TypeScript                                       |
+| `pnpm test`         | Vitest, service tests, and Swift Testing         |
+| `pnpm build`        | Workspace builds, including the native Debug app |
+| `pnpm check:swift`  | Swift formatting, lint, tests, and Debug build   |
+| `pnpm check:rust`   | Rust file length, formatting, Clippy, and tests  |
+| `pnpm check:macos`  | Swift and Rust checks                            |
 
-GitHub Actions runs `pnpm check` on Linux, where it skips the Swift and Rust checks. A macOS 26 runner with Xcode 26.3 runs `pnpm check:swift` and `pnpm check:rust`; it installs XcodeGen and SwiftLint with Homebrew when the image lacks them, and the Rust toolchain from `rust-toolchain.toml`.
+CI runs the non-native checks on Linux and the Swift and Rust checks on macOS 26 with Xcode 26.3.
 
-### Release build
+### Build a release
 
 ```sh
 pnpm --filter @atd/macos build:release
 ```
 
-Builds the Release app into `apps/macos/DerivedData/Build/Products/Release/Atd.app`. Its `bundle` step first builds the service and the renderer, then `apps/macos/scripts/prepare-service-pack.mjs` stages the service with its production dependencies, together with the official Node.js release pinned by `.node-version` for the build machine's architecture. The first pack downloads that release into `tmp/node-dist/` and checks it against the release's `SHASUMS256.txt`. Each pack also writes a new build ID; the app only reuses a running service with the same build ID and replaces any other. The app is about 907 MB, mostly the service's `node_modules`. Run the full `build:release` rather than `xcodebuild` alone, which would embed a stale service pack.
+The output is `apps/macos/DerivedData/Build/Products/Release/Atd.app`. The command builds the service and renderer, stages production dependencies, and embeds the official Node.js runtime pinned by `.node-version`. Use the complete command so the app includes current renderer and service output.
 
-The Release app is ad-hoc signed and not notarized; Developer ID signing and notarization are not set up yet.
+The [release workflow](.github/workflows/release.yml) publishes an Apple silicon `.dmg` when a version bump in `apps/macos/package.json` reaches `main`. Keep that version aligned with `MARKETING_VERSION` in `apps/macos/project.yml` and `apps/desktop/package.json`. A manual run can publish the current version when its tag is absent.
 
-### Releases
+Releases include a signed Sparkle `appcast.xml` update feed. Release apps use that feed for updates; Debug apps do not update themselves. See [GitHub Releases](https://github.com/JUNERDD/ai/releases) for published builds.
 
-Releases are paused. There is no release workflow; the native app's releases, starting at 0.3.0, are not set up yet.
+## Data and permissions
 
-## Data and Security
+- **Local storage.** Task history, settings, and memories live in the service data directory on your Mac.
+- **Model and tool access.** Requests go to the model providers you configure. Tools and MCP servers can access the files or external services allowed by their configuration and the task's permissions.
+- **Credentials.** Provider and MCP secrets live in the OS keychain and do not reach the renderer or task snapshots.
+- **Approval controls.** Each task can use Manual approval, Auto approval, or Always allow. Settings also owns the shell allowlist and memory-learning controls.
+- **Native isolation.** The page communicates through a typed native bridge and an authenticated relay. The service listens on loopback; the renderer never holds its bearer token.
+- **Lifecycle and logs.** Release starts its bundled service and stops it on quit. Service logs are in `~/Library/Logs/AI/`; **Show Service Logs** in the menu reveals them.
 
-- **Page isolation**: the page loads from `ai-app://renderer` inside the app bundle; no HTTP origin serves it. It reaches native features only through a typed bridge, and the shell accepts bridge messages only from that origin's main frame and validates each one. Subframe navigation and navigation away from that origin are blocked. Service requests go through the shell's relay, which forwards only the routes the service marks for the page and adds the token itself.
-- **Local service**: the agent service listens only on loopback and requires a bearer token stored in its data directory. It hosts no web page and has no browser sign-in.
-- **Credentials**: provider and MCP secrets are stored in the OS keychain (macOS Keychain, Windows Credential Manager, or Secret Service on Linux). They never reach the renderer or task snapshots. If no persistent keyring is available, the service says so and runs only with temporary credentials from `AI_AGENT_TEMP_*` environment variables, which it never stores.
-- **Service lifecycle**: the Release app starts its bundled service as its child and stops it on quit. When tasks are running, quitting first asks whether to stop them; queued tasks stay queued and start the next time the app opens. OS shutdown, logout, and termination signals quit without asking. If the service exits unexpectedly, the app restarts it with an increasing delay. After 3 unexpected exits within 5 minutes it stops trying, and **Restart Agent Service** in the menu starts it again. The Debug app never starts or stops a service.
-- **Open at login**: an opt-in switch in Settings › Shortcuts (Release builds). The state lives in the macOS login items, not in the app's settings; an app started at login stays in the menu bar without showing the panel.
-- **Logs**: the Release app writes the service's output to `~/Library/Logs/AI/service.log`, with the previous four launches kept as `service.1.log` to `service.4.log` (**Show Service Logs** in the menu reveals it). The shell logs to the unified log under the subsystem `com.junerdd.ai`.
-- **Data location**: tasks, settings, and memory live in the service data directory:
-  - macOS: `~/Library/Application Support/AgentService`
-  - Windows: `%LOCALAPPDATA%\AgentService`
-  - Linux: `$XDG_DATA_HOME/agent-service` (default `~/.local/share/agent-service`)
+## Design and contributing
 
-  `AI_AGENT_DATA_DIR` overrides this location. `pnpm dev` and the native Debug app use `~/Library/Application Support/AgentService Dev` instead (see [Development data](#development-data)).
+- [Project Figma file](https://www.figma.com/design/D9YK1tEeBTEBgstcepesW5/Atd): application screens and project components.
+- [Shared shadcn UI kit](https://www.figma.com/design/tEV8H6Msibbc64Dds5eehO/shadcn-ui-kit-community-edition--Community-): shared controls and Lucide icons.
+- [Design-to-code mapping](docs/design-source.md): component and token ownership.
+- [UI screenshot sources](apps/website/public/cases/README.md): exact exports shared by this README and the website.
+- [Contributor guidelines](AGENTS.md): repository constraints, validation, and design synchronization.
 
-- **Window material**: the app uses Liquid Glass (`NSGlassEffectView`) behind a transparent web view. The system draws the corners, edge highlight, and shadow; the renderer keeps its root transparent and paints a single token-based content surface. Menus, popovers, and dialogs inside the page share one glass material, WebKit's system glass; if WebKit stops offering it, they fall back to a CSS blur of the page behind them.
-- **CSP**: the shell sends the page's Content Security Policy as a response header. Release pages allow no inline or evaluated script; Debug pages additionally allow, by hash, the inline script React Fast Refresh needs, and the Vite hot-reload socket.
-
-## Design
-
-Screens and project components live in the [project Figma file](https://www.figma.com/design/D9YK1tEeBTEBgstcepesW5/Atd). Shared controls and Lucide icons come from the approved [shadcn UI kit](https://www.figma.com/design/tEV8H6Msibbc64Dds5eehO/shadcn-ui-kit-community-edition--Community-). Brand assets are kept in `packages/ui/src/assets/brands/`.
-
-To add a shadcn component:
-
-```sh
-pnpm dlx shadcn@4.21.0 add dialog -c apps/desktop --yes
-```
-
-Components are generated into `packages/ui/src/components`. After running the CLI, check the import paths and any dependency changes.
-
-For the design-to-code mapping, see [docs/design-source.md](docs/design-source.md). Implementation plans are in [docs/plans/](docs/plans/). Contributor and agent guidelines are in [AGENTS.md](AGENTS.md).
+Read the contributor guidelines before making changes. Keep changes scoped, run the relevant checks, and submit a pull request targeting `main`. Include reproduction steps and the expected result when [reporting an issue](https://github.com/JUNERDD/ai/issues).

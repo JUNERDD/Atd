@@ -91,6 +91,7 @@ async function runWith(granted: string[], calls: Array<[string, ToolArgs]>) {
     tier: 'manual' as const,
     grants: new Set<string>(),
     review: async () => ({ decision: 'allow' as const, reason: '' }),
+    unattended: () => false,
     sessions: manager,
     confirms: harness.service.confirms,
     capabilities: harness.service.capabilities,
@@ -103,7 +104,11 @@ async function runWith(granted: string[], calls: Array<[string, ToolArgs]>) {
   };
   const material = {
     ...NO_RUN_MATERIAL,
-    folders: granted.map((real) => ({ name: path.basename(real), path: real })),
+    folders: granted.map((real, index) => ({
+      id: `folder-${index}`,
+      name: path.basename(real),
+      path: real,
+    })),
   };
   const search = searchToolsExtension({
     cwd,
