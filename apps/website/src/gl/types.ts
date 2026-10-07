@@ -12,8 +12,8 @@ export interface Box {
 export interface DotFieldOptions {
   /**
    * Words drawn as lit dots, shown in turn: the first powers on, then in full motion the board
-   * melts from each word into the next and loops. `|` marks where a word may break onto two
-   * lines when that sets it larger. Default ["Atd"].
+   * erases each word and types the next behind a block cursor, and loops. `|` marks where a word
+   * may break onto two lines when that sets it larger. Default ["Atd"].
    */
   words?: readonly string[];
   /**
@@ -36,8 +36,8 @@ export interface DotFieldOptions {
   /** Start in reduced-motion mode. Default false. */
   reducedMotion?: boolean;
   /**
-   * Play the power-on sequence on the first frame (never under reduced motion): the picture opens
-   * from a line like a CRT, then a scan resolves the art out of static. Default true.
+   * Play the power-on sequence on the first frame (never under reduced motion): the field wakes
+   * outward from the art's center as a soft wave, then the art lights left to right. Default true.
    */
   boot?: boolean;
   /**

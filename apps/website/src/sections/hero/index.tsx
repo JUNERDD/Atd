@@ -29,13 +29,14 @@ const MOUSE = [
 
 /**
  * The opening section: a black LED panel (the WebGL dot field) whose display spells the name, then
- * what it stands for — anything, anytime, anywhere — each word melting into the next. The heading is
- * for assistive tech and search; the display is the visible title.
+ * what it stands for — anything, anytime, anywhere — each word erased and the next typed in behind a
+ * block cursor that blinks while a word rests. The heading is for assistive tech and search; the
+ * display is the visible title.
  *
- * The field powers on like a CRT and resolves the name out of static (see gl/shaders.ts), and the
- * registration marks come in on the same clock, then a dot-matrix mouse at the bottom center whose
- * wheel turns to say there is more below. For visitors who prefer reduced motion the display holds
- * the name and the wheel stays still. Without WebGL the Doto lettering and a CSS dot screen stand in
+ * The field wakes outward from the name as a soft wave and the name lights up behind it, left to
+ * right (see gl/shaders.ts); the registration marks come in on the same clock, then a dot-matrix
+ * mouse at the bottom center whose wheel turns to say there is more below. For visitors who prefer
+ * reduced motion the display holds the name with a steady cursor and the wheel stays still. Without WebGL the Doto lettering and a CSS dot screen stand in
  * for the field (`data-gl="off"`).
  */
 export function HeroSection() {

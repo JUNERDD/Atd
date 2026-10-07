@@ -1,7 +1,7 @@
-/** Text effects the reveal controller plays in script, for `data-reveal="decode" | "count" | "type"`. */
-export type TextEffect = 'decode' | 'count' | 'type';
+/** Text effects the reveal controller plays in script, for `data-reveal="decode" | "type"`. */
+export type TextEffect = 'decode' | 'type';
 
-const TEXT_EFFECTS: ReadonlySet<string> = new Set<TextEffect>(['decode', 'count', 'type']);
+const TEXT_EFFECTS: ReadonlySet<string> = new Set<TextEffect>(['decode', 'type']);
 
 export function isTextEffect(effect: string | undefined): effect is TextEffect {
   return effect !== undefined && TEXT_EFFECTS.has(effect);
@@ -54,21 +54,6 @@ function decode(final: string): Pick<Job, 'duration' | 'render'> {
   };
 }
 
-/** Counts every number in the text up from zero, easing out, with the same decimals. */
-function count(final: string): Pick<Job, 'duration' | 'render'> {
-  const pattern = /\d+(?:\.\d+)?/g;
-  return {
-    duration: 1200,
-    render(progress) {
-      const eased = progress >= 1 ? 1 : 1 - 2 ** (-10 * progress);
-      return final.replace(pattern, (match) => {
-        const decimals = match.split('.')[1]?.length ?? 0;
-        return (Number(match) * eased).toFixed(decimals);
-      });
-    },
-  };
-}
-
 /** Types the text in after a caret. */
 function type(final: string): Pick<Job, 'duration' | 'render'> {
   const chars = Array.from(final);
@@ -82,7 +67,6 @@ function type(final: string): Pick<Job, 'duration' | 'render'> {
 
 const MAKERS: Record<TextEffect, (final: string) => Pick<Job, 'duration' | 'render'>> = {
   decode,
-  count,
   type,
 };
 

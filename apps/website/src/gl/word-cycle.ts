@@ -1,12 +1,6 @@
-/** Seconds a word holds before the next change; the first word (the name) holds longer. */
-const HOLD = 2.4;
-const FIRST_HOLD = 3.4;
-/**
- * Seconds one change takes on the board: the shader's sweep across it (SWEEP) plus one cell's melt
- * (MELT) in shaders.ts. Keep them in step.
- */
-export const CHANGE_SECONDS = 1.6;
-
+/** Seconds a word holds before the next change; the first word (the name) holds a little longer. */
+const HOLD = 1.3;
+const FIRST_HOLD = 1.6;
 /**
  * Which word the field shows, and the change in progress. A change starts only while the cycle may
  * run (full motion, power-on done, more than one word); a change already under way always ends.
@@ -17,7 +11,11 @@ export interface WordCycle {
   /** The word changing in, or -1. */
   readonly next: number;
   /** Seconds into the change in progress, or -1. */
-  morph(time: number): number;
+  change(time: number): number;
+  /** Seconds since the shown word arrived (power-on or a change landing), or -1 if it has not. */
+  settled(time: number): number;
+  /** Marks the shown word as arrived at `time`: the end of power-on. */
+  arrive(time: number): void;
   /** Advances to `time` (seconds), starting the next change once the current word's hold is over. */
   tick(time: number, running: boolean): void;
   /** Ends any change at once, on its incoming word. */
@@ -26,13 +24,24 @@ export interface WordCycle {
   reset(count: number): void;
 }
 
-export function createWordCycle(count: number): WordCycle {
+/**
+ * `changeSeconds` says how long a change from one word to another takes (typing.ts), read as each
+ * change starts.
+ */
+export function createWordCycle(
+  count: number,
+  changeSeconds: (from: number, to: number) => number,
+): WordCycle {
   let words = count;
   let current = 0;
   let next = -1;
   let changeAt = 0;
+  /** How long the change in progress takes. */
+  let changeLength = 0;
   /** When the current word's hold ends; NaN until the cycle first runs. */
   let holdUntil = Number.NaN;
+  /** When the shown word arrived; NaN before power-on ends and after the words are reset. */
+  let arrivedAt = Number.NaN;
 
   const hold = (index: number) => (index === 0 ? FIRST_HOLD : HOLD);
   const land = () => {
@@ -48,12 +57,19 @@ export function createWordCycle(count: number): WordCycle {
     get next() {
       return next;
     },
-    morph(time) {
+    change(time) {
       return next < 0 ? -1 : time - changeAt;
     },
+    settled(time) {
+      return next >= 0 || Number.isNaN(arrivedAt) ? -1 : time - arrivedAt;
+    },
+    arrive(time) {
+      arrivedAt = time;
+    },
     tick(time, running) {
-      if (next >= 0 && time - changeAt >= CHANGE_SECONDS) {
+      if (next >= 0 && time - changeAt >= changeLength) {
         land();
+        arrivedAt = changeAt + changeLength;
         holdUntil = time + hold(current);
       }
       if (!running || words < 2 || next >= 0) {
@@ -65,8 +81,11 @@ export function createWordCycle(count: number): WordCycle {
       if (time < holdUntil) return;
       next = (current + 1) % words;
       changeAt = time;
+      changeLength = changeSeconds(current, next);
     },
     finish() {
+      // A change cut short counts as landed when it would have; a word at rest keeps its arrival.
+      if (next >= 0) arrivedAt = changeAt + changeLength;
       land();
       holdUntil = Number.NaN;
     },
@@ -75,6 +94,7 @@ export function createWordCycle(count: number): WordCycle {
       current = 0;
       next = -1;
       holdUntil = Number.NaN;
+      arrivedAt = Number.NaN;
     },
   };
 }

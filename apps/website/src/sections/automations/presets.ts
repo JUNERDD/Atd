@@ -1,5 +1,5 @@
 /** The example triggers the week grid can show. */
-export const PRESET_IDS = ['hourly', 'weekdays', 'monday', 'folder'] as const;
+export const PRESET_IDS = ['hourly', 'weekdays', 'folder'] as const;
 
 export type PresetId = (typeof PRESET_IDS)[number];
 
@@ -9,7 +9,6 @@ export type RuleKind = 'cron' | 'folder';
 export const RULES: Record<PresetId, { kind: RuleKind; text: string }> = {
   hourly: { kind: 'cron', text: '0 */2 * * *' },
   weekdays: { kind: 'cron', text: '0 9 * * 1-5' },
-  monday: { kind: 'cron', text: '30 8 * * 1' },
   folder: { kind: 'folder', text: '~/Downloads' },
 };
 
@@ -43,8 +42,6 @@ export function runsAt(preset: PresetId, day: number, hour: number): boolean {
       return hour % 2 === 0;
     case 'weekdays':
       return day < 5 && hour === 9;
-    case 'monday':
-      return day === 0 && hour === 8;
     case 'folder':
       return FOLDER_EVENTS.has(`${day}-${hour}`);
   }

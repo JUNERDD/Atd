@@ -47,11 +47,6 @@ export function initReveal(): () => void {
   const start = (item: HTMLElement, delay: number) => {
     item.style.setProperty('--rv-delay', `${Math.round(delay)}ms`);
     const effect = item.dataset.reveal;
-    if (effect === 'words') {
-      item.querySelectorAll<HTMLElement>('.split__piece').forEach((piece, index) => {
-        piece.style.setProperty('--rv-i', String(index));
-      });
-    }
     item.setAttribute('data-revealed', '');
     if (motion && isTextEffect(effect)) texts.play(item, effect, delay);
   };

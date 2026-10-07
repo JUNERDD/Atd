@@ -13,7 +13,8 @@
   background-color: var(--ink-0);
 }
 
-/* The fallback dot screen, under the canvas. */
+/* The fallback dot screen, under the canvas. When the field takes over from it (a slow load showed
+   it first), it fades out over the field's wake, so the dots hand over rather than blink out. */
 .hero::before {
   content: '';
   position: absolute;
@@ -22,7 +23,7 @@
   background-image: radial-gradient(circle, var(--dot-0) 1.25px, transparent 1.75px);
   background-position: center;
   background-size: 12px 12px;
-  transition: opacity var(--dur-fast) linear;
+  transition: opacity 0.9s var(--curve-out);
 }
 
 .hero__canvas {

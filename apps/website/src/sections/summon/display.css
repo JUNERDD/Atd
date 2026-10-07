@@ -1,307 +1,57 @@
-/* The drawing: a viewport with the display's aspect ratio, framed by dimension gutters. The viewport is
-   a size container, and its descendants lay out in display points: 1 pt is var(--pt). */
-.summon__display {
-  display: grid;
-  grid-template-columns: 22px minmax(0, 1fr) 22px;
-  grid-template-rows: 22px auto 22px;
+.summon__viewport {
   min-inline-size: 0;
 }
 
-/* Overall dimensions: a hairline with end ticks either side of the figure. */
-.summon__axis {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  line-height: 1;
-  letter-spacing: 0.06em;
-  color: var(--fg-3);
-  white-space: nowrap;
-}
-
-.summon__axis::before,
-.summon__axis::after {
-  content: '';
-  flex: 1;
-  align-self: stretch;
-}
-
-/* The ticks are logical borders, so the vertical axis (set in vertical writing, turned to read
-   bottom-up) reuses them; only the line's physical direction differs. */
-.summon__axis::before {
-  border-inline-start: 1px solid var(--line-2);
-}
-
-.summon__axis::after {
-  border-inline-end: 1px solid var(--line-2);
-}
-
-.summon__axis[data-axis='x'] {
-  grid-area: 1 / 2;
-  align-self: start;
-  block-size: 11px;
-}
-
-.summon__axis[data-axis='x']::before,
-.summon__axis[data-axis='x']::after {
-  background: linear-gradient(var(--line-2), var(--line-2)) center / 100% 1px no-repeat;
-}
-
-.summon__axis[data-axis='y'] {
-  grid-area: 2 / 1;
-  justify-self: start;
-  block-size: 11px;
-  writing-mode: vertical-rl;
-  rotate: 180deg;
-}
-
-.summon__axis[data-axis='y']::before,
-.summon__axis[data-axis='y']::after {
-  background: linear-gradient(var(--line-2), var(--line-2)) center / 1px 100% no-repeat;
-}
-
-.summon__viewport {
-  --pt: calc(100cqi / 1512);
-  grid-area: 2 / 2;
-  position: relative;
-  container: summon-display / inline-size;
-  aspect-ratio: 1512 / 982;
-}
-
 .summon__screen {
+  aspect-ratio: 6 / 5;
+  overflow: clip;
+  border-radius: var(--r-part);
+  background: var(--ink-0);
+}
+
+.summon__wallpaper {
   position: absolute;
   inset: 0;
-  overflow: hidden;
-  border: 1px solid var(--line-2);
-  border-radius: max(8px, calc(18 * var(--pt)));
-  background-color: var(--ink-0);
-  background-image: radial-gradient(circle, var(--dot-0) 1px, transparent 1.5px);
-  background-position: calc(12 * var(--pt)) calc(12 * var(--pt));
-  background-size: calc(24 * var(--pt)) calc(24 * var(--pt));
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
 }
 
-.summon__menubar {
+/* Preserve every captured pixel, including the native header and unsent draft. */
+.summon__panel {
   position: absolute;
-  inset-block-start: 0;
-  inset-inline: 0;
-  display: flex;
-  align-items: center;
-  gap: calc(20 * var(--pt));
-  block-size: calc(32 * var(--pt));
-  padding-inline: calc(22 * var(--pt));
-  border-block-end: 1px solid var(--line-1);
-  background-color: var(--ink-1);
+  inset-inline-end: 1.7%;
+  inset-block-end: 4.08%;
+  block-size: 91.84%;
+  aspect-ratio: 560 / 720;
+  translate: 0 112%;
+  transition: translate 0.42s var(--curve-out);
 }
 
-.summon__menus,
-.summon__extras {
-  block-size: calc(8 * var(--pt));
-  border-radius: 99px;
+.summon__viewport[data-open] .summon__panel {
+  translate: 0 0;
 }
 
-.summon__menus {
-  inline-size: calc(232 * var(--pt));
-  background: repeating-linear-gradient(
-    90deg,
-    var(--line-2) 0 calc(44 * var(--pt)),
-    transparent 0 calc(60 * var(--pt))
-  );
+.summon__shot {
+  display: block;
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: contain;
 }
 
-.summon__extras {
-  inline-size: calc(92 * var(--pt));
-  margin-inline-start: auto;
-  background: repeating-linear-gradient(
-    90deg,
-    var(--line-2) 0 calc(16 * var(--pt)),
-    transparent 0 calc(28 * var(--pt))
-  );
-}
-
-/* The menu bar icon: the Atd mark, lit while the panel is up. */
-.summon__mark {
-  inline-size: calc(18 * var(--pt));
-  block-size: calc(18 * var(--pt));
-  background-color: var(--fg-3);
-  -webkit-mask: url('/brand/atd-symbol.png') center / contain no-repeat;
-  mask: url('/brand/atd-symbol.png') center / contain no-repeat;
-  transition: background-color var(--dur-base) linear;
-}
-
-.summon__display[data-open] .summon__mark {
-  background-color: var(--fg-1);
-}
-
-.summon__state {
-  position: absolute;
-  inset-block-end: 10px;
-  inset-inline-start: 12px;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  line-height: 1.2;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+.summon__unavailable {
+  display: grid;
+  place-content: center;
+  block-size: 100%;
+  padding: 24px;
+  background: var(--ink-2);
+  border-radius: var(--r-part);
   color: var(--fg-2);
+  text-align: center;
 }
 
-/* Someone else's window, under the panel's corner: the panel floats over whatever you were doing. */
-.summon__window {
-  position: absolute;
-  inset-block-start: calc(104 * var(--pt));
-  inset-inline-start: calc(104 * var(--pt));
-  display: flex;
-  flex-direction: column;
-  gap: calc(20 * var(--pt));
-  inline-size: calc(820 * var(--pt));
-  block-size: calc(600 * var(--pt));
-  padding-inline: calc(44 * var(--pt));
-  border: 1px solid var(--line-1);
-  border-radius: calc(16 * var(--pt));
-  background-color: var(--ink-1);
-}
-
-.summon__window-bar {
-  block-size: calc(40 * var(--pt));
-  margin-inline: calc(-44 * var(--pt));
-  margin-block-end: calc(20 * var(--pt));
-  border-block-end: 1px solid var(--line-1);
-}
-
-.summon__line {
-  block-size: calc(12 * var(--pt));
-  border-radius: 99px;
-  background-color: var(--line-1);
-}
-
-.summon__line[data-w='1'] {
-  inline-size: 72%;
-}
-
-.summon__line[data-w='2'] {
-  inline-size: 56%;
-}
-
-.summon__line[data-w='3'] {
-  inline-size: 64%;
-}
-
-/* Where the panel lives, drawn dashed while it is hidden. */
-.summon__ghost {
-  position: absolute;
-  inset-block-end: calc(16 * var(--pt));
-  inset-inline-end: calc(16 * var(--pt));
-  inline-size: calc(420 * var(--pt));
-  block-size: calc(580 * var(--pt));
-  border: 1px dashed var(--line-2);
-  border-radius: calc(26 * var(--pt));
-  transition: opacity var(--dur-base) linear;
-}
-
-.summon__display[data-open] .summon__ghost {
-  opacity: 0;
-}
-
-/* Dimension callouts: 420 above the panel and 580 beside it, inside the screen; the two 16 pt gaps
-   are labelled in the gutters outside it. They appear once the panel has landed. */
-.summon__dim,
-.summon__gap {
-  position: absolute;
-  display: flex;
-  align-items: center;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  line-height: 1;
-  color: var(--fg-2);
-  opacity: 0;
-  transition: opacity var(--dur-base) linear;
-}
-
-.summon__display[data-open] :is(.summon__dim, .summon__gap) {
-  opacity: 1;
-  transition-delay: 280ms;
-}
-
-.summon__dim {
-  gap: 6px;
-}
-
-.summon__dim::before,
-.summon__dim::after {
-  content: '';
-  flex: 1;
-  align-self: stretch;
-}
-
-.summon__dim[data-dim='width'] {
-  inset-block-end: calc(596 * var(--pt) + 8px);
-  inset-inline-end: calc(16 * var(--pt));
-  inline-size: calc(420 * var(--pt));
-  block-size: 9px;
-}
-
-.summon__dim[data-dim='width']::before,
-.summon__dim[data-dim='width']::after {
-  background: linear-gradient(var(--fg-3), var(--fg-3)) center / 100% 1px no-repeat;
-}
-
-.summon__dim[data-dim='width']::before {
-  border-inline-start: 1px solid var(--fg-3);
-}
-
-.summon__dim[data-dim='width']::after {
-  border-inline-end: 1px solid var(--fg-3);
-}
-
-.summon__dim[data-dim='height'] {
-  inset-block-end: calc(16 * var(--pt));
-  inset-inline-end: calc(436 * var(--pt) + 8px);
-  flex-direction: column;
-  inline-size: 9px;
-  block-size: calc(580 * var(--pt));
-}
-
-.summon__dim[data-dim='height']::before,
-.summon__dim[data-dim='height']::after {
-  background: linear-gradient(var(--fg-3), var(--fg-3)) center / 1px 100% no-repeat;
-}
-
-.summon__dim[data-dim='height']::before {
-  border-block-start: 1px solid var(--fg-3);
-}
-
-.summon__dim[data-dim='height']::after {
-  border-block-end: 1px solid var(--fg-3);
-}
-
-/* A leader crosses each 16 pt gap, from the panel's edge to the label in the gutter. */
-.summon__gap::before {
-  content: '';
-  position: absolute;
-  background-color: var(--fg-2);
-}
-
-.summon__gap[data-gap='right'] {
-  inset-block-end: calc(306 * var(--pt));
-  inset-inline-start: calc(100% + 5px);
-  translate: 0 50%;
-}
-
-.summon__gap[data-gap='right']::before {
-  inset-inline-end: calc(100% + 2px);
-  inline-size: calc(16 * var(--pt) + 5px);
-  block-size: 1px;
-}
-
-.summon__gap[data-gap='bottom'] {
-  inset-block-start: calc(100% + 6px);
-  inset-inline-end: calc(226 * var(--pt));
-  translate: 50% 0;
-}
-
-.summon__gap[data-gap='bottom']::before {
-  inset-block-end: calc(100% + 2px);
-  inset-inline-start: 50%;
-  inline-size: 1px;
-  block-size: calc(16 * var(--pt) + 6px);
+@media (prefers-reduced-motion: reduce) {
+  .summon__panel {
+    transition: none;
+  }
 }

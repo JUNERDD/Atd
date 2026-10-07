@@ -1,6 +1,7 @@
 import { useRef } from 'react';
 import { site } from '../../content/site';
-import { useCopy } from '../../i18n/lang';
+import { summonPanels } from '../../content/summon';
+import { useCopy, useLang } from '../../i18n/lang';
 import { Keycap } from '../../ui/keycap';
 import { Section } from '../../ui/section';
 import { summonCopy } from './copy';
@@ -10,26 +11,10 @@ import './summon.css';
 
 const KEYS: readonly SummonKey[] = ['meta', 'shift', 'space'];
 
-/**
- * How a readout's value enters: figures count up, Latin words decode; other scripts (Chinese) have
- * nothing to scramble and simply rise with their row.
- */
-function readoutEffect(value: string): 'count' | 'decode' | undefined {
-  if (/\d/u.test(value)) return 'count';
-  if (/[a-z]/iu.test(value)) return 'decode';
-  return undefined;
-}
-
-/**
- * The shortcut on three keycaps beside a true-scale drawing of the panel in its corner. The real
- * chord, or the Try it button, shows and hides the drawn panel; its draft survives.
- *
- * Three reveal groups enter on their own triggers: the keycaps rise one after another and the button
- * and hint follow; the drawing plots itself (display.tsx); the readout rows rise in sequence with
- * their values counting or decoding. Then the chord presses itself and the panel springs up.
- */
+/** The real panel and its draft stay intact while the visitor shows and hides it. */
 export function SummonSection() {
   const t = useCopy(summonCopy);
+  const lang = useLang();
   const stageRef = useRef<HTMLDivElement>(null);
   const controlsRef = useRef<HTMLDivElement>(null);
   const displayRef = useRef<HTMLDivElement>(null);
@@ -45,7 +30,7 @@ export function SummonSection() {
         : '';
 
   return (
-    <Section id="summon" index="A·01" kicker={t.kicker} title={t.title} lede={t.lede}>
+    <Section id="summon" label={t.label} title={t.title} lede={t.lede}>
       <div className="summon__stage" ref={stageRef}>
         <div
           className="summon__controls"
@@ -53,6 +38,9 @@ export function SummonSection() {
           data-reveal-group=""
           data-reveal-stagger="80"
         >
+          <p className="legend" data-reveal="fade">
+            {t.legend}
+          </p>
           <p className="summon__keys">
             <span className="summon__caps" aria-hidden="true">
               {KEYS.map((key, index) => (
@@ -78,7 +66,7 @@ export function SummonSection() {
             >
               {t.tryIt}
             </button>
-            <p className="summon__hint" data-reveal="fade" data-reveal-delay="400">
+            <p className="summon__hint legend" data-reveal="fade" data-reveal-delay="400">
               {t.hint}
             </p>
           </div>
@@ -90,30 +78,9 @@ export function SummonSection() {
         <SummonDisplay
           ref={displayRef}
           open={demo.open}
-          kept={demo.kept}
-          live={demo.near}
-          state={t.state[demo.phase]}
-          draft={t.draft}
-          draftKept={t.draftKept}
+          shot={summonPanels[lang]}
+          unavailable={t.unavailable}
         />
-        <dl className="summon__readouts" data-reveal-group="">
-          {t.readouts.map((readout) => {
-            const effect = readoutEffect(readout.value);
-            return (
-              <div
-                className="summon__readout"
-                key={readout.label}
-                data-reveal="rise"
-                data-reveal-group=""
-              >
-                <dt className="mono-label">{readout.label}</dt>
-                <dd data-reveal={effect} data-reveal-delay={effect ? 160 : undefined}>
-                  {readout.value}
-                </dd>
-              </div>
-            );
-          })}
-        </dl>
       </div>
     </Section>
   );

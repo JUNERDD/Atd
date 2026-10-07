@@ -1,5 +1,6 @@
-/* Week grid: a day label, then 24 square cells per row; hour labels head every sixth column. Each
-   row is a `display: contents` wrapper that only carries its day for the power-on wave. */
+/* Week grid on a display: a day label, then 24 square cells per row; hour labels head every sixth
+   column. Each row is a `display: contents` wrapper that only carries its day for the power-on
+   wave. The cells draw their own unlit LEDs, so the display's own dots stay off. */
 .auto__week {
   /* The playhead's cycle: it rests 1.2 s, then sweeps the day in 8.8 s. The scan keyframes below
      restate the rest as a percentage (12% of 10 s). */
@@ -15,7 +16,8 @@
   align-items: center;
   column-gap: 0;
   row-gap: 2px;
-  max-inline-size: 640px;
+  padding: 20px 20px 24px 16px;
+  background-image: none;
 }
 
 .auto__row {
@@ -51,19 +53,19 @@
   padding-block-end: 6px;
   border-inline-start: 1px solid var(--line-2);
   padding-inline-start: 4px;
-  font-family: var(--font-mono);
-  font-size: 10px;
+  font-family: var(--font-dot);
+  font-size: 11px;
+  font-weight: 700;
   line-height: 1;
   color: var(--fg-3);
 }
 
 .auto__day {
   padding-inline-end: 10px;
-  font-family: var(--font-mono);
-  font-size: 10px;
+  font-family: var(--font-dot);
+  font-size: 11px;
+  font-weight: 700;
   line-height: 1;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
   color: var(--fg-3);
 }
 

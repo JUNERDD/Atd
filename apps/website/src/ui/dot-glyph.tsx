@@ -6,6 +6,11 @@ interface DotGlyphProps {
    * same length, which sets the matrix width.
    */
   rows: readonly string[];
+  /**
+   * Lights the glyph as a reveal item (`data-reveal="wave"`): when it arrives, its lit dots come on
+   * in a diagonal wave from the top left (dot-glyph.css).
+   */
+  wave?: boolean;
 }
 
 /**
@@ -13,7 +18,7 @@ interface DotGlyphProps {
  * carries its column and row as `data-x` and `data-y`, so a consumer's CSS can light the dots in
  * sequence (a hover sweep, a power-on wave) without inline styles.
  */
-export function DotGlyph({ rows }: DotGlyphProps) {
+export function DotGlyph({ rows, wave = false }: DotGlyphProps) {
   const width = rows[0]?.length ?? 0;
   return (
     <svg
@@ -21,6 +26,7 @@ export function DotGlyph({ rows }: DotGlyphProps) {
       viewBox={`0 0 ${width} ${rows.length}`}
       aria-hidden="true"
       focusable="false"
+      data-reveal={wave ? 'wave' : undefined}
     >
       {rows.flatMap((row, y) =>
         Array.from(row, (cell, x) => {

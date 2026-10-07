@@ -1,40 +1,30 @@
 import type { ReactNode } from 'react';
-import { SplitText } from './split-text';
 import './section.css';
 
 interface SectionProps {
   /** The anchor id; the title gets `${id}-title`. */
   id: string;
-  /** The grid index printed before the kicker, such as `A·02`. */
-  index: string;
-  kicker: string;
-  /**
-   * A plain string rises in word by word. Other content renders as given: compose it with
-   * `SplitText` (delay 160) to keep the same entrance.
-   */
-  title: ReactNode;
+  /** The plate's printed name, as the nav calls the section. */
+  label: string;
+  title: string;
   lede?: ReactNode;
-  /** `dark` sits on the page's dot grid, `void` on pure black, `paper` is the one light section. */
-  tone?: 'dark' | 'void' | 'paper';
   children?: ReactNode;
 }
 
 /**
- * The standard section frame: a full-bleed band with one message — an instrument label, a heading
- * and an optional lede — under a hairline drawn between registration marks at the frame's corners.
- * As the band arrives, the marks plot in and the hairline draws between them; then the index
- * decodes, the kicker fades up, the heading rises word by word and the lede follows.
+ * One plate of the faceplate: a full-bleed band of the dot grid, joined to the plate above it by a
+ * seam with registration crosses where the content column's edges meet it. The header prints the
+ * plate's name beside a status light in its own column, and lights the heading in dots, as the
+ * hero lights its word.
+ *
+ * As the plate arrives the seam draws across and the crosses plot in; then the name fades up, the
+ * heading flickers on like an LED, and the lede follows.
  */
-export function Section({ id, index, kicker, title, lede, tone = 'dark', children }: SectionProps) {
+export function Section({ id, label, title, lede, children }: SectionProps) {
   const titleId = `${id}-title`;
   return (
-    <section
-      id={id}
-      className="section"
-      data-tone={tone}
-      data-theme={tone === 'paper' ? 'light' : undefined}
-      aria-labelledby={titleId}
-    >
+    <section id={id} className="section plate" aria-labelledby={titleId}>
+      <span className="section__seam" aria-hidden="true" data-reveal="draw" />
       <div className="section__frame container">
         <span className="section__mark" data-corner="start" aria-hidden="true" data-reveal="plot" />
         <span
@@ -44,26 +34,21 @@ export function Section({ id, index, kicker, title, lede, tone = 'dark', childre
           data-reveal="plot"
           data-reveal-delay="120"
         />
-        <span
-          className="section__rule"
-          aria-hidden="true"
-          data-reveal="draw"
-          data-reveal-delay="60"
-        />
         <header className="section__header" data-reveal-group="">
-          <p className="section__meta mono-label">
-            <span className="section__index" data-reveal="decode">
-              {index}
-            </span>
-            <span data-reveal="fade" data-reveal-delay="120">
-              {kicker}
-            </span>
+          <p className="section__label legend" data-reveal="fade">
+            <span className="led" aria-hidden="true" />
+            {label}
           </p>
-          <h2 id={titleId} className="section__title">
-            {typeof title === 'string' ? <SplitText text={title} delay={160} /> : title}
+          <h2
+            id={titleId}
+            className="section__title dot-text"
+            data-reveal="light"
+            data-reveal-delay="140"
+          >
+            {title}
           </h2>
           {lede ? (
-            <p className="section__lede" data-reveal="rise" data-reveal-delay="420">
+            <p className="section__lede" data-reveal="fade" data-reveal-delay="360">
               {lede}
             </p>
           ) : null}

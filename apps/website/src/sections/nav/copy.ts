@@ -18,8 +18,7 @@ export const navCopy = {
     skip: 'Skip to content',
     links: [
       { href: '#features', label: 'Features' },
-      { href: '#automations', label: 'Automations' },
-      { href: '#cases', label: 'In practice' },
+      { href: '#cases', label: 'Interfaces' },
       { href: '#privacy', label: 'Privacy' },
     ],
     download: 'Download',
@@ -32,8 +31,7 @@ export const navCopy = {
     skip: '跳到正文',
     links: [
       { href: '#features', label: '功能' },
-      { href: '#automations', label: '自动化' },
-      { href: '#cases', label: '实录' },
+      { href: '#cases', label: '界面' },
       { href: '#privacy', label: '隐私' },
     ],
     download: '下载',
