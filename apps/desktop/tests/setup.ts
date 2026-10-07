@@ -1,8 +1,11 @@
 import '@testing-library/jest-dom/vitest';
-import { cleanup } from '@testing-library/react';
+import { cleanup, configure } from '@testing-library/react';
 import { afterEach, beforeEach } from 'vitest';
 import '../src/i18n';
 import { queryClient } from '../src/lib/query-client';
+
+// Async view updates share CPU with the workspace's build and service checks.
+configure({ asyncUtilTimeout: 5_000 });
 
 beforeEach(() => {
   localStorage.clear();

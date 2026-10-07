@@ -9,6 +9,9 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./tests/setup.ts'],
     include: ['src/**/*.test.{ts,tsx}'],
+    // DOM interactions share the runner with service tests and production builds.
+    maxWorkers: 2,
+    testTimeout: 15_000,
     restoreMocks: true,
     clearMocks: true,
   },
