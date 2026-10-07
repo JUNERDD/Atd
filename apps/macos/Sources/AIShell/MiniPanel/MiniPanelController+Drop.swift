@@ -37,7 +37,7 @@ extension MiniPanelController: MiniPanelDropTarget {
       dropGrace = nil
       magnet.reset()
       transition(to: .invite, trigger: "drag session")
-    case .hidden, .dragging, .absorbing:
+    case .hidden, .dragging, .draggingPill, .absorbing:
       break
     }
   }

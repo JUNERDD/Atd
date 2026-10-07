@@ -11,7 +11,7 @@ import SwiftUI
 extension MiniPanelController {
   /// A press, a drag, the context menu or a snap in flight holds the capsule open.
   var isHeld: Bool {
-    window?.isPressing == true || model.phase == .dragging || menuOpen || snap != nil
+    window?.isPressing == true || model.phase.isDragging || menuOpen || snap != nil
   }
 
   /// Something needs the frames to keep coming while the pointer rests away from the panel.
@@ -49,7 +49,7 @@ extension MiniPanelController {
       hoverExpanded(pointer, at: now)
     case .invite, .target:
       followDrag(pointer, at: now)
-    case .hidden, .dragging, .absorbing:
+    case .hidden, .dragging, .draggingPill, .absorbing:
       break
     }
     track(pointer)
@@ -195,7 +195,7 @@ extension MiniPanelController {
       } else if drawnBody.contains(pointer) {
         cursor = .openHand
       }
-    case .dragging:
+    case .dragging, .draggingPill:
       cursor = .closedHand
     default:
       break
@@ -225,7 +225,7 @@ extension MiniPanelController {
       return isInClickZone(point) ? .body(nil) : .none
     case .invite, .target, .absorbing:
       return .dropShape
-    case .hidden, .dragging:
+    case .hidden, .dragging, .draggingPill:
       return .none
     }
   }
