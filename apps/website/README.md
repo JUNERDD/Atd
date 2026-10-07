@@ -61,7 +61,7 @@ public/
 
 Section headings and introductions share the page's center line, with no category label beside them.
 The privacy diagram is centered below its heading and capped at 54rem; its existing grid changes
-direction at 1000px. The [desktop and compact layout review](https://www.figma.com/design/D9YK1tEeBTEBgstcepesW5?node-id=2504-145342)
+direction at 1000px. The desktop and compact layout review (`2504:145342`)
 keeps the shared heading and diagram components alongside the website's other design sources.
 
 ## Header language menu
@@ -69,7 +69,7 @@ keeps the shared heading and diagram components alongside the website's other de
 The header uses a 44 px Lucide language icon button and an end-aligned dropdown. Radix handles
 keyboard navigation, dismissal, focus restoration and viewport collision. The English and 简体中文
 links keep their language routes and remember explicit choices; the current language has a checkmark.
-The [button and menu states](https://www.figma.com/design/D9YK1tEeBTEBgstcepesW5?node-id=2495-144651)
+The button and menu states (`2495:144651`)
 reuse the website's monochrome tokens and remain connected to the shared Lucide library.
 
 ## Interface carousel
@@ -88,7 +88,7 @@ The progress bar beside the playback controls follows Embla's timer, freezes whi
 restarts with each slide. Its interval label uses the same three-second setting as playback.
 Scene selectors use compact labels that wrap instead of scrolling sideways. Below 480 px, a
 two-column layout keeps all eight choices visible and preserves a 44 px minimum touch target.
-The [navigation component and responsive examples](https://www.figma.com/design/D9YK1tEeBTEBgstcepesW5?node-id=2488-144568)
+The navigation component and responsive examples (`2488:144568`)
 are kept in the project design file alongside the website's existing color tokens.
 
 The source nodes, export process and image paths are in
