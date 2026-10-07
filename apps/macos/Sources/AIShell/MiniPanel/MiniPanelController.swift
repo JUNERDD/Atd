@@ -112,7 +112,7 @@ final class MiniPanelController {
   var bodyPressed = false
   /// Where a press holds the scrollbar's thumb, from its top, while it drags it.
   var scrollerGrab: Double?
-  /// A drag lifted the capsule.
+  /// A drag lifted the body.
   var lifted = false
   var menuOpen = false
   /// The cursor the panel set last, or nil when it set none.
@@ -326,7 +326,7 @@ final class MiniPanelController {
   /// A display came, went or changed its work area, or the Mac woke: the panel lays itself out
   /// again where it belongs. A drag in progress is left alone; its release finds the displays.
   private func displaysChanged() {
-    guard let window, window.isVisible, model.phase != .dragging else { return }
+    guard let window, window.isVisible, !model.phase.isDragging else { return }
     relayout()
   }
 }
