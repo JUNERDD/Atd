@@ -21,6 +21,7 @@
     "embla-carousel-autoplay": "catalog:",
     "embla-carousel-react": "catalog:",
     "lucide-react": "catalog:",
+    "radix-ui": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
     "vite": "8.3.1"
