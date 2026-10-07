@@ -17,9 +17,9 @@ The panel uses the symbol as a `currentColor` alpha mask. A 26px image footprint
 - Debug menu images are 44 × 18 at 1x and 88 × 36 at 2x. They pair the 18px state icon with an outlined `DEV` label. The native item uses variable width so neither the mark nor label is squeezed. Production images remain 18 × 18 and 36 × 36.
 - In both environments the status-bar mark is scaled to about 17px of visible width. Transparent source padding is allowed outside that small export frame; the complete visible silhouette stays inside it.
 
-Canonical design: [Atd brand and app icon](https://www.figma.com/design/D9YK1tEeBTEBgstcepesW5/Atd?node-id=1741-95296). The Figma components retain the original raster artwork; they do not claim editable vector paths.
+Canonical design: Atd brand and app icon (`1741:95296`). The Figma components retain the original raster artwork; they do not claim editable vector paths.
 
-Development design sources: [app icon](https://www.figma.com/design/D9YK1tEeBTEBgstcepesW5/Atd?node-id=1757-95728), [panel header](https://www.figma.com/design/D9YK1tEeBTEBgstcepesW5/Atd?node-id=1760-95766), and [menu bar states](https://www.figma.com/design/D9YK1tEeBTEBgstcepesW5/Atd?node-id=1759-95783).
+Development design sources: app icon (`1757:95728`), panel header (`1760:95766`), and menu bar states (`1759:95783`).
 
 ## Final generation prompt
 

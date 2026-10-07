@@ -7,7 +7,7 @@ from the canonical Figma file, not recordings of a live browser agent.
 ## Active assets
 
 All eight PNGs are **1440 × 900**, use the same canonical Desktop instance and preserve the entire
-scene. Frames are in [W · Website · Interface scenes · shared desktop](https://www.figma.com/design/D9YK1tEeBTEBgstcepesW5?node-id=2462-142863).
+scene. Frames are in “W · Website · Interface scenes · shared desktop” (`2462:142863`).
 
 | File                       | Export frame  | Application design source                                    |
 | -------------------------- | ------------- | ------------------------------------------------------------ |

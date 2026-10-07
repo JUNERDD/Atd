@@ -133,6 +133,8 @@ jobs:
           # LZFSE (ULFO) compresses faster and smaller than zlib (UDZO); every macOS the app
           # supports opens it.
           hdiutil create -volname Atd -srcfolder "$stage" -ov -format ULFO "dist/Atd-$VERSION-arm64.dmg"
+          # Keep the README's latest/download URL stable while Sparkle uses the versioned asset.
+          cp "dist/Atd-$VERSION-arm64.dmg" dist/Atd-arm64.dmg
           ls -lh dist
       - name: Write the update feed
         env:
