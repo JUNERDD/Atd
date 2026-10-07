@@ -11,6 +11,7 @@ import {
   ItemMedia,
   ItemTitle,
 } from '@atd/ui/components/item';
+import { cn } from '@atd/ui/lib/utils';
 import { formatDuration, formatWhen } from './automation-time';
 import { isUnread, outcomeTone, outcomeWords, reasonWords } from './automation-words';
 import { OutcomeIcon } from './run-outcome';
@@ -19,7 +20,8 @@ import { OutcomeIcon } from './run-outcome';
  * One run of an automation: its outcome (with New until its result is opened, and Late for a
  * catch-up run), the opening of its answer, why it was skipped or failed, and when and how long
  * it ran, scheduled against actual time. Open task shows its task in the panel, which marks it
- * read; a task deleted since says so instead. Summaries, details and file names are runtime text
+ * read; a task deleted since says so instead. A run that starts no task (a memory consolidation)
+ * has neither: its summary is its whole result. Summaries, details and file names are runtime text
  * and stay as the run wrote them.
  */
 export function RunRow({
@@ -66,7 +68,8 @@ export function RunRow({
             {isUnread(run) && <Badge>{t('runs.new')}</Badge>}
           </div>
           {run.summary && (
-            <ItemDescription className="line-clamp-2 whitespace-normal">
+            // Without a task to open, the summary is all there is to read, so it shows in full.
+            <ItemDescription className={cn('whitespace-normal', run.taskId && 'line-clamp-2')}>
               {run.summary}
             </ItemDescription>
           )}

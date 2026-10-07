@@ -74,6 +74,15 @@ export interface LearnerCommit {
   skipped: string[];
 }
 
+/**
+ * How a consolidation commit ended: refused because learning is paused or memory changed since the
+ * consolidation read it (nothing written), or the learner-style counts and the enabled units the
+ * commit left, which the next consolidation compares against.
+ */
+export type ConsolidationCommit =
+  | { refused: 'paused' | 'changed' }
+  | (LearnerCommit & { refused: null; units: MemoryUnit[] });
+
 /** The engine surface runs and learners use; implemented by the memory authority. */
 export interface MemoryRuntimeStore {
   /** Reading is allowed when the run enables memory, for root and child executions alike. */

@@ -11,9 +11,9 @@ import {
 } from '@atd/ui/components/select';
 import { FieldError } from '../commands/field-error';
 import { defaultSchedule, type ScheduleKind } from './automation-draft';
-import { systemTimeZone, timeZones, zonedIso, zonedLocal } from './automation-time';
+import { zonedIso, zonedLocal } from './automation-time';
 import { errorId, type AutomationProblemsView } from './use-automation-problems';
-import { IntervalField, MonthDaySelect, TimeField } from './schedule-inputs';
+import { IntervalField, MonthDaySelect, TimeField, TimeZoneSelect } from './schedule-inputs';
 import { WeekdayPicker } from './weekday-picker';
 
 type ScheduleTrigger = Extract<AutomationTrigger, { kind: 'schedule' }>;
@@ -168,8 +168,6 @@ export function ScheduleFields({
 }) {
   const { t } = useTranslation('automations');
   const { schedule, timezone } = trigger;
-  const zoneError = problems.text('timezone');
-  const system = systemTimeZone();
   return (
     <div className="automation-field-stack">
       <div className="field-columns aligned-fields">
@@ -195,43 +193,20 @@ export function ScheduleFields({
             </SelectContent>
           </Select>
         </div>
-        <div className="settings-field">
-          <Label htmlFor="automation-timezone">{t('schedule.timeZone')}</Label>
-          <div className="flex flex-col gap-2">
-            <Select
-              value={timezone}
-              onValueChange={(zone) =>
-                onChange({
-                  ...trigger,
-                  timezone: zone,
-                  schedule:
-                    schedule.kind === 'once'
-                      ? { ...schedule, at: zonedIso(zonedLocal(schedule.at, timezone), zone) ?? '' }
-                      : schedule,
-                })
-              }
-            >
-              <SelectTrigger
-                id="automation-timezone"
-                className="w-full"
-                aria-invalid={Boolean(zoneError) || undefined}
-                aria-describedby={zoneError ? errorId('timezone') : undefined}
-              >
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {timeZones(timezone).map((zone) => (
-                  <SelectItem key={zone} value={zone}>
-                    {zone === system
-                      ? t('schedule.systemZone', { zone: zone.replaceAll('_', ' ') })
-                      : zone.replaceAll('_', ' ')}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {zoneError && <FieldError id={errorId('timezone')}>{zoneError}</FieldError>}
-          </div>
-        </div>
+        <TimeZoneSelect
+          timezone={timezone}
+          onChange={(zone) =>
+            onChange({
+              ...trigger,
+              timezone: zone,
+              schedule:
+                schedule.kind === 'once'
+                  ? { ...schedule, at: zonedIso(zonedLocal(schedule.at, timezone), zone) ?? '' }
+                  : schedule,
+            })
+          }
+          error={problems.text('timezone')}
+        />
       </div>
       <ScheduleDetail
         schedule={schedule}

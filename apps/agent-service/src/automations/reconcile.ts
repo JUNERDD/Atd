@@ -25,10 +25,11 @@ export interface ReconcileDeps {
 /**
  * Boot reconciliation (decision D6), after the service's own recovery and before queued task runs
  * dispatch. A record still `running` whose fire never reached the ledger (its operation id is
- * unknown) ends `interrupted`, and is never retried. One whose task run exists is watched again:
- * the supervisor settles a run that already ended from the ledger (recovery marked runs that were
- * live as interrupted), and a queued run of an automation that is off is cancelled first. Queued
- * runs of automations that were deleted or turned off are cancelled too.
+ * unknown), a memory consolidation's included, ends `interrupted`, and is never retried. One
+ * whose task run exists is watched again: the supervisor settles a run that already ended from the
+ * ledger (recovery marked runs that were live as interrupted), and a queued run of an automation
+ * that is off is cancelled first. Queued runs of automations that were deleted or turned off are
+ * cancelled too.
  */
 export async function reconcileRuns(deps: ReconcileDeps): Promise<void> {
   const { store, ledger } = deps;
@@ -41,10 +42,19 @@ export async function reconcileRuns(deps: ReconcileDeps): Promise<void> {
       if (record.outcome !== 'running') continue;
       const operation = ledger.operation(operationIdFor(automationId, record.id));
       if (!operation) {
-        await deps.settle(automationId, record.id, {
-          outcome: 'interrupted',
-          detail: 'Atd stopped before the run started.',
-        });
+        // A memory consolidation starts no task, so it ended with the process that ran it.
+        const consolidation = automation?.action.kind === 'consolidateMemory';
+        await deps.settle(
+          automationId,
+          record.id,
+          consolidation
+            ? {
+                outcome: 'interrupted',
+                detail: 'Atd stopped during the memory consolidation.',
+                read: true,
+              }
+            : { outcome: 'interrupted', detail: 'Atd stopped before the run started.' },
+        );
         continue;
       }
       if (!automation?.enabled) await cancelQueued(deps, operation.taskId, operation.runId);

@@ -161,6 +161,14 @@ public nonisolated struct ShellClient: Sendable {
       "POST", "/v1/automation-notices/ack", body: body, contentType: "application/json")
   }
 
+  /// `POST /v1/system-activity { idleSeconds }`: how long the Mac has been idle, answered 204.
+  /// Bounded, since a report that is not answered soon is stale and the next one replaces it.
+  public func postSystemActivity(_ report: SystemActivityReport) async throws {
+    _ = try await send(
+      "POST", "/v1/system-activity", body: try JSONEncoder().encode(report),
+      contentType: "application/json", timeout: 10)
+  }
+
   /// `POST /v1/admin/shutdown`: the service answers, then drains and exits. Bounded, since quit
   /// waits on it and falls back to SIGTERM.
   public func shutdown() async throws {
@@ -267,6 +275,14 @@ extension AutomationNoticeFeed.Service {
 }
 
 extension ServiceLink {
+  /// The idle reporter's route through the shell's own client, or nil while the service has no
+  /// endpoint.
+  public func systemActivityService() async -> SystemActivityReporter.Service? {
+    guard case .success(let endpoint) = await endpoint() else { return nil }
+    let client = ShellClient(endpoint: endpoint)
+    return { try await client.postSystemActivity($0) }
+  }
+
   /// The quit guard's count of active runs: an unavailable, failing or slower-than-`timeout`
   /// service counts as idle.
   public func activeRunsForQuitGuard(timeout: Duration = .milliseconds(1500)) async -> Int {

@@ -99,14 +99,10 @@ export function replyChannel(content: AssistantMessage['content']): LearnerReply
  * a missed save is recoverable, applying an update the model rejected is not.
  */
 export function parseLearnerReply(reply: LearnerReply): ParsedOps | null {
-  if (reply.source === 'text') {
-    const payload = extractPayload(reply.text);
-    return payload ? validOps(payload.operations) : null;
-  }
-  const candidate = lastOperationsObject(reply.text);
-  if (!candidate) return null;
-  const parsed = validOps(candidate.payload.operations);
-  if (candidate.trailing) return parsed;
+  const found = replyPayload(reply);
+  if (!found) return null;
+  const parsed = validOps(found.payload.operations);
+  if (found.final) return parsed;
   const drafts = parsed.ops.filter((op) => op.op !== 'create');
   return {
     ops: parsed.ops.filter((op) => op.op === 'create'),
@@ -134,8 +130,11 @@ function validOps(operations: unknown[]): ParsedOps {
   return { ops, dropped };
 }
 
-/** The operation, or why it is invalid. */
-function toOp(item: unknown): LearnerOp | string {
+/**
+ * The operation, or why it is invalid: its known fields normalized and checked against the unit
+ * contract. A memory consolidation (consolidation/reply.ts) validates its operations through here.
+ */
+export function toOp(item: unknown): LearnerOp | string {
   if (!isRecord(item)) return 'not an object';
   const kind = item.op;
   if (!isOpKind(kind)) return `unknown op ${JSON.stringify(kind) ?? 'undefined'}`.slice(0, 80);
@@ -175,15 +174,31 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-/** A JSON object with an `operations` array; any other object never claims the parse. */
-interface OperationsPayload {
-  operations: unknown[];
-}
+/**
+ * A JSON object with an `operations` array, its other fields kept for replies that carry more
+ * (the consolidation's `summary`); any other object never claims the parse.
+ */
+export type OperationsPayload = Record<string, unknown> & { operations: unknown[] };
 
 function asPayload(value: unknown): OperationsPayload | null {
   return isRecord(value) && Array.isArray(value.operations)
-    ? { operations: value.operations }
+    ? { ...value, operations: value.operations }
     : null;
+}
+
+/**
+ * The reply's operations payload, or null when it holds none. `final` is false for a payload in
+ * the reasoning channel with text after it: a draft the model may have revised.
+ */
+export function replyPayload(
+  reply: LearnerReply,
+): { payload: OperationsPayload; final: boolean } | null {
+  if (reply.source === 'text') {
+    const payload = extractPayload(reply.text);
+    return payload ? { payload, final: true } : null;
+  }
+  const candidate = lastOperationsObject(reply.text);
+  return candidate ? { payload: candidate.payload, final: candidate.trailing } : null;
 }
 
 function parsePayload(text: string): OperationsPayload | null {

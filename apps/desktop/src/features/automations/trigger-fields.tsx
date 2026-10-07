@@ -3,17 +3,19 @@ import { useTranslation } from 'react-i18next';
 import type { AutomationItem, AutomationTrigger, FolderRef } from '@atd/agent-contracts';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@atd/ui/components/tabs';
 import { FieldError } from '../commands/field-error';
+import { SettingsGroup } from '../settings/settings-group';
 import { defaultTrigger, type DraftPatch, type TriggerKind } from './automation-draft';
 import { formatDateTime, systemTimeZone, zoneName } from './automation-time';
 import { problemWords } from './automation-words';
 import { ChainTriggerFields } from './chain-trigger-fields';
 import { FolderTriggerFields } from './folder-trigger-fields';
+import { IdleTriggerFields } from './idle-trigger-fields';
 import { TriggerIcon } from './run-outcome';
 import { ScheduleFields } from './schedule-fields';
 import type { AutomationProblemsView } from './use-automation-problems';
 import type { TriggerPreview } from './use-automations';
 
-const TRIGGER_KINDS: readonly TriggerKind[] = ['schedule', 'folder', 'automation'];
+const TRIGGER_KINDS: readonly TriggerKind[] = ['schedule', 'folder', 'idle', 'automation'];
 
 /** Where the trigger's preview problem shows; Save scrolls to it when the service refuses one. */
 export const TRIGGER_ERROR_ID = 'automation-trigger-error';
@@ -22,6 +24,10 @@ export const TRIGGER_ERROR_ID = 'automation-trigger-error';
  * The service's word on the edited trigger: why it cannot run, or a schedule's next run times in
  * the schedule's own zone (named when it is not the Mac's). The service owns the one schedule
  * implementation, so nothing here works out when a schedule fires.
+ *
+ * A schedule's block keeps its height while the answer is on its way (the preview waits for edits
+ * to settle, and a half-typed schedule has none): its title stays and the list holds room for the
+ * runs it will show, so the sections below do not jump when the times arrive.
  */
 function TriggerOutlook({
   trigger,
@@ -32,40 +38,50 @@ function TriggerOutlook({
 }) {
   const { t, i18n } = useTranslation('automations');
   const result = preview.preview;
-  if (preview.error)
-    return (
-      <p className="settings-field-note">{t('trigger.previewError', { message: preview.error })}</p>
-    );
-  if (!result) return null;
-  if (result.problem)
-    return <FieldError id={TRIGGER_ERROR_ID}>{problemWords(result.problem, t)}</FieldError>;
-  if (trigger.kind !== 'schedule') return null;
+  const errorNote = preview.error ? (
+    <p className="settings-field-note">{t('trigger.previewError', { message: preview.error })}</p>
+  ) : null;
+  const problem = result?.problem ? (
+    <FieldError id={TRIGGER_ERROR_ID}>{problemWords(result.problem, t)}</FieldError>
+  ) : null;
+  if (trigger.kind !== 'schedule') return errorNote ?? problem;
   const zone =
     trigger.timezone === systemTimeZone() ? null : zoneName(trigger.timezone, i18n.language);
   return (
-    <div className="automation-next-runs" aria-busy={preview.pending || undefined}>
+    <div
+      className="automation-next-runs"
+      data-rows={trigger.schedule.kind === 'once' ? 1 : 3}
+      aria-busy={preview.pending || !result || undefined}
+    >
       <p className="automation-next-runs-title">
         {zone ? t('trigger.nextRunsIn', { zone }) : t('trigger.nextRuns')}
       </p>
-      {result.nextRuns.length ? (
-        <ul>
-          {result.nextRuns.map((run) => (
-            <li key={run}>
-              <time dateTime={run}>{formatDateTime(run, i18n.language, trigger.timezone)}</time>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className="settings-field-note">{t('trigger.noNextRuns')}</p>
-      )}
+      <div className="automation-next-runs-body">
+        {errorNote ??
+          problem ??
+          (result &&
+            (result.nextRuns.length ? (
+              <ul>
+                {result.nextRuns.map((run) => (
+                  <li key={run}>
+                    <time dateTime={run}>
+                      {formatDateTime(run, i18n.language, trigger.timezone)}
+                    </time>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="settings-field-note">{t('trigger.noNextRuns')}</p>
+            )))}
+      </div>
     </div>
   );
 }
 
 /**
- * "When it runs": a schedule, changes in a watched folder, or another automation's results, as
- * tabs over the fields of each. Switching kind keeps what the other kinds held, so switching back
- * restores it.
+ * "When it runs": a schedule, changes in a watched folder, the Mac going idle, or another
+ * automation's results, as tabs over the fields of each. Switching kind keeps what the other kinds
+ * held, so switching back restores it.
  */
 export function TriggerFields({
   trigger,
@@ -100,10 +116,11 @@ export function TriggerFields({
     onChange(kept[kind] ?? defaultTrigger(kind));
   }
   return (
-    <section className="settings-field" aria-labelledby="automation-trigger-title">
-      <h3 id="automation-trigger-title" className="settings-section-title">
-        {t('trigger.title')}
-      </h3>
+    <SettingsGroup
+      id="automation-trigger"
+      title={t('trigger.title')}
+      description={t('trigger.description')}
+    >
       <Tabs value={trigger.kind} onValueChange={switchKind}>
         <TabsList
           aria-label={t('trigger.kindLabel')}
@@ -128,6 +145,8 @@ export function TriggerFields({
               onFoldersPicked={onFoldersPicked}
               problems={problems}
             />
+          ) : trigger.kind === 'idle' ? (
+            <IdleTriggerFields trigger={trigger} onChange={onChange} problems={problems} />
           ) : (
             <ChainTriggerFields
               trigger={trigger}
@@ -140,6 +159,6 @@ export function TriggerFields({
         </TabsContent>
       </Tabs>
       <TriggerOutlook trigger={trigger} preview={preview} />
-    </section>
+    </SettingsGroup>
   );
 }

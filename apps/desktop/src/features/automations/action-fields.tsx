@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Command, MessageSquareText } from 'lucide-react';
+import { Brain, Command, MessageSquareText } from 'lucide-react';
 import type { AutomationAction, AutomationTrigger } from '@atd/agent-contracts';
 import { Label } from '@atd/ui/components/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@atd/ui/components/tabs';
@@ -8,22 +8,28 @@ import { Textarea } from '@atd/ui/components/textarea';
 import type { CommandDefinition } from '../../client/agent/command-schema';
 import { FieldError } from '../commands/field-error';
 import { defaultAction, type ActionKind, type DraftPatch } from './automation-draft';
+import { SettingsGroup } from '../settings/settings-group';
 import { CommandActionFields } from './command-action-fields';
 import { errorId, type AutomationProblemsView } from './use-automation-problems';
 
-const ACTION_KINDS: readonly ActionKind[] = ['prompt', 'command'];
+const ACTION_KINDS: readonly ActionKind[] = ['prompt', 'command', 'consolidateMemory'];
 
 function ActionIcon({ kind }: { kind: ActionKind }) {
-  return kind === 'prompt' ? (
-    <MessageSquareText aria-hidden="true" />
-  ) : (
-    <Command aria-hidden="true" />
-  );
+  switch (kind) {
+    case 'prompt':
+      return <MessageSquareText aria-hidden="true" />;
+    case 'command':
+      return <Command aria-hidden="true" />;
+    case 'consolidateMemory':
+      return <Brain aria-hidden="true" />;
+  }
 }
 
 /**
- * "What it does": a prompt written for the automation, or a saved command with its parameter
- * values and input, as tabs. Switching keeps what the other kind held.
+ * "What it does": a prompt written for the automation, a saved command with its parameter values
+ * and input, or consolidating memory, as tabs. Switching keeps what the other kinds held.
+ * Consolidation is the memory engine's own job: it has nothing to fill in and starts no task, so
+ * its tab says what it changes instead.
  */
 export function ActionFields({
   action,
@@ -51,10 +57,15 @@ export function ActionFields({
     onChange(kept[kind] ?? defaultAction(kind));
   }
   return (
-    <section className="settings-field" aria-labelledby="automation-action-title">
-      <h3 id="automation-action-title" className="settings-section-title">
-        {t('action.title')}
-      </h3>
+    <SettingsGroup
+      id="automation-action"
+      title={t('action.title')}
+      description={
+        action.kind === 'consolidateMemory'
+          ? t('action.descriptionMemory')
+          : t('action.description')
+      }
+    >
       <Tabs value={action.kind} onValueChange={switchKind}>
         <TabsList
           aria-label={t('action.kindLabel')}
@@ -92,6 +103,8 @@ export function ActionFields({
                 </p>
               )}
             </div>
+          ) : action.kind === 'consolidateMemory' ? (
+            <p className="settings-field-note">{t('action.consolidateNote')}</p>
           ) : (
             <CommandActionFields
               action={action}
@@ -104,6 +117,6 @@ export function ActionFields({
           )}
         </TabsContent>
       </Tabs>
-    </section>
+    </SettingsGroup>
   );
 }

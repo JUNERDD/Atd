@@ -13,6 +13,9 @@ export const AUTOMATION_MIN_INTERVAL_MINUTES = 15;
 export const AUTOMATION_MAX_INTERVAL_MINUTES = 10080;
 /** How many levels below a watched folder a recursive folder trigger looks. */
 export const AUTOMATION_FOLDER_MAX_DEPTH = 4;
+/** Bounds of an idle trigger's idle time: how long the Mac must have had no input. */
+export const AUTOMATION_IDLE_MIN_MINUTES = 5;
+export const AUTOMATION_IDLE_MAX_MINUTES = 120;
 /** A watched folder holding more matching files than this is not watched; the trigger reports it. */
 export const AUTOMATION_FOLDER_MAX_FILES = 10000;
 /** Files one folder run is given; more changes wait for the next run. */
@@ -134,6 +137,23 @@ export const AutomationTriggerSchema = Type.Union([
       patterns: Type.Array(Type.String({ minLength: 1, maxLength: 100 }), { maxItems: 10 }),
       /** Whether files in subfolders count, down to `AUTOMATION_FOLDER_MAX_DEPTH` levels. */
       recursive: Type.Boolean(),
+    },
+    { additionalProperties: false },
+  ),
+  Type.Object(
+    {
+      kind: Type.Literal('idle'),
+      /**
+       * Fires at most once per calendar day, the first time the Mac has had no keyboard, mouse or
+       * trackpad input for this long and no task of the person's is running. The shell reports
+       * the system idle time (`POST /v1/system-activity`); without a report it never fires.
+       */
+      idleMinutes: Type.Integer({
+        minimum: AUTOMATION_IDLE_MIN_MINUTES,
+        maximum: AUTOMATION_IDLE_MAX_MINUTES,
+      }),
+      /** IANA time zone whose calendar day bounds the once-a-day run. */
+      timezone: Type.String({ minLength: 1, maxLength: 64 }),
     },
     { additionalProperties: false },
   ),

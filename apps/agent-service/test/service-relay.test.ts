@@ -61,9 +61,14 @@ const SHELL_APP_PATHS = new Set([
 
 /**
  * Automation notices (decision D5): the shell pulls and acknowledges them once for all windows,
- * so a page cannot swallow a notification before it is posted.
+ * so a page cannot swallow a notification before it is posted. Only the shell reports how long
+ * the Mac has been idle, so a page cannot make idle triggers fire.
  */
-const SHELL_AUTOMATION_PATHS = new Set(['/v1/automation-notices', '/v1/automation-notices/ack']);
+const SHELL_AUTOMATION_PATHS = new Set([
+  '/v1/automation-notices',
+  '/v1/automation-notices/ack',
+  '/v1/system-activity',
+]);
 
 /** The routes only direct main-token clients may call (the relay refuses them). */
 function isShellPath(pathPattern: string): boolean {
@@ -117,6 +122,7 @@ test('the route manifest classifies every route the service serves', async () =>
     'PATCH /v1/automation-settings',
     'GET /v1/automation-notices',
     'POST /v1/automation-notices/ack',
+    'POST /v1/system-activity',
     ...[...SHELL_MCP_PATHS].map((pathPattern) =>
       pathPattern === '/v1/mcp/snapshot' ? `GET ${pathPattern}` : `POST ${pathPattern}`,
     ),

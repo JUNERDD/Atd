@@ -10,10 +10,10 @@ import {
   type MemoryUnit,
 } from '@atd/agent-contracts';
 import { ConflictError } from '../errors.js';
-import type { MemoryHit, MemoryUnitInput, MemoryUnitPatch } from './engine-types.js';
+import type { LearnerOp, MemoryHit, MemoryUnitInput, MemoryUnitPatch } from './engine-types.js';
 import { searchTerms, snippetFor } from './fts-query.js';
 import { MemoryIndex, type IndexQuery } from './index-db.js';
-import type { LearnPlan } from './learn-commit.js';
+import { planLearned, type CommitContext, type LearnPlan } from './learn-commit.js';
 import {
   applyProposal,
   mergeProposals,
@@ -214,7 +214,14 @@ export class MemoryStore {
     await this.keep(mergeProposals(this.pending, [unitProposal('core', unit, '', origin, now())]));
   }
 
-  /** Writes a learner commit's units and queues its suggestions. */
+  /** What `ops` would write among the current units and suggestions (learn-commit.ts). */
+  async plan(ops: readonly LearnerOp[], context: CommitContext): Promise<LearnPlan> {
+    const { units } = await this.files.read(true);
+    const askFirst = this.current.askFirst;
+    return planLearned(ops, { ...context, units, pending: this.pending, askFirst, now: now() });
+  }
+
+  /** Writes a learner or consolidation commit's units and queues its suggestions. */
   async commit(plan: LearnPlan): Promise<{ applied: number; proposed: number }> {
     for (const write of plan.writes) {
       if (write.kind === 'create') await this.files.create(write.draft);

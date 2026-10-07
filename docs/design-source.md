@@ -1097,6 +1097,40 @@ Figma 侧未同步：本会话云端 Figma 工具不可用，本地 Figma MCP �
 - 既有问题，本次未改：窄宽度下设置概览头部的描述单行截断；抽屉布局子页面的面包屑显示为「…」；命令菜单没有 Remove shortcut 项。
 - 往窗口布局的插槽里放内容时，要先在插槽外按目标宽度建好再放入，否则会留下旧的几何（裁切、重叠）。之后新增画面请沿用这个做法。
 
+### 默认自动化「整理记忆」：Mac 空闲触发与整理记忆动作
+
+用户决定（2026-10-06）：每个数据目录预置一个自动化「整理记忆 / Consolidate memory」，每天在 Mac 空闲时运行一次；随后用户更正为空闲 2 小时（`idleMinutes: 120`），新建的空闲触发仍默认 15 分钟。代码见 `trigger-fields.tsx`（第四个页签「Mac is idle」，在 Folder 与 Another automation 之间）、`idle-trigger-fields.tsx`、`action-fields.tsx`（「Consolidate memory」页签，Lucide brain）、`permission-fields.tsx`、`policy-fields.tsx`（空闲触发不显示 Missed runs）、`run-row.tsx`、`run-outcome.tsx`（空闲触发图标 Lucide monitor-pause）与服务的 `automations/defaults.ts`。文件中的编辑页已按分组显示（每组有标题与说明，Permissions 为独立分区 [App / Automation permissions section · Rhea](https://www.figma.com/design/PROJECT_FILE_KEY/Atd?node-id=2414-155702)），新状态沿用这一结构。
+
+组件（32 · Automations）：
+
+| Figma 节点                                                                                                                              | 改动                                                                                                                                                                                                                                                              |
+| --------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [App / Automation kind tabs · Rhea](https://www.figma.com/design/PROJECT_FILE_KEY/Atd?node-id=2346-139320)                        | 触发的三个变体在 Folder 后加入「Mac is idle」（monitor-pause），动作的两个变体在 Command 后加入「Consolidate memory」（brain），均为 App / Tab trigger · Rhea 实例；新增 `Selected=Mac is idle`（`2419:155764`）与 `Selected=Consolidate memory`（`2419:155805`） |
+| [Trigger=Mac is idle](https://www.figma.com/design/PROJECT_FILE_KEY/Atd?node-id=2419-156259)（`2419:156259`）                     | 「Idle for」（组件默认 15 minutes）与 Time zone 两个 Select 同行，其下为每天至多一次的说明；没有下次运行（服务无法预知空闲时间）                                                                                                                                  |
+| [Action=Consolidate memory](https://www.figma.com/design/PROJECT_FILE_KEY/Atd?node-id=2419-156370)（`2419:156370`）               | 说明改为「Runs work on your memory directly and don’t start a task.」，面板只有整理说明                                                                                                                                                                           |
+| [Permissions · Action=Consolidate memory](https://www.figma.com/design/PROJECT_FILE_KEY/Atd?node-id=2419-156436)（`2419:156436`） | 只有标题与「these settings don’t apply」说明，没有字段                                                                                                                                                                                                            |
+| [Run row · Tone=Progress, Summary=Full](https://www.figma.com/design/PROJECT_FILE_KEY/Atd?node-id=2419-156472)（`2419:156472`）   | 不开任务的运行（整理记忆）：摘要不截断，配合关闭 `Show open task` 使用；Meta 以来源开头（Mac idle、Run now）。memoryPaused 跳过用现有 `Tone=Muted, Summary=No` 加 Reason，图标覆盖为 skip-forward                                                                 |
+
+另外：App / Automation row · Rhea 的 `Trigger icon` 对空闲触发用 Lucide / monitor-pause；How it runs 分区对空闲（与联动）触发关闭 `Show missed runs` 并把说明覆盖为「The model it uses and how long a run may take.」。以上组件说明已同步。为放下运行行的新列，运行行组件集加宽一列，其右侧的种类页签、Field error、下次运行与文件夹选择右移 760。Lucide brain（`3a08e847…`）与 monitor-pause（`bbfa5dd4…`）是共享库实例。
+
+画面（AU 区块新增一行「AU5 · Default automation · Consolidate memory」，深色、英文，与现有画面一致）：
+
+- [AU5.01 概览 1000](https://www.figma.com/design/PROJECT_FILE_KEY/Atd?node-id=2419-156499)：按名称排序，「Consolidate memory」排第一（monitor-pause，「Once a day, when the Mac has been idle for 2 hours」，开关打开，「Last run today 3:12 PM: Result ready」，无未读，整理的运行结算即已读）；其余行顺移一位，Run now 不可用状态随行移动。
+- AU5 编辑页：[1000](https://www.figma.com/design/PROJECT_FILE_KEY/Atd?node-id=2419-156507)、[480](https://www.figma.com/design/PROJECT_FILE_KEY/Atd?node-id=2419-156514)、[760 × 480 短高](https://www.figma.com/design/PROJECT_FILE_KEY/Atd?node-id=2419-156521)、[完整正文（仅供评审，1000 × 1460）](https://www.figma.com/design/PROJECT_FILE_KEY/Atd?node-id=2419-156537)。Idle for 为 2 hours；Permissions 只有说明；How it runs 无 Missed runs、Stop after 15 minutes；Results 为 When there’s something new，Pass on the previous result 关闭（与 `defaults.ts` 一致）。
+- [AU5.05 运行记录 1000](https://www.figma.com/design/PROJECT_FILE_KEY/Atd?node-id=2419-156528)：Result ready（完整摘要，无 Open task）、Nothing new、Skipped（「Automatic learning is off, so memory wasn’t changed.」）、Ran out of time、Run now 触发的 Result ready、再一次 Skipped。
+- 原型：AU5.01 第一行打开 AU5.02，AU5.02 的 Back/Cancel 与 AU5.05 的 Back 回到 AU5.01，AU5.05 的 Edit 到 AU5.02。
+
+验证范围：截图检查新增的种类页签七个变体、三个分区变体、运行行 Full 变体、AU5 全部六个画面，以及受影响的既有画面 AU1.02、AU2.30（所有触发变体都显示四个页签）。回读 AU5 的 537 个实例与组件区块的实例，没有丢失主组件；远程实例来自共享 shadcn 库；AU5 内与 AU 区块边界内没有重叠。
+
+已知差异：
+
+- 默认项的 `apps/agent-service/src/automations/defaults.ts` 已同步为 `idleMinutes: 120`，与画面的 2 小时一致；新建空闲触发仍默认 15 分钟。
+- 种类页签加宽后（触发 486、动作 391），除 320 外，480 与 760（内容宽 ≤ 445）的触发页签也被裁切；代码中可横向滚动。
+- 只有一个 Stop after 时它占满整行，这是代码 `auto-fit` 网格的实际表现，Figma 照画。
+- memoryPaused 跳过在代码中也有 `finishedAt`，Meta 显示「Took 0 sec」，Figma 照画。
+- 未画：AU1 其余宽度与状态画面中的默认行；AU2.30 没有空闲触发列；中文画面（「整理记忆」「每天一次，在 Mac 空闲 2 小时后」）；Run now 的「Run started; its result shows in the run history.」toast；空闲触发的预览错误。
+- 本轮期间文件中的 App / Automations list content · Rhea 被他人同时改动（「Pause all automations」改为页脚的药丸开关），AU5.01 随组件继承，未单独核对该改动。
+
 ## 2026-10-06 设置内容头部窄宽度下的标题截断
 
 用户在浏览器渲染的设置窗口中发现：320 宽（抽屉布局）时，头部右端的语言选择器像是盖在面包屑上，「Permissions」「Automations」被切在药丸下面。

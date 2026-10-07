@@ -33,6 +33,7 @@
     "cancel": "Cancel",
     "saved": "Automation saved.",
     "started": "Run started; its task shows in the task panel.",
+    "startedMemory": "Run started; its result shows in the run history.",
     "alreadyRunning": "{{name}} is already running."
   },
   "command": {
@@ -90,14 +91,17 @@
     "matching": "{{trigger}}, named {{patterns}}",
     "deletedAutomation": "an automation that was deleted",
     "chain": "After {{name}} {{outcomes}}",
-    "chainAny": "After each run of {{name}}"
+    "chainAny": "After each run of {{name}}",
+    "idle": "Once a day, when the Mac has been idle for {{duration}}"
   },
   "trigger": {
     "title": "When it runs",
+    "description": "Runs start on their own while Atd is open.",
     "kindLabel": "What starts it",
     "kinds": {
       "schedule": "Schedule",
       "folder": "Folder",
+      "idle": "Mac is idle",
       "automation": "Another automation"
     },
     "nextRuns": "Next runs",
@@ -138,6 +142,10 @@
     "expressionNote": "Five fields: minute, hour, day of the month, month and day of the week. Runs must be at least 15 minutes apart.",
     "timeZone": "Time zone",
     "systemZone": "{{zone}} (this Mac)"
+  },
+  "idle": {
+    "after": "Idle for",
+    "note": "Runs at most once a day: the first time this Mac has had no keyboard, mouse or trackpad input for this long while none of your tasks is running. Atd needs to be open, and a day without such a moment has no run. The time zone decides when each day begins."
   },
   "folder": {
     "folder": "Folder",
@@ -194,10 +202,13 @@
   },
   "action": {
     "title": "What it does",
+    "description": "Each run starts a new task in the task panel.",
+    "descriptionMemory": "Runs work on your memory directly and don’t start a task.",
     "kindLabel": "Action",
     "kinds": {
       "prompt": "Prompt",
-      "command": "Command"
+      "command": "Command",
+      "consolidateMemory": "Consolidate memory"
     },
     "prompt": "Prompt",
     "promptPlaceholder": "e.g. Summarize what arrived in my Downloads folder today and list anything that needs a reply.",
@@ -210,11 +221,19 @@
     "input": "Input",
     "inputPlaceholder": "Text the command works on",
     "inputNote": "The command’s input text. Folder runs also give it the files that changed.",
-    "parameters": "Parameters"
+    "parameters": "Parameters",
+    "consolidateNote": "Merges duplicate memories and rewrites outdated ones, keeping their history. Memories it would remove become suggestions you confirm in Memory › Suggestions. While automatic learning is off, it changes nothing."
+  },
+  "permissions": {
+    "title": "Permissions",
+    "description": "Runs happen without you, so choose what each one may do and read on its own.",
+    "notApplicable": "Consolidation only works on your memory: it uses no tools, reads no folders and needs no approval, so these settings don’t apply."
   },
   "policy": {
     "title": "How it runs",
-    "tier": "Permissions",
+    "description": "The model it uses, how long a run may take, and what happens to runs missed while Atd was closed.",
+    "descriptionChain": "The model it uses and how long a run may take.",
+    "tier": "Approval",
     "tiers": {
       "manual": "Nobody is there to approve, so every file change and terminal command is declined. Runs can still read and report.",
       "auto": "A model checks each action against this automation. Safe actions run; anything it would ask you about is declined.",
@@ -253,6 +272,7 @@
   },
   "delivery": {
     "title": "Results",
+    "description": "How finished runs reach you, and what the next run knows about them.",
     "notify": "Notify me",
     "options": {
       "whenNew": "When there’s something new",
@@ -351,6 +371,7 @@
     "rateLimited": "It had already run 12 times in the last hour.",
     "paused": "All automations were paused.",
     "unsupportedFiles": "None of its files could be given to the command.",
+    "memoryPaused": "Automatic learning is off, so memory wasn’t changed.",
     "modelUnavailable": "No model was available.",
     "commandUnavailable": "Its command was gone, turned off, or needed input an automation can’t give.",
     "folderUnavailable": "A folder it uses wasn’t available.",
@@ -361,6 +382,7 @@
   "source": {
     "schedule": "Scheduled",
     "folder": "Folder change",
+    "idle": "Mac idle",
     "automation": "After another automation",
     "manual": "Run now"
   }

@@ -3,9 +3,11 @@ import type { EventLog } from '../event-log.js';
 import type { FolderStore } from '../folders/store.js';
 import type { Ledger } from '../ledger.js';
 import type { Logger } from '../logging.js';
+import type { ConsolidateMemory } from '../memory/consolidation/index.js';
 import type { ResourceStore } from '../resources.js';
 import type { RunnerManager } from '../runner-manager.js';
 import type { ServicePaths } from '../storage.js';
+import type { SystemActivity } from '../system-activity.js';
 import type { FolderSnapshots } from './folder-snapshots.js';
 import type { FolderScanner } from './folder-watch.js';
 import type { CommandLauncher } from './launch-run.js';
@@ -31,6 +33,10 @@ export interface EngineDeps {
   launchCommand: CommandLauncher;
   folders: Pick<FolderStore, 'resolve'>;
   resources: Pick<ResourceStore, 'save'>;
+  /** The memory engine's job that `consolidateMemory` runs carry out. */
+  consolidateMemory: ConsolidateMemory;
+  /** How long the Mac has had no input, as the shell last reported it (idle triggers). */
+  activity: Pick<SystemActivity, 'idleSeconds'>;
   log: Logger;
   /** The wall clock (epoch ms); injectable so tests drive the tick. */
   now: () => number;

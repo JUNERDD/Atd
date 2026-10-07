@@ -16,7 +16,7 @@ import { ConnectionStore } from '../credentials/connections.js';
 import type { FolderStore } from '../folders/store.js';
 import { findPluginCommand } from '../plugins/commands.js';
 import { TEMP_CONNECTION_ID } from '../tasks/run-selection.js';
-import { scheduleProblem } from './schedule.js';
+import { scheduleProblem, validTimeZone } from './schedule.js';
 
 /**
  * What must hold for an automation to be saved and to fire: its trigger resolves, its folders are
@@ -115,6 +115,8 @@ export function triggerProblem(
       return scheduleProblem(trigger, ctx.now, forSave);
     case 'folder':
       return folderRegistered(ctx.folders, trigger.folderId) ? undefined : 'unknownFolder';
+    case 'idle':
+      return validTimeZone(trigger.timezone) ? undefined : 'invalidTimeZone';
     case 'automation': {
       if (trigger.automationId === automationId) return 'chainLoop';
       if (!ctx.automations.some((item) => item.id === trigger.automationId))
@@ -195,6 +197,18 @@ export function runModel(
   return { connectionId: command.model.connectionId, modelId: command.model.modelId };
 }
 
+/**
+ * Whether the policy's readable folders are registered. A memory consolidation reads no folder,
+ * so the folders it carries are ignored, as its tier, tools and memory switch are.
+ */
+function policyFoldersRegistered(
+  draft: AutomationDraft,
+  folders: Pick<FolderStore, 'resolve'>,
+): boolean {
+  if (draft.action.kind === 'consolidateMemory') return true;
+  return draft.policy.folderIds.every((id) => folderRegistered(folders, id));
+}
+
 /** Refuses a draft that cannot be saved; `automationId` names the automation an update edits. */
 export async function checkDraft(
   draft: AutomationDraft,
@@ -203,8 +217,7 @@ export async function checkDraft(
 ): Promise<void> {
   const trigger = triggerProblem(draft.trigger, ctx, automationId, true);
   if (trigger) throw problemError(trigger);
-  if (!draft.policy.folderIds.every((id) => folderRegistered(ctx.folders, id)))
-    throw problemError('unknownFolder');
+  if (!policyFoldersRegistered(draft, ctx.folders)) throw problemError('unknownFolder');
   if (draft.policy.model && !(await ctx.lookups.modelAvailable(draft.policy.model)))
     throw problemError('modelUnavailable');
   if (draft.action.kind === 'command') {
@@ -226,10 +239,7 @@ export async function firingProblem(
 ): Promise<Problem | undefined> {
   const trigger = triggerProblem(automation.trigger, ctx, automation.id, false);
   if (trigger) return trigger;
-  if (
-    folderTrouble ||
-    !automation.policy.folderIds.every((id) => folderRegistered(ctx.folders, id))
-  )
+  if (folderTrouble || !policyFoldersRegistered(automation, ctx.folders))
     return 'folderUnavailable';
   const { action } = automation;
   const command = action.kind === 'command' ? await ctx.lookups.command(action.commandId) : null;

@@ -1,5 +1,6 @@
 import { readFile, realpath } from 'node:fs/promises';
 import path from 'node:path';
+import { isActiveStatus } from '@atd/agent-contracts';
 import type { Ledger } from './ledger.js';
 
 /**
@@ -58,6 +59,18 @@ export function unattendedMcpCall(serverId: string, tool: string): string {
 export function isUnattendedRun(ledger: Ledger, taskId: string, runId: string): boolean {
   const task = ledger.data.tasks.find((item) => item.id === taskId);
   return task?.runs.find((run) => run.id === runId)?.snapshot.trigger !== undefined;
+}
+
+/**
+ * Runs the person started that have not ended, waiting for confirmation or input included:
+ * while one is going the person counts as present, so idle triggers hold off.
+ */
+export function attendedActiveRuns(ledger: Pick<Ledger, 'data'>): number {
+  let count = 0;
+  for (const task of ledger.data.tasks)
+    for (const run of task.runs)
+      if (isActiveStatus(run.status) && run.snapshot.trigger === undefined) count += 1;
+  return count;
 }
 
 /** One unattended answer as its audit line records it; extra fields are kept. */

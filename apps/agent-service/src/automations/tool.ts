@@ -108,7 +108,7 @@ export const AutomationToolParametersSchema = Type.Object(
     automation: Type.Optional({
       ...AutomationDraftSchema,
       description:
-        "create, update: the whole automation. Schedule times are wall-clock times in the trigger time zone (an IANA id; context answers the Mac's); one-time runs are ISO date-times with an offset; intervals and custom cron fire at most every 15 minutes. A folder trigger and policy.folderIds name folders by the ids context lists. permissionTier decides what the unattended runs may do: actions it would ask about are declined.",
+        "create, update: the whole automation. Schedule times are wall-clock times in the trigger time zone (an IANA id; context answers the Mac's); one-time runs are ISO date-times with an offset; intervals and custom cron fire at most every 15 minutes. An idle trigger fires at most once a day, the first time the Mac has had no input for idleMinutes (5 to 120) while none of the person's tasks is running; its time zone bounds the day. A folder trigger and policy.folderIds name folders by the ids context lists. permissionTier decides what the unattended runs may do: actions it would ask about are declined. The consolidateMemory action starts no task: the memory engine merges duplicate memories and rewrites outdated ones, and only suggests removals; it uses policy.model, thinkingLevel and maxDurationMinutes and ignores the tier, tools, memory switch and folders.",
     }),
     trigger: Type.Optional({ ...AutomationTriggerSchema, description: 'preview: the trigger.' }),
   },
@@ -116,7 +116,7 @@ export const AutomationToolParametersSchema = Type.Object(
 );
 
 const DESCRIPTION =
-  "Manage the person's automations: saved agent work that starts by itself on a schedule, when files arrive in a folder attached to this conversation, or after another automation, and runs as a new task with nobody present. Read context for the time, time zone and folders a trigger is written against, and preview a trigger before saving it. Saving, deleting, switching and running ask the person to confirm. A run that an automation started cannot change or run automations. To update, get the automation first and pass its revision.";
+  "Manage the person's automations: saved work that starts by itself on a schedule, when files arrive in a folder attached to this conversation, once a day when the Mac is idle, or after another automation, and either runs a prompt or command as a new task with nobody present or consolidates memory. Read context for the time, time zone and folders a trigger is written against, and preview a trigger before saving it. Saving, deleting, switching and running ask the person to confirm. A run that an automation started cannot change or run automations. To update, get the automation first and pass its revision.";
 
 interface ToolContext {
   dataDir: string;
@@ -240,7 +240,10 @@ async function write(service: AutomationService, call: WriteCall, approve: Appro
     case 'run': {
       const current = service.automation(call.automationId);
       if (service.engine.running(current.id)) throw new Error('The automation is already running.');
-      const note = 'Runs it now, as a new task with nobody present.\n\n';
+      const note =
+        current.action.kind === 'consolidateMemory'
+          ? 'Consolidates memory now.\n\n'
+          : 'Runs it now, as a new task with nobody present.\n\n';
       await approve(`Run the automation "${current.name}" now?`, current, note);
       const run = await service.engine.runNow(current.id);
       return JSON.stringify({ runId: run.id, outcome: run.outcome });

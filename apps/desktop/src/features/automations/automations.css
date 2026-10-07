@@ -102,10 +102,6 @@
   }
 }
 
-/* The editor: its sections stand further apart than the fields inside them. */
-.automation-editor-fields {
-  gap: 24px;
-}
 /* The footer's leading group, Create or Edit with AI and Run now; `.editor-footer > div` pushes
    the trailing Cancel and Save to the end, onto a line of their own when both do not fit. */
 .automation-editor .editor-footer > .automation-editor-tools {
@@ -188,6 +184,14 @@
 }
 .automation-next-runs[aria-busy='true'] {
   opacity: 0.6;
+}
+/* Room for the runs the preview returns (three, or the one of a one-time schedule) at 20px a
+   line, held while it loads so the block keeps its height. */
+.automation-next-runs-body {
+  min-height: 60px;
+}
+.automation-next-runs[data-rows='1'] > .automation-next-runs-body {
+  min-height: 20px;
 }
 .automation-next-runs-title {
   margin: 0;

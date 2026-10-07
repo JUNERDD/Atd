@@ -43,6 +43,7 @@ public final class ShellController {
   /// The WidgetKit extension's files and the service's list of live widgets.
   let widgets: WidgetSyncController
   let automationNotices: AutomationNoticeFeed?
+  let systemActivity: SystemActivityReporter
   private var statusItem: StatusItemController?
   private var registrar: HotKeyRegistrar?
   private(set) var menuStatus = MenuBarStatus(availability: .connecting, running: 0, attention: 0)
@@ -118,6 +119,7 @@ public final class ShellController {
     widgets = WidgetSyncController(
       services: services, files: .forMainBundle())
     automationNotices = Self.makeAutomationNotices(services: services)
+    systemActivity = Self.makeSystemActivity(services: services)
     // A quit ends a capture session first: `activeRuns` runs before the quit alert could open
     // beneath the overlays, `hideWindows` on an unattended quit that skips it.
     quitGuard = QuitGuard(
@@ -169,6 +171,7 @@ public final class ShellController {
       menu: { [weak self] in AppMenus.statusMenu(self?.menuActions ?? .inert) })
     control.onConnectionState = { [weak self] state in
       self?.refreshStatus()
+      self?.systemActivityConnectionChanged(state)
       if state == .connected {
         self?.attachments.serviceDidConnect()
         self?.widgets.serviceDidConnect()
@@ -180,6 +183,7 @@ public final class ShellController {
     services.start()
     startWidgets()
     startAutomationNotices()
+    startSystemActivity()
     control.start()
     updater.start()
     miniPanel.start()

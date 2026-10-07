@@ -46,6 +46,8 @@ export * from './apps-ipc.js';
 export * from './widgets.js';
 export * from './widget-sync.js';
 export * from './run-trigger.js';
+export * from './automation-actions.js';
 export * from './automation-triggers.js';
 export * from './automations.js';
 export * from './automation-notices.js';
+export * from './system-activity.js';

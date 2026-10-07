@@ -77,12 +77,12 @@ export async function writeProposals(
 }
 
 /**
- * A new suggestion from `origin`, its reason on one line; throws a TypeError when it breaks the
- * suggestion limits.
+ * A new suggestion from `origin` (null when no task made it, as for a consolidation), its reason on
+ * one line; throws a TypeError when it breaks the suggestion limits.
  */
 export function newProposal(
   fields: ProposalFields,
-  origin: MemoryOrigin,
+  origin: MemoryOrigin | null,
   now: string,
 ): MemoryProposal {
   const proposal: MemoryProposal = {
@@ -102,7 +102,7 @@ export function unitProposal(
   kind: 'remove' | 'core',
   unit: MemoryUnit,
   reason: string,
-  origin: MemoryOrigin,
+  origin: MemoryOrigin | null,
   now: string,
 ): MemoryProposal {
   const { id, name, description, type, revision } = unit;

@@ -33,6 +33,7 @@
     "cancel": "取消",
     "saved": "自动化已保存。",
     "started": "已开始运行，任务会显示在任务面板中。",
+    "startedMemory": "已开始运行，结果会显示在运行记录中。",
     "alreadyRunning": "{{name}} 正在运行。"
   },
   "command": {
@@ -88,14 +89,17 @@
     "matching": "{{trigger}}，文件名为 {{patterns}}",
     "deletedAutomation": "已删除的自动化",
     "chain": "“{{name}}”{{outcomes}}后",
-    "chainAny": "“{{name}}”每次运行后"
+    "chainAny": "“{{name}}”每次运行后",
+    "idle": "每天一次，在 Mac 空闲 {{duration}}后"
   },
   "trigger": {
     "title": "何时运行",
+    "description": "Atd 打开期间，运行会自动开始。",
     "kindLabel": "启动方式",
     "kinds": {
       "schedule": "计划",
       "folder": "文件夹",
+      "idle": "Mac 空闲时",
       "automation": "另一个自动化"
     },
     "nextRuns": "接下来的运行",
@@ -136,6 +140,10 @@
     "expressionNote": "共五个字段：分钟、小时、日期、月份和星期。两次运行至少间隔 15 分钟。",
     "timeZone": "时区",
     "systemZone": "{{zone}}（这台 Mac）"
+  },
+  "idle": {
+    "after": "空闲时长",
+    "note": "每天最多运行一次：在这台 Mac 首次连续这么久没有键盘、鼠标或触控板操作，且你的任务都没有在运行时开始。Atd 需要保持打开；当天没有出现这样的空闲时段就不会运行。时区决定每天从何时算起。"
   },
   "folder": {
     "folder": "文件夹",
@@ -192,10 +200,13 @@
   },
   "action": {
     "title": "做什么",
+    "description": "每次运行都会在任务面板中新建一个任务。",
+    "descriptionMemory": "运行会直接整理你的记忆，不会新建任务。",
     "kindLabel": "操作",
     "kinds": {
       "prompt": "提示词",
-      "command": "命令"
+      "command": "命令",
+      "consolidateMemory": "整理记忆"
     },
     "prompt": "提示词",
     "promptPlaceholder": "例如：总结今天下载文件夹里收到的内容，并列出需要回复的事项。",
@@ -208,11 +219,19 @@
     "input": "输入",
     "inputPlaceholder": "命令要处理的文本",
     "inputNote": "命令的输入文本。由文件夹触发的运行还会把变化的文件交给它。",
-    "parameters": "参数"
+    "parameters": "参数",
+    "consolidateNote": "合并重复的记忆、改写过时的记忆，并保留修改历史。它认为该删除的记忆会变成建议，由你在「记忆 › 建议」中确认。自动学习关闭期间，它不会做任何更改。"
+  },
+  "permissions": {
+    "title": "权限",
+    "description": "运行时你不在场，请决定每次运行可以自行执行和读取哪些内容。",
+    "notApplicable": "整理只处理你的记忆：不使用工具、不读取文件夹，也无需批准，因此这些设置不适用。"
   },
   "policy": {
     "title": "如何运行",
-    "tier": "权限",
+    "description": "使用的模型、单次运行的时长上限，以及 Atd 关闭期间错过的运行如何处理。",
+    "descriptionChain": "使用的模型和单次运行的时长上限。",
+    "tier": "批准方式",
     "tiers": {
       "manual": "无人在场批准，因此所有文件更改和终端命令都会被拒绝。运行仍可读取内容并汇报。",
       "auto": "由模型对照此自动化检查每个操作：安全的直接执行，原本需要询问你的操作会被拒绝。",
@@ -249,6 +268,7 @@
   },
   "delivery": {
     "title": "结果",
+    "description": "运行结束后如何通知你，以及下次运行能看到什么。",
     "notify": "通知我",
     "options": {
       "whenNew": "有新内容时",
@@ -345,6 +365,7 @@
     "rateLimited": "过去一小时内它已运行了 12 次。",
     "paused": "所有自动化都已暂停。",
     "unsupportedFiles": "这些文件都无法交给该命令。",
+    "memoryPaused": "自动学习已关闭，因此没有更改记忆。",
     "modelUnavailable": "没有可用的模型。",
     "commandUnavailable": "它的命令已不存在、已关闭，或需要自动化无法提供的输入。",
     "folderUnavailable": "它使用的某个文件夹不可用。",
@@ -355,6 +376,7 @@
   "source": {
     "schedule": "按计划",
     "folder": "文件夹变化",
+    "idle": "Mac 空闲",
     "automation": "跟随另一个自动化",
     "manual": "立即运行"
   }

@@ -16,12 +16,14 @@ import { FolderStore } from './folders/store.js';
 import { Ledger } from './ledger.js';
 import { createLogger, type Logger } from './logging.js';
 import { McpAuthority, migrateMcpSecrets } from './mcp/index.js';
+import { createMemoryConsolidator } from './memory/consolidation/index.js';
 import { PluginHost } from './plugins/host.js';
 import { recoverService, type RecoveryReport } from './recovery.js';
 import { ResourceStore } from './resources.js';
 import { RunnerManager } from './runner-manager.js';
 import { buildServer, type ServerDeps } from './server.js';
 import { SettingsStore } from './settings/store.js';
+import { SystemActivity } from './system-activity.js';
 import type { RunnerContext } from './task-runner.js';
 
 export type { ServiceConfig } from './config.js';
@@ -115,6 +117,9 @@ export async function createService(
       launchCommand({ paths: config.paths, ledger, manager }, request, internal),
     folders,
     resources,
+    consolidateMemory: createMemoryConsolidator({ paths: config.paths, log }),
+    activity: new SystemActivity(),
+    language: () => settings.current().settings.language,
     log,
   });
 

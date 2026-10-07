@@ -115,6 +115,9 @@ function triggerProblems(trigger: AutomationDraft['trigger']): AutomationProblem
           ? { patterns: { code: 'patternsInvalid' } }
           : {}),
       };
+    case 'idle':
+      // The idle time comes from a list of allowed values, so only the zone can be wrong.
+      return isTimeZone(trigger.timezone) ? {} : { timezone: { code: 'timeZoneRequired' } };
     case 'automation':
       return {
         ...(trigger.automationId ? {} : { chain: { code: 'automationRequired' } }),
@@ -153,6 +156,8 @@ function actionProblems(
   { action, trigger }: AutomationDraft,
   commands: readonly CommandDefinition[],
 ): AutomationProblems {
+  // Consolidating memory has nothing to fill in.
+  if (action.kind === 'consolidateMemory') return {};
   if (action.kind === 'prompt')
     return action.prompt.trim() ? {} : { prompt: { code: 'promptRequired' } };
   if (!action.commandId) return { command: { code: 'commandRequired' } };

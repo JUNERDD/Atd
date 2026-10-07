@@ -1,4 +1,5 @@
 import { Type, type Static } from 'typebox';
+import { AutomationActionSchema } from './automation-actions.js';
 import {
   AutomationResultSchema,
   AutomationTriggerProblemSchema,
@@ -21,33 +22,6 @@ import { ModelSelectionSchema, ServiceToolIdSchema } from './task.js';
 export const MAX_AUTOMATIONS = 100;
 /** Run records kept per automation; older ones are dropped, newest first. */
 export const AUTOMATION_RUN_HISTORY = 100;
-
-/** What a run does: a prompt written for the automation, or a saved command with bound values. */
-export const AutomationActionSchema = Type.Union([
-  Type.Object(
-    { kind: Type.Literal('prompt'), prompt: Type.String({ minLength: 1, maxLength: 20000 }) },
-    { additionalProperties: false },
-  ),
-  Type.Object(
-    {
-      kind: Type.Literal('command'),
-      commandId: Identifier,
-      /** Values for the command's parameters by key; missing ones take the command's defaults. */
-      arguments: Type.Record(
-        Type.String(),
-        Type.Union([Type.String({ maxLength: 10000 }), Type.Number(), Type.Boolean()]),
-      ),
-      /**
-       * Text for the command's `{{input}}`. A folder trigger hands the files that fired it to
-       * `{{files}}`. Commands that read the selection, the clipboard or a screenshot cannot run
-       * unattended and are refused when the automation is saved.
-       */
-      input: Type.String({ maxLength: 20000 }),
-    },
-    { additionalProperties: false },
-  ),
-]);
-export type AutomationAction = Static<typeof AutomationActionSchema>;
 
 /**
  * Schedule occurrences missed while Atd was closed or the Mac slept: run the latest one once,
@@ -156,11 +130,12 @@ export type AutomationOutcome = Static<typeof AutomationOutcomeSchema>;
 /**
  * Why a run was skipped or failed, for the client's own wording. Skips: the previous run was still
  * going, the occurrence was missed and missed runs are skipped, too many runs in the last hour,
- * every automation is paused, or none of the files that fired a command's `{{files}}` can be
- * attached (they are not retried). Failures before a task started: no usable model, the command is gone,
- * turned off or needs input an automation cannot give, a folder is unregistered or unreadable, or
- * the service refused the run. Failures after: the agent reported it could not finish, or the task
- * run failed (`detail` says how).
+ * every automation is paused, none of the files that fired a command's `{{files}}` can be
+ * attached (they are not retried), or memory learning is paused so consolidation may not write.
+ * Failures before a task started: no usable model, the command is gone, turned off or needs input
+ * an automation cannot give, a folder is unregistered or unreadable, or the service refused the
+ * run. Failures after: the agent reported it could not finish, or the task run failed (`detail`
+ * says how); a consolidation that fails says how in `detail` under `runFailed`.
  */
 export const AutomationRunReasonSchema = Type.Union([
   Type.Literal('overlap'),
@@ -168,6 +143,7 @@ export const AutomationRunReasonSchema = Type.Union([
   Type.Literal('rateLimited'),
   Type.Literal('paused'),
   Type.Literal('unsupportedFiles'),
+  Type.Literal('memoryPaused'),
   Type.Literal('modelUnavailable'),
   Type.Literal('commandUnavailable'),
   Type.Literal('folderUnavailable'),

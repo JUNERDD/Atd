@@ -56,8 +56,13 @@ const daily: AutomationTrigger = {
 };
 
 test('automations are created, read, changed, switched and deleted', async () => {
-  const empty = parse(AutomationListResponseSchema, (await send('/v1/automations')).json);
-  assert.deepEqual(empty, { automations: [], paused: false });
+  const fresh = parse(AutomationListResponseSchema, (await send('/v1/automations')).json);
+  assert.deepEqual(
+    fresh.automations.map(({ automation }) => [automation.id, automation.trigger.kind]),
+    [['default-memory-consolidation', 'idle']],
+    'a fresh data dir holds the default memory consolidation',
+  );
+  assert.equal(fresh.paused, false);
 
   const stream = await openStream(harness.baseUrl, harness.config.token);
   const created = await send('/v1/automations', 'POST', draft({ trigger: daily }));
@@ -163,6 +168,13 @@ test('saves name the problem; previews report it with the next run times', async
   assert.equal(next.nextRuns.length, 3);
   assert.equal(next.problem, undefined);
   assert.match(next.nextRuns[0] ?? '', /T01:00:00\.000Z$/, '09:00 in Shanghai');
+  const idle = { kind: 'idle', idleMinutes: 15, timezone: 'Asia/Shanghai' } as const;
+  assert.deepEqual(await preview({ trigger: idle }), { nextRuns: [] }, 'idle has no run times');
+  assert.deepEqual(await preview({ trigger: { ...idle, timezone: 'Mars/Olympus' } }), {
+    nextRuns: [],
+    problem: 'invalidTimeZone',
+  });
+  await refused('/v1/automations', 'POST', draft({ trigger: { ...idle, idleMinutes: 2 } }), 400);
   assert.deepEqual(
     await preview({ trigger: { kind: 'automation', automationId: 'gone', outcomes: ['failed'] } }),
     {
@@ -199,7 +211,7 @@ test('saves name the problem; previews report it with the next run times', async
   assert.match(back.message, /\(chainLoop\)/);
 });
 
-test('a registered folder can be watched; the pause and the notices are reachable', async () => {
+test('a folder can be watched; the pause, the notices and the activity report are reachable', async () => {
   const watched = path.join(scratch, 'inbox');
   await mkdir(watched);
   const registered = await send('/v1/folders/register', 'POST', { paths: [watched] });
@@ -245,4 +257,8 @@ test('a registered folder can be watched; the pause and the notices are reachabl
     204,
   );
   await refused('/v1/automation-notices/ack', 'POST', { ids: [] }, 400);
+
+  const report = await send('/v1/system-activity', 'POST', { idleSeconds: 42 });
+  assert.equal(report.status, 204);
+  await refused('/v1/system-activity', 'POST', { idleSeconds: -1 }, 400);
 });

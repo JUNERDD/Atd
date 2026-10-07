@@ -60,7 +60,7 @@ test('an unreadable file leaves automations inert until the next change moves it
 });
 
 test('the agent tool asks before every change and only reads in an automation run', async () => {
-  const k = await automationKit('2026-10-06T08:00:00Z');
+  const k = await automationKit('2026-10-06T08:00:00Z', { defaults: false });
   kit = k;
   const asked: GateRequest[] = [];
   let unattended = false;

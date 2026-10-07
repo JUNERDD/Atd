@@ -7,6 +7,7 @@ import {
   CircleX,
   FolderSync,
   LoaderCircle,
+  MonitorPause,
   SkipForward,
   TimerOff,
   TriangleAlert,
@@ -40,13 +41,18 @@ export function OutcomeIcon({ outcome }: { outcome: AutomationOutcome }) {
   }
 }
 
-/** What starts the automation, as the list row's icon: a schedule, a folder, another automation. */
+/**
+ * What starts the automation, as the list row's icon: a schedule, a folder, the Mac going idle,
+ * another automation.
+ */
 export function TriggerIcon({ kind }: { kind: AutomationTrigger['kind'] }) {
   switch (kind) {
     case 'schedule':
       return <CalendarClock aria-hidden="true" />;
     case 'folder':
       return <FolderSync aria-hidden="true" />;
+    case 'idle':
+      return <MonitorPause aria-hidden="true" />;
     case 'automation':
       return <Workflow aria-hidden="true" />;
   }

@@ -52,6 +52,13 @@ function intervalWords(minutes: number, t: Translate): string {
   return t('summary.everyMinutes', { n: minutes });
 }
 
+/** A length of time in whole hours when it is one, such as "15 minutes" or "2 hours". */
+export function minutesWords(minutes: number, t: Translate): string {
+  return minutes % 60 === 0
+    ? t('policy.hours', { count: minutes / 60 })
+    : t('policy.minutes', { count: minutes });
+}
+
 /** The chosen week days named in the language's week order, such as "Mon, Wed and Fri". */
 export function daysWords(days: readonly number[], language: string): string {
   const names = weekdayOrder(language)
@@ -127,6 +134,13 @@ export function triggerNames(automations: readonly AutomationItem[] | null): Tri
   };
 }
 
+/** A sentence with the trigger's time zone added when it is not the Mac's. */
+function inZone(words: string, timezone: string, t: Translate, language: string): string {
+  return timezone === systemTimeZone()
+    ? words
+    : t('summary.inZone', { schedule: words, zone: zoneName(timezone, language) });
+}
+
 /** A trigger as one sentence, with its time zone when it is not the Mac's. */
 export function triggerWords(
   trigger: AutomationTrigger,
@@ -135,12 +149,20 @@ export function triggerWords(
   language: string,
 ): string {
   switch (trigger.kind) {
-    case 'schedule': {
-      const words = scheduleWords(trigger.schedule, trigger.timezone, t, language);
-      return trigger.timezone === systemTimeZone()
-        ? words
-        : t('summary.inZone', { schedule: words, zone: zoneName(trigger.timezone, language) });
-    }
+    case 'schedule':
+      return inZone(
+        scheduleWords(trigger.schedule, trigger.timezone, t, language),
+        trigger.timezone,
+        t,
+        language,
+      );
+    case 'idle':
+      return inZone(
+        t('summary.idle', { duration: minutesWords(trigger.idleMinutes, t) }),
+        trigger.timezone,
+        t,
+        language,
+      );
     case 'folder': {
       const folder = names.folder(trigger.folderId);
       const added = trigger.events.includes('added');
