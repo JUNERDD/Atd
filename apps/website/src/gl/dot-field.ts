@@ -10,11 +10,12 @@ import { bindPointer, createPointerState } from './pointer';
 import { createQualityGovernor } from './quality';
 import { createSpring, snapSpring, stepSpring } from './spring';
 import type { Box, DotField, DotFieldOptions, Rgb } from './types';
+import { typingAt, typingSeconds } from './typing';
 import { createWordCycle } from './word-cycle';
 
 const MAX_DPR = 2;
-/** Power-on length (see the shader's CRT and scan timeline), including the last flashes settling. */
-const BOOT_SECONDS = 1.9;
+/** Power-on length (the shader's wake and word timeline), until the last dot has settled. */
+const BOOT_SECONDS = 1.45;
 /** Boot clock value that means "settled" to the shader. */
 const BOOT_SETTLED = 1e4;
 const RIPPLE_SECONDS = 1.2;
@@ -37,13 +38,16 @@ function sameBox(a: Box | null, b: Box | null): boolean {
   );
 }
 
+const NO_BOX: Box = { x: 0, y: 0, width: 0, height: 0 };
+
 /**
  * Creates a dot-matrix field on `canvas`, or returns null when WebGL2 (or the shader) is unavailable,
  * in which case the host keeps its DOM fallback. The field draws only while the canvas intersects
  * the viewport and the document is visible: continuously in full motion, on demand under reduced
  * motion. Listeners write to local state that the frame loop reads; one draw call per frame. Each
- * word has a coverage texture and a signed distance field on the shared grid; a change binds the
- * outgoing word's to units 0 and 2 and the incoming word's to units 1 and 3.
+ * word has one texture on the shared grid (coverage and character order); a change erases the
+ * outgoing word and types the incoming one (typing.ts), and the frame binds whichever is on the
+ * board, with how many of its characters show and where the cursor stands.
  */
 export function createDotField(
   canvas: HTMLCanvasElement,
@@ -80,11 +84,14 @@ function runField(
   const dot = options.dot ?? WHITE;
   const fieldLevel = options.fieldLevel ?? 0.13;
   let words: readonly string[] = options.words?.length ? options.words : ['Atd'];
-  const cycle = createWordCycle(words.length);
+  const cycle = createWordCycle(words.length, (from, to) =>
+    typingSeconds(words[from] ?? '', words[to] ?? ''),
+  );
   let artBox: Box | null = null;
   let layout: GridLayout = { pitch: 12, originX: 0, originY: 0, cols: 1, rows: 1 };
-  /** Where each word's ink sits, for the power-on scan. */
+  /** Where each word's ink sits (the power-on sweeps it), and its cursor after each typed prefix. */
   let inks: Box[] = [];
+  let cursors: Box[][] = [];
 
   let width = 0;
   let height = 0;
@@ -151,6 +158,7 @@ function runField(
     });
     layout = raster.layout;
     inks = raster.words.map((word) => word.ink);
+    cursors = raster.words.map((word) => word.cursors);
     uploadWords(gl, target, raster.words, layout.cols, layout.rows);
     // A change in flight belongs to the old grid; it lands at once.
     cycle.finish();
@@ -176,15 +184,23 @@ function runField(
     const time = (now - epoch) / 1000;
     if (bootStart < 0) bootStart = now;
     const boot = bootDone ? BOOT_SETTLED : (now - bootStart) / 1000;
-    if (boot >= BOOT_SECONDS) bootDone = true;
+    if (!bootDone && boot >= BOOT_SECONDS) {
+      bootDone = true;
+      cycle.arrive(time);
+    }
     // The board changes words only in full motion, once it has powered on and while it is in place.
     cycle.tick(time, !reduced && bootDone && scroll < 0.05);
-    const shown = target.words[cycle.current] ?? target.art;
-    const shape = target.shapes[cycle.current] ?? target.art;
+    const change = cycle.change(time);
+    const typing =
+      change >= 0 ? typingAt(change, words[cycle.current] ?? '', words[cycle.next] ?? '') : null;
+    // The word on the board: the outgoing one until it is erased, then the incoming one.
+    const showing = typing?.incoming ? cycle.next : cycle.current;
+    const art = target.words[showing] ?? target.art;
     const box = artBox ?? defaultArtBox(width, height);
-    const inkBox = inks[cycle.current] ?? box;
+    const inkBox = inks[showing] ?? box;
     const pivot = [box.x + box.width / 2, box.y + box.height / 2] as const;
-    const morph = cycle.morph(time);
+    const wordCursors = cursors[showing] ?? [];
+    const cursor = wordCursors[typing ? typing.shown : wordCursors.length - 1] ?? NO_BOX;
 
     // The pointer is stored in viewport coordinates; adding the live scroll keeps the lens under it
     // while the page scrolls without pointer events.
@@ -205,14 +221,8 @@ function runField(
     const u = target.uniforms;
     gl.useProgram(target.program);
     gl.bindVertexArray(target.vao);
-    gl.activeTexture(gl.TEXTURE3);
-    gl.bindTexture(gl.TEXTURE_2D, target.shapes[cycle.next] ?? shape);
-    gl.activeTexture(gl.TEXTURE2);
-    gl.bindTexture(gl.TEXTURE_2D, shape);
-    gl.activeTexture(gl.TEXTURE1);
-    gl.bindTexture(gl.TEXTURE_2D, target.words[cycle.next] ?? shown);
     gl.activeTexture(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D, shown);
+    gl.bindTexture(gl.TEXTURE_2D, art);
     gl.uniform2f(u.u_res, canvas.width, canvas.height);
     gl.uniform1f(u.u_scale, canvas.width / width);
     gl.uniform1f(u.u_time, time);
@@ -223,7 +233,11 @@ function runField(
     gl.uniform2i(u.u_cells, layout.cols, layout.rows);
     gl.uniform4f(u.u_artBox, inkBox.x, inkBox.y, inkBox.width, inkBox.height);
     gl.uniform2f(u.u_pivot, ...pivot);
-    gl.uniform1f(u.u_morph, morph);
+    // Every character shows at rest; the count only ever reaches a few.
+    gl.uniform1f(u.u_shown, typing ? typing.shown : 255);
+    gl.uniform1f(u.u_typing, typing ? 1 : 0);
+    gl.uniform1f(u.u_settle, cycle.settled(time));
+    gl.uniform4f(u.u_cursor, cursor.x, cursor.y, cursor.width, cursor.height);
     gl.uniform4f(u.u_lens, lensX.value, lensY.value, lensRadius, lensStrength.value);
     gl.uniform1f(u.u_zoom, LENS_ZOOM);
     gl.uniform4fv(u.u_ripples, ripples);

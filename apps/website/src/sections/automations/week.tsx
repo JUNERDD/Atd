@@ -21,7 +21,8 @@ interface WeekProps {
 }
 
 /**
- * The week as a dot matrix, Monday to Sunday by hour, lit in the hours the preset runs in. It powers
+ * The week as an LED matrix on its own display, Monday to Sunday by hour, lit in the hours the
+ * preset runs in. It powers
  * on as a diagonal wave when it arrives; then, while it is on screen, a playhead sweeps the day and
  * each lit hour flashes as it passes. Picking another example relights its hours left to right (each
  * 3-hour band is a `data-step`, 20 ms apart). Hidden from assistive tech: the rule readout states the
@@ -39,7 +40,7 @@ export function Week({ preset, days }: WeekProps) {
   return (
     <div
       ref={ref}
-      className="auto__week"
+      className="auto__week display"
       aria-hidden="true"
       data-reveal="fade"
       data-reveal-group=""

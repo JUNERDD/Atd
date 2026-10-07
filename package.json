@@ -6,6 +6,8 @@
     "dev": "node scripts/dev-guard.mjs && turbo run dev dev:renderer --filter=@atd/agent-service --filter=@atd/desktop --filter=@atd/macos",
     "dev:headless": "node scripts/dev-guard.mjs && turbo run dev dev:renderer --filter=@atd/agent-service --filter=@atd/desktop",
     "dev:renderer": "turbo run dev:renderer --filter=@atd/desktop",
+    "dev:website": "pnpm --filter @atd/website dev",
+    "preview:website": "pnpm --filter @atd/website build && pnpm --filter @atd/website preview",
     "build": "turbo run build",
     "typecheck": "turbo run typecheck",
     "lint": "turbo run lint",

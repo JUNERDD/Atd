@@ -1,38 +1,26 @@
+/* A plate's padding is a whole number of grid cells (--section-pad), so its content starts on a
+   line between dot rows, as its top seam does. */
 .section {
-  position: relative;
   padding-block: var(--section-pad);
 }
 
-.section[data-tone='void'] {
-  background-color: var(--ink-0);
-}
-
-/* The light section re-points the text and line tokens, so components inside adapt without their
-   own light variants. */
-.section[data-tone='paper'] {
-  --fg-1: var(--paper-fg-1);
-  --fg-2: var(--paper-fg-2);
-  --fg-3: var(--paper-fg-2);
-  --line-1: var(--paper-line);
-  --line-2: rgb(0 0 0 / 0.16);
-  --ink-2: #fff;
-  --ink-3: #ebebed;
-  --dot-0: rgb(0 0 0 / 0.08);
-  --dot-1: #1d1d1f;
-  --spot-fill: rgb(0 0 0 / 0.035);
-  --spot-edge: rgb(0 0 0 / 0.2);
-  color: var(--fg-1);
-  background-color: var(--paper-1);
+/* The seam: where this plate meets the one above, a hairline across the whole band. */
+.section__seam {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline: 0;
+  block-size: 1px;
+  background-color: var(--line-1);
 }
 
 .section__frame {
   position: relative;
 }
 
-/* Registration marks: a small cross at the frame's top corners, on the grid. */
+/* Registration crosses where the content column's edges meet the seam. */
 .section__mark {
   position: absolute;
-  inset-block-start: calc(-1 * var(--section-pad) / 2);
+  inset-block-start: calc(-1 * var(--section-pad) - 5px);
   inline-size: 11px;
   block-size: 11px;
   background:
@@ -48,45 +36,61 @@
   inset-inline-end: -5px;
 }
 
-/* The frame's top edge: a hairline between the marks, stopping short of their crosses. */
-.section__rule {
-  position: absolute;
-  inset-block-start: calc(-1 * var(--section-pad) / 2 + 5px);
-  inset-inline: 16px;
-  block-size: 1px;
-  background-color: var(--line-1);
-}
-
 .section__header {
-  max-inline-size: 46rem;
-  margin-block-end: clamp(48px, 7vw, 88px);
+  display: grid;
+  align-items: start;
+  gap: 24px;
+  margin-block-end: round(clamp(48px, 7vw, 96px), 24px);
 }
 
-.section__meta {
+.section__label {
   display: flex;
-  gap: 12px;
-  align-items: baseline;
-  margin-block-end: 20px;
-}
-
-.section__index {
-  color: var(--fg-1);
+  align-items: center;
+  gap: 10px;
 }
 
 .section__title {
+  max-inline-size: 13em;
   font-family: var(--font-display);
   font-size: var(--fs-h2);
-  font-weight: 600;
+  font-weight: 800;
   line-height: var(--lh-display);
   letter-spacing: var(--tr-display);
   text-wrap: balance;
 }
 
+/* PingFang's heaviest weight is semibold; asking for more would fall back to a synthetic bold.
+   Chinese headings break at their punctuation, so no word is split across lines, unless a line
+   would overflow. */
+:lang(zh) .section__title {
+  font-weight: 600;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
 .section__lede {
-  margin-block-start: 20px;
-  max-inline-size: 38rem;
+  max-inline-size: 34rem;
   font-size: var(--fs-lede);
-  line-height: 1.4;
+  line-height: 1.45;
   color: var(--fg-2);
   text-wrap: pretty;
+}
+
+/* Wide plates print the name in a column of its own, like a legend beside a rack unit, and set the
+   heading and lede in the three columns after it. */
+@media (width >= 1000px) {
+  .section__header {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 3fr);
+    column-gap: 48px;
+  }
+
+  .section__label {
+    grid-row: 1 / span 2;
+    padding-block-start: 0.6em;
+  }
+
+  .section__title,
+  .section__lede {
+    grid-column: 2;
+  }
 }

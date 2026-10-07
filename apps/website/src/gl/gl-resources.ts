@@ -11,10 +11,10 @@ export interface Uniforms {
   u_scroll: WebGLUniformLocation | null;
   u_grid: WebGLUniformLocation | null;
   u_art: WebGLUniformLocation | null;
-  u_artNext: WebGLUniformLocation | null;
-  u_shape: WebGLUniformLocation | null;
-  u_shapeNext: WebGLUniformLocation | null;
-  u_morph: WebGLUniformLocation | null;
+  u_shown: WebGLUniformLocation | null;
+  u_typing: WebGLUniformLocation | null;
+  u_settle: WebGLUniformLocation | null;
+  u_cursor: WebGLUniformLocation | null;
   u_cells: WebGLUniformLocation | null;
   u_artBox: WebGLUniformLocation | null;
   u_pivot: WebGLUniformLocation | null;
@@ -37,10 +37,10 @@ function locateUniforms(gl: WebGL2RenderingContext, program: WebGLProgram): Unif
     u_scroll: at('u_scroll'),
     u_grid: at('u_grid'),
     u_art: at('u_art'),
-    u_artNext: at('u_artNext'),
-    u_shape: at('u_shape'),
-    u_shapeNext: at('u_shapeNext'),
-    u_morph: at('u_morph'),
+    u_shown: at('u_shown'),
+    u_typing: at('u_typing'),
+    u_settle: at('u_settle'),
+    u_cursor: at('u_cursor'),
     u_cells: at('u_cells'),
     u_artBox: at('u_artBox'),
     u_pivot: at('u_pivot'),
@@ -55,15 +55,13 @@ function locateUniforms(gl: WebGL2RenderingContext, program: WebGLProgram): Unif
 
 /**
  * GL objects owned by one field. They die with the context and are rebuilt after a restore. `art`
- * is a blank placeholder; once the art is rasterized, `words` holds each word's coverage and
- * `shapes` its signed distance field (what a change melts from one word into the next).
+ * is a blank placeholder; once the art is rasterized, `words` holds each word's texture.
  */
 export interface GlResources {
   program: WebGLProgram;
   vao: WebGLVertexArrayObject;
   art: WebGLTexture;
   words: WebGLTexture[];
-  shapes: WebGLTexture[];
   uniforms: Uniforms;
 }
 
@@ -82,78 +80,65 @@ export function createResources(gl: WebGL2RenderingContext): GlResources | null 
   const uniforms = locateUniforms(gl, program);
   gl.useProgram(program);
   gl.uniform1i(uniforms.u_art, 0);
-  gl.uniform1i(uniforms.u_artNext, 1);
-  gl.uniform1i(uniforms.u_shape, 2);
-  gl.uniform1i(uniforms.u_shapeNext, 3);
-  uploadArt(gl, art, new Uint8Array(1), 1, 1);
-  return { program, vao, art, words: [], shapes: [], uniforms };
+  uploadArt(gl, art, { coverage: new Uint8Array(1), order: new Uint8Array(1) }, 1, 1);
+  return { program, vao, art, words: [], uniforms };
 }
 
 export function deleteResources(gl: WebGL2RenderingContext, resources: GlResources): void {
   gl.deleteProgram(resources.program);
   gl.deleteVertexArray(resources.vao);
-  for (const texture of [...resources.words, ...resources.shapes]) {
+  for (const texture of resources.words) {
     if (texture !== resources.art) gl.deleteTexture(texture);
   }
   gl.deleteTexture(resources.art);
 }
 
-/** A word's two textures: its coverage and its signed distance field. */
-export interface WordTextures {
+/** What a word's texture holds per cell: its ink coverage, and which character the cell is part of. */
+export interface WordTexture {
   coverage: Uint8Array;
-  shape: Float32Array;
+  order: Uint8Array;
 }
 
-/**
- * Replaces the word textures: per word, its coverage (mipmapped, see uploadArt) and its signed
- * distance field (32-bit float, read exactly with texelFetch). A failed allocation reuses the blank.
- */
+/** Replaces the word textures, one per word (see uploadArt). A failed allocation reuses the blank. */
 export function uploadWords(
   gl: WebGL2RenderingContext,
   resources: GlResources,
-  words: readonly WordTextures[],
+  words: readonly WordTexture[],
   cols: number,
   rows: number,
 ): void {
-  for (const texture of [...resources.words, ...resources.shapes]) {
+  for (const texture of resources.words) {
     if (texture !== resources.art) gl.deleteTexture(texture);
   }
-  resources.words = words.map(({ coverage }) => {
+  resources.words = words.map((word) => {
     const texture = gl.createTexture();
     if (!texture) return resources.art;
-    uploadArt(gl, texture, coverage, cols, rows);
-    return texture;
-  });
-  resources.shapes = words.map(({ shape }) => {
-    const texture = gl.createTexture();
-    if (!texture) return resources.art;
-    gl.activeTexture(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D, texture);
-    gl.pixelStorei(gl.UNPACK_ALIGNMENT, 4);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.R32F, cols, rows, 0, gl.RED, gl.FLOAT, shape);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    uploadArt(gl, texture, word, cols, rows);
     return texture;
   });
 }
 
 /**
- * Uploads per-cell coverage as a single-channel texture. Level 0 is read exactly with texelFetch;
- * the mip chain gives the shader a cheap blurred copy for the haze and the halo.
+ * Uploads a word as a two-channel texture: coverage in red and the character index in green. Level
+ * 0 is read exactly with texelFetch; the mip chain gives the shader a cheap blurred copy of the
+ * coverage for the haze and the halo.
  */
 export function uploadArt(
   gl: WebGL2RenderingContext,
   texture: WebGLTexture,
-  coverage: Uint8Array,
+  word: WordTexture,
   cols: number,
   rows: number,
 ): void {
+  const texels = new Uint8Array(cols * rows * 2);
+  for (let i = 0; i < cols * rows; i++) {
+    texels[i * 2] = word.coverage[i] ?? 0;
+    texels[i * 2 + 1] = word.order[i] ?? 0;
+  }
   gl.activeTexture(gl.TEXTURE0);
   gl.bindTexture(gl.TEXTURE_2D, texture);
   gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
-  gl.texImage2D(gl.TEXTURE_2D, 0, gl.R8, cols, rows, 0, gl.RED, gl.UNSIGNED_BYTE, coverage);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RG8, cols, rows, 0, gl.RG, gl.UNSIGNED_BYTE, texels);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);

@@ -7,8 +7,8 @@ export type SummonKey = 'meta' | 'shift' | 'space';
 
 /** From the controls' reveal until the last keycap has risen into place (three rises, 80 ms apart). */
 const KEYS_LANDED_MS = 700;
-/** From the drawing's reveal until it has plotted: the screen, the menu bar, the window, the slot. */
-const DRAWING_PLOTTED_MS = 850;
+/** Let the background arrive before the native window rises. */
+const DRAWING_PLOTTED_MS = 450;
 
 type Held = Readonly<Record<SummonKey, boolean>>;
 
@@ -19,7 +19,7 @@ const CHORD: readonly SummonKey[] = ['meta', 'shift', 'space'];
 
 interface DemoState {
   open: boolean;
-  /** How often the panel was hidden; once it comes back, the drawing marks the draft as kept. */
+  /** How often the panel was hidden; once it comes back, its draft is announced as kept. */
   hides: number;
   /** Who moved the panel last. Only the visitor's own moves are announced. */
   by: 'none' | 'entrance' | 'visitor';
@@ -53,7 +53,7 @@ function isChord(event: KeyboardEvent): boolean {
   );
 }
 
-export type DemoPhase = 'idle' | 'shown' | 'hidden';
+type DemoPhase = 'idle' | 'shown' | 'hidden';
 
 /** Whether the element's entrance has been playing for `ms`: it was revealed at least that long ago. */
 function useRevealedFor(ref: RefObject<Element | null>, ms: number): boolean {
@@ -168,7 +168,6 @@ export function useSummonDemo(
 
   return {
     open: state.open,
-    phase,
     /** The panel is back after being hidden, with the same draft. */
     kept: state.open && state.hides > 0,
     /** What to announce, or null while nothing the visitor did has changed the panel. */

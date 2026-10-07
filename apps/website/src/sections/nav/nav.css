@@ -1,15 +1,9 @@
 /* The scroll edge spans the viewport under the bar; it is the kit's masked blur, matched to the
-   section beneath. */
+   plates beneath. */
 .nav__edge {
-  --scroll-edge-bg: var(--ink-0);
+  --scroll-edge-bg: var(--plate);
 }
 
-.nav__edge[data-tone='paper'] {
-  --scroll-edge-bg: var(--paper-1);
-}
-
-/* A floating Liquid Glass capsule. Inner controls keep concentric corners: the 44 px pill sits 4 px
-   inside the 52 px bar. */
 .nav {
   position: fixed;
   z-index: 50;
@@ -17,42 +11,33 @@
   inset-inline: 0;
   display: flex;
   justify-content: center;
-  padding-inline: var(--gutter);
   pointer-events: none;
 }
 
+/* A matte strip of smoked black, the content column's width, with a hairline rim. Inner parts keep
+   concentric corners: the 44 px key sits 4 px inside the 52 px strip. */
 .nav__bar {
-  --glass-radius: 999px;
-  --glass-density: 72%;
   display: flex;
   align-items: center;
   gap: 8px;
-  inline-size: min(100%, 980px);
+  inline-size: round(down, min(100% - 2 * var(--gutter), var(--maxw)), calc(2 * var(--grid)));
   block-size: var(--nav-h);
   padding: 4px;
-  padding-inline-start: 16px;
-  border-radius: 999px;
+  padding-inline-start: 14px;
+  border-radius: calc(var(--r-part) + 4px);
+  background-color: rgb(0 0 0 / 0.72);
+  box-shadow:
+    inset 0 0 0 1px var(--line-1),
+    0 12px 32px -12px rgb(0 0 0 / 0.8);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  backdrop-filter: blur(20px) saturate(140%);
   pointer-events: auto;
 }
 
-/* Over the paper section the bar is light glass: dark text, and the pill flips to black. The kit's
-   glass tokens are restated with its light values because browsers resolve `light-dark()` inside
-   custom properties where they are declared (the dark root), not in this light subtree. */
-.nav__bar[data-theme='light'] {
-  --fg-1: var(--paper-fg-1);
-  --fg-2: var(--paper-fg-2);
-  --label: var(--paper-fg-1);
-  --accent-fill: var(--paper-fg-1);
-  --accent-on: #fff;
-  --focus-ring: var(--paper-fg-1);
-  --glass-fill-color: #fff;
-  --glass-saturate: 180%;
-  --glass-specular: rgb(255 255 255 / 0.95);
-  --glass-specular2: rgb(255 255 255 / 0.55);
-  --glass-rim: rgb(255 255 255 / 0.55);
-  --glass-inner-glow: rgb(255 255 255 / 0.45);
-  --glass-edge: rgb(0 0 0 / 0.1);
-  --glass-sheen: rgb(255 255 255 / 0.55);
+@media (prefers-reduced-transparency: reduce) {
+  .nav__bar {
+    background-color: var(--ink-0);
+  }
 }
 
 .nav__brand {
@@ -66,8 +51,8 @@
 
 /* The Atd mark as an alpha mask, so it takes the text color (as the panel uses it). */
 .nav__mark {
-  inline-size: 26px;
-  block-size: 26px;
+  inline-size: 24px;
+  block-size: 24px;
   background-color: currentColor;
   -webkit-mask: url('/brand/atd-symbol.png') center / contain no-repeat;
   mask: url('/brand/atd-symbol.png') center / contain no-repeat;
@@ -86,26 +71,54 @@
   flex: 1;
   justify-content: center;
   gap: 4px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
 }
 
+/* A link's status light is off until its section is the one being read. */
 .nav__link {
   display: inline-flex;
   align-items: center;
+  gap: 8px;
   min-block-size: 44px;
-  padding-inline: 12px;
-  border-radius: 999px;
+  padding-inline: 10px;
   font-size: var(--fs-small);
   color: var(--fg-2);
   transition: color var(--dur-fast) linear;
+}
+
+.nav__link::before {
+  content: '';
+  inline-size: 5px;
+  block-size: 5px;
+  border-radius: 50%;
+  background-color: var(--dot-0);
+  transition:
+    background-color var(--dur-fast) linear,
+    box-shadow var(--dur-fast) linear;
+}
+
+.nav__link[aria-current] {
+  color: var(--fg-1);
+}
+
+.nav__link[aria-current]::before {
+  background-color: var(--dot-1);
+  box-shadow: 0 0 6px rgb(255 255 255 / 0.6);
 }
 
 @media (hover: hover) and (pointer: fine) {
   .nav__link:hover,
   .nav__lang:hover {
     color: var(--fg-1);
+  }
+}
+
+@media (forced-colors: active) {
+  .nav__bar {
+    border: 1px solid CanvasText;
+  }
+
+  .nav__link[aria-current]::before {
+    background-color: CanvasText;
   }
 }
 
@@ -123,7 +136,6 @@
   min-inline-size: 44px;
   min-block-size: 44px;
   padding-inline: 10px;
-  border-radius: 999px;
   font-size: var(--fs-small);
   color: var(--fg-2);
   transition: color var(--dur-fast) linear;

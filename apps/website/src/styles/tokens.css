@@ -1,33 +1,32 @@
-/* Site tokens. The page is fixed dark and strictly monochrome (black, white and grays), laid out on an
-   8 px unit and drawn over a 24 px dot grid. They override the Apple kit's tokens where the site
-   differs: these rules are unlayered and the kit's derivations have zero specificity. */
+/* Site tokens. The page is one instrument, fixed dark and strictly monochrome. The hero is its main
+   LED display; below it, every section is a plate of the faceplate, perforated with a 24 px dot
+   grid, and each demo sits in a smaller LED display set into the plate. Two materials, then: the
+   faceplate (`--plate`) and the display glass (`--ink-0`, as black as the hero). These rules are
+   unlayered and override the Apple kit's tokens where the site differs. */
 :root {
   color-scheme: dark;
 
-  /* Ink: page and surface fills, darkest first. */
+  /* Ink: the display glass is pure black, like the hero; the faceplate is a shade lighter so the
+     displays read as set into it. */
   --ink-0: #000;
-  --ink-1: #0a0a0b;
-  --ink-2: #121214;
-  --ink-3: #1b1b1e;
-  --line-1: rgb(255 255 255 / 0.08);
+  --plate: #0b0b0c;
+  --ink-2: #131315;
+  --ink-3: #1d1d20;
+  --line-1: rgb(255 255 255 / 0.09);
   --line-2: rgb(255 255 255 / 0.14);
 
-  /* Text on ink. --fg-3 still passes 4.5:1 on --ink-2, so it can carry small labels. */
+  /* Text on the plate. --fg-3 still passes 4.5:1 on --plate, so it can carry small legends. */
   --fg-1: #f5f5f7;
   --fg-2: #a1a1a6;
   --fg-3: #86868b;
 
-  /* Dot-matrix: a lit and an unlit dot. */
+  /* Dots: lit, and unlit. The plate's perforations and a display's unlit LEDs use the same unlit
+     dot; the displays pack theirs tighter (--led). */
   --dot-1: #fff;
   --dot-0: rgb(255 255 255 / 0.1);
+  --dot-mid: rgb(255 255 255 / 0.42);
 
-  /* The one light "paper" section. */
-  --paper-1: #f5f5f7;
-  --paper-fg-1: #1d1d1f;
-  --paper-fg-2: #6e6e73;
-  --paper-line: rgb(0 0 0 / 0.1);
-
-  /* Monochrome accent for the kit: a white pill with black text, white links and focus rings. */
+  /* Monochrome accent for the kit: a white key with black text, white links and focus rings. */
   --accent: #f5f5f7;
   --accent-fill: #f5f5f7;
   --accent-on: #000;
@@ -36,8 +35,8 @@
   --link: #f5f5f7;
   --label: var(--fg-1);
   --secondary-label: var(--fg-2);
-  --system-background: var(--ink-1);
-  --system-grouped-background: var(--ink-1);
+  --system-background: var(--plate);
+  --system-grouped-background: var(--plate);
 
   /* The kit's fills and glass surfaces use Apple's grays, which lean slightly blue; these neutral
      equivalents keep the same alphas so every state and the glass stay strictly gray. */
@@ -51,8 +50,11 @@
   --glass-fill-color: light-dark(#fff, #1c1c1c);
   --glass-solid: light-dark(#f6f6f6, #2c2c2c);
 
+  /* Keys, not capsules: the kit's buttons take a hardware key's corner. */
+  --corner-capsule: 10px;
+
   /* Type: the system faces (SF Pro and SF Mono on Apple devices, PingFang for Chinese) and Doto, a
-     dot-matrix display face for Latin lettering. */
+     dot-matrix face for the readouts the displays show. Headings are lit in dots (`.dot-text`). */
   --font-text:
     -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', 'PingFang SC',
     'Hiragino Sans GB', 'Noto Sans CJK SC', 'Microsoft YaHei', system-ui, sans-serif;
@@ -63,39 +65,37 @@
     ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
   --font-dot: 'Doto Variable', var(--font-mono);
 
-  --fs-hero: clamp(2.75rem, 1.6rem + 5.4vw, 6.5rem);
-  --fs-h2: clamp(2.125rem, 1.4rem + 3.2vw, 4rem);
-  --fs-h3: clamp(1.375rem, 1.1rem + 0.8vw, 1.75rem);
-  --fs-lede: clamp(1.1875rem, 1rem + 0.6vw, 1.5rem);
+  --fs-h2: clamp(2.5rem, 1.5rem + 4.2vw, 5rem);
+  --fs-h3: clamp(1.25rem, 1.1rem + 0.5vw, 1.5rem);
+  --fs-lede: clamp(1.125rem, 1rem + 0.4vw, 1.3125rem);
   --fs-body: 1.0625rem;
   --fs-small: 0.875rem;
-  --fs-label: 0.6875rem;
-  --lh-display: 1.05;
+  --fs-legend: 0.8125rem;
+  --lh-display: 1;
   --lh-title: 1.15;
   --lh-text: 1.47;
-  --tr-display: -0.015em;
+  --tr-display: -0.02em;
   --tr-title: -0.01em;
-  --tr-label: 0.08em;
 
-  /* Space and grid. */
+  /* The grid. Everything below the hero is registered to the plate's 24 px dot pitch: the
+     container is a whole number of double cells, so its edges and the seams between plates fall
+     midway between dot columns (base.css). Displays light their own, finer LEDs. */
   --u: 8px;
   --grid: 24px;
+  --led: 8px;
   --gutter: 16px;
   --maxw: 1200px;
-  --section-pad: clamp(96px, 13vw, 176px);
+  --section-pad: round(clamp(96px, 12vw, 168px), 24px);
   --nav-h: 52px;
   --nav-top: 12px;
 
-  /* Pointer light (motion.css): the spotlight on surfaces and the halo on the page grid. */
-  --spot-fill: rgb(255 255 255 / 0.05);
-  --spot-edge: rgb(255 255 255 / 0.3);
+  /* The halo of brighter dots the pointer carries over the plates (motion/grid-halo.ts). */
   --halo-size: 360px;
   --halo-dot: rgb(255 255 255 / 0.42);
 
-  /* Shape. */
-  --r-tile: 28px;
-  --r-frame: 20px;
-  --r-chip: 10px;
+  /* Shape: a display window's bezel, and the small parts set into the plate. */
+  --r-display: 16px;
+  --r-part: 10px;
 }
 
 @media (width >= 700px) {
@@ -110,7 +110,7 @@
   }
 }
 
-/* Increase Contrast keeps the kit's stronger fill alphas, in neutral gray. */
+/* Increase Contrast keeps the kit's stronger fill alphas, in neutral gray, and firms up the lines. */
 @media (prefers-contrast: more) {
   :root {
     --fill: light-dark(rgb(124 124 124 / 0.28), rgb(124 124 124 / 0.44));
@@ -119,14 +119,15 @@
     --fill-quaternary: light-dark(rgb(120 120 120 / 0.16), rgb(122 122 122 / 0.26));
     --secondary-system-background: light-dark(#ebebeb, #242424);
     --tertiary-system-background: light-dark(#fff, #363636);
+    --line-1: rgb(255 255 255 / 0.2);
+    --line-2: rgb(255 255 255 / 0.32);
   }
 }
 
-/* Chinese sets solid: no Latin display tracking, looser label spacing. */
+/* Chinese sets solid: no Latin display tracking, a little more leading. */
 :root:lang(zh) {
   --tr-display: 0;
   --tr-title: 0;
-  --tr-label: 0.04em;
   --lh-display: 1.12;
   --lh-text: 1.6;
 }
