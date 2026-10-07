@@ -8,7 +8,7 @@ export const ONBOARDING_STEPS = [
   'selection',
   'screenshot',
   'provider',
-  'apps',
+  'features',
   'finish',
 ] as const;
 export type OnboardingStepId = (typeof ONBOARDING_STEPS)[number];

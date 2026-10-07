@@ -1,5 +1,5 @@
 import type { OnboardingStepId } from '../onboarding-types';
-import { APPS_LIGHT } from './apps';
+import { FEATURES_LIGHT } from './features';
 import { FINISH_LIGHT } from './finish';
 import { HOTKEY_LIGHT } from './hotkey';
 import type { LightDesign } from './light-design';
@@ -15,6 +15,6 @@ export const STEP_LIGHTS: Record<OnboardingStepId, LightDesign> = {
   selection: SELECTION_LIGHT,
   screenshot: SCREENSHOT_LIGHT,
   provider: PROVIDER_LIGHT,
-  apps: APPS_LIGHT,
+  features: FEATURES_LIGHT,
   finish: FINISH_LIGHT,
 };
