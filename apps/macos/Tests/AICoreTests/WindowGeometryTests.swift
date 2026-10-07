@@ -17,7 +17,7 @@ struct WindowGeometryTests {
     let workArea = Self.flip(0, 25, 1440, 815, primaryHeight: 900)
     #expect(
       PanelGeometry.dockedFrame(in: workArea)
-        == Self.flip(864, 104, 560, 720, primaryHeight: 900))
+        == Self.flip(924, 144, 500, 680, primaryHeight: 900))
   }
 
   @Test("Anchors to a secondary display with a negative origin")
@@ -25,7 +25,7 @@ struct WindowGeometryTests {
     let workArea = Self.flip(-1920, -100, 1920, 1040, primaryHeight: 1080)
     #expect(
       PanelGeometry.dockedFrame(in: workArea)
-        == Self.flip(-576, 204, 560, 720, primaryHeight: 1080))
+        == Self.flip(-516, 244, 500, 680, primaryHeight: 1080))
   }
 
   @Test("Fits a small display without leaving the work area")
