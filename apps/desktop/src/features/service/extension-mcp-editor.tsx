@@ -1,7 +1,6 @@
 import { useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@atd/ui/components/button';
-import { ExtensionDetailSection } from './extension-detail-fields';
 import {
   sameMcpDraft,
   toUpsertInput,
@@ -10,9 +9,10 @@ import {
   type McpUpsertInput,
 } from './extension-mcp-draft';
 import type { ExtensionMcpConfig } from './extension-detail-rows';
+import { SettingsGroup } from '../settings/settings-group';
 import { useSettingsUnsavedChanges } from '../settings/settings-unsaved-changes';
 import { McpAccessFields } from './extension-mcp-access';
-import { McpConnectionFields } from './extension-mcp-form';
+import { McpAuthFields, McpConnectionFields } from './extension-mcp-form';
 import { McpOAuthClientFields } from './extension-mcp-oauth-fields';
 import { ExtensionPage, type ExtensionPageBadge } from './extension-page';
 
@@ -22,8 +22,8 @@ const FORM_ID = 'mcp-server-form';
  * The MCP page with its form: the add page when `serverId` is null, otherwise that server's
  * details, with its status (`before`) above the form and anything the form cannot carry over
  * (`after`) below it, and a Personal server's Remove (`remove`) before Cancel. The form groups the
- * connection, a remote OAuth server's client, and how the agent reaches the server's tools and
- * resources. Save checks the draft here first, then hands it to `onUpsert`; the route returns to
+ * connection, a remote server's authentication and OAuth client, and how the agent reaches the
+ * server's tools and resources. Save checks the draft here first, then hands it to `onUpsert`; the route returns to
  * the list when the save succeeds, and a failure keeps the page for repair.
  */
 export function McpEditor({
@@ -89,18 +89,19 @@ export function McpEditor({
   }
 
   // Each group locks while the service is away or a write runs.
-  const group = (label: string, fields: ReactNode) => (
-    <ExtensionDetailSection label={label}>
+  const group = (id: string, title: string, description: string, fields: ReactNode) => (
+    <SettingsGroup id={`mcp-${id}`} title={title} description={description}>
       <fieldset className="settings-fields" disabled={locked}>
         {fields}
       </fieldset>
-    </ExtensionDetailSection>
+    </SettingsGroup>
   );
+  const remote = draft.transport !== 'stdio';
   const form = (
     <form
       ref={formRef}
       id={FORM_ID}
-      className="extension-page-body"
+      className="extension-page-body settings-groups"
       noValidate
       onSubmit={(event) => {
         event.preventDefault();
@@ -108,7 +109,9 @@ export function McpEditor({
       }}
     >
       {group(
+        'connection',
         t('extensions.mcpPage.connectionSection'),
+        t('extensions.mcpPage.connectionDescription'),
         <McpConnectionFields
           draft={draft}
           problems={problems}
@@ -116,9 +119,19 @@ export function McpEditor({
           onChange={setDraft}
         />,
       )}
-      {draft.transport !== 'stdio' && draft.authKind === 'oauth'
+      {remote
         ? group(
+            'auth',
+            t('extensions.mcpPage.authSection'),
+            t('extensions.mcpPage.authDescription'),
+            <McpAuthFields draft={draft} problems={problems} onChange={setDraft} />,
+          )
+        : null}
+      {remote && draft.authKind === 'oauth'
+        ? group(
+            'oauth',
             t('extensions.mcpPage.oauthSection'),
+            t('extensions.mcpPage.oauthSectionNote'),
             <McpOAuthClientFields
               draft={draft}
               problems={problems}
@@ -128,7 +141,9 @@ export function McpEditor({
           )
         : null}
       {group(
+        'access',
         t('extensions.mcpPage.accessSection'),
+        t('extensions.mcpPage.accessDescription'),
         <McpAccessFields draft={draft} toolCount={toolCount} onChange={setDraft} />,
       )}
     </form>

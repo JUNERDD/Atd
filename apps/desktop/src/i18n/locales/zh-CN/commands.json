@@ -179,8 +179,13 @@
     "opened": "已在任务面板中打开新的 AI 会话。",
     "enableSkill": "请先在「扩展 → 技能」中启用 {{name}}，再使用 AI 创建。"
   },
+  "start": {
+    "title": "输入与启动",
+    "description": "启动时读取什么、用哪个快捷键运行，以及还会出现在哪些位置。"
+  },
   "run": {
     "title": "运行设置",
+    "description": "每次运行可以使用的模型、记忆和工具。",
     "model": "模型",
     "useAppDefault": "使用应用默认值",
     "useFixedModel": "使用固定模型",

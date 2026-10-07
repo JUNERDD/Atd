@@ -9,8 +9,23 @@
   flex-direction: column;
   min-height: 0;
 }
-/* The global pause and an unreadable store sit between the heading and the list. */
-.automation-pause-card,
+/* The overview keeps its heading fixed above the scrolling list, like Memory, so its footer (the
+   global pause) floats at the bottom of the window. */
+.automation-overview {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+}
+/* An unreadable store, then the list or its empty state, which fills the rest. */
+.automation-overview-body {
+  display: flex;
+  flex: 1 0 auto;
+  min-width: 0;
+  flex-direction: column;
+  padding: 3px 3px 16px;
+}
 .automation-store-problem {
   margin-bottom: 16px;
 }

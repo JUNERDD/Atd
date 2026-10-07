@@ -4,9 +4,7 @@ import { Settings2 } from 'lucide-react';
 import { EditorState } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
 import { Button } from '@atd/ui/components/button';
-import { Label } from '@atd/ui/components/label';
 import { contextVariables, variableDetails, type ContextVariable } from './command-variables';
-import { FieldHint } from '../../components/field-hint';
 import type { CommandDefinition } from '../../client/agent/command-schema';
 import type { AgentTask } from '../../client/agent/task-schema';
 import { availableVariables } from '../../client/agent/command-validation';
@@ -114,12 +112,6 @@ export function InstructionEditor({
   );
   return (
     <div className="settings-field" data-figma-node="1554:58480">
-      <div className="instruction-toolbar">
-        <div className="flex items-center gap-1.5">
-          <Label>{t('instruction.title')}</Label>
-          <FieldHint text={t('instruction.hint')} />
-        </div>
-      </div>
       <div ref={host} className="instruction-editor" onBlur={onBlur} />
       <InstructionQuickPanel
         trigger={trigger}

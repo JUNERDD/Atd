@@ -294,13 +294,6 @@
   padding: 4px 4px 16px;
 }
 
-.instruction-toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
 .editor-heading {
   flex-shrink: 0;
   min-width: 0;

@@ -404,6 +404,7 @@
         .settings-loading,
         .settings-extension-settings,
         .memory-settings,
+        .automation-overview,
         .app-settings
       )
   ) {
@@ -443,15 +444,25 @@
 .settings-page[hidden]:has(.settings-editor, .command-editor, .settings-loading) {
   display: none;
 }
-/* Extensions, memory and apps keep their heading fixed above a scrolling list, so the page never
- * outgrows the viewport. */
-.settings-page:has(.settings-extension-settings, .memory-settings, .app-settings) {
+/* Extensions, memory, the automations overview and apps keep their heading fixed above a
+ * scrolling list, so the page never outgrows the viewport. */
+.settings-page:has(
+  .settings-extension-settings,
+  .memory-settings,
+  .automation-overview,
+  .app-settings
+) {
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
 }
-.settings-page[hidden]:has(.settings-extension-settings, .memory-settings, .app-settings) {
+.settings-page[hidden]:has(
+    .settings-extension-settings,
+    .memory-settings,
+    .automation-overview,
+    .app-settings
+  ) {
   display: none;
 }
 .settings-editor,
@@ -596,6 +607,44 @@
   font-size: 14px;
   font-weight: 600;
   line-height: 20px;
+}
+/*
+ * An editor's groups (settings-group.tsx): each starts at a hairline with its title and a line on
+ * what it decides, and stands 48px from the one before (the container's 24px gap, then its own
+ * 24px), further than the 16px between the fields inside it. `.settings-groups` is that container;
+ * `:has` lets its gap win over the container's own (`.editor-fields`, `.extension-page-body`),
+ * whichever stylesheet loads last.
+ */
+.settings-groups:has(> .settings-group) {
+  gap: 24px;
+}
+.settings-group {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 16px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+}
+/* A narrow window moves the action under the heading rather than squeezing the text beside it. */
+.settings-group-header {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px 12px;
+}
+.settings-group-heading {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 240px;
+  flex-direction: column;
+  gap: 2px;
+}
+.settings-group-heading > p {
+  max-width: 72ch;
+  text-wrap: pretty;
 }
 /*
  * An error shown beside what caused it, as an icon and text rather than a timed toast. Render a
