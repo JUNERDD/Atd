@@ -7,7 +7,7 @@ import { CasesShowcase } from './showcase';
 export function CasesSection() {
   const t = useCopy(casesCopy);
   return (
-    <Section id="cases" label={t.label} title={t.title} lede={t.lede}>
+    <Section id="cases" title={t.title} lede={t.lede}>
       <CasesShowcase />
     </Section>
   );

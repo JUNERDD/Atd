@@ -38,18 +38,16 @@
 
 .section__header {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   align-items: start;
+  justify-items: center;
   gap: 24px;
   margin-block-end: round(clamp(48px, 7vw, 96px), 24px);
-}
-
-.section__label {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+  text-align: center;
 }
 
 .section__title {
+  inline-size: 100%;
   max-inline-size: 13em;
   font-family: var(--font-display);
   font-size: var(--fs-h2);
@@ -69,28 +67,10 @@
 }
 
 .section__lede {
+  inline-size: 100%;
   max-inline-size: 34rem;
   font-size: var(--fs-lede);
   line-height: 1.45;
   color: var(--fg-2);
-  text-wrap: pretty;
-}
-
-/* Wide plates print the name in a column of its own, like a legend beside a rack unit, and set the
-   heading and lede in the three columns after it. */
-@media (width >= 1000px) {
-  .section__header {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 3fr);
-    column-gap: 48px;
-  }
-
-  .section__label {
-    grid-row: 1 / span 2;
-    padding-block-start: 0.6em;
-  }
-
-  .section__title,
-  .section__lede {
-    grid-column: 2;
-  }
+  text-wrap: balance;
 }

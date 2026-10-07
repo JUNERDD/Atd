@@ -3,8 +3,6 @@ import type { Localized } from '../../i18n/lang';
 export type NodeId = 'panel' | 'service' | 'keychain' | 'providers';
 
 interface PrivacyCopy {
-  /** The plate's printed name, as the nav calls the section. */
-  label: string;
   title: string;
   lede: string;
   /** The schematic in words, for assistive tech: the drawing itself is hidden from it. */
@@ -15,7 +13,6 @@ interface PrivacyCopy {
 
 export const privacyCopy = {
   en: {
-    label: 'Privacy',
     title: 'Local by design.',
     lede: 'Your data stays on your Mac. Tasks go only to the providers you connect, and their keys stay in the Keychain.',
     diagramLabel:
@@ -29,7 +26,6 @@ export const privacyCopy = {
     },
   },
   zh: {
-    label: '隐私',
     title: '本地运行，设计使然。',
     lede: '数据留在你的 Mac 上。任务只发给你接入的提供商，密钥始终留在钥匙串中。',
     diagramLabel:

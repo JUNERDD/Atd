@@ -1,7 +1,8 @@
 import { site } from '../../content/site';
 import { useCopy, useLang } from '../../i18n/lang';
-import { htmlLang, langPath, otherLang, rememberLang } from '../../i18n/routes';
+import { langPath } from '../../i18n/routes';
 import { navCopy } from './copy';
+import { LanguageMenu } from './language-menu';
 import { useActiveSection } from './use-active-section';
 import './nav.css';
 
@@ -13,7 +14,6 @@ import './nav.css';
 export function SiteNav() {
   const t = useCopy(navCopy);
   const lang = useLang();
-  const other = otherLang(lang);
   const active = useActiveSection(t.links.map((link) => link.href));
 
   return (
@@ -44,16 +44,7 @@ export function SiteNav() {
             ))}
           </ul>
           <div className="nav__end">
-            <a
-              className="nav__lang"
-              href={langPath[other]}
-              hrefLang={htmlLang[other]}
-              lang={htmlLang[other]}
-              aria-label={t.switchName}
-              onClick={() => rememberLang(other)}
-            >
-              {t.switchTo}
-            </a>
+            <LanguageMenu />
             <a className="btn-filled nav__cta" href={site.latestReleaseUrl}>
               {t.download}
             </a>

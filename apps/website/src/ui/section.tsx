@@ -4,8 +4,6 @@ import './section.css';
 interface SectionProps {
   /** The anchor id; the title gets `${id}-title`. */
   id: string;
-  /** The plate's printed name, as the nav calls the section. */
-  label: string;
   title: string;
   lede?: ReactNode;
   children?: ReactNode;
@@ -13,14 +11,13 @@ interface SectionProps {
 
 /**
  * One plate of the faceplate: a full-bleed band of the dot grid, joined to the plate above it by a
- * seam with registration crosses where the content column's edges meet it. The header prints the
- * plate's name beside a status light in its own column, and lights the heading in dots, as the
- * hero lights its word.
+ * seam with registration crosses where the content column's edges meet it. The heading and lede
+ * share the plate's center line; the heading lights in dots, as the hero lights its word.
  *
- * As the plate arrives the seam draws across and the crosses plot in; then the name fades up, the
- * heading flickers on like an LED, and the lede follows.
+ * As the plate arrives the seam draws across and the crosses plot in; then the heading flickers
+ * on like an LED, and the lede follows.
  */
-export function Section({ id, label, title, lede, children }: SectionProps) {
+export function Section({ id, title, lede, children }: SectionProps) {
   const titleId = `${id}-title`;
   return (
     <section id={id} className="section plate" aria-labelledby={titleId}>
@@ -35,10 +32,6 @@ export function Section({ id, label, title, lede, children }: SectionProps) {
           data-reveal-delay="120"
         />
         <header className="section__header" data-reveal-group="">
-          <p className="section__label legend" data-reveal="fade">
-            <span className="led" aria-hidden="true" />
-            {label}
-          </p>
           <h2
             id={titleId}
             className="section__title dot-text"

@@ -14,7 +14,7 @@ export function DownloadSection() {
   const t = useCopy(downloadCopy);
 
   return (
-    <Section id="download" label={t.label} title={t.title} lede={t.lede}>
+    <Section id="download" title={t.title} lede={t.lede}>
       <div className="download__stage">
         <dl className="download__specs" data-reveal-group="" data-reveal-stagger="80">
           {t.specs.map((spec) => (

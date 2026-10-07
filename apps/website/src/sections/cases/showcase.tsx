@@ -21,8 +21,6 @@ export function CasesShowcase() {
     playing,
     rotationEnabled,
     pauseOnFocus,
-    pointerEnter,
-    pointerLeave,
     select,
     previous,
     next,
@@ -38,8 +36,6 @@ export function CasesShowcase() {
       aria-label={t.views}
       aria-roledescription={t.carousel}
       onFocusCapture={pauseOnFocus}
-      onPointerEnter={pointerEnter}
-      onPointerLeave={pointerLeave}
     >
       <ol className="cases__views" aria-label={t.views} data-reveal-group="">
         {cases.map((item, index) => (
