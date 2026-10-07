@@ -1,12 +1,15 @@
 /* The schematic is one grid; links are grid items in the tracks between nodes. Narrow plates run
    the path down the first column with the Keychain beside the service; wide plates run it left to
-   right with the Keychain under the service, and set the schematic under the heading. */
+   right with the Keychain under the service. Both layouts share the heading's center line. */
 .privacy__diagram {
   --link: 40px;
   position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr) var(--link) minmax(0, 1fr);
   grid-template-rows: auto var(--link) auto var(--link) auto;
+  inline-size: 100%;
+  max-inline-size: 54rem;
+  margin-inline: auto;
   padding: 20px;
 }
 
@@ -140,7 +143,6 @@
       minmax(0, 1fr) var(--link) minmax(0, 1fr) var(--link)
       minmax(0, 1fr);
     grid-template-rows: auto var(--link) auto;
-    margin-inline-start: calc((100% - 48px) / 4 + 48px);
   }
 
   .privacy__node[data-node='service'] {

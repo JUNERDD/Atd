@@ -30,7 +30,7 @@ export function SummonSection() {
         : '';
 
   return (
-    <Section id="summon" label={t.label} title={t.title} lede={t.lede}>
+    <Section id="summon" title={t.title} lede={t.lede}>
       <div className="summon__stage" ref={stageRef}>
         <div
           className="summon__controls"

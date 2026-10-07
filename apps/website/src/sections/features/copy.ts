@@ -2,8 +2,6 @@ import type { Localized } from '../../i18n/lang';
 import type { FeatureId } from './glyphs';
 
 interface FeaturesCopy {
-  /** The plate's printed name, as the nav calls the section. */
-  label: string;
   title: string;
   /** One line each: the cell's glyph carries the rest. */
   items: Record<FeatureId, { title: string; body: string }>;
@@ -11,7 +9,6 @@ interface FeaturesCopy {
 
 export const featuresCopy = {
   en: {
-    label: 'Features',
     title: 'Your models, your tools, your rules.',
     items: {
       providers: {
@@ -27,7 +24,6 @@ export const featuresCopy = {
     },
   },
   zh: {
-    label: '功能',
     title: '你的模型，你的工具，你的规则。',
     items: {
       providers: { title: '模型', body: '接入你在用的提供商，云端或本机皆可。' },

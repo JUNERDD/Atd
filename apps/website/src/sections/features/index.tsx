@@ -14,7 +14,7 @@ export function FeaturesSection() {
   const t = useCopy(featuresCopy);
 
   return (
-    <Section id="features" label={t.label} title={t.title}>
+    <Section id="features" title={t.title}>
       <ul className="feat__bank">
         {FEATURE_IDS.map((id) => (
           <li className="feat__cell" key={id} data-reveal-group="">
