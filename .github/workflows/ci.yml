@@ -102,6 +102,7 @@ jobs:
           swiftlint version
       # Widget codegen imports agent-contracts source, including its TypeBox dependency.
       - run: pnpm install --frozen-lockfile --filter atd --filter @atd/agent-contracts...
+      # check:swift serializes swift test and xcodebuild, which share SwiftPM's artifact cache.
       - name: Swift checks (codegen, format, lint, test, build)
         run: pnpm check:swift
 
