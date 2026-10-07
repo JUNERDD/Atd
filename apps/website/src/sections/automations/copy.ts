@@ -2,8 +2,6 @@ import type { Localized } from '../../i18n/lang';
 import type { PresetId, RuleKind } from './presets';
 
 interface AutomationsCopy {
-  /** The plate's printed name, as the nav calls the section. */
-  label: string;
   title: string;
   lede: string;
   presetsLegend: string;
@@ -16,7 +14,6 @@ interface AutomationsCopy {
 
 export const automationsCopy = {
   en: {
-    label: 'Automations',
     title: 'Work that starts on its own.',
     lede: 'Run a prompt or a saved command on a schedule, or when a folder changes. It works unattended and tells you only what’s new.',
     presetsLegend: 'Examples',
@@ -29,7 +26,6 @@ export const automationsCopy = {
     days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
   },
   zh: {
-    label: '自动化',
     title: '让工作自己开始。',
     lede: '按计划或在文件夹变化时，运行提示词或已保存的命令。它无人值守，只在有新结果时告诉你。',
     presetsLegend: '示例',

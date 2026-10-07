@@ -6,7 +6,7 @@ WebGL2 dot-matrix hero. English is served at `/` and Simplified Chinese at `/zh`
 The look is fixed dark and strictly monochrome, retro-modern and spare: the page is one instrument. The hero is
 its main LED display, which spells out the name, Atd: anything, anytime, anywhere, to do. Below it, every
 section is a plate of the faceplate, perforated with a 24 px dot grid registered to the plate, joined to the
-next by a seam with registration crosses. Each plate carries one message: a printed name, a heading lit in
+next by a seam with registration crosses. Each plate carries one message: a centered heading lit in
 dots like the hero's word, a short lede, and one demo on a smaller LED display set into the plate.
 
 ## Commands
@@ -56,6 +56,13 @@ public/
   cases/               Interface images and archived recordings (see cases/README.md)
   brand/               The Atd mark, resized from packages/ui/src/assets/brands/atd
 ```
+
+## Section layout
+
+Section headings and introductions share the page's center line, with no category label beside them.
+The privacy diagram is centered below its heading and capped at 54rem; its existing grid changes
+direction at 1000px. The [desktop and compact layout review](https://www.figma.com/design/PROJECT_FILE_KEY?node-id=2504-145342)
+keeps the shared heading and diagram components alongside the website's other design sources.
 
 ## Header language menu
 
@@ -126,8 +133,8 @@ everything is simply shown.
   so the container's edges and the seams run between dots) and the display (`.display`, black glass with
   finer LEDs). What a display shows is drawn in dots. The nav is a matte strip, not glass.
 - Type has three roles: headings lit in dots (`.dot-text`), printed legends (`.legend`, small and sentence
-  case) and readouts in Doto (`.readout`). Wide plates set the printed name, keys and readouts in a legend
-  column and the heading and display in the three columns beside it.
+  case) and readouts in Doto (`.readout`). Section headings and ledes share the page's center line;
+  legends and readouts provide supporting detail within each demo.
 - Keep each plate to one message and one demo; cut copy before adding more.
 - Motion animates only `transform` and `opacity`, pauses off-screen, and falls back to fades or stillness
   under reduced motion. Every interaction has a keyboard path.

@@ -1,7 +1,6 @@
 import type { Localized } from '../../i18n/lang';
 
 interface CasesCopy {
-  label: string;
   title: string;
   lede: string;
   views: string;
@@ -20,7 +19,6 @@ interface CasesCopy {
 
 export const casesCopy = {
   en: {
-    label: 'Interfaces',
     title: 'At hand, in every detail.',
     lede: 'From a quick selection to an app of your own. Eight ways to work with Atd.',
     views: 'Explore Atd interfaces',
@@ -37,7 +35,6 @@ export const casesCopy = {
     duration: (seconds) => `${seconds}s`,
   },
   zh: {
-    label: '界面',
     title: '每一步，都顺手。',
     lede: '从一次选区，到一个自己的应用。看看 Atd 的八个工作界面。',
     views: '浏览 Atd 界面',
