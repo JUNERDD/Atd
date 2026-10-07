@@ -48,7 +48,7 @@ jobs:
       - id: filter
         uses: dorny/paths-filter@v4.0.3
         with:
-          # Besides each area's sources: the bridge schema the Swift codegen check reads, and
+          # Besides each area's sources: the bridge and widget contracts Swift codegen reads, and
           # what decides how the checks run (scripts, tool pins, lockfile, this workflow).
           filters: |
             shared: &shared
@@ -61,7 +61,8 @@ jobs:
             swift:
               - *shared
               - apps/macos/**
-              - apps/desktop/src/native-bridge/native-bridge.schema.json
+              - apps/desktop/src/native-bridge/*schema.json
+              - packages/agent-contracts/**
             rust:
               - *shared
               - crates/**
@@ -81,8 +82,8 @@ jobs:
     steps:
       - uses: actions/checkout@v7.0.1
       - uses: pnpm/action-setup@v6.1.0
-      # No pnpm store cache: the Swift checks need only the root tools (turbo), which download
-      # faster than the full store restores on macOS.
+      # No pnpm store cache: the small set of tools and schema dependencies downloads faster
+      # than the full store restores on macOS.
       - uses: actions/setup-node@v7.0.0
         with:
           node-version-file: .node-version
@@ -99,8 +100,8 @@ jobs:
           done
           xcodegen --version
           swiftlint version
-      # @atd/macos has no package dependencies, and its scripts use only Node built-ins.
-      - run: pnpm install --frozen-lockfile --filter atd
+      # Widget codegen imports agent-contracts source, including its TypeBox dependency.
+      - run: pnpm install --frozen-lockfile --filter atd --filter @atd/agent-contracts...
       - name: Swift checks (codegen, format, lint, test, build)
         run: pnpm check:swift
 
