@@ -27,7 +27,7 @@ Agent 流程与 Providers / Shortcuts 设置已合并到同一设计页：[统�
 ## 视觉约束与最新修正
 
 - 采用仓库的 `b27GcrRo`：Radix / Rhea、Inter、Neutral、Lucide；控件复用 `packages/ui`，按钮、输入框、选择器与菜单保持各自变体的几何与状态。
-- 面板默认 420 × 580，标题栏 48px 加 1px 分隔线。macOS 的外部圆角、材质、边缘与阴影由原生 HUD 窗口拥有；渲染层保持单一共享表面填充，不叠加 CSS 窗口描边或阴影。
+- 面板默认 560 × 720（2026-10-07），标题栏 48px 加 1px 分隔线。macOS 的外部圆角、材质、边缘与阴影由原生 HUD 窗口拥有；渲染层保持单一共享表面填充，不叠加 CSS 窗口描边或阴影。`PanelGeometry.defaultSize` 与 Figma 的[空白／输入示例](https://www.figma.com/design/PROJECT_FILE_KEY/Atd?node-id=98-222)、[会话示例](https://www.figma.com/design/PROJECT_FILE_KEY/Atd?node-id=237-1988)已同步；既有用户保存的尺寸继续保留。已读回设计尺寸并检查原生窗口及 8 项窗口定位测试。
 - 按用户反馈移除会话 `margin-top: auto`。短对话首条消息从标题栏下方 20px 开始，Composer 固定在底部；长对话滚动至最新内容由滚动逻辑负责。
 - [共享会话说明](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=694-17333) 与 [短回复示例](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=796-15567) 已同步顶部排列。长内容原型中展示“滚动至最新”的有限状态不代表运行时垂直布局规则。
 - 已检查实际 Electron 内容截图及白色 / 蓝色背景上的 OS 合成窗口，覆盖四角、边缘、阴影和原生材质。证据在 `apps/desktop/.artifacts/agent-result-top-aligned.png`、`agent-native-contrasting.png`。
