@@ -1,10 +1,8 @@
 import { site } from '../../content/site';
 import { useCopy, useLang } from '../../i18n/lang';
-import { htmlLang, LANGS, langPath, rememberLang } from '../../i18n/routes';
+import { htmlLang, LANGS, langPath, languageNames, rememberLang } from '../../i18n/routes';
 import { footerCopy } from './copy';
 import './footer.css';
-
-const languageNames = { en: 'English', zh: '简体中文' } as const;
 
 /**
  * The last plate: the name in dot figures, the project links and the languages on one row, and the

@@ -28,6 +28,7 @@ catalog:
   croner: 10.0.1
   embla-carousel-autoplay: 8.6.0
   embla-carousel-react: 8.6.0
+  radix-ui: 1.6.7
 
 allowBuilds:
   '@google/genai': false

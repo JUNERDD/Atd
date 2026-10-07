@@ -57,6 +57,14 @@ public/
   brand/               The Atd mark, resized from packages/ui/src/assets/brands/atd
 ```
 
+## Header language menu
+
+The header uses a 44 px Lucide language icon button and an end-aligned dropdown. Radix handles
+keyboard navigation, dismissal, focus restoration and viewport collision. The English and 简体中文
+links keep their language routes and remember explicit choices; the current language has a checkmark.
+The [button and menu states](https://www.figma.com/design/PROJECT_FILE_KEY?node-id=2495-144651)
+reuse the website's monochrome tokens and remain connected to the shared Lucide library.
+
 ## Interface carousel
 
 The “Interfaces” section shows eight exact Figma exports: the selection toolbar, Mini Panel,
