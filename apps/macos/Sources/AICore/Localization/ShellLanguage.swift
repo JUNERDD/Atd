@@ -122,6 +122,13 @@ public enum ShellStringKey: String, CaseIterable, Sendable {
   case selectionHudHint = "selectionHud.hint"
   case selectionHudHide = "selectionHud.hide"
 
+  /// `%1$@` the app's name, `%2$@` the permission's name in System Settings.
+  case permissionGuideTitle = "permissionGuide.title"
+  case permissionGuideAccessibility = "permissionGuide.accessibility"
+  case permissionGuideScreenRecording = "permissionGuide.screenRecording"
+  case permissionGuideDrag = "permissionGuide.drag"
+  case permissionGuideClose = "permissionGuide.close"
+
   case miniPanelLabel = "miniPanel.label"
   case miniPanelOpen = "miniPanel.open"
   case miniPanelHidePanel = "miniPanel.hidePanel"

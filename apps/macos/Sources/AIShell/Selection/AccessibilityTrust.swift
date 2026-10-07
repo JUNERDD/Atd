@@ -7,11 +7,13 @@ import ApplicationServices
 ///   so Debug and Release builds each ask once ever and never again by themselves; opening the
 ///   welcome guide retires that prompt, since the guide asks in context;
 /// - after that only a summon that wants the selection asks (once per launch), or the
-///   settings page's permission row (`accessibility.request`).
+///   settings page's permission row (`accessibility.request`), which opens the drag-to-allow
+///   ``PermissionGuide`` instead of the prompt.
 ///
-/// Trust is re-read every 2 s while missing, so granting it in System Settings takes effect
-/// without a restart, and when the system posts that the trusted list changed, so a revoked
-/// grant is noticed too. ``onChange`` reports every change.
+/// Trust is re-read every 2 s, whether held or missing, and when the app becomes active again, so
+/// granting or revoking it in System Settings shows without a restart. The system's
+/// `com.apple.accessibility.api` notification is not relied on: a grant switched off in System
+/// Settings did not reach the guide through it. ``onChange`` reports every change.
 final class AccessibilityTrust {
   private(set) var isTrusted: Bool
   var onChange: ((Bool) -> Void)?
@@ -19,13 +21,9 @@ final class AccessibilityTrust {
   private let defaults: UserDefaults
   private var promptedThisLaunch = false
   private var poll: Timer?
-  private var listObserver: NSObjectProtocol?
+  private var activation: NSObjectProtocol?
 
   private static let autoPromptedKey = "accessibility.autoPrompted"
-  /// Posted by the system when an app's Accessibility grant changes.
-  private static let listChanged = Notification.Name("com.apple.accessibility.api")
-  private static let settingsURL = URL(
-    string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")
 
   init(defaults: UserDefaults = .standard) {
     self.defaults = defaults
@@ -33,16 +31,17 @@ final class AccessibilityTrust {
   }
 
   func start() {
-    listObserver = DistributedNotificationCenter.default().addObserver(
-      forName: Self.listChanged, object: nil, queue: .main
+    activation = NotificationCenter.default.addObserver(
+      forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main
     ) { [weak self] _ in
-      // The grant settles shortly after the notification.
-      DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
-        MainActor.assumeIsolated { self?.refresh() }
-      }
+      MainActor.assumeIsolated { self?.refresh() }
     }
+    let poll = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
+      MainActor.assumeIsolated { self?.refresh() }
+    }
+    poll.tolerance = 0.5
+    self.poll = poll
     refresh()
-    updatePolling()
   }
 
   /// The once-ever prompt of a first launch with the toolbar on.
@@ -76,29 +75,19 @@ final class AccessibilityTrust {
     SelectionReader.requestTrust()
   }
 
-  /// `accessibility.request`: the prompt under the same once-per-launch rule (it also lists the
-  /// app in System Settings), then Privacy & Security › Accessibility.
+  /// `accessibility.request`: Privacy & Security › Accessibility with the drag-to-allow guide.
+  /// The guide replaces the system prompt, whose alert would cover the page, and counts as this
+  /// launch's ask.
   func openSystemSettings() {
-    promptOncePerLaunch()
-    if let url = Self.settingsURL { NSWorkspace.shared.open(url) }
+    promptedThisLaunch = true
+    PermissionGuide.shared.open(.accessibility)
   }
 
   private func refresh() {
     let trusted = SelectionReader.isTrusted
     guard trusted != isTrusted else { return }
     isTrusted = trusted
-    updatePolling()
+    if trusted { PermissionGuide.shared.finish(.accessibility) }
     onChange?(trusted)
-  }
-
-  private func updatePolling() {
-    if isTrusted {
-      poll?.invalidate()
-      poll = nil
-    } else if poll == nil {
-      poll = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
-        MainActor.assumeIsolated { self?.refresh() }
-      }
-    }
   }
 }
