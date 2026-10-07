@@ -8,7 +8,7 @@ export function AutomationsSection() {
   const t = useCopy(automationsCopy);
 
   return (
-    <Section id="automations" label={t.label} title={t.title} lede={t.lede}>
+    <Section id="automations" title={t.title} lede={t.lede}>
       <Schedule
         legend={t.presetsLegend}
         presets={t.presets}

@@ -9,6 +9,8 @@ export type Localized<T> = Record<Lang, T>;
 /** The `lang` attribute value of each language's page. */
 export const htmlLang: Localized<string> = { en: 'en', zh: 'zh-CN' };
 
+export const languageNames: Localized<string> = { en: 'English', zh: '简体中文' };
+
 /** Where each language's page lives. */
 export const langPath: Localized<string> = { en: '/', zh: '/zh' };
 
@@ -17,10 +19,6 @@ export const LANG_CHOICE_KEY = 'atd-lang';
 
 export function isLang(value: unknown): value is Lang {
   return value === 'en' || value === 'zh';
-}
-
-export function otherLang(lang: Lang): Lang {
-  return lang === 'en' ? 'zh' : 'en';
 }
 
 /**

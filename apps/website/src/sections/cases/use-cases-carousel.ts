@@ -1,6 +1,6 @@
 import Autoplay from 'embla-carousel-autoplay';
 import useEmblaCarousel from 'embla-carousel-react';
-import { useEffect, useMemo, useRef, useState, type FocusEvent, type PointerEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type FocusEvent } from 'react';
 import { useInView } from '../../lib/use-in-view';
 import { useReducedMotion } from '../../lib/use-reduced-motion';
 
@@ -13,7 +13,7 @@ export function useCasesCarousel() {
   const inView = useInView(root, { threshold: 0.2 });
   const reducedMotion = useReducedMotion();
   const [manualPlay, setManualPlay] = useState<boolean | null>(null);
-  const [hovered, setHovered] = useState(false);
+  const [pressed, setPressed] = useState(false);
   const [active, setActive] = useState(0);
   const [playing, setPlaying] = useState(false);
   const rotationEnabled = manualPlay ?? !reducedMotion;
@@ -37,19 +37,24 @@ export function useCasesCarousel() {
     const select = () => setActive(api.selectedScrollSnap());
     const play = () => setPlaying(true);
     const stop = () => setPlaying(false);
-    const interact = () => setManualPlay(false);
+    const press = () => setPressed(true);
+    const release = () => setPressed(false);
     select();
     api
       .on('select', select)
       .on('reInit', select)
-      .on('pointerDown', interact)
+      .on('reInit', release)
+      .on('pointerDown', press)
+      .on('pointerUp', release)
       .on('autoplay:play', play)
       .on('autoplay:stop', stop);
     return () => {
       api
         .off('select', select)
         .off('reInit', select)
-        .off('pointerDown', interact)
+        .off('reInit', release)
+        .off('pointerDown', press)
+        .off('pointerUp', release)
         .off('autoplay:play', play)
         .off('autoplay:stop', stop);
     };
@@ -68,7 +73,7 @@ export function useCasesCarousel() {
       const remaining = api.plugins().autoplay.timeUntilNext();
       if (remaining === null) return;
       reset();
-      // Follow Embla's actual timer, including restarts after hover, visibility and resize.
+      // Follow Embla's actual timer, including restarts after a hold, visibility and resize.
       animation = fill.animate([{ transform: 'scaleX(0)' }, { transform: 'scaleX(1)' }], {
         duration: INTERVAL_MS,
         easing: reducedMotion ? 'steps(3, end)' : 'linear',
@@ -97,7 +102,7 @@ export function useCasesCarousel() {
     if (!api) return;
     const syncPlayback = () => {
       const playback = api.plugins().autoplay;
-      if (inView && rotationEnabled && !hovered) playback.play(reducedMotion);
+      if (inView && rotationEnabled && !pressed) playback.play(reducedMotion);
       else playback.stop();
     };
     api.on('reInit', syncPlayback);
@@ -106,7 +111,7 @@ export function useCasesCarousel() {
       api.off('reInit', syncPlayback);
       api.plugins().autoplay.stop();
     };
-  }, [api, inView, rotationEnabled, hovered, reducedMotion]);
+  }, [api, inView, rotationEnabled, pressed, reducedMotion]);
 
   function pause() {
     api?.plugins().autoplay.stop();
@@ -116,14 +121,6 @@ export function useCasesCarousel() {
   function pauseOnFocus(event: FocusEvent<HTMLElement>) {
     // Pointer clicks must reach the playback button before changing its play/pause state.
     if (event.target.matches(':focus-visible')) pause();
-  }
-
-  function pointerEnter(event: PointerEvent<HTMLElement>) {
-    if (event.pointerType === 'mouse') setHovered(true);
-  }
-
-  function pointerLeave() {
-    setHovered(false);
   }
 
   function select(index: number) {
@@ -142,7 +139,6 @@ export function useCasesCarousel() {
   }
 
   function toggle() {
-    // Hover pauses movement, but must not invert the visitor's intended play/pause action.
     setManualPlay(!rotationEnabled);
   }
 
@@ -155,8 +151,6 @@ export function useCasesCarousel() {
     playing,
     rotationEnabled,
     pauseOnFocus,
-    pointerEnter,
-    pointerLeave,
     select,
     previous,
     next,

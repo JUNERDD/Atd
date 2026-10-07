@@ -6,9 +6,7 @@ interface NavCopy {
   skip: string;
   links: { href: string; label: string }[];
   download: string;
-  /** The other language's name, written in that language. */
-  switchTo: string;
-  switchName: string;
+  language: string;
 }
 
 export const navCopy = {
@@ -22,8 +20,7 @@ export const navCopy = {
       { href: '#privacy', label: 'Privacy' },
     ],
     download: 'Download',
-    switchTo: '中文',
-    switchName: '简体中文',
+    language: 'Change language',
   },
   zh: {
     label: '主导航',
@@ -35,7 +32,6 @@ export const navCopy = {
       { href: '#privacy', label: '隐私' },
     ],
     download: '下载',
-    switchTo: 'EN',
-    switchName: 'English',
+    language: '切换语言',
   },
 } satisfies Localized<NavCopy>;

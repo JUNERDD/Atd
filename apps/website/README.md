@@ -6,7 +6,7 @@ WebGL2 dot-matrix hero. English is served at `/` and Simplified Chinese at `/zh`
 The look is fixed dark and strictly monochrome, retro-modern and spare: the page is one instrument. The hero is
 its main LED display, which spells out the name, Atd: anything, anytime, anywhere, to do. Below it, every
 section is a plate of the faceplate, perforated with a 24 px dot grid registered to the plate, joined to the
-next by a seam with registration crosses. Each plate carries one message: a printed name, a heading lit in
+next by a seam with registration crosses. Each plate carries one message: a centered heading lit in
 dots like the hero's word, a short lede, and one demo on a smaller LED display set into the plate.
 
 ## Commands
@@ -57,6 +57,21 @@ public/
   brand/               The Atd mark, resized from packages/ui/src/assets/brands/atd
 ```
 
+## Section layout
+
+Section headings and introductions share the page's center line, with no category label beside them.
+The privacy diagram is centered below its heading and capped at 54rem; its existing grid changes
+direction at 1000px. The [desktop and compact layout review](https://www.figma.com/design/D9YK1tEeBTEBgstcepesW5?node-id=2504-145342)
+keeps the shared heading and diagram components alongside the website's other design sources.
+
+## Header language menu
+
+The header uses a 44 px Lucide language icon button and an end-aligned dropdown. Radix handles
+keyboard navigation, dismissal, focus restoration and viewport collision. The English and 简体中文
+links keep their language routes and remember explicit choices; the current language has a checkmark.
+The [button and menu states](https://www.figma.com/design/D9YK1tEeBTEBgstcepesW5?node-id=2495-144651)
+reuse the website's monochrome tokens and remain connected to the shared Lucide library.
+
 ## Interface carousel
 
 The “Interfaces” section shows eight exact Figma exports: the selection toolbar, Mini Panel,
@@ -65,9 +80,10 @@ background and a 1440 × 900 canvas. The website displays each complete image wi
 
 [Embla](https://www.embla-carousel.com/docs/v8/get-started/react) handles looping, dragging and
 three-second automatic playback. Visitors can select a scene, go backward or forward, pause, resume,
-or open the original image. Hover temporarily pauses playback. Keyboard focus and manual navigation
-stop it until the visitor resumes; it also pauses offscreen and in hidden tabs. Reduced motion starts
-paused and removes the slide animation.
+or open the original image. Holding a scene with a mouse or touch temporarily pauses playback;
+releasing it resumes automatic playback if it was enabled. Hovering leaves playback running.
+Keyboard focus and manual navigation stop it until the visitor resumes; it also pauses offscreen and
+in hidden tabs. Reduced motion starts paused and removes the slide animation.
 The progress bar beside the playback controls follows Embla's timer, freezes while paused and
 restarts with each slide. Its interval label uses the same three-second setting as playback.
 Scene selectors use compact labels that wrap instead of scrolling sideways. Below 480 px, a
@@ -118,8 +134,8 @@ everything is simply shown.
   so the container's edges and the seams run between dots) and the display (`.display`, black glass with
   finer LEDs). What a display shows is drawn in dots. The nav is a matte strip, not glass.
 - Type has three roles: headings lit in dots (`.dot-text`), printed legends (`.legend`, small and sentence
-  case) and readouts in Doto (`.readout`). Wide plates set the printed name, keys and readouts in a legend
-  column and the heading and display in the three columns beside it.
+  case) and readouts in Doto (`.readout`). Section headings and ledes share the page's center line;
+  legends and readouts provide supporting detail within each demo.
 - Keep each plate to one message and one demo; cut copy before adding more.
 - Motion animates only `transform` and `opacity`, pauses off-screen, and falls back to fades or stillness
   under reduced motion. Every interaction has a keyboard path.

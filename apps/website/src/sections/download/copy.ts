@@ -2,8 +2,6 @@ import { site } from '../../content/site';
 import type { Localized } from '../../i18n/lang';
 
 interface DownloadCopy {
-  /** The plate's printed name, as the nav calls the section. */
-  label: string;
   title: string;
   lede: string;
   cta: string;
@@ -14,7 +12,6 @@ interface DownloadCopy {
 
 export const downloadCopy = {
   en: {
-    label: 'Download',
     title: 'Ready when you are.',
     lede: 'Download Atd, press ⌘ ⇧ Space, and hand it your first task.',
     cta: 'Download for Mac',
@@ -27,7 +24,6 @@ export const downloadCopy = {
       'Atd isn’t notarized, so the first time, choose Open Anyway in System Settings › Privacy & Security. It updates itself after that.',
   },
   zh: {
-    label: '下载',
     title: '随时待命。',
     lede: '下载 Atd，按下 ⌘ ⇧ Space，交给它第一个任务。',
     cta: '下载 Mac 版',

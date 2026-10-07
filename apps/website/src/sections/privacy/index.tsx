@@ -12,7 +12,7 @@ export function PrivacySection() {
   const live = useInView(diagramRef, { rootMargin: '120px 0px' });
 
   return (
-    <Section id="privacy" label={t.label} title={t.title} lede={t.lede}>
+    <Section id="privacy" title={t.title} lede={t.lede}>
       <p className="sr-only">{t.diagramLabel}</p>
       <PrivacyDiagram ref={diagramRef} live={live} boundary={t.boundary} nodes={t.nodes} />
     </Section>

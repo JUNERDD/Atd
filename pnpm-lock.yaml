@@ -200,6 +200,9 @@ catalogs:
     oxlint-tsgolint:
       specifier: 7.0.2003
       version: 7.0.2003
+    radix-ui:
+      specifier: 1.6.7
+      version: 1.6.7
     react:
       specifier: 19.3.0
       version: 19.3.0
@@ -503,6 +506,9 @@ importers:
       lucide-react:
         specifier: 'catalog:'
         version: 1.49.0(@types/react@19.3.0)(react@19.3.0)
+      radix-ui:
+        specifier: 'catalog:'
+        version: 1.6.7(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       react:
         specifier: 'catalog:'
         version: 19.3.0

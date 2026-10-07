@@ -1,8 +1,6 @@
 import type { Localized } from '../../i18n/lang';
 
 interface SummonCopy {
-  /** The plate's printed name, as the nav calls the section. */
-  label: string;
   title: string;
   lede: string;
   /** The legend printed over the keycaps. */
@@ -19,7 +17,6 @@ interface SummonCopy {
 
 export const summonCopy = {
   en: {
-    label: 'Summon',
     title: 'Always one shortcut away.',
     lede: 'Atd rises in the corner of any screen. Press again to hide it; your draft stays.',
     legend: 'Shortcut',
@@ -36,7 +33,6 @@ export const summonCopy = {
     unavailable: 'The app preview could not be loaded.',
   },
   zh: {
-    label: '唤出',
     title: '一个快捷键，随叫随到。',
     lede: 'Atd 从屏幕一角升起。再按一次收起，草稿原样保留。',
     legend: '快捷键',
