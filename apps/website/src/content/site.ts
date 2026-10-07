@@ -3,7 +3,7 @@ export const site = {
   name: 'Atd',
   author: 'JUNERDD',
   /** The latest published release; the download links always resolve the newest one on GitHub. */
-  version: '0.6.0',
+  version: '0.7.0',
   repoUrl: 'https://github.com/JUNERDD/ai',
   releasesUrl: 'https://github.com/JUNERDD/ai/releases',
   latestReleaseUrl: 'https://github.com/JUNERDD/ai/releases/latest',
