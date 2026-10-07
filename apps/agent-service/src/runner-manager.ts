@@ -22,13 +22,18 @@ import { ConflictError, DrainingError } from './errors.js';
 import { SessionReleases } from './session-release.js';
 import { TaskRunner, type RunnerContext } from './task-runner.js';
 import { taskContextBreakdown, taskSnapshot, taskSummary } from './task-view.js';
-import { checkChipRanges, taskTitle } from './tasks/input-chips.js';
+import { checkChipRanges } from './tasks/input-chips.js';
 import {
   branchUserEntries,
   checkBranchBefore,
   freezeRunSnapshot,
   loadSubmitContextWindow,
 } from './tasks/run-snapshot.js';
+import {
+  checkSideChatOf,
+  newTaskRecord,
+  type InternalSubmitOptions,
+} from './tasks/submit-options.js';
 
 export interface ManagerDeps {
   ctx: RunnerContext;
@@ -90,8 +95,14 @@ export class RunnerManager {
     return runner;
   }
 
-  /** Idempotent acceptance; repeats return the original run, never a new one. */
-  async submit(request: SubmitTaskRequest): Promise<SubmitTaskResponse> {
+  /**
+   * Idempotent acceptance; repeats return the original run, never a new one. `internal` carries
+   * what only service code may set (an automation's origin, tier, title and trigger).
+   */
+  async submit(
+    request: SubmitTaskRequest,
+    internal: InternalSubmitOptions = {},
+  ): Promise<SubmitTaskResponse> {
     if (this.draining) throw new DrainingError();
     checkChipRanges(request.input);
     // Read before the checks below so acceptance stays free of awaits until the ledger write.
@@ -110,11 +121,13 @@ export class RunnerManager {
     const previous = ledger.data.tasks.find((item) => item.id === taskId) ?? null;
     if (previous && request.taskId === undefined) {
       // A fresh uuid collided; retry once rather than merging into a stranger.
-      return this.submit({ ...request, taskId: randomUUID() });
+      return this.submit({ ...request, taskId: randomUUID() }, internal);
     }
     if (previous?.runs.some((run) => isActiveStatus(run.status)) || this.accepting.has(taskId))
       throw new ConflictError('Finish the active run before starting a new one.');
     checkBranchBefore(request.branchBefore, onBranch);
+    const { sideChatOf } = request;
+    checkSideChatOf(sideChatOf, previous, ledger.data.tasks);
     for (const file of request.input.files) {
       if (!ledger.data.resources.some((resource) => resource.id === file.id))
         throw new Error(`Attachment ${file.id} was not uploaded.`);
@@ -125,7 +138,9 @@ export class RunnerManager {
       request,
       connections,
       contextWindowOf,
-      previous?.runs.at(-1),
+      previous,
+      onBranch,
+      internal.trigger,
     );
     const runId = randomUUID();
     const now = new Date().toISOString();
@@ -139,18 +154,8 @@ export class RunnerManager {
       .change((data) => {
         let task = data.tasks.find((item) => item.id === taskId);
         if (!task) {
-          task = {
-            id: taskId,
-            title: taskTitle(snapshot),
-            createdAt: now,
-            updatedAt: now,
-            sessionFile: null,
-            runs: [],
-            rootTaskId: null,
-            parentExecutionId: null,
-            // A task keeps the tier it was created with; later default changes leave it alone.
-            permissionTier: this.deps.newTaskTier(),
-          };
+          const tier = this.deps.newTaskTier();
+          task = newTaskRecord({ id: taskId, now, snapshot, tier, sideChatOf, internal });
           data.tasks.unshift(task);
         }
         task.runs.push({
@@ -225,12 +230,12 @@ export class RunnerManager {
     await this.runnerFor(taskId).queue(text, mode);
   }
 
-  /** Disposes a deleted task's runner and forgets it, so deleted tasks hold no runner. */
+  /** Discards a deleted task's runner and forgets it, so deleted tasks hold no runner. */
   async remove(taskId: string): Promise<void> {
     const runner = this.runners.get(taskId);
     this.releases.cancel(taskId);
     this.runners.delete(taskId);
-    await runner?.dispose();
+    await runner?.discard();
   }
 
   snapshot(taskId: string): Promise<TaskSnapshot> {
@@ -308,11 +313,13 @@ export class RunnerManager {
       }
     await Promise.allSettled(stopping);
     await Promise.allSettled(this.executions.values());
-    for (const runner of this.runners.values()) {
-      await runner.dispose().catch((error: unknown) => {
-        this.deps.log.warn('Runner dispose failed.', { error: errorMessage(error) });
-      });
-    }
+    // Together: capped memory reviews (memory/learner) must not add up past the native stop budget.
+    const disposing = [...this.runners].map(([taskId, runner]) =>
+      runner.dispose().catch((error: unknown) => {
+        this.deps.log.warn('Runner dispose failed.', { taskId, error: errorMessage(error) });
+      }),
+    );
+    await Promise.all(disposing);
   }
 
   private start(taskId: string, run: TaskRun): void {

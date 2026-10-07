@@ -4,27 +4,19 @@ import {
   type AgentHttpClient,
 } from '@atd/agent-client';
 import type { InvalidateFrame } from '@atd/agent-contracts';
-import type {
-  AgentEvent,
-  AgentRequest,
-  AgentSnapshot,
-  MemorySnapshot,
-  PreparedCommand,
-} from './bridge';
+import type { AgentEvent, AgentRequest, AgentSnapshot, PreparedCommand } from './bridge';
 import type { CommandDefinition } from './command-schema';
+import { isMemoryRequest, runMemoryRequest } from './memory-manage';
 import type { Screenshot } from './screenshot-input';
 import {
   compactLiveTask,
   deleteLiveTask,
   forkLiveTask,
-  loadMemory,
   notConnected,
   previewRun,
   renameLiveTask,
   replaceLiveQueue,
   retierLiveTask,
-  saveMemoryEntry,
-  setMemoryPaused,
 } from './service-manage';
 import { TaskClient, type TaskConnection } from './service-tasks';
 import { submitTask } from './task-submit';
@@ -37,6 +29,12 @@ export interface CommandCatalog {
   list(): CommandDefinition[];
   find(id: string): CommandDefinition;
   prepare(id: string): Promise<PreparedCommand>;
+  /**
+   * Prepares a command as its shortcut does, except that `text` (taken from the page) stands in for
+   * the selection, so the shell reads none; the clipboard and a screenshot are captured as usual.
+   * Rejects with an English message when `text` is over the capture limit.
+   */
+  prepareWithText(id: string, text: string): Promise<PreparedCommand>;
   capture(source: 'selection' | 'clipboard'): Promise<{ text: string; capturedAt: string }>;
   /**
    * Lets the user capture the screen and imports the image; null when the user cancelled. Rejects
@@ -87,7 +85,6 @@ export class AgentRequests<S> {
   /** The pending publish of task changes; see `scheduleBroadcast`. */
   private scheduled: ReturnType<typeof setTimeout> | null = null;
   private mutation: Promise<void> = Promise.resolve();
-  private memory: MemorySnapshot = { entries: [], paused: false, error: '' };
 
   constructor(
     private readonly connection: AgentConnection,
@@ -151,7 +148,11 @@ export class AgentRequests<S> {
       case 'task.deleted':
         await this.tasks.onInvalidate(frame);
         return;
-      // The native host reloads these itself (extensions, settings and providers).
+      // The native host reloads these itself (extensions, settings, providers, apps and
+      // automations); no page shows widgets.
+      case 'apps':
+      case 'automations':
+      case 'widgets':
       case 'extensions':
       case 'providers':
       case 'settings':
@@ -163,11 +164,6 @@ export class AgentRequests<S> {
     const options = this.connection.options();
     if (!options) throw notConnected();
     return options;
-  }
-
-  private publishMemory(snapshot: MemorySnapshot) {
-    this.memory = snapshot;
-    this.host.emit({ type: 'memory', snapshot });
   }
 
   /** Command writes run one at a time so revisions never race each other. */
@@ -183,6 +179,13 @@ export class AgentRequests<S> {
   }
 
   private async dispatch(request: AgentRequest, subscriber?: S): Promise<unknown> {
+    if (isMemoryRequest(request)) {
+      // A failed read (or no connection) is reported inside the snapshot, never thrown; every
+      // window sees the snapshot a write produced before its answer settles.
+      const { snapshot, answer } = await runMemoryRequest(this.connection.options(), request);
+      this.host.emit({ type: 'memory', snapshot });
+      return answer;
+    }
     switch (request.action) {
       case 'get':
         return this.snapshot();
@@ -197,6 +200,8 @@ export class AgentRequests<S> {
         } else this.platform.launch(await this.commands.prepare(request.commandId), false);
         return null;
       }
+      case 'prepareWithText':
+        return this.commands.prepareWithText(request.commandId, request.text);
       case 'prepare':
         return this.commands.prepare(request.commandId);
       case 'capture':
@@ -263,24 +268,6 @@ export class AgentRequests<S> {
         return this.platform.chooseFiles(this.tasks.http());
       case 'saveFile':
         return this.platform.saveFile(request.name, request.content);
-      case 'memory':
-        // A failed load (or no connection) is reported inside the snapshot, never thrown.
-        try {
-          this.publishMemory(await loadMemory(this.options()));
-        } catch (error) {
-          this.publishMemory({
-            entries: [],
-            paused: false,
-            error: error instanceof Error ? error.message : 'Memory could not be loaded.',
-          });
-        }
-        return this.memory;
-      case 'pauseMemory':
-        this.publishMemory(await setMemoryPaused(this.options(), request.paused));
-        return this.memory;
-      case 'updateMemory':
-        this.publishMemory(await saveMemoryEntry(this.options(), request.entry, request.content));
-        return this.memory;
       case 'artifact':
         return this.platform.artifact(this.options(), request.artifactId, request.operation);
       case 'copy':

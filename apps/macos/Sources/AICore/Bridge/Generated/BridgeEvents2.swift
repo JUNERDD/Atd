@@ -4,6 +4,51 @@
 
 import Foundation
 
+/// Payload of the `miniPanel.state` event.
+public struct MiniPanelStateEvent: Codable, Equatable, Sendable {
+  public let shown: Bool
+  public let openOn: OpenOn
+
+  public init(shown: Bool, openOn: OpenOn) {
+    self.shown = shown
+    self.openOn = openOn
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    shown = try container.boolean(.shown)
+    openOn = try container.value(.openOn, OpenOn.self)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case shown
+    case openOn
+  }
+
+  public enum OpenOn: String, Codable, Equatable, Sendable {
+    case hover
+    case click
+  }
+}
+
+/// Payload of the `accessibility.trust` event.
+public struct AccessibilityTrustEvent: Codable, Equatable, Sendable {
+  public let trusted: Bool
+
+  public init(trusted: Bool) {
+    self.trusted = trusted
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    trusted = try container.boolean(.trusted)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case trusted
+  }
+}
+
 /// Payload of the `screenRecording.trust` event.
 public struct ScreenRecordingTrustEvent: Codable, Equatable, Sendable {
   public let trusted: Bool
@@ -60,5 +105,115 @@ public struct SocketFramesEvent: Codable, Equatable, Sendable {
 
   private enum CodingKeys: String, CodingKey, CaseIterable {
     case frames
+  }
+}
+
+/// Payload of the `userApp.state` event.
+public struct UserAppStateEvent: Codable, Equatable, Sendable {
+  public let appId: String
+  public let open: Bool
+  public let version: Int?
+
+  public init(appId: String, open: Bool, version: Int?) {
+    self.appId = appId
+    self.open = open
+    self.version = version
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    appId = try container.string(.appId, pattern: "^app-[a-z0-9]{10}$")
+    open = try container.boolean(.open)
+    version = try container.nullable(.version) { try container.integer($0, minimum: 1) }
+  }
+
+  public func encode(to encoder: any Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(appId, forKey: .appId)
+    try container.encode(open, forKey: .open)
+    try container.encode(version, forKey: .version)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case appId
+    case open
+    case version
+  }
+}
+
+/// Payload of the `userApp.pins` event.
+public struct UserAppPinsEvent: Codable, Equatable, Sendable {
+  public let pins: [Pin]
+
+  public init(pins: [Pin]) {
+    self.pins = pins
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    pins = try container.array(.pins, of: Pin.self, maxItems: 24)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case pins
+  }
+
+  public struct Pin: Codable, Equatable, Sendable {
+    public let appId: String
+    public let widgetId: String?
+    public let family: Family?
+
+    public init(appId: String, widgetId: String?, family: Family?) {
+      self.appId = appId
+      self.widgetId = widgetId
+      self.family = family
+    }
+
+    public init(from decoder: any Decoder) throws {
+      let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+      appId = try container.string(.appId, pattern: "^app-[a-z0-9]{10}$")
+      widgetId = try container.nullable(.widgetId) {
+        try container.string($0, pattern: "^[a-z][a-z0-9-]{0,31}$")
+      }
+      family = try container.nullable(.family) { try container.value($0, Family.self) }
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+      var container = encoder.container(keyedBy: CodingKeys.self)
+      try container.encode(appId, forKey: .appId)
+      try container.encode(widgetId, forKey: .widgetId)
+      try container.encode(family, forKey: .family)
+    }
+
+    private enum CodingKeys: String, CodingKey, CaseIterable {
+      case appId
+      case widgetId
+      case family
+    }
+
+    public enum Family: String, Codable, Equatable, Sendable {
+      case systemSmall
+      case systemMedium
+      case systemLarge
+    }
+  }
+}
+
+/// Payload of the `task.open` event.
+public struct TaskOpenEvent: Codable, Equatable, Sendable {
+  public let taskId: String
+
+  public init(taskId: String) {
+    self.taskId = taskId
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    taskId = try container.string(
+      .taskId, minLength: 1, maxLength: 128, pattern: "^[a-zA-Z0-9_-]+$")
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case taskId
   }
 }

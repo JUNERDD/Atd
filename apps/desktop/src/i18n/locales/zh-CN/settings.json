@@ -15,7 +15,9 @@
     "extensions": "扩展",
     "providers": "模型",
     "commands": "命令",
+    "automations": "自动化",
     "memory": "记忆",
+    "apps": "应用",
     "general": "通用"
   },
   "drawer": {
@@ -36,14 +38,17 @@
     "resultCount_other": "{{count}} 个结果",
     "general": "通用",
     "entries": {
-      "newCommand": "新建命令"
+      "newCommand": "新建命令",
+      "newAutomation": "新建自动化"
     },
     "keywords": {
       "sectionPermissions": "审批 批准 授权 安全 确认 访问 允许",
       "sectionExtensions": "扩展 拓展 插件 技能 子代理 智能体 服务器 工具 MCP",
       "sectionProviders": "模型 提供商 服务商 接口 密钥 连接 账号 登录 服务",
       "sectionCommands": "命令 指令 提示词 模板 快捷指令",
+      "sectionAutomations": "自动化 计划 定时 定期 重复 周期 cron 每天 每周 每月 触发 监视 文件夹 后台 自动运行 工作流 例行",
       "sectionMemory": "记忆 偏好 学习 上下文 画像",
+      "sectionApps": "应用 小程序 工具 构建 小组件 版本 权限",
       "sectionGeneral": "通用 常规 键盘 快捷键 热键 按键 录制 窗口偏好 程序坞 登录 启动",
       "tierManual": "手动 询问 每次确认 逐个确认 每个操作",
       "tierAuto": "自动 自动批准 自动审批 模型审核 安全操作",
@@ -53,12 +58,16 @@
       "openAtLogin": "开机 启动 自启 自动启动 登录项 登录时",
       "showInDock": "程序坞 菜单栏 图标 隐藏",
       "alwaysOnTop": "置顶 固定 悬浮 窗口置顶 总在最前",
+      "miniPanel": "迷你 面板 悬浮 浮窗 贴边 侧边 边缘 快捷 入口 拖放 拖拽 小窗 启动器",
+      "miniPanelOpenOn": "悬停 点击 展开 打开 触发 方式 指针 鼠标 边缘 误触",
       "restoreDefaults": "重置 恢复 还原 默认 快捷键",
       "language": "语言 界面语言 中文 英文 简体 翻译 本地化",
       "defaultModel": "默认 提供商 模型 选择 当前",
       "addProvider": "添加 连接 账号 接口密钥 登录 云端 本地 新增",
       "connectedProviders": "提供商 连接 账号 断开",
       "newCommand": "创建 添加 新增 命令 提示词 模板",
+      "newAutomation": "创建 添加 自动化 计划 定时任务 例行 自动执行",
+      "automationsPause": "暂停 停止 停用 全部自动化 计划 恢复",
       "memoryLearning": "自动学习 记住 暂停 偏好 纠正",
       "memoryCreate": "添加 新增 保存 记住 记忆",
       "memoryProfile": "画像 关于我 用户 偏好",
@@ -248,10 +257,25 @@
     "openAtLogin": "登录时打开",
     "showInDock": "在程序坞中显示",
     "alwaysOnTop": "始终置顶",
+    "miniPanel": "显示迷你面板",
+    "miniPanelOpenOn": {
+      "title": "展开迷你面板",
+      "description": "选择迷你面板在指针移到它上面时展开，还是点击后才展开。",
+      "label": "迷你面板的展开方式",
+      "modes": {
+        "hover": "悬停时",
+        "click": "点击时"
+      },
+      "hints": {
+        "hover": "指针移到屏幕边缘的迷你面板上就会展开。",
+        "click": "点击迷你面板才会展开，指针经过时它只会稍稍鼓起。"
+      }
+    },
     "preferenceNotes": {
       "openAtLogin": "登录 Mac 时自动启动应用。",
       "showInDock": "无论是否显示，菜单栏图标都会保留。",
-      "alwaysOnTop": "让面板始终位于其他窗口之上。"
+      "alwaysOnTop": "让面板始终位于其他窗口之上。",
+      "miniPanel": "在屏幕边缘保留一个小面板，用于快捷操作；把文件、图片或文字拖到上面即可添加到消息中。"
     },
     "restoreDefaults": "恢复默认快捷键",
     "restoring": "正在恢复…",
@@ -468,6 +492,9 @@
       "statusSection": "运行状态",
       "state": "连接状态",
       "connectionSection": "连接配置",
+      "connectionDescription": "服务器的名称，以及应用如何在本机启动它或通过网络连接它。",
+      "authSection": "身份验证",
+      "authDescription": "应用如何登录此服务器。",
       "authCodeNote": "请在浏览器中完成登录。如果页面显示授权码，请将其粘贴到列表中该服务器所在行。",
       "serverIdHint": "可使用字母、数字、连字符和下划线。添加服务器后无法修改 ID。",
       "serverIdPlaceholder": "例如 github",
@@ -511,6 +538,7 @@
       "metadataUrlHint": "登录时从这里获取授权服务器信息，而不是询问 MCP 服务器。授权码、令牌和客户端密钥都会发往它指定的地址，因此必须使用 https://（仅 localhost 可用 http://）。",
       "metadataUrlPlaceholder": "https://auth.example.com/.well-known/oauth-authorization-server",
       "accessSection": "智能体访问",
+      "accessDescription": "智能体如何使用此服务器的工具和资源。",
       "exposure": "工具加载",
       "exposureAuto": "自动",
       "exposureDirect": "始终可用",
@@ -622,7 +650,7 @@
       "host": {
         "core": {
           "name": "系统",
-          "description": "随应用提供的技能和子代理。"
+          "description": "随应用提供的技能。"
         },
         "personal": {
           "name": "个人",

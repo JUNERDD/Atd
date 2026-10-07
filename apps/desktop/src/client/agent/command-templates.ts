@@ -1,3 +1,4 @@
+import { defaultCommandPlacement } from '@atd/agent-contracts';
 import type { CommandDefinition } from './command-schema';
 
 /** An editable copy the user owns: a copy of a plugin command leaves the plugin behind. */
@@ -31,6 +32,13 @@ export function personalCopy(
 }
 
 export function newCommand(id: string): CommandDefinition {
+  const input: CommandDefinition['input'] = {
+    source: 'manual',
+    required: true,
+    files: false,
+    selection: false,
+    clipboard: false,
+  };
   return {
     id,
     revision: 1,
@@ -40,7 +48,8 @@ export function newCommand(id: string): CommandDefinition {
     enabled: true,
     shortcut: '',
     templateId: null,
-    input: { source: 'manual', required: true, files: false, selection: false, clipboard: false },
+    input,
+    placement: defaultCommandPlacement(input.source),
     parameters: [],
     model: { mode: 'inherit' },
     tools: [],

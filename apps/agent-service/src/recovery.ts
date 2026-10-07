@@ -10,15 +10,17 @@ export interface RecoveryReport {
   requeued: string[];
   interrupted: string[];
   unknown: string[];
-  waitingKept: string[];
-  confirms: { kept: number; dropped: number };
-  capabilities: { kept: number; dropped: number };
+  /** Pending confirms and capability requests of the previous process, dropped unanswered. */
+  droppedConfirms: number;
+  droppedCapabilities: number;
 }
 
 /**
  * Crash/restart recovery from the ledger and Pi JSONL. Queued runs that never
  * started stay queued; live runs become interrupted (or unknown when even the
- * session file cannot confirm what happened). Nothing is auto-replayed.
+ * session file cannot confirm what happened). Nothing is auto-replayed, so no
+ * pending request outlives the restart: the tool call awaiting its answer ended
+ * with the previous process, and a run that waited on one is interrupted.
  */
 export async function recoverService(options: {
   ledger: Ledger;
@@ -32,14 +34,9 @@ export async function recoverService(options: {
     requeued: [],
     interrupted: [],
     unknown: [],
-    waitingKept: [],
-    confirms: { kept: 0, dropped: 0 },
-    capabilities: { kept: 0, dropped: 0 },
+    droppedConfirms: await confirms.recover(),
+    droppedCapabilities: await capabilities.recover(),
   };
-  report.confirms = await confirms.recover();
-  report.capabilities = await capabilities.recover();
-  const waitingRuns = new Set<string>();
-  for (const request of confirms.pending()) waitingRuns.add(`${request.taskId}:${request.runId}`);
 
   for (const task of ledger.data.tasks) {
     for (const run of task.runs) {
@@ -50,19 +47,15 @@ export async function recoverService(options: {
           break;
         case 'awaiting_input':
         case 'awaiting_confirmation':
-          if (waitingRuns.has(`${task.id}:${run.id}`)) {
-            report.waitingKept.push(run.id);
-          } else {
-            await mark(
-              ledger,
-              events,
-              task.id,
-              run.id,
-              'interrupted',
-              'The pending request did not survive the restart.',
-            );
-            report.interrupted.push(run.id);
-          }
+          await mark(
+            ledger,
+            events,
+            task.id,
+            run.id,
+            'interrupted',
+            'The pending request did not survive the restart.',
+          );
+          report.interrupted.push(run.id);
           break;
         case 'running':
         case 'stopping': {

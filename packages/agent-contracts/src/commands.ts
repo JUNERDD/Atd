@@ -1,7 +1,9 @@
 import { Type, type Static } from 'typebox';
-import { Identifier } from './identifiers.js';
+import { SubmitTaskResponseSchema, type SubmitTaskResponse } from './http.js';
+import { Identifier, OperationId } from './identifiers.js';
 import { ThinkingLevelSchema } from './models.js';
 import { SkillName } from './skills.js';
+import { ModelSelectionSchema, ServiceToolIdSchema, TaskInputSchema } from './task.js';
 
 /**
  * T6b (service v1.2 candidate): live command management DTOs. The persisted
@@ -97,6 +99,49 @@ export const CommandInputSchema = Type.Object(
 );
 export type CommandInput = Static<typeof CommandInputSchema>;
 
+/**
+ * Where a command is offered beyond the command list, its shortcut and the launcher. Each place
+ * hands the command text that stands in for the selection it reads: the text selected in another
+ * app (`selectionToolbar`), the text selected in a conversation's answers (`turnSelection`), or a
+ * settled turn's answer (`turnActions`). Clients offer a command only where it is placed and only
+ * while it reads the selection (`offeredAt`).
+ */
+export const CommandPlacementSchema = Type.Object(
+  {
+    /** The selection toolbar over text selected in other apps. */
+    selectionToolbar: Type.Boolean(),
+    /** The toolbar over text selected in a conversation's answers. */
+    turnSelection: Type.Boolean(),
+    /** A settled turn's actions, which run the command on the turn's answer. */
+    turnActions: Type.Boolean(),
+  },
+  { additionalProperties: false },
+);
+export type CommandPlacement = Static<typeof CommandPlacementSchema>;
+export type CommandPlace = keyof CommandPlacement;
+
+/**
+ * The placement of a command that never chose one (stored before placements existed, or created
+ * without one): a command that takes the selection as its input shows on the selection toolbar
+ * over other apps, as every such command did before, and in no conversation until it is put there.
+ */
+export function defaultCommandPlacement(source: CommandInput['source']): CommandPlacement {
+  return { selectionToolbar: source === 'selection', turnSelection: false, turnActions: false };
+}
+
+/** Whether a command reads the selection: as its input, or through the `{{selection}}` variable. */
+export function readsSelection(input: CommandInput): boolean {
+  return input.source === 'selection' || input.selection;
+}
+
+/** Whether a client offers `command` at `place`: it is enabled, placed there and reads the selection. */
+export function offeredAt(
+  command: { enabled: boolean; input: CommandInput; placement: CommandPlacement },
+  place: CommandPlace,
+): boolean {
+  return command.enabled && command.placement[place] && readsSelection(command.input);
+}
+
 export const CommandModelSchema = Type.Union([
   Type.Object({ mode: Type.Literal('inherit') }, { additionalProperties: false }),
   Type.Object(
@@ -135,6 +180,7 @@ export const ServiceCommandFullSchema = Type.Object({
   shortcut: Type.String({ maxLength: 100 }),
   templateId: Type.Union([Identifier, Type.Null()]),
   input: CommandInputSchema,
+  placement: CommandPlacementSchema,
   parameters: Type.Array(CommandParameterSchema, { maxItems: 20 }),
   model: CommandModelSchema,
   tools: Type.Array(CommandToolSchema, { uniqueItems: true }),
@@ -159,6 +205,8 @@ export const CommandCreateSchema = Type.Object({
   shortcut: Type.Optional(Type.String({ maxLength: 100 })),
   templateId: Type.Optional(Type.Union([Identifier, Type.Null()])),
   input: Type.Optional(CommandInputSchema),
+  /** Omitted: `defaultCommandPlacement` of the input source. */
+  placement: Type.Optional(CommandPlacementSchema),
   parameters: Type.Optional(Type.Array(CommandParameterSchema, { maxItems: 20 })),
   model: Type.Optional(CommandModelSchema),
   tools: Type.Optional(Type.Array(CommandToolSchema, { uniqueItems: true })),
@@ -197,6 +245,50 @@ export const CommandDeleteResponseSchema = Type.Object(
   { additionalProperties: false },
 );
 export type CommandDeleteResponse = Static<typeof CommandDeleteResponseSchema>;
+
+/**
+ * Run-time picks over a command's saved settings, as the panel's pickers set them; each absent
+ * field keeps the command's own. A picked model wins over the command's fixed model
+ * (`runModelSelection`).
+ */
+export const CommandRunPolicySchema = Type.Object(
+  {
+    model: Type.Optional(ModelSelectionSchema),
+    thinkingLevel: Type.Optional(ThinkingLevelSchema),
+    tools: Type.Optional(Type.Array(ServiceToolIdSchema, { uniqueItems: true })),
+    memory: Type.Optional(Type.Boolean()),
+  },
+  { additionalProperties: false },
+);
+export type CommandRunPolicy = Static<typeof CommandRunPolicySchema>;
+
+/**
+ * `POST /v1/commands/:id/run`: launches a saved command, the user's own or a plugin's, as one run.
+ * Every launcher takes this path: the service renders the template with `input`, stages the
+ * skills and references the template names, shows its tokens as the run's chips (the input's own
+ * chips are replaced), freezes the text as command material and titles a new task after the
+ * command. 404 for an unknown command, 409 for a disabled one or a busy task, 400 for input the
+ * template cannot run with.
+ */
+export const CommandRunRequestSchema = Type.Object(
+  {
+    /** Repeats with the same id answer the original run (`duplicate: true`). */
+    operationId: OperationId,
+    /** The task to run in; absent starts a new task. */
+    taskId: Type.Optional(Identifier),
+    /** What the template reads: the `{{input}}` text, argument values, files and captures. */
+    input: TaskInputSchema,
+    policy: Type.Optional(CommandRunPolicySchema),
+    /** Starts the new task as a side chat of this conversation (`SubmitTaskRequest.sideChatOf`). */
+    sideChatOf: Type.Optional(Identifier),
+  },
+  { additionalProperties: false },
+);
+export type CommandRunRequest = Static<typeof CommandRunRequestSchema>;
+
+/** A command run is accepted like a task submit. */
+export const CommandRunResponseSchema = SubmitTaskResponseSchema;
+export type CommandRunResponse = SubmitTaskResponse;
 
 /**
  * Stored command core in `commands.json`. `migratedAt` stays so files written

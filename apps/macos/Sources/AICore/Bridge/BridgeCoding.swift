@@ -38,6 +38,13 @@ public enum BridgeCoding {
     return try decoder.container(keyedBy: Keys.self)
   }
 
+  /// JSON Schema `format: date-time` as JavaScript's `toISOString` writes it (fractional seconds
+  /// optional, `Z` or an offset); nil for anything else.
+  public static func parseDateTime(_ value: String) -> Date? {
+    (try? Date.ISO8601FormatStyle(includingFractionalSeconds: true).parse(value))
+      ?? (try? Date.ISO8601FormatStyle().parse(value))
+  }
+
   /// JSON Schema `pattern`: an unanchored ECMA-262 regular expression (the contract's are ASCII).
   static func matches(_ value: String, _ pattern: String) -> Bool {
     guard let expression = try? NSRegularExpression(pattern: pattern) else { return false }
@@ -95,6 +102,36 @@ extension KeyedDecodingContainer {
     return value
   }
 
+  /// An array whose items must differ from each other (`uniqueItems`).
+  public func array<Element: Decodable & Hashable>(
+    _ key: Key, of element: Element.Type, minItems: Int = 0, maxItems: Int = .max,
+    uniqueItems: Bool
+  ) throws -> [Element] {
+    let value = try array(key, of: element, minItems: minItems, maxItems: maxItems)
+    if uniqueItems, Set(value).count != value.count { throw invalid(key, "must not repeat items") }
+    return value
+  }
+
+  /// A `Type.Record` whose keys match `keyPattern`.
+  public func dictionary<Value: Decodable>(
+    _ key: Key, of value: Value.Type, keyPattern: String
+  ) throws -> [String: Value] {
+    let entries = try decode([String: Value].self, forKey: key)
+    if let bad = entries.keys.first(where: { !BridgeCoding.matches($0, keyPattern) }) {
+      throw invalid(key, "has the key \(bad), which must match \(keyPattern)")
+    }
+    return entries
+  }
+
+  /// A `format: date-time` string, kept as written; ``BridgeCoding/parseDateTime(_:)`` reads it.
+  public func dateTime(_ key: Key, maxLength: Int = .max) throws -> String {
+    let value = try string(key, maxLength: maxLength)
+    guard BridgeCoding.parseDateTime(value) != nil else {
+      throw invalid(key, "must be an ISO 8601 date-time")
+    }
+    return value
+  }
+
   /// A member of a generated type, which checks itself.
   public func value<Value: Decodable>(_ key: Key, _ type: Value.Type) throws -> Value {
     try decode(type, forKey: key)
@@ -120,6 +157,11 @@ extension KeyedDecodingContainer {
         key, .init(codingPath: codingPath, debugDescription: "\(key.stringValue) is required."))
     }
     return try decodeNil(forKey: key) ? nil : read(key)
+  }
+
+  /// A member that may be absent (`Type.Optional`); when present it must not be null.
+  public func optional<Value>(_ key: Key, _ read: (Key) throws -> Value) throws -> Value? {
+    contains(key) ? try read(key) : nil
   }
 
   private func invalid(_ key: Key, _ rule: String) -> DecodingError {

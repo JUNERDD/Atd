@@ -20,7 +20,7 @@ const MAX_ARGS_BYTES = 8 * 1024;
  * a step keeps what its row shows: the arguments, the result text and the projected details a
  * direct call's row would show. Two owners feed one: codemode/extension.ts from the `tool_call`
  * and `tool_result` hooks, to persist the steps in the codemode result, and live-transcript.ts
- * from the session's `tool_execution_*` events, to show them while the script runs.
+ * from the session's `tool_execution_*` events, to show them until that result is on the branch.
  */
 export class NestedStepLog {
   private readonly parents = new Map<string, StepList>();
@@ -89,9 +89,11 @@ function stepDetails(name: string, raw: unknown): CodemodeStepDetails | undefine
     case 'webSearch':
     case 'webFetch':
       return details;
+    case 'app':
     case 'codemode':
     case 'mcpApproval':
     case 'subagent':
+    case 'subagentDefine':
     case 'todo':
     case undefined:
       return undefined;

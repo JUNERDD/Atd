@@ -1,9 +1,9 @@
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { PermissionRequest } from '../client/agent/permission-schema';
 import type { QueueState } from '../client/agent/transcript-schema';
 import type { HitlStatus } from '../features/agent/progress/progress-pill';
-import { scopeKey } from '../features/agent/transcript/tool-copy';
+import { scopeKey } from '../features/agent/transcript/permission-copy';
+import type { HitlRequest } from './hitl-request';
 
 export interface HitlSummary {
   /** The pill's HITL part; null when nothing waits. */
@@ -18,16 +18,18 @@ export interface HitlSummary {
 }
 
 /**
- * What waits on the user, in the labels the regions use: approvals (permission confirms and
- * plans) win over answers, and the queued count covers a queue alone.
+ * What waits on the user, in the labels the regions use: approvals (permission confirms, plans
+ * and app consents) win over answers, and the queued count covers a queue alone. A lone request
+ * that is an approval or a consent names what it asks for in the title.
  */
 export function useHitlSummary(
-  requests: readonly PermissionRequest[],
+  requests: readonly HitlRequest[],
   queue: QueueState,
   taskId: string | null,
 ): HitlSummary {
   const { t } = useTranslation('tasks');
   const { t: tp } = useTranslation('panel');
+  const { t: ta } = useTranslation('apps');
   const signature = useMemo(
     () => `${requests.map((request) => request.id).join(',')}|${JSON.stringify(queue)}`,
     [requests, queue],
@@ -43,12 +45,21 @@ export function useHitlSummary(
         : t('permission.waitingAnswer');
   const kind: HitlStatus['kind'] =
     requests.length === 0 ? 'queue' : approval ? 'approval' : 'answer';
-  const first = requests[0];
-  const single = requests.length === 1 && first?.kind === 'confirmation' ? first : null;
+  const first = requests.length === 1 ? requests[0] : undefined;
+  const single = first?.kind === 'confirmation' ? first : null;
+  const subject =
+    single !== null
+      ? t(scopeKey(single.scope))
+      : first?.kind === 'appConsent'
+        ? ta('consent.title', {
+            app: first.consent.appName,
+            capability: ta(`capability.${first.consent.capability}.action`),
+          })
+        : null;
   return {
     status: requests.length > 0 || hasQueue ? { kind, label } : null,
     signature,
-    title: single === null ? label : `${label} · ${t(scopeKey(single.scope))}`,
+    title: subject === null ? label : `${label} · ${subject}`,
     mergedApproval: single !== null,
     hasQueue,
   };

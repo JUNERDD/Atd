@@ -76,6 +76,7 @@ export function mcpProxyTool(
         executionId: host.executionId(),
         toolCallId: id,
         configRevision: binding.revision,
+        setStatus: host.setStatus,
       };
       const input = args ?? {};
       if (!isJsonObject(input)) {

@@ -3,6 +3,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { fetchGit, normalizeSubdir, type GitClone } from '../../src/node/fetch-git.js';
 import { fetchLocal } from '../../src/node/fetch-local.js';
+import { sourceFallbackName } from '../../src/node/fetch.js';
 import { FetchLimitError } from '../../src/node/limits.js';
 import { SKILL_FIXTURE, tempDir } from './helpers.js';
 
@@ -48,9 +49,9 @@ describe('fetchGit', () => {
     expect(fetched).toEqual({
       source: { kind: 'git', url: 'https://example.test/acme/tools.git', ref: 'v1' },
       resolved: { commit: COMMIT },
-      fallbackName: 'tools',
       warnings: [],
     });
+    expect(sourceFallbackName(fetched.source)).toBe('tools');
     expect((await readdir(paths.tree)).sort()).toEqual(['README.md', 'plugins']);
     expect(await readdir(paths.workDir)).toEqual([]);
   });
@@ -68,7 +69,7 @@ describe('fetchGit', () => {
       url: 'https://example.test/acme/tools',
       subdir: 'plugins/hello',
     });
-    expect(fetched.fallbackName).toBe('hello');
+    expect(sourceFallbackName(fetched.source)).toBe('hello');
     expect((await readdir(paths.tree)).sort()).toEqual(['SKILL.md', 'notes.txt', 'scripts']);
   });
 

@@ -18,7 +18,7 @@ Read `references/architecture.md` (relative to this skill's directory; reading i
 - Read-only investigation: `read`, `grep`, `find`, `ls` (confined to the task folder), `web_search` and `fetch_content` for documentation lookups, and `ask_user` for questions. Paths are relative to the task folder.
 - Planning writes: `write` and `edit`, only on the planning artifacts listed below. Each write may ask the user for permission; if the user declines, do not retry. Keep the content in chat and say which file was not written.
 - `bash`: every command goes through the shell allowlist or a user confirmation. Before approval, only side-effect-free commands such as `git status`, `git diff` or `date +%F`.
-- `subagent`: when available, you may delegate bounded read-only discovery to the `service.scout` agent (`agent: "service.scout"`, `task: "<read-only objective>"`).
+- `subagent`: when available, you may delegate bounded read-only discovery to a task agent you define for it with `{ action: "define" }`. Give it only `read`, `grep`, `find` and `ls` (plus `web_search` and `fetch_content` when the question needs the web) and instructions to change nothing, then launch it as `task.<name>` in a later message with a bounded read-only objective.
 - `todo`: the execution checklist. Use it only after approval (see Handoff To Execution).
 
 ## Core Contract
@@ -170,7 +170,7 @@ Ask questions early when the answer changes the plan.
 Keep research proportional to risk.
 
 - For small tasks, read the directly relevant files and stop.
-- For large folders, map ownership boundaries, routes, data contracts and verification surfaces with `grep` and `find`. Delegate independent discovery to `service.scout` when that is faster, giving each child a bounded read-only objective and asking for paths, evidence, blockers and residual risks.
+- For large folders, map ownership boundaries, routes, data contracts and verification surfaces with `grep` and `find`. When independent discovery is faster in parallel, delegate it to the read-only task agent described under Tools In This App, giving each child a bounded read-only objective and asking for paths, evidence, blockers and residual risks.
 - Do not redo a delegated investigation yourself unless the result is blocking and unavailable.
 
 ## Plan Structure

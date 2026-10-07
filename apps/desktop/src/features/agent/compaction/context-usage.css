@@ -6,6 +6,8 @@
   /* Skills have no status or syntax hue of their own; a violet keeps them apart from the blue
      messages and the indigo-leaning sidebar primary. */
   --context-skills: #a78bfa;
+  /* Memory sits beside skills in the prompt; a pink keeps it apart from the violet skills. */
+  --context-memory: #f472b6;
   --context-color: var(--border);
 }
 .context-category[data-category='messages'] {
@@ -16,6 +18,9 @@
 }
 .context-category[data-category='skills'] {
   --context-color: var(--context-skills);
+}
+.context-category[data-category='memory'] {
+  --context-color: var(--context-memory);
 }
 .context-category[data-category='systemTools'] {
   --context-color: var(--ata-status-warning);

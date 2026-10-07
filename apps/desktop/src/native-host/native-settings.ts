@@ -5,8 +5,9 @@ import {
   type PatchSettingsRequest,
   type SettingsResponse,
 } from '@atd/agent-contracts';
-import { parseExtensionSession } from '../client/agent/bridge';
+import { AutomationSessionTargetSchema, parseExtensionSession } from '../client/agent/bridge';
 import { DEFAULT_PERMISSION_TIER } from '../client/agent/permission-schema';
+import { parse } from '../client/agent/validation';
 import type { ProviderBridge } from '../client/providers/schema';
 import { ProviderService } from '../client/providers/service';
 import {
@@ -27,15 +28,18 @@ import type { WindowMessages } from './window-messages';
 
 /**
  * The preferences the shell owns, whether it holds the panel and screenshot shortcuts (null until
- * the panel's first registration answer reaches this window), and whether macOS trusts the app for
+ * the panel's first registration answer reaches this window), whether macOS trusts the app for
  * Accessibility and lets it capture the screen (each null until the shell's `accessibility.trust`
- * or `screenRecording.trust` arrives).
+ * or `screenRecording.trust` arrives), and whether the mini panel shows and how it opens (null
+ * until the shell's first `miniPanel.state`).
  */
 export type ShellState = CallResult<'app.state'> & {
   shortcutAvailable: boolean | null;
   screenshotShortcutAvailable: boolean | null;
   accessibilityTrusted: boolean | null;
   screenRecordingTrusted: boolean | null;
+  miniPanelShown: boolean | null;
+  miniPanelOpenOn: CallResult<'miniPanel.setOpenOn'>['openOn'] | null;
 };
 
 /**
@@ -54,8 +58,8 @@ export function nativeSettings(
   setShell: (patch: Partial<ShellState>) => SettingsSnapshot;
   /** Whether the service's settings loaded; until then the snapshot holds defaults. */
   loaded: () => boolean;
-  /** Records whether the welcome guide was shown in this data dir (the panel's trigger only). */
-  setOnboardingCompleted: (done: boolean) => Promise<SettingsSnapshot>;
+  /** Records that the welcome guide was shown in this data dir (the panel's trigger only). */
+  markOnboardingShown: () => Promise<SettingsSnapshot>;
   ready: Promise<void>;
 } {
   let shared: SettingsResponse | null = null;
@@ -63,10 +67,14 @@ export function nativeSettings(
     pinned: false,
     showInDock: false,
     openAtLogin: null,
+    // Assumed until the shell answers, so no placement warning flashes at startup.
+    widgetsAvailable: true,
     shortcutAvailable: null,
     screenshotShortcutAvailable: null,
     accessibilityTrusted: null,
     screenRecordingTrusted: null,
+    miniPanelShown: null,
+    miniPanelOpenOn: null,
   };
   const listeners = new Set<(settings: SettingsSnapshot) => void>();
   const loginListeners = new Set<Parameters<ProviderBridge['onLogin']>[0]>();
@@ -139,6 +147,11 @@ export function nativeSettings(
     },
     startCommandSession: async (commandId) => messages.post({ type: 'commandSession', commandId }),
     // Validated here so the caller sees a rejection, as the desktop IPC boundary does.
+    startAutomationSession: async (automation) =>
+      messages.post({
+        type: 'automationSession',
+        automation: parse(AutomationSessionTargetSchema, automation),
+      }),
     startExtensionSession: async (kind, target) =>
       messages.post({ type: 'extensionSession', ...parseExtensionSession(kind, target ?? null) }),
     close: async () => void (await native.call('settings.close', {})),
@@ -199,7 +212,7 @@ export function nativeSettings(
     providers,
     shell: () => shell,
     loaded: () => shared !== null,
-    setOnboardingCompleted: (done) => write({ onboardingCompleted: done }),
+    markOnboardingShown: () => write({ onboardingCompleted: true }),
     setShell: (patch) => {
       shell = { ...shell, ...patch };
       return publish();

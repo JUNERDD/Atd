@@ -15,6 +15,8 @@ import { Type, type TSchema } from 'typebox';
 import { NativeCalls } from './calls.ts';
 import { ImportFailureSchema, NativeFileRefSchema, NativeFolderRefSchema } from './file-calls.ts';
 import { Empty, Text } from './primitives.ts';
+import { UserAppIdSchema } from './user-app-contract.ts';
+import { DesktopPinSchema, MAX_DESKTOP_PINS, MiniPanelOpenOnSchema } from './window-calls.ts';
 
 /** `WKScriptMessageHandler` name the page posts to. */
 export const MESSAGE_HANDLER = 'aiNative';
@@ -113,6 +115,14 @@ export const NativePosts = {
     },
     { additionalProperties: false },
   ),
+  /**
+   * Drags the app's pin out of the panel: posted once a press on the app's card moved past the
+   * drag threshold, with the button still down. The shell starts a native drag from that press
+   * with the pin as its image; a drop on the desktop pins the app there or moves its pin, and
+   * Escape or a drop anywhere else ends it without a change. The shell takes it only from the panel
+   * and the settings window, while the left button is down after a press under two seconds old.
+   */
+  'userApp.pinDrag': Type.Object({ appId: UserAppIdSchema }, { additionalProperties: false }),
 } satisfies Record<string, TSchema>;
 
 /** One socket frame; Swift batches them per run-loop turn, in order. */
@@ -162,11 +172,6 @@ export const NativeEvents = {
    */
   'shortcut.screenshot': Empty,
   /**
-   * Debug builds' Replay First-Launch Guide (panel only): the page marks the guide as not shown,
-   * which runs the first launch's path again.
-   */
-  'onboarding.replay': Empty,
-  /**
    * Swift imported files dropped or pasted into the panel through `/v1/resources/import`, and
    * registered folders through `/v1/folders/register`. `failures` covers both; each path of the
    * import lands in exactly one list.
@@ -211,6 +216,20 @@ export const NativeEvents = {
    */
   'selection.ask': Empty,
   /**
+   * The mini panel's New task: Swift already showed the panel. The page leaves the open task for a
+   * new task's composer, as the panel's own New task button does.
+   */
+  'task.new': Empty,
+  /**
+   * Whether the mini panel shows on the screen edge (`miniPanel.setShown`, the menu bar's toggle
+   * and the mini panel's own Hide) and how it opens (`miniPanel.setOpenOn` and its context menu),
+   * sent to every page on each change and replayed when a page becomes ready.
+   */
+  'miniPanel.state': Type.Object(
+    { shown: Type.Boolean(), openOn: MiniPanelOpenOnSchema },
+    { additionalProperties: false },
+  ),
+  /**
    * Whether the app is trusted for Accessibility (selection capture and the selection toolbar
    * need it), sent to every page on each change and replayed when a page becomes ready.
    */
@@ -234,6 +253,36 @@ export const NativeEvents = {
   ),
   'socket.frames': Type.Object(
     { frames: Type.Array(SocketFrameSchema, { minItems: 1 }) },
+    { additionalProperties: false },
+  ),
+  /**
+   * A user app window opened, reloaded or closed: `version` is the version it loaded, null once
+   * closed. Sent to every page on each change and replayed for each open window when a page
+   * becomes ready, so the renderer knows which open apps to reload after an `apps` invalidate.
+   */
+  'userApp.state': Type.Object(
+    {
+      appId: UserAppIdSchema,
+      open: Type.Boolean(),
+      version: Type.Union([Type.Integer({ minimum: 1 }), Type.Null()]),
+    },
+    { additionalProperties: false },
+  ),
+  /**
+   * The apps pinned to the desktop and what each pin shows, oldest pin first: the whole list, sent
+   * to every page on each change and replayed when a page becomes ready, including a settings
+   * window opened later.
+   */
+  'userApp.pins': Type.Object(
+    { pins: Type.Array(DesktopPinSchema, { maxItems: MAX_DESKTOP_PINS }) },
+    { additionalProperties: false },
+  ),
+  /**
+   * Show this task in the panel: the person opened an automation's notification. Sent to the
+   * panel once it is shown, and queued until its page is ready.
+   */
+  'task.open': Type.Object(
+    { taskId: Type.String({ minLength: 1, maxLength: 128, pattern: '^[a-zA-Z0-9_-]+$' }) },
     { additionalProperties: false },
   ),
 } satisfies Record<string, TSchema>;

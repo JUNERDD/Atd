@@ -60,11 +60,13 @@ public struct AppStateResult: Codable, Equatable, Sendable {
   public let pinned: Bool
   public let showInDock: Bool
   public let openAtLogin: Bool?
+  public let widgetsAvailable: Bool
 
-  public init(pinned: Bool, showInDock: Bool, openAtLogin: Bool?) {
+  public init(pinned: Bool, showInDock: Bool, openAtLogin: Bool?, widgetsAvailable: Bool) {
     self.pinned = pinned
     self.showInDock = showInDock
     self.openAtLogin = openAtLogin
+    self.widgetsAvailable = widgetsAvailable
   }
 
   public init(from decoder: any Decoder) throws {
@@ -72,6 +74,7 @@ public struct AppStateResult: Codable, Equatable, Sendable {
     pinned = try container.boolean(.pinned)
     showInDock = try container.boolean(.showInDock)
     openAtLogin = try container.nullable(.openAtLogin) { try container.boolean($0) }
+    widgetsAvailable = try container.boolean(.widgetsAvailable)
   }
 
   public func encode(to encoder: any Encoder) throws {
@@ -79,12 +82,14 @@ public struct AppStateResult: Codable, Equatable, Sendable {
     try container.encode(pinned, forKey: .pinned)
     try container.encode(showInDock, forKey: .showInDock)
     try container.encode(openAtLogin, forKey: .openAtLogin)
+    try container.encode(widgetsAvailable, forKey: .widgetsAvailable)
   }
 
   private enum CodingKeys: String, CodingKey, CaseIterable {
     case pinned
     case showInDock
     case openAtLogin
+    case widgetsAvailable
   }
 }
 
@@ -160,97 +165,84 @@ public struct AppSetOpenAtLoginResult: Codable, Equatable, Sendable {
   }
 }
 
-/// Params of the `settings.open` call.
-public struct SettingsOpenParams: Codable, Equatable, Sendable {
-  public let commandId: String?
-  public let section: String?
+/// Params of the `miniPanel.setShown` call.
+public struct MiniPanelSetShownParams: Codable, Equatable, Sendable {
+  public let shown: Bool
 
-  public init(commandId: String?, section: String?) {
-    self.commandId = commandId
-    self.section = section
+  public init(shown: Bool) {
+    self.shown = shown
   }
 
   public init(from decoder: any Decoder) throws {
     let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    commandId = try container.nullable(.commandId) { try container.string($0, maxLength: 128) }
-    section = try container.nullable(.section) {
-      try container.string($0, minLength: 1, maxLength: 32)
-    }
-  }
-
-  public func encode(to encoder: any Encoder) throws {
-    var container = encoder.container(keyedBy: CodingKeys.self)
-    try container.encode(commandId, forKey: .commandId)
-    try container.encode(section, forKey: .section)
+    shown = try container.boolean(.shown)
   }
 
   private enum CodingKeys: String, CodingKey, CaseIterable {
-    case commandId
-    case section
+    case shown
   }
 }
 
-/// Result of the `settings.open` call.
-public typealias SettingsOpenResult = NativeEmpty
+/// Result of the `miniPanel.setShown` call.
+public struct MiniPanelSetShownResult: Codable, Equatable, Sendable {
+  public let shown: Bool
 
-/// Params of the `settings.close` call.
-public typealias SettingsCloseParams = NativeEmpty
-
-/// Result of the `settings.close` call.
-public typealias SettingsCloseResult = NativeEmpty
-
-/// Params of the `onboarding.open` call.
-public typealias OnboardingOpenParams = NativeEmpty
-
-/// Result of the `onboarding.open` call.
-public typealias OnboardingOpenResult = NativeEmpty
-
-/// Params of the `onboarding.settle` call.
-public typealias OnboardingSettleParams = NativeEmpty
-
-/// Result of the `onboarding.settle` call.
-public typealias OnboardingSettleResult = NativeEmpty
-
-/// Params of the `onboarding.close` call.
-public struct OnboardingCloseParams: Codable, Equatable, Sendable {
-  public let summon: Bool
-
-  public init(summon: Bool) {
-    self.summon = summon
+  public init(shown: Bool) {
+    self.shown = shown
   }
 
   public init(from decoder: any Decoder) throws {
     let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    summon = try container.boolean(.summon)
+    shown = try container.boolean(.shown)
   }
 
   private enum CodingKeys: String, CodingKey, CaseIterable {
-    case summon
+    case shown
   }
 }
 
-/// Result of the `onboarding.close` call.
-public typealias OnboardingCloseResult = NativeEmpty
+/// Params of the `miniPanel.setOpenOn` call.
+public struct MiniPanelSetOpenOnParams: Codable, Equatable, Sendable {
+  public let openOn: OpenOn
 
-/// Params of the `shortcuts.set` call.
-public struct ShortcutsSetParams: Codable, Equatable, Sendable {
-  public let registrations: [ShortcutRegistration]
-  public let selectionWanted: Bool
-
-  public init(registrations: [ShortcutRegistration], selectionWanted: Bool) {
-    self.registrations = registrations
-    self.selectionWanted = selectionWanted
+  public init(openOn: OpenOn) {
+    self.openOn = openOn
   }
 
   public init(from decoder: any Decoder) throws {
     let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    registrations = try container.array(
-      .registrations, of: ShortcutRegistration.self, maxItems: 256)
-    selectionWanted = try container.boolean(.selectionWanted)
+    openOn = try container.value(.openOn, OpenOn.self)
   }
 
   private enum CodingKeys: String, CodingKey, CaseIterable {
-    case registrations
-    case selectionWanted
+    case openOn
+  }
+
+  public enum OpenOn: String, Codable, Equatable, Sendable {
+    case hover
+    case click
+  }
+}
+
+/// Result of the `miniPanel.setOpenOn` call.
+public struct MiniPanelSetOpenOnResult: Codable, Equatable, Sendable {
+  public let openOn: OpenOn
+
+  public init(openOn: OpenOn) {
+    self.openOn = openOn
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    openOn = try container.value(.openOn, OpenOn.self)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case openOn
+  }
+
+  public enum OpenOn: String, Codable, Equatable, Sendable {
+    case hover
+    case click
   }
 }

@@ -70,7 +70,7 @@ export function contextDrill({
       editor.clearTrigger();
     },
   }));
-  const group = { id: 'context', heading: tp('modelConfig.context'), options };
+  const group = { id: 'context', heading: tp('modelConfig.context'), icon: <Layers />, options };
   return { groups: [group], empty: reason ?? t('quickPanel.states.noMatches') };
 }
 
@@ -110,7 +110,12 @@ export function compactDrill({
       actions.compact(focus || undefined);
     },
   };
-  const group = { id: 'compact', heading: t('quickPanel.groups.commands'), options: [option] };
+  const group = {
+    id: 'compact',
+    heading: t('quickPanel.groups.commands'),
+    icon: <FoldVertical />,
+    options: [option],
+  };
   if (block) return { groups: [], empty: t(`quickPanel.blocked.${block}`) };
   return { groups: [group], empty: null };
 }

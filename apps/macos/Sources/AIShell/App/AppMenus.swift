@@ -7,8 +7,6 @@ struct AppMenuActions {
   var hidePanel: () -> Void
   var openSettings: () -> Void
   var openOnboarding: () -> Void
-  /// Debug builds only: runs the first launch's welcome guide path again; nil in Release.
-  var replayOnboarding: (() -> Void)?
   /// Nil where the build does not update (Debug).
   var checkForUpdates: (() -> Void)?
   var restartService: () async throws -> Void
@@ -21,12 +19,15 @@ struct AppMenuActions {
   /// effect; the status menu shows it as a checkable item.
   var selectionListening: () -> Bool?
   var setSelectionListening: (Bool) -> Void
+  /// Whether the mini panel shows; both menus show it as the checkable Show Mini Panel item.
+  var miniPanelShown: () -> Bool
+  var setMiniPanelShown: (Bool) -> Void
 }
 
 /// The app's menus.
 enum AppMenus {
-  /// Panel, settings, welcome guide and service items, then Quit. The status item and the
-  /// application menu share them, since a hidden Dock icon hides the application menu.
+  /// Panel, mini panel, settings, welcome guide and service items, then Quit. The status item and
+  /// the application menu share them, since a hidden Dock icon hides the application menu.
   static func appItems(_ actions: AppMenuActions) -> [NSMenuItem] {
     let strings = ShellStrings.shared
     let quit = NSMenuItem(
@@ -35,12 +36,12 @@ enum AppMenus {
     var items: [NSMenuItem] = [
       ActionMenuItem(strings.text(.menuShowPanel), actions.showPanel),
       ActionMenuItem(strings.text(.menuHidePanel), actions.hidePanel),
+      ActionMenuItem(strings.text(.menuShowMiniPanel), isOn: actions.miniPanelShown) {
+        actions.setMiniPanelShown(!actions.miniPanelShown())
+      },
       ActionMenuItem(strings.text(.menuSettings), key: ",", actions.openSettings),
       ActionMenuItem(strings.text(.menuOnboarding), actions.openOnboarding),
     ]
-    if let replayOnboarding = actions.replayOnboarding {
-      items.append(ActionMenuItem(strings.text(.menuOnboardingReplay), replayOnboarding))
-    }
     if let checkForUpdates = actions.checkForUpdates {
       items.append(ActionMenuItem(strings.text(.menuCheckForUpdates), checkForUpdates))
     }
@@ -162,14 +163,32 @@ enum AppMenus {
   }
 }
 
-/// A menu item that runs a closure.
-final class ActionMenuItem: NSMenuItem {
+/// A menu item that runs a closure. A checkable one (`isOn`) reads its check mark again whenever
+/// its menu updates, since the application menu is built once per language and a mark set only
+/// then would go stale.
+final class ActionMenuItem: NSMenuItem, NSMenuItemValidation {
   private let handler: () -> Void
+  private let isOn: (() -> Bool)?
 
-  init(_ title: String, key: String = "", _ handler: @escaping () -> Void) {
+  init(
+    _ title: String, key: String = "", isOn: (() -> Bool)? = nil,
+    _ handler: @escaping () -> Void
+  ) {
     self.handler = handler
+    self.isOn = isOn
     super.init(title: title, action: #selector(run), keyEquivalent: key)
     target = self
+    refreshState()
+  }
+
+  /// Always enabled, as an item whose target answers its action is.
+  func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
+    refreshState()
+    return true
+  }
+
+  private func refreshState() {
+    if let isOn { state = isOn() ? .on : .off }
   }
 
   // NSMenuItem's initializers are nonisolated; under the target's main-actor default the
@@ -202,9 +221,10 @@ extension AppMenuActions {
   /// Actions of a controller that is gone; the menu still builds.
   static var inert: AppMenuActions {
     AppMenuActions(
-      showPanel: {}, hidePanel: {}, openSettings: {}, openOnboarding: {}, replayOnboarding: nil,
+      showPanel: {}, hidePanel: {}, openSettings: {}, openOnboarding: {},
       checkForUpdates: nil,
       restartService: {}, showServiceLogs: {}, editCommand: { _ in }, developmentHint: { false },
-      selectionListening: { nil }, setSelectionListening: { _ in })
+      selectionListening: { nil }, setSelectionListening: { _ in }, miniPanelShown: { false },
+      setMiniPanelShown: { _ in })
   }
 }

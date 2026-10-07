@@ -1,6 +1,7 @@
 import path from 'node:path';
 import {
   errorMessage,
+  isTerminalStatus,
   rootExecutionId,
   type ChildTranscriptResponse,
   type PermissionTier,
@@ -47,7 +48,6 @@ import {
 } from './subagents/index.js';
 import { LiveSlot } from './session-release.js';
 import { replaceFollowUps } from './tasks/queue-replace.js';
-import { rootMemoryScope, withRootMemoryTurn, type RunnerMemoryScope } from './memory/index.js';
 
 export interface RunnerContext {
   ledger: Ledger;
@@ -66,10 +66,12 @@ export interface RunnerContext {
  */
 export class TaskRunner {
   /** The live session; a release serializes against reopening it (session-release.ts). */
-  private readonly slot = new LiveSlot((scope, action) => this.memoryTurn(scope, action));
+  private readonly slot = new LiveSlot();
   private currentRunId = '';
   private material: RunMaterial = NO_RUN_MATERIAL;
   private aborted = false;
+  /** The task was deleted (`discard`); its sessions read memory off from then on. */
+  private deleted = false;
   /** A manual compaction of the idle session runs; runs wait for it. */
   private compacting = false;
   private audit: AuditWriter | null = null;
@@ -105,6 +107,7 @@ export class TaskRunner {
         void this.setStatus(runId, status, '').catch(() => undefined);
       },
       stopRequested: () => this.aborted,
+      deleted: () => this.deleted,
     };
   }
 
@@ -144,17 +147,13 @@ export class TaskRunner {
       throw compactRefused('nothing_to_compact', NOTHING_TO_COMPACT);
     // Events of a compaction outside a run belong to the task's latest run.
     this.currentRunId ||= run.id;
-    const memory = this.slot.memory;
     this.compacting = true;
     return startManualCompaction({
       live: async () => {
         await this.slot.settled();
-        return (
-          this.slot.live ?? this.slot.hold(await createCompactionState(this.session, run), null)
-        );
+        return this.slot.live ?? this.slot.hold(await createCompactionState(this.session, run));
       },
       instructions,
-      wrap: (action) => this.memoryTurn(memory, action),
       onEnd: () => {
         this.compacting = false;
       },
@@ -204,15 +203,13 @@ export class TaskRunner {
         references: frozen.references.material,
         skills: frozen.skills.loaded,
         catalog: frozen.catalog,
+        memory: frozen.memory,
       };
       const live = await this.ensureSession(run, frozen.agents);
       rebindSubagentsForRun(this.taskId, run);
       // Nothing in the text expands: `/skill:` markers reach the model as written,
       // and the skills themselves arrive in a hidden message (skills/session-skills.ts).
-      // Memory tool writes and Hermes' review learners pass only inside the root memory scope.
-      await this.memoryTurn(rootMemoryScope(this.taskId, run), () =>
-        live.session.prompt(runPromptText(run), runPromptOptions(attachments)),
-      );
+      await live.session.prompt(runPromptText(run), runPromptOptions(attachments));
       const last = lastAssistant(live.manager.getBranch());
       const failed = last?.stopReason === 'error';
       const error = failed ? (last.errorMessage ?? 'The model request failed.') : '';
@@ -229,9 +226,11 @@ export class TaskRunner {
       else if (state !== 'cancelled' && state !== 'interrupted')
         await this.setStatus(run.id, 'failed', errorMessage(error));
     } finally {
-      // Only the catalog outlives the run: a prompt the idle session sends keeps its system prompt
-      // section (skills/session-catalog.ts), while attachment and skill text would only hold memory.
-      this.material = { ...NO_RUN_MATERIAL, catalog: this.material.catalog };
+      // Only the catalog and the memory sections outlive the run: a prompt the idle session sends
+      // keeps its system prompt sections (skills/session-catalog.ts, memory/session-memory.ts);
+      // attachment and skill text are let go.
+      const { catalog, memory } = this.material;
+      this.material = { ...NO_RUN_MATERIAL, catalog, memory };
       await releaseRunSelections(this.session, run.id);
       await this.audit?.flush();
     }
@@ -299,12 +298,14 @@ export class TaskRunner {
     await this.audit?.flush();
   }
 
-  private memoryTurn<T>(scope: RunnerMemoryScope | null, action: () => Promise<T>): Promise<T> {
-    return withRootMemoryTurn(
-      { agentDir: this.ctx.paths.agentDir, log: this.ctx.log, taskId: this.taskId },
-      scope,
-      action,
-    );
+  /**
+   * Disposes the runner of a deleted task. Marked first, so the closing session's memory already
+   * reads off: its learner starts no shutdown review and aborts running ones at once, and the
+   * store refuses what a review still commits (harness/memory-extension.ts).
+   */
+  async discard(): Promise<void> {
+    this.deleted = true;
+    await this.dispose();
   }
 
   private statusOf(runId: string): RunStatus {
@@ -312,6 +313,9 @@ export class TaskRunner {
   }
 
   private async setStatus(runId: string, status: RunStatus, error: string): Promise<void> {
+    // The run's audit is complete before anyone hears it ended (audit.ts): the automation engine
+    // reads its unattended declines and writes then (unattended.ts).
+    if (isTerminalStatus(status)) await this.audit?.flush();
     await this.ctx.ledger.change((data) => {
       const task = data.tasks.find((item) => item.id === this.taskId);
       const run = task?.runs.find((item) => item.id === runId);
@@ -336,14 +340,10 @@ export class TaskRunner {
     await this.slot.settled();
     if (this.aborted) throw new Error('The run stopped before its session opened.');
     const live = this.slot.live;
-    if (live && (await applyRunToSession(live, run, binding))) {
-      this.slot.rescope(rootMemoryScope(this.taskId, run));
-      return live;
-    }
+    if (live && (await applyRunToSession(live, run, binding))) return live;
     // A changed run binding or another connection needs a new session;
     // reopen it from the same session file.
     await this.release();
-    const opened = await createLiveState(this.session, run, binding);
-    return this.slot.hold(opened, rootMemoryScope(this.taskId, run));
+    return this.slot.hold(await createLiveState(this.session, run, binding));
   }
 }

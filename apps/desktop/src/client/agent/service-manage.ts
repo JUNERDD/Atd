@@ -3,12 +3,9 @@ import {
   compactTask,
   deleteTask,
   forkTask,
-  listMemory,
   patchTask,
-  pauseMemory,
   previewTask,
   replaceQueue,
-  updateMemory,
   type AgentClientOptions,
 } from '@atd/agent-client';
 import {
@@ -21,7 +18,6 @@ import {
   type ServiceRunPolicy,
 } from '@atd/agent-contracts';
 import { Value } from 'typebox/value';
-import type { MemoryEntry, MemorySnapshot } from './bridge';
 import type { RunPolicy } from './run-policy';
 import type { RunSnapshot } from './task-schema';
 
@@ -94,44 +90,6 @@ export async function previewRun(
       ),
       memory: snapshot.memory,
     };
-  } catch (error) {
-    manageError(error);
-  }
-}
-
-export async function loadMemory(options: AgentClientOptions): Promise<MemorySnapshot> {
-  try {
-    const listed = await listMemory(options);
-    return { entries: listed.entries, paused: listed.paused, error: '' };
-  } catch (error) {
-    return {
-      entries: [],
-      paused: false,
-      error: error instanceof Error ? error.message : 'Memory could not be loaded.',
-    };
-  }
-}
-
-export async function setMemoryPaused(
-  options: AgentClientOptions,
-  paused: boolean,
-): Promise<MemorySnapshot> {
-  try {
-    await pauseMemory(options, paused);
-    return loadMemory(options);
-  } catch (error) {
-    manageError(error);
-  }
-}
-
-export async function saveMemoryEntry(
-  options: AgentClientOptions,
-  entry: MemoryEntry,
-  content: string,
-): Promise<MemorySnapshot> {
-  try {
-    await updateMemory(options, { id: entry.id, target: entry.target }, content);
-    return loadMemory(options);
   } catch (error) {
     manageError(error);
   }

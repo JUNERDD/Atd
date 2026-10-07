@@ -1,0 +1,209 @@
+/* The hero is a black LED panel. The canvas draws the dot field with the wordmark lit across its
+   middle, centered on the panel. Without WebGL, a CSS dot screen and the Doto wordmark stand in for
+   the field. */
+.hero {
+  --hero-clear: calc(var(--nav-top) + var(--nav-h) + 24px);
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+  min-block-size: max(560px, 100svh);
+  overflow: clip;
+  color: var(--fg-1);
+  background-color: var(--ink-0);
+}
+
+/* The fallback dot screen, under the canvas. When the field takes over from it (a slow load showed
+   it first), it fades out over the field's wake, so the dots hand over rather than blink out. */
+.hero::before {
+  content: '';
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  background-image: radial-gradient(circle, var(--dot-0) 1.25px, transparent 1.75px);
+  background-position: center;
+  background-size: 12px 12px;
+  transition: opacity 0.9s var(--curve-out);
+}
+
+.hero__canvas {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  opacity: 0;
+  transition: opacity var(--dur-fast) linear;
+}
+
+.hero[data-gl='live'] .hero__canvas {
+  opacity: 1;
+}
+
+.hero[data-gl='live']::before {
+  opacity: 0;
+}
+
+.hero__stage {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+  /* The same clearance top and bottom keeps the wordmark on the panel's center line, clear of the
+     floating nav above and the scroll cue below. */
+  padding-block: var(--hero-clear);
+  padding-inline: var(--gutter);
+}
+
+/* Registration marks at the stage's top corners, just under the floating nav. */
+.hero__reg {
+  position: absolute;
+  inset-block-start: calc(var(--hero-clear) - 10px);
+  inline-size: 11px;
+  block-size: 11px;
+  background:
+    linear-gradient(var(--line-2), var(--line-2)) center / 1px 100% no-repeat,
+    linear-gradient(var(--line-2), var(--line-2)) center / 100% 1px no-repeat;
+}
+
+.hero__reg[data-corner='start'] {
+  inset-inline-start: calc(var(--gutter) - 5px);
+}
+
+.hero__reg[data-corner='end'] {
+  inset-inline-end: calc(var(--gutter) - 5px);
+}
+
+/* The wordmark's box, centered in the stage. The shader fits its art into this box (measured on
+   resize), and the fallback lettering fills the same box, so the two line up when the field takes
+   over. */
+.hero__mark {
+  container-type: size;
+  display: grid;
+  place-items: center;
+  place-self: center;
+  inline-size: 92%;
+  block-size: min(100%, 80vw, 56svh);
+  pointer-events: none;
+}
+
+/* Wide bands set every word on one line; compact ones break the long words onto two, so the box
+   is taller there. */
+@media (width >= 700px) {
+  .hero__mark {
+    inline-size: min(100%, 76vw, 1200px);
+    block-size: min(100%, 44vw, 52svh);
+  }
+}
+
+.hero__mark-word {
+  font-family: var(--font-dot);
+  font-size: min(52cqw, 120cqh);
+  font-weight: 500;
+  line-height: 0.8;
+  letter-spacing: -0.02em;
+  color: var(--dot-1);
+  transition: opacity var(--dur-base) var(--curve-standard);
+}
+
+.hero[data-gl='live'] .hero__mark-word {
+  opacity: 0;
+}
+
+/* With motion, the fallback waits for the field: the field normally takes over within moments, and
+   the lettering would only flash before the field's own power-on. If the field never starts, the
+   fallback fades in; without WebGL (`data-gl="off"`) it shows at once. */
+@media (prefers-reduced-motion: no-preference) {
+  :root[data-motion] .hero:not([data-gl])::before,
+  :root[data-motion] .hero:not([data-gl]) .hero__mark-word {
+    animation: hero-fallback 0.6s var(--curve-out) 1.8s backwards;
+  }
+}
+
+@keyframes hero-fallback {
+  from {
+    opacity: 0;
+  }
+}
+
+/* The scroll cue: a dot-matrix mouse (index.tsx) at the panel's bottom center, its outline drawn in
+   faint dots and only its lit dots shown. A mouse means a pointer, so only pointer devices show it. */
+.hero__scroll {
+  --dot-0: transparent;
+  --dot-1: color-mix(in srgb, var(--fg-3) 60%, transparent);
+  display: none;
+  position: absolute;
+  z-index: 1;
+  inset-block-end: max(24px, env(safe-area-inset-bottom));
+  inset-inline-start: 50%;
+  inline-size: 26px;
+  translate: -50% 0;
+  pointer-events: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .hero__scroll {
+    display: block;
+  }
+}
+
+/* The wheel: the track down the mouse's middle (column 3, rows 2–5), brighter than the body. At rest
+   it is the track's top two dots. */
+.hero__scroll
+  .dot-glyph__dot[data-x='3']:is([data-y='2'], [data-y='3'], [data-y='4'], [data-y='5']) {
+  fill: var(--fg-2);
+}
+
+.hero__scroll .dot-glyph__dot[data-x='3']:is([data-y='4'], [data-y='5']) {
+  opacity: 0;
+}
+
+/* The wheel turns: a lit dot steps down the track a row every 0.25 s, leaving a fading trail, and the
+   track rests empty a beat before the next turn. Each row runs the same cycle one step later; the
+   negative delays keep the rows in phase from the first frame. */
+@media (prefers-reduced-motion: no-preference) {
+  .hero__scroll
+    .dot-glyph__dot[data-x='3']:is([data-y='2'], [data-y='3'], [data-y='4'], [data-y='5']) {
+    opacity: 0;
+    animation: hero-wheel 2.2s linear infinite;
+  }
+
+  .hero__scroll .dot-glyph__dot[data-x='3'][data-y='3'] {
+    animation-delay: -1.95s;
+  }
+
+  .hero__scroll .dot-glyph__dot[data-x='3'][data-y='4'] {
+    animation-delay: -1.7s;
+  }
+
+  .hero__scroll .dot-glyph__dot[data-x='3'][data-y='5'] {
+    animation-delay: -1.45s;
+  }
+}
+
+@media (forced-colors: active) {
+  .hero__scroll .dot-glyph__dot[data-lit] {
+    fill: CanvasText;
+  }
+}
+
+/* One step lit, then a trail that fades over the next step. */
+@keyframes hero-wheel {
+  0%,
+  11% {
+    opacity: 1;
+  }
+
+  11.5% {
+    opacity: 0.45;
+  }
+
+  22% {
+    opacity: 0.1;
+  }
+
+  22.5%,
+  100% {
+    opacity: 0;
+  }
+}

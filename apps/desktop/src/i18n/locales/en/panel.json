@@ -18,7 +18,8 @@
     "tasks": "Tasks",
     "commandInput": "Command input",
     "task": "Task",
-    "newTask": "New task"
+    "newTask": "New task",
+    "apps": "My apps"
   },
   "composer": {
     "send": "Send task",
@@ -91,6 +92,14 @@
       "subagentOne": "1 subagent",
       "subagentMany": "{{count}} subagents",
       "subagentRunning": "{{count}} running",
+      "sideChats": {
+        "list": "Side chats",
+        "waiting": "{{count}} waiting",
+        "running": "{{count}} running",
+        "one": "1 side chat",
+        "many": "{{count}} side chats",
+        "open": "Open {{name}}"
+      },
       "showTodos": "Show todos",
       "compacting": "Compacting context…"
     },
@@ -107,6 +116,7 @@
           "messages": "Messages",
           "systemPrompt": "System prompt",
           "skills": "Skills",
+          "memory": "Memory",
           "systemTools": "Tools",
           "mcpTools": "MCP"
         },
@@ -177,6 +187,7 @@
   },
   "session": {
     "editSeed": "Update the command \"{{name}}\" (id: {{id}}): ",
+    "editAutomationSeed": "Update the automation \"{{name}}\" (id: {{id}}): ",
     "editSkillSeed": "Update the existing skill \"{{name}}\": ",
     "editSubagentSeed": "Update the existing subagent \"{{name}}\": ",
     "editMcpSeed": "Update the existing MCP server \"{{name}}\": ",
@@ -234,6 +245,7 @@
   },
   "quickPanel": {
     "listLabel": "Suggestions",
+    "sectionsLabel": "Groups",
     "groups": {
       "commands": "Quick commands",
       "skills": "Skills",
@@ -298,6 +310,7 @@
     },
     "hints": {
       "choose": "to choose",
+      "nextGroup": "for next group",
       "insert": "to insert",
       "use": "to use",
       "close": "to close"

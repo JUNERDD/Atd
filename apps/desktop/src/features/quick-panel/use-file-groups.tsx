@@ -3,8 +3,10 @@ import {
   FileBraces,
   FileCode,
   FileImage,
+  FileSearch,
   FileText,
   FolderOpen,
+  History,
   Paperclip,
   type LucideIcon,
 } from 'lucide-react';
@@ -178,10 +180,16 @@ export function useFileGroups({
   };
   return {
     lists: [
-      { id: 'files:attached', heading: t('quickPanel.groups.recentAttached'), options: attached },
+      {
+        id: 'files:attached',
+        heading: t('quickPanel.groups.recentAttached'),
+        icon: <Paperclip />,
+        options: attached,
+      },
       {
         id: query ? 'files:search' : 'files:recent',
         heading: query ? t('quickPanel.groups.files') : t('quickPanel.groups.recentUsed'),
+        icon: query ? <FileSearch /> : <History />,
         notice:
           search.status === 'ready' && search.partial ? t('quickPanel.files.partial') : undefined,
         options: results,

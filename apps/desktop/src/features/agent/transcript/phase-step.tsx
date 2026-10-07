@@ -33,6 +33,9 @@ export function PhaseStep({ view, requests }: { view: ViewBlock; requests: Reque
     case 'compaction':
       // Unreachable: `foldTurn` keeps compactions standalone, rendered by `BlockView`.
       return <CompactionBlock block={block} />;
+    case 'retry':
+      // Unreachable: `foldTurn` keeps retries standalone, rendered by `BlockView`.
+      return null;
     default: {
       const _exhaustive: never = block;
       void _exhaustive;

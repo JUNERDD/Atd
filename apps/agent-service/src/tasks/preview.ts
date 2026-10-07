@@ -30,9 +30,9 @@ export interface PreviewContext {
 /**
  * Read-only run preview (T6b). Shows the exact snapshot a submit with the
  * same inputs would freeze: resolved instructions, pinned model ref,
- * tools, memory flag, thinking level and context window. No ledger write, no run, no
- * network. Input problems answer 400 (TypeError); unknown command or
- * connection answers 404.
+ * tools, memory flag, thinking level, context window and, for a command,
+ * `fromCommand`. No ledger write, no run, no network. Input problems
+ * answer 400 (TypeError); unknown command or connection answers 404.
  */
 export function registerPreviewRoute(app: FastifyInstance, ctx: PreviewContext): void {
   app.post('/v1/tasks/preview', RENDERER_ROUTE, async (request) => {
@@ -84,6 +84,7 @@ export async function resolvePreview(
     memory,
     ...(thinkingLevel ? { thinkingLevel } : {}),
     ...(contextWindow ? { contextWindow } : {}),
+    ...(command ? { fromCommand: true } : {}),
   });
   return { snapshot, commandId: command?.id ?? null, warnings };
 }

@@ -1,9 +1,15 @@
+import type { Handle } from 'hast-util-to-mdast';
+import type { InlineMath, Math } from 'mdast-util-math';
 import {
   ATOMIC_BLOCKS,
   atomicBlockSource,
   closestAtomicBlock,
   type CodeSource,
 } from './code-sources';
+
+/** An element of the selection's hast, as the converter hands it to a handler. */
+type HastElement = Parameters<Handle>[1];
+type HastContent = HastElement['children'][number];
 
 /**
  * Controls that render inside a message but are not its content: buttons, decorative icons, and
@@ -115,34 +121,76 @@ function selectedContent(range: Range): Node | null {
   return content;
 }
 
-/** The DOM → hast → mdast → Markdown chain, loaded on first use to stay out of the entry chunk. */
-async function loadConverters() {
-  const [{ fromDom }, { toMdast, defaultHandlers }, { toMarkdown }, { gfmToMarkdown }] =
-    await Promise.all([
-      import('hast-util-from-dom'),
-      import('hast-util-to-mdast'),
-      import('mdast-util-to-markdown'),
-      import('mdast-util-gfm'),
-    ]);
-  return { fromDom, toMdast, defaultHandlers, toMarkdown, gfmToMarkdown };
+function hastText(node: HastContent): string {
+  if (node.type === 'text') return node.value;
+  return node.type === 'element' ? node.children.map(hastText).join('') : '';
 }
 
-/** The selected content as Markdown: code blocks it touches whole, chrome dropped, trimmed. */
+/** The TeX KaTeX keeps in a formula's MathML: the text of its `annotation`. */
+function annotationTex(element: HastElement): string | undefined {
+  for (const child of element.children) {
+    if (child.type !== 'element') continue;
+    const tex = child.tagName === 'annotation' ? hastText(child) : annotationTex(child);
+    if (tex !== undefined) return tex;
+  }
+  return undefined;
+}
+
+/**
+ * A rendered formula (`math-sources.ts`, which also widens the selection to take it whole) as
+ * Markdown math: a display block as `math`, an inline formula as `inlineMath`, both from KaTeX's
+ * TeX. The chrome pass has already dropped the glyphs, which KaTeX hides from accessibility.
+ */
+function formulaNode(element: HastElement): Math | InlineMath | undefined {
+  const classes = element.properties['className'];
+  if (!Array.isArray(classes)) return undefined;
+  // KaTeX renders a formula it cannot parse as its source text.
+  if (classes.includes('katex-error')) return { type: 'inlineMath', value: hastText(element) };
+  const display = classes.includes('katex-display');
+  const value = display || classes.includes('katex') ? annotationTex(element) : undefined;
+  if (value === undefined) return undefined;
+  return display ? { type: 'math', value } : { type: 'inlineMath', value };
+}
+
+/** The DOM → hast → mdast → Markdown chain, loaded on first use to stay out of the entry chunk. */
+async function loadConverters() {
+  const [
+    { fromDom },
+    { toMdast, defaultHandlers },
+    { toMarkdown },
+    { gfmToMarkdown },
+    { mathToMarkdown },
+  ] = await Promise.all([
+    import('hast-util-from-dom'),
+    import('hast-util-to-mdast'),
+    import('mdast-util-to-markdown'),
+    import('mdast-util-gfm'),
+    import('mdast-util-math'),
+  ]);
+  return { fromDom, toMdast, defaultHandlers, toMarkdown, gfmToMarkdown, mathToMarkdown };
+}
+
+/**
+ * The selected content as Markdown: code blocks it touches whole, formulas as their TeX, chrome
+ * dropped, trimmed.
+ */
 export async function selectionMarkdown(range: Range): Promise<string> {
   const content = selectedContent(range);
   if (!content) return '';
-  const { fromDom, toMdast, defaultHandlers, toMarkdown, gfmToMarkdown } = await loadConverters();
+  const { fromDom, toMdast, defaultHandlers, toMarkdown, gfmToMarkdown, mathToMarkdown } =
+    await loadConverters();
   const tree = toMdast(fromDom(content), {
     handlers: {
       // Streamdown renders bold as a styled span, which the default handler would flatten.
       span: (state, element) =>
-        element.properties['dataStreamdown'] === 'strong'
+        formulaNode(element) ??
+        (element.properties['dataStreamdown'] === 'strong'
           ? defaultHandlers.strong(state, element)
-          : state.all(element),
+          : state.all(element)),
     },
   });
   const markdown = toMarkdown(tree, {
-    extensions: [gfmToMarkdown()],
+    extensions: [gfmToMarkdown(), mathToMarkdown()],
     bullet: '-',
     rule: '-',
   });

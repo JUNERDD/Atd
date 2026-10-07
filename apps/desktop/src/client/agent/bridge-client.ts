@@ -2,6 +2,7 @@ import type {
   AgentBridge,
   AgentEvent,
   AgentRequest,
+  AutomationSessionTarget,
   CommandLaunch,
   CommandSession,
   ExtensionSession,
@@ -12,6 +13,7 @@ export interface AgentChannelValues {
   changed: AgentEvent;
   launch: CommandLaunch;
   session: CommandSession;
+  automationSession: AutomationSessionTarget;
   extensionSession: ExtensionSession;
 }
 export type AgentChannel = keyof AgentChannelValues;
@@ -40,6 +42,7 @@ export function createAgentBridge(
       invoke({ action: 'deleteCommand', commandId, revision }),
     launch: (commandId, prepared) =>
       invoke({ action: 'launch', commandId, prepared: prepared ?? null }),
+    prepareWithText: (commandId, text) => invoke({ action: 'prepareWithText', commandId, text }),
     prepare: (commandId) => invoke({ action: 'prepare', commandId }),
     capture: (source) => invoke({ action: 'capture', source }),
     preview: (input, command, policy = null) =>
@@ -65,8 +68,14 @@ export function createAgentBridge(
     chooseFiles: () => invoke({ action: 'chooseFiles' }),
     saveFile: (name, content) => invoke({ action: 'saveFile', name, content }),
     memory: () => invoke({ action: 'memory' }),
-    pauseMemory: (paused) => invoke({ action: 'pauseMemory', paused }),
-    updateMemory: (entry, content) => invoke({ action: 'updateMemory', entry, content }),
+    saveMemorySettings: (settings) => invoke({ action: 'saveMemorySettings', settings }),
+    createMemoryUnit: (input) => invoke({ action: 'createMemoryUnit', input }),
+    saveMemoryUnit: (input) => invoke({ action: 'saveMemoryUnit', input }),
+    deleteMemoryUnit: (id) => invoke({ action: 'deleteMemoryUnit', id }),
+    toggleMemoryUnit: (id, enabled) => invoke({ action: 'toggleMemoryUnit', id, enabled }),
+    markMemoryUnitReviewed: (id) => invoke({ action: 'markMemoryUnitReviewed', id }),
+    acceptMemoryProposal: (id) => invoke({ action: 'acceptMemoryProposal', id }),
+    dismissMemoryProposal: (id) => invoke({ action: 'dismissMemoryProposal', id }),
     artifact: (artifactId, operation) => invoke({ action: 'artifact', artifactId, operation }),
     copy: (text) => invoke({ action: 'copy', text }),
     openLink: (url) => invoke({ action: 'openLink', url }),
@@ -76,6 +85,7 @@ export function createAgentBridge(
     onChange: (listener) => listen('changed', listener),
     onLaunch: (listener) => listen('launch', listener),
     onCommandSession: (listener) => listen('session', listener),
+    onAutomationSession: (listener) => listen('automationSession', listener),
     onExtensionSession: (listener) => listen('extensionSession', listener),
   };
 }

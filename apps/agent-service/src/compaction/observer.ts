@@ -12,7 +12,7 @@ type CompactionEnd = Extract<AgentSessionEvent, { type: 'compaction_end' }>;
 /**
  * Follows one Pi session's compactions for the transcript and context state. Pi's session events
  * give the timing: `compaction_start` comes before `session_before_compact`, so the running block
- * shows while pi-hermes-memory flushes memory in that hook, and `compaction_end` comes after Pi
+ * shows while extensions handle that hook, and `compaction_end` comes after Pi
  * persisted the compaction (or gave up). Its outcome is recorded next to Pi's entry
  * (records.ts); an aborted compaction (Stop, session release) leaves nothing behind.
  *
@@ -31,7 +31,7 @@ export class CompactionObserver {
    * Marks the running compaction prepared when Pi hands it to extensions. A manual compaction
    * that ends before this point was refused (nothing to compact, no model): the caller reports
    * it and no failed block is kept. Registered before the harness, so it runs before the memory
-   * flush in the same hook.
+   * learner's handler in the same hook.
    */
   extension(): ExtensionFactory {
     return (pi) => {

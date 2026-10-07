@@ -84,8 +84,8 @@ export interface PluginAgent {
 }
 
 /**
- * The source `model` hint is not carried: service subagents never pin a model of their own
- * (subagents/agents.ts), so a hint could only be ignored later.
+ * The source `model` hint is not carried: the runtime agents a run registers never pin a model of
+ * their own (subagents/agents.ts), so a hint could only be ignored later.
  */
 export function mapAgent(
   plugin: InstalledPlugin,

@@ -1,4 +1,11 @@
-import type { ComponentProps, ReactNode, Ref, RefCallback, RefObject } from 'react';
+import {
+  useRef,
+  type ComponentProps,
+  type ReactNode,
+  type Ref,
+  type RefCallback,
+  type RefObject,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Command,
@@ -12,7 +19,9 @@ import { HighlightedText } from '@atd/ui/components/highlighted-text';
 import { Kbd, KbdGroup } from '@atd/ui/components/kbd';
 import { Popover, PopoverContent } from '@atd/ui/components/popover';
 import { visibleGroups, type QuickOption, type QuickView } from './quick-options';
+import { QuickPanelSections } from './quick-panel-sections';
 import { useQuickPanel, type QuickPanelAria, type QuickPanelHandle } from './use-quick-panel';
+import { sectionsOf, type SectionScroller } from './use-section-pin';
 import './quick-panel.css';
 
 /**
@@ -50,9 +59,10 @@ export interface QuickPanelSurfaceProps {
 
 /**
  * The `@` / `/` panel surface shared by every editor with chips (plan 1.4). Focus never leaves
- * the editor: it forwards ↑ ↓ Enter Tab through `handleRef`, the content refuses focus (no
- * auto-focus, mousedown cancelled), and Esc closes the panel in Radix's dismissable layer before
- * any outer Esc handler sees it.
+ * the editor: it forwards ↑ ↓ Enter Tab and ⌘↑ ⌘↓ through `handleRef`, the content refuses focus
+ * (no auto-focus, mousedown cancelled), and Esc closes the panel in Radix's dismissable layer
+ * before any outer Esc handler sees it. Groups with headings are sections: their headings pin
+ * over the list's top edge, and with two or more a section bar there jumps between them.
  */
 export function QuickPanelSurface({
   open,
@@ -67,11 +77,15 @@ export function QuickPanelSurface({
 }: QuickPanelSurfaceProps) {
   const { t } = useTranslation('panel');
   const groups = visibleGroups(view.groups);
+  const sections = sectionsOf(groups);
   // Only the trailing "Browse files…" group has no heading; it is an action, not a result.
-  const empty = groups.some((group) => group.heading !== undefined) ? null : view.empty;
-  const { activeValue, hover, setList, trackOption } = useQuickPanel({
+  const empty = sections.length > 0 ? null : view.empty;
+  const scroller = useRef<SectionScroller>(null);
+  const { activeValue, activeSection, hover, jumpTo, list, setList, trackOption } = useQuickPanel({
     open,
     groups,
+    sections,
+    scroller,
     handleRef,
     onAriaChange,
   });
@@ -108,37 +122,52 @@ export function QuickPanelSurface({
           onValueChange={hover}
           className="min-h-0 bg-transparent"
         >
-          <CommandList
-            ref={setList}
-            label={t('quickPanel.listLabel')}
-            className="max-h-none min-h-0 flex-1"
+          <QuickPanelSections
+            ref={scroller}
+            list={list}
+            open={open}
+            sections={sections}
+            active={activeSection}
+            onPick={jumpTo}
+            onDismiss={onDismiss}
           >
-            {empty !== null && (
-              <p className="px-2 py-6 text-center text-sm text-muted-foreground">{empty}</p>
-            )}
-            {groups.flatMap((group, index) => [
-              // The heading-less "Browse files…" group is set apart from whatever precedes it.
-              !group.heading && (index > 0 || empty !== null) && (
-                <CommandSeparator key={`${group.id}:rule`} alwaysRender />
-              ),
-              <CommandGroup
-                key={group.id}
-                value={group.id}
-                heading={
-                  group.heading === undefined ? undefined : (
-                    <HighlightedText text={group.heading} ranges={group.headingRanges} />
-                  )
-                }
-              >
-                {group.notice && (
-                  <p className="px-2 py-1.5 text-xs text-muted-foreground">{group.notice}</p>
-                )}
-                {group.options.map((option) => (
-                  <QuickRow key={option.value} option={option} track={trackOption(option.value)} />
-                ))}
-              </CommandGroup>,
-            ])}
-          </CommandList>
+            <CommandList
+              ref={setList}
+              label={t('quickPanel.listLabel')}
+              scrollShadow
+              className="max-h-none min-h-0 flex-1"
+            >
+              {empty !== null && (
+                <p className="px-2 py-6 text-center text-sm text-muted-foreground">{empty}</p>
+              )}
+              {groups.flatMap((group, index) => [
+                // The heading-less "Browse files…" group is set apart from whatever precedes it.
+                !group.heading && (index > 0 || empty !== null) && (
+                  <CommandSeparator key={`${group.id}:rule`} alwaysRender />
+                ),
+                <CommandGroup
+                  key={group.id}
+                  value={group.id}
+                  heading={
+                    group.heading === undefined ? undefined : (
+                      <HighlightedText text={group.heading} ranges={group.headingRanges} />
+                    )
+                  }
+                >
+                  {group.notice && (
+                    <p className="px-2 py-1.5 text-xs text-muted-foreground">{group.notice}</p>
+                  )}
+                  {group.options.map((option) => (
+                    <QuickRow
+                      key={option.value}
+                      option={option}
+                      track={trackOption(option.value)}
+                    />
+                  ))}
+                </CommandGroup>,
+              ])}
+            </CommandList>
+          </QuickPanelSections>
           <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 px-2 py-1.5 text-xs text-muted-foreground">
             <span className="inline-flex items-center gap-1 whitespace-nowrap">
               <KbdGroup>
@@ -147,6 +176,15 @@ export function QuickPanelSurface({
               </KbdGroup>
               {t('quickPanel.hints.choose')}
             </span>
+            {sections.length >= 2 && (
+              <span className="inline-flex items-center gap-1 whitespace-nowrap">
+                <KbdGroup>
+                  <Kbd>⌘</Kbd>
+                  <Kbd>↓</Kbd>
+                </KbdGroup>
+                {t('quickPanel.hints.nextGroup')}
+              </span>
+            )}
             <span className="inline-flex items-center gap-1 whitespace-nowrap">
               <Kbd>Enter</Kbd>
               {enterHint === 'use' ? t('quickPanel.hints.use') : t('quickPanel.hints.insert')}

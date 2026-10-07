@@ -293,7 +293,15 @@ body {
   outline: none;
   box-shadow: none;
 }
+/* The title truncates before a trailing badge (the app that started the task) does. */
+.task-row-head {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+}
 .task-row-title {
+  min-width: 0;
   overflow: hidden;
   font-size: 14px;
   font-weight: 500;

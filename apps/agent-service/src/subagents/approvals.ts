@@ -3,6 +3,7 @@ import type { SessionManager } from '@earendil-works/pi-coding-agent';
 import { createGate, type Gate } from '../harness/gate.js';
 import type { SessionFactoryDeps } from '../pi-session.js';
 import { effectiveTaskTier } from '../tasks/tier.js';
+import { isUnattendedRun } from '../unattended.js';
 import type { RuntimeAgent } from './agents.js';
 
 /**
@@ -15,11 +16,11 @@ export interface ChildApprovals {
   gate: Gate;
 }
 
-/** One child execution asking for its approvals; `agent` is its runtime agent name, if known. */
+/** One child execution asking for its approvals; `agent` is its runtime agent name. */
 export interface ChildApprovalsRequest {
   runId: string;
   executionId: string;
-  agent: string | null;
+  agent: string;
 }
 
 /**
@@ -28,8 +29,8 @@ export interface ChildApprovalsRequest {
  * approval from Settings (`RuntimeAgent.approval`), and one gate per child execution over the
  * parent's confirms, session grants, audit and session entries. Child confirms carry the child's
  * execution id, which the desktop labels as a subtask; while one waits, the parent run shows
- * `awaiting_confirmation`, as for the parent's own confirms. A child whose agent is unknown
- * keeps the task tier.
+ * `awaiting_confirmation`, as for the parent's own confirms. An agent without an approval of its
+ * own keeps the task tier.
  */
 export function childApprovals(
   deps: SessionFactoryDeps,
@@ -39,7 +40,7 @@ export function childApprovals(
   const taskTier = effectiveTaskTier(deps.ctx.ledger, deps.taskId, deps.ctx.tier);
   const approvals = new Map(agents.map((agent) => [agent.name, agent.approval]));
   return (child) => {
-    const tier = subagentTier(taskTier, child.agent ? (approvals.get(child.agent) ?? null) : null);
+    const tier = subagentTier(taskTier, approvals.get(child.agent) ?? null);
     return {
       tier,
       gate: createGate({
@@ -49,6 +50,8 @@ export function childApprovals(
         tier,
         grants: deps.grants,
         review: deps.review,
+        // A child's run is its parent run: an unattended parent's children are unattended too.
+        unattended: () => isUnattendedRun(deps.ctx.ledger, deps.taskId, child.runId),
         sessions,
         confirms: deps.ctx.confirms,
         audit: deps.audit,

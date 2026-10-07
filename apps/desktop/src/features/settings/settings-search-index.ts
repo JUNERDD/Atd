@@ -3,7 +3,7 @@ import { Languages, type LucideIcon } from 'lucide-react';
 import type { SettingsSectionId } from './settings-sections';
 
 /** The namespaces whose existing copy the index reuses; `settings` is the default one. */
-export const SEARCH_NAMESPACES = ['settings', 'commands', 'memory'] as const;
+export const SEARCH_NAMESPACES = ['settings', 'commands', 'memory', 'apps', 'automations'] as const;
 export type SearchKey = ParseKeys<typeof SEARCH_NAMESPACES>;
 
 /**
@@ -30,7 +30,9 @@ export const SECTION_DESCRIPTIONS = {
   providers: 'providers.overview.description',
   permissions: 'permissions.description',
   commands: 'commands:list.description',
+  automations: 'automations:list.description',
   memory: 'memory:memory.description',
+  apps: 'apps:settings.description',
   extensions: 'extensions.plugins.description',
 } as const satisfies Record<SettingsSectionId, SearchKey>;
 
@@ -39,7 +41,9 @@ export const SECTION_KEYWORDS = {
   providers: 'search.keywords.sectionProviders',
   permissions: 'search.keywords.sectionPermissions',
   commands: 'search.keywords.sectionCommands',
+  automations: 'search.keywords.sectionAutomations',
   memory: 'search.keywords.sectionMemory',
+  apps: 'search.keywords.sectionApps',
   extensions: 'search.keywords.sectionExtensions',
 } as const satisfies Record<SettingsSectionId, SearchKey>;
 
@@ -89,6 +93,22 @@ export const settingsSearchEntries: readonly SettingsSearchEntry[] = [
     label: 'shortcuts.alwaysOnTop',
     description: 'shortcuts.preferenceNotes.alwaysOnTop',
     keywords: 'search.keywords.alwaysOnTop',
+  },
+  {
+    id: 'window-mini-panel',
+    section: 'general',
+    anchor: 'settings-mini-panel',
+    label: 'shortcuts.miniPanel',
+    description: 'shortcuts.preferenceNotes.miniPanel',
+    keywords: 'search.keywords.miniPanel',
+  },
+  {
+    id: 'window-mini-panel-open',
+    section: 'general',
+    anchor: 'settings-mini-panel-open',
+    label: 'shortcuts.miniPanelOpenOn.title',
+    description: 'shortcuts.miniPanelOpenOn.description',
+    keywords: 'search.keywords.miniPanelOpenOn',
   },
   {
     id: 'selection-toolbar',
@@ -186,6 +206,21 @@ export const settingsSearchEntries: readonly SettingsSearchEntry[] = [
     label: 'search.entries.newCommand',
     description: 'commands:list.description',
     keywords: 'search.keywords.newCommand',
+  },
+  {
+    id: 'automations-new',
+    section: 'automations',
+    label: 'search.entries.newAutomation',
+    description: 'automations:list.description',
+    keywords: 'search.keywords.newAutomation',
+  },
+  {
+    // No anchor: the switch shows only once there is something to pause, at the section's top.
+    id: 'automations-pause',
+    section: 'automations',
+    label: 'automations:list.pause',
+    description: 'automations:list.pauseDescription',
+    keywords: 'search.keywords.automationsPause',
   },
   {
     id: 'memory-learning',

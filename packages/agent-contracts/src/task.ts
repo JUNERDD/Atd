@@ -1,4 +1,5 @@
 import { Type, type Static } from 'typebox';
+import { AppIdSchema } from './app-identity.js';
 import type { CommandTool } from './commands.js';
 import { Identifier, OperationId, SessionEntryId } from './identifiers.js';
 import { PermissionTierSchema } from './confirms.js';
@@ -6,6 +7,7 @@ import { MAX_FOLDERS } from './folders.js';
 import { McpServerIdSchema } from './mcp.js';
 import { MemoryTargetSchema } from './memory.js';
 import { MAX_QUOTE_CHARS, QuoteSourceSchema } from './quotes.js';
+import { RunTriggerSchema } from './run-trigger.js';
 import { ThinkingLevelSchema } from './models.js';
 import { SkillName } from './skills.js';
 import { SubagentNameSchema } from './subagents.js';
@@ -242,10 +244,33 @@ export const RunSnapshotSchema = Type.Object(
      * everything after it leave the transcript while staying in the session file.
      */
     branchBefore: Type.Optional(SessionEntryId),
+    /**
+     * The run's prompt is command material, never the user's own words: a saved command's
+     * rendered template (`SubmitTaskRequest.fromCommand`), or a replacement of such a run's prompt
+     * (edit and resend, regenerate). Memory's automatic learners never read the run; it still
+     * searches memory and keeps the memory tools.
+     */
+    fromCommand: Type.Optional(Type.Literal(true)),
+    /** Set when an automation started the run, which makes it unattended (`RunTriggerSchema`). */
+    trigger: Type.Optional(RunTriggerSchema),
   },
   { additionalProperties: false },
 );
 export type RunSnapshot = Static<typeof RunSnapshotSchema>;
+
+/**
+ * A task the user did not start: a user app's backend started it through `ctx.agent.run`, or an
+ * automation fired. History shows the app or automation on it; an app task's confirms still go
+ * through the task panel, while an automation's runs are unattended (`RunSnapshot.trigger`).
+ */
+export const TaskOriginSchema = Type.Union([
+  Type.Object({ kind: Type.Literal('app'), appId: AppIdSchema }, { additionalProperties: false }),
+  Type.Object(
+    { kind: Type.Literal('automation'), automationId: Identifier },
+    { additionalProperties: false },
+  ),
+]);
+export type TaskOrigin = Static<typeof TaskOriginSchema>;
 
 export const TaskRunSchema = Type.Object(
   {
@@ -273,6 +298,15 @@ export const AgentTaskSchema = Type.Object(
     parentExecutionId: Type.Union([Type.String({ maxLength: 256 }), Type.Null()]),
     /** Frozen from the service default when the task is created. */
     permissionTier: Type.Optional(PermissionTierSchema),
+    /** Who started the task; absent for a task the user started (every task before apps). */
+    origin: Type.Optional(TaskOriginSchema),
+    /**
+     * The conversation this task is a side chat of: a command launched from inside that
+     * conversation ran here, and the conversation lists it above its composer. Set when the task
+     * is created and never changed. A side chat outlives its conversation, so the id may name a
+     * deleted task.
+     */
+    sideChatOf: Type.Optional(Identifier),
   },
   { additionalProperties: false },
 );

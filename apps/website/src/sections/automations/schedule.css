@@ -1,0 +1,140 @@
+/* The keys and readout above the week; on wide plates, in the legend column beside it. */
+.auto__stage {
+  display: grid;
+  gap: 32px;
+}
+
+.auto__controls {
+  display: grid;
+  align-content: start;
+  gap: 24px;
+  min-inline-size: 0;
+}
+
+.auto__presets {
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.auto__legend {
+  margin-block-end: 12px;
+  padding: 0;
+}
+
+.auto__keys {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Each example is a native radio under a key: a lamp on the key lights while it is the one chosen,
+   and the chosen key sits pressed into the plate. */
+.auto__key {
+  position: relative;
+  display: grid;
+  cursor: pointer;
+}
+
+.auto__radio {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.auto__key-face {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-block-size: 44px;
+  padding-inline: 14px 16px;
+  border-radius: var(--r-part);
+  background: linear-gradient(var(--ink-3), var(--ink-2));
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.08),
+    inset 0 0 0 1px var(--line-1),
+    0 2px 0 rgb(0 0 0 / 0.6);
+  font-size: var(--fs-small);
+  font-weight: 600;
+  color: var(--fg-2);
+  pointer-events: none;
+  transition:
+    color var(--dur-fast) linear,
+    translate var(--dur-press) var(--curve-out);
+}
+
+.auto__lamp {
+  flex: none;
+  inline-size: 6px;
+  block-size: 6px;
+  border-radius: 50%;
+  background-color: var(--dot-0);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .auto__key:hover .auto__key-face {
+    color: var(--fg-1);
+  }
+}
+
+.auto__radio:checked + .auto__key-face {
+  translate: 0 1px;
+  background: var(--ink-2);
+  box-shadow:
+    inset 0 1px 3px rgb(0 0 0 / 0.6),
+    inset 0 0 0 1px var(--line-2);
+  color: var(--fg-1);
+}
+
+.auto__radio:checked + .auto__key-face .auto__lamp {
+  background-color: var(--dot-1);
+  box-shadow: 0 0 8px rgb(255 255 255 / 0.6);
+}
+
+.auto__radio:focus-visible + .auto__key-face {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+@media (forced-colors: active) {
+  .auto__key-face {
+    border: 1px solid CanvasText;
+  }
+
+  .auto__radio:checked + .auto__key-face .auto__lamp {
+    background-color: Highlight;
+  }
+}
+
+/* The rule readout: a strip of display with the trigger's kind and its rule. The rule is set in
+   mono rather than dot figures: Doto's asterisk would not read as cron's. */
+.auto__rule {
+  display: grid;
+  gap: 6px;
+  padding: 16px 18px;
+  border-radius: var(--r-part);
+}
+
+.auto__rule-text {
+  font-family: var(--font-mono);
+  font-size: 1.25rem;
+  font-weight: 500;
+  line-height: 1.3;
+  white-space: pre;
+  color: var(--fg-1);
+}
+
+@media (width >= 1000px) {
+  .auto__stage {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 3fr);
+    column-gap: 48px;
+  }
+
+  .auto__keys {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

@@ -1,13 +1,15 @@
 import { useTranslation } from 'react-i18next';
 import type { PermissionOutcome } from '../../../client/agent/permission-schema';
 import type { BlockOf } from '../../../client/agent/transcript-schema';
-import { hasToolDetail, outcomeKey, structuredDetails, type RowDetails } from './tool-copy';
+import { outcomeKey } from './permission-copy';
+import { hasToolDetail, structuredDetails, type RowDetails } from './tool-copy';
 import { BashBody } from './bash-body';
 import { CodemodeBody } from './codemode-body';
 import { EditBody } from './edit-body';
 import { ReadBody, WriteBody } from './file-bodies';
 import { GenericBody } from './generic-body';
 import { SearchBody } from './search-bodies';
+import { SubagentDefineBody } from './subagent-define-body';
 import { ToolCard } from './tool-card';
 import { WebFetchBody, WebSearchBody } from './web-body';
 
@@ -49,6 +51,8 @@ function DetailsBody({ block, data }: { block: BlockOf<'tool'>; data: RowDetails
     case 'diff':
       // The projection moves the edit diff into `details.diff`; a stray variant reads the same.
       return <EditBody block={block} diff={data.diff} truncated={data.truncated} />;
+    case 'subagentDefine':
+      return <SubagentDefineBody details={data} copyText={block.output} />;
     default: {
       const _exhaustive: never = data;
       void _exhaustive;
@@ -59,8 +63,8 @@ function DetailsBody({ block, data }: { block: BlockOf<'tool'>; data: RowDetails
 
 /**
  * The expanded detail of one call, by tool family: structured results first (codemode, web,
- * diff), then the tool's own body. Each family module owns its card layout; tools without one read
- * through the generic body.
+ * diff, subagent definitions), then the tool's own body. Each family module owns its card layout;
+ * tools without one read through the generic body.
  */
 export function ToolBody({ block }: { block: BlockOf<'tool'> }) {
   if (!hasToolDetail(block)) return null;

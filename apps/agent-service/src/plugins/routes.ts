@@ -24,7 +24,7 @@ import { CommandStore } from '../commands/store.js';
 import { ConflictError } from '../errors.js';
 import type { Logger } from '../logging.js';
 import { McpAuthority } from '../mcp/index.js';
-import { logMemoryEvents, MemoryAuthority } from '../memory/authority.js';
+import { logMemoryEvents, MemoryAuthority } from '../memory/index.js';
 import { findInstalled, findPlugin, pluginDetail, toSummary } from './detail.js';
 import { duplicateItem } from './duplicate.js';
 import { PluginHost } from './host.js';
@@ -90,7 +90,8 @@ async function checkedPreview(preview: Promise<InstallPreview>): Promise<PluginI
  */
 export function registerPluginRoutes(app: FastifyInstance, ctx: PluginRouteContext): void {
   const host = () => PluginHost.for(ctx.dataDir, ctx.log);
-  // Start the host (and the one-time legacy migration) with the service, not on first use.
+  // Start the host (and the one-time legacy migration) with the service, not on first use; the
+  // service's stop awaits it (`PluginHost.closeFor`).
   void host().catch((error: unknown) =>
     ctx.log.warn('Plugins could not be prepared.', { error: String(error) }),
   );

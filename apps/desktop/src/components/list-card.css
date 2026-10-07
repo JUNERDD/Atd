@@ -1,0 +1,42 @@
+/* Cards fill as many columns of at least 240px (`--list-card-min`) as the list's width holds, one
+ * column at the narrowest widths; cards in a row share its height. */
+.list-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--list-card-min, 240px)), 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.list-card-cell {
+  display: flex;
+  min-width: 0;
+}
+/* The card keeps the focus ring of its open button visible, which the default clip would cut. */
+.list-card {
+  flex: 1;
+  min-width: 0;
+  overflow: visible;
+}
+.list-card > [data-slot='card-header'] {
+  align-items: center;
+}
+/* The actions center on the media, with or without the line under the name. The name block holds
+ * that line, so the header has one row: spanning CardAction's default two would add an empty row
+ * and the header's 6px gap, and drop the actions 3px below the media. */
+.list-card [data-slot='card-action'] {
+  grid-row: 1;
+  align-self: center;
+}
+.list-card-description {
+  display: -webkit-box;
+  min-height: 40px;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-height: 20px;
+}
+.list-card-footer {
+  gap: 8px;
+  margin-top: auto;
+}

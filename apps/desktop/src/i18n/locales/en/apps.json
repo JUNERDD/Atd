@@ -1,0 +1,183 @@
+{
+  "card": {
+    "label": "App {{name}}",
+    "version": "v{{version}}",
+    "versionUpdated": "Updated v{{version}}",
+    "typecheckWarning_one": "{{count}} type error. This version still runs; ask Atd to fix it.",
+    "typecheckWarning_other": "{{count}} type errors. This version still runs; ask Atd to fix them.",
+    "widgets_one": "{{count}} widget",
+    "widgets_other": "{{count}} widgets",
+    "open": "Open",
+    "history": "Version history",
+    "building": "Type-checking and building version {{version}}…",
+    "failed": "The build failed. The current version still runs."
+  },
+  "panel": {
+    "label": "My apps",
+    "create": "Create app",
+    "empty": "No apps yet",
+    "emptyDescription": "Ask Atd to build one, such as a habit tracker or a budget sheet.",
+    "loading": "Loading apps…",
+    "loadError": "Apps could not be loaded",
+    "retry": "Try again",
+    "open": "Open",
+    "openLabel": "Open {{name}}",
+    "edit": "Continue editing",
+    "editLabel": "Continue editing {{name}}",
+    "more": "More",
+    "moreLabel": "More actions for {{name}}",
+    "rename": "Rename",
+    "versions": "Versions",
+    "delete": "Delete",
+    "rowMeta": "Updated {{date}} · v{{version}}"
+  },
+  "pin": {
+    "addHint": "Pin to Desktop (or drag the card there)",
+    "remove": "Remove from Desktop",
+    "addLabel": "Pin {{name}} to the desktop",
+    "removeLabel": "Remove {{name}} from the desktop",
+    "added": "Pinned “{{name}}” to the desktop",
+    "removed": "Removed “{{name}}” from the desktop",
+    "dragHint": "Next time, drag an app's card onto the desktop to pin it.",
+    "loginHint": "Pins show while Atd runs; turn on Open at login to keep them after a restart."
+  },
+  "origin": {
+    "label": "Started by {{name}}",
+    "unknown": "App"
+  },
+  "consent": {
+    "title": "{{app}} wants to {{capability}}",
+    "allow": "Allow",
+    "deny": "Deny",
+    "purpose": "Why the app asks",
+    "remembered": "Atd remembers your choice for this app. Change it in Settings › Apps."
+  },
+  "capability": {
+    "ai": {
+      "label": "AI models",
+      "action": "use AI models",
+      "description": "Uses your model provider.",
+      "consent": "Sends prompts to the model provider you set up in Atd. Usage is billed to that provider account."
+    },
+    "agent": {
+      "label": "Agent",
+      "action": "run the agent",
+      "description": "Steps with side effects still ask for approval.",
+      "consent": "Runs tasks with tools, skills and subagents. Steps with side effects still ask for your approval."
+    },
+    "memory": {
+      "label": "Memory",
+      "action": "use your memory",
+      "description": "Searches, reads and saves entries.",
+      "consent": "Searches, reads and saves entries in your long-term memory."
+    },
+    "mcp": {
+      "label": "MCP servers",
+      "action": "use MCP servers",
+      "description": "Calls tools on your MCP servers.",
+      "consent": "Lists and calls tools on the MCP servers you connected in Atd."
+    },
+    "web": {
+      "label": "Web search and fetch",
+      "action": "search and read the web",
+      "description": "Searches the web and fetches pages.",
+      "consent": "Runs web searches and fetches pages through Atd."
+    }
+  },
+  "rename": {
+    "title": "Rename app",
+    "description": "The new name shows in your apps and on the app's window.",
+    "label": "Name",
+    "cancel": "Cancel",
+    "save": "Save",
+    "done": "App renamed"
+  },
+  "confirm": {
+    "cancel": "Cancel",
+    "deleteTitle": "Delete {{name}}?",
+    "deleteDescription": "The app, every version and all of its data are deleted, and its window closes. This can't be undone.",
+    "deleteAction": "Delete",
+    "clearTitle": "Clear the data of {{name}}?",
+    "clearDescription": "Everything the app saved is removed and its window closes. The app and its versions stay.",
+    "clearAction": "Clear data",
+    "revertTitle": "Revert to version {{version}}?",
+    "revertDescription": "Version {{version}} is published again as the newest version. The app's data is not rolled back, so data saved by later versions may not work with it.",
+    "revertAction": "Revert"
+  },
+  "feedback": {
+    "deleted": "App deleted",
+    "cleared": "App data cleared",
+    "reverted": "Version {{version}} is current again, as version {{current}}"
+  },
+  "settings": {
+    "title": "Apps",
+    "description": "Apps you built with Atd. Open one, go back to an earlier version, or change what it can use.",
+    "searchLabel": "Search apps",
+    "searchPlaceholder": "Search apps",
+    "noMatches": "No apps match “{{query}}”",
+    "clearSearch": "Clear search",
+    "showLabel": "Show {{name}}",
+    "rowMeta": "v{{version}} · Updated {{date}}",
+    "waiting": "Waiting for permission",
+    "emptyDescription": "Describe an app in the task panel and Atd builds it. It shows up here when the first version is ready."
+  },
+  "detail": {
+    "label": "App details",
+    "back": "Back to apps",
+    "loading": "Loading…",
+    "meta": "Version {{version}} · Created {{date}}",
+    "builtIn": "Built in the task “{{task}}”",
+    "versions": {
+      "title": "Versions",
+      "footer": "Each change you ask for becomes one version, however many builds it takes. Reverting makes an older one current; newer versions stay listed.",
+      "showAll": "Show all {{total}}",
+      "showFewer": "Show fewer",
+      "item": "Version {{version}}",
+      "current": "Current",
+      "meta": "Built {{date}} · {{check}}",
+      "typecheckPassed": "Type check passed",
+      "typeErrors_one": "{{count}} type error",
+      "typeErrors_other": "{{count}} type errors",
+      "revert": "Revert",
+      "revertLabel": "Revert to version {{version}}",
+      "reverting": "Reverting…"
+    },
+    "widgets": {
+      "title": "Widgets",
+      "footer": "Add “App Widget” from Atd in the macOS widget gallery, then choose “{{name}}”.",
+      "unavailable": "Move Atd to the Applications folder to use its widgets.",
+      "noPreview": "No preview yet",
+      "previewAlt": "Preview of {{name}}",
+      "refreshes": "Refreshes every {{count}} min",
+      "family": {
+        "systemSmall": "Small",
+        "systemMedium": "Medium",
+        "systemLarge": "Large"
+      }
+    },
+    "permissions": {
+      "title": "Permissions",
+      "footer": "Atd asks the first time the app uses each capability. Storage and logs need no permission.",
+      "none": "This app uses no AI models, agent tasks, memory, MCP tools or web access.",
+      "status": "{{status}} · {{description}}",
+      "granted": "Allowed",
+      "denied": "Denied",
+      "notAsked": "Not asked yet",
+      "allowLabel": "Allow {{capability}} for {{name}}",
+      "askAgain": "Ask again",
+      "askAgainLabel": "Ask again before using {{capability}}"
+    },
+    "data": {
+      "title": "Data",
+      "footer": "The app's own database, files and browser storage live in its data folder.",
+      "clear": "Clear data",
+      "clearDescription": "Deletes the app's database, files and browser storage. Versions and permissions stay.",
+      "clearAction": "Clear data…",
+      "clearing": "Clearing…",
+      "delete": "Delete app",
+      "deleteDescription": "Removes the app, all versions, its data and its widgets. This cannot be undone.",
+      "deleteAction": "Delete app…",
+      "deleting": "Deleting…"
+    }
+  }
+}

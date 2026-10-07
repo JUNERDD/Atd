@@ -74,7 +74,6 @@ export class NativeBridge {
     'accessibility.reduceTransparency': new Set(),
     'shortcut.command': new Set(),
     'shortcut.screenshot': new Set(),
-    'onboarding.replay': new Set(),
     'resources.imported': new Set(),
     'files.drag': new Set(),
     'edit.command': new Set(),
@@ -84,6 +83,11 @@ export class NativeBridge {
     'screenRecording.trust': new Set(),
     'update.state': new Set(),
     'socket.frames': new Set(),
+    'userApp.state': new Set(),
+    'userApp.pins': new Set(),
+    'task.new': new Set(),
+    'miniPanel.state': new Set(),
+    'task.open': new Set(),
   };
 
   private constructor(private readonly handler: ScriptMessageHandler) {}

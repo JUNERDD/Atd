@@ -17,11 +17,20 @@
       "app.state",
       "app.setShowInDock",
       "app.setOpenAtLogin",
+      "miniPanel.setShown",
+      "miniPanel.setOpenOn",
+      "miniPanel.setCommands",
       "settings.open",
       "settings.close",
       "onboarding.open",
       "onboarding.settle",
       "onboarding.close",
+      "userApp.open",
+      "userApp.close",
+      "userApp.widgetPreview",
+      "userApp.clearData",
+      "userApp.pin",
+      "userApp.unpin",
       "shortcuts.set",
       "capture",
       "clipboard.read",
@@ -51,7 +60,8 @@
       "socket.open",
       "socket.send",
       "update.install",
-      "socket.close"
+      "socket.close",
+      "userApp.pinDrag"
     ],
     "events": [
       "window.active",
@@ -59,16 +69,20 @@
       "accessibility.reduceTransparency",
       "shortcut.command",
       "shortcut.screenshot",
-      "onboarding.replay",
       "resources.imported",
       "files.drag",
       "edit.command",
       "speech.state",
       "selection.ask",
+      "task.new",
+      "miniPanel.state",
       "accessibility.trust",
       "screenRecording.trust",
       "update.state",
-      "socket.frames"
+      "socket.frames",
+      "userApp.state",
+      "userApp.pins",
+      "task.open"
     ]
   },
   "anyOf": [
@@ -255,6 +269,120 @@
             },
             "method": {
               "type": "string",
+              "const": "miniPanel.setShown"
+            },
+            "params": {
+              "type": "object",
+              "required": ["shown"],
+              "properties": {
+                "shown": {
+                  "type": "boolean"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
+              "const": "miniPanel.setOpenOn"
+            },
+            "params": {
+              "type": "object",
+              "required": ["openOn"],
+              "properties": {
+                "openOn": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "const": "hover"
+                    },
+                    {
+                      "type": "string",
+                      "const": "click"
+                    }
+                  ]
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
+              "const": "miniPanel.setCommands"
+            },
+            "params": {
+              "type": "object",
+              "required": ["commands"],
+              "properties": {
+                "commands": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["id", "name"],
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 128
+                      },
+                      "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 256
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "maxItems": 64
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
               "const": "settings.open"
             },
             "params": {
@@ -384,6 +512,244 @@
               "properties": {
                 "summon": {
                   "type": "boolean"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
+              "const": "userApp.open"
+            },
+            "params": {
+              "type": "object",
+              "required": ["appId"],
+              "properties": {
+                "appId": {
+                  "type": "string",
+                  "pattern": "^app-[a-z0-9]{10}$"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
+              "const": "userApp.close"
+            },
+            "params": {
+              "type": "object",
+              "required": ["appId"],
+              "properties": {
+                "appId": {
+                  "type": "string",
+                  "pattern": "^app-[a-z0-9]{10}$"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
+              "const": "userApp.widgetPreview"
+            },
+            "params": {
+              "type": "object",
+              "required": ["appId", "widgetId", "family"],
+              "properties": {
+                "appId": {
+                  "type": "string",
+                  "pattern": "^app-[a-z0-9]{10}$"
+                },
+                "widgetId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 64
+                },
+                "family": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "const": "systemSmall"
+                    },
+                    {
+                      "type": "string",
+                      "const": "systemMedium"
+                    },
+                    {
+                      "type": "string",
+                      "const": "systemLarge"
+                    }
+                  ]
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
+              "const": "userApp.clearData"
+            },
+            "params": {
+              "type": "object",
+              "required": ["appId", "forget"],
+              "properties": {
+                "appId": {
+                  "type": "string",
+                  "pattern": "^app-[a-z0-9]{10}$"
+                },
+                "forget": {
+                  "type": "boolean"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
+              "const": "userApp.pin"
+            },
+            "params": {
+              "type": "object",
+              "required": ["appId", "widget"],
+              "properties": {
+                "appId": {
+                  "type": "string",
+                  "pattern": "^app-[a-z0-9]{10}$"
+                },
+                "widget": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "required": ["widgetId", "family"],
+                      "properties": {
+                        "widgetId": {
+                          "type": "string",
+                          "pattern": "^[a-z][a-z0-9-]{0,31}$"
+                        },
+                        "family": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "const": "systemSmall"
+                            },
+                            {
+                              "type": "string",
+                              "const": "systemMedium"
+                            },
+                            {
+                              "type": "string",
+                              "const": "systemLarge"
+                            }
+                          ]
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
+              "const": "userApp.unpin"
+            },
+            "params": {
+              "type": "object",
+              "required": ["appId"],
+              "properties": {
+                "appId": {
+                  "type": "string",
+                  "pattern": "^app-[a-z0-9]{10}$"
                 }
               },
               "additionalProperties": false
@@ -1426,6 +1792,32 @@
             }
           },
           "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "post"
+            },
+            "method": {
+              "type": "string",
+              "const": "userApp.pinDrag"
+            },
+            "params": {
+              "type": "object",
+              "required": ["appId"],
+              "properties": {
+                "appId": {
+                  "type": "string",
+                  "pattern": "^app-[a-z0-9]{10}$"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
         }
       ]
     },
@@ -1579,26 +1971,6 @@
             "event": {
               "type": "string",
               "const": "shortcut.screenshot"
-            },
-            "payload": {
-              "type": "object",
-              "properties": {},
-              "additionalProperties": false
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": ["type", "event", "payload"],
-          "properties": {
-            "type": {
-              "type": "string",
-              "const": "event"
-            },
-            "event": {
-              "type": "string",
-              "const": "onboarding.replay"
             },
             "payload": {
               "type": "object",
@@ -1861,6 +2233,63 @@
             },
             "event": {
               "type": "string",
+              "const": "task.new"
+            },
+            "payload": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "event", "payload"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "event"
+            },
+            "event": {
+              "type": "string",
+              "const": "miniPanel.state"
+            },
+            "payload": {
+              "type": "object",
+              "required": ["shown", "openOn"],
+              "properties": {
+                "shown": {
+                  "type": "boolean"
+                },
+                "openOn": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "const": "hover"
+                    },
+                    {
+                      "type": "string",
+                      "const": "click"
+                    }
+                  ]
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "event", "payload"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "event"
+            },
+            "event": {
+              "type": "string",
               "const": "accessibility.trust"
             },
             "payload": {
@@ -2010,6 +2439,145 @@
                     ]
                   },
                   "minItems": 1
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "event", "payload"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "event"
+            },
+            "event": {
+              "type": "string",
+              "const": "userApp.state"
+            },
+            "payload": {
+              "type": "object",
+              "required": ["appId", "open", "version"],
+              "properties": {
+                "appId": {
+                  "type": "string",
+                  "pattern": "^app-[a-z0-9]{10}$"
+                },
+                "open": {
+                  "type": "boolean"
+                },
+                "version": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "event", "payload"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "event"
+            },
+            "event": {
+              "type": "string",
+              "const": "userApp.pins"
+            },
+            "payload": {
+              "type": "object",
+              "required": ["pins"],
+              "properties": {
+                "pins": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["appId", "widgetId", "family"],
+                    "properties": {
+                      "appId": {
+                        "type": "string",
+                        "pattern": "^app-[a-z0-9]{10}$"
+                      },
+                      "widgetId": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "pattern": "^[a-z][a-z0-9-]{0,31}$"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "family": {
+                        "anyOf": [
+                          {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "const": "systemSmall"
+                              },
+                              {
+                                "type": "string",
+                                "const": "systemMedium"
+                              },
+                              {
+                                "type": "string",
+                                "const": "systemLarge"
+                              }
+                            ]
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "maxItems": 24
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "event", "payload"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "event"
+            },
+            "event": {
+              "type": "string",
+              "const": "task.open"
+            },
+            "payload": {
+              "type": "object",
+              "required": ["taskId"],
+              "properties": {
+                "taskId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128,
+                  "pattern": "^[a-zA-Z0-9_-]+$"
                 }
               },
               "additionalProperties": false
@@ -2210,7 +2778,7 @@
     },
     "AppStateResult": {
       "type": "object",
-      "required": ["pinned", "showInDock", "openAtLogin"],
+      "required": ["pinned", "showInDock", "openAtLogin", "widgetsAvailable"],
       "properties": {
         "pinned": {
           "type": "boolean"
@@ -2227,6 +2795,9 @@
               "type": "null"
             }
           ]
+        },
+        "widgetsAvailable": {
+          "type": "boolean"
         }
       },
       "additionalProperties": false
@@ -2269,6 +2840,97 @@
           "type": "boolean"
         }
       },
+      "additionalProperties": false
+    },
+    "MiniPanelSetShownParams": {
+      "type": "object",
+      "required": ["shown"],
+      "properties": {
+        "shown": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "MiniPanelSetShownResult": {
+      "type": "object",
+      "required": ["shown"],
+      "properties": {
+        "shown": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "MiniPanelSetOpenOnParams": {
+      "type": "object",
+      "required": ["openOn"],
+      "properties": {
+        "openOn": {
+          "anyOf": [
+            {
+              "type": "string",
+              "const": "hover"
+            },
+            {
+              "type": "string",
+              "const": "click"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "MiniPanelSetOpenOnResult": {
+      "type": "object",
+      "required": ["openOn"],
+      "properties": {
+        "openOn": {
+          "anyOf": [
+            {
+              "type": "string",
+              "const": "hover"
+            },
+            {
+              "type": "string",
+              "const": "click"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "MiniPanelSetCommandsParams": {
+      "type": "object",
+      "required": ["commands"],
+      "properties": {
+        "commands": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "name"],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              }
+            },
+            "additionalProperties": false
+          },
+          "maxItems": 64
+        }
+      },
+      "additionalProperties": false
+    },
+    "MiniPanelSetCommandsResult": {
+      "type": "object",
+      "properties": {},
       "additionalProperties": false
     },
     "SettingsOpenParams": {
@@ -2347,6 +3009,165 @@
       "additionalProperties": false
     },
     "OnboardingCloseResult": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "UserAppOpenParams": {
+      "type": "object",
+      "required": ["appId"],
+      "properties": {
+        "appId": {
+          "type": "string",
+          "pattern": "^app-[a-z0-9]{10}$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "UserAppOpenResult": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "UserAppCloseParams": {
+      "type": "object",
+      "required": ["appId"],
+      "properties": {
+        "appId": {
+          "type": "string",
+          "pattern": "^app-[a-z0-9]{10}$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "UserAppCloseResult": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "UserAppWidgetPreviewParams": {
+      "type": "object",
+      "required": ["appId", "widgetId", "family"],
+      "properties": {
+        "appId": {
+          "type": "string",
+          "pattern": "^app-[a-z0-9]{10}$"
+        },
+        "widgetId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "family": {
+          "anyOf": [
+            {
+              "type": "string",
+              "const": "systemSmall"
+            },
+            {
+              "type": "string",
+              "const": "systemMedium"
+            },
+            {
+              "type": "string",
+              "const": "systemLarge"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "UserAppWidgetPreviewResult": {
+      "type": "object",
+      "required": ["pngBase64"],
+      "properties": {
+        "pngBase64": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "UserAppClearDataParams": {
+      "type": "object",
+      "required": ["appId", "forget"],
+      "properties": {
+        "appId": {
+          "type": "string",
+          "pattern": "^app-[a-z0-9]{10}$"
+        },
+        "forget": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "UserAppClearDataResult": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "UserAppPinParams": {
+      "type": "object",
+      "required": ["appId", "widget"],
+      "properties": {
+        "appId": {
+          "type": "string",
+          "pattern": "^app-[a-z0-9]{10}$"
+        },
+        "widget": {
+          "anyOf": [
+            {
+              "type": "object",
+              "required": ["widgetId", "family"],
+              "properties": {
+                "widgetId": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9-]{0,31}$"
+                },
+                "family": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "const": "systemSmall"
+                    },
+                    {
+                      "type": "string",
+                      "const": "systemMedium"
+                    },
+                    {
+                      "type": "string",
+                      "const": "systemLarge"
+                    }
+                  ]
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "UserAppPinResult": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "UserAppUnpinParams": {
+      "type": "object",
+      "required": ["appId"],
+      "properties": {
+        "appId": {
+          "type": "string",
+          "pattern": "^app-[a-z0-9]{10}$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "UserAppUnpinResult": {
       "type": "object",
       "properties": {},
       "additionalProperties": false
@@ -3463,6 +4284,17 @@
       },
       "additionalProperties": false
     },
+    "UserAppPinDragPost": {
+      "type": "object",
+      "required": ["appId"],
+      "properties": {
+        "appId": {
+          "type": "string",
+          "pattern": "^app-[a-z0-9]{10}$"
+        }
+      },
+      "additionalProperties": false
+    },
     "WindowActiveEvent": {
       "type": "object",
       "required": ["active"],
@@ -3506,11 +4338,6 @@
       "additionalProperties": false
     },
     "ShortcutScreenshotEvent": {
-      "type": "object",
-      "properties": {},
-      "additionalProperties": false
-    },
-    "OnboardingReplayEvent": {
       "type": "object",
       "properties": {},
       "additionalProperties": false
@@ -3683,6 +4510,33 @@
       "properties": {},
       "additionalProperties": false
     },
+    "TaskNewEvent": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "MiniPanelStateEvent": {
+      "type": "object",
+      "required": ["shown", "openOn"],
+      "properties": {
+        "shown": {
+          "type": "boolean"
+        },
+        "openOn": {
+          "anyOf": [
+            {
+              "type": "string",
+              "const": "hover"
+            },
+            {
+              "type": "string",
+              "const": "click"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
     "AccessibilityTrustEvent": {
       "type": "object",
       "required": ["trusted"],
@@ -3785,6 +4639,100 @@
             ]
           },
           "minItems": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "UserAppStateEvent": {
+      "type": "object",
+      "required": ["appId", "open", "version"],
+      "properties": {
+        "appId": {
+          "type": "string",
+          "pattern": "^app-[a-z0-9]{10}$"
+        },
+        "open": {
+          "type": "boolean"
+        },
+        "version": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "UserAppPinsEvent": {
+      "type": "object",
+      "required": ["pins"],
+      "properties": {
+        "pins": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["appId", "widgetId", "family"],
+            "properties": {
+              "appId": {
+                "type": "string",
+                "pattern": "^app-[a-z0-9]{10}$"
+              },
+              "widgetId": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9-]{0,31}$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "family": {
+                "anyOf": [
+                  {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "const": "systemSmall"
+                      },
+                      {
+                        "type": "string",
+                        "const": "systemMedium"
+                      },
+                      {
+                        "type": "string",
+                        "const": "systemLarge"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "additionalProperties": false
+          },
+          "maxItems": 24
+        }
+      },
+      "additionalProperties": false
+    },
+    "TaskOpenEvent": {
+      "type": "object",
+      "required": ["taskId"],
+      "properties": {
+        "taskId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_-]+$"
         }
       },
       "additionalProperties": false

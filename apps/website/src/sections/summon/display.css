@@ -1,0 +1,57 @@
+.summon__viewport {
+  min-inline-size: 0;
+}
+
+.summon__screen {
+  aspect-ratio: 6 / 5;
+  overflow: clip;
+  border-radius: var(--r-part);
+  background: var(--ink-0);
+}
+
+.summon__wallpaper {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+}
+
+/* Preserve every captured pixel, including the native header and unsent draft. */
+.summon__panel {
+  position: absolute;
+  inset-inline-end: 1.7%;
+  inset-block-end: 4.08%;
+  block-size: 91.84%;
+  aspect-ratio: 560 / 720;
+  translate: 0 112%;
+  transition: translate 0.42s var(--curve-out);
+}
+
+.summon__viewport[data-open] .summon__panel {
+  translate: 0 0;
+}
+
+.summon__shot {
+  display: block;
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: contain;
+}
+
+.summon__unavailable {
+  display: grid;
+  place-content: center;
+  block-size: 100%;
+  padding: 24px;
+  background: var(--ink-2);
+  border-radius: var(--r-part);
+  color: var(--fg-2);
+  text-align: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .summon__panel {
+    transition: none;
+  }
+}

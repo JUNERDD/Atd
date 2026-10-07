@@ -60,7 +60,7 @@ export function PluginItemTabs({
             {t(`extensions.plugins.kinds.${kind}`)}
             {kind === 'memory' && !snapshot ? null : (
               <span className="text-muted-foreground tabular-nums">
-                {kind === 'memory' ? snapshot?.entries.length : count}
+                {kind === 'memory' ? snapshot?.units.length : count}
               </span>
             )}
           </TabsTrigger>

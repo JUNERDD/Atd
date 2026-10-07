@@ -1,10 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ATOMIC_BLOCKS } from './code-sources';
+import { formulaText, wholeFormulas } from './math-sources';
 
 /** A settled assistant message; a streaming one replaces its nodes under the selection. */
 const MESSAGE = '.assistant-block:not([data-streaming])';
-/** The toolbar (`SelectionToolbar`), whose own presses must not re-read or drop the selection. */
-const TOOLBAR = '[data-selection-toolbar]';
+/**
+ * The toolbar (`SelectionToolbar`) and its portaled command menu, whose own presses must not
+ * re-read or drop the selection.
+ */
+export const TOOLBAR = '[data-selection-toolbar]';
 
 /** Floating UI's virtual reference: a rect to place against and the element whose scrollers move it. */
 export interface SelectionAnchor {
@@ -24,11 +28,14 @@ export interface MessagePart {
  * parts are its content.
  */
 export interface MessageSelection {
-  /** A copy of the selected range, so later selection changes leave it intact. */
+  /**
+   * A copy of the selected range, so later selection changes leave it intact, widened to take in
+   * whole any formula it cuts into.
+   */
   range: Range;
   /** The selected part of each settled assistant message, in document order. */
   parts: MessagePart[];
-  /** The parts' text as the page selects it, for reading aloud. */
+  /** The parts' text as the page selects it, each formula as its TeX, for reading aloud. */
   text: string;
   /**
    * Where the toolbar goes from the anchor: past the selection's focus, away from the selected text
@@ -88,13 +95,15 @@ function focusRect(range: Range, caret: Range, edge: 'start' | 'end', x: number 
 function readSelection(root: HTMLElement, releaseX: number | null): MessageSelection | null {
   const selection = document.getSelection();
   if (!selection?.focusNode || selection.isCollapsed || selection.rangeCount === 0) return null;
-  const range = selection.getRangeAt(0).cloneRange();
+  const selected = selection.getRangeAt(0);
+  // Every action takes a formula whole, so the selection does too (`math-sources.ts`).
+  const range = wholeFormulas(selected.cloneRange());
   const container = elementOf(range.commonAncestorContainer);
   // Inside the conversation: selecting the whole page (Select All) is not a quote of its answers.
   if (!container || !root.contains(container)) return null;
   const parts = messageParts(range, root);
   const text = parts
-    .map((part) => part.range.toString().trim())
+    .map((part) => formulaText(part.range).trim())
     .filter(Boolean)
     .join('\n\n');
   // A code block's text lives in its shadow root and a diagram is an SVG, outside the string.
@@ -106,7 +115,7 @@ function readSelection(root: HTMLElement, releaseX: number | null): MessageSelec
   const caret = document.createRange();
   caret.setStart(selection.focusNode, selection.focusOffset);
   // A selection made forwards ends at its end; one made backwards (dragged up) at its start.
-  const forward = caret.compareBoundaryPoints(Range.START_TO_START, range) !== 0;
+  const forward = caret.compareBoundaryPoints(Range.START_TO_START, selected) !== 0;
   const edge = forward ? 'end' : 'start';
   const offset = releaseX === null ? null : releaseX - root.getBoundingClientRect().left;
   const pointerX = () => {

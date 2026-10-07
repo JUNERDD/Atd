@@ -3,8 +3,10 @@ import { Type, type Static } from 'typebox';
 /**
  * What fills a task's context, by the part of the request it comes from:
  *
- * - `systemPrompt`: the service prompt's sections other than the skill catalog;
+ * - `systemPrompt`: the service prompt's sections other than the skill catalog and memory;
  * - `skills`: the skill catalog section plus the skills loaded into the conversation;
+ * - `memory`: the memory sections (policy, always-on memories, memory index) plus the results of
+ *   the memory tools;
  * - `systemTools`: the declarations of the service's own tools;
  * - `mcpTools`: the declarations of MCP server tools (`mcp__<server>__<tool>`);
  * - `messages`: everything else the provider counted, the conversation itself.
@@ -13,6 +15,7 @@ export const ContextCategoryIdSchema = Type.Union([
   Type.Literal('messages'),
   Type.Literal('systemPrompt'),
   Type.Literal('skills'),
+  Type.Literal('memory'),
   Type.Literal('systemTools'),
   Type.Literal('mcpTools'),
 ]);

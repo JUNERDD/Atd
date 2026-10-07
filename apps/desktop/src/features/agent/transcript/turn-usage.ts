@@ -10,7 +10,13 @@ export interface TurnUsage {
 }
 
 function usageOf(block: Block): AssistantUsage | undefined {
-  if (block.kind === 'user' || block.kind === 'system' || block.kind === 'compaction') return;
+  if (
+    block.kind === 'user' ||
+    block.kind === 'system' ||
+    block.kind === 'compaction' ||
+    block.kind === 'retry'
+  )
+    return;
   return block.usage;
 }
 

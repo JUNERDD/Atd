@@ -1,0 +1,8 @@
+# Atd
+
+> Atd (anything, anytime, anywhere, to do) is a quiet desktop agent panel for macOS. A native app (macOS 26 or later, Apple silicon) puts a small panel in the bottom-right corner of the screen; press ⌘ ⇧ Space anywhere to open it, and it runs coding and general-purpose agent tasks on your own Mac through a local agent service.
+
+- [Website (English)](/): features, privacy model, screen recordings and download
+- [Website (简体中文)](/zh): the same page in Simplified Chinese
+- [Source on GitHub](https://github.com/JUNERDD/ai): the native shell, the React UI and the agent service
+- [Releases](https://github.com/JUNERDD/ai/releases): release notes and the arm64 dmg for each version

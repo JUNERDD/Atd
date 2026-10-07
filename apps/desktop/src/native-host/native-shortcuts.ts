@@ -1,5 +1,5 @@
 import type { PreparedCommand } from '../client/agent/bridge';
-import { readyToRun } from '../client/agent/command-validation';
+import { runsAsIs } from '../client/agent/command-prepare';
 import { errorMessage } from '../client/agent/validation';
 import type { NativeBridge, ShortcutResult } from '../native-bridge/client';
 import { PANEL_SHORTCUT_ID, SCREENSHOT_SHORTCUT_ID } from '../native-bridge/calls';
@@ -110,9 +110,7 @@ export function nativeShortcuts(
   bridge.on('shortcut.command', ({ id }) => {
     void commands
       .prepare(id, true)
-      .then((prepared) =>
-        host.launch(prepared, !prepared.notice && readyToRun(prepared.command, prepared.input)),
-      )
+      .then((prepared) => host.launch(prepared, runsAsIs(prepared)))
       .catch((error: unknown) => {
         commands.errors[id] = errorMessage(error);
       });

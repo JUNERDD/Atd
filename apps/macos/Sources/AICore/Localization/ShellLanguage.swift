@@ -30,10 +30,10 @@ public enum ShellStringKey: String, CaseIterable, Sendable {
 
   case menuShowPanel = "menu.showPanel"
   case menuHidePanel = "menu.hidePanel"
+  case menuShowMiniPanel = "menu.showMiniPanel"
   case menuSettings = "menu.settings"
   case menuOnboarding = "menu.onboarding"
   case menuSelectionListening = "menu.selectionListening"
-  case menuOnboardingReplay = "menu.onboardingReplay"
   case menuCheckForUpdates = "menu.checkForUpdates"
   case menuRestartService = "menu.restartService"
   case menuShowServiceLogs = "menu.showServiceLogs"
@@ -86,6 +86,32 @@ public enum ShellStringKey: String, CaseIterable, Sendable {
   case folderPickTitle = "folder.pick.title"
   case appPickTitle = "app.pick.title"
 
+  case userAppOpenFailed = "userApp.open.failed"
+  case userAppOpenMissing = "userApp.open.missing"
+  case userAppClearFailed = "userApp.clear.failed"
+  case userAppLinkTitle = "userApp.link.title"
+  /// `%1$@` the app's name, `%2$@` the link.
+  case userAppLinkMessage = "userApp.link.message"
+  case userAppLinkOpen = "userApp.link.open"
+  /// `%@` the app's name.
+  case userAppFilesPickTitle = "userApp.files.pick.title"
+  case userAppFilesTooLarge = "userApp.files.tooLarge"
+
+  /// `%@` the app's name.
+  case pinMenuOpen = "pin.menu.open"
+  case pinMenuWidget = "pin.menu.widget"
+  case pinMenuAppIcon = "pin.menu.appIcon"
+  case pinSizeSmall = "pin.size.small"
+  case pinSizeMedium = "pin.size.medium"
+  case pinSizeLarge = "pin.size.large"
+  case pinMenuRemove = "pin.menu.remove"
+  case pinUnreadable = "pin.unreadable"
+  case pinFailed = "pin.failed"
+  /// `%lld` the most apps the desktop holds pins of.
+  case pinLimit = "pin.limit"
+  /// `%1$@` the app's name, `%2$@` the widget's title.
+  case pinAccessibilityLabel = "pin.accessibility.label"
+
   case selectionToolbar = "selectionToolbar"
   case selectionToolbarAsk = "selectionToolbar.ask"
   case selectionToolbarAskTooltip = "selectionToolbar.ask.tooltip"
@@ -95,6 +121,26 @@ public enum ShellStringKey: String, CaseIterable, Sendable {
   case selectionHudOff = "selectionHud.off"
   case selectionHudHint = "selectionHud.hint"
   case selectionHudHide = "selectionHud.hide"
+
+  /// `%1$@` the app's name, `%2$@` the permission's name in System Settings.
+  case permissionGuideTitle = "permissionGuide.title"
+  case permissionGuideAccessibility = "permissionGuide.accessibility"
+  case permissionGuideScreenRecording = "permissionGuide.screenRecording"
+  case permissionGuideDrag = "permissionGuide.drag"
+  case permissionGuideClose = "permissionGuide.close"
+
+  case miniPanelLabel = "miniPanel.label"
+  case miniPanelOpen = "miniPanel.open"
+  case miniPanelHidePanel = "miniPanel.hidePanel"
+  case miniPanelNewTask = "miniPanel.newTask"
+  case miniPanelAsk = "miniPanel.ask"
+  case miniPanelScreenshot = "miniPanel.screenshot"
+  case miniPanelCommands = "miniPanel.commands"
+  case miniPanelDrop = "miniPanel.drop"
+  case miniPanelMoveLeft = "miniPanel.moveLeft"
+  case miniPanelMoveRight = "miniPanel.moveRight"
+  case miniPanelOpenOnClick = "miniPanel.openOnClick"
+  case miniPanelHide = "miniPanel.hide"
 
   case artifactOpenTitle = "artifact.open.title"
   case artifactOpenMessage = "artifact.open.message"
@@ -167,4 +213,20 @@ public enum ShellStringKey: String, CaseIterable, Sendable {
   case captureRedo = "capture.redo"
   case captureConfirm = "capture.confirm"
   case captureCopy = "capture.copy"
+
+  /// Automation notifications (``AutomationNotification``): the automation's name and the run's
+  /// summary go in as written.
+  case automationNoticeDeliveredBody = "automation.notice.delivered.body"
+  /// `%@` the automation's name.
+  case automationNoticeAttentionTitle = "automation.notice.attention.title"
+  case automationNoticeAttentionBody = "automation.notice.attention.body"
+  case automationNoticeDeclinedOne = "automation.notice.attention.declined.one"
+  /// `%lld` the actions and questions declined.
+  case automationNoticeDeclinedOther = "automation.notice.attention.declined.other"
+  /// `%@` the automation's name.
+  case automationNoticeFailedTitle = "automation.notice.failed.title"
+  case automationNoticeFailedBody = "automation.notice.failed.body"
+  /// `%@` the automation's name.
+  case automationNoticePausedTitle = "automation.notice.paused.title"
+  case automationNoticePausedBody = "automation.notice.paused.body"
 }

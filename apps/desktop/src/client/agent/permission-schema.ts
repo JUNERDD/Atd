@@ -39,6 +39,10 @@ export const GrantScopeSchema = Type.Union([
   Type.Object({ tool: Type.Literal('mcp') }, { additionalProperties: false }),
   // C1 additive: web search and fetch network calls.
   Type.Object({ tool: Type.Literal('web') }, { additionalProperties: false }),
+  // Create App: the `app` harness tool (build, diagnostics, call, list).
+  Type.Object({ tool: Type.Literal('app') }, { additionalProperties: false }),
+  // Automations: the `automation` harness tool's saves, deletes and Run now (always asked).
+  Type.Object({ tool: Type.Literal('automation') }, { additionalProperties: false }),
 ]);
 export type GrantScope = Static<typeof GrantScopeSchema>;
 
@@ -85,21 +89,6 @@ export const QuestionRecordSchema = Type.Object(
   { additionalProperties: false },
 );
 export type QuestionRecord = Static<typeof QuestionRecordSchema>;
-
-/**
- * Measured thinking time, appended as the `app-thinking-duration` custom entry so the
- * transcript keeps it after reopen. Keyed by stable thinking block id `t:<timestamp>:<index>`.
- */
-export const ThinkingDurationRecordSchema = Type.Object(
-  {
-    blockId: Type.String({ maxLength: 256 }),
-    runId: Identifier,
-    durationMs: Type.Integer({ minimum: 0 }),
-    at: Type.Number(),
-  },
-  { additionalProperties: false },
-);
-export type ThinkingDurationRecord = Static<typeof ThinkingDurationRecordSchema>;
 
 const requestBase = {
   id: Identifier,

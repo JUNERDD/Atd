@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import type { MemoryUnit } from '@atd/agent-contracts';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -9,29 +11,33 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@atd/ui/components/alert-dialog';
-import type { MemoryEntry } from '../../client/agent/bridge';
 
-/** Confirms deleting one memory; open while `entry` is set. */
+/** Confirms deleting one memory, named by its name; open while `unit` is set. */
 export function MemoryDeleteDialog({
-  entry,
+  unit,
   onCancel,
   onConfirm,
 }: {
-  entry: MemoryEntry | null;
+  unit: MemoryUnit | null;
   onCancel: () => void;
-  onConfirm: (entry: MemoryEntry) => void;
+  onConfirm: (unit: MemoryUnit) => void;
 }) {
   const { t } = useTranslation('memory');
+  // The dialog keeps naming the memory while it closes, after `unit` is cleared.
+  const [shown, setShown] = useState(unit);
+  if (unit && unit !== shown) setShown(unit);
   return (
     <AlertDialog
-      open={Boolean(entry)}
+      open={Boolean(unit)}
       onOpenChange={(open) => {
         if (!open) onCancel();
       }}
     >
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>{t('memory.confirm.deleteTitle')}</AlertDialogTitle>
+          <AlertDialogTitle>
+            {t('memory.confirm.deleteTitle', { name: shown?.name ?? '' })}
+          </AlertDialogTitle>
           <AlertDialogDescription>{t('memory.confirm.deleteDescription')}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
@@ -39,7 +45,7 @@ export function MemoryDeleteDialog({
           <AlertDialogAction
             variant="destructive"
             onClick={() => {
-              if (entry) onConfirm(entry);
+              if (unit) onConfirm(unit);
             }}
           >
             {t('memory.confirm.deleteAction')}

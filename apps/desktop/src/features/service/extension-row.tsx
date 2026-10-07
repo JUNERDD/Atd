@@ -12,6 +12,7 @@ import { Item, ItemActions } from '@atd/ui/components/item';
 import { Switch } from '@atd/ui/components/switch';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@atd/ui/components/tooltip';
 import { IconButton } from '../../components/icon-button';
+import '../../components/open-row.css';
 
 /**
  * One plugin, skill, subagent, MCP server or command row. A button under the row's content opens the details, so a click
@@ -32,15 +33,11 @@ export function ExtensionRow({
 }) {
   const { t } = useTranslation('settings');
   return (
-    <Item
-      asChild
-      size="xs"
-      className={className ? `settings-open-row ${className}` : 'settings-open-row'}
-    >
+    <Item asChild size="xs" className={className ? `open-row ${className}` : 'open-row'}>
       <li>
         <button
           type="button"
-          className="settings-open-row-button"
+          className="open-row-button"
           aria-label={t('extensions.viewDetailsFor', { name })}
           onClick={onDetails}
         />

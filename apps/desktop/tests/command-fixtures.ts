@@ -1,3 +1,4 @@
+import { defaultCommandPlacement } from '@atd/agent-contracts';
 import type { CommandDefinition } from '../src/client/agent/command-schema';
 import { newCommand } from '../src/client/agent/command-templates';
 
@@ -18,6 +19,8 @@ export function fixtureCommands(): CommandDefinition[] {
     instructions,
     templateId: id,
     input: { source: 'selection', required: true, files: true, selection: true, clipboard: false },
+    // Placed as the service places a command that never chose: on the selection toolbar only.
+    placement: defaultCommandPlacement('selection'),
   });
   const translate = command(
     'translate',
@@ -76,5 +79,6 @@ export function fixtureCommands(): CommandDefinition[] {
     selection: false,
     clipboard: false,
   };
+  summarize.placement = defaultCommandPlacement(summarize.input.source);
   return [translate, extract, polish, summarize];
 }

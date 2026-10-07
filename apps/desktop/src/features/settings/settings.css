@@ -280,10 +280,11 @@
 .settings-window[data-layout='drawer'] .settings-content-header-bar {
   padding-left: var(--settings-traffic-lights-inset);
 }
+/* 8px from the controls on either side, twice the gap between the controls of a group. */
 .settings-breadcrumb {
   flex: 1;
   min-width: 0;
-  margin-left: 4px;
+  margin-inline: 4px;
 }
 .settings-breadcrumb ol {
   display: flex;
@@ -301,7 +302,6 @@
   gap: 4px;
   min-width: 0;
   overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
 }
 .settings-breadcrumb li[aria-current='page'] {
@@ -318,6 +318,8 @@
   height: 16px;
   color: var(--ata-text-secondary);
 }
+/* Each crumb's name truncates in its own box. It needs an element of its own: the item is a flex
+ * container, so `text-overflow` on the item never reaches bare text in it. */
 .settings-breadcrumb li > span {
   min-width: 0;
   overflow: hidden;
@@ -326,8 +328,17 @@
 .settings-language {
   flex-shrink: 0;
 }
-/* Below 480px the language control keeps only its icon; its accessible name stays "Language". */
-.settings-window[data-layout='drawer'] .settings-language [data-slot='select-value'] {
+/* Below 480px the language control keeps only its icon (the value and the chevron `SelectTrigger`
+ * appends are hidden), in a square of the trigger's 32px height, which leaves the breadcrumb its
+ * width; its accessible name stays "Language". */
+.settings-window[data-layout='drawer'] .settings-language [data-slot='select-trigger'] {
+  justify-content: center;
+  width: 32px;
+  padding-inline: 0;
+}
+.settings-window[data-layout='drawer']
+  .settings-language
+  :is([data-slot='select-value'], [data-slot='select-trigger'] > svg:last-child) {
   display: none;
 }
 .settings-content-scroll-area {
@@ -365,28 +376,39 @@
 .settings-page-scroll > [data-slot='scroll-area-viewport'] {
   padding-right: calc(var(--settings-page-reach) - var(--settings-scroll-ring, 3px));
 }
-/* Grows with a page taller than the viewport, so its bottom padding stays below the content;
- * content that overflowed a viewport-high box would scroll without that padding. */
+/* Fills the viewport and grows with a taller page, so its bottom padding stays below the content;
+ * content that overflowed a viewport-high box would scroll without that padding. It shrinks only
+ * when the box around it is held at the viewport height (below). */
 .settings-content-scroll {
   display: flex;
-  flex: 1 0 auto;
+  flex: 1 1 auto;
   min-width: 0;
+  min-height: 0;
   flex-direction: column;
   padding: 8px 40px 32px;
 }
-/* Pages that fill the viewport and scroll inside themselves keep the box at its height. */
-.settings-content-scroll:has(
-  > .settings-page:not([hidden])
-    :is(
-      .settings-editor,
-      .command-editor,
-      .settings-loading,
-      .settings-extension-settings,
-      .memory-settings
-    )
-) {
-  flex-shrink: 1;
-  min-height: 0;
+/*
+ * The box Radix wraps the pages in is at least the viewport's height and otherwise follows the
+ * page, because the bar and the scroll fade measure the page only when that box resizes: a box
+ * always held at the viewport height kept the previous page's bar, as when an editor replaced the
+ * longer command list. Pages that fill the viewport and scroll inside themselves hold it there.
+ */
+.settings-content-scroll-area
+  > [data-slot='scroll-area-viewport']
+  > div:has(
+    > .settings-content-scroll
+      > .settings-page:not([hidden])
+      :is(
+        .settings-editor,
+        .command-editor,
+        .settings-loading,
+        .settings-extension-settings,
+        .memory-settings,
+        .automation-overview,
+        .app-settings
+      )
+  ) {
+  height: 100%;
 }
 .settings-window:not([data-layout='sidebar']) .settings-content-scroll {
   padding: 8px 16px 16px;
@@ -422,15 +444,25 @@
 .settings-page[hidden]:has(.settings-editor, .command-editor, .settings-loading) {
   display: none;
 }
-/* Extensions and memory keep their heading fixed above a scrolling list, so the page never
- * outgrows the viewport. */
-.settings-page:has(.settings-extension-settings, .memory-settings) {
+/* Extensions, memory, the automations overview and apps keep their heading fixed above a
+ * scrolling list, so the page never outgrows the viewport. */
+.settings-page:has(
+  .settings-extension-settings,
+  .memory-settings,
+  .automation-overview,
+  .app-settings
+) {
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
 }
-.settings-page[hidden]:has(.settings-extension-settings, .memory-settings) {
+.settings-page[hidden]:has(
+    .settings-extension-settings,
+    .memory-settings,
+    .automation-overview,
+    .app-settings
+  ) {
   display: none;
 }
 .settings-editor,
@@ -577,6 +609,44 @@
   line-height: 20px;
 }
 /*
+ * An editor's groups (settings-group.tsx): each starts at a hairline with its title and a line on
+ * what it decides, and stands 48px from the one before (the container's 24px gap, then its own
+ * 24px), further than the 16px between the fields inside it. `.settings-groups` is that container;
+ * `:has` lets its gap win over the container's own (`.editor-fields`, `.extension-page-body`),
+ * whichever stylesheet loads last.
+ */
+.settings-groups:has(> .settings-group) {
+  gap: 24px;
+}
+.settings-group {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 16px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+}
+/* A narrow window moves the action under the heading rather than squeezing the text beside it. */
+.settings-group-header {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px 12px;
+}
+.settings-group-heading {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 240px;
+  flex-direction: column;
+  gap: 2px;
+}
+.settings-group-heading > p {
+  max-width: 72ch;
+  text-wrap: pretty;
+}
+/*
  * An error shown beside what caused it, as an icon and text rather than a timed toast. Render a
  * lucide `CircleAlert` (aria-hidden) before the text and give the element `role="alert"` when it
  * appears in response to an action.
@@ -633,48 +703,6 @@
   gap: 24px;
   padding: 4px;
 }
-/* Plugin cards fill as many columns of at least 240px as the list's width holds, one column at
- * the narrowest widths; cards in a row share its height. */
-.plugin-card-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr));
-  gap: 12px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.plugin-card-cell {
-  display: flex;
-  min-width: 0;
-}
-/* The card keeps the focus ring of its open button visible, which the default clip would cut. */
-.plugin-card {
-  flex: 1;
-  min-width: 0;
-  overflow: visible;
-}
-.plugin-card > [data-slot='card-header'] {
-  align-items: center;
-}
-/* The switch and More center on the icon, with or without the source line under the name. The
- * name block holds that line, so the header has one row: spanning CardAction's default two would
- * add an empty row and the header's 6px gap, and drop the controls 3px below the icon. */
-.plugin-card [data-slot='card-action'] {
-  grid-row: 1;
-  align-self: center;
-}
-.plugin-card-description {
-  display: -webkit-box;
-  min-height: 40px;
-  overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-height: 20px;
-}
-.plugin-card-footer {
-  gap: 8px;
-  margin-top: auto;
-}
 /* One plugin's search results stack its row and kind groups; the groups hug their rows. */
 .settings-extension-results {
   display: flex;
@@ -717,33 +745,8 @@
   align-items: center;
   gap: 8px 12px;
 }
-/* A row opens its details from anywhere: the open button fills the row under its content, which
- * ignores the pointer, while the actions and the inline sign-in field stay above it. */
-/*
- * A row that opens its details on click: a button fills the row under its content, which ignores
- * the pointer, while trailing actions and inline fields stay interactive above it.
- */
-.settings-open-row {
-  position: relative;
-}
-.settings-open-row-button {
-  position: absolute;
-  inset: 0;
-  padding: 0;
-  border: 0;
-  border-radius: inherit;
-  background: transparent;
-  cursor: pointer;
-  outline: none;
-  transition: background-color 100ms;
-}
-.settings-open-row > :not(.settings-open-row-button) {
-  position: relative;
-  pointer-events: none;
-}
-/* Actions may sit in a wrapper, as the command rows group them with the shortcut. */
-.settings-open-row [data-slot='item-actions'],
-.settings-open-row .settings-extension-mcp-auth {
+/* The inline sign-in field of an MCP row stays above its open button (components/open-row.css). */
+.open-row .settings-extension-mcp-auth {
   pointer-events: auto;
 }
 /* A row without More holds an empty slot in More's column. It takes space only while another list
@@ -755,31 +758,13 @@
 .settings-page:has([data-slot='item-group'] [data-more-column]) .settings-row-more-slot {
   display: block;
 }
-/* An outlined row fills inside its 1px border, so the fill's corners follow the border's inner
- * curve instead of the outer one. */
-.settings-open-row[data-variant='outline'] > .settings-open-row-button {
-  border-radius: calc(var(--radius-2xl) - 1px);
-}
-.settings-open-row:hover > .settings-open-row-button,
-.settings-open-row:has([aria-expanded='true']) > .settings-open-row-button,
-.settings-open-row-button:focus-visible {
-  background: var(--muted);
-}
-.dark .settings-open-row:hover > .settings-open-row-button,
-.dark .settings-open-row:has([aria-expanded='true']) > .settings-open-row-button,
-.dark .settings-open-row-button:focus-visible {
-  background: var(--ata-surface-ghost-hover);
-}
-.settings-open-row-button:focus-visible {
-  outline: 1px solid var(--ring);
-  box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 30%, transparent);
-}
 /* Extension icons sit in a ring and center on the title plus description, on the
- * plugin list and on a plugin's page alike. */
+ * plugin list and on a plugin's page alike; memory cards ring theirs the same way. */
 :is(.settings-extension-settings, .extension-page) [data-slot='item-media'],
 :is(.settings-extension-settings, .extension-page)
   .group\/item:has([data-slot='item-description'])
-  [data-slot='item-media'] {
+  [data-slot='item-media'],
+.memory-settings .list-card [data-slot='item-media'] {
   align-self: center;
   transform: none;
   box-sizing: border-box;
@@ -915,6 +900,10 @@
   > [data-slot='scroll-area-scrollbar'][data-orientation='vertical'] {
   height: auto;
   margin: 4px 4px 4px 0;
+}
+/* A code file's preview also scrolls sideways; Radix pins that bar's sides and bottom inline. */
+.skill-browser-body > [data-slot='scroll-area-scrollbar'][data-orientation='horizontal'] {
+  margin: 0 4px 4px;
 }
 .skill-browser-content {
   padding: 12px;

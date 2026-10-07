@@ -67,6 +67,7 @@ async function bind(
     audit: (entry) => void kit.audit.push(entry),
     log: kit.log,
     ...(tier ? { preapprove: tier } : {}),
+    setStatus: () => undefined,
   };
   const prepared = await prepareMcpTools(host, { facade: kit.facade, records });
   const tools = await registeredTools(prepared.factory);
@@ -161,6 +162,7 @@ test('include and exclude lists, a staged selection and a disabled server narrow
     executionId: () => 'e',
     audit: () => undefined,
     log: kit.log,
+    setStatus: () => undefined,
   };
   const selected = [{ connectionId: 'conn-srv', tool: 'slow' }];
   const staged = await prepareMcpTools(host, { facade: kit.facade, records: [record], selected });
@@ -181,6 +183,7 @@ test('a server that cannot be reached is skipped and audited, not fatal', async 
     executionId: () => 'e',
     audit: (e) => void audit.push(e),
     log: kit.log,
+    setStatus: () => undefined,
   };
   fake.failNext('initialize', 1, () => new Error('connection refused'));
   const prepared = await prepareMcpTools(host, { facade: kit.facade, records });

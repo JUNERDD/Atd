@@ -218,7 +218,7 @@
 .command-row-shortcut .shortcut-recorder {
   justify-content: flex-end;
 }
-/* The recorder takes its own clicks above the row's open button (settings-open-row), like the
+/* The recorder takes its own clicks above the row's open button (open-row), like the
  * row's actions; the rest of the column, and a plugin command's keys, still open the editor. */
 .command-row-shortcut .shortcut-recorder-keys {
   pointer-events: auto;
@@ -284,7 +284,7 @@
 .memory-scroll {
   --settings-scroll-ring: 4px;
 }
-/* Rows, feedback, and the storage note; an empty state fills the rest. */
+/* Problems, suggestions, the memory cards and feedback; an empty state fills the rest. */
 .memory-list {
   display: flex;
   flex: 1 0 auto;
@@ -294,13 +294,6 @@
   padding: 4px 4px 16px;
 }
 
-.instruction-toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
 .editor-heading {
   flex-shrink: 0;
   min-width: 0;

@@ -33,7 +33,6 @@ export {
   hostForTask,
 } from './registry.js';
 export { intersectChildTools, isChildToolAllowed } from './intersection.js';
-export { serviceAgentNames, SERVICE_RUNTIME_AGENTS } from './agents.js';
 export {
   installManagedLaunchTrigger,
   pinManagedLaunch,

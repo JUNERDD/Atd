@@ -19,6 +19,9 @@ let package = Package(
   products: [
     .library(name: "AICore", targets: ["AICore"]),
     .library(name: "AIShell", targets: ["AIShell"]),
+    // Shared with the WidgetKit extension (`AtdWidgets` in project.yml).
+    .library(name: "AIWidgetModel", targets: ["AIWidgetModel"]),
+    .library(name: "AIWidgetRender", targets: ["AIWidgetRender"]),
   ],
   // Package.resolved is not checked in, so the one dependency is pinned exactly.
   dependencies: [
@@ -34,11 +37,23 @@ let package = Package(
     // Release builds' Sparkle updater.
     .target(
       name: "AIShell",
-      dependencies: ["AICore", "AIRelay", .product(name: "Sparkle", package: "Sparkle")],
+      dependencies: [
+        "AICore", "AIRelay", "AIWidgetModel", "AIWidgetRender",
+        .product(name: "Sparkle", package: "Sparkle"),
+      ],
       swiftSettings: approachableConcurrency),
     // The renderer relay, virtual socket pipe, control stream and service access: Foundation,
     // WebKit and AICore, no AppKit windows. AIShell wires it to its web views.
-    .target(name: "AIRelay", dependencies: ["AICore"], swiftSettings: approachableConcurrency),
+    .target(
+      name: "AIRelay", dependencies: ["AICore", "AIWidgetModel"],
+      swiftSettings: approachableConcurrency),
+    // Desktop widgets' data, shared by the shell (the only writer) and the sandboxed WidgetKit
+    // extension (a reader): the generated view tree and sync types, the files' layout and the
+    // widget link. Foundation and AICore only.
+    .target(name: "AIWidgetModel", dependencies: ["AICore"]),
+    // The SwiftUI renderer of a widget's view tree, used by the extension and by the shell's
+    // previews, so both draw a snapshot the same way.
+    .target(name: "AIWidgetRender", dependencies: ["AIWidgetModel"]),
     .testTarget(name: "AICoreTests", dependencies: ["AICore"]),
     // Runs a real WKWebView against a local stub service; see RelayIntegrationTests.
     .testTarget(name: "AIRelayTests", dependencies: ["AIRelay", "AICore"]),

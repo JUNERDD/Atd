@@ -4,7 +4,7 @@ import {
   type ExtensionFactory,
   type ProjectedSessionEntry,
 } from '@earendil-works/pi-coding-agent';
-import { LOAD_SKILL_TOOL, MEMORY_TOOLS } from '@atd/agent-contracts';
+import { LOAD_SKILL_TOOL, MEMORY_READ_TOOLS, MEMORY_WRITE_TOOLS } from '@atd/agent-contracts';
 import { SUBAGENT_TOOL } from '../subagents/tool-contract.js';
 
 /** Share of the effective window from which older tool output is cleared. */
@@ -22,10 +22,16 @@ export const CLEARED_TOOL_OUTPUT =
 /**
  * Results that must stay: `load_skill` carries skill instructions that the session's skill
  * re-attach and `load_skill` dedup read from context (skills/session-skills.ts,
- * load-skill-tool.ts), memory results are small and deliberate, and a subagent result is the
- * only copy of its child's work.
+ * load-skill-tool.ts), memory searches and writes are small and deliberate, and a subagent result
+ * is the only copy of its child's work. A `memory_read` result may be cleared: the model found the
+ * memory by name once, in the memory index or a search, and can read it again.
  */
-const KEPT_TOOLS = new Set<string>([LOAD_SKILL_TOOL, ...MEMORY_TOOLS, SUBAGENT_TOOL]);
+const KEPT_TOOLS = new Set<string>([
+  LOAD_SKILL_TOOL,
+  ...MEMORY_READ_TOOLS.filter((name) => name !== 'memory_read'),
+  ...MEMORY_WRITE_TOOLS,
+  SUBAGENT_TOOL,
+]);
 
 /**
  * First context layer before compaction (plan P3). At each turn end with context at 60% of the

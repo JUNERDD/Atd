@@ -61,7 +61,11 @@
     "codegen:check": {
       "inputs": [
         "$TURBO_DEFAULT$",
-        "$TURBO_ROOT$/apps/desktop/src/native-bridge/native-bridge.schema.json"
+        "$TURBO_ROOT$/apps/desktop/src/native-bridge/native-bridge.schema.json",
+        "$TURBO_ROOT$/apps/desktop/src/native-bridge/user-app-bridge.schema.json",
+        "$TURBO_ROOT$/packages/agent-contracts/src/widgets.ts",
+        "$TURBO_ROOT$/packages/agent-contracts/src/widget-sync.ts",
+        "$TURBO_ROOT$/packages/agent-contracts/src/app-identity.ts"
       ],
       "outputs": []
     },

@@ -109,6 +109,168 @@
         }
       }
     },
+    "automation.notice.attention.body" : {
+      "comment" : "Body of a needs-attention automation notification when the number of declined actions and questions is unknown",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Some actions or questions were declined because no one was there."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "由于无人在场，部分操作或提问已被拒绝。"
+          }
+        }
+      }
+    },
+    "automation.notice.attention.declined.one" : {
+      "comment" : "Body of a needs-attention automation notification for one declined action or question",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 action or question was declined because no one was there."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "由于无人在场，已拒绝 1 项操作或提问。"
+          }
+        }
+      }
+    },
+    "automation.notice.attention.declined.other" : {
+      "comment" : "Body of a needs-attention automation notification; %lld is the number of declined actions and questions",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld actions or questions were declined because no one was there."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "由于无人在场，已拒绝 %lld 项操作或提问。"
+          }
+        }
+      }
+    },
+    "automation.notice.attention.title" : {
+      "comment" : "Title of the notification of an automation run that declined actions or questions because nobody was there; %@ is the automation's name",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” needs your attention"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@”需要你处理"
+          }
+        }
+      }
+    },
+    "automation.notice.delivered.body" : {
+      "comment" : "Body of an automation's notification when the run's result came without a summary",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Finished — open to see the result."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已完成，打开即可查看结果。"
+          }
+        }
+      }
+    },
+    "automation.notice.failed.body" : {
+      "comment" : "Body of a failed automation notification when the run reported no error",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Something went wrong before it could finish."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "运行在完成前出了问题。"
+          }
+        }
+      }
+    },
+    "automation.notice.failed.title" : {
+      "comment" : "Title of the notification of an automation run that failed or ran out of time; %@ is the automation's name",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” didn’t finish"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@”未能完成"
+          }
+        }
+      }
+    },
+    "automation.notice.paused.body" : {
+      "comment" : "Body of the notification sent when Atd turned an automation off after repeated failures; names the Automations settings section",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "It failed several times in a row. You can turn it back on in Settings › Automations."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "它连续多次运行失败。你可以在“设置 › 自动化”中重新开启。"
+          }
+        }
+      }
+    },
+    "automation.notice.paused.title" : {
+      "comment" : "Title of the notification sent when Atd turned an automation off after repeated failures; %@ is the automation's name",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” was turned off"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@”已关闭"
+          }
+        }
+      }
+    },
     "capture.color.black" : {
       "comment" : "Annotation colour swatch",
       "extractionState" : "manual",
@@ -1855,24 +2017,6 @@
         }
       }
     },
-    "menu.onboardingReplay" : {
-      "comment" : "Debug-only menu item that replays the first-launch welcome guide",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Replay First-Launch Guide"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "重播首次启动引导"
-          }
-        }
-      }
-    },
     "menu.quit" : {
       "comment" : "Quit menu item",
       "extractionState" : "manual",
@@ -1945,6 +2089,24 @@
         }
       }
     },
+    "menu.showMiniPanel" : {
+      "comment" : "App and status menu item, checked while the mini panel shows on the screen edge",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show Mini Panel"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "显示迷你面板"
+          }
+        }
+      }
+    },
     "menu.showPanel" : {
       "comment" : "Menu item that reveals the task panel",
       "extractionState" : "manual",
@@ -2013,6 +2175,510 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "重新载入页面"
+          }
+        }
+      }
+    },
+    "miniPanel.ask" : {
+      "comment" : "Mini panel button that asks Atd about the text selected in the front app: tooltip, accessibility label and VoiceOver action",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ask about the selected text"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "就所选文字询问 Atd"
+          }
+        }
+      }
+    },
+    "miniPanel.commands" : {
+      "comment" : "Mini panel button that opens the list of commands, and that list's accessibility label",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Commands"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "命令"
+          }
+        }
+      }
+    },
+    "miniPanel.drop" : {
+      "comment" : "Mini panel drop card while a dragged file, image or text is over it; the drop goes into the task panel's message",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Drop to add as context"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "松开以添加为上下文"
+          }
+        }
+      }
+    },
+    "miniPanel.hide" : {
+      "comment" : "Mini panel context menu item that hides it until it is turned on again",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hide Mini Panel"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "隐藏迷你面板"
+          }
+        }
+      }
+    },
+    "miniPanel.hidePanel" : {
+      "comment" : "Mini panel Atd mark that hides the task panel while it has the keyboard: tooltip and accessibility label",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hide Atd"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "隐藏 Atd"
+          }
+        }
+      }
+    },
+    "miniPanel.label" : {
+      "comment" : "Accessibility label of the mini panel on the screen edge, its resting pill and its open capsule",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atd Mini Panel"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atd 迷你面板"
+          }
+        }
+      }
+    },
+    "miniPanel.moveLeft" : {
+      "comment" : "Mini panel context menu item that moves it to the left edge of the screen",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Move to Left Edge"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "移到左侧边缘"
+          }
+        }
+      }
+    },
+    "miniPanel.moveRight" : {
+      "comment" : "Mini panel context menu item that moves it to the right edge of the screen",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Move to Right Edge"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "移到右侧边缘"
+          }
+        }
+      }
+    },
+    "miniPanel.newTask" : {
+      "comment" : "Mini panel button that starts a new task in the task panel: tooltip, accessibility label and VoiceOver action",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New task"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "新建任务"
+          }
+        }
+      }
+    },
+    "miniPanel.open" : {
+      "comment" : "Mini panel Atd mark that shows the task panel: tooltip, accessibility label and the pill's VoiceOver action",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open Atd"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "打开 Atd"
+          }
+        }
+      }
+    },
+    "miniPanel.openOnClick" : {
+      "comment" : "Mini panel context menu item, checked while the panel opens only on a click rather than as the pointer reaches it",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open on Click"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "点击时打开"
+          }
+        }
+      }
+    },
+    "miniPanel.screenshot" : {
+      "comment" : "Mini panel button that takes a screenshot for the task panel: tooltip, accessibility label and VoiceOver action",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Take a screenshot"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "截图"
+          }
+        }
+      }
+    },
+    "permissionGuide.accessibility" : {
+      "comment" : "The Accessibility permission's name in System Settings",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Accessibility"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "辅助功能"
+          }
+        }
+      }
+    },
+    "permissionGuide.close" : {
+      "comment" : "Permission guide panel's close button",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Close"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "关闭"
+          }
+        }
+      }
+    },
+    "permissionGuide.drag" : {
+      "comment" : "Hint on the app card the user drags into System Settings",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Drag"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "拖拽"
+          }
+        }
+      }
+    },
+    "permissionGuide.screenRecording" : {
+      "comment" : "The Screen Recording permission's name in System Settings",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Screen & System Audio Recording"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "录屏与系统录音"
+          }
+        }
+      }
+    },
+    "permissionGuide.title" : {
+      "comment" : "Permission guide panel docked under System Settings: %1$@ is the app's name, %2$@ the permission's name",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Drag %1$@ to the list above to allow %2$@."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "将 %1$@ 拖到上方列表中，以允许 %2$@。"
+          }
+        }
+      }
+    },
+    "pin.accessibility.label" : {
+      "comment" : "VoiceOver label of a desktop pin that shows a widget; %1$@ is the app name, %2$@ the widget title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@, %2$@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@，%2$@"
+          }
+        }
+      }
+    },
+    "pin.failed" : {
+      "comment" : "Error the panel shows when an app could not be pinned to the desktop",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The app could not be pinned to the desktop."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法将这个应用固定到桌面。"
+          }
+        }
+      }
+    },
+    "pin.limit" : {
+      "comment" : "Error the panel shows when pinning one more app would exceed the limit; %lld is the limit",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You can pin up to %lld apps to the desktop."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "最多可将 %lld 个应用固定到桌面。"
+          }
+        }
+      }
+    },
+    "pin.menu.appIcon" : {
+      "comment" : "Choice in a desktop pin's Widget submenu that shows the app's icon and name instead of a widget",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "App Icon"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "应用图标"
+          }
+        }
+      }
+    },
+    "pin.menu.open" : {
+      "comment" : "Context menu item of a desktop pin that opens its app; %@ is the app name",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open “%@”"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "打开“%@”"
+          }
+        }
+      }
+    },
+    "pin.menu.remove" : {
+      "comment" : "Context menu item and accessibility action that removes a desktop pin",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove from Desktop"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "从桌面移除"
+          }
+        }
+      }
+    },
+    "pin.menu.widget" : {
+      "comment" : "Context menu submenu of a desktop pin that chooses which of the app's widgets it shows",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Widget"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "小组件"
+          }
+        }
+      }
+    },
+    "pin.size.large" : {
+      "comment" : "Radio item in a desktop pin's context menu that shows the pin's widget at its large size",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Large"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "大"
+          }
+        }
+      }
+    },
+    "pin.size.medium" : {
+      "comment" : "Radio item in a desktop pin's context menu that shows the pin, a widget or the app's icon tile, at its medium size",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Medium"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "中"
+          }
+        }
+      }
+    },
+    "pin.size.small" : {
+      "comment" : "Radio item in a desktop pin's context menu that shows the pin, a widget or the app's icon tile, at its small size",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Small"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "小"
+          }
+        }
+      }
+    },
+    "pin.unreadable" : {
+      "comment" : "Message a desktop pin shows when its widget content cannot be read",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This widget can’t be shown."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法显示这个小组件。"
           }
         }
       }
@@ -2337,6 +3003,150 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "服务不可用"
+          }
+        }
+      }
+    },
+    "userApp.clear.failed" : {
+      "comment" : "Error the panel shows when an app's stored web data could not be removed",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The app's data could not be cleared. It will be removed the next time Atd starts."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法清除这个应用的数据。Atd 下次启动时会再次删除。"
+          }
+        }
+      }
+    },
+    "userApp.files.pick.title" : {
+      "comment" : "Open panel message when an app asks for files; %@ is the app's name",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose files for “%@”"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "为“%@”选择文件"
+          }
+        }
+      }
+    },
+    "userApp.files.tooLarge" : {
+      "comment" : "Error an app shows when a chosen file is larger than 8 MB or cannot be read",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A chosen file is larger than 8 MB or cannot be read."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "所选文件超过 8 MB 或无法读取。"
+          }
+        }
+      }
+    },
+    "userApp.link.message" : {
+      "comment" : "Message of the link confirmation; %1$@ is the app's name, %2$@ the link",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%1$@” wants to open %2$@ in your browser."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%1$@”想在浏览器中打开 %2$@。"
+          }
+        }
+      }
+    },
+    "userApp.link.open" : {
+      "comment" : "Default button of the link confirmation: opens the link in the browser",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open Link"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "打开链接"
+          }
+        }
+      }
+    },
+    "userApp.link.title" : {
+      "comment" : "Title of the confirmation before an app opens a web link in the browser",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open this link?"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "打开这个链接吗？"
+          }
+        }
+      }
+    },
+    "userApp.open.failed" : {
+      "comment" : "Error the panel shows when an app window could not open",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The app could not be opened."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法打开这个应用。"
+          }
+        }
+      }
+    },
+    "userApp.open.missing" : {
+      "comment" : "Error the panel shows when the app to open was deleted",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This app no longer exists."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "这个应用已不存在。"
           }
         }
       }

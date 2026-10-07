@@ -8,7 +8,7 @@ import {
   type SelectionToolbarSettings,
 } from '@atd/agent-contracts';
 import type { Connection, ProviderBridge } from './providers/schema';
-import type { ExtensionSessionKind } from './agent/bridge';
+import type { AutomationSessionTarget, ExtensionSessionKind } from './agent/bridge';
 import type { PermissionTier } from './agent/permission-schema';
 
 export type ShortcutAction = keyof typeof DEFAULT_SHORTCUTS;
@@ -24,6 +24,13 @@ export type {
   SelectionToolbarSettings,
 };
 export { SELECTION_TOOLBAR_ACTIVATIONS, SELECTION_TOOLBAR_KEYS } from '@atd/agent-contracts';
+
+/**
+ * How the mini panel opens from its pill on the screen edge: as the pointer reaches it, or only on
+ * a click (the default), the pointer only swelling the pill. The shell keeps it.
+ */
+export const MINI_PANEL_OPEN_ON = ['hover', 'click'] as const;
+export type MiniPanelOpenOn = (typeof MINI_PANEL_OPEN_ON)[number];
 
 /** The selection toolbar before the service's settings load, as the service defaults it. */
 export const DEFAULT_SELECTION_TOOLBAR: SelectionToolbarSettings = {
@@ -59,6 +66,23 @@ export interface SettingsSnapshot {
    * builds, Linux, the web client).
    */
   openAtLogin: boolean | null;
+  /**
+   * Whether macOS can configure this app's widgets: false while it runs outside `/Applications`
+   * and `~/Applications` (the shell's `app.state`). True until the shell answers; optional for
+   * test hosts, which read as available.
+   */
+  widgetsAvailable?: boolean;
+  /**
+   * Whether the shell shows the mini panel on the screen edge. It follows every change, the menu
+   * bar's toggle and the mini panel's own Hide included; null until the shell reports it. Optional
+   * for test hosts, which read as not reported.
+   */
+  miniPanelShown?: boolean | null;
+  /**
+   * How the mini panel opens (`MINI_PANEL_OPEN_ON`), following every change, its context menu's
+   * included; null until the shell reports it. Optional for test hosts, which read as not reported.
+   */
+  miniPanelOpenOn?: MiniPanelOpenOn | null;
   /** Whether the shell registered the panel shortcut; null until the panel reports it. */
   shortcutAvailable: boolean | null;
   /** Whether the shell registered the screenshot shortcut; null until the panel reports it. */
@@ -100,6 +124,11 @@ export interface SettingsBridge {
   openSection: (section: string) => Promise<void>;
   /** Opens the command's editor content in a new task-panel session; null creates a new command. */
   startCommandSession: (commandId: string | null) => Promise<void>;
+  /**
+   * Opens a new task-panel session seeded with the `create-automation` skill: an edit session for
+   * the saved automation `automation` names, or a create session when it is null.
+   */
+  startAutomationSession: (automation: AutomationSessionTarget) => Promise<void>;
   /**
    * Opens a new task-panel session seeded for creating a skill, subagent, MCP server, or memory.
    * `target` names an existing skill, subagent, or MCP serverId to edit instead; omitted or null

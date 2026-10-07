@@ -6,6 +6,7 @@ import { useShortcutCapture } from './use-shortcut-capture';
 import { showSettingsSnapshot } from './use-settings';
 import { DEFAULT_SHORTCUTS, effectiveAccelerator } from '@atd/agent-contracts';
 import {
+  type MiniPanelOpenOn,
   type SettingsSnapshot,
   type ShortcutAction,
   type ShortcutBindings,
@@ -15,7 +16,7 @@ import { recordedKeysToAccelerator } from '../../lib/shortcuts';
 const MODIFIER_KEYS = new Set(['meta', 'ctrl', 'alt', 'shift']);
 
 /** A desktop window preference the Shortcuts page switches. */
-type WindowPreference = 'pin' | 'dock' | 'login';
+type WindowPreference = 'pin' | 'dock' | 'login' | 'miniPanel' | 'miniPanelOpenOn';
 
 /** Where an error shows: a shortcut's row, a window preference's row, or Restore defaults. */
 type ErrorOwner = ShortcutAction | WindowPreference | 'restore';
@@ -56,6 +57,12 @@ export function useShortcutSettings(snapshot: SettingsSnapshot | null) {
   const pinned = snapshot?.pinned ?? false;
   const showInDock = snapshot?.showInDock ?? false;
   const openAtLogin = snapshot?.openAtLogin ?? null;
+  const setMiniPanelShown = desktop?.setMiniPanelShown;
+  const setMiniPanelOpenOn = desktop?.setMiniPanelOpenOn;
+  // The shell reports the mini panel's state on every change. Until its first report, or where the
+  // host has no mini panel to switch, the state is unknown and its controls stay disabled.
+  const miniPanelShown = setMiniPanelShown ? (snapshot?.miniPanelShown ?? null) : null;
+  const miniPanelOpenOn = setMiniPanelOpenOn ? (snapshot?.miniPanelOpenOn ?? null) : null;
   const { keys, start, stop, resetKeys, isRecording } = useShortcutCapture();
   const [recordingAction, setRecordingAction] = useState<ShortcutAction | null>(null);
   // `all` while Restore defaults runs; an action while its Reset runs.
@@ -146,7 +153,13 @@ export function useShortcutSettings(snapshot: SettingsSnapshot | null) {
     if (!bridge || unavailable || shortcutBusy || recording || allDefault) return;
     endRecording();
     // Every shortcut row starts over; the window preferences keep their own errors.
-    setErrors(({ pin, dock, login }) => ({ pin, dock, login }));
+    setErrors(({ pin, dock, login, miniPanel, miniPanelOpenOn }) => ({
+      pin,
+      dock,
+      login,
+      miniPanel,
+      miniPanelOpenOn,
+    }));
     setMutation('all');
     void bridge.restoreShortcuts().then(
       (snapshot) => {
@@ -182,10 +195,10 @@ export function useShortcutSettings(snapshot: SettingsSnapshot | null) {
   }
 
   /** Saves one desktop window preference; each has its own pending state and error. */
-  async function changeWindowPreference(
+  async function changeWindowPreference<Value>(
     kind: WindowPreference,
-    value: boolean,
-    save: (desktop: NonNullable<typeof window.desktop>) => Promise<boolean>,
+    value: Value,
+    save: (desktop: NonNullable<typeof window.desktop>) => Promise<Value>,
   ) {
     if (!desktop || unavailable || preferencePending[kind]) return;
     if (recordingAction) endRecording();
@@ -207,6 +220,8 @@ export function useShortcutSettings(snapshot: SettingsSnapshot | null) {
     pinned,
     showInDock,
     openAtLogin,
+    miniPanelShown,
+    miniPanelOpenOn,
     recording,
     shortcutBusy,
     preferencePending,
@@ -227,5 +242,13 @@ export function useShortcutSettings(snapshot: SettingsSnapshot | null) {
       changeWindowPreference('dock', value, (desktop) => desktop.setShowInDock(value)),
     changeOpenAtLogin: (value: boolean) =>
       changeWindowPreference('login', value, (desktop) => desktop.setOpenAtLogin(value)),
+    changeMiniPanel: async (value: boolean) => {
+      if (setMiniPanelShown)
+        await changeWindowPreference('miniPanel', value, () => setMiniPanelShown(value));
+    },
+    changeMiniPanelOpenOn: async (value: MiniPanelOpenOn) => {
+      if (setMiniPanelOpenOn)
+        await changeWindowPreference('miniPanelOpenOn', value, () => setMiniPanelOpenOn(value));
+    },
   };
 }

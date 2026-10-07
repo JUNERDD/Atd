@@ -5,7 +5,7 @@ import type { PluginSourceSpec } from '../model/manifest.js';
 import { isPluginName } from '../model/names.js';
 import type { InstallPreview, InstalledPlugin } from '../model/records.js';
 import type { Clock, Logger, SecretStore } from '../ports.js';
-import { fetchSource, sourceIdentity, type FetchContext } from './fetch.js';
+import { fetchSource, sourceFallbackName, sourceIdentity, type FetchContext } from './fetch.js';
 import { createNodeFs } from './fs.js';
 import { collectGarbage } from './gc.js';
 import { hashTree } from './hash.js';
@@ -81,7 +81,7 @@ export async function previewSource(
     await rm(staging.work, { recursive: true, force: true });
     for (const warning of fetched.warnings ?? []) context.logger.warn(warning, { source });
     const fs = createNodeFs(staging.tree);
-    const plugin = await normalizePlugin(fs, { fallbackName: fetched.fallbackName });
+    const plugin = await normalizePlugin(fs, { fallbackName: sourceFallbackName(fetched.source) });
     if (!isPluginName(plugin.manifest.name)) {
       throw new Error(`"${plugin.manifest.name}" is not a valid plugin name.`);
     }
@@ -112,7 +112,7 @@ export async function previewSource(
   }
 }
 
-async function exists(target: string): Promise<boolean> {
+export async function exists(target: string): Promise<boolean> {
   try {
     await stat(target);
     return true;

@@ -8,6 +8,16 @@
       "label": "Learn automatically",
       "description": "Save stable preferences and clear corrections as you work. When off, nothing new is saved, and the agent can still use saved memories."
     },
+    "askFirst": {
+      "label": "Ask before saving",
+      "description": "Learned memories wait in Suggestions until you accept them, instead of being saved right away.",
+      "pausedHint": "Turn on automatic learning to change this."
+    },
+    "add": {
+      "label": "Add",
+      "new": "New memory",
+      "createWithAi": "Create with AI"
+    },
     "create": {
       "label": "Create memory",
       "opened": "Opened a new AI session in the task panel to save a memory.",
@@ -17,37 +27,115 @@
     "list": {
       "userProfile": "User profile",
       "corrections": "Corrections and learnings",
-      "preference": "Saved preference",
+      "preference": "Preferences and facts",
+      "new": "New",
+      "openLabel": "Open memory {{name}}",
       "edit": "Edit",
-      "editLabel": "Edit memory: {{content}}",
+      "enableFor": "Enable memory {{name}}",
       "more": "More",
-      "moreActionsFor": "More actions for memory: {{content}}",
+      "moreActionsFor": "More actions for memory {{name}}",
       "delete": "Delete",
       "loading": "Loading memory…",
       "empty": "No saved memories yet. Share a lasting preference as you work.",
       "noMatches": "No memories match “{{query}}”",
       "clearSearch": "Clear search"
     },
-    "edit": {
-      "title": "Edit memory",
+    "source": {
+      "user": "You",
+      "agent": "Agent",
+      "learned": "Learned",
+      "app": "App"
+    },
+    "category": {
+      "none": "None",
+      "failure": "Failure",
+      "correction": "Correction",
+      "insight": "Insight",
+      "preference": "Preference",
+      "convention": "Convention",
+      "tool-quirk": "Tool quirk"
+    },
+    "activation": {
+      "core": {
+        "label": "Always",
+        "hint": "Every run includes its text, or only its description when the text is over 600 characters. Always-on memories share 3,000 characters; any that don't fit are listed in the memory index instead."
+      },
+      "index": {
+        "label": "In the memory index",
+        "hint": "Every run lists its name and description, and the agent reads it when it applies."
+      },
+      "search": {
+        "label": "Search only",
+        "hint": "The agent finds it only when it searches memory."
+      }
+    },
+    "page": {
+      "newTitle": "New memory",
       "back": "Back to memory",
-      "fieldLabel": "Memory",
-      "note": "Changes apply to future memory reads.",
+      "disabled": "Disabled",
+      "source": "Source",
+      "task": "From task",
+      "deletedTask": "A deleted task",
+      "created": "Created",
+      "updated": "Updated",
+      "name": "Name",
+      "namePlaceholder": "Named from the description",
+      "nameHint": "Lowercase letters, numbers and hyphens. The agent reads the memory by this name.",
+      "description": "Description",
+      "descriptionPlaceholder": "What it is and when it applies",
+      "type": "Type",
+      "activation": "How it's used",
+      "category": "Category",
+      "body": "Content",
+      "bodyNote": "Changes apply to future memory reads.",
+      "changed": "This memory changed after you opened it.",
+      "reload": "Reload",
+      "deleted": "This memory was deleted elsewhere. Save keeps your edits as a new memory.",
       "delete": "Delete memory",
       "cancel": "Cancel",
       "saving": "Saving…",
-      "save": "Save changes"
+      "save": "Save changes",
+      "create": "Create memory"
+    },
+    "errors": {
+      "nameFormat": "Use lowercase letters, numbers and single hyphens, such as prefer-pnpm.",
+      "nameTaken": "Another memory already uses this name.",
+      "nameRequired": "Enter a name.",
+      "descriptionRequired": "Enter a description.",
+      "bodyRequired": "Enter the memory."
+    },
+    "suggestions": {
+      "title": "Suggestions",
+      "kinds": {
+        "create": "New memory",
+        "update": "Update memory",
+        "remove": "Remove memory",
+        "core": "Always include",
+        "skill": "New skill"
+      },
+      "accept": "Accept",
+      "dismiss": "Dismiss",
+      "acceptFor": "Accept suggestion {{name}}",
+      "dismissFor": "Dismiss suggestion {{name}}",
+      "showText": "Show text",
+      "hideText": "Hide text",
+      "outdated": "Outdated: the memory changed after this suggestion.",
+      "skillCreated": "Created skill {{name}}."
+    },
+    "problems": {
+      "title": "Some memories could not be read",
+      "description": "They stay out of runs until the files are fixed or removed."
     },
     "feedback": {
       "reload": "Reload memory",
-      "emptyContent": "Enter the memory, or use Delete to remove it.",
       "deleted": "Memory deleted.",
       "updated": "Memory updated.",
+      "created": "Memory created.",
       "storageNote": "Stored on this device. Learning uses your configured model and may make additional model calls."
     },
     "confirm": {
-      "deleteTitle": "Delete this memory?",
-      "deleteDescription": "This preference will be removed from memory. Existing conversation text will remain.",
+      "deleteTitle": "Delete {{name}}?",
+      "deleteDescription": "This memory will be deleted. Existing conversation text will remain.",
       "deleteAction": "Delete memory",
       "cancel": "Cancel"
     }

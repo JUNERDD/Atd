@@ -4,7 +4,7 @@ import type { Block, BlockOf, ToolStatus } from '../../../client/agent/transcrip
 import { buildActivityPhase, isViewLive, type ActivityPhase } from './phases';
 import { reuseProjection, type ProjectionCache } from './projection-cache';
 import { subagentLaunches } from './subagent-call';
-import { hasCompactionMarker, sumTurnGeneration } from './token-rate';
+import { measureTurn, type TurnGeneration } from './token-rate';
 import type { TurnWaitingKind } from './turn-header';
 import { sumTurnUsage, type TurnUsage } from './turn-usage';
 import { deriveTurns, requestFor, type RequestIndex, type Turn } from './turns';
@@ -88,10 +88,8 @@ export type AdaptedTurn = {
   durationMs: number | null;
   waiting: TurnWaitingKind;
   modelName: string;
-  /** Provider true output total for settled turns; null while streaming or when unknown. */
-  trueTokens: number | null;
-  /** Worker-measured generation time for settled turns; null while streaming or when unknown. */
-  trueDurationMs: number | null;
+  /** What the turn's token rate is read from: its timed messages and its streaming one. */
+  generation: TurnGeneration;
   /** Provider-reported usage summed over the turn's messages; null when none reported any. */
   usage: TurnUsage | null;
 };
@@ -101,6 +99,7 @@ function toolKindForName(name: string): ViewToolKind {
     case 'read':
     case 'ls':
     case LOAD_SKILL_TOOL:
+    case 'memory_read':
       return 'read';
     case 'write':
     case 'edit':
@@ -229,6 +228,16 @@ function adaptBlock(block: Block, requests: RequestIndex): ViewBlock {
         status: null,
         tool: null,
       };
+    // So is a retry; `RetryBlock` renders its source.
+    case 'retry':
+      return {
+        ...base,
+        role: 'system',
+        text: block.error,
+        streaming: false,
+        status: null,
+        tool: null,
+      };
     default: {
       const _exhaustive: never = block;
       void _exhaustive;
@@ -301,7 +310,6 @@ function adaptTurn(turn: Turn, requests: RequestIndex, runs: TaskRun[]): Adapted
     const startedAt = userTimestamp ?? view[0]?.timestamp ?? null;
     let end = userTimestamp ?? null;
     for (const block of source) end = end === null ? block.endedAt : Math.max(end, block.endedAt);
-    const generation = hasCompactionMarker(source) ? null : sumTurnGeneration(source);
     return {
       id: turn.id,
       user: turn.user,
@@ -311,8 +319,7 @@ function adaptTurn(turn: Turn, requests: RequestIndex, runs: TaskRun[]): Adapted
       durationMs: startedAt !== null && end !== null ? Math.max(0, end - startedAt) : null,
       waiting: waitingKindFor(view),
       modelName: modelNameForRun(run),
-      trueTokens: generation?.tokens ?? null,
-      trueDurationMs: generation?.durationMs ?? null,
+      generation: measureTurn(source),
       usage: sumTurnUsage(source),
     };
   });

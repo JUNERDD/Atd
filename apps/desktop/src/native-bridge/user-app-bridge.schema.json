@@ -1,0 +1,443 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ai-app://renderer/user-app-bridge.schema.json",
+  "title": "User app bridge",
+  "description": "Generated from apps/desktop/src/native-bridge/user-app-contract.ts by scripts/export-bridge-schema.mjs; do not edit.",
+  "x-bridge": {
+    "messageHandler": "atdApp",
+    "scheme": "ai-userapp",
+    "appIdPattern": "^app-[a-z0-9]{10}$",
+    "maxFileBytes": 8388608,
+    "calls": ["clipboard.write", "link.open", "files.pick", "files.save"],
+    "posts": ["app.ready", "app.error", "window.dragRegions"]
+  },
+  "$ref": "#/$defs/UserAppMessage",
+  "$defs": {
+    "UserAppMessage": {
+      "anyOf": [
+        {
+          "type": "object",
+          "required": ["type", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "method": {
+              "type": "string",
+              "const": "clipboard.write"
+            },
+            "params": {
+              "type": "object",
+              "required": ["text"],
+              "properties": {
+                "text": {
+                  "type": "string",
+                  "maxLength": 1000000
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "method": {
+              "type": "string",
+              "const": "link.open"
+            },
+            "params": {
+              "type": "object",
+              "required": ["url"],
+              "properties": {
+                "url": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2048,
+                  "pattern": "^https?://"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "method": {
+              "type": "string",
+              "const": "files.pick"
+            },
+            "params": {
+              "type": "object",
+              "properties": {
+                "types": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128,
+                    "pattern": "^[A-Za-z0-9.+-]+$"
+                  },
+                  "maxItems": 32
+                },
+                "multiple": {
+                  "type": "boolean"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "method": {
+              "type": "string",
+              "const": "files.save"
+            },
+            "params": {
+              "type": "object",
+              "required": ["suggestedName", "bytesBase64"],
+              "properties": {
+                "suggestedName": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 255
+                },
+                "bytesBase64": {
+                  "type": "string",
+                  "maxLength": 11184812,
+                  "pattern": "^[A-Za-z0-9+/]*={0,2}$"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "post"
+            },
+            "method": {
+              "type": "string",
+              "const": "app.ready"
+            },
+            "params": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "post"
+            },
+            "method": {
+              "type": "string",
+              "const": "app.error"
+            },
+            "params": {
+              "type": "object",
+              "required": ["kind", "message"],
+              "properties": {
+                "kind": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "const": "error"
+                    },
+                    {
+                      "type": "string",
+                      "const": "unhandledrejection"
+                    },
+                    {
+                      "type": "string",
+                      "const": "console"
+                    }
+                  ]
+                },
+                "message": {
+                  "type": "string",
+                  "maxLength": 4000
+                },
+                "stack": {
+                  "type": "string",
+                  "maxLength": 16000
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "post"
+            },
+            "method": {
+              "type": "string",
+              "const": "window.dragRegions"
+            },
+            "params": {
+              "type": "object",
+              "required": ["rects"],
+              "properties": {
+                "rects": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["x", "y", "width", "height"],
+                    "properties": {
+                      "x": {
+                        "type": "number"
+                      },
+                      "y": {
+                        "type": "number"
+                      },
+                      "width": {
+                        "type": "number"
+                      },
+                      "height": {
+                        "type": "number"
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "maxItems": 64
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "UserAppFile": {
+      "type": "object",
+      "required": ["name", "bytesBase64"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255
+        },
+        "bytesBase64": {
+          "type": "string",
+          "maxLength": 11184812,
+          "pattern": "^[A-Za-z0-9+/]*={0,2}$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "UserAppClipboardWriteParams": {
+      "type": "object",
+      "required": ["text"],
+      "properties": {
+        "text": {
+          "type": "string",
+          "maxLength": 1000000
+        }
+      },
+      "additionalProperties": false
+    },
+    "UserAppClipboardWriteResult": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "UserAppLinkOpenParams": {
+      "type": "object",
+      "required": ["url"],
+      "properties": {
+        "url": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048,
+          "pattern": "^https?://"
+        }
+      },
+      "additionalProperties": false
+    },
+    "UserAppLinkOpenResult": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "UserAppFilesPickParams": {
+      "type": "object",
+      "properties": {
+        "types": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9.+-]+$"
+          },
+          "maxItems": 32
+        },
+        "multiple": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "UserAppFilesPickResult": {
+      "type": "object",
+      "required": ["files"],
+      "properties": {
+        "files": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "bytesBase64"],
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 255
+              },
+              "bytesBase64": {
+                "type": "string",
+                "maxLength": 11184812,
+                "pattern": "^[A-Za-z0-9+/]*={0,2}$"
+              }
+            },
+            "additionalProperties": false
+          },
+          "maxItems": 10
+        }
+      },
+      "additionalProperties": false
+    },
+    "UserAppFilesSaveParams": {
+      "type": "object",
+      "required": ["suggestedName", "bytesBase64"],
+      "properties": {
+        "suggestedName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255
+        },
+        "bytesBase64": {
+          "type": "string",
+          "maxLength": 11184812,
+          "pattern": "^[A-Za-z0-9+/]*={0,2}$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "UserAppFilesSaveResult": {
+      "type": "object",
+      "required": ["saved"],
+      "properties": {
+        "saved": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "UserAppAppReadyPost": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "UserAppAppErrorPost": {
+      "type": "object",
+      "required": ["kind", "message"],
+      "properties": {
+        "kind": {
+          "anyOf": [
+            {
+              "type": "string",
+              "const": "error"
+            },
+            {
+              "type": "string",
+              "const": "unhandledrejection"
+            },
+            {
+              "type": "string",
+              "const": "console"
+            }
+          ]
+        },
+        "message": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "stack": {
+          "type": "string",
+          "maxLength": 16000
+        }
+      },
+      "additionalProperties": false
+    },
+    "UserAppWindowDragRegionsPost": {
+      "type": "object",
+      "required": ["rects"],
+      "properties": {
+        "rects": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["x", "y", "width", "height"],
+            "properties": {
+              "x": {
+                "type": "number"
+              },
+              "y": {
+                "type": "number"
+              },
+              "width": {
+                "type": "number"
+              },
+              "height": {
+                "type": "number"
+              }
+            },
+            "additionalProperties": false
+          },
+          "maxItems": 64
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

@@ -48,4 +48,8 @@ export default defineConfig(({ command }) => ({
     target: 'safari26',
     outDir: 'dist-native',
   },
+  // `CodeHighlightPool` starts its worker as an ES module (`{ type: 'module' }`), so the worker is
+  // bundled as one too; that also keeps Shiki's WASM engine, which the pool never uses, in a lazy
+  // chunk instead of inlined into the worker as the default IIFE format does.
+  worker: { format: 'es' },
 }));

@@ -1,0 +1,158 @@
+/* The scroll edge spans the viewport under the bar; it is the kit's masked blur, matched to the
+   plates beneath. */
+.nav__edge {
+  --scroll-edge-bg: var(--plate);
+}
+
+.nav {
+  position: fixed;
+  z-index: 50;
+  inset-block-start: max(var(--nav-top), env(safe-area-inset-top));
+  inset-inline: 0;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
+/* A matte strip of smoked black, the content column's width, with a hairline rim. Inner parts keep
+   concentric corners: the 44 px key sits 4 px inside the 52 px strip. */
+.nav__bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  inline-size: round(down, min(100% - 2 * var(--gutter), var(--maxw)), calc(2 * var(--grid)));
+  block-size: var(--nav-h);
+  padding: 4px;
+  padding-inline-start: 14px;
+  border-radius: calc(var(--r-part) + 4px);
+  background-color: rgb(0 0 0 / 0.72);
+  box-shadow:
+    inset 0 0 0 1px var(--line-1),
+    0 12px 32px -12px rgb(0 0 0 / 0.8);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  backdrop-filter: blur(20px) saturate(140%);
+  pointer-events: auto;
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .nav__bar {
+    background-color: var(--ink-0);
+  }
+}
+
+.nav__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-block-size: 44px;
+  padding-inline-end: 8px;
+  color: var(--fg-1);
+}
+
+/* The Atd mark as an alpha mask, so it takes the text color (as the panel uses it). */
+.nav__mark {
+  inline-size: 24px;
+  block-size: 24px;
+  background-color: currentColor;
+  -webkit-mask: url('/brand/atd-symbol.png') center / contain no-repeat;
+  mask: url('/brand/atd-symbol.png') center / contain no-repeat;
+}
+
+.nav__word {
+  font-family: var(--font-dot);
+  font-size: 1.375rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.02em;
+}
+
+.nav__links {
+  display: none;
+  flex: 1;
+  justify-content: center;
+  gap: 4px;
+}
+
+/* A link's status light is off until its section is the one being read. */
+.nav__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-block-size: 44px;
+  padding-inline: 10px;
+  font-size: var(--fs-small);
+  color: var(--fg-2);
+  transition: color var(--dur-fast) linear;
+}
+
+.nav__link::before {
+  content: '';
+  inline-size: 5px;
+  block-size: 5px;
+  border-radius: 50%;
+  background-color: var(--dot-0);
+  transition:
+    background-color var(--dur-fast) linear,
+    box-shadow var(--dur-fast) linear;
+}
+
+.nav__link[aria-current] {
+  color: var(--fg-1);
+}
+
+.nav__link[aria-current]::before {
+  background-color: var(--dot-1);
+  box-shadow: 0 0 6px rgb(255 255 255 / 0.6);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .nav__link:hover,
+  .nav__lang:hover {
+    color: var(--fg-1);
+  }
+}
+
+@media (forced-colors: active) {
+  .nav__bar {
+    border: 1px solid CanvasText;
+  }
+
+  .nav__link[aria-current]::before {
+    background-color: CanvasText;
+  }
+}
+
+.nav__end {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-inline-start: auto;
+}
+
+.nav__lang {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-inline-size: 44px;
+  min-block-size: 44px;
+  padding-inline: 10px;
+  font-size: var(--fs-small);
+  color: var(--fg-2);
+  transition: color var(--dur-fast) linear;
+}
+
+.nav__cta {
+  padding-inline: 18px;
+  font-size: var(--fs-small);
+  font-weight: 600;
+}
+
+@media (width >= 840px) {
+  .nav__links {
+    display: flex;
+  }
+
+  .nav__end {
+    margin-inline-start: 0;
+  }
+}

@@ -40,6 +40,17 @@ const PRIVATE_WRITES = new Set([
 /** The plugin item switch that can be the memory pause (plugins/toggle.ts). */
 const PLUGIN_SWITCHES = new Set(['/v1/plugins/:id/items/:kind/:name/enabled']);
 
+/** The notifier `registerInvalidation` installed on each server, for writes made off a route. */
+const notifiers = new WeakMap<FastifyInstance, (frame: InvalidateFrame) => void>();
+
+/**
+ * Sends a frame for a change no route write made (a store a tool or a background job wrote);
+ * a server without the invalidation hook ignores it.
+ */
+export function invalidateOffRoute(app: FastifyInstance, frame: InvalidateFrame): void {
+  notifiers.get(app)?.(frame);
+}
+
 /** Frames handlers named for their request (`announceInvalidation`). */
 const announced = new WeakMap<FastifyRequest, InvalidateFrame[]>();
 
@@ -85,6 +96,7 @@ export function registerInvalidation(
   app: FastifyInstance,
   notify: (frame: InvalidateFrame) => void,
 ): void {
+  notifiers.set(app, notify);
   app.addHook('onResponse', (request, reply, done) => {
     if (request.method !== 'GET' && request.method !== 'HEAD' && reply.statusCode < 400)
       for (const frame of framesFor(request)) notify(frame);

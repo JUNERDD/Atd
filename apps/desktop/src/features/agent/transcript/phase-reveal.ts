@@ -23,6 +23,15 @@ export function visiblePhaseSteps(
   return active ? steps.slice(-PEEK_STEPS) : [];
 }
 
+/**
+ * Whether folding a group changes what it shows. A live group whose steps all fit the peek window
+ * shows the same steps open or collapsed, so its header offers no toggle until a step overflows
+ * the window or the group settles.
+ */
+export function phaseFoldable(count: number, active: boolean): boolean {
+  return !active || count > PEEK_STEPS;
+}
+
 /*
  * Reveal timing mirrors the leaf rows' `row-expand` / `row-collapse` keyframes in agent.css:
  * entering eases out over 240ms, leaving eases in over 200ms. Only height and opacity move — a

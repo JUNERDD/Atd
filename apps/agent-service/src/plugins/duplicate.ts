@@ -8,11 +8,10 @@ import type {
 } from '@atd/agent-contracts';
 import { toItemName, transportSecrets } from '@atd/plugin-kit';
 import { listAtdAgents, putAtdAgent } from '../atd-agents/catalog.js';
-import { atdSkillsDir } from '../service-fs.js';
+import { atdAgentsDir, atdSkillsDir } from '../service-fs.js';
 import { discoverAtdSkills } from '../skills/atd-skills.js';
 import { discoverUserAgentSkills } from '../skills/user-agents.js';
 import type { SkillRevisionRecord } from '../skills/versions.js';
-import { SERVICE_RUNTIME_AGENTS } from '../subagents/agents.js';
 import { mapPluginComponents } from './components.js';
 import { findPlugin } from './detail.js';
 import { CORE_PLUGIN, SHARED_PLUGIN, USER_PLUGIN } from './host-plugins.js';
@@ -81,11 +80,8 @@ async function duplicateSkill(record: SkillRevisionRecord, base: string): Promis
   return name;
 }
 
+/** An installed plugin's subagent; host plugins other than Personal contribute none. */
 async function sourceAgent(actions: PluginActions, pluginId: string, name: string) {
-  if (pluginId === CORE_PLUGIN) {
-    const agent = SERVICE_RUNTIME_AGENTS.find((entry) => entry.name === name);
-    return agent && { ...agent.definition, tools: agent.definition.tools ?? null };
-  }
   const { agents } = await mapPluginComponents(actions.host, actions.view, new Set(['agent']));
   return agents.find(({ item }) => item.pluginId === pluginId && item.localName === name)?.value;
 }
@@ -100,7 +96,12 @@ async function duplicateAgent(
       `Invalid request: its prompt is longer than the ${MAX_AGENT_PROMPT} characters a Personal subagent may have.`,
     );
   const existing = new Set((await listAtdAgents()).agents.map((entry) => entry.name));
-  const name = await freeName(base, async (candidate) => existing.has(candidate));
+  // A file that does not load still holds its name: writing `<name>.md` would replace it.
+  const name = await freeName(
+    base,
+    async (candidate) =>
+      existing.has(candidate) || (await exists(path.join(atdAgentsDir(), `${candidate}.md`))),
+  );
   await putAtdAgent({
     name,
     description: agent.description.slice(0, MAX_AGENT_DESCRIPTION) || name,
@@ -192,7 +193,7 @@ export async function duplicateItem(
     throw new TypeError('Invalid request: this item is already in Personal.');
   if (kind === 'command' || kind === 'memory')
     throw new TypeError(`Invalid request: ${kind} items cannot be duplicated.`);
-  const base = toItemName(name.replace(/^service\./, '')) ?? 'copy';
+  const base = toItemName(name) ?? 'copy';
   if (kind === 'skill') {
     const record = await sourceSkill(actions, pluginId, name);
     if (!record) throw new TypeError(`Invalid request: skill "${name}" could not be read.`);

@@ -2,14 +2,18 @@ import { randomUUID } from 'node:crypto';
 import { readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import {
+  CommandInputSchema,
+  defaultCommandPlacement,
   parse,
   ServiceCommandFullSchema,
   ServiceCommandsFileSchema,
   type CommandCreate,
+  type CommandInput,
   type ServiceCommand,
   type ServiceCommandFull,
   type ServiceCommandsFile,
 } from '@atd/agent-contracts';
+import { Value } from 'typebox/value';
 import { atomicWrite } from '../config.js';
 import { ConflictError } from '../errors.js';
 import { LedgerNotFound } from '../ledger.js';
@@ -24,6 +28,22 @@ function commandsFile(dataDir: string): string {
 }
 
 /**
+ * A command stored before placements existed has none: it takes the default of its input source
+ * (`defaultCommandPlacement`), so it shows where it always did. Idempotent, and the same object
+ * when the command has a placement or its input does not read as a command input, which the full
+ * parse reports when the command is read.
+ */
+function withAddedPlacement<T extends object>(command: T): T {
+  if (
+    'placement' in command ||
+    !('input' in command) ||
+    !Value.Check(CommandInputSchema, command.input)
+  )
+    return command;
+  return { ...command, placement: defaultCommandPlacement(command.input.source) };
+}
+
+/**
  * Service-owned command store (T6b live surface over the T2 `commands.json`).
  * Create assigns identity; updates are full-replace with an expected-revision
  * guard (next-version edits, never a hot-swap: accepted runs already froze
@@ -31,8 +51,10 @@ function commandsFile(dataDir: string): string {
  * Every write stores a canonical shortcut no app action or other enabled
  * command holds (`shortcuts.ts`), for routes and the Agent's tool alike.
  * Legacy `skills`/`roleId` keys are folded into instructions on load and on
- * every write (`legacy-selection.ts`). The load keeps the revision: the fold
- * is deterministic, so the file converges with the next write of any command.
+ * every write (`legacy-selection.ts`), and a command stored before placements
+ * existed gets its default placement on load (`withAddedPlacement`). The load
+ * keeps the revision: the folds are deterministic, so the file converges with
+ * the next write of any command.
  */
 export class CommandStore {
   private chain: Promise<void> = Promise.resolve();
@@ -76,7 +98,9 @@ export class CommandStore {
       const data = parse(ServiceCommandsFileSchema, JSON.parse(await readFile(file, 'utf8')));
       return new CommandStore(dataDir, file, {
         ...data,
-        commands: data.commands.map(withoutLegacySelection),
+        commands: data.commands.map((command) =>
+          withAddedPlacement(withoutLegacySelection(command)),
+        ),
       });
     } catch (error) {
       if (error instanceof Error && 'code' in error && error.code === 'ENOENT')
@@ -125,9 +149,17 @@ export class CommandStore {
 
   /**
    * The command a create would store: defaults filled, identity assigned (a draft without `id`
-   * gets a fresh one), shape and templates validated. Throws TypeError on invalid drafts.
+   * gets a fresh one), shape and templates validated. A draft without a placement gets the
+   * default of its input source. Throws TypeError on invalid drafts.
    */
   static compose(draft: CommandCreate): ServiceCommandFull {
+    const input: CommandInput = draft.input ?? {
+      source: 'manual',
+      required: false,
+      files: false,
+      selection: false,
+      clipboard: false,
+    };
     const full = parse(
       ServiceCommandFullSchema,
       withoutLegacySelection({
@@ -137,13 +169,8 @@ export class CommandStore {
         enabled: true,
         shortcut: '',
         templateId: null,
-        input: {
-          source: 'manual',
-          required: false,
-          files: false,
-          selection: false,
-          clipboard: false,
-        },
+        input,
+        placement: defaultCommandPlacement(input.source),
         parameters: [],
         model: { mode: 'inherit' },
         tools: [],

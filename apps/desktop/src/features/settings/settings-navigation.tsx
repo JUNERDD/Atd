@@ -21,11 +21,47 @@ export function useOpenSettingsCommand() {
   return open;
 }
 
+/** What "Automate…" on a command asks of the Automations section: a new automation running it. */
+export interface SettingsAutomationTarget {
+  commandId: string;
+}
+
+/** Opens the Automations section at a new automation's editor, prefilled with one command. */
+export const SettingsAutomationLinkContext = createContext<
+  ((target: SettingsAutomationTarget) => void) | null
+>(null);
+export function useOpenSettingsAutomation() {
+  const open = useContext(SettingsAutomationLinkContext);
+  if (!open) throw new Error('Automating a command requires the settings window.');
+  return open;
+}
+
 /** Opens the Memory section at one entry's editor, as Personal's Memory tab links there. */
 export const SettingsMemoryLinkContext = createContext<((entryId: string) => void) | null>(null);
 export function useOpenSettingsMemory() {
   const open = useContext(SettingsMemoryLinkContext);
   if (!open) throw new Error('Opening a memory requires the settings window.');
+  return open;
+}
+
+/** One item page of Extensions: a plugin's skill, subagent or MCP server. */
+export interface SettingsExtensionItem {
+  pluginId: string;
+  kind: 'skill' | 'agent' | 'mcp';
+  name: string;
+}
+
+/**
+ * Opens Extensions at one item's page, with its plugin's page behind it. The settings window
+ * provides it to the sections that link to an item: Memory, where accepting a skill suggestion
+ * opens the skill it created.
+ */
+export const SettingsExtensionLinkContext = createContext<
+  ((item: SettingsExtensionItem) => void) | null
+>(null);
+export function useOpenSettingsExtension() {
+  const open = useContext(SettingsExtensionLinkContext);
+  if (!open) throw new Error('Opening an extension requires the settings window.');
   return open;
 }
 

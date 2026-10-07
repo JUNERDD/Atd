@@ -1,5 +1,6 @@
 import { createContext, use } from 'react';
 import type { TaskRun } from '../../../client/agent/task-schema';
+import type { CommandOpener } from './use-offered-commands';
 
 /**
  * What a turn's actions need from the task the transcript shows and from the panel around it.
@@ -16,6 +17,8 @@ export interface TaskTurns {
   openTask?: ((taskId: string) => void) | undefined;
   /** Starts a memory session seeded with `text`. */
   remember?: ((text: string) => void) | undefined;
+  /** Opens a command placed on turn actions on a turn's answer; without it turns offer none. */
+  runCommand?: CommandOpener | undefined;
 }
 
 export const TaskTurnsContext = createContext<TaskTurns | null>(null);

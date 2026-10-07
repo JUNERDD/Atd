@@ -15,7 +15,9 @@
     "extensions": "Extensions",
     "providers": "Models",
     "commands": "Commands",
+    "automations": "Automations",
     "memory": "Memory",
+    "apps": "Apps",
     "general": "General"
   },
   "drawer": {
@@ -36,14 +38,17 @@
     "resultCount_other": "{{count}} results",
     "general": "General",
     "entries": {
-      "newCommand": "New command"
+      "newCommand": "New command",
+      "newAutomation": "New automation"
     },
     "keywords": {
       "sectionPermissions": "approval security safety allow ask confirm access",
       "sectionExtensions": "plugin plugins skill skills subagent agents mcp server tools marketplace add-on",
       "sectionProviders": "model models provider providers api key connection account login sign in service openai anthropic ollama",
       "sectionCommands": "command prompt snippet template macro instruction saved",
+      "sectionAutomations": "automation automations schedule scheduled recurring repeat cron timer daily weekly monthly trigger watch folder background run automatically workflow routine",
       "sectionMemory": "preferences remember learn context profile",
+      "sectionApps": "apps app applications tools built widgets versions permissions",
       "sectionGeneral": "general keyboard shortcut hotkey keybinding key binding record window preferences dock login startup",
       "tierManual": "manual ask confirm every action prompt each time",
       "tierAuto": "auto automatic approve approval review model safe",
@@ -53,12 +58,16 @@
       "openAtLogin": "startup launch boot login item autostart start automatically",
       "showInDock": "dock menu bar icon taskbar hide",
       "alwaysOnTop": "pin float window topmost keep on top sticky",
+      "miniPanel": "floating float overlay widget launcher edge side sidebar quick entry drag drop attach",
+      "miniPanelOpenOn": "hover click open expand trigger pointer mouse edge accidental",
       "restoreDefaults": "reset revert default shortcuts",
       "language": "language locale translate translation interface english chinese",
       "defaultModel": "default provider model choose selected",
       "addProvider": "connect account api key login sign in cloud local new",
       "connectedProviders": "providers connections accounts disconnect",
       "newCommand": "create add command prompt template",
+      "newAutomation": "create add automation schedule recurring task routine automate",
+      "automationsPause": "pause stop disable all automations schedule hold resume",
       "memoryLearning": "learn automatically remember pause preferences corrections",
       "memoryCreate": "add new save remember memory",
       "memoryProfile": "profile about me user preferences",
@@ -248,10 +257,25 @@
     "openAtLogin": "Open at login",
     "showInDock": "Show in Dock",
     "alwaysOnTop": "Always on top",
+    "miniPanel": "Show mini panel",
+    "miniPanelOpenOn": {
+      "title": "Open mini panel",
+      "description": "Choose whether the mini panel opens when the pointer reaches it or only when you click it.",
+      "label": "How the mini panel opens",
+      "modes": {
+        "hover": "On hover",
+        "click": "On click"
+      },
+      "hints": {
+        "hover": "Opens as soon as the pointer reaches it on the screen edge.",
+        "click": "Opens only when you click it. Pointing at it just makes it swell."
+      }
+    },
     "preferenceNotes": {
       "openAtLogin": "Start the app when you log in to your Mac.",
       "showInDock": "The menu bar icon stays either way.",
-      "alwaysOnTop": "Keep the panel above other windows."
+      "alwaysOnTop": "Keep the panel above other windows.",
+      "miniPanel": "Keep a small panel on the screen edge for quick actions. Drop files, images or text on it to add them to your message."
     },
     "restoreDefaults": "Restore default shortcuts",
     "restoring": "Restoring…",
@@ -468,6 +492,9 @@
       "statusSection": "Status",
       "state": "State",
       "connectionSection": "Connection",
+      "connectionDescription": "The server’s name, and how the app starts it on this computer or reaches it over the network.",
+      "authSection": "Authentication",
+      "authDescription": "How the app signs in to the server.",
       "authCodeNote": "Finish signing in with your browser. If it shows an authorization code, paste it in this server's row in the list.",
       "serverIdHint": "Letters, digits, hyphens, and underscores. The ID can't be changed after the server is added.",
       "serverIdPlaceholder": "e.g. github",
@@ -511,6 +538,7 @@
       "metadataUrlHint": "Where sign-in finds the authorization server instead of asking the MCP server. Codes, tokens, and the client secret go where it says, so it must use https:// (http:// only on localhost).",
       "metadataUrlPlaceholder": "https://auth.example.com/.well-known/oauth-authorization-server",
       "accessSection": "Agent access",
+      "accessDescription": "How the agent reaches the server’s tools and resources.",
       "exposure": "Tool loading",
       "exposureAuto": "Automatic",
       "exposureDirect": "Always available",
@@ -624,7 +652,7 @@
       "host": {
         "core": {
           "name": "System",
-          "description": "Skills and subagents that ship with the app."
+          "description": "Skills that ship with the app."
         },
         "personal": {
           "name": "Personal",

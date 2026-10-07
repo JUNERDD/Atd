@@ -1,7 +1,19 @@
 import { errorMessage, type TaskRun } from '@atd/agent-contracts';
 import { readAgentHarness } from './atd-agents/harness.js';
+import {
+  freezeCatalogAgents,
+  type CatalogAgentSources,
+  type RunCatalogAgents,
+} from './atd-agents/run-agents.js';
 import { McpAuthority } from './mcp/index.js';
 import { freezeRunMcp, releaseRunMcp } from './mcp/staging.js';
+import { logMemoryEvents, MemoryAuthority } from './memory/index.js';
+import {
+  EMPTY_RUN_MEMORY,
+  freezeRunMemory,
+  runMemoryChars,
+  type RunMemory,
+} from './memory/run-memory.js';
 import { inSnapshot, mapPluginComponents } from './plugins/components.js';
 import type { PluginAgent } from './plugins/map.js';
 import { freezeRunPlugins, releaseRunPlugins } from './plugins/run-snapshot.js';
@@ -19,9 +31,10 @@ import { captureRunSkills, skillChars, type RunSkills } from './skills/run-skill
 import { takeTaskStaging } from './skills/staging.js';
 import { freezeSkillCatalog, type RunSkillCatalog } from './skills/skill-catalog.js';
 import { freezeRunSkills, loadSkillCatalog, releaseRun } from './skills/versions.js';
-import { SERVICE_RUNTIME_AGENTS, withPermissions, type RuntimeAgent } from './subagents/agents.js';
+import type { RuntimeAgent } from './subagents/agents.js';
 import { readServiceId } from './storage.js';
 import type { RunnerContext } from './task-runner.js';
+import { CONTEXT_BUDGET, runInputSize } from './tasks/run-budget.js';
 
 /** What a freeze needs from the task runner: its context, task and run audit. */
 export interface RunFreezeDeps {
@@ -36,7 +49,12 @@ export interface FrozenSelections {
   skills: RunSkills;
   /** The skills the run's model is told about and may load (skills/skill-catalog.ts). */
   catalog: RunSkillCatalog;
-  /** The runtime agents the run's session registers: enabled system agents, then referenced specialists. */
+  /** The memory the run's model is told about (memory/run-memory.ts); empty with memory off. */
+  memory: RunMemory;
+  /**
+   * The runtime agents the run's session registers: every catalog subagent the run registers,
+   * referenced or not (atd-agents/run-agents.ts); none when the catalog has none enabled.
+   */
   agents: RuntimeAgent[];
 }
 
@@ -44,8 +62,9 @@ export interface FrozenSelections {
  * Accept-time freeze of the selections staged for a task's next run. Staging
  * is consumed once here; the frozen role and MCP records are what the run's
  * session binding reads (run-binding.ts), the skills the run loads are
- * captured with their bodies, and the resolved references are returned for
- * the run's material and binding, so later staging never reaches this run.
+ * captured with their bodies, the catalog subagents are resolved for the
+ * binding and the resolved references are returned for the run's material,
+ * so later staging or catalog changes never reach this run.
  */
 export async function freezeRunSelections(
   deps: RunFreezeDeps,
@@ -63,18 +82,82 @@ export async function freezeRunSelections(
     readAgentHarness(deps.ctx.paths.root),
   ]);
   const { disabled: disabledAgents, permissions: agentPermissions } = harness;
+  // Memory takes what the run's input and skills leave of the budget, before references.
+  const chars = skillChars(run.id, skills.loaded, catalog);
+  const memory = await freezeMemory(deps, run, CONTEXT_BUDGET - runInputSize(run.snapshot) - chars);
+  const catalogAgents = await freezeAgents(deps, run, {
+    toolCeiling,
+    disabled: disabledAgents,
+    permissions: agentPermissions,
+    plugins: plugins.agents,
+  });
   const references = await freezeReferencesForRun(deps, run, {
     toolCeiling,
     mcp,
-    skillChars: skillChars(run.id, skills.loaded, catalog),
-    disabledAgents,
-    agentPermissions,
-    pluginAgents: plugins.agents,
+    skillChars: chars,
+    memoryChars: runMemoryChars(memory),
+    agents: catalogAgents,
   });
-  const systemAgents = SERVICE_RUNTIME_AGENTS.filter(
-    (agent) => !disabledAgents.has(agent.name),
-  ).map((agent) => withPermissions(agent, agentPermissions.get(agent.name)));
-  return { references, skills, catalog, agents: [...systemAgents, ...references.agents] };
+  const agents = catalogAgents.registered.map(({ agent }) => agent);
+  return { references, skills, catalog, memory, agents };
+}
+
+/**
+ * Freezes the catalog subagents the run registers whether or not its message references them
+ * (atd-agents/run-agents.ts). An unreadable `~/.atd/agents` never fails the run: it registers
+ * the plugin subagents only, and the log and audit say so.
+ */
+async function freezeAgents(
+  deps: RunFreezeDeps,
+  run: TaskRun,
+  sources: CatalogAgentSources,
+): Promise<RunCatalogAgents> {
+  const agents = await freezeCatalogAgents(sources);
+  if (agents.catalogError)
+    deps.ctx.log.warn('The agent catalog is unavailable; the run registers no ~/.atd/agents.', {
+      taskId: deps.taskId,
+      error: agents.catalogError,
+    });
+  deps.audit({
+    taskId: deps.taskId,
+    runId: run.id,
+    catalogAgents: agents.registered.map(({ agent }) => agent.name),
+    catalogAgentsUnavailable: Object.fromEntries(agents.unavailable),
+    ...(agents.catalogError && { catalogError: agents.catalogError }),
+  });
+  return agents;
+}
+
+/**
+ * Freezes the memory the run's model is told about (memory/run-memory.ts) within `room`. Memory
+ * is optional for a run: a store that cannot load never fails it, it runs without memory sections,
+ * and the log and audit say so.
+ */
+async function freezeMemory(deps: RunFreezeDeps, run: TaskRun, room: number): Promise<RunMemory> {
+  if (!run.snapshot.memory) return EMPTY_RUN_MEMORY;
+  try {
+    const { agentDir } = deps.ctx.paths;
+    const store = await MemoryAuthority.authorityFor(agentDir, logMemoryEvents(deps.ctx.log));
+    const memory = await freezeRunMemory(store, run.snapshot.memory, room);
+    deps.audit({
+      taskId: deps.taskId,
+      runId: run.id,
+      memory: {
+        named: memory.names.size,
+        coreChars: memory.coreText.length,
+        indexChars: memory.indexText.length,
+        chars: runMemoryChars(memory),
+      },
+    });
+    return memory;
+  } catch (error) {
+    deps.ctx.log.warn('Memory is unavailable; the run continues without it.', {
+      taskId: deps.taskId,
+      error: errorMessage(error),
+    });
+    deps.audit({ taskId: deps.taskId, runId: run.id, memoryDegraded: true });
+    return EMPTY_RUN_MEMORY;
+  }
 }
 
 /**
@@ -135,17 +218,14 @@ async function freezePlugins(
 
 /**
  * Resolves the references staged for this run against the tool ceiling, MCP
- * state and skills frozen just before (references/material.ts). They reach
- * the run only through its material and session binding, so nothing is
- * written per run and nothing needs a release.
+ * state, skills and catalog subagents frozen just before (references/material.ts).
+ * They reach the run only through its material, so nothing is written per run
+ * and nothing needs a release.
  */
 async function freezeReferencesForRun(
   deps: RunFreezeDeps,
   run: TaskRun,
-  frozen: Pick<
-    ReferenceContext,
-    'toolCeiling' | 'mcp' | 'skillChars' | 'disabledAgents' | 'agentPermissions' | 'pluginAgents'
-  >,
+  frozen: Pick<ReferenceContext, 'toolCeiling' | 'mcp' | 'skillChars' | 'memoryChars' | 'agents'>,
 ): Promise<RunReferences> {
   const references = await takeTaskReferences(deps.ctx.paths.root, deps.taskId);
   const resolved = await resolveRunReferences(

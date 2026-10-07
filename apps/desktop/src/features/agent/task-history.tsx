@@ -47,6 +47,7 @@ import { SettingsSearchField } from '../settings/settings-search-field';
 import { HistoryViewMenu } from './history-view-menu';
 import { groupHistory, rowDate, sortHistory, stampOf } from './history-view';
 import { RenameTaskDialog } from './rename-task-dialog';
+import { TaskOriginBadge } from './task-origin-badge';
 import { useCopyTaskId } from './use-copy-task-id';
 import { useHistoryView } from './use-history-view';
 import { messageOf } from '../../lib/errors';
@@ -149,6 +150,8 @@ export function TaskHistory({
         return t(`history.statusSection.${section.status}`);
       case 'model':
         return section.model ?? t('history.noModel');
+      case 'origin':
+        return t(`history.originSection.${section.origin}`);
       case 'all':
         return null;
     }
@@ -201,8 +204,11 @@ export function TaskHistory({
                               className="task-row min-w-0"
                               onClick={() => onChoose(task.id)}
                             >
-                              <span className="task-row-title" title={task.title}>
-                                <HighlightedText text={task.title} ranges={match?.ranges.title} />
+                              <span className="task-row-head">
+                                <span className="task-row-title" title={task.title}>
+                                  <HighlightedText text={task.title} ranges={match?.ranges.title} />
+                                </span>
+                                {task.origin && <TaskOriginBadge origin={task.origin} />}
                               </span>
                               <span className="task-row-meta">
                                 <time dateTime={stamp} title={updated.toLocaleString()}>

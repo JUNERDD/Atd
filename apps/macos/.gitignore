@@ -5,6 +5,8 @@ Package.resolved
 # XcodeGen output; project.yml is the source of truth
 *.xcodeproj/
 App/Info.plist
+Widgets/Extension/Info.plist
+Widgets/Extension/AtdWidgets.entitlements
 # xcodebuild -derivedDataPath
 DerivedData/
 xcuserdata/

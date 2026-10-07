@@ -20,9 +20,11 @@ import { InstructionEditor } from './instruction-editor';
 import { FieldError } from './field-error';
 import { ParameterEditor } from './parameter-editor';
 import { ParameterList } from './parameter-list';
+import { PlacementSettings } from './placement-settings';
 import { RunSettings } from './run-settings';
 import { useCommandAiSession } from './use-command-ai-session';
 import { errorId, useCommandProblems } from './use-command-problems';
+import { SettingsGroup } from '../settings/settings-group';
 import { SettingsHeading } from '../settings/settings-heading';
 import { useSettingsUnsavedChanges } from '../settings/settings-unsaved-changes';
 
@@ -177,7 +179,10 @@ export function CommandEditor({
         gutter="none"
         scrollShadow
       >
-        <fieldset disabled={Boolean(plugin)} className="editor-fields min-w-0 p-0.75">
+        <fieldset
+          disabled={Boolean(plugin)}
+          className="editor-fields settings-groups min-w-0 p-0.75"
+        >
           {plugin && (
             <Alert role="note">
               <Puzzle />
@@ -213,36 +218,34 @@ export function CommandEditor({
               />
             </div>
           </div>
-          <InstructionEditor
-            command={draft}
-            onChange={setDraft}
-            onNormalize={(instructions) => {
-              setDraft((current) => ({ ...current, instructions }));
-              setBaseline((current) => ({ ...current, instructions }));
-            }}
-            readOnly={Boolean(plugin)}
-            tasks={tasks}
-            error={problems.text('instructions')}
-            onBlur={() => problems.recheck('instructions')}
-            onConfigureSource={(source) => {
-              setInputOptionsOpen(true);
-              requestAnimationFrame(() => {
-                const control = document.getElementById(
-                  source === 'input' ? 'command-source' : `input-${source}`,
-                );
-                control?.scrollIntoView({ block: 'nearest' });
-                control?.focus();
-              });
-            }}
-          />
-          <InputOptions
-            command={draft}
-            onChange={setDraft}
-            open={inputOptionsOpen}
-            onOpenChange={setInputOptionsOpen}
-            error={problems.text('input')}
-            onBlur={() => problems.recheck('input')}
-          />
+          <SettingsGroup
+            id="command-instructions"
+            title={t('instruction.title')}
+            description={t('instruction.hint')}
+          >
+            <InstructionEditor
+              command={draft}
+              onChange={setDraft}
+              onNormalize={(instructions) => {
+                setDraft((current) => ({ ...current, instructions }));
+                setBaseline((current) => ({ ...current, instructions }));
+              }}
+              readOnly={Boolean(plugin)}
+              tasks={tasks}
+              error={problems.text('instructions')}
+              onBlur={() => problems.recheck('instructions')}
+              onConfigureSource={(source) => {
+                setInputOptionsOpen(true);
+                requestAnimationFrame(() => {
+                  const control = document.getElementById(
+                    source === 'input' ? 'command-source' : `input-${source}`,
+                  );
+                  control?.scrollIntoView({ block: 'nearest' });
+                  control?.focus();
+                });
+              }}
+            />
+          </SettingsGroup>
           <ParameterList
             parameters={draft.parameters}
             onChange={(parameters) => {
@@ -254,6 +257,21 @@ export function CommandEditor({
             onOpen={parameterPage.open}
             error={problems.text('parameters')}
           />
+          <SettingsGroup
+            id="command-start"
+            title={t('start.title')}
+            description={t('start.description')}
+          >
+            <InputOptions
+              command={draft}
+              onChange={setDraft}
+              open={inputOptionsOpen}
+              onOpenChange={setInputOptionsOpen}
+              error={problems.text('input')}
+              onBlur={() => problems.recheck('input')}
+            />
+            <PlacementSettings command={draft} onChange={setDraft} />
+          </SettingsGroup>
           <RunSettings command={draft} onChange={setDraft} settings={settings} />
           {error && (
             <div ref={errorMessage} className="space-y-2">

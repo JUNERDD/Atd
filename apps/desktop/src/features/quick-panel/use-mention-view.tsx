@@ -1,7 +1,7 @@
 import { Bot, MessageSquare, Plug } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { rankByQuery } from '@atd/ui/lib/fuzzy-match';
-import type { MemoryEntry } from '../../client/agent/bridge';
+import type { MemoryUnit } from '@atd/agent-contracts';
 import type { CommandDefinition } from '../../client/agent/command-schema';
 import type { AgentTask } from '../../client/agent/task-schema';
 import type { Chip } from '../composer-editor/draft';
@@ -54,7 +54,7 @@ export function useMentionView({
   mcp: ServiceListView<ExtensionMcpRow>;
   /** Snapshot commands; none where the editor offers no command chips. */
   commands: readonly CommandDefinition[];
-  memories: ServiceListView<MemoryEntry>;
+  memories: ServiceListView<MemoryUnit>;
   /** Whether files and "Browse files…" are offered (the composer). */
   files: boolean;
   /** Whether the editor can hold this chip; items it cannot are not offered. */
@@ -96,6 +96,7 @@ export function useMentionView({
   const conversations: QuickGroup = {
     id: 'conversations',
     heading: t('quickPanel.groups.conversations'),
+    icon: <MessageSquare />,
     options: rankByQuery(referable, query, (task) => ({
       title: task.title,
       description: describeConversation(task),
@@ -124,6 +125,7 @@ export function useMentionView({
   const mcpGroup: QuickGroup = {
     id: 'mcp',
     heading: t('quickPanel.groups.mcp'),
+    icon: <Plug />,
     options: rankByQuery(servers, query, (row) => ({
       title: row.serverId,
       description: row.lastError,
@@ -141,18 +143,16 @@ export function useMentionView({
     })),
   };
 
-  // Only enabled `~/.atd/agents` specialists resolve as references. A disabled one would only be
-  // refused at send; a system agent (`service.*`) is already registered for every run, and its
-  // name is not a valid reference, so the send itself would be rejected.
+  // Only enabled catalog subagents resolve as references; a disabled one would only be refused
+  // at send.
   const catalog =
     agents.status === 'ready'
-      ? agents.rows.filter(
-          (row) => row.enabled && !row.system && accepts({ kind: 'agent', name: row.name }),
-        )
+      ? agents.rows.filter((row) => row.enabled && accepts({ kind: 'agent', name: row.name }))
       : [];
   const agentGroup: QuickGroup = {
     id: 'agents',
     heading: t('quickPanel.groups.agents'),
+    icon: <Bot />,
     options: rankByQuery(catalog, query, (row) => ({
       title: row.name,
       description: row.description,

@@ -161,13 +161,32 @@ async function loadCommandPath(ctx: AdapterContext, raw: unknown): Promise<void>
   } else reportMissing(ctx, path, 'a markdown file or directory');
 }
 
-function readOverrides(entry: Record<string, unknown>): CommandOverrides {
+/**
+ * A manifest command entry's overrides, or null when its `allowedTools` is not a list of strings:
+ * the command is then skipped, as one with unreadable `allowed-tools` frontmatter is.
+ */
+function readOverrides(
+  ctx: AdapterContext,
+  name: string,
+  entry: Record<string, unknown>,
+): CommandOverrides | null {
   const overrides: CommandOverrides = {};
   if (typeof entry.description === 'string') overrides.description = entry.description;
   if (typeof entry.argumentHint === 'string') overrides.argumentHint = entry.argumentHint;
   if (typeof entry.model === 'string') overrides.model = entry.model;
+  if (entry.allowedTools === undefined || entry.allowedTools === null) return overrides;
   const tools = stringArray(entry.allowedTools);
-  if (tools !== null) overrides.allowedTools = tools;
+  if (tools === null) {
+    report(
+      ctx,
+      'warning',
+      'invalid-component',
+      `Command "${name}" is skipped: its allowedTools are not a list of tool names.`,
+      { path: MANIFEST, component: { kind: 'command', name: name.slice(0, 256) } },
+    );
+    return null;
+  }
+  overrides.allowedTools = tools;
   return overrides;
 }
 
@@ -194,7 +213,8 @@ async function loadCommands(ctx: AdapterContext, declared: unknown): Promise<voi
       );
       continue;
     }
-    const overrides = readOverrides(entry);
+    const overrides = readOverrides(ctx, name, entry);
+    if (overrides === null) continue;
     if (typeof content === 'string') {
       await loadClaudeCommand(ctx, MANIFEST, name, { content, overrides });
       continue;

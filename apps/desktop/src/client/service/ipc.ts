@@ -43,15 +43,6 @@ const RoleToolSchema = Type.Union([
   Type.Literal('command'),
 ]);
 
-/**
- * A subagent catalog name: `service.*` for the system agents, a bare file name for Personal ones,
- * or `<plugin>:<agent>` for an installed plugin's.
- */
-const AgentNameSchema = Type.Union([
-  Type.String({ minLength: 1, maxLength: 128, pattern: '^[A-Za-z0-9][A-Za-z0-9._-]*$' }),
-  SubagentNameSchema,
-]);
-
 const RoleIdSchema = Type.String({
   minLength: 1,
   maxLength: 128,
@@ -139,12 +130,12 @@ export const ServiceRequestSchema = Type.Union([
   Type.Object({ action: Type.Literal('agents') }),
   Type.Object({
     action: Type.Literal('agentsSetEnabled'),
-    name: AgentNameSchema,
+    name: SubagentNameSchema,
     enabled: Type.Boolean(),
   }),
   Type.Object({
     action: Type.Literal('agentsSetPermissions'),
-    name: AgentNameSchema,
+    name: SubagentNameSchema,
     permissions: Type.Union([SubagentPermissionsSchema, Type.Null()]),
   }),
   Type.Object({ action: Type.Literal('agentsDelete'), name: PersonalItemNameSchema }),
@@ -221,7 +212,8 @@ export interface ServiceBridge extends ServicePluginBridge, ServiceMcpApprovalBr
       skills: string[];
     };
   }) => Promise<{ role: unknown }>;
-  agents: () => Promise<{ agents: unknown[] }>;
+  /** The subagent catalog, and the ~/.atd/agents files that did not load with why. */
+  agents: () => Promise<{ agents: unknown[]; diagnostics: unknown[] }>;
   /** Turns a catalog subagent on or off for later runs. */
   setAgentEnabled: (name: string, enabled: boolean) => Promise<{ name: string; enabled: boolean }>;
   /** Saves a catalog subagent's permissions for later runs; null restores its defaults. */
@@ -236,7 +228,7 @@ export interface ServiceBridge extends ServicePluginBridge, ServiceMcpApprovalBr
     model: string | null;
     systemPrompt: string;
   }) => Promise<{ agent: unknown }>;
-  /** Deletes a Personal subagent's file; system and plugin subagents are refused. */
+  /** Deletes a Personal subagent's file; plugin subagents are refused. */
   deleteAgent: (name: string) => Promise<{ name: string; deleted: true }>;
   /** Status rows, and whether the one-time launch approval notice still shows. */
   mcpStatus: () => Promise<{ servers: unknown[]; approvalNotice: boolean }>;

@@ -1,5 +1,7 @@
 import { errorMessage, type PermissionTier } from '@atd/agent-contracts';
+import { AutomationService } from './automations/service.js';
 import { CapabilityRegistry } from './capabilities.js';
+import { launchCommand } from './commands/launch.js';
 import { seedStarterCommands } from './commands/starters.js';
 import {
   clearEndpoint,
@@ -14,11 +16,14 @@ import { FolderStore } from './folders/store.js';
 import { Ledger } from './ledger.js';
 import { createLogger, type Logger } from './logging.js';
 import { McpAuthority, migrateMcpSecrets } from './mcp/index.js';
+import { createMemoryConsolidator } from './memory/consolidation/index.js';
+import { PluginHost } from './plugins/host.js';
 import { recoverService, type RecoveryReport } from './recovery.js';
 import { ResourceStore } from './resources.js';
 import { RunnerManager } from './runner-manager.js';
 import { buildServer, type ServerDeps } from './server.js';
 import { SettingsStore } from './settings/store.js';
+import { SystemActivity } from './system-activity.js';
 import type { RunnerContext } from './task-runner.js';
 
 export type { ServiceConfig } from './config.js';
@@ -38,6 +43,7 @@ export interface ServiceHandle {
   capabilities: CapabilityRegistry;
   resources: ResourceStore;
   manager: RunnerManager;
+  automations: AutomationService;
   log: Logger;
   startedAt: string;
   report: RecoveryReport;
@@ -48,8 +54,8 @@ export interface ServiceHandle {
 /**
  * Importable service entry. Wires ledger, events, confirms, capabilities,
  * resources, runners and transport; `start` listens and publishes the
- * endpoint, `stop` drains runs, closes HTTP and MCP, and releases the dataDir
- * lock. Every stop trigger shares one run of those steps.
+ * endpoint, `stop` drains runs, closes HTTP and MCP, settles the plugin host,
+ * and releases the dataDir lock. Every stop trigger shares one run of those steps.
  */
 export async function createService(
   config: ServiceConfig,
@@ -101,6 +107,21 @@ export async function createService(
       error: errorMessage(error),
     }),
   );
+  // After recovery and before any run dispatches: its reconciliation may cancel queued runs.
+  const automations = await AutomationService.create({
+    paths: config.paths,
+    ledger,
+    events,
+    manager,
+    launchCommand: (request, internal) =>
+      launchCommand({ paths: config.paths, ledger, manager }, request, internal),
+    folders,
+    resources,
+    consolidateMemory: createMemoryConsolidator({ paths: config.paths, log }),
+    activity: new SystemActivity(),
+    language: () => settings.current().settings.language,
+    log,
+  });
 
   let stopping: (() => Promise<void>) | null = null;
   const serverDeps: ServerDeps = {
@@ -113,6 +134,7 @@ export async function createService(
     manager,
     settings,
     folders,
+    automations,
     log,
     startedAt,
     onShutdown:
@@ -127,13 +149,18 @@ export async function createService(
   const app = await buildServer(serverDeps);
   // Runs drain and HTTP closes first, so MCP has lost its callers when the
   // close ends every MCP connection (base and per-task aliases) and its
-  // stdio children; only then does the lock free the profile for a new service.
+  // stdio children. The plugin host settles after everything that reaches it,
+  // so its creation (started with the service, unawaited) stops writing under
+  // the dataDir; only then does the lock free the profile for a new service.
   // Clearing the endpoint tells the native supervisor the stop has finished
   // (`ServiceStopper`): it gives the process a short grace to exit, then kills it.
   const stopService = async () => {
+    // No automation fires once draining begins; the runs it started stop with the manager.
+    await automations.stop();
     await manager.shutdown();
     await app.close();
     await McpAuthority.closeFor(config.paths.root);
+    await PluginHost.closeFor(config.paths.root);
     await clearEndpoint(config.paths);
     await releaseLock(config.paths);
   };
@@ -149,6 +176,7 @@ export async function createService(
     capabilities,
     resources,
     manager,
+    automations,
     log,
     startedAt,
     report,
@@ -171,6 +199,8 @@ export async function createService(
         ...(buildId === undefined ? {} : { buildId }),
       });
       manager.dispatch();
+      // After the recovered queue: their runs go first, then missed occurrences after a grace.
+      automations.start();
       // The MCP authority is not loaded here: the desktop calls no MCP route on connect, and the
       // load reads the server records, launch approvals and saved sign-ins. The first MCP request
       // or run loads it, cached per dataDir (mcp/authority.ts).

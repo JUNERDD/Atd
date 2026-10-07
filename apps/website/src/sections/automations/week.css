@@ -1,0 +1,287 @@
+/* Week grid on a display: a day label, then 24 square cells per row; hour labels head every sixth
+   column. Each row is a `display: contents` wrapper that only carries its day for the power-on
+   wave. The cells draw their own unlit LEDs, so the display's own dots stay off. */
+.auto__week {
+  /* The playhead's cycle: it rests 1.2 s, then sweeps the day in 8.8 s. The scan keyframes below
+     restate the rest as a percentage (12% of 10 s). */
+  --auto-cycle: 10s;
+  --auto-lead: 1.2s;
+  --auto-sweep: 8.8s;
+  --auto-day: 0;
+  /* The matrix's own fade only unhides it; it is over before the first dot comes on. */
+  --rv-dur: 0.24s;
+  position: relative;
+  display: grid;
+  grid-template-columns: auto repeat(24, minmax(0, 1fr));
+  align-items: center;
+  column-gap: 0;
+  row-gap: 2px;
+  padding: 20px 20px 24px 16px;
+  background-image: none;
+}
+
+.auto__row {
+  display: contents;
+}
+
+.auto__row[data-day='1'] {
+  --auto-day: 1;
+}
+
+.auto__row[data-day='2'] {
+  --auto-day: 2;
+}
+
+.auto__row[data-day='3'] {
+  --auto-day: 3;
+}
+
+.auto__row[data-day='4'] {
+  --auto-day: 4;
+}
+
+.auto__row[data-day='5'] {
+  --auto-day: 5;
+}
+
+.auto__row[data-day='6'] {
+  --auto-day: 6;
+}
+
+.auto__hour {
+  grid-column: span 6;
+  padding-block-end: 6px;
+  border-inline-start: 1px solid var(--line-2);
+  padding-inline-start: 4px;
+  font-family: var(--font-dot);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--fg-3);
+}
+
+.auto__day {
+  padding-inline-end: 10px;
+  font-family: var(--font-dot);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--fg-3);
+}
+
+/* A cell's hour is its 3-hour band (`data-step`, which also times the preset sweep) plus its place
+   in the band (`data-sub`). */
+.auto__cell {
+  --auto-band: 0;
+  --auto-sub: 0;
+  --auto-col: calc(var(--auto-band) * 3 + var(--auto-sub));
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  opacity: 0.16;
+  scale: 0.7;
+  transition:
+    opacity var(--dur-fast) linear,
+    scale var(--dur-fast) var(--curve-out);
+}
+
+/* The dot, and the ring a lit hour sends out as the playhead passes it, stacked in one cell. */
+.auto__cell::before,
+.auto__cell::after {
+  content: '';
+  grid-area: 1 / 1;
+  inline-size: min(58%, 10px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+}
+
+.auto__cell::before {
+  background-color: var(--dot-1);
+}
+
+.auto__cell::after {
+  border: 1px solid var(--dot-1);
+  opacity: 0;
+  visibility: hidden;
+}
+
+/* Lit hours fade and spring up band by band: eight 3-hour bands, 20 ms apart (140 ms in all). */
+.auto__cell[data-on] {
+  opacity: 1;
+  scale: 1;
+  transition:
+    opacity var(--dur-base) var(--curve-out) calc(var(--auto-band) * 20ms),
+    scale var(--dur-spring-bouncy) var(--spring-bouncy) calc(var(--auto-band) * 20ms);
+}
+
+.auto__cell[data-on]::before {
+  box-shadow: 0 0 10px rgb(255 255 255 / 0.4);
+}
+
+.auto__cell[data-on]::after {
+  visibility: visible;
+}
+
+.auto__cell[data-step='1'] {
+  --auto-band: 1;
+}
+
+.auto__cell[data-step='2'] {
+  --auto-band: 2;
+}
+
+.auto__cell[data-step='3'] {
+  --auto-band: 3;
+}
+
+.auto__cell[data-step='4'] {
+  --auto-band: 4;
+}
+
+.auto__cell[data-step='5'] {
+  --auto-band: 5;
+}
+
+.auto__cell[data-step='6'] {
+  --auto-band: 6;
+}
+
+.auto__cell[data-step='7'] {
+  --auto-band: 7;
+}
+
+.auto__cell[data-sub='1'] {
+  --auto-sub: 1;
+}
+
+.auto__cell[data-sub='2'] {
+  --auto-sub: 2;
+}
+
+/* The playhead: a line with a faint trail over the hour cells (an absolutely placed grid item across
+   the 24 hour columns and the 7 day rows). The beam is as wide as the day and slides by its own
+   width, so only its translate and opacity animate. It shows only where motion is allowed. */
+.auto__scan {
+  position: absolute;
+  inset: 0;
+  grid-column: 2 / -1;
+  grid-row: 2 / 9;
+  display: none;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.auto__scan-beam {
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(
+    to right,
+    transparent calc(100% - 72px),
+    rgb(255 255 255 / 0.07) calc(100% - 1px),
+    rgb(255 255 255 / 0.6) calc(100% - 1px)
+  );
+  translate: -100% 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Power-on: each dot comes on as the diagonal wave reaches it, timed from the matrix's reveal slot
+     (week.tsx holds the same lead and step for the labels). A lit hour passes through the unlit
+     state on its way up, so the pattern lights out of a powered-on grid. */
+  :root[data-motion] .auto__week[data-revealed] .auto__cell::before {
+    animation: auto-cell-on 0.6s var(--curve-out)
+      calc(var(--rv-delay, 0s) + 240ms + (var(--auto-day) + var(--auto-col)) * 18ms) backwards;
+  }
+
+  .auto__cell[data-on] {
+    --auto-dim-opacity: 0.16;
+    --auto-dim-scale: 0.7;
+  }
+
+  /* Life: the playhead loops, and every cell's flash runs on the same cycle, offset to the moment
+     the line crosses its column. All of them run, lit or not (an unlit cell's flash is hidden), so
+     a new preset's hours flash in step without restarting anything. Off screen they all pause. */
+  .auto__scan {
+    display: block;
+  }
+
+  .auto__scan-beam {
+    animation: auto-scan var(--auto-cycle) linear infinite;
+  }
+
+  .auto__cell::after {
+    animation: auto-flash var(--auto-cycle) linear
+      calc(var(--auto-lead) + (var(--auto-col) + 0.5) * var(--auto-sweep) / 24) infinite;
+  }
+
+  .auto__week:not([data-live]) .auto__scan-beam,
+  .auto__week:not([data-live]) .auto__cell::after {
+    animation-play-state: paused;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auto__cell,
+  .auto__cell[data-on] {
+    scale: none;
+    transition: opacity var(--dur-fast) linear;
+  }
+}
+
+@media (forced-colors: active) {
+  .auto__cell::before {
+    background-color: CanvasText;
+  }
+
+  .auto__cell::after,
+  .auto__scan {
+    display: none;
+  }
+}
+
+@keyframes auto-cell-on {
+  0% {
+    opacity: 0;
+    scale: 0;
+  }
+
+  45% {
+    opacity: var(--auto-dim-opacity, 1);
+    scale: var(--auto-dim-scale, 1);
+  }
+}
+
+/* 0–12%: rest, unseen. 12–100%: the line crosses the 24 hours at a constant pace, fading in at the
+   start and out at the end. */
+@keyframes auto-scan {
+  0%,
+  12% {
+    opacity: 0;
+    translate: -100% 0;
+  }
+
+  15%,
+  96% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    translate: 0 0;
+  }
+}
+
+/* A flash: the ring leaves the dot as the line reaches the hour and widens as it fades (0.7 s of
+   10 s). */
+@keyframes auto-flash {
+  0% {
+    opacity: 1;
+    scale: 1;
+    animation-timing-function: var(--curve-out);
+  }
+
+  7%,
+  100% {
+    opacity: 0;
+    scale: 2.8;
+  }
+}

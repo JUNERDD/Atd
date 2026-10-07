@@ -26,6 +26,7 @@
   },
   "dependencies": {
     "@atd/agent-contracts": "workspace:*",
+    "@atd/app-kit": "workspace:*",
     "@atd/file-index": "workspace:*",
     "@atd/plugin-kit": "workspace:*",
     "@earendil-works/pi-ai": "1.0.0",
@@ -34,10 +35,10 @@
     "@fastify/websocket": "11.3.1",
     "@juicesharp/rpiv-todo": "2.12.0",
     "@napi-rs/keyring": "2.1.0",
+    "croner": "catalog:",
     "eventsource-parser": "4.1.1",
     "fastify": "5.12.5",
     "jiti": "2.7.0",
-    "pi-hermes-memory": "0.9.9",
     "pi-subagents": "0.74.0",
     "pi-web-access": "0.35.0",
     "typebox": "catalog:"

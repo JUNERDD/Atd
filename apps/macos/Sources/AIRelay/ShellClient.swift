@@ -1,4 +1,5 @@
 import AICore
+import AIWidgetModel
 import Foundation
 
 /// Authenticated calls the shell makes for itself with the main token, including the
@@ -108,6 +109,66 @@ public nonisolated struct ShellClient: Sendable {
     return .approved
   }
 
+  /// `GET /v1/apps/:appId/runtime`: the current version an app's window shows. A deleted app
+  /// answers 404 (``ShellClientError/http(status:code:message:)``).
+  public func appRuntime(appId: String) async throws -> UserAppRuntime {
+    guard UserAppOrigin.isValidAppId(appId) else {
+      throw ShellClientError.invalidArgument("Not an app id.")
+    }
+    let response = try await send("GET", "/v1/apps/\(appId)/runtime")
+    return try UserAppRuntime.decode(response.data, appId: appId)
+  }
+
+  /// `POST /v1/apps/:appId/diagnostics { entries }`: errors an app's page reported.
+  public func postAppDiagnostics(appId: String, entries: [UserAppDiagnostic]) async throws {
+    guard UserAppOrigin.isValidAppId(appId), !entries.isEmpty else {
+      throw ShellClientError.invalidArgument("Diagnostics need an app id and entries.")
+    }
+    _ = try await send(
+      "POST", "/v1/apps/\(appId)/diagnostics",
+      body: try JSONEncoder().encode(["entries": entries]), contentType: "application/json")
+  }
+
+  /// `GET /v1/widgets/snapshots`: the widget catalog and every snapshot, checked against the
+  /// contract while decoding.
+  public func widgetSync() async throws -> WidgetSync {
+    try JSONDecoder().decode(
+      WidgetSync.self, from: try await send("GET", "/v1/widgets/snapshots").data)
+  }
+
+  /// `POST /v1/widgets/instances`: the widgets the system shows, which the service renders.
+  public func postWidgetInstances(_ instances: [WidgetInstance]) async throws {
+    let body = try JSONEncoder().encode(WidgetInstancesRequest(instances: instances))
+    _ = try await send("POST", "/v1/widgets/instances", body: body, contentType: "application/json")
+  }
+
+  /// `GET /v1/automation-notices`: the automation notices nobody acknowledged yet, oldest first,
+  /// checked against the contract while decoding.
+  public func automationNotices() async throws -> [AutomationNotice] {
+    try JSONDecoder().decode(
+      AutomationNoticesResponse.self, from: try await send("GET", "/v1/automation-notices").data
+    ).notices
+  }
+
+  /// `POST /v1/automation-notices/ack { ids }`: notices the shell is done with, shown or not. The
+  /// service ignores ids it no longer has.
+  public func acknowledgeAutomationNotices(ids: [String]) async throws {
+    guard (1...AutomationNotice.maxPending).contains(ids.count) else {
+      throw ShellClientError.invalidArgument("Acknowledge takes 1 to 50 notice ids.")
+    }
+    let body = try JSONEncoder().encode(["ids": ids])
+    _ = try await send(
+      "POST", "/v1/automation-notices/ack", body: body, contentType: "application/json")
+  }
+
+  /// `POST /v1/system-activity { idleSeconds }`: how long the Mac has been idle, answered 204.
+  /// Bounded, since a report that is not answered soon is stale and the next one replaces it.
+  public func postSystemActivity(_ report: SystemActivityReport) async throws {
+    _ = try await send(
+      "POST", "/v1/system-activity", body: try JSONEncoder().encode(report),
+      contentType: "application/json", timeout: 10)
+  }
+
   /// `POST /v1/admin/shutdown`: the service answers, then drains and exits. Bounded, since quit
   /// waits on it and falls back to SIGTERM.
   public func shutdown() async throws {
@@ -204,7 +265,24 @@ extension McpApprovalGate.Service {
   }
 }
 
+extension AutomationNoticeFeed.Service {
+  /// The feed's routes through the shell's own client.
+  public init(client: ShellClient) {
+    self.init(
+      pending: { try await client.automationNotices() },
+      acknowledge: { try await client.acknowledgeAutomationNotices(ids: $0) })
+  }
+}
+
 extension ServiceLink {
+  /// The idle reporter's route through the shell's own client, or nil while the service has no
+  /// endpoint.
+  public func systemActivityService() async -> SystemActivityReporter.Service? {
+    guard case .success(let endpoint) = await endpoint() else { return nil }
+    let client = ShellClient(endpoint: endpoint)
+    return { try await client.postSystemActivity($0) }
+  }
+
   /// The quit guard's count of active runs: an unavailable, failing or slower-than-`timeout`
   /// service counts as idle.
   public func activeRunsForQuitGuard(timeout: Duration = .milliseconds(1500)) async -> Int {

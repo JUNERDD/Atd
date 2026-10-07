@@ -56,8 +56,8 @@ function parsesBetween(before: string, token: string, after: string): boolean {
 
 /**
  * Whether the instructions can hold this chip: its token must read back as the same item. Every
- * service identifier and qualified plugin item name (`<plugin>:<item>`) can, but system subagents
- * (`service.worker`) are named outside that alphabet and cannot be referenced by a run anyway.
+ * service identifier and qualified plugin item name (`<plugin>:<item>`) can; a name outside that
+ * alphabet could not be referenced by a run anyway.
  */
 export function isInstructionChip(chip: Chip): boolean {
   const reference = referenceOf(chip);

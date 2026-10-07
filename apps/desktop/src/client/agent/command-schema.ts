@@ -1,4 +1,5 @@
 import { Type, type Static } from 'typebox';
+import { CommandPlacementSchema } from '@atd/agent-contracts';
 import { ModelThinkingLevelSchema } from '../providers/schema';
 
 export const Identifier = Type.String({
@@ -119,6 +120,8 @@ export const CommandSchema = Type.Object(
       },
       { additionalProperties: false },
     ),
+    /** Where the command is offered beyond the command list (`offeredAt` in `@atd/agent-contracts`). */
+    placement: CommandPlacementSchema,
     parameters: Type.Array(ParameterSchema, { maxItems: 20 }),
     model: ModelPolicySchema,
     tools: Type.Array(ToolIdSchema, { uniqueItems: true }),

@@ -1,0 +1,18 @@
+{
+  "extends": "@atd/typescript-config/react.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "allowJs": true,
+    "checkJs": true,
+    "allowImportingTsExtensions": true
+  },
+  "include": [
+    "src",
+    "runtime",
+    "builder",
+    "template/web/src",
+    "template/server",
+    "template/shared",
+    "types"
+  ]
+}

@@ -1,0 +1,56 @@
+/* The keys and the display: stacked when compact, then one row under the heading, the display no
+   wider than a small window (but wide enough for a capture of the panel to read as real UI), so the
+   plate stays a single glance. */
+.summon__stage {
+  display: grid;
+  gap: 40px;
+}
+
+.summon__controls {
+  display: grid;
+  align-content: start;
+  justify-items: start;
+  gap: 16px;
+}
+
+.summon__caps {
+  display: flex;
+  gap: 8px;
+}
+
+/* The Try it key with the hint under it, so the column stays as wide as the keycaps. */
+.summon__actions {
+  display: grid;
+  justify-items: start;
+  gap: 12px;
+  margin-block-start: 8px;
+}
+
+/* The hint names a keyboard chord, which touch screens have no use for. */
+@media (pointer: coarse) {
+  .summon__hint {
+    display: none;
+  }
+}
+
+.summon__try {
+  padding-inline: 20px;
+  font-weight: 600;
+}
+
+/* With a fine pointer, the key matches the keycaps' height; touch keeps the kit's 44 pt target. */
+@media (pointer: fine) {
+  .summon__try {
+    --_btn-h: 36px;
+    padding-inline: 16px;
+    font-size: var(--fs-small);
+  }
+}
+
+@media (width >= 700px) {
+  .summon__stage {
+    grid-template-columns: minmax(180px, 0.65fr) minmax(0, 2fr);
+    align-items: center;
+    column-gap: 48px;
+  }
+}

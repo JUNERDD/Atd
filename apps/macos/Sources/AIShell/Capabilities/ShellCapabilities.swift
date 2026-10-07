@@ -116,7 +116,11 @@ struct CapabilityFailure: LocalizedError {
 /// Open and save panels. While one is open the panel floats no higher than normal windows
 /// (so the system panel is never hidden behind it) and summons are ignored.
 final class SystemPanels {
-  private(set) var isOpen = false
+  private(set) var isOpen = false {
+    didSet { if isOpen != oldValue { onChange?(isOpen) } }
+  }
+  /// Told when a panel opens and when it closes; the mini panel leaves the screen meanwhile.
+  var onChange: ((_ open: Bool) -> Void)?
   private let lowerPanel: () -> NSWindow.Level
   private let restorePanel: (NSWindow.Level) -> Void
 
@@ -137,6 +141,18 @@ final class SystemPanels {
     panel.allowedContentTypes = AttachmentRules.extensions.compactMap {
       UTType(filenameExtension: $0)
     }
+    return await run(panel) ? panel.urls : nil
+  }
+
+  /// Files of `types` (any file when empty) for a user app (`atdApp` `files.pick`); nil when
+  /// cancelled or another system panel is open.
+  func chooseFiles(types: [UTType], multiple: Bool, message: String) async -> [URL]? {
+    let panel = NSOpenPanel()
+    panel.message = message
+    panel.canChooseFiles = true
+    panel.canChooseDirectories = false
+    panel.allowsMultipleSelection = multiple
+    if !types.isEmpty { panel.allowedContentTypes = types }
     return await run(panel) ? panel.urls : nil
   }
 

@@ -43,8 +43,8 @@ export interface ChildToolHost {
   taskId: string;
   parentRunId: string;
   executionId: string;
-  /** The child's runtime agent name, which may make its approvals stricter; null when unknown. */
-  agent: string | null;
+  /** The child's runtime agent name, which may make its approvals stricter. */
+  agent: string;
   cwd: string;
   dataDir: string;
   allowedTools: string[];
