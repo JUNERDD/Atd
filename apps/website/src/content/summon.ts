@@ -1,3 +1,4 @@
+import { mediaUrl } from './media';
 import type { Localized } from '../i18n/lang';
 
 export interface SummonPanel {
@@ -8,6 +9,6 @@ export interface SummonPanel {
 
 /** Unsent drafts captured in the native app at its 560 × 720 pt default size. */
 export const summonPanels = {
-  en: { src: '/summon/panel-en.png', width: 560, height: 720 },
-  zh: { src: '/summon/panel-zh.png', width: 560, height: 720 },
+  en: { src: mediaUrl('/summon/panel-en.png'), width: 560, height: 720 },
+  zh: { src: mediaUrl('/summon/panel-zh.png'), width: 560, height: 720 },
 } satisfies Localized<SummonPanel>;

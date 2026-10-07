@@ -34,6 +34,7 @@ allowBuilds:
   '@google/genai': false
   esbuild: true
   protobufjs: false
+  workerd: true
 
 minimumReleaseAgeExclude:
   - '@earendil-works/chord@1.0.0'

@@ -1,3 +1,4 @@
+import { mediaUrl } from '../../content/media';
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
 import type { SummonPanel } from '../../content/summon';
 import './display.css';
@@ -31,7 +32,7 @@ export function SummonDisplay({ ref, open, shot, unavailable }: SummonDisplayPro
       <div className="summon__screen display" data-reveal="power" data-reveal-delay="100">
         <img
           className="summon__wallpaper"
-          src="/summon/background.jpg"
+          src={mediaUrl('/summon/background.jpg')}
           width={1200}
           height={1000}
           alt=""
