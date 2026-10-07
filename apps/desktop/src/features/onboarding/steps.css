@@ -53,3 +53,24 @@
 .guide-row-icon[data-done] {
   color: var(--ata-status-progress);
 }
+
+/*
+ * The features step's cards (`step-features.tsx`): one settings card per feature, 8px apart, on
+ * rows of `1fr`, so every card is as tall as the tallest and a description that wraps in one
+ * language or width never leaves them uneven. Each card's row keeps to its top, so the icons and
+ * names line up from card to card and a shorter card's spare height falls below its text.
+ */
+.guide-features {
+  display: grid;
+  min-width: 0;
+  grid-auto-rows: 1fr;
+  gap: 8px;
+}
+/* Each item lends its row's height to its card. */
+.guide-features > li {
+  display: flex;
+  min-width: 0;
+}
+.guide-features > li > .settings-card {
+  flex: 1 1 auto;
+}
