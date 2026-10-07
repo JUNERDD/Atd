@@ -2,8 +2,8 @@ import { useTranslation } from 'react-i18next';
 import { ChevronDown, ChevronUp, Pencil, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@atd/ui/components/button';
 import type { Parameter } from '../../client/agent/command-schema';
-import { FieldHint } from '../../components/field-hint';
 import { IconButton } from '../../components/icon-button';
+import { SettingsGroup } from '../settings/settings-group';
 import { parameterTypeTag } from './command-variables';
 import { FieldError } from './field-error';
 import { errorId } from './use-command-problems';
@@ -32,23 +32,17 @@ export function ParameterList({
     onChange(next);
   }
   return (
-    <section
-      className="settings-field"
-      aria-labelledby="command-parameters-title"
-      aria-describedby={error ? errorId('parameters') : undefined}
-    >
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1.5">
-          <h3 id="command-parameters-title" className="settings-section-title">
-            {t('editor.parameters')}
-          </h3>
-          <FieldHint text={t('editor.parametersHint')} />
-        </div>
+    <SettingsGroup
+      id="command-parameters"
+      title={t('editor.parameters')}
+      description={t('editor.parametersHint')}
+      action={
         <Button variant="outline" disabled={parameters.length >= 20} onClick={() => onOpen(null)}>
           <Plus />
           {t('parameters.add')}
         </Button>
-      </div>
+      }
+    >
       {error && <FieldError id={errorId('parameters')}>{error}</FieldError>}
       <ul className="parameter-items">
         {parameters.map((item, index) => {
@@ -104,6 +98,6 @@ export function ParameterList({
           );
         })}
       </ul>
-    </section>
+    </SettingsGroup>
   );
 }

@@ -179,8 +179,13 @@
     "opened": "Opened a new AI session in the task panel.",
     "enableSkill": "Enable {{name}} in Extensions → Skills before creating with AI."
   },
+  "start": {
+    "title": "Input and launch",
+    "description": "What it reads when it starts, the shortcut that runs it, and where else it’s offered."
+  },
   "run": {
     "title": "Run settings",
+    "description": "The model, memory and tools each run may use.",
     "model": "Model",
     "useAppDefault": "Use app default",
     "useFixedModel": "Use a fixed model",
