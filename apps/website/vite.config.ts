@@ -1,5 +1,6 @@
 import react from '@vitejs/plugin-react';
-import { defineConfig, type Plugin } from 'vite';
+import { defineConfig, loadEnv, type Plugin } from 'vite';
+import { normalizeAssetBase, websiteMediaAssets } from './media-assets.ts';
 import { renderHead } from './src/head.ts';
 
 /**
@@ -19,8 +20,12 @@ function devHead(): Plugin {
  * A static site: `vite build` makes the client bundle and the template, the SSR build and
  * `scripts/prerender.ts` then write one prerendered page per language into `dist`.
  */
-export default defineConfig({
-  plugins: [react(), devHead()],
+export default defineConfig(({ mode }) => ({
+  plugins: [
+    react(),
+    devHead(),
+    websiteMediaAssets(normalizeAssetBase(loadEnv(mode, process.cwd()).VITE_ASSET_BASE_URL)),
+  ],
   server: { host: '127.0.0.1', port: 5180, strictPort: true },
   preview: { host: '127.0.0.1', port: 4180, strictPort: true },
-});
+}));

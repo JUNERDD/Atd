@@ -1,0 +1,43 @@
+{
+  "$schema": "../../apps/website/node_modules/wrangler/config-schema.json",
+  "name": "atd-r2-budget-guard",
+  "main": "alarm.mjs",
+  "account_id": "YOUR_CLOUDFLARE_ACCOUNT_ID",
+  "compatibility_date": "2026-10-07",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": false,
+  "preview_urls": false,
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1,
+  },
+  "secrets": {
+    "required": ["CF_API_TOKEN"],
+  },
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "GUARD_ALARM",
+        "class_name": "BudgetAlarm",
+      },
+    ],
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["BudgetAlarm"],
+    },
+  ],
+  "vars": {
+    "CF_ACCOUNT_ID": "YOUR_CLOUDFLARE_ACCOUNT_ID",
+    "TARGET_BUCKET": "atd-assets",
+    "TARGET_DOMAIN": "assets.atd.best",
+    "CLASS_A_LIMIT": 950000,
+    "CLASS_B_LIMIT": 9500000,
+    "STORAGE_BYTES_LIMIT": 9500000000,
+    "MODE": "enforce",
+  },
+  "triggers": {
+    "crons": ["* * * * *"],
+  },
+}

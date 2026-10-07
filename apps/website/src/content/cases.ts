@@ -1,3 +1,4 @@
+import { mediaUrl } from './media';
 import type { Localized } from '../i18n/lang';
 
 interface CaseImage {
@@ -24,7 +25,7 @@ export const cases = [
       zh: '工具栏就在选区旁，提问、翻译、总结或解释，顺手完成。',
     },
     image: {
-      src: '/cases/ui/selection-toolbar.png',
+      src: mediaUrl('/cases/ui/selection-toolbar.png'),
       alt: {
         en: 'Atd selection toolbar above highlighted text, with Ask Atd, Translate, Summarize and Explain actions.',
         zh: '文字选区上方的 Atd 工具栏，包含提问、翻译、总结和解释操作。',
@@ -40,7 +41,7 @@ export const cases = [
       zh: '在屏幕边缘展开迷你面板，新建任务、截图，或运行常用命令。',
     },
     image: {
-      src: '/cases/ui/mini-panel.png',
+      src: mediaUrl('/cases/ui/mini-panel.png'),
       alt: {
         en: 'Expanded Mini Panel at the right edge of the desktop, with its saved-command menu open.',
         zh: '桌面右侧展开的迷你面板，以及打开的常用命令菜单。',
@@ -56,7 +57,7 @@ export const cases = [
       zh: '框选画面，用箭头、文字、序号和马赛克做好标注，再把截图带进任务。',
     },
     image: {
-      src: '/cases/ui/screenshot.png',
+      src: mediaUrl('/cases/ui/screenshot.png'),
       alt: {
         en: 'Screenshot selection with resize handles, numbered annotations, arrows and mosaic, plus the capture toolbar and color controls.',
         zh: '截图选区内的箭头、序号与马赛克标注，下方显示截图工具栏和颜色、线宽控制。',
@@ -72,7 +73,7 @@ export const cases = [
       zh: '在浮动面板里输入任务、添加上下文，选择模型与权限，随时开始。',
     },
     image: {
-      src: '/cases/ui/main-panel.png',
+      src: mediaUrl('/cases/ui/main-panel.png'),
       alt: {
         en: 'Atd new-task panel with its header, history and settings actions, composer, permissions and model selector.',
         zh: 'Atd 新任务主面板，包含顶部历史和设置入口、输入框、权限与模型选择。',
@@ -88,7 +89,7 @@ export const cases = [
       zh: '查看回答与工具执行过程，在同一个对话中补充要求、继续追问。',
     },
     image: {
-      src: '/cases/ui/chat.png',
+      src: mediaUrl('/cases/ui/chat.png'),
       alt: {
         en: 'A weekly recap conversation showing a follow-up request, tool activity, response actions and the composer.',
         zh: '周报对话中的追问、工具执行状态、回答操作和底部输入框。',
@@ -104,7 +105,7 @@ export const cases = [
       zh: '接入模型，管理权限、命令、自动化、记忆与扩展，让 Atd 配合你的工作方式。',
     },
     image: {
-      src: '/cases/ui/settings.png',
+      src: mediaUrl('/cases/ui/settings.png'),
       alt: {
         en: 'Atd settings with the navigation sidebar and model providers, including ChatGPT, Anthropic and LM Studio.',
         zh: 'Atd 设置窗口，左侧为功能导航，右侧为 ChatGPT、Anthropic 和 LM Studio 模型配置。',
@@ -120,7 +121,7 @@ export const cases = [
       zh: '让 Atd 帮你创建小应用，从「我的应用」打开使用，再通过对话继续完善。',
     },
     image: {
-      src: '/cases/ui/apps.png',
+      src: mediaUrl('/cases/ui/apps.png'),
       alt: {
         en: 'My apps in Atd alongside a Notes app, showing the app launcher and a complete standalone application window.',
         zh: '同一桌面上的「我的应用」列表与 Notes 笔记应用，展示应用入口和独立应用窗口。',
@@ -136,7 +137,7 @@ export const cases = [
       zh: '按计划、文件变化或 Mac 空闲时自动开始，统一查看任务状态与结果。',
     },
     image: {
-      src: '/cases/ui/automations.png',
+      src: mediaUrl('/cases/ui/automations.png'),
       alt: {
         en: 'Automations settings showing scheduled tasks, a folder-triggered workflow, memory consolidation, run status and pause controls.',
         zh: '自动化设置窗口，展示定时任务、文件夹触发、空闲时整理记忆、运行状态和暂停控制。',
