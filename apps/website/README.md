@@ -154,3 +154,53 @@ The Vercel project `atd-agent` (team `junerdds-projects`) is connected to `JUNER
   caching for hashed assets, and security headers.
 - The project variable `ENABLE_EXPERIMENTAL_COREPACK=1` makes Vercel use the repository's pinned pnpm
   (`packageManager` in the root `package.json`); the project runs Node.js 24.
+
+### Domain and media delivery
+
+The production origin is `https://atd.best`; `www.atd.best` redirects to the apex through Vercel.
+Cloudflare remains authoritative DNS. Set Vercel build variables `SITE_URL=https://atd.best` and
+`VITE_ASSET_BASE_URL=https://assets.atd.best`. The latter is public configuration, never a credential.
+The dedicated R2 bucket is `atd-assets`, exposed through its custom domain `assets.atd.best`.
+
+Only raster images and videos under `public/cases/` and `public/summon/` enter the media pipeline.
+Their keys are `assets/media/<source-name>-<first-16-SHA256-characters>.<extension>`.
+The client and prerender server share the same generated URLs. Without an asset base, builds serve
+those hashed files locally; development uses the original public files. JavaScript, CSS, fonts,
+brand images, icons and the Open Graph image stay on Vercel. Original media copies are omitted from
+the built site, while the hashed media remain available for upload and local rollback builds.
+
+`dist/asset-manifest.json` records every media key, byte count, full SHA-256, MIME type and
+`public, max-age=31536000, immutable` policy. Authenticate using Wrangler's supported login or
+Cloudflare environment variables; do not store credentials in `VITE_*` or commit local auth files.
+Run these commands from the repository root, uploading and verifying before deploying a CDN build:
+
+```sh
+SITE_URL=https://atd.best VITE_ASSET_BASE_URL=https://assets.atd.best pnpm --filter @atd/website build
+pnpm --filter @atd/website assets:upload --bucket atd-assets --dry-run
+pnpm --filter @atd/website assets:upload --bucket atd-assets
+pnpm --filter @atd/website assets:check --base https://assets.atd.best --origin https://atd.best --full
+```
+
+Uploads validate local bytes and hashes before invoking the pinned Wrangler CLI and never delete
+objects. Delivery checks verify local hashes, remote size, MIME type, CORS, immutable caching and
+byte-preserving video ranges; `--full` also compares every downloaded SHA-256. Configure bucket CORS
+for GET and HEAD from `https://atd.best` (and any explicitly supported preview origins), allowing
+Range and exposing Content-Length, Content-Range, Accept-Ranges and Cache-Control.
+The checked-in `r2-cors.json` allows GET/HEAD from any origin because these are public media;
+this also supports preview deployments. Apply it with
+`pnpm --filter @atd/website exec wrangler r2 bucket cors set atd-assets --file r2-cors.json`.
+The independent [R2 budget guard](../../ops/r2-budget-guard/README.md) can pause this bucket's
+public endpoints when the shared account approaches its allowance.
+
+Rollback: promote the previous known-good Vercel deployment using
+`vercel rollback <previous-production-deployment-url> --scope junerdds-projects`. Keep historical
+R2 keys so previous deployments continue to resolve their media. To restore entirely local delivery,
+remove `VITE_ASSET_BASE_URL` from the relevant Vercel environment and rebuild/redeploy; locally use:
+
+```sh
+SITE_URL=https://atd.best VITE_ASSET_BASE_URL= pnpm --filter @atd/website build
+pnpm --filter @atd/website assets:check
+```
+
+Build/public paths are implemented with Vite's supported plugin API, and uploads reuse
+[Cloudflare Wrangler](https://developers.cloudflare.com/r2/objects/upload-objects/) rather than custom authentication.
