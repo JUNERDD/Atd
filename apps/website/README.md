@@ -80,9 +80,10 @@ background and a 1440 × 900 canvas. The website displays each complete image wi
 
 [Embla](https://www.embla-carousel.com/docs/v8/get-started/react) handles looping, dragging and
 three-second automatic playback. Visitors can select a scene, go backward or forward, pause, resume,
-or open the original image. Hover temporarily pauses playback. Keyboard focus and manual navigation
-stop it until the visitor resumes; it also pauses offscreen and in hidden tabs. Reduced motion starts
-paused and removes the slide animation.
+or open the original image. Holding a scene with a mouse or touch temporarily pauses playback;
+releasing it resumes automatic playback if it was enabled. Hovering leaves playback running.
+Keyboard focus and manual navigation stop it until the visitor resumes; it also pauses offscreen and
+in hidden tabs. Reduced motion starts paused and removes the slide animation.
 The progress bar beside the playback controls follows Embla's timer, freezes while paused and
 restarts with each slide. Its interval label uses the same three-second setting as playback.
 Scene selectors use compact labels that wrap instead of scrolling sideways. Below 480 px, a
