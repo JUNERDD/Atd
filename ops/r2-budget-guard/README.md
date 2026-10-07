@@ -26,23 +26,30 @@ Cloudflare 账户 `f65290facd2e10a39704bca5a51b8f73` 的免费额度由所有桶
 
 唯一运行 Secret 是 `CF_API_TOKEN`，使用专用 Cloudflare 账户令牌，所需权限为目标账户的 **Workers R2 Storage Write、Account Analytics Read、Billing Read**。该控制面权限可能覆盖账户所有桶，代码只对配置中的 Atd 桶写入；账户用量和存储清单需要读取其他桶。不能将 Token 放进 `VITE_*`、源代码、命令参数或日志。Wrangler 的发布认证与这个运行 Secret 是两套独立凭据。
 
+发布和查看日志分别需要 Wrangler 的 `workers_scripts:write`、`workers_tail:read` OAuth 权限；只有旧的 `workers:write` 登录可能可以上传 Secret，却无法读取版本或部署。下列命令使用独立的 `atd-deploy` 登录配置，不切换默认登录，也不给运行 Secret 增加部署权限。已有此配置时跳过创建步骤。
+
 在仓库根目录执行：
 
 ```bash
+# 首次创建部署登录配置，在 Cloudflare 授权页面确认所列权限。
+pnpm --filter @atd/website exec wrangler auth create atd-deploy --scopes account:read user:read workers_scripts:write workers_tail:read
+
 # 本地类型和打包检查，不部署。
 pnpm --filter @atd/website exec wrangler types ../../tmp/atd-r2-guard-types.d.ts --config ../../ops/r2-budget-guard/wrangler.jsonc
 pnpm exec tsc --strict --noEmit --allowJs --checkJs --skipLibCheck --module esnext --target es2024 --moduleResolution bundler --lib ES2024 ops/r2-budget-guard/*.mjs tmp/atd-r2-guard-types.d.ts
 pnpm --filter @atd/website exec wrangler deploy --dry-run --config ../../ops/r2-budget-guard/wrangler.jsonc
 
 # 首次在 Cloudflare 设置运行 Secret，或通过安全交互输入上传。
-pnpm --filter @atd/website exec wrangler secret put CF_API_TOKEN --config ../../ops/r2-budget-guard/wrangler.jsonc
+pnpm --filter @atd/website exec wrangler secret put CF_API_TOKEN --config ../../ops/r2-budget-guard/wrangler.jsonc --profile atd-deploy
 
 # 确认 atd-assets、assets.atd.best 和 Secret 均已准备好，再部署。
-pnpm --filter @atd/website exec wrangler deploy --config ../../ops/r2-budget-guard/wrangler.jsonc
-pnpm --filter @atd/website exec wrangler tail --format json --config ../../ops/r2-budget-guard/wrangler.jsonc
+pnpm --filter @atd/website exec wrangler deploy --config ../../ops/r2-budget-guard/wrangler.jsonc --profile atd-deploy
+pnpm --filter @atd/website exec wrangler tail --format json --config ../../ops/r2-budget-guard/wrangler.jsonc --profile atd-deploy
 ```
 
-首次 Secret 上传若工具询问是否创建 Worker，仅创建 `atd-r2-budget-guard`；配置完成前不要把首次短暂缺少 Secret 的部署当作健康状态。发布后确认首个 `within_limits` 或明确的暂停结果，以及后续分钟闹钟持续运行。控制台的 Cron Trigger 测试可补充启动，正常运行不依赖电脑在线。部署成功不等于检查已通过。
+首次 Secret 上传若工具询问是否创建 Worker，仅创建 `atd-r2-budget-guard`；配置完成前不要把首次短暂缺少 Secret 的部署当作健康状态。发布后确认首个 `within_limits` 或明确的暂停结果，以及后续分钟闹钟持续运行。正常运行不依赖电脑在线。部署成功不等于检查已通过。
+
+新建或修改 Cron 触发器[最多需要 15 分钟传播](https://developers.cloudflare.com/workers/configuration/cron-triggers/)。首次部署可保持日志连接等待自动启动；尚无执行记录时不要据此重复部署或判断守护已健康运行。
 
 ## 资产健康检查与恢复
 
