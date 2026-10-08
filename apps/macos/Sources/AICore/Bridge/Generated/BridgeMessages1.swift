@@ -34,6 +34,7 @@ public struct NativeEmpty: Codable, Equatable, Sendable {
 
 /// A page → Swift call with its typed params.
 public enum NativeCall: Equatable, Sendable {
+  case appStartup(AppStartupParams)
   case windowShow(WindowShowParams)
   case windowHide(WindowHideParams)
   case windowSetPinned(WindowSetPinnedParams)
@@ -77,6 +78,7 @@ public enum NativeCall: Equatable, Sendable {
   /// The contract name.
   public var name: String {
     switch self {
+    case .appStartup: "app.startup"
     case .windowShow: "window.show"
     case .windowHide: "window.hide"
     case .windowSetPinned: "window.setPinned"
@@ -164,6 +166,7 @@ public enum JsMessage: Decodable, Equatable, Sendable {
       let method = try container.string(.method)
       let call: NativeCall
       switch method {
+      case "app.startup": call = try .appStartup(container.value(.params, AppStartupParams.self))
       case "window.show": call = try .windowShow(container.value(.params, WindowShowParams.self))
       case "window.hide": call = try .windowHide(container.value(.params, WindowHideParams.self))
       case "window.setPinned":

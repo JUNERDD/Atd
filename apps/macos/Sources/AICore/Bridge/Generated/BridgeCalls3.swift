@@ -4,6 +4,31 @@
 
 import Foundation
 
+/// Params of the `userApp.clearData` call.
+public struct UserAppClearDataParams: Codable, Equatable, Sendable {
+  public let appId: String
+  public let forget: Bool
+
+  public init(appId: String, forget: Bool) {
+    self.appId = appId
+    self.forget = forget
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    appId = try container.string(.appId, pattern: "^app-[a-z0-9]{10}$")
+    forget = try container.boolean(.forget)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case appId
+    case forget
+  }
+}
+
+/// Result of the `userApp.clearData` call.
+public typealias UserAppClearDataResult = NativeEmpty
+
 /// Params of the `userApp.pin` call.
 public struct UserAppPinParams: Codable, Equatable, Sendable {
   public let appId: String
@@ -231,21 +256,3 @@ public enum CaptureResult: Codable, Equatable, Sendable {
 
 /// Params of the `clipboard.read` call.
 public typealias ClipboardReadParams = NativeEmpty
-
-/// Result of the `clipboard.read` call.
-public struct ClipboardReadResult: Codable, Equatable, Sendable {
-  public let text: String
-
-  public init(text: String) {
-    self.text = text
-  }
-
-  public init(from decoder: any Decoder) throws {
-    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    text = try container.string(.text)
-  }
-
-  private enum CodingKeys: String, CodingKey, CaseIterable {
-    case text
-  }
-}

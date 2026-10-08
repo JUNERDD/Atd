@@ -63,6 +63,11 @@ final class ShellBridge {
       }
     }
     switch call {
+    case .appStartup(let params):
+      guard host === shell.panelHost else {
+        throw BridgeError("Only the task panel can resolve the launch window.")
+      }
+      return try Self.encode(shell.presentLaunch(params.state))
     case .windowShow:
       shell.showPanel()
       return try Self.encode(NativeEmpty())

@@ -11,8 +11,8 @@ import WebKit
 /// ``settle()`` on it stays above other apps' windows (see ``applyLevel(for:)``). The window owns its
 /// renderer web view (loaded at `#onboarding`); closing releases both, and opening again builds
 /// fresh ones.
-/// When it opens is the panel page's decision (`onboarding.open`), or the user's through the
-/// Welcome Guide menu item.
+/// The shell opens it for the panel page's first-run decision (`app.startup`), or the user opens
+/// it through the Welcome Guide menu item.
 final class OnboardingWindowController: NSObject, NSWindowDelegate {
   private var window: NSWindow?
   /// The guide's glass, behind the page; hidden (alpha 0) until the page reports a surface.

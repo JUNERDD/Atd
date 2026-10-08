@@ -4,6 +4,48 @@
 
 import Foundation
 
+/// Params of the `app.startup` call.
+public struct AppStartupParams: Codable, Equatable, Sendable {
+  public let state: State
+
+  public init(state: State) {
+    self.state = state
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    state = try container.value(.state, State.self)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case state
+  }
+
+  public enum State: String, Codable, Equatable, Sendable {
+    case onboarding
+    case ready
+    case unavailable
+  }
+}
+
+/// Result of the `app.startup` call.
+public struct AppStartupResult: Codable, Equatable, Sendable {
+  public let onboardingShown: Bool
+
+  public init(onboardingShown: Bool) {
+    self.onboardingShown = onboardingShown
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    onboardingShown = try container.boolean(.onboardingShown)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case onboardingShown
+  }
+}
+
 /// Params of the `window.show` call.
 public typealias WindowShowParams = NativeEmpty
 
@@ -198,51 +240,5 @@ public struct MiniPanelSetShownResult: Codable, Equatable, Sendable {
 
   private enum CodingKeys: String, CodingKey, CaseIterable {
     case shown
-  }
-}
-
-/// Params of the `miniPanel.setOpenOn` call.
-public struct MiniPanelSetOpenOnParams: Codable, Equatable, Sendable {
-  public let openOn: OpenOn
-
-  public init(openOn: OpenOn) {
-    self.openOn = openOn
-  }
-
-  public init(from decoder: any Decoder) throws {
-    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    openOn = try container.value(.openOn, OpenOn.self)
-  }
-
-  private enum CodingKeys: String, CodingKey, CaseIterable {
-    case openOn
-  }
-
-  public enum OpenOn: String, Codable, Equatable, Sendable {
-    case hover
-    case click
-  }
-}
-
-/// Result of the `miniPanel.setOpenOn` call.
-public struct MiniPanelSetOpenOnResult: Codable, Equatable, Sendable {
-  public let openOn: OpenOn
-
-  public init(openOn: OpenOn) {
-    self.openOn = openOn
-  }
-
-  public init(from decoder: any Decoder) throws {
-    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    openOn = try container.value(.openOn, OpenOn.self)
-  }
-
-  private enum CodingKeys: String, CodingKey, CaseIterable {
-    case openOn
-  }
-
-  public enum OpenOn: String, Codable, Equatable, Sendable {
-    case hover
-    case click
   }
 }

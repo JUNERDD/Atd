@@ -44,6 +44,25 @@ export const DesktopPinSchema = Type.Object(
 );
 
 export const NativeWindowCalls = {
+  /**
+   * The panel reports the first service settings before the shell reveals a launch window.
+   * `onboarding` opens the guide, `ready` reveals a normally launched panel, and `unavailable`
+   * reveals its connection state without consuming the decision if the service recovers.
+   * Only the panel may call this. Repeated resolved states never reopen a launch window.
+   */
+  'app.startup': {
+    params: Type.Object(
+      {
+        state: Type.Union([
+          Type.Literal('onboarding'),
+          Type.Literal('ready'),
+          Type.Literal('unavailable'),
+        ]),
+      },
+      { additionalProperties: false },
+    ),
+    result: Type.Object({ onboardingShown: Type.Boolean() }, { additionalProperties: false }),
+  },
   /** Shows and focuses the panel. */
   'window.show': { params: Empty, result: Empty },
   /** Hides the panel (alpha 0; it stays ordered in). */

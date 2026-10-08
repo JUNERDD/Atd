@@ -59,7 +59,8 @@ export function nativeSettings(
   /** Whether the service's settings loaded; until then the snapshot holds defaults. */
   loaded: () => boolean;
   /** Records that the welcome guide was shown in this data dir (the panel's trigger only). */
-  markOnboardingShown: () => Promise<SettingsSnapshot>;
+  markOnboardingShown: () => Promise<void>;
+  onLoadError: (listener: () => void) => () => void;
   ready: Promise<void>;
 } {
   let shared: SettingsResponse | null = null;
@@ -77,6 +78,7 @@ export function nativeSettings(
     miniPanelOpenOn: null,
   };
   const listeners = new Set<(settings: SettingsSnapshot) => void>();
+  const loadErrorListeners = new Set<() => void>();
   const loginListeners = new Set<Parameters<ProviderBridge['onLogin']>[0]>();
 
   const snapshot = (): SettingsSnapshot => {
@@ -110,8 +112,13 @@ export function nativeSettings(
   providers.attach(connection);
 
   const reload = async () => {
-    shared = await getSettings(connection.options());
-    publish();
+    try {
+      shared = await getSettings(connection.options());
+      publish();
+    } catch (error) {
+      for (const listener of loadErrorListeners) listener();
+      throw error;
+    }
   };
   const write = async (request: PatchSettingsRequest) => {
     shared = await patchSettings(connection.options(), request);
@@ -212,7 +219,11 @@ export function nativeSettings(
     providers,
     shell: () => shell,
     loaded: () => shared !== null,
-    markOnboardingShown: () => write({ onboardingCompleted: true }),
+    markOnboardingShown: async () => void (await write({ onboardingCompleted: true })),
+    onLoadError: (listener) => {
+      loadErrorListeners.add(listener);
+      return () => loadErrorListeners.delete(listener);
+    },
     setShell: (patch) => {
       shell = { ...shell, ...patch };
       return publish();

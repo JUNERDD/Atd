@@ -11,6 +11,7 @@
     "screenshotShortcutId": "captureScreenshot",
     "maxCaptureLength": 100000,
     "calls": [
+      "app.startup",
       "window.show",
       "window.hide",
       "window.setPinned",
@@ -96,6 +97,48 @@
   "$defs": {
     "JsMessage": {
       "anyOf": [
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
+              "const": "app.startup"
+            },
+            "params": {
+              "type": "object",
+              "required": ["state"],
+              "properties": {
+                "state": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "const": "onboarding"
+                    },
+                    {
+                      "type": "string",
+                      "const": "ready"
+                    },
+                    {
+                      "type": "string",
+                      "const": "unavailable"
+                    }
+                  ]
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
         {
           "type": "object",
           "required": ["type", "id", "method", "params"],
@@ -2730,6 +2773,39 @@
           "additionalProperties": false
         }
       ]
+    },
+    "AppStartupParams": {
+      "type": "object",
+      "required": ["state"],
+      "properties": {
+        "state": {
+          "anyOf": [
+            {
+              "type": "string",
+              "const": "onboarding"
+            },
+            {
+              "type": "string",
+              "const": "ready"
+            },
+            {
+              "type": "string",
+              "const": "unavailable"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "AppStartupResult": {
+      "type": "object",
+      "required": ["onboardingShown"],
+      "properties": {
+        "onboardingShown": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
     },
     "WindowShowParams": {
       "type": "object",
