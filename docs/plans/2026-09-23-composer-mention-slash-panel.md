@@ -289,7 +289,7 @@ flowchart LR
   - `docs/plans/2026-09-22-extensions-settings-configuration.md:28,76,100`：按运行选择、接受时冻结、MCP 走暂存。
   - `docs/plans/2026-09-22-extensions-tab-add-actions.md:15,26`：子代理与角色的区别。
   - `docs/design-source.md:139,240,243`：弹层材质、完成列表宽度 320–460 px。
-- Figma 项目文件 `D9YK1tEeBTEBgstcepesW5`：
+- Figma 项目文件 `project`：
   - `72:150` `App / Composer`。
   - `476:2600` `App / Popover surface · Rhea`。
   - `481:2698` `App / Variable row · Rhea`（14 px 圆角，8/6 px 内边距）。
@@ -530,7 +530,7 @@ flowchart LR
 
 ### 第 3 阶段：设计同步与验收
 
-- [ ] **3.1 Figma 同步（项目文件 `D9YK1tEeBTEBgstcepesW5`，页 `02 · App components` 的 §06）。**
+- [ ] **3.1 Figma 同步（项目文件 `project`，页 `02 · App components` 的 §06）。**
   - 新建 `App / Composer quick panel`：由 `476:2600` 表面、`481:2698` 行、分组标题和页脚提示组合而成。
   - 变体：`@` 根视图、`/` 根视图、模型钻取、空、加载中、不可用、运行中置灰。
   - 文件行变体：最近附加、最近使用、搜索结果（高亮文件名、上级路径、相对时间）、置灰（超过 1 MB、已达上限）、结果不完整、搜索不可用。

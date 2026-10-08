@@ -2,7 +2,7 @@
   "$schema": "../../apps/website/node_modules/wrangler/config-schema.json",
   "name": "atd-r2-budget-guard",
   "main": "alarm.mjs",
-  "account_id": "f65290facd2e10a39704bca5a51b8f73",
+  "account_id": "YOUR_CLOUDFLARE_ACCOUNT_ID",
   "compatibility_date": "2026-10-07",
   "compatibility_flags": ["nodejs_compat"],
   "workers_dev": false,
@@ -29,7 +29,7 @@
     },
   ],
   "vars": {
-    "CF_ACCOUNT_ID": "f65290facd2e10a39704bca5a51b8f73",
+    "CF_ACCOUNT_ID": "YOUR_CLOUDFLARE_ACCOUNT_ID",
     "TARGET_BUCKET": "atd-assets",
     "TARGET_DOMAIN": "assets.atd.best",
     "CLASS_A_LIMIT": 950000,

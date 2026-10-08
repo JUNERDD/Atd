@@ -47,7 +47,7 @@ Assumptions:
 - `apps/agent-service/src/skills/loader.ts` — a run loads only frozen `additionalSkillPaths`.
 - `packages/agent-contracts/src/skills.ts` — `SkillSourceKindSchema` is `local | npm | git | agents`.
 - `apps/agent-service/src/service-fs.ts` — `confined()` blocks paths outside the service data directory. `~/.atd` is outside it, so create-skill and create-subagent cannot write there until that product home is an allowed root.
-- Pi `packages/coding-agent/README.md` — “No sub-agents.” Core leaves this to an extension. Local checkout: `/Users/zen/Documents/Project Source/pi`, tag `v0.85.1`.
+- Pi `packages/coding-agent/README.md` — “No sub-agents.” Core leaves this to an extension. Local checkout: `${referenceRoot}/pi`, tag `v0.85.1`.
 - Pi `packages/coding-agent/src/config.ts` — `getAgentDir()` returns `~/.pi/agent` because `.pi` is a shared config root and `agent` is only the coding-agent slice inside it. atd’s product home is `~/.atd` itself, with `skills/` and `agents/` directly underneath.
 - Pi `packages/coding-agent/examples/extensions/subagent/README.md` and `agents.ts` — an agent file has `name`, `description`, optional `tools` and `model`, and the markdown body is the system prompt. Pi stores those files in `~/.pi/agent/agents/*.md`. atd stores them in `~/.atd/agents/*.md`.
 - `apps/desktop/electron-builder.yml` — packaged `productName` is `AI` and `appId` is `com.junerdd.ai`. The service data directory stays the existing per-OS dataDir. The product entity for skills and subagents is `~/.atd`, not that dataDir and not `~/Library/Application Support/AI`.
@@ -87,7 +87,7 @@ flowchart LR
 - [ ] Add the skill install form and desktop `skillsInstall` IPC for `local`, `npm`, and `git`, including the optional name. Refresh the list after success.
 - [ ] Add `settings:start-extension-session` with kind `skill`, `subagent`, or `mcp`. The panel opens a new task, sets the composer to `/skill:create-skill`, `/skill:create-subagent`, or `/skill:create-mcp`, and sets that task’s skill policy to the matching atd skill so submit can freeze it. Show the panel the same way the command session does. If that skill is harness-disabled, tell the user to enable it and do not start a run that will fail expansion.
 - [ ] Add `en` and `zh-CN` copy for the menu, the skill form, the `atd` source label, and the session toast. Keep English strings that existing tests assert.
-- [ ] On implementation, update the Extensions frame in Figma file `D9YK1tEeBTEBgstcepesW5` to the trailing add menu and both methods. Locate the current frame in the file before editing.
+- [ ] On implementation, update the Extensions frame in Figma file `project` to the trailing add menu and both methods. Locate the current frame in the file before editing.
 - [ ] Keep each edited `.ts` and `.tsx` file at or under 350 lines. New modules own the menu, the skill install form, app-skill discovery, and the three skill directories.
 
 ## Grill-Me Outcome

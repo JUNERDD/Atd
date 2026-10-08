@@ -69,7 +69,7 @@ struct ContentSecurityPolicyTests {
     "Proxies Vite's module prefixes and ordinary paths",
     arguments: [
       "/", "/src/main.tsx", "/@vite/client", "/@vite/env", "/@react-refresh",
-      "/@fs/Users/zen/node_modules/.pnpm/vite@8.3.1_@types+node@24/node_modules/vite/env.mjs",
+      "/@fs/Users/dev/node_modules/.pnpm/vite@8.3.1_@types+node@24/node_modules/vite/env.mjs",
       "/@id/__x00__virtual", "/node_modules/.vite/deps/react.js",
     ])
   func devPaths(raw: String) throws {

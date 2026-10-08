@@ -27,41 +27,41 @@ Constraints: 350-line limit per maintained file, pnpm workspace with lockfile di
 
 Monocode reference (read-only):
 
-- `/Users/zen/Documents/Project Source/monocode/src/surfaces/SessionPane.tsx:335-360` transcript host with jump overlay.
-- `/Users/zen/Documents/Project Source/monocode/src/surfaces/AgentTranscript.tsx:113-130,301-430` turn shell, live gating, footer placement.
-- `/Users/zen/Documents/Project Source/monocode/src/surfaces/AgentTranscript.tsx:847-879,945-1090` phase grouping with live pinning and expand behavior.
-- `/Users/zen/Documents/Project Source/monocode/src/surfaces/AgentTranscript.tsx:1123-1171,1177-1366` thinking plus note plus tool row variants.
-- `/Users/zen/Documents/Project Source/monocode/src/surfaces/AgentTranscript.tsx:433-571,1390-1472` live footer, elapsed formatting, copy and save actions.
-- `/Users/zen/Documents/Project Source/monocode/src/surfaces/AgentMarkdown.tsx:1-80,346-380` Streamdown shell with code plus mermaid plus harden configuration.
-- `/Users/zen/Documents/Project Source/monocode/src/surfaces/mermaidPlugin.ts:1-53` lazy mermaid factory with strict config.
-- `/Users/zen/Documents/Project Source/monocode/src/surfaces/transcriptActivity.ts:182-199,205-264,279-377,471-511` turn split, fold timing, phase build, title verbs.
-- `/Users/zen/Documents/Project Source/monocode/src/lib/session.ts:27-37,106-133,163-236` block roles, tool preview, harness titles.
-- `/Users/zen/Documents/Project Source/monocode/src/index.css:123-146,296-620,653-677,796-937` turn containment, markdown skin, shimmer, phase rail and motion.
-- `/Users/zen/Documents/Project Source/monocode/package.json:33-52` hugeicons, streamdown plugins, harden, react 19.
+- `${referenceRoot}/monocode/src/surfaces/SessionPane.tsx:335-360` transcript host with jump overlay.
+- `${referenceRoot}/monocode/src/surfaces/AgentTranscript.tsx:113-130,301-430` turn shell, live gating, footer placement.
+- `${referenceRoot}/monocode/src/surfaces/AgentTranscript.tsx:847-879,945-1090` phase grouping with live pinning and expand behavior.
+- `${referenceRoot}/monocode/src/surfaces/AgentTranscript.tsx:1123-1171,1177-1366` thinking plus note plus tool row variants.
+- `${referenceRoot}/monocode/src/surfaces/AgentTranscript.tsx:433-571,1390-1472` live footer, elapsed formatting, copy and save actions.
+- `${referenceRoot}/monocode/src/surfaces/AgentMarkdown.tsx:1-80,346-380` Streamdown shell with code plus mermaid plus harden configuration.
+- `${referenceRoot}/monocode/src/surfaces/mermaidPlugin.ts:1-53` lazy mermaid factory with strict config.
+- `${referenceRoot}/monocode/src/surfaces/transcriptActivity.ts:182-199,205-264,279-377,471-511` turn split, fold timing, phase build, title verbs.
+- `${referenceRoot}/monocode/src/lib/session.ts:27-37,106-133,163-236` block roles, tool preview, harness titles.
+- `${referenceRoot}/monocode/src/index.css:123-146,296-620,653-677,796-937` turn containment, markdown skin, shimmer, phase rail and motion.
+- `${referenceRoot}/monocode/package.json:33-52` hugeicons, streamdown plugins, harden, react 19.
 
 Current Pi architecture (preserve):
 
-- `/Users/zen/Documents/ZProject/ai/apps/desktop/electron/agent/worker-session.ts:179-222` live partial projection source.
-- `/Users/zen/Documents/ZProject/ai/apps/desktop/electron/agent/transcript.ts:113-195` projection plus diff.
-- `/Users/zen/Documents/ZProject/ai/apps/desktop/electron/agent/transcript-project.ts:82-222` Pi event to block mapping.
-- `/Users/zen/Documents/ZProject/ai/apps/desktop/electron/agent/transcript-publish.ts:7-54` 40ms patch publisher.
-- `/Users/zen/Documents/ZProject/ai/apps/desktop/electron/agent/transcript-schema.ts:17-189` block ids, statuses, patch apply.
-- `/Users/zen/Documents/ZProject/ai/apps/desktop/electron/agent/bridge.ts:46-76,189-228` detail plus transcript event contract.
-- `/Users/zen/Documents/ZProject/ai/apps/desktop/src/features/agent/use-agent.ts:43-103` seed plus patch apply in renderer.
-- `/Users/zen/Documents/ZProject/ai/apps/desktop/src/features/agent/transcript/turns.ts:6-163` current fold plus live plus anchors.
-- `/Users/zen/Documents/ZProject/ai/apps/desktop/src/features/agent/transcript/transcript.tsx:27-100` scroll plus jump composition.
-- `/Users/zen/Documents/ZProject/ai/apps/desktop/src/features/agent/transcript/activity-group.tsx:11-65` count-only titles, live open.
-- `/Users/zen/Documents/ZProject/ai/apps/desktop/src/features/agent/transcript/thinking-block.tsx:10-52` title plus summary fallback.
-- `/Users/zen/Documents/ZProject/ai/apps/desktop/src/features/agent/transcript/tool-block.tsx:13-82` status icon plus collapsible body.
-- `/Users/zen/Documents/ZProject/ai/apps/desktop/src/features/agent/transcript/markdown.tsx:11-76` bare Streamdown with custom link plus image plus scroll wrappers.
-- `/Users/zen/Documents/ZProject/ai/apps/desktop/src/features/agent/transcript/status-bar.tsx:32-110` in-flow working plus terminal cards.
-- `/Users/zen/Documents/ZProject/ai/apps/desktop/src/features/agent/transcript/use-transcript-scroll.ts:8-77` pin plus jump plus viewport var.
-- `/Users/zen/Documents/ZProject/ai/apps/desktop/src/features/agent/agent.css:174-211,232-413` conversation, jump, activity, markdown, status styles.
-- `/Users/zen/Documents/ZProject/ai/packages/ui/src/styles.css:14-99` panel tokens plus Rhea theme.
-- `/Users/zen/Documents/ZProject/ai/apps/desktop/src/i18n/locales/en/tasks.json:20-32,49-56,107-115` working, activity, thinking, permission strings.
-- `/Users/zen/Documents/ZProject/ai/apps/desktop/src/i18n/locales/zh-CN/tasks.json:23-30,113-115` Chinese mirror keys.
-- `/Users/zen/Documents/ZProject/ai/apps/desktop/package.json:22-66` desktop dependencies and scripts.
-- `/Users/zen/Documents/ZProject/ai/packages/ui/package.json:17-25` shared UI dependencies.
+- `apps/desktop/electron/agent/worker-session.ts:179-222` live partial projection source.
+- `apps/desktop/electron/agent/transcript.ts:113-195` projection plus diff.
+- `apps/desktop/electron/agent/transcript-project.ts:82-222` Pi event to block mapping.
+- `apps/desktop/electron/agent/transcript-publish.ts:7-54` 40ms patch publisher.
+- `apps/desktop/electron/agent/transcript-schema.ts:17-189` block ids, statuses, patch apply.
+- `apps/desktop/electron/agent/bridge.ts:46-76,189-228` detail plus transcript event contract.
+- `apps/desktop/src/features/agent/use-agent.ts:43-103` seed plus patch apply in renderer.
+- `apps/desktop/src/features/agent/transcript/turns.ts:6-163` current fold plus live plus anchors.
+- `apps/desktop/src/features/agent/transcript/transcript.tsx:27-100` scroll plus jump composition.
+- `apps/desktop/src/features/agent/transcript/activity-group.tsx:11-65` count-only titles, live open.
+- `apps/desktop/src/features/agent/transcript/thinking-block.tsx:10-52` title plus summary fallback.
+- `apps/desktop/src/features/agent/transcript/tool-block.tsx:13-82` status icon plus collapsible body.
+- `apps/desktop/src/features/agent/transcript/markdown.tsx:11-76` bare Streamdown with custom link plus image plus scroll wrappers.
+- `apps/desktop/src/features/agent/transcript/status-bar.tsx:32-110` in-flow working plus terminal cards.
+- `apps/desktop/src/features/agent/transcript/use-transcript-scroll.ts:8-77` pin plus jump plus viewport var.
+- `apps/desktop/src/features/agent/agent.css:174-211,232-413` conversation, jump, activity, markdown, status styles.
+- `packages/ui/src/styles.css:14-99` panel tokens plus Rhea theme.
+- `apps/desktop/src/i18n/locales/en/tasks.json:20-32,49-56,107-115` working, activity, thinking, permission strings.
+- `apps/desktop/src/i18n/locales/zh-CN/tasks.json:23-30,113-115` Chinese mirror keys.
+- `apps/desktop/package.json:22-66` desktop dependencies and scripts.
+- `packages/ui/package.json:17-25` shared UI dependencies.
 
 ## Dependency Equivalence
 
@@ -92,8 +92,8 @@ Context7 library ID `/vercel/streamdown` with high reputation was used for Strea
 
 ## Grill-Me Outcome
 
-- Transcript: `/Users/zen/Documents/ZProject/ai/tmp/grill-me/session-transcript-1to1-20260918-20260918-171403.md`
-- Outcome: `/Users/zen/Documents/ZProject/ai/tmp/grill-me/outcome-transcript-1to1-20260918-20260918-171403.md`
+- Transcript: `tmp/grill-me/session-transcript-1to1-20260918-20260918-171403.md`
+- Outcome: `tmp/grill-me/outcome-transcript-1to1-20260918-20260918-171403.md`
 - Summary: Q1 asked pixel versus information scope and received an evaluation-first reply; Q2 presented blocked verbatim migration evidence and received a visual-equivalence decision on Pi architecture with equivalence-first dependency policy. Execution authorized with no Figma updates.
 
 ## Build From Plan

@@ -144,7 +144,7 @@ everything is simply shown.
 
 ## Deployment
 
-The Vercel project `atd-agent` (team `junerdds-projects`) is connected to `JUNERDD/ai` with
+The Vercel project `atd-agent` is connected to `JUNERDD/ai` with
 `apps/website` as its Root Directory:
 
 - A push to `main` deploys production; other branches and pull requests get preview deployments.
@@ -193,7 +193,8 @@ The independent [R2 budget guard](../../ops/r2-budget-guard/README.md) can pause
 public endpoints when the shared account approaches its allowance.
 
 Rollback: promote the previous known-good Vercel deployment using
-`vercel rollback <previous-production-deployment-url> --scope junerdds-projects`. Keep historical
+`vercel rollback <previous-production-deployment-url> --scope "$VERCEL_SCOPE"`, setting
+`VERCEL_SCOPE` to the deployment team's slug from your private project context. Keep historical
 R2 keys so previous deployments continue to resolve their media. To restore entirely local delivery,
 remove `VITE_ASSET_BASE_URL` from the relevant Vercel environment and rebuild/redeploy; locally use:
 

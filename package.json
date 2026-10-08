@@ -17,7 +17,9 @@
     "check": "pnpm format:check && turbo run lint typecheck test build --filter=!@atd/macos && node scripts/on-macos.mjs pnpm check:macos",
     "check:macos": "pnpm check:swift && pnpm check:rust",
     "check:swift": "turbo run codegen:check format:check lint test build --filter=@atd/macos --concurrency=1",
-    "check:rust": "node scripts/check-rust-file-length.mjs && cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test"
+    "check:rust": "node scripts/check-rust-file-length.mjs && cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test",
+    "design:link": "node scripts/design-link.mjs",
+    "check:secrets": "gitleaks git --staged --redact --verbose --no-banner --ignore-gitleaks-allow --config .gitleaks.toml"
   },
   "devDependencies": {
     "@shadcn/lint": "0.2.0",
