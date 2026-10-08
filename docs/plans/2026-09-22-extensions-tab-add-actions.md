@@ -87,7 +87,7 @@ flowchart LR
 - [ ] Add the skill install form and desktop `skillsInstall` IPC for `local`, `npm`, and `git`, including the optional name. Refresh the list after success.
 - [ ] Add `settings:start-extension-session` with kind `skill`, `subagent`, or `mcp`. The panel opens a new task, sets the composer to `/skill:create-skill`, `/skill:create-subagent`, or `/skill:create-mcp`, and sets that task’s skill policy to the matching atd skill so submit can freeze it. Show the panel the same way the command session does. If that skill is harness-disabled, tell the user to enable it and do not start a run that will fail expansion.
 - [ ] Add `en` and `zh-CN` copy for the menu, the skill form, the `atd` source label, and the session toast. Keep English strings that existing tests assert.
-- [ ] On implementation, update the Extensions frame in Figma file `PROJECT_FILE_KEY` to the trailing add menu and both methods. Locate the current frame in the file before editing.
+- [ ] On implementation, update the Extensions frame in Figma file `project` to the trailing add menu and both methods. Locate the current frame in the file before editing.
 - [ ] Keep each edited `.ts` and `.tsx` file at or under 350 lines. New modules own the menu, the skill install form, app-skill discovery, and the three skill directories.
 
 ## Grill-Me Outcome

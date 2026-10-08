@@ -1,0 +1,8 @@
+{
+  "figma": {
+    "project": "https://www.figma.com/design/PROJECT_FILE_KEY/Atd",
+    "uiKit": "https://www.figma.com/design/UI_KIT_FILE_KEY/UI-kit"
+  },
+  "referenceRoot": "/path/to/reference-checkouts",
+  "vercelScope": "YOUR_VERCEL_TEAM"
+}

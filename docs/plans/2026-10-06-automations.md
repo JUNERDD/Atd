@@ -180,7 +180,7 @@ flowchart LR
 - [x] **T2 自动化子系统**：存储、校验、巡检与补跑、文件夹轮询、联动、调度与监督、通知队列、路由、失效、启动与停止、`automation` 工具。
 - [x] **T3 渲染器**：客户端与数据层、设置页（列表、编辑、运行记录、全局暂停）、任务历史来源标记与分组、`task.open` 页面侧、中英文案。
 - [x] **T4 原生壳**：失效处理、拉取与确认通知、UserNotifications、点击打开任务、String Catalog、桥类型生成。
-- [x] **T5 Figma 同步**：设置导航、列表、编辑页、运行记录、来源标记与各状态。组件区 [32 · Automations](https://www.figma.com/design/PROJECT_FILE_KEY/Atd?node-id=2336-138721)，画面区 [AU · 自动化](https://www.figma.com/design/PROJECT_FILE_KEY/Atd?node-id=2365-119978)（40 个帧，含 320–1280 px 与短高度），映射与已知差异见 [design-source](../design-source.md) 的「2026-10-06 自动化」。
+- [x] **T5 Figma 同步**：设置导航、列表、编辑页、运行记录、来源标记与各状态。组件区 32 · Automations (Figma `project/2336:138721`)，画面区 AU · 自动化 (Figma `project/2365:119978`)（40 个帧，含 320–1280 px 与短高度），映射与已知差异见 [design-source](../design-source.md) 的「2026-10-06 自动化」。
 - [x] **T6 集成验证**：隔离服务的端到端检查、两轮独立审查与修复、类型检查、lint、测试与原生构建。
 
 ## 实施记录

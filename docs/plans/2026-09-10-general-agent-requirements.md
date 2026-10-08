@@ -91,7 +91,7 @@ Approval: 用户已明确授权界面、真实 Agent 与持久化一并落地，
 
 本节是进入实现前采用的架构基线。它覆盖命令定义、输入、触发、执行、结果、维护和后续扩展；交付阶段决定什么时候实现相应功能。Pi/Hermes 的实际适配是否成立仍由 E0 核验，不能把未接入的能力标为已完成。
 
-规划依据包括 [GPT-6 Astra（max）架构评审](tmp/command-system-review-2026-09-10.md)。评审记录的是修订前的缺口；本节给出当前选择的规则，以本计划为后续设计与实现依据。
+规划依据包括 [GPT-6 Astra（max）架构评审](../../tmp/command-system-review-2026-09-10.md)。评审记录的是修订前的缺口；本节给出当前选择的规则，以本计划为后续设计与实现依据。
 
 ### C1 · 产品抽象与数据所有权
 
@@ -252,48 +252,48 @@ D4 已补全共享参数定义与运行表单、来源预览、定义变更冲�
 - 2026-09-11 命令标题反馈：命令名称只显示在顶部 Panel header，正文直接从用户消息或实际结果开始，移除 `COMMAND · …` / `CUSTOM COMMAND · …` 重复标题及占位。接受前显示当前命令名称，接受后使用本次命令快照中的名称；运行、停止、续聊和记忆工具状态保留同一任务上下文，不因命令后续改名或原型状态切换而替换历史内容。普通任务继续使用自己的任务标题。
 - 任务页从“Task saved”升级为用户消息、助手消息、执行步骤和结果。准备阶段与已接受执行分开呈现，执行状态按 C5 覆盖排队、运行、等待输入/确认、正在停止、取消、停止、中断、失败和完成；不展示模型隐藏推理。
 - 任务历史保留一份列表，显示标题、时间和状态；命令任务增加命令来源即可，不创建独立命令会话体系。
-- 2026-09-11 列表间距反馈：[任务历史](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=336-1154)、[首页快捷命令](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=336-1149) 和 [全部命令](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=336-1150) 的行间距统一为 8px，绑定已有 `gap/layout`。任务行单独放入 Fill 宽度、Hug 高度的 Auto Layout 分组，搜索框、日期标题和页面区域保留各自间距；保留行本身的内容、尺寸和原型操作。已有应用任务列表在 `apps/desktop/src/styles.css` 同步使用两单位共享 spacing（默认 8px）；命令入口和 Agent 运行功能仍待后续实现。
+- 2026-09-11 列表间距反馈：任务历史 (Figma `project/336:1154`)、首页快捷命令 (Figma `project/336:1149`) 和 全部命令 (Figma `project/336:1150`) 的行间距统一为 8px，绑定已有 `gap/layout`。任务行单独放入 Fill 宽度、Hug 高度的 Auto Layout 分组，搜索框、日期标题和页面区域保留各自间距；保留行本身的内容、尺寸和原型操作。已有应用任务列表在 `apps/desktop/src/styles.css` 同步使用两单位共享 spacing（默认 8px）；命令入口和 Agent 运行功能仍待后续实现。
 - 设置沿用现有侧栏布局，增加 Commands 与 Memory。命令编辑和记忆编辑在设置内完成；不把完整配置表单塞进窄浮窗。
 - 缺失模型、缺失选区、权限未授予、快捷键冲突、附件不可读和记忆服务不可用都应有具体动作入口；服务恢复不能自动重复文件写入或 shell 命令。
 
 ### Figma 设计交付与实现映射
 
-- [统一产品设计页](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=1-251)：主浮窗、命令输入/执行/结果、历史、恢复状态，以及 Commands / Memory / Providers / Shortcuts 设置。Agent 流程与设置设计已合并，原画板节点链接保持不变；从[统一导览](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=577-11193)进入各流程。
-- [已交付 Commands 列表](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=362-1860) 与 [自定义命令编辑](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=348-799)。空白新建入口、示例提示词、输入选项、模型/记忆/工具设置及保存后状态均已提供；通用参数定义和运行表单已按 C2 在 D4 补齐。
-- [命令列表组件与四种状态](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=373-1416) 及 [长名称/宽度评审](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=384-1373)。保留共享 Item、Lucide、Kbd 与项目 Icon button 的实例连接；共享库自身未修改。
-- 列表映射到现有 [item.tsx](packages/ui/src/components/item.tsx)、[kbd.tsx](packages/ui/src/components/kbd.tsx) 和 [styles.css](packages/ui/src/styles.css)：Small / Outline，水平 14px / 垂直 12px 内边距，14px 媒体间距，18px 圆角，1px 边框，10px 列表间距；标题 14px / 19.25px，说明 14px / 20px。行高 70px 是产品组合尺寸；命令名称可截断，操作区不被挤压。
+- 统一产品设计页 (Figma `project/1:251`)：主浮窗、命令输入/执行/结果、历史、恢复状态，以及 Commands / Memory / Providers / Shortcuts 设置。Agent 流程与设置设计已合并，原画板节点链接保持不变；从统一导览 (Figma `project/577:11193`)进入各流程。
+- 已交付 Commands 列表 (Figma `project/362:1860`) 与 自定义命令编辑 (Figma `project/348:799`)。空白新建入口、示例提示词、输入选项、模型/记忆/工具设置及保存后状态均已提供；通用参数定义和运行表单已按 C2 在 D4 补齐。
+- 命令列表组件与四种状态 (Figma `project/373:1416`) 及 长名称/宽度评审 (Figma `project/384:1373`)。保留共享 Item、Lucide、Kbd 与项目 Icon button 的实例连接；共享库自身未修改。
+- 列表映射到现有 [item.tsx](../../packages/ui/src/components/item.tsx)、[kbd.tsx](../../packages/ui/src/components/kbd.tsx) 和 [styles.css](../../packages/ui/src/styles.css)：Small / Outline，水平 14px / 垂直 12px 内边距，14px 媒体间距，18px 圆角，1px 边框，10px 列表间距；标题 14px / 19.25px，说明 14px / 20px。行高 70px 是产品组合尺寸；命令名称可截断，操作区不被挤压。
 - 项目新增 `Rhea / Item title` 文字样式及 `item/focus-ring` 变量，对应 Item 的 `leading-snug` 和 `ring-ring/50`；保留现有按钮、输入框、窗口材质、侧栏与设置内容 inset 的既定值。
-- [发送/停止组件](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=392-1441) 复用 `App / Icon button`、`App / Tooltip` 及共享 Lucide arrow-up / square。按钮保持 28 × 28px、图标 16px；tooltip 沿用 Rhea 的 12px / 16px 字体、水平 12px / 垂直 6px 内边距、14px 圆角和现有颜色变量。默认、悬停、焦点、禁用和禁用悬停状态均已提供；未增加新 token 或修改共享库。
+- 发送/停止组件 (Figma `project/392:1441`) 复用 `App / Icon button`、`App / Tooltip` 及共享 Lucide arrow-up / square。按钮保持 28 × 28px、图标 16px；tooltip 沿用 Rhea 的 12px / 16px 字体、水平 12px / 垂直 6px 内边距、14px 圆角和现有颜色变量。默认、悬停、焦点、禁用和禁用悬停状态均已提供；未增加新 token 或修改共享库。
 - Tooltip 后续修订：修复箭头与气泡右下圆角衔接处的缺口。气泡右边缘超出按钮右边缘 8px，仍收在输入框边界内；箭头保持对准按钮中心，避开圆角区域，箭尖与按钮保留 4px 间距。此定位属于 Composer 调用方，后续实现设置 `sideOffset={4}`，不修改共享 Tooltip 的默认值或箭头造型。
-- [运行页](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=336-1152) 与 Weekly planning brief 的运行页已使用 Composer Running 变体，停止点击连接各自的已停止状态；[停止提示](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=395-3811) 和 [发送提示](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=395-3917) 可独立评审。后续代码在现有 Composer 中复用 [tooltip.tsx](packages/ui/src/components/tooltip.tsx) 和 Button，运行状态控制同一操作位；真实停止与草稿保留属于 E1/E2。
+- 运行页 (Figma `project/336:1152`) 与 Weekly planning brief 的运行页已使用 Composer Running 变体，停止点击连接各自的已停止状态；停止提示 (Figma `project/395:3811`) 和 发送提示 (Figma `project/395:3917`) 可独立评审。后续代码在现有 Composer 中复用 [tooltip.tsx](../../packages/ui/src/components/tooltip.tsx) 和 Button，运行状态控制同一操作位；真实停止与草稿保留属于 E1/E2。
 - 原型入口为 Use the agent、Create your own command、Manage memory。已连接自定义命令的新建、示例填写、保存、运行、继续对话、编辑、复制、删除、启用/停用，以及记忆编辑/删除/暂停主路径；部分其他表单控件仍用于视觉状态评审。
 - Figma 原型使用固定样例表达交互状态，不承担真实输入持久化、复制到系统剪贴板、模型调用、工具执行或记忆写入。真实功能属于 E0–E6；设计阶段更新了 Figma 与本计划；应用代码已在 2026-09-12 实施阶段接入。
 
 ### D4 · Command 设计补充
 
-- [变量选择器](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=421-3644) 与 [icon button / tooltip](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=437-7613)：彩色花括号、内置来源、参数默认值、插入与启用入口；另有输入建议、未知引用、来源启用、空白命令和 Action items 的独立范围示例。变量选择器使用 [共享项目组件](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=439-2067)，右侧操作复用 App / Icon button、App / Tooltip 和共享 Lucide plus / settings-2。
-- 2026-09-11 弹层宽度修正：[共享变量菜单内容](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=507-4022) 按 [Rhea Command](https://ui.shadcn.com/r/styles/radix-rhea/command.json) 的容器与分组结构组织横向间距，外层 4px 加搜索/分组各 4px，使搜索框与选项高亮均距外边缘 8px。三种完整选择器和输入建议共用此规则，组与行使用 Fill 宽度、Hug 高度；保留现有纵向节奏、18px 弹层材质和行内 8px/6px 留白。普通 Dropdown Menu、SelectGroup 保留各自的 4px 留白，Tooltip 按自己的内容规则布局。同步主组件、实际实例及宽度/状态评审，避免在实例中覆盖宽度或 padding。
-- 同步排查其他弹层：[Provider 菜单](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=306-1817) 的 SelectGroup 改为 Hug 高度，保留与触发器等宽及单层 4px 留白；[插件通知](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=783-4274) 的 Visible 变体改为 Hug，兑现已有的长文案与顶部绝对定位规则，Hidden 语义保持不变；[窄宽度评审容器](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=444-1961) 关闭误裁切，保留 Tooltip 的正确锚点。现有应用 Select/Tooltip 已按各自 primitive 布局，本轮无需代码修改；变量菜单和插件通知仍属于待实现设计。
-- [输入与参数列表](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=362-1861) 提供新增及四类参数编辑：[文本](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=422-3901)、[数字](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=425-4065)、[选项](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=425-4398)、[开关](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=425-4743)。重复 key、无效默认值、可选值及新增后状态均有评审画面，参数保持列表形式。
-- [统一运行表单](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=362-1862)、[运行预览](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=430-5530) 和指令展开预览使用同一组参数示例。补充接受前配置变化、保存冲突以及 [历史再次运行](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=430-6067)；使用新版进入更新后的设置预览，删除命令后仍可查看历史快照。
-- [排队与取消](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=431-7040)、[正在停止](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=431-7341)、[中断恢复](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=431-7431)、[过期确认](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=431-7534) 区分准备、已接受、排队、停止和恢复。普通任务与命令均保留 Composer 草稿，正在停止时同一按钮位禁用；已接受任务不因命令停用而自动取消。
-- [文件产物](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=433-7453) 提供可用、缺失、外部修改和部分输出状态，以及重新定位文件的确认画面。复用 [App / File artifact · Rhea](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=433-2044)、共享 Item 与 Lucide file-text；打开、Finder 和复制路径在原型中只表达入口，不执行系统操作。
-- 新增 [Command field 组件](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=410-1982) 覆盖 Text / Number / Choice / Boolean 与默认、hover、focus、disabled、invalid 状态。输入与选择框为 32px 高、18px 圆角、Inter 14/20；标签与说明沿用项目 Rhea 样式。变量操作为 32 × 32px、16px 图标，tooltip 箭头对准图标按钮中心并保留 4px 间距。未改变 Composer 的 28px 操作位、窗口材质、侧栏与设置 inset。
-- `syntax/variable` 是项目变量，引用共享 `tw-raw/blue/400`；`destructive` 对照代码中的暗色主题值建立项目映射。共享库保持连接，原有 Nova 命名的输入、按钮、Item 实例通过项目适配匹配实际 Rhea 几何，不把组件名称作为样式一致性的证据。[宽度与状态评审](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=444-1961) 覆盖长标签、较窄字段、参数行与图标替换。
+- 变量选择器 (Figma `project/421:3644`) 与 icon button / tooltip (Figma `project/437:7613`)：彩色花括号、内置来源、参数默认值、插入与启用入口；另有输入建议、未知引用、来源启用、空白命令和 Action items 的独立范围示例。变量选择器使用 共享项目组件 (Figma `project/439:2067`)，右侧操作复用 App / Icon button、App / Tooltip 和共享 Lucide plus / settings-2。
+- 2026-09-11 弹层宽度修正：共享变量菜单内容 (Figma `project/507:4022`) 按 [Rhea Command](https://ui.shadcn.com/r/styles/radix-rhea/command.json) 的容器与分组结构组织横向间距，外层 4px 加搜索/分组各 4px，使搜索框与选项高亮均距外边缘 8px。三种完整选择器和输入建议共用此规则，组与行使用 Fill 宽度、Hug 高度；保留现有纵向节奏、18px 弹层材质和行内 8px/6px 留白。普通 Dropdown Menu、SelectGroup 保留各自的 4px 留白，Tooltip 按自己的内容规则布局。同步主组件、实际实例及宽度/状态评审，避免在实例中覆盖宽度或 padding。
+- 同步排查其他弹层：Provider 菜单 (Figma `project/306:1817`) 的 SelectGroup 改为 Hug 高度，保留与触发器等宽及单层 4px 留白；插件通知 (Figma `project/783:4274`) 的 Visible 变体改为 Hug，兑现已有的长文案与顶部绝对定位规则，Hidden 语义保持不变；窄宽度评审容器 (Figma `project/444:1961`) 关闭误裁切，保留 Tooltip 的正确锚点。现有应用 Select/Tooltip 已按各自 primitive 布局，本轮无需代码修改；变量菜单和插件通知仍属于待实现设计。
+- 输入与参数列表 (Figma `project/362:1861`) 提供新增及四类参数编辑：文本 (Figma `project/422:3901`)、数字 (Figma `project/425:4065`)、选项 (Figma `project/425:4398`)、开关 (Figma `project/425:4743`)。重复 key、无效默认值、可选值及新增后状态均有评审画面，参数保持列表形式。
+- 统一运行表单 (Figma `project/362:1862`)、运行预览 (Figma `project/430:5530`) 和指令展开预览使用同一组参数示例。补充接受前配置变化、保存冲突以及 历史再次运行 (Figma `project/430:6067`)；使用新版进入更新后的设置预览，删除命令后仍可查看历史快照。
+- 排队与取消 (Figma `project/431:7040`)、正在停止 (Figma `project/431:7341`)、中断恢复 (Figma `project/431:7431`)、过期确认 (Figma `project/431:7534`) 区分准备、已接受、排队、停止和恢复。普通任务与命令均保留 Composer 草稿，正在停止时同一按钮位禁用；已接受任务不因命令停用而自动取消。
+- 文件产物 (Figma `project/433:7453`) 提供可用、缺失、外部修改和部分输出状态，以及重新定位文件的确认画面。复用 App / File artifact · Rhea (Figma `project/433:2044`)、共享 Item 与 Lucide file-text；打开、Finder 和复制路径在原型中只表达入口，不执行系统操作。
+- 新增 Command field 组件 (Figma `project/410:1982`) 覆盖 Text / Number / Choice / Boolean 与默认、hover、focus、disabled、invalid 状态。输入与选择框为 32px 高、18px 圆角、Inter 14/20；标签与说明沿用项目 Rhea 样式。变量操作为 32 × 32px、16px 图标，tooltip 箭头对准图标按钮中心并保留 4px 间距。未改变 Composer 的 28px 操作位、窗口材质、侧栏与设置 inset。
+- `syntax/variable` 是项目变量，引用共享 `tw-raw/blue/400`；`destructive` 对照代码中的暗色主题值建立项目映射。共享库保持连接，原有 Nova 命名的输入、按钮、Item 实例通过项目适配匹配实际 Rhea 几何，不把组件名称作为样式一致性的证据。宽度与状态评审 (Figma `project/444:1961`) 覆盖长标签、较窄字段、参数行与图标替换。
 - 本批状态已并入 `01 · Product design · Flows & settings` 的对应流程分区（原 Agent v1 的 44–82 号画面）；新增组件与使用说明仍位于 `02 · App components`。组件可以在 Figma 中编辑属性，原型连接代表性评审路径；键入过滤、任意表单组合与来源捕获仍需在实现中完成。
-- 根据后续间距与按钮反馈，已在 [AGENTS.md](AGENTS.md:108) 增加 Figma Layout First 规则。选项编辑使用定义、选项和补充信息三个 Auto Layout 分组，组间距 16px、组内行间距 12px、标签与控件间距 8px；这些值用于此表单组合，不覆盖其他控件默认值。[选项行组件](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=447-2288) 使用 Fill 字段与固定尺寸删除图标，按控件底部对齐，错误信息位于独立行。400px / 700px 宽度、标签换行及错误状态中，两个输入框与删除按钮的垂直中心差均为 0；增加选项后内容可滚动，页脚位置不变。[布局评审](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=448-2188) 已提供截图与状态示例。
+- 根据后续间距与按钮反馈，已在 [AGENTS.md](../../AGENTS.md#L108) 增加 Figma Layout First 规则。选项编辑使用定义、选项和补充信息三个 Auto Layout 分组，组间距 16px、组内行间距 12px、标签与控件间距 8px；这些值用于此表单组合，不覆盖其他控件默认值。选项行组件 (Figma `project/447:2288`) 使用 Fill 字段与固定尺寸删除图标，按控件底部对齐，错误信息位于独立行。400px / 700px 宽度、标签换行及错误状态中，两个输入框与删除按钮的垂直中心差均为 0；增加选项后内容可滚动，页脚位置不变。布局评审 (Figma `project/448:2188`) 已提供截图与状态示例。
 
-- 后续输入与快捷键对齐排查：原来的 15 组独立列使用 16px / 14px 高的标题区并按顶部对齐，导致控件相差 2px。已统一为 [共享输入与快捷键组件](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=457-2372)：标题共用一行并按文字基线对齐，32px 控件共用下一行，两个行轨道共用列宽变量。复用 Command field 的状态，增加默认开启的 `Show label` 属性，供外部标题组合关闭内部标签；原字段默认外观保持不变。
-- 输入选项入口使用 [Rhea 紧凑 Ghost 按钮](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=457-2369)，快捷键使用 [项目状态适配](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=464-2598)，保留共享库连接。修正继承尺寸回弹及焦点状态白底白字的问题，清除组件替换后继承的重复 padding、填充与旧状态跳转。[对齐评审](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=459-2349) 包含 520px / 700px、左右标签分别换行、未设置快捷键、hover / focus / disabled 与独立错误说明。15 个画面和 8 个评审实例的实际控件顶部、底部差值均为 0；另检查的 27 组并排表单没有发现同类偏移，组件引用和原型目标有效。已复核完整编辑页及状态截图，并补充 AGENTS.md 的共享行轨道与实际控件边界检查要求。
+- 后续输入与快捷键对齐排查：原来的 15 组独立列使用 16px / 14px 高的标题区并按顶部对齐，导致控件相差 2px。已统一为 共享输入与快捷键组件 (Figma `project/457:2372`)：标题共用一行并按文字基线对齐，32px 控件共用下一行，两个行轨道共用列宽变量。复用 Command field 的状态，增加默认开启的 `Show label` 属性，供外部标题组合关闭内部标签；原字段默认外观保持不变。
+- 输入选项入口使用 Rhea 紧凑 Ghost 按钮 (Figma `project/457:2369`)，快捷键使用 项目状态适配 (Figma `project/464:2598`)，保留共享库连接。修正继承尺寸回弹及焦点状态白底白字的问题，清除组件替换后继承的重复 padding、填充与旧状态跳转。对齐评审 (Figma `project/459:2349`) 包含 520px / 700px、左右标签分别换行、未设置快捷键、hover / focus / disabled 与独立错误说明。15 个画面和 8 个评审实例的实际控件顶部、底部差值均为 0；另检查的 27 组并排表单没有发现同类偏移，组件引用和原型目标有效。已复核完整编辑页及状态截图，并补充 AGENTS.md 的共享行轨道与实际控件边界检查要求。
 
 ### 2026-09-12 · 表单间距修正（仅 Figma）
 
 用户指出变量快捷入口、Input、展开运行设置、Model 与 Allowed tools 之间的留白不一致。本次修正覆盖 25 个命令／参数／上下文编辑画板、命令运行输入页和字段宽度评审，沿用本轮仅修改 Figma 并同步 plan 的范围。
 
 - 17 组命令表单以 16px 分隔普通字段和语义分组，标签到控件保持 8px；25 个编辑页的标题、滚动内容和固定页脚之间统一为 16px。绑定已有 `Spacing / 16` 的 Standard 模式与 `gap/layout`，不新增全局间距值。保留上／右／下／左 40／40／32／40px 设置 inset、Rhea 14px / 14px 标签、32px 控件及输入／快捷键共享行轨道。
-- [运行设置组合](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=1062-33204) 提供展开／收起变体及可编辑摘要，15 个画面使用连接实例。展开入口到内容为 16px；Model／Memory 共用一行，Allowed tools 以 16px 与上一行分隔，组内标签到开关为 8px。保留嵌套 Button、Select、Switch 的来源和原型导航，导航由按钮的容器承担。
-- [输入选项](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=440-6995) 将 Add parameter 与参数标题对齐；参数列表随内容增长，行距保持 8px，五项参数完整显示。更多内容由有界表单滚动，页脚不移动。[运行输入表单](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=362-1862) 区分来源／正文组和参数组，字段之间 16px，来源到正文 8px。
-- [共享指令编辑器](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=417-1716) 的正文区域保留 96px 最小高度并 Hug 内容，背景随正文区域伸缩；长指令不再侵入下方说明。字段反馈与表单之间保留 16px。提供商的大分区 24px、选项编辑分组内部的 12px 行距保留原有语义，不作全局替换。
+- 运行设置组合 (Figma `project/1062:33204`) 提供展开／收起变体及可编辑摘要，15 个画面使用连接实例。展开入口到内容为 16px；Model／Memory 共用一行，Allowed tools 以 16px 与上一行分隔，组内标签到开关为 8px。保留嵌套 Button、Select、Switch 的来源和原型导航，导航由按钮的容器承担。
+- 输入选项 (Figma `project/440:6995`) 将 Add parameter 与参数标题对齐；参数列表随内容增长，行距保持 8px，五项参数完整显示。更多内容由有界表单滚动，页脚不移动。运行输入表单 (Figma `project/362:1862`) 区分来源／正文组和参数组，字段之间 16px，来源到正文 8px。
+- 共享指令编辑器 (Figma `project/417:1716`) 的正文区域保留 96px 最小高度并 Hug 内容，背景随正文区域伸缩；长指令不再侵入下方说明。字段反馈与表单之间保留 16px。提供商的大分区 24px、选项编辑分组内部的 12px 行距保留原有语义，不作全局替换。
 - 已检查新建命令展开／收起、来源启用后的长指令、参数校验、变量建议弹层、五项参数、运行输入与长标签／窄字段的截图及结构。25 个编辑页的页脚位置保持不变；15 组运行设置的摘要与既有导航目标保持一致。Figma 原型仍使用固定样例。
 
 后续实现沿用现有 `commands.css` 的字段间距和 `settings.css` 的标签分组；在 `run-settings.tsx` 同步 16px 展开间距及 Model／Memory／Allowed tools 组合，在输入选项组件同步列表标题与 Add parameter 操作，并同步指令编辑器的内容高度。当前应用仍使用 `pt-3` 展开间距及另一种运行设置排列，本次未改应用代码或运行应用验证。
@@ -302,11 +302,11 @@ D4 已补全共享参数定义与运行表单、来源预览、定义变更冲�
 
 状态：Figma 组件与页面迁移完成；本条沿用用户确认的「只改 Figma，同时同步 plan」范围。以重复布局的拥有者和实例覆盖情况判断复用程度，不以嵌套图标带来的实例数量判断组件化质量。固定导航文案使用一个来源；页面数据、状态和原型目的地继续允许按需配置。
 
-- [x] [Settings sidebar](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=256-1024)：四个 `Content/Settings navigation/*` 字符串变量统一导航文案，清除 55 处旧文字覆盖。后续响应式版本扩展到 24 个变体、93 个设置／菜单画面；保留活动项和页面导航，按用户最新要求移除全部 logo、头像与姓名。
-- [x] [Settings editor layout](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=1093-34262) 与 [footer](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=1093-34242)：25 个编辑页共用标题、滚动 SLOT 和页脚，主组件拥有 40／40／32／40px inset 与 16px 间距；业务表单和反馈放入 SLOT，底部操作不随正文滚动。
-- [x] [Command identity](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=1093-34209)：15 组名称／描述使用同一字段组合，列距 16px、标签到控件 8px。当前每列最小 220px，可用宽度小于 456px 时标签随字段堆叠；固定标签在最小列宽内不换行。更长标签需堆叠或共用标签／控件轨道，不能通过单独偏移补偿。
-- [x] 131 个独立按钮归入既有 [Settings action](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=907-17188)，39 个独立输入框归入既有 [Command field](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=410-1982)。通过属性配置按钮标签、图标和状态，以及输入内容／占位状态；维持共享库连接和 Rhea 几何。按钮 hover、焦点和禁用状态由项目组件拥有，禁用时没有原型操作。
-- [x] [组件使用与评审区](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=1093-34208) 保留早期布局、长提示、图标及控件状态评审；最新宽度行为以 [响应式评审区](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=1117-35919) 为准。早期标准命令页和 Memory 控件迁移的前后截图一致；后续窄屏允许字段堆叠。复核长指令、五项参数、校验错误、固定页脚和导航引用。产品页继续保留 26 个分区、25 个原型起点。
+- [x] Settings sidebar (Figma `project/256:1024`)：四个 `Content/Settings navigation/*` 字符串变量统一导航文案，清除 55 处旧文字覆盖。后续响应式版本扩展到 24 个变体、93 个设置／菜单画面；保留活动项和页面导航，按用户最新要求移除全部 logo、头像与姓名。
+- [x] Settings editor layout (Figma `project/1093:34262`) 与 footer (Figma `project/1093:34242`)：25 个编辑页共用标题、滚动 SLOT 和页脚，主组件拥有 40／40／32／40px inset 与 16px 间距；业务表单和反馈放入 SLOT，底部操作不随正文滚动。
+- [x] Command identity (Figma `project/1093:34209`)：15 组名称／描述使用同一字段组合，列距 16px、标签到控件 8px。当前每列最小 220px，可用宽度小于 456px 时标签随字段堆叠；固定标签在最小列宽内不换行。更长标签需堆叠或共用标签／控件轨道，不能通过单独偏移补偿。
+- [x] 131 个独立按钮归入既有 Settings action (Figma `project/907:17188`)，39 个独立输入框归入既有 Command field (Figma `project/410:1982`)。通过属性配置按钮标签、图标和状态，以及输入内容／占位状态；维持共享库连接和 Rhea 几何。按钮 hover、焦点和禁用状态由项目组件拥有，禁用时没有原型操作。
+- [x] 组件使用与评审区 (Figma `project/1093:34208`) 保留早期布局、长提示、图标及控件状态评审；最新宽度行为以 响应式评审区 (Figma `project/1117:35919`) 为准。早期标准命令页和 Memory 控件迁移的前后截图一致；后续窄屏允许字段堆叠。复核长指令、五项参数、校验错误、固定页脚和导航引用。产品页继续保留 26 个分区、25 个原型起点。
 - [ ] 后续应用同步：在 `apps/desktop/src/features/commands/command-editor.tsx`、`parameter-editor.tsx` 与 `commands.css` 收敛共同的标题／有界正文／页脚结构，字段在窄屏堆叠，并排时保持标签／控件对齐；继续复用 `packages/ui` 的 Button、Input、Select。沿用上一节的运行设置、输入选项和指令高度同步事项。`settings-window.tsx` 已集中呈现 Providers 导航，不新增另一套标签来源；响应式与抽屉要求见下一节。
 
 验收要求：修改固定文案或组合间距后，相关实例共同继承；有效的内容、状态和导航覆盖保留；默认、hover、focus、disabled、占位及错误状态继续使用当前项目 token。页面导航由按钮外的透明 Auto Layout 动作容器拥有，按钮只继承组件状态反应；178 个产品页按钮导航保留原目的地。只把重复的结构和规则交给主组件，单页业务内容保持在 SLOT 内。本条未修改应用代码、启动应用或新增测试。
@@ -316,23 +316,23 @@ D4 已补全共享参数定义与运行表单、来源预览、定义变更冲�
 状态：基础响应式结构与补充截图标注项已完成，静态菜单跨分支自动锚定的 Figma 限制见下方。范围继续遵守用户确认的「本轮只改 Figma，同时同步项目 plan」，应用实现列为后续工作。
 
 - [x] 统一导航：窗口宽度 ≥760px 为 208px 侧栏，480–759px 为可换行顶部导航，<480px 使用抽屉。所有布局去掉 logo、头像与姓名；保留原生窗口控件及四项固定导航文案。抽屉提供菜单触发、选中项、关闭按钮、遮罩与 Escape 关闭；按用户补充截图保留 Glass 半透明、背景模糊和共享选中色。
-- [x] [响应式窗口](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=1119-36110) 提供 Desktop、Compact、Drawer Closed／Open 四种变体，两个原生 SLOT 分别承载正文和弹层。93 个设置／菜单画面共用此组件；旧命令菜单保留画板 ID 和操作目标，入口改为完整窗口状态导航。
+- [x] 响应式窗口 (Figma `project/1119:36110`) 提供 Desktop、Compact、Drawer Closed／Open 四种变体，两个原生 SLOT 分别承载正文和弹层。93 个设置／菜单画面共用此组件；旧命令菜单保留画板 ID 和操作目标，入口改为完整窗口状态导航。
 - [x] `App · Responsive` 通过三项 token 别名管理 Desktop 40／40／32px 与 Compact 16／16／16px 的上／左右／下 inset，通过布尔变量管理窄屏列标题。原生控件行另用横向／纵向 inset 的 Desktop 0／0px、Compact 12／4px 值，使抽屉开关时三灯保持同一位置，且不污染桌面布局。名称／描述、Input／Shortcut、运行设置、搜索筛选、校验行与页脚按可用空间换行。长正文有界滚动，保留控件原有尺寸和可达的页脚／Composer。
 - [x] 提供商行与命令行的响应式布局由主组件统一拥有；模型、状态、文本、图标、快捷键显隐和动作目标比较一致后，清理旧插槽副本。18 个设置弹层限制在窗口内并可滚动；49 个任务浮窗及 8 个边界状态卡片适配伸缩和短高度。
-- [x] [响应式评审区](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=1117-35919) 展示窄／宽编辑器、导航、设置模块、菜单及任务浮窗。基础结构检查覆盖设置 320×400、480×560、760×560、1000×720、1280×900；浮窗 320×400、420×580、640×800。发现的溢出已修复，并检查断点两侧与抽屉状态往返的正文／Tab 保留。最终引用复核包含隐藏与远程嵌套实例：28,508 个实例、371 个主组件引用（83 个远程）、112 个 NAVIGATE 目标未发现断链；93 个设置窗口继续连接同一响应式窗口主组件。产品页仍有 26 个分区和 25 个原型起点。
-- [x] 将全界面宽高适配、三档导航、小屏抽屉、无账户装饰、字段换行、有界滚动、弹层边界、断点和视觉复核要求写入 [AGENTS.md 的 Responsive Layouts](AGENTS.md#responsive-layouts)。
+- [x] 响应式评审区 (Figma `project/1117:35919`) 展示窄／宽编辑器、导航、设置模块、菜单及任务浮窗。基础结构检查覆盖设置 320×400、480×560、760×560、1000×720、1280×900；浮窗 320×400、420×580、640×800。发现的溢出已修复，并检查断点两侧与抽屉状态往返的正文／Tab 保留。最终引用复核包含隐藏与远程嵌套实例：28,508 个实例、371 个主组件引用（83 个远程）、112 个 NAVIGATE 目标未发现断链；93 个设置窗口继续连接同一响应式窗口主组件。产品页仍有 26 个分区和 25 个原型起点。
+- [x] 将全界面宽高适配、三档导航、小屏抽屉、无账户装饰、字段换行、有界滚动、弹层边界、断点和视觉复核要求写入 [AGENTS.md 的 Responsive Layouts](../../AGENTS.md#responsive-layouts)。
 - [ ] 后续应用同步：由 `settings-window.tsx` 及共享布局实现相同断点和唯一导航文案；复用已有 Radix／`packages/ui` 可访问对话框能力处理抽屉的焦点约束、Escape、焦点恢复及选择导航后关闭。表单、列表、浮窗与弹层复用对应布局规则；主进程最小窗口尺寸受显示器工作区约束，不能用固定最小尺寸代替响应式适配。
 
 Figma 调整窗口宽度时不会自动切换变体，须按断点显式选择 Layout；各变体内部使用原生 Auto Layout、Fill／Hug、min/max 和滚动。已核对模式切换不会清空 SLOT 内容或选中项。原型是有限样例，键盘焦点管理和实际窗口响应需在后续应用实现中完成；本次未启动应用或新增测试。
 
 补充截图视觉验收：
 
-- [x] [Settings overview header · Rhea](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=1181-38808) 统一概览页标题／说明、搜索与主操作；32 个产品消费者、4 个提供商源状态和 3 个总览 QA 已同步。Top／Drawer 导航底部降至 8px，Compact 正文上 inset 为 16px，保留既有 12px 外层 inset。
+- [x] Settings overview header · Rhea (Figma `project/1181:38808`) 统一概览页标题／说明、搜索与主操作；32 个产品消费者、4 个提供商源状态和 3 个总览 QA 已同步。Top／Drawer 导航底部降至 8px，Compact 正文上 inset 为 16px，保留既有 12px 外层 inset。
 - [x] 修正输入框内部 Fill 与长文本裁切，保留 Input 左右 10px 内边距、完整文本与状态。553 个输入视口、313 个 Input 几何检查通过。提供商／命令行的 Item 外观层覆盖完整内容边界，123 个实例检查通过，其中 93 个产品行完全吻合；旧源 QA 仅有一处 0.25px 原生取整差异，无可见裁切。
-- [x] 恢复抽屉玻璃材质与共享选中色：窗口独占 80% 底色，抽屉用现有 settings-content 10% 局部材质、40px 背景模糊及白色 12% 选中态；30% 遮罩只覆盖抽屉外区域。以 [蓝色壁纸开关对照](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=1187-38838) 复核，打开与关闭时三色窗口按钮位置一致。
+- [x] 恢复抽屉玻璃材质与共享选中色：窗口独占 80% 底色，抽屉用现有 settings-content 10% 局部材质、40px 背景模糊及白色 12% 选中态；30% 遮罩只覆盖抽屉外区域。以 蓝色壁纸开关对照 (Figma `project/1187:38838`) 复核，打开与关闭时三色窗口按钮位置一致。
 - [x] 修正变量弹层底部圆角：三个 Scope 的内容使用头尾 Hug、中间选项 Fill + 垂直滚动；外层与表面共用 18px 圆角。四处产品状态和小屏 QA 已同步，16 个尺寸检查通过，保留文案和既有动作。
 - [x] 补充 32 项边界／短高检查及四 Tab 的 20 状态往返检查，正文、选中项与动作目标保留；仅按既定模式隐藏窄屏列标题。12 处菜单的当前画面锚点已校准，760／1000／1280px 与 320px 有界呈现共 48 项显式重排检查通过；临时探针已清理。
-- [x] 修正 [Command actions menu · Rhea](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=487-11060) 的布局归属：原有 4px 内边距符合 DropdownMenu 规格，但位于两个实例各自保留的 SLOT 内容 Frame。Enabled／Disabled 主组件现直接拥有 4px padding 和五个连接菜单项，材质层保持连接且 SLOT 留空；两处旧副本清理后，九个动作目标与禁用 Run 状态保留。实测源组件间距修改可传到产品实例，再恢复 4px；192／224／288px 下六项菜单重排检查通过。启用态前后 PNG 完全一致，禁用态视觉复核通过。当时仅确认其余 16 个弹层已有连接内容组件，未验证累计内边距；后续深度排查补齐这一遗漏。同步组件说明与 AGENTS.md。详细依据见 [菜单内边距归属](../design-source.md#命令菜单内边距归属仅-figma)。
+- [x] 修正 Command actions menu · Rhea (Figma `project/487:11060`) 的布局归属：原有 4px 内边距符合 DropdownMenu 规格，但位于两个实例各自保留的 SLOT 内容 Frame。Enabled／Disabled 主组件现直接拥有 4px padding 和五个连接菜单项，材质层保持连接且 SLOT 留空；两处旧副本清理后，九个动作目标与禁用 Run 状态保留。实测源组件间距修改可传到产品实例，再恢复 4px；192／224／288px 下六项菜单重排检查通过。启用态前后 PNG 完全一致，禁用态视觉复核通过。当时仅确认其余 16 个弹层已有连接内容组件，未验证累计内边距；后续深度排查补齐这一遗漏。同步组件说明与 AGENTS.md。详细依据见 [菜单内边距归属](../design-source.md#命令菜单内边距归属仅-figma)。
 
 静态菜单的限制：Page content 与 Viewport overlays 是不同分支，MAX／STRETCH 不会读取另一分支随换行而变化的高度。760px 的说明换行会令菜单锚点比 1000px 下移 20px；调整宽度、文案或列表后，评审帧须按实际触发器边界重新定位，并复核 4px 间隔、尾端对齐、上翻和视口边界。本次没有把这些显式重排检查当成自动锚定实现。应用后续必须使用现有菜单／弹层库的动态定位与碰撞处理；Figma 评审机制和适用范围详见 [设计来源](../design-source.md#全界面响应式布局仅-figma)。
 
@@ -417,16 +417,16 @@ Hermes 发布包的 gitHead 为 `34c6fe49f832e6a0957ce517586158a8bdde71a4`，本
 
 ## File And Code References
 
-- [App.tsx:14](apps/desktop/src/App.tsx:14)：现有 new/history/task 切换；submit 从 89 行开始仅写入本地记录。
-- [task-store.ts:8](apps/desktop/src/lib/task-store.ts:8)：localStorage 的单条提示词与附件元信息，无 Agent 会话或消息流；当前最多 50 条记录、6 个附件、4000 字符提示词。
+- [App.tsx:14](../../apps/desktop/src/App.tsx#L14)：现有 new/history/task 切换；submit 从 89 行开始仅写入本地记录。
+- [task-store.ts:8](../../apps/desktop/src/lib/task-store.ts#L8)：localStorage 的单条提示词与附件元信息，无 Agent 会话或消息流；当前最多 50 条记录、6 个附件、4000 字符提示词。
 - `apps/desktop/src/components/composer.tsx`、`composer-configuration.tsx`：输入、附件、模型与权限入口。
 - `apps/desktop/electron/contract.ts`、`preload.ts`、`main.ts`：扩展受限的 IPC 合约与主进程服务注册。
 - `apps/desktop/electron/settings-provider.ts`、`settings-store.ts`：已有凭据加密、模型连接和设置持久化，应复用。
 - `apps/desktop/electron/context-files.ts`：原生文件选择只返回名称、大小、类型，正式 Agent 需增加主进程拥有的可读取引用。
 - `apps/desktop/vite.config.ts`、`electron-builder.yml`：后续增加 Agent 运行入口、打包扩展及原生依赖的落点。
 - `apps/desktop/components.json`、`packages/ui/components.json`：均为 radix-rhea；复用现有共享组件和 Neutral 主题。
-- [项目任务面板 1:400](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=1-400)：云端已确认 420 × 580、Header 与 Composer 实例。
-- [App components 69:80](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=69-80)：云端已确认 Icon button 70:129、Panel header 71:112、Composer 72:150、Activity step 192:428、Agent activity 204:1096、User message 227:1129、Assistant message 236:1755、Settings sidebar 256:1024。优先复用这些设计组件，新增命令与记忆状态。
+- 项目任务面板 1:400 (Figma `project/1:400`)：云端已确认 420 × 580、Header 与 Composer 实例。
+- App components 69:80 (Figma `project/69:80`)：云端已确认 Icon button 70:129、Panel header 71:112、Composer 72:150、Activity step 192:428、Agent activity 204:1096、User message 227:1129、Assistant message 236:1755、Settings sidebar 256:1024。优先复用这些设计组件，新增命令与记忆状态。
 - 云端未指定 nodeId 时只返回一个页面，但直接查询上述节点成功；这不构成资产丢失证据，也不需要回退本地连接。需求调研时未完成图像读取；后续设计修订已读取截图并完成下述视觉核对。
 - [Raycast AI Commands](https://manual.raycast.com/ai/ai-commands)：参考命令输入、快捷触发、工具能力、结果回填与继续对话。
 - Figma 与代码同步沿用预设 b27GcrRo：Rhea / Neutral / Inter / Lucide；代码按钮默认高 32px、sm/icon-sm 为 28px，不能把通用 shadcn 示例样式直接当作本项目规范。保留原生窗口材质、设置内嵌内容和侧栏透明度等已批准例外。
@@ -471,8 +471,8 @@ Hermes 发布包的 gitHead 为 `34c6fe49f832e6a0957ce517586158a8bdde71a4`，本
 
 ## Grill-Me Outcome
 
-- Transcript: [本轮需求问答](tmp/grill-me/session-01a08a6e-0967-7fc3-8031-367ae43d9c9a-20260910-163245.md)
-- Outcome: [已确认的需求结论](tmp/grill-me/outcome-01a08a6e-0967-7fc3-8031-367ae43d9c9a-20260910-163245.md)
+- Transcript: [本轮需求问答](../../tmp/grill-me/session-01a08a6e-0967-7fc3-8031-367ae43d9c9a-20260910-163245.md)
+- Outcome: [已确认的需求结论](../../tmp/grill-me/outcome-01a08a6e-0967-7fc3-8031-367ae43d9c9a-20260910-163245.md)
 - Summary: 已确认工具型 AI Command，与普通任务共用 Agent；记忆自动学习且可由用户管理。
 
 ## Build From Plan

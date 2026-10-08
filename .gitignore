@@ -12,3 +12,9 @@ coverage/
 !.env.example
 /target/
 .vercel
+/.local/
+.wrangler/
+.dev.vars
+.dev.vars.*
+!.dev.vars.example
+/ops/r2-budget-guard/wrangler.local.jsonc

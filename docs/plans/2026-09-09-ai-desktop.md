@@ -6,7 +6,7 @@ Approval: User authorized planning, initialization, implementation, and GitHub p
 
 ## Summary
 
-在空目录 `repository-root` 初始化 pnpm + Turborepo 工作区，用最新稳定版本的 Vite、Electron、React 19、TypeScript、Oxc 工具链、shadcn/ui 与 Vitest 实现桌面任务面板。目标为 [Figma 1:400](https://www.figma.com/design/PROJECT_FILE_KEY/ai?node-id=1-400)，尺寸 420 × 580，默认定位屏幕工作区右下角，距边缘 16px。保留原设计的 Inter 字体、图标资源、颜色、间距与半透明表面。
+在空目录 `repository root` 初始化 pnpm + Turborepo 工作区，用最新稳定版本的 Vite、Electron、React 19、TypeScript、Oxc 工具链、shadcn/ui 与 Vitest 实现桌面任务面板。目标为 Figma 1:400 (Figma `project/1:400`)，尺寸 420 × 580，默认定位屏幕工作区右下角，距边缘 16px。保留原设计的 Inter 字体、图标资源、颜色、间距与半透明表面。
 
 已核验 npm latest（2026-09-09）：Vite 8.2.2、Electron 44.2.0、React/React DOM 19.2.8、TypeScript 7.0.2、Turbo 2.10.12、Vitest 5.0.0、Oxlint 1.82.0、Oxfmt 0.67.0、shadcn CLI 4.21.0、Tailwind 4.3.3、pnpm 12.3.4。通过精确版本和 lockfile 固定安装结果。
 
@@ -27,7 +27,7 @@ Approval: User authorized planning, initialization, implementation, and GitHub p
 - `apps/desktop/src/`：任务面板、状态管理、任务/附件本地存储、精确导出图标。
 - `apps/desktop/tests/`：Vitest 行为测试及 Electron 冒烟测试。
 - `.github/workflows/ci.yml`, `README.md`, `docs/design-source.md`：CI、开发/打包说明和设计来源。
-- 云端 Figma get_design_context、get_metadata、get_variable_defs 均成功读取 file `PROJECT_FILE_KEY` node `1:400`；不需要本地 Figma 回退。
+- 云端 Figma get_design_context、get_metadata、get_variable_defs 均成功读取 file `project` node `1:400`；不需要本地 Figma 回退。
 - [Vite 8 / Oxc](https://vite.dev/blog/announcing-vite8)、[vite-plugin-electron](https://github.com/electron-vite/vite-plugin-electron)、[shadcn Vite](https://ui.shadcn.com/docs/installation/vite)、[Electron releases](https://releases.electronjs.org/)、[Turborepo workspace](https://turborepo.dev/docs/getting-started/add-to-existing-repository)。
 
 ## Plan Todos

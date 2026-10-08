@@ -18,6 +18,35 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Install Gitleaks 8.30.1
+        env:
+          GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+        run: |
+          tool_dir="$RUNNER_TEMP/gitleaks"
+          mkdir -p "$tool_dir"
+          curl --fail --silent --show-error --location --retry 3 \
+            https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz \
+            --output "$tool_dir/gitleaks.tar.gz"
+          echo "$GITLEAKS_SHA256  $tool_dir/gitleaks.tar.gz" | sha256sum --check
+          tar -xzf "$tool_dir/gitleaks.tar.gz" -C "$tool_dir" gitleaks
+          echo "$tool_dir" >> "$GITHUB_PATH"
+      - name: Scan tracked snapshot and introduced commits
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          snapshot=$(mktemp -d "$RUNNER_TEMP/privacy-snapshot.XXXXXX")
+          trap 'rm -rf "$snapshot"' EXIT
+          git archive HEAD | tar -x -C "$snapshot"
+          gitleaks dir "$snapshot" --config "$GITHUB_WORKSPACE/.gitleaks.toml" \
+            --redact --verbose --no-banner --ignore-gitleaks-allow
+          if [ -n "$BASE_SHA" ] && [ "$BASE_SHA" != 0000000000000000000000000000000000000000 ]; then
+            gitleaks git --log-opts="$BASE_SHA..$HEAD_SHA" --config .gitleaks.toml \
+              --redact --verbose --no-banner --ignore-gitleaks-allow
+          fi
       - uses: pnpm/action-setup@v6.1.0
       - uses: actions/setup-node@v7.0.0
         with:

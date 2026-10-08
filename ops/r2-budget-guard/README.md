@@ -1,12 +1,12 @@
 # Atd R2 预算守护
 
-`atd-r2-budget-guard` 只管理 `atd-assets` 的 `assets.atd.best` 和该桶的 `r2.dev` 公开入口。它独立于 `other-r2-budget-guard`，不修改其他桶、Worker、DNS 或对象。守护直接使用 R2 账户 API，无需 zone ID。
+`atd-r2-budget-guard` 只管理 `atd-assets` 的 `assets.atd.best` 和该桶的 `r2.dev` 公开入口。它独立于其他预算守护，不修改其他桶、Worker、DNS 或对象。守护直接使用 R2 账户 API，无需 zone ID。
 
-代码按已审读的 `private-reference/r2-budget-guard` 实现适配，保留账期验证、有限重试、持久状态和暂停后自检；不包含邮件或其他消息发送。运行状态保存在独立 Durable Object，并输出到 Cloudflare Worker Logs。
+守护包含账期验证、有限重试、持久状态和暂停后自检；不包含邮件或其他消息发送。运行状态保存在独立 Durable Object，并输出到 Cloudflare Worker Logs。
 
 ## 共享额度和行为
 
-Cloudflare 账户 `YOUR_CLOUDFLARE_ACCOUNT_ID` 的免费额度由所有桶共享，因此操作数和对象总大小按整个账户统计。其他桶增长可能触发 Atd 停用；Atd 的资源也计入同一账户内其他守护的阈值。两个守护各自仅关闭自己的公开入口。
+部署账户的免费额度由所有桶共享，因此操作数和对象总大小按整个账户统计。其他桶增长可能触发 Atd 停用；Atd 的资源也计入同一账户内其他守护的阈值。各守护仅关闭自己负责的公开入口。
 
 | 项目           | 暂停阈值                  | 检查频率                 |
 | -------------- | ------------------------- | ------------------------ |
@@ -31,23 +31,30 @@ Cloudflare 账户 `YOUR_CLOUDFLARE_ACCOUNT_ID` 的免费额度由所有桶共享
 在仓库根目录执行：
 
 ```bash
+# 首次复制公开模板；已有本地配置时不要覆盖。
+cp -n ops/r2-budget-guard/wrangler.example.jsonc ops/r2-budget-guard/wrangler.local.jsonc
+chmod 600 ops/r2-budget-guard/wrangler.local.jsonc
+# 编辑本地配置，将 account_id 和 vars.CF_ACCOUNT_ID 填成同一目标账户 ID。
+
 # 首次创建部署登录配置，在 Cloudflare 授权页面确认所列权限。
 pnpm --filter @atd/website exec wrangler auth create atd-deploy --scopes account:read user:read workers_scripts:write workers_tail:read
 
 # 本地类型和打包检查，不部署。
-pnpm --filter @atd/website exec wrangler types ../../tmp/atd-r2-guard-types.d.ts --config ../../ops/r2-budget-guard/wrangler.jsonc
+pnpm --filter @atd/website exec wrangler types ../../tmp/atd-r2-guard-types.d.ts --config ../../ops/r2-budget-guard/wrangler.local.jsonc
 pnpm exec tsc --strict --noEmit --allowJs --checkJs --skipLibCheck --module esnext --target es2024 --moduleResolution bundler --lib ES2024 ops/r2-budget-guard/*.mjs tmp/atd-r2-guard-types.d.ts
-pnpm --filter @atd/website exec wrangler deploy --dry-run --config ../../ops/r2-budget-guard/wrangler.jsonc
+pnpm --filter @atd/website exec wrangler deploy --dry-run --config ../../ops/r2-budget-guard/wrangler.local.jsonc
 
 # 首次在 Cloudflare 设置运行 Secret，或通过安全交互输入上传。
-pnpm --filter @atd/website exec wrangler secret put CF_API_TOKEN --config ../../ops/r2-budget-guard/wrangler.jsonc --profile atd-deploy
+pnpm --filter @atd/website exec wrangler secret put CF_API_TOKEN --config ../../ops/r2-budget-guard/wrangler.local.jsonc --profile atd-deploy
 
 # 确认 atd-assets、assets.atd.best 和 Secret 均已准备好，再部署。
-pnpm --filter @atd/website exec wrangler deploy --config ../../ops/r2-budget-guard/wrangler.jsonc --profile atd-deploy
-pnpm --filter @atd/website exec wrangler tail --format json --config ../../ops/r2-budget-guard/wrangler.jsonc --profile atd-deploy
+pnpm --filter @atd/website exec wrangler deploy --config ../../ops/r2-budget-guard/wrangler.local.jsonc --profile atd-deploy
+pnpm --filter @atd/website exec wrangler tail --format json --config ../../ops/r2-budget-guard/wrangler.local.jsonc --profile atd-deploy
 ```
 
 首次 Secret 上传若工具询问是否创建 Worker，仅创建 `atd-r2-budget-guard`；配置完成前不要把首次短暂缺少 Secret 的部署当作健康状态。发布后确认首个 `within_limits` 或明确的暂停结果，以及后续分钟闹钟持续运行。正常运行不依赖电脑在线。部署成功不等于检查已通过。
+
+`wrangler.local.jsonc` 受 Git 忽略，不提交账户 ID 或令牌。共享配置更新时，把模板中的行为变更同步到本地配置，并保留目标账户、`v1` 迁移及已有 Durable Object 绑定。模板只包含占位值，不能直接用于生产部署。
 
 新建或修改 Cron 触发器[最多需要 15 分钟传播](https://developers.cloudflare.com/workers/configuration/cron-triggers/)。首次部署可保持日志连接等待自动启动；尚无执行记录时不要据此重复部署或判断守护已健康运行。
 
@@ -61,7 +68,7 @@ pnpm --filter @atd/website assets:check --base https://assets.atd.best --full
 
 该命令需要当前网站构建产物，核对每个清单对象的大小、SHA-256、Content-Type、一年 immutable 缓存和跨域响应，并核对每个 MP4 的 206 Range 字节。详见 [网站发布说明](../../apps/website/README.md)。暂停期间不要用 CDN 检查失败推断对象丢失。
 
-恢复时先在 [Worker Logs](https://dash.cloudflare.com/YOUR_CLOUDFLARE_ACCOUNT_ID/workers/services/view/atd-r2-budget-guard/production/settings) 复核暂停原因、用量和 `recovery_ready`。解决根因且确认额度后，在 R2 → `atd-assets` → Settings → Custom Domains 手动启用 `assets.atd.best`，保持 `r2.dev` 关闭。然后核实新的 `within_limits`，运行资产健康检查。需要紧急停用时在同一位置 Disable domain，无需删除桶或域名连接。
+恢复时先在 [Cloudflare 控制台](https://dash.cloudflare.com/) 选择部署账户 → Workers → `atd-r2-budget-guard` → Logs，复核暂停原因、用量和 `recovery_ready`。解决根因且确认额度后，在 R2 → `atd-assets` → Settings → Custom Domains 手动启用 `assets.atd.best`，保持 `r2.dev` 关闭。然后核实新的 `within_limits`，运行资产健康检查。需要紧急停用时在同一位置 Disable domain，无需删除桶或域名连接。
 
 ## 限制
 
