@@ -4,9 +4,10 @@ import { homedir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 
 /**
- * The product home that holds the `skills` and `agents` catalogs. `AI_ATD_HOME` overrides it (the
- * desktop sets it for isolated test profiles); otherwise it is `~/.atd` through `os.homedir()`, so a
- * confined service HOME cannot hide or redirect it. Read on every call, never cached.
+ * The product home that holds the `skills` and `agents` catalogs. `AI_ATD_HOME` overrides it; `serve`
+ * sets it from the data dir (storage.ts `resolveAtdHome`), so only the installed app's data dir uses
+ * `~/.atd`. Without it, it is `~/.atd` through `os.homedir()`, so a confined service HOME cannot hide
+ * or redirect it. Read on every call, never cached.
  */
 export function atdHome(): string {
   const override = process.env.AI_ATD_HOME?.trim();
