@@ -9,8 +9,7 @@ with open(defines["layout"], encoding="utf-8") as fp:
 app = defines["app"]
 files = [app]
 symlinks = {"Applications": "/Applications"}
-# Request "Atd"; Finder can still show .app when the user enables all filename extensions.
-hide_extensions = ["Atd.app"]
+# Hiding extensions writes FinderInfo into the signed bundle and fails strict verification.
 
 # LZFSE (ULFO) compresses faster and smaller than zlib (UDZO); every macOS the app supports opens it.
 format = "ULFO"
