@@ -93,6 +93,9 @@ final class WebViewHost: NSObject {
     act(outbox.post(message, scope: .document))
   }
 
+  /// Whether a page is up to take events now, rather than when it becomes ready.
+  var isPageReady: Bool { outbox.pageReady }
+
   func pageDidBecomeReady() {
     act(outbox.pageDidBecomeReady())
   }
