@@ -74,7 +74,7 @@ extension MiniPanelController {
     guard let layout else { return }
     let near = layout.keepsOpen(point, flyoutOpen: model.flyoutOpen)
     guard hover.expanded(near: near, held: isHeld, at: time) == .collapse else { return }
-    respond("close", at: CACurrentMediaTime(), settling: Self.settling(.collapse))
+    respond("close", at: CACurrentMediaTime(), settling: settling(.collapse, from: .capsule))
     collapse(trigger: "pointer left")
   }
 
@@ -86,10 +86,11 @@ extension MiniPanelController {
     switch hover.tucked(inHotZone: layout.isInHotZone(point), at: time) {
     case .swell?:
       if openOn == .hover {
-        respond("open", at: time, settling: MiniPanelHover.dwell + Self.settling(.expand))
+        respond(
+          "open", at: time, settling: MiniPanelHover.dwell + settling(.expand, from: .swell))
         openStartedAt = time
       } else {
-        respond("swell", at: time, settling: Self.settling(.swell))
+        respond("swell", at: time, settling: settling(.swell, from: .pill))
       }
       morphBody(to: .swell, motion: MiniPanelChoreography.shape(.swell, reduceMotion: reduce))
       pointer.wake()
@@ -109,12 +110,23 @@ extension MiniPanelController {
     pendingResponse = (name, start, settling)
   }
 
-  /// How long `moment`'s shape takes to come to rest, as SwiftUI runs its springs.
-  static func settling(_ moment: MiniPanelMoment) -> Double {
-    let motion = MiniPanelChoreography.shape(moment)
-    return max(
-      motion.thicknessDelay + MiniPanelMotion.settling(motion.thickness),
-      motion.lengthDelay + MiniPanelMotion.settling(motion.length))
+  /// How long the body takes to come to rest as `moment` changes it from `from`, as it runs
+  /// (``MiniPanelAxisAnimation/restTime(_:across:along:)``).
+  func settling(_ moment: MiniPanelMoment, from: MiniPanelShape) -> Double {
+    guard let layout else { return 0 }
+    let to: MiniPanelShape =
+      switch moment {
+      case .swell: .swell
+      case .relax, .collapse: .pill
+      case .expand: .capsule
+      case .invite, .untarget: .invite
+      case .target: .target
+      }
+    let (old, new) = (layout.rect(of: from), layout.rect(of: to))
+    return MiniPanelAxisAnimation.restTime(
+      MiniPanelChoreography.shape(moment, reduceMotion: model.reduceMotion),
+      across: max(abs(new.x - old.x), abs(new.maxX - old.maxX)),
+      along: max(abs(new.y - old.y), abs(new.maxY - old.maxY)))
   }
 
   /// Logs how long a response took to reach the screen (this frame's display time, which shows
@@ -137,7 +149,7 @@ extension MiniPanelController {
   func expand(trigger: String, awaitingVisit: Bool = false) {
     guard model.phase == .tucked else { return }
     if openStartedAt == nil {
-      respond("open", at: CACurrentMediaTime(), settling: Self.settling(.expand))
+      respond("open", at: CACurrentMediaTime(), settling: settling(.expand, from: .pill))
     }
     openStartedAt = nil
     refreshPanelKey()
