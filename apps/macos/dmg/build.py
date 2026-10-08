@@ -2,6 +2,7 @@
 
 import argparse
 import struct
+import subprocess
 from pathlib import Path
 
 from dmgbuild import build_dmg
@@ -61,6 +62,17 @@ def main():
             if mount_point is None:
                 raise RuntimeError("dmgbuild did not provide the mounted image")
             fix_background_bookmark(mount_point)
+            # Layout metadata must not invalidate the signed app that users install.
+            subprocess.run(
+                [
+                    "codesign",
+                    "--verify",
+                    "--deep",
+                    "--strict",
+                    str(mount_point / Path(args.app).name),
+                ],
+                check=True,
+            )
 
     build_dmg(
         args.output,
