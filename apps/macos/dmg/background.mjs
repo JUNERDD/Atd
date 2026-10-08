@@ -1,12 +1,6 @@
-// Draws the installer window's background in the website's faceplate language (apps/website, see
-// its README and styles/base.css): a dark plate perforated with a 24 pt dot grid, a black LED
-// display set into it whose lit dots point from the app to Applications, and a lower legend plate
-// joined to it by a seam with registration crosses, carrying the build's readout in dot-matrix
-// figures.
-//
-// Finder draws icon labels in the system appearance's text color (white in Dark Mode, black in
-// Light Mode) whatever the picture behind them, so the legend plate under the labels is a mid gray
-// that keeps both colors at about 4.5:1. The upper plate holds only the icons and the display.
+// Draws a light installer background with a subtle 24 pt dot grid, a dot-matrix arrow pointing
+// from the app to Applications, and a build readout. Finder's native black labels stay readable
+// directly on the background. A short English instruction sits below the arrow.
 import { execFileSync } from 'node:child_process';
 import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -14,24 +8,17 @@ import { join } from 'node:path';
 /** Window geometry shared with settings.py: content size, icon size and icon centers in points. */
 export const layout = JSON.parse(readFileSync(new URL('layout.json', import.meta.url), 'utf8'));
 
-// The website's tokens (styles/tokens.css): the faceplate, the display glass, hairlines and dots.
-const PLATE = '#0b0b0c';
-const GLASS = '#000';
-// Hairlines are white at the given opacity: CoreSVG, which rasterizes this, reads no CSS color
-// alpha, so every translucent fill is a color plus an opacity.
-const LINE_1 = 0.09;
-const LINE_2 = 0.14;
+const SURFACE = '#f5f5f7';
+const INK = '#323235';
 const GRID = 24;
 const LED = 8;
-// Mid gray (relative luminance ~0.18): white and black label text both reach ~4.5:1 on it.
-const LEGEND = '#767676';
-const ENGRAVED = '#2a2a2c';
+const READOUT = '#6e6e73';
 // Finder's icon view keeps its content taller than the 288 pt window (578 pt for these icons,
-// whatever the window's height), so the window can scroll. The legend plate runs on below the
-// window by this much, so scrolling reveals more plate rather than Finder's blank fill.
+// whatever the window's height), so the window can scroll. Extend the surface below the window
+// to keep the background continuous when scrolling.
 const OVERSCROLL = 320;
 
-// The display's picture, top row first: `x` is a lit LED. The tail fades in like a trail.
+// The arrow, top row first: `x` is a lit LED. The tail fades in like a trail.
 const ARROW = [
   '....................',
   '............x.......',
@@ -93,17 +80,16 @@ const dot = (x, y, r, fill, opacity = 1) =>
   `<circle cx="${x}" cy="${y}" r="${r}" fill="${fill}" fill-opacity="${opacity}"/>`;
 
 /** Perforations at the 24 pt pitch, registered so the window edges fall between dots. */
-function perforations(top, bottom, fill, opacity) {
+function perforations(height) {
   const dots = [];
-  for (let y = GRID / 2; y < bottom; y += GRID) {
-    if (y < top) continue;
-    for (let x = GRID / 2; x < layout.width; x += GRID) dots.push(dot(x, y, 1.25, fill, opacity));
+  for (let y = GRID / 2; y < height; y += GRID) {
+    for (let x = GRID / 2; x < layout.width; x += GRID) dots.push(dot(x, y, 1.25, '#000', 0.06));
   }
   return dots.join('');
 }
 
-/** The display between the two icons: black glass, a hairline bezel, unlit and lit LEDs. */
-function display() {
+/** Lit arrow dots between the icons, directly on the window background. */
+function arrow() {
   const cols = ARROW[0].length;
   const w = cols * LED;
   const h = ARROW.length * LED;
@@ -113,26 +99,15 @@ function display() {
     Array.from(row, (cell, i) => {
       const cx = x + LED / 2 + i * LED;
       const cy = y + LED / 2 + j * LED;
-      if (cell !== 'x') return dot(cx, cy, 1.1, '#fff', 0.07);
+      if (cell !== 'x') return '';
       const opacity = TRAIL[i] ?? 1;
-      // A faint halo stands in for the website's LED glow (`.led`'s box-shadow).
-      return dot(cx, cy, 4.5, '#fff', 0.12 * opacity) + dot(cx, cy, LED * 0.34, '#fff', opacity);
+      return dot(cx, cy, 4.5, INK, 0.08 * opacity) + dot(cx, cy, LED * 0.34, INK, opacity);
     }),
   );
-  return [
-    `<rect x="${x}" y="${y + 1}" width="${w}" height="${h}" rx="16" fill="#fff" fill-opacity="0.05"/>`,
-    `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="16" fill="${GLASS}"/>`,
-    `<rect x="${x + 0.5}" y="${y + 0.5}" width="${w - 1}" height="${h - 1}" rx="15.5" fill="none" stroke="#fff" stroke-opacity="${LINE_1}"/>`,
-    ...leds,
-  ].join('');
+  return leds.join('');
 }
 
-/** A registration cross centered on (x, y), as on the website's seams. */
-const cross = (x, y) =>
-  `<rect x="${x - 5}" y="${y}" width="11" height="1" fill="#fff" fill-opacity="${LINE_2}"/>` +
-  `<rect x="${x}" y="${y - 5}" width="1" height="11" fill="#fff" fill-opacity="${LINE_2}"/>`;
-
-/** The readout engraved in the legend plate, centered on (cx, cy) at a 2 pt dot pitch. */
+/** The build readout, centered on (cx, cy) at a 2 pt dot pitch. */
 function readout(text, cx, cy) {
   const pitch = 2;
   const glyphs = [...text.toUpperCase()].map((c) => FONT[c] ?? FONT[' ']);
@@ -145,7 +120,7 @@ function readout(text, cx, cy) {
         .flatMap((row, j) =>
           Array.from(row, (bit, i) =>
             bit === '1'
-              ? dot(left + (g * 6 + i + 0.5) * pitch, top + (j + 0.5) * pitch, 0.75, ENGRAVED)
+              ? dot(left + (g * 6 + i + 0.5) * pitch, top + (j + 0.5) * pitch, 0.75, READOUT)
               : '',
           ),
         ),
@@ -156,22 +131,15 @@ function readout(text, cx, cy) {
 /** The background as SVG, in points; `version` is the app version the readout names. */
 export function backgroundSvg(version) {
   const { width, height, iconSize, app } = layout;
-  // The seam runs just above the bottom of the icon cell: below the artwork, which macOS insets
-  // within the cell, and above the label Finder draws under the cell.
-  const seam = app.y + iconSize / 2 - 4;
   // The readout sits midway between the labels' line and the window's bottom edge.
-  const readoutY = Math.round((seam + 24 + height) / 2);
+  const readoutY = Math.round((app.y + iconSize / 2 + 20 + height) / 2);
   const imageHeight = height + OVERSCROLL;
   return [
     `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${imageHeight}" viewBox="0 0 ${width} ${imageHeight}">`,
-    `<rect width="${width}" height="${seam}" fill="${PLATE}"/>`,
-    perforations(0, seam, '#fff', 0.1),
-    `<rect y="${seam}" width="${width}" height="${imageHeight - seam}" fill="${LEGEND}"/>`,
-    perforations(seam + GRID / 2, imageHeight, '#000', 0.07),
-    `<rect y="${seam}" width="${width}" height="1" fill="#fff" fill-opacity="0.18"/>`,
-    cross(2 * GRID, seam),
-    cross(width - 2 * GRID, seam),
-    display(),
+    `<rect width="${width}" height="${imageHeight}" fill="${SURFACE}"/>`,
+    perforations(imageHeight),
+    arrow(),
+    `<text x="${width / 2}" y="${app.y + 50}" text-anchor="middle" font-family="Helvetica Neue, sans-serif" font-size="12" fill="#66666b">Drag to install</text>`,
     readout(`Atd · ${version} · arm64`, width / 2, readoutY),
     '</svg>',
   ].join('');
