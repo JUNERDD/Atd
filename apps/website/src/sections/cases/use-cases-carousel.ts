@@ -1,26 +1,35 @@
 import Autoplay from 'embla-carousel-autoplay';
+import Fade from 'embla-carousel-fade';
 import useEmblaCarousel from 'embla-carousel-react';
 import { useEffect, useMemo, useRef, useState, type FocusEvent } from 'react';
+import { cases } from '../../content/cases';
 import { useInView } from '../../lib/use-in-view';
 import { useReducedMotion } from '../../lib/use-reduced-motion';
+import { sceneTiming } from './scenes';
 
-const INTERVAL_MS = 3000;
+/** Each slide's hold, in slide order, as Embla's per-snap autoplay delays. */
+const DURATIONS = cases.map((item) => sceneTiming[item.id].duration);
+const durationOf = (index: number) => DURATIONS[index] ?? sceneTiming[cases[0].id].duration;
 
-/** Embla owns dragging and playback; this hook connects page visibility and the visitor's choice. */
+/**
+ * Embla owns the crossfade and playback; this hook connects page visibility, the visitor's choice
+ * and each scene's timing. Scenes change only through the controls, never by dragging.
+ */
 export function useCasesCarousel() {
   const root = useRef<HTMLElement>(null);
   const progress = useRef<HTMLSpanElement>(null);
   const inView = useInView(root, { threshold: 0.2 });
+  // Scenes wait, hidden, for the first time the carousel is seen (scenes.css), then play in.
+  const started = useInView(root, { threshold: 0.2, once: true });
   const reducedMotion = useReducedMotion();
   const [manualPlay, setManualPlay] = useState<boolean | null>(null);
-  const [pressed, setPressed] = useState(false);
   const [active, setActive] = useState(0);
   const [playing, setPlaying] = useState(false);
   const rotationEnabled = manualPlay ?? !reducedMotion;
   const autoplay = useMemo(
     () =>
       Autoplay({
-        delay: INTERVAL_MS,
+        delay: () => DURATIONS,
         playOnInit: false,
         stopOnInteraction: true,
         stopOnMouseEnter: false,
@@ -28,33 +37,26 @@ export function useCasesCarousel() {
       }),
     [],
   );
-  const [viewport, api] = useEmblaCarousel({ loop: true, duration: reducedMotion ? 0 : 28 }, [
-    autoplay,
-  ]);
+  const [viewport, api] = useEmblaCarousel(
+    { loop: true, watchDrag: false, duration: reducedMotion ? 0 : 28 },
+    [autoplay, Fade()],
+  );
 
   useEffect(() => {
     if (!api) return;
     const select = () => setActive(api.selectedScrollSnap());
     const play = () => setPlaying(true);
     const stop = () => setPlaying(false);
-    const press = () => setPressed(true);
-    const release = () => setPressed(false);
     select();
     api
       .on('select', select)
       .on('reInit', select)
-      .on('reInit', release)
-      .on('pointerDown', press)
-      .on('pointerUp', release)
       .on('autoplay:play', play)
       .on('autoplay:stop', stop);
     return () => {
       api
         .off('select', select)
         .off('reInit', select)
-        .off('reInit', release)
-        .off('pointerDown', press)
-        .off('pointerUp', release)
         .off('autoplay:play', play)
         .off('autoplay:stop', stop);
     };
@@ -74,12 +76,13 @@ export function useCasesCarousel() {
       if (remaining === null) return;
       reset();
       // Follow Embla's actual timer, including restarts after a hold, visibility and resize.
+      const duration = durationOf(api.selectedScrollSnap());
       animation = fill.animate([{ transform: 'scaleX(0)' }, { transform: 'scaleX(1)' }], {
-        duration: INTERVAL_MS,
+        duration,
         easing: reducedMotion ? 'steps(3, end)' : 'linear',
         fill: 'forwards',
       });
-      animation.currentTime = INTERVAL_MS - remaining;
+      animation.currentTime = duration - remaining;
     };
     const stop = () => animation?.pause();
     api
@@ -102,7 +105,7 @@ export function useCasesCarousel() {
     if (!api) return;
     const syncPlayback = () => {
       const playback = api.plugins().autoplay;
-      if (inView && rotationEnabled && !pressed) playback.play(reducedMotion);
+      if (inView && rotationEnabled) playback.play(reducedMotion);
       else playback.stop();
     };
     api.on('reInit', syncPlayback);
@@ -111,31 +114,35 @@ export function useCasesCarousel() {
       api.off('reInit', syncPlayback);
       api.plugins().autoplay.stop();
     };
-  }, [api, inView, rotationEnabled, pressed, reducedMotion]);
+  }, [api, inView, rotationEnabled, reducedMotion]);
 
-  function pause() {
+  function pauseOnFocus(event: FocusEvent<HTMLElement>) {
+    // Pointer clicks must reach the playback button before changing its play/pause state.
+    if (!event.target.matches(':focus-visible')) return;
     api?.plugins().autoplay.stop();
     setManualPlay(false);
   }
 
-  function pauseOnFocus(event: FocusEvent<HTMLElement>) {
-    // Pointer clicks must reach the playback button before changing its play/pause state.
-    if (event.target.matches(':focus-visible')) pause();
+  /**
+   * The scene tabs and the previous and next buttons keep playback as it was: a running timer
+   * restarts with the new scene's hold, and a paused carousel stays paused.
+   */
+  function go(move: (carousel: NonNullable<typeof api>) => void) {
+    if (!api) return;
+    move(api);
+    api.plugins().autoplay.reset();
   }
 
   function select(index: number) {
-    pause();
-    api?.scrollTo(index, reducedMotion);
+    go((carousel) => carousel.scrollTo(index, reducedMotion));
   }
 
   function previous() {
-    pause();
-    api?.scrollPrev(reducedMotion);
+    go((carousel) => carousel.scrollPrev(reducedMotion));
   }
 
   function next() {
-    pause();
-    api?.scrollNext(reducedMotion);
+    go((carousel) => carousel.scrollNext(reducedMotion));
   }
 
   function toggle() {
@@ -145,9 +152,11 @@ export function useCasesCarousel() {
   return {
     root,
     progress,
-    intervalSeconds: INTERVAL_MS / 1000,
+    intervalSeconds: durationOf(active) / 1000,
     viewport,
     active,
+    started,
+    entered: inView,
     playing,
     rotationEnabled,
     pauseOnFocus,

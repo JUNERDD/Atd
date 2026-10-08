@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { cases } from '../../content/cases';
 import { useCopy, useLang } from '../../i18n/lang';
 import { casesCopy } from './copy';
+import { CaseDesktop, CaseScene } from './scene';
 import { useCasesCarousel } from './use-cases-carousel';
 import './cases.css';
 
@@ -18,6 +19,8 @@ export function CasesShowcase() {
     intervalSeconds,
     viewport,
     active,
+    started,
+    entered,
     playing,
     rotationEnabled,
     pauseOnFocus,
@@ -35,6 +38,7 @@ export function CasesShowcase() {
       className="cases__showcase"
       aria-label={t.views}
       aria-roledescription={t.carousel}
+      data-started={started ? '' : undefined}
       onFocusCapture={pauseOnFocus}
     >
       <ol className="cases__views" aria-label={t.views} data-reveal-group="">
@@ -52,33 +56,32 @@ export function CasesShowcase() {
           </li>
         ))}
       </ol>
-      <div ref={viewport} className="cases__viewport display" id="case-carousel">
-        <div className="cases__slides">
-          {cases.map((item, index) => (
-            <figure
-              key={item.id}
-              className="cases__slide"
-              aria-label={`${index + 1} / ${cases.length} · ${item.label[lang]}`}
-              aria-roledescription={t.slide}
-              aria-hidden={active !== index}
-            >
-              {failed.has(item.id) ? (
-                <output className="cases__unavailable">{t.imageUnavailable}</output>
-              ) : (
-                <img
-                  className="cases__image"
-                  src={item.image.src}
-                  alt={item.image.alt[lang]}
-                  width={1440}
-                  height={900}
-                  loading="lazy"
-                  decoding="async"
-                  draggable={false}
-                  onError={() => setFailed((previous) => new Set(previous).add(item.id))}
-                />
-              )}
-            </figure>
-          ))}
+      <div className="cases__screen display" id="case-carousel">
+        <CaseDesktop />
+        <div ref={viewport} className="cases__viewport">
+          <div className="cases__slides">
+            {cases.map((item, index) => (
+              <figure
+                key={item.id}
+                className="cases__slide"
+                data-entered={entered && active === index ? '' : undefined}
+                aria-label={`${index + 1} / ${cases.length} · ${item.label[lang]}`}
+                aria-roledescription={t.slide}
+                aria-hidden={active !== index}
+              >
+                {failed.has(item.id) ? (
+                  <output className="cases__unavailable">{t.imageUnavailable}</output>
+                ) : (
+                  <CaseScene
+                    id={item.id}
+                    layers={item.layers}
+                    alt={item.image.alt[lang]}
+                    onError={() => setFailed((previous) => new Set(previous).add(item.id))}
+                  />
+                )}
+              </figure>
+            ))}
+          </div>
         </div>
       </div>
       <div className="cases__caption">

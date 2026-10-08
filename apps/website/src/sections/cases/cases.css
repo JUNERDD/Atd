@@ -36,36 +36,59 @@
   background: var(--accent-fill);
 }
 
-.cases__viewport {
+/* The screen is a 16:10 window: the shared desktop, with Embla's stacked slides crossfading
+   above it. */
+.cases__screen {
   overflow: hidden;
+  aspect-ratio: 16 / 10;
   border-radius: var(--r-display);
-  cursor: grab;
+  /* Scene motion measures in cqw, so it scales with the screen like the scene itself. */
+  container-type: inline-size;
 }
 
-.cases__viewport:active {
-  cursor: grabbing;
+.cases__desktop,
+.cases__viewport {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+}
+
+.cases__desktop {
+  display: block;
+  user-select: none;
+}
+
+.cases__viewport {
+  overflow: hidden;
 }
 
 .cases__slides {
   display: flex;
-  touch-action: pan-y pinch-zoom;
+  block-size: 100%;
 }
 
 .cases__slide {
+  position: relative;
   flex: 0 0 100%;
   min-inline-size: 0;
-  aspect-ratio: 16 / 10;
   display: grid;
   place-items: center;
 }
 
-.cases__image {
+.cases__scene {
+  position: absolute;
+  inset: 0;
+}
+
+/* Boxes come from case-layers.css; the height follows each image's own aspect ratio. */
+.cases__layer {
+  position: absolute;
   display: block;
-  inline-size: 100%;
-  block-size: 100%;
-  min-inline-size: 0;
-  object-fit: contain;
+  block-size: auto;
+  max-inline-size: none;
   user-select: none;
+  pointer-events: none;
 }
 
 .cases__caption {
@@ -184,7 +207,10 @@
 }
 
 .cases__unavailable {
+  max-inline-size: 28rem;
   padding: 32px;
+  border-radius: var(--r-part);
+  background: var(--ink-0);
   color: var(--fg-2);
   text-align: center;
 }

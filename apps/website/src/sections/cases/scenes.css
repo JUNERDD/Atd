@@ -1,0 +1,363 @@
+/* Scene choreography. Each scene is the shared desktop with its surfaces as separate layers
+   (case-layers.css places them; at rest they reproduce the flat export). When a slide is entered,
+   its layers play in the way the real surfaces arrive on a Mac: text gets selected before its
+   toolbar appears, the Mini Panel slides out from the edge, a capture is framed and then
+   annotated step by step, windows open, and replies stream in. Every animation runs from a hidden
+   keyframe to the layer's resting style, with a backwards fill through its delay, so nothing is
+   held once it ends and an interrupted scene is always complete. Offsets are in cqw of the screen,
+   so motion scales with it. Reduced motion keeps every layer at rest. */
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Before the carousel is first seen, only the desktop shows, so the first scene can play in.
+     Without the page script (no data-motion-ready) everything stays visible. */
+  :root[data-motion][data-motion-ready] .cases__showcase:not([data-started]) .cases__scene {
+    opacity: 0;
+  }
+
+  :root[data-motion] .cases__slide[data-entered] .cases__layer {
+    --cs-delay: 0ms;
+    animation-delay: var(--cs-delay);
+    animation-fill-mode: backwards;
+  }
+
+  /* 01 · Selection toolbar: the page opens and its text settles in, a drag selects the words,
+     then the toolbar appears above them. */
+  :root[data-motion] .cases__slide[data-entered] [data-layer='selection-toolbar/page'] {
+    --cs-delay: 150ms;
+    animation-name: cs-open;
+    animation-duration: var(--dur-spring-smooth);
+    animation-timing-function: var(--spring-smooth);
+  }
+
+  :root[data-motion] .cases__slide[data-entered] [data-layer='selection-toolbar/text'] {
+    --cs-delay: 550ms;
+    animation-name: cs-rise;
+    animation-duration: var(--dur-spring-smooth);
+    animation-timing-function: var(--spring-smooth);
+  }
+
+  /* The drag starts once the text has settled, at an even hand speed. */
+  :root[data-motion] .cases__slide[data-entered] [data-layer='selection-toolbar/highlight'] {
+    --cs-delay: 1300ms;
+    animation-name: cs-wipe-right;
+    animation-duration: 900ms;
+    animation-timing-function: ease-in-out;
+  }
+
+  :root[data-motion] .cases__slide[data-entered] [data-layer='selection-toolbar/toolbar'] {
+    --cs-delay: 2300ms;
+    transform-origin: 50% 100%;
+    animation-name: cs-pop-up;
+    animation-duration: var(--dur-spring-snappy);
+    animation-timing-function: var(--spring-snappy);
+  }
+
+  /* 02 · Mini Panel: the rail slides out from the edge, its menu unfolds, the pointer arrives. */
+  :root[data-motion] .cases__slide[data-entered] [data-layer='mini-panel/rail'] {
+    --cs-delay: 150ms;
+    animation-name: cs-from-edge;
+    animation-duration: var(--dur-spring-smooth);
+    animation-timing-function: var(--spring-smooth);
+  }
+
+  :root[data-motion] .cases__slide[data-entered] [data-layer='mini-panel/flyout'] {
+    --cs-delay: 800ms;
+    transform-origin: 100% 30%;
+    animation-name: cs-unfold;
+    animation-duration: var(--dur-spring-smooth);
+    animation-timing-function: var(--spring-smooth);
+  }
+
+  :root[data-motion] .cases__slide[data-entered] [data-layer='mini-panel/pointer'] {
+    --cs-delay: 1150ms;
+    --cs-from: 12cqw 3cqw;
+    animation-name: cs-glide;
+    animation-duration: 800ms;
+    animation-timing-function: var(--curve-sheet);
+  }
+
+  /* 03 · Screenshot: the screen freezes, the area is framed, then the rest dims as the tools rise,
+     and the annotations go on in the order of their step numbers. The dim's cutout is the final
+     frame, so it waits until the frame is drawn. */
+  :root[data-motion] .cases__slide[data-entered] [data-layer^='screenshot/'] {
+    animation-name: cs-fade;
+    animation-duration: var(--dur-slow);
+    animation-timing-function: var(--curve-out);
+  }
+
+  :root[data-motion] .cases__slide[data-entered] [data-layer='screenshot/selection'] {
+    --cs-delay: 300ms;
+    /* The outline's top-left corner; the layer box also holds the handles and the size label. */
+    transform-origin: 1.1% 6.2%;
+    animation-name: cs-frame;
+    animation-duration: var(--dur-sheet);
+    animation-timing-function: var(--curve-sheet);
+  }
+
+  /* With the tools, at their pace. */
+  :root[data-motion] .cases__slide[data-entered] [data-layer='screenshot/dim'] {
+    --cs-delay: 1000ms;
+    animation-duration: var(--dur-spring-smooth);
+  }
+
+  :root[data-motion] .cases__slide[data-entered] [data-layer='screenshot/bars'] {
+    --cs-delay: 1000ms;
+    animation-name: cs-rise;
+    animation-duration: var(--dur-spring-smooth);
+    animation-timing-function: var(--spring-smooth);
+  }
+
+  :root[data-motion] .cases__slide[data-entered] [data-layer='screenshot/hint'] {
+    --cs-delay: 1200ms;
+  }
+
+  :root[data-motion] .cases__slide[data-entered] [data-layer='screenshot/mosaic'] {
+    --cs-delay: 1700ms;
+    animation-name: cs-wipe-right;
+    animation-duration: 480ms;
+    animation-timing-function: steps(12, end);
+  }
+
+  :root[data-motion] .cases__slide[data-entered] [data-layer='screenshot/step-1'] {
+    --cs-delay: 2200ms;
+    animation-name: cs-pop;
+    animation-duration: var(--dur-spring-snappy);
+    animation-timing-function: var(--spring-snappy);
+  }
+
+  :root[data-motion] .cases__slide[data-entered] [data-layer='screenshot/step-2'] {
+    --cs-delay: 2700ms;
+    animation-name: cs-wipe-down;
+    animation-duration: 600ms;
+    animation-timing-function: ease-in-out;
+  }
+
+  :root[data-motion] .cases__slide[data-entered] [data-layer='screenshot/step-3'] {
+    --cs-delay: 3200ms;
+    animation-name: cs-wipe-left;
+    animation-duration: 800ms;
+    animation-timing-function: ease-in-out;
+  }
+
+  /* 04 · Main panel and 06 · Settings, 08 · Automations: the window opens, then its content. */
+  :root[data-motion]
+    .cases__slide[data-entered]
+    :is(
+      [data-layer='main-panel/panel'],
+      [data-layer='settings/window'],
+      [data-layer='automations/window']
+    ) {
+    animation-name: cs-open;
+    animation-duration: var(--dur-spring-smooth);
+    animation-timing-function: var(--spring-smooth);
+  }
+
+  :root[data-motion]
+    .cases__slide[data-entered]
+    :is(
+      [data-layer='main-panel/welcome'],
+      [data-layer='settings/page'],
+      [data-layer='automations/page']
+    ) {
+    --cs-delay: 380ms;
+    animation-name: cs-rise;
+    animation-duration: var(--dur-spring-smooth);
+    animation-timing-function: var(--spring-smooth);
+  }
+
+  /* 05 · Conversation: the follow-up is sent; the reply then builds the way a run does, its
+     status, then the tools it ran, then the answer streaming in line by line, then its actions. */
+  :root[data-motion]
+    .cases__slide[data-entered]
+    :is([data-layer='chat/panel'], [data-layer='chat/earlier']) {
+    animation-name: cs-fade;
+    animation-duration: var(--dur-base);
+    animation-timing-function: var(--curve-out);
+  }
+
+  :root[data-motion] .cases__slide[data-entered] [data-layer='chat/ask'] {
+    --cs-delay: 500ms;
+    transform-origin: 100% 100%;
+    animation-name: cs-pop-up;
+    animation-duration: var(--dur-spring-smooth);
+    animation-timing-function: var(--spring-smooth);
+  }
+
+  :root[data-motion] .cases__slide[data-entered] [data-layer='chat/status'] {
+    --cs-delay: 1100ms;
+    animation-name: cs-fade;
+    animation-duration: var(--dur-base);
+    animation-timing-function: var(--curve-out);
+  }
+
+  :root[data-motion] .cases__slide[data-entered] [data-layer='chat/tools'] {
+    --cs-delay: 1300ms;
+    animation-name: cs-rise;
+    animation-duration: var(--dur-slow);
+    animation-timing-function: var(--curve-out);
+  }
+
+  /* Word-sized steps, like tokens arriving. */
+  :root[data-motion] .cases__slide[data-entered] [data-layer='chat/answer'] {
+    --cs-delay: 1550ms;
+    animation-name: cs-stream-answer;
+    animation-duration: 1500ms;
+    animation-timing-function: steps(12, end);
+  }
+
+  :root[data-motion] .cases__slide[data-entered] [data-layer='chat/actions'] {
+    --cs-delay: 3100ms;
+    animation-name: cs-rise;
+    animation-duration: var(--dur-slow);
+    animation-timing-function: var(--curve-out);
+  }
+
+  /* 07 · Apps: My apps opens, then the app opens from it. */
+  :root[data-motion] .cases__slide[data-entered] [data-layer='apps/apps'] {
+    --cs-from: -2cqw 0;
+    animation-name: cs-glide;
+    animation-duration: var(--dur-spring-smooth);
+    animation-timing-function: var(--spring-smooth);
+  }
+
+  :root[data-motion] .cases__slide[data-entered] [data-layer='apps/notes'] {
+    --cs-delay: 700ms;
+    transform-origin: 0 30%;
+    animation-name: cs-launch;
+    animation-duration: var(--dur-spring-smooth);
+    animation-timing-function: var(--spring-smooth);
+  }
+}
+
+@keyframes cs-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes cs-rise {
+  from {
+    opacity: 0;
+    translate: 0 1.2cqw;
+  }
+}
+
+@keyframes cs-open {
+  from {
+    opacity: 0;
+    scale: 0.94;
+    translate: 0 1cqw;
+  }
+}
+
+@keyframes cs-pop {
+  from {
+    opacity: 0;
+    scale: 0.4;
+  }
+}
+
+@keyframes cs-pop-up {
+  from {
+    opacity: 0;
+    scale: 0.9;
+    translate: 0 0.6cqw;
+  }
+}
+
+@keyframes cs-unfold {
+  from {
+    opacity: 0;
+    scale: 0.88;
+  }
+}
+
+@keyframes cs-launch {
+  from {
+    opacity: 0;
+    scale: 0.6;
+  }
+}
+
+@keyframes cs-from-edge {
+  from {
+    translate: 6cqw 0;
+  }
+}
+
+@keyframes cs-glide {
+  from {
+    opacity: 0;
+    translate: var(--cs-from);
+  }
+}
+
+@keyframes cs-frame {
+  from {
+    opacity: 0;
+    scale: 0.3;
+  }
+}
+
+/* Reveals the conversation answer line by line, each from the left. The answer layer holds three
+   lines, split at 31.25% and 68.75% of its height and ending at 97.5%, 100% and 78.5% of its
+   width (measured from layers/chat/6-answer.webp); the time per line follows its length. The
+   polygon is the lines above plus the current line up to the cursor, so moving to the next line
+   starts from the same shape. */
+@keyframes cs-stream-answer {
+  0% {
+    clip-path: polygon(0 0, 100% 0, 100% 0, 0 0, 0 31.25%, 0 31.25%);
+  }
+
+  35.3% {
+    clip-path: polygon(0 0, 100% 0, 100% 0, 97.5% 0, 97.5% 31.25%, 0 31.25%);
+  }
+
+  35.4% {
+    clip-path: polygon(0 0, 100% 0, 100% 31.25%, 0 31.25%, 0 68.75%, 0 68.75%);
+  }
+
+  71.6% {
+    clip-path: polygon(0 0, 100% 0, 100% 31.25%, 100% 31.25%, 100% 68.75%, 0 68.75%);
+  }
+
+  71.7% {
+    clip-path: polygon(0 0, 100% 0, 100% 68.75%, 0 68.75%, 0 100%, 0 100%);
+  }
+
+  100% {
+    clip-path: polygon(0 0, 100% 0, 100% 68.75%, 78.5% 68.75%, 78.5% 100%, 0 100%);
+  }
+}
+
+/* Wipes end at an explicit inset(0): clip-path cannot interpolate from inset() to the resting
+   `none`, so an open end would flip at the midpoint instead of wiping. inset(0) shows the same. */
+@keyframes cs-wipe-right {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+
+  to {
+    clip-path: inset(0);
+  }
+}
+
+@keyframes cs-wipe-left {
+  from {
+    clip-path: inset(0 0 0 100%);
+  }
+
+  to {
+    clip-path: inset(0);
+  }
+}
+
+@keyframes cs-wipe-down {
+  from {
+    clip-path: inset(0 0 100% 0);
+  }
+
+  to {
+    clip-path: inset(0);
+  }
+}
