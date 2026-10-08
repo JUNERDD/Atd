@@ -60,9 +60,12 @@ public/
 ## Section layout
 
 Section headings and introductions share the page's center line, with no category label beside them.
-The privacy diagram is centered below its heading and capped at 54rem; its existing grid changes
-direction at 1000px. The desktop and compact layout review (`2504:145342`)
-keeps the shared heading and diagram components alongside the website's other design sources.
+The privacy board is centered below its heading and capped at 54rem. It answers what stays on the
+Mac (inside a dotted ring) and what leaves it; a cloud/local model switch above it empties the
+outbound side, and three "never" legends close the plate. Its two sides stack below 760px and sit
+side by side from 760px. The privacy section review (`2504:145342` desktop, `2504:145595` compact)
+composes the shared section heading with the board's components: `Website / Privacy board` (Layout × Mode),
+`Website / Privacy line`, `Website / Model switch` and `Website / Privacy promises`.
 
 ## Header language menu
 
