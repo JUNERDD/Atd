@@ -34,7 +34,7 @@ from a failed upload. An explicit tag must still equal GitHub's latest stable re
 node ops/release-downloads/mirror.mjs --tag latest --dry-run
 
 # Publish using the repository's encrypted credentials.
-gh workflow run mirror-release.yml --repo JUNERDD/ai --ref main -f tag=latest
+gh workflow run mirror-release.yml --repo JUNERDD/Atd --ref main -f tag=latest
 ```
 
 ## Private configuration

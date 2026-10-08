@@ -4,5 +4,5 @@
 
 - [Website (English)](/): features, privacy model, screen recordings and download
 - [Website (简体中文)](/zh): the same page in Simplified Chinese
-- [Source on GitHub](https://github.com/JUNERDD/ai): the native shell, the React UI and the agent service
-- [Releases](https://github.com/JUNERDD/ai/releases): release notes and the arm64 dmg for each version
+- [Source on GitHub](https://github.com/JUNERDD/Atd): the native shell, the React UI and the agent service
+- [Releases](https://github.com/JUNERDD/Atd/releases): release notes and the arm64 dmg for each version
