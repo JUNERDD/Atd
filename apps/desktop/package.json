@@ -1,6 +1,6 @@
 {
   "name": "@atd/desktop",
-  "version": "0.7.4",
+  "version": "0.7.5",
   "private": true,
   "description": "A quiet desktop task panel, built from Figma.",
   "author": "JUNERDD",

@@ -4,6 +4,52 @@
 
 import Foundation
 
+/// Params of the `miniPanel.setOpenOn` call.
+public struct MiniPanelSetOpenOnParams: Codable, Equatable, Sendable {
+  public let openOn: OpenOn
+
+  public init(openOn: OpenOn) {
+    self.openOn = openOn
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    openOn = try container.value(.openOn, OpenOn.self)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case openOn
+  }
+
+  public enum OpenOn: String, Codable, Equatable, Sendable {
+    case hover
+    case click
+  }
+}
+
+/// Result of the `miniPanel.setOpenOn` call.
+public struct MiniPanelSetOpenOnResult: Codable, Equatable, Sendable {
+  public let openOn: OpenOn
+
+  public init(openOn: OpenOn) {
+    self.openOn = openOn
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    openOn = try container.value(.openOn, OpenOn.self)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case openOn
+  }
+
+  public enum OpenOn: String, Codable, Equatable, Sendable {
+    case hover
+    case click
+  }
+}
+
 /// Params of the `miniPanel.setCommands` call.
 public struct MiniPanelSetCommandsParams: Codable, Equatable, Sendable {
   public let commands: [Command]
@@ -209,28 +255,3 @@ public struct UserAppWidgetPreviewResult: Codable, Equatable, Sendable {
     case pngBase64
   }
 }
-
-/// Params of the `userApp.clearData` call.
-public struct UserAppClearDataParams: Codable, Equatable, Sendable {
-  public let appId: String
-  public let forget: Bool
-
-  public init(appId: String, forget: Bool) {
-    self.appId = appId
-    self.forget = forget
-  }
-
-  public init(from decoder: any Decoder) throws {
-    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    appId = try container.string(.appId, pattern: "^app-[a-z0-9]{10}$")
-    forget = try container.boolean(.forget)
-  }
-
-  private enum CodingKeys: String, CodingKey, CaseIterable {
-    case appId
-    case forget
-  }
-}
-
-/// Result of the `userApp.clearData` call.
-public typealias UserAppClearDataResult = NativeEmpty

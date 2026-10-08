@@ -4,6 +4,24 @@
 
 import Foundation
 
+/// Result of the `clipboard.read` call.
+public struct ClipboardReadResult: Codable, Equatable, Sendable {
+  public let text: String
+
+  public init(text: String) {
+    self.text = text
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    text = try container.string(.text)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case text
+  }
+}
+
 /// Params of the `clipboard.write` call.
 public struct ClipboardWriteParams: Codable, Equatable, Sendable {
   public let text: String

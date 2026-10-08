@@ -3,7 +3,7 @@ export const site = {
   name: 'Atd',
   author: 'JUNERDD',
   /** The version described by this site; the stable download follows verified releases. */
-  version: '0.7.4',
+  version: '0.7.5',
   repoUrl: 'https://github.com/JUNERDD/Atd',
   releasesUrl: 'https://github.com/JUNERDD/Atd/releases',
   downloadUrl: 'https://downloads.atd.best/latest/Atd-arm64.dmg',

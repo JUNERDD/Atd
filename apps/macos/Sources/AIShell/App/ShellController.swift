@@ -15,6 +15,7 @@ public final class ShellController {
   let panel: PanelWindowController
   private let settings: SettingsWindowController
   let onboarding: OnboardingWindowController
+  var launchPresentation = LaunchPresentation(revealPanel: false)
   let systemPanels: SystemPanels
   /// Serves the five desktop capabilities; the control stream holds it weakly.
   private let capabilities: ShellCapabilities
@@ -165,6 +166,7 @@ public final class ShellController {
   /// Starts the service connection and the app-level surfaces, then loads the panel page,
   /// which pushes the shortcut set, `selectionWanted` and the language.
   public func start(revealPanel: Bool) {
+    launchPresentation = LaunchPresentation(revealPanel: revealPanel)
     registrar = HotKeyRegistrar { [weak self] id in self?.summon(SummonTrigger(hotKeyID: id)) }
     statusItem = StatusItemController(
       toggle: { [weak self] in self?.summon(.toggle) },
@@ -172,6 +174,7 @@ public final class ShellController {
     control.onConnectionState = { [weak self] state in
       self?.refreshStatus()
       self?.systemActivityConnectionChanged(state)
+      if state == .disconnected { _ = try? self?.presentLaunch(.unavailable) }
       if state == .connected {
         self?.attachments.serviceDidConnect()
         self?.widgets.serviceDidConnect()
@@ -196,7 +199,6 @@ public final class ShellController {
     ) { [weak self] _ in MainActor.assumeIsolated { self?.applyLanguage() } }
     panelHost.setState(.windowVisibility(.init(visible: false)))
     panelHost.load()
-    if revealPanel { summon(.toggle) }
   }
 
   // MARK: Summons

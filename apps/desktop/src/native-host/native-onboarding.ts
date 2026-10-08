@@ -5,10 +5,11 @@ import type { WindowMessages } from './window-messages';
 
 /**
  * The panel's half of the welcome guide. The panel page is the one window every launch loads, so
- * it decides when the guide opens: once the service's settings load and say this data dir has not
- * shown it. It asks the shell to open the guide before marking it shown, and before its first
- * selection toolbar push (`onSettings` runs ahead of that sync), so the guide, not the launch, asks
- * for Accessibility. A guide closed early or a quit mid-way does not reopen it; the app menu's
+ * it resolves the launch window once the service's settings load. The shell keeps the panel
+ * hidden until that decision. It requests the guide before the first selection toolbar push
+ * (`onSettings` runs ahead of that sync), so the guide, not the launch, asks for Accessibility.
+ * It marks the guide as shown only after the shell confirms it opened. A guide closed early
+ * or a quit mid-way does not reopen it; the app menu's
  * Welcome Guide does, without touching the setting.
  *
  * It also relays the shell's panel visibility to the other windows, which the guide's hotkey
@@ -17,8 +18,11 @@ import type { WindowMessages } from './window-messages';
 export function nativeOnboardingTrigger(
   native: NativeBridge,
   messages: WindowMessages,
-  markShown: () => Promise<SettingsSnapshot>,
-): { onSettings: (next: SettingsSnapshot) => void } {
+  markShown: () => Promise<void>,
+): {
+  onSettings: (next: Pick<SettingsSnapshot, 'onboardingCompleted'>) => void;
+  onUnavailable: () => void;
+} {
   native.on('window.visibility', ({ visible }) =>
     messages.post({ type: 'panelVisibility', visible }),
   );
@@ -27,13 +31,25 @@ export function nativeOnboardingTrigger(
   let requested = false;
   return {
     onSettings: (next) => {
-      if (next.onboardingCompleted || requested) return;
+      if (requested) return;
       requested = true;
-      void native.call('onboarding.open', {}).catch((error: unknown) => {
-        console.error('The welcome guide could not open:', error);
-      });
-      void markShown().catch((error: unknown) => {
-        console.error('The welcome guide could not be marked as shown:', error);
+      void native
+        .call('app.startup', { state: next.onboardingCompleted ? 'ready' : 'onboarding' })
+        .then(({ onboardingShown }) => {
+          if (onboardingShown)
+            void markShown().catch((error: unknown) => {
+              console.error('The welcome guide could not be marked as shown:', error);
+            });
+        })
+        .catch((error: unknown) => {
+          requested = false;
+          console.error('The launch window could not open:', error);
+        });
+    },
+    onUnavailable: () => {
+      if (requested) return;
+      void native.call('app.startup', { state: 'unavailable' }).catch((error: unknown) => {
+        console.error('The unavailable service could not be shown:', error);
       });
     },
   };
