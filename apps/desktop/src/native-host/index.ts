@@ -32,7 +32,7 @@ import { nativeMiniPanel } from './native-mini-panel';
 import { nativeOnboarding, nativeOnboardingTrigger } from './native-onboarding';
 import { nativePlatform } from './native-platform';
 import { nativeSettings } from './native-settings';
-import { nativeSelectionAsk } from './native-selection-ask';
+import { nativeHeldRequest } from './native-held-request';
 import { followShortcutState, nativeShortcuts, type GlobalShortcutState } from './native-shortcuts';
 import { nativeSocketTransport } from './socket-transport';
 import { windowMessages } from './window-messages';
@@ -64,9 +64,11 @@ export async function installNativeHost(
   surface: 'panel' | 'settings' | 'onboarding',
 ): Promise<void> {
   // Before the first await: the shell replays `update.state` as soon as the page is ready, and
-  // can send an Ask that showed the panel before this host is installed.
+  // can send an Ask or the mini panel's New task before this host is installed.
   const update = surface === 'panel' ? nativeUpdate(native) : undefined;
-  const onSelectionAsk = surface === 'panel' ? nativeSelectionAsk(native) : undefined;
+  const onSelectionAsk =
+    surface === 'panel' ? nativeHeldRequest(native, 'selection.ask') : undefined;
+  const onNewTask = surface === 'panel' ? nativeHeldRequest(native, 'task.new') : undefined;
   // The shell sends an opened notification's `task.open` once the panel's page is ready, which
   // can be before the panel subscribes; the host holds it until then.
   const onTaskOpen = surface === 'panel' ? nativeTaskOpen(native) : undefined;
@@ -318,10 +320,10 @@ export async function installNativeHost(
     ...(surface === 'panel'
       ? {
           onScreenshotShortcut: (listener) => native.on('shortcut.screenshot', () => listener()),
-          onNewTask: (listener) => native.on('task.new', () => listener()),
         }
       : {}),
     ...(onSelectionAsk ? { onSelectionAsk } : {}),
+    ...(onNewTask ? { onNewTask } : {}),
     ...(onTaskOpen ? { onTaskOpen } : {}),
     ...(surface === 'onboarding' ? { onboarding: nativeOnboarding(native, messages) } : {}),
   };

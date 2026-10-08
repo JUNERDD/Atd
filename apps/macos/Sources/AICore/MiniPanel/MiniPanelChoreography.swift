@@ -97,7 +97,8 @@ public enum MiniPanelMoment: CaseIterable, Sendable {
   case untarget
 }
 
-/// The mini panel's motion (motion-v3: motion-v2's "Dynamic Island" feel at perf-v1's pace): one
+/// The mini panel's motion (motion-v3: motion-v2's "Dynamic Island" feel at perf-v1's pace;
+/// island-v1: the capsule opens and closes as elastically as the island does): one
 /// living shape that grows out of the edge it is docked to with elastic, per-axis springs, and
 /// content that rides inside it, scaling with it, arriving out of a blur just after the shape
 /// starts and leaving into one just before it closes. The invite, the drop card and the commands
@@ -110,6 +111,10 @@ public enum MiniPanelChoreography {
 
   /// The shape's springs for `moment`. Opening moves first and lets the content follow; closing
   /// waits a moment for the content to leave (the length after 20 ms, the thickness 30 ms later).
+  /// The capsule opens and closes as the Dynamic Island does (island-v1): opening, it swells past
+  /// its rest, thicker by about 7 % and longer by about 5 %, before it settles; closing, it draws
+  /// into the pill a little past it, about 3 % on each axis, and pops back out. Every overshoot
+  /// stays inside ``MiniPanelMetrics/overshootRoom``.
   public static func shape(_ moment: MiniPanelMoment, reduceMotion: Bool = false)
     -> MiniPanelShapeMotion
   {
@@ -120,10 +125,10 @@ public enum MiniPanelChoreography {
       case .relax:
         MiniPanelShapeMotion(thickness: .init(0.2, 0), length: .init(0.2, 0))
       case .expand:
-        MiniPanelShapeMotion(thickness: .init(0.28, 0.22), length: .init(0.36, 0.28))
+        MiniPanelShapeMotion(thickness: .init(0.34, 0.36), length: .init(0.42, 0.32))
       case .collapse:
         MiniPanelShapeMotion(
-          thickness: .init(0.26, 0.1), thicknessDelay: 0.05, length: .init(0.30, 0.15),
+          thickness: .init(0.30, 0.24), thicknessDelay: 0.05, length: .init(0.36, 0.26),
           lengthDelay: 0.02)
       case .invite:
         MiniPanelShapeMotion(thickness: .init(0.27, 0.22), length: .init(0.36, 0.32))

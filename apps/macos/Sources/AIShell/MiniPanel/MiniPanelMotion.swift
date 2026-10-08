@@ -18,7 +18,7 @@ enum MiniPanelMotion {
   static func settling(_ spring: MiniPanelSpring) -> Double { spring.spring.settlingDuration }
 }
 
-extension MiniPanelSpring {
+nonisolated extension MiniPanelSpring {
   var animation: Animation { .spring(duration: duration, bounce: bounce) }
   var spring: Spring { Spring(duration: duration, bounce: bounce) }
 }
@@ -44,26 +44,90 @@ extension MiniPanelShapeMotion {
 /// content following it are interpolated together. A change made while one runs adds to it, as
 /// SwiftUI combines animations that do not merge, which for springs is the same as retargeting
 /// them with their velocity.
+///
+/// The clip and the content get the shape itself and move per axis. `glassEffect(in:)` erases
+/// the shape it is given, so the glass's change arrives as opaque data, which moves as a whole on
+/// the length's spring. Drawing the glass from a per-axis shape every frame instead (an animatable
+/// modifier) costs about 1 ms more of the main thread per frame, measured: SwiftUI interpolates
+/// the erased shape without updating the view graph.
+///
+/// A change ends once it can no longer move anything by more than ``restTolerance`` (perf-v2):
+/// SwiftUI's own estimate for a spring at rest runs a bouncy spring's sub-pixel tail, redrawing
+/// the glass on every frame for a few hundred milliseconds after the last visible motion. The jump
+/// to rest is under a pixel, so ending there cannot be seen.
 nonisolated struct MiniPanelAxisAnimation: CustomAnimation {
+  /// The most, in points, a shape's change still has to go when it ends: half a pixel on Retina.
+  static let restTolerance = 0.25
+
   let motion: MiniPanelShapeMotion
 
   func animate<V: VectorArithmetic>(
     value: V, time: TimeInterval, context: inout AnimationContext<V>
   ) -> V? {
-    let thickness = Spring(duration: motion.thickness.duration, bounce: motion.thickness.bounce)
-    let length = Spring(duration: motion.length.duration, bounce: motion.length.bounce)
+    let (thickness, length) = (motion.thickness.spring, motion.length.spring)
     let settles = max(
       motion.thicknessDelay + thickness.settlingDuration,
       motion.lengthDelay + length.settlingDuration)
     guard time < settles else { return nil }
     let across = Self.progress(thickness, after: motion.thicknessDelay, at: time)
     let along = Self.progress(length, after: motion.lengthDelay, at: time)
-    // Anything else in the same scope moves with the length.
-    guard let shape = value as? MiniPanelGlassRect else { return value.scaled(by: along) }
+    // The glass's erased shape, or anything else in the scope, moves with the length as a whole,
+    // its change in points at most its magnitude.
+    guard let shape = value as? MiniPanelGlassRect else {
+      let change = value.magnitudeSquared.squareRoot()
+      guard !Self.rests(length, after: motion.lengthDelay, change: change, at: time) else {
+        return nil
+      }
+      return value.scaled(by: along)
+    }
+    let change = Self.change(of: shape)
+    guard !Self.rests(motion, across: change.across, along: change.along, at: time) else {
+      return nil
+    }
     let moved = MiniPanelGlassRect(
       x: shape.x * across, y: shape.y * along, width: shape.width * across,
       height: shape.height * along, corner: shape.corner * across)
     return moved as? V
+  }
+
+  /// How long `motion` takes to end for a change of `across` points across the edge and `along`
+  /// points along it, as it runs on the body.
+  static func restTime(_ motion: MiniPanelShapeMotion, across: Double, along: Double) -> Double {
+    let step = 1.0 / 240
+    var time = 0.0
+    while time < motion.settles * 4, !rests(motion, across: across, along: along, at: time) {
+      time += step
+    }
+    return time
+  }
+
+  /// Whether neither axis of `motion`, changing by `across` and `along` points, can move the
+  /// shape by more than ``restTolerance`` from `time` on.
+  private static func rests(
+    _ motion: MiniPanelShapeMotion, across: Double, along: Double, at time: Double
+  ) -> Bool {
+    rests(motion.thickness.spring, after: motion.thicknessDelay, change: across, at: time)
+      && rests(motion.length.spring, after: motion.lengthDelay, change: along, at: time)
+  }
+
+  /// The spring's remaining energy, its distance from rest and its speed over its frequency, which
+  /// bounds every swing still to come, as a share of the change, against the tolerance.
+  private static func rests(
+    _ spring: Spring, after delay: Double, change: Double, at time: Double
+  ) -> Bool {
+    guard change > restTolerance else { return true }
+    guard time > delay else { return false }
+    let left = 1 - spring.value(target: 1.0, time: time - delay)
+    let speed = spring.velocity(target: 1.0, time: time - delay) / (2 * .pi / spring.duration)
+    return (left * left + speed * speed).squareRoot() * change <= restTolerance
+  }
+
+  /// How far a shape's change moves it across the edge (x, width, corner) and along it (y, height).
+  private static func change(of shape: MiniPanelGlassRect) -> (across: Double, along: Double) {
+    (
+      max(abs(shape.x), abs(shape.x + shape.width), abs(shape.corner)),
+      max(abs(shape.y), abs(shape.y + shape.height))
+    )
   }
 
   /// How far along a unit change `spring` is `time` seconds in, once `delay` has passed.

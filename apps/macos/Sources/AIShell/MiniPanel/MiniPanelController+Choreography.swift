@@ -24,7 +24,7 @@ extension MiniPanelController {
     model.pressed = nil
     // Only the open capsule has labels: any other state takes one down at once.
     if phase != .expanded { dropLabel() }
-    if phase != .dragging, lifted { setLifted(false) }
+    if !phase.isDragging, lifted { setLifted(false) }
     choreograph(from: from, to: phase)
     updateDropZone()
     hover.reset()
@@ -37,7 +37,7 @@ extension MiniPanelController {
   static func shape(for phase: MiniPanelPhase) -> MiniPanelShape? {
     switch phase {
     case .hidden: nil
-    case .tucked: .pill
+    case .tucked, .draggingPill: .pill
     case .expanded, .dragging: .capsule
     case .invite: .invite
     case .target, .absorbing: .target
@@ -47,7 +47,7 @@ extension MiniPanelController {
   /// The body content each phase shows; the pill shows none.
   static func content(for phase: MiniPanelPhase) -> MiniPanelContent? {
     switch phase {
-    case .hidden, .tucked: nil
+    case .hidden, .tucked, .draggingPill: nil
     case .expanded, .dragging: .capsule
     case .invite: .invite
     case .target, .absorbing: .card
@@ -241,7 +241,7 @@ extension MiniPanelController {
     setBodyScale(1, MiniPanelChoreography.bodyRelease.animation)
   }
 
-  /// The capsule lifts as a drag begins, and settles with the snap. Reduce Motion keeps its size.
+  /// The body lifts as a drag begins, and settles with the snap. Reduce Motion keeps its size.
   func setLifted(_ lifted: Bool) {
     self.lifted = lifted
     bodyPressed = false

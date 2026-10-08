@@ -69,9 +69,11 @@ extension ShellController {
     return MiniPanelSetOpenOnResult(openOn: applied)
   }
 
-  /// The mini panel's New task: the panel shows where it is, then its page starts a new task.
+  /// The mini panel's New task: the page starts a new task and shows the panel where it is once
+  /// that view is drawn, so the view the panel was left on never shows first. A page that is not
+  /// up yet has no such view and takes the request when ready; the panel shows at once meanwhile.
   private func startNewTask() {
-    showPanel()
+    if !panelHost.isPageReady { showPanel() }
     panelHost.send(.taskNew(.init()))
   }
 

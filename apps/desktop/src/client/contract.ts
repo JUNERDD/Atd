@@ -166,9 +166,10 @@ export interface DesktopBridge {
    */
   onScreenshotShortcut?: (listener: () => void) => () => void;
   /**
-   * The mini panel's New task, which the shell hands to the panel page only, after it showed the
+   * The mini panel's New task, which the shell hands to the panel page only, without showing the
    * panel (absent in the settings window and in tests); returns the unsubscribe. The page starts a
-   * new task as its own New task button does.
+   * new task as its own New task button does, then shows the panel. A request that arrived before
+   * anything subscribed reaches the first subscriber.
    */
   onNewTask?: (listener: () => void) => () => void;
   /**

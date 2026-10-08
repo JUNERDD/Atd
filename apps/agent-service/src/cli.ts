@@ -11,7 +11,7 @@ import { createService } from './index.js';
 import { createLogger } from './logging.js';
 import { applyLoginShellPath } from './login-shell-path.js';
 import { assertSupportedNode, readServiceManifest } from './node-runtime.js';
-import { resolveDataDir } from './storage.js';
+import { resolveAtdHome, resolveDataDir } from './storage.js';
 
 const RENDERER_PORT = 5173;
 
@@ -95,6 +95,11 @@ async function serve(flags: Flags): Promise<void> {
     host: flags.host,
     port: flags.port,
   });
+  // `atdHome()` reads this on every call, and the processes the service starts inherit it.
+  process.env.AI_ATD_HOME = resolveAtdHome({
+    envHome: process.env.AI_ATD_HOME,
+    dataDir: config.paths.root,
+  });
   // SIGINT, SIGTERM and `POST /v1/admin/shutdown` all end here. The exit is
   // what ends the process once the service has stopped; nothing else would.
   // Exit joins libuv's thread pool, so a pool thread stuck in a blocking call
@@ -120,6 +125,7 @@ async function serve(flags: Flags): Promise<void> {
     epoch: config.epoch,
     port,
     dataDir: config.paths.root,
+    atdHome: process.env.AI_ATD_HOME,
     recovery: handle.report,
   });
   // Machine-readable readiness line for supervisors and the T1 proof harness.
