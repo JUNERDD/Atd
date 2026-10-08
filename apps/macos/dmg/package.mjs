@@ -1,10 +1,10 @@
 // Packages a built Atd.app into the installer dmg: draws the background for the app's version,
-// then runs dmgbuild with settings.py, which lays the window out from layout.json.
+// then runs build.py with settings.py, which lays the window out from layout.json.
 //
 //   node apps/macos/dmg/package.mjs <path/to/Atd.app> <out.dmg>
 //
-// DMGBUILD names the dmgbuild executable (default: `dmgbuild` on PATH); install the hash-pinned
-// version from requirements.txt into a virtual environment, as the release workflow does.
+// DMG_PYTHON names the Python interpreter (default: `python3` on PATH); install the hash-pinned
+// dmgbuild from requirements.txt into its virtual environment, as the release workflow does.
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -32,19 +32,13 @@ try {
   writeBackground(backgroundDir, version);
   const here = fileURLToPath(new URL('.', import.meta.url));
   execFileSync(
-    process.env.DMGBUILD ?? 'dmgbuild',
+    process.env.DMG_PYTHON ?? 'python3',
     [
-      '-s',
-      join(here, 'settings.py'),
-      '-D',
-      `app=${app}`,
-      '-D',
-      `background=${join(backgroundDir, 'background.png')}`,
-      '-D',
-      `layout=${join(here, 'layout.json')}`,
-      // Finder finds the background through a bookmark to /Volumes/<name>/.background.tiff. An
-      // older installer still mounted under the same name takes that path, and the window then
-      // shows no background, so the name carries the version.
+      join(here, 'build.py'),
+      app,
+      join(backgroundDir, 'background.png'),
+      join(here, 'layout.json'),
+      // Keep releases distinct when multiple installers are mounted at once.
       `Atd ${version}`,
       out,
     ],

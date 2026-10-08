@@ -1,5 +1,5 @@
-# dmgbuild settings for the installer dmg. package.mjs passes the app, the background pair and
-# layout.json as -D defines; layout.json is the geometry background.mjs draws against, so the icons
+# dmgbuild settings for the installer dmg. build.py passes the app, the background pair and
+# layout.json as defines; layout.json is the geometry background.mjs draws against, so the icons
 # land on the picture's marks.
 import json
 
@@ -9,7 +9,7 @@ with open(defines["layout"], encoding="utf-8") as fp:
 app = defines["app"]
 files = [app]
 symlinks = {"Applications": "/Applications"}
-# Finder labels the app "Atd", not "Atd.app".
+# Request "Atd"; Finder can still show .app when the user enables all filename extensions.
 hide_extensions = ["Atd.app"]
 
 # LZFSE (ULFO) compresses faster and smaller than zlib (UDZO); every macOS the app supports opens it.
