@@ -15,7 +15,7 @@ Select text, capture your screen, or press **⌘ ⇧ Space** to start a conversa
 
 [![Download Atd for Mac](https://img.shields.io/badge/Download_for_Mac-Apple_silicon-111111?style=for-the-badge&logo=apple&logoColor=white)](https://downloads.atd.best/latest/Atd-arm64.dmg)
 
-[Website](https://atd.best) · [GitHub download mirror](https://github.com/JUNERDD/ai/releases/latest/download/Atd-arm64.dmg) · [Release notes](https://github.com/JUNERDD/ai/releases/latest) · [Interface previews](#interface-previews) · [Report an issue](https://github.com/JUNERDD/ai/issues)
+[Website](https://atd.best) · [GitHub download mirror](https://github.com/JUNERDD/Atd/releases/latest/download/Atd-arm64.dmg) · [Release notes](https://github.com/JUNERDD/Atd/releases/latest) · [Interface previews](#interface-previews) · [Report an issue](https://github.com/JUNERDD/Atd/issues)
 
 [![Atd main panel on the desktop, with a new task, composer, model selector, and permission controls](apps/website/public/cases/ui/main-panel.png)](apps/website/public/cases/ui/main-panel.png)
 
@@ -99,4 +99,4 @@ Scheduled tasks, folder workflows, and idle-time memory consolidation, with run 
 
 ## Contributing
 
-Read the [contributor guidelines](AGENTS.md) before making changes, and submit a pull request targeting `main`. Include reproduction steps and the expected result when [reporting an issue](https://github.com/JUNERDD/ai/issues).
+Read the [contributor guidelines](AGENTS.md) before making changes, and submit a pull request targeting `main`. Include reproduction steps and the expected result when [reporting an issue](https://github.com/JUNERDD/Atd/issues).

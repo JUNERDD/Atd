@@ -13,7 +13,7 @@ const { values } = parseArgs({
     'dry-run': { type: 'boolean', default: false },
   },
 });
-const repo = 'JUNERDD/ai';
+const repo = 'JUNERDD/Atd';
 const bucket = 'atd-releases';
 const base = 'https://downloads.atd.best';
 const latestKey = 'latest/Atd-arm64.dmg';

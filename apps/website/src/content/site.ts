@@ -4,10 +4,10 @@ export const site = {
   author: 'JUNERDD',
   /** The version described by this site; the stable download follows verified releases. */
   version: '0.7.4',
-  repoUrl: 'https://github.com/JUNERDD/ai',
-  releasesUrl: 'https://github.com/JUNERDD/ai/releases',
+  repoUrl: 'https://github.com/JUNERDD/Atd',
+  releasesUrl: 'https://github.com/JUNERDD/Atd/releases',
   downloadUrl: 'https://downloads.atd.best/latest/Atd-arm64.dmg',
-  issuesUrl: 'https://github.com/JUNERDD/ai/issues',
+  issuesUrl: 'https://github.com/JUNERDD/Atd/issues',
   minMacOS: '26',
   chip: 'Apple silicon',
   /** The default global shortcut that shows and hides the panel. */

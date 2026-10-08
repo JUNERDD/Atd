@@ -147,7 +147,7 @@ everything is simply shown.
 
 ## Deployment
 
-The Vercel project `atd-agent` is connected to `JUNERDD/ai` with
+The Vercel project `atd-agent` is connected to `JUNERDD/Atd` with
 `apps/website` as its Root Directory:
 
 - A push to `main` deploys production; other branches and pull requests get preview deployments.
