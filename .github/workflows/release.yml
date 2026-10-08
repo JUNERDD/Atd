@@ -124,15 +124,14 @@ jobs:
             fi
           done
           codesign --verify --deep --strict "$app"
-          # Moved, not copied: nothing reads the built app after this step, and a rename within
-          # the runner's work volume skips copying the service pack's tens of thousands of files.
-          stage=$(mktemp -d "$RUNNER_TEMP/dmg.XXXXXX")
-          mv "$app" "$stage/Atd.app"
-          ln -s /Applications "$stage/Applications"
+          # dmgbuild lays out the installer window (apps/macos/dmg): the background, icon
+          # positions and the Applications link, written straight into the image's .DS_Store
+          # without driving Finder. It is pinned by hash in its own virtual environment.
+          venv="$RUNNER_TEMP/dmgbuild"
+          python3 -m venv "$venv"
+          "$venv/bin/pip" install --quiet --require-hashes -r apps/macos/dmg/requirements.txt
           mkdir dist
-          # LZFSE (ULFO) compresses faster and smaller than zlib (UDZO); every macOS the app
-          # supports opens it.
-          hdiutil create -volname Atd -srcfolder "$stage" -ov -format ULFO "dist/Atd-$VERSION-arm64.dmg"
+          DMGBUILD="$venv/bin/dmgbuild" node apps/macos/dmg/package.mjs "$app" "dist/Atd-$VERSION-arm64.dmg"
           # Keep the README's latest/download URL stable while Sparkle uses the versioned asset.
           cp "dist/Atd-$VERSION-arm64.dmg" dist/Atd-arm64.dmg
           ls -lh dist

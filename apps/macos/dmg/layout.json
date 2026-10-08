@@ -1,0 +1,9 @@
+{
+  "width": 648,
+  "height": 288,
+  "titleBar": 32,
+  "iconSize": 128,
+  "textSize": 13,
+  "app": { "x": 156, "y": 132 },
+  "applications": { "x": 492, "y": 132 }
+}
