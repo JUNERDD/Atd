@@ -53,6 +53,7 @@ assert(/^sha256:[a-f0-9]{64}$/.test(asset.digest), 'GitHub must provide a SHA-25
 assert(asset.size > 0 && asset.size <= 512 * 1024 ** 2, 'The DMG exceeds the CDN cache limit.');
 const sha256 = asset.digest.slice('sha256:'.length);
 const versionKey = `releases/${release.tag_name}/${name}`;
+const disposition = `attachment; filename="${name}"`;
 const metadata = { version, sha256, bytes: asset.size, url: `${base}/${versionKey}` };
 console.log(
   JSON.stringify({ ...metadata, latest: `${base}/${latestKey}`, dryRun: values['dry-run'] }),
@@ -102,6 +103,8 @@ async function verifyDelivery(key, cacheControl, full) {
   assert.equal(Number(head.headers.get('content-length')), asset.size, 'Wrong public file size.');
   assert.equal(head.headers.get('content-type'), 'application/x-apple-diskimage');
   assert.equal(head.headers.get('cache-control'), cacheControl);
+  // Both keys save under the versioned name, so a download from the permanent URL names its version.
+  assert.equal(head.headers.get('content-disposition'), disposition, 'Wrong download filename.');
   const source = await open(file, 'r');
   try {
     for (const start of [0, asset.size - 65536]) {
@@ -161,7 +164,7 @@ try {
     '--content-type',
     'application/x-apple-diskimage',
     '--content-disposition',
-    `attachment; filename="${name}"`,
+    disposition,
     '--cache-control',
     immutableCache,
     '--metadata',
@@ -189,7 +192,7 @@ try {
     '--content-type',
     'application/x-apple-diskimage',
     '--content-disposition',
-    'attachment; filename="Atd-arm64.dmg"',
+    disposition,
     '--cache-control',
     latestCache,
     '--metadata',

@@ -23,7 +23,7 @@ _Interface preview of the main panel._
 
 ## Get started
 
-1. [Download the latest Apple silicon DMG](https://downloads.atd.best/latest/Atd-arm64.dmg), open it, and drag **Atd** to **Applications**.
+1. [Download the latest Apple silicon DMG](https://downloads.atd.best/latest/Atd-arm64.dmg) (saved as `Atd-<version>-arm64.dmg`), open it, and drag **Atd** to **Applications**.
 2. Open **Atd**. If macOS blocks it, follow the first-launch instructions in the warning above.
 3. Open **Settings → Models**, add a provider connection, and choose your default provider and model. Connect with a supported account sign-in, API key, or local endpoint.
 4. Press **⌘ ⇧ Space** to open the panel. Ask a question, attach a file, or start from selected text or a screenshot.
