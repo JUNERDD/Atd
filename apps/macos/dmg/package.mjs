@@ -42,7 +42,10 @@ try {
       `background=${join(backgroundDir, 'background.png')}`,
       '-D',
       `layout=${join(here, 'layout.json')}`,
-      'Atd',
+      // Finder finds the background through a bookmark to /Volumes/<name>/.background.tiff. An
+      // older installer still mounted under the same name takes that path, and the window then
+      // shows no background, so the name carries the version.
+      `Atd ${version}`,
       out,
     ],
     { stdio: 'inherit' },
