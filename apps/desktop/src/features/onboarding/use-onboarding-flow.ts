@@ -1,6 +1,8 @@
-import { useEffect, useEffectEvent, useState } from 'react';
+import { useEffect, useEffectEvent, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { isComposingKey } from '@atd/ui/lib/ime';
+import type { OnboardingProgress } from '@atd/agent-contracts';
+import { showErrorToast } from '../../components/toast-store';
 import {
   ONBOARDING_STEPS,
   isGoalStep,
@@ -28,27 +30,62 @@ export const STEP_NAME_KEYS = {
  * slide, the furthest step reached (progress jumps only to visited steps, or the next one), and
  * whether the user has moved yet (the first move starts step announcements).
  */
-export function useOnboardingFlow() {
-  const [state, setState] = useState({ index: 0, direction: 1, furthest: 0, moved: false });
+export function useOnboardingFlow(initial: OnboardingProgress, hotkeyTested: boolean) {
+  const [state, setState] = useState(() => {
+    const index = initial.step === 'intro' ? 0 : ONBOARDING_STEPS.indexOf(initial.step);
+    return {
+      index,
+      direction: 1,
+      furthest: Math.max(index, ONBOARDING_STEPS.indexOf(initial.furthest)),
+      moved: false,
+      begun: initial.step !== 'intro',
+    };
+  });
+  const current = useRef(state);
+  const changes = useRef(Promise.resolve());
+  const step = ONBOARDING_STEPS[state.index] ?? 'welcome';
+  // Persist before displaying a step. Goal updates join the same queue and read its latest
+  // state, so a hotkey report during navigation cannot overwrite the new position with the old.
+  function change(update: (value: typeof state) => typeof state) {
+    const pending = changes.current.then(async () => {
+      const next = update(current.current);
+      await window.desktop?.onboarding?.saveProgress({
+        step: next.begun ? (ONBOARDING_STEPS[next.index] ?? 'welcome') : 'intro',
+        furthest: ONBOARDING_STEPS[next.furthest] ?? 'welcome',
+        hotkeyTested,
+      });
+      current.current = next;
+      setState(next);
+    });
+    changes.current = pending.catch(() => undefined);
+    return pending;
+  }
+  const saveProgress = () => change((value) => value);
+  const persist = useEffectEvent(saveProgress);
+  useEffect(() => {
+    void persist().catch(showErrorToast);
+  }, [hotkeyTested]);
 
   function goTo(target: number) {
-    setState((current) => {
-      if (target === current.index || target < 0 || target > Math.min(current.furthest + 1, LAST))
-        return current;
+    void change((value) => {
+      if (target === value.index || target < 0 || target > Math.min(value.furthest + 1, LAST))
+        return value;
       return {
         index: target,
-        direction: target > current.index ? 1 : -1,
-        furthest: Math.max(current.furthest, target),
+        direction: target > value.index ? 1 : -1,
+        furthest: Math.max(value.furthest, target),
         moved: true,
+        begun: true,
       };
-    });
+    }).catch(showErrorToast);
   }
 
-  const step = ONBOARDING_STEPS[state.index] ?? 'welcome';
   return {
     ...state,
     step,
     isLast: state.index === LAST,
+    begin: () => change((value) => ({ ...value, begun: true })),
+    saveProgress,
     next: () => goTo(state.index + 1),
     back: () => goTo(state.index - 1),
     goTo,

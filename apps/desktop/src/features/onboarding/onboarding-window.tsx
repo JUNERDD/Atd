@@ -1,8 +1,14 @@
 import { MotionConfig } from 'motion/react';
+import { useQuery } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
+import type { OnboardingProgress } from '@atd/agent-contracts';
+import { Button } from '@atd/ui/components/button';
+import { Card } from '@atd/ui/components/card';
 import { TooltipProvider } from '@atd/ui/components/tooltip';
 import { ToastHost } from '../../components/toast';
 import { useAppLanguage } from '../../i18n/use-app-language';
 import { useSettingsSnapshot } from '../settings/use-settings';
+import { queryClient } from '../../lib/query-client';
 import '../settings/settings.css';
 import { OnboardingStage } from './onboarding-stage';
 import { useOnboardingGoals } from './use-onboarding-goals';
@@ -18,13 +24,53 @@ const TOAST_TOP = 56;
  * guide opens, so a shortcut pressed during the intro already counts.
  */
 export function OnboardingWindow() {
+  const { t } = useTranslation('onboarding');
   const { snapshot } = useSettingsSnapshot();
   useAppLanguage(snapshot?.language);
-  const goals = useOnboardingGoals(snapshot, window.desktop?.onboarding);
+  const bridge = window.desktop?.onboarding;
+  const progress = useQuery(
+    {
+      queryKey: ['onboarding', 'progress'],
+      queryFn: async () => {
+        if (!bridge) throw new Error('The welcome guide requires the desktop app.');
+        const saved: OnboardingProgress = (await bridge.getProgress()) ?? {
+          step: 'intro',
+          furthest: 'welcome',
+          hotkeyTested: false,
+        };
+        // Opening from the menu also starts a resumable guide. Save before revealing any step.
+        await bridge.saveProgress(saved);
+        return saved;
+      },
+      staleTime: Infinity,
+      meta: { errorToast: false },
+    },
+    queryClient,
+  );
+  const goals = useOnboardingGoals(snapshot, bridge, progress.data?.hotkeyTested);
   return (
     <MotionConfig reducedMotion="user">
       <TooltipProvider delayDuration={300}>
-        <OnboardingStage snapshot={snapshot} goals={goals} />
+        {progress.data ? (
+          <OnboardingStage snapshot={snapshot} goals={goals} initialProgress={progress.data} />
+        ) : (
+          <div className="onboarding-stage">
+            <Card className="mx-8 max-w-md p-6">
+              <p role={progress.isError ? 'alert' : 'status'}>
+                {t(progress.isError ? 'chrome.loadError' : 'chrome.loading')}
+              </p>
+              {progress.isError && (
+                <Button
+                  variant="outline"
+                  disabled={progress.isFetching}
+                  onClick={() => void progress.refetch()}
+                >
+                  {t('chrome.retry')}
+                </Button>
+              )}
+            </Card>
+          </div>
+        )}
         <ToastHost top={TOAST_TOP} />
       </TooltipProvider>
     </MotionConfig>

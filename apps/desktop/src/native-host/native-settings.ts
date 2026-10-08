@@ -58,8 +58,6 @@ export function nativeSettings(
   setShell: (patch: Partial<ShellState>) => SettingsSnapshot;
   /** Whether the service's settings loaded; until then the snapshot holds defaults. */
   loaded: () => boolean;
-  /** Records that the welcome guide was shown in this data dir (the panel's trigger only). */
-  markOnboardingShown: () => Promise<void>;
   onLoadError: (listener: () => void) => () => void;
   ready: Promise<void>;
 } {
@@ -219,7 +217,6 @@ export function nativeSettings(
     providers,
     shell: () => shell,
     loaded: () => shared !== null,
-    markOnboardingShown: async () => void (await write({ onboardingCompleted: true })),
     onLoadError: (listener) => {
       loadErrorListeners.add(listener);
       return () => loadErrorListeners.delete(listener);

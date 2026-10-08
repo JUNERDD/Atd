@@ -48,14 +48,16 @@ async function readStored(file: string): Promise<Static<typeof SettingsFileSchem
 
 /**
  * A file written before the welcome guide existed belongs to someone already using the app, so it
- * reads as having shown the guide; only a data dir without settings starts with it pending.
+ * keeps the guide dismissed. Files without saved progress keep their existing completion flag.
  */
 function withAddedOnboarding(file: unknown): unknown {
   if (typeof file !== 'object' || file === null || !('settings' in file)) return file;
   const { settings } = file;
-  if (typeof settings !== 'object' || settings === null || 'onboardingCompleted' in settings)
-    return file;
-  return { ...file, settings: { ...settings, onboardingCompleted: true } };
+  if (typeof settings !== 'object' || settings === null) return file;
+  return {
+    ...file,
+    settings: { onboardingCompleted: true, onboardingProgress: null, ...settings },
+  };
 }
 
 /** The selection toolbar starts on, over every app, for selections made while Option is held. */
@@ -129,6 +131,7 @@ export class SettingsStore {
         shortcuts: null,
         selectionToolbar: structuredClone(DEFAULT_SELECTION_TOOLBAR),
         onboardingCompleted: false,
+        onboardingProgress: null,
       };
       return new SettingsStore(file, { settings, revision: 0, initialized: false });
     }

@@ -90,6 +90,38 @@ export const SelectionToolbarSettingsSchema = Type.Object(
 );
 export type SelectionToolbarSettings = Static<typeof SelectionToolbarSettingsSchema>;
 
+/** Stable step IDs, shared by the saved welcome guide and its renderer. */
+export const ONBOARDING_STEPS = [
+  'welcome',
+  'hotkey',
+  'selection',
+  'screenshot',
+  'provider',
+  'features',
+  'finish',
+] as const;
+export type OnboardingStepId = (typeof ONBOARDING_STEPS)[number];
+const OnboardingStepSchema = Type.Union([
+  Type.Literal('welcome'),
+  Type.Literal('hotkey'),
+  Type.Literal('selection'),
+  Type.Literal('screenshot'),
+  Type.Literal('provider'),
+  Type.Literal('features'),
+  Type.Literal('finish'),
+]);
+
+/** Permissions and provider readiness are always read live; only the hotkey try-out is kept. */
+export const OnboardingProgressSchema = Type.Object(
+  {
+    step: Type.Union([Type.Literal('intro'), OnboardingStepSchema]),
+    furthest: OnboardingStepSchema,
+    hotkeyTested: Type.Boolean(),
+  },
+  { additionalProperties: false },
+);
+export type OnboardingProgress = Static<typeof OnboardingProgressSchema>;
+
 /**
  * Settings every client applies the same way. `language: null` means the client resolves one
  * from its locale; `shortcuts: null` means the defaults.
@@ -103,8 +135,10 @@ export const UserSettingsSchema = Type.Object(
     shellAllowlist: ShellAllowlistSchema,
     shortcuts: Type.Union([ShortcutBindingsSchema, Type.Null()]),
     selectionToolbar: SelectionToolbarSettingsSchema,
-    /** The first desktop launch on this data dir showed the welcome guide. */
+    /** The user explicitly finished or dismissed the welcome guide. */
     onboardingCompleted: Type.Boolean(),
+    /** An interrupted guide resumes here; null starts with the intro. */
+    onboardingProgress: Type.Union([OnboardingProgressSchema, Type.Null()]),
   },
   { additionalProperties: false },
 );
@@ -133,6 +167,7 @@ export const PatchSettingsRequestSchema = Type.Object(
     shortcuts: Type.Optional(Type.Union([ShortcutBindingsSchema, Type.Null()])),
     selectionToolbar: Type.Optional(SelectionToolbarSettingsSchema),
     onboardingCompleted: Type.Optional(Type.Boolean()),
+    onboardingProgress: Type.Optional(Type.Union([OnboardingProgressSchema, Type.Null()])),
     /** Seeding: apply only while the settings are uninitialized, else answer the current ones. */
     onlyIfUninitialized: Type.Optional(Type.Boolean()),
   },

@@ -1,5 +1,8 @@
 {
   "chrome": {
+    "loading": "Loading your setup…",
+    "loadError": "Your setup progress couldn’t be loaded. Try again to continue.",
+    "retry": "Try again",
     "back": "Back",
     "later": "Later",
     "continue": "Continue",
