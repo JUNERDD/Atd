@@ -43,10 +43,14 @@ jobs:
           git archive HEAD | tar -x -C "$snapshot"
           gitleaks dir "$snapshot" --config "$GITHUB_WORKSPACE/.gitleaks.toml" \
             --redact --verbose --no-banner --ignore-gitleaks-allow
-          if [ -n "$BASE_SHA" ] && [ "$BASE_SHA" != 0000000000000000000000000000000000000000 ]; then
-            gitleaks git --log-opts="$BASE_SHA..$HEAD_SHA" --config .gitleaks.toml \
-              --redact --verbose --no-banner --ignore-gitleaks-allow
+          scan_range="$HEAD_SHA"
+          if [ -n "$BASE_SHA" ] && git cat-file -e "$BASE_SHA^{commit}" 2>/dev/null; then
+            scan_range="$BASE_SHA..$HEAD_SHA"
           fi
+          # After a history rewrite, the old push base may no longer be fetchable.
+          # Scan all reachable head history in that case, including removed values.
+          gitleaks git --log-opts="$scan_range" --config .gitleaks.toml \
+            --redact --verbose --no-banner --ignore-gitleaks-allow
       - uses: pnpm/action-setup@v6.1.0
       - uses: actions/setup-node@v7.0.0
         with:
