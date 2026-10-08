@@ -38,8 +38,13 @@ gh workflow run mirror-release.yml --repo JUNERDD/ai --ref main -f tag=latest
 ## Private configuration
 
 Create the `atd-releases` bucket with Standard storage, connect `downloads.atd.best`, and keep
-the managed `r2.dev` endpoint disabled. Configure an R2 API token with **Object Read & Write**
-restricted to this bucket. Store only the following GitHub Actions repository secrets:
+the managed `r2.dev` endpoint disabled. Add a Cache Rule matching only
+`http.host eq "downloads.atd.best"`: eligible for cache, with Edge TTL and Browser TTL both
+respecting the origin's cache headers. The zone's default Browser Cache TTL can otherwise turn
+the latest object's 60 seconds into four hours; the mirror's header check catches this.
+
+Configure an R2 API token with **Object Read & Write** restricted to this bucket. Store only
+the following GitHub Actions repository secrets:
 
 | Secret                          | Value                                      |
 | ------------------------------- | ------------------------------------------ |
