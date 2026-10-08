@@ -5,6 +5,8 @@ The website and root README use one permanent URL:
 <https://downloads.atd.best/latest/Atd-arm64.dmg>
 
 Every successful stable release updates this object to the newest verified Apple silicon DMG.
+It downloads as `Atd-<version>-arm64.dmg`, the release asset's own name, so the saved file names
+its version while the link never changes.
 Cloudflare R2 Standard serves the bytes through the custom domain. GitHub Releases remains the
 source of truth and the alternative download location. This does not change Sparkle's signed
 appcast or require a new application version.

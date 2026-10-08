@@ -195,7 +195,8 @@ download buckets' public endpoints when the shared account approaches its allowa
 ### Installer downloads
 
 Both download buttons use `https://downloads.atd.best/latest/Atd-arm64.dmg`. This permanent URL
-tracks the newest verified stable installer without rebuilding the website for each release.
+tracks the newest verified stable installer without rebuilding the website for each release, and
+saves as `Atd-<version>-arm64.dmg`.
 The release workflow mirrors GitHub's original bytes to the separate `atd-releases` R2 bucket;
 the latest URL's cache expires within 60 seconds. The root README also keeps a GitHub alternative.
 See the [release mirror instructions](../../ops/release-downloads/README.md) for credentials,
