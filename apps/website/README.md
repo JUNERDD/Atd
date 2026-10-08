@@ -77,24 +77,31 @@ reuse the website's monochrome tokens and remain connected to the shared Lucide 
 
 ## Interface carousel
 
-The “Interfaces” section shows eight exact Figma exports: the selection toolbar, Mini Panel,
-screenshot tool, main panel, conversation, settings, Apps and automations. All scenes share the canonical desktop
-background and a 1440 × 900 canvas. The website displays each complete image without cropping.
+The “Interfaces” section shows eight Figma scenes: the selection toolbar, Mini Panel, screenshot
+tool, main panel, conversation, settings, Apps and automations. All scenes share the canonical
+desktop and a 1440 × 900 canvas, so the carousel keeps one desktop still and changes only what is
+on it. Each scene is a stack of layers cut from Figma (`scripts/matte-layers.py`) that reproduces
+the flat export at rest, and each plays in the way the real surfaces arrive on a Mac
+(`src/sections/cases/scenes.css`): text is selected before its toolbar appears, the Mini Panel
+slides out from the edge, a capture is framed and annotated step by step, windows open and replies
+stream in. The layers are positioned by `case-layers.css`, so the prerendered page shows every
+scene complete; reduced motion keeps them at rest.
 
-[Embla](https://www.embla-carousel.com/docs/v8/get-started/react) handles looping, dragging and
-three-second automatic playback. Visitors can select a scene, go backward or forward, pause, resume,
-or open the original image. Holding a scene with a mouse or touch temporarily pauses playback;
-releasing it resumes automatic playback if it was enabled. Hovering leaves playback running.
-Keyboard focus and manual navigation stop it until the visitor resumes; it also pauses offscreen and
-in hidden tabs. Reduced motion starts paused and removes the slide animation.
-The progress bar beside the playback controls follows Embla's timer, freezes while paused and
-restarts with each slide. Its interval label uses the same three-second setting as playback.
-Scene selectors use compact labels that wrap instead of scrolling sideways. Below 480 px, a
-two-column layout keeps all eight choices visible and preserves a 44 px minimum touch target.
-The navigation component and responsive examples (`2488:144568`)
-are kept in the project design file alongside the website's existing color tokens.
+[Embla](https://www.embla-carousel.com/docs/v8/get-started/react) handles looping, the crossfade
+(its Fade plugin) and automatic playback; scenes are not draggable. Each scene holds for its own
+time (3–5 s, `src/sections/cases/scenes.ts`), long enough for its entrance and a moment to read
+it. Visitors can select a scene, go backward or forward, pause, resume, or open the original image.
+Hovering, choosing a scene and the previous and next buttons leave playback running; changing scene
+restarts the hold for the new scene. Keyboard focus stops it until the visitor resumes; it also
+pauses offscreen and in hidden tabs. Reduced motion starts paused and switches scenes without the
+crossfade. The progress bar beside the playback controls follows Embla's timer, freezes while paused
+and restarts with each slide; its label shows the current scene's hold. Scene selectors use compact
+labels that wrap instead of scrolling sideways. Below 480 px, a two-column layout keeps all eight
+choices visible and preserves a 44 px minimum touch target. The navigation component and responsive
+examples (`2488:144568`) are kept in the project design file alongside the website's existing color
+tokens.
 
-The source nodes, export process and image paths are in
+The source nodes, layer exports, export process and image paths are in
 [`public/cases/README.md`](public/cases/README.md). Keep bilingual labels and descriptions in
 `src/content/cases.ts`, and controls in `src/sections/cases/copy.ts`.
 The former standalone Automations section and its navigation link are no longer mounted;

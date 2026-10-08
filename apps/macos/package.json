@@ -1,6 +1,6 @@
 {
   "name": "@atd/macos",
-  "version": "0.7.6",
+  "version": "0.7.7",
   "private": true,
   "description": "Native macOS shell (Swift/AppKit). Requires Xcode 26, XcodeGen and SwiftLint.",
   "scripts": {

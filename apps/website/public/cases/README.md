@@ -1,6 +1,6 @@
 # Interface scenes
 
-The “Interfaces” section (`#cases`) is an eight-slide image carousel. Its labels, captions and image
+The “Interfaces” section (`#cases`) is an eight-scene carousel. Its labels, captions and image
 paths live in [`src/content/cases.ts`](../../src/content/cases.ts). These are design previews exported
 from the canonical Figma file, not recordings of a live browser agent.
 
@@ -34,23 +34,49 @@ glass fills already shown in the other website scenes.
 The shared glass switch pill binds its fill and edge to translucent color variables, preserving
 72% fill and 10% edge opacity in nested instances, including “Pause all automations”.
 
+## Scene layers
+
+The carousel does not show the flat PNGs: it stacks each scene's layers over one shared desktop
+(`layers/desktop.webp`) and animates them. The layers come from
+“W · Website · Interface scene layers (matte exports)” (`2552:144525`), on the same page as the
+scenes. [`scripts/case-layers.json`](../../scripts/case-layers.json) lists, per scene, its layers
+bottom to top, their source nodes and their sheets. Each sheet row is a clone of the scene twice:
+composited through that layer (later layers at zero opacity, so auto layout never reflows), and
+the layer alone on a transparent canvas (ancestors keep their geometry and clipping but not their
+paint; strokes keep their weight). The sheets export as PNG at 2x.
+
+Most surfaces are glass and blur the wallpaper behind them, which an export on a transparent
+canvas loses. [`scripts/matte-layers.py`](../../scripts/matte-layers.py) recovers each layer from
+the composite below it and the composite through it, as the most transparent straight-alpha image
+that reproduces the scene and is never more transparent than the layer's own coverage. Layers
+without glass are their exact alone export. It writes `layers/<scene>/<n>-<layer>.webp` cropped to
+each layer's box, `src/content/case-layers.ts` and `src/sections/cases/case-layers.css`, then
+recomposites the decoded files and prints each scene's error against Figma (a mean below 1/255;
+the remaining maximum is lossy WebP on the Dock icons).
+
 ## Updating the carousel
 
 1. Update the corresponding Figma scene, retaining the common canvas and desktop component. Keep
    small floating tools at their intended screen position and preserve full window bounds.
 2. Export the complete frame as a PNG at the default scale and save it to the matching `ui/` path.
    Keep exact exports in this directory rather than relying on expiring Figma URLs or CSS crops.
-3. Keep both languages of the label, caption and alt text aligned with the displayed functionality.
-4. Verify all eight slides, automatic playback, pause/resume, previous/next wrapping, swipe, keyboard
-   access, original-image links, reduced motion and mobile layout in both languages. Run the website
-   lint, type check and production build.
+3. Rebuild the scene's sheet in the layer section from the updated scene, keeping one row per layer
+   as above, and update `scripts/case-layers.json` when layers or sheets change. Export every sheet
+   listed there at 2x into one directory, each file named after its node (`2553-145107.png`), then
+   run `python3 apps/website/scripts/matte-layers.py <directory>` from the repository root (numpy
+   and Pillow with WebP). A new or renamed layer also needs its entrance in
+   `src/sections/cases/scenes.css`.
+4. Keep both languages of the label, caption and alt text aligned with the displayed functionality.
+5. Verify all eight slides, their entrances, automatic playback, pause/resume,
+   previous/next wrapping, keyboard access, original-image links, reduced motion and mobile
+   layout in both languages. Run the website lint, type check and production build.
 
-The website uses Embla with its Autoplay plugin. It advances every three seconds while visible.
-Hover temporarily pauses playback; manual navigation and keyboard focus stop it until the visitor
-resumes explicitly. Reduced motion starts paused.
-The controls show the three-second interval and a progress bar driven by Embla's timer events.
-The bar freezes when playback pauses and resets when the next interval starts.
-A failed image displays a localized message and retains the link to the original asset.
+The website uses Embla with its Autoplay and Fade plugins. Each scene holds for its own time
+(`src/sections/cases/scenes.ts`) while visible. Hover, choosing a scene and the previous and next
+buttons leave playback running; keyboard focus stops it until the visitor resumes explicitly.
+Reduced motion starts paused. The controls show the current scene's hold and a progress bar driven
+by Embla's timer events. The bar freezes when playback pauses and resets when the next interval
+starts. A failed layer displays a localized message and retains the link to the original asset.
 
 ## Archived recordings and Summon assets
 

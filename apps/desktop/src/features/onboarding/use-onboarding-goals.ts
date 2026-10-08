@@ -43,10 +43,11 @@ function usePanelShown(onboarding: OnboardingBridge | undefined) {
 export function useOnboardingGoals(
   snapshot: SettingsSnapshot | null,
   onboarding: OnboardingBridge | undefined,
+  hotkeyTested = false,
 ): OnboardingGoals {
   const hotkey = usePanelShown(onboarding);
   return {
-    hotkey,
+    hotkey: hotkey || hotkeyTested,
     selection: snapshot?.accessibilityTrusted === true,
     screenshot: snapshot?.screenRecordingTrusted === true,
     provider: readyConnection(snapshot) !== null,

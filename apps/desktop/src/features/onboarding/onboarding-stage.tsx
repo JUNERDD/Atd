@@ -1,6 +1,7 @@
 import { useEffect, useEffectEvent, useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { isComposingKey } from '@atd/ui/lib/ime';
+import type { OnboardingProgress } from '@atd/agent-contracts';
 import type { SettingsSnapshot } from '../../client/settings-contract';
 import { showErrorToast } from '../../components/toast-store';
 import { OnboardingCard } from './onboarding-card';
@@ -13,7 +14,12 @@ import {
   STAGE_FADE_DURATION,
 } from './onboarding-motion';
 import type { OnboardingGoals } from './onboarding-types';
-import { OWNS_RETURN, closeOnboarding, settleOnboarding } from './use-onboarding-flow';
+import {
+  OWNS_RETURN,
+  closeOnboarding,
+  settleOnboarding,
+  useOnboardingFlow,
+} from './use-onboarding-flow';
 import { useOnboardingMusic } from './use-onboarding-music';
 
 /**
@@ -57,16 +63,19 @@ function useBeginKeys(active: boolean, begin: () => void) {
 export function OnboardingStage({
   snapshot,
   goals,
+  initialProgress,
 }: {
   snapshot: SettingsSnapshot | null;
   goals: OnboardingGoals;
+  initialProgress: OnboardingProgress;
 }) {
   const reduced = useReducedMotion() ?? false;
   // The music begins as the room dims (at once under Reduce Motion), so its bloom lands with the
   // opening page's light.
   const [musicAt] = useState(() => performance.now() + (reduced ? 0 : INTRO.musicAt * 1000));
   const music = useOnboardingMusic(musicAt);
-  const [phase, setPhase] = useState<Phase>('intro');
+  const [phase, setPhase] = useState<Phase>(initialProgress.step === 'intro' ? 'intro' : 'settled');
+  const flow = useOnboardingFlow(initialProgress, goals.hotkey);
   const [closing, setClosing] = useState(false);
   const closingRef = useRef(false);
   const settledRef = useRef(false);
@@ -87,7 +96,10 @@ export function OnboardingStage({
   }, [phase]);
 
   function begin() {
-    setPhase((current) => (current === 'intro' ? 'reveal' : current));
+    void flow
+      .begin()
+      .then(() => setPhase((current) => (current === 'intro' ? 'reveal' : current)))
+      .catch(showErrorToast);
   }
   useBeginKeys(phase === 'intro', begin);
 
@@ -97,11 +109,14 @@ export function OnboardingStage({
     setClosing(true);
     const wait = Math.max(STAGE_FADE_DURATION, music.fadeOut()) * 1000;
     window.setTimeout(() => {
-      closeOnboarding(summon).catch((error: unknown) => {
-        closingRef.current = false;
-        setClosing(false);
-        showErrorToast(error);
-      });
+      flow
+        .saveProgress()
+        .then(() => closeOnboarding(summon))
+        .catch((error: unknown) => {
+          closingRef.current = false;
+          setClosing(false);
+          showErrorToast(error);
+        });
     }, wait);
   }
 
@@ -137,6 +152,7 @@ export function OnboardingStage({
           entrance={reduced ? 'fade' : 'skip'}
           settled={phase === 'settled'}
           closing={closing}
+          flow={flow}
           onClose={close}
         />
       )}

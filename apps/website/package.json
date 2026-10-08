@@ -21,6 +21,7 @@
     "@types/react-dom": "catalog:",
     "@vitejs/plugin-react": "6.1.1",
     "embla-carousel-autoplay": "catalog:",
+    "embla-carousel-fade": "catalog:",
     "embla-carousel-react": "catalog:",
     "lucide-react": "catalog:",
     "radix-ui": "catalog:",

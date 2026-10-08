@@ -110,9 +110,8 @@ export interface SettingsSnapshot {
    */
   screenRecordingTrusted: boolean | null;
   /**
-   * Whether this data dir has shown the welcome guide; the panel opens the guide once while it is
-   * false and marks it done as it does. True until the service's settings load, so defaults never
-   * open the guide.
+   * Whether the user explicitly finished or dismissed the welcome guide. False after an
+   * interrupted guide, so the next launch resumes it. True until service settings load.
    */
   onboardingCompleted: boolean;
 }

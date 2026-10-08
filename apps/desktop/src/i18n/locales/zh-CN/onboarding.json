@@ -1,5 +1,8 @@
 {
   "chrome": {
+    "loading": "正在读取设置进度…",
+    "loadError": "无法读取设置进度，请重试后继续。",
+    "retry": "重试",
     "back": "返回",
     "later": "稍后",
     "continue": "继续",

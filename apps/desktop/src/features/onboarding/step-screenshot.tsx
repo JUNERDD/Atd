@@ -15,7 +15,7 @@ import { PermissionRow } from './permission-row';
  * the image lands in the panel's composer, which the guide never sends anywhere. Changing the
  * shortcut is Settings' job.
  */
-export function ScreenshotStep({ snapshot, goals, focusHeading }: StepRenderProps) {
+export function ScreenshotStep({ snapshot, goals, focusHeading, saveProgress }: StepRenderProps) {
   const { t } = useTranslation('onboarding');
   const keys = shortcutKeys(
     (snapshot?.shortcuts ?? DEFAULT_SHORTCUTS).captureScreenshot,
@@ -44,6 +44,7 @@ export function ScreenshotStep({ snapshot, goals, focusHeading }: StepRenderProp
           <PermissionRow
             trusted={goals.screenshot}
             request={async () => {
+              await saveProgress();
               await window.desktop?.settings.requestScreenRecording();
             }}
             copy={{

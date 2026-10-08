@@ -100,10 +100,7 @@ export async function installNativeHost(
     };
   };
   const settings = nativeSettings(connection, messages, native);
-  const onboarding =
-    surface === 'panel'
-      ? nativeOnboardingTrigger(native, messages, settings.markOnboardingShown)
-      : undefined;
+  const onboarding = surface === 'panel' ? nativeOnboardingTrigger(native, messages) : undefined;
   settings.onLoadError(() => onboarding?.onUnavailable());
   // Replayed when the page becomes ready, so subscribed before the first await too.
   native.on('accessibility.trust', ({ trusted }) =>
@@ -326,7 +323,9 @@ export async function installNativeHost(
     ...(onSelectionAsk ? { onSelectionAsk } : {}),
     ...(onNewTask ? { onNewTask } : {}),
     ...(onTaskOpen ? { onTaskOpen } : {}),
-    ...(surface === 'onboarding' ? { onboarding: nativeOnboarding(native, messages) } : {}),
+    ...(surface === 'onboarding'
+      ? { onboarding: nativeOnboarding(native, messages, connection) }
+      : {}),
   };
   window.desktop = bridge;
 }

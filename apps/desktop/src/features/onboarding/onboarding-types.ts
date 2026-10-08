@@ -1,17 +1,8 @@
 import type { ReactNode } from 'react';
 import type { SettingsSnapshot } from '../../client/settings-contract';
 
-/** The guide's steps after the intro, in order. */
-export const ONBOARDING_STEPS = [
-  'welcome',
-  'hotkey',
-  'selection',
-  'screenshot',
-  'provider',
-  'features',
-  'finish',
-] as const;
-export type OnboardingStepId = (typeof ONBOARDING_STEPS)[number];
+import type { OnboardingStepId } from '@atd/agent-contracts';
+export { ONBOARDING_STEPS, type OnboardingStepId } from '@atd/agent-contracts';
 
 /**
  * Whether each interactive step's goal is met, read from the app's real state (a panel the hotkey
@@ -42,6 +33,8 @@ export interface StepRenderProps {
   focusHeading: boolean;
   /** The card is at rest: settled after its entrance, and not closing. */
   atRest: boolean;
+  /** Save this step before macOS can quit the app to apply a permission. */
+  saveProgress: () => Promise<void>;
   /** Shows another step: the finish step's way back to an unfinished one. */
   goTo: (step: OnboardingStepId) => void;
 }

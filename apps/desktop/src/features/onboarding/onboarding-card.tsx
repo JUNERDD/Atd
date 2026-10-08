@@ -12,9 +12,9 @@ import type { OnboardingGoals } from './onboarding-types';
 import { FADE } from './step-motion';
 import {
   isGoalPending,
-  useOnboardingFlow,
   usePrimaryShortcut,
   useStepAnnouncement,
+  type useOnboardingFlow,
 } from './use-onboarding-flow';
 import type { OnboardingMusic } from './use-onboarding-music';
 import { useNativeSurface } from './use-native-surface';
@@ -83,6 +83,7 @@ export function OnboardingCard({
   entrance,
   settled,
   closing,
+  flow,
   onClose,
 }: {
   snapshot: SettingsSnapshot | null;
@@ -91,10 +92,10 @@ export function OnboardingCard({
   entrance: CardEntrance;
   settled: boolean;
   closing: boolean;
+  flow: ReturnType<typeof useOnboardingFlow>;
   onClose: (summon: boolean) => void;
 }) {
   const reduced = useReducedMotion() ?? false;
-  const flow = useOnboardingFlow();
   const viewport = useRef<HTMLDivElement>(null);
   const surface = useRef<HTMLDivElement>(null);
   // From the card's first moment: the glass moves to it as soon as its entrance comes to rest,
@@ -108,6 +109,7 @@ export function OnboardingCard({
     goals,
     focusHeading: settled,
     atRest: settled && !closing,
+    saveProgress: flow.saveProgress,
     goTo: flow.goToStep,
   });
   const announcement = useStepAnnouncement(flow.index, flow.moved);
@@ -122,7 +124,7 @@ export function OnboardingCard({
     if (flow.isLast) onClose(true);
     else flow.next();
   };
-  usePrimaryShortcut(primary, settled && !pending);
+  usePrimaryShortcut(primary, settled && !closing && !pending);
 
   const reveal = revealVariants(entrance);
   return (

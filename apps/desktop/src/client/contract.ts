@@ -1,4 +1,9 @@
-import type { FileSearchQuery, FileSearchReply, FolderRef } from '@atd/agent-contracts';
+import type {
+  FileSearchQuery,
+  FileSearchReply,
+  FolderRef,
+  OnboardingProgress,
+} from '@atd/agent-contracts';
 import type { AgentBridge } from './agent/bridge';
 import type { AppsBridge } from './apps-contract';
 import type { AutomationsBridge } from './automations-contract';
@@ -190,7 +195,11 @@ export interface DesktopBridge {
 
 /** What the welcome guide window can do beyond the settings every window shares. */
 export interface OnboardingBridge {
-  /** Closes the guide; `summon` then shows the panel. */
+  /** Reads durable progress before the guide mounts; null starts a new guide. */
+  getProgress: () => Promise<OnboardingProgress | null>;
+  /** Resolves only once progress is saved, before an external permission prompt can restart us. */
+  saveProgress: (progress: OnboardingProgress) => Promise<void>;
+  /** Records an explicit finish/dismissal, then closes; `summon` shows the panel. */
   close: (summon: boolean) => Promise<void>;
   /** The full-screen intro ended: the guide's window drops to the normal level. */
   settle: () => Promise<void>;

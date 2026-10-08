@@ -20,7 +20,7 @@ import { PermissionRow } from './permission-row';
  * below, the toolbar's own switch and the activation rows (which selections bring it up, the key
  * combination, and the toggle mode's HUD) sit beside the permission, as in Settings.
  */
-export function SelectionStep({ snapshot, goals, focusHeading }: StepRenderProps) {
+export function SelectionStep({ snapshot, goals, focusHeading, saveProgress }: StepRenderProps) {
   const { t } = useTranslation('onboarding');
   const settings = useSelectionToolbarSettings(snapshot);
   const { activation, activationKeys } = settings.value;
@@ -56,6 +56,7 @@ export function SelectionStep({ snapshot, goals, focusHeading }: StepRenderProps
           <PermissionRow
             trusted={goals.selection}
             request={async () => {
+              await saveProgress();
               await window.desktop?.settings.requestAccessibility();
             }}
             copy={{
