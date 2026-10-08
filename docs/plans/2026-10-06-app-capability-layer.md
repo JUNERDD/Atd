@@ -266,7 +266,7 @@ flowchart LR
 | 我的应用           | 查看状态与资源占用                                             | 出错时显示原因与重试                               |
 | 模块不可用         | 显示补救动作：安装、批准、启动                                 | `capability_unavailable`                           |
 
-- Figma：同意弹窗的分级、设置中的 app 授权页、菜单栏「后台运行」段、我的应用状态，在项目文件 `D9YK1tEeBTEBgstcepesW5` 同步（`AGENTS.md` 的默认同步规则）。
+- Figma：同意弹窗的分级、设置中的 app 授权页、菜单栏「后台运行」段、我的应用状态，在项目文件 `project` 同步（`AGENTS.md` 的默认同步规则）。
 - 文案：en 与 zh-CN（`apps/desktop/src/i18n/locales/{en,zh-CN}/apps.json` 等）；菜单栏、通知、原生对话框的文案进 Swift String Catalog。
 
 ### 复用决定

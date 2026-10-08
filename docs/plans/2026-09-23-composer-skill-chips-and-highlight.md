@@ -198,7 +198,7 @@ flowchart LR
 
 agent-service 与 packages 没有测试脚本。
 
-Figma（项目文件 `D9YK1tEeBTEBgstcepesW5`，只读核对）：
+Figma（项目文件 `project`，只读核对）：
 
 - `App / Composer` 72:150（含 `Ready chips` 1453:53356）。
 - `App / Composer quick panel` 1447:51964，其中 Loading 1447:51630、Unavailable 1447:51718。

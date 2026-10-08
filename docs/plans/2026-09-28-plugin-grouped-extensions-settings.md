@@ -307,7 +307,7 @@ A click anywhere else on the card opens the plugin page. When there is no Switch
 
 **Design and docs**
 
-- Figma file `D9YK1tEeBTEBgstcepesW5`, nodes:
+- Figma file `project`, nodes:
   - settings layout: `1119:36110`, `1181:38808`, `1045:32910`
   - editor: `1093:34262` / `1093:34242`
   - commands: `373:1416`
@@ -443,7 +443,7 @@ The workstreams, with their dependencies:
 ### G. Design
 
 - [x] **G1. Figma** (runs in parallel with E3–E5; required by the AGENTS design/code sync rule).
-  - In file `D9YK1tEeBTEBgstcepesW5`, locate the current Extensions frame.
+  - In file `project`, locate the current Extensions frame.
   - Add three compositions:
     - `App / Plugin row`: Rhea `Item`, `Switch`, `Badge` and icon-button instances.
     - Plugin detail: kind groups, metadata and diagnostics.

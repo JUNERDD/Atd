@@ -1,0 +1,91 @@
+title = "Atd secrets and private project references"
+
+[extend]
+useDefault = true
+
+# Exact, synthetic values in specific security tests; other values in these files remain scanned.
+[[allowlists]]
+description = "MCP keyring test sentinels"
+targetRules = ["generic-api-key"]
+condition = "AND"
+paths = ['''(^|/)apps/agent-service/test/mcp-keyring\.test\.ts$''']
+regexTarget = "secret"
+regexes = ['''^kc-sentinel-(env-71d2|header-9e04)$''']
+
+[[allowlists]]
+description = "MCP persistence test sentinels"
+targetRules = ["generic-api-key"]
+condition = "AND"
+paths = ['''(^|/)apps/agent-service/test/mcp-secrets\.test\.ts$''']
+regexTarget = "secret"
+regexes = ['''^sentinel-(env-5f1c9a|header-8b2e4d|plugin-3a7f0e|client-6d9b21)$''']
+
+[[allowlists]]
+description = "Launch approval test sentinel"
+targetRules = ["generic-api-key"]
+condition = "AND"
+paths = ['''(^|/)apps/agent-service/test/launch-approvals\.test\.ts$''']
+regexTarget = "secret"
+regexes = ['''^launch-sentinel-env-4c1b$''']
+
+[[allowlists]]
+description = "OAuth header redaction test sentinel"
+targetRules = ["generic-api-key"]
+condition = "AND"
+paths = ['''(^|/)apps/agent-service/test/mcp-oauth-headers\.test\.ts$''']
+regexTarget = "secret"
+regexes = ['''^key-from-env-4711$''']
+
+[[allowlists]]
+description = "Deliberately alphabetic AWS-shaped scanner fixture"
+targetRules = ["aws-access-token"]
+condition = "AND"
+paths = ['''(^|/)apps/agent-service/test/memory-scanner\.test\.ts$''']
+regexTarget = "secret"
+regexes = ['''^AKIAABCDEFGHIJKLMNOP$''']
+
+[[allowlists]]
+description = "Sparkle's public verification key, never its signing secret"
+targetRules = ["generic-api-key"]
+condition = "AND"
+paths = ['''(^|/)apps/macos/project\.yml$''']
+regexTarget = "line"
+regexes = ['''^\s*SUPublicEDKey: [A-Za-z0-9+/]{43}=$''']
+
+[[rules]]
+id = "private-figma-file"
+description = "Keep design file URLs in ignored local project context"
+regex = '''https?://(?:www\.)?figma\.com/(?:design|file|proto|board)/([A-Za-z0-9]{15,})(?:[/?#\s)"'`]|$)'''
+secretGroup = 1
+keywords = ["figma.com"]
+
+[[rules]]
+id = "temporary-figma-asset"
+description = "Save required exported assets locally instead of publishing temporary MCP URLs"
+regex = '''https?://(?:www\.)?figma\.com/api/mcp/asset/[A-Za-z0-9._/-]+'''
+keywords = ["figma.com/api/mcp/asset"]
+
+[[rules]]
+id = "private-cloudflare-account"
+description = "Account identifiers belong in local deployment configuration"
+regex = '''(?i)(?:account_id["']?\s*[:=]\s*["']?|dash\.cloudflare\.com/)([a-f0-9]{32})'''
+secretGroup = 1
+keywords = ["account_id", "dash.cloudflare.com"]
+
+[[rules]]
+id = "personal-home-path"
+description = "Use repository-relative paths or a neutral fixture user"
+regex = '''/(?:Users|home)/([A-Za-z0-9_.-]+)'''
+secretGroup = 1
+keywords = ["/Users/", "/home/"]
+[[rules.allowlists]]
+description = "Neutral example users, not personal account names"
+regexTarget = "secret"
+regexes = ['''^(me|user|dev|a|u|x|test|USERNAME|username|runner)$''']
+
+[[rules]]
+id = "private-local-config"
+description = "Local project context, deployment config and secret files must stay untracked"
+path = '''(^|/)(\.local/|\.dev\.vars(?:\.|$)|wrangler\.local\.jsonc$|\.env(?:$|\.))'''
+[[rules.allowlists]]
+paths = ['''(^|/)(\.env|\.dev\.vars)\.example$''']

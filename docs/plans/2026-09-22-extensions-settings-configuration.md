@@ -38,10 +38,10 @@ Accepted community map: Claude Code, Codex, OpenCode, Goose, Cline, and Cursor a
 - `apps/agent-service/src/mcp/routes.ts` — `handleMcpConfigure` adds, replaces, or disables servers.
 - `packages/agent-client/src/skills-client.ts` — `listSkills` and `installSkill` only.
 - `packages/agent-client/src/mcp-client.ts` — `mcpConfigure` and `mcpRevoke` exist for service clients, not for the Extensions page.
-- `/Users/zen/Documents/Project Source/pi/packages/coding-agent/README.md` — “No MCP.” and “No sub-agents.”
-- `/Users/zen/Documents/Project Source/pi/packages/coding-agent/docs/packages.md` — `pi config` toggles extensions, skills, prompts, and themes; Tab switches global and project settings.
-- `/Users/zen/Documents/Project Source/pi/packages/coding-agent/docs/usage.md` — `/reload` reloads skills and extensions.
-- `/Users/zen/Documents/Project Source/pi-hermes-memory/README.md` — `/memory-skills` searches, moves, and deletes Hermes skills; `skill_manage` creates them during work.
+- `${referenceRoot}/pi/packages/coding-agent/README.md` — “No MCP.” and “No sub-agents.”
+- `${referenceRoot}/pi/packages/coding-agent/docs/packages.md` — `pi config` toggles extensions, skills, prompts, and themes; Tab switches global and project settings.
+- `${referenceRoot}/pi/packages/coding-agent/docs/usage.md` — `/reload` reloads skills and extensions.
+- `${referenceRoot}/pi-hermes-memory/README.md` — `/memory-skills` searches, moves, and deletes Hermes skills; `skill_manage` creates them during work.
 
 ## Pi And Hermes
 

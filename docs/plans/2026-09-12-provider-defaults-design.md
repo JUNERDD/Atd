@@ -2,7 +2,7 @@
 
 日期：2026-09-12。范围：Figma 设计、交互约定与设计资产；本轮按用户确认同步设计稿和本计划，应用实现另行进行。
 
-设计稿统一放在 [01 · Product design · Flows & settings](https://www.figma.com/design/D9YK1tEeBTEBgstcepesW5/ai?node-id=1-251)，与任务、命令和记忆流程共用一页；提供商位于 F1–F9，快捷键位于 G。页面合并保留原画板节点与原型目标，不改变本计划的能力和实现边界。
+设计稿统一放在 01 · Product design · Flows & settings (Figma `project/1:251`)，与任务、命令和记忆流程共用一页；提供商位于 F1–F9，快捷键位于 G。页面合并保留原画板节点与原型目标，不改变本计划的能力和实现边界。
 
 ## 应用实现记录 · 2026-09-12
 
@@ -14,7 +14,7 @@
 - 新请求解析默认连接与该连接默认模型；固定命令和 Composer 支持跨连接明确选择。接受时冻结模型，出队与每次调用前重新校验连接/认证；默认值改变不会重写历史或队列。旧运行时不能把新配置凭据发送到旧端点。
 - Providers 的本地模糊搜索复用已安装 cmdk 的 `defaultFilter`，保留连接顺序。共享 `ModelPicker` 分别提供连接内选择与跨连接选择；保存冲突保留草稿并提供重新载入，目录失败保留缓存与原选择。
 - 设置窗口在 760px、480px 断点切换侧栏、顶部导航、抽屉；抽屉复用 Rhea Sheet（底层 Radix Dialog），从左侧滑入，关闭时退回左侧。共同标题/搜索排列、220px 字段下限、16/8px 表单节奏、滚动正文与固定页脚已用于提供商、命令、参数、记忆页面；导航移除 logo、头像与姓名。
-- [指令生成组件](https://www.figma.com/design/D9YK1tEeBTEBgstcepesW5/ai?node-id=1231-39739)接入应用默认模型：只生成完整指令文本并验证 Mustache 引用。预览、重试、停止、错误和缺少默认模型均有反馈；Use instructions 只更新未保存草稿并提供 Undo。关闭/取消后忽略迟到结果，不创建任务、不执行工具、不学习记忆。
+- 指令生成组件 (Figma `project/1231:39739`)接入应用默认模型：只生成完整指令文本并验证 Mustache 引用。预览、重试、停止、错误和缺少默认模型均有反馈；Use instructions 只更新未保存草稿并提供 Undo。关闭/取消后忽略迟到结果，不创建任务、不执行工具、不学习记忆。
 - 实现映射已回写 Figma 共享窗口、编辑器、Run settings、连接列表和指令生成组件的 usage description；既有主组件、变量、实例和画板保留。
 
 验证：`pnpm check`（格式、TypeScript、Oxlint、现有 Vitest 13 项、生产构建）和现有 Electron 冒烟检查均已通过。随后按用户要求完成隔离 Electron UI 走查：设置页覆盖 36 个尺寸与页面组合，面板覆盖 320 / 420 / 640px 与短高；透明菜单和抽屉在原生明暗背景下检查。滚动区域统一使用 ScrollArea，标题与描述优先单行省略，具体修复与证据见[完整 UI 走查记录](../design-source.md#2026-09-12-完整-ui-走查与透明弹层修复)。未使用真实账户完成 OAuth、云端/本地模型调用或计费验证。
@@ -25,14 +25,14 @@
 
 启动时兼容旧配置：默认提供商为空且只有一个已连接、已保存模型的候选连接时，补全并持久化该默认关联；多个候选时保留空值，等待用户明确选择。已有默认引用即使失效也不自动替换。主界面 Composer 展示当前 Provider 的品牌图标与模型显示名称，悬停说明包含连接名称；读取新任务默认值与实际运行解析使用同一已保存关联。
 
-- [提供商总览](https://www.figma.com/design/D9YK1tEeBTEBgstcepesW5/ai?node-id=250-1337)：顶部改为 `Search providers…` 模糊搜索输入框；各连接行右侧继续独立选择默认模型。取消顶部默认提供商下拉框及其说明区域。
-- [连接操作菜单](https://www.figma.com/design/D9YK1tEeBTEBgstcepesW5/ai?node-id=933-20523)：从行尾 More 菜单选择 `Make default provider`。保存成功后，仅该连接名称旁显示 `Default` 标签；其他行不显示该标签。
-- [当前默认连接菜单](https://www.figma.com/design/D9YK1tEeBTEBgstcepesW5/ai?node-id=933-20290)：首项显示禁用的 `Current default`，避免重复提交；Manage connection、Refresh models、Disconnect 保留原有含义。
-- [搜索焦点](https://www.figma.com/design/D9YK1tEeBTEBgstcepesW5/ai?node-id=323-1525)、[匹配结果](https://www.figma.com/design/D9YK1tEeBTEBgstcepesW5/ai?node-id=981-29300)与[无匹配结果](https://www.figma.com/design/D9YK1tEeBTEBgstcepesW5/ai?node-id=981-29310)：展示已保存连接的过滤状态，搜索不修改默认值。
-- [提供商内的模型选择](https://www.figma.com/design/D9YK1tEeBTEBgstcepesW5/ai?node-id=976-25105)：只显示 Anthropic 连接的模型。
-- [独立模型偏好](https://www.figma.com/design/D9YK1tEeBTEBgstcepesW5/ai?node-id=981-29320)：Anthropic 改用 Opus 后，默认提供商仍为 ChatGPT / Codex。
-- [未设置模型](https://www.figma.com/design/D9YK1tEeBTEBgstcepesW5/ai?node-id=976-25180)：OpenAI API 保留在列表中，选择默认模型前不能将其设为默认提供商。
-- [完整接入目录](https://www.figma.com/design/D9YK1tEeBTEBgstcepesW5/ai?node-id=929-16837)：搜索与分类位于滚动列表外；支持账户登录、API keys、云服务及本地连接筛选。
+- 提供商总览 (Figma `project/250:1337`)：顶部改为 `Search providers…` 模糊搜索输入框；各连接行右侧继续独立选择默认模型。取消顶部默认提供商下拉框及其说明区域。
+- 连接操作菜单 (Figma `project/933:20523`)：从行尾 More 菜单选择 `Make default provider`。保存成功后，仅该连接名称旁显示 `Default` 标签；其他行不显示该标签。
+- 当前默认连接菜单 (Figma `project/933:20290`)：首项显示禁用的 `Current default`，避免重复提交；Manage connection、Refresh models、Disconnect 保留原有含义。
+- 搜索焦点 (Figma `project/323:1525`)、匹配结果 (Figma `project/981:29300`)与无匹配结果 (Figma `project/981:29310`)：展示已保存连接的过滤状态，搜索不修改默认值。
+- 提供商内的模型选择 (Figma `project/976:25105`)：只显示 Anthropic 连接的模型。
+- 独立模型偏好 (Figma `project/981:29320`)：Anthropic 改用 Opus 后，默认提供商仍为 ChatGPT / Codex。
+- 未设置模型 (Figma `project/976:25180`)：OpenAI API 保留在列表中，选择默认模型前不能将其设为默认提供商。
+- 完整接入目录 (Figma `project/929:16837`)：搜索与分类位于滚动列表外；支持账户登录、API keys、云服务及本地连接筛选。
 
 ## Pi 依据与实现差异
 
@@ -144,10 +144,10 @@ llama.cpp 是 Pi 单独支持的动态本地服务；Ollama、LM Studio 和 vLLM
 
 ## 组件与资产
 
-- 总览复用 [Settings overview header · Rhea](https://www.figma.com/design/D9YK1tEeBTEBgstcepesW5/ai?node-id=1181-38808)，与 Commands、Memory 共用标题／说明、搜索与主操作的排列；窄屏按钮随工具栏换行。搜索复用 `App / Command field · Rhea` 的 Text 输入框，连接列表复用 `App / Provider connection row · Rhea` 和 `App / Provider model controls`。旧 `App / Default provider · Rhea` 标记为被替代，不再用于总览。
-- [App / Provider identity · Rhea](https://www.figma.com/design/D9YK1tEeBTEBgstcepesW5/ai?node-id=1006-22689) 统一品牌、连接名称、认证说明及 Default 标签；暴露名称、说明、品牌替换和 Default provider 布尔属性。响应式行使用该组合与模型／More 组合的连接实例，项目 Auto Layout 拥有换行；保留共享 Item 外观层，比对后清理旧 SLOT 副本。
+- 总览复用 Settings overview header · Rhea (Figma `project/1181:38808`)，与 Commands、Memory 共用标题／说明、搜索与主操作的排列；窄屏按钮随工具栏换行。搜索复用 `App / Command field · Rhea` 的 Text 输入框，连接列表复用 `App / Provider connection row · Rhea` 和 `App / Provider model controls`。旧 `App / Default provider · Rhea` 标记为被替代，不再用于总览。
+- App / Provider identity · Rhea (Figma `project/1006:22689`) 统一品牌、连接名称、认证说明及 Default 标签；暴露名称、说明、品牌替换和 Default provider 布尔属性。响应式行使用该组合与模型／More 组合的连接实例，项目 Auto Layout 拥有换行；保留共享 Item 外观层，比对后清理旧 SLOT 副本。
 - 名称保留 ItemTitle 的 Inter Medium 14px / 19.25px 行高，并在项目组合拥有的最小 20px 标题轨道内垂直居中；认证说明使用 Inter Regular 14px / 20px。名称单行截断，标签不收缩，统一行内间距与尾部操作位置。
-- [App / Provider connection menu content](https://www.figma.com/design/D9YK1tEeBTEBgstcepesW5/ai?node-id=1015-22940) 提供 Available、Current、Needs model 三种状态，嵌入 `App / Service connection menu` 的连接弹层。菜单在 More 下方留 4px，尾部对齐，空间不足时上翻；缺少模型的禁用说明允许菜单行随内容增高。静态 Figma 评审帧改变尺寸或文案后须重算跨 SLOT 锚点，不能把其约束当成自动定位；应用实现复用菜单库的碰撞处理。
+- App / Provider connection menu content (Figma `project/1015:22940`) 提供 Available、Current、Needs model 三种状态，嵌入 `App / Service connection menu` 的连接弹层。菜单在 More 下方留 4px，尾部对齐，空间不足时上翻；缺少模型的禁用说明允许菜单行随内容增高。静态 Figma 评审帧改变尺寸或文案后须重算跨 SLOT 锚点，不能把其约束当成自动定位；应用实现复用菜单库的碰撞处理。
 - 2026-09-12 深度间距复核：跨提供商的 `App / Model picker content` 三个状态统一 CommandInput inset，搜索表面与选项高亮左右均为 8px，输入框保留 32px；作用域模型菜单继续保留自身 4px 边界。Catalog warning 的 Refresh notice 使用 Fill，不能把固定 320px 提示放进 312px 内容区；320px 菜单下提示容器左右为 4px、文字左右为 12px，288px 窄宽已核对。源组件与当前消费者同步，详见[排查记录](../design-source.md#弹层内边距深度排查仅-figma)。
 - `App / Provider connections · Rhea` 增加 No results 状态，复用既有空态布局、共享 Lucide / search-x 图标与 Rhea 按钮。模型菜单继续使用 `App / Provider selection content` 和 `App / Provider selection menu` 的连接内上下文；接入目录继续使用 `App / Provider catalog content`。
 - 保留 Rhea Input / Select 32px 高、18px 圆角和菜单选项 14px 圆角。Default 标签保留共享 shadcn Badge 的引用，并按 [Rhea Badge 源定义](https://ui.shadcn.com/r/styles/radix-rhea/badge.json)在项目组合内适配：Secondary、20px 高、18px 圆角、左右内边距 8px、Inter Medium 12/16，使用语义 secondary / foreground 变量。More 操作与品牌图标保持原有组件引用。
@@ -156,7 +156,7 @@ llama.cpp 是 Pi 单独支持的动态本地服务；Ollama、LM Studio 和 vLLM
 
 ## 二级页面标题
 
-接入目录、认证步骤、云服务、本地或自定义连接、模型配置与连接详情统一使用 [App / Settings subpage header · Rhea](https://www.figma.com/design/D9YK1tEeBTEBgstcepesW5/ai?node-id=1045-32910)，与 New command 使用同一组合。顶部不再将文字 Back 独立放在标题上方。
+接入目录、认证步骤、云服务、本地或自定义连接、模型配置与连接详情统一使用 App / Settings subpage header · Rhea (Figma `project/1045:32910`)，与 New command 使用同一组合。顶部不再将文字 Back 独立放在标题上方。
 
 - 标题行横向排列：28 × 28px Ghost / icon-sm 返回按钮、16px 共享 Lucide / arrow-left、8px 间距，以及 Inter Semi Bold 24px / 32px 标题；按钮与标题垂直居中。
 - 说明可选，位于标题行下方 8px，使用 Inter Regular 14px / 20px。组合填满可用宽度并随内容增高；长标题换行，不挤压返回控件，也不增加固定空白占位。Desktop 保留内容 40px 内边距，窄屏遵循响应式模式；保留原表单分组间距。
@@ -167,7 +167,7 @@ llama.cpp 是 Pi 单独支持的动态本地服务；Ollama、LM Studio 和 vLLM
 
 ## 设计验证范围
 
-提供商总览、目录、连接步骤、模型与 More 菜单同时遵循 [全界面响应式约定](2026-09-10-general-agent-requirements.md#2026-09-12--全界面响应式布局仅-figma)：≥760px 侧栏、480–759px 顶部导航、<480px 抽屉；全部移除 logo、头像和姓名。宽屏保留 40px 内容 inset，窄屏左右 16px；身份与模型操作自动换行，弹层限制在窗口内并滚动。已核对模型名称和 Default 标签在迁移及模式切换后保留。组件、样例和断点见 [响应式评审区](https://www.figma.com/design/D9YK1tEeBTEBgstcepesW5/ai?node-id=1117-35919)。应用实现仍属后续同步范围。
+提供商总览、目录、连接步骤、模型与 More 菜单同时遵循 [全界面响应式约定](2026-09-10-general-agent-requirements.md#2026-09-12--全界面响应式布局仅-figma)：≥760px 侧栏、480–759px 顶部导航、<480px 抽屉；全部移除 logo、头像和姓名。宽屏保留 40px 内容 inset，窄屏左右 16px；身份与模型操作自动换行，弹层限制在窗口内并滚动。已核对模型名称和 Default 标签在迁移及模式切换后保留。组件、样例和断点见 响应式评审区 (Figma `project/1117:35919`)。应用实现仍属后续同步范围。
 
 本轮核对总览搜索框、Default 标签、当前默认菜单、可设为默认菜单、未选模型禁用原因、搜索焦点、匹配与无匹配结果，以及长名称和模型菜单锚点。保留默认 Anthropic / LM Studio、独立模型更新、连接失效等既有状态中的连接名称、品牌与模型偏好。画板按功能区域整理，搜索状态替换原默认提供商下拉菜单的评审画板，沿用原链接。
 
