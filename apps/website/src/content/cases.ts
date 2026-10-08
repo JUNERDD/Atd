@@ -1,3 +1,4 @@
+import { caseLayers, type CaseLayer } from './case-layers';
 import { mediaUrl } from './media';
 import type { Localized } from '../i18n/lang';
 
@@ -11,10 +12,13 @@ interface Case {
   label: Localized<string>;
   title: Localized<string>;
   description: Localized<string>;
+  /** The flat export, linked as the original. */
   image: CaseImage;
+  /** The same scene as layers over the shared desktop, which the carousel animates. */
+  layers: readonly CaseLayer[];
 }
 
-/** Figma scenes share the canonical desktop and a 1440 × 900 canvas. Source nodes and update instructions live in public/cases/README.md. */
+/** Figma scenes share the canonical desktop and a 1440 × 900 canvas. Source nodes, layer exports and update instructions live in public/cases/README.md. */
 export const cases = [
   {
     id: 'selection-toolbar',
@@ -31,6 +35,7 @@ export const cases = [
         zh: '文字选区上方的 Atd 工具栏，包含提问、翻译、总结和解释操作。',
       },
     },
+    layers: caseLayers['selection-toolbar'],
   },
   {
     id: 'mini-panel',
@@ -47,6 +52,7 @@ export const cases = [
         zh: '桌面右侧展开的迷你面板，以及打开的常用命令菜单。',
       },
     },
+    layers: caseLayers['mini-panel'],
   },
   {
     id: 'screenshot',
@@ -63,6 +69,7 @@ export const cases = [
         zh: '截图选区内的箭头、序号与马赛克标注，下方显示截图工具栏和颜色、线宽控制。',
       },
     },
+    layers: caseLayers['screenshot'],
   },
   {
     id: 'main-panel',
@@ -79,6 +86,7 @@ export const cases = [
         zh: 'Atd 新任务主面板，包含顶部历史和设置入口、输入框、权限与模型选择。',
       },
     },
+    layers: caseLayers['main-panel'],
   },
   {
     id: 'chat',
@@ -95,6 +103,7 @@ export const cases = [
         zh: '周报对话中的追问、工具执行状态、回答操作和底部输入框。',
       },
     },
+    layers: caseLayers['chat'],
   },
   {
     id: 'settings',
@@ -111,6 +120,7 @@ export const cases = [
         zh: 'Atd 设置窗口，左侧为功能导航，右侧为 ChatGPT、Anthropic 和 LM Studio 模型配置。',
       },
     },
+    layers: caseLayers['settings'],
   },
   {
     id: 'apps',
@@ -127,6 +137,7 @@ export const cases = [
         zh: '同一桌面上的「我的应用」列表与 Notes 笔记应用，展示应用入口和独立应用窗口。',
       },
     },
+    layers: caseLayers['apps'],
   },
   {
     id: 'automations',
@@ -143,5 +154,6 @@ export const cases = [
         zh: '自动化设置窗口，展示定时任务、文件夹触发、空闲时整理记忆、运行状态和暂停控制。',
       },
     },
+    layers: caseLayers['automations'],
   },
 ] as const satisfies readonly Case[];
