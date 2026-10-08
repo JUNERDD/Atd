@@ -13,9 +13,9 @@ Select text, capture your screen, or press **⌘ ⇧ Space** to start a conversa
 
 **macOS 26+ · Apple silicon**
 
-[![Download Atd for Mac](https://img.shields.io/badge/Download_for_Mac-Apple_silicon-111111?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/JUNERDD/ai/releases/latest/download/Atd-arm64.dmg)
+[![Download Atd for Mac](https://img.shields.io/badge/Download_for_Mac-Apple_silicon-111111?style=for-the-badge&logo=apple&logoColor=white)](https://downloads.atd.best/latest/Atd-arm64.dmg)
 
-[Website](https://atd.best) · [Release notes](https://github.com/JUNERDD/ai/releases/latest) · [Interface previews](#interface-previews) · [Report an issue](https://github.com/JUNERDD/ai/issues)
+[Website](https://atd.best) · [GitHub download mirror](https://github.com/JUNERDD/ai/releases/latest/download/Atd-arm64.dmg) · [Release notes](https://github.com/JUNERDD/ai/releases/latest) · [Interface previews](#interface-previews) · [Report an issue](https://github.com/JUNERDD/ai/issues)
 
 [![Atd main panel on the desktop, with a new task, composer, model selector, and permission controls](apps/website/public/cases/ui/main-panel.png)](apps/website/public/cases/ui/main-panel.png)
 
@@ -23,7 +23,7 @@ _Interface preview of the main panel._
 
 ## Get started
 
-1. [Download the latest Apple silicon DMG](https://github.com/JUNERDD/ai/releases/latest/download/Atd-arm64.dmg), open it, and drag **Atd** to **Applications**.
+1. [Download the latest Apple silicon DMG](https://downloads.atd.best/latest/Atd-arm64.dmg), open it, and drag **Atd** to **Applications**.
 2. Open **Atd**. If macOS blocks it, follow the first-launch instructions in the warning above.
 3. Open **Settings → Models**, add a provider connection, and choose your default provider and model. Connect with a supported account sign-in, API key, or local endpoint.
 4. Press **⌘ ⇧ Space** to open the panel. Ask a question, attach a file, or start from selected text or a screenshot.

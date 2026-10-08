@@ -33,7 +33,7 @@ export function DownloadSection() {
           <div className="download__actions">
             <a
               className="btn-filled btn-large download__cta"
-              href={site.latestReleaseUrl}
+              href={site.downloadUrl}
               data-reveal="rise"
               data-reveal-delay="420"
             >

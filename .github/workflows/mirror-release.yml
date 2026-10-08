@@ -1,0 +1,57 @@
+name: Mirror release downloads
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Stable release tag, or latest (older releases cannot replace latest)
+        type: string
+        default: latest
+        required: true
+  workflow_call:
+    inputs:
+      tag:
+        type: string
+        required: true
+    secrets:
+      R2_DOWNLOAD_ACCOUNT_ID:
+        required: true
+      R2_DOWNLOAD_ACCESS_KEY_ID:
+        required: true
+      R2_DOWNLOAD_SECRET_ACCESS_KEY:
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-download-mirror
+  cancel-in-progress: false
+
+jobs:
+  mirror:
+    name: Mirror and verify the latest stable DMG
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version-file: .node-version
+      - name: Check the runner's upload tools
+        run: |
+          aws --version
+          gh --version
+      - name: Upload and verify the official release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+          R2_DOWNLOAD_ACCOUNT_ID: ${{ secrets.R2_DOWNLOAD_ACCOUNT_ID }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_DOWNLOAD_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_DOWNLOAD_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+          AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
+        run: node ops/release-downloads/mirror.mjs --tag "$RELEASE_TAG"
