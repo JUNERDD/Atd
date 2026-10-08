@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { createReadStream } from 'node:fs';
 import { mkdtemp, open, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -54,6 +54,7 @@ assert(asset.size > 0 && asset.size <= 512 * 1024 ** 2, 'The DMG exceeds the CDN
 const sha256 = asset.digest.slice('sha256:'.length);
 const versionKey = `releases/${release.tag_name}/${name}`;
 const disposition = `attachment; filename="${name}"`;
+const runNonce = randomUUID();
 const metadata = { version, sha256, bytes: asset.size, url: `${base}/${versionKey}` };
 console.log(
   JSON.stringify({ ...metadata, latest: `${base}/${latestKey}`, dryRun: values['dry-run'] }),
@@ -95,9 +96,11 @@ function pruneOldMirrors() {
 }
 
 async function verifyDelivery(key, cacheControl, full) {
-  // A version query bypasses a previous release's <=60s cache during promotion.
+  // A query unique to this run bypasses every earlier cached copy of the latest object. A version
+  // alone is not enough on a rerun: the promoted bytes keep their ETag, so the edge revalidates its
+  // earlier entry with a 304 and goes on serving that entry's headers.
   const url = new URL(`${base}/${key}`);
-  if (key === latestKey) url.searchParams.set('version', version);
+  if (key === latestKey) url.searchParams.set('verify', `${version}-${runNonce}`);
   const head = await fetch(url, { method: 'HEAD', signal: AbortSignal.timeout(30000) });
   assert.equal(head.status, 200, `HEAD failed for ${key}`);
   assert.equal(Number(head.headers.get('content-length')), asset.size, 'Wrong public file size.');
