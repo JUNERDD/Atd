@@ -12,10 +12,10 @@ interface SectionProps {
 /**
  * One plate of the faceplate: a full-bleed band of the dot grid, joined to the plate above it by a
  * seam with registration crosses where the content column's edges meet it. The heading and lede
- * share the plate's center line; the heading lights in dots, as the hero lights its word.
+ * share the plate's center line; the heading keeps the faceplate's dot typography.
  *
- * As the plate arrives the seam draws across and the crosses plot in; then the heading flickers
- * on like an LED, and the lede follows.
+ * As the plate arrives the seam draws across and the crosses plot in; the heading fades in with
+ * a small rise, and the lede follows.
  */
 export function Section({ id, title, lede, children }: SectionProps) {
   const titleId = `${id}-title`;
@@ -35,13 +35,13 @@ export function Section({ id, title, lede, children }: SectionProps) {
           <h2
             id={titleId}
             className="section__title dot-text"
-            data-reveal="light"
-            data-reveal-delay="140"
+            data-reveal="rise"
+            data-reveal-delay="80"
           >
             {title}
           </h2>
           {lede ? (
-            <p className="section__lede" data-reveal="fade" data-reveal-delay="360">
+            <p className="section__lede" data-reveal="fade" data-reveal-delay="240">
               {lede}
             </p>
           ) : null}

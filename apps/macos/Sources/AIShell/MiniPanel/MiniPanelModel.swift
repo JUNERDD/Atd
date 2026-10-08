@@ -14,12 +14,17 @@ enum MiniPanelPhase: String {
   case expanded
   /// The capsule, lifted, following the pointer.
   case dragging
+  /// The pill, lifted, following the pointer: a drag that begins tucked stays tucked.
+  case draggingPill
   /// A drag with something to take is under way somewhere on screen.
   case invite
   /// The dragged item is over the invite: the drop card.
   case target
   /// The drop card taking a drop in, before it tucks away.
   case absorbing
+
+  /// Whether the panel follows the pointer, as the capsule or as the pill.
+  var isDragging: Bool { self == .dragging || self == .draggingPill }
 }
 
 /// One of the mini panel's controls. Nonisolated, so the pure hover-label timer can hold it.

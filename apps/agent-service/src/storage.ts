@@ -44,6 +44,20 @@ export function resolveDataDir(options: {
   return path.resolve(raw);
 }
 
+/**
+ * The product home (`skills`, `agents` and the product-skill records, see service-fs.ts `atdHome`)
+ * that belongs with a data dir. AI_ATD_HOME wins; the installed app's default data dir keeps the
+ * user-facing `~/.atd`; every other data dir (development, a temporary instance) gets its own
+ * `<dataDir>/atd`, so only the installed app reads, writes or seeds `~/.atd`.
+ */
+export function resolveAtdHome(options: { envHome?: string | undefined; dataDir: string }): string {
+  const override = options.envHome?.trim();
+  if (override) return path.resolve(override);
+  if (path.resolve(options.dataDir) === path.resolve(defaultDataDir()))
+    return path.join(homedir(), '.atd');
+  return path.join(path.resolve(options.dataDir), 'atd');
+}
+
 /** The service identity recorded in `service.json`; fails when it is missing. */
 export async function readServiceId(paths: ServicePaths): Promise<string> {
   const raw = JSON.parse(await readFile(paths.serviceFile, 'utf8')) as { serviceId?: unknown };

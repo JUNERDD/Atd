@@ -4,17 +4,26 @@ import QuartzCore
 import SwiftUI
 
 /// Dragging the mini panel and its spring to rest (spec v1 Geometry, motion-v2, perf-v1): the
-/// capsule lifts and follows the pointer 1:1 (``MiniPanelWindow`` moves itself), and a release
-/// decides where it comes to rest from the pointer's velocity (``MiniPanelSnap``), then springs
-/// there. Only the window's origin is stepped on the display link; the release's stretch and the
-/// body's own motion are SwiftUI animations set once.
+/// capsule, or the tucked pill as it is, lifts and follows the pointer 1:1 (``MiniPanelWindow``
+/// moves itself), and a release decides where it comes to rest from the pointer's velocity
+/// (``MiniPanelSnap``), then springs there. Only the window's origin is stepped on the display
+/// link; the release's stretch and the body's own motion are SwiftUI animations set once.
 extension MiniPanelController {
-  /// A press on the pill or the capsule travelled: the pill opens into the capsule as it goes,
-  /// and the capsule lifts and follows the pointer.
+  /// A press on the pill or the capsule travelled: it lifts and follows the pointer as it is. The
+  /// pill stays tucked, any swell under the pointer relaxing, and never opens on the way.
   func dragBegan() {
     snap = nil
     snapInterrupted = false
-    transition(to: .dragging, trigger: "drag")
+    if model.phase == .tucked {
+      hover.reset()
+      openStartedAt = nil
+      morphBody(
+        to: .pill,
+        motion: MiniPanelChoreography.shape(.relax, reduceMotion: model.reduceMotion))
+      transition(to: .draggingPill, trigger: "drag")
+    } else {
+      transition(to: .dragging, trigger: "drag")
+    }
     setLifted(true)
     setCursor(.closedHand)
   }
@@ -34,7 +43,7 @@ extension MiniPanelController {
         id: $0.displayUUID, frame: ScreenRect($0.frame), workArea: ScreenRect($0.visibleFrame))
     }
     guard let target = MiniPanelSnap.target(for: projected, in: displays) else {
-      return transition(to: .expanded, trigger: "release")
+      return transition(to: dragRest, trigger: "release")
     }
     settle(
       at: target.placement, on: screens[target.display], velocity: velocity, trigger: "release")
@@ -53,7 +62,8 @@ extension MiniPanelController {
   /// `velocity`, with the release's stretch. Everything takes its place in the new canvas at once,
   /// the body shifted to where it is drawn now should its place in the canvas change (near the
   /// display's top or bottom, or the pill across edges); the shift then springs out with the
-  /// window, so on screen it moves as one. A dragged capsule rests open; the rest keep their state.
+  /// window, so on screen it moves as one. A drag rests in the state it began in; the rest keep
+  /// their state.
   private func settle(
     at placement: MiniPanelPlacement, on screen: NSScreen, velocity: CGVector, trigger: String
   ) {
@@ -74,7 +84,7 @@ extension MiniPanelController {
       position \(position, format: .fixed(precision: 3), privacy: .public) \
       (\(trigger, privacy: .public))
       """)
-    let resting = model.phase == .dragging ? MiniPanelPhase.expanded : model.phase
+    let resting = model.phase.isDragging ? dragRest : model.phase
     let shift = hold(shown, as: Self.shape(for: resting), in: layout)
     applyLayout()
     let snap = MiniPanelChoreography.snap.reduced(model.reduceMotion)
@@ -92,7 +102,12 @@ extension MiniPanelController {
       spring: snap.spring, origin: window.frame.origin, velocity: velocity,
       rest: CGPoint(x: layout.canvas.x, y: layout.canvas.y), at: CACurrentMediaTime())
     pointer.wake()
-    if model.phase == .dragging { transition(to: .expanded, trigger: trigger) }
+    if model.phase.isDragging { transition(to: dragRest, trigger: trigger) }
+  }
+
+  /// Where a drag comes to rest: a dragged pill tucked, a dragged capsule open.
+  private var dragRest: MiniPanelPhase {
+    model.phase == .draggingPill ? .tucked : .expanded
   }
 
   /// Moves the glass container to its place for `layout` and the body to its rest as `shape`, at

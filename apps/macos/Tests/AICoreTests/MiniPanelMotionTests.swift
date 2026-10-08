@@ -21,11 +21,11 @@ struct MiniPanelMotionTests {
     #expect(relax.thicknessDelay == 0 && relax.lengthDelay == 0)
   }
 
-  @Test("Opening runs each axis on its own spring at once, the content 20 ms behind")
+  @Test("Opening runs each axis on its own island spring at once, the content 20 ms behind")
   func expand() {
     let shape = Choreography.shape(.expand)
-    #expect(shape.thickness == MiniPanelSpring(0.28, 0.22))
-    #expect(shape.length == MiniPanelSpring(0.36, 0.28))
+    #expect(shape.thickness == MiniPanelSpring(0.34, 0.36))
+    #expect(shape.length == MiniPanelSpring(0.42, 0.32))
     #expect(shape.thicknessDelay == 0 && shape.lengthDelay == 0)
     let content = Choreography.content(.expand)
     #expect(content.delay == 0.02)
@@ -38,9 +38,9 @@ struct MiniPanelMotionTests {
   func collapse() {
     #expect(Choreography.content(.collapse).exit == 0.08)
     let shape = Choreography.shape(.collapse)
-    #expect(shape.length == MiniPanelSpring(0.30, 0.15))
+    #expect(shape.length == MiniPanelSpring(0.36, 0.26))
     #expect(shape.lengthDelay == 0.02)
-    #expect(shape.thickness == MiniPanelSpring(0.26, 0.1))
+    #expect(shape.thickness == MiniPanelSpring(0.30, 0.24))
     #expect(near(shape.thicknessDelay - shape.lengthDelay, 0.03))
   }
 
