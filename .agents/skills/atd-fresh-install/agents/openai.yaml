@@ -1,0 +1,7 @@
+interface:
+  display_name: 'Atd Fresh Install'
+  short_description: 'Reset production Atd data and permissions for a fresh install'
+  default_prompt: 'Use $atd-fresh-install to completely reset production Atd data and macOS permissions, preserve the development version, and prepare the installer so I can experience installation and first launch myself.'
+
+policy:
+  allow_implicit_invocation: false
