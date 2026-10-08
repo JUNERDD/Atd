@@ -1,6 +1,6 @@
 # Atd R2 预算守护
 
-`atd-r2-budget-guard` 只管理 `atd-assets` 的 `assets.atd.best` 和该桶的 `r2.dev` 公开入口。它独立于其他预算守护，不修改其他桶、Worker、DNS 或对象。守护直接使用 R2 账户 API，无需 zone ID。
+`atd-r2-budget-guard` 管理 `TARGETS` 配置中的 Atd 公开入口：`atd-assets` 的 `assets.atd.best`、`atd-releases` 的 `downloads.atd.best`，以及这两个桶各自的 `r2.dev`。它独立于其他预算守护，不修改配置之外的桶、Worker、DNS 或对象。守护直接使用 R2 账户 API，无需 zone ID。
 
 守护包含账期验证、有限重试、持久状态和暂停后自检；不包含邮件或其他消息发送。运行状态保存在独立 Durable Object，并输出到 Cloudflare Worker Logs。
 
@@ -14,13 +14,13 @@
 | Class B 操作   | 当前 R2 账期 9,500,000 次 | 每分钟                   |
 | 当前对象总大小 | 9,500,000,000 字节        | 首次、手动恢复后及每小时 |
 
-任一阈值达到即关闭两个公开入口，并再次读取配置确认。关闭失败记录 `pause_failed`，后续闹钟继续尝试。守护不会删除对象、恢复公开访问或在新账期自动解除暂停。生产配置是 `MODE: enforce`；`observe` 仅记录 `would_pause`，不可当作保护已启用。
+任一阈值达到即关闭全部配置的公开入口，并再次读取配置确认。关闭失败记录 `pause_failed`，后续闹钟继续尝试。守护不会删除对象、恢复公开访问或在新账期自动解除暂停。生产配置是 `MODE: enforce`；`observe` 仅记录 `would_pause`，不可当作保护已启用。
 
 每分钟 Cron `* * * * *` 给缺失的 Durable Object 闹钟补充启动；闹钟在外部请求前保存下一次运行时间。首次部署等待 Cron 自动启用，无需公开 HTTP 路由或额外 arming 请求。`workers.dev` 和预览 URL 都关闭。Worker 更新必须保留 `v1` 迁移及已有 Durable Object 命名空间。
 
 账期从 R2 订阅读取，不假设月初重置。已验证账期每 15 分钟刷新，最多复用 30 分钟且不得跨账期；缺失字段会尝试读取匹配的订阅详情。权限错误、账期冲突、非法响应、分页不完整或未知司法辖区均触发保护性暂停。网络和限流错误最多共享两次额外请求；仅有最近完整、低于阈值 80% 的健康记录时才给最多三分钟宽限。冷启动缺少有效账期/监控证据会停用，因此首次部署前必须检查令牌权限。
 
-暂停后每五分钟强制读取账期、用量与完整对象清单，连续三次低于各阈值的 80% 才记录 `recovery_ready`。达到三次或暂停超过 30 分钟后完整检查降至每小时，两个入口的关闭状态仍每分钟检查。恢复始终需要人工决定；`recovery_ready` 只表示检查时点满足条件。
+暂停后每五分钟强制读取账期、用量与完整对象清单，连续三次低于各阈值的 80% 才记录 `recovery_ready`。达到三次或暂停超过 30 分钟后完整检查降至每小时，全部入口的关闭状态仍每分钟检查。恢复始终需要人工决定；`recovery_ready` 只表示检查时点满足条件。
 
 ## 凭据和部署
 
@@ -47,7 +47,7 @@ pnpm --filter @atd/website exec wrangler deploy --dry-run --config ../../ops/r2-
 # 首次在 Cloudflare 设置运行 Secret，或通过安全交互输入上传。
 pnpm --filter @atd/website exec wrangler secret put CF_API_TOKEN --config ../../ops/r2-budget-guard/wrangler.local.jsonc --profile atd-deploy
 
-# 确认 atd-assets、assets.atd.best 和 Secret 均已准备好，再部署。
+# 确认 TARGETS 中两个桶及其自定义域名、运行 Secret 均已准备好，再部署。
 pnpm --filter @atd/website exec wrangler deploy --config ../../ops/r2-budget-guard/wrangler.local.jsonc --profile atd-deploy
 pnpm --filter @atd/website exec wrangler tail --format json --config ../../ops/r2-budget-guard/wrangler.local.jsonc --profile atd-deploy
 ```
@@ -66,9 +66,9 @@ pnpm --filter @atd/website exec wrangler tail --format json --config ../../ops/r
 pnpm --filter @atd/website assets:check --base https://assets.atd.best --full
 ```
 
-该命令需要当前网站构建产物，核对每个清单对象的大小、SHA-256、Content-Type、一年 immutable 缓存和跨域响应，并核对每个 MP4 的 206 Range 字节。详见 [网站发布说明](../../apps/website/README.md)。暂停期间不要用 CDN 检查失败推断对象丢失。
+该命令需要当前网站构建产物，核对每个清单对象的大小、SHA-256、Content-Type、一年 immutable 缓存和跨域响应，并核对每个 MP4 的 206 Range 字节。详见 [网站发布说明](../../apps/website/README.md)。暂停期间不要用 CDN 检查失败推断对象丢失。安装包的发布与交付校验见 [下载镜像说明](../release-downloads/README.md)。仅手动关闭一个域名时，守护继续监控其他仍开放的入口。
 
-恢复时先在 [Cloudflare 控制台](https://dash.cloudflare.com/) 选择部署账户 → Workers → `atd-r2-budget-guard` → Logs，复核暂停原因、用量和 `recovery_ready`。解决根因且确认额度后，在 R2 → `atd-assets` → Settings → Custom Domains 手动启用 `assets.atd.best`，保持 `r2.dev` 关闭。然后核实新的 `within_limits`，运行资产健康检查。需要紧急停用时在同一位置 Disable domain，无需删除桶或域名连接。
+恢复时先在 [Cloudflare 控制台](https://dash.cloudflare.com/) 选择部署账户 → Workers → `atd-r2-budget-guard` → Logs，复核暂停原因、用量和 `recovery_ready`。解决根因且确认额度后，分别在 R2 → `atd-assets` / `atd-releases` → Settings → Custom Domains 手动启用 `assets.atd.best` / `downloads.atd.best`，保持两个桶的 `r2.dev` 关闭。然后核实新的 `within_limits`，运行资产健康检查。需要紧急停用时在同一位置 Disable domain，无需删除桶或域名连接。
 
 ## 限制
 

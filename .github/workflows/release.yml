@@ -188,3 +188,15 @@ jobs:
             --notes "Apple Silicon (arm64) build for macOS 26 or later. The app is ad hoc signed and not notarized: after downloading, open it once from System Settings › Privacy & Security. Installed copies of 0.4.0 or later update themselves." \
             --generate-notes \
             "${flags[@]}"
+
+  mirror:
+    name: Mirror the published stable download
+    needs: [version, release]
+    if: needs.release.result == 'success' && !contains(needs.version.outputs.version, '-')
+    uses: ./.github/workflows/mirror-release.yml
+    with:
+      tag: v${{ needs.version.outputs.version }}
+    secrets:
+      R2_DOWNLOAD_ACCOUNT_ID: ${{ secrets.R2_DOWNLOAD_ACCOUNT_ID }}
+      R2_DOWNLOAD_ACCESS_KEY_ID: ${{ secrets.R2_DOWNLOAD_ACCESS_KEY_ID }}
+      R2_DOWNLOAD_SECRET_ACCESS_KEY: ${{ secrets.R2_DOWNLOAD_SECRET_ACCESS_KEY }}

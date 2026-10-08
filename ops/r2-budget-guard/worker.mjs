@@ -1,6 +1,7 @@
 // @ts-check
 import { ApiRequestError, createRequest } from './api.mjs';
 import { BillingUnavailableError, resolveBilling } from './billing.mjs';
+import { disablePublicAccess, publicAccessState, publicEndpoints } from './public-access.mjs';
 import {
   graceDeadline,
   PAUSED_CHECK_INTERVAL,
@@ -33,7 +34,7 @@ const CLASS_B_ACTIONS = new Set([
 export class PauseFailedError extends Error {
   /** @param {string[]} reasons @param {object} usage @param {string} checkedAt */
   constructor(reasons, usage, checkedAt) {
-    super('Could not verify that both public R2 entry points are disabled');
+    super('Could not verify that all configured public R2 entry points are disabled');
     this.name = 'PauseFailedError';
     this.report = { event: 'pause_failed', reasons, usage, checkedAt };
   }
@@ -103,8 +104,7 @@ export async function runGuard(env, options = {}) {
   /** @type {Awaited<ReturnType<typeof resolveBilling>>|undefined} */
   let billing;
   const prefix = `/accounts/${encodeURIComponent(env.CF_ACCOUNT_ID)}`;
-  const bucketPath = `${prefix}/r2/buckets/${encodeURIComponent(env.TARGET_BUCKET)}`;
-  const domainPath = `${bucketPath}/domains/custom/${encodeURIComponent(env.TARGET_DOMAIN)}`;
+  const endpoints = publicEndpoints(env.CF_ACCOUNT_ID, env.TARGETS);
   if (!['observe', 'enforce'].includes(env.MODE)) throw new Error('Invalid guard mode');
   const limits = {
     classA: number(env.CLASS_A_LIMIT, 'Class A limit'),
@@ -134,20 +134,13 @@ export async function runGuard(env, options = {}) {
       return result;
     }
     // Disabling domains is persistent. This Worker deliberately never enables one.
-    // Run both even if one fails, so a stray development URL cannot remain open.
-    const changes = await Promise.allSettled([
-      request(domainPath, 'PUT', { enabled: false }),
-      request(`${bucketPath}/domains/managed`, 'PUT', { enabled: false }),
-    ]);
-    const checks = await Promise.allSettled([
-      request(domainPath),
-      request(`${bucketPath}/domains/managed`),
-    ]);
-    if (checks.some((r) => r.status !== 'fulfilled' || object(r.value.result).enabled !== false)) {
+    // Close every configured bucket, including a stray development URL.
+    const access = await disablePublicAccess(request, endpoints);
+    if (!access.disabled) {
       log({
         event: 'pause_failed',
         reasons,
-        changeFailures: changes.filter((r) => r.status === 'rejected').length,
+        changeFailures: access.changeFailures,
       });
       throw new PauseFailedError(reasons, usage, now.toISOString());
     }
@@ -160,11 +153,9 @@ export async function runGuard(env, options = {}) {
   try {
     if (monitorState.lastFailure && +now < (monitorState.retryNotBefore ?? 0))
       throw new ApiRequestError(monitorState.lastFailure);
-    const domain = object((await request(domainPath)).result);
-    if (domain.enabled === false) {
-      // Keep the development endpoint closed after a trip or a manual suspension.
-      const managed = object((await request(`${bucketPath}/domains/managed`)).result);
-      if (managed.enabled !== false) return pause(['public_entry_reopened'], {});
+    const access = await publicAccessState(request, endpoints);
+    if (access.managedEnabled) return pause(['public_entry_reopened'], {});
+    if (access.allPaused) {
       paused = true;
       delete monitorState.failureSince;
       delete monitorState.retryNotBefore;
@@ -182,7 +173,6 @@ export async function runGuard(env, options = {}) {
       }
       recordPausedCheck(monitorState, +now, 0);
     } else {
-      if (domain.enabled !== true) throw new Error('Invalid domain access state');
       delete monitorState.pausedCheck;
       delete monitorState.pausedSince;
     }

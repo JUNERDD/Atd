@@ -189,8 +189,19 @@ Range and exposing Content-Length, Content-Range, Accept-Ranges and Cache-Contro
 The checked-in `r2-cors.json` allows GET/HEAD from any origin because these are public media;
 this also supports preview deployments. Apply it with
 `pnpm --filter @atd/website exec wrangler r2 bucket cors set atd-assets --file r2-cors.json`.
-The independent [R2 budget guard](../../ops/r2-budget-guard/README.md) can pause this bucket's
-public endpoints when the shared account approaches its allowance.
+The independent [R2 budget guard](../../ops/r2-budget-guard/README.md) can pause the media and
+download buckets' public endpoints when the shared account approaches its allowance.
+
+### Installer downloads
+
+Both download buttons use `https://downloads.atd.best/latest/Atd-arm64.dmg`. This permanent URL
+tracks the newest verified stable installer without rebuilding the website for each release.
+The release workflow mirrors GitHub's original bytes to the separate `atd-releases` R2 bucket;
+the latest URL's cache expires within 60 seconds. The root README also keeps a GitHub alternative.
+See the [release mirror instructions](../../ops/release-downloads/README.md) for credentials,
+verification, and manual retries. Application updates continue to use the signed GitHub appcast.
+
+### Media rollback
 
 Rollback: promote the previous known-good Vercel deployment using
 `vercel rollback <previous-production-deployment-url> --scope "$VERCEL_SCOPE"`, setting

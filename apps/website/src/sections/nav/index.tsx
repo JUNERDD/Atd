@@ -45,7 +45,7 @@ export function SiteNav() {
           </ul>
           <div className="nav__end">
             <LanguageMenu />
-            <a className="btn-filled nav__cta" href={site.latestReleaseUrl}>
+            <a className="btn-filled nav__cta" href={site.downloadUrl}>
               {t.download}
             </a>
           </div>

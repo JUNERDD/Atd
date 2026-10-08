@@ -30,8 +30,10 @@
   ],
   "vars": {
     "CF_ACCOUNT_ID": "YOUR_CLOUDFLARE_ACCOUNT_ID",
-    "TARGET_BUCKET": "atd-assets",
-    "TARGET_DOMAIN": "assets.atd.best",
+    "TARGETS": [
+      { "bucket": "atd-assets", "domain": "assets.atd.best" },
+      { "bucket": "atd-releases", "domain": "downloads.atd.best" },
+    ],
     "CLASS_A_LIMIT": 950000,
     "CLASS_B_LIMIT": 9500000,
     "STORAGE_BYTES_LIMIT": 9500000000,

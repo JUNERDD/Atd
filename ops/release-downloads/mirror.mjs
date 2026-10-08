@@ -1,0 +1,215 @@
+import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import { createReadStream } from 'node:fs';
+import { mkdtemp, open, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { parseArgs } from 'node:util';
+
+const { values } = parseArgs({
+  options: {
+    tag: { type: 'string', default: 'latest' },
+    'dry-run': { type: 'boolean', default: false },
+  },
+});
+const repo = 'JUNERDD/ai';
+const bucket = 'atd-releases';
+const base = 'https://downloads.atd.best';
+const latestKey = 'latest/Atd-arm64.dmg';
+const immutableCache = 'public, max-age=31536000, immutable';
+const latestCache = 'public, max-age=60, must-revalidate';
+const sensitive = ['R2_DOWNLOAD_ACCOUNT_ID', 'AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY'];
+
+function command(executable, args) {
+  const result = spawnSync(executable, args, { encoding: 'utf8', maxBuffer: 16 * 1024 ** 2 });
+  if (result.error) throw result.error;
+  if (result.status !== 0) {
+    let message = result.stderr || result.stdout;
+    for (const name of sensitive) {
+      if (process.env[name]) message = message.replaceAll(process.env[name], '[redacted]');
+    }
+    throw new Error(`${executable} failed (${result.status}): ${message}`);
+  }
+  return result.stdout;
+}
+
+function latestRelease() {
+  return JSON.parse(command('gh', ['api', `repos/${repo}/releases/latest`]));
+}
+
+const release = latestRelease();
+assert(!release.draft && !release.prerelease, 'Only stable public releases are mirrored.');
+assert(/^v\d+\.\d+\.\d+$/.test(release.tag_name), 'Expected a stable version tag.');
+assert(
+  values.tag === 'latest' || values.tag === release.tag_name,
+  'Refusing to replace the latest download with an older release.',
+);
+const version = release.tag_name.slice(1);
+const name = `Atd-${version}-arm64.dmg`;
+const asset = release.assets.find((item) => item.name === name);
+assert(asset && asset.state === 'uploaded', 'The versioned release DMG is missing.');
+assert(/^sha256:[a-f0-9]{64}$/.test(asset.digest), 'GitHub must provide a SHA-256 asset digest.');
+assert(asset.size > 0 && asset.size <= 512 * 1024 ** 2, 'The DMG exceeds the CDN cache limit.');
+const sha256 = asset.digest.slice('sha256:'.length);
+const versionKey = `releases/${release.tag_name}/${name}`;
+const metadata = { version, sha256, bytes: asset.size, url: `${base}/${versionKey}` };
+console.log(
+  JSON.stringify({ ...metadata, latest: `${base}/${latestKey}`, dryRun: values['dry-run'] }),
+);
+if (values['dry-run']) process.exit(0);
+
+for (const key of sensitive) assert(process.env[key], `Missing ${key}.`);
+assert(/^[a-f0-9]{32}$/.test(process.env.R2_DOWNLOAD_ACCOUNT_ID), 'Invalid R2 account ID.');
+const endpoint = `https://${process.env.R2_DOWNLOAD_ACCOUNT_ID}.r2.cloudflarestorage.com`;
+const directory = await mkdtemp(join(tmpdir(), 'atd-release-mirror-'));
+const file = join(directory, name);
+const metadataFile = join(directory, 'latest.json');
+
+function aws(args) {
+  return command('aws', [...args, '--endpoint-url', endpoint, '--region', 'auto']);
+}
+
+async function hashFile(path) {
+  const hash = createHash('sha256');
+  for await (const chunk of createReadStream(path)) hash.update(chunk);
+  return hash.digest('hex');
+}
+
+function pruneOldMirrors() {
+  const listing = JSON.parse(
+    aws(['s3api', 'list-objects-v2', '--bucket', bucket, '--prefix', 'releases/']),
+  );
+  const previous = (listing.Contents ?? [])
+    .filter(
+      (item) =>
+        item.Key !== versionKey && /^releases\/v(\d+\.\d+\.\d+)\/Atd-\1-arm64\.dmg$/.test(item.Key),
+    )
+    .sort((a, b) => b.LastModified.localeCompare(a.LastModified));
+  // Only this mirror's versioned keys are eligible. GitHub keeps the full archive.
+  for (const item of previous.slice(2)) {
+    aws(['s3api', 'delete-object', '--bucket', bucket, '--key', item.Key]);
+    console.log(`Removed old mirror: ${item.Key}`);
+  }
+}
+
+async function verifyDelivery(key, cacheControl, full) {
+  // A version query bypasses a previous release's <=60s cache during promotion.
+  const url = new URL(`${base}/${key}`);
+  if (key === latestKey) url.searchParams.set('version', version);
+  const head = await fetch(url, { method: 'HEAD', signal: AbortSignal.timeout(30000) });
+  assert.equal(head.status, 200, `HEAD failed for ${key}`);
+  assert.equal(Number(head.headers.get('content-length')), asset.size, 'Wrong public file size.');
+  assert.equal(head.headers.get('content-type'), 'application/x-apple-diskimage');
+  assert.equal(head.headers.get('cache-control'), cacheControl);
+  const source = await open(file, 'r');
+  try {
+    for (const start of [0, asset.size - 65536]) {
+      const end = start + 65535;
+      const response = await fetch(url, {
+        headers: { Range: `bytes=${start}-${end}` },
+        signal: AbortSignal.timeout(30000),
+      });
+      assert.equal(response.status, 206, 'Byte-range downloads must work.');
+      assert.equal(response.headers.get('content-range'), `bytes ${start}-${end}/${asset.size}`);
+      const expected = Buffer.alloc(65536);
+      await source.read(expected, 0, expected.length, start);
+      assert.deepEqual(Buffer.from(await response.arrayBuffer()), expected, 'Range bytes changed.');
+    }
+  } finally {
+    await source.close();
+  }
+  if (full) {
+    const response = await fetch(url, { signal: AbortSignal.timeout(300000) });
+    assert.equal(response.status, 200);
+    const hash = createHash('sha256');
+    let bytes = 0;
+    for await (const chunk of response.body) {
+      hash.update(chunk);
+      bytes += chunk.length;
+    }
+    assert.equal(bytes, asset.size);
+    assert.equal(
+      hash.digest('hex'),
+      sha256,
+      'The public mirror differs from the signed GitHub DMG.',
+    );
+  }
+  console.log(`Verified ${key}: size, cache policy, byte ranges${full ? ', SHA-256' : ''}`);
+}
+
+try {
+  command('gh', [
+    'release',
+    'download',
+    release.tag_name,
+    '--repo',
+    repo,
+    '--pattern',
+    name,
+    '--dir',
+    directory,
+  ]);
+  assert.equal(await hashFile(file), sha256, 'Downloaded release digest does not match GitHub.');
+  // The official AWS CLI owns multipart uploads, retries, and S3 authentication.
+  // Wrangler's single-upload limit is smaller than the current DMG.
+  aws([
+    's3',
+    'cp',
+    file,
+    `s3://${bucket}/${versionKey}`,
+    '--content-type',
+    'application/x-apple-diskimage',
+    '--content-disposition',
+    `attachment; filename="${name}"`,
+    '--cache-control',
+    immutableCache,
+    '--metadata',
+    `sha256=${sha256},version=${version}`,
+    '--only-show-errors',
+    '--no-progress',
+  ]);
+  await verifyDelivery(versionKey, immutableCache, true);
+  assert.equal(
+    latestRelease().id,
+    release.id,
+    'A newer GitHub release appeared; rerun the mirror.',
+  );
+  aws([
+    's3api',
+    'copy-object',
+    '--bucket',
+    bucket,
+    '--key',
+    latestKey,
+    '--copy-source',
+    `${bucket}/${versionKey}`,
+    '--metadata-directive',
+    'REPLACE',
+    '--content-type',
+    'application/x-apple-diskimage',
+    '--content-disposition',
+    'attachment; filename="Atd-arm64.dmg"',
+    '--cache-control',
+    latestCache,
+    '--metadata',
+    `sha256=${sha256},version=${version}`,
+  ]);
+  await verifyDelivery(latestKey, latestCache, false);
+  await writeFile(metadataFile, `${JSON.stringify(metadata, null, 2)}\n`);
+  aws([
+    's3',
+    'cp',
+    metadataFile,
+    `s3://${bucket}/latest.json`,
+    '--content-type',
+    'application/json',
+    '--cache-control',
+    latestCache,
+    '--only-show-errors',
+  ]);
+  pruneOldMirrors();
+  console.log(`Published ${version}; the stable download cache expires within 60 seconds.`);
+} finally {
+  await rm(directory, { recursive: true, force: true });
+}

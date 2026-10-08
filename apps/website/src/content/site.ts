@@ -2,11 +2,11 @@
 export const site = {
   name: 'Atd',
   author: 'JUNERDD',
-  /** The latest published release; the download links always resolve the newest one on GitHub. */
+  /** The version described by this site; the stable download follows verified releases. */
   version: '0.7.1',
   repoUrl: 'https://github.com/JUNERDD/ai',
   releasesUrl: 'https://github.com/JUNERDD/ai/releases',
-  latestReleaseUrl: 'https://github.com/JUNERDD/ai/releases/latest',
+  downloadUrl: 'https://downloads.atd.best/latest/Atd-arm64.dmg',
   issuesUrl: 'https://github.com/JUNERDD/ai/issues',
   minMacOS: '26',
   chip: 'Apple silicon',
