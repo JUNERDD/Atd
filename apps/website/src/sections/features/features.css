@@ -68,19 +68,21 @@
 }
 
 /* Strips: the channels sit edge to edge, each showing its whole channel, with its name and line
-   centered beneath it. Only a strip's outer corners are rounded. Each channel draws its bezel's
+   centered beneath it, kept to about 12rem a channel so the display stays a compact instrument
+   rather than filling the column. Only a strip's outer corners are rounded. Each channel draws its bezel's
    top, bottom and start edge, so the start edge of every channel after the first is the hairline
    seam between two channels; the channel that ends a strip also draws the end edge. */
 @media (width >= 700px) {
   .feat {
+    margin-inline: auto;
     column-gap: 0;
-    row-gap: 48px;
+    row-gap: 40px;
   }
 
   .feat__item {
     grid-template-columns: minmax(0, 1fr);
     align-content: start;
-    row-gap: 20px;
+    row-gap: 16px;
     text-align: center;
   }
 
@@ -104,12 +106,17 @@
 
   .feat__copy {
     justify-items: center;
-    gap: 6px;
-    padding-inline: 16px;
+    gap: 4px;
+    padding-inline: 10px;
+  }
+
+  .feat__name {
+    font-size: 1.25rem;
   }
 
   .feat__line {
-    max-inline-size: 22rem;
+    font-size: var(--fs-small);
+    line-height: 1.45;
     text-wrap: balance;
   }
 }
@@ -119,6 +126,7 @@
 @media (width >= 700px) and (width < 1100px) {
   .feat {
     grid-template-columns: repeat(6, minmax(0, 1fr));
+    max-inline-size: 37.5rem;
   }
 
   .feat__item {
@@ -144,6 +152,7 @@
 @media (width >= 1100px) {
   .feat {
     grid-template-columns: repeat(5, minmax(0, 1fr));
+    max-inline-size: 60rem;
   }
 
   .feat__item:first-child .feat__channel {

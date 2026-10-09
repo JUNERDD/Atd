@@ -64,10 +64,10 @@ The features plate is one LED display set into the plate, a channel per capabili
 extensions, memory, permissions and running locally). Each channel is 21 × 15 dots and lights its
 capability's 11 × 11 pictogram (`src/sections/features/glyphs.ts`) on the shared LED board
 (`src/ui/led-board.tsx`), which also draws the download board: the dots power on column by column
-as the plate arrives, and a fine pointer swells them like a loupe. Wide (from 1100px), the five
-channels join into one strip with hairline seams and their names and lines are centered beneath
-them; regular (700–1099px), they form two strips, three over two; compact, each channel is a small
-square display (64–88px), cropped to the pictogram and one ring of dots, beside its name and line.
+as the plate arrives, and a fine pointer swells them like a loupe. Strips keep each channel near
+12rem wide, so the display stays compact. Wide (from 1100px), the five channels join into one strip
+with hairline seams and their names and lines are centered beneath them; regular (700–1099px),
+they form two strips, three over two; compact, each channel is a small square display (64–88px), cropped to the pictogram and one ring of dots, beside its name and line.
 The features review (`2564:159329` desktop, `2564:159355` compact) composes the shared section
 heading with `Website / Feature channel` (Layout=Strip with Position Start, Middle, End;
 Layout=Compact), whose Pictogram property swaps among `Website / Feature pictogram` (one variant
@@ -83,8 +83,9 @@ reuse the website's monochrome tokens and remain connected to the shared Lucide 
 
 ## Interface showcase
 
-The “Interfaces” section comes right after the hero. It shows eight Figma scenes as one scroll
-sequence: the selection toolbar, Mini Panel, screenshot tool, main panel, conversation, settings,
+The interface showcase comes right after the hero; the nav calls it “Features”, and the features
+display after it “Control”. The showcase shows eight Figma scenes as one scroll sequence: the
+selection toolbar, Mini Panel, screenshot tool, main panel, conversation, settings,
 Apps and automations. All scenes share the canonical desktop and a 1440 × 900 canvas, so the
 showcase keeps one desktop still and changes only what is on it. Each scene is a stack of layers
 cut from Figma (`scripts/matte-layers.py`) that reproduces the flat export at rest, and each plays
@@ -96,21 +97,24 @@ them at rest and only cross-fades between scenes.
 
 The stage pins to the viewport (`position: sticky`) while its track scrolls past. The track is one
 stage tall plus one step of scrolling per scene, and `use-case-scroll.ts` turns how far it has
-scrolled into the scene. The stage holds only the screen, the scene's caption and a row of eight
-bars: the bars behind the current scene are full, and the current one fills 1:1 with the scroll.
-Each bar is also a button that jumps straight to its scene; the jump is instant, so the pinned stage
-doesn't move and the scenes in between never flash. As the stage rises into place the screen grows
-to full size, tied to the scroll where the browser supports scroll-driven animations. The screen
-takes the height the stage leaves it, and on landscape phones the caption and bars sit beside it.
+scrolled into the scene. Above the screen the stage names every scene in one row over a single
+hairline, and the line is the scroll's progress: it is lit under the scenes already passed and fills
+under the current one 1:1 with the scroll. Each name is also a button that jumps straight to its
+scene; the jump is instant, so the pinned stage doesn't move and the scenes in between never flash.
+Where the names don't fit the row scrolls sideways and keeps the current one in its middle. Below
+the screen the scene's caption is a headline and one line; on a phone the headline shrinks with the
+width so it stays on one line. As the stage rises into place the screen grows to full size, tied to
+the scroll where the browser supports scroll-driven animations. The screen takes the height the
+stage leaves it, and on landscape phones the names and caption sit beside it.
 The section's heading and lede open the stage (the showcase places them with `SectionHeader`), and
-they pin with it when the viewport holds them beside a full-size screen, its caption and the bars;
+they pin with it when the viewport holds them beside the names, a full-size screen and its caption;
 otherwise the stage pins higher by the heading's height, so the heading scrolls away and fades
 while the screen keeps its size (`use-case-scroll.ts` measures which). Whatever height is still
 unused is shared above and below the pinned stage.
 The showcase review (`2564:159138` desktop, `2564:159288` compact) composes the shared section
-heading with a scene, `Website / Case caption` (Align: Center, Start) and `Website / Case progress`,
-whose eight `Website / Case progress key` instances take a Progress (Next, Current, Done) and a
-State (Rest, Hover, Focus).
+heading, a row of `Website / Case tab` instances (Label text property; State Rest, Hover or Current
+and Line Unlit, Lit or Partial), a scene and `Website / Case caption` (Align: Center, Start; Title
+and Description text properties).
 
 The source nodes, layer exports, export process and image paths are in
 [`public/cases/README.md`](public/cases/README.md). Keep bilingual labels and descriptions in
