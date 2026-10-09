@@ -1,6 +1,7 @@
 {
   "name": "atd",
   "private": true,
+  "license": "MIT",
   "scripts": {
     "prepare": "git config core.hooksPath .githooks || exit 0",
     "dev": "node scripts/dev-guard.mjs && turbo run dev dev:renderer --filter=@atd/agent-service --filter=@atd/desktop --filter=@atd/macos",
