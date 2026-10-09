@@ -561,11 +561,20 @@ Figma 侧未同步：本会话云端 Figma 工具不可用，本地 Figma MCP �
 
 项目对外名称统一为 `Atd`，Figma 文件标题也已更名。应用显示名、菜单、窗口标题、应用包及安装包名称已同步；工作区包名和导入路径统一为 `@atd/*`。Bundle ID、数据目录、钥匙串和通信协议标识保留，以保持现有数据与连接兼容。
 
-- 标识：使用完整的抽象折带轮廓与圆形端部，不含产品名字母。原始透明 PNG 保留在 `packages/ui/src/assets/brands/atd/symbol.png`；Figma 原始标识组件 (Figma `project/1741:95290`) 与 前景色组件 (Figma `project/1741:95292`) 共用该图像，没有重绘轮廓。
+- 标识（2026-10-09 起由水滴标识取代，见下节）：使用完整的抽象折带轮廓与圆形端部，不含产品名字母。原始透明 PNG 保留在 `packages/ui/src/assets/brands/atd/symbol.png`；Figma 原始标识组件 (Figma `project/1741:95290`) 与 前景色组件 (Figma `project/1741:95292`) 共用该图像，没有重绘轮廓。
 - 面板：Panel header (Figma `project/71:112`) 的新建任务入口替换为新标识。26px 图像占位保留原始透明留白，实际标识约 16px 宽，按钮保持 28px；返回箭头的覆盖实例继续使用 16px。代码通过 `currentColor` alpha mask 着色，按比例完整显示。设置导航继续不显示 Logo。
 - 菜单栏：四种状态 (Figma `project/1562:59933`) 共用新标识，保留运行圆点、待处理标记和不可用时的 40% 不透明度，导出 18px／36px 透明模板图片。状态栏专用实例放大到约 17.1px 的可见宽度，图框外只保留原图的透明留白，完整轮廓留在 18px 图框内。
 - 应用图标：1024px 母版 (Figma `project/1741:95296`) 使用 864px 浅色底板，四周留 80px 透明边距。正式 PNG 通过 Figma `exportAsync` 导出，未包含画布底色；macOS AppIcon 的 10 个尺寸从该母版等比导出。图片资源与生成提示词见 `packages/ui/src/assets/brands/atd/README.md`。
 - 开发环境：开发版应用图标 (Figma `project/1757:95728`) 在完整图形旁加入琥珀色 `DEV` 标签。标签右下圆角为 134px，与外框 190px 圆角同心，右侧和底部等距内缩 56px。Debug 构建使用 `AppIconDev`，Release 使用 `AppIcon`；面板按 `import.meta.env.DEV` 显示 54 × 26 的标识，按钮为 68 × 28，水平内边距 6px，与标题相距 8px；开发版菜单栏使用 44 × 18 的模板图片和自适应宽度，完整显示图形、状态标记与 `DEV`。
+
+## 2026-10-09 Atd 标识改为水滴
+
+标识重画为扁平抽象的“水滴”：两颗水滴在对角线上尖对尖相接，纯色实心，不含字母和外框。经过实心几何、单色徽章两轮方案后定稿。
+
+- 母版：矢量 `packages/ui/src/assets/brands/atd/symbol.svg`。全部 PNG（符号、应用图标及开发版、两套 AppIcon、菜单栏 8 张模板图、官网图标）由 `node scripts/export-brand.mjs` 从母版导出，不再从 Figma 导出或手工修改。
+- Figma：`App / Atd symbol` (Figma `project/1741:95290`) 改为矢量，水滴占 26px 图框的 58%，与导出的 `symbol.png` 留白一致；引用它的前景色组件、应用图标、面板标题和菜单栏状态随之更新。
+- 尺寸：面板 26px 占位中可见约 15px；应用图标保持 864px 浅色底板与 80px 边距，标识 400px 居中，开发版 `DEV` 标签位置不变，距标识 16px；菜单栏标识可见 15pt。
+- 菜单栏：运行圆点与待处理标记移到标识空出的右上象限 (Figma `project/1562:59933`)，中心 (13.5, 4.5)，四周挖出间隙；不可用状态仍为 40% 不透明度。
 
 ## 2026-10-02 选择文字工具栏与文件夹只读授权
 
