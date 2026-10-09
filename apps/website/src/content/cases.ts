@@ -14,7 +14,7 @@ interface Case {
   description: Localized<string>;
   /** The flat export, linked as the original. */
   image: CaseImage;
-  /** The same scene as layers over the shared desktop, which the carousel animates. */
+  /** The same scene as layers over the shared desktop, which the showcase animates. */
   layers: readonly CaseLayer[];
 }
 

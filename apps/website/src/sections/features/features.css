@@ -1,32 +1,53 @@
-/* The bank: cells ruled into the plate by hairlines, with no fill of their own, so the perforations
-   run through them. The bank draws its top and start edges, each cell its end and bottom, so every
-   line is drawn once. One column when compact, two when regular, four when wide. */
-.feat__bank {
+/* The capabilities on one LED display set into the plate, a channel each. A channel is 21 × 15 dots
+   (glyphs.ts) and lights its capability's pictogram on the shared LED board. Compact, each channel
+   is a small display beside its name and line. Regular, the five channels join into two strips,
+   three over two; wide, into one strip of five. In a strip the names and lines are printed on the
+   plate beneath their channels. */
+.feat {
+  /* A channel is mostly unlit dots; dimmed a step, they stay a texture behind the pictogram. */
+  --dot-0: rgb(255 255 255 / 0.08);
+  --led-lead: 300ms;
+  --led-step: 24ms;
   display: grid;
-  border-block-start: 1px solid var(--line-1);
-  border-inline-start: 1px solid var(--line-1);
+  grid-template-columns: minmax(0, 1fr);
+  gap: 20px;
 }
 
-.feat__cell {
+.feat__item {
   display: grid;
-  align-content: start;
-  gap: 8px;
-  min-inline-size: 0;
-  padding: 24px;
-  border-block-end: 1px solid var(--line-1);
-  border-inline-end: 1px solid var(--line-1);
+  grid-template-columns: clamp(4rem, 22%, 5.5rem) minmax(0, 1fr);
+  align-items: center;
+  column-gap: 16px;
 }
 
-/* A pictogram's display: a small square window; the glyph draws its own unlit dots. */
-.feat__glyph {
-  inline-size: 72px;
-  margin-block-end: 40px;
-  padding: 14px;
+/* A channel's display. The board draws its own unlit dots, so the display's stay off. Compact, the
+   display is a small square window on the pictogram and a ring of dots around it, 13 × 13 of the
+   channel's 21 × 15: the board keeps its size in cells, shifted four columns and a row back, and
+   the display clips the rest, so the dots stay as large as the window allows. */
+.feat__channel {
+  /* Its own formatting context, so the board's negative margin shifts the board, not the display. */
+  display: flow-root;
+  container-type: inline-size;
+  aspect-ratio: 1;
+  /* The square holds, rather than growing to the shifted board's height. */
+  min-block-size: 0;
+  overflow: clip;
   border-radius: var(--r-part);
   background-image: none;
 }
 
-.feat__title {
+.feat__channel .led-board {
+  inline-size: calc(100cqi * 21 / 13);
+  margin-block-start: calc(100cqi * -1 / 13);
+  margin-inline-start: calc(100cqi * -4 / 13);
+}
+
+.feat__copy {
+  display: grid;
+  gap: 4px;
+}
+
+.feat__name {
   font-family: var(--font-display);
   font-size: var(--fs-h3);
   font-weight: 600;
@@ -34,28 +55,105 @@
   letter-spacing: var(--tr-title);
 }
 
-.feat__body {
-  max-inline-size: 22rem;
+.feat__line {
   color: var(--fg-2);
   text-wrap: pretty;
 }
 
+/* Chinese lines break at their punctuation and spaces, as the headings do, so no word is split
+   across two lines unless a line would overflow. */
+:lang(zh) .feat__line {
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+/* Strips: the channels sit edge to edge, each showing its whole channel, with its name and line
+   centered beneath it. Only a strip's outer corners are rounded. Each channel draws its bezel's
+   top, bottom and start edge, so the start edge of every channel after the first is the hairline
+   seam between two channels; the channel that ends a strip also draws the end edge. */
 @media (width >= 700px) {
-  .feat__bank {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .feat {
+    column-gap: 0;
+    row-gap: 48px;
   }
 
-  .feat__cell {
-    padding: 32px;
+  .feat__item {
+    grid-template-columns: minmax(0, 1fr);
+    align-content: start;
+    row-gap: 20px;
+    text-align: center;
+  }
+
+  .feat__channel {
+    --bezel-end: 0 0 transparent;
+    aspect-ratio: auto;
+    padding: 8px;
+    border-radius: 0;
+    box-shadow:
+      inset 1px 0 var(--line-1),
+      inset 0 1px var(--line-1),
+      inset 0 -1px var(--line-1),
+      inset var(--bezel-end),
+      0 1px rgb(255 255 255 / 0.05);
+  }
+
+  .feat__channel .led-board {
+    inline-size: auto;
+    margin: 0;
+  }
+
+  .feat__copy {
+    justify-items: center;
+    gap: 6px;
+    padding-inline: 16px;
+  }
+
+  .feat__line {
+    max-inline-size: 22rem;
+    text-wrap: balance;
+  }
+}
+
+/* Three over two, on a six-column grid: each channel takes two columns, and the second strip starts
+   one column in, so it sits centered under the first. */
+@media (width >= 700px) and (width < 1100px) {
+  .feat {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+
+  .feat__item {
+    grid-column: span 2;
+  }
+
+  .feat__item:nth-child(4) {
+    grid-column: 2 / span 2;
+  }
+
+  .feat__item:is(:nth-child(1), :nth-child(4)) .feat__channel {
+    border-start-start-radius: var(--r-display);
+    border-end-start-radius: var(--r-display);
+  }
+
+  .feat__item:is(:nth-child(3), :nth-child(5)) .feat__channel {
+    --bezel-end: -1px 0 var(--line-1);
+    border-start-end-radius: var(--r-display);
+    border-end-end-radius: var(--r-display);
   }
 }
 
 @media (width >= 1100px) {
-  .feat__bank {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+  .feat {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 
-  .feat__cell {
-    min-block-size: 336px;
+  .feat__item:first-child .feat__channel {
+    border-start-start-radius: var(--r-display);
+    border-end-start-radius: var(--r-display);
+  }
+
+  .feat__item:last-child .feat__channel {
+    --bezel-end: -1px 0 var(--line-1);
+    border-start-end-radius: var(--r-display);
+    border-end-end-radius: var(--r-display);
   }
 }

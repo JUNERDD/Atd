@@ -8,7 +8,7 @@
    so motion scales with it. Reduced motion keeps every layer at rest. */
 
 @media (prefers-reduced-motion: no-preference) {
-  /* Before the carousel is first seen, only the desktop shows, so the first scene can play in.
+  /* Before the screen is first seen, only the desktop shows, so the first scene can play in.
      Without the page script (no data-motion-ready) everything stays visible. */
   :root[data-motion][data-motion-ready] .cases__showcase:not([data-started]) .cases__scene {
     opacity: 0;

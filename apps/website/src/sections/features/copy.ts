@@ -1,35 +1,38 @@
 import type { Localized } from '../../i18n/lang';
-import type { FeatureId } from './glyphs';
+
+/** The capabilities in reading order: your setup (models, tools, memory), your rules, your Mac. */
+export const FEATURE_IDS = ['providers', 'extensions', 'memory', 'permissions', 'local'] as const;
+
+export type FeatureId = (typeof FEATURE_IDS)[number];
 
 interface FeaturesCopy {
   title: string;
-  /** One line each: the cell's glyph carries the rest. */
+  /** Each capability's name and its one line. */
   items: Record<FeatureId, { title: string; body: string }>;
 }
 
 export const featuresCopy = {
   en: {
-    title: 'Your models, your tools, your rules.',
+    title: 'Your setup, your rules, your Mac.',
     items: {
-      providers: {
-        title: 'Models',
-        body: 'Bring the providers you use, in the cloud or on your Mac.',
-      },
+      providers: { title: 'Models', body: 'Use the providers you have, cloud or local.' },
       extensions: {
         title: 'Extensions',
-        body: 'Skills, subagents, MCP servers and saved /\u00a0commands.',
+        body: 'Skills, subagents, MCP servers and /\u00a0commands.',
       },
       memory: { title: 'Memory', body: 'It learns how you work. You review what it keeps.' },
       permissions: { title: 'Permissions', body: 'You decide what it may do without asking.' },
+      local: { title: 'Runs locally', body: 'No account, and no Atd server in between.' },
     },
   },
   zh: {
-    title: '你的模型，你的工具，你的规则。',
+    title: '你的配置，你的规则，你的 Mac。',
     items: {
-      providers: { title: '模型', body: '接入你在用的提供商，云端或本机皆可。' },
-      extensions: { title: '扩展', body: '技能、子代理、MCP 服务器，以及用 /\u00a0运行的命令。' },
-      memory: { title: '记忆', body: '它会学习你的工作方式，记住什么由你审核。' },
-      permissions: { title: '权限', body: '无需询问时能做多少，由你决定。' },
+      providers: { title: '模型', body: '接入在用的提供商，云端本机皆可。' },
+      extensions: { title: '扩展', body: '技能、子代理、MCP 和\u00a0/\u00a0命令。' },
+      memory: { title: '记忆', body: '学习你的习惯，记住什么由你审核。' },
+      permissions: { title: '权限', body: '无需询问能做多少，由你决定。' },
+      local: { title: '本地运行', body: '无需账号，不经 Atd 服务器中转。' },
     },
   },
 } satisfies Localized<FeaturesCopy>;

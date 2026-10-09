@@ -1,14 +1,14 @@
-import { useCopy } from '../../i18n/lang';
 import { Section } from '../../ui/section';
-import { casesCopy } from './copy';
 import { CasesShowcase } from './showcase';
 
-/** Product surfaces, illustrated with exports of the canonical UI designs. */
+/**
+ * The product's surfaces as one scroll sequence, drawn from the canonical UI designs. The showcase
+ * places the section's heading itself, at the top of its stage, so it can pin with the screen.
+ */
 export function CasesSection() {
-  const t = useCopy(casesCopy);
   return (
-    <Section id="cases" title={t.title} lede={t.lede}>
-      <CasesShowcase />
+    <Section id="cases">
+      <CasesShowcase id="cases" />
     </Section>
   );
 }

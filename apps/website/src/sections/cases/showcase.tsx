@@ -1,76 +1,53 @@
-import { ArrowLeft, ArrowRight, ArrowUpRight, Pause, Play } from 'lucide-react';
 import { useState } from 'react';
 import { cases } from '../../content/cases';
 import { useCopy, useLang } from '../../i18n/lang';
+import { SectionHeader } from '../../ui/section';
 import { casesCopy } from './copy';
 import { CaseDesktop, CaseScene } from './scene';
-import { useCasesCarousel } from './use-cases-carousel';
+import { useCaseScroll } from './use-case-scroll';
 import './cases.css';
 
-const pad = (value: number) => String(value).padStart(2, '0');
-
-/** One carousel for every desktop scene, with explicit navigation and playback controls. */
-export function CasesShowcase() {
+/**
+ * Every scene as one scroll sequence on the one desktop, under the section's heading. The stage pins
+ * while its track scrolls past, and each step of scrolling brings in the next scene with its
+ * caption. Under them, one bar per scene fills with the scroll; a bar is also a button that goes
+ * straight to its scene. The heading pins with the stage when the viewport has room for it beside a
+ * full-size screen (use-case-scroll.ts). The prerendered page shows the first scene complete; the
+ * scroll drives it once the page hydrates.
+ */
+export function CasesShowcase({ id }: { id: string }) {
   const t = useCopy(casesCopy);
   const lang = useLang();
-  const {
-    root,
-    progress,
-    intervalSeconds,
-    viewport,
-    active,
-    started,
-    entered,
-    playing,
-    rotationEnabled,
-    pauseOnFocus,
-    select,
-    previous,
-    next,
-    toggle,
-  } = useCasesCarousel();
+  const { root, stage, heading, screen, active, entered, started, select } = useCaseScroll(
+    cases.length,
+  );
   const [failed, setFailed] = useState<ReadonlySet<string>>(new Set());
-  const current = cases[active] ?? cases[0];
 
   return (
-    <section
-      ref={root}
-      className="cases__showcase"
-      aria-label={t.views}
-      aria-roledescription={t.carousel}
-      data-started={started ? '' : undefined}
-      onFocusCapture={pauseOnFocus}
-    >
-      <ol className="cases__views" aria-label={t.views} data-reveal-group="">
-        {cases.map((item, index) => (
-          <li key={item.id} data-reveal="fade">
-            <button
-              type="button"
-              className="cases__view"
-              aria-pressed={active === index}
-              aria-controls="case-carousel"
-              onClick={() => select(index)}
-            >
-              {item.label[lang]}
-            </button>
-          </li>
-        ))}
-      </ol>
-      <div className="cases__screen display" id="case-carousel">
-        <CaseDesktop />
-        <div ref={viewport} className="cases__viewport">
-          <div className="cases__slides">
+    <div ref={root} className="cases__showcase" data-started={started ? '' : undefined}>
+      <div ref={stage} className="cases__stage">
+        <div ref={heading} className="cases__heading">
+          <SectionHeader id={id} title={t.title} lede={t.lede} />
+        </div>
+        <div className="cases__frame">
+          <div ref={screen} className="cases__screen display" id="case-screen">
+            <CaseDesktop />
             {cases.map((item, index) => (
               <figure
                 key={item.id}
                 className="cases__slide"
+                data-active={active === index ? '' : undefined}
                 data-entered={entered && active === index ? '' : undefined}
-                aria-label={`${index + 1} / ${cases.length} · ${item.label[lang]}`}
-                aria-roledescription={t.slide}
+                aria-label={item.label[lang]}
                 aria-hidden={active !== index}
               >
                 {failed.has(item.id) ? (
-                  <output className="cases__unavailable">{t.imageUnavailable}</output>
+                  <output className="cases__unavailable">
+                    {t.imageUnavailable}{' '}
+                    <a href={item.image.src} target="_blank" rel="noopener noreferrer">
+                      {t.openImage}
+                    </a>
+                  </output>
                 ) : (
                   <CaseScene
                     id={item.id}
@@ -83,62 +60,44 @@ export function CasesShowcase() {
             ))}
           </div>
         </div>
-      </div>
-      <div className="cases__caption">
-        <div
-          className="cases__description"
-          aria-live={playing ? 'off' : 'polite'}
-          aria-atomic="true"
-        >
-          <h3>{current.title[lang]}</h3>
-          <p>{current.description[lang]}</p>
+        <div className="cases__captions" aria-live="polite">
+          {cases.map((item, index) => (
+            <div
+              key={item.id}
+              className="cases__caption"
+              data-active={active === index ? '' : undefined}
+              aria-hidden={active !== index}
+            >
+              <h3>{item.title[lang]}</h3>
+              <p>{item.description[lang]}</p>
+            </div>
+          ))}
         </div>
-        <div className="cases__controls">
-          <div className="cases__timing">
-            <span className="cases__position readout">
-              {pad(active + 1)} / {pad(cases.length)}
-            </span>
-            <span className="cases__timer" title={t.interval(intervalSeconds)}>
-              <span className="cases__timer-track" aria-hidden="true">
-                <span ref={progress} className="cases__timer-fill" />
-              </span>
-              <span className="readout">{t.duration(intervalSeconds)}</span>
-            </span>
-          </div>
-          <button
-            type="button"
-            onClick={previous}
-            aria-label={t.previous}
-            aria-controls="case-carousel"
-          >
-            <ArrowLeft aria-hidden="true" />
-          </button>
-          <button
-            type="button"
-            onClick={toggle}
-            aria-label={rotationEnabled ? t.pause : t.play}
-            aria-controls="case-carousel"
-          >
-            {rotationEnabled ? <Pause aria-hidden="true" /> : <Play aria-hidden="true" />}
-          </button>
-          <button type="button" onClick={next} aria-label={t.next} aria-controls="case-carousel">
-            <ArrowRight aria-hidden="true" />
-          </button>
-        </div>
+        <ol className="cases__progress" aria-label={t.index}>
+          {cases.map((item, index) => (
+            <li key={item.id}>
+              <button
+                type="button"
+                className="cases__step"
+                aria-label={item.label[lang]}
+                aria-current={index === active ? 'true' : undefined}
+                aria-controls="case-screen"
+                onClick={() => select(index)}
+              >
+                <span className="cases__bar" aria-hidden="true">
+                  <span className="cases__fill" data-case-fill="" />
+                </span>
+              </button>
+            </li>
+          ))}
+        </ol>
       </div>
-      <div className="cases__footer">
-        <p>{t.note}</p>
-        <a
-          className="cases__original"
-          href={current.image.src}
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label={`${t.openImage} · ${current.label[lang]}`}
-        >
-          {t.openImage}
-          <ArrowUpRight aria-hidden="true" />
-        </a>
+      {/* One step of scrolling per scene: together they set how long the stage stays pinned. */}
+      <div className="cases__steps" aria-hidden="true">
+        {cases.map((item) => (
+          <span key={item.id} className="cases__space" />
+        ))}
       </div>
-    </section>
+    </div>
   );
 }

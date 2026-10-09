@@ -4,10 +4,10 @@ The marketing site for Atd: a static site built with Vite and React 19, prerende
 WebGL2 dot-matrix hero. English is served at `/` and Simplified Chinese at `/zh`.
 
 The look is fixed dark and strictly monochrome, retro-modern and spare: the page is one instrument. The hero is
-its main LED display, which spells out the name, Atd: anything, anytime, anywhere, to do. Below it, every
-section is a plate of the faceplate, perforated with a 24 px dot grid registered to the plate, joined to the
-next by a seam with registration crosses. Each plate carries one message: a centered heading lit in
-dots like the hero's word, a short lede, and one demo on a smaller LED display set into the plate.
+its main LED display, which spells out the name, Atd: anything, anytime, anywhere, to do. Below it come the
+interfaces, the features and the download, then the footer. Each is a plate of the faceplate, perforated with
+a 24 px dot grid registered to the plate, joined to the next by a seam with registration crosses. Each plate
+carries one message: a centered heading lit in dots like the hero's word, a short lede, and one demo.
 
 ## Commands
 
@@ -33,7 +33,7 @@ Run from the repository root:
    `dist/zh/index.html`, then deletes `dist-ssr`.
 
 The pages are complete before any JavaScript runs; the browser hydrates them, and the WebGL hero, the
-interactive demos and the interface carousel only enhance what is already there. Canonical and Open Graph URLs
+interactive demos and the interface showcase's scroll sequence only enhance what is already there. Canonical and Open Graph URLs
 use `SITE_URL` when set, otherwise the Vercel production domain (`VERCEL_PROJECT_PRODUCTION_URL`).
 
 ## Layout
@@ -60,12 +60,18 @@ public/
 ## Section layout
 
 Section headings and introductions share the page's center line, with no category label beside them.
-The privacy board is centered below its heading and capped at 54rem. It answers what stays on the
-Mac (inside a dotted ring) and what leaves it; a cloud/local model switch above it empties the
-outbound side, and three "never" legends close the plate. Its two sides stack below 760px and sit
-side by side from 760px. The privacy section review (`2504:145342` desktop, `2504:145595` compact)
-composes the shared section heading with the board's components: `Website / Privacy board` (Layout × Mode),
-`Website / Privacy line`, `Website / Model switch` and `Website / Privacy promises`.
+The features plate is one LED display set into the plate, a channel per capability (models,
+extensions, memory, permissions and running locally). Each channel is 21 × 15 dots and lights its
+capability's 11 × 11 pictogram (`src/sections/features/glyphs.ts`) on the shared LED board
+(`src/ui/led-board.tsx`), which also draws the download board: the dots power on column by column
+as the plate arrives, and a fine pointer swells them like a loupe. Wide (from 1100px), the five
+channels join into one strip with hairline seams and their names and lines are centered beneath
+them; regular (700–1099px), they form two strips, three over two; compact, each channel is a small
+square display (64–88px), cropped to the pictogram and one ring of dots, beside its name and line.
+The features review (`2564:159329` desktop, `2564:159355` compact) composes the shared section
+heading with `Website / Feature channel` (Layout=Strip with Position Start, Middle, End;
+Layout=Compact), whose Pictogram property swaps among `Website / Feature pictogram` (one variant
+per capability).
 
 ## Header language menu
 
@@ -75,37 +81,51 @@ links keep their language routes and remember explicit choices; the current lang
 The button and menu states (`2495:144651`)
 reuse the website's monochrome tokens and remain connected to the shared Lucide library.
 
-## Interface carousel
+## Interface showcase
 
-The “Interfaces” section shows eight Figma scenes: the selection toolbar, Mini Panel, screenshot
-tool, main panel, conversation, settings, Apps and automations. All scenes share the canonical
-desktop and a 1440 × 900 canvas, so the carousel keeps one desktop still and changes only what is
-on it. Each scene is a stack of layers cut from Figma (`scripts/matte-layers.py`) that reproduces
-the flat export at rest, and each plays in the way the real surfaces arrive on a Mac
-(`src/sections/cases/scenes.css`): text is selected before its toolbar appears, the Mini Panel
-slides out from the edge, a capture is framed and annotated step by step, windows open and replies
-stream in. The layers are positioned by `case-layers.css`, so the prerendered page shows every
-scene complete; reduced motion keeps them at rest.
+The “Interfaces” section comes right after the hero. It shows eight Figma scenes as one scroll
+sequence: the selection toolbar, Mini Panel, screenshot tool, main panel, conversation, settings,
+Apps and automations. All scenes share the canonical desktop and a 1440 × 900 canvas, so the
+showcase keeps one desktop still and changes only what is on it. Each scene is a stack of layers
+cut from Figma (`scripts/matte-layers.py`) that reproduces the flat export at rest, and each plays
+in the way the real surfaces arrive on a Mac (`src/sections/cases/scenes.css`): text is selected
+before its toolbar appears, the Mini Panel slides out from the edge, a capture is framed and
+annotated step by step, windows open and replies stream in. The layers are positioned by
+`case-layers.css`, so the prerendered page shows the first scene complete; reduced motion keeps
+them at rest and only cross-fades between scenes.
 
-[Embla](https://www.embla-carousel.com/docs/v8/get-started/react) handles looping, the crossfade
-(its Fade plugin) and automatic playback; scenes are not draggable. Each scene holds for its own
-time (3–5 s, `src/sections/cases/scenes.ts`), long enough for its entrance and a moment to read
-it. Visitors can select a scene, go backward or forward, pause, resume, or open the original image.
-Hovering, choosing a scene and the previous and next buttons leave playback running; changing scene
-restarts the hold for the new scene. Keyboard focus stops it until the visitor resumes; it also
-pauses offscreen and in hidden tabs. Reduced motion starts paused and switches scenes without the
-crossfade. The progress bar beside the playback controls follows Embla's timer, freezes while paused
-and restarts with each slide; its label shows the current scene's hold. Scene selectors use compact
-labels that wrap instead of scrolling sideways. Below 480 px, a two-column layout keeps all eight
-choices visible and preserves a 44 px minimum touch target. The navigation component and responsive
-examples (`2488:144568`) are kept in the project design file alongside the website's existing color
-tokens.
+The stage pins to the viewport (`position: sticky`) while its track scrolls past. The track is one
+stage tall plus one step of scrolling per scene, and `use-case-scroll.ts` turns how far it has
+scrolled into the scene. The stage holds only the screen, the scene's caption and a row of eight
+bars: the bars behind the current scene are full, and the current one fills 1:1 with the scroll.
+Each bar is also a button that jumps straight to its scene; the jump is instant, so the pinned stage
+doesn't move and the scenes in between never flash. As the stage rises into place the screen grows
+to full size, tied to the scroll where the browser supports scroll-driven animations. The screen
+takes the height the stage leaves it, and on landscape phones the caption and bars sit beside it.
+The section's heading and lede open the stage (the showcase places them with `SectionHeader`), and
+they pin with it when the viewport holds them beside a full-size screen, its caption and the bars;
+otherwise the stage pins higher by the heading's height, so the heading scrolls away and fades
+while the screen keeps its size (`use-case-scroll.ts` measures which). Whatever height is still
+unused is shared above and below the pinned stage.
+The showcase review (`2564:159138` desktop, `2564:159288` compact) composes the shared section
+heading with a scene, `Website / Case caption` (Align: Center, Start) and `Website / Case progress`,
+whose eight `Website / Case progress key` instances take a Progress (Next, Current, Done) and a
+State (Rest, Hover, Focus).
 
 The source nodes, layer exports, export process and image paths are in
 [`public/cases/README.md`](public/cases/README.md). Keep bilingual labels and descriptions in
-`src/content/cases.ts`, and controls in `src/sections/cases/copy.ts`.
+`src/content/cases.ts`, and the section's own copy in `src/sections/cases/copy.ts`.
 The former standalone Automations section and its navigation link are no longer mounted;
-automations appear as a case in this carousel.
+automations appear as a scene in this showcase.
+
+## Archived Privacy section
+
+The homepage no longer mounts the Privacy section (`src/sections/privacy/`) or its navigation link;
+its message lives on as the features display's “Runs locally” channel.
+Its board, which showed what stays on the Mac and what leaves it with a cloud or a local model,
+remains in the source, and its review (`2504:145342` desktop, `2504:145595` compact) remains in the
+project design file with the components `Website / Privacy board`, `Website / Privacy line`,
+`Website / Model switch` and `Website / Privacy promises`.
 
 ## Archived Summon demo
 
