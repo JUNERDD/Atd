@@ -162,6 +162,9 @@ The Vercel project `atd-agent` is connected to `JUNERDD/Atd` with
   "skip unaffected projects" setting).
 - `vercel.json` sets the filtered install, the build, clean URLs without trailing slashes, long-lived
   caching for hashed assets, and security headers.
+- Vercel checks the media manifest after building. With `VITE_ASSET_BASE_URL` configured, missing
+  CDN objects or invalid delivery headers fail the deployment before it replaces the current site.
+  Upload new media before pushing a website change; then run `assets:check` as shown below.
 - The project variable `ENABLE_EXPERIMENTAL_COREPACK=1` makes Vercel use the repository's pinned pnpm
   (`packageManager` in the root `package.json`); the project runs Node.js 24.
 
