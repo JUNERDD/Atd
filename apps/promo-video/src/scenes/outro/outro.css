@@ -1,0 +1,101 @@
+/* The call to action under the display: the invitation, the shortcut, where to get Atd. */
+.outro {
+  background-color: var(--ink);
+  opacity: var(--o, 1);
+}
+
+.outro__content {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 528px;
+}
+
+.outro__title {
+  font-size: 74px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--fg-1);
+}
+
+.outro__title:lang(zh) {
+  font-size: 68px;
+  letter-spacing: 0.04em;
+}
+
+.outro__keys {
+  margin-top: 44px;
+}
+
+.outro__cta {
+  display: flex;
+  align-items: center;
+  gap: 34px;
+  margin-top: 50px;
+}
+
+/* A white key with black text: the website's monochrome download button. */
+.outro__button {
+  position: relative;
+  overflow: hidden;
+  padding: 18px 36px;
+  border-radius: 14px;
+  background-color: var(--fg-1);
+  color: var(--ink);
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  box-shadow: 0 0 calc(var(--glow, 0) * 40px) rgb(255 255 255 / 0.18);
+  opacity: var(--o, 1);
+  scale: var(--s, 1);
+}
+
+.outro__button:lang(zh) {
+  letter-spacing: 0.04em;
+}
+
+.outro__shine {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 35%, rgb(255 255 255 / 0.9) 50%, transparent 65%);
+  mix-blend-mode: overlay;
+  translate: var(--x, -120%) 0;
+}
+
+.outro__url {
+  min-width: 230px;
+  font-family: var(--font-dot);
+  font-size: 46px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: var(--fg-1);
+}
+
+/* Doto's middle dot sits two dots (a quarter em) above the baseline; this sets it on it. */
+.outro__stop {
+  display: inline-block;
+  translate: 0 0.25em;
+}
+
+.outro__specs {
+  margin-top: 58px;
+  font-family: var(--font-dot);
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  /* A step brighter than the website's dot labels: lit in sparse dots, the line reads darker
+     than its colour, and it carries what the Mac needs. */
+  color: var(--fg-2);
+  opacity: var(--o, 1);
+}
+
+/* Doto has no Chinese, and its dotted Latin beside solid Chinese reads as two weights; the Chinese
+   cut sets the whole line in the text faces instead. */
+.outro__specs:lang(zh) {
+  font-family: var(--font-text);
+  font-size: 24px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}

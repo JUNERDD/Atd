@@ -1,0 +1,79 @@
+/* A scene's caption, in the column left of the screen: its number and name, headline and line. */
+.caption {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding-left: 120px;
+}
+
+.caption__column {
+  width: 560px;
+}
+
+.readout {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  opacity: var(--o, 1);
+}
+
+.readout__number {
+  font-family: var(--font-dot);
+  font-size: 36px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.06em;
+  color: var(--fg-1);
+}
+
+.readout__rule {
+  width: 40px;
+  height: 2px;
+  background-color: var(--line-2);
+}
+
+.readout__label {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--fg-2);
+}
+
+.caption__title {
+  margin-top: 28px;
+  font-size: 76px;
+  font-weight: 700;
+  line-height: 1.04;
+  letter-spacing: -0.03em;
+  color: var(--fg-1);
+}
+
+.caption__body {
+  margin-top: 30px;
+  font-size: 30px;
+  line-height: 1.42;
+  letter-spacing: -0.005em;
+  color: var(--fg-2);
+}
+
+.caption__keys {
+  margin-top: 44px;
+  opacity: var(--o, 1);
+}
+
+.caption:lang(zh) .readout__label {
+  letter-spacing: 0.16em;
+}
+
+.caption:lang(zh) .caption__title {
+  font-size: 68px;
+  line-height: 1.2;
+  letter-spacing: 0.02em;
+}
+
+.caption:lang(zh) .caption__body {
+  letter-spacing: 0.03em;
+}
