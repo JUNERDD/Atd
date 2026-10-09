@@ -100,3 +100,9 @@ Scheduled tasks, folder workflows, and idle-time memory consolidation, with run 
 ## Contributing
 
 Read the [contributor guidelines](AGENTS.md) before making changes, and submit a pull request targeting `main`. Include reproduction steps and the expected result when [reporting an issue](https://github.com/JUNERDD/Atd/issues).
+
+## License
+
+Atd is released under the [MIT License](LICENSE). Code adapted from other projects keeps its own license: the [AI Elements](packages/ui/src/components/ai-elements/LICENSE) components (Apache-2.0) and the memory engine's files from [pi-hermes-memory](docs/third-party/pi-hermes-memory-LICENSE) (MIT).
+
+The license covers the code, not the Atd name and logo, nor the logos of other companies and services in `packages/ui/src/assets/brands`, which remain their owners' trademarks.
