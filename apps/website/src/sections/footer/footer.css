@@ -53,12 +53,15 @@
   grid-column: 1 / -1;
 }
 
+/* On one row, the outer columns share the width, so the project links sit on the page's center
+   line whatever the name and the languages measure; the name and both lists share a baseline. */
 @media (width >= 840px) {
   .footer__inner {
-    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: baseline;
   }
 
-  .footer__nav:first-of-type {
-    justify-self: center;
+  .footer__nav:last-of-type {
+    justify-self: end;
   }
 }
