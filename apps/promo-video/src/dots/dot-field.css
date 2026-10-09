@@ -1,0 +1,23 @@
+/* The LED display, full frame. The bloom is a quarter-size copy of each frame, blurred and
+   screened over it, so lit dots glow the way the website hero's do. --zoom swells the display
+   about --zoom-origin for the dive into its cursor. */
+.dot-field {
+  position: absolute;
+  inset: 0;
+  scale: var(--zoom, 1);
+  transform-origin: var(--zoom-origin, 50% 50%);
+}
+
+.dot-field__canvas,
+.dot-field__bloom {
+  position: absolute;
+  inset: 0;
+  width: 1920px;
+  height: 1080px;
+}
+
+.dot-field__bloom {
+  filter: blur(5px) brightness(1.6);
+  opacity: 0.55;
+  mix-blend-mode: screen;
+}

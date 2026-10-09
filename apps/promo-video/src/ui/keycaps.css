@@ -1,0 +1,49 @@
+/* ⌘ ⇧ Space as keycaps, after the website's: a low lip with a sculpted face that sinks when held,
+   its legend lighting as it goes down. --key is the key's size in px; each key's --down (0–1) is
+   how far it is pressed, and --o, --y, --s how it arrives. */
+.keycaps {
+  display: flex;
+  gap: calc(var(--key) * 0.2px);
+}
+
+.keycap {
+  box-sizing: border-box;
+  width: calc(var(--key) * 1px);
+  height: calc(var(--key) * 1px);
+  padding-bottom: calc(var(--key) * 0.08px);
+  border-radius: calc(var(--key) * 0.24px);
+  background: linear-gradient(#1d1d20, #111113);
+  box-shadow:
+    0 0 0 1px var(--line-2),
+    0 14px 34px rgb(0 0 0 / 0.55),
+    0 0 calc(var(--down) * 28px) rgb(255 255 255 / calc(var(--down) * 0.22));
+  opacity: var(--o, 1);
+  translate: 0 var(--y, 0px);
+  scale: var(--s, 1);
+}
+
+.keycap[data-wide] {
+  width: calc(var(--key) * 2.7px);
+}
+
+.keycap__face {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  border-radius: calc(var(--key) * 0.22px);
+  background: linear-gradient(
+    color-mix(in srgb, #36363c calc(var(--down) * 100%), #28282d),
+    #1c1c1f
+  );
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.09);
+  translate: 0 calc(var(--down) * (var(--key) * 0.08px - 1px));
+  font-family: var(--font-text);
+  font-size: calc(var(--key) * 0.42px);
+  font-weight: 500;
+  color: rgb(245 245 247 / calc(0.6 + var(--down) * 0.4));
+  text-shadow: 0 0 calc(var(--down) * 14px) rgb(255 255 255 / calc(var(--down) * 0.7));
+}
+
+.keycap[data-wide] .keycap__face {
+  font-size: calc(var(--key) * 0.34px);
+}

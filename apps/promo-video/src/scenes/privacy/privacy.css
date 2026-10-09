@@ -1,0 +1,71 @@
+/* Local by design: the Mac's dotted boundary, the promise inside it, and three things Atd never has. */
+.privacy {
+  opacity: var(--o, 1);
+  filter: var(--filter, none);
+}
+
+.privacy__ring {
+  position: absolute;
+  inset: 0;
+  color: #fff;
+  rotate: var(--turn, 0deg);
+  transform-origin: 960px 486px;
+}
+
+.privacy__center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding-bottom: 108px;
+}
+
+.privacy__title {
+  font-size: 104px;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  text-align: center;
+}
+
+.privacy__title:lang(zh) {
+  font-size: 92px;
+  letter-spacing: 0.04em;
+}
+
+.privacy__lede {
+  max-width: 640px;
+  margin-top: 30px;
+  font-size: 30px;
+  line-height: 1.45;
+  text-align: center;
+  color: var(--fg-2);
+}
+
+.privacy__nevers {
+  position: absolute;
+  top: 918px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  gap: 22px;
+}
+
+.never {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 24px;
+  border-radius: 999px;
+  background-color: rgb(255 255 255 / 0.05);
+  box-shadow: inset 0 0 0 1px var(--line-2);
+  font-size: 26px;
+  font-weight: 500;
+  color: var(--fg-1);
+  opacity: var(--o, 1);
+  translate: 0 var(--y, 0px);
+  scale: var(--s, 1);
+}

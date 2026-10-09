@@ -1,0 +1,10 @@
+{
+  "extends": "@atd/typescript-config/react.json",
+  "compilerOptions": {
+    "types": ["node"],
+    // The soundtrack script runs under Node's type stripping, so the modules it shares with the
+    // film name their imports by `.ts` file name.
+    "allowImportingTsExtensions": true
+  },
+  "include": ["src", "scripts", "*.ts"]
+}
