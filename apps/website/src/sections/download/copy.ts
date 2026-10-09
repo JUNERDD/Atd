@@ -5,7 +5,8 @@ interface DownloadCopy {
   title: string;
   lede: string;
   cta: string;
-  specs: { label: string; value: string }[];
+  /** Readouts beside the board; one with an `href` links to what it names. */
+  specs: { label: string; value: string; href?: string }[];
   /** What to expect the first time it opens, in one line. */
   firstLaunch: string;
 }
@@ -19,6 +20,7 @@ export const downloadCopy = {
       { label: 'Requires', value: `macOS ${site.minMacOS}+` },
       { label: 'Chip', value: site.chip },
       { label: 'Latest', value: `v${site.version}` },
+      { label: 'License', value: site.license, href: site.licenseUrl },
     ],
     firstLaunch:
       'Atd isn’t notarized, so the first time, choose Open Anyway in System Settings › Privacy & Security. It updates itself after that.',
@@ -31,6 +33,7 @@ export const downloadCopy = {
       { label: '系统要求', value: `macOS ${site.minMacOS}+` },
       { label: '芯片', value: 'Apple 芯片' },
       { label: '最新版本', value: `v${site.version}` },
+      { label: '开源许可', value: site.license, href: site.licenseUrl },
     ],
     firstLaunch:
       'Atd 未经公证，首次打开时请在“系统设置 › 隐私与安全性”中点按“仍要打开”。此后它会自行更新。',

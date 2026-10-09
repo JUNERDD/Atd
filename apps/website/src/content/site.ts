@@ -8,6 +8,9 @@ export const site = {
   releasesUrl: 'https://github.com/JUNERDD/Atd/releases',
   downloadUrl: 'https://downloads.atd.best/latest/Atd-arm64.dmg',
   issuesUrl: 'https://github.com/JUNERDD/Atd/issues',
+  /** The open-source license the repository is released under, and its text. */
+  license: 'MIT',
+  licenseUrl: 'https://github.com/JUNERDD/Atd/blob/main/LICENSE',
   minMacOS: '26',
   chip: 'Apple silicon',
   /** The default global shortcut that shows and hides the panel. */

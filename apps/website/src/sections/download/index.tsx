@@ -6,9 +6,9 @@ import { LedWord } from './led-word';
 import './download.css';
 
 /**
- * The finale: the name on an LED board, the download key under it, and the requirements as
- * readouts in the legend column. The board powers on and lights column by column; the key rises,
- * the readouts decode and the first-launch line follows.
+ * The finale: the name on an LED board, the download key under it, and the requirements and the
+ * license as readouts in the legend column. The board powers on and lights column by column; the
+ * key rises, the readouts decode and the first-launch line follows.
  */
 export function DownloadSection() {
   const t = useCopy(downloadCopy);
@@ -20,9 +20,19 @@ export function DownloadSection() {
           {t.specs.map((spec) => (
             <div className="download__spec" key={spec.label} data-reveal="fade">
               <dt className="legend">{spec.label}</dt>
-              <dd className="readout" data-reveal="decode">
-                {spec.value}
-              </dd>
+              {/* A text effect only plays on an element holding just its text, so a linked
+                  readout decodes in its link. */}
+              {spec.href ? (
+                <dd className="readout">
+                  <a className="download__link" href={spec.href} data-reveal="decode">
+                    {spec.value}
+                  </a>
+                </dd>
+              ) : (
+                <dd className="readout" data-reveal="decode">
+                  {spec.value}
+                </dd>
+              )}
             </div>
           ))}
         </dl>
